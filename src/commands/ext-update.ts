@@ -64,7 +64,6 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
   .before(checkMinRequiredVersion, "extMinVersion")
   .before(diagnoseAndFixProject)
   .withForce()
-  .option("--params <paramsFile>", "name of params variables file with .env format.")
   .option(
     "--local",
     "save the update to firebase.json rather than directly update an existing Extension instance on a Firebase project"
@@ -139,7 +138,8 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
         newSpec: newExtensionVersion.spec,
         currentParams: oldParamValues,
         projectId,
-        paramsEnvPath: (options.params ?? "") as string,
+        // TODO(b/230598656): Clean up paramsEnvPath after v11 launch.
+        paramsEnvPath: "",
         nonInteractive: options.nonInteractive,
         instanceId,
       });
@@ -339,7 +339,8 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
         newSpec,
         currentParams: existingParams,
         projectId,
-        paramsEnvPath: (options.params ?? "") as string,
+        // TODO(b/230598656): Clean up paramsEnvPath after v11 launch.
+        paramsEnvPath: "",
         nonInteractive: options.nonInteractive,
         instanceId,
       });

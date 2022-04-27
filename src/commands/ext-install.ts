@@ -61,7 +61,6 @@ export default new Command("ext:install [extensionName]")
   )
   .withForce()
   // TODO(b/221037520): Deprecate the params flag then remove it in the next breaking version.
-  .option("--params <paramsFile>", "name of params variables file with .env format.")
   .option("--local", "save to firebase.json rather than directly install to a Firebase project")
   .before(requirePermissions, ["firebaseextensions.instances.create"])
   .before(ensureExtensionsApiEnabled)
@@ -69,7 +68,8 @@ export default new Command("ext:install [extensionName]")
   .before(diagnoseAndFixProject)
   .action(async (extensionName: string, options: Options) => {
     const projectId = getProjectId(options);
-    const paramsEnvPath = (options.params ?? "") as string;
+    // TODO(b/230598656): Clean up paramsEnvPath after v11 launch.
+    const paramsEnvPath = "";
     let learnMore = false;
     if (!extensionName) {
       if (options.interactive) {

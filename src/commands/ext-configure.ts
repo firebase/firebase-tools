@@ -36,7 +36,6 @@ marked.setOptions({
 export default new Command("ext:configure <extensionInstanceId>")
   .description("configure an existing extension instance")
   .withForce()
-  .option("--params <paramsFile>", "path of params file with .env format.")
   .option("--local", "save to firebase.json rather than directly install to a Firebase project")
   .before(requirePermissions, [
     "firebaseextensions.instances.update",
@@ -85,7 +84,8 @@ export default new Command("ext:configure <extensionInstanceId>")
         projectId,
         paramSpecs: tbdParams,
         nonInteractive: false,
-        paramsEnvPath: (options.params ?? "") as string,
+        // TODO(b/230598656): Clean up paramsEnvPath after v11 launch.
+        paramsEnvPath: "",
         instanceId,
         reconfiguring: true,
       });
@@ -146,7 +146,8 @@ export default new Command("ext:configure <extensionInstanceId>")
         projectId,
         paramSpecs: paramSpecWithNewDefaults,
         nonInteractive: options.nonInteractive,
-        paramsEnvPath: options.params as string,
+        // TODO(b/230598656): Clean up paramsEnvPath after v11 launch.
+        paramsEnvPath: "",
         instanceId,
         reconfiguring: true,
       });
