@@ -2,11 +2,13 @@ import { client } from "./client";
 import { logger } from "../../logger";
 import { needProjectNumber } from "../../projectUtils";
 import * as utils from "../../utils";
+import { convertConfig } from "./convertConfig";
+import { Payload } from "./args";
 
 /**
  *  Release finalized a Hosting release.
  */
-export async function release(context: any, options: any): Promise<void> {
+export async function release(context: any, options: any, payload: Payload): Promise<void> {
   if (!context.hosting || !context.hosting.deploys) {
     return;
   }
@@ -17,11 +19,12 @@ export async function release(context: any, options: any): Promise<void> {
   await Promise.all(
     context.hosting.deploys.map(async (deploy: any) => {
       utils.logLabeledBullet(`hosting[${deploy.site}]`, "finalizing version...");
-      const finalizeResult = await client.patch(
-        `/${deploy.version}`,
-        { status: "FINALIZED" },
-        { queryParams: { updateMask: "status" } }
-      );
+
+      const config = await convertConfig(context, payload, deploy.config, true);
+      const data = { status: "FINALIZED", config };
+      const queryParams = { updateMask: "status,config" };
+
+      const finalizeResult = await client.patch(`/${deploy.version}`, data, { queryParams });
 
       logger.debug(`[hosting] finalized version for ${deploy.site}:${finalizeResult.body}`);
       utils.logLabeledSuccess(`hosting[${deploy.site}]`, "version finalized");

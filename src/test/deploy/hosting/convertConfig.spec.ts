@@ -1,10 +1,27 @@
 import { expect } from "chai";
 import { HostingConfig } from "../../../firebaseConfig";
-
 import { convertConfig } from "../../../deploy/hosting/convertConfig";
+import * as args from "../../../deploy/functions/args";
+import * as backend from "../../../deploy/functions/backend";
+
+const DEFAULT_CONTEXT = {
+  loadedExistingBackend: true,
+  existingBackend: {
+    endpoints: {},
+  },
+};
+
+const DEFAULT_PAYLOAD = {};
 
 describe("convertConfig", () => {
-  const tests: Array<{ name: string; input: HostingConfig | undefined; want: any }> = [
+  const tests: Array<{
+    name: string;
+    input: HostingConfig | undefined;
+    want: any;
+    payload?: args.Payload;
+    finalize?: boolean;
+    context?: any;
+  }> = [
     {
       name: "returns nothing if no config is provided",
       input: undefined,
@@ -37,6 +54,82 @@ describe("convertConfig", () => {
       want: { rewrites: [{ regex: "/foo$", function: "foofn", functionRegion: "us-central1" }] },
     },
     {
+      name: "skips functions referencing CF3v2 functions being deployed (during prepare)",
+      input: { rewrites: [{ regex: "/foo$", function: "foofn", region: "us-central1" }] },
+      payload: {
+        functions: {
+          default: {
+            wantBackend: backend.of({
+              id: "foofn",
+              project: "my-project",
+              entryPoint: "foofn",
+              runtime: "nodejs14",
+              region: "us-central1",
+              platform: "gcfv2",
+              httpsTrigger: {},
+            }),
+            haveBackend: backend.empty(),
+          },
+        },
+      },
+      want: { rewrites: [] },
+      finalize: false,
+    },
+    {
+      name: "rewrites referencing CF3v2 functions being deployed are changed to Cloud Run (during release)",
+      input: { rewrites: [{ regex: "/foo$", function: "foofn", region: "us-central1" }] },
+      payload: {
+        functions: {
+          default: {
+            wantBackend: backend.of({
+              id: "foofn",
+              project: "my-project",
+              entryPoint: "foofn",
+              runtime: "nodejs14",
+              region: "us-central1",
+              platform: "gcfv2",
+              httpsTrigger: {},
+            }),
+            haveBackend: backend.empty(),
+          },
+        },
+      },
+      want: { rewrites: [{ regex: "/foo$", run: { serviceId: "foofn", region: "us-central1" } }] },
+      finalize: true,
+    },
+    {
+      name: "rewrites referencing existing CF3v2 functions are changed to Cloud Run (during prepare)",
+      input: { rewrites: [{ regex: "/foo$", function: "foofn", region: "us-central1" }] },
+      context: {
+        loadedExistingBackend: true,
+        existingBackend: {
+          endpoints: {
+            "us-central1": {
+              foofn: { id: "foofn", region: "us-central1", platform: "gcfv2", httpsTrigger: true },
+            },
+          },
+        },
+      },
+      want: { rewrites: [{ regex: "/foo$", run: { serviceId: "foofn", region: "us-central1" } }] },
+      finalize: true,
+    },
+    {
+      name: "rewrites referencing existing CF3v2 functions are changed to Cloud Run (during release)",
+      input: { rewrites: [{ regex: "/foo$", function: "foofn", region: "us-central1" }] },
+      context: {
+        loadedExistingBackend: true,
+        existingBackend: {
+          endpoints: {
+            "us-central1": {
+              foofn: { id: "foofn", region: "us-central1", platform: "gcfv2", httpsTrigger: true },
+            },
+          },
+        },
+      },
+      want: { rewrites: [{ regex: "/foo$", run: { serviceId: "foofn", region: "us-central1" } }] },
+      finalize: true,
+    },
+    {
       name: "returns rewrites for glob Run",
       input: { rewrites: [{ glob: "/foo", run: { serviceId: "hello" } }] },
       want: { rewrites: [{ glob: "/foo", run: { region: "us-central1", serviceId: "hello" } }] },
@@ -45,6 +138,50 @@ describe("convertConfig", () => {
       name: "returns rewrites for regex Run",
       input: { rewrites: [{ regex: "/foo$", run: { serviceId: "hello" } }] },
       want: { rewrites: [{ regex: "/foo$", run: { region: "us-central1", serviceId: "hello" } }] },
+    },
+    {
+      name: "skips rewrites for Cloud Run instances being deployed (during prepare)",
+      input: { rewrites: [{ regex: "/foo$", run: { serviceId: "hello" } }] },
+      want: { rewrites: [] },
+      payload: {
+        functions: {
+          default: {
+            wantBackend: backend.of({
+              id: "hello",
+              project: "my-project",
+              entryPoint: "hello",
+              runtime: "nodejs14",
+              region: "us-central1",
+              platform: "gcfv2",
+              httpsTrigger: {},
+            }),
+            haveBackend: backend.empty(),
+          },
+        },
+      },
+      finalize: false,
+    },
+    {
+      name: "return rewrites for Cloud Run instances being deployed (during release)",
+      input: { rewrites: [{ regex: "/foo$", run: { serviceId: "hello" } }] },
+      want: { rewrites: [{ regex: "/foo$", run: { region: "us-central1", serviceId: "hello" } }] },
+      payload: {
+        functions: {
+          default: {
+            wantBackend: backend.of({
+              id: "hello",
+              project: "my-project",
+              entryPoint: "hello",
+              runtime: "nodejs14",
+              region: "us-central1",
+              platform: "gcfv2",
+              httpsTrigger: {},
+            }),
+            haveBackend: backend.empty(),
+          },
+        },
+      },
+      finalize: true,
     },
     {
       name: "returns rewrites for Run with specified regions",
@@ -149,9 +286,17 @@ describe("convertConfig", () => {
     },
   ];
 
-  for (const test of tests) {
-    it(test.name, () => {
-      expect(convertConfig(test.input)).to.deep.equal(test.want);
+  for (const {
+    name,
+    context = DEFAULT_CONTEXT,
+    input,
+    payload = DEFAULT_PAYLOAD,
+    want,
+    finalize = true,
+  } of tests) {
+    it(name, async () => {
+      const config = await convertConfig(context, payload, input, finalize);
+      expect(config).to.deep.equal(want);
     });
   }
 });
