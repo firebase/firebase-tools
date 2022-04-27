@@ -387,7 +387,7 @@ export async function deleteFunction(cloudFunction: string): Promise<Operation> 
 }
 
 /**
- *
+ * Generate a v2 Cloud Function API object from a versionless Endpoint object.
  */
 export function functionFromEndpoint(endpoint: backend.Endpoint, source: StorageSource) {
   if (endpoint.platform !== "gcfv2") {
@@ -517,7 +517,7 @@ export function functionFromEndpoint(endpoint: backend.Endpoint, source: Storage
 }
 
 /**
- *
+ * Generate a versionless Endpoint object from a v2 Cloud Function API object.
  */
 export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoint {
   const [, project, , region, , id] = gcfFunction.name.split("/");
