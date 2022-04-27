@@ -7,7 +7,7 @@ import { OpenAPIObject, PathsObject, ServerObject, OperationObject } from "opena
 import { EmulatorLogger } from "../emulatorLogger";
 import { Emulators } from "../types";
 import { authOperations, AuthOps, AuthOperation, FirebaseJwtPayload } from "./operations";
-import { AgentProjectState, ProjectState } from "./state";
+import { AgentProjectState, decodeRefreshToken, ProjectState } from "./state";
 import apiSpecUntyped from "./apiSpec";
 import {
   PromiseController,
@@ -504,6 +504,19 @@ function toExegesisController(
           assert(decoded?.payload.firebase.tenant === targetTenantId, "TENANT_ID_MISMATCH");
         }
         targetTenantId = targetTenantId || decoded?.payload.firebase.tenant;
+      }
+
+      // Need to check refresh token for tenant ID for grantToken endpoint
+      if (ctx.requestBody?.refreshToken) {
+        const refreshTokenRecord = decodeRefreshToken(ctx.requestBody!.refreshToken);
+        if (refreshTokenRecord.tenantId && targetTenantId) {
+          // Shouldn't ever reach this assertion, but adding for completeness
+          assert(
+            refreshTokenRecord.tenantId === targetTenantId,
+            "TENANT_ID_MISMATCH: ((Refresh token tenant ID does not match target tenant ID.))"
+          );
+        }
+        targetTenantId = targetTenantId || refreshTokenRecord.tenantId;
       }
 
       return operation(getProjectStateById(targetProjectId, targetTenantId), ctx.requestBody, ctx);

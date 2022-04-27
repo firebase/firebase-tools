@@ -1,1 +1,2 @@
 - Updates `superstatic` to `v8` to fix audit issues.
+- Make grantToken tenant-aware (#4475)
