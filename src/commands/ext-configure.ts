@@ -33,7 +33,6 @@ marked.setOptions({
 export default new Command("ext:configure <extensionInstanceId>")
   .description("configure an existing extension instance")
   .withForce()
-  .option("--params <paramsFile>", "path of params file with .env format.")
   .before(requirePermissions, [
     "firebaseextensions.instances.update",
     "firebaseextensions.instances.get",
@@ -81,7 +80,8 @@ export default new Command("ext:configure <extensionInstanceId>")
       projectId,
       paramSpecs: tbdParams,
       nonInteractive: false,
-      paramsEnvPath: (options.params ?? "") as string,
+      // TODO(b/230598656): Clean up paramsEnvPath after v11 launch.
+      paramsEnvPath: "",
       instanceId,
       reconfiguring: true,
     });

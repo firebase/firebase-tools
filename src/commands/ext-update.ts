@@ -47,7 +47,6 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
   .before(checkMinRequiredVersion, "extMinVersion")
   .before(diagnoseAndFixProject)
   .withForce()
-  .option("--params <paramsFile>", "name of params variables file with .env format.")
   .action(async (instanceId: string, updateSource: string, options: Options) => {
     const projectId = getProjectId(options);
     const config = manifest.loadConfig(options);
@@ -117,7 +116,8 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
       newSpec: newExtensionVersion.spec,
       currentParams: oldParamValues,
       projectId,
-      paramsEnvPath: (options.params ?? "") as string,
+      // TODO(b/230598656): Clean up paramsEnvPath after v11 launch.
+      paramsEnvPath: "",
       nonInteractive: options.nonInteractive,
       instanceId,
     });
