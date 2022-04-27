@@ -101,7 +101,7 @@ export class EventarcEmulator implements EmulatorInstance {
         .filter(
           (trigger) =>
             !trigger.eventTrigger.eventFilters ||
-            Object.entries(trigger.eventTrigger.eventFilters).every(([k, v]) => event[k] === v)
+            Object.entries(trigger.eventTrigger.eventFilters).every(([k, v]) => event[k] === JSON.stringify(v))
         )
         .map((trigger) =>
           api
