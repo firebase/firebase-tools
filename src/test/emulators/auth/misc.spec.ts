@@ -1,6 +1,11 @@
 import { expect } from "chai";
 import { decode as decodeJwt, JwtHeader } from "jsonwebtoken";
-import { UserInfo } from "../../../emulator/auth/state";
+import {
+  decodeRefreshToken,
+  encodeRefreshToken,
+  RefreshTokenRecord,
+  UserInfo,
+} from "../../../emulator/auth/state";
 import {
   deleteAccount,
   getAccountInfoByIdToken,
@@ -47,6 +52,40 @@ describeAuthEmulator("token refresh", ({ authApi, getClock }) => {
       });
   });
 
+  it("should exchange refresh tokens for new tokens in a tenant project", async () => {
+    const tenant = await registerTenant(authApi(), PROJECT_ID, {
+      disableAuth: false,
+      allowPasswordSignup: true,
+    });
+    const { refreshToken, localId } = await registerUser(authApi(), {
+      email: "alice@example.com",
+      password: "notasecret",
+      tenantId: tenant.tenantId,
+    });
+
+    await authApi()
+      .post("/securetoken.googleapis.com/v1/token")
+      .type("form")
+      // snake_case parameters also work, per OAuth 2.0 spec.
+      .send({ refresh_token: refreshToken, grantType: "refresh_token" })
+      .query({ key: "fake-api-key" })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body.id_token).to.be.a("string");
+        expect(res.body.access_token).to.equal(res.body.id_token);
+        expect(res.body.refresh_token).to.be.a("string");
+        expect(res.body.expires_in)
+          .to.be.a("string")
+          .matches(/[0-9]+/);
+        expect(res.body.project_id).to.equal("12345");
+        expect(res.body.token_type).to.equal("Bearer");
+        expect(res.body.user_id).to.equal(localId);
+
+        const refreshTokenRecord = decodeRefreshToken(res.body.refresh_token);
+        expect(refreshTokenRecord.tenantId).to.equal(tenant.tenantId);
+      });
+  });
+
   it("should populate auth_time to match lastLoginAt (in seconds since epoch)", async () => {
     getClock().tick(444); // Make timestamps a bit more interesting (non-zero).
     const emailUser = { email: "alice@example.com", password: "notasecret" };
@@ -73,6 +112,62 @@ describeAuthEmulator("token refresh", ({ authApi, getClock }) => {
     expect(decoded!.header.alg).to.eql("none");
     // This should match login time, not token refresh time.
     expect(decoded!.payload.auth_time).to.equal(lastLoginAtSeconds);
+  });
+
+  it("should error if grant type is missing", async () => {
+    const { refreshToken } = await registerAnonUser(authApi());
+
+    await authApi()
+      .post("/securetoken.googleapis.com/v1/token")
+      .type("form")
+      // snake_case parameters also work, per OAuth 2.0 spec.
+      .send({ refresh_token: refreshToken })
+      .query({ key: "fake-api-key" })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error.message).to.contain("MISSING_GRANT_TYPE");
+      });
+  });
+
+  it("should error if grant type is not refresh_token", async () => {
+    const { refreshToken } = await registerAnonUser(authApi());
+
+    await authApi()
+      .post("/securetoken.googleapis.com/v1/token")
+      .type("form")
+      // snake_case parameters also work, per OAuth 2.0 spec.
+      .send({ refresh_token: refreshToken, grantType: "other_grant_type" })
+      .query({ key: "fake-api-key" })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error.message).to.contain("INVALID_GRANT_TYPE");
+      });
+  });
+
+  it("should error if refresh token is missing", async () => {
+    await authApi()
+      .post("/securetoken.googleapis.com/v1/token")
+      .type("form")
+      // snake_case parameters also work, per OAuth 2.0 spec.
+      .send({ grantType: "refresh_token" })
+      .query({ key: "fake-api-key" })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error.message).to.contain("MISSING_REFRESH_TOKEN");
+      });
+  });
+
+  it("should error on malformed refresh tokens", async () => {
+    await authApi()
+      .post("/securetoken.googleapis.com/v1/token")
+      .type("form")
+      // snake_case parameters also work, per OAuth 2.0 spec.
+      .send({ refresh_token: "malformedToken", grantType: "refresh_token" })
+      .query({ key: "fake-api-key" })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error.message).to.contain("INVALID_REFRESH_TOKEN");
+      });
   });
 
   it("should error if user is disabled", async () => {
@@ -105,6 +200,47 @@ describeAuthEmulator("token refresh", ({ authApi, getClock }) => {
         expect(res.body.error)
           .to.have.property("message")
           .equals("UNSUPPORTED_PASSTHROUGH_OPERATION");
+      });
+  });
+
+  it("should error when refresh tokens are from a different project", async () => {
+    const refreshTokenRecord = {
+      _AuthEmulatorRefreshToken: "DO NOT MODIFY",
+      localId: "localId",
+      provider: "provider",
+      extraClaims: {},
+      projectId: "notMatchingProjectId",
+    };
+    const refreshToken = encodeRefreshToken(refreshTokenRecord);
+
+    await authApi()
+      .post("/securetoken.googleapis.com/v1/token")
+      .type("form")
+      .send({ refresh_token: refreshToken, grantType: "refresh_token" })
+      .query({ key: "fake-api-key" })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error).to.have.property("message").equals("INVALID_REFRESH_TOKEN");
+      });
+  });
+
+  it("should error on refresh tokens without required fields", async () => {
+    const refreshTokenRecord = {
+      localId: "localId",
+      provider: "provider",
+      extraClaims: {},
+      projectId: "notMatchingProjectId",
+    };
+    const refreshToken = encodeRefreshToken(refreshTokenRecord as RefreshTokenRecord);
+
+    await authApi()
+      .post("/securetoken.googleapis.com/v1/token")
+      .type("form")
+      .send({ refresh_token: refreshToken, grantType: "refresh_token" })
+      .query({ key: "fake-api-key" })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error).to.have.property("message").equals("INVALID_REFRESH_TOKEN");
       });
   });
 });
