@@ -1,0 +1,1 @@
+- Updates `superstatic` to `v8` to fix audit issues.
