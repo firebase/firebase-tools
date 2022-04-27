@@ -157,6 +157,11 @@ describe("FunctionsEmulatorUtils", () => {
         expected: true,
       },
       {
+        desc: "should return true for ipv6 loopback",
+        href: "[::1]:5001/firestore",
+        expected: true,
+      },
+      {
         desc: "should work with https",
         href: "https://127.0.0.1:5001/firestore",
         expected: true,
