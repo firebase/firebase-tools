@@ -3,4 +3,5 @@
 - Fix database emulator rules error parsing (#4454).
 - Fix timestamp format in Auth Emulator events (#3093).
 - Fix `TypeError: Invalid Version:` error when emulating functions (#4403).
+- Fix Storage Emulator UI creating folder (https://github.com/firebase/firebase-tools-ui/issues/738).
 - Fix Storage Emulator showing folder placeholders in list results.
