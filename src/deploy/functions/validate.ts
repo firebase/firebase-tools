@@ -116,7 +116,7 @@ export function functionIdsAreValid(functions: { id: string; platform: string }[
   });
   if (invalidV2Ids.length !== 0) {
     const msg =
-      `${invalidV2Ids.map((f) => f.id).join(", ")} v2 function name(s) can only contin lower ` +
+      `${invalidV2Ids.map((f) => f.id).join(", ")} v2 function name(s) can only contain lower ` +
       `case letters, numbers, hyphens, and not exceed 62 characters in length`;
     throw new FirebaseError(msg);
   }

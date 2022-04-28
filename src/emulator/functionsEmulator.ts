@@ -438,7 +438,6 @@ export class FunctionsEmulator implements EmulatorInstance {
   }
 
   async connect(): Promise<void> {
-    const loadTriggerPromises: Promise<void>[] = [];
     for (const backend of this.args.emulatableBackends) {
       this.logger.logLabeled(
         "BULLET",
@@ -461,9 +460,8 @@ export class FunctionsEmulator implements EmulatorInstance {
         return debouncedLoadTriggers();
       });
 
-      loadTriggerPromises.push(this.loadTriggers(backend, /* force= */ true));
+      await this.loadTriggers(backend, /* force= */ true);
     }
-    await Promise.all(loadTriggerPromises);
     await this.performPostLoadOperations();
     return;
   }
@@ -1358,11 +1356,9 @@ export class FunctionsEmulator implements EmulatorInstance {
 
   async reloadTriggers() {
     this.triggerGeneration++;
-    const loadTriggerPromises = [];
     for (const backend of this.args.emulatableBackends) {
-      loadTriggerPromises.push(this.loadTriggers(backend));
+      await this.loadTriggers(backend);
     }
-    await Promise.all(loadTriggerPromises);
     await this.performPostLoadOperations();
     return;
   }
