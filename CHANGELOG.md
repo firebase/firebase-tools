@@ -3,3 +3,4 @@
 - Fix database emulator rules error parsing (#4454).
 - Fix timestamp format in Auth Emulator events (#3093).
 - Fix `TypeError: Invalid Version:` error when emulating functions (#4403).
+- Fix Storage Emulator showing folder placeholders in list results.
