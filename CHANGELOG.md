@@ -1,7 +1,0 @@
-- Updates `superstatic` to `v8` to fix audit issues.
-- Make grantToken tenant-aware (#4475)
-- Fix database emulator rules error parsing (#4454).
-- Fix timestamp format in Auth Emulator events (#3093).
-- Fix `TypeError: Invalid Version:` error when emulating functions (#4403).
-- Fix issue with creating folders from Storage Emulator UI (https://github.com/firebase/firebase-tools-ui/issues/738).
-- Fix Storage Emulator showing folder placeholders in list results.
