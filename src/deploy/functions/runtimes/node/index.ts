@@ -129,7 +129,7 @@ export class Delegate {
     env: backend.EnvironmentVariables
   ): Promise<backend.Backend> {
     if (previews.functionsv2) {
-      if (semver.valid(this.sdkVersion)) {
+      if (!semver.valid(this.sdkVersion)) {
         logger.debug(
           `Could not parse firebase-functions version '${this.sdkVersion}' into semver. Falling back to parseTriggers.`
         );
