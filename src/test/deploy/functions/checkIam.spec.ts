@@ -189,22 +189,6 @@ describe("checkIam", () => {
     });
   });
 
-  describe("obtainEventarcServiceAgentBindings", () => {
-    it("should add the binding", () => {
-      const policy = { ...iamPolicy };
-
-      const bindings = checkIam.obtainEventarcServiceAgentBindings(projectNumber, policy);
-
-      expect(bindings.length).to.equal(1);
-      expect(bindings[0]).to.deep.equal({
-        role: checkIam.EVENTARC_SERVICE_AGENT_ROLE,
-        members: [
-          `serviceAccount:service-${projectNumber}@gcp-sa-eventarc.iam.gserviceaccount.com`,
-        ],
-      });
-    });
-  });
-
   describe("mergeBindings", () => {
     it("should skip empty or duplicate bindings", () => {
       const policy = {
@@ -369,12 +353,6 @@ describe("checkIam", () => {
             role: checkIam.EVENTARC_EVENT_RECEIVER_ROLE,
             members: [`serviceAccount:${projectNumber}-compute@developer.gserviceaccount.com`],
           },
-          {
-            role: checkIam.EVENTARC_SERVICE_AGENT_ROLE,
-            members: [
-              `serviceAccount:service-${projectNumber}@gcp-sa-eventarc.iam.gserviceaccount.com`,
-            ],
-          },
         ],
       };
       storageStub.resolves(STORAGE_RES);
@@ -474,12 +452,6 @@ describe("checkIam", () => {
         {
           role: checkIam.EVENTARC_EVENT_RECEIVER_ROLE,
           members: [`serviceAccount:${projectNumber}-compute@developer.gserviceaccount.com`],
-        },
-        {
-          role: checkIam.EVENTARC_SERVICE_AGENT_ROLE,
-          members: [
-            `serviceAccount:service-${projectNumber}@gcp-sa-eventarc.iam.gserviceaccount.com`,
-          ],
         },
       ],
     };
