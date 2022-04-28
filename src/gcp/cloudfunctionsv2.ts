@@ -201,7 +201,7 @@ const BYTES_PER_UNIT: Record<MemoryUnit, number> = {
  * Must serve the same results as
  * https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/apimachinery/pkg/api/resource/quantity.go
  */
-export function megabytes(memory: string): number {
+export function mebibytes(memory: string): number {
   const re = /^([0-9]+(\.[0-9]*)?)(Ki|Mi|Gi|Ti|k|M|G|T|([eE]([0-9]+)))?$/;
   const matches = re.exec(memory);
   if (!matches) {
@@ -215,7 +215,7 @@ export function megabytes(memory: string): number {
     const suffix = matches[3] || "";
     bytes = quantity * BYTES_PER_UNIT[suffix as MemoryUnit];
   }
-  return bytes / 1e6;
+  return bytes / (1 << 20);
 }
 
 /**
@@ -386,6 +386,9 @@ export async function deleteFunction(cloudFunction: string): Promise<Operation> 
   }
 }
 
+/**
+ * Generate a v2 Cloud Function API object from a versionless Endpoint object.
+ */
 export function functionFromEndpoint(endpoint: backend.Endpoint, source: StorageSource) {
   if (endpoint.platform !== "gcfv2") {
     throw new FirebaseError(
@@ -428,7 +431,13 @@ export function functionFromEndpoint(endpoint: backend.Endpoint, source: Storage
     endpoint,
     "availableMemory",
     "availableMemoryMb",
-    (mb: string) => `${mb}M`
+    (mb: number) => {
+      if (mb > 1024) {
+        return `${mb / 1024}Gi`;
+      } else {
+        return `${mb}Mi`;
+      }
+    }
   );
   proto.renameIfPresent(gcfFunction.serviceConfig, endpoint, "minInstanceCount", "minInstances");
   proto.renameIfPresent(gcfFunction.serviceConfig, endpoint, "maxInstanceCount", "maxInstances");
@@ -507,6 +516,9 @@ export function functionFromEndpoint(endpoint: backend.Endpoint, source: Storage
   return gcfFunction;
 }
 
+/**
+ * Generate a versionless Endpoint object from a v2 Cloud Function API object.
+ */
 export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoint {
   const [, project, , region, , id] = gcfFunction.name.split("/");
   let trigger: backend.Triggered;
@@ -581,7 +593,7 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
     gcfFunction.serviceConfig,
     "availableMemoryMb",
     "availableMemory",
-    megabytes
+    mebibytes
   );
   proto.renameIfPresent(endpoint, gcfFunction.serviceConfig, "minInstances", "minInstanceCount");
   proto.renameIfPresent(endpoint, gcfFunction.serviceConfig, "maxInstances", "maxInstanceCount");
