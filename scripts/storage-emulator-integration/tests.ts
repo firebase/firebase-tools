@@ -1721,7 +1721,6 @@ describe("Storage emulator", () => {
             items: [],
           });
         });
-
         context("with folder placeholders", () => {
           beforeEach(async function (this) {
             this.timeout(TEST_SETUP_TIMEOUT);
@@ -1775,6 +1774,45 @@ describe("Storage emulator", () => {
             expect(listResult).to.deep.equal({
               prefixes: ["abc", "somePathEndsWithDoubleSlash", "storage_ref"],
               items: [],
+            });
+          });
+        });
+
+        context("with invalid prefixes and items", () => {
+          beforeEach(async function (this) {
+            this.timeout(TEST_SETUP_TIMEOUT);
+
+            const refs = ["list//foo", "list/bar//", "list/baz//qux"];
+            for (const ref of refs) {
+              // Use REST API to create the folder placeholders since SDK won't
+              // allow refs with trailing slashes.
+              await fetch(
+                `${STORAGE_EMULATOR_HOST}/upload/storage/v1/b/${storageBucket}/o?name=${encodeURIComponent(
+                  ref
+                )}`,
+                {
+                  headers: {
+                    "Content-Type": "multipart/related; boundary=boundary",
+                  },
+                  method: "POST",
+                  body: Buffer.from(EMPTY_FOLDER_DATA, "utf8"),
+                }
+              );
+            }
+          });
+
+          it("list result should not include show invalid prefixes and items", async () => {
+            const listResult = await page.evaluate(async () => {
+              const list = await firebase.storage().ref("/list").listAll();
+              return {
+                prefixes: list.prefixes.map((prefix) => prefix.name),
+                items: list.items.map((item) => item.name),
+              };
+            });
+
+            expect(listResult).to.deep.equal({
+              prefixes: ["bar", "baz"], // only implicit prefixes, (no bar//)
+              items: [], // no valid items
             });
           });
         });

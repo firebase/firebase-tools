@@ -519,12 +519,12 @@ function setObjectHeaders(
   }
 }
 
-function validPrefix(prefix: string) {
+function validPrefix(prefix: string): boolean {
   // See go/firebase-storage-backend-valid-path
   return isValidNonEncodedPathString(removeAtMostOneTrailingSlash(prefix));
 }
 
-function isValidNonEncodedPathString(path: string) {
+function isValidNonEncodedPathString(path: string): boolean {
   // See go/firebase-storage-backend-valid-path
   if (path.startsWith("/")) {
     path = path.substring(1);
