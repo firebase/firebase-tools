@@ -35,7 +35,7 @@ function hasUserConfig(config: Record<string, unknown>): boolean {
 }
 
 /**
- *
+ * Prepare functions codebases for deploy.
  */
 export async function prepare(
   context: args.Context,

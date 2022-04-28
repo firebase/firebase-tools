@@ -127,7 +127,7 @@ export interface IamPolicy {
 }
 
 /**
- *
+ * Gets a service with a given name.
  */
 export async function getService(name: string): Promise<Service> {
   try {
@@ -141,7 +141,7 @@ export async function getService(name: string): Promise<Service> {
 }
 
 /**
- *
+ * Replaces a service spec.
  */
 export async function replaceService(name: string, service: Service): Promise<Service> {
   try {
@@ -184,7 +184,7 @@ export async function setIamPolicy(
 }
 
 /**
- *
+ * Gets IAM policy for a service.
  */
 export async function getIamPolicy(
   serviceName: string,

@@ -211,7 +211,9 @@ export function memoryToGen1Cpu(memory: MemoryOptions): number {
 }
 
 /**
- *
+ * The amount of CPU we allocate in V2.
+ * Where these don't match with memoryToGen1Cpu we must manually configure these
+ * at the run service.
  */
 export function memoryToGen2Cpu(memory: MemoryOptions): number {
   return {

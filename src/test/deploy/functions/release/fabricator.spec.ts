@@ -1012,7 +1012,7 @@ describe("Fabricator", () => {
       };
     });
 
-    it("returns false if the observed generation isn't hte metageneration", () => {
+    it("returns false if the observed generation isn't the metageneration", () => {
       service.status!.observedGeneration = 1;
       service.metadata.generation = 2;
       expect(fabricator.serviceIsResolved(service)).to.be.false;
@@ -1042,7 +1042,7 @@ describe("Fabricator", () => {
       service.status!.conditions[0].status = "True";
       service.status!.conditions[0].type = "Ready";
 
-      expect(() => fabricator.serviceIsResolved(service)).to.throw;
+      expect(fabricator.serviceIsResolved(service)).to.be.true;
     });
   });
 
