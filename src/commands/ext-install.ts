@@ -326,6 +326,12 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
         reason: `To access and manage secrets which are used by this extension. By using this product you agree to the terms and conditions of the following license: https://console.cloud.google.com/tos?id=cloud&project=${projectId}`,
       });
     }
+    if (spec.events && spec.events.length > 0) {
+      apis.push({
+        apiName: "eventarc.googleapis.com",
+        reason: `When events are enabled, the Eventarc API is required to provision an event channel and publish events.`,
+      });      
+    }
     if (apis.length) {
       askUserForConsent.displayApis(spec.displayName || spec.name, projectId, apis);
       const consented = await confirm({ nonInteractive, force, default: true });
