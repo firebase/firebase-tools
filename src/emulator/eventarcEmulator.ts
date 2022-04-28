@@ -101,9 +101,7 @@ export class EventarcEmulator implements EmulatorInstance {
         .filter(
           (trigger) =>
             !trigger.eventTrigger.eventFilters ||
-            Object.entries(trigger.eventTrigger.eventFilters).every(
-              ([k, v]) => event[k] === JSON.stringify(v)
-            )
+            this.matchesAll(event, trigger.eventTrigger.eventFilters)
         )
         .map((trigger) =>
           api
@@ -124,6 +122,16 @@ export class EventarcEmulator implements EmulatorInstance {
             })
         )
     );
+  }
+
+  private matchesAll(event: CloudEvent<any>, eventFilters: Record<string, string>): boolean {
+    return Object.entries(eventFilters).every(([key, value]) => {
+      let attr = event[key] ?? event.attributes[key];
+      if (typeof attr === "object" && !Array.isArray(attr)) {
+        attr = attr.ceTimestamp ?? attr.ceString;
+      }
+      return attr === value;
+    });
   }
 
   async start(): Promise<void> {
