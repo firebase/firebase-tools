@@ -83,8 +83,16 @@ export class DatabaseEmulator implements EmulatorInstance {
         if (!c.instance) {
           continue;
         }
-
-        await this.updateRules(c.instance, c.rules);
+        try {
+          await this.updateRules(c.instance, c.rules);
+        } catch (e: any) {
+          const rulesError = this.prettyPrintRulesError(c.rules, e);
+          this.logger.logLabeled("WARN", "database", rulesError);
+          this.logger.logLabeled("WARN", "database", "Failed to update rules");
+          throw new FirebaseError(
+            `Failed to load initial ${Constants.description(this.getName())} rules:\n${rulesError}`
+          );
+        }
       }
     }
   }
@@ -173,12 +181,39 @@ export class DatabaseEmulator implements EmulatorInstance {
       if (e.context && e.context.body) {
         throw e.context.body.error;
       }
-      throw e.original;
+      throw e.original ?? e;
     }
   }
 
-  private prettyPrintRulesError(filePath: string, error: string): string {
+  // TODO: tests
+  private prettyPrintRulesError(filePath: string, error: unknown): string {
+    let errStr;
+    switch (typeof error) {
+      case "string":
+        errStr = error;
+        break;
+      case "object":
+        if (error != null && "message" in error) {
+          const message = (error as { message: unknown }).message;
+          errStr = `${message}`;
+          if (typeof message === "string") {
+            try {
+              // message may be JSON with {error: string} in it
+              const parsed = JSON.parse(message);
+              if (typeof parsed === "object" && parsed.error) {
+                errStr = `${parsed.error}`;
+              }
+            } catch (_) {
+              // Probably not JSON, just output the string itself as above.
+            }
+          }
+          break;
+        }
+      // fallthrough
+      default:
+        errStr = `Unknown error: ${JSON.stringify(error)}`;
+    }
     const relativePath = path.relative(process.cwd(), filePath);
-    return `${clc.cyan(relativePath)}:${error.trim()}`;
+    return `${clc.cyan(relativePath)}:${errStr.trim()}`;
   }
 }

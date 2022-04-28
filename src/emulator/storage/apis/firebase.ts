@@ -169,11 +169,12 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
     }
     return res.status(200).json({
       nextPageToken: listResponse.nextPageToken,
-      prefixes: listResponse.prefixes ?? [],
-      items:
-        listResponse.items?.map((item) => {
+      prefixes: (listResponse.prefixes ?? []).filter(isValidPrefix),
+      items: (listResponse.items ?? [])
+        .filter((item) => isValidNonEncodedPathString(item.name))
+        .map((item) => {
           return { name: item.name, bucket: item.bucket };
-        }) ?? [],
+        }),
     });
   });
 
@@ -516,4 +517,29 @@ function setObjectHeaders(
   if (metadata.contentLanguage) {
     res.setHeader("Content-Language", metadata.contentLanguage);
   }
+}
+
+function isValidPrefix(prefix: string): boolean {
+  // See go/firebase-storage-backend-valid-path
+  return isValidNonEncodedPathString(removeAtMostOneTrailingSlash(prefix));
+}
+
+function isValidNonEncodedPathString(path: string): boolean {
+  // See go/firebase-storage-backend-valid-path
+  if (path.startsWith("/")) {
+    path = path.substring(1);
+  }
+  if (!path) {
+    return false;
+  }
+  for (const pathSegment of path.split("/")) {
+    if (!pathSegment) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function removeAtMostOneTrailingSlash(path: string): string {
+  return path.replace(/\/$/, "");
 }
