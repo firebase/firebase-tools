@@ -19,7 +19,7 @@ import {
   HttpConstants,
   SignatureType,
 } from "./functionsEmulatorShared";
-import { compareVersionStrings } from "./functionsEmulatorUtils";
+import { compareVersionStrings, isLocalHost } from "./functionsEmulatorUtils";
 
 let functionModule: any;
 let FUNCTION_TARGET_NAME: string;
@@ -365,7 +365,7 @@ function initializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
         .filter((v) => v);
       const href = (hrefs.length && hrefs[0]) || "";
 
-      if (href && !history[href] && !href.startsWith("http://localhost")) {
+      if (href && !history[href] && !isLocalHost(href)) {
         history[href] = true;
         if (href.indexOf("googleapis.com") !== -1) {
           new EmulatorLog("SYSTEM", "googleapis-network-access", "", {

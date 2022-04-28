@@ -10,6 +10,7 @@ import { humanReadable } from "../deploy/extensions/deploymentSummary";
 import { InstanceSpec, getExtension, getExtensionVersion } from "../deploy/extensions/planner";
 import { partition } from "../functional";
 import * as utils from "../utils";
+import { logger } from "../logger";
 
 interface displayEAPWarningParameters {
   publisherId: string;
@@ -118,4 +119,15 @@ export async function displayWarningsForDeploy(instancesToCreate: InstanceSpec[]
     );
   }
   return experimental.length > 0 || eapExtensions.length > 0;
+}
+
+/**
+ * paramsFlagDeprecationWarning displays a warning about the future depreaction of the --params flag.
+ */
+export function paramsFlagDeprecationWarning() {
+  logger.warn(
+    "The --params flag is deprecated and will be removed in firebase-tools@11. " +
+      "Instead, use an extensions manifest and `firebase deploy --only extensions` to deploy extensions noninteractively. " +
+      "See https://firebase.google.com/docs/extensions/manifest for more details"
+  );
 }

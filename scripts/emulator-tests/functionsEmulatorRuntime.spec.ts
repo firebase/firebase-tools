@@ -8,7 +8,11 @@ import * as sinon from "sinon";
 
 import { EmulatorLog, Emulators } from "../../src/emulator/types";
 import { FunctionRuntimeBundles, TIMEOUT_LONG, TIMEOUT_MED, MODULE_ROOT } from "./fixtures";
-import { FunctionsRuntimeBundle, SignatureType } from "../../src/emulator/functionsEmulatorShared";
+import {
+  EmulatedTriggerDefinition,
+  FunctionsRuntimeBundle,
+  SignatureType,
+} from "../../src/emulator/functionsEmulatorShared";
 import { InvokeRuntimeOpts, FunctionsEmulator } from "../../src/emulator/functionsEmulator";
 import { RuntimeWorker } from "../../src/emulator/functionsRuntimeWorker";
 import { streamToString, cloneDeep } from "../../src/utils";
@@ -60,15 +64,18 @@ async function invokeFunction(
   opts.ignore_warnings = true;
   opts.serializedTriggers = serializedTriggers;
 
-  const dummyTriggerDef = {
+  const dummyTriggerDef: EmulatedTriggerDefinition = {
     name: "function_id",
     region: "region",
     id: "region-function_id",
     entryPoint: "function_id",
     platform: "gcfv1" as const,
   };
+  if (signatureType !== "http") {
+    dummyTriggerDef.eventTrigger = { resource: "dummyResource", eventType: "dummyType" };
+  }
+  functionsEmulator.setTriggersForTesting([dummyTriggerDef], testBackend);
   return functionsEmulator.invokeTrigger(
-    testBackend,
     {
       ...dummyTriggerDef,
       // Fill in with dummy trigger info based on given signature type.
