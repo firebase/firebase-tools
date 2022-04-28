@@ -2,6 +2,7 @@ import * as clc from "cli-color";
 
 import * as args from "./args";
 import * as backend from "./backend";
+import * as build from "./build";
 import * as ensureApiEnabled from "../../ensureApiEnabled";
 import * as functionsConfig from "../../functionsConfig";
 import * as functionsEnv from "../../functions/env";
@@ -107,9 +108,16 @@ export async function prepare(
       projectAlias: options.projectAlias,
     };
     const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
-    logger.debug(`Analyzing ${runtimeDelegate.name} backend spec`);
-    const wantBackend = await runtimeDelegate.discoverSpec(runtimeConfig, firebaseEnvs);
-    wantBackend.environmentVariables = { ...userEnvs, ...firebaseEnvs };
+    const envs = { ...userEnvs, ...firebaseEnvs };
+    let wantBackend: backend.Backend;
+    if (previews.functionsparams) {
+      const wantBuild = await runtimeDelegate.discoverBuild(runtimeConfig, firebaseEnvs);
+      wantBackend = build.resolveBackend(wantBuild, userEnvs);
+    } else {
+      logger.debug(`Analyzing ${runtimeDelegate.name} backend spec`);
+      wantBackend = await runtimeDelegate.discoverSpec(runtimeConfig, firebaseEnvs);
+    }
+    wantBackend.environmentVariables = envs;
     for (const endpoint of backend.allEndpoints(wantBackend)) {
       endpoint.environmentVariables = wantBackend.environmentVariables;
       endpoint.codebase = codebase;
