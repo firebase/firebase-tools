@@ -169,7 +169,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
     }
     return res.status(200).json({
       nextPageToken: listResponse.nextPageToken,
-      prefixes: (listResponse.prefixes ?? []).filter(validPrefix),
+      prefixes: (listResponse.prefixes ?? []).filter(isValidPrefix),
       items: (listResponse.items ?? [])
         .filter((item) => isValidNonEncodedPathString(item.name))
         .map((item) => {
@@ -519,7 +519,7 @@ function setObjectHeaders(
   }
 }
 
-function validPrefix(prefix: string): boolean {
+function isValidPrefix(prefix: string): boolean {
   // See go/firebase-storage-backend-valid-path
   return isValidNonEncodedPathString(removeAtMostOneTrailingSlash(prefix));
 }
