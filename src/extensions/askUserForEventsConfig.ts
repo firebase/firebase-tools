@@ -17,7 +17,7 @@ export function checkAllowedEventTypesResponse(
   for (const e of response) {
     if (!validEventTypes.includes(e)) {
       utils.logWarning(
-        `Unexpected event type '${response}' was configured to be emitted. This event type is not part of the extension spec.`
+        `Unexpected event type '${e}' was configured to be emitted. This event type is not part of the extension spec.`
       );
       return false;
     }
@@ -55,7 +55,11 @@ export async function askForAllowedEventTypes(
 ): Promise<string[]> {
   let valid = false;
   let response: string[] = [];
-  const eventTypes = eventDescriptors.map((e) => ({ checked: false, value: e.type }));
+  const eventTypes = eventDescriptors.map((e, index) => ({
+    checked: false,
+    name: `${index + 1}. ${e.type}\n   ${e.description}`,
+    value: e.type,
+  }));
   while (!valid) {
     response = await promptOnce({
       name: "selectedEventTypesInput",
@@ -66,6 +70,7 @@ export async function askForAllowedEventTypes(
         "Please select the events that this extension is permitted to emit. " +
         "You can implement your own handlers that trigger when these events are emitted to customize the extension's behavior. ",
       choices: eventTypes,
+      pageSize: 20,
     });
     valid = checkAllowedEventTypesResponse(response, eventDescriptors);
   }
