@@ -18,7 +18,6 @@ const PERMISSION = "cloudfunctions.functions.setIamPolicy";
 export const SERVICE_ACCOUNT_TOKEN_CREATOR_ROLE = "roles/iam.serviceAccountTokenCreator";
 export const RUN_INVOKER_ROLE = "roles/run.invoker";
 export const EVENTARC_EVENT_RECEIVER_ROLE = "roles/eventarc.eventReceiver";
-export const EVENTARC_SERVICE_AGENT_ROLE = "roles/eventarc.serviceAgent";
 
 /**
  * Checks to see if the authenticated account has `iam.serviceAccounts.actAs` permissions
@@ -188,20 +187,6 @@ export function obtainDefaultComputeServiceAgentBindings(
   return [invokerBinding, eventReceiverBinding];
 }
 
-/**
- * Finds the required project level IAM bindings for the eventarc service agent.
- * If a user enables eventarc for the first time, this grant can take a while to propagate and deployment will fail.
- * @param projectNumber project number
- * @param existingPolicy the project level IAM policy
- */
-export function obtainEventarcServiceAgentBindings(
-  projectNumber: string,
-  existingPolicy: iam.Policy
-): iam.Binding[] {
-  const eventarcServiceAgent = `serviceAccount:service-${projectNumber}@gcp-sa-eventarc.iam.gserviceaccount.com`;
-  return [obtainBinding(existingPolicy, eventarcServiceAgent, EVENTARC_SERVICE_AGENT_ROLE)];
-}
-
 /** Helper to merge all required bindings into the IAM policy */
 export function mergeBindings(policy: iam.Policy, allRequiredBindings: iam.Binding[][]) {
   for (const requiredBindings of allRequiredBindings) {
@@ -268,7 +253,6 @@ export async function ensureServiceAgentRoles(
   if (haveServices.length === 0) {
     allRequiredBindings.push(obtainPubSubServiceAgentBindings(projectNumber, policy));
     allRequiredBindings.push(obtainDefaultComputeServiceAgentBindings(projectNumber, policy));
-    // allRequiredBindings.push(obtainEventarcServiceAgentBindings(projectNumber, policy));
   }
   if (!allRequiredBindings.find((bindings) => bindings.length > 0)) {
     return;
