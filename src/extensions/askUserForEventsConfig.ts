@@ -55,7 +55,11 @@ export async function askForAllowedEventTypes(
 ): Promise<string[]> {
   let valid = false;
   let response: string[] = [];
-  const eventTypes = eventDescriptors.map((e, index) => ({ checked: false, name: `${index+1}. ${e.type}\n   ${e.description}`, value: e.type}));
+  const eventTypes = eventDescriptors.map((e, index) => ({
+    checked: false,
+    name: `${index + 1}. ${e.type}\n   ${e.description}`,
+    value: e.type,
+  }));
   while (!valid) {
     response = await promptOnce({
       name: "selectedEventTypesInput",

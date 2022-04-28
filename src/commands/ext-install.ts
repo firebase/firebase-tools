@@ -330,7 +330,7 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
       apis.push({
         apiName: "eventarc.googleapis.com",
         reason: `When events are enabled, the Eventarc API is required to provision an event channel and publish events.`,
-      });      
+      });
     }
     if (apis.length) {
       askUserForConsent.displayApis(spec.displayName || spec.name, projectId, apis);
