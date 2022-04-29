@@ -131,7 +131,9 @@ export default new Command("ext:configure <extensionInstanceId>")
       return;
     }
     if (!projectId) {
-      throw new FirebaseError(`Project ID must be provided when re-configuring an instance outside of local mode.`);
+      throw new FirebaseError(
+        `Project ID must be provided when re-configuring an instance outside of local mode.`
+      );
     }
     // TODO(b/220900194): Remove everything below and make --local the default behavior.
     const spinner = ora(
