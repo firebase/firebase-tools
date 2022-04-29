@@ -9,7 +9,7 @@ import {
 } from "./utils";
 import { MakeRequired } from "./utils";
 import { AuthCloudFunction } from "./cloudFunctions";
-import { assert } from "./errors";
+import { assert, BadRequestError } from "./errors";
 import { MfaEnrollments, Schemas } from "./types";
 
 export const PROVIDER_PASSWORD = "password";
@@ -27,8 +27,6 @@ export abstract class ProjectState {
   private localIdForPhoneNumber: Map<string, string> = new Map();
   private localIdsForProviderEmail: Map<string, Set<string>> = new Map();
   private userIdForProviderRawId: Map<string, Map<string, string>> = new Map();
-  private refreshTokens: Map<string, RefreshTokenRecord> = new Map();
-  private refreshTokensForLocalId: Map<string, Set<string>> = new Map();
   private oobs: Map<string, OobRecord> = new Map();
   private verificationCodes: Map<string, PhoneVerificationRecord> = new Map();
   private temporaryProofs: Map<string, TemporaryProofRecord> = new Map();
@@ -123,15 +121,6 @@ export abstract class ProjectState {
   deleteUser(user: UserInfo): void {
     this.users.delete(user.localId);
     this.removeUserFromIndex(user);
-
-    const refreshTokens = this.refreshTokensForLocalId.get(user.localId);
-    if (refreshTokens) {
-      this.refreshTokensForLocalId.delete(user.localId);
-      for (const refreshToken of refreshTokens) {
-        this.refreshTokens.delete(refreshToken);
-      }
-    }
-
     this.authCloudFunction.dispatch("delete", user);
   }
 
@@ -399,34 +388,30 @@ export abstract class ProjectState {
     } = {}
   ): string {
     const localId = userInfo.localId;
-    const refreshToken = randomBase64UrlStr(204);
-    this.refreshTokens.set(refreshToken, {
+    const refreshTokenRecord = {
+      _AuthEmulatorRefreshToken: "DO NOT MODIFY",
       localId,
       provider,
       extraClaims,
+      projectId: this.projectId,
       secondFactor,
       tenantId: userInfo.tenantId,
-    });
-    let refreshTokens = this.refreshTokensForLocalId.get(localId);
-    if (!refreshTokens) {
-      refreshTokens = new Set();
-      this.refreshTokensForLocalId.set(localId, refreshTokens);
-    }
-    refreshTokens.add(refreshToken);
+    };
+    const refreshToken = encodeRefreshToken(refreshTokenRecord);
     return refreshToken;
   }
 
-  validateRefreshToken(refreshToken: string):
-    | {
-        user: UserInfo;
-        provider: string;
-        extraClaims: Record<string, unknown>;
-        secondFactor?: SecondFactorRecord;
-      }
-    | undefined {
-    const record = this.refreshTokens.get(refreshToken);
-    if (!record) {
-      return undefined;
+  validateRefreshToken(refreshToken: string): {
+    user: UserInfo;
+    provider: string;
+    extraClaims: Record<string, unknown>;
+    secondFactor?: SecondFactorRecord;
+  } {
+    const record = decodeRefreshToken(refreshToken);
+    assert(record.projectId === this.projectId, "INVALID_REFRESH_TOKEN");
+    if (this instanceof TenantProjectState) {
+      // Shouldn't ever reach this assertion, but adding for completeness
+      assert(record.tenantId === this.tenantId, "TENANT_ID_MISMATCH");
     }
     return {
       user: this.getUserByLocalIdAssertingExists(record.localId),
@@ -495,8 +480,6 @@ export abstract class ProjectState {
     this.localIdForPhoneNumber.clear();
     this.localIdsForProviderEmail.clear();
     this.userIdForProviderRawId.clear();
-    this.refreshTokens.clear();
-    this.refreshTokensForLocalId.clear();
 
     // We do not clear OOBs / phone verification codes since some of those may
     // still be valid (e.g. email link / phone sign-in may still create a new
@@ -871,10 +854,12 @@ export type Config = {
   blockingFunctions: BlockingFunctionsConfig;
 };
 
-interface RefreshTokenRecord {
+export interface RefreshTokenRecord {
+  _AuthEmulatorRefreshToken: string;
   localId: string;
   provider: string;
   extraClaims: Record<string, unknown>;
+  projectId: string;
   secondFactor?: SecondFactorRecord;
   tenantId?: string;
 }
@@ -920,6 +905,22 @@ interface TemporaryProofRecord {
   temporaryProofExpiresIn: string;
   // Temporary proofs in emulator never expire to make interactive debugging
   // a bit easier. Therefore, there's no need to record createdAt timestamps.
+}
+
+export function encodeRefreshToken(refreshTokenRecord: RefreshTokenRecord): string {
+  return Buffer.from(JSON.stringify(refreshTokenRecord), "utf8").toString("base64");
+}
+
+export function decodeRefreshToken(refreshTokenString: string): RefreshTokenRecord {
+  let refreshTokenRecord: RefreshTokenRecord;
+  try {
+    const json = Buffer.from(refreshTokenString, "base64").toString("utf8");
+    refreshTokenRecord = JSON.parse(json) as RefreshTokenRecord;
+  } catch {
+    throw new BadRequestError("INVALID_REFRESH_TOKEN");
+  }
+  assert(refreshTokenRecord._AuthEmulatorRefreshToken, "INVALID_REFRESH_TOKEN");
+  return refreshTokenRecord;
 }
 
 function getProviderEmailsForUser(user: UserInfo): Set<string> {

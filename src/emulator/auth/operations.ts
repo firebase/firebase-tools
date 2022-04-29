@@ -1704,7 +1704,6 @@ function grantToken(
   assert(reqBody.refreshToken, "MISSING_REFRESH_TOKEN");
 
   const refreshTokenRecord = state.validateRefreshToken(reqBody.refreshToken);
-  assert(refreshTokenRecord, "INVALID_REFRESH_TOKEN");
   assert(!refreshTokenRecord.user.disabled, "USER_DISABLED");
   const tokens = issueTokens(state, refreshTokenRecord.user, refreshTokenRecord.provider, {
     extraClaims: refreshTokenRecord.extraClaims,
