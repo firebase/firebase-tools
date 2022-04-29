@@ -74,7 +74,7 @@ describe("addResourcesToBuild", () => {
       ...BASIC_BACKEND_ENDPOINT,
       httpsTrigger: {},
     });
-    const convertedBackend: backend.Backend = build.resolveBackend(expected);
+    const convertedBackend: backend.Backend = build.resolveBackend(expected, {});
     expect(convertedBackend).to.deep.equal(expectedBackend);
   });
 
@@ -104,7 +104,7 @@ describe("addResourcesToBuild", () => {
       callableTrigger: {},
       labels: {},
     });
-    const convertedBackend: backend.Backend = build.resolveBackend(expected);
+    const convertedBackend: backend.Backend = build.resolveBackend(expected, {});
     expect(convertedBackend).to.deep.equal(expectedBackend);
   });
 
@@ -140,7 +140,7 @@ describe("addResourcesToBuild", () => {
         },
       ],
     };
-    const convertedBackend: backend.Backend = build.resolveBackend(expected);
+    const convertedBackend: backend.Backend = build.resolveBackend(expected, {});
     expect(convertedBackend).to.deep.equal(expectedBackend);
   });
 
@@ -208,7 +208,7 @@ describe("addResourcesToBuild", () => {
       },
       ...backendConfig,
     });
-    const convertedBackend: backend.Backend = build.resolveBackend(expected);
+    const convertedBackend: backend.Backend = build.resolveBackend(expected, {});
     expect(convertedBackend).to.deep.equal(expectedBackend);
   });
 
@@ -244,7 +244,7 @@ describe("addResourcesToBuild", () => {
       ...BASIC_BACKEND_ENDPOINT,
       eventTrigger,
     });
-    const convertedBackend: backend.Backend = build.resolveBackend(expected);
+    const convertedBackend: backend.Backend = build.resolveBackend(expected, {});
     expect(convertedBackend).to.deep.equal(expectedBackend);
   });
 
@@ -278,7 +278,7 @@ describe("addResourcesToBuild", () => {
         region: "europe-west1",
       }
     );
-    const convertedBackend: backend.Backend = build.resolveBackend(expected);
+    const convertedBackend: backend.Backend = build.resolveBackend(expected, {});
     expect(convertedBackend).to.deep.equal(expectedBackend);
   });
 
@@ -360,7 +360,7 @@ describe("addResourcesToBuild", () => {
         },
       ],
     };
-    const convertedBackend: backend.Backend = build.resolveBackend(expected);
+    const convertedBackend: backend.Backend = build.resolveBackend(expected, {});
     expect(convertedBackend).to.deep.equal(expectedBackend);
   });
 
@@ -392,7 +392,7 @@ describe("addResourcesToBuild", () => {
         connector: "",
       },
     });
-    const convertedBackend: backend.Backend = build.resolveBackend(expected);
+    const convertedBackend: backend.Backend = build.resolveBackend(expected, {});
     expect(convertedBackend).to.deep.equal(expectedBackend);
   });
 });
