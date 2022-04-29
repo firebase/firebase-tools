@@ -172,14 +172,15 @@ export default new Command("ext:configure <extensionInstanceId>")
         );
       }
       const spec = existingInstance ? existingInstance.config.source.spec : undefined;
-      const eventsConfig = spec.events ? await askUserForEventsConfig.askForEventsConfig(spec.events, projectId, instanceId)
-      : undefined;
+      const eventsConfig = spec.events
+        ? await askUserForEventsConfig.askForEventsConfig(spec.events, projectId, instanceId)
+        : undefined;
       spinner.start();
       const configureOptions: any = {
         projectId: needProjectId({ projectId }),
         instanceId,
         params: paramBindings,
-      }
+      };
       if (existingInstance.config.eventarcChannel !== eventsConfig?.channel) {
         configureOptions.eventarcChannel = eventsConfig?.channel;
       }
