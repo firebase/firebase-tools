@@ -67,7 +67,7 @@ export async function askForAllowedEventTypes(
       default: preselectedTypes ?? [],
       // @TODO(b/229170748): Link to docs / audit the copy with UX.
       message:
-        "Please select the events that this extension is permitted to emit. " +
+        `Please select the events [${eventTypes.length} types total] that this extension is permitted to emit. ` +
         "You can implement your own handlers that trigger when these events are emitted to customize the extension's behavior. ",
       choices: eventTypes,
       pageSize: 20,
