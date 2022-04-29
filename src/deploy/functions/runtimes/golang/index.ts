@@ -8,6 +8,7 @@ import * as spawn from "cross-spawn";
 import { FirebaseError } from "../../../../error";
 import { logger } from "../../../../logger";
 import * as backend from "../../backend";
+import * as build from "../../build";
 import * as discovery from "../discovery";
 import * as gomod from "./gomod";
 import * as runtimes from "..";
@@ -23,6 +24,9 @@ export const FUNCTIONS_SDK = "github.com/FirebaseExtended/firebase-functions-go"
 export const FUNCTIONS_CODEGEN = FUNCTIONS_SDK + "/support/codegen";
 export const FUNCTIONS_RUNTIME = FUNCTIONS_SDK + "/support/runtime";
 
+/**
+ *
+ */
 export async function tryCreateDelegate(
   context: runtimes.DelegateContext
 ): Promise<Delegate | undefined> {
@@ -139,6 +143,15 @@ export class Delegate {
       }, 10_000);
       return p;
     });
+  }
+
+  // eslint-disable-next-line
+  async discoverBuild(
+    configValues: backend.RuntimeConfigValues,
+    envs: backend.EnvironmentVariables
+  ): Promise<build.Build> {
+    // Unimplemented. Build discovery is not currently supported in Go.
+    return { requiredAPIs: [], endpoints: {}, params: [] };
   }
 
   async discoverSpec(
