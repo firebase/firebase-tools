@@ -172,14 +172,16 @@ export default new Command("ext:configure <extensionInstanceId>")
             ", uninstall the extension, then install a new instance of this extension."
         );
       }
+      // Call needProjectId to guarantee that project ID exists, or this errors out.
+      const pId = needProjectId({ projectId });
       const spec = existingInstance ? existingInstance.config.source.spec : undefined;
       const eventsConfig = spec.events
-        ? await askUserForEventsConfig.askForEventsConfig(spec.events, projectId, instanceId)
+        ? await askUserForEventsConfig.askForEventsConfig(spec.events, pId, instanceId)
         : undefined;
       spinner.start();
 
       const configureOptions: any = {
-        projectId: needProjectId({ projectId }),
+        projectId: pId,
         instanceId,
         params: paramBindings,
       };
