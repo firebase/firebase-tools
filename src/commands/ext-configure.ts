@@ -25,6 +25,7 @@ import * as manifest from "../extensions/manifest";
 import { Options } from "../options";
 import { partition } from "../functional";
 import { buildBindingOptionsWithBaseValue, getBaseParamBindings } from "../extensions/paramHelper";
+import * as askUserForEventsConfig from "../extensions/askUserForEventsConfig";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),
@@ -46,6 +47,9 @@ export default new Command("ext:configure <extensionInstanceId>")
   .before(diagnoseAndFixProject)
   .action(async (instanceId: string, options: Options) => {
     const projectId = getProjectId(options);
+    if (!projectId) {
+      throw new FirebaseError(`Project ID must be provided when re-configuring an instance.`);
+    }
 
     if (options.local) {
       if (options.nonInteractive) {
@@ -90,6 +94,20 @@ export default new Command("ext:configure <extensionInstanceId>")
         reconfiguring: true,
       });
 
+      const eventsConfig = spec.events
+        ? await askUserForEventsConfig.askForEventsConfig(
+            spec.events,
+            "${param:PROJECT_ID}",
+            instanceId
+          )
+        : undefined;
+      if (eventsConfig) {
+        mutableParamsBindingOptions.EVENTARC_CHANNEL = { baseValue: eventsConfig.channel };
+        mutableParamsBindingOptions.ALLOWED_EVENT_TYPES = {
+          baseValue: eventsConfig.allowedEventTypes.join(","),
+        };
+      }
+
       // Merge with old immutable params.
       const newParamOptions = {
         ...buildBindingOptionsWithBaseValue(oldParamValues),
@@ -121,23 +139,10 @@ export default new Command("ext:configure <extensionInstanceId>")
       `Configuring ${clc.bold(instanceId)}. This usually takes 3 to 5 minutes...`
     );
     try {
-      let existingInstance: extensionsApi.ExtensionInstance;
-      try {
-        existingInstance = await extensionsApi.getInstance(
-          needProjectId({ projectId }),
-          instanceId
-        );
-      } catch (err: any) {
-        if (err.status === 404) {
-          return utils.reject(
-            `No extension instance ${instanceId} found in project ${projectId}.`,
-            {
-              exit: 1,
-            }
-          );
-        }
-        throw err;
-      }
+      const existingInstance = await extensionsApi.getInstance(
+        needProjectId({ projectId }),
+        instanceId
+      );
       const paramSpecWithNewDefaults =
         paramHelper.getParamsWithCurrentValuesAsDefaults(existingInstance);
       const immutableParams = _.remove(paramSpecWithNewDefaults, (param) => param.immutable);
@@ -166,13 +171,22 @@ export default new Command("ext:configure <extensionInstanceId>")
             ", uninstall the extension, then install a new instance of this extension."
         );
       }
-
+      const spec = existingInstance ? existingInstance.config.source.spec : undefined;
+      const eventsConfig = spec.events ? await askUserForEventsConfig.askForEventsConfig(spec.events, projectId, instanceId)
+      : undefined;
       spinner.start();
-      const res = await extensionsApi.configureInstance({
+      const configureOptions: any = {
         projectId: needProjectId({ projectId }),
         instanceId,
         params: paramBindings,
-      });
+      }
+      if (existingInstance.config.eventarcChannel !== eventsConfig?.channel) {
+        configureOptions.eventarcChannel = eventsConfig?.channel;
+      }
+      if (existingInstance.config.allowedEventTypes !== eventsConfig?.allowedEventTypes) {
+        configureOptions.allowedEventTypes = eventsConfig?.allowedEventTypes;
+      }
+      const res = await extensionsApi.configureInstance(configureOptions);
       spinner.stop();
       utils.logLabeledSuccess(logPrefix, `successfully configured ${clc.bold(instanceId)}.`);
       utils.logLabeledBullet(
