@@ -3,12 +3,13 @@ import { bold } from "cli-color";
 import { logger } from "../../logger";
 import { getEndpointFilters, endpointMatchesAnyFilter } from "./functionsDeployHelper";
 import { FirebaseError } from "../../error";
+import { Options } from "../../options";
+import { flattenArray } from "../../functional";
 import * as iam from "../../gcp/iam";
 import * as args from "./args";
 import * as backend from "./backend";
 import { track } from "../../track";
 import * as utils from "../../utils";
-import { Options } from "../../options";
 
 import { getIamPolicy, setIamPolicy } from "../../gcp/resourceManager";
 import { Service, serviceForEndpoint } from "./services";
@@ -17,7 +18,6 @@ const PERMISSION = "cloudfunctions.functions.setIamPolicy";
 export const SERVICE_ACCOUNT_TOKEN_CREATOR_ROLE = "roles/iam.serviceAccountTokenCreator";
 export const RUN_INVOKER_ROLE = "roles/run.invoker";
 export const EVENTARC_EVENT_RECEIVER_ROLE = "roles/eventarc.eventReceiver";
-export const EVENTARC_SERVICE_AGENT_ROLE = "roles/eventarc.serviceAgent";
 
 /**
  * Checks to see if the authenticated account has `iam.serviceAccounts.actAs` permissions
@@ -65,11 +65,12 @@ export async function checkHttpIam(
   options: Options,
   payload: args.Payload
 ): Promise<void> {
+  if (!payload.functions) {
+    return;
+  }
   const filters = context.filters || getEndpointFilters(options);
-  const wantBackend = payload.functions!.wantBackend;
-
-  const httpEndpoints = backend
-    .allEndpoints(wantBackend)
+  const wantBackends = Object.values(payload.functions).map(({ wantBackend }) => wantBackend);
+  const httpEndpoints = [...flattenArray(wantBackends.map((b) => backend.allEndpoints(b)))]
     .filter(backend.isHttpsTriggered)
     .filter((f) => endpointMatchesAnyFilter(f, filters));
 
@@ -128,7 +129,7 @@ function reduceEventsToServices(services: Array<Service>, endpoint: backend.Endp
  * @param existingPolicy the project level IAM policy
  * @param serviceAccount the IAM service account
  * @param role the role you want to grant
- * @returns
+ * @return the correct IAM binding
  */
 export function obtainBinding(
   existingPolicy: iam.Policy,
@@ -184,20 +185,6 @@ export function obtainDefaultComputeServiceAgentBindings(
     EVENTARC_EVENT_RECEIVER_ROLE
   );
   return [invokerBinding, eventReceiverBinding];
-}
-
-/**
- * Finds the required project level IAM bindings for the eventarc service agent.
- * If a user enables eventarc for the first time, this grant can take a while to propagate and deployment will fail.
- * @param projectNumber project number
- * @param existingPolicy the project level IAM policy
- */
-export function obtainEventarcServiceAgentBindings(
-  projectNumber: string,
-  existingPolicy: iam.Policy
-): iam.Binding[] {
-  const eventarcServiceAgent = `serviceAccount:service-${projectNumber}@gcp-sa-eventarc.iam.gserviceaccount.com`;
-  return [obtainBinding(existingPolicy, eventarcServiceAgent, EVENTARC_SERVICE_AGENT_ROLE)];
 }
 
 /** Helper to merge all required bindings into the IAM policy */
@@ -266,7 +253,6 @@ export async function ensureServiceAgentRoles(
   if (haveServices.length === 0) {
     allRequiredBindings.push(obtainPubSubServiceAgentBindings(projectNumber, policy));
     allRequiredBindings.push(obtainDefaultComputeServiceAgentBindings(projectNumber, policy));
-    allRequiredBindings.push(obtainEventarcServiceAgentBindings(projectNumber, policy));
   }
   if (!allRequiredBindings.find((bindings) => bindings.length > 0)) {
     return;

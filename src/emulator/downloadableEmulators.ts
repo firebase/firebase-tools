@@ -39,14 +39,14 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
     },
   },
   firestore: {
-    downloadPath: path.join(CACHE_DIR, "cloud-firestore-emulator-v1.14.2.jar"),
-    version: "1.14.2",
+    downloadPath: path.join(CACHE_DIR, "cloud-firestore-emulator-v1.14.3.jar"),
+    version: "1.14.3",
     opts: {
       cacheDir: CACHE_DIR,
       remoteUrl:
-        "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v1.14.2.jar",
-      expectedSize: 60551603,
-      expectedChecksum: "0930bb09c080b52b1cbc70a91377ccd8",
+        "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v1.14.3.jar",
+      expectedSize: 60442855,
+      expectedChecksum: "63517534875818689639ee5dee57dd52",
       namePrefix: "cloud-firestore-emulator",
     },
   },
@@ -62,7 +62,24 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
       namePrefix: "cloud-storage-rules-emulator",
     },
   },
-  ui: previews.emulatoruisnapshot
+  ui: previews.extensionsemulator
+    ? {
+        version: "EXTENSIONS",
+        downloadPath: path.join(CACHE_DIR, "ui-vEXTENSIONS.zip"),
+        unzipDir: path.join(CACHE_DIR, "ui-vEXTENSIONS"),
+        binaryPath: path.join(CACHE_DIR, "ui-vEXTENSIONS", "server.bundle.js"),
+        opts: {
+          cacheDir: CACHE_DIR,
+          remoteUrl:
+            "https://storage.googleapis.com/firebase-preview-drop/emulator/ui-vEXTENSIONS.zip",
+          expectedSize: -1,
+          expectedChecksum: "",
+          skipCache: true,
+          skipChecksumAndSize: true,
+          namePrefix: "ui",
+        },
+      }
+    : previews.emulatoruisnapshot
     ? {
         version: "SNAPSHOT",
         downloadPath: path.join(CACHE_DIR, "ui-vSNAPSHOT.zip"),
@@ -80,15 +97,15 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
         },
       }
     : {
-        version: "1.6.5",
-        downloadPath: path.join(CACHE_DIR, "ui-v1.6.5.zip"),
-        unzipDir: path.join(CACHE_DIR, "ui-v1.6.5"),
-        binaryPath: path.join(CACHE_DIR, "ui-v1.6.5", "server.bundle.js"),
+        version: "1.6.6",
+        downloadPath: path.join(CACHE_DIR, "ui-v1.6.6.zip"),
+        unzipDir: path.join(CACHE_DIR, "ui-v1.6.6"),
+        binaryPath: path.join(CACHE_DIR, "ui-v1.6.6", "server.bundle.js"),
         opts: {
           cacheDir: CACHE_DIR,
-          remoteUrl: "https://storage.googleapis.com/firebase-preview-drop/emulator/ui-v1.6.5.zip",
-          expectedSize: 3816994,
-          expectedChecksum: "92dfff4b2ef8ab616e8a60cc93e0a00b",
+          remoteUrl: "https://storage.googleapis.com/firebase-preview-drop/emulator/ui-v1.6.6.zip",
+          expectedSize: 3817247,
+          expectedChecksum: "c80a3f0ae1e3f682ace0a18a9cdd2861",
           namePrefix: "ui",
         },
       },

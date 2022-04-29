@@ -96,8 +96,12 @@ describe("Fabricator", () => {
   const ctorArgs: fabricator.FabricatorArgs = {
     executor: new executor.InlineExecutor(),
     functionExecutor: new executor.InlineExecutor(),
-    sourceUrl: "https://example.com",
-    storage: storage,
+    sources: {
+      default: {
+        sourceUrl: "https://example.com",
+        storage: storage,
+      },
+    },
     appEngineLocation: "us-central1",
   };
   let fab: fabricator.Fabricator;
@@ -119,6 +123,7 @@ describe("Fabricator", () => {
       region: "us-central1",
       entryPoint: "entrypoint",
       runtime: "nodejs16",
+      codebase: "default",
       ...JSON.parse(JSON.stringify(base)),
       ...trigger,
     } as backend.Endpoint;
