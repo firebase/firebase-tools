@@ -359,12 +359,13 @@ async function listFunctionsInternal(
 export async function updateFunction(
   cloudFunction: Omit<CloudFunction, OutputOnlyFields>
 ): Promise<Operation> {
-  // Keys in labels and environmentVariables are user defined, so we don't recurse
+  // Keys in labels and environmentVariables and secretEnvironmentVariables are user defined, so we don't recurse
   // for field masks.
   const fieldMasks = proto.fieldMasks(
     cloudFunction,
     /* doNotRecurseIn...=*/ "labels",
-    "serviceConfig.environmentVariables"
+    "serviceConfig.environmentVariables",
+    "serviceConfig.secretEnvironmentVariables"
   );
   try {
     const queryParams = {
