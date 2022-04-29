@@ -47,9 +47,6 @@ export default new Command("ext:configure <extensionInstanceId>")
   .before(diagnoseAndFixProject)
   .action(async (instanceId: string, options: Options) => {
     const projectId = getProjectId(options);
-    if (!projectId) {
-      throw new FirebaseError(`Project ID must be provided when re-configuring an instance.`);
-    }
 
     if (options.local) {
       if (options.nonInteractive) {
@@ -133,7 +130,9 @@ export default new Command("ext:configure <extensionInstanceId>")
       manifest.showPreviewWarning();
       return;
     }
-
+    if (!projectId) {
+      throw new FirebaseError(`Project ID must be provided when re-configuring an instance outside of local mode.`);
+    }
     // TODO(b/220900194): Remove everything below and make --local the default behavior.
     const spinner = ora(
       `Configuring ${clc.bold(instanceId)}. This usually takes 3 to 5 minutes...`
@@ -176,6 +175,7 @@ export default new Command("ext:configure <extensionInstanceId>")
         ? await askUserForEventsConfig.askForEventsConfig(spec.events, projectId, instanceId)
         : undefined;
       spinner.start();
+
       const configureOptions: any = {
         projectId: needProjectId({ projectId }),
         instanceId,
