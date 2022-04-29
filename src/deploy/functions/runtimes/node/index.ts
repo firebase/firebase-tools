@@ -12,6 +12,7 @@ import { logger } from "../../../../logger";
 import { previews } from "../../../../previews";
 import { logLabeledWarning } from "../../../../utils";
 import * as backend from "../../backend";
+import * as build from "../../build";
 import * as discovery from "../discovery";
 import * as runtimes from "..";
 import * as validate from "./validate";
@@ -20,6 +21,9 @@ import * as parseTriggers from "./parseTriggers";
 
 const MIN_FUNCTIONS_SDK_VERSION = "3.20.0";
 
+/**
+ *
+ */
 export async function tryCreateDelegate(
   context: runtimes.DelegateContext
 ): Promise<Delegate | undefined> {
@@ -125,6 +129,18 @@ export class Delegate {
     env: backend.EnvironmentVariables
   ): Promise<backend.Backend> {
     if (previews.functionsv2) {
+      if (!semver.valid(this.sdkVersion)) {
+        logger.debug(
+          `Could not parse firebase-functions version '${this.sdkVersion}' into semver. Falling back to parseTriggers.`
+        );
+        return parseTriggers.discoverBackend(
+          this.projectId,
+          this.sourceDir,
+          this.runtime,
+          config,
+          env
+        );
+      }
       if (semver.lt(this.sdkVersion, MIN_FUNCTIONS_SDK_VERSION)) {
         logLabeledWarning(
           "functions",
@@ -154,5 +170,13 @@ export class Delegate {
       return discovered;
     }
     return parseTriggers.discoverBackend(this.projectId, this.sourceDir, this.runtime, config, env);
+  }
+
+  // eslint-disable-next-line require-await
+  async discoverBuild(
+    config: backend.RuntimeConfigValues,
+    env: backend.EnvironmentVariables
+  ): Promise<build.Build> {
+    return parseTriggers.discoverBuild(this.projectId, this.sourceDir, this.runtime, config, env);
   }
 }
