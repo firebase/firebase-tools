@@ -187,12 +187,12 @@ export function monthlyMinInstanceCost(endpoints: backend.Endpoint[]): number {
         usage["gcfv1"][tier].cpu + cpu * SECONDS_PER_MONTH * endpoint.minInstances;
     } else {
       // V2 is currently fixed at 1vCPU.
-      const cpu = 1;
       const tier = V2_REGION_TO_TIER[endpoint.region];
       usage["gcfv2"][tier].ram =
         usage["gcfv2"][tier].ram + ramGb * SECONDS_PER_MONTH * endpoint.minInstances;
       usage["gcfv2"][tier].cpu =
-        usage["gcfv2"][tier].cpu + cpu * SECONDS_PER_MONTH * endpoint.minInstances;
+        usage["gcfv2"][tier].cpu +
+        (endpoint.cpu as number) * SECONDS_PER_MONTH * endpoint.minInstances;
     }
   }
 

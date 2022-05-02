@@ -8,6 +8,7 @@ import * as projectPath from "../../../projectPath";
 import * as secretManager from "../../../gcp/secretManager";
 import * as backend from "../../../deploy/functions/backend";
 import { BEFORE_CREATE_EVENT, BEFORE_SIGN_IN_EVENT } from "../../../functions/events/v1";
+import { resolveCpu } from "../../../deploy/functions/prepare";
 
 describe("validate", () => {
   describe("functionsDirectoryExists", () => {
@@ -132,17 +133,30 @@ describe("validate", () => {
       const ep: backend.Endpoint = {
         ...ENDPOINT_BASE,
         platform: "gcfv1",
-        availableMemoryMb: backend.MIN_MEMORY_FOR_CONCURRENCY,
+        availableMemoryMb: 256,
         concurrency: 2,
       };
       expect(() => validate.endpointsAreValid(backend.of(ep))).to.throw(/GCF gen 1/);
+    });
+
+    it("Disallows concurrency for low-CPU gen 2", () => {
+      const ep: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        platform: "gcfv2",
+        cpu: 1 / 6,
+        concurrency: 2,
+      };
+
+      expect(() => validate.endpointsAreValid(backend.of(ep))).to.throw(
+        /concurrent execution and less than one full CPU/
+      );
     });
 
     it("Allows endpoints with no mem and no concurrency", () => {
       expect(() => validate.endpointsAreValid(backend.of(ENDPOINT_BASE))).to.not.throw;
     });
 
-    it("Allows endpionts with mem and no concurrency", () => {
+    it("Allows endpoints with mem and no concurrency", () => {
       const ep: backend.Endpoint = {
         ...ENDPOINT_BASE,
         availableMemoryMb: 256,
@@ -163,7 +177,9 @@ describe("validate", () => {
         const ep: backend.Endpoint = {
           ...ENDPOINT_BASE,
           availableMemoryMb: mem,
+          cpu: "gcf_gen1",
         };
+        resolveCpu(backend.of(ep));
         expect(() => validate.endpointsAreValid(backend.of(ep))).to.not.throw;
       }
     });
@@ -173,8 +189,10 @@ describe("validate", () => {
         const ep: backend.Endpoint = {
           ...ENDPOINT_BASE,
           availableMemoryMb: mem,
+          cpu: "gcf_gen1",
           concurrency: 42,
         };
+        resolveCpu(backend.of(ep));
         expect(() => validate.endpointsAreValid(backend.of(ep))).to.not.throw;
       }
     });
@@ -182,21 +200,24 @@ describe("validate", () => {
     it("disallows concurrency with too little memory (implicit)", () => {
       const ep: backend.Endpoint = {
         ...ENDPOINT_BASE,
+        availableMemoryMb: 256,
         concurrency: 2,
+        cpu: "gcf_gen1",
       };
+      resolveCpu(backend.of(ep));
       expect(() => validate.endpointsAreValid(backend.of(ep))).to.throw(
-        /they have fewer than 2GB memory/
+        /concurrent execution and less than one full CPU/
       );
     });
 
-    it("disallows concurrency with too little memory (explicit)", () => {
+    it("Disallows concurrency with too little cpu (explicit)", () => {
       const ep: backend.Endpoint = {
         ...ENDPOINT_BASE,
         concurrency: 2,
-        availableMemoryMb: 512,
+        cpu: 0.5,
       };
       expect(() => validate.endpointsAreValid(backend.of(ep))).to.throw(
-        /they have fewer than 2GB memory/
+        /concurrent execution and less than one full CPU/
       );
     });
 
