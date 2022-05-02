@@ -13,6 +13,7 @@ interface PreviewFlags {
   artifactregistry: boolean;
   emulatoruisnapshot: boolean;
   frameworkawareness: boolean;
+  functionsparams: boolean;
 }
 
 export const previews: PreviewFlags = {
@@ -28,6 +29,7 @@ export const previews: PreviewFlags = {
   artifactregistry: false,
   emulatoruisnapshot: false,
   frameworkawareness: false,
+  functionsparams: false,
 
   ...(configstore.get("previews") as Partial<PreviewFlags>),
 };
