@@ -12,8 +12,10 @@ export function checkAllowedEventTypesResponse(
   response: string[],
   validEvents: extensionsApi.EventDescriptor[]
 ): boolean {
-  const valid = true;
   const validEventTypes = validEvents.map((e) => e.type);
+  if (response.length === 0) {
+    return false;
+  }
   for (const e of response) {
     if (!validEventTypes.includes(e)) {
       utils.logWarning(
@@ -22,7 +24,7 @@ export function checkAllowedEventTypesResponse(
       return false;
     }
   }
-  return valid;
+  return true;
 }
 
 export async function askForEventsConfig(
