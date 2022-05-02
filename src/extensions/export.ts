@@ -80,10 +80,10 @@ function displaySpecs(specs: DeploymentInstanceSpec[]): void {
       logger.info(`\t${p[0]}=${p[1]}`);
     }
     if (spec.allowedEventTypes?.length) {
-      logger.info(`\tAllowed events=${spec.allowedEventTypes}`);
+      logger.info(`\tALLOWED_EVENTS=${spec.allowedEventTypes}`);
     }
     if (spec.eventarcChannel) {
-      logger.info(`\tEventarc Channel=${spec.eventarcChannel}`);
+      logger.info(`\tEVENTARC_CHANNEL=${spec.eventarcChannel}`);
     }
     logger.info("");
   }
