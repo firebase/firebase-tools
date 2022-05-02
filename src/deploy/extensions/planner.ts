@@ -47,8 +47,6 @@ export interface DeploymentInstanceSpec extends InstanceSpec {
   params: Record<string, string>;
   allowedEventTypes?: string[];
   eventarcChannel?: string;
-  extensionVersion?: extensionsApi.ExtensionVersion;
-  extension?: extensionsApi.Extension;
 }
 
 /**
