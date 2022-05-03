@@ -1,0 +1,1 @@
+- Add support for secrets to v2 functions (#4451).

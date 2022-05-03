@@ -420,10 +420,12 @@ describe("validate", () => {
       expect(validate.secretsAreValid(project, b)).to.not.be.rejected;
     });
 
-    it("fails validation given endpoint with secrets targeting unsupported platform", () => {
+    it("fails validation given non-existent secret version", () => {
+      secretVersionStub.rejects({ reason: "Secret version does not exist" });
+
       const b = backend.of({
         ...ENDPOINT,
-        platform: "gcfv2",
+        platform: "gcfv1",
         secretEnvironmentVariables: [
           {
             projectId: project,
@@ -432,8 +434,10 @@ describe("validate", () => {
           },
         ],
       });
-
-      expect(validate.secretsAreValid(project, b)).to.be.rejectedWith(FirebaseError);
+      expect(validate.secretsAreValid(project, b)).to.be.rejectedWith(
+        FirebaseError,
+        /Failed to validate secret version/
+      );
     });
 
     it("fails validation given non-existent secret version", () => {
@@ -450,7 +454,10 @@ describe("validate", () => {
           },
         ],
       });
-      expect(validate.secretsAreValid(project, b)).to.be.rejectedWith(FirebaseError);
+      expect(validate.secretsAreValid(project, b)).to.be.rejectedWith(
+        FirebaseError,
+        /Failed to validate secret versions/
+      );
     });
 
     it("fails validation given disabled secret version", () => {
@@ -471,7 +478,10 @@ describe("validate", () => {
           },
         ],
       });
-      expect(validate.secretsAreValid(project, b)).to.be.rejected;
+      expect(validate.secretsAreValid(project, b)).to.be.rejectedWith(
+        FirebaseError,
+        /Failed to validate secret versions/
+      );
     });
 
     it("passes validation and resolves latest version given valid secret config", async () => {
@@ -481,20 +491,22 @@ describe("validate", () => {
         state: "ENABLED",
       });
 
-      const b = backend.of({
-        ...ENDPOINT,
-        platform: "gcfv1",
-        secretEnvironmentVariables: [
-          {
-            projectId: project,
-            secret: "MY_SECRET",
-            key: "MY_SECRET",
-          },
-        ],
-      });
+      for (const platform of ["gcfv1" as const, "gcfv2" as const]) {
+        const b = backend.of({
+          ...ENDPOINT,
+          platform,
+          secretEnvironmentVariables: [
+            {
+              projectId: project,
+              secret: "MY_SECRET",
+              key: "MY_SECRET",
+            },
+          ],
+        });
 
-      await validate.secretsAreValid(project, b);
-      expect(backend.allEndpoints(b)[0].secretEnvironmentVariables![0].version).to.equal("2");
+        await validate.secretsAreValid(project, b);
+        expect(backend.allEndpoints(b)[0].secretEnvironmentVariables![0].version).to.equal("2");
+      }
     });
   });
 });
