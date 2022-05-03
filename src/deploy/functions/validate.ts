@@ -44,6 +44,40 @@ export function endpointsAreValid(wantBackend: backend.Backend): void {
     )} because they have fewer than 2GB memory`;
     throw new FirebaseError(msg);
   }
+
+  const gcfV1WithCPU = endpoints
+    .filter((endpoint) => endpoint.platform === "gcfv1" && "cpu" in endpoint)
+    .map((endpoint) => endpoint.id);
+  if (gcfV1WithCPU.length) {
+    const msg = `Cannot set CPU on the functions ${gcfV1WithCPU.join(
+      ","
+    )} because they are GCF gen 1`;
+    throw new FirebaseError(msg);
+  }
+
+  const invalidCPU = endpoints
+    .filter((endpoint) => {
+      if (typeof endpoint.cpu === "undefined") {
+        return false;
+      }
+      if (endpoint.cpu === "gcf_gen1") {
+        return false;
+      }
+      const cpu: number = endpoint.cpu;
+      // All fractional CPU is allowed apparently?
+      if (cpu < 1) {
+        return false;
+      }
+      // But whole CPU is limited to fixed sizes
+      return [1, 2, 4, 6, 8].includes(cpu);
+    })
+    .map((endpoint) => endpoint.id);
+  if (invalidCPU.length) {
+    const msg = `The following functions have invalid CPU settings ${invalidCPU.join(
+      ","
+    )}. Valid CPU options are (0, 1], 2, 4, 6, 8, or "gcf_gen1"`;
+    throw new FirebaseError(msg);
+  }
 }
 
 /** Validate that all endpoints in the given set of backends are unique */
