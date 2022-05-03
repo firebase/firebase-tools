@@ -352,6 +352,9 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
       const updateOptions: UpdateOptions = {
         projectId,
         instanceId,
+        canEmitEvents: eventsConfig ? true : false,
+        eventarcChannel: eventsConfig?.channel,
+        allowedEventTypes: eventsConfig?.allowedEventTypes,
       };
       if (newSourceName.includes("publisher")) {
         updateOptions.extRef = refs.toExtensionVersionRef(refs.parse(newSourceName));
@@ -360,12 +363,6 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
       }
       if (!_.isEqual(newParams, oldParamValues)) {
         updateOptions.params = newParams;
-      }
-      if (existingInstance.config.eventarcChannel !== eventsConfig?.channel) {
-        updateOptions.eventarcChannel = eventsConfig?.channel;
-      }
-      if (existingInstance.config.allowedEventTypes !== eventsConfig?.allowedEventTypes) {
-        updateOptions.allowedEventTypes = eventsConfig?.allowedEventTypes;
       }
       await update(updateOptions);
       spinner.stop();

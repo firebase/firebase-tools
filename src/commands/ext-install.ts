@@ -418,7 +418,6 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
           paramsEnvPath,
           instanceId,
         });
-        const existingInstance = await extensionsApi.getInstance(projectId, instanceId);
         eventsConfig = spec.events
           ? await askUserForEventsConfig.askForEventsConfig(spec.events, projectId, instanceId)
           : undefined;
@@ -429,18 +428,12 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
           projectId,
           instanceId,
           source,
+          canEmitEvents: eventsConfig ? true : false,
+          eventarcChannel: eventsConfig?.channel,
+          allowedEventTypes: eventsConfig?.allowedEventTypes,
           extRef: extVersion?.ref,
           params: paramBindings,
         };
-        if (existingInstance.config.eventarcChannel !== eventsConfig?.channel) {
-          updateOptions.eventarcChannel = eventsConfig?.channel;
-        }
-        if (
-          JSON.stringify((existingInstance.config.allowedEventTypes || []).sort()) !==
-          JSON.stringify((eventsConfig?.allowedEventTypes || []).sort())
-        ) {
-          updateOptions.allowedEventTypes = eventsConfig?.allowedEventTypes;
-        }
         await update(updateOptions);
         spinner.stop();
         utils.logLabeledSuccess(
