@@ -389,11 +389,7 @@ export async function configureInstance(args: {
       },
     },
   };
-  if (!args.canEmitEvents) {
-    reqBody.data.config.allowedEventTypes = undefined;
-    reqBody.data.config.eventarcChannel = undefined;
-    reqBody.updateMask += ",config.allowed_event_types,config.eventarc_channel";
-  } else {
+  if (args.canEmitEvents) {
     if (args.allowedEventTypes === undefined || args.eventarcChannel === undefined) {
       throw new FirebaseError(
         `This instance is configured to emit events, but either allowed event types or eventarc channel is undefined.`
@@ -401,8 +397,8 @@ export async function configureInstance(args: {
     }
     reqBody.data.config.allowedEventTypes = args.allowedEventTypes;
     reqBody.data.config.eventarcChannel = args.eventarcChannel;
-    reqBody.updateMask += ",config.allowed_event_types,config.eventarc_channel";
   }
+  reqBody.updateMask += ",config.allowed_event_types,config.eventarc_channel";
   return patchInstance(reqBody);
 }
 
@@ -437,12 +433,7 @@ export async function updateInstance(args: {
     body.config.params = args.params;
     updateMask += ",config.params";
   }
-
-  if (!args.canEmitEvents) {
-    body.config.allowedEventTypes = undefined;
-    body.config.eventarcChannel = undefined;
-    updateMask += ",config.allowed_event_types,config.eventarc_channel";
-  } else {
+  if (args.canEmitEvents) {
     if (args.allowedEventTypes === undefined || args.eventarcChannel === undefined) {
       throw new FirebaseError(
         `This instance is configured to emit events, but either allowed event types or eventarc channel is undefined.`
@@ -450,8 +441,8 @@ export async function updateInstance(args: {
     }
     body.config.allowedEventTypes = args.allowedEventTypes;
     body.config.eventarcChannel = args.eventarcChannel;
-    updateMask += ",config.allowed_event_types,config.eventarc_channel";
   }
+  updateMask += ",config.allowed_event_types,config.eventarc_channel";
   return patchInstance({
     projectId: args.projectId,
     instanceId: args.instanceId,
@@ -494,11 +485,7 @@ export async function updateInstanceFromRegistry(args: {
     body.config.params = args.params;
     updateMask += ",config.params";
   }
-  if (!args.canEmitEvents) {
-    body.config.allowedEventTypes = undefined;
-    body.config.eventarcChannel = undefined;
-    updateMask += ",config.allowed_event_types,config.eventarc_channel";
-  } else {
+  if (args.canEmitEvents) {
     if (args.allowedEventTypes === undefined || args.eventarcChannel === undefined) {
       throw new FirebaseError(
         `This instance is configured to emit events, but either allowed event types or eventarc channel is undefined.`
@@ -506,9 +493,8 @@ export async function updateInstanceFromRegistry(args: {
     }
     body.config.allowedEventTypes = args.allowedEventTypes;
     body.config.eventarcChannel = args.eventarcChannel;
-    updateMask += ",config.allowed_event_types,config.eventarc_channel";
   }
-
+  updateMask += ",config.allowed_event_types,config.eventarc_channel";
   return patchInstance({
     projectId: args.projectId,
     instanceId: args.instanceId,
