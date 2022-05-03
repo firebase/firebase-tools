@@ -116,12 +116,12 @@ export async function checkHttpIam(
 }
 
 /** obtain the pubsub service agent */
-function getPubsubServiceAgent(projectNumber: string) {
+function getPubsubServiceAgent(projectNumber: string): string {
   return `serviceAccount:service-${projectNumber}@gcp-sa-pubsub.iam.gserviceaccount.com`;
 }
 
 /** obtain the default compute service agent */
-function getDefaultComputeServiceAgent(projectNumber: string) {
+function getDefaultComputeServiceAgent(projectNumber: string): string {
   return `serviceAccount:${projectNumber}-compute@developer.gserviceaccount.com`;
 }
 
@@ -200,13 +200,15 @@ function printManualIamConfig(requiredBindings: iam.Binding[], projectId: string
     "warn"
   );
   for (const binding of requiredBindings) {
-    utils.logLabeledBullet(
-      "functions",
-      `\`gcloud projects add-iam-policy-binding ${projectId} ` +
-        `--member=${binding.members} ` +
-        `--role=${binding.role}\``,
-      "warn"
-    );
+    for (const member of binding.members) {
+      utils.logLabeledBullet(
+        "functions",
+        `\`gcloud projects add-iam-policy-binding ${projectId} ` +
+          `--member=${member} ` +
+          `--role=${binding.role}\``,
+        "warn"
+      );
+    }
   }
 }
 
