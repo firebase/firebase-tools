@@ -46,7 +46,7 @@ export function endpointsAreValid(wantBackend: backend.Backend): void {
   }
 
   const gcfV1WithCPU = endpoints
-    .filter((endpoint) => endpoint.platform === "gcfv1" && "cpu" in endpoint)
+    .filter((endpoint) => endpoint.platform === "gcfv1" && typeof endpoint["cpu"] !== "undefined")
     .map((endpoint) => endpoint.id);
   if (gcfV1WithCPU.length) {
     const msg = `Cannot set CPU on the functions ${gcfV1WithCPU.join(
@@ -69,7 +69,7 @@ export function endpointsAreValid(wantBackend: backend.Backend): void {
         return false;
       }
       // But whole CPU is limited to fixed sizes
-      return [1, 2, 4, 6, 8].includes(cpu);
+      return ![1, 2, 4, 6, 8].includes(cpu);
     })
     .map((endpoint) => endpoint.id);
   if (invalidCPU.length) {

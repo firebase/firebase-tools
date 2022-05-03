@@ -29,7 +29,7 @@ describe("RulesDeploy", () => {
 
       expect(() => {
         rd.addFile("firestore.rules");
-      }).to.not.throw;
+      }).to.not.throw();
     });
 
     it("should throw an error if the file does not exist", () => {
