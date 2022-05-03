@@ -253,7 +253,7 @@ function parseEndpoints(
           ep.secretEnvironmentVariables = [];
           for (const { key, secret } of senvs) {
             ep.secretEnvironmentVariables.push({
-              key: key,
+              key,
               secret: secret || key, // if secret is undefined, assume env var key == secret name
               projectId: project,
             });
