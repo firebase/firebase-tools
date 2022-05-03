@@ -92,10 +92,17 @@ export interface EventFilter {
   value: string;
 }
 
+/**
+ * Configurations for secret environment variables attached to a cloud functions resource.
+ */
 export interface SecretEnvVar {
+  /* Name of the environment variable. */
   key: string;
+  /* Project identifier (or project number) of the project that contains the secret. */
   projectId: string;
+  /* Name of the secret in secret manager. e.g. MY_SECRET, NOT projects/abc/secrets/MY_SECRET */
   secret: string;
+  /* Version of the secret (version number or the string 'latest') */
   version?: string;
 }
 
