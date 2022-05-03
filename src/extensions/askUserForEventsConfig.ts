@@ -38,7 +38,7 @@ export async function askForEventsConfig(
   logger.info(
     `\n${clc.bold(
       "Enable Events"
-    )}: If you enable events, you can write custom event handlers that respond to these events. You can always enable or disable events later.\n\nEvents will be emitted via Eventarc. Fees apply ${marked("([https://cloud.google.com/eventarc/pricing](\https://cloud.google.com/eventarc/pricing)).")}`
+    )}: ${marked("If you enable events, you can write custom event handlers ([https://firebase.google.com/docs/extensions/install-extensions#eventarc](\https://firebase.google.com/docs/extensions/install-extensions#eventarc)) that respond to these events.\n\nYou can always enable or disable events later. Events will be emitted via Eventarc. Fees apply ([https://cloud.google.com/eventarc/pricing](\https://cloud.google.com/eventarc/pricing)).")}`
   );
   if (!(await askShouldCollectEventsConfig())) {
     return undefined;
