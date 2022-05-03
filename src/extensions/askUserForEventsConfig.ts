@@ -4,6 +4,7 @@ import * as extensionsApi from "../extensions/extensionsApi";
 import * as utils from "../utils";
 import * as clc from "cli-color";
 import { logger } from "../logger";
+const { marked } = require("marked");
 
 export interface InstanceEventsConfig {
   channel: string;
@@ -37,7 +38,7 @@ export async function askForEventsConfig(
   logger.info(
     `\n${clc.bold(
       "Enable Events"
-    )}: If you enable events, you can write custom event handlers (https://cloud.google.com/eventarc/pricing) that respond to these events. You can always enable or disable events later.\n\nEvents will be emitted via Eventarc. Fees apply (https://cloud.google.com/eventarc/pricing).\n`
+    )}: If you enable events, you can write custom event handlers that respond to these events. You can always enable or disable events later.\n\nEvents will be emitted via Eventarc. Fees apply ${marked("([https://cloud.google.com/eventarc/pricing](\https://cloud.google.com/eventarc/pricing)).")}`
   );
   if (!(await askShouldCollectEventsConfig())) {
     return undefined;
