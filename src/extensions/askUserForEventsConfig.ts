@@ -2,6 +2,8 @@ import * as _ from "lodash";
 import { promptOnce } from "../prompt";
 import * as extensionsApi from "../extensions/extensionsApi";
 import * as utils from "../utils";
+import * as clc from "cli-color";
+import { logger } from "../logger";
 
 export interface InstanceEventsConfig {
   channel: string;
@@ -32,6 +34,11 @@ export async function askForEventsConfig(
   projectId: string,
   instanceId: string
 ): Promise<InstanceEventsConfig | undefined> {
+  logger.info(
+    `\n${clc.bold(
+      "Enable Events"
+    )}: If you enable events, you can write custom event handlers (https://cloud.google.com/eventarc/pricing) that respond to these events. You can always enable or disable events later.\n\nEvents will be emitted via Eventarc (https://cloud.google.com/eventarc/docs/overview). Fees apply (https://cloud.google.com/eventarc/pricing).\n`
+  );
   if (!(await askShouldCollectEventsConfig())) {
     return undefined;
   }
@@ -82,7 +89,7 @@ export async function askShouldCollectEventsConfig(): Promise<boolean> {
   return promptOnce({
     type: "confirm",
     name: "shouldCollectEvents",
-    message: `Would you like to enable events? If you enable events, you can write custom event handlers (https://cloud.google.com/eventarc/pricing) that respond to these events. These events would be published to an Eventarc Channel. You can always enable or disable events later.\n\nEvents will be emitted via Eventarc. Fees apply (https://cloud.google.com/eventarc/pricing).`,
+    message: `Would you like to enable events?`,
     default: false,
   });
 }
