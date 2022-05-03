@@ -34,14 +34,14 @@ export function endpointsAreValid(wantBackend: backend.Backend): void {
       if ((endpoint.concurrency || 1) === 1) {
         return false;
       }
-      const mem = endpoint.availableMemoryMb || backend.DEFAULT_MEMORY;
-      return mem < backend.MIN_MEMORY_FOR_CONCURRENCY;
+      return (endpoint.cpu as number) < backend.MIN_CPU_FOR_CONCURRENCY;
     })
     .map((endpoint) => endpoint.id);
   if (tooSmallForConcurrency.length) {
-    const msg = `Cannot set concurency on the functions ${tooSmallForConcurrency.join(
-      ","
-    )} because they have fewer than 2GB memory`;
+    const msg =
+      "The following functions are configured to allow concurrent " +
+      "execution and less than one full CPU. This is not supported: " +
+      tooSmallForConcurrency.join(",");
     throw new FirebaseError(msg);
   }
 }

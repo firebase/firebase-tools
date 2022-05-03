@@ -24,6 +24,7 @@ import * as scheduler from "../../../gcp/cloudscheduler";
 import * as utils from "../../../utils";
 import * as services from "../services";
 import { AUTH_BLOCKING_EVENTS } from "../../../functions/events/v1";
+import { backoff } from "../../../throttler/throttler";
 
 // TODO: Tune this for better performance.
 const gcfV1PollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
@@ -337,12 +338,23 @@ export class Fabricator {
     }
 
     const mem = endpoint.availableMemoryMb || backend.DEFAULT_MEMORY;
-    if (mem >= backend.MIN_MEMORY_FOR_CONCURRENCY && endpoint.concurrency !== 1) {
-      await this.setConcurrency(
-        endpoint,
-        serviceName,
-        endpoint.concurrency || DEFAULT_GCFV2_CONCURRENCY
-      );
+
+    // "CustomCPU" here means "not the CPU that GCF gives us". GCF automatically
+    // sets the CPU for a Run service based on the RAM settings. The value GCF
+    // uses is memoryToGen1Cpu.
+    const hasCustomCPU = endpoint.cpu !== backend.memoryToGen1Cpu(mem);
+    // I don't love editing an input in this function, but the code gets ugly
+    // otherwise. It's nice to not resolve concurrency in the prepare stage
+    // because it helps us know whether we should call setRunTraits on update.
+    if (!endpoint.concurrency) {
+      endpoint.concurrency =
+        (endpoint.cpu as number) >= backend.MIN_CPU_FOR_CONCURRENCY
+          ? backend.DEFAULT_CONCURRENCY
+          : 1;
+    }
+    const hasConcurrency = endpoint.concurrency !== 1;
+    if (hasCustomCPU || hasConcurrency) {
+      await this.setRunTraits(serviceName, endpoint);
     }
   }
 
@@ -431,8 +443,24 @@ export class Fabricator {
         .catch(rethrowAs(endpoint, "set invoker"));
     }
 
-    if (endpoint.concurrency) {
-      await this.setConcurrency(endpoint, serviceName, endpoint.concurrency);
+    // Ideally we'd avoid a read of the Cloud Run service. We need to read if we
+    // believe a setting (CPU or concurrency) has changed because the user
+    // changed their mind or if GCF has stamped over the user's choice (we're
+    // using custom VM shapes).
+    const hasCustomCPU =
+      endpoint.cpu !==
+      backend.memoryToGen1Cpu(endpoint.availableMemoryMb || backend.DEFAULT_MEMORY);
+    const explicitConcurrency = endpoint.concurrency !== undefined;
+    if (hasCustomCPU || explicitConcurrency) {
+      // GCF may have stamped over the CPU to be <1 which would reset concurrency.
+      // We may have to reapply defaults.
+      if (endpoint.concurrency === undefined) {
+        endpoint.concurrency =
+          (endpoint.cpu as number) < backend.MIN_CPU_FOR_CONCURRENCY
+            ? 1
+            : backend.DEFAULT_CONCURRENCY;
+      }
+      await this.setRunTraits(serviceName, endpoint);
     }
   }
 
@@ -466,23 +494,40 @@ export class Fabricator {
       .catch(rethrowAs(endpoint, "delete"));
   }
 
-  async setConcurrency(
-    endpoint: backend.Endpoint,
-    serviceName: string,
-    concurrency: number
-  ): Promise<void> {
+  async setRunTraits(serviceName: string, endpoint: backend.Endpoint): Promise<void> {
     await this.functionExecutor
       .run(async () => {
-        const service = await run.getService(serviceName);
-        if (service.spec.template.spec.containerConcurrency === concurrency) {
-          logger.debug("Skipping setConcurrency on", serviceName, " because it already matches");
+        let service = await run.getService(serviceName);
+        let changed = false;
+        if (service.spec.template.spec.containerConcurrency !== endpoint.concurrency) {
+          service.spec.template.spec.containerConcurrency = endpoint.concurrency;
+          changed = true;
+        }
+
+        if (+service.spec.template.spec.containers[0].resources.limits.cpu !== endpoint.cpu) {
+          service.spec.template.spec.containers[0].resources.limits.cpu = `${
+            endpoint.cpu as number
+          }`;
+          changed = true;
+        }
+
+        if (!changed) {
+          logger.debug("Skipping setRunTraits on", serviceName, " because it already matches");
           return;
         }
 
         delete service.status;
         delete (service.spec.template.metadata as any).name;
-        service.spec.template.spec.containerConcurrency = concurrency;
-        await run.replaceService(serviceName, service);
+        service = await run.replaceService(serviceName, service);
+
+        // Now we need to wait for reconciliation or we might delete the docker
+        // image while the service is still rolling out a new revision.
+        let retry = 0;
+        while (!exports.serviceIsResolved(service)) {
+          await backoff(retry, 2, 30);
+          retry = retry + 1;
+          service = await run.getService(serviceName);
+        }
       })
       .catch(rethrowAs(endpoint, "set concurrency"));
   }
@@ -605,4 +650,39 @@ export class Fabricator {
     const label = helper.getFunctionLabel(endpoint);
     utils.logSuccess(`${clc.bold.green(`functions[${label}]`)} Successful ${op} operation.`);
   }
+}
+
+/**
+ * Returns whether a service is resolved (all transitions have completed).
+ */
+export function serviceIsResolved(service: run.Service): boolean {
+  if (service.status?.observedGeneration !== service.metadata.generation) {
+    logger.debug(
+      `Service ${service.metadata.name} is not resolved because` +
+        `observed generation ${service.status?.observedGeneration} does not ` +
+        `match spec generation ${service.metadata.generation}`
+    );
+    return false;
+  }
+  const readyCondition = service.status?.conditions?.find((condition) => {
+    return condition.type === "Ready";
+  });
+
+  if (readyCondition?.status === "Unknown") {
+    logger.debug(
+      `Waiting for service ${service.metadata.name} to be ready. ` +
+        `Status is ${JSON.stringify(service.status?.conditions)}`
+    );
+    return false;
+  } else if (readyCondition?.status === "True") {
+    return true;
+  }
+  logger.debug(
+    `Service ${service.metadata.name} has unexpected ready status ${JSON.stringify(
+      readyCondition
+    )}. It may have failed rollout.`
+  );
+  throw new FirebaseError(
+    `Unexpected Status ${readyCondition?.status} for service ${service.metadata.name}`
+  );
 }

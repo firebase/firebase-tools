@@ -241,7 +241,8 @@ function parseEndpoints(
       "vpc",
       "labels",
       "ingressSettings",
-      "environmentVariables"
+      "environmentVariables",
+      "cpu"
     );
     renameIfPresent(
       parsed,
