@@ -12,8 +12,10 @@ export function checkAllowedEventTypesResponse(
   response: string[],
   validEvents: extensionsApi.EventDescriptor[]
 ): boolean {
-  const valid = true;
   const validEventTypes = validEvents.map((e) => e.type);
+  if (response.length === 0) {
+    return false;
+  }
   for (const e of response) {
     if (!validEventTypes.includes(e)) {
       utils.logWarning(
@@ -22,7 +24,7 @@ export function checkAllowedEventTypesResponse(
       return false;
     }
   }
-  return valid;
+  return true;
 }
 
 export async function askForEventsConfig(
@@ -65,7 +67,6 @@ export async function askForAllowedEventTypes(
       name: "selectedEventTypesInput",
       type: "checkbox",
       default: preselectedTypes ?? [],
-      // @TODO(b/229170748): Link to docs / audit the copy with UX.
       message:
         `Please select the events [${eventTypes.length} types total] that this extension is permitted to emit. ` +
         "You can implement your own handlers that trigger when these events are emitted to customize the extension's behavior. ",
@@ -81,8 +82,7 @@ export async function askShouldCollectEventsConfig(): Promise<boolean> {
   return promptOnce({
     type: "confirm",
     name: "shouldCollectEvents",
-    // @TODO(b/229170748): Link to docs / audit the copy with UX.
-    message: `Would you like to enable events? If you enable events, this extension will publish events to Eventarc at key points in its lifecycle. Eventarc usage fees apply. You can write custom event handlers that respond to these events. You can always enable events later.`,
+    message: `Would you like to enable events? If you enable events, you can write custom event handlers (https://cloud.google.com/eventarc/pricing) that respond to these events. These events would be published to an Eventarc Channel. You can always enable or disable events later.\n\nEvents will be emitted via Eventarc. Fees apply (https://cloud.google.com/eventarc/pricing).`,
     default: false,
   });
 }
