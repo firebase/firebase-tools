@@ -27,6 +27,7 @@ import { FirebaseError } from "../../error";
 import { configForCodebase, normalizeAndValidate } from "../../functions/projectConfig";
 import { previews } from "../../previews";
 import { AUTH_BLOCKING_EVENTS } from "../../functions/events/v1";
+import { generateServiceIdentity } from "../../gcp/serviceusage";
 
 function hasUserConfig(config: Record<string, unknown>): boolean {
   // "firebase" key is always going to exist in runtime config.
@@ -197,10 +198,10 @@ export async function prepare(
       return ensureApiEnabled.ensure(projectId, api, "functions", /* silent=*/ false);
     })
   );
-  // Note: Some of these are premium APIs that require billing to be enabled.
-  // We'd eventually have to add special error handling for billing APIs, but
-  // enableCloudBuild is called above and has this special casing already.
   if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv2")) {
+    // Note: Some of these are premium APIs that require billing to be enabled.
+    // We'd eventually have to add special error handling for billing APIs, but
+    // enableCloudBuild is called above and has this special casing already.
     const V2_APIS = [
       "artifactregistry.googleapis.com",
       "run.googleapis.com",
@@ -212,6 +213,13 @@ export async function prepare(
       return ensureApiEnabled.ensure(context.projectId, api, "functions");
     });
     await Promise.all(enablements);
+    // Need to manually kick off the p4sa activation of services
+    // that we use with IAM roles assignment.
+    const services = ["pubsub.googleapis.com", "eventarc.googleapis.com"];
+    const generateServiceAccounts = services.map((service) => {
+      return generateServiceIdentity(projectNumber, service, "functions");
+    });
+    await Promise.all(generateServiceAccounts);
   }
 
   // ===Phase 5. Ask for user prompts for things might warrant user attentions.
@@ -225,7 +233,7 @@ export async function prepare(
   // ===Phase 6. Finalize preparation by "fixing" all extraneous environment issues like IAM policies.
   // We limit the scope endpoints being deployed.
   await backend.checkAvailability(context, matchingBackend);
-  await ensureServiceAgentRoles(projectNumber, matchingBackend, haveBackend);
+  await ensureServiceAgentRoles(projectId, projectNumber, matchingBackend, haveBackend);
   await validate.secretsAreValid(projectId, matchingBackend);
   await ensure.secretAccess(projectId, matchingBackend, haveBackend);
 }

@@ -232,6 +232,7 @@ function functionsOpLogReject(funcName: string, type: string, err: any): void {
       )} got "Quota Exceeded" error while trying to ${type} ${funcName}. Waiting to retry...`
     );
   } else {
+    utils.logWarning(clc.bold.yellow("functions:") + ` ${err?.message}`);
     utils.logWarning(
       clc.bold.yellow("functions:") + " failed to " + type + " function " + funcName
     );

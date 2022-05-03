@@ -12,23 +12,15 @@ const PUBSUB_PUBLISHER_ROLE = "roles/pubsub.publisher";
  * @param projectId project identifier
  * @param existingPolicy the project level IAM policy
  */
-export async function obtainStorageBindings(
-  projectNumber: string,
-  existingPolicy: iam.Policy
-): Promise<Array<iam.Binding>> {
+export async function obtainStorageBindings(projectNumber: string): Promise<Array<iam.Binding>> {
   const storageResponse = await storage.getServiceAccount(projectNumber);
   const storageServiceAgent = `serviceAccount:${storageResponse.email_address}`;
-  let pubsubBinding = existingPolicy.bindings.find((b) => b.role === PUBSUB_PUBLISHER_ROLE);
-  if (!pubsubBinding) {
-    pubsubBinding = {
-      role: PUBSUB_PUBLISHER_ROLE,
-      members: [],
-    };
-  }
-  if (!pubsubBinding.members.find((m) => m === storageServiceAgent)) {
-    pubsubBinding.members.push(storageServiceAgent); // add service agent to role
-  }
-  return [pubsubBinding];
+
+  const pubsubPublisherBinding = {
+    role: PUBSUB_PUBLISHER_ROLE,
+    members: [storageServiceAgent],
+  };
+  return [pubsubPublisherBinding];
 }
 
 /**
