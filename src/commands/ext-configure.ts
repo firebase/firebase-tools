@@ -184,16 +184,10 @@ export default new Command("ext:configure <extensionInstanceId>")
         projectId: pId,
         instanceId,
         params: paramBindings,
+        canEmitEvents: eventsConfig ? true : false,
+        eventarcChannel: eventsConfig?.channel,
+        allowedEventTypes: eventsConfig?.allowedEventTypes,
       };
-      if (eventsConfig) {
-        configureOptions.canEmitEvents = true;
-        configureOptions.eventarcChannel = eventsConfig.channel;
-        configureOptions.allowedEventTypes = eventsConfig.allowedEventTypes;
-      } else {
-        configureOptions.canEmitEvents = false;
-        configureOptions.eventarcChannel = undefined;
-        configureOptions.allowedEventTypes = undefined;
-      }
       const res = await extensionsApi.configureInstance(configureOptions);
       spinner.stop();
       utils.logLabeledSuccess(logPrefix, `successfully configured ${clc.bold(instanceId)}.`);
