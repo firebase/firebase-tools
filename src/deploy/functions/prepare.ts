@@ -35,6 +35,9 @@ function hasUserConfig(config: Record<string, unknown>): boolean {
   return Object.keys(config).length > 1;
 }
 
+/**
+ * Prepare functions codebases for deploy.
+ */
 export async function prepare(
   context: args.Context,
   options: Options,
@@ -171,12 +174,13 @@ export async function prepare(
     backend.allEndpoints(await backend.existingBackend(context))
   );
   for (const [codebase, wantBackend] of Object.entries(wantBackends)) {
-    const haveBackend = haveBackends[codebase] || { ...backend.empty() };
+    const haveBackend = haveBackends[codebase] || backend.empty();
     payload.functions[codebase] = { wantBackend, haveBackend };
   }
   for (const [codebase, { wantBackend, haveBackend }] of Object.entries(payload.functions)) {
     inferDetailsFromExisting(wantBackend, haveBackend, codebaseUsesEnvs.includes(codebase));
     await ensureTriggerRegions(wantBackend);
+    resolveCpu(wantBackend);
     validate.endpointsAreValid(wantBackend);
     inferBlockingDetails(wantBackend);
   }
@@ -270,6 +274,17 @@ export function inferDetailsFromExisting(
       wantE.availableMemoryMb = haveE.availableMemoryMb;
     }
 
+    // N.B. This code doesn't handle automatic downgrading of concurrency if
+    // the customer sets CPU <1. We'll instead error that you can't have both.
+    // We may want to handle this case, though it might also be surprising to
+    // customers if they _don't_ get an error and we silently drop concurrency.
+    if (!wantE.concurrency && haveE.concurrency) {
+      wantE.concurrency = haveE.concurrency;
+    }
+    if (!wantE.cpu && haveE.cpu) {
+      wantE.cpu = haveE.cpu;
+    }
+
     wantE.securityLevel = haveE.securityLevel ? haveE.securityLevel : "SECURE_ALWAYS";
 
     maybeCopyTriggerRegion(wantE, haveE);
@@ -324,5 +339,23 @@ export function inferBlockingDetails(want: backend.Backend): void {
     blockingEp.blockingTrigger.options.accessToken = accessToken;
     blockingEp.blockingTrigger.options.idToken = idToken;
     blockingEp.blockingTrigger.options.refreshToken = refreshToken;
+  }
+}
+
+/**
+ * Assigns the CPU level to a function based on its memory if CPU is not
+ * provided and sets concurrency based on the CPU level if not provided.
+ * After this function, CPU will be a real number and not "gcf_gen1".
+ */
+export function resolveCpu(want: backend.Backend): void {
+  for (const e of backend.allEndpoints(want)) {
+    if (e.platform === "gcfv1") {
+      continue;
+    }
+    if (e.cpu === "gcf_gen1") {
+      e.cpu = backend.memoryToGen1Cpu(e.availableMemoryMb || backend.DEFAULT_MEMORY);
+    } else if (!e.cpu) {
+      e.cpu = backend.memoryToGen2Cpu(e.availableMemoryMb || backend.DEFAULT_MEMORY);
+    }
   }
 }
