@@ -373,6 +373,7 @@ export async function configureInstance(args: {
   projectId: string;
   instanceId: string;
   params: { [option: string]: string };
+  canEmitEvents: boolean;
   allowedEventTypes?: string[];
   eventarcChannel?: string;
   validateOnly?: boolean;
@@ -388,14 +389,19 @@ export async function configureInstance(args: {
       },
     },
   };
-  if (args.allowedEventTypes !== undefined) {
+  if (!args.canEmitEvents) {
+    reqBody.data.config.allowedEventTypes = undefined;
+    reqBody.data.config.eventarcChannel = undefined;
+    reqBody.updateMask += ",config.allowed_event_types,config.eventarc_channel";
+  } else {
+    if (args.allowedEventTypes === undefined || args.eventarcChannel === undefined) {
+      throw new FirebaseError(
+        `This instance is configured to emit events, but either allowed event types or eventarc channel is undefined.`
+      );
+    }
     reqBody.data.config.allowedEventTypes = args.allowedEventTypes;
-    reqBody.updateMask += ",config.allowed_event_types";
-  }
-
-  if (args.eventarcChannel !== undefined) {
     reqBody.data.config.eventarcChannel = args.eventarcChannel;
-    reqBody.updateMask += ",config.eventarc_channel";
+    reqBody.updateMask += ",config.allowed_event_types,config.eventarc_channel";
   }
   return patchInstance(reqBody);
 }
@@ -416,6 +422,7 @@ export async function updateInstance(args: {
   instanceId: string;
   extensionSource: ExtensionSource;
   params?: { [option: string]: string };
+  canEmitEvents: boolean;
   allowedEventTypes?: string[];
   eventarcChannel?: string;
   validateOnly?: boolean;
@@ -430,14 +437,20 @@ export async function updateInstance(args: {
     body.config.params = args.params;
     updateMask += ",config.params";
   }
-  if (args.allowedEventTypes !== undefined) {
-    body.config.allowedEventTypes = args.allowedEventTypes;
-    updateMask += ",config.allowed_event_types";
-  }
 
-  if (args.eventarcChannel !== undefined) {
+  if (!args.canEmitEvents) {
+    body.config.allowedEventTypes = undefined;
+    body.config.eventarcChannel = undefined;
+    updateMask += ",config.allowed_event_types,config.eventarc_channel";
+  } else {
+    if (args.allowedEventTypes === undefined || args.eventarcChannel === undefined) {
+      throw new FirebaseError(
+        `This instance is configured to emit events, but either allowed event types or eventarc channel is undefined.`
+      );
+    }
+    body.config.allowedEventTypes = args.allowedEventTypes;
     body.config.eventarcChannel = args.eventarcChannel;
-    updateMask += ",config.eventarc_channel";
+    updateMask += ",config.allowed_event_types,config.eventarc_channel";
   }
   return patchInstance({
     projectId: args.projectId,
@@ -464,6 +477,7 @@ export async function updateInstanceFromRegistry(args: {
   instanceId: string;
   extRef: string;
   params?: { [option: string]: string };
+  canEmitEvents: boolean;
   allowedEventTypes?: string[];
   eventarcChannel?: string;
   validateOnly?: boolean;
@@ -480,15 +494,21 @@ export async function updateInstanceFromRegistry(args: {
     body.config.params = args.params;
     updateMask += ",config.params";
   }
-  if (args.allowedEventTypes !== undefined) {
+  if (!args.canEmitEvents) {
+    body.config.allowedEventTypes = undefined;
+    body.config.eventarcChannel = undefined;
+    updateMask += ",config.allowed_event_types,config.eventarc_channel";
+  } else {
+    if (args.allowedEventTypes === undefined || args.eventarcChannel === undefined) {
+      throw new FirebaseError(
+        `This instance is configured to emit events, but either allowed event types or eventarc channel is undefined.`
+      );
+    }
     body.config.allowedEventTypes = args.allowedEventTypes;
-    updateMask += ",config.allowed_event_types";
+    body.config.eventarcChannel = args.eventarcChannel;
+    updateMask += ",config.allowed_event_types,config.eventarc_channel";
   }
 
-  if (args.eventarcChannel !== undefined) {
-    body.config.eventarcChannel = args.eventarcChannel;
-    updateMask += ",config.eventarc_channel";
-  }
   return patchInstance({
     projectId: args.projectId,
     instanceId: args.instanceId,

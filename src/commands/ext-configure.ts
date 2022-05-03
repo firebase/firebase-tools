@@ -185,11 +185,14 @@ export default new Command("ext:configure <extensionInstanceId>")
         instanceId,
         params: paramBindings,
       };
-      if (existingInstance.config.eventarcChannel !== eventsConfig?.channel) {
-        configureOptions.eventarcChannel = eventsConfig?.channel;
-      }
-      if (existingInstance.config.allowedEventTypes !== eventsConfig?.allowedEventTypes) {
-        configureOptions.allowedEventTypes = eventsConfig?.allowedEventTypes;
+      if (eventsConfig) {
+        configureOptions.canEmitEvents = true;
+        configureOptions.eventarcChannel = eventsConfig.channel;
+        configureOptions.allowedEventTypes = eventsConfig.allowedEventTypes;
+      } else {
+        configureOptions.canEmitEvents = false;
+        configureOptions.eventarcChannel = undefined;
+        configureOptions.allowedEventTypes = undefined;
       }
       const res = await extensionsApi.configureInstance(configureOptions);
       spinner.stop();

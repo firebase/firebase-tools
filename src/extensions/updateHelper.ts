@@ -122,6 +122,7 @@ export interface UpdateOptions {
   source?: extensionsApi.ExtensionSource;
   extRef?: string;
   params?: { [key: string]: string };
+  canEmitEvents: boolean;
   allowedEventTypes?: string[];
   eventarcChannel?: string;
 }
@@ -135,14 +136,23 @@ export interface UpdateOptions {
  * @param updateOptions Info on the instance and associated resources to update
  */
 export async function update(updateOptions: UpdateOptions): Promise<any> {
-  const { projectId, instanceId, source, extRef, params, allowedEventTypes, eventarcChannel } =
-    updateOptions;
+  const {
+    projectId,
+    instanceId,
+    source,
+    extRef,
+    params,
+    canEmitEvents,
+    allowedEventTypes,
+    eventarcChannel,
+  } = updateOptions;
   if (extRef) {
     return await extensionsApi.updateInstanceFromRegistry({
       projectId,
       instanceId,
       extRef,
       params,
+      canEmitEvents,
       allowedEventTypes,
       eventarcChannel,
     });
@@ -152,6 +162,7 @@ export async function update(updateOptions: UpdateOptions): Promise<any> {
       instanceId,
       extensionSource: source,
       params,
+      canEmitEvents,
       allowedEventTypes,
       eventarcChannel,
     });
