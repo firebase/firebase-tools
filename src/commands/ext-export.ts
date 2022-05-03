@@ -64,7 +64,7 @@ module.exports = new Command("ext:export")
       return;
     }
 
-    const manifestSpecs = withRef.map((spec) => ({
+    const manifestSpecs = withRefSubbed.map((spec) => ({
       instanceId: spec.instanceId,
       ref: spec.ref,
       params: buildBindingOptionsWithBaseValue(spec.params),
