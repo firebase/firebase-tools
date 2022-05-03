@@ -34,14 +34,14 @@ export function endpointsAreValid(wantBackend: backend.Backend): void {
       if ((endpoint.concurrency || 1) === 1) {
         return false;
       }
-      const mem = endpoint.availableMemoryMb || backend.DEFAULT_MEMORY;
-      return mem < backend.MIN_MEMORY_FOR_CONCURRENCY;
+      return (endpoint.cpu as number) < backend.MIN_CPU_FOR_CONCURRENCY;
     })
     .map((endpoint) => endpoint.id);
   if (tooSmallForConcurrency.length) {
-    const msg = `Cannot set concurency on the functions ${tooSmallForConcurrency.join(
-      ","
-    )} because they have fewer than 2GB memory`;
+    const msg =
+      "The following functions are configured to allow concurrent " +
+      "execution and less than one full CPU. This is not supported: " +
+      tooSmallForConcurrency.join(",");
     throw new FirebaseError(msg);
   }
 
@@ -170,17 +170,17 @@ export async function secretsAreValid(projectId: string, wantBackend: backend.Ba
   await validateSecretVersions(projectId, endpoints);
 }
 
+const secretsSupportedPlatforms = ["gcfv1", "gcfv2"];
 /**
  * Ensures that all endpoints specifying secret environment variables target platform that supports the feature.
  */
 function validatePlatformTargets(endpoints: backend.Endpoint[]) {
-  const supportedPlatforms = ["gcfv1"];
-  const unsupported = endpoints.filter((e) => !supportedPlatforms.includes(e.platform));
+  const unsupported = endpoints.filter((e) => !secretsSupportedPlatforms.includes(e.platform));
   if (unsupported.length > 0) {
     const errs = unsupported.map((e) => `${e.id}[platform=${e.platform}]`);
     throw new FirebaseError(
       `Tried to set secret environment variables on ${errs.join(", ")}. ` +
-        `Only ${supportedPlatforms.join(", ")} support secret environments.`
+        `Only ${secretsSupportedPlatforms.join(", ")} support secret environments.`
     );
   }
 }

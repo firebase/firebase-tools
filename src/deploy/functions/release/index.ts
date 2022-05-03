@@ -106,7 +106,10 @@ export async function release(
       const projectId = needProjectId(options);
       const projectNumber = await needProjectNumber(options);
       // Re-load backend with all endpoints, not just the ones deployed.
-      const reloadedBackend = await backend.existingBackend({ projectId } as args.Context);
+      const reloadedBackend = await backend.existingBackend(
+        { projectId } as args.Context,
+        /* forceRefresh= */ true
+      );
       const prunedResult = await secrets.pruneAndDestroySecrets(
         { projectId, projectNumber },
         backend.allEndpoints(reloadedBackend)
