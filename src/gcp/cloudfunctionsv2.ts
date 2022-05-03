@@ -118,7 +118,7 @@ export interface ServiceConfig {
   timeoutSeconds?: number;
   availableMemory?: string;
   environmentVariables?: Record<string, string>;
-  secretEnvironmentVariables?: Array<SecretEnvVar>;
+  secretEnvironmentVariables?: SecretEnvVar[];
   maxInstanceCount?: number;
   minInstanceCount?: number;
   vpcConnector?: string;
