@@ -1,0 +1,2 @@
+- Add support for secrets to v2 functions (#4451).
+- Fixes an issue where `ext:export` would write different param values than what it displayed in the prompt (#4515).

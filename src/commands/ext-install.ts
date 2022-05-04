@@ -6,6 +6,7 @@ import TerminalRenderer = require("marked-terminal");
 
 import * as askUserForConsent from "../extensions/askUserForConsent";
 import { displayExtInfo } from "../extensions/displayExtensionInfo";
+import * as askUserForEventsConfig from "../extensions/askUserForEventsConfig";
 import { displayNode10CreateBillingNotice } from "../extensions/billingMigrationHelper";
 import { enableBilling } from "../extensions/checkProjectBilling";
 import { checkBillingEnabled } from "../gcp/cloudbilling";
@@ -33,7 +34,7 @@ import {
   isLocalPath,
   canonicalizeRefInput,
 } from "../extensions/extensionsHelper";
-import { update } from "../extensions/updateHelper";
+import { update, UpdateOptions } from "../extensions/updateHelper";
 import { getRandomString } from "../extensions/utils";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
@@ -247,7 +248,19 @@ async function installToManifest(options: InstallExtensionOptions): Promise<void
     paramsEnvPath,
     instanceId,
   });
-
+  const eventsConfig = spec.events
+    ? await askUserForEventsConfig.askForEventsConfig(
+        spec.events,
+        "${param:PROJECT_ID}",
+        instanceId
+      )
+    : undefined;
+  if (eventsConfig) {
+    paramBindingOptions.EVENTARC_CHANNEL = { baseValue: eventsConfig.channel };
+    paramBindingOptions.ALLOWED_EVENT_TYPES = {
+      baseValue: eventsConfig.allowedEventTypes.join(","),
+    };
+  }
   const ref = extVersion ? refs.parse(extVersion.ref) : undefined;
   await manifest.writeToManifest(
     [
@@ -313,6 +326,12 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
         reason: `To access and manage secrets which are used by this extension. By using this product you agree to the terms and conditions of the following license: https://console.cloud.google.com/tos?id=cloud&project=${projectId}`,
       });
     }
+    if (spec.events && spec.events.length > 0) {
+      apis.push({
+        apiName: "eventarc.googleapis.com",
+        reason: `When events are enabled, the Eventarc API is required to provision an event channel and publish events.`,
+      });
+    }
     if (apis.length) {
       askUserForConsent.displayApis(spec.displayName || spec.name, projectId, apis);
       const consented = await confirm({ nonInteractive, force, default: true });
@@ -358,6 +377,7 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
     }
     let paramBindingOptions: { [key: string]: ParamBindingOptions };
     let paramBindings: Record<string, string>;
+    let eventsConfig: askUserForEventsConfig.InstanceEventsConfig | undefined;
     switch (choice) {
       case "installNew":
         instanceId = await promptForValidInstanceId(`${instanceId}-${getRandomString(4)}`);
@@ -368,6 +388,9 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
           paramsEnvPath,
           instanceId,
         });
+        eventsConfig = spec.events
+          ? await askUserForEventsConfig.askForEventsConfig(spec.events, projectId, instanceId)
+          : undefined;
         paramBindings = getBaseParamBindings(paramBindingOptions);
         spinner.text = "Installing your extension instance. This usually takes 3 to 5 minutes...";
         spinner.start();
@@ -377,6 +400,8 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
           extensionSource: source,
           extensionVersionRef: extVersion?.ref,
           params: paramBindings,
+          allowedEventTypes: eventsConfig?.allowedEventTypes,
+          eventarcChannel: eventsConfig?.channel,
         });
         spinner.stop();
         utils.logLabeledSuccess(
@@ -393,16 +418,23 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
           paramsEnvPath,
           instanceId,
         });
+        eventsConfig = spec.events
+          ? await askUserForEventsConfig.askForEventsConfig(spec.events, projectId, instanceId)
+          : undefined;
         paramBindings = getBaseParamBindings(paramBindingOptions);
         spinner.text = "Updating your extension instance. This usually takes 3 to 5 minutes...";
         spinner.start();
-        await update({
+        const updateOptions: UpdateOptions = {
           projectId,
           instanceId,
           source,
+          canEmitEvents: eventsConfig ? true : false,
+          eventarcChannel: eventsConfig?.channel,
+          allowedEventTypes: eventsConfig?.allowedEventTypes,
           extRef: extVersion?.ref,
           params: paramBindings,
-        });
+        };
+        await update(updateOptions);
         spinner.stop();
         utils.logLabeledSuccess(
           logPrefix,
