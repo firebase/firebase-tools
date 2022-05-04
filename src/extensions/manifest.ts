@@ -78,7 +78,7 @@ export async function writeLocalSecrets(
 
     const writeBuffer: Record<string, string> = {};
     const locallyOverridenSecretParams = extensionSpec.params.filter(
-      (p) => p.type === ParamType.SECRET && spec.params[p.param].local
+      (p) => p.type === ParamType.SECRET && spec.params[p.param]?.local
     );
     for (const paramSpec of locallyOverridenSecretParams) {
       const key = paramSpec.param;
