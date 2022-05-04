@@ -102,7 +102,8 @@ export async function displayWarningsForDeploy(instancesToCreate: InstanceSpec[]
       marked(
         `The following are instances of ${clc.bold(
           "experimental"
-        )} extensions.They may not be production-ready. Their functionality may change in backward-incompatible ways before their official release, or they may be discontinued.\n${humanReadableList}\n`
+        )} extensions.They may not be production-ready. Their functionality may change in backward-incompatible ways before their official release, or they may be discontinued.\n${humanReadableList}\n`,
+        { gfm: false }
       )
     );
   }
@@ -112,9 +113,10 @@ export async function displayWarningsForDeploy(instancesToCreate: InstanceSpec[]
     utils.logLabeledBullet(
       logPrefix,
       marked(
-        `These extensions are in preview and are built by a developer in the Extensions Publisher Early Access Program (http://bit.ly/firex-provider. Their functionality might change in backwards-incompatible ways. Since these extensions aren't built by Firebase, reach out to their publisher with questions about them.` +
+        `These extensions are in preview and are built by a developer in the Extensions Publisher Early Access Program (http://bit.ly/firex-provider). Their functionality might change in backwards-incompatible ways. Since these extensions aren't built by Firebase, reach out to their publisher with questions about them.` +
           ` They are provided “AS IS”, without any warranty, express or implied, from Google.` +
-          ` Google disclaims all liability for any damages, direct or indirect, resulting from the use of these extensions\n${humanReadableList}`
+          ` Google disclaims all liability for any damages, direct or indirect, resulting from the use of these extensions\n${humanReadableList}`,
+        { gfm: false }
       )
     );
   }
