@@ -525,10 +525,6 @@ async function loadExistingBackend(ctx: Context & PrivateContextFields): Promise
   }
   ctx.unreachableRegions.gcfV1 = gcfV1Results.unreachable;
 
-  if (!previews.functionsv2) {
-    return;
-  }
-
   let gcfV2Results;
   try {
     gcfV2Results = await gcfV2.listAllFunctions(ctx.projectId);

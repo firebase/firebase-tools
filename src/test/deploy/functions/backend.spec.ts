@@ -2,7 +2,6 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 
 import { FirebaseError } from "../../../error";
-import { previews } from "../../../previews";
 import * as args from "../../../deploy/functions/args";
 import * as backend from "../../../deploy/functions/backend";
 import * as gcf from "../../../gcp/cloudfunctions";
@@ -165,7 +164,6 @@ describe("Backend", () => {
     let getService: sinon.SinonStub;
 
     beforeEach(() => {
-      previews.functionsv2 = false;
       listAllFunctions = sinon.stub(gcf, "listAllFunctions").rejects("Unexpected call");
       listAllFunctionsV2 = sinon.stub(gcfV2, "listAllFunctions").rejects("Unexpected v2 call");
       logLabeledWarning = sinon.spy(utils, "logLabeledWarning");
@@ -192,7 +190,9 @@ describe("Backend", () => {
       });
 
       it("should cache", async () => {
-        const context = newContext();
+        getService
+          .withArgs(HAVE_CLOUD_FUNCTION_V2.serviceConfig.service!)
+          .resolves(CLOUD_RUN_SERVICE);
         listAllFunctions.onFirstCall().resolves({
           functions: [
             {
@@ -202,6 +202,17 @@ describe("Backend", () => {
           ],
           unreachable: ["region"],
         });
+        listAllFunctionsV2.onFirstCall().resolves({
+          functions: [
+            {
+              ...HAVE_CLOUD_FUNCTION_V2,
+              httpsTrigger: {},
+            },
+          ],
+          unreachable: [],
+        });
+
+        const context = newContext();
         const firstBackend = await backend.existingBackend(context);
 
         const secondBackend = await backend.existingBackend(context);
@@ -209,10 +220,11 @@ describe("Backend", () => {
 
         expect(firstBackend).to.deep.equal(secondBackend);
         expect(listAllFunctions).to.be.calledOnce;
-        expect(listAllFunctionsV2).to.not.be.called;
+        expect(listAllFunctionsV2).to.be.calledOnce;
       });
 
       it("should translate functions", async () => {
+        const context = newContext();
         listAllFunctions.onFirstCall().resolves({
           functions: [
             {
@@ -222,13 +234,16 @@ describe("Backend", () => {
           ],
           unreachable: [],
         });
+        listAllFunctionsV2.onFirstCall().resolves({
+          functions: [],
+          unreachable: [],
+        });
         const have = await backend.existingBackend(newContext());
 
         expect(have).to.deep.equal(backend.of({ ...ENDPOINT, httpsTrigger: {} }));
       });
 
       it("should throw an error if v2 list api throws an error", async () => {
-        previews.functionsv2 = true;
         listAllFunctions.onFirstCall().resolves({
           functions: [],
           unreachable: [],
@@ -243,7 +258,6 @@ describe("Backend", () => {
       });
 
       it("should read v1 functions only when user is not allowlisted for v2", async () => {
-        previews.functionsv2 = true;
         listAllFunctions.onFirstCall().resolves({
           functions: [
             {
@@ -263,7 +277,6 @@ describe("Backend", () => {
       });
 
       it("should throw an error if v2 list api throws an error", async () => {
-        previews.functionsv2 = true;
         listAllFunctions.onFirstCall().resolves({
           functions: [],
           unreachable: [],
@@ -278,7 +291,6 @@ describe("Backend", () => {
       });
 
       it("should read v1 functions only when user is not allowlisted for v2", async () => {
-        previews.functionsv2 = true;
         listAllFunctions.onFirstCall().resolves({
           functions: [
             {
@@ -298,7 +310,6 @@ describe("Backend", () => {
       });
 
       it("should read v2 functions when enabled", async () => {
-        previews.functionsv2 = true;
         getService
           .withArgs(HAVE_CLOUD_FUNCTION_V2.serviceConfig.service!)
           .resolves(CLOUD_RUN_SERVICE);
@@ -341,6 +352,10 @@ describe("Backend", () => {
           ],
           unreachable: [],
         });
+        listAllFunctionsV2.onFirstCall().resolves({
+          functions: [],
+          unreachable: [],
+        });
         const have = await backend.existingBackend(newContext());
         const want = backend.of({
           ...ENDPOINT,
@@ -367,20 +382,6 @@ describe("Backend", () => {
           functions: [],
           unreachable: [],
         });
-
-        await backend.checkAvailability(newContext(), backend.empty());
-
-        expect(listAllFunctions).to.have.been.called;
-        expect(listAllFunctionsV2).to.not.have.been.called;
-        expect(logLabeledWarning).to.not.have.been.called;
-      });
-
-      it("should do nothing when all regions are available and GCFv2 is enabled", async () => {
-        previews.functionsv2 = true;
-        listAllFunctions.onFirstCall().resolves({
-          functions: [],
-          unreachable: [],
-        });
         listAllFunctionsV2.onFirstCall().resolves({
           functions: [],
           unreachable: [],
@@ -398,16 +399,19 @@ describe("Backend", () => {
           functions: [],
           unreachable: ["region"],
         });
+        listAllFunctionsV2.onFirstCall().resolves({
+          functions: [],
+          unreachable: [],
+        });
 
         await backend.checkAvailability(newContext(), backend.empty());
 
         expect(listAllFunctions).to.have.been.called;
-        expect(listAllFunctionsV2).to.not.have.been.called;
+        expect(listAllFunctionsV2).to.have.been.called;
         expect(logLabeledWarning).to.have.been.called;
       });
 
       it("should warn if an unused GCFv2 backend is unavailable", async () => {
-        previews.functionsv2 = true;
         listAllFunctions.onFirstCall().resolves({
           functions: [],
           unreachable: [],
@@ -429,6 +433,10 @@ describe("Backend", () => {
           functions: [],
           unreachable: ["region"],
         });
+        listAllFunctionsV2.onFirstCall().resolves({
+          functions: [],
+          unreachable: [],
+        });
         const want = backend.of({ ...ENDPOINT, httpsTrigger: {} });
         await expect(backend.checkAvailability(newContext(), want)).to.eventually.be.rejectedWith(
           FirebaseError,
@@ -437,7 +445,6 @@ describe("Backend", () => {
       });
 
       it("should throw if a GCFv2 needed region is unavailable", async () => {
-        previews.functionsv2 = true;
         listAllFunctions.onFirstCall().resolves({
           functions: [],
           unreachable: [],
@@ -459,7 +466,6 @@ describe("Backend", () => {
       });
 
       it("Should only warn when deploying GCFv1 and GCFv2 is unavailable.", async () => {
-        previews.functionsv2 = true;
         listAllFunctions.onFirstCall().resolves({
           functions: [],
           unreachable: [],
@@ -478,7 +484,6 @@ describe("Backend", () => {
       });
 
       it("Should only warn when deploying GCFv2 and GCFv1 is unavailable.", async () => {
-        previews.functionsv2 = true;
         listAllFunctions.onFirstCall().resolves({
           functions: [],
           unreachable: ["us-central1"],
