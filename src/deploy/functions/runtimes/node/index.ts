@@ -128,45 +128,56 @@ export class Delegate {
     config: backend.RuntimeConfigValues,
     env: backend.EnvironmentVariables
   ): Promise<backend.Backend> {
-    if (!semver.valid(this.sdkVersion)) {
-      logger.debug(
-        `Could not parse firebase-functions version '${this.sdkVersion}' into semver. Falling back to parseTriggers.`
-      );
-      return parseTriggers.discoverBackend(
-        this.projectId,
-        this.sourceDir,
-        this.runtime,
-        config,
-        env
-      );
-    }
-    if (semver.lt(this.sdkVersion, MIN_FUNCTIONS_SDK_VERSION)) {
-      logLabeledWarning(
-        "functions",
-        `You are using an old version of firebase-functions SDK (${this.sdkVersion}). ` +
-          `Please update firebase-functions SDK to >=${MIN_FUNCTIONS_SDK_VERSION}`
-      );
-      return parseTriggers.discoverBackend(
-        this.projectId,
-        this.sourceDir,
-        this.runtime,
-        config,
-        env
-      );
-    }
-    let discovered = await discovery.detectFromYaml(this.sourceDir, this.projectId, this.runtime);
-    if (!discovered) {
-      const getPort = promisify(portfinder.getPort) as () => Promise<number>;
-      const port = await getPort();
-      const kill = await this.serve(port, env);
-      try {
-        discovered = await discovery.detectFromPort(port, this.projectId, this.runtime);
-      } finally {
-        await kill();
+    try {
+      if (!semver.valid(this.sdkVersion)) {
+        logger.debug(
+          `Could not parse firebase-functions version '${this.sdkVersion}' into semver. Falling back to parseTriggers.`
+        );
+        return parseTriggers.discoverBackend(
+          this.projectId,
+          this.sourceDir,
+          this.runtime,
+          config,
+          env
+        );
       }
+      if (semver.lt(this.sdkVersion, MIN_FUNCTIONS_SDK_VERSION)) {
+        logLabeledWarning(
+          "functions",
+          `You are using an old version of firebase-functions SDK (${this.sdkVersion}). ` +
+            `Please update firebase-functions SDK to >=${MIN_FUNCTIONS_SDK_VERSION}`
+        );
+        return parseTriggers.discoverBackend(
+          this.projectId,
+          this.sourceDir,
+          this.runtime,
+          config,
+          env
+        );
+      }
+      let discovered = await discovery.detectFromYaml(this.sourceDir, this.projectId, this.runtime);
+      if (!discovered) {
+        const getPort = promisify(portfinder.getPort) as () => Promise<number>;
+        const port = await getPort();
+        const kill = await this.serve(port, env);
+        try {
+          discovered = await discovery.detectFromPort(port, this.projectId, this.runtime);
+        } finally {
+          await kill();
+        }
+      }
+      discovered.environmentVariables = env;
+      return discovered;
+    } catch {
+      // If anything happens, fallback to using parseTriggers.
+      return parseTriggers.discoverBackend(
+        this.projectId,
+        this.sourceDir,
+        this.runtime,
+        config,
+        env
+      );
     }
-    discovered.environmentVariables = env;
-    return discovered;
   }
 
   // eslint-disable-next-line require-await
