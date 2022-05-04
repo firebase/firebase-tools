@@ -79,6 +79,12 @@ function displaySpecs(specs: DeploymentInstanceSpec[]): void {
     for (const p of Object.entries(spec.params)) {
       logger.info(`\t${p[0]}=${p[1]}`);
     }
+    if (spec.allowedEventTypes?.length) {
+      logger.info(`\tALLOWED_EVENTS=${spec.allowedEventTypes}`);
+    }
+    if (spec.eventarcChannel) {
+      logger.info(`\tEVENTARC_CHANNEL=${spec.eventarcChannel}`);
+    }
     logger.info("");
   }
 }
