@@ -223,8 +223,7 @@ export async function ensureServiceAgentRoles(
   projectId: string,
   projectNumber: string,
   want: backend.Backend,
-  have: backend.Backend,
-  skipSleep = false
+  have: backend.Backend
 ): Promise<void> {
   // find new services
   const wantServices = backend.allEndpoints(want).reduce(reduceEventsToServices, []);
@@ -242,10 +241,7 @@ export async function ensureServiceAgentRoles(
     requiredBindingsPromises.push(service.requiredProjectBindings!(projectNumber));
   }
   const nestedRequiredBindings = await Promise.all(requiredBindingsPromises);
-  const requiredBindings = nestedRequiredBindings.reduce((requiredBindings, binding) => {
-    requiredBindings.push(...binding);
-    return requiredBindings;
-  }, []);
+  const requiredBindings = [...flattenArray(nestedRequiredBindings)];
   if (haveServices.length === 0) {
     requiredBindings.push(...obtainPubSubServiceAgentBindings(projectNumber));
     requiredBindings.push(...obtainDefaultComputeServiceAgentBindings(projectNumber));
@@ -285,11 +281,5 @@ export async function ensureServiceAgentRoles(
         " otherwise the deployment will fail.",
       { original: err }
     );
-  }
-
-  if (!skipSleep) {
-    // sleep for 60 seconds to give time for role grants & enablement to propagate
-    utils.logLabeledBullet("functions", "Waiting for newly enabled services to catch up...");
-    await new Promise((r) => setTimeout(r, 60000));
   }
 }
