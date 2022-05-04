@@ -60,6 +60,8 @@ export interface PublisherProfile {
   name: string;
   publisherId: string;
   registerTime: string;
+  websiteUri: string;
+  displayName: string;
 }
 
 export interface ExtensionInstance {
@@ -696,12 +698,16 @@ export async function getPublisherProfile(
  */
 export async function registerPublisherProfile(
   projectId: string,
-  publisherId: string
+  publisherId: string,
+  websiteUri: string,
+  displayName: string
 ): Promise<PublisherProfile> {
-  const res = await apiClient.post<{ publisherId: string }, PublisherProfile>(
+  const res = await apiClient.post<Partial<PublisherProfile>, PublisherProfile>(
     `/projects/${projectId}/publisherProfile:register`,
     {
       publisherId,
+      websiteUri,
+      displayName,
     }
   );
   return res.body;

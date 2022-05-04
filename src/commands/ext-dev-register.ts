@@ -34,8 +34,21 @@ export default new Command("ext:dev:register")
       message: msg,
       default: projectId,
     });
+    const msg2 =
+      "What is the URI of your public facing website where users can learn more about you?";
+    const websiteUri = await promptOnce({
+      name: "publisherId",
+      type: "input",
+      message: msg2,
+    });
+    const msg3 = "What display name would you like to use for your publisher profile?";
+    const displayName = await promptOnce({
+      name: "publisherId",
+      type: "input",
+      message: msg3,
+    });
     try {
-      await registerPublisherProfile(projectId, publisherId);
+      await registerPublisherProfile(projectId, publisherId, websiteUri, displayName);
     } catch (err: any) {
       if (err.status === 409) {
         const error =
