@@ -43,7 +43,7 @@ describe("planner", () => {
     it("throws on illegal updates", () => {
       const httpsFunc = func("a", "b", { httpsTrigger: {} });
       const scheduleFunc = func("a", "b", { scheduleTrigger: {} });
-      expect(() => planner.calculateUpdate(httpsFunc, scheduleFunc)).to.throw;
+      expect(() => planner.calculateUpdate(httpsFunc, scheduleFunc)).to.throw();
     });
 
     it("knows to delete & recreate for v2 topic changes", () => {
@@ -316,7 +316,7 @@ describe("planner", () => {
       const have: backend.Endpoint = { ...func("id", "region"), platform: "gcfv1" };
       const want: backend.Endpoint = { ...func("id", "region"), platform: "gcfv2" };
 
-      expect(() => planner.checkForIllegalUpdate(want, have)).to.throw;
+      expect(() => planner.checkForIllegalUpdate(want, have)).to.throw();
     });
 
     it("should throw if a https function would be changed into an event triggered function", () => {
