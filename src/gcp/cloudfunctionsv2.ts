@@ -240,11 +240,22 @@ export function mebibytes(memory: string): number {
  * @param err The error returned from the operation.
  */
 function functionsOpLogReject(funcName: string, type: string, err: any): void {
+  utils.logWarning(clc.bold.yellow("functions:") + ` ${err?.message}`);
   if (err?.context?.response?.statusCode === 429) {
     utils.logWarning(
       `${clc.bold.yellow(
         "functions:"
       )} got "Quota Exceeded" error while trying to ${type} ${funcName}. Waiting to retry...`
+    );
+  } else if (
+    err?.message.includes(
+      "If you recently started to use Eventarc, it may take a few minutes before all necessary permissions are propagated to the Service Agent"
+    )
+  ) {
+    utils.logWarning(
+      `${clc.bold.yellow(
+        "functions:"
+      )} since this is your first time using functions v2, we need a little bit longer to finish setting everything up, please retry the deployment in a few minutes.`
     );
   } else {
     utils.logWarning(
