@@ -74,7 +74,15 @@ describe("Extensions Emulator", () => {
           },
           params: {
             LOCATION: "us-west1",
+            ALLOWED_EVENT_TYPES:
+              "google.firebase.image-resize-started,google.firebase.image-resize-completed",
+            EVENTARC_CHANNEL: "projects/sample-project/locations/us-central1/channels/firebase",
           },
+          allowedEventTypes: [
+            "google.firebase.image-resize-started",
+            "google.firebase.image-resize-completed",
+          ],
+          eventarcChannel: "projects/sample-project/locations/us-central1/channels/firebase",
           extension: TEST_EXTENSION,
           extensionVersion: TEST_EXTENSION_VERSION,
         },
@@ -86,6 +94,9 @@ describe("Extensions Emulator", () => {
             EXT_INSTANCE_ID: "ext-test",
             PROJECT_ID: "test-project",
             STORAGE_BUCKET: "test-project.appspot.com",
+            ALLOWED_EVENT_TYPES:
+              "google.firebase.image-resize-started,google.firebase.image-resize-completed",
+            EVENTARC_CHANNEL: "projects/sample-project/locations/us-central1/channels/firebase",
           },
           secretEnv: [],
           extensionInstanceId: "ext-test",

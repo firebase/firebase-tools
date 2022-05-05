@@ -25,6 +25,7 @@ import * as utils from "../utils";
 import { previews } from "../previews";
 import * as manifest from "../extensions/manifest";
 import { Options } from "../options";
+import * as askUserForEventsConfig from "../extensions/askUserForEventsConfig";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),
@@ -121,7 +122,19 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
       nonInteractive: options.nonInteractive,
       instanceId,
     });
-
+    const eventsConfig = newExtensionVersion.spec.events
+      ? await askUserForEventsConfig.askForEventsConfig(
+          newExtensionVersion.spec.events,
+          "${param:PROJECT_ID}",
+          instanceId
+        )
+      : undefined;
+    if (eventsConfig) {
+      newParamBindingOptions.EVENTARC_CHANNEL = { baseValue: eventsConfig.channel };
+      newParamBindingOptions.ALLOWED_EVENT_TYPES = {
+        baseValue: eventsConfig.allowedEventTypes.join(","),
+      };
+    }
     await manifest.writeToManifest(
       [
         {

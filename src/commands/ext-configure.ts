@@ -22,6 +22,7 @@ import * as manifest from "../extensions/manifest";
 import { Options } from "../options";
 import { partition } from "../functional";
 import { buildBindingOptionsWithBaseValue, getBaseParamBindings } from "../extensions/paramHelper";
+import * as askUserForEventsConfig from "../extensions/askUserForEventsConfig";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),
@@ -85,6 +86,21 @@ export default new Command("ext:configure <extensionInstanceId>")
       instanceId,
       reconfiguring: true,
     });
+
+    // Ask for events config
+    const eventsConfig = spec.events
+      ? await askUserForEventsConfig.askForEventsConfig(
+          spec.events,
+          "${param:PROJECT_ID}",
+          instanceId
+        )
+      : undefined;
+    if (eventsConfig) {
+      mutableParamsBindingOptions.EVENTARC_CHANNEL = { baseValue: eventsConfig.channel };
+      mutableParamsBindingOptions.ALLOWED_EVENT_TYPES = {
+        baseValue: eventsConfig.allowedEventTypes.join(","),
+      };
+    }
 
     // Merge with old immutable params.
     const newParamOptions = {

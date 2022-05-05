@@ -76,14 +76,27 @@ export interface ServiceStatus {
 
 export interface Service {
   apiVersion: "serving.knative.dev/v1";
-  kind: "service";
+  kind: "Service";
   metadata: ObjectMetadata;
   spec: ServiceSpec;
   status?: ServiceStatus;
 }
 
+export interface Container {
+  image: string;
+  ports: Array<{ name: string; containerPort: number }>;
+  env: Record<string, string>;
+  resources: {
+    limits: {
+      cpu: string;
+      memory: string;
+    };
+  };
+}
+
 export interface RevisionSpec {
   containerConcurrency?: number | null;
+  containers: Container[];
 }
 
 export interface RevisionTemplate {
@@ -113,6 +126,9 @@ export interface IamPolicy {
   etag?: string;
 }
 
+/**
+ * Gets a service with a given name.
+ */
 export async function getService(name: string): Promise<Service> {
   try {
     const response = await client.get<Service>(name);
@@ -124,6 +140,9 @@ export async function getService(name: string): Promise<Service> {
   }
 }
 
+/**
+ * Replaces a service spec.
+ */
 export async function replaceService(name: string, service: Service): Promise<Service> {
   try {
     const response = await client.put<Service, Service>(name, service);
@@ -164,6 +183,9 @@ export async function setIamPolicy(
   }
 }
 
+/**
+ * Gets IAM policy for a service.
+ */
 export async function getIamPolicy(
   serviceName: string,
   httpClient: Client = client
@@ -183,7 +205,6 @@ export async function getIamPolicy(
  * @param projectId id of the project
  * @param serviceName cloud run service
  * @param invoker an array of invoker strings
- *
  * @throws {@link FirebaseError} on an empty invoker, when the IAM Polciy fails to be grabbed or set
  */
 export async function setInvokerCreate(
@@ -213,7 +234,6 @@ export async function setInvokerCreate(
  * @param projectId id of the project
  * @param serviceName cloud run service
  * @param invoker an array of invoker strings
- *
  * @throws {@link FirebaseError} on an empty invoker, when the IAM Polciy fails to be grabbed or set
  */
 export async function setInvokerUpdate(

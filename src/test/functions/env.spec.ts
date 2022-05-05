@@ -302,7 +302,7 @@ FOO=foo
       rimraf(tmpdir);
       expect(() => {
         fs.statSync(tmpdir);
-      }).to.throw;
+      }).to.throw();
     });
 
     it("loads nothing if .env files are missing", () => {

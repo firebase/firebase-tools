@@ -4,6 +4,7 @@ const { marked } = require("marked");
 import TerminalRenderer = require("marked-terminal");
 
 import { displayExtInfo } from "../extensions/displayExtensionInfo";
+import * as askUserForEventsConfig from "../extensions/askUserForEventsConfig";
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
 import { FirebaseError } from "../error";
@@ -208,7 +209,19 @@ async function installToManifest(options: InstallExtensionOptions): Promise<void
     paramsEnvPath,
     instanceId,
   });
-
+  const eventsConfig = spec.events
+    ? await askUserForEventsConfig.askForEventsConfig(
+        spec.events,
+        "${param:PROJECT_ID}",
+        instanceId
+      )
+    : undefined;
+  if (eventsConfig) {
+    paramBindingOptions.EVENTARC_CHANNEL = { baseValue: eventsConfig.channel };
+    paramBindingOptions.ALLOWED_EVENT_TYPES = {
+      baseValue: eventsConfig.allowedEventTypes.join(","),
+    };
+  }
   const ref = extVersion ? refs.parse(extVersion.ref) : undefined;
   await manifest.writeToManifest(
     [
