@@ -302,7 +302,7 @@ export function addResourcesToBuild(
     project: projectId,
     entryPoint: annotation.entryPoint,
     runtime: runtime,
-    serviceAccount: annotation.serviceAccountEmail || "default",
+    serviceAccount: annotation.serviceAccountEmail || null,
     ...triggered,
   };
   if (annotation.vpcConnector != null) {
@@ -313,6 +313,18 @@ export function addResourcesToBuild(
     endpoint.vpc = { connector: maybeId };
     proto.renameIfPresent(endpoint.vpc, annotation, "egressSettings", "vpcConnectorEgressSettings");
   }
+  if (annotation.secrets) {
+    const secretEnvs = [];
+    for (const secret of annotation.secrets) {
+      secretEnvs.push({
+        key: secret,
+        secret: secret,
+        projectId: projectId,
+      });
+    }
+    endpoint.secretEnvironmentVariables = secretEnvs;
+  }
+
   proto.copyIfPresent(
     endpoint,
     annotation,

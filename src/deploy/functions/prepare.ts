@@ -114,7 +114,7 @@ export async function prepare(
     const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
     const envs = { ...userEnvs, ...firebaseEnvs };
     let wantBackend: backend.Backend;
-    if (previews.functionsparams) {
+    if (previews.functionsparams && !previews.functionsv2) {
       const wantBuild = await runtimeDelegate.discoverBuild(runtimeConfig, firebaseEnvs);
       wantBackend = build.resolveBackend(wantBuild, userEnvs);
     } else {

@@ -12,9 +12,6 @@ export interface Build {
 }
 
 /* A utility function that returns an empty Build. */
-/**
- *
- */
 export function empty(): Build {
   return {
     requiredAPIs: [],
@@ -24,9 +21,6 @@ export function empty(): Build {
 }
 
 /* A utility function that creates a Build containing a map of IDs to Endpoints. */
-/**
- *
- */
 export function of(endpoints: Record<string, Endpoint>): Build {
   const build = empty();
   build.endpoints = endpoints;
@@ -174,6 +168,12 @@ interface VpcSettings {
   egressSettings?: "PRIVATE_RANGES_ONLY" | "ALL_TRAFFIC";
 }
 
+interface SecretEnvVar {
+  key: string; // The environment variable this secret is accessible at
+  secret: string; // The id of the SecretVersion - ie for projects/myproject/secrets/mysecret, this is 'mysecret'
+  projectId: string; // The project containing the Secret
+}
+
 export type Endpoint = Triggered & {
   // Defaults to "gcfv2". "Run" will be an additional option defined later
   platform?: "gcfv1" | "gcfv2";
@@ -217,6 +217,7 @@ export type Endpoint = Triggered & {
   ingressSettings?: "ALLOW_ALL" | "ALLOW_INTERNAL_ONLY" | "ALLOW_INTERNAL_AND_GCLB" | null;
 
   environmentVariables?: Record<string, string | Expression<string>>;
+  secretEnvironmentVariables?: SecretEnvVar[];
   labels?: Record<string, string | Expression<string>>;
 };
 
@@ -309,7 +310,7 @@ export function resolveBackend(build: Build, userEnvs: Record<string, string>): 
         "environmentVariables",
         "labels"
       );
-      // proto.copyIfPresent(bkEndpoint, endpoint, "secretEnvironmentVariables");
+      proto.copyIfPresent(bkEndpoint, endpoint, "secretEnvironmentVariables");
       if (endpoint.vpc) {
         bkEndpoint.vpc = {
           // $REGION is a token in the Build VPC connector because Build endpoints can have multiple regions, so we unroll here

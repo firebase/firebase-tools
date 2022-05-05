@@ -13,9 +13,6 @@ function applyBuildDefaults(
   if (!endpoint.timeoutSeconds) {
     endpoint.timeoutSeconds = 60;
   }
-  if (!endpoint.serviceAccountEmail) {
-    endpoint.serviceAccountEmail = "default";
-  }
   return endpoint;
 }
 
@@ -40,7 +37,7 @@ describe("addResourcesToBuild", () => {
     project: "project",
     runtime: "nodejs16",
     entryPoint: "func",
-    serviceAccount: "default",
+    serviceAccount: null,
   });
 
   const BASIC_FUNCTION_NAME: backend.TargetIds = Object.freeze({
@@ -391,6 +388,46 @@ describe("addResourcesToBuild", () => {
       vpc: {
         connector: "",
       },
+    });
+    const convertedBackend: backend.Backend = build.resolveBackend(expected, {});
+    expect(convertedBackend).to.deep.equal(expectedBackend);
+  });
+
+  it("should parse secret, yielding a build reversibly equivalent to the corresponding backend", () => {
+    const trigger: parseTriggers.TriggerAnnotation = {
+      ...BASIC_TRIGGER,
+      httpsTrigger: {},
+      secrets: ["MY_SECRET"],
+    };
+
+    const result = build.empty();
+    parseTriggers.addResourcesToBuild("project", "nodejs16", trigger, result);
+
+    const expected: build.Build = build.of({
+      func: {
+        ...BASIC_ENDPOINT,
+        httpsTrigger: {},
+        secretEnvironmentVariables: [
+          {
+            projectId: "project",
+            secret: "MY_SECRET",
+            key: "MY_SECRET",
+          },
+        ],
+      },
+    });
+    expect(result).to.deep.equal(expected);
+
+    const expectedBackend: backend.Backend = backend.of({
+      ...BASIC_BACKEND_ENDPOINT,
+      httpsTrigger: {},
+      secretEnvironmentVariables: [
+        {
+          projectId: "project",
+          secret: "MY_SECRET",
+          key: "MY_SECRET",
+        },
+      ],
     });
     const convertedBackend: backend.Backend = build.resolveBackend(expected, {});
     expect(convertedBackend).to.deep.equal(expectedBackend);
