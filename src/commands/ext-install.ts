@@ -95,7 +95,7 @@ export default new Command("ext:install [extensionName]")
       void track("Extension Install", "Install by Source", options.interactive ? 1 : 0);
     } else {
       void track("Extension Install", "Install by Extension Ref", options.interactive ? 1 : 0);
-      extensionName = canonicalizeRefInput(extensionName);
+      extensionName = await canonicalizeRefInput(extensionName);
       extensionVersion = await extensionsApi.getExtensionVersion(extensionName);
       await infoExtensionVersion({
         extensionName,
