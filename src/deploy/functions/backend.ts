@@ -6,7 +6,6 @@ import * as utils from "../../utils";
 import * as runtimes from "./runtimes";
 import { FirebaseError } from "../../error";
 import { Context } from "./args";
-import { previews } from "../../previews";
 import { flattenArray, zip } from "../../functional";
 
 /** Retry settings for a ScheduleSpec. */
@@ -524,10 +523,6 @@ async function loadExistingBackend(ctx: Context & PrivateContextFields): Promise
     ctx.existingBackend.endpoints[endpoint.region][endpoint.id] = endpoint;
   }
   ctx.unreachableRegions.gcfV1 = gcfV1Results.unreachable;
-
-  if (!previews.functionsv2) {
-    return;
-  }
 
   let gcfV2Results;
   try {

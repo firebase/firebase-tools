@@ -7,7 +7,6 @@ interface PreviewFlags {
   extdev: boolean;
   extensionsemulator: boolean;
   rtdbmanagement: boolean;
-  functionsv2: boolean;
   golang: boolean;
   deletegcfartifacts: boolean;
   artifactregistry: boolean;
@@ -23,7 +22,6 @@ export const previews: PreviewFlags = {
   extdev: false,
   extensionsemulator: false,
   rtdbmanagement: false,
-  functionsv2: false,
   golang: false,
   deletegcfartifacts: false,
   artifactregistry: false,
