@@ -1012,6 +1012,7 @@ export class FunctionsEmulator implements EmulatorInstance {
   }
 
   getNodeBinary(backend: EmulatableBackend): string {
+    this.logger.log("DEBUG", `We're at ${__dirname}`);
     const pkg = require(path.join(backend.functionsDir, "package.json"));
     // If the developer hasn't specified a Node to use, inform them that it's an option and use default
     if ((!pkg.engines || !pkg.engines.node) && !backend.nodeMajorVersion) {
