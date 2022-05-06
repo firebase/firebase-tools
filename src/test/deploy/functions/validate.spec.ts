@@ -8,6 +8,7 @@ import * as projectPath from "../../../projectPath";
 import * as secretManager from "../../../gcp/secretManager";
 import * as backend from "../../../deploy/functions/backend";
 import { BEFORE_CREATE_EVENT, BEFORE_SIGN_IN_EVENT } from "../../../functions/events/v1";
+import { resolveCpu } from "../../../deploy/functions/prepare";
 
 describe("validate", () => {
   describe("functionsDirectoryExists", () => {
@@ -132,22 +133,35 @@ describe("validate", () => {
       const ep: backend.Endpoint = {
         ...ENDPOINT_BASE,
         platform: "gcfv1",
-        availableMemoryMb: backend.MIN_MEMORY_FOR_CONCURRENCY,
+        availableMemoryMb: 256,
         concurrency: 2,
       };
       expect(() => validate.endpointsAreValid(backend.of(ep))).to.throw(/GCF gen 1/);
     });
 
-    it("Allows endpoints with no mem and no concurrency", () => {
-      expect(() => validate.endpointsAreValid(backend.of(ENDPOINT_BASE))).to.not.throw;
+    it("Disallows concurrency for low-CPU gen 2", () => {
+      const ep: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        platform: "gcfv2",
+        cpu: 1 / 6,
+        concurrency: 2,
+      };
+
+      expect(() => validate.endpointsAreValid(backend.of(ep))).to.throw(
+        /concurrent execution and less than one full CPU/
+      );
     });
 
-    it("Allows endpionts with mem and no concurrency", () => {
+    it("Allows endpoints with no mem and no concurrency", () => {
+      expect(() => validate.endpointsAreValid(backend.of(ENDPOINT_BASE))).to.not.throw();
+    });
+
+    it("Allows endpoints with mem and no concurrency", () => {
       const ep: backend.Endpoint = {
         ...ENDPOINT_BASE,
         availableMemoryMb: 256,
       };
-      expect(() => validate.endpointsAreValid(backend.of(ep))).to.not.throw;
+      expect(() => validate.endpointsAreValid(backend.of(ep))).to.not.throw();
     });
 
     it("Allows explicitly one concurrent", () => {
@@ -155,7 +169,7 @@ describe("validate", () => {
         ...ENDPOINT_BASE,
         concurrency: 1,
       };
-      expect(() => validate.endpointsAreValid(backend.of(ep))).to.not.throw;
+      expect(() => validate.endpointsAreValid(backend.of(ep))).to.not.throw();
     });
 
     it("Allows endpoints with enough mem and no concurrency", () => {
@@ -163,7 +177,9 @@ describe("validate", () => {
         const ep: backend.Endpoint = {
           ...ENDPOINT_BASE,
           availableMemoryMb: mem,
+          cpu: "gcf_gen1",
         };
+        resolveCpu(backend.of(ep));
         expect(() => validate.endpointsAreValid(backend.of(ep))).to.not.throw;
       }
     });
@@ -173,8 +189,10 @@ describe("validate", () => {
         const ep: backend.Endpoint = {
           ...ENDPOINT_BASE,
           availableMemoryMb: mem,
+          cpu: "gcf_gen1",
           concurrency: 42,
         };
+        resolveCpu(backend.of(ep));
         expect(() => validate.endpointsAreValid(backend.of(ep))).to.not.throw;
       }
     });
@@ -182,21 +200,24 @@ describe("validate", () => {
     it("disallows concurrency with too little memory (implicit)", () => {
       const ep: backend.Endpoint = {
         ...ENDPOINT_BASE,
+        availableMemoryMb: 256,
         concurrency: 2,
+        cpu: "gcf_gen1",
       };
+      resolveCpu(backend.of(ep));
       expect(() => validate.endpointsAreValid(backend.of(ep))).to.throw(
-        /they have fewer than 2GB memory/
+        /concurrent execution and less than one full CPU/
       );
     });
 
-    it("disallows concurrency with too little memory (explicit)", () => {
+    it("Disallows concurrency with too little cpu (explicit)", () => {
       const ep: backend.Endpoint = {
         ...ENDPOINT_BASE,
         concurrency: 2,
-        availableMemoryMb: 512,
+        cpu: 0.5,
       };
       expect(() => validate.endpointsAreValid(backend.of(ep))).to.throw(
-        /they have fewer than 2GB memory/
+        /concurrent execution and less than one full CPU/
       );
     });
 
@@ -294,6 +315,36 @@ describe("validate", () => {
 
       expect(() => validate.endpointsAreValid(want)).to.not.throw();
     });
+
+    for (const cpu of [undefined, "gcf_gen1", 0.1, 0.5, 1, 2, 4, 6, 8] as const) {
+      it(`does not throw for valid CPU ${cpu ?? "undefined"}`, () => {
+        const want = backend.of({
+          ...ENDPOINT_BASE,
+          platform: "gcfv2",
+          cpu,
+        });
+        expect(() => validate.endpointsAreValid(want)).to.not.throw();
+      });
+    }
+
+    it("throws for gcfv1 with CPU", () => {
+      const want = backend.of({
+        ...ENDPOINT_BASE,
+        platform: "gcfv1",
+        cpu: 1,
+      });
+      expect(() => validate.endpointsAreValid(want)).to.throw();
+    });
+
+    it("throws for invalid CPU", () => {
+      const want = backend.of({
+        ...ENDPOINT_BASE,
+        platform: "gcfv2",
+        // Fractional CPU is only valid for <1
+        cpu: 1.5,
+      });
+      expect(() => validate.endpointsAreValid(want)).to.throw();
+    });
   });
 
   describe("endpointsAreUnqiue", () => {
@@ -316,7 +367,7 @@ describe("validate", () => {
         { ...ENDPOINT_BASE, id: "i3", region: "r2" },
         { ...ENDPOINT_BASE, id: "i4", region: "r2" }
       );
-      expect(() => validate.endpointsAreUnique({ b1, b2 })).to.not.throw;
+      expect(() => validate.endpointsAreUnique({ b1, b2 })).to.not.throw();
     });
 
     it("passes given unique id, region pairs", () => {
@@ -328,7 +379,7 @@ describe("validate", () => {
         { ...ENDPOINT_BASE, id: "i1", region: "r2" },
         { ...ENDPOINT_BASE, id: "i2", region: "r2" }
       );
-      expect(() => validate.endpointsAreUnique({ b1, b2 })).to.not.throw;
+      expect(() => validate.endpointsAreUnique({ b1, b2 })).to.not.throw();
     });
 
     it("throws given non-unique id region pairs", () => {
@@ -399,10 +450,12 @@ describe("validate", () => {
       expect(validate.secretsAreValid(project, b)).to.not.be.rejected;
     });
 
-    it("fails validation given endpoint with secrets targeting unsupported platform", () => {
+    it("fails validation given non-existent secret version", () => {
+      secretVersionStub.rejects({ reason: "Secret version does not exist" });
+
       const b = backend.of({
         ...ENDPOINT,
-        platform: "gcfv2",
+        platform: "gcfv1",
         secretEnvironmentVariables: [
           {
             projectId: project,
@@ -411,8 +464,10 @@ describe("validate", () => {
           },
         ],
       });
-
-      expect(validate.secretsAreValid(project, b)).to.be.rejectedWith(FirebaseError);
+      expect(validate.secretsAreValid(project, b)).to.be.rejectedWith(
+        FirebaseError,
+        /Failed to validate secret version/
+      );
     });
 
     it("fails validation given non-existent secret version", () => {
@@ -429,7 +484,10 @@ describe("validate", () => {
           },
         ],
       });
-      expect(validate.secretsAreValid(project, b)).to.be.rejectedWith(FirebaseError);
+      expect(validate.secretsAreValid(project, b)).to.be.rejectedWith(
+        FirebaseError,
+        /Failed to validate secret versions/
+      );
     });
 
     it("fails validation given disabled secret version", () => {
@@ -450,7 +508,10 @@ describe("validate", () => {
           },
         ],
       });
-      expect(validate.secretsAreValid(project, b)).to.be.rejected;
+      expect(validate.secretsAreValid(project, b)).to.be.rejectedWith(
+        FirebaseError,
+        /Failed to validate secret versions/
+      );
     });
 
     it("passes validation and resolves latest version given valid secret config", async () => {
@@ -460,20 +521,22 @@ describe("validate", () => {
         state: "ENABLED",
       });
 
-      const b = backend.of({
-        ...ENDPOINT,
-        platform: "gcfv1",
-        secretEnvironmentVariables: [
-          {
-            projectId: project,
-            secret: "MY_SECRET",
-            key: "MY_SECRET",
-          },
-        ],
-      });
+      for (const platform of ["gcfv1" as const, "gcfv2" as const]) {
+        const b = backend.of({
+          ...ENDPOINT,
+          platform,
+          secretEnvironmentVariables: [
+            {
+              projectId: project,
+              secret: "MY_SECRET",
+              key: "MY_SECRET",
+            },
+          ],
+        });
 
-      await validate.secretsAreValid(project, b);
-      expect(backend.allEndpoints(b)[0].secretEnvironmentVariables![0].version).to.equal("2");
+        await validate.secretsAreValid(project, b);
+        expect(backend.allEndpoints(b)[0].secretEnvironmentVariables![0].version).to.equal("2");
+      }
     });
   });
 });

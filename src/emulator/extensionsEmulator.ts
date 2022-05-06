@@ -92,14 +92,13 @@ export class ExtensionsEmulator implements EmulatorInstance {
   // ensureSourceCode checks the cache for the source code for a given extension version,
   // downloads and builds it if it is not found, then returns the path to that source code.
   private async ensureSourceCode(instance: planner.InstanceSpec): Promise<string> {
-    // TODO(b/213335255): Handle local extensions.
     if (instance.localPath) {
       if (!this.hasValidSource({ path: instance.localPath, extTarget: instance.localPath })) {
         throw new FirebaseError(
           `Tried to emulate local extension at ${instance.localPath}, but it was missing required files.`
         );
       }
-      return instance.localPath;
+      return path.resolve(instance.localPath);
     } else if (instance.ref) {
       const ref = toExtensionVersionRef(instance.ref);
       const cacheDir =
@@ -158,7 +157,7 @@ export class ExtensionsEmulator implements EmulatorInstance {
     for (const requiredFile of requiredFiles) {
       const f = path.join(args.path, requiredFile);
       if (!fs.existsSync(f)) {
-        EmulatorLogger.forExtension({ ref: args.extTarget }).logLabeled(
+        this.logger.logLabeled(
           "BULLET",
           "extensions",
           `Detected invalid source code for ${args.extTarget}, expected to find ${f}`
@@ -166,7 +165,7 @@ export class ExtensionsEmulator implements EmulatorInstance {
         return false;
       }
     }
-
+    this.logger.logLabeled("DEBUG", "extensions", `Source code valid for ${args.extTarget}`);
     return true;
   }
 
@@ -238,7 +237,7 @@ export class ExtensionsEmulator implements EmulatorInstance {
     return emulatableBackend;
   }
 
-  private autoPopulatedParams(instance: planner.InstanceSpec): Record<string, string> {
+  private autoPopulatedParams(instance: planner.DeploymentInstanceSpec): Record<string, string> {
     const projectId = this.args.projectId;
     return {
       PROJECT_ID: projectId ?? "", // TODO: Should this fallback to a default?
@@ -246,6 +245,8 @@ export class ExtensionsEmulator implements EmulatorInstance {
       DATABASE_INSTANCE: projectId ?? "",
       DATABASE_URL: `https://${projectId}.firebaseio.com`,
       STORAGE_BUCKET: `${projectId}.appspot.com`,
+      ALLOWED_EVENT_TYPES: instance.allowedEventTypes ? instance.allowedEventTypes.join(",") : "",
+      EVENTARC_CHANNEL: instance.eventarcChannel ?? "",
     };
   }
 
