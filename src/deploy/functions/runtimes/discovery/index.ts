@@ -34,9 +34,6 @@ export function yamlToBackend(
   }
 }
 
-/**
- *
- */
 export async function detectFromYaml(
   directory: string,
   project: string,
