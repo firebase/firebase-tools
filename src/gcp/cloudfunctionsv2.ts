@@ -92,6 +92,20 @@ export interface EventFilter {
   value: string;
 }
 
+/**
+ * Configurations for secret environment variables attached to a cloud functions resource.
+ */
+export interface SecretEnvVar {
+  /* Name of the environment variable. */
+  key: string;
+  /* Project identifier (or project number) of the project that contains the secret. */
+  projectId: string;
+  /* Name of the secret in secret manager. e.g. MY_SECRET, NOT projects/abc/secrets/MY_SECRET */
+  secret: string;
+  /* Version of the secret (version number or the string 'latest') */
+  version?: string;
+}
+
 /** The Cloud Run service that underlies a Cloud Function. */
 export interface ServiceConfig {
   // Output only
@@ -104,6 +118,7 @@ export interface ServiceConfig {
   timeoutSeconds?: number;
   availableMemory?: string;
   environmentVariables?: Record<string, string>;
+  secretEnvironmentVariables?: SecretEnvVar[];
   maxInstanceCount?: number;
   minInstanceCount?: number;
   vpcConnector?: string;
@@ -225,11 +240,22 @@ export function mebibytes(memory: string): number {
  * @param err The error returned from the operation.
  */
 function functionsOpLogReject(funcName: string, type: string, err: any): void {
+  utils.logWarning(clc.bold.yellow("functions:") + ` ${err?.message}`);
   if (err?.context?.response?.statusCode === 429) {
     utils.logWarning(
       `${clc.bold.yellow(
         "functions:"
       )} got "Quota Exceeded" error while trying to ${type} ${funcName}. Waiting to retry...`
+    );
+  } else if (
+    err?.message.includes(
+      "If you recently started to use Eventarc, it may take a few minutes before all necessary permissions are propagated to the Service Agent"
+    )
+  ) {
+    utils.logWarning(
+      `${clc.bold.yellow(
+        "functions:"
+      )} since this is your first time using functions v2, we need a little bit longer to finish setting everything up, please retry the deployment in a few minutes.`
     );
   } else {
     utils.logWarning(
@@ -351,12 +377,13 @@ async function listFunctionsInternal(
 export async function updateFunction(
   cloudFunction: Omit<CloudFunction, OutputOnlyFields>
 ): Promise<Operation> {
-  // Keys in labels and environmentVariables are user defined, so we don't recurse
+  // Keys in labels and environmentVariables and secretEnvironmentVariables are user defined, so we don't recurse
   // for field masks.
   const fieldMasks = proto.fieldMasks(
     cloudFunction,
     /* doNotRecurseIn...=*/ "labels",
-    "serviceConfig.environmentVariables"
+    "serviceConfig.environmentVariables",
+    "serviceConfig.secretEnvironmentVariables"
   );
   try {
     const queryParams = {
@@ -422,6 +449,7 @@ export function functionFromEndpoint(endpoint: backend.Endpoint, source: Storage
     gcfFunction.serviceConfig,
     endpoint,
     "environmentVariables",
+    "secretEnvironmentVariables",
     "serviceAccountEmail",
     "ingressSettings",
     "timeoutSeconds"
@@ -586,6 +614,7 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
     "serviceAccountEmail",
     "ingressSettings",
     "environmentVariables",
+    "secretEnvironmentVariables",
     "timeoutSeconds"
   );
   proto.renameIfPresent(

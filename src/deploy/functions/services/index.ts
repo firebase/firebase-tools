@@ -20,10 +20,7 @@ export interface Service {
   readonly api: string;
 
   // dispatch functions
-  requiredProjectBindings?: (
-    projectNumber: string,
-    policy: iam.Policy
-  ) => Promise<Array<iam.Binding>>;
+  requiredProjectBindings?: (projectNumber: string) => Promise<Array<iam.Binding>>;
   ensureTriggerRegion: (ep: backend.Endpoint & backend.EventTriggered) => Promise<void>;
   validateTrigger: (ep: backend.Endpoint, want: backend.Backend) => void;
   registerTrigger: (ep: backend.Endpoint) => Promise<void>;

@@ -82,7 +82,7 @@ describe("cloudfunctionsv2", () => {
           { ...ENDPOINT, httpsTrigger: {}, platform: "gcfv1" },
           CLOUD_FUNCTION_V2_SOURCE
         );
-      }).to.throw;
+      }).to.throw();
     });
 
     it("should copy a minimal function", () => {
@@ -211,6 +211,13 @@ describe("cloudfunctionsv2", () => {
         environmentVariables: {
           FOO: "bar",
         },
+        secretEnvironmentVariables: [
+          {
+            secret: "MY_SECRET",
+            key: "MY_SECRET",
+            projectId: "project",
+          },
+        ],
       };
 
       const fullGcfFunction: Omit<
@@ -227,6 +234,13 @@ describe("cloudfunctionsv2", () => {
           environmentVariables: {
             FOO: "bar",
           },
+          secretEnvironmentVariables: [
+            {
+              secret: "MY_SECRET",
+              key: "MY_SECRET",
+              projectId: "project",
+            },
+          ],
           vpcConnector: "connector",
           vpcConnectorEgressSettings: "ALL_TRAFFIC",
           ingressSettings: "ALLOW_ALL",

@@ -237,7 +237,7 @@ export class ExtensionsEmulator implements EmulatorInstance {
     return emulatableBackend;
   }
 
-  private autoPopulatedParams(instance: planner.InstanceSpec): Record<string, string> {
+  private autoPopulatedParams(instance: planner.DeploymentInstanceSpec): Record<string, string> {
     const projectId = this.args.projectId;
     return {
       PROJECT_ID: projectId ?? "", // TODO: Should this fallback to a default?
@@ -245,6 +245,8 @@ export class ExtensionsEmulator implements EmulatorInstance {
       DATABASE_INSTANCE: projectId ?? "",
       DATABASE_URL: `https://${projectId}.firebaseio.com`,
       STORAGE_BUCKET: `${projectId}.appspot.com`,
+      ALLOWED_EVENT_TYPES: instance.allowedEventTypes ? instance.allowedEventTypes.join(",") : "",
+      EVENTARC_CHANNEL: instance.eventarcChannel ?? "",
     };
   }
 

@@ -310,7 +310,10 @@ describe("extensions", () => {
     it("should make a PATCH call to the correct endpoint, and then poll on the returned operation", async () => {
       nock(api.extensionsOrigin)
         .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
-        .query({ updateMask: "config.params", validateOnly: "false" })
+        .query({
+          updateMask: "config.params,config.allowed_event_types,config.eventarc_channel",
+          validateOnly: "false",
+        })
         .reply(200, { name: "operations/abc123" });
       nock(api.extensionsOrigin)
         .get(`/${VERSION}/operations/abc123`)
@@ -322,6 +325,7 @@ describe("extensions", () => {
         projectId: PROJECT_ID,
         instanceId: INSTANCE_ID,
         params: { MY_PARAM: "value" },
+        canEmitEvents: false,
       });
       expect(nock.isDone()).to.be.true;
     });
@@ -329,7 +333,10 @@ describe("extensions", () => {
     it("should make a PATCH and not poll if validateOnly=true", async () => {
       nock(api.extensionsOrigin)
         .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
-        .query({ updateMask: "config.params", validateOnly: "true" })
+        .query({
+          updateMask: "config.params,config.allowed_event_types,config.eventarc_channel",
+          validateOnly: "true",
+        })
         .reply(200, { name: "operations/abc123", done: true });
 
       await extensionsApi.configureInstance({
@@ -337,6 +344,7 @@ describe("extensions", () => {
         instanceId: INSTANCE_ID,
         params: { MY_PARAM: "value" },
         validateOnly: true,
+        canEmitEvents: false,
       });
       expect(nock.isDone()).to.be.true;
     });
@@ -344,7 +352,10 @@ describe("extensions", () => {
     it("should throw a FirebaseError if update returns an error response", async () => {
       nock(api.extensionsOrigin)
         .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
-        .query({ updateMask: "config.params", validateOnly: false })
+        .query({
+          updateMask: "config.params,config.allowed_event_types,config.eventarc_channel",
+          validateOnly: false,
+        })
         .reply(500);
 
       await expect(
@@ -352,6 +363,7 @@ describe("extensions", () => {
           projectId: PROJECT_ID,
           instanceId: INSTANCE_ID,
           params: { MY_PARAM: "value" },
+          canEmitEvents: false,
         })
       ).to.be.rejectedWith(FirebaseError, "HTTP Error: 500");
       expect(nock.isDone()).to.be.true;
@@ -406,7 +418,11 @@ describe("extensions", () => {
     it("should include config.param in updateMask is params are changed", async () => {
       nock(api.extensionsOrigin)
         .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
-        .query({ updateMask: "config.source.name,config.params", validateOnly: "false" })
+        .query({
+          updateMask:
+            "config.source.name,config.params,config.allowed_event_types,config.eventarc_channel",
+          validateOnly: "false",
+        })
         .reply(200, { name: "operations/abc123" });
       nock(api.extensionsOrigin).get(`/${VERSION}/operations/abc123`).reply(200, { done: true });
 
@@ -417,6 +433,7 @@ describe("extensions", () => {
         params: {
           MY_PARAM: "value",
         },
+        canEmitEvents: false,
       });
 
       expect(nock.isDone()).to.be.true;
@@ -425,7 +442,10 @@ describe("extensions", () => {
     it("should not include config.param in updateMask is params aren't changed", async () => {
       nock(api.extensionsOrigin)
         .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
-        .query({ updateMask: "config.source.name", validateOnly: "false" })
+        .query({
+          updateMask: "config.source.name,config.allowed_event_types,config.eventarc_channel",
+          validateOnly: "false",
+        })
         .reply(200, { name: "operations/abc123" });
       nock(api.extensionsOrigin).get(`/${VERSION}/operations/abc123`).reply(200, { done: true });
 
@@ -433,15 +453,43 @@ describe("extensions", () => {
         projectId: PROJECT_ID,
         instanceId: INSTANCE_ID,
         extensionSource: testSource,
+        canEmitEvents: false,
       });
+      expect(nock.isDone()).to.be.true;
+    });
 
+    it("should include config.allowed_event_types and config.eventarc_Channel in updateMask if events config is provided", async () => {
+      nock(api.extensionsOrigin)
+        .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
+        .query({
+          updateMask:
+            "config.source.name,config.params,config.allowed_event_types,config.eventarc_channel",
+          validateOnly: "false",
+        })
+        .reply(200, { name: "operations/abc123" });
+      nock(api.extensionsOrigin).get(`/${VERSION}/operations/abc123`).reply(200, { done: true });
+
+      await extensionsApi.updateInstance({
+        projectId: PROJECT_ID,
+        instanceId: INSTANCE_ID,
+        extensionSource: testSource,
+        params: {
+          MY_PARAM: "value",
+        },
+        canEmitEvents: true,
+        eventarcChannel: "projects/${PROJECT_ID}/locations/us-central1/channels/firebase",
+        allowedEventTypes: ["google.firebase.custom-events-occurred"],
+      });
       expect(nock.isDone()).to.be.true;
     });
 
     it("should make a PATCH and not poll if validateOnly=true", async () => {
       nock(api.extensionsOrigin)
         .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
-        .query({ updateMask: "config.source.name", validateOnly: "true" })
+        .query({
+          updateMask: "config.source.name,config.allowed_event_types,config.eventarc_channel",
+          validateOnly: "true",
+        })
         .reply(200, { name: "operations/abc123", done: true });
 
       await extensionsApi.updateInstance({
@@ -449,6 +497,7 @@ describe("extensions", () => {
         instanceId: INSTANCE_ID,
         extensionSource: testSource,
         validateOnly: true,
+        canEmitEvents: false,
       });
       expect(nock.isDone()).to.be.true;
     });
@@ -456,7 +505,10 @@ describe("extensions", () => {
     it("should make a PATCH and not poll if validateOnly=true", async () => {
       nock(api.extensionsOrigin)
         .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
-        .query({ updateMask: "config.source.name", validateOnly: "true" })
+        .query({
+          updateMask: "config.source.name,config.allowed_event_types,config.eventarc_channel",
+          validateOnly: "true",
+        })
         .reply(200, { name: "operations/abc123", done: true });
 
       await extensionsApi.updateInstance({
@@ -464,6 +516,7 @@ describe("extensions", () => {
         instanceId: INSTANCE_ID,
         extensionSource: testSource,
         validateOnly: true,
+        canEmitEvents: false,
       });
       expect(nock.isDone()).to.be.true;
     });
@@ -471,7 +524,11 @@ describe("extensions", () => {
     it("should throw a FirebaseError if update returns an error response", async () => {
       nock(api.extensionsOrigin)
         .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
-        .query({ updateMask: "config.source.name,config.params", validateOnly: false })
+        .query({
+          updateMask:
+            "config.source.name,config.params,config.allowed_event_types,config.eventarc_channel",
+          validateOnly: false,
+        })
         .reply(500);
 
       await expect(
@@ -482,6 +539,7 @@ describe("extensions", () => {
           params: {
             MY_PARAM: "value",
           },
+          canEmitEvents: false,
         })
       ).to.be.rejectedWith(FirebaseError, "HTTP Error: 500");
 
