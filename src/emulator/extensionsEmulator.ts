@@ -165,11 +165,7 @@ export class ExtensionsEmulator implements EmulatorInstance {
         return false;
       }
     }
-    this.logger.logLabeled(
-      "DEBUG",
-      "extensions",
-      `Source code valid for ${args.extTarget}`
-    );
+    this.logger.logLabeled("DEBUG", "extensions", `Source code valid for ${args.extTarget}`);
     return true;
   }
 
