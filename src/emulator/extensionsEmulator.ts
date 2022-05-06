@@ -99,7 +99,7 @@ export class ExtensionsEmulator implements EmulatorInstance {
           `Tried to emulate local extension at ${instance.localPath}, but it was missing required files.`
         );
       }
-      return instance.localPath;
+      return path.resolve(instance.localPath);
     } else if (instance.ref) {
       const ref = toExtensionVersionRef(instance.ref);
       const cacheDir =
