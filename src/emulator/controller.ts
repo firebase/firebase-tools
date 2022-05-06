@@ -44,7 +44,6 @@ import { getProjectDefaultAccount } from "../auth";
 import { Options } from "../options";
 import { ParsedTriggerDefinition } from "./functionsEmulatorShared";
 import { ExtensionsEmulator } from "./extensionsEmulator";
-import { previews } from "../previews";
 import { normalizeAndValidate } from "../functions/projectConfig";
 import { requiresJava } from "./downloadableEmulators";
 
@@ -193,9 +192,7 @@ export async function cleanShutdown(): Promise<void> {
  */
 export function filterEmulatorTargets(options: any): Emulators[] {
   let targets = [...ALL_SERVICE_EMULATORS];
-  if (previews.extensionsemulator) {
-    targets.push(Emulators.EXTENSIONS);
-  }
+  targets.push(Emulators.EXTENSIONS);
 
   targets = targets.filter((e) => {
     return options.config.has(e) || options.config.has(`emulators.${e}`);
@@ -460,7 +457,7 @@ export async function startAll(
     }
   }
 
-  if (shouldStart(options, Emulators.EXTENSIONS) && previews.extensionsemulator) {
+  if (shouldStart(options, Emulators.EXTENSIONS)) {
     const projectNumber = Constants.isDemoProject(projectId)
       ? Constants.FAKE_PROJECT_NUMBER
       : await needProjectNumber(options);

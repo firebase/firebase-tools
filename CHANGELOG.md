@@ -1,0 +1,1 @@
+- Adds Firebase Extensions emulator. Learn more about how to test Extensions in the Emulator Suite here: https://firebase.google.com/docs/extensions/manifest.

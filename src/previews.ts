@@ -5,7 +5,6 @@ interface PreviewFlags {
   rtdbrules: boolean;
   ext: boolean;
   extdev: boolean;
-  extensionsemulator: boolean;
   rtdbmanagement: boolean;
   golang: boolean;
   deletegcfartifacts: boolean;
@@ -20,7 +19,6 @@ export const previews: PreviewFlags = {
   rtdbrules: false,
   ext: false,
   extdev: false,
-  extensionsemulator: false,
   rtdbmanagement: false,
   golang: false,
   deletegcfartifacts: false,
