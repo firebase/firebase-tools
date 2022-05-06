@@ -153,7 +153,7 @@ describe("validate", () => {
     });
 
     it("Allows endpoints with no mem and no concurrency", () => {
-      expect(() => validate.endpointsAreValid(backend.of(ENDPOINT_BASE))).to.not.throw;
+      expect(() => validate.endpointsAreValid(backend.of(ENDPOINT_BASE))).to.not.throw();
     });
 
     it("Allows endpoints with mem and no concurrency", () => {
@@ -161,7 +161,7 @@ describe("validate", () => {
         ...ENDPOINT_BASE,
         availableMemoryMb: 256,
       };
-      expect(() => validate.endpointsAreValid(backend.of(ep))).to.not.throw;
+      expect(() => validate.endpointsAreValid(backend.of(ep))).to.not.throw();
     });
 
     it("Allows explicitly one concurrent", () => {
@@ -169,7 +169,7 @@ describe("validate", () => {
         ...ENDPOINT_BASE,
         concurrency: 1,
       };
-      expect(() => validate.endpointsAreValid(backend.of(ep))).to.not.throw;
+      expect(() => validate.endpointsAreValid(backend.of(ep))).to.not.throw();
     });
 
     it("Allows endpoints with enough mem and no concurrency", () => {
@@ -315,6 +315,36 @@ describe("validate", () => {
 
       expect(() => validate.endpointsAreValid(want)).to.not.throw();
     });
+
+    for (const cpu of [undefined, "gcf_gen1", 0.1, 0.5, 1, 2, 4, 6, 8] as const) {
+      it(`does not throw for valid CPU ${cpu ?? "undefined"}`, () => {
+        const want = backend.of({
+          ...ENDPOINT_BASE,
+          platform: "gcfv2",
+          cpu,
+        });
+        expect(() => validate.endpointsAreValid(want)).to.not.throw();
+      });
+    }
+
+    it("throws for gcfv1 with CPU", () => {
+      const want = backend.of({
+        ...ENDPOINT_BASE,
+        platform: "gcfv1",
+        cpu: 1,
+      });
+      expect(() => validate.endpointsAreValid(want)).to.throw();
+    });
+
+    it("throws for invalid CPU", () => {
+      const want = backend.of({
+        ...ENDPOINT_BASE,
+        platform: "gcfv2",
+        // Fractional CPU is only valid for <1
+        cpu: 1.5,
+      });
+      expect(() => validate.endpointsAreValid(want)).to.throw();
+    });
   });
 
   describe("endpointsAreUnqiue", () => {
@@ -337,7 +367,7 @@ describe("validate", () => {
         { ...ENDPOINT_BASE, id: "i3", region: "r2" },
         { ...ENDPOINT_BASE, id: "i4", region: "r2" }
       );
-      expect(() => validate.endpointsAreUnique({ b1, b2 })).to.not.throw;
+      expect(() => validate.endpointsAreUnique({ b1, b2 })).to.not.throw();
     });
 
     it("passes given unique id, region pairs", () => {
@@ -349,7 +379,7 @@ describe("validate", () => {
         { ...ENDPOINT_BASE, id: "i1", region: "r2" },
         { ...ENDPOINT_BASE, id: "i2", region: "r2" }
       );
-      expect(() => validate.endpointsAreUnique({ b1, b2 })).to.not.throw;
+      expect(() => validate.endpointsAreUnique({ b1, b2 })).to.not.throw();
     });
 
     it("throws given non-unique id region pairs", () => {

@@ -103,25 +103,5 @@ export default new Command("functions:secrets:set <KEY>")
       logBullet(`Updated function ${e.id}(${e.region}).`);
       return updated;
     });
-    const updatedEndpoints = await Promise.all(updateOps);
-
-    logBullet(`Pruning stale secrets...`);
-    const prunedResult = await pruneAndDestroySecrets(
-      { projectId, projectNumber },
-      updatedEndpoints
-    );
-    if (prunedResult.destroyed.length > 0) {
-      logBullet(
-        `Detroyed unused secret versions: ${prunedResult.destroyed
-          .map((s) => `${s.secret}@${s.version}`)
-          .join(", ")}`
-      );
-    }
-    if (prunedResult.erred.length > 0) {
-      logWarning(
-        `Failed to destroy unused secret versions:\n\t${prunedResult.erred
-          .map((err) => err.message)
-          .join("\n\t")}`
-      );
-    }
+    await Promise.all(updateOps);
   });

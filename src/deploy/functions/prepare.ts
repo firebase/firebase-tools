@@ -148,17 +148,6 @@ export async function prepare(
       );
     }
     if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv2")) {
-      if (!previews.functionsv2) {
-        throw new FirebaseError(
-          "This version of firebase-tools does not support Google Cloud " +
-            "Functions gen 2\n" +
-            "If Cloud Functions for Firebase gen 2 is still in alpha, sign up " +
-            "for the alpha program at " +
-            "https://services.google.com/fb/forms/firebasealphaprogram/\n" +
-            "If Cloud Functions for Firebase gen 2 is in beta, get the latest " +
-            "version of Firebse Tools with `npm i -g firebase-tools@latest`"
-        );
-      }
       source.functionsSourceV2 = await prepareFunctionsUpload(sourceDir, config);
     }
     if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv1")) {
