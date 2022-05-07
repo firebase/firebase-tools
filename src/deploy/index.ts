@@ -15,7 +15,7 @@ import * as FunctionsTarget from "./functions";
 import * as StorageTarget from "./storage";
 import * as RemoteConfigTarget from "./remoteconfig";
 import * as ExtensionsTarget from "./extensions";
-import { prepare as prepareFrameworks } from "../frameworks";
+import { prepareFrameworks } from "../frameworks";
 
 const TARGETS = {
   hosting: HostingTarget,

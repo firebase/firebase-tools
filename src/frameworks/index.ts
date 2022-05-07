@@ -1,20 +1,18 @@
 import { join } from "path";
 import { exit } from "process";
-import inquirer from "inquirer";
-// @ts-ignore why is this import acting up?
-import { build } from "firebase-frameworks/tools";
 
 import { needProjectId } from "../projectUtils";
 import { normalizedHostingConfigs } from "../hosting/normalizedHostingConfigs";
 import { listSites, Site } from "../hosting/api";
 import { getAppConfig, AppPlatform } from "../management/apps";
 import { promises as fsPromises } from "fs";
+import { promptOnce } from "../prompt";
 
 const { writeFile } = fsPromises;
 
 export const shortSiteName = (site?: Site) => site?.name && site.name.split("/").pop();
 
-export const prepare = async (targetNames: string[], context: any, options: any) => {
+export const prepareFrameworks = async (targetNames: string[], context: any, options: any) => {
   const project = needProjectId(context);
   // options.site is not present when emulated. We could call requireHostingSite but IAM permissions haven't
   // been booted up (at this point) and we may be offline, so just use projectId. Most of the time
@@ -29,9 +27,10 @@ export const prepare = async (targetNames: string[], context: any, options: any)
     const dist = join(".firebase", site);
     const hostingDist = join(dist, "hosting");
     const functionsDist = join(dist, "functions");
-    if (publicDir) throw `hosting.public and hosting.source cannot both be set in firebase.json`;
+    if (publicDir) throw new Error(`hosting.public and hosting.source cannot both be set in firebase.json`);
     const getProjectPath = (...args: string[]) => join(process.cwd(), source, ...args);
     const functionName = `ssr${site.replace(/-/g, "")}`;
+    const { build } = require("firebase-frameworks/tools");
     const { usingCloudFunctions, rewrites, redirects, headers, usesFirebaseConfig } = await build(
       {
         dist,
@@ -51,11 +50,10 @@ export const prepare = async (targetNames: string[], context: any, options: any)
         const message =
           "Cannot preview changes to the backend, you will only see changes to the static content on this channel.";
         if (!options.nonInteractive) {
-          const { continueDeploy } = await inquirer.prompt({
+          const continueDeploy = await promptOnce({
             type: "confirm",
-            name: "continueDeploy",
-            message: `${message} Would you like to continue with the deploy?`,
             default: true,
+            message: `${message} Would you like to continue with the deploy?`,
           });
           if (!continueDeploy) exit(1);
         } else {
@@ -76,7 +74,7 @@ export const prepare = async (targetNames: string[], context: any, options: any)
           options.config.set("functions", functionConfig);
         }
       }
-      // TODO get the other firebase.json modifications
+
       config.rewrites = [
         ...(config.rewrites || []),
         ...rewrites,

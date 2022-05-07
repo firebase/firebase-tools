@@ -47,7 +47,7 @@ import { ExtensionsEmulator } from "./extensionsEmulator";
 import { previews } from "../previews";
 import { normalizeAndValidate } from "../functions/projectConfig";
 import { requiresJava } from "./downloadableEmulators";
-import { prepare as prepareFrameworks } from "../frameworks";
+import { prepareFrameworks } from "../frameworks";
 
 const START_LOGGING_EMULATOR = utils.envOverride(
   "START_LOGGING_EMULATOR",
@@ -334,9 +334,6 @@ interface EmulatorOptions extends Options {
   extDevEnv?: Record<string, string>;
 }
 
-/**
- *
- */
 export async function startAll(
   options: EmulatorOptions,
   showUI = true
