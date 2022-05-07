@@ -47,6 +47,7 @@ import { ExtensionsEmulator } from "./extensionsEmulator";
 import { previews } from "../previews";
 import { normalizeAndValidate } from "../functions/projectConfig";
 import { requiresJava } from "./downloadableEmulators";
+import { prepare as prepareFrameworks } from "../frameworks";
 
 const START_LOGGING_EMULATOR = utils.envOverride(
   "START_LOGGING_EMULATOR",
@@ -333,6 +334,9 @@ interface EmulatorOptions extends Options {
   extDevEnv?: Record<string, string>;
 }
 
+/**
+ *
+ */
 export async function startAll(
   options: EmulatorOptions,
   showUI = true
@@ -408,7 +412,7 @@ export async function startAll(
   if (previews.frameworkawareness) {
     const config = options.config.get("hosting");
     if (Array.isArray(config) ? config.some((it) => it.source) : config.source) {
-      await require("firebase-frameworks").prepare(targets, options, options);
+      await prepareFrameworks(targets, options, options);
     }
   }
 
