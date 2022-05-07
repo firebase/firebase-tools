@@ -27,7 +27,8 @@ export const prepareFrameworks = async (targetNames: string[], context: any, opt
     const dist = join(".firebase", site);
     const hostingDist = join(dist, "hosting");
     const functionsDist = join(dist, "functions");
-    if (publicDir) throw new Error(`hosting.public and hosting.source cannot both be set in firebase.json`);
+    if (publicDir)
+      throw new Error(`hosting.public and hosting.source cannot both be set in firebase.json`);
     const getProjectPath = (...args: string[]) => join(process.cwd(), source, ...args);
     const functionName = `ssr${site.replace(/-/g, "")}`;
     const { build } = require("firebase-frameworks/tools");
