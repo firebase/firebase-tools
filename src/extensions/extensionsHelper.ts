@@ -792,5 +792,5 @@ export async function canonicalizeRefInput(extensionName: string): Promise<strin
   // Get the correct version for a given extension reference from the Registry API.
   const ref = refs.parse(extensionName);
   ref.version = await resolveVersion(ref);
-  return refs.toExtensionVersionName(ref);
+  return refs.toExtensionVersionRef(ref);
 }
