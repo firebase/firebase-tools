@@ -46,6 +46,8 @@ import { ParsedTriggerDefinition } from "./functionsEmulatorShared";
 import { ExtensionsEmulator } from "./extensionsEmulator";
 import { normalizeAndValidate } from "../functions/projectConfig";
 import { requiresJava } from "./downloadableEmulators";
+import { prepareFrameworks } from "../frameworks";
+import { previews } from "../previews";
 
 const START_LOGGING_EMULATOR = utils.envOverride(
   "START_LOGGING_EMULATOR",
@@ -399,6 +401,13 @@ export async function startAll(
           { exit: 1 }
         );
       }
+    }
+  }
+
+  if (previews.frameworkawareness) {
+    const config = options.config.get("hosting");
+    if (Array.isArray(config) ? config.some((it) => it.source) : config.source) {
+      await prepareFrameworks(targets, options, options);
     }
   }
 
