@@ -55,7 +55,7 @@ describe("cloudfunctions", () => {
           { ...ENDPOINT, platform: "gcfv2", httpsTrigger: {} },
           UPLOAD_URL
         );
-      }).to.throw;
+      }).to.throw();
     });
 
     it("should copy a minimal function", () => {

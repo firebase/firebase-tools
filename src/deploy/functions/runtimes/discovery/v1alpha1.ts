@@ -241,7 +241,26 @@ function parseEndpoints(
       "vpc",
       "labels",
       "ingressSettings",
-      "environmentVariables"
+      "environmentVariables",
+      "cpu"
+    );
+    renameIfPresent(
+      parsed,
+      ep,
+      "secretEnvironmentVariables",
+      "secretEnvironmentVariables",
+      (senvs: ManifestEndpoint["secretEnvironmentVariables"]) => {
+        if (senvs && senvs.length > 0) {
+          ep.secretEnvironmentVariables = [];
+          for (const { key, secret } of senvs) {
+            ep.secretEnvironmentVariables.push({
+              key,
+              secret: secret || key, // if secret is undefined, assume env var key == secret name
+              projectId: project,
+            });
+          }
+        }
+      }
     );
     allParsed.push(parsed);
   }

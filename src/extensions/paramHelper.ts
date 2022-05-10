@@ -15,6 +15,7 @@ import * as askUserForParam from "./askUserForParam";
 import { track } from "../track";
 import * as env from "../functions/env";
 import { cloneDeep } from "../utils";
+import { paramsFlagDeprecationWarning } from "./warnings";
 
 /**
  * Interface for holding different param values for different environments/configs.
@@ -116,6 +117,7 @@ export async function getParams(args: {
         paramsMessage
     );
   } else if (args.paramsEnvPath) {
+    paramsFlagDeprecationWarning();
     params = getParamsFromFile({
       paramSpecs: args.paramSpecs,
       paramsEnvPath: args.paramsEnvPath,

@@ -101,33 +101,6 @@ export async function release(
   if (allErrors.length) {
     const opts = allErrors.length === 1 ? { original: allErrors[0] } : { children: allErrors };
     throw new FirebaseError("There was an error deploying functions", { ...opts, exit: 2 });
-  } else {
-    if (secrets.of(haveEndpoints).length > 0) {
-      const projectId = needProjectId(options);
-      const projectNumber = await needProjectNumber(options);
-      // Re-load backend with all endpoints, not just the ones deployed.
-      const reloadedBackend = await backend.existingBackend({ projectId } as args.Context);
-      const prunedResult = await secrets.pruneAndDestroySecrets(
-        { projectId, projectNumber },
-        backend.allEndpoints(reloadedBackend)
-      );
-      if (prunedResult.destroyed.length > 0) {
-        logLabeledBullet(
-          "functions",
-          `Destroyed unused secret versions: ${prunedResult.destroyed
-            .map((s) => `${s.secret}@${s.version}`)
-            .join(", ")}`
-        );
-      }
-      if (prunedResult.erred.length > 0) {
-        logLabeledWarning(
-          "functions",
-          `Failed to destroy unused secret versions:\n\t${prunedResult.erred
-            .map((err) => err.message)
-            .join("\n\t")}`
-        );
-      }
-    }
   }
 }
 

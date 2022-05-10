@@ -17,7 +17,7 @@ describe("Persistence", () => {
       _persistence.appendBytes(filename, Buffer.from("hello world"));
 
       _persistence.deleteFile(filename);
-      expect(() => _persistence.readBytes(filename, 10)).to.throw;
+      expect(() => _persistence.readBytes(filename, 10)).to.throw();
     });
   });
 

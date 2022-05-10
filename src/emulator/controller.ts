@@ -44,7 +44,6 @@ import { getProjectDefaultAccount } from "../auth";
 import { Options } from "../options";
 import { ParsedTriggerDefinition } from "./functionsEmulatorShared";
 import { ExtensionsEmulator } from "./extensionsEmulator";
-import { previews } from "../previews";
 import { normalizeAndValidate } from "../functions/projectConfig";
 import { requiresJava } from "./downloadableEmulators";
 import { prepareFrameworks } from "../frameworks";
@@ -194,9 +193,7 @@ export async function cleanShutdown(): Promise<void> {
  */
 export function filterEmulatorTargets(options: any): Emulators[] {
   let targets = [...ALL_SERVICE_EMULATORS];
-  if (previews.extensionsemulator) {
-    targets.push(Emulators.EXTENSIONS);
-  }
+  targets.push(Emulators.EXTENSIONS);
 
   targets = targets.filter((e) => {
     return options.config.has(e) || options.config.has(`emulators.${e}`);
@@ -447,27 +444,28 @@ export async function startAll(
   const emulatableBackends: EmulatableBackend[] = [];
   const projectDir = (options.extDevDir || options.config.projectDir) as string;
   if (shouldStart(options, Emulators.FUNCTIONS)) {
-    const functionsCfg = normalizeAndValidate(options.config.src.functions)[0];
+    const functionsCfg = normalizeAndValidate(options.config.src.functions);
     // Note: ext:dev:emulators:* commands hit this path, not the Emulators.EXTENSIONS path
     utils.assertIsStringOrUndefined(options.extDevDir);
-    const functionsDir = path.join(projectDir, functionsCfg.source);
 
-    emulatableBackends.push({
-      functionsDir,
-      env: {
-        ...options.extDevEnv,
-      },
-      secretEnv: [], // CF3 secrets are bound to specific functions, so we'll get them during trigger discovery.
-      // TODO(b/213335255): predefinedTriggers and nodeMajorVersion are here to support ext:dev:emulators:* commands.
-      // Ideally, we should handle that case via ExtensionEmulator.
-      predefinedTriggers: options.extDevTriggers as ParsedTriggerDefinition[] | undefined,
-      nodeMajorVersion: parseRuntimeVersion(
-        (options.extDevNodeVersion as string) || functionsCfg.runtime
-      ),
-    });
+    for (const cfg of functionsCfg) {
+      const functionsDir = path.join(projectDir, cfg.source);
+      emulatableBackends.push({
+        functionsDir,
+        codebase: cfg.codebase,
+        env: {
+          ...options.extDevEnv,
+        },
+        secretEnv: [], // CF3 secrets are bound to specific functions, so we'll get them during trigger discovery.
+        // TODO(b/213335255): predefinedTriggers and nodeMajorVersion are here to support ext:dev:emulators:* commands.
+        // Ideally, we should handle that case via ExtensionEmulator.
+        predefinedTriggers: options.extDevTriggers as ParsedTriggerDefinition[] | undefined,
+        nodeMajorVersion: parseRuntimeVersion((options.extDevNodeVersion as string) || cfg.runtime),
+      });
+    }
   }
 
-  if (shouldStart(options, Emulators.EXTENSIONS) && previews.extensionsemulator) {
+  if (shouldStart(options, Emulators.EXTENSIONS)) {
     const projectNumber = Constants.isDemoProject(projectId)
       ? Constants.FAKE_PROJECT_NUMBER
       : await needProjectNumber(options);
