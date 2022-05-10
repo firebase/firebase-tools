@@ -47,6 +47,7 @@ import { ExtensionsEmulator } from "./extensionsEmulator";
 import { normalizeAndValidate } from "../functions/projectConfig";
 import { requiresJava } from "./downloadableEmulators";
 import { prepareFrameworks } from "../frameworks";
+import { previews } from "../previews";
 
 const START_LOGGING_EMULATOR = utils.envOverride(
   "START_LOGGING_EMULATOR",
