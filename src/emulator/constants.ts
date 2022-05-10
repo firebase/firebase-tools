@@ -75,7 +75,7 @@ export class Constants {
   static CLOUD_STORAGE_EMULATOR_HOST = "STORAGE_EMULATOR_HOST";
 
   // Environment variable to discover the eventarc emulator.
-  static CLOUD_EVENTARC_EMULATOR_HOST = "EVENTARC_EMULATOR_HOST";
+  static CLOUD_EVENTARC_EMULATOR_HOST = "CLOUD_EVENTARC_EMULATOR_HOST";
 
   // Environment variable to discover the Emulator HUB
   static FIREBASE_EMULATOR_HUB = "FIREBASE_EMULATOR_HUB";

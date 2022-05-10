@@ -1158,7 +1158,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     const eventarcEmulator = this.getEmulatorInfo(Emulators.EVENTARC);
     if (eventarcEmulator) {
-      process.env.CLOUD_EVENTARC_EMULATOR_HOST = `http://${formatHost(eventarcEmulator)}`;
+      envs[Constants.CLOUD_EVENTARC_EMULATOR_HOST] = `http://${formatHost(eventarcEmulator)}`;
     }
 
     if (this.args.debugPort) {
