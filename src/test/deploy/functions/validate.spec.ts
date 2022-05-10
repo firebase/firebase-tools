@@ -152,6 +152,147 @@ describe("validate", () => {
       );
     });
 
+    for (const [mem, cpu] of [
+      [undefined, undefined],
+      [undefined, "gcf_gen1"],
+      [128, 0.1],
+      [512, 0.5],
+      [512, 1],
+      [512, 2],
+      [2048, 4],
+      [4096, 6],
+      [4096, 8],
+    ] as const) {
+      it(`does not throw for valid CPU ${cpu ?? "undefined"}`, () => {
+        const want = backend.of({
+          ...ENDPOINT_BASE,
+          platform: "gcfv2",
+          cpu,
+          availableMemoryMb: mem,
+        });
+        expect(() => validate.endpointsAreValid(want)).to.not.throw();
+      });
+    }
+
+    it("throws for gcfv1 with CPU", () => {
+      const want = backend.of({
+        ...ENDPOINT_BASE,
+        platform: "gcfv1",
+        cpu: 1,
+      });
+      expect(() => validate.endpointsAreValid(want)).to.throw();
+    });
+
+    for (const region of ["australia-southeast2", "asia-northeast3", "asia-south2"]) {
+      it("disallows large CPU in low-CPU region" + region, () => {
+        const ep: backend.Endpoint = {
+          ...ENDPOINT_BASE,
+          platform: "gcfv2",
+          region,
+          cpu: 6,
+          availableMemoryMb: 2048,
+        };
+
+        expect(() => validate.endpointsAreValid(backend.of(ep))).to.throw(
+          /have > 4 CPU in a region that supports a maximum 4 CPU/
+        );
+      });
+    }
+
+    for (const [mem, cpu] of [
+      [128, 0.08],
+      [512, 0.5],
+      [1024, 1],
+      [2048, 2],
+      [2048, 4],
+      [4096, 6],
+      [4096, 8],
+      [1024, "gcf_gen1"],
+    ] as const) {
+      it(`allows valid CPU size ${cpu}`, () => {
+        const ep: backend.Endpoint = {
+          ...ENDPOINT_BASE,
+          platform: "gcfv2",
+          region: "us-west1",
+          cpu: cpu,
+          availableMemoryMb: mem,
+        };
+
+        expect(() => validate.endpointsAreValid(backend.of(ep))).to.not.throw();
+      });
+    }
+
+    for (const [mem, cpu] of [
+      // < 0.08
+      [128, 0.07],
+      // fractional > 1
+      [512, 1.1],
+      // odd
+      [1024, 3],
+      [2048, 5],
+      [2048, 7],
+      // too large
+      [4096, 9],
+    ] as const) {
+      it(`disallows CPU size ${cpu}`, () => {
+        const ep: backend.Endpoint = {
+          ...ENDPOINT_BASE,
+          platform: "gcfv2",
+          cpu,
+          availableMemoryMb: mem,
+        };
+
+        expect(() => validate.endpointsAreValid(backend.of(ep))).to.throw(
+          /Valid CPU options are \(0.08, 1], 2, 4, 6, 8, or "gcf_gen1"/
+        );
+      });
+    }
+
+    it("disallows tiny CPU with large memory", () => {
+      const ep: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        platform: "gcfv2",
+        cpu: 0.49,
+        availableMemoryMb: 1024,
+      };
+
+      expect(() => validate.endpointsAreValid(backend.of(ep))).to.throw(
+        /A minimum of 0.5 CPU is needed to set a memory limit greater than 512MiB/
+      );
+    });
+
+    it("disallows small CPU with huge memory", () => {
+      const ep: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        platform: "gcfv2",
+        cpu: 0.99,
+        availableMemoryMb: 2048,
+      };
+
+      expect(() => validate.endpointsAreValid(backend.of(ep))).to.throw(
+        /A minimum of 1 CPU is needed to set a memory limit greater than 1GiB/
+      );
+    });
+
+    for (const [mem, cpu] of [
+      [1024, 4],
+      [2048, 6],
+      [2048, 8],
+    ] as const) {
+      it(`enforces minimum memory for ${cpu} CPU`, () => {
+        const ep: backend.Endpoint = {
+          ...ENDPOINT_BASE,
+          platform: "gcfv2",
+          cpu,
+          availableMemoryMb: mem,
+        };
+
+        expect(() => validate.endpointsAreValid(backend.of(ep))).to.throw(
+          /too little memory for their CPU/
+        );
+      });
+    }
+
     it("Allows endpoints with no mem and no concurrency", () => {
       expect(() => validate.endpointsAreValid(backend.of(ENDPOINT_BASE))).to.not.throw();
     });
@@ -314,36 +455,6 @@ describe("validate", () => {
       };
 
       expect(() => validate.endpointsAreValid(want)).to.not.throw();
-    });
-
-    for (const cpu of [undefined, "gcf_gen1", 0.1, 0.5, 1, 2, 4, 6, 8] as const) {
-      it(`does not throw for valid CPU ${cpu ?? "undefined"}`, () => {
-        const want = backend.of({
-          ...ENDPOINT_BASE,
-          platform: "gcfv2",
-          cpu,
-        });
-        expect(() => validate.endpointsAreValid(want)).to.not.throw();
-      });
-    }
-
-    it("throws for gcfv1 with CPU", () => {
-      const want = backend.of({
-        ...ENDPOINT_BASE,
-        platform: "gcfv1",
-        cpu: 1,
-      });
-      expect(() => validate.endpointsAreValid(want)).to.throw();
-    });
-
-    it("throws for invalid CPU", () => {
-      const want = backend.of({
-        ...ENDPOINT_BASE,
-        platform: "gcfv2",
-        // Fractional CPU is only valid for <1
-        cpu: 1.5,
-      });
-      expect(() => validate.endpointsAreValid(want)).to.throw();
     });
   });
 
