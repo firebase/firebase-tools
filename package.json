@@ -1,6 +1,6 @@
 {
   "name": "firebase-tools",
-  "version": "10.8.0",
+  "version": "10.9.0",
   "description": "Command-Line Interface for Firebase",
   "main": "./lib/index.js",
   "bin": {
@@ -107,7 +107,7 @@
     "exit-code": "^1.0.2",
     "express": "^4.16.4",
     "filesize": "^6.1.0",
-    "firebase-frameworks": "^0.3.0",
+    "firebase-frameworks": "^0.4.0",
     "fs-extra": "^5.0.0",
     "glob": "^7.1.2",
     "google-auth-library": "^7.11.0",
