@@ -1,2 +1,2 @@
-- Updating [firebase-frameworks](https://github.com/FirebaseExtended/firebase-framework-tools) to 0.4.2 addressing several issues with the web frameworks integration
-- Adds `hosting.source` to configuration schema as an allowed property
+- Updates [firebase-frameworks](https://github.com/FirebaseExtended/firebase-framework-tools) to 0.4.2 addressing several issues with the web frameworks integration.
+- Adds `hosting.source` to configuration schema as an allowed property.
