@@ -1096,6 +1096,9 @@
                                     "public": {
                                         "type": "string"
                                     },
+                                    "source": {
+                                        "type": "string"
+                                    },
                                     "redirects": {
                                         "items": {
                                             "anyOf": [
@@ -1576,6 +1579,9 @@
                                         ]
                                     },
                                     "public": {
+                                        "type": "string"
+                                    },
+                                    "source": {
                                         "type": "string"
                                     },
                                     "redirects": {
