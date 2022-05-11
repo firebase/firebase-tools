@@ -1,1 +1,0 @@
-- Fixes bug where secret environment variables were not set on functions (#4543)
