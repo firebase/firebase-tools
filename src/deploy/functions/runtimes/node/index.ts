@@ -92,15 +92,23 @@ export class Delegate {
     return Promise.resolve(() => Promise.resolve());
   }
 
-  serve(port: number, envs: backend.EnvironmentVariables): Promise<() => Promise<void>> {
+  serve(
+    port: number,
+    config: backend.RuntimeConfigValues,
+    envs: backend.EnvironmentVariables
+  ): Promise<() => Promise<void>> {
+    const env: Record<string, string | undefined> = {
+      ...envs,
+      PORT: port.toString(),
+      FUNCTIONS_CONTROL_API: "true",
+      HOME: process.env.HOME,
+      PATH: process.env.PATH,
+    };
+    if (Object.keys(config || {}).length) {
+      env.CLOUD_RUNTIME_CONFIG = JSON.stringify(config);
+    }
     const childProcess = spawn("./node_modules/.bin/firebase-functions", [this.sourceDir], {
-      env: {
-        ...envs,
-        PORT: port.toString(),
-        FUNCTIONS_CONTROL_API: "true",
-        HOME: process.env.HOME,
-        PATH: process.env.PATH,
-      },
+      env,
       cwd: this.sourceDir,
       stdio: [/* stdin=*/ "ignore", /* stdout=*/ "pipe", /* stderr=*/ "inherit"],
     });
@@ -157,7 +165,7 @@ export class Delegate {
     if (!discovered) {
       const getPort = promisify(portfinder.getPort) as () => Promise<number>;
       const port = await getPort();
-      const kill = await this.serve(port, env);
+      const kill = await this.serve(port, config, env);
       try {
         discovered = await discovery.detectFromPort(port, this.projectId, this.runtime);
       } finally {
