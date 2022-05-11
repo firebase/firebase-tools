@@ -1,0 +1,1 @@
+- Fix bug where functions failed to deploy if Runtime Config is accessed at global scope (#4541)
