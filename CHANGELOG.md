@@ -1,1 +1,3 @@
 - Fix bug where functions failed to deploy if Runtime Config is accessed at global scope (#4541)
+- Updates [firebase-frameworks](https://github.com/FirebaseExtended/firebase-framework-tools) to 0.4.2 addressing several issues with the web frameworks integration.
+- Adds `hosting.source` to configuration schema as an allowed property.
