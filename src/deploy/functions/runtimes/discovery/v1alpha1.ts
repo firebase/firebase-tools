@@ -250,16 +250,15 @@ function parseEndpoints(
       "secretEnvironmentVariables",
       "secretEnvironmentVariables",
       (senvs: ManifestEndpoint["secretEnvironmentVariables"]) => {
-        if (senvs && senvs.length > 0) {
-          ep.secretEnvironmentVariables = [];
-          for (const { key, secret } of senvs) {
-            ep.secretEnvironmentVariables.push({
-              key,
-              secret: secret || key, // if secret is undefined, assume env var key == secret name
-              projectId: project,
-            });
-          }
+        const secretEnvironmentVariables: backend.SecretEnvVar[] = [];
+        for (const { key, secret } of senvs!) {
+          secretEnvironmentVariables.push({
+            key,
+            secret: secret || key, // if secret is undefined, assume env var key == secret name
+            projectId: project,
+          });
         }
+        return secretEnvironmentVariables;
       }
     );
     allParsed.push(parsed);
