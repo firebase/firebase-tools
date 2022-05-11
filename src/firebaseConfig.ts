@@ -57,8 +57,18 @@ export type HostingHeaders = HostingSource & {
   }[];
 };
 
-type HostingBase = {
-  public?: string;
+type HostingPublicOrSource = {
+  public: string;
+  source: never;
+} | {
+  source: string;
+  public: never;
+} | {
+  source: never;
+  public: never;
+};
+
+type HostingBase = HostingPublicOrSource & {
   ignore?: string[];
   appAssociation?: string;
   cleanUrls?: boolean;
