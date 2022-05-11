@@ -13,7 +13,14 @@ const CHANNEL_NAME_REGEX = new RegExp(
     "(?<channel>[A-Za-z\\d\\-_]+)"
 );
 
-export type ManifestEndpoint = backend.ServiceConfiguration &
+export interface ManifestSecretEnv {
+  key: string;
+  secret?: string;
+  projectId: string;
+}
+
+type Base = Omit<backend.ServiceConfiguration, "secretEnvironmentVariables">;
+export type ManifestEndpoint = Base &
   backend.Triggered &
   Partial<backend.HttpsTriggered> &
   Partial<backend.CallableTriggered> &
@@ -24,6 +31,7 @@ export type ManifestEndpoint = backend.ServiceConfiguration &
     region?: string[];
     entryPoint: string;
     platform?: backend.FunctionsPlatform;
+    secretEnvironmentVariables?: Array<ManifestSecretEnv>;
   };
 
 export interface Manifest {
@@ -249,9 +257,9 @@ function parseEndpoints(
       ep,
       "secretEnvironmentVariables",
       "secretEnvironmentVariables",
-      (senvs: ManifestEndpoint["secretEnvironmentVariables"]) => {
+      (senvs: Array<ManifestSecretEnv>) => {
         const secretEnvironmentVariables: backend.SecretEnvVar[] = [];
-        for (const { key, secret } of senvs!) {
+        for (const { key, secret } of senvs) {
           secretEnvironmentVariables.push({
             key,
             secret: secret || key, // if secret is undefined, assume env var key == secret name
