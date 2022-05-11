@@ -599,6 +599,9 @@
                         "public": {
                             "type": "string"
                         },
+                        "source": {
+                            "type": "string"
+                        },
                         "redirects": {
                             "items": {
                                 "anyOf": [
@@ -917,10 +920,22 @@
                             "type": "boolean"
                         }
                     },
-                    "type": "object"
+                    "type": "object",
+                    "not" : {
+                        "required" : [
+                            "public",
+                            "source"
+                        ]
+                    }
                 },
                 {
                     "items": {
+                        "not" : {
+                            "required" : [
+                                "public",
+                                "source"
+                            ]
+                        },
                         "anyOf": [
                             {
                                 "additionalProperties": false,
