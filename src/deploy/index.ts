@@ -56,7 +56,7 @@ export const deploy = async function (
   const postdeploys: Chain = [];
   const startTime = Date.now();
 
-  if (previews.frameworkawareness && targetNames.includes("hosting")) {
+  if (targetNames.includes("hosting")) {
     const config = options.config.get("hosting");
     if (Array.isArray(config) ? config.some((it) => it.source) : config.source) {
       await prepareFrameworks(targetNames, context, options);
