@@ -23,6 +23,7 @@ export async function serve(options: any): Promise<void> {
   const targetNames = options.targets;
   options.port = parseInt(options.port, 10);
   if (
+    previews.frameworkawareness &&
     targetNames.includes("hosting") &&
     [].concat(options.config.get("hosting")).some((it: any) => it.source)
   ) {
