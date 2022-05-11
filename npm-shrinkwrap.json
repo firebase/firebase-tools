@@ -30,7 +30,7 @@
         "exit-code": "^1.0.2",
         "express": "^4.16.4",
         "filesize": "^6.1.0",
-        "firebase-frameworks": "^0.4.1",
+        "firebase-frameworks": "^0.4.2",
         "fs-extra": "^5.0.0",
         "glob": "^7.1.2",
         "google-auth-library": "^7.11.0",
@@ -6059,9 +6059,9 @@
       }
     },
     "node_modules/firebase-frameworks": {
-      "version": "0.4.1",
-      "resolved": "https://registry.npmjs.org/firebase-frameworks/-/firebase-frameworks-0.4.1.tgz",
-      "integrity": "sha512-JozphW1LOwHrN38Die5uj+eCZ9rOdGDKVwYlivvj9yp06U/mV8JsjEna+F8h3sSLuiO4JjFWrh1kwVXQpBi34w==",
+      "version": "0.4.2",
+      "resolved": "https://registry.npmjs.org/firebase-frameworks/-/firebase-frameworks-0.4.2.tgz",
+      "integrity": "sha512-a3xNE3wPh8JWq2WOgWlSypVS9O/y/3/3Im9EV7bNBF44wFV2oOAyFdVgDk6it81+lBRv7ci8PttgQZohtsFeVA==",
       "dependencies": {
         "fs-extra": "^10.1.0",
         "jsonc-parser": "^3.0.0",
@@ -18454,9 +18454,9 @@
       }
     },
     "firebase-frameworks": {
-      "version": "0.4.1",
-      "resolved": "https://registry.npmjs.org/firebase-frameworks/-/firebase-frameworks-0.4.1.tgz",
-      "integrity": "sha512-JozphW1LOwHrN38Die5uj+eCZ9rOdGDKVwYlivvj9yp06U/mV8JsjEna+F8h3sSLuiO4JjFWrh1kwVXQpBi34w==",
+      "version": "0.4.2",
+      "resolved": "https://registry.npmjs.org/firebase-frameworks/-/firebase-frameworks-0.4.2.tgz",
+      "integrity": "sha512-a3xNE3wPh8JWq2WOgWlSypVS9O/y/3/3Im9EV7bNBF44wFV2oOAyFdVgDk6it81+lBRv7ci8PttgQZohtsFeVA==",
       "requires": {
         "fs-extra": "^10.1.0",
         "jsonc-parser": "^3.0.0",
