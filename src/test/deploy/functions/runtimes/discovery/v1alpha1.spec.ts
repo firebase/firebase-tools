@@ -294,7 +294,10 @@ describe("backendFromV1Alpha1", () => {
   }); // Parser errors;
 
   describe("allows valid backends", () => {
-    const DEFAULTED_ENDPOINT: Omit<backend.Endpoint, "httpsTrigger"> = {
+    const DEFAULTED_ENDPOINT: Omit<
+      backend.Endpoint,
+      "httpsTrigger" | "secretEnvironmentVariables"
+    > = {
       ...MIN_ENDPOINT,
       platform: "gcfv2",
       id: "id",
@@ -551,6 +554,13 @@ describe("backendFromV1Alpha1", () => {
         },
         ingressSettings: "ALLOW_INTERNAL_ONLY",
         serviceAccountEmail: "sa@",
+        secretEnvironmentVariables: [
+          {
+            key: "SECRET",
+            secret: "SECRET",
+            projectId: "project",
+          },
+        ],
       };
 
       const yaml: v1alpha1.Manifest = {
@@ -560,6 +570,13 @@ describe("backendFromV1Alpha1", () => {
             ...MIN_ENDPOINT,
             httpsTrigger: {},
             ...fields,
+            secretEnvironmentVariables: [
+              {
+                key: "SECRET",
+                // Missing "secret"
+                projectId: "project",
+              },
+            ],
           },
         },
       };
