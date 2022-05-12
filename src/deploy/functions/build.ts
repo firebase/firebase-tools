@@ -369,7 +369,7 @@ function discoverTrigger(endpoint: Endpoint): backend.Triggered {
     if (endpoint.scheduleTrigger.retryConfig) {
       // TODO: consider changing backend.ScheduleRetryConfig to use
       // number seconds instead of proto.duration and only using
-      // duration at the GCP API layer. In generaly numbers >> durations.
+      // duration at the GCP API layer. In general numbers >> durations.
       bkSchedule.retryConfig = {};
       proto.renameIfPresent(
         bkSchedule.retryConfig,

@@ -464,8 +464,8 @@ export function functionFromEndpoint(endpoint: backend.Endpoint, source: Storage
   // GCF gen 2's "MiB" (or at least we interpreted it that way in the past).
   // 128MiB functions break if we use MB instead of MiB so we always use MiB.
   // This means though that we need to default explicitly to 256MiB over 256MB
-  // otherwise we read 256MB as 256MiB on update and break Pantheon which
-  // expects an enum of memories and doesn't care that 250MiB == 256MB.
+  // otherwise we read 256MB as 244.1MiB on update and break Pantheon which
+  // expects an enum of memories and doesn't care that 244.1MiB == 256MB.
   const mb = endpoint.availableMemoryMb || backend.DEFAULT_MEMORY;
   gcfFunction.serviceConfig.availableMemory = mb > 1024 ? `${mb / 1024}Gi` : `${mb}Mi`;
 
