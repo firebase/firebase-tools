@@ -147,7 +147,7 @@ export interface TaskQueueTrigger {
   invoker?: Array<ServiceAccount | Expression<string>> | null;
 }
 
-interface ScheduleRetryConfig {
+export interface ScheduleRetryConfig {
   retryCount?: Field<number>;
   maxRetrySeconds?: Field<number>;
   minBackoffSeconds?: Field<number>;
@@ -157,8 +157,8 @@ interface ScheduleRetryConfig {
 
 export interface ScheduleTrigger {
   schedule: string | Expression<string>;
-  timeZone: string | Expression<string>;
-  retryConfig: ScheduleRetryConfig;
+  timeZone?: string | Expression<string>;
+  retryConfig?: ScheduleRetryConfig;
 }
 
 export type Triggered =
@@ -364,31 +364,68 @@ function discoverTrigger(endpoint: Endpoint): backend.Triggered {
   } else if ("scheduleTrigger" in endpoint) {
     const bkSchedule: backend.ScheduleTrigger = {
       schedule: resolveString(endpoint.scheduleTrigger.schedule),
-      timeZone: resolveString(endpoint.scheduleTrigger.timeZone),
     };
-    proto.renameIfPresent(
-      bkSchedule,
-      endpoint.scheduleTrigger,
-      "retryConfig",
-      "retryConfig",
-      resolveInt
-    );
+    proto.convertIfPresent(bkSchedule, endpoint.scheduleTrigger, "timeZone", resolveString);
+    if (endpoint.scheduleTrigger.retryConfig) {
+      // TODO: consider changing backend.ScheduleRetryConfig to use
+      // number seconds instead of proto.duration and only using
+      // duration at the GCP API layer. In generaly numbers >> durations.
+      bkSchedule.retryConfig = {};
+      proto.renameIfPresent(
+        bkSchedule.retryConfig,
+        endpoint.scheduleTrigger.retryConfig,
+        "maxBackoffDuration",
+        "maxBackoffSeconds",
+        (seconds) => proto.durationFromSeconds(resolveInt(seconds))
+      );
+      proto.convertIfPresent(
+        bkSchedule.retryConfig,
+        endpoint.scheduleTrigger.retryConfig,
+        "maxDoublings",
+        resolveInt
+      );
+      proto.renameIfPresent(
+        bkSchedule.retryConfig,
+        endpoint.scheduleTrigger.retryConfig,
+        "minBackoffDuration",
+        "minBackoffSeconds",
+        (seconds) => proto.durationFromSeconds(resolveInt(seconds))
+      );
+      proto.renameIfPresent(
+        bkSchedule.retryConfig,
+        endpoint.scheduleTrigger.retryConfig,
+        "maxBackoffDuration",
+        "maxBackoffSeconds",
+        (seconds) => proto.durationFromSeconds(resolveInt(seconds))
+      );
+      proto.renameIfPresent(
+        bkSchedule.retryConfig,
+        endpoint.scheduleTrigger.retryConfig,
+        "maxRetryDuration",
+        "maxRetrySeconds",
+        (seconds) => proto.durationFromSeconds(resolveInt(seconds))
+      );
+      proto.convertIfPresent(
+        bkSchedule.retryConfig,
+        endpoint.scheduleTrigger.retryConfig,
+        "retryCount",
+        resolveInt
+      );
+    }
     trigger = { scheduleTrigger: bkSchedule };
   } else if ("taskQueueTrigger" in endpoint) {
     const bkTaskQueue: backend.TaskQueueTrigger = {};
     if (endpoint.taskQueueTrigger.rateLimits) {
       const bkRateLimits: backend.TaskQueueRateLimits = {};
-      proto.renameIfPresent(
+      proto.convertIfPresent(
         bkRateLimits,
         endpoint.taskQueueTrigger.rateLimits,
-        "maxConcurrentDispatches",
         "maxConcurrentDispatches",
         resolveInt
       );
-      proto.renameIfPresent(
+      proto.convertIfPresent(
         bkRateLimits,
         endpoint.taskQueueTrigger.rateLimits,
-        "maxDispatchesPerSecond",
         "maxDispatchesPerSecond",
         resolveInt
       );
@@ -396,44 +433,34 @@ function discoverTrigger(endpoint: Endpoint): backend.Triggered {
     }
     if (endpoint.taskQueueTrigger.retryConfig) {
       const bkRetryConfig: backend.TaskQueueRetryConfig = {};
-      proto.renameIfPresent(
+      proto.convertIfPresent(
         bkRetryConfig,
         endpoint.taskQueueTrigger.retryConfig,
-        "maxAttempts",
         "maxAttempts",
         resolveInt
       );
-      proto.renameIfPresent(
+      proto.convertIfPresent(
         bkRetryConfig,
         endpoint.taskQueueTrigger.retryConfig,
         "maxBackoffSeconds",
-        "maxBackoffSeconds",
-        (from: number | Expression<number> | null): string => {
-          return proto.durationFromSeconds(resolveInt(from));
-        }
+        resolveInt
       );
-      proto.renameIfPresent(
+      proto.convertIfPresent(
         bkRetryConfig,
         endpoint.taskQueueTrigger.retryConfig,
         "minBackoffSeconds",
-        "minBackoffSeconds",
-        (from: number | Expression<number> | null): string => {
-          return proto.durationFromSeconds(resolveInt(from));
-        }
+        resolveInt
       );
       proto.renameIfPresent(
         bkRetryConfig,
         endpoint.taskQueueTrigger.retryConfig,
         "maxRetrySeconds",
         "maxRetryDurationSeconds",
-        (from: number | Expression<number> | null): string => {
-          return proto.durationFromSeconds(resolveInt(from));
-        }
+        resolveInt
       );
-      proto.renameIfPresent(
+      proto.convertIfPresent(
         bkRetryConfig,
         endpoint.taskQueueTrigger.retryConfig,
-        "maxDoublings",
         "maxDoublings",
         resolveInt
       );

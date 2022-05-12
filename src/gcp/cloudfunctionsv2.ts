@@ -211,12 +211,12 @@ const BYTES_PER_UNIT: Record<MemoryUnit, number> = {
 };
 
 /**
- * Returns the float-precision number of Mega(not Mebi)bytes in a
+ * Returns the float-precision number of Mebibytes in a
  * Kubernetes-style quantity
  * Must serve the same results as
  * https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/apimachinery/pkg/api/resource/quantity.go
  */
-export function mebibytes(memory: string): number {
+export function mebibytes(memory: string): backend.MemoryOptions {
   const re = /^([0-9]+(\.[0-9]*)?)(Ki|Mi|Gi|Ti|k|M|G|T|([eE]([0-9]+)))?$/;
   const matches = re.exec(memory);
   if (!matches) {
@@ -230,7 +230,12 @@ export function mebibytes(memory: string): number {
     const suffix = matches[3] || "";
     bytes = quantity * BYTES_PER_UNIT[suffix as MemoryUnit];
   }
-  return bytes / (1 << 20);
+  bytes = bytes / (1 << 20);
+  const typed = bytes as backend.MemoryOptions;
+  if (backend.AllMemoryOptions.includes(typed)) {
+    logger.warn(`Got a non-standard memory option ${memory}; this may break tools`);
+  }
+  return typed;
 }
 
 /**
@@ -454,10 +459,16 @@ export function functionFromEndpoint(endpoint: backend.Endpoint, source: Storage
     "ingressSettings",
     "timeoutSeconds"
   );
-  // Memory must be set because the default value of GCF gen 2 is Megabytes and
-  // we use mebibytes
-  const mem: number = endpoint.availableMemoryMb || backend.DEFAULT_MEMORY;
-  gcfFunction.serviceConfig.availableMemory = mem > 1024 ? `${mem / 1024}Gi` : `${mem}Mi`;
+  // Due to reverse compatibility with GCF gen 1, GCF defaults to 256MB instead
+  // of 256MiB. This is despite the fact that it seems like GCF gen 1's "MB" is
+  // GCF gen 2's "MiB" (or at least we interpreted it that way in the past).
+  // 128MiB functions break if we use MB instead of MiB so we always use MiB.
+  // This means though that we need to default explicitly to 256MiB over 256MB
+  // otherwise we read 256MB as 256MiB on update and break Pantheon which
+  // expects an enum of memories and doesn't care that 250MiB == 256MB.
+  const mb = endpoint.availableMemoryMb || backend.DEFAULT_MEMORY;
+  gcfFunction.serviceConfig.availableMemory = mb > 1024 ? `${mb / 1024}Gi` : `${mb}Mi`;
+
   proto.renameIfPresent(gcfFunction.serviceConfig, endpoint, "minInstanceCount", "minInstances");
   proto.renameIfPresent(gcfFunction.serviceConfig, endpoint, "maxInstanceCount", "maxInstances");
 

@@ -257,7 +257,7 @@ function parseEndpoints(
       ep,
       "secretEnvironmentVariables",
       "secretEnvironmentVariables",
-      (senvs: Array<ManifestSecretEnv>) => {
+      (senvs) => {
         const secretEnvironmentVariables: backend.SecretEnvVar[] = [];
         for (const { key, secret } of senvs) {
           secretEnvironmentVariables.push({

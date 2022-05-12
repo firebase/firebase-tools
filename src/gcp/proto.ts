@@ -62,19 +62,46 @@ export function copyIfPresent<Src, Dest>(
   }
 }
 
-export function renameIfPresent<Src, Dest>(
+/**
+ *
+ */
+export function renameIfPresent<
+  Dest extends object,
+  DestKey extends keyof Dest,
+  Src extends object,
+  SrcKey extends keyof Src
+>(
   dest: Dest,
   src: Src,
-  destField: keyof Dest,
-  srcField: keyof Src,
-  converter: (from: any) => any = (from: any) => {
-    return from;
+  destField: DestKey,
+  srcField: SrcKey,
+  converter: (from: Required<Src>[SrcKey]) => Required<Dest>[DestKey] = (
+    from: Required<Src>[SrcKey]
+  ): Required<Dest>[DestKey] => {
+    return from as any;
   }
-) {
+): void {
   if (!Object.prototype.hasOwnProperty.call(src, srcField)) {
     return;
   }
   dest[destField] = converter(src[srcField]);
+}
+
+/** Copy a field from one interface to another after transforming it with a lamdba */
+export function convertIfPresent<
+  Dest extends object,
+  Src extends object,
+  Key extends keyof Dest & keyof Src
+>(
+  dest: Dest,
+  src: Src,
+  key: Key,
+  converter: (from: Required<Src>[Key]) => Required<Dest>[Key]
+): void {
+  if (!Object.prototype.hasOwnProperty.call(src, key)) {
+    return;
+  }
+  dest[key] = converter(src[key]);
 }
 
 // eslint-enable @typescript-eslint/no-unsafe-returns @typescript-eslint/no-explicit-any
@@ -128,8 +155,7 @@ function fieldMasksHelper(
  * Gets the correctly invoker members to be used with the invoker role for IAM API calls.
  * @param invoker the array of non-formatted invoker members
  * @param projectId the ID of the current project
- * @returns an array of correctly formatted invoker members
- *
+ * @return an array of correctly formatted invoker members
  * @throws {@link FirebaseError} if any invoker string is empty or not of the correct form
  */
 export function getInvokerMembers(invoker: string[], projectId: string): string[] {
@@ -147,8 +173,7 @@ export function getInvokerMembers(invoker: string[], projectId: string): string[
  * '{service-account}@' or '{service-account}@{project}.iam.gserviceaccount.com'.
  * @param serviceAccount the custom service account created by the user
  * @param projectId the ID of the current project
- * @returns a correctly formatted service account string
- *
+ * @return a correctly formatted service account string
  * @throws {@link FirebaseError} if the supplied service account string is empty or not of the correct form
  */
 export function formatServiceAccount(serviceAccount: string, projectId: string): string {

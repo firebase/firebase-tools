@@ -283,7 +283,7 @@ describe("addResourcesToBuild", () => {
   });
 
   it("should support schedules, yielding a build reversibly equivalent to the corresponding backend", () => {
-    const schedule = {
+    const schedule: parseTriggers.ScheduleAnnotation = {
       schedule: "every 10 minutes",
       timeZone: "America/Los_Angeles",
       retryConfig: {
@@ -319,7 +319,17 @@ describe("addResourcesToBuild", () => {
     const expected: build.Build = build.of({
       func: {
         ...BASIC_ENDPOINT,
-        scheduleTrigger: schedule,
+        scheduleTrigger: {
+          schedule: "every 10 minutes",
+          timeZone: "America/Los_Angeles",
+          retryConfig: {
+            retryCount: 20,
+            maxRetrySeconds: 200,
+            minBackoffSeconds: 1,
+            maxBackoffSeconds: 10,
+            maxDoublings: 10,
+          },
+        },
         labels: {
           test: "testing",
         },

@@ -266,13 +266,40 @@ export function addResourcesToBuild(
       api: "cloudscheduler.googleapis.com",
       reason: "Needed for scheduled functions.",
     });
+
     triggered = {
       scheduleTrigger: {
         schedule: annotation.schedule.schedule,
-        timeZone: annotation.schedule.timeZone || "what's the default timezone?",
-        retryConfig: annotation.schedule.retryConfig || {},
       },
     };
+    proto.copyIfPresent(triggered.scheduleTrigger, annotation.schedule, "timeZone");
+    if (annotation.schedule.retryConfig) {
+      const retryConfig: build.ScheduleRetryConfig = {};
+      const from: ScheduleRetryConfig = annotation.schedule.retryConfig || {};
+      proto.copyIfPresent(retryConfig, from, "maxDoublings", "retryCount");
+      proto.renameIfPresent(
+        retryConfig,
+        from,
+        "minBackoffSeconds",
+        "minBackoffDuration",
+        proto.secondsFromDuration
+      );
+      proto.renameIfPresent(
+        retryConfig,
+        from,
+        "maxBackoffSeconds",
+        "maxBackoffDuration",
+        proto.secondsFromDuration
+      );
+      proto.renameIfPresent(
+        retryConfig,
+        from,
+        "maxRetrySeconds",
+        "maxRetryDuration",
+        proto.secondsFromDuration
+      );
+      triggered.scheduleTrigger.retryConfig = retryConfig;
+    }
   } else if (annotation.blockingTrigger) {
     if (events.v1.AUTH_BLOCKING_EVENTS.includes(annotation.blockingTrigger.eventType as any)) {
       want.requiredAPIs.push({
