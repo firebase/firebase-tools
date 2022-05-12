@@ -1,5 +1,5 @@
-import * as _ from "lodash";
 import * as express from "express";
+
 import * as api from "../api";
 import { logger } from "../logger";
 import { Constants } from "./constants";
