@@ -1,2 +1,1 @@
-- Fixes bug where secret environment variables were not set on functions (#4543)
 - Remove `params` flag from ext:install, ext:update, ext:configure commands as they are replaced by the Extensions Manifest. See https://firebase.google.com/docs/extensions/manifest for more details.
