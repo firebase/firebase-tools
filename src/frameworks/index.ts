@@ -95,8 +95,17 @@ export const prepareFrameworks = async (targetNames: string[], context: any, opt
             firebaseProjectConfig = await getAppConfig(appId, AppPlatform.WEB);
           } else {
             console.warn(
-              `No Firebase app associated with site ${site}, unable to provide authenticated server context`
+              `No Firebase app associated with site ${site}, unable to provide authenticated server context.
+You can link a Web app to a Hosting site here https://console.firebase.google.com/project/_/settings/general/web`
             );
+            if (!options.nonInteractive) {
+              const continueDeploy = await promptOnce({
+                type: "confirm",
+                default: true,
+                message: "Would you like to continue with the deploy?",
+              });
+              if (!continueDeploy) exit(1);
+            }
           }
         }
       }
