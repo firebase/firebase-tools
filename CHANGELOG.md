@@ -1,1 +1,2 @@
-- Fix missing Connection header in RTDB emulator REST streaming API (https://github.com/firebase/firebase-tools-ui/issues/3329).
+- Fixes missing Connection header in RTDB emulator REST streaming API (#3329).
+- Fixes error messaging when working with apps in interactive/non-interactive modes (#4007).
