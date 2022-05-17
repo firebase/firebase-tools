@@ -2,7 +2,7 @@ import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
 
 import * as commandUtils from "../emulator/commandUtils";
-import * as optionsHelper from "../extensions/emulator/optionsHelper";
+import { logger } from "../logger";
 
 module.exports = new Command("ext:dev:emulators:exec <script>")
   .description("emulate an extension, run a test script, then shut down the emulators")
@@ -14,8 +14,14 @@ module.exports = new Command("ext:dev:emulators:exec <script>")
   .option(commandUtils.FLAG_EXPORT_ON_EXIT, commandUtils.DESC_EXPORT_ON_EXIT)
   .option(commandUtils.FLAG_UI, commandUtils.DESC_UI)
   .before(checkMinRequiredVersion, "extDevMinVersion")
-  .action(async (script: string, options: any) => {
-    const emulatorOptions = await optionsHelper.buildOptions(options);
-    commandUtils.beforeEmulatorCommand(emulatorOptions);
-    await commandUtils.emulatorExec(script, emulatorOptions);
+  .action((script: string, options: any) => {
+    const localInstallCommand = `firebase ext:install ${options.cwd}`;
+    const emulatorsExecCommand = `firebase emulators:exec '${script}`;
+    logger.error(
+      "ext:dev:emulators:exec is no longer supported. " +
+        "Instead, navigate to a Firebase project directory and add this extension to the extensions manifest by running:\n" +
+        localInstallCommand +
+        "\nThen, you can emulate this extension as part of that project by running:\n" +
+        emulatorsExecCommand
+    );
   });
