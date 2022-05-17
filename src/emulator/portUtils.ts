@@ -135,12 +135,15 @@ export async function checkPortOpen(port: number, host: string): Promise<boolean
 }
 
 /**
- * Wait for a port to close on the given host. Checks every 250ms for up to 30s.
+ * Wait for a port to close on the given host. Checks every 250ms for up to 60s.
  */
 export async function waitForPortClosed(port: number, host: string): Promise<void> {
   const interval = 250;
-  const timeout = 60000;
+  const timeout = 60_000;
   try {
+    if (host === "localhost") {
+      host = "127.0.0.1";
+    }
     await tcpport.waitUntilUsedOnHost(port, host, interval, timeout);
   } catch (e: any) {
     throw new FirebaseError(`TIMEOUT: Port ${port} on ${host} was not active within ${timeout}ms`);

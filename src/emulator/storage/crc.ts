@@ -46,6 +46,9 @@ export function crc32c(bytes: Buffer): number {
  *  - https://github.com/googleapis/nodejs-storage/blob/0c1fa3934a52a608366a8c6c798c43516dd03dbf/src/file.ts#L1406-L1409
  */
 export function crc32cToString(crc32cValue: number | string): string {
+  if (typeof crc32cValue === "number") {
+    crc32cValue = String(crc32cValue);
+  }
   // Does the reverse of https://stackoverflow.com/q/25096737/849645
-  return "----" + Buffer.from([crc32cValue]).toString("base64");
+  return "----" + Buffer.from(crc32cValue).toString("base64");
 }

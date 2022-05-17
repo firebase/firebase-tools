@@ -145,7 +145,10 @@ export class EmulatorHub implements EmulatorInstance {
   }
 
   async start(): Promise<void> {
-    const { host, port } = this.getInfo();
+    let { host, port } = this.getInfo();
+    if (host === "localhost") {
+      host = "127.0.0.1";
+    }
     const server = this.hub.listen(port, host);
     this.destroyServer = utils.createDestroyer(server);
     await this.writeLocatorFile();
