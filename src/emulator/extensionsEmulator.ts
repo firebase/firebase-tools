@@ -3,7 +3,7 @@ import * as os from "os";
 import * as path from "path";
 import * as clc from "cli-color";
 import Table = require("cli-table");
-import { spawnSync } from "child_process";
+import * as spawn from "cross-spawn";
 
 import * as planner from "../deploy/extensions/planner";
 import { Options } from "../options";
@@ -172,14 +172,22 @@ export class ExtensionsEmulator implements EmulatorInstance {
 
   private installAndBuildSourceCode(sourceCodePath: string): void {
     // TODO: Add logging during this so it is clear what is happening.
-    const npmInstall = spawnSync("npm", ["--prefix", `/${sourceCodePath}/functions/`, "install"], {
+
+    this.logger.logLabeled("DEBUG", "Extensions", `Running "npm install" for ${sourceCodePath}`);
+    const npmInstall = spawn.sync("npm", ["--prefix", `/${sourceCodePath}/functions/`, "install"], {
       encoding: "utf8",
     });
     if (npmInstall.error) {
       throw npmInstall.error;
     }
+    this.logger.logLabeled("DEBUG", "Extensions", `Finished "npm install" for ${sourceCodePath}`);
 
-    const npmRunGCPBuild = spawnSync(
+    this.logger.logLabeled(
+      "DEBUG",
+      "Extensions",
+      `Running "npm run gcp-build" for ${sourceCodePath}`
+    );
+    const npmRunGCPBuild = spawn.sync(
       "npm",
       ["--prefix", `/${sourceCodePath}/functions/`, "run", "gcp-build"],
       { encoding: "utf8" }
@@ -188,6 +196,11 @@ export class ExtensionsEmulator implements EmulatorInstance {
       // TODO: Make sure this does not error out if "gcp-build" is not defined, but does error if it fails otherwise.
       throw npmRunGCPBuild.error;
     }
+    this.logger.logLabeled(
+      "DEBUG",
+      "Extensions",
+      `Finished "npm run gcp-build" for ${sourceCodePath}`
+    );
   }
 
   /**
