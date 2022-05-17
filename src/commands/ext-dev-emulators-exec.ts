@@ -1,11 +1,12 @@
+import * as clc from "cli-color";
+
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
-
+import { FirebaseError } from "../error";
 import * as commandUtils from "../emulator/commandUtils";
-import { logger } from "../logger";
 
 module.exports = new Command("ext:dev:emulators:exec <script>")
-  .description("emulate an extension, run a test script, then shut down the emulators")
+  .description("deprecated")
   .before(commandUtils.setExportOnExitOptions)
   .option(commandUtils.FLAG_INSPECT_FUNCTIONS, commandUtils.DESC_INSPECT_FUNCTIONS)
   .option(commandUtils.FLAG_TEST_CONFIG, commandUtils.DESC_TEST_CONFIG)
@@ -15,9 +16,9 @@ module.exports = new Command("ext:dev:emulators:exec <script>")
   .option(commandUtils.FLAG_UI, commandUtils.DESC_UI)
   .before(checkMinRequiredVersion, "extDevMinVersion")
   .action((script: string, options: any) => {
-    const localInstallCommand = `firebase ext:install ${options.cwd}`;
+    const localInstallCommand = `firebase ext:install ${process.cwd()}`;
     const emulatorsExecCommand = `firebase emulators:exec '${script}`;
-    logger.error(
+    throw new FirebaseError(
       "ext:dev:emulators:exec is no longer supported. " +
         "Instead, navigate to a Firebase project directory and add this extension to the extensions manifest by running:\n" +
         localInstallCommand +
