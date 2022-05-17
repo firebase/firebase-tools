@@ -8,6 +8,9 @@
 
 ## Not-so-breaking
 
-- Fix missing Connection header in RTDB emulator REST streaming API (https://github.com/firebase/firebase-tools-ui/issues/3329).
-- Removes unused `dotenv` dependency.
+- Fixes missing Connection header in RTDB emulator REST streaming API (https://github.com/firebase/firebase-tools-ui/issues/3329).
+- Fixes error messaging when working with apps in interactive/non-interactive modes (#4007).
 - Fixes an issue where the Extensions emulator would not work on Windows (#4554).
+- Removes unused `dotenv` dependency.
+- Updates `fs-extra` dependency.
+- Updates `tmp` dependency.
