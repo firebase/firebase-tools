@@ -8,4 +8,5 @@
 ## Not-so-breaking
 
 - Fix missing Connection header in RTDB emulator REST streaming API (https://github.com/firebase/firebase-tools-ui/issues/3329).
+- Removes unused `dotenv` dependency.
 - Updates `fs-extra` dependency.
