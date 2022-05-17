@@ -10,3 +10,4 @@
 
 - Fix missing Connection header in RTDB emulator REST streaming API (https://github.com/firebase/firebase-tools-ui/issues/3329).
 - Removes unused `dotenv` dependency.
+- Fixes an issue where the Extensions emulator would not work on Windows (#4554).
