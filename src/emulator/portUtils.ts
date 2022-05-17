@@ -1,8 +1,11 @@
 import * as pf from "portfinder";
 import * as tcpport from "tcp-port-used";
+import * as dns from "dns";
 
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
+
+dns.setDefaultResultOrder("ipv4first");
 
 // See:
 // - https://stackoverflow.com/questions/4313403/why-do-browsers-block-some-ports
@@ -141,9 +144,6 @@ export async function waitForPortClosed(port: number, host: string): Promise<voi
   const interval = 250;
   const timeout = 60_000;
   try {
-    if (host === "localhost") {
-      host = "127.0.0.1";
-    }
     await tcpport.waitUntilUsedOnHost(port, host, interval, timeout);
   } catch (e: any) {
     throw new FirebaseError(`TIMEOUT: Port ${port} on ${host} was not active within ${timeout}ms`);

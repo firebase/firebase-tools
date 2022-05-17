@@ -61,7 +61,7 @@ async function getAndCheckAddress(emulator: Emulators, options: Options): Promis
     emulator = Emulators.FUNCTIONS;
   }
   let host = options.config.src.emulators?.[emulator]?.host || Constants.getDefaultHost(emulator);
-  if (host === "localhost") {
+  if (host === "localhost" && utils.isRunningInWSL()) {
     // HACK(https://github.com/firebase/firebase-tools-ui/issues/332): Use IPv4
     // 127.0.0.1 instead of localhost. This, combined with the hack in
     // downloadableEmulators.ts, forces the emulator to listen on IPv4 ONLY.
