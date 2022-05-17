@@ -45,9 +45,10 @@ import { getProjectDefaultAccount } from "../auth";
 import { Options } from "../options";
 import { ParsedTriggerDefinition } from "./functionsEmulatorShared";
 import { ExtensionsEmulator } from "./extensionsEmulator";
-import { previews } from "../previews";
 import { normalizeAndValidate } from "../functions/projectConfig";
 import { requiresJava } from "./downloadableEmulators";
+import { prepareFrameworks } from "../frameworks";
+import { previews } from "../previews";
 
 const START_LOGGING_EMULATOR = utils.envOverride(
   "START_LOGGING_EMULATOR",
@@ -194,9 +195,7 @@ export async function cleanShutdown(): Promise<void> {
  */
 export function filterEmulatorTargets(options: any): Emulators[] {
   let targets = [...ALL_SERVICE_EMULATORS];
-  if (previews.extensionsemulator) {
-    targets.push(Emulators.EXTENSIONS);
-  }
+  targets.push(Emulators.EXTENSIONS);
 
   targets = targets.filter((e) => {
     return options.config.has(e) || options.config.has(`emulators.${e}`);
@@ -406,6 +405,13 @@ export async function startAll(
     }
   }
 
+  if (previews.frameworkawareness) {
+    const config = options.config.get("hosting");
+    if (Array.isArray(config) ? config.some((it) => it.source) : config.source) {
+      await prepareFrameworks(targets, options, options);
+    }
+  }
+
   if (shouldStart(options, Emulators.HUB)) {
     const hubAddr = await getAndCheckAddress(Emulators.HUB, options);
     const hub = new EmulatorHub({ projectId, ...hubAddr });
@@ -461,7 +467,7 @@ export async function startAll(
     }
   }
 
-  if (shouldStart(options, Emulators.EXTENSIONS) && previews.extensionsemulator) {
+  if (shouldStart(options, Emulators.EXTENSIONS)) {
     const projectNumber = Constants.isDemoProject(projectId)
       ? Constants.FAKE_PROJECT_NUMBER
       : await needProjectNumber(options);
