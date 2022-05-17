@@ -13,6 +13,7 @@ import { ExtensionSource } from "../../extensions/extensionsApi";
 import { Readable } from "stream";
 import { ArchiveResult } from "../../archiveDirectory";
 import { canonicalizeRefInput } from "../../extensions/extensionsHelper";
+import * as planner from "../../deploy/extensions/planner";
 
 describe("extensionsHelper", () => {
   describe("substituteParams", () => {
@@ -881,26 +882,35 @@ describe("extensionsHelper", () => {
   });
 
   describe(`${canonicalizeRefInput.name}`, () => {
-    it("should do nothing to a valid ref", () => {
-      expect(canonicalizeRefInput("firebase/bigquery-export@10.1.1")).to.equal(
+    let resolveVersionStub: sinon.SinonStub;
+    beforeEach(() => {
+      resolveVersionStub = sinon.stub(planner, "resolveVersion").resolves("10.1.1");
+    });
+    afterEach(() => {
+      resolveVersionStub.restore();
+    });
+    it("should do nothing to a valid ref", async () => {
+      expect(await canonicalizeRefInput("firebase/bigquery-export@10.1.1")).to.equal(
         "firebase/bigquery-export@10.1.1"
       );
     });
 
-    it("should infer latest version", () => {
-      expect(canonicalizeRefInput("firebase/bigquery-export")).to.equal(
-        "firebase/bigquery-export@latest"
+    it("should infer latest version", async () => {
+      expect(await canonicalizeRefInput("firebase/bigquery-export")).to.equal(
+        "firebase/bigquery-export@10.1.1"
       );
     });
 
-    it("should infer publisher name as firebase", () => {
-      expect(canonicalizeRefInput("firebase/bigquery-export")).to.equal(
-        "firebase/bigquery-export@latest"
+    it("should infer publisher name as firebase", async () => {
+      expect(await canonicalizeRefInput("firebase/bigquery-export")).to.equal(
+        "firebase/bigquery-export@10.1.1"
       );
     });
 
-    it("should infer publisher name as firebase and also infer latest as version", () => {
-      expect(canonicalizeRefInput("bigquery-export")).to.equal("firebase/bigquery-export@latest");
+    it("should infer publisher name as firebase and also infer latest as version", async () => {
+      expect(await canonicalizeRefInput("bigquery-export")).to.equal(
+        "firebase/bigquery-export@10.1.1"
+      );
     });
   });
 });
