@@ -356,11 +356,11 @@ export async function startAll(
       `No emulators to start, run ${clc.bold("firebase init emulators")} to get started.`
     );
   }
-  const deprecationNotices = [];
+  const deprecationNotices: string[] = [];
   if (targets.some(requiresJava)) {
     if (!(await commandUtils.checkJavaSupported())) {
-      utils.logLabeledWarning("emulators", JAVA_DEPRECATION_WARNING, "warn");
-      deprecationNotices.push(JAVA_DEPRECATION_WARNING);
+      utils.logLabeledError("emulators", JAVA_DEPRECATION_WARNING, "warn");
+      throw new FirebaseError(JAVA_DEPRECATION_WARNING);
     }
   }
   const hubLogger = EmulatorLogger.forEmulator(Emulators.HUB);
