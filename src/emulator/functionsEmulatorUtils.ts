@@ -131,3 +131,10 @@ export function compareVersionStrings(a?: string, b?: string) {
 
   return 0;
 }
+
+/**
+ * Check if a url is localhost
+ */
+export function isLocalHost(href: string): boolean {
+  return !!href.match(/^(http(s)?:\/\/)?(localhost|127.0.0.1|\[::1])/);
+}

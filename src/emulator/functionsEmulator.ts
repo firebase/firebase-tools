@@ -91,6 +91,7 @@ export interface EmulatableBackend {
   functionsDir: string;
   env: Record<string, string>;
   secretEnv: backend.SecretEnvVar[];
+  codebase?: string;
   predefinedTriggers?: ParsedTriggerDefinition[];
   nodeMajorVersion?: number;
   nodeBinary?: string;
@@ -378,11 +379,12 @@ export class FunctionsEmulator implements EmulatorInstance {
   }
 
   async invokeTrigger(
-    backend: EmulatableBackend,
     trigger: EmulatedTriggerDefinition,
     proto?: any,
     runtimeOpts?: InvokeRuntimeOpts
   ): Promise<RuntimeWorker> {
+    const record = this.getTriggerRecordByKey(this.getTriggerKey(trigger));
+    const backend = record.backend;
     const bundleTemplate = this.getBaseBundle();
     const runtimeBundle: FunctionsRuntimeBundle = {
       ...bundleTemplate,
@@ -436,7 +438,6 @@ export class FunctionsEmulator implements EmulatorInstance {
   }
 
   async connect(): Promise<void> {
-    const loadTriggerPromises: Promise<void>[] = [];
     for (const backend of this.args.emulatableBackends) {
       this.logger.logLabeled(
         "BULLET",
@@ -459,9 +460,8 @@ export class FunctionsEmulator implements EmulatorInstance {
         return debouncedLoadTriggers();
       });
 
-      loadTriggerPromises.push(this.loadTriggers(backend, /* force= */ true));
+      await this.loadTriggers(backend, /* force= */ true);
     }
-    await Promise.all(loadTriggerPromises);
     await this.performPostLoadOperations();
     return;
   }
@@ -534,6 +534,9 @@ export class FunctionsEmulator implements EmulatorInstance {
       );
       const endpoints = backend.allEndpoints(discoveredBackend);
       prepareEndpoints(endpoints);
+      for (const e of endpoints) {
+        e.codebase = emulatableBackend.codebase;
+      }
       triggerDefinitions = emulatedFunctionsFromEndpoints(endpoints);
     }
     // When force is true we set up all triggers, otherwise we only set up
@@ -960,6 +963,7 @@ export class FunctionsEmulator implements EmulatorInstance {
   }
 
   setTriggersForTesting(triggers: EmulatedTriggerDefinition[], backend: EmulatableBackend) {
+    this.triggers = {};
     triggers.forEach((def) => this.addTriggerRecord(def, { backend, ignored: false }));
   }
 
@@ -1079,7 +1083,10 @@ export class FunctionsEmulator implements EmulatorInstance {
     envs.FUNCTIONS_EMULATOR = "true";
     envs.TZ = "UTC"; // Fixes https://github.com/firebase/firebase-tools/issues/2253
     envs.FIREBASE_DEBUG_MODE = "true";
-    envs.FIREBASE_DEBUG_FEATURES = JSON.stringify({ skipTokenVerification: true });
+    envs.FIREBASE_DEBUG_FEATURES = JSON.stringify({
+      skipTokenVerification: true,
+      enableCors: true,
+    });
     // TODO(danielylee): Support timeouts. Temporarily dropping the feature until we finish refactoring.
 
     // Make firebase-admin point at the Firestore emulator
@@ -1352,11 +1359,9 @@ export class FunctionsEmulator implements EmulatorInstance {
 
   async reloadTriggers() {
     this.triggerGeneration++;
-    const loadTriggerPromises = [];
     for (const backend of this.args.emulatableBackends) {
-      loadTriggerPromises.push(this.loadTriggers(backend));
+      await this.loadTriggers(backend);
     }
-    await Promise.all(loadTriggerPromises);
     await this.performPostLoadOperations();
     return;
   }
@@ -1369,7 +1374,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
     const trigger = record.def;
     const service = getFunctionService(trigger);
-    const worker = await this.invokeTrigger(record.backend, trigger, proto);
+    const worker = await this.invokeTrigger(trigger, proto);
 
     return new Promise((resolve, reject) => {
       if (projectId !== this.args.projectId) {
@@ -1507,7 +1512,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         );
       }
     }
-    const worker = await this.invokeTrigger(record.backend, trigger);
+    const worker = await this.invokeTrigger(trigger);
 
     worker.onLogs((el: EmulatorLog) => {
       if (el.level === "FATAL") {

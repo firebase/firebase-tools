@@ -92,6 +92,20 @@ export interface EventFilter {
   value: string;
 }
 
+/**
+ * Configurations for secret environment variables attached to a cloud functions resource.
+ */
+export interface SecretEnvVar {
+  /* Name of the environment variable. */
+  key: string;
+  /* Project identifier (or project number) of the project that contains the secret. */
+  projectId: string;
+  /* Name of the secret in secret manager. e.g. MY_SECRET, NOT projects/abc/secrets/MY_SECRET */
+  secret: string;
+  /* Version of the secret (version number or the string 'latest') */
+  version?: string;
+}
+
 /** The Cloud Run service that underlies a Cloud Function. */
 export interface ServiceConfig {
   // Output only
@@ -104,6 +118,7 @@ export interface ServiceConfig {
   timeoutSeconds?: number;
   availableMemory?: string;
   environmentVariables?: Record<string, string>;
+  secretEnvironmentVariables?: SecretEnvVar[];
   maxInstanceCount?: number;
   minInstanceCount?: number;
   vpcConnector?: string;
@@ -201,7 +216,7 @@ const BYTES_PER_UNIT: Record<MemoryUnit, number> = {
  * Must serve the same results as
  * https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/apimachinery/pkg/api/resource/quantity.go
  */
-export function megabytes(memory: string): number {
+export function mebibytes(memory: string): number {
   const re = /^([0-9]+(\.[0-9]*)?)(Ki|Mi|Gi|Ti|k|M|G|T|([eE]([0-9]+)))?$/;
   const matches = re.exec(memory);
   if (!matches) {
@@ -215,7 +230,7 @@ export function megabytes(memory: string): number {
     const suffix = matches[3] || "";
     bytes = quantity * BYTES_PER_UNIT[suffix as MemoryUnit];
   }
-  return bytes / 1e6;
+  return bytes / (1 << 20);
 }
 
 /**
@@ -225,11 +240,22 @@ export function megabytes(memory: string): number {
  * @param err The error returned from the operation.
  */
 function functionsOpLogReject(funcName: string, type: string, err: any): void {
+  utils.logWarning(clc.bold.yellow("functions:") + ` ${err?.message}`);
   if (err?.context?.response?.statusCode === 429) {
     utils.logWarning(
       `${clc.bold.yellow(
         "functions:"
       )} got "Quota Exceeded" error while trying to ${type} ${funcName}. Waiting to retry...`
+    );
+  } else if (
+    err?.message.includes(
+      "If you recently started to use Eventarc, it may take a few minutes before all necessary permissions are propagated to the Service Agent"
+    )
+  ) {
+    utils.logWarning(
+      `${clc.bold.yellow(
+        "functions:"
+      )} since this is your first time using functions v2, we need a little bit longer to finish setting everything up, please retry the deployment in a few minutes.`
     );
   } else {
     utils.logWarning(
@@ -351,12 +377,13 @@ async function listFunctionsInternal(
 export async function updateFunction(
   cloudFunction: Omit<CloudFunction, OutputOnlyFields>
 ): Promise<Operation> {
-  // Keys in labels and environmentVariables are user defined, so we don't recurse
+  // Keys in labels and environmentVariables and secretEnvironmentVariables are user defined, so we don't recurse
   // for field masks.
   const fieldMasks = proto.fieldMasks(
     cloudFunction,
     /* doNotRecurseIn...=*/ "labels",
-    "serviceConfig.environmentVariables"
+    "serviceConfig.environmentVariables",
+    "serviceConfig.secretEnvironmentVariables"
   );
   try {
     const queryParams = {
@@ -386,6 +413,9 @@ export async function deleteFunction(cloudFunction: string): Promise<Operation> 
   }
 }
 
+/**
+ * Generate a v2 Cloud Function API object from a versionless Endpoint object.
+ */
 export function functionFromEndpoint(endpoint: backend.Endpoint, source: StorageSource) {
   if (endpoint.platform !== "gcfv2") {
     throw new FirebaseError(
@@ -419,17 +449,15 @@ export function functionFromEndpoint(endpoint: backend.Endpoint, source: Storage
     gcfFunction.serviceConfig,
     endpoint,
     "environmentVariables",
+    "secretEnvironmentVariables",
     "serviceAccountEmail",
     "ingressSettings",
     "timeoutSeconds"
   );
-  proto.renameIfPresent(
-    gcfFunction.serviceConfig,
-    endpoint,
-    "availableMemory",
-    "availableMemoryMb",
-    (mb: string) => `${mb}M`
-  );
+  // Memory must be set because the default value of GCF gen 2 is Megabytes and
+  // we use mebibytes
+  const mem: number = endpoint.availableMemoryMb || backend.DEFAULT_MEMORY;
+  gcfFunction.serviceConfig.availableMemory = mem > 1024 ? `${mem / 1024}Gi` : `${mem}Mi`;
   proto.renameIfPresent(gcfFunction.serviceConfig, endpoint, "minInstanceCount", "minInstances");
   proto.renameIfPresent(gcfFunction.serviceConfig, endpoint, "maxInstanceCount", "maxInstances");
 
@@ -495,15 +523,20 @@ export function functionFromEndpoint(endpoint: backend.Endpoint, source: Storage
         ],
     };
   }
-  gcfFunction.labels = {
-    ...gcfFunction.labels,
-    [CODEBASE_LABEL]: endpoint.codebase || projectConfig.DEFAULT_CODEBASE,
-  };
+  const codebase = endpoint.codebase || projectConfig.DEFAULT_CODEBASE;
+  if (codebase !== projectConfig.DEFAULT_CODEBASE) {
+    gcfFunction.labels = {
+      ...gcfFunction.labels,
+      [CODEBASE_LABEL]: codebase,
+    };
+  } else {
+    delete gcfFunction.labels?.[CODEBASE_LABEL];
+  }
   return gcfFunction;
 }
 
 /**
- *
+ * Generate a versionless Endpoint object from a v2 Cloud Function API object.
  */
 export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoint {
   const [, project, , region, , id] = gcfFunction.name.split("/");
@@ -572,6 +605,7 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
     "serviceAccountEmail",
     "ingressSettings",
     "environmentVariables",
+    "secretEnvironmentVariables",
     "timeoutSeconds"
   );
   proto.renameIfPresent(
@@ -579,7 +613,7 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
     gcfFunction.serviceConfig,
     "availableMemoryMb",
     "availableMemory",
-    megabytes
+    mebibytes
   );
   proto.renameIfPresent(endpoint, gcfFunction.serviceConfig, "minInstances", "minInstanceCount");
   proto.renameIfPresent(endpoint, gcfFunction.serviceConfig, "maxInstances", "maxInstanceCount");

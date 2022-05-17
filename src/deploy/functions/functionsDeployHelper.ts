@@ -1,5 +1,5 @@
 import * as backend from "./backend";
-import * as projectConfig from "../../functions/projectConfig";
+import { DEFAULT_CODEBASE, ValidatedConfig } from "../../functions/projectConfig";
 
 export interface EndpointFilter {
   // If codebase is undefined, match all functions in all codebase that matches the idChunks.
@@ -69,7 +69,7 @@ export function parseFunctionSelector(selector: string): EndpointFilter[] {
     // conflict between a codebase name as function id in the default codebase.
     return [
       { codebase: fragments[0] },
-      { codebase: projectConfig.DEFAULT_CODEBASE, idChunks: fragments[0].split(/[-.]/) },
+      { codebase: DEFAULT_CODEBASE, idChunks: fragments[0].split(/[-.]/) },
     ];
   }
   return [
@@ -127,6 +127,80 @@ export function getEndpointFilters(options: { only?: string }): EndpointFilter[]
 /**
  * Generate label for a function.
  */
-export function getFunctionLabel(fn: backend.TargetIds): string {
-  return `${fn.id}(${fn.region})`;
+export function getFunctionLabel(fn: backend.TargetIds & { codebase?: string }): string {
+  let id = `${fn.id}(${fn.region})`;
+  if (fn.codebase && fn.codebase !== DEFAULT_CODEBASE) {
+    id = `${fn.codebase}:${id}`;
+  }
+  return id;
+}
+
+/**
+ * Returns list of codebases specified in firebase.json filtered by --only filters if present.
+ */
+export function targetCodebases(config: ValidatedConfig, filters?: EndpointFilter[]): string[] {
+  const codebasesFromConfig = [...new Set(Object.values(config).map((c) => c.codebase))];
+  if (!filters) {
+    return [...codebasesFromConfig];
+  }
+
+  const codebasesFromFilters = [
+    ...new Set(filters.map((f) => f.codebase).filter((c) => c !== undefined)),
+  ];
+
+  if (codebasesFromFilters.length === 0) {
+    return [...codebasesFromConfig];
+  }
+
+  const intersections: string[] = [];
+  for (const codebase of codebasesFromConfig) {
+    if (codebasesFromFilters.includes(codebase)) {
+      intersections.push(codebase);
+    }
+  }
+  return intersections;
+}
+
+/**
+ * Assign each endpoint deployed in the project to a codebase.
+ *
+ * An endpoint is part a codebase if:
+ *   1. Endpoint is associated w/ the current codebase (duh).
+ *   2. Endpoint name matches name of an endoint we want to deploy
+ *
+ * Condition (2) might feel wrong but is a practical conflict resolution strategy as it makes migrating a function
+ * from one codebase to another straightforward.
+ */
+export function groupEndpointsByCodebase(
+  wantBackends: Record<string, backend.Backend>,
+  haveEndpoints: backend.Endpoint[]
+): Record<string, backend.Backend> {
+  const grouped: Record<string, backend.Backend> = {};
+  // endpointsToAssign will hold endpoints not assigned to any codebase.
+  let endpointsToAssign: backend.Endpoint[] = haveEndpoints;
+
+  // First, dole out endpoints using names. If resource name matches, endpoint belongs to that codebase regardless
+  // of the codebase annotation.
+  for (const codebase of Object.keys(wantBackends)) {
+    const names = backend.allEndpoints(wantBackends[codebase]).map((e) => backend.functionName(e));
+    grouped[codebase] = backend.of(
+      ...endpointsToAssign.filter((e) => names.includes(backend.functionName(e)))
+    );
+    // Remove all endpoints we've assigned in this iteration.
+    endpointsToAssign = endpointsToAssign.filter((e) => !names.includes(backend.functionName(e)));
+  }
+
+  // Next, dole out endpoints using codebase annotation.
+  for (const codebase of Object.keys(wantBackends)) {
+    const matchedEndpoints = endpointsToAssign.filter((e) => e.codebase === codebase);
+    grouped[codebase] = backend.merge(grouped[codebase], backend.of(...matchedEndpoints));
+    // Update current backend, removing all endpoints we've assigned in this iteration.
+    const matchedNames = matchedEndpoints.map((e) => backend.functionName(e));
+    endpointsToAssign = endpointsToAssign.filter((e) => {
+      return !matchedNames.includes(backend.functionName(e));
+    });
+  }
+  // What about unassigned endpoints? We leave them, as it's possible that these endpoints belong to codebases
+  // defined in other project repositories.
+  return grouped;
 }

@@ -39,6 +39,7 @@ import { envOverride } from "../utils";
 import { getLocalChangelog } from "./changelog";
 import { getProjectNumber } from "../getProjectNumber";
 import { Constants } from "../emulator/constants";
+import { resolveVersion } from "../deploy/extensions/planner";
 
 /**
  * SpecParamType represents the exact strings that the extensions
@@ -782,7 +783,7 @@ export async function diagnoseAndFixProject(options: any): Promise<void> {
  * 1. Infer firebase publisher if not provided
  * 2. Infer "latest" as the version if not provided
  */
-export function canonicalizeRefInput(extensionName: string): string {
+export async function canonicalizeRefInput(extensionName: string): Promise<string> {
   // Infer firebase if publisher ID not provided.
   if (extensionName.split("/").length < 2) {
     const [extensionID, version] = extensionName.split("@");
@@ -790,8 +791,6 @@ export function canonicalizeRefInput(extensionName: string): string {
   }
   // Get the correct version for a given extension reference from the Registry API.
   const ref = refs.parse(extensionName);
-  if (!ref.version) {
-    extensionName = `${extensionName}@latest`;
-  }
-  return extensionName;
+  ref.version = await resolveVersion(ref);
+  return refs.toExtensionVersionRef(ref);
 }
