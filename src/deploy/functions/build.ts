@@ -11,6 +11,28 @@ export interface Build {
   params: Param[];
 }
 
+/* A utility function that returns an empty Build. */
+/**
+ *
+ */
+export function empty(): Build {
+  return {
+    requiredAPIs: [],
+    endpoints: {},
+    params: [],
+  };
+}
+
+/* A utility function that creates a Build containing a map of IDs to Endpoints. */
+/**
+ *
+ */
+export function of(endpoints: Record<string, Endpoint>): Build {
+  const build = empty();
+  build.endpoints = endpoints;
+  return build;
+}
+
 interface RequiredApi {
   // The API that should be enabled. For Google APIs, this should be a googleapis.com subdomain
   // (e.g. vision.googleapis.com)
@@ -64,7 +86,7 @@ function resolveBoolean(from: boolean | Expression<boolean> | null): boolean {
 type ServiceAccount = string;
 
 // Trigger definition for arbitrary HTTPS endpoints
-interface HttpsTrigger {
+export interface HttpsTrigger {
   // Which service account should be able to trigger this function. No value means "make public
   // on create and don't do anything on update." For more, see go/cf3-http-access-control
   invoker?: ServiceAccount | null;
@@ -77,13 +99,13 @@ interface CallableTrigger { }
 
 // Trigger definitions for endpoints that should be called as a delegate for other operations.
 // For example, before user login.
-interface BlockingTrigger {
+export interface BlockingTrigger {
   eventType: string;
 }
 
 // Trigger definitions for endpoints that listen to CloudEvents emitted by other systems (or legacy
 // Google events for GCF gen 1)
-interface EventTrigger {
+export interface EventTrigger {
   eventType: string;
   eventFilters: Record<string, Expression<string>>;
 
@@ -117,7 +139,7 @@ interface TaskQueueRetryConfig {
   maxDoublings?: Field<number>;
 }
 
-interface TaskQueueTrigger {
+export interface TaskQueueTrigger {
   rateLimits?: TaskQueueRateLimits | null;
   retryConfig?: TaskQueueRetryConfig | null;
 
@@ -133,13 +155,13 @@ interface ScheduleRetryConfig {
   maxDoublings?: Field<number>;
 }
 
-interface ScheduleTrigger {
+export interface ScheduleTrigger {
   schedule: string | Expression<string>;
   timeZone: string | Expression<string>;
   retryConfig: ScheduleRetryConfig;
 }
 
-type Triggered =
+export type Triggered =
   | { httpsTrigger: HttpsTrigger }
   | { callableTrigger: CallableTrigger }
   | { blockingTrigger: BlockingTrigger }
@@ -152,7 +174,7 @@ interface VpcSettings {
   egressSettings?: "PRIVATE_RANGES_ONLY" | "ALL_TRAFFIC";
 }
 
-type Endpoint = Triggered & {
+export type Endpoint = Triggered & {
   // Defaults to "gcfv2". "Run" will be an additional option defined later
   platform?: "gcfv1" | "gcfv2";
 
@@ -169,6 +191,12 @@ type Endpoint = Triggered & {
   // defaults to ["us-central1"], overridable in firebase-tools with
   //  process.env.FIREBASE_FUNCTIONS_DEFAULT_REGION
   region?: string[];
+
+  // The Cloud project associated with this endpoint.
+  project: string;
+
+  // The runtime being deployed to this endpoint. Currently targeting "nodejs16."
+  runtime: string;
 
   // Firebase default of 80. Cloud default of 1
   concurrency?: Field<number>;
@@ -224,7 +252,18 @@ function isMemoryOption(value: backend.MemoryOptions | any): value is backend.Me
 /** Converts a build specification into a Backend representation, with all Params resolved and interpolated */
 // TODO(vsfan): resolve build.Params
 // TODO(vsfan): handle Expression<T> types
-export function resolveBackend(build: Build): backend.Backend {
+export function resolveBackend(build: Build, userEnvs: Record<string, string>): backend.Backend {
+  for (const param of build.params) {
+    const expectedEnv = param.param;
+    if (!userEnvs.hasOwnProperty(expectedEnv)) {
+      throw new FirebaseError(
+        "Build specified parameter " +
+          expectedEnv +
+          " but it was not present in the user dotenv files"
+      );
+    }
+  }
+
   const bkEndpoints: Array<backend.Endpoint> = [];
   for (const endpointId of Object.keys(build.endpoints)) {
     const endpoint = build.endpoints[endpointId];
@@ -251,32 +290,35 @@ export function resolveBackend(build: Build): backend.Backend {
 
       const bkEndpoint: backend.Endpoint = {
         id: endpointId,
-        project: "",
+        project: endpoint.project,
         region: region,
         entryPoint: endpoint.entryPoint,
         platform: endpoint.platform,
-        runtime: "",
-        labels: endpoint.labels,
-        environmentVariables: endpoint.environmentVariables,
-        secretEnvironmentVariables: undefined,
-        availableMemoryMb: endpoint.availableMemoryMb,
+        runtime: endpoint.runtime,
         timeoutSeconds: timeout,
         ...trigger,
       };
       proto.renameIfPresent(bkEndpoint, endpoint, "maxInstances", "maxInstances", resolveInt);
       proto.renameIfPresent(bkEndpoint, endpoint, "minInstances", "minInstances", resolveInt);
       proto.renameIfPresent(bkEndpoint, endpoint, "concurrency", "concurrency", resolveInt);
-      proto.copyIfPresent(bkEndpoint, endpoint, "ingressSettings");
+      proto.copyIfPresent(
+        bkEndpoint,
+        endpoint,
+        "ingressSettings",
+        "availableMemoryMb",
+        "environmentVariables",
+        "labels"
+      );
+      // proto.copyIfPresent(bkEndpoint, endpoint, "secretEnvironmentVariables");
       if (endpoint.vpc) {
         bkEndpoint.vpc = {
-          connector: resolveString(endpoint.vpc.connector),
-          egressSettings: endpoint.vpc.egressSettings,
+          // $REGION is a token in the Build VPC connector because Build endpoints can have multiple regions, so we unroll here
+          connector: resolveString(endpoint.vpc.connector).replace("$REGION", region),
         };
+        proto.copyIfPresent(bkEndpoint.vpc, endpoint.vpc, "egressSettings");
       }
       if (endpoint.serviceAccount) {
         bkEndpoint.serviceAccountEmail = endpoint.serviceAccount;
-      } else {
-        bkEndpoint.serviceAccountEmail = "default";
       }
 
       bkEndpoints.push(bkEndpoint);

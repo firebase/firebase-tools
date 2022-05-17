@@ -224,6 +224,7 @@ describe("Functions Pricing", () => {
           region: "us-central1",
           minInstances: 1,
           availableMemoryMb: 256,
+          cpu: 1,
         },
       ]);
 
@@ -242,6 +243,7 @@ describe("Functions Pricing", () => {
           region: "europe-west3",
           minInstances: 1,
           availableMemoryMb: 256,
+          cpu: 1,
         },
       ]);
 
@@ -260,11 +262,12 @@ describe("Functions Pricing", () => {
           region: "europe-west3",
           minInstances: 1,
           availableMemoryMb: 4096,
+          cpu: 2,
         },
       ]);
 
       const ramCost = pricing.V2_RATES.memoryGb[2] * 4 * SECONDS_PER_MONTH;
-      const cpuCost = pricing.V2_RATES.idleVCpu[2] * SECONDS_PER_MONTH;
+      const cpuCost = pricing.V2_RATES.idleVCpu[2] * 2 * SECONDS_PER_MONTH;
       const expected = v2CostAfterDiscounts(ramCost, cpuCost);
 
       expect(cost).to.equal(expected);
@@ -283,6 +286,7 @@ describe("Functions Pricing", () => {
           platform: "gcfv2",
           region: "us-central1",
           minInstances: 1,
+          cpu: 1,
         },
       ]);
 

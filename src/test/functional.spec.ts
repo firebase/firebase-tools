@@ -1,5 +1,6 @@
 import { expect } from "chai";
 import { flatten } from "lodash";
+import { SameType } from "../metaprogramming";
 
 import * as f from "../functional";
 
@@ -11,6 +12,13 @@ describe("functional", () => {
 
     it("can iterate an object that's already flat", () => {
       expect([...f.flatten({ a: "b" })]).to.deep.equal([["a", "b"]]);
+    });
+
+    it("Gets the right type for flattening arrays", () => {
+      const arr = [[["a"], "b"], ["c"]];
+      const flattened = [...f.flattenArray(arr)];
+      const test: SameType<typeof flattened, string[]> = true;
+      expect(test).to.be.true;
     });
 
     it("can handle nested objects", () => {
@@ -78,7 +86,7 @@ describe("functional", () => {
       expect([...f.zip([1], ["a"])]).to.deep.equal([[1, "a"]]);
     });
     it("throws on length mismatch", () => {
-      expect(() => f.zip([1], [])).to.throw;
+      expect(() => [...f.zip([1], [])]).to.throw();
     });
   });
 

@@ -39,6 +39,7 @@ import { envOverride } from "../utils";
 import { getLocalChangelog } from "./changelog";
 import { getProjectNumber } from "../getProjectNumber";
 import { Constants } from "../emulator/constants";
+import { resolveVersion } from "../deploy/extensions/planner";
 
 /**
  * SpecParamType represents the exact strings that the extensions
@@ -553,18 +554,15 @@ export async function createSourceFromLocation(
   let packageUri: string;
   let objectPath = "";
 
-  let spinner = ora(" Archiving and uploading extension source code");
+  const spinner = ora(" Archiving and uploading extension source code");
   try {
     spinner.start();
     objectPath = await archiveAndUploadSource(sourceUri, EXTENSIONS_BUCKET_NAME);
     spinner.succeed(" Uploaded extension source code");
 
-    spinner = ora(" Creating an extension source based on uploaded source code");
-    spinner.start();
     packageUri = storageOrigin + objectPath + "?alt=media";
     const res = await createSource(projectId, packageUri, extensionRoot);
     logger.debug("Created new Extension Source %s", res.name);
-    spinner.succeed(" Created extension source code");
 
     // if we uploaded an object to user's bucket, delete it after "createSource" copies it into extension service's bucket.
     await deleteUploadedSource(objectPath);
@@ -785,7 +783,7 @@ export async function diagnoseAndFixProject(options: any): Promise<void> {
  * 1. Infer firebase publisher if not provided
  * 2. Infer "latest" as the version if not provided
  */
-export function canonicalizeRefInput(extensionName: string): string {
+export async function canonicalizeRefInput(extensionName: string): Promise<string> {
   // Infer firebase if publisher ID not provided.
   if (extensionName.split("/").length < 2) {
     const [extensionID, version] = extensionName.split("@");
@@ -793,8 +791,6 @@ export function canonicalizeRefInput(extensionName: string): string {
   }
   // Get the correct version for a given extension reference from the Registry API.
   const ref = refs.parse(extensionName);
-  if (!ref.version) {
-    extensionName = `${extensionName}@latest`;
-  }
-  return extensionName;
+  ref.version = await resolveVersion(ref);
+  return refs.toExtensionVersionRef(ref);
 }

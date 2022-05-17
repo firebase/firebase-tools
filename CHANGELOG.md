@@ -1,9 +1,12 @@
-- Fix URL with wrong host returned in storage resumable upload (#4374).
-- Fixes Firestore emulator transaction expiration and reused bug.
-- Fixes Firestore emulator deadlock bug. [#2452](https://github.com/firebase/firebase-tools/issues/2452)
-- Ensure that the hosting emulator port is not claimed by OSX (#4415).
-- Improves support for prerelease versions in `ext:dev:publish` (#4244).
-- Fixes console error on large uploads to Storage Emulator (#4407).
-- Fixes cross-platform incompatibility with Storage Emulator exports (#4411).
-- Fixes issue where function deployment errored on projects without secrets (#4425).
-- Adds a blocking trigger type (#4395).
+## Breaking
+
+- Drops support for Node 12.
+- Tooling moves to Node 16, firepit (standalone) builds move to Node 16, testing moves to 14, 16, and 18.
+- Removes support for running the emulators with Java versions prior to 11.
+- Removes `params` flag from ext:install, ext:update, ext:configure commands as they are replaced by the Extensions Manifest. See https://firebase.google.com/docs/extensions/manifest for more details.
+- Removes `ext:dev:emulators:start` and `ext:dev:emulators:exec` preview commands.
+
+## Not-so-breaking
+
+- Fix missing Connection header in RTDB emulator REST streaming API (https://github.com/firebase/firebase-tools-ui/issues/3329).
+- Removes unused `dotenv` dependency.

@@ -3,7 +3,7 @@ import { expect } from "chai";
 import * as backend from "../../../deploy/functions/backend";
 import * as helper from "../../../deploy/functions/functionsDeployHelper";
 import { Options } from "../../../options";
-import { DEFAULT_CODEBASE, ValidatedSingle } from "../../../functions/projectConfig";
+import { DEFAULT_CODEBASE, ValidatedConfig } from "../../../functions/projectConfig";
 import {
   EndpointFilter,
   parseFunctionSelector,
@@ -317,6 +317,122 @@ describe("functionsDeployHelper", () => {
 
     it("returns undefined given no functions selector", () => {
       expect(helper.getEndpointFilters({ only: "hosting:siteA,storage:bucketB" })).to.be.undefined;
+    });
+  });
+
+  describe("targetCodebases", () => {
+    const config: ValidatedConfig = [
+      {
+        source: "foo",
+        codebase: "default",
+      },
+      {
+        source: "bar",
+        codebase: "foobar",
+      },
+    ];
+
+    it("returns all codebases in firebase.json with empty filters", () => {
+      expect(helper.targetCodebases(config)).to.have.members(["default", "foobar"]);
+    });
+
+    it("returns only codebases included in the filters", () => {
+      const filters: EndpointFilter[] = [
+        {
+          codebase: "default",
+        },
+      ];
+      expect(helper.targetCodebases(config, filters)).to.have.members(["default"]);
+    });
+
+    it("correctly deals with duplicate entries", () => {
+      const filters: EndpointFilter[] = [
+        {
+          codebase: "default",
+        },
+        {
+          codebase: "default",
+        },
+      ];
+      expect(helper.targetCodebases(config, filters)).to.have.members(["default"]);
+    });
+
+    it("returns all codebases given filter without codebase specified", () => {
+      const filters: EndpointFilter[] = [
+        {
+          idChunks: ["foo", "bar"],
+        },
+      ];
+      expect(helper.targetCodebases(config, filters)).to.have.members(["default", "foobar"]);
+    });
+  });
+
+  describe("groupEndpointsByCodebase", () => {
+    function endpointsOf(b: backend.Backend): string[] {
+      return backend.allEndpoints(b).map((e) => backend.functionName(e));
+    }
+
+    it("groups codebase using codebase property", () => {
+      const wantBackends: Record<string, backend.Backend> = {
+        default: backend.of(
+          { ...ENDPOINT, id: "default-0", codebase: "default" },
+          { ...ENDPOINT, id: "default-1", codebase: "default" }
+        ),
+        cb: backend.of(
+          { ...ENDPOINT, id: "cb-0", codebase: "cb" },
+          { ...ENDPOINT, id: "cb-1", codebase: "cb" }
+        ),
+      };
+      const haveBackend = backend.of(
+        { ...ENDPOINT, id: "default-0", codebase: "default" },
+        { ...ENDPOINT, id: "default-1", codebase: "default" },
+        { ...ENDPOINT, id: "cb-0", codebase: "cb" },
+        { ...ENDPOINT, id: "cb-1", codebase: "cb" },
+        { ...ENDPOINT, id: "orphan", codebase: "orphan" }
+      );
+
+      const got = helper.groupEndpointsByCodebase(wantBackends, backend.allEndpoints(haveBackend));
+      for (const codebase of Object.keys(got)) {
+        expect(endpointsOf(got[codebase])).to.have.members(endpointsOf(wantBackends[codebase]));
+      }
+    });
+
+    it("claims endpoint with matching name regardless of codebase property", () => {
+      const wantBackends: Record<string, backend.Backend> = {
+        default: backend.of(
+          { ...ENDPOINT, id: "default-0", codebase: "default" },
+          { ...ENDPOINT, id: "default-1", codebase: "default" }
+        ),
+        cb: backend.of(
+          { ...ENDPOINT, id: "cb-0", codebase: "cb" },
+          { ...ENDPOINT, id: "cb-1", codebase: "cb" }
+        ),
+      };
+      let haveBackend = backend.of(
+        { ...ENDPOINT, id: "default-0", codebase: "cb" },
+        { ...ENDPOINT, id: "default-1", codebase: "cb" },
+        { ...ENDPOINT, id: "cb-0", codebase: "cb" },
+        { ...ENDPOINT, id: "cb-1", codebase: "cb" },
+        { ...ENDPOINT, id: "orphan", codebase: "orphan" }
+      );
+
+      let got = helper.groupEndpointsByCodebase(wantBackends, backend.allEndpoints(haveBackend));
+      for (const codebase of Object.keys(got)) {
+        expect(endpointsOf(got[codebase])).to.have.members(endpointsOf(wantBackends[codebase]));
+      }
+
+      // Do it again, this time labeling with default codebase to make sure that arbitrary ordering does not matter.
+      haveBackend = backend.of(
+        { ...ENDPOINT, id: "default-0", codebase: "default" },
+        { ...ENDPOINT, id: "default-1", codebase: "default" },
+        { ...ENDPOINT, id: "cb-0", codebase: "default" },
+        { ...ENDPOINT, id: "cb-1", codebase: "default" },
+        { ...ENDPOINT, id: "orphan", codebase: "orphan" }
+      );
+      got = helper.groupEndpointsByCodebase(wantBackends, backend.allEndpoints(haveBackend));
+      for (const codebase of Object.keys(got)) {
+        expect(endpointsOf(got[codebase])).to.have.members(endpointsOf(wantBackends[codebase]));
+      }
     });
   });
 });

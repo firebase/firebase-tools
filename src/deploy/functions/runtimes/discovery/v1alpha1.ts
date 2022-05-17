@@ -13,7 +13,14 @@ const CHANNEL_NAME_REGEX = new RegExp(
     "(?<channel>[A-Za-z\\d\\-_]+)"
 );
 
-export type ManifestEndpoint = backend.ServiceConfiguration &
+export interface ManifestSecretEnv {
+  key: string;
+  secret?: string;
+  projectId: string;
+}
+
+type Base = Omit<backend.ServiceConfiguration, "secretEnvironmentVariables">;
+export type ManifestEndpoint = Base &
   backend.Triggered &
   Partial<backend.HttpsTriggered> &
   Partial<backend.CallableTriggered> &
@@ -24,6 +31,7 @@ export type ManifestEndpoint = backend.ServiceConfiguration &
     region?: string[];
     entryPoint: string;
     platform?: backend.FunctionsPlatform;
+    secretEnvironmentVariables?: Array<ManifestSecretEnv>;
   };
 
 export interface Manifest {
@@ -85,9 +93,9 @@ function parseEndpoints(
 
   assertKeyTypes(prefix, ep, {
     region: "array",
-    platform: "string",
+    platform: (platform) => backend.AllFunctionsPlatforms.includes(platform),
     entryPoint: "string",
-    availableMemoryMb: "number",
+    availableMemoryMb: (mem) => backend.AllMemoryOptions.includes(mem),
     maxInstances: "number",
     minInstances: "number",
     concurrency: "number",
@@ -95,7 +103,7 @@ function parseEndpoints(
     timeoutSeconds: "number",
     vpc: "object",
     labels: "object",
-    ingressSettings: "string",
+    ingressSettings: (setting) => backend.AllIngressSettings.includes(setting),
     environmentVariables: "object",
     secretEnvironmentVariables: "array",
     httpsTrigger: "object",
@@ -104,7 +112,15 @@ function parseEndpoints(
     scheduleTrigger: "object",
     taskQueueTrigger: "object",
     blockingTrigger: "object",
+    cpu: (cpu: backend.Endpoint["cpu"]) => typeof cpu === "number" || cpu === "gcf_gen1",
   });
+  if (ep.vpc) {
+    assertKeyTypes(prefix + ".vpc", ep.vpc, {
+      connector: "string",
+      egressSettings: (setting) => backend.AllVpcEgressSettings.includes(setting),
+    });
+    requireKeys(prefix + ".vpc", ep.vpc, "connector");
+  }
   let triggerCount = 0;
   if (ep.httpsTrigger) {
     triggerCount++;
@@ -233,7 +249,25 @@ function parseEndpoints(
       "vpc",
       "labels",
       "ingressSettings",
-      "environmentVariables"
+      "environmentVariables",
+      "cpu"
+    );
+    renameIfPresent(
+      parsed,
+      ep,
+      "secretEnvironmentVariables",
+      "secretEnvironmentVariables",
+      (senvs: Array<ManifestSecretEnv>) => {
+        const secretEnvironmentVariables: backend.SecretEnvVar[] = [];
+        for (const { key, secret } of senvs) {
+          secretEnvironmentVariables.push({
+            key,
+            secret: secret || key, // if secret is undefined, assume env var key == secret name
+            projectId: project,
+          });
+        }
+        return secretEnvironmentVariables;
+      }
     );
     allParsed.push(parsed);
   }

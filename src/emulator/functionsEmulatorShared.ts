@@ -9,11 +9,13 @@ import * as backend from "../deploy/functions/backend";
 import { Constants } from "./constants";
 import { BackendInfo, EmulatableBackend, InvokeRuntimeOpts } from "./functionsEmulator";
 import { copyIfPresent } from "../gcp/proto";
-import { logger } from "../logger";
 import { ENV_DIRECTORY } from "../extensions/manifest";
 import { substituteParams } from "../extensions/extensionsHelper";
 import { ExtensionSpec, ExtensionVersion } from "../extensions/extensionsApi";
 import { replaceConsoleLinks } from "./extensions/postinstall";
+import { AUTH_BLOCKING_EVENTS } from "../functions/events/v1";
+import { serviceForEndpoint } from "../deploy/functions/services";
+import { inferBlockingDetails } from "../deploy/functions/prepare";
 
 export type SignatureType = "http" | "event" | "cloudevent";
 
@@ -27,13 +29,20 @@ export interface ParsedTriggerDefinition {
   httpsTrigger?: any;
   eventTrigger?: EventTrigger;
   schedule?: EventSchedule;
+  blockingTrigger?: BlockingTrigger;
   labels?: { [key: string]: any };
+  codebase?: string;
 }
 
 export interface EmulatedTriggerDefinition extends ParsedTriggerDefinition {
   id: string; // An unique-id per-function, generated from the name and the region.
   region: string;
   secretEnvironmentVariables?: backend.SecretEnvVar[]; // Secret env vars needs to be specially loaded in the Emulator.
+}
+
+export interface BlockingTrigger {
+  eventType: string;
+  options?: Record<string, unknown>;
 }
 
 export interface EventSchedule {
@@ -122,6 +131,14 @@ export class EmulatedTrigger {
   }
 }
 
+export function prepareEndpoints(endpoints: backend.Endpoint[]) {
+  const bkend = backend.of(...endpoints);
+  for (const ep of endpoints) {
+    serviceForEndpoint(ep).validateTrigger(ep as any, bkend);
+  }
+  inferBlockingDetails(bkend);
+}
+
 /**
  * Creates a unique trigger definition from Endpoints.
  * @param Endpoints A list of all CloudFunctions in the deployment.
@@ -144,6 +161,7 @@ export function emulatedFunctionsFromEndpoints(
       // We should later refactor the emulator to stop using a custom trigger definition.
       name: endpoint.id,
       id: `${endpoint.region}-${endpoint.id}`,
+      codebase: endpoint.codebase,
     };
     copyIfPresent(
       def,
@@ -185,6 +203,14 @@ export function emulatedFunctionsFromEndpoints(
       // TODO: This is an awkward transformation. Emulator does not understand scheduled triggers - maybe it should?
       def.eventTrigger = { eventType: "pubsub", resource: "" };
       def.schedule = endpoint.scheduleTrigger as EventSchedule;
+    } else if (backend.isBlockingTriggered(endpoint)) {
+      def.blockingTrigger = {
+        eventType: endpoint.blockingTrigger.eventType,
+        options: endpoint.blockingTrigger.options || {},
+      };
+    } else if (backend.isTaskQueueTriggered(endpoint)) {
+      // Just expose TQ trigger as HTTPS. Useful for debugging.
+      def.httpsTrigger = {};
     } else {
       // All other trigger types are not supported by the emulator
       // We leave both eventTrigger and httpTrigger attributes empty
@@ -269,6 +295,9 @@ export function getTemporarySocketPath(pid: number, cwd: string): string {
 export function getFunctionService(def: ParsedTriggerDefinition): string {
   if (def.eventTrigger) {
     return def.eventTrigger.service ?? getServiceFromEventType(def.eventTrigger.eventType);
+  }
+  if (def.blockingTrigger) {
+    return def.blockingTrigger.eventType;
   }
 
   return "unknown";
@@ -417,7 +446,9 @@ export function toBackendInfo(
       extension: e.extension, // Only present on published extensions
       extensionVersion: extensionVersion, // Only present on published extensions
       extensionSpec: extensionSpec, // Only present on local extensions
-      functionTriggers: e.predefinedTriggers ?? cf3Triggers, // If we don't have predefinedTriggers, this is the CF3 backend.
+      functionTriggers:
+        // If we don't have predefinedTriggers, this is the CF3 backend.
+        e.predefinedTriggers ?? cf3Triggers.filter((t) => t.codebase === e.codebase),
     })
   );
 }

@@ -3,7 +3,7 @@ import { FirebaseError } from "../error";
 
 export type NormalizedConfig = [FunctionConfig, ...FunctionConfig[]];
 export type ValidatedSingle = FunctionConfig & { source: string; codebase: string };
-export type ValidatedConfig = [ValidatedSingle];
+export type ValidatedConfig = [ValidatedSingle, ...ValidatedSingle[]];
 
 export const DEFAULT_CODEBASE = "default";
 
@@ -59,13 +59,10 @@ function assertUnique(config: ValidatedConfig, property: keyof ValidatedSingle) 
  * Validate functions config.
  */
 export function validate(config: NormalizedConfig): ValidatedConfig {
-  if (config.length > 1) {
-    throw new FirebaseError("More than one functions.source detected in firebase.json.");
-  }
-  const validated = validateSingle(config[0]);
-  assertUnique([validated], "source");
-  assertUnique([validated], "codebase");
-  return [validated];
+  const validated = config.map((cfg) => validateSingle(cfg)) as ValidatedConfig;
+  assertUnique(validated, "source");
+  assertUnique(validated, "codebase");
+  return validated;
 }
 
 /**
@@ -75,4 +72,15 @@ export function validate(config: NormalizedConfig): ValidatedConfig {
  */
 export function normalizeAndValidate(config?: FunctionsConfig): ValidatedConfig {
   return validate(normalize(config));
+}
+
+/**
+ * Return functions config for given codebase.
+ */
+export function configForCodebase(config: ValidatedConfig, codebase: string): ValidatedSingle {
+  const codebaseCfg = config.find((c) => c.codebase === codebase);
+  if (!codebaseCfg) {
+    throw new FirebaseError(`No functions config found for codebase ${codebase}`);
+  }
+  return codebaseCfg;
 }
