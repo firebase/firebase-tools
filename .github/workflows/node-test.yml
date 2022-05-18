@@ -52,7 +52,7 @@ jobs:
   integration:
     needs: unit
     if: github.event_name == 'push'
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
 
     env:
       FIREBASE_CLI_PREVIEWS: none
