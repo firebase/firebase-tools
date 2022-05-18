@@ -643,11 +643,9 @@ describe("FunctionsEmulator-Hub", () => {
       .then((res) => {
         // TODO(b/216642962): Add tests for this endpoint that validate behavior when there are Extensions running
         const expectedDirectory = path.resolve(`${__dirname}/../..`);
-        expect(res.body.backends).to.deep.equal([
-          {
-            directory: expectedDirectory,
-            env: {},
-            functionTriggers: [
+        expect(res.body.backends.length).to.equal(1);
+        expect(res.body.backends[0].functionTriggers).to.deep.equal(
+          [
               {
                 entryPoint: "function_id",
                 httpsTrigger: {},
@@ -712,9 +710,8 @@ describe("FunctionsEmulator-Hub", () => {
                   },
                 ],
               },
-            ],
-          },
-        ]);
+            ]
+        );
       });
   }).timeout(TIMEOUT_LONG);
 
