@@ -52,7 +52,6 @@ jobs:
   integration:
     needs: unit
     if: github.event_name == 'push'
-    runs-on: ubuntu-latest
 
     env:
       FIREBASE_CLI_PREVIEWS: none
@@ -67,6 +66,9 @@ jobs:
       matrix:
         node-version:
           - "16"
+        os: 
+          - ubuntu-latest
+          - windows-latest
         script:
           - npm run test:hosting
           - npm run test:client-integration
