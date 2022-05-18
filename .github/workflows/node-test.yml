@@ -141,7 +141,7 @@ jobs:
 
       - run: npm i -g npm@8.7
       - run: npm ci
-      - run: echo | set /p dummyname=${{ secrets.service_account_json_base64 }} > tmp.txt
+      - run: echo | set /p dummyname="${{ secrets.service_account_json_base64 }}" > tmp.txt
       - run: certutil -decode tmp.txt scripts/service-account.json
       - run: ${{ matrix.script }}
 
