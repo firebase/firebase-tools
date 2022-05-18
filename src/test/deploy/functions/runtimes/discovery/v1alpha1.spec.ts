@@ -2,9 +2,11 @@ import { expect } from "chai";
 
 import { FirebaseError } from "../../../../../error";
 import * as backend from "../../../../../deploy/functions/backend";
+import * as build from "../../../../../deploy/functions/build";
 import { Runtime } from "../../../../../deploy/functions/runtimes";
 import * as v1alpha1 from "../../../../../deploy/functions/runtimes/discovery/v1alpha1";
 import { BEFORE_CREATE_EVENT } from "../../../../../functions/events/v1";
+import { BucketBuilder } from "firebase-functions/v1/storage";
 
 const PROJECT = "project";
 const REGION = "region";
@@ -12,6 +14,361 @@ const RUNTIME: Runtime = "node14";
 const MIN_ENDPOINT: Omit<v1alpha1.ManifestEndpoint, "httpsTrigger"> = {
   entryPoint: "entryPoint",
 };
+
+describe("buildFromV1Alpha", () => {
+  describe("Endpoint keys", () => {
+    const DEFAULTED_BACKEND_ENDPOINT: Omit<
+      backend.Endpoint,
+      "httpsTrigger" | "secretEnvironmentVariables"
+    > = {
+      ...MIN_ENDPOINT,
+      platform: "gcfv2",
+      id: "id",
+      project: PROJECT,
+      region: REGION,
+      runtime: RUNTIME,
+      serviceAccountEmail: "default",
+      timeoutSeconds: 60,
+    };
+    const DEFAULTED_ENDPOINT: Omit<build.Endpoint, "httpsTrigger" | "secretEnvironmentVariables"> =
+      {
+        ...MIN_ENDPOINT,
+        platform: "gcfv2",
+        project: PROJECT,
+        region: [REGION],
+        runtime: RUNTIME,
+        serviceAccount: "default",
+      };
+
+    it("fills default backend and function fields", () => {
+      const yaml: v1alpha1.Manifest = {
+        specVersion: "v1alpha1",
+        endpoints: {
+          id: {
+            ...MIN_ENDPOINT,
+            httpsTrigger: {},
+          },
+        },
+      };
+      const parsed = v1alpha1.buildFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME);
+      const expected: build.Build = build.of({ id: { ...DEFAULTED_ENDPOINT, httpsTrigger: {} } });
+      expect(parsed).to.deep.equal(expected);
+
+      const expectedBackend: backend.Backend = backend.of({
+        ...DEFAULTED_BACKEND_ENDPOINT,
+        httpsTrigger: {},
+      });
+      expect(build.resolveBackend(parsed, {})).to.deep.equal(expectedBackend);
+    });
+
+    it("copies schedules", () => {
+      const scheduleBackendTrigger: backend.ScheduleTrigger = {
+        schedule: "every 5 minutes",
+        timeZone: "America/Los_Angeles",
+        retryConfig: {
+          retryCount: 20,
+          minBackoffDuration: "1s",
+          maxBackoffDuration: "20s",
+          maxRetryDuration: "120s",
+          maxDoublings: 10,
+        },
+      };
+      const scheduleTrigger: build.ScheduleTrigger = {
+        schedule: "every 5 minutes",
+        timeZone: "America/Los_Angeles",
+        retryConfig: {
+          retryCount: 20,
+          minBackoffSeconds: 1,
+          maxBackoffSeconds: 20,
+          maxRetrySeconds: 120,
+          maxDoublings: 10,
+        },
+      };
+
+      const yaml: v1alpha1.Manifest = {
+        specVersion: "v1alpha1",
+        endpoints: {
+          id: {
+            ...MIN_ENDPOINT,
+            scheduleTrigger: scheduleBackendTrigger,
+          },
+        },
+      };
+
+      const parsed = v1alpha1.buildFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME);
+      const expected: build.Build = build.of({ id: { ...DEFAULTED_ENDPOINT, scheduleTrigger } });
+      expect(parsed).to.deep.equal(expected);
+
+      const expectedBackend = backend.of({
+        ...DEFAULTED_BACKEND_ENDPOINT,
+        scheduleTrigger: scheduleBackendTrigger,
+      });
+      expect(build.resolveBackend(parsed, {})).to.deep.equal(expectedBackend);
+    });
+
+    it("copies event triggers", () => {
+      const eventTrigger: backend.EventTrigger = {
+        eventType: "google.pubsub.topic.v1.publish",
+        eventFilters: { resource: "projects/project/topics/t" },
+        region: "us-central1",
+        serviceAccountEmail: "sa@",
+        retry: true,
+      };
+      const newFormatTrigger: build.EventTrigger = {
+        eventType: "google.pubsub.topic.v1.publish",
+        eventFilters: { resource: "projects/project/topics/t" },
+        region: "us-central1",
+        serviceAccount: "sa@",
+        retry: true,
+      };
+      const yaml: v1alpha1.Manifest = {
+        specVersion: "v1alpha1",
+        endpoints: {
+          id: {
+            ...MIN_ENDPOINT,
+            eventTrigger,
+          },
+        },
+      };
+
+      const parsed = v1alpha1.buildFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME);
+      const expected: build.Build = build.of({
+        id: { ...DEFAULTED_ENDPOINT, eventTrigger: newFormatTrigger },
+      });
+      expect(parsed).to.deep.equal(expected);
+
+      const expectedBackend = backend.of({
+        ...DEFAULTED_BACKEND_ENDPOINT,
+        eventTrigger,
+      });
+      expect(build.resolveBackend(parsed, {})).to.deep.equal(expectedBackend);
+    });
+
+    it("copies event triggers with full resource path", () => {
+      const eventTrigger: backend.EventTrigger = {
+        eventType: "google.pubsub.topic.v1.publish",
+        eventFilters: { topic: "my-topic" },
+        region: "us-central1",
+        serviceAccountEmail: "sa@",
+        retry: true,
+      };
+      const newFormatTrigger: build.EventTrigger = {
+        eventType: "google.pubsub.topic.v1.publish",
+        eventFilters: { topic: "my-topic" },
+        region: "us-central1",
+        serviceAccount: "sa@",
+        retry: true,
+      };
+      const yaml: v1alpha1.Manifest = {
+        specVersion: "v1alpha1",
+        endpoints: {
+          id: {
+            ...MIN_ENDPOINT,
+            eventTrigger,
+          },
+        },
+      };
+
+      const parsed = v1alpha1.buildFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME);
+      const expected = build.of({
+        id: {
+          ...DEFAULTED_ENDPOINT,
+          eventTrigger: {
+            ...newFormatTrigger,
+            eventFilters: { topic: `projects/${PROJECT}/topics/my-topic` },
+          },
+        },
+      });
+      expect(parsed).to.deep.equal(expected);
+
+      const expectedBackend = backend.of({
+        ...DEFAULTED_BACKEND_ENDPOINT,
+        eventTrigger: {
+          ...eventTrigger,
+          eventFilters: { topic: `projects/${PROJECT}/topics/my-topic` },
+        },
+      });
+      expect(build.resolveBackend(parsed, {})).to.deep.equal(expectedBackend);
+    });
+
+    /* TODO(vsfan): Enable these when blocking triggers are implemented in the Build type
+    it("copies blocking triggers", () => {
+      const blockingTrigger: backend.BlockingTrigger = {
+        eventType: BEFORE_CREATE_EVENT,
+        options: {
+          accessToken: true,
+          idToken: false,
+          refreshToken: true,
+        },
+      };
+      const yaml: v1alpha1.Manifest = {
+        specVersion: "v1alpha1",
+        endpoints: {
+          id: {
+            ...MIN_ENDPOINT,
+            blockingTrigger,
+          },
+        },
+      };
+
+      const parsed = v1alpha1.buildFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME);
+      const expected: build.Build = build.of({"id":{ ...DEFAULTED_ENDPOINT, blockingTrigger }})
+      expect(parsed).to.deep.equal(expected);
+
+      const expectedBackend = backend.of({
+        ...DEFAULTED_BACKEND_ENDPOINT,
+        blockingTrigger: {
+          ...blockingTrigger,
+        },
+      });
+      expect(build.resolveBackend(parsed, {})).to.deep.equal(expectedBackend);
+    });
+
+    it("copies blocking triggers without options", () => {
+      const blockingTrigger: backend.BlockingTrigger = {
+        eventType: BEFORE_CREATE_EVENT,
+      };
+      const yaml: v1alpha1.Manifest = {
+        specVersion: "v1alpha1",
+        endpoints: {
+          id: {
+            ...MIN_ENDPOINT,
+            blockingTrigger,
+          },
+        },
+      };
+
+      const parsed = v1alpha1.buildFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME);
+      const expected: build.Build = build.of({"id":{ ...DEFAULTED_ENDPOINT, blockingTrigger }})
+      expect(parsed).to.deep.equal(expected);
+
+      const expectedBackend = backend.of({
+        ...DEFAULTED_BACKEND_ENDPOINT,
+        blockingTrigger: {
+          ...blockingTrigger,
+        },
+      });
+      expect(build.resolveBackend(parsed, {})).to.deep.equal(expectedBackend);
+    });
+    */
+
+    it("copies optional fields", () => {
+      const fields: backend.ServiceConfiguration = {
+        concurrency: 42,
+        labels: { hello: "world" },
+        environmentVariables: { foo: "bar" },
+        availableMemoryMb: 256,
+        timeoutSeconds: 60,
+        maxInstances: 20,
+        minInstances: 1,
+        vpc: {
+          connector: "hello",
+          egressSettings: "ALL_TRAFFIC",
+        },
+        ingressSettings: "ALLOW_INTERNAL_ONLY",
+        serviceAccountEmail: "sa@",
+        secretEnvironmentVariables: [
+          {
+            key: "SECRET",
+            secret: "SECRET",
+            projectId: "project",
+          },
+        ],
+      };
+
+      const yaml: v1alpha1.Manifest = {
+        specVersion: "v1alpha1",
+        endpoints: {
+          id: {
+            ...MIN_ENDPOINT,
+            httpsTrigger: {},
+            ...fields,
+            secretEnvironmentVariables: [
+              {
+                key: "SECRET",
+                // Missing "secret"
+                projectId: "project",
+              },
+            ],
+          },
+        },
+      };
+
+      const parsed = v1alpha1.buildFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME);
+      const expected: build.Build = build.of({
+        id: {
+          ...DEFAULTED_ENDPOINT,
+          httpsTrigger: {},
+          concurrency: 42,
+          labels: { hello: "world" },
+          environmentVariables: { foo: "bar" },
+          availableMemoryMb: 256,
+          timeoutSeconds: 60,
+          maxInstances: 20,
+          minInstances: 1,
+          vpc: {
+            connector: "hello",
+            egressSettings: "ALL_TRAFFIC",
+          },
+          ingressSettings: "ALLOW_INTERNAL_ONLY",
+          serviceAccount: "sa@",
+          secretEnvironmentVariables: [
+            {
+              key: "SECRET",
+              secret: "SECRET",
+              projectId: "project",
+            },
+          ],
+        },
+      });
+      expect(parsed).to.deep.equal(expected);
+
+      const expectedBackend = backend.of({
+        ...DEFAULTED_BACKEND_ENDPOINT,
+        httpsTrigger: {},
+        ...fields,
+      });
+      expect(build.resolveBackend(parsed, {})).to.deep.equal(expectedBackend);
+    });
+
+    it("handles multiple regions", () => {
+      const yaml: v1alpha1.Manifest = {
+        specVersion: "v1alpha1",
+        endpoints: {
+          id: {
+            ...MIN_ENDPOINT,
+            httpsTrigger: {},
+            region: ["region1", "region2"],
+          },
+        },
+      };
+
+      const parsed = v1alpha1.buildFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME);
+      const expected = build.of({
+        id: {
+          ...DEFAULTED_ENDPOINT,
+          httpsTrigger: {},
+          region: ["region1", "region2"],
+        },
+      });
+      expect(parsed).to.deep.equal(expected);
+
+      const expectedBackend = backend.of(
+        {
+          ...DEFAULTED_BACKEND_ENDPOINT,
+          httpsTrigger: {},
+          region: "region1",
+        },
+        {
+          ...DEFAULTED_BACKEND_ENDPOINT,
+          httpsTrigger: {},
+          region: "region2",
+        }
+      );
+      expect(build.resolveBackend(parsed, {})).to.deep.equal(expectedBackend);
+    });
+  });
+});
 
 describe("backendFromV1Alpha1", () => {
   describe("parser errors", () => {

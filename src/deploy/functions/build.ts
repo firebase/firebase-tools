@@ -124,16 +124,20 @@ export interface EventTrigger {
   // will cause the "invoker" role to be granted to this service account on the endpoint
   // (Function or Route)
   serviceAccount?: ServiceAccount | null;
+
+  // The name of the channel where the function receives events.
+  // Must be provided to receive CF3v2 custom events.
+  channel?: string;
 }
 
-interface TaskQueueRateLimits {
+export interface TaskQueueRateLimits {
   maxConcurrentDispatches?: Field<number>;
   maxDispatchesPerSecond?: Field<number>;
 }
 
-interface TaskQueueRetryConfig {
+export interface TaskQueueRetryConfig {
   maxAttempts?: Field<number>;
-  maxRetryDurationSeconds: Field<number>;
+  maxRetryDurationSeconds?: Field<number>;
   minBackoffSeconds?: Field<number>;
   maxBackoffSeconds?: Field<number>;
   maxDoublings?: Field<number>;
@@ -147,7 +151,7 @@ export interface TaskQueueTrigger {
   invoker?: Array<ServiceAccount | Expression<string>> | null;
 }
 
-interface ScheduleRetryConfig {
+export interface ScheduleRetryConfig {
   retryCount?: Field<number>;
   maxRetrySeconds?: Field<number>;
   minBackoffSeconds?: Field<number>;
@@ -169,9 +173,15 @@ export type Triggered =
   | { scheduleTrigger: ScheduleTrigger }
   | { taskQueueTrigger: TaskQueueTrigger };
 
-interface VpcSettings {
+export interface VpcSettings {
   connector: string | Expression<string>;
   egressSettings?: "PRIVATE_RANGES_ONLY" | "ALL_TRAFFIC";
+}
+
+export interface SecretEnvVar {
+  key: string; // The environment variable this secret is accessible at
+  secret: string; // The id of the SecretVersion - ie for projects/myproject/secrets/mysecret, this is 'mysecret'
+  projectId: string; // The project containing the Secret
 }
 
 export type Endpoint = Triggered & {
@@ -217,6 +227,7 @@ export type Endpoint = Triggered & {
   ingressSettings?: "ALLOW_ALL" | "ALLOW_INTERNAL_ONLY" | "ALLOW_INTERNAL_AND_GCLB" | null;
 
   environmentVariables?: Record<string, string | Expression<string>>;
+  secretEnvironmentVariables?: SecretEnvVar[];
   labels?: Record<string, string | Expression<string>>;
 };
 
@@ -309,7 +320,7 @@ export function resolveBackend(build: Build, userEnvs: Record<string, string>): 
         "environmentVariables",
         "labels"
       );
-      // proto.copyIfPresent(bkEndpoint, endpoint, "secretEnvironmentVariables");
+      proto.copyIfPresent(bkEndpoint, endpoint, "secretEnvironmentVariables");
       if (endpoint.vpc) {
         bkEndpoint.vpc = {
           // $REGION is a token in the Build VPC connector because Build endpoints can have multiple regions, so we unroll here
@@ -366,13 +377,29 @@ function discoverTrigger(endpoint: Endpoint): backend.Triggered {
       schedule: resolveString(endpoint.scheduleTrigger.schedule),
       timeZone: resolveString(endpoint.scheduleTrigger.timeZone),
     };
-    proto.renameIfPresent(
-      bkSchedule,
-      endpoint.scheduleTrigger,
-      "retryConfig",
-      "retryConfig",
-      resolveInt
+    const bkRetry: backend.ScheduleRetryConfig = {};
+    if (endpoint.scheduleTrigger.retryConfig.maxBackoffSeconds) {
+      bkRetry.maxBackoffDuration = proto.durationFromSeconds(
+        resolveInt(endpoint.scheduleTrigger.retryConfig.maxBackoffSeconds)
+      );
+    }
+    if (endpoint.scheduleTrigger.retryConfig.minBackoffSeconds) {
+      bkRetry.minBackoffDuration = proto.durationFromSeconds(
+        resolveInt(endpoint.scheduleTrigger.retryConfig.minBackoffSeconds)
+      );
+    }
+    if (endpoint.scheduleTrigger.retryConfig.maxRetrySeconds) {
+      bkRetry.maxRetryDuration = proto.durationFromSeconds(
+        resolveInt(endpoint.scheduleTrigger.retryConfig.maxRetrySeconds)
+      );
+    }
+    proto.copyIfPresent(
+      bkRetry,
+      endpoint.scheduleTrigger.retryConfig,
+      "retryCount",
+      "maxDoublings"
     );
+    bkSchedule.retryConfig = bkRetry;
     trigger = { scheduleTrigger: bkSchedule };
   } else if ("taskQueueTrigger" in endpoint) {
     const bkTaskQueue: backend.TaskQueueTrigger = {};
