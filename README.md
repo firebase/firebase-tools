@@ -139,6 +139,7 @@ Detailed doc is [here](https://firebase.google.com/docs/cli/auth).
 | Command                       | Description                                                                                                  |
 | ----------------------------- | ------------------------------------------------------------------------------------------------------------ |
 | **functions:log**             | Read logs from deployed Cloud Functions.                                                                     |
+| **functions:list**            | List all deployed functions in your Firebase project.                                                        |
 | **functions:config:set**      | Store runtime configuration values for the current project's Cloud Functions.                                |
 | **functions:config:get**      | Retrieve existing configuration values for the current project's Cloud Functions.                            |
 | **functions:config:unset**    | Remove values from the current project's runtime configuration.                                              |
