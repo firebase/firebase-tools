@@ -139,7 +139,7 @@ jobs:
           key: ${{ runner.os }}-firebase-emulators-${{ hashFiles('emulator-cache/**') }}
         continue-on-error: true
 
-      - run: echo | set /p="${{ secrets.service_account_json_base64 }}" > tmp.txt
+      - run: <NUL set /p="${{ secrets.service_account_json_base64 }}" > tmp.txt
       - run: npm i -g npm@8.7
       - run: npm ci
       - run: certutil -decode tmp.txt scripts/service-account.json
