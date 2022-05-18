@@ -25,7 +25,7 @@ import {
 import * as chokidar from "chokidar";
 
 import * as spawn from "cross-spawn";
-import { ChildProcess, spawnSync } from "child_process";
+import { ChildProcess } from "child_process";
 import {
   EmulatedTriggerDefinition,
   SignatureType,
@@ -995,7 +995,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     // Next check if we have a Node install in the node_modules folder
     try {
-      const localNodeOutput = spawnSync(localNodePath, ["--version"]).stdout.toString();
+      const localNodeOutput = spawn.sync(localNodePath, ["--version"]).stdout.toString();
       localMajorVersion = localNodeOutput.slice(1).split(".")[0];
     } catch (err: any) {
       // Will happen if we haven't asked about local version yet
