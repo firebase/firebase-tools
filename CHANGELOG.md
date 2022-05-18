@@ -1,0 +1,1 @@
+- Replaces deprecated `tweetsodium` with `libsodium-wrappers`.
