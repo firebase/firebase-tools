@@ -100,7 +100,6 @@ jobs:
         run: find . -type f -name "*debug.log" | xargs cat
 
   integration-windows:
-    needs: unit
     if: github.event_name == 'push'
     runs-on: windows-latest
 
@@ -142,12 +141,12 @@ jobs:
 
       - run: npm i -g npm@8.7
       - run: npm ci
-      - run: echo ${{ secrets.service_account_json_base64 }} | certutil -decode -d > ./scripts/service-account.json
+      - run: echo ${{ secrets.service_account_json_base64 }} | certutil -decode -d > scripts/service-account.json
       - run: ${{ matrix.script }}
 
       - name: Print debug logs
         if: failure()
-        run: Find-ChildItem . -Type f -name "*debug.log" | FORFILES type
+        run: dir *debug.log /b/s | FORFILES type
 
   check-package-lock:
     runs-on: ubuntu-latest
