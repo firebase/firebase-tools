@@ -146,7 +146,7 @@ jobs:
 
       - name: Print debug logs
         if: failure()
-        run: dir *debug.log /b/s | FORFILES type
+        run: dir *debug.log /b/s | FORFILES /C type
 
   check-package-lock:
     runs-on: ubuntu-latest
