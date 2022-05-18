@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -e
 
-if [ "$CI" = "true" ]; then
+echo "$OSTYPE"
+if [ "$CI" = "true"  &&  "$OSTYPE" != *"MSYS"*]; then
   echo "Running sudo npm link..."
   sudo npm link
 else
