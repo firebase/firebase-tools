@@ -114,7 +114,7 @@ function parseTriggers(
       execArgv: execArgv,
     });
 
-    parser.on("message", (message) => {
+    parser.on("message", (message: { triggers?: any; error?: any }) => {
       if (message.triggers) {
         resolve(message.triggers);
       } else if (message.error) {
