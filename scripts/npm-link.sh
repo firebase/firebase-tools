@@ -2,7 +2,7 @@
 set -e
 
 echo "$OSTYPE"
-if [ "$CI" = "true"  &&  "$OSTYPE" != *"MSYS"*]; then
+if [ "$CI" = "true"  &&  "$OSTYPE" != *"MSYS"* ]; then
   echo "Running sudo npm link..."
   sudo npm link
 else
