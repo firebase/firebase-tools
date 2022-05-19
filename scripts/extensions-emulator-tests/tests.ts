@@ -85,8 +85,12 @@ describe("CF3 and Extensions emulator", () => {
     await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS));
     const fileResized = await admin.storage().bucket().file(STORAGE_RESIZED_FILE_NAME).exists();
     expect(fileResized[0]).to.be.true;
-    const eventFired = await admin.firestore().collection('resizedImages').doc(STORAGE_FILE_NAME).get()
+    const eventFired = await admin
+      .firestore()
+      .collection("resizedImages")
+      .doc(STORAGE_FILE_NAME)
+      .get();
     expect(eventFired.exists).to.be.true;
-    expect(eventFired.data()?.eventHandlerFired).to.be.true;    
+    expect(eventFired.data()?.eventHandlerFired).to.be.true;
   });
 });

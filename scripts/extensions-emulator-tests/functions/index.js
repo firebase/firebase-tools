@@ -16,9 +16,13 @@ exports.eventhandler = onCustomEventPublished(
   {
     eventType: "firebase.extensions.storage-resize-images.v1.complete",
     channel: `locations/us-west1/channels/firebase`,
-    region: "us-west1"
+    region: "us-west1",
   },
   (event) => {
-    admin.firestore().collection('resizedImages').doc(STORAGE_FILE_NAME).set({eventHandlerFired: true})
+    admin
+      .firestore()
+      .collection("resizedImages")
+      .doc(STORAGE_FILE_NAME)
+      .set({ eventHandlerFired: true });
   }
 );
