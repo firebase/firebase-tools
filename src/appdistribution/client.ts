@@ -121,9 +121,7 @@ export class AppDistributionClient {
     const queryParams = { updateMask: "release_notes.text" };
 
     try {
-      await this.appDistroV2Client.patch(`/${releaseName}?updateMask=release_notes.text`, data, {
-        queryParams,
-      });
+      await this.appDistroV2Client.patch(`/${releaseName}`, data, { queryParams });
     } catch (err: any) {
       throw new FirebaseError(`failed to update release notes with ${err?.message}`);
     }

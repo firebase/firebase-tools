@@ -22,6 +22,7 @@ export async function getEtag(projectNumber: string, versionNumber?: string): Pr
   const response = await client.request<void, void>({
     method: "GET",
     path: reqPath,
+    queryParams,
     headers: { "Accept-Encoding": "gzip" },
     timeout: TIMEOUT,
   });
