@@ -140,14 +140,14 @@ jobs:
         continue-on-error: true
 
       - run: echo ${{ secrets.service_account_json_base64 }} > tmp.txt
+      - run: certutil -decode tmp.txt scripts/service-account.json
       - run: npm i -g npm@8.7
       - run: npm ci
-      - run: certutil -decode tmp.txt scripts/service-account.json
       - run: ${{ matrix.script }}
 
       - name: Print debug logs
         if: failure()
-        run: dir *debug.log /b/s ##| FORFILES /C type
+        run: echo "find . -type f -name "*debug.log" | xargs cat" > tmp.sh && bash tmp.sh
 
   check-package-lock:
     runs-on: ubuntu-latest
