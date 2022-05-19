@@ -147,7 +147,7 @@ jobs:
 
       - name: Print debug logs
         if: failure()
-        run: echo "find . -type f -name "*debug.log" | xargs cat" > tmp.sh && bash tmp.sh
+        run: echo `find . -type f -name "*debug.log" | xargs cat` > tmp.sh && bash tmp.sh
 
   check-package-lock:
     runs-on: ubuntu-latest
