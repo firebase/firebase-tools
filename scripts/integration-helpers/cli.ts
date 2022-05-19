@@ -1,7 +1,8 @@
-import * as subprocess from "child_process";
+import { ChildProcess } from "child_process";
+import * as spawn from "cross-spawn";
 
 export class CLIProcess {
-  process?: subprocess.ChildProcess;
+  process?: ChildProcess;
 
   constructor(private readonly name: string, private readonly workdir: string) {}
 
@@ -17,7 +18,7 @@ export class CLIProcess {
       args.push(...additionalArgs);
     }
 
-    const p = subprocess.spawn("firebase", args, { cwd: this.workdir });
+    const p = spawn("firebase", args, { cwd: this.workdir });
     if (!p) {
       throw new Error("Failed to start firebase CLI");
     }
