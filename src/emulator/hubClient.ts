@@ -4,11 +4,9 @@ import { Client } from "../apiv2";
 
 export class EmulatorHubClient {
   private locator: Locator | undefined;
-  private apiClient: Client;
 
   constructor(private projectId: string) {
     this.locator = EmulatorHub.readLocatorFile(projectId);
-    this.apiClient = new Client({ urlPrefix: this.origin, auth: false });
   }
 
   foundHub(): boolean {
@@ -16,16 +14,19 @@ export class EmulatorHubClient {
   }
 
   async getStatus(): Promise<void> {
-    await this.apiClient.get("/");
+    const apiClient = new Client({ urlPrefix: this.origin, auth: false });
+    await apiClient.get("/");
   }
 
   async getEmulators(): Promise<GetEmulatorsResponse> {
-    const res = await this.apiClient.get<GetEmulatorsResponse>(EmulatorHub.PATH_EMULATORS);
+    const apiClient = new Client({ urlPrefix: this.origin, auth: false });
+    const res = await apiClient.get<GetEmulatorsResponse>(EmulatorHub.PATH_EMULATORS);
     return res.body;
   }
 
   async postExport(path: string): Promise<void> {
-    await this.apiClient.post(EmulatorHub.PATH_EXPORT, { path });
+    const apiClient = new Client({ urlPrefix: this.origin, auth: false });
+    await apiClient.post(EmulatorHub.PATH_EXPORT, { path });
   }
 
   get origin(): string {

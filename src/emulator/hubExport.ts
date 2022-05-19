@@ -140,7 +140,7 @@ export class HubExport {
   private async exportDatabase(metadata: ExportMetadata): Promise<void> {
     const databaseEmulator = EmulatorRegistry.get(Emulators.DATABASE) as DatabaseEmulator;
     const databaseAddr = `http://${EmulatorRegistry.getInfoHostString(databaseEmulator.getInfo())}`;
-    const client = new Client({ urlPrefix: databaseAddr, auth: false });
+    const client = new Client({ urlPrefix: databaseAddr, auth: true });
 
     // Get the list of namespaces
     const inspectURL = `/.inspect/databases.json`;
