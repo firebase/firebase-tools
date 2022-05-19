@@ -1,14 +1,14 @@
 import * as clc from "cli-color";
+import * as FormData from "form-data";
 import * as fs from "fs";
-import * as jwt from "jsonwebtoken";
 import * as http from "http";
+import * as jwt from "jsonwebtoken";
 import * as opn from "open";
 import * as path from "path";
 import * as portfinder from "portfinder";
 import * as url from "url";
 import * as util from "util";
 
-import * as api from "./api";
 import * as apiv2 from "./apiv2";
 import { configstore } from "./configstore";
 import { FirebaseError } from "./error";
@@ -21,6 +21,17 @@ import { v4 as uuidv4 } from "uuid";
 import { randomBytes, createHash } from "crypto";
 import { bold } from "cli-color";
 import { track } from "./track";
+import {
+  authOrigin,
+  authProxyOrigin,
+  clientId,
+  clientSecret,
+  githubClientId,
+  githubClientSecret,
+  githubOrigin,
+  googleOrigin,
+} from "./api";
+import { stream } from "winston";
 
 /* eslint-disable camelcase */
 // The wire protocol for an access token returned by Google.
@@ -163,7 +174,6 @@ export function setActiveAccount(options: any, account: Account) {
  * @param token refresh token string
  */
 export function setRefreshToken(token: string) {
-  api.setRefreshToken(token);
   apiv2.setRefreshToken(token);
 }
 
@@ -315,10 +325,10 @@ function queryParamString(args: { [key: string]: string | undefined }) {
 
 function getLoginUrl(callbackUrl: string, userHint?: string) {
   return (
-    api.authOrigin +
+    authOrigin +
     "/o/oauth2/auth?" +
     queryParamString({
-      client_id: api.clientId,
+      client_id: clientId,
       scope: SCOPES.join(" "),
       response_type: "code",
       state: _nonce,
@@ -333,15 +343,10 @@ async function getTokensFromAuthorizationCode(
   callbackUrl: string,
   verifier?: string
 ) {
-  let res: {
-    body?: TokensWithTTL;
-    statusCode: number;
-  };
-
   const params: Record<string, string> = {
     code: code,
-    client_id: api.clientId,
-    client_secret: api.clientSecret,
+    client_id: clientId,
+    client_secret: clientSecret,
     redirect_uri: callbackUrl,
     grant_type: "authorization_code",
   };
@@ -350,10 +355,19 @@ async function getTokensFromAuthorizationCode(
     params["code_verifier"] = verifier;
   }
 
+  let res: apiv2.ClientResponse<NodeJS.ReadableStream>;
   try {
-    res = await api.request("POST", "/o/oauth2/token", {
-      origin: api.authOrigin,
-      form: params,
+    const client = new apiv2.Client({ urlPrefix: authOrigin, auth: false });
+    const form = new FormData();
+    for (const [k, v] of Object.entries(params)) {
+      form.append(k, v);
+    }
+    res = await client.request<any, NodeJS.ReadableStream>({
+      method: "POST",
+      path: "/o/oauth2/token",
+      body: form,
+      responseType: "stream",
+      resolveOnHTTPError: true,
     });
   } catch (err: any) {
     if (err instanceof Error) {
@@ -363,15 +377,16 @@ async function getTokensFromAuthorizationCode(
     }
     throw invalidCredentialError();
   }
-  if (!res?.body?.access_token && !res?.body?.refresh_token) {
-    logger.debug("Token Fetch Error:", res.statusCode, res.body);
+  const body: TokensWithTTL = JSON.parse(await utils.streamToString(res.body));
+  if (!body.access_token && !body.refresh_token) {
+    logger.debug("Token Fetch Error:", res.status, res.body);
     throw invalidCredentialError();
   }
   lastAccessToken = Object.assign(
     {
-      expires_at: Date.now() + res!.body!.expires_in! * 1000,
+      expires_at: Date.now() + body.expires_in! * 1000,
     },
-    res.body
+    body
   );
   return lastAccessToken;
 }
@@ -380,10 +395,10 @@ const GITHUB_SCOPES = ["read:user", "repo", "public_repo"];
 
 function getGithubLoginUrl(callbackUrl: string) {
   return (
-    api.githubOrigin +
+    githubOrigin +
     "/login/oauth/authorize?" +
     queryParamString({
-      client_id: api.githubClientId,
+      client_id: githubClientId,
       state: _nonce,
       redirect_uri: callbackUrl,
       scope: GITHUB_SCOPES.join(" "),
@@ -392,17 +407,26 @@ function getGithubLoginUrl(callbackUrl: string) {
 }
 
 async function getGithubTokensFromAuthorizationCode(code: string, callbackUrl: string) {
-  const res: { body: GitHubAuthResponse } = await api.request("POST", "/login/oauth/access_token", {
-    origin: api.githubOrigin,
-    form: {
-      client_id: api.githubClientId,
-      client_secret: api.githubClientSecret,
-      code,
-      redirect_uri: callbackUrl,
-      state: _nonce,
-    },
+  const client = new apiv2.Client({ urlPrefix: githubOrigin, auth: false });
+  const data = {
+    client_id: githubClientId,
+    client_secret: githubClientSecret,
+    code,
+    redirect_uri: callbackUrl,
+    state: _nonce,
+  };
+  const form = new FormData();
+  for (const [k, v] of Object.entries(data)) {
+    form.append(k, v);
+  }
+  const res = await client.request<any, GitHubAuthResponse>({
+    method: "POST",
+    path: "/login/oauth/access_token",
+    body: form,
+    responseType: "stream",
+    resolveOnHTTPError: true,
   });
-  return res.body.access_token as string;
+  return res.body.access_token;
 }
 
 async function respondWithFile(
@@ -426,7 +450,7 @@ function urlsafeBase64(base64string: string) {
 
 async function loginRemotely(userHint?: string): Promise<UserCredentials> {
   const authProxyClient = new apiv2.Client({
-    urlPrefix: api.authProxyOrigin,
+    urlPrefix: authProxyOrigin,
     auth: false,
   });
 
@@ -441,7 +465,7 @@ async function loginRemotely(userHint?: string): Promise<UserCredentials> {
     })
   ).body?.token;
 
-  const loginUrl = `${api.authProxyOrigin}/login?code_challenge=${codeChallenge}&session=${sessionId}&attest=${attestToken}`;
+  const loginUrl = `${authProxyOrigin}/login?code_challenge=${codeChallenge}&session=${sessionId}&attest=${attestToken}`;
 
   logger.info();
   logger.info("To sign in to the Firebase CLI:");
@@ -465,7 +489,7 @@ async function loginRemotely(userHint?: string): Promise<UserCredentials> {
   try {
     const tokens = await getTokensFromAuthorizationCode(
       code,
-      `${api.authProxyOrigin}/complete`,
+      `${authProxyOrigin}/complete`,
       codeVerifier
     );
 
@@ -668,16 +692,25 @@ async function refreshTokens(
 ): Promise<TokensWithExpiration> {
   logger.debug("> refreshing access token with scopes:", JSON.stringify(authScopes));
   try {
-    const res = await api.request("POST", "/oauth2/v3/token", {
-      origin: api.googleOrigin,
-      form: {
-        refresh_token: refreshToken,
-        client_id: api.clientId,
-        client_secret: api.clientSecret,
-        grant_type: "refresh_token",
-        scope: (authScopes || []).join(" "),
-      },
-      logOptions: { skipRequestBody: true, skipQueryParams: true, skipResponseBody: true },
+    const client = new apiv2.Client({ urlPrefix: googleOrigin, auth: false });
+    const data = {
+      refresh_token: refreshToken,
+      client_id: clientId,
+      client_secret: clientSecret,
+      grant_type: "refresh_token",
+      scope: (authScopes || []).join(" "),
+    };
+    const form = new FormData();
+    for (const [k, v] of Object.entries(data)) {
+      form.append(k, v);
+    }
+    const res = await client.request<any, any>({
+      method: "POST",
+      path: "/oauth2/v3/token",
+      body: form,
+      responseType: "stream",
+      skipLog: { body: true, queryParams: true, resBody: true },
+      resolveOnHTTPError: true,
     });
     if (res.status === 401 || res.status === 400) {
       // Support --token <token> commands. In this case we won't have an expiration
@@ -734,12 +767,8 @@ export async function logout(refreshToken: string) {
   }
   logoutCurrentSession(refreshToken);
   try {
-    await api.request("GET", "/o/oauth2/revoke", {
-      origin: api.authOrigin,
-      data: {
-        token: refreshToken,
-      },
-    });
+    const client = new apiv2.Client({ urlPrefix: authOrigin, auth: false });
+    await client.get("/o/oauth2/revoke", { queryParams: { token: refreshToken } });
   } catch (thrown: any) {
     const err: Error = thrown instanceof Error ? thrown : new Error(thrown);
     throw new FirebaseError("Authentication Error.", {
