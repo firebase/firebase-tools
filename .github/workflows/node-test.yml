@@ -129,6 +129,7 @@ jobs:
         uses: actions/setup-java@v3.3.0
         with:
           java-version: 17
+          distribution: temurin
 
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
