@@ -4,7 +4,8 @@ import * as utils from "../utils";
 import * as operationPoller from "../operation-poller";
 import { Distribution } from "./distribution";
 import { FirebaseError } from "../error";
-import { Client, ClientResponse } from "../apiv2";
+import { Client } from "../apiv2";
+import { ReadStream } from "fs";
 
 /**
  * Helper interface for an app that is provisioned with App Distribution
@@ -70,28 +71,24 @@ export class AppDistributionClient {
   });
 
   async getAabInfo(appName: string): Promise<AabInfo> {
-    const apiResponse = await api.request("GET", `/v1/${appName}/aabInfo`, {
-      origin: api.appDistributionOrigin,
-      auth: true,
-    });
-
-    return _.get(apiResponse, "body");
+    const apiResponse = await this.appDistroV2Client.get<AabInfo>(`/${appName}/aabInfo`);
+    return apiResponse.body;
   }
 
   async uploadRelease(appName: string, distribution: Distribution): Promise<string> {
-    const apiResponse = await api.request("POST", `/upload/v1/${appName}/releases:upload`, {
-      auth: true,
-      origin: api.appDistributionOrigin,
+    const client = new Client({ urlPrefix: api.appDistributionOrigin });
+    const apiResponse = await client.request<ReadStream, { name: string }>({
+      method: "POST",
+      path: `/upload/v1/${appName}/releases:upload`,
       headers: {
         "X-Goog-Upload-File-Name": distribution.getFileName(),
         "X-Goog-Upload-Protocol": "raw",
         "Content-Type": "application/octet-stream",
       },
-      data: distribution.readStream(),
-      json: false,
+      responseType: "json",
+      body: distribution.readStream(),
     });
-
-    return _.get(JSON.parse(apiResponse.body), "name");
+    return apiResponse.body.name;
   }
 
   async pollUploadStatus(operationName: string): Promise<UploadReleaseResponse> {
