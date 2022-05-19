@@ -1,7 +1,6 @@
 import { Client } from "./apiv2";
 import { DatabaseInstance, populateInstanceDetails } from "./management/database";
 import { FirebaseError } from "./error";
-import { Options } from "./options";
 import { realtimeOriginOrCustomUrl } from "./database/api";
 import * as utils from "./utils";
 
@@ -14,9 +13,9 @@ export async function updateRules(
   src: any,
   options: { dryRun?: boolean } = {}
 ): Promise<void> {
-  let path = ".settings/rules.json";
+  const queryParams: { dryRun?: string } = {};
   if (options.dryRun) {
-    path += "?dryRun=true";
+    queryParams.dryRun = "true";
   }
   const downstreamOptions: {
     instance: string;
@@ -35,7 +34,8 @@ export async function updateRules(
   const client = new Client({ urlPrefix: origin });
   const response = await client.request<any, any>({
     method: "PUT",
-    path,
+    path: ".settings/rules.json",
+    queryParams,
     body: src,
     resolveOnHTTPError: true,
   });
