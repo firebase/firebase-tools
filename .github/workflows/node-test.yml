@@ -125,6 +125,11 @@ jobs:
           - npm run test:storage-deploy
           - npm run test:storage-emulator-integration
     steps:
+      - name: Setup Java JDK
+        uses: actions/setup-java@v3.3.0
+        with:
+          java-version: 17
+
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
         with:
