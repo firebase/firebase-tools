@@ -196,7 +196,7 @@ export class AppDistributionClient {
         { emails: string[] },
         BatchRemoveTestersResponse
       >({
-        method: "POST",
+        method: "DELETE",
         path: `${projectName}/testers:batchRemove`,
         body: { emails: emails },
       });
