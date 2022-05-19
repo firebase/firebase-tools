@@ -177,7 +177,7 @@ export class DatabaseEmulator implements EmulatorInstance {
       await client.put(`/.settings/rules.json`, content, {
         headers: { Authorization: "Bearer owner" },
         queryParams: { ns: instance },
-      })
+      });
     } catch (e: any) {
       // The body is already parsed as JSON
       if (e.context && e.context.body) {
