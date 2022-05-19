@@ -38,16 +38,16 @@ export class CLIProcess {
         const customCallback = (data: unknown): void => {
           if (logDoneFn(data)) {
             // eslint-disable-next-line @typescript-eslint/no-use-before-define
-            p.stdout.removeListener("close", customFailure);
+            p.stdout?.removeListener("close", customFailure);
             resolve();
           }
         };
         const customFailure = (): void => {
-          p.stdout.removeListener("data", customCallback);
+          p.stdout?.removeListener("data", customCallback);
           reject(new Error("failed to resolve startup before process.stdout closed"));
         };
-        p.stdout.on("data", customCallback);
-        p.stdout.on("close", customFailure);
+        p.stdout?.on("data", customCallback);
+        p.stdout?.on("close", customFailure);
       });
     } else {
       started = new Promise((resolve) => {
