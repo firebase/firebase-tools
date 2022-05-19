@@ -16,6 +16,7 @@ const TEST_SETUP_TIMEOUT = 120000;
 const EMULATORS_WRITE_DELAY_MS = 5000;
 const EMULATORS_SHUTDOWN_DELAY_MS = 25000;
 const EMULATOR_TEST_TIMEOUT = EMULATORS_WRITE_DELAY_MS * 2;
+const STORAGE_FILE_NAME = "test.png";
 const STORAGE_RESIZED_FILE_NAME = "test_200x200.png";
 
 function setUpExtensionsCache(): void {
@@ -49,8 +50,11 @@ describe("CF3 and Extensions emulator", () => {
     expect(FIREBASE_PROJECT).to.exist.and.not.be.empty;
 
     const config = readConfig();
-    const port = config.emulators!.storage.port;
-    process.env.STORAGE_EMULATOR_HOST = `http://localhost:${port}`;
+    const storagePort = config.emulators!.storage.port;
+    process.env.STORAGE_EMULATOR_HOST = `http://localhost:${storagePort}`;
+
+    const firestorePort = config.emulators!.firestore.port;
+    process.env.FIRESTORE_EMULATOR_HOST = `localhost:${firestorePort}`;
 
     test = new TriggerEndToEndTest(FIREBASE_PROJECT, __dirname, config);
     await test.startEmulators();
@@ -82,6 +86,10 @@ describe("CF3 and Extensions emulator", () => {
 
     const fileResized = await admin.storage().bucket().file(STORAGE_RESIZED_FILE_NAME).exists();
 
-    expect(fileResized[0]).to.be.true;
+    
+
+    const eventFired = await admin.firestore().collection('resizedImages').doc(STORAGE_FILE_NAME).get()
+    expect(eventFired.exists).to.be.true;
+    expect(eventFired.data()?.eventHandlerFired).to.be.true;    
   });
 });

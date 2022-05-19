@@ -12,13 +12,13 @@ exports.writeToDefaultStorage = functions.https.onRequest(async (req, res) => {
   res.json({ created: "ok" });
 });
 
-exports.eventHandler = onCustomEventPublished(
+exports.eventhandler = onCustomEventPublished(
   {
     eventType: "firebase.extensions.storage-resize-images.v1.complete",
-    channel: `projects/pavelj-extensions1/locations/us-west1/channels/firebase`,
+    channel: `locations/us-west1/channels/firebase`,
+    region: "us-west1"
   },
   (event) => {
-    //await admin.firestore().collection('resizedImages').doc()
-    console.log("Triggered on event: " + JSON.stringify(event));
+    admin.firestore().collection('resizedImages').doc(STORAGE_FILE_NAME).set({eventHandlerFired: true})
   }
 );
