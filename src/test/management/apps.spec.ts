@@ -64,7 +64,7 @@ function generateWebAppList(counts: number): WebAppMetadata[] {
   }));
 }
 
-describe.only("App management", () => {
+describe("App management", () => {
   let sandbox: sinon.SinonSandbox;
   let apiRequestStub: sinon.SinonStub;
   let pollOperationStub: sinon.SinonStub;
