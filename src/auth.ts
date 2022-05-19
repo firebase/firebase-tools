@@ -31,7 +31,6 @@ import {
   githubOrigin,
   googleOrigin,
 } from "./api";
-import { stream } from "winston";
 
 /* eslint-disable camelcase */
 // The wire protocol for an access token returned by Google.
@@ -355,19 +354,19 @@ async function getTokensFromAuthorizationCode(
     params["code_verifier"] = verifier;
   }
 
-  let res: apiv2.ClientResponse<NodeJS.ReadableStream>;
+  let res: apiv2.ClientResponse<TokensWithTTL>;
   try {
     const client = new apiv2.Client({ urlPrefix: authOrigin, auth: false });
     const form = new FormData();
     for (const [k, v] of Object.entries(params)) {
       form.append(k, v);
     }
-    res = await client.request<any, NodeJS.ReadableStream>({
+    res = await client.request<any, TokensWithTTL>({
       method: "POST",
       path: "/o/oauth2/token",
       body: form,
-      responseType: "stream",
-      resolveOnHTTPError: true,
+      headers: form.getHeaders(),
+      skipLog: { body: true, queryParams: true, resBody: true },
     });
   } catch (err: any) {
     if (err instanceof Error) {
@@ -377,16 +376,15 @@ async function getTokensFromAuthorizationCode(
     }
     throw invalidCredentialError();
   }
-  const body: TokensWithTTL = JSON.parse(await utils.streamToString(res.body));
-  if (!body.access_token && !body.refresh_token) {
+  if (!res.body.access_token && !res.body.refresh_token) {
     logger.debug("Token Fetch Error:", res.status, res.body);
     throw invalidCredentialError();
   }
   lastAccessToken = Object.assign(
     {
-      expires_at: Date.now() + body.expires_in! * 1000,
+      expires_at: Date.now() + res.body.expires_in! * 1000,
     },
-    body
+    res.body
   );
   return lastAccessToken;
 }
@@ -423,8 +421,7 @@ async function getGithubTokensFromAuthorizationCode(code: string, callbackUrl: s
     method: "POST",
     path: "/login/oauth/access_token",
     body: form,
-    responseType: "stream",
-    resolveOnHTTPError: true,
+    headers: form.getHeaders(),
   });
   return res.body.access_token;
 }
@@ -704,11 +701,11 @@ async function refreshTokens(
     for (const [k, v] of Object.entries(data)) {
       form.append(k, v);
     }
-    const res = await client.request<any, any>({
+    const res = await client.request<FormData, TokensWithTTL>({
       method: "POST",
       path: "/oauth2/v3/token",
       body: form,
-      responseType: "stream",
+      headers: form.getHeaders(),
       skipLog: { body: true, queryParams: true, resBody: true },
       resolveOnHTTPError: true,
     });
@@ -718,12 +715,12 @@ async function refreshTokens(
       return { access_token: refreshToken };
     }
 
-    if (typeof res.body?.access_token !== "string") {
+    if (typeof res.body.access_token !== "string") {
       throw invalidCredentialError();
     }
     lastAccessToken = Object.assign(
       {
-        expires_at: Date.now() + res.body.expires_in * 1000,
+        expires_at: Date.now() + res.body.expires_in! * 1000,
         refresh_token: refreshToken,
         scopes: authScopes,
       },
