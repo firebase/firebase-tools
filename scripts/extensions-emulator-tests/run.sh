@@ -9,4 +9,7 @@ source scripts/set-default-credentials.sh
 )
 
 firebase --open-sesame extensionsemulator
+firebase --open-sesame functionsv2
 mocha scripts/extensions-emulator-tests/tests.ts
+
+

@@ -1,6 +1,6 @@
 {
   "extensions": {
-    "resize-images": "firebase/storage-resize-images@0.1.27"
+    "resize-images": "firebase/storage-resize-images@0.1.28"
   },
   "storage": {
     "rules": "storage.rules"
@@ -15,6 +15,9 @@
     },
     "functions": {
       "port": 9002
+    },
+    "eventarc": {
+      "port": 9299
     }
   }
 }

@@ -62,7 +62,7 @@ export class EventarcEmulator implements EmulatorInstance {
           res.sendStatus(400);
           return;
         }
-        logger.info(`Received custom event: ${JSON.stringify(event)}`);
+        logger.info(`Received custom event at channel ${channel}: ${JSON.stringify(event)}`);
         this.triggerCustomEventFunction(channel, event);
       }
       res.sendStatus(200);
