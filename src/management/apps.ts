@@ -431,7 +431,7 @@ export async function deleteAppAndroidSha(
 ): Promise<void> {
   try {
     await apiClient.request<void, void>({
-      method: "POST",
+      method: "DELETE",
       path: `/projects/${projectId}/androidApps/${appId}/sha/${shaId}`,
       timeout: CREATE_APP_API_REQUEST_TIMEOUT_MILLIS,
     });
