@@ -1,11 +1,12 @@
 import * as _ from "lodash";
-import * as api from "../api";
+import { ReadStream } from "fs";
+
 import * as utils from "../utils";
 import * as operationPoller from "../operation-poller";
 import { Distribution } from "./distribution";
 import { FirebaseError } from "../error";
 import { Client } from "../apiv2";
-import { ReadStream } from "fs";
+import { appDistributionOrigin } from "../api";
 
 /**
  * Helper interface for an app that is provisioned with App Distribution
@@ -66,7 +67,7 @@ export interface BatchRemoveTestersResponse {
  */
 export class AppDistributionClient {
   appDistroV2Client = new Client({
-    urlPrefix: api.appDistributionOrigin,
+    urlPrefix: appDistributionOrigin,
     apiVersion: "v1",
   });
 
@@ -76,7 +77,7 @@ export class AppDistributionClient {
   }
 
   async uploadRelease(appName: string, distribution: Distribution): Promise<string> {
-    const client = new Client({ urlPrefix: api.appDistributionOrigin });
+    const client = new Client({ urlPrefix: appDistributionOrigin });
     const apiResponse = await client.request<ReadStream, { name: string }>({
       method: "POST",
       path: `/upload/v1/${appName}/releases:upload`,
@@ -94,7 +95,7 @@ export class AppDistributionClient {
   async pollUploadStatus(operationName: string): Promise<UploadReleaseResponse> {
     return operationPoller.pollOperation<UploadReleaseResponse>({
       pollerName: "App Distribution Upload Poller",
-      apiOrigin: api.appDistributionOrigin,
+      apiOrigin: appDistributionOrigin,
       apiVersion: "v1",
       operationResourceName: operationName,
       masterTimeout: 5 * 60 * 1000,
@@ -117,15 +118,14 @@ export class AppDistributionClient {
         text: releaseNotes,
       },
     };
+    const queryParams = { updateMask: "release_notes.text" };
 
     try {
-      await api.request("PATCH", `/v1/${releaseName}?updateMask=release_notes.text`, {
-        origin: api.appDistributionOrigin,
-        auth: true,
-        data,
+      await this.appDistroV2Client.patch(`/${releaseName}?updateMask=release_notes.text`, data, {
+        queryParams,
       });
     } catch (err: any) {
-      throw new FirebaseError(`failed to update release notes with ${err?.message}`, { exit: 1 });
+      throw new FirebaseError(`failed to update release notes with ${err?.message}`);
     }
 
     utils.logSuccess("added release notes successfully");
@@ -149,11 +149,7 @@ export class AppDistributionClient {
     };
 
     try {
-      await api.request("POST", `/v1/${releaseName}:distribute`, {
-        origin: api.appDistributionOrigin,
-        auth: true,
-        data,
-      });
+      await this.appDistroV2Client.post(`/${releaseName}:distribute`, data);
     } catch (err: any) {
       let errorMessage = err.message;
       if (_.has(err, "context.body.error")) {
