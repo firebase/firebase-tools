@@ -248,7 +248,17 @@ export class HubExport {
     };
 
     const client = new Client({ urlPrefix: storageHost, auth: false });
-    await client.post("/internal/export", storageExportBody);
+    const res = await client.request({
+      method: "POST",
+      path: "/internal/export",
+      headers: { "Content-Type": "application/json" },
+      body: storageExportBody,
+      responseType: "stream",
+      resolveOnHTTPError: true,
+    });
+    if (res.status >= 400) {
+      throw new FirebaseError(`Failed to export storage: ${await res.response.text()}`);
+    }
   }
 }
 
