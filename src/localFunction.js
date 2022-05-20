@@ -1,7 +1,7 @@
 "use strict";
 
 var _ = require("lodash");
-var request = require("request");
+var { Client } = require("./apiv2");
 
 var { encodeFirestoreValue } = require("./firestore/encodeFirestoreValue");
 var utils = require("./utils");
@@ -28,11 +28,28 @@ var LocalFunction = function (trigger, urls, controller) {
     if (isCallable == "true") {
       this.call = this._constructCallableFunc.bind(this);
     } else {
-      this.call = request.defaults({
-        callback: this._requestCallBack,
-        baseUrl: this.url,
-        uri: "",
-      });
+      const callClient = new Client({ urlPrefix: this.url, auth: false });
+      this.call = (data, opts) => {
+        callClient
+          .get("", opts)
+          .then((res) => {
+            this._requestCallBack(undefined, res, res.body);
+          })
+          .catch((err) => {
+            this._requestCallBack(err);
+          });
+      };
+      for (const method of ["get", "post", "put", "patch", "delete"]) {
+        this.call[method] = (data, opts) => {
+          callClient[method]("", data, opts)
+            .then((res) => {
+              this._requestCallBack(undefined, res, res.body);
+            })
+            .catch((err) => {
+              this._requestCallBack(err);
+            });
+        };
+      }
     }
   } else {
     this.call = this._call.bind(this);
@@ -64,14 +81,15 @@ LocalFunction.prototype._constructCallableFunc = function (data, opts) {
     headers["Firebase-Instance-ID-Token"] = opts.instanceIdToken;
   }
 
-  return request.post({
-    callback: this._requestCallBack,
-    baseUrl: this.url,
-    uri: "",
-    body: { data: data },
-    json: true,
-    headers: headers,
-  });
+  const client = new Client({ urlPrefix: this.url, auth: false });
+  void client
+    .post("", data, { headers })
+    .then((res) => {
+      this._requestCallBack(undefined, res, res.body);
+    })
+    .catch((err) => {
+      this._requestCallBack(err);
+    });
 };
 
 LocalFunction.prototype._constructAuth = function (auth, authType) {
@@ -135,7 +153,7 @@ LocalFunction.prototype._requestCallBack = function (err, response, body) {
   if (err) {
     return console.warn("\nERROR SENDING REQUEST: " + err);
   }
-  var status = response ? response.statusCode + ", " : "";
+  var status = response ? response.status + ", " : "";
 
   // If the body is a string we want to check if we can parse it as JSON
   // and pretty-print it. We can't blindly stringify because stringifying

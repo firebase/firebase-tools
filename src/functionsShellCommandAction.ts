@@ -1,21 +1,18 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment */
 import * as clc from "cli-color";
 import * as repl from "repl";
 import * as _ from "lodash";
-import * as request from "request";
 import * as util from "util";
 
-import { FunctionsServer } from "./serve/functions";
-import * as LocalFunction from "./localFunction";
-import * as utils from "./utils";
-import { logger } from "./logger";
-import * as shell from "./emulator/functionsEmulatorShell";
-import * as commandUtils from "./emulator/commandUtils";
-import { EMULATORS_SUPPORTED_BY_FUNCTIONS, EmulatorInfo, Emulators } from "./emulator/types";
 import { EmulatorHubClient } from "./emulator/hubClient";
-import { Constants } from "./emulator/constants";
+import { EMULATORS_SUPPORTED_BY_FUNCTIONS, EmulatorInfo, Emulators } from "./emulator/types";
 import { findAvailablePort } from "./emulator/portUtils";
+import { FunctionsServer } from "./serve/functions";
+import { logger } from "./logger";
 import { Options } from "./options";
+import * as commandUtils from "./emulator/commandUtils";
+import * as LocalFunction from "./localFunction";
+import * as shell from "./emulator/functionsEmulatorShell";
+import * as utils from "./utils";
 
 const serveFunctions = new FunctionsServer();
 
@@ -111,11 +108,6 @@ export const actionFunction = async (options: Options) => {
       );
 
       const writer = (output: any) => {
-        // Prevent full print out of Request object when a request is made
-        // @ts-ignore
-        if (output instanceof request.Request) {
-          return "Sent request to function.";
-        }
         return util.inspect(output);
       };
 
