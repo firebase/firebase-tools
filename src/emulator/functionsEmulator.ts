@@ -602,8 +602,6 @@ export class FunctionsEmulator implements EmulatorInstance {
         const key = this.getTriggerKey(definition);
         const signature = getSignatureType(definition);
 
-        logger.debug(`Registering trigger ${JSON.stringify(key)}`);
-
         switch (service) {
           case Constants.SERVICE_FIRESTORE:
             added = await this.addFirestoreTrigger(
