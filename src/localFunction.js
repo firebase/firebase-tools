@@ -76,6 +76,7 @@ LocalFunction.prototype._substituteParams = function (resource, params) {
 LocalFunction.prototype._constructCallableFunc = function (data, opts) {
   opts = opts || {};
 
+  /** @type {{ [key: string]: string }} */
   var headers = {};
   if (_.has(opts, "instanceIdToken")) {
     headers["Firebase-Instance-ID-Token"] = opts.instanceIdToken;
