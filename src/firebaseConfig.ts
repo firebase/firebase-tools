@@ -59,6 +59,7 @@ export type HostingHeaders = HostingSource & {
 
 type HostingBase = {
   public?: string;
+  source?: string;
   ignore?: string[];
   appAssociation?: string;
   cleanUrls?: boolean;

@@ -38,6 +38,11 @@ export class EventarcEmulator implements EmulatorInstance {
     const registerTriggerHandler: express.RequestHandler = (req, res) => {
       const projectId = req.params.project_id;
       const triggerName = req.params.trigger_name;
+      if (!projectId || !triggerName) {
+        logger.info("Missing project ID or trigger name.");
+        res.sendStatus(400);
+        return;
+      }
       const body = JSON.parse((req as RequestWithRawBody).rawBody.toString());
       const eventTrigger = body.eventTrigger as EventTrigger;
       if (!eventTrigger) {
@@ -143,7 +148,7 @@ export class EventarcEmulator implements EmulatorInstance {
   }
 
   async connect(): Promise<void> {
-    // wip. what to do here?
+    return Promise.resolve();
   }
 
   async stop(): Promise<void> {

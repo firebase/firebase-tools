@@ -454,19 +454,10 @@ export function functionFromEndpoint(endpoint: backend.Endpoint, source: Storage
     "ingressSettings",
     "timeoutSeconds"
   );
-  proto.renameIfPresent(
-    gcfFunction.serviceConfig,
-    endpoint,
-    "availableMemory",
-    "availableMemoryMb",
-    (mb: number) => {
-      if (mb > 1024) {
-        return `${mb / 1024}Gi`;
-      } else {
-        return `${mb}Mi`;
-      }
-    }
-  );
+  // Memory must be set because the default value of GCF gen 2 is Megabytes and
+  // we use mebibytes
+  const mem: number = endpoint.availableMemoryMb || backend.DEFAULT_MEMORY;
+  gcfFunction.serviceConfig.availableMemory = mem > 1024 ? `${mem / 1024}Gi` : `${mem}Mi`;
   proto.renameIfPresent(gcfFunction.serviceConfig, endpoint, "minInstanceCount", "minInstances");
   proto.renameIfPresent(gcfFunction.serviceConfig, endpoint, "maxInstanceCount", "maxInstances");
 
