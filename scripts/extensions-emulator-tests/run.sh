@@ -8,8 +8,6 @@ source scripts/set-default-credentials.sh
   npm install
 )
 
-firebase --open-sesame functionsv2
-
 mocha scripts/extensions-emulator-tests/tests.ts
 
 
