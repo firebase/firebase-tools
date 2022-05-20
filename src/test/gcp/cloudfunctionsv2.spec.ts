@@ -38,7 +38,9 @@ describe("cloudfunctionsv2", () => {
         },
         environmentVariables: {},
       },
-      serviceConfig: {},
+      serviceConfig: {
+        availableMemory: `${backend.DEFAULT_MEMORY}Mi`,
+      },
     };
 
   const RUN_URI = "https://id-nonce-region-project.run.app";

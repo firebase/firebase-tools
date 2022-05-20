@@ -602,8 +602,6 @@ export class FunctionsEmulator implements EmulatorInstance {
         const key = this.getTriggerKey(definition);
         const signature = getSignatureType(definition);
 
-        logger.debug(`Registering trigger ${JSON.stringify(key)}`);
-
         switch (service) {
           case Constants.SERVICE_FIRESTORE:
             added = await this.addFirestoreTrigger(
@@ -1122,7 +1120,10 @@ export class FunctionsEmulator implements EmulatorInstance {
     envs.FUNCTIONS_EMULATOR = "true";
     envs.TZ = "UTC"; // Fixes https://github.com/firebase/firebase-tools/issues/2253
     envs.FIREBASE_DEBUG_MODE = "true";
-    envs.FIREBASE_DEBUG_FEATURES = JSON.stringify({ skipTokenVerification: true });
+    envs.FIREBASE_DEBUG_FEATURES = JSON.stringify({
+      skipTokenVerification: true,
+      enableCors: true,
+    });
     // TODO(danielylee): Support timeouts. Temporarily dropping the feature until we finish refactoring.
 
     // Make firebase-admin point at the Firestore emulator
