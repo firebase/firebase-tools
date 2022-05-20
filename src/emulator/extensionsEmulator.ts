@@ -247,6 +247,7 @@ export class ExtensionsEmulator implements EmulatorInstance {
       STORAGE_BUCKET: `${projectId}.appspot.com`,
       ALLOWED_EVENT_TYPES: instance.allowedEventTypes ? instance.allowedEventTypes.join(",") : "",
       EVENTARC_CHANNEL: instance.eventarcChannel ?? "",
+      EVENTARC_CLOUD_EVENT_SOURCE: instance.instanceId
     };
   }
 
