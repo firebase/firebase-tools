@@ -491,8 +491,14 @@ export function functionFromEndpoint(endpoint: backend.Endpoint, source: Storage
       for (const [attribute, value] of Object.entries(endpoint.eventTrigger.eventFilters)) {
         gcfFunction.eventTrigger.eventFilters.push({ attribute, value });
       }
-      for (const [attribute, value] of Object.entries(endpoint.eventTrigger.eventFilterPathPatterns || {})) {
-        gcfFunction.eventTrigger.eventFilters.push({ attribute, value, operator: "match-path-pattern" });
+      for (const [attribute, value] of Object.entries(
+        endpoint.eventTrigger.eventFilterPathPatterns || {}
+      )) {
+        gcfFunction.eventTrigger.eventFilters.push({
+          attribute,
+          value,
+          operator: "match-path-pattern",
+        });
       }
     }
     proto.renameIfPresent(
@@ -571,7 +577,6 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
       eventTrigger: {
         eventType: gcfFunction.eventTrigger.eventType,
         eventFilters: {},
-        eventFilterPathPatterns: {},
         retry: false,
       },
     };
@@ -580,7 +585,10 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
     } else {
       for (const eventFilter of gcfFunction.eventTrigger.eventFilters || []) {
         if (eventFilter.operator === "match-path-pattern") {
-          trigger.eventTrigger.eventFilterPathPatterns![eventFilter.attribute] = eventFilter.value;
+          if (!trigger.eventTrigger.eventFilterPathPatterns) {
+            trigger.eventTrigger.eventFilterPathPatterns = {};
+          }
+          trigger.eventTrigger.eventFilterPathPatterns[eventFilter.attribute] = eventFilter.value;
         } else {
           trigger.eventTrigger.eventFilters[eventFilter.attribute] = eventFilter.value;
         }
