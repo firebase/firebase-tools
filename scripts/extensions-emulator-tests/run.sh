@@ -9,5 +9,3 @@ source scripts/set-default-credentials.sh
 )
 
 mocha scripts/extensions-emulator-tests/tests.ts
-
-
