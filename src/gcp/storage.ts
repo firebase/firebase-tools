@@ -1,7 +1,7 @@
 import { Readable } from "stream";
 import * as path from "path";
 
-import api, { appengineOrigin, storageOrigin } from "../api";
+import { appengineOrigin, storageOrigin } from "../api";
 import { Client } from "../apiv2";
 import { logger } from "../logger";
 import { FirebaseError } from "../error";
@@ -206,10 +206,8 @@ export async function uploadObject(
  * @param {string} location A Firebase Storage location, of the form "/v0/b/<bucket>/o/<object>"
  */
 export function deleteObject(location: string): Promise<any> {
-  return api.request("DELETE", location, {
-    auth: true,
-    origin: api.storageOrigin,
-  });
+  const localAPIClient = new Client({ urlPrefix: storageOrigin });
+  return localAPIClient.delete(location);
 }
 
 /**
