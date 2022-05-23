@@ -256,13 +256,18 @@ export async function createCloudProject(
   options: { displayName?: string; parentResource?: ProjectParentResource }
 ): Promise<any> {
   try {
-    const response = await api.request("POST", "/v1/projects", {
-      auth: true,
-      origin: api.resourceManagerOrigin,
+    const client = new Client({ urlPrefix: api.resourceManagerOrigin, apiVersion: "v1" });
+    const data = {
+      projectId,
+      name: options.displayName || projectId,
+      parent: options.parentResource,
+    };
+    const response = await client.request<any, { name: string }>({
+      method: "POST",
+      path: "/projects",
+      body: data,
       timeout: CREATE_PROJECT_API_REQUEST_TIMEOUT_MILLIS,
-      data: { projectId, name: options.displayName || projectId, parent: options.parentResource },
     });
-
     const projectInfo = await pollOperation<any>({
       pollerName: "Project Creation Poller",
       apiOrigin: api.resourceManagerOrigin,
@@ -299,9 +304,9 @@ export async function addFirebaseToCloudProject(
   projectId: string
 ): Promise<FirebaseProjectMetadata> {
   try {
-    const response = await api.request("POST", `/v1beta1/projects/${projectId}:addFirebase`, {
-      auth: true,
-      origin: api.firebaseApiOrigin,
+    const response = await firebaseAPIClient.request<any, { name: string }>({
+      method: "POST",
+      path: `/projects/${projectId}:addFirebase`,
       timeout: CREATE_PROJECT_API_REQUEST_TIMEOUT_MILLIS,
     });
     const projectInfo = await pollOperation<any>({
