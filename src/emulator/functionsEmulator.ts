@@ -11,7 +11,6 @@ import { URL } from "url";
 import { EventEmitter } from "events";
 
 import { Account } from "../auth";
-import * as api from "../api";
 import { logger } from "../logger";
 import { track } from "../track";
 import { Constants } from "./constants";
@@ -68,6 +67,7 @@ import * as backend from "../deploy/functions/backend";
 import * as functionsEnv from "../functions/env";
 import { AUTH_BLOCKING_EVENTS, BEFORE_CREATE_EVENT } from "../functions/events/v1";
 import { BlockingFunctionsConfig } from "../gcp/identityPlatform";
+import { Client } from "../apiv2";
 
 const EVENT_INVOKE = "functions:invoke";
 
@@ -694,16 +694,17 @@ export class FunctionsEmulator implements EmulatorInstance {
     const path = `/identitytoolkit.googleapis.com/v2/projects/${this.getProjectId()}/config?updateMask=blockingFunctions`;
 
     try {
-      await api.request("PATCH", path, {
-        origin: `http://${EmulatorRegistry.getInfoHostString(authEmu.getInfo())}`,
-        headers: {
-          Authorization: "Bearer owner",
-        },
-        data: {
-          blockingFunctions: this.blockingFunctionsConfig,
-        },
-        json: true,
+      const client = new Client({
+        urlPrefix: `http://${EmulatorRegistry.getInfoHostString(authEmu.getInfo())}`,
+        auth: false,
       });
+      await client.patch(
+        path,
+        { blockingFunctions: this.blockingFunctionsConfig },
+        {
+          headers: { Authorization: "Bearer owner" },
+        }
+      );
     } catch (err) {
       this.logger.log(
         "WARN",
@@ -713,14 +714,14 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
   }
 
-  addRealtimeDatabaseTrigger(
+  async addRealtimeDatabaseTrigger(
     projectId: string,
     key: string,
     eventTrigger: EventTrigger
   ): Promise<boolean> {
     const databaseEmu = EmulatorRegistry.get(Emulators.DATABASE);
     if (!databaseEmu) {
-      return Promise.resolve(false);
+      return false;
     }
 
     const result: string[] | null = DATABASE_PATH_PATTERN.exec(eventTrigger.resource);
@@ -729,7 +730,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         "WARN",
         `Event function "${key}" has malformed "resource" member. ` + `${eventTrigger.resource}`
       );
-      return Promise.reject();
+      throw new FirebaseError(`Event function ${key} has malformed resource member`);
     }
 
     const instance = result[1];
@@ -752,25 +753,20 @@ export class FunctionsEmulator implements EmulatorInstance {
       );
     }
 
-    return api
-      .request("POST", setTriggersPath, {
-        origin: `http://${EmulatorRegistry.getInfoHostString(databaseEmu.getInfo())}`,
-        headers: {
-          Authorization: "Bearer owner",
-        },
-        data: bundle,
-        json: false,
-      })
-      .then(() => {
-        return true;
-      })
-      .catch((err) => {
-        this.logger.log("WARN", "Error adding Realtime Database function: " + err);
-        throw err;
-      });
+    const client = new Client({
+      urlPrefix: `http://${EmulatorRegistry.getInfoHostString(databaseEmu.getInfo())}`,
+      auth: false,
+    });
+    try {
+      await client.post(setTriggersPath, bundle, { headers: { Authorization: "Bearer owner" } });
+    } catch (err: any) {
+      this.logger.log("WARN", "Error adding Realtime Database function: " + err);
+      throw err;
+    }
+    return true;
   }
 
-  addFirestoreTrigger(
+  async addFirestoreTrigger(
     projectId: string,
     key: string,
     eventTrigger: EventTrigger
@@ -788,19 +784,17 @@ export class FunctionsEmulator implements EmulatorInstance {
     });
     logger.debug(`addFirestoreTrigger`, JSON.stringify(bundle));
 
-    return api
-      .request("PUT", `/emulator/v1/projects/${projectId}/triggers/${key}`, {
-        origin: `http://${EmulatorRegistry.getInfoHostString(firestoreEmu.getInfo())}`,
-        data: bundle,
-        json: false,
-      })
-      .then(() => {
-        return true;
-      })
-      .catch((err) => {
-        this.logger.log("WARN", "Error adding firestore function: " + err);
-        throw err;
-      });
+    const client = new Client({
+      urlPrefix: `http://${EmulatorRegistry.getInfoHostString(firestoreEmu.getInfo())}`,
+      auth: false,
+    });
+    try {
+      await client.put(`/emulator/v1/projects/${projectId}/triggers/${key}`, bundle);
+    } catch (err: any) {
+      this.logger.log("WARN", "Error adding firestore function: " + err);
+      throw err;
+    }
+    return true;
   }
 
   async addPubsubTrigger(
