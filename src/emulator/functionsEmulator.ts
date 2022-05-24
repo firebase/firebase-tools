@@ -1023,11 +1023,12 @@ export class FunctionsEmulator implements EmulatorInstance {
           "INFO",
           `To use a different Node.js version, consider removing the standalone Firebase CLI and switching to "firebase-tools" on npm.`
         );
+      } else {
+        this.logger.log(
+          "WARN",
+          `Your requested "node" version "${requestedMajorVersion}" doesn't match your global version "${hostMajorVersion}". Using node@${hostMajorVersion} from host.`
+        );
       }
-      this.logger.log(
-        "WARN",
-        `Your requested "node" version "${requestedMajorVersion}" doesn't match your global version "${hostMajorVersion}". Using node@${hostMajorVersion} from host.`
-      );
     }
 
     return process.execPath;
