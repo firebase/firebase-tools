@@ -47,10 +47,18 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
   .before(ensureExtensionsApiEnabled)
   .before(checkMinRequiredVersion, "extMinVersion")
   .before(diagnoseAndFixProject)
+  .option("--local", "deprecated")
   .withForce()
   .action(async (instanceId: string, updateSource: string, options: Options) => {
     const projectId = getProjectId(options);
     const config = manifest.loadConfig(options);
+
+    if (options.local) {
+      utils.logLabeledWarning(
+        logPrefix,
+        "As of firebase-tools@11.0.0, the `--local` flag is no longer required, as it is the default behavior."
+      );
+    }
 
     const oldRefOrPath = manifest.getInstanceTarget(instanceId, config);
     if (isLocalPath(oldRefOrPath)) {

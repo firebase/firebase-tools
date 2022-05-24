@@ -6,6 +6,7 @@ import * as api from "../../api";
 import * as projectManager from "../../management/projects";
 import * as pollUtils from "../../operation-poller";
 import * as prompt from "../../prompt";
+import { FirebaseError } from "../../error";
 
 const PROJECT_ID = "the-best-firebase-project";
 const PROJECT_NUMBER = "1234567890";
@@ -81,17 +82,17 @@ function generateCloudProjectList(counts: number): projectManager.CloudProjectIn
 
 describe("Project management", () => {
   let sandbox: sinon.SinonSandbox;
-  let apiRequestStub: sinon.SinonStub;
   let pollOperationStub: sinon.SinonStub;
 
   beforeEach(() => {
     sandbox = sinon.createSandbox();
-    apiRequestStub = sandbox.stub(api, "request").throws("Unexpected API request call");
     pollOperationStub = sandbox.stub(pollUtils, "pollOperation").throws("Unexpected poll call");
+    nock.disableNetConnect();
   });
 
   afterEach(() => {
     sandbox.restore();
+    nock.enableNetConnect();
   });
 
   describe("Interactive flows", () => {
@@ -264,7 +265,9 @@ describe("Project management", () => {
           projectId: PROJECT_ID,
           name: PROJECT_NAME,
         };
-        apiRequestStub.onFirstCall().resolves({ body: { name: OPERATION_RESOURCE_NAME_1 } });
+        nock(api.resourceManagerOrigin)
+          .post("/v1/projects")
+          .reply(200, { name: OPERATION_RESOURCE_NAME_1 });
         pollOperationStub.onFirstCall().resolves(expectedProjectInfo);
 
         const resultProjectInfo = await projectManager.createCloudProject(PROJECT_ID, {
@@ -273,12 +276,7 @@ describe("Project management", () => {
         });
 
         expect(resultProjectInfo).to.equal(expectedProjectInfo);
-        expect(apiRequestStub).to.be.calledOnceWith("POST", "/v1/projects", {
-          auth: true,
-          origin: api.resourceManagerOrigin,
-          timeout: 15000,
-          data: { projectId: PROJECT_ID, name: PROJECT_NAME, parent: PARENT_RESOURCE },
-        });
+        expect(nock.isDone()).to.be.true;
         expect(pollOperationStub).to.be.calledOnceWith({
           pollerName: "Project Creation Poller",
           apiOrigin: api.resourceManagerOrigin,
@@ -288,8 +286,7 @@ describe("Project management", () => {
       });
 
       it("should reject if Cloud project creation fails", async () => {
-        const expectedError = new Error("HTTP Error 404: Not Found");
-        apiRequestStub.onFirstCall().rejects(expectedError);
+        nock(api.resourceManagerOrigin).post("/v1/projects").reply(404);
 
         let err;
         try {
@@ -304,19 +301,16 @@ describe("Project management", () => {
         expect(err.message).to.equal(
           "Failed to create project. See firebase-debug.log for more info."
         );
-        expect(err.original).to.equal(expectedError);
-        expect(apiRequestStub).to.be.calledOnceWith("POST", "/v1/projects", {
-          auth: true,
-          origin: api.resourceManagerOrigin,
-          timeout: 15000,
-          data: { projectId: PROJECT_ID, name: PROJECT_NAME, parent: PARENT_RESOURCE },
-        });
+        expect(err.original).to.be.an.instanceOf(FirebaseError, "Not Found");
+        expect(nock.isDone()).to.be.true;
         expect(pollOperationStub).to.be.not.called;
       });
 
       it("should reject if Cloud project creation polling throws error", async () => {
         const expectedError = new Error("Entity already exists");
-        apiRequestStub.onFirstCall().resolves({ body: { name: OPERATION_RESOURCE_NAME_1 } });
+        nock(api.resourceManagerOrigin)
+          .post("/v1/projects")
+          .reply(200, { name: OPERATION_RESOURCE_NAME_1 });
         pollOperationStub.onFirstCall().rejects(expectedError);
 
         let err;
@@ -333,12 +327,7 @@ describe("Project management", () => {
           "Failed to create project. See firebase-debug.log for more info."
         );
         expect(err.original).to.equal(expectedError);
-        expect(apiRequestStub).to.be.calledOnceWith("POST", "/v1/projects", {
-          auth: true,
-          origin: api.resourceManagerOrigin,
-          timeout: 15000,
-          data: { projectId: PROJECT_ID, name: PROJECT_NAME, parent: PARENT_RESOURCE },
-        });
+        expect(nock.isDone()).to.be.true;
         expect(pollOperationStub).to.be.calledOnceWith({
           pollerName: "Project Creation Poller",
           apiOrigin: api.resourceManagerOrigin,
@@ -351,7 +340,9 @@ describe("Project management", () => {
     describe("addFirebaseToCloudProject", () => {
       it("should resolve with Firebase project data if it succeeds", async () => {
         const expectFirebaseProjectInfo = { projectId: PROJECT_ID, displayName: PROJECT_NAME };
-        apiRequestStub.onFirstCall().resolves({ body: { name: OPERATION_RESOURCE_NAME_2 } });
+        nock(api.firebaseApiOrigin)
+          .post(`/v1beta1/projects/${PROJECT_ID}:addFirebase`)
+          .reply(200, { name: OPERATION_RESOURCE_NAME_2 });
         pollOperationStub
           .onFirstCall()
           .resolves({ projectId: PROJECT_ID, displayName: PROJECT_NAME });
@@ -359,15 +350,7 @@ describe("Project management", () => {
         const resultProjectInfo = await projectManager.addFirebaseToCloudProject(PROJECT_ID);
 
         expect(resultProjectInfo).to.deep.equal(expectFirebaseProjectInfo);
-        expect(apiRequestStub).to.be.calledOnceWith(
-          "POST",
-          `/v1beta1/projects/${PROJECT_ID}:addFirebase`,
-          {
-            auth: true,
-            origin: api.firebaseApiOrigin,
-            timeout: 15000,
-          }
-        );
+        expect(nock.isDone()).to.be.true;
         expect(pollOperationStub).to.be.calledOnceWith({
           pollerName: "Add Firebase Poller",
           apiOrigin: api.firebaseApiOrigin,
@@ -377,8 +360,7 @@ describe("Project management", () => {
       });
 
       it("should reject if add Firebase api call fails", async () => {
-        const expectedError = new Error("HTTP Error 404: Not Found");
-        apiRequestStub.onFirstCall().rejects(expectedError);
+        nock(api.firebaseApiOrigin).post(`/v1beta1/projects/${PROJECT_ID}:addFirebase`).reply(404);
 
         let err;
         try {
@@ -390,22 +372,16 @@ describe("Project management", () => {
         expect(err.message).to.equal(
           "Failed to add Firebase to Google Cloud Platform project. See firebase-debug.log for more info."
         );
-        expect(err.original).to.equal(expectedError);
-        expect(apiRequestStub).to.be.calledOnceWith(
-          "POST",
-          `/v1beta1/projects/${PROJECT_ID}:addFirebase`,
-          {
-            auth: true,
-            origin: api.firebaseApiOrigin,
-            timeout: 15000,
-          }
-        );
+        expect(err.original).to.be.an.instanceOf(FirebaseError, "Not Found");
+        expect(nock.isDone()).to.be.true;
         expect(pollOperationStub).to.be.not.called;
       });
 
       it("should reject if polling add Firebase operation throws error", async () => {
         const expectedError = new Error("Permission denied");
-        apiRequestStub.onFirstCall().resolves({ body: { name: OPERATION_RESOURCE_NAME_2 } });
+        nock(api.firebaseApiOrigin)
+          .post(`/v1beta1/projects/${PROJECT_ID}:addFirebase`)
+          .reply(200, { name: OPERATION_RESOURCE_NAME_2 });
         pollOperationStub.onFirstCall().rejects(expectedError);
 
         let err;
@@ -419,15 +395,7 @@ describe("Project management", () => {
           "Failed to add Firebase to Google Cloud Platform project. See firebase-debug.log for more info."
         );
         expect(err.original).to.equal(expectedError);
-        expect(apiRequestStub).to.be.calledOnceWith(
-          "POST",
-          `/v1beta1/projects/${PROJECT_ID}:addFirebase`,
-          {
-            auth: true,
-            origin: api.firebaseApiOrigin,
-            timeout: 15000,
-          }
-        );
+        expect(nock.isDone()).to.be.true;
         expect(pollOperationStub).to.be.calledOnceWith({
           pollerName: "Add Firebase Poller",
           apiOrigin: api.firebaseApiOrigin,
