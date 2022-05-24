@@ -48,6 +48,7 @@ export default new Command("ext:install [extensionName]")
         : "") +
       "or run with `-i` to see all available extensions."
   )
+  .option("--local", "deprecated")
   .withForce()
   .before(requirePermissions, ["firebaseextensions.instances.create"])
   .before(ensureExtensionsApiEnabled)

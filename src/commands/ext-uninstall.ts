@@ -15,6 +15,7 @@ marked.setOptions({
 
 export default new Command("ext:uninstall <extensionInstanceId>")
   .description("uninstall an extension that is installed in your Firebase project by instance ID")
+  .option("--local", "deprecated")
   .withForce()
   .before(requirePermissions, ["firebaseextensions.instances.delete"])
   .before(ensureExtensionsApiEnabled)

@@ -47,6 +47,7 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
   .before(ensureExtensionsApiEnabled)
   .before(checkMinRequiredVersion, "extMinVersion")
   .before(diagnoseAndFixProject)
+  .option("--local", "deprecated")
   .withForce()
   .action(async (instanceId: string, updateSource: string, options: Options) => {
     const projectId = getProjectId(options);

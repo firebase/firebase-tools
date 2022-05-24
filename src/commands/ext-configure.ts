@@ -34,6 +34,7 @@ marked.setOptions({
 export default new Command("ext:configure <extensionInstanceId>")
   .description("configure an existing extension instance")
   .withForce()
+  .option("--local", "deprecated")
   .before(requirePermissions, [
     "firebaseextensions.instances.update",
     "firebaseextensions.instances.get",

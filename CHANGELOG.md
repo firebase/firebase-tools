@@ -1,0 +1,1 @@
+- Fixes issue where `ext:*` commands would error out if the `--local` flag was included. This flag is deprecated because it is now the default behavior (#4577).
