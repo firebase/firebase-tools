@@ -1,1 +1,1 @@
-- Improve Node.js version warning for standalone Firebase CLI build (#2791).
+- Improves Node.js version warning for standalone Firebase CLI build (#2791).
