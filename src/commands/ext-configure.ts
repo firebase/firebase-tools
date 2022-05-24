@@ -50,6 +50,9 @@ export default new Command("ext:configure <extensionInstanceId>")
           `See https://firebase.google.com/docs/extensions/manifest for more details.`
       );
     }
+    if (options.local) {
+      utils.logLabeledWarning(logPrefix, "As of firebase-tools@11.0.0, the `--local` flag is no longer required, as it is the default behavior.")
+    }
 
     const config = manifest.loadConfig(options);
 

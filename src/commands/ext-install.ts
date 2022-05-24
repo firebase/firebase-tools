@@ -85,6 +85,9 @@ export default new Command("ext:install [extensionName]")
         `Installing with a source url is no longer supported in the CLI. Please use Firebase Console instead.`
       );
     }
+    if (options.local) {
+      utils.logLabeledWarning(logPrefix, "As of firebase-tools@11.0.0, the `--local` flag is no longer required, as it is the default behavior.")
+    }
 
     // If the user types in a local path (prefixed with ~/, ../, or ./), install from local source.
     // Otherwise, treat the input as an extension reference and proceed with reference-based installation.
