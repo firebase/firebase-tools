@@ -86,7 +86,10 @@ export default new Command("ext:install [extensionName]")
       );
     }
     if (options.local) {
-      utils.logLabeledWarning(logPrefix, "As of firebase-tools@11.0.0, the `--local` flag is no longer required, as it is the default behavior.")
+      utils.logLabeledWarning(
+        logPrefix,
+        "As of firebase-tools@11.0.0, the `--local` flag is no longer required, as it is the default behavior."
+      );
     }
 
     // If the user types in a local path (prefixed with ~/, ../, or ./), install from local source.
