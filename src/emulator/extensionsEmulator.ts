@@ -185,6 +185,20 @@ export class ExtensionsEmulator implements EmulatorInstance {
     console.log(`Finished "npm install" for ${sourceCodePath}`)
     this.logger.logLabeled("INFO", "Extensions", `Finished "npm install" for ${sourceCodePath}`);
 
+
+    console.log(`Running "npm run build" for ${sourceCodePath}`)
+    const npmRunBuild = spawn.sync(
+      "npm",
+      ["--prefix", `/${sourceCodePath}/functions/`, "run", "build"],
+      { encoding: "utf8" }
+    );
+    if (npmRunBuild.error) {
+      // TODO: Make sure this does not error out if "build" is not defined, but does error if it fails otherwise.
+      throw npmRunBuild.error;
+    }
+
+    console.log(`Finished "npm run build" for ${sourceCodePath}`)
+
     console.log(`Running "npm run gcp-build" for ${sourceCodePath}`)
     this.logger.logLabeled(
       "INFO",
