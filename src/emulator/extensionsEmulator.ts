@@ -119,6 +119,7 @@ export class ExtensionsEmulator implements EmulatorInstance {
         const promise = this.downloadSource(instance, ref, sourceCodePath);
         this.pendingDownloads.set(ref, promise);
         await promise;
+        console.log('Waited for valid source, we good now!')
       }
       return sourceCodePath;
     } else {
@@ -219,9 +220,11 @@ export class ExtensionsEmulator implements EmulatorInstance {
     await this.checkAndWarnAPIs(this.want);
     this.backends = await Promise.all(
       this.want.map((i: planner.DeploymentInstanceSpec) => {
+        console.log(`getting backend for ${i.instanceId}`)
         return this.toEmulatableBackend(i);
       })
     );
+    console.log('done getting backends!')
     return this.backends;
   }
 
@@ -233,6 +236,7 @@ export class ExtensionsEmulator implements EmulatorInstance {
     instance: planner.DeploymentInstanceSpec
   ): Promise<EmulatableBackend> {
     const extensionDir = await this.ensureSourceCode(instance);
+    console.log(`Source code ensured ${extensionDir}`);
     // TODO: This should find package.json, then use that as functionsDir.
     const functionsDir = path.join(extensionDir, "functions");
     // TODO(b/213335255): For local extensions, this should include extensionSpec instead of extensionVersion

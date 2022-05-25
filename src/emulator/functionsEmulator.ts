@@ -408,6 +408,7 @@ export class FunctionsEmulator implements EmulatorInstance {
   }
 
   async start(): Promise<void> {
+    console.log("just about to start functions emulator");
     for (const backend of this.args.emulatableBackends) {
       backend.nodeBinary = this.getNodeBinary(backend);
     }
