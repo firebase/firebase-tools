@@ -116,6 +116,7 @@ export class ExtensionsEmulator implements EmulatorInstance {
       }
 
       if (!this.hasValidSource({ path: sourceCodePath, extTarget: ref })) {
+        console.log("about to download source")
         const promise = this.downloadSource(instance, ref, sourceCodePath);
         this.pendingDownloads.set(ref, promise);
         await promise;
