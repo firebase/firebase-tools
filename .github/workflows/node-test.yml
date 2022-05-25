@@ -8,48 +8,48 @@ env:
   CI: true
 
 jobs:
-  lint:
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
-    strategy:
-      matrix:
-        node-version:
-          - "16"
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-      - uses: actions/setup-node@v3
-        with:
-          node-version: ${{ matrix.node-version }}
-          cache: npm
-          cache-dependency-path: npm-shrinkwrap.json
+  # lint:
+  #   runs-on: ubuntu-latest
+  #   if: github.event_name == 'pull_request'
+  #   strategy:
+  #     matrix:
+  #       node-version:
+  #         - "16"
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #       with:
+  #         fetch-depth: 0
+  #     - uses: actions/setup-node@v3
+  #       with:
+  #         node-version: ${{ matrix.node-version }}
+  #         cache: npm
+  #         cache-dependency-path: npm-shrinkwrap.json
 
-      - run: npm i -g npm@8.7
-      - run: npm ci
-      - run: npm run lint:changed-files
+  #     - run: npm i -g npm@8.7
+  #     - run: npm ci
+  #     - run: npm run lint:changed-files
 
-  unit:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node-version:
-          - "14"
-          - "16"
-          - "18"
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-        with:
-          node-version: ${{ matrix.node-version }}
-          cache: npm
-          cache-dependency-path: npm-shrinkwrap.json
+  # unit:
+  #   runs-on: ubuntu-latest
+  #   strategy:
+  #     matrix:
+  #       node-version:
+  #         - "14"
+  #         - "16"
+  #         - "18"
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #     - uses: actions/setup-node@v3
+  #       with:
+  #         node-version: ${{ matrix.node-version }}
+  #         cache: npm
+  #         cache-dependency-path: npm-shrinkwrap.json
 
-      - run: npm i -g npm@8.7
-      - run: npm ci
-      - run: npm test
+  #     - run: npm i -g npm@8.7
+  #     - run: npm ci
+  #     - run: npm test
 
-  integration:
+  # integration:
     needs: unit
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
@@ -117,12 +117,12 @@ jobs:
         node-version:
           - "16"
         script:
-          - npm run test:hosting
-          - npm run test:client-integration
-          - npm run test:emulator
+        #   - npm run test:hosting
+        #   - npm run test:client-integration
+        #   - npm run test:emulator
           - npm run test:extensions-emulator
           - npm run test:triggers-end-to-end
-          - npm run test:storage-deploy
+          # - npm run test:storage-deploy
           - npm run test:storage-emulator-integration
     steps:
       - name: Setup Java JDK
@@ -155,43 +155,43 @@ jobs:
         if: failure()
         run: type *debug.log
 
-  check-package-lock:
-    runs-on: ubuntu-latest
+  # check-package-lock:
+  #   runs-on: ubuntu-latest
 
-    strategy:
-      matrix:
-        node-version:
-          - "16"
+  #   strategy:
+  #     matrix:
+  #       node-version:
+  #         - "16"
 
-    steps:
-      - uses: actions/checkout@v3
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v3
-        with:
-          node-version: ${{ matrix.node-version }}
-          cache: npm
-          cache-dependency-path: npm-shrinkwrap.json
-      - run: npm i -g npm@8.7
-      # --ignore-scripts prevents the `prepare` script from being run.
-      - run: npm install --package-lock-only --ignore-scripts
-      - run: "git diff --exit-code -- npm-shrinkwrap.json || (echo 'Error: npm-shrinkwrap.json is changed during npm install! Please make sure to use npm >= 8 and commit npm-shrinkwrap.json.' && false)"
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #     - name: Use Node.js ${{ matrix.node-version }}
+  #       uses: actions/setup-node@v3
+  #       with:
+  #         node-version: ${{ matrix.node-version }}
+  #         cache: npm
+  #         cache-dependency-path: npm-shrinkwrap.json
+  #     - run: npm i -g npm@8.7
+  #     # --ignore-scripts prevents the `prepare` script from being run.
+  #     - run: npm install --package-lock-only --ignore-scripts
+  #     - run: "git diff --exit-code -- npm-shrinkwrap.json || (echo 'Error: npm-shrinkwrap.json is changed during npm install! Please make sure to use npm >= 8 and commit npm-shrinkwrap.json.' && false)"
 
-  check-json-schema:
-    runs-on: ubuntu-latest
+  # check-json-schema:
+  #   runs-on: ubuntu-latest
 
-    strategy:
-      matrix:
-        node-version:
-          - "16"
+  #   strategy:
+  #     matrix:
+  #       node-version:
+  #         - "16"
 
-    steps:
-      - uses: actions/checkout@v3
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v3
-        with:
-          node-version: ${{ matrix.node-version }}
-          cache: npm
-          cache-dependency-path: npm-shrinkwrap.json
-      - run: npm install
-      - run: npm run generate:json-schema
-      - run: "git diff --exit-code -- schema/*.json || (echo 'Error: JSON schema is changed! Please run npm run generate:json-schema and commit the results.' && false)"
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #     - name: Use Node.js ${{ matrix.node-version }}
+  #       uses: actions/setup-node@v3
+  #       with:
+  #         node-version: ${{ matrix.node-version }}
+  #         cache: npm
+  #         cache-dependency-path: npm-shrinkwrap.json
+  #     - run: npm install
+  #     - run: npm run generate:json-schema
+  #     - run: "git diff --exit-code -- schema/*.json || (echo 'Error: JSON schema is changed! Please run npm run generate:json-schema and commit the results.' && false)"

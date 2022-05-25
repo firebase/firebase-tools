@@ -52,7 +52,7 @@ export async function downloadExtensionVersion(
   emulatorLogger.logLabeled(
     "BULLET",
     "extensions",
-    `Starting download for ${extensionVersionRef} source code...`
+    `Starting download for ${extensionVersionRef} source code to ${targetDir}..`
   );
   try {
     fs.mkdirSync(targetDir);
@@ -72,6 +72,7 @@ export async function downloadExtensionVersion(
   // TODO: We should not need to do this wait
   // However, when I remove this, unzipDir doesn't contain everything yet.
   await new Promise((resolve) => setTimeout(resolve, 1000));
+  emulatorLogger.logLabeled("BULLET", "extensions", `Done waiting for ${targetDir} to unzip...`);
 }
 
 function unzip(zipPath: string, unzipDir: string): Promise<void> {

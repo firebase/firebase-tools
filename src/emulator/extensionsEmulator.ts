@@ -173,17 +173,17 @@ export class ExtensionsEmulator implements EmulatorInstance {
   private installAndBuildSourceCode(sourceCodePath: string): void {
     // TODO: Add logging during this so it is clear what is happening.
 
-    this.logger.logLabeled("DEBUG", "Extensions", `Running "npm install" for ${sourceCodePath}`);
+    this.logger.logLabeled("INFO", "Extensions", `Running "npm install" for ${sourceCodePath}`);
     const npmInstall = spawn.sync("npm", ["--prefix", `/${sourceCodePath}/functions/`, "install"], {
       encoding: "utf8",
     });
     if (npmInstall.error) {
       throw npmInstall.error;
     }
-    this.logger.logLabeled("DEBUG", "Extensions", `Finished "npm install" for ${sourceCodePath}`);
+    this.logger.logLabeled("INFO", "Extensions", `Finished "npm install" for ${sourceCodePath}`);
 
     this.logger.logLabeled(
-      "DEBUG",
+      "INFO",
       "Extensions",
       `Running "npm run gcp-build" for ${sourceCodePath}`
     );
@@ -197,7 +197,7 @@ export class ExtensionsEmulator implements EmulatorInstance {
       throw npmRunGCPBuild.error;
     }
     this.logger.logLabeled(
-      "DEBUG",
+      "INFO",
       "Extensions",
       `Finished "npm run gcp-build" for ${sourceCodePath}`
     );
