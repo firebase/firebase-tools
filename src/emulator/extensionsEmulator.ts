@@ -27,9 +27,7 @@ export interface ExtensionEmulatorArgs {
   extensions: Record<string, string>;
   projectDir: string;
 }
-// TODO: Consider a different name, since this does not implement the EmulatorInstance interface
-// Note: At the moment, this doesn't really seem like it needs to be a class. However, I think the
-// statefulness that enables will be useful once we want to watch .env files for config changes.
+
 export class ExtensionsEmulator implements EmulatorInstance {
   private want: planner.DeploymentInstanceSpec[] = [];
   private backends: EmulatableBackend[] = [];
@@ -118,6 +116,7 @@ export class ExtensionsEmulator implements EmulatorInstance {
       if (!this.hasValidSource({ path: sourceCodePath, extTarget: ref })) {
         console.log("about to download source")
         const promise = this.downloadSource(instance, ref, sourceCodePath);
+        console.log("made promise")
         this.pendingDownloads.set(ref, promise);
         await promise;
         console.log('Waited for valid source, we good now!')
@@ -137,7 +136,7 @@ export class ExtensionsEmulator implements EmulatorInstance {
   ): Promise<void> {
     const extensionVersion = await planner.getExtensionVersion(instance);
     await downloadExtensionVersion(ref, extensionVersion.sourceDownloadUri, sourceCodePath);
-    await new Promise(() => this.installAndBuildSourceCode(sourceCodePath));
+    this.installAndBuildSourceCode(sourceCodePath);
   }
 
   /**
