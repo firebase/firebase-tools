@@ -167,7 +167,7 @@ export function substituteParams<T>(original: T, params: Record<string, string>)
  * Sets params equal to defaults given in extension.yaml if not already set in .env file.
  *
  * @param paramVars JSON object of params to values parsed from .env file
- * @param paramSpec information on params parsed from extension.yaml
+ * @param paramSpecs information on params parsed from extension.yaml
  * @return JSON object of params
  */
 export function populateDefaultParams(
@@ -177,15 +177,15 @@ export function populateDefaultParams(
   const newParams = paramVars;
 
   for (const param of paramSpecs) {
-    if (!paramVars[param.param]) {
-      if (param.default !== undefined && param.required) {
-        newParams[param.param] = param.default;
-      } else if (param.required) {
-        throw new FirebaseError(
-          `${param.param} has not been set in the given params file` +
-            " and there is no default available. Please set this variable before installing again."
-        );
-      }
+    if (paramVars[param.param]) continue;
+
+    if (param.default !== undefined) {
+      newParams[param.param] = param.default;
+    } else if (param.required) {
+      throw new FirebaseError(
+        `${param.param} has not been set in the given params file` +
+          " and there is no default available. Please set this variable before installing again."
+      );
     }
   }
 
