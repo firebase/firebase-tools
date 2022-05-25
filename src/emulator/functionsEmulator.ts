@@ -708,20 +708,6 @@ export class FunctionsEmulator implements EmulatorInstance {
         this.logger.log("WARN", "Error adding Eventarc function: " + err);
         throw err;
       });
-
-    /*
-    return api
-      .request("POST", `/emulator/v1/projects/${projectId}/triggers/${key}`, {
-        origin: `http://${EmulatorRegistry.getInfoHostString(eventarcEmu.getInfo())}`,
-        data: bundle,
-        json: true,
-      })
-      .then(() => true)
-      .catch((err) => {
-        this.logger.log("WARN", "Error adding Eventarc function: " + err);
-        throw err;
-      });
-    */
   }
 
   async performPostLoadOperations(): Promise<void> {
