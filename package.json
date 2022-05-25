@@ -26,6 +26,7 @@
     "test:client-integration": "bash ./scripts/client-integration-tests/run.sh",
     "test:compile": "tsc --project tsconfig.compile.json",
     "test:emulator": "bash ./scripts/emulator-tests/run.sh",
+    "test:import-export": "bash ./scripts/emulator-import-export-tests/run.sh",
     "test:extensions-deploy": "bash ./scripts/extensions-deploy-tests/run.sh",
     "test:extensions-emulator": "bash ./scripts/extensions-emulator-tests/run.sh",
     "test:hosting": "bash ./scripts/hosting-tests/run.sh",
