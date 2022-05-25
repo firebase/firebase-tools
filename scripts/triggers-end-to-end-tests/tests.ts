@@ -2,10 +2,8 @@ import { expect } from "chai";
 import * as admin from "firebase-admin";
 import { Firestore } from "@google-cloud/firestore";
 import * as fs from "fs";
-import * as os from "os";
 import * as path from "path";
 
-import { CLIProcess } from "../integration-helpers/cli";
 import { FrameworkOptions, TriggerEndToEndTest } from "../integration-helpers/framework";
 
 const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "";
@@ -18,13 +16,11 @@ const ADMIN_CREDENTIAL = {
   },
 };
 
-const ALL_EMULATORS_STARTED_LOG = "All emulators ready";
-
 /*
  * Various delays that are needed because this test spawns
  * parallel emulator subprocesses.
  */
-const TEST_SETUP_TIMEOUT = 60000;
+const TEST_SETUP_TIMEOUT = 80000;
 const EMULATORS_WRITE_DELAY_MS = 5000;
 const EMULATORS_SHUTDOWN_DELAY_MS = 5000;
 const EMULATOR_TEST_TIMEOUT = EMULATORS_WRITE_DELAY_MS * 2;
@@ -42,15 +38,6 @@ function readConfig(): FrameworkOptions {
   return JSON.parse(data);
 }
 
-function logIncludes(msg: string) {
-  return (data: unknown) => {
-    if (typeof data !== "string" && !Buffer.isBuffer(data)) {
-      throw new Error(`data is not a string or buffer (${typeof data})`);
-    }
-    return data.includes(msg);
-  };
-}
-
 describe("function triggers", () => {
   let test: TriggerEndToEndTest;
   let database: admin.database.Database | undefined;
@@ -64,7 +51,7 @@ describe("function triggers", () => {
 
     const config = readConfig();
     test = new TriggerEndToEndTest(FIREBASE_PROJECT, __dirname, config);
-    await test.startEmulators(["--only", "functions,database,firestore,pubsub,storage,auth"]);
+    await test.startEmulators(["--only", "functions,database,firestore,pubsub,storage,auth", "--debug"]);
 
     firestore = new Firestore({
       port: test.firestoreEmulatorPort,
