@@ -135,7 +135,7 @@ export class ExtensionsEmulator implements EmulatorInstance {
   ): Promise<void> {
     const extensionVersion = await planner.getExtensionVersion(instance);
     await downloadExtensionVersion(ref, extensionVersion.sourceDownloadUri, sourceCodePath);
-    this.installAndBuildSourceCode(sourceCodePath);
+    await new Promise(() => this.installAndBuildSourceCode(sourceCodePath));
   }
 
   /**
@@ -172,7 +172,7 @@ export class ExtensionsEmulator implements EmulatorInstance {
 
   private installAndBuildSourceCode(sourceCodePath: string): void {
     // TODO: Add logging during this so it is clear what is happening.
-
+    console.log(`Running "npm install" for ${sourceCodePath}`)
     this.logger.logLabeled("INFO", "Extensions", `Running "npm install" for ${sourceCodePath}`);
     const npmInstall = spawn.sync("npm", ["--prefix", `/${sourceCodePath}/functions/`, "install"], {
       encoding: "utf8",
@@ -180,6 +180,7 @@ export class ExtensionsEmulator implements EmulatorInstance {
     if (npmInstall.error) {
       throw npmInstall.error;
     }
+    console.log(`Finished "npm install" for ${sourceCodePath}`)
     this.logger.logLabeled("INFO", "Extensions", `Finished "npm install" for ${sourceCodePath}`);
 
     this.logger.logLabeled(
