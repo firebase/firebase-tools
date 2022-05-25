@@ -158,6 +158,7 @@ export class ExtensionsEmulator implements EmulatorInstance {
     for (const requiredFile of requiredFiles) {
       const f = path.join(args.path, requiredFile);
       if (!fs.existsSync(f)) {
+        console.log("invalid??")
         EmulatorLogger.forExtension({ ref: args.extTarget }).logLabeled(
           "BULLET",
           "extensions",
@@ -183,25 +184,28 @@ export class ExtensionsEmulator implements EmulatorInstance {
     console.log(`Finished "npm install" for ${sourceCodePath}`)
     this.logger.logLabeled("INFO", "Extensions", `Finished "npm install" for ${sourceCodePath}`);
 
-    // this.logger.logLabeled(
-    //   "INFO",
-    //   "Extensions",
-    //   `Running "npm run gcp-build" for ${sourceCodePath}`
-    // );
-    // const npmRunGCPBuild = spawn.sync(
-    //   "npm",
-    //   ["--prefix", `/${sourceCodePath}/functions/`, "run", "gcp-build"],
-    //   { encoding: "utf8" }
-    // );
-    // if (npmRunGCPBuild.error) {
-    //   // TODO: Make sure this does not error out if "gcp-build" is not defined, but does error if it fails otherwise.
-    //   throw npmRunGCPBuild.error;
-    // }
-    // this.logger.logLabeled(
-    //   "INFO",
-    //   "Extensions",
-    //   `Finished "npm run gcp-build" for ${sourceCodePath}`
-    // );
+    console.log(`Running "npm run gcp-build" for ${sourceCodePath}`)
+    this.logger.logLabeled(
+      "INFO",
+      "Extensions",
+      `Running "npm run gcp-build" for ${sourceCodePath}`
+    );
+    const npmRunGCPBuild = spawn.sync(
+      "npm",
+      ["--prefix", `/${sourceCodePath}/functions/`, "run", "gcp-build"],
+      { encoding: "utf8" }
+    );
+    if (npmRunGCPBuild.error) {
+      // TODO: Make sure this does not error out if "gcp-build" is not defined, but does error if it fails otherwise.
+      throw npmRunGCPBuild.error;
+    }
+
+    console.log(`Finished "npm run gcp-build" for ${sourceCodePath}`)
+    this.logger.logLabeled(
+      "INFO",
+      "Extensions",
+      `Finished "npm run gcp-build" for ${sourceCodePath}`
+    );
   }
 
   /**
