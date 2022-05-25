@@ -114,12 +114,9 @@ export class ExtensionsEmulator implements EmulatorInstance {
       }
 
       if (!this.hasValidSource({ path: sourceCodePath, extTarget: ref })) {
-        console.log("about to download source")
         const promise = this.downloadSource(instance, ref, sourceCodePath);
-        console.log("made promise")
         this.pendingDownloads.set(ref, promise);
         await promise;
-        console.log('Waited for valid source, we good now!')
       }
       return sourceCodePath;
     } else {
@@ -159,7 +156,6 @@ export class ExtensionsEmulator implements EmulatorInstance {
     for (const requiredFile of requiredFiles) {
       const f = path.join(args.path, requiredFile);
       if (!fs.existsSync(f)) {
-        console.log("invalid??")
         EmulatorLogger.forExtension({ ref: args.extTarget }).logLabeled(
           "BULLET",
           "extensions",
@@ -174,34 +170,17 @@ export class ExtensionsEmulator implements EmulatorInstance {
 
   private installAndBuildSourceCode(sourceCodePath: string): void {
     // TODO: Add logging during this so it is clear what is happening.
-    console.log(`Running "npm install" for ${sourceCodePath}`)
-    this.logger.logLabeled("INFO", "Extensions", `Running "npm install" for ${sourceCodePath}`);
+    this.logger.logLabeled("DEBUG", "Extensions", `Running "npm install" for ${sourceCodePath}`);
     const npmInstall = spawn.sync("npm", ["--prefix", `/${sourceCodePath}/functions/`, "install"], {
       encoding: "utf8",
     });
     if (npmInstall.error) {
       throw npmInstall.error;
     }
-    console.log(`Finished "npm install" for ${sourceCodePath}`)
-    this.logger.logLabeled("INFO", "Extensions", `Finished "npm install" for ${sourceCodePath}`);
+    this.logger.logLabeled("DEBUG", "Extensions", `Finished "npm install" for ${sourceCodePath}`);
 
-
-    console.log(`Running "npm run build" for ${sourceCodePath}`)
-    const npmRunBuild = spawn.sync(
-      "npm",
-      ["--prefix", `/${sourceCodePath}/functions/`, "run", "build"],
-      { encoding: "utf8" }
-    );
-    if (npmRunBuild.error) {
-      // TODO: Make sure this does not error out if "build" is not defined, but does error if it fails otherwise.
-      throw npmRunBuild.error;
-    }
-
-    console.log(`Finished "npm run build" for ${sourceCodePath}`)
-
-    console.log(`Running "npm run gcp-build" for ${sourceCodePath}`)
     this.logger.logLabeled(
-      "INFO",
+      "DEBUG",
       "Extensions",
       `Running "npm run gcp-build" for ${sourceCodePath}`
     );
@@ -215,9 +194,8 @@ export class ExtensionsEmulator implements EmulatorInstance {
       throw npmRunGCPBuild.error;
     }
 
-    console.log(`Finished "npm run gcp-build" for ${sourceCodePath}`)
     this.logger.logLabeled(
-      "INFO",
+      "DEBUG",
       "Extensions",
       `Finished "npm run gcp-build" for ${sourceCodePath}`
     );
@@ -234,11 +212,9 @@ export class ExtensionsEmulator implements EmulatorInstance {
     await this.checkAndWarnAPIs(this.want);
     this.backends = await Promise.all(
       this.want.map((i: planner.DeploymentInstanceSpec) => {
-        console.log(`getting backend for ${i.instanceId}`)
         return this.toEmulatableBackend(i);
       })
     );
-    console.log('done getting backends!')
     return this.backends;
   }
 
@@ -250,7 +226,6 @@ export class ExtensionsEmulator implements EmulatorInstance {
     instance: planner.DeploymentInstanceSpec
   ): Promise<EmulatableBackend> {
     const extensionDir = await this.ensureSourceCode(instance);
-    console.log(`Source code ensured ${extensionDir}`);
     // TODO: This should find package.json, then use that as functionsDir.
     const functionsDir = path.join(extensionDir, "functions");
     // TODO(b/213335255): For local extensions, this should include extensionSpec instead of extensionVersion

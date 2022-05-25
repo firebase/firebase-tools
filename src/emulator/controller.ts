@@ -486,7 +486,6 @@ export async function startAll(
     emulatableBackends.push(...filteredExtensionsBackends);
     // Log the command for analytics
     void track("Emulator Run", Emulators.EXTENSIONS);
-    console.log("about to start emulator!");
     await startEmulator(extensionEmulator);
   }
 
