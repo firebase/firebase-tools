@@ -55,7 +55,7 @@ export class EventarcEmulator implements EmulatorInstance {
       const customEventTriggers = this.customEvents[key] || [];
       customEventTriggers.push({ projectId, triggerName, eventTrigger });
       this.customEvents[key] = customEventTriggers;
-      res.sendStatus(200);
+      res.status(200).send({ status: "OK" });
     };
 
     const publishEventsRoute = `/projects/:project_id/locations/:location/channels/:channel::publishEvents`;

@@ -706,7 +706,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       .then(() => true)
       .catch((err) => {
         this.logger.log("WARN", "Error adding Eventarc function: " + err);
-        throw err;
+        return false;
       });
   }
 
