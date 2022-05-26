@@ -153,7 +153,6 @@ jobs:
       - run: npm i -g npm@8.7
       - run: npm ci
       - run: ${{ matrix.script }}
-      - run: dir
       - name: Print debug logs
         if: failure()
         run: type *debug.log

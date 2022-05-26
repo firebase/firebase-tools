@@ -24,7 +24,6 @@ const ALL_EMULATORS_STARTED_LOG = "All emulators ready";
  * parallel emulator subprocesses.
  */
 const TEST_SETUP_TIMEOUT = 60000;
-const EMULATORS_WRITE_DELAY_MS = 5000;
 
 function readConfig(): FrameworkOptions {
   const filename = path.join(__dirname, "firebase.json");
