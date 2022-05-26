@@ -54,7 +54,6 @@ describe("function triggers", () => {
     await test.startEmulators([
       "--only",
       "functions,database,firestore,pubsub,storage,auth",
-      "--debug",
     ]);
 
     firestore = new Firestore({
