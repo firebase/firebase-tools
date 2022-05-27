@@ -263,20 +263,17 @@ function isMemoryOption(value: backend.MemoryOptions | any): value is backend.Me
 
 /** Converts a build specification into a Backend representation, with all Params resolved and interpolated */
 // TODO(vsfan): handle Expression<T> types
-export function resolveBackend(
-  build: Build,
-  userEnvs: Record<string, string>
-): backend.Backend {
+export function resolveBackend(build: Build, userEnvs: Record<string, string>): backend.Backend {
   for (const param of build.params) {
     const expectedEnv = param.param;
 
     if (!userEnvs.hasOwnProperty(expectedEnv)) {
       throw new FirebaseError(
         "Build specified parameter " +
-        expectedEnv +
-        " but it was not present in the user dotenv files or Cloud Secret Manager"
+          expectedEnv +
+          " but it was not present in the user dotenv files or Cloud Secret Manager"
       );
-    } 
+    }
   }
 
   const bkEndpoints: Array<backend.Endpoint> = [];
