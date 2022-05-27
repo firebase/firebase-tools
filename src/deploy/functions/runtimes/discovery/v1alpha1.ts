@@ -51,7 +51,6 @@ export function buildFromV1Alpha1(
   const manifest = JSON.parse(JSON.stringify(yaml)) as Manifest;
   const bd: build.Build = build.empty();
   bd.requiredAPIs = parseRequiredAPIs(manifest);
-  bd.endpoints = {};
   for (const id of Object.keys(manifest.endpoints)) {
     const me: ManifestEndpoint = manifest.endpoints[id];
     assertManifestEndpoint(me, id);
@@ -101,7 +100,7 @@ function parseRequiredAPIs(manifest: Manifest): backend.RequiredAPI[] {
   return requiredAPIs;
 }
 
-function assertManifestEndpoint(ep: ManifestEndpoint, id: string) {
+function assertManifestEndpoint(ep: ManifestEndpoint, id: string): void {
   const prefix = `endpoints[${id}]`;
   assertKeyTypes(prefix, ep, {
     region: "array",

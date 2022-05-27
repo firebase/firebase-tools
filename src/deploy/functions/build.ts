@@ -3,6 +3,7 @@ import * as proto from "../../gcp/proto";
 import * as api from "../../.../../api";
 import { FirebaseError } from "../../error";
 import { assertExhaustive } from "../../functional";
+import { getSecret, getSecretVersion, accessSecretVersion } from "../../gcp/secretManager";
 
 /* The union of a customer-controlled deployment and potentially deploy-time defined parameters */
 export interface Build {
@@ -260,76 +261,112 @@ function isMemoryOption(value: backend.MemoryOptions | any): value is backend.Me
   return value == null || [128, 256, 512, 1024, 2048, 4096, 8192].includes(value);
 }
 
-/** Converts a build specification into a Backend representation, with all Params resolved and interpolated */
-// TODO(vsfan): resolve build.Params
-// TODO(vsfan): handle Expression<T> types
-export function resolveBackend(build: Build, userEnvs: Record<string, string>): backend.Backend {
-  for (const param of build.params) {
-    const expectedEnv = param.param;
-    if (!userEnvs.hasOwnProperty(expectedEnv)) {
-      throw new FirebaseError(
-        "Build specified parameter " +
-          expectedEnv +
-          " but it was not present in the user dotenv files"
-      );
+async function handleParam(
+  param: Param,
+  projectId: string,
+  userEnvs: Record<string, string>
+): Promise<string> {
+  const paramName = param.param;
+  let existsAsSecret = false;
+
+  try {
+    const _ = await getSecret(projectId, paramName);
+    existsAsSecret = true;
+  } catch (err: any) {
+    if (err.status === 404) {
+      // no-op
     }
+    throw err;
+  }
+  if (existsAsSecret) {
+    return accessSecretVersion(projectId, paramName, "latest");
+  }
+
+  if (!userEnvs.hasOwnProperty(paramName)) {
+    throw new FirebaseError(
+      "Build specified parameter " +
+        paramName +
+        " but it was not present in the user dotenv files or Cloud Secret Manager"
+    );
+  } else {
+    return userEnvs[paramName];
+  }
+
+  // TODO(vsfan): prompt user for any misisng parameters
+  return "";
+}
+
+/** Converts a build specification into a Backend representation, with all Params resolved and interpolated */
+// TODO(vsfan): handle Expression<T> types
+export async function resolveBackend(
+  build: Build,
+  userEnvs: Record<string, string>
+): Promise<backend.Backend> {
+  let projectId = "";
+  const paramValues: Record<string, string> = {};
+  for (const endpointId of Object.keys(build.endpoints)) {
+    projectId = build.endpoints[endpointId].project;
+    break;
+  }
+  for (const param of build.params) {
+    paramValues[param.param] = await handleParam(param, projectId, userEnvs);
   }
 
   const bkEndpoints: Array<backend.Endpoint> = [];
   for (const endpointId of Object.keys(build.endpoints)) {
-    const endpoint = build.endpoints[endpointId];
+    const bdEndpoint = build.endpoints[endpointId];
 
-    let regions = endpoint.region;
+    let regions = bdEndpoint.region;
     if (typeof regions === "undefined") {
       regions = [api.functionsDefaultRegion];
     }
     for (const region of regions) {
-      const trigger = discoverTrigger(endpoint);
+      const trigger = discoverTrigger(bdEndpoint);
 
-      if (typeof endpoint.platform === "undefined") {
+      if (typeof bdEndpoint.platform === "undefined") {
         throw new FirebaseError("platform can't be undefined");
       }
-      if (!isMemoryOption(endpoint.availableMemoryMb)) {
+      if (!isMemoryOption(bdEndpoint.availableMemoryMb)) {
         throw new FirebaseError("available memory must be a supported value, if present");
       }
       let timeout: number;
-      if (endpoint.timeoutSeconds) {
-        timeout = resolveInt(endpoint.timeoutSeconds);
+      if (bdEndpoint.timeoutSeconds) {
+        timeout = resolveInt(bdEndpoint.timeoutSeconds);
       } else {
         timeout = 60;
       }
 
       const bkEndpoint: backend.Endpoint = {
         id: endpointId,
-        project: endpoint.project,
+        project: bdEndpoint.project,
         region: region,
-        entryPoint: endpoint.entryPoint,
-        platform: endpoint.platform,
-        runtime: endpoint.runtime,
+        entryPoint: bdEndpoint.entryPoint,
+        platform: bdEndpoint.platform,
+        runtime: bdEndpoint.runtime,
         timeoutSeconds: timeout,
         ...trigger,
       };
-      proto.renameIfPresent(bkEndpoint, endpoint, "maxInstances", "maxInstances", resolveInt);
-      proto.renameIfPresent(bkEndpoint, endpoint, "minInstances", "minInstances", resolveInt);
-      proto.renameIfPresent(bkEndpoint, endpoint, "concurrency", "concurrency", resolveInt);
+      proto.renameIfPresent(bkEndpoint, bdEndpoint, "maxInstances", "maxInstances", resolveInt);
+      proto.renameIfPresent(bkEndpoint, bdEndpoint, "minInstances", "minInstances", resolveInt);
+      proto.renameIfPresent(bkEndpoint, bdEndpoint, "concurrency", "concurrency", resolveInt);
       proto.copyIfPresent(
         bkEndpoint,
-        endpoint,
+        bdEndpoint,
         "ingressSettings",
         "availableMemoryMb",
         "environmentVariables",
         "labels"
       );
-      proto.copyIfPresent(bkEndpoint, endpoint, "secretEnvironmentVariables");
-      if (endpoint.vpc) {
+      proto.copyIfPresent(bkEndpoint, bdEndpoint, "secretEnvironmentVariables");
+      if (bdEndpoint.vpc) {
         bkEndpoint.vpc = {
           // $REGION is a token in the Build VPC connector because Build endpoints can have multiple regions, so we unroll here
-          connector: resolveString(endpoint.vpc.connector).replace("$REGION", region),
+          connector: resolveString(bdEndpoint.vpc.connector).replace("$REGION", region),
         };
-        proto.copyIfPresent(bkEndpoint.vpc, endpoint.vpc, "egressSettings");
+        proto.copyIfPresent(bkEndpoint.vpc, bdEndpoint.vpc, "egressSettings");
       }
-      if (endpoint.serviceAccount) {
-        bkEndpoint.serviceAccountEmail = endpoint.serviceAccount;
+      if (bdEndpoint.serviceAccount) {
+        bkEndpoint.serviceAccountEmail = bdEndpoint.serviceAccount;
       }
 
       bkEndpoints.push(bkEndpoint);
