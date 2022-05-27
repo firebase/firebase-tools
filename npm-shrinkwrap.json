@@ -1,12 +1,12 @@
 {
   "name": "firebase-tools",
-  "version": "11.0.0",
+  "version": "11.0.1",
   "lockfileVersion": 2,
   "requires": true,
   "packages": {
     "": {
       "name": "firebase-tools",
-      "version": "11.0.0",
+      "version": "11.0.1",
       "license": "MIT",
       "dependencies": {
         "@google-cloud/pubsub": "^2.19.4",
@@ -147,7 +147,7 @@
         "typescript-json-schema": "^0.50.1"
       },
       "engines": {
-        "node": ">= 14.18.0"
+        "node": "^14.18.0 || >=16.4.0"
       }
     },
     "node_modules/@apidevtools/json-schema-ref-parser": {
