@@ -3,6 +3,7 @@ import * as proto from "../../gcp/proto";
 import * as api from "../../.../../api";
 import { FirebaseError } from "../../error";
 import { assertExhaustive } from "../../functional";
+import { getSecret, getSecretVersion, accessSecretVersion } from "../../gcp/secretManager";
 
 /* The union of a customer-controlled deployment and potentially deploy-time defined parameters */
 export interface Build {
@@ -252,7 +253,25 @@ function isMemoryOption(value: backend.MemoryOptions | any): value is backend.Me
 /** Converts a build specification into a Backend representation, with all Params resolved and interpolated */
 // TODO(vsfan): resolve build.Params
 // TODO(vsfan): handle Expression<T> types
-export function resolveBackend(build: Build, userEnvs: Record<string, string>): backend.Backend {
+export async function resolveBackend(build: Build, userEnvs: Record<string, string>): backend.Backend {
+  let projectId = "";
+  const paramValues: Record<string, string> = {};
+  for (const endpointId of Object.keys(build.endpoints)) {
+    projectId = build.endpoints[endpointId].project;
+    break;
+  }
+  for (const param of build.params) {
+    paramValues[param.param] = await handleParam(param, projectId, userEnvs);
+  }
+
+  return toBackend(build, userEnvs, paramValues);
+}
+
+export function toBackend(
+  build: Build,
+  userEnvs: Record<string, string>,
+  paramValues: Record<string, string>,
+) {
   for (const param of build.params) {
     const expectedEnv = param.param;
     if (!userEnvs.hasOwnProperty(expectedEnv)) {
@@ -328,6 +347,41 @@ export function resolveBackend(build: Build, userEnvs: Record<string, string>): 
   const bkend = backend.of(...bkEndpoints);
   bkend.requiredAPIs = build.requiredAPIs;
   return bkend;
+}
+
+async function handleParam(
+  param: Param,
+  projectId: string,
+  userEnvs: Record<string, string>
+): Promise<string> {
+  const paramName = param.param;
+  let existsAsSecret = false;
+
+  try {
+    const _ = await getSecret(projectId, paramName);
+    existsAsSecret = true;
+  } catch (err: any) {
+    if (err.status === 404) {
+      // no-op
+    }
+    throw err;
+  }
+  if (existsAsSecret) {
+    return accessSecretVersion(projectId, paramName, "latest");
+  }
+
+  if (!userEnvs.hasOwnProperty(paramName)) {
+    throw new FirebaseError(
+      "Build specified parameter " +
+        paramName +
+        " but it was not present in the user dotenv files or Cloud Secret Manager"
+    );
+  } else {
+    return userEnvs[paramName];
+  }
+
+  // TODO(vsfan): prompt user for any misisng parameters
+  return "";
 }
 
 function discoverTrigger(endpoint: Endpoint): backend.Triggered {

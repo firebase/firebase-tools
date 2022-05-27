@@ -116,7 +116,7 @@ export async function prepare(
     let wantBackend: backend.Backend;
     if (previews.functionsparams) {
       const wantBuild = await runtimeDelegate.discoverBuild(runtimeConfig, firebaseEnvs);
-      wantBackend = build.resolveBackend(wantBuild, userEnvs);
+      wantBackend = await build.resolveBackend(wantBuild, userEnvs);
     } else {
       logger.debug(`Analyzing ${runtimeDelegate.name} backend spec`);
       wantBackend = await runtimeDelegate.discoverSpec(runtimeConfig, firebaseEnvs);
