@@ -102,6 +102,7 @@ interface CallableTrigger { }
 // For example, before user login.
 export interface BlockingTrigger {
   eventType: string;
+  options?: Record<string, unknown>;
 }
 
 // Trigger definitions for endpoints that listen to CloudEvents emitted by other systems (or legacy
@@ -353,7 +354,7 @@ function discoverTrigger(endpoint: Endpoint): backend.Triggered {
   } else if ("callableTrigger" in endpoint) {
     trigger = { callableTrigger: {} };
   } else if ("blockingTrigger" in endpoint) {
-    throw new FirebaseError("blocking triggers not supported");
+    trigger = { blockingTrigger: endpoint.blockingTrigger };
   } else if ("eventTrigger" in endpoint) {
     const bkEventFilters: Record<string, string> = {};
     for (const key in endpoint.eventTrigger.eventFilters) {

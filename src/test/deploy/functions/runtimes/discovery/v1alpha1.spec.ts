@@ -191,7 +191,6 @@ describe("buildFromV1Alpha", () => {
       expect(build.resolveBackend(parsed, {})).to.deep.equal(expectedBackend);
     });
 
-    /* TODO(vsfan): Enable these when blocking triggers are implemented in the Build type
     it("copies blocking triggers", () => {
       const blockingTrigger: backend.BlockingTrigger = {
         eventType: BEFORE_CREATE_EVENT,
@@ -250,7 +249,6 @@ describe("buildFromV1Alpha", () => {
       });
       expect(build.resolveBackend(parsed, {})).to.deep.equal(expectedBackend);
     });
-    */
 
     it("copies optional fields", () => {
       const fields: backend.ServiceConfiguration = {
