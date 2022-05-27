@@ -1,1 +1,2 @@
 - Updates the minimum required version of Node.js to be `~14.18.0 || >=16.4.0` (#4580).
+- Adds v2 RTDB triggers to function deploy (#4582).
