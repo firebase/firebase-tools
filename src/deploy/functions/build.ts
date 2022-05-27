@@ -261,55 +261,22 @@ function isMemoryOption(value: backend.MemoryOptions | any): value is backend.Me
   return value == null || [128, 256, 512, 1024, 2048, 4096, 8192].includes(value);
 }
 
-async function handleParam(
-  param: Param,
-  projectId: string,
-  userEnvs: Record<string, string>
-): Promise<string> {
-  const paramName = param.param;
-  let existsAsSecret = false;
-
-  try {
-    const _ = await getSecret(projectId, paramName);
-    existsAsSecret = true;
-  } catch (err: any) {
-    if (err.status === 404) {
-      // no-op
-    }
-    throw err;
-  }
-  if (existsAsSecret) {
-    return accessSecretVersion(projectId, paramName, "latest");
-  }
-
-  if (!userEnvs.hasOwnProperty(paramName)) {
-    throw new FirebaseError(
-      "Build specified parameter " +
-        paramName +
-        " but it was not present in the user dotenv files or Cloud Secret Manager"
-    );
-  } else {
-    return userEnvs[paramName];
-  }
-
-  // TODO(vsfan): prompt user for any misisng parameters
-  return "";
-}
-
 /** Converts a build specification into a Backend representation, with all Params resolved and interpolated */
 // TODO(vsfan): handle Expression<T> types
-export async function resolveBackend(
+export function resolveBackend(
   build: Build,
   userEnvs: Record<string, string>
-): Promise<backend.Backend> {
-  let projectId = "";
-  const paramValues: Record<string, string> = {};
-  for (const endpointId of Object.keys(build.endpoints)) {
-    projectId = build.endpoints[endpointId].project;
-    break;
-  }
+): backend.Backend {
   for (const param of build.params) {
-    paramValues[param.param] = await handleParam(param, projectId, userEnvs);
+    const expectedEnv = param.param;
+
+    if (!userEnvs.hasOwnProperty(expectedEnv)) {
+      throw new FirebaseError(
+        "Build specified parameter " +
+        expectedEnv +
+        " but it was not present in the user dotenv files or Cloud Secret Manager"
+      );
+    } 
   }
 
   const bkEndpoints: Array<backend.Endpoint> = [];
