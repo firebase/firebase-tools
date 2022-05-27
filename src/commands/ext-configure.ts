@@ -1,8 +1,5 @@
-import * as _ from "lodash";
-import * as clc from "cli-color";
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const { marked } = require("marked");
-import * as ora from "ora";
 import TerminalRenderer = require("marked-terminal");
 
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
@@ -37,8 +34,7 @@ marked.setOptions({
 export default new Command("ext:configure <extensionInstanceId>")
   .description("configure an existing extension instance")
   .withForce()
-  .option("--params <paramsFile>", "path of params file with .env format.")
-  .option("--local", "save to firebase.json rather than directly install to a Firebase project")
+  .option("--local", "deprecated")
   .before(requirePermissions, [
     "firebaseextensions.instances.update",
     "firebaseextensions.instances.get",
@@ -48,171 +44,95 @@ export default new Command("ext:configure <extensionInstanceId>")
   .action(async (instanceId: string, options: Options) => {
     const projectId = getProjectId(options);
 
-    if (options.local) {
-      if (options.nonInteractive) {
-        throw new FirebaseError(
-          `Command not supported in non-interactive mode, edit ./extensions/${instanceId}.env directly instead`
-        );
-      }
-
-      const config = manifest.loadConfig(options);
-
-      const refOrPath = manifest.getInstanceTarget(instanceId, config);
-      const isLocalSource = isLocalPath(refOrPath);
-
-      let spec: extensionsApi.ExtensionSpec;
-      if (isLocalSource) {
-        const source = await createSourceFromLocation(needProjectId({ projectId }), refOrPath);
-        spec = source.spec;
-      } else {
-        const extensionVersion = await extensionsApi.getExtensionVersion(refOrPath);
-        spec = extensionVersion.spec;
-      }
-
-      const oldParamValues = manifest.readInstanceParam({
-        instanceId,
-        projectDir: config.projectDir,
-      });
-
-      const [immutableParams, tbdParams] = partition(
-        spec.params,
-        (param) => param.immutable ?? false
-      );
-      infoImmutableParams(immutableParams, oldParamValues);
-
-      // Ask for mutable param values from user.
-      paramHelper.setNewDefaults(tbdParams, oldParamValues);
-      const mutableParamsBindingOptions = await paramHelper.getParams({
-        projectId,
-        paramSpecs: tbdParams,
-        nonInteractive: false,
-        paramsEnvPath: (options.params ?? "") as string,
-        instanceId,
-        reconfiguring: true,
-      });
-
-      const eventsConfig = spec.events
-        ? await askUserForEventsConfig.askForEventsConfig(
-            spec.events,
-            "${param:PROJECT_ID}",
-            instanceId
-          )
-        : undefined;
-      if (eventsConfig) {
-        mutableParamsBindingOptions.EVENTARC_CHANNEL = { baseValue: eventsConfig.channel };
-        mutableParamsBindingOptions.ALLOWED_EVENT_TYPES = {
-          baseValue: eventsConfig.allowedEventTypes.join(","),
-        };
-      }
-
-      // Merge with old immutable params.
-      const newParamOptions = {
-        ...buildBindingOptionsWithBaseValue(oldParamValues),
-        ...mutableParamsBindingOptions,
-      };
-
-      await manifest.writeToManifest(
-        [
-          {
-            instanceId,
-            ref: !isLocalSource ? refs.parse(refOrPath) : undefined,
-            localPath: isLocalSource ? refOrPath : undefined,
-            params: newParamOptions,
-            extensionSpec: spec,
-          },
-        ],
-        config,
-        {
-          nonInteractive: false,
-          force: true, // Skip asking for permission again
-        }
-      );
-      manifest.showPreviewWarning();
-      return;
-    }
-    if (!projectId) {
+    if (options.nonInteractive) {
       throw new FirebaseError(
-        `Project ID must be provided when re-configuring an instance outside of local mode.`
+        `Command not supported in non-interactive mode, edit ./extensions/${instanceId}.env directly instead. ` +
+          `See https://firebase.google.com/docs/extensions/manifest for more details.`
       );
     }
-    // TODO(b/220900194): Remove everything below and make --local the default behavior.
-    const spinner = ora(
-      `Configuring ${clc.bold(instanceId)}. This usually takes 3 to 5 minutes...`
-    );
-    try {
-      const existingInstance = await extensionsApi.getInstance(
-        needProjectId({ projectId }),
-        instanceId
-      );
-      const paramSpecWithNewDefaults =
-        paramHelper.getParamsWithCurrentValuesAsDefaults(existingInstance);
-      const immutableParams = _.remove(paramSpecWithNewDefaults, (param) => param.immutable);
-
-      const paramBindingOptions = await paramHelper.getParams({
-        projectId,
-        paramSpecs: paramSpecWithNewDefaults,
-        nonInteractive: options.nonInteractive,
-        paramsEnvPath: options.params as string,
-        instanceId,
-        reconfiguring: true,
-      });
-      const paramBindings = getBaseParamBindings(paramBindingOptions);
-      if (immutableParams.length) {
-        const plural = immutableParams.length > 1;
-        logger.info(`The following param${plural ? "s are" : " is"} immutable:`);
-        for (const { param } of immutableParams) {
-          const value = _.get(existingInstance, `config.params.${param}`);
-          logger.info(`param: ${param}, value: ${value}`);
-          paramBindings[param] = value;
-        }
-        logger.info(
-          (plural
-            ? "To set different values for these params"
-            : "To set a different value for this param") +
-            ", uninstall the extension, then install a new instance of this extension."
-        );
-      }
-      // Call needProjectId to guarantee that project ID exists, or this errors out.
-      const pId = needProjectId({ projectId });
-      const spec = existingInstance ? existingInstance.config.source.spec : undefined;
-      const eventsConfig = spec.events
-        ? await askUserForEventsConfig.askForEventsConfig(spec.events, pId, instanceId)
-        : undefined;
-      spinner.start();
-
-      const configureOptions: any = {
-        projectId: pId,
-        instanceId,
-        params: paramBindings,
-        canEmitEvents: eventsConfig ? true : false,
-        eventarcChannel: eventsConfig?.channel,
-        allowedEventTypes: eventsConfig?.allowedEventTypes,
-      };
-      const res = await extensionsApi.configureInstance(configureOptions);
-      spinner.stop();
-      utils.logLabeledSuccess(logPrefix, `successfully configured ${clc.bold(instanceId)}.`);
-      utils.logLabeledBullet(
+    if (options.local) {
+      utils.logLabeledWarning(
         logPrefix,
-        marked(
-          `You can view your reconfigured instance in the Firebase console: ${utils.consoleUrl(
-            needProjectId({ projectId }),
-            `/extensions/instances/${instanceId}?tab=config`
-          )}`
-        )
+        "As of firebase-tools@11.0.0, the `--local` flag is no longer required, as it is the default behavior."
       );
-      manifest.showDeprecationWarning();
-      return res;
-    } catch (err: any) {
-      if (spinner.isSpinning) {
-        spinner.fail();
-      }
-      if (!(err instanceof FirebaseError)) {
-        throw new FirebaseError(`Error occurred while configuring the instance: ${err.message}`, {
-          original: err,
-        });
-      }
-      throw err;
     }
+
+    const config = manifest.loadConfig(options);
+
+    const refOrPath = manifest.getInstanceTarget(instanceId, config);
+    const isLocalSource = isLocalPath(refOrPath);
+
+    let spec: extensionsApi.ExtensionSpec;
+    if (isLocalSource) {
+      const source = await createSourceFromLocation(needProjectId({ projectId }), refOrPath);
+      spec = source.spec;
+    } else {
+      const extensionVersion = await extensionsApi.getExtensionVersion(refOrPath);
+      spec = extensionVersion.spec;
+    }
+
+    const oldParamValues = manifest.readInstanceParam({
+      instanceId,
+      projectDir: config.projectDir,
+    });
+
+    const [immutableParams, tbdParams] = partition(
+      spec.params,
+      (param) => param.immutable ?? false
+    );
+    infoImmutableParams(immutableParams, oldParamValues);
+
+    // Ask for mutable param values from user.
+    paramHelper.setNewDefaults(tbdParams, oldParamValues);
+    const mutableParamsBindingOptions = await paramHelper.getParams({
+      projectId,
+      paramSpecs: tbdParams,
+      nonInteractive: false,
+      // TODO(b/230598656): Clean up paramsEnvPath after v11 launch.
+      paramsEnvPath: "",
+      instanceId,
+      reconfiguring: true,
+    });
+
+    // Ask for events config
+    const eventsConfig = spec.events
+      ? await askUserForEventsConfig.askForEventsConfig(
+          spec.events,
+          "${param:PROJECT_ID}",
+          instanceId
+        )
+      : undefined;
+    if (eventsConfig) {
+      mutableParamsBindingOptions.EVENTARC_CHANNEL = { baseValue: eventsConfig.channel };
+      mutableParamsBindingOptions.ALLOWED_EVENT_TYPES = {
+        baseValue: eventsConfig.allowedEventTypes.join(","),
+      };
+    }
+
+    // Merge with old immutable params.
+    const newParamOptions = {
+      ...buildBindingOptionsWithBaseValue(oldParamValues),
+      ...mutableParamsBindingOptions,
+    };
+
+    await manifest.writeToManifest(
+      [
+        {
+          instanceId,
+          ref: !isLocalSource ? refs.parse(refOrPath) : undefined,
+          localPath: isLocalSource ? refOrPath : undefined,
+          params: newParamOptions,
+          extensionSpec: spec,
+        },
+      ],
+      config,
+      {
+        nonInteractive: false,
+        force: true, // Skip asking for permission again
+      }
+    );
+    manifest.showPostDeprecationNotice();
+    return;
   });
 
 function infoImmutableParams(

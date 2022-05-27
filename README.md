@@ -136,15 +136,21 @@ Detailed doc is [here](https://firebase.google.com/docs/cli/auth).
 
 ### Cloud Functions Commands
 
-| Command                    | Description                                                                                                  |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| **functions:log**          | Read logs from deployed Cloud Functions.                                                                     |
-| **functions:config:set**   | Store runtime configuration values for the current project's Cloud Functions.                                |
-| **functions:config:get**   | Retrieve existing configuration values for the current project's Cloud Functions.                            |
-| **functions:config:unset** | Remove values from the current project's runtime configuration.                                              |
-| **functions:config:clone** | Copy runtime configuration from one project environment to another.                                          |
-| **functions:delete**       | Delete one or more Cloud Functions by name or group name.                                                    |
-| **functions:shell**        | Locally emulate functions and start Node.js shell where these local functions can be invoked with test data. |
+| Command                       | Description                                                                                                  |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| **functions:log**             | Read logs from deployed Cloud Functions.                                                                     |
+| **functions:list**            | List all deployed functions in your Firebase project.                                                        |
+| **functions:config:set**      | Store runtime configuration values for the current project's Cloud Functions.                                |
+| **functions:config:get**      | Retrieve existing configuration values for the current project's Cloud Functions.                            |
+| **functions:config:unset**    | Remove values from the current project's runtime configuration.                                              |
+| **functions:config:clone**    | Copy runtime configuration from one project environment to another.                                          |
+| **functions:secrets:set**     | Create or update a secret for use in Cloud Functions for Firebase.                                           |
+| **functions:secrets:get**     | Get metadata for secret and its versions.                                                                    |
+| **functions:secrets:access**  | Access secret value given secret and its version. Defaults to accessing the latest version.                  |
+| **functions:secrets:prune**   | Destroys unused secrets.                                                                                     |
+| **functions:secrets:destroy** | Destroy a secret. Defaults to destroying the latest version.                                                 |
+| **functions:delete**          | Delete one or more Cloud Functions by name or group name.                                                    |
+| **functions:shell**           | Locally emulate functions and start Node.js shell where these local functions can be invoked with test data. |
 
 ### Hosting Commands
 

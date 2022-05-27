@@ -1,2 +1,1 @@
-- Updates [firebase-frameworks](https://github.com/FirebaseExtended/firebase-framework-tools) to 0.4.2 addressing several issues with the web frameworks integration.
-- Adds `hosting.source` to configuration schema as an allowed property.
+- Updates the minimum required version of Node.js to be `~14.18.0 || >=16.4.0` (#4580).

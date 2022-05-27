@@ -1,5 +1,4 @@
 import * as clc from "cli-color";
-import * as api from "../../api";
 import { prompt, promptOnce } from "../../prompt";
 import { logger } from "../../logger";
 import * as utils from "../../utils";
@@ -17,6 +16,7 @@ import ora = require("ora");
 import { ensure } from "../../ensureApiEnabled";
 import { getDefaultDatabaseInstance } from "../../getDefaultDatabaseInstance";
 import { FirebaseError } from "../../error";
+import { Client } from "../../apiv2";
 
 interface DatabaseSetup {
   projectId?: string;
@@ -41,10 +41,8 @@ async function getDBRules(instanceDetails: DatabaseInstance): Promise<string> {
   if (!instanceDetails || !instanceDetails.name) {
     return DEFAULT_RULES;
   }
-  const response = await api.request("GET", "/.settings/rules.json", {
-    auth: true,
-    origin: instanceDetails.databaseUrl,
-  });
+  const client = new Client({ urlPrefix: instanceDetails.databaseUrl });
+  const response = await client.get<string>("/.settings/rules.json");
   return response.body;
 }
 

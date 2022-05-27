@@ -1,4 +1,4 @@
-FROM node:12
+FROM node:16
 
 # Install dependencies
 RUN apt-get update && \
@@ -9,7 +9,7 @@ RUN curl -fsSL --output hub.tgz https://github.com/github/hub/releases/download/
 RUN tar --strip-components=2 -C /usr/bin -xf hub.tgz hub-linux-amd64-2.11.2/bin/hub
 
 # Upgrade npm to 8.
-RUN npm install --global npm@8
+RUN npm install --global npm@8.7
 
 # Create app directory
 WORKDIR /usr/src/app
