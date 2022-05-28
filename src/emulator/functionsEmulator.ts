@@ -705,15 +705,6 @@ export class FunctionsEmulator implements EmulatorInstance {
       urlPrefix: `http://${EmulatorRegistry.getInfoHostString(eventarcEmu.getInfo())}`,
       auth: false,
     });
-    /*
-    return client
-      .post(`/emulator/v1/projects/${projectId}/triggers/${key}`, bundle)
-      .then(() => true)
-      .catch((err) => {
-        this.logger.log("WARN", "Error adding Eventarc function: " + err);
-        return false;
-      });
-    */
     const reqOptions: ClientRequestOptions<any> = {
       method: "POST",
       path: `/emulator/v1/projects/${projectId}/triggers/${key}`,
