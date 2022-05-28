@@ -67,7 +67,7 @@ import * as backend from "../deploy/functions/backend";
 import * as functionsEnv from "../functions/env";
 import { AUTH_BLOCKING_EVENTS, BEFORE_CREATE_EVENT } from "../functions/events/v1";
 import { BlockingFunctionsConfig } from "../gcp/identityPlatform";
-import { Client } from "../apiv2";
+import { Client, ClientRequestOptions } from "../apiv2";
 
 const EVENT_INVOKE = "functions:invoke";
 
@@ -685,7 +685,11 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
   }
 
-  addEventarcTrigger(projectId: string, key: string, eventTrigger: EventTrigger): Promise<boolean> {
+  async addEventarcTrigger(
+    projectId: string,
+    key: string,
+    eventTrigger: EventTrigger
+  ): Promise<boolean> {
     const eventarcEmu = EmulatorRegistry.get(Emulators.EVENTARC);
     if (!eventarcEmu) {
       return Promise.resolve(false);
@@ -701,6 +705,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       urlPrefix: `http://${EmulatorRegistry.getInfoHostString(eventarcEmu.getInfo())}`,
       auth: false,
     });
+    /*
     return client
       .post(`/emulator/v1/projects/${projectId}/triggers/${key}`, bundle)
       .then(() => true)
@@ -708,6 +713,19 @@ export class FunctionsEmulator implements EmulatorInstance {
         this.logger.log("WARN", "Error adding Eventarc function: " + err);
         return false;
       });
+    */
+    const reqOptions: ClientRequestOptions<any> = {
+      method: "POST",
+      path: `/emulator/v1/projects/${projectId}/triggers/${key}`,
+      body: bundle,
+    };
+    try {
+      await client.request(reqOptions);
+      return true;
+    } catch (err) {
+      this.logger.log("WARN", "Error adding Eventarc function: " + err);
+      return false;
+    }
   }
 
   async performPostLoadOperations(): Promise<void> {

@@ -55,7 +55,7 @@ export class EventarcEmulator implements EmulatorInstance {
       const customEventTriggers = this.customEvents[key] || [];
       customEventTriggers.push({ projectId, triggerName, eventTrigger });
       this.customEvents[key] = customEventTriggers;
-      res.status(200).send({ status: "OK" });
+      res.sendStatus(200);
     };
 
     const publishEventsRoute = `/projects/:project_id/locations/:location/channels/:channel::publishEvents`;
@@ -74,6 +74,7 @@ export class EventarcEmulator implements EmulatorInstance {
     };
 
     const dataMiddleware: express.RequestHandler = (req, _, next) => {
+      console.log("processing data midleware");
       const chunks: Buffer[] = [];
       req.on("data", (chunk: Buffer) => {
         chunks.push(chunk);
