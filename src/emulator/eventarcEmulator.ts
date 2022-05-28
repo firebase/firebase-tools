@@ -74,7 +74,6 @@ export class EventarcEmulator implements EmulatorInstance {
     };
 
     const dataMiddleware: express.RequestHandler = (req, _, next) => {
-      console.log("processing data midleware");
       const chunks: Buffer[] = [];
       req.on("data", (chunk: Buffer) => {
         chunks.push(chunk);
