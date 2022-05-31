@@ -4,7 +4,6 @@ import * as fs from "fs";
 import * as path from "path";
 import * as http from "http";
 
-import * as api from "../api";
 import * as downloadableEmulators from "./downloadableEmulators";
 import { EmulatorInfo, EmulatorInstance, Emulators } from "../emulator/types";
 import { Constants } from "./constants";
@@ -12,6 +11,7 @@ import { EmulatorRegistry } from "./registry";
 import { EmulatorLogger } from "./emulatorLogger";
 import { FirebaseError } from "../error";
 import * as parseBoltRules from "../parseBoltRules";
+import { Client } from "../apiv2";
 
 export interface DatabaseEmulatorArgs {
   port?: number;
@@ -170,11 +170,13 @@ export class DatabaseEmulator implements EmulatorInstance {
 
     const info = this.getInfo();
     try {
-      await api.request("PUT", `/.settings/rules.json?ns=${instance}`, {
-        origin: `http://${EmulatorRegistry.getInfoHostString(info)}`,
+      const client = new Client({
+        urlPrefix: `http://${EmulatorRegistry.getInfoHostString(info)}`,
+        auth: false,
+      });
+      await client.put(`/.settings/rules.json`, content, {
         headers: { Authorization: "Bearer owner" },
-        data: content,
-        json: false,
+        queryParams: { ns: instance },
       });
     } catch (e: any) {
       // The body is already parsed as JSON
