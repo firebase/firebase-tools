@@ -1,1 +1,2 @@
 - Updates the minimum required version of Node.js to be `~14.18.0 || >=16.4.0` (#4580).
+- Fixes issue where `init` would fail to write existing RTDB rules containing comments (#4596).
