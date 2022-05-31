@@ -697,16 +697,16 @@ export class FunctionsEmulator implements EmulatorInstance {
       },
     };
     logger.debug(`addEventarcTrigger`, JSON.stringify(bundle));
-    return api
-      .request("POST", `/emulator/v1/projects/${projectId}/triggers/${key}`, {
-        origin: `http://${EmulatorRegistry.getInfoHostString(eventarcEmu.getInfo())}`,
-        data: bundle,
-        json: true,
-      })
+    const client = new Client({
+      urlPrefix: `http://${EmulatorRegistry.getInfoHostString(eventarcEmu.getInfo())}`,
+      auth: false,
+    });
+    return client
+      .post(`/emulator/v1/projects/${projectId}/triggers/${key}`, bundle)
       .then(() => true)
       .catch((err) => {
         this.logger.log("WARN", "Error adding Eventarc function: " + err);
-        throw err;
+        return false;
       });
   }
 

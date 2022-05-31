@@ -39,15 +39,17 @@ export class EventarcEmulator implements EmulatorInstance {
       const projectId = req.params.project_id;
       const triggerName = req.params.trigger_name;
       if (!projectId || !triggerName) {
-        logger.info("Missing project ID or trigger name.");
-        res.sendStatus(400);
+        const error = "Missing project ID or trigger name.";
+        logger.info(error);
+        res.status(400).send({ error });
         return;
       }
       const body = JSON.parse((req as RequestWithRawBody).rawBody.toString());
       const eventTrigger = body.eventTrigger as EventTrigger;
       if (!eventTrigger) {
-        logger.info(`Missing event trigger for ${triggerName}.`);
-        res.sendStatus(400);
+        const error = `Missing event trigger for ${triggerName}.`;
+        logger.info(error);
+        res.status(400).send({ error });
         return;
       }
       const key = `${eventTrigger.eventType}-${eventTrigger.channel}`;
@@ -55,7 +57,7 @@ export class EventarcEmulator implements EmulatorInstance {
       const customEventTriggers = this.customEvents[key] || [];
       customEventTriggers.push({ projectId, triggerName, eventTrigger });
       this.customEvents[key] = customEventTriggers;
-      res.sendStatus(200);
+      res.status(200).send({ res: "OK" });
     };
 
     const publishEventsRoute = `/projects/:project_id/locations/:location/channels/:channel::publishEvents`;
