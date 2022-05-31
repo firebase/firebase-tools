@@ -709,6 +709,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       method: "POST",
       path: `/emulator/v1/projects/${projectId}/triggers/${key}`,
       body: bundle,
+      responseType: "stream",
     };
     try {
       await client.request(reqOptions);
