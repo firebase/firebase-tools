@@ -177,15 +177,15 @@ export function populateDefaultParams(
   const newParams = paramVars;
 
   for (const param of paramSpecs) {
-    if (paramVars[param.param]) continue;
-
-    if (param.default !== undefined) {
-      newParams[param.param] = param.default;
-    } else if (param.required) {
-      throw new FirebaseError(
-        `${param.param} has not been set in the given params file` +
-          " and there is no default available. Please set this variable before installing again."
-      );
+    if (!paramVars[param.param]) {
+      if (param.default !== undefined) {
+        newParams[param.param] = param.default;
+      } else if (param.required) {
+        throw new FirebaseError(
+          `${param.param} has not been set in the given params file` +
+            " and there is no default available. Please set this variable before installing again."
+        );
+      }
     }
   }
 
