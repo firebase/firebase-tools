@@ -11,6 +11,7 @@ import { logger } from "./logger";
 import { Options } from "./options";
 import * as commandUtils from "./emulator/commandUtils";
 import * as LocalFunction from "./localFunction";
+import { HTTPS_SENTINAL } from "./localFunction";
 import * as shell from "./emulator/functionsEmulatorShell";
 import * as utils from "./utils";
 
@@ -108,6 +109,9 @@ export const actionFunction = async (options: Options) => {
       );
 
       const writer = (output: any) => {
+        if (output === HTTPS_SENTINAL) {
+          return HTTPS_SENTINAL;
+        }
         return util.inspect(output);
       };
 
