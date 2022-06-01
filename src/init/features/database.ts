@@ -42,8 +42,16 @@ async function getDBRules(instanceDetails: DatabaseInstance): Promise<string> {
     return DEFAULT_RULES;
   }
   const client = new Client({ urlPrefix: instanceDetails.databaseUrl });
-  const response = await client.get<string>("/.settings/rules.json");
-  return response.body;
+  const response = await client.request<void, NodeJS.ReadableStream>({
+    method: "GET",
+    path: "/.settings/rules.json",
+    responseType: "stream",
+    resolveOnHTTPError: true,
+  });
+  if (response.status !== 200) {
+    throw new FirebaseError(`Failed to fetch current rules. Code: ${response.status}`);
+  }
+  return await response.response.text();
 }
 
 function writeDBRules(
