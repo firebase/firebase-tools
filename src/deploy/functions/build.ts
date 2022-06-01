@@ -50,27 +50,86 @@ interface RequiredApi {
 type Expression<T extends string | number | boolean> = string;
 type Field<T extends string | number | boolean> = T | Expression<T> | null;
 
-function resolveInt(from: number | Expression<number> | null): number {
+function resolveInt(
+  from: number | Expression<number> | null,
+  paramValues: Record<string, Field<string | number | boolean>>
+): number {
   if (from == null) {
     return 0;
+  } else if (typeof from === "string" && /{{ params\.(\S+) }}/.test(from)) {
+    const match = /{{ params\.(\S+) }}/.exec(from);
+    if (!match) {
+      // how did we even get here?
+      return 0;
+    }
+    const referencedParamValue = paramValues[match[1]];
+    if (typeof referencedParamValue !== "number") {
+      throw new FirebaseError(
+        "Referenced string parameter '" +
+          match +
+          "' resolved to non-string value " +
+          referencedParamValue
+      );
+    }
+    return referencedParamValue;
   } else if (typeof from === "string") {
     throw new FirebaseError("CEL evaluation of expression '" + from + "' not yet supported");
   }
   return from;
 }
 
-function resolveString(from: string | Expression<string> | null): string {
+function resolveString(
+  from: string | Expression<string> | null,
+  paramValues: Record<string, Field<string | number | boolean>>
+): string {
   if (from == null) {
     return "";
+  } else if (/{{ params\.(\S+) }}/.test(from)) {
+    const match = /{{ params\.(\S+) }}/.exec(from);
+    if (!match) {
+      // how did we even get here?
+      return "";
+    }
+    const referencedParamValue = paramValues[match[1]];
+    if (typeof referencedParamValue !== "string") {
+      throw new FirebaseError(
+        "Referenced numeric parameter '" +
+          match +
+          "' resolved to non-numeric value " +
+          referencedParamValue
+      );
+    }
+    return referencedParamValue;
   } else if (from.includes("{{") && from.includes("}}")) {
-    throw new FirebaseError("CEL evaluation of expression '" + from + "' not yet supported");
+    throw new FirebaseError(
+      "CEL evaluation of non-identity expression '" + from + "' not yet supported"
+    );
   }
   return from;
 }
 
-function resolveBoolean(from: boolean | Expression<boolean> | null): boolean {
+function resolveBoolean(
+  from: boolean | Expression<boolean> | null,
+  paramValues: Record<string, Field<string | number | boolean>>
+): boolean {
   if (from == null) {
     return false;
+  } else if (typeof from === "string" && /{{ params\.(\S+) }}/.test(from)) {
+    const match = /{{ params\.(\S+) }}/.exec(from);
+    if (!match) {
+      // how did we even get here?
+      return false;
+    }
+    const referencedParamValue = paramValues[match[1]];
+    if (typeof referencedParamValue !== "boolean") {
+      throw new FirebaseError(
+        "Referenced boolean parameter '" +
+          match +
+          "' resolved to non-boolean value " +
+          referencedParamValue
+      );
+    }
+    return referencedParamValue;
   } else if (typeof from === "string") {
     throw new FirebaseError("CEL evaluation of expression '" + from + "' not yet supported");
   }
@@ -299,20 +358,22 @@ export async function resolveBackend(
     break;
   }
 
-  const paramValues: Record<string, string> = {};
+  const paramValues: Record<string, Field<string | number | boolean>> = {};
   for (const param of build.params) {
-    paramValues[param.param] = await handleParam(param, projectId, userEnvs);
+    const paramValue = await handleParam(param, projectId, userEnvs);
+    if (paramValue !== null) {
+      paramValues[param.param] = paramValue;
+    }
   }
 
-  return toBackend(build, userEnvs, paramValues);
+  return toBackend(build, paramValues);
 }
 
 /* Converts a build specification into a Backend representation, interpolating param and dotenv values as needed */
 // TODO(vsfan): handle Expression<T> types
 export function toBackend(
   build: Build,
-  userEnvs: Record<string, string>,
-  paramValues: Record<string, string>
+  paramValues: Record<string, Field<string | number | boolean>>
 ): backend.Backend {
   const bkEndpoints: Array<backend.Endpoint> = [];
   for (const endpointId of Object.keys(build.endpoints)) {
@@ -323,7 +384,7 @@ export function toBackend(
       regions = [api.functionsDefaultRegion];
     }
     for (const region of regions) {
-      const trigger = discoverTrigger(endpoint);
+      const trigger = discoverTrigger(endpoint, paramValues);
 
       if (typeof endpoint.platform === "undefined") {
         throw new FirebaseError("platform can't be undefined");
@@ -333,7 +394,7 @@ export function toBackend(
       }
       let timeout: number;
       if (endpoint.timeoutSeconds) {
-        timeout = resolveInt(endpoint.timeoutSeconds);
+        timeout = resolveInt(endpoint.timeoutSeconds, paramValues);
       } else {
         timeout = 60;
       }
@@ -348,9 +409,33 @@ export function toBackend(
         timeoutSeconds: timeout,
         ...trigger,
       };
-      proto.renameIfPresent(bkEndpoint, endpoint, "maxInstances", "maxInstances", resolveInt);
-      proto.renameIfPresent(bkEndpoint, endpoint, "minInstances", "minInstances", resolveInt);
-      proto.renameIfPresent(bkEndpoint, endpoint, "concurrency", "concurrency", resolveInt);
+      proto.renameIfPresent(
+        bkEndpoint,
+        endpoint,
+        "maxInstances",
+        "maxInstances",
+        (from: number | Expression<number> | null): number => {
+          return resolveInt(from, paramValues);
+        }
+      );
+      proto.renameIfPresent(
+        bkEndpoint,
+        endpoint,
+        "minInstances",
+        "minInstances",
+        (from: number | Expression<number> | null): number => {
+          return resolveInt(from, paramValues);
+        }
+      );
+      proto.renameIfPresent(
+        bkEndpoint,
+        endpoint,
+        "concurrency",
+        "concurrency",
+        (from: number | Expression<number> | null): number => {
+          return resolveInt(from, paramValues);
+        }
+      );
       proto.copyIfPresent(
         bkEndpoint,
         endpoint,
@@ -363,7 +448,7 @@ export function toBackend(
       if (endpoint.vpc) {
         bkEndpoint.vpc = {
           // $REGION is a token in the Build VPC connector because Build endpoints can have multiple regions, so we unroll here
-          connector: resolveString(endpoint.vpc.connector).replace("$REGION", region),
+          connector: resolveString(endpoint.vpc.connector, paramValues).replace("$REGION", region),
         };
         proto.copyIfPresent(bkEndpoint.vpc, endpoint.vpc, "egressSettings");
       }
@@ -401,7 +486,7 @@ async function handleSecretParam(secret: SecretParam, projectId: string): Promis
   return accessSecretVersion(projectId, secret.param, "latest");
 }
 
-async function promptStringParam(param: StringParam): Promise<string> {
+async function promptStringParam(param: StringParam): Promise<Field<string>> {
   if (!param.input) {
     if (param.default) {
       return param.default;
@@ -437,7 +522,7 @@ async function handleParam(
   param: Param,
   projectId: string,
   userEnvs: Record<string, string>
-): Promise<string> {
+): Promise<Field<string | number | boolean>> {
   const paramName = param.param;
 
   if (param.type === "secret") {
@@ -458,7 +543,10 @@ async function handleParam(
   }
 }
 
-function discoverTrigger(endpoint: Endpoint): backend.Triggered {
+function discoverTrigger(
+  endpoint: Endpoint,
+  paramValues: Record<string, Field<string | number | boolean>>
+): backend.Triggered {
   let trigger: backend.Triggered;
   if ("httpsTrigger" in endpoint) {
     const bkHttps: backend.HttpsTrigger = {};
@@ -474,32 +562,34 @@ function discoverTrigger(endpoint: Endpoint): backend.Triggered {
     const bkEventFilters: Record<string, string> = {};
     for (const key in endpoint.eventTrigger.eventFilters) {
       if (typeof key === "string") {
-        bkEventFilters[key] = resolveString(endpoint.eventTrigger.eventFilters[key]);
+        bkEventFilters[key] = resolveString(endpoint.eventTrigger.eventFilters[key], paramValues);
       }
     }
     const bkEvent: backend.EventTrigger = {
       eventType: endpoint.eventTrigger.eventType,
       eventFilters: bkEventFilters,
-      retry: resolveBoolean(endpoint.eventTrigger.retry),
+      retry: resolveBoolean(endpoint.eventTrigger.retry, paramValues),
     };
     if (endpoint.eventTrigger.serviceAccount) {
       bkEvent.serviceAccountEmail = endpoint.eventTrigger.serviceAccount;
     }
     if (endpoint.eventTrigger.region) {
-      bkEvent.region = resolveString(endpoint.eventTrigger.region);
+      bkEvent.region = resolveString(endpoint.eventTrigger.region, paramValues);
     }
     trigger = { eventTrigger: bkEvent };
   } else if ("scheduleTrigger" in endpoint) {
     const bkSchedule: backend.ScheduleTrigger = {
-      schedule: resolveString(endpoint.scheduleTrigger.schedule),
-      timeZone: resolveString(endpoint.scheduleTrigger.timeZone),
+      schedule: resolveString(endpoint.scheduleTrigger.schedule, paramValues),
+      timeZone: resolveString(endpoint.scheduleTrigger.timeZone, paramValues),
     };
     proto.renameIfPresent(
       bkSchedule,
       endpoint.scheduleTrigger,
       "retryConfig",
       "retryConfig",
-      resolveInt
+      (from: number | Expression<number> | null): number => {
+        return resolveInt(from, paramValues);
+      }
     );
     trigger = { scheduleTrigger: bkSchedule };
   } else if ("taskQueueTrigger" in endpoint) {
@@ -511,14 +601,18 @@ function discoverTrigger(endpoint: Endpoint): backend.Triggered {
         endpoint.taskQueueTrigger.rateLimits,
         "maxConcurrentDispatches",
         "maxConcurrentDispatches",
-        resolveInt
+        (from: number | Expression<number> | null): number => {
+          return resolveInt(from, paramValues);
+        }
       );
       proto.renameIfPresent(
         bkRateLimits,
         endpoint.taskQueueTrigger.rateLimits,
         "maxDispatchesPerSecond",
         "maxDispatchesPerSecond",
-        resolveInt
+        (from: number | Expression<number> | null): number => {
+          return resolveInt(from, paramValues);
+        }
       );
       bkTaskQueue.rateLimits = bkRateLimits;
     }
@@ -529,7 +623,9 @@ function discoverTrigger(endpoint: Endpoint): backend.Triggered {
         endpoint.taskQueueTrigger.retryConfig,
         "maxAttempts",
         "maxAttempts",
-        resolveInt
+        (from: number | Expression<number> | null): number => {
+          return resolveInt(from, paramValues);
+        }
       );
       proto.renameIfPresent(
         bkRetryConfig,
@@ -537,7 +633,7 @@ function discoverTrigger(endpoint: Endpoint): backend.Triggered {
         "maxBackoffSeconds",
         "maxBackoffSeconds",
         (from: number | Expression<number> | null): string => {
-          return proto.durationFromSeconds(resolveInt(from));
+          return proto.durationFromSeconds(resolveInt(from, paramValues));
         }
       );
       proto.renameIfPresent(
@@ -546,7 +642,7 @@ function discoverTrigger(endpoint: Endpoint): backend.Triggered {
         "minBackoffSeconds",
         "minBackoffSeconds",
         (from: number | Expression<number> | null): string => {
-          return proto.durationFromSeconds(resolveInt(from));
+          return proto.durationFromSeconds(resolveInt(from, paramValues));
         }
       );
       proto.renameIfPresent(
@@ -555,7 +651,7 @@ function discoverTrigger(endpoint: Endpoint): backend.Triggered {
         "maxRetrySeconds",
         "maxRetryDurationSeconds",
         (from: number | Expression<number> | null): string => {
-          return proto.durationFromSeconds(resolveInt(from));
+          return proto.durationFromSeconds(resolveInt(from, paramValues));
         }
       );
       proto.renameIfPresent(
@@ -563,12 +659,16 @@ function discoverTrigger(endpoint: Endpoint): backend.Triggered {
         endpoint.taskQueueTrigger.retryConfig,
         "maxDoublings",
         "maxDoublings",
-        resolveInt
+        (from: number | Expression<number> | null): number => {
+          return resolveInt(from, paramValues);
+        }
       );
       bkTaskQueue.retryConfig = bkRetryConfig;
     }
     if (endpoint.taskQueueTrigger.invoker) {
-      bkTaskQueue.invoker = endpoint.taskQueueTrigger.invoker.map((sa) => resolveString(sa));
+      bkTaskQueue.invoker = endpoint.taskQueueTrigger.invoker.map((sa) =>
+        resolveString(sa, paramValues)
+      );
     }
     trigger = { taskQueueTrigger: bkTaskQueue };
   } else {
