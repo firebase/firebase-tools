@@ -3,7 +3,9 @@ import * as proto from "../../gcp/proto";
 import * as api from "../../.../../api";
 import { FirebaseError } from "../../error";
 import { assertExhaustive } from "../../functional";
-import { getSecret, getSecretVersion, accessSecretVersion } from "../../gcp/secretManager";
+import { getSecret, accessSecretVersion } from "../../gcp/secretManager";
+import { testIamPermissions } from "../../gcp/iam";
+import { promptOnce } from "../../prompt";
 
 /* The union of a customer-controlled deployment and potentially deploy-time defined parameters */
 export interface Build {
@@ -13,9 +15,6 @@ export interface Build {
 }
 
 /* A utility function that returns an empty Build. */
-/**
- *
- */
 export function empty(): Build {
   return {
     requiredAPIs: [],
@@ -25,9 +24,6 @@ export function empty(): Build {
 }
 
 /* A utility function that creates a Build containing a map of IDs to Endpoints. */
-/**
- *
- */
 export function of(endpoints: Record<string, Endpoint>): Build {
   const build = empty();
   build.endpoints = endpoints;
@@ -240,26 +236,73 @@ interface ParamBase<T extends string | number | boolean> {
   immutable?: boolean;
 }
 
-interface StringParam extends ParamBase<string> {
-  type?: "string";
+export interface TextInput<T, Extensions = {}> {
+  type?: "text";
+
+  text:
+    | Extensions
+    | {
+        example?: string;
+      };
 }
 
-type Param = StringParam;
+export interface StringParam extends ParamBase<string> {
+  type?: "string";
+
+  input?: TextInput<string> | SelectOptions<string>;
+}
+
+interface SelectOptions<T> {
+  type?: "select";
+
+  // Optional human-facing value for this option (e.g. "US Central (Iowa)" instead of value
+  // "us-central1")
+  label?: string;
+
+  // Actual value of the parameter if this option is selected
+  value: T;
+}
+
+export interface SelectInput<T> {
+  select: Array<SelectOptions<T>>;
+}
+
+export interface SecretParam {
+  type: "secret";
+
+  // name of the param. Will be exposed as an environment variable with this name
+  param: string;
+
+  // A human friendly name for the param. Will be used in install/configure flows to describe
+  // what param is being updated. If omitted, UX will use the value of "param" instead.
+  label?: string;
+
+  // A long description of the parameter's purpose and allowed values. If omitted, UX will not
+  // provide a description of the parameter
+  description?: string;
+}
+
+type Param = StringParam | SecretParam;
 
 function isMemoryOption(value: backend.MemoryOptions | any): value is backend.MemoryOptions {
   return value == null || [128, 256, 512, 1024, 2048, 4096, 8192].includes(value);
 }
 
-/** Converts a build specification into a Backend representation, with all Params resolved and interpolated */
-// TODO(vsfan): resolve build.Params
-// TODO(vsfan): handle Expression<T> types
-export async function resolveBackend(build: Build, userEnvs: Record<string, string>): backend.Backend {
+/* Resolves user-defined parameters inside a Build, and returns a Backend ready for upload to the API */
+/**
+ *
+ */
+export async function resolveBackend(
+  build: Build,
+  userEnvs: Record<string, string>
+): Promise<backend.Backend> {
   let projectId = "";
-  const paramValues: Record<string, string> = {};
   for (const endpointId of Object.keys(build.endpoints)) {
     projectId = build.endpoints[endpointId].project;
     break;
   }
+
+  const paramValues: Record<string, string> = {};
   for (const param of build.params) {
     paramValues[param.param] = await handleParam(param, projectId, userEnvs);
   }
@@ -267,22 +310,16 @@ export async function resolveBackend(build: Build, userEnvs: Record<string, stri
   return toBackend(build, userEnvs, paramValues);
 }
 
+/* Converts a build specification into a Backend representation, interpolating param and dotenv values as needed */
+// TODO(vsfan): handle Expression<T> types
+/**
+ *
+ */
 export function toBackend(
   build: Build,
   userEnvs: Record<string, string>,
-  paramValues: Record<string, string>,
-) {
-  for (const param of build.params) {
-    const expectedEnv = param.param;
-    if (!userEnvs.hasOwnProperty(expectedEnv)) {
-      throw new FirebaseError(
-        "Build specified parameter " +
-          expectedEnv +
-          " but it was not present in the user dotenv files"
-      );
-    }
-  }
-
+  paramValues: Record<string, string>
+): backend.Backend {
   const bkEndpoints: Array<backend.Endpoint> = [];
   for (const endpointId of Object.keys(build.endpoints)) {
     const endpoint = build.endpoints[endpointId];
@@ -349,39 +386,82 @@ export function toBackend(
   return bkend;
 }
 
+async function handleSecretParam(secret: SecretParam, projectId: string): Promise<string> {
+  const iam = await testIamPermissions(projectId, ["secretmanager.secrets.setIamPolicy"]);
+  if (!iam.passed) {
+    throw new FirebaseError("Secrets cannot be managed without the secretmanager.admin role");
+  }
+
+  try {
+    const _ = await getSecret(projectId, secret.param);
+  } catch (err: any) {
+    if (err.status === 404) {
+      throw new FirebaseError(
+        "Build specified secret parameter " +
+          secret.param +
+          " but it was not present in Cloud Secret Manager"
+      );
+    }
+    throw err;
+  }
+  return accessSecretVersion(projectId, secret.param, "latest");
+}
+
+async function promptStringParam(param: StringParam): Promise<string> {
+  if (!param.input) {
+    if (param.default) {
+      return param.default;
+    }
+    throw new FirebaseError(
+      "Build specified string parameter " + param.param + " without any input form or default value"
+    );
+  }
+
+  switch (param.input.type) {
+    case "text":
+      let prompt = `Enter a value for ${param.label || param.param}:`;
+      if (param.description) {
+        prompt += ` \n(${param.description})`;
+      }
+      return await promptOnce({
+        name: param.param,
+        type: "input",
+        default: param.default,
+        message: prompt,
+      });
+    default:
+      throw new FirebaseError(
+        "Build specified string parameter " +
+          param.param +
+          " with unsupported input type " +
+          param.input.type
+      );
+  }
+}
+
 async function handleParam(
   param: Param,
   projectId: string,
   userEnvs: Record<string, string>
 ): Promise<string> {
   const paramName = param.param;
-  let existsAsSecret = false;
 
-  try {
-    const _ = await getSecret(projectId, paramName);
-    existsAsSecret = true;
-  } catch (err: any) {
-    if (err.status === 404) {
-      // no-op
-    }
-    throw err;
-  }
-  if (existsAsSecret) {
-    return accessSecretVersion(projectId, paramName, "latest");
+  if (param.type === "secret") {
+    return handleSecretParam(param, projectId);
   }
 
-  if (!userEnvs.hasOwnProperty(paramName)) {
-    throw new FirebaseError(
-      "Build specified parameter " +
-        paramName +
-        " but it was not present in the user dotenv files or Cloud Secret Manager"
-    );
-  } else {
+  if (userEnvs.hasOwnProperty(paramName)) {
     return userEnvs[paramName];
   }
 
-  // TODO(vsfan): prompt user for any misisng parameters
-  return "";
+  switch (param.type) {
+    case "string":
+      return promptStringParam(param);
+    default:
+      throw new FirebaseError(
+        "Build specified parameter " + param.param + " with unsupported type"
+      );
+  }
 }
 
 function discoverTrigger(endpoint: Endpoint): backend.Triggered {
