@@ -289,9 +289,6 @@ function isMemoryOption(value: backend.MemoryOptions | any): value is backend.Me
 }
 
 /* Resolves user-defined parameters inside a Build, and returns a Backend ready for upload to the API */
-/**
- *
- */
 export async function resolveBackend(
   build: Build,
   userEnvs: Record<string, string>
@@ -312,9 +309,6 @@ export async function resolveBackend(
 
 /* Converts a build specification into a Backend representation, interpolating param and dotenv values as needed */
 // TODO(vsfan): handle Expression<T> types
-/**
- *
- */
 export function toBackend(
   build: Build,
   userEnvs: Record<string, string>,
