@@ -576,12 +576,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         // To match prod behavior, only validate functionName
         functionIdsAreValid([{ ...definition, id: definition.name }]);
       } catch (e: any) {
-        this.logger.logLabeled(
-          "WARN",
-          `functions[${definition.id}]`,
-          `Invalid function id: ${e.message}`
-        );
-        continue;
+        throw new FirebaseError(`functions[${definition.id}]: Invalid function id: ${e.message}`)
       }
 
       let added = false;
