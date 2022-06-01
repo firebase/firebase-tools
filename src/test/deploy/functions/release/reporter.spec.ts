@@ -5,6 +5,7 @@ import { logger } from "../../../../logger";
 import * as backend from "../../../../deploy/functions/backend";
 import * as reporter from "../../../../deploy/functions/release/reporter";
 import * as track from "../../../../track";
+import * as events from "../../../../functions/events";
 
 const ENDPOINT_BASE: Omit<backend.Endpoint, "httpsTrigger"> = {
   platform: "gcfv1",
@@ -81,6 +82,25 @@ describe("reporter", () => {
       ).to.equal("v2.scheduled");
     });
 
+    it("detects v1.blocking", () => {
+      expect(
+        reporter.triggerTag({
+          ...ENDPOINT_BASE,
+          blockingTrigger: { eventType: events.v1.BEFORE_CREATE_EVENT },
+        })
+      ).to.equal("v1.blocking");
+    });
+
+    it("detects v2.blocking", () => {
+      expect(
+        reporter.triggerTag({
+          ...ENDPOINT_BASE,
+          platform: "gcfv2",
+          blockingTrigger: { eventType: events.v1.BEFORE_CREATE_EVENT },
+        })
+      ).to.equal("v2.blocking");
+    });
+
     it("detects others", () => {
       expect(
         reporter.triggerTag({
@@ -88,7 +108,7 @@ describe("reporter", () => {
           platform: "gcfv2",
           eventTrigger: {
             eventType: "google.pubsub.topic.publish",
-            eventFilters: [],
+            eventFilters: {},
             retry: false,
           },
         })

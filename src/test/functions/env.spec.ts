@@ -54,6 +54,43 @@ BAR=bar
         want: { FOO: "foo1\nfoo2", BAR: "bar" },
       },
       {
+        description: "should parse escape sequences in order, from start to end",
+        input: `BAZ=baz
+ONE_NEWLINE="foo1\\nfoo2"
+ONE_BSLASH_AND_N="foo3\\\\nfoo4"
+ONE_BSLASH_AND_NEWLINE="foo5\\\\\\nfoo6"
+TWO_BSLASHES_AND_N="foo7\\\\\\\\nfoo8"
+BAR=bar`,
+        want: {
+          BAZ: "baz",
+          ONE_NEWLINE: "foo1\nfoo2",
+          ONE_BSLASH_AND_N: "foo3\\nfoo4",
+          ONE_BSLASH_AND_NEWLINE: "foo5\\\nfoo6",
+          TWO_BSLASHES_AND_N: "foo7\\\\nfoo8",
+          BAR: "bar",
+        },
+      },
+      {
+        description: "should parse double quoted with multiple escaped newlines",
+        input: 'FOO="foo1\\nfoo2\\nfoo3"\nBAR=bar',
+        want: { FOO: "foo1\nfoo2\nfoo3", BAR: "bar" },
+      },
+      {
+        description: "should parse double quoted with multiple escaped horizontal tabs",
+        input: 'FOO="foo1\\tfoo2\\tfoo3"\nBAR=bar',
+        want: { FOO: "foo1\tfoo2\tfoo3", BAR: "bar" },
+      },
+      {
+        description: "should parse double quoted with multiple escaped vertical tabs",
+        input: 'FOO="foo1\\vfoo2\\vfoo3"\nBAR=bar',
+        want: { FOO: "foo1\vfoo2\vfoo3", BAR: "bar" },
+      },
+      {
+        description: "should parse double quoted with multiple escaped carriage returns",
+        input: 'FOO="foo1\\rfoo2\\rfoo3"\nBAR=bar',
+        want: { FOO: "foo1\rfoo2\rfoo3", BAR: "bar" },
+      },
+      {
         description: "should leave single quotes when double quoted",
         input: `FOO="'foo'"`,
         want: { FOO: "'foo'" },
@@ -265,7 +302,7 @@ FOO=foo
       rimraf(tmpdir);
       expect(() => {
         fs.statSync(tmpdir);
-      }).to.throw;
+      }).to.throw();
     });
 
     it("loads nothing if .env files are missing", () => {

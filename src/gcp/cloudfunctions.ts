@@ -4,17 +4,31 @@ import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import { previews } from "../previews";
 import * as backend from "../deploy/functions/backend";
+import * as events from "../functions/events";
 import * as utils from "../utils";
 import * as proto from "./proto";
 import * as runtimes from "../deploy/functions/runtimes";
 import * as iam from "./iam";
+import * as projectConfig from "../functions/projectConfig";
 import { Client } from "../apiv2";
 import { functionsOrigin } from "../api";
-import { getFirebaseProject } from "../management/projects";
-import { assertExhaustive } from "../functional";
+import { AUTH_BLOCKING_EVENTS } from "../functions/events/v1";
 
 export const API_VERSION = "v1";
+export const CODEBASE_LABEL = "firebase-functions-codebase";
 const client = new Client({ urlPrefix: functionsOrigin, apiVersion: API_VERSION });
+
+export const BLOCKING_LABEL = "deployment-blocking";
+
+const BLOCKING_LABEL_KEY_TO_EVENT: Record<string, typeof AUTH_BLOCKING_EVENTS[number]> = {
+  "before-create": "providers/cloud.auth/eventTypes/user.beforeCreate",
+  "before-sign-in": "providers/cloud.auth/eventTypes/user.beforeSignIn",
+};
+
+const BLOCKING_EVENT_TO_LABEL_KEY: Record<typeof AUTH_BLOCKING_EVENTS[number], string> = {
+  "providers/cloud.auth/eventTypes/user.beforeCreate": "before-create",
+  "providers/cloud.auth/eventTypes/user.beforeSignIn": "before-sign-in",
+};
 
 interface Operation {
   name: string;
@@ -356,12 +370,13 @@ export async function updateFunction(
   cloudFunction: Omit<CloudFunction, OutputOnlyFields>
 ): Promise<Operation> {
   const endpoint = `/${cloudFunction.name}`;
-  // Keys in labels and environmentVariables are user defined, so we don't recurse
+  // Keys in labels and environmentVariables and secretEnvironmentVariables are user defined, so we don't recurse
   // for field masks.
   const fieldMasks = proto.fieldMasks(
     cloudFunction,
     /* doNotRecurseIn...=*/ "labels",
-    "environmentVariables"
+    "environmentVariables",
+    "secretEnvironmentVariables"
   );
 
   // Failure policy is always an explicit policy and is only signified by the presence or absence of
@@ -489,23 +504,27 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
     trigger = {
       callableTrigger: {},
     };
+  } else if (gcfFunction.labels?.[BLOCKING_LABEL]) {
+    trigger = {
+      blockingTrigger: {
+        eventType: BLOCKING_LABEL_KEY_TO_EVENT[gcfFunction.labels[BLOCKING_LABEL]],
+      },
+    };
   } else if (gcfFunction.httpsTrigger) {
     trigger = { httpsTrigger: {} };
-    uri = gcfFunction.httpsTrigger.url;
-    securityLevel = gcfFunction.httpsTrigger.securityLevel;
   } else {
     trigger = {
       eventTrigger: {
         eventType: gcfFunction.eventTrigger!.eventType,
-        eventFilters: [
-          {
-            attribute: "resource",
-            value: gcfFunction.eventTrigger!.resource,
-          },
-        ],
+        eventFilters: { resource: gcfFunction.eventTrigger!.resource },
         retry: !!gcfFunction.eventTrigger!.failurePolicy?.retry,
       },
     };
+  }
+
+  if (gcfFunction.httpsTrigger) {
+    uri = gcfFunction.httpsTrigger.url;
+    securityLevel = gcfFunction.httpsTrigger.securityLevel;
   }
 
   if (!runtimes.isValidRuntime(gcfFunction.runtime)) {
@@ -532,7 +551,6 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
     gcfFunction,
     "serviceAccountEmail",
     "availableMemoryMb",
-    "timeout",
     "minInstances",
     "maxInstances",
     "ingressSettings",
@@ -540,6 +558,13 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
     "environmentVariables",
     "secretEnvironmentVariables",
     "sourceUploadUrl"
+  );
+  proto.renameIfPresent(
+    endpoint,
+    gcfFunction,
+    "timeoutSeconds",
+    "timeout",
+    proto.secondsFromDuration
   );
   if (gcfFunction.vpcConnector) {
     endpoint.vpc = { connector: gcfFunction.vpcConnector };
@@ -550,6 +575,7 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
       "vpcConnectorEgressSettings"
     );
   }
+  endpoint.codebase = gcfFunction.labels?.[CODEBASE_LABEL] || projectConfig.DEFAULT_CODEBASE;
   return endpoint;
 }
 
@@ -581,15 +607,9 @@ export function functionFromEndpoint(
 
   proto.copyIfPresent(gcfFunction, endpoint, "labels");
   if (backend.isEventTriggered(endpoint)) {
-    const resourceFilter = backend.findEventFilter(endpoint, "resource");
-    if (!resourceFilter) {
-      throw new FirebaseError(
-        "Invalid event trigger definition. Expected event filter with 'resource' attribute."
-      );
-    }
     gcfFunction.eventTrigger = {
       eventType: endpoint.eventTrigger.eventType,
-      resource: resourceFilter.value,
+      resource: endpoint.eventTrigger.eventFilters.resource,
       // Service is unnecessary and deprecated
     };
 
@@ -608,6 +628,15 @@ export function functionFromEndpoint(
   } else if (backend.isTaskQueueTriggered(endpoint)) {
     gcfFunction.httpsTrigger = {};
     gcfFunction.labels = { ...gcfFunction.labels, "deployment-taskqueue": "true" };
+  } else if (backend.isBlockingTriggered(endpoint)) {
+    gcfFunction.httpsTrigger = {};
+    gcfFunction.labels = {
+      ...gcfFunction.labels,
+      [BLOCKING_LABEL]:
+        BLOCKING_EVENT_TO_LABEL_KEY[
+          endpoint.blockingTrigger.eventType as typeof AUTH_BLOCKING_EVENTS[number]
+        ],
+    };
   } else {
     gcfFunction.httpsTrigger = {};
     if (backend.isCallableTriggered(endpoint)) {
@@ -622,13 +651,19 @@ export function functionFromEndpoint(
     gcfFunction,
     endpoint,
     "serviceAccountEmail",
-    "timeout",
     "availableMemoryMb",
     "minInstances",
     "maxInstances",
     "ingressSettings",
     "environmentVariables",
     "secretEnvironmentVariables"
+  );
+  proto.renameIfPresent(
+    gcfFunction,
+    endpoint,
+    "timeout",
+    "timeoutSeconds",
+    proto.durationFromSeconds
   );
   if (endpoint.vpc) {
     proto.renameIfPresent(gcfFunction, endpoint.vpc, "vpcConnector", "connector");
@@ -638,6 +673,15 @@ export function functionFromEndpoint(
       "vpcConnectorEgressSettings",
       "egressSettings"
     );
+  }
+  const codebase = endpoint.codebase || projectConfig.DEFAULT_CODEBASE;
+  if (codebase !== projectConfig.DEFAULT_CODEBASE) {
+    gcfFunction.labels = {
+      ...gcfFunction.labels,
+      [CODEBASE_LABEL]: codebase,
+    };
+  } else {
+    delete gcfFunction.labels?.[CODEBASE_LABEL];
   }
   return gcfFunction;
 }

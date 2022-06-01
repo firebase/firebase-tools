@@ -5,11 +5,13 @@ import { normalizedHostingConfigs } from "../../hosting/normalizedHostingConfigs
 import { validateDeploy } from "./validate";
 import { convertConfig } from "./convertConfig";
 import * as deploymentTool from "../../deploymentTool";
+import { Payload } from "./args";
+import { allEndpoints } from "../functions/backend";
 
 /**
  *  Prepare creates versions for each Hosting site to be deployed.
  */
-export async function prepare(context: any, options: any): Promise<void> {
+export async function prepare(context: any, options: any, payload: Payload): Promise<void> {
   // Allow the public directory to be overridden by the --public flag
   if (options.public) {
     if (Array.isArray(options.config.get("hosting"))) {
@@ -40,7 +42,7 @@ export async function prepare(context: any, options: any): Promise<void> {
     validateDeploy(deploy, options);
 
     const data = {
-      config: convertConfig(cfg),
+      config: await convertConfig(context, payload, cfg, false),
       labels: deploymentTool.labels(),
     };
 

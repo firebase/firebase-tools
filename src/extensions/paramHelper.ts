@@ -1,4 +1,3 @@
-import * as _ from "lodash";
 import * as path from "path";
 import * as clc from "cli-color";
 import * as fs from "fs-extra";
@@ -13,8 +12,10 @@ import {
   validateCommandLineParams,
 } from "./extensionsHelper";
 import * as askUserForParam from "./askUserForParam";
-import * as track from "../track";
+import { track } from "../track";
 import * as env from "../functions/env";
+import { cloneDeep } from "../utils";
+import { paramsFlagDeprecationWarning } from "./warnings";
 
 /**
  * Interface for holding different param values for different environments/configs.
@@ -80,8 +81,8 @@ export function setNewDefaults(
 export function getParamsWithCurrentValuesAsDefaults(
   extensionInstance: extensionsApi.ExtensionInstance
 ): extensionsApi.Param[] {
-  const specParams = _.cloneDeep(_.get(extensionInstance, "config.source.spec.params", []));
-  const currentParams = _.cloneDeep(_.get(extensionInstance, "config.params", {}));
+  const specParams = cloneDeep(extensionInstance?.config?.source?.spec?.params || []);
+  const currentParams = cloneDeep(extensionInstance?.config?.params || {});
   return setNewDefaults(specParams, currentParams);
 }
 
@@ -101,8 +102,8 @@ export async function getParams(args: {
   nonInteractive?: boolean;
   paramsEnvPath?: string;
   reconfiguring?: boolean;
-}): Promise<{ [key: string]: ParamBindingOptions }> {
-  let params: any;
+}): Promise<Record<string, ParamBindingOptions>> {
+  let params: Record<string, ParamBindingOptions>;
   if (args.nonInteractive && !args.paramsEnvPath) {
     const paramsMessage = args.paramSpecs
       .map((p) => {
@@ -116,6 +117,7 @@ export async function getParams(args: {
         paramsMessage
     );
   } else if (args.paramsEnvPath) {
+    paramsFlagDeprecationWarning();
     params = getParamsFromFile({
       paramSpecs: args.paramSpecs,
       paramsEnvPath: args.paramsEnvPath,
@@ -130,7 +132,8 @@ export async function getParams(args: {
       reconfiguring: !!args.reconfiguring,
     });
   }
-  void track("Extension Params", _.isEmpty(params) ? "Not Present" : "Present", _.size(params));
+  const paramNames = Object.keys(params);
+  void track("Extension Params", paramNames.length ? "Not Present" : "Present", paramNames.length);
   return params;
 }
 
@@ -142,8 +145,8 @@ export async function getParamsForUpdate(args: {
   paramsEnvPath?: string;
   nonInteractive?: boolean;
   instanceId: string;
-}): Promise<{ [key: string]: ParamBindingOptions }> {
-  let params: { [key: string]: ParamBindingOptions };
+}): Promise<Record<string, ParamBindingOptions>> {
+  let params: Record<string, ParamBindingOptions>;
   if (args.nonInteractive && !args.paramsEnvPath) {
     const paramsMessage = args.newSpec.params
       .map((p) => {
@@ -170,7 +173,8 @@ export async function getParamsForUpdate(args: {
       instanceId: args.instanceId,
     });
   }
-  void track("Extension Params", _.isEmpty(params) ? "Not Present" : "Present", _.size(params));
+  const paramNames = Object.keys(params);
+  void track("Extension Params", paramNames.length ? "Not Present" : "Present", paramNames.length);
   return params;
 }
 
@@ -192,8 +196,14 @@ export async function promptForNewParams(args: {
   const newParamBindingOptions = buildBindingOptionsWithBaseValue(args.currentParams);
 
   const firebaseProjectParams = await getFirebaseProjectParams(args.projectId);
-  const comparer = (param1: extensionsApi.Param, param2: extensionsApi.Param) => {
+  const sameParam = (param1: extensionsApi.Param) => (param2: extensionsApi.Param) => {
     return param1.type === param2.type && param1.param === param2.param;
+  };
+  const paramDiff = (
+    left: extensionsApi.Param[],
+    right: extensionsApi.Param[]
+  ): extensionsApi.Param[] => {
+    return left.filter((aLeft) => !right.find(sameParam(aLeft)));
   };
 
   // Some params are in the spec but not in currentParams, remove so we can prompt for them.
@@ -201,13 +211,13 @@ export async function promptForNewParams(args: {
     Object.keys(args.currentParams).includes(p.param)
   );
 
-  let paramsDiffDeletions = _.differenceWith(oldParams, args.newSpec.params, comparer);
+  let paramsDiffDeletions = paramDiff(oldParams, args.newSpec.params);
   paramsDiffDeletions = substituteParams<extensionsApi.Param[]>(
     paramsDiffDeletions,
     firebaseProjectParams
   );
 
-  let paramsDiffAdditions = _.differenceWith(args.newSpec.params, oldParams, comparer);
+  let paramsDiffAdditions = paramDiff(args.newSpec.params, oldParams);
   paramsDiffAdditions = substituteParams<extensionsApi.Param[]>(
     paramsDiffAdditions,
     firebaseProjectParams
@@ -215,10 +225,10 @@ export async function promptForNewParams(args: {
 
   if (paramsDiffDeletions.length) {
     logger.info("The following params will no longer be used:");
-    paramsDiffDeletions.forEach((param) => {
+    for (const param of paramsDiffDeletions) {
       logger.info(clc.red(`- ${param.param}: ${args.currentParams[param.param.toUpperCase()]}`));
       delete newParamBindingOptions[param.param.toUpperCase()];
-    });
+    }
   }
   if (paramsDiffAdditions.length) {
     logger.info("To update this instance, configure the following new parameters:");

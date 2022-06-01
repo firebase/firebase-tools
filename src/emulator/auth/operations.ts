@@ -33,6 +33,7 @@ import {
   AgentProjectState,
   TenantProjectState,
   MfaConfig,
+  BlockingFunctionEvents,
 } from "./state";
 import { MfaEnrollments, Schemas } from "./types";
 
@@ -73,6 +74,8 @@ export const authOperations: AuthOps = {
     projects: {
       createSessionCookie,
       queryAccounts,
+      getConfig,
+      updateConfig,
       accounts: {
         _: signUp,
         delete: deleteAccount,
@@ -1701,7 +1704,6 @@ function grantToken(
   assert(reqBody.refreshToken, "MISSING_REFRESH_TOKEN");
 
   const refreshTokenRecord = state.validateRefreshToken(reqBody.refreshToken);
-  assert(refreshTokenRecord, "INVALID_REFRESH_TOKEN");
   assert(!refreshTokenRecord.user.disabled, "USER_DISABLED");
   const tokens = issueTokens(state, refreshTokenRecord.user, refreshTokenRecord.provider, {
     extraClaims: refreshTokenRecord.extraClaims,
@@ -1739,31 +1741,22 @@ function getEmulatorProjectConfig(state: ProjectState): Schemas["EmulatorV1Proje
 
 function updateEmulatorProjectConfig(
   state: ProjectState,
-  reqBody: Schemas["EmulatorV1ProjectsConfig"]
+  reqBody: Schemas["EmulatorV1ProjectsConfig"],
+  ctx: ExegesisContext
 ): Schemas["EmulatorV1ProjectsConfig"] {
-  const allowDuplicateEmails = reqBody.signIn?.allowDuplicateEmails;
-  if (allowDuplicateEmails != null) {
-    assert(
-      state instanceof AgentProjectState,
-      "((Only top level projects can set oneAccountPerEmail.))"
-    );
-    state.oneAccountPerEmail = !allowDuplicateEmails;
+  // New developers should not use updateEmulatorProjectConfig to update the
+  // allowDuplicateEmails and usageMode settings and should instead use
+  // updateConfig to do so.
+  const updateMask = [];
+  if (reqBody.signIn?.allowDuplicateEmails != null) {
+    updateMask.push("signIn.allowDuplicateEmails");
   }
-  const usageMode = reqBody.usageMode;
-  if (usageMode != null) {
-    assert(state instanceof AgentProjectState, "((Only top level projects can set usageMode.))");
-    switch (usageMode) {
-      case "PASSTHROUGH":
-        assert(state.getUserCount() === 0, "Users are present, unable to set passthrough mode");
-        state.usageMode = UsageMode.PASSTHROUGH;
-        break;
-      case "DEFAULT":
-        state.usageMode = UsageMode.DEFAULT;
-        break;
-      default:
-        throw new BadRequestError("Invalid usage mode provided");
-    }
+  if (reqBody.usageMode) {
+    updateMask.push("usageMode");
   }
+  ctx.params.query.updateMask = updateMask.join();
+
+  updateConfig(state, reqBody, ctx);
   return getEmulatorProjectConfig(state);
 }
 
@@ -2005,6 +1998,43 @@ function mfaSignInFinalize(
     idToken,
     refreshToken,
   };
+}
+
+function getConfig(
+  state: ProjectState,
+  reqBody: unknown,
+  ctx: ExegesisContext
+): Schemas["GoogleCloudIdentitytoolkitAdminV2Config"] {
+  // Shouldn't error on this but need assertion for type checking
+  assert(
+    state instanceof AgentProjectState,
+    "((Can only get top-level configurations on agent projects.))"
+  );
+  return state.config;
+}
+
+function updateConfig(
+  state: ProjectState,
+  reqBody: Schemas["GoogleCloudIdentitytoolkitAdminV2Config"],
+  ctx: ExegesisContext
+): Schemas["GoogleCloudIdentitytoolkitAdminV2Config"] {
+  assert(
+    state instanceof AgentProjectState,
+    "((Can only update top-level configurations on agent projects.))"
+  );
+  for (const event in reqBody.blockingFunctions?.triggers) {
+    if (Object.prototype.hasOwnProperty.call(reqBody.blockingFunctions!.triggers, event)) {
+      assert(
+        Object.values(BlockingFunctionEvents).includes(event as BlockingFunctionEvents),
+        "INVALID_BLOCKING_FUNCTION: ((Event type is invalid.))"
+      );
+      assert(
+        parseAbsoluteUri(reqBody.blockingFunctions!.triggers[event].functionUri!),
+        "INVALID_BLOCKING_FUNCTION: ((Expected an absolute URI with valid scheme and host.))"
+      );
+    }
+  }
+  return state.updateConfig(reqBody, ctx.params.query.updateMask);
 }
 
 export type AuthOperation = (

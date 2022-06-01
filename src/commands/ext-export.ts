@@ -31,14 +31,7 @@ module.exports = new Command("ext:export")
     // Look up the instances that already exist,
     // set any secrets to latest version,
     // and strip project IDs from the param values.
-    const have = await Promise.all(
-      (
-        await planner.have(projectId)
-      ).map(async (i) => {
-        const subbed = await setSecretParamsToLatest(i);
-        return parameterizeProject(projectId, projectNumber, subbed);
-      })
-    );
+    const have = await Promise.all(await planner.have(projectId));
 
     if (have.length === 0) {
       logger.info(
@@ -49,8 +42,14 @@ module.exports = new Command("ext:export")
 
     // If an instance spec is missing a ref, that instance must have been installed from a local source.
     const [withRef, withoutRef] = partition(have, (s) => !!s.ref);
+    const withRefSubbed = await Promise.all(
+      withRef.map(async (i) => {
+        const subbed = await setSecretParamsToLatest(i);
+        return parameterizeProject(projectId, projectNumber, subbed);
+      })
+    );
 
-    displayExportInfo(withRef, withoutRef);
+    displayExportInfo(withRefSubbed, withoutRef);
 
     if (
       !options.nonInteractive &&
@@ -65,11 +64,20 @@ module.exports = new Command("ext:export")
       return;
     }
 
-    const manifestSpecs = withRef.map((spec) => ({
-      instanceId: spec.instanceId,
-      ref: spec.ref,
-      params: buildBindingOptionsWithBaseValue(spec.params),
-    }));
+    const manifestSpecs = withRefSubbed.map((spec) => {
+      const paramCopy = { ...spec.params };
+      if (spec.eventarcChannel) {
+        paramCopy.EVENTARC_CHANNEL = spec.eventarcChannel;
+      }
+      if (spec.allowedEventTypes) {
+        paramCopy.ALLOWED_EVENT_TYPES = spec.allowedEventTypes.join(",");
+      }
+      return {
+        instanceId: spec.instanceId,
+        ref: spec.ref,
+        params: buildBindingOptionsWithBaseValue(paramCopy),
+      };
+    });
 
     const existingConfig = manifest.loadConfig(options);
     await manifest.writeToManifest(

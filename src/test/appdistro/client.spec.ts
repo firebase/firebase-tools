@@ -1,15 +1,15 @@
 import { expect } from "chai";
 import { join } from "path";
 import * as fs from "fs-extra";
+import * as nock from "nock";
 import * as rimraf from "rimraf";
 import * as sinon from "sinon";
 import * as tmp from "tmp";
 
 import { AppDistributionClient, BatchRemoveTestersResponse } from "../../appdistribution/client";
-import { FirebaseError } from "../../error";
-import * as api from "../../api";
-import * as nock from "nock";
+import { appDistributionOrigin } from "../../api";
 import { Distribution } from "../../appdistribution/distribution";
+import { FirebaseError } from "../../error";
 
 tmp.setGracefulCleanup();
 
@@ -41,7 +41,7 @@ describe("distribution", () => {
     const emails = ["a@foo.com", "b@foo.com"];
 
     it("should throw error if request fails", async () => {
-      nock(api.appDistributionOrigin)
+      nock(appDistributionOrigin)
         .post(`/v1/${projectName}/testers:batchAdd`)
         .reply(400, { error: { status: "FAILED_PRECONDITION" } });
       await expect(appDistributionClient.addTesters(projectName, emails)).to.be.rejectedWith(
@@ -52,7 +52,7 @@ describe("distribution", () => {
     });
 
     it("should resolve when request succeeds", async () => {
-      nock(api.appDistributionOrigin).post(`/v1/${projectName}/testers:batchAdd`).reply(200, {});
+      nock(appDistributionOrigin).post(`/v1/${projectName}/testers:batchAdd`).reply(200, {});
       await expect(appDistributionClient.addTesters(projectName, emails)).to.be.eventually
         .fulfilled;
       expect(nock.isDone()).to.be.true;
@@ -63,7 +63,7 @@ describe("distribution", () => {
     const emails = ["a@foo.com", "b@foo.com"];
 
     it("should throw error if delete fails", async () => {
-      nock(api.appDistributionOrigin)
+      nock(appDistributionOrigin)
         .post(`/v1/${projectName}/testers:batchRemove`)
         .reply(400, { error: { status: "FAILED_PRECONDITION" } });
       await expect(appDistributionClient.removeTesters(projectName, emails)).to.be.rejectedWith(
@@ -75,7 +75,7 @@ describe("distribution", () => {
 
     const mockResponse: BatchRemoveTestersResponse = { emails: emails };
     it("should resolve when request succeeds", async () => {
-      nock(api.appDistributionOrigin)
+      nock(appDistributionOrigin)
         .post(`/v1/${projectName}/testers:batchRemove`)
         .reply(200, mockResponse);
       await expect(appDistributionClient.removeTesters(projectName, emails)).to.eventually.deep.eq(
@@ -87,14 +87,14 @@ describe("distribution", () => {
 
   describe("uploadRelease", () => {
     it("should throw error if upload fails", async () => {
-      nock(api.appDistributionOrigin).post(`/upload/v1/${appName}/releases:upload`).reply(400, {});
+      nock(appDistributionOrigin).post(`/upload/v1/${appName}/releases:upload`).reply(400, {});
       await expect(appDistributionClient.uploadRelease(appName, mockDistribution)).to.be.rejected;
       expect(nock.isDone()).to.be.true;
     });
 
     it("should return token if upload succeeds", async () => {
       const fakeOperation = "fake-operation-name";
-      nock(api.appDistributionOrigin)
+      nock(appDistributionOrigin)
         .post(`/upload/v1/${appName}/releases:upload`)
         .reply(200, { name: fakeOperation });
       await expect(
@@ -107,14 +107,13 @@ describe("distribution", () => {
   describe("updateReleaseNotes", () => {
     const releaseName = `${appName}/releases/fake-release-id`;
     it("should return immediately when no release notes are specified", async () => {
-      const apiSpy = sandbox.spy(api, "request");
       await expect(appDistributionClient.updateReleaseNotes(releaseName, "")).to.eventually.be
         .fulfilled;
-      expect(apiSpy).to.not.be.called;
+      expect(nock.isDone()).to.be.true;
     });
 
     it("should throw error when request fails", async () => {
-      nock(api.appDistributionOrigin)
+      nock(appDistributionOrigin)
         .patch(`/v1/${releaseName}?updateMask=release_notes.text`)
         .reply(400, {});
       await expect(
@@ -124,7 +123,7 @@ describe("distribution", () => {
     });
 
     it("should resolve when request succeeds", async () => {
-      nock(api.appDistributionOrigin)
+      nock(appDistributionOrigin)
         .patch(`/v1/${releaseName}?updateMask=release_notes.text`)
         .reply(200, {});
       await expect(appDistributionClient.updateReleaseNotes(releaseName, "release notes")).to
@@ -136,13 +135,12 @@ describe("distribution", () => {
   describe("distribute", () => {
     const releaseName = `${appName}/releases/fake-release-id`;
     it("should return immediately when testers and groups are empty", async () => {
-      const apiSpy = sandbox.spy(api, "request");
       await expect(appDistributionClient.distribute(releaseName)).to.eventually.be.fulfilled;
-      expect(apiSpy).to.not.be.called;
+      expect(nock.isDone()).to.be.true;
     });
 
     it("should resolve when request succeeds", async () => {
-      nock(api.appDistributionOrigin).post(`/v1/${releaseName}:distribute`).reply(200, {});
+      nock(appDistributionOrigin).post(`/v1/${releaseName}:distribute`).reply(200, {});
       await expect(appDistributionClient.distribute(releaseName, ["tester1"], ["group1"])).to.be
         .fulfilled;
       expect(nock.isDone()).to.be.true;
@@ -157,7 +155,7 @@ describe("distribution", () => {
       });
 
       it("should throw invalid testers error when status code is FAILED_PRECONDITION ", async () => {
-        nock(api.appDistributionOrigin)
+        nock(appDistributionOrigin)
           .post(`/v1/${releaseName}:distribute`, {
             testerEmails: testers,
             groupAliases: groups,
@@ -173,7 +171,7 @@ describe("distribution", () => {
       });
 
       it("should throw invalid groups error when status code is INVALID_ARGUMENT", async () => {
-        nock(api.appDistributionOrigin)
+        nock(appDistributionOrigin)
           .post(`/v1/${releaseName}:distribute`, {
             testerEmails: testers,
             groupAliases: groups,
@@ -189,7 +187,7 @@ describe("distribution", () => {
       });
 
       it("should throw default error", async () => {
-        nock(api.appDistributionOrigin)
+        nock(appDistributionOrigin)
           .post(`/v1/${releaseName}:distribute`, {
             testerEmails: testers,
             groupAliases: groups,

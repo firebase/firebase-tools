@@ -60,7 +60,7 @@ export async function detectFromPort(
   port: number,
   project: string,
   runtime: runtimes.Runtime,
-  timeout: number = 30_000 /* 30s to boot up */
+  timeout = 30_000 /* 30s to boot up */
 ): Promise<backend.Backend> {
   // The result type of fetch isn't exported
   let res: { text(): Promise<string> };
@@ -90,7 +90,8 @@ export async function detectFromPort(
   try {
     parsed = yaml.load(text);
   } catch (err: any) {
-    throw new FirebaseError("Failed to parse backend specification", { children: [err] });
+    logger.debug("Failed to parse functions.yaml", err);
+    throw new FirebaseError(`Failed to load function definition from source: ${text}`);
   }
 
   return yamlToBackend(parsed, project, api.functionsDefaultRegion, runtime);

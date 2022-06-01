@@ -1,11 +1,12 @@
 import * as proto from "../../gcp/proto";
 import * as gcf from "../../gcp/cloudfunctions";
 import * as gcfV2 from "../../gcp/cloudfunctionsv2";
+import * as run from "../../gcp/run";
 import * as utils from "../../utils";
 import * as runtimes from "./runtimes";
 import { FirebaseError } from "../../error";
 import { Context } from "./args";
-import { previews } from "../../previews";
+import { flattenArray, zip } from "../../functional";
 
 /** Retry settings for a ScheduleSpec. */
 export interface ScheduleRetryConfig {
@@ -48,16 +49,7 @@ export interface CallableTriggered {
   callableTrigger: CallableTrigger;
 }
 
-type EventFilterAttribute = "resource" | "topic" | "bucket" | string;
-
-// One or more event filters restrict the set of events delivered to an EventTrigger.
-interface EventFilter {
-  attribute: EventFilterAttribute;
-  value: string;
-
-  // if left unspecified, equality is used.
-  operator?: "match-path-pattern";
-}
+type EventFilterKey = "resource" | "topic" | "bucket" | "alerttype" | "appid" | string;
 
 /** API agnostic version of a Cloud Function's event trigger. */
 export interface EventTrigger {
@@ -73,14 +65,20 @@ export interface EventTrigger {
   eventType: string;
 
   /**
-   * Additional filters for narrowing down which events to receive.
+   * Additional exact-match filters for narrowing down which events to receive.
+   *
    * While not required by the GCF API, this is always provided in
    * the Cloud Console, and we are likely to always require it as well.
    * V1 functions will always (and only) have the "resource" filter.
    * V2 will have arbitrary filters and some EventArc filters will be
    * top-level keys in the GCF API (e.g. "pubsubTopic").
    */
-  eventFilters: EventFilter[];
+  eventFilters: Record<EventFilterKey, string>;
+
+  /**
+   * Additional path-pattern filters for narrowing down which events to receive.
+   */
+  eventFilterPathPatterns?: Record<string, string>;
 
   /** Should failures in a function execution cause an event to be retried. */
   retry: boolean;
@@ -98,6 +96,12 @@ export interface EventTrigger {
    * This field is ignored for v1 and defaults to the
    */
   serviceAccountEmail?: string;
+
+  /**
+   * The name of the channel where the function receive events.
+   * Must be provided to receive custom events.
+   */
+  channel?: string;
 }
 
 /** Something that has an EventTrigger */
@@ -106,17 +110,16 @@ export interface EventTriggered {
 }
 
 export interface TaskQueueRateLimits {
-  maxBurstSize?: number;
   maxConcurrentDispatches?: number;
   maxDispatchesPerSecond?: number;
 }
 
 export interface TaskQueueRetryConfig {
   maxAttempts?: number;
-  maxRetryDuration?: proto.Duration;
-  minBackoff?: proto.Duration;
-  maxBackoff?: proto.Duration;
+  maxRetrySeconds?: number;
+  maxBackoffSeconds?: number;
   maxDoublings?: number;
+  minBackoffSeconds?: number;
 }
 
 export interface TaskQueueTrigger {
@@ -127,6 +130,14 @@ export interface TaskQueueTrigger {
 
 export interface TaskQueueTriggered {
   taskQueueTrigger: TaskQueueTrigger;
+}
+
+export interface BlockingTrigger {
+  eventType: string;
+  options?: Record<string, unknown>;
+}
+export interface BlockingTriggered {
+  blockingTrigger: BlockingTrigger;
 }
 
 /** A user-friendly string for the kind of trigger of an endpoint. */
@@ -141,6 +152,8 @@ export function endpointTriggerType(endpoint: Endpoint): string {
     return endpoint.eventTrigger.eventType;
   } else if (isTaskQueueTriggered(endpoint)) {
     return "taskQueue";
+  } else if (isBlockingTriggered(endpoint)) {
+    return endpoint.blockingTrigger.eventType;
   } else {
     throw new Error("Unexpected trigger type for endpoint " + JSON.stringify(endpoint));
   }
@@ -148,8 +161,17 @@ export function endpointTriggerType(endpoint: Endpoint): string {
 
 // TODO(inlined): Enum types should be singularly named
 export type VpcEgressSettings = "PRIVATE_RANGES_ONLY" | "ALL_TRAFFIC";
+export const AllVpcEgressSettings: VpcEgressSettings[] = ["PRIVATE_RANGES_ONLY", "ALL_TRAFFIC"];
 export type IngressSettings = "ALLOW_ALL" | "ALLOW_INTERNAL_ONLY" | "ALLOW_INTERNAL_AND_GCLB";
-export type MemoryOptions = 128 | 256 | 512 | 1024 | 2048 | 4096 | 8192;
+export const AllIngressSettings: IngressSettings[] = [
+  "ALLOW_ALL",
+  "ALLOW_INTERNAL_ONLY",
+  "ALLOW_INTERNAL_AND_GCLB",
+];
+export type MemoryOptions = 128 | 256 | 512 | 1024 | 2048 | 4096 | 8192 | 16384 | 32768;
+export const AllMemoryOptions: MemoryOptions[] = [
+  128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768,
+];
 
 /** Returns a human-readable name with MB or GB suffix for a MemoryOption (MB). */
 export function memoryOptionDisplayName(option: MemoryOptions): string {
@@ -161,11 +183,54 @@ export function memoryOptionDisplayName(option: MemoryOptions): string {
     2048: "2GB",
     4096: "4GB",
     8192: "8GB",
+    16384: "16GB",
+    32768: "32GB",
   }[option];
 }
 
+/**
+ * Returns the gen 1 mapping of CPU for RAM. Used whenever a customer sets cpu to "gcf_gen1".
+ * Note that these values must be the right number of decimal places and include
+ * rounding errors (e.g. 0.1666 instead of 0.1667) so that we match GCF's
+ * behavior and don't unnecessarily create a new Run revision because our target
+ * CPU doesn't exactly match their CPU.
+ */
+export function memoryToGen1Cpu(memory: MemoryOptions): number {
+  return {
+    128: 0.0833, // ~1/12
+    256: 0.1666, // ~1/6
+    512: 0.3333, // ~1/3
+    1024: 0.5833, // ~5/7
+    2048: 1,
+    4096: 2,
+    8192: 2,
+    16384: 3,
+    32768: 4,
+  }[memory];
+}
+
+/**
+ * The amount of CPU we allocate in V2.
+ * Where these don't match with memoryToGen1Cpu we must manually configure these
+ * at the run service.
+ */
+export function memoryToGen2Cpu(memory: MemoryOptions): number {
+  return {
+    128: 1,
+    256: 1,
+    512: 1,
+    1024: 1,
+    2048: 1,
+    4096: 2,
+    8192: 2,
+    16384: 3,
+    32768: 4,
+  }[memory];
+}
+
+export const DEFAULT_CONCURRENCY = 80;
 export const DEFAULT_MEMORY: MemoryOptions = 256;
-export const MIN_MEMORY_FOR_CONCURRENCY: MemoryOptions = 2048;
+export const MIN_CPU_FOR_CONCURRENCY = 1;
 export const SCHEDULED_FUNCTION_LABEL = Object.freeze({ deployment: "firebase-schedule" });
 
 /**
@@ -197,6 +262,9 @@ export interface SecretEnvVar {
   version?: string;
 }
 
+/**
+ * Returns full resource name of a secret version.
+ */
 export function secretVersionName(s: SecretEnvVar): string {
   return `projects/${s.projectId}/secrets/${s.secret}/versions/${s.version ?? "latest"}`;
 }
@@ -207,7 +275,8 @@ export interface ServiceConfiguration {
   environmentVariables?: Record<string, string>;
   secretEnvironmentVariables?: SecretEnvVar[];
   availableMemoryMb?: MemoryOptions;
-  timeout?: proto.Duration;
+  cpu?: number | "gcf_gen1";
+  timeoutSeconds?: number;
   maxInstances?: number;
   minInstances?: number;
   vpc?: {
@@ -219,13 +288,15 @@ export interface ServiceConfiguration {
 }
 
 export type FunctionsPlatform = "gcfv1" | "gcfv2";
+export const AllFunctionsPlatforms: FunctionsPlatform[] = ["gcfv1", "gcfv2"];
 
 export type Triggered =
   | HttpsTriggered
   | CallableTriggered
   | EventTriggered
   | ScheduleTriggered
-  | TaskQueueTriggered;
+  | TaskQueueTriggered
+  | BlockingTriggered;
 
 /** Whether something has an HttpsTrigger */
 export function isHttpsTriggered(triggered: Triggered): triggered is HttpsTriggered {
@@ -252,6 +323,11 @@ export function isTaskQueueTriggered(triggered: Triggered): triggered is TaskQue
   return {}.hasOwnProperty.call(triggered, "taskQueueTrigger");
 }
 
+/** Whether something has a BlockingTrigger */
+export function isBlockingTriggered(triggered: Triggered): triggered is BlockingTriggered {
+  return {}.hasOwnProperty.call(triggered, "blockingTrigger");
+}
+
 /**
  * An endpoint that serves traffic to a stack of services.
  * For now, this is always a Cloud Function. Future iterations may use complex
@@ -266,7 +342,9 @@ export type Endpoint = TargetIds &
     runtime: runtimes.Runtime | runtimes.DeprecatedRuntime;
 
     // Output only
-
+    // "Codebase" is not part of the container contract. Instead, it's value is provided by firebase.json or derived
+    // from function labels.
+    codebase?: string;
     // URI is available on GCFv1 for HTTPS triggers and
     // on GCFv2 always
     uri?: string;
@@ -279,7 +357,7 @@ export type Endpoint = TargetIds &
   };
 
 export interface RequiredAPI {
-  reason: string;
+  reason?: string;
   api: string;
 }
 
@@ -321,6 +399,32 @@ export function of(...endpoints: Endpoint[]): Backend {
     bkend.endpoints[endpoint.region][endpoint.id] = endpoint;
   }
   return bkend;
+}
+
+/**
+ * A helper utility to merge backends.
+ */
+export function merge(...backends: Backend[]): Backend {
+  // Merge all endpoints
+  const merged = of(...flattenArray(backends.map((b) => allEndpoints(b))));
+
+  // Merge all APIs
+  const apiToReasons: Record<string, Set<string>> = {};
+  for (const b of backends) {
+    for (const { api, reason } of b.requiredAPIs) {
+      const reasons = apiToReasons[api] || new Set();
+      if (reason) {
+        reasons.add(reason);
+      }
+      apiToReasons[api] = reasons;
+    }
+    // Mere all environment variables.
+    merged.environmentVariables = { ...merged.environmentVariables, ...b.environmentVariables };
+  }
+  for (const [api, reasons] of Object.entries(apiToReasons)) {
+    merged.requiredAPIs.push({ api, reason: Array.from(reasons).join(" ") });
+  }
+  return merged;
 }
 
 /**
@@ -420,26 +524,34 @@ async function loadExistingBackend(ctx: Context & PrivateContextFields): Promise
   }
   ctx.unreachableRegions.gcfV1 = gcfV1Results.unreachable;
 
-  if (!previews.functionsv2) {
-    return;
-  }
-
   let gcfV2Results;
   try {
     gcfV2Results = await gcfV2.listAllFunctions(ctx.projectId);
+    const runResults = await Promise.all(
+      gcfV2Results.functions.map((fn) => run.getService(fn.serviceConfig.service!))
+    );
+    for (const [apiFunction, runService] of zip(gcfV2Results.functions, runResults)) {
+      // I don't know why but code complete knows apiFunction is a gcfv2.CloudFunction
+      // and the compiler thinks it's type {}.
+      const endpoint = gcfV2.endpointFromFunction(apiFunction as any);
+      endpoint.concurrency = runService.spec.template.spec.containerConcurrency || 1;
+      // N.B. We don't generally do anything with multiple containers, but we
+      // might have to figure out WTF to do here if we're updating multiple containers
+      // and our only reference point is the image. Hopefully by then we'll be
+      // on the next gen infrastructure and have state we can refer back to.
+      endpoint.cpu = +runService.spec.template.spec.containers[0].resources.limits.cpu;
+
+      ctx.existingBackend.endpoints[endpoint.region] =
+        ctx.existingBackend.endpoints[endpoint.region] || {};
+      ctx.existingBackend.endpoints[endpoint.region][endpoint.id] = endpoint;
+    }
+    ctx.unreachableRegions.gcfV2 = gcfV2Results.unreachable;
   } catch (err: any) {
     if (err.status === 404 && err.message?.toLowerCase().includes("method not found")) {
       return; // customer has preview enabled without allowlist set
     }
     throw err;
   }
-  for (const apiFunction of gcfV2Results.functions) {
-    const endpoint = gcfV2.endpointFromFunction(apiFunction);
-    ctx.existingBackend.endpoints[endpoint.region] =
-      ctx.existingBackend.endpoints[endpoint.region] || {};
-    ctx.existingBackend.endpoints[endpoint.region][endpoint.id] = endpoint;
-  }
-  ctx.unreachableRegions.gcfV2 = gcfV2Results.unreachable;
 }
 
 /**
@@ -543,7 +655,8 @@ export function matchingBackend(
   predicate: (endpoint: Endpoint) => boolean
 ): Backend {
   const filtered: Backend = {
-    ...empty(),
+    ...backend,
+    endpoints: {},
   };
   for (const endpoint of allEndpoints(backend)) {
     if (!predicate(endpoint)) {
@@ -575,14 +688,6 @@ export const missingEndpoint =
   (endpoint: Endpoint): boolean => {
     return !hasEndpoint(backend)(endpoint);
   };
-
-/** A helper utility to find event filter of given attribute */
-export function findEventFilter(
-  endpoint: Endpoint & EventTriggered,
-  attribute: EventFilterAttribute
-): EventFilter | undefined {
-  return endpoint.eventTrigger.eventFilters.find((ef) => ef.attribute === attribute);
-}
 
 /**
  * A standard method for sorting endpoints for display.
