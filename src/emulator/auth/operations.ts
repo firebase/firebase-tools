@@ -29,7 +29,6 @@ import {
   OobRecord,
   PROVIDER_GAME_CENTER,
   SecondFactorRecord,
-  UsageMode,
   AgentProjectState,
   TenantProjectState,
   MfaConfig,
@@ -151,7 +150,6 @@ function signUp(
   ctx: ExegesisContext
 ): Schemas["GoogleCloudIdentitytoolkitV1SignUpResponse"] {
   assert(!state.disableAuth, "PROJECT_DISABLED");
-  assert(state.usageMode !== UsageMode.PASSTHROUGH, "UNSUPPORTED_PASSTHROUGH_OPERATION");
   let provider: string | undefined;
   const updates: Omit<Partial<UserInfo>, "localId" | "providerUserInfo"> = {
     lastLoginAt: Date.now().toString(),
@@ -299,7 +297,6 @@ function batchCreate(
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1UploadAccountRequest"]
 ): Schemas["GoogleCloudIdentitytoolkitV1UploadAccountResponse"] {
   assert(!state.disableAuth, "PROJECT_DISABLED");
-  assert(state.usageMode !== UsageMode.PASSTHROUGH, "UNSUPPORTED_PASSTHROUGH_OPERATION");
   assert(reqBody.users?.length, "MISSING_USER_ACCOUNT");
 
   if (reqBody.sanityCheck) {
@@ -554,7 +551,6 @@ function createAuthUri(
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1CreateAuthUriRequest"]
 ): Schemas["GoogleCloudIdentitytoolkitV1CreateAuthUriResponse"] {
   assert(!state.disableAuth, "PROJECT_DISABLED");
-  assert(state.usageMode !== UsageMode.PASSTHROUGH, "UNSUPPORTED_PASSTHROUGH_OPERATION");
   const sessionId = reqBody.sessionId || randomId(27);
   if (reqBody.providerId) {
     throw new NotImplementedError("Sign-in with IDP is not yet supported.");
@@ -626,7 +622,6 @@ function createSessionCookie(
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1CreateSessionCookieRequest"],
   ctx: ExegesisContext
 ): Schemas["GoogleCloudIdentitytoolkitV1CreateSessionCookieResponse"] {
-  assert(state.usageMode !== UsageMode.PASSTHROUGH, "UNSUPPORTED_PASSTHROUGH_OPERATION");
   assert(reqBody.idToken, "MISSING_ID_TOKEN");
   const validDuration = Number(reqBody.validDuration) || SESSION_COOKIE_MAX_VALID_DURATION;
   assert(
@@ -777,7 +772,6 @@ export function resetPassword(
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1ResetPasswordRequest"]
 ): Schemas["GoogleCloudIdentitytoolkitV1ResetPasswordResponse"] {
   assert(!state.disableAuth, "PROJECT_DISABLED");
-  assert(state.usageMode !== UsageMode.PASSTHROUGH, "UNSUPPORTED_PASSTHROUGH_OPERATION");
   assert(state.allowPasswordSignup, "PASSWORD_LOGIN_DISABLED");
   assert(reqBody.oobCode, "MISSING_OOB_CODE");
   const oob = state.validateOobCode(reqBody.oobCode);
@@ -825,7 +819,6 @@ function sendOobCode(
   ctx: ExegesisContext
 ): Schemas["GoogleCloudIdentitytoolkitV1GetOobCodeResponse"] {
   assert(!state.disableAuth, "PROJECT_DISABLED");
-  assert(state.usageMode !== UsageMode.PASSTHROUGH, "UNSUPPORTED_PASSTHROUGH_OPERATION");
   assert(
     reqBody.requestType && reqBody.requestType !== "OOB_REQ_TYPE_UNSPECIFIED",
     "MISSING_REQ_TYPE"
@@ -915,7 +908,6 @@ function sendVerificationCode(
 ): Schemas["GoogleCloudIdentitytoolkitV1SendVerificationCodeResponse"] {
   assert(!state.disableAuth, "PROJECT_DISABLED");
   assert(state instanceof AgentProjectState, "UNSUPPORTED_TENANT_OPERATION");
-  assert(state.usageMode !== UsageMode.PASSTHROUGH, "UNSUPPORTED_PASSTHROUGH_OPERATION");
   // reqBody.iosReceipt, iosSecret, and recaptchaToken are intentionally ignored.
 
   // Production Firebase Auth service also throws INVALID_PHONE_NUMBER instead
@@ -951,7 +943,6 @@ function setAccountInfo(
   ctx: ExegesisContext
 ): Schemas["GoogleCloudIdentitytoolkitV1SetAccountInfoResponse"] {
   assert(!state.disableAuth, "PROJECT_DISABLED");
-  assert(state.usageMode !== UsageMode.PASSTHROUGH, "UNSUPPORTED_PASSTHROUGH_OPERATION");
   const url = authEmulatorUrl(ctx.req as express.Request);
   return setAccountInfoImpl(state, reqBody, {
     privileged: !!ctx.security?.Oauth2,
@@ -1327,7 +1318,7 @@ function signInWithCustomToken(
   }
 
   let user = state.getUserByLocalId(localId);
-  const isNewUser = state.usageMode === UsageMode.PASSTHROUGH ? false : !user;
+  const isNewUser = !user;
 
   const updates = {
     customAuth: true,
@@ -1358,7 +1349,6 @@ function signInWithEmailLink(
 ): Schemas["GoogleCloudIdentitytoolkitV1SignInWithEmailLinkResponse"] {
   assert(!state.disableAuth, "PROJECT_DISABLED");
   assert(state.enableEmailLinkSignin, "OPERATION_NOT_ALLOWED");
-  assert(state.usageMode !== UsageMode.PASSTHROUGH, "UNSUPPORTED_PASSTHROUGH_OPERATION");
   const userFromIdToken = reqBody.idToken ? parseIdToken(state, reqBody.idToken).user : undefined;
   assert(reqBody.email, "MISSING_EMAIL");
   const email = canonicalizeEmailAddress(reqBody.email);
@@ -1421,7 +1411,6 @@ function signInWithIdp(
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1SignInWithIdpRequest"]
 ): SignInWithIdpResponse {
   assert(!state.disableAuth, "PROJECT_DISABLED");
-  assert(state.usageMode !== UsageMode.PASSTHROUGH, "UNSUPPORTED_PASSTHROUGH_OPERATION");
 
   if (reqBody.returnRefreshToken) {
     throw new NotImplementedError("returnRefreshToken is not implemented yet.");
@@ -1589,7 +1578,6 @@ function signInWithPassword(
 ): Schemas["GoogleCloudIdentitytoolkitV1SignInWithPasswordResponse"] {
   assert(!state.disableAuth, "PROJECT_DISABLED");
   assert(state.allowPasswordSignup, "PASSWORD_LOGIN_DISABLED");
-  assert(state.usageMode !== UsageMode.PASSTHROUGH, "UNSUPPORTED_PASSTHROUGH_OPERATION");
   assert(reqBody.email, "MISSING_EMAIL");
   assert(reqBody.password, "MISSING_PASSWORD");
   if (reqBody.captchaResponse || reqBody.captchaChallenge) {
@@ -1632,7 +1620,6 @@ function signInWithPhoneNumber(
 ): Schemas["GoogleCloudIdentitytoolkitV1SignInWithPhoneNumberResponse"] {
   assert(!state.disableAuth, "PROJECT_DISABLED");
   assert(state instanceof AgentProjectState, "UNSUPPORTED_TENANT_OPERATION");
-  assert(state.usageMode !== UsageMode.PASSTHROUGH, "UNSUPPORTED_PASSTHROUGH_OPERATION");
   let phoneNumber: string;
   if (reqBody.temporaryProof) {
     assert(reqBody.phoneNumber, "MISSING_PHONE_NUMBER");
@@ -1698,7 +1685,6 @@ function grantToken(
 ): Schemas["GrantTokenResponse"] {
   // https://developers.google.com/identity/toolkit/reference/securetoken/rest/v1/token
   // reqBody.code is intentionally ignored.
-  assert(state.usageMode !== UsageMode.PASSTHROUGH, "UNSUPPORTED_PASSTHROUGH_OPERATION");
   assert(reqBody.grantType, "MISSING_GRANT_TYPE");
   assert(reqBody.grantType === "refresh_token", "INVALID_GRANT_TYPE");
   assert(reqBody.refreshToken, "MISSING_REFRESH_TOKEN");
@@ -1735,7 +1721,6 @@ function getEmulatorProjectConfig(state: ProjectState): Schemas["EmulatorV1Proje
     signIn: {
       allowDuplicateEmails: !state.oneAccountPerEmail,
     },
-    usageMode: state.usageMode,
   };
 }
 
@@ -1745,14 +1730,10 @@ function updateEmulatorProjectConfig(
   ctx: ExegesisContext
 ): Schemas["EmulatorV1ProjectsConfig"] {
   // New developers should not use updateEmulatorProjectConfig to update the
-  // allowDuplicateEmails and usageMode settings and should instead use
-  // updateConfig to do so.
+  // allowDuplicateEmails setting and should instead use updateConfig to do so.
   const updateMask = [];
   if (reqBody.signIn?.allowDuplicateEmails != null) {
     updateMask.push("signIn.allowDuplicateEmails");
-  }
-  if (reqBody.usageMode) {
-    updateMask.push("usageMode");
   }
   ctx.params.query.updateMask = updateMask.join();
 
@@ -2090,8 +2071,6 @@ function issueTokens(
 ): { idToken: string; refreshToken?: string; expiresIn: string } {
   user = state.updateUserByLocalId(user.localId, { lastRefreshAt: new Date().toISOString() });
 
-  const usageMode = state.usageMode === UsageMode.PASSTHROUGH ? "passthrough" : undefined;
-
   const tenantId = state instanceof TenantProjectState ? state.tenantId : undefined;
 
   const expiresInSeconds = 60 * 60;
@@ -2101,17 +2080,13 @@ function issueTokens(
     expiresInSeconds,
     extraClaims,
     secondFactor,
-    usageMode,
     tenantId,
     signInAttributes,
   });
-  const refreshToken =
-    state.usageMode === UsageMode.DEFAULT
-      ? state.createRefreshTokenFor(user, signInProvider, {
-          extraClaims,
-          secondFactor,
-        })
-      : undefined;
+  const refreshToken = state.createRefreshTokenFor(user, signInProvider, {
+    extraClaims,
+    secondFactor,
+  });
   return {
     idToken,
     refreshToken,
@@ -2127,7 +2102,6 @@ function parseIdToken(
   payload: FirebaseJwtPayload;
   signInProvider: string;
 } {
-  assert(state.usageMode !== UsageMode.PASSTHROUGH, "UNSUPPORTED_PASSTHROUGH_OPERATION");
   const decoded = decodeJwt(idToken, { complete: true }) as {
     header: JwtHeader;
     payload: FirebaseJwtPayload;
@@ -2170,7 +2144,6 @@ function generateJwt(
     expiresInSeconds,
     extraClaims = {},
     secondFactor,
-    usageMode,
     tenantId,
     signInAttributes,
   }: {
@@ -2179,7 +2152,6 @@ function generateJwt(
     expiresInSeconds: number;
     extraClaims?: Record<string, unknown>;
     secondFactor?: SecondFactorRecord;
-    usageMode?: string;
     tenantId?: string;
     signInAttributes?: unknown;
   }
@@ -2226,7 +2198,6 @@ function generateJwt(
       sign_in_provider: signInProvider,
       second_factor_identifier: secondFactor?.identifier,
       sign_in_second_factor: secondFactor?.provider,
-      usage_mode: usageMode,
       tenant: tenantId,
       sign_in_attributes: signInAttributes,
     },
@@ -2868,7 +2839,6 @@ export interface FirebaseJwtPayload {
     sign_in_provider: string;
     sign_in_second_factor?: string;
     second_factor_identifier?: string;
-    usage_mode?: string;
     tenant?: string;
     sign_in_attributes?: unknown;
   };
