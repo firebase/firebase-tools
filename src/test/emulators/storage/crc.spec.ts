@@ -19,7 +19,7 @@ const bufferTestCases: {
 
 const toStringTestCases: {
   cases: { input: string; want: string }[];
-} = require("./crc-string-cases.json");
+} = require("./crc-to-string-cases.json");
 
 describe("crc", () => {
   it("correctly computes crc32c from a string", () => {
