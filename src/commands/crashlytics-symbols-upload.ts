@@ -4,7 +4,6 @@ import * as uuid from "uuid";
 
 import { Command } from "../command";
 import { FirebaseError } from "../error";
-import { logger } from "../logger";
 import * as utils from "../utils";
 
 import { fetchBuildtoolsJar, runBuildtoolsCommand } from "../crashlytics/buildToolsJarHelper";
@@ -19,13 +18,11 @@ interface CommandOptions {
   generator: SymbolGenerator | null;
   dryRun: boolean | null;
   debug: boolean | null;
-  // Temporary override to use a local JAR until we get the fat jar in our
-  // bucket
+  // Temporary override to use a local JAR until we get the fat jar in our bucket
   localJar: string | null;
 }
 
 interface JarOptions {
-  jarFile: string;
   app: string;
   generator: SymbolGenerator;
   cachePath: string;
@@ -50,7 +47,6 @@ export default new Command("crashlytics:symbols:upload <symbolFiles...>")
     let jarFile = await fetchBuildtoolsJar();
 
     const jarOptions: JarOptions = {
-      jarFile,
       app,
       generator,
       cachePath: path.join(
@@ -104,18 +100,17 @@ function getSymbolGenerator(options: CommandOptions): SymbolGenerator {
 
 function buildArgs(options: JarOptions): string[] {
   const baseArgs = [
-    `-symbolGenerator=${options.generator}`,
-    `-symbolFileCacheDir=${options.cachePath}`,
+    "-symbolGenerator", options.generator,
+    "-symbolFileCacheDir", options.cachePath,
     "-verbose",
   ];
 
   if (options.generate) {
-    return baseArgs.concat(["-generateNativeSymbols", `-unstrippedLibrary=${options.symbolFile}`]);
+    return baseArgs.concat(["-generateNativeSymbols", "-unstrippedLibrary", options.symbolFile]);
   }
 
   return baseArgs.concat([
     "-uploadNativeSymbols",
-    `-googleAppId=${options.app}`,
-    // `-androidApplicationId=`,
+    "-googleAppId", options.app
   ]);
 }
