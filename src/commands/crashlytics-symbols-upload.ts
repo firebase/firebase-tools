@@ -44,7 +44,7 @@ export default new Command("crashlytics:symbols:upload <symbolFiles...>")
     const dryRun = !!options.dryRun;
     const debug = !!options.debug;
 
-    let jarFile = await fetchBuildtoolsJar();
+    const jarFile = await fetchBuildtoolsJar();
 
     const jarOptions: JarOptions = {
       app,
@@ -100,8 +100,10 @@ function getSymbolGenerator(options: CommandOptions): SymbolGenerator {
 
 function buildArgs(options: JarOptions): string[] {
   const baseArgs = [
-    "-symbolGenerator", options.generator,
-    "-symbolFileCacheDir", options.cachePath,
+    "-symbolGenerator",
+    options.generator,
+    "-symbolFileCacheDir",
+    options.cachePath,
     "-verbose",
   ];
 
@@ -109,8 +111,5 @@ function buildArgs(options: JarOptions): string[] {
     return baseArgs.concat(["-generateNativeSymbols", "-unstrippedLibrary", options.symbolFile]);
   }
 
-  return baseArgs.concat([
-    "-uploadNativeSymbols",
-    "-googleAppId", options.app
-  ]);
+  return baseArgs.concat(["-uploadNativeSymbols", "-googleAppId", options.app]);
 }

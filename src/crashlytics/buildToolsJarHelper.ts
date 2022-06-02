@@ -16,28 +16,33 @@ const JAR_CACHE_DIR =
 const JAR_VERSION = "2.9.0";
 const JAR_URL = `https://dl.google.com/android/maven2/com/google/firebase/firebase-crashlytics-buildtools/${JAR_VERSION}/firebase-crashlytics-buildtools-${JAR_VERSION}.jar`;
 
-// Returns the path to the jar file, downloading it if necessary.
+/**
+ * Returns the path to the jar file, downloading it if necessary.
+ */
 export async function fetchBuildtoolsJar(): Promise<string> {
-
   if (process.env.LOCAL_JAR) {
     return process.env.LOCAL_JAR;
   }
 
   let jarPath = path.join(JAR_CACHE_DIR, `crashlytics-buildtools-${JAR_VERSION}.jar`);
   if (fs.existsSync(jarPath)) {
-      logger.debug(`Buildtools Jar already downloaded at ${jarPath}`);
-      return jarPath;
+    logger.debug(`Buildtools Jar already downloaded at ${jarPath}`);
+    return jarPath;
   }
 
   // If the Jar cache directory exists, but the jar for the current version
   // doesn't, then we're running the CLI with a new Jar version and we can
   // delete the old version.
   if (fs.existsSync(JAR_CACHE_DIR)) {
-    logger.debug(`Deleting Jar cache at ${JAR_CACHE_DIR} because the CLI was run with a newer Jar version`);
-      rimraf.sync(JAR_CACHE_DIR);
+    logger.debug(
+      `Deleting Jar cache at ${JAR_CACHE_DIR} because the CLI was run with a newer Jar version`
+    );
+    rimraf.sync(JAR_CACHE_DIR);
   }
   utils.logBullet("Downloading crashlytics-buildtools.jar to " + jarPath);
-  utils.logBullet("For open source licenses used by this command, look in the META-INF directory in the buildtools.jar file");
+  utils.logBullet(
+    "For open source licenses used by this command, look in the META-INF directory in the buildtools.jar file"
+  );
   const tmpfile = await downloadUtils.downloadToTmp(JAR_URL);
   fs.mkdirSync(JAR_CACHE_DIR, { recursive: true });
   fs.copySync(tmpfile, jarPath);
@@ -49,11 +54,12 @@ export async function fetchBuildtoolsJar(): Promise<string> {
   return jarPath;
 }
 
-export function runBuildtoolsCommand(jarFile: string, args: string[], debug: boolean) {
+/**
+ * Helper function to invoke the given set of arguments on the the executable jar
+ */
+export function runBuildtoolsCommand(jarFile: string, args: string[], debug: boolean): void {
   args = ["-jar", jarFile].concat(args);
   args = args.concat(["-clientName", "firebase-cli;crashlytics-buildtools"]);
-  // Inherit is better for debug output because it'll print as it goes. If we pipe here and print 
-  // after it'll wait until the command has finished to print all the output.
   const outputs = spawn.sync("java", args, {
     stdio: debug ? "inherit" : "pipe",
   });
