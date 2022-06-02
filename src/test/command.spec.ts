@@ -26,7 +26,7 @@ describe("Command", () => {
       command.action(() => {
         // do nothing
       });
-    }).not.to.throw;
+    }).not.to.throw();
   });
 
   describe("runner", () => {

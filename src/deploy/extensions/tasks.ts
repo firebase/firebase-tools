@@ -1,10 +1,12 @@
 import * as clc from "cli-color";
+import { FirebaseError } from "../../error";
 
 import * as extensionsApi from "../../extensions/extensionsApi";
+import { createSourceFromLocation } from "../../extensions/extensionsHelper";
 import * as refs from "../../extensions/refs";
 import * as utils from "../../utils";
 import { ErrorHandler } from "./errors";
-import { InstanceSpec } from "./planner";
+import { DeploymentInstanceSpec, InstanceSpec } from "./planner";
 
 const isRetryable = (err: any) => err.status === 429 || err.status === 409;
 
@@ -38,17 +40,36 @@ export function extensionsDeploymentHandler(
 
 export function createExtensionInstanceTask(
   projectId: string,
-  instanceSpec: InstanceSpec,
+  instanceSpec: DeploymentInstanceSpec,
   validateOnly: boolean = false
 ): ExtensionDeploymentTask {
   const run = async () => {
-    const res = await extensionsApi.createInstance({
-      projectId,
-      instanceId: instanceSpec.instanceId,
-      params: instanceSpec.params,
-      extensionVersionRef: refs.toExtensionVersionRef(instanceSpec.ref!),
-      validateOnly,
-    });
+    if (instanceSpec.ref) {
+      await extensionsApi.createInstance({
+        projectId,
+        instanceId: instanceSpec.instanceId,
+        params: instanceSpec.params,
+        extensionVersionRef: refs.toExtensionVersionRef(instanceSpec.ref),
+        allowedEventTypes: instanceSpec.allowedEventTypes,
+        eventarcChannel: instanceSpec.eventarcChannel,
+        validateOnly,
+      });
+    } else if (instanceSpec.localPath) {
+      const extensionSource = await createSourceFromLocation(projectId, instanceSpec.localPath);
+      await extensionsApi.createInstance({
+        projectId,
+        instanceId: instanceSpec.instanceId,
+        params: instanceSpec.params,
+        extensionSource,
+        allowedEventTypes: instanceSpec.allowedEventTypes,
+        eventarcChannel: instanceSpec.eventarcChannel,
+        validateOnly,
+      });
+    } else {
+      throw new FirebaseError(
+        `Tried to create extension instance ${instanceSpec.instanceId} without a ref or a local path. This should never happen.`
+      );
+    }
     printSuccess(instanceSpec.instanceId, "create", validateOnly);
     return;
   };
@@ -61,17 +82,37 @@ export function createExtensionInstanceTask(
 
 export function updateExtensionInstanceTask(
   projectId: string,
-  instanceSpec: InstanceSpec,
+  instanceSpec: DeploymentInstanceSpec,
   validateOnly: boolean = false
 ): ExtensionDeploymentTask {
   const run = async () => {
-    const res = await extensionsApi.updateInstanceFromRegistry({
-      projectId,
-      instanceId: instanceSpec.instanceId,
-      extRef: refs.toExtensionVersionRef(instanceSpec.ref!),
-      params: instanceSpec.params,
-      validateOnly,
-    });
+    if (instanceSpec.ref) {
+      await extensionsApi.updateInstanceFromRegistry({
+        projectId,
+        instanceId: instanceSpec.instanceId,
+        extRef: refs.toExtensionVersionRef(instanceSpec.ref!),
+        params: instanceSpec.params,
+        canEmitEvents: !!instanceSpec.allowedEventTypes,
+        allowedEventTypes: instanceSpec.allowedEventTypes,
+        eventarcChannel: instanceSpec.eventarcChannel,
+        validateOnly,
+      });
+    } else if (instanceSpec.localPath) {
+      const extensionSource = await createSourceFromLocation(projectId, instanceSpec.localPath);
+      await extensionsApi.updateInstance({
+        projectId,
+        instanceId: instanceSpec.instanceId,
+        extensionSource,
+        validateOnly,
+        canEmitEvents: !!instanceSpec.allowedEventTypes,
+        allowedEventTypes: instanceSpec.allowedEventTypes,
+        eventarcChannel: instanceSpec.eventarcChannel,
+      });
+    } else {
+      throw new FirebaseError(
+        `Tried to update extension instance ${instanceSpec.instanceId} without a ref or a local path. This should never happen.`
+      );
+    }
     printSuccess(instanceSpec.instanceId, "update", validateOnly);
     return;
   };
@@ -84,16 +125,30 @@ export function updateExtensionInstanceTask(
 
 export function configureExtensionInstanceTask(
   projectId: string,
-  instanceSpec: InstanceSpec,
+  instanceSpec: DeploymentInstanceSpec,
   validateOnly: boolean = false
 ): ExtensionDeploymentTask {
   const run = async () => {
-    const res = await extensionsApi.configureInstance({
-      projectId,
-      instanceId: instanceSpec.instanceId,
-      params: instanceSpec.params,
-      validateOnly,
-    });
+    if (instanceSpec.ref) {
+      await extensionsApi.configureInstance({
+        projectId,
+        instanceId: instanceSpec.instanceId,
+        params: instanceSpec.params,
+        canEmitEvents: !!instanceSpec.allowedEventTypes,
+        allowedEventTypes: instanceSpec.allowedEventTypes,
+        eventarcChannel: instanceSpec.eventarcChannel,
+        validateOnly,
+      });
+    } else if (instanceSpec.localPath) {
+      // We should _always_ be updating when using local extensions, since we don't know if there was a code change at the local path since last deploy.
+      throw new FirebaseError(
+        `Tried to configure extension instance ${instanceSpec.instanceId} from a local path. This should never happen.`
+      );
+    } else {
+      throw new FirebaseError(
+        `Tried to configure extension instance ${instanceSpec.instanceId} without a ref or a local path. This should never happen.`
+      );
+    }
     printSuccess(instanceSpec.instanceId, "configure", validateOnly);
     return;
   };
@@ -109,7 +164,7 @@ export function deleteExtensionInstanceTask(
   instanceSpec: InstanceSpec
 ): ExtensionDeploymentTask {
   const run = async () => {
-    const res = await extensionsApi.deleteInstance(projectId, instanceSpec.instanceId);
+    await extensionsApi.deleteInstance(projectId, instanceSpec.instanceId);
     printSuccess(instanceSpec.instanceId, "delete", false);
     return;
   };

@@ -1,6 +1,6 @@
 import { bold } from "cli-color";
 
-import * as track from "./track";
+import { track } from "./track";
 import { serviceUsageOrigin } from "./api";
 import { Client } from "./apiv2";
 import * as utils from "./utils";
@@ -29,7 +29,9 @@ export async function check(
   prefix: string,
   silent = false
 ): Promise<boolean> {
-  const res = await apiClient.get<{ state: string }>(`/projects/${projectId}/services/${apiName}`);
+  const res = await apiClient.get<{ state: string }>(`/projects/${projectId}/services/${apiName}`, {
+    skipLog: { resBody: true },
+  });
   const isEnabled = res.body.state === "ENABLED";
   if (isEnabled && !silent) {
     utils.logLabeledSuccess(prefix, `required API ${bold(apiName)} is enabled`);
@@ -48,7 +50,13 @@ export async function check(
  */
 async function enable(projectId: string, apiName: string): Promise<void> {
   try {
-    await apiClient.post(`/projects/${projectId}/services/${apiName}:enable`);
+    await apiClient.post<undefined, unknown>(
+      `/projects/${projectId}/services/${apiName}:enable`,
+      undefined,
+      {
+        skipLog: { resBody: true },
+      }
+    );
   } catch (err: any) {
     if (isBillingError(err)) {
       throw new FirebaseError(`Your project ${bold(

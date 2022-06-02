@@ -4,7 +4,6 @@ import * as fs from "fs";
 import * as path from "path";
 import * as http from "http";
 
-import * as api from "../api";
 import * as downloadableEmulators from "./downloadableEmulators";
 import { EmulatorInfo, EmulatorInstance, Emulators } from "../emulator/types";
 import { Constants } from "./constants";
@@ -12,6 +11,7 @@ import { EmulatorRegistry } from "./registry";
 import { EmulatorLogger } from "./emulatorLogger";
 import { FirebaseError } from "../error";
 import * as parseBoltRules from "../parseBoltRules";
+import { Client } from "../apiv2";
 
 export interface DatabaseEmulatorArgs {
   port?: number;
@@ -83,8 +83,16 @@ export class DatabaseEmulator implements EmulatorInstance {
         if (!c.instance) {
           continue;
         }
-
-        await this.updateRules(c.instance, c.rules);
+        try {
+          await this.updateRules(c.instance, c.rules);
+        } catch (e: any) {
+          const rulesError = this.prettyPrintRulesError(c.rules, e);
+          this.logger.logLabeled("WARN", "database", rulesError);
+          this.logger.logLabeled("WARN", "database", "Failed to update rules");
+          throw new FirebaseError(
+            `Failed to load initial ${Constants.description(this.getName())} rules:\n${rulesError}`
+          );
+        }
       }
     }
   }
@@ -162,23 +170,52 @@ export class DatabaseEmulator implements EmulatorInstance {
 
     const info = this.getInfo();
     try {
-      await api.request("PUT", `/.settings/rules.json?ns=${instance}`, {
-        origin: `http://${EmulatorRegistry.getInfoHostString(info)}`,
+      const client = new Client({
+        urlPrefix: `http://${EmulatorRegistry.getInfoHostString(info)}`,
+        auth: false,
+      });
+      await client.put(`/.settings/rules.json`, content, {
         headers: { Authorization: "Bearer owner" },
-        data: content,
-        json: false,
+        queryParams: { ns: instance },
       });
     } catch (e: any) {
       // The body is already parsed as JSON
       if (e.context && e.context.body) {
         throw e.context.body.error;
       }
-      throw e.original;
+      throw e.original ?? e;
     }
   }
 
-  private prettyPrintRulesError(filePath: string, error: string): string {
+  // TODO: tests
+  private prettyPrintRulesError(filePath: string, error: unknown): string {
+    let errStr;
+    switch (typeof error) {
+      case "string":
+        errStr = error;
+        break;
+      case "object":
+        if (error != null && "message" in error) {
+          const message = (error as { message: unknown }).message;
+          errStr = `${message}`;
+          if (typeof message === "string") {
+            try {
+              // message may be JSON with {error: string} in it
+              const parsed = JSON.parse(message);
+              if (typeof parsed === "object" && parsed.error) {
+                errStr = `${parsed.error}`;
+              }
+            } catch (_) {
+              // Probably not JSON, just output the string itself as above.
+            }
+          }
+          break;
+        }
+      // fallthrough
+      default:
+        errStr = `Unknown error: ${JSON.stringify(error)}`;
+    }
     const relativePath = path.relative(process.cwd(), filePath);
-    return `${clc.cyan(relativePath)}:${error.trim()}`;
+    return `${clc.cyan(relativePath)}:${errStr.trim()}`;
   }
 }

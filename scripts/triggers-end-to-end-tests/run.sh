@@ -3,16 +3,11 @@
 source scripts/set-default-credentials.sh
 ./scripts/npm-link.sh
 
-(
-  cd scripts/triggers-end-to-end-tests/functions
-  npm install
-)
+for dir in triggers v1 v2; do
+  (
+    cd scripts/triggers-end-to-end-tests/$dir
+    npm install
+  )
+done
 
-npx mocha \
-  --require ts-node/register \
-  --require source-map-support/register \
-  --require src/test/helpers/mocha-bootstrap.ts \
-  --exit \
-  scripts/triggers-end-to-end-tests/tests.ts
-
-rm scripts/triggers-end-to-end-tests/functions/package.json
+npx mocha --exit scripts/triggers-end-to-end-tests/tests.ts

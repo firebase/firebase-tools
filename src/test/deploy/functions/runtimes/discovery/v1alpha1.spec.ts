@@ -4,6 +4,7 @@ import { FirebaseError } from "../../../../../error";
 import * as backend from "../../../../../deploy/functions/backend";
 import { Runtime } from "../../../../../deploy/functions/runtimes";
 import * as v1alpha1 from "../../../../../deploy/functions/runtimes/discovery/v1alpha1";
+import { BEFORE_CREATE_EVENT } from "../../../../../functions/events/v1";
 
 const PROJECT = "project";
 const REGION = "region";
@@ -77,12 +78,13 @@ describe("backendFromV1Alpha1", () => {
         maxInstances: "2",
         minInstances: "1",
         serviceAccountEmail: { ldap: "inlined" },
-        timeout: 60,
+        timeoutSeconds: "60s",
         trigger: [],
         vpcConnector: 2,
         vpcConnectorEgressSettings: {},
         labels: "yes",
         ingressSettings: true,
+        cpu: "gcf_gen6",
       };
       for (const [key, value] of Object.entries(invalidFunctionEntries)) {
         it(`invalid value for CloudFunction key ${key}`, () => {
@@ -99,27 +101,20 @@ describe("backendFromV1Alpha1", () => {
     describe("Event triggers", () => {
       const validTrigger: backend.EventTrigger = {
         eventType: "google.pubsub.v1.topic.publish",
-        eventFilters: [
-          {
-            attribute: "resource",
-            value: "projects/p/topics/t",
-          },
-        ],
+        eventFilters: { resource: "projects/p/topics/t" },
         retry: true,
         region: "global",
         serviceAccountEmail: "root@",
       };
-      for (const key of ["eventType", "eventFilters"]) {
-        it(`missing event trigger key ${key}`, () => {
-          const eventTrigger = { ...validTrigger } as Record<string, unknown>;
-          delete eventTrigger[key];
-          assertParserError({
-            endpoints: {
-              func: { ...MIN_ENDPOINT, eventTrigger },
-            },
-          });
+      it(`missing event trigger key eventType`, () => {
+        const eventTrigger = { ...validTrigger } as Record<string, unknown>;
+        delete eventTrigger["eventType"];
+        assertParserError({
+          endpoints: {
+            func: { ...MIN_ENDPOINT, eventTrigger },
+          },
         });
-      }
+      });
 
       const invalidEntries = {
         eventType: { foo: "bar" },
@@ -127,6 +122,7 @@ describe("backendFromV1Alpha1", () => {
         retry: {},
         region: ["us-central1"],
         serviceAccountEmail: ["ldap"],
+        channel: "foo/bar/channel-id",
       };
       for (const [key, value] of Object.entries(invalidEntries)) {
         it(`invalid value for event trigger key ${key}`, () => {
@@ -211,22 +207,20 @@ describe("backendFromV1Alpha1", () => {
     describe("taskQueueTriggers", () => {
       const validTrigger: backend.TaskQueueTrigger = {
         rateLimits: {
-          maxBurstSize: 5,
           maxConcurrentDispatches: 10,
           maxDispatchesPerSecond: 20,
         },
         retryConfig: {
           maxAttempts: 3,
-          maxRetryDuration: "120s",
-          minBackoff: "1s",
-          maxBackoff: "30s",
+          maxRetrySeconds: 120,
+          minBackoffSeconds: 1,
+          maxBackoffSeconds: 30,
           maxDoublings: 5,
         },
         invoker: ["custom@"],
       };
 
       const invalidRateLimits = {
-        maxBurstSize: "5",
         maxConcurrentDispatches: "10",
         maxDispatchesPerSecond: "20",
       };
@@ -264,13 +258,46 @@ describe("backendFromV1Alpha1", () => {
       }
     });
 
+    describe("blockingTriggers", () => {
+      const validTrigger: backend.BlockingTrigger = {
+        eventType: BEFORE_CREATE_EVENT,
+        options: {
+          accessToken: true,
+          idToken: false,
+          refreshToken: true,
+        },
+      };
+
+      const invalidOptions = {
+        eventType: true,
+        options: 11,
+      };
+
+      for (const [key, value] of Object.entries(invalidOptions)) {
+        it(`invalid value for blocking trigger key ${key}`, () => {
+          const blockingTrigger = {
+            ...validTrigger,
+            [key]: value,
+          };
+          assertParserError({
+            endpoints: {
+              func: { ...MIN_ENDPOINT, blockingTrigger },
+            },
+          });
+        });
+      }
+    });
+
     it("detects missing triggers", () => {
       assertParserError({ endpoints: MIN_ENDPOINT });
     });
   }); // Parser errors;
 
   describe("allows valid backends", () => {
-    const DEFAULTED_ENDPOINT: Omit<backend.Endpoint, "httpsTrigger"> = {
+    const DEFAULTED_ENDPOINT: Omit<
+      backend.Endpoint,
+      "httpsTrigger" | "secretEnvironmentVariables"
+    > = {
       ...MIN_ENDPOINT,
       platform: "gcfv2",
       id: "id",
@@ -327,12 +354,7 @@ describe("backendFromV1Alpha1", () => {
     it("copies event triggers", () => {
       const eventTrigger: backend.EventTrigger = {
         eventType: "google.pubsub.topic.v1.publish",
-        eventFilters: [
-          {
-            attribute: "resource",
-            value: "projects/project/topics/topic",
-          },
-        ],
+        eventFilters: { resource: "projects/project/topics/t" },
         region: "us-central1",
         serviceAccountEmail: "sa@",
         retry: true,
@@ -354,12 +376,7 @@ describe("backendFromV1Alpha1", () => {
     it("copies event triggers with full resource path", () => {
       const eventTrigger: backend.EventTrigger = {
         eventType: "google.pubsub.topic.v1.publish",
-        eventFilters: [
-          {
-            attribute: "topic",
-            value: "my-topic",
-          },
-        ],
+        eventFilters: { topic: "my-topic" },
         region: "us-central1",
         serviceAccountEmail: "sa@",
         retry: true,
@@ -377,16 +394,149 @@ describe("backendFromV1Alpha1", () => {
         ...DEFAULTED_ENDPOINT,
         eventTrigger: {
           ...eventTrigger,
-          eventFilters: [
-            {
-              attribute: "topic",
-              value: `projects/${PROJECT}/topics/my-topic`,
-            },
-          ],
+          eventFilters: { topic: `projects/${PROJECT}/topics/my-topic` },
         },
       });
       const parsed = v1alpha1.backendFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME);
       expect(parsed).to.deep.equal(expected);
+    });
+
+    it("copies blocking triggers", () => {
+      const blockingTrigger: backend.BlockingTrigger = {
+        eventType: BEFORE_CREATE_EVENT,
+        options: {
+          accessToken: true,
+          idToken: false,
+          refreshToken: true,
+        },
+      };
+      const yaml: v1alpha1.Manifest = {
+        specVersion: "v1alpha1",
+        endpoints: {
+          id: {
+            ...MIN_ENDPOINT,
+            blockingTrigger,
+          },
+        },
+      };
+      const expected = backend.of({ ...DEFAULTED_ENDPOINT, blockingTrigger });
+      const parsed = v1alpha1.backendFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME);
+      expect(parsed).to.deep.equal(expected);
+    });
+
+    it("copies blocking triggers without options", () => {
+      const blockingTrigger: backend.BlockingTrigger = {
+        eventType: BEFORE_CREATE_EVENT,
+      };
+      const yaml: v1alpha1.Manifest = {
+        specVersion: "v1alpha1",
+        endpoints: {
+          id: {
+            ...MIN_ENDPOINT,
+            blockingTrigger,
+          },
+        },
+      };
+      const expected = backend.of({
+        ...DEFAULTED_ENDPOINT,
+        blockingTrigger: {
+          ...blockingTrigger,
+        },
+      });
+      const parsed = v1alpha1.backendFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME);
+      expect(parsed).to.deep.equal(expected);
+    });
+
+    describe("channel name", () => {
+      it("resolves partial (channel ID only) channel resource name", () => {
+        const eventTrigger: backend.EventTrigger = {
+          eventType: "com.custom.event.type",
+          eventFilters: {},
+          channel: "my-channel",
+          region: "us-central1",
+          serviceAccountEmail: "sa@",
+          retry: true,
+        };
+        const yaml: v1alpha1.Manifest = {
+          specVersion: "v1alpha1",
+          endpoints: {
+            id: {
+              ...MIN_ENDPOINT,
+              eventTrigger,
+            },
+          },
+        };
+        const expected = backend.of({
+          ...DEFAULTED_ENDPOINT,
+          eventTrigger: {
+            ...eventTrigger,
+            eventFilters: {},
+            channel: "projects/project/locations/region/channels/my-channel",
+          },
+        });
+        const parsed = v1alpha1.backendFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME);
+        expect(parsed).to.deep.equal(expected);
+      });
+
+      it("resolves partial (channel ID and loaction) channel resource name", () => {
+        const eventTrigger: backend.EventTrigger = {
+          eventType: "com.custom.event.type",
+          eventFilters: {},
+          channel: "locations/us-wildwest11/channels/my-channel",
+          region: "us-central1",
+          serviceAccountEmail: "sa@",
+          retry: true,
+        };
+        const yaml: v1alpha1.Manifest = {
+          specVersion: "v1alpha1",
+          endpoints: {
+            id: {
+              ...MIN_ENDPOINT,
+              eventTrigger,
+            },
+          },
+        };
+        const expected = backend.of({
+          ...DEFAULTED_ENDPOINT,
+          eventTrigger: {
+            ...eventTrigger,
+            eventFilters: {},
+            channel: "projects/project/locations/us-wildwest11/channels/my-channel",
+          },
+        });
+        const parsed = v1alpha1.backendFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME);
+        expect(parsed).to.deep.equal(expected);
+      });
+
+      it("uses full channel resource name as is", () => {
+        const eventTrigger: backend.EventTrigger = {
+          eventType: "com.custom.event.type",
+          eventFilters: {},
+          channel: "projects/newyearresolution1/locations/us-wildwest11/channels/my-channel",
+          region: "us-central1",
+          serviceAccountEmail: "sa@",
+          retry: true,
+        };
+        const yaml: v1alpha1.Manifest = {
+          specVersion: "v1alpha1",
+          endpoints: {
+            id: {
+              ...MIN_ENDPOINT,
+              eventTrigger,
+            },
+          },
+        };
+        const expected = backend.of({
+          ...DEFAULTED_ENDPOINT,
+          eventTrigger: {
+            ...eventTrigger,
+            eventFilters: {},
+            channel: "projects/newyearresolution1/locations/us-wildwest11/channels/my-channel",
+          },
+        });
+        const parsed = v1alpha1.backendFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME);
+        expect(parsed).to.deep.equal(expected);
+      });
     });
 
     it("copies optional fields", () => {
@@ -395,7 +545,7 @@ describe("backendFromV1Alpha1", () => {
         labels: { hello: "world" },
         environmentVariables: { foo: "bar" },
         availableMemoryMb: 256,
-        timeout: "60s",
+        timeoutSeconds: 60,
         maxInstances: 20,
         minInstances: 1,
         vpc: {
@@ -404,6 +554,13 @@ describe("backendFromV1Alpha1", () => {
         },
         ingressSettings: "ALLOW_INTERNAL_ONLY",
         serviceAccountEmail: "sa@",
+        secretEnvironmentVariables: [
+          {
+            key: "SECRET",
+            secret: "SECRET",
+            projectId: "project",
+          },
+        ],
       };
 
       const yaml: v1alpha1.Manifest = {
@@ -413,6 +570,13 @@ describe("backendFromV1Alpha1", () => {
             ...MIN_ENDPOINT,
             httpsTrigger: {},
             ...fields,
+            secretEnvironmentVariables: [
+              {
+                key: "SECRET",
+                // Missing "secret"
+                projectId: "project",
+              },
+            ],
           },
         },
       };

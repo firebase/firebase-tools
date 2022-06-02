@@ -6,7 +6,7 @@ import { Command } from "../command";
 import { requirePermissions } from "../requirePermissions";
 import { needProjectId } from "../projectUtils";
 import { logger } from "../logger";
-import * as requireConfig from "../requireConfig";
+import { requireConfig } from "../requireConfig";
 import { datetimeString } from "../utils";
 import { requireHostingSite } from "../requireHostingSite";
 

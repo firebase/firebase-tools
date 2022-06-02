@@ -1,4 +1,3 @@
-import * as _ from "lodash";
 import * as path from "path";
 import * as clc from "cli-color";
 import * as fs from "fs-extra";
@@ -13,8 +12,48 @@ import {
   validateCommandLineParams,
 } from "./extensionsHelper";
 import * as askUserForParam from "./askUserForParam";
-import * as track from "../track";
+import { track } from "../track";
 import * as env from "../functions/env";
+import { cloneDeep } from "../utils";
+import { paramsFlagDeprecationWarning } from "./warnings";
+
+/**
+ * Interface for holding different param values for different environments/configs.
+ *
+ * baseValue: The base value of the configurations, stored in {instance-id}.env.
+ * local: The local value used by extensions emulators. Only used by secrets in {instance-id}.secret.env for now.
+ */
+export interface ParamBindingOptions {
+  baseValue: string;
+  local?: string;
+  // Add project specific key:value here when we want to support that.
+}
+
+export function getBaseParamBindings(params: { [key: string]: ParamBindingOptions }): {
+  [key: string]: string;
+} {
+  let ret = {};
+  for (const [k, v] of Object.entries(params)) {
+    ret = {
+      ...ret,
+      ...{ [k]: v.baseValue },
+    };
+  }
+  return ret;
+}
+
+export function buildBindingOptionsWithBaseValue(baseParams: { [key: string]: string }): {
+  [key: string]: ParamBindingOptions;
+} {
+  let paramOptions: { [key: string]: ParamBindingOptions } = {};
+  for (const [k, v] of Object.entries(baseParams)) {
+    paramOptions = {
+      ...paramOptions,
+      ...{ [k]: { baseValue: v } },
+    };
+  }
+  return paramOptions;
+}
 
 /**
  * A mutator to switch the defaults for a list of params to new ones.
@@ -42,8 +81,8 @@ export function setNewDefaults(
 export function getParamsWithCurrentValuesAsDefaults(
   extensionInstance: extensionsApi.ExtensionInstance
 ): extensionsApi.Param[] {
-  const specParams = _.cloneDeep(_.get(extensionInstance, "config.source.spec.params", []));
-  const currentParams = _.cloneDeep(_.get(extensionInstance, "config.params", {}));
+  const specParams = cloneDeep(extensionInstance?.config?.source?.spec?.params || []);
+  const currentParams = cloneDeep(extensionInstance?.config?.params || {});
   return setNewDefaults(specParams, currentParams);
 }
 
@@ -57,14 +96,14 @@ export function getParamsWithCurrentValuesAsDefaults(
  * @throws FirebaseError if an invalid env file is passed in
  */
 export async function getParams(args: {
-  projectId: string;
+  projectId?: string;
   instanceId: string;
   paramSpecs: extensionsApi.Param[];
   nonInteractive?: boolean;
   paramsEnvPath?: string;
   reconfiguring?: boolean;
-}): Promise<{ [key: string]: string }> {
-  let params: any;
+}): Promise<Record<string, ParamBindingOptions>> {
+  let params: Record<string, ParamBindingOptions>;
   if (args.nonInteractive && !args.paramsEnvPath) {
     const paramsMessage = args.paramSpecs
       .map((p) => {
@@ -78,22 +117,23 @@ export async function getParams(args: {
         paramsMessage
     );
   } else if (args.paramsEnvPath) {
+    paramsFlagDeprecationWarning();
     params = getParamsFromFile({
-      projectId: args.projectId,
       paramSpecs: args.paramSpecs,
       paramsEnvPath: args.paramsEnvPath,
     });
   } else {
     const firebaseProjectParams = await getFirebaseProjectParams(args.projectId);
-    params = await askUserForParam.ask(
-      args.projectId,
-      args.instanceId,
-      args.paramSpecs,
+    params = await askUserForParam.ask({
+      projectId: args.projectId,
+      instanceId: args.instanceId,
+      paramSpecs: args.paramSpecs,
       firebaseProjectParams,
-      !!args.reconfiguring
-    );
+      reconfiguring: !!args.reconfiguring,
+    });
   }
-  void track("Extension Params", _.isEmpty(params) ? "Not Present" : "Present", _.size(params));
+  const paramNames = Object.keys(params);
+  void track("Extension Params", paramNames.length ? "Not Present" : "Present", paramNames.length);
   return params;
 }
 
@@ -101,12 +141,12 @@ export async function getParamsForUpdate(args: {
   spec: extensionsApi.ExtensionSpec;
   newSpec: extensionsApi.ExtensionSpec;
   currentParams: { [option: string]: string };
-  projectId: string;
+  projectId?: string;
   paramsEnvPath?: string;
   nonInteractive?: boolean;
   instanceId: string;
-}) {
-  let params: any;
+}): Promise<Record<string, ParamBindingOptions>> {
+  let params: Record<string, ParamBindingOptions>;
   if (args.nonInteractive && !args.paramsEnvPath) {
     const paramsMessage = args.newSpec.params
       .map((p) => {
@@ -121,7 +161,6 @@ export async function getParamsForUpdate(args: {
     );
   } else if (args.paramsEnvPath) {
     params = getParamsFromFile({
-      projectId: args.projectId,
       paramSpecs: args.newSpec.params,
       paramsEnvPath: args.paramsEnvPath,
     });
@@ -134,7 +173,8 @@ export async function getParamsForUpdate(args: {
       instanceId: args.instanceId,
     });
   }
-  void track("Extension Params", _.isEmpty(params) ? "Not Present" : "Present", _.size(params));
+  const paramNames = Object.keys(params);
+  void track("Extension Params", paramNames.length ? "Not Present" : "Present", paramNames.length);
   return params;
 }
 
@@ -150,12 +190,20 @@ export async function promptForNewParams(args: {
   spec: extensionsApi.ExtensionSpec;
   newSpec: extensionsApi.ExtensionSpec;
   currentParams: { [option: string]: string };
-  projectId: string;
+  projectId?: string;
   instanceId: string;
-}): Promise<any> {
+}): Promise<{ [option: string]: ParamBindingOptions }> {
+  const newParamBindingOptions = buildBindingOptionsWithBaseValue(args.currentParams);
+
   const firebaseProjectParams = await getFirebaseProjectParams(args.projectId);
-  const comparer = (param1: extensionsApi.Param, param2: extensionsApi.Param) => {
+  const sameParam = (param1: extensionsApi.Param) => (param2: extensionsApi.Param) => {
     return param1.type === param2.type && param1.param === param2.param;
+  };
+  const paramDiff = (
+    left: extensionsApi.Param[],
+    right: extensionsApi.Param[]
+  ): extensionsApi.Param[] => {
+    return left.filter((aLeft) => !right.find(sameParam(aLeft)));
   };
 
   // Some params are in the spec but not in currentParams, remove so we can prompt for them.
@@ -163,13 +211,13 @@ export async function promptForNewParams(args: {
     Object.keys(args.currentParams).includes(p.param)
   );
 
-  let paramsDiffDeletions = _.differenceWith(oldParams, args.newSpec.params, comparer);
+  let paramsDiffDeletions = paramDiff(oldParams, args.newSpec.params);
   paramsDiffDeletions = substituteParams<extensionsApi.Param[]>(
     paramsDiffDeletions,
     firebaseProjectParams
   );
 
-  let paramsDiffAdditions = _.differenceWith(args.newSpec.params, oldParams, comparer);
+  let paramsDiffAdditions = paramDiff(args.newSpec.params, oldParams);
   paramsDiffAdditions = substituteParams<extensionsApi.Param[]>(
     paramsDiffAdditions,
     firebaseProjectParams
@@ -177,31 +225,31 @@ export async function promptForNewParams(args: {
 
   if (paramsDiffDeletions.length) {
     logger.info("The following params will no longer be used:");
-    paramsDiffDeletions.forEach((param) => {
+    for (const param of paramsDiffDeletions) {
       logger.info(clc.red(`- ${param.param}: ${args.currentParams[param.param.toUpperCase()]}`));
-      delete args.currentParams[param.param.toUpperCase()];
-    });
+      delete newParamBindingOptions[param.param.toUpperCase()];
+    }
   }
   if (paramsDiffAdditions.length) {
     logger.info("To update this instance, configure the following new parameters:");
     for (const param of paramsDiffAdditions) {
-      const chosenValue = await askUserForParam.askForParam(
-        args.projectId,
-        args.instanceId,
-        param,
-        false
-      );
-      args.currentParams[param.param] = chosenValue;
+      const chosenValue = await askUserForParam.askForParam({
+        projectId: args.projectId,
+        instanceId: args.instanceId,
+        paramSpec: param,
+        reconfiguring: false,
+      });
+      newParamBindingOptions[param.param] = chosenValue;
     }
   }
-  return args.currentParams;
+
+  return newParamBindingOptions;
 }
 
 function getParamsFromFile(args: {
-  projectId: string;
   paramSpecs: extensionsApi.Param[];
   paramsEnvPath: string;
-}): Record<string, string> {
+}): Record<string, ParamBindingOptions> {
   let envParams;
   try {
     envParams = readEnvFile(args.paramsEnvPath);
@@ -213,10 +261,11 @@ function getParamsFromFile(args: {
   const params = populateDefaultParams(envParams, args.paramSpecs);
   validateCommandLineParams(params, args.paramSpecs);
   logger.info(`Using param values from ${args.paramsEnvPath}`);
-  return params;
+
+  return buildBindingOptionsWithBaseValue(params);
 }
 
-export function readEnvFile(envPath: string) {
+export function readEnvFile(envPath: string): Record<string, string> {
   const buf = fs.readFileSync(path.resolve(envPath), "utf8");
   const result = env.parse(buf.toString().trim());
   if (result.errors.length) {

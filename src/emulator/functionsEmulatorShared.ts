@@ -7,9 +7,15 @@ import * as fs from "fs";
 
 import * as backend from "../deploy/functions/backend";
 import { Constants } from "./constants";
-import { InvokeRuntimeOpts } from "./functionsEmulator";
+import { BackendInfo, EmulatableBackend, InvokeRuntimeOpts } from "./functionsEmulator";
 import { copyIfPresent } from "../gcp/proto";
-import { logger } from "../logger";
+import { ENV_DIRECTORY } from "../extensions/manifest";
+import { substituteParams } from "../extensions/extensionsHelper";
+import { ExtensionSpec, ExtensionVersion } from "../extensions/extensionsApi";
+import { replaceConsoleLinks } from "./extensions/postinstall";
+import { AUTH_BLOCKING_EVENTS } from "../functions/events/v1";
+import { serviceForEndpoint } from "../deploy/functions/services";
+import { inferBlockingDetails } from "../deploy/functions/prepare";
 
 export type SignatureType = "http" | "event" | "cloudevent";
 
@@ -17,19 +23,26 @@ export interface ParsedTriggerDefinition {
   entryPoint: string;
   platform: backend.FunctionsPlatform;
   name: string;
-  timeout?: string | number; // Can be "3s" for some reason lol
+  timeoutSeconds?: number;
   regions?: string[];
   availableMemoryMb?: "128MB" | "256MB" | "512MB" | "1GB" | "2GB" | "4GB";
   httpsTrigger?: any;
   eventTrigger?: EventTrigger;
   schedule?: EventSchedule;
+  blockingTrigger?: BlockingTrigger;
   labels?: { [key: string]: any };
+  codebase?: string;
 }
 
 export interface EmulatedTriggerDefinition extends ParsedTriggerDefinition {
   id: string; // An unique-id per-function, generated from the name and the region.
   region: string;
   secretEnvironmentVariables?: backend.SecretEnvVar[]; // Secret env vars needs to be specially loaded in the Emulator.
+}
+
+export interface BlockingTrigger {
+  eventType: string;
+  options?: Record<string, unknown>;
 }
 
 export interface EventSchedule {
@@ -105,11 +118,7 @@ export class EmulatedTrigger {
   }
 
   get timeoutMs(): number {
-    if (typeof this.definition.timeout === "number") {
-      return this.definition.timeout * 1000;
-    } else {
-      return parseInt((this.definition.timeout || "60s").split("s")[0], 10) * 1000;
-    }
+    return (this.definition.timeoutSeconds || 60) * 1000;
   }
 
   getRawFunction(): CloudFunction<any> {
@@ -120,6 +129,14 @@ export class EmulatedTrigger {
     const func = _.get(this.module, this.definition.entryPoint);
     return func.__emulator_func || func;
   }
+}
+
+export function prepareEndpoints(endpoints: backend.Endpoint[]) {
+  const bkend = backend.of(...endpoints);
+  for (const ep of endpoints) {
+    serviceForEndpoint(ep).validateTrigger(ep as any, bkend);
+  }
+  inferBlockingDetails(bkend);
 }
 
 /**
@@ -144,13 +161,14 @@ export function emulatedFunctionsFromEndpoints(
       // We should later refactor the emulator to stop using a custom trigger definition.
       name: endpoint.id,
       id: `${endpoint.region}-${endpoint.id}`,
+      codebase: endpoint.codebase,
     };
     copyIfPresent(
       def,
       endpoint,
-      "timeout",
       "availableMemoryMb",
       "labels",
+      "timeoutSeconds",
       "platform",
       "secretEnvironmentVariables"
     );
@@ -158,43 +176,41 @@ export function emulatedFunctionsFromEndpoints(
     // process requires it in this form. Need to work in Firestore emulator for a proper fix...
     if (backend.isHttpsTriggered(endpoint)) {
       def.httpsTrigger = endpoint.httpsTrigger;
+    } else if (backend.isCallableTriggered(endpoint)) {
+      def.httpsTrigger = {};
+      def.labels = { ...def.labels, "deployment-callable": "true" };
     } else if (backend.isEventTriggered(endpoint)) {
       const eventTrigger = endpoint.eventTrigger;
       if (endpoint.platform === "gcfv1") {
-        const resourceFilter = backend.findEventFilter(endpoint, "resource");
-        if (!resourceFilter) {
-          logger.debug(
-            `Invalid event trigger ${JSON.stringify(
-              endpoint
-            )}, expected event filter with resource attribute. Skipping.`
-          );
-          // Silently skip invalid trigger.
-          continue;
-        }
         def.eventTrigger = {
           eventType: eventTrigger.eventType,
-          resource: resourceFilter.value,
+          resource: eventTrigger.eventFilters.resource,
         };
       } else {
-        const [eventFilter] = endpoint.eventTrigger.eventFilters;
-        if (!eventFilter) {
-          logger.debug(
-            `Invalid event trigger ${JSON.stringify(
-              endpoint
-            )}, expected at least one event filter. Skipping.`
-          );
-          // Silently skip invalid trigger.
+        // Only pubsub and storage events are supported for gcfv2.
+        const { resource, topic, bucket } = endpoint.eventTrigger.eventFilters;
+        const eventResource = resource || topic || bucket;
+        if (!eventResource) {
+          // Unsupported event type for GCFv2
           continue;
         }
         def.eventTrigger = {
           eventType: eventTrigger.eventType,
-          resource: eventFilter.value,
+          resource: eventResource,
         };
       }
     } else if (backend.isScheduleTriggered(endpoint)) {
       // TODO: This is an awkward transformation. Emulator does not understand scheduled triggers - maybe it should?
       def.eventTrigger = { eventType: "pubsub", resource: "" };
       def.schedule = endpoint.scheduleTrigger as EventSchedule;
+    } else if (backend.isBlockingTriggered(endpoint)) {
+      def.blockingTrigger = {
+        eventType: endpoint.blockingTrigger.eventType,
+        options: endpoint.blockingTrigger.options || {},
+      };
+    } else if (backend.isTaskQueueTriggered(endpoint)) {
+      // Just expose TQ trigger as HTTPS. Useful for debugging.
+      def.httpsTrigger = {};
     } else {
       // All other trigger types are not supported by the emulator
       // We leave both eventTrigger and httpTrigger attributes empty
@@ -279,6 +295,9 @@ export function getTemporarySocketPath(pid: number, cwd: string): string {
 export function getFunctionService(def: ParsedTriggerDefinition): string {
   if (def.eventTrigger) {
     return def.eventTrigger.service ?? getServiceFromEventType(def.eventTrigger.eventType);
+  }
+  if (def.blockingTrigger) {
+    return def.blockingTrigger.eventType;
   }
 
   return "unknown";
@@ -371,4 +390,65 @@ export function getSignatureType(def: EmulatedTriggerDefinition): SignatureType 
   // functions cannot receive events in legacy format. This conflicts with our goal of introducing a 'compat' layer
   // that allows CF3v1 functions to target GCFv2 and vice versa.
   return def.platform === "gcfv2" ? "cloudevent" : "event";
+}
+
+const LOCAL_SECRETS_FILE = ".secret.local";
+
+/**
+ * getSecretLocalPath returns the expected location for a .secret.local override file.
+ */
+export function getSecretLocalPath(backend: EmulatableBackend, projectDir: string) {
+  const secretsFile = backend.extensionInstanceId
+    ? `${backend.extensionInstanceId}${LOCAL_SECRETS_FILE}`
+    : LOCAL_SECRETS_FILE;
+  const secretDirectory = backend.extensionInstanceId
+    ? path.join(projectDir, ENV_DIRECTORY)
+    : backend.functionsDir;
+  return path.join(secretDirectory, secretsFile);
+}
+
+/**
+ * toBackendInfo transforms an EmulatableBackend into its correspondign API type, BackendInfo
+ * @param e the emulatableBackend to transform
+ * @param cf3Triggers a list of CF3 triggers. If e does not include predefinedTriggers, these will be used instead.
+ */
+export function toBackendInfo(
+  e: EmulatableBackend,
+  cf3Triggers: ParsedTriggerDefinition[]
+): BackendInfo {
+  const envWithSecrets = Object.assign({}, e.env);
+  for (const s of e.secretEnv) {
+    envWithSecrets[s.key] = backend.secretVersionName(s);
+  }
+  let extensionVersion = e.extensionVersion;
+  if (extensionVersion) {
+    extensionVersion = substituteParams<ExtensionVersion>(extensionVersion, e.env);
+    if (extensionVersion.spec?.postinstallContent) {
+      extensionVersion.spec.postinstallContent = replaceConsoleLinks(
+        extensionVersion.spec.postinstallContent
+      );
+    }
+  }
+  let extensionSpec = e.extensionSpec;
+  if (extensionSpec) {
+    extensionSpec = substituteParams<ExtensionSpec>(extensionSpec, e.env);
+    if (extensionSpec?.postinstallContent) {
+      extensionSpec.postinstallContent = replaceConsoleLinks(extensionSpec.postinstallContent);
+    }
+  }
+
+  // Parse and stringify to get rid of undefined values
+  return JSON.parse(
+    JSON.stringify({
+      directory: e.functionsDir,
+      env: envWithSecrets,
+      extensionInstanceId: e.extensionInstanceId, // Present on all extensions
+      extension: e.extension, // Only present on published extensions
+      extensionVersion: extensionVersion, // Only present on published extensions
+      extensionSpec: extensionSpec, // Only present on local extensions
+      functionTriggers:
+        // If we don't have predefinedTriggers, this is the CF3 backend.
+        e.predefinedTriggers ?? cf3Triggers.filter((t) => t.codebase === e.codebase),
+    })
+  );
 }

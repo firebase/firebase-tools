@@ -3,16 +3,50 @@ import * as semver from "semver";
 import * as extensionsApi from "../../extensions/extensionsApi";
 import * as refs from "../../extensions/refs";
 import { FirebaseError } from "../../error";
-import { getFirebaseProjectParams, substituteParams } from "../../extensions/extensionsHelper";
+import {
+  getFirebaseProjectParams,
+  isLocalPath,
+  substituteParams,
+} from "../../extensions/extensionsHelper";
 import { logger } from "../../logger";
 import { readInstanceParam } from "../../extensions/manifest";
+import { ParamBindingOptions } from "../../extensions/paramHelper";
+import { readExtensionYaml, readPostinstall } from "../../extensions/emulator/specHelper";
 
 export interface InstanceSpec {
   instanceId: string;
-  ref?: refs.Ref;
-  params: Record<string, string>;
+  // OneOf:
+  ref?: refs.Ref; // For published extensions
+  localPath?: string; // For local extensions
+  // Used by getExtensionVersion, getExtension, and getExtensionSpec.
+  // You should stronly prefer accessing via those methods
   extensionVersion?: extensionsApi.ExtensionVersion;
   extension?: extensionsApi.Extension;
+  extensionSpec?: extensionsApi.ExtensionSpec;
+}
+
+/**
+ * Instance spec used by manifest.
+ *
+ * Params are passed in ParamBindingOptions so we know the param bindings for
+ * all environments user has configured.
+ *
+ * So far this is only used for writing to the manifest, but in the future
+ * we want to read manifest into this interface.
+ */
+export interface ManifestInstanceSpec extends InstanceSpec {
+  params: Record<string, ParamBindingOptions>;
+}
+
+/**
+ * Instance spec used for deploying extensions to firebase project or emulator.
+ *
+ * Param bindings are expected to be collapsed from ParamBindingOptions into a Record<string, string>.
+ */
+export interface DeploymentInstanceSpec extends InstanceSpec {
+  params: Record<string, string>;
+  allowedEventTypes?: string[];
+  eventarcChannel?: string;
 }
 
 /**
@@ -37,7 +71,7 @@ export async function getExtensionVersion(
  */
 export async function getExtension(i: InstanceSpec): Promise<extensionsApi.Extension> {
   if (!i.ref) {
-    throw new FirebaseError(`Can't get Extensionfor ${i.instanceId} because it has no ref`);
+    throw new FirebaseError(`Can't get Extension for ${i.instanceId} because it has no ref`);
   }
   if (!i.extension) {
     i.extension = await extensionsApi.getExtension(refs.toExtensionRef(i.ref));
@@ -45,17 +79,36 @@ export async function getExtension(i: InstanceSpec): Promise<extensionsApi.Exten
   return i.extension;
 }
 
+/** Caching fetcher for the corresponding ExtensionSpec for an instance spec.
+ */
+export async function getExtensionSpec(i: InstanceSpec): Promise<extensionsApi.ExtensionSpec> {
+  if (!i.extensionSpec) {
+    if (i.ref) {
+      const extensionVersion = await getExtensionVersion(i);
+      i.extensionSpec = extensionVersion.spec;
+    } else if (i.localPath) {
+      i.extensionSpec = await readExtensionYaml(i.localPath);
+      i.extensionSpec.postinstallContent = await readPostinstall(i.localPath);
+    } else {
+      throw new FirebaseError("InstanceSpec had no ref or localPath, unable to get extensionSpec");
+    }
+  }
+  return i.extensionSpec;
+}
+
 /**
  * have checks a project for what extension instances are currently installed,
  * and returns them as a list of instanceSpecs.
  * @param projectId
  */
-export async function have(projectId: string): Promise<InstanceSpec[]> {
+export async function have(projectId: string): Promise<DeploymentInstanceSpec[]> {
   const instances = await extensionsApi.listInstances(projectId);
   return instances.map((i) => {
-    const dep: InstanceSpec = {
+    const dep: DeploymentInstanceSpec = {
       instanceId: i.name.split("/").pop()!,
       params: i.config.params,
+      allowedEventTypes: i.config.allowedEventTypes,
+      eventarcChannel: i.config.eventarcChannel,
     };
     if (i.config.extensionRef) {
       const ref = refs.parse(i.config.extensionRef);
@@ -84,14 +137,12 @@ export async function want(args: {
   projectDir: string;
   extensions: Record<string, string>;
   emulatorMode?: boolean;
-}): Promise<InstanceSpec[]> {
-  const instanceSpecs: InstanceSpec[] = [];
+}): Promise<DeploymentInstanceSpec[]> {
+  const instanceSpecs: DeploymentInstanceSpec[] = [];
   const errors: FirebaseError[] = [];
   for (const e of Object.entries(args.extensions)) {
     try {
       const instanceId = e[0];
-      const ref = refs.parse(e[1]);
-      ref.version = await resolveVersion(ref);
 
       const params = readInstanceParam({
         projectDir: args.projectDir,
@@ -104,11 +155,38 @@ export async function want(args: {
       const autoPopulatedParams = await getFirebaseProjectParams(args.projectId, args.emulatorMode);
       const subbedParams = substituteParams(params, autoPopulatedParams);
 
-      instanceSpecs.push({
-        instanceId,
-        ref,
-        params: subbedParams,
-      });
+      // ALLOWED_EVENT_TYPES can be undefined (user input not provided) or empty string (no events selected).
+      // If empty string, we want to pass an empty array. If it's undefined we want to pass through undefined.
+      const allowedEventTypes =
+        subbedParams.ALLOWED_EVENT_TYPES !== undefined
+          ? subbedParams.ALLOWED_EVENT_TYPES.split(",").filter((e) => e !== "")
+          : undefined;
+      const eventarcChannel = subbedParams.EVENTARC_CHANNEL;
+
+      // Remove special params that are stored in the .env file but aren't actually params specified by the publisher.
+      // Currently, only environment variables needed for Events features are considered special params stored in .env files.
+      delete subbedParams["EVENTARC_CHANNEL"];
+      delete subbedParams["ALLOWED_EVENT_TYPES"];
+
+      if (isLocalPath(e[1])) {
+        instanceSpecs.push({
+          instanceId,
+          localPath: e[1],
+          params: subbedParams,
+          allowedEventTypes: allowedEventTypes,
+          eventarcChannel: eventarcChannel,
+        });
+      } else {
+        const ref = refs.parse(e[1]);
+        ref.version = await resolveVersion(ref);
+        instanceSpecs.push({
+          instanceId,
+          ref,
+          params: subbedParams,
+          allowedEventTypes: allowedEventTypes,
+          eventarcChannel: eventarcChannel,
+        });
+      }
     } catch (err: any) {
       logger.debug(`Got error reading extensions entry ${e}: ${err}`);
       errors.push(err as FirebaseError);
@@ -129,11 +207,17 @@ export async function want(args: {
  * @param version a semver or semver range
  */
 export async function resolveVersion(ref: refs.Ref): Promise<string> {
-  if (!ref.version || ref.version === "latest") {
-    return "latest";
-  }
   const extensionRef = refs.toExtensionRef(ref);
   const versions = await extensionsApi.listExtensionVersions(extensionRef);
+  if (versions.length === 0) {
+    throw new FirebaseError(`No versions found for ${extensionRef}`);
+  }
+  if (!ref.version || ref.version === "latest") {
+    return versions
+      .map((ev) => ev.spec.version)
+      .sort(semver.compare)
+      .pop()!;
+  }
   const maxSatisfying = semver.maxSatisfying(
     versions.map((ev) => ev.spec.version),
     ref.version

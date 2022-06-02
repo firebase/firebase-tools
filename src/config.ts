@@ -16,7 +16,7 @@ import { resolveProjectPath } from "./projectPath";
 import * as utils from "./utils";
 import { getValidator, getErrorMessage } from "./firebaseConfigValidate";
 import { logger } from "./logger";
-const loadCJSON = require("./loadCJSON");
+import { loadCJSON } from "./loadCJSON";
 const parseBoltRules = require("./parseBoltRules");
 
 export class Config {
@@ -76,13 +76,17 @@ export class Config {
       }
     });
 
-    // Auto-detect functions from package.json in directory
-    if (
-      this.projectDir &&
-      !this.get("functions.source") &&
-      fsutils.dirExistsSync(this.path("functions"))
-    ) {
-      this.set("functions.source", Config.DEFAULT_FUNCTIONS_SOURCE);
+    // Inject default functions config and source if missing.
+    if (this.projectDir && fsutils.dirExistsSync(this.path(Config.DEFAULT_FUNCTIONS_SOURCE))) {
+      if (Array.isArray(this.get("functions"))) {
+        if (!this.get("functions.[0].source")) {
+          this.set("functions.[0].source", Config.DEFAULT_FUNCTIONS_SOURCE);
+        }
+      } else {
+        if (!this.get("functions.source")) {
+          this.set("functions.source", Config.DEFAULT_FUNCTIONS_SOURCE);
+        }
+      }
     }
   }
 
@@ -201,6 +205,10 @@ export class Config {
 
     fs.ensureFileSync(this.path(p));
     fs.writeFileSync(this.path(p), content, "utf8");
+  }
+
+  projectFileExists(p: string): boolean {
+    return fs.existsSync(this.path(p));
   }
 
   deleteProjectFile(p: string) {

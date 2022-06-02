@@ -21,7 +21,7 @@ import { diagnose } from "./diagnose";
 import { checkResponse } from "./askUserForParam";
 import { ensure } from "../ensureApiEnabled";
 import { deleteObject, uploadObject } from "../gcp/storage";
-import { needProjectId } from "../projectUtils";
+import { getProjectId } from "../projectUtils";
 import {
   createSource,
   ExtensionSource,
@@ -39,6 +39,7 @@ import { envOverride } from "../utils";
 import { getLocalChangelog } from "./changelog";
 import { getProjectNumber } from "../getProjectNumber";
 import { Constants } from "../emulator/constants";
+import { resolveVersion } from "../deploy/extensions/planner";
 
 /**
  * SpecParamType represents the exact strings that the extensions
@@ -108,9 +109,12 @@ export function getDBInstanceFromURL(databaseUrl = ""): string {
  * Gets Firebase project specific param values.
  */
 export async function getFirebaseProjectParams(
-  projectId: string,
+  projectId: string | undefined,
   emulatorMode: boolean = false
 ): Promise<Record<string, string>> {
+  if (!projectId) {
+    return {};
+  }
   const body = emulatorMode
     ? await getProjectAdminSdkConfigOrCached(projectId)
     : await getFirebaseConfig({ project: projectId });
@@ -166,7 +170,10 @@ export function substituteParams<T>(original: T, params: Record<string, string>)
  * @param paramSpec information on params parsed from extension.yaml
  * @return JSON object of params
  */
-export function populateDefaultParams(paramVars: Record<string, string>, paramSpecs: Param[]): any {
+export function populateDefaultParams(
+  paramVars: Record<string, string>,
+  paramSpecs: Param[]
+): Record<string, string> {
   const newParams = paramVars;
 
   for (const param of paramSpecs) {
@@ -363,7 +370,10 @@ export async function promptForValidInstanceId(instanceId: string): Promise<stri
 }
 
 export async function ensureExtensionsApiEnabled(options: any): Promise<void> {
-  const projectId = needProjectId(options);
+  const projectId = getProjectId(options);
+  if (!projectId) {
+    return;
+  }
   return await ensure(
     projectId,
     "firebaseextensions.googleapis.com",
@@ -437,7 +447,8 @@ export async function publishExtensionVersionFromLocalSource(args: {
         )
     );
   }
-  if (!notes && extension) {
+  // Skip this check for prerelease versions
+  if (!notes && !semver.prerelease(extensionSpec.version) && extension) {
     // If this is not the first version of this extension, we require release notes
     throw new FirebaseError(
       `No entry for version ${extensionSpec.version} found in CHANGELOG.md. ` +
@@ -539,31 +550,32 @@ export async function createSourceFromLocation(
   projectId: string,
   sourceUri: string
 ): Promise<ExtensionSource> {
+  const extensionRoot = "/";
   let packageUri: string;
-  let extensionRoot: string;
   let objectPath = "";
-  if (!sourceUri.startsWith("https:")) {
-    const uploadSpinner = ora(" Archiving and uploading extension source code");
-    try {
-      uploadSpinner.start();
-      objectPath = await archiveAndUploadSource(sourceUri, EXTENSIONS_BUCKET_NAME);
-      uploadSpinner.succeed(" Uploaded extension source code");
-      packageUri = storageOrigin + objectPath + "?alt=media";
-      extensionRoot = "/";
-    } catch (err: any) {
-      uploadSpinner.fail();
-      throw new FirebaseError(`Failed to archive and upload extension source, ${err}`, {
+
+  const spinner = ora(" Archiving and uploading extension source code");
+  try {
+    spinner.start();
+    objectPath = await archiveAndUploadSource(sourceUri, EXTENSIONS_BUCKET_NAME);
+    spinner.succeed(" Uploaded extension source code");
+
+    packageUri = storageOrigin + objectPath + "?alt=media";
+    const res = await createSource(projectId, packageUri, extensionRoot);
+    logger.debug("Created new Extension Source %s", res.name);
+
+    // if we uploaded an object to user's bucket, delete it after "createSource" copies it into extension service's bucket.
+    await deleteUploadedSource(objectPath);
+    return res;
+  } catch (err: any) {
+    spinner.fail();
+    throw new FirebaseError(
+      `Failed to archive and upload extension source from ${sourceUri}, ${err}`,
+      {
         original: err,
-      });
-    }
-  } else {
-    [packageUri, extensionRoot] = sourceUri.split("#");
+      }
+    );
   }
-  const res = await createSource(projectId, packageUri, extensionRoot);
-  logger.debug("Created new Extension Source %s", res.name);
-  // if we uploaded an object, delete it
-  await deleteUploadedSource(objectPath);
-  return res;
 }
 
 /**
@@ -756,9 +768,29 @@ export async function confirm(args: {
 }
 
 export async function diagnoseAndFixProject(options: any): Promise<void> {
-  const projectId = needProjectId(options);
+  const projectId = getProjectId(options);
+  if (!projectId) {
+    return;
+  }
   const ok = await diagnose(projectId);
   if (!ok) {
     throw new FirebaseError("Unable to proceed until all issues are resolved.");
   }
+}
+
+/**
+ * Canonicalize a user-inputted ref string.
+ * 1. Infer firebase publisher if not provided
+ * 2. Infer "latest" as the version if not provided
+ */
+export async function canonicalizeRefInput(extensionName: string): Promise<string> {
+  // Infer firebase if publisher ID not provided.
+  if (extensionName.split("/").length < 2) {
+    const [extensionID, version] = extensionName.split("@");
+    extensionName = `firebase/${extensionID}@${version || "latest"}`;
+  }
+  // Get the correct version for a given extension reference from the Registry API.
+  const ref = refs.parse(extensionName);
+  ref.version = await resolveVersion(ref);
+  return refs.toExtensionVersionRef(ref);
 }

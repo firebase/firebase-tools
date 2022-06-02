@@ -15,7 +15,4 @@ trap cleanup EXIT
 cp package.json dev/package.json
 
 # Run the tests from the built dev directory.
-mocha \
-  --require ts-node/register \
-  --require src/test/helpers/mocha-bootstrap.ts \
-  dev/scripts/emulator-tests/*.spec.*
+mocha dev/scripts/emulator-tests/*.spec.*

@@ -4,19 +4,16 @@ import * as nock from "nock";
 import * as os from "os";
 import * as sinon from "sinon";
 
-import * as accountExporter from "../accountExporter";
+import { validateOptions, serialExportUsers } from "../accountExporter";
 
 describe("accountExporter", () => {
-  const validateOptions = accountExporter.validateOptions;
-  const serialExportUsers = accountExporter.serialExportUsers;
-
   describe("validateOptions", () => {
     it("should reject when no format provided", () => {
-      expect(() => validateOptions({}, "output_file")).to.throw;
+      expect(() => validateOptions({}, "output_file")).to.throw();
     });
 
     it("should reject when format is not csv or json", () => {
-      expect(() => validateOptions({ format: "txt" }, "output_file")).to.throw;
+      expect(() => validateOptions({ format: "txt" }, "output_file")).to.throw();
     });
 
     it("should ignore format param when implicitly specified in file name", () => {
@@ -231,7 +228,6 @@ describe("accountExporter", () => {
         })
         .reply(200, {
           users: userList.slice(0, 3),
-          nextPageToken: "3",
         });
       await serialExportUsers("test-project-id", {
         format: "JSON",

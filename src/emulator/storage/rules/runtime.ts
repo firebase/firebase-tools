@@ -84,6 +84,11 @@ export class StorageRulesIssues {
   exist(): boolean {
     return !!(this.errors.length || this.warnings.length);
   }
+
+  extend(other: StorageRulesIssues): void {
+    this.errors.push(...other.errors);
+    this.warnings.push(...other.warnings);
+  }
 }
 
 export class StorageRulesRuntime {
@@ -168,7 +173,7 @@ export class StorageRulesRuntime {
     });
 
     this._childprocess.stdout?.on("data", (buf: Buffer) => {
-      const serializedRuntimeActionResponse = buf.toString("UTF8").trim();
+      const serializedRuntimeActionResponse = buf.toString("utf-8").trim();
       if (serializedRuntimeActionResponse !== "") {
         let rap;
         try {

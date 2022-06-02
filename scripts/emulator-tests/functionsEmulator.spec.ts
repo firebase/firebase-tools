@@ -9,11 +9,7 @@ import * as logform from "logform";
 import * as path from "path";
 
 import { EmulatedTriggerDefinition } from "../../src/emulator/functionsEmulatorShared";
-import {
-  EmulatableBackend,
-  FunctionsEmulator,
-  InvokeRuntimeOpts,
-} from "../../src/emulator/functionsEmulator";
+import { FunctionsEmulator, InvokeRuntimeOpts } from "../../src/emulator/functionsEmulator";
 import { Emulators } from "../../src/emulator/types";
 import { RuntimeWorker } from "../../src/emulator/functionsRuntimeWorker";
 import { TIMEOUT_LONG, TIMEOUT_MED, MODULE_ROOT } from "./fixtures";
@@ -131,12 +127,11 @@ function useFunctions(triggers: () => {}): void {
 
   // eslint-disable-next-line @typescript-eslint/unbound-method
   functionsEmulator.invokeTrigger = (
-    backend: EmulatableBackend,
     trigger: EmulatedTriggerDefinition,
     proto?: any,
     runtimeOpts?: InvokeRuntimeOpts
   ): Promise<RuntimeWorker> => {
-    return invokeTrigger(testBackend, trigger, proto, {
+    return invokeTrigger(trigger, proto, {
       nodeBinary: process.execPath,
       serializedTriggers,
     });
@@ -786,7 +781,7 @@ describe("FunctionsEmulator-Hub", () => {
         .then((res) => {
           expect(res.body.var).to.eql("localhost:9090");
         });
-    });
+    }).timeout(5000);
 
     it("should set FIREBASE_AUTH_EMULATOR_HOST when the emulator is running", async () => {
       emulatorRegistryStub.withArgs(Emulators.AUTH).returns({

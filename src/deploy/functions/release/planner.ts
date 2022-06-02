@@ -1,4 +1,8 @@
-import { functionMatchesAnyGroup, getFunctionLabel } from "../functionsDeployHelper";
+import {
+  EndpointFilter,
+  endpointMatchesAnyFilter,
+  getFunctionLabel,
+} from "../functionsDeployHelper";
 import { isFirebaseManaged } from "../../../deploymentTool";
 import { FirebaseError } from "../../../error";
 import * as utils from "../../../utils";
@@ -18,10 +22,12 @@ export interface Changeset {
 
 export type DeploymentPlan = Record<string, Changeset>;
 
-export interface Options {
-  filters?: string[][];
-  // If set to false, will delete only functions that are managed by firebase
-  deleteAll?: boolean;
+export interface PlanArgs {
+  wantBackend: backend.Backend; // the desired state
+  haveBackend: backend.Backend; // the current state
+  codebase: string; // target codebase of the deployment
+  filters?: EndpointFilter[]; // filters to apply to backend, passed from users by --only flag
+  deleteAll?: boolean; // deletes all functions if set
 }
 
 /** Calculate the changesets of given endpoints by grouping endpoints with keyFn. */
@@ -29,7 +35,7 @@ export function calculateChangesets(
   want: Record<string, backend.Endpoint>,
   have: Record<string, backend.Endpoint>,
   keyFn: (e: backend.Endpoint) => string,
-  options: Options
+  deleteAll?: boolean
 ): Record<string, Changeset> {
   const toCreate = utils.groupBy(
     Object.keys(want)
@@ -41,7 +47,7 @@ export function calculateChangesets(
   const toDelete = utils.groupBy(
     Object.keys(have)
       .filter((id) => !want[id])
-      .filter((id) => options.deleteAll || isFirebaseManaged(have[id].labels || {}))
+      .filter((id) => deleteAll || isFirebaseManaged(have[id].labels || {}))
       .map((id) => have[id]),
     keyFn
   );
@@ -93,35 +99,33 @@ export function calculateUpdate(want: backend.Endpoint, have: backend.Endpoint):
 
 /**
  * Create a plan for deploying all functions in one region.
- * @param want the desired state
- * @param have the current state
- * @param filters The filters, passed in by the user via  `--only functions:`
  */
-export function createDeploymentPlan(
-  want: backend.Backend,
-  have: backend.Backend,
-  options: Options = {}
-): DeploymentPlan {
+export function createDeploymentPlan(args: PlanArgs): DeploymentPlan {
+  let { wantBackend, haveBackend, codebase, filters, deleteAll } = args;
   let deployment: DeploymentPlan = {};
-  want = backend.matchingBackend(want, (endpoint) => {
-    return functionMatchesAnyGroup(endpoint, options.filters || []);
+  wantBackend = backend.matchingBackend(wantBackend, (endpoint) => {
+    return endpointMatchesAnyFilter(endpoint, filters);
   });
-  have = backend.matchingBackend(have, (endpoint) => {
-    return functionMatchesAnyGroup(endpoint, options.filters || []);
+  const wantedEndpoint = backend.hasEndpoint(wantBackend);
+  haveBackend = backend.matchingBackend(haveBackend, (endpoint) => {
+    return wantedEndpoint(endpoint) || endpointMatchesAnyFilter(endpoint, filters);
   });
 
-  const regions = new Set([...Object.keys(want.endpoints), ...Object.keys(have.endpoints)]);
+  const regions = new Set([
+    ...Object.keys(wantBackend.endpoints),
+    ...Object.keys(haveBackend.endpoints),
+  ]);
   for (const region of regions) {
     const changesets = calculateChangesets(
-      want.endpoints[region] || {},
-      have.endpoints[region] || {},
-      (e) => `${e.region}-${e.availableMemoryMb || "default"}`,
-      options
+      wantBackend.endpoints[region] || {},
+      haveBackend.endpoints[region] || {},
+      (e) => `${codebase}-${e.region}-${e.availableMemoryMb || "default"}`,
+      deleteAll
     );
     deployment = { ...deployment, ...changesets };
   }
 
-  if (upgradedToGCFv2WithoutSettingConcurrency(want, have)) {
+  if (upgradedToGCFv2WithoutSettingConcurrency(wantBackend, haveBackend)) {
     utils.logLabeledBullet(
       "functions",
       "You are updating one or more functions to Google Cloud Functions v2, " +
@@ -196,10 +200,7 @@ export function changedV2PubSubTopic(want: backend.Endpoint, have: backend.Endpo
   if (have.eventTrigger.eventType !== v2events.PUBSUB_PUBLISH_EVENT) {
     return false;
   }
-
-  return (
-    backend.findEventFilter(have, "topic")?.value !== backend.findEventFilter(want, "topic")?.value
-  );
+  return have.eventTrigger.eventFilters.topic !== want.eventTrigger.eventFilters.topic;
 }
 
 /** Whether a user upgraded a scheduled function (which goes from Pub/Sub to HTTPS). */
@@ -237,6 +238,8 @@ export function checkForIllegalUpdate(want: backend.Endpoint, have: backend.Endp
       return "a scheduled";
     } else if (backend.isTaskQueueTriggered(e)) {
       return "a task queue";
+    } else if (backend.isBlockingTriggered(e)) {
+      return e.blockingTrigger.eventType;
     }
     // Unfortunately TypeScript isn't like Scala and I can't prove to it
     // that all cases have been handled

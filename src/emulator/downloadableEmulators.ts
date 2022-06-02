@@ -27,38 +27,38 @@ const CACHE_DIR =
 
 export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDetails } = {
   database: {
-    downloadPath: path.join(CACHE_DIR, "firebase-database-emulator-v4.7.3.jar"),
-    version: "4.7.3",
+    downloadPath: path.join(CACHE_DIR, "firebase-database-emulator-v4.8.0.jar"),
+    version: "4.8.0",
     opts: {
       cacheDir: CACHE_DIR,
       remoteUrl:
-        "https://storage.googleapis.com/firebase-preview-drop/emulator/firebase-database-emulator-v4.7.3.jar",
-      expectedSize: 28862098,
-      expectedChecksum: "8f696f24ee89c937a789498a0c0e4899",
+        "https://storage.googleapis.com/firebase-preview-drop/emulator/firebase-database-emulator-v4.8.0.jar",
+      expectedSize: 33676395,
+      expectedChecksum: "e5ae0085d9c88ed14b0bd9c25fe62916",
       namePrefix: "firebase-database-emulator",
     },
   },
   firestore: {
-    downloadPath: path.join(CACHE_DIR, "cloud-firestore-emulator-v1.13.1.jar"),
-    version: "1.13.1",
+    downloadPath: path.join(CACHE_DIR, "cloud-firestore-emulator-v1.14.3.jar"),
+    version: "1.14.3",
     opts: {
       cacheDir: CACHE_DIR,
       remoteUrl:
-        "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v1.13.1.jar",
-      expectedSize: 60486708,
-      expectedChecksum: "e0590880408eacb790874643147c0081",
+        "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v1.14.3.jar",
+      expectedSize: 60442855,
+      expectedChecksum: "63517534875818689639ee5dee57dd52",
       namePrefix: "cloud-firestore-emulator",
     },
   },
   storage: {
-    downloadPath: path.join(CACHE_DIR, "cloud-storage-rules-runtime-v1.0.1.jar"),
-    version: "1.0.1",
+    downloadPath: path.join(CACHE_DIR, "cloud-storage-rules-runtime-v1.0.2.jar"),
+    version: "1.0.2",
     opts: {
       cacheDir: CACHE_DIR,
       remoteUrl:
-        "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-storage-rules-runtime-v1.0.1.jar",
-      expectedSize: 32729999,
-      expectedChecksum: "1a441f5e16c17aa7a27db71c9c9186d5",
+        "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-storage-rules-runtime-v1.0.2.jar",
+      expectedSize: 35704306,
+      expectedChecksum: "0dd3e17939610fc3dbdf53fb24cfda86",
       namePrefix: "cloud-storage-rules-emulator",
     },
   },
@@ -80,15 +80,15 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
         },
       }
     : {
-        version: "1.6.5",
-        downloadPath: path.join(CACHE_DIR, "ui-v1.6.5.zip"),
-        unzipDir: path.join(CACHE_DIR, "ui-v1.6.5"),
-        binaryPath: path.join(CACHE_DIR, "ui-v1.6.5", "server.bundle.js"),
+        version: "1.7.0",
+        downloadPath: path.join(CACHE_DIR, "ui-v1.7.0.zip"),
+        unzipDir: path.join(CACHE_DIR, "ui-v1.7.0"),
+        binaryPath: path.join(CACHE_DIR, "ui-v1.7.0", "server.bundle.js"),
         opts: {
           cacheDir: CACHE_DIR,
-          remoteUrl: "https://storage.googleapis.com/firebase-preview-drop/emulator/ui-v1.6.5.zip",
-          expectedSize: 3816994,
-          expectedChecksum: "92dfff4b2ef8ab616e8a60cc93e0a00b",
+          remoteUrl: "https://storage.googleapis.com/firebase-preview-drop/emulator/ui-v1.7.0.zip",
+          expectedSize: 4053708,
+          expectedChecksum: "aea9ae19091df5974a88a8847aaf127c",
           namePrefix: "ui",
         },
       },
@@ -188,7 +188,7 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
   },
   ui: {
     binary: "node",
-    args: [getExecPath(Emulators.UI)],
+    args: ["--dns-result-order=ipv4first", getExecPath(Emulators.UI)],
     optionalArgs: [],
     joinArgs: false,
   },
@@ -296,6 +296,13 @@ export async function handleEmulatorProcessError(emulator: Emulators, err: any):
   } else {
     await _fatal(emulator, `${description} has exited: ${err}`);
   }
+}
+
+export function requiresJava(emulator: Emulators): boolean {
+  if (emulator in Commands) {
+    return Commands[emulator as keyof typeof Commands].binary === "java";
+  }
+  return false;
 }
 
 async function _runBinary(
