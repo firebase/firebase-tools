@@ -371,13 +371,6 @@ function discoverTrigger(endpoint: Endpoint): backend.Triggered {
       // number seconds instead of proto.duration and only using
       // duration at the GCP API layer. In general numbers >> durations.
       bkSchedule.retryConfig = {};
-      proto.renameIfPresent(
-        bkSchedule.retryConfig,
-        endpoint.scheduleTrigger.retryConfig,
-        "maxBackoffDuration",
-        "maxBackoffSeconds",
-        (seconds) => proto.durationFromSeconds(resolveInt(seconds))
-      );
       proto.convertIfPresent(
         bkSchedule.retryConfig,
         endpoint.scheduleTrigger.retryConfig,

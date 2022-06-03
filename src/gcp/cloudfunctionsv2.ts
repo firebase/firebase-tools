@@ -232,7 +232,7 @@ export function mebibytes(memory: string): backend.MemoryOptions {
   }
   bytes = bytes / (1 << 20);
   const typed = bytes as backend.MemoryOptions;
-  if (backend.AllMemoryOptions.includes(typed)) {
+  if (!backend.AllMemoryOptions.includes(typed)) {
     logger.warn(`Got a non-standard memory option ${memory}; this may break tools`);
   }
   return typed;
