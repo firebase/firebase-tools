@@ -5011,8 +5011,8 @@ export default {
       GoogleCloudIdentitytoolkitV1SetAccountInfoResponse: {
         description: "Response message for SetAccountInfo",
         properties: {
-          displayName: { type: "string" },
-          email: { type: "string" },
+          displayName: { description: "The account's display name.", type: "string" },
+          email: { description: "The account's email address.", type: "string" },
           emailVerified: {
             description: "Whether the account's email has been verified.",
             type: "boolean",
@@ -5033,8 +5033,14 @@ export default {
             description: "The new email that has been set on the user's account attributes.",
             type: "string",
           },
-          passwordHash: { type: "string" },
-          photoUrl: { type: "string" },
+          passwordHash: {
+            description: "Deprecated. No actual password hash is currently returned.",
+            type: "string",
+          },
+          photoUrl: {
+            description: "The user's photo URL for the account's profile photo.",
+            type: "string",
+          },
           providerUserInfo: {
             description: "The linked Identity Providers on the account.",
             items: { $ref: "#/components/schemas/GoogleCloudIdentitytoolkitV1ProviderUserInfo" },
@@ -6013,32 +6019,6 @@ export default {
         },
         type: "object",
       },
-      GoogleCloudIdentitytoolkitAdminV2AllowByDefault: {
-        description:
-          "Defines a policy of allowing every region by default and adding disallowed regions to a disallow list.",
-        properties: {
-          disallowedRegions: {
-            description:
-              "Two letter unicode region codes to disallow as defined by https://cldr.unicode.org/ The full list of these region codes is here: https://github.com/unicode-cldr/cldr-localenames-full/blob/master/main/en/territories.json",
-            items: { type: "string" },
-            type: "array",
-          },
-        },
-        type: "object",
-      },
-      GoogleCloudIdentitytoolkitAdminV2AllowlistOnly: {
-        description:
-          "Defines a policy of only allowing regions by explicitly adding them to an allowlist.",
-        properties: {
-          allowedRegions: {
-            description:
-              "Two letter unicode region codes to allow as defined by https://cldr.unicode.org/ The full list of these region codes is here: https://github.com/unicode-cldr/cldr-localenames-full/blob/master/main/en/territories.json",
-            items: { type: "string" },
-            type: "array",
-          },
-        },
-        type: "object",
-      },
       GoogleCloudIdentitytoolkitAdminV2Anonymous: {
         description: "Configuration options related to authenticating an anonymous user.",
         properties: {
@@ -6683,19 +6663,6 @@ export default {
         },
         type: "object",
       },
-      GoogleCloudIdentitytoolkitAdminV2SmsRegionConfig: {
-        description:
-          "Configures the regions where users are allowed to send verification SMS for the project or tenant. This is based on the calling code of the destination phone number.",
-        properties: {
-          allowByDefault: {
-            $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2AllowByDefault",
-          },
-          allowlistOnly: {
-            $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2AllowlistOnly",
-          },
-        },
-        type: "object",
-      },
       GoogleCloudIdentitytoolkitAdminV2SmsTemplate: {
         description: "The template to use when sending an SMS.",
         properties: {
@@ -6810,9 +6777,6 @@ export default {
               'Output only. Resource name of a tenant. For example: "projects/{project-id}/tenants/{tenant-id}"',
             readOnly: true,
             type: "string",
-          },
-          smsRegionConfig: {
-            $ref: "#/components/schemas/GoogleCloudIdentitytoolkitAdminV2SmsRegionConfig",
           },
           testPhoneNumbers: {
             additionalProperties: { type: "string" },
@@ -7074,7 +7038,7 @@ export default {
       },
       GoogleIamV1AuditConfig: {
         description:
-          'Specifies the audit configuration for a service. The configuration determines which permission types are logged, and what identities, if any, are exempted from logging. An AuditConfig must have one or more AuditLogConfigs. If there are AuditConfigs for both `allServices` and a specific service, the union of the two AuditConfigs is used for that service: the log_types specified in each AuditConfig are enabled, and the exempted_members in each AuditLogConfig are exempted. Example Policy with multiple AuditConfigs: { "audit_configs": [ { "service": "allServices", "audit_log_configs": [ { "log_type": "DATA_READ", "exempted_members": [ "user:jose@example.com" ] }, { "log_type": "DATA_WRITE" }, { "log_type": "ADMIN_READ" } ] }, { "service": "sampleservice.googleapis.com", "audit_log_configs": [ { "log_type": "DATA_READ" }, { "log_type": "DATA_WRITE", "exempted_members": [ "user:aliya@example.com" ] } ] } ] } For sampleservice, this policy enables DATA_READ, DATA_WRITE and ADMIN_READ logging. It also exempts jose@example.com from DATA_READ logging, and aliya@example.com from DATA_WRITE logging.',
+          'Specifies the audit configuration for a service. The configuration determines which permission types are logged, and what identities, if any, are exempted from logging. An AuditConfig must have one or more AuditLogConfigs. If there are AuditConfigs for both `allServices` and a specific service, the union of the two AuditConfigs is used for that service: the log_types specified in each AuditConfig are enabled, and the exempted_members in each AuditLogConfig are exempted. Example Policy with multiple AuditConfigs: { "audit_configs": [ { "service": "allServices", "audit_log_configs": [ { "log_type": "DATA_READ", "exempted_members": [ "user:jose@example.com" ] }, { "log_type": "DATA_WRITE" }, { "log_type": "ADMIN_READ" } ] }, { "service": "sampleservice.googleapis.com", "audit_log_configs": [ { "log_type": "DATA_READ" }, { "log_type": "DATA_WRITE", "exempted_members": [ "user:aliya@example.com" ] } ] } ] } For sampleservice, this policy enables DATA_READ, DATA_WRITE and ADMIN_READ logging. It also exempts `jose@example.com` from DATA_READ logging, and `aliya@example.com` from DATA_WRITE logging.',
         properties: {
           auditLogConfigs: {
             description: "The configuration for logging of each type of permission.",
@@ -7113,7 +7077,7 @@ export default {
           condition: { $ref: "#/components/schemas/GoogleTypeExpr" },
           members: {
             description:
-              "Specifies the principals requesting access for a Cloud Platform resource. `members` can have the following values: * `allUsers`: A special identifier that represents anyone who is on the internet; with or without a Google account. * `allAuthenticatedUsers`: A special identifier that represents anyone who is authenticated with a Google account or a service account. * `user:{emailid}`: An email address that represents a specific Google account. For example, `alice@example.com` . * `serviceAccount:{emailid}`: An email address that represents a service account. For example, `my-other-app@appspot.gserviceaccount.com`. * `group:{emailid}`: An email address that represents a Google group. For example, `admins@example.com`. * `deleted:user:{emailid}?uid={uniqueid}`: An email address (plus unique identifier) representing a user that has been recently deleted. For example, `alice@example.com?uid=123456789012345678901`. If the user is recovered, this value reverts to `user:{emailid}` and the recovered user retains the role in the binding. * `deleted:serviceAccount:{emailid}?uid={uniqueid}`: An email address (plus unique identifier) representing a service account that has been recently deleted. For example, `my-other-app@appspot.gserviceaccount.com?uid=123456789012345678901`. If the service account is undeleted, this value reverts to `serviceAccount:{emailid}` and the undeleted service account retains the role in the binding. * `deleted:group:{emailid}?uid={uniqueid}`: An email address (plus unique identifier) representing a Google group that has been recently deleted. For example, `admins@example.com?uid=123456789012345678901`. If the group is recovered, this value reverts to `group:{emailid}` and the recovered group retains the role in the binding. * `domain:{domain}`: The G Suite domain (primary) that represents all the users of that domain. For example, `google.com` or `example.com`. ",
+              "Specifies the principals requesting access for a Google Cloud resource. `members` can have the following values: * `allUsers`: A special identifier that represents anyone who is on the internet; with or without a Google account. * `allAuthenticatedUsers`: A special identifier that represents anyone who is authenticated with a Google account or a service account. * `user:{emailid}`: An email address that represents a specific Google account. For example, `alice@example.com` . * `serviceAccount:{emailid}`: An email address that represents a service account. For example, `my-other-app@appspot.gserviceaccount.com`. * `group:{emailid}`: An email address that represents a Google group. For example, `admins@example.com`. * `deleted:user:{emailid}?uid={uniqueid}`: An email address (plus unique identifier) representing a user that has been recently deleted. For example, `alice@example.com?uid=123456789012345678901`. If the user is recovered, this value reverts to `user:{emailid}` and the recovered user retains the role in the binding. * `deleted:serviceAccount:{emailid}?uid={uniqueid}`: An email address (plus unique identifier) representing a service account that has been recently deleted. For example, `my-other-app@appspot.gserviceaccount.com?uid=123456789012345678901`. If the service account is undeleted, this value reverts to `serviceAccount:{emailid}` and the undeleted service account retains the role in the binding. * `deleted:group:{emailid}?uid={uniqueid}`: An email address (plus unique identifier) representing a Google group that has been recently deleted. For example, `admins@example.com?uid=123456789012345678901`. If the group is recovered, this value reverts to `group:{emailid}` and the recovered group retains the role in the binding. * `domain:{domain}`: The G Suite domain (primary) that represents all the users of that domain. For example, `google.com` or `example.com`. ",
             items: { type: "string" },
             type: "array",
           },
@@ -7190,7 +7154,7 @@ export default {
         properties: {
           permissions: {
             description:
-              "The set of permissions to check for the `resource`. Permissions with wildcards (such as '*' or 'storage.*') are not allowed. For more information see [IAM Overview](https://cloud.google.com/iam/docs/overview#permissions).",
+              "The set of permissions to check for the `resource`. Permissions with wildcards (such as `*` or `storage.*`) are not allowed. For more information see [IAM Overview](https://cloud.google.com/iam/docs/overview#permissions).",
             items: { type: "string" },
             type: "array",
           },
@@ -7211,7 +7175,7 @@ export default {
       },
       GoogleProtobufEmpty: {
         description:
-          "A generic empty message that you can re-use to avoid defining duplicated empty messages in your APIs. A typical example is to use it as the request or the response type of an API method. For instance: service Foo { rpc Bar(google.protobuf.Empty) returns (google.protobuf.Empty); } The JSON representation for `Empty` is empty JSON object `{}`.",
+          "A generic empty message that you can re-use to avoid defining duplicated empty messages in your APIs. A typical example is to use it as the request or the response type of an API method. For instance: service Foo { rpc Bar(google.protobuf.Empty) returns (google.protobuf.Empty); }",
         properties: {},
         type: "object",
       },
@@ -7295,7 +7259,6 @@ export default {
         description: "Emulator-specific configuration.",
         properties: {
           signIn: { properties: { allowDuplicateEmails: { type: "boolean" } }, type: "object" },
-          usageMode: { enum: ["USAGE_MODE_UNSPECIFIED", "DEFAULT", "PASSTHROUGH"], type: "string" },
         },
       },
       EmulatorV1ProjectsOobCodes: {

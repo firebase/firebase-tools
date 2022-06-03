@@ -11,7 +11,6 @@ import { URL } from "url";
 import { EventEmitter } from "events";
 
 import { Account } from "../auth";
-import * as api from "../api";
 import { logger } from "../logger";
 import { track } from "../track";
 import { Constants } from "./constants";
@@ -25,7 +24,7 @@ import {
 import * as chokidar from "chokidar";
 
 import * as spawn from "cross-spawn";
-import { ChildProcess, spawnSync } from "child_process";
+import { ChildProcess } from "child_process";
 import {
   EmulatedTriggerDefinition,
   SignatureType,
@@ -68,6 +67,7 @@ import * as backend from "../deploy/functions/backend";
 import * as functionsEnv from "../functions/env";
 import { AUTH_BLOCKING_EVENTS, BEFORE_CREATE_EVENT } from "../functions/events/v1";
 import { BlockingFunctionsConfig } from "../gcp/identityPlatform";
+import { Client } from "../apiv2";
 
 const EVENT_INVOKE = "functions:invoke";
 
@@ -694,16 +694,17 @@ export class FunctionsEmulator implements EmulatorInstance {
     const path = `/identitytoolkit.googleapis.com/v2/projects/${this.getProjectId()}/config?updateMask=blockingFunctions`;
 
     try {
-      await api.request("PATCH", path, {
-        origin: `http://${EmulatorRegistry.getInfoHostString(authEmu.getInfo())}`,
-        headers: {
-          Authorization: "Bearer owner",
-        },
-        data: {
-          blockingFunctions: this.blockingFunctionsConfig,
-        },
-        json: true,
+      const client = new Client({
+        urlPrefix: `http://${EmulatorRegistry.getInfoHostString(authEmu.getInfo())}`,
+        auth: false,
       });
+      await client.patch(
+        path,
+        { blockingFunctions: this.blockingFunctionsConfig },
+        {
+          headers: { Authorization: "Bearer owner" },
+        }
+      );
     } catch (err) {
       this.logger.log(
         "WARN",
@@ -713,14 +714,14 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
   }
 
-  addRealtimeDatabaseTrigger(
+  async addRealtimeDatabaseTrigger(
     projectId: string,
     key: string,
     eventTrigger: EventTrigger
   ): Promise<boolean> {
     const databaseEmu = EmulatorRegistry.get(Emulators.DATABASE);
     if (!databaseEmu) {
-      return Promise.resolve(false);
+      return false;
     }
 
     const result: string[] | null = DATABASE_PATH_PATTERN.exec(eventTrigger.resource);
@@ -729,7 +730,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         "WARN",
         `Event function "${key}" has malformed "resource" member. ` + `${eventTrigger.resource}`
       );
-      return Promise.reject();
+      throw new FirebaseError(`Event function ${key} has malformed resource member`);
     }
 
     const instance = result[1];
@@ -752,25 +753,20 @@ export class FunctionsEmulator implements EmulatorInstance {
       );
     }
 
-    return api
-      .request("POST", setTriggersPath, {
-        origin: `http://${EmulatorRegistry.getInfoHostString(databaseEmu.getInfo())}`,
-        headers: {
-          Authorization: "Bearer owner",
-        },
-        data: bundle,
-        json: false,
-      })
-      .then(() => {
-        return true;
-      })
-      .catch((err) => {
-        this.logger.log("WARN", "Error adding Realtime Database function: " + err);
-        throw err;
-      });
+    const client = new Client({
+      urlPrefix: `http://${EmulatorRegistry.getInfoHostString(databaseEmu.getInfo())}`,
+      auth: false,
+    });
+    try {
+      await client.post(setTriggersPath, bundle, { headers: { Authorization: "Bearer owner" } });
+    } catch (err: any) {
+      this.logger.log("WARN", "Error adding Realtime Database function: " + err);
+      throw err;
+    }
+    return true;
   }
 
-  addFirestoreTrigger(
+  async addFirestoreTrigger(
     projectId: string,
     key: string,
     eventTrigger: EventTrigger
@@ -788,19 +784,17 @@ export class FunctionsEmulator implements EmulatorInstance {
     });
     logger.debug(`addFirestoreTrigger`, JSON.stringify(bundle));
 
-    return api
-      .request("PUT", `/emulator/v1/projects/${projectId}/triggers/${key}`, {
-        origin: `http://${EmulatorRegistry.getInfoHostString(firestoreEmu.getInfo())}`,
-        data: bundle,
-        json: false,
-      })
-      .then(() => {
-        return true;
-      })
-      .catch((err) => {
-        this.logger.log("WARN", "Error adding firestore function: " + err);
-        throw err;
-      });
+    const client = new Client({
+      urlPrefix: `http://${EmulatorRegistry.getInfoHostString(firestoreEmu.getInfo())}`,
+      auth: false,
+    });
+    try {
+      await client.put(`/emulator/v1/projects/${projectId}/triggers/${key}`, bundle);
+    } catch (err: any) {
+      this.logger.log("WARN", "Error adding firestore function: " + err);
+      throw err;
+    }
+    return true;
   }
 
   async addPubsubTrigger(
@@ -995,7 +989,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     // Next check if we have a Node install in the node_modules folder
     try {
-      const localNodeOutput = spawnSync(localNodePath, ["--version"]).stdout.toString();
+      const localNodeOutput = spawn.sync(localNodePath, ["--version"]).stdout.toString();
       localMajorVersion = localNodeOutput.slice(1).split(".")[0];
     } catch (err: any) {
       // Will happen if we haven't asked about local version yet
@@ -1020,10 +1014,21 @@ export class FunctionsEmulator implements EmulatorInstance {
       );
     } else {
       // Otherwise we'll warn and use the version that is currently running this process.
-      this.logger.log(
-        "WARN",
-        `Your requested "node" version "${requestedMajorVersion}" doesn't match your global version "${hostMajorVersion}". Using node@${hostMajorVersion} from host.`
-      );
+      if (process.env.FIREPIT_VERSION) {
+        this.logger.log(
+          "WARN",
+          `You've requested "node" version "${requestedMajorVersion}", but the standalone Firebase CLI comes with bundled Node "${hostMajorVersion}".`
+        );
+        this.logger.log(
+          "INFO",
+          `To use a different Node.js version, consider removing the standalone Firebase CLI and switching to "firebase-tools" on npm.`
+        );
+      } else {
+        this.logger.log(
+          "WARN",
+          `Your requested "node" version "${requestedMajorVersion}" doesn't match your global version "${hostMajorVersion}". Using node@${hostMajorVersion} from host.`
+        );
+      }
     }
 
     return process.execPath;

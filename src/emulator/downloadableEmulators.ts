@@ -188,7 +188,7 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
   },
   ui: {
     binary: "node",
-    args: [getExecPath(Emulators.UI)],
+    args: ["--dns-result-order=ipv4first", getExecPath(Emulators.UI)],
     optionalArgs: [],
     joinArgs: false,
   },
