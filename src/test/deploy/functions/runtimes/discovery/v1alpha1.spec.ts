@@ -211,7 +211,7 @@ describe("buildFromV1Alpha", () => {
       };
 
       const parsed = v1alpha1.buildFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME);
-      const expected: build.Build = build.of({"id":{ ...DEFAULTED_ENDPOINT, blockingTrigger }})
+      const expected: build.Build = build.of({ id: { ...DEFAULTED_ENDPOINT, blockingTrigger } });
       expect(parsed).to.deep.equal(expected);
 
       const expectedBackend = backend.of({
@@ -238,7 +238,7 @@ describe("buildFromV1Alpha", () => {
       };
 
       const parsed = v1alpha1.buildFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME);
-      const expected: build.Build = build.of({"id":{ ...DEFAULTED_ENDPOINT, blockingTrigger }})
+      const expected: build.Build = build.of({ id: { ...DEFAULTED_ENDPOINT, blockingTrigger } });
       expect(parsed).to.deep.equal(expected);
 
       const expectedBackend = backend.of({

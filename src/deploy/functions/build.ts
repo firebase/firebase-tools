@@ -3,7 +3,6 @@ import * as proto from "../../gcp/proto";
 import * as api from "../../.../../api";
 import { FirebaseError } from "../../error";
 import { assertExhaustive } from "../../functional";
-import { getSecret, getSecretVersion, accessSecretVersion } from "../../gcp/secretManager";
 
 /* The union of a customer-controlled deployment and potentially deploy-time defined parameters */
 export interface Build {
