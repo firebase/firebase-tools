@@ -574,6 +574,14 @@ export function thirtyDaysFromNow(): Date {
 }
 
 /**
+ * Get the current version of Node.js engine from `process.version`.
+ * @return Node.js major release version
+ */
+export function getNodeVersionString(): string {
+  return process.versions.node.split(".")[0];
+}
+
+/**
  * See:
  * https://www.typescriptlang.org/docs/handbook/release-notes/typescript-3-7.html#assertion-functions
  */
