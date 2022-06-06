@@ -4,7 +4,7 @@ import { Command } from "../command";
 import * as commandUtils from "../emulator/commandUtils";
 import { FirebaseError } from "../error";
 
-module.exports = new Command("ext:dev:emulators:start")
+export const command = new Command("ext:dev:emulators:start")
   .description("deprecated: please use `firebase emulators:start`")
   .before(commandUtils.setExportOnExitOptions)
   .option(commandUtils.FLAG_INSPECT_FUNCTIONS, commandUtils.DESC_INSPECT_FUNCTIONS)

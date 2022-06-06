@@ -34,7 +34,7 @@ marked.setOptions({
 /**
  * Command for updating an existing extension instance
  */
-export default new Command("ext:update <extensionInstanceId> [updateSource]")
+export const command = new Command("ext:update <extensionInstanceId> [updateSource]")
   .description(
     previews.extdev
       ? "update an existing extension instance to the latest version or from a local or URL source"

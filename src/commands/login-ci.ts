@@ -6,7 +6,7 @@ import { logger } from "../logger";
 import * as auth from "../auth";
 import * as utils from "../utils";
 
-export default new Command("login:ci")
+export const command = new Command("login:ci")
   .description("generate an access token for use in non-interactive environments")
   .option(
     "--no-localhost",

@@ -15,7 +15,7 @@ import { logger } from "../logger";
 import { requireDatabaseInstance } from "../requireDatabaseInstance";
 import * as utils from "../utils";
 
-export default new Command("database:update <path> [infile]")
+export const command = new Command("database:update <path> [infile]")
   .description("update some of the keys for the defined path in your Firebase")
   .option("-d, --data <data>", "specify escaped JSON directly")
   .option("-f, --force", "pass this option to bypass confirmation prompt")

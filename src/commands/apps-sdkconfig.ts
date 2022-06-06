@@ -53,7 +53,7 @@ async function selectAppInteractively(
   });
 }
 
-module.exports = new Command("apps:sdkconfig [platform] [appId]")
+export const command = new Command("apps:sdkconfig [platform] [appId]")
   .description(
     "print the Google Services config of a Firebase app. " +
       "[platform] can be IOS, ANDROID or WEB (case insensitive)"
