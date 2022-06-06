@@ -50,7 +50,8 @@ export function crc32c(bytes: Buffer): number {
 export function crc32cToString(crc32cValue: number | string): string {
   const value = typeof crc32cValue === "string" ? Number.parseInt(crc32cValue) : crc32cValue;
 
-  // Allocating 4 bytes to write an unsigned 32-bit integer
+  // `Buffer` objects are arrays of 8-bit unsigned integers
+  // Allocating 4 octets to write an unsigned CRC32C 32-bit integer
   const buffer = Buffer.alloc(4);
   buffer.writeUint32BE(value);
 
