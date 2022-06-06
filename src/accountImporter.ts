@@ -44,7 +44,7 @@ function isValidBase64(str: string): boolean {
 }
 
 function toWebSafeBase64(data: string): string {
-  return Buffer.from(data).toString("base64").replace(/\//g, "_").replace(/\+/g, "-");
+  return data.replace(/\//g, "_").replace(/\+/g, "-");
 }
 
 function addProviderUserInfo(user: any, providerId: string, arr: any[]) {
@@ -327,7 +327,7 @@ export function serialImportUsers(
   hashOptions: any,
   userListArr: any[],
   index: number
-): any {
+): Promise<any> {
   return sendRequest(projectId, userListArr[index], hashOptions).then(() => {
     if (index < userListArr.length - 1) {
       return serialImportUsers(projectId, hashOptions, userListArr, index + 1);
