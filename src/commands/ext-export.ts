@@ -17,7 +17,7 @@ import { needProjectId } from "../projectUtils";
 import { promptOnce } from "../prompt";
 import { requirePermissions } from "../requirePermissions";
 
-module.exports = new Command("ext:export")
+export const command = new Command("ext:export")
   .description(
     "export all Extension instances installed on a project to a local Firebase directory"
   )

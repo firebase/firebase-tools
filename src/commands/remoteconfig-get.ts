@@ -26,7 +26,7 @@ function checkValidOptionalNumber(versionNumber?: string): string | undefined {
   throw new FirebaseError(`Could not interpret "${versionNumber}" as a valid number.`);
 }
 
-module.exports = new Command("remoteconfig:get")
+export const command = new Command("remoteconfig:get")
   .description("get a Firebase project's Remote Config template")
   .option("-v, --version-number <versionNumber>", "grabs the specified version of the template")
   .option(

@@ -16,7 +16,7 @@ import { logger } from "../logger";
 import { requireDatabaseInstance } from "../requireDatabaseInstance";
 import * as utils from "../utils";
 
-export default new Command("database:set <path> [infile]")
+export const command = new Command("database:set <path> [infile]")
   .description("store JSON data at the specified path via STDIN, arg, or file")
   .option("-d, --data <data>", "specify escaped JSON directly")
   .option("-f, --force", "pass this option to bypass confirmation prompt")

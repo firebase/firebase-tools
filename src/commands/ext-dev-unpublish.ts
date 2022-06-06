@@ -9,7 +9,7 @@ import { requireAuth } from "../requireAuth";
 import { FirebaseError } from "../error";
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 
-module.exports = new Command("ext:dev:unpublish <extensionRef>")
+export const command = new Command("ext:dev:unpublish <extensionRef>")
   .description("unpublish an extension")
   .withForce()
   .help(
