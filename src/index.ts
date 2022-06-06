@@ -4,7 +4,6 @@ import * as leven from "leven";
 
 import { logger } from "./logger";
 import { setupLoggers } from "./utils";
-import { errorOut } from "./errorOut";
 
 const pkg = require("../package.json");
 
@@ -23,8 +22,8 @@ program.option("-c, --config <path>", "path to the firebase.json file to use for
 
 const client = {
   cli: program,
-  logger: logger, //require("./logger"),
-  errorOut: errorOut, //require("./errorOut").errorOut,
+  logger: require("./logger"),
+  errorOut: require("./errorOut").errorOut,
   getCommand: (name: string) => {
     for (let i = 0; i < client.cli.commands.length; i++) {
       if (client.cli.commands[i]._name === name) {
@@ -98,5 +97,5 @@ program.action((_, args) => {
   process.exit(1);
 });
 
-// NB: Keep this module.exports line to keep firebase-tools-as-a-module working.
+// NB: Keep this export line to keep firebase-tools-as-a-module working.
 export = client;
