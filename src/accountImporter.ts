@@ -252,7 +252,9 @@ function validateRequiredParameters(options: any): any {
   }
 }
 
-function validateProviderUserInfo(providerUserInfo: any): any {
+function validateProviderUserInfo(providerUserInfo: { providerId: string; error?: string }): {
+  error?: string;
+} {
   if (!_.includes(ALLOWED_PROVIDER_IDS, providerUserInfo.providerId)) {
     return {
       error: JSON.stringify(providerUserInfo, null, 2) + " has unsupported providerId",
@@ -268,7 +270,7 @@ function validateProviderUserInfo(providerUserInfo: any): any {
   return {};
 }
 
-export function validateUserJson(userJson: any): any {
+export function validateUserJson(userJson: any): { error?: string } {
   const keydiff = _.difference(_.keys(userJson), ALLOWED_JSON_KEYS);
   if (keydiff.length) {
     return {

@@ -33,7 +33,7 @@ const client = {
     }
     return;
   },
-}
+};
 
 require("./commands").load(client);
 
