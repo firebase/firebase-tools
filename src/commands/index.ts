@@ -170,4 +170,4 @@ export function load(client: any): any {
   }
 
   return client;
-};
+}
