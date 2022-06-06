@@ -3,11 +3,10 @@ import * as clc from "cli-color";
 import * as path from "path";
 
 import { FirebaseError } from "../../error";
-import * as parseBoltRules from "../../parseBoltRules";
+import { parseBoltRules } from "../../parseBoltRules";
 import * as rtdb from "../../rtdb";
 import * as utils from "../../utils";
 import { Options } from "../../options";
-
 import * as dbRulesConfig from "../../database/rulesConfig";
 
 export function prepare(context: any, options: Options): Promise<any> {
