@@ -1,15 +1,13 @@
-"use strict";
-
-const _ = require("lodash");
-const { requireDatabaseInstance } = require("../requireDatabaseInstance");
-const { requirePermissions } = require("../requirePermissions");
-const { checkServiceAccountIam } = require("../deploy/functions/checkIam");
-const checkValidTargetFilters = require("../checkValidTargetFilters");
-const { Command } = require("../command");
-const { deploy } = require("../deploy");
-const { requireConfig } = require("../requireConfig");
-const { filterTargets } = require("../filterTargets");
-const { requireHostingSite } = require("../requireHostingSite");
+import * as _ from "lodash";
+import { requireDatabaseInstance } from "../requireDatabaseInstance";
+import { requirePermissions } from "../requirePermissions";
+import { checkServiceAccountIam } from "../deploy/functions/checkIam";
+import { checkValidTargetFilters } from "../checkValidTargetFilters";
+import { Command } from "../command";
+import { deploy } from "../deploy";
+import { requireConfig } from "../requireConfig";
+import { filterTargets } from "../filterTargets";
+import { requireHostingSite } from "../requireHostingSite";
 
 // in order of least time-consuming to most time-consuming
 const VALID_TARGETS = [

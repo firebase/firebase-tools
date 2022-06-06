@@ -32,7 +32,7 @@ const updateMessage =
   )}`;
 updateNotifier.notify({ defer: true, isGlobal: true, message: updateMessage });
 
-const client = require("..");
+const { client } = require("..");
 const errorOut = require("../errorOut").errorOut;
 const winston = require("winston");
 const { SPLAT } = require("triple-beam");

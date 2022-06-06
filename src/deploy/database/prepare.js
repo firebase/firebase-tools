@@ -5,7 +5,7 @@ var clc = require("cli-color");
 var path = require("path");
 
 var { FirebaseError } = require("../../error");
-var parseBoltRules = require("../../parseBoltRules");
+var { parseBoltRules } = require("../../parseBoltRules");
 var rtdb = require("../../rtdb");
 var utils = require("../../utils");
 

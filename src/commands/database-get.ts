@@ -11,7 +11,7 @@ import { realtimeOriginOrEmulatorOrCustomUrl } from "../database/api";
 import { requirePermissions } from "../requirePermissions";
 import { logger } from "../logger";
 import { requireDatabaseInstance } from "../requireDatabaseInstance";
-import * as responseToError from "../responseToError";
+import { responseToError } from "../responseToError";
 import * as utils from "../utils";
 
 /**
