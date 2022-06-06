@@ -16,7 +16,7 @@ import { resolveProjectPath } from "./projectPath";
 import * as utils from "./utils";
 import { getValidator, getErrorMessage } from "./firebaseConfigValidate";
 import { logger } from "./logger";
-const loadCJSON = require("./loadCJSON");
+import { loadCJSON } from "./loadCJSON";
 const parseBoltRules = require("./parseBoltRules");
 
 export class Config {
