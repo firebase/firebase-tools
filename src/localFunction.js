@@ -6,7 +6,7 @@ var { Client } = require("./apiv2");
 var { encodeFirestoreValue } = require("./firestore/encodeFirestoreValue");
 var utils = require("./utils");
 
-const HTTPS_SENTINAL = "Request sent to function.";
+const HTTPS_SENTINEL = "Request sent to function.";
 
 /**
  * @constructor
@@ -40,7 +40,7 @@ var LocalFunction = function (trigger, urls, controller) {
           .catch((err) => {
             this._requestCallBack(err);
           });
-        return HTTPS_SENTINAL;
+        return HTTPS_SENTINEL;
       };
       this.call["get"] = (path) => {
         callClient["get"]("path" || "/")
@@ -50,7 +50,7 @@ var LocalFunction = function (trigger, urls, controller) {
           .catch((err) => {
             this._requestCallBack(err);
           });
-        return HTTPS_SENTINAL;
+        return HTTPS_SENTINEL;
       };
       for (const method of ["post", "put", "patch", "delete"]) {
         this.call[method] = (...args) => {
@@ -69,7 +69,7 @@ var LocalFunction = function (trigger, urls, controller) {
             .catch((err) => {
               this._requestCallBack(err);
             });
-          return HTTPS_SENTINAL;
+          return HTTPS_SENTINEL;
         };
       }
     }
@@ -260,4 +260,4 @@ LocalFunction.prototype._call = function (data, opts) {
 };
 
 module.exports = LocalFunction;
-module.exports.HTTPS_SENTINAL = HTTPS_SENTINAL;
+module.exports.HTTPS_SENTINAL = HTTPS_SENTINEL;
