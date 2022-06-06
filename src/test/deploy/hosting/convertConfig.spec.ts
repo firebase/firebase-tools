@@ -3,6 +3,7 @@ import { HostingConfig } from "../../../firebaseConfig";
 import { convertConfig } from "../../../deploy/hosting/convertConfig";
 import * as args from "../../../deploy/functions/args";
 import * as backend from "../../../deploy/functions/backend";
+import { FirebaseError } from "../../../error";
 
 const DEFAULT_CONTEXT = {
   loadedExistingBackend: true,
@@ -39,19 +40,78 @@ describe("convertConfig", () => {
       want: { rewrites: [{ glob: "/foo$", path: "https://example.com" }] },
     },
     {
-      name: "defaults to us-central1 for CF3",
+      name: "checks for function region if unspecified",
       input: { rewrites: [{ glob: "/foo", function: "foofn" }] },
-      want: { rewrites: [{ glob: "/foo", function: "foofn", functionRegion: "us-central1" }] },
+      want: { rewrites: [{ glob: "/foo", function: "foofn", functionRegion: "us-central2" }] },
+      payload: {
+        functions: {
+          default: {
+            wantBackend: backend.of({
+              id: "foofn",
+              project: "my-project",
+              entryPoint: "foofn",
+              runtime: "nodejs14",
+              region: "us-central2",
+              platform: "gcfv1",
+              httpsTrigger: {},
+            }),
+            haveBackend: backend.empty(),
+          },
+        },
+      },
     },
     {
       name: "returns rewrites for glob CF3",
       input: { rewrites: [{ glob: "/foo", function: "foofn", region: "europe-west2" }] },
       want: { rewrites: [{ glob: "/foo", function: "foofn", functionRegion: "europe-west2" }] },
+      payload: {
+        functions: {
+          default: {
+            wantBackend: backend.of(
+              {
+                id: "foofn",
+                project: "my-project",
+                entryPoint: "foofn",
+                runtime: "nodejs14",
+                region: "europe-west2",
+                platform: "gcfv1",
+                httpsTrigger: {},
+              },
+              {
+                id: "foofn",
+                project: "my-project",
+                entryPoint: "foofn",
+                runtime: "nodejs14",
+                region: "us-central1",
+                platform: "gcfv2",
+                httpsTrigger: {},
+              }
+            ),
+            haveBackend: backend.empty(),
+          },
+        },
+      },
     },
     {
       name: "returns rewrites for regex CF3",
       input: { rewrites: [{ regex: "/foo$", function: "foofn", region: "us-central1" }] },
       want: { rewrites: [{ regex: "/foo$", function: "foofn", functionRegion: "us-central1" }] },
+      payload: {
+        functions: {
+          default: {
+            wantBackend: backend.of({
+              id: "foofn",
+              project: "my-project",
+              entryPoint: "foofn",
+              runtime: "nodejs14",
+              region: "us-central1",
+              platform: "gcfv1",
+              httpsTrigger: {},
+            }),
+            haveBackend: backend.empty(),
+          },
+        },
+      },
     },
     {
       name: "skips functions referencing CF3v2 functions being deployed (during prepare)",
@@ -297,6 +357,134 @@ describe("convertConfig", () => {
     it(name, async () => {
       const config = await convertConfig(context, payload, input, finalize);
       expect(config).to.deep.equal(want);
+    });
+  }
+});
+
+describe("convertConfig throws expection if", () => {
+  const tests: Array<{
+    name: string;
+    input: HostingConfig | undefined;
+    errorString: string;
+    payload?: args.Payload;
+    finalize?: boolean;
+    context?: any;
+  }> = [
+    {
+      name: "no valid endpoints are found for function",
+      input: { rewrites: [{ glob: "/foo", function: "foofn" }] },
+      errorString: "Unable to find a valid endpoint",
+    },
+    {
+      name: "multiple v2 endpoints are found for function and functionRegion is not specified",
+      input: { rewrites: [{ glob: "/foo", function: "foofn" }] },
+      errorString: "More than one backend found for function name",
+      payload: {
+        functions: {
+          default: {
+            wantBackend: backend.of(
+              {
+                id: "foofn",
+                project: "my-project",
+                entryPoint: "foofn",
+                runtime: "nodejs14",
+                region: "us-central1",
+                platform: "gcfv2",
+                httpsTrigger: {},
+              },
+              {
+                id: "foofn",
+                project: "my-project",
+                entryPoint: "foofn",
+                runtime: "nodejs14",
+                region: "europe-west2",
+                platform: "gcfv2",
+                httpsTrigger: {},
+              }
+            ),
+            haveBackend: backend.empty(),
+          },
+        },
+      },
+      finalize: true,
+    },
+    {
+      name: "multiple v1 endpoints are found for function and functionRegion is not specified",
+      input: { rewrites: [{ glob: "/foo", function: "foofn" }] },
+      errorString: "More than one backend found for function name",
+      payload: {
+        functions: {
+          default: {
+            wantBackend: backend.of(
+              {
+                id: "foofn",
+                project: "my-project",
+                entryPoint: "foofn",
+                runtime: "nodejs14",
+                region: "us-central1",
+                platform: "gcfv1",
+                httpsTrigger: {},
+              },
+              {
+                id: "foofn",
+                project: "my-project",
+                entryPoint: "foofn",
+                runtime: "nodejs14",
+                region: "europe-west2",
+                platform: "gcfv1",
+                httpsTrigger: {},
+              }
+            ),
+            haveBackend: backend.empty(),
+          },
+        },
+      },
+      finalize: true,
+    },
+    {
+      name: "multiple existing v1 function regions are found for rewrite and no region is specified",
+      input: { rewrites: [{ regex: "/foo$", function: "foofn" }] },
+      context: {
+        loadedExistingBackend: true,
+        existingBackend: {
+          endpoints: {
+            "us-central1": {
+              foofn: {
+                id: "foofn",
+                region: "us-central1",
+                platform: "gcfv1",
+                httpsTrigger: true,
+              },
+            },
+            "asia-northeast2": {
+              foofn: {
+                id: "foofn",
+                region: "asia-northeast2",
+                platform: "gcfv1",
+                httpsTrigger: true,
+              },
+            },
+          },
+        },
+      },
+      errorString: "More than one backend found for function name",
+      finalize: true,
+    },
+  ];
+
+  for (const {
+    name,
+    context = DEFAULT_CONTEXT,
+    input,
+    payload = DEFAULT_PAYLOAD,
+    errorString,
+    finalize = true,
+  } of tests) {
+    it(name, async () => {
+      const config = async (): Promise<void> => {
+        await convertConfig(context, payload, input, finalize);
+      };
+      await expect(config()).to.eventually.be.rejectedWith(FirebaseError, errorString);
     });
   }
 });
