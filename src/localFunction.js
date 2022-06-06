@@ -31,9 +31,9 @@ var LocalFunction = function (trigger, urls, controller) {
       this.call = this._constructCallableFunc.bind(this);
     } else {
       const callClient = new Client({ urlPrefix: this.url, auth: false });
-      this.call = (data, opts) => {
+      this.call = (path) => {
         callClient
-          .get("", opts)
+          .get(path || "/")
           .then((res) => {
             this._requestCallBack(undefined, res, res.body);
           })
@@ -42,9 +42,27 @@ var LocalFunction = function (trigger, urls, controller) {
           });
         return HTTPS_SENTINAL;
       };
-      for (const method of ["get", "post", "put", "patch", "delete"]) {
-        this.call[method] = (data, opts) => {
-          callClient[method]("", data, opts)
+      this.call["get"] = (path) => {
+        callClient["get"]("path" || "/")
+          .then((res) => {
+            this._requestCallBack(undefined, res, res.body);
+          })
+          .catch((err) => {
+            this._requestCallBack(err);
+          });
+        return HTTPS_SENTINAL;
+      };
+      for (const method of ["post", "put", "patch", "delete"]) {
+        this.call[method] = (...args) => {
+          let path = "/";
+          let data = {};
+          if (args.length === 1 && typeof args[0] !== "string") {
+            data = args[0];
+          } else if (args.length === 2) {
+            path = args[0];
+            data = args[1];
+          }
+          callClient[method](path, data)
             .then((res) => {
               this._requestCallBack(undefined, res, res.body);
             })
