@@ -17,7 +17,7 @@ import { requireAuth } from "../requireAuth";
 const { marked } = require("marked");
 import { logger } from "../logger";
 
-export default new Command("hosting:clone <source> <targetChannel>")
+export const command = new Command("hosting:clone <source> <targetChannel>")
   .description("clone a version from one site to another")
   .before(requireAuth)
   .action(async (source = "", targetChannel = "") => {

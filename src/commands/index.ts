@@ -1,17 +1,21 @@
-"use strict";
+import { previews } from "../previews";
 
-const previews = require("../previews").previews;
-
-module.exports = function (client) {
-  var loadCommand = function (name) {
-    var cmd = require("./" + name);
-    // .ts commands export at .default.
-    if (cmd.default) {
-      cmd = cmd.default;
-    }
+export function load(client: any): any {
+  function loadCommand(name: string) {
+    const t0 = process.hrtime.bigint();
+    const { command: cmd } = require(`./${name}`);
     cmd.register(client);
+    const t1 = process.hrtime.bigint();
+    const diffMS = (t1 - t0) / BigInt(1e6);
+    if (diffMS > 75) {
+      // NOTE: logger.debug doesn't work since it's not loaded yet. Comment out below to debug.
+      // console.error(`Loading ${name} took ${diffMS}ms`);
+    }
+
     return cmd.runner();
-  };
+  }
+
+  const t0 = process.hrtime.bigint();
 
   client.appdistribution = {};
   client.appdistribution.distribute = loadCommand("appdistribution-distribute");
@@ -157,5 +161,13 @@ module.exports = function (client) {
   client.target.clear = loadCommand("target-clear");
   client.target.remove = loadCommand("target-remove");
   client.use = loadCommand("use");
+
+  const t1 = process.hrtime.bigint();
+  const diffMS = (t1 - t0) / BigInt(1e6);
+  if (diffMS > 100) {
+    // NOTE: logger.debug doesn't work since it's not loaded yet. Comment out below to debug.
+    console.error(`Loading all commands took ${diffMS}ms`);
+  }
+
   return client;
 };

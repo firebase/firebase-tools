@@ -19,7 +19,7 @@ const validateUserJson = accountImporter.validateUserJson;
 const transArrayToUser = accountImporter.transArrayToUser;
 const serialImportUsers = accountImporter.serialImportUsers;
 
-module.exports = new Command("auth:import [dataFile]")
+export const command = new Command("auth:import [dataFile]")
   .description("import users into your Firebase project from a data file(.csv or .json)")
   .option(
     "--hash-algo <hashAlgo>",
