@@ -13,7 +13,7 @@ import { logger } from "../logger";
 import { promptOnce } from "../prompt";
 import { shortenUrl } from "../shortenUrl";
 
-module.exports = new Command("ext:dev:usage <publisherId>")
+export const command = new Command("ext:dev:usage <publisherId>")
   .description("get usage for an extension")
   .help(
     "use this command to get the usage of extensions you published. " +

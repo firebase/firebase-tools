@@ -159,7 +159,7 @@ async function initiateWebAppCreation(options: CreateWebAppOptions): Promise<Web
   }
 }
 
-module.exports = new Command("apps:create [platform] [displayName]")
+export const command = new Command("apps:create [platform] [displayName]")
   .description(
     "create a new Firebase app. [platform] can be IOS, ANDROID or WEB (case insensitive)."
   )

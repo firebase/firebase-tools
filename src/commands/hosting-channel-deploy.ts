@@ -33,7 +33,7 @@ interface ChannelInfo {
   expireTime: string;
 }
 
-export default new Command("hosting:channel:deploy [channelId]")
+export const command = new Command("hosting:channel:deploy [channelId]")
   .description("deploy to a specific Firebase Hosting channel")
   .option(
     "-e, --expires <duration>",
