@@ -18,7 +18,7 @@ export function prepare(context: any, options: Options): Promise<any> {
     return next;
   }
 
-  const ruleFiles: Record<any, any> = {};
+  const ruleFiles: Record<string, any> = {};
   const deploys: any[] = [];
 
   rulesConfig.forEach((ruleConfig: any) => {
