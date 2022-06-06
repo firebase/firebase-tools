@@ -95,3 +95,6 @@ program.action((_, args) => {
 
   process.exit(1);
 });
+
+// NB: Keep this module.exports line to keep firebase-tools-as-a-module working.
+module.exports = client;
