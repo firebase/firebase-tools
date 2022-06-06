@@ -43,8 +43,6 @@ export abstract class ProjectState {
 
   abstract get authCloudFunction(): AuthCloudFunction;
 
-  abstract get usageMode(): UsageMode;
-
   abstract get allowPasswordSignup(): boolean;
 
   abstract get disableAuth(): boolean;
@@ -571,7 +569,6 @@ export class AgentProjectState extends ProjectState {
   private readonly _authCloudFunction = new AuthCloudFunction(this.projectId);
   private _config: Config = {
     signIn: { allowDuplicateEmails: false },
-    usageMode: UsageMode.DEFAULT,
     blockingFunctions: {},
   };
 
@@ -589,14 +586,6 @@ export class AgentProjectState extends ProjectState {
 
   set oneAccountPerEmail(oneAccountPerEmail: boolean) {
     this._config.signIn.allowDuplicateEmails = !oneAccountPerEmail;
-  }
-
-  get usageMode() {
-    return this._config.usageMode;
-  }
-
-  set usageMode(usageMode: UsageMode) {
-    this._config.usageMode = usageMode;
   }
 
   get allowPasswordSignup() {
@@ -631,31 +620,14 @@ export class AgentProjectState extends ProjectState {
     this._config.blockingFunctions = blockingFunctions;
   }
 
-  // TODO(lisajian): Once v2 API discovery is updated, type of update should be
-  // changed to Schemas["GoogleCloudIdentitytoolkitAdminV2Config"] and validation
-  // of update.usageMode should be moved to operations.ts
   updateConfig(
-    update: Schemas["GoogleCloudIdentitytoolkitAdminV2Config"] & { usageMode?: UsageMode },
+    update: Schemas["GoogleCloudIdentitytoolkitAdminV2Config"],
     updateMask: string | undefined
   ): Config {
-    if (update.usageMode) {
-      assert(
-        update.usageMode !== UsageMode.USAGE_MODE_UNSPECIFIED,
-        "INVALID_USAGE_MODE: ((Invalid usage mode provided.))"
-      );
-      if (update.usageMode === UsageMode.PASSTHROUGH) {
-        assert(
-          this.getUserCount() === 0,
-          "USERS_STILL_EXIST: ((Users are present, unable to set passthrough mode.))"
-        );
-      }
-    }
-
     // Empty masks indicate a full update.
     if (!updateMask) {
       this.oneAccountPerEmail = !update.signIn?.allowDuplicateEmails ?? true;
       this.blockingFunctionsConfig = update.blockingFunctions ?? {};
-      this.usageMode = update.usageMode ?? UsageMode.DEFAULT;
       return this.config;
     }
     return applyMask(updateMask, this.config, update);
@@ -747,10 +719,6 @@ export class TenantProjectState extends ProjectState {
 
   get authCloudFunction() {
     return this.parentProject.authCloudFunction;
-  }
-
-  get usageMode() {
-    return this.parentProject.usageMode;
   }
 
   get tenantConfig() {
@@ -850,7 +818,6 @@ export type BlockingFunctionsConfig =
 // behavior, Config only stores the configurable fields.
 export type Config = {
   signIn: SignInConfig;
-  usageMode: UsageMode;
   blockingFunctions: BlockingFunctionsConfig;
 };
 
@@ -884,14 +851,6 @@ export interface PhoneVerificationRecord {
   code: string;
   phoneNumber: string;
   sessionInfo: string;
-}
-
-export enum UsageMode {
-  // Should never be used
-  USAGE_MODE_UNSPECIFIED = "USAGE_MODE_UNSPECIFIED",
-
-  DEFAULT = "DEFAULT",
-  PASSTHROUGH = "PASSTHROUGH",
 }
 
 export enum BlockingFunctionEvents {
