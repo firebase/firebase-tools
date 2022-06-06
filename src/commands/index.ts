@@ -166,7 +166,7 @@ export function load(client: any): any {
   const diffMS = (t1 - t0) / BigInt(1e6);
   if (diffMS > 100) {
     // NOTE: logger.debug doesn't work since it's not loaded yet. Comment out below to debug.
-    console.error(`Loading all commands took ${diffMS}ms`);
+    // console.error(`Loading all commands took ${diffMS}ms`);
   }
 
   return client;
