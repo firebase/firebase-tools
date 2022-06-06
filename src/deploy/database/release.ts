@@ -1,11 +1,9 @@
-"use strict";
+import * as clc from "cli-color";
 
-var clc = require("cli-color");
+import * as rtdb from "../../rtdb";
+import * as utils from "../../utils";
 
-var rtdb = require("../../rtdb");
-var utils = require("../../utils");
-
-module.exports = function (context) {
+export function release(context: any): Promise<any> {
   if (
     !context.projectId ||
     !context.database ||
@@ -15,17 +13,17 @@ module.exports = function (context) {
     return Promise.resolve();
   }
 
-  var deploys = context.database.deploys;
-  var ruleFiles = context.database.ruleFiles;
+  const deploys = context.database.deploys;
+  const ruleFiles = context.database.ruleFiles;
 
   utils.logBullet(clc.bold.cyan("database: ") + "releasing rules...");
   return Promise.all(
-    deploys.map(function (deploy) {
+    deploys.map((deploy: any) => {
       return rtdb
         .updateRules(context.projectId, deploy.instance, ruleFiles[deploy.rules], {
           dryRun: false,
         })
-        .then(function () {
+        .then(() => {
           utils.logSuccess(
             clc.bold.green("database: ") +
               "rules for database " +
@@ -35,4 +33,4 @@ module.exports = function (context) {
         });
     })
   );
-};
+}
