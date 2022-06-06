@@ -14,7 +14,7 @@ import { requireAuth } from "../requireAuth";
 /**
  * List all published extensions associated with this publisher ID.
  */
-export default new Command("ext:dev:list <publisherId>")
+export const command = new Command("ext:dev:list <publisherId>")
   .description("list all published extensions associated with this publisher ID")
   .before(requireAuth)
   .action(async (publisherId: string) => {

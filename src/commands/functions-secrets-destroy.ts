@@ -14,7 +14,7 @@ import * as secrets from "../functions/secrets";
 import * as backend from "../deploy/functions/backend";
 import * as args from "../deploy/functions/args";
 
-export default new Command("functions:secrets:destroy <KEY>[@version]")
+export const command = new Command("functions:secrets:destroy <KEY>[@version]")
   .description("Destroy a secret. Defaults to destroying the latest version.")
   .withForce("Destroys a secret without confirmation.")
   .action(async (key: string, options: Options) => {
