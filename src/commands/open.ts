@@ -51,7 +51,7 @@ const LINKS: Link[] = [
 
 const CHOICES = _.map(LINKS, "name");
 
-export default new Command("open [link]")
+export const command = new Command("open [link]")
   .description("quickly open a browser to relevant project resources")
   .before(requirePermissions)
   .before(requireDatabaseInstance)

@@ -5,7 +5,7 @@ import * as utils from "../utils";
 import * as auth from "../auth";
 import { FirebaseError } from "../error";
 
-module.exports = new Command("login:use <email>")
+export const command = new Command("login:use <email>")
   .description("set the default account to use for this project directory")
   .action((email: string, options: any) => {
     const allAccounts = auth.getAllAccounts();

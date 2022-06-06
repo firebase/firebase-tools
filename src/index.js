@@ -33,7 +33,7 @@ client.getCommand = function (name) {
   return null;
 };
 
-require("./commands")(client);
+require("./commands").load(client);
 
 /**
  * Checks to see if there is a different command similar to the provided one.
