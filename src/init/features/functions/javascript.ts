@@ -47,4 +47,4 @@ export function setup(setup: any, config: any): Promise<any> {
     .then(() => {
       return askInstallDependencies(setup.functions, config);
     });
-};
+}

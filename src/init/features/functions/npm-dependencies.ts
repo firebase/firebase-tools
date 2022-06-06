@@ -34,4 +34,4 @@ export function askInstallDependencies(setup: any, config: any): Promise<void> {
       });
     }
   });
-};
+}
