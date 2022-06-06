@@ -1,23 +1,21 @@
-"use strict";
+import * as clc from "cli-color";
+import * as _ from "lodash";
 
-var clc = require("cli-color");
-var _ = require("lodash");
+import { Command } from "../command";
+import { logger } from "../logger";
+import * as utils from "../utils";
+import { requirePermissions } from "../requirePermissions";
+import { requireConfig } from "../requireConfig";
+import { serve } from "../serve/index";
+import { filterTargets } from "../filterTargets";
+import { needProjectNumber } from "../projectUtils";
+import { FirebaseError } from "../error";
 
-var { Command } = require("../command");
-const { logger } = require("../logger");
-var utils = require("../utils");
-var { requirePermissions } = require("../requirePermissions");
-var { requireConfig } = require("../requireConfig");
-var { serve } = require("../serve/index");
-var { filterTargets } = require("../filterTargets");
-var { needProjectNumber } = require("../projectUtils");
-var { FirebaseError } = require("../error");
+const VALID_TARGETS = ["hosting", "functions"];
+const REQUIRES_AUTH = ["hosting", "functions"];
+const ALL_TARGETS = _.union(VALID_TARGETS, ["database", "firestore"]);
 
-var VALID_TARGETS = ["hosting", "functions"];
-var REQUIRES_AUTH = ["hosting", "functions"];
-var ALL_TARGETS = _.union(VALID_TARGETS, ["database", "firestore"]);
-
-var filterOnly = (list, only) => {
+function filterOnly(list: string[], only = ""): string[] {
   if (!only) {
     return [];
   }
@@ -27,9 +25,9 @@ var filterOnly = (list, only) => {
       return opt.split(":")[0];
     })
   );
-};
+}
 
-module.exports = new Command("serve")
+export const command = new Command("serve")
   .description("start a local server for your static assets")
   .option("-p, --port <port>", "the port on which to listen (default: 5000)", 5000)
   .option("-o, --host <host>", "the host on which to listen (default: localhost)", "localhost")

@@ -19,7 +19,7 @@ marked.setOptions({
 /**
  * Command for publishing an extension version.
  */
-export default new Command("ext:dev:publish <extensionRef>")
+export const command = new Command("ext:dev:publish <extensionRef>")
   .description(`publish a new version of an extension`)
   .withForce()
   .help(

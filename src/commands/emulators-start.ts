@@ -16,7 +16,7 @@ function stylizeLink(url: string): string {
   return clc.underline(clc.bold(url));
 }
 
-module.exports = new Command("emulators:start")
+export const command = new Command("emulators:start")
   .before(commandUtils.setExportOnExitOptions)
   .before(commandUtils.beforeEmulatorCommand)
   .description("start the local Firebase emulators")

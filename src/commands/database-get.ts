@@ -47,7 +47,7 @@ function applyStringOpts(
   }
 }
 
-export default new Command("database:get <path>")
+export const command = new Command("database:get <path>")
   .description("fetch and print JSON data at the specified path")
   .option("-o, --output <filename>", "save output to the specified file")
   .option("--pretty", "pretty print response")

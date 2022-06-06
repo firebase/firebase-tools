@@ -20,7 +20,7 @@ import {
 
 const MAX_BATCH_SIZE = 1000;
 
-module.exports = new Command("auth:import [dataFile]")
+export const command = new Command("auth:import [dataFile]")
   .description("import users into your Firebase project from a data file(.csv or .json)")
   .option(
     "--hash-algo <hashAlgo>",
