@@ -417,11 +417,13 @@ async function getGithubTokensFromAuthorizationCode(code: string, callbackUrl: s
   for (const [k, v] of Object.entries(data)) {
     form.append(k, v);
   }
+  const headers = form.getHeaders();
+  headers.accept = "application/json";
   const res = await client.request<any, GitHubAuthResponse>({
     method: "POST",
     path: "/login/oauth/access_token",
     body: form,
-    headers: form.getHeaders(),
+    headers,
   });
   return res.body.access_token;
 }
