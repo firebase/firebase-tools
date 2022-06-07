@@ -40,7 +40,7 @@ marked.setOptions({
 /**
  * Command for installing an extension
  */
-export default new Command("ext:install [extensionName]")
+export const command = new Command("ext:install [extensionName]")
   .description(
     "install an official extension if [extensionName] or [extensionName@version] is provided; " +
       (previews.extdev
@@ -48,6 +48,7 @@ export default new Command("ext:install [extensionName]")
         : "") +
       "or run with `-i` to see all available extensions."
   )
+  .option("--local", "deprecated")
   .withForce()
   .before(requirePermissions, ["firebaseextensions.instances.create"])
   .before(ensureExtensionsApiEnabled)
@@ -82,6 +83,12 @@ export default new Command("ext:install [extensionName]")
     if (isUrlPath(extensionName)) {
       throw new FirebaseError(
         `Installing with a source url is no longer supported in the CLI. Please use Firebase Console instead.`
+      );
+    }
+    if (options.local) {
+      utils.logLabeledWarning(
+        logPrefix,
+        "As of firebase-tools@11.0.0, the `--local` flag is no longer required, as it is the default behavior."
       );
     }
 

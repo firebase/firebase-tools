@@ -5,7 +5,7 @@ import { Command } from "../command";
 import { logger } from "../logger";
 import * as utils from "../utils";
 
-export default new Command("help [command]")
+export const command = new Command("help [command]")
   .description("display help information")
   // This must stay `function (commandName)`.
   .action(function (commandName) {

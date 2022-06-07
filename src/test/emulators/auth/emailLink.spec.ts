@@ -12,7 +12,6 @@ import {
   createEmailSignInOob,
   TEST_PHONE_NUMBER,
   TEST_MFA_INFO,
-  updateProjectConfig,
   registerTenant,
   getAccountInfoByLocalId,
 } from "./helpers";
@@ -81,23 +80,6 @@ describeAuthEmulator("email link sign-in", ({ authApi }) => {
       "password",
       "emailLink",
     ]);
-  });
-
-  it("should error on signInWithEmailLink if usageMode is passthrough", async () => {
-    const user = { email: "bob@example.com", password: "notasecret" };
-    const { oobCode } = await createEmailSignInOob(authApi(), user.email);
-    await updateProjectConfig(authApi(), { usageMode: "PASSTHROUGH" });
-
-    await authApi()
-      .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithEmailLink")
-      .query({ key: "fake-api-key" })
-      .send({ email: user.email, oobCode })
-      .then((res) => {
-        expectStatusCode(400, res);
-        expect(res.body.error)
-          .to.have.property("message")
-          .equals("UNSUPPORTED_PASSTHROUGH_OPERATION");
-      });
   });
 
   it("should error on invalid oobCode", async () => {

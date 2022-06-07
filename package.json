@@ -1,6 +1,6 @@
 {
   "name": "firebase-tools",
-  "version": "11.0.0",
+  "version": "11.0.1",
   "description": "Command-Line Interface for Firebase",
   "main": "./lib/index.js",
   "bin": {
@@ -56,7 +56,7 @@
   ],
   "preferGlobal": true,
   "engines": {
-    "node": ">= 14.18.0"
+    "node": "^14.18.0 || >=16.4.0"
   },
   "author": "Firebase (https://firebase.google.com/)",
   "license": "MIT",
@@ -85,7 +85,7 @@
     ]
   },
   "dependencies": {
-    "@google-cloud/pubsub": "^2.19.4",
+    "@google-cloud/pubsub": "^3.0.1",
     "abort-controller": "^3.0.0",
     "ajv": "^6.12.6",
     "archiver": "^5.0.0",

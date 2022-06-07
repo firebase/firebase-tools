@@ -14,7 +14,7 @@ import { getDefaultDatabaseInstance } from "../getDefaultDatabaseInstance";
 import { FirebaseError } from "../error";
 import { MISSING_DEFAULT_INSTANCE_ERROR_MESSAGE } from "../requireDatabaseInstance";
 
-export default new Command("database:instances:create <instanceName>")
+export const command = new Command("database:instances:create <instanceName>")
   .description("create a realtime database instance")
   .option(
     "-l, --location <location>",

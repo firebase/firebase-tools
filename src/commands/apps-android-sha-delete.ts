@@ -6,7 +6,7 @@ import { deleteAppAndroidSha } from "../management/apps";
 import { requireAuth } from "../requireAuth";
 import { promiseWithSpinner } from "../utils";
 
-module.exports = new Command("apps:android:sha:delete <appId> <shaId>")
+export const command = new Command("apps:android:sha:delete <appId> <shaId>")
   .description("delete a SHA certificate hash for a given app id.")
   .before(requireAuth)
   .action(async (appId: string = "", shaId: string = "", options: any): Promise<void> => {

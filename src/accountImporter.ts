@@ -1,20 +1,18 @@
-"use strict";
+import * as clc from "cli-color";
+import * as _ from "lodash";
 
-var clc = require("cli-color");
-var _ = require("lodash");
-
-const { Client } = require("./apiv2");
-const { googleOrigin } = require("./api");
-const { logger } = require("./logger");
-var { FirebaseError } = require("./error");
-var utils = require("./utils");
+import { Client } from "./apiv2";
+import { googleOrigin } from "./api";
+import { logger } from "./logger";
+import { FirebaseError } from "./error";
+import * as utils from "./utils";
 
 const apiClient = new Client({
   urlPrefix: googleOrigin,
 });
 
 // TODO: support for MFA at runtime was added in PR #3173, but this importer currently ignores `mfaInfo` and loses the data on import.
-var ALLOWED_JSON_KEYS = [
+const ALLOWED_JSON_KEYS = [
   "localId",
   "email",
   "emailVerified",
@@ -29,27 +27,27 @@ var ALLOWED_JSON_KEYS = [
   "disabled",
   "customAttributes",
 ];
-var ALLOWED_JSON_KEYS_RENAMING = {
+const ALLOWED_JSON_KEYS_RENAMING = {
   lastSignedInAt: "lastLoginAt",
 };
-var ALLOWED_PROVIDER_USER_INFO_KEYS = ["providerId", "rawId", "email", "displayName", "photoUrl"];
-var ALLOWED_PROVIDER_IDS = ["google.com", "facebook.com", "twitter.com", "github.com"];
+const ALLOWED_PROVIDER_USER_INFO_KEYS = ["providerId", "rawId", "email", "displayName", "photoUrl"];
+const ALLOWED_PROVIDER_IDS = ["google.com", "facebook.com", "twitter.com", "github.com"];
 
-var _isValidBase64 = function (str) {
-  var expected = Buffer.from(str, "base64").toString("base64");
+function isValidBase64(str: string): boolean {
+  const expected = Buffer.from(str, "base64").toString("base64");
   // Buffer automatically pads with '=' character,
   // but input string might not have padding.
-  if (str.length < expected.length && str.slice(-1) !== "=") {
+  if (str.length < expected.length && !str.endsWith("=")) {
     str += "=".repeat(expected.length - str.length);
   }
   return expected === str;
-};
+}
 
-var _toWebSafeBase64 = function (data) {
-  return data.toString("base64").replace(/\//g, "_").replace(/\+/g, "-");
-};
+function toWebSafeBase64(data: string): string {
+  return data.replace(/\//g, "_").replace(/\+/g, "-");
+}
 
-var _addProviderUserInfo = function (user, providerId, arr) {
+function addProviderUserInfo(user: any, providerId: string, arr: any[]) {
   if (arr[0]) {
     user.providerUserInfo.push({
       providerId: providerId,
@@ -59,18 +57,18 @@ var _addProviderUserInfo = function (user, providerId, arr) {
       photoUrl: arr[3],
     });
   }
-};
+}
 
-var _genUploadAccountPostBody = function (projectId, accounts, hashOptions) {
-  var postBody = {
-    users: accounts.map(function (account) {
+function genUploadAccountPostBody(projectId: string, accounts: any[], hashOptions: any) {
+  const postBody: any = {
+    users: accounts.map((account) => {
       if (account.passwordHash) {
-        account.passwordHash = _toWebSafeBase64(account.passwordHash);
+        account.passwordHash = toWebSafeBase64(account.passwordHash);
       }
       if (account.salt) {
-        account.salt = _toWebSafeBase64(account.salt);
+        account.salt = toWebSafeBase64(account.salt);
       }
-      _.each(ALLOWED_JSON_KEYS_RENAMING, function (value, key) {
+      _.each(ALLOWED_JSON_KEYS_RENAMING, (value, key) => {
         if (account[key]) {
           account[value] = account[key];
           delete account[key];
@@ -83,10 +81,10 @@ var _genUploadAccountPostBody = function (projectId, accounts, hashOptions) {
     postBody.hashAlgorithm = hashOptions.hashAlgo;
   }
   if (hashOptions.hashKey) {
-    postBody.signerKey = _toWebSafeBase64(hashOptions.hashKey);
+    postBody.signerKey = toWebSafeBase64(hashOptions.hashKey);
   }
   if (hashOptions.saltSeparator) {
-    postBody.saltSeparator = _toWebSafeBase64(hashOptions.saltSeparator);
+    postBody.saltSeparator = toWebSafeBase64(hashOptions.saltSeparator);
   }
   if (hashOptions.rounds) {
     postBody.rounds = hashOptions.rounds;
@@ -111,10 +109,10 @@ var _genUploadAccountPostBody = function (projectId, accounts, hashOptions) {
   }
   postBody.targetProjectId = projectId;
   return postBody;
-};
+}
 
-var transArrayToUser = function (arr) {
-  var user = {
+export function transArrayToUser(arr: any[]): any {
+  const user = {
     localId: arr[0],
     email: arr[1],
     emailVerified: arr[2] === "true",
@@ -129,47 +127,47 @@ var transArrayToUser = function (arr) {
     disabled: arr[26],
     customAttributes: arr[27],
   };
-  _addProviderUserInfo(user, "google.com", arr.slice(7, 11));
-  _addProviderUserInfo(user, "facebook.com", arr.slice(11, 15));
-  _addProviderUserInfo(user, "twitter.com", arr.slice(15, 19));
-  _addProviderUserInfo(user, "github.com", arr.slice(19, 23));
+  addProviderUserInfo(user, "google.com", arr.slice(7, 11));
+  addProviderUserInfo(user, "facebook.com", arr.slice(11, 15));
+  addProviderUserInfo(user, "twitter.com", arr.slice(15, 19));
+  addProviderUserInfo(user, "github.com", arr.slice(19, 23));
 
-  if (user.passwordHash && !_isValidBase64(user.passwordHash)) {
+  if (user.passwordHash && !isValidBase64(user.passwordHash)) {
     return {
       error: "Password hash should be base64 encoded.",
     };
   }
-  if (user.salt && !_isValidBase64(user.salt)) {
+  if (user.salt && !isValidBase64(user.salt)) {
     return {
       error: "Password salt should be base64 encoded.",
     };
   }
   return user;
-};
+}
 
-var validateOptions = function (options) {
-  var hashOptions = _validateRequiredParameters(options);
+export function validateOptions(options: any): any {
+  const hashOptions = validateRequiredParameters(options);
   if (!hashOptions.valid) {
     return hashOptions;
   }
-  var hashInputOrder = options.hashInputOrder ? options.hashInputOrder.toUpperCase() : undefined;
+  const hashInputOrder = options.hashInputOrder ? options.hashInputOrder.toUpperCase() : undefined;
   if (hashInputOrder) {
-    if (hashInputOrder != "SALT_FIRST" && hashInputOrder != "PASSWORD_FIRST") {
-      throw new FirebaseError("Unknown password hash order flag", { exit: 1 });
+    if (hashInputOrder !== "SALT_FIRST" && hashInputOrder !== "PASSWORD_FIRST") {
+      throw new FirebaseError("Unknown password hash order flag");
     } else {
       hashOptions["passwordHashOrder"] =
-        hashInputOrder == "SALT_FIRST" ? "SALT_AND_PASSWORD" : "PASSWORD_AND_SALT";
+        hashInputOrder === "SALT_FIRST" ? "SALT_AND_PASSWORD" : "PASSWORD_AND_SALT";
     }
   }
   return hashOptions;
-};
+}
 
-var _validateRequiredParameters = function (options) {
+function validateRequiredParameters(options: any): any {
   if (!options.hashAlgo) {
     utils.logWarning("No hash algorithm specified. Password users cannot be imported.");
     return { valid: true };
   }
-  var hashAlgo = options.hashAlgo.toUpperCase();
+  const hashAlgo = options.hashAlgo.toUpperCase();
   let roundsNum;
   switch (hashAlgo) {
     case "HMAC_SHA512":
@@ -178,8 +176,7 @@ var _validateRequiredParameters = function (options) {
     case "HMAC_MD5":
       if (!options.hashKey || options.hashKey === "") {
         throw new FirebaseError(
-          "Must provide hash key(base64 encoded) for hash algorithm " + options.hashAlgo,
-          { exit: 1 }
+          "Must provide hash key(base64 encoded) for hash algorithm " + options.hashAlgo
         );
       }
       return { hashAlgo: hashAlgo, hashKey: options.hashKey, valid: true };
@@ -189,11 +186,10 @@ var _validateRequiredParameters = function (options) {
     case "SHA512":
       // MD5 is [0,8192] but SHA1, SHA256, and SHA512 are [1,8192]
       roundsNum = parseInt(options.rounds, 10);
-      var minRounds = hashAlgo === "MD5" ? 0 : 1;
+      const minRounds = hashAlgo === "MD5" ? 0 : 1;
       if (isNaN(roundsNum) || roundsNum < minRounds || roundsNum > 8192) {
         throw new FirebaseError(
-          `Must provide valid rounds(${minRounds}..8192) for hash algorithm ${options.hashAlgo}`,
-          { exit: 1 }
+          `Must provide valid rounds(${minRounds}..8192) for hash algorithm ${options.hashAlgo}`
         );
       }
       return { hashAlgo: hashAlgo, rounds: options.rounds, valid: true };
@@ -202,33 +198,29 @@ var _validateRequiredParameters = function (options) {
       roundsNum = parseInt(options.rounds, 10);
       if (isNaN(roundsNum) || roundsNum < 0 || roundsNum > 120000) {
         throw new FirebaseError(
-          "Must provide valid rounds(0..120000) for hash algorithm " + options.hashAlgo,
-          { exit: 1 }
+          "Must provide valid rounds(0..120000) for hash algorithm " + options.hashAlgo
         );
       }
       return { hashAlgo: hashAlgo, rounds: options.rounds, valid: true };
     case "SCRYPT":
       if (!options.hashKey || options.hashKey === "") {
         throw new FirebaseError(
-          "Must provide hash key(base64 encoded) for hash algorithm " + options.hashAlgo,
-          { exit: 1 }
+          "Must provide hash key(base64 encoded) for hash algorithm " + options.hashAlgo
         );
       }
       roundsNum = parseInt(options.rounds, 10);
       if (isNaN(roundsNum) || roundsNum <= 0 || roundsNum > 8) {
         throw new FirebaseError(
-          "Must provide valid rounds(1..8) for hash algorithm " + options.hashAlgo,
-          { exit: 1 }
+          "Must provide valid rounds(1..8) for hash algorithm " + options.hashAlgo
         );
       }
-      var memCost = parseInt(options.memCost, 10);
+      const memCost = parseInt(options.memCost, 10);
       if (isNaN(memCost) || memCost <= 0 || memCost > 14) {
         throw new FirebaseError(
-          "Must provide valid memory cost(1..14) for hash algorithm " + options.hashAlgo,
-          { exit: 1 }
+          "Must provide valid memory cost(1..14) for hash algorithm " + options.hashAlgo
         );
       }
-      var saltSeparator = "";
+      let saltSeparator = "";
       if (options.saltSeparator) {
         saltSeparator = options.saltSeparator;
       }
@@ -243,10 +235,10 @@ var _validateRequiredParameters = function (options) {
     case "BCRYPT":
       return { hashAlgo: hashAlgo, valid: true };
     case "STANDARD_SCRYPT":
-      var cpuMemCost = parseInt(options.memCost, 10);
-      var parallelization = parseInt(options.parallelization, 10);
-      var blockSize = parseInt(options.blockSize, 10);
-      var dkLen = parseInt(options.dkLen, 10);
+      const cpuMemCost = parseInt(options.memCost, 10);
+      const parallelization = parseInt(options.parallelization, 10);
+      const blockSize = parseInt(options.blockSize, 10);
+      const dkLen = parseInt(options.dkLen, 10);
       return {
         hashAlgo: hashAlgo,
         valid: true,
@@ -258,15 +250,17 @@ var _validateRequiredParameters = function (options) {
     default:
       throw new FirebaseError("Unsupported hash algorithm " + clc.bold(options.hashAlgo));
   }
-};
+}
 
-var _validateProviderUserInfo = function (providerUserInfo) {
+function validateProviderUserInfo(providerUserInfo: { providerId: string; error?: string }): {
+  error?: string;
+} {
   if (!_.includes(ALLOWED_PROVIDER_IDS, providerUserInfo.providerId)) {
     return {
       error: JSON.stringify(providerUserInfo, null, 2) + " has unsupported providerId",
     };
   }
-  var keydiff = _.difference(_.keys(providerUserInfo), ALLOWED_PROVIDER_USER_INFO_KEYS);
+  const keydiff = _.difference(_.keys(providerUserInfo), ALLOWED_PROVIDER_USER_INFO_KEYS);
   if (keydiff.length) {
     return {
       error:
@@ -274,49 +268,49 @@ var _validateProviderUserInfo = function (providerUserInfo) {
     };
   }
   return {};
-};
+}
 
-var validateUserJson = function (userJson) {
-  var keydiff = _.difference(_.keys(userJson), ALLOWED_JSON_KEYS);
+export function validateUserJson(userJson: any): { error?: string } {
+  const keydiff = _.difference(_.keys(userJson), ALLOWED_JSON_KEYS);
   if (keydiff.length) {
     return {
       error: JSON.stringify(userJson, null, 2) + " has unsupported keys: " + keydiff.join(","),
     };
   }
   if (userJson.providerUserInfo) {
-    for (var i = 0; i < userJson.providerUserInfo.length; i++) {
-      var res = _validateProviderUserInfo(userJson.providerUserInfo[i]);
+    for (let i = 0; i < userJson.providerUserInfo.length; i++) {
+      const res = validateProviderUserInfo(userJson.providerUserInfo[i]);
       if (res.error) {
         return res;
       }
     }
   }
-  var badFormat = JSON.stringify(userJson, null, 2) + " has invalid data format: ";
-  if (userJson.passwordHash && !_isValidBase64(userJson.passwordHash)) {
+  const badFormat = JSON.stringify(userJson, null, 2) + " has invalid data format: ";
+  if (userJson.passwordHash && !isValidBase64(userJson.passwordHash)) {
     return {
       error: badFormat + "Password hash should be base64 encoded.",
     };
   }
-  if (userJson.salt && !_isValidBase64(userJson.salt)) {
+  if (userJson.salt && !isValidBase64(userJson.salt)) {
     return {
       error: badFormat + "Password salt should be base64 encoded.",
     };
   }
   return {};
-};
+}
 
-var _sendRequest = function (projectId, userList, hashOptions) {
+async function sendRequest(projectId: string, userList: any[], hashOptions: any): Promise<void> {
   logger.info("Starting importing " + userList.length + " account(s).");
-  const postData = _genUploadAccountPostBody(projectId, userList, hashOptions);
+  const postData = genUploadAccountPostBody(projectId, userList, hashOptions);
   return apiClient
-    .post("/identitytoolkit/v3/relyingparty/uploadAccount", postData, {
+    .post<any, any>("/identitytoolkit/v3/relyingparty/uploadAccount", postData, {
       skipLog: { body: true }, // Contains a lot of PII - don't log.
     })
-    .then(function (ret) {
+    .then((ret) => {
       if (ret.body.error) {
         logger.info("Encountered problems while importing accounts. Details:");
         logger.info(
-          ret.body.error.map(function (rawInfo) {
+          ret.body.error.map((rawInfo: any) => {
             return {
               account: JSON.stringify(userList[parseInt(rawInfo.index, 10)], null, 2),
               reason: rawInfo.message,
@@ -328,21 +322,17 @@ var _sendRequest = function (projectId, userList, hashOptions) {
       }
       logger.info();
     });
-};
+}
 
-var serialImportUsers = function (projectId, hashOptions, userListArr, index) {
-  return _sendRequest(projectId, userListArr[index], hashOptions).then(function () {
+export function serialImportUsers(
+  projectId: string,
+  hashOptions: any,
+  userListArr: any[],
+  index: number
+): Promise<any> {
+  return sendRequest(projectId, userListArr[index], hashOptions).then(() => {
     if (index < userListArr.length - 1) {
       return serialImportUsers(projectId, hashOptions, userListArr, index + 1);
     }
   });
-};
-
-var accountImporter = {
-  validateOptions: validateOptions,
-  validateUserJson: validateUserJson,
-  transArrayToUser: transArrayToUser,
-  serialImportUsers: serialImportUsers,
-};
-
-module.exports = accountImporter;
+}
