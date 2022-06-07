@@ -366,19 +366,32 @@ describe("convertConfig throws expection if", () => {
     name: string;
     input: HostingConfig | undefined;
     errorString: string;
-    payload?: args.Payload;
+    payload: args.Payload;
     finalize?: boolean;
-    context?: any;
+    context: any;
   }> = [
     {
       name: "no valid endpoints are found for function",
       input: { rewrites: [{ glob: "/foo", function: "foofn" }] },
+      context: {
+        loadedExistingBackend: true,
+        existingBackend: {
+          endpoints: {},
+        },
+      },
+      payload: {},
       errorString: "Unable to find a valid endpoint",
     },
     {
       name: "multiple v2 endpoints are found for function and functionRegion is not specified",
       input: { rewrites: [{ glob: "/foo", function: "foofn" }] },
       errorString: "More than one backend found for function name",
+      context: {
+        loadedExistingBackend: true,
+        existingBackend: {
+          endpoints: {},
+        },
+      },
       payload: {
         functions: {
           default: {
@@ -411,7 +424,12 @@ describe("convertConfig throws expection if", () => {
     {
       name: "multiple v1 endpoints are found for function and functionRegion is not specified",
       input: { rewrites: [{ glob: "/foo", function: "foofn" }] },
-      errorString: "More than one backend found for function name",
+      context: {
+        loadedExistingBackend: true,
+        existingBackend: {
+          endpoints: {},
+        },
+      },
       payload: {
         functions: {
           default: {
@@ -440,6 +458,7 @@ describe("convertConfig throws expection if", () => {
         },
       },
       finalize: true,
+      errorString: "More than one backend found for function name",
     },
     {
       name: "multiple existing v1 function regions are found for rewrite and no region is specified",
@@ -467,19 +486,13 @@ describe("convertConfig throws expection if", () => {
           },
         },
       },
+      payload: {},
       errorString: "More than one backend found for function name",
       finalize: true,
     },
   ];
 
-  for (const {
-    name,
-    context = DEFAULT_CONTEXT,
-    input,
-    payload = DEFAULT_PAYLOAD,
-    errorString,
-    finalize = true,
-  } of tests) {
+  for (const { name, context, input, payload, errorString, finalize = true } of tests) {
     it(name, async () => {
       const config = async (): Promise<void> => {
         await convertConfig(context, payload, input, finalize);
