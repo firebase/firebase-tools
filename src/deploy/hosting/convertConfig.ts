@@ -77,8 +77,9 @@ export async function convertConfig(
     });
 
     if (matchingBackends.length > 1) {
-      throw new FirebaseError(`More than one backend found for function name: ${serviceId}.
-      If the function is deployed in multiple regions, you must specify a region.`);
+      throw new FirebaseError(
+        `More than one backend found for function name: ${serviceId}. If the function is deployed in multiple regions, you must specify a region.`
+      );
     }
 
     if (matchingBackends.length === 1) {
@@ -87,7 +88,7 @@ export async function convertConfig(
         return endpoint;
       }
     }
-    return undefined;
+    return;
   };
 
   const endpointBeingDeployed = (
@@ -150,7 +151,7 @@ export async function convertConfig(
         return endpointAlreadyDeployed;
       }
     }
-    return undefined;
+    return;
   };
 
   // rewrites
