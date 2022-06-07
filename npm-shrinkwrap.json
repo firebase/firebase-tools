@@ -26,7 +26,6 @@
         "csv-parse": "^5.0.4",
         "exegesis": "^4.1.0",
         "exegesis-express": "^4.0.0",
-        "exit-code": "^1.0.2",
         "express": "^4.16.4",
         "filesize": "^6.1.0",
         "firebase-frameworks": "^0.4.2",
@@ -81,7 +80,7 @@
         "@types/chai": "^4.3.0",
         "@types/chai-as-promised": "^7.1.4",
         "@types/cjson": "^0.5.0",
-        "@types/cli-color": "^0.3.29",
+        "@types/cli-color": "^2.0.2",
         "@types/cli-table": "^0.3.0",
         "@types/configstore": "^4.0.0",
         "@types/cors": "^2.8.10",
@@ -116,6 +115,7 @@
         "@types/triple-beam": "^1.3.0",
         "@types/universal-analytics": "^0.4.5",
         "@types/unzipper": "^0.10.0",
+        "@types/update-notifier": "^5.1.0",
         "@types/uuid": "^8.3.1",
         "@types/ws": "^7.2.3",
         "@typescript-eslint/eslint-plugin": "^5.9.0",
@@ -2201,9 +2201,9 @@
       "dev": true
     },
     "node_modules/@types/cli-color": {
-      "version": "0.3.29",
-      "resolved": "https://registry.npmjs.org/@types/cli-color/-/cli-color-0.3.29.tgz",
-      "integrity": "sha1-yDpx/gLIx+HM7ASN1qJFjR9sluo=",
+      "version": "2.0.2",
+      "resolved": "https://registry.npmjs.org/@types/cli-color/-/cli-color-2.0.2.tgz",
+      "integrity": "sha512-1ErQIcmNHtNViGKTtB/TIKqMkC2RkKI2nBneCr9hSCPo9H05g9VzjlaXPW3H0vaI8zFGjJZvSav+VKDKCtKgKA==",
       "dev": true
     },
     "node_modules/@types/cli-table": {
@@ -2676,6 +2676,16 @@
       "dev": true,
       "dependencies": {
         "@types/node": "*"
+      }
+    },
+    "node_modules/@types/update-notifier": {
+      "version": "5.1.0",
+      "resolved": "https://registry.npmjs.org/@types/update-notifier/-/update-notifier-5.1.0.tgz",
+      "integrity": "sha512-aGY5pH1Q/DcToKXl4MCj1c0uDUB+zSVFDRCI7Q7js5sguzBTqJV/5kJA2awofbtWYF3xnon1TYdZYnFditRPtQ==",
+      "dev": true,
+      "dependencies": {
+        "@types/configstore": "*",
+        "boxen": "^4.2.0"
       }
     },
     "node_modules/@types/uuid": {
@@ -5966,11 +5976,6 @@
       "engines": {
         "node": ">=10"
       }
-    },
-    "node_modules/exit-code": {
-      "version": "1.0.2",
-      "resolved": "https://registry.npmjs.org/exit-code/-/exit-code-1.0.2.tgz",
-      "integrity": "sha1-zhZYEcnxF69qX4gpQLlq5/muzDQ="
     },
     "node_modules/exit-on-epipe": {
       "version": "1.0.1",
@@ -15862,9 +15867,9 @@
       "dev": true
     },
     "@types/cli-color": {
-      "version": "0.3.29",
-      "resolved": "https://registry.npmjs.org/@types/cli-color/-/cli-color-0.3.29.tgz",
-      "integrity": "sha1-yDpx/gLIx+HM7ASN1qJFjR9sluo=",
+      "version": "2.0.2",
+      "resolved": "https://registry.npmjs.org/@types/cli-color/-/cli-color-2.0.2.tgz",
+      "integrity": "sha512-1ErQIcmNHtNViGKTtB/TIKqMkC2RkKI2nBneCr9hSCPo9H05g9VzjlaXPW3H0vaI8zFGjJZvSav+VKDKCtKgKA==",
       "dev": true
     },
     "@types/cli-table": {
@@ -16337,6 +16342,16 @@
       "dev": true,
       "requires": {
         "@types/node": "*"
+      }
+    },
+    "@types/update-notifier": {
+      "version": "5.1.0",
+      "resolved": "https://registry.npmjs.org/@types/update-notifier/-/update-notifier-5.1.0.tgz",
+      "integrity": "sha512-aGY5pH1Q/DcToKXl4MCj1c0uDUB+zSVFDRCI7Q7js5sguzBTqJV/5kJA2awofbtWYF3xnon1TYdZYnFditRPtQ==",
+      "dev": true,
+      "requires": {
+        "@types/configstore": "*",
+        "boxen": "^4.2.0"
       }
     },
     "@types/uuid": {
@@ -18825,11 +18840,6 @@
       "requires": {
         "exegesis": "^4.1.0"
       }
-    },
-    "exit-code": {
-      "version": "1.0.2",
-      "resolved": "https://registry.npmjs.org/exit-code/-/exit-code-1.0.2.tgz",
-      "integrity": "sha1-zhZYEcnxF69qX4gpQLlq5/muzDQ="
     },
     "exit-on-epipe": {
       "version": "1.0.1",
