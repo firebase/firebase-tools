@@ -49,6 +49,12 @@ export function buildFromV1Alpha1(
   runtime: runtimes.Runtime
 ): build.Build {
   const manifest = JSON.parse(JSON.stringify(yaml)) as Manifest;
+  requireKeys("", manifest, "endpoints");
+  assertKeyTypes("", manifest, {
+    specVersion: "string",
+    requiredAPIs: "array",
+    endpoints: "object",
+  });
   const bd: build.Build = build.empty();
   bd.requiredAPIs = parseRequiredAPIs(manifest);
   for (const id of Object.keys(manifest.endpoints)) {

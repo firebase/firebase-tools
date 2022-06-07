@@ -6,7 +6,6 @@ import * as build from "../../../../../deploy/functions/build";
 import { Runtime } from "../../../../../deploy/functions/runtimes";
 import * as v1alpha1 from "../../../../../deploy/functions/runtimes/discovery/v1alpha1";
 import { BEFORE_CREATE_EVENT } from "../../../../../functions/events/v1";
-import { BucketBuilder } from "firebase-functions/v1/storage";
 
 const PROJECT = "project";
 const REGION = "region";
