@@ -318,15 +318,7 @@ describeAuthEmulator("email link sign-in", ({ authApi }) => {
   });
 
   describe("when blocking functions are present", () => {
-    afterEach(async () => {
-      await updateConfig(
-        authApi(),
-        PROJECT_ID,
-        {
-          blockingFunctions: {},
-        },
-        "blockingFunctions"
-      );
+    afterEach(() => {
       expect(nock.isDone()).to.be.true;
       nock.cleanAll();
     });
@@ -508,6 +500,63 @@ describeAuthEmulator("email link sign-in", ({ authApi }) => {
         });
     });
 
+    it("should update modifiable fields before sign in for existing accounts", async () => {
+      const user = { email: "bob@example.com", password: "notasecret" };
+      const { localId, idToken } = await registerUser(authApi(), user);
+      const { oobCode } = await createEmailSignInOob(authApi(), user.email);
+      await updateConfig(
+        authApi(),
+        PROJECT_ID,
+        {
+          blockingFunctions: {
+            triggers: {
+              beforeSignIn: {
+                functionUri: BEFORE_SIGN_IN_URL,
+              },
+            },
+          },
+        },
+        "blockingFunctions"
+      );
+      nock(BLOCKING_FUNCTION_HOST)
+        .post(BEFORE_SIGN_IN_PATH)
+        .reply(200, {
+          userRecord: {
+            updateMask: "displayName,photoUrl,emailVerified,customClaims,sessionClaims",
+            displayName: DISPLAY_NAME,
+            photoUrl: PHOTO_URL,
+            emailVerified: true,
+            customClaims: JSON.stringify({ customAttribute: "custom" }),
+            sessionClaims: JSON.stringify({ sessionAttribute: "session" }),
+          },
+        });
+
+      await authApi()
+        .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithEmailLink")
+        .query({ key: "fake-api-key" })
+        .send({ email: user.email, oobCode })
+        .then((res) => {
+          expectStatusCode(200, res);
+          expect(res.body.localId).to.equal(localId);
+          expect(res.body).to.have.property("idToken").that.is.a("string");
+          expect(res.body.email).to.equal(user.email);
+          expect(res.body.isNewUser).to.equal(false);
+
+          const idToken = res.body.idToken;
+          const decoded = decodeJwt(idToken, { complete: true }) as {
+            header: JwtHeader;
+            payload: FirebaseJwtPayload;
+          } | null;
+          expect(decoded, "JWT returned by emulator is invalid").not.to.be.null;
+
+          expect(decoded!.payload.name).to.equal(DISPLAY_NAME);
+          expect(decoded!.payload.picture).to.equal(PHOTO_URL);
+          expect(decoded!.payload.email_verified).to.be.true;
+          expect(decoded!.payload).to.have.property("customAttribute").equals("custom");
+          expect(decoded!.payload).to.have.property("sessionAttribute").equals("session");
+        });
+    });
+
     it("should error after disabling user", async () => {
       await updateConfig(
         authApi(),
@@ -535,21 +584,10 @@ describeAuthEmulator("email link sign-in", ({ authApi }) => {
       await createEmailSignInOob(authApi(), email);
       const oobs = await inspectOobs(authApi());
 
-      // Creates the user and sets user to disabled
       await authApi()
         .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithEmailLink")
         .query({ key: "fake-api-key" })
         .send({ oobCode: oobs[0].oobCode, email })
-        .then((res) => {
-          expectStatusCode(200, res);
-        });
-
-      // Next sign in attempt will throw error because user is disabled
-      const { oobCode } = await createEmailSignInOob(authApi(), email);
-      await authApi()
-        .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithEmailLink")
-        .query({ key: "fake-api-key" })
-        .send({ email, oobCode })
         .then((res) => {
           expectStatusCode(400, res);
           expect(res.body.error.message).to.equal("USER_DISABLED");

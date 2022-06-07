@@ -583,20 +583,12 @@ describeAuthEmulator("accounts:signUp", ({ authApi }) => {
   });
 
   describe("when blocking functions are present", () => {
-    afterEach(async () => {
-      await updateConfig(
-        authApi(),
-        PROJECT_ID,
-        {
-          blockingFunctions: {},
-        },
-        "blockingFunctions"
-      );
+    afterEach(() => {
       expect(nock.isDone()).to.be.true;
       nock.cleanAll();
     });
 
-    it("should update modifiable fields for a new email/password user", async () => {
+    it("should update modifiable fields with beforeCreate response for a new email/password user", async () => {
       await updateConfig(
         authApi(),
         PROJECT_ID,
@@ -651,8 +643,7 @@ describeAuthEmulator("accounts:signUp", ({ authApi }) => {
         });
     });
 
-    it("should update modifiable fields for an existing user", async () => {
-      const { idToken } = await registerAnonUser(authApi());
+    it("should update modifiable fields with beforeSignIn response for a new email/password user", async () => {
       await updateConfig(
         authApi(),
         PROJECT_ID,
@@ -683,7 +674,75 @@ describeAuthEmulator("accounts:signUp", ({ authApi }) => {
       const email = "me@example.com";
       await authApi()
         .post("/identitytoolkit.googleapis.com/v1/accounts:signUp")
-        .send({ idToken, email, password: "notasecret" })
+        .send({ email, password: "notasecret" })
+        .query({ key: "fake-api-key" })
+        .then((res) => {
+          expectStatusCode(200, res);
+          expect(res.body).to.have.property("refreshToken").that.is.a("string");
+
+          const idToken = res.body.idToken;
+          const decoded = decodeJwt(idToken, { complete: true }) as {
+            header: JwtHeader;
+            payload: FirebaseJwtPayload;
+          } | null;
+          expect(decoded, "JWT returned by emulator is invalid").not.to.be.null;
+          expect(decoded!.payload.firebase).to.have.property("sign_in_provider").equals("password");
+          expect(decoded!.payload.firebase.identities).to.eql({
+            email: [email],
+          });
+
+          expect(res.body.displayName).to.equal(DISPLAY_NAME);
+          expect(decoded!.payload.name).to.equal(DISPLAY_NAME);
+          expect(decoded!.payload.picture).to.equal(PHOTO_URL);
+          expect(decoded!.payload.email_verified).to.be.true;
+          expect(decoded!.payload).to.have.property("customAttribute").equals("custom");
+          expect(decoded!.payload).to.have.property("sessionAttribute").equals("session");
+        });
+    });
+
+    it("beforeSignIn fields should overwrite beforeCreate fields", async () => {
+      await updateConfig(
+        authApi(),
+        PROJECT_ID,
+        {
+          blockingFunctions: {
+            triggers: {
+              beforeCreate: {
+                functionUri: BEFORE_CREATE_URL,
+              },
+              beforeSignIn: {
+                functionUri: BEFORE_SIGN_IN_URL,
+              },
+            },
+          },
+        },
+        "blockingFunctions"
+      );
+      nock(BLOCKING_FUNCTION_HOST)
+        .post(BEFORE_CREATE_PATH)
+        .reply(200, {
+          updateMask: "displayName,photoUrl,emailVerified,customClaims",
+          displayName: "oldDisplayName",
+          photoUrl: "oldPhotoUrl",
+          emailVerified: false,
+          customClaims: JSON.stringify({ customAttribute: "oldCustom" }),
+        })
+        .post(BEFORE_SIGN_IN_PATH)
+        .reply(200, {
+          userRecord: {
+            updateMask: "displayName,photoUrl,emailVerified,customClaims,sessionClaims",
+            displayName: DISPLAY_NAME,
+            photoUrl: PHOTO_URL,
+            emailVerified: true,
+            customClaims: JSON.stringify({ customAttribute: "custom" }),
+            sessionClaims: JSON.stringify({ sessionAttribute: "session" }),
+          },
+        });
+
+      const email = "me@example.com";
+      await authApi()
+        .post("/identitytoolkit.googleapis.com/v1/accounts:signUp")
+        .send({ email, password: "notasecret" })
         .query({ key: "fake-api-key" })
         .then((res) => {
           expectStatusCode(200, res);
@@ -733,29 +792,10 @@ describeAuthEmulator("accounts:signUp", ({ authApi }) => {
           },
         });
 
-      // Creates user and sets user to disabled
       const email = "me@example.com";
       const password = "notasecret";
       await authApi()
         .post("/identitytoolkit.googleapis.com/v1/accounts:signUp")
-        .send({ email, password })
-        .query({ key: "fake-api-key" })
-        .then((res) => {
-          expectStatusCode(200, res);
-          const idToken = res.body.idToken;
-          const decoded = decodeJwt(idToken, { complete: true }) as {
-            header: JwtHeader;
-            payload: FirebaseJwtPayload;
-          } | null;
-          expect(decoded, "JWT returned by emulator is invalid").not.to.be.null;
-          expect(decoded!.payload.firebase.identities).to.eql({
-            email: [email],
-          });
-        });
-
-      // Should no longer be able to sign in
-      await authApi()
-        .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword")
         .send({ email, password })
         .query({ key: "fake-api-key" })
         .then((res) => {

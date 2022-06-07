@@ -154,8 +154,9 @@ async function signUp(
 ): Promise<Schemas["GoogleCloudIdentitytoolkitV1SignUpResponse"]> {
   assert(!state.disableAuth, "PROJECT_DISABLED");
   let provider: string | undefined;
+  const timestamp = new Date();
   let updates: Omit<Partial<UserInfo>, "localId" | "providerUserInfo"> = {
-    lastLoginAt: Date.now().toString(),
+    lastLoginAt: timestamp.getTime().toString(),
   };
 
   if (ctx.security?.Oauth2) {
@@ -228,30 +229,39 @@ async function signUp(
 
   let extraClaims;
   if (!user) {
+    updates.createdAt = timestamp.getTime().toString();
+    const localId = reqBody.localId ?? state.generateLocalId();
     if (reqBody.email) {
-      const fetchResponse = await fetchBlockingFunction(
+      const userBeforeCreate = { localId, ...updates };
+      const blockingResponse = await fetchBlockingFunction(
         state,
         BlockingFunctionEvents.BEFORE_CREATE,
-        updates
+        userBeforeCreate,
+        { signInMethod: "password" }
       );
-      updates = fetchResponse.user;
+      updates = { ...updates, ...blockingResponse.updates };
     }
-    if (reqBody.localId) {
-      user = state.createUserWithLocalId(reqBody.localId, updates);
-      assert(user, "DUPLICATE_LOCAL_ID");
-    } else {
-      user = state.createUser(updates);
+
+    user = state.createUserWithLocalId(localId, updates);
+    assert(user, "DUPLICATE_LOCAL_ID");
+
+    if (reqBody.email) {
+      if (!user.disabled) {
+        const blockingResponse = await fetchBlockingFunction(
+          state,
+          BlockingFunctionEvents.BEFORE_SIGN_IN,
+          user,
+          { signInMethod: "password" }
+        );
+        updates = blockingResponse.updates;
+        extraClaims = blockingResponse.extraClaims;
+        user = state.updateUserByLocalId(user.localId, updates);
+      }
+      // User may have been disabled after either blocking function, but
+      // only throw after writing user to store
+      assert(!user.disabled, "USER_DISABLED");
     }
   } else {
-    if (reqBody.email) {
-      const fetchResponse = await fetchBlockingFunction(
-        state,
-        BlockingFunctionEvents.BEFORE_SIGN_IN,
-        updates
-      );
-      updates = fetchResponse.user;
-      extraClaims = fetchResponse.extraClaims;
-    }
     user = state.updateUserByLocalId(user.localId, updates);
   }
 
@@ -1341,9 +1351,10 @@ function signInWithCustomToken(
   let user = state.getUserByLocalId(localId);
   const isNewUser = !user;
 
-  const updates = {
+  const timestamp = new Date();
+  const updates: Partial<UserInfo> = {
     customAuth: true,
-    lastLoginAt: Date.now().toString(),
+    lastLoginAt: timestamp.getTime().toString(),
     tenantId: state instanceof TenantProjectState ? state.tenantId : undefined,
   };
 
@@ -1351,6 +1362,7 @@ function signInWithCustomToken(
     assert(!user.disabled, "USER_DISABLED");
     user = state.updateUserByLocalId(localId, updates);
   } else {
+    updates.createdAt = timestamp.getTime().toString();
     user = state.createUserWithLocalId(localId, updates);
     if (!user) {
       throw new Error(`Internal assertion error: trying to create duplicate localId: ${localId}`);
@@ -1380,9 +1392,13 @@ async function signInWithEmailLink(
     email === oob.email,
     "INVALID_EMAIL : The email provided does not match the sign-in email address."
   );
-
   state.deleteOobCode(reqBody.oobCode);
 
+  const userFromEmail = state.getUserByEmail(email);
+  let user = userFromIdToken || userFromEmail;
+  const isNewUser = !user;
+
+  const timestamp = new Date();
   let updates: Omit<Partial<UserInfo>, "localId" | "providerUserInfo"> = {
     email,
     emailVerified: true,
@@ -1393,33 +1409,51 @@ async function signInWithEmailLink(
     updates.tenantId = state.tenantId;
   }
 
-  let user = state.getUserByEmail(email);
-  const isNewUser = !user && !userFromIdToken;
+  let extraClaims;
   if (!user) {
-    if (userFromIdToken) {
-      user = state.updateUserByLocalId(userFromIdToken.localId, updates);
-    } else {
-      const fetchResponse = await fetchBlockingFunction(
+    updates.createdAt = timestamp.getTime().toString();
+    const localId = state.generateLocalId();
+    const userBeforeCreate = { localId, ...updates };
+    const blockingResponse = await fetchBlockingFunction(
+      state,
+      BlockingFunctionEvents.BEFORE_CREATE,
+      userBeforeCreate,
+      { signInMethod: "emailLink" }
+    );
+
+    updates = { ...updates, ...blockingResponse.updates };
+    user = state.createUserWithLocalId(localId, updates)!;
+
+    if (!user.disabled && !isMfaEnabled(state, user)) {
+      const blockingResponse = await fetchBlockingFunction(
         state,
-        BlockingFunctionEvents.BEFORE_CREATE,
-        updates
+        BlockingFunctionEvents.BEFORE_SIGN_IN,
+        user,
+        { signInMethod: "emailLink" }
       );
-      updates = fetchResponse.user;
-      user = state.createUser(updates);
+      updates = blockingResponse.updates;
+      extraClaims = blockingResponse.extraClaims;
+      user = state.updateUserByLocalId(user.localId, updates);
     }
   } else {
     assert(!user.disabled, "USER_DISABLED");
-    assert(!userFromIdToken || userFromIdToken.localId === user.localId, "EMAIL_EXISTS");
+    if (userFromIdToken && userFromEmail) {
+      assert(userFromIdToken.localId === userFromEmail.localId, "EMAIL_EXISTS");
+    }
+
+    if (!user.disabled && !isMfaEnabled(state, user)) {
+      const blockingResponse = await fetchBlockingFunction(
+        state,
+        BlockingFunctionEvents.BEFORE_SIGN_IN,
+        { ...user, ...updates },
+        { signInMethod: "emailLink" }
+      );
+      updates = { ...updates, ...blockingResponse.updates };
+      extraClaims = blockingResponse.extraClaims;
+    }
+
     user = state.updateUserByLocalId(user.localId, updates);
   }
-  const fetchResponse = await fetchBlockingFunction(
-    state,
-    BlockingFunctionEvents.BEFORE_SIGN_IN,
-    updates
-  );
-  updates = fetchResponse.user;
-  const extraClaims = fetchResponse.extraClaims;
-  user = state.updateUserByLocalId(user.localId, updates);
 
   const response = {
     kind: "identitytoolkit#EmailLinkSigninResponse",
@@ -1428,13 +1462,13 @@ async function signInWithEmailLink(
     isNewUser,
   };
 
-  if (
-    (state.mfaConfig.state === "ENABLED" || state.mfaConfig.state === "MANDATORY") &&
-    user.mfaInfo?.length
-  ) {
+  if (isMfaEnabled(state, user)) {
     return { ...response, ...mfaPending(state, user, PROVIDER_PASSWORD) };
   } else {
     user = state.updateUserByLocalId(user.localId, { lastLoginAt: Date.now().toString() });
+    // User may have been disabled after either blocking function, but
+    // only throw after writing user to store
+    assert(!user?.disabled, "USER_DISABLED");
     return { ...response, ...issueTokens(state, user, PROVIDER_PASSWORD, { extraClaims }) };
   }
 }
@@ -1569,6 +1603,8 @@ async function signInWithIdp(
   const oauthTokens = {
     oauthIdToken: response.oauthIdToken,
     oauthAccessToken: response.oauthAccessToken,
+
+    // The below are not set by our fake IdP fetch currently
     oauthRefreshToken: response.oauthRefreshToken,
     oauthTokenSecret: response.oauthTokenSecret,
     oauthExpiresIn: coercePrimitiveToString(response.oauthExpireIn),
@@ -1580,30 +1616,67 @@ async function signInWithIdp(
       providerUserInfo: [providerUserInfo],
       tenantId: state instanceof TenantProjectState ? state.tenantId : undefined,
     };
-    const fetchResponse = await fetchBlockingFunction(
+    const localId = state.generateLocalId();
+    const userBeforeCreate = { localId, ...updates };
+    const blockingResponse = await fetchBlockingFunction(
       state,
       BlockingFunctionEvents.BEFORE_CREATE,
-      updates,
+      userBeforeCreate,
+      {
+        signInMethod: response.providerId,
+        rawUserInfo: response.rawUserInfo,
+        signInAttributes: JSON.stringify(signInAttributes),
+      },
       oauthTokens
     );
-    updates = fetchResponse.user;
-    user = state.createUser(updates);
+
+    updates = { ...updates, ...blockingResponse.updates };
+    user = state.createUserWithLocalId(localId, updates)!;
     response.localId = user.localId;
+
+    if (!user.disabled && !isMfaEnabled(state, user)) {
+      const blockingResponse = await fetchBlockingFunction(
+        state,
+        BlockingFunctionEvents.BEFORE_SIGN_IN,
+        user,
+        {
+          signInMethod: response.providerId,
+          rawUserInfo: response.rawUserInfo,
+          signInAttributes: JSON.stringify(signInAttributes),
+        },
+        oauthTokens
+      );
+      updates = blockingResponse.updates;
+      extraClaims = blockingResponse.extraClaims;
+      user = state.updateUserByLocalId(user.localId, updates);
+    }
   } else {
     if (!response.localId) {
       throw new Error("Internal assertion error: localId not set for exising user.");
     }
-    let updates = {
-      ...accountUpdates.fields,
-    };
-    const fetchResponse = await fetchBlockingFunction(
-      state,
-      BlockingFunctionEvents.BEFORE_SIGN_IN,
-      updates,
-      oauthTokens
-    );
-    extraClaims = fetchResponse.extraClaims;
-    updates = fetchResponse.user;
+
+    const maybeUser = state.getUserByLocalId(response.localId);
+    assert(maybeUser, "USER_NOT_FOUND");
+    user = maybeUser;
+
+    let updates = { ...accountUpdates.fields };
+
+    if (!user.disabled && !isMfaEnabled(state, user)) {
+      const blockingResponse = await fetchBlockingFunction(
+        state,
+        BlockingFunctionEvents.BEFORE_SIGN_IN,
+        { ...user, ...updates },
+        {
+          signInMethod: response.providerId,
+          rawUserInfo: response.rawUserInfo,
+          signInAttributes: JSON.stringify(signInAttributes),
+        },
+        oauthTokens
+      );
+      extraClaims = blockingResponse.extraClaims;
+      updates = { ...updates, ...blockingResponse.updates };
+    }
+
     user = state.updateUserByLocalId(response.localId, updates, {
       upsertProviders: [providerUserInfo],
     });
@@ -1617,13 +1690,13 @@ async function signInWithIdp(
     response.tenantId = state.tenantId;
   }
 
-  if (
-    (state.mfaConfig.state === "ENABLED" || state.mfaConfig.state === "MANDATORY") &&
-    user.mfaInfo?.length
-  ) {
+  if (isMfaEnabled(state, user)) {
     return { ...response, ...mfaPending(state, user, providerId) };
   } else {
     user = state.updateUserByLocalId(user.localId, { lastLoginAt: Date.now().toString() });
+    // User may have been disabled after either blocking function, but
+    // only throw after writing user to store
+    assert(!user?.disabled, "USER_DISABLED");
     return {
       ...response,
       ...issueTokens(state, user, providerId, { signInAttributes, extraClaims }),
@@ -1655,13 +1728,6 @@ async function signInWithPassword(
   assert(user.passwordHash && user.salt, "INVALID_PASSWORD");
   assert(user.passwordHash === hashPassword(reqBody.password, user.salt), "INVALID_PASSWORD");
 
-  const { user: updates, extraClaims } = await fetchBlockingFunction(
-    state,
-    BlockingFunctionEvents.BEFORE_SIGN_IN,
-    user
-  );
-  user = state.updateUserByLocalId(user.localId, updates);
-
   const response = {
     kind: "identitytoolkit#VerifyPasswordResponse",
     registered: true,
@@ -1669,13 +1735,22 @@ async function signInWithPassword(
     email,
   };
 
-  if (
-    (state.mfaConfig.state === "ENABLED" || state.mfaConfig.state === "MANDATORY") &&
-    user.mfaInfo?.length
-  ) {
+  if (isMfaEnabled(state, user)) {
     return { ...response, ...mfaPending(state, user, PROVIDER_PASSWORD) };
   } else {
-    user = state.updateUserByLocalId(user.localId, { lastLoginAt: Date.now().toString() });
+    const { updates, extraClaims } = await fetchBlockingFunction(
+      state,
+      BlockingFunctionEvents.BEFORE_SIGN_IN,
+      user,
+      { signInMethod: "password" }
+    );
+    user = state.updateUserByLocalId(user.localId, {
+      ...updates,
+      lastLoginAt: Date.now().toString(),
+    });
+    // User may have been disabled after blocking function, but only throw after
+    // writing user to store
+    assert(!user.disabled, "USER_DISABLED");
     return { ...response, ...issueTokens(state, user, PROVIDER_PASSWORD, { extraClaims }) };
   }
 }
@@ -1699,56 +1774,82 @@ async function signInWithPhoneNumber(
     phoneNumber = verifyPhoneNumber(state, reqBody.sessionInfo, reqBody.code);
   }
 
-  let user = state.getUserByPhoneNumber(phoneNumber);
-  let isNewUser = false;
+  const userFromPhoneNumber = state.getUserByPhoneNumber(phoneNumber);
+  const userFromIdToken = reqBody.idToken ? parseIdToken(state, reqBody.idToken).user : undefined;
+  if (userFromPhoneNumber && userFromIdToken) {
+    if (userFromPhoneNumber.localId !== userFromIdToken.localId) {
+      assert(!reqBody.temporaryProof, "PHONE_NUMBER_EXISTS");
+      // By now, the verification has succeeded, but we cannot proceed since
+      // the phone number is linked to a different account. If a sessionInfo
+      // is consumed, a temporaryProof should be returned with 200.
+      return {
+        ...state.createTemporaryProof(phoneNumber),
+      };
+    }
+  }
+
+  let user = userFromIdToken || userFromPhoneNumber;
+  const isNewUser = !user;
+
+  const timestamp = new Date();
   let updates: Partial<UserInfo> = {
     phoneNumber,
-    lastLoginAt: Date.now().toString(),
+    lastLoginAt: timestamp.getTime().toString(),
   };
 
-  const userFromIdToken = reqBody.idToken ? parseIdToken(state, reqBody.idToken).user : undefined;
+  let extraClaims;
   if (!user) {
-    if (userFromIdToken) {
-      assert(
-        !userFromIdToken.mfaInfo?.length,
-        "UNSUPPORTED_FIRST_FACTOR : A phone number cannot be set as a first factor on an SMS based MFA user."
-      );
-      user = state.updateUserByLocalId(userFromIdToken.localId, updates);
-    } else {
-      isNewUser = true;
-      const fetchResponse = await fetchBlockingFunction(
+    updates.createdAt = timestamp.getTime().toString();
+    const localId = state.generateLocalId();
+    const userBeforeCreate = { localId, ...updates };
+    const blockingResponse = await fetchBlockingFunction(
+      state,
+      BlockingFunctionEvents.BEFORE_CREATE,
+      userBeforeCreate,
+      { signInMethod: "phone" }
+    );
+
+    updates = { ...updates, ...blockingResponse.updates };
+    user = state.createUserWithLocalId(localId, updates)!;
+
+    if (!user.disabled) {
+      const blockingResponse = await fetchBlockingFunction(
         state,
-        BlockingFunctionEvents.BEFORE_CREATE,
-        updates
+        BlockingFunctionEvents.BEFORE_SIGN_IN,
+        user,
+        { signInMethod: "phone" }
       );
-      updates = fetchResponse.user;
-      user = state.createUser(updates);
+      updates = blockingResponse.updates;
+      extraClaims = blockingResponse.extraClaims;
+      user = state.updateUserByLocalId(user.localId, updates);
     }
   } else {
     assert(!user.disabled, "USER_DISABLED");
-    if (userFromIdToken && userFromIdToken.localId !== user.localId) {
-      if (!reqBody.temporaryProof) {
-        // By now, the verification has succeeded, but we cannot proceed since
-        // the phone number is linked to a different account. If a sessionInfo
-        // is consumed, a temporaryProof should be returned with 200.
-        return {
-          ...state.createTemporaryProof(phoneNumber),
-        };
-      }
-      throw new BadRequestError("PHONE_NUMBER_EXISTS");
+    assert(
+      !user.mfaInfo?.length,
+      "UNSUPPORTED_FIRST_FACTOR : A phone number cannot be set as a first factor on an SMS based MFA user."
+    );
+
+    if (!user.disabled) {
+      const blockingResponse = await fetchBlockingFunction(
+        state,
+        BlockingFunctionEvents.BEFORE_SIGN_IN,
+        { ...user, ...updates },
+        { signInMethod: "phone" }
+      );
+      updates = { ...updates, ...blockingResponse.updates };
+      extraClaims = blockingResponse.extraClaims;
     }
+
     user = state.updateUserByLocalId(user.localId, updates);
   }
-  const fetchResponse = await fetchBlockingFunction(
-    state,
-    BlockingFunctionEvents.BEFORE_SIGN_IN,
-    updates
-  );
-  updates = fetchResponse.user;
-  user = state.updateUserByLocalId(user.localId, updates);
+
+  // User may have been disabled after either blocking function, but
+  // only throw after writing user to store
+  assert(!user?.disabled, "USER_DISABLED");
 
   const tokens = issueTokens(state, user, PROVIDER_PHONE, {
-    extraClaims: fetchResponse.extraClaims,
+    extraClaims,
   });
 
   return {
@@ -2047,18 +2148,21 @@ async function mfaSignInFinalize(
   const enrollment = user.mfaInfo?.find(
     (enrollment) => enrollment.unobfuscatedPhoneInfo === phoneNumber
   );
-  assert(enrollment && enrollment.mfaEnrollmentId, "MFA_ENROLLMENT_NOT_FOUND");
 
-  const { user: updatedUser, extraClaims } = await fetchBlockingFunction(
+  const { updates, extraClaims } = await fetchBlockingFunction(
     state,
     BlockingFunctionEvents.BEFORE_SIGN_IN,
-    user
+    user,
+    { signInMethod: signInProvider, signInSecondFactor: "phone" }
   );
   user = state.updateUserByLocalId(user.localId, {
-    ...updatedUser,
+    ...updates,
     lastLoginAt: Date.now().toString(),
   });
 
+  assert(enrollment && enrollment.mfaEnrollmentId, "MFA_ENROLLMENT_NOT_FOUND");
+  // User may have been disabled after blocking function, but only throw after
+  // writing user to store
   assert(!user.disabled, "USER_DISABLED");
 
   const { idToken, refreshToken } = issueTokens(state, user, signInProvider, {
@@ -2890,11 +2994,24 @@ function updateTenant(
   return state.updateTenant(reqBody, ctx.params.query.updateMask);
 }
 
+function isMfaEnabled(state: ProjectState, user: UserInfo) {
+  return (
+    (state.mfaConfig.state === "ENABLED" || state.mfaConfig.state === "MANDATORY") &&
+    user.mfaInfo?.length
+  );
+}
+
 // TODO: Timeout is 60s. Should we make the timeout an emulator configuration?
 async function fetchBlockingFunction(
   state: ProjectState,
   event: BlockingFunctionEvents,
-  user: Partial<UserInfo>,
+  user: UserInfo,
+  options: {
+    signInMethod?: string;
+    signInSecondFactor?: string;
+    rawUserInfo?: string;
+    signInAttributes?: string;
+  } = {},
   oauthTokens: {
     oauthIdToken?: string;
     oauthAccessToken?: string;
@@ -2904,17 +3021,17 @@ async function fetchBlockingFunction(
   } = {},
   timeoutMs: number = 60000
 ): Promise<{
-  user: Partial<UserInfo>;
+  updates: BlockingFunctionUpdates;
   extraClaims?: Record<string, unknown>;
 }> {
   const url = state.getBlockingFunctionUri(event);
 
   // No-op if blocking function is not present
   if (!url) {
-    return { user };
+    return { updates: {} };
   }
 
-  const jwt = generateBlockingFunctionJwt(state, event, url, timeoutMs, user, oauthTokens);
+  const jwt = generateBlockingFunctionJwt(state, event, url, timeoutMs, user, options, oauthTokens);
   const reqBody = {
     data: {
       jwt,
@@ -2957,18 +3074,16 @@ async function fetchBlockingFunction(
     clearTimeout(timeout);
   }
 
-  return processBlockingFunctionResponse(user, response);
+  return processBlockingFunctionResponse(response);
 }
 
-function processBlockingFunctionResponse(
-  user: Partial<UserInfo>,
-  response: BlockingFunctionResponsePayload
-): {
-  user: Partial<UserInfo>;
+function processBlockingFunctionResponse(response: BlockingFunctionResponsePayload): {
+  updates: BlockingFunctionUpdates;
   extraClaims?: Record<string, unknown>;
 } {
-  // Update user info with modifiable fields if present in response
+  // Only return updates that are specified in the update mask
   let extraClaims;
+  const updates: BlockingFunctionUpdates = {};
   if (response.userRecord) {
     const userRecord = response.userRecord;
     assert(
@@ -2979,36 +3094,35 @@ function processBlockingFunctionResponse(
     const fields = mask.split(",");
 
     for (const field of fields) {
-      if (
-        Object.values(BlockingFunctionModifiableFields).includes(
-          field as BlockingFunctionModifiableFields
-        ) &&
-        Object.prototype.hasOwnProperty.call(userRecord, field)
-      ) {
-        switch (field) {
-          case BlockingFunctionModifiableFields.CUSTOM_CLAIMS:
-            validateSerializedCustomClaims(userRecord[field]!);
-            user.customAttributes = userRecord[field];
-            break;
-          // Session claims are only returned in beforeSignIn. For more info,
-          // see https://cloud.google.com/identity-platform/docs/blocking-functions#modifying_a_user
-          case BlockingFunctionModifiableFields.SESSION_CLAIMS:
-            try {
-              extraClaims = JSON.parse(userRecord[field]!);
-            } catch {
-              throw new BadRequestError(
-                "BLOCKING_FUNCTION_ERROR_RESPONSE: ((Response has malformed session claims.))"
-              );
-            }
-            break;
-          default:
-            (user as any)[field] = (userRecord as any)[field];
-            break;
-        }
+      switch (field) {
+        case "displayName":
+        case "photoUrl":
+        case "disabled":
+        case "emailVerified":
+          (updates as any)[field] = userRecord[field];
+          break;
+        case "customClaims":
+          validateSerializedCustomClaims(userRecord.customClaims!);
+          updates.customAttributes = userRecord.customClaims;
+          break;
+        // Session claims are only returned in beforeSignIn. For more info,
+        // see https://cloud.google.com/identity-platform/docs/blocking-functions#modifying_a_user
+        case "sessionClaims":
+          try {
+            extraClaims = JSON.parse(userRecord.sessionClaims!);
+          } catch {
+            throw new BadRequestError(
+              "BLOCKING_FUNCTION_ERROR_RESPONSE: ((Response has malformed session claims.))"
+            );
+          }
+          break;
+        default:
+          break;
       }
     }
   }
-  return { user, extraClaims };
+
+  return { updates, extraClaims };
 }
 
 function generateBlockingFunctionJwt(
@@ -3016,7 +3130,13 @@ function generateBlockingFunctionJwt(
   event: BlockingFunctionEvents,
   url: string,
   timeoutMs: number,
-  user: Partial<UserInfo>,
+  user: UserInfo,
+  options: {
+    signInMethod?: string;
+    signInSecondFactor?: string;
+    rawUserInfo?: string;
+    signInAttributes?: string;
+  },
   oauthTokens: {
     oauthIdToken?: string;
     oauthAccessToken?: string;
@@ -3033,8 +3153,8 @@ function generateBlockingFunctionJwt(
     exp: issuedAt + timeoutMs / 100,
     event_id: randomBase64UrlStr(16),
     event_type: event,
-    user_agent: "", // TODO: switch to express.js to get UserAgent
-    ip_address: "", // TODO: switch to express.js to get IP address
+    user_agent: "NotYetSupportedInFirebaseAuthEmulator", // TODO: switch to express.js to get UserAgent
+    ip_address: "127.0.0.1", // TODO: switch to express.js to get IP address
     locale: "en",
     user_record: {
       uid: user.localId,
@@ -3047,6 +3167,10 @@ function generateBlockingFunctionJwt(
       custom_claims: user.customAttributes,
     },
     sub: user.localId,
+    sign_in_method: options.signInMethod,
+    sign_in_second_factor: options.signInSecondFactor,
+    sign_in_attributes: options.signInAttributes,
+    raw_user_info: options.rawUserInfo,
   };
 
   if (state instanceof TenantProjectState) {
@@ -3068,7 +3192,9 @@ function generateBlockingFunctionJwt(
     }
   }
   if (user.localId) {
-    const allPhoneNumbers = state.getAllPhoneNumbersByLocalId(user.localId);
+    const allPhoneNumbers = user.providerUserInfo
+      ? user.providerUserInfo.filter((info) => !!info.phoneNumber).map((info) => info.phoneNumber)
+      : [];
     for (const phoneNumber of allPhoneNumbers) {
       const provider: Provider = {
         provider_id: PROVIDER_PASSWORD,
@@ -3117,17 +3243,17 @@ function generateBlockingFunctionJwt(
     };
   }
 
-  if (state.includeAccessToken) {
+  if (state.shouldForwardCredentialToBlockingFunction("accessToken")) {
     jwt.oauth_access_token = oauthTokens.oauthAccessToken;
     jwt.oauth_token_secret = oauthTokens.oauthTokenSecret;
     jwt.oauth_expires_in = oauthTokens.oauthExpiresIn;
   }
 
-  if (state.includeIdToken) {
+  if (state.shouldForwardCredentialToBlockingFunction("idToken")) {
     jwt.oauth_id_token = oauthTokens.oauthIdToken;
   }
 
-  if (state.includeRefreshToken) {
+  if (state.shouldForwardCredentialToBlockingFunction("refreshToken")) {
     jwt.oauth_refresh_token = oauthTokens.oauthRefreshToken;
   }
 
@@ -3291,13 +3417,12 @@ export interface BlockingFunctionResponsePayload {
   };
 }
 
-export enum BlockingFunctionModifiableFields {
-  DISPLAY_NAME = "displayName",
-  DISABLED = "disabled",
-  EMAIL_VERIFIED = "emailVerified",
-  PHOTO_URL = "photoUrl",
-  CUSTOM_CLAIMS = "customClaims",
-  SESSION_CLAIMS = "sessionClaims",
+export interface BlockingFunctionUpdates {
+  displayName?: string;
+  photoUrl?: string;
+  disabled?: boolean;
+  emailVerified?: boolean;
+  customAttributes?: string;
 }
 
 /**

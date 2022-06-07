@@ -18,7 +18,7 @@ export const TEST_MFA_INFO = {
 };
 export const TEST_INVALID_PHONE_NUMBER = "5555550100"; /* no country code */
 export const DISPLAY_NAME = "Example User";
-export const PHOTO_URL = "fakephotourl";
+export const PHOTO_URL = "http://fakephotourl.test";
 export const FAKE_GOOGLE_ACCOUNT = {
   displayName: "Example User",
   email: "example@gmail.com",
@@ -53,7 +53,7 @@ export const REAL_GOOGLE_ACCOUNT = {
 };
 
 // Used for testing blocking functions
-export const BLOCKING_FUNCTION_HOST = "http://localhost";
+export const BLOCKING_FUNCTION_HOST = "http://my-blocking-function.test";
 export const BEFORE_CREATE_PATH = "/beforeCreate";
 export const BEFORE_SIGN_IN_PATH = "/beforeSignIn";
 export const BEFORE_CREATE_URL = BLOCKING_FUNCTION_HOST + BEFORE_CREATE_PATH;

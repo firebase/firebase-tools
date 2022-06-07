@@ -221,15 +221,7 @@ describeAuthEmulator("accounts:signInWithPassword", ({ authApi, getClock }) => {
   });
 
   describe("when blocking functions are present", () => {
-    afterEach(async () => {
-      await updateConfig(
-        authApi(),
-        PROJECT_ID,
-        {
-          blockingFunctions: {},
-        },
-        "blockingFunctions"
-      );
+    afterEach(() => {
       expect(nock.isDone()).to.be.true;
       nock.cleanAll();
     });
@@ -317,16 +309,6 @@ describeAuthEmulator("accounts:signInWithPassword", ({ authApi, getClock }) => {
           },
         });
 
-      // Sign in user and set to disabled
-      await authApi()
-        .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword")
-        .query({ key: "fake-api-key" })
-        .send({ email: user.email, password: user.password })
-        .then((res) => {
-          expectStatusCode(200, res);
-        });
-
-      // Next attempt at sign in should error
       await authApi()
         .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword")
         .query({ key: "fake-api-key" })

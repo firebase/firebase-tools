@@ -423,15 +423,7 @@ describeAuthEmulator("phone auth sign-in", ({ authApi }) => {
   });
 
   describe("when blocking functions are present", () => {
-    afterEach(async () => {
-      await updateConfig(
-        authApi(),
-        PROJECT_ID,
-        {
-          blockingFunctions: {},
-        },
-        "blockingFunctions"
-      );
+    afterEach(() => {
       expect(nock.isDone()).to.be.true;
       nock.cleanAll();
     });
@@ -663,12 +655,7 @@ describeAuthEmulator("phone auth sign-in", ({ authApi }) => {
             disabled: true,
           },
         });
-
-      // Creates user and sets user to disabled
       const phoneNumber = TEST_PHONE_NUMBER;
-      await signInWithPhoneNumber(authApi(), phoneNumber);
-
-      // Next attempt at sign in should error
       const sessionInfo = await authApi()
         .post("/identitytoolkit.googleapis.com/v1/accounts:sendVerificationCode")
         .query({ key: "fake-api-key" })
@@ -678,11 +665,11 @@ describeAuthEmulator("phone auth sign-in", ({ authApi }) => {
           return res.body.sessionInfo;
         });
       const codes = await inspectVerificationCodes(authApi());
-      const code = codes[0].code;
-      await authApi()
+
+      return authApi()
         .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithPhoneNumber")
         .query({ key: "fake-api-key" })
-        .send({ sessionInfo, code })
+        .send({ sessionInfo, code: codes[0].code })
         .then((res) => {
           expectStatusCode(400, res);
           expect(res.body.error).to.have.property("message").equals("USER_DISABLED");

@@ -1136,20 +1136,12 @@ describeAuthEmulator("sign-in with credential", ({ authApi, getClock }) => {
   });
 
   describe("when blocking functions are present", () => {
-    afterEach(async () => {
-      await updateConfig(
-        authApi(),
-        PROJECT_ID,
-        {
-          blockingFunctions: {},
-        },
-        "blockingFunctions"
-      );
+    afterEach(() => {
       expect(nock.isDone()).to.be.true;
       nock.cleanAll();
     });
 
-    it("should update modifiable fields for new users", async () => {
+    it("should update modifiable fields for new users for beforeCreate", async () => {
       await updateConfig(
         authApi(),
         PROJECT_ID,
@@ -1207,6 +1199,143 @@ describeAuthEmulator("sign-in with credential", ({ authApi, getClock }) => {
           expect(decoded!.payload.picture).to.equal(PHOTO_URL);
           expect(decoded!.payload.email_verified).to.be.true;
           expect(decoded!.payload).to.have.property("customAttribute").equals("custom");
+        });
+    });
+
+    it("should update modifiable fields for new users for beforeSignIn", async () => {
+      await updateConfig(
+        authApi(),
+        PROJECT_ID,
+        {
+          blockingFunctions: {
+            triggers: {
+              beforeSignIn: {
+                functionUri: BEFORE_SIGN_IN_URL,
+              },
+            },
+          },
+        },
+        "blockingFunctions"
+      );
+      nock(BLOCKING_FUNCTION_HOST)
+        .post(BEFORE_SIGN_IN_PATH)
+        .reply(200, {
+          userRecord: {
+            updateMask: "displayName,photoUrl,emailVerified,customClaims,sessionClaims",
+            displayName: DISPLAY_NAME,
+            photoUrl: PHOTO_URL,
+            emailVerified: true,
+            customClaims: JSON.stringify({ customAttribute: "custom" }),
+            sessionClaims: JSON.stringify({ sessionAttribute: "session" }),
+          },
+        });
+
+      await authApi()
+        .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithIdp")
+        .query({ key: "fake-api-key" })
+        .send({
+          postBody: `providerId=google.com&id_token=${FAKE_GOOGLE_ACCOUNT.idToken}`,
+          requestUri: "http://localhost",
+          returnIdpCredential: true,
+          returnSecureToken: true,
+        })
+        .then((res) => {
+          expectStatusCode(200, res);
+          expect(res.body.isNewUser).to.equal(true);
+
+          const idToken = res.body.idToken;
+          const decoded = decodeJwt(idToken, { complete: true }) as {
+            header: JwtHeader;
+            payload: FirebaseJwtPayload;
+          } | null;
+          expect(decoded, "JWT returned by emulator is invalid").not.to.be.null;
+          expect(decoded!.header.alg).to.eql("none");
+          expect(decoded!.payload.firebase)
+            .to.have.property("identities")
+            .eql({
+              "google.com": [FAKE_GOOGLE_ACCOUNT.rawId],
+              email: [FAKE_GOOGLE_ACCOUNT.email],
+            });
+
+          expect(decoded!.payload.name).to.equal(DISPLAY_NAME);
+          expect(decoded!.payload.picture).to.equal(PHOTO_URL);
+          expect(decoded!.payload.email_verified).to.be.true;
+          expect(decoded!.payload).to.have.property("customAttribute").equals("custom");
+          expect(decoded!.payload).to.have.property("sessionAttribute").equals("session");
+        });
+    });
+
+    it("beforeSignIn fields should overwrite beforeCreate fields for new users", async () => {
+      await updateConfig(
+        authApi(),
+        PROJECT_ID,
+        {
+          blockingFunctions: {
+            triggers: {
+              beforeCreate: {
+                functionUri: BEFORE_CREATE_URL,
+              },
+              beforeSignIn: {
+                functionUri: BEFORE_SIGN_IN_URL,
+              },
+            },
+          },
+        },
+        "blockingFunctions"
+      );
+      nock(BLOCKING_FUNCTION_HOST)
+        .post(BEFORE_CREATE_PATH)
+        .reply(200, {
+          updateMask: "displayName,photoUrl,emailVerified,customClaims",
+          displayName: "oldDisplayName",
+          photoUrl: "oldPhotoUrl",
+          emailVerified: false,
+          customClaims: JSON.stringify({ customAttribute: "oldCustom" }),
+        })
+        .post(BEFORE_SIGN_IN_PATH)
+        .reply(200, {
+          userRecord: {
+            updateMask: "displayName,photoUrl,emailVerified,customClaims,sessionClaims",
+            displayName: DISPLAY_NAME,
+            photoUrl: PHOTO_URL,
+            emailVerified: true,
+            customClaims: JSON.stringify({ customAttribute: "custom" }),
+            sessionClaims: JSON.stringify({ sessionAttribute: "session" }),
+          },
+        });
+
+      await authApi()
+        .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithIdp")
+        .query({ key: "fake-api-key" })
+        .send({
+          postBody: `providerId=google.com&id_token=${FAKE_GOOGLE_ACCOUNT.idToken}`,
+          requestUri: "http://localhost",
+          returnIdpCredential: true,
+          returnSecureToken: true,
+        })
+        .then((res) => {
+          expectStatusCode(200, res);
+          expect(res.body.isNewUser).to.equal(true);
+
+          const idToken = res.body.idToken;
+          const decoded = decodeJwt(idToken, { complete: true }) as {
+            header: JwtHeader;
+            payload: FirebaseJwtPayload;
+          } | null;
+          expect(decoded, "JWT returned by emulator is invalid").not.to.be.null;
+          expect(decoded!.header.alg).to.eql("none");
+          expect(decoded!.payload.firebase)
+            .to.have.property("identities")
+            .eql({
+              "google.com": [FAKE_GOOGLE_ACCOUNT.rawId],
+              email: [FAKE_GOOGLE_ACCOUNT.email],
+            });
+
+          expect(decoded!.payload.name).to.equal(DISPLAY_NAME);
+          expect(decoded!.payload.picture).to.equal(PHOTO_URL);
+          expect(decoded!.payload.email_verified).to.be.true;
+          expect(decoded!.payload).to.have.property("customAttribute").equals("custom");
+          expect(decoded!.payload).to.have.property("sessionAttribute").equals("session");
         });
     });
 
@@ -1306,8 +1435,7 @@ describeAuthEmulator("sign-in with credential", ({ authApi, getClock }) => {
           },
         });
 
-      // Creates the user and sets user to disabled
-      const idToken = await authApi()
+      await authApi()
         .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithIdp")
         .query({ key: "fake-api-key" })
         .send({
@@ -1315,24 +1443,6 @@ describeAuthEmulator("sign-in with credential", ({ authApi, getClock }) => {
           requestUri: "http://localhost",
           returnIdpCredential: true,
           returnSecureToken: true,
-        })
-        .then((res) => {
-          expectStatusCode(200, res);
-          expect(res.body.isNewUser).to.equal(true);
-          return res.body.idToken;
-        });
-
-      // Next sign in attempt will throw error because user is disabled
-      await authApi()
-        .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithIdp")
-        .query({ key: "fake-api-key" })
-        .send({
-          idToken,
-          postBody: `providerId=google.com&id_token=${encodeURIComponent(
-            FAKE_GOOGLE_ACCOUNT.idToken
-          )}`,
-          requestUri: "http://localhost",
-          returnIdpCredential: true,
         })
         .then((res) => {
           expectStatusCode(400, res);
