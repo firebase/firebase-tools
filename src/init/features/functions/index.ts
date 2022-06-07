@@ -48,5 +48,5 @@ export async function doSetup(setup: any, config: any, options: Options) {
     default: "javascript",
     choices,
   });
-  return require("./" + language)(setup, config);
+  return require("./" + language).setup(setup, config);
 }

@@ -1,11 +1,10 @@
-"use strict";
+import * as _ from "lodash";
 
-const _ = require("lodash");
-const { FirebaseError } = require("./error");
+import { FirebaseError } from "./error";
 
-module.exports = function (response, body) {
+export function responseToError(response: any, body: any): FirebaseError | undefined {
   if (response.statusCode < 400) {
-    return null;
+    return;
   }
 
   if (typeof body === "string") {
@@ -59,4 +58,4 @@ module.exports = function (response, body) {
     exit: exitCode,
     status: response.statusCode,
   });
-};
+}

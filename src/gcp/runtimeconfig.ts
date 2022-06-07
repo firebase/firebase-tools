@@ -1,26 +1,22 @@
-"use strict";
+import * as _ from "lodash";
 
-const { runtimeconfigOrigin } = require("../api");
-const { Client } = require("../apiv2");
-
-const { logger } = require("../logger");
-var _ = require("lodash");
+import { runtimeconfigOrigin } from "../api";
+import { Client } from "../apiv2";
+import { logger } from "../logger";
 
 const API_VERSION = "v1beta1";
 const apiClient = new Client({ urlPrefix: runtimeconfigOrigin, apiVersion: API_VERSION });
 
-function _listConfigs(projectId) {
+function listConfigs(projectId: string): Promise<any> {
   return apiClient
-    .get(`/projects/${projectId}/configs`, {
+    .get<{ configs: any }>(`/projects/${projectId}/configs`, {
       retryCodes: [500, 503],
     })
-    .then(function (resp) {
-      return resp.body.configs;
-    });
+    .then((resp) => resp.body.configs);
 }
 
-function _createConfig(projectId, configId) {
-  var path = _.join(["projects", projectId, "configs"], "/");
+function createConfig(projectId: string, configId: string): Promise<any> {
+  const path = _.join(["projects", projectId, "configs"], "/");
   return apiClient
     .post(
       `/projects/${projectId}/configs`,
@@ -31,7 +27,7 @@ function _createConfig(projectId, configId) {
         retryCodes: [500, 503],
       }
     )
-    .catch(function (err) {
+    .catch((err) => {
       if (_.get(err, "context.response.statusCode") === 409) {
         // Config has already been created as part of a parallel operation during firebase functions:config:set
         return Promise.resolve();
@@ -40,41 +36,46 @@ function _createConfig(projectId, configId) {
     });
 }
 
-function _deleteConfig(projectId, configId) {
+function deleteConfig(projectId: string, configId: string): Promise<any> {
   return apiClient
     .delete(`/projects/${projectId}/configs/${configId}`, {
       retryCodes: [500, 503],
     })
-    .catch(function (err) {
+    .catch((err) => {
       if (_.get(err, "context.response.statusCode") === 404) {
         logger.debug("Config already deleted.");
         return Promise.resolve();
       }
-      return Promise.reject(err);
+      throw err;
     });
 }
 
-function _listVariables(configPath) {
+function listVariables(configPath: string): Promise<any> {
   return apiClient
-    .get(`${configPath}/variables`, {
+    .get<{ variables: any }>(`${configPath}/variables`, {
       retryCodes: [500, 503],
     })
-    .then(function (resp) {
+    .then((resp) => {
       return Promise.resolve(resp.body.variables);
     });
 }
 
-function _getVariable(varPath) {
+function getVariable(varPath: string): Promise<any> {
   return apiClient
     .get(varPath, {
       retryCodes: [500, 503],
     })
-    .then(function (resp) {
+    .then((resp) => {
       return Promise.resolve(resp.body);
     });
 }
 
-function _createVariable(projectId, configId, varId, value) {
+function createVariable(
+  projectId: string,
+  configId: string,
+  varId: string,
+  value: any
+): Promise<any> {
   const path = `/projects/${projectId}/configs/${configId}/variables`;
   return apiClient
     .post(
@@ -87,18 +88,23 @@ function _createVariable(projectId, configId, varId, value) {
         retryCodes: [500, 503],
       }
     )
-    .catch(function (err) {
+    .catch((err) => {
       if (_.get(err, "context.response.statusCode") === 404) {
         // parent config doesn't exist yet
-        return _createConfig(projectId, configId).then(function () {
-          return _createVariable(projectId, configId, varId, value);
+        return createConfig(projectId, configId).then(() => {
+          return createVariable(projectId, configId, varId, value);
         });
       }
       return Promise.reject(err);
     });
 }
 
-function _updateVariable(projectId, configId, varId, value) {
+function updateVariable(
+  projectId: string,
+  configId: string,
+  varId: string,
+  value: any
+): Promise<any> {
   const path = `/projects/${projectId}/configs/${configId}/variables/${varId}`;
   return apiClient.put(
     path,
@@ -112,27 +118,27 @@ function _updateVariable(projectId, configId, varId, value) {
   );
 }
 
-function _setVariable(projectId, configId, varId, value) {
-  var path = _.join(["projects", projectId, "configs", configId, "variables", varId], "/");
-  return _getVariable(path)
-    .then(function () {
-      return _updateVariable(projectId, configId, varId, value);
+function setVariable(projectId: string, configId: string, varId: string, value: any): Promise<any> {
+  const path = _.join(["projects", projectId, "configs", configId, "variables", varId], "/");
+  return getVariable(path)
+    .then(() => {
+      return updateVariable(projectId, configId, varId, value);
     })
-    .catch(function (err) {
+    .catch((err) => {
       if (_.get(err, "context.response.statusCode") === 404) {
-        return _createVariable(projectId, configId, varId, value);
+        return createVariable(projectId, configId, varId, value);
       }
       return Promise.reject(err);
     });
 }
 
-function _deleteVariable(projectId, configId, varId) {
+function deleteVariable(projectId: string, configId: string, varId: string): Promise<any> {
   return apiClient
     .delete(`/projects/${projectId}/configs/${configId}/variables/${varId}`, {
       retryCodes: [500, 503],
       queryParams: { recursive: "true" },
     })
-    .catch(function (err) {
+    .catch((err) => {
       if (_.get(err, "context.response.statusCode") === 404) {
         logger.debug("Variable already deleted.");
         return Promise.resolve();
@@ -141,16 +147,14 @@ function _deleteVariable(projectId, configId, varId) {
     });
 }
 
-module.exports = {
-  configs: {
-    list: _listConfigs,
-    create: _createConfig,
-    delete: _deleteConfig,
-  },
-  variables: {
-    list: _listVariables,
-    get: _getVariable,
-    set: _setVariable,
-    delete: _deleteVariable,
-  },
+export const configs = {
+  list: listConfigs,
+  create: createConfig,
+  delete: deleteConfig,
+};
+export const variables = {
+  list: listVariables,
+  get: getVariable,
+  set: setVariable,
+  delete: deleteVariable,
 };

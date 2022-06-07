@@ -14,7 +14,7 @@ import { FirebaseError } from "../error";
 /**
  * Deprecate all extension versions that match the version predicate.
  */
-export default new Command("ext:dev:deprecate <extensionRef> <versionPredicate>")
+export const command = new Command("ext:dev:deprecate <extensionRef> <versionPredicate>")
   .description("deprecate extension versions that match the version predicate")
   .option("-m, --message <deprecationMessage>", "deprecation message")
   .option(

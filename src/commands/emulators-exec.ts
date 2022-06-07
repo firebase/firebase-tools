@@ -1,7 +1,7 @@
 import { Command } from "../command";
 import * as commandUtils from "../emulator/commandUtils";
 
-module.exports = new Command("emulators:exec <script>")
+export const command = new Command("emulators:exec <script>")
   .before(commandUtils.setExportOnExitOptions)
   .before(commandUtils.beforeEmulatorCommand)
   .description(

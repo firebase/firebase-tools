@@ -1,16 +1,15 @@
-"use strict";
+import * as _ from "lodash";
 
-const _ = require("lodash");
-
-const utils = require("../utils");
-const clc = require("cli-color");
-const childProcess = require("child_process");
-const { FirebaseError } = require("../error");
+import * as utils from "../utils";
+import * as clc from "cli-color";
+import * as childProcess from "child_process";
+import { FirebaseError } from "../error";
 const needProjectId = require("../projectUtils").needProjectId;
-const { logger } = require("../logger");
-const path = require("path");
+import { logger } from "../logger";
+import * as path from "path";
+import { Options } from "../options";
 
-function runCommand(command, childOptions) {
+function runCommand(command: string, childOptions: childProcess.SpawnOptions) {
   const escapedCommand = command.replace(/\"/g, '\\"');
   const translatedCommand =
     '"' +
@@ -21,16 +20,16 @@ function runCommand(command, childOptions) {
     escapedCommand +
     '"';
 
-  return new Promise(function (resolve, reject) {
+  return new Promise<void>((resolve, reject) => {
     logger.info("Running command: " + command);
     if (translatedCommand === "") {
-      resolve();
+      return resolve();
     }
     const child = childProcess.spawn(translatedCommand, [], childOptions);
-    child.on("error", function (err) {
+    child.on("error", (err) => {
       reject(err);
     });
-    child.on("exit", function (code, signal) {
+    child.on("exit", (code, signal) => {
       if (signal) {
         reject(new Error("Command terminated with signal " + signal));
       } else if (code !== 0) {
@@ -42,7 +41,7 @@ function runCommand(command, childOptions) {
   });
 }
 
-function getChildEnvironment(target, overallOptions, config) {
+function getChildEnvironment(target: string, overallOptions: any, config: any) {
   // active project ID
   const projectId = needProjectId(overallOptions);
   // root directory where firebase.json can be found
@@ -68,7 +67,12 @@ function getChildEnvironment(target, overallOptions, config) {
   });
 }
 
-function runTargetCommands(target, hook, overallOptions, config) {
+function runTargetCommands(
+  target: string,
+  hook: string,
+  overallOptions: any,
+  config: any
+): Promise<void> {
   let commands = config[hook];
   if (!commands) {
     return Promise.resolve();
@@ -86,8 +90,8 @@ function runTargetCommands(target, hook, overallOptions, config) {
 
   const runAllCommands = _.reduce(
     commands,
-    function (soFar, command) {
-      return soFar.then(function () {
+    (soFar, command) => {
+      return soFar.then(() => {
         return runCommand(command, childOptions);
       });
     },
@@ -103,17 +107,17 @@ function runTargetCommands(target, hook, overallOptions, config) {
   }
 
   return runAllCommands
-    .then(function () {
+    .then(() => {
       utils.logSuccess(
         clc.green.bold(logIdentifier + ":") + " Finished running " + clc.bold(hook) + " script."
       );
     })
-    .catch(function (err) {
+    .catch((err) => {
       throw new FirebaseError(logIdentifier + " " + hook + " error: " + err.message);
     });
 }
 
-function getReleventConfigs(target, options) {
+function getReleventConfigs(target: string, options: Options) {
   let targetConfigs = options.config.get(target);
   if (!targetConfigs) {
     return [];
@@ -126,35 +130,38 @@ function getReleventConfigs(target, options) {
     return targetConfigs;
   }
 
-  var onlyTargets = options.only.split(",");
+  let onlyTargets = options.only.split(",");
   if (_.includes(onlyTargets, target)) {
     // If the target matches entirely then all instances should be included.
     return targetConfigs;
   }
 
   onlyTargets = onlyTargets
-    .filter(function (individualOnly) {
+    .filter((individualOnly) => {
       return individualOnly.indexOf(`${target}:`) === 0;
     })
-    .map(function (individualOnly) {
+    .map((individualOnly) => {
       return individualOnly.replace(`${target}:`, "");
     });
 
-  return targetConfigs.filter(function (config) {
+  return targetConfigs.filter((config: any) => {
     return !config.target || _.includes(onlyTargets, config.target);
   });
 }
 
-module.exports = function (target, hook) {
-  return function (context, options) {
+export function lifecycleHooks(
+  target: string,
+  hook: string
+): (context: any, options: Options) => Promise<void> {
+  return function (context: any, options: Options) {
     return _.reduce(
       getReleventConfigs(target, options),
-      function (previousCommands, individualConfig) {
-        return previousCommands.then(function () {
+      (previousCommands, individualConfig) => {
+        return previousCommands.then(() => {
           return runTargetCommands(target, hook, options, individualConfig);
         });
       },
       Promise.resolve()
     );
   };
-};
+}
