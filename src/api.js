@@ -1,14 +1,10 @@
 "use strict";
 
 var _ = require("lodash");
-var querystring = require("querystring");
-var request = require("request");
 var url = require("url");
 
 var { Constants } = require("./emulator/constants");
-var { FirebaseError } = require("./error");
 const { logger } = require("./logger");
-var responseToError = require("./responseToError");
 var scopes = require("./scopes");
 var utils = require("./utils");
 var CLI_VERSION = require("../package.json").version;
@@ -16,72 +12,6 @@ var CLI_VERSION = require("../package.json").version;
 var accessToken;
 var refreshToken;
 var commandScopes;
-
-var _request = function (options, logOptions) {
-  logOptions = logOptions || {};
-  var qsLog = "";
-  var bodyLog = "<request body omitted>";
-
-  if (options.qs && !logOptions.skipQueryParams) {
-    qsLog = JSON.stringify(options.qs);
-  }
-
-  if (!logOptions.skipRequestBody) {
-    bodyLog = options.body || options.form || "";
-  }
-
-  logger.debug(">>> HTTP REQUEST", options.method, options.url, qsLog, "\n", bodyLog);
-
-  options.headers = options.headers || {};
-  options.headers["connection"] = "keep-alive";
-
-  return new Promise(function (resolve, reject) {
-    var req = request(options, function (err, response, body) {
-      if (err) {
-        return reject(
-          new FirebaseError("Server Error. " + err.message, {
-            original: err,
-            exit: 2,
-          })
-        );
-      }
-
-      logger.debug("<<< HTTP RESPONSE", response.statusCode, response.headers);
-
-      if (response.statusCode >= 400 && !logOptions.skipResponseBody) {
-        logger.debug("<<< HTTP RESPONSE BODY", response.body);
-        if (!options.resolveOnHTTPError) {
-          return reject(responseToError(response, body));
-        }
-      }
-
-      return resolve({
-        status: response.statusCode,
-        response: response,
-        body: body,
-      });
-    });
-
-    if (_.size(options.files) > 0) {
-      var form = req.form();
-      _.forEach(options.files, function (details, param) {
-        form.append(param, details.stream, {
-          knownLength: details.knownLength,
-          filename: details.filename,
-          contentType: details.contentType,
-        });
-      });
-    }
-  });
-};
-
-var _appendQueryData = function (path, data) {
-  if (data && _.size(data) > 0) {
-    path += _.includes(path, "?") ? "&" : "?";
-    path += querystring.stringify(data);
-  }
-  return path;
-};
 
 var api = {
   authProxyOrigin: utils.envOverride("FIREBASE_AUTHPROXY_URL", "https://auth.firebase.tools"),
@@ -274,76 +204,6 @@ var api = {
     return getTokenPromise.then(function (result) {
       _.set(reqOptions, "headers.authorization", "Bearer " + result.access_token);
       return reqOptions;
-    });
-  },
-  request: function (method, resource, options) {
-    options = _.extend(
-      {
-        data: {},
-        resolveOnHTTPError: false, // by default, status codes >= 400 leads to reject
-        json: true,
-      },
-      options
-    );
-
-    if (!options.origin) {
-      throw new FirebaseError("Cannot make request without an origin", { exit: 2 });
-    }
-
-    var validMethods = ["GET", "PUT", "POST", "DELETE", "PATCH"];
-
-    if (validMethods.indexOf(method) < 0) {
-      method = "GET";
-    }
-
-    var reqOptions = {
-      method: method,
-    };
-
-    if (options.query) {
-      resource = _appendQueryData(resource, options.query);
-    }
-
-    if (method === "GET") {
-      resource = _appendQueryData(resource, options.data);
-    } else {
-      if (_.size(options.data) > 0) {
-        reqOptions.body = options.data;
-      } else if (_.size(options.form) > 0) {
-        reqOptions.form = options.form;
-      }
-    }
-
-    reqOptions.url = options.origin + resource;
-    reqOptions.files = options.files;
-    reqOptions.resolveOnHTTPError = options.resolveOnHTTPError;
-    reqOptions.json = options.json;
-    reqOptions.qs = options.qs;
-    reqOptions.headers = options.headers;
-    reqOptions.timeout = options.timeout;
-
-    var requestFunction = function () {
-      return _request(reqOptions, options.logOptions);
-    };
-
-    if (options.auth === true) {
-      requestFunction = function () {
-        return api.addRequestHeaders(reqOptions, options).then(function (reqOptionsWithToken) {
-          return _request(reqOptionsWithToken, options.logOptions);
-        });
-      };
-    }
-
-    return requestFunction().catch(function (err) {
-      if (
-        options.retryCodes &&
-        _.includes(options.retryCodes, _.get(err, "context.response.statusCode"))
-      ) {
-        return new Promise(function (resolve) {
-          setTimeout(resolve, 1000);
-        }).then(requestFunction);
-      }
-      return Promise.reject(err);
     });
   },
 };

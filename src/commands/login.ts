@@ -11,7 +11,7 @@ import { promptOnce } from "../prompt";
 import * as auth from "../auth";
 import { isCloudEnvironment } from "../utils";
 
-module.exports = new Command("login")
+export const command = new Command("login")
   .description("log the CLI into Firebase")
   .option("--no-localhost", "login from a device without an accessible localhost")
   .option("--reauth", "force reauthentication even if already logged in")

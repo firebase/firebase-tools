@@ -15,7 +15,7 @@ import * as secrets from "../functions/secrets";
 import * as backend from "../deploy/functions/backend";
 import * as args from "../deploy/functions/args";
 
-export default new Command("functions:secrets:set <KEY>")
+export const command = new Command("functions:secrets:set <KEY>")
   .description("Create or update a secret for use in Cloud Functions for Firebase.")
   .withForce("Automatically updates functions to use the new secret.")
   .before(requirePermissions, [
