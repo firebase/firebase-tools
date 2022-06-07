@@ -145,6 +145,46 @@ describe("cloudfunctionsv2", () => {
           {
             ...ENDPOINT,
             platform: "gcfv2",
+            eventTrigger: {
+              eventType: "google.firebase.database.ref.v1.written",
+              eventFilters: {
+                instance: "my-db-1",
+              },
+              eventFilterPathPatterns: {
+                path: "foo/{bar}",
+              },
+              retry: false,
+            },
+          },
+          CLOUD_FUNCTION_V2_SOURCE
+        )
+      ).to.deep.equal({
+        ...CLOUD_FUNCTION_V2,
+        eventTrigger: {
+          eventType: "google.firebase.database.ref.v1.written",
+          eventFilters: [
+            {
+              attribute: "instance",
+              value: "my-db-1",
+            },
+            {
+              attribute: "path",
+              value: "foo/{bar}",
+              operator: "match-path-pattern",
+            },
+          ],
+        },
+        serviceConfig: {
+          ...CLOUD_FUNCTION_V2.serviceConfig,
+          environmentVariables: { FUNCTION_SIGNATURE_TYPE: "cloudevent" },
+        },
+      });
+
+      expect(
+        cloudfunctionsv2.functionFromEndpoint(
+          {
+            ...ENDPOINT,
+            platform: "gcfv2",
             taskQueueTrigger: {},
           },
           CLOUD_FUNCTION_V2_SOURCE
@@ -372,6 +412,40 @@ describe("cloudfunctionsv2", () => {
               {
                 attribute: "serviceName",
                 value: "compute.googleapis.com",
+              },
+            ],
+          },
+        })
+      ).to.deep.equal(want);
+
+      // And again with a pattern match event trigger
+      want = {
+        ...want,
+        eventTrigger: {
+          eventType: "google.firebase.database.ref.v1.written",
+          eventFilters: {
+            instance: "my-db-1",
+          },
+          eventFilterPathPatterns: {
+            path: "foo/{bar}",
+          },
+          retry: false,
+        },
+      };
+      expect(
+        cloudfunctionsv2.endpointFromFunction({
+          ...HAVE_CLOUD_FUNCTION_V2,
+          eventTrigger: {
+            eventType: "google.firebase.database.ref.v1.written",
+            eventFilters: [
+              {
+                attribute: "instance",
+                value: "my-db-1",
+              },
+              {
+                attribute: "path",
+                value: "foo/{bar}",
+                operator: "match-path-pattern",
               },
             ],
           },
