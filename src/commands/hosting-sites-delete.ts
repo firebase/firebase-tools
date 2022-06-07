@@ -11,7 +11,7 @@ import { logger } from "../logger";
 
 const LOG_TAG = "hosting:sites";
 
-export default new Command("hosting:sites:delete <siteId>")
+export const command = new Command("hosting:sites:delete <siteId>")
   .description("delete a Firebase Hosting site")
   .withForce()
   .before(requireConfig)

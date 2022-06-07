@@ -8,7 +8,7 @@ import { getVersions } from "../remoteconfig/versionslist";
 
 import { needProjectId } from "../projectUtils";
 
-module.exports = new Command("remoteconfig:rollback")
+export const command = new Command("remoteconfig:rollback")
   .description(
     "roll back a project's published Remote Config template to the one specified by the provided version number"
   )

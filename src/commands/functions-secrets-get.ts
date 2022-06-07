@@ -6,7 +6,7 @@ import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
 import { listSecretVersions } from "../gcp/secretManager";
 
-export default new Command("functions:secrets:get <KEY>")
+export const command = new Command("functions:secrets:get <KEY>")
   .description("Get metadata for secret and its versions")
   .action(async (key: string, options: Options) => {
     const projectId = needProjectId(options);

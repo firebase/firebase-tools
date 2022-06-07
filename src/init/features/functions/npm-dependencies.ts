@@ -1,11 +1,9 @@
-"use strict";
+import * as spawn from "cross-spawn";
 
-var spawn = require("cross-spawn");
+import { logger } from "../../../logger";
+import { prompt } from "../../../prompt";
 
-const { logger } = require("../../../logger");
-var { prompt } = require("../../../prompt");
-
-exports.askInstallDependencies = function (setup, config) {
+export function askInstallDependencies(setup: any, config: any): Promise<void> {
   return prompt(setup, [
     {
       name: "npm",
@@ -13,19 +11,19 @@ exports.askInstallDependencies = function (setup, config) {
       message: "Do you want to install dependencies with npm now?",
       default: true,
     },
-  ]).then(function () {
+  ]).then(() => {
     if (setup.npm) {
-      return new Promise(function (resolve) {
-        var installer = spawn("npm", ["install"], {
+      return new Promise<void>((resolve) => {
+        const installer = spawn("npm", ["install"], {
           cwd: config.projectDir + "/functions",
           stdio: "inherit",
         });
 
-        installer.on("error", function (err) {
+        installer.on("error", (err: any) => {
           logger.debug(err.stack);
         });
 
-        installer.on("close", function (code) {
+        installer.on("close", (code) => {
           if (code === 0) {
             return resolve();
           }
@@ -36,4 +34,4 @@ exports.askInstallDependencies = function (setup, config) {
       });
     }
   });
-};
+}

@@ -1,27 +1,27 @@
-"use strict";
+import * as clc from "cli-color";
+import * as fs from "fs";
+import * as os from "os";
+import * as path from "path";
 
-var clc = require("cli-color");
-var fs = require("fs");
-var homeDir = require("os").homedir();
-var path = require("path");
+import { Command } from "../command";
+import { Config } from "../config";
+import { getAllAccounts } from "../auth";
+import { init, Setup } from "../init";
+import { logger } from "../logger";
+import { prompt, promptOnce } from "../prompt";
+import { requireAuth } from "../requireAuth";
+import * as fsutils from "../fsutils";
+import * as utils from "../utils";
 
-var { Command } = require("../command");
-var { Config } = require("../config");
-var fsutils = require("../fsutils");
-var { init } = require("../init");
-const { logger } = require("../logger");
-var { prompt, promptOnce } = require("../prompt");
-var { requireAuth } = require("../requireAuth");
-var utils = require("../utils");
-const { getAllAccounts } = require("../auth");
+const homeDir = os.homedir();
 
-var TEMPLATE_ROOT = path.resolve(__dirname, "../../templates/");
-var BANNER_TEXT = fs.readFileSync(path.join(TEMPLATE_ROOT, "banner.txt"), "utf8");
-var GITIGNORE_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "_gitignore"), "utf8");
+const TEMPLATE_ROOT = path.resolve(__dirname, "../../templates/");
+const BANNER_TEXT = fs.readFileSync(path.join(TEMPLATE_ROOT, "banner.txt"), "utf8");
+const GITIGNORE_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "_gitignore"), "utf8");
 
-var _isOutside = function (from, to) {
-  return path.relative(from, to).match(/^\.\./);
-};
+function isOutside(from: string, to: string): boolean {
+  return !!/^\.\./.exec(path.relative(from, to));
+}
 
 const choices = [
   {
@@ -77,37 +77,36 @@ ${[...featureNames]
   .map((n) => `\n  - ${n}`)
   .join("")}`;
 
-module.exports = new Command("init [feature]")
+export const command = new Command("init [feature]")
   .description(DESCRIPTION)
   .before(requireAuth)
-  .action(function (feature, options) {
+  .action((feature, options) => {
     if (feature && !featureNames.includes(feature)) {
       return utils.reject(
         clc.bold(feature) +
           " is not a supported feature; must be one of " +
           featureNames.join(", ") +
-          ".",
-        { exit: 1 }
+          "."
       );
     }
 
-    var cwd = options.cwd || process.cwd();
+    const cwd = options.cwd || process.cwd();
 
-    var warnings = [];
-    var warningText = "";
-    if (_isOutside(homeDir, cwd)) {
+    const warnings = [];
+    let warningText = "";
+    if (isOutside(homeDir, cwd)) {
       warnings.push("You are currently outside your home directory");
     }
     if (cwd === homeDir) {
       warnings.push("You are initializing your home directory as a Firebase project directory");
     }
 
-    var existingConfig = Config.load(options, true);
+    const existingConfig = Config.load(options, true);
     if (existingConfig) {
       warnings.push("You are initializing within an existing Firebase project directory");
     }
 
-    var config =
+    const config =
       existingConfig !== null ? existingConfig : new Config({}, { projectDir: cwd, cwd: cwd });
 
     if (warnings.length) {
@@ -126,7 +125,7 @@ module.exports = new Command("init [feature]")
         warningText
     );
 
-    var setup = {
+    const setup: Setup = {
       config: config.src,
       rcfile: config.readProjectFile(".firebaserc", {
         json: true,
@@ -134,7 +133,7 @@ module.exports = new Command("init [feature]")
       }),
     };
 
-    var next;
+    let next;
     // HACK: Windows Node has issues with selectables as the first prompt, so we
     // add an extra confirmation prompt that fixes the problem
     if (process.platform === "win32") {
@@ -147,7 +146,7 @@ module.exports = new Command("init [feature]")
     }
 
     return next
-      .then(function (proceed) {
+      .then((proceed) => {
         if (!proceed) {
           return utils.reject("Aborted by user.", { exit: 1 });
         }
@@ -168,8 +167,8 @@ module.exports = new Command("init [feature]")
           },
         ]);
       })
-      .then(function () {
-        if (setup.features.length === 0) {
+      .then(() => {
+        if (!setup.features || setup.features?.length === 0) {
           return utils.reject(
             "Must select at least one feature. Use " +
               clc.bold.underline("SPACEBAR") +
@@ -189,12 +188,12 @@ module.exports = new Command("init [feature]")
 
         // "hosting:github" is a part of "hosting", so if both are selected, "hosting:github" is ignored.
         if (setup.features.includes("hosting") && setup.features.includes("hosting:github")) {
-          setup.features = setup.features.filter((f) => f != "hosting:github");
+          setup.features = setup.features.filter((f) => f !== "hosting:github");
         }
 
         return init(setup, config, options);
       })
-      .then(function () {
+      .then(() => {
         logger.info();
         utils.logBullet("Writing configuration info to " + clc.bold("firebase.json") + "...");
         config.writeProjectFile("firebase.json", setup.config);

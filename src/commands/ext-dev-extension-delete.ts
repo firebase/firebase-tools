@@ -10,7 +10,7 @@ import { requireAuth } from "../requireAuth";
 import { FirebaseError } from "../error";
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 
-module.exports = new Command("ext:dev:delete <extensionRef>")
+export const command = new Command("ext:dev:delete <extensionRef>")
   .description("delete an extension")
   .help(
     "use this command to delete an extension, and make it unavailable for developers to install or reconfigure. " +
