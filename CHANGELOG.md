@@ -1,5 +1,7 @@
+- Adds v2 RTDB triggers to function deploy (#4582).
 - Updates the minimum required version of Node.js to be `~14.18.0 || >=16.4.0` (#4580).
 - Fixes issue where `init` would fail to write existing RTDB rules containing comments (#4596).
 - Bump `@google-cloud/pubsub` from `2.19.4` to `3.0.1`
 - Adds v2 RTDB triggers to function deploy (#4582).
+- Fixes issue where emualtor commands would error out when `frameworkawareness` preview flag was enabled and `firebase.json` did not have a hosting entry (#4624).
 - Updates the underlying HTTP request library for auth-related requests (#4574).
