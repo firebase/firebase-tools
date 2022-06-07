@@ -1,11 +1,11 @@
-"use strict";
+import * as program from "commander";
+import * as clc from "cli-color";
+import * as leven from "leven";
 
-var program = require("commander");
-var pkg = require("../package.json");
-var clc = require("cli-color");
-const { logger } = require("./logger");
-var { setupLoggers } = require("./utils");
-var leven = require("leven");
+import { logger } from "./logger";
+import { setupLoggers } from "./utils";
+
+const pkg = require("../package.json");
 
 program.version(pkg.version);
 program.option(
@@ -20,17 +20,18 @@ program.option("-i, --interactive", "force prompts to be displayed");
 program.option("--debug", "print verbose debug output and keep a debug log file");
 program.option("-c, --config <path>", "path to the firebase.json file to use for configuration");
 
-var client = {};
-client.cli = program;
-client.logger = require("./logger");
-client.errorOut = require("./errorOut").errorOut;
-client.getCommand = function (name) {
-  for (var i = 0; i < client.cli.commands.length; i++) {
-    if (client.cli.commands[i]._name === name) {
-      return client.cli.commands[i];
+const client = {
+  cli: program,
+  logger: require("./logger"),
+  errorOut: require("./errorOut").errorOut,
+  getCommand: (name: string) => {
+    for (let i = 0; i < client.cli.commands.length; i++) {
+      if (client.cli.commands[i]._name === name) {
+        return client.cli.commands[i];
+      }
     }
-  }
-  return null;
+    return;
+  },
 };
 
 require("./commands").load(client);
@@ -38,12 +39,12 @@ require("./commands").load(client);
 /**
  * Checks to see if there is a different command similar to the provided one.
  * This prints the suggestion and returns it if there is one.
- * @param {string} cmd The command as provided by the user.
- * @param {string[]} cmdList List of commands available in the CLI.
- * @return {string|undefined} Returns the suggested command; undefined if none.
+ * @param cmd The command as provided by the user.
+ * @param cmdList List of commands available in the CLI.
+ * @return Returns the suggested command; undefined if none.
  */
-function suggestCommands(cmd, cmdList) {
-  var suggestion = cmdList.find(function (c) {
+function suggestCommands(cmd: string, cmdList: string[]): string | undefined {
+  const suggestion = cmdList.find((c) => {
     return leven(c, cmd) < c.length * 0.4;
   });
   if (suggestion) {
@@ -53,11 +54,11 @@ function suggestCommands(cmd, cmdList) {
   }
 }
 
-var commandNames = program.commands.map(function (cmd) {
+const commandNames = program.commands.map((cmd: any) => {
   return cmd._name;
 });
 
-var RENAMED_COMMANDS = {
+const RENAMED_COMMANDS: Record<string, string> = {
   "delete-site": "hosting:disable",
   "disable:hosting": "hosting:disable",
   "data:get": "database:get",
@@ -71,10 +72,10 @@ var RENAMED_COMMANDS = {
 };
 
 // Default handler, this is called when no other command action matches.
-program.action(function (_, args) {
+program.action((_, args) => {
   setupLoggers();
 
-  var cmd = args[0];
+  const cmd = args[0];
   logger.error(clc.bold.red("Error:"), clc.bold(cmd), "is not a Firebase command");
 
   if (RENAMED_COMMANDS[cmd]) {
@@ -96,4 +97,5 @@ program.action(function (_, args) {
   process.exit(1);
 });
 
-module.exports = client;
+// NB: Keep this export line to keep firebase-tools-as-a-module working.
+export = client;

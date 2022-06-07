@@ -2,7 +2,7 @@ import * as _ from "lodash";
 import { requireDatabaseInstance } from "../requireDatabaseInstance";
 import { requirePermissions } from "../requirePermissions";
 import { checkServiceAccountIam } from "../deploy/functions/checkIam";
-import * as checkValidTargetFilters from "../checkValidTargetFilters";
+import { checkValidTargetFilters } from "../checkValidTargetFilters";
 import { Command } from "../command";
 import { deploy } from "../deploy";
 import { requireConfig } from "../requireConfig";
