@@ -66,7 +66,8 @@ export abstract class ProjectState {
       // Math.random() which isn't really that great).
       const localId = randomId(28);
       if (!this.users.has(localId) && !this.pendingLocalIds.has(localId)) {
-        // Create a pending localId until user is created
+        // Create a pending localId until user is created. This creates a memory
+        // leak if a blocking functions throws and the localId is never used.
         this.pendingLocalIds.add(localId);
         return localId;
       }

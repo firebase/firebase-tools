@@ -231,7 +231,7 @@ async function signUp(
   if (!user) {
     updates.createdAt = timestamp.getTime().toString();
     const localId = reqBody.localId ?? state.generateLocalId();
-    if (reqBody.email) {
+    if (reqBody.email && !ctx.security?.Oauth2) {
       const userBeforeCreate = { localId, ...updates };
       const blockingResponse = await fetchBlockingFunction(
         state,
@@ -245,7 +245,7 @@ async function signUp(
     user = state.createUserWithLocalId(localId, updates);
     assert(user, "DUPLICATE_LOCAL_ID");
 
-    if (reqBody.email) {
+    if (reqBody.email && !ctx.security?.Oauth2) {
       if (!user.disabled) {
         const blockingResponse = await fetchBlockingFunction(
           state,
@@ -1462,13 +1462,13 @@ async function signInWithEmailLink(
     isNewUser,
   };
 
+  // User may have been disabled but only throw after writing user to store
+  assert(!user.disabled, "USER_DISABLED");
+
   if (isMfaEnabled(state, user)) {
     return { ...response, ...mfaPending(state, user, PROVIDER_PASSWORD) };
   } else {
     user = state.updateUserByLocalId(user.localId, { lastLoginAt: Date.now().toString() });
-    // User may have been disabled after either blocking function, but
-    // only throw after writing user to store
-    assert(!user?.disabled, "USER_DISABLED");
     return { ...response, ...issueTokens(state, user, PROVIDER_PASSWORD, { extraClaims }) };
   }
 }
@@ -3054,7 +3054,7 @@ async function fetchBlockingFunction(
     const text = await res.text();
     assert(
       res.ok,
-      `BLOCKING_FUNCTION_ERROR_RESPONSE: ((HTTP request to ${url} returned an error: ${text}))`
+      `BLOCKING_FUNCTION_ERROR_RESPONSE: ((HTTP request to ${url} returned HTTP error${res.status}: ${text}))`
     );
     response = JSON.parse(text) as BlockingFunctionResponsePayload;
   } catch (thrown: any) {
@@ -3074,10 +3074,13 @@ async function fetchBlockingFunction(
     clearTimeout(timeout);
   }
 
-  return processBlockingFunctionResponse(response);
+  return processBlockingFunctionResponse(event, response);
 }
 
-function processBlockingFunctionResponse(response: BlockingFunctionResponsePayload): {
+function processBlockingFunctionResponse(
+  event: BlockingFunctionEvents,
+  response: BlockingFunctionResponsePayload
+): {
   updates: BlockingFunctionUpdates;
   extraClaims?: Record<string, unknown>;
 } {
@@ -3105,9 +3108,13 @@ function processBlockingFunctionResponse(response: BlockingFunctionResponsePaylo
           validateSerializedCustomClaims(userRecord.customClaims!);
           updates.customAttributes = userRecord.customClaims;
           break;
-        // Session claims are only returned in beforeSignIn. For more info,
-        // see https://cloud.google.com/identity-platform/docs/blocking-functions#modifying_a_user
+        // Session claims are only returned in beforeSignIn and will be ignored
+        // otherwise. For more info, see
+        // https://cloud.google.com/identity-platform/docs/blocking-functions#modifying_a_user
         case "sessionClaims":
+          if (event !== BlockingFunctionEvents.BEFORE_SIGN_IN) {
+            break;
+          }
           try {
             extraClaims = JSON.parse(userRecord.sessionClaims!);
           } catch {
@@ -3186,33 +3193,11 @@ function generateBlockingFunctionJwt(
         display_name: providerUserInfo.displayName,
         photo_url: providerUserInfo.photoUrl,
         email: providerUserInfo.email,
-        uid: providerUserInfo.providerId,
+        uid: providerUserInfo.rawId,
+        phone_number: providerUserInfo.phoneNumber,
       };
       provider_data.push(provider);
     }
-  }
-  if (user.localId) {
-    const allPhoneNumbers = user.providerUserInfo
-      ? user.providerUserInfo.filter((info) => !!info.phoneNumber).map((info) => info.phoneNumber)
-      : [];
-    for (const phoneNumber of allPhoneNumbers) {
-      const provider: Provider = {
-        provider_id: PROVIDER_PASSWORD,
-        uid: phoneNumber,
-        phone_number: phoneNumber,
-      };
-      provider_data.push(provider);
-    }
-  }
-  if (user.email && (user.passwordHash || user.emailLinkSignin)) {
-    const provider: Provider = {
-      provider_id: PROVIDER_PASSWORD,
-      email: user.email,
-      uid: user.email,
-      display_name: user.displayName,
-      photo_url: user.photoUrl,
-    };
-    provider_data.push(provider);
   }
   jwt.user_record.provider_data = provider_data;
 

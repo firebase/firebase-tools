@@ -803,5 +803,51 @@ describeAuthEmulator("accounts:signUp", ({ authApi }) => {
           expect(res.body.error.message).to.equal("USER_DISABLED");
         });
     });
+
+    it("should not trigger blocking functions for privileged requests", async () => {
+      await updateConfig(
+        authApi(),
+        PROJECT_ID,
+        {
+          blockingFunctions: {
+            triggers: {
+              beforeCreate: {
+                functionUri: BEFORE_CREATE_URL,
+              },
+              beforeSignIn: {
+                functionUri: BEFORE_SIGN_IN_URL,
+              },
+            },
+          },
+        },
+        "blockingFunctions"
+      );
+      nock(BLOCKING_FUNCTION_HOST)
+        .post(BEFORE_CREATE_PATH)
+        .reply(400)
+        .post(BEFORE_SIGN_IN_PATH)
+        .reply(400);
+
+      const phoneNumber = TEST_PHONE_NUMBER;
+      const displayName = "Alice";
+      await authApi()
+        .post("/identitytoolkit.googleapis.com/v1/accounts:signUp")
+        .set("Authorization", "Bearer owner")
+        .send({ phoneNumber, displayName })
+        .then((res) => {
+          expectStatusCode(200, res);
+
+          // Shouldn't be set for authenticated requests:
+          expect(res.body).not.to.have.property("idToken");
+          expect(res.body).not.to.have.property("refreshToken");
+
+          expect(res.body.displayName).to.equal(displayName);
+          expect(res.body.localId).to.be.a("string").and.not.empty;
+        });
+
+      // Shouldn't trigger nock calls
+      expect(nock.isDone()).to.be.false;
+      nock.cleanAll();
+    });
   });
 });
