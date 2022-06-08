@@ -1,6 +1,5 @@
 import * as express from "express";
 
-import * as api from "../api";
 import { logger } from "../logger";
 import { Constants } from "./constants";
 import { EmulatorInfo, EmulatorInstance, Emulators } from "./types";
@@ -9,6 +8,8 @@ import { EmulatorLogger } from "./emulatorLogger";
 import { EventTrigger } from "./functionsEmulatorShared";
 import { CloudEvent } from "./events/types";
 import { EmulatorRegistry } from "./registry";
+import { Client } from "../apiv2";
+import { FirebaseError } from "../error";
 
 interface CustomEventTrigger {
   projectId: string;
@@ -104,6 +105,10 @@ export class EventarcEmulator implements EmulatorInstance {
     }
     const key = `${event.type}-${channel}`;
     const triggers = this.customEvents[key] || [];
+    const apiClient = new Client({
+      urlPrefix: `http://${EmulatorRegistry.getInfoHostString(functionsEmulator.getInfo())}`,
+      auth: false,
+    });
     return await Promise.all(
       triggers
         .filter(
@@ -112,17 +117,20 @@ export class EventarcEmulator implements EmulatorInstance {
             this.matchesAll(event, trigger.eventTrigger.eventFilters)
         )
         .map((trigger) =>
-          api
-            .request(
-              "POST",
-              `/functions/projects/${trigger.projectId}/triggers/${trigger.triggerName}`,
-              {
-                origin: `http://${EmulatorRegistry.getInfoHostString(functionsEmulator.getInfo())}`,
-                data: JSON.stringify(event),
-                json: false,
+          apiClient
+            .request<CloudEvent<any>, NodeJS.ReadableStream>({
+              method: "POST",
+              path: `/functions/projects/${trigger.projectId}/triggers/${trigger.triggerName}`,
+              body: JSON.stringify(event),
+              responseType: "stream",
+              resolveOnHTTPError: true,
+            })
+            .then((res) => {
+              // Since the response type is a stream and using `resolveOnHTTPError: true`, we check status manually.
+              if (res.status >= 400) {
+                throw new FirebaseError(`Received non-200 status code: ${res.status}`);
               }
-            )
-            .then(() => true)
+            })
             .catch((err) => {
               logger.error(
                 `Failed to trigger Functions emulator for ${trigger.triggerName}: ${err}`
