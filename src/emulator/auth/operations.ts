@@ -3100,9 +3100,11 @@ function processBlockingFunctionResponse(
       switch (field) {
         case "displayName":
         case "photoUrl":
+          (updates as any)[field] = coercePrimitiveToString(userRecord[field]);
+          break;
         case "disabled":
         case "emailVerified":
-          (updates as any)[field] = userRecord[field];
+          (updates as any)[field] = !!userRecord[field];
           break;
         case "customClaims":
           validateSerializedCustomClaims(userRecord.customClaims!);
