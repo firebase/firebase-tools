@@ -269,10 +269,33 @@ export function addResourcesToBuild(
     triggered = {
       scheduleTrigger: {
         schedule: annotation.schedule.schedule,
-        timeZone: annotation.schedule.timeZone || "what's the default timezone?",
-        retryConfig: annotation.schedule.retryConfig || {},
+        timeZone: annotation.schedule.timeZone || "America/Los_Angeles",
+        retryConfig: {},
       },
     };
+    if (annotation.schedule.retryConfig) {
+      if (annotation.schedule.retryConfig.maxBackoffDuration) {
+        triggered.scheduleTrigger.retryConfig.maxBackoffSeconds = proto.secondsFromDuration(
+          annotation.schedule.retryConfig.maxBackoffDuration
+        );
+      }
+      if (annotation.schedule.retryConfig.minBackoffDuration) {
+        triggered.scheduleTrigger.retryConfig.minBackoffSeconds = proto.secondsFromDuration(
+          annotation.schedule.retryConfig.minBackoffDuration
+        );
+      }
+      if (annotation.schedule.retryConfig.maxRetryDuration) {
+        triggered.scheduleTrigger.retryConfig.maxRetrySeconds = proto.secondsFromDuration(
+          annotation.schedule.retryConfig.maxRetryDuration
+        );
+      }
+      proto.copyIfPresent(
+        triggered.scheduleTrigger.retryConfig,
+        annotation.schedule.retryConfig,
+        "maxDoublings",
+        "retryCount"
+      );
+    }
   } else if (annotation.blockingTrigger) {
     if (events.v1.AUTH_BLOCKING_EVENTS.includes(annotation.blockingTrigger.eventType as any)) {
       want.requiredAPIs.push({
