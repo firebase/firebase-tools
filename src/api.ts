@@ -3,8 +3,6 @@ import { logger } from "./logger";
 import * as scopes from "./scopes";
 import * as utils from "./utils";
 
-const CLI_VERSION = require("../package.json").version;
-
 let commandScopes = new Set<string>();
 
 export const authProxyOrigin = utils.envOverride(
@@ -182,11 +180,13 @@ export const githubClientSecret = utils.envOverride(
   "3330d14abc895d9a74d5f17cd7a00711fa2c5bf0"
 );
 
+/** Gets scopes that have been set. */
 export function getScopes(): string[] {
   return Array.from(commandScopes);
 }
 
-export function setScopes(sps: string[] = []) {
+/** Sets scopes for API calls. */
+export function setScopes(sps: string[] = []): void {
   commandScopes = new Set<string>([
     scopes.EMAIL,
     scopes.OPENID,
