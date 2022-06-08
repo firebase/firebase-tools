@@ -30,8 +30,8 @@ const YAML_OBJ = {
 
 const YAML_TEXT = yaml.dump(YAML_OBJ);
 
-//const BACKEND: backend.Backend = backend.of(ENDPOINT);
-const BUILD: build.Build = build.of({"id": ENDPOINT});
+// const BACKEND: backend.Backend = backend.of(ENDPOINT);
+const BUILD: build.Build = build.of({ id: ENDPOINT });
 
 describe("yamlToBuild", () => {
   it("Accepts a valid v1alpha1 spec", () => {
