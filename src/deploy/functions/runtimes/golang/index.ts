@@ -153,26 +153,4 @@ export class Delegate {
     // Unimplemented. Build discovery is not currently supported in Go.
     return { requiredAPIs: [], endpoints: {}, params: [] };
   }
-
-  async discoverSpec(
-    configValues: backend.RuntimeConfigValues,
-    envs: backend.EnvironmentVariables
-  ): Promise<backend.Backend> {
-    let discovered = await discovery.detectFromYaml(this.sourceDir, this.projectId, this.runtime);
-    if (!discovered) {
-      const getPort = promisify(portfinder.getPort) as () => Promise<number>;
-      const port = await getPort();
-      (portfinder as any).basePort = port + 1;
-      const adminPort = await getPort();
-
-      const kill = await this.serve(port, adminPort, envs);
-      try {
-        discovered = await discovery.detectFromPort(adminPort, this.projectId, this.runtime);
-      } finally {
-        await kill();
-      }
-    }
-    discovered.environmentVariables = envs;
-    return discovered;
-  }
 }
