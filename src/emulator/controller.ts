@@ -541,7 +541,7 @@ export async function startAll(
   // even if the app developer has not explicitly configured the eventarc emulator.
   if (!shouldStart(options, Emulators.EVENTARC)) {
     if (options.config.src.emulators) {
-      options.config.src.emulators.eventarc = {host: DEFAULT_HOST, port: DEFAULT_PORTS.eventarc};
+      options.config.src.emulators.eventarc = { host: DEFAULT_HOST, port: DEFAULT_PORTS.eventarc };
     }
   }
   const eventarcAddr = await getAndCheckAddress(Emulators.EVENTARC, options);
