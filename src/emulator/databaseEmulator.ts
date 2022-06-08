@@ -10,7 +10,7 @@ import { Constants } from "./constants";
 import { EmulatorRegistry } from "./registry";
 import { EmulatorLogger } from "./emulatorLogger";
 import { FirebaseError } from "../error";
-import * as parseBoltRules from "../parseBoltRules";
+import { parseBoltRules } from "../parseBoltRules";
 import { Client } from "../apiv2";
 
 export interface DatabaseEmulatorArgs {

@@ -63,13 +63,17 @@ export async function createServiceAccount(
   const response = await apiClient.post<
     { accountId: string; serviceAccount: { displayName: string; description: string } },
     any
-  >(`/projects/${projectId}/serviceAccounts`, {
-    accountId,
-    serviceAccount: {
-      displayName,
-      description,
+  >(
+    `/projects/${projectId}/serviceAccounts`,
+    {
+      accountId,
+      serviceAccount: {
+        displayName,
+        description,
+      },
     },
-  });
+    { skipLog: { resBody: true } }
+  );
   return response.body;
 }
 

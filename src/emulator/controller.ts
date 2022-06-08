@@ -407,7 +407,7 @@ export async function startAll(
 
   if (previews.frameworkawareness) {
     const config = options.config.get("hosting");
-    if (Array.isArray(config) ? config.some((it) => it.source) : config.source) {
+    if (Array.isArray(config) ? config.some((it) => it.source) : config?.source) {
       await prepareFrameworks(targets, options, options);
     }
   }
