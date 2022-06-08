@@ -2,7 +2,8 @@ import * as clc from "cli-color";
 import * as _ from "lodash";
 
 import { Client } from "./apiv2.js";
-import { googleOrigin } from "./api.cjs";
+import apiv1Pkg from "./api.cjs";
+const { googleOrigin } = apiv1Pkg;
 import { logger } from "./logger.js";
 import { FirebaseError } from "./error.js";
 import * as utils from "./utils.js";

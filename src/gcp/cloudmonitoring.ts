@@ -1,4 +1,5 @@
-import { cloudMonitoringOrigin } from "../api.cjs";
+import apiv1Pkg from "../api.cjs";
+const { cloudMonitoringOrigin } = apiv1Pkg;
 import { Client } from "../apiv2.js";
 import { FirebaseError } from "../error.js";
 

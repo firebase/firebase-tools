@@ -4,7 +4,8 @@ import * as sinon from "sinon";
 
 import { configstore } from "../configstore.js";
 import { fetchWebSetup, getCachedWebSetup } from "../fetchWebSetup.js";
-import { firebaseApiOrigin } from "../api.cjs";
+import apiv1Pkg from "../api.cjs";
+const { firebaseApiOrigin } = apiv1Pkg;
 import { FirebaseError } from "../error.js";
 
 describe("fetchWebSetup module", () => {

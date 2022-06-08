@@ -1,4 +1,5 @@
-import { resourceManagerOrigin, iamOrigin } from "../api.cjs";
+import apiv1Pkg from "../api.cjs";
+const { resourceManagerOrigin, iamOrigin } = apiv1Pkg;
 import lodash from "lodash";
 const { difference } = lodash;
 import { logger } from "../logger.js";

@@ -1,7 +1,8 @@
 import * as _ from "lodash";
 import * as clc from "cli-color";
 
-import { firebaseApiOrigin } from "./api.cjs";
+import apiv1Pkg from "./api.cjs";
+const { firebaseApiOrigin } = apiv1Pkg;
 import { Client } from "./apiv2.js";
 import { ensure as ensureApiEnabled } from "./ensureApiEnabled.js";
 import { FirebaseError } from "./error.js";

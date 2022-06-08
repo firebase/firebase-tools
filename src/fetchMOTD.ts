@@ -3,7 +3,8 @@ import * as semver from "semver";
 
 import { Client } from "./apiv2.js";
 import { configstore } from "./configstore.js";
-import { realtimeOrigin } from "./api.cjs";
+import apiv1Pkg from "./api.cjs";
+const { realtimeOrigin } = apiv1Pkg;
 import * as utils from "./utils.js";
 
 const pkg = require("../package.json"); // eslint-disable-line @typescript-eslint/no-var-requires

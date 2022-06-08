@@ -20,7 +20,8 @@ import {
 } from "../../management/apps";
 import * as pollUtils from "../../operation-poller.js";
 import { FirebaseError } from "../../error.js";
-import { firebaseApiOrigin } from "../../api.cjs";
+import apiv1Pkg from "../../api.cjs";
+const { firebaseApiOrigin } = apiv1Pkg;
 
 const PROJECT_ID = "the-best-firebase-project";
 const OPERATION_RESOURCE_NAME_1 = "operations/cp.11111111111111111";

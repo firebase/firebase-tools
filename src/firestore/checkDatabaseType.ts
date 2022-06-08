@@ -1,4 +1,5 @@
-import { appengineOrigin } from "../api.cjs";
+import apiv1Pkg from "../api.cjs";
+const { appengineOrigin } = apiv1Pkg;
 import { Client } from "../apiv2.js";
 import { logger } from "../logger.js";
 

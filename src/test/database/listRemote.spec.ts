@@ -2,7 +2,8 @@ import { expect } from "chai";
 import nock from "nock";
 
 import * as utils from "../../utils.js";
-import { realtimeOrigin } from "../../api.cjs";
+import apiv1Pkg from "../../api.cjs";
+const { realtimeOrigin } = apiv1Pkg;
 import { RTDBListRemote } from "../../database/listRemote.js";
 const HOST = "https://firebaseio.com";
 

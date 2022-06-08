@@ -1,5 +1,6 @@
 import { logger } from "../logger.js";
-import { hostingOrigin } from "../api.cjs";
+import apiv1Pkg from "../api.cjs";
+const { hostingOrigin } = apiv1Pkg;
 import clccolor from "cli-color";
 const { bold, white } = clccolor;
 import lodash from "lodash";

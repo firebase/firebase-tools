@@ -20,7 +20,8 @@ import { logWarning } from "../utils.js";
 import { promptOnce } from "../prompt.js";
 import { validateKey } from "./env.js";
 import { logger } from "../logger.js";
-import { functionsOrigin } from "../api.cjs";
+import apiv1Pkg from "../api.cjs";
+const { functionsOrigin } = apiv1Pkg;
 import { assertExhaustive } from "../functional.js";
 
 const FIREBASE_MANGED = "firebase-managed";

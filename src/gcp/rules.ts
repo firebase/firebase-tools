@@ -1,6 +1,7 @@
 import * as _ from "lodash";
 
-import { rulesOrigin } from "../api.cjs";
+import apiv1Pkg from "../api.cjs";
+const { rulesOrigin } = apiv1Pkg;
 import { Client } from "../apiv2.js";
 import { logger } from "../logger.js";
 import * as utils from "../utils.js";

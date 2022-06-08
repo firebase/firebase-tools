@@ -1,7 +1,8 @@
 import { RequestHandler } from "express";
 
 import { Client } from "../apiv2.js";
-import { cloudRunApiOrigin } from "../api.cjs";
+import apiv1Pkg from "../api.cjs";
+const { cloudRunApiOrigin } = apiv1Pkg;
 import { errorRequestHandler, proxyRequestHandler } from "./proxy.js";
 import { FirebaseError } from "../error.js";
 import { logger } from "../logger.js";

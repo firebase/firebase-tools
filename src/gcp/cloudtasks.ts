@@ -1,7 +1,8 @@
 import * as proto from "./proto.js";
 
 import { Client } from "../apiv2.js";
-import { cloudTasksOrigin } from "../api.cjs";
+import apiv1Pkg from "../api.cjs";
+const { cloudTasksOrigin } = apiv1Pkg;
 import * as iam from "./iam.js";
 import * as backend from "../deploy/functions/backend.js";
 

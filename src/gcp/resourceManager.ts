@@ -1,6 +1,7 @@
 import lodash from "lodash";
 const { findIndex } = lodash;
-import { resourceManagerOrigin } from "../api.cjs";
+import apiv1Pkg from "../api.cjs";
+const { resourceManagerOrigin } = apiv1Pkg;
 import { Client } from "../apiv2.js";
 import { Binding, getServiceAccount, Policy } from "./iam.js";
 

@@ -1,5 +1,6 @@
 import { FirebaseError } from "../error.js";
-import { hostingApiOrigin } from "../api.cjs";
+import apiv1Pkg from "../api.cjs";
+const { hostingApiOrigin } = apiv1Pkg;
 import { Client } from "../apiv2.js";
 import * as operationPoller from "../operation-poller.js";
 import { DEFAULT_DURATION } from "../hosting/expireUtils.js";

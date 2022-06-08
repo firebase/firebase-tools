@@ -1,5 +1,6 @@
 import { expect } from "chai";
-import { remoteConfigApiOrigin } from "../../api.cjs";
+import apiv1Pkg from "../../api.cjs";
+const { remoteConfigApiOrigin } = apiv1Pkg;
 import nock from "nock";
 
 import * as remoteconfig from "../../remoteconfig/versionslist.js";

@@ -2,7 +2,8 @@ import * as clc from "cli-color";
 
 import { Client } from "../apiv2.js";
 import { FirebaseError } from "../error.js";
-import { functionsV2Origin } from "../api.cjs";
+import apiv1Pkg from "../api.cjs";
+const { functionsV2Origin } = apiv1Pkg;
 import { logger } from "../logger.js";
 import { AUTH_BLOCKING_EVENTS } from "../functions/events/v1.js";
 import { PUBSUB_PUBLISH_EVENT } from "../functions/events/v2.js";

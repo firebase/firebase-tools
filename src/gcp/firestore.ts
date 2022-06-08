@@ -1,4 +1,5 @@
-import { firestoreOriginOrEmulator } from "../api.cjs";
+import apiv1Pkg from "../api.cjs";
+const { firestoreOriginOrEmulator } = apiv1Pkg;
 import { Client } from "../apiv2.js";
 
 const apiClient = new Client({

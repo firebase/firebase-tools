@@ -6,7 +6,8 @@
 import * as clc from "cli-color";
 
 import { FirebaseError } from "../../error.js";
-import { artifactRegistryDomain, containerRegistryDomain } from "../../api.cjs";
+import apiv1Pkg from "../../api.cjs";
+const { artifactRegistryDomain, containerRegistryDomain } = apiv1Pkg;
 import { logger } from "../../logger.js";
 import * as artifactregistry from "../../gcp/artifactregistry.js";
 import * as backend from "./backend.js";

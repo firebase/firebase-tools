@@ -10,7 +10,8 @@ marked.setOptions({
   renderer: new TerminalRenderer(),
 });
 
-import { storageOrigin } from "../api.cjs";
+import apiv1Pkg from "../api.cjs";
+const { storageOrigin } = apiv1Pkg;
 import { archiveDirectory } from "../archiveDirectory.js";
 import { convertOfficialExtensionsToList } from "./utils.js";
 import { getFirebaseConfig } from "../functionsConfig.js";

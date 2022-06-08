@@ -3,7 +3,8 @@ import nock from "nock";
 import * as sinon from "sinon";
 
 import { FirebaseError } from "../../error.js";
-import { firebaseExtensionsRegistryOrigin } from "../../api.cjs";
+import apiv1Pkg from "../../api.cjs";
+const { firebaseExtensionsRegistryOrigin } = apiv1Pkg;
 import * as extensionsApi from "../../extensions/extensionsApi.js";
 import * as extensionsHelper from "../../extensions/extensionsHelper.js";
 import * as updateHelper from "../../extensions/updateHelper.js";

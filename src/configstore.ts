@@ -1,6 +1,6 @@
 import Configstore from "configstore";
+import fs from "fs-extra";
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const pkg = require("../package.json");
+const pkg = JSON.parse(fs.readFileSync("../package.json", "utf-8"));
 
 export const configstore = new Configstore(pkg.name);

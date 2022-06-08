@@ -9,7 +9,8 @@ import * as Spec from "./indexes-spec.js";
 import * as sort from "./indexes-sort.js";
 import * as util from "./util.js";
 import { promptOnce } from "../prompt.js";
-import { firestoreOrigin } from "../api.cjs";
+import apiv1Pkg from "../api.cjs";
+const { firestoreOrigin } = apiv1Pkg;
 import { Client } from "../apiv2.js";
 
 export class FirestoreIndexes {

@@ -1,4 +1,5 @@
-import { remoteConfigApiOrigin } from "../../api.cjs";
+import apiv1Pkg from "../../api.cjs";
+const { remoteConfigApiOrigin } = apiv1Pkg;
 import { Client } from "../../apiv2.js";
 import { FirebaseError } from "../../error.js";
 import { RemoteConfigTemplate } from "../../remoteconfig/interfaces.js";

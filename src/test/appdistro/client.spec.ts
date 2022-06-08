@@ -7,7 +7,8 @@ import * as sinon from "sinon";
 import * as tmp from "tmp";
 
 import { AppDistributionClient, BatchRemoveTestersResponse } from "../../appdistribution/client.js";
-import { appDistributionOrigin } from "../../api.cjs";
+import apiv1Pkg from "../../api.cjs";
+const { appDistributionOrigin } = apiv1Pkg;
 import { Distribution } from "../../appdistribution/distribution.js";
 import { FirebaseError } from "../../error.js";
 

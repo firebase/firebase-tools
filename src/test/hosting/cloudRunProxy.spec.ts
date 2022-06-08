@@ -4,7 +4,8 @@ import nock from "nock";
 import * as sinon from "sinon";
 import supertest from "supertest";
 
-import { cloudRunApiOrigin } from "../../api.cjs";
+import apiv1Pkg from "../../api.cjs";
+const { cloudRunApiOrigin } = apiv1Pkg;
 import cloudRunProxy, {
   CloudRunProxyOptions,
   CloudRunProxyRewrite,

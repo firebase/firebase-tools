@@ -2,7 +2,8 @@ import * as _ from "lodash";
 
 import { FirebaseError } from "../error.js";
 import { logger } from "../logger.js";
-import { cloudschedulerOrigin } from "../api.cjs";
+import apiv1Pkg from "../api.cjs";
+const { cloudschedulerOrigin } = apiv1Pkg;
 import { Client } from "../apiv2.js";
 import * as backend from "../deploy/functions/backend.js";
 import * as proto from "./proto.js";

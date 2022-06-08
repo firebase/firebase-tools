@@ -1,4 +1,5 @@
-import { cloudbillingOrigin } from "../api.cjs";
+import apiv1Pkg from "../api.cjs";
+const { cloudbillingOrigin } = apiv1Pkg;
 import { Client } from "../apiv2.js";
 import * as utils from "../utils.js";
 

@@ -7,7 +7,8 @@ import { Client } from "../apiv2.js";
 import { Constants } from "../emulator/constants.js";
 import { FirebaseError } from "../error.js";
 import { logger } from "../logger.js";
-import { rtdbManagementOrigin } from "../api.cjs";
+import apiv1Pkg from "../api.cjs";
+const { rtdbManagementOrigin } = apiv1Pkg;
 import * as utils from "../utils.js";
 
 export const MGMT_API_VERSION = "v1beta";

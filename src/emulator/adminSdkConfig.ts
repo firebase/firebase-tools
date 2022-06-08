@@ -1,4 +1,5 @@
-import { firebaseApiOrigin } from "../api.cjs";
+import apiv1Pkg from "../api.cjs";
+const { firebaseApiOrigin } = apiv1Pkg;
 import * as apiv2 from "../apiv2.js";
 import { configstore } from "../configstore.js";
 import { FirebaseError } from "../error.js";

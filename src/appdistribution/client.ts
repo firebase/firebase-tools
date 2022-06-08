@@ -6,7 +6,8 @@ import * as operationPoller from "../operation-poller.js";
 import { Distribution } from "./distribution.js";
 import { FirebaseError } from "../error.js";
 import { Client } from "../apiv2.js";
-import { appDistributionOrigin } from "../api.cjs";
+import apiv1Pkg from "../api.cjs";
+const { appDistributionOrigin } = apiv1Pkg;
 
 /**
  * Helper interface for an app that is provisioned with App Distribution

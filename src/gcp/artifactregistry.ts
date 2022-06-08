@@ -1,5 +1,6 @@
 import { Client } from "../apiv2.js";
-import { artifactRegistryDomain } from "../api.cjs";
+import apiv1Pkg from "../api.cjs";
+const { artifactRegistryDomain } = apiv1Pkg;
 
 export const API_VERSION = "v1beta2";
 

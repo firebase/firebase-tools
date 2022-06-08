@@ -1,7 +1,8 @@
 import * as _ from "lodash";
 import { logger } from "../logger.js";
 import { Client } from "../apiv2.js";
-import { firebaseExtensionsRegistryOrigin } from "../api.cjs";
+import apiv1Pkg from "../api.cjs";
+const { firebaseExtensionsRegistryOrigin } = apiv1Pkg;
 
 const EXTENSIONS_REGISTRY_ENDPOINT = "/extensions.json";
 

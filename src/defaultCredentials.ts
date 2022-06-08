@@ -1,7 +1,8 @@
 import * as fs from "fs";
 import * as path from "path";
 
-import { clientId, clientSecret } from "./api.cjs";
+import apiv1Pkg from "./api.cjs";
+const { clientId, clientSecret } = apiv1Pkg;
 import { Tokens, User, Account } from "./auth.js";
 import { logger } from "./logger.js";
 

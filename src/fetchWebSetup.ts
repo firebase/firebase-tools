@@ -1,6 +1,7 @@
 import { Client } from "./apiv2.js";
 import { configstore } from "./configstore.js";
-import { firebaseApiOrigin, hostingApiOrigin } from "./api.cjs";
+import apiv1Pkg from "./api.cjs";
+const { firebaseApiOrigin, hostingApiOrigin } = apiv1Pkg;
 import { needProjectId } from "./projectUtils.js";
 import { logger } from "./logger.js";
 import { Constants } from "./emulator/constants.js";

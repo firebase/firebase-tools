@@ -6,7 +6,8 @@ import * as firestore from "../gcp/firestore.js";
 import { FirebaseError } from "../error.js";
 import { logger } from "../logger.js";
 import * as utils from "../utils.js";
-import { firestoreOriginOrEmulator } from "../api.cjs";
+import apiv1Pkg from "../api.cjs";
+const { firestoreOriginOrEmulator } = apiv1Pkg;
 
 // Datastore allowed numeric IDs where Firestore only allows strings. Numeric IDs are
 // exposed to Firestore as __idNUM__, so this is the lowest possible negative numeric

@@ -2,7 +2,8 @@
  * Package for interacting with Realtime Database metadata.
  */
 
-import { realtimeOrigin, rtdbMetadataOrigin } from "../api.cjs";
+import apiv1Pkg from "../api.cjs";
+const { realtimeOrigin, rtdbMetadataOrigin } = apiv1Pkg;
 import { Client } from "../apiv2.js";
 import { logger } from "../logger.js";
 import * as utils from "../utils.js";

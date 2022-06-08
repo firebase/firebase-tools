@@ -1,5 +1,6 @@
 import { Client } from "../apiv2.js";
-import { pubsubOrigin } from "../api.cjs";
+import apiv1Pkg from "../api.cjs";
+const { pubsubOrigin } = apiv1Pkg;
 import * as backend from "../deploy/functions/backend.js";
 import * as proto from "./proto.js";
 

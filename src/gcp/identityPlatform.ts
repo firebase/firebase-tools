@@ -1,5 +1,6 @@
 import * as proto from "./proto.js";
-import { identityOrigin } from "../api.cjs";
+import apiv1Pkg from "../api.cjs";
+const { identityOrigin } = apiv1Pkg;
 import { Client } from "../apiv2.js";
 
 const API_VERSION = "v2";

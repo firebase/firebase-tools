@@ -2,7 +2,8 @@ import * as clc from "cli-color";
 
 import { Client } from "../apiv2.js";
 import { Command } from "../command.js";
-import { hostingApiOrigin } from "../api.cjs";
+import apiv1Pkg from "../api.cjs";
+const { hostingApiOrigin } = apiv1Pkg;
 import { promptOnce } from "../prompt.js";
 import { requireHostingSite } from "../requireHostingSite.js";
 import { requirePermissions } from "../requirePermissions.js";

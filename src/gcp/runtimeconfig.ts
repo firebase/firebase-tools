@@ -1,6 +1,7 @@
 import * as _ from "lodash";
 
-import { runtimeconfigOrigin } from "../api.cjs";
+import apiv1Pkg from "../api.cjs";
+const { runtimeconfigOrigin } = apiv1Pkg;
 import { Client } from "../apiv2.js";
 import { logger } from "../logger.js";
 

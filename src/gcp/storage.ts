@@ -1,7 +1,8 @@
 import { Readable } from "stream";
 import * as path from "path";
 
-import { appengineOrigin, storageOrigin } from "../api.cjs";
+import apiv1Pkg from "../api.cjs";
+const { appengineOrigin, storageOrigin } = apiv1Pkg;
 import { Client } from "../apiv2.js";
 import { logger } from "../logger.js";
 import { FirebaseError } from "../error.js";

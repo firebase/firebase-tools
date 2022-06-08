@@ -1,7 +1,8 @@
 import * as fs from "fs";
 
 import { Client } from "../apiv2.js";
-import { firebaseApiOrigin } from "../api.cjs";
+import apiv1Pkg from "../api.cjs";
+const { firebaseApiOrigin } = apiv1Pkg;
 import { FirebaseError } from "../error.js";
 import { logger } from "../logger.js";
 import { pollOperation } from "../operation-poller.js";

@@ -1,7 +1,8 @@
 import nock from "nock";
 import { expect } from "chai";
 
-import { googleOrigin } from "../api.cjs";
+import apiv1Pkg from "../api.cjs";
+const { googleOrigin } = apiv1Pkg;
 
 import * as accountImporter from "../accountImporter.js";
 

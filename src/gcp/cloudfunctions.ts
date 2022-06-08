@@ -10,7 +10,8 @@ import * as runtimes from "../deploy/functions/runtimes";
 import * as iam from "./iam.js";
 import * as projectConfig from "../functions/projectConfig.js";
 import { Client } from "../apiv2.js";
-import { functionsOrigin } from "../api.cjs";
+import apiv1Pkg from "../api.cjs";
+const { functionsOrigin } = apiv1Pkg;
 import { AUTH_BLOCKING_EVENTS } from "../functions/events/v1.js";
 
 export const API_VERSION = "v1";

@@ -5,7 +5,8 @@ import * as clc from "cli-color";
 const { marked } = require("marked");
 
 import { Client } from "../apiv2.js";
-import { extensionsOrigin } from "../api.cjs";
+import apiv1Pkg from "../api.cjs";
+const { extensionsOrigin } = apiv1Pkg;
 import { FirebaseError } from "../error.js";
 import { logger } from "../logger.js";
 import * as operationPoller from "../operation-poller.js";

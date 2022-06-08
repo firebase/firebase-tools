@@ -19,7 +19,8 @@ import { addServiceAccountToRoles, firebaseRoles } from "../../../gcp/resourceMa
 import { logger } from "../../../logger.js";
 import { prompt } from "../../../prompt.js";
 import { logBullet, logLabeledBullet, logSuccess, logWarning, reject } from "../../../utils.js";
-import { githubApiOrigin, githubClientId } from "../../../api.cjs";
+import apiv1Pkg from "../../../api.cjs";
+const { githubApiOrigin, githubClientId } = apiv1Pkg;
 import { Client } from "../../../apiv2.js";
 
 let GIT_DIR: string;

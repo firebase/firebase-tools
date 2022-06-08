@@ -1,6 +1,7 @@
 import { logger } from "./logger.js";
 import { Client } from "./apiv2.js";
-import { dynamicLinksKey, dynamicLinksOrigin } from "./api.cjs";
+import apiv1Pkg from "./api.cjs";
+const { dynamicLinksKey, dynamicLinksOrigin } = apiv1Pkg;
 
 const DYNAMIC_LINKS_PREFIX = "https://firebase.tools/l";
 

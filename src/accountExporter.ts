@@ -5,7 +5,8 @@ import * as path from "path";
 
 import { Client } from "./apiv2.js";
 import { FirebaseError } from "./error.js";
-import { googleOrigin } from "./api.cjs";
+import apiv1Pkg from "./api.cjs";
+const { googleOrigin } = apiv1Pkg;
 import * as utils from "./utils.js";
 
 const apiClient = new Client({

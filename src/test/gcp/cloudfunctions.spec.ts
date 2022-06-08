@@ -1,7 +1,8 @@
 import { expect } from "chai";
 import nock from "nock";
 
-import { functionsOrigin } from "../../api.cjs";
+import apiv1Pkg from "../../api.cjs";
+const { functionsOrigin } = apiv1Pkg;
 
 import * as backend from "../../deploy/functions/backend.js";
 import { BEFORE_CREATE_EVENT, BEFORE_SIGN_IN_EVENT } from "../../functions/events/v1.js";

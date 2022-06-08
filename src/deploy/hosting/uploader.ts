@@ -9,7 +9,8 @@ import * as zlib from "zlib";
 
 import { Client } from "../../apiv2.js";
 import { Queue } from "../../throttler/queue.js";
-import { hostingApiOrigin } from "../../api.cjs";
+import apiv1Pkg from "../../api.cjs";
+const { hostingApiOrigin } = apiv1Pkg;
 import { load, dump, HashRecord } from "./hashcache.js";
 import { logger } from "../../logger.js";
 import { FirebaseError } from "../../error.js";

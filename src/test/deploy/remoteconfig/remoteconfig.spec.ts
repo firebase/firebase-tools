@@ -3,7 +3,8 @@ import nock from "nock";
 import * as sinon from "sinon";
 
 import * as api from "../../../api.cjs";
-import { remoteConfigApiOrigin } from "../../../api.cjs";
+import apiv1Pkg from "../../../api.cjs";
+const { remoteConfigApiOrigin } = apiv1Pkg;
 import * as rcDeploy from "../../../deploy/remoteconfig/functions.js";
 import { FirebaseError } from "../../../error.js";
 import * as remoteconfig from "../../../remoteconfig/get.js";

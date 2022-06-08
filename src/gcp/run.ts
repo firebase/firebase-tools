@@ -1,6 +1,7 @@
 import { Client } from "../apiv2.js";
 import { FirebaseError } from "../error.js";
-import { runOrigin } from "../api.cjs";
+import apiv1Pkg from "../api.cjs";
+const { runOrigin } = apiv1Pkg;
 import * as proto from "./proto.js";
 import * as iam from "./iam.js";
 import * as _ from "lodash";

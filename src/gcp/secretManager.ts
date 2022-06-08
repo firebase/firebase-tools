@@ -3,7 +3,8 @@ import * as iam from "./iam.js";
 import { logLabeledSuccess } from "../utils.js";
 import { FirebaseError } from "../error.js";
 import { Client } from "../apiv2.js";
-import { secretManagerOrigin } from "../api.cjs";
+import apiv1Pkg from "../api.cjs";
+const { secretManagerOrigin } = apiv1Pkg;
 
 // Matches projects/{PROJECT}/secrets/{SECRET}
 const SECRET_NAME_REGEX = new RegExp(

@@ -22,7 +22,8 @@ import { randomBytes, createHash } from "crypto";
 import clccolor from "cli-color";
 const { bold } = clccolor;
 import { track } from "./track.js";
-import {
+import apiv1Pkg from "./api.cjs";
+const {
   authOrigin,
   authProxyOrigin,
   clientId,
@@ -31,7 +32,7 @@ import {
   githubClientSecret,
   githubOrigin,
   googleOrigin,
-} from "./api.cjs";
+} = apiv1Pkg;
 
 /* eslint-disable camelcase */
 // The wire protocol for an access token returned by Google.

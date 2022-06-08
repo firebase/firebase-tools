@@ -1,4 +1,5 @@
-import { firedataOrigin } from "../api.cjs";
+import apiv1Pkg from "../api.cjs";
+const { firedataOrigin } = apiv1Pkg;
 import { Client } from "../apiv2.js";
 import { logger } from "../logger.js";
 import * as utils from "../utils.js";

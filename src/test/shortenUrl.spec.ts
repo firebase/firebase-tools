@@ -1,6 +1,7 @@
 import { expect } from "chai";
 import nock from "nock";
-import { dynamicLinksKey, dynamicLinksOrigin } from "../api.cjs";
+import apiv1Pkg from "../api.cjs";
+const { dynamicLinksKey, dynamicLinksOrigin } = apiv1Pkg;
 import { shortenUrl } from "../shortenUrl.js";
 
 describe("shortenUrl", () => {

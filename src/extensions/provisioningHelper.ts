@@ -2,7 +2,8 @@
 const { marked } = require("marked");
 
 import * as extensionsApi from "./extensionsApi.js";
-import { firebaseStorageOrigin, firedataOrigin } from "../api.cjs";
+import apiv1Pkg from "../api.cjs";
+const { firebaseStorageOrigin, firedataOrigin } = apiv1Pkg;
 import { Client } from "../apiv2.js";
 import { flattenArray } from "../functional.js";
 import { FirebaseError } from "../error.js";

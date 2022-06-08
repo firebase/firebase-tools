@@ -1,4 +1,5 @@
-import { hostingApiOrigin } from "../../api.cjs";
+import apiv1Pkg from "../../api.cjs";
+const { hostingApiOrigin } = apiv1Pkg;
 import { Client } from "../../apiv2.js";
 
 export const client = new Client({

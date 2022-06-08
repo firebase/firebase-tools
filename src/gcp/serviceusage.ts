@@ -1,6 +1,7 @@
 import clccolor from "cli-color";
 const { bold } = clccolor;
-import { serviceUsageOrigin } from "../api.cjs";
+import apiv1Pkg from "../api.cjs";
+const { serviceUsageOrigin } = apiv1Pkg;
 import { Client } from "../apiv2.js";
 import { FirebaseError } from "../error.js";
 import * as utils from "../utils.js";
