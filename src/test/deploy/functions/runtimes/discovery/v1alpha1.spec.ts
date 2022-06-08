@@ -26,7 +26,7 @@ describe("buildFromV1Alpha", () => {
       project: PROJECT,
       region: REGION,
       runtime: RUNTIME,
-      serviceAccountEmail: "default",
+      serviceAccountEmail: undefined,
       timeoutSeconds: 60,
     };
     const DEFAULTED_ENDPOINT: Omit<build.Endpoint, "httpsTrigger" | "secretEnvironmentVariables"> =
@@ -36,7 +36,7 @@ describe("buildFromV1Alpha", () => {
         project: PROJECT,
         region: [REGION],
         runtime: RUNTIME,
-        serviceAccount: "default",
+        serviceAccount: null,
       };
 
     it("fills default backend and function fields", () => {

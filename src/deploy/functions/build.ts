@@ -331,6 +331,8 @@ export function resolveBackend(build: Build, userEnvs: Record<string, string>): 
       }
       if (bdEndpoint.serviceAccount) {
         bkEndpoint.serviceAccountEmail = bdEndpoint.serviceAccount;
+      } else {
+        bkEndpoint.serviceAccountEmail = undefined;
       }
 
       bkEndpoints.push(bkEndpoint);
