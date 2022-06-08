@@ -294,6 +294,17 @@ describe("addResourcesToBuild", () => {
         maxDoublings: 10,
       },
     };
+    const buildSschedule: build.ScheduleTrigger = {
+      schedule: "every 10 minutes",
+      timeZone: "America/Los_Angeles",
+      retryConfig: {
+        retryCount: 20,
+        maxRetrySeconds: 200,
+        minBackoffSeconds: 1,
+        maxBackoffSeconds: 10,
+        maxDoublings: 10,
+      },
+    };
     const trigger: parseTriggers.TriggerAnnotation = {
       ...BASIC_TRIGGER,
       eventTrigger: {
@@ -319,7 +330,7 @@ describe("addResourcesToBuild", () => {
     const expected: build.Build = build.of({
       func: {
         ...BASIC_ENDPOINT,
-        scheduleTrigger: schedule,
+        scheduleTrigger: buildSschedule,
         labels: {
           test: "testing",
         },
