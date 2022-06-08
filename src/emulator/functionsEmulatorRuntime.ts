@@ -1,15 +1,15 @@
 import * as fs from "fs";
 
 import { CloudFunction, DeploymentOptions, https } from "firebase-functions";
-import * as express from "express";
+import express from "express";
 import * as path from "path";
 import * as admin from "firebase-admin";
 import * as bodyParser from "body-parser";
 import { pathToFileURL, URL } from "url";
 import * as _ from "lodash";
 
-import { EmulatorLog } from "./types";
-import { Constants } from "./constants";
+import { EmulatorLog } from "./types.js";
+import { Constants } from "./constants.js";
 import {
   EmulatedTriggerMap,
   findModuleRoot,
@@ -19,7 +19,7 @@ import {
   HttpConstants,
   SignatureType,
 } from "./functionsEmulatorShared";
-import { compareVersionStrings, isLocalHost } from "./functionsEmulatorUtils";
+import { compareVersionStrings, isLocalHost } from "./functionsEmulatorUtils.js";
 
 let functionModule: any;
 let FUNCTION_TARGET_NAME: string;

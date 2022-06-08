@@ -1,5 +1,5 @@
 import * as sinon from "sinon";
-import * as auth from "../../auth";
+import * as auth from "../../auth.js";
 
 /**
  * Mocks getAccessToken so that tests don't take forever.

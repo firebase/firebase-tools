@@ -1,11 +1,11 @@
 import * as clc from "cli-color";
 
-import { logger } from "../../../logger";
-import { promptOnce } from "../../../prompt";
-import { requirePermissions } from "../../../requirePermissions";
-import { previews } from "../../../previews";
-import { Options } from "../../../options";
-import { ensure } from "../../../ensureApiEnabled";
+import { logger } from "../../../logger.js";
+import { promptOnce } from "../../../prompt.js";
+import { requirePermissions } from "../../../requirePermissions.js";
+import { previews } from "../../../previews.js";
+import { Options } from "../../../options.js";
+import { ensure } from "../../../ensureApiEnabled.js";
 
 export async function doSetup(setup: any, config: any, options: Options) {
   logger.info();

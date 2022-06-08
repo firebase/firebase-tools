@@ -1,23 +1,23 @@
 import * as clc from "cli-color";
-import * as functionsConfig from "../functionsConfig";
+import * as functionsConfig from "../functionsConfig.js";
 
-import { Command } from "../command";
-import { FirebaseError } from "../error";
-import { Options } from "../options";
-import { needProjectId } from "../projectUtils";
-import { promptOnce } from "../prompt";
-import { reduceFlat } from "../functional";
-import { requirePermissions } from "../requirePermissions";
-import * as args from "../deploy/functions/args";
-import * as ensure from "../ensureApiEnabled";
-import * as helper from "../deploy/functions/functionsDeployHelper";
-import * as utils from "../utils";
-import * as backend from "../deploy/functions/backend";
-import * as planner from "../deploy/functions/release/planner";
-import * as fabricator from "../deploy/functions/release/fabricator";
-import * as executor from "../deploy/functions/release/executor";
-import * as reporter from "../deploy/functions/release/reporter";
-import * as containerCleaner from "../deploy/functions/containerCleaner";
+import { Command } from "../command.js";
+import { FirebaseError } from "../error.js";
+import { Options } from "../options.js";
+import { needProjectId } from "../projectUtils.js";
+import { promptOnce } from "../prompt.js";
+import { reduceFlat } from "../functional.js";
+import { requirePermissions } from "../requirePermissions.js";
+import * as args from "../deploy/functions/args.js";
+import * as ensure from "../ensureApiEnabled.js";
+import * as helper from "../deploy/functions/functionsDeployHelper.js";
+import * as utils from "../utils.js";
+import * as backend from "../deploy/functions/backend.js";
+import * as planner from "../deploy/functions/release/planner.js";
+import * as fabricator from "../deploy/functions/release/fabricator.js";
+import * as executor from "../deploy/functions/release/executor.js";
+import * as reporter from "../deploy/functions/release/reporter.js";
+import * as containerCleaner from "../deploy/functions/containerCleaner.js";
 
 export const command = new Command("functions:delete [filters...]")
   .description("delete one or more Cloud Functions by name or group name.")

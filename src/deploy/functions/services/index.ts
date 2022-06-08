@@ -1,10 +1,10 @@
-import * as backend from "../backend";
-import * as iam from "../../../gcp/iam";
+import * as backend from "../backend.js";
+import * as iam from "../../../gcp/iam.js";
 import * as events from "../../../functions/events";
-import { AuthBlockingService } from "./auth";
-import { obtainStorageBindings, ensureStorageTriggerRegion } from "./storage";
-import { ensureFirebaseAlertsTriggerRegion } from "./firebaseAlerts";
-import { ensureDatabaseTriggerRegion } from "./database";
+import { AuthBlockingService } from "./auth.js";
+import { obtainStorageBindings, ensureStorageTriggerRegion } from "./storage.js";
+import { ensureFirebaseAlertsTriggerRegion } from "./firebaseAlerts.js";
+import { ensureDatabaseTriggerRegion } from "./database.js";
 
 /** A standard void No Op */
 export const noop = (): Promise<void> => Promise.resolve();

@@ -1,6 +1,6 @@
 import { expect } from "chai";
-import { PROVIDER_PASSWORD, SIGNIN_METHOD_EMAIL_LINK } from "../../../emulator/auth/state";
-import { describeAuthEmulator, PROJECT_ID } from "./setup";
+import { PROVIDER_PASSWORD, SIGNIN_METHOD_EMAIL_LINK } from "../../../emulator/auth/state.js";
+import { describeAuthEmulator, PROJECT_ID } from "./setup.js";
 import {
   expectStatusCode,
   registerUser,

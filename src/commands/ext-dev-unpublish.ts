@@ -1,13 +1,13 @@
-import { Command } from "../command";
-import { logPrefix } from "../extensions/extensionsHelper";
-import { unpublishExtension, getExtension } from "../extensions/extensionsApi";
-import * as utils from "../utils";
-import * as refs from "../extensions/refs";
-import { promptOnce } from "../prompt";
+import { Command } from "../command.js";
+import { logPrefix } from "../extensions/extensionsHelper.js";
+import { unpublishExtension, getExtension } from "../extensions/extensionsApi.js";
+import * as utils from "../utils.js";
+import * as refs from "../extensions/refs.js";
+import { promptOnce } from "../prompt.js";
 import * as clc from "cli-color";
-import { requireAuth } from "../requireAuth";
-import { FirebaseError } from "../error";
-import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
+import { requireAuth } from "../requireAuth.js";
+import { FirebaseError } from "../error.js";
+import { checkMinRequiredVersion } from "../checkMinRequiredVersion.js";
 
 export const command = new Command("ext:dev:unpublish <extensionRef>")
   .description("unpublish an extension")

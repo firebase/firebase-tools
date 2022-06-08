@@ -1,9 +1,9 @@
 import * as uuid from "uuid";
 import * as crypto from "crypto";
-import { EmulatorRegistry } from "../registry";
-import { Emulators } from "../types";
-import { StorageCloudFunctions } from "./cloudFunctions";
-import { crc32c, crc32cToString } from "./crc";
+import { EmulatorRegistry } from "../registry.js";
+import { Emulators } from "../types.js";
+import { StorageCloudFunctions } from "./cloudFunctions.js";
+import { crc32c, crc32cToString } from "./crc.js";
 
 type RulesResourceMetadataOverrides = {
   [Property in keyof RulesResourceMetadata]?: RulesResourceMetadata[Property];

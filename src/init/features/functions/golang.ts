@@ -1,14 +1,14 @@
 import { promisify } from "util";
 import * as fs from "fs";
 import * as path from "path";
-import * as spawn from "cross-spawn";
+import spawn from "cross-spawn";
 
-import { FirebaseError } from "../../../error";
-import { Config } from "../../../config";
-import { promptOnce } from "../../../prompt";
-import * as utils from "../../../utils";
+import { FirebaseError } from "../../../error.js";
+import { Config } from "../../../config.js";
+import { promptOnce } from "../../../prompt.js";
+import * as utils from "../../../utils.js";
 import * as go from "../../../deploy/functions/runtimes/golang";
-import { logger } from "../../../logger";
+import { logger } from "../../../logger.js";
 
 const clc = require("cli-color");
 

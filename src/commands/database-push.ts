@@ -2,18 +2,18 @@ import * as _ from "lodash";
 import * as clc from "cli-color";
 import * as fs from "fs";
 
-import { Client } from "../apiv2";
-import { Command } from "../command";
-import { Emulators } from "../emulator/types";
-import { FirebaseError } from "../error";
-import { populateInstanceDetails } from "../management/database";
-import { printNoticeIfEmulated } from "../emulator/commandUtils";
-import { realtimeOriginOrEmulatorOrCustomUrl } from "../database/api";
-import { requirePermissions } from "../requirePermissions";
+import { Client } from "../apiv2.js";
+import { Command } from "../command.js";
+import { Emulators } from "../emulator/types.js";
+import { FirebaseError } from "../error.js";
+import { populateInstanceDetails } from "../management/database.js";
+import { printNoticeIfEmulated } from "../emulator/commandUtils.js";
+import { realtimeOriginOrEmulatorOrCustomUrl } from "../database/api.js";
+import { requirePermissions } from "../requirePermissions.js";
 import { URL } from "url";
-import { logger } from "../logger";
-import { requireDatabaseInstance } from "../requireDatabaseInstance";
-import * as utils from "../utils";
+import { logger } from "../logger.js";
+import { requireDatabaseInstance } from "../requireDatabaseInstance.js";
+import * as utils from "../utils.js";
 
 export const command = new Command("database:push <path> [infile]")
   .description("add a new JSON object to a list of data in your Firebase")

@@ -1,7 +1,7 @@
-import * as spawn from "cross-spawn";
+import spawn from "cross-spawn";
 
-import { logger } from "../../../logger";
-import { prompt } from "../../../prompt";
+import { logger } from "../../../logger.js";
+import { prompt } from "../../../prompt.js";
 
 export function askInstallDependencies(setup: any, config: any): Promise<void> {
   return prompt(setup, [

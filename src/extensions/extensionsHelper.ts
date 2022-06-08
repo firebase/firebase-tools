@@ -1,6 +1,6 @@
 import * as _ from "lodash";
 import * as clc from "cli-color";
-import * as ora from "ora";
+import ora from "ora";
 import * as semver from "semver";
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const { marked } = require("marked");
@@ -10,18 +10,18 @@ marked.setOptions({
   renderer: new TerminalRenderer(),
 });
 
-import { storageOrigin } from "../api";
-import { archiveDirectory } from "../archiveDirectory";
-import { convertOfficialExtensionsToList } from "./utils";
-import { getFirebaseConfig } from "../functionsConfig";
-import { getProjectAdminSdkConfigOrCached } from "../emulator/adminSdkConfig";
-import { getExtensionRegistry } from "./resolveSource";
-import { FirebaseError } from "../error";
-import { diagnose } from "./diagnose";
-import { checkResponse } from "./askUserForParam";
-import { ensure } from "../ensureApiEnabled";
-import { deleteObject, uploadObject } from "../gcp/storage";
-import { getProjectId } from "../projectUtils";
+import { storageOrigin } from "../api.cjs";
+import { archiveDirectory } from "../archiveDirectory.js";
+import { convertOfficialExtensionsToList } from "./utils.js";
+import { getFirebaseConfig } from "../functionsConfig.js";
+import { getProjectAdminSdkConfigOrCached } from "../emulator/adminSdkConfig.js";
+import { getExtensionRegistry } from "./resolveSource.js";
+import { FirebaseError } from "../error.js";
+import { diagnose } from "./diagnose.js";
+import { checkResponse } from "./askUserForParam.js";
+import { ensure } from "../ensureApiEnabled.js";
+import { deleteObject, uploadObject } from "../gcp/storage.js";
+import { getProjectId } from "../projectUtils.js";
 import {
   createSource,
   ExtensionSource,
@@ -31,15 +31,15 @@ import {
   Param,
   publishExtensionVersion,
 } from "./extensionsApi";
-import * as refs from "./refs";
-import { getLocalExtensionSpec } from "./localHelper";
-import { promptOnce } from "../prompt";
-import { logger } from "../logger";
-import { envOverride } from "../utils";
-import { getLocalChangelog } from "./changelog";
-import { getProjectNumber } from "../getProjectNumber";
-import { Constants } from "../emulator/constants";
-import { resolveVersion } from "../deploy/extensions/planner";
+import * as refs from "./refs.js";
+import { getLocalExtensionSpec } from "./localHelper.js";
+import { promptOnce } from "../prompt.js";
+import { logger } from "../logger.js";
+import { envOverride } from "../utils.js";
+import { getLocalChangelog } from "./changelog.js";
+import { getProjectNumber } from "../getProjectNumber.js";
+import { Constants } from "../emulator/constants.js";
+import { resolveVersion } from "../deploy/extensions/planner.js";
 
 /**
  * SpecParamType represents the exact strings that the extensions

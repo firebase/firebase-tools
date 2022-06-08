@@ -2,20 +2,19 @@ import * as _ from "lodash";
 import { CloudFunction } from "firebase-functions";
 import * as os from "os";
 import * as path from "path";
-import * as express from "express";
+import express from "express";
 import * as fs from "fs";
 
-import * as backend from "../deploy/functions/backend";
-import { Constants } from "./constants";
-import { BackendInfo, EmulatableBackend, InvokeRuntimeOpts } from "./functionsEmulator";
-import { copyIfPresent } from "../gcp/proto";
-import { ENV_DIRECTORY } from "../extensions/manifest";
-import { substituteParams } from "../extensions/extensionsHelper";
-import { ExtensionSpec, ExtensionVersion } from "../extensions/extensionsApi";
-import { replaceConsoleLinks } from "./extensions/postinstall";
-import { AUTH_BLOCKING_EVENTS } from "../functions/events/v1";
+import * as backend from "../deploy/functions/backend.js";
+import { Constants } from "./constants.js";
+import { BackendInfo, EmulatableBackend, InvokeRuntimeOpts } from "./functionsEmulator.js";
+import { copyIfPresent } from "../gcp/proto.js";
+import { ENV_DIRECTORY } from "../extensions/manifest.js";
+import { substituteParams } from "../extensions/extensionsHelper.js";
+import { ExtensionSpec, ExtensionVersion } from "../extensions/extensionsApi.js";
+import { replaceConsoleLinks } from "./extensions/postinstall.js";
 import { serviceForEndpoint } from "../deploy/functions/services";
-import { inferBlockingDetails } from "../deploy/functions/prepare";
+import { inferBlockingDetails } from "../deploy/functions/prepare.js";
 
 export type SignatureType = "http" | "event" | "cloudevent";
 

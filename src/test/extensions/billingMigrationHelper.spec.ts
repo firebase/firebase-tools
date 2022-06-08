@@ -1,11 +1,11 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 
-import { FirebaseError } from "../../error";
-import * as nodejsMigrationHelper from "../../extensions/billingMigrationHelper";
-import * as prompt from "../../prompt";
-import { ExtensionSpec } from "../../extensions/extensionsApi";
-import { cloneDeep } from "../../utils";
+import { FirebaseError } from "../../error.js";
+import * as nodejsMigrationHelper from "../../extensions/billingMigrationHelper.js";
+import * as prompt from "../../prompt.js";
+import { ExtensionSpec } from "../../extensions/extensionsApi.js";
+import { cloneDeep } from "../../utils.js";
 
 const NO_RUNTIME_SPEC: ExtensionSpec = {
   name: "test",

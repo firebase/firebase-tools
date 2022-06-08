@@ -1,10 +1,10 @@
 import { expect } from "chai";
 import * as admin from "firebase-admin";
 import * as fs from "fs";
-import * as rimraf from "rimraf";
+import rimraf from "rimraf";
 import * as path from "path";
 
-import { FrameworkOptions, TriggerEndToEndTest } from "../integration-helpers/framework";
+import { FrameworkOptions, TriggerEndToEndTest } from "../integration-helpers/framework.js";
 
 const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "";
 

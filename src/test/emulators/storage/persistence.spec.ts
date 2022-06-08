@@ -2,7 +2,7 @@ import { expect } from "chai";
 import { tmpdir } from "os";
 
 import { v4 as uuidV4 } from "uuid";
-import { Persistence } from "../../../emulator/storage/persistence";
+import { Persistence } from "../../../emulator/storage/persistence.js";
 
 describe("Persistence", () => {
   const testDir = `${tmpdir()}/${uuidV4()}`;

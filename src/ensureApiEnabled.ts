@@ -1,10 +1,11 @@
-import { bold } from "cli-color";
+import clccolor from "cli-color";
+const { bold } = clccolor;
 
-import { track } from "./track";
-import { serviceUsageOrigin } from "./api";
-import { Client } from "./apiv2";
-import * as utils from "./utils";
-import { FirebaseError, isBillingError } from "./error";
+import { track } from "./track.js";
+import { serviceUsageOrigin } from "./api.cjs";
+import { Client } from "./apiv2.js";
+import * as utils from "./utils.js";
+import { FirebaseError, isBillingError } from "./error.js";
 
 export const POLL_SETTINGS = {
   pollInterval: 10000,

@@ -1,6 +1,6 @@
-import serveHosting = require("../serve/hosting");
-import { EmulatorInfo, EmulatorInstance, Emulators } from "../emulator/types";
-import { Constants } from "./constants";
+import * as serveHosting from "../serve/hosting.js";
+import { EmulatorInfo, EmulatorInstance, Emulators } from "../emulator/types.js";
+import { Constants } from "./constants.js";
 
 interface HostingEmulatorArgs {
   options: any;

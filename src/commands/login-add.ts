@@ -1,10 +1,10 @@
 import * as clc from "cli-color";
 
-import { Command } from "../command";
-import { logger } from "../logger";
-import * as utils from "../utils";
-import { FirebaseError } from "../error";
-import * as auth from "../auth";
+import { Command } from "../command.js";
+import { logger } from "../logger.js";
+import * as utils from "../utils.js";
+import { FirebaseError } from "../error.js";
+import * as auth from "../auth.js";
 
 export const command = new Command("login:add [email]")
   .description("authorize the CLI for an additional account")

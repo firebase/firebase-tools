@@ -1,17 +1,17 @@
-import * as cors from "cors";
-import * as express from "express";
+import cors from "cors";
+import express from "express";
 import * as os from "os";
 import * as fs from "fs";
 import * as path from "path";
 import * as bodyParser from "body-parser";
 
-import * as utils from "../utils";
-import { logger } from "../logger";
-import { Constants } from "./constants";
-import { Emulators, EmulatorInstance, EmulatorInfo } from "./types";
-import { HubExport } from "./hubExport";
-import { EmulatorRegistry } from "./registry";
-import { FunctionsEmulator } from "./functionsEmulator";
+import * as utils from "../utils.js";
+import { logger } from "../logger.js";
+import { Constants } from "./constants.js";
+import { Emulators, EmulatorInstance, EmulatorInfo } from "./types.js";
+import { HubExport } from "./hubExport.js";
+import { EmulatorRegistry } from "./registry.js";
+import { FunctionsEmulator } from "./functionsEmulator.js";
 
 // We use the CLI version from package.json
 const pkg = require("../../package.json");

@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import * as path from "path";
-import { RC, loadRC, RCData } from "../rc";
+import { RC, loadRC, RCData } from "../rc.js";
 
 const fixturesDir = path.resolve(__dirname, "./fixtures");
 

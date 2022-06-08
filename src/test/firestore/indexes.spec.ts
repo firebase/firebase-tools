@@ -1,10 +1,10 @@
 import { expect } from "chai";
-import { FirestoreIndexes } from "../../firestore/indexes";
-import { FirebaseError } from "../../error";
-import * as API from "../../firestore/indexes-api";
-import * as Spec from "../../firestore/indexes-spec";
-import * as sort from "../../firestore/indexes-sort";
-import * as util from "../../firestore/util";
+import { FirestoreIndexes } from "../../firestore/indexes.js";
+import { FirebaseError } from "../../error.js";
+import * as API from "../../firestore/indexes-api.js";
+import * as Spec from "../../firestore/indexes-spec.js";
+import * as sort from "../../firestore/indexes-sort.js";
+import * as util from "../../firestore/util.js";
 
 const idx = new FirestoreIndexes();
 

@@ -1,9 +1,9 @@
 import * as _ from "lodash";
 import * as clc from "cli-color";
 
-import { FirebaseError } from "./error";
-import * as functionsConfig from "./functionsConfig";
-import * as runtimeconfig from "./gcp/runtimeconfig";
+import { FirebaseError } from "./error.js";
+import * as functionsConfig from "./functionsConfig.js";
+import * as runtimeconfig from "./gcp/runtimeconfig.js";
 
 // Tests whether short is a prefix of long
 function matchPrefix(short: any[], long: any[]): boolean {

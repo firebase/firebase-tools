@@ -1,5 +1,5 @@
-import { logger } from "../../logger";
-import * as utils from "../../utils";
+import { logger } from "../../logger.js";
+import * as utils from "../../utils.js";
 import {
   getAllAccounts,
   loginAdditionalAccount,
@@ -8,8 +8,8 @@ import {
   Account,
   setProjectAccount,
 } from "../../auth";
-import { promptOnce } from "../../prompt";
-import { FirebaseError } from "../../error";
+import { promptOnce } from "../../prompt.js";
+import { FirebaseError } from "../../error.js";
 
 async function promptForAccount() {
   logger.info();

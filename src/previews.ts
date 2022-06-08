@@ -1,5 +1,6 @@
-import { has, set } from "lodash";
-import { configstore } from "./configstore";
+import lodash from "lodash";
+const { has, set } = lodash;
+import { configstore } from "./configstore.js";
 
 interface PreviewFlags {
   rtdbrules: boolean;

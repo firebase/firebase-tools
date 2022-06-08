@@ -4,7 +4,7 @@ import * as os from "os";
 import { sync as rimraf } from "rimraf";
 import { expect } from "chai";
 
-import * as env from "../../functions/env";
+import * as env from "../../functions/env.js";
 
 describe("functions/env", () => {
   describe("parse", () => {

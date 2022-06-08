@@ -1,6 +1,6 @@
 import { spawn } from "cross-spawn";
 import { ChildProcess } from "child_process";
-import { FirebaseError } from "../../../error";
+import { FirebaseError } from "../../../error.js";
 import {
   RulesetOperationMethod,
   RuntimeActionBundle,
@@ -13,13 +13,13 @@ import {
   Source,
 } from "./types";
 import * as jwt from "jsonwebtoken";
-import { ExpressionValue } from "./expressionValue";
-import { EmulatorLogger } from "../../emulatorLogger";
-import { Emulators } from "../../types";
-import { RulesResourceMetadata, toSerializedDate } from "../metadata";
-import * as utils from "../../../utils";
-import { Constants } from "../../constants";
-import { downloadEmulator } from "../../download";
+import { ExpressionValue } from "./expressionValue.js";
+import { EmulatorLogger } from "../../emulatorLogger.js";
+import { Emulators } from "../../types.js";
+import { RulesResourceMetadata, toSerializedDate } from "../metadata.js";
+import * as utils from "../../../utils.js";
+import { Constants } from "../../constants.js";
+import { downloadEmulator } from "../../download.js";
 import * as fs from "fs-extra";
 import {
   _getCommand,

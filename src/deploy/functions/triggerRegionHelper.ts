@@ -1,4 +1,4 @@
-import * as backend from "./backend";
+import * as backend from "./backend.js";
 import { serviceForEndpoint } from "./services";
 
 /**

@@ -1,7 +1,9 @@
-import { bold } from "cli-color";
-import { cloneDeep } from "lodash";
+import clccolor from "cli-color";
+const { bold } = clccolor;
+import lodash from "lodash";
+const { cloneDeep } = lodash;
 
-import { FirebaseError } from "../error";
+import { FirebaseError } from "../error.js";
 
 interface HostingConfig {
   source?: string;

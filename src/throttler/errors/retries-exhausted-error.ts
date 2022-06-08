@@ -1,4 +1,4 @@
-import TaskError from "./task-error";
+import TaskError from "./task-error.js";
 
 export default class RetriesExhaustedError extends TaskError {
   constructor(taskName: string, totalRetries: number, lastTrialError: Error) {

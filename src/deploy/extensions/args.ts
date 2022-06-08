@@ -1,4 +1,4 @@
-import * as planner from "./planner";
+import * as planner from "./planner.js";
 
 export interface Payload {
   instancesToCreate?: planner.DeploymentInstanceSpec[];

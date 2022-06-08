@@ -1,6 +1,6 @@
 import { expect } from "chai";
-import { expectStatusCode, registerTenant, registerUser } from "./helpers";
-import { describeAuthEmulator, PROJECT_ID } from "./setup";
+import { expectStatusCode, registerTenant, registerUser } from "./helpers.js";
+import { describeAuthEmulator, PROJECT_ID } from "./setup.js";
 
 describeAuthEmulator("REST API mapping", ({ authApi }) => {
   it("should respond to status checks", async () => {

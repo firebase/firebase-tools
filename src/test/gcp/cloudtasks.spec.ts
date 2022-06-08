@@ -1,9 +1,9 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 
-import * as iam from "../../gcp/iam";
-import * as backend from "../../deploy/functions/backend";
-import * as cloudtasks from "../../gcp/cloudtasks";
+import * as iam from "../../gcp/iam.js";
+import * as backend from "../../deploy/functions/backend.js";
+import * as cloudtasks from "../../gcp/cloudtasks.js";
 
 describe("CloudTasks", () => {
   let ct: sinon.SinonStubbedInstance<typeof cloudtasks>;

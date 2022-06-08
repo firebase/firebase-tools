@@ -1,14 +1,14 @@
-import * as utils from "../utils";
+import * as utils from "../utils.js";
 import * as clc from "cli-color";
 
-import { Command } from "../command";
-import { logPrefix } from "../extensions/extensionsHelper";
-import { getExtension, deleteExtension } from "../extensions/extensionsApi";
-import * as refs from "../extensions/refs";
-import { promptOnce } from "../prompt";
-import { requireAuth } from "../requireAuth";
-import { FirebaseError } from "../error";
-import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
+import { Command } from "../command.js";
+import { logPrefix } from "../extensions/extensionsHelper.js";
+import { getExtension, deleteExtension } from "../extensions/extensionsApi.js";
+import * as refs from "../extensions/refs.js";
+import { promptOnce } from "../prompt.js";
+import { requireAuth } from "../requireAuth.js";
+import { FirebaseError } from "../error.js";
+import { checkMinRequiredVersion } from "../checkMinRequiredVersion.js";
 
 export const command = new Command("ext:dev:delete <extensionRef>")
   .description("delete an extension")

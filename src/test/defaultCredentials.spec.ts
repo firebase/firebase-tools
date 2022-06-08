@@ -4,10 +4,10 @@ import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
 
-import * as api from "../api";
-import { configstore } from "../configstore";
-import * as defaultCredentials from "../defaultCredentials";
-import { Account, getGlobalDefaultAccount } from "../auth";
+import * as api from "../api.cjs";
+import { configstore } from "../configstore.js";
+import * as defaultCredentials from "../defaultCredentials.js";
+import { Account, getGlobalDefaultAccount } from "../auth.js";
 
 describe("defaultCredentials", () => {
   const sandbox: sinon.SinonSandbox = sinon.createSandbox();

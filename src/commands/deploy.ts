@@ -1,13 +1,13 @@
 import * as _ from "lodash";
-import { requireDatabaseInstance } from "../requireDatabaseInstance";
-import { requirePermissions } from "../requirePermissions";
-import { checkServiceAccountIam } from "../deploy/functions/checkIam";
-import { checkValidTargetFilters } from "../checkValidTargetFilters";
-import { Command } from "../command";
+import { requireDatabaseInstance } from "../requireDatabaseInstance.js";
+import { requirePermissions } from "../requirePermissions.js";
+import { checkServiceAccountIam } from "../deploy/functions/checkIam.js";
+import { checkValidTargetFilters } from "../checkValidTargetFilters.js";
+import { Command } from "../command.js";
 import { deploy } from "../deploy";
-import { requireConfig } from "../requireConfig";
-import { filterTargets } from "../filterTargets";
-import { requireHostingSite } from "../requireHostingSite";
+import { requireConfig } from "../requireConfig.js";
+import { filterTargets } from "../filterTargets.js";
+import { requireHostingSite } from "../requireHostingSite.js";
 
 // in order of least time-consuming to most time-consuming
 const VALID_TARGETS = [

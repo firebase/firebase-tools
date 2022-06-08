@@ -1,9 +1,9 @@
 import * as clc from "cli-color";
-import { prompt, promptOnce } from "../../prompt";
-import { logger } from "../../logger";
-import * as utils from "../../utils";
-import * as fsutils from "../../fsutils";
-import { Config } from "../../config";
+import { prompt, promptOnce } from "../../prompt.js";
+import { logger } from "../../logger.js";
+import * as utils from "../../utils.js";
+import * as fsutils from "../../fsutils.js";
+import { Config } from "../../config.js";
 import {
   createInstance,
   DatabaseInstance,
@@ -12,11 +12,11 @@ import {
   checkInstanceNameAvailable,
   getDatabaseInstanceDetails,
 } from "../../management/database";
-import ora = require("ora");
-import { ensure } from "../../ensureApiEnabled";
-import { getDefaultDatabaseInstance } from "../../getDefaultDatabaseInstance";
-import { FirebaseError } from "../../error";
-import { Client } from "../../apiv2";
+import ora from "ora";
+import { ensure } from "../../ensureApiEnabled.js";
+import { getDefaultDatabaseInstance } from "../../getDefaultDatabaseInstance.js";
+import { FirebaseError } from "../../error.js";
+import { Client } from "../../apiv2.js";
 
 interface DatabaseSetup {
   projectId?: string;

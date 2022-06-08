@@ -1,15 +1,15 @@
 import * as clc from "cli-color";
 import * as semver from "semver";
 
-import * as refs from "../extensions/refs";
-import * as utils from "../utils";
-import { Command } from "../command";
-import { promptOnce } from "../prompt";
-import { ensureExtensionsApiEnabled, logPrefix } from "../extensions/extensionsHelper";
-import { undeprecateExtensionVersion, listExtensionVersions } from "../extensions/extensionsApi";
-import { parseVersionPredicate } from "../extensions/versionHelper";
-import { requireAuth } from "../requireAuth";
-import { FirebaseError } from "../error";
+import * as refs from "../extensions/refs.js";
+import * as utils from "../utils.js";
+import { Command } from "../command.js";
+import { promptOnce } from "../prompt.js";
+import { ensureExtensionsApiEnabled, logPrefix } from "../extensions/extensionsHelper.js";
+import { undeprecateExtensionVersion, listExtensionVersions } from "../extensions/extensionsApi.js";
+import { parseVersionPredicate } from "../extensions/versionHelper.js";
+import { requireAuth } from "../requireAuth.js";
+import { FirebaseError } from "../error.js";
 
 /**
  * Undeprecate all extension versions that match the version predicate.

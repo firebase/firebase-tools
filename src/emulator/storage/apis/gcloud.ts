@@ -1,22 +1,22 @@
 import { Router } from "express";
 import { gunzipSync } from "zlib";
-import { Emulators } from "../../types";
+import { Emulators } from "../../types.js";
 import {
   CloudStorageObjectAccessControlMetadata,
   CloudStorageObjectMetadata,
   IncomingMetadata,
   StoredFileMetadata,
 } from "../metadata";
-import { EmulatorRegistry } from "../../registry";
-import { StorageEmulator } from "../index";
-import { EmulatorLogger } from "../../emulatorLogger";
-import { GetObjectResponse, ListObjectsResponse } from "../files";
-import { crc32cToString } from "../crc";
+import { EmulatorRegistry } from "../../registry.js";
+import { StorageEmulator } from "../index.js";
+import { EmulatorLogger } from "../../emulatorLogger.js";
+import { GetObjectResponse, ListObjectsResponse } from "../files.js";
+import { crc32cToString } from "../crc.js";
 import type { Request, Response } from "express";
-import { parseObjectUploadMultipartRequest } from "../multipart";
-import { Upload, UploadNotActiveError } from "../upload";
-import { ForbiddenError, NotFoundError } from "../errors";
-import { reqBodyToBuffer } from "../../shared/request";
+import { parseObjectUploadMultipartRequest } from "../multipart.js";
+import { Upload, UploadNotActiveError } from "../upload.js";
+import { ForbiddenError, NotFoundError } from "../errors.js";
+import { reqBodyToBuffer } from "../../shared/request.js";
 
 export function createCloudEndpoints(emulator: StorageEmulator): Router {
   // eslint-disable-next-line new-cap

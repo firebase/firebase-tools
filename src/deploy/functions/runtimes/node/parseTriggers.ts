@@ -2,13 +2,13 @@ import * as path from "path";
 import * as _ from "lodash";
 import { fork } from "child_process";
 
-import { FirebaseError } from "../../../../error";
-import { logger } from "../../../../logger";
-import * as backend from "../../backend";
-import * as build from "../../build";
-import * as api from "../../../../api";
-import * as proto from "../../../../gcp/proto";
-import * as args from "../../args";
+import { FirebaseError } from "../../../../error.js";
+import { logger } from "../../../../logger.js";
+import * as backend from "../../backend.js";
+import * as build from "../../build.js";
+import * as api from "../../../../api.cjs";
+import * as proto from "../../../../gcp/proto.js";
+import * as args from "../../args.js";
 import * as runtimes from "../../runtimes";
 import * as events from "../../../../functions/events";
 

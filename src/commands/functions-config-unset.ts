@@ -1,13 +1,13 @@
 import * as clc from "cli-color";
 
-import { Command } from "../command";
-import { logger } from "../logger";
-import { requirePermissions } from "../requirePermissions";
-import { needProjectId } from "../projectUtils";
-import * as functionsConfig from "../functionsConfig";
-import * as runtimeconfig from "../gcp/runtimeconfig";
-import * as utils from "../utils";
-import { FirebaseError } from "../error";
+import { Command } from "../command.js";
+import { logger } from "../logger.js";
+import { requirePermissions } from "../requirePermissions.js";
+import { needProjectId } from "../projectUtils.js";
+import * as functionsConfig from "../functionsConfig.js";
+import * as runtimeconfig from "../gcp/runtimeconfig.js";
+import * as utils from "../utils.js";
+import { FirebaseError } from "../error.js";
 
 export const command = new Command("functions:config:unset [keys...]")
   .description("unset environment config at the specified path(s)")

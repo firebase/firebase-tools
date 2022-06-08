@@ -1,10 +1,10 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 
-import { logger } from "../../../../logger";
-import * as backend from "../../../../deploy/functions/backend";
-import * as reporter from "../../../../deploy/functions/release/reporter";
-import * as track from "../../../../track";
+import { logger } from "../../../../logger.js";
+import * as backend from "../../../../deploy/functions/backend.js";
+import * as reporter from "../../../../deploy/functions/release/reporter.js";
+import * as track from "../../../../track.js";
 import * as events from "../../../../functions/events";
 
 const ENDPOINT_BASE: Omit<backend.Endpoint, "httpsTrigger"> = {

@@ -1,6 +1,6 @@
 import { expect } from "chai";
-import { Endpoint } from "../../../../deploy/functions/backend";
-import * as database from "../../../../deploy/functions/services/database";
+import { Endpoint } from "../../../../deploy/functions/backend.js";
+import * as database from "../../../../deploy/functions/services/database.js";
 
 const projectNumber = "123456789";
 

@@ -3,8 +3,8 @@ import { expect } from "chai";
 chai.use(require("chai-as-promised"));
 import * as sinon from "sinon";
 
-import * as changelog from "../../extensions/changelog";
-import * as extensionApi from "../../extensions/extensionsApi";
+import * as changelog from "../../extensions/changelog.js";
+import * as extensionApi from "../../extensions/extensionsApi.js";
 
 function testExtensionVersion(
   version: string,

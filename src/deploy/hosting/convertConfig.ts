@@ -1,7 +1,7 @@
-import { FirebaseError } from "../../error";
-import { HostingConfig, HostingRewrites, HostingHeaders } from "../../firebaseConfig";
-import { existingBackend, allEndpoints, isHttpsTriggered } from "../functions/backend";
-import { Payload } from "./args";
+import { FirebaseError } from "../../error.js";
+import { HostingConfig, HostingRewrites, HostingHeaders } from "../../firebaseConfig.js";
+import { existingBackend, allEndpoints, isHttpsTriggered } from "../functions/backend.js";
+import { Payload } from "./args.js";
 
 function has(obj: { [k: string]: unknown }, k: string): boolean {
   return obj[k] !== undefined;

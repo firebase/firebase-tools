@@ -1,12 +1,12 @@
 import { expect } from "chai";
-import * as nock from "nock";
+import nock from "nock";
 
-import { functionsOrigin } from "../../api";
+import { functionsOrigin } from "../../api.cjs";
 
-import * as backend from "../../deploy/functions/backend";
-import { BEFORE_CREATE_EVENT, BEFORE_SIGN_IN_EVENT } from "../../functions/events/v1";
-import * as cloudfunctions from "../../gcp/cloudfunctions";
-import * as projectConfig from "../../functions/projectConfig";
+import * as backend from "../../deploy/functions/backend.js";
+import { BEFORE_CREATE_EVENT, BEFORE_SIGN_IN_EVENT } from "../../functions/events/v1.js";
+import * as cloudfunctions from "../../gcp/cloudfunctions.js";
+import * as projectConfig from "../../functions/projectConfig.js";
 
 describe("cloudfunctions", () => {
   const FUNCTION_NAME: backend.TargetIds = {

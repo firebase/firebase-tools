@@ -4,7 +4,7 @@ import { readFileSync, writeFileSync, unlinkSync } from "fs";
 import { v4 as uuidv4 } from "uuid";
 import * as tmp from "tmp";
 
-import firebase = require("../../src");
+import firebase from "../../src.js";
 
 tmp.setGracefulCleanup();
 

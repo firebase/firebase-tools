@@ -5,8 +5,8 @@ import * as sinon from "sinon";
 // eslint-disable-next-line
 const cjson = require("cjson");
 
-import { FirebaseError } from "../../../../../error";
-import * as runtime from "../../../../../deploy/functions/runtimes/node/parseRuntimeAndValidateSDK";
+import { FirebaseError } from "../../../../../error.js";
+import * as runtime from "../../../../../deploy/functions/runtimes/node/parseRuntimeAndValidateSDK.js";
 
 describe("getRuntimeChoice", () => {
   const sandbox = sinon.createSandbox();

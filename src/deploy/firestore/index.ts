@@ -1,5 +1,5 @@
-import prepare from "./prepare";
-import deploy from "./deploy";
-import release from "./release";
+import prepare from "./prepare.js";
+import deploy from "./deploy.js";
+import release from "./release.js";
 
 export { prepare, deploy, release };

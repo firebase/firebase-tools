@@ -1,8 +1,8 @@
-import { Command } from "../command";
-import { logger } from "../logger";
-import { Options } from "../options";
-import { needProjectId } from "../projectUtils";
-import { accessSecretVersion } from "../gcp/secretManager";
+import { Command } from "../command.js";
+import { logger } from "../logger.js";
+import { Options } from "../options.js";
+import { needProjectId } from "../projectUtils.js";
+import { accessSecretVersion } from "../gcp/secretManager.js";
 
 export const command = new Command("functions:secrets:access <KEY>[@version]")
   .description(

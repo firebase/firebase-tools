@@ -1,6 +1,6 @@
-import { Client } from "./apiv2";
-import { FirebaseError } from "./error";
-import { Queue } from "./throttler/queue";
+import { Client } from "./apiv2.js";
+import { FirebaseError } from "./error.js";
+import { Queue } from "./throttler/queue.js";
 
 export interface OperationPollerOptions {
   pollerName?: string;

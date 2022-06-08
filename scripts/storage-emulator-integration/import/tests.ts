@@ -1,11 +1,11 @@
 import * as path from "path";
 import * as fs from "fs-extra";
 import { expect } from "chai";
-import supertest = require("supertest");
+import supertest from "supertest";
 
-import { createTmpDir } from "../../../src/test/emulators/fixtures";
-import { Emulators } from "../../../src/emulator/types";
-import { TriggerEndToEndTest } from "../../integration-helpers/framework";
+import { createTmpDir } from "../../../src/test/emulators/fixtures.js";
+import { Emulators } from "../../../src/emulator/types.js";
+import { TriggerEndToEndTest } from "../../integration-helpers/framework.js";
 import {
   EMULATORS_SHUTDOWN_DELAY_MS,
   FIREBASE_EMULATOR_CONFIG,

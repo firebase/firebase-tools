@@ -4,11 +4,11 @@ import * as path from "path";
 import * as tmp from "tmp";
 import * as unzipper from "unzipper";
 
-import { EmulatorLogger } from "./emulatorLogger";
-import { EmulatorDownloadDetails, DownloadableEmulators } from "./types";
-import { FirebaseError } from "../error";
-import * as downloadableEmulators from "./downloadableEmulators";
-import * as downloadUtils from "../downloadUtils";
+import { EmulatorLogger } from "./emulatorLogger.js";
+import { EmulatorDownloadDetails, DownloadableEmulators } from "./types.js";
+import { FirebaseError } from "../error.js";
+import * as downloadableEmulators from "./downloadableEmulators.js";
+import * as downloadUtils from "../downloadUtils.js";
 
 tmp.setGracefulCleanup();
 

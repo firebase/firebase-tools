@@ -1,8 +1,8 @@
 import * as _ from "lodash";
 
-import gcp = require("../../gcp");
-import { RulesDeploy, RulesetServiceType } from "../../rulesDeploy";
-import { Options } from "../../options";
+import * as gcp from "../../gcp"
+import { RulesDeploy, RulesetServiceType } from "../../rulesDeploy.js";
+import { Options } from "../../options.js";
 
 /**
  * Prepares for a Firebase Storage deployment.

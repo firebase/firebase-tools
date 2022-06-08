@@ -1,11 +1,11 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 
-import * as backend from "../../../../deploy/functions/backend";
-import * as planner from "../../../../deploy/functions/release/planner";
-import * as deploymentTool from "../../../../deploymentTool";
-import * as utils from "../../../../utils";
-import * as v2events from "../../../../functions/events/v2";
+import * as backend from "../../../../deploy/functions/backend.js";
+import * as planner from "../../../../deploy/functions/release/planner.js";
+import * as deploymentTool from "../../../../deploymentTool.js";
+import * as utils from "../../../../utils.js";
+import * as v2events from "../../../../functions/events/v2.js";
 
 describe("planner", () => {
   let logLabeledBullet: sinon.SinonStub;

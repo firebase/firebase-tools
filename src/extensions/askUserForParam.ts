@@ -3,16 +3,16 @@ import * as clc from "cli-color";
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const { marked } = require("marked");
 
-import { Param, ParamOption, ParamType } from "./extensionsApi";
-import * as secretManagerApi from "../gcp/secretManager";
-import * as secretsUtils from "./secretsUtils";
-import { logPrefix, substituteParams } from "./extensionsHelper";
-import { convertExtensionOptionToLabeledList, getRandomString, onceWithJoin } from "./utils";
-import { logger } from "../logger";
-import { promptOnce } from "../prompt";
-import * as utils from "../utils";
-import { ParamBindingOptions } from "./paramHelper";
-import { needProjectId } from "../projectUtils";
+import { Param, ParamOption, ParamType } from "./extensionsApi.js";
+import * as secretManagerApi from "../gcp/secretManager.js";
+import * as secretsUtils from "./secretsUtils.js";
+import { logPrefix, substituteParams } from "./extensionsHelper.js";
+import { convertExtensionOptionToLabeledList, getRandomString, onceWithJoin } from "./utils.js";
+import { logger } from "../logger.js";
+import { promptOnce } from "../prompt.js";
+import * as utils from "../utils.js";
+import { ParamBindingOptions } from "./paramHelper.js";
+import { needProjectId } from "../projectUtils.js";
 
 /**
  * Location where the secret value is stored.

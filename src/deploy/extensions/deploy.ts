@@ -1,13 +1,13 @@
-import * as tasks from "./tasks";
-import Queue from "../../throttler/queue";
-import { Context, Payload } from "./args";
-import { FirebaseError } from "../../error";
-import { ErrorHandler } from "./errors";
-import { Options } from "../../options";
-import { needProjectId } from "../../projectUtils";
-import { bulkCheckProductsProvisioned } from "../../extensions/provisioningHelper";
-import { handleSecretParams } from "./secrets";
-import { checkBilling } from "./validate";
+import * as tasks from "./tasks.js";
+import Queue from "../../throttler/queue.js";
+import { Context, Payload } from "./args.js";
+import { FirebaseError } from "../../error.js";
+import { ErrorHandler } from "./errors.js";
+import { Options } from "../../options.js";
+import { needProjectId } from "../../projectUtils.js";
+import { bulkCheckProductsProvisioned } from "../../extensions/provisioningHelper.js";
+import { handleSecretParams } from "./secrets.js";
+import { checkBilling } from "./validate.js";
 
 export async function deploy(context: Context, options: Options, payload: Payload) {
   const projectId = needProjectId(options);

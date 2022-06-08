@@ -1,14 +1,14 @@
-import _ = require("lodash");
-import clc = require("cli-color");
-import fs = require("fs");
+import _ from "lodash";
+import clc from "cli-color";
+import fs from "fs";
 
-import gcp = require("./gcp");
-import { logger } from "./logger";
-import { FirebaseError } from "./error";
-import utils = require("./utils");
+import * as gcp from "./gcp";
+import { logger } from "./logger.js";
+import { FirebaseError } from "./error.js";
+import * as utils from "./utils.js";
 
-import { promptOnce } from "./prompt";
-import { ListRulesetsEntry, Release, RulesetFile } from "./gcp/rules";
+import { promptOnce } from "./prompt.js";
+import { ListRulesetsEntry, Release, RulesetFile } from "./gcp/rules.js";
 
 // The status code the Firebase Rules backend sends to indicate too many rulesets.
 const QUOTA_EXCEEDED_STATUS_CODE = 429;

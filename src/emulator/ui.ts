@@ -1,8 +1,8 @@
-import { EmulatorInstance, EmulatorInfo, Emulators } from "./types";
-import * as downloadableEmulators from "./downloadableEmulators";
-import { EmulatorRegistry } from "./registry";
-import { FirebaseError } from "../error";
-import { Constants } from "./constants";
+import { EmulatorInstance, EmulatorInfo, Emulators } from "./types.js";
+import * as downloadableEmulators from "./downloadableEmulators.js";
+import { EmulatorRegistry } from "./registry.js";
+import { FirebaseError } from "../error.js";
+import { Constants } from "./constants.js";
 
 export interface EmulatorUIOptions {
   port: number;

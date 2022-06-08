@@ -1,7 +1,7 @@
 import * as _ from "lodash";
-import { logger } from "../logger";
-import { Client } from "../apiv2";
-import { firebaseExtensionsRegistryOrigin } from "../api";
+import { logger } from "../logger.js";
+import { Client } from "../apiv2.js";
+import { firebaseExtensionsRegistryOrigin } from "../api.cjs";
 
 const EXTENSIONS_REGISTRY_ENDPOINT = "/extensions.json";
 

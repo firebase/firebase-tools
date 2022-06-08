@@ -1,7 +1,7 @@
 import * as _ from "lodash";
 
-import { FirebaseError } from "./error";
-import { Options } from "./options";
+import { FirebaseError } from "./error.js";
+import { Options } from "./options.js";
 
 export function checkValidTargetFilters(options: Options): Promise<void> {
   function numFilters(targetTypes: string[]): number {

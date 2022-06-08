@@ -1,9 +1,9 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 
-import { FirebaseError } from "../../../../../error";
-import * as validate from "../../../../../deploy/functions/runtimes/node/validate";
-import * as fsutils from "../../../../../fsutils";
+import { FirebaseError } from "../../../../../error.js";
+import * as validate from "../../../../../deploy/functions/runtimes/node/validate.js";
+import * as fsutils from "../../../../../fsutils.js";
 
 const cjson = require("cjson");
 

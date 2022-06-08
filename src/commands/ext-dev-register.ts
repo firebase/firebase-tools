@@ -2,15 +2,15 @@ import * as clc from "cli-color";
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const { marked } = require("marked");
 
-import { Command } from "../command";
-import { registerPublisherProfile } from "../extensions/extensionsApi";
-import { needProjectId } from "../projectUtils";
-import { promptOnce } from "../prompt";
-import { ensureExtensionsApiEnabled, logPrefix } from "../extensions/extensionsHelper";
-import { promptForPublisherTOS } from "../extensions/askUserForConsent";
-import { requirePermissions } from "../requirePermissions";
-import { FirebaseError } from "../error";
-import * as utils from "../utils";
+import { Command } from "../command.js";
+import { registerPublisherProfile } from "../extensions/extensionsApi.js";
+import { needProjectId } from "../projectUtils.js";
+import { promptOnce } from "../prompt.js";
+import { ensureExtensionsApiEnabled, logPrefix } from "../extensions/extensionsHelper.js";
+import { promptForPublisherTOS } from "../extensions/askUserForConsent.js";
+import { requirePermissions } from "../requirePermissions.js";
+import { FirebaseError } from "../error.js";
+import * as utils from "../utils.js";
 
 /**
  * Register a publisher ID; run this before publishing any extensions.

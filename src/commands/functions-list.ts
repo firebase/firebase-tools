@@ -1,12 +1,12 @@
-import { Command } from "../command";
-import { FirebaseError } from "../error";
-import * as args from "../deploy/functions/args";
-import { needProjectId } from "../projectUtils";
-import { Options } from "../options";
-import { requirePermissions } from "../requirePermissions";
-import * as backend from "../deploy/functions/backend";
-import { logger } from "../logger";
-import Table = require("cli-table");
+import { Command } from "../command.js";
+import { FirebaseError } from "../error.js";
+import * as args from "../deploy/functions/args.js";
+import { needProjectId } from "../projectUtils.js";
+import { Options } from "../options.js";
+import { requirePermissions } from "../requirePermissions.js";
+import * as backend from "../deploy/functions/backend.js";
+import { logger } from "../logger.js";
+import Table from "cli-table";
 
 export const command = new Command("functions:list")
   .description("list all deployed functions in your Firebase project")

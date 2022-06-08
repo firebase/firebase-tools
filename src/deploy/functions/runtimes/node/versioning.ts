@@ -2,11 +2,11 @@ import * as _ from "lodash";
 import * as clc from "cli-color";
 import * as path from "path";
 import * as semver from "semver";
-import * as spawn from "cross-spawn";
+import spawn from "cross-spawn";
 
-import * as utils from "../../../../utils";
-import { logger } from "../../../../logger";
-import { track } from "../../../../track";
+import * as utils from "../../../../utils.js";
+import { logger } from "../../../../logger.js";
+import { track } from "../../../../track.js";
 
 interface NpmListResult {
   name: string;

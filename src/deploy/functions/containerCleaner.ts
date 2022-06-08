@@ -5,14 +5,14 @@
 
 import * as clc from "cli-color";
 
-import { FirebaseError } from "../../error";
-import { artifactRegistryDomain, containerRegistryDomain } from "../../api";
-import { logger } from "../../logger";
-import * as artifactregistry from "../../gcp/artifactregistry";
-import * as backend from "./backend";
-import * as docker from "../../gcp/docker";
-import * as utils from "../../utils";
-import * as poller from "../../operation-poller";
+import { FirebaseError } from "../../error.js";
+import { artifactRegistryDomain, containerRegistryDomain } from "../../api.cjs";
+import { logger } from "../../logger.js";
+import * as artifactregistry from "../../gcp/artifactregistry.js";
+import * as backend from "./backend.js";
+import * as docker from "../../gcp/docker.js";
+import * as utils from "../../utils.js";
+import * as poller from "../../operation-poller.js";
 
 async function retry<Return>(func: () => Promise<Return>): Promise<Return> {
   const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));

@@ -1,8 +1,8 @@
 import { Suite } from "mocha";
 import { useFakeTimers } from "sinon";
-import supertest = require("supertest");
-import { createApp } from "../../../emulator/auth/server";
-import { AgentProjectState } from "../../../emulator/auth/state";
+import supertest from "supertest";
+import { createApp } from "../../../emulator/auth/server.js";
+import { AgentProjectState } from "../../../emulator/auth/state.js";
 
 export const PROJECT_ID = "example";
 

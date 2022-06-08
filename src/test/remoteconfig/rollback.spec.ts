@@ -1,10 +1,10 @@
 import { expect } from "chai";
-import { remoteConfigApiOrigin } from "../../api";
-import * as nock from "nock";
+import { remoteConfigApiOrigin } from "../../api.cjs";
+import nock from "nock";
 
-import { RemoteConfigTemplate } from "../../remoteconfig/interfaces";
-import * as remoteconfig from "../../remoteconfig/rollback";
-import { FirebaseError } from "../../error";
+import { RemoteConfigTemplate } from "../../remoteconfig/interfaces.js";
+import * as remoteconfig from "../../remoteconfig/rollback.js";
+import { FirebaseError } from "../../error.js";
 
 const PROJECT_ID = "the-remoteconfig-test-project";
 

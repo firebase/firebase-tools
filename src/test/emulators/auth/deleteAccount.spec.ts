@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { describeAuthEmulator, PROJECT_ID } from "./setup";
+import { describeAuthEmulator, PROJECT_ID } from "./setup.js";
 import {
   expectStatusCode,
   registerUser,

@@ -8,10 +8,10 @@ import * as https from "https";
 import fetch from "node-fetch";
 import * as puppeteer from "puppeteer";
 import { Bucket, Storage, CopyOptions } from "@google-cloud/storage";
-import supertest = require("supertest");
+import supertest from "supertest";
 
-import { IMAGE_FILE_BASE64, StorageRulesFiles } from "../../src/test/emulators/fixtures";
-import { TriggerEndToEndTest } from "../integration-helpers/framework";
+import { IMAGE_FILE_BASE64, StorageRulesFiles } from "../../src/test/emulators/fixtures.js";
+import { TriggerEndToEndTest } from "../integration-helpers/framework.js";
 import {
   createRandomFile,
   EMULATORS_SHUTDOWN_DELAY_MS,

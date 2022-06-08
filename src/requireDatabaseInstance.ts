@@ -1,6 +1,6 @@
 import * as clc from "cli-color";
-import { FirebaseError } from "./error";
-import { getDefaultDatabaseInstance } from "./getDefaultDatabaseInstance";
+import { FirebaseError } from "./error.js";
+import { getDefaultDatabaseInstance } from "./getDefaultDatabaseInstance.js";
 
 /**
  * Error message to be returned when the default database instance is found to be missing.

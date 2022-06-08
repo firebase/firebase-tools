@@ -1,25 +1,24 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 
-import * as fabricator from "../../../../deploy/functions/release/fabricator";
-import * as reporter from "../../../../deploy/functions/release/reporter";
-import * as executor from "../../../../deploy/functions/release/executor";
-import * as gcfNSV2 from "../../../../gcp/cloudfunctionsv2";
-import * as gcfNS from "../../../../gcp/cloudfunctions";
-import * as pollerNS from "../../../../operation-poller";
-import * as pubsubNS from "../../../../gcp/pubsub";
-import * as schedulerNS from "../../../../gcp/cloudscheduler";
-import * as runNS from "../../../../gcp/run";
-import * as cloudtasksNS from "../../../../gcp/cloudtasks";
-import * as backend from "../../../../deploy/functions/backend";
-import * as scraper from "../../../../deploy/functions/release/sourceTokenScraper";
-import * as planner from "../../../../deploy/functions/release/planner";
-import * as v2events from "../../../../functions/events/v2";
-import * as v1events from "../../../../functions/events/v1";
+import * as fabricator from "../../../../deploy/functions/release/fabricator.js";
+import * as reporter from "../../../../deploy/functions/release/reporter.js";
+import * as executor from "../../../../deploy/functions/release/executor.js";
+import * as gcfNSV2 from "../../../../gcp/cloudfunctionsv2.js";
+import * as gcfNS from "../../../../gcp/cloudfunctions.js";
+import * as pollerNS from "../../../../operation-poller.js";
+import * as pubsubNS from "../../../../gcp/pubsub.js";
+import * as schedulerNS from "../../../../gcp/cloudscheduler.js";
+import * as runNS from "../../../../gcp/run.js";
+import * as cloudtasksNS from "../../../../gcp/cloudtasks.js";
+import * as backend from "../../../../deploy/functions/backend.js";
+import * as scraper from "../../../../deploy/functions/release/sourceTokenScraper.js";
+import * as planner from "../../../../deploy/functions/release/planner.js";
+import * as v2events from "../../../../functions/events/v2.js";
+import * as v1events from "../../../../functions/events/v1.js";
 import * as servicesNS from "../../../../deploy/functions/services";
-import * as identityPlatformNS from "../../../../gcp/identityPlatform";
-import { AuthBlockingService } from "../../../../deploy/functions/services/auth";
-import { define } from "mime";
+import * as identityPlatformNS from "../../../../gcp/identityPlatform.js";
+import { AuthBlockingService } from "../../../../deploy/functions/services/auth.js";
 
 describe("Fabricator", () => {
   // Stub all GCP APIs to make sure this test is hermetic

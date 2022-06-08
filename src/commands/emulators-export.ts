@@ -1,6 +1,6 @@
-import { Command } from "../command";
-import * as controller from "../emulator/controller";
-import * as commandUtils from "../emulator/commandUtils";
+import { Command } from "../command.js";
+import * as controller from "../emulator/controller.js";
+import * as commandUtils from "../emulator/commandUtils.js";
 
 export const command = new Command("emulators:export <path>")
   .description("export data from running emulators")

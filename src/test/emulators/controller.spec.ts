@@ -1,8 +1,8 @@
-import { Emulators } from "../../emulator/types";
-import { startEmulator } from "../../emulator/controller";
-import { EmulatorRegistry } from "../../emulator/registry";
+import { Emulators } from "../../emulator/types.js";
+import { startEmulator } from "../../emulator/controller.js";
+import { EmulatorRegistry } from "../../emulator/registry.js";
 import { expect } from "chai";
-import { FakeEmulator } from "./fakeEmulator";
+import { FakeEmulator } from "./fakeEmulator.js";
 
 describe("EmulatorController", () => {
   afterEach(async () => {

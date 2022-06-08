@@ -1,9 +1,9 @@
-import { firebaseApiOrigin } from "../api";
-import * as apiv2 from "../apiv2";
-import { configstore } from "../configstore";
-import { FirebaseError } from "../error";
-import { logger } from "../logger";
-import { Constants } from "./constants";
+import { firebaseApiOrigin } from "../api.cjs";
+import * as apiv2 from "../apiv2.js";
+import { configstore } from "../configstore.js";
+import { FirebaseError } from "../error.js";
+import { logger } from "../logger.js";
+import { Constants } from "./constants.js";
 
 export type AdminSdkConfig = {
   projectId: string;

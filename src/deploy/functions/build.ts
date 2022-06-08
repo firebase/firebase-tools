@@ -1,8 +1,8 @@
-import * as backend from "./backend";
-import * as proto from "../../gcp/proto";
-import * as api from "../../.../../api";
-import { FirebaseError } from "../../error";
-import { assertExhaustive } from "../../functional";
+import * as backend from "./backend.js";
+import * as proto from "../../gcp/proto.js";
+import * as api from "../../.../../api.cjs";
+import { FirebaseError } from "../../error.js";
+import { assertExhaustive } from "../../functional.js";
 
 /* The union of a customer-controlled deployment and potentially deploy-time defined parameters */
 export interface Build {

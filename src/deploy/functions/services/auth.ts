@@ -1,9 +1,9 @@
-import * as backend from "../backend";
-import * as identityPlatform from "../../../gcp/identityPlatform";
+import * as backend from "../backend.js";
+import * as identityPlatform from "../../../gcp/identityPlatform.js";
 import * as events from "../../../functions/events";
-import { FirebaseError } from "../../../error";
-import { cloneDeep } from "../../../utils";
-import { Name, noop, Service } from "./index";
+import { FirebaseError } from "../../../error.js";
+import { cloneDeep } from "../../../utils.js";
+import { Name, noop, Service } from "./index.js";
 
 export class AuthBlockingService implements Service {
   name: Name;

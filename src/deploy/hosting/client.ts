@@ -1,5 +1,5 @@
-import { hostingApiOrigin } from "../../api";
-import { Client } from "../../apiv2";
+import { hostingApiOrigin } from "../../api.cjs";
+import { Client } from "../../apiv2.js";
 
 export const client = new Client({
   urlPrefix: hostingApiOrigin,

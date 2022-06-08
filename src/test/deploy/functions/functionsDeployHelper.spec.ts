@@ -1,9 +1,9 @@
 import { expect } from "chai";
 
-import * as backend from "../../../deploy/functions/backend";
-import * as helper from "../../../deploy/functions/functionsDeployHelper";
-import { Options } from "../../../options";
-import { DEFAULT_CODEBASE, ValidatedConfig } from "../../../functions/projectConfig";
+import * as backend from "../../../deploy/functions/backend.js";
+import * as helper from "../../../deploy/functions/functionsDeployHelper.js";
+import { Options } from "../../../options.js";
+import { DEFAULT_CODEBASE, ValidatedConfig } from "../../../functions/projectConfig.js";
 import {
   EndpointFilter,
   parseFunctionSelector,

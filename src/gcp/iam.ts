@@ -1,7 +1,8 @@
-import { resourceManagerOrigin, iamOrigin } from "../api";
-import { difference } from "lodash";
-import { logger } from "../logger";
-import { Client } from "../apiv2";
+import { resourceManagerOrigin, iamOrigin } from "../api.cjs";
+import lodash from "lodash";
+const { difference } = lodash;
+import { logger } from "../logger.js";
+import { Client } from "../apiv2.js";
 
 const API_VERSION = "v1";
 

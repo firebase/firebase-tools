@@ -1,11 +1,11 @@
 import { expect } from "chai";
-import * as nock from "nock";
+import nock from "nock";
 import * as sinon from "sinon";
 
-import { AuthCloudFunction } from "../../emulator/auth/cloudFunctions";
-import { EmulatorRegistry } from "../../emulator/registry";
-import { Emulators } from "../../emulator/types";
-import { FakeEmulator } from "./fakeEmulator";
+import { AuthCloudFunction } from "../../emulator/auth/cloudFunctions.js";
+import { EmulatorRegistry } from "../../emulator/registry.js";
+import { Emulators } from "../../emulator/types.js";
+import { FakeEmulator } from "./fakeEmulator.js";
 
 describe("cloudFunctions", () => {
   describe("dispatch", () => {

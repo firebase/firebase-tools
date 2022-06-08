@@ -1,6 +1,6 @@
-import { cloudMonitoringOrigin } from "../api";
-import { Client } from "../apiv2";
-import { FirebaseError } from "../error";
+import { cloudMonitoringOrigin } from "../api.cjs";
+import { Client } from "../apiv2.js";
+import { FirebaseError } from "../error.js";
 
 export const CLOUD_MONITORING_VERSION = "v3";
 

@@ -2,10 +2,10 @@ import { expect } from "chai";
 import * as _ from "lodash";
 import * as sinon from "sinon";
 
-import { FirebaseError } from "../../../error";
-import { Config } from "../../../config";
-import { doSetup } from "../../../init/features/storage";
-import * as prompt from "../../../prompt";
+import { FirebaseError } from "../../../error.js";
+import { Config } from "../../../config.js";
+import { doSetup } from "../../../init/features/storage.js";
+import * as prompt from "../../../prompt.js";
 
 describe("storage", () => {
   const sandbox: sinon.SinonSandbox = sinon.createSandbox();

@@ -1,4 +1,4 @@
-import { FirebaseError } from "../error";
+import { FirebaseError } from "../error.js";
 
 /**
  * A type alias used to annotate interfaces as using a google.protobuf.Duration.

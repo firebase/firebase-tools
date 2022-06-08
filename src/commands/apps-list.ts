@@ -1,12 +1,12 @@
 import * as clc from "cli-color";
-import * as ora from "ora";
-import Table = require("cli-table");
+import ora from "ora";
+import Table from "cli-table";
 
-import { Command } from "../command";
-import { needProjectId } from "../projectUtils";
-import { AppMetadata, AppPlatform, getAppPlatform, listFirebaseApps } from "../management/apps";
-import { requireAuth } from "../requireAuth";
-import { logger } from "../logger";
+import { Command } from "../command.js";
+import { needProjectId } from "../projectUtils.js";
+import { AppMetadata, AppPlatform, getAppPlatform, listFirebaseApps } from "../management/apps.js";
+import { requireAuth } from "../requireAuth.js";
+import { logger } from "../logger.js";
 
 const NOT_SPECIFIED = clc.yellow("[Not specified]");
 

@@ -1,6 +1,6 @@
 import * as fs from "fs-extra";
-import { FirebaseError } from "../error";
-import { logger } from "../logger";
+import { FirebaseError } from "../error.js";
+import { logger } from "../logger.js";
 import * as pathUtil from "path";
 
 export enum DistributionFileType {

@@ -1,9 +1,9 @@
-import * as backend from "../../backend";
-import * as build from "../../build";
-import * as runtimes from "..";
-import { copyIfPresent, renameIfPresent, secondsFromDuration } from "../../../../gcp/proto";
-import { assertKeyTypes, requireKeys } from "./parsing";
-import { FirebaseError } from "../../../../error";
+import * as backend from "../../backend.js";
+import * as build from "../../build.js";
+import * as runtimes from "../index.js";
+import { copyIfPresent, renameIfPresent, secondsFromDuration } from "../../../../gcp/proto.js";
+import { assertKeyTypes, requireKeys } from "./parsing.js";
+import { FirebaseError } from "../../../../error.js";
 
 const CHANNEL_NAME_REGEX = new RegExp(
   "(projects\\/" +

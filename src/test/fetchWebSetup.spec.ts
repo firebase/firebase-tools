@@ -1,11 +1,11 @@
 import { expect } from "chai";
-import * as nock from "nock";
+import nock from "nock";
 import * as sinon from "sinon";
 
-import { configstore } from "../configstore";
-import { fetchWebSetup, getCachedWebSetup } from "../fetchWebSetup";
-import { firebaseApiOrigin } from "../api";
-import { FirebaseError } from "../error";
+import { configstore } from "../configstore.js";
+import { fetchWebSetup, getCachedWebSetup } from "../fetchWebSetup.js";
+import { firebaseApiOrigin } from "../api.cjs";
+import { FirebaseError } from "../error.js";
 
 describe("fetchWebSetup module", () => {
   before(() => {

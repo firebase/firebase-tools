@@ -1,15 +1,15 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
-import * as nock from "nock";
+import nock from "nock";
 
-import { FirebaseError } from "../../../error";
-import { logger } from "../../../logger";
-import { configstore } from "../../../configstore";
-import { POLL_SETTINGS } from "../../../ensureApiEnabled";
-import * as api from "../../../api";
-import * as backend from "../../../deploy/functions/backend";
-import * as ensure from "../../../deploy/functions/ensure";
-import * as secretManager from "../../../gcp/secretManager";
+import { FirebaseError } from "../../../error.js";
+import { logger } from "../../../logger.js";
+import { configstore } from "../../../configstore.js";
+import { POLL_SETTINGS } from "../../../ensureApiEnabled.js";
+import * as api from "../../../api.cjs";
+import * as backend from "../../../deploy/functions/backend.js";
+import * as ensure from "../../../deploy/functions/ensure.js";
+import * as secretManager from "../../../gcp/secretManager.js";
 
 describe("ensureCloudBuildEnabled()", () => {
   let restoreInterval: number;

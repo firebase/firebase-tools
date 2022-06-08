@@ -1,12 +1,12 @@
 import * as clc from "cli-color";
-import * as ProgressBar from "progress";
+import ProgressBar from "progress";
 
-import * as apiv2 from "../apiv2";
-import * as firestore from "../gcp/firestore";
-import { FirebaseError } from "../error";
-import { logger } from "../logger";
-import * as utils from "../utils";
-import { firestoreOriginOrEmulator } from "../api";
+import * as apiv2 from "../apiv2.js";
+import * as firestore from "../gcp/firestore.js";
+import { FirebaseError } from "../error.js";
+import { logger } from "../logger.js";
+import * as utils from "../utils.js";
+import { firestoreOriginOrEmulator } from "../api.cjs";
 
 // Datastore allowed numeric IDs where Firestore only allows strings. Numeric IDs are
 // exposed to Firestore as __idNUM__, so this is the lowest possible negative numeric

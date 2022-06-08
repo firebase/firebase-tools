@@ -1,6 +1,6 @@
 import { expect } from "chai";
 
-import * as fsutils from "../fsutils";
+import * as fsutils from "../fsutils.js";
 
 describe("fsutils", () => {
   describe("fileExistsSync", () => {

@@ -1,19 +1,19 @@
 import * as fs from "fs-extra";
-import { ParsedTriggerDefinition } from "../../emulator/functionsEmulatorShared";
+import { ParsedTriggerDefinition } from "../../emulator/functionsEmulatorShared.js";
 import * as path from "path";
-import * as paramHelper from "../paramHelper";
-import * as specHelper from "./specHelper";
-import * as localHelper from "../localHelper";
-import * as triggerHelper from "./triggerHelper";
-import { ExtensionSpec, Param, ParamType, Resource } from "../extensionsApi";
-import * as extensionsHelper from "../extensionsHelper";
-import * as planner from "../../deploy/extensions/planner";
-import { Config } from "../../config";
-import { FirebaseError } from "../../error";
-import { EmulatorLogger } from "../../emulator/emulatorLogger";
-import { needProjectId } from "../../projectUtils";
-import { Emulators } from "../../emulator/types";
-import { SecretEnvVar } from "../../deploy/functions/backend";
+import * as paramHelper from "../paramHelper.js";
+import * as specHelper from "./specHelper.js";
+import * as localHelper from "../localHelper.js";
+import * as triggerHelper from "./triggerHelper.js";
+import { ExtensionSpec, Param, ParamType, Resource } from "../extensionsApi.js";
+import * as extensionsHelper from "../extensionsHelper.js";
+import * as planner from "../../deploy/extensions/planner.js";
+import { Config } from "../../config.js";
+import { FirebaseError } from "../../error.js";
+import { EmulatorLogger } from "../../emulator/emulatorLogger.js";
+import { needProjectId } from "../../projectUtils.js";
+import { Emulators } from "../../emulator/types.js";
+import { SecretEnvVar } from "../../deploy/functions/backend.js";
 
 export async function buildOptions(options: any): Promise<any> {
   const extDevDir = localHelper.findExtensionYaml(process.cwd());

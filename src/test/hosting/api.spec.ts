@@ -1,8 +1,8 @@
 import { expect } from "chai";
-import * as nock from "nock";
+import nock from "nock";
 
-import * as api from "../../api";
-import * as hostingApi from "../../hosting/api";
+import * as api from "../../api.cjs";
+import * as hostingApi from "../../hosting/api.js";
 
 const TEST_CHANNELS_RESPONSE = {
   channels: [

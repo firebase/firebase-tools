@@ -1,11 +1,11 @@
 import { expect } from "chai";
-import * as nock from "nock";
+import nock from "nock";
 
-import * as api from "../../api";
-import { FirebaseError } from "../../error";
-import * as extensionsApi from "../../extensions/extensionsApi";
-import * as refs from "../../extensions/refs";
-import { cloneDeep } from "../../utils";
+import * as api from "../../api.cjs";
+import { FirebaseError } from "../../error.js";
+import * as extensionsApi from "../../extensions/extensionsApi.js";
+import * as refs from "../../extensions/refs.js";
+import { cloneDeep } from "../../utils.js";
 
 const VERSION = "v1beta";
 const PROJECT_ID = "test-project";

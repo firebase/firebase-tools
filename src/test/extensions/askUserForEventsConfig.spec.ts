@@ -6,8 +6,8 @@ import {
   askForAllowedEventTypes,
   checkAllowedEventTypesResponse,
 } from "../../extensions/askUserForEventsConfig";
-import * as utils from "../../utils";
-import * as prompt from "../../prompt";
+import * as utils from "../../utils.js";
+import * as prompt from "../../prompt.js";
 
 describe("checkAllowedEventTypesResponse", () => {
   let logWarningSpy: sinon.SinonSpy;

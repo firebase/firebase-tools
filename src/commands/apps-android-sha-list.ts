@@ -1,11 +1,11 @@
-import Table = require("cli-table");
+import Table from "cli-table";
 
-import { Command } from "../command";
-import { needProjectId } from "../projectUtils";
-import { listAppAndroidSha, AppAndroidShaData } from "../management/apps";
-import { requireAuth } from "../requireAuth";
-import { logger } from "../logger";
-import { promiseWithSpinner } from "../utils";
+import { Command } from "../command.js";
+import { needProjectId } from "../projectUtils.js";
+import { listAppAndroidSha, AppAndroidShaData } from "../management/apps.js";
+import { requireAuth } from "../requireAuth.js";
+import { logger } from "../logger.js";
+import { promiseWithSpinner } from "../utils.js";
 
 function logCertificatesList(certificates: AppAndroidShaData[]): void {
   if (certificates.length === 0) {

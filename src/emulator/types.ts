@@ -1,6 +1,6 @@
 import { ChildProcess } from "child_process";
 import { EventEmitter } from "events";
-import { previews } from "../previews";
+import { previews } from "../previews.js";
 
 export enum Emulators {
   AUTH = "auth",

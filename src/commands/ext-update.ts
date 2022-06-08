@@ -1,12 +1,12 @@
 import * as clc from "cli-color";
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const { marked } = require("marked");
-import TerminalRenderer = require("marked-terminal");
+import TerminalRenderer from "marked-terminal";
 
-import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
-import { Command } from "../command";
-import { FirebaseError } from "../error";
-import * as extensionsApi from "../extensions/extensionsApi";
+import { checkMinRequiredVersion } from "../checkMinRequiredVersion.js";
+import { Command } from "../command.js";
+import { FirebaseError } from "../error.js";
+import * as extensionsApi from "../extensions/extensionsApi.js";
 import {
   ensureExtensionsApiEnabled,
   logPrefix,
@@ -16,16 +16,16 @@ import {
   diagnoseAndFixProject,
   isLocalPath,
 } from "../extensions/extensionsHelper";
-import * as paramHelper from "../extensions/paramHelper";
-import { inferUpdateSource } from "../extensions/updateHelper";
-import * as refs from "../extensions/refs";
-import { getProjectId, needProjectId } from "../projectUtils";
-import { requirePermissions } from "../requirePermissions";
-import * as utils from "../utils";
-import { previews } from "../previews";
-import * as manifest from "../extensions/manifest";
-import { Options } from "../options";
-import * as askUserForEventsConfig from "../extensions/askUserForEventsConfig";
+import * as paramHelper from "../extensions/paramHelper.js";
+import { inferUpdateSource } from "../extensions/updateHelper.js";
+import * as refs from "../extensions/refs.js";
+import { getProjectId, needProjectId } from "../projectUtils.js";
+import { requirePermissions } from "../requirePermissions.js";
+import * as utils from "../utils.js";
+import { previews } from "../previews.js";
+import * as manifest from "../extensions/manifest.js";
+import { Options } from "../options.js";
+import * as askUserForEventsConfig from "../extensions/askUserForEventsConfig.js";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),

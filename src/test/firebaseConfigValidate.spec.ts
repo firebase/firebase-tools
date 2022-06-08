@@ -1,6 +1,6 @@
 import { expect } from "chai";
-import { getValidator } from "../firebaseConfigValidate";
-import { FirebaseConfig } from "../firebaseConfig";
+import { getValidator } from "../firebaseConfigValidate.js";
+import { FirebaseConfig } from "../firebaseConfig.js";
 import { valid } from "semver";
 
 describe("firebaseConfigValidate", () => {

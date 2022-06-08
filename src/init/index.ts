@@ -1,8 +1,9 @@
-import { capitalize } from "lodash";
+import lodash from "lodash";
+const { capitalize } = lodash;
 import * as clc from "cli-color";
 
-import { FirebaseError } from "../error";
-import { logger } from "../logger";
+import { FirebaseError } from "../error.js";
+import { logger } from "../logger.js";
 import * as features from "./features";
 
 export interface Setup {

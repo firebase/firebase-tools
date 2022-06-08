@@ -2,21 +2,21 @@ import { Change } from "firebase-functions";
 import { DocumentSnapshot } from "firebase-functions/lib/providers/firestore";
 import { expect } from "chai";
 import { IncomingMessage, request } from "http";
-import * as express from "express";
+import express from "express";
 import * as fs from "fs";
 import * as sinon from "sinon";
 
-import { EmulatorLog, Emulators } from "../../src/emulator/types";
-import { FunctionRuntimeBundles, TIMEOUT_LONG, TIMEOUT_MED, MODULE_ROOT } from "./fixtures";
+import { EmulatorLog, Emulators } from "../../src/emulator/types.js";
+import { FunctionRuntimeBundles, TIMEOUT_LONG, TIMEOUT_MED, MODULE_ROOT } from "./fixtures.js";
 import {
   EmulatedTriggerDefinition,
   FunctionsRuntimeBundle,
   SignatureType,
 } from "../../src/emulator/functionsEmulatorShared";
-import { InvokeRuntimeOpts, FunctionsEmulator } from "../../src/emulator/functionsEmulator";
-import { RuntimeWorker } from "../../src/emulator/functionsRuntimeWorker";
-import { streamToString, cloneDeep } from "../../src/utils";
-import * as registry from "../../src/emulator/registry";
+import { InvokeRuntimeOpts, FunctionsEmulator } from "../../src/emulator/functionsEmulator.js";
+import { RuntimeWorker } from "../../src/emulator/functionsRuntimeWorker.js";
+import { streamToString, cloneDeep } from "../../src/utils.js";
+import * as registry from "../../src/emulator/registry.js";
 
 const DO_NOTHING = () => {
   // do nothing.

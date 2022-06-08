@@ -1,8 +1,9 @@
 import { expect } from "chai";
-import { flatten } from "lodash";
-import { SameType } from "../metaprogramming";
+import lodash from "lodash";
+const { flatten } = lodash;
+import { SameType } from "../metaprogramming.js";
 
-import * as f from "../functional";
+import * as f from "../functional.js";
 
 describe("functional", () => {
   describe("flatten", () => {

@@ -1,8 +1,8 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 
-import * as auth from "../auth";
-import { configstore } from "../configstore";
+import * as auth from "../auth.js";
+import { configstore } from "../configstore.js";
 
 describe("auth", () => {
   const sandbox: sinon.SinonSandbox = sinon.createSandbox();

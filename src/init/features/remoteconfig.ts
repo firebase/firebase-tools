@@ -1,7 +1,7 @@
-import { promptOnce } from "../../prompt";
-import fsutils = require("../../fsutils");
-import clc = require("cli-color");
-import { Config } from "../../config";
+import { promptOnce } from "../../prompt.js";
+import * as fsutils from "../../fsutils.js";
+import clc from "cli-color";
+import { Config } from "../../config.js";
 
 interface RemoteConfig {
   template?: string;

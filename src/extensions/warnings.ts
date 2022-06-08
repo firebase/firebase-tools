@@ -2,15 +2,15 @@
 const { marked } = require("marked");
 import * as clc from "cli-color";
 
-import { ExtensionVersion, RegistryLaunchStage } from "./extensionsApi";
-import { printSourceDownloadLink } from "./displayExtensionInfo";
-import { logPrefix } from "./extensionsHelper";
-import { getTrustedPublishers } from "./resolveSource";
-import { humanReadable } from "../deploy/extensions/deploymentSummary";
-import { InstanceSpec, getExtension, getExtensionVersion } from "../deploy/extensions/planner";
-import { partition } from "../functional";
-import * as utils from "../utils";
-import { logger } from "../logger";
+import { ExtensionVersion, RegistryLaunchStage } from "./extensionsApi.js";
+import { printSourceDownloadLink } from "./displayExtensionInfo.js";
+import { logPrefix } from "./extensionsHelper.js";
+import { getTrustedPublishers } from "./resolveSource.js";
+import { humanReadable } from "../deploy/extensions/deploymentSummary.js";
+import { InstanceSpec, getExtension, getExtensionVersion } from "../deploy/extensions/planner.js";
+import { partition } from "../functional.js";
+import * as utils from "../utils.js";
+import { logger } from "../logger.js";
 
 interface displayEAPWarningParameters {
   publisherId: string;

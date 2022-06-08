@@ -1,11 +1,11 @@
 import * as clc from "cli-color";
 import * as fs from "fs";
 
-import { Client } from "../../../apiv2";
-import { initGitHub } from "./github";
-import { prompt } from "../../../prompt";
-import { logger } from "../../../logger";
-import { Options } from "../../../options";
+import { Client } from "../../../apiv2.js";
+import { initGitHub } from "./github.js";
+import { prompt } from "../../../prompt.js";
+import { logger } from "../../../logger.js";
+import { Options } from "../../../options.js";
 
 const INDEX_TEMPLATE = fs.readFileSync(
   __dirname + "/../../../../templates/init/hosting/index.html",

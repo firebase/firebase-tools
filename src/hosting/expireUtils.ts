@@ -1,4 +1,4 @@
-import { FirebaseError } from "../error";
+import { FirebaseError } from "../error.js";
 
 /**
  * A regex to test for valid duration strings.

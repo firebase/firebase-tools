@@ -1,10 +1,10 @@
 import { Readable } from "stream";
 import * as path from "path";
 
-import { appengineOrigin, storageOrigin } from "../api";
-import { Client } from "../apiv2";
-import { logger } from "../logger";
-import { FirebaseError } from "../error";
+import { appengineOrigin, storageOrigin } from "../api.cjs";
+import { Client } from "../apiv2.js";
+import { logger } from "../logger.js";
+import { FirebaseError } from "../error.js";
 
 /** Bucket Interface */
 interface BucketResponse {

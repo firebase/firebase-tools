@@ -2,14 +2,14 @@ import * as _ from "lodash";
 import * as clc from "cli-color";
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const { marked } = require("marked");
-import TerminalRenderer = require("marked-terminal");
+import TerminalRenderer from "marked-terminal";
 
-import { FirebaseError } from "../error";
-import { logPrefix } from "../extensions/extensionsHelper";
-import * as extensionsApi from "./extensionsApi";
-import * as iam from "../gcp/iam";
-import { promptOnce } from "../prompt";
-import * as utils from "../utils";
+import { FirebaseError } from "../error.js";
+import { logPrefix } from "../extensions/extensionsHelper.js";
+import * as extensionsApi from "./extensionsApi.js";
+import * as iam from "../gcp/iam.js";
+import { promptOnce } from "../prompt.js";
+import * as utils from "../utils.js";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),

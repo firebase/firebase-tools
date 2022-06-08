@@ -1,8 +1,8 @@
-import { RulesConfig } from "..";
-import { FirebaseError } from "../../../error";
-import { readFile } from "../../../fsutils";
-import { Options } from "../../../options";
-import { SourceFile } from "./types";
+import { RulesConfig } from "../index.js";
+import { FirebaseError } from "../../../error.js";
+import { readFile } from "../../../fsutils.js";
+import { Options } from "../../../options.js";
+import { SourceFile } from "./types.js";
 
 function getSourceFile(rules: string, options: Options): SourceFile {
   const path = options.config.path(rules);

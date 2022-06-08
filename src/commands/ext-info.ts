@@ -1,18 +1,18 @@
 import * as clc from "cli-color";
 import * as _ from "lodash";
 
-import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
-import { Command } from "../command";
-import * as extensionsApi from "../extensions/extensionsApi";
-import { ensureExtensionsApiEnabled, logPrefix } from "../extensions/extensionsHelper";
-import { isLocalExtension, getLocalExtensionSpec } from "../extensions/localHelper";
-import { logger } from "../logger";
-import { requirePermissions } from "../requirePermissions";
-import * as utils from "../utils";
+import { checkMinRequiredVersion } from "../checkMinRequiredVersion.js";
+import { Command } from "../command.js";
+import * as extensionsApi from "../extensions/extensionsApi.js";
+import { ensureExtensionsApiEnabled, logPrefix } from "../extensions/extensionsHelper.js";
+import { isLocalExtension, getLocalExtensionSpec } from "../extensions/localHelper.js";
+import { logger } from "../logger.js";
+import { requirePermissions } from "../requirePermissions.js";
+import * as utils from "../utils.js";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const { marked } = require("marked");
-import TerminalRenderer = require("marked-terminal");
+import TerminalRenderer from "marked-terminal";
 
 const FUNCTION_TYPE_REGEX = /\..+\.function/;
 

@@ -1,10 +1,10 @@
 import * as fs from "fs";
 
-import { Client } from "../apiv2";
-import { firebaseApiOrigin } from "../api";
-import { FirebaseError } from "../error";
-import { logger } from "../logger";
-import { pollOperation } from "../operation-poller";
+import { Client } from "../apiv2.js";
+import { firebaseApiOrigin } from "../api.cjs";
+import { FirebaseError } from "../error.js";
+import { logger } from "../logger.js";
+import { pollOperation } from "../operation-poller.js";
 
 const TIMEOUT_MILLIS = 30000;
 export const APP_LIST_PAGE_SIZE = 100;

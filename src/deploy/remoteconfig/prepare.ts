@@ -1,8 +1,8 @@
-import { needProjectNumber } from "../../projectUtils";
-import { loadCJSON } from "../../loadCJSON";
-import { getEtag } from "./functions";
-import { validateInputRemoteConfigTemplate } from "./functions";
-import { Options } from "../../options";
+import { needProjectNumber } from "../../projectUtils.js";
+import { loadCJSON } from "../../loadCJSON.js";
+import { getEtag } from "./functions.js";
+import { validateInputRemoteConfigTemplate } from "./functions.js";
+import { Options } from "../../options.js";
 
 export default async function (context: any, options: Options): Promise<void> {
   if (!context) {

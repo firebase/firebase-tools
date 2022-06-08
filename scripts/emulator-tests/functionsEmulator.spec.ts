@@ -1,21 +1,21 @@
 import * as fs from "fs";
 
 import { expect } from "chai";
-import * as express from "express";
+import express from "express";
 import * as sinon from "sinon";
-import * as supertest from "supertest";
+import supertest from "supertest";
 import * as winston from "winston";
 import * as logform from "logform";
 import * as path from "path";
 
-import { EmulatedTriggerDefinition } from "../../src/emulator/functionsEmulatorShared";
-import { FunctionsEmulator, InvokeRuntimeOpts } from "../../src/emulator/functionsEmulator";
-import { Emulators } from "../../src/emulator/types";
-import { RuntimeWorker } from "../../src/emulator/functionsRuntimeWorker";
-import { TIMEOUT_LONG, TIMEOUT_MED, MODULE_ROOT } from "./fixtures";
-import { logger } from "../../src/logger";
-import * as registry from "../../src/emulator/registry";
-import * as secretManager from "../../src/gcp/secretManager";
+import { EmulatedTriggerDefinition } from "../../src/emulator/functionsEmulatorShared.js";
+import { FunctionsEmulator, InvokeRuntimeOpts } from "../../src/emulator/functionsEmulator.js";
+import { Emulators } from "../../src/emulator/types.js";
+import { RuntimeWorker } from "../../src/emulator/functionsRuntimeWorker.js";
+import { TIMEOUT_LONG, TIMEOUT_MED, MODULE_ROOT } from "./fixtures.js";
+import { logger } from "../../src/logger.js";
+import * as registry from "../../src/emulator/registry.js";
+import * as secretManager from "../../src/gcp/secretManager.js";
 
 if ((process.env.DEBUG || "").toLowerCase().includes("spec")) {
   const dropLogLevels = (info: logform.TransformableInfo) => info.message;

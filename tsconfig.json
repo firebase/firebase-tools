@@ -1,13 +1,15 @@
 {
   "compilerOptions": {
     "allowJs": true,
+    "esModuleInterop": true,
+    "moduleResolution": "Node",
     "checkJs": false,
-    "module": "commonjs",
+    "module": "ES2020",
     "strict": true,
     "outDir": "lib",
     "removeComments": true,
     "allowSyntheticDefaultImports": true,
-    "target": "es2017",
+    "target": "ES2020",
     "sourceMap": true,
     "typeRoots": [
       "node_modules/@types",

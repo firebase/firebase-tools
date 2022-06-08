@@ -1,7 +1,7 @@
-import { remoteConfigApiOrigin } from "../../api";
-import { Client } from "../../apiv2";
-import { FirebaseError } from "../../error";
-import { RemoteConfigTemplate } from "../../remoteconfig/interfaces";
+import { remoteConfigApiOrigin } from "../../api.cjs";
+import { Client } from "../../apiv2.js";
+import { FirebaseError } from "../../error.js";
+import { RemoteConfigTemplate } from "../../remoteconfig/interfaces.js";
 
 const TIMEOUT = 30000;
 

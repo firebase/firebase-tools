@@ -1,8 +1,8 @@
-import { Client } from "./apiv2";
-import { DatabaseInstance, populateInstanceDetails } from "./management/database";
-import { FirebaseError } from "./error";
-import { realtimeOriginOrCustomUrl } from "./database/api";
-import * as utils from "./utils";
+import { Client } from "./apiv2.js";
+import { DatabaseInstance, populateInstanceDetails } from "./management/database.js";
+import { FirebaseError } from "./error.js";
+import { realtimeOriginOrCustomUrl } from "./database/api.js";
+import * as utils from "./utils.js";
 
 /**
  * Updates rules, optionally specifying a dry run flag for validation purposes.

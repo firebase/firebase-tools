@@ -1,4 +1,4 @@
-import { FirebaseError } from "../../../../error";
+import { FirebaseError } from "../../../../error.js";
 
 // Use "omit" for output only fields. This allows us to fully exhaust keyof T
 // while still recognizing output-only fields

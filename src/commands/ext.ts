@@ -1,14 +1,14 @@
 import * as _ from "lodash";
 import * as clc from "cli-color";
 
-import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
-import { Command } from "../command";
-import { needProjectId } from "../projectUtils";
-import { logPrefix } from "../extensions/extensionsHelper";
-import { listExtensions } from "../extensions/listExtensions";
-import { requirePermissions } from "../requirePermissions";
-import { logger } from "../logger";
-import * as utils from "../utils";
+import { checkMinRequiredVersion } from "../checkMinRequiredVersion.js";
+import { Command } from "../command.js";
+import { needProjectId } from "../projectUtils.js";
+import { logPrefix } from "../extensions/extensionsHelper.js";
+import { listExtensions } from "../extensions/listExtensions.js";
+import { requirePermissions } from "../requirePermissions.js";
+import { logger } from "../logger.js";
+import * as utils from "../utils.js";
 import { CommanderStatic } from "commander";
 
 export const command = new Command("ext")

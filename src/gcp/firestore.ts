@@ -1,5 +1,5 @@
-import { firestoreOriginOrEmulator } from "../api";
-import { Client } from "../apiv2";
+import { firestoreOriginOrEmulator } from "../api.cjs";
+import { Client } from "../apiv2.js";
 
 const apiClient = new Client({
   auth: true,

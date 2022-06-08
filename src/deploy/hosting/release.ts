@@ -1,9 +1,9 @@
-import { client } from "./client";
-import { logger } from "../../logger";
-import { needProjectNumber } from "../../projectUtils";
-import * as utils from "../../utils";
-import { convertConfig } from "./convertConfig";
-import { Payload } from "./args";
+import { client } from "./client.js";
+import { logger } from "../../logger.js";
+import { needProjectNumber } from "../../projectUtils.js";
+import * as utils from "../../utils.js";
+import { convertConfig } from "./convertConfig.js";
+import { Payload } from "./args.js";
 
 /**
  *  Release finalized a Hosting release.

@@ -1,9 +1,9 @@
-import * as iam from "./iam";
+import * as iam from "./iam.js";
 
-import { logLabeledSuccess } from "../utils";
-import { FirebaseError } from "../error";
-import { Client } from "../apiv2";
-import { secretManagerOrigin } from "../api";
+import { logLabeledSuccess } from "../utils.js";
+import { FirebaseError } from "../error.js";
+import { Client } from "../apiv2.js";
+import { secretManagerOrigin } from "../api.cjs";
 
 // Matches projects/{PROJECT}/secrets/{SECRET}
 const SECRET_NAME_REGEX = new RegExp(

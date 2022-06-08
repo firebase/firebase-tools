@@ -1,16 +1,16 @@
 import * as clc from "cli-color";
 
-import { logger } from "../logger";
-import * as utils from "../utils";
-import * as validator from "./validator";
+import { logger } from "../logger.js";
+import * as utils from "../utils.js";
+import * as validator from "./validator.js";
 
-import * as API from "./indexes-api";
-import * as Spec from "./indexes-spec";
-import * as sort from "./indexes-sort";
-import * as util from "./util";
-import { promptOnce } from "../prompt";
-import { firestoreOrigin } from "../api";
-import { Client } from "../apiv2";
+import * as API from "./indexes-api.js";
+import * as Spec from "./indexes-spec.js";
+import * as sort from "./indexes-sort.js";
+import * as util from "./util.js";
+import { promptOnce } from "../prompt.js";
+import { firestoreOrigin } from "../api.cjs";
+import { Client } from "../apiv2.js";
 
 export class FirestoreIndexes {
   apiClient = new Client({ urlPrefix: firestoreOrigin, apiVersion: "v1" });

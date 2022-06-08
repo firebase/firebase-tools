@@ -1,15 +1,16 @@
-import { cloneDeep } from "lodash";
+import lodash from "lodash";
+const { cloneDeep } = lodash;
 import { expect } from "chai";
-import * as express from "express";
-import * as nock from "nock";
+import express from "express";
+import nock from "nock";
 import * as sinon from "sinon";
-import * as supertest from "supertest";
+import supertest from "supertest";
 
-import { functionsProxy, FunctionsProxyOptions } from "../../hosting/functionsProxy";
-import { EmulatorRegistry } from "../../emulator/registry";
-import { Emulators } from "../../emulator/types";
-import { FakeEmulator } from "../emulators/fakeEmulator";
-import { HostingRewrites } from "../../firebaseConfig";
+import { functionsProxy, FunctionsProxyOptions } from "../../hosting/functionsProxy.js";
+import { EmulatorRegistry } from "../../emulator/registry.js";
+import { Emulators } from "../../emulator/types.js";
+import { FakeEmulator } from "../emulators/fakeEmulator.js";
+import { HostingRewrites } from "../../firebaseConfig.js";
 
 describe("functionsProxy", () => {
   const fakeOptions: FunctionsProxyOptions = {

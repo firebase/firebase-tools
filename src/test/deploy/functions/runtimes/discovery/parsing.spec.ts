@@ -1,6 +1,6 @@
 import { expect } from "chai";
-import { FirebaseError } from "../../../../../error";
-import * as parsing from "../../../../../deploy/functions/runtimes/discovery/parsing";
+import { FirebaseError } from "../../../../../error.js";
+import * as parsing from "../../../../../deploy/functions/runtimes/discovery/parsing.js";
 
 describe("requireKeys", () => {
   it("accepts found keys", () => {

@@ -13,7 +13,7 @@ import {
   signInWithPhoneNumber,
   TEST_PHONE_NUMBER,
 } from "./helpers";
-import { describeAuthEmulator } from "./setup";
+import { describeAuthEmulator } from "./setup.js";
 import {
   expectStatusCode,
   registerUser,
@@ -25,7 +25,7 @@ import {
   FirebaseJwtPayload,
   SESSION_COOKIE_MAX_VALID_DURATION,
 } from "../../../emulator/auth/operations";
-import { toUnixTimestamp } from "../../../emulator/auth/utils";
+import { toUnixTimestamp } from "../../../emulator/auth/utils.js";
 
 describeAuthEmulator("token refresh", ({ authApi, getClock }) => {
   it("should exchange refresh token for new tokens", async () => {

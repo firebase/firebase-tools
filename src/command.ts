@@ -1,18 +1,20 @@
-import { bold } from "cli-color";
+import clccolor from "cli-color";
+const { bold } = clccolor;
 import { CommanderStatic } from "commander";
-import { first, last, get, size, head, keys, values } from "lodash";
+import lodash from "lodash";
+const { first, last, get, size, head, keys, values } = lodash;
 
-import { FirebaseError } from "./error";
-import { getInheritedOption, setupLoggers } from "./utils";
-import { loadRC, RC } from "./rc";
-import { Config } from "./config";
-import { configstore } from "./configstore";
-import { detectProjectRoot } from "./detectProjectRoot";
-import { track } from "./track";
-import clc = require("cli-color");
-import { selectAccount, setActiveAccount } from "./auth";
-import { getFirebaseProject } from "./management/projects";
-import { requireAuth } from "./requireAuth";
+import { FirebaseError } from "./error.js";
+import { getInheritedOption, setupLoggers } from "./utils.js";
+import { loadRC, RC } from "./rc.js";
+import { Config } from "./config.js";
+import { configstore } from "./configstore.js";
+import { detectProjectRoot } from "./detectProjectRoot.js";
+import { track } from "./track.js";
+import clc from "cli-color";
+import { selectAccount, setActiveAccount } from "./auth.js";
+import { getFirebaseProject } from "./management/projects.js";
+import { requireAuth } from "./requireAuth.js";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ActionFunction = (...args: any[]) => any;

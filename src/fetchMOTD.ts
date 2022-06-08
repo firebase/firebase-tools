@@ -1,10 +1,10 @@
 import * as clc from "cli-color";
 import * as semver from "semver";
 
-import { Client } from "./apiv2";
-import { configstore } from "./configstore";
-import { realtimeOrigin } from "./api";
-import * as utils from "./utils";
+import { Client } from "./apiv2.js";
+import { configstore } from "./configstore.js";
+import { realtimeOrigin } from "./api.cjs";
+import * as utils from "./utils.js";
 
 const pkg = require("../package.json"); // eslint-disable-line @typescript-eslint/no-var-requires
 

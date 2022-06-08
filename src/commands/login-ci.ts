@@ -1,10 +1,10 @@
 import * as clc from "cli-color";
 
-import { Command } from "../command";
-import { FirebaseError } from "../error";
-import { logger } from "../logger";
-import * as auth from "../auth";
-import * as utils from "../utils";
+import { Command } from "../command.js";
+import { FirebaseError } from "../error.js";
+import { logger } from "../logger.js";
+import * as auth from "../auth.js";
+import * as utils from "../utils.js";
 
 export const command = new Command("login:ci")
   .description("generate an access token for use in non-interactive environments")

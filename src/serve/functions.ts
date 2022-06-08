@@ -4,13 +4,13 @@ import {
   FunctionsEmulator,
   FunctionsEmulatorArgs,
 } from "../emulator/functionsEmulator";
-import { EmulatorServer } from "../emulator/emulatorServer";
-import { parseRuntimeVersion } from "../emulator/functionsEmulatorUtils";
-import { needProjectId } from "../projectUtils";
-import { getProjectDefaultAccount } from "../auth";
-import { Options } from "../options";
-import * as projectConfig from "../functions/projectConfig";
-import * as utils from "../utils";
+import { EmulatorServer } from "../emulator/emulatorServer.js";
+import { parseRuntimeVersion } from "../emulator/functionsEmulatorUtils.js";
+import { needProjectId } from "../projectUtils.js";
+import { getProjectDefaultAccount } from "../auth.js";
+import { Options } from "../options.js";
+import * as projectConfig from "../functions/projectConfig.js";
+import * as utils from "../utils.js";
 
 // TODO(samstern): It would be better to convert this to an EmulatorServer
 // but we don't have the "options" object until start() is called.

@@ -1,4 +1,4 @@
-import { defaultTo } from "lodash";
+import defaultTo from "lodash/defaultTo.js";
 
 interface FirebaseErrorOptions {
   children?: unknown[];

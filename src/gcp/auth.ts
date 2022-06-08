@@ -1,5 +1,5 @@
-import { Client } from "../apiv2";
-import { identityOrigin } from "../api";
+import { Client } from "../apiv2.js";
+import { identityOrigin } from "../api.cjs";
 
 const apiClient = new Client({ urlPrefix: identityOrigin, auth: true });
 

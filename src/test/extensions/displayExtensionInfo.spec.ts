@@ -1,11 +1,11 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 
-import { FirebaseError } from "../../error";
-import * as displayExtensionInfo from "../../extensions/displayExtensionInfo";
-import * as prompt from "../../prompt";
-import { ExtensionSpec, Resource } from "../../extensions/extensionsApi";
-import { cloneDeep } from "../../utils";
+import { FirebaseError } from "../../error.js";
+import * as displayExtensionInfo from "../../extensions/displayExtensionInfo.js";
+import * as prompt from "../../prompt.js";
+import { ExtensionSpec, Resource } from "../../extensions/extensionsApi.js";
+import { cloneDeep } from "../../utils.js";
 
 const SPEC: ExtensionSpec = {
   name: "test",

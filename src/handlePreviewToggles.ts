@@ -1,10 +1,12 @@
 "use strict";
 
-import { unset, has } from "lodash";
-import { bold } from "cli-color";
+import lodash from "lodash";
+const { unset, has } = lodash;
+import clccolor from "cli-color";
+const { bold } = clccolor;
 
-import { configstore } from "./configstore";
-import { previews } from "./previews";
+import { configstore } from "./configstore.js";
+import { previews } from "./previews.js";
 
 function _errorOut(name?: string) {
   console.log(bold.red("Error:"), "Did not recognize preview feature", bold(name));

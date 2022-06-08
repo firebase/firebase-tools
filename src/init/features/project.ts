@@ -1,7 +1,7 @@
 import * as clc from "cli-color";
 import * as _ from "lodash";
 
-import { FirebaseError } from "../../error";
+import { FirebaseError } from "../../error.js";
 import {
   addFirebaseToCloudProjectAndLog,
   createFirebaseProjectAndLog,
@@ -11,9 +11,9 @@ import {
   PROJECTS_CREATE_QUESTIONS,
   promptAvailableProjectId,
 } from "../../management/projects";
-import { logger } from "../../logger";
-import { prompt, promptOnce } from "../../prompt";
-import * as utils from "../../utils";
+import { logger } from "../../logger.js";
+import { prompt, promptOnce } from "../../prompt.js";
+import * as utils from "../../utils.js";
 
 const OPTION_NO_PROJECT = "Don't set up a default project";
 const OPTION_USE_PROJECT = "Use an existing project";

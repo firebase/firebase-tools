@@ -1,4 +1,4 @@
-import { previews } from "../previews";
+import { previews } from "../previews.js";
 
 export function load(client: any): any {
   function loadCommand(name: string) {

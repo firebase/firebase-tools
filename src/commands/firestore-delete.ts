@@ -1,13 +1,13 @@
 "use strict";
 
 import * as clc from "cli-color";
-import { Command } from "../command";
-import { Emulators } from "../emulator/types";
-import { printNoticeIfEmulated } from "../emulator/commandUtils";
-import { FirestoreDelete } from "../firestore/delete";
-import { promptOnce } from "../prompt";
-import { requirePermissions } from "../requirePermissions";
-import * as utils from "../utils";
+import { Command } from "../command.js";
+import { Emulators } from "../emulator/types.js";
+import { printNoticeIfEmulated } from "../emulator/commandUtils.js";
+import { FirestoreDelete } from "../firestore/delete.js";
+import { promptOnce } from "../prompt.js";
+import { requirePermissions } from "../requirePermissions.js";
+import * as utils from "../utils.js";
 
 function getConfirmationMessage(deleteOp: FirestoreDelete, options: any) {
   if (options.allCollections) {

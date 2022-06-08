@@ -1,6 +1,6 @@
-import { appengineOrigin } from "../api";
-import { Client } from "../apiv2";
-import { logger } from "../logger";
+import { appengineOrigin } from "../api.cjs";
+import { Client } from "../apiv2.js";
+import { logger } from "../logger.js";
 
 /**
  * Determine the Firestore database type for a given project. One of:

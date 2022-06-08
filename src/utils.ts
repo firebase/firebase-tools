@@ -2,7 +2,7 @@ import * as _ from "lodash";
 import * as url from "url";
 import * as http from "http";
 import * as clc from "cli-color";
-import * as ora from "ora";
+import ora from "ora";
 import * as process from "process";
 import { Readable } from "stream";
 import * as winston from "winston";
@@ -10,10 +10,10 @@ import { SPLAT } from "triple-beam";
 import { AssertionError } from "assert";
 const ansiStrip = require("cli-color/strip") as (input: string) => string;
 
-import { configstore } from "./configstore";
-import { FirebaseError } from "./error";
-import { logger, LogLevel } from "./logger";
-import { LogDataOrUndefined } from "./emulator/loggingEmulator";
+import { configstore } from "./configstore.js";
+import { FirebaseError } from "./error.js";
+import { logger, LogLevel } from "./logger.js";
+import { LogDataOrUndefined } from "./emulator/loggingEmulator.js";
 import { Socket } from "net";
 
 const IS_WINDOWS = process.platform === "win32";
@@ -28,7 +28,7 @@ export const envOverrides: string[] = [];
  * Create a Firebase Console URL for the specified path and project.
  */
 export function consoleUrl(project: string, path: string): string {
-  const api = require("./api");
+  const api = require("./api.cjs");
   return `${api.consoleOrigin}/project/${project}${path}`;
 }
 

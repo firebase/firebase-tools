@@ -1,11 +1,11 @@
 import * as path from "path";
 import * as clc from "cli-color";
 
-import { FirebaseError } from "../../error";
-import { resolveProjectPath } from "../../projectPath";
-import { dirExistsSync } from "../../fsutils";
-import { logLabeledWarning } from "../../utils";
-import { HostingDeploy } from "./hostingDeploy";
+import { FirebaseError } from "../../error.js";
+import { resolveProjectPath } from "../../projectPath.js";
+import { dirExistsSync } from "../../fsutils.js";
+import { logLabeledWarning } from "../../utils.js";
+import { HostingDeploy } from "./hostingDeploy.js";
 
 export function validateDeploy(deploy: HostingDeploy, options: any) {
   const cfg = deploy.config;

@@ -1,13 +1,14 @@
-import { capitalize, includes } from "lodash";
+import lodash from "lodash";
+const { capitalize, includes } = lodash;
 import { FetchError, Headers } from "node-fetch";
 import { IncomingMessage, ServerResponse } from "http";
 import { PassThrough } from "stream";
 import { Request, RequestHandler, Response } from "express";
 import { URL } from "url";
 
-import { Client, HttpMethod } from "../apiv2";
-import { FirebaseError } from "../error";
-import { logger } from "../logger";
+import { Client, HttpMethod } from "../apiv2.js";
+import { FirebaseError } from "../error.js";
+import { logger } from "../logger.js";
 
 const REQUIRED_VARY_VALUES = ["Accept-Encoding", "Authorization", "Cookie"];
 

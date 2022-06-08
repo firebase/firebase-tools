@@ -1,5 +1,5 @@
-import { getFirebaseProject } from "./management/projects";
-import { needProjectId } from "./projectUtils";
+import { getFirebaseProject } from "./management/projects.js";
+import { needProjectId } from "./projectUtils.js";
 /**
  * Fetches the project number.
  * @param options CLI options.

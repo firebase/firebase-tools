@@ -1,7 +1,7 @@
-import { Client } from "../apiv2";
-import { pubsubOrigin } from "../api";
-import * as backend from "../deploy/functions/backend";
-import * as proto from "./proto";
+import { Client } from "../apiv2.js";
+import { pubsubOrigin } from "../api.cjs";
+import * as backend from "../deploy/functions/backend.js";
+import * as proto from "./proto.js";
 
 const API_VERSION = "v1";
 

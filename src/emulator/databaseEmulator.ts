@@ -4,14 +4,14 @@ import * as fs from "fs";
 import * as path from "path";
 import * as http from "http";
 
-import * as downloadableEmulators from "./downloadableEmulators";
-import { EmulatorInfo, EmulatorInstance, Emulators } from "../emulator/types";
-import { Constants } from "./constants";
-import { EmulatorRegistry } from "./registry";
-import { EmulatorLogger } from "./emulatorLogger";
-import { FirebaseError } from "../error";
-import { parseBoltRules } from "../parseBoltRules";
-import { Client } from "../apiv2";
+import * as downloadableEmulators from "./downloadableEmulators.js";
+import { EmulatorInfo, EmulatorInstance, Emulators } from "../emulator/types.js";
+import { Constants } from "./constants.js";
+import { EmulatorRegistry } from "./registry.js";
+import { EmulatorLogger } from "./emulatorLogger.js";
+import { FirebaseError } from "../error.js";
+import { parseBoltRules } from "../parseBoltRules.js";
+import { Client } from "../apiv2.js";
 
 export interface DatabaseEmulatorArgs {
   port?: number;

@@ -2,16 +2,16 @@ import { setGracefulCleanup } from "tmp";
 import * as clc from "cli-color";
 import * as fs from "fs";
 
-import { checkHttpIam } from "./checkIam";
-import { logSuccess, logWarning } from "../../utils";
-import { Options } from "../../options";
-import { FirebaseError } from "../../error";
-import { configForCodebase } from "../../functions/projectConfig";
-import * as args from "./args";
-import * as gcs from "../../gcp/storage";
-import * as gcf from "../../gcp/cloudfunctions";
-import * as gcfv2 from "../../gcp/cloudfunctionsv2";
-import * as backend from "./backend";
+import { checkHttpIam } from "./checkIam.js";
+import { logSuccess, logWarning } from "../../utils.js";
+import { Options } from "../../options.js";
+import { FirebaseError } from "../../error.js";
+import { configForCodebase } from "../../functions/projectConfig.js";
+import * as args from "./args.js";
+import * as gcs from "../../gcp/storage.js";
+import * as gcf from "../../gcp/cloudfunctions.js";
+import * as gcfv2 from "../../gcp/cloudfunctionsv2.js";
+import * as backend from "./backend.js";
 
 setGracefulCleanup();
 

@@ -1,10 +1,10 @@
 import * as clc from "cli-color";
 import * as _ from "lodash";
-import * as utils from "../../utils";
-import { prompt } from "../../prompt";
-import { Emulators, ALL_SERVICE_EMULATORS, isDownloadableEmulator } from "../../emulator/types";
-import { Constants } from "../../emulator/constants";
-import { downloadIfNecessary } from "../../emulator/downloadableEmulators";
+import * as utils from "../../utils.js";
+import { prompt } from "../../prompt.js";
+import { Emulators, ALL_SERVICE_EMULATORS, isDownloadableEmulator } from "../../emulator/types.js";
+import { Constants } from "../../emulator/constants.js";
+import { downloadIfNecessary } from "../../emulator/downloadableEmulators.js";
 
 interface EmulatorsInitSelections {
   emulators?: Emulators[];

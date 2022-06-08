@@ -1,13 +1,13 @@
 import * as _ from "lodash";
 
-import * as utils from "../utils";
+import * as utils from "../utils.js";
 import * as clc from "cli-color";
 import * as childProcess from "child_process";
-import { FirebaseError } from "../error";
+import { FirebaseError } from "../error.js";
 const needProjectId = require("../projectUtils").needProjectId;
-import { logger } from "../logger";
+import { logger } from "../logger.js";
 import * as path from "path";
-import { Options } from "../options";
+import { Options } from "../options.js";
 
 function runCommand(command: string, childOptions: childProcess.SpawnOptions) {
   const escapedCommand = command.replace(/\"/g, '\\"');

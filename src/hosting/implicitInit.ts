@@ -2,11 +2,11 @@ import * as _ from "lodash";
 import * as clc from "cli-color";
 import * as fs from "fs";
 
-import { fetchWebSetup, getCachedWebSetup } from "../fetchWebSetup";
-import * as utils from "../utils";
-import { logger } from "../logger";
-import { EmulatorRegistry } from "../emulator/registry";
-import { EMULATORS_SUPPORTED_BY_USE_EMULATOR, Address, Emulators } from "../emulator/types";
+import { fetchWebSetup, getCachedWebSetup } from "../fetchWebSetup.js";
+import * as utils from "../utils.js";
+import { logger } from "../logger.js";
+import { EmulatorRegistry } from "../emulator/registry.js";
+import { EMULATORS_SUPPORTED_BY_USE_EMULATOR, Address, Emulators } from "../emulator/types.js";
 
 const INIT_TEMPLATE = fs.readFileSync(__dirname + "/../../templates/hosting/init.js", "utf8");
 

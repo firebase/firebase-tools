@@ -1,11 +1,11 @@
-import { logPrefix } from "./extensionsHelper";
-import { getProjectNumber } from "../getProjectNumber";
-import * as utils from "../utils";
-import * as resourceManager from "../gcp/resourceManager";
-import { listInstances } from "./extensionsApi";
-import { promptOnce } from "../prompt";
-import { logger } from "../logger";
-import { FirebaseError } from "../error";
+import { logPrefix } from "./extensionsHelper.js";
+import { getProjectNumber } from "../getProjectNumber.js";
+import * as utils from "../utils.js";
+import * as resourceManager from "../gcp/resourceManager.js";
+import { listInstances } from "./extensionsApi.js";
+import { promptOnce } from "../prompt.js";
+import { logger } from "../logger.js";
+import { FirebaseError } from "../error.js";
 
 const SERVICE_AGENT_ROLE = "roles/firebasemods.serviceAgent";
 

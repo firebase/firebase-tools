@@ -1,9 +1,9 @@
-import { ALL_EMULATORS, Emulators } from "../../emulator/types";
-import { EmulatorRegistry } from "../../emulator/registry";
+import { ALL_EMULATORS, Emulators } from "../../emulator/types.js";
+import { EmulatorRegistry } from "../../emulator/registry.js";
 import { expect } from "chai";
-import { FakeEmulator } from "./fakeEmulator";
-import { findAvailablePort } from "../../emulator/portUtils";
-import * as express from "express";
+import { FakeEmulator } from "./fakeEmulator.js";
+import { findAvailablePort } from "../../emulator/portUtils.js";
+import express from "express";
 import * as os from "os";
 
 describe("EmulatorRegistry", () => {

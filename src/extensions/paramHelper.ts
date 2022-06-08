@@ -2,20 +2,20 @@ import * as path from "path";
 import * as clc from "cli-color";
 import * as fs from "fs-extra";
 
-import { FirebaseError } from "../error";
-import { logger } from "../logger";
-import * as extensionsApi from "./extensionsApi";
+import { FirebaseError } from "../error.js";
+import { logger } from "../logger.js";
+import * as extensionsApi from "./extensionsApi.js";
 import {
   getFirebaseProjectParams,
   populateDefaultParams,
   substituteParams,
   validateCommandLineParams,
 } from "./extensionsHelper";
-import * as askUserForParam from "./askUserForParam";
-import { track } from "../track";
-import * as env from "../functions/env";
-import { cloneDeep } from "../utils";
-import { paramsFlagDeprecationWarning } from "./warnings";
+import * as askUserForParam from "./askUserForParam.js";
+import { track } from "../track.js";
+import * as env from "../functions/env.js";
+import { cloneDeep } from "../utils.js";
+import { paramsFlagDeprecationWarning } from "./warnings.js";
 
 /**
  * Interface for holding different param values for different environments/configs.

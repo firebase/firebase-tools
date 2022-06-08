@@ -1,7 +1,7 @@
 import * as semver from "semver";
 
-import { configstore } from "./configstore";
-import { FirebaseError } from "./error";
+import { configstore } from "./configstore.js";
+import { FirebaseError } from "./error.js";
 
 const pkg = require("../package.json"); // eslint-disable-line @typescript-eslint/no-var-requires
 

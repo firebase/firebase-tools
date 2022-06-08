@@ -1,5 +1,5 @@
-import { logger } from "./logger";
-import { getFirebaseProject } from "./management/projects";
+import { logger } from "./logger.js";
+import { getFirebaseProject } from "./management/projects.js";
 
 /**
  * Tries to determine the default hosting site for a project, else falls back to projectId.

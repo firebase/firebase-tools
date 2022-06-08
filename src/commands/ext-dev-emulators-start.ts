@@ -1,8 +1,8 @@
 // TODO(joehanley): Remove this entire command in v12.
 import * as clc from "cli-color";
-import { Command } from "../command";
-import * as commandUtils from "../emulator/commandUtils";
-import { FirebaseError } from "../error";
+import { Command } from "../command.js";
+import * as commandUtils from "../emulator/commandUtils.js";
+import { FirebaseError } from "../error.js";
 
 export const command = new Command("ext:dev:emulators:start")
   .description("deprecated: please use `firebase emulators:start`")

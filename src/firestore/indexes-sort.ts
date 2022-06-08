@@ -1,6 +1,6 @@
-import * as API from "./indexes-api";
-import * as Spec from "./indexes-spec";
-import * as util from "./util";
+import * as API from "./indexes-api.js";
+import * as Spec from "./indexes-spec.js";
+import * as util from "./util.js";
 
 const QUERY_SCOPE_SEQUENCE = [
   API.QueryScope.COLLECTION_GROUP,

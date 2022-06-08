@@ -1,28 +1,28 @@
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const { marked } = require("marked");
-import TerminalRenderer = require("marked-terminal");
+import TerminalRenderer from "marked-terminal";
 
-import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
-import { Command } from "../command";
-import { FirebaseError } from "../error";
-import { needProjectId, getProjectId } from "../projectUtils";
-import * as extensionsApi from "../extensions/extensionsApi";
+import { checkMinRequiredVersion } from "../checkMinRequiredVersion.js";
+import { Command } from "../command.js";
+import { FirebaseError } from "../error.js";
+import { needProjectId, getProjectId } from "../projectUtils.js";
+import * as extensionsApi from "../extensions/extensionsApi.js";
 import {
   logPrefix,
   diagnoseAndFixProject,
   createSourceFromLocation,
   isLocalPath,
 } from "../extensions/extensionsHelper";
-import * as paramHelper from "../extensions/paramHelper";
-import { requirePermissions } from "../requirePermissions";
-import * as utils from "../utils";
-import { logger } from "../logger";
-import * as refs from "../extensions/refs";
-import * as manifest from "../extensions/manifest";
-import { Options } from "../options";
-import { partition } from "../functional";
-import { buildBindingOptionsWithBaseValue, getBaseParamBindings } from "../extensions/paramHelper";
-import * as askUserForEventsConfig from "../extensions/askUserForEventsConfig";
+import * as paramHelper from "../extensions/paramHelper.js";
+import { requirePermissions } from "../requirePermissions.js";
+import * as utils from "../utils.js";
+import { logger } from "../logger.js";
+import * as refs from "../extensions/refs.js";
+import * as manifest from "../extensions/manifest.js";
+import { Options } from "../options.js";
+import { partition } from "../functional.js";
+import { buildBindingOptionsWithBaseValue, getBaseParamBindings } from "../extensions/paramHelper.js";
+import * as askUserForEventsConfig from "../extensions/askUserForEventsConfig.js";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),

@@ -1,14 +1,14 @@
 import * as _ from "lodash";
 import * as clc from "cli-color";
-import * as ora from "ora";
+import ora from "ora";
 
-import { Client } from "../apiv2";
-import { FirebaseError } from "../error";
-import { pollOperation } from "../operation-poller";
-import { Question, promptOnce } from "../prompt";
-import * as api from "../api";
-import { logger } from "../logger";
-import * as utils from "../utils";
+import { Client } from "../apiv2.js";
+import { FirebaseError } from "../error.js";
+import { pollOperation } from "../operation-poller.js";
+import { Question, promptOnce } from "../prompt.js";
+import * as api from "../api.cjs";
+import { logger } from "../logger.js";
+import * as utils from "../utils.js";
 
 const TIMEOUT_MILLIS = 30000;
 const MAXIMUM_PROMPT_LIST = 100;

@@ -1,7 +1,7 @@
 import { expect } from "chai";
 
-import * as projectConfig from "../../functions/projectConfig";
-import { FirebaseError } from "../../error";
+import * as projectConfig from "../../functions/projectConfig.js";
+import { FirebaseError } from "../../error.js";
 
 const TEST_CONFIG_0 = { source: "foo" };
 const TEST_CONFIG_1 = { source: "bar", codebase: "bar" };

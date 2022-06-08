@@ -9,7 +9,7 @@
 import * as _ from "lodash";
 
 import { Resource } from "firebase-functions";
-import * as express from "express";
+import express from "express";
 
 /**
  * Wire formal for v1beta1 EventFlow.

@@ -1,11 +1,11 @@
 import { expect } from "chai";
 
-import { FirebaseError } from "../../../../../error";
-import * as backend from "../../../../../deploy/functions/backend";
-import * as build from "../../../../../deploy/functions/build";
-import * as parseTriggers from "../../../../../deploy/functions/runtimes/node/parseTriggers";
-import * as api from "../../../../../api";
-import { BEFORE_CREATE_EVENT } from "../../../../../functions/events/v1";
+import { FirebaseError } from "../../../../../error.js";
+import * as backend from "../../../../../deploy/functions/backend.js";
+import * as build from "../../../../../deploy/functions/build.js";
+import * as parseTriggers from "../../../../../deploy/functions/runtimes/node/parseTriggers.js";
+import * as api from "../../../../../api.cjs";
+import { BEFORE_CREATE_EVENT } from "../../../../../functions/events/v1.js";
 
 function applyBuildDefaults(
   endpoint: Omit<backend.Endpoint, "httpsTrigger">

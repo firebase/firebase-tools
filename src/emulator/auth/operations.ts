@@ -1,6 +1,6 @@
 import { URLSearchParams } from "url";
 import { decode as decodeJwt, sign as signJwt, JwtHeader } from "jsonwebtoken";
-import * as express from "express";
+import express from "express";
 import { ExegesisContext } from "exegesis-express";
 import {
   toUnixTimestamp,
@@ -13,9 +13,9 @@ import {
   MakeRequired,
   isValidPhoneNumber,
 } from "./utils";
-import { NotImplementedError, assert, BadRequestError, InternalError } from "./errors";
-import { Emulators } from "../types";
-import { EmulatorLogger } from "../emulatorLogger";
+import { NotImplementedError, assert, BadRequestError, InternalError } from "./errors.js";
+import { Emulators } from "../types.js";
+import { EmulatorLogger } from "../emulatorLogger.js";
 import {
   ProjectState,
   OobRequestType,
@@ -34,7 +34,7 @@ import {
   MfaConfig,
   BlockingFunctionEvents,
 } from "./state";
-import { MfaEnrollments, Schemas } from "./types";
+import { MfaEnrollments, Schemas } from "./types.js";
 
 /**
  * Create a map from IDs to operations handlers suitable for exegesis.

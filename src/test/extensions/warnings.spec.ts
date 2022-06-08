@@ -1,16 +1,16 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 
-import * as resolveSource from "../../extensions/resolveSource";
-import * as utils from "../../utils";
-import * as warnings from "../../extensions/warnings";
+import * as resolveSource from "../../extensions/resolveSource.js";
+import * as utils from "../../utils.js";
+import * as warnings from "../../extensions/warnings.js";
 import {
   Extension,
   ExtensionVersion,
   RegistryLaunchStage,
   Visibility,
 } from "../../extensions/extensionsApi";
-import { DeploymentInstanceSpec } from "../../deploy/extensions/planner";
+import { DeploymentInstanceSpec } from "../../deploy/extensions/planner.js";
 
 const testExtensionVersion: ExtensionVersion = {
   name: "test",

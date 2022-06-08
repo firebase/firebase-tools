@@ -1,18 +1,18 @@
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const { marked } = require("marked");
-import TerminalRenderer = require("marked-terminal");
+import TerminalRenderer from "marked-terminal";
 
-import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
-import { Command } from "../command";
+import { checkMinRequiredVersion } from "../checkMinRequiredVersion.js";
+import { Command } from "../command.js";
 import {
   ensureExtensionsApiEnabled,
   diagnoseAndFixProject,
   logPrefix,
 } from "../extensions/extensionsHelper";
-import { requirePermissions } from "../requirePermissions";
-import { logLabeledWarning } from "../utils";
-import * as manifest from "../extensions/manifest";
-import { Options } from "../options";
+import { requirePermissions } from "../requirePermissions.js";
+import { logLabeledWarning } from "../utils.js";
+import * as manifest from "../extensions/manifest.js";
+import { Options } from "../options.js";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),

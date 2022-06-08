@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { parseObjectUploadMultipartRequest } from "../../../emulator/storage/multipart";
+import { parseObjectUploadMultipartRequest } from "../../../emulator/storage/multipart.js";
 import { randomBytes } from "crypto";
 
 describe("Storage Multipart Request Parser", () => {

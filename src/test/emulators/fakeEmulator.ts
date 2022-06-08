@@ -1,6 +1,6 @@
-import { EmulatorInfo, EmulatorInstance, Emulators } from "../../emulator/types";
-import * as express from "express";
-import { createDestroyer } from "../../utils";
+import { EmulatorInfo, EmulatorInstance, Emulators } from "../../emulator/types.js";
+import express from "express";
+import { createDestroyer } from "../../utils.js";
 
 /**
  * A thing that acts like an emulator by just occupying a port.

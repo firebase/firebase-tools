@@ -173,7 +173,7 @@ First, create a new file in `src/commands` for your new command, replacing
 colons with dashes where appropriate. Populate the file with this basic content:
 
 ```typescript
-import { Command } from "../command";
+import { Command } from "../command.js";
 
 // `export default` is used for consistency in command files.
 export const command = new Command("your:command")
@@ -271,7 +271,7 @@ The Firebase CLI has a central logger available in `src/logger`. You should
 never use `console.log()` when displaying output to the user.
 
 ```typescript
-import { logger } from "../logger";
+import { logger } from "../logger.js";
 
 logger.info("This text will be displayed to the end user.");
 logger.debug("This text will only show up in firebase-debug.log or running with --debug.");
@@ -307,7 +307,7 @@ may be provided as well. Here's an example:
 
 ```typescript
 import * as clc from "cli-color";
-import { FirebaseError } from "../error";
+import { FirebaseError } from "../error.js";
 
 async function myFunc(options: any): void {
   try {

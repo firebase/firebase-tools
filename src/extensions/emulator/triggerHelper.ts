@@ -2,10 +2,10 @@ import {
   ParsedTriggerDefinition,
   getServiceFromEventType,
 } from "../../emulator/functionsEmulatorShared";
-import { EmulatorLogger } from "../../emulator/emulatorLogger";
-import { Emulators } from "../../emulator/types";
-import * as extensionsApi from "../../extensions/extensionsApi";
-import * as proto from "../../gcp/proto";
+import { EmulatorLogger } from "../../emulator/emulatorLogger.js";
+import { Emulators } from "../../emulator/types.js";
+import * as extensionsApi from "../../extensions/extensionsApi.js";
+import * as proto from "../../gcp/proto.js";
 
 export function functionResourceToEmulatedTriggerDefintion(
   resource: extensionsApi.Resource

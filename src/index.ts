@@ -1,9 +1,9 @@
 import * as program from "commander";
 import * as clc from "cli-color";
-import * as leven from "leven";
+import leven from "leven";
 
-import { logger } from "./logger";
-import { setupLoggers } from "./utils";
+import { logger } from "./logger.js";
+import { setupLoggers } from "./utils.js";
 
 const pkg = require("../package.json");
 
@@ -97,5 +97,4 @@ program.action((_, args) => {
   process.exit(1);
 });
 
-// NB: Keep this export line to keep firebase-tools-as-a-module working.
-export = client;
+export default client;

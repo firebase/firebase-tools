@@ -1,5 +1,5 @@
-import { getFirebaseProject } from "./management/projects";
-import { RC } from "./rc";
+import { getFirebaseProject } from "./management/projects.js";
+import { RC } from "./rc.js";
 
 import * as clc from "cli-color";
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires

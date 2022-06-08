@@ -4,12 +4,12 @@ import * as path from "path";
 import * as yaml from "js-yaml";
 import { promisify } from "util";
 
-import { logger } from "../../../../logger";
-import * as api from "../../.../../../../api";
-import * as backend from "../../backend";
-import * as runtimes from "..";
-import * as v1alpha1 from "./v1alpha1";
-import { FirebaseError } from "../../../../error";
+import { logger } from "../../../../logger.js";
+import * as api from "../../.../../../../api.cjs";
+import * as backend from "../../backend.js";
+import * as runtimes from "../index.js";
+import * as v1alpha1 from "./v1alpha1.js";
+import { FirebaseError } from "../../../../error.js";
 
 export const readFileAsync = promisify(fs.readFile);
 

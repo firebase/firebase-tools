@@ -1,18 +1,18 @@
 import * as clc from "cli-color";
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const { marked } = require("marked");
-import TerminalRenderer = require("marked-terminal");
+import TerminalRenderer from "marked-terminal";
 
-import { displayExtInfo } from "../extensions/displayExtensionInfo";
-import * as askUserForEventsConfig from "../extensions/askUserForEventsConfig";
-import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
-import { Command } from "../command";
-import { FirebaseError } from "../error";
-import { getProjectId, needProjectId } from "../projectUtils";
-import * as extensionsApi from "../extensions/extensionsApi";
-import * as refs from "../extensions/refs";
-import { displayWarningPrompts } from "../extensions/warnings";
-import * as paramHelper from "../extensions/paramHelper";
+import { displayExtInfo } from "../extensions/displayExtensionInfo.js";
+import * as askUserForEventsConfig from "../extensions/askUserForEventsConfig.js";
+import { checkMinRequiredVersion } from "../checkMinRequiredVersion.js";
+import { Command } from "../command.js";
+import { FirebaseError } from "../error.js";
+import { getProjectId, needProjectId } from "../projectUtils.js";
+import * as extensionsApi from "../extensions/extensionsApi.js";
+import * as refs from "../extensions/refs.js";
+import { displayWarningPrompts } from "../extensions/warnings.js";
+import * as paramHelper from "../extensions/paramHelper.js";
 import {
   confirm,
   createSourceFromLocation,
@@ -25,13 +25,13 @@ import {
   isLocalPath,
   canonicalizeRefInput,
 } from "../extensions/extensionsHelper";
-import { getRandomString } from "../extensions/utils";
-import { requirePermissions } from "../requirePermissions";
-import * as utils from "../utils";
-import { track } from "../track";
-import { previews } from "../previews";
-import { Options } from "../options";
-import * as manifest from "../extensions/manifest";
+import { getRandomString } from "../extensions/utils.js";
+import { requirePermissions } from "../requirePermissions.js";
+import * as utils from "../utils.js";
+import { track } from "../track.js";
+import { previews } from "../previews.js";
+import { Options } from "../options.js";
+import * as manifest from "../extensions/manifest.js";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),

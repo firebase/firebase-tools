@@ -1,8 +1,8 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 
-import * as extensionsApi from "../../extensions/extensionsApi";
-import { listExtensions } from "../../extensions/listExtensions";
+import * as extensionsApi from "../../extensions/extensionsApi.js";
+import { listExtensions } from "../../extensions/listExtensions.js";
 
 const MOCK_INSTANCES = [
   {

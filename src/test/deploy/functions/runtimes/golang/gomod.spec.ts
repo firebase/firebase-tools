@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import * as gomod from "../../../../../deploy/functions/runtimes/golang/gomod";
+import * as gomod from "../../../../../deploy/functions/runtimes/golang/gomod.js";
 import * as go from "../../../../../deploy/functions/runtimes/golang";
 
 const MOD_NAME = "acme.com/fucntions";

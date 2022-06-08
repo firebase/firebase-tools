@@ -1,4 +1,4 @@
-import { logger } from "../../../logger";
+import { logger } from "../../../logger.js";
 
 /**
  * GCF v1 deploys support reusing a build between function deploys.

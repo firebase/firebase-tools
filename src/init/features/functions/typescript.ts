@@ -2,8 +2,8 @@ import * as _ from "lodash";
 import * as fs from "fs";
 import * as path from "path";
 
-import { askInstallDependencies } from "./npm-dependencies";
-import { prompt } from "../../../prompt";
+import { askInstallDependencies } from "./npm-dependencies.js";
+import { prompt } from "../../../prompt.js";
 
 const TEMPLATE_ROOT = path.resolve(__dirname, "../../../../templates/init/functions/typescript/");
 const PACKAGE_LINTING_TEMPLATE = fs.readFileSync(

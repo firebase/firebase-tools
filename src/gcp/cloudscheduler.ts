@@ -1,12 +1,12 @@
 import * as _ from "lodash";
 
-import { FirebaseError } from "../error";
-import { logger } from "../logger";
-import { cloudschedulerOrigin } from "../api";
-import { Client } from "../apiv2";
-import * as backend from "../deploy/functions/backend";
-import * as proto from "./proto";
-import { assertExhaustive } from "../functional";
+import { FirebaseError } from "../error.js";
+import { logger } from "../logger.js";
+import { cloudschedulerOrigin } from "../api.cjs";
+import { Client } from "../apiv2.js";
+import * as backend from "../deploy/functions/backend.js";
+import * as proto from "./proto.js";
+import { assertExhaustive } from "../functional.js";
 
 const VERSION = "v1beta1";
 const DEFAULT_TIME_ZONE = "America/Los_Angeles";

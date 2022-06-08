@@ -1,7 +1,7 @@
-import * as commandUtils from "../../emulator/commandUtils";
+import * as commandUtils from "../../emulator/commandUtils.js";
 import { expect } from "chai";
-import { FirebaseError } from "../../error";
-import { EXPORT_ON_EXIT_USAGE_ERROR, EXPORT_ON_EXIT_CWD_DANGER } from "../../emulator/commandUtils";
+import { FirebaseError } from "../../error.js";
+import { EXPORT_ON_EXIT_USAGE_ERROR, EXPORT_ON_EXIT_CWD_DANGER } from "../../emulator/commandUtils.js";
 import * as path from "path";
 import * as sinon from "sinon";
 

@@ -2,8 +2,8 @@ import * as pf from "portfinder";
 import * as tcpport from "tcp-port-used";
 import * as dns from "dns";
 
-import { FirebaseError } from "../error";
-import { logger } from "../logger";
+import { FirebaseError } from "../error.js";
+import { logger } from "../logger.js";
 
 dns.setDefaultResultOrder("ipv4first");
 

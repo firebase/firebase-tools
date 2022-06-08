@@ -1,7 +1,7 @@
-import * as ua from "universal-analytics";
+import ua from "universal-analytics";
 import { v4 as uuidV4 } from "uuid";
 
-import { configstore } from "./configstore";
+import { configstore } from "./configstore.js";
 const pkg = require("../package.json");
 
 let anonId = configstore.get("analytics-uuid");

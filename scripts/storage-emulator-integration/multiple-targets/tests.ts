@@ -1,6 +1,6 @@
-import supertest = require("supertest");
-import { Emulators } from "../../../src/emulator/types";
-import { TriggerEndToEndTest } from "../../integration-helpers/framework";
+import supertest from "supertest";
+import { Emulators } from "../../../src/emulator/types.js";
+import { TriggerEndToEndTest } from "../../integration-helpers/framework.js";
 import {
   EMULATORS_SHUTDOWN_DELAY_MS,
   FIREBASE_EMULATOR_CONFIG,

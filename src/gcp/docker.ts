@@ -5,8 +5,8 @@
 // are both strings and can both be put in the same route to get completely different
 // response document types).
 // This file will only implement a minimal subset as needed.
-import { FirebaseError } from "../error";
-import * as api from "../apiv2";
+import { FirebaseError } from "../error.js";
+import * as api from "../apiv2.js";
 
 // A mapping from geographical region to subdomain, useful for Container Registry
 export const GCR_SUBDOMAIN_MAPPING: Record<string, string> = {

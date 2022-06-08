@@ -1,8 +1,8 @@
 import * as _ from "lodash";
 
-import { RulesDeploy, RulesetServiceType } from "../../rulesDeploy";
-import { Options } from "../../options";
-import { FirebaseError } from "../../error";
+import { RulesDeploy, RulesetServiceType } from "../../rulesDeploy.js";
+import { Options } from "../../options.js";
+import { FirebaseError } from "../../error.js";
 
 /**
  * Releases Firestore rules.

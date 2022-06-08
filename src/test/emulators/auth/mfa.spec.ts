@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { describeAuthEmulator, PROJECT_ID } from "./setup";
+import { describeAuthEmulator, PROJECT_ID } from "./setup.js";
 import { decode as decodeJwt, JwtHeader } from "jsonwebtoken";
 import {
   enrollPhoneMfa,
@@ -16,8 +16,8 @@ import {
   TEST_PHONE_NUMBER_OBFUSCATED,
   updateAccountByLocalId,
 } from "./helpers";
-import { MfaEnrollment } from "../../../emulator/auth/types";
-import { FirebaseJwtPayload } from "../../../emulator/auth/operations";
+import { MfaEnrollment } from "../../../emulator/auth/types.js";
+import { FirebaseJwtPayload } from "../../../emulator/auth/operations.js";
 
 describeAuthEmulator("mfa enrollment", ({ authApi, getClock }) => {
   it("should error if account does not have email verified", async () => {

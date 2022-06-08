@@ -1,10 +1,9 @@
-import * as backend from "../backend";
-import * as build from "../build";
+import * as backend from "../backend.js";
+import * as build from "../build.js";
 import * as golang from "./golang";
 import * as node from "./node";
-import * as validate from "../validate";
-import * as projectPath from "../../../projectPath";
-import { FirebaseError } from "../../../error";
+import * as validate from "../validate.js";
+import { FirebaseError } from "../../../error.js";
 
 /** Supported runtimes for new Cloud Functions. */
 const RUNTIMES: string[] = ["nodejs10", "nodejs12", "nodejs14", "nodejs16"];

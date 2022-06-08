@@ -1,14 +1,14 @@
-import * as cors from "cors";
-import * as express from "express";
+import cors from "cors";
+import express from "express";
 import * as exegesisExpress from "exegesis-express";
 import { ValidationError } from "exegesis/lib/errors";
 import * as _ from "lodash";
 import { OpenAPIObject, PathsObject, ServerObject, OperationObject } from "openapi3-ts";
-import { EmulatorLogger } from "../emulatorLogger";
-import { Emulators } from "../types";
-import { authOperations, AuthOps, AuthOperation, FirebaseJwtPayload } from "./operations";
-import { AgentProjectState, decodeRefreshToken, ProjectState } from "./state";
-import apiSpecUntyped from "./apiSpec";
+import { EmulatorLogger } from "../emulatorLogger.js";
+import { Emulators } from "../types.js";
+import { authOperations, AuthOps, AuthOperation, FirebaseJwtPayload } from "./operations.js";
+import { AgentProjectState, decodeRefreshToken, ProjectState } from "./state.js";
+import apiSpecUntyped from "./apiSpec.js";
 import {
   PromiseController,
   ExegesisContext,
@@ -28,10 +28,11 @@ import {
   BadRequestError,
   assert,
 } from "./errors";
-import { logError } from "./utils";
-import { camelCase } from "lodash";
-import { registerHandlers } from "./handlers";
-import bodyParser = require("body-parser");
+import { logError } from "./utils.js";
+import lodash from "lodash";
+const { camelCase } = lodash;
+import { registerHandlers } from "./handlers.js";
+import bodyParser from "body-parser";
 import { URLSearchParams } from "url";
 import { decode, JwtHeader } from "jsonwebtoken";
 const apiSpec = apiSpecUntyped as OpenAPIObject;

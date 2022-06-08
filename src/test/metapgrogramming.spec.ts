@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { SameType, RecursiveKeyOf, LeafElems, DeepPick, DeepOmit } from "../metaprogramming";
+import { SameType, RecursiveKeyOf, LeafElems, DeepPick, DeepOmit } from "../metaprogramming.js";
 
 describe("metaprogramming", () => {
   it("can calcluate recursive keys", () => {

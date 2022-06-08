@@ -1,7 +1,7 @@
-import { EmulatorInstance } from "./types";
-import { EmulatorRegistry } from "./registry";
-import * as portUtils from "./portUtils";
-import { FirebaseError } from "../error";
+import { EmulatorInstance } from "./types.js";
+import { EmulatorRegistry } from "./registry.js";
+import * as portUtils from "./portUtils.js";
+import { FirebaseError } from "../error.js";
 
 /**
  * Wrapper object to expose an EmulatorInstance for "firebase serve" that

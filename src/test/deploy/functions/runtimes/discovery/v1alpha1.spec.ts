@@ -1,11 +1,11 @@
 import { expect } from "chai";
 
-import { FirebaseError } from "../../../../../error";
-import * as backend from "../../../../../deploy/functions/backend";
-import * as build from "../../../../../deploy/functions/build";
+import { FirebaseError } from "../../../../../error.js";
+import * as backend from "../../../../../deploy/functions/backend.js";
+import * as build from "../../../../../deploy/functions/build.js";
 import { Runtime } from "../../../../../deploy/functions/runtimes";
-import * as v1alpha1 from "../../../../../deploy/functions/runtimes/discovery/v1alpha1";
-import { BEFORE_CREATE_EVENT } from "../../../../../functions/events/v1";
+import * as v1alpha1 from "../../../../../deploy/functions/runtimes/discovery/v1alpha1.js";
+import { BEFORE_CREATE_EVENT } from "../../../../../functions/events/v1.js";
 
 const PROJECT = "project";
 const REGION = "region";

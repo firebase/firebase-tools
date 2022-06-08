@@ -1,12 +1,12 @@
 import { expect } from "chai";
-import * as nock from "nock";
+import nock from "nock";
 import * as sinon from "sinon";
 
-import { FirebaseError } from "../../error";
-import { firebaseExtensionsRegistryOrigin } from "../../api";
-import * as extensionsApi from "../../extensions/extensionsApi";
-import * as extensionsHelper from "../../extensions/extensionsHelper";
-import * as updateHelper from "../../extensions/updateHelper";
+import { FirebaseError } from "../../error.js";
+import { firebaseExtensionsRegistryOrigin } from "../../api.cjs";
+import * as extensionsApi from "../../extensions/extensionsApi.js";
+import * as extensionsHelper from "../../extensions/extensionsHelper.js";
+import * as updateHelper from "../../extensions/updateHelper.js";
 
 const SPEC: extensionsApi.ExtensionSpec = {
   name: "test",

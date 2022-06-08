@@ -1,16 +1,16 @@
 import * as fs from "fs-extra";
 
-import { Command } from "../command";
-import * as utils from "../utils";
-import { requireAuth } from "../requireAuth";
+import { Command } from "../command.js";
+import * as utils from "../utils.js";
+import { requireAuth } from "../requireAuth.js";
 import {
   AabInfo,
   IntegrationState,
   AppDistributionClient,
   UploadReleaseResult,
 } from "../appdistribution/client";
-import { FirebaseError } from "../error";
-import { Distribution, DistributionFileType } from "../appdistribution/distribution";
+import { FirebaseError } from "../error.js";
+import { Distribution, DistributionFileType } from "../appdistribution/distribution.js";
 import {
   ensureFileExists,
   getAppName,

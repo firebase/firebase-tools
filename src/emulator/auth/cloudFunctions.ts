@@ -1,12 +1,12 @@
 import * as uuid from "uuid";
 
 import { EventContext } from "firebase-functions";
-import { Client } from "../../apiv2";
+import { Client } from "../../apiv2.js";
 
-import { EmulatorInfo, Emulators } from "../types";
-import { EmulatorLogger } from "../emulatorLogger";
-import { EmulatorRegistry } from "../registry";
-import { UserInfo } from "./state";
+import { EmulatorInfo, Emulators } from "../types.js";
+import { EmulatorLogger } from "../emulatorLogger.js";
+import { EmulatorRegistry } from "../registry.js";
+import { UserInfo } from "./state.js";
 
 type AuthCloudFunctionAction = "create" | "delete";
 

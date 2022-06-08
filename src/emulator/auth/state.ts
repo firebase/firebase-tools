@@ -7,10 +7,10 @@ import {
   DeepPartial,
   parseAbsoluteUri,
 } from "./utils";
-import { MakeRequired } from "./utils";
-import { AuthCloudFunction } from "./cloudFunctions";
-import { assert, BadRequestError } from "./errors";
-import { MfaEnrollments, Schemas } from "./types";
+import { MakeRequired } from "./utils.js";
+import { AuthCloudFunction } from "./cloudFunctions.js";
+import { assert, BadRequestError } from "./errors.js";
+import { MfaEnrollments, Schemas } from "./types.js";
 
 export const PROVIDER_PASSWORD = "password";
 export const PROVIDER_PHONE = "phone";

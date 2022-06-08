@@ -1,11 +1,11 @@
 import * as _ from "lodash";
 import * as clc from "cli-color";
 
-import { FirebaseError } from "../../error";
-import { FirestoreIndexes } from "../../firestore/indexes";
-import { logger } from "../../logger";
-import utils = require("../../utils");
-import { RulesDeploy, RulesetServiceType } from "../../rulesDeploy";
+import { FirebaseError } from "../../error.js";
+import { FirestoreIndexes } from "../../firestore/indexes.js";
+import { logger } from "../../logger.js";
+import * as utils from "../../utils"
+import { RulesDeploy, RulesetServiceType } from "../../rulesDeploy.js";
 
 /**
  * Deploys Firestore Rules.

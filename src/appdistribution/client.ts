@@ -1,12 +1,12 @@
 import * as _ from "lodash";
 import { ReadStream } from "fs";
 
-import * as utils from "../utils";
-import * as operationPoller from "../operation-poller";
-import { Distribution } from "./distribution";
-import { FirebaseError } from "../error";
-import { Client } from "../apiv2";
-import { appDistributionOrigin } from "../api";
+import * as utils from "../utils.js";
+import * as operationPoller from "../operation-poller.js";
+import { Distribution } from "./distribution.js";
+import { FirebaseError } from "../error.js";
+import { Client } from "../apiv2.js";
+import { appDistributionOrigin } from "../api.cjs";
 
 /**
  * Helper interface for an app that is provisioned with App Distribution

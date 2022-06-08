@@ -1,9 +1,9 @@
-import { Emulators } from "../../emulator/types";
-import { EmulatorRegistry } from "../../emulator/registry";
+import { Emulators } from "../../emulator/types.js";
+import { EmulatorRegistry } from "../../emulator/registry.js";
 import { expect } from "chai";
-import { FakeEmulator } from "./fakeEmulator";
-import { EmulatorServer } from "../../emulator/emulatorServer";
-import { findAvailablePort } from "../../emulator/portUtils";
+import { FakeEmulator } from "./fakeEmulator.js";
+import { EmulatorServer } from "../../emulator/emulatorServer.js";
+import { findAvailablePort } from "../../emulator/portUtils.js";
 
 describe("EmulatorServer", () => {
   it("should correctly start and stop an emulator", async () => {

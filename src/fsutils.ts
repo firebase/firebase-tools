@@ -1,5 +1,5 @@
 import { readFileSync, statSync } from "fs";
-import { FirebaseError } from "./error";
+import { FirebaseError } from "./error.js";
 
 export function fileExistsSync(path: string): boolean {
   try {

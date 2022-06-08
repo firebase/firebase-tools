@@ -1,8 +1,8 @@
 import * as clc from "cli-color";
 
-import { Command } from "../command";
-import { requireConfig } from "../requireConfig";
-import * as utils from "../utils";
+import { Command } from "../command.js";
+import { requireConfig } from "../requireConfig.js";
+import * as utils from "../utils.js";
 
 export const command = new Command("target:clear <type> <target>")
   .description("clear all resources from a named resource target")

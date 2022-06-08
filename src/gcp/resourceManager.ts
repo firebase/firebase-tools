@@ -1,7 +1,8 @@
-import { findIndex } from "lodash";
-import { resourceManagerOrigin } from "../api";
-import { Client } from "../apiv2";
-import { Binding, getServiceAccount, Policy } from "./iam";
+import lodash from "lodash";
+const { findIndex } = lodash;
+import { resourceManagerOrigin } from "../api.cjs";
+import { Client } from "../apiv2.js";
+import { Binding, getServiceAccount, Policy } from "./iam.js";
 
 const API_VERSION = "v1";
 

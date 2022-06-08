@@ -1,11 +1,12 @@
-import { bold } from "cli-color";
-import Table = require("cli-table");
+import clccolor from "cli-color";
+const { bold } = clccolor;
+import Table from "cli-table";
 
-import { Command } from "../command";
-import { Site, listSites } from "../hosting/api";
-import { requirePermissions } from "../requirePermissions";
-import { needProjectId } from "../projectUtils";
-import { logger } from "../logger";
+import { Command } from "../command.js";
+import { Site, listSites } from "../hosting/api.js";
+import { requirePermissions } from "../requirePermissions.js";
+import { needProjectId } from "../projectUtils.js";
+import { logger } from "../logger.js";
 
 const TABLE_HEAD = ["Site ID", "Default URL", "App ID (if set)"];
 

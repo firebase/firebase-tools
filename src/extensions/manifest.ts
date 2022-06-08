@@ -1,15 +1,15 @@
 import * as clc from "cli-color";
 import * as path from "path";
-import * as refs from "./refs";
-import { Config } from "../config";
-import { getExtensionSpec, ManifestInstanceSpec } from "../deploy/extensions/planner";
-import { logger } from "../logger";
-import { promptOnce } from "../prompt";
-import { readEnvFile } from "./paramHelper";
-import { FirebaseError } from "../error";
-import * as utils from "../utils";
-import { isLocalPath, logPrefix } from "./extensionsHelper";
-import { ParamType } from "./extensionsApi";
+import * as refs from "./refs.js";
+import { Config } from "../config.js";
+import { getExtensionSpec, ManifestInstanceSpec } from "../deploy/extensions/planner.js";
+import { logger } from "../logger.js";
+import { promptOnce } from "../prompt.js";
+import { readEnvFile } from "./paramHelper.js";
+import { FirebaseError } from "../error.js";
+import * as utils from "../utils.js";
+import { isLocalPath, logPrefix } from "./extensionsHelper.js";
+import { ParamType } from "./extensionsApi.js";
 
 export const ENV_DIRECTORY = "extensions";
 

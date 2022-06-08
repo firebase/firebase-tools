@@ -1,15 +1,15 @@
 import * as fs from "fs-extra";
 import * as os from "os";
 import * as path from "path";
-import * as spawn from "cross-spawn";
+import spawn from "cross-spawn";
 import * as uuid from "uuid";
 
-import { Command } from "../command";
-import * as downloadUtils from "../downloadUtils";
-import { FirebaseError } from "../error";
-import { logger } from "../logger";
-import * as rimraf from "rimraf";
-import * as utils from "../utils";
+import { Command } from "../command.js";
+import * as downloadUtils from "../downloadUtils.js";
+import { FirebaseError } from "../error.js";
+import { logger } from "../logger.js";
+import rimraf from "rimraf";
+import * as utils from "../utils.js";
 
 enum SymbolGenerator {
   breakpad = "breakpad",

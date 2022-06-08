@@ -1,18 +1,18 @@
-import * as rcGet from "../remoteconfig/get";
-import { Command } from "../command";
-import { requireAuth } from "../requireAuth";
-import { logger } from "../logger";
-import { RemoteConfigTemplate } from "../remoteconfig/interfaces";
-import { needProjectId } from "../projectUtils";
-import { requirePermissions } from "../requirePermissions";
-import { parseTemplateForTable } from "../remoteconfig/get";
-import { Options } from "../options";
-import * as utils from "../utils";
+import * as rcGet from "../remoteconfig/get.js";
+import { Command } from "../command.js";
+import { requireAuth } from "../requireAuth.js";
+import { logger } from "../logger.js";
+import { RemoteConfigTemplate } from "../remoteconfig/interfaces.js";
+import { needProjectId } from "../projectUtils.js";
+import { requirePermissions } from "../requirePermissions.js";
+import { parseTemplateForTable } from "../remoteconfig/get.js";
+import { Options } from "../options.js";
+import * as utils from "../utils.js";
 
-import Table = require("cli-table");
+import Table from "cli-table";
 import * as fs from "fs";
-import util = require("util");
-import { FirebaseError } from "../error";
+import util from "util";
+import { FirebaseError } from "../error.js";
 
 const tableHead = ["Entry Name", "Value"];
 

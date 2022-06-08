@@ -1,10 +1,10 @@
 import * as _ from "lodash";
 import * as clc from "cli-color";
 
-import { loadCJSON } from "../../loadCJSON";
-import { RulesDeploy, RulesetServiceType } from "../../rulesDeploy";
-import utils = require("../../utils");
-import { Options } from "../../options";
+import { loadCJSON } from "../../loadCJSON.js";
+import { RulesDeploy, RulesetServiceType } from "../../rulesDeploy.js";
+import * as utils from "../../utils"
+import { Options } from "../../options.js";
 
 /**
  * Prepares Firestore Rules deploys.

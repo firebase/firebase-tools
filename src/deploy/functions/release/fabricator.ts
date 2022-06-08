@@ -1,30 +1,30 @@
 import * as clc from "cli-color";
 
-import { Executor } from "./executor";
-import { FirebaseError } from "../../../error";
-import { SourceTokenScraper } from "./sourceTokenScraper";
-import { Timer } from "./timer";
-import { assertExhaustive } from "../../../functional";
+import { Executor } from "./executor.js";
+import { FirebaseError } from "../../../error.js";
+import { SourceTokenScraper } from "./sourceTokenScraper.js";
+import { Timer } from "./timer.js";
+import { assertExhaustive } from "../../../functional.js";
 import { getHumanFriendlyRuntimeName } from "../runtimes";
-import { functionsOrigin, functionsV2Origin } from "../../../api";
-import { logger } from "../../../logger";
-import * as args from "../args";
-import * as backend from "../backend";
-import * as cloudtasks from "../../../gcp/cloudtasks";
-import * as deploymentTool from "../../../deploymentTool";
-import * as gcf from "../../../gcp/cloudfunctions";
-import * as gcfV2 from "../../../gcp/cloudfunctionsv2";
-import * as helper from "../functionsDeployHelper";
-import * as planner from "./planner";
-import * as poller from "../../../operation-poller";
-import * as pubsub from "../../../gcp/pubsub";
-import * as reporter from "./reporter";
-import * as run from "../../../gcp/run";
-import * as scheduler from "../../../gcp/cloudscheduler";
-import * as utils from "../../../utils";
+import { functionsOrigin, functionsV2Origin } from "../../../api.cjs";
+import { logger } from "../../../logger.js";
+import * as args from "../args.js";
+import * as backend from "../backend.js";
+import * as cloudtasks from "../../../gcp/cloudtasks.js";
+import * as deploymentTool from "../../../deploymentTool.js";
+import * as gcf from "../../../gcp/cloudfunctions.js";
+import * as gcfV2 from "../../../gcp/cloudfunctionsv2.js";
+import * as helper from "../functionsDeployHelper.js";
+import * as planner from "./planner.js";
+import * as poller from "../../../operation-poller.js";
+import * as pubsub from "../../../gcp/pubsub.js";
+import * as reporter from "./reporter.js";
+import * as run from "../../../gcp/run.js";
+import * as scheduler from "../../../gcp/cloudscheduler.js";
+import * as utils from "../../../utils.js";
 import * as services from "../services";
-import { AUTH_BLOCKING_EVENTS } from "../../../functions/events/v1";
-import { backoff } from "../../../throttler/throttler";
+import { AUTH_BLOCKING_EVENTS } from "../../../functions/events/v1.js";
+import { backoff } from "../../../throttler/throttler.js";
 
 // TODO: Tune this for better performance.
 const gcfV1PollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {

@@ -1,9 +1,9 @@
 import { expect } from "chai";
-import { remoteConfigApiOrigin } from "../../api";
-import * as nock from "nock";
+import { remoteConfigApiOrigin } from "../../api.cjs";
+import nock from "nock";
 
-import * as remoteconfig from "../../remoteconfig/versionslist";
-import { ListVersionsResult, Version } from "../../remoteconfig/interfaces";
+import * as remoteconfig from "../../remoteconfig/versionslist.js";
+import { ListVersionsResult, Version } from "../../remoteconfig/interfaces.js";
 
 const PROJECT_ID = "the-remoteconfig-test-project";
 

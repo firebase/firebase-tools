@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import { decode as decodeJwt } from "jsonwebtoken";
-import { describeAuthEmulator } from "./setup";
+import { describeAuthEmulator } from "./setup.js";
 import {
   enrollPhoneMfa,
   expectStatusCode,
@@ -18,7 +18,7 @@ import {
   updateAccountByLocalId,
   registerTenant,
 } from "./helpers";
-import { UserInfo } from "../../../emulator/auth/state";
+import { UserInfo } from "../../../emulator/auth/state.js";
 
 describeAuthEmulator("accounts:batchGet", ({ authApi }) => {
   it("should allow listing all accounts", async () => {

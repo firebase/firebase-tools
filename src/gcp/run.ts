@@ -1,8 +1,8 @@
-import { Client } from "../apiv2";
-import { FirebaseError } from "../error";
-import { runOrigin } from "../api";
-import * as proto from "./proto";
-import * as iam from "./iam";
+import { Client } from "../apiv2.js";
+import { FirebaseError } from "../error.js";
+import { runOrigin } from "../api.cjs";
+import * as proto from "./proto.js";
+import * as iam from "./iam.js";
 import * as _ from "lodash";
 
 const API_VERSION = "v1";

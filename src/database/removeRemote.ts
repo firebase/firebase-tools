@@ -1,7 +1,7 @@
-import { Client } from "../apiv2";
+import { Client } from "../apiv2.js";
 import { URL } from "url";
-import { logger } from "../logger";
-import * as utils from "../utils";
+import { logger } from "../logger.js";
+import * as utils from "../utils.js";
 
 export interface RemoveRemote {
   /**

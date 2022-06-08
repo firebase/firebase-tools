@@ -6,10 +6,10 @@ import * as chai from "chai";
 chai.use(require("chai-as-promised"));
 import * as sinon from "sinon";
 
-import * as askUserForConsent from "../../extensions/askUserForConsent";
-import * as iam from "../../gcp/iam";
-import * as resolveSource from "../../extensions/resolveSource";
-import * as extensionHelper from "../../extensions/extensionsHelper";
+import * as askUserForConsent from "../../extensions/askUserForConsent.js";
+import * as iam from "../../gcp/iam.js";
+import * as resolveSource from "../../extensions/resolveSource.js";
+import * as extensionHelper from "../../extensions/extensionsHelper.js";
 
 const expect = chai.expect;
 

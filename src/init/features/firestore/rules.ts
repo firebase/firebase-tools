@@ -1,11 +1,11 @@
-import clc = require("cli-color");
-import fs = require("fs");
+import clc from "cli-color";
+import fs from "fs";
 
-import gcp = require("../../../gcp");
-import fsutils = require("../../../fsutils");
-import { prompt, promptOnce } from "../../../prompt";
-import { logger } from "../../../logger";
-import utils = require("../../../utils");
+import * as gcp from "../../../gcp"
+import * as fsutils from "../../../fsutils"
+import { prompt, promptOnce } from "../../../prompt.js";
+import { logger } from "../../../logger.js";
+import * as utils from "../../../utils"
 
 const DEFAULT_RULES_FILE = "firestore.rules";
 

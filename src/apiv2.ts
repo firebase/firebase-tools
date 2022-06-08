@@ -1,17 +1,17 @@
 import { AbortSignal } from "abort-controller";
 import { URL, URLSearchParams } from "url";
 import { Readable } from "stream";
-import * as ProxyAgent from "proxy-agent";
-import * as retry from "retry";
+import ProxyAgent from "proxy-agent";
+import retry from "retry";
 import AbortController from "abort-controller";
 import fetch, { HeadersInit, Response, RequestInit, Headers } from "node-fetch";
 import util from "util";
 
-import * as auth from "./auth";
-import { FirebaseError } from "./error";
-import { logger } from "./logger";
-import { responseToError } from "./responseToError";
-import * as FormData from "form-data";
+import * as auth from "./auth.js";
+import { FirebaseError } from "./error.js";
+import { logger } from "./logger.js";
+import { responseToError } from "./responseToError.js";
+import FormData from "form-data";
 
 // Using import would require resolveJsonModule, which seems to break the
 // build/output format.

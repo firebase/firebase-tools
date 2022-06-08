@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 
-import * as resolveSource from "../../extensions/resolveSource";
+import * as resolveSource from "../../extensions/resolveSource.js";
 
 const testRegistryEntry = {
   name: "test-stuff",

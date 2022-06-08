@@ -2,13 +2,13 @@ import { expect } from "chai";
 import * as _ from "lodash";
 import * as sinon from "sinon";
 
-import { FirebaseError } from "../../../error";
+import { FirebaseError } from "../../../error.js";
 import * as firestore from "../../../init/features/firestore";
-import * as indexes from "../../../init/features/firestore/indexes";
-import * as rules from "../../../init/features/firestore/rules";
-import * as requirePermissions from "../../../requirePermissions";
-import * as apiEnabled from "../../../ensureApiEnabled";
-import * as checkDatabaseType from "../../../firestore/checkDatabaseType";
+import * as indexes from "../../../init/features/firestore/indexes.js";
+import * as rules from "../../../init/features/firestore/rules.js";
+import * as requirePermissions from "../../../requirePermissions.js";
+import * as apiEnabled from "../../../ensureApiEnabled.js";
+import * as checkDatabaseType from "../../../firestore/checkDatabaseType.js";
 
 describe("firestore", () => {
   const sandbox: sinon.SinonSandbox = sinon.createSandbox();

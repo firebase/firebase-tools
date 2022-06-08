@@ -1,17 +1,17 @@
 import * as semver from "semver";
 
-import * as extensionsApi from "../../extensions/extensionsApi";
-import * as refs from "../../extensions/refs";
-import { FirebaseError } from "../../error";
+import * as extensionsApi from "../../extensions/extensionsApi.js";
+import * as refs from "../../extensions/refs.js";
+import { FirebaseError } from "../../error.js";
 import {
   getFirebaseProjectParams,
   isLocalPath,
   substituteParams,
 } from "../../extensions/extensionsHelper";
-import { logger } from "../../logger";
-import { readInstanceParam } from "../../extensions/manifest";
-import { ParamBindingOptions } from "../../extensions/paramHelper";
-import { readExtensionYaml, readPostinstall } from "../../extensions/emulator/specHelper";
+import { logger } from "../../logger.js";
+import { readInstanceParam } from "../../extensions/manifest.js";
+import { ParamBindingOptions } from "../../extensions/paramHelper.js";
+import { readExtensionYaml, readPostinstall } from "../../extensions/emulator/specHelper.js";
 
 export interface InstanceSpec {
   instanceId: string;

@@ -1,9 +1,9 @@
-import { Client } from "./apiv2";
-import { configstore } from "./configstore";
-import { firebaseApiOrigin, hostingApiOrigin } from "./api";
-import { needProjectId } from "./projectUtils";
-import { logger } from "./logger";
-import { Constants } from "./emulator/constants";
+import { Client } from "./apiv2.js";
+import { configstore } from "./configstore.js";
+import { firebaseApiOrigin, hostingApiOrigin } from "./api.cjs";
+import { needProjectId } from "./projectUtils.js";
+import { logger } from "./logger.js";
+import { Constants } from "./emulator/constants.js";
 
 export interface WebConfig {
   projectId: string;

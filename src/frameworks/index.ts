@@ -1,12 +1,12 @@
 import { join } from "path";
 import { exit } from "process";
 
-import { needProjectId } from "../projectUtils";
-import { normalizedHostingConfigs } from "../hosting/normalizedHostingConfigs";
-import { listSites, Site } from "../hosting/api";
-import { getAppConfig, AppPlatform } from "../management/apps";
+import { needProjectId } from "../projectUtils.js";
+import { normalizedHostingConfigs } from "../hosting/normalizedHostingConfigs.js";
+import { listSites, Site } from "../hosting/api.js";
+import { getAppConfig, AppPlatform } from "../management/apps.js";
 import { promises as fsPromises } from "fs";
-import { promptOnce } from "../prompt";
+import { promptOnce } from "../prompt.js";
 
 const { writeFile } = fsPromises;
 

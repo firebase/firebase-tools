@@ -1,16 +1,16 @@
-import { Command } from "../command";
-import Table = require("cli-table");
+import { Command } from "../command.js";
+import Table from "cli-table";
 import * as clc from "cli-color";
-import * as ora from "ora";
+import ora from "ora";
 
-import { logger } from "../logger";
-import { requirePermissions } from "../requirePermissions";
-import { needProjectNumber } from "../projectUtils";
-import firedata = require("../gcp/firedata");
-import { Emulators } from "../emulator/types";
-import { warnEmulatorNotSupported } from "../emulator/commandUtils";
-import { previews } from "../previews";
-import { needProjectId } from "../projectUtils";
+import { logger } from "../logger.js";
+import { requirePermissions } from "../requirePermissions.js";
+import { needProjectNumber } from "../projectUtils.js";
+import * as firedata from "../gcp/firedata.js";
+import { Emulators } from "../emulator/types.js";
+import { warnEmulatorNotSupported } from "../emulator/commandUtils.js";
+import { previews } from "../previews.js";
+import { needProjectId } from "../projectUtils.js";
 import {
   listDatabaseInstances,
   DatabaseInstance,

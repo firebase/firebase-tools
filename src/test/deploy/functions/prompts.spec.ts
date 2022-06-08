@@ -1,13 +1,13 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 
-import { FirebaseError } from "../../../error";
-import * as backend from "../../../deploy/functions/backend";
-import * as functionPrompts from "../../../deploy/functions/prompts";
-import * as prompt from "../../../prompt";
-import * as utils from "../../../utils";
-import { Options } from "../../../options";
-import { RC } from "../../../rc";
+import { FirebaseError } from "../../../error.js";
+import * as backend from "../../../deploy/functions/backend.js";
+import * as functionPrompts from "../../../deploy/functions/prompts.js";
+import * as prompt from "../../../prompt.js";
+import * as utils from "../../../utils.js";
+import { Options } from "../../../options.js";
+import { RC } from "../../../rc.js";
 
 const SAMPLE_EVENT_TRIGGER: backend.EventTrigger = {
   eventType: "google.pubsub.topic.publish",

@@ -1,25 +1,26 @@
-import { bold } from "cli-color";
+import clccolor from "cli-color";
+const { bold } = clccolor;
 import * as fs from "fs";
 import * as yaml from "js-yaml";
 import { safeLoad } from "js-yaml";
-import * as ora from "ora";
+import ora from "ora";
 import * as path from "path";
 import * as sodium from "tweetsodium";
 
-import { Setup } from "../..";
-import { loginGithub } from "../../../auth";
-import { dirExistsSync } from "../../../fsutils";
+import { Setup } from "../../index.js";
+import { loginGithub } from "../../../auth.js";
+import { dirExistsSync } from "../../../fsutils.js";
 import {
   createServiceAccount,
   createServiceAccountKey,
   deleteServiceAccount,
 } from "../../../gcp/iam";
-import { addServiceAccountToRoles, firebaseRoles } from "../../../gcp/resourceManager";
-import { logger } from "../../../logger";
-import { prompt } from "../../../prompt";
-import { logBullet, logLabeledBullet, logSuccess, logWarning, reject } from "../../../utils";
-import { githubApiOrigin, githubClientId } from "../../../api";
-import { Client } from "../../../apiv2";
+import { addServiceAccountToRoles, firebaseRoles } from "../../../gcp/resourceManager.js";
+import { logger } from "../../../logger.js";
+import { prompt } from "../../../prompt.js";
+import { logBullet, logLabeledBullet, logSuccess, logWarning, reject } from "../../../utils.js";
+import { githubApiOrigin, githubClientId } from "../../../api.cjs";
+import { Client } from "../../../apiv2.js";
 
 let GIT_DIR: string;
 let GITHUB_DIR: string;

@@ -1,13 +1,13 @@
-import { logger } from "../logger";
-import * as rcVersion from "../remoteconfig/versionslist";
-import { Command } from "../command";
-import { needProjectId } from "../projectUtils";
-import { requireAuth } from "../requireAuth";
-import { requirePermissions } from "../requirePermissions";
-import { Version, ListVersionsResult } from "../remoteconfig/interfaces";
-import { datetimeString } from "../utils";
+import { logger } from "../logger.js";
+import * as rcVersion from "../remoteconfig/versionslist.js";
+import { Command } from "../command.js";
+import { needProjectId } from "../projectUtils.js";
+import { requireAuth } from "../requireAuth.js";
+import { requirePermissions } from "../requirePermissions.js";
+import { Version, ListVersionsResult } from "../remoteconfig/interfaces.js";
+import { datetimeString } from "../utils.js";
 
-import Table = require("cli-table");
+import Table from "cli-table";
 
 const tableHead = ["Update User", "Version Number", "Update Time"];
 

@@ -2,14 +2,14 @@ import { expect } from "chai";
 import * as path from "path";
 import * as sinon from "sinon";
 
-import { FirebaseError } from "../error";
-import * as prompt from "../prompt";
+import { FirebaseError } from "../error.js";
+import * as prompt from "../prompt.js";
 import { readFileSync } from "fs-extra";
-import { RulesetFile } from "../gcp/rules";
-import { Config } from "../config";
-import gcp = require("../gcp");
+import { RulesetFile } from "../gcp/rules.js";
+import { Config } from "../config.js";
+import * as gcp from "../gcp";
 
-import { RulesDeploy, RulesetServiceType } from "../rulesDeploy";
+import { RulesDeploy, RulesetServiceType } from "../rulesDeploy.js";
 
 describe("RulesDeploy", () => {
   const FIXTURE_DIR = path.resolve(__dirname, "fixtures/rulesDeploy");

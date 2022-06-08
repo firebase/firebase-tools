@@ -3,20 +3,20 @@ import * as fs from "fs";
 import * as path from "path";
 import * as portfinder from "portfinder";
 import * as semver from "semver";
-import * as spawn from "cross-spawn";
+import spawn from "cross-spawn";
 import fetch from "node-fetch";
 
-import { FirebaseError } from "../../../../error";
-import { getRuntimeChoice } from "./parseRuntimeAndValidateSDK";
-import { logger } from "../../../../logger";
-import { logLabeledWarning } from "../../../../utils";
-import * as backend from "../../backend";
-import * as build from "../../build";
+import { FirebaseError } from "../../../../error.js";
+import { getRuntimeChoice } from "./parseRuntimeAndValidateSDK.js";
+import { logger } from "../../../../logger.js";
+import { logLabeledWarning } from "../../../../utils.js";
+import * as backend from "../../backend.js";
+import * as build from "../../build.js";
 import * as discovery from "../discovery";
-import * as runtimes from "..";
-import * as validate from "./validate";
-import * as versioning from "./versioning";
-import * as parseTriggers from "./parseTriggers";
+import * as runtimes from "../index.js";
+import * as validate from "./validate.js";
+import * as versioning from "./versioning.js";
+import * as parseTriggers from "./parseTriggers.js";
 
 const MIN_FUNCTIONS_SDK_VERSION = "3.20.0";
 

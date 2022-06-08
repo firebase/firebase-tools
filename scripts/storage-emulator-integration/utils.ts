@@ -5,7 +5,7 @@ import * as puppeteer from "puppeteer";
 import * as request from "request";
 import * as crypto from "crypto";
 import * as os from "os";
-import { FrameworkOptions } from "../integration-helpers/framework";
+import { FrameworkOptions } from "../integration-helpers/framework.js";
 
 /* Various delays needed when integration test spawns parallel emulator subprocesses. */
 export const TEST_SETUP_TIMEOUT = 60000;

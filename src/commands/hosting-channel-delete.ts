@@ -1,16 +1,17 @@
-import { bold, underline } from "cli-color";
+import clccolor from "cli-color";
+const { bold, underline } = clccolor;
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const { marked } = require("marked");
 
-import { Command } from "../command";
-import { consoleUrl, logLabeledSuccess, logLabeledWarning } from "../utils";
-import { deleteChannel, normalizeName, getChannel, removeAuthDomain } from "../hosting/api";
-import { promptOnce } from "../prompt";
-import { requireHostingSite } from "../requireHostingSite";
-import { requirePermissions } from "../requirePermissions";
-import { needProjectId } from "../projectUtils";
-import { requireConfig } from "../requireConfig";
-import { logger } from "../logger";
+import { Command } from "../command.js";
+import { consoleUrl, logLabeledSuccess, logLabeledWarning } from "../utils.js";
+import { deleteChannel, normalizeName, getChannel, removeAuthDomain } from "../hosting/api.js";
+import { promptOnce } from "../prompt.js";
+import { requireHostingSite } from "../requireHostingSite.js";
+import { requirePermissions } from "../requirePermissions.js";
+import { needProjectId } from "../projectUtils.js";
+import { requireConfig } from "../requireConfig.js";
+import { logger } from "../logger.js";
 
 export const command = new Command("hosting:channel:delete <channelId>")
   .description("delete a Firebase Hosting channel")

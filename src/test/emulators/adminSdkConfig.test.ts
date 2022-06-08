@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { getProjectAdminSdkConfigOrCached } from "../../emulator/adminSdkConfig";
+import { getProjectAdminSdkConfigOrCached } from "../../emulator/adminSdkConfig.js";
 
 describe("adminSdkConfig", () => {
   describe("getProjectAdminSdkConfigOrCached", () => {

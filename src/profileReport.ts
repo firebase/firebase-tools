@@ -1,11 +1,11 @@
 import * as clc from "cli-color";
-import Table = require("cli-table");
+import Table from "cli-table";
 import * as fs from "fs";
 import * as _ from "lodash";
 import * as readline from "readline";
 
-import { FirebaseError } from "./error";
-import { logger } from "./logger";
+import { FirebaseError } from "./error.js";
+import { logger } from "./logger.js";
 
 const DATA_LINE_REGEX = /^data: /;
 

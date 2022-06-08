@@ -1,6 +1,6 @@
 import { expect } from "chai";
 
-import { SourceTokenScraper } from "../../../../deploy/functions/release/sourceTokenScraper";
+import { SourceTokenScraper } from "../../../../deploy/functions/release/sourceTokenScraper.js";
 
 describe("SourcTokenScraper", () => {
   it("immediately provides the first result", async () => {

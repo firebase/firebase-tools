@@ -1,15 +1,15 @@
 import * as clc from "cli-color";
 
-import { ensure } from "../../ensureApiEnabled";
-import { FirebaseError, isBillingError } from "../../error";
-import { logLabeledBullet, logLabeledSuccess } from "../../utils";
-import { ensureServiceAgentRole } from "../../gcp/secretManager";
-import { previews } from "../../previews";
-import { getFirebaseProject } from "../../management/projects";
-import { assertExhaustive } from "../../functional";
-import { track } from "../../track";
-import * as backend from "./backend";
-import * as ensureApiEnabled from "../../ensureApiEnabled";
+import { ensure } from "../../ensureApiEnabled.js";
+import { FirebaseError, isBillingError } from "../../error.js";
+import { logLabeledBullet, logLabeledSuccess } from "../../utils.js";
+import { ensureServiceAgentRole } from "../../gcp/secretManager.js";
+import { previews } from "../../previews.js";
+import { getFirebaseProject } from "../../management/projects.js";
+import { assertExhaustive } from "../../functional.js";
+import { track } from "../../track.js";
+import * as backend from "./backend.js";
+import * as ensureApiEnabled from "../../ensureApiEnabled.js";
 
 const FAQ_URL = "https://firebase.google.com/support/faq#functions-runtime";
 const CLOUD_BUILD_API = "cloudbuild.googleapis.com";

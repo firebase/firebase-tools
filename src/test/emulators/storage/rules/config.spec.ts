@@ -1,14 +1,14 @@
 import * as path from "path";
 import { expect } from "chai";
 
-import { Options } from "../../../../options";
-import { RC } from "../../../../rc";
-import { getStorageRulesConfig } from "../../../../emulator/storage/rules/config";
-import { createTmpDir, StorageRulesFiles } from "../../fixtures";
-import { Persistence } from "../../../../emulator/storage/persistence";
-import { FirebaseError } from "../../../../error";
+import { Options } from "../../../../options.js";
+import { RC } from "../../../../rc.js";
+import { getStorageRulesConfig } from "../../../../emulator/storage/rules/config.js";
+import { createTmpDir, StorageRulesFiles } from "../../fixtures.js";
+import { Persistence } from "../../../../emulator/storage/persistence.js";
+import { FirebaseError } from "../../../../error.js";
 import { RulesConfig } from "../../../../emulator/storage";
-import { SourceFile } from "../../../../emulator/storage/rules/types";
+import { SourceFile } from "../../../../emulator/storage/rules/types.js";
 
 const PROJECT_ID = "test-project";
 

@@ -1,7 +1,7 @@
 import * as _ from "lodash";
-import { promptOnce } from "../prompt";
-import { ParamOption } from "./extensionsApi";
-import { RegistryEntry } from "./resolveSource";
+import { promptOnce } from "../prompt.js";
+import { ParamOption } from "./extensionsApi.js";
+import { RegistryEntry } from "./resolveSource.js";
 
 // Modified version of the once function from prompt, to return as a joined string.
 export async function onceWithJoin(question: any): Promise<string> {

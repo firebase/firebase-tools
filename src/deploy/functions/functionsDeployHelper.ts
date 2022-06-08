@@ -1,5 +1,5 @@
-import * as backend from "./backend";
-import { DEFAULT_CODEBASE, ValidatedConfig } from "../../functions/projectConfig";
+import * as backend from "./backend.js";
+import { DEFAULT_CODEBASE, ValidatedConfig } from "../../functions/projectConfig.js";
 
 export interface EndpointFilter {
   // If codebase is undefined, match all functions in all codebase that matches the idChunks.

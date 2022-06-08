@@ -2,12 +2,12 @@ import * as _ from "lodash";
 import * as clc from "cli-color";
 import * as path from "path";
 
-import { FirebaseError } from "../../error";
-import { parseBoltRules } from "../../parseBoltRules";
-import * as rtdb from "../../rtdb";
-import * as utils from "../../utils";
-import { Options } from "../../options";
-import * as dbRulesConfig from "../../database/rulesConfig";
+import { FirebaseError } from "../../error.js";
+import { parseBoltRules } from "../../parseBoltRules.js";
+import * as rtdb from "../../rtdb.js";
+import * as utils from "../../utils.js";
+import { Options } from "../../options.js";
+import * as dbRulesConfig from "../../database/rulesConfig.js";
 
 export function prepare(context: any, options: Options): Promise<any> {
   const rulesConfig = dbRulesConfig.getRulesConfig(context.projectId, options);

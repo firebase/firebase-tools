@@ -1,6 +1,6 @@
 import { expect } from "chai";
-import { expectStatusCode, registerAnonUser } from "./helpers";
-import { describeAuthEmulator, PROJECT_ID } from "./setup";
+import { expectStatusCode, registerAnonUser } from "./helpers.js";
+import { describeAuthEmulator, PROJECT_ID } from "./setup.js";
 
 describeAuthEmulator("config management", ({ authApi }) => {
   describe("updateConfig", () => {

@@ -5,19 +5,19 @@ import {
   IncomingMetadata,
   StoredFileMetadata,
 } from "./metadata";
-import { NotFoundError, ForbiddenError } from "./errors";
+import { NotFoundError, ForbiddenError } from "./errors.js";
 import * as path from "path";
 import * as fse from "fs-extra";
-import { StorageCloudFunctions } from "./cloudFunctions";
-import { logger } from "../../logger";
+import { StorageCloudFunctions } from "./cloudFunctions.js";
+import { logger } from "../../logger.js";
 import {
   constructDefaultAdminSdkConfig,
   getProjectAdminSdkConfigOrCached,
 } from "../adminSdkConfig";
-import { RulesetOperationMethod } from "./rules/types";
-import { AdminCredentialValidator, FirebaseRulesValidator } from "./rules/utils";
-import { Persistence } from "./persistence";
-import { Upload, UploadStatus } from "./upload";
+import { RulesetOperationMethod } from "./rules/types.js";
+import { AdminCredentialValidator, FirebaseRulesValidator } from "./rules/utils.js";
+import { Persistence } from "./persistence.js";
+import { Upload, UploadStatus } from "./upload.js";
 
 interface BucketsList {
   buckets: {

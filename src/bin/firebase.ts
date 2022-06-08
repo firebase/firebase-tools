@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 // Check for older versions of Node no longer supported by the CLI.
-import * as semver from "semver";
+import semver from "semver";
 const pkg = require("../../package.json");
 const nodeVersion = process.version;
 if (!semver.satisfies(nodeVersion, pkg.engines.node)) {
@@ -11,9 +11,9 @@ if (!semver.satisfies(nodeVersion, pkg.engines.node)) {
   process.exit(1);
 }
 
-import * as updateNotifierPkg from "update-notifier";
-import * as clc from "cli-color";
-import * as TerminalRenderer from "marked-terminal";
+import updateNotifierPkg from "update-notifier";
+import clc from "cli-color";
+import TerminalRenderer from "marked-terminal";
 const updateNotifier = updateNotifierPkg({ pkg: pkg });
 import { marked } from "marked";
 marked.setOptions({
@@ -30,17 +30,18 @@ updateNotifier.notify({ defer: true, isGlobal: true, message: updateMessage });
 import { Command } from "commander";
 import { join } from "node:path";
 import { SPLAT } from "triple-beam";
-import { strip } from "cli-color";
-import * as fs from "node:fs";
+import clccolor from "cli-color";
+const { strip } = clccolor;
+import fs from "node:fs";
 
-import { configstore } from "../configstore";
-import { errorOut } from "../errorOut";
-import { handlePreviewToggles } from "../handlePreviewToggles";
-import { logger } from "../logger";
-import * as client from "..";
-import * as fsutils from "../fsutils";
-import * as utils from "../utils";
-import * as winston from "winston";
+import { configstore } from "../configstore.js";
+import { errorOut } from "../errorOut.js";
+import { handlePreviewToggles } from "../handlePreviewToggles.js";
+import { logger } from "../logger.js";
+import client from "../index.js";
+import * as fsutils from "../fsutils.js";
+import * as utils from "../utils.js";
+import winston from "winston";
 
 let args = process.argv.slice(2);
 let cmd: Command;
@@ -103,7 +104,7 @@ if (utils.envOverrides.length) {
 logger.debug("-".repeat(70));
 logger.debug();
 
-import { fetchMOTD } from "../fetchMOTD";
+import { fetchMOTD } from "../fetchMOTD.js";
 fetchMOTD();
 
 process.on("exit", (code) => {

@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { decode as decodeJwt, JwtHeader } from "jsonwebtoken";
-import { FirebaseJwtPayload } from "../../../emulator/auth/operations";
-import { describeAuthEmulator, PROJECT_ID } from "./setup";
+import { FirebaseJwtPayload } from "../../../emulator/auth/operations.js";
+import { describeAuthEmulator, PROJECT_ID } from "./setup.js";
 import {
   expectStatusCode,
   registerAnonUser,

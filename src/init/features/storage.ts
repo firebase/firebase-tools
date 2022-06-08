@@ -1,9 +1,9 @@
 import * as clc from "cli-color";
 import * as fs from "fs";
 
-import { logger } from "../../logger";
-import { promptOnce } from "../../prompt";
-import { ensureLocationSet } from "../../ensureCloudResourceLocation";
+import { logger } from "../../logger.js";
+import { promptOnce } from "../../prompt.js";
+import { ensureLocationSet } from "../../ensureCloudResourceLocation.js";
 
 const RULES_TEMPLATE = fs.readFileSync(
   __dirname + "/../../../templates/init/storage/storage.rules",

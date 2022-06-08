@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { resolve } from "path";
 
-import { listFiles } from "../listFiles";
+import { listFiles } from "../listFiles.js";
 
 describe("listFiles", () => {
   // for details, see the file structure and firebase.json in test/fixtures/ignores

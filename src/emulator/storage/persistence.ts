@@ -1,5 +1,5 @@
 import { openSync, closeSync, readSync, unlinkSync, renameSync, mkdirSync } from "fs";
-import * as rimraf from "rimraf";
+import rimraf from "rimraf";
 import * as fs from "fs";
 import * as path from "path";
 

@@ -1,5 +1,5 @@
-import { FirebaseError } from "./error";
-import { Options } from "./options";
+import { FirebaseError } from "./error.js";
+import { Options } from "./options.js";
 
 export async function requireConfig(options: Options): Promise<void> {
   await Promise.resolve(); // Allows this function to remain `async`.

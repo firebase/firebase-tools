@@ -1,13 +1,13 @@
 import { expect } from "chai";
 import { tmpdir } from "os";
 
-import { StoredFileMetadata } from "../../../emulator/storage/metadata";
-import { StorageCloudFunctions } from "../../../emulator/storage/cloudFunctions";
-import { StorageLayer } from "../../../emulator/storage/files";
-import { ForbiddenError, NotFoundError } from "../../../emulator/storage/errors";
-import { Persistence } from "../../../emulator/storage/persistence";
-import { FirebaseRulesValidator } from "../../../emulator/storage/rules/utils";
-import { Upload, UploadService, UploadStatus, UploadType } from "../../../emulator/storage/upload";
+import { StoredFileMetadata } from "../../../emulator/storage/metadata.js";
+import { StorageCloudFunctions } from "../../../emulator/storage/cloudFunctions.js";
+import { StorageLayer } from "../../../emulator/storage/files.js";
+import { ForbiddenError, NotFoundError } from "../../../emulator/storage/errors.js";
+import { Persistence } from "../../../emulator/storage/persistence.js";
+import { FirebaseRulesValidator } from "../../../emulator/storage/rules/utils.js";
+import { Upload, UploadService, UploadStatus, UploadType } from "../../../emulator/storage/upload.js";
 
 const ALWAYS_TRUE_RULES_VALIDATOR = {
   validate: () => Promise.resolve(true),

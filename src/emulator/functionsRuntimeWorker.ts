@@ -1,14 +1,14 @@
 import * as uuid from "uuid";
-import { FunctionsRuntimeInstance, InvokeRuntimeOpts } from "./functionsEmulator";
-import { EmulatorLog, Emulators, FunctionsExecutionMode } from "./types";
+import { FunctionsRuntimeInstance, InvokeRuntimeOpts } from "./functionsEmulator.js";
+import { EmulatorLog, Emulators, FunctionsExecutionMode } from "./types.js";
 import {
   FunctionsRuntimeArgs,
   FunctionsRuntimeBundle,
   getTemporarySocketPath,
 } from "./functionsEmulatorShared";
 import { EventEmitter } from "events";
-import { EmulatorLogger, ExtensionLogInfo } from "./emulatorLogger";
-import { FirebaseError } from "../error";
+import { EmulatorLogger, ExtensionLogInfo } from "./emulatorLogger.js";
+import { FirebaseError } from "../error.js";
 
 type LogListener = (el: EmulatorLog) => any;
 

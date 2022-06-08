@@ -4,17 +4,15 @@ import * as clc from "cli-color";
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const { marked } = require("marked");
 
-import { Client } from "../apiv2";
-import { extensionsOrigin } from "../api";
-import { FirebaseError } from "../error";
-import { logger } from "../logger";
-import * as operationPoller from "../operation-poller";
-import * as refs from "./refs";
-import * as proto from "../gcp/proto";
-import { SpecParamType } from "./extensionsHelper";
+import { Client } from "../apiv2.js";
+import { extensionsOrigin } from "../api.cjs";
+import { FirebaseError } from "../error.js";
+import { logger } from "../logger.js";
+import * as operationPoller from "../operation-poller.js";
+import * as refs from "./refs.js";
+import * as proto from "../gcp/proto.js";
+import { SpecParamType } from "./extensionsHelper.js";
 import { Runtime } from "../deploy/functions/runtimes";
-import { HttpsTriggered, EventTriggered } from "../deploy/functions/backend";
-import { StringifyOptions } from "querystring";
 
 const VERSION = "v1beta";
 const PAGE_SIZE_MAX = 100;

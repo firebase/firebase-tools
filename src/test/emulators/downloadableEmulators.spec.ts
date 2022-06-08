@@ -1,8 +1,8 @@
 import { expect } from "chai";
 import * as path from "path";
 
-import * as downloadableEmulators from "../../emulator/downloadableEmulators";
-import { Emulators } from "../../emulator/types";
+import * as downloadableEmulators from "../../emulator/downloadableEmulators.js";
+import { Emulators } from "../../emulator/types.js";
 
 type DownloadableEmulator = Emulators.FIRESTORE | Emulators.DATABASE | Emulators.PUBSUB;
 

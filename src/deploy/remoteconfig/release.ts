@@ -1,6 +1,6 @@
-import { publishTemplate, getEtag } from "./functions";
-import { needProjectNumber } from "../../projectUtils";
-import { RemoteConfigTemplate } from "../../remoteconfig/interfaces";
+import { publishTemplate, getEtag } from "./functions.js";
+import { needProjectNumber } from "../../projectUtils.js";
+import { RemoteConfigTemplate } from "../../remoteconfig/interfaces.js";
 
 interface ReleaseContext {
   remoteconfigTemplate?: RemoteConfigTemplate;

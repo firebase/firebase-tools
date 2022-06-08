@@ -1,6 +1,7 @@
-import { intersection, difference } from "lodash";
-import { FirebaseError } from "./error";
-import { Options } from "./options";
+import lodash from "lodash";
+const { intersection, difference } = lodash;
+import { FirebaseError } from "./error.js";
+import { Options } from "./options.js";
 
 /**
  * Filters targets from options with valid targets as specified.

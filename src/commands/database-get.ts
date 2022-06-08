@@ -1,18 +1,18 @@
 import * as fs from "fs";
 import * as url from "url";
 
-import { Client } from "../apiv2";
-import { Command } from "../command";
-import { Emulators } from "../emulator/types";
-import { FirebaseError } from "../error";
-import { populateInstanceDetails } from "../management/database";
-import { printNoticeIfEmulated } from "../emulator/commandUtils";
-import { realtimeOriginOrEmulatorOrCustomUrl } from "../database/api";
-import { requirePermissions } from "../requirePermissions";
-import { logger } from "../logger";
-import { requireDatabaseInstance } from "../requireDatabaseInstance";
-import { responseToError } from "../responseToError";
-import * as utils from "../utils";
+import { Client } from "../apiv2.js";
+import { Command } from "../command.js";
+import { Emulators } from "../emulator/types.js";
+import { FirebaseError } from "../error.js";
+import { populateInstanceDetails } from "../management/database.js";
+import { printNoticeIfEmulated } from "../emulator/commandUtils.js";
+import { realtimeOriginOrEmulatorOrCustomUrl } from "../database/api.js";
+import { requirePermissions } from "../requirePermissions.js";
+import { logger } from "../logger.js";
+import { requireDatabaseInstance } from "../requireDatabaseInstance.js";
+import { responseToError } from "../responseToError.js";
+import * as utils from "../utils.js";
 
 /**
  * Copies any `keys` from `src` to `dest`. Then copies any `jsonKeys` from

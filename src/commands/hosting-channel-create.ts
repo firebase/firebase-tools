@@ -1,18 +1,19 @@
-import { bold, yellow } from "cli-color";
+import clccolor from "cli-color";
+const { bold, yellow } = clccolor;
 
-import { Channel, createChannel, addAuthDomains, normalizeName } from "../hosting/api";
-import { Command } from "../command";
-import { DEFAULT_DURATION, calculateChannelExpireTTL } from "../hosting/expireUtils";
-import { FirebaseError } from "../error";
-import { logLabeledSuccess, datetimeString, logLabeledWarning, consoleUrl } from "../utils";
-import { promptOnce } from "../prompt";
-import { requirePermissions } from "../requirePermissions";
-import { needProjectId } from "../projectUtils";
-import { logger } from "../logger";
-import { requireConfig } from "../requireConfig";
+import { Channel, createChannel, addAuthDomains, normalizeName } from "../hosting/api.js";
+import { Command } from "../command.js";
+import { DEFAULT_DURATION, calculateChannelExpireTTL } from "../hosting/expireUtils.js";
+import { FirebaseError } from "../error.js";
+import { logLabeledSuccess, datetimeString, logLabeledWarning, consoleUrl } from "../utils.js";
+import { promptOnce } from "../prompt.js";
+import { requirePermissions } from "../requirePermissions.js";
+import { needProjectId } from "../projectUtils.js";
+import { logger } from "../logger.js";
+import { requireConfig } from "../requireConfig.js";
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const { marked } = require("marked");
-import { requireHostingSite } from "../requireHostingSite";
+import { requireHostingSite } from "../requireHostingSite.js";
 
 const LOG_TAG = "hosting:channel";
 

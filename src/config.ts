@@ -1,6 +1,6 @@
 "use strict";
 
-import { FirebaseConfig } from "./firebaseConfig";
+import { FirebaseConfig } from "./firebaseConfig.js";
 
 import * as _ from "lodash";
 import * as clc from "cli-color";
@@ -8,15 +8,15 @@ import * as fs from "fs-extra";
 import * as path from "path";
 const cjson = require("cjson");
 
-import { detectProjectRoot } from "./detectProjectRoot";
-import { FirebaseError } from "./error";
-import * as fsutils from "./fsutils";
-import { promptOnce } from "./prompt";
-import { resolveProjectPath } from "./projectPath";
-import * as utils from "./utils";
-import { getValidator, getErrorMessage } from "./firebaseConfigValidate";
-import { logger } from "./logger";
-import { loadCJSON } from "./loadCJSON";
+import { detectProjectRoot } from "./detectProjectRoot.js";
+import { FirebaseError } from "./error.js";
+import * as fsutils from "./fsutils.js";
+import { promptOnce } from "./prompt.js";
+import { resolveProjectPath } from "./projectPath.js";
+import * as utils from "./utils.js";
+import { getValidator, getErrorMessage } from "./firebaseConfigValidate.js";
+import { logger } from "./logger.js";
+import { loadCJSON } from "./loadCJSON.js";
 const parseBoltRules = require("./parseBoltRules");
 
 export class Config {

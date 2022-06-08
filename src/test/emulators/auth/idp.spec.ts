@@ -1,8 +1,8 @@
 import { expect } from "chai";
 import { decode as decodeJwt, JwtHeader } from "jsonwebtoken";
-import { FirebaseJwtPayload } from "../../../emulator/auth/operations";
-import { PROVIDER_PASSWORD, SIGNIN_METHOD_EMAIL_LINK } from "../../../emulator/auth/state";
-import { describeAuthEmulator, PROJECT_ID } from "./setup";
+import { FirebaseJwtPayload } from "../../../emulator/auth/operations.js";
+import { PROVIDER_PASSWORD, SIGNIN_METHOD_EMAIL_LINK } from "../../../emulator/auth/state.js";
+import { describeAuthEmulator, PROJECT_ID } from "./setup.js";
 import {
   expectStatusCode,
   getAccountInfoByIdToken,

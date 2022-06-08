@@ -1,6 +1,6 @@
 import { expect } from "chai";
-import { BackendInfo, EmulatableBackend } from "../../emulator/functionsEmulator";
-import * as functionsEmulatorShared from "../../emulator/functionsEmulatorShared";
+import { BackendInfo, EmulatableBackend } from "../../emulator/functionsEmulator.js";
+import * as functionsEmulatorShared from "../../emulator/functionsEmulatorShared.js";
 import {
   Extension,
   ExtensionSpec,

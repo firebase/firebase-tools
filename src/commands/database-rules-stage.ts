@@ -1,12 +1,12 @@
-import { Command } from "../command";
-import { logger } from "../logger";
-import { requireDatabaseInstance } from "../requireDatabaseInstance";
-import { requirePermissions } from "../requirePermissions";
-import * as metadata from "../database/metadata";
+import { Command } from "../command.js";
+import { logger } from "../logger.js";
+import { requireDatabaseInstance } from "../requireDatabaseInstance.js";
+import { requirePermissions } from "../requirePermissions.js";
+import * as metadata from "../database/metadata.js";
 import * as fs from "fs-extra";
 import * as path from "path";
-import { Emulators } from "../emulator/types";
-import { warnEmulatorNotSupported } from "../emulator/commandUtils";
+import { Emulators } from "../emulator/types.js";
+import { warnEmulatorNotSupported } from "../emulator/commandUtils.js";
 
 export const command = new Command("database:rules:stage")
   .description("create a new realtime database ruleset")

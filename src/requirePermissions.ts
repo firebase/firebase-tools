@@ -1,9 +1,10 @@
-import { bold } from "cli-color";
-import { getProjectId } from "./projectUtils";
-import { requireAuth } from "./requireAuth";
-import { logger } from "./logger";
-import { FirebaseError } from "./error";
-import { testIamPermissions } from "./gcp/iam";
+import clccolor from "cli-color";
+const { bold } = clccolor;
+import { getProjectId } from "./projectUtils.js";
+import { requireAuth } from "./requireAuth.js";
+import { logger } from "./logger.js";
+import { FirebaseError } from "./error.js";
+import { testIamPermissions } from "./gcp/iam.js";
 
 // Permissions required for all commands.
 const BASE_PERMISSIONS = ["firebase.projects.get"];

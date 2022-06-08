@@ -1,10 +1,10 @@
-import Queue from "../../throttler/queue";
-import * as tasks from "./tasks";
-import { Context, Payload } from "./args";
-import { FirebaseError } from "../../error";
-import { ErrorHandler } from "./errors";
-import { Options } from "../../options";
-import { needProjectId } from "../../projectUtils";
+import Queue from "../../throttler/queue.js";
+import * as tasks from "./tasks.js";
+import { Context, Payload } from "./args.js";
+import { FirebaseError } from "../../error.js";
+import { ErrorHandler } from "./errors.js";
+import { Options } from "../../options.js";
+import { needProjectId } from "../../projectUtils.js";
 
 export async function release(context: Context, options: Options, payload: Payload) {
   const projectId = needProjectId(options);

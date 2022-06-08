@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { FunctionsRuntimeInstance } from "../../emulator/functionsEmulator";
+import { FunctionsRuntimeInstance } from "../../emulator/functionsEmulator.js";
 import { EventEmitter } from "events";
 import {
   FunctionsRuntimeArgs,
@@ -10,7 +10,7 @@ import {
   RuntimeWorkerState,
   RuntimeWorkerPool,
 } from "../../emulator/functionsRuntimeWorker";
-import { FunctionsExecutionMode } from "../../emulator/types";
+import { FunctionsExecutionMode } from "../../emulator/types.js";
 
 /**
  * Fake runtime instance we can use to simulate different subprocess conditions.

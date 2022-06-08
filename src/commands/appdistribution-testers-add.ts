@@ -1,10 +1,10 @@
-import { Command } from "../command";
-import * as utils from "../utils";
-import { requireAuth } from "../requireAuth";
-import { FirebaseError } from "../error";
-import { AppDistributionClient } from "../appdistribution/client";
-import { getEmails, getProjectName } from "../appdistribution/options-parser-util";
-import { needProjectNumber } from "../projectUtils";
+import { Command } from "../command.js";
+import * as utils from "../utils.js";
+import { requireAuth } from "../requireAuth.js";
+import { FirebaseError } from "../error.js";
+import { AppDistributionClient } from "../appdistribution/client.js";
+import { getEmails, getProjectName } from "../appdistribution/options-parser-util.js";
+import { needProjectNumber } from "../projectUtils.js";
 
 export const command = new Command("appdistribution:testers:add [emails...]")
   .description("add testers to project")

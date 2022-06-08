@@ -1,13 +1,14 @@
-import { includes } from "lodash";
+import lodash from "lodash";
+const { includes } = lodash;
 import { RequestHandler } from "express";
 
-import { proxyRequestHandler } from "./proxy";
-import { needProjectId } from "../projectUtils";
-import { EmulatorRegistry } from "../emulator/registry";
-import { Emulators } from "../emulator/types";
-import { FunctionsEmulator } from "../emulator/functionsEmulator";
-import { HostingRewrites } from "../firebaseConfig";
-import { FirebaseError } from "../error";
+import { proxyRequestHandler } from "./proxy.js";
+import { needProjectId } from "../projectUtils.js";
+import { EmulatorRegistry } from "../emulator/registry.js";
+import { Emulators } from "../emulator/types.js";
+import { FunctionsEmulator } from "../emulator/functionsEmulator.js";
+import { HostingRewrites } from "../firebaseConfig.js";
+import { FirebaseError } from "../error.js";
 
 export interface FunctionsProxyOptions {
   port: number;

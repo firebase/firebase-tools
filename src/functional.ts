@@ -1,4 +1,4 @@
-import { LeafElems } from "./metaprogramming";
+import { LeafElems } from "./metaprogramming.js";
 
 /**
  * Flattens an object so that the return value's keys are the path

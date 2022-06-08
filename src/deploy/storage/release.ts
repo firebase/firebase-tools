@@ -1,6 +1,7 @@
-import { get } from "lodash";
+import lodash from "lodash";
+const { get } = lodash;
 
-import { RulesDeploy, RulesetServiceType } from "../../rulesDeploy";
+import { RulesDeploy, RulesetServiceType } from "../../rulesDeploy.js";
 
 /**
  * Releases Firebase Storage rules.

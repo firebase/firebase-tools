@@ -4,7 +4,7 @@
  * Please review and update the README as needed and notify firebase-docs@google.com.
  */
 
-import * as API from "./indexes-api";
+import * as API from "./indexes-api.js";
 
 /**
  * An entry specifying a compound or other non-default index.

@@ -3,13 +3,13 @@ import * as fs from "fs";
 import * as clc from "cli-color";
 import * as path from "path";
 
-import * as utils from "../utils";
-import * as downloadableEmulators from "./downloadableEmulators";
-import { EmulatorInfo, EmulatorInstance, Emulators, Severity } from "../emulator/types";
-import { EmulatorRegistry } from "./registry";
-import { Constants } from "./constants";
-import { Issue } from "./types";
-import { Client } from "../apiv2";
+import * as utils from "../utils.js";
+import * as downloadableEmulators from "./downloadableEmulators.js";
+import { EmulatorInfo, EmulatorInstance, Emulators, Severity } from "../emulator/types.js";
+import { EmulatorRegistry } from "./registry.js";
+import { Constants } from "./constants.js";
+import { Issue } from "./types.js";
+import { Client } from "../apiv2.js";
 
 export interface FirestoreEmulatorArgs {
   port?: number;

@@ -1,6 +1,6 @@
 import * as url from "url";
 
-import { Emulators } from "./types";
+import { Emulators } from "./types.js";
 
 const DEFAULT_PORTS: { [s in Emulators]: number } = {
   ui: 4000,

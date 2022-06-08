@@ -1,8 +1,8 @@
-import { FirebaseError } from "../error";
-import { Config } from "../config";
-import { logger } from "../logger";
-import { Options } from "../options";
-import * as utils from "../utils";
+import { FirebaseError } from "../error.js";
+import { Config } from "../config.js";
+import { logger } from "../logger.js";
+import { Options } from "../options.js";
+import * as utils from "../utils.js";
 
 export interface RulesInstanceConfig {
   instance: string;

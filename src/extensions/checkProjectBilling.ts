@@ -1,12 +1,12 @@
 import * as clc from "cli-color";
-import * as opn from "open";
+import opn from "open";
 
-import * as cloudbilling from "../gcp/cloudbilling";
-import { FirebaseError } from "../error";
-import { logger } from "../logger";
-import { logPrefix } from "./extensionsHelper";
-import * as prompt from "../prompt";
-import * as utils from "../utils";
+import * as cloudbilling from "../gcp/cloudbilling.js";
+import { FirebaseError } from "../error.js";
+import { logger } from "../logger.js";
+import { logPrefix } from "./extensionsHelper.js";
+import * as prompt from "../prompt.js";
+import * as utils from "../utils.js";
 
 const ADD_BILLING_ACCOUNT = "Add new billing account";
 /**

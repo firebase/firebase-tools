@@ -1,8 +1,8 @@
 import { expect } from "chai";
-import { HostingConfig } from "../../../firebaseConfig";
-import { convertConfig } from "../../../deploy/hosting/convertConfig";
-import * as args from "../../../deploy/functions/args";
-import * as backend from "../../../deploy/functions/backend";
+import { HostingConfig } from "../../../firebaseConfig.js";
+import { convertConfig } from "../../../deploy/hosting/convertConfig.js";
+import * as args from "../../../deploy/functions/args.js";
+import * as backend from "../../../deploy/functions/backend.js";
 
 const DEFAULT_CONTEXT = {
   loadedExistingBackend: true,

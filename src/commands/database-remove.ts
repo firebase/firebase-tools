@@ -1,13 +1,13 @@
-import { Command } from "../command";
-import { requireDatabaseInstance } from "../requireDatabaseInstance";
-import { requirePermissions } from "../requirePermissions";
-import DatabaseRemove from "../database/remove";
-import { Emulators } from "../emulator/types";
-import { warnEmulatorNotSupported } from "../emulator/commandUtils";
-import { populateInstanceDetails } from "../management/database";
-import { realtimeOriginOrEmulatorOrCustomUrl } from "../database/api";
-import * as utils from "../utils";
-import { promptOnce } from "../prompt";
+import { Command } from "../command.js";
+import { requireDatabaseInstance } from "../requireDatabaseInstance.js";
+import { requirePermissions } from "../requirePermissions.js";
+import DatabaseRemove from "../database/remove.js";
+import { Emulators } from "../emulator/types.js";
+import { warnEmulatorNotSupported } from "../emulator/commandUtils.js";
+import { populateInstanceDetails } from "../management/database.js";
+import { realtimeOriginOrEmulatorOrCustomUrl } from "../database/api.js";
+import * as utils from "../utils.js";
+import { promptOnce } from "../prompt.js";
 import * as clc from "cli-color";
 import * as _ from "lodash";
 

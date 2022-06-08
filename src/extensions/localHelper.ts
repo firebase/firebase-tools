@@ -2,10 +2,10 @@ import * as fs from "fs-extra";
 import * as path from "path";
 import * as yaml from "js-yaml";
 
-import { fileExistsSync } from "../fsutils";
-import { FirebaseError } from "../error";
-import { ExtensionSpec } from "./extensionsApi";
-import { logger } from "../logger";
+import { fileExistsSync } from "../fsutils.js";
+import { FirebaseError } from "../error.js";
+import { ExtensionSpec } from "./extensionsApi.js";
+import { logger } from "../logger.js";
 
 const EXTENSIONS_SPEC_FILE = "extension.yaml";
 const EXTENSIONS_PREINSTALL_FILE = "PREINSTALL.md";

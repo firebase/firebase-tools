@@ -1,7 +1,7 @@
 import { expect } from "chai";
-import { Tenant } from "../../../emulator/auth/state";
-import { expectStatusCode, registerTenant } from "./helpers";
-import { describeAuthEmulator, PROJECT_ID } from "./setup";
+import { Tenant } from "../../../emulator/auth/state.js";
+import { expectStatusCode, registerTenant } from "./helpers.js";
+import { describeAuthEmulator, PROJECT_ID } from "./setup.js";
 
 describeAuthEmulator("tenant management", ({ authApi }) => {
   describe("createTenant", () => {

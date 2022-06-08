@@ -1,8 +1,8 @@
 import * as _ from "lodash";
 
-import { runtimeconfigOrigin } from "../api";
-import { Client } from "../apiv2";
-import { logger } from "../logger";
+import { runtimeconfigOrigin } from "../api.cjs";
+import { Client } from "../apiv2.js";
+import { logger } from "../logger.js";
 
 const API_VERSION = "v1beta1";
 const apiClient = new Client({ urlPrefix: runtimeconfigOrigin, apiVersion: API_VERSION });

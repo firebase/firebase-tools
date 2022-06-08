@@ -1,8 +1,8 @@
-import { EmulatorServer } from "../emulator/emulatorServer";
+import { EmulatorServer } from "../emulator/emulatorServer.js";
 import * as _ from "lodash";
-import { logger } from "../logger";
+import { logger } from "../logger.js";
 import { prepareFrameworks } from "../frameworks";
-import { previews } from "../previews";
+import { previews } from "../previews.js";
 
 const { FunctionsServer } = require("./functions");
 

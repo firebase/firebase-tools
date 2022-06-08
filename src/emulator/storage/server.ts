@@ -1,13 +1,13 @@
-import * as cors from "cors";
-import * as express from "express";
-import { EmulatorLogger } from "../emulatorLogger";
-import { Emulators } from "../types";
+import cors from "cors";
+import express from "express";
+import { EmulatorLogger } from "../emulatorLogger.js";
+import { Emulators } from "../types.js";
 import * as bodyParser from "body-parser";
-import { createCloudEndpoints } from "./apis/gcloud";
-import { RulesConfig, StorageEmulator } from "./index";
-import { createFirebaseEndpoints } from "./apis/firebase";
-import { InvalidArgumentError } from "../auth/errors";
-import { SourceFile } from "./rules/types";
+import { createCloudEndpoints } from "./apis/gcloud.js";
+import { RulesConfig, StorageEmulator } from "./index.js";
+import { createFirebaseEndpoints } from "./apis/firebase.js";
+import { InvalidArgumentError } from "../auth/errors.js";
+import { SourceFile } from "./rules/types.js";
 
 /**
  * @param defaultProjectId

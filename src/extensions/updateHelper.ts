@@ -3,23 +3,23 @@ import * as semver from "semver";
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const { marked } = require("marked");
 
-import { FirebaseError } from "../error";
-import { logger } from "../logger";
-import * as extensionsApi from "./extensionsApi";
-import * as refs from "./refs";
+import { FirebaseError } from "../error.js";
+import { logger } from "../logger.js";
+import * as extensionsApi from "./extensionsApi.js";
+import * as refs from "./refs.js";
 import {
   createSourceFromLocation,
   logPrefix,
   SourceOrigin,
   isLocalOrURLPath,
 } from "./extensionsHelper";
-import * as utils from "../utils";
+import * as utils from "../utils.js";
 import {
   displayUpdateChangesNoInput,
   displayUpdateChangesRequiringConfirmation,
   displayExtInfo,
 } from "./displayExtensionInfo";
-import * as changelog from "./changelog";
+import * as changelog from "./changelog.js";
 
 function invalidSourceErrMsgTemplate(instanceId: string, source: string): string {
   return `Unable to update from the source \`${clc.bold(

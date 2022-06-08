@@ -1,8 +1,8 @@
 import { expect } from "chai";
-import * as nock from "nock";
+import nock from "nock";
 
-import { Command, validateProjectId } from "../command";
-import { FirebaseError } from "../error";
+import { Command, validateProjectId } from "../command.js";
+import { FirebaseError } from "../error.js";
 
 describe("Command", () => {
   let command: Command;

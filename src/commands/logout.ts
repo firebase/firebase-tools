@@ -1,10 +1,10 @@
-import { Command } from "../command";
-import { logger } from "../logger";
+import { Command } from "../command.js";
+import { logger } from "../logger.js";
 import * as clc from "cli-color";
 
-import * as utils from "../utils";
-import * as auth from "../auth";
-import { promptOnce } from "../prompt";
+import * as utils from "../utils.js";
+import * as auth from "../auth.js";
+import { promptOnce } from "../prompt.js";
 
 export const command = new Command("logout [email]")
   .description("log the CLI out of Firebase")

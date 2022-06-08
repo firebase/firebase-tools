@@ -1,5 +1,5 @@
-import { fileExistsSync } from "./fsutils";
-import { FirebaseError } from "./error";
+import { fileExistsSync } from "./fsutils.js";
+import { FirebaseError } from "./error.js";
 import { dirname, resolve } from "path";
 
 export function detectProjectRoot(options: { cwd?: string; configPath?: string }): string | null {

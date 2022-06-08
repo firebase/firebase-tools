@@ -1,16 +1,16 @@
 import * as clc from "cli-color";
 
-import { Client } from "../apiv2";
-import { FirebaseError } from "../error";
-import { functionsV2Origin } from "../api";
-import { logger } from "../logger";
-import { AUTH_BLOCKING_EVENTS } from "../functions/events/v1";
-import { PUBSUB_PUBLISH_EVENT } from "../functions/events/v2";
-import * as backend from "../deploy/functions/backend";
+import { Client } from "../apiv2.js";
+import { FirebaseError } from "../error.js";
+import { functionsV2Origin } from "../api.cjs";
+import { logger } from "../logger.js";
+import { AUTH_BLOCKING_EVENTS } from "../functions/events/v1.js";
+import { PUBSUB_PUBLISH_EVENT } from "../functions/events/v2.js";
+import * as backend from "../deploy/functions/backend.js";
 import * as runtimes from "../deploy/functions/runtimes";
-import * as proto from "./proto";
-import * as utils from "../utils";
-import * as projectConfig from "../functions/projectConfig";
+import * as proto from "./proto.js";
+import * as utils from "../utils.js";
+import * as projectConfig from "../functions/projectConfig.js";
 
 export const API_VERSION = "v2alpha";
 export const CODEBASE_LABEL = "firebase-functions-codebase";

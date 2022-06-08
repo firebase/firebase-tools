@@ -5,17 +5,17 @@ import * as _ from "lodash";
 import * as request from "request";
 import * as util from "util";
 
-import { FunctionsServer } from "./serve/functions";
-import * as LocalFunction from "./localFunction";
-import * as utils from "./utils";
-import { logger } from "./logger";
-import * as shell from "./emulator/functionsEmulatorShell";
-import * as commandUtils from "./emulator/commandUtils";
-import { EMULATORS_SUPPORTED_BY_FUNCTIONS, EmulatorInfo, Emulators } from "./emulator/types";
-import { EmulatorHubClient } from "./emulator/hubClient";
-import { Constants } from "./emulator/constants";
-import { findAvailablePort } from "./emulator/portUtils";
-import { Options } from "./options";
+import { FunctionsServer } from "./serve/functions.js";
+import LocalFunction from "./localFunction.cjs";
+import * as utils from "./utils.js";
+import { logger } from "./logger.js";
+import * as shell from "./emulator/functionsEmulatorShell.js";
+import * as commandUtils from "./emulator/commandUtils.js";
+import { EMULATORS_SUPPORTED_BY_FUNCTIONS, EmulatorInfo, Emulators } from "./emulator/types.js";
+import { EmulatorHubClient } from "./emulator/hubClient.js";
+import { Constants } from "./emulator/constants.js";
+import { findAvailablePort } from "./emulator/portUtils.js";
+import { Options } from "./options.js";
 
 const serveFunctions = new FunctionsServer();
 

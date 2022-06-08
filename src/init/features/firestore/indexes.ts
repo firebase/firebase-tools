@@ -1,11 +1,11 @@
-import clc = require("cli-color");
-import fs = require("fs");
+import clc from "cli-color";
+import fs from "fs";
 
-import { FirebaseError } from "../../../error";
-import iv2 = require("../../../firestore/indexes");
-import fsutils = require("../../../fsutils");
-import { prompt, promptOnce } from "../../../prompt";
-import { logger } from "../../../logger";
+import { FirebaseError } from "../../../error.js";
+import * as iv2 from "../../../firestore/indexes.js";
+import * as fsutils from "../../../fsutils.js";
+import { prompt, promptOnce } from "../../../prompt.js";
+import { logger } from "../../../logger.js";
 
 const indexes = new iv2.FirestoreIndexes();
 

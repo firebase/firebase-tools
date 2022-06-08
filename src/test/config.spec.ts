@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import * as path from "path";
 
-import { Config } from "../config";
+import { Config } from "../config.js";
 
 function fixtureDir(name: string): string {
   return path.resolve(__dirname, "./fixtures/" + name);

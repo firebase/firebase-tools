@@ -1,20 +1,20 @@
-import clc = require("cli-color");
+import clc from "cli-color";
 
 const superstatic = require("superstatic").server; // Superstatic has no types, requires odd importing.
 const morgan = require("morgan");
 
-import { detectProjectRoot } from "../detectProjectRoot";
-import { FirebaseError } from "../error";
-import { implicitInit, TemplateServerResponse } from "../hosting/implicitInit";
-import { initMiddleware } from "../hosting/initMiddleware";
-import { normalizedHostingConfigs } from "../hosting/normalizedHostingConfigs";
-import cloudRunProxy from "../hosting/cloudRunProxy";
-import { functionsProxy } from "../hosting/functionsProxy";
+import { detectProjectRoot } from "../detectProjectRoot.js";
+import { FirebaseError } from "../error.js";
+import { implicitInit, TemplateServerResponse } from "../hosting/implicitInit.js";
+import { initMiddleware } from "../hosting/initMiddleware.js";
+import { normalizedHostingConfigs } from "../hosting/normalizedHostingConfigs.js";
+import cloudRunProxy from "../hosting/cloudRunProxy.js";
+import { functionsProxy } from "../hosting/functionsProxy.js";
 import { NextFunction, Request, Response } from "express";
 import { Writable } from "stream";
-import { EmulatorLogger } from "../emulator/emulatorLogger";
-import { Emulators } from "../emulator/types";
-import { createDestroyer } from "../utils";
+import { EmulatorLogger } from "../emulator/emulatorLogger.js";
+import { Emulators } from "../emulator/types.js";
+import { createDestroyer } from "../utils.js";
 import { execSync } from "child_process";
 
 const MAX_PORT_ATTEMPTS = 10;

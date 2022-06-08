@@ -1,16 +1,18 @@
-import { last, sortBy } from "lodash";
-import { bold } from "cli-color";
-import * as open from "open";
+import lodash from "lodash";
+const { last, sortBy } = lodash;
+import clccolor from "cli-color";
+const { bold } = clccolor;
+import open from "open";
 
-import { Command } from "../command";
-import { FirebaseError } from "../error";
-import { getChannel, listChannels, normalizeName } from "../hosting/api";
-import { requirePermissions } from "../requirePermissions";
-import { needProjectId } from "../projectUtils";
-import { requireConfig } from "../requireConfig";
-import { logLabeledBullet } from "../utils";
-import { promptOnce } from "../prompt";
-import { requireHostingSite } from "../requireHostingSite";
+import { Command } from "../command.js";
+import { FirebaseError } from "../error.js";
+import { getChannel, listChannels, normalizeName } from "../hosting/api.js";
+import { requirePermissions } from "../requirePermissions.js";
+import { needProjectId } from "../projectUtils.js";
+import { requireConfig } from "../requireConfig.js";
+import { logLabeledBullet } from "../utils.js";
+import { promptOnce } from "../prompt.js";
+import { requireHostingSite } from "../requireHostingSite.js";
 
 export const command = new Command("hosting:channel:open [channelId]")
   .description("opens the URL for a Firebase Hosting channel")

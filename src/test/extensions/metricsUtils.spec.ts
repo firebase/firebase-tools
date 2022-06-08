@@ -7,8 +7,8 @@ import {
   parseBucket,
   parseTimeseriesResponse,
 } from "../../extensions/metricsUtils";
-import { TimeSeriesResponse, MetricKind, ValueType } from "../../gcp/cloudmonitoring";
-import { BucketedMetric } from "../../extensions/metricsTypeDef";
+import { TimeSeriesResponse, MetricKind, ValueType } from "../../gcp/cloudmonitoring.js";
+import { BucketedMetric } from "../../extensions/metricsTypeDef.js";
 
 describe("metricsUtil", () => {
   describe(`${parseBucket.name}`, () => {

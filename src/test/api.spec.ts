@@ -1,12 +1,12 @@
 import { expect } from "chai";
 
-import * as utils from "../utils";
+import * as utils from "../utils.js";
 
 describe("api", () => {
   beforeEach(() => {
     // The api module resolves env var statically so we need to
     // do lazy imports and clear the import each time.
-    delete require.cache[require.resolve("../api")];
+    delete require.cache[require.resolve("../api.cjs")];
   });
 
   afterEach(() => {
@@ -18,13 +18,13 @@ describe("api", () => {
   });
 
   after(() => {
-    delete require.cache[require.resolve("../api")];
+    delete require.cache[require.resolve("../api.cjs")];
   });
 
   it("should override with FIRESTORE_URL", () => {
     process.env.FIRESTORE_URL = "http://foobar.com";
 
-    const api = require("../api");
+    const api = require("../api.cjs");
     expect(api.firestoreOrigin).to.eq("http://foobar.com");
   });
 
@@ -32,7 +32,7 @@ describe("api", () => {
     process.env.FIRESTORE_EMULATOR_HOST = "localhost:8080";
     process.env.FIRESTORE_URL = "http://foobar.com";
 
-    const api = require("../api");
+    const api = require("../api.cjs");
     expect(api.firestoreOriginOrEmulator).to.eq("http://localhost:8080");
   });
 });

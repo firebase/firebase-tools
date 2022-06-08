@@ -1,8 +1,8 @@
 import { expect } from "chai";
-import { configstore } from "../configstore";
+import { configstore } from "../configstore.js";
 import * as sinon from "sinon";
 
-import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
+import { checkMinRequiredVersion } from "../checkMinRequiredVersion.js";
 import Sinon from "sinon";
 
 describe("checkMinRequiredVersion", () => {

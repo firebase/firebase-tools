@@ -1,7 +1,7 @@
-import { firedataOrigin } from "../api";
-import { Client } from "../apiv2";
-import { logger } from "../logger";
-import * as utils from "../utils";
+import { firedataOrigin } from "../api.cjs";
+import { Client } from "../apiv2.js";
+import { logger } from "../logger.js";
+import * as utils from "../utils.js";
 
 export interface DatabaseInstance {
   // The globally unique name of the Database instance.

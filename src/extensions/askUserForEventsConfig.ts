@@ -1,9 +1,9 @@
 import * as _ from "lodash";
-import { promptOnce } from "../prompt";
-import * as extensionsApi from "../extensions/extensionsApi";
-import * as utils from "../utils";
+import { promptOnce } from "../prompt.js";
+import * as extensionsApi from "../extensions/extensionsApi.js";
+import * as utils from "../utils.js";
 import * as clc from "cli-color";
-import { logger } from "../logger";
+import { logger } from "../logger.js";
 const { marked } = require("marked");
 
 export interface InstanceEventsConfig {

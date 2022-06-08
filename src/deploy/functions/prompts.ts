@@ -1,13 +1,13 @@
 import * as clc from "cli-color";
 
-import { getFunctionLabel } from "./functionsDeployHelper";
-import { FirebaseError } from "../../error";
-import { promptOnce } from "../../prompt";
-import { logger } from "../../logger";
-import * as backend from "./backend";
-import * as pricing from "./pricing";
-import * as utils from "../../utils";
-import { Options } from "../../options";
+import { getFunctionLabel } from "./functionsDeployHelper.js";
+import { FirebaseError } from "../../error.js";
+import { promptOnce } from "../../prompt.js";
+import { logger } from "../../logger.js";
+import * as backend from "./backend.js";
+import * as pricing from "./pricing.js";
+import * as utils from "../../utils.js";
+import { Options } from "../../options.js";
 
 /**
  * Checks if a deployment will create any functions with a failure policy

@@ -1,4 +1,4 @@
-import { FirebaseError } from "../../error";
+import { FirebaseError } from "../../error.js";
 
 export default abstract class TaskError extends FirebaseError {
   constructor(taskName: string, message: string, options: object = {}) {

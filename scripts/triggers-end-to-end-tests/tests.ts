@@ -5,8 +5,8 @@ import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
 
-import { CLIProcess } from "../integration-helpers/cli";
-import { FrameworkOptions, TriggerEndToEndTest } from "../integration-helpers/framework";
+import { CLIProcess } from "../integration-helpers/cli.js";
+import { FrameworkOptions, TriggerEndToEndTest } from "../integration-helpers/framework.js";
 
 const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "";
 const ADMIN_CREDENTIAL = {

@@ -1,9 +1,9 @@
 import * as fs from "fs";
-import * as spawn from "cross-spawn";
+import spawn from "cross-spawn";
 import * as clc from "cli-color";
 import * as _ from "lodash";
 
-import { FirebaseError } from "./error";
+import { FirebaseError } from "./error.js";
 
 export function parseBoltRules(filename: string): string {
   const ruleSrc = fs.readFileSync(filename, "utf8");

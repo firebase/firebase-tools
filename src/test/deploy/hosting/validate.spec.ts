@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { validateDeploy } from "../../../deploy/hosting/validate";
+import { validateDeploy } from "../../../deploy/hosting/validate.js";
 
 const PUBLIC_DIR_ERROR_PREFIX = 'Must supply a "public" directory';
 

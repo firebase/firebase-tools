@@ -1,4 +1,4 @@
-import { logger } from "../../../../logger";
+import { logger } from "../../../../logger.js";
 
 // A module can be much more complicated than this, but this is all we need so far.
 // For a full reference, see https://golang.org/doc/modules/gomod-ref

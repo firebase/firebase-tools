@@ -1,12 +1,12 @@
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const { marked } = require("marked");
 
-import * as extensionsApi from "./extensionsApi";
-import { firebaseStorageOrigin, firedataOrigin } from "../api";
-import { Client } from "../apiv2";
-import { flattenArray } from "../functional";
-import { FirebaseError } from "../error";
-import { getExtensionSpec, InstanceSpec } from "../deploy/extensions/planner";
+import * as extensionsApi from "./extensionsApi.js";
+import { firebaseStorageOrigin, firedataOrigin } from "../api.cjs";
+import { Client } from "../apiv2.js";
+import { flattenArray } from "../functional.js";
+import { FirebaseError } from "../error.js";
+import { getExtensionSpec, InstanceSpec } from "../deploy/extensions/planner.js";
 
 /** Product for which provisioning can be (or is) deferred */
 export enum DeferredProduct {

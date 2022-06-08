@@ -1,7 +1,7 @@
-import * as utils from "../utils";
-import * as poller from "../operation-poller";
-import * as gcf from "../gcp/cloudfunctions";
-import * as backend from "../deploy/functions/backend";
+import * as utils from "../utils.js";
+import * as poller from "../operation-poller.js";
+import * as gcf from "../gcp/cloudfunctions.js";
+import * as backend from "../deploy/functions/backend.js";
 import {
   createSecret,
   destroySecretVersion,
@@ -14,14 +14,14 @@ import {
   Secret,
   SecretVersion,
 } from "../gcp/secretManager";
-import { Options } from "../options";
-import { FirebaseError } from "../error";
-import { logWarning } from "../utils";
-import { promptOnce } from "../prompt";
-import { validateKey } from "./env";
-import { logger } from "../logger";
-import { functionsOrigin } from "../api";
-import { assertExhaustive } from "../functional";
+import { Options } from "../options.js";
+import { FirebaseError } from "../error.js";
+import { logWarning } from "../utils.js";
+import { promptOnce } from "../prompt.js";
+import { validateKey } from "./env.js";
+import { logger } from "../logger.js";
+import { functionsOrigin } from "../api.cjs";
+import { assertExhaustive } from "../functional.js";
 
 const FIREBASE_MANGED = "firebase-managed";
 

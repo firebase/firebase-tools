@@ -1,16 +1,16 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 
-import * as validation from "../../../emulator/extensions/validation";
-import * as ensureApiEnabled from "../../../ensureApiEnabled";
-import * as controller from "../../../emulator/controller";
-import { DeploymentInstanceSpec } from "../../../deploy/extensions/planner";
-import { EmulatableBackend } from "../../../emulator/functionsEmulator";
-import { Emulators } from "../../../emulator/types";
-import { EventTrigger, ParsedTriggerDefinition } from "../../../emulator/functionsEmulatorShared";
-import { Options } from "../../../options";
-import { RC } from "../../../rc";
-import { Config } from "../../../config";
+import * as validation from "../../../emulator/extensions/validation.js";
+import * as ensureApiEnabled from "../../../ensureApiEnabled.js";
+import * as controller from "../../../emulator/controller.js";
+import { DeploymentInstanceSpec } from "../../../deploy/extensions/planner.js";
+import { EmulatableBackend } from "../../../emulator/functionsEmulator.js";
+import { Emulators } from "../../../emulator/types.js";
+import { EventTrigger, ParsedTriggerDefinition } from "../../../emulator/functionsEmulatorShared.js";
+import { Options } from "../../../options.js";
+import { RC } from "../../../rc.js";
+import { Config } from "../../../config.js";
 
 const TEST_OPTIONS: Options = {
   cwd: ".",

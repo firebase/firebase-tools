@@ -1,7 +1,7 @@
 import { expect } from "chai";
 
-import Queue from "../../throttler/queue";
-import { createHandler, createTask, Task } from "./throttler.spec";
+import Queue from "../../throttler/queue.js";
+import { createHandler, createTask, Task } from "./throttler.spec.js";
 
 describe("Queue", () => {
   it("should have default name of queue", () => {

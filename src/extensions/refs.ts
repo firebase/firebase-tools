@@ -1,6 +1,6 @@
 import * as semver from "semver";
 
-import { FirebaseError } from "../error";
+import { FirebaseError } from "../error.js";
 
 const refRegex = new RegExp(/^([^/@\n]+)\/{1}([^/@\n]+)(@{1}([^\n]+)|)$/);
 

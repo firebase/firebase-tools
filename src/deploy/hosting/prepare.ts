@@ -1,12 +1,12 @@
-import { FirebaseError } from "../../error";
-import { client } from "./client";
-import { needProjectNumber } from "../../projectUtils";
-import { normalizedHostingConfigs } from "../../hosting/normalizedHostingConfigs";
-import { validateDeploy } from "./validate";
-import { convertConfig } from "./convertConfig";
-import * as deploymentTool from "../../deploymentTool";
-import { Payload } from "./args";
-import { allEndpoints } from "../functions/backend";
+import { FirebaseError } from "../../error.js";
+import { client } from "./client.js";
+import { needProjectNumber } from "../../projectUtils.js";
+import { normalizedHostingConfigs } from "../../hosting/normalizedHostingConfigs.js";
+import { validateDeploy } from "./validate.js";
+import { convertConfig } from "./convertConfig.js";
+import * as deploymentTool from "../../deploymentTool.js";
+import { Payload } from "./args.js";
+import { allEndpoints } from "../functions/backend.js";
 
 /**
  *  Prepare creates versions for each Hosting site to be deployed.

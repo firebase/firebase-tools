@@ -1,12 +1,12 @@
 import { expect } from "chai";
 import * as yaml from "js-yaml";
 import * as sinon from "sinon";
-import * as nock from "nock";
+import nock from "nock";
 
-import * as api from "../../../../../api";
-import { FirebaseError } from "../../../../../error";
+import * as api from "../../../../../api.cjs";
+import { FirebaseError } from "../../../../../error.js";
 import * as discovery from "../../../../../deploy/functions/runtimes/discovery";
-import * as backend from "../../../../../deploy/functions/backend";
+import * as backend from "../../../../../deploy/functions/backend.js";
 
 const MIN_ENDPOINT = {
   entryPoint: "entrypoint",

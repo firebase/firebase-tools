@@ -2,7 +2,7 @@ import { expect } from "chai";
 
 import * as path from "path";
 import * as stream from "stream";
-import { extractReadableIndex, formatNumber, ProfileReport } from "../profileReport";
+import { extractReadableIndex, formatNumber, ProfileReport } from "../profileReport.js";
 
 function combinerFunc(obj1: any, obj2: any): any {
   return { count: obj1.count + obj2.count };

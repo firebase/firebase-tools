@@ -2,7 +2,7 @@ import { expect } from "chai";
 import * as subprocess from "child_process";
 import { cli } from "winston/lib/winston/config";
 
-import { CLIProcess } from "../integration-helpers/cli";
+import { CLIProcess } from "../integration-helpers/cli.js";
 
 const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "";
 

@@ -1,7 +1,7 @@
 import { expect } from "chai";
 
-import { WorkQueue } from "../../emulator/workQueue";
-import { FunctionsExecutionMode } from "../../emulator/types";
+import { WorkQueue } from "../../emulator/workQueue.js";
+import { FunctionsExecutionMode } from "../../emulator/types.js";
 
 function resolveIn(ms: number) {
   if (ms === 0) {

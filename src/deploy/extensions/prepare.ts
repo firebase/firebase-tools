@@ -1,17 +1,17 @@
-import * as planner from "./planner";
-import * as deploymentSummary from "./deploymentSummary";
-import * as prompt from "../../prompt";
-import * as refs from "../../extensions/refs";
-import { Options } from "../../options";
-import { getAliases, needProjectId, needProjectNumber } from "../../projectUtils";
-import { logger } from "../../logger";
-import { Context, Payload } from "./args";
-import { FirebaseError } from "../../error";
-import { requirePermissions } from "../../requirePermissions";
-import { ensureExtensionsApiEnabled } from "../../extensions/extensionsHelper";
-import { ensureSecretManagerApiEnabled } from "../../extensions/secretsUtils";
-import { checkSpecForSecrets } from "./secrets";
-import { displayWarningsForDeploy } from "../../extensions/warnings";
+import * as planner from "./planner.js";
+import * as deploymentSummary from "./deploymentSummary.js";
+import * as prompt from "../../prompt.js";
+import * as refs from "../../extensions/refs.js";
+import { Options } from "../../options.js";
+import { getAliases, needProjectId, needProjectNumber } from "../../projectUtils.js";
+import { logger } from "../../logger.js";
+import { Context, Payload } from "./args.js";
+import { FirebaseError } from "../../error.js";
+import { requirePermissions } from "../../requirePermissions.js";
+import { ensureExtensionsApiEnabled } from "../../extensions/extensionsHelper.js";
+import { ensureSecretManagerApiEnabled } from "../../extensions/secretsUtils.js";
+import { checkSpecForSecrets } from "./secrets.js";
+import { displayWarningsForDeploy } from "../../extensions/warnings.js";
 
 export async function prepare(context: Context, options: Options, payload: Payload) {
   const projectId = needProjectId(options);

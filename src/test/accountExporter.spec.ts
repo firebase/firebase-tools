@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/no-empty-function */
 import { expect } from "chai";
-import * as nock from "nock";
+import nock from "nock";
 import * as os from "os";
 import * as sinon from "sinon";
 
-import { validateOptions, serialExportUsers } from "../accountExporter";
+import { validateOptions, serialExportUsers } from "../accountExporter.js";
 
 describe("accountExporter", () => {
   describe("validateOptions", () => {

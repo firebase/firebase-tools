@@ -3,10 +3,10 @@ import * as _ from "lodash";
 import * as path from "path";
 import * as fs from "fs-extra";
 
-import { ExtensionSpec, ParamType, Resource } from "../extensionsApi";
-import { FirebaseError } from "../../error";
-import { substituteParams } from "../extensionsHelper";
-import { parseRuntimeVersion } from "../../emulator/functionsEmulatorUtils";
+import { ExtensionSpec, ParamType, Resource } from "../extensionsApi.js";
+import { FirebaseError } from "../../error.js";
+import { substituteParams } from "../extensionsHelper.js";
+import { parseRuntimeVersion } from "../../emulator/functionsEmulatorUtils.js";
 
 const SPEC_FILE = "extension.yaml";
 const POSTINSTALL_FILE = "POSTINSTALL.md";

@@ -1,10 +1,10 @@
 import { expect } from "chai";
-import * as express from "express";
-import * as nock from "nock";
+import express from "express";
+import nock from "nock";
 import * as sinon from "sinon";
-import * as supertest from "supertest";
+import supertest from "supertest";
 
-import { cloudRunApiOrigin } from "../../api";
+import { cloudRunApiOrigin } from "../../api.cjs";
 import cloudRunProxy, {
   CloudRunProxyOptions,
   CloudRunProxyRewrite,

@@ -8,12 +8,12 @@ import {
   getInquirerDefault,
   SecretLocation,
 } from "../../extensions/askUserForParam";
-import * as utils from "../../utils";
-import * as prompt from "../../prompt";
-import { ParamType } from "../../extensions/extensionsApi";
-import * as extensionsHelper from "../../extensions/extensionsHelper";
-import * as secretManagerApi from "../../gcp/secretManager";
-import * as secretsUtils from "../../extensions/secretsUtils";
+import * as utils from "../../utils.js";
+import * as prompt from "../../prompt.js";
+import { ParamType } from "../../extensions/extensionsApi.js";
+import * as extensionsHelper from "../../extensions/extensionsHelper.js";
+import * as secretManagerApi from "../../gcp/secretManager.js";
+import * as secretsUtils from "../../extensions/secretsUtils.js";
 
 describe("askUserForParam", () => {
   const testSpec = {

@@ -3,15 +3,15 @@ import fetch from "node-fetch";
 import * as fs from "fs";
 import * as path from "path";
 import * as portfinder from "portfinder";
-import * as spawn from "cross-spawn";
+import spawn from "cross-spawn";
 
-import { FirebaseError } from "../../../../error";
-import { logger } from "../../../../logger";
-import * as backend from "../../backend";
-import * as build from "../../build";
+import { FirebaseError } from "../../../../error.js";
+import { logger } from "../../../../logger.js";
+import * as backend from "../../backend.js";
+import * as build from "../../build.js";
 import * as discovery from "../discovery";
-import * as gomod from "./gomod";
-import * as runtimes from "..";
+import * as gomod from "./gomod.js";
+import * as runtimes from "../index.js";
 
 const VERSION_TO_RUNTIME: Record<string, runtimes.Runtime> = {
   "1.13": "go113",

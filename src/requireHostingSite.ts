@@ -1,4 +1,4 @@
-import { getDefaultHostingSite } from "./getDefaultHostingSite";
+import { getDefaultHostingSite } from "./getDefaultHostingSite.js";
 
 /**
  * Ensure that a hosting site is set, fetching it from defaultHostingSite if not already present.

@@ -1,14 +1,14 @@
 import { createGunzip, createGzip } from "zlib";
 import { expect } from "chai";
-import * as express from "express";
+import express from "express";
 import * as http from "http";
-import * as nock from "nock";
+import nock from "nock";
 import * as portfinder from "portfinder";
-import * as supertest from "supertest";
+import supertest from "supertest";
 
-import { initMiddleware } from "../../hosting/initMiddleware";
-import { streamToString, stringToStream } from "../../utils";
-import { TemplateServerResponse } from "../../hosting/implicitInit";
+import { initMiddleware } from "../../hosting/initMiddleware.js";
+import { streamToString, stringToStream } from "../../utils.js";
+import { TemplateServerResponse } from "../../hosting/implicitInit.js";
 
 const templateServerRes: TemplateServerResponse = {
   js: "here is some js",

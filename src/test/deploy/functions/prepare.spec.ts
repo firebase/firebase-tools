@@ -1,8 +1,8 @@
 import { expect } from "chai";
 
-import * as backend from "../../../deploy/functions/backend";
-import * as prepare from "../../../deploy/functions/prepare";
-import { BEFORE_CREATE_EVENT, BEFORE_SIGN_IN_EVENT } from "../../../functions/events/v1";
+import * as backend from "../../../deploy/functions/backend.js";
+import * as prepare from "../../../deploy/functions/prepare.js";
+import { BEFORE_CREATE_EVENT, BEFORE_SIGN_IN_EVENT } from "../../../functions/events/v1.js";
 
 describe("prepare", () => {
   const ENDPOINT_BASE: Omit<backend.Endpoint, "httpsTrigger"> = {

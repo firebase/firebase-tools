@@ -1,15 +1,15 @@
 import * as _ from "lodash";
 import * as clc from "cli-color";
 
-import { Command } from "../command";
-import { logger } from "../logger";
-import { configstore } from "../configstore";
-import * as utils from "../utils";
-import { FirebaseError } from "../error";
-import { promptOnce } from "../prompt";
+import { Command } from "../command.js";
+import { logger } from "../logger.js";
+import { configstore } from "../configstore.js";
+import * as utils from "../utils.js";
+import { FirebaseError } from "../error.js";
+import { promptOnce } from "../prompt.js";
 
-import * as auth from "../auth";
-import { isCloudEnvironment } from "../utils";
+import * as auth from "../auth.js";
+import { isCloudEnvironment } from "../utils.js";
 
 export const command = new Command("login")
   .description("log the CLI into Firebase")

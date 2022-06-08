@@ -1,6 +1,6 @@
 import * as _ from "lodash";
 
-import { FirebaseError } from "./error";
+import { FirebaseError } from "./error.js";
 
 export function responseToError(response: any, body: any): FirebaseError | undefined {
   if (response.statusCode < 400) {

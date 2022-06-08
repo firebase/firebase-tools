@@ -1,22 +1,22 @@
 import * as clc from "cli-color";
 
-import { Options } from "../../../options";
-import { logger } from "../../../logger";
-import { reduceFlat } from "../../../functional";
-import * as args from "../args";
-import * as backend from "../backend";
-import * as containerCleaner from "../containerCleaner";
-import * as planner from "./planner";
-import * as fabricator from "./fabricator";
-import * as reporter from "./reporter";
-import * as executor from "./executor";
-import * as prompts from "../prompts";
-import * as secrets from "../../../functions/secrets";
-import { getAppEngineLocation } from "../../../functionsConfig";
-import { getFunctionLabel } from "../functionsDeployHelper";
-import { FirebaseError } from "../../../error";
-import { needProjectId, needProjectNumber } from "../../../projectUtils";
-import { logLabeledBullet, logLabeledWarning } from "../../../utils";
+import { Options } from "../../../options.js";
+import { logger } from "../../../logger.js";
+import { reduceFlat } from "../../../functional.js";
+import * as args from "../args.js";
+import * as backend from "../backend.js";
+import * as containerCleaner from "../containerCleaner.js";
+import * as planner from "./planner.js";
+import * as fabricator from "./fabricator.js";
+import * as reporter from "./reporter.js";
+import * as executor from "./executor.js";
+import * as prompts from "../prompts.js";
+import * as secrets from "../../../functions/secrets.js";
+import { getAppEngineLocation } from "../../../functionsConfig.js";
+import { getFunctionLabel } from "../functionsDeployHelper.js";
+import { FirebaseError } from "../../../error.js";
+import { needProjectId, needProjectNumber } from "../../../projectUtils.js";
+import { logLabeledBullet, logLabeledWarning } from "../../../utils.js";
 
 /** Releases new versions of functions to prod. */
 export async function release(

@@ -1,12 +1,12 @@
 import * as _ from "lodash";
 import * as clc from "cli-color";
-import Table = require("cli-table");
+import Table from "cli-table";
 
-import { ExtensionInstance, listInstances } from "./extensionsApi";
-import { logPrefix } from "./extensionsHelper";
-import * as utils from "../utils";
-import * as extensionsUtils from "./utils";
-import { logger } from "../logger";
+import { ExtensionInstance, listInstances } from "./extensionsApi.js";
+import { logPrefix } from "./extensionsHelper.js";
+import * as utils from "../utils.js";
+import * as extensionsUtils from "./utils.js";
+import { logger } from "../logger.js";
 
 /**
  * Lists the extensions installed under a project

@@ -1,19 +1,19 @@
 import * as _ from "lodash";
 import * as fs from "fs";
 import * as path from "path";
-import * as express from "express";
+import express from "express";
 import * as clc from "cli-color";
 import * as http from "http";
 import * as jwt from "jsonwebtoken";
-import * as cors from "cors";
+import cors from "cors";
 import * as stream from "stream";
 import { URL } from "url";
 import { EventEmitter } from "events";
 
-import { Account } from "../auth";
-import { logger } from "../logger";
-import { track } from "../track";
-import { Constants } from "./constants";
+import { Account } from "../auth.js";
+import { logger } from "../logger.js";
+import { track } from "../track.js";
+import { Constants } from "./constants.js";
 import {
   EmulatorInfo,
   EmulatorInstance,
@@ -23,7 +23,7 @@ import {
 } from "./types";
 import * as chokidar from "chokidar";
 
-import * as spawn from "cross-spawn";
+import spawn from "cross-spawn";
 import { ChildProcess } from "child_process";
 import {
   EmulatedTriggerDefinition,
@@ -45,29 +45,29 @@ import {
   prepareEndpoints,
   BlockingTrigger,
 } from "./functionsEmulatorShared";
-import { EmulatorRegistry } from "./registry";
-import { EmulatorLogger, Verbosity } from "./emulatorLogger";
-import { RuntimeWorker, RuntimeWorkerPool } from "./functionsRuntimeWorker";
-import { PubsubEmulator } from "./pubsubEmulator";
-import { FirebaseError } from "../error";
-import { WorkQueue } from "./workQueue";
-import { allSettled, createDestroyer } from "../utils";
-import { getCredentialPathAsync } from "../defaultCredentials";
+import { EmulatorRegistry } from "./registry.js";
+import { EmulatorLogger, Verbosity } from "./emulatorLogger.js";
+import { RuntimeWorker, RuntimeWorkerPool } from "./functionsRuntimeWorker.js";
+import { PubsubEmulator } from "./pubsubEmulator.js";
+import { FirebaseError } from "../error.js";
+import { WorkQueue } from "./workQueue.js";
+import { allSettled, createDestroyer } from "../utils.js";
+import { getCredentialPathAsync } from "../defaultCredentials.js";
 import {
   AdminSdkConfig,
   constructDefaultAdminSdkConfig,
   getProjectAdminSdkConfigOrCached,
 } from "./adminSdkConfig";
-import { EventUtils } from "./events/types";
-import { functionIdsAreValid } from "../deploy/functions/validate";
-import { Extension, ExtensionSpec, ExtensionVersion } from "../extensions/extensionsApi";
-import { accessSecretVersion } from "../gcp/secretManager";
+import { EventUtils } from "./events/types.js";
+import { functionIdsAreValid } from "../deploy/functions/validate.js";
+import { Extension, ExtensionSpec, ExtensionVersion } from "../extensions/extensionsApi.js";
+import { accessSecretVersion } from "../gcp/secretManager.js";
 import * as runtimes from "../deploy/functions/runtimes";
-import * as backend from "../deploy/functions/backend";
-import * as functionsEnv from "../functions/env";
-import { AUTH_BLOCKING_EVENTS, BEFORE_CREATE_EVENT } from "../functions/events/v1";
-import { BlockingFunctionsConfig } from "../gcp/identityPlatform";
-import { Client } from "../apiv2";
+import * as backend from "../deploy/functions/backend.js";
+import * as functionsEnv from "../functions/env.js";
+import { AUTH_BLOCKING_EVENTS, BEFORE_CREATE_EVENT } from "../functions/events/v1.js";
+import { BlockingFunctionsConfig } from "../gcp/identityPlatform.js";
+import { Client } from "../apiv2.js";
 
 const EVENT_INVOKE = "functions:invoke";
 

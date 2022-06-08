@@ -1,6 +1,6 @@
 import { expect } from "chai";
-import { Endpoint } from "../../../../deploy/functions/backend";
-import * as firebaseAlerts from "../../../../deploy/functions/services/firebaseAlerts";
+import { Endpoint } from "../../../../deploy/functions/backend.js";
+import * as firebaseAlerts from "../../../../deploy/functions/services/firebaseAlerts.js";
 
 const projectNumber = "123456789";
 

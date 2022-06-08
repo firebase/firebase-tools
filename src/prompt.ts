@@ -1,7 +1,7 @@
 import * as inquirer from "inquirer";
 import * as _ from "lodash";
 
-import { FirebaseError } from "./error";
+import { FirebaseError } from "./error.js";
 
 /**
  * Question type for inquirer. See

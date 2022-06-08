@@ -3,14 +3,14 @@ import * as clc from "cli-color";
 const { marked } = require("marked");
 import * as path from "path";
 import * as semver from "semver";
-import TerminalRenderer = require("marked-terminal");
-import Table = require("cli-table");
+import TerminalRenderer from "marked-terminal";
+import Table from "cli-table";
 
-import { listExtensionVersions } from "./extensionsApi";
-import { readFile } from "./localHelper";
-import { logger } from "../logger";
-import * as refs from "./refs";
-import { logLabeledWarning } from "../utils";
+import { listExtensionVersions } from "./extensionsApi.js";
+import { readFile } from "./localHelper.js";
+import { logger } from "../logger.js";
+import * as refs from "./refs.js";
+import { logLabeledWarning } from "../utils.js";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),

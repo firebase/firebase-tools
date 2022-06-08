@@ -1,12 +1,12 @@
-import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
-import { Command } from "../command";
-import { needProjectId } from "../projectUtils";
-import { logger } from "../logger";
+import { checkMinRequiredVersion } from "../checkMinRequiredVersion.js";
+import { Command } from "../command.js";
+import { needProjectId } from "../projectUtils.js";
+import { logger } from "../logger.js";
 import {
   createSourceFromLocation,
   ensureExtensionsApiEnabled,
 } from "../extensions/extensionsHelper";
-import { requirePermissions } from "../requirePermissions";
+import { requirePermissions } from "../requirePermissions.js";
 
 /**
  * Command for creating a extension source

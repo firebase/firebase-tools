@@ -1,5 +1,5 @@
-import { logError } from "./logError";
-import { FirebaseError } from "./error";
+import { logError } from "./logError.js";
+import { FirebaseError } from "./error.js";
 
 /**
  * Errors out by calling `process.exit` with an exit code of 2.

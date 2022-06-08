@@ -1,10 +1,10 @@
 import { URL } from "url";
 import * as fs from "fs-extra";
-import * as ProgressBar from "progress";
+import ProgressBar from "progress";
 import * as tmp from "tmp";
 
-import { Client } from "./apiv2";
-import { FirebaseError } from "./error";
+import { Client } from "./apiv2.js";
+import { FirebaseError } from "./error.js";
 
 /**
  * Downloads the resource at `remoteUrl` to a temporary file.

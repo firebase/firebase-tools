@@ -2,15 +2,15 @@ import * as fs from "fs";
 import * as path from "path";
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const { marked } = require("marked");
-import TerminalRenderer = require("marked-terminal");
+import TerminalRenderer from "marked-terminal";
 
-import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
-import { Command } from "../command";
-import { Config } from "../config";
-import { FirebaseError } from "../error";
-import { promptOnce } from "../prompt";
-import { logger } from "../logger";
-import * as npmDependencies from "../init/features/functions/npm-dependencies";
+import { checkMinRequiredVersion } from "../checkMinRequiredVersion.js";
+import { Command } from "../command.js";
+import { Config } from "../config.js";
+import { FirebaseError } from "../error.js";
+import { promptOnce } from "../prompt.js";
+import { logger } from "../logger.js";
+import * as npmDependencies from "../init/features/functions/npm-dependencies.js";
 marked.setOptions({
   renderer: new TerminalRenderer(),
 });

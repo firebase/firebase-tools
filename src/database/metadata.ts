@@ -2,10 +2,10 @@
  * Package for interacting with Realtime Database metadata.
  */
 
-import { realtimeOrigin, rtdbMetadataOrigin } from "../api";
-import { Client } from "../apiv2";
-import { logger } from "../logger";
-import * as utils from "../utils";
+import { realtimeOrigin, rtdbMetadataOrigin } from "../api.cjs";
+import { Client } from "../apiv2.js";
+import { logger } from "../logger.js";
+import * as utils from "../utils.js";
 
 function handleErrorResponse(response: any): Promise<any> {
   if (response.body && response.body.error) {

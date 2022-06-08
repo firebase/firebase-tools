@@ -1,10 +1,10 @@
 import * as clc from "cli-color";
 
-import { Command } from "../command";
-import { needProjectId } from "../projectUtils";
-import { AppAndroidShaData, createAppAndroidSha, ShaCertificateType } from "../management/apps";
-import { requireAuth } from "../requireAuth";
-import { promiseWithSpinner } from "../utils";
+import { Command } from "../command.js";
+import { needProjectId } from "../projectUtils.js";
+import { AppAndroidShaData, createAppAndroidSha, ShaCertificateType } from "../management/apps.js";
+import { requireAuth } from "../requireAuth.js";
+import { promiseWithSpinner } from "../utils.js";
 
 function getCertHashType(shaHash: string): string {
   shaHash = shaHash.replace(/:/g, "");

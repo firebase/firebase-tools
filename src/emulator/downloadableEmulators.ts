@@ -5,20 +5,20 @@ import {
   DownloadableEmulatorDetails,
   EmulatorDownloadDetails,
 } from "./types";
-import { Constants } from "./constants";
+import { Constants } from "./constants.js";
 
-import { FirebaseError } from "../error";
+import { FirebaseError } from "../error.js";
 import * as childProcess from "child_process";
-import * as utils from "../utils";
-import { EmulatorLogger } from "./emulatorLogger";
+import * as utils from "../utils.js";
+import { EmulatorLogger } from "./emulatorLogger.js";
 
 import * as clc from "cli-color";
 import * as fs from "fs-extra";
 import * as path from "path";
 import * as os from "os";
-import { EmulatorRegistry } from "./registry";
-import { downloadEmulator } from "../emulator/download";
-import { previews } from "../previews";
+import { EmulatorRegistry } from "./registry.js";
+import { downloadEmulator } from "../emulator/download.js";
+import { previews } from "../previews.js";
 
 const EMULATOR_INSTANCE_KILL_TIMEOUT = 4000; /* ms */
 

@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { crc32c } from "../../../emulator/storage/crc";
+import { crc32c } from "../../../emulator/storage/crc.js";
 
 /**
  * Test cases adapated from:

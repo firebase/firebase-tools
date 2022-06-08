@@ -1,16 +1,16 @@
 import * as clc from "cli-color";
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const { marked } = require("marked");
-import TerminalRenderer = require("marked-terminal");
+import TerminalRenderer from "marked-terminal";
 
-import { Command } from "../command";
-import { publishExtensionVersionFromLocalSource, logPrefix } from "../extensions/extensionsHelper";
-import * as refs from "../extensions/refs";
-import { findExtensionYaml } from "../extensions/localHelper";
-import { consoleInstallLink } from "../extensions/publishHelpers";
-import { requireAuth } from "../requireAuth";
-import { FirebaseError } from "../error";
-import * as utils from "../utils";
+import { Command } from "../command.js";
+import { publishExtensionVersionFromLocalSource, logPrefix } from "../extensions/extensionsHelper.js";
+import * as refs from "../extensions/refs.js";
+import { findExtensionYaml } from "../extensions/localHelper.js";
+import { consoleInstallLink } from "../extensions/publishHelpers.js";
+import { requireAuth } from "../requireAuth.js";
+import { FirebaseError } from "../error.js";
+import * as utils from "../utils.js";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),

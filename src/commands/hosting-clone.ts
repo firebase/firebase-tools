@@ -1,8 +1,9 @@
-import { bold } from "cli-color";
-import * as ora from "ora";
+import clccolor from "cli-color";
+const { bold } = clccolor;
+import ora from "ora";
 
-import { Command } from "../command";
-import { FirebaseError } from "../error";
+import { Command } from "../command.js";
+import { FirebaseError } from "../error.js";
 import {
   getChannel,
   createChannel,
@@ -11,11 +12,11 @@ import {
   addAuthDomains,
   normalizeName,
 } from "../hosting/api";
-import * as utils from "../utils";
-import { requireAuth } from "../requireAuth";
+import * as utils from "../utils.js";
+import { requireAuth } from "../requireAuth.js";
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const { marked } = require("marked");
-import { logger } from "../logger";
+import { logger } from "../logger.js";
 
 export const command = new Command("hosting:clone <source> <targetChannel>")
   .description("clone a version from one site to another")

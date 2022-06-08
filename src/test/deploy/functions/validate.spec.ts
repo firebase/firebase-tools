@@ -1,14 +1,14 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 
-import { FirebaseError } from "../../../error";
-import * as fsutils from "../../../fsutils";
-import * as validate from "../../../deploy/functions/validate";
-import * as projectPath from "../../../projectPath";
-import * as secretManager from "../../../gcp/secretManager";
-import * as backend from "../../../deploy/functions/backend";
-import { BEFORE_CREATE_EVENT, BEFORE_SIGN_IN_EVENT } from "../../../functions/events/v1";
-import { resolveCpu } from "../../../deploy/functions/prepare";
+import { FirebaseError } from "../../../error.js";
+import * as fsutils from "../../../fsutils.js";
+import * as validate from "../../../deploy/functions/validate.js";
+import * as projectPath from "../../../projectPath.js";
+import * as secretManager from "../../../gcp/secretManager.js";
+import * as backend from "../../../deploy/functions/backend.js";
+import { BEFORE_CREATE_EVENT, BEFORE_SIGN_IN_EVENT } from "../../../functions/events/v1.js";
+import { resolveCpu } from "../../../deploy/functions/prepare.js";
 
 describe("validate", () => {
   describe("functionsDirectoryExists", () => {

@@ -4,7 +4,7 @@ import * as admin from "firebase-admin";
 import { Bucket } from "@google-cloud/storage";
 import * as http from "http";
 import * as firebase from "firebase";
-import { TriggerEndToEndTest } from "../integration-helpers/framework";
+import { TriggerEndToEndTest } from "../integration-helpers/framework.js";
 import * as fs from "fs";
 import * as path from "path";
 import {

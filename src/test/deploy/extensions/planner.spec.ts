@@ -1,8 +1,8 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 
-import * as planner from "../../../deploy/extensions/planner";
-import * as extensionsApi from "../../../extensions/extensionsApi";
+import * as planner from "../../../deploy/extensions/planner.js";
+import * as extensionsApi from "../../../extensions/extensionsApi.js";
 
 function extensionVersion(version: string): extensionsApi.ExtensionVersion {
   return {

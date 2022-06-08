@@ -1,18 +1,18 @@
-import { Command } from "../command";
-import { logger } from "../logger";
-import { requirePermissions } from "../requirePermissions";
-import { warnEmulatorNotSupported } from "../emulator/commandUtils";
-import { Emulators } from "../emulator/types";
+import { Command } from "../command.js";
+import { logger } from "../logger.js";
+import { requirePermissions } from "../requirePermissions.js";
+import { warnEmulatorNotSupported } from "../emulator/commandUtils.js";
+import { Emulators } from "../emulator/types.js";
 import {
   createInstance,
   DatabaseInstanceType,
   DatabaseLocation,
   parseDatabaseLocation,
 } from "../management/database";
-import { needProjectId } from "../projectUtils";
-import { getDefaultDatabaseInstance } from "../getDefaultDatabaseInstance";
-import { FirebaseError } from "../error";
-import { MISSING_DEFAULT_INSTANCE_ERROR_MESSAGE } from "../requireDatabaseInstance";
+import { needProjectId } from "../projectUtils.js";
+import { getDefaultDatabaseInstance } from "../getDefaultDatabaseInstance.js";
+import { FirebaseError } from "../error.js";
+import { MISSING_DEFAULT_INSTANCE_ERROR_MESSAGE } from "../requireDatabaseInstance.js";
 
 export const command = new Command("database:instances:create <instanceName>")
   .description("create a realtime database instance")

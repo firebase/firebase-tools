@@ -3,17 +3,17 @@ import * as fs from "fs";
 
 import * as clc from "cli-color";
 
-import { ensureValidKey, ensureSecret, pruneAndDestroySecrets } from "../functions/secrets";
-import { Command } from "../command";
-import { requirePermissions } from "../requirePermissions";
-import { Options } from "../options";
-import { promptOnce } from "../prompt";
-import { logBullet, logSuccess, logWarning } from "../utils";
-import { needProjectId, needProjectNumber } from "../projectUtils";
-import { addVersion, toSecretVersionResourceName } from "../gcp/secretManager";
-import * as secrets from "../functions/secrets";
-import * as backend from "../deploy/functions/backend";
-import * as args from "../deploy/functions/args";
+import { ensureValidKey, ensureSecret, pruneAndDestroySecrets } from "../functions/secrets.js";
+import { Command } from "../command.js";
+import { requirePermissions } from "../requirePermissions.js";
+import { Options } from "../options.js";
+import { promptOnce } from "../prompt.js";
+import { logBullet, logSuccess, logWarning } from "../utils.js";
+import { needProjectId, needProjectNumber } from "../projectUtils.js";
+import { addVersion, toSecretVersionResourceName } from "../gcp/secretManager.js";
+import * as secrets from "../functions/secrets.js";
+import * as backend from "../deploy/functions/backend.js";
+import * as args from "../deploy/functions/args.js";
 
 export const command = new Command("functions:secrets:set <KEY>")
   .description("Create or update a secret for use in Cloud Functions for Firebase.")

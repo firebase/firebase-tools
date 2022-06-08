@@ -3,10 +3,10 @@ import * as _ from "lodash";
 import * as os from "os";
 import * as path from "path";
 
-import { Client } from "./apiv2";
-import { FirebaseError } from "./error";
-import { googleOrigin } from "./api";
-import * as utils from "./utils";
+import { Client } from "./apiv2.js";
+import { FirebaseError } from "./error.js";
+import { googleOrigin } from "./api.cjs";
+import * as utils from "./utils.js";
 
 const apiClient = new Client({
   urlPrefix: googleOrigin,

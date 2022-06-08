@@ -1,25 +1,25 @@
 import * as clc from "cli-color";
 import * as childProcess from "child_process";
 
-import * as controller from "../emulator/controller";
-import { Config } from "../config";
-import * as utils from "../utils";
-import { logger } from "../logger";
+import * as controller from "../emulator/controller.js";
+import { Config } from "../config.js";
+import * as utils from "../utils.js";
+import { logger } from "../logger.js";
 import * as path from "path";
-import { Constants } from "./constants";
-import { requireAuth } from "../requireAuth";
-import { requireConfig } from "../requireConfig";
-import { Emulators, ALL_SERVICE_EMULATORS } from "./types";
-import { FirebaseError } from "../error";
-import { EmulatorRegistry } from "./registry";
-import { FirestoreEmulator } from "./firestoreEmulator";
-import { getProjectId } from "../projectUtils";
-import { promptOnce } from "../prompt";
-import { onExit } from "./controller";
-import * as fsutils from "../fsutils";
+import { Constants } from "./constants.js";
+import { requireAuth } from "../requireAuth.js";
+import { requireConfig } from "../requireConfig.js";
+import { Emulators, ALL_SERVICE_EMULATORS } from "./types.js";
+import { FirebaseError } from "../error.js";
+import { EmulatorRegistry } from "./registry.js";
+import { FirestoreEmulator } from "./firestoreEmulator.js";
+import { getProjectId } from "../projectUtils.js";
+import { promptOnce } from "../prompt.js";
+import { onExit } from "./controller.js";
+import * as fsutils from "../fsutils.js";
 import Signals = NodeJS.Signals;
 import SignalsListener = NodeJS.SignalsListener;
-import Table = require("cli-table");
+import Table from "cli-table";
 
 export const FLAG_ONLY = "--only <emulators>";
 export const DESC_ONLY =

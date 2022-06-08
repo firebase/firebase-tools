@@ -1,19 +1,19 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 
-import { FirebaseError } from "../../error";
-import * as extensionsApi from "../../extensions/extensionsApi";
-import * as extensionsHelper from "../../extensions/extensionsHelper";
-import * as getProjectNumber from "../../getProjectNumber";
-import * as functionsConfig from "../../functionsConfig";
+import { FirebaseError } from "../../error.js";
+import * as extensionsApi from "../../extensions/extensionsApi.js";
+import * as extensionsHelper from "../../extensions/extensionsHelper.js";
+import * as getProjectNumber from "../../getProjectNumber.js";
+import * as functionsConfig from "../../functionsConfig.js";
 import { storage } from "../../gcp";
-import * as archiveDirectory from "../../archiveDirectory";
-import * as prompt from "../../prompt";
-import { ExtensionSource } from "../../extensions/extensionsApi";
+import * as archiveDirectory from "../../archiveDirectory.js";
+import * as prompt from "../../prompt.js";
+import { ExtensionSource } from "../../extensions/extensionsApi.js";
 import { Readable } from "stream";
-import { ArchiveResult } from "../../archiveDirectory";
-import { canonicalizeRefInput } from "../../extensions/extensionsHelper";
-import * as planner from "../../deploy/extensions/planner";
+import { ArchiveResult } from "../../archiveDirectory.js";
+import { canonicalizeRefInput } from "../../extensions/extensionsHelper.js";
+import * as planner from "../../deploy/extensions/planner.js";
 
 describe("extensionsHelper", () => {
   describe("substituteParams", () => {

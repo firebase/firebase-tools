@@ -1,7 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import { tmpdir } from "os";
-import { findModuleRoot, FunctionsRuntimeBundle } from "../../emulator/functionsEmulatorShared";
+import { findModuleRoot, FunctionsRuntimeBundle } from "../../emulator/functionsEmulatorShared.js";
 
 export const TIMEOUT_LONG = 10000;
 export const TIMEOUT_MED = 5000;

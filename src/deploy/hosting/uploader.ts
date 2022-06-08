@@ -1,4 +1,5 @@
-import { size } from "lodash";
+import lodash from "lodash";
+const { size } = lodash;
 import AbortController from "abort-controller";
 import * as clc from "cli-color";
 import * as crypto from "crypto";
@@ -6,12 +7,12 @@ import * as fs from "fs";
 import * as path from "path";
 import * as zlib from "zlib";
 
-import { Client } from "../../apiv2";
-import { Queue } from "../../throttler/queue";
-import { hostingApiOrigin } from "../../api";
-import { load, dump, HashRecord } from "./hashcache";
-import { logger } from "../../logger";
-import { FirebaseError } from "../../error";
+import { Client } from "../../apiv2.js";
+import { Queue } from "../../throttler/queue.js";
+import { hostingApiOrigin } from "../../api.cjs";
+import { load, dump, HashRecord } from "./hashcache.js";
+import { logger } from "../../logger.js";
+import { FirebaseError } from "../../error.js";
 
 const MIN_UPLOAD_TIMEOUT = 30000; // 30s
 const MAX_UPLOAD_TIMEOUT = 7200000; // 2h

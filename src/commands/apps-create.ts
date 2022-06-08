@@ -1,9 +1,9 @@
 import * as clc from "cli-color";
-import * as ora from "ora";
+import ora from "ora";
 
-import { Command } from "../command";
-import { needProjectId } from "../projectUtils";
-import { FirebaseError } from "../error";
+import { Command } from "../command.js";
+import { needProjectId } from "../projectUtils.js";
+import { FirebaseError } from "../error.js";
 import {
   AndroidAppMetadata,
   AppMetadata,
@@ -15,9 +15,9 @@ import {
   IosAppMetadata,
   WebAppMetadata,
 } from "../management/apps";
-import { prompt, promptOnce, Question } from "../prompt";
-import { requireAuth } from "../requireAuth";
-import { logger } from "../logger";
+import { prompt, promptOnce, Question } from "../prompt.js";
+import { requireAuth } from "../requireAuth.js";
+import { logger } from "../logger.js";
 
 const DISPLAY_NAME_QUESTION: Question = {
   type: "input",

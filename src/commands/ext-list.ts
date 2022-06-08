@@ -1,9 +1,9 @@
-import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
-import { Command } from "../command";
-import { needProjectId } from "../projectUtils";
-import { listExtensions } from "../extensions/listExtensions";
-import { ensureExtensionsApiEnabled } from "../extensions/extensionsHelper";
-import { requirePermissions } from "../requirePermissions";
+import { checkMinRequiredVersion } from "../checkMinRequiredVersion.js";
+import { Command } from "../command.js";
+import { needProjectId } from "../projectUtils.js";
+import { listExtensions } from "../extensions/listExtensions.js";
+import { ensureExtensionsApiEnabled } from "../extensions/extensionsHelper.js";
+import { requirePermissions } from "../requirePermissions.js";
 
 export const command = new Command("ext:list")
   .description("list all the extensions that are installed in your Firebase project")

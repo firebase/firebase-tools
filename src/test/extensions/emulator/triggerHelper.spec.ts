@@ -1,6 +1,6 @@
 import { expect } from "chai";
-import * as triggerHelper from "../../../extensions/emulator/triggerHelper";
-import { Resource } from "../../../extensions/extensionsApi";
+import * as triggerHelper from "../../../extensions/emulator/triggerHelper.js";
+import { Resource } from "../../../extensions/extensionsApi.js";
 
 describe("triggerHelper", () => {
   describe("functionResourceToEmulatedTriggerDefintion", () => {

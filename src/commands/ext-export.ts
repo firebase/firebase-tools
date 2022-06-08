@@ -1,21 +1,21 @@
-import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
-import { Command } from "../command";
-import * as planner from "../deploy/extensions/planner";
+import { checkMinRequiredVersion } from "../checkMinRequiredVersion.js";
+import { Command } from "../command.js";
+import * as planner from "../deploy/extensions/planner.js";
 import {
   displayExportInfo,
   parameterizeProject,
   setSecretParamsToLatest,
 } from "../extensions/export";
-import { ensureExtensionsApiEnabled } from "../extensions/extensionsHelper";
-import * as manifest from "../extensions/manifest";
-import { buildBindingOptionsWithBaseValue } from "../extensions/paramHelper";
-import { partition } from "../functional";
-import { getProjectNumber } from "../getProjectNumber";
-import { logger } from "../logger";
-import { Options } from "../options";
-import { needProjectId } from "../projectUtils";
-import { promptOnce } from "../prompt";
-import { requirePermissions } from "../requirePermissions";
+import { ensureExtensionsApiEnabled } from "../extensions/extensionsHelper.js";
+import * as manifest from "../extensions/manifest.js";
+import { buildBindingOptionsWithBaseValue } from "../extensions/paramHelper.js";
+import { partition } from "../functional.js";
+import { getProjectNumber } from "../getProjectNumber.js";
+import { logger } from "../logger.js";
+import { Options } from "../options.js";
+import { needProjectId } from "../projectUtils.js";
+import { promptOnce } from "../prompt.js";
+import { requirePermissions } from "../requirePermissions.js";
 
 export const command = new Command("ext:export")
   .description(

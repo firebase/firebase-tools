@@ -1,6 +1,6 @@
-import { Command } from "../command";
-import { Options } from "../options";
-import { needProjectId, needProjectNumber } from "../projectUtils";
+import { Command } from "../command.js";
+import { Options } from "../options.js";
+import { needProjectId, needProjectNumber } from "../projectUtils.js";
 import {
   deleteSecret,
   destroySecretVersion,
@@ -8,11 +8,11 @@ import {
   getSecretVersion,
   listSecretVersions,
 } from "../gcp/secretManager";
-import { promptOnce } from "../prompt";
-import { logBullet, logWarning } from "../utils";
-import * as secrets from "../functions/secrets";
-import * as backend from "../deploy/functions/backend";
-import * as args from "../deploy/functions/args";
+import { promptOnce } from "../prompt.js";
+import { logBullet, logWarning } from "../utils.js";
+import * as secrets from "../functions/secrets.js";
+import * as backend from "../deploy/functions/backend.js";
+import * as args from "../deploy/functions/args.js";
 
 export const command = new Command("functions:secrets:destroy <KEY>[@version]")
   .description("Destroy a secret. Defaults to destroying the latest version.")

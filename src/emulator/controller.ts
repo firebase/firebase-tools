@@ -3,10 +3,10 @@ import * as clc from "cli-color";
 import * as fs from "fs";
 import * as path from "path";
 
-import { logger } from "../logger";
-import { track } from "../track";
-import * as utils from "../utils";
-import { EmulatorRegistry } from "./registry";
+import { logger } from "../logger.js";
+import { track } from "../track.js";
+import * as utils from "../utils.js";
+import { EmulatorRegistry } from "./registry.js";
 import {
   Address,
   ALL_SERVICE_EMULATORS,
@@ -15,39 +15,39 @@ import {
   EMULATORS_SUPPORTED_BY_UI,
   isEmulator,
 } from "./types";
-import { Constants, FIND_AVAILBLE_PORT_BY_DEFAULT } from "./constants";
-import { EmulatableBackend, FunctionsEmulator } from "./functionsEmulator";
-import { parseRuntimeVersion } from "./functionsEmulatorUtils";
+import { Constants, FIND_AVAILBLE_PORT_BY_DEFAULT } from "./constants.js";
+import { EmulatableBackend, FunctionsEmulator } from "./functionsEmulator.js";
+import { parseRuntimeVersion } from "./functionsEmulatorUtils.js";
 import { AuthEmulator } from "./auth";
-import { DatabaseEmulator, DatabaseEmulatorArgs } from "./databaseEmulator";
-import { FirestoreEmulator, FirestoreEmulatorArgs } from "./firestoreEmulator";
-import { HostingEmulator } from "./hostingEmulator";
-import { FirebaseError } from "../error";
-import { getProjectId, needProjectId, getAliases, needProjectNumber } from "../projectUtils";
-import { PubsubEmulator } from "./pubsubEmulator";
-import * as commandUtils from "./commandUtils";
-import { EmulatorHub } from "./hub";
-import { ExportMetadata, HubExport } from "./hubExport";
-import { EmulatorUI } from "./ui";
-import { LoggingEmulator } from "./loggingEmulator";
-import * as dbRulesConfig from "../database/rulesConfig";
-import { EmulatorLogger } from "./emulatorLogger";
-import * as portUtils from "./portUtils";
-import { EmulatorHubClient } from "./hubClient";
-import { promptOnce } from "../prompt";
-import { FLAG_EXPORT_ON_EXIT_NAME, JAVA_DEPRECATION_WARNING } from "./commandUtils";
-import { fileExistsSync } from "../fsutils";
+import { DatabaseEmulator, DatabaseEmulatorArgs } from "./databaseEmulator.js";
+import { FirestoreEmulator, FirestoreEmulatorArgs } from "./firestoreEmulator.js";
+import { HostingEmulator } from "./hostingEmulator.js";
+import { FirebaseError } from "../error.js";
+import { getProjectId, needProjectId, getAliases, needProjectNumber } from "../projectUtils.js";
+import { PubsubEmulator } from "./pubsubEmulator.js";
+import * as commandUtils from "./commandUtils.js";
+import { EmulatorHub } from "./hub.js";
+import { ExportMetadata, HubExport } from "./hubExport.js";
+import { EmulatorUI } from "./ui.js";
+import { LoggingEmulator } from "./loggingEmulator.js";
+import * as dbRulesConfig from "../database/rulesConfig.js";
+import { EmulatorLogger } from "./emulatorLogger.js";
+import * as portUtils from "./portUtils.js";
+import { EmulatorHubClient } from "./hubClient.js";
+import { promptOnce } from "../prompt.js";
+import { FLAG_EXPORT_ON_EXIT_NAME, JAVA_DEPRECATION_WARNING } from "./commandUtils.js";
+import { fileExistsSync } from "../fsutils.js";
 import { StorageEmulator } from "./storage";
-import { getStorageRulesConfig } from "./storage/rules/config";
-import { getDefaultDatabaseInstance } from "../getDefaultDatabaseInstance";
-import { getProjectDefaultAccount } from "../auth";
-import { Options } from "../options";
-import { ParsedTriggerDefinition } from "./functionsEmulatorShared";
-import { ExtensionsEmulator } from "./extensionsEmulator";
-import { normalizeAndValidate } from "../functions/projectConfig";
-import { requiresJava } from "./downloadableEmulators";
+import { getStorageRulesConfig } from "./storage/rules/config.js";
+import { getDefaultDatabaseInstance } from "../getDefaultDatabaseInstance.js";
+import { getProjectDefaultAccount } from "../auth.js";
+import { Options } from "../options.js";
+import { ParsedTriggerDefinition } from "./functionsEmulatorShared.js";
+import { ExtensionsEmulator } from "./extensionsEmulator.js";
+import { normalizeAndValidate } from "../functions/projectConfig.js";
+import { requiresJava } from "./downloadableEmulators.js";
 import { prepareFrameworks } from "../frameworks";
-import { previews } from "../previews";
+import { previews } from "../previews.js";
 
 const START_LOGGING_EMULATOR = utils.envOverride(
   "START_LOGGING_EMULATOR",

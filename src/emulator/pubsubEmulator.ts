@@ -2,15 +2,15 @@ import * as uuid from "uuid";
 import { MessagePublishedData } from "@google/events/cloud/pubsub/v1/MessagePublishedData";
 import { Message, PubSub, Subscription } from "@google-cloud/pubsub";
 
-import * as downloadableEmulators from "./downloadableEmulators";
-import { Client } from "../apiv2";
-import { EmulatorLogger } from "./emulatorLogger";
-import { EmulatorInfo, EmulatorInstance, Emulators } from "../emulator/types";
-import { Constants } from "./constants";
-import { FirebaseError } from "../error";
-import { EmulatorRegistry } from "./registry";
-import { SignatureType } from "./functionsEmulatorShared";
-import { CloudEvent } from "./events/types";
+import * as downloadableEmulators from "./downloadableEmulators.js";
+import { Client } from "../apiv2.js";
+import { EmulatorLogger } from "./emulatorLogger.js";
+import { EmulatorInfo, EmulatorInstance, Emulators } from "../emulator/types.js";
+import { Constants } from "./constants.js";
+import { FirebaseError } from "../error.js";
+import { EmulatorRegistry } from "./registry.js";
+import { SignatureType } from "./functionsEmulatorShared.js";
+import { CloudEvent } from "./events/types.js";
 
 export interface PubsubEmulatorArgs {
   projectId: string;

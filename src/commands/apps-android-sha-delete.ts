@@ -1,10 +1,10 @@
 import * as clc from "cli-color";
 
-import { Command } from "../command";
-import { needProjectId } from "../projectUtils";
-import { deleteAppAndroidSha } from "../management/apps";
-import { requireAuth } from "../requireAuth";
-import { promiseWithSpinner } from "../utils";
+import { Command } from "../command.js";
+import { needProjectId } from "../projectUtils.js";
+import { deleteAppAndroidSha } from "../management/apps.js";
+import { requireAuth } from "../requireAuth.js";
+import { promiseWithSpinner } from "../utils.js";
 
 export const command = new Command("apps:android:sha:delete <appId> <shaId>")
   .description("delete a SHA certificate hash for a given app id.")

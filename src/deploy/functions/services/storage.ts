@@ -1,9 +1,9 @@
-import * as storage from "../../../gcp/storage";
-import * as backend from "../backend";
-import * as iam from "../../../gcp/iam";
-import { logger } from "../../../logger";
-import { FirebaseError } from "../../../error";
-import { regionInLocation } from "../../../gcp/location";
+import * as storage from "../../../gcp/storage.js";
+import * as backend from "../backend.js";
+import * as iam from "../../../gcp/iam.js";
+import { logger } from "../../../logger.js";
+import { FirebaseError } from "../../../error.js";
+import { regionInLocation } from "../../../gcp/location.js";
 
 const PUBSUB_PUBLISHER_ROLE = "roles/pubsub.publisher";
 

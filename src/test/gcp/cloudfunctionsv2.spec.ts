@@ -1,9 +1,9 @@
 import { expect } from "chai";
 
-import * as cloudfunctionsv2 from "../../gcp/cloudfunctionsv2";
-import * as backend from "../../deploy/functions/backend";
+import * as cloudfunctionsv2 from "../../gcp/cloudfunctionsv2.js";
+import * as backend from "../../deploy/functions/backend.js";
 import * as events from "../../functions/events";
-import * as projectConfig from "../../functions/projectConfig";
+import * as projectConfig from "../../functions/projectConfig.js";
 
 describe("cloudfunctionsv2", () => {
   const FUNCTION_NAME: backend.TargetIds = {

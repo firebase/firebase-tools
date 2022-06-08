@@ -1,10 +1,10 @@
-import { Command } from "../command";
+import { Command } from "../command.js";
 import * as clc from "cli-color";
-import * as fsi from "../firestore/indexes";
-import { logger } from "../logger";
-import { requirePermissions } from "../requirePermissions";
-import { Emulators } from "../emulator/types";
-import { warnEmulatorNotSupported } from "../emulator/commandUtils";
+import * as fsi from "../firestore/indexes.js";
+import { logger } from "../logger.js";
+import { requirePermissions } from "../requirePermissions.js";
+import { Emulators } from "../emulator/types.js";
+import { warnEmulatorNotSupported } from "../emulator/commandUtils.js";
 
 export const command = new Command("firestore:indexes")
   .description("List indexes in your project's Cloud Firestore database.")

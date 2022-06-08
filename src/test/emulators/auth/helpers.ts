@@ -1,11 +1,11 @@
 import { STATUS_CODES } from "http";
 import { inspect } from "util";
-import * as supertest from "supertest";
+import supertest from "supertest";
 import { expect, AssertionError } from "chai";
-import { IdpJwtPayload } from "../../../emulator/auth/operations";
-import { OobRecord, PhoneVerificationRecord, Tenant, UserInfo } from "../../../emulator/auth/state";
-import { TestAgent, PROJECT_ID } from "./setup";
-import { MfaEnrollments, Schemas } from "../../../emulator/auth/types";
+import { IdpJwtPayload } from "../../../emulator/auth/operations.js";
+import { OobRecord, PhoneVerificationRecord, Tenant, UserInfo } from "../../../emulator/auth/state.js";
+import { TestAgent, PROJECT_ID } from "./setup.js";
+import { MfaEnrollments, Schemas } from "../../../emulator/auth/types.js";
 
 export { PROJECT_ID };
 export const TEST_PHONE_NUMBER = "+15555550100";

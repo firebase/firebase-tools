@@ -1,15 +1,15 @@
 import { expect } from "chai";
 import { join } from "path";
 import * as fs from "fs-extra";
-import * as nock from "nock";
-import * as rimraf from "rimraf";
+import nock from "nock";
+import rimraf from "rimraf";
 import * as sinon from "sinon";
 import * as tmp from "tmp";
 
-import { AppDistributionClient, BatchRemoveTestersResponse } from "../../appdistribution/client";
-import { appDistributionOrigin } from "../../api";
-import { Distribution } from "../../appdistribution/distribution";
-import { FirebaseError } from "../../error";
+import { AppDistributionClient, BatchRemoveTestersResponse } from "../../appdistribution/client.js";
+import { appDistributionOrigin } from "../../api.cjs";
+import { Distribution } from "../../appdistribution/distribution.js";
+import { FirebaseError } from "../../error.js";
 
 tmp.setGracefulCleanup();
 

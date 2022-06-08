@@ -1,4 +1,4 @@
-import { getFirebaseProject } from "./management/projects";
+import { getFirebaseProject } from "./management/projects.js";
 
 /**
  * Tries to determine the default database instance for a project.

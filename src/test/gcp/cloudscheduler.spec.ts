@@ -1,11 +1,11 @@
 import { expect } from "chai";
-import * as nock from "nock";
+import nock from "nock";
 
-import { FirebaseError } from "../../error";
-import * as api from "../../api";
-import * as backend from "../../deploy/functions/backend";
-import * as cloudscheduler from "../../gcp/cloudscheduler";
-import { cloneDeep } from "../../utils";
+import { FirebaseError } from "../../error.js";
+import * as api from "../../api.cjs";
+import * as backend from "../../deploy/functions/backend.js";
+import * as cloudscheduler from "../../gcp/cloudscheduler.js";
+import { cloneDeep } from "../../utils.js";
 
 const VERSION = "v1beta1";
 

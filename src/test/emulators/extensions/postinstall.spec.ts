@@ -1,8 +1,8 @@
 import { expect } from "chai";
 import * as Sinon from "sinon";
-import * as postinstall from "../../../emulator/extensions/postinstall";
-import { EmulatorRegistry } from "../../../emulator/registry";
-import { Emulators } from "../../../emulator/types";
+import * as postinstall from "../../../emulator/extensions/postinstall.js";
+import { EmulatorRegistry } from "../../../emulator/registry.js";
+import { Emulators } from "../../../emulator/types.js";
 
 describe("replaceConsoleLinks", () => {
   let sandbox: Sinon.SinonSandbox;

@@ -1,7 +1,7 @@
 import { expect } from "chai";
-import { FirebaseError } from "../../error";
+import { FirebaseError } from "../../error.js";
 
-import { normalizedHostingConfigs } from "../../hosting/normalizedHostingConfigs";
+import { normalizedHostingConfigs } from "../../hosting/normalizedHostingConfigs.js";
 
 describe("normalizedHostingConfigs", () => {
   it("should fail if both site and target are specified", () => {

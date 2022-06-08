@@ -1,15 +1,15 @@
-import { Command } from "../command";
-import * as utils from "../utils";
-import { needProjectId } from "../projectUtils";
+import { Command } from "../command.js";
+import * as utils from "../utils.js";
+import { needProjectId } from "../projectUtils.js";
 import {
   listGcfPaths,
   deleteGcfArtifacts,
   DockerHelper,
 } from "../deploy/functions/containerCleaner";
-import { promptOnce } from "../prompt";
-import { requirePermissions } from "../requirePermissions";
-import { FirebaseError } from "../error";
-import { RC } from "../rc";
+import { promptOnce } from "../prompt.js";
+import { requirePermissions } from "../requirePermissions.js";
+import { FirebaseError } from "../error.js";
+import { RC } from "../rc.js";
 
 function getConfirmationMessage(paths: string[]): string {
   let message = "You are about to delete all images in the following directories:\n\n";

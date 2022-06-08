@@ -1,9 +1,9 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 
-import * as backend from "../../../deploy/functions/backend";
-import * as storage from "../../../gcp/storage";
-import * as triggerRegionHelper from "../../../deploy/functions/triggerRegionHelper";
+import * as backend from "../../../deploy/functions/backend.js";
+import * as storage from "../../../gcp/storage.js";
+import * as triggerRegionHelper from "../../../deploy/functions/triggerRegionHelper.js";
 
 const SPEC = {
   region: "us-west1",

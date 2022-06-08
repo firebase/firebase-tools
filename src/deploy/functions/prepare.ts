@@ -1,34 +1,34 @@
 import * as clc from "cli-color";
 
-import * as args from "./args";
-import * as backend from "./backend";
-import * as build from "./build";
-import * as ensureApiEnabled from "../../ensureApiEnabled";
-import * as functionsConfig from "../../functionsConfig";
-import * as functionsEnv from "../../functions/env";
+import * as args from "./args.js";
+import * as backend from "./backend.js";
+import * as build from "./build.js";
+import * as ensureApiEnabled from "../../ensureApiEnabled.js";
+import * as functionsConfig from "../../functionsConfig.js";
+import * as functionsEnv from "../../functions/env.js";
 import * as runtimes from "./runtimes";
-import * as validate from "./validate";
-import * as ensure from "./ensure";
-import { Options } from "../../options";
+import * as validate from "./validate.js";
+import * as ensure from "./ensure.js";
+import { Options } from "../../options.js";
 import {
   endpointMatchesAnyFilter,
   getEndpointFilters,
   groupEndpointsByCodebase,
   targetCodebases,
 } from "./functionsDeployHelper";
-import { logLabeledBullet } from "../../utils";
-import { getFunctionsConfig, prepareFunctionsUpload } from "./prepareFunctionsUpload";
-import { promptForFailurePolicies, promptForMinInstances } from "./prompts";
-import { needProjectId, needProjectNumber } from "../../projectUtils";
-import { track } from "../../track";
-import { logger } from "../../logger";
-import { ensureTriggerRegions } from "./triggerRegionHelper";
-import { ensureServiceAgentRoles } from "./checkIam";
-import { FirebaseError } from "../../error";
-import { configForCodebase, normalizeAndValidate } from "../../functions/projectConfig";
-import { previews } from "../../previews";
-import { AUTH_BLOCKING_EVENTS } from "../../functions/events/v1";
-import { generateServiceIdentity } from "../../gcp/serviceusage";
+import { logLabeledBullet } from "../../utils.js";
+import { getFunctionsConfig, prepareFunctionsUpload } from "./prepareFunctionsUpload.js";
+import { promptForFailurePolicies, promptForMinInstances } from "./prompts.js";
+import { needProjectId, needProjectNumber } from "../../projectUtils.js";
+import { track } from "../../track.js";
+import { logger } from "../../logger.js";
+import { ensureTriggerRegions } from "./triggerRegionHelper.js";
+import { ensureServiceAgentRoles } from "./checkIam.js";
+import { FirebaseError } from "../../error.js";
+import { configForCodebase, normalizeAndValidate } from "../../functions/projectConfig.js";
+import { previews } from "../../previews.js";
+import { AUTH_BLOCKING_EVENTS } from "../../functions/events/v1.js";
+import { generateServiceIdentity } from "../../gcp/serviceusage.js";
 
 function hasUserConfig(config: Record<string, unknown>): boolean {
   // "firebase" key is always going to exist in runtime config.

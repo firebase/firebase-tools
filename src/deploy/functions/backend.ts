@@ -1,12 +1,12 @@
-import * as proto from "../../gcp/proto";
-import * as gcf from "../../gcp/cloudfunctions";
-import * as gcfV2 from "../../gcp/cloudfunctionsv2";
-import * as run from "../../gcp/run";
-import * as utils from "../../utils";
+import * as proto from "../../gcp/proto.js";
+import * as gcf from "../../gcp/cloudfunctions.js";
+import * as gcfV2 from "../../gcp/cloudfunctionsv2.js";
+import * as run from "../../gcp/run.js";
+import * as utils from "../../utils.js";
 import * as runtimes from "./runtimes";
-import { FirebaseError } from "../../error";
-import { Context } from "./args";
-import { flattenArray, zip } from "../../functional";
+import { FirebaseError } from "../../error.js";
+import { Context } from "./args.js";
+import { flattenArray, zip } from "../../functional.js";
 
 /** Retry settings for a ScheduleSpec. */
 export interface ScheduleRetryConfig {

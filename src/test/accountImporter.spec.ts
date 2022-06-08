@@ -1,9 +1,9 @@
-import * as nock from "nock";
+import nock from "nock";
 import { expect } from "chai";
 
-import { googleOrigin } from "../api";
+import { googleOrigin } from "../api.cjs";
 
-import * as accountImporter from "../accountImporter";
+import * as accountImporter from "../accountImporter.js";
 
 describe("accountImporter", () => {
   before(() => {

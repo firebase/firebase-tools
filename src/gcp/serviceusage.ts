@@ -1,8 +1,9 @@
-import { bold } from "cli-color";
-import { serviceUsageOrigin } from "../api";
-import { Client } from "../apiv2";
-import { FirebaseError } from "../error";
-import * as utils from "../utils";
+import clccolor from "cli-color";
+const { bold } = clccolor;
+import { serviceUsageOrigin } from "../api.cjs";
+import { Client } from "../apiv2.js";
+import { FirebaseError } from "../error.js";
+import * as utils from "../utils.js";
 
 const apiClient = new Client({
   urlPrefix: serviceUsageOrigin,

@@ -1,6 +1,6 @@
-import * as proto from "./proto";
-import { identityOrigin } from "../api";
-import { Client } from "../apiv2";
+import * as proto from "./proto.js";
+import { identityOrigin } from "../api.cjs";
+import { Client } from "../apiv2.js";
 
 const API_VERSION = "v2";
 

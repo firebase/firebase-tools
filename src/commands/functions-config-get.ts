@@ -1,11 +1,12 @@
-import { get } from "lodash";
+import lodash from "lodash";
+const { get } = lodash;
 import { join } from "path";
 
-import { Command } from "../command";
-import { logger } from "../logger";
-import { needProjectId } from "../projectUtils";
-import { requirePermissions } from "../requirePermissions";
-import * as functionsConfig from "../functionsConfig";
+import { Command } from "../command.js";
+import { logger } from "../logger.js";
+import { needProjectId } from "../projectUtils.js";
+import { requirePermissions } from "../requirePermissions.js";
+import * as functionsConfig from "../functionsConfig.js";
 
 async function materialize(projectId: string, path?: string): Promise<any> {
   if (path === undefined) {

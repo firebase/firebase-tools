@@ -9,11 +9,11 @@ import {
   createStorageRulesManager,
   StorageRulesManager,
 } from "../../../src/emulator/storage/rules/manager";
-import { StorageRulesRuntime } from "../../../src/emulator/storage/rules/runtime";
-import { Persistence } from "../../../src/emulator/storage/persistence";
-import { RulesetOperationMethod, SourceFile } from "../../../src/emulator/storage/rules/types";
-import { isPermitted } from "../../../src/emulator/storage/rules/utils";
-import { readFile } from "../../../src/fsutils";
+import { StorageRulesRuntime } from "../../../src/emulator/storage/rules/runtime.js";
+import { Persistence } from "../../../src/emulator/storage/persistence.js";
+import { RulesetOperationMethod, SourceFile } from "../../../src/emulator/storage/rules/types.js";
+import { isPermitted } from "../../../src/emulator/storage/rules/utils.js";
+import { readFile } from "../../../src/fsutils.js";
 
 const EMULATOR_LOAD_RULESET_DELAY_MS = 2000;
 

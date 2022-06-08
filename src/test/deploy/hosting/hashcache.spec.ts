@@ -3,7 +3,7 @@ import { existsSync, mkdirpSync, readFileSync, writeFileSync } from "fs-extra";
 import { join } from "path";
 import * as tmp from "tmp";
 
-import { load, dump, HashRecord } from "../../../deploy/hosting/hashcache";
+import { load, dump, HashRecord } from "../../../deploy/hosting/hashcache.js";
 
 tmp.setGracefulCleanup();
 

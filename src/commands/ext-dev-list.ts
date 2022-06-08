@@ -1,15 +1,15 @@
 import * as clc from "cli-color";
-import Table = require("cli-table");
+import Table from "cli-table";
 import * as _ from "lodash";
 
-import { Command } from "../command";
-import { logPrefix } from "../extensions/extensionsHelper";
-import { FirebaseError } from "../error";
-import * as utils from "../utils";
-import * as extensionsUtils from "../extensions/utils";
-import { listExtensions } from "../extensions/extensionsApi";
-import { logger } from "../logger";
-import { requireAuth } from "../requireAuth";
+import { Command } from "../command.js";
+import { logPrefix } from "../extensions/extensionsHelper.js";
+import { FirebaseError } from "../error.js";
+import * as utils from "../utils.js";
+import * as extensionsUtils from "../extensions/utils.js";
+import { listExtensions } from "../extensions/extensionsApi.js";
+import { logger } from "../logger.js";
+import { requireAuth } from "../requireAuth.js";
 
 /**
  * List all published extensions associated with this publisher ID.

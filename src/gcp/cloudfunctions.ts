@@ -1,18 +1,17 @@
 import * as clc from "cli-color";
 
-import { FirebaseError } from "../error";
-import { logger } from "../logger";
-import { previews } from "../previews";
-import * as backend from "../deploy/functions/backend";
-import * as events from "../functions/events";
-import * as utils from "../utils";
-import * as proto from "./proto";
+import { FirebaseError } from "../error.js";
+import { logger } from "../logger.js";
+import { previews } from "../previews.js";
+import * as backend from "../deploy/functions/backend.js";
+import * as utils from "../utils.js";
+import * as proto from "./proto.js";
 import * as runtimes from "../deploy/functions/runtimes";
-import * as iam from "./iam";
-import * as projectConfig from "../functions/projectConfig";
-import { Client } from "../apiv2";
-import { functionsOrigin } from "../api";
-import { AUTH_BLOCKING_EVENTS } from "../functions/events/v1";
+import * as iam from "./iam.js";
+import * as projectConfig from "../functions/projectConfig.js";
+import { Client } from "../apiv2.js";
+import { functionsOrigin } from "../api.cjs";
+import { AUTH_BLOCKING_EVENTS } from "../functions/events/v1.js";
 
 export const API_VERSION = "v1";
 export const CODEBASE_LABEL = "firebase-functions-codebase";

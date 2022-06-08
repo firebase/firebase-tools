@@ -1,12 +1,12 @@
 import { expect } from "chai";
 import * as _ from "lodash";
 import * as sinon from "sinon";
-import { configstore } from "../../../configstore";
+import { configstore } from "../../../configstore.js";
 
-import { doSetup } from "../../../init/features/project";
-import * as projectManager from "../../../management/projects";
-import * as prompt from "../../../prompt";
-import { Config } from "../../../config";
+import { doSetup } from "../../../init/features/project.js";
+import * as projectManager from "../../../management/projects.js";
+import * as prompt from "../../../prompt.js";
+import { Config } from "../../../config.js";
 
 const TEST_FIREBASE_PROJECT: projectManager.FirebaseProjectMetadata = {
   projectId: "my-project-123",

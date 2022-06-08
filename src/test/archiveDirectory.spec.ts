@@ -1,8 +1,8 @@
 import { resolve } from "path";
 import { expect } from "chai";
-import { FirebaseError } from "../error";
+import { FirebaseError } from "../error.js";
 
-import { archiveDirectory } from "../archiveDirectory";
+import { archiveDirectory } from "../archiveDirectory.js";
 
 const SOME_FIXTURE_DIRECTORY = resolve(__dirname, "./fixtures/config-imports");
 

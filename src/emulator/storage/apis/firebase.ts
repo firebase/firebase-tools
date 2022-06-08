@@ -1,15 +1,15 @@
-import { EmulatorLogger } from "../../emulatorLogger";
-import { Emulators } from "../../types";
+import { EmulatorLogger } from "../../emulatorLogger.js";
+import { Emulators } from "../../types.js";
 import { gunzipSync } from "zlib";
-import { IncomingMetadata, OutgoingFirebaseMetadata, StoredFileMetadata } from "../metadata";
+import { IncomingMetadata, OutgoingFirebaseMetadata, StoredFileMetadata } from "../metadata.js";
 import { Request, Response, Router } from "express";
-import { StorageEmulator } from "../index";
-import { EmulatorRegistry } from "../../registry";
-import { parseObjectUploadMultipartRequest } from "../multipart";
-import { NotFoundError, ForbiddenError } from "../errors";
-import { NotCancellableError, Upload, UploadNotActiveError } from "../upload";
-import { reqBodyToBuffer } from "../../shared/request";
-import { ListObjectsResponse } from "../files";
+import { StorageEmulator } from "../index.js";
+import { EmulatorRegistry } from "../../registry.js";
+import { parseObjectUploadMultipartRequest } from "../multipart.js";
+import { NotFoundError, ForbiddenError } from "../errors.js";
+import { NotCancellableError, Upload, UploadNotActiveError } from "../upload.js";
+import { reqBodyToBuffer } from "../../shared/request.js";
+import { ListObjectsResponse } from "../files.js";
 
 /**
  * @param emulator

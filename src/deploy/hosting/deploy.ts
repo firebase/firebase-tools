@@ -1,10 +1,10 @@
-import { Uploader } from "./uploader";
-import { detectProjectRoot } from "../../detectProjectRoot";
-import { listFiles } from "../../listFiles";
-import { logger } from "../../logger";
-import { track } from "../../track";
-import { envOverride, logLabeledBullet, logLabeledSuccess } from "../../utils";
-import { HostingDeploy } from "./hostingDeploy";
+import { Uploader } from "./uploader.js";
+import { detectProjectRoot } from "../../detectProjectRoot.js";
+import { listFiles } from "../../listFiles.js";
+import { logger } from "../../logger.js";
+import { track } from "../../track.js";
+import { envOverride, logLabeledBullet, logLabeledSuccess } from "../../utils.js";
+import { HostingDeploy } from "./hostingDeploy.js";
 
 import * as clc from "cli-color";
 const SPINNER = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];

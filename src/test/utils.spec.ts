@@ -1,6 +1,6 @@
 import { expect } from "chai";
 
-import * as utils from "../utils";
+import * as utils from "../utils.js";
 
 describe("utils", () => {
   describe("consoleUrl", () => {

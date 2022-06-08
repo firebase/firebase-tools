@@ -1,13 +1,13 @@
-import { Command } from "../command";
-import * as controller from "../emulator/controller";
-import * as commandUtils from "../emulator/commandUtils";
-import { logger } from "../logger";
-import { EmulatorRegistry } from "../emulator/registry";
-import { Emulators, EMULATORS_SUPPORTED_BY_UI } from "../emulator/types";
+import { Command } from "../command.js";
+import * as controller from "../emulator/controller.js";
+import * as commandUtils from "../emulator/commandUtils.js";
+import { logger } from "../logger.js";
+import { EmulatorRegistry } from "../emulator/registry.js";
+import { Emulators, EMULATORS_SUPPORTED_BY_UI } from "../emulator/types.js";
 import * as clc from "cli-color";
-import { Constants } from "../emulator/constants";
-import { logLabeledWarning } from "../utils";
-import { ExtensionsEmulator } from "../emulator/extensionsEmulator";
+import { Constants } from "../emulator/constants.js";
+import { logLabeledWarning } from "../utils.js";
+import { ExtensionsEmulator } from "../emulator/extensionsEmulator.js";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const Table = require("cli-table");
