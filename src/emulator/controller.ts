@@ -539,19 +539,16 @@ export async function startAll(
   // Since the functions emulator will always be started by default, and the eventarc emulator
   // is only used by the functions emulator, we will start them in conjunction (using the default host/port)
   // even if the app developer has not explicitly configured the eventarc emulator.
-  let eventarcEmulator;
-  if (shouldStart(options, Emulators.EVENTARC)) {
-    const eventarcAddr = await getAndCheckAddress(Emulators.EVENTARC, options);
-    eventarcEmulator = new EventarcEmulator({
-      host: eventarcAddr.host,
-      port: eventarcAddr.port,
-    });
-  } else {
-    eventarcEmulator = new EventarcEmulator({
-      host: DEFAULT_HOST,
-      port: DEFAULT_PORTS.eventarc,
-    });
+  if (!shouldStart(options, Emulators.EVENTARC)) {
+    if (options.config.src.emulators) {
+      options.config.src.emulators.eventarc = {host: DEFAULT_HOST, port: DEFAULT_PORTS.eventarc};
+    }
   }
+  const eventarcAddr = await getAndCheckAddress(Emulators.EVENTARC, options);
+  const eventarcEmulator = new EventarcEmulator({
+    host: eventarcAddr.host,
+    port: eventarcAddr.port,
+  });
   await startEmulator(eventarcEmulator);
 
   if (shouldStart(options, Emulators.FIRESTORE)) {
