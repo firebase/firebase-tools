@@ -19,7 +19,7 @@ import * as executor from "../deploy/functions/release/executor";
 import * as reporter from "../deploy/functions/release/reporter";
 import * as containerCleaner from "../deploy/functions/containerCleaner";
 
-export default new Command("functions:delete [filters...]")
+export const command = new Command("functions:delete [filters...]")
   .description("delete one or more Cloud Functions by name or group name.")
   .option(
     "--region <region>",

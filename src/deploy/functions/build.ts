@@ -101,6 +101,7 @@ interface CallableTrigger { }
 // For example, before user login.
 export interface BlockingTrigger {
   eventType: string;
+  options?: Record<string, unknown>;
 }
 
 // Trigger definitions for endpoints that listen to CloudEvents emitted by other systems (or legacy
@@ -124,16 +125,20 @@ export interface EventTrigger {
   // will cause the "invoker" role to be granted to this service account on the endpoint
   // (Function or Route)
   serviceAccount?: ServiceAccount | null;
+
+  // The name of the channel where the function receives events.
+  // Must be provided to receive CF3v2 custom events.
+  channel?: string;
 }
 
-interface TaskQueueRateLimits {
+export interface TaskQueueRateLimits {
   maxConcurrentDispatches?: Field<number>;
   maxDispatchesPerSecond?: Field<number>;
 }
 
-interface TaskQueueRetryConfig {
+export interface TaskQueueRetryConfig {
   maxAttempts?: Field<number>;
-  maxRetryDurationSeconds: Field<number>;
+  maxRetryDurationSeconds?: Field<number>;
   minBackoffSeconds?: Field<number>;
   maxBackoffSeconds?: Field<number>;
   maxDoublings?: Field<number>;
@@ -147,7 +152,7 @@ export interface TaskQueueTrigger {
   invoker?: Array<ServiceAccount | Expression<string>> | null;
 }
 
-interface ScheduleRetryConfig {
+export interface ScheduleRetryConfig {
   retryCount?: Field<number>;
   maxRetrySeconds?: Field<number>;
   minBackoffSeconds?: Field<number>;
@@ -169,9 +174,15 @@ export type Triggered =
   | { scheduleTrigger: ScheduleTrigger }
   | { taskQueueTrigger: TaskQueueTrigger };
 
-interface VpcSettings {
+export interface VpcSettings {
   connector: string | Expression<string>;
   egressSettings?: "PRIVATE_RANGES_ONLY" | "ALL_TRAFFIC";
+}
+
+export interface SecretEnvVar {
+  key: string; // The environment variable this secret is accessible at
+  secret: string; // The id of the SecretVersion - ie for projects/myproject/secrets/mysecret, this is 'mysecret'
+  projectId: string; // The project containing the Secret
 }
 
 export type Endpoint = Triggered & {
@@ -217,6 +228,7 @@ export type Endpoint = Triggered & {
   ingressSettings?: "ALLOW_ALL" | "ALLOW_INTERNAL_ONLY" | "ALLOW_INTERNAL_AND_GCLB" | null;
 
   environmentVariables?: Record<string, string | Expression<string>>;
+  secretEnvironmentVariables?: SecretEnvVar[];
   labels?: Record<string, string | Expression<string>>;
 };
 
@@ -250,75 +262,75 @@ function isMemoryOption(value: backend.MemoryOptions | any): value is backend.Me
 }
 
 /** Converts a build specification into a Backend representation, with all Params resolved and interpolated */
-// TODO(vsfan): resolve build.Params
 // TODO(vsfan): handle Expression<T> types
 export function resolveBackend(build: Build, userEnvs: Record<string, string>): backend.Backend {
   for (const param of build.params) {
     const expectedEnv = param.param;
+
     if (!userEnvs.hasOwnProperty(expectedEnv)) {
       throw new FirebaseError(
         "Build specified parameter " +
           expectedEnv +
-          " but it was not present in the user dotenv files"
+          " but it was not present in the user dotenv files or Cloud Secret Manager"
       );
     }
   }
 
   const bkEndpoints: Array<backend.Endpoint> = [];
   for (const endpointId of Object.keys(build.endpoints)) {
-    const endpoint = build.endpoints[endpointId];
+    const bdEndpoint = build.endpoints[endpointId];
 
-    let regions = endpoint.region;
+    let regions = bdEndpoint.region;
     if (typeof regions === "undefined") {
       regions = [api.functionsDefaultRegion];
     }
     for (const region of regions) {
-      const trigger = discoverTrigger(endpoint);
+      const trigger = discoverTrigger(bdEndpoint);
 
-      if (typeof endpoint.platform === "undefined") {
+      if (typeof bdEndpoint.platform === "undefined") {
         throw new FirebaseError("platform can't be undefined");
       }
-      if (!isMemoryOption(endpoint.availableMemoryMb)) {
+      if (!isMemoryOption(bdEndpoint.availableMemoryMb)) {
         throw new FirebaseError("available memory must be a supported value, if present");
       }
       let timeout: number;
-      if (endpoint.timeoutSeconds) {
-        timeout = resolveInt(endpoint.timeoutSeconds);
+      if (bdEndpoint.timeoutSeconds) {
+        timeout = resolveInt(bdEndpoint.timeoutSeconds);
       } else {
         timeout = 60;
       }
 
       const bkEndpoint: backend.Endpoint = {
         id: endpointId,
-        project: endpoint.project,
+        project: bdEndpoint.project,
         region: region,
-        entryPoint: endpoint.entryPoint,
-        platform: endpoint.platform,
-        runtime: endpoint.runtime,
+        entryPoint: bdEndpoint.entryPoint,
+        platform: bdEndpoint.platform,
+        runtime: bdEndpoint.runtime,
         timeoutSeconds: timeout,
         ...trigger,
       };
-      proto.renameIfPresent(bkEndpoint, endpoint, "maxInstances", "maxInstances", resolveInt);
-      proto.renameIfPresent(bkEndpoint, endpoint, "minInstances", "minInstances", resolveInt);
-      proto.renameIfPresent(bkEndpoint, endpoint, "concurrency", "concurrency", resolveInt);
+      proto.renameIfPresent(bkEndpoint, bdEndpoint, "maxInstances", "maxInstances", resolveInt);
+      proto.renameIfPresent(bkEndpoint, bdEndpoint, "minInstances", "minInstances", resolveInt);
+      proto.renameIfPresent(bkEndpoint, bdEndpoint, "concurrency", "concurrency", resolveInt);
       proto.copyIfPresent(
         bkEndpoint,
-        endpoint,
+        bdEndpoint,
         "ingressSettings",
         "availableMemoryMb",
         "environmentVariables",
         "labels"
       );
-      // proto.copyIfPresent(bkEndpoint, endpoint, "secretEnvironmentVariables");
-      if (endpoint.vpc) {
+      proto.copyIfPresent(bkEndpoint, bdEndpoint, "secretEnvironmentVariables");
+      if (bdEndpoint.vpc) {
         bkEndpoint.vpc = {
           // $REGION is a token in the Build VPC connector because Build endpoints can have multiple regions, so we unroll here
-          connector: resolveString(endpoint.vpc.connector).replace("$REGION", region),
+          connector: resolveString(bdEndpoint.vpc.connector).replace("$REGION", region),
         };
-        proto.copyIfPresent(bkEndpoint.vpc, endpoint.vpc, "egressSettings");
+        proto.copyIfPresent(bkEndpoint.vpc, bdEndpoint.vpc, "egressSettings");
       }
-      if (endpoint.serviceAccount) {
-        bkEndpoint.serviceAccountEmail = endpoint.serviceAccount;
+      if (bdEndpoint.serviceAccount) {
+        bkEndpoint.serviceAccountEmail = bdEndpoint.serviceAccount;
       }
 
       bkEndpoints.push(bkEndpoint);
@@ -341,7 +353,7 @@ function discoverTrigger(endpoint: Endpoint): backend.Triggered {
   } else if ("callableTrigger" in endpoint) {
     trigger = { callableTrigger: {} };
   } else if ("blockingTrigger" in endpoint) {
-    throw new FirebaseError("blocking triggers not supported");
+    trigger = { blockingTrigger: endpoint.blockingTrigger };
   } else if ("eventTrigger" in endpoint) {
     const bkEventFilters: Record<string, string> = {};
     for (const key in endpoint.eventTrigger.eventFilters) {
@@ -366,13 +378,29 @@ function discoverTrigger(endpoint: Endpoint): backend.Triggered {
       schedule: resolveString(endpoint.scheduleTrigger.schedule),
       timeZone: resolveString(endpoint.scheduleTrigger.timeZone),
     };
-    proto.renameIfPresent(
-      bkSchedule,
-      endpoint.scheduleTrigger,
-      "retryConfig",
-      "retryConfig",
-      resolveInt
+    const bkRetry: backend.ScheduleRetryConfig = {};
+    if (endpoint.scheduleTrigger.retryConfig.maxBackoffSeconds) {
+      bkRetry.maxBackoffDuration = proto.durationFromSeconds(
+        resolveInt(endpoint.scheduleTrigger.retryConfig.maxBackoffSeconds)
+      );
+    }
+    if (endpoint.scheduleTrigger.retryConfig.minBackoffSeconds) {
+      bkRetry.minBackoffDuration = proto.durationFromSeconds(
+        resolveInt(endpoint.scheduleTrigger.retryConfig.minBackoffSeconds)
+      );
+    }
+    if (endpoint.scheduleTrigger.retryConfig.maxRetrySeconds) {
+      bkRetry.maxRetryDuration = proto.durationFromSeconds(
+        resolveInt(endpoint.scheduleTrigger.retryConfig.maxRetrySeconds)
+      );
+    }
+    proto.copyIfPresent(
+      bkRetry,
+      endpoint.scheduleTrigger.retryConfig,
+      "retryCount",
+      "maxDoublings"
     );
+    bkSchedule.retryConfig = bkRetry;
     trigger = { scheduleTrigger: bkSchedule };
   } else if ("taskQueueTrigger" in endpoint) {
     const bkTaskQueue: backend.TaskQueueTrigger = {};

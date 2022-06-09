@@ -31,9 +31,10 @@ marked.setOptions({
 /**
  * Command for configuring an existing extension instance
  */
-export default new Command("ext:configure <extensionInstanceId>")
+export const command = new Command("ext:configure <extensionInstanceId>")
   .description("configure an existing extension instance")
   .withForce()
+  .option("--local", "deprecated")
   .before(requirePermissions, [
     "firebaseextensions.instances.update",
     "firebaseextensions.instances.get",
@@ -47,6 +48,12 @@ export default new Command("ext:configure <extensionInstanceId>")
       throw new FirebaseError(
         `Command not supported in non-interactive mode, edit ./extensions/${instanceId}.env directly instead. ` +
           `See https://firebase.google.com/docs/extensions/manifest for more details.`
+      );
+    }
+    if (options.local) {
+      utils.logLabeledWarning(
+        logPrefix,
+        "As of firebase-tools@11.0.0, the `--local` flag is no longer required, as it is the default behavior."
       );
     }
 

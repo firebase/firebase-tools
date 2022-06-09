@@ -16,7 +16,7 @@ function logTargets(type: string, targets: targetMap): void {
   }
 }
 
-export default new Command("target [type]")
+export const command = new Command("target [type]")
   .description("display configured deploy targets for the current project")
   .before(requireConfig)
   .action((type, options) => {

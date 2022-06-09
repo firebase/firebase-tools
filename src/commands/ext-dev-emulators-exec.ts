@@ -6,7 +6,7 @@ import { Command } from "../command";
 import { FirebaseError } from "../error";
 import * as commandUtils from "../emulator/commandUtils";
 
-module.exports = new Command("ext:dev:emulators:exec <script>")
+export const command = new Command("ext:dev:emulators:exec <script>")
   .description("deprecated: please use `firebase emulators:exec` instead")
   .before(commandUtils.setExportOnExitOptions)
   .option(commandUtils.FLAG_INSPECT_FUNCTIONS, commandUtils.DESC_INSPECT_FUNCTIONS)

@@ -6,7 +6,7 @@ import { needProjectId } from "../projectUtils";
 import { logBullet, logSuccess, consoleUrl, addSubdomain } from "../utils";
 import { FirebaseError } from "../error";
 import { track } from "../track";
-import * as lifecycleHooks from "./lifecycleHooks";
+import { lifecycleHooks } from "./lifecycleHooks";
 import { previews } from "../previews";
 import * as HostingTarget from "./hosting";
 import * as DatabaseTarget from "./database";
