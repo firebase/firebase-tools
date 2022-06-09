@@ -642,7 +642,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       } else {
         this.logger.log(
           "WARN",
-          `Unsupported function type on ${definition.name}. Expected either httpsTrigger or eventTrigger.`
+          `Unsupported function type on ${definition.name}. Expected either an httpsTrigger, eventTrigger, or blockingTrigger.`
         );
       }
 
@@ -873,9 +873,9 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
 
     this.blockingFunctionsConfig.forwardInboundCredentials = {
-      accessToken: blockingTrigger.options!.accessToken as boolean,
-      idToken: blockingTrigger.options!.idToken as boolean,
-      refreshToken: blockingTrigger.options!.refreshToken as boolean,
+      accessToken: !!blockingTrigger.options!.accessToken,
+      idToken: !!blockingTrigger.options!.idToken,
+      refreshToken: !!blockingTrigger.options!.refreshToken,
     };
 
     return true;
