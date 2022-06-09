@@ -2,8 +2,10 @@
 set -e
 
 if [ "$CI" = "true" ]; then
-  echo "Running sudo npm link..."
-  sudo npm link
+  echo "Doing normal npm link for now..."
+  npm link
+  # echo "Running sudo npm link..."
+  # sudo npm link
 else
   echo "Running npm link..."
   npm link
