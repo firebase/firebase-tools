@@ -1,26 +1,21 @@
 #!/usr/bin/env node
-"use strict";
 
-// Make check for Node 8, which is no longer supported by the CLI.
-const semver = require("semver");
+// Check for older versions of Node no longer supported by the CLI.
+import * as semver from "semver";
 const pkg = require("../../package.json");
 const nodeVersion = process.version;
 if (!semver.satisfies(nodeVersion, pkg.engines.node)) {
   console.error(
-    "Firebase CLI v" +
-      pkg.version +
-      " is incompatible with Node.js " +
-      nodeVersion +
-      " Please upgrade Node.js to version " +
-      pkg.engines.node
+    `Firebase CLI v${pkg.version} is incompatible with Node.js ${nodeVersion} Please upgrade Node.js to version ${pkg.engines.node}`
   );
   process.exit(1);
 }
 
-const updateNotifier = require("update-notifier")({ pkg: pkg });
-const clc = require("cli-color");
-const TerminalRenderer = require("marked-terminal");
-const marked = require("marked").marked;
+import * as updateNotifierPkg from "update-notifier";
+import * as clc from "cli-color";
+import * as TerminalRenderer from "marked-terminal";
+const updateNotifier = updateNotifierPkg({ pkg: pkg });
+import { marked } from "marked";
 marked.setOptions({
   renderer: new TerminalRenderer(),
 });
@@ -32,21 +27,23 @@ const updateMessage =
   )}`;
 updateNotifier.notify({ defer: true, isGlobal: true, message: updateMessage });
 
-const client = require("..");
-const errorOut = require("../errorOut").errorOut;
-const winston = require("winston");
-const { SPLAT } = require("triple-beam");
-const { logger } = require("../logger");
-const fs = require("fs");
-const fsutils = require("../fsutils");
-const path = require("path");
-const ansiStrip = require("cli-color/strip");
-const { configstore } = require("../configstore");
-const _ = require("lodash");
+import { Command } from "commander";
+import { join } from "node:path";
+import { SPLAT } from "triple-beam";
+import { strip } from "cli-color";
+import * as fs from "node:fs";
+
+import { configstore } from "../configstore";
+import { errorOut } from "../errorOut";
+import { handlePreviewToggles } from "../handlePreviewToggles";
+import { logger } from "../logger";
+import * as client from "..";
+import * as fsutils from "../fsutils";
+import * as utils from "../utils";
+import * as winston from "winston";
+
 let args = process.argv.slice(2);
-const { handlePreviewToggles } = require("../handlePreviewToggles");
-const utils = require("../utils");
-let cmd;
+let cmd: Command;
 
 function findAvailableLogFile() {
   const candidates = ["firebase-debug.log"];
@@ -55,13 +52,13 @@ function findAvailableLogFile() {
   }
 
   for (const c of candidates) {
-    const logFilename = path.join(process.cwd(), c);
+    const logFilename = join(process.cwd(), c);
 
     try {
       const fd = fs.openSync(logFilename, "r+");
       fs.closeSync(fd);
       return logFilename;
-    } catch (e) {
+    } catch (e: any) {
       if (e.code === "ENOENT") {
         // File does not exist, which is fine
         return logFilename;
@@ -77,7 +74,7 @@ function findAvailableLogFile() {
 
 const logFilename = findAvailableLogFile();
 
-if (!process.env.DEBUG && _.includes(args, "--debug")) {
+if (!process.env.DEBUG && args.includes("--debug")) {
   process.env.DEBUG = "true";
 }
 
@@ -89,12 +86,12 @@ logger.add(
     filename: logFilename,
     format: winston.format.printf((info) => {
       const segments = [info.message, ...(info[SPLAT] || [])].map(utils.tryStringify);
-      return `[${info.level}] ${ansiStrip(segments.join(" "))}`;
+      return `[${info.level}] ${strip(segments.join(" "))}`;
     }),
   })
 );
 
-logger.debug(_.repeat("-", 70));
+logger.debug("-".repeat(70));
 logger.debug("Command:      ", process.argv.join(" "));
 logger.debug("CLI Version:  ", pkg.version);
 logger.debug("Platform:     ", process.platform);
@@ -103,12 +100,13 @@ logger.debug("Time:         ", new Date().toString());
 if (utils.envOverrides.length) {
   logger.debug("Env Overrides:", utils.envOverrides.join(", "));
 }
-logger.debug(_.repeat("-", 70));
+logger.debug("-".repeat(70));
 logger.debug();
 
-require("../fetchMOTD").fetchMOTD();
+import { fetchMOTD } from "../fetchMOTD";
+fetchMOTD();
 
-process.on("exit", function (code) {
+process.on("exit", (code) => {
   code = process.exitCode || code;
   if (!process.env.DEBUG && code < 2 && fsutils.fileExistsSync(logFilename)) {
     fs.unlinkSync(logFilename);
@@ -120,8 +118,7 @@ process.on("exit", function (code) {
     if (lastError > timestamp - 120000) {
       let help;
       if (code === 1 && cmd) {
-        const commandName = _.get(_.last(cmd.args), "_name", "[command]");
-        help = "Having trouble? Try " + clc.bold("firebase " + commandName + " --help");
+        help = "Having trouble? Try " + clc.bold("firebase [command] --help");
       } else {
         help = "Having trouble? Try again or contact support with contents of firebase-debug.log";
       }
@@ -136,9 +133,8 @@ process.on("exit", function (code) {
     configstore.delete("lastError");
   }
 });
-require("exit-code");
 
-process.on("uncaughtException", function (err) {
+process.on("uncaughtException", (err) => {
   errorOut(err);
 });
 
@@ -146,7 +142,7 @@ if (!handlePreviewToggles(args)) {
   cmd = client.cli.parse(process.argv);
 
   // determine if there are any non-option arguments. if not, display help
-  args = args.filter(function (arg) {
+  args = args.filter((arg) => {
     return arg.indexOf("-") < 0;
   });
   if (!args.length) {
