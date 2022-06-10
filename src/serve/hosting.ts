@@ -65,7 +65,7 @@ function startServer(options: any, config: any, port: number, init: TemplateServ
   // enough devexp that we should special case and ensure it's available.
   if (process.platform === "darwin") {
     try {
-      execSync(`lsof -i :${port}`);
+      execSync(`lsof -i :${port} -sTCP:LISTEN`);
       portInUse();
       return;
     } catch (e) {
