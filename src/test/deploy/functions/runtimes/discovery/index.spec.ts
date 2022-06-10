@@ -6,7 +6,6 @@ import * as nock from "nock";
 import * as api from "../../../../../api";
 import { FirebaseError } from "../../../../../error";
 import * as discovery from "../../../../../deploy/functions/runtimes/discovery";
-import * as backend from "../../../../../deploy/functions/backend";
 import * as build from "../../../../../deploy/functions/build";
 
 const MIN_ENDPOINT = {
@@ -19,7 +18,7 @@ const ENDPOINT: build.Endpoint = {
   platform: "gcfv2",
   project: "project",
   runtime: "nodejs16",
-  region: ["us-central1"],
+  region: [api.functionsDefaultRegion],
   serviceAccount: null,
 };
 
@@ -30,7 +29,6 @@ const YAML_OBJ = {
 
 const YAML_TEXT = yaml.dump(YAML_OBJ);
 
-// const BACKEND: backend.Backend = backend.of(ENDPOINT);
 const BUILD: build.Build = build.of({ id: ENDPOINT });
 
 describe("yamlToBuild", () => {
