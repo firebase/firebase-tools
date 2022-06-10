@@ -37,6 +37,7 @@
         "js-yaml": "^3.13.1",
         "jsonwebtoken": "^8.5.1",
         "leven": "^3.1.0",
+        "libsodium-wrappers": "^0.7.10",
         "lodash": "^4.17.21",
         "marked": "^4.0.14",
         "marked-terminal": "^5.1.1",
@@ -60,7 +61,6 @@
         "tcp-port-used": "^1.0.2",
         "tmp": "^0.2.1",
         "triple-beam": "^1.3.0",
-        "tweetsodium": "0.0.5",
         "universal-analytics": "^0.5.3",
         "unzipper": "^0.10.10",
         "update-notifier": "^5.1.0",
@@ -92,6 +92,7 @@
         "@types/inquirer": "^8.1.3",
         "@types/js-yaml": "^3.12.2",
         "@types/jsonwebtoken": "^8.3.8",
+        "@types/libsodium-wrappers": "^0.7.9",
         "@types/lodash": "^4.14.149",
         "@types/marked": "^4.0.3",
         "@types/marked-terminal": "^3.1.3",
@@ -2359,6 +2360,12 @@
         "@types/node": "*"
       }
     },
+    "node_modules/@types/libsodium-wrappers": {
+      "version": "0.7.9",
+      "resolved": "https://registry.npmjs.org/@types/libsodium-wrappers/-/libsodium-wrappers-0.7.9.tgz",
+      "integrity": "sha512-LisgKLlYQk19baQwjkBZZXdJL0KbeTpdEnrAfz5hQACbklCY0gVFnsKUyjfNWF1UQsCSjw93Sj5jSbiO8RPfdw==",
+      "dev": true
+    },
     "node_modules/@types/lodash": {
       "version": "4.14.149",
       "resolved": "https://registry.npmjs.org/@types/lodash/-/lodash-4.14.149.tgz",
@@ -3656,11 +3663,6 @@
         "inherits": "^2.0.4",
         "readable-stream": "^3.4.0"
       }
-    },
-    "node_modules/blakejs": {
-      "version": "1.1.0",
-      "resolved": "https://registry.npmjs.org/blakejs/-/blakejs-1.1.0.tgz",
-      "integrity": "sha1-ad+S75U6qIylGjLfarHFShVfx6U="
     },
     "node_modules/bluebird": {
       "version": "3.4.7",
@@ -8634,6 +8636,19 @@
         "node": ">= 0.8.0"
       }
     },
+    "node_modules/libsodium": {
+      "version": "0.7.10",
+      "resolved": "https://registry.npmjs.org/libsodium/-/libsodium-0.7.10.tgz",
+      "integrity": "sha512-eY+z7hDrDKxkAK+QKZVNv92A5KYkxfvIshtBJkmg5TSiCnYqZP3i9OO9whE79Pwgm4jGaoHgkM4ao/b9Cyu4zQ=="
+    },
+    "node_modules/libsodium-wrappers": {
+      "version": "0.7.10",
+      "resolved": "https://registry.npmjs.org/libsodium-wrappers/-/libsodium-wrappers-0.7.10.tgz",
+      "integrity": "sha512-pO3F1Q9NPLB/MWIhehim42b/Fwb30JNScCNh8TcQ/kIc+qGLQch8ag8wb0keK3EP5kbGakk1H8Wwo7v+36rNQg==",
+      "dependencies": {
+        "libsodium": "^0.7.0"
+      }
+    },
     "node_modules/limiter": {
       "version": "1.1.5",
       "resolved": "https://registry.npmjs.org/limiter/-/limiter-1.1.5.tgz",
@@ -13135,20 +13150,6 @@
       "resolved": "https://registry.npmjs.org/tweetnacl/-/tweetnacl-0.14.5.tgz",
       "integrity": "sha1-WuaBd/GS1EViadEIr6k/+HQ/T2Q="
     },
-    "node_modules/tweetsodium": {
-      "version": "0.0.5",
-      "resolved": "https://registry.npmjs.org/tweetsodium/-/tweetsodium-0.0.5.tgz",
-      "integrity": "sha512-T3aXZtx7KqQbutTtBfn+P5By3HdBuB1eCoGviIrRJV2sXeToxv2X2cv5RvYqgG26PSnN5m3fYixds22Gkfd11w==",
-      "dependencies": {
-        "blakejs": "^1.1.0",
-        "tweetnacl": "^1.0.1"
-      }
-    },
-    "node_modules/tweetsodium/node_modules/tweetnacl": {
-      "version": "1.0.3",
-      "resolved": "https://registry.npmjs.org/tweetnacl/-/tweetnacl-1.0.3.tgz",
-      "integrity": "sha512-6rt+RN7aOi1nGMyC4Xa5DdYiukl2UWCbcJft7YhxReBGQD7OAM8Pbxw6YMo4r2diNEA8FEmu32YOn9rhaiE5yw=="
-    },
     "node_modules/type": {
       "version": "1.2.0",
       "resolved": "https://registry.npmjs.org/type/-/type-1.2.0.tgz",
@@ -16025,6 +16026,12 @@
         "@types/node": "*"
       }
     },
+    "@types/libsodium-wrappers": {
+      "version": "0.7.9",
+      "resolved": "https://registry.npmjs.org/@types/libsodium-wrappers/-/libsodium-wrappers-0.7.9.tgz",
+      "integrity": "sha512-LisgKLlYQk19baQwjkBZZXdJL0KbeTpdEnrAfz5hQACbklCY0gVFnsKUyjfNWF1UQsCSjw93Sj5jSbiO8RPfdw==",
+      "dev": true
+    },
     "@types/lodash": {
       "version": "4.14.149",
       "resolved": "https://registry.npmjs.org/@types/lodash/-/lodash-4.14.149.tgz",
@@ -17073,11 +17080,6 @@
         "inherits": "^2.0.4",
         "readable-stream": "^3.4.0"
       }
-    },
-    "blakejs": {
-      "version": "1.1.0",
-      "resolved": "https://registry.npmjs.org/blakejs/-/blakejs-1.1.0.tgz",
-      "integrity": "sha1-ad+S75U6qIylGjLfarHFShVfx6U="
     },
     "bluebird": {
       "version": "3.4.7",
@@ -20964,6 +20966,19 @@
         "type-check": "~0.3.2"
       }
     },
+    "libsodium": {
+      "version": "0.7.10",
+      "resolved": "https://registry.npmjs.org/libsodium/-/libsodium-0.7.10.tgz",
+      "integrity": "sha512-eY+z7hDrDKxkAK+QKZVNv92A5KYkxfvIshtBJkmg5TSiCnYqZP3i9OO9whE79Pwgm4jGaoHgkM4ao/b9Cyu4zQ=="
+    },
+    "libsodium-wrappers": {
+      "version": "0.7.10",
+      "resolved": "https://registry.npmjs.org/libsodium-wrappers/-/libsodium-wrappers-0.7.10.tgz",
+      "integrity": "sha512-pO3F1Q9NPLB/MWIhehim42b/Fwb30JNScCNh8TcQ/kIc+qGLQch8ag8wb0keK3EP5kbGakk1H8Wwo7v+36rNQg==",
+      "requires": {
+        "libsodium": "^0.7.0"
+      }
+    },
     "limiter": {
       "version": "1.1.5",
       "resolved": "https://registry.npmjs.org/limiter/-/limiter-1.1.5.tgz",
@@ -24477,22 +24492,6 @@
       "version": "0.14.5",
       "resolved": "https://registry.npmjs.org/tweetnacl/-/tweetnacl-0.14.5.tgz",
       "integrity": "sha1-WuaBd/GS1EViadEIr6k/+HQ/T2Q="
-    },
-    "tweetsodium": {
-      "version": "0.0.5",
-      "resolved": "https://registry.npmjs.org/tweetsodium/-/tweetsodium-0.0.5.tgz",
-      "integrity": "sha512-T3aXZtx7KqQbutTtBfn+P5By3HdBuB1eCoGviIrRJV2sXeToxv2X2cv5RvYqgG26PSnN5m3fYixds22Gkfd11w==",
-      "requires": {
-        "blakejs": "^1.1.0",
-        "tweetnacl": "^1.0.1"
-      },
-      "dependencies": {
-        "tweetnacl": {
-          "version": "1.0.3",
-          "resolved": "https://registry.npmjs.org/tweetnacl/-/tweetnacl-1.0.3.tgz",
-          "integrity": "sha512-6rt+RN7aOi1nGMyC4Xa5DdYiukl2UWCbcJft7YhxReBGQD7OAM8Pbxw6YMo4r2diNEA8FEmu32YOn9rhaiE5yw=="
-        }
-      }
     },
     "type": {
       "version": "1.2.0",
