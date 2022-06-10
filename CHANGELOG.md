@@ -5,3 +5,4 @@
 - Adds v2 RTDB triggers to function deploy (#4582).
 - Fixes issue where emualtor commands would error out when `frameworkawareness` preview flag was enabled and `firebase.json` did not have a hosting entry (#4624).
 - Updates the underlying HTTP request library for auth-related requests (#4574).
+- Replaces deprecated `tweetsodium` with `libsodium-wrappers`.
