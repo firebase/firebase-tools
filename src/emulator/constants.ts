@@ -2,7 +2,7 @@ import * as url from "url";
 
 import { Emulators } from "./types";
 
-const DEFAULT_PORTS: { [s in Emulators]: number } = {
+export const DEFAULT_PORTS: { [s in Emulators]: number } = {
   ui: 4000,
   hub: 4400,
   logging: 4500,
@@ -47,7 +47,7 @@ export const EMULATOR_DESCRIPTION: Record<Emulators, string> = {
   eventarc: "Eventarc Emulator",
 };
 
-const DEFAULT_HOST = "localhost";
+export const DEFAULT_HOST = "localhost";
 
 export class Constants {
   // GCP projects cannot start with 'demo' so we use 'demo-' as a prefix to denote
