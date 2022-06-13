@@ -184,9 +184,7 @@ export async function handleParam(
     case "int":
       return promptIntParam(param);
     default:
-      throw new FirebaseError(
-        "Build specified parameter " + param.param + " with unsupported type"
-      );
+      throw new FirebaseError("Build specified parameter " + param + " with unsupported type");
   }
 }
 

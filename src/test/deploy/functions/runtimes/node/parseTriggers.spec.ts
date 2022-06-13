@@ -19,6 +19,10 @@ function applyBuildDefaults(
   return endpoint;
 }
 
+async function resolveBackend(bd: build.Build): Promise<backend.Backend> {
+  return build.resolveBackend(bd, { functionsSource: "", projectId: "PROJECT" }, {});
+}
+
 describe("addResourcesToBuild", () => {
   const oldDefaultRegion = api.functionsDefaultRegion;
   before(() => {
@@ -74,8 +78,8 @@ describe("addResourcesToBuild", () => {
       ...BASIC_BACKEND_ENDPOINT,
       httpsTrigger: {},
     });
-    const convertedBackend: backend.Backend = build.resolveBackend(expected, {});
-    expect(convertedBackend).to.deep.equal(expectedBackend);
+    const convertedBackend = resolveBackend(expected);
+    expect(convertedBackend).to.eventually.deep.equal(expectedBackend);
   });
 
   it("should handle a callable trigger, yielding a build reversibly equivalent to the corresponding backend", () => {
@@ -104,8 +108,8 @@ describe("addResourcesToBuild", () => {
       callableTrigger: {},
       labels: {},
     });
-    const convertedBackend: backend.Backend = build.resolveBackend(expected, {});
-    expect(convertedBackend).to.deep.equal(expectedBackend);
+    const convertedBackend = resolveBackend(expected);
+    expect(convertedBackend).to.eventually.deep.equal(expectedBackend);
   });
 
   it("should handle a minimal task queue trigger, yielding a build reversibly equivalent to the corresponding backend", () => {
@@ -140,8 +144,8 @@ describe("addResourcesToBuild", () => {
         },
       ],
     };
-    const convertedBackend: backend.Backend = build.resolveBackend(expected, {});
-    expect(convertedBackend).to.deep.equal(expectedBackend);
+    const convertedBackend = resolveBackend(expected);
+    expect(convertedBackend).to.eventually.deep.equal(expectedBackend);
   });
 
   it("should copy fields, yielding a build reversibly equivalent to the corresponding backend", () => {
@@ -208,8 +212,8 @@ describe("addResourcesToBuild", () => {
       },
       ...backendConfig,
     });
-    const convertedBackend: backend.Backend = build.resolveBackend(expected, {});
-    expect(convertedBackend).to.deep.equal(expectedBackend);
+    const convertedBackend = resolveBackend(expected);
+    expect(convertedBackend).to.eventually.deep.equal(expectedBackend);
   });
 
   it("should rename/transform fields, yielding a build reversibly equivalent to the corresponding backend", () => {
@@ -244,8 +248,8 @@ describe("addResourcesToBuild", () => {
       ...BASIC_BACKEND_ENDPOINT,
       eventTrigger,
     });
-    const convertedBackend: backend.Backend = build.resolveBackend(expected, {});
-    expect(convertedBackend).to.deep.equal(expectedBackend);
+    const convertedBackend = resolveBackend(expected);
+    expect(convertedBackend).to.eventually.deep.equal(expectedBackend);
   });
 
   it("should support multiple regions, yielding a build reversibly equivalent to the corresponding backend", () => {
@@ -278,8 +282,8 @@ describe("addResourcesToBuild", () => {
         region: "europe-west1",
       }
     );
-    const convertedBackend: backend.Backend = build.resolveBackend(expected, {});
-    expect(convertedBackend).to.deep.equal(expectedBackend);
+    const convertedBackend = resolveBackend(expected);
+    expect(convertedBackend).to.eventually.deep.equal(expectedBackend);
   });
 
   it("should support schedules, yielding a build reversibly equivalent to the corresponding backend", () => {
@@ -371,8 +375,8 @@ describe("addResourcesToBuild", () => {
         },
       ],
     };
-    const convertedBackend: backend.Backend = build.resolveBackend(expected, {});
-    expect(convertedBackend).to.deep.equal(expectedBackend);
+    const convertedBackend = resolveBackend(expected);
+    expect(convertedBackend).to.eventually.deep.equal(expectedBackend);
   });
 
   it("should preserve empty vpc connector setting, yielding a build reversibly equivalent to the corresponding backend", () => {
@@ -403,8 +407,8 @@ describe("addResourcesToBuild", () => {
         connector: "",
       },
     });
-    const convertedBackend: backend.Backend = build.resolveBackend(expected, {});
-    expect(convertedBackend).to.deep.equal(expectedBackend);
+    const convertedBackend = resolveBackend(expected);
+    expect(convertedBackend).to.eventually.deep.equal(expectedBackend);
   });
 });
 

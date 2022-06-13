@@ -14,6 +14,10 @@ const MIN_ENDPOINT: Omit<v1alpha1.ManifestEndpoint, "httpsTrigger"> = {
   entryPoint: "entryPoint",
 };
 
+async function resolveBackend(bd: build.Build): Promise<backend.Backend> {
+  return build.resolveBackend(bd, { functionsSource: "", projectId: PROJECT }, {});
+}
+
 describe("buildFromV1Alpha", () => {
   describe("Endpoint keys", () => {
     const DEFAULTED_BACKEND_ENDPOINT: Omit<
@@ -57,7 +61,7 @@ describe("buildFromV1Alpha", () => {
         ...DEFAULTED_BACKEND_ENDPOINT,
         httpsTrigger: {},
       });
-      expect(build.resolveBackend(parsed, {})).to.deep.equal(expectedBackend);
+      expect(resolveBackend(parsed)).to.eventually.deep.equal(expectedBackend);
     });
 
     it("copies schedules", () => {
@@ -102,7 +106,7 @@ describe("buildFromV1Alpha", () => {
         ...DEFAULTED_BACKEND_ENDPOINT,
         scheduleTrigger: scheduleBackendTrigger,
       });
-      expect(build.resolveBackend(parsed, {})).to.deep.equal(expectedBackend);
+      expect(resolveBackend(parsed)).to.eventually.deep.equal(expectedBackend);
     });
 
     it("copies event triggers", () => {
@@ -140,7 +144,7 @@ describe("buildFromV1Alpha", () => {
         ...DEFAULTED_BACKEND_ENDPOINT,
         eventTrigger,
       });
-      expect(build.resolveBackend(parsed, {})).to.deep.equal(expectedBackend);
+      expect(resolveBackend(parsed)).to.eventually.deep.equal(expectedBackend);
     });
 
     it("copies event triggers with full resource path", () => {
@@ -187,7 +191,7 @@ describe("buildFromV1Alpha", () => {
           eventFilters: { topic: `projects/${PROJECT}/topics/my-topic` },
         },
       });
-      expect(build.resolveBackend(parsed, {})).to.deep.equal(expectedBackend);
+      expect(resolveBackend(parsed)).to.eventually.deep.equal(expectedBackend);
     });
 
     it("copies blocking triggers", () => {
@@ -219,7 +223,7 @@ describe("buildFromV1Alpha", () => {
           ...blockingTrigger,
         },
       });
-      expect(build.resolveBackend(parsed, {})).to.deep.equal(expectedBackend);
+      expect(resolveBackend(parsed)).to.eventually.deep.equal(expectedBackend);
     });
 
     it("copies blocking triggers without options", () => {
@@ -246,7 +250,7 @@ describe("buildFromV1Alpha", () => {
           ...blockingTrigger,
         },
       });
-      expect(build.resolveBackend(parsed, {})).to.deep.equal(expectedBackend);
+      expect(resolveBackend(parsed)).to.eventually.deep.equal(expectedBackend);
     });
 
     it("copies optional fields", () => {
@@ -325,7 +329,7 @@ describe("buildFromV1Alpha", () => {
         httpsTrigger: {},
         ...fields,
       });
-      expect(build.resolveBackend(parsed, {})).to.deep.equal(expectedBackend);
+      expect(resolveBackend(parsed)).to.eventually.deep.equal(expectedBackend);
     });
 
     it("handles multiple regions", () => {
@@ -362,7 +366,7 @@ describe("buildFromV1Alpha", () => {
           region: "region2",
         }
       );
-      expect(build.resolveBackend(parsed, {})).to.deep.equal(expectedBackend);
+      expect(resolveBackend(parsed)).to.eventually.deep.equal(expectedBackend);
     });
   });
 });
