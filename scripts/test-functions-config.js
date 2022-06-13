@@ -22,7 +22,7 @@ var { configstore } = require("../lib/configstore");
 
 var projectId = process.argv[2] || "functions-integration-test";
 var localFirebase = __dirname + "/../lib/bin/firebase.js";
-var projectDir = __dirname + "/test-project";
+var projectDir = __dirname + "/test-projects/test-project-1";
 var tmpDir;
 
 var preTest = function () {
