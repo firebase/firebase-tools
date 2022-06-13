@@ -40,7 +40,7 @@ marked.setOptions({
 /**
  * Command for installing an extension
  */
-export default new Command("ext:install [extensionName]")
+export const command = new Command("ext:install [extensionName]")
   .description(
     "install an official extension if [extensionName] or [extensionName@version] is provided; " +
       (previews.extdev

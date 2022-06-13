@@ -6,7 +6,7 @@ import * as metadata from "../database/metadata";
 import { Emulators } from "../emulator/types";
 import { warnEmulatorNotSupported } from "../emulator/commandUtils";
 
-export default new Command("database:rules:get <rulesetId>")
+export const command = new Command("database:rules:get <rulesetId>")
   .description("get a realtime database ruleset by id")
   .option(
     "--instance <instance>",

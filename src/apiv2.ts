@@ -10,7 +10,8 @@ import util from "util";
 import * as auth from "./auth";
 import { FirebaseError } from "./error";
 import { logger } from "./logger";
-import * as responseToError from "./responseToError";
+import { responseToError } from "./responseToError";
+import * as FormData from "form-data";
 
 // Using import would require resolveJsonModule, which seems to break the
 // build/output format.
@@ -507,5 +508,5 @@ function bodyToString(body: unknown): string {
 }
 
 function isStream(o: unknown): o is NodeJS.ReadableStream {
-  return o instanceof Readable;
+  return o instanceof Readable || o instanceof FormData;
 }

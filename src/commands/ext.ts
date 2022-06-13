@@ -11,7 +11,7 @@ import { logger } from "../logger";
 import * as utils from "../utils";
 import { CommanderStatic } from "commander";
 
-module.exports = new Command("ext")
+export const command = new Command("ext")
   .description(
     "display information on how to use ext commands and extensions installed to your project"
   )

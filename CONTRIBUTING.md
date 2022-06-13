@@ -176,7 +176,7 @@ colons with dashes where appropriate. Populate the file with this basic content:
 import { Command } from "../command";
 
 // `export default` is used for consistency in command files.
-export default new Command("your:command")
+export const command = new Command("your:command")
   .description("a one-line description of your command")
   // .option("-e, --example <requiredValue>", "describe the option briefly")
   // .before(requireConfig) // add any necessary filters and require them above

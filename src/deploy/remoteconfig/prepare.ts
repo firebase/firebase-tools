@@ -1,5 +1,5 @@
 import { needProjectNumber } from "../../projectUtils";
-import loadCJSON = require("../../loadCJSON");
+import { loadCJSON } from "../../loadCJSON";
 import { getEtag } from "./functions";
 import { validateInputRemoteConfigTemplate } from "./functions";
 import { Options } from "../../options";

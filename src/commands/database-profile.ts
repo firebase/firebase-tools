@@ -11,7 +11,7 @@ import { warnEmulatorNotSupported } from "../emulator/commandUtils";
 
 const description = "profile the Realtime Database and generate a usage report";
 
-module.exports = new Command("database:profile")
+export const command = new Command("database:profile")
   .description(description)
   .option("-o, --output <filename>", "save the output to the specified file")
   .option(

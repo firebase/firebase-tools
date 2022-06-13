@@ -16,7 +16,7 @@ import { resolveProjectPath } from "./projectPath";
 import * as utils from "./utils";
 import { getValidator, getErrorMessage } from "./firebaseConfigValidate";
 import { logger } from "./logger";
-const loadCJSON = require("./loadCJSON");
+import { loadCJSON } from "./loadCJSON";
 const parseBoltRules = require("./parseBoltRules");
 
 export class Config {
@@ -179,7 +179,7 @@ export class Config {
     return outPath;
   }
 
-  readProjectFile(p: string, options: any) {
+  readProjectFile(p: string, options: any = {}) {
     options = options || {};
     try {
       const content = fs.readFileSync(this.path(p), "utf8");

@@ -8,7 +8,7 @@ import { requireHostingSite } from "../requireHostingSite";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
 
-export default new Command("hosting:disable")
+export const command = new Command("hosting:disable")
   .description("stop serving web traffic to your Firebase Hosting site")
   .option("-f, --force", "skip confirmation")
   .option("-s, --site <siteName>", "the site to disable")
