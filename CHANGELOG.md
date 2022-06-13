@@ -6,3 +6,4 @@
 - Fixes issue where emualtor commands would error out when `frameworkawareness` preview flag was enabled and `firebase.json` did not have a hosting entry (#4624).
 - Updates the underlying HTTP request library for auth-related requests (#4574).
 - Improves detection of in-use ports for Hosting Emulator on macOS (#4628).
+- Replaces deprecated `tweetsodium` with `libsodium-wrappers`.
