@@ -12,7 +12,7 @@ import { warnEmulatorNotSupported } from "../emulator/commandUtils";
 import { requireDatabaseInstance } from "../requireDatabaseInstance";
 import * as utils from "../utils";
 
-export default new Command("database:settings:get <path>")
+export const command = new Command("database:settings:get <path>")
   .description("read the realtime database setting at path")
   .option(
     "--instance <instance>",

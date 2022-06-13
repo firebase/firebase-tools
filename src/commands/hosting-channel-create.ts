@@ -16,7 +16,7 @@ import { requireHostingSite } from "../requireHostingSite";
 
 const LOG_TAG = "hosting:channel";
 
-export default new Command("hosting:channel:create [channelId]")
+export const command = new Command("hosting:channel:create [channelId]")
   .description("create a Firebase Hosting channel")
   .option(
     "-e, --expires <duration>",

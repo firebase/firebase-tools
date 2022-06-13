@@ -65,7 +65,7 @@ function getConfirmationMessage(deleteOp: FirestoreDelete, options: any) {
   );
 }
 
-module.exports = new Command("firestore:delete [path]")
+export const command = new Command("firestore:delete [path]")
   .description("Delete data from Cloud Firestore.")
   .option(
     "-r, --recursive",
