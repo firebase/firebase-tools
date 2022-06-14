@@ -61,10 +61,13 @@ export async function setIamPolicy(
 export async function addServiceAccountToRoles(
   projectId: string,
   serviceAccountName: string,
-  roles: string[]
+  roles: string[],
+  skipAccountLookup = false
 ): Promise<Policy> {
   const [{ name: fullServiceAccountName }, projectPolicy] = await Promise.all([
-    getServiceAccount(projectId, serviceAccountName),
+    skipAccountLookup
+      ? Promise.resolve({ name: serviceAccountName })
+      : getServiceAccount(projectId, serviceAccountName),
     getIamPolicy(projectId),
   ]);
 
@@ -97,4 +100,43 @@ export async function addServiceAccountToRoles(
   });
 
   return setIamPolicy(projectId, projectPolicy, "bindings");
+}
+
+export async function serviceAccountHasRoles(
+  projectId: string,
+  serviceAccountName: string,
+  roles: string[],
+  skipAccountLookup = false
+): Promise<boolean> {
+  const [{ name: fullServiceAccountName }, projectPolicy] = await Promise.all([
+    skipAccountLookup
+      ? Promise.resolve({ name: serviceAccountName })
+      : getServiceAccount(projectId, serviceAccountName),
+    getIamPolicy(projectId),
+  ]);
+
+  // The way the service account name is formatted in the Policy object
+  // https://cloud.google.com/iam/docs/reference/rest/v1/Policy
+  // serviceAccount:my-project-id@appspot.gserviceaccount.com
+  const memberName = `serviceAccount:${fullServiceAccountName.split("/").pop()}`;
+
+  for (const roleName of roles) {
+    const bindingIndex = findIndex(
+      projectPolicy.bindings,
+      (binding: Binding) => binding.role === roleName
+    );
+
+    if (bindingIndex === -1) {
+      return false;
+    }
+
+    const binding = projectPolicy.bindings[bindingIndex];
+
+    // No need to update if service account already has role
+    if (!binding.members.includes(memberName)) {
+      return false;
+    }
+  }
+
+  return true;
 }
