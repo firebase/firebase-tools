@@ -28,6 +28,8 @@ const CRC32C_TABLE = makeCRCTable(0x82f63b78);
  * Adapted from:
  *  - https://en.wikipedia.org/wiki/Cyclic_redundancy_check#Computation
  *  - https://stackoverflow.com/a/18639999/324977
+ *
+ * @returns CRC32C as an unsigned 32-bit integer
  */
 export function crc32c(bytes: Buffer): number {
   let crc = 0 ^ -1;
@@ -43,12 +45,15 @@ export function crc32c(bytes: Buffer): number {
 
 /**
  * Adapted from:
- *  - https://github.com/googleapis/nodejs-storage/blob/0c1fa3934a52a608366a8c6c798c43516dd03dbf/src/file.ts#L1406-L1409
+ *  - https://github.com/googleapis/nodejs-storage/blob/1d7d075b82fd24ea3c214bd304cefe4ba5d8be5c/src/crc32c.ts
  */
 export function crc32cToString(crc32cValue: number | string): string {
-  if (typeof crc32cValue === "string") {
-    crc32cValue = Number(crc32cValue);
-  }
-  // Does the reverse of https://stackoverflow.com/q/25096737/849645
-  return "----" + Buffer.from([crc32cValue]).toString("base64");
+  const value = typeof crc32cValue === "string" ? Number.parseInt(crc32cValue) : crc32cValue;
+
+  // `Buffer` objects are arrays of 8-bit unsigned integers
+  // Allocating 4 octets to write an unsigned CRC32C 32-bit integer
+  const buffer = Buffer.alloc(4);
+  buffer.writeUint32BE(value);
+
+  return buffer.toString("base64");
 }
