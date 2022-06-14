@@ -2,7 +2,7 @@
 const { marked } = require("marked");
 import * as clc from "cli-color";
 
-import { ExtensionVersion, RegistryLaunchStage } from "./extensionsApi";
+import { ExtensionVersion, RegistryLaunchStage } from "./types";
 import { printSourceDownloadLink } from "./displayExtensionInfo";
 import { logPrefix } from "./extensionsHelper";
 import { getTrustedPublishers } from "./resolveSource";

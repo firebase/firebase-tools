@@ -6,6 +6,7 @@ const { marked } = require("marked");
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import * as extensionsApi from "./extensionsApi";
+import { ExtensionSource, ExtensionSpec } from "./types";
 import * as refs from "./refs";
 import {
   createSourceFromLocation,
@@ -98,8 +99,8 @@ export function warningUpdateToOtherSource(sourceOrigin: SourceOrigin) {
  * @param published
  */
 export async function displayChanges(args: {
-  spec: extensionsApi.ExtensionSpec;
-  newSpec: extensionsApi.ExtensionSpec;
+  spec: ExtensionSpec;
+  newSpec: ExtensionSpec;
   nonInteractive: boolean;
   force: boolean;
 }): Promise<void> {
@@ -119,7 +120,7 @@ export async function displayChanges(args: {
 export interface UpdateOptions {
   projectId: string;
   instanceId: string;
-  source?: extensionsApi.ExtensionSource;
+  source?: ExtensionSource;
   extRef?: string;
   params?: { [key: string]: string };
   canEmitEvents: boolean;
@@ -183,7 +184,7 @@ export async function updateFromLocalSource(
   projectId: string,
   instanceId: string,
   localSource: string,
-  existingSpec: extensionsApi.ExtensionSpec
+  existingSpec: ExtensionSpec
 ): Promise<string> {
   displayExtInfo(instanceId, "", existingSpec, false);
   let source;
@@ -213,7 +214,7 @@ export async function updateFromUrlSource(
   projectId: string,
   instanceId: string,
   urlSource: string,
-  existingSpec: extensionsApi.ExtensionSpec
+  existingSpec: ExtensionSpec
 ): Promise<string> {
   displayExtInfo(instanceId, "", existingSpec, false);
   let source;
@@ -241,7 +242,7 @@ export async function updateToVersionFromPublisherSource(
   projectId: string,
   instanceId: string,
   extVersionRef: string,
-  existingSpec: extensionsApi.ExtensionSpec
+  existingSpec: ExtensionSpec
 ): Promise<string> {
   let source;
   const ref = refs.parse(extVersionRef);
@@ -284,7 +285,7 @@ export async function updateFromPublisherSource(
   projectId: string,
   instanceId: string,
   extRef: string,
-  existingSpec: extensionsApi.ExtensionSpec
+  existingSpec: ExtensionSpec
 ): Promise<string> {
   return updateToVersionFromPublisherSource(
     projectId,

@@ -22,15 +22,8 @@ import { checkResponse } from "./askUserForParam";
 import { ensure } from "../ensureApiEnabled";
 import { deleteObject, uploadObject } from "../gcp/storage";
 import { getProjectId } from "../projectUtils";
-import {
-  createSource,
-  ExtensionSource,
-  ExtensionVersion,
-  getExtension,
-  getInstance,
-  Param,
-  publishExtensionVersion,
-} from "./extensionsApi";
+import { createSource, getExtension, getInstance, publishExtensionVersion } from "./extensionsApi";
+import { ExtensionSource, ExtensionVersion, Param } from "./types";
 import * as refs from "./refs";
 import { getLocalExtensionSpec } from "./localHelper";
 import { promptOnce } from "../prompt";
