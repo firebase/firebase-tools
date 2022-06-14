@@ -1286,11 +1286,13 @@ describeAuthEmulator("sign-in with credential", ({ authApi, getClock }) => {
       nock(BLOCKING_FUNCTION_HOST)
         .post(BEFORE_CREATE_PATH)
         .reply(200, {
-          updateMask: "displayName,photoUrl,emailVerified,customClaims",
-          displayName: "oldDisplayName",
-          photoUrl: "oldPhotoUrl",
-          emailVerified: false,
-          customClaims: JSON.stringify({ customAttribute: "oldCustom" }),
+          userRecord: {
+            updateMask: "displayName,photoUrl,emailVerified,customClaims",
+            displayName: "oldDisplayName",
+            photoUrl: "oldPhotoUrl",
+            emailVerified: false,
+            customClaims: JSON.stringify({ customAttribute: "oldCustom" }),
+          },
         })
         .post(BEFORE_SIGN_IN_PATH)
         .reply(200, {

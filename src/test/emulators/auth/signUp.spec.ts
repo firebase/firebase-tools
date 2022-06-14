@@ -721,11 +721,13 @@ describeAuthEmulator("accounts:signUp", ({ authApi }) => {
       nock(BLOCKING_FUNCTION_HOST)
         .post(BEFORE_CREATE_PATH)
         .reply(200, {
-          updateMask: "displayName,photoUrl,emailVerified,customClaims",
-          displayName: "oldDisplayName",
-          photoUrl: "oldPhotoUrl",
-          emailVerified: false,
-          customClaims: JSON.stringify({ customAttribute: "oldCustom" }),
+          userRecord: {
+            updateMask: "displayName,photoUrl,emailVerified,customClaims",
+            displayName: "oldDisplayName",
+            photoUrl: "oldPhotoUrl",
+            emailVerified: false,
+            customClaims: JSON.stringify({ customAttribute: "oldCustom" }),
+          },
         })
         .post(BEFORE_SIGN_IN_PATH)
         .reply(200, {
@@ -768,7 +770,7 @@ describeAuthEmulator("accounts:signUp", ({ authApi }) => {
         });
     });
 
-    it("should disable email/password user if set", async () => {
+    it("should disable new user if set", async () => {
       await updateConfig(
         authApi(),
         PROJECT_ID,

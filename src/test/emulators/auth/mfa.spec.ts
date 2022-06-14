@@ -16,6 +16,7 @@ import {
   registerTenant,
   registerUser,
   signInWithEmailLink,
+  signInWithPassword,
   signInWithPhoneNumber,
   TEST_PHONE_NUMBER,
   TEST_PHONE_NUMBER_2,
@@ -493,24 +494,12 @@ describeAuthEmulator("mfa enrollment", ({ authApi, getClock }) => {
 
       getClock().tick(3333);
 
-      const { mfaPendingCredential, mfaEnrollmentId } = await authApi()
-        .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword")
-        .query({ key: "fake-api-key" })
-        .send({ email, password })
-        .then((res) => {
-          expectStatusCode(200, res);
-          expect(res.body).not.to.have.property("idToken");
-          expect(res.body).not.to.have.property("refreshToken");
-          const mfaPendingCredential = res.body.mfaPendingCredential as string;
-          const mfaInfo = res.body.mfaInfo as MfaEnrollment[];
-          expect(mfaPendingCredential).to.be.a("string");
-          expect(mfaInfo).to.be.an("array").with.lengthOf(1);
-          expect(mfaInfo[0]?.phoneInfo).to.equal(TEST_PHONE_NUMBER_OBFUSCATED);
-
-          // This must not be exposed right after first factor login.
-          expect(mfaInfo[0]?.phoneInfo).not.to.have.property("unobfuscatedPhoneInfo");
-          return { mfaPendingCredential, mfaEnrollmentId: mfaInfo[0].mfaEnrollmentId };
-        });
+      const { mfaPendingCredential, mfaEnrollmentId } = await signInWithPassword(
+        authApi(),
+        email,
+        password,
+        true
+      );
 
       getClock().tick(4444);
 
@@ -598,24 +587,12 @@ describeAuthEmulator("mfa enrollment", ({ authApi, getClock }) => {
 
       getClock().tick(3333);
 
-      const { mfaPendingCredential, mfaEnrollmentId } = await authApi()
-        .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword")
-        .query({ key: "fake-api-key" })
-        .send({ email, password })
-        .then((res) => {
-          expectStatusCode(200, res);
-          expect(res.body).not.to.have.property("idToken");
-          expect(res.body).not.to.have.property("refreshToken");
-          const mfaPendingCredential = res.body.mfaPendingCredential as string;
-          const mfaInfo = res.body.mfaInfo as MfaEnrollment[];
-          expect(mfaPendingCredential).to.be.a("string");
-          expect(mfaInfo).to.be.an("array").with.lengthOf(1);
-          expect(mfaInfo[0]?.phoneInfo).to.equal(TEST_PHONE_NUMBER_OBFUSCATED);
-
-          // This must not be exposed right after first factor login.
-          expect(mfaInfo[0]?.phoneInfo).not.to.have.property("unobfuscatedPhoneInfo");
-          return { mfaPendingCredential, mfaEnrollmentId: mfaInfo[0].mfaEnrollmentId };
-        });
+      const { mfaPendingCredential, mfaEnrollmentId } = await signInWithPassword(
+        authApi(),
+        email,
+        password,
+        true
+      );
 
       getClock().tick(4444);
 

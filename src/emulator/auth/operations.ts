@@ -3100,11 +3100,11 @@ function processBlockingFunctionResponse(
       switch (field) {
         case "displayName":
         case "photoUrl":
-          (updates as any)[field] = coercePrimitiveToString(userRecord[field]);
+          updates[field] = coercePrimitiveToString(userRecord[field]);
           break;
         case "disabled":
         case "emailVerified":
-          (updates as any)[field] = !!userRecord[field];
+          updates[field] = !!userRecord[field];
           break;
         case "customClaims":
           validateSerializedCustomClaims(userRecord.customClaims!);
@@ -3249,6 +3249,15 @@ function generateBlockingFunctionJwt(
   });
 
   return jwtStr;
+}
+
+export function parseBlockingFunctionJwt(jwt: string): BlockingFunctionsJwtPayload {
+  const decoded = decodeJwt(jwt, { json: true }) as BlockingFunctionsJwtPayload;
+  assert(decoded, "((Invalid blocking function jwt.))");
+  assert(decoded.iss, "((Invalid blocking function jwt, missing `iss` claim.))");
+  assert(decoded.aud, "((Invalid blocking function jwt, missing `aud` claim.))");
+  assert(decoded.user_record, "((Invalid blocking function jwt, missing `user_record` claim.))");
+  return decoded;
 }
 
 export interface SamlAssertion {

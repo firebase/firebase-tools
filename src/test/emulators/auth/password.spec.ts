@@ -318,5 +318,52 @@ describeAuthEmulator("accounts:signInWithPassword", ({ authApi, getClock }) => {
           expect(res.body.error.message).to.equal("USER_DISABLED");
         });
     });
+
+    it("should not trigger blocking function if user has MFA", async () => {
+      const user = {
+        email: "alice@example.com",
+        password: "notasecret",
+        mfaInfo: [TEST_MFA_INFO],
+      };
+      await registerUser(authApi(), user);
+      await updateConfig(
+        authApi(),
+        PROJECT_ID,
+        {
+          blockingFunctions: {
+            triggers: {
+              beforeSignIn: {
+                functionUri: BEFORE_SIGN_IN_URL,
+              },
+            },
+          },
+        },
+        "blockingFunctions"
+      );
+      nock(BLOCKING_FUNCTION_HOST)
+        .post(BEFORE_SIGN_IN_PATH)
+        .reply(200, {
+          userRecord: {
+            updateMask: "disabled",
+            disabled: true,
+          },
+        });
+
+      await authApi()
+        .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword")
+        .query({ key: "fake-api-key" })
+        .send({ email: user.email, password: user.password })
+        .then((res) => {
+          expectStatusCode(200, res);
+          expect(res.body).not.to.have.property("idToken");
+          expect(res.body).not.to.have.property("refreshToken");
+          expect(res.body.mfaPendingCredential).to.be.a("string");
+          expect(res.body.mfaInfo).to.be.an("array").with.lengthOf(1);
+        });
+
+      // Shouldn't trigger nock calls
+      expect(nock.isDone()).to.be.false;
+      nock.cleanAll();
+    });
   });
 });

@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import * as nock from "nock";
 import { decode as decodeJwt, JwtHeader } from "jsonwebtoken";
-import { FirebaseJwtPayload } from "../../../emulator/auth/operations";
+import { FirebaseJwtPayload, parseBlockingFunctionJwt } from "../../../emulator/auth/operations";
 import { describeAuthEmulator, PROJECT_ID } from "./setup";
 import {
   expectStatusCode,
@@ -377,6 +377,174 @@ describeAuthEmulator("email link sign-in", ({ authApi }) => {
         });
     });
 
+    it("should pass user info in the request body to beforeCreate", async () => {
+      await updateConfig(
+        authApi(),
+        PROJECT_ID,
+        {
+          blockingFunctions: {
+            triggers: {
+              beforeCreate: {
+                functionUri: BEFORE_CREATE_URL,
+              },
+            },
+          },
+        },
+        "blockingFunctions"
+      );
+      let jwtStr;
+      nock(BLOCKING_FUNCTION_HOST)
+        .post(BEFORE_CREATE_PATH, (parsedBody) => {
+          jwtStr = parsedBody.data.jwt;
+          return parsedBody;
+        })
+        .reply(200, {
+          userRecord: {
+            updateMask: "displayName",
+            displayName: "Not tested",
+          },
+        });
+
+      const email = "alice@example.com";
+      await createEmailSignInOob(authApi(), email);
+      const oobs = await inspectOobs(authApi());
+
+      await authApi()
+        .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithEmailLink")
+        .query({ key: "fake-api-key" })
+        .send({ oobCode: oobs[0].oobCode, email })
+        .then((res) => {
+          expectStatusCode(200, res);
+        });
+
+      expect(jwtStr).not.to.be.undefined;
+      const jwt = parseBlockingFunctionJwt(jwtStr as unknown as string);
+      expect(jwt).to.have.property("sign_in_method").eql("emailLink");
+      expect(jwt.user_record).to.have.property("uid").that.is.a("string");
+      expect(jwt.user_record).to.have.property("email").eql(email);
+      expect(jwt.user_record).to.have.property("email_verified").to.be.true;
+      expect(jwt.user_record).to.have.property("metadata");
+      expect(jwt.user_record.metadata).to.have.property("creation_time").that.is.a("string");
+    });
+
+    it("should pass user info in the request body to beforeSignIn", async () => {
+      await updateConfig(
+        authApi(),
+        PROJECT_ID,
+        {
+          blockingFunctions: {
+            triggers: {
+              beforeSignIn: {
+                functionUri: BEFORE_SIGN_IN_URL,
+              },
+            },
+          },
+        },
+        "blockingFunctions"
+      );
+      let jwtStr;
+      nock(BLOCKING_FUNCTION_HOST)
+        .post(BEFORE_SIGN_IN_PATH, (parsedBody) => {
+          jwtStr = parsedBody.data.jwt;
+          return parsedBody;
+        })
+        .reply(200, {
+          userRecord: {
+            updateMask: "displayName",
+            displayName: "Not tested",
+          },
+        });
+
+      const email = "alice@example.com";
+      await createEmailSignInOob(authApi(), email);
+      const oobs = await inspectOobs(authApi());
+
+      await authApi()
+        .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithEmailLink")
+        .query({ key: "fake-api-key" })
+        .send({ oobCode: oobs[0].oobCode, email })
+        .then((res) => {
+          expectStatusCode(200, res);
+        });
+
+      expect(jwtStr).not.to.be.undefined;
+      const jwt = parseBlockingFunctionJwt(jwtStr as unknown as string);
+      expect(jwt).to.have.property("sign_in_method").eql("emailLink");
+      expect(jwt.user_record).to.have.property("uid").that.is.a("string");
+      expect(jwt.user_record).to.have.property("email").eql(email);
+      expect(jwt.user_record).to.have.property("email_verified").to.be.true;
+      expect(jwt.user_record).to.have.property("metadata");
+      expect(jwt.user_record.metadata).to.have.property("creation_time").that.is.a("string");
+    });
+
+    it("should pass user info in the request body to beforeSignIn and include modifiable fields from beforeCreate", async () => {
+      await updateConfig(
+        authApi(),
+        PROJECT_ID,
+        {
+          blockingFunctions: {
+            triggers: {
+              beforeCreate: {
+                functionUri: BEFORE_CREATE_URL,
+              },
+              beforeSignIn: {
+                functionUri: BEFORE_SIGN_IN_URL,
+              },
+            },
+          },
+        },
+        "blockingFunctions"
+      );
+      let jwtStr;
+      nock(BLOCKING_FUNCTION_HOST)
+        .post(BEFORE_CREATE_PATH)
+        .reply(200, {
+          userRecord: {
+            updateMask: "displayName,photoUrl,emailVerified,customClaims",
+            displayName: DISPLAY_NAME,
+            photoUrl: PHOTO_URL,
+            emailVerified: false,
+            customClaims: JSON.stringify({ customAttribute: "custom" }),
+          },
+        })
+        .post(BEFORE_SIGN_IN_PATH, (parsedBody) => {
+          jwtStr = parsedBody.data.jwt;
+          return parsedBody;
+        })
+        .reply(200, {
+          userRecord: {
+            updateMask: "displayName",
+            displayName: "Not tested",
+          },
+        });
+
+      const email = "alice@example.com";
+      await createEmailSignInOob(authApi(), email);
+      const oobs = await inspectOobs(authApi());
+
+      await authApi()
+        .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithEmailLink")
+        .query({ key: "fake-api-key" })
+        .send({ oobCode: oobs[0].oobCode, email })
+        .then((res) => {
+          expectStatusCode(200, res);
+        });
+
+      expect(jwtStr).not.to.be.undefined;
+      const jwt = parseBlockingFunctionJwt(jwtStr as unknown as string);
+      expect(jwt).to.have.property("sign_in_method").eql("emailLink");
+      expect(jwt.user_record).to.have.property("uid").that.is.a("string");
+      expect(jwt.user_record).to.have.property("email").eql(email);
+      expect(jwt.user_record).to.have.property("email_verified").to.be.false;
+      expect(jwt.user_record).to.have.property("display_name").eql(DISPLAY_NAME);
+      expect(jwt.user_record).to.have.property("photo_url").eql(PHOTO_URL);
+      expect(jwt.user_record)
+        .to.have.property("custom_claims")
+        .eql(JSON.stringify({ customAttribute: "custom" }));
+      expect(jwt.user_record).to.have.property("metadata");
+      expect(jwt.user_record.metadata).to.have.property("creation_time").that.is.a("string");
+    });
+
     it("should update modifiable fields before sign in", async () => {
       await updateConfig(
         authApi(),
@@ -454,11 +622,13 @@ describeAuthEmulator("email link sign-in", ({ authApi }) => {
       nock(BLOCKING_FUNCTION_HOST)
         .post(BEFORE_CREATE_PATH)
         .reply(200, {
-          updateMask: "displayName,photoUrl,emailVerified,customClaims",
-          displayName: "oldDisplayName",
-          photoUrl: "oldPhotoUrl",
-          emailVerified: false,
-          customClaims: JSON.stringify({ customAttribute: "oldCustom" }),
+          userRecord: {
+            updateMask: "displayName,photoUrl,emailVerified,customClaims",
+            displayName: "oldDisplayName",
+            photoUrl: "oldPhotoUrl",
+            emailVerified: false,
+            customClaims: JSON.stringify({ customAttribute: "oldCustom" }),
+          },
         })
         .post(BEFORE_SIGN_IN_PATH)
         .reply(200, {

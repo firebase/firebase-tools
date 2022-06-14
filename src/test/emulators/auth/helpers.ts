@@ -5,7 +5,7 @@ import { expect, AssertionError } from "chai";
 import { IdpJwtPayload } from "../../../emulator/auth/operations";
 import { OobRecord, PhoneVerificationRecord, Tenant, UserInfo } from "../../../emulator/auth/state";
 import { TestAgent, PROJECT_ID } from "./setup";
-import { MfaEnrollments, Schemas } from "../../../emulator/auth/types";
+import { MfaEnrollment, MfaEnrollments, Schemas } from "../../../emulator/auth/types";
 
 export { PROJECT_ID };
 export const TEST_PHONE_NUMBER = "+15555550100";
@@ -161,8 +161,28 @@ export async function signInWithEmailLink(
 export function signInWithPassword(
   testAgent: TestAgent,
   email: string,
-  password: string
-): Promise<{ idToken: string; localId: string; refreshToken: string; email: string }> {
+  password: string,
+  extractMfaPending: boolean = false
+): Promise<{
+  idToken?: string;
+  localId?: string;
+  refreshToken?: string;
+  email?: string;
+  mfaPendingCredential?: string;
+  mfaEnrollmentId?: string;
+}> {
+  if (extractMfaPending) {
+    return testAgent
+      .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword")
+      .send({ email, password })
+      .query({ key: "fake-api-key" })
+      .then((res) => {
+        expectStatusCode(200, res);
+        const mfaPendingCredential = res.body.mfaPendingCredential as string;
+        const mfaInfo = res.body.mfaInfo as MfaEnrollment[];
+        return { mfaPendingCredential, mfaEnrollmentId: mfaInfo[0].mfaEnrollmentId };
+      });
+  }
   return testAgent
     .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword")
     .send({ email, password })
