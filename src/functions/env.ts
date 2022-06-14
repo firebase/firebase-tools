@@ -170,6 +170,9 @@ export function validateKey(key: string): void {
 // Parse dotenv file, but throw errors if:
 //   1. Input has any invalid lines.
 //   2. Any env key fails validation.
+/**
+ *
+ */
 export function parseStrict(data: string): Record<string, string> {
   const { envs, errors } = parse(data);
 
@@ -242,20 +245,17 @@ export function hasUserEnvs({
 
 /**
  * Write a new environment variable into a dotenv file.
- * 
+ *
  * Identifies one and only one dotenv file to touch using the same rules as loadUserEnvs().
  */
 export function writeUserEnv(
   key: string,
   value: string,
-  {
-    functionsSource,
-    projectId,
-    projectAlias,
-    isEmulator,
-  }: UserEnvsOpts
+  { functionsSource, projectId, projectAlias, isEmulator }: UserEnvsOpts
 ) {
-  throw new FirebaseError("Persisting user-defined parameters to .env files is not yet implemented.");
+  throw new FirebaseError(
+    "Persisting user-defined parameters to .env files is not yet implemented."
+  );
 }
 
 /**
