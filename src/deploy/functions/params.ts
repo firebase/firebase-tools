@@ -1,3 +1,4 @@
+import { logger } from "../../logger";
 import { FirebaseError } from "../../error";
 import { promptOnce } from "../../prompt";
 import * as build from "./build";
@@ -15,15 +16,12 @@ export function resolveInt(
     return 0;
   } else if (typeof from === "string" && /{{ params\.(\S+) }}/.test(from)) {
     const match = /{{ params\.(\S+) }}/.exec(from);
-    if (!match) {
-      return 0;
-    }
-    const referencedParamValue = paramValues[match[1]];
+    const referencedParamValue = paramValues[match![1]];
     if (typeof referencedParamValue !== "number") {
       throw new FirebaseError(
-        "Referenced string parameter '" +
+        "Referenced numeric parameter '" +
           match +
-          "' resolved to non-string value " +
+          "' resolved to non-number value " +
           referencedParamValue
       );
     }
@@ -35,7 +33,7 @@ export function resolveInt(
 }
 
 /**
- * Resolves a numeric string in a Build to an an actual string.
+ * Resolves a string field in a Build to an an actual string.
  * Fields can be null, literal, or a {{ }} delimited CEL expression referencing param values.
  * Currently only the CEL literal {{ params.PARAMNAME }} is implemented.
  */
@@ -47,10 +45,7 @@ export function resolveString(
     return "";
   } else if (/{{ params\.(\S+) }}/.test(from)) {
     const match = /{{ params\.(\S+) }}/.exec(from);
-    if (!match) {
-      return "";
-    }
-    const referencedParamValue = paramValues[match[1]];
+    const referencedParamValue = paramValues[match![1]];
     if (typeof referencedParamValue !== "string") {
       throw new FirebaseError(
         "Referenced numeric parameter '" +
@@ -81,10 +76,7 @@ export function resolveBoolean(
     return false;
   } else if (typeof from === "string" && /{{ params\.(\S+) }}/.test(from)) {
     const match = /{{ params\.(\S+) }}/.exec(from);
-    if (!match) {
-      return false;
-    }
-    const referencedParamValue = paramValues[match[1]];
+    const referencedParamValue = paramValues[match![1]];
     if (typeof referencedParamValue !== "boolean") {
       throw new FirebaseError(
         "Referenced boolean parameter '" +
@@ -322,12 +314,8 @@ async function promptParam(param: Param): Promise<ParamValue> {
 
 async function promptStringParam(param: StringParam): Promise<string> {
   if (!param.input) {
-    if (param.default) {
-      return resolveString(param.default, {});
-    }
-    throw new FirebaseError(
-      "Build specified string parameter " + param.param + " without any input form or default value"
-    );
+    const defaultToText: TextInput<string> = { text: {} };
+    param.input = defaultToText;
   }
 
   switch (param.input.type) {
@@ -352,12 +340,8 @@ async function promptStringParam(param: StringParam): Promise<string> {
 
 async function promptIntParam(param: IntParam): Promise<number> {
   if (!param.input) {
-    if (param.default) {
-      return resolveInt(param.default, {});
-    }
-    throw new FirebaseError(
-      "Build specified string parameter " + param.param + " without any input form or default value"
-    );
+    const defaultToText: TextInput<string> = { text: {} };
+    param.input = defaultToText;
   }
 
   switch (param.input.type) {
@@ -371,15 +355,18 @@ async function promptIntParam(param: IntParam): Promise<number> {
       if (param.description) {
         prompt += ` \n(${param.description})`;
       }
-      const res = await promptOnce({
-        name: param.param,
-        type: "number",
-        default: param.default,
-        message: prompt,
-      });
-      if (!Number.isInteger(res)) {
-        // / TODO: what do we do here? is there a way to force prompts to only give us integers?
+      let res: number;
+      while (true) {
+        res = await promptOnce({
+          name: param.param,
+          type: "number",
+          default: param.default,
+          message: prompt,
+        });
+        if (Number.isInteger(res)) {
+          return res;
+        }
+        logger.error(`${param.label || param.param} must be an integer; retrying...`);
       }
-      return res;
   }
 }
