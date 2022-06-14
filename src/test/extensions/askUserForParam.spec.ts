@@ -88,6 +88,30 @@ describe("askUserForParam", () => {
       ).to.equal(true);
     });
 
+    it("should not check against list of options if no value is passed for an optional SELECT", () => {
+      expect(
+        checkResponse("", {
+          param: "param",
+          label: "fill in the blank!",
+          type: ParamType.SELECT,
+          required: false,
+          options: [{ value: "aaa" }, { value: "bbb" }, { value: "ccc" }],
+        })
+      ).to.equal(true);
+    });
+
+    it("should not check against list of options if no value is passed for an optional MULTISELECT", () => {
+      expect(
+        checkResponse("", {
+          param: "param",
+          label: "fill in the blank!",
+          type: ParamType.MULTISELECT,
+          required: false,
+          options: [{ value: "aaa" }, { value: "bbb" }, { value: "ccc" }],
+        })
+      ).to.equal(true);
+    });
+
     it("should use custom validation error message if provided", () => {
       const message = "please enter a word with foo in it";
       expect(
