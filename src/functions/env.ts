@@ -241,6 +241,24 @@ export function hasUserEnvs({
 }
 
 /**
+ * Write a new environment variable into a dotenv file.
+ * 
+ * Identifies one and only one dotenv file to touch using the same rules as loadUserEnvs().
+ */
+export function writeUserEnv(
+  key: string,
+  value: string,
+  {
+    functionsSource,
+    projectId,
+    projectAlias,
+    isEmulator,
+  }: UserEnvsOpts
+) {
+  throw new FirebaseError("Persisting user-defined parameters to .env files is not yet implemented.");
+}
+
+/**
  * Load user-specified environment variables.
  *
  * Look for .env files at the root of functions source directory

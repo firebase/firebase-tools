@@ -159,6 +159,146 @@ export interface SelectInput<T> {
 }
 
 export type Param = StringParam | IntParam;
+type ParamValue = string | number | boolean;
+
+type CEL = build.Expression<string> | build.Expression<number> | build.Expression<boolean>;
+function isCEL(expr: string | number | boolean): expr is CEL {
+  return typeof expr === "string" && expr.startsWith("{{") && expr.endsWith("}}");
+}
+function dependenciesCEL(expr: CEL): string[] {
+  return /params\.(\w+)/.exec(expr)?.slice(1) || [];
+}
+function hasCircularDeps(
+  paramName: string,
+  expr: CEL,
+  currentlyUnresolvedFields: Record<string, CEL>
+): boolean {
+  for (const dep of dependenciesCEL(expr)) {
+    if (dep === paramName) {
+      return true;
+    }
+    // This depth-1 search is sufficient for the currently implemented subset of CEL.
+    // If we ever try to implement all of CEL, this may have to turn into an actual graph search.
+    if (currentlyUnresolvedFields.hasOwnProperty(dep)) {
+      const subexpr = currentlyUnresolvedFields[dep];
+      if (dependenciesCEL(subexpr).includes(paramName)) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+/** 
+ * At the beginning, we have a set of dotenv variables (some of which are literal, and some of which are CEL),
+ * and a set of params (some of which map to a dotenv literal/CEL expression, and some of which have to be prompted for).
+ * There are two invariants we need to check for:
+ * 1) No CEL expression can reference a field which is not defined either as a dotenv variable or a param name
+ * 2) No interactive prompt can result in a CEL expression which creates a cycle in param dependencies
+ */
+export async function resolveParams(
+  params: Param[],
+  projectId: string,
+  userEnvs: Record<string, ParamValue>
+): Promise<Record<string, build.Field<ParamValue>>> {
+  let unresolvedFields: Record<string, CEL> = {};
+  const resolvedFields: Record<string, ParamValue> = {};
+  const allFields: string[] = [];
+
+  for (const env of Object.keys(userEnvs)) {
+    const value = userEnvs[env];
+    allFields.push(env);
+    if (isCEL(value)) {
+      unresolvedFields[env] = value;
+    } else {
+      resolvedFields[env] = value;
+    }
+  }
+  for (const param of params) {
+    allFields.push(param.param);
+  }
+  // for k, v in unresolvedFields: ensure that dependenciesCEL(v) is a subset of allFields
+  for (const k of Object.keys(unresolvedFields)) {
+    const deps = dependenciesCEL(unresolvedFields[k]);
+    const allDepsFound = deps.every((dep) => {
+      return allFields.includes(dep);
+    });
+    if (!allDepsFound) {
+      throw new FirebaseError(
+        "Env file CEL configuration field " +
+          unresolvedFields[k] +
+          " unresolvable; missing required parameters."
+      );
+    }
+  }
+
+  // for param of params:
+  //   if param is not in dotenv keys:
+  //     prompt interactively for param value
+  //     if param value is CEL:
+  //       ensure that param value does not depend on fields outside allFields
+  //       ensure that param value does not introduce circular depndencies
+  //       add param, param value to unresolved fields
+  //     else:
+  //       add directly to resolvedFields
+
+  for (const param of params) {
+    if (
+      !resolvedFields.hasOwnProperty(param.param) &&
+      !unresolvedFields.hasOwnProperty(param.param)
+    ) {
+      const paramValue = await promptParam(param);
+      if (isCEL(paramValue)) {
+        // TODO: we probably want to gin up a way to retry the prompt when either of these checks fail, since the most likely cause is a typo
+        const deps = dependenciesCEL(paramValue);
+        const allDepsFound = deps.every((dep) => {
+          return allFields.includes(dep);
+        });
+        if (!allDepsFound) {
+          throw new FirebaseError("CEL expression unresolvable; missing required parameters.");
+        }
+        if (hasCircularDeps(param.param, paramValue, unresolvedFields)) {
+          throw new FirebaseError("CEL expression unresolvable; circular parameter dependencies.");
+        }
+        unresolvedFields[param.param] = paramValue;
+      } else {
+        resolvedFields[param.param] = paramValue;
+      }
+    }
+  }
+
+  // while unresolvedFields.length > 0:
+  // loop through unresolvedFields and resolve any that depend only on values in resolvedfields
+  //    make sure to remove them from unresolvedfields after
+  let stuck = false;
+  while (true) {
+    const stillUnresolved: Record<string, CEL> = {};
+    for (const k of Object.keys(unresolvedFields)) {
+      const expr = unresolvedFields[k];
+      const deps = dependenciesCEL(expr);
+      const resolvable = deps.every((dep) => {
+        return Object.keys(resolvedFields).includes(dep);
+      });
+      if (resolvable) {
+        stuck = false;
+        // uh-oh
+        resolvedFields[k] = resolveString(expr, resolvedFields);
+      } else {
+        stillUnresolved[k] = expr;
+      }
+    }
+    if (stuck) {
+      throw new FirebaseError("Cycle detected during Functions parameter resolution");
+    }
+    if (Object.keys(stillUnresolved).length === 0) {
+      break;
+    }
+    unresolvedFields = stillUnresolved;
+    stuck = true;
+  }
+
+  return resolvedFields;
+}
 
 /**
  * Returns the resolved value of a user-defined Functions parameter.
@@ -167,16 +307,8 @@ export type Param = StringParam | IntParam;
  * For most param types, we check the contents of the dotenv files first for a matching key, then interactively prompt the user.
  * When the CLI is running in non-interactive mode or with the --force argument, it is an error for a param to be undefined in dotenvs.
  */
-export async function handleParam(
-  param: Param,
-  projectId: string,
-  userEnvs: Record<string, string>
-): Promise<string | number | boolean> {
+async function promptParam(param: Param): Promise<ParamValue> {
   const paramName = param.param;
-
-  if (userEnvs.hasOwnProperty(paramName)) {
-    return userEnvs[paramName];
-  }
 
   switch (param.type) {
     case "string":

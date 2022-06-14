@@ -222,15 +222,9 @@ export async function resolveBackend(
   userEnvs: Record<string, string>
 ): Promise<backend.Backend> {
   const projectId = userEnvOpt.projectId;
-
-  const paramValues: Record<string, Field<string | number | boolean>> = {};
+  let paramValues: Record<string, Field<string | number | boolean>> = {};
   if (previews.functionsparams) {
-    for (const param of build.params) {
-      const paramValue = await params.handleParam(param, projectId, userEnvs);
-      if (paramValue !== null) {
-        paramValues[param.param] = paramValue;
-      }
-    }
+    paramValues = await params.resolveParams(build.params, projectId, userEnvs);
   }
 
   return toBackend(build, paramValues);
