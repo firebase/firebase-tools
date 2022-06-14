@@ -9,7 +9,7 @@ import {
   ExtensionVersion,
   RegistryLaunchStage,
   Visibility,
-} from "../../extensions/extensionsApi";
+} from "../../extensions/types";
 import { DeploymentInstanceSpec } from "../../deploy/extensions/planner";
 
 const testExtensionVersion: ExtensionVersion = {

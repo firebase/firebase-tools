@@ -1,6 +1,6 @@
 import * as _ from "lodash";
 import { promptOnce } from "../prompt";
-import { ParamOption } from "./extensionsApi";
+import { ParamOption } from "./types";
 import { RegistryEntry } from "./resolveSource";
 
 // Modified version of the once function from prompt, to return as a joined string.

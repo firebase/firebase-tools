@@ -2,7 +2,7 @@ import * as _ from "lodash";
 import * as clc from "cli-color";
 import Table = require("cli-table");
 
-import { ExtensionInstance, listInstances } from "./extensionsApi";
+import { listInstances } from "./extensionsApi";
 import { logPrefix } from "./extensionsHelper";
 import * as utils from "../utils";
 import * as extensionsUtils from "./utils";
