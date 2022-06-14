@@ -47,7 +47,7 @@ export function checkResponse(response: string, spec: Param): boolean {
   if (spec.validationRegex && !!response) {
     // !!response to ignore empty optional params
     const re = new RegExp(spec.validationRegex);
-    _.forEach(responses, (resp) => {
+    for (const resp of responses) {
       if ((spec.required || resp !== "") && !re.test(resp)) {
         const genericWarn =
           `${resp} is not a valid value for ${spec.param} since it` +
@@ -55,20 +55,18 @@ export function checkResponse(response: string, spec: Param): boolean {
         utils.logWarning(spec.validationErrorMessage || genericWarn);
         valid = false;
       }
-    });
+    }
   }
 
   if (spec.type && (spec.type === ParamType.MULTISELECT || spec.type === ParamType.SELECT)) {
-    _.forEach(responses, (r) => {
+    for (const r of responses) {
       // A choice is valid if it matches one of the option values.
-      const validChoice = _.some(spec.options, (option: ParamOption) => {
-        return r === option.value;
-      });
-      if (!validChoice) {
+      const validChoice = spec.options?.some((option) => r === option.value);
+      if (r && !validChoice) {
         utils.logWarning(`${r} is not a valid option for ${spec.param}.`);
         valid = false;
       }
-    });
+    }
   }
   return valid;
 }
