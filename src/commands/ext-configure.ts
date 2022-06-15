@@ -31,7 +31,7 @@ marked.setOptions({
 /**
  * Command for configuring an existing extension instance
  */
-export default new Command("ext:configure <extensionInstanceId>")
+export const command = new Command("ext:configure <extensionInstanceId>")
   .description("configure an existing extension instance")
   .withForce()
   .option("--local", "deprecated")

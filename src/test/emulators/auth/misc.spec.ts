@@ -7,13 +7,11 @@ import {
   UserInfo,
 } from "../../../emulator/auth/state";
 import {
-  deleteAccount,
   getAccountInfoByIdToken,
   PROJECT_ID,
   registerTenant,
   signInWithPhoneNumber,
   TEST_PHONE_NUMBER,
-  updateProjectConfig,
 } from "./helpers";
 import { describeAuthEmulator } from "./setup";
 import {
@@ -185,24 +183,6 @@ describeAuthEmulator("token refresh", ({ authApi, getClock }) => {
       });
   });
 
-  it("should error if usageMode is passthrough", async () => {
-    const { refreshToken, idToken } = await registerAnonUser(authApi());
-    await deleteAccount(authApi(), { idToken });
-    await updateProjectConfig(authApi(), { usageMode: "PASSTHROUGH" });
-
-    await authApi()
-      .post("/securetoken.googleapis.com/v1/token")
-      .type("form")
-      .send({ refresh_token: refreshToken, grantType: "refresh_token" })
-      .query({ key: "fake-api-key" })
-      .then((res) => {
-        expectStatusCode(400, res);
-        expect(res.body.error)
-          .to.have.property("message")
-          .equals("UNSUPPORTED_PASSTHROUGH_OPERATION");
-      });
-  });
-
   it("should error when refresh tokens are from a different project", async () => {
     const refreshTokenRecord = {
       _AuthEmulatorRefreshToken: "DO NOT MODIFY",
@@ -346,24 +326,6 @@ describeAuthEmulator("createSessionCookie", ({ authApi }) => {
         expect(res.body.error.message).to.equal("INVALID_DURATION");
       });
   });
-
-  it("should error if usageMode is passthrough", async () => {
-    const { idToken } = await registerAnonUser(authApi());
-    const validDuration = 7777; /* seconds */
-    await deleteAccount(authApi(), { idToken });
-    await updateProjectConfig(authApi(), { usageMode: "PASSTHROUGH" });
-
-    await authApi()
-      .post(`/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}:createSessionCookie`)
-      .set("Authorization", "Bearer owner")
-      .send({ idToken, validDuration: validDuration.toString() })
-      .then((res) => {
-        expectStatusCode(400, res);
-        expect(res.body.error)
-          .to.have.property("message")
-          .equals("UNSUPPORTED_PASSTHROUGH_OPERATION");
-      });
-  });
 });
 
 describeAuthEmulator("accounts:lookup", ({ authApi }) => {
@@ -426,19 +388,6 @@ describeAuthEmulator("accounts:lookup", ({ authApi }) => {
       });
   });
 
-  it("should return empty result for admin lookup if usageMode is passthrough", async () => {
-    await updateProjectConfig(authApi(), { usageMode: "PASSTHROUGH" });
-
-    await authApi()
-      .post(`/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:lookup`)
-      .set("Authorization", "Bearer owner")
-      .send({ localId: ["noSuchId"] })
-      .then((res) => {
-        expectStatusCode(200, res);
-        expect(res.body).not.to.have.property("users");
-      });
-  });
-
   it("should return user by tenantId in idToken", async () => {
     const tenant = await registerTenant(authApi(), PROJECT_ID, {
       disableAuth: false,
@@ -458,23 +407,6 @@ describeAuthEmulator("accounts:lookup", ({ authApi }) => {
         expectStatusCode(200, res);
         expect(res.body.users).to.have.length(1);
         expect(res.body.users[0].localId).to.equal(localId);
-      });
-  });
-
-  it("should error for lookup using idToken if usageMode is passthrough", async () => {
-    const { idToken } = await registerAnonUser(authApi());
-    await deleteAccount(authApi(), { idToken });
-    await updateProjectConfig(authApi(), { usageMode: "PASSTHROUGH" });
-
-    await authApi()
-      .post(`/identitytoolkit.googleapis.com/v1/accounts:lookup`)
-      .send({ idToken })
-      .query({ key: "fake-api-key" })
-      .then((res) => {
-        expectStatusCode(400, res);
-        expect(res.body.error)
-          .to.have.property("message")
-          .equals("UNSUPPORTED_PASSTHROUGH_OPERATION");
       });
   });
 
@@ -623,67 +555,6 @@ describeAuthEmulator("emulator utility APIs", ({ authApi }) => {
         expect(res.body).to.have.property("signIn").eql({
           allowDuplicateEmails: false,
         });
-      });
-  });
-
-  it("should update usageMode on PATCH /emulator/v1/projects/{PROJECT_ID}/config", async () => {
-    await authApi()
-      .patch(`/emulator/v1/projects/${PROJECT_ID}/config`)
-      .send({ usageMode: "PASSTHROUGH" })
-      .then((res) => {
-        expectStatusCode(200, res);
-        expect(res.body).to.have.property("usageMode").equals("PASSTHROUGH");
-      });
-    await authApi()
-      .patch(`/emulator/v1/projects/${PROJECT_ID}/config`)
-      .send({ usageMode: "DEFAULT" })
-      .then((res) => {
-        expectStatusCode(200, res);
-        expect(res.body).to.have.property("usageMode").equals("DEFAULT");
-      });
-  });
-
-  it("should default to DEFAULT usageMode on PATCH /emulator/v1/projects/{PROJECT_ID}/config", async () => {
-    await authApi()
-      .patch(`/emulator/v1/projects/${PROJECT_ID}/config`)
-      .send({ usageMode: undefined })
-      .then((res) => {
-        expectStatusCode(200, res);
-        expect(res.body).to.have.property("usageMode").equals("DEFAULT");
-      });
-  });
-
-  it("should error for unspecified usageMode on PATCH /emulator/v1/projects/{PROJECT_ID}/config", async () => {
-    await authApi()
-      .patch(`/emulator/v1/projects/${PROJECT_ID}/config`)
-      .send({ usageMode: "USAGE_MODE_UNSPECIFIED" })
-      .then((res) => {
-        expectStatusCode(400, res);
-        expect(res.body.error).to.have.property("message").contains("INVALID_USAGE_MODE");
-      });
-  });
-
-  it("should error for invalid usageMode on PATCH /emulator/v1/projects/{PROJECT_ID}/config", async () => {
-    await authApi()
-      .patch(`/emulator/v1/projects/${PROJECT_ID}/config`)
-      .send({ usageMode: "NOT_AN_ACTUAL_USAGE_MODE" })
-      .then((res) => {
-        expectStatusCode(400, res);
-        expect(res.body.error)
-          .to.have.property("message")
-          .contains("Invalid JSON payload received");
-      });
-  });
-
-  it("should error when users are present for passthrough mode on PATCH /emulator/v1/projects/{PROJECT_ID}/config", async () => {
-    await registerAnonUser(authApi());
-
-    await authApi()
-      .patch(`/emulator/v1/projects/${PROJECT_ID}/config`)
-      .send({ usageMode: "PASSTHROUGH" })
-      .then((res) => {
-        expectStatusCode(400, res);
-        expect(res.body.error).to.have.property("message").contains("USERS_STILL_EXIST");
       });
   });
 });

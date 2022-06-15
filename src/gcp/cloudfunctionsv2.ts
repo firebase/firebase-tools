@@ -48,6 +48,9 @@ export type FunctionState = "ACTIVE" | "FAILED" | "DEPLOYING" | "DELETING" | "UN
 // An alternative would be to name the types OutputCloudFunction/CloudFunction or CloudFunction/InputCloudFunction.
 export type OutputOnlyFields = "state" | "updateTime";
 
+// Values allowed for the operator field in EventFilter
+export type EventFilterOperator = "match-path-pattern";
+
 /** Settings for building a container out of the customer source. */
 export interface BuildConfig {
   runtime: runtimes.Runtime;
@@ -90,6 +93,7 @@ export interface Source {
 export interface EventFilter {
   attribute: string;
   value: string;
+  operator?: EventFilterOperator;
 }
 
 /**
@@ -487,6 +491,15 @@ export function functionFromEndpoint(endpoint: backend.Endpoint, source: Storage
       for (const [attribute, value] of Object.entries(endpoint.eventTrigger.eventFilters)) {
         gcfFunction.eventTrigger.eventFilters.push({ attribute, value });
       }
+      for (const [attribute, value] of Object.entries(
+        endpoint.eventTrigger.eventFilterPathPatterns || {}
+      )) {
+        gcfFunction.eventTrigger.eventFilters.push({
+          attribute,
+          value,
+          operator: "match-path-pattern",
+        });
+      }
     }
     proto.renameIfPresent(
       gcfFunction.eventTrigger,
@@ -570,8 +583,15 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
     if (gcfFunction.eventTrigger.pubsubTopic) {
       trigger.eventTrigger.eventFilters.topic = gcfFunction.eventTrigger.pubsubTopic;
     } else {
-      for (const { attribute, value } of gcfFunction.eventTrigger.eventFilters || []) {
-        trigger.eventTrigger.eventFilters[attribute] = value;
+      for (const eventFilter of gcfFunction.eventTrigger.eventFilters || []) {
+        if (eventFilter.operator === "match-path-pattern") {
+          if (!trigger.eventTrigger.eventFilterPathPatterns) {
+            trigger.eventTrigger.eventFilterPathPatterns = {};
+          }
+          trigger.eventTrigger.eventFilterPathPatterns[eventFilter.attribute] = eventFilter.value;
+        } else {
+          trigger.eventTrigger.eventFilters[eventFilter.attribute] = eventFilter.value;
+        }
       }
     }
     proto.copyIfPresent(trigger.eventTrigger, gcfFunction.eventTrigger, "channel");

@@ -1,1 +1,1 @@
-- Updates the minimum required version of Node.js to be `~14.18.0 || >=16.4.0` (#4580).
+- Fixes Auth Blocking Trigger registration in the Emulator (#4592).

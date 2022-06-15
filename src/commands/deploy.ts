@@ -1,15 +1,13 @@
-"use strict";
-
-const _ = require("lodash");
-const { requireDatabaseInstance } = require("../requireDatabaseInstance");
-const { requirePermissions } = require("../requirePermissions");
-const { checkServiceAccountIam } = require("../deploy/functions/checkIam");
-const checkValidTargetFilters = require("../checkValidTargetFilters");
-const { Command } = require("../command");
-const { deploy } = require("../deploy");
-const { requireConfig } = require("../requireConfig");
-const { filterTargets } = require("../filterTargets");
-const { requireHostingSite } = require("../requireHostingSite");
+import * as _ from "lodash";
+import { requireDatabaseInstance } from "../requireDatabaseInstance";
+import { requirePermissions } from "../requirePermissions";
+import { checkServiceAccountIam } from "../deploy/functions/checkIam";
+import { checkValidTargetFilters } from "../checkValidTargetFilters";
+import { Command } from "../command";
+import { deploy } from "../deploy";
+import { requireConfig } from "../requireConfig";
+import { filterTargets } from "../filterTargets";
+import { requireHostingSite } from "../requireHostingSite";
 
 // in order of least time-consuming to most time-consuming
 const VALID_TARGETS = [
@@ -21,7 +19,7 @@ const VALID_TARGETS = [
   "remoteconfig",
   "extensions",
 ];
-const TARGET_PERMISSIONS = {
+const TARGET_PERMISSIONS: Record<string, string[]> = {
   database: ["firebasedatabase.instances.update"],
   hosting: ["firebasehosting.sites.update"],
   functions: [
@@ -46,7 +44,7 @@ const TARGET_PERMISSIONS = {
   remoteconfig: ["cloudconfig.configs.get", "cloudconfig.configs.update"],
 };
 
-module.exports = new Command("deploy")
+export const command = new Command("deploy")
   .description("deploy code and assets to your Firebase project")
   .withForce(
     "delete Cloud Functions missing from the current working directory without confirmation"
@@ -62,9 +60,9 @@ module.exports = new Command("deploy")
   )
   .option("--except <targets>", 'deploy to all targets except specified (e.g. "database")')
   .before(requireConfig)
-  .before(function (options) {
+  .before((options) => {
     options.filteredTargets = filterTargets(options, VALID_TARGETS);
-    const permissions = options.filteredTargets.reduce((perms, target) => {
+    const permissions = options.filteredTargets.reduce((perms: string[], target: string) => {
       return perms.concat(TARGET_PERMISSIONS[target]);
     }, []);
     return requirePermissions(options, permissions);
@@ -74,7 +72,7 @@ module.exports = new Command("deploy")
       return checkServiceAccountIam(options.project);
     }
   })
-  .before(async function (options) {
+  .before(async (options) => {
     // only fetch the default instance for hosting or database deploys
     if (_.includes(options.filteredTargets, "database")) {
       await requireDatabaseInstance(options);
@@ -85,6 +83,6 @@ module.exports = new Command("deploy")
     }
   })
   .before(checkValidTargetFilters)
-  .action(function (options) {
+  .action((options) => {
     return deploy(options.filteredTargets, options);
   });

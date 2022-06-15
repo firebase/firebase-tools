@@ -11,7 +11,7 @@ import { promptOnce } from "../prompt";
 import * as clc from "cli-color";
 import * as _ from "lodash";
 
-module.exports = new Command("database:remove <path>")
+export const command = new Command("database:remove <path>")
   .description("remove data from your Firebase at the specified path")
   .option("-f, --force", "pass this option to bypass confirmation prompt")
   .option(

@@ -179,7 +179,7 @@ export class Config {
     return outPath;
   }
 
-  readProjectFile(p: string, options: any) {
+  readProjectFile(p: string, options: any = {}) {
     options = options || {};
     try {
       const content = fs.readFileSync(this.path(p), "utf8");

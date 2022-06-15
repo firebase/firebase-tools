@@ -42,7 +42,7 @@ const JAR_CACHE_DIR =
 const JAR_VERSION = "2.8.0";
 const JAR_URL = `https://dl.google.com/android/maven2/com/google/firebase/firebase-crashlytics-buildtools/${JAR_VERSION}/firebase-crashlytics-buildtools-${JAR_VERSION}.jar`;
 
-export default new Command("crashlytics:symbols:upload <symbolFiles...>")
+export const command = new Command("crashlytics:symbols:upload <symbolFiles...>")
   .description("Upload symbols for native code, to symbolicate stack traces.")
   .option("--app <appID>", "the app id of your Firebase app")
   .option("--generator [breakpad|csym]", "the symbol generator being used, defaults to breakpad.")
