@@ -9,7 +9,7 @@ import { readEnvFile } from "./paramHelper";
 import { FirebaseError } from "../error";
 import * as utils from "../utils";
 import { isLocalPath, logPrefix } from "./extensionsHelper";
-import { ParamType } from "./extensionsApi";
+import { ParamType } from "./types";
 
 export const ENV_DIRECTORY = "extensions";
 

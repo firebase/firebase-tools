@@ -5,7 +5,7 @@ import * as paramHelper from "../paramHelper";
 import * as specHelper from "./specHelper";
 import * as localHelper from "../localHelper";
 import * as triggerHelper from "./triggerHelper";
-import { ExtensionSpec, Param, ParamType, Resource } from "../extensionsApi";
+import { ExtensionSpec, Param, ParamType, Resource } from "../types";
 import * as extensionsHelper from "../extensionsHelper";
 import * as planner from "../../deploy/extensions/planner";
 import { Config } from "../../config";

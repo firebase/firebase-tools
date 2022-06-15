@@ -1,0 +1,1 @@
+- Fixes Auth Blocking Trigger registration in the Emulator (#4592).

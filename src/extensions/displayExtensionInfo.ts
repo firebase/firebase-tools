@@ -4,12 +4,11 @@ import * as clc from "cli-color";
 const { marked } = require("marked");
 import TerminalRenderer = require("marked-terminal");
 
-import * as extensionsApi from "./extensionsApi";
 import * as utils from "../utils";
 import { confirm, logPrefix } from "./extensionsHelper";
 import { logger } from "../logger";
 import { FirebaseError } from "../error";
-import { promptOnce } from "../prompt";
+import { ExtensionSpec, Resource } from "./types";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),
@@ -28,7 +27,7 @@ const deletionColor = clc.red;
 export function displayExtInfo(
   extensionName: string,
   publisher: string,
-  spec: extensionsApi.ExtensionSpec,
+  spec: ExtensionSpec,
   published = false
 ): string[] {
   const lines = [];
@@ -73,10 +72,7 @@ export function displayExtInfo(
  * @param newSpec The spec that the ExtensionInstance is being updated to
  * @param published whether or not this spec is for a published extension
  */
-export function displayUpdateChangesNoInput(
-  spec: extensionsApi.ExtensionSpec,
-  newSpec: extensionsApi.ExtensionSpec
-): string[] {
+export function displayUpdateChangesNoInput(spec: ExtensionSpec, newSpec: ExtensionSpec): string[] {
   const lines: string[] = [];
   if (spec.displayName !== newSpec.displayName) {
     lines.push(
@@ -129,8 +125,8 @@ export function displayUpdateChangesNoInput(
  * @param newSpec The spec that the ExtensionInstance is being updated to
  */
 export async function displayUpdateChangesRequiringConfirmation(args: {
-  spec: extensionsApi.ExtensionSpec;
-  newSpec: extensionsApi.ExtensionSpec;
+  spec: ExtensionSpec;
+  newSpec: ExtensionSpec;
   nonInteractive: boolean;
   force: boolean;
 }): Promise<void> {
@@ -249,11 +245,11 @@ export async function displayUpdateChangesRequiringConfirmation(args: {
   }
 }
 
-function compareResources(resource1: extensionsApi.Resource, resource2: extensionsApi.Resource) {
+function compareResources(resource1: Resource, resource2: Resource) {
   return resource1.name === resource2.name && resource1.type === resource2.type;
 }
 
-function getResourceReadableName(resource: extensionsApi.Resource): string {
+function getResourceReadableName(resource: Resource): string {
   return resource.type === "firebaseextensions.v1beta.function"
     ? `${resource.name} (Cloud Function): ${resource.description}\n`
     : `${resource.name} (${resource.type})\n`;
