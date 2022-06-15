@@ -26,7 +26,6 @@ describe("buildFromV1Alpha", () => {
       project: PROJECT,
       region: REGION,
       runtime: RUNTIME,
-      serviceAccountEmail: undefined,
       timeoutSeconds: 60,
     };
     const DEFAULTED_ENDPOINT: Omit<build.Endpoint, "httpsTrigger" | "secretEnvironmentVariables"> =
