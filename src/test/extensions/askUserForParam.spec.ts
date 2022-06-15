@@ -10,7 +10,7 @@ import {
 } from "../../extensions/askUserForParam";
 import * as utils from "../../utils";
 import * as prompt from "../../prompt";
-import { ParamType } from "../../extensions/extensionsApi";
+import { ParamType } from "../../extensions/types";
 import * as extensionsHelper from "../../extensions/extensionsHelper";
 import * as secretManagerApi from "../../gcp/secretManager";
 import * as secretsUtils from "../../extensions/secretsUtils";

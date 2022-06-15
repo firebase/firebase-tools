@@ -5,10 +5,11 @@ import * as sinon from "sinon";
 import { FirebaseError } from "../../error";
 import { firebaseExtensionsRegistryOrigin } from "../../api";
 import * as extensionsApi from "../../extensions/extensionsApi";
+import { ExtensionSpec, Resource } from "../../extensions/types";
 import * as extensionsHelper from "../../extensions/extensionsHelper";
 import * as updateHelper from "../../extensions/updateHelper";
 
-const SPEC: extensionsApi.ExtensionSpec = {
+const SPEC: ExtensionSpec = {
   name: "test",
   displayName: "Old",
   description: "descriptive",
@@ -24,7 +25,7 @@ const SPEC: extensionsApi.ExtensionSpec = {
   ],
   resources: [
     { name: "resource1", type: "firebaseextensions.v1beta.function", description: "desc" },
-    { name: "resource2", type: "other", description: "" } as unknown as extensionsApi.Resource,
+    { name: "resource2", type: "other", description: "" } as unknown as Resource,
   ],
   author: { authorName: "Tester" },
   contributors: [{ authorName: "Tester 2" }],

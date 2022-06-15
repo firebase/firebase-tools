@@ -7,6 +7,7 @@ import { Command } from "../command";
 import { FirebaseError } from "../error";
 import { needProjectId, getProjectId } from "../projectUtils";
 import * as extensionsApi from "../extensions/extensionsApi";
+import { ExtensionSpec, Param } from "../extensions/types";
 import {
   logPrefix,
   diagnoseAndFixProject,
@@ -62,7 +63,7 @@ export const command = new Command("ext:configure <extensionInstanceId>")
     const refOrPath = manifest.getInstanceTarget(instanceId, config);
     const isLocalSource = isLocalPath(refOrPath);
 
-    let spec: extensionsApi.ExtensionSpec;
+    let spec: ExtensionSpec;
     if (isLocalSource) {
       const source = await createSourceFromLocation(needProjectId({ projectId }), refOrPath);
       spec = source.spec;
@@ -135,10 +136,7 @@ export const command = new Command("ext:configure <extensionInstanceId>")
     return;
   });
 
-function infoImmutableParams(
-  immutableParams: extensionsApi.Param[],
-  paramValues: { [key: string]: string }
-) {
+function infoImmutableParams(immutableParams: Param[], paramValues: { [key: string]: string }) {
   if (!immutableParams.length) {
     return;
   }

@@ -3,7 +3,7 @@ import * as clc from "cli-color";
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const { marked } = require("marked");
 
-import { Param, ParamOption, ParamType } from "./extensionsApi";
+import { Param, ParamOption, ParamType } from "./types";
 import * as secretManagerApi from "../gcp/secretManager";
 import * as secretsUtils from "./secretsUtils";
 import { logPrefix, substituteParams } from "./extensionsHelper";
