@@ -1,0 +1,24 @@
+{
+  "name": "update-single-file",
+  "version": "0.0.0",
+  "description": "example of using the Hosting API to update a single file",
+  "type": "module",
+  "bin": "lib/index.js",
+  "main": "lib/index.js",
+  "scripts": {
+    "build": "tsc",
+    "prepare": "npm run build",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/debug": "^4.1.7",
+    "typescript": "^4.7.3"
+  },
+  "dependencies": {
+    "debug": "^4.3.4",
+    "google-auth-library": "^8.0.2",
+    "minimist": "^1.2.6"
+  }
+}
