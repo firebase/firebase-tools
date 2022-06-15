@@ -38,9 +38,6 @@ async function init(_setup: unknown, config: Config): Promise<void> {
 
   // Write the selected runtime version to the config.
   config.set("functions.runtime", runtimeVersion);
-
-  // TODO switch to virtualenv instead of venv to allow specifying python version
-
   // Setup VENV.
   await runWithVirtualEnv(
     ["python3", "-m", "venv", "venv"],
