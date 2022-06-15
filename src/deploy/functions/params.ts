@@ -3,18 +3,24 @@ import { FirebaseError } from "../../error";
 import { promptOnce } from "../../prompt";
 import * as build from "./build";
 
+type CEL = build.Expression<string> | build.Expression<number> | build.Expression<boolean>;
+function isCEL(expr: string | number | boolean): expr is CEL {
+  return typeof expr === "string" && expr.startsWith("{{") && expr.endsWith("}}");
+}
+function dependenciesCEL(expr: CEL): string[] {
+  return /params\.(\w+)/.exec(expr)?.slice(1) || [];
+}
+
 /**
  * Resolves a numeric field in a Build to an an actual numeric value.
- * Fields can be null, literal, or a {{ }} delimited CEL expression referencing param values.
- * Currently only the CEL literal {{ params.PARAMNAME }} is implemented.
+ * Fields can be literal or a {{ }} delimited CEL expression referencing param values.
+ * Currently only the CEL identity {{ params.PARAMNAME }} is implemented.
  */
 export function resolveInt(
-  from: build.Field<number>,
+  from: number | build.Expression<number>,
   paramValues: Record<string, build.Field<string | number | boolean>>
 ): number {
-  if (from == null) {
-    return 0;
-  } else if (typeof from === "string" && /{{ params\.(\S+) }}/.test(from)) {
+  if (typeof from === "string" && /{{ params\.(\S+) }}/.test(from)) {
     const match = /{{ params\.(\S+) }}/.exec(from);
     const referencedParamValue = paramValues[match![1]];
     if (typeof referencedParamValue !== "number") {
@@ -34,11 +40,11 @@ export function resolveInt(
 
 /**
  * Resolves a string field in a Build to an an actual string.
- * Fields can be null, literal, or a {{ }} delimited CEL expression referencing param values.
- * Currently only the CEL literal {{ params.PARAMNAME }} is implemented.
+ * Fields can be literal or a {{ }} delimited CEL expression referencing param values.
+ * Currently only the CEL identity {{ params.PARAMNAME }} is implemented.
  */
 export function resolveString(
-  from: string | build.Expression<string> | null,
+  from: string | build.Expression<string>,
   paramValues: Record<string, build.Field<string | number | boolean>>
 ): string {
   if (from == null) {
@@ -65,16 +71,14 @@ export function resolveString(
 
 /**
  * Resolves a boolean field in a Build to an an actual boolean value.
- * Fields can be null, literal, or a {{ }} delimited CEL expression referencing param values.
- * Currently only the CEL literal {{ params.PARAMNAME }} is implemented.
+ * Fields can be literal or a {{ }} delimited CEL expression referencing param values.
+ * Currently only the CEL identity {{ params.PARAMNAME }} is implemented.
  */
 export function resolveBoolean(
-  from: boolean | build.Expression<boolean> | null,
+  from: boolean | build.Expression<boolean>,
   paramValues: Record<string, build.Field<string | number | boolean>>
 ): boolean {
-  if (from == null) {
-    return false;
-  } else if (typeof from === "string" && /{{ params\.(\S+) }}/.test(from)) {
+  if (typeof from === "string" && /{{ params\.(\S+) }}/.test(from)) {
     const match = /{{ params\.(\S+) }}/.exec(from);
     const referencedParamValue = paramValues[match![1]];
     if (typeof referencedParamValue !== "boolean") {
@@ -157,13 +161,6 @@ export interface DefaultOnly {
 export type Param = StringParam | IntParam;
 type ParamValue = string | number | boolean;
 
-type CEL = build.Expression<string> | build.Expression<number> | build.Expression<boolean>;
-function isCEL(expr: string | number | boolean): expr is CEL {
-  return typeof expr === "string" && expr.startsWith("{{") && expr.endsWith("}}");
-}
-function dependenciesCEL(expr: CEL): string[] {
-  return /params\.(\w+)/.exec(expr)?.slice(1) || [];
-}
 /**
  * Calls the corresponding resolveX function for the type of a param.
  * To be used when resolving the default value of a param, if CEL.

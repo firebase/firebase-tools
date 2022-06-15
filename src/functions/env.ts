@@ -170,10 +170,7 @@ export function validateKey(key: string): void {
 // Parse dotenv file, but throw errors if:
 //   1. Input has any invalid lines.
 //   2. Any env key fails validation.
-/**
- *
- */
-export function parseStrict(data: string): Record<string, string> {
+function parseStrict(data: string): Record<string, string> {
   const { envs, errors } = parse(data);
 
   if (errors.length) {

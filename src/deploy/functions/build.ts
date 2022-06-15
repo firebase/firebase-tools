@@ -212,9 +212,8 @@ function isMemoryOption(value: backend.MemoryOptions | any): value is backend.Me
   return value == null || [128, 256, 512, 1024, 2048, 4096, 8192].includes(value);
 }
 
-/* Resolves user-defined parameters inside a Build, and returns a Backend ready for upload to the API */
 /**
- *
+ *  Resolves user-defined parameters inside a Build, and returns a Backend ready for upload to the API
  */
 export async function resolveBackend(
   build: Build,
@@ -275,7 +274,7 @@ export function toBackend(
         bdEndpoint,
         "maxInstances",
         "maxInstances",
-        (from: number | Expression<number> | null): number => {
+        (from: number | Expression<number>): number => {
           return params.resolveInt(from, paramValues);
         }
       );
@@ -284,7 +283,7 @@ export function toBackend(
         bdEndpoint,
         "minInstances",
         "minInstances",
-        (from: number | Expression<number> | null): number => {
+        (from: number | Expression<number>): number => {
           return params.resolveInt(from, paramValues);
         }
       );
@@ -293,7 +292,7 @@ export function toBackend(
         bdEndpoint,
         "concurrency",
         "concurrency",
-        (from: number | Expression<number> | null): number => {
+        (from: number | Expression<number>): number => {
           return params.resolveInt(from, paramValues);
         }
       );
@@ -356,7 +355,7 @@ function discoverTrigger(
     const bkEvent: backend.EventTrigger = {
       eventType: endpoint.eventTrigger.eventType,
       eventFilters: bkEventFilters,
-      retry: params.resolveBoolean(endpoint.eventTrigger.retry, paramValues),
+      retry: params.resolveBoolean(endpoint.eventTrigger.retry || false, paramValues),
     };
     if (endpoint.eventTrigger.serviceAccount) {
       bkEvent.serviceAccountEmail = endpoint.eventTrigger.serviceAccount;
@@ -403,7 +402,7 @@ function discoverTrigger(
         endpoint.taskQueueTrigger.rateLimits,
         "maxConcurrentDispatches",
         "maxConcurrentDispatches",
-        (from: number | Expression<number> | null): number => {
+        (from: number | Expression<number>): number => {
           return params.resolveInt(from, paramValues);
         }
       );
@@ -412,7 +411,7 @@ function discoverTrigger(
         endpoint.taskQueueTrigger.rateLimits,
         "maxDispatchesPerSecond",
         "maxDispatchesPerSecond",
-        (from: number | Expression<number> | null): number => {
+        (from: number | Expression<number>): number => {
           return params.resolveInt(from, paramValues);
         }
       );
@@ -425,7 +424,7 @@ function discoverTrigger(
         endpoint.taskQueueTrigger.retryConfig,
         "maxAttempts",
         "maxAttempts",
-        (from: number | Expression<number> | null): number => {
+        (from: number | Expression<number>): number => {
           return params.resolveInt(from, paramValues);
         }
       );
@@ -434,7 +433,7 @@ function discoverTrigger(
         endpoint.taskQueueTrigger.retryConfig,
         "maxBackoffSeconds",
         "maxBackoffSeconds",
-        (from: number | Expression<number> | null): string => {
+        (from: number | Expression<number>): string => {
           return proto.durationFromSeconds(params.resolveInt(from, paramValues));
         }
       );
@@ -443,7 +442,7 @@ function discoverTrigger(
         endpoint.taskQueueTrigger.retryConfig,
         "minBackoffSeconds",
         "minBackoffSeconds",
-        (from: number | Expression<number> | null): string => {
+        (from: number | Expression<number>): string => {
           return proto.durationFromSeconds(params.resolveInt(from, paramValues));
         }
       );
@@ -452,7 +451,7 @@ function discoverTrigger(
         endpoint.taskQueueTrigger.retryConfig,
         "maxRetrySeconds",
         "maxRetryDurationSeconds",
-        (from: number | Expression<number> | null): string => {
+        (from: number | Expression<number>): string => {
           return proto.durationFromSeconds(params.resolveInt(from, paramValues));
         }
       );
@@ -461,7 +460,7 @@ function discoverTrigger(
         endpoint.taskQueueTrigger.retryConfig,
         "maxDoublings",
         "maxDoublings",
-        (from: number | Expression<number> | null): number => {
+        (from: number | Expression<number>): number => {
           return params.resolveInt(from, paramValues);
         }
       );
