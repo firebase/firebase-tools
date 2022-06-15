@@ -60,7 +60,7 @@ import {
 } from "./adminSdkConfig";
 import { EventUtils } from "./events/types";
 import { functionIdsAreValid } from "../deploy/functions/validate";
-import { Extension, ExtensionSpec, ExtensionVersion } from "../extensions/extensionsApi";
+import { Extension, ExtensionSpec, ExtensionVersion } from "../extensions/types";
 import { accessSecretVersion } from "../gcp/secretManager";
 import * as runtimes from "../deploy/functions/runtimes";
 import * as backend from "../deploy/functions/backend";
@@ -68,6 +68,7 @@ import * as functionsEnv from "../functions/env";
 import { AUTH_BLOCKING_EVENTS, BEFORE_CREATE_EVENT } from "../functions/events/v1";
 import { BlockingFunctionsConfig } from "../gcp/identityPlatform";
 import { Client } from "../apiv2";
+import { resolveBackend } from "../deploy/functions/build";
 
 const EVENT_INVOKE = "functions:invoke";
 
@@ -192,7 +193,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
   private adminSdkConfig: AdminSdkConfig;
 
-  private blockingFunctionsConfig: BlockingFunctionsConfig;
+  private blockingFunctionsConfig: BlockingFunctionsConfig = {};
 
   constructor(private args: FunctionsEmulatorArgs) {
     // TODO: Would prefer not to have static state but here we are!
@@ -211,16 +212,6 @@ export class FunctionsEmulator implements EmulatorInstance {
       : FunctionsExecutionMode.AUTO;
     this.workerPool = new RuntimeWorkerPool(mode);
     this.workQueue = new WorkQueue(mode);
-    this.blockingFunctionsConfig = {
-      triggers: {
-        beforeCreate: {
-          functionUri: "",
-        },
-        beforeSignIn: {
-          functionUri: "",
-        },
-      },
-    };
   }
 
   private async getCredentialsEnvironment(): Promise<Record<string, string>> {
@@ -500,6 +491,9 @@ export class FunctionsEmulator implements EmulatorInstance {
       );
     }
 
+    // reset blocking functions config for reloads
+    this.blockingFunctionsConfig = {};
+
     let triggerDefinitions: EmulatedTriggerDefinition[];
     if (emulatableBackend.predefinedTriggers) {
       triggerDefinitions = emulatedFunctionsByRegion(
@@ -522,16 +516,15 @@ export class FunctionsEmulator implements EmulatorInstance {
       logger.debug(`Building ${runtimeDelegate.name} source`);
       await runtimeDelegate.build();
       logger.debug(`Analyzing ${runtimeDelegate.name} backend spec`);
-      const discoveredBackend = await runtimeDelegate.discoverSpec(
-        runtimeConfig,
-        // Don't include user envs when parsing triggers.
-        {
-          ...this.getSystemEnvs(),
-          ...this.getEmulatorEnvs(),
-          FIREBASE_CONFIG: this.getFirebaseConfig(),
-          ...emulatableBackend.env,
-        }
-      );
+      // Don't include user envs when parsing triggers.
+      const environment = {
+        ...this.getSystemEnvs(),
+        ...this.getEmulatorEnvs(),
+        FIREBASE_CONFIG: this.getFirebaseConfig(),
+        ...emulatableBackend.env,
+      };
+      const discoveredBuild = await runtimeDelegate.discoverBuild(runtimeConfig, environment);
+      const discoveredBackend = resolveBackend(discoveredBuild, environment);
       const endpoints = backend.allEndpoints(discoveredBackend);
       prepareEndpoints(endpoints);
       for (const e of endpoints) {
@@ -649,7 +642,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       } else {
         this.logger.log(
           "WARN",
-          `Unsupported function type on ${definition.name}. Expected either httpsTrigger or eventTrigger.`
+          `Unsupported function type on ${definition.name}. Expected either an httpsTrigger, eventTrigger, or blockingTrigger.`
         );
       }
 
@@ -680,8 +673,8 @@ export class FunctionsEmulator implements EmulatorInstance {
 
   async performPostLoadOperations(): Promise<void> {
     if (
-      this.blockingFunctionsConfig.triggers?.beforeCreate?.functionUri === "" &&
-      this.blockingFunctionsConfig.triggers?.beforeSignIn?.functionUri === ""
+      !this.blockingFunctionsConfig.triggers &&
+      !this.blockingFunctionsConfig.forwardInboundCredentials
     ) {
       return;
     }
@@ -859,30 +852,31 @@ export class FunctionsEmulator implements EmulatorInstance {
     logger.debug(`addBlockingTrigger`, JSON.stringify({ blockingTrigger }));
 
     const eventType = blockingTrigger.eventType;
-    if (AUTH_BLOCKING_EVENTS.includes(eventType as any)) {
-      if (blockingTrigger.eventType === BEFORE_CREATE_EVENT) {
-        this.blockingFunctionsConfig.triggers = {
-          ...this.blockingFunctionsConfig.triggers,
-          beforeCreate: {
-            functionUri: url,
-          },
-        };
-      } else {
-        this.blockingFunctionsConfig.triggers = {
-          ...this.blockingFunctionsConfig.triggers,
-          beforeSignIn: {
-            functionUri: url,
-          },
-        };
-      }
-      this.blockingFunctionsConfig.forwardInboundCredentials = {
-        accessToken: blockingTrigger.options!.accessToken as boolean,
-        idToken: blockingTrigger.options!.idToken as boolean,
-        refreshToken: blockingTrigger.options!.refreshToken as boolean,
-      };
-    } else {
+    if (!AUTH_BLOCKING_EVENTS.includes(eventType as any)) {
       return false;
     }
+
+    if (blockingTrigger.eventType === BEFORE_CREATE_EVENT) {
+      this.blockingFunctionsConfig.triggers = {
+        ...this.blockingFunctionsConfig.triggers,
+        beforeCreate: {
+          functionUri: url,
+        },
+      };
+    } else {
+      this.blockingFunctionsConfig.triggers = {
+        ...this.blockingFunctionsConfig.triggers,
+        beforeSignIn: {
+          functionUri: url,
+        },
+      };
+    }
+
+    this.blockingFunctionsConfig.forwardInboundCredentials = {
+      accessToken: !!blockingTrigger.options!.accessToken,
+      idToken: !!blockingTrigger.options!.idToken,
+      refreshToken: !!blockingTrigger.options!.refreshToken,
+    };
 
     return true;
   }

@@ -113,14 +113,8 @@ export async function prepare(
     };
     const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
     const envs = { ...userEnvs, ...firebaseEnvs };
-    let wantBackend: backend.Backend;
-    if (previews.functionsparams) {
-      const wantBuild = await runtimeDelegate.discoverBuild(runtimeConfig, firebaseEnvs);
-      wantBackend = await build.resolveBackend(wantBuild, userEnvOpt, userEnvs);
-    } else {
-      logger.debug(`Analyzing ${runtimeDelegate.name} backend spec`);
-      wantBackend = await runtimeDelegate.discoverSpec(runtimeConfig, firebaseEnvs);
-    }
+    const wantBuild: build.Build = await runtimeDelegate.discoverBuild(runtimeConfig, firebaseEnvs);
+    const wantBackend: backend.Backend = await build.resolveBackend(wantBuild, userEnvOpt, userEnvs);
     wantBackend.environmentVariables = envs;
     for (const endpoint of backend.allEndpoints(wantBackend)) {
       endpoint.environmentVariables = wantBackend.environmentVariables;

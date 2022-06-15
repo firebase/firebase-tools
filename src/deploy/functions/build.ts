@@ -314,8 +314,10 @@ export function toBackend(
         };
         proto.copyIfPresent(bkEndpoint.vpc, bdEndpoint.vpc, "egressSettings");
       }
-      if (bdEndpoint.serviceAccount) {
-        bkEndpoint.serviceAccountEmail = bdEndpoint.serviceAccount;
+      proto.renameIfPresent(bkEndpoint, bdEndpoint, "serviceAccountEmail", "serviceAccount");
+      // TODO: renameIfPresent currently copies over null fields, which will change imminently. Once that change is in, we don't need this cleanup code anymore to make tests pass.
+      if ("serviceAccountEmail" in bkEndpoint && !bdEndpoint.serviceAccount) {
+        delete bkEndpoint.serviceAccountEmail;
       }
 
       bkEndpoints.push(bkEndpoint);
