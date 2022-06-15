@@ -20,55 +20,81 @@ describe("resolveParams", () => {
     });
   });
 
-  it("can pull a CEL expression out of the dotenvs", async () => {
+  it("errors when the dotenvs provide a value of the wrong type", async () => {
     const paramsToResolve: params.Param[] = [
       {
         param: "foo",
         type: "string",
       },
-      {
-        param: "bar",
-        type: "string",
-      },
     ];
     const userEnv: Record<string, string | number | boolean> = {
-      foo: "{{ params.bar }}",
-      bar: "baz",
+      foo: 22,
     };
-    await expect(params.resolveParams(paramsToResolve, "", userEnv)).to.eventually.deep.equal({
+    await expect(params.resolveParams(paramsToResolve, "", userEnv)).to.eventually.be.rejected;
+  });
+
+  it("can use a provided literal as default", async () => {
+    const paramsToResolve: params.Param[] = [
+      {
+        param: "foo",
+        default: "bar",
+        type: "string",
+        input: { type: "hardcoded" },
+      },
+    ];
+    await expect(params.resolveParams(paramsToResolve, "", {})).to.eventually.deep.equal({
+      foo: "bar",
+    });
+  });
+
+  it("can resolve a CEL expression and use it as default", async () => {
+    const paramsToResolve: params.Param[] = [
+      {
+        param: "foo",
+        default: "baz",
+        type: "string",
+        input: { type: "hardcoded" },
+      },
+      {
+        param: "bar",
+        default: "{{ params.foo }}",
+        type: "string",
+        input: { type: "hardcoded" },
+      },
+    ];
+    await expect(params.resolveParams(paramsToResolve, "", {})).to.eventually.deep.equal({
       foo: "baz",
       bar: "baz",
     });
   });
 
-  it("errors when a CEL expression references a parameter that isn't defined", async () => {
+  it("errors when the default is an unresolvable CEL expression", async () => {
     const paramsToResolve: params.Param[] = [
       {
-        param: "foo",
+        param: "bar",
+        default: "{{ params.foo }}",
         type: "string",
+        input: { type: "hardcoded" },
       },
     ];
-    const userEnv: Record<string, string | number | boolean> = {
-      foo: "{{ params.bar }}",
-    };
-    await expect(params.resolveParams(paramsToResolve, "", userEnv)).to.eventually.be.rejected;
+    await expect(params.resolveParams(paramsToResolve, "", {})).to.eventually.be.rejected;
   });
 
-  it("errors when a CEL expression has circular dependencies", async () => {
+  it("errors when the default is a CEL expression that resolves to the wrong type", async () => {
     const paramsToResolve: params.Param[] = [
       {
         param: "foo",
-        type: "string",
+        default: 22,
+        type: "int",
+        input: { type: "hardcoded" },
       },
       {
         param: "bar",
+        default: "{{ params.foo }}",
         type: "string",
+        input: { type: "hardcoded" },
       },
     ];
-    const userEnv: Record<string, string | number | boolean> = {
-      foo: "{{ params.bar }}",
-      bar: "{{ params.foo }}",
-    };
-    await expect(params.resolveParams(paramsToResolve, "", userEnv)).to.eventually.be.rejected;
+    await expect(params.resolveParams(paramsToResolve, "", {})).to.eventually.be.rejected;
   });
 });

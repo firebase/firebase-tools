@@ -115,14 +115,14 @@ export interface StringParam extends ParamBase<string> {
   type?: "string";
 
   // If omitted, defaults to TextInput<string>
-  input?: TextInput<string> | SelectInput<string>;
+  input?: TextInput<string> | SelectInput<string> | DefaultOnly;
 }
 
 export interface IntParam extends ParamBase<number> {
   type: "int";
 
   // If omitted, defaults to TextInput<number>
-  input?: TextInput<number> | SelectInput<number>;
+  input?: TextInput<number> | SelectInput<number> | DefaultOnly;
 }
 
 export interface TextInput<T, Extensions = {}> {
@@ -150,6 +150,10 @@ export interface SelectInput<T> {
   select: Array<SelectOptions<T>>;
 }
 
+export interface DefaultOnly {
+  type?: "hardcoded";
+}
+
 export type Param = StringParam | IntParam;
 type ParamValue = string | number | boolean;
 
@@ -160,136 +164,90 @@ function isCEL(expr: string | number | boolean): expr is CEL {
 function dependenciesCEL(expr: CEL): string[] {
   return /params\.(\w+)/.exec(expr)?.slice(1) || [];
 }
-function hasCircularDeps(
-  paramName: string,
+/**
+ * Calls the corresponding resolveX function for the type of a param.
+ * To be used when resolving the default value of a param, if CEL.
+ * It's an error to call this on a CEL expression that depends on params not already known in the currentEnv.
+ */
+function resolveDefaultCEL(
+  type: string,
   expr: CEL,
-  currentlyUnresolvedFields: Record<string, CEL>
-): boolean {
-  for (const dep of dependenciesCEL(expr)) {
-    if (dep === paramName) {
-      return true;
-    }
-    // This depth-1 search is sufficient for the currently implemented subset of CEL.
-    // If we ever try to implement all of CEL, this may have to turn into an actual graph search.
-    if (currentlyUnresolvedFields.hasOwnProperty(dep)) {
-      const subexpr = currentlyUnresolvedFields[dep];
-      if (dependenciesCEL(subexpr).includes(paramName)) {
-        return true;
-      }
-    }
+  currentEnv: Record<string, ParamValue>
+): ParamValue {
+  const deps = dependenciesCEL(expr);
+  const allDepsFound = deps.every((dep) => {
+    return Object.keys(currentEnv).includes(dep);
+  });
+  if (!allDepsFound) {
+    throw new FirebaseError("");
   }
-  return false;
+
+  switch (type) {
+    case "string":
+      return resolveString(expr, currentEnv);
+    case "int":
+      return resolveInt(expr, currentEnv);
+    default:
+      throw new FirebaseError(
+        "Build specified parameter with default " + expr + " of unsupported type"
+      );
+  }
+}
+/**
+ * Tests whether a mooted ParamValue literal is of the correct type to be the value for a Param.
+ */
+function canSatisfyParam(param: Param, value: ParamValue): boolean {
+  switch (param.type) {
+    case "string":
+      return typeof value === "string";
+    case "int":
+      return typeof value === "number" && Number.isInteger(value);
+    default:
+      throw new FirebaseError("Build specified parameter " + param + " with unsupported type");
+  }
 }
 
 /**
- * At the beginning, we have a set of dotenv variables (some of which are literal, and some of which are CEL),
- * and a set of params (some of which map to a dotenv literal/CEL expression, and some of which have to be prompted for).
- * There are two invariants we need to check for:
- * 1) No CEL expression can reference a field which is not defined either as a dotenv variable or a param name
- * 2) No interactive prompt can result in a CEL expression which creates a cycle in param dependencies
+ * A param defined by the SDK may resolve to:
+ * - the value of a Cloud Secret in the same project with name == param name (not implemented yet), but only if it's a SecretParam
+ * - a literal value of the same type already defined in one of the .env files with key == param name
+ * - the value returned by interactively prompting the user
+ *   - the default value of the prompt comes from the SDK via param.default, which may be a literal value or a CEL expression
+ *   - if the default CEL expression is not resolvable--it depends on a param whose value is not yet known--we throw an error
+ *   - yes, this means that the same set of params may or may not throw depending on the order the SDK provides them to us in
+ *   - after prompting, the resolved value of the param is written to the most specific .env file available
  */
 export async function resolveParams(
   params: Param[],
   projectId: string,
   userEnvs: Record<string, ParamValue>
-): Promise<Record<string, build.Field<ParamValue>>> {
-  let unresolvedFields: Record<string, CEL> = {};
-  const resolvedFields: Record<string, ParamValue> = {};
-  const allFields: string[] = [];
+): Promise<Record<string, ParamValue>> {
+  const paramValues: Record<string, ParamValue> = {};
 
-  for (const env of Object.keys(userEnvs)) {
-    const value = userEnvs[env];
-    allFields.push(env);
-    if (isCEL(value)) {
-      unresolvedFields[env] = value;
+  for (const param of params) {
+    if (userEnvs.hasOwnProperty(param.param)) {
+      if (canSatisfyParam(param, userEnvs[param.param])) {
+        paramValues[param.param] = userEnvs[param.param];
+        continue;
+      } else {
+        throw new FirebaseError("");
+      }
+    }
+
+    if (param.default) {
+      let paramDefault: ParamValue;
+      if (isCEL(param.default)) {
+        paramDefault = resolveDefaultCEL(param.type || "", param.default, paramValues);
+      } else {
+        paramDefault = param.default;
+      }
+      paramValues[param.param] = await promptParam(param, paramDefault);
     } else {
-      resolvedFields[env] = value;
-    }
-  }
-  for (const param of params) {
-    allFields.push(param.param);
-  }
-  // for k, v in unresolvedFields: ensure that dependenciesCEL(v) is a subset of allFields
-  for (const k of Object.keys(unresolvedFields)) {
-    const deps = dependenciesCEL(unresolvedFields[k]);
-    const allDepsFound = deps.every((dep) => {
-      return allFields.includes(dep);
-    });
-    if (!allDepsFound) {
-      throw new FirebaseError(
-        "Env file CEL configuration field " +
-          unresolvedFields[k] +
-          " unresolvable; missing required parameters."
-      );
+      paramValues[param.param] = await promptParam(param);
     }
   }
 
-  // for param of params:
-  //   if param is not in dotenv keys:
-  //     prompt interactively for param value
-  //     if param value is CEL:
-  //       ensure that param value does not depend on fields outside allFields
-  //       ensure that param value does not introduce circular depndencies
-  //       add param, param value to unresolved fields
-  //     else:
-  //       add directly to resolvedFields
-
-  for (const param of params) {
-    if (
-      !resolvedFields.hasOwnProperty(param.param) &&
-      !unresolvedFields.hasOwnProperty(param.param)
-    ) {
-      const paramValue = await promptParam(param);
-      if (isCEL(paramValue)) {
-        // TODO: we probably want to gin up a way to retry the prompt when either of these checks fail, since the most likely cause is a typo
-        const deps = dependenciesCEL(paramValue);
-        const allDepsFound = deps.every((dep) => {
-          return allFields.includes(dep);
-        });
-        if (!allDepsFound) {
-          throw new FirebaseError("CEL expression unresolvable; missing required parameters.");
-        }
-        if (hasCircularDeps(param.param, paramValue, unresolvedFields)) {
-          throw new FirebaseError("CEL expression unresolvable; circular parameter dependencies.");
-        }
-        unresolvedFields[param.param] = paramValue;
-      } else {
-        resolvedFields[param.param] = paramValue;
-      }
-    }
-  }
-
-  // while unresolvedFields.length > 0:
-  // loop through unresolvedFields and resolve any that depend only on values in resolvedfields
-  //    make sure to remove them from unresolvedfields after
-  let stuck = false;
-  while (true) {
-    const stillUnresolved: Record<string, CEL> = {};
-    for (const k of Object.keys(unresolvedFields)) {
-      const expr = unresolvedFields[k];
-      const deps = dependenciesCEL(expr);
-      const resolvable = deps.every((dep) => {
-        return Object.keys(resolvedFields).includes(dep);
-      });
-      if (resolvable) {
-        stuck = false;
-        // uh-oh
-        resolvedFields[k] = resolveString(expr, resolvedFields);
-      } else {
-        stillUnresolved[k] = expr;
-      }
-    }
-    if (stuck) {
-      throw new FirebaseError("Cycle detected during Functions parameter resolution");
-    }
-    if (Object.keys(stillUnresolved).length === 0) {
-      break;
-    }
-    unresolvedFields = stillUnresolved;
-    stuck = true;
-  }
-
-  return resolvedFields;
+  return paramValues;
 }
 
 /**
@@ -299,20 +257,22 @@ export async function resolveParams(
  * For most param types, we check the contents of the dotenv files first for a matching key, then interactively prompt the user.
  * When the CLI is running in non-interactive mode or with the --force argument, it is an error for a param to be undefined in dotenvs.
  */
-async function promptParam(param: Param): Promise<ParamValue> {
-  const paramName = param.param;
+async function promptParam(param: Param, resolvedDefault?: ParamValue): Promise<ParamValue> {
+  if (resolvedDefault !== undefined && !canSatisfyParam(param, resolvedDefault)) {
+    throw new FirebaseError("");
+  }
 
   switch (param.type) {
     case "string":
-      return promptStringParam(param);
+      return promptStringParam(param, resolvedDefault as string);
     case "int":
-      return promptIntParam(param);
+      return promptIntParam(param, resolvedDefault as number);
     default:
       throw new FirebaseError("Build specified parameter " + param + " with unsupported type");
   }
 }
 
-async function promptStringParam(param: StringParam): Promise<string> {
+async function promptStringParam(param: StringParam, resolvedDefault?: string): Promise<string> {
   if (!param.input) {
     const defaultToText: TextInput<string> = { text: {} };
     param.input = defaultToText;
@@ -323,6 +283,8 @@ async function promptStringParam(param: StringParam): Promise<string> {
       throw new FirebaseError(
         "Build specified string parameter " + param.param + " with unsupported input type 'select'"
       );
+    case "hardcoded":
+      return resolvedDefault || "";
     case "text":
     default:
       let prompt = `Enter a value for ${param.label || param.param}:`;
@@ -332,13 +294,13 @@ async function promptStringParam(param: StringParam): Promise<string> {
       return await promptOnce({
         name: param.param,
         type: "input",
-        default: param.default,
+        default: resolvedDefault,
         message: prompt,
       });
   }
 }
 
-async function promptIntParam(param: IntParam): Promise<number> {
+async function promptIntParam(param: IntParam, resolvedDefault?: number): Promise<number> {
   if (!param.input) {
     const defaultToText: TextInput<string> = { text: {} };
     param.input = defaultToText;
@@ -349,6 +311,8 @@ async function promptIntParam(param: IntParam): Promise<number> {
       throw new FirebaseError(
         "Build specified int parameter " + param.param + " with unsupported input type 'select'"
       );
+    case "hardcoded":
+      return resolvedDefault || 0;
     case "text":
     default:
       let prompt = `Enter a value for ${param.label || param.param}:`;
@@ -360,7 +324,7 @@ async function promptIntParam(param: IntParam): Promise<number> {
         res = await promptOnce({
           name: param.param,
           type: "number",
-          default: param.default,
+          default: resolvedDefault,
           message: prompt,
         });
         if (Number.isInteger(res)) {
