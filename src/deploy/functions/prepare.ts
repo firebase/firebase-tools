@@ -65,7 +65,7 @@ export async function prepare(
       /* silent=*/ true
     ),
     ensure.cloudBuildEnabled(projectId),
-    ensure.maybeEnableAR(projectId),
+    ensureApiEnabled.check(projectId, "artifactregistry.googleapis.com", "artifactregistry"),
   ]);
   context.artifactRegistryEnabled = checkAPIsEnabled[3];
 

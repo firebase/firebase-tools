@@ -222,9 +222,7 @@ export async function createFunction(
 
   try {
     const headers: Record<string, string> = {};
-    if (previews.artifactregistry) {
-      headers["X-Firebase-Artifact-Registry"] = "optin";
-    }
+    headers["X-Firebase-Artifact-Registry"] = "optin";
     const res = await client.post<Omit<CloudFunction, OutputOnlyFields>, CloudFunction>(
       endpoint,
       cloudFunction,
@@ -383,9 +381,7 @@ export async function updateFunction(
   // a protobuf.Empty value, so we have to manually add it in the missing case.
   try {
     const headers: Record<string, string> = {};
-    if (previews.artifactregistry) {
-      headers["X-Firebase-Artifact-Registry"] = "optin";
-    }
+    headers["X-Firebase-Artifact-Registry"] = "optin";
     const res = await client.patch<Omit<CloudFunction, OutputOnlyFields>, CloudFunction>(
       endpoint,
       cloudFunction,

@@ -82,22 +82,6 @@ export async function cloudBuildEnabled(projectId: string): Promise<void> {
   }
 }
 
-// We previously force-enabled AR. We want to wait on this to see if we can give
-// an upgrade warning in the future. If it already is enabled though we want to
-// remember this and still use the cleaner if necessary.
-export async function maybeEnableAR(projectId: string): Promise<boolean> {
-  if (!previews.artifactregistry) {
-    return ensureApiEnabled.check(
-      projectId,
-      "artifactregistry.googleapis.com",
-      "functions",
-      /* silent= */ true
-    );
-  }
-  await ensureApiEnabled.ensure(projectId, "artifactregistry.googleapis.com", "functions");
-  return true;
-}
-
 /**
  * Returns a mapping of all secrets declared in a stack to the bound service accounts.
  */

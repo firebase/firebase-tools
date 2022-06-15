@@ -1,7 +1,6 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 
-import { previews } from "../../../previews";
 import * as artifactregistry from "../../../gcp/artifactregistry";
 import * as backend from "../../../deploy/functions/backend";
 import * as containerCleaner from "../../../deploy/functions/containerCleaner";
