@@ -23,6 +23,8 @@ export function loadRC(options: { cwd?: string; [other: string]: any }) {
   return RC.loadFile(potential);
 }
 
+type EtagResourceType = "extensionInstances";
+
 export interface RCData {
   projects: { [alias: string]: string };
   targets: {
@@ -31,6 +33,9 @@ export interface RCData {
         [targetName: string]: string[];
       };
     };
+  };
+  etags: {
+    [projectId: string]: Record<EtagResourceType, Record<string, string>>;
   };
 }
 
@@ -53,7 +58,7 @@ export class RC {
 
   constructor(rcpath?: string, data?: Partial<RCData>) {
     this.path = rcpath;
-    this.data = { projects: {}, targets: {}, ...data };
+    this.data = { projects: {}, targets: {}, etags: {}, ...data };
   }
 
   private set(key: string | string[], value: any): void {
@@ -215,6 +220,17 @@ export class RC {
     }
 
     return target;
+  }
+  getEtags(projectId: string): Record<EtagResourceType, Record<string, string>> {
+    return this.data.etags[projectId];
+  }
+
+  setEtags(projectId: string, resourceType: EtagResourceType, etagData: Record<string, string>) {
+    if (!this.data.etags[projectId]) {
+      this.data.etags[projectId] = {} as Record<EtagResourceType, Record<string, string>>;
+    }
+    this.data.etags[projectId][resourceType] = etagData;
+    this.save();
   }
 
   /**
