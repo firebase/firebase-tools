@@ -91,10 +91,11 @@ function transUserToArray(user: any): any[] {
 
 function transUserJson(user: any): any {
   const newUser: any = {};
-  _.each(_.pick(user, EXPORTED_JSON_KEYS), (value, key) => {
+  const pickedUser = _.pick(user, EXPORTED_JSON_KEYS);
+  for (const [key, value] of Object.entries(pickedUser)) {
     const newKey = EXPORTED_JSON_KEYS_RENAMING[key] || key;
     newUser[newKey] = value;
-  });
+  }
   if (newUser.passwordHash) {
     newUser.passwordHash = convertToNormalBase64(newUser.passwordHash);
   }

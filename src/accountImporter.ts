@@ -68,12 +68,12 @@ function genUploadAccountPostBody(projectId: string, accounts: any[], hashOption
       if (account.salt) {
         account.salt = toWebSafeBase64(account.salt);
       }
-      _.each(ALLOWED_JSON_KEYS_RENAMING, (value, key) => {
+      for (const [key, value] of Object.entries(ALLOWED_JSON_KEYS_RENAMING)) {
         if (account[key]) {
           account[value] = account[key];
           delete account[key];
         }
-      });
+      }
       return account;
     }),
   };
@@ -255,7 +255,7 @@ function validateRequiredParameters(options: any): any {
 function validateProviderUserInfo(providerUserInfo: { providerId: string; error?: string }): {
   error?: string;
 } {
-  if (!_.includes(ALLOWED_PROVIDER_IDS, providerUserInfo.providerId)) {
+  if (!ALLOWED_PROVIDER_IDS.includes(providerUserInfo.providerId)) {
     return {
       error: JSON.stringify(providerUserInfo, null, 2) + " has unsupported providerId",
     };

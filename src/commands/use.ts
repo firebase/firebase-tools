@@ -1,4 +1,3 @@
-import * as _ from "lodash";
 import * as clc from "cli-color";
 
 import { Command } from "../command";
@@ -18,14 +17,14 @@ function listAliases(options: Options) {
   if (options.rc.hasProjects) {
     logger.info("Project aliases for", clc.bold(options.projectRoot) + ":");
     logger.info();
-    _.forEach(options.rc.projects, (projectId, alias) => {
+    for (const [alias, projectId] of Object.entries(options.rc.projects)) {
       const listing = alias + " (" + projectId + ")";
       if (options.project === projectId || options.projectAlias === alias) {
         logger.info(clc.cyan.bold("* " + listing));
       } else {
         logger.info("  " + listing);
       }
-    });
+    }
     logger.info();
   }
   logger.info("Run", clc.bold("firebase use --add"), "to define a new project alias.");

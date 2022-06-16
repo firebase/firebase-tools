@@ -30,20 +30,20 @@ export async function serve(options: any): Promise<void> {
     await prepareFrameworks(targetNames, options, options);
   }
   await Promise.all(
-    _.map(targetNames, (targetName: string) => {
+    targetNames.map((targetName: string) => {
       return TARGETS[targetName].start(options);
     })
   );
   await Promise.all(
-    _.map(targetNames, (targetName: string) => {
+    targetNames.map((targetName: string) => {
       return TARGETS[targetName].connect();
     })
   );
   await new Promise((resolve) => {
     process.on("SIGINT", () => {
       logger.info("Shutting down...");
-      return Promise.all(
-        _.map(targetNames, (targetName: string) => {
+      Promise.all(
+        targetNames.map((targetName: string) => {
           return TARGETS[targetName].stop(options);
         })
       )
