@@ -28,7 +28,7 @@ export function prepare(context: any, options: Options): Promise<any> {
     deploys.push(ruleConfig);
   });
 
-  for (const [file, v] of Object.entries(ruleFiles)) {
+  for (const file of Object.keys(ruleFiles)) {
     switch (path.extname(file)) {
       case ".json":
         ruleFiles[file] = options.config.readProjectFile(file);
