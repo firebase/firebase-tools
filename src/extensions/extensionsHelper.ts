@@ -273,7 +273,7 @@ export function validateSpec(spec: any) {
     if (!param.label) {
       errors.push(`Param${param.param ? ` ${param.param}` : ""} is missing required field: label`);
     }
-    if (param.type && Object.values(SpecParamType).includes(param.type)) {
+    if (param.type && !Object.values(SpecParamType).includes(param.type)) {
       errors.push(
         `Invalid type ${param.type} for param${
           param.param ? ` ${param.param}` : ""
