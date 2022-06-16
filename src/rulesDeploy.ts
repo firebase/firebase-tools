@@ -108,7 +108,7 @@ export class RulesDeploy {
     return { latestName, latestContent };
   }
 
-  async checkStorageRulesIamPermissions(rulesContent: string | undefined): Promise<void> {
+  async checkStorageRulesIamPermissions(rulesContent?: string): Promise<void> {
     if (rulesContent?.match(CROSS_SERVICE_FUNCTIONS) === null) {
       return;
     }
