@@ -22,6 +22,7 @@ var scopes = require("../lib/scopes");
 var { configstore } = require("../lib/configstore");
 var extractTriggers = require("../lib/deploy/functions/runtimes/node/extractTriggers");
 var functionsConfig = require("../lib/functionsConfig");
+var { last } = require("../lib/utils");
 
 var clc = require("cli-color");
 var firebase = require("firebase");
@@ -97,7 +98,7 @@ var checkFunctionsListMatch = function (expectedFunctions) {
   return cloudfunctions
     .listFunctions(projectId, region)
     .then(function (result) {
-      deployedFunctions = _.map(result, (fn) => _.last(fn.name.split("/")));
+      deployedFunctions = _.map(result, (fn) => last(fn.name.split("/")));
       expect(_.isEmpty(_.xor(expectedFunctions, deployedFunctions))).to.be.true;
       return true;
     })
