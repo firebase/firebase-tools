@@ -26,7 +26,7 @@ export async function getExtensionRegistry(
   if (onlyFeatured) {
     const featuredList = _.get(res, "body.featured.discover");
     return _.pickBy(extensions, (_entry, extensionName: string) => {
-      return _.includes(featuredList, extensionName);
+      return featuredList.includes(extensionName);
     });
   }
   return extensions;

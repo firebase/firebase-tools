@@ -255,7 +255,7 @@ function validateRequiredParameters(options: any): any {
 function validateProviderUserInfo(providerUserInfo: { providerId: string; error?: string }): {
   error?: string;
 } {
-  if (!_.includes(ALLOWED_PROVIDER_IDS, providerUserInfo.providerId)) {
+  if (!ALLOWED_PROVIDER_IDS.includes(providerUserInfo.providerId)) {
     return {
       error: JSON.stringify(providerUserInfo, null, 2) + " has unsupported providerId",
     };

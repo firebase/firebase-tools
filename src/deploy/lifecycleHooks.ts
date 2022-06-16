@@ -131,7 +131,7 @@ function getReleventConfigs(target: string, options: Options) {
   }
 
   let onlyTargets = options.only.split(",");
-  if (_.includes(onlyTargets, target)) {
+  if (onlyTargets.includes(target)) {
     // If the target matches entirely then all instances should be included.
     return targetConfigs;
   }
@@ -145,7 +145,7 @@ function getReleventConfigs(target: string, options: Options) {
     });
 
   return targetConfigs.filter((config: any) => {
-    return !config.target || _.includes(onlyTargets, config.target);
+    return !config.target || onlyTargets.includes(config.target);
   });
 }
 
