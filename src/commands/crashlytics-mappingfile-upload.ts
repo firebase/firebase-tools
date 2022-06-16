@@ -3,12 +3,12 @@ import { FirebaseError } from "../error";
 import * as utils from "../utils";
 
 import { fetchBuildtoolsJar, runBuildtoolsCommand } from "../crashlytics/buildToolsJarHelper";
+import { Options } from "../options";
 
-interface CommandOptions {
-  app: string | null;
-  mappingFile: string | null;
-  resourceFile: string | null;
-  debug: boolean | null;
+interface CommandOptions extends Options {
+  app?: string;
+  mappingFile?: string;
+  resourceFile?: string;
 }
 
 interface JarOptions {
@@ -18,7 +18,7 @@ interface JarOptions {
 }
 
 export default new Command("crashlytics:mappingfile:upload <mappingFile>")
-  .description("Upload a mapping file to deobfuscate stack traces.")
+  .description("upload a ProGuard/R8-compatible mapping file to deobfuscate stack traces")
   .option("--app <appID>", "The app id of your Firebase app")
   .option(
     "--resource-file <resourceFile>",
@@ -26,26 +26,36 @@ export default new Command("crashlytics:mappingfile:upload <mappingFile>")
   )
   .option("--debug", "print debug output and logging from the underlying uploader tool")
   .action(async (mappingFile: string, options: CommandOptions) => {
-    const app = getGoogleAppID(options) || "";
+    const app = getGoogleAppID(options);
     const debug = !!options.debug;
     if (!mappingFile) {
-      throw new FirebaseError("set <mappingFile> to a valid mapping file path");
+      throw new FirebaseError(
+        "set <mappingFile> to a valid mapping file path, e.g. app/build/outputs/mapping.txt"
+      );
     }
     const mappingFilePath = mappingFile;
-    const resourceFilePath = options.resourceFile ? options.resourceFile : "";
+
+    const resourceFilePath = options.resourceFile;
+    if (!resourceFilePath) {
+      throw new FirebaseError(
+        "set <resourceFile> to a valid Android resource file path, e.g. app/main/res/values/strings.xml"
+      );
+    }
 
     const jarFile = await fetchBuildtoolsJar();
     const jarOptions: JarOptions = { app, mappingFilePath, resourceFilePath };
 
     utils.logBullet(`Uploading mapping file: ${mappingFilePath}`);
-    const uploadArgs = buildArgs({ ...jarOptions });
+    const uploadArgs = buildArgs(jarOptions);
     runBuildtoolsCommand(jarFile, uploadArgs, debug);
     utils.logBullet("Successfully uploaded mapping file");
   });
 
-function getGoogleAppID(options: CommandOptions): string | null {
+function getGoogleAppID(options: CommandOptions): string {
   if (!options.app) {
-    throw new FirebaseError("Set the --app option to a valid Firebase app id and try again");
+    throw new FirebaseError(
+      "set --app <appId> to a valid Firebase application id, e.g. 1:00000000:android:0000000"
+    );
   }
   return options.app;
 }

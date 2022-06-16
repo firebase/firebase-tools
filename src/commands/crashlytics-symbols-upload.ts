@@ -7,19 +7,17 @@ import { FirebaseError } from "../error";
 import * as utils from "../utils";
 
 import { fetchBuildtoolsJar, runBuildtoolsCommand } from "../crashlytics/buildToolsJarHelper";
+import { Options } from "../options";
 
 enum SymbolGenerator {
   breakpad = "breakpad",
   csym = "csym",
 }
 
-interface CommandOptions {
+interface CommandOptions extends Options {
   app: string | null;
   generator: SymbolGenerator | null;
   dryRun: boolean | null;
-  debug: boolean | null;
-  // Temporary override to use a local JAR until we get the fat jar in our bucket
-  localJar: string | null;
 }
 
 interface JarOptions {
@@ -33,13 +31,13 @@ interface JarOptions {
 const SYMBOL_CACHE_ROOT_DIR = process.env.FIREBASE_CRASHLYTICS_CACHE_PATH || os.tmpdir();
 
 export default new Command("crashlytics:symbols:upload <symbolFiles...>")
-  .description("Upload symbols for native code, to symbolicate stack traces.")
+  .description("upload symbols for native code, to symbolicate stack traces")
   .option("--app <appID>", "the app id of your Firebase app")
   .option("--generator [breakpad|csym]", "the symbol generator being used, defaults to breakpad.")
   .option("--dry-run", "generate symbols without uploading them")
   .option("--debug", "print debug output and logging from the underlying uploader tool")
   .action(async (symbolFiles: string[], options: CommandOptions) => {
-    const app = getGoogleAppID(options) || "";
+    const app = getGoogleAppID(options);
     const generator = getSymbolGenerator(options);
     const dryRun = !!options.dryRun;
     const debug = !!options.debug;
@@ -80,9 +78,11 @@ export default new Command("crashlytics:symbols:upload <symbolFiles...>")
     utils.logBullet("Successfully uploaded all symbols");
   });
 
-function getGoogleAppID(options: CommandOptions): string | null {
+function getGoogleAppID(options: CommandOptions): string {
   if (!options.app) {
-    throw new FirebaseError("set the --app option to a valid Firebase app id and try again");
+    throw new FirebaseError(
+      "set --app <appId> to a valid Firebase application id, e.g. 1:00000000:android:0000000"
+    );
   }
   return options.app;
 }

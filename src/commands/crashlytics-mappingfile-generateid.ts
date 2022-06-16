@@ -2,10 +2,10 @@ import { Command } from "../command";
 import * as utils from "../utils";
 
 import { fetchBuildtoolsJar, runBuildtoolsCommand } from "../crashlytics/buildToolsJarHelper";
+import { Options } from "../options";
 
-interface CommandOptions {
-  resourceFile: string | null;
-  debug: boolean | null;
+interface CommandOptions extends Options {
+  resourceFile?: string;
 }
 
 interface JarOptions {
@@ -14,7 +14,7 @@ interface JarOptions {
 
 export default new Command("crashlytics:mappingfile:generateid")
   .description(
-    "Generate a mapping file id and write it to an Android resource file, which will be built into the app."
+    "generate a mapping file id and write it to an Android resource file, which will be built into the app"
   )
   .option(
     "--resource-file <resourceFile>",
@@ -28,8 +28,8 @@ export default new Command("crashlytics:mappingfile:generateid")
     const jarFile = await fetchBuildtoolsJar();
     const jarOptions: JarOptions = { resourceFilePath };
 
-    utils.logBullet(`Updating resource file: ` + resourceFilePath);
-    const uploadArgs = buildArgs({ ...jarOptions });
+    utils.logBullet(`Updating resource file: ${resourceFilePath}`);
+    const uploadArgs = buildArgs(jarOptions);
     runBuildtoolsCommand(jarFile, uploadArgs, debug);
     utils.logBullet("Successfully updated mapping file id");
   });

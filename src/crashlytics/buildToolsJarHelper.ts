@@ -20,11 +20,12 @@ const JAR_URL = `https://dl.google.com/android/maven2/com/google/firebase/fireba
  * Returns the path to the jar file, downloading it if necessary.
  */
 export async function fetchBuildtoolsJar(): Promise<string> {
+  // If you set LOCAL_JAR to a path it will override the downloaded buildtools.jar
   if (process.env.LOCAL_JAR) {
     return process.env.LOCAL_JAR;
   }
 
-  let jarPath = path.join(JAR_CACHE_DIR, `crashlytics-buildtools-${JAR_VERSION}.jar`);
+  const jarPath = path.join(JAR_CACHE_DIR, `crashlytics-buildtools-${JAR_VERSION}.jar`);
   if (fs.existsSync(jarPath)) {
     logger.debug(`Buildtools Jar already downloaded at ${jarPath}`);
     return jarPath;
@@ -47,10 +48,6 @@ export async function fetchBuildtoolsJar(): Promise<string> {
   fs.mkdirSync(JAR_CACHE_DIR, { recursive: true });
   fs.copySync(tmpfile, jarPath);
 
-  // If you set LOCAL_JAR to a path it will override the downloaded buildtools.jar
-  if (process.env.LOCAL_JAR) {
-    jarPath = process.env.LOCAL_JAR;
-  }
   return jarPath;
 }
 
@@ -58,9 +55,8 @@ export async function fetchBuildtoolsJar(): Promise<string> {
  * Helper function to invoke the given set of arguments on the the executable jar
  */
 export function runBuildtoolsCommand(jarFile: string, args: string[], debug: boolean): void {
-  args = ["-jar", jarFile].concat(args);
-  args = args.concat(["-clientName", "firebase-cli;crashlytics-buildtools"]);
-  const outputs = spawn.sync("java", args, {
+  const fullArgs = ["-jar", jarFile, ...args, "-clientName", "firebase-cli;crashlytics-buildtools"];
+  const outputs = spawn.sync("java", fullArgs, {
     stdio: debug ? "inherit" : "pipe",
   });
 
