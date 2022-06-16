@@ -99,7 +99,7 @@ export async function setVariablesRecursive(
   // If 'parsed' is object, call again
   if (_.isPlainObject(parsed)) {
     return Promise.all(
-      _.map(parsed, (item: any, key: string) => {
+      Object.entries(parsed).map(([key, item]) => {
         const newVarPath = varPath ? _.join([varPath, key], "/") : key;
         return setVariablesRecursive(projectId, configId, newVarPath, item);
       })
@@ -118,9 +118,9 @@ export async function materializeConfig(configName: string, output: any): Promis
     _.set(output, key, variable.text);
   };
 
-  const traverseVariables = async function (variables: any) {
+  const traverseVariables = async function (variables: { name: string }[]) {
     return Promise.all(
-      _.map(variables, (variable) => {
+      variables.map((variable) => {
         return materializeVariable(variable.name);
       })
     );
@@ -135,7 +135,7 @@ export async function materializeAll(projectId: string): Promise<{ [key: string]
   const output = {};
   const configs = await runtimeconfig.configs.list(projectId);
   await Promise.all(
-    _.map(configs, (config) => {
+    configs.map((config: any) => {
       if (config.name.match(new RegExp("configs/firebase"))) {
         // ignore firebase config
         return;

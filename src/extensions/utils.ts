@@ -1,4 +1,3 @@
-import * as _ from "lodash";
 import { promptOnce } from "../prompt";
 import { ParamOption } from "./types";
 import { RegistryEntry } from "./resolveSource";
@@ -33,7 +32,7 @@ export function convertExtensionOptionToLabeledList(options: ParamOption[]): Lis
 export function convertOfficialExtensionsToList(officialExts: {
   [key: string]: RegistryEntry;
 }): ListItem[] {
-  const l = _.map(officialExts, (entry: RegistryEntry, key: string) => {
+  const l = Object.entries(officialExts).map(([key, entry]) => {
     return {
       checked: false,
       value: `${entry.publisher}/${key}`,

@@ -35,7 +35,7 @@ function cloneVariable(varName: string, toProject: any): Promise<any> {
 function cloneConfig(configName: string, toProject: any): Promise<any> {
   return runtimeconfig.variables.list(configName).then((variables) => {
     return Promise.all(
-      _.map(variables, (variable) => {
+      variables.map((variable: { name: string }) => {
         return cloneVariable(variable.name, toProject);
       })
     );
@@ -72,7 +72,7 @@ export async function functionsConfigClone(
 ): Promise<any> {
   if (only) {
     return Promise.all(
-      _.map(only, (key) => {
+      only.map((key) => {
         return cloneConfigOrVariable(key, fromProject, toProject);
       })
     );
@@ -81,7 +81,7 @@ export async function functionsConfigClone(
     _.unset(toClone, "firebase"); // Do not clone firebase config
     applyExcept(toClone, except);
     return Promise.all(
-      _.map(toClone, (val, configId) => {
+      Object.entries(toClone).map(([configId, val]) => {
         return functionsConfig.setVariablesRecursive(toProject, configId, "", val);
       })
     );

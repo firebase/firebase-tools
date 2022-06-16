@@ -92,7 +92,7 @@ export async function ask(args: {
   utils.logLabeledBullet(logPrefix, "answer the questions below to configure your extension:");
   const substituted = substituteParams<Param[]>(args.paramSpecs, args.firebaseProjectParams);
   const result: { [key: string]: ParamBindingOptions } = {};
-  const promises = _.map(substituted, (paramSpec: Param) => {
+  const promises = substituted.map((paramSpec) => {
     return async () => {
       result[paramSpec.param] = await askForParam({
         projectId: args.projectId,
