@@ -60,7 +60,7 @@ async function getAndCheckAddress(emulator: Emulators, options: Options): Promis
     // The Extensions emulator always runs on the same port as the Functions emulator.
     emulator = Emulators.FUNCTIONS;
   }
-  let host = options.config.src.emulators?.[emulator]?.host || Constants.getDefaultHost(emulator);
+  let host = options.config.src.emulators?.[emulator]?.host || Constants.getDefaultHost();
   if (host === "localhost" && utils.isRunningInWSL()) {
     // HACK(https://github.com/firebase/firebase-tools-ui/issues/332): Use IPv4
     // 127.0.0.1 instead of localhost. This, combined with the hack in

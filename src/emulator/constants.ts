@@ -111,7 +111,7 @@ export class Constants {
     }
   }
 
-  static getDefaultHost(emulator: Emulators): string {
+  static getDefaultHost(): string {
     return DEFAULT_HOST;
   }
 

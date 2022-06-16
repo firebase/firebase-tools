@@ -34,9 +34,7 @@ function invalidSourceErrMsgTemplate(instanceId: string, source: string): string
 
 export async function getExistingSourceOrigin(
   projectId: string,
-  instanceId: string,
-  extensionName: string,
-  existingSource: string
+  instanceId: string
 ): Promise<SourceOrigin> {
   const instance = await extensionsApi.getInstance(projectId, instanceId);
   return instance && instance.config.extensionRef

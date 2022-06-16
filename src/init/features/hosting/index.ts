@@ -70,6 +70,6 @@ export async function doSetup(setup: any, config: any, options: Options): Promis
     INDEX_TEMPLATE.replace(/{{VERSION}}/g, response.body.current.version)
   );
   if (setup.hosting.github) {
-    return initGitHub(setup, config, options);
+    return initGitHub(setup);
   }
 }

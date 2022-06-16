@@ -537,7 +537,7 @@ function wrapValidateBody(pluginContext: ExegesisPluginContext): void {
   if (op.validateBody && !op._authEmulatorValidateBodyWrapped) {
     const validateBody = op.validateBody.bind(op);
     op.validateBody = (body) => {
-      return validateAndFixRestMappingRequestBody(validateBody, body, pluginContext.api);
+      return validateAndFixRestMappingRequestBody(validateBody, body);
     };
     op._authEmulatorValidateBodyWrapped = true;
   }
@@ -546,9 +546,7 @@ function wrapValidateBody(pluginContext: ExegesisPluginContext): void {
 function validateAndFixRestMappingRequestBody(
   validate: ValidatorFunction,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  body: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  api: any
+  body: any
 ): ReturnType<ValidatorFunction> {
   body = convertKeysToCamelCase(body);
 

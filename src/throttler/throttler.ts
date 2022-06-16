@@ -46,7 +46,7 @@ export interface ThrottlerStats {
   elapsed: number;
 }
 
-interface TaskData<T, R> {
+interface TaskData<T> {
   task: T;
   retryCount: number;
   wait?: { resolve: (R: any) => void; reject: (err: TaskError) => void };
@@ -73,7 +73,7 @@ export abstract class Throttler<T, R> {
   errored = 0;
   retried = 0;
   total = 0;
-  taskDataMap = new Map<number, TaskData<T, R>>();
+  taskDataMap = new Map<number, TaskData<T>>();
   waits: Array<{ resolve: () => void; reject: (err: Error) => void }> = [];
   min = 9999999999;
   max = 0;

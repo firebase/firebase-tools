@@ -50,6 +50,7 @@ interface RequiredApi {
 // expressions.
 // `Expression<Foo> == Expression<Foo>` is an Expression<boolean>
 // `Expression<boolean> ? Expression<T> : Expression<T>` is an Expression<T>
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 type Expression<T extends string | number | boolean> = string;
 type Field<T extends string | number | boolean> = T | Expression<T> | null;
 

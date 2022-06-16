@@ -49,7 +49,7 @@ const githubApiClient = new Client({ urlPrefix: githubApiOrigin, auth: false });
  * @param config Configuration for the project.
  * @param options Command line options.
  */
-export async function initGitHub(setup: Setup, config: any, options: any): Promise<void> {
+export async function initGitHub(setup: Setup): Promise<void> {
   if (!setup.projectId) {
     return reject("Could not determine Project ID, can't set up GitHub workflow.", { exit: 1 });
   }

@@ -212,7 +212,7 @@ export class EmulatorLog {
     type: string,
     filter?: (el: EmulatorLog) => boolean
   ): Promise<EmulatorLog> {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const listener = (el: EmulatorLog) => {
         const levelTypeMatch = el.level === level && el.type === type;
         let filterMatch = true;

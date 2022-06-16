@@ -1,5 +1,3 @@
-"use strict";
-
 import * as _ from "lodash";
 import * as clc from "cli-color";
 import * as chai from "chai";
@@ -8,8 +6,6 @@ import * as sinon from "sinon";
 
 import * as askUserForConsent from "../../extensions/askUserForConsent";
 import * as iam from "../../gcp/iam";
-import * as resolveSource from "../../extensions/resolveSource";
-import * as extensionHelper from "../../extensions/extensionsHelper";
 
 const expect = chai.expect;
 

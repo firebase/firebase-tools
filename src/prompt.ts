@@ -91,7 +91,7 @@ export async function promptOnce<A extends inquirer.Answers>(
  * @param question The question (of life, the universe, and everything).
  * @return The value as returned by `inquirer` for that quesiton.
  */
-export async function promptOnce<A>(question: Question, options: Options = {}): Promise<any> {
+export async function promptOnce<A>(question: Question, options: Options = {}): Promise<A> {
   question.name = question.name || "question";
   await prompt(options, [question]);
   return options[question.name];

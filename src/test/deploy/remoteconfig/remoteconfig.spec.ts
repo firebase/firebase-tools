@@ -2,7 +2,6 @@ import { expect } from "chai";
 import * as nock from "nock";
 import * as sinon from "sinon";
 
-import * as api from "../../../api";
 import { remoteConfigApiOrigin } from "../../../api";
 import * as rcDeploy from "../../../deploy/remoteconfig/functions";
 import { FirebaseError } from "../../../error";
@@ -63,7 +62,6 @@ const currentTemplate: RemoteConfigTemplate = createTemplate("6");
 
 describe("Remote Config Deploy", () => {
   let sandbox: sinon.SinonSandbox;
-  let apiRequestStub: sinon.SinonStub;
   let templateStub: sinon.SinonStub;
   let etagStub: sinon.SinonStub;
 
