@@ -7,7 +7,7 @@ export function checkValidTargetFilters(options: Options): Promise<void> {
   function numFilters(targetTypes: string[]): number {
     return _.filter(options.only, (opt) => {
       const optChunks = opt.split(":");
-      return _.includes(targetTypes, optChunks[0]) && optChunks.length > 1;
+      return targetTypes.includes(optChunks[0]) && optChunks.length > 1;
     }).length;
   }
   function targetContainsFilter(targetTypes: string[]): boolean {

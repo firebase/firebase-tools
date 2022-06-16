@@ -376,7 +376,7 @@ export type SettledPromise = SettledPromiseResolved | SettledPromiseRejected;
  * either resolved or rejected.
  */
 export function promiseAllSettled(promises: Array<Promise<any>>): Promise<SettledPromise[]> {
-  const wrappedPromises = _.map(promises, async (p) => {
+  const wrappedPromises = promises.map(async (p) => {
     try {
       const val = await Promise.resolve(p);
       return { state: "fulfilled", value: val } as SettledPromiseResolved;

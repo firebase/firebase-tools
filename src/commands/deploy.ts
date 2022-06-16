@@ -1,4 +1,3 @@
-import * as _ from "lodash";
 import { requireDatabaseInstance } from "../requireDatabaseInstance";
 import { requirePermissions } from "../requirePermissions";
 import { checkServiceAccountIam } from "../deploy/functions/checkIam";
@@ -74,11 +73,11 @@ export const command = new Command("deploy")
   })
   .before(async (options) => {
     // only fetch the default instance for hosting or database deploys
-    if (_.includes(options.filteredTargets, "database")) {
+    if (options.filteredTargets.includes("database")) {
       await requireDatabaseInstance(options);
     }
 
-    if (_.includes(options.filteredTargets, "hosting")) {
+    if (options.filteredTargets.includes("hosting")) {
       await requireHostingSite(options);
     }
   })
