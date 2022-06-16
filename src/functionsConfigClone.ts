@@ -20,9 +20,9 @@ function matchPrefix(short: any[], long: any[]): boolean {
 }
 
 function applyExcept(json: any, except: any[]) {
-  _.forEach(except, (key) => {
+  for (const key of except) {
     _.unset(json, key);
-  });
+  }
 }
 
 function cloneVariable(varName: string, toProject: any): Promise<any> {
@@ -53,13 +53,13 @@ async function cloneConfigOrVariable(key: string, fromProject: any, toProject: a
   }
   return runtimeconfig.variables.list(configName).then((variables) => {
     const promises: Promise<any>[] = [];
-    _.forEach(variables, (variable) => {
+    for (const variable of variables) {
       const varId = functionsConfig.varNameToIds(variable.name).variable;
       const variablePrefixFilter = parts.slice(1);
       if (matchPrefix(variablePrefixFilter, varId.split("/"))) {
         promises.push(cloneVariable(variable.name, toProject));
       }
-    });
+    }
     return Promise.all(promises);
   });
 }

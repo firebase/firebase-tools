@@ -154,7 +154,7 @@ interface ParsedArg {
 
 export function parseSetArgs(args: string[]): ParsedArg[] {
   const parsed: ParsedArg[] = [];
-  _.forEach(args, (arg) => {
+  for (const arg of args) {
     const parts = arg.split("=");
     const key = parts[0];
     if (parts.length < 2) {
@@ -175,18 +175,18 @@ export function parseSetArgs(args: string[]): ParsedArg[] {
       varId: id.variable,
       val: val,
     });
-  });
+  }
   return parsed;
 }
 
 export function parseUnsetArgs(args: string[]): ParsedArg[] {
   const parsed: ParsedArg[] = [];
   let splitArgs: string[] = [];
-  _.forEach(args, (arg) => {
+  for (const arg of args) {
     splitArgs = _.union(splitArgs, arg.split(","));
-  });
+  }
 
-  _.forEach(splitArgs, (key) => {
+  for (const key of splitArgs) {
     const id = keyToIds(key);
     if (isReservedNamespace(id)) {
       throw new FirebaseError("Cannot unset reserved namespace " + clc.bold(id.config));
@@ -196,6 +196,6 @@ export function parseUnsetArgs(args: string[]): ParsedArg[] {
       configId: id.config,
       varId: id.variable,
     });
-  });
+  }
   return parsed;
 }
