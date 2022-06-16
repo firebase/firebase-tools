@@ -747,7 +747,10 @@ export async function startAll(
     hubLogger.logLabeled(
       "WARN",
       "emulators",
-      "The Emulator UI requires a project ID to start. Configure your default project with 'firebase use' or pass the --project flag."
+      "The Emulator UI is not starting, either because none of the emulated " +
+        "features interact with the Emulator UI or it cannot determine the " +
+        "Project ID. Configure your default project with 'firebase use' or " +
+        "pass the --project flag"
     );
   }
 

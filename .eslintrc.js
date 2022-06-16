@@ -39,6 +39,7 @@ module.exports = {
         "no-invalid-this": "off", // Turned off in favor of @typescript-eslint/no-invalid-this.
         "@typescript-eslint/no-invalid-this": ["error"],
         eqeqeq: ["error", "always", { null: "ignore" }],
+        "no-unused-vars": "off", // Off in favor of @typescript-eslint/no-unused-vars.
 
         "@typescript-eslint/ban-types": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/explicit-function-return-type": ["warn", { allowExpressions: true }], // TODO(bkendall): SET to error.
@@ -52,6 +53,7 @@ module.exports = {
         "@typescript-eslint/no-unsafe-call": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/no-unsafe-member-access": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/no-unsafe-return": "warn", // TODO(bkendall): remove, allow to error.
+        "@typescript-eslint/no-unused-vars": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/no-use-before-define": ["warn", { functions: false, typedefs: false }], // TODO(bkendall): change to error.
         "@typescript-eslint/no-var-requires": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/prefer-includes": "warn", // TODO(bkendall): remove, allow to error.
@@ -62,7 +64,6 @@ module.exports = {
         "no-case-declarations": "warn", // TODO(bkendall): remove, allow to error.
         "no-constant-condition": "warn", // TODO(bkendall): remove, allow to error.
         "no-fallthrough": "warn", // TODO(bkendall): remove, allow to error.
-        "no-unused-vars": "warn", // TODO(bkendall): remove, allow to error.
         camelcase: ["warn", { ignoreDestructuring: true }], // TODO(bkendall): remove, allow to error.
       },
     },
