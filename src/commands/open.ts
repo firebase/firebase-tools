@@ -59,7 +59,7 @@ export const command = new Command("open [link]")
     let link = _.find(LINKS, { arg: linkName });
     if (linkName && !link) {
       throw new FirebaseError(
-        "Unrecognized link name. Valid links are:\n\n" +LINKS.map((l) => l.arg).join("\n")
+        "Unrecognized link name. Valid links are:\n\n" + LINKS.map((l) => l.arg).join("\n")
       );
     }
 
@@ -73,7 +73,7 @@ export const command = new Command("open [link]")
     }
     if (!link) {
       throw new FirebaseError(
-        "Unrecognized link name. Valid links are:\n\n" +LINKS.map((l) => l.arg).join("\n")
+        "Unrecognized link name. Valid links are:\n\n" + LINKS.map((l) => l.arg).join("\n")
       );
     }
 
