@@ -121,16 +121,10 @@ export async function serviceAccountHasRoles(
   const memberName = `serviceAccount:${fullServiceAccountName.split("/").pop()}`;
 
   for (const roleName of roles) {
-    const bindingIndex = findIndex(
-      projectPolicy.bindings,
-      (binding: Binding) => binding.role === roleName
-    );
-
-    if (bindingIndex === -1) {
+    const binding = projectPolicy.bindings.find((b: Binding) => b.role === roleName);
+    if (!binding) {
       return false;
     }
-
-    const binding = projectPolicy.bindings[bindingIndex];
 
     // No need to update if service account already has role
     if (!binding.members.includes(memberName)) {
