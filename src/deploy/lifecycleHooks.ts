@@ -122,7 +122,7 @@ function getReleventConfigs(target: string, options: Options) {
   if (!targetConfigs) {
     return [];
   }
-  if (!_.isArray(targetConfigs)) {
+  if (!Array.isArray(targetConfigs)) {
     targetConfigs = [targetConfigs];
   }
 
