@@ -1,4 +1,3 @@
-import * as _ from "lodash";
 import * as clc from "cli-color";
 import * as open from "open";
 
@@ -56,7 +55,7 @@ export const command = new Command("open [link]")
   .before(requirePermissions)
   .before(requireDatabaseInstance)
   .action(async (linkName: string, options: any): Promise<void> => {
-    let link = _.find(LINKS, { arg: linkName });
+    let link = LINKS.find((l) => l.arg === linkName);
     if (linkName && !link) {
       throw new FirebaseError(
         "Unrecognized link name. Valid links are:\n\n" + LINKS.map((l) => l.arg).join("\n")
@@ -69,7 +68,7 @@ export const command = new Command("open [link]")
         message: "What link would you like to open?",
         choices: CHOICES,
       });
-      link = _.find(LINKS, { name });
+      link = LINKS.find((l) => l.name === name);
     }
     if (!link) {
       throw new FirebaseError(

@@ -1,6 +1,5 @@
 import * as clc from "cli-color";
 import Table = require("cli-table");
-import * as _ from "lodash";
 
 import { Command } from "../command";
 import { FirebaseError } from "../error";
@@ -41,7 +40,9 @@ export const command = new Command("ext:dev:list <publisherId>")
       style: { head: ["yellow"] },
     });
     // Order extensions newest to oldest.
-    const sorted = _.sortBy(extensions, "createTime", "asc").reverse();
+    const sorted = extensions.sort(
+      (a, b) => new Date(b.createTime).valueOf() - new Date(a.createTime).valueOf()
+    );
     sorted.forEach((extension) => {
       table.push([
         last(extension.ref.split("/")),
