@@ -19,7 +19,6 @@ import * as v1events from "../../../../functions/events/v1";
 import * as servicesNS from "../../../../deploy/functions/services";
 import * as identityPlatformNS from "../../../../gcp/identityPlatform";
 import { AuthBlockingService } from "../../../../deploy/functions/services/auth";
-import { define } from "mime";
 
 describe("Fabricator", () => {
   // Stub all GCP APIs to make sure this test is hermetic

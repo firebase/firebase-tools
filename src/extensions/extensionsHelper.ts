@@ -592,6 +592,7 @@ export function getPublisherProjectFromName(publisherName: string): number {
   const publisherNameRegex = /projects\/.+\/publisherProfile/;
 
   if (publisherNameRegex.test(publisherName)) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [_, projectNumber, __] = publisherName.split("/");
     return Number.parseInt(projectNumber);
   }

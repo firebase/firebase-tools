@@ -1,1 +1,2 @@
 - Fixes Auth Blocking Trigger registration in the Emulator (#4592).
+- Adds better messaging when the Emulator UI isn't started (#3781).

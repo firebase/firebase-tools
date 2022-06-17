@@ -326,9 +326,7 @@ describe("getExistingSourceOrigin", () => {
 
     const result = await updateHelper.getExistingSourceOrigin(
       "invader-zim",
-      "instance-of-registry-ext",
-      "ext-testing",
-      "projects/firebasemods/sources/fake-registry-source"
+      "instance-of-registry-ext"
     );
 
     expect(result).to.equal(extensionsHelper.SourceOrigin.PUBLISHED_EXTENSION);
@@ -339,9 +337,7 @@ describe("getExistingSourceOrigin", () => {
 
     const result = await updateHelper.getExistingSourceOrigin(
       "invader-zim",
-      "instance-of-local-ext",
-      "ext-testing",
-      "projects/firebasemods/sources/fake-local-source"
+      "instance-of-local-ext"
     );
 
     expect(result).to.equal(extensionsHelper.SourceOrigin.LOCAL);

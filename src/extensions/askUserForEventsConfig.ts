@@ -1,4 +1,3 @@
-import * as _ from "lodash";
 import { promptOnce } from "../prompt";
 import * as extensionsApi from "../extensions/extensionsApi";
 import { EventDescriptor, ExtensionInstance } from "./types";

@@ -5,7 +5,6 @@ import {
   randomDigits,
   isValidPhoneNumber,
   DeepPartial,
-  parseAbsoluteUri,
 } from "./utils";
 import { MakeRequired } from "./utils";
 import { AuthCloudFunction } from "./cloudFunctions";

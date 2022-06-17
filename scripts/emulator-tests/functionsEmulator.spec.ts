@@ -6,10 +6,9 @@ import * as sinon from "sinon";
 import * as supertest from "supertest";
 import * as winston from "winston";
 import * as logform from "logform";
-import * as path from "path";
 
 import { EmulatedTriggerDefinition } from "../../src/emulator/functionsEmulatorShared";
-import { FunctionsEmulator, InvokeRuntimeOpts } from "../../src/emulator/functionsEmulator";
+import { FunctionsEmulator } from "../../src/emulator/functionsEmulator";
 import { Emulators } from "../../src/emulator/types";
 import { RuntimeWorker } from "../../src/emulator/functionsRuntimeWorker";
 import { TIMEOUT_LONG, TIMEOUT_MED, MODULE_ROOT } from "./fixtures";
@@ -128,8 +127,7 @@ function useFunctions(triggers: () => {}): void {
   // eslint-disable-next-line @typescript-eslint/unbound-method
   functionsEmulator.invokeTrigger = (
     trigger: EmulatedTriggerDefinition,
-    proto?: any,
-    runtimeOpts?: InvokeRuntimeOpts
+    proto?: any
   ): Promise<RuntimeWorker> => {
     return invokeTrigger(trigger, proto, {
       nodeBinary: process.execPath,
@@ -642,7 +640,6 @@ describe("FunctionsEmulator-Hub", () => {
       .expect(200)
       .then((res) => {
         // TODO(b/216642962): Add tests for this endpoint that validate behavior when there are Extensions running
-        const expectedDirectory = path.resolve(`${__dirname}/../..`);
         expect(res.body.backends.length).to.equal(1);
         expect(res.body.backends[0].functionTriggers).to.deep.equal([
           {
