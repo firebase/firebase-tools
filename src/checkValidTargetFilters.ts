@@ -49,12 +49,6 @@ export async function checkValidTargetFilters(options: Options): Promise<void> {
       );
     }
     const targetsForFunctions = targetsForTypes(only, "functions");
-    console.error(
-      "uhh",
-      targetsForFunctions,
-      targetsHaveFilters(...targetsForFunctions),
-      targetsHaveNoFilters(...targetsForFunctions)
-    );
     if (
       targetsForFunctions.length &&
       targetsHaveFilters(...targetsForFunctions) &&
