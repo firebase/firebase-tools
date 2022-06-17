@@ -39,7 +39,7 @@ export function consoleUrl(project: string, path: string): string {
 export function getInheritedOption(options: any, key: string): any {
   let target = options;
   while (target) {
-    if (_.has(target, key)) {
+    if (target[key] !== undefined) {
       return target[key];
     }
     target = target.parent;
