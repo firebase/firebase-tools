@@ -58,7 +58,7 @@ export function varNameToIds(varName: string): Id {
 }
 
 export function idsToVarName(projectId: string, configId: string, varId: string): string {
-  return _.join(["projects", projectId, "configs", configId, "variables", varId], "/");
+  return ["projects", projectId, "configs", configId, "variables", varId].join("/");
 }
 
 // TODO(inlined): Yank and inline into Fabricator
@@ -100,7 +100,7 @@ export async function setVariablesRecursive(
   if (_.isPlainObject(parsed)) {
     return Promise.all(
       Object.entries(parsed).map(([key, item]) => {
-        const newVarPath = varPath ? _.join([varPath, key], "/") : key;
+        const newVarPath = varPath ? [varPath, key].join("/") : key;
         return setVariablesRecursive(projectId, configId, newVarPath, item);
       })
     );
