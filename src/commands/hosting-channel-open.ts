@@ -12,7 +12,7 @@ import { logLabeledBullet } from "../utils";
 import { promptOnce } from "../prompt";
 import { requireHostingSite } from "../requireHostingSite";
 
-export default new Command("hosting:channel:open [channelId]")
+export const command = new Command("hosting:channel:open [channelId]")
   .description("opens the URL for a Firebase Hosting channel")
   .help("if unable to open the URL in a browser, it will be displayed in the output")
   .option("--site <siteId>", "the site to which the channel belongs")

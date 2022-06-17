@@ -49,7 +49,7 @@ export async function readdirRecursive(
   options: ReaddirRecursiveOpts
 ): Promise<ReaddirRecursiveFile[]> {
   const mmopts = { matchBase: true, dot: true };
-  const rules = _.map(options.ignore || [], (glob) => {
+  const rules = (options.ignore || []).map((glob) => {
     return (p: string) => minimatch(p, glob, mmopts);
   });
   const filter = (t: string): boolean => {

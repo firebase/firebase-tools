@@ -312,7 +312,7 @@ export function streamToString(s: NodeJS.ReadableStream): Promise<string> {
 /**
  * Sets the active project alias or id in the specified directory.
  */
-export function makeActiveProject(projectDir: string, newActive: string | null): void {
+export function makeActiveProject(projectDir: string, newActive?: string): void {
   const activeProjects = configstore.get("activeProjects") || {};
   if (newActive) {
     activeProjects[projectDir] = newActive;
@@ -337,7 +337,7 @@ export function getFunctionsEventProvider(eventType: string): string {
   // Legacy event types:
   const parts = eventType.split("/");
   if (parts.length > 1) {
-    const provider = _.last(parts[1].split("."));
+    const provider = last(parts[1].split("."));
     return _.capitalize(provider);
   }
   // New event types:
@@ -376,7 +376,7 @@ export type SettledPromise = SettledPromiseResolved | SettledPromiseRejected;
  * either resolved or rejected.
  */
 export function promiseAllSettled(promises: Array<Promise<any>>): Promise<SettledPromise[]> {
-  const wrappedPromises = _.map(promises, async (p) => {
+  const wrappedPromises = promises.map(async (p) => {
     try {
       const val = await Promise.resolve(p);
       return { state: "fulfilled", value: val } as SettledPromiseResolved;
@@ -672,4 +672,15 @@ export function cloneDeep<T>(obj: T): T {
     return new Map(obj.entries()) as typeof obj;
   }
   return cloneObject(obj as Record<string, unknown>) as typeof obj;
+}
+
+/**
+ * Returns the last element in the array, or undefined if no array is passed or
+ * the array is empty.
+ */
+export function last<T>(arr?: Array<T>): T | undefined {
+  if (!Array.isArray(arr)) {
+    return;
+  }
+  return arr[arr.length - 1];
 }

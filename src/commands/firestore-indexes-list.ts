@@ -6,7 +6,7 @@ import { requirePermissions } from "../requirePermissions";
 import { Emulators } from "../emulator/types";
 import { warnEmulatorNotSupported } from "../emulator/commandUtils";
 
-module.exports = new Command("firestore:indexes")
+export const command = new Command("firestore:indexes")
   .description("List indexes in your project's Cloud Firestore database.")
   .option(
     "--pretty",

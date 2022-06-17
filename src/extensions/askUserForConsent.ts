@@ -6,7 +6,7 @@ import TerminalRenderer = require("marked-terminal");
 
 import { FirebaseError } from "../error";
 import { logPrefix } from "../extensions/extensionsHelper";
-import * as extensionsApi from "./extensionsApi";
+import { Api } from "./types";
 import * as iam from "../gcp/iam";
 import { promptOnce } from "../prompt";
 import * as utils from "../utils";
@@ -72,14 +72,14 @@ export async function displayRoles(
  * @param projectId ID of user's project
  * @param apis APIs that require user approval
  */
-export function displayApis(extensionName: string, projectId: string, apis: extensionsApi.Api[]) {
+export function displayApis(extensionName: string, projectId: string, apis: Api[]) {
   if (!apis.length) {
     return;
   }
   const question = `${clc.bold(
     extensionName
   )} will enable the following APIs for project ${clc.bold(projectId)}`;
-  const results: string[] = apis.map((api: extensionsApi.Api) => {
+  const results: string[] = apis.map((api: Api) => {
     return `- ${api.apiName}: ${api.reason}`;
   });
   results.unshift(question);

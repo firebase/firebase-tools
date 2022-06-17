@@ -1,4 +1,3 @@
-import * as _ from "lodash";
 import * as clc from "cli-color";
 
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
@@ -11,7 +10,7 @@ import { logger } from "../logger";
 import * as utils from "../utils";
 import { CommanderStatic } from "commander";
 
-module.exports = new Command("ext")
+export const command = new Command("ext")
   .description(
     "display information on how to use ext commands and extensions installed to your project"
   )
@@ -29,11 +28,11 @@ module.exports = new Command("ext")
       "ext:uninstall",
     ];
 
-    _.forEach(commandNames, (commandName) => {
+    for (const commandName of commandNames) {
       const command: CommanderStatic = firebaseTools.getCommand(commandName);
       logger.info(clc.bold("\n" + command.name()));
       command.outputHelp();
-    });
+    }
     logger.info();
 
     // Print out a list of all extension instances on project, if called with a project.

@@ -8,7 +8,7 @@ import * as path from "path";
 import { Emulators } from "../emulator/types";
 import { warnEmulatorNotSupported } from "../emulator/commandUtils";
 
-export default new Command("database:rules:stage")
+export const command = new Command("database:rules:stage")
   .description("create a new realtime database ruleset")
   .option(
     "--instance <instance>",

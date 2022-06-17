@@ -49,9 +49,9 @@ const LINKS: Link[] = [
   { name: "Test Lab", arg: "testlab", consolePath: "/testlab/histories/" },
 ];
 
-const CHOICES = _.map(LINKS, "name");
+const CHOICES = LINKS.map((l) => l.name);
 
-export default new Command("open [link]")
+export const command = new Command("open [link]")
   .description("quickly open a browser to relevant project resources")
   .before(requirePermissions)
   .before(requireDatabaseInstance)
@@ -59,7 +59,7 @@ export default new Command("open [link]")
     let link = _.find(LINKS, { arg: linkName });
     if (linkName && !link) {
       throw new FirebaseError(
-        "Unrecognized link name. Valid links are:\n\n" + _.map(LINKS, "arg").join("\n")
+        "Unrecognized link name. Valid links are:\n\n" + LINKS.map((l) => l.arg).join("\n")
       );
     }
 
@@ -73,7 +73,7 @@ export default new Command("open [link]")
     }
     if (!link) {
       throw new FirebaseError(
-        "Unrecognized link name. Valid links are:\n\n" + _.map(LINKS, "arg").join("\n")
+        "Unrecognized link name. Valid links are:\n\n" + LINKS.map((l) => l.arg).join("\n")
       );
     }
 

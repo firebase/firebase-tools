@@ -45,7 +45,7 @@ function logProjectCount(arr: FirebaseProjectMetadata[] = []): void {
   logger.info(`${arr.length} project(s) total.`);
 }
 
-module.exports = new Command("projects:list")
+export const command = new Command("projects:list")
   .description("list all Firebase projects you have access to")
   .before(requireAuth)
   .action(

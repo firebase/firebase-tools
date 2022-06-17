@@ -1,28 +1,25 @@
-"use strict";
+import * as clc from "cli-color";
+import * as path from "path";
 
-var _ = require("lodash");
-var clc = require("cli-color");
-var path = require("path");
+import { FirebaseError } from "../../error";
+import { parseBoltRules } from "../../parseBoltRules";
+import * as rtdb from "../../rtdb";
+import * as utils from "../../utils";
+import { Options } from "../../options";
+import * as dbRulesConfig from "../../database/rulesConfig";
 
-var { FirebaseError } = require("../../error");
-var parseBoltRules = require("../../parseBoltRules");
-var rtdb = require("../../rtdb");
-var utils = require("../../utils");
-
-const dbRulesConfig = require("../../database/rulesConfig");
-
-module.exports = function (context, options) {
-  var rulesConfig = dbRulesConfig.getRulesConfig(context.projectId, options);
-  var next = Promise.resolve();
+export function prepare(context: any, options: Options): Promise<any> {
+  const rulesConfig = dbRulesConfig.getRulesConfig(context.projectId, options);
+  const next = Promise.resolve();
 
   if (!rulesConfig || rulesConfig.length === 0) {
     return next;
   }
 
-  var ruleFiles = {};
-  var deploys = [];
+  const ruleFiles: Record<string, any> = {};
+  const deploys: any[] = [];
 
-  rulesConfig.forEach(function (ruleConfig) {
+  rulesConfig.forEach((ruleConfig: any) => {
     if (!ruleConfig.rules) {
       return;
     }
@@ -31,7 +28,7 @@ module.exports = function (context, options) {
     deploys.push(ruleConfig);
   });
 
-  _.forEach(ruleFiles, function (v, file) {
+  for (const [file, v] of Object.entries(ruleFiles)) {
     switch (path.extname(file)) {
       case ".json":
         ruleFiles[file] = options.config.readProjectFile(file);
@@ -42,7 +39,7 @@ module.exports = function (context, options) {
       default:
         throw new FirebaseError("Unexpected rules format " + path.extname(file));
     }
-  });
+  }
 
   context.database = {
     deploys: deploys,
@@ -50,10 +47,10 @@ module.exports = function (context, options) {
   };
   utils.logBullet(clc.bold.cyan("database: ") + "checking rules syntax...");
   return Promise.all(
-    deploys.map(function (deploy) {
+    deploys.map((deploy) => {
       return rtdb
         .updateRules(context.projectId, deploy.instance, ruleFiles[deploy.rules], { dryRun: true })
-        .then(function () {
+        .then(() => {
           utils.logSuccess(
             clc.bold.green("database: ") +
               "rules syntax for database " +
@@ -63,4 +60,4 @@ module.exports = function (context, options) {
         });
     })
   );
-};
+}

@@ -163,7 +163,7 @@ LocalFunction.prototype._call = function (data, opts) {
     this.controller.call(this.name, data || {});
   } else if (this.eventTrigger) {
     if (this._isDatabaseFunc(this.eventTrigger)) {
-      operationType = _.last(this.eventTrigger.eventType.split("."));
+      operationType = utils.last(this.eventTrigger.eventType.split("."));
       switch (operationType) {
         case "create":
           dataPayload = {
@@ -188,7 +188,7 @@ LocalFunction.prototype._call = function (data, opts) {
       opts.auth = this._constructAuth(opts.auth, opts.authType);
       this.controller.call(this.name, dataPayload, opts);
     } else if (this._isFirestoreFunc(this.eventTrigger)) {
-      operationType = _.last(this.eventTrigger.eventType.split("."));
+      operationType = utils.last(this.eventTrigger.eventType.split("."));
       switch (operationType) {
         case "create":
           dataPayload = {

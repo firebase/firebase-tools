@@ -30,7 +30,7 @@ interface JarOptions {
 
 const SYMBOL_CACHE_ROOT_DIR = process.env.FIREBASE_CRASHLYTICS_CACHE_PATH || os.tmpdir();
 
-export default new Command("crashlytics:symbols:upload <symbolFiles...>")
+export const command = new Command("crashlytics:symbols:upload <symbolFiles...>")
   .description("upload symbols for native code, to symbolicate stack traces")
   .option("--app <appID>", "the app id of your Firebase app")
   .option("--generator [breakpad|csym]", "the symbol generator being used, defaults to breakpad.")

@@ -22,15 +22,8 @@ import { checkResponse } from "./askUserForParam";
 import { ensure } from "../ensureApiEnabled";
 import { deleteObject, uploadObject } from "../gcp/storage";
 import { getProjectId } from "../projectUtils";
-import {
-  createSource,
-  ExtensionSource,
-  ExtensionVersion,
-  getExtension,
-  getInstance,
-  Param,
-  publishExtensionVersion,
-} from "./extensionsApi";
+import { createSource, getExtension, getInstance, publishExtensionVersion } from "./extensionsApi";
+import { ExtensionSource, ExtensionVersion, Param } from "./types";
 import * as refs from "./refs";
 import { getLocalExtensionSpec } from "./localHelper";
 import { promptOnce } from "../prompt";
@@ -280,7 +273,7 @@ export function validateSpec(spec: any) {
     if (!param.label) {
       errors.push(`Param${param.param ? ` ${param.param}` : ""} is missing required field: label`);
     }
-    if (param.type && !_.includes(SpecParamType, param.type)) {
+    if (param.type && !Object.values(SpecParamType).includes(param.type)) {
       errors.push(
         `Invalid type ${param.type} for param${
           param.param ? ` ${param.param}` : ""
