@@ -337,7 +337,7 @@ export function getFunctionsEventProvider(eventType: string): string {
   // Legacy event types:
   const parts = eventType.split("/");
   if (parts.length > 1) {
-    const provider = _.last(parts[1].split("."));
+    const provider = last(parts[1].split("."));
     return _.capitalize(provider);
   }
   // New event types:
@@ -672,4 +672,15 @@ export function cloneDeep<T>(obj: T): T {
     return new Map(obj.entries()) as typeof obj;
   }
   return cloneObject(obj as Record<string, unknown>) as typeof obj;
+}
+
+/**
+ * Returns the last element in the array, or undefined if no array is passed or
+ * the array is empty.
+ */
+export function last<T>(arr?: Array<T>): T | undefined {
+  if (!Array.isArray(arr)) {
+    return;
+  }
+  return arr[arr.length - 1];
 }
