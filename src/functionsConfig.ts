@@ -58,7 +58,7 @@ export function varNameToIds(varName: string): Id {
 }
 
 export function idsToVarName(projectId: string, configId: string, varId: string): string {
-  return _.join(["projects", projectId, "configs", configId, "variables", varId], "/");
+  return ["projects", projectId, "configs", configId, "variables", varId].join("/");
 }
 
 // TODO(inlined): Yank and inline into Fabricator
@@ -100,7 +100,7 @@ export async function setVariablesRecursive(
   if (_.isPlainObject(parsed)) {
     return Promise.all(
       Object.entries(parsed).map(([key, item]) => {
-        const newVarPath = varPath ? _.join([varPath, key], "/") : key;
+        const newVarPath = varPath ? [varPath, key].join("/") : key;
         return setVariablesRecursive(projectId, configId, newVarPath, item);
       })
     );
@@ -131,11 +131,14 @@ export async function materializeConfig(configName: string, output: any): Promis
   return output;
 }
 
-export async function materializeAll(projectId: string): Promise<{ [key: string]: any }> {
+export async function materializeAll(projectId: string): Promise<Record<string, any>> {
   const output = {};
   const configs = await runtimeconfig.configs.list(projectId);
+  if (!Array.isArray(configs) || !configs.length) {
+    return output;
+  }
   await Promise.all(
-    configs.map((config: any) => {
+    configs.map<Promise<any> | undefined>((config: any) => {
       if (config.name.match(new RegExp("configs/firebase"))) {
         // ignore firebase config
         return;

@@ -326,7 +326,7 @@ export function makeActiveProject(projectDir: string, newActive?: string): void 
  * Creates API endpoint string, e.g. /v1/projects/pid/cloudfunctions
  */
 export function endpoint(parts: string[]): string {
-  return `/${_.join(parts, "/")}`;
+  return `/${parts.join("/")}`;
 }
 
 /**
@@ -418,7 +418,7 @@ export async function promiseWhile<T>(
  */
 export async function promiseProps(obj: any): Promise<any> {
   const resultObj: any = {};
-  const promises = _.keys(obj).map(async (key) => {
+  const promises = Object.keys(obj).map(async (key) => {
     const r = await Promise.resolve(obj[key]);
     resultObj[key] = r;
   });
