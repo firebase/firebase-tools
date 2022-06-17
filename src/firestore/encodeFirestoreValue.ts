@@ -56,9 +56,9 @@ function encodeHelper(val: any): any {
   );
 }
 
-export function encodeFirestoreValue(data: any): { [key: string]: any } {
+export function encodeFirestoreValue(data: any): Record<string, any> {
   return Object.entries(data).reduce((acc, [key, val]) => {
     acc[key] = encodeHelper(val);
     return acc;
-  }, {} as { [key: string]: any });
+  }, {} as Record<string, any>);
 }
