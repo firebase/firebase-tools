@@ -289,7 +289,7 @@ export class ProfileReport {
       // Don't do this if the --no-collapse flag is specified
       return pathedObject;
     }
-    const allSegments = _.keys(pathedObject).map((path) => {
+    const allSegments = Object.keys(pathedObject).map((path) => {
       return path.split("/").filter((s) => {
         return s !== "";
       });
@@ -353,9 +353,9 @@ export class ProfileReport {
         };
       });
     });
-    const paths = _.keys(unindexed);
+    const paths = Object.keys(unindexed);
     paths.forEach((path) => {
-      const indices = _.keys(unindexed[path]);
+      const indices = Object.keys(unindexed[path]);
       indices.forEach((index) => {
         const data = unindexed[path][index];
         const row = [path, extractReadableIndex(data.query), formatNumber(data.times)];
@@ -379,7 +379,7 @@ export class ProfileReport {
         times: b1.times + b2.times,
       };
     });
-    const paths = _.orderBy(_.keys(data), [(p) => data[p].bytes], ["desc"]);
+    const paths = _.orderBy(Object.keys(data), [(p) => data[p].bytes], ["desc"]);
     paths.forEach((path) => {
       const bandwidth = data[path];
       const row = [
@@ -462,7 +462,7 @@ export class ProfileReport {
         rejected: s1.rejected + s2.rejected,
       };
     });
-    let paths = _.keys(data);
+    let paths = Object.keys(data);
     paths = _.orderBy(
       paths,
       (path) => {

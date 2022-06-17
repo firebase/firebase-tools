@@ -273,7 +273,7 @@ export function validateSpec(spec: any) {
     if (!param.label) {
       errors.push(`Param${param.param ? ` ${param.param}` : ""} is missing required field: label`);
     }
-    if (param.type && !_.includes(SpecParamType, param.type)) {
+    if (param.type && !Object.values(SpecParamType).includes(param.type)) {
       errors.push(
         `Invalid type ${param.type} for param${
           param.param ? ` ${param.param}` : ""
@@ -635,7 +635,7 @@ export async function promptForOfficialExtension(message: string): Promise<strin
     type: "list",
     message,
     choices: convertOfficialExtensionsToList(officialExts),
-    pageSize: _.size(officialExts),
+    pageSize: Object.keys(officialExts).length,
   });
 }
 

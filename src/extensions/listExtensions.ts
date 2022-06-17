@@ -3,10 +3,10 @@ import * as clc from "cli-color";
 import Table = require("cli-table");
 
 import { listInstances } from "./extensionsApi";
-import { logPrefix } from "./extensionsHelper";
-import * as utils from "../utils";
-import * as extensionsUtils from "./utils";
 import { logger } from "../logger";
+import { last, logLabeledBullet } from "../utils";
+import { logPrefix } from "./extensionsHelper";
+import * as extensionsUtils from "./utils";
 
 /**
  * Lists the extensions installed under a project
@@ -16,7 +16,7 @@ import { logger } from "../logger";
 export async function listExtensions(projectId: string): Promise<any> {
   const instances = await listInstances(projectId);
   if (instances.length < 1) {
-    utils.logLabeledBullet(
+    logLabeledBullet(
       logPrefix,
       `there are no extensions installed on project ${clc.bold(projectId)}.`
     );
@@ -39,7 +39,7 @@ export async function listExtensions(projectId: string): Promise<any> {
     } else {
       publisher = extension.split("/")[0];
     }
-    const instanceId = _.last(instance.name.split("/")) ?? "";
+    const instanceId = last(instance.name.split("/")) ?? "";
     const state =
       instance.state +
       (_.get(instance, "config.source.state", "ACTIVE") === "DELETED" ? " (UNPUBLISHED)" : "");
@@ -56,7 +56,7 @@ export async function listExtensions(projectId: string): Promise<any> {
     });
   });
 
-  utils.logLabeledBullet(logPrefix, `list of extensions installed in ${clc.bold(projectId)}:`);
+  logLabeledBullet(logPrefix, `list of extensions installed in ${clc.bold(projectId)}:`);
   logger.info(table.toString());
   return formatted;
 }
