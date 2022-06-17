@@ -46,10 +46,10 @@ export interface ThrottlerStats {
   elapsed: number;
 }
 
-interface TaskData<T> {
+interface TaskData<T, R> {
   task: T;
   retryCount: number;
-  wait?: { resolve: (R: any) => void; reject: (err: TaskError) => void };
+  wait?: { resolve: (value: R) => void; reject: (err: TaskError) => void };
   timeoutMillis?: number;
   timeoutId?: NodeJS.Timeout;
   isTimedOut: boolean;
@@ -73,7 +73,7 @@ export abstract class Throttler<T, R> {
   errored = 0;
   retried = 0;
   total = 0;
-  taskDataMap = new Map<number, TaskData<T>>();
+  taskDataMap = new Map<number, TaskData<T, R>>();
   waits: Array<{ resolve: () => void; reject: (err: Error) => void }> = [];
   min = 9999999999;
   max = 0;
