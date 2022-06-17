@@ -418,7 +418,7 @@ export async function promiseWhile<T>(
  */
 export async function promiseProps(obj: any): Promise<any> {
   const resultObj: any = {};
-  const promises = _.keys(obj).map(async (key) => {
+  const promises = Object.keys(obj).map(async (key) => {
     const r = await Promise.resolve(obj[key]);
     resultObj[key] = r;
   });
