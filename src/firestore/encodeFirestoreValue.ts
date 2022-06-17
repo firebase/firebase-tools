@@ -27,7 +27,7 @@ function encodeHelper(val: any): any {
   if (_.isDate(val)) {
     return { timestampValue: val.toISOString() };
   }
-  if (_.isArray(val)) {
+  if (Array.isArray(val)) {
     const encodedElements = [];
     for (const v of val) {
       const enc = encodeHelper(v);
