@@ -131,11 +131,14 @@ export async function materializeConfig(configName: string, output: any): Promis
   return output;
 }
 
-export async function materializeAll(projectId: string): Promise<{ [key: string]: any }> {
+export async function materializeAll(projectId: string): Promise<Record<string, any>> {
   const output = {};
   const configs = await runtimeconfig.configs.list(projectId);
+  if (!Array.isArray(configs) || !configs.length) {
+    return output;
+  }
   await Promise.all(
-    configs.map((config: any) => {
+    configs.map<Promise<any> | undefined>((config: any) => {
       if (config.name.match(new RegExp("configs/firebase"))) {
         // ignore firebase config
         return;
