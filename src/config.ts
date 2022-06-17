@@ -167,8 +167,8 @@ export class Config {
     return _.set(this.data, key, value);
   }
 
-  has(key: string) {
-    return this.data[key];
+  has(key: string): boolean {
+    return _.has(this.data, key);
   }
 
   path(pathName: string) {
