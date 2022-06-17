@@ -1,5 +1,4 @@
 import * as yaml from "js-yaml";
-import * as _ from "lodash";
 import * as path from "path";
 import * as fs from "fs-extra";
 

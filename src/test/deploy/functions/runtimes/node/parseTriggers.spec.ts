@@ -322,11 +322,6 @@ describe("addResourcesToBuild", () => {
     const result = build.empty();
     parseTriggers.addResourcesToBuild("project", "nodejs16", trigger, result);
 
-    const europeFunctionName = {
-      ...BASIC_FUNCTION_NAME,
-      region: "europe-west1",
-    };
-
     const expected: build.Build = build.of({
       func: {
         ...BASIC_ENDPOINT,
@@ -683,11 +678,6 @@ describe("addResourcesToBackend", () => {
 
     const result = backend.empty();
     parseTriggers.addResourcesToBackend("project", "nodejs16", trigger, result);
-
-    const europeFunctionName = {
-      ...BASIC_FUNCTION_NAME,
-      region: "europe-west1",
-    };
 
     const expected: backend.Backend = {
       ...backend.of(

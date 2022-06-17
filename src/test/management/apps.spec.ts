@@ -66,7 +66,6 @@ function generateWebAppList(counts: number): WebAppMetadata[] {
 
 describe("App management", () => {
   let sandbox: sinon.SinonSandbox;
-  let apiRequestStub: sinon.SinonStub;
   let pollOperationStub: sinon.SinonStub;
   let readFileSyncStub: sinon.SinonStub;
 

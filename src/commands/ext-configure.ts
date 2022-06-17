@@ -22,7 +22,7 @@ import * as refs from "../extensions/refs";
 import * as manifest from "../extensions/manifest";
 import { Options } from "../options";
 import { partition } from "../functional";
-import { buildBindingOptionsWithBaseValue, getBaseParamBindings } from "../extensions/paramHelper";
+import { buildBindingOptionsWithBaseValue } from "../extensions/paramHelper";
 import * as askUserForEventsConfig from "../extensions/askUserForEventsConfig";
 
 marked.setOptions({

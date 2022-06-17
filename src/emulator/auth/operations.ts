@@ -650,8 +650,7 @@ export const SESSION_COOKIE_MAX_VALID_DURATION = 14 * 24 * 60 * 60; /* 14 days i
 
 function createSessionCookie(
   state: ProjectState,
-  reqBody: Schemas["GoogleCloudIdentitytoolkitV1CreateSessionCookieRequest"],
-  ctx: ExegesisContext
+  reqBody: Schemas["GoogleCloudIdentitytoolkitV1CreateSessionCookieRequest"]
 ): Schemas["GoogleCloudIdentitytoolkitV1CreateSessionCookieResponse"] {
   assert(reqBody.idToken, "MISSING_ID_TOKEN");
   const validDuration = Number(reqBody.validDuration) || SESSION_COOKIE_MAX_VALID_DURATION;
@@ -2175,11 +2174,7 @@ async function mfaSignInFinalize(
   };
 }
 
-function getConfig(
-  state: ProjectState,
-  reqBody: unknown,
-  ctx: ExegesisContext
-): Schemas["GoogleCloudIdentitytoolkitAdminV2Config"] {
+function getConfig(state: ProjectState): Schemas["GoogleCloudIdentitytoolkitAdminV2Config"] {
   // Shouldn't error on this but need assertion for type checking
   assert(
     state instanceof AgentProjectState,
@@ -2966,21 +2961,13 @@ function listTenants(
   };
 }
 
-function deleteTenant(
-  state: ProjectState,
-  reqBody: unknown,
-  ctx: ExegesisContext
-): Schemas["GoogleProtobufEmpty"] {
+function deleteTenant(state: ProjectState): Schemas["GoogleProtobufEmpty"] {
   assert(state instanceof TenantProjectState, "((Can only delete tenant on tenant projects.))");
   state.delete();
   return {};
 }
 
-function getTenant(
-  state: ProjectState,
-  reqBody: unknown,
-  ctx: ExegesisContext
-): Schemas["GoogleCloudIdentitytoolkitAdminV2Tenant"] {
+function getTenant(state: ProjectState): Schemas["GoogleCloudIdentitytoolkitAdminV2Tenant"] {
   assert(state instanceof TenantProjectState, "((Can only get tenant on tenant projects.))");
   return state.tenantConfig;
 }

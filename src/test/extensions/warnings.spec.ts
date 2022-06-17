@@ -147,8 +147,6 @@ describe("displayWarningsForDeploy", () => {
   });
 
   it("should prompt if the publisher is not on the approved publisher list", async () => {
-    const publisherId = "pubby-mcpublisher";
-
     const toCreate = [
       testInstanceSpec("pubby-mcpublisher", "ext-id-1", RegistryLaunchStage.GA),
       testInstanceSpec("pubby-mcpublisher", "ext-id-2", RegistryLaunchStage.GA),
@@ -161,8 +159,6 @@ describe("displayWarningsForDeploy", () => {
   });
 
   it("should show multiple warnings at once if triggered", async () => {
-    const publisherId = "pubby-mcpublisher";
-
     const toCreate = [
       testInstanceSpec("pubby-mcpublisher", "ext-id-1", RegistryLaunchStage.GA),
       testInstanceSpec("firebase", "ext-id-2", RegistryLaunchStage.EXPERIMENTAL),

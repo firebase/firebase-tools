@@ -1,5 +1,4 @@
 import { EmulatorServer } from "../emulator/emulatorServer";
-import * as _ from "lodash";
 import { logger } from "../logger";
 import { prepareFrameworks } from "../frameworks";
 import { previews } from "../previews";

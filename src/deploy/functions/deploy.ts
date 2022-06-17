@@ -5,7 +5,6 @@ import * as fs from "fs";
 import { checkHttpIam } from "./checkIam";
 import { logSuccess, logWarning } from "../../utils";
 import { Options } from "../../options";
-import { FirebaseError } from "../../error";
 import { configForCodebase } from "../../functions/projectConfig";
 import * as args from "./args";
 import * as gcs from "../../gcp/storage";
