@@ -205,7 +205,7 @@ export function filterEmulatorTargets(options: any): Emulators[] {
     const only = onlyOptions.split(",").map((o) => {
       return o.split(":")[0];
     });
-    targets = _.intersection(targets, only as Emulators[]);
+    targets = targets.filter((t) => only.includes(t));
   }
 
   return targets;
@@ -380,7 +380,7 @@ export async function startAll(
     const requested: string[] = onlyOptions.split(",").map((o) => {
       return o.split(":")[0];
     });
-    const ignored = _.difference(requested, targets);
+    const ignored = requested.filter((k) => !targets.includes(k as Emulators));
 
     for (const name of ignored) {
       if (isEmulator(name)) {

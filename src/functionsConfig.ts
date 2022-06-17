@@ -88,7 +88,7 @@ export async function setVariablesRecursive(
   val: string | { [key: string]: any }
 ): Promise<any> {
   let parsed = val;
-  if (_.isString(val)) {
+  if (typeof val === "string") {
     try {
       // Only attempt to parse 'val' if it is a String (takes care of unparsed JSON, numbers, quoted string, etc.)
       parsed = JSON.parse(val);
@@ -186,7 +186,7 @@ export function parseUnsetArgs(args: string[]): ParsedArg[] {
   const parsed: ParsedArg[] = [];
   let splitArgs: string[] = [];
   for (const arg of args) {
-    splitArgs = _.union(splitArgs, arg.split(","));
+    splitArgs = Array.from(new Set([...splitArgs, ...arg.split(",")]));
   }
 
   for (const key of splitArgs) {

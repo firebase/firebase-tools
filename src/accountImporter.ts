@@ -1,5 +1,4 @@
 import * as clc from "cli-color";
-import * as _ from "lodash";
 
 import { Client } from "./apiv2";
 import { googleOrigin } from "./api";
@@ -260,7 +259,9 @@ function validateProviderUserInfo(providerUserInfo: { providerId: string; error?
       error: JSON.stringify(providerUserInfo, null, 2) + " has unsupported providerId",
     };
   }
-  const keydiff = _.difference(Object.keys(providerUserInfo), ALLOWED_PROVIDER_USER_INFO_KEYS);
+  const keydiff = Object.keys(providerUserInfo).filter(
+    (k) => !ALLOWED_PROVIDER_USER_INFO_KEYS.includes(k)
+  );
   if (keydiff.length) {
     return {
       error:
@@ -271,7 +272,7 @@ function validateProviderUserInfo(providerUserInfo: { providerId: string; error?
 }
 
 export function validateUserJson(userJson: any): { error?: string } {
-  const keydiff = _.difference(Object.keys(userJson), ALLOWED_JSON_KEYS);
+  const keydiff = Object.keys(userJson).filter((k) => !ALLOWED_JSON_KEYS.includes(k));
   if (keydiff.length) {
     return {
       error: JSON.stringify(userJson, null, 2) + " has unsupported keys: " + keydiff.join(","),
