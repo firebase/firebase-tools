@@ -98,7 +98,7 @@ var checkFunctionsListMatch = function (expectedFunctions) {
   return cloudfunctions
     .listFunctions(projectId, region)
     .then(function (result) {
-      deployedFunctions = result.map((fn) => last(fn.name.split("/")));
+      deployedFunctions = (result || []).map((fn) => last(fn.name.split("/")));
       expect(_.isEmpty(_.xor(expectedFunctions, deployedFunctions))).to.be.true;
       return true;
     })

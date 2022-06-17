@@ -7,9 +7,9 @@ import { logger } from "../logger";
 const API_VERSION = "v1beta1";
 const apiClient = new Client({ urlPrefix: runtimeconfigOrigin, apiVersion: API_VERSION });
 
-function listConfigs(projectId: string): Promise<any> {
+function listConfigs(projectId: string): Promise<unknown[] | undefined> {
   return apiClient
-    .get<{ configs: any }>(`/projects/${projectId}/configs`, {
+    .get<{ configs?: unknown[] }>(`/projects/${projectId}/configs`, {
       retryCodes: [500, 503],
     })
     .then((resp) => resp.body.configs);
