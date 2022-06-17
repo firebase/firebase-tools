@@ -60,7 +60,7 @@ LocalFunction.prototype._constructCallableFunc = function (data, opts) {
   opts = opts || {};
 
   var headers = {};
-  if (_.has(opts, "instanceIdToken")) {
+  if (opts.instanceIdToken) {
     headers["Firebase-Instance-ID-Token"] = opts.instanceIdToken;
   }
 

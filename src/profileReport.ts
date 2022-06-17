@@ -67,7 +67,7 @@ export function formatBytes(bytes: number) {
 }
 
 export function extractReadableIndex(query: Record<string, any>): string {
-  if (_.has(query, "orderBy")) {
+  if (query.orderBy) {
     return query.orderBy;
   }
   const indexPath: string[] = _.get(query, "index.path");
@@ -118,7 +118,7 @@ export class ProfileReport {
     if (!data.unIndexed) {
       return;
     }
-    if (!_.has(this.state.unindexed, path)) {
+    if (!this.state.unindexed.path) {
       this.state.unindexed[path] = {};
     }
     const pathNode = this.state.unindexed[path];
