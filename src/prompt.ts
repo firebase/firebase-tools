@@ -1,5 +1,4 @@
 import * as inquirer from "inquirer";
-import * as _ from "lodash";
 
 import { FirebaseError } from "./error";
 
@@ -46,7 +45,7 @@ export async function prompt(
   }
 
   if (prompts.length && options.nonInteractive) {
-    const missingOptions = _.uniq(prompts.map((p) => p.name)).join(", ");
+    const missingOptions = Array.from(new Set(prompts.map((p) => p.name))).join(", ");
     throw new FirebaseError(
       `Missing required options (${missingOptions}) while running in non-interactive mode`,
       {
