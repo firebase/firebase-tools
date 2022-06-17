@@ -40,7 +40,7 @@ function setVariable(
 }
 
 function isReservedNamespace(id: Id) {
-  return _.some(RESERVED_NAMESPACES, (reserved) => {
+  return RESERVED_NAMESPACES.some((reserved) => {
     return id.config.toLowerCase().startsWith(reserved);
   });
 }
