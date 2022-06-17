@@ -207,7 +207,6 @@ export class Uploader {
     this.populateQueue.process();
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async populateHandler(batch: Record<string, string>): Promise<void> {
     // wait for any existing populate calls to finish before proceeding
     const res = await this.hashClient.post<
