@@ -35,7 +35,6 @@ export const command = new Command("serve")
     "serve all except specified targets (valid targets are: " + VALID_TARGETS.join(", ") + ")"
   )
   .before((options) => {
-    console.error("before", filterOnly(REQUIRES_AUTH, options.only));
     if (
       options.only &&
       options.only.length > 0 &&
