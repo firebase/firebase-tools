@@ -38,7 +38,7 @@ var tmpDir;
 var app;
 
 var deleteAllFunctions = function () {
-  var toDelete = _.map(parseFunctionsList(), function (funcName) {
+  var toDelete = parseFunctionsList().map(function (funcName) {
     return funcName.replace("-", ".");
   });
   return localFirebase + ` functions:delete ${toDelete.join(" ")} -f --project=${projectId}`;
@@ -47,7 +47,7 @@ var deleteAllFunctions = function () {
 var parseFunctionsList = function () {
   var triggers = [];
   extractTriggers(require(functionsSource), triggers);
-  return _.map(triggers, "name");
+  return triggers.map((t) => t.name);
 };
 
 var getUuid = function () {
@@ -98,7 +98,7 @@ var checkFunctionsListMatch = function (expectedFunctions) {
   return cloudfunctions
     .listFunctions(projectId, region)
     .then(function (result) {
-      deployedFunctions = _.map(result, (fn) => last(fn.name.split("/")));
+      deployedFunctions = result.map((fn) => last(fn.name.split("/")));
       expect(_.isEmpty(_.xor(expectedFunctions, deployedFunctions))).to.be.true;
       return true;
     })

@@ -260,7 +260,7 @@ function validateProviderUserInfo(providerUserInfo: { providerId: string; error?
       error: JSON.stringify(providerUserInfo, null, 2) + " has unsupported providerId",
     };
   }
-  const keydiff = _.difference(_.keys(providerUserInfo), ALLOWED_PROVIDER_USER_INFO_KEYS);
+  const keydiff = _.difference(Object.keys(providerUserInfo), ALLOWED_PROVIDER_USER_INFO_KEYS);
   if (keydiff.length) {
     return {
       error:
@@ -271,7 +271,7 @@ function validateProviderUserInfo(providerUserInfo: { providerId: string; error?
 }
 
 export function validateUserJson(userJson: any): { error?: string } {
-  const keydiff = _.difference(_.keys(userJson), ALLOWED_JSON_KEYS);
+  const keydiff = _.difference(Object.keys(userJson), ALLOWED_JSON_KEYS);
   if (keydiff.length) {
     return {
       error: JSON.stringify(userJson, null, 2) + " has unsupported keys: " + keydiff.join(","),

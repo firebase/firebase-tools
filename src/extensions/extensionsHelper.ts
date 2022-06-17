@@ -634,7 +634,7 @@ export async function promptForOfficialExtension(message: string): Promise<strin
     type: "list",
     message,
     choices: convertOfficialExtensionsToList(officialExts),
-    pageSize: _.size(officialExts),
+    pageSize: Object.keys(officialExts).length,
   });
 }
 
