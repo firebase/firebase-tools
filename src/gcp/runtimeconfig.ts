@@ -16,7 +16,7 @@ function listConfigs(projectId: string): Promise<any> {
 }
 
 function createConfig(projectId: string, configId: string): Promise<any> {
-  const path = _.join(["projects", projectId, "configs"], "/");
+  const path = ["projects", projectId, "configs"].join("/");
   return apiClient
     .post(
       `/projects/${projectId}/configs`,
@@ -119,7 +119,7 @@ function updateVariable(
 }
 
 function setVariable(projectId: string, configId: string, varId: string, value: any): Promise<any> {
-  const path = _.join(["projects", projectId, "configs", configId, "variables", varId], "/");
+  const path = ["projects", projectId, "configs", configId, "variables", varId].join("/");
   return getVariable(path)
     .then(() => {
       return updateVariable(projectId, configId, varId, value);

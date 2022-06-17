@@ -1,4 +1,3 @@
-import * as _ from "lodash";
 import * as clc from "cli-color";
 import * as chai from "chai";
 chai.use(require("chai-as-promised"));
@@ -39,7 +38,7 @@ describe("askUserForConsent", () => {
       const storageDescription = "- Storage Object Admin (Full control of GCS objects.)";
       const datastoreDescription =
         "- Cloud Datastore Viewer (Read access to all Cloud Datastore resources.)";
-      const expected = _.join([question, storageDescription, datastoreDescription], "\n");
+      const expected = [question, storageDescription, datastoreDescription].join("\n");
 
       getRoleStub.onFirstCall().resolves(storageRole);
       getRoleStub.onSecondCall().resolves(datastoreRole);
