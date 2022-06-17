@@ -67,7 +67,7 @@ export function formatBytes(bytes: number) {
 }
 
 export function extractReadableIndex(query: Record<string, any>): string {
-  if (_.has(query, "orderBy")) {
+  if (query.orderBy) {
     return query.orderBy;
   }
   const indexPath: string[] = _.get(query, "index.path");
@@ -118,7 +118,7 @@ export class ProfileReport {
     if (!data.unIndexed) {
       return;
     }
-    if (!_.has(this.state.unindexed, path)) {
+    if (!this.state.unindexed.path) {
       this.state.unindexed[path] = {};
     }
     const pathNode = this.state.unindexed[path];
@@ -126,7 +126,7 @@ export class ProfileReport {
     const query = data.querySet[0];
     // Get a unique string for this query.
     const index = JSON.stringify(query.index);
-    if (!_.has(pathNode, index)) {
+    if (!pathNode[index]) {
       pathNode[index] = {
         times: 0,
         query: query,
@@ -160,7 +160,7 @@ export class ProfileReport {
   }
 
   collectSpeed(data: any, path: string, opType: any) {
-    if (!_.has(opType, path)) {
+    if (!opType[path]) {
       opType[path] = {
         times: 0,
         millis: 0,
@@ -191,7 +191,7 @@ export class ProfileReport {
   }
 
   collectBandwidth(bytes: number, path: string, direction: any) {
-    if (!_.has(direction, path)) {
+    if (!direction[path]) {
       direction[path] = {
         times: 0,
         bytes: 0,
