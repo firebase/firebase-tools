@@ -277,7 +277,7 @@ export function validateSpec(spec: any) {
       errors.push(
         `Invalid type ${param.type} for param${
           param.param ? ` ${param.param}` : ""
-        }. Valid types are ${_.values(SpecParamType).join(", ")}`
+        }. Valid types are ${Object.values(SpecParamType).join(", ")}`
       );
     }
     if (!param.type || param.type === SpecParamType.STRING) {

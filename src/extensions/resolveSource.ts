@@ -33,6 +33,7 @@ export async function getExtensionRegistry(
         filteredExtensions[name] = extension;
       }
     }
+    return filteredExtensions;
   }
   return extensions;
 }
