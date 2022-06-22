@@ -747,8 +747,8 @@ export async function startAll(
       "WARN",
       "emulators",
       "The Emulator UI is not starting, either because none of the emulated " +
-        "products interact with the Emulator UI or it cannot determine the " +
-        "Project ID. Pass the --project flag to specify a project."
+        "products have an interaction layer in Emulator UI or it cannot " +
+        "determine the Project ID. Pass the --project flag to specify a project."
     );
   }
 
