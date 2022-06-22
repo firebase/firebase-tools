@@ -11,20 +11,20 @@ function isPlainObject(input: any): boolean {
 }
 
 function encodeHelper(val: any): any {
-  if (_.isString(val)) {
+  if (typeof val === "string") {
     return { stringValue: val };
   }
-  if (_.isBoolean(val)) {
+  if (val === !!val) {
     return { booleanValue: val };
   }
-  if (_.isInteger(val)) {
+  if (Number.isInteger(val)) {
     return { integerValue: val };
   }
   // Integers are handled above, the remaining numbers are treated as doubles
-  if (_.isNumber(val)) {
+  if (typeof val === "number") {
     return { doubleValue: val };
   }
-  if (_.isDate(val)) {
+  if (val instanceof Date && !Number.isNaN(val)) {
     return { timestampValue: val.toISOString() };
   }
   if (Array.isArray(val)) {

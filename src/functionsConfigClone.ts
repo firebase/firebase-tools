@@ -10,13 +10,7 @@ function matchPrefix(short: any[], long: any[]): boolean {
   if (short.length > long.length) {
     return false;
   }
-  return _.reduce(
-    short,
-    (accum: boolean, x, i) => {
-      return accum && x === long[i];
-    },
-    true
-  );
+  return short.reduce((accum, x, i) => accum && x === long[i], true);
 }
 
 function applyExcept(json: any, except: any[]) {
