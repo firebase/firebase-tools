@@ -1,4 +1,3 @@
-import * as _ from "lodash";
 import * as clc from "cli-color";
 import Table = require("cli-table");
 
@@ -13,7 +12,7 @@ import * as extensionsUtils from "./utils";
  * @param projectId ID of the project we're querying
  * @return mapping that contains a list of instances under the "instances" key
  */
-export async function listExtensions(projectId: string): Promise<any> {
+export async function listExtensions(projectId: string): Promise<Record<string, string>[]> {
   const instances = await listInstances(projectId);
   if (instances.length < 1) {
     logLabeledBullet(
@@ -28,13 +27,15 @@ export async function listExtensions(projectId: string): Promise<any> {
     style: { head: ["yellow"] },
   });
   // Order instances newest to oldest.
-  const sorted = _.sortBy(instances, "createTime", "asc").reverse();
+  const sorted = instances.sort(
+    (a, b) => new Date(b.createTime).valueOf() - new Date(a.createTime).valueOf()
+  );
   const formatted: Record<string, string>[] = [];
   sorted.forEach((instance) => {
-    let extension = _.get(instance, "config.extensionRef", "");
+    let extension = instance.config.extensionRef || "";
     let publisher;
     if (extension === "") {
-      extension = _.get(instance, "config.source.spec.name", "");
+      extension = instance.config.source.spec.name || "";
       publisher = "N/A";
     } else {
       publisher = extension.split("/")[0];
@@ -42,7 +43,7 @@ export async function listExtensions(projectId: string): Promise<any> {
     const instanceId = last(instance.name.split("/")) ?? "";
     const state =
       instance.state +
-      (_.get(instance, "config.source.state", "ACTIVE") === "DELETED" ? " (UNPUBLISHED)" : "");
+      ((instance.config.source.state || "ACTIVE") === "DELETED" ? " (UNPUBLISHED)" : "");
     const version = instance?.config?.source?.spec?.version;
     const updateTime = extensionsUtils.formatTimestamp(instance.updateTime);
     table.push([extension, publisher, instanceId, state, version, updateTime]);

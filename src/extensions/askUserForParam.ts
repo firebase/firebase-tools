@@ -372,8 +372,6 @@ async function addNewSecretVersion(
 }
 
 export function getInquirerDefault(options: ParamOption[], def: string): string {
-  const defaultOption = _.find(options, (option) => {
-    return option.value === def;
-  });
+  const defaultOption = options.find((o) => o.value === def);
   return defaultOption ? defaultOption.label || defaultOption.value : "";
 }
