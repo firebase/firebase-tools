@@ -684,3 +684,29 @@ export function last<T>(arr?: Array<T>): T | undefined {
   }
   return arr[arr.length - 1];
 }
+
+/**
+ * Options for debounce.
+ */
+type DebounceOptions = {
+  leading?: boolean;
+};
+
+/**
+ * Returns a function that delays invoking `fn` until `delay` ms have
+ * passed since the last time `fn` was invoked.
+ */
+export function debounce<T>(
+  fn: (...args: T[]) => void,
+  delay: number,
+  { leading }: DebounceOptions = {}
+): (...args: T[]) => void {
+  let timer: NodeJS.Timeout;
+  return (...args) => {
+    if (!timer && leading) {
+      fn(...args);
+    }
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), delay);
+  };
+}
