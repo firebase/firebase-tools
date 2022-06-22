@@ -710,3 +710,12 @@ export function debounce<T>(
     timer = setTimeout(() => fn(...args), delay);
   };
 }
+
+/**
+ * Returns a random number between min and max, inclusive.
+ */
+export function randomInt(min: number, max: number): number {
+  min = Math.floor(min);
+  max = Math.ceil(max) + 1;
+  return Math.floor(Math.random() * (max - min) + min);
+}
