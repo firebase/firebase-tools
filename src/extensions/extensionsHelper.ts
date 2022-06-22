@@ -1,4 +1,3 @@
-import * as _ from "lodash";
 import * as clc from "cli-color";
 import * as ora from "ora";
 import * as semver from "semver";
@@ -151,9 +150,13 @@ export function substituteParams<T>(original: T, params: Record<string, string>)
     const substituteRegexMatches = (unsubstituted: string, regex: RegExp): string => {
       return unsubstituted.replace(regex, paramVal);
     };
-    return _.reduce(regexes, substituteRegexMatches, str);
+    return regexes.reduce(substituteRegexMatches, str);
   };
-  return JSON.parse(_.reduce(params, applySubstitution, startingString));
+  const s = Object.entries(params).reduce(
+    (str, [key, val]) => applySubstitution(str, val, key),
+    startingString
+  );
+  return JSON.parse(s);
 }
 
 /**
