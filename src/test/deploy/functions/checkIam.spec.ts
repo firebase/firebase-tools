@@ -24,12 +24,6 @@ const SPEC = {
   runtime: "nodejs14",
 };
 
-const iamPolicy = {
-  etag: "etag",
-  version: 3,
-  bindings: [BINDING],
-};
-
 describe("checkIam", () => {
   let storageStub: sinon.SinonStub;
   let getIamStub: sinon.SinonStub;
@@ -50,17 +44,6 @@ describe("checkIam", () => {
   afterEach(() => {
     sinon.verifyAndRestore();
   });
-
-  const iamPolicy = {
-    etag: "etag",
-    version: 3,
-    bindings: [
-      {
-        role: "some/role",
-        members: ["someuser"],
-      },
-    ],
-  };
 
   describe("obtainPubSubServiceAgentBindings", () => {
     it("should obtain the bindings", () => {

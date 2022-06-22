@@ -9,7 +9,7 @@ import { filterTargets } from "../filterTargets";
 import { requireHostingSite } from "../requireHostingSite";
 
 // in order of least time-consuming to most time-consuming
-const VALID_TARGETS = [
+export const VALID_DEPLOY_TARGETS = [
   "database",
   "storage",
   "firestore",
@@ -60,7 +60,7 @@ export const command = new Command("deploy")
   .option("--except <targets>", 'deploy to all targets except specified (e.g. "database")')
   .before(requireConfig)
   .before((options) => {
-    options.filteredTargets = filterTargets(options, VALID_TARGETS);
+    options.filteredTargets = filterTargets(options, VALID_DEPLOY_TARGETS);
     const permissions = options.filteredTargets.reduce((perms: string[], target: string) => {
       return perms.concat(TARGET_PERMISSIONS[target]);
     }, []);

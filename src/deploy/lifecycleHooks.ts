@@ -1,5 +1,3 @@
-import * as _ from "lodash";
-
 import * as utils from "../utils";
 import * as clc from "cli-color";
 import * as childProcess from "child_process";
@@ -60,7 +58,7 @@ function getChildEnvironment(target: string, overallOptions: any, config: any) {
   }
 
   // Copying over environment variables
-  return _.assign({}, process.env, {
+  return Object.assign({}, process.env, {
     GCLOUD_PROJECT: projectId,
     PROJECT_DIR: projectDir,
     RESOURCE_DIR: resourceDir,
@@ -88,15 +86,9 @@ function runTargetCommands(
     stdio: [0, 1, 2], // Inherit STDIN, STDOUT, and STDERR
   };
 
-  const runAllCommands = _.reduce(
-    commands,
-    (soFar, command) => {
-      return soFar.then(() => {
-        return runCommand(command, childOptions);
-      });
-    },
-    Promise.resolve()
-  );
+  const runAllCommands = commands.reduce((soFar: Promise<unknown>, command: string) => {
+    soFar.then(() => runCommand(command, childOptions));
+  }, Promise.resolve());
 
   // We currently use the resource name in info logs in the rest of the deploy.
   // However we don't have access to that here because predeploy hooks will
@@ -112,7 +104,7 @@ function runTargetCommands(
         clc.green.bold(logIdentifier + ":") + " Finished running " + clc.bold(hook) + " script."
       );
     })
-    .catch((err) => {
+    .catch((err: any) => {
       throw new FirebaseError(logIdentifier + " " + hook + " error: " + err.message);
     });
 }
@@ -122,7 +114,7 @@ function getReleventConfigs(target: string, options: Options) {
   if (!targetConfigs) {
     return [];
   }
-  if (!_.isArray(targetConfigs)) {
+  if (!Array.isArray(targetConfigs)) {
     targetConfigs = [targetConfigs];
   }
 
@@ -154,9 +146,8 @@ export function lifecycleHooks(
   hook: string
 ): (context: any, options: Options) => Promise<void> {
   return function (context: any, options: Options) {
-    return _.reduce(
-      getReleventConfigs(target, options),
-      (previousCommands, individualConfig) => {
+    return getReleventConfigs(target, options).reduce(
+      (previousCommands: Promise<unknown>, individualConfig: any) => {
         return previousCommands.then(() => {
           return runTargetCommands(target, hook, options, individualConfig);
         });

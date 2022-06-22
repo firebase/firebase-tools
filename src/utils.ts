@@ -39,7 +39,7 @@ export function consoleUrl(project: string, path: string): string {
 export function getInheritedOption(options: any, key: string): any {
   let target = options;
   while (target) {
-    if (_.has(target, key)) {
+    if (target[key] !== undefined) {
       return target[key];
     }
     target = target.parent;
@@ -326,7 +326,7 @@ export function makeActiveProject(projectDir: string, newActive?: string): void 
  * Creates API endpoint string, e.g. /v1/projects/pid/cloudfunctions
  */
 export function endpoint(parts: string[]): string {
-  return `/${_.join(parts, "/")}`;
+  return `/${parts.join("/")}`;
 }
 
 /**
@@ -418,7 +418,7 @@ export async function promiseWhile<T>(
  */
 export async function promiseProps(obj: any): Promise<any> {
   const resultObj: any = {};
-  const promises = _.keys(obj).map(async (key) => {
+  const promises = Object.keys(obj).map(async (key) => {
     const r = await Promise.resolve(obj[key]);
     resultObj[key] = r;
   });
@@ -683,4 +683,39 @@ export function last<T>(arr?: Array<T>): T | undefined {
     return;
   }
   return arr[arr.length - 1];
+}
+
+/**
+ * Options for debounce.
+ */
+type DebounceOptions = {
+  leading?: boolean;
+};
+
+/**
+ * Returns a function that delays invoking `fn` until `delay` ms have
+ * passed since the last time `fn` was invoked.
+ */
+export function debounce<T>(
+  fn: (...args: T[]) => void,
+  delay: number,
+  { leading }: DebounceOptions = {}
+): (...args: T[]) => void {
+  let timer: NodeJS.Timeout;
+  return (...args) => {
+    if (!timer && leading) {
+      fn(...args);
+    }
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), delay);
+  };
+}
+
+/**
+ * Returns a random number between min and max, inclusive.
+ */
+export function randomInt(min: number, max: number): number {
+  min = Math.floor(min);
+  max = Math.ceil(max) + 1;
+  return Math.floor(Math.random() * (max - min) + min);
 }

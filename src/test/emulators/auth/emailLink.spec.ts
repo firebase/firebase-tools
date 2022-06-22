@@ -672,7 +672,7 @@ describeAuthEmulator("email link sign-in", ({ authApi }) => {
 
     it("should update modifiable fields before sign in for existing accounts", async () => {
       const user = { email: "bob@example.com", password: "notasecret" };
-      const { localId, idToken } = await registerUser(authApi(), user);
+      const { localId } = await registerUser(authApi(), user);
       const { oobCode } = await createEmailSignInOob(authApi(), user.email);
       await updateConfig(
         authApi(),

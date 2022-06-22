@@ -10,13 +10,7 @@ function matchPrefix(short: any[], long: any[]): boolean {
   if (short.length > long.length) {
     return false;
   }
-  return _.reduce(
-    short,
-    (accum: boolean, x, i) => {
-      return accum && x === long[i];
-    },
-    true
-  );
+  return short.reduce((accum, x, i) => accum && x === long[i], true);
 }
 
 function applyExcept(json: any, except: any[]) {
@@ -47,7 +41,7 @@ async function cloneConfigOrVariable(key: string, fromProject: any, toProject: a
   if (functionsConfig.RESERVED_NAMESPACES.includes(parts[0])) {
     throw new FirebaseError("Cannot clone reserved namespace " + clc.bold(parts[0]));
   }
-  const configName = _.join(["projects", fromProject, "configs", parts[0]], "/");
+  const configName = ["projects", fromProject, "configs", parts[0]].join("/");
   if (parts.length === 1) {
     return cloneConfig(configName, toProject);
   }

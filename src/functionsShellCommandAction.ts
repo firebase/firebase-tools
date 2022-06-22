@@ -13,7 +13,6 @@ import * as shell from "./emulator/functionsEmulatorShell";
 import * as commandUtils from "./emulator/commandUtils";
 import { EMULATORS_SUPPORTED_BY_FUNCTIONS, EmulatorInfo, Emulators } from "./emulator/types";
 import { EmulatorHubClient } from "./emulator/hubClient";
-import { Constants } from "./emulator/constants";
 import { findAvailablePort } from "./emulator/portUtils";
 import { Options } from "./options";
 

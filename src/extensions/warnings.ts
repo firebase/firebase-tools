@@ -7,7 +7,7 @@ import { printSourceDownloadLink } from "./displayExtensionInfo";
 import { logPrefix } from "./extensionsHelper";
 import { getTrustedPublishers } from "./resolveSource";
 import { humanReadable } from "../deploy/extensions/deploymentSummary";
-import { InstanceSpec, getExtension, getExtensionVersion } from "../deploy/extensions/planner";
+import { InstanceSpec, getExtension } from "../deploy/extensions/planner";
 import { partition } from "../functional";
 import * as utils from "../utils";
 import { logger } from "../logger";

@@ -1,4 +1,3 @@
-import * as _ from "lodash";
 import * as fs from "fs";
 import * as path from "path";
 import * as express from "express";
@@ -51,7 +50,7 @@ import { RuntimeWorker, RuntimeWorkerPool } from "./functionsRuntimeWorker";
 import { PubsubEmulator } from "./pubsubEmulator";
 import { FirebaseError } from "../error";
 import { WorkQueue } from "./workQueue";
-import { allSettled, createDestroyer } from "../utils";
+import { allSettled, createDestroyer, debounce } from "../utils";
 import { getCredentialPathAsync } from "../defaultCredentials";
 import {
   AdminSdkConfig,
@@ -277,7 +276,6 @@ export class FunctionsEmulator implements EmulatorInstance {
     const listBackendsRoute = `/backends`;
 
     const backgroundHandler: express.RequestHandler = (req, res) => {
-      const region = req.params.region;
       const triggerId = req.params.trigger_name;
       const projectId = req.params.project_id;
 
@@ -445,7 +443,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         persistent: true,
       });
 
-      const debouncedLoadTriggers = _.debounce(() => this.loadTriggers(backend), 1000);
+      const debouncedLoadTriggers = debounce(() => this.loadTriggers(backend), 1000);
       watcher.on("change", (filePath) => {
         this.logger.log("DEBUG", `File ${filePath} changed, reloading triggers`);
         return debouncedLoadTriggers();
@@ -886,7 +884,7 @@ export class FunctionsEmulator implements EmulatorInstance {
   }
 
   getInfo(): EmulatorInfo {
-    const host = this.args.host || Constants.getDefaultHost(Emulators.FUNCTIONS);
+    const host = this.args.host || Constants.getDefaultHost();
     const port = this.args.port || Constants.getDefaultPort(Emulators.FUNCTIONS);
 
     return {

@@ -8,7 +8,6 @@ import * as backend from "../../backend";
 import * as build from "../../build";
 import * as api from "../../../../api";
 import * as proto from "../../../../gcp/proto";
-import * as args from "../../args";
 import * as runtimes from "../../runtimes";
 import * as events from "../../../../functions/events";
 
@@ -136,7 +135,7 @@ function parseTriggers(
 }
 
 /** Currently we always use JS trigger parsing */
-export function useStrategy(context: args.Context): Promise<boolean> {
+export function useStrategy(): Promise<boolean> {
   return Promise.resolve(true);
 }
 

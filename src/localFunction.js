@@ -52,7 +52,7 @@ LocalFunction.prototype._substituteParams = function (resource, params) {
   return resource.replace(wildcardRegex, function (wildcard) {
     var wildcardNoBraces = wildcard.slice(1, -1); // .slice removes '{' and '}' from wildcard
     var sub = _.get(params, wildcardNoBraces);
-    return sub || wildcardNoBraces + _.random(1, 9);
+    return sub || wildcardNoBraces + utils.randomInt(1, 9);
   });
 };
 
@@ -60,7 +60,7 @@ LocalFunction.prototype._constructCallableFunc = function (data, opts) {
   opts = opts || {};
 
   var headers = {};
-  if (_.has(opts, "instanceIdToken")) {
+  if (opts.instanceIdToken) {
     headers["Firebase-Instance-ID-Token"] = opts.instanceIdToken;
   }
 

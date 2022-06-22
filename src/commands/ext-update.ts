@@ -19,7 +19,7 @@ import {
 import * as paramHelper from "../extensions/paramHelper";
 import { inferUpdateSource } from "../extensions/updateHelper";
 import * as refs from "../extensions/refs";
-import { getProjectId, needProjectId } from "../projectUtils";
+import { getProjectId } from "../projectUtils";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
 import { previews } from "../previews";
