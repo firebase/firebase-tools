@@ -1,4 +1,3 @@
-import * as _ from "lodash";
 import * as clc from "cli-color";
 import * as fs from "fs";
 
@@ -28,8 +27,8 @@ export const command = new Command("database:set <path> [infile]")
   .before(requireDatabaseInstance)
   .before(populateInstanceDetails)
   .before(printNoticeIfEmulated, Emulators.DATABASE)
-  .action(async (path, infile, options) => {
-    if (!_.startsWith(path, "/")) {
+  .action(async (path: string, infile, options) => {
+    if (!path.startsWith("/")) {
       throw new FirebaseError("Path must begin with /");
     }
     const origin = realtimeOriginOrEmulatorOrCustomUrl(options.instanceDetails.databaseUrl);

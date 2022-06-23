@@ -8,7 +8,7 @@ function resolveIn(ms: number) {
     return Promise.resolve();
   }
 
-  return new Promise((res, rej) => {
+  return new Promise((res) => {
     setTimeout(res, ms);
   });
 }

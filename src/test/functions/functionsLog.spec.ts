@@ -2,7 +2,6 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 import * as functionsLog from "../../functions/functionslog";
 import { logger } from "../../logger";
-import { previews } from "../../previews";
 
 describe("functionsLog", () => {
   describe("getApiFilter", () => {

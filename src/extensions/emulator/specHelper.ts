@@ -1,9 +1,8 @@
 import * as yaml from "js-yaml";
-import * as _ from "lodash";
 import * as path from "path";
 import * as fs from "fs-extra";
 
-import { ExtensionSpec, ParamType, Resource } from "../extensionsApi";
+import { ExtensionSpec, Resource } from "../types";
 import { FirebaseError } from "../../error";
 import { substituteParams } from "../extensionsHelper";
 import { parseRuntimeVersion } from "../../emulator/functionsEmulatorUtils";

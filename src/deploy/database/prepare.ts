@@ -1,4 +1,3 @@
-import * as _ from "lodash";
 import * as clc from "cli-color";
 import * as path from "path";
 
@@ -29,7 +28,7 @@ export function prepare(context: any, options: Options): Promise<any> {
     deploys.push(ruleConfig);
   });
 
-  _.forEach(ruleFiles, (v, file) => {
+  for (const file of Object.keys(ruleFiles)) {
     switch (path.extname(file)) {
       case ".json":
         ruleFiles[file] = options.config.readProjectFile(file);
@@ -40,7 +39,7 @@ export function prepare(context: any, options: Options): Promise<any> {
       default:
         throw new FirebaseError("Unexpected rules format " + path.extname(file));
     }
-  });
+  }
 
   context.database = {
     deploys: deploys,

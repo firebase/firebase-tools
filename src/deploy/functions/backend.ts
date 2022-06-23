@@ -284,7 +284,7 @@ export interface ServiceConfiguration {
     egressSettings?: VpcEgressSettings;
   };
   ingressSettings?: IngressSettings;
-  serviceAccountEmail?: "default" | string;
+  serviceAccountEmail?: string;
 }
 
 export type FunctionsPlatform = "gcfv1" | "gcfv2";

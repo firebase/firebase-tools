@@ -7,7 +7,7 @@ import {
   ExtensionVersion,
   RegistryLaunchStage,
   Visibility,
-} from "../../extensions/extensionsApi";
+} from "../../extensions/types";
 import * as planner from "../../deploy/extensions/planner";
 
 const TEST_EXTENSION: Extension = {

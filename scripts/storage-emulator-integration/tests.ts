@@ -1473,6 +1473,7 @@ describe("Storage emulator", () => {
           await uploadText(page, "upload/replace.txt", "some-content");
           await uploadText(page, "upload/replace.txt", "some-other-content");
 
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
           const downloadUrl = await page.evaluate((filename) => {
             return firebase.storage().ref("upload/replace.txt").getDownloadURL();
           }, filename);

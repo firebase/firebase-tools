@@ -1,5 +1,4 @@
 import { EmulatorServer } from "../emulator/emulatorServer";
-import * as _ from "lodash";
 import { logger } from "../logger";
 import { prepareFrameworks } from "../frameworks";
 import { previews } from "../previews";
@@ -20,7 +19,7 @@ const TARGETS: {
  * @param options Firebase CLI options.
  */
 export async function serve(options: any): Promise<void> {
-  const targetNames = options.targets;
+  const targetNames = options.targets || [];
   options.port = parseInt(options.port, 10);
   if (
     previews.frameworkawareness &&
@@ -30,20 +29,20 @@ export async function serve(options: any): Promise<void> {
     await prepareFrameworks(targetNames, options, options);
   }
   await Promise.all(
-    _.map(targetNames, (targetName: string) => {
+    targetNames.map((targetName: string) => {
       return TARGETS[targetName].start(options);
     })
   );
   await Promise.all(
-    _.map(targetNames, (targetName: string) => {
+    targetNames.map((targetName: string) => {
       return TARGETS[targetName].connect();
     })
   );
   await new Promise((resolve) => {
     process.on("SIGINT", () => {
       logger.info("Shutting down...");
-      return Promise.all(
-        _.map(targetNames, (targetName: string) => {
+      Promise.all(
+        targetNames.map((targetName: string) => {
           return TARGETS[targetName].stop(options);
         })
       )

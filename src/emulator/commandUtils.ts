@@ -123,7 +123,7 @@ export function warnEmulatorNotSupported(
       type: "confirm",
       default: false,
       message: "Do you want to continue?",
-    }).then((confirm: boolean) => {
+    }).then(() => {
       if (!opts.confirm) {
         return utils.reject("Command aborted.", { exit: 1 });
       }

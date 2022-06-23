@@ -907,7 +907,7 @@ describe("FunctionsEmulator-Runtime", () => {
           () => {
             require("firebase-admin").initializeApp();
             return {
-              function_id: require("firebase-functions").https.onRequest((req: any, res: any) => {
+              function_id: require("firebase-functions").https.onRequest(() => {
                 throw new Error("not a thing");
               }),
             };
@@ -933,12 +933,9 @@ describe("FunctionsEmulator-Runtime", () => {
           () => {
             require("firebase-admin").initializeApp();
             return {
-              function_id: require("firebase-functions").https.onRequest(
-                async (req: any, res: any) => {
-                  await Promise.resolve(); // Required `await` for `async`.
-                  return Promise.reject(new Error("not a thing"));
-                }
-              ),
+              function_id: require("firebase-functions").https.onRequest(async () => {
+                return Promise.reject(new Error("not a thing"));
+              }),
             };
           },
           "http"
@@ -964,8 +961,7 @@ describe("FunctionsEmulator-Runtime", () => {
             return {
               function_id: require("firebase-functions")
                 .runWith({})
-                .https.onRequest(async (req: any, res: any) => {
-                  await Promise.resolve(); // Required `await` for `async`.
+                .https.onRequest(async () => {
                   return Promise.reject(new Error("not a thing"));
                 }),
             };

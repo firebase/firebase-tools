@@ -27,15 +27,11 @@ export class Uploader {
   private cwd: string;
   private projectRoot: string;
   private gzipLevel: number;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private hashQueue: Queue<any, unknown>;
+  private hashQueue: Queue<string, void>;
   private populateBatchSize: number;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private populateBatch: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private populateQueue: Queue<any, unknown>;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private uploadQueue: Queue<any, unknown>;
+  private populateBatch: Record<string, string>;
+  private populateQueue: Queue<Record<string, string>, void>;
+  private uploadQueue: Queue<string, void>;
   private public: string;
   private files: string[];
   private fileCount: number;
@@ -211,8 +207,7 @@ export class Uploader {
     this.populateQueue.process();
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  async populateHandler(batch: any): Promise<void> {
+  async populateHandler(batch: Record<string, string>): Promise<void> {
     // wait for any existing populate calls to finish before proceeding
     const res = await this.hashClient.post<
       unknown,
