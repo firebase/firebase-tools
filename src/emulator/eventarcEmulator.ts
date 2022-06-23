@@ -41,20 +41,22 @@ export class EventarcEmulator implements EmulatorInstance {
       const triggerName = req.params.trigger_name;
       if (!projectId || !triggerName) {
         const error = "Missing project ID or trigger name.";
-        logger.info(error);
+        this.logger.log("ERROR", error);
         res.status(400).send({ error });
         return;
       }
-      const body = JSON.parse((req as RequestWithRawBody).rawBody.toString());
+      const bodyString = (req as RequestWithRawBody).rawBody.toString();
+      const substituted = bodyString.replaceAll("${PROJECT_ID}", projectId);
+      const body = JSON.parse(substituted);
       const eventTrigger = body.eventTrigger as EventTrigger;
       if (!eventTrigger) {
         const error = `Missing event trigger for ${triggerName}.`;
-        logger.info(error);
+        this.logger.log("ERROR", error);
         res.status(400).send({ error });
         return;
       }
       const key = `${eventTrigger.eventType}-${eventTrigger.channel}`;
-      logger.info(`Registering custom event trigger for ${key} with trigger name ${triggerName}.`);
+      this.logger.logLabeled("BULLET", "eventarc", `Registering custom event trigger for ${key} with trigger name ${triggerName}.`);
       const customEventTriggers = this.customEvents[key] || [];
       customEventTriggers.push({ projectId, triggerName, eventTrigger });
       this.customEvents[key] = customEventTriggers;
@@ -70,7 +72,7 @@ export class EventarcEmulator implements EmulatorInstance {
           res.sendStatus(400);
           return;
         }
-        logger.info(`Received custom event at channel ${channel}: ${JSON.stringify(event)}`);
+        this.logger.log("INFO", `Received custom event at channel ${channel}: ${JSON.stringify(event, null, 2)}`);
         this.triggerCustomEventFunction(channel, event);
       }
       res.sendStatus(200);
@@ -91,7 +93,7 @@ export class EventarcEmulator implements EmulatorInstance {
     hub.post([registerTriggerRoute], dataMiddleware, registerTriggerHandler);
     hub.post([publishEventsRoute], dataMiddleware, publishEventsHandler);
     hub.all("*", (req, res) => {
-      logger.debug(`Eventarc emulator received unknown request at path ${req.path}`);
+      this.logger.log("DEBUG", `Eventarc emulator received unknown request at path ${req.path}`);
       res.sendStatus(404);
     });
     return hub;
@@ -100,7 +102,7 @@ export class EventarcEmulator implements EmulatorInstance {
   async triggerCustomEventFunction(channel: string, event: CloudEvent<any>) {
     const functionsEmulator = EmulatorRegistry.get(Emulators.FUNCTIONS);
     if (!functionsEmulator) {
-      logger.info("Functions emulator not found. This should not happen.");
+      this.logger.log("INFO", "Functions emulator not found. This should not happen.");
       return Promise.reject();
     }
     const key = `${event.type}-${channel}`;
@@ -132,7 +134,7 @@ export class EventarcEmulator implements EmulatorInstance {
               }
             })
             .catch((err) => {
-              logger.error(
+              this.logger.log("ERROR", 
                 `Failed to trigger Functions emulator for ${trigger.triggerName}: ${err}`
               );
             })
