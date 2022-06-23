@@ -60,7 +60,7 @@ export function runBuildtoolsCommand(jarFile: string, args: string[], debug: boo
     stdio: debug ? "inherit" : "pipe",
   });
 
-  if (outputs.status != 0) {
+  if (outputs.status !== 0) {
     if (!debug) {
       utils.logWarning(outputs.stdout?.toString() || "An unknown error occurred");
     }
