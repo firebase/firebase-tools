@@ -50,6 +50,7 @@ interface RequiredApi {
 // expressions.
 // `Expression<Foo> == Expression<Foo>` is an Expression<boolean>
 // `Expression<boolean> ? Expression<T> : Expression<T>` is an Expression<T>
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 type Expression<T extends string | number | boolean> = string;
 type Field<T extends string | number | boolean> = T | Expression<T> | null;
 
@@ -329,8 +330,10 @@ export function resolveBackend(build: Build, userEnvs: Record<string, string>): 
         };
         proto.copyIfPresent(bkEndpoint.vpc, bdEndpoint.vpc, "egressSettings");
       }
-      if (bdEndpoint.serviceAccount) {
-        bkEndpoint.serviceAccountEmail = bdEndpoint.serviceAccount;
+      proto.renameIfPresent(bkEndpoint, bdEndpoint, "serviceAccountEmail", "serviceAccount");
+      // TODO: renameIfPresent currently copies over null fields, which will change imminently. Once that change is in, we don't need this cleanup code anymore to make tests pass.
+      if ("serviceAccountEmail" in bkEndpoint && !bdEndpoint.serviceAccount) {
+        delete bkEndpoint.serviceAccountEmail;
       }
 
       bkEndpoints.push(bkEndpoint);

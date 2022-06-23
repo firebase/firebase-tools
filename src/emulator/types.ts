@@ -1,6 +1,5 @@
 import { ChildProcess } from "child_process";
 import { EventEmitter } from "events";
-import { previews } from "../previews";
 
 export enum Emulators {
   AUTH = "auth",
@@ -48,7 +47,7 @@ export const ALL_SERVICE_EMULATORS = [
   Emulators.PUBSUB,
   Emulators.STORAGE,
   Emulators.EVENTARC,
-].filter((v) => v) as Emulators[];
+].filter((v) => v);
 
 export const EMULATORS_SUPPORTED_BY_FUNCTIONS = [
   Emulators.FIRESTORE,
@@ -216,7 +215,7 @@ export class EmulatorLog {
     type: string,
     filter?: (el: EmulatorLog) => boolean
   ): Promise<EmulatorLog> {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const listener = (el: EmulatorLog) => {
         const levelTypeMatch = el.level === level && el.type === type;
         let filterMatch = true;

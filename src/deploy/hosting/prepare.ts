@@ -6,7 +6,6 @@ import { validateDeploy } from "./validate";
 import { convertConfig } from "./convertConfig";
 import * as deploymentTool from "../../deploymentTool";
 import { Payload } from "./args";
-import { allEndpoints } from "../functions/backend";
 
 /**
  *  Prepare creates versions for each Hosting site to be deployed.

@@ -4,7 +4,7 @@ import * as sinon from "sinon";
 import { FirebaseError } from "../../error";
 import * as displayExtensionInfo from "../../extensions/displayExtensionInfo";
 import * as prompt from "../../prompt";
-import { ExtensionSpec, Resource } from "../../extensions/extensionsApi";
+import { ExtensionSpec, Resource } from "../../extensions/types";
 import { cloneDeep } from "../../utils";
 
 const SPEC: ExtensionSpec = {

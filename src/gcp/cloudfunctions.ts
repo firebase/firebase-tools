@@ -4,7 +4,6 @@ import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import { previews } from "../previews";
 import * as backend from "../deploy/functions/backend";
-import * as events from "../functions/events";
 import * as utils from "../utils";
 import * as proto from "./proto";
 import * as runtimes from "../deploy/functions/runtimes";
@@ -147,18 +146,6 @@ export interface CloudFunction {
 }
 
 export type OutputOnlyFields = "status" | "buildId" | "updateTime" | "versionId";
-
-function validateFunction(func: CloudFunction) {
-  proto.assertOneOf(
-    "Cloud Function",
-    func,
-    "sourceCode",
-    "sourceArchiveUrl",
-    "sourceRepository",
-    "sourceUploadUrl"
-  );
-  proto.assertOneOf("Cloud Function", func, "trigger", "httpsTrigger", "eventTrigger");
-}
 
 /**
  * Logs an error from a failed function deployment.

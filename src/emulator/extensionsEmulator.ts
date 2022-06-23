@@ -27,9 +27,7 @@ export interface ExtensionEmulatorArgs {
   extensions: Record<string, string>;
   projectDir: string;
 }
-// TODO: Consider a different name, since this does not implement the EmulatorInstance interface
-// Note: At the moment, this doesn't really seem like it needs to be a class. However, I think the
-// statefulness that enables will be useful once we want to watch .env files for config changes.
+
 export class ExtensionsEmulator implements EmulatorInstance {
   private want: planner.DeploymentInstanceSpec[] = [];
   private backends: EmulatableBackend[] = [];
@@ -171,7 +169,6 @@ export class ExtensionsEmulator implements EmulatorInstance {
 
   private installAndBuildSourceCode(sourceCodePath: string): void {
     // TODO: Add logging during this so it is clear what is happening.
-
     this.logger.logLabeled("DEBUG", "Extensions", `Running "npm install" for ${sourceCodePath}`);
     const npmInstall = spawn.sync("npm", ["--prefix", `/${sourceCodePath}/functions/`, "install"], {
       encoding: "utf8",
@@ -195,6 +192,7 @@ export class ExtensionsEmulator implements EmulatorInstance {
       // TODO: Make sure this does not error out if "gcp-build" is not defined, but does error if it fails otherwise.
       throw npmRunGCPBuild.error;
     }
+
     this.logger.logLabeled(
       "DEBUG",
       "Extensions",

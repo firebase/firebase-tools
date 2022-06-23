@@ -1,6 +1,5 @@
-import * as _ from "lodash";
 import { promptOnce } from "../prompt";
-import { ParamOption } from "./extensionsApi";
+import { ParamOption } from "./types";
 import { RegistryEntry } from "./resolveSource";
 
 // Modified version of the once function from prompt, to return as a joined string.
@@ -33,7 +32,7 @@ export function convertExtensionOptionToLabeledList(options: ParamOption[]): Lis
 export function convertOfficialExtensionsToList(officialExts: {
   [key: string]: RegistryEntry;
 }): ListItem[] {
-  const l = _.map(officialExts, (entry: RegistryEntry, key: string) => {
+  const l = Object.entries(officialExts).map(([key, entry]) => {
     return {
       checked: false,
       value: `${entry.publisher}/${key}`,

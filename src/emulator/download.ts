@@ -52,7 +52,7 @@ export async function downloadExtensionVersion(
   emulatorLogger.logLabeled(
     "BULLET",
     "extensions",
-    `Starting download for ${extensionVersionRef} source code...`
+    `Starting download for ${extensionVersionRef} source code to ${targetDir}..`
   );
   try {
     fs.mkdirSync(targetDir);

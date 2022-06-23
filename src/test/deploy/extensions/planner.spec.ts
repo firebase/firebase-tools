@@ -3,8 +3,9 @@ import * as sinon from "sinon";
 
 import * as planner from "../../../deploy/extensions/planner";
 import * as extensionsApi from "../../../extensions/extensionsApi";
+import { ExtensionInstance, ExtensionVersion } from "../../../extensions/types";
 
-function extensionVersion(version: string): extensionsApi.ExtensionVersion {
+function extensionVersion(version: string): ExtensionVersion {
   return {
     name: `publishers/test/extensions/test/versions/${version}`,
     ref: `test/test@${version}`,
@@ -107,7 +108,7 @@ describe("Extensions Deployment Planner", () => {
       params: [],
     };
 
-    const INSTANCE_WITH_EVENTS: extensionsApi.ExtensionInstance = {
+    const INSTANCE_WITH_EVENTS: ExtensionInstance = {
       name: "projects/my-test-proj/instances/image-resizer",
       createTime: "2019-05-19T00:20:10.416947Z",
       updateTime: "2019-05-19T00:20:10.416947Z",
