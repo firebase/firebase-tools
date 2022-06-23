@@ -17,7 +17,7 @@ interface JarOptions {
   resourceFilePath: string;
 }
 
-export default new Command("crashlytics:mappingfile:upload <mappingFile>")
+export const command = new Command("crashlytics:mappingfile:upload <mappingFile>")
   .description("upload a ProGuard/R8-compatible mapping file to deobfuscate stack traces")
   .option("--app <appID>", "The app id of your Firebase app")
   .option(
