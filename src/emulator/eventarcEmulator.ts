@@ -1,6 +1,5 @@
 import * as express from "express";
 
-import { logger } from "../logger";
 import { Constants } from "./constants";
 import { EmulatorInfo, EmulatorInstance, Emulators } from "./types";
 import { createDestroyer } from "../utils";
@@ -178,7 +177,7 @@ export class EventarcEmulator implements EmulatorInstance {
   }
 
   getInfo(): EmulatorInfo {
-    const host = this.args.host || Constants.getDefaultHost(Emulators.EVENTARC);
+    const host = this.args.host || Constants.getDefaultHost();
     const port = this.args.port || Constants.getDefaultPort(Emulators.EVENTARC);
 
     return {
