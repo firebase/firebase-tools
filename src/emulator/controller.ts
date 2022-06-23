@@ -3,7 +3,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 import { logger } from "../logger";
-import { track } from "../track";
+import { track, trackEmulator } from "../track";
 import * as utils from "../utils";
 import { EmulatorRegistry } from "./registry";
 import {
@@ -143,6 +143,7 @@ export async function startEmulator(instance: EmulatorInstance): Promise<void> {
 
   // Log the command for analytics
   void track("Emulator Run", name);
+  void trackEmulator("emulator_run", { name });
 
   await EmulatorRegistry.start(instance);
 }
