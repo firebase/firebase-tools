@@ -56,7 +56,11 @@ export class EventarcEmulator implements EmulatorInstance {
         return;
       }
       const key = `${eventTrigger.eventType}-${eventTrigger.channel}`;
-      this.logger.logLabeled("BULLET", "eventarc", `Registering custom event trigger for ${key} with trigger name ${triggerName}.`);
+      this.logger.logLabeled(
+        "BULLET",
+        "eventarc",
+        `Registering custom event trigger for ${key} with trigger name ${triggerName}.`
+      );
       const customEventTriggers = this.customEvents[key] || [];
       customEventTriggers.push({ projectId, triggerName, eventTrigger });
       this.customEvents[key] = customEventTriggers;
@@ -72,7 +76,10 @@ export class EventarcEmulator implements EmulatorInstance {
           res.sendStatus(400);
           return;
         }
-        this.logger.log("INFO", `Received custom event at channel ${channel}: ${JSON.stringify(event, null, 2)}`);
+        this.logger.log(
+          "INFO",
+          `Received custom event at channel ${channel}: ${JSON.stringify(event, null, 2)}`
+        );
         this.triggerCustomEventFunction(channel, event);
       }
       res.sendStatus(200);
@@ -134,7 +141,8 @@ export class EventarcEmulator implements EmulatorInstance {
               }
             })
             .catch((err) => {
-              this.logger.log("ERROR", 
+              this.logger.log(
+                "ERROR",
                 `Failed to trigger Functions emulator for ${trigger.triggerName}: ${err}`
               );
             })
