@@ -57,7 +57,7 @@ describe("CF3 and Extensions emulator", () => {
     process.env.FIRESTORE_EMULATOR_HOST = `localhost:${firestorePort}`;
 
     test = new TriggerEndToEndTest(FIREBASE_PROJECT, __dirname, config);
-    await test.startEmulators(["--only", "functions,extensions,storage"]);
+    await test.startEmulators(["--only", "functions,extensions,storage,eventarc"]);
 
     admin.initializeApp({
       projectId: FIREBASE_PROJECT,
