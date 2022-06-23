@@ -15,7 +15,7 @@ exports.writeToDefaultStorage = functions.https.onRequest(async (req, res) => {
 exports.eventhandler = onCustomEventPublished(
   {
     eventType: "firebase.extensions.storage-resize-images.v1.complete",
-    channel: `locations/us-west1/channels/firebase`,
+    channel: `projects/${PROJECT_ID}/locations/us-west1/channels/firebase`,
     region: "us-west1",
   },
   (event) => {
