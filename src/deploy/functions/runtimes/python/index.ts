@@ -8,9 +8,9 @@ import * as cp from "child_process";
 import * as runtimes from "..";
 import * as backend from "../../backend";
 import { logger } from "../../../../logger";
-import { RuntimeConfigValues, EnvironmentVariables, Backend } from "../../backend";
 import * as discovery from "../discovery";
 import { FirebaseError } from "../../../../error";
+import { Build } from "../../build";
 
 export const LATEST_VERSION: runtimes.Runtime = "python39";
 
@@ -133,24 +133,30 @@ class Delegate implements runtimes.RuntimeDelegate {
     });
   }
 
-  async discoverSpec(
-    configValues: RuntimeConfigValues,
-    envs: EnvironmentVariables
-  ): Promise<Backend> {
+  async discoverBuild(
+    configValues: backend.RuntimeConfigValues,
+    envs: backend.EnvironmentVariables
+  ): Promise<Build> {
     let discovered = await discovery.detectFromYaml(this.sourceDir, this.projectId, this.runtime);
     if (!discovered) {
       const port = await portfinder.getPortPromise();
       const adminPort = await portfinder.getPortPromise({
         port: 8081,
       });
-      const killProcess = await this.serveAdmin(port, envs);
+      if (Object.keys(configValues || {}).length) {
+        envs.CLOUD_RUNTIME_CONFIG = JSON.stringify(configValues);
+      }
+      const processEnvs: backend.EnvironmentVariables = { ...envs };
+      if (Object.keys(configValues || {}).length) {
+        processEnvs.CLOUD_RUNTIME_CONFIG = JSON.stringify(configValues);
+      }
+      const killProcess = await this.serveAdmin(port, processEnvs);
       try {
         discovered = await discovery.detectFromPort(adminPort, this.projectId, this.runtime);
       } finally {
         await killProcess();
       }
     }
-    discovered.environmentVariables = envs;
     return discovered;
   }
 }

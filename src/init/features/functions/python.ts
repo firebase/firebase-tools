@@ -14,7 +14,7 @@ const GITIGNORE_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "_gitignore"
 /**
  * Create a Python Firebase Functions project.
  */
-async function init(_setup: unknown, config: Config): Promise<void> {
+export async function setup(_setup: unknown, config: Config): Promise<void> {
   await config.askWriteProjectFile(
     `${Config.DEFAULT_FUNCTIONS_SOURCE}/requirements.txt`,
     REQUIREMENTS_TEMPLATE
@@ -50,5 +50,3 @@ async function init(_setup: unknown, config: Config): Promise<void> {
     config.path(Config.DEFAULT_FUNCTIONS_SOURCE)
   ).promise;
 }
-
-module.exports = init;
