@@ -26,7 +26,7 @@ const functionTarget = "httpsAction";
 const projectId = process.argv[2] || "functions-integration-test";
 const region = process.argv[3] || "us-central1";
 const localFirebase = __dirname + "/../lib/bin/firebase.js";
-const projectDir = __dirname + "/test-projects/test-project-1";
+const projectDir = __dirname + "/test-project";
 
 let tmpDir;
 let functionsSource;

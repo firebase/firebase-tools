@@ -29,6 +29,7 @@
     "test:extensions-deploy": "./scripts/extensions-deploy-tests/run.sh",
     "test:extensions-emulator": "./scripts/extensions-emulator-tests/run.sh",
     "test:hosting": "./scripts/hosting-tests/run.sh",
+    "test:hosting-rewrites": "./scripts/hosting-tests/rewrites-tests/run.sh",
     "test:triggers-end-to-end": "./scripts/triggers-end-to-end-tests/run.sh",
     "test:storage-deploy": "./scripts/storage-deploy-tests/run.sh",
     "test:storage-emulator-integration": "./scripts/storage-emulator-integration/run.sh"
@@ -201,7 +202,7 @@
     "eslint-plugin-jsdoc": "^39.2.9",
     "eslint-plugin-prettier": "^4.0.0",
     "firebase": "^7.24.0",
-    "firebase-admin": "^9.4.2",
+    "firebase-admin": "^9.12.0",
     "firebase-functions": "^3.15.0",
     "google-discovery-to-swagger": "^2.1.0",
     "mocha": "^9.1.3",

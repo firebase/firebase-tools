@@ -15,8 +15,6 @@ tmp.setGracefulCleanup();
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const client: any = firebase;
 
-const accessToken = getAccessToken();
-
 function writeFirebaseRc(firebasercFilePath: string): void {
   const config = {
     projects: {
@@ -39,17 +37,15 @@ async function deleteAllDeployedFunctions(): Promise<void> {
       projectId: process.env.FBTOOLS_TARGET_PROJECT,
       force: true,
     });
+    await (() => {
+      return new Promise((resolve) => setTimeout(resolve, 10000));
+    })();
   } catch (FirebaseError) {
     // do nothing if the function doesn't match.
   }
 }
 
-function getAccessToken() {
-  const token = execSync("gcloud auth print-identity-token").toString().trim();
-  return token;
-}
-
-function functionRegionString(functionRegions: string[]) {
+function functionRegionString(functionRegions: string[]): string {
   const functionRegionsQuoted = functionRegions.map((regionString) => {
     return `"${regionString}"`;
   });
@@ -66,11 +62,12 @@ function writeHelloWorldFunctionWithRegions(
   const functionFileContents = `
 const functions = require("firebase-functions");
 
-exports.helloWorld = functions${region}.runWith({invoker: "private"}).https.onRequest((request, response) => {
+exports.helloWorld = functions${region}.runWith({invoker: "public"}).https.onRequest((request, response) => {
   functions.logger.info("Hello logs!", { structuredData: true });
   const envVarFunctionsRegion = process.env.FUNCTION_REGION;
-  response.send("Hello from Firebase ${functionRegions ? "from " + functionRegions.toString() : ""
-    }");
+  response.send("Hello from Firebase ${
+    functionRegions ? "from " + functionRegions.toString() : ""
+  }");
 });`;
   writeFileSync(join(functionsDirectory, ".", "index.js"), functionFileContents);
 
@@ -90,892 +87,709 @@ exports.helloWorld = functions${region}.runWith({invoker: "private"}).https.onRe
   execSync("npm install", { cwd: functionsDirectory });
 }
 
-describe("deployHostingAndFunctions", () => {
-  const tempDir = tmp.dirSync({ prefix: "hosting_rewrites_tests_" });
-  const firebasercFilePath = join(tempDir.name, ".", ".firebaserc");
-  const hostingDirPath = join(tempDir.name, ".", "hosting");
+function writeBasicHostingFile(hostingDirectory: string): void {
+  writeFileSync(
+    join(hostingDirectory, ".", "index.html"),
+    `< !DOCTYPE html >
+<html>
+<head>
+</head>
+< body >
+Rabbit
+< /body>
+< /html>`
+  );
+}
+
+class TempDirectoryInfo {
+  tempDir = tmp.dirSync({ prefix: "hosting_rewrites_tests_" });
+  firebasercFilePath = join(this.tempDir.name, ".", ".firebaserc");
+  hostingDirPath = join(this.tempDir.name, ".", "hosting");
+}
+
+describe("deploy function-targeted rewrites And functions", () => {
+  let tempDirInfo = new TempDirectoryInfo();
+  // const tempDir = tmp.dirSync({ prefix: "hosting_rewrites_tests_" });
+  // const firebasercFilePath = join(tempDirInfo.tempDir.name, ".", ".firebaserc");
+  // const tempDirInfo.hostingDirPath = join(tempDirInfo.tempDir.name, ".", "hosting");
 
   // eslint-disable-next-line prefer-arrow-callback
   beforeEach(async function () {
+    tempDirInfo = new TempDirectoryInfo();
     // eslint-disable-next-line @typescript-eslint/no-invalid-this
     this.timeout(100 * 1e3);
-    emptyDirSync(tempDir.name);
-    writeFirebaseRc(firebasercFilePath);
     await deleteAllDeployedFunctions();
+    emptyDirSync(tempDirInfo.tempDir.name);
+    writeFirebaseRc(tempDirInfo.firebasercFilePath);
   });
 
   after(() => {
-    unlinkSync(firebasercFilePath);
+    unlinkSync(tempDirInfo.firebasercFilePath);
   });
 
-  //   it("should deploy hosting and functions with no specified function region", async () => {
-  //     const firebaseJson = {
-  //       hosting: {
-  //         public: "hosting",
-  //         rewrites: [
-  //           {
-  //             source: "/helloWorld",
-  //             function: "helloWorld",
-  //           },
-  //         ],
-  //       },
-  //     };
-
-  //     const firebaseJsonFilePath = join(tempDir.name, ".", "firebase.json");
-  //     writeFileSync(firebaseJsonFilePath, JSON.stringify(firebaseJson));
-  //     ensureDirSync(hostingDirPath);
-  //     writeFileSync(
-  //       join(hostingDirPath, ".", "index.html"),
-  //       `< !DOCTYPE html >
-  //   <html>
-  //   <head>
-  //   </head>
-  //   < body >
-  //   Rabbit
-  //   < /body>
-  //   < /html>`
-  //     );
-
-  //     writeHelloWorldFunctionWithRegions(join(tempDir.name, ".", "functions"));
-
-  //     await client.deploy({
-  //       project: process.env.FBTOOLS_TARGET_PROJECT,
-  //       cwd: tempDir.name,
-  //       only: "hosting,functions",
-  //     });
-
-  //     const staticResponse = await fetch(
-  //       `https://${process.env.FBTOOLS_TARGET_PROJECT}.web.app/index.html`
-  //     );
-  //     expect(await staticResponse.text()).to.contain("Rabbit");
-
-  //     const functionsRequest = new Request(
-  //       `https://${process.env.FBTOOLS_TARGET_PROJECT}.web.app/helloWorld`
-  //     );
-
-  //     functionsRequest.headers.set("Authorization", `Bearer ${accessToken}`);
-  //     const functionsResponse = await fetch(functionsRequest);
-
-  //     expect(await functionsResponse.text()).to.contain("Hello from Firebase");
-  //   }).timeout(1000 * 1e3); // Deploying takes several steps.
-
-  //   it("should deploy hosting and functions with region specified in function but no specified function region in rewrite", async () => {
-  //     const firebaseJson = {
-  //       hosting: {
-  //         public: "hosting",
-  //         rewrites: [
-  //           {
-  //             source: "/helloWorld",
-  //             function: "helloWorld",
-  //           },
-  //         ],
-  //       },
-  //     };
-
-  //     const firebaseJsonFilePath = join(tempDir.name, ".", "firebase.json");
-  //     writeFileSync(firebaseJsonFilePath, JSON.stringify(firebaseJson));
-  //     ensureDirSync(hostingDirPath);
-  //     writeFileSync(
-  //       join(hostingDirPath, ".", "index.html"),
-  //       `< !DOCTYPE html >
-  //   <html>
-  //   <head>
-  //   </head>
-  //   < body >
-  //   Rabbit
-  //   < /body>
-  //   < /html>`
-  //     );
-
-  //     writeHelloWorldFunctionWithRegions(join(tempDir.name, ".", "functions"), ["us-central1"]);
-
-  //     await client.deploy({
-  //       project: process.env.FBTOOLS_TARGET_PROJECT,
-  //       cwd: tempDir.name,
-  //       only: "hosting,functions",
-  //     });
-
-  //     const staticResponse = await fetch(
-  //       `https://${process.env.FBTOOLS_TARGET_PROJECT}.web.app/index.html`
-  //     );
-  //     expect(await staticResponse.text()).to.contain("Rabbit");
-
-  //     const functionsRequest = new Request(
-  //       `https://${process.env.FBTOOLS_TARGET_PROJECT}.web.app/helloWorld`
-  //     );
-
-  //     functionsRequest.headers.set("Authorization", `Bearer ${accessToken}`);
-  //     const functionsResponse = await fetch(functionsRequest);
-
-  //     expect(await functionsResponse.text()).to.contain("Hello from Firebase");
-  //   }).timeout(1000 * 1e3); // Deploying takes several steps.
-
-  //   it("should deploy hosting and functions with region specified in rewrite but no specified region in function", async () => {
-  //     const firebaseJson = {
-  //       hosting: {
-  //         public: "hosting",
-  //         rewrites: [
-  //           {
-  //             source: "/helloWorld",
-  //             function: "helloWorld",
-  //             region: "us-central1",
-  //           },
-  //         ],
-  //       },
-  //     };
-
-  //     const firebaseJsonFilePath = join(tempDir.name, ".", "firebase.json");
-  //     writeFileSync(firebaseJsonFilePath, JSON.stringify(firebaseJson));
-  //     ensureDirSync(hostingDirPath);
-  //     writeFileSync(
-  //       join(hostingDirPath, ".", "index.html"),
-  //       `< !DOCTYPE html >
-  //   <html>
-  //   <head>
-  //   </head>
-  //   < body >
-  //   Rabbit
-  //   < /body>
-  //   < /html>`
-  //     );
-
-  //     writeHelloWorldFunctionWithRegions(join(tempDir.name, ".", "functions"));
-
-  //     await client.deploy({
-  //       project: process.env.FBTOOLS_TARGET_PROJECT,
-  //       cwd: tempDir.name,
-  //       only: "hosting,functions",
-  //     });
-
-  //     const staticResponse = await fetch(
-  //       `https://${process.env.FBTOOLS_TARGET_PROJECT}.web.app/index.html`
-  //     );
-  //     expect(await staticResponse.text()).to.contain("Rabbit");
-
-  //     const functionsRequest = new Request(
-  //       `https://${process.env.FBTOOLS_TARGET_PROJECT}.web.app/helloWorld`
-  //     );
-
-  //     functionsRequest.headers.set("Authorization", `Bearer ${accessToken}`);
-  //     const functionsResponse = await fetch(functionsRequest);
-
-  //     expect(await functionsResponse.text()).to.contain("Hello from Firebase");
-  //   }).timeout(1000 * 1e3); // Deploying takes several steps.
-
-  //   it("should deploy hosting and functions with a specified function region", async () => {
-  //     const firebaseJson = {
-  //       hosting: {
-  //         public: "hosting",
-  //         rewrites: [
-  //           {
-  //             source: "/helloWorld",
-  //             function: "helloWorld",
-  //             region: "asia-northeast1",
-  //           },
-  //         ],
-  //       },
-  //     };
-
-  //     const firebaseJsonFilePath = join(tempDir.name, ".", "firebase.json");
-  //     writeFileSync(firebaseJsonFilePath, JSON.stringify(firebaseJson));
-  //     ensureDirSync(hostingDirPath);
-  //     writeFileSync(
-  //       join(hostingDirPath, ".", "index.html"),
-  //       `< !DOCTYPE html >
-  //   <html>
-  //   <head>
-  //   </head>
-  //   < body >
-  //   Rabbit
-  //   < /body>
-  //   < /html>`
-  //     );
-
-  //     writeHelloWorldFunctionWithRegions(join(tempDir.name, ".", "functions"), ["asia-northeast1"]);
-
-  //     await client.deploy({
-  //       project: process.env.FBTOOLS_TARGET_PROJECT,
-  //       cwd: tempDir.name,
-  //       only: "hosting,functions",
-  //     });
-
-  //     const staticResponse = await fetch(
-  //       `https://${process.env.FBTOOLS_TARGET_PROJECT}.web.app/index.html`
-  //     );
-  //     expect(await staticResponse.text()).to.contain("Rabbit");
-
-  //     const functionsRequest = new Request(
-  //       `https://${process.env.FBTOOLS_TARGET_PROJECT}.web.app/helloWorld`
-  //     );
-
-  //     functionsRequest.headers.set("Authorization", `Bearer ${accessToken}`);
-  //     const functionsResponse = await fetch(functionsRequest);
-
-  //     expect(await functionsResponse.text()).to.contain("Hello from Firebase");
-  //   }).timeout(1000 * 1e3); // Deploying takes several steps.
-
-  //   it("should not deploy hosting and functions with the wrong function region", async () => {
-  //     const firebaseJson = {
-  //       hosting: {
-  //         public: "hosting",
-  //         rewrites: [
-  //           {
-  //             source: "/helloWorld",
-  //             function: "helloWorld",
-  //             region: "asia-northeast1",
-  //           },
-  //         ],
-  //       },
-  //     };
-
-  //     const firebaseJsonFilePath = join(tempDir.name, ".", "firebase.json");
-  //     writeFileSync(firebaseJsonFilePath, JSON.stringify(firebaseJson));
-  //     ensureDirSync(hostingDirPath);
-  //     writeFileSync(
-  //       join(hostingDirPath, ".", "index.html"),
-  //       `< !DOCTYPE html >
-  //   <html>
-  //   <head>
-  //   </head>
-  //   < body >
-  //   Rabbit
-  //   < /body>
-  //   < /html>`
-  //     );
-
-  //     writeHelloWorldFunctionWithRegions(join(tempDir.name, ".", "functions"), ["europe-west2"]);
-
-  //     await expect(
-  //       client.deploy({
-  //         project: process.env.FBTOOLS_TARGET_PROJECT,
-  //         cwd: tempDir.name,
-  //         only: "hosting,functions",
-  //       })
-  //     ).to.eventually.be.rejectedWith(FirebaseError, "Unable to find a valid endpoint for function");
-  //   }).timeout(1000 * 1e3); // Deploying takes several steps.
-
-  // it("should not deploy when a rewrite points to a non-existent function", async () => {
-  //   const firebaseJson = {
-  //     hosting: {
-  //       public: "hosting",
-  //       rewrites: [
-  //         {
-  //           source: "/helloWorld",
-  //           function: "helloWorld",
-  //         },
-  //       ],
-  //     },
-  //   };
-
-  //   const firebaseJsonFilePath = join(tempDir.name, ".", "firebase.json");
-  //   writeFileSync(firebaseJsonFilePath, JSON.stringify(firebaseJson));
-  //   ensureDirSync(hostingDirPath);
-  //   writeFileSync(
-  //     join(hostingDirPath, ".", "index.html"),
-  //     `< !DOCTYPE html >
-  // <html>
-  // <head>
-  // </head>
-  // < body >
-  // Rabbit
-  // < /body>
-  // < /html>`
-  //   );
-
-  //   await expect(
-  //     client.deploy({
-  //       project: process.env.FBTOOLS_TARGET_PROJECT,
-  //       cwd: tempDir.name,
-  //       only: "hosting,functions",
-  //     })
-  //   ).to.eventually.be.rejectedWith(FirebaseError, "Unable to find a valid endpoint for function");
-  // }).timeout(1000 * 1e3); // Deploying takes several steps.
-
-  // it("should deploy hosting and functions with any function region", async () => {
-  //   const firebaseJson = {
-  //     hosting: {
-  //       public: "hosting",
-  //       rewrites: [
-  //         {
-  //           source: "/helloWorld",
-  //           function: "helloWorld",
-  //           region: "europe-west2",
-  //         },
-  //       ],
-  //     },
-  //   };
-
-  //   const firebaseJsonFilePath = join(tempDir.name, ".", "firebase.json");
-  //   writeFileSync(firebaseJsonFilePath, JSON.stringify(firebaseJson));
-  //   ensureDirSync(hostingDirPath);
-  //   writeFileSync(
-  //     join(hostingDirPath, ".", "index.html"),
-  //     `< !DOCTYPE html >
-  // <html>
-  // <head>
-  // </head>
-  // < body >
-  // Rabbit
-  // < /body>
-  // < /html>`
-  // it("should rewrite using a specified function region for a function with multiple regions", async () => {
-  //   const firebaseJson = {
-  //     hosting: {
-  //       public: "hosting",
-  //       rewrites: [
-  //         {
-  //           source: "/helloWorld",
-  //           function: "helloWorld",
-  //           region: "asia-northeast1",
-  //         },
-  //       ],
-  //     },
-  //   };
-
-  //   const firebaseJsonFilePath = join(tempDir.name, ".", "firebase.json");
-  //   writeFileSync(firebaseJsonFilePath, JSON.stringify(firebaseJson));
-  //   ensureDirSync(hostingDirPath);
-  //   writeFileSync(
-  //     join(hostingDirPath, ".", "index.html"),
-  //     `< !DOCTYPE html >
-  // <html>
-  // <head>
-  // </head>
-  // < body >
-  // Rabbit
-  // < /body>
-  // < /html>`
-  //   );
-
-  //   writeHelloWorldFunctionWithRegions(join(tempDir.name, ".", "functions"), [
-  //     "asia-northeast1",
-  //     "europe-west1",
-  //   ]);
-
-  //   await client.deploy({
-  //     project: process.env.FBTOOLS_TARGET_PROJECT,
-  //     cwd: tempDir.name,
-  //     only: "hosting,functions",
-  //   });
-
-  //   const staticResponse = await fetch(
-  //     `https://${process.env.FBTOOLS_TARGET_PROJECT}.web.app/index.html`
-  //   );
-  //   expect(await staticResponse.text()).to.contain("Rabbit");
-
-  //   const functionsRequest = new Request(
-  //     `https://${process.env.FBTOOLS_TARGET_PROJECT}.web.app/helloWorld`
-  //   );
-
-  //   functionsRequest.headers.set("Authorization", `Bearer ${accessToken}`);
-  //   const functionsResponse = await fetch(functionsRequest);
-
-  //   expect(await functionsResponse.text()).to.contain("Hello from Firebase");
-  // }).timeout(1000 * 1e3); // Deploying takes several steps.
-
-  // it("should fail when rewrite points to an invalid region for a function with multiple regions", async () => {
-  //   const firebaseJson = {
-  //     hosting: {
-  //       public: "hosting",
-  //       rewrites: [
-  //         {
-  //           source: "/helloWorld",
-  //           function: "helloWorld",
-  //           region: "us-east1",
-  //         },
-  //       ],
-  //     },
-  //   };
-
-  //   const firebaseJsonFilePath = join(tempDir.name, ".", "firebase.json");
-  //   writeFileSync(firebaseJsonFilePath, JSON.stringify(firebaseJson));
-  //   ensureDirSync(hostingDirPath);
-  //   writeFileSync(
-  //     join(hostingDirPath, ".", "index.html"),
-  //     `< !DOCTYPE html >
-  // <html>
-  // <head>
-  // </head>
-  // < body >
-  // Rabbit
-  // < /body>
-  // < /html>`
-  //   );
-
-  //   writeHelloWorldFunctionWithRegions(join(tempDir.name, ".", "functions"), [
-  //     "asia-northeast1",
-  //     "europe-west1",
-  //   ]);
-
-  //   await expect(
-  //     client.deploy({
-  //       project: process.env.FBTOOLS_TARGET_PROJECT,
-  //       cwd: tempDir.name,
-  //       only: "hosting,functions",
-  //     })
-  //   ).to.eventually.be.rejectedWith(FirebaseError, "Unable to find a valid endpoint for function");
-  // }).timeout(1000 * 1e3); // Deploying takes several steps.
-
-  // it("should fail when rewrite has no region specified for a function with multiple regions", async () => {
-  //   const firebaseJson = {
-  //     hosting: {
-  //       public: "hosting",
-  //       rewrites: [
-  //         {
-  //           source: "/helloWorld",
-  //           function: "helloWorld",
-  //         },
-  //       ],
-  //     },
-  //   };
-
-  //   const firebaseJsonFilePath = join(tempDir.name, ".", "firebase.json");
-  //   writeFileSync(firebaseJsonFilePath, JSON.stringify(firebaseJson));
-  //   ensureDirSync(hostingDirPath);
-  //   writeFileSync(
-  //     join(hostingDirPath, ".", "index.html"),
-  //     `< !DOCTYPE html >
-  // <html>
-  // <head>
-  // </head>
-  // < body >
-  // Rabbit
-  // < /body>
-  // < /html>`
-  //   );
-
-  //   writeHelloWorldFunctionWithRegions(join(tempDir.name, ".", "functions"), [
-  //     "asia-northeast1",
-  //     "europe-west1",
-  //   ]);
-
-  //   await expect(
-  //     client.deploy({
-  //       project: process.env.FBTOOLS_TARGET_PROJECT,
-  //       cwd: tempDir.name,
-  //       only: "hosting,functions",
-  //     })
-  //   ).to.eventually.be.rejectedWith(FirebaseError, "More than one backend found for function");
-  // }).timeout(1000 * 1e3); // Deploying takes several steps.
-
-  // it("should deploy with autodetected function region", async () => {
-  //   const firebaseJson = {
-  //     hosting: {
-  //       public: "hosting",
-  //       rewrites: [
-  //         {
-  //           source: "/helloWorld",
-  //           function: "helloWorld",
-  //         },
-  //       ],
-  //     },
-  //   };
-
-  //   const firebaseJsonFilePath = join(tempDir.name, ".", "firebase.json");
-  //   writeFileSync(firebaseJsonFilePath, JSON.stringify(firebaseJson));
-  //   ensureDirSync(hostingDirPath);
-  //   writeFileSync(
-  //     join(hostingDirPath, ".", "index.html"),
-  //     `< !DOCTYPE html >
-  // <html>
-  // <head>
-  // </head>
-  // < body >
-  // Rabbit
-  // < /body>
-  // < /html>`
-  //   );
-
-  //   writeHelloWorldFunctionWithRegions(join(tempDir.name, ".", "functions"), ["europe-west1"]);
-
-  //   await client.deploy({
-  //     project: process.env.FBTOOLS_TARGET_PROJECT,
-  //     cwd: tempDir.name,
-  //     only: "hosting,functions",
-  //   });
-
-  //   const staticResponse = await fetch(
-  //     `https://${process.env.FBTOOLS_TARGET_PROJECT}.web.app/index.html`
-  //   );
-  //   expect(await staticResponse.text()).to.contain("Rabbit");
-
-  //   const functionsRequest = new Request(
-  //     `https://${process.env.FBTOOLS_TARGET_PROJECT}.web.app/helloWorld`
-  //   );
-
-  //   functionsRequest.headers.set("Authorization", `Bearer ${accessToken}`);
-  //   const functionsResponse = await fetch(functionsRequest);
-
-  //   expect(await functionsResponse.text()).to.contain("Hello from Firebase");
-  // }).timeout(1000 * 1e3); // Deploying takes several steps.
-
-  // it("should deploy with autodetected function region when function region is changed", async () => {
-  //   const firebaseJson = {
-  //     hosting: {
-  //       public: "hosting",
-  //       rewrites: [
-  //         {
-  //           source: "/helloWorld",
-  //           function: "helloWorld",
-  //         },
-  //       ],
-  //     },
-  //   };
-
-  //   const firebaseJsonFilePath = join(tempDir.name, ".", "firebase.json");
-  //   writeFileSync(firebaseJsonFilePath, JSON.stringify(firebaseJson));
-  //   ensureDirSync(hostingDirPath);
-  //   writeFileSync(
-  //     join(hostingDirPath, ".", "index.html"),
-  //     `< !DOCTYPE html >
-  // <html>
-  // <head>
-  // </head>
-  // < body >
-  // Rabbit
-  // < /body>
-  // < /html>`
-  //   );
-
-  //   writeHelloWorldFunctionWithRegions(join(tempDir.name, ".", "functions"), ["europe-west1"]);
-
-  //   await client.deploy({
-  //     project: process.env.FBTOOLS_TARGET_PROJECT,
-  //     cwd: tempDir.name,
-  //     only: "hosting,functions",
-  //     force: true,
-  //   });
-
-  //   const staticResponse = await fetch(
-  //     `https://${process.env.FBTOOLS_TARGET_PROJECT}.web.app/index.html`
-  //   );
-  //   expect(await staticResponse.text()).to.contain("Rabbit");
-
-  //   const functionsRequest = new Request(
-  //     `https://${process.env.FBTOOLS_TARGET_PROJECT}.web.app/helloWorld`
-  //   );
-
-  //   functionsRequest.headers.set("Authorization", `Bearer ${accessToken}`);
-  //   const functionsResponse = await fetch(functionsRequest);
-
-  //   const responseText = await functionsResponse.text();
-  //   expect(responseText).to.contain("Hello from Firebase");
-  //   expect(responseText).to.contain("europe-west1");
-
-  //   writeHelloWorldFunctionWithRegions(join(tempDir.name, ".", "functions"), ["asia-northeast1"]);
-
-  //   await client.deploy({
-  //     project: process.env.FBTOOLS_TARGET_PROJECT,
-  //     cwd: tempDir.name,
-  //     only: "hosting,functions",
-  //     force: true,
-  //   });
-
-  //   const staticResponse2 = await fetch(
-  //     `https://${process.env.FBTOOLS_TARGET_PROJECT}.web.app/index.html`
-  //   );
-  //   expect(await staticResponse2.text()).to.contain("Rabbit");
-  //   const functionsResponse2 = await fetch(functionsRequest);
-  //   const responseText2 = await functionsResponse2.text();
-
-  //   expect(responseText2).to.contain("Hello from Firebase");
-  //   expect(responseText2).to.contain("asia-northeast1");
-  //   expect(responseText2).not.to.contain("europe-west1");
-  // }).timeout(1000 * 1e3); // Deploying takes several steps.
-
-  // it("should deploy with specified function region when function region is changed", async () => {
-  //   let firebaseJson = {
-  //     hosting: {
-  //       public: "hosting",
-  //       rewrites: [
-  //         {
-  //           source: "/helloWorld",
-  //           function: "helloWorld",
-  //           region: "europe-west1",
-  //         },
-  //       ],
-  //     },
-  //   };
-
-  //   const firebaseJsonFilePath = join(tempDir.name, ".", "firebase.json");
-  //   writeFileSync(firebaseJsonFilePath, JSON.stringify(firebaseJson));
-  //   ensureDirSync(hostingDirPath);
-  //   writeFileSync(
-  //     join(hostingDirPath, ".", "index.html"),
-  //     `< !DOCTYPE html >
-  // <html>
-  // <head>
-  // </head>
-  // < body >
-  // Rabbit
-  // < /body>
-  // < /html>`
-  //   );
-
-  //   writeHelloWorldFunctionWithRegions(join(tempDir.name, ".", "functions"), ["europe-west1"]);
-
-  //   const functionsRequest = new Request(
-  //     `https://${process.env.FBTOOLS_TARGET_PROJECT}.web.app/helloWorld`
-  //   );
-
-  //   {
-  //     await client.deploy({
-  //       project: process.env.FBTOOLS_TARGET_PROJECT,
-  //       cwd: tempDir.name,
-  //       only: "hosting,functions",
-  //     });
-
-  //     const staticResponse = await fetch(
-  //       `https://${process.env.FBTOOLS_TARGET_PROJECT}.web.app/index.html`
-  //     );
-  //     expect(await staticResponse.text()).to.contain("Rabbit");
-
-
-  //     functionsRequest.headers.set("Authorization", `Bearer ${accessToken}`);
-  //     const functionsResponse = await fetch(functionsRequest);
-
-  //     const responseText = await functionsResponse.text();
-  //     expect(responseText).to.contain("Hello from Firebase");
-  //     expect(responseText).to.contain("europe-west1");
-  //   }
-
-  //   // Change function region in both firebase.json and function definition.
-  //   firebaseJson = {
-  //     hosting: {
-  //       public: "hosting",
-  //       rewrites: [
-  //         {
-  //           source: "/helloWorld",
-  //           function: "helloWorld",
-  //           region: "asia-northeast1",
-  //         },
-  //       ],
-  //     },
-  //   };
-  //   writeFileSync(firebaseJsonFilePath, JSON.stringify(firebaseJson));
-  //   writeHelloWorldFunctionWithRegions(join(tempDir.name, ".", "functions"), ["asia-northeast1"]);
-
-  //   {
-  //     await client.deploy({
-  //       project: process.env.FBTOOLS_TARGET_PROJECT,
-  //       cwd: tempDir.name,
-  //       only: "hosting,functions",
-  //       force: true,
-  //     });
-
-  //     const staticResponse = await fetch(
-  //       `https://${process.env.FBTOOLS_TARGET_PROJECT}.web.app/index.html`
-  //     );
-  //     expect(await staticResponse.text()).to.contain("Rabbit");
-  //     const functionsResponse = await fetch(functionsRequest);
-  //     const responseText = await functionsResponse.text();
-
-  //     expect(responseText).to.contain("Hello from Firebase");
-  //     expect(responseText).to.contain("asia-northeast1");
-  //     expect(responseText).not.to.contain("europe-west1");
-  //   }
-  // }).timeout(1000 * 1e3); // Deploying takes several steps.
-
-  // it("should fail to deploy when rewrite function region changes and functions region doesn't", async () => {
-  //   let firebaseJson = {
-  //     hosting: {
-  //       public: "hosting",
-  //       rewrites: [
-  //         {
-  //           source: "/helloWorld",
-  //           function: "helloWorld",
-  //           region: "europe-west1",
-  //         },
-  //       ],
-  //     },
-  //   };
-
-  //   const firebaseJsonFilePath = join(tempDir.name, ".", "firebase.json");
-  //   writeFileSync(firebaseJsonFilePath, JSON.stringify(firebaseJson));
-  //   ensureDirSync(hostingDirPath);
-  //   writeFileSync(
-  //     join(hostingDirPath, ".", "index.html"),
-  //     `< !DOCTYPE html >
-  // <html>
-  // <head>
-  // </head>
-  // < body >
-  // Rabbit
-  // < /body>
-  // < /html>`
-  //   );
-
-  //   writeHelloWorldFunctionWithRegions(join(tempDir.name, ".", "functions"), ["europe-west1"]);
-
-  //   const functionsRequest = new Request(
-  //     `https://${process.env.FBTOOLS_TARGET_PROJECT}.web.app/helloWorld`
-  //   );
-
-  //   {
-  //     await client.deploy({
-  //       project: process.env.FBTOOLS_TARGET_PROJECT,
-  //       cwd: tempDir.name,
-  //       only: "hosting,functions",
-  //       force: true,
-  //     });
-
-  //     const staticResponse = await fetch(
-  //       `https://${process.env.FBTOOLS_TARGET_PROJECT}.web.app/index.html`
-  //     );
-  //     expect(await staticResponse.text()).to.contain("Rabbit");
-
-
-  //     functionsRequest.headers.set("Authorization", `Bearer ${accessToken}`);
-  //     const functionsResponse = await fetch(functionsRequest);
-
-  //     const responseText = await functionsResponse.text();
-  //     expect(responseText).to.contain("Hello from Firebase");
-  //     expect(responseText).to.contain("europe-west1");
-  //   }
-
-  //   // Change function region in both firebase.json and function definition.
-  //   firebaseJson = {
-  //     hosting: {
-  //       public: "hosting",
-  //       rewrites: [
-  //         {
-  //           source: "/helloWorld",
-  //           function: "helloWorld",
-  //           region: "asia-northeast1",
-  //         },
-  //       ],
-  //     },
-  //   };
-  //   writeFileSync(firebaseJsonFilePath, JSON.stringify(firebaseJson));
-  //   {
-  //     await expect(
-  //       client.deploy({
-  //         project: process.env.FBTOOLS_TARGET_PROJECT,
-  //         cwd: tempDir.name,
-  //         only: "hosting",
-  //         force: true,
-  //       })
-  //     ).to.eventually.be.rejectedWith(FirebaseError);
-  //   }
-  // }).timeout(1000 * 1e3); // Deploying takes several steps.
-
-  // it("should fail to deploy when target function doesn't exist", async () => {
-  //   const firebaseJson = {
-  //     hosting: {
-  //       public: "hosting",
-  //       rewrites: [
-  //         {
-  //           source: "/helloWorld",
-  //           function: "helloWorld",
-  //           region: "europe-west1",
-  //         },
-  //       ],
-  //     },
-  //   };
-
-  //   const firebaseJsonFilePath = join(tempDir.name, ".", "firebase.json");
-  //   writeFileSync(firebaseJsonFilePath, JSON.stringify(firebaseJson));
-  //   ensureDirSync(hostingDirPath);
-  //   writeFileSync(
-  //     join(hostingDirPath, ".", "index.html"),
-  //     `< !DOCTYPE html >
-  // <html>
-  // <head>
-  // </head>
-  // < body >
-  // Rabbit
-  // < /body>
-  // < /html>`
-  //   );
-  //   await expect(
-  //     client.deploy({
-  //       project: process.env.FBTOOLS_TARGET_PROJECT,
-  //       cwd: tempDir.name,
-  //       only: "hosting",
-  //       force: true,
-  //     })
-  //   ).to.eventually.be.rejectedWith(FirebaseError);
-  // }).timeout(1000 * 1e3); // Deploying takes several steps.
-
-  // it("should deploy when target function exists in prod but code isn't available", async () => {
-  //   const firebaseJson = {
-  //     hosting: {
-  //       public: "hosting",
-  //       rewrites: [
-  //         {
-  //           source: "/helloWorld",
-  //           function: "helloWorld",
-  //         },
-  //       ],
-  //     },
-  //   };
-
-  //   const firebaseJsonFilePath = join(tempDir.name, ".", "firebase.json");
-  //   writeFileSync(firebaseJsonFilePath, JSON.stringify(firebaseJson));
-  //   ensureDirSync(hostingDirPath);
-  //   writeFileSync(
-  //     join(hostingDirPath, ".", "index.html"),
-  //     `< !DOCTYPE html >
-  //   <html>
-  //   <head>
-  //   </head>
-  //   < body >
-  //   Rabbit
-  //   < /body>
-  //   < /html>`
-  //   );
-
-  //   writeHelloWorldFunctionWithRegions(join(tempDir.name, ".", "functions"));
-
-  //   await client.deploy({
-  //     project: process.env.FBTOOLS_TARGET_PROJECT,
-  //     cwd: tempDir.name,
-  //     only: "hosting,functions",
-  //   });
-
-  //   const staticResponse = await fetch(
-  //     `https://${process.env.FBTOOLS_TARGET_PROJECT}.web.app/index.html`
-  //   );
-
-  //   expect(await staticResponse.text()).to.contain("Rabbit");
-  //   {
-  //     const functionsRequest = new Request(
-  //       `https://${process.env.FBTOOLS_TARGET_PROJECT}.web.app/helloWorld`
-  //     );
-
-  //     functionsRequest.headers.set("Authorization", `Bearer ${accessToken}`);
-  //     const functionsResponse = await fetch(functionsRequest);
-
-  //     expect(await functionsResponse.text()).to.contain("Hello from Firebase");
-  //   }
-
-  //   emptyDirSync(join(tempDir.name, ".", "functions"));
-  //   await client.deploy({
-  //     project: process.env.FBTOOLS_TARGET_PROJECT,
-  //     cwd: tempDir.name,
-  //     only: "hosting", // Including functions here will prompt for deletion.
-  //     // Forcing the prompt will delete the function.
-  //   });
-
-  //   {
-  //     const functionsRequest = new Request(
-  //       `https://${process.env.FBTOOLS_TARGET_PROJECT}.web.app/helloWorld`
-  //     );
-
-  //     functionsRequest.headers.set("Authorization", `Bearer ${accessToken}`);
-  //     const functionsResponse = await fetch(functionsRequest);
-
-  //     expect(await functionsResponse.text()).to.contain("Hello from Firebase");
-  //   }
-  // }).timeout(1000 * 1e3); // Deploying takes several steps.
-
-  it("should fail to deploy when target function exists in prod, code isn't available, and rewrite region is specified incorrectly", async () => {
-    writeHelloWorldFunctionWithRegions(join(tempDir.name, ".", "functions"), ["asia-northeast1"]);
+  it("should deploy with default function region", async () => {
+    const firebaseJson = {
+      hosting: {
+        public: "hosting",
+        rewrites: [
+          {
+            source: "/helloWorld",
+            function: "helloWorld",
+          },
+        ],
+      },
+    };
+
+    const firebaseJsonFilePath = join(tempDirInfo.tempDir.name, ".", "firebase.json");
+    writeFileSync(firebaseJsonFilePath, JSON.stringify(firebaseJson));
+    ensureDirSync(tempDirInfo.hostingDirPath);
+    writeBasicHostingFile(tempDirInfo.hostingDirPath);
+
+    writeHelloWorldFunctionWithRegions(join(tempDirInfo.tempDir.name, ".", "functions"));
 
     await client.deploy({
       project: process.env.FBTOOLS_TARGET_PROJECT,
-      cwd: tempDir.name,
+      cwd: tempDirInfo.tempDir.name,
+      only: "hosting,functions",
+      force: true,
+    });
+
+    const staticResponse = await fetch(
+      `https://${process.env.FBTOOLS_TARGET_PROJECT}.web.app/index.html`
+    );
+    expect(await staticResponse.text()).to.contain("Rabbit");
+
+    const functionsRequest = new Request(
+      `https://${process.env.FBTOOLS_TARGET_PROJECT}.web.app/helloWorld`
+    );
+
+    const functionsResponse = await fetch(functionsRequest);
+
+    expect(await functionsResponse.text()).to.contain("Hello from Firebase");
+  }).timeout(1000 * 1e3);
+
+  it("should deploy with default function region explicitly specified in rewrite", async () => {
+    const firebaseJson = {
+      hosting: {
+        public: "hosting",
+        rewrites: [
+          {
+            source: "/helloWorld",
+            function: "helloWorld",
+            region: "us-central1",
+          },
+        ],
+      },
+    };
+
+    const firebaseJsonFilePath = join(tempDirInfo.tempDir.name, ".", "firebase.json");
+    writeFileSync(firebaseJsonFilePath, JSON.stringify(firebaseJson));
+    ensureDirSync(tempDirInfo.hostingDirPath);
+    writeBasicHostingFile(tempDirInfo.hostingDirPath);
+
+    writeHelloWorldFunctionWithRegions(join(tempDirInfo.tempDir.name, ".", "functions"));
+
+    await client.deploy({
+      project: process.env.FBTOOLS_TARGET_PROJECT,
+      cwd: tempDirInfo.tempDir.name,
+      only: "hosting,functions",
+      force: true,
+    });
+
+    const staticResponse = await fetch(
+      `https://${process.env.FBTOOLS_TARGET_PROJECT}.web.app/index.html`
+    );
+    expect(await staticResponse.text()).to.contain("Rabbit");
+
+    const functionsRequest = new Request(
+      `https://${process.env.FBTOOLS_TARGET_PROJECT}.web.app/helloWorld`
+    );
+
+    const functionsResponse = await fetch(functionsRequest);
+
+    expect(await functionsResponse.text()).to.contain("Hello from Firebase");
+  }).timeout(1000 * 1e3);
+
+  it("should deploy with autodetected (not us-central1) function region", async () => {
+    const firebaseJson = {
+      hosting: {
+        public: "hosting",
+        rewrites: [
+          {
+            source: "/helloWorld",
+            function: "helloWorld",
+          },
+        ],
+      },
+    };
+
+    const firebaseJsonFilePath = join(tempDirInfo.tempDir.name, ".", "firebase.json");
+    writeFileSync(firebaseJsonFilePath, JSON.stringify(firebaseJson));
+    ensureDirSync(tempDirInfo.hostingDirPath);
+    writeBasicHostingFile(tempDirInfo.hostingDirPath);
+
+    writeHelloWorldFunctionWithRegions(join(tempDirInfo.tempDir.name, ".", "functions"), [
+      "europe-west1",
+    ]);
+
+    await client.deploy({
+      project: process.env.FBTOOLS_TARGET_PROJECT,
+      cwd: tempDirInfo.tempDir.name,
+      only: "hosting,functions",
+      force: true,
+    });
+
+    const staticResponse = await fetch(
+      `https://${process.env.FBTOOLS_TARGET_PROJECT}.web.app/index.html`
+    );
+    expect(await staticResponse.text()).to.contain("Rabbit");
+
+    const functionsRequest = new Request(
+      `https://${process.env.FBTOOLS_TARGET_PROJECT}.web.app/helloWorld`
+    );
+
+    const functionsResponse = await fetch(functionsRequest);
+
+    expect(await functionsResponse.text()).to.contain("Hello from Firebase");
+  }).timeout(1000 * 1e3);
+
+  it("should deploy rewrites and functions with function region specified in both", async () => {
+    const firebaseJson = {
+      hosting: {
+        public: "hosting",
+        rewrites: [
+          {
+            source: "/helloWorld",
+            function: "helloWorld",
+            region: "asia-northeast1",
+          },
+        ],
+      },
+    };
+
+    const firebaseJsonFilePath = join(tempDirInfo.tempDir.name, ".", "firebase.json");
+    writeFileSync(firebaseJsonFilePath, JSON.stringify(firebaseJson));
+    ensureDirSync(tempDirInfo.hostingDirPath);
+    writeBasicHostingFile(tempDirInfo.hostingDirPath);
+
+    writeHelloWorldFunctionWithRegions(join(tempDirInfo.tempDir.name, ".", "functions"), [
+      "asia-northeast1",
+    ]);
+
+    await client.deploy({
+      project: process.env.FBTOOLS_TARGET_PROJECT,
+      cwd: tempDirInfo.tempDir.name,
+      only: "hosting,functions",
+      force: true,
+    });
+
+    const staticResponse = await fetch(
+      `https://${process.env.FBTOOLS_TARGET_PROJECT}.web.app/index.html`
+    );
+    expect(await staticResponse.text()).to.contain("Rabbit");
+
+    const functionsRequest = new Request(
+      `https://${process.env.FBTOOLS_TARGET_PROJECT}.web.app/helloWorld`
+    );
+
+    const functionsResponse = await fetch(functionsRequest);
+
+    expect(await functionsResponse.text()).to.contain("Hello from Firebase");
+  }).timeout(1000 * 1e3);
+
+  it("should fail to deploy rewrites with the wrong function region", async () => {
+    const firebaseJson = {
+      hosting: {
+        public: "hosting",
+        rewrites: [
+          {
+            source: "/helloWorld",
+            function: "helloWorld",
+            region: "asia-northeast1",
+          },
+        ],
+      },
+    };
+
+    const firebaseJsonFilePath = join(tempDirInfo.tempDir.name, ".", "firebase.json");
+    writeFileSync(firebaseJsonFilePath, JSON.stringify(firebaseJson));
+    ensureDirSync(tempDirInfo.hostingDirPath);
+    writeBasicHostingFile(tempDirInfo.hostingDirPath);
+
+    writeHelloWorldFunctionWithRegions(join(tempDirInfo.tempDir.name, ".", "functions"), [
+      "europe-west2",
+    ]);
+
+    await expect(
+      client.deploy({
+        project: process.env.FBTOOLS_TARGET_PROJECT,
+        cwd: tempDirInfo.tempDir.name,
+        only: "hosting,functions",
+        force: true,
+      })
+    ).to.eventually.be.rejectedWith(FirebaseError, "Unable to find a valid endpoint for function");
+  }).timeout(1000 * 1e3);
+
+  it("should fail to deploy when a rewrite points to a non-existent function", async () => {
+    const firebaseJson = {
+      hosting: {
+        public: "hosting",
+        rewrites: [
+          {
+            source: "/helloWorld",
+            function: "helloWorld",
+          },
+        ],
+      },
+    };
+
+    const firebaseJsonFilePath = join(tempDirInfo.tempDir.name, ".", "firebase.json");
+    writeFileSync(firebaseJsonFilePath, JSON.stringify(firebaseJson));
+    ensureDirSync(tempDirInfo.hostingDirPath);
+    writeBasicHostingFile(tempDirInfo.hostingDirPath);
+
+    await expect(
+      client.deploy({
+        project: process.env.FBTOOLS_TARGET_PROJECT,
+        cwd: tempDirInfo.tempDir.name,
+        only: "hosting,functions",
+        force: true,
+      })
+    ).to.eventually.be.rejectedWith(FirebaseError, "Unable to find a valid endpoint for function");
+  }).timeout(1000 * 1e3);
+
+  it("should rewrite using a specified function region for a function with multiple regions", async () => {
+    const firebaseJson = {
+      hosting: {
+        public: "hosting",
+        rewrites: [
+          {
+            source: "/helloWorld",
+            function: "helloWorld",
+            region: "asia-northeast1",
+          },
+        ],
+      },
+    };
+
+    const firebaseJsonFilePath = join(tempDirInfo.tempDir.name, ".", "firebase.json");
+    writeFileSync(firebaseJsonFilePath, JSON.stringify(firebaseJson));
+    ensureDirSync(tempDirInfo.hostingDirPath);
+    writeBasicHostingFile(tempDirInfo.hostingDirPath);
+
+    writeHelloWorldFunctionWithRegions(join(tempDirInfo.tempDir.name, ".", "functions"), [
+      "asia-northeast1",
+      "europe-west1",
+    ]);
+
+    await client.deploy({
+      project: process.env.FBTOOLS_TARGET_PROJECT,
+      cwd: tempDirInfo.tempDir.name,
+      only: "hosting,functions",
+      force: true,
+    });
+
+    const staticResponse = await fetch(
+      `https://${process.env.FBTOOLS_TARGET_PROJECT}.web.app/index.html`
+    );
+    expect(await staticResponse.text()).to.contain("Rabbit");
+
+    const functionsRequest = new Request(
+      `https://${process.env.FBTOOLS_TARGET_PROJECT}.web.app/helloWorld`
+    );
+
+    const functionsResponse = await fetch(functionsRequest);
+
+    expect(await functionsResponse.text()).to.contain("Hello from Firebase");
+  }).timeout(1000 * 1e3);
+
+  it("should fail when rewrite points to an invalid region for a function with multiple regions", async () => {
+    const firebaseJson = {
+      hosting: {
+        public: "hosting",
+        rewrites: [
+          {
+            source: "/helloWorld",
+            function: "helloWorld",
+            region: "us-east1",
+          },
+        ],
+      },
+    };
+
+    const firebaseJsonFilePath = join(tempDirInfo.tempDir.name, ".", "firebase.json");
+    writeFileSync(firebaseJsonFilePath, JSON.stringify(firebaseJson));
+    ensureDirSync(tempDirInfo.hostingDirPath);
+    writeBasicHostingFile(tempDirInfo.hostingDirPath);
+
+    writeHelloWorldFunctionWithRegions(join(tempDirInfo.tempDir.name, ".", "functions"), [
+      "asia-northeast1",
+      "europe-west1",
+    ]);
+
+    await expect(
+      client.deploy({
+        project: process.env.FBTOOLS_TARGET_PROJECT,
+        cwd: tempDirInfo.tempDir.name,
+        only: "hosting,functions",
+      })
+    ).to.eventually.be.rejectedWith(FirebaseError, "Unable to find a valid endpoint for function");
+  }).timeout(1000 * 1e3);
+
+  it("should fail when rewrite has no region specified for a function with multiple regions", async () => {
+    const firebaseJson = {
+      hosting: {
+        public: "hosting",
+        rewrites: [
+          {
+            source: "/helloWorld",
+            function: "helloWorld",
+          },
+        ],
+      },
+    };
+
+    const firebaseJsonFilePath = join(tempDirInfo.tempDir.name, ".", "firebase.json");
+    writeFileSync(firebaseJsonFilePath, JSON.stringify(firebaseJson));
+    ensureDirSync(tempDirInfo.hostingDirPath);
+    writeBasicHostingFile(tempDirInfo.hostingDirPath);
+
+    writeHelloWorldFunctionWithRegions(join(tempDirInfo.tempDir.name, ".", "functions"), [
+      "asia-northeast1",
+      "europe-west1",
+    ]);
+
+    await expect(
+      client.deploy({
+        project: process.env.FBTOOLS_TARGET_PROJECT,
+        cwd: tempDirInfo.tempDir.name,
+        only: "hosting,functions",
+        force: true,
+      })
+    ).to.eventually.be.rejectedWith(FirebaseError, "More than one backend found for function");
+  }).timeout(1000 * 1e3);
+
+  it("should deploy with autodetected function region when function region is changed", async () => {
+    const firebaseJson = {
+      hosting: {
+        public: "hosting",
+        rewrites: [
+          {
+            source: "/helloWorld",
+            function: "helloWorld",
+          },
+        ],
+      },
+    };
+
+    const firebaseJsonFilePath = join(tempDirInfo.tempDir.name, ".", "firebase.json");
+    writeFileSync(firebaseJsonFilePath, JSON.stringify(firebaseJson));
+    ensureDirSync(tempDirInfo.hostingDirPath);
+    writeBasicHostingFile(tempDirInfo.hostingDirPath);
+
+    writeHelloWorldFunctionWithRegions(join(tempDirInfo.tempDir.name, ".", "functions"), [
+      "europe-west1",
+    ]);
+
+    await client.deploy({
+      project: process.env.FBTOOLS_TARGET_PROJECT,
+      cwd: tempDirInfo.tempDir.name,
+      only: "hosting,functions",
+      force: true,
+    });
+
+    const staticResponse = await fetch(
+      `https://${process.env.FBTOOLS_TARGET_PROJECT}.web.app/index.html`
+    );
+    expect(await staticResponse.text()).to.contain("Rabbit");
+
+    const functionsRequest = new Request(
+      `https://${process.env.FBTOOLS_TARGET_PROJECT}.web.app/helloWorld`
+    );
+
+    const functionsResponse = await fetch(functionsRequest);
+    const responseText = await functionsResponse.text();
+    expect(responseText).to.contain("Hello from Firebase");
+    expect(responseText).to.contain("europe-west1");
+
+    writeHelloWorldFunctionWithRegions(join(tempDirInfo.tempDir.name, ".", "functions"), [
+      "asia-northeast1",
+    ]);
+
+    await client.deploy({
+      project: process.env.FBTOOLS_TARGET_PROJECT,
+      cwd: tempDirInfo.tempDir.name,
+      only: "hosting,functions",
+      force: true,
+    });
+
+    const staticResponse2 = await fetch(
+      `https://${process.env.FBTOOLS_TARGET_PROJECT}.web.app/index.html`
+    );
+    expect(await staticResponse2.text()).to.contain("Rabbit");
+    const functionsResponse2 = await fetch(functionsRequest);
+    const responseText2 = await functionsResponse2.text();
+
+    expect(responseText2).to.contain("Hello from Firebase");
+    expect(responseText2).to.contain("asia-northeast1");
+    expect(responseText2).not.to.contain("europe-west1");
+  }).timeout(1000 * 1e3);
+
+  it("should deploy with specified function region when function region is changed", async () => {
+    let firebaseJson = {
+      hosting: {
+        public: "hosting",
+        rewrites: [
+          {
+            source: "/helloWorld",
+            function: "helloWorld",
+            region: "europe-west1",
+          },
+        ],
+      },
+    };
+
+    const firebaseJsonFilePath = join(tempDirInfo.tempDir.name, ".", "firebase.json");
+    writeFileSync(firebaseJsonFilePath, JSON.stringify(firebaseJson));
+    ensureDirSync(tempDirInfo.hostingDirPath);
+    writeBasicHostingFile(tempDirInfo.hostingDirPath);
+
+    writeHelloWorldFunctionWithRegions(join(tempDirInfo.tempDir.name, ".", "functions"), [
+      "europe-west1",
+    ]);
+
+    const functionsRequest = new Request(
+      `https://${process.env.FBTOOLS_TARGET_PROJECT}.web.app/helloWorld`
+    );
+
+    {
+      await client.deploy({
+        project: process.env.FBTOOLS_TARGET_PROJECT,
+        cwd: tempDirInfo.tempDir.name,
+        only: "hosting,functions",
+      });
+
+      const staticResponse = await fetch(
+        `https://${process.env.FBTOOLS_TARGET_PROJECT}.web.app/index.html`
+      );
+      expect(await staticResponse.text()).to.contain("Rabbit");
+
+      const functionsResponse = await fetch(functionsRequest);
+
+      const responseText = await functionsResponse.text();
+      expect(responseText).to.contain("Hello from Firebase");
+      expect(responseText).to.contain("europe-west1");
+    }
+
+    // Change function region in both firebase.json and function definition.
+    firebaseJson = {
+      hosting: {
+        public: "hosting",
+        rewrites: [
+          {
+            source: "/helloWorld",
+            function: "helloWorld",
+            region: "asia-northeast1",
+          },
+        ],
+      },
+    };
+    writeFileSync(firebaseJsonFilePath, JSON.stringify(firebaseJson));
+    writeHelloWorldFunctionWithRegions(join(tempDirInfo.tempDir.name, ".", "functions"), [
+      "asia-northeast1",
+    ]);
+
+    {
+      await client.deploy({
+        project: process.env.FBTOOLS_TARGET_PROJECT,
+        cwd: tempDirInfo.tempDir.name,
+        only: "hosting,functions",
+        force: true,
+      });
+
+      const staticResponse = await fetch(
+        `https://${process.env.FBTOOLS_TARGET_PROJECT}.web.app/index.html`
+      );
+      expect(await staticResponse.text()).to.contain("Rabbit");
+      const functionsResponse = await fetch(functionsRequest);
+      const responseText = await functionsResponse.text();
+
+      expect(responseText).to.contain("Hello from Firebase");
+      expect(responseText).to.contain("asia-northeast1");
+      expect(responseText).not.to.contain("europe-west1");
+    }
+  }).timeout(1000 * 1e3);
+
+  it("should fail to deploy when rewrite function region changes and actual function region doesn't", async () => {
+    let firebaseJson = {
+      hosting: {
+        public: "hosting",
+        rewrites: [
+          {
+            source: "/helloWorld",
+            function: "helloWorld",
+            region: "europe-west1",
+          },
+        ],
+      },
+    };
+
+    const firebaseJsonFilePath = join(tempDirInfo.tempDir.name, ".", "firebase.json");
+    writeFileSync(firebaseJsonFilePath, JSON.stringify(firebaseJson));
+    ensureDirSync(tempDirInfo.hostingDirPath);
+    writeBasicHostingFile(tempDirInfo.hostingDirPath);
+
+    writeHelloWorldFunctionWithRegions(join(tempDirInfo.tempDir.name, ".", "functions"), [
+      "europe-west1",
+    ]);
+
+    const functionsRequest = new Request(
+      `https://${process.env.FBTOOLS_TARGET_PROJECT}.web.app/helloWorld`
+    );
+
+    {
+      await client.deploy({
+        project: process.env.FBTOOLS_TARGET_PROJECT,
+        cwd: tempDirInfo.tempDir.name,
+        only: "hosting,functions",
+        force: true,
+      });
+
+      const staticResponse = await fetch(
+        `https://${process.env.FBTOOLS_TARGET_PROJECT}.web.app/index.html`
+      );
+      expect(await staticResponse.text()).to.contain("Rabbit");
+
+      const functionsResponse = await fetch(functionsRequest);
+
+      const responseText = await functionsResponse.text();
+      expect(responseText).to.contain("Hello from Firebase");
+      expect(responseText).to.contain("europe-west1");
+    }
+
+    // Change function region in both firebase.json.
+    firebaseJson = {
+      hosting: {
+        public: "hosting",
+        rewrites: [
+          {
+            source: "/helloWorld",
+            function: "helloWorld",
+            region: "asia-northeast1",
+          },
+        ],
+      },
+    };
+    writeFileSync(firebaseJsonFilePath, JSON.stringify(firebaseJson));
+    {
+      await expect(
+        client.deploy({
+          project: process.env.FBTOOLS_TARGET_PROJECT,
+          cwd: tempDirInfo.tempDir.name,
+          only: "hosting",
+          force: true,
+        })
+      ).to.eventually.be.rejectedWith(FirebaseError);
+    }
+  }).timeout(1000 * 1e3);
+
+  it("should fail to deploy when target function doesn't exist in specified region and isn't being deployed to that region", async () => {
+    const firebaseJsonFilePath = join(tempDirInfo.tempDir.name, ".", "firebase.json");
+    writeFileSync(firebaseJsonFilePath, "{}");
+
+    writeHelloWorldFunctionWithRegions(join(tempDirInfo.tempDir.name, ".", "functions"), [
+      "europe-west1",
+    ]);
+
+    client.deploy({
+      project: process.env.FBTOOLS_TARGET_PROJECT,
+      cwd: tempDirInfo.tempDir.name,
       only: "functions",
+      force: true,
+    });
+
+    const firebaseJson = {
+      hosting: {
+        public: "hosting",
+        rewrites: [
+          {
+            source: "/helloWorld",
+            function: "helloWorld",
+            region: "asia-northeast1",
+          },
+        ],
+      },
+    };
+    writeFileSync(firebaseJsonFilePath, JSON.stringify(firebaseJson));
+    ensureDirSync(tempDirInfo.hostingDirPath);
+    writeBasicHostingFile(tempDirInfo.hostingDirPath);
+
+    await expect(
+      client.deploy({
+        project: process.env.FBTOOLS_TARGET_PROJECT,
+        cwd: tempDirInfo.tempDir.name,
+        only: "hosting",
+        force: true,
+      })
+    ).to.eventually.be.rejectedWith(FirebaseError);
+  }).timeout(1000 * 1e3);
+
+  it("should deploy when target function exists in prod but code isn't available", async () => {
+    const firebaseJsonFilePath = join(tempDirInfo.tempDir.name, ".", "firebase.json");
+    writeFileSync(firebaseJsonFilePath, "{}");
+    writeHelloWorldFunctionWithRegions(join(tempDirInfo.tempDir.name, ".", "functions"));
+
+    await client.deploy({
+      project: process.env.FBTOOLS_TARGET_PROJECT,
+      cwd: tempDirInfo.tempDir.name,
+      only: "functions",
+      force: true,
+    });
+
+    emptyDirSync(join(tempDirInfo.tempDir.name, ".", "functions"));
+    ensureDirSync(tempDirInfo.hostingDirPath);
+
+    const firebaseJson = {
+      hosting: {
+        public: "hosting",
+        rewrites: [
+          {
+            source: "/helloWorld",
+            function: "helloWorld",
+          },
+        ],
+      },
+    };
+
+    writeFileSync(firebaseJsonFilePath, JSON.stringify(firebaseJson));
+    emptyDirSync(join(tempDirInfo.tempDir.name, ".", "functions"));
+    await client.deploy({
+      project: process.env.FBTOOLS_TARGET_PROJECT,
+      cwd: tempDirInfo.tempDir.name,
+      only: "hosting", // Including functions here will prompt for deletion.
+      // Forcing the prompt will delete the function.
+    });
+
+    const functionsRequest = new Request(
+      `https://${process.env.FBTOOLS_TARGET_PROJECT}.web.app/helloWorld`
+    );
+
+    const functionsResponse = await fetch(functionsRequest);
+    expect(await functionsResponse.text()).to.contain("Hello from Firebase");
+  }).timeout(1000 * 1e3);
+
+  it("should fail to deploy when target function exists in prod, code isn't available, and rewrite region is specified incorrectly", async () => {
+    const firebaseJsonFilePath = join(tempDirInfo.tempDir.name, ".", "firebase.json");
+    writeHelloWorldFunctionWithRegions(join(tempDirInfo.tempDir.name, ".", "functions"), [
+      "asia-northeast1",
+    ]);
+    writeFileSync(firebaseJsonFilePath, "{}");
+
+    await client.deploy({
+      project: process.env.FBTOOLS_TARGET_PROJECT,
+      cwd: tempDirInfo.tempDir.name,
+      only: "functions",
+      force: true,
     });
 
     const firebaseJson = {
@@ -991,61 +805,63 @@ describe("deployHostingAndFunctions", () => {
       },
     };
 
-    const firebaseJsonFilePath = join(tempDir.name, ".", "firebase.json");
+    emptyDirSync(join(tempDirInfo.tempDir.name, ".", "functions"));
     writeFileSync(firebaseJsonFilePath, JSON.stringify(firebaseJson));
+    ensureDirSync(tempDirInfo.hostingDirPath);
 
-    emptyDirSync(join(tempDir.name, ".", "functions"));
     await expect(
       client.deploy({
         project: process.env.FBTOOLS_TARGET_PROJECT,
-        cwd: tempDir.name,
+        cwd: tempDirInfo.tempDir.name,
         only: "hosting", // Including functions here will prompt for deletion.
         // Forcing the prompt will delete the function.
       })
     ).to.eventually.be.rejectedWith(FirebaseError);
-  }).timeout(1000 * 1e3); // Deploying takes several steps.
+  }).timeout(1000 * 1e3);
 
-  // it("should deploy when target function exists in prod, codebase isn't available, and region matches", async () => {
-  //   const firebaseJson = {
-  //     hosting: {
-  //       public: "hosting",
-  //       rewrites: [
-  //         {
-  //           source: "/helloWorld",
-  //           function: "helloWorld",
-  //           region: "asia-northeast1",
-  //         },
-  //       ],
-  //     },
-  //   };
+  it("should deploy when target function exists in prod, codebase isn't available, and region matches", async () => {
+    const firebaseJsonFilePath = join(tempDirInfo.tempDir.name, ".", "firebase.json");
+    writeFileSync(firebaseJsonFilePath, "{}");
+    writeHelloWorldFunctionWithRegions(join(tempDirInfo.tempDir.name, ".", "functions"), [
+      "asia-northeast1",
+    ]);
 
-  //   const firebaseJsonFilePath = join(tempDir.name, ".", "firebase.json");
-  //   writeFileSync(firebaseJsonFilePath, JSON.stringify(firebaseJson));
-  //   writeHelloWorldFunctionWithRegions(join(tempDir.name, ".", "functions"), ["asia-northeast1"]);
+    await client.deploy({
+      project: process.env.FBTOOLS_TARGET_PROJECT,
+      cwd: tempDirInfo.tempDir.name,
+      only: "functions",
+      force: true,
+    });
 
-  //   await client.deploy({
-  //     project: process.env.FBTOOLS_TARGET_PROJECT,
-  //     cwd: tempDir.name,
-  //     only: "functions",
-  //   });
+    emptyDirSync(join(tempDirInfo.tempDir.name, ".", "functions"));
+    const firebaseJson = {
+      hosting: {
+        public: "hosting",
+        rewrites: [
+          {
+            source: "/helloWorld",
+            function: "helloWorld",
+            region: "asia-northeast1",
+          },
+        ],
+      },
+    };
+    writeFileSync(firebaseJsonFilePath, JSON.stringify(firebaseJson));
+    ensureDirSync(tempDirInfo.hostingDirPath);
+    await client.deploy({
+      project: process.env.FBTOOLS_TARGET_PROJECT,
+      cwd: tempDirInfo.tempDir.name,
+      only: "hosting", // Including functions here will prompt for deletion.
+      // Forcing the prompt will delete the function.
+    });
 
-  //   emptyDirSync(join(tempDir.name, ".", "functions"));
-  //   await client.deploy({
-  //     project: process.env.FBTOOLS_TARGET_PROJECT,
-  //     cwd: tempDir.name,
-  //     only: "hosting", // Including functions here will prompt for deletion.
-  //     // Forcing the prompt will delete the function.
-  //   });
+    {
+      const functionsRequest = new Request(
+        `https://${process.env.FBTOOLS_TARGET_PROJECT}.web.app/helloWorld`
+      );
 
-  //   {
-  //     const functionsRequest = new Request(
-  //       `https://${process.env.FBTOOLS_TARGET_PROJECT}.web.app/helloWorld`
-  //     );
-
-  //     functionsRequest.headers.set("Authorization", `Bearer ${accessToken}`);
-  //     const functionsResponse = await fetch(functionsRequest);
-
-  //     expect(await functionsResponse.text()).to.contain("Hello from Firebase");
-  //   }
-  // }).timeout(1000 * 1e3); // Deploying takes several steps.
+      const functionsResponse = await fetch(functionsRequest);
+      expect(await functionsResponse.text()).to.contain("Hello from Firebase");
+    }
+  }).timeout(1000 * 1e3);
 }).timeout(1000 * 1e3);

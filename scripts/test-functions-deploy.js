@@ -27,7 +27,7 @@ var clc = require("cli-color");
 var firebase = require("firebase");
 
 var functionsSource = __dirname + "/assets/functions_to_test.js";
-var projectDir = __dirname + "/test-projects/test-project-1";
+var projectDir = __dirname + "/test-project";
 var projectId = process.argv[2] || "functions-integration-test";
 var region = process.argv[3] || "us-central1";
 var httpsTrigger = `https://${region}-${projectId}.cloudfunctions.net/httpsAction`;
