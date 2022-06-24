@@ -179,7 +179,7 @@ export function proxyRequestHandler(url: string, rewriteIdentifier: string): Req
  * return an internal HTTP error response.
  */
 export function errorRequestHandler(error: string): RequestHandler {
-  return (req: Request, res: Response, next: () => void): any => {
+  return (req: Request, res: Response): any => {
     res.statusCode = 500;
     const out = `A problem occurred while trying to handle a proxied rewrite: ${error}`;
     logger.error(out);

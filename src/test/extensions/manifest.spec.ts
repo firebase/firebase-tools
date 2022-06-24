@@ -122,7 +122,7 @@ describe("manifest", () => {
     });
 
     it("should remove from firebase.json and remove .env file", () => {
-      const result = manifest.removeFromManifest("delete-user-data", generateBaseConfig());
+      manifest.removeFromManifest("delete-user-data", generateBaseConfig());
 
       expect(writeProjectFileStub).calledWithExactly("firebase.json", {
         extensions: {

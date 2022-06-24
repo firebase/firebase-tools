@@ -12,7 +12,7 @@ export const command = new Command("ext:dev:emulators:start")
   .option(commandUtils.FLAG_TEST_PARAMS, commandUtils.DESC_TEST_PARAMS)
   .option(commandUtils.FLAG_IMPORT, commandUtils.DESC_IMPORT)
   .option(commandUtils.FLAG_EXPORT_ON_EXIT, commandUtils.DESC_EXPORT_ON_EXIT)
-  .action((options: any) => {
+  .action(() => {
     const localInstallCommand = `firebase ext:install ${process.cwd()}`;
     const emulatorsStartCommand = "firebase emulators:start";
     throw new FirebaseError(

@@ -104,11 +104,6 @@ export interface RuntimeDelegate {
     configValues: backend.RuntimeConfigValues,
     envs: backend.EnvironmentVariables
   ): Promise<build.Build>;
-
-  discoverSpec(
-    configValues: backend.RuntimeConfigValues,
-    envs: backend.EnvironmentVariables
-  ): Promise<backend.Backend>;
 }
 
 export interface DelegateContext {

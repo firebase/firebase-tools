@@ -3,7 +3,6 @@ import { FirebaseError } from "../error";
 import { runOrigin } from "../api";
 import * as proto from "./proto";
 import * as iam from "./iam";
-import * as _ from "lodash";
 
 const API_VERSION = "v1";
 
