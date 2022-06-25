@@ -4,7 +4,7 @@ import { first, last, get, size, head, keys, values } from "lodash";
 
 import { FirebaseError } from "./error";
 import { getInheritedOption, setupLoggers } from "./utils";
-import { loadRC, RC } from "./rc";
+import { loadRC } from "./rc";
 import { Config } from "./config";
 import { configstore } from "./configstore";
 import { detectProjectRoot } from "./detectProjectRoot";

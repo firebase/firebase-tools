@@ -1,6 +1,4 @@
 import { expect } from "chai";
-import * as subprocess from "child_process";
-import { cli } from "winston/lib/winston/config";
 
 import { CLIProcess } from "../integration-helpers/cli";
 

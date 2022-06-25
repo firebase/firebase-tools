@@ -49,7 +49,7 @@ export interface ThrottlerStats {
 interface TaskData<T, R> {
   task: T;
   retryCount: number;
-  wait?: { resolve: (R: any) => void; reject: (err: TaskError) => void };
+  wait?: { resolve: (value: R) => void; reject: (err: TaskError) => void };
   timeoutMillis?: number;
   timeoutId?: NodeJS.Timeout;
   isTimedOut: boolean;

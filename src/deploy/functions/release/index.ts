@@ -11,12 +11,9 @@ import * as fabricator from "./fabricator";
 import * as reporter from "./reporter";
 import * as executor from "./executor";
 import * as prompts from "../prompts";
-import * as secrets from "../../../functions/secrets";
 import { getAppEngineLocation } from "../../../functionsConfig";
 import { getFunctionLabel } from "../functionsDeployHelper";
 import { FirebaseError } from "../../../error";
-import { needProjectId, needProjectNumber } from "../../../projectUtils";
-import { logLabeledBullet, logLabeledWarning } from "../../../utils";
 
 /** Releases new versions of functions to prod. */
 export async function release(

@@ -10,6 +10,7 @@ import { Command } from "../command";
 import { FirebaseError } from "../error";
 import { getProjectId, needProjectId } from "../projectUtils";
 import * as extensionsApi from "../extensions/extensionsApi";
+import { ExtensionVersion, ExtensionSource } from "../extensions/types";
 import * as refs from "../extensions/refs";
 import { displayWarningPrompts } from "../extensions/warnings";
 import * as paramHelper from "../extensions/paramHelper";
@@ -162,7 +163,7 @@ export const command = new Command("ext:install [extensionName]")
 
 async function infoExtensionVersion(args: {
   extensionName: string;
-  extensionVersion: extensionsApi.ExtensionVersion;
+  extensionVersion: ExtensionVersion;
 }): Promise<void> {
   const ref = refs.parse(args.extensionName);
   const extension = await extensionsApi.getExtension(refs.toExtensionRef(ref));
@@ -178,8 +179,8 @@ interface InstallExtensionOptions {
   paramsEnvPath?: string;
   projectId?: string;
   extensionName: string;
-  source?: extensionsApi.ExtensionSource;
-  extVersion?: extensionsApi.ExtensionVersion;
+  source?: ExtensionSource;
+  extVersion?: ExtensionVersion;
   nonInteractive: boolean;
   force?: boolean;
 }

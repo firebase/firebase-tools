@@ -57,6 +57,7 @@ export const command = new Command("ext:dev:usage <publisherId>")
         name: "extension",
         message: "Which published extension do you want to view the stats for?",
         choices: extensions.map((e) => {
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
           const [_, name] = e.ref.split("/");
           return {
             name,
@@ -126,6 +127,7 @@ export const command = new Command("ext:dev:usage <publisherId>")
     // TODO(b/216289102): Add buildCloudMonitoringLink back after UI is fixed.
   });
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- b/216289102
 async function buildCloudMonitoringLink(args: {
   projectNumber: number;
   extensionName: string;

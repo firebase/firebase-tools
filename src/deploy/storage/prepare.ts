@@ -22,7 +22,7 @@ export default async function (context: any, options: Options): Promise<void> {
 
   if (_.isPlainObject(rulesConfig)) {
     const defaultBucket = await gcp.storage.getDefaultBucket(options.project);
-    rulesConfig = [_.assign(rulesConfig, { bucket: defaultBucket })];
+    rulesConfig = [Object.assign(rulesConfig, { bucket: defaultBucket })];
     _.set(context, "storage.rules", rulesConfig);
   }
 

@@ -7,7 +7,7 @@ import { StorageLayer } from "../../../emulator/storage/files";
 import { ForbiddenError, NotFoundError } from "../../../emulator/storage/errors";
 import { Persistence } from "../../../emulator/storage/persistence";
 import { FirebaseRulesValidator } from "../../../emulator/storage/rules/utils";
-import { Upload, UploadService, UploadStatus, UploadType } from "../../../emulator/storage/upload";
+import { UploadService } from "../../../emulator/storage/upload";
 
 const ALWAYS_TRUE_RULES_VALIDATOR = {
   validate: () => Promise.resolve(true),
@@ -47,17 +47,6 @@ describe("files", () => {
     let _persistence: Persistence;
     let _uploadService: UploadService;
 
-    const UPLOAD: Upload = {
-      id: "uploadId",
-      bucketId: "bucket",
-      objectId: "dir%2Fobject",
-      path: "",
-      type: UploadType.RESUMABLE,
-      status: UploadStatus.FINISHED,
-      metadata: {},
-      size: 10,
-    };
-
     beforeEach(() => {
       _persistence = new Persistence(getPersistenceTmpDir());
       _uploadService = new UploadService(_persistence);
@@ -82,7 +71,6 @@ describe("files", () => {
           objectId: "dir%2Fobject",
           metadataRaw: "{}",
         }).id;
-        const data = Buffer.from("hello world");
         _uploadService.continueResumableUpload(uploadId, Buffer.from("hello world"));
         const upload = _uploadService.finalizeResumableUpload(uploadId);
 

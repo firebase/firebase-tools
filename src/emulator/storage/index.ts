@@ -123,7 +123,7 @@ export class StorageEmulator implements EmulatorInstance {
   }
 
   getInfo(): EmulatorInfo {
-    const host = this.args.host || Constants.getDefaultHost(Emulators.STORAGE);
+    const host = this.args.host || Constants.getDefaultHost();
     const port = this.args.port || Constants.getDefaultPort(Emulators.STORAGE);
 
     return {

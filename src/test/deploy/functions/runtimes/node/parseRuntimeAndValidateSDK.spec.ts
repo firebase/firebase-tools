@@ -11,7 +11,6 @@ import * as runtime from "../../../../../deploy/functions/runtimes/node/parseRun
 describe("getRuntimeChoice", () => {
   const sandbox = sinon.createSandbox();
   let cjsonStub: sinon.SinonStub;
-  let SDKVersionStub: sinon.SinonStub;
 
   beforeEach(() => {
     cjsonStub = sandbox.stub(cjson, "load");

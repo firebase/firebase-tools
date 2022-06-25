@@ -294,6 +294,17 @@ describe("addResourcesToBuild", () => {
         maxDoublings: 10,
       },
     };
+    const buildSschedule: build.ScheduleTrigger = {
+      schedule: "every 10 minutes",
+      timeZone: "America/Los_Angeles",
+      retryConfig: {
+        retryCount: 20,
+        maxRetrySeconds: 200,
+        minBackoffSeconds: 1,
+        maxBackoffSeconds: 10,
+        maxDoublings: 10,
+      },
+    };
     const trigger: parseTriggers.TriggerAnnotation = {
       ...BASIC_TRIGGER,
       eventTrigger: {
@@ -311,15 +322,10 @@ describe("addResourcesToBuild", () => {
     const result = build.empty();
     parseTriggers.addResourcesToBuild("project", "nodejs16", trigger, result);
 
-    const europeFunctionName = {
-      ...BASIC_FUNCTION_NAME,
-      region: "europe-west1",
-    };
-
     const expected: build.Build = build.of({
       func: {
         ...BASIC_ENDPOINT,
-        scheduleTrigger: schedule,
+        scheduleTrigger: buildSschedule,
         labels: {
           test: "testing",
         },
@@ -672,11 +678,6 @@ describe("addResourcesToBackend", () => {
 
     const result = backend.empty();
     parseTriggers.addResourcesToBackend("project", "nodejs16", trigger, result);
-
-    const europeFunctionName = {
-      ...BASIC_FUNCTION_NAME,
-      region: "europe-west1",
-    };
 
     const expected: backend.Backend = {
       ...backend.of(

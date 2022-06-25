@@ -41,8 +41,6 @@ const gcfV2PollerOptions: Omit<poller.OperationPollerOptions, "operationResource
   maxBackoff: 10_000,
 };
 
-const DEFAULT_GCFV2_CONCURRENCY = 80;
-
 export interface FabricatorArgs {
   executor: Executor;
   functionExecutor: Executor;

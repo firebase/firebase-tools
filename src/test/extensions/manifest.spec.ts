@@ -8,7 +8,7 @@ import * as refs from "../../extensions/refs";
 import { Config } from "../../config";
 import * as prompt from "../../prompt";
 import { FirebaseError } from "../../error";
-import { ParamType } from "../../extensions/extensionsApi";
+import { ParamType } from "../../extensions/types";
 
 /**
  * Returns a base Config with some extensions data.
@@ -122,7 +122,7 @@ describe("manifest", () => {
     });
 
     it("should remove from firebase.json and remove .env file", () => {
-      const result = manifest.removeFromManifest("delete-user-data", generateBaseConfig());
+      manifest.removeFromManifest("delete-user-data", generateBaseConfig());
 
       expect(writeProjectFileStub).calledWithExactly("firebase.json", {
         extensions: {

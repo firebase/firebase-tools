@@ -447,7 +447,7 @@ function urlsafeBase64(base64string: string) {
   return base64string.replace(/\+/g, "-").replace(/=+$/, "").replace(/\//g, "_");
 }
 
-async function loginRemotely(userHint?: string): Promise<UserCredentials> {
+async function loginRemotely(): Promise<UserCredentials> {
   const authProxyClient = new apiv2.Client({
     urlPrefix: authProxyOrigin,
     auth: false,
@@ -550,7 +550,6 @@ async function loginWithLocalhost<ResultType>(
 ): Promise<ResultType> {
   return new Promise<ResultType>((resolve, reject) => {
     const server = http.createServer(async (req, res) => {
-      let tokens: Tokens;
       const query = url.parse(`${req.url}`, true).query || {};
       const queryState = query.state;
       const queryCode = query.code;
@@ -592,15 +591,14 @@ async function loginWithLocalhost<ResultType>(
 
 export async function loginGoogle(localhost: boolean, userHint?: string): Promise<UserCredentials> {
   if (localhost) {
-    const port = await getPort();
     try {
       const port = await getPort();
       return await loginWithLocalhostGoogle(port, userHint);
     } catch {
-      return await loginRemotely(userHint);
+      return await loginRemotely();
     }
   }
-  return await loginRemotely(userHint);
+  return await loginRemotely();
 }
 
 export async function loginGithub(): Promise<string> {

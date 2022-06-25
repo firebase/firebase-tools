@@ -1,4 +1,3 @@
-import * as _ from "lodash";
 import * as clc from "cli-color";
 import * as fs from "fs";
 import * as path from "path";
@@ -60,7 +59,7 @@ async function getAndCheckAddress(emulator: Emulators, options: Options): Promis
     // The Extensions emulator always runs on the same port as the Functions emulator.
     emulator = Emulators.FUNCTIONS;
   }
-  let host = options.config.src.emulators?.[emulator]?.host || Constants.getDefaultHost(emulator);
+  let host = options.config.src.emulators?.[emulator]?.host || Constants.getDefaultHost();
   if (host === "localhost" && utils.isRunningInWSL()) {
     // HACK(https://github.com/firebase/firebase-tools-ui/issues/332): Use IPv4
     // 127.0.0.1 instead of localhost. This, combined with the hack in
@@ -205,7 +204,7 @@ export function filterEmulatorTargets(options: any): Emulators[] {
     const only = onlyOptions.split(",").map((o) => {
       return o.split(":")[0];
     });
-    targets = _.intersection(targets, only as Emulators[]);
+    targets = targets.filter((t) => only.includes(t));
   }
 
   return targets;
@@ -380,7 +379,7 @@ export async function startAll(
     const requested: string[] = onlyOptions.split(",").map((o) => {
       return o.split(":")[0];
     });
-    const ignored = _.difference(requested, targets);
+    const ignored = requested.filter((k) => !targets.includes(k as Emulators));
 
     for (const name of ignored) {
       if (isEmulator(name)) {
@@ -747,7 +746,9 @@ export async function startAll(
     hubLogger.logLabeled(
       "WARN",
       "emulators",
-      "The Emulator UI requires a project ID to start. Configure your default project with 'firebase use' or pass the --project flag."
+      "The Emulator UI is not starting, either because none of the emulated " +
+        "products have an interaction layer in Emulator UI or it cannot " +
+        "determine the Project ID. Pass the --project flag to specify a project."
     );
   }
 
