@@ -27,7 +27,12 @@ async function generateSourceHash(source: args.Source): any {
       readStream.on("error", (err) => reject(err));
     });
   }
-  // TODO(tystark) Hash the contents of the .env files; discussion needed
+
+  // Hash any possible .env additions
+  hash.push({
+    ...process.env,
+  });
+
   // TODO(tystark) Hash the contents of the secret versions; rpc needed (unless we already made this call earlier)
   return hash.read();
 }
