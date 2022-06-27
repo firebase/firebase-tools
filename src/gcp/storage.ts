@@ -166,6 +166,7 @@ export async function upload(
     body: source.stream,
     skipLog: { resBody: true },
   });
+  // TODO(tystark) - trigger a second rpc to add hash label; discussion needed
   return {
     generation: res.response.headers.get("x-goog-generation"),
   };

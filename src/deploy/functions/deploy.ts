@@ -11,8 +11,26 @@ import * as gcs from "../../gcp/storage";
 import * as gcf from "../../gcp/cloudfunctions";
 import * as gcfv2 from "../../gcp/cloudfunctionsv2";
 import * as backend from "./backend";
+import crypto from "crypto";
 
 setGracefulCleanup();
+
+async function generateSourceHash(source: args.Source): any {
+  const hash = crypto.createHash("sha256");
+  const sourceFile = source.functionsSourceV2 || source.functionsSourceV1;
+  // Hash the contents of the source file
+  if (sourceFile) {
+    const readStream = fs.createReadStream(sourceFile);
+    readStream.pipe(hash);
+    await new Promise((resolve, reject) => {
+      hash.on("end", () => resolve(hash.read()));
+      readStream.on("error", (err) => reject(err));
+    });
+  }
+  // TODO(tystark) Hash the contents of the .env files; discussion needed
+  // TODO(tystark) Hash the contents of the secret versions; rpc needed (unless we already made this call earlier)
+  return hash.read();
+}
 
 async function uploadSourceV1(
   projectId: string,
@@ -63,6 +81,12 @@ async function uploadCodebase(
   if (!source || (!source.functionsSourceV1 && !source.functionsSourceV2)) {
     return;
   }
+
+  const generatedHash = generateSourceHash(source);
+  // TODO(tystark) - fetch the latest uploaded snapshot of the codebase.
+  // TODO(tystark) - log a message to the user if the hashes match
+  // TODO(tystark) - short-circuit if the hashes match and there is no --force
+  // TODO(tystark) - short-circuit if the hashes match and there is no --force
 
   const uploads: Promise<unknown>[] = [];
   try {
