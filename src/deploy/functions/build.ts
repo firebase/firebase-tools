@@ -53,7 +53,7 @@ interface RequiredApi {
 // expressions.
 // `Expression<Foo> == Expression<Foo>` is an Expression<boolean>
 // `Expression<boolean> ? Expression<T> : Expression<T>` is an Expression<T>
-export type Expression<T extends string | number | boolean> = string;
+export type Expression<T extends string | number | boolean> = string; // eslint-disable-line
 export type Field<T extends string | number | boolean> = T | Expression<T> | null;
 
 // A service account must either:
@@ -333,6 +333,12 @@ function discoverTrigger(
   endpoint: Endpoint,
   paramValues: Record<string, Field<string | number | boolean>>
 ): backend.Triggered {
+  const resolveInt = (from: number | Expression<number>) => params.resolveInt(from, paramValues);
+  const resolveString = (from: string | Expression<string>) =>
+    params.resolveString(from, paramValues);
+  const resolveBoolean = (from: boolean | Expression<boolean>) =>
+    params.resolveBoolean(from, paramValues);
+
   let trigger: backend.Triggered;
   if ("httpsTrigger" in endpoint) {
     const bkHttps: backend.HttpsTrigger = {};
@@ -346,45 +352,40 @@ function discoverTrigger(
     trigger = { blockingTrigger: endpoint.blockingTrigger };
   } else if ("eventTrigger" in endpoint) {
     const bkEventFilters: Record<string, string> = {};
-    for (const key in endpoint.eventTrigger.eventFilters) {
-      if (typeof key === "string") {
-        bkEventFilters[key] = params.resolveString(
-          endpoint.eventTrigger.eventFilters[key],
-          paramValues
-        );
-      }
+    for (const [key, value] of Object.entries(endpoint.eventTrigger.eventFilters)) {
+      bkEventFilters[key] = params.resolveString(value, paramValues);
     }
     const bkEvent: backend.EventTrigger = {
       eventType: endpoint.eventTrigger.eventType,
       eventFilters: bkEventFilters,
-      retry: params.resolveBoolean(endpoint.eventTrigger.retry || false, paramValues),
+      retry: resolveBoolean(endpoint.eventTrigger.retry || false),
     };
     if (endpoint.eventTrigger.serviceAccount) {
       bkEvent.serviceAccountEmail = endpoint.eventTrigger.serviceAccount;
     }
     if (endpoint.eventTrigger.region) {
-      bkEvent.region = params.resolveString(endpoint.eventTrigger.region, paramValues);
+      bkEvent.region = resolveString(endpoint.eventTrigger.region);
     }
     trigger = { eventTrigger: bkEvent };
   } else if ("scheduleTrigger" in endpoint) {
     const bkSchedule: backend.ScheduleTrigger = {
-      schedule: params.resolveString(endpoint.scheduleTrigger.schedule, paramValues),
-      timeZone: params.resolveString(endpoint.scheduleTrigger.timeZone, paramValues),
+      schedule: resolveString(endpoint.scheduleTrigger.schedule),
+      timeZone: resolveString(endpoint.scheduleTrigger.timeZone),
     };
     const bkRetry: backend.ScheduleRetryConfig = {};
     if (endpoint.scheduleTrigger.retryConfig.maxBackoffSeconds) {
       bkRetry.maxBackoffDuration = proto.durationFromSeconds(
-        params.resolveInt(endpoint.scheduleTrigger.retryConfig.maxBackoffSeconds, paramValues)
+        resolveInt(endpoint.scheduleTrigger.retryConfig.maxBackoffSeconds)
       );
     }
     if (endpoint.scheduleTrigger.retryConfig.minBackoffSeconds) {
       bkRetry.minBackoffDuration = proto.durationFromSeconds(
-        params.resolveInt(endpoint.scheduleTrigger.retryConfig.minBackoffSeconds, paramValues)
+        resolveInt(endpoint.scheduleTrigger.retryConfig.minBackoffSeconds)
       );
     }
     if (endpoint.scheduleTrigger.retryConfig.maxRetrySeconds) {
       bkRetry.maxRetryDuration = proto.durationFromSeconds(
-        params.resolveInt(endpoint.scheduleTrigger.retryConfig.maxRetrySeconds, paramValues)
+        resolveInt(endpoint.scheduleTrigger.retryConfig.maxRetrySeconds)
       );
     }
     proto.copyIfPresent(
@@ -404,18 +405,14 @@ function discoverTrigger(
         endpoint.taskQueueTrigger.rateLimits,
         "maxConcurrentDispatches",
         "maxConcurrentDispatches",
-        (from: number | Expression<number>): number => {
-          return params.resolveInt(from, paramValues);
-        }
+        resolveInt
       );
       proto.renameIfPresent(
         bkRateLimits,
         endpoint.taskQueueTrigger.rateLimits,
         "maxDispatchesPerSecond",
         "maxDispatchesPerSecond",
-        (from: number | Expression<number>): number => {
-          return params.resolveInt(from, paramValues);
-        }
+        resolveInt
       );
       bkTaskQueue.rateLimits = bkRateLimits;
     }
@@ -426,9 +423,7 @@ function discoverTrigger(
         endpoint.taskQueueTrigger.retryConfig,
         "maxAttempts",
         "maxAttempts",
-        (from: number | Expression<number>): number => {
-          return params.resolveInt(from, paramValues);
-        }
+        resolveInt
       );
       proto.renameIfPresent(
         bkRetryConfig,
@@ -436,7 +431,7 @@ function discoverTrigger(
         "maxBackoffSeconds",
         "maxBackoffSeconds",
         (from: number | Expression<number>): string => {
-          return proto.durationFromSeconds(params.resolveInt(from, paramValues));
+          return proto.durationFromSeconds(resolveInt(from));
         }
       );
       proto.renameIfPresent(
@@ -445,7 +440,7 @@ function discoverTrigger(
         "minBackoffSeconds",
         "minBackoffSeconds",
         (from: number | Expression<number>): string => {
-          return proto.durationFromSeconds(params.resolveInt(from, paramValues));
+          return proto.durationFromSeconds(resolveInt(from));
         }
       );
       proto.renameIfPresent(
@@ -454,7 +449,7 @@ function discoverTrigger(
         "maxRetrySeconds",
         "maxRetryDurationSeconds",
         (from: number | Expression<number>): string => {
-          return proto.durationFromSeconds(params.resolveInt(from, paramValues));
+          return proto.durationFromSeconds(resolveInt(from));
         }
       );
       proto.renameIfPresent(
@@ -462,16 +457,12 @@ function discoverTrigger(
         endpoint.taskQueueTrigger.retryConfig,
         "maxDoublings",
         "maxDoublings",
-        (from: number | Expression<number>): number => {
-          return params.resolveInt(from, paramValues);
-        }
+        resolveInt
       );
       bkTaskQueue.retryConfig = bkRetryConfig;
     }
     if (endpoint.taskQueueTrigger.invoker) {
-      bkTaskQueue.invoker = endpoint.taskQueueTrigger.invoker.map((sa) =>
-        params.resolveString(sa, paramValues)
-      );
+      bkTaskQueue.invoker = endpoint.taskQueueTrigger.invoker.map((sa) => resolveString(sa));
     }
     trigger = { taskQueueTrigger: bkTaskQueue };
   } else {

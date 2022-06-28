@@ -2,10 +2,11 @@ import { logger } from "../../logger";
 import { FirebaseError } from "../../error";
 import { promptOnce } from "../../prompt";
 import * as build from "./build";
+import { assertExhaustive } from "../../functional";
 
 type CEL = build.Expression<string> | build.Expression<number> | build.Expression<boolean>;
 function isCEL(expr: string | number | boolean): expr is CEL {
-  return typeof expr === "string" && expr.startsWith("{{") && expr.endsWith("}}");
+  return typeof expr === "string" && expr.includes("{{") && expr.includes("}}");
 }
 function dependenciesCEL(expr: CEL): string[] {
   return /params\.(\w+)/.exec(expr)?.slice(1) || [];
@@ -49,22 +50,29 @@ export function resolveString(
 ): string {
   if (from == null) {
     return "";
-  } else if (/{{ params\.(\S+) }}/.test(from)) {
-    const match = /{{ params\.(\S+) }}/.exec(from);
-    const referencedParamValue = paramValues[match![1]];
-    if (typeof referencedParamValue !== "string") {
+  } else if (from.includes("{{") && from.includes("}}")) {
+    let output = from;
+    const matches = /{{ params\.(\S+) }}/.exec(from);
+    if (matches && matches.length > 1) {
+      for (let i = 1; i < matches.length; i++) {
+        const referencedParamValue = paramValues[matches[i]];
+        if (typeof referencedParamValue !== "string") {
+          throw new FirebaseError(
+            "Referenced string parameter '" +
+              matches[i] +
+              "' resolved to non-string value " +
+              referencedParamValue
+          );
+        }
+        output = output.replace(`{{ params.${matches[i]} }}`, referencedParamValue);
+      }
+    }
+    if (output.includes("{{") || output.includes("}}")) {
       throw new FirebaseError(
-        "Referenced numeric parameter '" +
-          match +
-          "' resolved to non-numeric value " +
-          referencedParamValue
+        "CEL evaluation of non-identity expression '" + from + "' not yet supported"
       );
     }
-    return referencedParamValue;
-  } else if (from.includes("{{") && from.includes("}}")) {
-    throw new FirebaseError(
-      "CEL evaluation of non-identity expression '" + from + "' not yet supported"
-    );
+    return output;
   }
   return from;
 }
@@ -116,20 +124,20 @@ interface ParamBase<T extends string | number | boolean> {
 }
 
 export interface StringParam extends ParamBase<string> {
-  type?: "string";
+  type: "string";
 
   // If omitted, defaults to TextInput<string>
-  input?: TextInput<string> | SelectInput<string> | DefaultOnly;
+  input?: TextInput<string> | SelectInput<string>;
 }
 
 export interface IntParam extends ParamBase<number> {
   type: "int";
 
   // If omitted, defaults to TextInput<number>
-  input?: TextInput<number> | SelectInput<number> | DefaultOnly;
+  input?: TextInput<number> | SelectInput<number>;
 }
 
-export interface TextInput<T, Extensions = {}> {
+export interface TextInput<T, Extensions = {}> { // eslint-disable-line
   type?: "text";
 
   text:
@@ -152,10 +160,6 @@ export interface SelectInput<T> {
   type?: "select";
 
   select: Array<SelectOptions<T>>;
-}
-
-export interface DefaultOnly {
-  type?: "hardcoded";
 }
 
 export type Param = StringParam | IntParam;
@@ -194,13 +198,12 @@ function resolveDefaultCEL(
  * Tests whether a mooted ParamValue literal is of the correct type to be the value for a Param.
  */
 function canSatisfyParam(param: Param, value: ParamValue): boolean {
-  switch (param.type) {
-    case "string":
-      return typeof value === "string";
-    case "int":
-      return typeof value === "number" && Number.isInteger(value);
-    default:
-      throw new FirebaseError("Build specified parameter " + param + " with unsupported type");
+  if (param.type === "string") {
+    return typeof value === "string";
+  } else if (param.type === "int") {
+    return typeof value === "number" && Number.isInteger(value);
+  } else {
+    assertExhaustive(param);
   }
 }
 
@@ -238,6 +241,9 @@ export async function resolveParams(
       } else {
         paramDefault = param.default;
       }
+      if (!canSatisfyParam(param, paramDefault)) {
+        throw new FirebaseError("");
+      }
       paramValues[param.param] = await promptParam(param, paramDefault);
     } else {
       paramValues[param.param] = await promptParam(param);
@@ -259,13 +265,12 @@ async function promptParam(param: Param, resolvedDefault?: ParamValue): Promise<
     throw new FirebaseError("");
   }
 
-  switch (param.type) {
-    case "string":
-      return promptStringParam(param, resolvedDefault as string);
-    case "int":
-      return promptIntParam(param, resolvedDefault as number);
-    default:
-      throw new FirebaseError("Build specified parameter " + param + " with unsupported type");
+  if (param.type === "string") {
+    return promptStringParam(param, resolvedDefault as string);
+  } else if (param.type === "int") {
+    return promptIntParam(param, resolvedDefault as number);
+  } else {
+    assertExhaustive(param);
   }
 }
 
@@ -280,11 +285,12 @@ async function promptStringParam(param: StringParam, resolvedDefault?: string): 
       throw new FirebaseError(
         "Build specified string parameter " + param.param + " with unsupported input type 'select'"
       );
-    case "hardcoded":
-      return resolvedDefault || "";
     case "text":
     default:
-      let prompt = `Enter a value for ${param.label || param.param}:`;
+      let prompt = `Enter a value for ${param.param}`;
+      if (param.label) {
+        prompt = `${prompt} (${param.label})`;
+      }
       if (param.description) {
         prompt += ` \n(${param.description})`;
       }
@@ -308,11 +314,12 @@ async function promptIntParam(param: IntParam, resolvedDefault?: number): Promis
       throw new FirebaseError(
         "Build specified int parameter " + param.param + " with unsupported input type 'select'"
       );
-    case "hardcoded":
-      return resolvedDefault || 0;
     case "text":
     default:
-      let prompt = `Enter a value for ${param.label || param.param}:`;
+      let prompt = `Enter a value for ${param.param}`;
+      if (param.label) {
+        prompt = `${prompt} (${param.label})`;
+      }
       if (param.description) {
         prompt += ` \n(${param.description})`;
       }
