@@ -8,6 +8,16 @@ env:
   CI: true
 
 jobs:
+  check-license:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-go@v3
+      - run: go install github.com/google/addlicense@latest
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - run: env bash -c 'addlicense -check -c "Google LLC" -l MIT src/**/*'
+
   lint:
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
