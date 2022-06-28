@@ -9,7 +9,7 @@ function isCEL(expr: string | number | boolean): expr is CEL {
   return typeof expr === "string" && expr.includes("{{") && expr.includes("}}");
 }
 function dependenciesCEL(expr: CEL): string[] {
-  return /params\.(\S+)/.exec(expr)?.slice(1) || [];
+  return /params\.(\w+)/.exec(expr)?.slice(1) || [];
 }
 
 /**
@@ -21,8 +21,8 @@ export function resolveInt(
   from: number | build.Expression<number>,
   paramValues: Record<string, build.Field<string | number | boolean>>
 ): number {
-  if (typeof from === "string" && /{{ params\.(\S+) }}/.test(from)) {
-    const match = /{{ params\.(\S+) }}/.exec(from);
+  if (typeof from === "string" && /{{ params\.(\w+) }}/.test(from)) {
+    const match = /{{ params\.(\w+) }}/.exec(from);
     const referencedParamValue = paramValues[match![1]];
     if (typeof referencedParamValue !== "number") {
       throw new FirebaseError(
@@ -52,7 +52,7 @@ export function resolveString(
     return "";
   } else if (from.includes("{{") && from.includes("}}")) {
     let output = from;
-    const matches = /{{ params\.(\S+) }}/.exec(from);
+    const matches = /{{ params\.(\w+) }}/.exec(from);
     if (matches && matches.length > 1) {
       for (let i = 1; i < matches.length; i++) {
         const referencedParamValue = paramValues[matches[i]];
@@ -86,8 +86,8 @@ export function resolveBoolean(
   from: boolean | build.Expression<boolean>,
   paramValues: Record<string, build.Field<string | number | boolean>>
 ): boolean {
-  if (typeof from === "string" && /{{ params\.(\S+) }}/.test(from)) {
-    const match = /{{ params\.(\S+) }}/.exec(from);
+  if (typeof from === "string" && /{{ params\.(\w+) }}/.test(from)) {
+    const match = /{{ params\.(\w+) }}/.exec(from);
     const referencedParamValue = paramValues[match![1]];
     if (typeof referencedParamValue !== "boolean") {
       throw new FirebaseError(
