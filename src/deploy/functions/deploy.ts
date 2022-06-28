@@ -15,7 +15,7 @@ import crypto from "crypto";
 
 setGracefulCleanup();
 
-async function generateSourceHash(source: args.Source): any {
+async function generateSourceHash(source: args.Source): Promise<any> {
   const hash = crypto.createHash("sha256");
   const sourceFile = source.functionsSourceV2 || source.functionsSourceV1;
   // Hash the contents of the source file
