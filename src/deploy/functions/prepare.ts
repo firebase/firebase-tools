@@ -28,6 +28,7 @@ import { FirebaseError } from "../../error";
 import { configForCodebase, normalizeAndValidate } from "../../functions/projectConfig";
 import { AUTH_BLOCKING_EVENTS } from "../../functions/events/v1";
 import { generateServiceIdentity } from "../../gcp/serviceusage";
+import {ofVersions} from "../../functions/secrets";
 
 function hasUserConfig(config: Record<string, unknown>): boolean {
   // "firebase" key is always going to exist in runtime config.
@@ -226,9 +227,10 @@ export async function prepare(
 
   // ===Phase 6. Finalize preparation by "fixing" all extraneous environment issues like IAM policies.
   // We limit the scope endpoints being deployed.
+  const secretsVersionsResponse = await ofVersions(projectId, matchingBackend);
   await backend.checkAvailability(context, matchingBackend);
   await ensureServiceAgentRoles(projectId, projectNumber, matchingBackend, haveBackend);
-  await validate.secretsAreValid(projectId, matchingBackend);
+  await validate.secretsAreValid(projectId, matchingBackend, secretsVersionsResponse);
   await ensure.secretAccess(projectId, matchingBackend, haveBackend);
 }
 

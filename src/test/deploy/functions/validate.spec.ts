@@ -550,7 +550,7 @@ describe("validate", () => {
     });
 
     it("passes validation with empty backend", () => {
-      expect(validate.secretsAreValid(project, backend.empty())).to.not.be.rejected;
+      expect(validate.secretsAreValid(project, backend.empty(), secretVersionResponse)).to.not.be.rejected;
     });
 
     it("passes validation with no secret env vars", () => {
@@ -558,7 +558,7 @@ describe("validate", () => {
         ...ENDPOINT,
         platform: "gcfv2",
       });
-      expect(validate.secretsAreValid(project, b)).to.not.be.rejected;
+      expect(validate.secretsAreValid(project, b, secretVersionResponse)).to.not.be.rejected;
     });
 
     it("fails validation given non-existent secret version", () => {
@@ -575,7 +575,7 @@ describe("validate", () => {
           },
         ],
       });
-      expect(validate.secretsAreValid(project, b)).to.be.rejectedWith(
+      expect(validate.secretsAreValid(project, b, secretVersionResponse)).to.be.rejectedWith(
         FirebaseError,
         /Failed to validate secret version/
       );
@@ -595,7 +595,7 @@ describe("validate", () => {
           },
         ],
       });
-      expect(validate.secretsAreValid(project, b)).to.be.rejectedWith(
+      expect(validate.secretsAreValid(project, b, secretVersionResponse)).to.be.rejectedWith(
         FirebaseError,
         /Failed to validate secret versions/
       );
@@ -619,7 +619,7 @@ describe("validate", () => {
           },
         ],
       });
-      expect(validate.secretsAreValid(project, b)).to.be.rejectedWith(
+      expect(validate.secretsAreValid(project, b, secretVersionResponse)).to.be.rejectedWith(
         FirebaseError,
         /Failed to validate secret versions/
       );
@@ -645,7 +645,7 @@ describe("validate", () => {
           ],
         });
 
-        await validate.secretsAreValid(project, b);
+        await validate.secretsAreValid(project, b, secretVersionResponse);
         expect(backend.allEndpoints(b)[0].secretEnvironmentVariables![0].version).to.equal("2");
       }
     });

@@ -9,6 +9,8 @@ import * as backend from "./backend";
 import * as utils from "../../utils";
 import * as secrets from "../../functions/secrets";
 import { serviceForEndpoint } from "./services";
+import {Backend} from "./backend";
+import {SecretVersionsResponses} from "../../functions/secrets";
 
 function matchingIds(
   endpoints: backend.Endpoint[],
@@ -227,12 +229,12 @@ export function functionIdsAreValid(functions: { id: string; platform: string }[
  *
  * If validation fails for any secret config, throws a FirebaseError.
  */
-export async function secretsAreValid(projectId: string, wantBackend: backend.Backend) {
+export async function secretsAreValid(projectId: string, wantBackend: Backend, secretsVersionsResponse: SecretVersionsResponses) {
   const endpoints = backend
     .allEndpoints(wantBackend)
     .filter((e) => e.secretEnvironmentVariables && e.secretEnvironmentVariables.length > 0);
   validatePlatformTargets(endpoints);
-  await validateSecretVersions(projectId, endpoints);
+  await validateSecretVersions(endpoints, secretsVersionsResponse);
 }
 
 const secretsSupportedPlatforms = ["gcfv1", "gcfv2"];
@@ -257,41 +259,12 @@ function validatePlatformTargets(endpoints: backend.Endpoint[]) {
  *   1) It exists.
  *   2) It's in state "enabled".
  */
-async function validateSecretVersions(projectId: string, endpoints: backend.Endpoint[]) {
-  const toResolve: Set<string> = new Set();
-  for (const s of secrets.of(endpoints)) {
-    toResolve.add(s.secret);
-  }
+async function validateSecretVersions(endpoints: backend.Endpoint[], secretsVersionsResponse: SecretVersionsResponses) {
+  const {secretVersions, errors} = secretsVersionsResponse;
 
-  const results = await utils.allSettled(
-    Array.from(toResolve).map(async (secret): Promise<SecretVersion> => {
-      // We resolve the secret to its latest version - we do not allow CF3 customers to pin secret versions.
-      const sv = await getSecretVersion(projectId, secret, "latest");
-      logger.debug(`Resolved secret version of ${clc.bold(secret)} to ${clc.bold(sv.versionId)}.`);
-      return sv;
-    })
-  );
 
-  const secretVersions: Record<string, SecretVersion> = {};
-  const errs: FirebaseError[] = [];
-  for (const result of results) {
-    if (result.status === "fulfilled") {
-      const sv = result.value;
-      if (sv.state !== "ENABLED") {
-        errs.push(
-          new FirebaseError(
-            `Expected secret ${sv.secret.name}@${sv.versionId} to be in state ENABLED not ${sv.state}.`
-          )
-        );
-      }
-      secretVersions[sv.secret.name] = sv;
-    } else {
-      errs.push(new FirebaseError((result.reason as { message: string }).message));
-    }
-  }
-
-  if (errs.length) {
-    throw new FirebaseError("Failed to validate secret versions", { children: errs });
+  if (errors.length) {
+    throw new FirebaseError("Failed to validate secret versions", { children: errors });
   }
 
   // Fill in versions.

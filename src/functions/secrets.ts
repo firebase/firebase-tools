@@ -22,6 +22,7 @@ import { validateKey } from "./env";
 import { logger } from "../logger";
 import { functionsOrigin } from "../api";
 import { assertExhaustive } from "../functional";
+import clc from "cli-color";
 
 const FIREBASE_MANGED = "firebase-managed";
 
@@ -133,6 +134,58 @@ export function of(endpoints: backend.Endpoint[]): backend.SecretEnvVar[] {
     (envs, endpoint) => [...envs, ...(endpoint.secretEnvironmentVariables || [])],
     [] as backend.SecretEnvVar[]
   );
+}
+
+export type SecretVersionsResponses = {
+  secretVersions: Record<string, SecretVersion>;
+  errors: FirebaseError[];
+};
+
+/**
+ * Collects all secret environment variables of endpoints and their versions
+ * If the version is "latest" we issue a rpc to capture which version is used.
+ */
+export async function ofVersions(
+  projectId: string,
+  wantBackend: backend.Backend
+): Promise<SecretVersionsResponses> {
+  const endpoints = backend
+    .allEndpoints(wantBackend)
+    .filter((e) => e.secretEnvironmentVariables && e.secretEnvironmentVariables.length);
+
+  const secrets = new Set(of(endpoints).map((secreteEnvVar) => secreteEnvVar.secret));
+
+  const results = await utils.allSettled(
+    Array.from(secrets).map(async (secret): Promise<SecretVersion> => {
+      // We resolve the secret to its latest version - we do not allow CF3 customers to pin secret versions.
+      const sv = await getSecretVersion(projectId, secret, "latest");
+      logger.debug(`Resolved secret version of ${clc.bold(secret)} to ${clc.bold(sv.versionId)}.`);
+      return sv;
+    })
+  );
+
+  const secretVersions: Record<string, SecretVersion> = {};
+  const errors: FirebaseError[] = [];
+  for (const result of results) {
+    if (result.status === "fulfilled") {
+      const sv = result.value;
+      if (sv.state !== "ENABLED") {
+        errors.push(
+          new FirebaseError(
+            `Expected secret ${sv.secret.name}@${sv.versionId} to be in state ENABLED not ${sv.state}.`
+          )
+        );
+      }
+      secretVersions[sv.secret.name] = sv;
+    } else {
+      errors.push(new FirebaseError((result.reason as { message: string }).message));
+    }
+  }
+
+  return {
+    secretVersions,
+    errors,
+  };
 }
 
 /**
