@@ -210,7 +210,7 @@ async function resolveDeveloperNodeModule(
   frb: FunctionsRuntimeBundle,
   name: string
 ): Promise<ModuleResolution> {
-  const pkg = requirePackageJson(frb);
+  const pkg = requirePackageJson();
   if (!pkg) {
     new EmulatorLog("SYSTEM", "missing-package-json", "").log();
     throw new Error("Could not find package.json");
@@ -294,7 +294,7 @@ async function verifyDeveloperNodeModules(frb: FunctionsRuntimeBundle): Promise<
 /**
  * Get the developer's package.json file.
  */
-function requirePackageJson(frb: FunctionsRuntimeBundle): PackageJSON | undefined {
+function requirePackageJson(): PackageJSON | undefined {
   if (developerPkgJSON) {
     return developerPkgJSON;
   }
@@ -324,7 +324,7 @@ function requirePackageJson(frb: FunctionsRuntimeBundle): PackageJSON | undefine
  *
  * So yeah, we'll try our best and hopefully we can catch 90% of requests.
  */
-function initializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
+function initializeNetworkFiltering(): void {
   const networkingModules = [
     { name: "http", module: require("http"), path: ["request"] },
     { name: "http", module: require("http"), path: ["get"] },
@@ -523,7 +523,7 @@ function getDefaultConfig(): any {
   return JSON.parse(process.env.FIREBASE_CONFIG || "{}");
 }
 
-function initializeRuntimeConfig(frb: FunctionsRuntimeBundle) {
+function initializeRuntimeConfig() {
   // Most recent version of Firebase Functions SDK automatically picks up locally
   // stored .runtimeconfig.json to populate the config entries.
   // However, due to a bug in some older version of the Function SDK, this process may fail.
@@ -752,7 +752,7 @@ async function initializeFunctionsConfigHelper(frb: FunctionsRuntimeBundle): Pro
 
   const functionsModuleProxy = new Proxied<typeof localFunctionsModule>(localFunctionsModule);
   const proxiedFunctionsModule = functionsModuleProxy
-    .when("config", (target) => () => {
+    .when("config", () => () => {
       return proxiedConfig;
     })
     .finalize();
@@ -1055,8 +1055,8 @@ async function initializeRuntime(
     return;
   }
 
-  initializeRuntimeConfig(frb);
-  initializeNetworkFiltering(frb);
+  initializeRuntimeConfig();
+  initializeNetworkFiltering();
   await initializeFunctionsConfigHelper(frb);
   await initializeFirebaseFunctionsStubs(frb);
   await initializeFirebaseAdminStubs(frb);

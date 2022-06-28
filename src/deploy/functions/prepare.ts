@@ -26,7 +26,6 @@ import { ensureTriggerRegions } from "./triggerRegionHelper";
 import { ensureServiceAgentRoles } from "./checkIam";
 import { FirebaseError } from "../../error";
 import { configForCodebase, normalizeAndValidate } from "../../functions/projectConfig";
-import { previews } from "../../previews";
 import { AUTH_BLOCKING_EVENTS } from "../../functions/events/v1";
 import { generateServiceIdentity } from "../../gcp/serviceusage";
 
@@ -112,14 +111,8 @@ export async function prepare(
     };
     const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
     const envs = { ...userEnvs, ...firebaseEnvs };
-    let wantBackend: backend.Backend;
-    if (previews.functionsparams) {
-      const wantBuild = await runtimeDelegate.discoverBuild(runtimeConfig, firebaseEnvs);
-      wantBackend = build.resolveBackend(wantBuild, userEnvs);
-    } else {
-      logger.debug(`Analyzing ${runtimeDelegate.name} backend spec`);
-      wantBackend = await runtimeDelegate.discoverSpec(runtimeConfig, firebaseEnvs);
-    }
+    const wantBuild: build.Build = await runtimeDelegate.discoverBuild(runtimeConfig, firebaseEnvs);
+    const wantBackend: backend.Backend = build.resolveBackend(wantBuild, userEnvs);
     wantBackend.environmentVariables = envs;
     for (const endpoint of backend.allEndpoints(wantBackend)) {
       endpoint.environmentVariables = wantBackend.environmentVariables;

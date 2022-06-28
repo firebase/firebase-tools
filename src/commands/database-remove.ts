@@ -9,7 +9,6 @@ import { realtimeOriginOrEmulatorOrCustomUrl } from "../database/api";
 import * as utils from "../utils";
 import { promptOnce } from "../prompt";
 import * as clc from "cli-color";
-import * as _ from "lodash";
 
 export const command = new Command("database:remove <path>")
   .description("remove data from your Firebase at the specified path")
@@ -22,8 +21,8 @@ export const command = new Command("database:remove <path>")
   .before(requireDatabaseInstance)
   .before(populateInstanceDetails)
   .before(warnEmulatorNotSupported, Emulators.DATABASE)
-  .action(async (path, options) => {
-    if (!_.startsWith(path, "/")) {
+  .action(async (path: string, options) => {
+    if (!path.startsWith("/")) {
       return utils.reject("Path must begin with /", { exit: 1 });
     }
     const origin = realtimeOriginOrEmulatorOrCustomUrl(options.instanceDetails.databaseUrl);

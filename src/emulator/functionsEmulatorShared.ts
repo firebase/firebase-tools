@@ -11,9 +11,8 @@ import { BackendInfo, EmulatableBackend, InvokeRuntimeOpts } from "./functionsEm
 import { copyIfPresent } from "../gcp/proto";
 import { ENV_DIRECTORY } from "../extensions/manifest";
 import { substituteParams } from "../extensions/extensionsHelper";
-import { ExtensionSpec, ExtensionVersion } from "../extensions/extensionsApi";
+import { ExtensionSpec, ExtensionVersion } from "../extensions/types";
 import { replaceConsoleLinks } from "./extensions/postinstall";
-import { AUTH_BLOCKING_EVENTS } from "../functions/events/v1";
 import { serviceForEndpoint } from "../deploy/functions/services";
 import { inferBlockingDetails } from "../deploy/functions/prepare";
 

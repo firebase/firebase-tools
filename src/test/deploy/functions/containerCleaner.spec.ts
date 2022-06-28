@@ -137,7 +137,7 @@ describe("DockerHelper", () => {
     });
 
     let firstDeleteImage = true;
-    deleteImage.callsFake((path: string, digest: string) => {
+    deleteImage.callsFake((path: string) => {
       if (firstDeleteImage) {
         firstDeleteImage = false;
         return Promise.reject(new Error("I'm flaky"));

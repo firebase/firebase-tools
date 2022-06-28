@@ -1,4 +1,3 @@
-import * as _ from "lodash";
 import * as archiver from "archiver";
 import * as clc from "cli-color";
 import * as filesize from "filesize";
@@ -71,12 +70,12 @@ async function packageSource(
   );
   try {
     const files = await fsAsync.readdirRecursive({ path: sourceDir, ignore: ignore });
-    _.forEach(files, (file) => {
+    for (const file of files) {
       archive.file(file.name, {
         name: path.relative(sourceDir, file.name),
         mode: file.mode,
       });
-    });
+    }
     if (typeof runtimeConfig !== "undefined") {
       archive.append(JSON.stringify(runtimeConfig, null, 2), {
         name: CONFIG_DEST_FILE,

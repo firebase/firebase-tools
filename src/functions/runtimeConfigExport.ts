@@ -1,6 +1,3 @@
-import * as fs from "fs";
-import * as path from "path";
-
 import * as clc from "cli-color";
 
 import * as env from "./env";

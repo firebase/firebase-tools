@@ -1,5 +1,4 @@
 import { FirebaseError } from "../error";
-import { Config } from "../config";
 import { logger } from "../logger";
 import { Options } from "../options";
 import * as utils from "../utils";
@@ -7,12 +6,6 @@ import * as utils from "../utils";
 export interface RulesInstanceConfig {
   instance: string;
   rules: string;
-}
-
-interface DatabaseConfig {
-  rules: string;
-  target?: string;
-  instance?: string;
 }
 
 /**

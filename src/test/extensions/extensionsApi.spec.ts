@@ -4,6 +4,7 @@ import * as nock from "nock";
 import * as api from "../../api";
 import { FirebaseError } from "../../error";
 import * as extensionsApi from "../../extensions/extensionsApi";
+import { ExtensionSource } from "../../extensions/types";
 import * as refs from "../../extensions/refs";
 import { cloneDeep } from "../../utils";
 
@@ -398,7 +399,7 @@ describe("extensions", () => {
   });
 
   describe("updateInstance", () => {
-    const testSource: extensionsApi.ExtensionSource = {
+    const testSource: ExtensionSource = {
       state: "ACTIVE",
       name: "abc123",
       packageUri: "www.google.com/pack.zip",

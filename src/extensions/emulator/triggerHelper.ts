@@ -4,11 +4,11 @@ import {
 } from "../../emulator/functionsEmulatorShared";
 import { EmulatorLogger } from "../../emulator/emulatorLogger";
 import { Emulators } from "../../emulator/types";
-import * as extensionsApi from "../../extensions/extensionsApi";
+import { Resource } from "../../extensions/types";
 import * as proto from "../../gcp/proto";
 
 export function functionResourceToEmulatedTriggerDefintion(
-  resource: extensionsApi.Resource
+  resource: Resource
 ): ParsedTriggerDefinition {
   const etd: ParsedTriggerDefinition = {
     name: resource.name,

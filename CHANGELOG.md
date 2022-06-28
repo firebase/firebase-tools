@@ -1,2 +1,3 @@
 - Fixes Auth Blocking Trigger registration in the Emulator (#4592).
 - Functions now store docker images on Artifact Registry rather than Container Repository (#4654)
+- Adds better messaging when the Emulator UI isn't started (#3781).

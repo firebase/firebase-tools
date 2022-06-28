@@ -9,7 +9,7 @@ import * as functionsConfig from "../../functionsConfig";
 import { storage } from "../../gcp";
 import * as archiveDirectory from "../../archiveDirectory";
 import * as prompt from "../../prompt";
-import { ExtensionSource } from "../../extensions/extensionsApi";
+import { ExtensionSource, ExtensionSpec, Param, ParamType } from "../../extensions/types";
 import { Readable } from "stream";
 import { ArchiveResult } from "../../archiveDirectory";
 import { canonicalizeRefInput } from "../../extensions/extensionsHelper";
@@ -109,7 +109,7 @@ describe("extensionsHelper", () => {
       ENV_VAR_THREE: "https://${PROJECT_ID}.web.app/?acceptInvitation={token}",
     };
 
-    const exampleParamSpec: extensionsApi.Param[] = [
+    const exampleParamSpec: Param[] = [
       {
         param: "ENV_VAR_ONE",
         label: "env1",
@@ -167,7 +167,7 @@ describe("extensionsHelper", () => {
   });
 
   describe("validateCommandLineParams", () => {
-    const exampleParamSpec: extensionsApi.Param[] = [
+    const exampleParamSpec: Param[] = [
       {
         param: "ENV_VAR_ONE",
         label: "env1",
@@ -307,7 +307,7 @@ describe("extensionsHelper", () => {
         {
           param: "HI",
           label: "hello",
-          type: extensionsApi.ParamType.MULTISELECT,
+          type: ParamType.MULTISELECT,
           options: [
             {
               value: "val",
@@ -330,7 +330,7 @@ describe("extensionsHelper", () => {
         {
           param: "HI",
           label: "hello",
-          type: extensionsApi.ParamType.MULTISELECT,
+          type: ParamType.MULTISELECT,
           options: [],
           validationRegex: "FAIL",
           required: true,
@@ -350,7 +350,7 @@ describe("extensionsHelper", () => {
         {
           param: "HI",
           label: "hello",
-          type: extensionsApi.ParamType.SELECT,
+          type: ParamType.SELECT,
           validationRegex: "FAIL",
           options: [],
           required: true,
@@ -370,7 +370,7 @@ describe("extensionsHelper", () => {
         {
           param: "HI",
           label: "hello",
-          type: extensionsApi.ParamType.SELECT,
+          type: ParamType.SELECT,
           options: [
             {
               value: "val",
@@ -393,7 +393,7 @@ describe("extensionsHelper", () => {
         {
           param: "HI",
           label: "hello",
-          type: extensionsApi.ParamType.MULTISELECT,
+          type: ParamType.MULTISELECT,
           options: [
             {
               value: "val",
@@ -417,7 +417,7 @@ describe("extensionsHelper", () => {
 
   describe("validateSpec", () => {
     it("should not error on a valid spec", () => {
-      const testSpec: extensionsApi.ExtensionSpec = {
+      const testSpec: ExtensionSpec = {
         name: "test",
         version: "0.1.0",
         specVersion: "v1beta",
@@ -432,7 +432,7 @@ describe("extensionsHelper", () => {
       }).not.to.throw();
     });
     it("should error if license is missing", () => {
-      const testSpec: extensionsApi.ExtensionSpec = {
+      const testSpec: ExtensionSpec = {
         name: "test",
         version: "0.1.0",
         specVersion: "v1beta",
@@ -446,7 +446,7 @@ describe("extensionsHelper", () => {
       }).to.throw(FirebaseError, /license/);
     });
     it("should error if license is invalid", () => {
-      const testSpec: extensionsApi.ExtensionSpec = {
+      const testSpec: ExtensionSpec = {
         name: "test",
         version: "0.1.0",
         specVersion: "v1beta",
