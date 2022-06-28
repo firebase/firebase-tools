@@ -20,7 +20,6 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-
 // Check for older versions of Node no longer supported by the CLI.
 import * as semver from "semver";
 const pkg = require("../../package.json");
