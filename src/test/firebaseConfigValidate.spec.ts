@@ -1,7 +1,6 @@
 import { expect } from "chai";
 import { getValidator } from "../firebaseConfigValidate";
 import { FirebaseConfig } from "../firebaseConfig";
-import { valid } from "semver";
 
 describe("firebaseConfigValidate", () => {
   it("should accept a basic, valid config", () => {

@@ -237,7 +237,8 @@ function parseEndpointForBuild(
 ): build.Endpoint {
   let triggered: build.Triggered;
   if (backend.isEventTriggered(ep)) {
-    const { serviceAccountEmail, ...newTrigger } = ep.eventTrigger;
+    const { ...newTrigger } = ep.eventTrigger;
+    delete newTrigger.serviceAccountEmail;
     triggered = { eventTrigger: newTrigger };
     triggered.eventTrigger.serviceAccount = ep.eventTrigger.serviceAccountEmail;
     renameIfPresent(triggered.eventTrigger, ep.eventTrigger, "channel", "channel", (c) =>

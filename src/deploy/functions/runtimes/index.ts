@@ -3,7 +3,6 @@ import * as build from "../build";
 import * as golang from "./golang";
 import * as node from "./node";
 import * as validate from "../validate";
-import * as projectPath from "../../../projectPath";
 import { FirebaseError } from "../../../error";
 
 /** Supported runtimes for new Cloud Functions. */

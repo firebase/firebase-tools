@@ -26,7 +26,6 @@ import { ensureTriggerRegions } from "./triggerRegionHelper";
 import { ensureServiceAgentRoles } from "./checkIam";
 import { FirebaseError } from "../../error";
 import { configForCodebase, normalizeAndValidate } from "../../functions/projectConfig";
-import { previews } from "../../previews";
 import { AUTH_BLOCKING_EVENTS } from "../../functions/events/v1";
 import { generateServiceIdentity } from "../../gcp/serviceusage";
 

@@ -550,7 +550,7 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
     const { localId, idToken } = await registerUser(authApi(), user);
     const savedUserInfo = await getAccountInfoByIdToken(authApi(), idToken);
     expect(savedUserInfo.mfaInfo).to.have.length(2);
-    const oldEnrollmentIds = savedUserInfo.mfaInfo!.map((_) => _.mfaEnrollmentId);
+    const oldEnrollmentIds = savedUserInfo.mfaInfo!.map((info) => info.mfaEnrollmentId);
 
     const newMfaInfo = {
       displayName: "New New",

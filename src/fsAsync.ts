@@ -21,7 +21,7 @@ async function readdirRecursiveHelper(options: {
 }): Promise<ReaddirRecursiveFile[]> {
   const dirContents = readdirSync(options.path);
   const fullPaths = dirContents.map((n) => join(options.path, n));
-  const filteredPaths = _.reject(fullPaths, options.filter);
+  const filteredPaths = fullPaths.filter((p) => !options.filter(p));
   const filePromises: Array<Promise<ReaddirRecursiveFile | ReaddirRecursiveFile[]>> = [];
   for (const p of filteredPaths) {
     const fstat = statSync(p);
@@ -36,7 +36,7 @@ async function readdirRecursiveHelper(options: {
 
   const files = await Promise.all(filePromises);
   let flatFiles = _.flattenDeep(files);
-  flatFiles = _.reject(flatFiles, (f) => _.isNull(f));
+  flatFiles = flatFiles.filter((f) => f !== null);
   return flatFiles;
 }
 
@@ -49,7 +49,7 @@ export async function readdirRecursive(
   options: ReaddirRecursiveOpts
 ): Promise<ReaddirRecursiveFile[]> {
   const mmopts = { matchBase: true, dot: true };
-  const rules = _.map(options.ignore || [], (glob) => {
+  const rules = (options.ignore || []).map((glob) => {
     return (p: string) => minimatch(p, glob, mmopts);
   });
   const filter = (t: string): boolean => {

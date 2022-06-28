@@ -1,4 +1,5 @@
 import { expect } from "chai";
+import * as sinon from "sinon";
 
 import * as utils from "../utils";
 
@@ -328,6 +329,72 @@ describe("utils", () => {
         ],
         europe: [{ id: 4, location: "europe" }],
       });
+    });
+  });
+
+  describe("debounce", () => {
+    let clock: sinon.SinonFakeTimers;
+
+    beforeEach(() => {
+      clock = sinon.useFakeTimers();
+    });
+
+    afterEach(() => {
+      clock.restore();
+    });
+
+    it("should be called only once in the given time interval", () => {
+      const fn = sinon.stub();
+      const debounced = utils.debounce(fn, 1000);
+
+      for (let i = 0; i < 100; i++) {
+        debounced(i);
+      }
+
+      clock.tick(1001);
+      expect(fn).to.be.calledOnce;
+      expect(fn).to.be.calledOnceWith(99);
+    });
+
+    it("should be called only once if it is called many times within the interval", () => {
+      const fn = sinon.stub();
+      const debounced = utils.debounce(fn, 1000);
+
+      for (let i = 0; i < 100; i++) {
+        debounced(i);
+        clock.tick(999);
+      }
+
+      clock.tick(1001);
+      expect(fn).to.be.calledOnce;
+      expect(fn).to.be.calledOnceWith(99);
+    });
+
+    it("should be called only once within the interval if leading is provided", () => {
+      const fn = sinon.stub();
+      const debounced = utils.debounce(fn, 1000, { leading: true });
+
+      for (let i = 0; i < 100; i++) {
+        debounced(i);
+      }
+
+      clock.tick(999);
+      expect(fn).to.be.calledOnce;
+      expect(fn).to.be.calledOnceWith(0);
+    });
+
+    it("should be called twice with leading", () => {
+      const fn = sinon.stub();
+      const debounced = utils.debounce(fn, 1000, { leading: true });
+
+      for (let i = 0; i < 100; i++) {
+        debounced(i);
+      }
+
+      clock.tick(1500);
+      expect(fn).to.be.calledTwice;
+      expect(fn).to.be.calledWith(0);
+      expect(fn).to.be.calledWith(99);
     });
   });
 });

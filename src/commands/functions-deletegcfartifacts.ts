@@ -1,5 +1,4 @@
 import { Command } from "../command";
-import * as utils from "../utils";
 import { needProjectId } from "../projectUtils";
 import {
   listGcfPaths,

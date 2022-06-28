@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { expectStatusCode, registerAnonUser } from "./helpers";
+import { expectStatusCode } from "./helpers";
 import { describeAuthEmulator, PROJECT_ID } from "./setup";
 
 describeAuthEmulator("config management", ({ authApi }) => {
