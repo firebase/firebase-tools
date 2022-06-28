@@ -306,12 +306,7 @@ export function toBackend(
       );
       proto.copyIfPresent(bkEndpoint, bdEndpoint, "secretEnvironmentVariables");
       if (bdEndpoint.vpc) {
-        bkEndpoint.vpc = {
-          // $REGION is a token in the Build VPC connector because Build endpoints can have multiple regions, so we unroll here
-          connector: params
-            .resolveString(bdEndpoint.vpc.connector, paramValues)
-            .replace("$REGION", region),
-        };
+        bkEndpoint.vpc = { connector: params.resolveString(bdEndpoint.vpc.connector, paramValues) };
         proto.copyIfPresent(bkEndpoint.vpc, bdEndpoint.vpc, "egressSettings");
       }
       proto.renameIfPresent(bkEndpoint, bdEndpoint, "serviceAccountEmail", "serviceAccount");

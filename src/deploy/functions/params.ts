@@ -9,7 +9,7 @@ function isCEL(expr: string | number | boolean): expr is CEL {
   return typeof expr === "string" && expr.includes("{{") && expr.includes("}}");
 }
 function dependenciesCEL(expr: CEL): string[] {
-  return /params\.(\w+)/.exec(expr)?.slice(1) || [];
+  return /params\.(\S+)/.exec(expr)?.slice(1) || [];
 }
 
 /**
@@ -180,7 +180,11 @@ function resolveDefaultCEL(
     return Object.keys(currentEnv).includes(dep);
   });
   if (!allDepsFound) {
-    throw new FirebaseError("");
+    throw new FirebaseError(
+      "Build specified parameter with un-resolvable default value " +
+        expr +
+        "; dependencies missing."
+    );
   }
 
   switch (type) {
@@ -230,24 +234,26 @@ export async function resolveParams(
         paramValues[param.param] = userEnvs[param.param];
         continue;
       } else {
-        throw new FirebaseError("");
+        throw new FirebaseError(
+          "Parameter " +
+            param.param +
+            " resolved to value from dotenv files " +
+            userEnvs[param.param] +
+            " of wrong type"
+        );
       }
     }
 
-    if (param.default) {
-      let paramDefault: ParamValue;
-      if (isCEL(param.default)) {
-        paramDefault = resolveDefaultCEL(param.type || "", param.default, paramValues);
-      } else {
-        paramDefault = param.default;
-      }
-      if (!canSatisfyParam(param, paramDefault)) {
-        throw new FirebaseError("");
-      }
-      paramValues[param.param] = await promptParam(param, paramDefault);
-    } else {
-      paramValues[param.param] = await promptParam(param);
+    let paramDefault: ParamValue | undefined = param.default;
+    if (paramDefault && isCEL(paramDefault)) {
+      paramDefault = resolveDefaultCEL(param.type || "string", paramDefault, paramValues);
     }
+    if (paramDefault && !canSatisfyParam(param, paramDefault)) {
+      throw new FirebaseError(
+        "Parameter " + param.param + " has default value " + paramDefault + " of wrong type"
+      );
+    }
+    paramValues[param.param] = await promptParam(param, paramDefault);
   }
 
   return paramValues;
@@ -261,10 +267,6 @@ export async function resolveParams(
  * When the CLI is running in non-interactive mode or with the --force argument, it is an error for a param to be undefined in dotenvs.
  */
 async function promptParam(param: Param, resolvedDefault?: ParamValue): Promise<ParamValue> {
-  if (resolvedDefault !== undefined && !canSatisfyParam(param, resolvedDefault)) {
-    throw new FirebaseError("");
-  }
-
   if (param.type === "string") {
     return promptStringParam(param, resolvedDefault as string);
   } else if (param.type === "int") {
