@@ -122,8 +122,6 @@ class Delegate implements runtimes.RuntimeDelegate {
     );
     return Promise.resolve(async () => {
       await fetch(`http://localhost:${port}/__/quitquitquit`);
-      // If we SIGKILL the child process we're actually going to kill the go
-      // runner and the webserver it launched will keep running.
       setTimeout(() => {
         if (!childProcess.killed) {
           childProcess.kill("SIGKILL");
@@ -139,11 +137,10 @@ class Delegate implements runtimes.RuntimeDelegate {
   ): Promise<Build> {
     let discovered = await discovery.detectFromYaml(this.sourceDir, this.projectId, this.runtime);
     if (!discovered) {
-      const port = await portfinder.getPortPromise();
       const adminPort = await portfinder.getPortPromise({
         port: 8081,
       });
-      const killProcess = await this.serveAdmin(port, envs);
+      const killProcess = await this.serveAdmin(adminPort, envs);
       try {
         discovered = await discovery.detectFromPort(adminPort, this.projectId, this.runtime);
       } finally {
