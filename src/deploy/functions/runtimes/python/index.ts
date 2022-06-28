@@ -134,7 +134,7 @@ class Delegate implements runtimes.RuntimeDelegate {
   }
 
   async discoverBuild(
-    configValues: backend.RuntimeConfigValues,
+    _configValues: backend.RuntimeConfigValues,
     envs: backend.EnvironmentVariables
   ): Promise<Build> {
     let discovered = await discovery.detectFromYaml(this.sourceDir, this.projectId, this.runtime);
@@ -143,14 +143,7 @@ class Delegate implements runtimes.RuntimeDelegate {
       const adminPort = await portfinder.getPortPromise({
         port: 8081,
       });
-      if (Object.keys(configValues || {}).length) {
-        envs.CLOUD_RUNTIME_CONFIG = JSON.stringify(configValues);
-      }
-      const processEnvs: backend.EnvironmentVariables = { ...envs };
-      if (Object.keys(configValues || {}).length) {
-        processEnvs.CLOUD_RUNTIME_CONFIG = JSON.stringify(configValues);
-      }
-      const killProcess = await this.serveAdmin(port, processEnvs);
+      const killProcess = await this.serveAdmin(port, envs);
       try {
         discovered = await discovery.detectFromPort(adminPort, this.projectId, this.runtime);
       } finally {
