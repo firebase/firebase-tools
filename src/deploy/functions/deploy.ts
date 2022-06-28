@@ -24,7 +24,7 @@ async function generateSourceHash(source: args.Source): Promise<any> {
     readStream.pipe(hash);
     await new Promise((resolve, reject) => {
       hash.on("end", () => resolve(hash.read()));
-      readStream.on("error", (err) => reject(err));
+      readStream.on("error", reject);
     });
   }
 
