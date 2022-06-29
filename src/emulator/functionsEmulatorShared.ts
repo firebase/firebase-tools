@@ -69,12 +69,6 @@ export interface FunctionsRuntimeArgs {
 
 export interface FunctionsRuntimeBundle {
   proto: any;
-  // TODO(danielylee): One day, we hope to get rid of all of the following properties.
-  // Our goal is for the emulator environment to mimic the production environment as much
-  // as possible, and that includes how the emulated functions are called. In prod,
-  // the calls are made over HTTP which provides only the uri path, payload, headers, etc
-  // and none of these extra properties.
-  socketPath?: string;
   disabled_features?: FunctionsRuntimeFeatures;
   // TODO(danielylee): To make debugging in Functions Emulator w/ --inspect-functions flag a good experience, we run
   // all functions in a single runtime process. This is drastically different to production environment where each
