@@ -1,9 +1,11 @@
-import * as _ from "lodash";
-import { CloudFunction } from "firebase-functions";
 import * as os from "os";
 import * as path from "path";
-import * as express from "express";
 import * as fs from "fs";
+import { randomBytes } from "crypto";
+
+import * as _ from "lodash";
+import * as express from "express";
+import { CloudFunction } from "firebase-functions";
 
 import * as backend from "../deploy/functions/backend";
 import { Constants } from "./constants";
@@ -270,7 +272,7 @@ export function getEmulatedTriggersFromDefinitions(
   );
 }
 
-export function getTemporarySocketPath(pid: number, cwd: string): string {
+export function getTemporarySocketPath(): string {
   // See "net" package docs for information about IPC pipes on Windows
   // https://nodejs.org/api/net.html#net_identifying_paths_for_ipc_connections
   //
@@ -284,10 +286,11 @@ export function getTemporarySocketPath(pid: number, cwd: string): string {
   //   /var/folders/xl/6lkrzp7j07581mw8_4dlt3b000643s/T/{...}.sock
   // Since the system prefix is about ~50 chars we only have about ~50 more to work with
   // before we will get truncated socket names and then undefined behavior.
+  const rand = randomBytes(8).toString("hex");
   if (process.platform === "win32") {
-    return path.join("\\\\?\\pipe", cwd, pid.toString());
+    return path.join("\\\\?\\pipe", `fire_emu_${rand}`);
   } else {
-    return path.join(os.tmpdir(), `fire_emu_${pid.toString()}.sock`);
+    return path.join(os.tmpdir(), `fire_emu_${rand}.sock`);
   }
 }
 
