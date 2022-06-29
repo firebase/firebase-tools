@@ -4,12 +4,10 @@ import { ensure } from "../../ensureApiEnabled";
 import { FirebaseError, isBillingError } from "../../error";
 import { logLabeledBullet, logLabeledSuccess } from "../../utils";
 import { ensureServiceAgentRole } from "../../gcp/secretManager";
-import { previews } from "../../previews";
 import { getFirebaseProject } from "../../management/projects";
 import { assertExhaustive } from "../../functional";
 import { track } from "../../track";
 import * as backend from "./backend";
-import * as ensureApiEnabled from "../../ensureApiEnabled";
 
 const FAQ_URL = "https://firebase.google.com/support/faq#functions-runtime";
 const CLOUD_BUILD_API = "cloudbuild.googleapis.com";
