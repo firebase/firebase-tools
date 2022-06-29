@@ -781,7 +781,6 @@ function rawBodySaver(req: express.Request, res: express.Response, buf: Buffer):
 
 async function processHTTPS(trigger: CloudFunction<any>): Promise<void> {
   const ephemeralServer = express();
-  const functionRouter = express.Router(); // eslint-disable-line new-cap
 
   await new Promise<void>((resolveEphemeralServer, rejectEphemeralServer) => {
     const handler = async (req: express.Request, res: express.Response) => {
@@ -830,10 +829,10 @@ async function processHTTPS(trigger: CloudFunction<any>): Promise<void> {
         verify: rawBodySaver,
       })
     );
-
-    functionRouter.all("*", handler);
-
-    ephemeralServer.use([`/`, `/*`], functionRouter);
+    ephemeralServer.all("/favicon.ico|/robots.txt", (req, res) => {
+      res.status(404).send(null);
+    });
+    ephemeralServer.all(`/*`, handler);
 
     logDebug(`Attempting to listen to port: ${process.env.PORT}`);
     const instance = ephemeralServer.listen(process.env.PORT, () => {
