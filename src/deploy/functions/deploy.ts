@@ -29,24 +29,21 @@ async function generateSourceHash(source: args.Source, wantBackend: backend.Back
     });
   }
 
-  // TODO(tystark) dotenv needs rework
-  hash.push({
-    ...process.env,
-  });
+  // Hash the contents of the dotenv variables
+  hash.push(wantBackend.environmentVariables);
 
+  // Hash the secret versions.
   const endpointsById = Object.values(wantBackend.endpoints);
   const endpointsList: backend.Endpoint[] = endpointsById
     .map((endpoints) => Object.values(endpoints))
     .reduce((memo, endpoints) => [...memo, ...endpoints], []);
-  const secretValues = secrets.of(endpointsList).reduce((memo, { secret, version }) => {
-    if (version) {
-      memo[secret] = version;
-    }
+  const secretVersions = secrets.of(endpointsList).reduce((memo, { secret, version }) => {
+    if (version) memo[secret] = version;
     return memo;
   }, {} as Record<string, string>);
-  hash.push(secretValues);
+  hash.push(secretVersions);
 
-  return hash.read();
+  return hash.read().toString("hex");
 }
 
 async function uploadSourceV1(
@@ -102,7 +99,6 @@ async function uploadCodebase(
   const generatedHash = generateSourceHash(source, wantBackend);
   // TODO(tystark) - fetch the latest uploaded snapshot of the codebase.
   // TODO(tystark) - log a message to the user if the hashes match
-  // TODO(tystark) - short-circuit if the hashes match and there is no --force
   // TODO(tystark) - short-circuit if the hashes match and there is no --force
 
   const uploads: Promise<unknown>[] = [];
