@@ -12,10 +12,11 @@ import * as gcf from "../../gcp/cloudfunctions";
 import * as gcfv2 from "../../gcp/cloudfunctionsv2";
 import * as backend from "./backend";
 import crypto from "crypto";
+import * as secrets from "../../functions/secrets";
 
 setGracefulCleanup();
 
-async function generateSourceHash(source: args.Source): Promise<any> {
+async function generateSourceHash(source: args.Source, wantBackend: backend.Backend): Promise<any> {
   const hash = crypto.createHash("sha256");
   const sourceFile = source.functionsSourceV2 || source.functionsSourceV1;
   // Hash the contents of the source file
@@ -28,12 +29,23 @@ async function generateSourceHash(source: args.Source): Promise<any> {
     });
   }
 
-  // Hash any possible .env additions
+  // TODO(tystark) dotenv needs rework
   hash.push({
     ...process.env,
   });
 
-  // TODO(tystark) Hash the contents of the secret versions; rpc needed (unless we already made this call earlier)
+  const endpointsById = Object.values(wantBackend.endpoints);
+  const endpointsList: backend.Endpoint[] = endpointsById
+    .map((endpoints) => Object.values(endpoints))
+    .reduce((memo, endpoints) => [...memo, ...endpoints], []);
+  const secretValues = secrets.of(endpointsList).reduce((memo, { secret, version }) => {
+    if (version) {
+      memo[secret] = version;
+    }
+    return memo;
+  }, {} as Record<string, string>);
+  hash.push(secretValues);
+
   return hash.read();
 }
 
@@ -87,7 +99,7 @@ async function uploadCodebase(
     return;
   }
 
-  const generatedHash = generateSourceHash(source);
+  const generatedHash = generateSourceHash(source, wantBackend);
   // TODO(tystark) - fetch the latest uploaded snapshot of the codebase.
   // TODO(tystark) - log a message to the user if the hashes match
   // TODO(tystark) - short-circuit if the hashes match and there is no --force
