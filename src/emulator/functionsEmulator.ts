@@ -1533,7 +1533,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     void track(EVENT_INVOKE, "https");
 
-    this.logger.log("INFO", `[functions] Runtime ready! Sending request!`);
+    this.logger.log("DEBUG", `[functions] Runtime ready! Sending request!`);
 
     // To match production behavior we need to drop the path prefix
     // req.url = /:projectId/:region/:trigger_name/*
