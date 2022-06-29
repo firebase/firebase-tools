@@ -2,14 +2,12 @@ import { promisify } from "util";
 import fetch from "node-fetch";
 import * as fs from "fs";
 import * as path from "path";
-import * as portfinder from "portfinder";
 import * as spawn from "cross-spawn";
 
 import { FirebaseError } from "../../../../error";
 import { logger } from "../../../../logger";
 import * as backend from "../../backend";
 import * as build from "../../build";
-import * as discovery from "../discovery";
 import * as gomod from "./gomod";
 import * as runtimes from "..";
 
@@ -145,34 +143,8 @@ export class Delegate {
     });
   }
 
-  // eslint-disable-next-line
-  async discoverBuild(
-    configValues: backend.RuntimeConfigValues,
-    envs: backend.EnvironmentVariables
-  ): Promise<build.Build> {
+  async discoverBuild(): Promise<build.Build> {
     // Unimplemented. Build discovery is not currently supported in Go.
-    return { requiredAPIs: [], endpoints: {}, params: [] };
-  }
-
-  async discoverSpec(
-    configValues: backend.RuntimeConfigValues,
-    envs: backend.EnvironmentVariables
-  ): Promise<backend.Backend> {
-    let discovered = await discovery.detectFromYaml(this.sourceDir, this.projectId, this.runtime);
-    if (!discovered) {
-      const getPort = promisify(portfinder.getPort) as () => Promise<number>;
-      const port = await getPort();
-      (portfinder as any).basePort = port + 1;
-      const adminPort = await getPort();
-
-      const kill = await this.serve(port, adminPort, envs);
-      try {
-        discovered = await discovery.detectFromPort(adminPort, this.projectId, this.runtime);
-      } finally {
-        await kill();
-      }
-    }
-    discovered.environmentVariables = envs;
-    return discovered;
+    return Promise.resolve({ requiredAPIs: [], endpoints: {}, params: [] });
   }
 }

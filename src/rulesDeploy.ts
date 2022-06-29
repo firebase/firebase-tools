@@ -167,12 +167,9 @@ export class RulesDeploy {
         if (confirm) {
           // Find the oldest unreleased rulesets. The rulesets are sorted reverse-chronlogically.
           const releases: Release[] = await gcp.rules.listAllReleases(this.options.project);
-          const unreleased: ListRulesetsEntry[] = _.reject(
-            history,
-            (ruleset: ListRulesetsEntry): boolean => {
-              return !!releases.find((release) => release.rulesetName === ruleset.name);
-            }
-          );
+          const unreleased: ListRulesetsEntry[] = history.filter((ruleset) => {
+            return !releases.find((release) => release.rulesetName === ruleset.name);
+          });
           const entriesToDelete = unreleased.reverse().slice(0, RULESETS_TO_GC);
           // To avoid running into quota issues, delete entries in _serial_ rather than parallel.
           for (const entry of entriesToDelete) {

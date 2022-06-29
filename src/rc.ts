@@ -140,7 +140,7 @@ export class RC {
 
     // apply resources to new target
     const existing = this.target(project, type, targetName);
-    const list = _.uniq(existing.concat(resources)).sort();
+    const list = Array.from(new Set(existing.concat(resources))).sort();
     this.set(["targets", project, type, targetName], list);
 
     this.save();

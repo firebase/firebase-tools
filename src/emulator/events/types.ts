@@ -5,9 +5,6 @@
  *
  * We can't import some of them because they are marked "internal".
  */
-
-import * as _ from "lodash";
-
 import { Resource } from "firebase-functions";
 import * as express from "express";
 
@@ -95,11 +92,11 @@ export interface AuthMode {
  */
 export class EventUtils {
   static isEvent(proto: any): proto is Event {
-    return _.has(proto, "context") && _.has(proto, "data");
+    return proto.context && proto.data;
   }
 
   static isLegacyEvent(proto: any): proto is LegacyEvent {
-    return _.has(proto, "data") && _.has(proto, "resource");
+    return proto.data && proto.resource;
   }
 
   static isBinaryCloudEvent(req: express.Request): boolean {
