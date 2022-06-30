@@ -368,13 +368,15 @@ function discoverTrigger(endpoint: Endpoint): backend.Triggered {
       eventType: endpoint.eventTrigger.eventType,
       eventFilters: bkEventFilters,
       retry: resolveBoolean(endpoint.eventTrigger.retry),
-      channel: endpoint.eventTrigger.channel,
     };
     if (endpoint.eventTrigger.serviceAccount) {
       bkEvent.serviceAccountEmail = endpoint.eventTrigger.serviceAccount;
     }
     if (endpoint.eventTrigger.region) {
       bkEvent.region = resolveString(endpoint.eventTrigger.region);
+    }
+    if (endpoint.eventTrigger.channel) {
+      bkEvent.channel = endpoint.eventTrigger.channel;
     }
     trigger = { eventTrigger: bkEvent };
   } else if ("scheduleTrigger" in endpoint) {
