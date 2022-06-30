@@ -40,6 +40,14 @@ const STORAGE_BUCKET_FUNCTION_FINALIZED_LOG =
 const STORAGE_BUCKET_FUNCTION_METADATA_LOG =
   "========== STORAGE BUCKET FUNCTION METADATA ==========";
 const ALL_EMULATORS_STARTED_LOG = "All emulators ready";
+const AUTH_BLOCKING_CREATE_V1_LOG =
+  "========== AUTH BLOCKING CREATE V1 FUNCTION METADATA ==========";
+const AUTH_BLOCKING_SIGN_IN_V1_LOG =
+  "========== AUTH BLOCKING SIGN IN V1 FUNCTION METADATA ==========";
+const AUTH_BLOCKING_CREATE_V2_LOG =
+  "========== AUTH BLOCKING CREATE V2 FUNCTION METADATA ==========";
+const AUTH_BLOCKING_SIGN_IN_V2_LOG =
+  "========== AUTH BLOCKING SIGN IN V2 FUNCTION METADATA ==========";
 
 interface ConnectionInfo {
   host: string;
@@ -85,6 +93,8 @@ export class TriggerEndToEndTest {
   storageBucketDeletedTriggerCount = 0;
   storageBucketFinalizedTriggerCount = 0;
   storageBucketMetadataTriggerCount = 0;
+  authBlockingCreateV1TriggerCount = 0;
+  authBlockingSignInV1TriggerCount = 0;
 
   /* Functions V2 */
   pubsubV2TriggerCount = 0;
@@ -96,6 +106,8 @@ export class TriggerEndToEndTest {
   storageBucketV2DeletedTriggerCount = 0;
   storageBucketV2FinalizedTriggerCount = 0;
   storageBucketV2MetadataTriggerCount = 0;
+  authBlockingCreateV2TriggerCount = 0;
+  authBlockingSignInV2TriggerCount = 0;
 
   rtdbFromFirestore = false;
   firestoreFromRtdb = false;
@@ -128,6 +140,8 @@ export class TriggerEndToEndTest {
     this.storageBucketDeletedTriggerCount = 0;
     this.storageBucketFinalizedTriggerCount = 0;
     this.storageBucketMetadataTriggerCount = 0;
+    this.authBlockingCreateV1TriggerCount = 0;
+    this.authBlockingSignInV1TriggerCount = 0;
 
     /* Functions V2 */
     this.pubsubV2TriggerCount = 0;
@@ -139,6 +153,8 @@ export class TriggerEndToEndTest {
     this.storageBucketV2DeletedTriggerCount = 0;
     this.storageBucketV2FinalizedTriggerCount = 0;
     this.storageBucketV2MetadataTriggerCount = 0;
+    this.authBlockingCreateV2TriggerCount = 0;
+    this.authBlockingSignInV2TriggerCount = 0;
   }
 
   /*
@@ -201,6 +217,13 @@ export class TriggerEndToEndTest {
       if (data.includes(STORAGE_BUCKET_FUNCTION_METADATA_LOG)) {
         this.storageBucketMetadataTriggerCount++;
       }
+      if (data.includes(AUTH_BLOCKING_CREATE_V1_LOG)) {
+        this.authBlockingCreateV1TriggerCount++;
+      }
+      if (data.includes(AUTH_BLOCKING_SIGN_IN_V1_LOG)) {
+        this.authBlockingSignInV1TriggerCount++;
+      }
+
       /* Functions V2 */
       if (data.includes(PUBSUB_FUNCTION_V2_LOG)) {
         this.pubsubV2TriggerCount++;
@@ -228,6 +251,12 @@ export class TriggerEndToEndTest {
       }
       if (data.includes(STORAGE_BUCKET_FUNCTION_V2_METADATA_LOG)) {
         this.storageBucketV2MetadataTriggerCount++;
+      }
+      if (data.includes(AUTH_BLOCKING_CREATE_V2_LOG)) {
+        this.authBlockingCreateV2TriggerCount++;
+      }
+      if (data.includes(AUTH_BLOCKING_SIGN_IN_V2_LOG)) {
+        this.authBlockingSignInV2TriggerCount++;
       }
     });
 
@@ -294,6 +323,14 @@ export class TriggerEndToEndTest {
       body: JSON.stringify(body),
       headers: { "Content-Type": "application/json" },
     });
+  }
+
+  createUserFromAuth(): Promise<Response> {
+    return this.invokeHttpFunction("createUserFromAuth");
+  }
+
+  signInUserFromAuth(): Promise<Response> {
+    return this.invokeHttpFunction("signInUserFromAuth");
   }
 
   writeToRtdb(): Promise<Response> {
