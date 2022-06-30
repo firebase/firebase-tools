@@ -368,6 +368,7 @@ function discoverTrigger(endpoint: Endpoint): backend.Triggered {
       eventType: endpoint.eventTrigger.eventType,
       eventFilters: bkEventFilters,
       retry: resolveBoolean(endpoint.eventTrigger.retry),
+      channel: endpoint.eventTrigger.channel,
     };
     if (endpoint.eventTrigger.serviceAccount) {
       bkEvent.serviceAccountEmail = endpoint.eventTrigger.serviceAccount;
