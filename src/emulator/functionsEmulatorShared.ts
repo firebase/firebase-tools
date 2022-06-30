@@ -2,7 +2,6 @@ import * as os from "os";
 import * as path from "path";
 import * as fs from "fs";
 import { randomBytes } from "crypto";
-
 import * as _ from "lodash";
 import * as express from "express";
 import { CloudFunction } from "firebase-functions";
