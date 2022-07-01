@@ -2,7 +2,6 @@ import { expect } from "chai";
 
 import * as etags from "../../extensions/etags";
 import * as rc from "../../rc";
-import { ExtensionInstance } from "../../extensions/types";
 
 const TEST_PROJECT = "test-project";
 
@@ -16,32 +15,10 @@ function dummyRc(etagMap: Record<string, string>) {
   });
 }
 
-function extensionInstanceHelper(name: string, etag: string) {
-  const ret: ExtensionInstance = {
-    name,
+function extensionInstanceHelper(instanceId: string, etag?: string) {
+  const ret = {
+    instanceId,
     etag,
-    createTime: "",
-    updateTime: "",
-    state: "ACTIVE",
-    serviceAccountEmail: "",
-    config: {
-      name: "",
-      params: [],
-      createTime: "",
-      source: {
-        state: "ACTIVE",
-        name: "",
-        packageUri: "",
-        hash: "",
-        spec: {
-          name: "",
-          version: "",
-          resources: [],
-          sourceUrl: "",
-          params: [],
-        },
-      },
-    },
   };
   return ret;
 }
@@ -50,7 +27,7 @@ describe("detectEtagChanges", () => {
   const testCases: {
     desc: string;
     rc: rc.RC;
-    instances: ExtensionInstance[];
+    instances: { instanceId: string; etag?: string }[];
     expected: string[];
   }[] = [
     {
