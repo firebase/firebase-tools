@@ -62,7 +62,7 @@ function writeHelloWorldFunctionWithRegions(
   const functionFileContents = `
 const functions = require("firebase-functions");
 
-exports.helloWorld = functions${region}.runWith({invoker: "public"}).https.onRequest((request, response) => {
+exports.helloWorld = functions${region}.https.onRequest((request, response) => {
   functions.logger.info("Hello logs!", { structuredData: true });
   const envVarFunctionsRegion = process.env.FUNCTION_REGION;
   response.send("Hello from Firebase ${
@@ -701,7 +701,7 @@ describe("deploy function-targeted rewrites And functions", () => {
       "europe-west1",
     ]);
 
-    client.deploy({
+    await client.deploy({
       project: process.env.FBTOOLS_TARGET_PROJECT,
       cwd: tempDirInfo.tempDir.name,
       only: "functions",
