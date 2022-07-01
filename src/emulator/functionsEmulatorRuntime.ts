@@ -21,6 +21,7 @@ import {
   SignatureType,
 } from "./functionsEmulatorShared";
 import { compareVersionStrings, isLocalHost } from "./functionsEmulatorUtils";
+import { EventUtils } from "./events/types";
 
 let functionModule: any;
 let FUNCTION_TARGET_NAME: string;
@@ -207,10 +208,7 @@ class Proxied<T extends ProxyTarget> {
   }
 }
 
-async function resolveDeveloperNodeModule(
-  frb: FunctionsRuntimeBundle,
-  name: string
-): Promise<ModuleResolution> {
+async function resolveDeveloperNodeModule(name: string): Promise<ModuleResolution> {
   const pkg = requirePackageJson();
   if (!pkg) {
     new EmulatorLog("SYSTEM", "missing-package-json", "").log();
@@ -245,11 +243,8 @@ async function resolveDeveloperNodeModule(
   return moduleResolution;
 }
 
-async function assertResolveDeveloperNodeModule(
-  frb: FunctionsRuntimeBundle,
-  name: string
-): Promise<SuccessfulModuleResolution> {
-  const resolution = await resolveDeveloperNodeModule(frb, name);
+async function assertResolveDeveloperNodeModule(name: string): Promise<SuccessfulModuleResolution> {
+  const resolution = await resolveDeveloperNodeModule(name);
   if (
     !(resolution.installed && resolution.declared && resolution.resolution && resolution.version)
   ) {
@@ -261,14 +256,14 @@ async function assertResolveDeveloperNodeModule(
   return resolution as SuccessfulModuleResolution;
 }
 
-async function verifyDeveloperNodeModules(frb: FunctionsRuntimeBundle): Promise<boolean> {
+async function verifyDeveloperNodeModules(): Promise<boolean> {
   const modBundles = [
     { name: "firebase-admin", isDev: false, minVersion: "8.9.0" },
     { name: "firebase-functions", isDev: false, minVersion: "3.13.1" },
   ];
 
   for (const modBundle of modBundles) {
-    const resolution = await resolveDeveloperNodeModule(frb, modBundle.name);
+    const resolution = await resolveDeveloperNodeModule(modBundle.name);
 
     /*
     If there's no reference to the module in their package.json, prompt them to install it
@@ -410,11 +405,8 @@ type HttpsHandler = (req: Request, resp: Response) => void;
     The relevant firebase-functions code is:
 https://github.com/firebase/firebase-functions/blob/9e3bda13565454543b4c7b2fd10fb627a6a3ab97/src/providers/https.ts#L66
    */
-async function initializeFirebaseFunctionsStubs(frb: FunctionsRuntimeBundle): Promise<void> {
-  const firebaseFunctionsResolution = await assertResolveDeveloperNodeModule(
-    frb,
-    "firebase-functions"
-  );
+async function initializeFirebaseFunctionsStubs(): Promise<void> {
+  const firebaseFunctionsResolution = await assertResolveDeveloperNodeModule("firebase-functions");
   const firebaseFunctionsRoot = findModuleRoot(
     "firebase-functions",
     firebaseFunctionsResolution.resolution
@@ -565,11 +557,11 @@ function initializeRuntimeConfig() {
  *
  * We also mock out firestore.settings() so we can merge the emulator settings with the developer's.
  */
-async function initializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promise<void> {
-  const adminResolution = await assertResolveDeveloperNodeModule(frb, "firebase-admin");
+async function initializeFirebaseAdminStubs(): Promise<void> {
+  const adminResolution = await assertResolveDeveloperNodeModule("firebase-admin");
   const localAdminModule = require(adminResolution.resolution);
 
-  const functionsResolution = await assertResolveDeveloperNodeModule(frb, "firebase-functions");
+  const functionsResolution = await assertResolveDeveloperNodeModule("firebase-functions");
   const localFunctionsModule = require(functionsResolution.resolution);
 
   // Configuration from the environment
@@ -591,7 +583,6 @@ async function initializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
       }).log();
 
       const defaultApp: admin.app.App = makeProxiedFirebaseApp(
-        frb,
         adminModuleTarget.initializeApp(defaultAppOptions)
       );
       logDebug("initializeApp(DEFAULT)", defaultAppOptions);
@@ -656,10 +647,7 @@ async function initializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
   });
 }
 
-function makeProxiedFirebaseApp(
-  frb: FunctionsRuntimeBundle,
-  original: admin.app.App
-): admin.app.App {
+function makeProxiedFirebaseApp(original: admin.app.App): admin.app.App {
   const appProxy = new Proxied<admin.app.App>(original);
   return appProxy
     .when("firestore", (target: any) => {
@@ -729,8 +717,8 @@ function warnAboutStorageProd(): void {
   ).log();
 }
 
-async function initializeFunctionsConfigHelper(frb: FunctionsRuntimeBundle): Promise<void> {
-  const functionsResolution = await assertResolveDeveloperNodeModule(frb, "firebase-functions");
+async function initializeFunctionsConfigHelper(): Promise<void> {
+  const functionsResolution = await assertResolveDeveloperNodeModule("firebase-functions");
   const localFunctionsModule = require(functionsResolution.resolution);
 
   logDebug("Checked functions.config()", {
@@ -778,77 +766,6 @@ async function initializeFunctionsConfigHelper(frb: FunctionsRuntimeBundle): Pro
 */
 function rawBodySaver(req: express.Request, res: express.Response, buf: Buffer): void {
   (req as any).rawBody = buf;
-}
-
-async function processHTTPS(trigger: CloudFunction<any>): Promise<void> {
-  const ephemeralServer = express();
-
-  await new Promise<void>((resolveEphemeralServer, rejectEphemeralServer) => {
-    ephemeralServer.enable("trust proxy");
-    ephemeralServer.use(
-      bodyParser.json({
-        limit: "10mb",
-        verify: rawBodySaver,
-      })
-    );
-    ephemeralServer.use(
-      bodyParser.text({
-        limit: "10mb",
-        verify: rawBodySaver,
-      })
-    );
-    ephemeralServer.use(
-      bodyParser.urlencoded({
-        extended: true,
-        limit: "10mb",
-        verify: rawBodySaver,
-      })
-    );
-    ephemeralServer.use(
-      bodyParser.raw({
-        type: "*/*",
-        limit: "10mb",
-        verify: rawBodySaver,
-      })
-    );
-
-    // eslint-disable-next-line prefer-const
-    let server: http.Server;
-    function closeServer() {
-      if (server) {
-        server.close((err) => {
-          if (err) {
-            rejectEphemeralServer(err);
-          } else {
-            resolveEphemeralServer();
-          }
-        });
-      }
-    }
-    // Endpoint used by the Functions Emulator to check if runtime process is ready to accept requests.
-    // Notice that unlike other endpoints, this route does not call closeServer() at the end of request since
-    // we expect one additional request that actually invokes the handler.
-    ephemeralServer.get("/__/health", (req, res) => {
-      res.status(200).send();
-    });
-    ephemeralServer.all("/favicon.ico|/robots.txt", (req, res) => {
-      res.on("finish", closeServer);
-      res.status(404).send();
-    });
-    ephemeralServer.all(`/*`, async (req: express.Request, res: express.Response) => {
-      try {
-        logDebug(`Ephemeral server handling ${req.method} request`);
-        res.on("finish", closeServer);
-        await runHTTPS(trigger, [req, res]);
-      } catch (err: any) {
-        rejectEphemeralServer(err);
-      }
-    });
-
-    logDebug(`Attempting to listen to port: ${process.env.PORT}`);
-    server = ephemeralServer.listen(process.env.PORT);
-    server.on("error", rejectEphemeralServer);
-  });
 }
 
 async function processBackground(
@@ -928,7 +845,7 @@ async function runHTTPS(trigger: CloudFunction<any>, args: any[]): Promise<any> 
   This method attempts to help a developer whose code can't be loaded by suggesting
   possible fixes based on the files in their functions directory.
  */
-async function moduleResolutionDetective(frb: FunctionsRuntimeBundle, error: Error): Promise<void> {
+async function moduleResolutionDetective(error: Error): Promise<void> {
   /*
   These files could all potentially exist, if they don't then the value in the map will be
   falsey, so we just catch to keep from throwing.
@@ -996,9 +913,6 @@ async function invokeTrigger(
     case "cloudevent":
       await processBackground(trigger, frb, FUNCTION_SIGNATURE);
       break;
-    case "http":
-      await processHTTPS(trigger);
-      break;
   }
 
   if (timeoutId) {
@@ -1013,9 +927,7 @@ async function invokeTrigger(
   ).log();
 }
 
-async function initializeRuntime(
-  frb: FunctionsRuntimeBundle
-): Promise<EmulatedTriggerMap | undefined> {
+async function initializeRuntime(): Promise<EmulatedTriggerMap | undefined> {
   FUNCTION_DEBUG_MODE = process.env.FUNCTION_DEBUG_MODE || "";
 
   if (!FUNCTION_DEBUG_MODE) {
@@ -1040,9 +952,7 @@ async function initializeRuntime(
     }
   }
 
-  logDebug(`Disabled runtime features: ${JSON.stringify(frb.disabled_features)}`);
-
-  const verified = await verifyDeveloperNodeModules(frb);
+  const verified = await verifyDeveloperNodeModules();
   if (!verified) {
     // If we can't verify the node modules, then just leave, something bad will happen during runtime.
     new EmulatorLog(
@@ -1055,33 +965,25 @@ async function initializeRuntime(
 
   initializeRuntimeConfig();
   initializeNetworkFiltering();
-  await initializeFunctionsConfigHelper(frb);
-  await initializeFirebaseFunctionsStubs(frb);
-  await initializeFirebaseAdminStubs(frb);
+  await initializeFunctionsConfigHelper();
+  await initializeFirebaseFunctionsStubs();
+  await initializeFirebaseAdminStubs();
 }
 
-async function loadTriggers(
-  frb: FunctionsRuntimeBundle,
-  serializedFunctionTrigger?: string
-): Promise<any> {
+async function loadTriggers(): Promise<any> {
   let triggerModule;
-  if (serializedFunctionTrigger) {
-    /* tslint:disable:no-eval */
-    triggerModule = eval(serializedFunctionTrigger)();
-  } else {
-    try {
-      triggerModule = require(process.cwd());
-    } catch (err: any) {
-      if (err.code !== "ERR_REQUIRE_ESM") {
-        // Try to run diagnostics to see what could've gone wrong before rethrowing the error.
-        await moduleResolutionDetective(frb, err);
-        throw err;
-      }
-      const modulePath = require.resolve(process.cwd());
-      // Resolve module path to file:// URL. Required for windows support.
-      const moduleURL = pathToFileURL(modulePath).href;
-      triggerModule = await dynamicImport(moduleURL);
+  try {
+    triggerModule = require(process.cwd());
+  } catch (err: any) {
+    if (err.code !== "ERR_REQUIRE_ESM") {
+      // Try to run diagnostics to see what could've gone wrong before rethrowing the error.
+      await moduleResolutionDetective(err);
+      throw err;
     }
+    const modulePath = require.resolve(process.cwd());
+    // Resolve module path to file:// URL. Required for windows support.
+    const moduleURL = pathToFileURL(modulePath).href;
+    triggerModule = await dynamicImport(moduleURL);
   }
   return triggerModule;
 }
@@ -1108,9 +1010,8 @@ async function handleMessage(message: string) {
 
   if (!functionModule) {
     try {
-      await initializeRuntime(runtimeArgs.frb);
-      const serializedTriggers = runtimeArgs.opts ? runtimeArgs.opts.serializedTriggers : undefined;
-      functionModule = await loadTriggers(runtimeArgs.frb, serializedTriggers);
+      await initializeRuntime();
+      functionModule = await loadTriggers();
     } catch (e: any) {
       logDebug(e);
       new EmulatorLog(
@@ -1141,40 +1042,94 @@ async function handleMessage(message: string) {
 
   try {
     await invokeTrigger(trigger, runtimeArgs.frb);
-    // If we were passed serialized triggers we have to exit the runtime after,
-    // otherwise we can go IDLE and await another request.
-    if (runtimeArgs.opts && runtimeArgs.opts.serializedTriggers) {
-      await flushAndExit(0);
-    } else {
-      await goIdle();
-    }
+    await goIdle();
   } catch (err: any) {
     new EmulatorLog("FATAL", "runtime-error", err.stack ? err.stack : err).log();
     await flushAndExit(1);
   }
 }
 
-function main(): void {
-  // Since the functions run as attached processes they naturally inherit SIGINT
-  // sent to the functions emulator. We want them to ignore the first signal
-  // to allow for a clean shutdown.
-  let lastSignal = new Date().getTime();
-  let signalCount = 0;
-  process.on("SIGINT", () => {
-    const now = new Date().getTime();
-    if (now - lastSignal < 100) {
-      return;
-    }
+function getTrigger(): CloudFunction<unknown> {
+  const trigger = FUNCTION_TARGET_NAME.split(".").reduce((mod, functionTargetPart) => {
+    return mod?.[functionTargetPart];
+  }, functionModule) as CloudFunction<any>;
+  if (!trigger) {
+    throw new Error(`Failed to find function ${FUNCTION_TARGET_NAME} in the loaded module`);
+  }
+  return trigger;
+}
 
-    signalCount = signalCount + 1;
-    lastSignal = now;
+function getServer(): http.Server {
+  const app = express();
+  app.enable("trust proxy"); // To respect X-Forwarded-For header.
+  // Disable Express 'x-powered-by' header:
+  // http://expressjs.com/en/advanced/best-practice-security.html#at-a-minimum-disable-x-powered-by-header
+  app.disable("x-powered-by");
+  // Disable Express eTag response header
+  app.disable("etag");
+  app.use(
+    bodyParser.json({
+      limit: "10mb",
+      verify: rawBodySaver,
+    })
+  );
+  app.use(
+    bodyParser.text({
+      limit: "10mb",
+      verify: rawBodySaver,
+    })
+  );
+  app.use(
+    bodyParser.urlencoded({
+      extended: true,
+      limit: "10mb",
+      verify: rawBodySaver,
+    })
+  );
+  app.use(
+    bodyParser.raw({
+      type: "*/*",
+      limit: "10mb",
+      verify: rawBodySaver,
+    })
+  );
 
-    if (signalCount >= 2) {
-      process.exit(1);
-    }
+  // Endpoint used by the Functions Emulator to check if runtime process is ready to accept requests.
+  // Notice that unlike other endpoints, this route does not call closeServer() at the end of request since
+  // we expect one additional request that actually invokes the handler.
+  app.get("/__/health", (req, res) => {
+    res.status(200).send();
   });
 
-  logDebug("Functions runtime initialized.", {
+  app.all("/favicon.ico|/robots.txt", (req, res) => {
+    res.status(404).send();
+  });
+
+  console.log(`Hey!: ${FUNCTION_SIGNATURE}`);
+  if (FUNCTION_SIGNATURE === "http") {
+    app.all(`/*`, async (req: express.Request, res: express.Response) => {
+      await runHTTPS(getTrigger(), [req, res]);
+    });
+  } else {
+    app.post(`/*`, async (req: express.Request) => {
+      let payload = JSON.parse((req as any).rawBody.toString());
+      if (FUNCTION_SIGNATURE === "cloudevent") {
+        if (EventUtils.isBinaryCloudEvent(req)) {
+          payload = EventUtils.extractBinaryCloudEventContext(req);
+          payload.data = req.body;
+        }
+        await runCloudEvent(getTrigger(), payload);
+      } else {
+        await runBackground(getTrigger(), payload);
+      }
+    });
+  }
+
+  return http.createServer(app);
+}
+
+function main(): void {
+  logDebug("Initializing Functions runtime", {
     cwd: process.cwd(),
     node_version: process.versions.node,
   });
@@ -1195,6 +1150,29 @@ function main(): void {
         new EmulatorLog("FATAL", "runtime-error", err.message || err, err).log();
         return flushAndExit(1);
       });
+  });
+
+  const server = getServer();
+  server.listen(process.env.PORT);
+  logDebug(`Listening to port: ${process.env.PORT}`);
+
+  // Since the functions run as attached processes they naturally inherit SIGINT
+  // sent to the functions emulator. We want them to ignore the first signal
+  // to allow for a clean shutdown.
+  let lastSignal = new Date().getTime();
+  let signalCount = 0;
+  process.on("SIGINT", () => {
+    const now = new Date().getTime();
+    if (now - lastSignal < 100) {
+      return;
+    }
+
+    signalCount = signalCount + 1;
+    lastSignal = now;
+
+    if (signalCount >= 2) {
+      process.exit(1);
+    }
   });
 }
 

@@ -63,6 +63,7 @@ export class RuntimeWorker {
     // Make a copy so we don't edit it
     const execFrb: FunctionsRuntimeBundle = { ...frb };
     const args: FunctionsRuntimeArgs = { frb: execFrb, opts };
+    // Can do http request over socket here?
     this.state = RuntimeWorkerState.BUSY;
     this.runtime.send(args);
   }
