@@ -8,7 +8,8 @@ const pkg = require("../package.json");
 
 // The ID identifying the GA4 property for the Emulator Suite only. Should only
 // be used in Emulator UI and emulator-related commands (e.g. emulators:start).
-export const EMULATOR_GA4_MEASUREMENT_ID = "G-KYP2JMPFC0";
+export const EMULATOR_GA4_MEASUREMENT_ID =
+  process.env.FIREBASE_EMULATOR_GA4_MEASUREMENT_ID || "G-KYP2JMPFC0";
 
 let _emulatorClientId: string | undefined = undefined;
 let _emulatorSessionId: string | undefined = undefined;
@@ -78,12 +79,13 @@ export function track(action: string, label: string, duration: number = 0): Prom
   });
 }
 
-const EMULATOR_GA4_API_SECRET = "2V_zBYc4TdeoppzDaIu0zw";
+const EMULATOR_GA4_API_SECRET =
+  process.env.FIREBASE_EMULATOR_GA4_API_SECRET || "2V_zBYc4TdeoppzDaIu0zw";
 
 // Whether to send all Analytics Measurement Protocol requests to the validation
 // endpoint and log the result. Should only be used when debugging Firebase CLI
 // itself regarding issues with Analytics.
-const VALIDATE = !!process.env["FIREBASE_CLI_MP_VALIDATE"];
+const VALIDATE = !!process.env.FIREBASE_CLI_MP_VALIDATE;
 const EMULATOR_GA4_USER_PROPS = {
   node_platform: {
     value: process.platform,
