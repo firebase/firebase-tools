@@ -1,11 +1,7 @@
 import * as uuid from "uuid";
 import { FunctionsRuntimeInstance, InvokeRuntimeOpts } from "./functionsEmulator";
 import { EmulatorLog, Emulators, FunctionsExecutionMode } from "./types";
-import {
-  FunctionsRuntimeArgs,
-  FunctionsRuntimeBundle,
-  getTemporarySocketPath,
-} from "./functionsEmulatorShared";
+import { FunctionsRuntimeArgs, FunctionsRuntimeBundle } from "./functionsEmulatorShared";
 import { EventEmitter } from "events";
 import { EmulatorLogger, ExtensionLogInfo } from "./emulatorLogger";
 import { FirebaseError } from "../error";
@@ -32,7 +28,6 @@ export class RuntimeWorker {
   readonly key: string;
   readonly runtime: FunctionsRuntimeInstance;
 
-  lastArgs?: FunctionsRuntimeArgs;
   stateEvents: EventEmitter = new EventEmitter();
 
   private socketReady?: Promise<any>;
@@ -66,16 +61,8 @@ export class RuntimeWorker {
   execute(frb: FunctionsRuntimeBundle, opts?: InvokeRuntimeOpts): void {
     // Make a copy so we don't edit it
     const execFrb: FunctionsRuntimeBundle = { ...frb };
-
-    // TODO(samstern): I would like to do this elsewhere...
-    if (!execFrb.socketPath) {
-      execFrb.socketPath = getTemporarySocketPath(this.runtime.pid, this.runtime.cwd);
-      this.log(`Assigning socketPath: ${execFrb.socketPath}`);
-    }
-
     const args: FunctionsRuntimeArgs = { frb: execFrb, opts };
     this.state = RuntimeWorkerState.BUSY;
-    this.lastArgs = args;
     this.runtime.send(args);
   }
 
