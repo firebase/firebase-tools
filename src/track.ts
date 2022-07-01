@@ -12,7 +12,6 @@ export const EMULATOR_GA4_MEASUREMENT_ID =
   process.env.FIREBASE_EMULATOR_GA4_MEASUREMENT_ID || "G-KYP2JMPFC0";
 
 let _emulatorClientId: string | undefined = undefined;
-let _emulatorSessionId: string | undefined = undefined;
 
 // The identifier for the client for the Emulator Suite.
 export function emulatorClientId(): string {
@@ -27,14 +26,6 @@ export function emulatorClientId(): string {
     _emulatorClientId = uuidV4();
     configstore.set("emulator-analytics-clientId", _emulatorClientId);
   }
-
-  // https://support.google.com/analytics/answer/9191807
-  // We treat each CLI invocation as a different session, and therefore this is
-  // not stored in configstore. The value may be an int64 string, but only ~50
-  // bits are generated here for simplicity. (AFAICT, they just need to be
-  // unique per clientId as opposed to globally. Revisit if that is not true.)
-  // https://help.analyticsedge.com/article/misunderstood-metrics-sessions-in-google-analytics-4/#:~:text=The%20Session%20ID%20Is%20Not%20Unique
-  _emulatorSessionId = (Math.random() * Number.MAX_SAFE_INTEGER).toFixed(0);
 
   return _emulatorClientId;
 }
@@ -119,14 +110,20 @@ export async function trackEmulator(
   if (!usageEnabled()) {
     return;
   }
-  const debug = VALIDATE ? "debug/" : "";
+  if (!_emulatorSessionId) {
+    // This must be an int64 string, but only ~50 bits are generated here
+    // for simplicity. (AFAICT, they just need to be unique per clientId,
+    // instead of globally. Revisit if that is not the case.)
+    // https://help.analyticsedge.com/article/misunderstood-metrics-sessions-in-google-analytics-4/#:~:text=The%20Session%20ID%20Is%20Not%20Unique
+    _emulatorSessionId = (Math.random() * Number.MAX_SAFE_INTEGER).toFixed(0);
+  }
   const search = `?api_secret=${EMULATOR_GA4_API_SECRET}&measurement_id=${EMULATOR_GA4_MEASUREMENT_ID}`;
-  const client_id = emulatorClientId();
+  const url = `https://www.google-analytics.com/${VALIDATE ? "debug/" : ""}mp/collect${search}`;
   const body = {
     // Get timestamp in millis and append '000' to get micros as string.
     // Not using multiplication due to JS number precision limit.
     timestamp_micros: `${Date.now()}000`,
-    client_id: client_id,
+    client_id: emulatorClientId(),
     user_properties: EMULATOR_GA4_USER_PROPS,
     events: [
       {
@@ -143,7 +140,7 @@ export async function trackEmulator(
           // terminal and waiting for the command to finish also counts.)
           engagement_time_msec: process.uptime().toFixed(3).replace(".", ""),
 
-          session_id: _emulatorSessionId!,
+          session_id: _emulatorSessionId,
           ...params,
         },
       },
@@ -153,7 +150,7 @@ export async function trackEmulator(
     (body as { validationBehavior?: string }).validationBehavior = "ENFORCE_RECOMMENDATIONS";
   }
   try {
-    const response = await fetch(`https://www.google-analytics.com/${debug}mp/collect${search}`, {
+    const response = await fetch(url, {
       method: "POST",
       headers: {
         "content-type": "application/json;charset=UTF-8",
@@ -181,3 +178,10 @@ export async function trackEmulator(
     return;
   }
 }
+
+// https://support.google.com/analytics/answer/9191807
+// We treat each CLI invocation as a different session, and therefore this is
+// not stored in configstore. If a developer opens the Emulator UI in their
+// browser, their interactions are reported as one or more *different* sessions
+// since there's no good way to "inherit" the session on GA4 web.
+let _emulatorSessionId: string | undefined = undefined;
