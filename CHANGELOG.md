@@ -1,0 +1,1 @@
+- Adds a check for out of band changes before deploying extensions.

@@ -221,7 +221,7 @@ export class RC {
 
     return target;
   }
-  
+
   getEtags(projectId: string): Record<EtagResourceType, Record<string, string>> {
     return this.data.etags[projectId] || {};
   }

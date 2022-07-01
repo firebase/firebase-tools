@@ -8,8 +8,8 @@ export function saveEtags(
   rc.setEtags(projectId, "extensionInstances", etagsMap(instances));
 }
 
-// detectEtagChanges compares the last set of etags stored in .firebaserc to the currently deployed etags
-// If any
+// detectEtagChanges compares the last set of etags stored in .firebaserc to the currently deployed etags,
+// and returns the ids on any instances have different etags.
 export function detectEtagChanges(
   rc: RC,
   projectId: string,
