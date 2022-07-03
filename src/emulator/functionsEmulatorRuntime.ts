@@ -917,7 +917,7 @@ async function runHTTPS(trigger: CloudFunction<any>, args: any[]): Promise<any> 
   This method attempts to help a developer whose code can't be loaded by suggesting
   possible fixes based on the files in their functions directory.
  */
-async function moduleResolutionDetective(frb: FunctionsRuntimeBundle, error: Error): Promise<void> {
+async function moduleResolutionDetective(error: Error): Promise<void> {
   /*
   These files could all potentially exist, if they don't then the value in the map will be
   falsey, so we just catch to keep from throwing.
@@ -1045,10 +1045,7 @@ async function initializeRuntime(): Promise<EmulatedTriggerMap | undefined> {
   await initializeFirebaseAdminStubs();
 }
 
-async function loadTriggers(
-  frb: FunctionsRuntimeBundle,
-  serializedFunctionTrigger?: string
-): Promise<any> {
+async function loadTriggers(serializedFunctionTrigger?: string): Promise<any> {
   let triggerModule;
   if (serializedFunctionTrigger) {
     /* tslint:disable:no-eval */
@@ -1059,7 +1056,7 @@ async function loadTriggers(
     } catch (err: any) {
       if (err.code !== "ERR_REQUIRE_ESM") {
         // Try to run diagnostics to see what could've gone wrong before rethrowing the error.
-        await moduleResolutionDetective(frb, err);
+        await moduleResolutionDetective(err);
         throw err;
       }
       const modulePath = require.resolve(process.cwd());
@@ -1094,7 +1091,7 @@ async function handleMessage(message: string) {
   if (!functionModule) {
     try {
       const serializedTriggers = runtimeArgs.opts ? runtimeArgs.opts.serializedTriggers : undefined;
-      functionModule = await loadTriggers(runtimeArgs.frb, serializedTriggers);
+      functionModule = await loadTriggers(serializedTriggers);
     } catch (e: any) {
       logDebug(e);
       new EmulatorLog(
