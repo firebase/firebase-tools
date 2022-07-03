@@ -1538,7 +1538,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
 
     let worker = await this.ensureTriggerRuntime(trigger);
-    if (this.args.debugPort) {
+    if (this.args.debugPort || process.env.INTEGRATION_TEST) {
       // TODO(danielylee): Ideally, we won't have to invoke trigger at all for HTTP functions.
       // Unfortunately, we still need to do it when emulating functions in --inspect-functions flag. In "inspect" mode,
       // we use a single process to emulate both http and background triggers, and invokeTrigger is the mechanism to

@@ -15,4 +15,4 @@ trap cleanup EXIT
 cp package.json dev/package.json
 
 # Run the tests from the built dev directory.
-mocha dev/scripts/emulator-tests/*.spec.*
+INTEGRATION_TEST=true mocha dev/scripts/emulator-tests/*.spec.*

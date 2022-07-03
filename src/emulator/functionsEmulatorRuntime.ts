@@ -22,6 +22,7 @@ import {
 } from "./functionsEmulatorShared";
 import { compareVersionStrings, isLocalHost } from "./functionsEmulatorUtils";
 
+const INTEGRATION_TEST = process.env.INTEGRATION_TEST || "";
 let functionModule: any;
 let FUNCTION_TARGET_NAME: string;
 let FUNCTION_SIGNATURE: string;
@@ -1031,17 +1032,18 @@ async function initializeRuntime(): Promise<EmulatedTriggerMap | undefined> {
   }
 
   try {
-    const serializedTriggers = runtimeArgs.opts ? runtimeArgs.opts.serializedTriggers : undefined;
-    functionModule = await loadTriggers(runtimeArgs.frb, serializedTriggers);
+    functionModule = await loadTriggers();
   } catch (e: any) {
     logDebug(e);
-    new EmulatorLog(
-      "FATAL",
-      "runtime-status",
-      `Failed to initialize and load triggers. This shouldn't happen: ${e.message}`
-    ).log();
-    await flushAndExit(1);
-    return;
+    if (!INTEGRATION_TEST) {
+      new EmulatorLog(
+        "FATAL",
+        "runtime-status",
+        `Failed to initialize and load triggers. This shouldn't happen: ${e.message}`
+      ).log();
+      await flushAndExit(1);
+      return;
+    }
   }
 
   const verified = await verifyDeveloperNodeModules();
@@ -1105,9 +1107,9 @@ async function handleMessage(message: string) {
     return;
   }
 
-  if (!functionModule) {
+  const serializedTriggers = runtimeArgs.opts ? runtimeArgs.opts.serializedTriggers : undefined;
+  if (serializedTriggers) {
     try {
-      const serializedTriggers = runtimeArgs.opts ? runtimeArgs.opts.serializedTriggers : undefined;
       functionModule = await loadTriggers(serializedTriggers);
     } catch (e: any) {
       logDebug(e);
@@ -1131,6 +1133,7 @@ async function handleMessage(message: string) {
   const trigger = FUNCTION_TARGET_NAME.split(".").reduce((mod, functionTargetPart) => {
     return mod?.[functionTargetPart];
   }, functionModule) as CloudFunction<any>;
+  console.log(functionModule)
   if (!trigger) {
     throw new Error(`Failed to find function ${FUNCTION_TARGET_NAME} in the loaded module`);
   }
