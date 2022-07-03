@@ -87,7 +87,7 @@ function runTargetCommands(
   };
 
   const runAllCommands = commands.reduce((soFar: Promise<unknown>, command: string) => {
-    soFar.then(() => runCommand(command, childOptions));
+    return soFar.then(() => runCommand(command, childOptions));
   }, Promise.resolve());
 
   // We currently use the resource name in info logs in the rest of the deploy.

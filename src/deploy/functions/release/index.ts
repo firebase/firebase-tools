@@ -88,11 +88,7 @@ export async function release(
   const deletedEndpoints = Object.values(plan)
     .map((r) => r.endpointsToDelete)
     .reduce(reduceFlat, []);
-  const opts: { ar?: containerCleaner.ArtifactRegistryCleaner } = {};
-  if (!context.artifactRegistryEnabled) {
-    opts.ar = new containerCleaner.NoopArtifactRegistryCleaner();
-  }
-  await containerCleaner.cleanupBuildImages(haveEndpoints, deletedEndpoints, opts);
+  await containerCleaner.cleanupBuildImages(haveEndpoints, deletedEndpoints);
 
   const allErrors = summary.results.filter((r) => r.error).map((r) => r.error) as Error[];
   if (allErrors.length) {
