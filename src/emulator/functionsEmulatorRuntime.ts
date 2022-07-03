@@ -206,10 +206,7 @@ class Proxied<T extends ProxyTarget> {
   }
 }
 
-async function resolveDeveloperNodeModule(
-  frb: FunctionsRuntimeBundle,
-  name: string
-): Promise<ModuleResolution> {
+async function resolveDeveloperNodeModule(name: string): Promise<ModuleResolution> {
   const pkg = requirePackageJson();
   if (!pkg) {
     new EmulatorLog("SYSTEM", "missing-package-json", "").log();
@@ -244,11 +241,8 @@ async function resolveDeveloperNodeModule(
   return moduleResolution;
 }
 
-async function assertResolveDeveloperNodeModule(
-  frb: FunctionsRuntimeBundle,
-  name: string
-): Promise<SuccessfulModuleResolution> {
-  const resolution = await resolveDeveloperNodeModule(frb, name);
+async function assertResolveDeveloperNodeModule(name: string): Promise<SuccessfulModuleResolution> {
+  const resolution = await resolveDeveloperNodeModule(name);
   if (
     !(resolution.installed && resolution.declared && resolution.resolution && resolution.version)
   ) {
@@ -260,14 +254,14 @@ async function assertResolveDeveloperNodeModule(
   return resolution as SuccessfulModuleResolution;
 }
 
-async function verifyDeveloperNodeModules(frb: FunctionsRuntimeBundle): Promise<boolean> {
+async function verifyDeveloperNodeModules(): Promise<boolean> {
   const modBundles = [
     { name: "firebase-admin", isDev: false, minVersion: "8.9.0" },
     { name: "firebase-functions", isDev: false, minVersion: "3.13.1" },
   ];
 
   for (const modBundle of modBundles) {
-    const resolution = await resolveDeveloperNodeModule(frb, modBundle.name);
+    const resolution = await resolveDeveloperNodeModule(modBundle.name);
 
     /*
     If there's no reference to the module in their package.json, prompt them to install it
@@ -409,11 +403,8 @@ type HttpsHandler = (req: Request, resp: Response) => void;
     The relevant firebase-functions code is:
 https://github.com/firebase/firebase-functions/blob/9e3bda13565454543b4c7b2fd10fb627a6a3ab97/src/providers/https.ts#L66
    */
-async function initializeFirebaseFunctionsStubs(frb: FunctionsRuntimeBundle): Promise<void> {
-  const firebaseFunctionsResolution = await assertResolveDeveloperNodeModule(
-    frb,
-    "firebase-functions"
-  );
+async function initializeFirebaseFunctionsStubs(): Promise<void> {
+  const firebaseFunctionsResolution = await assertResolveDeveloperNodeModule("firebase-functions");
   const firebaseFunctionsRoot = findModuleRoot(
     "firebase-functions",
     firebaseFunctionsResolution.resolution
@@ -564,11 +555,11 @@ function initializeRuntimeConfig() {
  *
  * We also mock out firestore.settings() so we can merge the emulator settings with the developer's.
  */
-async function initializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promise<void> {
-  const adminResolution = await assertResolveDeveloperNodeModule(frb, "firebase-admin");
+async function initializeFirebaseAdminStubs(): Promise<void> {
+  const adminResolution = await assertResolveDeveloperNodeModule("firebase-admin");
   const localAdminModule = require(adminResolution.resolution);
 
-  const functionsResolution = await assertResolveDeveloperNodeModule(frb, "firebase-functions");
+  const functionsResolution = await assertResolveDeveloperNodeModule("firebase-functions");
   const localFunctionsModule = require(functionsResolution.resolution);
 
   // Configuration from the environment
@@ -590,7 +581,6 @@ async function initializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
       }).log();
 
       const defaultApp: admin.app.App = makeProxiedFirebaseApp(
-        frb,
         adminModuleTarget.initializeApp(defaultAppOptions)
       );
       logDebug("initializeApp(DEFAULT)", defaultAppOptions);
@@ -655,10 +645,7 @@ async function initializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
   });
 }
 
-function makeProxiedFirebaseApp(
-  frb: FunctionsRuntimeBundle,
-  original: admin.app.App
-): admin.app.App {
+function makeProxiedFirebaseApp(original: admin.app.App): admin.app.App {
   const appProxy = new Proxied<admin.app.App>(original);
   return appProxy
     .when("firestore", (target: any) => {
@@ -728,8 +715,8 @@ function warnAboutStorageProd(): void {
   ).log();
 }
 
-async function initializeFunctionsConfigHelper(frb: FunctionsRuntimeBundle): Promise<void> {
-  const functionsResolution = await assertResolveDeveloperNodeModule(frb, "firebase-functions");
+async function initializeFunctionsConfigHelper(): Promise<void> {
+  const functionsResolution = await assertResolveDeveloperNodeModule("firebase-functions");
   const localFunctionsModule = require(functionsResolution.resolution);
 
   logDebug("Checked functions.config()", {
@@ -1015,9 +1002,7 @@ async function invokeTrigger(
   ).log();
 }
 
-async function initializeRuntime(
-  frb: FunctionsRuntimeBundle
-): Promise<EmulatedTriggerMap | undefined> {
+async function initializeRuntime(): Promise<EmulatedTriggerMap | undefined> {
   FUNCTION_DEBUG_MODE = process.env.FUNCTION_DEBUG_MODE || "";
 
   if (!FUNCTION_DEBUG_MODE) {
@@ -1042,9 +1027,7 @@ async function initializeRuntime(
     }
   }
 
-  logDebug(`Disabled runtime features: ${JSON.stringify(frb.disabled_features)}`);
-
-  const verified = await verifyDeveloperNodeModules(frb);
+  const verified = await verifyDeveloperNodeModules();
   if (!verified) {
     // If we can't verify the node modules, then just leave, something bad will happen during runtime.
     new EmulatorLog(
@@ -1057,9 +1040,9 @@ async function initializeRuntime(
 
   initializeRuntimeConfig();
   initializeNetworkFiltering();
-  await initializeFunctionsConfigHelper(frb);
-  await initializeFirebaseFunctionsStubs(frb);
-  await initializeFirebaseAdminStubs(frb);
+  await initializeFunctionsConfigHelper();
+  await initializeFirebaseFunctionsStubs();
+  await initializeFirebaseAdminStubs();
 }
 
 async function loadTriggers(
@@ -1110,7 +1093,6 @@ async function handleMessage(message: string) {
 
   if (!functionModule) {
     try {
-      await initializeRuntime(runtimeArgs.frb);
       const serializedTriggers = runtimeArgs.opts ? runtimeArgs.opts.serializedTriggers : undefined;
       functionModule = await loadTriggers(runtimeArgs.frb, serializedTriggers);
     } catch (e: any) {
@@ -1156,7 +1138,7 @@ async function handleMessage(message: string) {
   }
 }
 
-function main(): void {
+async function main(): Promise<void> {
   // Since the functions run as attached processes they naturally inherit SIGINT
   // sent to the functions emulator. We want them to ignore the first signal
   // to allow for a clean shutdown.
@@ -1176,11 +1158,7 @@ function main(): void {
     }
   });
 
-  logDebug("Functions runtime initialized.", {
-    cwd: process.cwd(),
-    node_version: process.versions.node,
-  });
-
+  await initializeRuntime();
   // Event emitters do not work well with async functions, so we
   // construct our own promise chain to make sure each message is
   // handled only after the previous message handling is complete.
@@ -1201,5 +1179,15 @@ function main(): void {
 }
 
 if (require.main === module) {
-  main();
+  main()
+    .then(() => {
+      logDebug("Functions runtime initialized.", {
+        cwd: process.cwd(),
+        node_version: process.versions.node,
+      });
+    })
+    .catch((err) => {
+      new EmulatorLog("FATAL", "runtime-error", err.message || err, err).log();
+      return flushAndExit(1);
+    });
 }
