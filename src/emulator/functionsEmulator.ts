@@ -1224,6 +1224,22 @@ export class FunctionsEmulator implements EmulatorInstance {
     return secretEnvs;
   }
 
+  async ensureTriggerRuntime(trigger: EmulatedTriggerDefinition): Promise<RuntimeWorker> {
+    const record = this.getTriggerRecordByKey(this.getTriggerKey(trigger));
+    const backend = record.backend;
+    if (!backend.nodeBinary) {
+      throw new FirebaseError(`No node binary for ${trigger.id}. This should never happen.`);
+    }
+    const opts = {
+      nodeBinary: backend.nodeBinary,
+      extensionTriggers: backend.predefinedTriggers,
+    };
+    if (!this.workerPool.readyForWork(trigger.id)) {
+      await this.startRuntime(backend, opts, trigger);
+    }
+    return this.workerPool.getIdleWorker(trigger.id)!;
+  }
+
   async invokeRuntime(
     backend: EmulatableBackend,
     trigger: EmulatedTriggerDefinition,
@@ -1520,15 +1536,22 @@ export class FunctionsEmulator implements EmulatorInstance {
         );
       }
     }
-    const worker = await this.invokeTrigger(trigger);
 
-    worker.onLogs((el: EmulatorLog) => {
-      if (el.level === "FATAL") {
-        res.status(500).send(el.text);
-      }
-    });
+    let worker = await this.ensureTriggerRuntime(trigger);
+    if (this.args.debugPort) {
+      // TODO(danielylee): Ideally, we won't have to invoke trigger at all for HTTP functions.
+      // Unfortunately, we still need to do it when emulating functions in --inspect-functions flag. In "inspect" mode,
+      // we use a single process to emulate both http and background triggers, and invokeTrigger is the mechanism to
+      // switch between different emulated function. Until we have a better mechanism support "inspect" mode, we'll
+      // have to keep this code around.
+      worker = await this.invokeTrigger(trigger);
+      worker.onLogs((el: EmulatorLog) => {
+        if (el.level === "FATAL") {
+          res.status(500).send(el.text);
+        }
+      });
+    }
 
-    // Wait for the worker to set up its internal HTTP server
     await worker.waitForSocketReady();
 
     void track(EVENT_INVOKE, "https");

@@ -768,74 +768,79 @@ function rawBodySaver(req: express.Request, res: express.Response, buf: Buffer):
 }
 
 async function processHTTPS(trigger: CloudFunction<any>): Promise<void> {
-  const ephemeralServer = express();
+  // In debug mode, we skip setting up a static server listening at socketPath because we need this process to server
+  // both http and background functions. At this point we do know that we need to serve an HTTP request - let's set
+  // up a server just in time.
+  if (FUNCTION_DEBUG_MODE) {
+    const ephemeralServer = express();
 
-  await new Promise<void>((resolveEphemeralServer, rejectEphemeralServer) => {
-    ephemeralServer.enable("trust proxy");
-    ephemeralServer.use(
-      bodyParser.json({
-        limit: "10mb",
-        verify: rawBodySaver,
-      })
-    );
-    ephemeralServer.use(
-      bodyParser.text({
-        limit: "10mb",
-        verify: rawBodySaver,
-      })
-    );
-    ephemeralServer.use(
-      bodyParser.urlencoded({
-        extended: true,
-        limit: "10mb",
-        verify: rawBodySaver,
-      })
-    );
-    ephemeralServer.use(
-      bodyParser.raw({
-        type: "*/*",
-        limit: "10mb",
-        verify: rawBodySaver,
-      })
-    );
+    await new Promise<void>((resolveEphemeralServer, rejectEphemeralServer) => {
+      ephemeralServer.enable("trust proxy");
+      ephemeralServer.use(
+        bodyParser.json({
+          limit: "10mb",
+          verify: rawBodySaver,
+        })
+      );
+      ephemeralServer.use(
+        bodyParser.text({
+          limit: "10mb",
+          verify: rawBodySaver,
+        })
+      );
+      ephemeralServer.use(
+        bodyParser.urlencoded({
+          extended: true,
+          limit: "10mb",
+          verify: rawBodySaver,
+        })
+      );
+      ephemeralServer.use(
+        bodyParser.raw({
+          type: "*/*",
+          limit: "10mb",
+          verify: rawBodySaver,
+        })
+      );
 
-    // eslint-disable-next-line prefer-const
-    let server: http.Server;
-    function closeServer() {
-      if (server) {
-        server.close((err) => {
-          if (err) {
-            rejectEphemeralServer(err);
-          } else {
-            resolveEphemeralServer();
-          }
-        });
+      // eslint-disable-next-line prefer-const
+      let server: http.Server;
+      function closeServer() {
+        if (server) {
+          server.close((err) => {
+            if (err) {
+              rejectEphemeralServer(err);
+            } else {
+              resolveEphemeralServer();
+            }
+          });
+        }
       }
-    }
-    // Endpoint used by the Functions Emulator to check if runtime process is ready to accept requests.
-    // Notice that unlike other endpoints, this route does not call closeServer() at the end of request since
-    // we expect one additional request that actually invokes the handler.
-    ephemeralServer.get("/__/health", (req, res) => {
-      res.status(200).send();
-    });
-    ephemeralServer.all("/favicon.ico|/robots.txt", (req, res) => {
-      res.on("finish", closeServer);
-      res.status(404).send();
-    });
-    ephemeralServer.all(`/*`, async (req: express.Request, res: express.Response) => {
-      try {
-        logDebug(`Ephemeral server handling ${req.method} request`);
+      // Endpoint used by the Functions Emulator to check if runtime process is ready to accept requests.
+      // Notice that unlike other endpoints, this route does not call closeServer() at the end of request since
+      // we expect one additional request that actually invokes the handler.
+      ephemeralServer.get("/__/health", (req, res) => {
+        res.status(200).send();
+      });
+      ephemeralServer.all("/favicon.ico|/robots.txt", (req, res) => {
         res.on("finish", closeServer);
-        await runHTTPS(trigger, [req, res]);
-      } catch (err: any) {
-        rejectEphemeralServer(err);
-      }
-    });
+        res.status(404).send();
+      });
+      ephemeralServer.all(`/*`, async (req: express.Request, res: express.Response) => {
+        try {
+          logDebug(`Ephemeral server handling ${req.method} request`);
+          res.on("finish", closeServer);
+          await runHTTPS(trigger, [req, res]);
+        } catch (err: any) {
+          rejectEphemeralServer(err);
+        }
+      });
 
-    logDebug(`Attempting to listen to port: ${process.env.PORT}`);
-    server = ephemeralServer.listen(process.env.PORT);
-    server.on("error", rejectEphemeralServer);
-  });
+      logDebug(`Attempting to listen to port: ${process.env.PORT}`);
+      server = ephemeralServer.listen(process.env.PORT);
+      server.on("error", rejectEphemeralServer);
+    });
+  }
 }
 
 async function processBackground(
@@ -1025,6 +1030,20 @@ async function initializeRuntime(): Promise<EmulatedTriggerMap | undefined> {
     }
   }
 
+  try {
+    const serializedTriggers = runtimeArgs.opts ? runtimeArgs.opts.serializedTriggers : undefined;
+    functionModule = await loadTriggers(runtimeArgs.frb, serializedTriggers);
+  } catch (e: any) {
+    logDebug(e);
+    new EmulatorLog(
+      "FATAL",
+      "runtime-status",
+      `Failed to initialize and load triggers. This shouldn't happen: ${e.message}`
+    ).log();
+    await flushAndExit(1);
+    return;
+  }
+
   const verified = await verifyDeveloperNodeModules();
   if (!verified) {
     // If we can't verify the node modules, then just leave, something bad will happen during runtime.
@@ -1136,6 +1155,68 @@ async function handleMessage(message: string) {
   }
 }
 
+function getTrigger(): CloudFunction<unknown> {
+  const trigger = FUNCTION_TARGET_NAME.split(".").reduce((mod, functionTargetPart) => {
+    return mod?.[functionTargetPart];
+  }, functionModule) as CloudFunction<any>;
+  if (!trigger) {
+    throw new Error(`Failed to find function ${FUNCTION_TARGET_NAME} in the loaded module`);
+  }
+  return trigger;
+}
+
+function getServer(): http.Server {
+  const app = express();
+  app.enable("trust proxy"); // To respect X-Forwarded-For header.
+  // Disable Express 'x-powered-by' header:
+  // http://expressjs.com/en/advanced/best-practice-security.html#at-a-minimum-disable-x-powered-by-header
+  app.disable("x-powered-by");
+  // Disable Express eTag response header
+  app.disable("etag");
+  app.use(
+    bodyParser.json({
+      limit: "10mb",
+      verify: rawBodySaver,
+    })
+  );
+  app.use(
+    bodyParser.text({
+      limit: "10mb",
+      verify: rawBodySaver,
+    })
+  );
+  app.use(
+    bodyParser.urlencoded({
+      extended: true,
+      limit: "10mb",
+      verify: rawBodySaver,
+    })
+  );
+  app.use(
+    bodyParser.raw({
+      type: "*/*",
+      limit: "10mb",
+      verify: rawBodySaver,
+    })
+  );
+
+  // Endpoint used by the Functions Emulator to check if runtime process is ready to accept requests.
+  // Notice that unlike other endpoints, this route does not call closeServer() at the end of request since
+  // we expect one additional request that actually invokes the handler.
+  app.get("/__/health", (req, res) => {
+    res.status(200).send();
+  });
+
+  app.all("/favicon.ico|/robots.txt", (req, res) => {
+    res.status(404).send();
+  });
+
+  app.all(`/*`, async (req: express.Request, res: express.Response) => {
+    await runHTTPS(getTrigger(), [req, res]);
+  });
+  return http.createServer(app);
+}
+
 async function main(): Promise<void> {
   // Since the functions run as attached processes they naturally inherit SIGINT
   // sent to the functions emulator. We want them to ignore the first signal
@@ -1161,6 +1242,7 @@ async function main(): Promise<void> {
   // construct our own promise chain to make sure each message is
   // handled only after the previous message handling is complete.
   let messageHandlePromise = Promise.resolve();
+
   process.on("message", (message: string) => {
     messageHandlePromise = messageHandlePromise
       .then(() => {
@@ -1174,6 +1256,13 @@ async function main(): Promise<void> {
         return flushAndExit(1);
       });
   });
+
+  if (!FUNCTION_DEBUG_MODE) {
+    if (FUNCTION_SIGNATURE === "http") {
+      const server = getServer();
+      server.listen(process.env.PORT);
+    }
+  }
 }
 
 if (require.main === module) {
