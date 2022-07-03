@@ -766,18 +766,9 @@ function rawBodySaver(req: express.Request, res: express.Response, buf: Buffer):
   (req as any).rawBody = buf;
 }
 
-async function processHTTPS(
-  trigger: CloudFunction<any>,
-  frb: FunctionsRuntimeBundle
-): Promise<void> {
+async function processHTTPS(trigger: CloudFunction<any>): Promise<void> {
   const ephemeralServer = express();
   const functionRouter = express.Router(); // eslint-disable-line new-cap
-  const socketPath = frb.socketPath;
-
-  if (!socketPath) {
-    new EmulatorLog("FATAL", "runtime-error", "Called processHTTPS with no socketPath").log();
-    return;
-  }
 
   await new Promise<void>((resolveEphemeralServer, rejectEphemeralServer) => {
     const handler = async (req: express.Request, res: express.Response) => {
@@ -831,8 +822,9 @@ async function processHTTPS(
 
     ephemeralServer.use([`/`, `/*`], functionRouter);
 
-    logDebug(`Attempting to listen to socketPath: ${socketPath}`);
-    const instance = ephemeralServer.listen(socketPath, () => {
+    logDebug(`Attempting to listen to port: ${process.env.PORT}`);
+    const instance = ephemeralServer.listen(process.env.PORT, () => {
+      logDebug(`Listening to port: ${process.env.PORT}`);
       new EmulatorLog("SYSTEM", "runtime-status", "ready", { state: "ready" }).log();
     });
 
@@ -986,7 +978,7 @@ async function invokeTrigger(
       await processBackground(trigger, frb, FUNCTION_SIGNATURE);
       break;
     case "http":
-      await processHTTPS(trigger, frb);
+      await processHTTPS(trigger);
       break;
   }
 
