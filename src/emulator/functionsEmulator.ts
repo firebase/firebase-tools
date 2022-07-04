@@ -43,6 +43,7 @@ import {
   toBackendInfo,
   prepareEndpoints,
   BlockingTrigger,
+  getTemporarySocketPath,
 } from "./functionsEmulatorShared";
 import { EmulatorRegistry } from "./registry";
 import { EmulatorLogger, Verbosity } from "./emulatorLogger";
@@ -139,6 +140,8 @@ export interface FunctionsRuntimeInstance {
   exit: Promise<number>;
   // A cwd of the process
   cwd: string;
+  // Path to socket file used for HTTP-over-IPC comms.
+  socketPath: string;
 
   // A function to manually kill the child process as normal cleanup
   shutdown(): void;
@@ -1311,10 +1314,17 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     const runtimeEnv = this.getRuntimeEnvs(backend, trigger);
     const secretEnvs = await this.resolveSecretEnvs(backend, trigger);
+    const socketPath = getTemporarySocketPath();
 
     const childProcess = spawn(opts.nodeBinary, args, {
       cwd: backend.functionsDir,
-      env: { node: opts.nodeBinary, ...process.env, ...runtimeEnv, ...secretEnvs },
+      env: {
+        node: opts.nodeBinary,
+        ...process.env,
+        ...runtimeEnv,
+        ...secretEnvs,
+        PORT: socketPath,
+      },
       stdio: ["pipe", "pipe", "pipe", "ipc"],
     });
 
@@ -1356,6 +1366,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       }),
       events: emitter,
       cwd: backend.functionsDir,
+      socketPath,
       shutdown: () => {
         childProcess.kill();
       },
@@ -1560,16 +1571,6 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     this.logger.log("DEBUG", `[functions] Runtime ready! Sending request!`);
 
-    if (!worker.lastArgs) {
-      throw new FirebaseError("Cannot execute on a worker with no arguments");
-    }
-
-    if (!worker.lastArgs.frb.socketPath) {
-      throw new FirebaseError(
-        `Cannot execute on a worker without a socketPath: ${JSON.stringify(worker.lastArgs)}`
-      );
-    }
-
     // To match production behavior we need to drop the path prefix
     // req.url = /:projectId/:region/:trigger_name/*
     const url = new URL(`${req.protocol}://${req.hostname}${req.url}`);
@@ -1587,7 +1588,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         method,
         path,
         headers: req.headers,
-        socketPath: worker.lastArgs.frb.socketPath,
+        socketPath: worker.runtime.socketPath,
       },
       (runtimeRes: http.IncomingMessage) => {
         function forwardStatusAndHeaders(): void {

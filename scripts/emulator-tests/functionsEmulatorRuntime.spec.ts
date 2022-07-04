@@ -102,11 +102,6 @@ async function callHTTPSFunction(
 ): Promise<string> {
   await worker.waitForSocketReady();
 
-  if (!worker.lastArgs) {
-    throw new Error("Can't talk to worker with undefined args");
-  }
-
-  const socketPath = worker.lastArgs.frb.socketPath;
   const path = options.path || "/";
 
   const res = await new Promise<IncomingMessage>((resolve, reject) => {
@@ -114,7 +109,7 @@ async function callHTTPSFunction(
       {
         method: "POST",
         headers: options.headers,
-        socketPath,
+        socketPath: worker.runtime.socketPath,
         path,
       },
       resolve
