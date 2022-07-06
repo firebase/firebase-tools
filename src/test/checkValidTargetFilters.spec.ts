@@ -6,7 +6,6 @@ import { Options } from "../options";
 import { RC } from "../rc";
 
 import { checkValidTargetFilters } from "../checkValidTargetFilters";
-// import { FirebaseError } from "../error";
 
 const SAMPLE_OPTIONS: Options = {
   cwd: "/",
