@@ -19,7 +19,7 @@ const ENDPOINT: build.Endpoint = {
   project: "project",
   runtime: "nodejs16",
   region: [api.functionsDefaultRegion],
-  serviceAccount: null,
+  serviceAccount: undefined,
 };
 
 const YAML_OBJ = {

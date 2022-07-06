@@ -324,7 +324,7 @@ export function addResourcesToBuild(
     project: projectId,
     entryPoint: annotation.entryPoint,
     runtime: runtime,
-    serviceAccount: annotation.serviceAccountEmail || "default",
+    serviceAccount: annotation.serviceAccountEmail,
     ...triggered,
   };
   if (annotation.vpcConnector != null) {

@@ -313,7 +313,7 @@ function parseEndpointForBuild(
     project,
     runtime,
     entryPoint: ep.entryPoint,
-    serviceAccount: ep.serviceAccountEmail || null,
+    serviceAccount: ep.serviceAccountEmail,
     ...triggered,
   };
   copyIfPresent(

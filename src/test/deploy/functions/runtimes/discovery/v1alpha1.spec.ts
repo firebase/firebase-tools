@@ -35,7 +35,6 @@ describe("buildFromV1Alpha", () => {
         project: PROJECT,
         region: [REGION],
         runtime: RUNTIME,
-        serviceAccount: null,
       };
 
     it("fills default backend and function fields", () => {

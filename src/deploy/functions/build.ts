@@ -198,7 +198,7 @@ export type Endpoint = Triggered & {
   // defaults to the GAE service account when a function is first created as a GCF gen 1 function.
   // Defaults to the compute service account when a function is first created as a GCF gen 2 function
   // or when using Cloud Run.
-  serviceAccount: ServiceAccount | null;
+  serviceAccount?: ServiceAccount;
 
   // defaults to ["us-central1"], overridable in firebase-tools with
   //  process.env.FIREBASE_FUNCTIONS_DEFAULT_REGION
