@@ -1,1 +1,2 @@
 - Adds a check for out of band changes before deploying extensions.
+- Fixes bug where function deployed failed with message "Invalid function service account requested: default." (#4714).
