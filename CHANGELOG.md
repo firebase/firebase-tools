@@ -1,0 +1,1 @@
+- Fix bug where Artifact Registry API was not enabled on function deploy (#4715).
