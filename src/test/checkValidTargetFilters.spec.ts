@@ -1,6 +1,4 @@
-import * as chai from "chai";
-chai.use(require("chai-as-promised"));
-const expect = chai.expect;
+import { expect } from "chai";
 
 import { Options } from "../options";
 import { RC } from "../rc";
