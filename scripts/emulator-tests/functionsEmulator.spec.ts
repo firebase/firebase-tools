@@ -131,7 +131,6 @@ function useFunctions(triggers: () => {}): void {
   ): Promise<RuntimeWorker> => {
     return invokeTrigger(trigger, proto, {
       nodeBinary: process.execPath,
-      serializedTriggers,
     });
   };
 }

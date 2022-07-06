@@ -7,15 +7,15 @@ import * as fs from "fs";
 import * as sinon from "sinon";
 
 import { EmulatorLog, Emulators } from "../../src/emulator/types";
-import { FunctionRuntimeBundles, TIMEOUT_LONG, TIMEOUT_MED, MODULE_ROOT } from "./fixtures";
+import { FunctionRuntimeBundles, MODULE_ROOT, TIMEOUT_LONG, TIMEOUT_MED } from "./fixtures";
 import {
   EmulatedTriggerDefinition,
   FunctionsRuntimeBundle,
   SignatureType,
 } from "../../src/emulator/functionsEmulatorShared";
-import { InvokeRuntimeOpts, FunctionsEmulator } from "../../src/emulator/functionsEmulator";
-import { RuntimeWorker } from "../../src/emulator/functionsRuntimeWorker";
-import { streamToString, cloneDeep } from "../../src/utils";
+import { FunctionsEmulator, InvokeRuntimeOpts } from "../../src/emulator/functionsEmulator";
+import { RuntimeWorker, RuntimeWorkerState } from "../../src/emulator/functionsRuntimeWorker";
+import { cloneDeep, streamToString } from "../../src/utils";
 import * as registry from "../../src/emulator/registry";
 
 const DO_NOTHING = () => {
@@ -40,15 +40,21 @@ const functionsEmulator = new FunctionsEmulator({
   },
 });
 
-async function countLogEntries(worker: RuntimeWorker): Promise<{ [key: string]: number }> {
+const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function countLogEntries(worker: RuntimeWorker): Promise<Record<string, number>> {
   const runtime = worker.runtime;
   const counts: { [key: string]: number } = {};
 
   runtime.events.on("log", (el: EmulatorLog) => {
+    console.log("LOG", el);
     counts[el.type] = (counts[el.type] || 0) + 1;
   });
 
-  await runtime.exit;
+  while (worker.state !== RuntimeWorkerState.IDLE) {
+    await sleep(10);
+  }
+
   return counts;
 }
 
@@ -58,11 +64,13 @@ async function invokeFunction(
   signatureType: SignatureType,
   opts?: InvokeRuntimeOpts
 ): Promise<RuntimeWorker> {
-  const serializedTriggers = triggers.toString();
+  testBackend.env = {
+    ...testBackend.env,
+    FIREBASE_INTERNAL_SERIALIZED_TRIGGERS: triggers.toString(),
+  };
 
   opts = opts || { nodeBinary: process.execPath };
   opts.ignore_warnings = true;
-  opts.serializedTriggers = serializedTriggers;
 
   const dummyTriggerDef: EmulatedTriggerDefinition = {
     name: "function_id",
@@ -128,6 +136,10 @@ async function callHTTPSFunction(
 }
 
 describe("FunctionsEmulator-Runtime", () => {
+  afterEach(() => {
+    functionsEmulator.workerPool.purgeWorkers();
+  });
+
   describe("Stubs, Mocks, and Helpers (aka Magic, Glee, and Awesomeness)", () => {
     describe("_InitializeNetworkFiltering(...)", () => {
       it("should log outgoing unknown HTTP requests via 'http'", async () => {
@@ -211,7 +223,7 @@ describe("FunctionsEmulator-Runtime", () => {
         emulatorRegistryStub.restore();
       });
 
-      it("should provide stubbed default app from initializeApp", async () => {
+      it.only("should provide stubbed default app from initializeApp", async () => {
         const worker = await invokeFunction(
           FunctionRuntimeBundles.onCreate,
           () => {
@@ -219,7 +231,7 @@ describe("FunctionsEmulator-Runtime", () => {
             return {
               function_id: require("firebase-functions")
                 .firestore.document("test/test")
-                .onCreate(DO_NOTHING),
+                .onCreate(() => {}),
             };
           },
           "event"
@@ -239,7 +251,7 @@ describe("FunctionsEmulator-Runtime", () => {
             return {
               function_id: require("firebase-functions")
                 .firestore.document("test/test")
-                .onCreate(DO_NOTHING),
+                .onCreate(() => {}),
             };
           },
           "event"

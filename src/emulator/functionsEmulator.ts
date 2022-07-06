@@ -153,8 +153,6 @@ export interface FunctionsRuntimeInstance {
 
 export interface InvokeRuntimeOpts {
   nodeBinary: string;
-  serializedTriggers?: string;
-  extensionTriggers?: ParsedTriggerDefinition[];
   ignore_warnings?: boolean;
 }
 
@@ -187,8 +185,8 @@ export class FunctionsEmulator implements EmulatorInstance {
 
   // Keep a "generation number" for triggers so that we can disable functions
   // and reload them with a new name.
+  workerPool: RuntimeWorkerPool;
   private triggerGeneration = 0;
-  private workerPool: RuntimeWorkerPool;
   private workQueue: WorkQueue;
   private logger = EmulatorLogger.forEmulator(Emulators.FUNCTIONS);
   private multicastTriggers: { [s: string]: string[] } = {};
@@ -1240,7 +1238,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     backend: EmulatableBackend,
     opts: InvokeRuntimeOpts,
     trigger?: EmulatedTriggerDefinition
-  ) {
+  ): Promise<RuntimeWorker> {
     const emitter = new EventEmitter();
     const args = [path.join(__dirname, "functionsEmulatorRuntime")];
 
@@ -1346,8 +1344,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       instanceId: backend.extensionInstanceId,
       ref: backend.extensionVersion?.ref,
     };
-    this.workerPool.addWorker(trigger?.id, runtime, extensionLogInfo);
-    return;
+    return this.workerPool.addWorker(trigger?.id, runtime, extensionLogInfo);
   }
 
   async disableBackgroundTriggers() {

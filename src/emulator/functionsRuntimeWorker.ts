@@ -292,6 +292,16 @@ export class RuntimeWorkerPool {
     return this.workers.get(this.getKey(triggerId)) || [];
   }
 
+  /* For testing purposes only. Purge all workers regardless of state. */
+  purgeWorkers() {
+    for (const [key, keyWorkers] of this.workers.entries()) {
+      for (const worker of keyWorkers) {
+        worker.runtime.shutdown();
+      }
+      this.setTriggerWorkers(key, []);
+    }
+  }
+
   private setTriggerWorkers(triggerId: string | undefined, workers: Array<RuntimeWorker>) {
     this.workers.set(this.getKey(triggerId), workers);
   }
