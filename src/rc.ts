@@ -223,7 +223,7 @@ export class RC {
   }
 
   getEtags(projectId: string): Record<EtagResourceType, Record<string, string>> {
-    return this.data.etags[projectId] || {};
+    return this.data.etags[projectId] || { extensionInstances: {} };
   }
 
   setEtags(projectId: string, resourceType: EtagResourceType, etagData: Record<string, string>) {

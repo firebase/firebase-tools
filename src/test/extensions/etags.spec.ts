@@ -8,7 +8,7 @@ const TEST_PROJECT = "test-project";
 function dummyRc(etagMap: Record<string, string>) {
   return new rc.RC(undefined, {
     etags: {
-      TEST_PROJECT: {
+      "test-project": {
         extensionInstances: etagMap,
       },
     },
@@ -23,7 +23,7 @@ function extensionInstanceHelper(instanceId: string, etag?: string) {
   return ret;
 }
 
-describe("detectEtagChanges", () => {
+describe.only("detectEtagChanges", () => {
   const testCases: {
     desc: string;
     rc: rc.RC;
