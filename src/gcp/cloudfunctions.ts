@@ -2,7 +2,6 @@ import * as clc from "cli-color";
 
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
-import { previews } from "../previews";
 import * as backend from "../deploy/functions/backend";
 import * as utils from "../utils";
 import * as proto from "./proto";
@@ -133,6 +132,7 @@ export interface CloudFunction {
   buildWorkerPool?: string;
   secretEnvironmentVariables?: SecretEnvVar[];
   secretVolumes?: SecretVolume[];
+  dockerRegistry?: "CONTAINER_REGISTRY" | "ARTIFACT_REGISTRY";
 
   // Input-only parameter. Source token originally comes from the Operation
   // of another Create/Update function call.
@@ -208,14 +208,9 @@ export async function createFunction(
   const endpoint = `/${apiPath}`;
 
   try {
-    const headers: Record<string, string> = {};
-    if (previews.artifactregistry) {
-      headers["X-Firebase-Artifact-Registry"] = "optin";
-    }
     const res = await client.post<Omit<CloudFunction, OutputOnlyFields>, CloudFunction>(
       endpoint,
-      cloudFunction,
-      { headers }
+      cloudFunction
     );
     return {
       name: res.body.name,
@@ -369,15 +364,10 @@ export async function updateFunction(
   // Failure policy is always an explicit policy and is only signified by the presence or absence of
   // a protobuf.Empty value, so we have to manually add it in the missing case.
   try {
-    const headers: Record<string, string> = {};
-    if (previews.artifactregistry) {
-      headers["X-Firebase-Artifact-Registry"] = "optin";
-    }
     const res = await client.patch<Omit<CloudFunction, OutputOnlyFields>, CloudFunction>(
       endpoint,
       cloudFunction,
       {
-        headers,
         queryParams: {
           updateMask: fieldMasks.join(","),
         },
@@ -590,6 +580,7 @@ export function functionFromEndpoint(
     sourceUploadUrl: sourceUploadUrl,
     entryPoint: endpoint.entryPoint,
     runtime: endpoint.runtime,
+    dockerRegistry: "ARTIFACT_REGISTRY",
   };
 
   proto.copyIfPresent(gcfFunction, endpoint, "labels");

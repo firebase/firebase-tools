@@ -28,6 +28,7 @@ describe("cloudfunctions", () => {
     name: "projects/project/locations/region/functions/id",
     entryPoint: "function",
     runtime: "nodejs16",
+    dockerRegistry: "ARTIFACT_REGISTRY",
   };
 
   const HAVE_CLOUD_FUNCTION: cloudfunctions.CloudFunction = {
