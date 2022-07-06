@@ -1,10 +1,33 @@
 import * as chai from "chai";
 import * as sinon from "sinon";
-chai.use(require("chai-as-promised"));
-const expect = chai.expect;
-const prompt = require("../../../prompt");
 
+import * as prompt from "../../../prompt";
 import * as params from "../../../deploy/functions/params";
+
+const expect = chai.expect;
+
+describe("CEL resolution", () => {
+  it("can interpolate a provided param into a CEL expression", () => {
+    expect(params.resolveString("{{ params.foo }} baz", { foo: "bar" })).to.equal("bar baz");
+  });
+
+  it("can interpolate multiple params into a CEL expression", () => {
+    expect(
+      params.resolveString("{{ params.foo }} {{ params.bar }}", { foo: "asdf", bar: "jkl;" })
+    ).to.equal("asdf jkl;");
+  });
+
+  it("throws instead of coercing a param value with the wrong type", () => {
+    expect(() => params.resolveString("{{ params.foo }}", { foo: 0 })).to.throw();
+    expect(() => params.resolveInt("{{ params.foo }}", { foo: "asdf" })).to.throw();
+  });
+
+  it("can't handle non-identity CEL expressions yet", () => {
+    expect(() =>
+      params.resolveString("{{ params.foo == 0 ? 'asdf' : 'jkl;' }}", { foo: 0 })
+    ).to.throw();
+  });
+});
 
 describe("resolveParams", () => {
   let promptOnce: sinon.SinonStub;
@@ -54,7 +77,7 @@ describe("resolveParams", () => {
         input: { type: "text", text: {} },
       },
     ];
-    promptOnce.returns(Promise.resolve("bar"));
+    promptOnce.resolves("bar");
     await expect(params.resolveParams(paramsToResolve, "", {})).to.eventually.deep.equal({
       foo: "bar",
     });
@@ -75,7 +98,7 @@ describe("resolveParams", () => {
         input: { type: "text", text: {} },
       },
     ];
-    promptOnce.returns(Promise.resolve("baz"));
+    promptOnce.resolves("baz");
     await params.resolveParams(paramsToResolve, "", {});
     expect(promptOnce.getCall(1).args[0].default).to.eq("baz");
   });
@@ -95,7 +118,7 @@ describe("resolveParams", () => {
         input: { type: "text", text: {} },
       },
     ];
-    promptOnce.returns(Promise.resolve("baz"));
+    promptOnce.resolves("baz");
     await params.resolveParams(paramsToResolve, "", {});
     expect(promptOnce.getCall(1).args[0].default).to.eq("baz/quox");
   });
@@ -109,7 +132,7 @@ describe("resolveParams", () => {
         input: { type: "text", text: {} },
       },
     ];
-    promptOnce.returns(Promise.resolve(""));
+    promptOnce.resolves("");
     await expect(params.resolveParams(paramsToResolve, "", {})).to.eventually.be.rejected;
   });
 
@@ -128,7 +151,7 @@ describe("resolveParams", () => {
         input: { type: "text", text: {} },
       },
     ];
-    promptOnce.returns(Promise.resolve("22"));
+    promptOnce.resolves("22");
     await expect(params.resolveParams(paramsToResolve, "", {})).to.eventually.be.rejected;
   });
 });

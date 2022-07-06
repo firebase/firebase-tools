@@ -9,7 +9,7 @@ function isCEL(expr: string | number | boolean): expr is CEL {
   return typeof expr === "string" && expr.includes("{{") && expr.includes("}}");
 }
 function dependenciesCEL(expr: CEL): string[] {
-  return /params\.(\w+)/.exec(expr)?.slice(1) || [];
+  return /{{ params\.\w+ }}/.exec(expr)?.slice(1) || [];
 }
 
 /**
@@ -21,22 +21,23 @@ export function resolveInt(
   from: number | build.Expression<number>,
   paramValues: Record<string, build.Field<string | number | boolean>>
 ): number {
-  if (typeof from === "string" && /{{ params\.(\w+) }}/.test(from)) {
-    const match = /{{ params\.(\w+) }}/.exec(from);
-    const referencedParamValue = paramValues[match![1]];
-    if (typeof referencedParamValue !== "number") {
-      throw new FirebaseError(
-        "Referenced numeric parameter '" +
-          match +
-          "' resolved to non-number value " +
-          referencedParamValue
-      );
-    }
-    return referencedParamValue;
-  } else if (typeof from === "string") {
+  if (typeof from === "number") {
+    return from;
+  }
+  if (!/{{ params\.(\w+) }}/.test(from)) {
     throw new FirebaseError("CEL evaluation of expression '" + from + "' not yet supported");
   }
-  return from;
+  const match = /{{ params\.(\w+) }}/.exec(from);
+  const referencedParamValue = paramValues[match![1]];
+  if (typeof referencedParamValue !== "number") {
+    throw new FirebaseError(
+      "Referenced numeric parameter '" +
+        match +
+        "' resolved to non-number value " +
+        referencedParamValue
+    );
+  }
+  return referencedParamValue;
 }
 
 /**
@@ -48,33 +49,30 @@ export function resolveString(
   from: string | build.Expression<string>,
   paramValues: Record<string, build.Field<string | number | boolean>>
 ): string {
-  if (from == null) {
-    return "";
-  } else if (from.includes("{{") && from.includes("}}")) {
-    let output = from;
-    const matches = /{{ params\.(\w+) }}/.exec(from);
-    if (matches && matches.length > 1) {
-      for (let i = 1; i < matches.length; i++) {
-        const referencedParamValue = paramValues[matches[i]];
-        if (typeof referencedParamValue !== "string") {
-          throw new FirebaseError(
-            "Referenced string parameter '" +
-              matches[i] +
-              "' resolved to non-string value " +
-              referencedParamValue
-          );
-        }
-        output = output.replace(`{{ params.${matches[i]} }}`, referencedParamValue);
-      }
-    }
-    if (output.includes("{{") || output.includes("}}")) {
+  if (!isCEL(from)) {
+    return from;
+  }
+  let output = from;
+  const paramCapture = /{{ params\.(\w+) }}/g;
+  let match: RegExpMatchArray | null;
+  while ((match = paramCapture.exec(from)) != null) {
+    const referencedParamValue = paramValues[match[1]];
+    if (typeof referencedParamValue !== "string") {
       throw new FirebaseError(
-        "CEL evaluation of non-identity expression '" + from + "' not yet supported"
+        "Referenced string parameter '" +
+          match[1] +
+          "' resolved to non-string value " +
+          referencedParamValue
       );
     }
-    return output;
+    output = output.replace(`{{ params.${match[1]} }}`, referencedParamValue);
   }
-  return from;
+  if (isCEL(output)) {
+    throw new FirebaseError(
+      "CEL evaluation of non-identity expression '" + from + "' not yet supported"
+    );
+  }
+  return output;
 }
 
 /**
@@ -138,7 +136,7 @@ export interface IntParam extends ParamBase<number> {
 }
 
 export interface TextInput<T, Extensions = {}> { // eslint-disable-line
-  type?: "text";
+  type: "text";
 
   text:
     | Extensions
@@ -157,7 +155,7 @@ interface SelectOptions<T> {
 }
 
 export interface SelectInput<T> {
-  type?: "select";
+  type: "select";
 
   select: Array<SelectOptions<T>>;
 }
@@ -206,9 +204,8 @@ function canSatisfyParam(param: Param, value: ParamValue): boolean {
     return typeof value === "string";
   } else if (param.type === "int") {
     return typeof value === "number" && Number.isInteger(value);
-  } else {
-    assertExhaustive(param);
   }
+  assertExhaustive(param);
 }
 
 /**
@@ -228,25 +225,23 @@ export async function resolveParams(
 ): Promise<Record<string, ParamValue>> {
   const paramValues: Record<string, ParamValue> = {};
 
-  for (const param of params) {
-    if (userEnvs.hasOwnProperty(param.param)) {
-      if (canSatisfyParam(param, userEnvs[param.param])) {
-        paramValues[param.param] = userEnvs[param.param];
-        continue;
-      } else {
-        throw new FirebaseError(
-          "Parameter " +
-            param.param +
-            " resolved to value from dotenv files " +
-            userEnvs[param.param] +
-            " of wrong type"
-        );
-      }
+  for (const param of params.filter((param) => userEnvs.hasOwnProperty(param.param))) {
+    if (!canSatisfyParam(param, userEnvs[param.param])) {
+      throw new FirebaseError(
+        "Parameter " +
+          param.param +
+          " resolved to value from dotenv files " +
+          userEnvs[param.param] +
+          " of wrong type"
+      );
     }
+    paramValues[param.param] = userEnvs[param.param];
+  }
 
+  for (const param of params.filter((param) => !userEnvs.hasOwnProperty(param.param))) {
     let paramDefault: ParamValue | undefined = param.default;
     if (paramDefault && isCEL(paramDefault)) {
-      paramDefault = resolveDefaultCEL(param.type || "string", paramDefault, paramValues);
+      paramDefault = resolveDefaultCEL(param.type, paramDefault, paramValues);
     }
     if (paramDefault && !canSatisfyParam(param, paramDefault)) {
       throw new FirebaseError(
@@ -254,6 +249,8 @@ export async function resolveParams(
       );
     }
     paramValues[param.param] = await promptParam(param, paramDefault);
+
+    // TODO(vsfan@): Once we have writeUserEnvs in functions/env.ts implemented, call it to persist user-provided params
   }
 
   return paramValues;
@@ -268,17 +265,16 @@ export async function resolveParams(
  */
 async function promptParam(param: Param, resolvedDefault?: ParamValue): Promise<ParamValue> {
   if (param.type === "string") {
-    return promptStringParam(param, resolvedDefault as string);
+    return promptStringParam(param, resolvedDefault as string | undefined);
   } else if (param.type === "int") {
-    return promptIntParam(param, resolvedDefault as number);
-  } else {
-    assertExhaustive(param);
+    return promptIntParam(param, resolvedDefault as number | undefined);
   }
+  assertExhaustive(param);
 }
 
 async function promptStringParam(param: StringParam, resolvedDefault?: string): Promise<string> {
   if (!param.input) {
-    const defaultToText: TextInput<string> = { text: {} };
+    const defaultToText: TextInput<string> = { type: "text", text: {} };
     param.input = defaultToText;
   }
 
@@ -289,10 +285,7 @@ async function promptStringParam(param: StringParam, resolvedDefault?: string): 
       );
     case "text":
     default:
-      let prompt = `Enter a value for ${param.param}`;
-      if (param.label) {
-        prompt = `${prompt} (${param.label})`;
-      }
+      let prompt = `Enter a value for ${param.label || param.param}`;
       if (param.description) {
         prompt += ` \n(${param.description})`;
       }
@@ -307,7 +300,7 @@ async function promptStringParam(param: StringParam, resolvedDefault?: string): 
 
 async function promptIntParam(param: IntParam, resolvedDefault?: number): Promise<number> {
   if (!param.input) {
-    const defaultToText: TextInput<string> = { text: {} };
+    const defaultToText: TextInput<number> = { type: "text", text: {} };
     param.input = defaultToText;
   }
 
@@ -318,10 +311,7 @@ async function promptIntParam(param: IntParam, resolvedDefault?: number): Promis
       );
     case "text":
     default:
-      let prompt = `Enter a value for ${param.param}`;
-      if (param.label) {
-        prompt = `${prompt} (${param.label})`;
-      }
+      let prompt = `Enter a value for ${param.label || param.param}`;
       if (param.description) {
         prompt += ` \n(${param.description})`;
       }
