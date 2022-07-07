@@ -1,1 +1,2 @@
+- Fix bug where Artifact Registry API was not enabled on function deploy (#4715).
 - Fix bug where function deployed failed with message "Invalid function service account requested: default." (#4714).
