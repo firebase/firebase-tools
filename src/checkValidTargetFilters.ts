@@ -28,7 +28,7 @@ function targetsHaveNoFilters(...targets: string[]): boolean {
  * Throws an error (rejects) if it is invalid.
  */
 export async function checkValidTargetFilters(options: Options): Promise<void> {
-  const only = (options.only || "").split(",");
+  const only = !options.only ? [] : options.only.split(",");
 
   return new Promise<void>((resolve, reject) => {
     if (!only.length) {

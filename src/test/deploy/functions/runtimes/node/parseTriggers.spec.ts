@@ -13,9 +13,6 @@ function applyBuildDefaults(
   if (!endpoint.timeoutSeconds) {
     endpoint.timeoutSeconds = 60;
   }
-  if (!endpoint.serviceAccountEmail) {
-    endpoint.serviceAccountEmail = "default";
-  }
   return endpoint;
 }
 
@@ -40,7 +37,7 @@ describe("addResourcesToBuild", () => {
     project: "project",
     runtime: "nodejs16",
     entryPoint: "func",
-    serviceAccount: "default",
+    serviceAccount: null,
   });
 
   const BASIC_FUNCTION_NAME: backend.TargetIds = Object.freeze({
