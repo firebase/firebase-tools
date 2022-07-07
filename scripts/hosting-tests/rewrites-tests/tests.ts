@@ -11,7 +11,7 @@ import { FirebaseError } from "../../../src/error";
 
 tmp.setGracefulCleanup();
 
-const functionName = `helloWorld-${process.env.CI_RUN_ID || "XX"}-${
+const functionName = `helloWorld_${process.env.CI_RUN_ID || "XX"}_${
   process.env.CI_RUN_ATTEMPT || "YY"
 }`;
 
@@ -57,6 +57,7 @@ function functionRegionString(functionRegions: string[]): string {
 }
 
 function writeHelloWorldFunctionWithRegions(
+  functionName: string,
   functionsDirectory: string,
   functionRegions?: string[]
 ): void {
@@ -66,7 +67,7 @@ function writeHelloWorldFunctionWithRegions(
   const functionFileContents = `
 const functions = require("firebase-functions");
 
-exports.helloWorld = functions${region}.https.onRequest((request, response) => {
+exports.${functionName} = functions${region}.https.onRequest((request, response) => {
   functions.logger.info("Hello logs!", { structuredData: true });
   const envVarFunctionsRegion = process.env.FUNCTION_REGION;
   response.send("Hello from Firebase ${
@@ -154,7 +155,10 @@ describe("deploy function-targeted rewrites And functions", () => {
     ensureDirSync(tempDirInfo.hostingDirPath);
     writeBasicHostingFile(tempDirInfo.hostingDirPath);
 
-    writeHelloWorldFunctionWithRegions(join(tempDirInfo.tempDir.name, ".", "functions"));
+    writeHelloWorldFunctionWithRegions(
+      functionName,
+      join(tempDirInfo.tempDir.name, ".", "functions")
+    );
 
     await client.deploy({
       project: process.env.FBTOOLS_TARGET_PROJECT,
@@ -196,7 +200,10 @@ describe("deploy function-targeted rewrites And functions", () => {
     ensureDirSync(tempDirInfo.hostingDirPath);
     writeBasicHostingFile(tempDirInfo.hostingDirPath);
 
-    writeHelloWorldFunctionWithRegions(join(tempDirInfo.tempDir.name, ".", "functions"));
+    writeHelloWorldFunctionWithRegions(
+      functionName,
+      join(tempDirInfo.tempDir.name, ".", "functions")
+    );
 
     await client.deploy({
       project: process.env.FBTOOLS_TARGET_PROJECT,
@@ -237,9 +244,11 @@ describe("deploy function-targeted rewrites And functions", () => {
     ensureDirSync(tempDirInfo.hostingDirPath);
     writeBasicHostingFile(tempDirInfo.hostingDirPath);
 
-    writeHelloWorldFunctionWithRegions(join(tempDirInfo.tempDir.name, ".", "functions"), [
-      "europe-west1",
-    ]);
+    writeHelloWorldFunctionWithRegions(
+      functionName,
+      join(tempDirInfo.tempDir.name, ".", "functions"),
+      ["europe-west1"]
+    );
 
     await client.deploy({
       project: process.env.FBTOOLS_TARGET_PROJECT,
@@ -281,9 +290,11 @@ describe("deploy function-targeted rewrites And functions", () => {
     ensureDirSync(tempDirInfo.hostingDirPath);
     writeBasicHostingFile(tempDirInfo.hostingDirPath);
 
-    writeHelloWorldFunctionWithRegions(join(tempDirInfo.tempDir.name, ".", "functions"), [
-      "asia-northeast1",
-    ]);
+    writeHelloWorldFunctionWithRegions(
+      functionName,
+      join(tempDirInfo.tempDir.name, ".", "functions"),
+      ["asia-northeast1"]
+    );
 
     await client.deploy({
       project: process.env.FBTOOLS_TARGET_PROJECT,
@@ -325,9 +336,11 @@ describe("deploy function-targeted rewrites And functions", () => {
     ensureDirSync(tempDirInfo.hostingDirPath);
     writeBasicHostingFile(tempDirInfo.hostingDirPath);
 
-    writeHelloWorldFunctionWithRegions(join(tempDirInfo.tempDir.name, ".", "functions"), [
-      "europe-west2",
-    ]);
+    writeHelloWorldFunctionWithRegions(
+      functionName,
+      join(tempDirInfo.tempDir.name, ".", "functions"),
+      ["europe-west2"]
+    );
 
     await expect(
       client.deploy({
@@ -386,10 +399,11 @@ describe("deploy function-targeted rewrites And functions", () => {
     ensureDirSync(tempDirInfo.hostingDirPath);
     writeBasicHostingFile(tempDirInfo.hostingDirPath);
 
-    writeHelloWorldFunctionWithRegions(join(tempDirInfo.tempDir.name, ".", "functions"), [
-      "asia-northeast1",
-      "europe-west1",
-    ]);
+    writeHelloWorldFunctionWithRegions(
+      functionName,
+      join(tempDirInfo.tempDir.name, ".", "functions"),
+      ["asia-northeast1", "europe-west1"]
+    );
 
     await client.deploy({
       project: process.env.FBTOOLS_TARGET_PROJECT,
@@ -431,10 +445,11 @@ describe("deploy function-targeted rewrites And functions", () => {
     ensureDirSync(tempDirInfo.hostingDirPath);
     writeBasicHostingFile(tempDirInfo.hostingDirPath);
 
-    writeHelloWorldFunctionWithRegions(join(tempDirInfo.tempDir.name, ".", "functions"), [
-      "asia-northeast1",
-      "europe-west1",
-    ]);
+    writeHelloWorldFunctionWithRegions(
+      functionName,
+      join(tempDirInfo.tempDir.name, ".", "functions"),
+      ["asia-northeast1", "europe-west1"]
+    );
 
     await expect(
       client.deploy({
@@ -463,10 +478,11 @@ describe("deploy function-targeted rewrites And functions", () => {
     ensureDirSync(tempDirInfo.hostingDirPath);
     writeBasicHostingFile(tempDirInfo.hostingDirPath);
 
-    writeHelloWorldFunctionWithRegions(join(tempDirInfo.tempDir.name, ".", "functions"), [
-      "asia-northeast1",
-      "europe-west1",
-    ]);
+    writeHelloWorldFunctionWithRegions(
+      functionName,
+      join(tempDirInfo.tempDir.name, ".", "functions"),
+      ["asia-northeast1", "europe-west1"]
+    );
 
     await expect(
       client.deploy({
@@ -496,9 +512,11 @@ describe("deploy function-targeted rewrites And functions", () => {
     ensureDirSync(tempDirInfo.hostingDirPath);
     writeBasicHostingFile(tempDirInfo.hostingDirPath);
 
-    writeHelloWorldFunctionWithRegions(join(tempDirInfo.tempDir.name, ".", "functions"), [
-      "europe-west1",
-    ]);
+    writeHelloWorldFunctionWithRegions(
+      functionName,
+      join(tempDirInfo.tempDir.name, ".", "functions"),
+      ["europe-west1"]
+    );
 
     await client.deploy({
       project: process.env.FBTOOLS_TARGET_PROJECT,
@@ -521,9 +539,11 @@ describe("deploy function-targeted rewrites And functions", () => {
     expect(responseText).to.contain("Hello from Firebase");
     expect(responseText).to.contain("europe-west1");
 
-    writeHelloWorldFunctionWithRegions(join(tempDirInfo.tempDir.name, ".", "functions"), [
-      "asia-northeast1",
-    ]);
+    writeHelloWorldFunctionWithRegions(
+      functionName,
+      join(tempDirInfo.tempDir.name, ".", "functions"),
+      ["asia-northeast1"]
+    );
 
     await client.deploy({
       project: process.env.FBTOOLS_TARGET_PROJECT,
@@ -563,9 +583,11 @@ describe("deploy function-targeted rewrites And functions", () => {
     ensureDirSync(tempDirInfo.hostingDirPath);
     writeBasicHostingFile(tempDirInfo.hostingDirPath);
 
-    writeHelloWorldFunctionWithRegions(join(tempDirInfo.tempDir.name, ".", "functions"), [
-      "europe-west1",
-    ]);
+    writeHelloWorldFunctionWithRegions(
+      functionName,
+      join(tempDirInfo.tempDir.name, ".", "functions"),
+      ["europe-west1"]
+    );
 
     const functionsRequest = new Request(
       `https://${process.env.FBTOOLS_CLIENT_INTEGRATION_SITE}.web.app/helloWorld`
@@ -604,9 +626,11 @@ describe("deploy function-targeted rewrites And functions", () => {
       },
     };
     writeFileSync(firebaseJsonFilePath, JSON.stringify(firebaseJson));
-    writeHelloWorldFunctionWithRegions(join(tempDirInfo.tempDir.name, ".", "functions"), [
-      "asia-northeast1",
-    ]);
+    writeHelloWorldFunctionWithRegions(
+      functionName,
+      join(tempDirInfo.tempDir.name, ".", "functions"),
+      ["asia-northeast1"]
+    );
 
     {
       await client.deploy({
@@ -648,9 +672,11 @@ describe("deploy function-targeted rewrites And functions", () => {
     ensureDirSync(tempDirInfo.hostingDirPath);
     writeBasicHostingFile(tempDirInfo.hostingDirPath);
 
-    writeHelloWorldFunctionWithRegions(join(tempDirInfo.tempDir.name, ".", "functions"), [
-      "europe-west1",
-    ]);
+    writeHelloWorldFunctionWithRegions(
+      functionName,
+      join(tempDirInfo.tempDir.name, ".", "functions"),
+      ["europe-west1"]
+    );
 
     const functionsRequest = new Request(
       `https://${process.env.FBTOOLS_CLIENT_INTEGRATION_SITE}.web.app/helloWorld`
@@ -706,9 +732,11 @@ describe("deploy function-targeted rewrites And functions", () => {
     const firebaseJsonFilePath = join(tempDirInfo.tempDir.name, ".", "firebase.json");
     writeFileSync(firebaseJsonFilePath, "{}");
 
-    writeHelloWorldFunctionWithRegions(join(tempDirInfo.tempDir.name, ".", "functions"), [
-      "europe-west1",
-    ]);
+    writeHelloWorldFunctionWithRegions(
+      functionName,
+      join(tempDirInfo.tempDir.name, ".", "functions"),
+      ["europe-west1"]
+    );
 
     await client.deploy({
       project: process.env.FBTOOLS_TARGET_PROJECT,
@@ -746,7 +774,10 @@ describe("deploy function-targeted rewrites And functions", () => {
   it("should deploy when target function exists in prod but code isn't available", async () => {
     const firebaseJsonFilePath = join(tempDirInfo.tempDir.name, ".", "firebase.json");
     writeFileSync(firebaseJsonFilePath, "{}");
-    writeHelloWorldFunctionWithRegions(join(tempDirInfo.tempDir.name, ".", "functions"));
+    writeHelloWorldFunctionWithRegions(
+      functionName,
+      join(tempDirInfo.tempDir.name, ".", "functions")
+    );
 
     await client.deploy({
       project: process.env.FBTOOLS_TARGET_PROJECT,
@@ -789,9 +820,11 @@ describe("deploy function-targeted rewrites And functions", () => {
 
   it("should fail to deploy when target function exists in prod, code isn't available, and rewrite region is specified incorrectly", async () => {
     const firebaseJsonFilePath = join(tempDirInfo.tempDir.name, ".", "firebase.json");
-    writeHelloWorldFunctionWithRegions(join(tempDirInfo.tempDir.name, ".", "functions"), [
-      "asia-northeast1",
-    ]);
+    writeHelloWorldFunctionWithRegions(
+      functionName,
+      join(tempDirInfo.tempDir.name, ".", "functions"),
+      ["asia-northeast1"]
+    );
     writeFileSync(firebaseJsonFilePath, "{}");
 
     await client.deploy({
@@ -831,9 +864,11 @@ describe("deploy function-targeted rewrites And functions", () => {
   it("should deploy when target function exists in prod, codebase isn't available, and region matches", async () => {
     const firebaseJsonFilePath = join(tempDirInfo.tempDir.name, ".", "firebase.json");
     writeFileSync(firebaseJsonFilePath, "{}");
-    writeHelloWorldFunctionWithRegions(join(tempDirInfo.tempDir.name, ".", "functions"), [
-      "asia-northeast1",
-    ]);
+    writeHelloWorldFunctionWithRegions(
+      functionName,
+      join(tempDirInfo.tempDir.name, ".", "functions"),
+      ["asia-northeast1"]
+    );
 
     await client.deploy({
       project: process.env.FBTOOLS_TARGET_PROJECT,
