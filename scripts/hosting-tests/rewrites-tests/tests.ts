@@ -11,12 +11,9 @@ import { FirebaseError } from "../../../src/error";
 
 tmp.setGracefulCleanup();
 
-const functionName = join(
-  "helloWorld",
-  process.env.CI_RUN_ID || "XX",
-  "-",
+const functionName = `helloWorld-${process.env.CI_RUN_ID || "XX"}-${
   process.env.CI_RUN_ATTEMPT || "YY"
-);
+}`;
 
 // Typescript doesn't like calling functions on `firebase`.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -116,9 +113,6 @@ class TempDirectoryInfo {
 
 describe("deploy function-targeted rewrites And functions", () => {
   let tempDirInfo = new TempDirectoryInfo();
-  // const tempDir = tmp.dirSync({ prefix: "hosting_rewrites_tests_" });
-  // const firebasercFilePath = join(tempDirInfo.tempDir.name, ".", ".firebaserc");
-  // const tempDirInfo.hostingDirPath = join(tempDirInfo.tempDir.name, ".", "hosting");
 
   // eslint-disable-next-line prefer-arrow-callback
   beforeEach(async function () {
@@ -130,11 +124,15 @@ describe("deploy function-targeted rewrites And functions", () => {
     writeFirebaseRc(tempDirInfo.firebasercFilePath);
   });
 
-  afterEach(async () => {
+  afterEach(async function () {
+    // eslint-disable-next-line @typescript-eslint/no-invalid-this
+    this.timeout(100 * 1e3);
     await deleteDeployedFunctions();
   });
 
-  after(async () => {
+  after(async function () {
+    // eslint-disable-next-line @typescript-eslint/no-invalid-this
+    this.timeout(100 * 1e3);
     await deleteDeployedFunctions();
   });
 
