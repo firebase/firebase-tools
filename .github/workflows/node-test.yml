@@ -61,6 +61,8 @@ jobs:
       CI_JOB_ID: ${{ github.action }}
       FBTOOLS_TARGET_PROJECT: ${{ secrets.FBTOOLS_TARGET_PROJECT }}
       FBTOOLS_CLIENT_INTEGRATION_SITE: ${{ secrets.FBTOOLS_CLIENT_INTEGRATION_SITE }}
+      CI_RUN_ID: ${{ github.run_id }}
+      CI_RUN_ATTEMPT: ${{ github.run_attempt }}
 
     strategy:
       fail-fast: false
@@ -113,6 +115,8 @@ jobs:
       CI_JOB_ID: ${{ github.action }}
       FBTOOLS_TARGET_PROJECT: ${{ secrets.FBTOOLS_TARGET_PROJECT }}
       FBTOOLS_CLIENT_INTEGRATION_SITE: ${{ secrets.FBTOOLS_CLIENT_INTEGRATION_SITE }}
+      CI_RUN_ID: ${{ github.run_id }}
+      CI_RUN_ATTEMPT: ${{ github.run_attempt }}
 
     strategy:
       fail-fast: false
