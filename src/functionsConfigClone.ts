@@ -28,6 +28,8 @@ function cloneVariable(varName: string, toProject: any): Promise<any> {
 
 function cloneConfig(configName: string, toProject: any): Promise<any> {
   return runtimeconfig.variables.list(configName).then((variables) => {
+    if (!variables) return {};
+
     return Promise.all(
       variables.map((variable: { name: string }) => {
         return cloneVariable(variable.name, toProject);
@@ -47,6 +49,9 @@ async function cloneConfigOrVariable(key: string, fromProject: any, toProject: a
   }
   return runtimeconfig.variables.list(configName).then((variables) => {
     const promises: Promise<any>[] = [];
+
+    if (!variables) return {};
+
     for (const variable of variables) {
       const varId = functionsConfig.varNameToIds(variable.name).variable;
       const variablePrefixFilter = parts.slice(1);
