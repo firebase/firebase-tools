@@ -78,7 +78,7 @@ const CHARACTERS_TO_ESCAPE_SEQUENCES: Record<string, string> = {
   "'": "\\'",
   '"': '\\"',
 };
-const ALL_ESCAPABLE_CHARACTERS = /[\n\r\t\v\\'"]/g;
+const ALL_ESCAPABLE_CHARACTERS_RE = /[\n\r\t\v\\'"]/g;
 
 interface ParseResult {
   envs: Record<string, string>;
@@ -299,7 +299,7 @@ function createEnvFile(envOpts: UserEnvsOpts) {
 
 function formatUserEnvForWrite(key: string, value: string): string {
   const escapedValue = value.replace(
-    ALL_ESCAPABLE_CHARACTERS,
+    ALL_ESCAPABLE_CHARACTERS_RE,
     (match) => CHARACTERS_TO_ESCAPE_SEQUENCES[match]
   );
   if (escapedValue !== value) {
