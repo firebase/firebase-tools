@@ -1,6 +1,7 @@
 const admin = require("firebase-admin");
 const functions = require("firebase-functions");
 const { PubSub } = require("@google-cloud/pubsub");
+const { initializeApp } = require("firebase/app");
 const {
   getAuth,
   connectAuthEmulator,
@@ -27,7 +28,8 @@ const pubsub = new PubSub();
 
 admin.initializeApp();
 
-const auth = getAuth();
+const app = initializeApp({}, "TRIGGERS_END_TO_END");
+const auth = getAuth(app);
 connectAuthEmulator(auth, "http://localhost:9099");
 
 // firebase.initializeApp();
