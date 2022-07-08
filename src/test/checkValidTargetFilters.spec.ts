@@ -20,7 +20,7 @@ const SAMPLE_OPTIONS: Options = {
   filteredTargets: [],
   rc: new RC(),
 };
-const UNFILTERABLE_TARGETS = ["database", "storage", "firestore", "remoteconfig", "extensions"];
+const UNFILTERABLE_TARGETS = ["database", "storage", "remoteconfig", "extensions"];
 
 describe("checkValidTargetFilters", () => {
   it("should resolve", async () => {
@@ -54,7 +54,7 @@ describe("checkValidTargetFilters", () => {
         except: null,
       });
       await expect(checkValidTargetFilters(options)).to.be.rejectedWith(
-        "Filters specified with colons (e.g. --only functions:func1,functions:func2) are only supported for functions and hosting"
+        /Filters specified with colons \(e.g. --only functions:func1,functions:func2\) are only supported for .*/
       );
     });
   });
