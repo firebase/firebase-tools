@@ -42,16 +42,6 @@ const app = initializeApp(
 const auth = getAuth(app);
 connectAuthEmulator(auth, "http://localhost:9099");
 
-exports.createUserFromAuth = functions.https.onRequest(async (req, res) => {
-  await createUserWithEmailAndPassword(auth, "email@gmail.com", "mypassword");
-  res.json({ created: "ok" });
-});
-
-exports.signInUserFromAuth = functions.https.onRequest(async (req, res) => {
-  await signInWithEmailAndPassword(auth, "email@gmail.com", "mypassword");
-  res.json({ created: "ok" });
-});
-
 exports.deleteFromFirestore = functions.https.onRequest(async (req, res) => {
   await admin.firestore().doc(START_DOCUMENT_NAME).delete();
   res.json({ deleted: true });
@@ -101,6 +91,16 @@ exports.writeToAuth = functions.https.onRequest(async (req, res) => {
     email: `user${time}@example.com`,
   });
 
+  res.json({ created: "ok" });
+});
+
+exports.createUserFromAuth = functions.https.onRequest(async (req, res) => {
+  await createUserWithEmailAndPassword(auth, "email@gmail.com", "mypassword");
+  res.json({ created: "ok" });
+});
+
+exports.signInUserFromAuth = functions.https.onRequest(async (req, res) => {
+  await signInWithEmailAndPassword(auth, "email@gmail.com", "mypassword");
   res.json({ created: "ok" });
 });
 
