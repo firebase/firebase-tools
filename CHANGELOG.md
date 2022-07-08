@@ -1,1 +1,2 @@
 - Fixes issue where `firestore:*` did not work with `--only` in `deploy`. (#4698)
+- Removes DNS flag passed to Emulator UI. (#4566)
