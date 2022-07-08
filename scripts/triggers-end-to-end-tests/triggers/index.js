@@ -9,6 +9,8 @@ const {
   signInWithEmailAndPassword,
 } = require("firebase/auth");
 
+const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "";
+
 // const firebase = require("firebase");
 
 /*
@@ -28,7 +30,20 @@ const pubsub = new PubSub();
 
 admin.initializeApp();
 
-const app = initializeApp({}, "TRIGGERS_END_TO_END");
+const app = initializeApp(
+  {
+    apiKey: "fake-api-key", // Auth / General Use
+    projectId: `${FIREBASE_PROJECT}`,
+    authDomain: `${FIREBASE_PROJECT}.firebaseapp.com`,
+    storageBucket: `${FIREBASE_PROJECT}.appspot.com`,
+    appId: "fake-app-id",
+    // authDomain: "YOUR_APP.firebaseapp.com",         // Auth with popup/redirect
+    // databaseURL: "https://YOUR_APP.firebaseio.com", // Realtime Database
+    // storageBucket: "YOUR_APP.appspot.com",          // Storage
+    // messagingSenderId: "123456789"                  // Cloud Messaging
+  },
+  "TRIGGERS_END_TO_END"
+);
 const auth = getAuth(app);
 connectAuthEmulator(auth, "http://localhost:9099");
 
