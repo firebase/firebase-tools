@@ -20,10 +20,10 @@ const STORAGE_BUCKET_FUNCTION_FINALIZED_LOG =
   "========== STORAGE BUCKET FUNCTION FINALIZED ==========";
 const STORAGE_BUCKET_FUNCTION_METADATA_LOG =
   "========== STORAGE BUCKET FUNCTION METADATA ==========";
-const AUTH_BLOCKING_CREATE_V1_LOG =
-  "========== AUTH BLOCKING CREATE V1 FUNCTION METADATA ==========";
-const AUTH_BLOCKING_SIGN_IN_V1_LOG =
-  "========== AUTH BLOCKING SIGN IN V1 FUNCTION METADATA ==========";
+// const AUTH_BLOCKING_CREATE_V1_LOG =
+//   "========== AUTH BLOCKING CREATE V1 FUNCTION METADATA ==========";
+// const AUTH_BLOCKING_SIGN_IN_V1_LOG =
+//   "========== AUTH BLOCKING SIGN IN V1 FUNCTION METADATA ==========";
 
 /*
  * We install onWrite triggers for START_DOCUMENT_NAME in both the firestore and
@@ -170,12 +170,12 @@ exports.storageBucketMetadataReaction = functions.storage
     return true;
   });
 
-exports.authBlockingCreateReaction = functions.auth.user().beforeCreate((user, context) => {
-  console.log(AUTH_BLOCKING_CREATE_V1_LOG);
-  return;
-});
+// exports.authBlockingCreateReaction = functions.auth.user().beforeCreate((user, context) => {
+//   console.log(AUTH_BLOCKING_CREATE_V1_LOG);
+//   return;
+// });
 
-exports.authBlockingSignInReaction = functions.auth.user().beforeSignIn((user, context) => {
-  console.log(AUTH_BLOCKING_SIGN_IN_V1_LOG);
-  return;
-});
+// exports.authBlockingSignInReaction = functions.auth.user().beforeSignIn((user, context) => {
+//   console.log(AUTH_BLOCKING_SIGN_IN_V1_LOG);
+//   return;
+// });
