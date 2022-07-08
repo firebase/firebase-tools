@@ -28,7 +28,7 @@ function targetsHaveNoFilters(...targets: string[]): boolean {
  * Throws an error (rejects) if it is invalid.
  */
 export async function checkValidTargetFilters(options: Options): Promise<void> {
-  const only = (options.only || "").split(",");
+  const only = !options.only ? [] : options.only.split(",");
 
   return new Promise<void>((resolve, reject) => {
     if (!only.length) {
@@ -38,13 +38,13 @@ export async function checkValidTargetFilters(options: Options): Promise<void> {
       return reject(new FirebaseError("Cannot specify both --only and --except"));
     }
     const nonFilteredTypes = VALID_DEPLOY_TARGETS.filter(
-      (t) => !["hosting", "functions"].includes(t)
+      (t) => !["hosting", "functions", "firestore"].includes(t)
     );
     const targetsForNonFilteredTypes = targetsForTypes(only, ...nonFilteredTypes);
     if (targetsForNonFilteredTypes.length && targetsHaveFilters(...targetsForNonFilteredTypes)) {
       return reject(
         new FirebaseError(
-          "Filters specified with colons (e.g. --only functions:func1,functions:func2) are only supported for functions and hosting"
+          "Filters specified with colons (e.g. --only functions:func1,functions:func2) are only supported for functions, hosting, and firestore"
         )
       );
     }
