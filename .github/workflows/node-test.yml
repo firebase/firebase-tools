@@ -52,6 +52,8 @@ jobs:
       - run: npm ci
       - run: npm test
 
+      - uses: codecov/codecov-action@v3
+
   integration:
     needs: unit
     if: github.event_name == 'push'
