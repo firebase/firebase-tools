@@ -54,7 +54,7 @@ describe("checkValidTargetFilters", () => {
         except: null,
       });
       await expect(checkValidTargetFilters(options)).to.be.rejectedWith(
-        "Filters specified with colons (e.g. --only functions:func1,functions:func2) are only supported for functions and hosting"
+        /Filters specified with colons (e.g. --only functions:func1,functions:func2) are only supported for .*/
       );
     });
   });
