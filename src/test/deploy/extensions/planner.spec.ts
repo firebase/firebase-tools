@@ -114,6 +114,7 @@ describe("Extensions Deployment Planner", () => {
       updateTime: "2019-05-19T00:20:10.416947Z",
       state: "ACTIVE",
       serviceAccountEmail: "",
+      etag: "123456",
       config: {
         params: {},
         extensionRef: "firebase/image-resizer",
@@ -137,6 +138,7 @@ describe("Extensions Deployment Planner", () => {
       params: {},
       allowedEventTypes: ["google.firebase.custom-event-occurred"],
       eventarcChannel: "projects/my-test-proj/locations/us-central1/channels/firebase",
+      etag: "123456",
       ref: {
         publisherId: "firebase",
         extensionId: "image-resizer",

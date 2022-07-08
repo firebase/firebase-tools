@@ -1,1 +1,2 @@
+- Adds a check for out of band changes before deploying extensions.
 - Fixes issue where `firestore:*` did not work with `--only` in `deploy`. (#4698)
