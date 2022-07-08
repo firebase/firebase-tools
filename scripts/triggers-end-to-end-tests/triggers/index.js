@@ -1,7 +1,7 @@
 const admin = require("firebase-admin");
 const functions = require("firebase-functions");
 const { PubSub } = require("@google-cloud/pubsub");
-const firebase = require("firebase");
+// const firebase = require("firebase");
 
 /*
  * We install onWrite triggers for START_DOCUMENT_NAME in both the firestore and
@@ -19,17 +19,17 @@ const STORAGE_FILE_NAME = "test-file.txt";
 const pubsub = new PubSub();
 admin.initializeApp();
 
-firebase.initializeApp();
-const auth = firebase.auth();
-auth.useEmulator("http://localhost:9099");
+// firebase.initializeApp();
+// const auth = firebase.auth();
+// auth.useEmulator("http://localhost:9099");
 
 exports.createUserFromAuth = functions.https.onRequest(async (req, res) => {
-  await auth.createUserWithEmailAndPassword("email@gmail.com", "password");
+  // await auth.createUserWithEmailAndPassword("email@gmail.com", "password");
   res.json({ created: "ok" });
 });
 
 exports.signInUserFromAuth = functions.https.onRequest(async (req, res) => {
-  await auth.signInWithEmailAndPassword("email@gmail.com", "password");
+  // await auth.signInWithEmailAndPassword("email@gmail.com", "password");
   res.json({ created: "ok" });
 });
 
