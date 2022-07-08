@@ -53,6 +53,7 @@ jobs:
       - run: npm test
 
       - uses: codecov/codecov-action@v3
+        if: matrix.node-version == '14'
 
   integration:
     needs: unit
