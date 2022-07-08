@@ -52,6 +52,9 @@ jobs:
       - run: npm ci
       - run: npm test
 
+      - uses: codecov/codecov-action@v3
+        if: matrix.node-version == '14'
+
   integration:
     needs: unit
     if: github.event_name == 'push'
