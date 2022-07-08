@@ -44,7 +44,7 @@ export async function checkValidTargetFilters(options: Options): Promise<void> {
     if (targetsForNonFilteredTypes.length && targetsHaveFilters(...targetsForNonFilteredTypes)) {
       return reject(
         new FirebaseError(
-          "Filters specified with colons (e.g. --only functions:func1,functions:func2) are only supported for functions and hosting"
+          "Filters specified with colons (e.g. --only functions:func1,functions:func2) are only supported for functions, hosting, and firestore"
         )
       );
     }
