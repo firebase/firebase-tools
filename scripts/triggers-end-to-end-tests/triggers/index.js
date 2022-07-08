@@ -1,6 +1,12 @@
 const admin = require("firebase-admin");
 const functions = require("firebase-functions");
 const { PubSub } = require("@google-cloud/pubsub");
+const {
+  getAuth,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+} = require("firebase/auth");
+
 // const firebase = require("firebase");
 
 /*
@@ -24,12 +30,16 @@ admin.initializeApp();
 // const auth = firebase.auth();
 // auth.useEmulator("http://localhost:9099");
 
-exports.createUserFromAuth = functions.https.onRequest((req, res) => {
+exports.createUserFromAuth = functions.https.onRequest(async (req, res) => {
+  const auth = getAuth();
+  await createUserWithEmailAndPassword(auth, "email@gmail.com", "mypassword");
   // await auth.createUserWithEmailAndPassword("email@gmail.com", "password");
   res.json({ created: "ok" });
 });
 
-exports.signInUserFromAuth = functions.https.onRequest((req, res) => {
+exports.signInUserFromAuth = functions.https.onRequest(async (req, res) => {
+  const auth = getAuth();
+  await signInWithEmailAndPassword(auth, "email@gmail.com", "mypassword");
   // await auth.signInWithEmailAndPassword("email@gmail.com", "password");
   res.json({ created: "ok" });
 });
