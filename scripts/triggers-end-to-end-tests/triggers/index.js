@@ -17,18 +17,19 @@ const PUBSUB_SCHEDULED_TOPIC = "firebase-schedule-pubsubScheduled";
 const STORAGE_FILE_NAME = "test-file.txt";
 
 const pubsub = new PubSub();
+
 admin.initializeApp();
 
 // firebase.initializeApp();
 // const auth = firebase.auth();
 // auth.useEmulator("http://localhost:9099");
 
-exports.createUserFromAuth = functions.https.onRequest(async (req, res) => {
+exports.createUserFromAuth = functions.https.onRequest((req, res) => {
   // await auth.createUserWithEmailAndPassword("email@gmail.com", "password");
   res.json({ created: "ok" });
 });
 
-exports.signInUserFromAuth = functions.https.onRequest(async (req, res) => {
+exports.signInUserFromAuth = functions.https.onRequest((req, res) => {
   // await auth.signInWithEmailAndPassword("email@gmail.com", "password");
   res.json({ created: "ok" });
 });
