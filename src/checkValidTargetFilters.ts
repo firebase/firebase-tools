@@ -38,7 +38,7 @@ export async function checkValidTargetFilters(options: Options): Promise<void> {
       return reject(new FirebaseError("Cannot specify both --only and --except"));
     }
     const nonFilteredTypes = VALID_DEPLOY_TARGETS.filter(
-      (t) => !["hosting", "functions"].includes(t)
+      (t) => !["hosting", "functions", "firestore"].includes(t)
     );
     const targetsForNonFilteredTypes = targetsForTypes(only, ...nonFilteredTypes);
     if (targetsForNonFilteredTypes.length && targetsHaveFilters(...targetsForNonFilteredTypes)) {
