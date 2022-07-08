@@ -53,6 +53,7 @@ export interface ExtensionInstance {
   errorStatus?: string;
   lastOperationName?: string;
   lastOperationType?: string;
+  etag?: string;
   extensionRef?: string;
   extensionVersion?: string;
 }
