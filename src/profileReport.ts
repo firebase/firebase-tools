@@ -354,14 +354,14 @@ export class ProfileReport {
       });
     });
     const paths = Object.keys(unindexed);
-    paths.forEach((path) => {
+    for (const path of paths) {
       const indices = Object.keys(unindexed[path]);
-      indices.forEach((index) => {
+      for (const index of indices) {
         const data = unindexed[path][index];
         const row = [path, extractReadableIndex(data.query), formatNumber(data.times)];
         table.push(row);
-      });
-    });
+      }
+    }
     return table;
   }
 
@@ -379,8 +379,10 @@ export class ProfileReport {
         times: b1.times + b2.times,
       };
     });
-    const paths = _.orderBy(Object.keys(data), [(p) => data[p].bytes], ["desc"]);
-    paths.forEach((path) => {
+    const paths = Object.keys(data).sort((a: string, b: string) => {
+      return data[b].bytes - data[a].bytes;
+    });
+    for (const path of paths) {
       const bandwidth = data[path];
       const row = [
         path,
@@ -389,7 +391,7 @@ export class ProfileReport {
         formatBytes(bandwidth.bytes / bandwidth.times),
       ];
       table.push(row);
-    });
+    }
     return table;
   }
 
@@ -462,16 +464,12 @@ export class ProfileReport {
         rejected: s1.rejected + s2.rejected,
       };
     });
-    let paths = Object.keys(data);
-    paths = _.orderBy(
-      paths,
-      (path) => {
-        const speed = data[path];
-        return speed.millis / speed.times;
-      },
-      ["desc"]
-    );
-    paths.forEach((path) => {
+    const paths = Object.keys(data).sort((a, b) => {
+      const speedA = data[a].millis / data[a].times;
+      const speedB = data[b].millis / data[b].times;
+      return speedB - speedA;
+    });
+    for (const path of paths) {
       const speed = data[path];
       const row = [
         path,
@@ -483,7 +481,7 @@ export class ProfileReport {
         row.push(formatNumber(speed.rejected));
       }
       table.push(row);
-    });
+    }
     return table;
   }
 
