@@ -7,6 +7,9 @@ on:
 env:
   CI: true
 
+permissions:
+  contents: read
+
 jobs:
   lint:
     runs-on: ubuntu-latest
