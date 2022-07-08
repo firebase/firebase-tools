@@ -11,8 +11,6 @@ const {
 
 const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "";
 
-// const firebase = require("firebase");
-
 /*
  * We install onWrite triggers for START_DOCUMENT_NAME in both the firestore and
  * database emulators. From each respective onWrite trigger, we write a document
@@ -30,36 +28,27 @@ const pubsub = new PubSub();
 
 admin.initializeApp();
 
+// init the Firebase JS SDK
 const app = initializeApp(
   {
-    apiKey: "fake-api-key", // Auth / General Use
+    apiKey: "fake-api-key",
     projectId: `${FIREBASE_PROJECT}`,
     authDomain: `${FIREBASE_PROJECT}.firebaseapp.com`,
     storageBucket: `${FIREBASE_PROJECT}.appspot.com`,
     appId: "fake-app-id",
-    // authDomain: "YOUR_APP.firebaseapp.com",         // Auth with popup/redirect
-    // databaseURL: "https://YOUR_APP.firebaseio.com", // Realtime Database
-    // storageBucket: "YOUR_APP.appspot.com",          // Storage
-    // messagingSenderId: "123456789"                  // Cloud Messaging
   },
   "TRIGGERS_END_TO_END"
 );
 const auth = getAuth(app);
 connectAuthEmulator(auth, "http://localhost:9099");
 
-// firebase.initializeApp();
-// const auth = firebase.auth();
-// auth.useEmulator("http://localhost:9099");
-
 exports.createUserFromAuth = functions.https.onRequest(async (req, res) => {
   await createUserWithEmailAndPassword(auth, "email@gmail.com", "mypassword");
-  // await auth.createUserWithEmailAndPassword("email@gmail.com", "password");
   res.json({ created: "ok" });
 });
 
 exports.signInUserFromAuth = functions.https.onRequest(async (req, res) => {
   await signInWithEmailAndPassword(auth, "email@gmail.com", "mypassword");
-  // await auth.signInWithEmailAndPassword("email@gmail.com", "password");
   res.json({ created: "ok" });
 });
 

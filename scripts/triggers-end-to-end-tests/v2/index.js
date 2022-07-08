@@ -99,12 +99,12 @@ exports.oncallv2 = functionsV2.https.onCall((req) => {
   return req.data;
 });
 
-exports.authBlockingCreateReaction = functionsV2.identity.beforeUserCreated((event) => {
+exports.authblockingcreatereaction = functionsV2.identity.beforeUserCreated((event) => {
   console.log(AUTH_BLOCKING_CREATE_V2_LOG);
   return;
 });
 
-exports.authBlockingSignInReaction = functionsV2.identity.beforeUserSignedIn((event) => {
+exports.authblockingsigninreaction = functionsV2.identity.beforeUserSignedIn((event) => {
   console.log(AUTH_BLOCKING_SIGN_IN_V2_LOG);
   return;
 });
