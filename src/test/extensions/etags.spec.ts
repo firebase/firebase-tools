@@ -23,7 +23,7 @@ function extensionInstanceHelper(instanceId: string, etag?: string) {
   return ret;
 }
 
-describe.only("detectEtagChanges", () => {
+describe("detectEtagChanges", () => {
   const testCases: {
     desc: string;
     rc: rc.RC;
