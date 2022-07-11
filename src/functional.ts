@@ -101,8 +101,8 @@ export function assertExhaustive(val: never): never {
  * Returns a Array containing two Array<T>. The first array contains all elements that returned true,
  * the second contains all elements that returned false.
  */
-export function partition<T>(arr: T[], callbackFn: (elem: T) => boolean): T[][] {
-  return arr.reduce<T[][]>(
+export function partition<T>(arr: T[], callbackFn: (elem: T) => boolean): [T[], T[]] {
+  return arr.reduce<[T[], T[]]>(
     (acc, elem) => {
       acc[callbackFn(elem) ? 0 : 1].push(elem);
       return acc;
