@@ -5,11 +5,20 @@ import * as build from "./build";
 import { assertExhaustive } from "../../functional";
 
 type CEL = build.Expression<string> | build.Expression<number> | build.Expression<boolean>;
+
 function isCEL(expr: string | number | boolean): expr is CEL {
   return typeof expr === "string" && expr.includes("{{") && expr.includes("}}");
 }
+
 function dependenciesCEL(expr: CEL): string[] {
-  return /{{ params\.\w+ }}/.exec(expr)?.slice(1) || [];
+  const deps: string[] = [];
+  const paramCapture = /{{ params\.(\w+) }}/g;
+  let match: RegExpMatchArray | null;
+  while ((match = paramCapture.exec(expr)) != null) {
+    deps.push(match[1]);
+  }
+  // return /{{ params\.\w+ }}/.exec(expr)?.slice(1) || [];
+  return deps;
 }
 
 /**
@@ -24,11 +33,11 @@ export function resolveInt(
   if (typeof from === "number") {
     return from;
   }
-  if (!/{{ params\.(\w+) }}/.test(from)) {
+  const match = /${{ params\.(\w+) }}^/.exec(from);
+  if (!match) {
     throw new FirebaseError("CEL evaluation of expression '" + from + "' not yet supported");
   }
-  const match = /{{ params\.(\w+) }}/.exec(from);
-  const referencedParamValue = paramValues[match![1]];
+  const referencedParamValue = paramValues[match[1]];
   if (typeof referencedParamValue !== "number") {
     throw new FirebaseError(
       "Referenced numeric parameter '" +
@@ -174,9 +183,7 @@ function resolveDefaultCEL(
   currentEnv: Record<string, ParamValue>
 ): ParamValue {
   const deps = dependenciesCEL(expr);
-  const allDepsFound = deps.every((dep) => {
-    return Object.keys(currentEnv).includes(dep);
-  });
+  const allDepsFound = deps.every((dep) => !!currentEnv[dep]);
   if (!allDepsFound) {
     throw new FirebaseError(
       "Build specified parameter with un-resolvable default value " +
