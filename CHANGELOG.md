@@ -1,2 +1,3 @@
-- Fixes Auth Blocking Trigger registration in the Emulator (#4592).
-- Adds better messaging when the Emulator UI isn't started (#3781).
+- Adds a check for out of band changes before deploying extensions.
+- Fixes issue where `firestore:*` did not work with `--only` in `deploy`. (#4698)
+- Removes DNS flag passed to Emulator UI. (#4566)
