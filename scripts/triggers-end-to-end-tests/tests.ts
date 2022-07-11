@@ -200,7 +200,7 @@ describe("function triggers", () => {
       this.timeout(EMULATOR_TEST_TIMEOUT);
       const response = await test.createUserFromAuth();
       expect(response.status).to.equal(200);
-      await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS));
+      await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS - 1000));
     });
 
     it("should have triggered cloud functions", () => {
