@@ -46,12 +46,18 @@ describe("resolveParams", () => {
         param: "foo",
         type: "string",
       },
+      {
+        param: "bar",
+        type: "int",
+      }
     ];
     const userEnv: Record<string, string | number | boolean> = {
       foo: "bar",
+      bar: 24,
     };
     await expect(params.resolveParams(paramsToResolve, "", userEnv)).to.eventually.deep.equal({
       foo: "bar",
+      bar: 24,
     });
   });
 

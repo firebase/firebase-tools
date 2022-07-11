@@ -33,7 +33,7 @@ export function resolveInt(
   if (typeof from === "number") {
     return from;
   }
-  const match = /${{ params\.(\w+) }}^/.exec(from);
+  const match = /\A{{ params\.(\w+) }}\z/.exec(from);
   if (!match) {
     throw new FirebaseError("CEL evaluation of expression '" + from + "' not yet supported");
   }
