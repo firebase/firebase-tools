@@ -40,10 +40,6 @@ const STORAGE_BUCKET_FUNCTION_FINALIZED_LOG =
 const STORAGE_BUCKET_FUNCTION_METADATA_LOG =
   "========== STORAGE BUCKET FUNCTION METADATA ==========";
 const ALL_EMULATORS_STARTED_LOG = "All emulators ready";
-const AUTH_BLOCKING_CREATE_V1_LOG =
-  "========== AUTH BLOCKING CREATE V1 FUNCTION METADATA ==========";
-const AUTH_BLOCKING_SIGN_IN_V1_LOG =
-  "========== AUTH BLOCKING SIGN IN V1 FUNCTION METADATA ==========";
 const AUTH_BLOCKING_CREATE_V2_LOG =
   "========== AUTH BLOCKING CREATE V2 FUNCTION METADATA ==========";
 const AUTH_BLOCKING_SIGN_IN_V2_LOG =
@@ -216,12 +212,6 @@ export class TriggerEndToEndTest {
       }
       if (data.includes(STORAGE_BUCKET_FUNCTION_METADATA_LOG)) {
         this.storageBucketMetadataTriggerCount++;
-      }
-      if (data.includes(AUTH_BLOCKING_CREATE_V1_LOG)) {
-        this.authBlockingCreateV1TriggerCount++;
-      }
-      if (data.includes(AUTH_BLOCKING_SIGN_IN_V1_LOG)) {
-        this.authBlockingSignInV1TriggerCount++;
       }
 
       /* Functions V2 */

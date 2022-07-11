@@ -26,6 +26,7 @@ const STORAGE_FILE_NAME = "test-file.txt";
 
 const pubsub = new PubSub();
 
+// init the Firebase Admin SDK
 admin.initializeApp();
 
 // init the Firebase JS SDK
@@ -96,12 +97,14 @@ exports.writeToAuth = functions.https.onRequest(async (req, res) => {
 
 exports.createUserFromAuth = functions.https.onRequest(async (req, res) => {
   await createUserWithEmailAndPassword(auth, "email@gmail.com", "mypassword");
+
   res.json({ created: "ok" });
 });
 
 exports.signInUserFromAuth = functions.https.onRequest(async (req, res) => {
   await signInWithEmailAndPassword(auth, "email@gmail.com", "mypassword");
-  res.json({ created: "ok" });
+
+  res.json({ done: "ok" });
 });
 
 exports.writeToDefaultStorage = functions.https.onRequest(async (req, res) => {

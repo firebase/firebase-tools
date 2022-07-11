@@ -204,8 +204,8 @@ describe("function triggers", () => {
     });
 
     it("should have triggered cloud functions", () => {
-      // expect(test.authBlockingCreateV1TriggerCount).to.equal(1);
       expect(test.authBlockingCreateV2TriggerCount).to.equal(1);
+      // Creating a User also triggers the before sign in trigger
       expect(test.authBlockingSignInV2TriggerCount).to.equal(1);
     });
 
@@ -217,7 +217,6 @@ describe("function triggers", () => {
     });
 
     it("should have triggered cloud functions", () => {
-      // expect(test.authBlockingSignInV1TriggerCount).to.equal(1);
       expect(test.authBlockingSignInV2TriggerCount).to.equal(2);
     });
   });
