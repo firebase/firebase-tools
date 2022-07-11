@@ -29,7 +29,6 @@ var preTest = function () {
   var dir = tmp.dirSync({ prefix: "cfgtest_" });
   tmpDir = dir.name;
   fs.copySync(projectDir, tmpDir);
-  api.setRefreshToken(configstore.get("tokens").refresh_token);
   api.setScopes(scopes.CLOUD_PLATFORM);
   execSync(`${localFirebase} functions:config:unset foo --project=${projectId}`, { cwd: tmpDir });
   console.log("Done pretest prep.");
