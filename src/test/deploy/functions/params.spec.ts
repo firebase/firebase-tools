@@ -49,7 +49,7 @@ describe("resolveParams", () => {
       {
         param: "bar",
         type: "int",
-      }
+      },
     ];
     const userEnv: Record<string, string | number | boolean> = {
       foo: "bar",
