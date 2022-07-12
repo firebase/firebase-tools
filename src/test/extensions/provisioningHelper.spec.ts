@@ -3,34 +3,33 @@ import { expect } from "chai";
 
 import * as api from "../../api";
 import * as provisioningHelper from "../../extensions/provisioningHelper";
-import * as extensionsApi from "../../extensions/extensionsApi";
+import { Api, ExtensionSpec, Resource, Role } from "../../extensions/types";
 import { FirebaseError } from "../../error";
 
-const TEST_INSTANCES_RESPONSE = {};
 const PROJECT_ID = "test-project";
 
 const SPEC_WITH_NOTHING = {
-  apis: [] as extensionsApi.Api[],
-  resources: [] as extensionsApi.Resource[],
-} as extensionsApi.ExtensionSpec;
+  apis: [] as Api[],
+  resources: [] as Resource[],
+} as ExtensionSpec;
 
 const SPEC_WITH_STORAGE = {
   apis: [
     {
       apiName: "storage-component.googleapis.com",
     },
-  ] as extensionsApi.Api[],
-  resources: [] as extensionsApi.Resource[],
-} as extensionsApi.ExtensionSpec;
+  ] as Api[],
+  resources: [] as Resource[],
+} as ExtensionSpec;
 
 const SPEC_WITH_AUTH = {
   apis: [
     {
       apiName: "identitytoolkit.googleapis.com",
     },
-  ] as extensionsApi.Api[],
-  resources: [] as extensionsApi.Resource[],
-} as extensionsApi.ExtensionSpec;
+  ] as Api[],
+  resources: [] as Resource[],
+} as ExtensionSpec;
 
 const SPEC_WITH_STORAGE_AND_AUTH = {
   apis: [
@@ -40,9 +39,9 @@ const SPEC_WITH_STORAGE_AND_AUTH = {
     {
       apiName: "identitytoolkit.googleapis.com",
     },
-  ] as extensionsApi.Api[],
-  resources: [] as extensionsApi.Resource[],
-} as extensionsApi.ExtensionSpec;
+  ] as Api[],
+  resources: [] as Resource[],
+} as ExtensionSpec;
 
 const FIREDATA_AUTH_ACTIVATED_RESPONSE = {
   activation: [
@@ -60,7 +59,7 @@ const FIREBASE_STORAGE_DEFAULT_BUCKET_LINKED_RESPONSE = {
   ],
 };
 
-const extensionVersionResponse = (version: string, spec: extensionsApi.ExtensionSpec) => {
+const extensionVersionResponse = (version: string, spec: ExtensionSpec) => {
   return {
     name: `publishers/test/extensions/test/version/${version}`,
     ref: `test/test@${version}`,
@@ -88,7 +87,7 @@ describe("provisioningHelper", () => {
   });
 
   describe("getUsedProducts", () => {
-    let testSpec: extensionsApi.ExtensionSpec;
+    let testSpec: ExtensionSpec;
 
     beforeEach(() => {
       testSpec = {
@@ -96,19 +95,19 @@ describe("provisioningHelper", () => {
           {
             apiName: "unrelated.googleapis.com",
           },
-        ] as extensionsApi.Api[],
+        ] as Api[],
         roles: [
           {
             role: "unrelated.role",
           },
-        ] as extensionsApi.Role[],
+        ] as Role[],
         resources: [
           {
             propertiesYaml:
               "availableMemoryMb: 1024\neventTrigger:\n  eventType: providers/unrelates.service/eventTypes/something.do\n  resource: projects/_/buckets/${param:IMG_BUCKET}\nlocation: ${param:LOCATION}\nruntime: nodejs10\n",
           },
-        ] as extensionsApi.Resource[],
-      } as extensionsApi.ExtensionSpec;
+        ] as Resource[],
+      } as ExtensionSpec;
     });
 
     it("returns empty array when nothing is used", () => {
@@ -139,7 +138,7 @@ describe("provisioningHelper", () => {
       testSpec.resources?.push({
         propertiesYaml:
           "availableMemoryMb: 1024\neventTrigger:\n  eventType: google.storage.object.finalize\n  resource: projects/_/buckets/${param:IMG_BUCKET}\nlocation: ${param:LOCATION}\nruntime: nodejs10\n",
-      } as extensionsApi.Resource);
+      } as Resource);
       expect(provisioningHelper.getUsedProducts(testSpec)).to.be.deep.eq([
         provisioningHelper.DeferredProduct.STORAGE,
       ]);
@@ -169,7 +168,7 @@ describe("provisioningHelper", () => {
       testSpec.resources?.push({
         propertiesYaml:
           "availableMemoryMb: 1024\neventTrigger:\n  eventType: providers/firebase.auth/eventTypes/user.create\n  resource: projects/_/buckets/${param:IMG_BUCKET}\nlocation: ${param:LOCATION}\nruntime: nodejs10\n",
-      } as extensionsApi.Resource);
+      } as Resource);
       expect(provisioningHelper.getUsedProducts(testSpec)).to.be.deep.eq([
         provisioningHelper.DeferredProduct.AUTH,
       ]);
@@ -180,8 +179,8 @@ describe("provisioningHelper", () => {
     it("passes provisioning check status when nothing is used", async () => {
       await expect(
         provisioningHelper.checkProductsProvisioned(PROJECT_ID, {
-          resources: [] as extensionsApi.Resource[],
-        } as extensionsApi.ExtensionSpec)
+          resources: [] as Resource[],
+        } as ExtensionSpec)
       ).to.be.fulfilled;
     });
 

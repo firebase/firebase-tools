@@ -6,6 +6,7 @@ const { marked } = require("marked");
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import * as extensionsApi from "./extensionsApi";
+import { ExtensionSource, ExtensionSpec } from "./types";
 import * as refs from "./refs";
 import {
   createSourceFromLocation,
@@ -33,9 +34,7 @@ function invalidSourceErrMsgTemplate(instanceId: string, source: string): string
 
 export async function getExistingSourceOrigin(
   projectId: string,
-  instanceId: string,
-  extensionName: string,
-  existingSource: string
+  instanceId: string
 ): Promise<SourceOrigin> {
   const instance = await extensionsApi.getInstance(projectId, instanceId);
   return instance && instance.config.extensionRef
@@ -98,8 +97,8 @@ export function warningUpdateToOtherSource(sourceOrigin: SourceOrigin) {
  * @param published
  */
 export async function displayChanges(args: {
-  spec: extensionsApi.ExtensionSpec;
-  newSpec: extensionsApi.ExtensionSpec;
+  spec: ExtensionSpec;
+  newSpec: ExtensionSpec;
   nonInteractive: boolean;
   force: boolean;
 }): Promise<void> {
@@ -119,9 +118,12 @@ export async function displayChanges(args: {
 export interface UpdateOptions {
   projectId: string;
   instanceId: string;
-  source?: extensionsApi.ExtensionSource;
+  source?: ExtensionSource;
   extRef?: string;
   params?: { [key: string]: string };
+  canEmitEvents: boolean;
+  allowedEventTypes?: string[];
+  eventarcChannel?: string;
 }
 
 /**
@@ -133,13 +135,25 @@ export interface UpdateOptions {
  * @param updateOptions Info on the instance and associated resources to update
  */
 export async function update(updateOptions: UpdateOptions): Promise<any> {
-  const { projectId, instanceId, source, extRef, params } = updateOptions;
+  const {
+    projectId,
+    instanceId,
+    source,
+    extRef,
+    params,
+    canEmitEvents,
+    allowedEventTypes,
+    eventarcChannel,
+  } = updateOptions;
   if (extRef) {
     return await extensionsApi.updateInstanceFromRegistry({
       projectId,
       instanceId,
       extRef,
       params,
+      canEmitEvents,
+      allowedEventTypes,
+      eventarcChannel,
     });
   } else if (source) {
     return await extensionsApi.updateInstance({
@@ -147,6 +161,9 @@ export async function update(updateOptions: UpdateOptions): Promise<any> {
       instanceId,
       extensionSource: source,
       params,
+      canEmitEvents,
+      allowedEventTypes,
+      eventarcChannel,
     });
   }
   throw new FirebaseError(
@@ -165,7 +182,7 @@ export async function updateFromLocalSource(
   projectId: string,
   instanceId: string,
   localSource: string,
-  existingSpec: extensionsApi.ExtensionSpec
+  existingSpec: ExtensionSpec
 ): Promise<string> {
   displayExtInfo(instanceId, "", existingSpec, false);
   let source;
@@ -195,7 +212,7 @@ export async function updateFromUrlSource(
   projectId: string,
   instanceId: string,
   urlSource: string,
-  existingSpec: extensionsApi.ExtensionSpec
+  existingSpec: ExtensionSpec
 ): Promise<string> {
   displayExtInfo(instanceId, "", existingSpec, false);
   let source;
@@ -223,7 +240,7 @@ export async function updateToVersionFromPublisherSource(
   projectId: string,
   instanceId: string,
   extVersionRef: string,
-  existingSpec: extensionsApi.ExtensionSpec
+  existingSpec: ExtensionSpec
 ): Promise<string> {
   let source;
   const ref = refs.parse(extVersionRef);
@@ -266,7 +283,7 @@ export async function updateFromPublisherSource(
   projectId: string,
   instanceId: string,
   extRef: string,
-  existingSpec: extensionsApi.ExtensionSpec
+  existingSpec: ExtensionSpec
 ): Promise<string> {
   return updateToVersionFromPublisherSource(
     projectId,

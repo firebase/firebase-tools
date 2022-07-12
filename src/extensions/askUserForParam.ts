@@ -3,7 +3,7 @@ import * as clc from "cli-color";
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const { marked } = require("marked");
 
-import { Param, ParamOption, ParamType } from "./extensionsApi";
+import { Param, ParamOption, ParamType } from "./types";
 import * as secretManagerApi from "../gcp/secretManager";
 import * as secretsUtils from "./secretsUtils";
 import { logPrefix, substituteParams } from "./extensionsHelper";
@@ -47,7 +47,7 @@ export function checkResponse(response: string, spec: Param): boolean {
   if (spec.validationRegex && !!response) {
     // !!response to ignore empty optional params
     const re = new RegExp(spec.validationRegex);
-    _.forEach(responses, (resp) => {
+    for (const resp of responses) {
       if ((spec.required || resp !== "") && !re.test(resp)) {
         const genericWarn =
           `${resp} is not a valid value for ${spec.param} since it` +
@@ -55,20 +55,18 @@ export function checkResponse(response: string, spec: Param): boolean {
         utils.logWarning(spec.validationErrorMessage || genericWarn);
         valid = false;
       }
-    });
+    }
   }
 
   if (spec.type && (spec.type === ParamType.MULTISELECT || spec.type === ParamType.SELECT)) {
-    _.forEach(responses, (r) => {
+    for (const r of responses) {
       // A choice is valid if it matches one of the option values.
-      const validChoice = _.some(spec.options, (option: ParamOption) => {
-        return r === option.value;
-      });
-      if (!validChoice) {
+      const validChoice = spec.options?.some((option) => r === option.value);
+      if (r && !validChoice) {
         utils.logWarning(`${r} is not a valid option for ${spec.param}.`);
         valid = false;
       }
-    });
+    }
   }
   return valid;
 }
@@ -94,7 +92,7 @@ export async function ask(args: {
   utils.logLabeledBullet(logPrefix, "answer the questions below to configure your extension:");
   const substituted = substituteParams<Param[]>(args.paramSpecs, args.firebaseProjectParams);
   const result: { [key: string]: ParamBindingOptions } = {};
-  const promises = _.map(substituted, (paramSpec: Param) => {
+  const promises = substituted.map((paramSpec) => {
     return async () => {
       result[paramSpec.param] = await askForParam({
         projectId: args.projectId,
@@ -215,13 +213,13 @@ async function promptSecretLocations(paramSpec: Param): Promise<string[]> {
       choices: [
         {
           checked: true,
-          name: "Google Cloud Secret Manager",
+          name: "Google Cloud Secret Manager (Used by deployed extensions and emulator)",
           // return type of string is not actually enforced, need to manually convert.
           value: SecretLocation.CLOUD.toString(),
         },
         {
           checked: false,
-          name: "Local file (Only used by Firebase Emulator)",
+          name: "Local file (Used by emulator only)",
           value: SecretLocation.LOCAL.toString(),
         },
       ],
@@ -236,31 +234,31 @@ async function promptSecretLocations(paramSpec: Param): Promise<string[]> {
     choices: [
       {
         checked: false,
-        name: "Google Cloud Secret Manager",
+        name: "Google Cloud Secret Manager (Used by deployed extensions and emulator)",
         // return type of string is not actually enforced, need to manually convert.
         value: SecretLocation.CLOUD.toString(),
       },
       {
         checked: false,
-        name: "Local file (Only used by Firebase Emulator)",
+        name: "Local file (Used by emulator only)",
         value: SecretLocation.LOCAL.toString(),
       },
     ],
   });
 }
 
-async function promptLocalSecret(
-  instanceId: string,
-  paramSpec: Param
-): Promise<string | undefined> {
-  utils.logLabeledBullet(logPrefix, "Configure a local secret value for Extensions Emulator");
-  const value = await promptOnce({
-    name: paramSpec.param,
-    type: "input",
-    message:
-      `This secret will be stored in ./extensions/${instanceId}.secret.local.\n` +
-      `Enter value for "${paramSpec.label.trim()}" to be used by Extensions Emulator:`,
-  });
+async function promptLocalSecret(instanceId: string, paramSpec: Param): Promise<string> {
+  let value;
+  do {
+    utils.logLabeledBullet(logPrefix, "Configure a local secret value for Extensions Emulator");
+    value = await promptOnce({
+      name: paramSpec.param,
+      type: "input",
+      message:
+        `This secret will be stored in ./extensions/${instanceId}.secret.local.\n` +
+        `Enter value for "${paramSpec.label.trim()}" to be used by Extensions Emulator:`,
+    });
+  } while (!value);
   return value;
 }
 
@@ -374,8 +372,6 @@ async function addNewSecretVersion(
 }
 
 export function getInquirerDefault(options: ParamOption[], def: string): string {
-  const defaultOption = _.find(options, (option) => {
-    return option.value === def;
-  });
+  const defaultOption = options.find((o) => o.value === def);
   return defaultOption ? defaultOption.label || defaultOption.value : "";
 }

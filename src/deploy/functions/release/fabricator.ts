@@ -8,6 +8,7 @@ import { assertExhaustive } from "../../../functional";
 import { getHumanFriendlyRuntimeName } from "../runtimes";
 import { functionsOrigin, functionsV2Origin } from "../../../api";
 import { logger } from "../../../logger";
+import * as args from "../args";
 import * as backend from "../backend";
 import * as cloudtasks from "../../../gcp/cloudtasks";
 import * as deploymentTool from "../../../deploymentTool";
@@ -21,39 +22,36 @@ import * as reporter from "./reporter";
 import * as run from "../../../gcp/run";
 import * as scheduler from "../../../gcp/cloudscheduler";
 import * as utils from "../../../utils";
+import * as services from "../services";
+import { AUTH_BLOCKING_EVENTS } from "../../../functions/events/v1";
+import { backoff } from "../../../throttler/throttler";
 
 // TODO: Tune this for better performance.
-const gcfV1PollerOptions = {
+const gcfV1PollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
   apiOrigin: functionsOrigin,
   apiVersion: gcf.API_VERSION,
   masterTimeout: 25 * 60 * 1_000, // 25 minutes is the maximum build time for a function
   maxBackoff: 10_000,
 };
 
-const gcfV2PollerOptions = {
+const gcfV2PollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
   apiOrigin: functionsV2Origin,
   apiVersion: gcfV2.API_VERSION,
   masterTimeout: 25 * 60 * 1_000, // 25 minutes is the maximum build time for a function
   maxBackoff: 10_000,
 };
 
-const DEFAULT_GCFV2_CONCURRENCY = 80;
-
 export interface FabricatorArgs {
   executor: Executor;
   functionExecutor: Executor;
   appEngineLocation: string;
-
-  // Required if creating or updating any GCFv1 functions
-  sourceUrl?: string;
-
-  // Required if creating or updating any GCFv2 functions
-  storage?: Record<string, gcfV2.StorageSource>;
+  sources: Record<string, args.Source>;
 }
 
 const rethrowAs =
   <T>(endpoint: backend.Endpoint, op: reporter.OperationType) =>
   (err: unknown): T => {
+    logger.error((err as Error).message);
     throw new reporter.DeploymentError(endpoint, op, err);
   };
 
@@ -61,15 +59,13 @@ const rethrowAs =
 export class Fabricator {
   executor: Executor;
   functionExecutor: Executor;
-  sourceUrl: string | undefined;
-  storage: Record<string, gcfV2.StorageSource> | undefined;
+  sources: Record<string, args.Source>;
   appEngineLocation: string;
 
   constructor(args: FabricatorArgs) {
     this.executor = args.executor;
     this.functionExecutor = args.functionExecutor;
-    this.sourceUrl = args.sourceUrl;
-    this.storage = args.storage;
+    this.sources = args.sources;
     this.appEngineLocation = args.appEngineLocation;
   }
 
@@ -168,10 +164,7 @@ export class Fabricator {
   }
 
   async updateEndpoint(update: planner.EndpointUpdate, scraper: SourceTokenScraper): Promise<void> {
-    // GCF team wants us to stop setting the deployment-tool labels on updates for gen 2
-    if (update.deleteAndRecreate || update.endpoint.platform !== "gcfv2") {
-      update.endpoint.labels = { ...update.endpoint.labels, ...deploymentTool.labels() };
-    }
+    update.endpoint.labels = { ...update.endpoint.labels, ...deploymentTool.labels() };
     if (update.deleteAndRecreate) {
       await this.deleteEndpoint(update.deleteAndRecreate);
       await this.createEndpoint(update.endpoint, scraper);
@@ -199,11 +192,12 @@ export class Fabricator {
   }
 
   async createV1Function(endpoint: backend.Endpoint, scraper: SourceTokenScraper): Promise<void> {
-    if (!this.sourceUrl) {
+    const sourceUrl = this.sources[endpoint.codebase!]?.sourceUrl;
+    if (!sourceUrl) {
       logger.debug("Precondition failed. Cannot create a GCF function without sourceUrl");
       throw new Error("Precondition failed");
     }
-    const apiFunction = gcf.functionFromEndpoint(endpoint, this.sourceUrl);
+    const apiFunction = gcf.functionFromEndpoint(endpoint, sourceUrl);
     // As a general security practice and way to smooth out the upgrade path
     // for GCF gen 2, we are enforcing that all new GCFv1 deploys will require
     // HTTPS
@@ -216,7 +210,7 @@ export class Fabricator {
         const op: { name: string } = await gcf.createFunction(apiFunction);
         return poller.pollOperation<gcf.CloudFunction>({
           ...gcfV1PollerOptions,
-          pollerName: `create-${endpoint.region}-${endpoint.id}`,
+          pollerName: `create-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
           operationResourceName: op.name,
           onPoll: scraper.poller,
         });
@@ -251,15 +245,26 @@ export class Fabricator {
           })
           .catch(rethrowAs(endpoint, "set invoker"));
       }
+    } else if (
+      backend.isBlockingTriggered(endpoint) &&
+      AUTH_BLOCKING_EVENTS.includes(endpoint.blockingTrigger.eventType as any)
+    ) {
+      // Auth Blocking functions should always be public
+      await this.executor
+        .run(async () => {
+          await gcf.setInvokerCreate(endpoint.project, backend.functionName(endpoint), ["public"]);
+        })
+        .catch(rethrowAs(endpoint, "set invoker"));
     }
   }
 
   async createV2Function(endpoint: backend.Endpoint): Promise<void> {
-    if (!this.storage) {
+    const storage = this.sources[endpoint.codebase!]?.storage;
+    if (!storage) {
       logger.debug("Precondition failed. Cannot create a GCFv2 function without storage");
       throw new Error("Precondition failed");
     }
-    const apiFunction = gcfV2.functionFromEndpoint(endpoint, this.storage[endpoint.region]);
+    const apiFunction = gcfV2.functionFromEndpoint(endpoint, storage);
 
     // N.B. As of GCFv2 private preview GCF no longer creates Pub/Sub topics
     // for Pub/Sub event handlers. This may change, at which point this code
@@ -289,7 +294,7 @@ export class Fabricator {
         const op: { name: string } = await gcfV2.createFunction(apiFunction);
         return await poller.pollOperation<gcfV2.CloudFunction>({
           ...gcfV2PollerOptions,
-          pollerName: `create-${endpoint.region}-${endpoint.id}`,
+          pollerName: `create-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
           operationResourceName: op.name,
         });
       })
@@ -320,31 +325,51 @@ export class Fabricator {
           })
           .catch(rethrowAs(endpoint, "set invoker"));
       }
+    } else if (
+      backend.isBlockingTriggered(endpoint) &&
+      AUTH_BLOCKING_EVENTS.includes(endpoint.blockingTrigger.eventType as any)
+    ) {
+      // Auth Blocking functions should always be public
+      await this.executor
+        .run(() => run.setInvokerCreate(endpoint.project, serviceName, ["public"]))
+        .catch(rethrowAs(endpoint, "set invoker"));
     }
 
     const mem = endpoint.availableMemoryMb || backend.DEFAULT_MEMORY;
-    if (mem >= backend.MIN_MEMORY_FOR_CONCURRENCY && endpoint.concurrency !== 1) {
-      await this.setConcurrency(
-        endpoint,
-        serviceName,
-        endpoint.concurrency || DEFAULT_GCFV2_CONCURRENCY
-      );
+
+    // "CustomCPU" here means "not the CPU that GCF gives us". GCF automatically
+    // sets the CPU for a Run service based on the RAM settings. The value GCF
+    // uses is memoryToGen1Cpu.
+    const hasCustomCPU = endpoint.cpu !== backend.memoryToGen1Cpu(mem);
+    // I don't love editing an input in this function, but the code gets ugly
+    // otherwise. It's nice to not resolve concurrency in the prepare stage
+    // because it helps us know whether we should call setRunTraits on update.
+    if (!endpoint.concurrency) {
+      endpoint.concurrency =
+        (endpoint.cpu as number) >= backend.MIN_CPU_FOR_CONCURRENCY
+          ? backend.DEFAULT_CONCURRENCY
+          : 1;
+    }
+    const hasConcurrency = endpoint.concurrency !== 1;
+    if (hasCustomCPU || hasConcurrency) {
+      await this.setRunTraits(serviceName, endpoint);
     }
   }
 
   async updateV1Function(endpoint: backend.Endpoint, scraper: SourceTokenScraper): Promise<void> {
-    if (!this.sourceUrl) {
+    const sourceUrl = this.sources[endpoint.codebase!]?.sourceUrl;
+    if (!sourceUrl) {
       logger.debug("Precondition failed. Cannot update a GCF function without sourceUrl");
       throw new Error("Precondition failed");
     }
-    const apiFunction = gcf.functionFromEndpoint(endpoint, this.sourceUrl);
+    const apiFunction = gcf.functionFromEndpoint(endpoint, sourceUrl);
     apiFunction.sourceToken = await scraper.tokenPromise();
     const resultFunction = await this.functionExecutor
       .run(async () => {
         const op: { name: string } = await gcf.updateFunction(apiFunction);
         return await poller.pollOperation<gcf.CloudFunction>({
           ...gcfV1PollerOptions,
-          pollerName: `update-${endpoint.region}-${endpoint.id}`,
+          pollerName: `update-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
           operationResourceName: op.name,
           onPoll: scraper.poller,
         });
@@ -357,6 +382,11 @@ export class Fabricator {
       invoker = endpoint.httpsTrigger.invoker;
     } else if (backend.isTaskQueueTriggered(endpoint)) {
       invoker = endpoint.taskQueueTrigger.invoker;
+    } else if (
+      backend.isBlockingTriggered(endpoint) &&
+      AUTH_BLOCKING_EVENTS.includes(endpoint.blockingTrigger.eventType as any)
+    ) {
+      invoker = ["public"];
     }
     if (invoker) {
       await this.executor
@@ -366,11 +396,12 @@ export class Fabricator {
   }
 
   async updateV2Function(endpoint: backend.Endpoint): Promise<void> {
-    if (!this.storage) {
+    const storage = this.sources[endpoint.codebase!]?.storage;
+    if (!storage) {
       logger.debug("Precondition failed. Cannot update a GCFv2 function without storage");
       throw new Error("Precondition failed");
     }
-    const apiFunction = gcfV2.functionFromEndpoint(endpoint, this.storage[endpoint.region]);
+    const apiFunction = gcfV2.functionFromEndpoint(endpoint, storage);
 
     // N.B. As of GCFv2 private preview the API chokes on any update call that
     // includes the pub/sub topic even if that topic is unchanged.
@@ -385,7 +416,7 @@ export class Fabricator {
         const op: { name: string } = await gcfV2.updateFunction(apiFunction);
         return await poller.pollOperation<gcfV2.CloudFunction>({
           ...gcfV2PollerOptions,
-          pollerName: `update-${endpoint.region}-${endpoint.id}`,
+          pollerName: `update-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
           operationResourceName: op.name,
         });
       })
@@ -398,6 +429,11 @@ export class Fabricator {
       invoker = endpoint.httpsTrigger.invoker;
     } else if (backend.isTaskQueueTriggered(endpoint)) {
       invoker = endpoint.taskQueueTrigger.invoker;
+    } else if (
+      backend.isBlockingTriggered(endpoint) &&
+      AUTH_BLOCKING_EVENTS.includes(endpoint.blockingTrigger.eventType as any)
+    ) {
+      invoker = ["public"];
     }
     if (invoker) {
       await this.executor
@@ -405,8 +441,24 @@ export class Fabricator {
         .catch(rethrowAs(endpoint, "set invoker"));
     }
 
-    if (endpoint.concurrency) {
-      await this.setConcurrency(endpoint, serviceName, endpoint.concurrency);
+    // Ideally we'd avoid a read of the Cloud Run service. We need to read if we
+    // believe a setting (CPU or concurrency) has changed because the user
+    // changed their mind or if GCF has stamped over the user's choice (we're
+    // using custom VM shapes).
+    const hasCustomCPU =
+      endpoint.cpu !==
+      backend.memoryToGen1Cpu(endpoint.availableMemoryMb || backend.DEFAULT_MEMORY);
+    const explicitConcurrency = endpoint.concurrency !== undefined;
+    if (hasCustomCPU || explicitConcurrency) {
+      // GCF may have stamped over the CPU to be <1 which would reset concurrency.
+      // We may have to reapply defaults.
+      if (endpoint.concurrency === undefined) {
+        endpoint.concurrency =
+          (endpoint.cpu as number) < backend.MIN_CPU_FOR_CONCURRENCY
+            ? 1
+            : backend.DEFAULT_CONCURRENCY;
+      }
+      await this.setRunTraits(serviceName, endpoint);
     }
   }
 
@@ -417,7 +469,7 @@ export class Fabricator {
         const op: { name: string } = await gcf.deleteFunction(fnName);
         const pollerOptions = {
           ...gcfV1PollerOptions,
-          pollerName: `delete-${endpoint.region}-${endpoint.id}`,
+          pollerName: `delete-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
           operationResourceName: op.name,
         };
         await poller.pollOperation<void>(pollerOptions);
@@ -432,7 +484,7 @@ export class Fabricator {
         const op: { name: string } = await gcfV2.deleteFunction(fnName);
         const pollerOptions = {
           ...gcfV2PollerOptions,
-          pollerName: `delete-${endpoint.region}-${endpoint.id}`,
+          pollerName: `delete-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
           operationResourceName: op.name,
         };
         await poller.pollOperation<void>(pollerOptions);
@@ -440,23 +492,40 @@ export class Fabricator {
       .catch(rethrowAs(endpoint, "delete"));
   }
 
-  async setConcurrency(
-    endpoint: backend.Endpoint,
-    serviceName: string,
-    concurrency: number
-  ): Promise<void> {
+  async setRunTraits(serviceName: string, endpoint: backend.Endpoint): Promise<void> {
     await this.functionExecutor
       .run(async () => {
-        const service = await run.getService(serviceName);
-        if (service.spec.template.spec.containerConcurrency === concurrency) {
-          logger.debug("Skipping setConcurrency on", serviceName, " because it already matches");
+        let service = await run.getService(serviceName);
+        let changed = false;
+        if (service.spec.template.spec.containerConcurrency !== endpoint.concurrency) {
+          service.spec.template.spec.containerConcurrency = endpoint.concurrency;
+          changed = true;
+        }
+
+        if (+service.spec.template.spec.containers[0].resources.limits.cpu !== endpoint.cpu) {
+          service.spec.template.spec.containers[0].resources.limits.cpu = `${
+            endpoint.cpu as number
+          }`;
+          changed = true;
+        }
+
+        if (!changed) {
+          logger.debug("Skipping setRunTraits on", serviceName, " because it already matches");
           return;
         }
 
         delete service.status;
         delete (service.spec.template.metadata as any).name;
-        service.spec.template.spec.containerConcurrency = concurrency;
-        await run.replaceService(serviceName, service);
+        service = await run.replaceService(serviceName, service);
+
+        // Now we need to wait for reconciliation or we might delete the docker
+        // image while the service is still rolling out a new revision.
+        let retry = 0;
+        while (!exports.serviceIsResolved(service)) {
+          await backoff(retry, 2, 30);
+          retry = retry + 1;
+          service = await run.getService(serviceName);
+        }
       })
       .catch(rethrowAs(endpoint, "set concurrency"));
   }
@@ -475,6 +544,8 @@ export class Fabricator {
       assertExhaustive(endpoint.platform);
     } else if (backend.isTaskQueueTriggered(endpoint)) {
       await this.upsertTaskQueue(endpoint);
+    } else if (backend.isBlockingTriggered(endpoint)) {
+      await this.registerBlockingTrigger(endpoint);
     }
   }
 
@@ -490,6 +561,8 @@ export class Fabricator {
       assertExhaustive(endpoint.platform);
     } else if (backend.isTaskQueueTriggered(endpoint)) {
       await this.disableTaskQueue(endpoint);
+    } else if (backend.isBlockingTriggered(endpoint)) {
+      await this.unregisterBlockingTrigger(endpoint);
     }
   }
 
@@ -522,6 +595,14 @@ export class Fabricator {
     }
   }
 
+  async registerBlockingTrigger(
+    endpoint: backend.Endpoint & backend.BlockingTriggered
+  ): Promise<void> {
+    await this.executor
+      .run(() => services.serviceForEndpoint(endpoint).registerTrigger(endpoint))
+      .catch(rethrowAs(endpoint, "register blocking trigger"));
+  }
+
   async deleteScheduleV1(endpoint: backend.Endpoint & backend.ScheduleTriggered): Promise<void> {
     const job = scheduler.jobFromEndpoint(endpoint, this.appEngineLocation);
     await this.executor
@@ -549,16 +630,57 @@ export class Fabricator {
       .catch(rethrowAs(endpoint, "disable task queue"));
   }
 
+  async unregisterBlockingTrigger(
+    endpoint: backend.Endpoint & backend.BlockingTriggered
+  ): Promise<void> {
+    await this.executor
+      .run(() => services.serviceForEndpoint(endpoint).unregisterTrigger(endpoint))
+      .catch(rethrowAs(endpoint, "unregister blocking trigger"));
+  }
+
   logOpStart(op: string, endpoint: backend.Endpoint): void {
     const runtime = getHumanFriendlyRuntimeName(endpoint.runtime);
     const label = helper.getFunctionLabel(endpoint);
-    utils.logBullet(
-      `${clc.bold.cyan("functions:")} ${op} ${runtime} function ${clc.bold(label)}...`
-    );
+    utils.logLabeledBullet("functions", `${op} ${runtime} function ${clc.bold(label)}...`);
   }
 
   logOpSuccess(op: string, endpoint: backend.Endpoint): void {
     const label = helper.getFunctionLabel(endpoint);
     utils.logSuccess(`${clc.bold.green(`functions[${label}]`)} Successful ${op} operation.`);
   }
+}
+
+/**
+ * Returns whether a service is resolved (all transitions have completed).
+ */
+export function serviceIsResolved(service: run.Service): boolean {
+  if (service.status?.observedGeneration !== service.metadata.generation) {
+    logger.debug(
+      `Service ${service.metadata.name} is not resolved because` +
+        `observed generation ${service.status?.observedGeneration} does not ` +
+        `match spec generation ${service.metadata.generation}`
+    );
+    return false;
+  }
+  const readyCondition = service.status?.conditions?.find((condition) => {
+    return condition.type === "Ready";
+  });
+
+  if (readyCondition?.status === "Unknown") {
+    logger.debug(
+      `Waiting for service ${service.metadata.name} to be ready. ` +
+        `Status is ${JSON.stringify(service.status?.conditions)}`
+    );
+    return false;
+  } else if (readyCondition?.status === "True") {
+    return true;
+  }
+  logger.debug(
+    `Service ${service.metadata.name} has unexpected ready status ${JSON.stringify(
+      readyCondition
+    )}. It may have failed rollout.`
+  );
+  throw new FirebaseError(
+    `Unexpected Status ${readyCondition?.status} for service ${service.metadata.name}`
+  );
 }

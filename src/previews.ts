@@ -5,13 +5,12 @@ interface PreviewFlags {
   rtdbrules: boolean;
   ext: boolean;
   extdev: boolean;
-  extensionsemulator: boolean;
   rtdbmanagement: boolean;
-  functionsv2: boolean;
   golang: boolean;
   deletegcfartifacts: boolean;
-  artifactregistry: boolean;
   emulatoruisnapshot: boolean;
+  frameworkawareness: boolean;
+  functionsparams: boolean;
 }
 
 export const previews: PreviewFlags = {
@@ -19,13 +18,12 @@ export const previews: PreviewFlags = {
   rtdbrules: false,
   ext: false,
   extdev: false,
-  extensionsemulator: false,
   rtdbmanagement: false,
-  functionsv2: false,
   golang: false,
   deletegcfartifacts: false,
-  artifactregistry: false,
   emulatoruisnapshot: false,
+  frameworkawareness: false,
+  functionsparams: false,
 
   ...(configstore.get("previews") as Partial<PreviewFlags>),
 };

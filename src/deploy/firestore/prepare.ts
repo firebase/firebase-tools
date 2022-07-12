@@ -1,7 +1,7 @@
 import * as _ from "lodash";
 import * as clc from "cli-color";
 
-import loadCJSON = require("../../loadCJSON");
+import { loadCJSON } from "../../loadCJSON";
 import { RulesDeploy, RulesetServiceType } from "../../rulesDeploy";
 import utils = require("../../utils");
 import { Options } from "../../options";

@@ -4,12 +4,10 @@ import { ensure } from "../../ensureApiEnabled";
 import { FirebaseError, isBillingError } from "../../error";
 import { logLabeledBullet, logLabeledSuccess } from "../../utils";
 import { ensureServiceAgentRole } from "../../gcp/secretManager";
-import { previews } from "../../previews";
 import { getFirebaseProject } from "../../management/projects";
 import { assertExhaustive } from "../../functional";
-import * as track from "../../track";
+import { track } from "../../track";
 import * as backend from "./backend";
-import * as ensureApiEnabled from "../../ensureApiEnabled";
 
 const FAQ_URL = "https://firebase.google.com/support/faq#functions-runtime";
 const CLOUD_BUILD_API = "cloudbuild.googleapis.com";
@@ -33,7 +31,7 @@ function nodeBillingError(projectId: string): FirebaseError {
   void track("functions_runtime_notices", "nodejs10_billing_error");
   return new FirebaseError(
     `Cloud Functions deployment requires the pay-as-you-go (Blaze) billing plan. To upgrade your project, visit the following URL:
-      
+
 https://console.firebase.google.com/project/${projectId}/usage/details
 
 For additional information about this requirement, see Firebase FAQs:
@@ -80,22 +78,6 @@ export async function cloudBuildEnabled(projectId: string): Promise<void> {
 
     throw e;
   }
-}
-
-// We previously force-enabled AR. We want to wait on this to see if we can give
-// an upgrade warning in the future. If it already is enabled though we want to
-// remember this and still use the cleaner if necessary.
-export async function maybeEnableAR(projectId: string): Promise<boolean> {
-  if (!previews.artifactregistry) {
-    return ensureApiEnabled.check(
-      projectId,
-      "artifactregistry.googleapis.com",
-      "functions",
-      /* silent= */ true
-    );
-  }
-  await ensureApiEnabled.ensure(projectId, "artifactregistry.googleapis.com", "functions");
-  return true;
 }
 
 /**

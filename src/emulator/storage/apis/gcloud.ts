@@ -226,9 +226,12 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
         authorization: req.header("authorization"),
       });
 
-      const { host, port } = emulatorInfo;
-      const uploadUrl = `http://${host}:${port}/upload/storage/v1/b/${req.params.bucketId}/o?name=${name}&uploadType=resumable&upload_id=${upload.id}`;
-      return res.header("location", uploadUrl).sendStatus(200);
+      const uploadUrl = EmulatorRegistry.url(Emulators.STORAGE, req);
+      uploadUrl.pathname = `/upload/storage/v1/b/${req.params.bucketId}/o`;
+      uploadUrl.searchParams.set("name", name);
+      uploadUrl.searchParams.set("uploadType", "resumable");
+      uploadUrl.searchParams.set("upload_id", upload.id);
+      return res.header("location", uploadUrl.toString()).sendStatus(200);
     }
 
     // Multipart upload
@@ -240,12 +243,15 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
         await reqBodyToBuffer(req)
       ));
     } catch (err) {
-      return res.status(400).json({
-        error: {
-          code: 400,
-          message: err,
-        },
-      });
+      if (err instanceof Error) {
+        return res.status(400).json({
+          error: {
+            code: 400,
+            message: err.message,
+          },
+        });
+      }
+      throw err;
     }
 
     const upload = uploadService.multipartUpload({

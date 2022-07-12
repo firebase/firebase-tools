@@ -11,7 +11,8 @@ import { requirePermissions } from "../../requirePermissions";
 import { ensureExtensionsApiEnabled } from "../../extensions/extensionsHelper";
 import { ensureSecretManagerApiEnabled } from "../../extensions/secretsUtils";
 import { checkSpecForSecrets } from "./secrets";
-import { displayWarningsForDeploy } from "../../extensions/warnings";
+import { displayWarningsForDeploy, outOfBandChangesWarning } from "../../extensions/warnings";
+import { detectEtagChanges } from "../../extensions/etags";
 
 export async function prepare(context: Context, options: Options, payload: Payload) {
   const projectId = needProjectId(options);
@@ -30,9 +31,29 @@ export async function prepare(context: Context, options: Options, payload: Paylo
     extensions: options.config.get("extensions"),
   });
 
+  const etagsChanged = detectEtagChanges(options.rc, projectId, context.have);
+  if (etagsChanged.length) {
+    outOfBandChangesWarning(etagsChanged);
+    if (!options.force && options.nonInteractive) {
+      throw new FirebaseError(
+        "Pass the --force flag to overwrite out of band changes in non-interactive mode"
+      );
+    } else if (
+      !options.force &&
+      !options.nonInteractive &&
+      !(await prompt.promptOnce({
+        type: "confirm",
+        message: `Do you wish to continue deploying these extension instances?`,
+        default: false,
+      }))
+    ) {
+      throw new FirebaseError("Deployment cancelled");
+    }
+  }
+
   // Check if any extension instance that we want is using secrets,
   // and ensure the API is enabled if so.
-  const usingSecrets = await Promise.all(context.have?.map(checkSpecForSecrets));
+  const usingSecrets = await Promise.all(context.want?.map(checkSpecForSecrets));
   if (usingSecrets.some((i) => i)) {
     await ensureSecretManagerApiEnabled(options);
   }
@@ -52,7 +73,7 @@ export async function prepare(context: Context, options: Options, payload: Paylo
       !options.nonInteractive &&
       !(await prompt.promptOnce({
         type: "confirm",
-        message: `Do you wish to continue deploying these extensions?`,
+        message: `Do you wish to continue deploying these extension instances?`,
         default: true,
       }))
     ) {

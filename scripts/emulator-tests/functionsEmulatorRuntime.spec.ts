@@ -2,17 +2,20 @@ import { Change } from "firebase-functions";
 import { DocumentSnapshot } from "firebase-functions/lib/providers/firestore";
 import { expect } from "chai";
 import { IncomingMessage, request } from "http";
-import * as _ from "lodash";
 import * as express from "express";
 import * as fs from "fs";
 import * as sinon from "sinon";
 
 import { EmulatorLog, Emulators } from "../../src/emulator/types";
 import { FunctionRuntimeBundles, TIMEOUT_LONG, TIMEOUT_MED, MODULE_ROOT } from "./fixtures";
-import { FunctionsRuntimeBundle, SignatureType } from "../../src/emulator/functionsEmulatorShared";
+import {
+  EmulatedTriggerDefinition,
+  FunctionsRuntimeBundle,
+  SignatureType,
+} from "../../src/emulator/functionsEmulatorShared";
 import { InvokeRuntimeOpts, FunctionsEmulator } from "../../src/emulator/functionsEmulator";
 import { RuntimeWorker } from "../../src/emulator/functionsRuntimeWorker";
-import { streamToString } from "../../src/utils";
+import { streamToString, cloneDeep } from "../../src/utils";
 import * as registry from "../../src/emulator/registry";
 
 const DO_NOTHING = () => {
@@ -61,15 +64,18 @@ async function invokeFunction(
   opts.ignore_warnings = true;
   opts.serializedTriggers = serializedTriggers;
 
-  const dummyTriggerDef = {
+  const dummyTriggerDef: EmulatedTriggerDefinition = {
     name: "function_id",
     region: "region",
     id: "region-function_id",
     entryPoint: "function_id",
     platform: "gcfv1" as const,
   };
+  if (signatureType !== "http") {
+    dummyTriggerDef.eventTrigger = { resource: "dummyResource", eventType: "dummyType" };
+  }
+  functionsEmulator.setTriggersForTesting([dummyTriggerDef], testBackend);
   return functionsEmulator.invokeTrigger(
-    testBackend,
     {
       ...dummyTriggerDef,
       // Fill in with dummy trigger info based on given signature type.
@@ -96,11 +102,6 @@ async function callHTTPSFunction(
 ): Promise<string> {
   await worker.waitForSocketReady();
 
-  if (!worker.lastArgs) {
-    throw new Error("Can't talk to worker with undefined args");
-  }
-
-  const socketPath = worker.lastArgs.frb.socketPath;
   const path = options.path || "/";
 
   const res = await new Promise<IncomingMessage>((resolve, reject) => {
@@ -108,7 +109,7 @@ async function callHTTPSFunction(
       {
         method: "POST",
         headers: options.headers,
-        socketPath,
+        socketPath: worker.runtime.socketPath,
         path,
       },
       resolve
@@ -449,7 +450,7 @@ describe("FunctionsEmulator-Runtime", () => {
       }).timeout(TIMEOUT_MED);
 
       it("should return a real databaseURL when RTDB emulator is not running", async () => {
-        const frb = _.cloneDeep(FunctionRuntimeBundles.onRequest);
+        const frb = cloneDeep(FunctionRuntimeBundles.onRequest);
         const worker = await invokeFunction(
           frb,
           () => {
@@ -901,7 +902,7 @@ describe("FunctionsEmulator-Runtime", () => {
           () => {
             require("firebase-admin").initializeApp();
             return {
-              function_id: require("firebase-functions").https.onRequest((req: any, res: any) => {
+              function_id: require("firebase-functions").https.onRequest(() => {
                 throw new Error("not a thing");
               }),
             };
@@ -927,12 +928,9 @@ describe("FunctionsEmulator-Runtime", () => {
           () => {
             require("firebase-admin").initializeApp();
             return {
-              function_id: require("firebase-functions").https.onRequest(
-                async (req: any, res: any) => {
-                  await Promise.resolve(); // Required `await` for `async`.
-                  return Promise.reject(new Error("not a thing"));
-                }
-              ),
+              function_id: require("firebase-functions").https.onRequest(async () => {
+                return Promise.reject(new Error("not a thing"));
+              }),
             };
           },
           "http"
@@ -958,8 +956,7 @@ describe("FunctionsEmulator-Runtime", () => {
             return {
               function_id: require("firebase-functions")
                 .runWith({})
-                .https.onRequest(async (req: any, res: any) => {
-                  await Promise.resolve(); // Required `await` for `async`.
+                .https.onRequest(async () => {
                   return Promise.reject(new Error("not a thing"));
                 }),
             };

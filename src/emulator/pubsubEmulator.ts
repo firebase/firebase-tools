@@ -61,7 +61,7 @@ export class PubsubEmulator implements EmulatorInstance {
   }
 
   getInfo(): EmulatorInfo {
-    const host = this.args.host || Constants.getDefaultHost(Emulators.PUBSUB);
+    const host = this.args.host || Constants.getDefaultHost();
     const port = this.args.port || Constants.getDefaultPort(Emulators.PUBSUB);
 
     return {
@@ -76,12 +76,50 @@ export class PubsubEmulator implements EmulatorInstance {
     return Emulators.PUBSUB;
   }
 
+  private async maybeCreateTopicAndSub(topicName: string): Promise<Subscription> {
+    const topic = this.pubsub.topic(topicName);
+    try {
+      this.logger.logLabeled("DEBUG", "pubsub", `Creating topic: ${topicName}`);
+      await topic.create();
+    } catch (e: any) {
+      // CODE 6: ALREADY EXISTS. Carry on.
+      if (e && e.code === 6) {
+        this.logger.logLabeled("DEBUG", "pubsub", `Topic ${topicName} exists`);
+      } else {
+        throw new FirebaseError(`Could not create topic ${topicName}`, { original: e });
+      }
+    }
+
+    const subName = `emulator-sub-${topicName}`;
+    let sub: Subscription;
+    try {
+      this.logger.logLabeled("DEBUG", "pubsub", `Creating sub for topic: ${topicName}`);
+      [sub] = await topic.createSubscription(subName);
+    } catch (e: any) {
+      if (e && e.code === 6) {
+        // CODE 6: ALREADY EXISTS. Carry on.
+        this.logger.logLabeled("DEBUG", "pubsub", `Sub for ${topicName} exists`);
+        sub = topic.subscription(subName);
+      } else {
+        throw new FirebaseError(`Could not create sub ${subName}`, { original: e });
+      }
+    }
+
+    sub.on("message", (message: Message) => {
+      this.onMessage(topicName, message);
+    });
+
+    return sub;
+  }
+
   async addTrigger(topicName: string, triggerKey: string, signatureType: SignatureType) {
     this.logger.logLabeled(
       "DEBUG",
       "pubsub",
       `addTrigger(${topicName}, ${triggerKey}, ${signatureType})`
     );
+
+    const sub = await this.maybeCreateTopicAndSub(topicName);
 
     const triggers = this.triggersForTopic.get(topicName) || [];
     if (
@@ -91,36 +129,6 @@ export class PubsubEmulator implements EmulatorInstance {
       this.logger.logLabeled("DEBUG", "pubsub", "Trigger already exists");
       return;
     }
-
-    const topic = this.pubsub.topic(topicName);
-    try {
-      this.logger.logLabeled("DEBUG", "pubsub", `Creating topic: ${topicName}`);
-      await topic.create();
-    } catch (e: any) {
-      if (e && e.code === 6) {
-        this.logger.logLabeled("DEBUG", "pubsub", `Topic ${topicName} exists`);
-      } else {
-        throw new FirebaseError(`Could not create topic ${topicName}`, { original: e });
-      }
-    }
-
-    const subName = `emulator-sub-${topicName}`;
-    let sub;
-    try {
-      this.logger.logLabeled("DEBUG", "pubsub", `Creating sub for topic: ${topicName}`);
-      [sub] = await topic.createSubscription(subName);
-    } catch (e: any) {
-      if (e && e.code === 6) {
-        this.logger.logLabeled("DEBUG", "pubsub", `Sub for ${topicName} exists`);
-        sub = topic.subscription(`emulator-sub-${topicName}`);
-      } else {
-        throw new FirebaseError(`Could not create sub ${subName}`, { original: e });
-      }
-    }
-
-    sub.on("message", (message: Message) => {
-      this.onMessage(topicName, message);
-    });
 
     triggers.push({ triggerKey, signatureType });
     this.triggersForTopic.set(topicName, triggers);

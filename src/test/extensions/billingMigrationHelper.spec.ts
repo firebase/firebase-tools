@@ -1,12 +1,13 @@
-import * as _ from "lodash";
 import { expect } from "chai";
 import * as sinon from "sinon";
 
 import { FirebaseError } from "../../error";
 import * as nodejsMigrationHelper from "../../extensions/billingMigrationHelper";
 import * as prompt from "../../prompt";
+import { ExtensionSpec } from "../../extensions/types";
+import { cloneDeep } from "../../utils";
 
-const NO_RUNTIME_SPEC = {
+const NO_RUNTIME_SPEC: ExtensionSpec = {
   name: "test",
   specVersion: "v1beta",
   displayName: "Old",
@@ -28,7 +29,7 @@ const NO_RUNTIME_SPEC = {
   params: [],
 };
 
-const NODE8_SPEC = {
+const NODE8_SPEC: ExtensionSpec = {
   name: "test",
   specVersion: "v1beta",
   displayName: "Old",
@@ -50,7 +51,7 @@ const NODE8_SPEC = {
   params: [],
 };
 
-const NODE10_SPEC = {
+const NODE10_SPEC: ExtensionSpec = {
   name: "test",
   specVersion: "v1beta",
   displayName: "Old",
@@ -85,7 +86,7 @@ describe("billingMigrationHelper", () => {
   describe("displayNode10CreateBillingNotice", () => {
     it("should notify the user if the runtime requires nodejs10", async () => {
       promptStub.resolves(true);
-      const newSpec = _.cloneDeep(NODE10_SPEC);
+      const newSpec = cloneDeep(NODE10_SPEC);
 
       await expect(nodejsMigrationHelper.displayNode10CreateBillingNotice(newSpec, true)).not.to.be
         .rejected;
@@ -94,7 +95,7 @@ describe("billingMigrationHelper", () => {
 
     it("should notify the user if the runtime does not require nodejs (explicit)", async () => {
       promptStub.resolves(true);
-      const newSpec = _.cloneDeep(NODE8_SPEC);
+      const newSpec = cloneDeep(NODE8_SPEC);
 
       await expect(nodejsMigrationHelper.displayNode10CreateBillingNotice(newSpec, true)).not.to.be
         .rejected;
@@ -103,7 +104,7 @@ describe("billingMigrationHelper", () => {
 
     it("should notify the user if the runtime does not require nodejs (implicit)", async () => {
       promptStub.resolves(true);
-      const newSpec = _.cloneDeep(NO_RUNTIME_SPEC);
+      const newSpec = cloneDeep(NO_RUNTIME_SPEC);
 
       await expect(nodejsMigrationHelper.displayNode10CreateBillingNotice(newSpec, true)).not.to.be
         .rejected;
@@ -112,7 +113,7 @@ describe("billingMigrationHelper", () => {
 
     it("should error if the user doesn't give consent", async () => {
       promptStub.resolves(false);
-      const newSpec = _.cloneDeep(NODE10_SPEC);
+      const newSpec = cloneDeep(NODE10_SPEC);
 
       await expect(
         nodejsMigrationHelper.displayNode10CreateBillingNotice(newSpec, true)

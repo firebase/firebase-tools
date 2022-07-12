@@ -19,10 +19,16 @@ describe("calculateChannelExpireTTL", () => {
     });
   }
 
-  const badTests = [{ input: "1.5d" }, { input: "2x" }, { input: "2dd" }, { input: "0.5m" }];
+  const badTests = [
+    { input: "1.5d" },
+    { input: "2x" },
+    { input: "2dd" },
+    { input: "0.5m" },
+    { input: undefined },
+  ];
 
   for (const test of badTests) {
-    it(`should be able to parse time ${test.input}`, () => {
+    it(`should be able to parse time ${test.input || "undefined"}`, () => {
       expect(() => calculateChannelExpireTTL(test.input)).to.throw(
         FirebaseError,
         /flag must be a duration string/

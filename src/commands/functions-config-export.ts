@@ -93,7 +93,7 @@ function fromEntries<V>(itr: Iterable<[string, V]>): Record<string, V> {
   return obj;
 }
 
-export default new Command("functions:config:export")
+export const command = new Command("functions:config:export")
   .description("Export environment config as environment variables in dotenv format")
   .before(requirePermissions, [
     "runtimeconfig.configs.list",

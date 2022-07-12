@@ -60,6 +60,7 @@ export function getFirebaseRulesValidator(
  */
 export function getAdminOnlyFirebaseRulesValidator(): FirebaseRulesValidator {
   return {
+    /* eslint-disable @typescript-eslint/no-unused-vars */
     validate: (
       _path: string,
       _bucketId: string,
@@ -72,6 +73,7 @@ export function getAdminOnlyFirebaseRulesValidator(): FirebaseRulesValidator {
       // "Bearer owner" along with requests so this is a placeholder.
       return Promise.resolve(true);
     },
+    /* eslint-enable @typescript-eslint/no-unused-vars */
   };
 }
 

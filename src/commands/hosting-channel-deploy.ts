@@ -13,7 +13,7 @@ import {
 } from "../hosting/api";
 import { normalizedHostingConfigs } from "../hosting/normalizedHostingConfigs";
 import { requirePermissions } from "../requirePermissions";
-import * as deploy from "../deploy";
+import { deploy } from "../deploy";
 import { needProjectId } from "../projectUtils";
 import { logger } from "../logger";
 import { requireConfig } from "../requireConfig";
@@ -33,7 +33,7 @@ interface ChannelInfo {
   expireTime: string;
 }
 
-export default new Command("hosting:channel:deploy [channelId]")
+export const command = new Command("hosting:channel:deploy [channelId]")
   .description("deploy to a specific Firebase Hosting channel")
   .option(
     "-e, --expires <duration>",

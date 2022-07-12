@@ -20,9 +20,9 @@ export default async function (context: any, options: Options): Promise<void> {
   const rulesDeploy = new RulesDeploy(options, RulesetServiceType.FIREBASE_STORAGE);
   _.set(context, "storage.rulesDeploy", rulesDeploy);
 
-  if (_.isPlainObject(rulesConfig)) {
+  if (typeof rulesConfig === "object" && rulesConfig !== null) {
     const defaultBucket = await gcp.storage.getDefaultBucket(options.project);
-    rulesConfig = [_.assign(rulesConfig, { bucket: defaultBucket })];
+    rulesConfig = [Object.assign(rulesConfig, { bucket: defaultBucket })];
     _.set(context, "storage.rules", rulesConfig);
   }
 

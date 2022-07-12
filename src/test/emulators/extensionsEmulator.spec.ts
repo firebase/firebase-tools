@@ -7,7 +7,7 @@ import {
   ExtensionVersion,
   RegistryLaunchStage,
   Visibility,
-} from "../../extensions/extensionsApi";
+} from "../../extensions/types";
 import * as planner from "../../deploy/extensions/planner";
 
 const TEST_EXTENSION: Extension = {
@@ -26,7 +26,22 @@ const TEST_EXTENSION_VERSION: ExtensionVersion = {
   hash: "abc123",
   spec: {
     name: "publishers/firebase/extensions/storage-resize-images/versions/0.1.18",
-    resources: [],
+    resources: [
+      {
+        type: "firebaseextensions.v1beta.function",
+        name: "generateResizedImage",
+        description: `Listens for new images uploaded to your specified Cloud Storage bucket, resizes the images,
+      then stores the resized images in the same bucket. Optionally keeps or deletes the original images.`,
+        properties: {
+          location: "${param:LOCATION}",
+          runtime: "nodejs10",
+          eventTrigger: {
+            eventType: "google.storage.object.finalize",
+            resource: "projects/_/buckets/${param:IMG_BUCKET}",
+          },
+        },
+      },
+    ],
     params: [],
     version: "0.1.18",
     sourceUrl: "https://fake.test",
@@ -45,7 +60,7 @@ describe("Extensions Emulator", () => {
     });
     const testCases: {
       desc: string;
-      input: planner.InstanceSpec;
+      input: planner.DeploymentInstanceSpec;
       expected: EmulatableBackend;
     }[] = [
       {
@@ -59,7 +74,15 @@ describe("Extensions Emulator", () => {
           },
           params: {
             LOCATION: "us-west1",
+            ALLOWED_EVENT_TYPES:
+              "google.firebase.image-resize-started,google.firebase.image-resize-completed",
+            EVENTARC_CHANNEL: "projects/sample-project/locations/us-central1/channels/firebase",
           },
+          allowedEventTypes: [
+            "google.firebase.image-resize-started",
+            "google.firebase.image-resize-completed",
+          ],
+          eventarcChannel: "projects/sample-project/locations/us-central1/channels/firebase",
           extension: TEST_EXTENSION,
           extensionVersion: TEST_EXTENSION_VERSION,
         },
@@ -71,6 +94,9 @@ describe("Extensions Emulator", () => {
             EXT_INSTANCE_ID: "ext-test",
             PROJECT_ID: "test-project",
             STORAGE_BUCKET: "test-project.appspot.com",
+            ALLOWED_EVENT_TYPES:
+              "google.firebase.image-resize-started,google.firebase.image-resize-completed",
+            EVENTARC_CHANNEL: "projects/sample-project/locations/us-central1/channels/firebase",
           },
           secretEnv: [],
           extensionInstanceId: "ext-test",

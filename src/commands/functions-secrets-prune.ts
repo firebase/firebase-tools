@@ -10,7 +10,8 @@ import { logBullet, logSuccess } from "../utils";
 import { promptOnce } from "../prompt";
 import { destroySecretVersion } from "../gcp/secretManager";
 
-export default new Command("functions:secrets:prune")
+export const command = new Command("functions:secrets:prune")
+  .withForce("Destroys unused secrets without prompt")
   .description("Destroys unused secrets")
   .before(requirePermissions, [
     "cloudfunctions.functions.list",
@@ -42,27 +43,26 @@ export default new Command("functions:secrets:prune")
         pruned.map((sv) => `${sv.secret}@${sv.version}`).join("\n\t")
     );
 
-    const confirm = await promptOnce(
-      {
-        name: "destroy",
-        type: "confirm",
-        default: true,
-        message: `Do you want to destroy unused secret versions?`,
-      },
-      options
-    );
-
-    if (!confirm) {
-      logBullet(
-        "Run the following commands to destroy each unused secret version:\n\t" +
-          pruned
-            .map((sv) => `firebase functions:secrets:destroy ${sv.secret}@${sv.version}`)
-            .join("\n\t")
+    if (!options.force) {
+      const confirm = await promptOnce(
+        {
+          name: "destroy",
+          type: "confirm",
+          default: true,
+          message: `Do you want to destroy unused secret versions?`,
+        },
+        options
       );
-      return;
+      if (!confirm) {
+        logBullet(
+          "Run the following commands to destroy each unused secret version:\n\t" +
+            pruned
+              .map((sv) => `firebase functions:secrets:destroy ${sv.secret}@${sv.version}`)
+              .join("\n\t")
+        );
+        return;
+      }
     }
-
     await Promise.all(pruned.map((sv) => destroySecretVersion(projectId, sv.secret, sv.version)));
-
     logSuccess("Destroyed all unused secrets!");
   });

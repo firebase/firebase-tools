@@ -1,15 +1,15 @@
-import * as _ from "lodash";
 import { expect } from "chai";
 import * as sinon from "sinon";
 import * as fs from "fs-extra";
 
 import { FirebaseError } from "../../error";
 import { logger } from "../../logger";
-import { ExtensionInstance, Param, ParamType } from "../../extensions/extensionsApi";
+import { ExtensionInstance, Param, ParamType } from "../../extensions/types";
 import * as extensionsHelper from "../../extensions/extensionsHelper";
 import * as paramHelper from "../../extensions/paramHelper";
 import * as env from "../../functions/env";
 import * as prompt from "../../prompt";
+import { cloneDeep } from "../../utils";
 
 const PROJECT_ID = "test-proj";
 const INSTANCE_ID = "ext-instance";
@@ -341,7 +341,7 @@ describe("paramHelper", () => {
     });
 
     it("should change existing defaults to the current state and leave other values unchanged", () => {
-      _.get(testInstance, "config.source.spec.params", []).push({
+      (testInstance.config?.source?.spec?.params || []).push({
         param: "THIRD",
         label: "3rd",
         default: "default",
@@ -389,7 +389,7 @@ describe("paramHelper", () => {
 
     it("should prompt the user for any params in the new spec that are not in the current one", async () => {
       promptStub.resolves("user input");
-      const newSpec = _.cloneDeep(SPEC);
+      const newSpec = cloneDeep(SPEC);
       newSpec.params = TEST_PARAMS_2;
 
       const newParams = await paramHelper.promptForNewParams({
@@ -430,7 +430,7 @@ describe("paramHelper", () => {
 
     it("should prompt for params that are not currently populated", async () => {
       promptStub.resolves("user input");
-      const newSpec = _.cloneDeep(SPEC);
+      const newSpec = cloneDeep(SPEC);
       newSpec.params = TEST_PARAMS_2;
 
       const newParams = await paramHelper.promptForNewParams({
@@ -454,7 +454,7 @@ describe("paramHelper", () => {
 
     it("should not prompt the user for params that did not change type or param", async () => {
       promptStub.resolves("Fail");
-      const newSpec = _.cloneDeep(SPEC);
+      const newSpec = cloneDeep(SPEC);
       newSpec.params = TEST_PARAMS_3;
 
       const newParams = await paramHelper.promptForNewParams({
@@ -479,7 +479,7 @@ describe("paramHelper", () => {
     it("should populate the spec with the default value if it is returned by prompt", async () => {
       promptStub.onFirstCall().resolves("test-proj");
       promptStub.onSecondCall().resolves("user input");
-      const newSpec = _.cloneDeep(SPEC);
+      const newSpec = cloneDeep(SPEC);
       newSpec.params = TEST_PARAMS_2;
 
       const newParams = await paramHelper.promptForNewParams({
@@ -520,7 +520,7 @@ describe("paramHelper", () => {
 
     it("shouldn't prompt if there are no new params", async () => {
       promptStub.resolves("Fail");
-      const newSpec = _.cloneDeep(SPEC);
+      const newSpec = cloneDeep(SPEC);
 
       const newParams = await paramHelper.promptForNewParams({
         spec: SPEC,
@@ -543,7 +543,7 @@ describe("paramHelper", () => {
 
     it("should exit if a prompt fails", async () => {
       promptStub.rejects(new FirebaseError("this is an error"));
-      const newSpec = _.cloneDeep(SPEC);
+      const newSpec = cloneDeep(SPEC);
       newSpec.params = TEST_PARAMS_2;
 
       await expect(

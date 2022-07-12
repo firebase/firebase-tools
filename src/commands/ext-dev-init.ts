@@ -30,7 +30,7 @@ function readCommonTemplates() {
 /**
  * Command for setting up boilerplate code for a new extension.
  */
-export default new Command("ext:dev:init")
+export const command = new Command("ext:dev:init")
   .description("initialize files for writing an extension in the current directory")
   .before(checkMinRequiredVersion, "extDevMinVersion")
   .action(async (options: any) => {

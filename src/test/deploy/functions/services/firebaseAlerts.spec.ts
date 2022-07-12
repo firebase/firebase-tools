@@ -11,7 +11,7 @@ const endpoint: Endpoint = {
   eventTrigger: {
     retry: false,
     eventType: "firebase.firebasealerts.alerts.v1.published",
-    eventFilters: [],
+    eventFilters: {},
   },
   entryPoint: "endpoint",
   platform: "gcfv2",
@@ -24,23 +24,23 @@ describe("ensureFirebaseAlertsTriggerRegion", () => {
 
     await firebaseAlerts.ensureFirebaseAlertsTriggerRegion(ep);
 
-    expect(endpoint.eventTrigger.region).to.eq("global");
+    expect(ep.eventTrigger.region).to.eq("global");
   });
 
   it("should not error if the trigger location is global", async () => {
     const ep = { ...endpoint };
     ep.eventTrigger.region = "global";
 
-    await firebaseAlerts.ensureFirebaseAlertsTriggerRegion(endpoint);
+    await firebaseAlerts.ensureFirebaseAlertsTriggerRegion(ep);
 
-    expect(endpoint.eventTrigger.region).to.eq("global");
+    expect(ep.eventTrigger.region).to.eq("global");
   });
 
   it("should error if the trigger location is not global", () => {
     const ep = { ...endpoint };
     ep.eventTrigger.region = "us-west1";
 
-    expect(() => firebaseAlerts.ensureFirebaseAlertsTriggerRegion(endpoint)).to.throw(
+    expect(() => firebaseAlerts.ensureFirebaseAlertsTriggerRegion(ep)).to.throw(
       "A firebase alerts trigger must specify 'global' trigger location"
     );
   });

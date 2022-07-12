@@ -1,13 +1,13 @@
 import * as fs from "fs-extra";
-import * as _ from "lodash";
 import { ParsedTriggerDefinition } from "../../emulator/functionsEmulatorShared";
 import * as path from "path";
 import * as paramHelper from "../paramHelper";
 import * as specHelper from "./specHelper";
 import * as localHelper from "../localHelper";
 import * as triggerHelper from "./triggerHelper";
-import { ExtensionSpec, Param, ParamType, Resource } from "../extensionsApi";
+import { ExtensionSpec, Param, ParamType, Resource } from "../types";
 import * as extensionsHelper from "../extensionsHelper";
+import * as planner from "../../deploy/extensions/planner";
 import { Config } from "../../config";
 import { FirebaseError } from "../../error";
 import { EmulatorLogger } from "../../emulator/emulatorLogger";
@@ -25,10 +25,7 @@ export async function buildOptions(options: any): Promise<any> {
 
   extensionsHelper.validateCommandLineParams(params, spec.params);
 
-  const functionResources = specHelper.getFunctionResourcesWithParamSubstitution(
-    spec,
-    params
-  ) as Resource[];
+  const functionResources = specHelper.getFunctionResourcesWithParamSubstitution(spec, params);
   let testConfig;
   if (options.testConfig) {
     testConfig = readTestConfigFile(options.testConfig);
@@ -46,8 +43,7 @@ export async function buildOptions(options: any): Promise<any> {
 
 // TODO: Better name? Also, should this be in extensionsEmulator instead?
 export async function getExtensionFunctionInfo(
-  extensionDir: string,
-  instanceId: string,
+  instance: planner.InstanceSpec,
   paramValues: Record<string, string>
 ): Promise<{
   nodeMajorVersion: number;
@@ -55,12 +51,12 @@ export async function getExtensionFunctionInfo(
   nonSecretEnv: Record<string, string>;
   secretEnvVariables: SecretEnvVar[];
 }> {
-  const spec = await specHelper.readExtensionYaml(extensionDir);
+  const spec = await planner.getExtensionSpec(instance);
   const functionResources = specHelper.getFunctionResourcesWithParamSubstitution(spec, paramValues);
   const extensionTriggers: ParsedTriggerDefinition[] = functionResources
     .map((r) => triggerHelper.functionResourceToEmulatedTriggerDefintion(r))
     .map((trigger) => {
-      trigger.name = `ext-${instanceId}-${trigger.name}`;
+      trigger.name = `ext-${instance.instanceId}-${trigger.name}`;
       return trigger;
     });
   const nodeMajorVersion = specHelper.getNodeVersion(functionResources);
@@ -73,8 +69,10 @@ export async function getExtensionFunctionInfo(
     secretEnvVariables,
   };
 }
+
 const isSecretParam = (p: Param) =>
   p.type === extensionsHelper.SpecParamType.SECRET || p.type === ParamType.SECRET;
+
 /**
  * getNonSecretEnv checks extension spec for secret params, and returns env without those secret params
  * @param params A list of params to check for secret params
@@ -241,11 +239,8 @@ function buildConfig(
 function getFunctionSourceDirectory(functionResources: Resource[]): string {
   let sourceDirectory;
   for (const r of functionResources) {
-    let dir = _.get(r, "properties.sourceDirectory");
     // If not specified, default sourceDirectory to "functions"
-    if (!dir) {
-      dir = "functions";
-    }
+    const dir = r.properties?.sourceDirectory || "functions";
     if (!sourceDirectory) {
       sourceDirectory = dir;
     } else if (sourceDirectory !== dir) {
@@ -254,7 +249,7 @@ function getFunctionSourceDirectory(functionResources: Resource[]): string {
       );
     }
   }
-  return sourceDirectory;
+  return sourceDirectory || "functions";
 }
 
 function shouldEmulateFunctions(resources: Resource[]): boolean {
@@ -263,7 +258,7 @@ function shouldEmulateFunctions(resources: Resource[]): boolean {
 
 function shouldEmulate(emulatorName: string, resources: Resource[]): boolean {
   for (const r of resources) {
-    const eventType: string = _.get(r, "properties.eventTrigger.eventType", "");
+    const eventType: string = r.properties?.eventTrigger?.eventType || "";
     if (eventType.includes(emulatorName)) {
       return true;
     }

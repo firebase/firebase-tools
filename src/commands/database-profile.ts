@@ -1,5 +1,3 @@
-import * as _ from "lodash";
-
 import { Command } from "../command";
 import { requireDatabaseInstance } from "../requireDatabaseInstance";
 import { populateInstanceDetails } from "../management/database";
@@ -11,7 +9,7 @@ import { warnEmulatorNotSupported } from "../emulator/commandUtils";
 
 const description = "profile the Realtime Database and generate a usage report";
 
-module.exports = new Command("database:profile")
+export const command = new Command("database:profile")
   .description(description)
   .option("-o, --output <filename>", "save the output to the specified file")
   .option(
@@ -41,11 +39,11 @@ module.exports = new Command("database:profile")
       });
     } else if (options.parent.json && options.raw) {
       return utils.reject("Cannot output raw data in json format", { exit: 1 });
-    } else if (options.input && _.has(options, "duration")) {
+    } else if (options.input && options.duration !== undefined) {
       return utils.reject("Cannot specify a duration for input files", {
         exit: 1,
       });
-    } else if (_.has(options, "duration") && options.duration <= 0) {
+    } else if (options.duration !== undefined && options.duration <= 0) {
       return utils.reject("Must specify a positive number of seconds", {
         exit: 1,
       });

@@ -1,14 +1,14 @@
 import * as yaml from "js-yaml";
-import * as _ from "lodash";
 import * as path from "path";
 import * as fs from "fs-extra";
 
-import { ExtensionSpec, ParamType, Resource } from "../extensionsApi";
+import { ExtensionSpec, Resource } from "../types";
 import { FirebaseError } from "../../error";
 import { substituteParams } from "../extensionsHelper";
 import { parseRuntimeVersion } from "../../emulator/functionsEmulatorUtils";
 
 const SPEC_FILE = "extension.yaml";
+const POSTINSTALL_FILE = "POSTINSTALL.md";
 const validFunctionTypes = [
   "firebaseextensions.v1beta.function",
   "firebaseextensions.v1beta.scheduledFunction",
@@ -40,12 +40,21 @@ export async function readExtensionYaml(directory: string): Promise<ExtensionSpe
 }
 
 /**
+ * Reads a POSTINSTALL file and returns its content as a string
+ * @param directory the directory to look for POSTINSTALL.md in.
+ */
+export async function readPostinstall(directory: string): Promise<string> {
+  const content = await readFileFromDirectory(directory, POSTINSTALL_FILE);
+  return content.source;
+}
+
+/**
  * Retrieves a file from the directory.
  */
 export function readFileFromDirectory(
   directory: string,
   file: string
-): Promise<{ [key: string]: any }> {
+): Promise<{ source: string; sourceDirectory: string }> {
   return new Promise<string>((resolve, reject) => {
     fs.readFile(path.resolve(directory, file), "utf8", (err, data) => {
       if (err) {

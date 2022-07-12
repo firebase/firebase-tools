@@ -7,7 +7,7 @@ import { OpenAPIObject, PathsObject, ServerObject, OperationObject } from "opena
 import { EmulatorLogger } from "../emulatorLogger";
 import { Emulators } from "../types";
 import { authOperations, AuthOps, AuthOperation, FirebaseJwtPayload } from "./operations";
-import { AgentProjectState, ProjectState } from "./state";
+import { AgentProjectState, decodeRefreshToken, ProjectState } from "./state";
 import apiSpecUntyped from "./apiSpec";
 import {
   PromiseController,
@@ -506,6 +506,19 @@ function toExegesisController(
         targetTenantId = targetTenantId || decoded?.payload.firebase.tenant;
       }
 
+      // Need to check refresh token for tenant ID for grantToken endpoint
+      if (ctx.requestBody?.refreshToken) {
+        const refreshTokenRecord = decodeRefreshToken(ctx.requestBody!.refreshToken);
+        if (refreshTokenRecord.tenantId && targetTenantId) {
+          // Shouldn't ever reach this assertion, but adding for completeness
+          assert(
+            refreshTokenRecord.tenantId === targetTenantId,
+            "TENANT_ID_MISMATCH: ((Refresh token tenant ID does not match target tenant ID.))"
+          );
+        }
+        targetTenantId = targetTenantId || refreshTokenRecord.tenantId;
+      }
+
       return operation(getProjectStateById(targetProjectId, targetTenantId), ctx.requestBody, ctx);
     };
   }
@@ -524,7 +537,7 @@ function wrapValidateBody(pluginContext: ExegesisPluginContext): void {
   if (op.validateBody && !op._authEmulatorValidateBodyWrapped) {
     const validateBody = op.validateBody.bind(op);
     op.validateBody = (body) => {
-      return validateAndFixRestMappingRequestBody(validateBody, body, pluginContext.api);
+      return validateAndFixRestMappingRequestBody(validateBody, body);
     };
     op._authEmulatorValidateBodyWrapped = true;
   }
@@ -533,9 +546,7 @@ function wrapValidateBody(pluginContext: ExegesisPluginContext): void {
 function validateAndFixRestMappingRequestBody(
   validate: ValidatorFunction,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  body: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  api: any
+  body: any
 ): ReturnType<ValidatorFunction> {
   body = convertKeysToCamelCase(body);
 

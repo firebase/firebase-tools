@@ -2,6 +2,7 @@ import { expect } from "chai";
 
 import * as backend from "../../../deploy/functions/backend";
 import * as prepare from "../../../deploy/functions/prepare";
+import { BEFORE_CREATE_EVENT, BEFORE_SIGN_IN_EVENT } from "../../../functions/events/v1";
 
 describe("prepare", () => {
   const ENDPOINT_BASE: Omit<backend.Endpoint, "httpsTrigger"> = {
@@ -79,12 +80,7 @@ describe("prepare", () => {
         ...ENDPOINT_BASE,
         eventTrigger: {
           eventType: "google.cloud.storage.object.v1.finalized",
-          eventFilters: [
-            {
-              attribute: "bucket",
-              value: "bucket",
-            },
-          ],
+          eventFilters: { bucket: "bucket" },
           retry: false,
         },
       };
@@ -101,18 +97,13 @@ describe("prepare", () => {
         ...ENDPOINT_BASE,
         eventTrigger: {
           eventType: "google.cloud.storage.object.v1.finalzied",
-          eventFilters: [
-            {
-              attribute: "bucket",
-              value: "us-bucket",
-            },
-          ],
+          eventFilters: { bucket: "us-bucket" },
           retry: false,
         },
       };
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       const have: backend.Endpoint & backend.EventTriggered = JSON.parse(JSON.stringify(want));
-      have.eventTrigger.eventFilters = [{ attribute: "bucket", value: "us-central1-bucket" }];
+      have.eventTrigger.eventFilters = { bucket: "us-central1-bucket" };
       have.eventTrigger.region = "us-central1";
 
       prepare.inferDetailsFromExisting(backend.of(want), backend.of(have), /* usedDotEnv= */ false);
@@ -130,6 +121,42 @@ describe("prepare", () => {
 
       prepare.inferDetailsFromExisting(backend.of(want), backend.of(have), /* usedDotEnv= */ false);
       expect(want.availableMemoryMb).to.equal(512);
+    });
+  });
+
+  describe("inferBlockingDetails", () => {
+    it("should merge the blocking options and set default value", () => {
+      const beforeCreate: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        id: "beforeCreate",
+        blockingTrigger: {
+          eventType: BEFORE_CREATE_EVENT,
+          options: {
+            accessToken: true,
+            refreshToken: false,
+          },
+        },
+      };
+      const beforeSignIn: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        id: "beforeSignIn",
+        blockingTrigger: {
+          eventType: BEFORE_SIGN_IN_EVENT,
+          options: {
+            accessToken: false,
+            idToken: true,
+          },
+        },
+      };
+
+      prepare.inferBlockingDetails(backend.of(beforeCreate, beforeSignIn));
+
+      expect(beforeCreate.blockingTrigger.options?.accessToken).to.be.true;
+      expect(beforeCreate.blockingTrigger.options?.idToken).to.be.true;
+      expect(beforeCreate.blockingTrigger.options?.refreshToken).to.be.false;
+      expect(beforeSignIn.blockingTrigger.options?.accessToken).to.be.true;
+      expect(beforeSignIn.blockingTrigger.options?.idToken).to.be.true;
+      expect(beforeSignIn.blockingTrigger.options?.refreshToken).to.be.false;
     });
   });
 });

@@ -116,7 +116,7 @@ export function warnEmulatorNotSupported(
       type: "confirm",
       default: false,
       message: "Do you want to continue?",
-    }).then((confirm: boolean) => {
+    }).then(() => {
       if (!opts.confirm) {
         return utils.reject("Command aborted.", { exit: 1 });
       }
@@ -530,5 +530,5 @@ export async function checkJavaSupported(): Promise<boolean> {
 }
 
 export const JAVA_DEPRECATION_WARNING =
-  "Support for Java version <= 10 will be dropped soon in firebase-tools@11. " +
+  "firebase-tools no longer supports Java version before 11. " +
   "Please upgrade to Java version 11 or above to continue using the emulators.";

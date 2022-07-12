@@ -13,7 +13,6 @@ import * as shell from "./emulator/functionsEmulatorShell";
 import * as commandUtils from "./emulator/commandUtils";
 import { EMULATORS_SUPPORTED_BY_FUNCTIONS, EmulatorInfo, Emulators } from "./emulator/types";
 import { EmulatorHubClient } from "./emulator/hubClient";
-import { Constants } from "./emulator/constants";
 import { findAvailablePort } from "./emulator/portUtils";
 import { Options } from "./options";
 
@@ -74,7 +73,7 @@ export const actionFunction = async (options: Options) => {
     })
     .then(() => {
       const instance = serveFunctions.get();
-      const emulator = new shell.FunctionsEmulatorShell(instance, serveFunctions.getBackend());
+      const emulator = new shell.FunctionsEmulatorShell(instance);
 
       if (emulator.emulatedFunctions && emulator.emulatedFunctions.length === 0) {
         logger.info("No functions emulated.");

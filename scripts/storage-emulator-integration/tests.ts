@@ -5,11 +5,12 @@ import * as fs from "fs";
 import * as path from "path";
 import * as http from "http";
 import * as https from "https";
+import fetch from "node-fetch";
 import * as puppeteer from "puppeteer";
 import { Bucket, Storage, CopyOptions } from "@google-cloud/storage";
 import supertest = require("supertest");
 
-import { IMAGE_FILE_BASE64 } from "../../src/test/emulators/fixtures";
+import { IMAGE_FILE_BASE64, StorageRulesFiles } from "../../src/test/emulators/fixtures";
 import { TriggerEndToEndTest } from "../integration-helpers/framework";
 import {
   createRandomFile,
@@ -48,6 +49,16 @@ const TEST_CONFIG = {
   // (useful for checking browser logs for errors)
   keepBrowserOpen: false,
 };
+
+const EMPTY_FOLDER_DATA = `--boundary\r
+Content-Type: application/json\r
+\r
+{"contentType":"text/plain"}\r
+--boundary\r
+Content-Type: text/plain\r
+\r
+--boundary--\r
+`;
 
 // Temp directory to store generated files.
 let tmpDir: string;
@@ -218,6 +229,17 @@ describe("Storage emulator", () => {
           });
 
           expect(fileMetadata).to.deep.include(metadata);
+        });
+
+        it("should return an error message when uploading a file with invalid metadata", async () => {
+          const fileName = "test_upload.jpg";
+          const errorMessage = await supertest(STORAGE_EMULATOR_HOST)
+            .post(`/upload/storage/v1/b/${storageBucket}/o?name=${fileName}`)
+            .set({ Authorization: "Bearer owner", "X-Upload-Content-Type": "foo" })
+            .expect(400)
+            .then((res) => res.body.error.message);
+
+          expect(errorMessage).to.equal("Invalid Content-Type: foo");
         });
 
         it("should be able to upload file named 'prefix/file.txt' when file named 'prefix' already exists", async () => {
@@ -1075,6 +1097,43 @@ describe("Storage emulator", () => {
           expect(metadata.contentLanguage).to.equal("en");
         });
 
+        it("should not duplicate data when called repeatedly", async () => {
+          const destination = "public/small_file";
+          await testBucket.upload(smallFilePath, {
+            destination,
+            metadata: {},
+          });
+
+          const cloudFile = testBucket.file(destination);
+          const incomingMetadata = {
+            metadata: {
+              firebaseStorageDownloadTokens: "myFirstToken,mySecondToken",
+            },
+          };
+
+          // Check that metadata isn't duplicated when setting multiple times in a row
+          await cloudFile.setMetadata(incomingMetadata);
+          await cloudFile.setMetadata(incomingMetadata);
+          await cloudFile.setMetadata(incomingMetadata);
+
+          // Check that the tokens are saved in Firebase metadata
+          await supertest(STORAGE_EMULATOR_HOST)
+            .get(`/v0/b/${testBucket.name}/o/${encodeURIComponent(destination)}`)
+            .expect(200)
+            .then((res) => {
+              const firebaseMd = res.body;
+              expect(firebaseMd.downloadTokens).to.equal(
+                incomingMetadata.metadata.firebaseStorageDownloadTokens
+              );
+            });
+
+          // Check that the tokens are saved in Cloud metadata
+          const [storedMetadata] = await cloudFile.getMetadata();
+          expect(storedMetadata.metadata.firebaseStorageDownloadTokens).to.equal(
+            incomingMetadata.metadata.firebaseStorageDownloadTokens
+          );
+        });
+
         it("should allow fields under .metadata", async () => {
           await testBucket.upload(smallFilePath);
           const [metadata] = await testBucket
@@ -1138,6 +1197,145 @@ describe("Storage emulator", () => {
         delete process.env.STORAGE_EMULATOR_HOST;
         await test.stopEmulators();
       }
+    });
+  });
+
+  emulatorSpecificDescribe("Internal Endpoints", () => {
+    before(async function (this) {
+      this.timeout(TEST_SETUP_TIMEOUT);
+      test = new TriggerEndToEndTest(FIREBASE_PROJECT, __dirname, emulatorConfig);
+      await test.startEmulators(["--only", "storage"]);
+    });
+
+    after(async () => {
+      await test.stopEmulators();
+    });
+
+    describe("setRules", () => {
+      it("should set single ruleset", async () => {
+        await supertest(STORAGE_EMULATOR_HOST)
+          .put("/internal/setRules")
+          .send({
+            rules: {
+              files: [StorageRulesFiles.readWriteIfTrue],
+            },
+          })
+          .expect(200);
+      });
+
+      it("should set multiple rules/resource objects", async () => {
+        await supertest(STORAGE_EMULATOR_HOST)
+          .put("/internal/setRules")
+          .send({
+            rules: {
+              files: [
+                { resource: "bucket_0", ...StorageRulesFiles.readWriteIfTrue },
+                { resource: "bucket_1", ...StorageRulesFiles.readWriteIfAuth },
+              ],
+            },
+          })
+          .expect(200);
+      });
+
+      it("should overwrite single ruleset with multiple rules/resource objects", async () => {
+        await supertest(STORAGE_EMULATOR_HOST)
+          .put("/internal/setRules")
+          .send({
+            rules: {
+              files: [StorageRulesFiles.readWriteIfTrue],
+            },
+          })
+          .expect(200);
+
+        await supertest(STORAGE_EMULATOR_HOST)
+          .put("/internal/setRules")
+          .send({
+            rules: {
+              files: [
+                { resource: "bucket_0", ...StorageRulesFiles.readWriteIfTrue },
+                { resource: "bucket_1", ...StorageRulesFiles.readWriteIfAuth },
+              ],
+            },
+          })
+          .expect(200);
+      });
+
+      it("should return 400 if rules.files array is missing", async () => {
+        const errorMessage = await supertest(STORAGE_EMULATOR_HOST)
+          .put("/internal/setRules")
+          .send({ rules: {} })
+          .expect(400)
+          .then((res) => res.body.message);
+
+        expect(errorMessage).to.equal("Request body must include 'rules.files' array");
+      });
+
+      it("should return 400 if rules.files array has missing name field", async () => {
+        const errorMessage = await supertest(STORAGE_EMULATOR_HOST)
+          .put("/internal/setRules")
+          .send({
+            rules: {
+              files: [{ content: StorageRulesFiles.readWriteIfTrue.content }],
+            },
+          })
+          .expect(400)
+          .then((res) => res.body.message);
+
+        expect(errorMessage).to.equal(
+          "Each member of 'rules.files' array must contain 'name' and 'content'"
+        );
+      });
+
+      it("should return 400 if rules.files array has missing content field", async () => {
+        const errorMessage = await supertest(STORAGE_EMULATOR_HOST)
+          .put("/internal/setRules")
+          .send({
+            rules: {
+              files: [{ name: StorageRulesFiles.readWriteIfTrue.name }],
+            },
+          })
+          .expect(400)
+          .then((res) => res.body.message);
+
+        expect(errorMessage).to.equal(
+          "Each member of 'rules.files' array must contain 'name' and 'content'"
+        );
+      });
+
+      it("should return 400 if rules.files array has missing resource field", async () => {
+        const errorMessage = await supertest(STORAGE_EMULATOR_HOST)
+          .put("/internal/setRules")
+          .send({
+            rules: {
+              files: [
+                { resource: "bucket_0", ...StorageRulesFiles.readWriteIfTrue },
+                StorageRulesFiles.readWriteIfAuth,
+              ],
+            },
+          })
+          .expect(400)
+          .then((res) => res.body.message);
+
+        expect(errorMessage).to.equal(
+          "Each member of 'rules.files' array must contain 'name', 'content', and 'resource'"
+        );
+      });
+
+      it("should return 400 if rules.files array has invalid content", async () => {
+        const errorMessage = await supertest(STORAGE_EMULATOR_HOST)
+          .put("/internal/setRules")
+          .send({
+            rules: {
+              files: [{ name: StorageRulesFiles.readWriteIfTrue.name, content: "foo" }],
+            },
+          })
+          .expect(400)
+          .then((res) => res.body.message);
+
+        expect(errorMessage).to.equal(
+          "There was an error updating rules, see logs for more details"
+        );
+      });
     });
   });
 
@@ -1275,6 +1473,7 @@ describe("Storage emulator", () => {
           await uploadText(page, "upload/replace.txt", "some-content");
           await uploadText(page, "upload/replace.txt", "some-other-content");
 
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
           const downloadUrl = await page.evaluate((filename) => {
             return firebase.storage().ref("upload/replace.txt").getDownloadURL();
           }, filename);
@@ -1521,6 +1720,101 @@ describe("Storage emulator", () => {
           expect(listResult).to.deep.equal({
             prefixes: [],
             items: [],
+          });
+        });
+        context("with folder placeholders", () => {
+          beforeEach(async function (this) {
+            this.timeout(TEST_SETUP_TIMEOUT);
+
+            const refs = [
+              "testing/abc", // empty folder inside testing/
+              "testing/storage_ref", // also an implicit prefix with files
+            ];
+            for (const ref of refs) {
+              // Use REST API to create the folder placeholders since SDK won't
+              // allow refs with trailing slashes.
+              await fetch(
+                `${STORAGE_EMULATOR_HOST}/upload/storage/v1/b/${storageBucket}/o?name=${encodeURIComponent(
+                  ref
+                )}/`,
+                {
+                  headers: {
+                    "Content-Type": "multipart/related; boundary=boundary",
+                  },
+                  method: "POST",
+                  body: Buffer.from(EMPTY_FOLDER_DATA, "utf8"),
+                }
+              );
+            }
+          });
+
+          it("folder placeholder should not be listed under itself", async () => {
+            const listResult = await page.evaluate(async () => {
+              const list = await firebase.storage().ref("/testing/abc").listAll();
+              return {
+                prefixes: list.prefixes.map((prefix) => prefix.name),
+                items: list.items.map((item) => item.name),
+              };
+            });
+
+            expect(listResult).to.deep.equal({
+              prefixes: [],
+              items: [],
+            });
+          });
+
+          it("folder placeholder should be listed as a prefix but not an item under parent", async () => {
+            const listResult = await page.evaluate(async () => {
+              const list = await firebase.storage().ref("/testing").listAll();
+              return {
+                prefixes: list.prefixes.map((prefix) => prefix.name),
+                items: list.items.map((item) => item.name),
+              };
+            });
+
+            expect(listResult).to.deep.equal({
+              prefixes: ["abc", "somePathEndsWithDoubleSlash", "storage_ref"],
+              items: [],
+            });
+          });
+        });
+
+        context("with invalid prefixes and items", () => {
+          beforeEach(async function (this) {
+            this.timeout(TEST_SETUP_TIMEOUT);
+
+            const refs = ["list//foo", "list/bar//", "list/baz//qux"];
+            for (const ref of refs) {
+              // Use REST API to create the folder placeholders since SDK won't
+              // allow refs with trailing slashes.
+              await fetch(
+                `${STORAGE_EMULATOR_HOST}/upload/storage/v1/b/${storageBucket}/o?name=${encodeURIComponent(
+                  ref
+                )}`,
+                {
+                  headers: {
+                    "Content-Type": "multipart/related; boundary=boundary",
+                  },
+                  method: "POST",
+                  body: Buffer.from(EMPTY_FOLDER_DATA, "utf8"),
+                }
+              );
+            }
+          });
+
+          it("list result should not include show invalid prefixes and items", async () => {
+            const listResult = await page.evaluate(async () => {
+              const list = await firebase.storage().ref("/list").listAll();
+              return {
+                prefixes: list.prefixes.map((prefix) => prefix.name),
+                items: list.items.map((item) => item.name),
+              };
+            });
+
+            expect(listResult).to.deep.equal({
+              prefixes: ["bar", "baz"], // only implicit prefixes, (no bar//)
+              items: [], // no valid items
+            });
           });
         });
       });
@@ -1907,6 +2201,17 @@ describe("Storage emulator", () => {
         });
       });
 
+      it("should return an error message when uploading a file with invalid metadata", async () => {
+        const fileName = "test_upload.jpg";
+        const errorMessage = await supertest(STORAGE_EMULATOR_HOST)
+          .post(`/v0/b/${storageBucket}/o/${fileName}?name=${fileName}`)
+          .set({ "x-goog-upload-protocol": "multipart", "content-type": "foo" })
+          .expect(400)
+          .then((res) => res.body.error.message);
+
+        expect(errorMessage).to.equal("Invalid Content-Type: foo");
+      });
+
       it("should accept subsequent resumable upload commands without an auth header", async () => {
         const uploadURL = await supertest(STORAGE_EMULATOR_HOST)
           .post(
@@ -1929,14 +2234,17 @@ describe("Storage emulator", () => {
           })
           .expect(200);
 
-        await supertest(STORAGE_EMULATOR_HOST)
+        const uploadStatus = await supertest(STORAGE_EMULATOR_HOST)
           .put(uploadURL.pathname + uploadURL.search)
           .set({
             // No Authorization required in finalize
             "X-Goog-Upload-Protocol": "resumable",
             "X-Goog-Upload-Command": "upload, finalize",
           })
-          .expect(200);
+          .expect(200)
+          .then((res) => res.header["x-goog-upload-status"]);
+
+        expect(uploadStatus).to.equal("final");
 
         await supertest(STORAGE_EMULATOR_HOST)
           .get(`/v0/b/${storageBucket}/o/test_upload.jpg`)

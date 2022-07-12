@@ -1,12 +1,13 @@
-import * as _ from "lodash";
 import { expect } from "chai";
 import * as sinon from "sinon";
 
 import { FirebaseError } from "../../error";
 import * as displayExtensionInfo from "../../extensions/displayExtensionInfo";
 import * as prompt from "../../prompt";
+import { ExtensionSpec, Resource } from "../../extensions/types";
+import { cloneDeep } from "../../utils";
 
-const SPEC = {
+const SPEC: ExtensionSpec = {
   name: "test",
   displayName: "Old",
   description: "descriptive",
@@ -22,7 +23,7 @@ const SPEC = {
   ],
   resources: [
     { name: "resource1", type: "firebaseextensions.v1beta.function", description: "desc" },
-    { name: "resource2", type: "other", description: "" },
+    { name: "resource2", type: "other", description: "" } as unknown as Resource,
   ],
   author: { authorName: "Tester", url: "firebase.google.com" },
   contributors: [{ authorName: "Tester 2" }],
@@ -57,7 +58,7 @@ describe("displayExtensionInfo", () => {
   });
   describe("displayUpdateChangesNoInput", () => {
     it("should display changes to display name", () => {
-      const newSpec = _.cloneDeep(SPEC);
+      const newSpec = cloneDeep(SPEC);
       newSpec.displayName = "new";
 
       const loggedLines = displayExtensionInfo.displayUpdateChangesNoInput(SPEC, newSpec);
@@ -67,7 +68,7 @@ describe("displayExtensionInfo", () => {
     });
 
     it("should display changes to description", () => {
-      const newSpec = _.cloneDeep(SPEC);
+      const newSpec = cloneDeep(SPEC);
       newSpec.description = "even better";
 
       const loggedLines = displayExtensionInfo.displayUpdateChangesNoInput(SPEC, newSpec);
@@ -82,7 +83,7 @@ describe("displayExtensionInfo", () => {
     });
 
     it("should notify the user if billing is no longer required", () => {
-      const newSpec = _.cloneDeep(SPEC);
+      const newSpec = cloneDeep(SPEC);
       newSpec.billingRequired = false;
 
       const loggedLines = displayExtensionInfo.displayUpdateChangesNoInput(SPEC, newSpec);
@@ -102,32 +103,32 @@ describe("displayExtensionInfo", () => {
       promptStub.restore();
     });
 
-    it("should prompt for changes to license and continue if user gives consent", () => {
+    it("should prompt for changes to license and continue if user gives consent", async () => {
       promptStub.resolves(true);
-      const newSpec = _.cloneDeep(SPEC);
+      const newSpec = cloneDeep(SPEC);
       newSpec.license = "To Kill";
 
-      expect(
+      await expect(
         displayExtensionInfo.displayUpdateChangesRequiringConfirmation({
           spec: SPEC,
           newSpec,
           nonInteractive: false,
           force: false,
         })
-      ).not.to.be.rejected;
+      ).to.eventually.not.be.rejected;
 
       expect(promptStub.callCount).to.equal(1);
     });
 
-    it("should prompt for changes to apis and continue if user gives consent", () => {
+    it("should prompt for changes to apis and continue if user gives consent", async () => {
       promptStub.resolves(true);
-      const newSpec = _.cloneDeep(SPEC);
+      const newSpec = cloneDeep(SPEC);
       newSpec.apis = [
         { apiName: "api2", reason: "" },
         { apiName: "api3", reason: "" },
       ];
 
-      expect(
+      await expect(
         displayExtensionInfo.displayUpdateChangesRequiringConfirmation({
           spec: SPEC,
           newSpec,
@@ -139,15 +140,15 @@ describe("displayExtensionInfo", () => {
       expect(promptStub.callCount).to.equal(1);
     });
 
-    it("should prompt for changes to roles and continue if user gives consent", () => {
+    it("should prompt for changes to roles and continue if user gives consent", async () => {
       promptStub.resolves(true);
-      const newSpec = _.cloneDeep(SPEC);
+      const newSpec = cloneDeep(SPEC);
       newSpec.roles = [
         { role: "role2", reason: "" },
         { role: "role3", reason: "" },
       ];
 
-      expect(
+      await expect(
         displayExtensionInfo.displayUpdateChangesRequiringConfirmation({
           spec: SPEC,
           newSpec,
@@ -159,15 +160,15 @@ describe("displayExtensionInfo", () => {
       expect(promptStub.callCount).to.equal(1);
     });
 
-    it("should prompt for changes to resources and continue if user gives consent", () => {
+    it("should prompt for changes to resources and continue if user gives consent", async () => {
       promptStub.resolves(true);
-      const newSpec = _.cloneDeep(SPEC);
+      const newSpec = cloneDeep(SPEC);
       newSpec.resources = [
         { name: "resource3", type: "firebaseextensions.v1beta.function", description: "new desc" },
-        { name: "resource2", type: "other", description: "" },
+        { name: "resource2", type: "other", description: "" } as unknown as Resource,
       ];
 
-      expect(
+      await expect(
         displayExtensionInfo.displayUpdateChangesRequiringConfirmation({
           spec: SPEC,
           newSpec,
@@ -179,12 +180,12 @@ describe("displayExtensionInfo", () => {
       expect(promptStub.callCount).to.equal(1);
     });
 
-    it("should prompt for changes to resources and continue if user gives consent", () => {
+    it("should prompt for changes to resources and continue if user gives consent", async () => {
       promptStub.resolves(true);
-      const oldSpec = _.cloneDeep(SPEC);
+      const oldSpec = cloneDeep(SPEC);
       oldSpec.billingRequired = false;
 
-      expect(
+      await expect(
         displayExtensionInfo.displayUpdateChangesRequiringConfirmation({
           spec: oldSpec,
           newSpec: SPEC,
@@ -196,17 +197,17 @@ describe("displayExtensionInfo", () => {
       expect(promptStub.callCount).to.equal(1);
     });
 
-    it("should exit if the user consents to one change but rejects another", () => {
+    it("should exit if the user consents to one change but rejects another", async () => {
       promptStub.resolves(true);
       promptStub.resolves(false);
-      const newSpec = _.cloneDeep(SPEC);
+      const newSpec = cloneDeep(SPEC);
       newSpec.license = "New";
       newSpec.roles = [
         { role: "role2", reason: "" },
         { role: "role3", reason: "" },
       ];
 
-      expect(
+      await expect(
         displayExtensionInfo.displayUpdateChangesRequiringConfirmation({
           spec: SPEC,
           newSpec,
@@ -221,12 +222,12 @@ describe("displayExtensionInfo", () => {
       expect(promptStub.callCount).to.equal(1);
     });
 
-    it("should error if the user doesn't give consent", () => {
+    it("should error if the user doesn't give consent", async () => {
       promptStub.resolves(false);
-      const newSpec = _.cloneDeep(SPEC);
+      const newSpec = cloneDeep(SPEC);
       newSpec.license = "new";
 
-      expect(
+      await expect(
         displayExtensionInfo.displayUpdateChangesRequiringConfirmation({
           spec: SPEC,
           newSpec,
@@ -241,7 +242,7 @@ describe("displayExtensionInfo", () => {
 
     it("shouldn't prompt the user if no changes require confirmation", async () => {
       promptStub.resolves(false);
-      const newSpec = _.cloneDeep(SPEC);
+      const newSpec = cloneDeep(SPEC);
       newSpec.version = "1.1.0";
 
       await displayExtensionInfo.displayUpdateChangesRequiringConfirmation({

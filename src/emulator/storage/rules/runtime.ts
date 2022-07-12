@@ -173,7 +173,7 @@ export class StorageRulesRuntime {
     });
 
     this._childprocess.stdout?.on("data", (buf: Buffer) => {
-      const serializedRuntimeActionResponse = buf.toString("UTF8").trim();
+      const serializedRuntimeActionResponse = buf.toString("utf-8").trim();
       if (serializedRuntimeActionResponse !== "") {
         let rap;
         try {
@@ -208,7 +208,7 @@ export class StorageRulesRuntime {
     this._childprocess?.kill("SIGINT");
   }
 
-  private async _sendRequest<T>(rab: RuntimeActionBundle) {
+  private async _sendRequest(rab: RuntimeActionBundle) {
     if (!this._childprocess) {
       throw new FirebaseError(
         "Attempted to send Cloud Storage rules request before child was ready"

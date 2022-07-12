@@ -59,6 +59,7 @@ export type HostingHeaders = HostingSource & {
 
 type HostingBase = {
   public?: string;
+  source?: string;
   ignore?: string[];
   appAssociation?: string;
   cleanUrls?: boolean;
@@ -106,6 +107,7 @@ export type FunctionConfig = {
   source?: string;
   ignore?: string[];
   runtime?: CloudFunctionRuntimes;
+  codebase?: string;
 } & Deployable;
 
 export type FunctionsConfig = FunctionConfig | FunctionConfig[];

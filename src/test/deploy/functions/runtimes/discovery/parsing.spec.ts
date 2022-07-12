@@ -46,18 +46,43 @@ describe("assertKeyTypes", () => {
     object: {},
   };
   for (const type of tests) {
-    const schema = { [type]: type as parsing.KeyType };
     for (const [testType, val] of Object.entries(values)) {
+      const schema = { [type]: type as parsing.KeyType<typeof val> };
       it(`handles a ${testType} when expecting a ${type}`, () => {
         const obj = { [type]: val };
         if (type === testType) {
-          expect(() => parsing.assertKeyTypes("", obj, schema)).not.to.throw;
+          expect(() => parsing.assertKeyTypes("", obj, schema)).not.to.throw();
         } else {
           expect(() => parsing.assertKeyTypes("", obj, schema)).to.throw(FirebaseError);
         }
       });
     }
   }
+
+  it("handles validator functions", () => {
+    interface hasCPU {
+      cpu: number | "gcf_gen1";
+    }
+
+    const literalCPU: hasCPU = {
+      cpu: 1,
+    };
+
+    const symbolicCPU: hasCPU = {
+      cpu: "gcf_gen1",
+    };
+
+    const badCPU: hasCPU = {
+      cpu: "bad" as any,
+    };
+
+    const schema = {
+      cpu: (val: hasCPU["cpu"]) => typeof val === "number" || val === "gcf_gen1",
+    };
+    expect(() => parsing.assertKeyTypes("", literalCPU, schema)).to.not.throw();
+    expect(() => parsing.assertKeyTypes("", symbolicCPU, schema)).to.not.throw();
+    expect(() => parsing.assertKeyTypes("", badCPU, schema)).to.throw();
+  });
 
   it("Throws on superfluous keys", () => {
     const obj = { foo: "bar", number: 1 } as any;

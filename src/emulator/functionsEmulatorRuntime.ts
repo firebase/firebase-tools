@@ -19,7 +19,7 @@ import {
   HttpConstants,
   SignatureType,
 } from "./functionsEmulatorShared";
-import { compareVersionStrings } from "./functionsEmulatorUtils";
+import { compareVersionStrings, isLocalHost } from "./functionsEmulatorUtils";
 
 let functionModule: any;
 let FUNCTION_TARGET_NAME: string;
@@ -210,7 +210,7 @@ async function resolveDeveloperNodeModule(
   frb: FunctionsRuntimeBundle,
   name: string
 ): Promise<ModuleResolution> {
-  const pkg = requirePackageJson(frb);
+  const pkg = requirePackageJson();
   if (!pkg) {
     new EmulatorLog("SYSTEM", "missing-package-json", "").log();
     throw new Error("Could not find package.json");
@@ -294,7 +294,7 @@ async function verifyDeveloperNodeModules(frb: FunctionsRuntimeBundle): Promise<
 /**
  * Get the developer's package.json file.
  */
-function requirePackageJson(frb: FunctionsRuntimeBundle): PackageJSON | undefined {
+function requirePackageJson(): PackageJSON | undefined {
   if (developerPkgJSON) {
     return developerPkgJSON;
   }
@@ -324,7 +324,7 @@ function requirePackageJson(frb: FunctionsRuntimeBundle): PackageJSON | undefine
  *
  * So yeah, we'll try our best and hopefully we can catch 90% of requests.
  */
-function initializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
+function initializeNetworkFiltering(): void {
   const networkingModules = [
     { name: "http", module: require("http"), path: ["request"] },
     { name: "http", module: require("http"), path: ["get"] },
@@ -365,7 +365,7 @@ function initializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
         .filter((v) => v);
       const href = (hrefs.length && hrefs[0]) || "";
 
-      if (href && !history[href] && !href.startsWith("http://localhost")) {
+      if (href && !history[href] && !isLocalHost(href)) {
         history[href] = true;
         if (href.indexOf("googleapis.com") !== -1) {
           new EmulatorLog("SYSTEM", "googleapis-network-access", "", {
@@ -523,7 +523,7 @@ function getDefaultConfig(): any {
   return JSON.parse(process.env.FIREBASE_CONFIG || "{}");
 }
 
-function initializeRuntimeConfig(frb: FunctionsRuntimeBundle) {
+function initializeRuntimeConfig() {
   // Most recent version of Firebase Functions SDK automatically picks up locally
   // stored .runtimeconfig.json to populate the config entries.
   // However, due to a bug in some older version of the Function SDK, this process may fail.
@@ -752,7 +752,7 @@ async function initializeFunctionsConfigHelper(frb: FunctionsRuntimeBundle): Pro
 
   const functionsModuleProxy = new Proxied<typeof localFunctionsModule>(localFunctionsModule);
   const proxiedFunctionsModule = functionsModuleProxy
-    .when("config", (target) => () => {
+    .when("config", () => () => {
       return proxiedConfig;
     })
     .finalize();
@@ -779,18 +779,9 @@ function rawBodySaver(req: express.Request, res: express.Response, buf: Buffer):
   (req as any).rawBody = buf;
 }
 
-async function processHTTPS(
-  trigger: CloudFunction<any>,
-  frb: FunctionsRuntimeBundle
-): Promise<void> {
+async function processHTTPS(trigger: CloudFunction<any>): Promise<void> {
   const ephemeralServer = express();
   const functionRouter = express.Router(); // eslint-disable-line new-cap
-  const socketPath = frb.socketPath;
-
-  if (!socketPath) {
-    new EmulatorLog("FATAL", "runtime-error", "Called processHTTPS with no socketPath").log();
-    return;
-  }
 
   await new Promise<void>((resolveEphemeralServer, rejectEphemeralServer) => {
     const handler = async (req: express.Request, res: express.Response) => {
@@ -844,8 +835,9 @@ async function processHTTPS(
 
     ephemeralServer.use([`/`, `/*`], functionRouter);
 
-    logDebug(`Attempting to listen to socketPath: ${socketPath}`);
-    const instance = ephemeralServer.listen(socketPath, () => {
+    logDebug(`Attempting to listen to port: ${process.env.PORT}`);
+    const instance = ephemeralServer.listen(process.env.PORT, () => {
+      logDebug(`Listening to port: ${process.env.PORT}`);
       new EmulatorLog("SYSTEM", "runtime-status", "ready", { state: "ready" }).log();
     });
 
@@ -999,7 +991,7 @@ async function invokeTrigger(
       await processBackground(trigger, frb, FUNCTION_SIGNATURE);
       break;
     case "http":
-      await processHTTPS(trigger, frb);
+      await processHTTPS(trigger);
       break;
   }
 
@@ -1055,8 +1047,8 @@ async function initializeRuntime(
     return;
   }
 
-  initializeRuntimeConfig(frb);
-  initializeNetworkFiltering(frb);
+  initializeRuntimeConfig();
+  initializeNetworkFiltering();
   await initializeFunctionsConfigHelper(frb);
   await initializeFirebaseFunctionsStubs(frb);
   await initializeFirebaseAdminStubs(frb);

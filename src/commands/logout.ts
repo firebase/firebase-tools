@@ -6,7 +6,7 @@ import * as utils from "../utils";
 import * as auth from "../auth";
 import { promptOnce } from "../prompt";
 
-module.exports = new Command("logout [email]")
+export const command = new Command("logout [email]")
   .description("log the CLI out of Firebase")
   .action(async (email: string | undefined, options: any) => {
     const globalToken = utils.getInheritedOption(options, "token");

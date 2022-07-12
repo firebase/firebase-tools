@@ -1,4 +1,3 @@
-import * as _ from "lodash";
 import * as clc from "cli-color";
 import * as open from "open";
 
@@ -49,17 +48,17 @@ const LINKS: Link[] = [
   { name: "Test Lab", arg: "testlab", consolePath: "/testlab/histories/" },
 ];
 
-const CHOICES = _.map(LINKS, "name");
+const CHOICES = LINKS.map((l) => l.name);
 
-export default new Command("open [link]")
+export const command = new Command("open [link]")
   .description("quickly open a browser to relevant project resources")
   .before(requirePermissions)
   .before(requireDatabaseInstance)
   .action(async (linkName: string, options: any): Promise<void> => {
-    let link = _.find(LINKS, { arg: linkName });
+    let link = LINKS.find((l) => l.arg === linkName);
     if (linkName && !link) {
       throw new FirebaseError(
-        "Unrecognized link name. Valid links are:\n\n" + _.map(LINKS, "arg").join("\n")
+        "Unrecognized link name. Valid links are:\n\n" + LINKS.map((l) => l.arg).join("\n")
       );
     }
 
@@ -69,11 +68,11 @@ export default new Command("open [link]")
         message: "What link would you like to open?",
         choices: CHOICES,
       });
-      link = _.find(LINKS, { name });
+      link = LINKS.find((l) => l.name === name);
     }
     if (!link) {
       throw new FirebaseError(
-        "Unrecognized link name. Valid links are:\n\n" + _.map(LINKS, "arg").join("\n")
+        "Unrecognized link name. Valid links are:\n\n" + LINKS.map((l) => l.arg).join("\n")
       );
     }
 

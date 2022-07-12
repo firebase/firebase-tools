@@ -1,9 +1,8 @@
-import * as _ from "lodash";
 import * as path from "path";
 import * as clc from "cli-color";
 
 import { FirebaseError } from "../../../../error";
-import * as track from "../../../../track";
+import { track } from "../../../../track";
 import * as runtimes from "../../runtimes";
 
 // have to require this because no @types/cjson available

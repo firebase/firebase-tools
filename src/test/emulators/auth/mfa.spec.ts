@@ -1,20 +1,28 @@
 import { expect } from "chai";
+import * as nock from "nock";
 import { describeAuthEmulator, PROJECT_ID } from "./setup";
 import { decode as decodeJwt, JwtHeader } from "jsonwebtoken";
 import {
+  BEFORE_SIGN_IN_PATH,
+  BEFORE_SIGN_IN_URL,
+  BLOCKING_FUNCTION_HOST,
+  DISPLAY_NAME,
   enrollPhoneMfa,
   expectStatusCode,
   getAccountInfoByIdToken,
   getAccountInfoByLocalId,
   inspectVerificationCodes,
+  PHOTO_URL,
   registerTenant,
   registerUser,
   signInWithEmailLink,
+  signInWithPassword,
   signInWithPhoneNumber,
   TEST_PHONE_NUMBER,
   TEST_PHONE_NUMBER_2,
   TEST_PHONE_NUMBER_OBFUSCATED,
   updateAccountByLocalId,
+  updateConfig,
 } from "./helpers";
 import { MfaEnrollment } from "../../../emulator/auth/types";
 import { FirebaseJwtPayload } from "../../../emulator/auth/operations";
@@ -461,5 +469,187 @@ describeAuthEmulator("mfa enrollment", ({ authApi, getClock }) => {
         expectStatusCode(400, res);
         expect(res.body.error).to.have.property("message").equals("PROJECT_DISABLED");
       });
+  });
+
+  describe("when blocking functions are present", () => {
+    afterEach(async () => {
+      await updateConfig(
+        authApi(),
+        PROJECT_ID,
+        {
+          blockingFunctions: {},
+        },
+        "blockingFunctions"
+      );
+      expect(nock.isDone()).to.be.true;
+      nock.cleanAll();
+    });
+
+    it("mfaSignIn:finalize should update modifiable fields before sign in", async () => {
+      const email = "foo@example.com";
+      const password = "abcdef";
+      const { idToken, localId } = await registerUser(authApi(), { email, password });
+      await updateAccountByLocalId(authApi(), localId, { emailVerified: true });
+      await enrollPhoneMfa(authApi(), idToken, TEST_PHONE_NUMBER);
+
+      getClock().tick(3333);
+
+      const { mfaPendingCredential, mfaEnrollmentId } = await signInWithPassword(
+        authApi(),
+        email,
+        password,
+        true
+      );
+
+      getClock().tick(4444);
+
+      const sessionInfo = await authApi()
+        .post("/identitytoolkit.googleapis.com/v2/accounts/mfaSignIn:start")
+        .query({ key: "fake-api-key" })
+        .send({
+          mfaEnrollmentId,
+          mfaPendingCredential,
+        })
+        .then((res) => {
+          expectStatusCode(200, res);
+          expect(res.body.phoneResponseInfo.sessionInfo).to.be.a("string");
+          return res.body.phoneResponseInfo.sessionInfo as string;
+        });
+
+      const code = (await inspectVerificationCodes(authApi()))[0].code;
+
+      await updateConfig(
+        authApi(),
+        PROJECT_ID,
+        {
+          blockingFunctions: {
+            triggers: {
+              beforeSignIn: {
+                functionUri: BEFORE_SIGN_IN_URL,
+              },
+            },
+          },
+        },
+        "blockingFunctions"
+      );
+      nock(BLOCKING_FUNCTION_HOST)
+        .post(BEFORE_SIGN_IN_PATH)
+        .reply(200, {
+          userRecord: {
+            updateMask: "displayName,photoUrl,emailVerified,customClaims,sessionClaims",
+            displayName: DISPLAY_NAME,
+            photoUrl: PHOTO_URL,
+            emailVerified: true,
+            customClaims: JSON.stringify({ customAttribute: "custom" }),
+            sessionClaims: JSON.stringify({ sessionAttribute: "session" }),
+          },
+        });
+
+      getClock().tick(5555);
+
+      await authApi()
+        .post("/identitytoolkit.googleapis.com/v2/accounts/mfaSignIn:finalize")
+        .query({ key: "fake-api-key" })
+        .send({
+          mfaPendingCredential,
+          phoneVerificationInfo: {
+            sessionInfo,
+            code: code,
+          },
+        })
+        .then((res) => {
+          expectStatusCode(200, res);
+          expect(res.body.idToken).to.be.a("string");
+          expect(res.body.refreshToken).to.be.a("string");
+
+          const decoded = decodeJwt(res.body.idToken, { complete: true }) as {
+            header: JwtHeader;
+            payload: FirebaseJwtPayload;
+          } | null;
+          expect(decoded, "JWT returned by emulator is invalid").not.to.be.null;
+          expect(decoded!.payload.firebase.sign_in_second_factor).to.equal("phone");
+          expect(decoded!.payload.firebase.second_factor_identifier).to.equal(mfaEnrollmentId);
+
+          expect(decoded!.payload.name).to.equal(DISPLAY_NAME);
+          expect(decoded!.payload.picture).to.equal(PHOTO_URL);
+          expect(decoded!.payload.email_verified).to.be.true;
+          expect(decoded!.payload).to.have.property("customAttribute").equals("custom");
+          expect(decoded!.payload).to.have.property("sessionAttribute").equals("session");
+        });
+    });
+
+    it("mfaSignIn:finalize should disable user if set", async () => {
+      const email = "foo@example.com";
+      const password = "abcdef";
+      const { idToken, localId } = await registerUser(authApi(), { email, password });
+      await updateAccountByLocalId(authApi(), localId, { emailVerified: true });
+      await enrollPhoneMfa(authApi(), idToken, TEST_PHONE_NUMBER);
+
+      getClock().tick(3333);
+
+      const { mfaPendingCredential, mfaEnrollmentId } = await signInWithPassword(
+        authApi(),
+        email,
+        password,
+        true
+      );
+
+      getClock().tick(4444);
+
+      const sessionInfo = await authApi()
+        .post("/identitytoolkit.googleapis.com/v2/accounts/mfaSignIn:start")
+        .query({ key: "fake-api-key" })
+        .send({
+          mfaEnrollmentId,
+          mfaPendingCredential,
+        })
+        .then((res) => {
+          expectStatusCode(200, res);
+          expect(res.body.phoneResponseInfo.sessionInfo).to.be.a("string");
+          return res.body.phoneResponseInfo.sessionInfo as string;
+        });
+
+      const code = (await inspectVerificationCodes(authApi()))[0].code;
+
+      await updateConfig(
+        authApi(),
+        PROJECT_ID,
+        {
+          blockingFunctions: {
+            triggers: {
+              beforeSignIn: {
+                functionUri: BEFORE_SIGN_IN_URL,
+              },
+            },
+          },
+        },
+        "blockingFunctions"
+      );
+      nock(BLOCKING_FUNCTION_HOST)
+        .post(BEFORE_SIGN_IN_PATH)
+        .reply(200, {
+          userRecord: {
+            updateMask: "disabled",
+            disabled: true,
+          },
+        });
+
+      getClock().tick(5555);
+
+      await authApi()
+        .post("/identitytoolkit.googleapis.com/v2/accounts/mfaSignIn:finalize")
+        .query({ key: "fake-api-key" })
+        .send({
+          mfaPendingCredential,
+          phoneVerificationInfo: {
+            sessionInfo,
+            code: code,
+          },
+        })
+        .then((res) => {
+          expectStatusCode(400, res);
+          expect(res.body.error).to.have.property("message").equals("USER_DISABLED");
+        });
+    });
   });
 });

@@ -1,3 +1,3 @@
-- Fixes bug where resumable uploads were not setting custom metadata on upload (#3398).
-- Fixes bug where GCS metadataUpdate cloud functions were triggered in incorrect situations (#3398).
-- Fixes bug where quoted escape sequences in .env files were incompletely unescaped. (#4270)
+- Adds a check for out of band changes before deploying extensions.
+- Fixes issue where `firestore:*` did not work with `--only` in `deploy`. (#4698)
+- Removes DNS flag passed to Emulator UI. (#4566)

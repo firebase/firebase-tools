@@ -4,9 +4,14 @@ import * as secretUtils from "../../extensions/secretsUtils";
 import * as secretManager from "../../gcp/secretManager";
 
 import { Payload } from "./args";
-import { getExtensionVersion, InstanceSpec } from "./planner";
+import {
+  getExtensionVersion,
+  DeploymentInstanceSpec,
+  InstanceSpec,
+  getExtensionSpec,
+} from "./planner";
 import { promptCreateSecret } from "../../extensions/askUserForParam";
-import { ExtensionSpec, Param, ParamType } from "../../extensions/extensionsApi";
+import { ExtensionSpec, Param, ParamType } from "../../extensions/types";
 import { FirebaseError } from "../../error";
 import { logger } from "../../logger";
 import { logLabeledBullet } from "../../utils";
@@ -21,7 +26,7 @@ import { logLabeledBullet } from "../../utils";
  */
 export async function handleSecretParams(
   payload: Payload,
-  have: InstanceSpec[],
+  have: DeploymentInstanceSpec[],
   nonInteractive: boolean
 ) {
   for (const i of payload.instancesToCreate ?? []) {
@@ -41,15 +46,15 @@ export async function handleSecretParams(
 }
 
 export async function checkSpecForSecrets(i: InstanceSpec): Promise<boolean> {
-  const extensionVersion = await getExtensionVersion(i);
-  return secretUtils.usesSecrets(extensionVersion.spec);
+  const extensionSpec = await getExtensionSpec(i);
+  return secretUtils.usesSecrets(extensionSpec);
 }
 
 const secretsInSpec = (spec: ExtensionSpec): Param[] => {
   return spec.params.filter((p) => p.type === ParamType.SECRET);
 };
 
-async function handleSecretsCreateInstance(i: InstanceSpec, nonInteractive: boolean) {
+async function handleSecretsCreateInstance(i: DeploymentInstanceSpec, nonInteractive: boolean) {
   const extensionVersion = await getExtensionVersion(i);
   const secretParams = secretsInSpec(extensionVersion.spec);
   for (const s of secretParams) {
@@ -58,8 +63,8 @@ async function handleSecretsCreateInstance(i: InstanceSpec, nonInteractive: bool
 }
 
 async function handleSecretsUpdateInstance(
-  i: InstanceSpec,
-  prevSpec: InstanceSpec,
+  i: DeploymentInstanceSpec,
+  prevSpec: DeploymentInstanceSpec,
   nonInteractive: boolean
 ) {
   const extensionVersion = await getExtensionVersion(i);
@@ -79,7 +84,7 @@ async function handleSecretsUpdateInstance(
 
 async function handleSecretParamForCreate(
   secretParam: Param,
-  i: InstanceSpec,
+  i: DeploymentInstanceSpec,
   nonInteractive: boolean
 ): Promise<void> {
   const providedValue = i.params[secretParam.param];
@@ -141,7 +146,7 @@ async function handleSecretParamForCreate(
 
 async function handleSecretParamForUpdate(
   secretParam: Param,
-  i: InstanceSpec,
+  i: DeploymentInstanceSpec,
   prevValue: string,
   nonInteractive: boolean
 ): Promise<void> {

@@ -169,11 +169,12 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
     }
     return res.status(200).json({
       nextPageToken: listResponse.nextPageToken,
-      prefixes: listResponse.prefixes ?? [],
-      items:
-        listResponse.items?.map((item) => {
+      prefixes: (listResponse.prefixes ?? []).filter(isValidPrefix),
+      items: (listResponse.items ?? [])
+        .filter((item) => isValidNonEncodedPathString(item.name))
+        .map((item) => {
           return { name: item.name, bucket: item.bucket };
-        }) ?? [],
+        }),
     });
   });
 
@@ -205,7 +206,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
           return res.status(400).json({
             error: {
               code: 400,
-              message: err.toString(),
+              message: err.message,
             },
           });
         }
@@ -255,12 +256,14 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       res.header("x-goog-upload-chunk-granularity", "10000");
       res.header("x-goog-upload-control-url", "");
       res.header("x-goog-upload-status", "active");
-      const emulatorInfo = EmulatorRegistry.getInfo(Emulators.STORAGE);
-      res.header(
-        "x-goog-upload-url",
-        `http://${req.hostname}:${emulatorInfo?.port}/v0/b/${bucketId}/o?name=${objectId}&upload_id=${upload.id}&upload_protocol=resumable`
-      );
       res.header("x-gupload-uploadid", upload.id);
+
+      const uploadUrl = EmulatorRegistry.url(Emulators.STORAGE, req);
+      uploadUrl.pathname = `/v0/b/${bucketId}/o`;
+      uploadUrl.searchParams.set("name", objectId);
+      uploadUrl.searchParams.set("upload_id", upload.id);
+      uploadUrl.searchParams.set("upload_protocol", "resumable");
+      res.header("x-goog-upload-url", uploadUrl.toString());
 
       return res.sendStatus(200);
     }
@@ -346,6 +349,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         throw err;
       }
 
+      res.header("x-goog-upload-status", "final");
       storedMetadata.addDownloadToken(/* shouldTrigger = */ false);
       return res.status(200).json(new OutgoingFirebaseMetadata(storedMetadata));
     }
@@ -513,4 +517,29 @@ function setObjectHeaders(
   if (metadata.contentLanguage) {
     res.setHeader("Content-Language", metadata.contentLanguage);
   }
+}
+
+function isValidPrefix(prefix: string): boolean {
+  // See go/firebase-storage-backend-valid-path
+  return isValidNonEncodedPathString(removeAtMostOneTrailingSlash(prefix));
+}
+
+function isValidNonEncodedPathString(path: string): boolean {
+  // See go/firebase-storage-backend-valid-path
+  if (path.startsWith("/")) {
+    path = path.substring(1);
+  }
+  if (!path) {
+    return false;
+  }
+  for (const pathSegment of path.split("/")) {
+    if (!pathSegment) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function removeAtMostOneTrailingSlash(path: string): string {
+  return path.replace(/\/$/, "");
 }

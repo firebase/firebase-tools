@@ -4,7 +4,9 @@ import * as nock from "nock";
 import { functionsOrigin } from "../../api";
 
 import * as backend from "../../deploy/functions/backend";
+import { BEFORE_CREATE_EVENT, BEFORE_SIGN_IN_EVENT } from "../../functions/events/v1";
 import * as cloudfunctions from "../../gcp/cloudfunctions";
+import * as projectConfig from "../../functions/projectConfig";
 
 describe("cloudfunctions", () => {
   const FUNCTION_NAME: backend.TargetIds = {
@@ -19,12 +21,14 @@ describe("cloudfunctions", () => {
     ...FUNCTION_NAME,
     entryPoint: "function",
     runtime: "nodejs16",
+    codebase: projectConfig.DEFAULT_CODEBASE,
   };
 
   const CLOUD_FUNCTION: Omit<cloudfunctions.CloudFunction, cloudfunctions.OutputOnlyFields> = {
     name: "projects/project/locations/region/functions/id",
     entryPoint: "function",
     runtime: "nodejs16",
+    dockerRegistry: "ARTIFACT_REGISTRY",
   };
 
   const HAVE_CLOUD_FUNCTION: cloudfunctions.CloudFunction = {
@@ -52,7 +56,7 @@ describe("cloudfunctions", () => {
           { ...ENDPOINT, platform: "gcfv2", httpsTrigger: {} },
           UPLOAD_URL
         );
-      }).to.throw;
+      }).to.throw();
     });
 
     it("should copy a minimal function", () => {
@@ -68,12 +72,7 @@ describe("cloudfunctions", () => {
         ...ENDPOINT,
         eventTrigger: {
           eventType: "google.pubsub.topic.publish",
-          eventFilters: [
-            {
-              attribute: "resource",
-              value: "projects/p/topics/t",
-            },
-          ],
+          eventFilters: { resource: "projects/p/topics/t" },
           retry: false,
         },
       };
@@ -103,7 +102,6 @@ describe("cloudfunctions", () => {
           egressSettings: "ALL_TRAFFIC",
         },
         ingressSettings: "ALLOW_ALL",
-        timeout: "15s",
         serviceAccountEmail: "inlined@google.com",
         labels: {
           foo: "bar",
@@ -118,6 +116,7 @@ describe("cloudfunctions", () => {
         sourceUploadUrl: UPLOAD_URL,
         httpsTrigger: {},
         labels: {
+          ...CLOUD_FUNCTION.labels,
           foo: "bar",
         },
         environmentVariables: {
@@ -129,7 +128,6 @@ describe("cloudfunctions", () => {
         vpcConnectorEgressSettings: "ALL_TRAFFIC",
         ingressSettings: "ALLOW_ALL",
         availableMemoryMb: 128,
-        timeout: "15s",
         serviceAccountEmail: "inlined@google.com",
       };
 
@@ -142,6 +140,7 @@ describe("cloudfunctions", () => {
       const complexEndpoint: backend.Endpoint = {
         ...ENDPOINT,
         scheduleTrigger: {},
+        timeoutSeconds: 20,
       };
 
       const complexGcfFunction: Omit<
@@ -154,7 +153,9 @@ describe("cloudfunctions", () => {
           eventType: "google.pubsub.topic.publish",
           resource: `projects/project/topics/${backend.scheduleIdForFunction(FUNCTION_NAME)}`,
         },
+        timeout: "20s",
         labels: {
+          ...CLOUD_FUNCTION.labels,
           "deployment-scheduled": "true",
         },
       };
@@ -175,6 +176,7 @@ describe("cloudfunctions", () => {
           sourceUploadUrl: UPLOAD_URL,
           httpsTrigger: {},
           labels: {
+            ...CLOUD_FUNCTION.labels,
             "deployment-taskqueue": "true",
           },
         };
@@ -182,6 +184,70 @@ describe("cloudfunctions", () => {
       expect(cloudfunctions.functionFromEndpoint(taskEndpoint, UPLOAD_URL)).to.deep.equal(
         taskQueueFunction
       );
+    });
+
+    it("detects beforeCreate blocking functions", () => {
+      const blockingEndpoint: backend.Endpoint = {
+        ...ENDPOINT,
+        blockingTrigger: {
+          eventType: BEFORE_CREATE_EVENT,
+        },
+      };
+      const blockingFunction: Omit<cloudfunctions.CloudFunction, cloudfunctions.OutputOnlyFields> =
+        {
+          ...CLOUD_FUNCTION,
+          sourceUploadUrl: UPLOAD_URL,
+          httpsTrigger: {},
+          labels: {
+            ...CLOUD_FUNCTION.labels,
+            [cloudfunctions.BLOCKING_LABEL]: "before-create",
+          },
+        };
+
+      expect(cloudfunctions.functionFromEndpoint(blockingEndpoint, UPLOAD_URL)).to.deep.equal(
+        blockingFunction
+      );
+    });
+
+    it("detects beforeSignIn blocking functions", () => {
+      const blockingEndpoint: backend.Endpoint = {
+        ...ENDPOINT,
+        blockingTrigger: {
+          eventType: BEFORE_SIGN_IN_EVENT,
+        },
+      };
+      const blockingFunction: Omit<cloudfunctions.CloudFunction, cloudfunctions.OutputOnlyFields> =
+        {
+          ...CLOUD_FUNCTION,
+          sourceUploadUrl: UPLOAD_URL,
+          httpsTrigger: {},
+          labels: {
+            ...CLOUD_FUNCTION.labels,
+            [cloudfunctions.BLOCKING_LABEL]: "before-sign-in",
+          },
+        };
+
+      expect(cloudfunctions.functionFromEndpoint(blockingEndpoint, UPLOAD_URL)).to.deep.equal(
+        blockingFunction
+      );
+    });
+
+    it("should export codebase as label", () => {
+      expect(
+        cloudfunctions.functionFromEndpoint(
+          {
+            ...ENDPOINT,
+            codebase: "my-codebase",
+            httpsTrigger: {},
+          },
+          UPLOAD_URL
+        )
+      ).to.deep.equal({
+        ...CLOUD_FUNCTION,
+        sourceUploadUrl: UPLOAD_URL,
+        httpsTrigger: {},
+        labels: { ...CLOUD_FUNCTION.labels, [cloudfunctions.CODEBASE_LABEL]: "my-codebase" },
+      });
     });
   });
 
@@ -196,6 +262,14 @@ describe("cloudfunctions", () => {
     });
 
     it("should translate event triggers", () => {
+      let want: backend.Endpoint = {
+        ...ENDPOINT,
+        eventTrigger: {
+          eventType: "google.pubsub.topic.publish",
+          eventFilters: { resource: "projects/p/topics/t" },
+          retry: true,
+        },
+      };
       expect(
         cloudfunctions.endpointFromFunction({
           ...HAVE_CLOUD_FUNCTION,
@@ -207,21 +281,16 @@ describe("cloudfunctions", () => {
             },
           },
         })
-      ).to.deep.equal({
-        ...ENDPOINT,
-        eventTrigger: {
-          eventType: "google.pubsub.topic.publish",
-          eventFilters: [
-            {
-              attribute: "resource",
-              value: "projects/p/topics/t",
-            },
-          ],
-          retry: true,
-        },
-      });
+      ).to.deep.equal(want);
 
       // And again w/o the failure policy
+      want = {
+        ...want,
+        eventTrigger: {
+          ...want.eventTrigger,
+          retry: false,
+        },
+      };
       expect(
         cloudfunctions.endpointFromFunction({
           ...HAVE_CLOUD_FUNCTION,
@@ -230,19 +299,7 @@ describe("cloudfunctions", () => {
             resource: "projects/p/topics/t",
           },
         })
-      ).to.deep.equal({
-        ...ENDPOINT,
-        eventTrigger: {
-          eventType: "google.pubsub.topic.publish",
-          eventFilters: [
-            {
-              attribute: "resource",
-              value: "projects/p/topics/t",
-            },
-          ],
-          retry: false,
-        },
-      });
+      ).to.deep.equal(want);
     });
 
     it("should transalte scheduled triggers", () => {
@@ -287,8 +344,62 @@ describe("cloudfunctions", () => {
       });
     });
 
+    it("should translate beforeCreate blocking triggers", () => {
+      expect(
+        cloudfunctions.endpointFromFunction({
+          ...HAVE_CLOUD_FUNCTION,
+          httpsTrigger: {},
+          labels: {
+            "deployment-blocking": "before-create",
+          },
+        })
+      ).to.deep.equal({
+        ...ENDPOINT,
+        blockingTrigger: {
+          eventType: BEFORE_CREATE_EVENT,
+        },
+        labels: {
+          "deployment-blocking": "before-create",
+        },
+      });
+    });
+
+    it("should translate beforeSignIn blocking triggers", () => {
+      expect(
+        cloudfunctions.endpointFromFunction({
+          ...HAVE_CLOUD_FUNCTION,
+          httpsTrigger: {},
+          labels: {
+            "deployment-blocking": "before-sign-in",
+          },
+        })
+      ).to.deep.equal({
+        ...ENDPOINT,
+        blockingTrigger: {
+          eventType: BEFORE_SIGN_IN_EVENT,
+        },
+        labels: {
+          "deployment-blocking": "before-sign-in",
+        },
+      });
+    });
+
     it("should copy optional fields", () => {
-      const extraFields: Partial<backend.Endpoint> = {
+      const wantExtraFields: Partial<backend.Endpoint> = {
+        availableMemoryMb: 128,
+        minInstances: 1,
+        maxInstances: 42,
+        ingressSettings: "ALLOW_ALL",
+        serviceAccountEmail: "inlined@google.com",
+        timeoutSeconds: 15,
+        labels: {
+          foo: "bar",
+        },
+        environmentVariables: {
+          FOO: "bar",
+        },
+      };
+      const haveExtraFields: Partial<cloudfunctions.CloudFunction> = {
         availableMemoryMb: 128,
         minInstances: 1,
         maxInstances: 42,
@@ -308,19 +419,40 @@ describe("cloudfunctions", () => {
       expect(
         cloudfunctions.endpointFromFunction({
           ...HAVE_CLOUD_FUNCTION,
-          ...extraFields,
+          ...haveExtraFields,
           vpcConnector,
           vpcConnectorEgressSettings,
           httpsTrigger: {},
         } as cloudfunctions.CloudFunction)
       ).to.deep.equal({
         ...ENDPOINT,
-        ...extraFields,
+        ...wantExtraFields,
         vpc: {
           connector: vpcConnector,
           egressSettings: vpcConnectorEgressSettings,
         },
         httpsTrigger: {},
+      });
+    });
+
+    it("should derive codebase from labels", () => {
+      expect(
+        cloudfunctions.endpointFromFunction({
+          ...HAVE_CLOUD_FUNCTION,
+          httpsTrigger: {},
+          labels: {
+            ...CLOUD_FUNCTION.labels,
+            [cloudfunctions.CODEBASE_LABEL]: "my-codebase",
+          },
+        })
+      ).to.deep.equal({
+        ...ENDPOINT,
+        httpsTrigger: {},
+        labels: {
+          ...ENDPOINT.labels,
+          [cloudfunctions.CODEBASE_LABEL]: "my-codebase",
+        },
+        codebase: "my-codebase",
       });
     });
   });
