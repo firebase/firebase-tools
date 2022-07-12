@@ -10,4 +10,4 @@ for dir in triggers v1 v2; do
   )
 done
 
-npx mocha --exit scripts/triggers-end-to-end-tests/tests.ts
+npx mocha --exit scripts/triggers-end-to-end-tests/tests.ts --timeout 100000

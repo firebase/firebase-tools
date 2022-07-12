@@ -201,7 +201,6 @@ describe("function triggers", () => {
       const response = await test.createUserFromAuth();
       expect(response.status).to.equal(200);
       await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS));
-      return Promise.resolve();
     });
 
     it("should have triggered cloud functions", () => {
@@ -215,7 +214,6 @@ describe("function triggers", () => {
       const response = await test.signInUserFromAuth();
       expect(response.status).to.equal(200);
       await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS));
-      return Promise.resolve();
     });
 
     it("should have triggered cloud functions", () => {
