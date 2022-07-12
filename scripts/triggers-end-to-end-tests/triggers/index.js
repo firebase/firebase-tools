@@ -41,7 +41,7 @@ const app = initializeApp(
   "TRIGGERS_END_TO_END"
 );
 const auth = getAuth(app);
-connectAuthEmulator(auth, "http://localhost:9099");
+connectAuthEmulator(auth, process.env.FIREBASE_AUTH_EMULATOR_HOST);
 
 exports.deleteFromFirestore = functions.https.onRequest(async (req, res) => {
   await admin.firestore().doc(START_DOCUMENT_NAME).delete();
