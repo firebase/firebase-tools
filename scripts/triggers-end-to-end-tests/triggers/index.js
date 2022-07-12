@@ -99,12 +99,14 @@ exports.createUserFromAuth = functions.https.onRequest(async (req, res) => {
   await createUserWithEmailAndPassword(auth, "email@gmail.com", "mypassword");
 
   res.json({ created: "ok" });
+  return Promise.resolve();
 });
 
 exports.signInUserFromAuth = functions.https.onRequest(async (req, res) => {
   await signInWithEmailAndPassword(auth, "email@gmail.com", "mypassword");
 
   res.json({ done: "ok" });
+  return Promise.resolve();
 });
 
 exports.writeToDefaultStorage = functions.https.onRequest(async (req, res) => {
