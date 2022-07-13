@@ -11,6 +11,13 @@ describe("CEL resolution", () => {
     expect(params.resolveString("{{ params.foo }} baz", { foo: "bar" })).to.equal("bar baz");
   });
 
+  it("doesn't explode when passed undefined", () => {
+    const undefCEL: string = undefined as unknown as string;
+    expect(params.resolveInt(undefCEL, {})).to.be.undefined;
+    expect(params.resolveString(undefCEL, {})).to.be.undefined;
+    expect(params.resolveBoolean(undefCEL, {})).to.be.undefined;
+  });
+
   it("can interpolate multiple params into a CEL expression", () => {
     expect(
       params.resolveString("{{ params.foo }} {{ params.bar }}", { foo: "asdf", bar: "jkl;" })

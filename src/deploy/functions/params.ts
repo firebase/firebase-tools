@@ -30,7 +30,7 @@ export function resolveInt(
   from: number | build.Expression<number>,
   paramValues: Record<string, build.Field<string | number | boolean>>
 ): number {
-  if (typeof from === "number") {
+  if (typeof from === "number" || typeof from === "undefined") {
     return from;
   }
   const match = /\A{{ params\.(\w+) }}\z/.exec(from);
@@ -58,7 +58,7 @@ export function resolveString(
   from: string | build.Expression<string>,
   paramValues: Record<string, build.Field<string | number | boolean>>
 ): string {
-  if (!isCEL(from)) {
+  if (!isCEL(from) || typeof from === "undefined") {
     return from;
   }
   let output = from;
@@ -93,6 +93,9 @@ export function resolveBoolean(
   from: boolean | build.Expression<boolean>,
   paramValues: Record<string, build.Field<string | number | boolean>>
 ): boolean {
+  if (typeof from === "boolean" || typeof from === "undefined") {
+    return from;
+  }
   if (typeof from === "string" && /{{ params\.(\w+) }}/.test(from)) {
     const match = /{{ params\.(\w+) }}/.exec(from);
     const referencedParamValue = paramValues[match![1]];
@@ -105,10 +108,8 @@ export function resolveBoolean(
       );
     }
     return referencedParamValue;
-  } else if (typeof from === "string") {
-    throw new FirebaseError("CEL evaluation of expression '" + from + "' not yet supported");
   }
-  return from;
+  throw new FirebaseError("CEL evaluation of expression '" + from + "' not yet supported");
 }
 
 interface ParamBase<T extends string | number | boolean> {
