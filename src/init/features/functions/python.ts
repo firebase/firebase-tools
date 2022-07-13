@@ -40,6 +40,8 @@ export async function setup(_setup: unknown, config: Config): Promise<void> {
 
   // Write the selected runtime version to the config.
   config.set("functions.runtime", LATEST_VERSION);
+  // Add python specific ignores to config.
+  config.set("functions.ignore", ["venv", "__pycache__"]);
   // Setup VENV.
   await runWithVirtualEnv(
     ["python3.9", "-m", "venv", "venv"],
