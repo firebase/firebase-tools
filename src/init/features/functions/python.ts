@@ -46,6 +46,12 @@ export async function setup(_setup: unknown, config: Config): Promise<void> {
     config.path(Config.DEFAULT_FUNCTIONS_SOURCE),
     false
   ).promise;
+  // Update pip to support dependencies like pyyaml.
+  await runWithVirtualEnv(
+    ["pip3", "install", "--upgrade", "pip"],
+    config.path(Config.DEFAULT_FUNCTIONS_SOURCE),
+    false
+  ).promise;
   // Install dependencies.
   await runWithVirtualEnv(
     ["python3.9", "-m", "pip", "install", "-r", "requirements.txt"],
