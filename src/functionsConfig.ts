@@ -97,7 +97,7 @@ export async function setVariablesRecursive(
     }
   }
   // If 'parsed' is object, call again
-  if (_.isPlainObject(parsed)) {
+  if (typeof parsed === "object" && parsed !== null) {
     return Promise.all(
       Object.entries(parsed).map(([key, item]) => {
         const newVarPath = varPath ? [varPath, key].join("/") : key;
