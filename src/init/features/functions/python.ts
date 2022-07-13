@@ -42,13 +42,13 @@ export async function setup(_setup: unknown, config: Config): Promise<void> {
   config.set("functions.runtime", LATEST_VERSION);
   // Setup VENV.
   await runWithVirtualEnv(
-    ["python3", "-m", "venv", "venv"],
+    ["python3.9", "-m", "venv", "venv"],
     config.path(Config.DEFAULT_FUNCTIONS_SOURCE),
     false
   ).promise;
   // Install dependencies.
   await runWithVirtualEnv(
-    ["python3", "-m", "pip", "install", "-r", "requirements.txt"],
+    ["python3.9", "-m", "pip", "install", "-r", "requirements.txt"],
     config.path(Config.DEFAULT_FUNCTIONS_SOURCE)
   ).promise;
 }
