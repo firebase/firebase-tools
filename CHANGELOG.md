@@ -1,1 +1,2 @@
 - Fix bug where functions:config get command failed on empty variable. (#4707)
+- Fix bug where not all the event trigger attributes are copied from build to backend (#4746).
