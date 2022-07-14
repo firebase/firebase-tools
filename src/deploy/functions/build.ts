@@ -65,7 +65,7 @@ type ServiceAccount = string;
 export interface HttpsTrigger {
   // Which service account should be able to trigger this function. No value means "make public
   // on create and don't do anything on update." For more, see go/cf3-http-access-control
-  invoker?: ServiceAccount | null;
+  invoker?: ServiceAccount[];
 }
 
 // Trigger definitions for RPCs servers using the HTTP protocol defined at
@@ -338,7 +338,7 @@ function discoverTrigger(
   if ("httpsTrigger" in endpoint) {
     const bkHttps: backend.HttpsTrigger = {};
     if (endpoint.httpsTrigger.invoker) {
-      bkHttps.invoker = [endpoint.httpsTrigger.invoker];
+      bkHttps.invoker = endpoint.httpsTrigger.invoker;
     }
     trigger = { httpsTrigger: bkHttps };
   } else if ("callableTrigger" in endpoint) {
