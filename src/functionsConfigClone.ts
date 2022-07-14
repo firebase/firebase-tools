@@ -47,7 +47,6 @@ async function cloneConfigOrVariable(key: string, fromProject: any, toProject: a
   }
   return runtimeconfig.variables.list(configName).then((variables) => {
     const promises: Promise<any>[] = [];
-
     for (const variable of variables) {
       const varId = functionsConfig.varNameToIds(variable.name).variable;
       const variablePrefixFilter = parts.slice(1);

@@ -134,7 +134,6 @@ export async function materializeConfig(configName: string, output: any): Promis
 export async function materializeAll(projectId: string): Promise<Record<string, any>> {
   const output = {};
   const configs = await runtimeconfig.configs.list(projectId);
-
   if (!Array.isArray(configs) || !configs.length) {
     return output;
   }
