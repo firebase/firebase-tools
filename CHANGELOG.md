@@ -1,2 +1,3 @@
 - Fix bug where functions:config get command failed on empty variable. (#4707)
 - Fix invoker type mismatch for https functions.
+- Add features for Auth Alignment in Emulator UI
