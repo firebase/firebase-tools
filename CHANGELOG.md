@@ -1,0 +1,1 @@
+- Fix bug where function timeout couldn't be configured in the Functions Emulator. (#4745)
