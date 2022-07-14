@@ -20,6 +20,7 @@ import * as fsutils from "../fsutils";
 import Signals = NodeJS.Signals;
 import SignalsListener = NodeJS.SignalsListener;
 import Table = require("cli-table");
+import { emulatorSession } from "../track";
 
 export const FLAG_ONLY = "--only <emulators>";
 export const DESC_ONLY =
@@ -428,6 +429,12 @@ export async function emulatorExec(script: string, options: any) {
   const extraEnv: Record<string, string> = {};
   if (projectId) {
     extraEnv.GCLOUD_PROJECT = projectId;
+  }
+  const session = emulatorSession();
+  if (session && session.debugMode) {
+    // Expose session in debug mode to allow running Emulator UI dev server via:
+    //     firebase emulators:exec 'npm start'
+    extraEnv[Constants.FIREBASE_GA_SESSION] = JSON.stringify(session);
   }
   let exitCode = 0;
   let deprecationNotices;

@@ -1,6 +1,7 @@
 import fetch from "node-fetch";
 import * as ua from "universal-analytics";
 import { v4 as uuidV4 } from "uuid";
+import { getGlobalDefaultAccount } from "./auth";
 
 import { configstore } from "./configstore";
 import { logger } from "./logger";
@@ -11,25 +12,6 @@ const pkg = require("../package.json");
 export const EMULATOR_GA4_MEASUREMENT_ID =
   process.env.FIREBASE_EMULATOR_GA4_MEASUREMENT_ID || "G-KYP2JMPFC0";
 
-let _emulatorClientId: string | undefined = undefined;
-
-// The identifier for the client for the Emulator Suite.
-export function emulatorClientId(): string {
-  if (!usageEnabled()) {
-    return "";
-  }
-  if (_emulatorClientId) {
-    return _emulatorClientId;
-  }
-  _emulatorClientId = configstore.get("emulator-analytics-clientId");
-  if (!_emulatorClientId) {
-    _emulatorClientId = uuidV4();
-    configstore.set("emulator-analytics-clientId", _emulatorClientId);
-  }
-
-  return _emulatorClientId;
-}
-
 export function usageEnabled(): boolean {
   return !!configstore.get("usage");
 }
@@ -39,7 +21,7 @@ export function usageEnabled(): boolean {
 // but excluding Emulator UI.
 // TODO: Upgrade to GA4 before July 1, 2023. See:
 // https://support.google.com/analytics/answer/11583528
-const FIREBASE_ANALYTICS_UA = "UA-29174744-3";
+const FIREBASE_ANALYTICS_UA = process.env.FIREBASE_ANALYTICS_UA || "UA-29174744-3";
 
 // Identifier for the client (UUID) in the CLI UA.
 let anonId = configstore.get("analytics-uuid");
@@ -48,7 +30,7 @@ if (!anonId) {
   configstore.set("analytics-uuid", anonId);
 }
 
-const visitor = ua(process.env.FIREBASE_ANALYTICS_UA || FIREBASE_ANALYTICS_UA, anonId, {
+const visitor = ua(FIREBASE_ANALYTICS_UA, anonId, {
   strictCidFormat: false,
   https: true,
 });
@@ -107,47 +89,53 @@ export async function trackEmulator(
   eventName: string,
   params?: Record<string, string | number>
 ): Promise<void> {
-  if (!usageEnabled()) {
+  const session = emulatorSession();
+  if (!session) {
     return;
   }
-  if (!_emulatorSessionId) {
-    // This must be an int64 string, but only ~50 bits are generated here
-    // for simplicity. (AFAICT, they just need to be unique per clientId,
-    // instead of globally. Revisit if that is not the case.)
-    // https://help.analyticsedge.com/article/misunderstood-metrics-sessions-in-google-analytics-4/#:~:text=The%20Session%20ID%20Is%20Not%20Unique
-    _emulatorSessionId = (Math.random() * Number.MAX_SAFE_INTEGER).toFixed(0);
-  }
-  const search = `?api_secret=${EMULATOR_GA4_API_SECRET}&measurement_id=${EMULATOR_GA4_MEASUREMENT_ID}`;
+
+  // Since there's no concept of foreground / active, we'll just assume users
+  // are constantly engaging with the CLI since Node.js process started. (Yes,
+  // staring at the terminal and waiting for the command to finish also counts.)
+  const oldTotalEngagementSeconds = session.totalEngagementSeconds;
+  session.totalEngagementSeconds = process.uptime();
+
+  const search = `?api_secret=${EMULATOR_GA4_API_SECRET}&measurement_id=${session.measurementId}`;
   const url = `https://www.google-analytics.com/${VALIDATE ? "debug/" : ""}mp/collect${search}`;
   const body = {
     // Get timestamp in millis and append '000' to get micros as string.
     // Not using multiplication due to JS number precision limit.
     timestamp_micros: `${Date.now()}000`,
-    client_id: emulatorClientId(),
+    client_id: session.clientId,
     user_properties: EMULATOR_GA4_USER_PROPS,
+    ...(VALIDATE ? { validationBehavior: "ENFORCE_RECOMMENDATIONS" } : {}),
     events: [
       {
         name: eventName,
         params: {
+          session_id: session.sessionId,
+
           // engagement_time_msec and session_id must be set for the activity
           // to display in standard reports like Realtime.
           // https://developers.google.com/analytics/devguides/collection/protocol/ga4/sending-events?client_type=gtag#optional_parameters_for_reports
 
           // https://support.google.com/analytics/answer/11109416?hl=en
-          // Since there's no concept of foreground / active, we'll just report
-          // time passed since the Node.js process for CLI has started. i.e.
-          // Users are assumed to be constantly engaging. (Yes, staring at the
-          // terminal and waiting for the command to finish also counts.)
-          engagement_time_msec: process.uptime().toFixed(3).replace(".", ""),
+          // Additional engagement time since last event, in microseconds.
+          engagement_time_msec: (session.totalEngagementSeconds - oldTotalEngagementSeconds)
+            .toFixed(3)
+            .replace(".", "")
+            .replace(/^0+/, ""), // trim leading zeros
 
-          session_id: _emulatorSessionId,
+          // https://support.google.com/analytics/answer/7201382?hl=en
+          // To turn debug mode off, `debug_mode` must be left out not `false`.
+          ...(session.debugMode ? { debug_mode: true } : {}),
           ...params,
         },
       },
     ],
   };
   if (VALIDATE) {
-    (body as { validationBehavior?: string }).validationBehavior = "ENFORCE_RECOMMENDATIONS";
+    logger.info(`Sending Analytics for event ${eventName}`, params, body);
   }
   try {
     const response = await fetch(url, {
@@ -179,9 +167,61 @@ export async function trackEmulator(
   }
 }
 
-// https://support.google.com/analytics/answer/9191807
-// We treat each CLI invocation as a different session, and therefore this is
-// not stored in configstore. If a developer opens the Emulator UI in their
-// browser, their interactions are reported as one or more *different* sessions
-// since there's no good way to "inherit" the session on GA4 web.
-let _emulatorSessionId: string | undefined = undefined;
+export interface AnalyticsSession {
+  measurementId: string;
+  clientId: string;
+
+  // https://support.google.com/analytics/answer/9191807
+  // We treat each CLI invocation as a different session, including any CLI
+  // events and Emulator UI interactions.
+  sessionId: string;
+  totalEngagementSeconds: number;
+  debugMode: boolean;
+}
+
+export function emulatorSession(): AnalyticsSession | undefined {
+  if (!usageEnabled()) {
+    if (VALIDATE) {
+      logger.warn("Google Analytics is DISABLED. To enable, (re)login and opt in to collection.");
+    }
+    return;
+  }
+  if (!currentEmulatorSession) {
+    let clientId: string | undefined = configstore.get("emulator-analytics-clientId");
+    if (!clientId) {
+      clientId = uuidV4();
+      configstore.set("emulator-analytics-clientId", clientId);
+    }
+
+    currentEmulatorSession = {
+      measurementId: EMULATOR_GA4_MEASUREMENT_ID,
+      clientId,
+
+      // This must be an int64 string, but only ~50 bits are generated here
+      // for simplicity. (AFAICT, they just need to be unique per clientId,
+      // instead of globally. Revisit if that is not the case.)
+      // https://help.analyticsedge.com/article/misunderstood-metrics-sessions-in-google-analytics-4/#:~:text=The%20Session%20ID%20Is%20Not%20Unique
+      sessionId: (Math.random() * Number.MAX_SAFE_INTEGER).toFixed(0),
+      debugMode: isDebugMode(),
+      totalEngagementSeconds: 0,
+    };
+  }
+  return currentEmulatorSession;
+}
+
+let currentEmulatorSession: AnalyticsSession | undefined = undefined;
+
+function isDebugMode(): boolean {
+  const account = getGlobalDefaultAccount();
+  if (account?.user.email.endsWith("@google.com")) {
+    try {
+      // This file is present in development mode only, not packaged to npm.
+      require("../tsconfig.json");
+      logger.info(
+        `Using Google Analytics in DEBUG mode. Emulators (+ UI) events will be shown in GA Debug View only.`
+      );
+      return true;
+    } catch {}
+  }
+  return false;
+}

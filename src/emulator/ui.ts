@@ -3,7 +3,7 @@ import * as downloadableEmulators from "./downloadableEmulators";
 import { EmulatorRegistry } from "./registry";
 import { FirebaseError } from "../error";
 import { Constants } from "./constants";
-import { emulatorClientId, EMULATOR_GA4_MEASUREMENT_ID, usageEnabled } from "../track";
+import { emulatorSession } from "../track";
 
 export interface EmulatorUIOptions {
   port: number;
@@ -32,10 +32,9 @@ export class EmulatorUI implements EmulatorInstance {
       [Constants.FIREBASE_EMULATOR_HUB]: EmulatorRegistry.getInfoHostString(hubInfo),
     };
 
-    if (usageEnabled()) {
-      env[Constants.FIREBASE_GA_MEASUREMENT_ID] = EMULATOR_GA4_MEASUREMENT_ID;
-      env[Constants.FIREBASE_GA_CLIENT_ID] = emulatorClientId();
-      env[Constants.FIREBASE_GA_ENABLED] = "true";
+    const session = emulatorSession();
+    if (session) {
+      env[Constants.FIREBASE_GA_SESSION] = JSON.stringify(session);
     }
 
     return downloadableEmulators.start(Emulators.UI, { auto_download }, env);
