@@ -50,13 +50,13 @@ function deleteConfig(projectId: string, configId: string): Promise<any> {
     });
 }
 
-function listVariables(configPath: string): Promise<{ name: string }[] | undefined> {
+function listVariables(configPath: string): Promise<{ name: string }[]> {
   return apiClient
     .get<{ variables: any }>(`${configPath}/variables`, {
       retryCodes: [500, 503],
     })
     .then((resp) => {
-      return Promise.resolve(resp.body.variables);
+      return Promise.resolve(resp.body.variables || []);
     });
 }
 

@@ -127,9 +127,6 @@ export async function materializeConfig(configName: string, output: any): Promis
   };
 
   const variables = await runtimeconfig.variables.list(configName);
-
-  if (!variables) return output;
-
   await traverseVariables(variables);
   return output;
 }
