@@ -1,3 +1,1 @@
-- Adds a check for out of band changes before deploying extensions.
-- Fixes issue where `firestore:*` did not work with `--only` in `deploy`. (#4698)
-- Removes DNS flag passed to Emulator UI. (#4566)
+- Fix bug where functions:config get command failed on empty variable. (#4707)
