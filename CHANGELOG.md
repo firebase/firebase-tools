@@ -1,0 +1,1 @@
+- Fix invoker type mismatch for https functions.
