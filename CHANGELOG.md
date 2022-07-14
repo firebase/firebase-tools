@@ -1,1 +1,2 @@
+- Fix bug where functions:config get command failed on empty variable. (#4707)
 - Fix invoker type mismatch for https functions.
