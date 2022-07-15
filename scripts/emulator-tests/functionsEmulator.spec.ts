@@ -103,7 +103,7 @@ describe("FunctionsEmulator-Hub", () => {
       .then((res) => {
         expect(res.body.path).to.deep.equal("/");
       });
-  }).timeout(TIMEOUT_LONG);
+  });
 
   it("should route requests to /:project_id/:other-region/:trigger_id to the region's HTTPS Function", async () => {
     await useFunction(
@@ -128,7 +128,7 @@ describe("FunctionsEmulator-Hub", () => {
       .then((res) => {
         expect(res.body.path).to.deep.equal("/");
       });
-  }).timeout(TIMEOUT_LONG);
+  });
 
   it("should 404 when a function doesn't exist in the region", async () => {
     await useFunction(
@@ -148,7 +148,7 @@ describe("FunctionsEmulator-Hub", () => {
     );
 
     await supertest(emu.createHubServer()).get("/fake-project-id/us-east1/functionId").expect(404);
-  }).timeout(TIMEOUT_LONG);
+  });
 
   it("should route requests to /:project_id/:region/:trigger_id/ to HTTPS Function", async () => {
     await useFunction(emu, "functionId", () => {
@@ -167,7 +167,7 @@ describe("FunctionsEmulator-Hub", () => {
       .then((res) => {
         expect(res.body.path).to.deep.equal("/");
       });
-  }).timeout(TIMEOUT_LONG);
+  });
 
   it("should 404 when a function does not exist", async () => {
     await useFunction(emu, "functionId", () => {
@@ -183,7 +183,7 @@ describe("FunctionsEmulator-Hub", () => {
     await supertest(emu.createHubServer())
       .get("/fake-project-id/us-central1/functionDNE")
       .expect(404);
-  }).timeout(TIMEOUT_LONG);
+  });
 
   it("should properly route to a namespaced/grouped HTTPs function", async () => {
     await useFunction(emu, "nested-functionId", () => {
@@ -204,7 +204,7 @@ describe("FunctionsEmulator-Hub", () => {
       .then((res) => {
         expect(res.body.path).to.deep.equal("/");
       });
-  }).timeout(TIMEOUT_LONG);
+  });
 
   it("should route requests to /:project_id/:region/:trigger_id/a/b to HTTPS Function", async () => {
     await useFunction(emu, "functionId", () => {
@@ -223,7 +223,7 @@ describe("FunctionsEmulator-Hub", () => {
       .then((res) => {
         expect(res.body.path).to.deep.equal("/a/b");
       });
-  }).timeout(TIMEOUT_LONG);
+  });
 
   it("should reject requests to a non-emulator path", async () => {
     await useFunction(emu, "functionId", () => {
@@ -237,7 +237,7 @@ describe("FunctionsEmulator-Hub", () => {
     });
 
     await supertest(emu.createHubServer()).get("/foo/bar/baz").expect(404);
-  }).timeout(TIMEOUT_LONG);
+  });
 
   it("should rewrite req.path to hide /:project_id/:region/:trigger_id", async () => {
     await useFunction(emu, "functionId", () => {
@@ -256,7 +256,7 @@ describe("FunctionsEmulator-Hub", () => {
       .then((res) => {
         expect(res.body.path).to.eq("/sub/route/a");
       });
-  }).timeout(TIMEOUT_LONG);
+  });
 
   it("should return the correct url, baseUrl, originalUrl for the root route", async () => {
     await useFunction(emu, "functionId", () => {
@@ -281,7 +281,7 @@ describe("FunctionsEmulator-Hub", () => {
         expect(res.body.baseUrl).to.eq("");
         expect(res.body.originalUrl).to.eq("/");
       });
-  }).timeout(TIMEOUT_LONG);
+  });
 
   it("should return the correct url, baseUrl, originalUrl with query params", async () => {
     await useFunction(emu, "functionId", () => {
@@ -308,7 +308,7 @@ describe("FunctionsEmulator-Hub", () => {
         expect(res.body.originalUrl).to.eq("/?a=1&b=2");
         expect(res.body.query).to.deep.eq({ a: "1", b: "2" });
       });
-  }).timeout(TIMEOUT_LONG);
+  });
 
   it("should return the correct url, baseUrl, originalUrl for a subroute", async () => {
     await useFunction(emu, "functionId", () => {
@@ -333,7 +333,7 @@ describe("FunctionsEmulator-Hub", () => {
         expect(res.body.baseUrl).to.eq("");
         expect(res.body.originalUrl).to.eq("/sub/route/a");
       });
-  }).timeout(TIMEOUT_LONG);
+  });
 
   it("should return the correct url, baseUrl, originalUrl for any region", async () => {
     await useFunction(
@@ -365,7 +365,7 @@ describe("FunctionsEmulator-Hub", () => {
         expect(res.body.originalUrl).to.eq("/?a=1&b=2");
         expect(res.body.query).to.deep.eq({ a: "1", b: "2" });
       });
-  }).timeout(TIMEOUT_LONG);
+  });
 
   it("should route request body", async () => {
     await useFunction(emu, "functionId", () => {
@@ -385,7 +385,7 @@ describe("FunctionsEmulator-Hub", () => {
       .then((res) => {
         expect(res.body).to.deep.equal({ hello: "world" });
       });
-  }).timeout(TIMEOUT_LONG);
+  });
 
   it("should route query parameters", async () => {
     await useFunction(emu, "functionId", () => {
@@ -404,7 +404,7 @@ describe("FunctionsEmulator-Hub", () => {
       .then((res) => {
         expect(res.body).to.deep.equal({ hello: "world" });
       });
-  }).timeout(TIMEOUT_LONG);
+  });
 
   it("should override callable auth", async () => {
     await useFunction(emu, "callableFunctionId", () => {
@@ -452,7 +452,7 @@ describe("FunctionsEmulator-Hub", () => {
           },
         });
       });
-  }).timeout(TIMEOUT_LONG);
+  });
 
   it("should override callable auth with unicode", async () => {
     await useFunction(emu, "callableFunctionId", () => {
@@ -501,7 +501,7 @@ describe("FunctionsEmulator-Hub", () => {
           },
         });
       });
-  }).timeout(TIMEOUT_LONG);
+  });
 
   it("should override callable auth with a poorly padded ID Token", async () => {
     await useFunction(emu, "callableFunctionId", () => {
@@ -540,7 +540,7 @@ describe("FunctionsEmulator-Hub", () => {
           },
         });
       });
-  }).timeout(TIMEOUT_LONG);
+  });
 
   it("should preserve the Authorization header for callable auth", async () => {
     await useFunction(emu, "callableFunctionId", () => {
@@ -572,7 +572,7 @@ describe("FunctionsEmulator-Hub", () => {
           },
         });
       });
-  }).timeout(TIMEOUT_LONG);
+  });
 
   it("should respond to requests to /backends to with info about the running backends", async () => {
     await useFunction(emu, "functionId", () => {
@@ -603,7 +603,7 @@ describe("FunctionsEmulator-Hub", () => {
           },
         ]);
       });
-  }).timeout(TIMEOUT_LONG);
+  });
 
   describe("environment variables", () => {
     let emulatorRegistryStub: sinon.SinonStub;
@@ -816,7 +816,7 @@ describe("FunctionsEmulator-Hub", () => {
         .then((res) => {
           expect(res.body.secret).to.equal("local");
         });
-    }).timeout(TIMEOUT_LONG);
+    });
 
     it("should try to access secret values from Secret Manager", async () => {
       readFileSyncStub.throws({ code: "ENOENT" });
@@ -853,6 +853,6 @@ describe("FunctionsEmulator-Hub", () => {
         .then((res) => {
           expect(res.body.secret).to.equal("secretManager");
         });
-    }).timeout(TIMEOUT_LONG);
+    });
   });
-});
+}).timeout(TIMEOUT_LONG);
