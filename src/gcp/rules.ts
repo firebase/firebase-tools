@@ -1,5 +1,3 @@
-import * as _ from "lodash";
-
 import { rulesOrigin } from "../api";
 import { Client } from "../apiv2";
 import { logger } from "../logger";
@@ -88,7 +86,7 @@ export async function listAllReleases(projectId: string): Promise<Release[]> {
     }
     pageToken = response.nextPageToken;
   } while (pageToken);
-  return _.orderBy(releases, ["createTime"], ["desc"]);
+  return releases.sort((a, b) => b.createTime.localeCompare(a.createTime));
 }
 
 export interface RulesetFile {
@@ -154,7 +152,7 @@ export async function listAllRulesets(projectId: string): Promise<ListRulesetsEn
     }
     pageToken = response.nextPageToken;
   } while (pageToken);
-  return _.orderBy(rulesets, ["createTime"], ["desc"]);
+  return rulesets.sort((a, b) => b.createTime.localeCompare(a.createTime));
 }
 
 export interface ListRulesetsResponse {

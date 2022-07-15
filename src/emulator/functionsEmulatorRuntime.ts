@@ -1,3 +1,4 @@
+import * as http from "http";
 import * as fs from "fs";
 
 import { CloudFunction, DeploymentOptions, https } from "firebase-functions";
@@ -768,28 +769,8 @@ function rawBodySaver(req: express.Request, res: express.Response, buf: Buffer):
 
 async function processHTTPS(trigger: CloudFunction<any>): Promise<void> {
   const ephemeralServer = express();
-  const functionRouter = express.Router(); // eslint-disable-line new-cap
 
   await new Promise<void>((resolveEphemeralServer, rejectEphemeralServer) => {
-    const handler = async (req: express.Request, res: express.Response) => {
-      try {
-        logDebug(`Ephemeral server handling ${req.method} request`);
-        res.on("finish", () => {
-          instance.close((err) => {
-            if (err) {
-              rejectEphemeralServer(err);
-            } else {
-              resolveEphemeralServer();
-            }
-          });
-        });
-
-        await runHTTPS(trigger, [req, res]);
-      } catch (err: any) {
-        rejectEphemeralServer(err);
-      }
-    };
-
     ephemeralServer.enable("trust proxy");
     ephemeralServer.use(
       bodyParser.json({
@@ -818,17 +799,42 @@ async function processHTTPS(trigger: CloudFunction<any>): Promise<void> {
       })
     );
 
-    functionRouter.all("*", handler);
-
-    ephemeralServer.use([`/`, `/*`], functionRouter);
-
-    logDebug(`Attempting to listen to port: ${process.env.PORT}`);
-    const instance = ephemeralServer.listen(process.env.PORT, () => {
-      logDebug(`Listening to port: ${process.env.PORT}`);
-      new EmulatorLog("SYSTEM", "runtime-status", "ready", { state: "ready" }).log();
+    // eslint-disable-next-line prefer-const
+    let server: http.Server;
+    function closeServer() {
+      if (server) {
+        server.close((err) => {
+          if (err) {
+            rejectEphemeralServer(err);
+          } else {
+            resolveEphemeralServer();
+          }
+        });
+      }
+    }
+    // Endpoint used by the Functions Emulator to check if runtime process is ready to accept requests.
+    // Notice that unlike other endpoints, this route does not call closeServer() at the end of request since
+    // we expect one additional request that actually invokes the handler.
+    ephemeralServer.get("/__/health", (req, res) => {
+      res.status(200).send();
+    });
+    ephemeralServer.all("/favicon.ico|/robots.txt", (req, res) => {
+      res.on("finish", closeServer);
+      res.status(404).send();
+    });
+    ephemeralServer.all(`/*`, async (req: express.Request, res: express.Response) => {
+      try {
+        logDebug(`Ephemeral server handling ${req.method} request`);
+        res.on("finish", closeServer);
+        await runHTTPS(trigger, [req, res]);
+      } catch (err: any) {
+        rejectEphemeralServer(err);
+      }
     });
 
-    instance.on("error", rejectEphemeralServer);
+    logDebug(`Attempting to listen to port: ${process.env.PORT}`);
+    server = ephemeralServer.listen(process.env.PORT);
+    server.on("error", rejectEphemeralServer);
   });
 }
 

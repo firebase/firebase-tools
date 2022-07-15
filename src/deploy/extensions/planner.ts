@@ -48,6 +48,7 @@ export interface DeploymentInstanceSpec extends InstanceSpec {
   params: Record<string, string>;
   allowedEventTypes?: string[];
   eventarcChannel?: string;
+  etag?: string;
 }
 
 /**
@@ -108,6 +109,7 @@ export async function have(projectId: string): Promise<DeploymentInstanceSpec[]>
       params: i.config.params,
       allowedEventTypes: i.config.allowedEventTypes,
       eventarcChannel: i.config.eventarcChannel,
+      etag: i.etag,
     };
     if (i.config.extensionRef) {
       const ref = refs.parse(i.config.extensionRef);
