@@ -61,8 +61,8 @@ async function startRuntime(
   const sourceCode = `module.exports = (${triggerSource.toString()})();\n`;
   await fs.writeFile(`${FUNCTIONS_DIR}/index.js`, sourceCode);
 
-  const args = ["--swc", path.join(MODULE_ROOT, "src", "emulator", "functionsEmulatorRuntime")];
-  const proc = spawn(path.join(MODULE_ROOT, "node_modules/.bin/ts-node"), args, {
+  const args = [path.join(MODULE_ROOT, "src", "emulator", "functionsEmulatorRuntime")];
+  const proc = spawn(process.execPath, args, {
     env: { ...process.env, ...env },
     cwd: FUNCTIONS_DIR,
     stdio: ["pipe", "pipe", "pipe", "ipc"],
