@@ -10,7 +10,7 @@ import * as express from "express";
 import { Change } from "firebase-functions";
 import { DocumentSnapshot } from "firebase-functions/lib/providers/firestore";
 
-import { FunctionRuntimeBundles, TIMEOUT_LONG, TIMEOUT_MED, MODULE_ROOT } from "./fixtures";
+import { FunctionRuntimeBundles, TIMEOUT_LONG, MODULE_ROOT } from "./fixtures";
 import {
   FunctionsRuntimeBundle,
   getTemporarySocketPath,
@@ -229,7 +229,7 @@ describe("FunctionsEmulator-Runtime", () => {
         });
         await triggerRuntime(runtime, FunctionRuntimeBundles.onCreate);
         expect(runtime.sysMsg["default-admin-app-used"]?.length).to.gte(1);
-      }).timeout(TIMEOUT_MED);
+      }).timeout(TIMEOUT_LONG);
 
       it("should provide a stubbed app with custom options", async () => {
         runtime = await startRuntime("functionId", "event", () => {
@@ -245,7 +245,7 @@ describe("FunctionsEmulator-Runtime", () => {
         await triggerRuntime(runtime, FunctionRuntimeBundles.onCreate);
         expect(runtime.sysMsg["default-admin-app-used"]?.length).to.gte(1);
         expect(runtime.sysMsg["default-admin-app-used"]?.join(" ")).to.match(/"custom":true/);
-      }).timeout(TIMEOUT_MED);
+      }).timeout(TIMEOUT_LONG);
 
       it("should provide non-stubbed non-default app from initializeApp", async () => {
         runtime = await startRuntime("functionId", "event", () => {
@@ -261,7 +261,7 @@ describe("FunctionsEmulator-Runtime", () => {
         });
         await triggerRuntime(runtime, FunctionRuntimeBundles.onCreate);
         expect(runtime.sysMsg["non-default-admin-app-used"]?.length).to.gte(1);
-      }).timeout(TIMEOUT_MED);
+      }).timeout(TIMEOUT_LONG);
 
       it("should route all sub-fields accordingly", async () => {
         runtime = await startRuntime("functionId", "event", () => {
@@ -279,7 +279,7 @@ describe("FunctionsEmulator-Runtime", () => {
         });
         await triggerRuntime(runtime, FunctionRuntimeBundles.onCreate);
         expect(runtime.stdout.join(" ")).to.match(/{"operand":4}/);
-      }).timeout(TIMEOUT_MED);
+      }).timeout(TIMEOUT_LONG);
 
       it("should expose Firestore prod when the emulator is not running", async () => {
         runtime = await startRuntime("functionId", "http", () => {
@@ -298,7 +298,7 @@ describe("FunctionsEmulator-Runtime", () => {
         expect(info.projectId).to.eql("fake-project-id");
         expect(info.servicePath).to.be.undefined;
         expect(info.port).to.be.undefined;
-      }).timeout(TIMEOUT_MED);
+      }).timeout(TIMEOUT_LONG);
 
       it("should expose a stubbed Firestore when the emulator is running", async () => {
         runtime = await startRuntime(
@@ -322,7 +322,7 @@ describe("FunctionsEmulator-Runtime", () => {
         expect(info.projectId).to.eql("fake-project-id");
         expect(info.servicePath).to.eq("localhost");
         expect(info.port).to.eq(9090);
-      }).timeout(TIMEOUT_MED);
+      }).timeout(TIMEOUT_LONG);
 
       it("should expose RTDB prod when the emulator is not running", async () => {
         runtime = await startRuntime("functionId", "http", () => {
@@ -340,7 +340,7 @@ describe("FunctionsEmulator-Runtime", () => {
         const data = await sendReq(runtime);
         const info = JSON.parse(data);
         expect(info.url).to.eql("https://fake-project-id-default-rtdb.firebaseio.com/");
-      }).timeout(TIMEOUT_MED);
+      }).timeout(TIMEOUT_LONG);
 
       it("should expose a stubbed RTDB when the emulator is running", async () => {
         runtime = await startRuntime(
@@ -365,7 +365,7 @@ describe("FunctionsEmulator-Runtime", () => {
         const data = await sendReq(runtime);
         const info = JSON.parse(data);
         expect(info.url).to.eql("http://localhost:9090/");
-      }).timeout(TIMEOUT_MED);
+      }).timeout(TIMEOUT_LONG);
     });
   });
   describe("_InitializeFunctionsConfigHelper()", () => {
@@ -396,7 +396,7 @@ describe("FunctionsEmulator-Runtime", () => {
       });
       await triggerRuntime(runtime, FunctionRuntimeBundles.onCreate);
       expect(runtime.sysMsg["functions-config-missing-value"]?.length).to.eq(2);
-    }).timeout(TIMEOUT_MED);
+    }).timeout(TIMEOUT_LONG);
   });
   describe("Runtime", () => {
     describe("HTTPS", () => {
@@ -413,7 +413,7 @@ describe("FunctionsEmulator-Runtime", () => {
         await triggerRuntime(runtime, FunctionRuntimeBundles.onRequest);
         const data = await sendReq(runtime, { method: "GET" });
         expect(JSON.parse(data)).to.deep.equal({ from_trigger: true });
-      }).timeout(TIMEOUT_MED);
+      }).timeout(TIMEOUT_LONG);
 
       it("should handle a POST request with form data", async () => {
         runtime = await startRuntime("functionId", "http", () => {
@@ -434,7 +434,7 @@ describe("FunctionsEmulator-Runtime", () => {
           },
         });
         expect(JSON.parse(data)).to.deep.equal({ name: "sparky" });
-      }).timeout(TIMEOUT_MED);
+      }).timeout(TIMEOUT_LONG);
 
       it("should handle a POST request with JSON data", async () => {
         runtime = await startRuntime("functionId", "http", () => {
@@ -455,7 +455,7 @@ describe("FunctionsEmulator-Runtime", () => {
           },
         });
         expect(JSON.parse(data)).to.deep.equal({ name: "sparky" });
-      }).timeout(TIMEOUT_MED);
+      }).timeout(TIMEOUT_LONG);
 
       it("should handle a POST request with text data", async () => {
         runtime = await startRuntime("functionId", "http", () => {
@@ -476,7 +476,7 @@ describe("FunctionsEmulator-Runtime", () => {
           },
         });
         expect(JSON.parse(data)).to.deep.equal("name is sparky");
-      }).timeout(TIMEOUT_MED);
+      }).timeout(TIMEOUT_LONG);
 
       it("should handle a POST request with any other type", async () => {
         runtime = await startRuntime("functionId", "http", () => {
@@ -498,7 +498,7 @@ describe("FunctionsEmulator-Runtime", () => {
         });
         expect(JSON.parse(data).type).to.deep.equal("Buffer");
         expect(JSON.parse(data).data.length).to.deep.equal(14);
-      }).timeout(TIMEOUT_MED);
+      }).timeout(TIMEOUT_LONG);
 
       it("should handle a POST request and store rawBody", async () => {
         runtime = await startRuntime("functionId", "http", () => {
@@ -519,7 +519,7 @@ describe("FunctionsEmulator-Runtime", () => {
           },
         });
         expect(data).to.equal(reqData);
-      }).timeout(TIMEOUT_MED);
+      }).timeout(TIMEOUT_LONG);
 
       it("should forward request to Express app", async () => {
         runtime = await startRuntime("functionId", "http", () => {
@@ -543,7 +543,7 @@ describe("FunctionsEmulator-Runtime", () => {
           },
         });
         expect(JSON.parse(data)).to.deep.equal({ hello: "world" });
-      }).timeout(TIMEOUT_MED);
+      }).timeout(TIMEOUT_LONG);
 
       it("should handle `x-forwarded-host`", async () => {
         runtime = await startRuntime("functionId", "http", () => {
@@ -563,7 +563,7 @@ describe("FunctionsEmulator-Runtime", () => {
           },
         });
         expect(JSON.parse(data)).to.deep.equal({ hostname: "real-hostname" });
-      }).timeout(TIMEOUT_MED);
+      }).timeout(TIMEOUT_LONG);
     });
 
     describe("Cloud Firestore", () => {
@@ -587,7 +587,7 @@ describe("FunctionsEmulator-Runtime", () => {
 
         await triggerRuntime(runtime, FunctionRuntimeBundles.onWrite);
         expect(runtime.stdout.join(" ")).to.match(/{"before_exists":false,"after_exists":true}/);
-      }).timeout(TIMEOUT_MED);
+      }).timeout(TIMEOUT_LONG);
 
       it("should provide Change for firestore.onUpdate()", async () => {
         runtime = await startRuntime("functionId", "event", () => {
@@ -609,7 +609,7 @@ describe("FunctionsEmulator-Runtime", () => {
 
         await triggerRuntime(runtime, FunctionRuntimeBundles.onUpdate);
         expect(runtime.stdout.join(" ")).to.match(/{"before_exists":true,"after_exists":true}/);
-      }).timeout(TIMEOUT_MED);
+      }).timeout(TIMEOUT_LONG);
 
       it("should provide Change for firestore.onDelete()", async () => {
         runtime = await startRuntime("functionId", "event", () => {
@@ -630,7 +630,7 @@ describe("FunctionsEmulator-Runtime", () => {
 
         await triggerRuntime(runtime, FunctionRuntimeBundles.onDelete);
         expect(runtime.stdout.join(" ")).to.match(/{"snap_exists":true}/);
-      }).timeout(TIMEOUT_MED);
+      }).timeout(TIMEOUT_LONG);
 
       it("should provide Change for firestore.onCreate()", async () => {
         runtime = await startRuntime("functionId", "event", () => {
@@ -651,7 +651,7 @@ describe("FunctionsEmulator-Runtime", () => {
 
         await triggerRuntime(runtime, FunctionRuntimeBundles.onUpdate);
         expect(runtime.stdout.join(" ")).to.match(/{"snap_exists":true}/);
-      }).timeout(TIMEOUT_MED);
+      }).timeout(TIMEOUT_LONG);
     });
 
     describe("Error handling", () => {
@@ -671,7 +671,7 @@ describe("FunctionsEmulator-Runtime", () => {
         }
 
         expect(runtime.sysMsg["runtime-error"]?.length).to.eq(1);
-      }).timeout(TIMEOUT_MED);
+      }).timeout(TIMEOUT_LONG);
 
       it("Should handle async functions for Express handlers", async () => {
         runtime = await startRuntime("functionId", "http", () => {
@@ -689,7 +689,7 @@ describe("FunctionsEmulator-Runtime", () => {
         }
 
         expect(runtime.sysMsg["runtime-error"]?.length).to.eq(1);
-      }).timeout(TIMEOUT_MED);
+      }).timeout(TIMEOUT_LONG);
 
       it("Should handle async/runWith functions for Express handlers", async () => {
         runtime = await startRuntime("functionId", "http", () => {
@@ -709,7 +709,7 @@ describe("FunctionsEmulator-Runtime", () => {
         }
 
         expect(runtime.sysMsg["runtime-error"]?.length).to.eq(1);
-      }).timeout(TIMEOUT_MED);
+      }).timeout(TIMEOUT_LONG);
     });
   });
 });
