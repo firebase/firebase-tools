@@ -1,4 +1,6 @@
+import * as http from "http";
 import * as uuid from "uuid";
+
 import { FunctionsRuntimeInstance, InvokeRuntimeOpts } from "./functionsEmulator";
 import { EmulatorLog, Emulators, FunctionsExecutionMode } from "./types";
 import { FunctionsRuntimeArgs, FunctionsRuntimeBundle } from "./functionsEmulatorShared";
@@ -30,7 +32,6 @@ export class RuntimeWorker {
 
   stateEvents: EventEmitter = new EventEmitter();
 
-  private socketReady?: Promise<any>;
   private logListeners: Array<LogListener> = [];
   private _state: RuntimeWorkerState = RuntimeWorkerState.IDLE;
 
@@ -71,24 +72,12 @@ export class RuntimeWorker {
   }
 
   set state(state: RuntimeWorkerState) {
-    if (state === RuntimeWorkerState.BUSY) {
-      this.socketReady = EmulatorLog.waitForLog(
-        this.runtime.events,
-        "SYSTEM",
-        "runtime-status",
-        (el) => {
-          return el.data.state === "ready";
-        }
-      );
-    }
-
     if (state === RuntimeWorkerState.IDLE) {
       // Remove all temporary log listeners every time we move to IDLE
       for (const l of this.logListeners) {
         this.runtime.events.removeListener("log", l);
       }
       this.logListeners = [];
-      this.socketReady = undefined;
     }
 
     if (state === RuntimeWorkerState.FINISHED) {
@@ -126,11 +115,44 @@ export class RuntimeWorker {
     });
   }
 
-  waitForSocketReady(): Promise<any> {
-    return (
-      this.socketReady ||
-      Promise.reject(new Error("Cannot call waitForSocketReady() if runtime is not BUSY"))
-    );
+  isSocketReady(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const req = http
+        .request(
+          {
+            method: "GET",
+            path: "/__/health",
+            socketPath: this.runtime.socketPath,
+          },
+          () => resolve()
+        )
+        .end();
+      req.on("error", (error) => {
+        reject(error);
+      });
+    });
+  }
+
+  async waitForSocketReady(): Promise<void> {
+    const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+    const timeout = new Promise<never>((resolve, reject) => {
+      setTimeout(() => {
+        reject(new FirebaseError("Failed to load function."));
+      }, 7_000);
+    });
+    while (true) {
+      try {
+        await Promise.race([this.isSocketReady(), timeout]);
+        break;
+      } catch (err: any) {
+        // Allow us to wait until the server is listening.
+        if (["ECONNREFUSED", "ENOENT"].includes(err?.code)) {
+          await sleep(100);
+          continue;
+        }
+        throw err;
+      }
+    }
   }
 
   private log(msg: string): void {
