@@ -12,7 +12,6 @@ import * as logform from "logform";
 import { EmulatedTriggerDefinition } from "../../src/emulator/functionsEmulatorShared";
 import { FunctionsEmulator } from "../../src/emulator/functionsEmulator";
 import { Emulators } from "../../src/emulator/types";
-import { RuntimeWorker } from "../../src/emulator/functionsRuntimeWorker";
 import { TIMEOUT_LONG, TIMEOUT_MED, MODULE_ROOT } from "./fixtures";
 import { logger } from "../../src/logger";
 import * as registry from "../../src/emulator/registry";
@@ -37,9 +36,9 @@ const TEST_BACKEND = {
   functionsDir: FUNCTIONS_DIR,
   env: {},
   secretEnv: [],
-  // nodeBinary: process.execPath
+  nodeBinary: process.execPath,
   // NOTE: Use the following nodeBinary path if you want to run test cases directly from your IDE.
-  nodeBinary: path.join(MODULE_ROOT, "node_modules/.bin/ts-node"),
+  // nodeBinary: path.join(MODULE_ROOT, "node_modules/.bin/ts-node"),
 };
 
 async function useFunction(
@@ -67,7 +66,7 @@ async function useFunction(
   emu.setTriggersForTesting(triggers, TEST_BACKEND);
 }
 
-describe.only("FunctionsEmulator-Hub", () => {
+describe("FunctionsEmulator-Hub", () => {
   let emu: FunctionsEmulator;
 
   beforeEach(() => {
@@ -75,7 +74,7 @@ describe.only("FunctionsEmulator-Hub", () => {
       projectId: "fake-project-id",
       projectDir: MODULE_ROOT,
       emulatableBackends: [TEST_BACKEND],
-      // quiet: true,
+      quiet: true,
     });
   });
 
