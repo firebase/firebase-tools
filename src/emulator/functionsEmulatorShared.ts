@@ -1,9 +1,10 @@
-import * as _ from "lodash";
-import { CloudFunction } from "firebase-functions";
 import * as os from "os";
 import * as path from "path";
-import * as express from "express";
 import * as fs from "fs";
+import { randomBytes } from "crypto";
+import * as _ from "lodash";
+import * as express from "express";
+import { CloudFunction } from "firebase-functions";
 
 import * as backend from "../deploy/functions/backend";
 import { Constants } from "./constants";
@@ -67,12 +68,6 @@ export interface FunctionsRuntimeArgs {
 
 export interface FunctionsRuntimeBundle {
   proto: any;
-  // TODO(danielylee): One day, we hope to get rid of all of the following properties.
-  // Our goal is for the emulator environment to mimic the production environment as much
-  // as possible, and that includes how the emulated functions are called. In prod,
-  // the calls are made over HTTP which provides only the uri path, payload, headers, etc
-  // and none of these extra properties.
-  socketPath?: string;
   disabled_features?: FunctionsRuntimeFeatures;
   // TODO(danielylee): To make debugging in Functions Emulator w/ --inspect-functions flag a good experience, we run
   // all functions in a single runtime process. This is drastically different to production environment where each
@@ -270,7 +265,7 @@ export function getEmulatedTriggersFromDefinitions(
   );
 }
 
-export function getTemporarySocketPath(pid: number, cwd: string): string {
+export function getTemporarySocketPath(): string {
   // See "net" package docs for information about IPC pipes on Windows
   // https://nodejs.org/api/net.html#net_identifying_paths_for_ipc_connections
   //
@@ -284,10 +279,11 @@ export function getTemporarySocketPath(pid: number, cwd: string): string {
   //   /var/folders/xl/6lkrzp7j07581mw8_4dlt3b000643s/T/{...}.sock
   // Since the system prefix is about ~50 chars we only have about ~50 more to work with
   // before we will get truncated socket names and then undefined behavior.
+  const rand = randomBytes(8).toString("hex");
   if (process.platform === "win32") {
-    return path.join("\\\\?\\pipe", cwd, pid.toString());
+    return path.join("\\\\?\\pipe", `fire_emu_${rand}`);
   } else {
-    return path.join(os.tmpdir(), `fire_emu_${pid.toString()}.sock`);
+    return path.join(os.tmpdir(), `fire_emu_${rand}.sock`);
   }
 }
 
@@ -382,7 +378,7 @@ export function formatHost(info: { host: string; port: number }): string {
 }
 
 export function getSignatureType(def: EmulatedTriggerDefinition): SignatureType {
-  if (def.httpsTrigger) {
+  if (def.httpsTrigger || def.blockingTrigger) {
     return "http";
   }
   // TODO: As implemented, emulated CF3v1 functions cannot receive events in CloudEvent format, and emulated CF3v2

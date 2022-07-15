@@ -19,6 +19,7 @@ class MockRuntimeInstance implements FunctionsRuntimeInstance {
   events: EventEmitter = new EventEmitter();
   exit: Promise<number>;
   cwd = "/home/users/dir";
+  socketPath = "/path/to/socket/foo.sock";
 
   constructor(private success: boolean) {
     this.exit = new Promise((res) => {

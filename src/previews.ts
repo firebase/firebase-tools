@@ -9,7 +9,6 @@ interface PreviewFlags {
   golang: boolean;
   python: boolean;
   deletegcfartifacts: boolean;
-  artifactregistry: boolean;
   emulatoruisnapshot: boolean;
   frameworkawareness: boolean;
   functionsparams: boolean;
@@ -24,7 +23,6 @@ export const previews: PreviewFlags = {
   golang: false,
   python: false,
   deletegcfartifacts: false,
-  artifactregistry: false,
   emulatoruisnapshot: false,
   frameworkawareness: false,
   functionsparams: false,

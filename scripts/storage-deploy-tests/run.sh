@@ -48,7 +48,7 @@ EOM
 echo "Initialized temp directory."
 
 echo "Testing storage deployment..."
-firebase deploy --only storage --project "${FBTOOLS_TARGET_PROJECT}"
+firebase deploy --force --only storage --project "${FBTOOLS_TARGET_PROJECT}"
 RET_CODE="$?"
 test "${RET_CODE}" == "0" || (echo "Expected exit code ${RET_CODE} to equal 0." && false)
 echo "Tested storage deployment."

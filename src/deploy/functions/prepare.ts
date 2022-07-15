@@ -64,9 +64,8 @@ export async function prepare(
       /* silent=*/ true
     ),
     ensure.cloudBuildEnabled(projectId),
-    ensure.maybeEnableAR(projectId),
+    ensureApiEnabled.ensure(projectId, "artifactregistry.googleapis.com", "artifactregistry"),
   ]);
-  context.artifactRegistryEnabled = checkAPIsEnabled[3];
 
   // Get the Firebase Config, and set it on each function in the deployment.
   const firebaseConfig = await functionsConfig.getFirebaseConfig(options);
@@ -113,7 +112,11 @@ export async function prepare(
     const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
     const envs = { ...userEnvs, ...firebaseEnvs };
     const wantBuild: build.Build = await runtimeDelegate.discoverBuild(runtimeConfig, firebaseEnvs);
-    const wantBackend: backend.Backend = build.resolveBackend(wantBuild, userEnvs);
+    const wantBackend: backend.Backend = await build.resolveBackend(
+      wantBuild,
+      userEnvOpt,
+      userEnvs
+    );
     wantBackend.environmentVariables = envs;
     for (const endpoint of backend.allEndpoints(wantBackend)) {
       endpoint.environmentVariables = wantBackend.environmentVariables;
@@ -197,7 +200,6 @@ export async function prepare(
     // We'd eventually have to add special error handling for billing APIs, but
     // enableCloudBuild is called above and has this special casing already.
     const V2_APIS = [
-      "artifactregistry.googleapis.com",
       "run.googleapis.com",
       "eventarc.googleapis.com",
       "pubsub.googleapis.com",
