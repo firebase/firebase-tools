@@ -92,7 +92,7 @@ async function startRuntime(
     } catch {
       // Carry on;
     }
-    if (msg.includes(`Finished "${triggerName}" in`)) {
+    if (msg.includes(`Finished "${triggerName}" in`) || msg.includes("Listening to port")) {
       runtime.done = true;
     }
   });

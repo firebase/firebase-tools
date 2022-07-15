@@ -845,8 +845,8 @@ async function processHTTPS(trigger: CloudFunction<any>): Promise<void> {
       }
     });
 
-    logDebug(`Attempting to listen to port: ${process.env.PORT}`);
     server = ephemeralServer.listen(process.env.PORT);
+    logDebug(`Listening to port: ${process.env.PORT}`);
     server.on("error", rejectEphemeralServer);
   });
 }
