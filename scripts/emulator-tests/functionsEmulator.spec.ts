@@ -1,6 +1,5 @@
 import * as fs from "fs";
 import * as fsp from "fs/promises";
-import * as path from "path";
 
 import { expect } from "chai";
 import * as express from "express";
@@ -47,7 +46,7 @@ async function useFunction(
   triggerSource: () => {},
   regions: string[] = ["us-central1"],
   triggerOverrides?: Partial<EmulatedTriggerDefinition>
-) {
+): Promise<void> {
   const sourceCode = `module.exports = (${triggerSource.toString()})();\n`;
   await fsp.writeFile(`${FUNCTIONS_DIR}/index.js`, sourceCode);
 
@@ -75,6 +74,11 @@ describe("FunctionsEmulator-Hub", () => {
       projectDir: MODULE_ROOT,
       emulatableBackends: [TEST_BACKEND],
       quiet: true,
+      adminSdkConfig: {
+        projectId: "fake-project-id",
+        databaseURL: "https://fake-project-id-default-rtdb.firebaseio.com",
+        storageBucket: "fake-project-id.appspot.com",
+      },
     });
   });
 
@@ -690,6 +694,74 @@ describe("FunctionsEmulator-Hub", () => {
         .expect(200)
         .then((res) => {
           expect(res.body.var).to.eql("localhost:9099");
+        });
+    }).timeout(TIMEOUT_MED);
+
+    it("should return an emulated databaseURL when RTDB emulator is running", async () => {
+      emulatorRegistryStub.withArgs(Emulators.DATABASE).returns({
+        name: Emulators.DATABASE,
+        host: "localhost",
+        port: 9090,
+      });
+
+      await useFunction(emu, "functionId", () => {
+        return {
+          functionId: require("firebase-functions").https.onRequest(
+            (_req: express.Request, res: express.Response) => {
+              res.json(JSON.parse(process.env.FIREBASE_CONFIG!));
+            }
+          ),
+        };
+      });
+
+      await supertest(emu.createHubServer())
+        .get("/fake-project-id/us-central1/functionId")
+        .expect(200)
+        .then((res) => {
+          expect(res.body.databaseURL).to.eql(
+            "http://localhost:9090/?ns=fake-project-id-default-rtdb"
+          );
+        });
+    }).timeout(TIMEOUT_MED);
+
+    it("should return a real databaseURL when RTDB emulator is not running", async () => {
+      await useFunction(emu, "functionId", () => {
+        return {
+          functionId: require("firebase-functions").https.onRequest(
+            (_req: express.Request, res: express.Response) => {
+              res.json(JSON.parse(process.env.FIREBASE_CONFIG!));
+            }
+          ),
+        };
+      });
+
+      await supertest(emu.createHubServer())
+        .get("/fake-project-id/us-central1/functionId")
+        .expect(200)
+        .then((res) => {
+          expect(res.body.databaseURL).to.eql(
+            "https://fake-project-id-default-rtdb.firebaseio.com"
+          );
+        });
+    }).timeout(TIMEOUT_MED);
+
+    it("should report GMT time zone", async () => {
+      await useFunction(emu, "functionId", () => {
+        return {
+          functionId: require("firebase-functions").https.onRequest(
+            (_req: express.Request, res: express.Response) => {
+              const now = new Date();
+              res.json({ offset: now.getTimezoneOffset() });
+            }
+          ),
+        };
+      });
+
+      await supertest(emu.createHubServer())
+        .get("/fake-project-id/us-central1/functionId")
+        .expect(200)
+        .then((res) => {
+          expect(res.body.offset).to.eql(0);
         });
     }).timeout(TIMEOUT_MED);
   });

@@ -56,8 +56,6 @@ async function startRuntime(
     enableCors: true,
   });
 
-  env.TZ = "UTC"; // TODO: I SHOULDNT DO THIS HERE?
-
   const sourceCode = `module.exports = (${triggerSource.toString()})();\n`;
   await fs.writeFile(`${FUNCTIONS_DIR}/index.js`, sourceCode);
 
@@ -362,11 +360,6 @@ describe("FunctionsEmulator-Runtime", () => {
         const info = JSON.parse(data);
         expect(info.url).to.eql("http://localhost:9090/");
       }).timeout(TIMEOUT_MED);
-
-      it("should return an emulated databaseURL when RTDB emulator is running", async () => {
-        // it("should return a real databaseURL when RTDB emulator is not running", async () => {
-        // TODO MOVE THESE TESTS TO THE FUNCTIONS EMULATOR TEST
-      });
     });
   });
   describe("_InitializeFunctionsConfigHelper()", () => {
@@ -565,22 +558,8 @@ describe("FunctionsEmulator-Runtime", () => {
         });
         expect(JSON.parse(data)).to.deep.equal({ hostname: "real-hostname" });
       }).timeout(TIMEOUT_MED);
-
-      it("should report GMT time zone", async () => {
-        runtime = await startRuntime("functionId", "http", () => {
-          return {
-            functionId: require("firebase-functions").https.onRequest((req: any, res: any) => {
-              const now = new Date();
-              res.json({ offset: now.getTimezoneOffset() });
-            }),
-          };
-        });
-
-        await triggerRuntime(runtime, FunctionRuntimeBundles.onRequest);
-        const data = await sendReq(runtime);
-        expect(JSON.parse(data)).to.deep.equal({ offset: 0 });
-      }).timeout(TIMEOUT_MED);
     });
+
     describe("Cloud Firestore", () => {
       it("should provide Change for firestore.onWrite()", async () => {
         runtime = await startRuntime("functionId", "event", () => {
