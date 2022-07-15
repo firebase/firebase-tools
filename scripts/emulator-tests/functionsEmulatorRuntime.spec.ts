@@ -222,7 +222,9 @@ describe("FunctionsEmulator-Runtime", () => {
           return {
             functionId: require("firebase-functions")
               .firestore.document("test/test")
-              .onCreate(() => {}),
+              .onCreate(() => {
+                console.log("hello world");
+              }),
           };
         });
         await triggerRuntime(runtime, FunctionRuntimeBundles.onCreate);
@@ -235,7 +237,9 @@ describe("FunctionsEmulator-Runtime", () => {
           return {
             functionId: require("firebase-functions")
               .firestore.document("test/test")
-              .onCreate(() => {}),
+              .onCreate(() => {
+                console.log("hello world");
+              }),
           };
         });
         await triggerRuntime(runtime, FunctionRuntimeBundles.onCreate);
@@ -250,7 +254,9 @@ describe("FunctionsEmulator-Runtime", () => {
           return {
             functionId: require("firebase-functions")
               .firestore.document("test/test")
-              .onCreate(() => {}),
+              .onCreate(() => {
+                console.log("hello world");
+              }),
           };
         });
         await triggerRuntime(runtime, FunctionRuntimeBundles.onCreate);
