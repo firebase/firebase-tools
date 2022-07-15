@@ -1,6 +1,7 @@
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
 import * as planner from "../deploy/extensions/planner";
+import { saveEtags } from "../extensions/etags";
 import {
   displayExportInfo,
   parameterizeProject,
@@ -89,4 +90,6 @@ export const command = new Command("ext:export")
       },
       true /** allowOverwrite */
     );
+
+    saveEtags(options.rc, projectId, have);
   });
