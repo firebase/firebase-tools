@@ -133,3 +133,11 @@ export function paramsFlagDeprecationWarning() {
       "See https://firebase.google.com/docs/extensions/manifest for more details"
   );
 }
+
+export function outOfBandChangesWarning(instanceIds: string[]) {
+  logger.warn(
+    "The following instances may have been changed in the Firebase console or by another machine since the last deploy from this machine.\n\t" +
+      clc.bold(instanceIds.join("\n\t")) +
+      "\nIf you proceed with this deployment, those changes will be overwritten. To avoid this, run `firebase ext:export` to sync these changes to your local extensions manifest."
+  );
+}

@@ -18,7 +18,6 @@ var tmp = require("tmp");
 
 var api = require("../lib/api");
 var scopes = require("../lib/scopes");
-var { configstore } = require("../lib/configstore");
 
 var projectId = process.argv[2] || "functions-integration-test";
 var localFirebase = __dirname + "/../lib/bin/firebase.js";
@@ -29,7 +28,6 @@ var preTest = function () {
   var dir = tmp.dirSync({ prefix: "cfgtest_" });
   tmpDir = dir.name;
   fs.copySync(projectDir, tmpDir);
-  api.setRefreshToken(configstore.get("tokens").refresh_token);
   api.setScopes(scopes.CLOUD_PLATFORM);
   execSync(`${localFirebase} functions:config:unset foo --project=${projectId}`, { cwd: tmpDir });
   console.log("Done pretest prep.");

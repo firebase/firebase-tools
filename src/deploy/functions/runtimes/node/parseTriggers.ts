@@ -256,7 +256,7 @@ export function addResourcesToBuild(
         logger.warn(`Ignoring retry policy for HTTPS function ${annotation.name}`);
       }
       if (annotation.httpsTrigger.invoker) {
-        trigger.invoker = annotation.httpsTrigger.invoker[0];
+        trigger.invoker = annotation.httpsTrigger.invoker;
       }
       triggered = { httpsTrigger: trigger };
     }

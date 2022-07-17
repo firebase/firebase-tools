@@ -16,6 +16,10 @@ function applyBuildDefaults(
   return endpoint;
 }
 
+async function resolveBackend(bd: build.Build): Promise<backend.Backend> {
+  return build.resolveBackend(bd, { functionsSource: "", projectId: "PROJECT" }, {});
+}
+
 describe("addResourcesToBuild", () => {
   const oldDefaultRegion = api.functionsDefaultRegion;
   before(() => {
@@ -55,7 +59,7 @@ describe("addResourcesToBuild", () => {
     })
   );
 
-  it("should handle a minimal https trigger, yielding a build reversibly equivalent to the corresponding backend", () => {
+  it("should handle a minimal https trigger, yielding a build reversibly equivalent to the corresponding backend", async () => {
     const trigger: parseTriggers.TriggerAnnotation = {
       ...BASIC_TRIGGER,
       httpsTrigger: {},
@@ -71,11 +75,11 @@ describe("addResourcesToBuild", () => {
       ...BASIC_BACKEND_ENDPOINT,
       httpsTrigger: {},
     });
-    const convertedBackend: backend.Backend = build.resolveBackend(expected, {});
-    expect(convertedBackend).to.deep.equal(expectedBackend);
+    const convertedBackend = resolveBackend(expected);
+    await expect(convertedBackend).to.eventually.deep.equal(expectedBackend);
   });
 
-  it("should handle a callable trigger, yielding a build reversibly equivalent to the corresponding backend", () => {
+  it("should handle a callable trigger, yielding a build reversibly equivalent to the corresponding backend", async () => {
     const trigger: parseTriggers.TriggerAnnotation = {
       ...BASIC_TRIGGER,
       httpsTrigger: {},
@@ -101,11 +105,11 @@ describe("addResourcesToBuild", () => {
       callableTrigger: {},
       labels: {},
     });
-    const convertedBackend: backend.Backend = build.resolveBackend(expected, {});
-    expect(convertedBackend).to.deep.equal(expectedBackend);
+    const convertedBackend = resolveBackend(expected);
+    await expect(convertedBackend).to.eventually.deep.equal(expectedBackend);
   });
 
-  it("should handle a minimal task queue trigger, yielding a build reversibly equivalent to the corresponding backend", () => {
+  it("should handle a minimal task queue trigger, yielding a build reversibly equivalent to the corresponding backend", async () => {
     const trigger: parseTriggers.TriggerAnnotation = {
       ...BASIC_TRIGGER,
       taskQueueTrigger: {},
@@ -137,11 +141,11 @@ describe("addResourcesToBuild", () => {
         },
       ],
     };
-    const convertedBackend: backend.Backend = build.resolveBackend(expected, {});
-    expect(convertedBackend).to.deep.equal(expectedBackend);
+    const convertedBackend = resolveBackend(expected);
+    await expect(convertedBackend).to.eventually.deep.equal(expectedBackend);
   });
 
-  it("should copy fields, yielding a build reversibly equivalent to the corresponding backend", () => {
+  it("should copy fields, yielding a build reversibly equivalent to the corresponding backend", async () => {
     const trigger: parseTriggers.TriggerAnnotation = {
       ...BASIC_TRIGGER,
       httpsTrigger: {
@@ -179,7 +183,7 @@ describe("addResourcesToBuild", () => {
         ...BASIC_ENDPOINT,
         ...config,
         httpsTrigger: {
-          invoker: "public",
+          invoker: ["public"],
         },
       },
     });
@@ -205,11 +209,11 @@ describe("addResourcesToBuild", () => {
       },
       ...backendConfig,
     });
-    const convertedBackend: backend.Backend = build.resolveBackend(expected, {});
-    expect(convertedBackend).to.deep.equal(expectedBackend);
+    const convertedBackend = resolveBackend(expected);
+    await expect(convertedBackend).to.eventually.deep.equal(expectedBackend);
   });
 
-  it("should rename/transform fields, yielding a build reversibly equivalent to the corresponding backend", () => {
+  it("should rename/transform fields, yielding a build reversibly equivalent to the corresponding backend", async () => {
     const trigger: parseTriggers.TriggerAnnotation = {
       ...BASIC_TRIGGER,
       eventTrigger: {
@@ -241,11 +245,11 @@ describe("addResourcesToBuild", () => {
       ...BASIC_BACKEND_ENDPOINT,
       eventTrigger,
     });
-    const convertedBackend: backend.Backend = build.resolveBackend(expected, {});
-    expect(convertedBackend).to.deep.equal(expectedBackend);
+    const convertedBackend = resolveBackend(expected);
+    await expect(convertedBackend).to.eventually.deep.equal(expectedBackend);
   });
 
-  it("should support multiple regions, yielding a build reversibly equivalent to the corresponding backend", () => {
+  it("should support multiple regions, yielding a build reversibly equivalent to the corresponding backend", async () => {
     const trigger: parseTriggers.TriggerAnnotation = {
       ...BASIC_TRIGGER,
       httpsTrigger: {},
@@ -275,11 +279,11 @@ describe("addResourcesToBuild", () => {
         region: "europe-west1",
       }
     );
-    const convertedBackend: backend.Backend = build.resolveBackend(expected, {});
-    expect(convertedBackend).to.deep.equal(expectedBackend);
+    const convertedBackend = resolveBackend(expected);
+    await expect(convertedBackend).to.eventually.deep.equal(expectedBackend);
   });
 
-  it("should support schedules, yielding a build reversibly equivalent to the corresponding backend", () => {
+  it("should support schedules, yielding a build reversibly equivalent to the corresponding backend", async () => {
     const schedule = {
       schedule: "every 10 minutes",
       timeZone: "America/Los_Angeles",
@@ -363,11 +367,11 @@ describe("addResourcesToBuild", () => {
         },
       ],
     };
-    const convertedBackend: backend.Backend = build.resolveBackend(expected, {});
-    expect(convertedBackend).to.deep.equal(expectedBackend);
+    const convertedBackend = resolveBackend(expected);
+    await expect(convertedBackend).to.eventually.deep.equal(expectedBackend);
   });
 
-  it("should preserve empty vpc connector setting, yielding a build reversibly equivalent to the corresponding backend", () => {
+  it("should preserve empty vpc connector setting, yielding a build reversibly equivalent to the corresponding backend", async () => {
     const trigger: parseTriggers.TriggerAnnotation = {
       ...BASIC_TRIGGER,
       httpsTrigger: {},
@@ -395,8 +399,8 @@ describe("addResourcesToBuild", () => {
         connector: "",
       },
     });
-    const convertedBackend: backend.Backend = build.resolveBackend(expected, {});
-    expect(convertedBackend).to.deep.equal(expectedBackend);
+    const convertedBackend = resolveBackend(expected);
+    await expect(convertedBackend).to.eventually.deep.equal(expectedBackend);
   });
 });
 
@@ -536,7 +540,7 @@ describe("addResourcesToBackend", () => {
     const trigger: parseTriggers.TriggerAnnotation = {
       ...BASIC_TRIGGER,
       httpsTrigger: {
-        invoker: ["public"],
+        invoker: ["public", "other", "serviceAccount@"],
       },
       maxInstances: 42,
       minInstances: 1,
@@ -568,7 +572,7 @@ describe("addResourcesToBackend", () => {
     const expected: backend.Backend = backend.of({
       ...BASIC_ENDPOINT,
       httpsTrigger: {
-        invoker: ["public"],
+        invoker: ["public", "other", "serviceAccount@"],
       },
       ...config,
     });
