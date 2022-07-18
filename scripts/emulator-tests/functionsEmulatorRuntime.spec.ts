@@ -155,6 +155,7 @@ async function sendReq(runtime: Runtime, opts: ReqOpts = {}): Promise<string> {
 }
 
 describe("FunctionsEmulator-Runtime", function () {
+  // eslint-disable-next-line @typescript-eslint/no-invalid-this
   this.timeout(TIMEOUT_LONG);
 
   let runtime: Runtime | undefined;

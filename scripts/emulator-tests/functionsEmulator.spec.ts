@@ -66,6 +66,7 @@ async function useFunction(
 }
 
 describe("FunctionsEmulator-Hub", function () {
+  // eslint-disable-next-line @typescript-eslint/no-invalid-this
   this.timeout(TIMEOUT_LONG);
 
   let emu: FunctionsEmulator;
