@@ -256,7 +256,7 @@ export function addResourcesToBuild(
         logger.warn(`Ignoring retry policy for HTTPS function ${annotation.name}`);
       }
       if (annotation.httpsTrigger.invoker) {
-        trigger.invoker = annotation.httpsTrigger.invoker[0];
+        trigger.invoker = annotation.httpsTrigger.invoker;
       }
       triggered = { httpsTrigger: trigger };
     }
@@ -340,12 +340,20 @@ export function addResourcesToBuild(
     annotation,
     "concurrency",
     "labels",
-    "ingressSettings",
     "maxInstances",
     "minInstances",
     "availableMemoryMb"
   );
-  proto.renameIfPresent(
+  proto.convertIfPresent(endpoint, annotation, "ingressSettings", (str) => {
+    if (str === null) {
+      return null;
+    }
+    if (!backend.AllIngressSettings.includes(str as backend.IngressSettings)) {
+      throw new Error(`Invalid ingress setting ${str}`);
+    }
+    return str as backend.IngressSettings;
+  });
+  proto.convertIfPresent(
     endpoint,
     annotation,
     "timeoutSeconds",
@@ -487,12 +495,30 @@ export function addResourcesToBackend(
       "concurrency",
       "serviceAccountEmail",
       "labels",
-      "ingressSettings",
       "maxInstances",
-      "minInstances",
-      "availableMemoryMb"
+      "minInstances"
     );
-    proto.renameIfPresent(
+    proto.convertIfPresent(endpoint, annotation, "ingressSettings", (ingress) => {
+      if (ingress == null) {
+        return null;
+      }
+      if (!backend.AllIngressSettings.includes(ingress as backend.IngressSettings)) {
+        throw new FirebaseError(`Invalid ingress setting ${ingress}`);
+      }
+      return ingress as backend.IngressSettings;
+    });
+    proto.convertIfPresent(endpoint, annotation, "availableMemoryMb", (mem) => {
+      if (mem === null) {
+        return null;
+      }
+      if (!backend.isValidMemoryOption(mem)) {
+        throw new FirebaseError(
+          `This version of firebase-tools does not know about the memory option ${mem}. Is an upgrade necessary?`
+        );
+      }
+      return mem;
+    });
+    proto.convertIfPresent(
       endpoint,
       annotation,
       "timeoutSeconds",

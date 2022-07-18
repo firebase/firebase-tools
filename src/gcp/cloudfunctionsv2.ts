@@ -119,20 +119,20 @@ export interface ServiceConfig {
   // cloudfunctions.net URLs.
   uri?: string;
 
-  timeoutSeconds?: number;
-  availableMemory?: string;
+  timeoutSeconds?: number | null;
+  availableMemory?: string | null;
   environmentVariables?: Record<string, string>;
-  secretEnvironmentVariables?: SecretEnvVar[];
-  maxInstanceCount?: number;
-  minInstanceCount?: number;
-  vpcConnector?: string;
-  vpcConnectorEgressSettings?: VpcConnectorEgressSettings;
-  ingressSettings?: IngressSettings;
+  secretEnvironmentVariables?: SecretEnvVar[] | null;
+  maxInstanceCount?: number | null;
+  minInstanceCount?: number | null;
+  vpcConnector?: string | null;
+  vpcConnectorEgressSettings?: VpcConnectorEgressSettings | null;
+  ingressSettings?: IngressSettings | null;
 
   // The service account for default credentials. Defaults to the
   // default compute account. This is different from the v1 default
   // of the default GAE account.
-  serviceAccountEmail?: string;
+  serviceAccountEmail?: string | null;
 }
 
 export interface EventTrigger {
@@ -420,7 +420,10 @@ export async function deleteFunction(cloudFunction: string): Promise<Operation> 
 /**
  * Generate a v2 Cloud Function API object from a versionless Endpoint object.
  */
-export function functionFromEndpoint(endpoint: backend.Endpoint, source: StorageSource) {
+export function functionFromEndpoint(
+  endpoint: backend.Endpoint,
+  source: StorageSource
+): Omit<CloudFunction, OutputOnlyFields> {
   if (endpoint.platform !== "gcfv2") {
     throw new FirebaseError(
       "Trying to create a v2 CloudFunction with v1 API. This should never happen"
@@ -628,12 +631,22 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
     "secretEnvironmentVariables",
     "timeoutSeconds"
   );
-  proto.renameIfPresent(
+  proto.convertIfPresent(
     endpoint,
     gcfFunction.serviceConfig,
     "availableMemoryMb",
     "availableMemory",
-    mebibytes
+    (prod) => {
+      if (prod === null) {
+        logger.debug("Prod should always return a valid memory amount");
+        return prod;
+      }
+      const mem = mebibytes(prod);
+      if (!backend.isValidMemoryOption(mem)) {
+        logger.warn("Converting a function to an endpoint with an invalid memory option", mem);
+      }
+      return mem as backend.MemoryOptions;
+    }
   );
   proto.renameIfPresent(endpoint, gcfFunction.serviceConfig, "minInstances", "minInstanceCount");
   proto.renameIfPresent(endpoint, gcfFunction.serviceConfig, "maxInstances", "maxInstanceCount");

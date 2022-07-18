@@ -6,6 +6,7 @@ import { previews } from "../../previews";
 import { FirebaseError } from "../../error";
 import { assertExhaustive } from "../../functional";
 import { UserEnvsOpts } from "../../functions/env";
+import { logger } from "../../logger";
 
 /* The union of a customer-controlled deployment and potentially deploy-time defined parameters */
 export interface Build {
@@ -65,7 +66,7 @@ type ServiceAccount = string;
 export interface HttpsTrigger {
   // Which service account should be able to trigger this function. No value means "make public
   // on create and don't do anything on update." For more, see go/cf3-http-access-control
-  invoker?: ServiceAccount | null;
+  invoker?: Array<ServiceAccount | Expression<ServiceAccount>> | null;
 }
 
 // Trigger definitions for RPCs servers using the HTTP protocol defined at
@@ -84,7 +85,7 @@ export interface BlockingTrigger {
 // Google events for GCF gen 1)
 export interface EventTrigger {
   eventType: string;
-  eventFilters: Record<string, Expression<string>>;
+  eventFilters: Record<string, string | Expression<string>>;
 
   // whether failed function executions should retry the event execution.
   // Retries are indefinite, so developers should be sure to add some end condition (e.g. event
@@ -94,7 +95,9 @@ export interface EventTrigger {
   // Region of the EventArc trigger. Must be the same region or multi-region as the event
   // trigger or be us-central1. All first party triggers (all triggers as of Jan 2022) need not
   // specify this field because tooling determines the correct value automatically.
-  region?: Field<string>;
+  // N.B. This is an Expression<string> not Field<string> because it cannot be reset
+  // by setting to null
+  region?: string | Expression<string>;
 
   // The service account that EventArc should use to invoke this function. Setting this field
   // requires the EventArc P4SA to be granted the "ActAs" permission to this service account and
@@ -125,7 +128,7 @@ export interface TaskQueueTrigger {
   retryConfig?: TaskQueueRetryConfig | null;
 
   // empty array means private
-  invoker?: Array<ServiceAccount | Expression<string>> | null;
+  invoker?: Array<ServiceAccount | Expression<ServiceAccount>> | null;
 }
 
 export interface ScheduleRetryConfig {
@@ -138,7 +141,7 @@ export interface ScheduleRetryConfig {
 
 export interface ScheduleTrigger {
   schedule: string | Expression<string>;
-  timeZone: string | Expression<string>;
+  timeZone: Field<string>;
   retryConfig: ScheduleRetryConfig;
 }
 
@@ -152,7 +155,7 @@ export type Triggered =
 
 export interface VpcSettings {
   connector: string | Expression<string>;
-  egressSettings?: "PRIVATE_RANGES_ONLY" | "ALL_TRAFFIC";
+  egressSettings?: "PRIVATE_RANGES_ONLY" | "ALL_TRAFFIC" | null;
 }
 
 export interface SecretEnvVar {
@@ -208,10 +211,6 @@ export type Endpoint = Triggered & {
   labels?: Record<string, string | Expression<string>>;
 };
 
-function isMemoryOption(value: backend.MemoryOptions | any): value is backend.MemoryOptions {
-  return value == null || [128, 256, 512, 1024, 2048, 4096, 8192].includes(value);
-}
-
 /**
  *  Resolves user-defined parameters inside a Build, and returns a Backend ready for upload to the API
  */
@@ -229,12 +228,74 @@ export async function resolveBackend(
   return toBackend(build, paramValues);
 }
 
+// Utility class to make it more fluent to use proto.convertIfPresent
+// The class usese const lambdas so it doesn't loose the this context when
+// passing Resolver.resolveFoo as a proto.convertIfPresent arg.
+// The class also recognizes that if the input is not null the output cannot be
+// null.
+class Resolver {
+  constructor(private readonly paramValues: Record<string, Field<string | number | boolean>>) {}
+
+  // NB: The (Extract<T, null> | number) says "If T can be null, the return value"
+  // can be null. If we know input is not null, the return type is known to not
+  // be null.
+  readonly resolveInt = <T extends Field<number>>(i: T): Extract<T, null> | number => {
+    if (i === null) {
+      return i as Extract<T, null>;
+    }
+    return params.resolveInt(i, this.paramValues);
+  };
+
+  readonly resolveBoolean = <T extends Field<boolean>>(i: T): Extract<T, null> | boolean => {
+    if (i === null) {
+      return i as Extract<T, null>;
+    }
+    return params.resolveBoolean(i, this.paramValues);
+  };
+
+  readonly resolveString = <T extends Field<string>>(i: T): Extract<T, null> | string => {
+    if (i === null) {
+      return i as Extract<T, null>;
+    }
+    return params.resolveString(i, this.paramValues);
+  };
+
+  resolveStrings<Key extends string>(
+    dest: { [K in Key]?: string | null },
+    src: { [K in Key]?: Field<string> },
+    ...keys: Key[]
+  ): void {
+    for (const key of keys) {
+      const orig = src[key];
+      if (typeof orig === "undefined") {
+        continue;
+      }
+      dest[key] = orig === null ? null : params.resolveString(orig, this.paramValues);
+    }
+  }
+
+  resolveInts<Key extends string>(
+    dest: { [K in Key]?: number | null },
+    src: { [K in Key]?: Field<number> },
+    ...keys: Key[]
+  ): void {
+    for (const key of keys) {
+      const orig = src[key];
+      if (typeof orig === "undefined") {
+        continue;
+      }
+      dest[key] = orig === null ? null : params.resolveInt(orig, this.paramValues);
+    }
+  }
+}
+
 /** Converts a build specification into a Backend representation, with all Params resolved and interpolated */
 // TODO(vsfan): handle Expression<T> types
 export function toBackend(
   build: Build,
   paramValues: Record<string, Field<string | number | boolean>>
 ): backend.Backend {
+  const r = new Resolver(paramValues);
   const bkEndpoints: Array<backend.Endpoint> = [];
   for (const endpointId of Object.keys(build.endpoints)) {
     const bdEndpoint = build.endpoints[endpointId];
@@ -244,21 +305,14 @@ export function toBackend(
       regions = [api.functionsDefaultRegion];
     }
     for (const region of regions) {
-      const trigger = discoverTrigger(bdEndpoint, paramValues);
+      const trigger = discoverTrigger(bdEndpoint, region, r);
 
       if (typeof bdEndpoint.platform === "undefined") {
         throw new FirebaseError("platform can't be undefined");
       }
-      if (!isMemoryOption(bdEndpoint.availableMemoryMb)) {
+      if (!backend.isValidMemoryOption(bdEndpoint.availableMemoryMb)) {
         throw new FirebaseError("available memory must be a supported value, if present");
       }
-      let timeout: number;
-      if (bdEndpoint.timeoutSeconds) {
-        timeout = params.resolveInt(bdEndpoint.timeoutSeconds, paramValues);
-      } else {
-        timeout = 60;
-      }
-
       const bkEndpoint: backend.Endpoint = {
         id: endpointId,
         project: bdEndpoint.project,
@@ -266,55 +320,43 @@ export function toBackend(
         entryPoint: bdEndpoint.entryPoint,
         platform: bdEndpoint.platform,
         runtime: bdEndpoint.runtime,
-        timeoutSeconds: timeout,
         ...trigger,
       };
-      proto.renameIfPresent(
-        bkEndpoint,
-        bdEndpoint,
-        "maxInstances",
-        "maxInstances",
-        (from: number | Expression<number>): number => {
-          return params.resolveInt(from, paramValues);
-        }
-      );
-      proto.renameIfPresent(
-        bkEndpoint,
-        bdEndpoint,
-        "minInstances",
-        "minInstances",
-        (from: number | Expression<number>): number => {
-          return params.resolveInt(from, paramValues);
-        }
-      );
-      proto.renameIfPresent(
-        bkEndpoint,
-        bdEndpoint,
-        "concurrency",
-        "concurrency",
-        (from: number | Expression<number>): number => {
-          return params.resolveInt(from, paramValues);
-        }
-      );
       proto.copyIfPresent(
         bkEndpoint,
         bdEndpoint,
-        "ingressSettings",
-        "availableMemoryMb",
         "environmentVariables",
-        "labels"
+        "labels",
+        "secretEnvironmentVariables"
       );
-      proto.copyIfPresent(bkEndpoint, bdEndpoint, "secretEnvironmentVariables");
+      proto.renameIfPresent(bkEndpoint, bdEndpoint, "serviceAccountEmail", "serviceAccount");
+
+      proto.convertIfPresent(bkEndpoint, bdEndpoint, "ingressSettings", (from) => {
+        if (from !== null && !backend.AllIngressSettings.includes(from)) {
+          throw new FirebaseError(`Cannot set ingress settings to invalid value ${from}`);
+        }
+        return from;
+      });
+      proto.convertIfPresent(bkEndpoint, bdEndpoint, "availableMemoryMb", (from) => {
+        const mem = r.resolveInt(from);
+        if (mem !== null && !backend.isValidMemoryOption(mem)) {
+          logger.debug("Warning; setting memory to unexpected value", mem);
+        }
+        return mem as backend.MemoryOptions | null;
+      });
+
+      r.resolveInts(
+        bkEndpoint,
+        bdEndpoint,
+        "timeoutSeconds",
+        "maxInstances",
+        "minInstances",
+        "concurrency"
+      );
       if (bdEndpoint.vpc) {
         bkEndpoint.vpc = { connector: params.resolveString(bdEndpoint.vpc.connector, paramValues) };
         proto.copyIfPresent(bkEndpoint.vpc, bdEndpoint.vpc, "egressSettings");
       }
-      proto.renameIfPresent(bkEndpoint, bdEndpoint, "serviceAccountEmail", "serviceAccount");
-      // TODO: renameIfPresent currently copies over null fields, which will change imminently. Once that change is in, we don't need this cleanup code anymore to make tests pass.
-      if ("serviceAccountEmail" in bkEndpoint && !bdEndpoint.serviceAccount) {
-        delete bkEndpoint.serviceAccountEmail;
-      }
-
       bkEndpoints.push(bkEndpoint);
     }
   }
@@ -324,144 +366,83 @@ export function toBackend(
   return bkend;
 }
 
-function discoverTrigger(
-  endpoint: Endpoint,
-  paramValues: Record<string, Field<string | number | boolean>>
-): backend.Triggered {
-  const resolveInt = (from: number | Expression<number>) => params.resolveInt(from, paramValues);
-  const resolveString = (from: string | Expression<string>) =>
-    params.resolveString(from, paramValues);
-  const resolveBoolean = (from: boolean | Expression<boolean>) =>
-    params.resolveBoolean(from, paramValues);
-
-  let trigger: backend.Triggered;
+function discoverTrigger(endpoint: Endpoint, region: string, r: Resolver): backend.Triggered {
   if ("httpsTrigger" in endpoint) {
-    const bkHttps: backend.HttpsTrigger = {};
-    if (endpoint.httpsTrigger.invoker) {
-      bkHttps.invoker = [endpoint.httpsTrigger.invoker];
+    const httpsTrigger: backend.HttpsTrigger = {};
+    if (endpoint.httpsTrigger.invoker === null) {
+      httpsTrigger.invoker = null;
+    } else if (typeof endpoint.httpsTrigger.invoker !== "undefined") {
+      httpsTrigger.invoker = endpoint.httpsTrigger.invoker.map(r.resolveString);
     }
-    trigger = { httpsTrigger: bkHttps };
+    return { httpsTrigger };
   } else if ("callableTrigger" in endpoint) {
-    trigger = { callableTrigger: {} };
+    return { callableTrigger: {} };
   } else if ("blockingTrigger" in endpoint) {
-    trigger = { blockingTrigger: endpoint.blockingTrigger };
+    return { blockingTrigger: endpoint.blockingTrigger };
   } else if ("eventTrigger" in endpoint) {
-    const bkEventFilters: Record<string, string> = {};
+    const eventFilters: Record<string, string> = {};
     for (const [key, value] of Object.entries(endpoint.eventTrigger.eventFilters)) {
-      bkEventFilters[key] = params.resolveString(value, paramValues);
+      eventFilters[key] = r.resolveString(value);
     }
-    const bkEvent: backend.EventTrigger = {
+    const eventTrigger: backend.EventTrigger = {
       eventType: endpoint.eventTrigger.eventType,
-      eventFilters: bkEventFilters,
-      retry: resolveBoolean(endpoint.eventTrigger.retry || false),
+      eventFilters,
+      retry: r.resolveBoolean(endpoint.eventTrigger.retry) || false,
     };
-    if (endpoint.eventTrigger.serviceAccount) {
-      bkEvent.serviceAccountEmail = endpoint.eventTrigger.serviceAccount;
-    }
-    if (endpoint.eventTrigger.region) {
-      bkEvent.region = resolveString(endpoint.eventTrigger.region);
-    }
-    trigger = { eventTrigger: bkEvent };
+    proto.convertIfPresent(
+      eventTrigger,
+      endpoint.eventTrigger,
+      "serviceAccountEmail",
+      "serviceAccount",
+      r.resolveString
+    );
+    proto.convertIfPresent(eventTrigger, endpoint.eventTrigger, "region", r.resolveString);
+    return { eventTrigger };
   } else if ("scheduleTrigger" in endpoint) {
     const bkSchedule: backend.ScheduleTrigger = {
-      schedule: resolveString(endpoint.scheduleTrigger.schedule),
-      timeZone: resolveString(endpoint.scheduleTrigger.timeZone),
+      schedule: r.resolveString(endpoint.scheduleTrigger.schedule),
+      timeZone: r.resolveString(endpoint.scheduleTrigger.timeZone),
     };
-    const bkRetry: backend.ScheduleRetryConfig = {};
-    if (endpoint.scheduleTrigger.retryConfig.maxBackoffSeconds) {
-      bkRetry.maxBackoffDuration = proto.durationFromSeconds(
-        resolveInt(endpoint.scheduleTrigger.retryConfig.maxBackoffSeconds)
+    if (endpoint.scheduleTrigger.retryConfig) {
+      const bkRetry: backend.ScheduleRetryConfig = {};
+      r.resolveInts(
+        bkRetry,
+        endpoint.scheduleTrigger.retryConfig,
+        "maxBackoffSeconds",
+        "minBackoffSeconds",
+        "retryCount",
+        "maxDoublings"
       );
+      bkSchedule.retryConfig = bkRetry;
     }
-    if (endpoint.scheduleTrigger.retryConfig.minBackoffSeconds) {
-      bkRetry.minBackoffDuration = proto.durationFromSeconds(
-        resolveInt(endpoint.scheduleTrigger.retryConfig.minBackoffSeconds)
-      );
-    }
-    if (endpoint.scheduleTrigger.retryConfig.maxRetrySeconds) {
-      bkRetry.maxRetryDuration = proto.durationFromSeconds(
-        resolveInt(endpoint.scheduleTrigger.retryConfig.maxRetrySeconds)
-      );
-    }
-    proto.copyIfPresent(
-      bkRetry,
-      endpoint.scheduleTrigger.retryConfig,
-      "retryCount",
-      "maxDoublings"
-    );
-    bkSchedule.retryConfig = bkRetry;
-    trigger = { scheduleTrigger: bkSchedule };
+    return { scheduleTrigger: bkSchedule };
   } else if ("taskQueueTrigger" in endpoint) {
-    const bkTaskQueue: backend.TaskQueueTrigger = {};
+    const taskQueueTrigger: backend.TaskQueueTrigger = {};
     if (endpoint.taskQueueTrigger.rateLimits) {
-      const bkRateLimits: backend.TaskQueueRateLimits = {};
-      proto.renameIfPresent(
-        bkRateLimits,
+      taskQueueTrigger.rateLimits = {};
+      r.resolveInts(
+        taskQueueTrigger.rateLimits,
         endpoint.taskQueueTrigger.rateLimits,
         "maxConcurrentDispatches",
-        "maxConcurrentDispatches",
-        resolveInt
+        "maxConcurrentDispatches"
       );
-      proto.renameIfPresent(
-        bkRateLimits,
-        endpoint.taskQueueTrigger.rateLimits,
-        "maxDispatchesPerSecond",
-        "maxDispatchesPerSecond",
-        resolveInt
-      );
-      bkTaskQueue.rateLimits = bkRateLimits;
     }
     if (endpoint.taskQueueTrigger.retryConfig) {
-      const bkRetryConfig: backend.TaskQueueRetryConfig = {};
-      proto.renameIfPresent(
-        bkRetryConfig,
+      taskQueueTrigger.retryConfig = {};
+      r.resolveInts(
+        taskQueueTrigger.retryConfig,
         endpoint.taskQueueTrigger.retryConfig,
         "maxAttempts",
-        "maxAttempts",
-        resolveInt
-      );
-      proto.renameIfPresent(
-        bkRetryConfig,
-        endpoint.taskQueueTrigger.retryConfig,
         "maxBackoffSeconds",
-        "maxBackoffSeconds",
-        (from: number | Expression<number>): string => {
-          return proto.durationFromSeconds(resolveInt(from));
-        }
-      );
-      proto.renameIfPresent(
-        bkRetryConfig,
-        endpoint.taskQueueTrigger.retryConfig,
         "minBackoffSeconds",
-        "minBackoffSeconds",
-        (from: number | Expression<number>): string => {
-          return proto.durationFromSeconds(resolveInt(from));
-        }
-      );
-      proto.renameIfPresent(
-        bkRetryConfig,
-        endpoint.taskQueueTrigger.retryConfig,
         "maxRetrySeconds",
-        "maxRetryDurationSeconds",
-        (from: number | Expression<number>): string => {
-          return proto.durationFromSeconds(resolveInt(from));
-        }
+        "maxDoublings"
       );
-      proto.renameIfPresent(
-        bkRetryConfig,
-        endpoint.taskQueueTrigger.retryConfig,
-        "maxDoublings",
-        "maxDoublings",
-        resolveInt
-      );
-      bkTaskQueue.retryConfig = bkRetryConfig;
     }
     if (endpoint.taskQueueTrigger.invoker) {
-      bkTaskQueue.invoker = endpoint.taskQueueTrigger.invoker.map((sa) => resolveString(sa));
+      taskQueueTrigger.invoker = endpoint.taskQueueTrigger.invoker.map(r.resolveString);
     }
-    trigger = { taskQueueTrigger: bkTaskQueue };
-  } else {
-    assertExhaustive(endpoint);
+    return { taskQueueTrigger };
   }
-  return trigger;
+  assertExhaustive(endpoint);
 }

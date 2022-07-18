@@ -1,7 +1,7 @@
 import * as backend from "../../backend";
 import * as build from "../../build";
 import * as runtimes from "..";
-import { copyIfPresent, renameIfPresent, secondsFromDuration } from "../../../../gcp/proto";
+import { copyIfPresent, renameIfPresent, convertIfPresent } from "../../../../gcp/proto";
 import { assertKeyTypes, requireKeys } from "./parsing";
 import { FirebaseError } from "../../../../error";
 
@@ -17,7 +17,7 @@ const CHANNEL_NAME_REGEX = new RegExp(
 export interface ManifestSecretEnv {
   key: string;
   secret?: string;
-  projectId: string;
+  projectId?: string;
 }
 
 type Base = Omit<backend.ServiceConfiguration, "secretEnvironmentVariables">;
@@ -32,7 +32,7 @@ export type ManifestEndpoint = Base &
     region?: string[];
     entryPoint: string;
     platform?: backend.FunctionsPlatform;
-    secretEnvironmentVariables?: Array<ManifestSecretEnv>;
+    secretEnvironmentVariables?: Array<ManifestSecretEnv> | null;
   };
 
 export interface Manifest {
@@ -112,7 +112,7 @@ function assertManifestEndpoint(ep: ManifestEndpoint, id: string): void {
     region: "array",
     platform: (platform) => backend.AllFunctionsPlatforms.includes(platform),
     entryPoint: "string",
-    availableMemoryMb: (mem) => backend.AllMemoryOptions.includes(mem),
+    availableMemoryMb: backend.isValidMemoryOption,
     maxInstances: "number",
     minInstances: "number",
     concurrency: "number",
@@ -120,7 +120,8 @@ function assertManifestEndpoint(ep: ManifestEndpoint, id: string): void {
     timeoutSeconds: "number",
     vpc: "object",
     labels: "object",
-    ingressSettings: (setting) => backend.AllIngressSettings.includes(setting),
+    ingressSettings: (setting) =>
+      backend.AllIngressSettings.includes(setting as backend.IngressSettings),
     environmentVariables: "object",
     secretEnvironmentVariables: "array",
     httpsTrigger: "object",
@@ -134,7 +135,8 @@ function assertManifestEndpoint(ep: ManifestEndpoint, id: string): void {
   if (ep.vpc) {
     assertKeyTypes(prefix + ".vpc", ep.vpc, {
       connector: "string",
-      egressSettings: (setting) => backend.AllVpcEgressSettings.includes(setting),
+      egressSettings: (setting) =>
+        backend.AllVpcEgressSettings.includes(setting as backend.VpcEgressSettings),
     });
     requireKeys(prefix + ".vpc", ep.vpc, "connector");
   }
@@ -189,9 +191,9 @@ function assertManifestEndpoint(ep: ManifestEndpoint, id: string): void {
     assertKeyTypes(prefix + ".scheduleTrigger.retryConfig", ep.scheduleTrigger.retryConfig, {
       retryCount: "number",
       maxDoublings: "number",
-      minBackoffDuration: "string",
-      maxBackoffDuration: "string",
-      maxRetryDuration: "string",
+      minBackoffSeconds: "number",
+      maxBackoffSeconds: "number",
+      maxRetrySeconds: "number",
     });
   } else if (backend.isTaskQueueTriggered(ep)) {
     assertKeyTypes(prefix + ".taskQueueTrigger", ep.taskQueueTrigger, {
@@ -241,7 +243,7 @@ function parseEndpointForBuild(
     delete newTrigger.serviceAccountEmail;
     triggered = { eventTrigger: newTrigger };
     triggered.eventTrigger.serviceAccount = ep.eventTrigger.serviceAccountEmail;
-    renameIfPresent(triggered.eventTrigger, ep.eventTrigger, "channel", "channel", (c) =>
+    convertIfPresent(triggered.eventTrigger, ep.eventTrigger, "channel", (c) =>
       resolveChannelName(project, c, defaultRegion)
     );
     for (const [k, v] of Object.entries(triggered.eventTrigger.eventFilters)) {
@@ -258,30 +260,17 @@ function parseEndpointForBuild(
   } else if (backend.isScheduleTriggered(ep)) {
     const st: build.ScheduleTrigger = {
       schedule: ep.scheduleTrigger.schedule || "",
-      timeZone: ep.scheduleTrigger.timeZone || "",
+      timeZone: ep.scheduleTrigger.timeZone ?? null,
       retryConfig: {},
     };
-    if (ep.scheduleTrigger.retryConfig) {
-      st.retryConfig = {
-        retryCount: ep.scheduleTrigger.retryConfig.retryCount,
-        maxDoublings: ep.scheduleTrigger.retryConfig.maxDoublings,
-      };
-      if (ep.scheduleTrigger.retryConfig.maxRetryDuration) {
-        st.retryConfig.maxRetrySeconds = secondsFromDuration(
-          ep.scheduleTrigger.retryConfig.maxRetryDuration
-        );
-      }
-      if (ep.scheduleTrigger.retryConfig.maxBackoffDuration) {
-        st.retryConfig.maxBackoffSeconds = secondsFromDuration(
-          ep.scheduleTrigger.retryConfig.maxBackoffDuration
-        );
-      }
-      if (ep.scheduleTrigger.retryConfig.minBackoffDuration) {
-        st.retryConfig.minBackoffSeconds = secondsFromDuration(
-          ep.scheduleTrigger.retryConfig.minBackoffDuration
-        );
-      }
-    }
+    copyIfPresent(
+      st.retryConfig,
+      ep.scheduleTrigger.retryConfig || {},
+      "retryCount",
+      "minBackoffSeconds",
+      "maxBackoffSeconds",
+      "maxRetrySeconds"
+    );
     triggered = { scheduleTrigger: st };
   } else if (backend.isTaskQueueTriggered(ep)) {
     const tq: build.TaskQueueTrigger = {
@@ -329,23 +318,20 @@ function parseEndpointForBuild(
     "ingressSettings",
     "environmentVariables"
   );
-  renameIfPresent(
-    parsed,
-    ep,
-    "secretEnvironmentVariables",
-    "secretEnvironmentVariables",
-    (senvs: Array<ManifestSecretEnv>) => {
-      const secretEnvironmentVariables: backend.SecretEnvVar[] = [];
-      for (const { key, secret } of senvs) {
-        secretEnvironmentVariables.push({
-          key,
-          secret: secret || key, // if secret is undefined, assume env var key == secret name
-          projectId: project,
-        });
-      }
-      return secretEnvironmentVariables;
+  convertIfPresent(parsed, ep, "secretEnvironmentVariables", (senvs) => {
+    if (senvs === null) {
+      return [];
     }
-  );
+    const secretEnvironmentVariables: backend.SecretEnvVar[] = [];
+    for (const { key, secret } of senvs) {
+      secretEnvironmentVariables.push({
+        key,
+        secret: secret || key, // if secret is undefined, assume env var key == secret name
+        projectId: project,
+      });
+    }
+    return secretEnvironmentVariables;
+  });
   return parsed;
 }
 
@@ -365,7 +351,7 @@ function parseEndpoints(
     let triggered: backend.Triggered;
     if (backend.isEventTriggered(ep)) {
       triggered = { eventTrigger: ep.eventTrigger };
-      renameIfPresent(triggered.eventTrigger, ep.eventTrigger, "channel", "channel", (c) =>
+      convertIfPresent(triggered.eventTrigger, ep.eventTrigger, "channel", (c) =>
         resolveChannelName(project, c, defaultRegion)
       );
       for (const [k, v] of Object.entries(triggered.eventTrigger.eventFilters)) {
@@ -417,23 +403,20 @@ function parseEndpoints(
       "environmentVariables",
       "cpu"
     );
-    renameIfPresent(
-      parsed,
-      ep,
-      "secretEnvironmentVariables",
-      "secretEnvironmentVariables",
-      (senvs: Array<ManifestSecretEnv>) => {
-        const secretEnvironmentVariables: backend.SecretEnvVar[] = [];
-        for (const { key, secret } of senvs) {
-          secretEnvironmentVariables.push({
-            key,
-            secret: secret || key, // if secret is undefined, assume env var key == secret name
-            projectId: project,
-          });
-        }
-        return secretEnvironmentVariables;
+    convertIfPresent(parsed, ep, "secretEnvironmentVariables", (senvs) => {
+      if (senvs === null) {
+        return [];
       }
-    );
+      const secretEnvironmentVariables: backend.SecretEnvVar[] = [];
+      for (const { key, secret } of senvs) {
+        secretEnvironmentVariables.push({
+          key,
+          secret: secret || key, // if secret is undefined, assume env var key == secret name
+          projectId: project,
+        });
+      }
+      return secretEnvironmentVariables;
+    });
     allParsed.push(parsed);
   }
 

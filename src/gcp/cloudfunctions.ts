@@ -59,7 +59,7 @@ export interface SecretEnvVar {
   key: string;
   projectId: string;
   secret: string;
-  version: string;
+  version?: string;
 }
 
 export interface SecretVolume {
@@ -86,6 +86,10 @@ export interface FailurePolicy {
   // end oneof action
 }
 
+/**
+ * API type for Cloud Functions in the v1 API. Fields that are nullable can
+ * be set to null in UpdateFunction to reset them to default server-side values.
+ */
 export interface CloudFunction {
   name: string;
   description?: string;
@@ -107,31 +111,31 @@ export interface CloudFunction {
   entryPoint: string;
   runtime: runtimes.Runtime;
   // Seconds. Default = 60
-  timeout?: proto.Duration;
+  timeout?: proto.Duration | null;
 
   // Default 256
-  availableMemoryMb?: number;
+  availableMemoryMb?: number | null;
 
   // Default <projectID>@appspot.gserviceaccount.com
-  serviceAccountEmail?: string;
+  serviceAccountEmail?: string | null;
 
   labels?: Record<string, string>;
   environmentVariables?: Record<string, string>;
   buildEnvironmentVariables?: Record<string, string>;
 
-  network?: string;
-  maxInstances?: number;
-  minInstances?: number;
+  network?: string | null;
+  maxInstances?: number | null;
+  minInstances?: number | null;
 
   corsPolicy?: CorsPolicy;
-  vpcConnector?: string;
-  vpcConnectorEgressSettings?: "PRIVATE_RANGES_ONLY" | "ALL_TRAFFIC";
-  ingressSettings?: "ALLOW_ALL" | "ALLOW_INTERNAL_ONLY" | "ALLOW_INTERNAL_AND_GCLB";
+  vpcConnector?: string | null;
+  vpcConnectorEgressSettings?: "PRIVATE_RANGES_ONLY" | "ALL_TRAFFIC" | null;
+  ingressSettings?: "ALLOW_ALL" | "ALLOW_INTERNAL_ONLY" | "ALLOW_INTERNAL_AND_GCLB" | null;
 
-  kmsKeyName?: string;
-  buildWorkerPool?: string;
-  secretEnvironmentVariables?: SecretEnvVar[];
-  secretVolumes?: SecretVolume[];
+  kmsKeyName?: string | null;
+  buildWorkerPool?: string | null;
+  secretEnvironmentVariables?: SecretEnvVar[] | null;
+  secretVolumes?: SecretVolume[] | null;
   dockerRegistry?: "CONTAINER_REGISTRY" | "ARTIFACT_REGISTRY";
 
   // Input-only parameter. Source token originally comes from the Operation
@@ -527,7 +531,6 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
     endpoint,
     gcfFunction,
     "serviceAccountEmail",
-    "availableMemoryMb",
     "minInstances",
     "maxInstances",
     "ingressSettings",
@@ -536,20 +539,23 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
     "secretEnvironmentVariables",
     "sourceUploadUrl"
   );
-  proto.renameIfPresent(
+  proto.convertIfPresent(
     endpoint,
     gcfFunction,
-    "timeoutSeconds",
-    "timeout",
-    proto.secondsFromDuration
+    "availableMemoryMb",
+    (raw) => raw as backend.MemoryOptions
+  );
+  proto.convertIfPresent(endpoint, gcfFunction, "timeoutSeconds", "timeout", (dur) =>
+    dur === null ? null : proto.secondsFromDuration(dur)
   );
   if (gcfFunction.vpcConnector) {
     endpoint.vpc = { connector: gcfFunction.vpcConnector };
-    proto.renameIfPresent(
+    proto.convertIfPresent(
       endpoint.vpc,
       gcfFunction,
       "egressSettings",
-      "vpcConnectorEgressSettings"
+      "vpcConnectorEgressSettings",
+      (raw) => raw as backend.VpcEgressSettings
     );
   }
   endpoint.codebase = gcfFunction.labels?.[CODEBASE_LABEL] || projectConfig.DEFAULT_CODEBASE;
@@ -629,19 +635,20 @@ export function functionFromEndpoint(
     gcfFunction,
     endpoint,
     "serviceAccountEmail",
-    "availableMemoryMb",
     "minInstances",
     "maxInstances",
     "ingressSettings",
     "environmentVariables",
     "secretEnvironmentVariables"
   );
-  proto.renameIfPresent(
+  proto.convertIfPresent(
     gcfFunction,
     endpoint,
-    "timeout",
-    "timeoutSeconds",
-    proto.durationFromSeconds
+    "availableMemoryMb",
+    (mem) => mem as backend.MemoryOptions
+  );
+  proto.convertIfPresent(gcfFunction, endpoint, "timeout", "timeoutSeconds", (sec) =>
+    sec ? proto.durationFromSeconds(sec) : null
   );
   if (endpoint.vpc) {
     proto.renameIfPresent(gcfFunction, endpoint.vpc, "vpcConnector", "connector");

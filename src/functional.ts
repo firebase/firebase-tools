@@ -110,3 +110,12 @@ export function partition<T>(arr: T[], callbackFn: (elem: T) => boolean): [T[], 
     [[], []]
   );
 }
+
+export const nullsafeVisitor =
+  <First, Rest extends unknown[], Ret>(func: (first: First, ...rest: Rest) => Ret, ...rest: Rest) =>
+  (first: First | null): Ret | null => {
+    if (first === null) {
+      return null;
+    }
+    return func(first, ...rest);
+  };
