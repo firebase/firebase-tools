@@ -67,7 +67,7 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
         version: "SNAPSHOT",
         downloadPath: path.join(CACHE_DIR, "ui-vSNAPSHOT.zip"),
         unzipDir: path.join(CACHE_DIR, "ui-vSNAPSHOT"),
-        binaryPath: path.join(CACHE_DIR, "ui-vSNAPSHOT", "server.bundle.js"),
+        binaryPath: path.join(CACHE_DIR, "ui-vSNAPSHOT", "server", "server.js"),
         opts: {
           cacheDir: CACHE_DIR,
           remoteUrl:
