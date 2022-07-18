@@ -18,4 +18,4 @@ cp package.json dev/package.json
 (cd scripts/emulator-tests/functions && npm ci)
 
 # Run the tests from the built dev directory.
-mocha dev/scripts/emulator-tests/*.spec.*
+timeout 300s mocha dev/scripts/emulator-tests/*.spec.*
