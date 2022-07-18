@@ -142,7 +142,9 @@ describe("proto", () => {
     });
 
     it("should support map types", () => {
-      const obj = {
+      // Note: we need to erase type info, because the template args to fieldMasks
+      // will otherwise know that "missing" isn't possible and fail to compile.
+      const obj: Record<string, unknown> = {
         map: {
           userDefined: "value",
         },
