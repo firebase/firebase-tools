@@ -154,7 +154,9 @@ async function sendReq(runtime: Runtime, opts: ReqOpts = {}): Promise<string> {
   return result;
 }
 
-describe("FunctionsEmulator-Runtime", () => {
+describe("FunctionsEmulator-Runtime", function () {
+  this.timeout(TIMEOUT_LONG);
+
   let runtime: Runtime | undefined;
 
   afterEach(() => {
@@ -712,4 +714,4 @@ describe("FunctionsEmulator-Runtime", () => {
       });
     });
   });
-}).timeout(TIMEOUT_LONG);
+});

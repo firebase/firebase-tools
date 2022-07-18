@@ -65,7 +65,9 @@ async function useFunction(
   emu.setTriggersForTesting(triggers, TEST_BACKEND);
 }
 
-describe("FunctionsEmulator-Hub", () => {
+describe("FunctionsEmulator-Hub", function () {
+  this.timeout(TIMEOUT_LONG);
+
   let emu: FunctionsEmulator;
 
   beforeEach(() => {
@@ -855,4 +857,4 @@ describe("FunctionsEmulator-Hub", () => {
         });
     });
   });
-}).timeout(TIMEOUT_LONG);
+});
