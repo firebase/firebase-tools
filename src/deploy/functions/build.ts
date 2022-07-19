@@ -172,11 +172,10 @@ export type Endpoint = Triggered & {
   // Will become optional once "run" is supported as a platform
   entryPoint: string;
 
-  // The services account that this function should run as. Has no effect for a Run service.
+  // The services account that this function should run as.
   // defaults to the GAE service account when a function is first created as a GCF gen 1 function.
-  // Defaults to the compute service account when a function is first created as a GCF gen 2 function
-  // or when using Cloud Run.
-  serviceAccount: ServiceAccount | null;
+  // Defaults to the compute service account when a function is first created as a GCF gen 2 function.
+  serviceAccount?: ServiceAccount | null;
 
   // defaults to ["us-central1"], overridable in firebase-tools with
   //  process.env.FIREBASE_FUNCTIONS_DEFAULT_REGION
@@ -310,7 +309,10 @@ export function toBackend(
       if (typeof bdEndpoint.platform === "undefined") {
         throw new FirebaseError("platform can't be undefined");
       }
-      if (!backend.isValidMemoryOption(bdEndpoint.availableMemoryMb)) {
+      if (
+        bdEndpoint.availableMemoryMb != null &&
+        !backend.isValidMemoryOption(bdEndpoint.availableMemoryMb)
+      ) {
         throw new FirebaseError("available memory must be a supported value, if present");
       }
       const bkEndpoint: backend.Endpoint = {
@@ -327,9 +329,9 @@ export function toBackend(
         bdEndpoint,
         "environmentVariables",
         "labels",
-        "secretEnvironmentVariables"
+        "secretEnvironmentVariables",
+        "serviceAccount"
       );
-      proto.renameIfPresent(bkEndpoint, bdEndpoint, "serviceAccountEmail", "serviceAccount");
 
       proto.convertIfPresent(bkEndpoint, bdEndpoint, "ingressSettings", (from) => {
         if (from !== null && !backend.AllIngressSettings.includes(from)) {
@@ -389,14 +391,7 @@ function discoverTrigger(endpoint: Endpoint, region: string, r: Resolver): backe
       eventFilters,
       retry: r.resolveBoolean(endpoint.eventTrigger.retry) || false,
     };
-    proto.convertIfPresent(
-      eventTrigger,
-      endpoint.eventTrigger,
-      "serviceAccountEmail",
-      "serviceAccount",
-      r.resolveString
-    );
-    proto.convertIfPresent(eventTrigger, endpoint.eventTrigger, "region", r.resolveString);
+    r.resolveStrings(eventTrigger, endpoint.eventTrigger, "serviceAccount", "region");
     return { eventTrigger };
   } else if ("scheduleTrigger" in endpoint) {
     const bkSchedule: backend.ScheduleTrigger = {
@@ -410,6 +405,7 @@ function discoverTrigger(endpoint: Endpoint, region: string, r: Resolver): backe
         endpoint.scheduleTrigger.retryConfig,
         "maxBackoffSeconds",
         "minBackoffSeconds",
+        "maxRetrySeconds",
         "retryCount",
         "maxDoublings"
       );

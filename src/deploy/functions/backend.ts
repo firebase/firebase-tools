@@ -95,7 +95,7 @@ export interface EventTrigger {
    * Which service account EventArc should use to emit a function.
    * This field is ignored for v1 and defaults to the
    */
-  serviceAccountEmail?: string | null;
+  serviceAccount?: string | null;
 
   /**
    * The name of the channel where the function receive events.
@@ -289,7 +289,7 @@ export interface ServiceConfiguration {
     egressSettings?: VpcEgressSettings | null;
   };
   ingressSettings?: IngressSettings | null;
-  serviceAccountEmail?: string | null;
+  serviceAccount?: string | null;
 }
 
 export type FunctionsPlatform = "gcfv1" | "gcfv2";

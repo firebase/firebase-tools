@@ -530,7 +530,6 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
   proto.copyIfPresent(
     endpoint,
     gcfFunction,
-    "serviceAccountEmail",
     "minInstances",
     "maxInstances",
     "ingressSettings",
@@ -539,6 +538,7 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
     "secretEnvironmentVariables",
     "sourceUploadUrl"
   );
+  proto.renameIfPresent(endpoint, gcfFunction, "serviceAccount", "serviceAccountEmail");
   proto.convertIfPresent(
     endpoint,
     gcfFunction,
@@ -634,13 +634,13 @@ export function functionFromEndpoint(
   proto.copyIfPresent(
     gcfFunction,
     endpoint,
-    "serviceAccountEmail",
     "minInstances",
     "maxInstances",
     "ingressSettings",
     "environmentVariables",
     "secretEnvironmentVariables"
   );
+  proto.renameIfPresent(gcfFunction, endpoint, "serviceAccountEmail", "serviceAccount");
   proto.convertIfPresent(
     gcfFunction,
     endpoint,

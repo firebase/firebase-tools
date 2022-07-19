@@ -457,9 +457,14 @@ export function functionFromEndpoint(
     endpoint,
     "environmentVariables",
     "secretEnvironmentVariables",
-    "serviceAccountEmail",
     "ingressSettings",
     "timeoutSeconds"
+  );
+  proto.renameIfPresent(
+    gcfFunction.serviceConfig,
+    endpoint,
+    "serviceAccountEmail",
+    "serviceAccount"
   );
   // Memory must be set because the default value of GCF gen 2 is Megabytes and
   // we use mebibytes
@@ -625,11 +630,16 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
   proto.copyIfPresent(
     endpoint,
     gcfFunction.serviceConfig,
-    "serviceAccountEmail",
     "ingressSettings",
     "environmentVariables",
     "secretEnvironmentVariables",
     "timeoutSeconds"
+  );
+  proto.renameIfPresent(
+    endpoint,
+    gcfFunction.serviceConfig,
+    "serviceAccount",
+    "serviceAccountEmail"
   );
   proto.convertIfPresent(
     endpoint,

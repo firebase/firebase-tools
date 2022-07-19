@@ -20,12 +20,21 @@ export interface ManifestSecretEnv {
   projectId?: string;
 }
 
-type Base = Omit<backend.ServiceConfiguration, "secretEnvironmentVariables">;
+// Note: In this version of the API we used "serviceAccountEmail" to refer to
+// something that may not be an email (e.g. it might be myAccount@ to be project-relative)
+// In future revisions we should change this.
+type Base = Omit<backend.ServiceConfiguration, "secretEnvironmentVariables"> & {
+  serviceAccountEmail?: string;
+};
+type EventTrigger = backend.EventTrigger & {
+  serviceAccountEmail?: string;
+};
+
 export type ManifestEndpoint = Base &
   backend.Triggered &
   Partial<backend.HttpsTriggered> &
   Partial<backend.CallableTriggered> &
-  Partial<backend.EventTriggered> &
+  Partial<{ eventTrigger: EventTrigger }> &
   Partial<backend.TaskQueueTriggered> &
   Partial<backend.BlockingTriggered> &
   Partial<backend.ScheduleTriggered> & {
@@ -116,6 +125,7 @@ function assertManifestEndpoint(ep: ManifestEndpoint, id: string): void {
     maxInstances: "number",
     minInstances: "number",
     concurrency: "number",
+    serviceAccount: "string",
     serviceAccountEmail: "string",
     timeoutSeconds: "number",
     vpc: "object",
@@ -173,6 +183,7 @@ function assertManifestEndpoint(ep: ManifestEndpoint, id: string): void {
       eventType: "string",
       retry: "boolean",
       region: "string",
+      serviceAccount: "string",
       serviceAccountEmail: "string",
       channel: "string",
     });
@@ -240,9 +251,9 @@ function parseEndpointForBuild(
   let triggered: build.Triggered;
   if (backend.isEventTriggered(ep)) {
     const { ...newTrigger } = ep.eventTrigger;
-    delete newTrigger.serviceAccountEmail;
+    delete newTrigger.serviceAccount;
     triggered = { eventTrigger: newTrigger };
-    triggered.eventTrigger.serviceAccount = ep.eventTrigger.serviceAccountEmail;
+    triggered.eventTrigger.serviceAccount = ep.eventTrigger.serviceAccount;
     convertIfPresent(triggered.eventTrigger, ep.eventTrigger, "channel", (c) =>
       resolveChannelName(project, c, defaultRegion)
     );
@@ -259,6 +270,8 @@ function parseEndpointForBuild(
     triggered = { callableTrigger: {} };
   } else if (backend.isScheduleTriggered(ep)) {
     const st: build.ScheduleTrigger = {
+      // TODO: consider adding validation for fields like this that reject
+      // invalid values before actually modifying prod.
       schedule: ep.scheduleTrigger.schedule || "",
       timeZone: ep.scheduleTrigger.timeZone ?? null,
       retryConfig: {},
@@ -302,9 +315,10 @@ function parseEndpointForBuild(
     project,
     runtime,
     entryPoint: ep.entryPoint,
-    serviceAccount: ep.serviceAccountEmail || null,
     ...triggered,
   };
+  // Allow "serviceAccountEmail" but prefer "serviceAccount"
+  renameIfPresent(parsed, ep, "serviceAccount", "serviceAccountEmail");
   copyIfPresent(
     parsed,
     ep,
@@ -316,7 +330,8 @@ function parseEndpointForBuild(
     "vpc",
     "labels",
     "ingressSettings",
-    "environmentVariables"
+    "environmentVariables",
+    "serviceAccount"
   );
   convertIfPresent(parsed, ep, "secretEnvironmentVariables", (senvs) => {
     if (senvs === null) {
@@ -388,6 +403,8 @@ function parseEndpoints(
       entryPoint: ep.entryPoint,
       ...triggered,
     };
+    // Allow "serviceAccountEmail" but prefer "serviceAccount"
+    renameIfPresent(parsed, ep, "serviceAccount", "serviceAccountEmail");
     copyIfPresent(
       parsed,
       ep,
@@ -395,7 +412,7 @@ function parseEndpoints(
       "maxInstances",
       "minInstances",
       "concurrency",
-      "serviceAccountEmail",
+      "serviceAccount",
       "timeoutSeconds",
       "vpc",
       "labels",
