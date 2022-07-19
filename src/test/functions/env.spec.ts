@@ -5,6 +5,7 @@ import { sync as rimraf } from "rimraf";
 import { expect } from "chai";
 
 import * as env from "../../functions/env";
+import { FirebaseError } from "../../error";
 
 describe("functions/env", () => {
   describe("parse", () => {
@@ -306,7 +307,7 @@ FOO=foo
         {},
         { projectId: "project", projectAlias: "alias", functionsSource: tmpdir }
       );
-      expect(!!fs.statSync(path.join(tmpdir, ".env.alias"))).to.be.false;
+      expect(() => fs.statSync(path.join(tmpdir, ".env.alias"))).throw;
     });
 
     it("touches .env.projectAlias if there are no .env files and project alias is available", () => {
@@ -318,7 +319,7 @@ FOO=foo
     });
 
     it("touches .env.projectId if there are no .env files and project alias is not available", () => {
-      env.writeUserEnvs({}, { projectId: "project", functionsSource: tmpdir });
+      env.writeUserEnvs({ FOO: "bar" }, { projectId: "project", functionsSource: tmpdir });
       expect(!!fs.statSync(path.join(tmpdir, ".env.project"))).to.be.true;
     });
 
@@ -331,7 +332,7 @@ FOO=foo
           { FOO: "bar" },
           { projectId: "project", projectAlias: "alias", functionsSource: tmpdir }
         )
-      ).to.throw(env.KeyValidationError);
+      ).to.throw(FirebaseError);
     });
 
     it("throws if asked to write a key that already exists in any .env", () => {
@@ -344,7 +345,7 @@ FOO=foo
           { FOO: "bar" },
           { projectId: "project", projectAlias: "alias", functionsSource: tmpdir }
         )
-      ).to.throw(env.KeyValidationError);
+      ).to.throw(FirebaseError);
     });
 
     it("throws if asked to write a key that fails key format validation", () => {

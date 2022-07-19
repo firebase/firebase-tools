@@ -259,7 +259,7 @@ export function hasUserEnvs({
  * It is an error to provide a key-value pair which is already in the file.
  */
 export function writeUserEnvs(toWrite: Record<string, string>, envOpts: UserEnvsOpts) {
-  if (toWrite.empty) {
+  if (Object.keys(toWrite).length === 0) {
     return;
   }
 
