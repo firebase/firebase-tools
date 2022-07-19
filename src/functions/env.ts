@@ -280,20 +280,19 @@ export function writeUserEnvs(toWrite: Record<string, string>, envOpts: UserEnvs
   }
 
   const mostSpecificEnv = path.join(functionsSource, envFiles[envFiles.length - 1]);
+  logBullet(
+    clc.cyan.bold("functions: ") + `Writing new parameter values to disk: ${mostSpecificEnv}`
+  );
   for (const k of Object.keys(toWrite)) {
     fs.appendFileSync(mostSpecificEnv, formatUserEnvForWrite(k, toWrite[k]));
   }
 }
 
 function createEnvFile(envOpts: UserEnvsOpts): string {
-  let fileToWrite: string;
-  if (envOpts.isEmulator) {
-    fileToWrite = FUNCTIONS_EMULATOR_DOTENV;
-  }
-  fileToWrite = envOpts.isEmulator
+  const fileToWrite = envOpts.isEmulator
     ? FUNCTIONS_EMULATOR_DOTENV
     : `.env.${envOpts.projectAlias || envOpts.projectId}`;
-  logger.debug(`No .env file detected to write to; creating ${fileToWrite}`);
+  logger.debug(`Creating ${fileToWrite}...`);
 
   fs.writeFileSync(path.join(envOpts.functionsSource, fileToWrite), "", { flag: "wx" });
   return fileToWrite;
