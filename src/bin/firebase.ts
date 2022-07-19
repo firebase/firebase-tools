@@ -140,7 +140,6 @@ process.on("uncaughtExceptionMonitor", (err) => {
 });
 
 try {
-  utils.setupLoggers();
   handlePreviewToggles(args);
   cmd = client.cli.parse(process.argv);
 
