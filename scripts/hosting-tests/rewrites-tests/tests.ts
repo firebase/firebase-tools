@@ -11,6 +11,10 @@ import { FirebaseError } from "../../../src/error";
 
 tmp.setGracefulCleanup();
 
+// Run this test manually by:
+// - Setting the target project to any project that can create publicly invokable functions.
+// - Disabling mockAuth in .mocharc
+
 const functionName = `helloWorld_${process.env.CI_RUN_ID || "XX"}_${
   process.env.CI_RUN_ATTEMPT || "YY"
 }`;
@@ -41,9 +45,6 @@ async function deleteDeployedFunctions(): Promise<void> {
       projectId: process.env.FBTOOLS_TARGET_PROJECT,
       force: true,
     });
-    await (() => {
-      return new Promise((resolve) => setTimeout(resolve, 10000));
-    })();
   } catch (FirebaseError) {
     // do nothing if the function doesn't match.
   }
