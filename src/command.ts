@@ -173,8 +173,7 @@ export class Command {
       if (args.length - 1 > cmd._args.length) {
         client.errorOut(
           new FirebaseError(
-            `Too many arguments. Run ${bold("firebase help " + this.name)} for usage instructions`,
-            { exit: 1 }
+            `Too many arguments. Run ${bold(`firebase help ${this.name}`)} for usage instructions`
           )
         );
         return;

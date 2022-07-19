@@ -1,17 +1,14 @@
-"use strict";
-
 import { unset, has } from "lodash";
 import { bold } from "cli-color";
 
 import { configstore } from "./configstore";
 import { previews } from "./previews";
+import { FirebaseError } from "./error";
 
-function _errorOut(name?: string) {
-  console.log(bold.red("Error:"), "Did not recognize preview feature", bold(name));
-  process.exit(1);
-}
-
-export function handlePreviewToggles(args: string[]) {
+/**
+ * Checks for `--[open|close]-sesame` flags and handles them.
+ */
+export function handlePreviewToggles(args: string[]): void {
   const isValidPreview = has(previews, args[1]);
   if (args[0] === "--open-sesame") {
     if (isValidPreview) {
@@ -22,7 +19,7 @@ export function handlePreviewToggles(args: string[]) {
       return process.exit(0);
     }
 
-    _errorOut();
+    throw new FirebaseError(`Did not recognize preview feature ${bold(args[1])}`);
   } else if (args[0] === "--close-sesame") {
     if (isValidPreview) {
       console.log("Disabling preview feature", bold(args[1]));
@@ -31,6 +28,6 @@ export function handlePreviewToggles(args: string[]) {
       return process.exit(0);
     }
 
-    _errorOut();
+    throw new FirebaseError(`Did not recognize preview feature ${bold(args[1])}`);
   }
 }

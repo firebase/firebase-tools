@@ -1,0 +1,1 @@
+- Cleans up how errors are handled in the CLI, appropriately setting the exit code and not process.exit-ing manually.

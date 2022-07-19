@@ -3,7 +3,6 @@ import * as clc from "cli-color";
 import * as leven from "leven";
 
 import { logger } from "./logger";
-import { setupLoggers } from "./utils";
 
 const pkg = require("../package.json");
 
@@ -73,9 +72,8 @@ const RENAMED_COMMANDS: Record<string, string> = {
 
 // Default handler, this is called when no other command action matches.
 program.action((_, args) => {
-  setupLoggers();
-
   const cmd = args[0];
+  logger.error();
   logger.error(clc.bold.red("Error:"), clc.bold(cmd), "is not a Firebase command");
 
   if (RENAMED_COMMANDS[cmd]) {
@@ -94,7 +92,7 @@ program.action((_, args) => {
     }
   }
 
-  process.exit(1);
+  process.exitCode = 1;
 });
 
 // NB: Keep this export line to keep firebase-tools-as-a-module working.

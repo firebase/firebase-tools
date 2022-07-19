@@ -2,7 +2,10 @@ import { logError } from "./logError";
 import { FirebaseError } from "./error";
 
 /**
- * Errors out by calling `process.exit` with an exit code of 2.
+ * Sets up the process to be exited with an error code specified by the error
+ * or a default of `2`.
+ * Does *not* call process.exit. End the process by returning from the
+ * callsite.
  * @param error an Error to be logged.
  */
 export function errorOut(error: Error): void {
@@ -18,7 +21,4 @@ export function errorOut(error: Error): void {
 
   logError(fbError);
   process.exitCode = fbError.exit || 2;
-  setTimeout(() => {
-    process.exit();
-  }, 250);
 }

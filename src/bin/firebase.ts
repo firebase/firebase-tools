@@ -42,10 +42,9 @@ import * as fsutils from "../fsutils";
 import * as utils from "../utils";
 import * as winston from "winston";
 
-let args = process.argv.slice(2);
-let cmd: Command;
+const args = process.argv.slice(2);
 
-function findAvailableLogFile() {
+function findAvailableLogFile(): string {
   const candidates = ["firebase-debug.log"];
   for (let i = 1; i < 10; i++) {
     candidates.push(`firebase-debug.${i}.log`);
@@ -106,6 +105,8 @@ logger.debug();
 import { fetchMOTD } from "../fetchMOTD";
 fetchMOTD();
 
+let cmd: Command;
+
 process.on("exit", (code) => {
   code = process.exitCode || code;
   if (!process.env.DEBUG && code < 2 && fsutils.fileExistsSync(logFilename)) {
@@ -134,18 +135,19 @@ process.on("exit", (code) => {
   }
 });
 
-process.on("uncaughtException", (err) => {
-  errorOut(err);
+process.on("uncaughtExceptionMonitor", (err) => {
+  console.error(`Uncaught Error: ${err}`);
 });
 
-if (!handlePreviewToggles(args)) {
+try {
+  utils.setupLoggers();
+  handlePreviewToggles(args);
   cmd = client.cli.parse(process.argv);
 
   // determine if there are any non-option arguments. if not, display help
-  args = args.filter((arg) => {
-    return arg.indexOf("-") < 0;
-  });
-  if (!args.length) {
+  if (!args.some((arg) => !arg.includes("-"))) {
     client.cli.help();
   }
+} catch (err: any) {
+  errorOut(err);
 }
