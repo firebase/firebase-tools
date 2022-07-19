@@ -301,9 +301,17 @@ FOO=foo
       }).to.throw();
     });
 
-    it("touches .env.projectAlias if there are no .env files and project alias is available", () => {
+    it("never affects the filesystem if the list of keys to write is empty", () => {
       env.writeUserEnvs(
         {},
+        { projectId: "project", projectAlias: "alias", functionsSource: tmpdir }
+      );
+      expect(!!fs.statSync(path.join(tmpdir, ".env.alias"))).to.be.false;
+    });
+
+    it("touches .env.projectAlias if there are no .env files and project alias is available", () => {
+      env.writeUserEnvs(
+        { FOO: "bar" },
         { projectId: "project", projectAlias: "alias", functionsSource: tmpdir }
       );
       expect(!!fs.statSync(path.join(tmpdir, ".env.alias"))).to.be.true;

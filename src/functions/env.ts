@@ -257,22 +257,23 @@ export function hasUserEnvs({
  *
  * Identifies one and only one dotenv file to touch using the same rules as loadUserEnvs().
  * It is an error to provide a key-value pair which is already in the file.
- * Not actually implemented yet.
  */
 export function writeUserEnvs(toWrite: Record<string, string>, envOpts: UserEnvsOpts) {
+  if (toWrite.empty) {
+    return;
+  }
+
   const { functionsSource, projectId, projectAlias, isEmulator } = envOpts;
   let envFiles = findEnvfiles(functionsSource, projectId, projectAlias, isEmulator);
   if (envFiles.length === 0) {
-    createEnvFile(envOpts);
-    envFiles = findEnvfiles(functionsSource, projectId, projectAlias, isEmulator);
+    envFiles = [createEnvFile(envOpts)];
   }
 
   const currentEnvs = loadUserEnvs(envOpts);
   for (const k of Object.keys(toWrite)) {
     validateKey(k);
     if (currentEnvs.hasOwnProperty(k)) {
-      throw new KeyValidationError(
-        k,
+      throw new FirebaseError(
         `Attempted to write param-defined key ${k} to .env files, but it was already defined.`
       );
     }
@@ -284,7 +285,7 @@ export function writeUserEnvs(toWrite: Record<string, string>, envOpts: UserEnvs
   }
 }
 
-function createEnvFile(envOpts: UserEnvsOpts) {
+function createEnvFile(envOpts: UserEnvsOpts): string {
   let fileToWrite: string;
   if (envOpts.isEmulator) {
     fileToWrite = FUNCTIONS_EMULATOR_DOTENV;
@@ -295,6 +296,7 @@ function createEnvFile(envOpts: UserEnvsOpts) {
   logger.debug(`No .env file detected to write to; creating ${fileToWrite}`);
 
   fs.writeFileSync(path.join(envOpts.functionsSource, fileToWrite), "", { flag: "wx" });
+  return fileToWrite;
 }
 
 function formatUserEnvForWrite(key: string, value: string): string {
