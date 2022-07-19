@@ -252,24 +252,6 @@ export function hasUserEnvs({
   return findEnvfiles(functionsSource, projectId, projectAlias, isEmulator).length > 0;
 }
 
-/* eslint-disable */
-/**
- * Write new environment variables into a dotenv file.
- *
- * Identifies one and only one dotenv file to touch using the same rules as loadUserEnvs().
- * It is an error to provide a key-value pair which is already in the file.
- * Not actually implemented yet.
- */
-export function writeUserEnvs(
-  toWrite: Record<string, string>,
-  envOpts: UserEnvsOpts
-) {
-  throw new FirebaseError(
-    "Persisting user-defined parameters to .env files is not yet implemented."
-  );
-}
-/* eslint-enable */
-
 /**
  * Write new environment variables into a dotenv file.
  *
