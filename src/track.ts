@@ -215,13 +215,15 @@ function isDebugMode(): boolean {
   const account = getGlobalDefaultAccount();
   if (account?.user.email.endsWith("@google.com")) {
     try {
-      // This file is present in development mode only, not packaged to npm.
       require("../tsconfig.json");
       logger.info(
         `Using Google Analytics in DEBUG mode. Emulators (+ UI) events will be shown in GA Debug View only.`
       );
       return true;
-    } catch {}
+    } catch {
+      // The file above present in the repo but not packaged to npm. If require
+      // fails, just turn off debug mode since the CLI is not in development.
+    }
   }
   return false;
 }
