@@ -55,10 +55,6 @@ export function track(action: string, label: string, duration: number = 0): Prom
 const EMULATOR_GA4_API_SECRET =
   process.env.FIREBASE_EMULATOR_GA4_API_SECRET || "2V_zBYc4TdeoppzDaIu0zw";
 
-// Whether to send all Analytics Measurement Protocol requests to the validation
-// endpoint and log the result. Should only be used when debugging Firebase CLI
-// itself regarding issues with Analytics.
-const VALIDATE = !!process.env.FIREBASE_CLI_MP_VALIDATE;
 const EMULATOR_GA4_USER_PROPS = {
   node_platform: {
     value: process.platform,
@@ -80,7 +76,7 @@ const EMULATOR_GA4_USER_PROPS = {
  *               only (no spaces), and must start with an alphabetic character.
  *               value: number or string with length <= 100
  * @returns a Promise fulfilled when the event reaches the server or fails
- *          (never rejects unless env var `FIREBASE_CLI_MP_VALIDATE` is set)
+ *          (never rejects unless `emulatorSession().validateOnly` is set)
  *
  * Note: On performance or latency critical paths, the returned Promise may be
  * safely ignored with the statement `void trackEmulator(...)`.
@@ -101,14 +97,15 @@ export async function trackEmulator(
   session.totalEngagementSeconds = process.uptime();
 
   const search = `?api_secret=${EMULATOR_GA4_API_SECRET}&measurement_id=${session.measurementId}`;
-  const url = `https://www.google-analytics.com/${VALIDATE ? "debug/" : ""}mp/collect${search}`;
+  const validate = session.validateOnly ? "debug/" : "";
+  const url = `https://www.google-analytics.com/${validate}mp/collect${search}`;
   const body = {
     // Get timestamp in millis and append '000' to get micros as string.
     // Not using multiplication due to JS number precision limit.
     timestamp_micros: `${Date.now()}000`,
     client_id: session.clientId,
     user_properties: EMULATOR_GA4_USER_PROPS,
-    ...(VALIDATE ? { validationBehavior: "ENFORCE_RECOMMENDATIONS" } : {}),
+    ...(session.validateOnly ? { validationBehavior: "ENFORCE_RECOMMENDATIONS" } : {}),
     events: [
       {
         name: eventName,
@@ -134,7 +131,7 @@ export async function trackEmulator(
       },
     ],
   };
-  if (VALIDATE) {
+  if (session.validateOnly) {
     logger.info(`Sending Analytics for event ${eventName}`, params, body);
   }
   try {
@@ -145,7 +142,7 @@ export async function trackEmulator(
       },
       body: JSON.stringify(body),
     });
-    if (VALIDATE) {
+    if (session.validateOnly) {
       // If the validation endpoint is used, response may contain errors.
       if (!response.ok) {
         logger.warn(`Analytics validation HTTP error: ${response.status}`);
@@ -155,7 +152,7 @@ export async function trackEmulator(
     }
     // response.ok / response.status intentionally ignored, see comment below.
   } catch (e: unknown) {
-    if (VALIDATE) {
+    if (session.validateOnly) {
       throw e;
     }
     // Otherwise, we will ignore the status / error for these reasons:
@@ -176,12 +173,23 @@ export interface AnalyticsSession {
   // events and Emulator UI interactions.
   sessionId: string;
   totalEngagementSeconds: number;
+
+  // Whether the events sent should be tagged so that they are shown in GA Debug
+  // View in real time (for Googler to debug) and excluded from reports.
   debugMode: boolean;
+
+  // Whether to validate events format instead of collecting them. Should only
+  // be used to debug the Firebase CLI / Emulator UI itself regarding issues
+  // with Analytics. To enable, set the env var FIREBASE_CLI_MP_VALIDATE.
+  // In the CLI, this is implemented by sending events to the GA4 measurement
+  // validation API (which does not persist events) and printing the response.
+  validateOnly: boolean;
 }
 
 export function emulatorSession(): AnalyticsSession | undefined {
+  const validateOnly = !!process.env.FIREBASE_CLI_MP_VALIDATE;
   if (!usageEnabled()) {
-    if (VALIDATE) {
+    if (validateOnly) {
       logger.warn("Google Analytics is DISABLED. To enable, (re)login and opt in to collection.");
     }
     return;
@@ -202,8 +210,9 @@ export function emulatorSession(): AnalyticsSession | undefined {
       // instead of globally. Revisit if that is not the case.)
       // https://help.analyticsedge.com/article/misunderstood-metrics-sessions-in-google-analytics-4/#:~:text=The%20Session%20ID%20Is%20Not%20Unique
       sessionId: (Math.random() * Number.MAX_SAFE_INTEGER).toFixed(0),
-      debugMode: isDebugMode(),
       totalEngagementSeconds: 0,
+      debugMode: isDebugMode(),
+      validateOnly,
     };
   }
   return currentEmulatorSession;
