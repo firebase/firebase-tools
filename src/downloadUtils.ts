@@ -25,14 +25,14 @@ export async function downloadToTmp(remoteUrl: string): Promise<string> {
     resolveOnHTTPError: true,
   });
   if (res.status !== 200) {
-    throw new FirebaseError(`download failed, status ${res.status}`, { exit: 1 });
+    throw new FirebaseError(`download failed, status ${res.status}: ${await res.response.text()}`);
   }
 
   const total = parseInt(res.response.headers.get("content-length") || "0", 10);
   const totalMb = Math.ceil(total / 1000000);
   const bar = new ProgressBar(`Progress: :bar (:percent of ${totalMb}MB)`, { total, head: ">" });
 
-  res.body.on("data", (chunk) => {
+  res.body.on("data", (chunk: string) => {
     bar.tick(chunk.length);
   });
 

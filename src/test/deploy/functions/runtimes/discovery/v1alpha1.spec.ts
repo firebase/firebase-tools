@@ -14,6 +14,10 @@ const MIN_ENDPOINT: Omit<v1alpha1.ManifestEndpoint, "httpsTrigger"> = {
   entryPoint: "entryPoint",
 };
 
+async function resolveBackend(bd: build.Build): Promise<backend.Backend> {
+  return build.resolveBackend(bd, { functionsSource: "", projectId: PROJECT }, {});
+}
+
 describe("buildFromV1Alpha", () => {
   describe("Endpoint keys", () => {
     const DEFAULTED_BACKEND_ENDPOINT: Omit<
@@ -56,7 +60,7 @@ describe("buildFromV1Alpha", () => {
         ...DEFAULTED_BACKEND_ENDPOINT,
         httpsTrigger: {},
       });
-      expect(build.resolveBackend(parsed, {})).to.deep.equal(expectedBackend);
+      expect(resolveBackend(parsed)).to.eventually.deep.equal(expectedBackend);
     });
 
     it("copies schedules", () => {
@@ -101,7 +105,7 @@ describe("buildFromV1Alpha", () => {
         ...DEFAULTED_BACKEND_ENDPOINT,
         scheduleTrigger: scheduleBackendTrigger,
       });
-      expect(build.resolveBackend(parsed, {})).to.deep.equal(expectedBackend);
+      expect(resolveBackend(parsed)).to.eventually.deep.equal(expectedBackend);
     });
 
     it("copies event triggers", () => {
@@ -139,7 +143,49 @@ describe("buildFromV1Alpha", () => {
         ...DEFAULTED_BACKEND_ENDPOINT,
         eventTrigger,
       });
-      expect(build.resolveBackend(parsed, {})).to.deep.equal(expectedBackend);
+      expect(resolveBackend(parsed)).to.eventually.deep.equal(expectedBackend);
+    });
+
+    it("copies event triggers with optional values", () => {
+      const eventTrigger: backend.EventTrigger = {
+        eventType: "some.event.type",
+        eventFilters: { resource: "my-resource" },
+        eventFilterPathPatterns: { instance: "my-instance" },
+        region: "us-central1",
+        serviceAccountEmail: "sa@",
+        retry: true,
+        channel: "projects/project/locations/region/channels/my-channel",
+      };
+      const newFormatTrigger: build.EventTrigger = {
+        eventType: "some.event.type",
+        eventFilters: { resource: "my-resource" },
+        eventFilterPathPatterns: { instance: "my-instance" },
+        region: "us-central1",
+        serviceAccount: "sa@",
+        retry: true,
+        channel: "projects/project/locations/region/channels/my-channel",
+      };
+      const yaml: v1alpha1.Manifest = {
+        specVersion: "v1alpha1",
+        endpoints: {
+          id: {
+            ...MIN_ENDPOINT,
+            eventTrigger,
+          },
+        },
+      };
+
+      const parsed = v1alpha1.buildFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME);
+      const expected: build.Build = build.of({
+        id: { ...DEFAULTED_ENDPOINT, eventTrigger: newFormatTrigger },
+      });
+      expect(parsed).to.deep.equal(expected);
+
+      const expectedBackend = backend.of({
+        ...DEFAULTED_BACKEND_ENDPOINT,
+        eventTrigger,
+      });
+      expect(resolveBackend(parsed)).to.eventually.deep.equal(expectedBackend);
     });
 
     it("copies event triggers with full resource path", () => {
@@ -186,7 +232,7 @@ describe("buildFromV1Alpha", () => {
           eventFilters: { topic: `projects/${PROJECT}/topics/my-topic` },
         },
       });
-      expect(build.resolveBackend(parsed, {})).to.deep.equal(expectedBackend);
+      expect(resolveBackend(parsed)).to.eventually.deep.equal(expectedBackend);
     });
 
     it("copies blocking triggers", () => {
@@ -218,7 +264,7 @@ describe("buildFromV1Alpha", () => {
           ...blockingTrigger,
         },
       });
-      expect(build.resolveBackend(parsed, {})).to.deep.equal(expectedBackend);
+      expect(resolveBackend(parsed)).to.eventually.deep.equal(expectedBackend);
     });
 
     it("copies blocking triggers without options", () => {
@@ -245,7 +291,7 @@ describe("buildFromV1Alpha", () => {
           ...blockingTrigger,
         },
       });
-      expect(build.resolveBackend(parsed, {})).to.deep.equal(expectedBackend);
+      expect(resolveBackend(parsed)).to.eventually.deep.equal(expectedBackend);
     });
 
     it("copies optional fields", () => {
@@ -324,7 +370,7 @@ describe("buildFromV1Alpha", () => {
         httpsTrigger: {},
         ...fields,
       });
-      expect(build.resolveBackend(parsed, {})).to.deep.equal(expectedBackend);
+      expect(resolveBackend(parsed)).to.eventually.deep.equal(expectedBackend);
     });
 
     it("handles multiple regions", () => {
@@ -361,7 +407,7 @@ describe("buildFromV1Alpha", () => {
           region: "region2",
         }
       );
-      expect(build.resolveBackend(parsed, {})).to.deep.equal(expectedBackend);
+      expect(resolveBackend(parsed)).to.eventually.deep.equal(expectedBackend);
     });
   });
 });
