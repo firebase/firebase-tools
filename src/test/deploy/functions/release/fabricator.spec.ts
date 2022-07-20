@@ -766,7 +766,10 @@ describe("Fabricator", () => {
       gcfv2.updateFunction.resolves({ name: "op", done: false });
       poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
       run.setInvokerUpdate.resolves();
-      const ep = endpoint({ scheduleTrigger: {} }, { platform: "gcfv2" });
+      const ep = endpoint(
+        { eventTrigger: { eventType: "event", eventFilters: {}, retry: false } },
+        { platform: "gcfv2" }
+      );
 
       await fab.updateV2Function(ep);
       expect(run.setInvokerUpdate).to.not.have.been.called;

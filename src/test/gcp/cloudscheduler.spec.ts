@@ -163,14 +163,14 @@ describe("cloudscheduler", () => {
         httpTarget: {
           uri: "https://my-uri.com",
           httpMethod: "GET",
-          odicToken: {
+          oidcToken: {
             serviceAccountEmail: "1234567-compute@developer.gserviceaccount.com",
           },
         },
       });
     });
 
-    it("should copy optional fields", () => {
+    it("should copy optional fields for v1 endpoints", () => {
       expect(
         cloudscheduler.jobFromEndpoint(
           {
@@ -203,6 +203,45 @@ describe("cloudscheduler", () => {
           topicName: "projects/project/topics/firebase-schedule-id-region",
           attributes: {
             scheduled: "true",
+          },
+        },
+      });
+    });
+
+    it("should copy optional fields for v2 endpoints", () => {
+      expect(
+        cloudscheduler.jobFromEndpoint(
+          {
+            ...V2_ENDPOINT,
+            scheduleTrigger: {
+              schedule: "every 1 minutes",
+              timeZone: "America/Los_Angeles",
+              retryConfig: {
+                maxDoublings: 2,
+                maxBackoffDuration: "20s",
+                minBackoffDuration: "1s",
+                maxRetryDuration: "60s",
+              },
+            },
+          },
+          "appEngineLocation",
+          "1234567"
+        )
+      ).to.deep.equal({
+        name: "projects/project/locations/region/jobs/firebase-schedule-id-region",
+        schedule: "every 1 minutes",
+        timeZone: "America/Los_Angeles",
+        retryConfig: {
+          maxDoublings: 2,
+          maxBackoffDuration: "20s",
+          minBackoffDuration: "1s",
+          maxRetryDuration: "60s",
+        },
+        httpTarget: {
+          uri: "https://my-uri.com",
+          httpMethod: "GET",
+          oidcToken: {
+            serviceAccountEmail: "1234567-compute@developer.gserviceaccount.com",
           },
         },
       });
