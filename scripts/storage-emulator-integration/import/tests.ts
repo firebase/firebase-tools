@@ -53,7 +53,7 @@ describe("Import Emulator Data", () => {
 
     expect(fs.readdirSync(path.join(exportedData, "storage_export", "blobs")).length).to.equal(1);
     expect(fs.readdirSync(path.join(exportedData, "storage_export", "blobs"))[0]).to.equal(
-      encodeURIComponent(`${BUCKET}/test_upload.jpg`)
+      encodeURIComponent(`${BUCKET}/1309f53f-1606-4290-93a2-4760f944a6b7`)
     );
   });
 

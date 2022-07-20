@@ -2,12 +2,19 @@ import { openSync, closeSync, readSync, unlinkSync, renameSync, mkdirSync } from
 import * as rimraf from "rimraf";
 import * as fs from "fs";
 import * as path from "path";
+import * as uuid from "uuid";
 
-/** Helper for disk I/O operations. */
+/**
+ * Helper for disk I/O operations.
+ * Assigns a unique identifier to each file and stores it on disk based on that identifier
+ */
 export class Persistence {
   private _dirPath!: string;
+  // Mapping from emulator filePaths to unique identifiers on disk
+  private _diskPathMap: Map<string, string>;
   constructor(dirPath: string) {
     this.reset(dirPath);
+    this._diskPathMap = new Map();
   }
 
   public reset(dirPath: string) {
@@ -22,6 +29,7 @@ export class Persistence {
   }
 
   appendBytes(fileName: string, bytes: Buffer): string {
+    this._diskPathMap.set(fileName, uuid.v4());
     const filepath = this.getDiskPath(fileName);
 
     let fd;
@@ -74,10 +82,19 @@ export class Persistence {
   }
 
   renameFile(oldName: string, newName: string): void {
+    this._diskPathMap.set(newName, uuid.v4());
     renameSync(this.getDiskPath(oldName), this.getDiskPath(newName));
   }
 
   getDiskPath(fileName: string): string {
+    const shortenedDiskPath = this._diskPathMap.get(fileName);
+    if (shortenedDiskPath !== undefined) {
+      return path.join(this._dirPath, encodeURIComponent(shortenedDiskPath));
+    }
     return path.join(this._dirPath, encodeURIComponent(fileName));
+  }
+
+  addDiskPathMapping(fileName: string, diskPath: string): void {
+    this._diskPathMap.set(fileName, diskPath);
   }
 }
