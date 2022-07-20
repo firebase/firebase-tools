@@ -17,6 +17,7 @@ import * as fabricator from "../deploy/functions/release/fabricator";
 import * as executor from "../deploy/functions/release/executor";
 import * as reporter from "../deploy/functions/release/reporter";
 import * as containerCleaner from "../deploy/functions/containerCleaner";
+import { getProjectNumber } from "../getProjectNumber";
 
 export const command = new Command("functions:delete [filters...]")
   .description("delete one or more Cloud Functions by name or group name.")
@@ -96,6 +97,8 @@ export const command = new Command("functions:delete [filters...]")
         appEngineLocation,
         executor: new executor.QueueExecutor({}),
         sources: {},
+        projectNumber:
+          options.projectNumber || (await getProjectNumber({ projectId: context.projectId })),
       });
       const summary = await fab.applyPlan(plan);
       await reporter.logAndTrackDeployStats(summary);

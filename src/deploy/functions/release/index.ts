@@ -14,6 +14,7 @@ import * as prompts from "../prompts";
 import { getAppEngineLocation } from "../../../functionsConfig";
 import { getFunctionLabel } from "../functionsDeployHelper";
 import { FirebaseError } from "../../../error";
+import { getProjectNumber } from "../../../getProjectNumber";
 
 /** Releases new versions of functions to prod. */
 export async function release(
@@ -70,6 +71,7 @@ export async function release(
     executor: new executor.QueueExecutor({}),
     sources: context.sources,
     appEngineLocation: getAppEngineLocation(context.firebaseConfig),
+    projectNumber: options.projectNumber || (await getProjectNumber(context.projectId)),
   });
 
   const summary = await fab.applyPlan(plan);

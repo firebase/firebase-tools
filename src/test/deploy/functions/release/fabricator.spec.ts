@@ -103,6 +103,7 @@ describe("Fabricator", () => {
       },
     },
     appEngineLocation: "us-central1",
+    projectNumber: "1234567",
   };
   let fab: fabricator.Fabricator;
   beforeEach(() => {
@@ -659,7 +660,10 @@ describe("Fabricator", () => {
       gcfv2.createFunction.resolves({ name: "op", done: false });
       poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
       run.setInvokerCreate.resolves();
-      const ep = endpoint({ scheduleTrigger: {} }, { platform: "gcfv2" });
+      const ep = endpoint(
+        { eventTrigger: { eventType: "event", eventFilters: {}, retry: false } },
+        { platform: "gcfv2" }
+      );
 
       await fab.createV2Function(ep);
       expect(run.setInvokerCreate).to.not.have.been.called;

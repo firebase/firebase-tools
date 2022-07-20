@@ -7,9 +7,11 @@ import { Client } from "../apiv2";
 import * as backend from "../deploy/functions/backend";
 import * as proto from "./proto";
 import { assertExhaustive } from "../functional";
+import { getDefaultComputeServiceAgent } from "../deploy/functions/checkIam";
 
 const VERSION = "v1beta1";
-const DEFAULT_TIME_ZONE = "America/Los_Angeles";
+const DEFAULT_TIME_ZONE_V1 = "America/Los_Angeles";
+const DEFAULT_TIME_ZONE_V2 = "utc";
 
 export interface PubsubTarget {
   topicName: string;
@@ -24,9 +26,9 @@ export interface OauthToken {
   scope: string;
 }
 
-export interface OdicToken {
+export interface OidcToken {
   serviceAccountEmail: string;
-  audiences: string[];
+  audience?: string;
 }
 
 export interface HttpTarget {
@@ -37,7 +39,7 @@ export interface HttpTarget {
 
   // oneof authorizationHeader
   oauthToken?: OauthToken;
-  odicToken?: OdicToken;
+  oidcToken?: OidcToken;
   // end oneof authorizationHeader;
 }
 
@@ -76,7 +78,7 @@ export function assertValidJob(job: Job) {
       job.httpTarget,
       "httpTarget.authorizationHeader",
       "oauthToken",
-      "odicToken"
+      "oidcToken"
     );
   }
 }
@@ -93,7 +95,7 @@ export function createJob(job: Job): Promise<any> {
   // ie: projects/my-proj/locations/us-central1/jobs/firebase-schedule-func-us-east1 would become
   // projects/my-proj/locations/us-central1/jobs
   const strippedName = job.name.substring(0, job.name.lastIndexOf("/"));
-  return apiClient.post(`/${strippedName}`, Object.assign({ timeZone: DEFAULT_TIME_ZONE }, job));
+  return apiClient.post(`/${strippedName}`, Object.assign({ timeZone: DEFAULT_TIME_ZONE_V1 }, job));
 }
 
 /**
@@ -123,7 +125,7 @@ export function getJob(name: string): Promise<any> {
  */
 export function updateJob(job: Job): Promise<any> {
   // Note that name cannot be updated.
-  return apiClient.patch(`/${job.name}`, Object.assign({ timeZone: DEFAULT_TIME_ZONE }, job));
+  return apiClient.patch(`/${job.name}`, Object.assign({ timeZone: DEFAULT_TIME_ZONE_V1 }, job));
 }
 
 /**
@@ -159,7 +161,7 @@ export async function createOrReplaceJob(job: Job): Promise<any> {
   }
   if (!job.timeZone) {
     // We set this here to avoid recreating schedules that use the default timeZone
-    job.timeZone = DEFAULT_TIME_ZONE;
+    job.timeZone = DEFAULT_TIME_ZONE_V1;
   }
   if (isIdentical(existingJob.body, job)) {
     logger.debug(`scheduler job ${jobName} is up to date, no changes required`);
@@ -188,7 +190,8 @@ function isIdentical(job: Job, otherJob: Job): boolean {
 /** Converts an Endpoint to a CloudScheduler v1 job */
 export function jobFromEndpoint(
   endpoint: backend.Endpoint & backend.ScheduleTriggered,
-  appEngineLocation: string
+  appEngineLocation: string,
+  projectNumber: string
 ): Job {
   const job: Partial<Job> = {};
   if (endpoint.platform === "gcfv1") {
@@ -208,7 +211,20 @@ export function jobFromEndpoint(
     // account credentials (it's a project editor, so it should have permissions
     // to invoke a function and editor deployers should have permission to actAs
     // it)
-    throw new FirebaseError("Do not know how to create a scheduled GCFv2 function");
+
+    const id = backend.scheduleIdForFunction(endpoint);
+    job.name = `projects/${endpoint.project}/locations/${endpoint.region}/jobs/${id}`;
+    job.timeZone = DEFAULT_TIME_ZONE_V2;
+    job.httpTarget = {
+      uri: endpoint.uri!,
+      httpMethod: "GET",
+      oidcToken: {
+        // TODO(colerogers): revisit adding 'invoker' to the container contract
+        // for schedule functions and use as the odic token service account here
+        // if it's present.
+        serviceAccountEmail: getDefaultComputeServiceAgent(projectNumber),
+      },
+    };
   } else {
     assertExhaustive(endpoint.platform);
   }
