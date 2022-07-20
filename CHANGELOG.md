@@ -1,1 +1,2 @@
+- Fix bug where function timeout couldn't be configured in the Functions Emulator. (#4745)
 - Adds warnings about upcoming deprecation of `--token`, `FIREBASE_TOKEN`, and `login:ci`.
