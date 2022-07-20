@@ -1,14 +1,17 @@
 import * as backend from "./backend";
 import * as proto from "../../gcp/proto";
 import * as api from "../../.../../api";
+import * as params from "./params";
+import { previews } from "../../previews";
 import { FirebaseError } from "../../error";
 import { assertExhaustive } from "../../functional";
+import { UserEnvsOpts } from "../../functions/env";
 
 /* The union of a customer-controlled deployment and potentially deploy-time defined parameters */
 export interface Build {
   requiredAPIs: RequiredApi[];
   endpoints: Record<string, Endpoint>;
-  params: Param[];
+  params: params.Param[];
 }
 
 /* A utility function that returns an empty Build. */
@@ -50,36 +53,8 @@ interface RequiredApi {
 // expressions.
 // `Expression<Foo> == Expression<Foo>` is an Expression<boolean>
 // `Expression<boolean> ? Expression<T> : Expression<T>` is an Expression<T>
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-type Expression<T extends string | number | boolean> = string;
-type Field<T extends string | number | boolean> = T | Expression<T> | null;
-
-function resolveInt(from: number | Expression<number> | null): number {
-  if (from == null) {
-    return 0;
-  } else if (typeof from === "string") {
-    throw new FirebaseError("CEL evaluation of expression '" + from + "' not yet supported");
-  }
-  return from;
-}
-
-function resolveString(from: string | Expression<string> | null): string {
-  if (from == null) {
-    return "";
-  } else if (from.includes("{{") && from.includes("}}")) {
-    throw new FirebaseError("CEL evaluation of expression '" + from + "' not yet supported");
-  }
-  return from;
-}
-
-function resolveBoolean(from: boolean | Expression<boolean> | null): boolean {
-  if (from == null) {
-    return false;
-  } else if (typeof from === "string") {
-    throw new FirebaseError("CEL evaluation of expression '" + from + "' not yet supported");
-  }
-  return from;
-}
+export type Expression<T extends string | number | boolean> = string; // eslint-disable-line
+export type Field<T extends string | number | boolean> = T | Expression<T> | null;
 
 // A service account must either:
 // 1. Be a project-relative email that ends with "@" (e.g. database-users@)
@@ -90,7 +65,7 @@ type ServiceAccount = string;
 export interface HttpsTrigger {
   // Which service account should be able to trigger this function. No value means "make public
   // on create and don't do anything on update." For more, see go/cf3-http-access-control
-  invoker?: ServiceAccount | null;
+  invoker?: ServiceAccount[];
 }
 
 // Trigger definitions for RPCs servers using the HTTP protocol defined at
@@ -110,6 +85,7 @@ export interface BlockingTrigger {
 export interface EventTrigger {
   eventType: string;
   eventFilters: Record<string, Expression<string>>;
+  eventFilterPathPatterns?: Record<string, Expression<string>>;
 
   // whether failed function executions should retry the event execution.
   // Retries are indefinite, so developers should be sure to add some end condition (e.g. event
@@ -233,50 +209,33 @@ export type Endpoint = Triggered & {
   labels?: Record<string, string | Expression<string>>;
 };
 
-interface ParamBase<T extends string | number | boolean> {
-  // name of the param. Will be exposed as an environment variable with this name
-  param: string;
-
-  // A human friendly name for the param. Will be used in install/configure flows to describe
-  // what param is being updated. If omitted, UX will use the value of "param" instead.
-  label?: string;
-
-  // A long description of the parameter's purpose and allowed values. If omitted, UX will not
-  // provide a description of the parameter
-  description?: string;
-
-  // Default value. If not provided, a param must be supplied.
-  default?: T | Expression<T>;
-
-  // default: false
-  immutable?: boolean;
-}
-
-interface StringParam extends ParamBase<string> {
-  type?: "string";
-}
-
-type Param = StringParam;
-
 function isMemoryOption(value: backend.MemoryOptions | any): value is backend.MemoryOptions {
   return value == null || [128, 256, 512, 1024, 2048, 4096, 8192].includes(value);
 }
 
-/** Converts a build specification into a Backend representation, with all Params resolved and interpolated */
-// TODO(vsfan): handle Expression<T> types
-export function resolveBackend(build: Build, userEnvs: Record<string, string>): backend.Backend {
-  for (const param of build.params) {
-    const expectedEnv = param.param;
-
-    if (!userEnvs.hasOwnProperty(expectedEnv)) {
-      throw new FirebaseError(
-        "Build specified parameter " +
-          expectedEnv +
-          " but it was not present in the user dotenv files or Cloud Secret Manager"
-      );
-    }
+/**
+ *  Resolves user-defined parameters inside a Build, and returns a Backend ready for upload to the API
+ */
+export async function resolveBackend(
+  build: Build,
+  userEnvOpt: UserEnvsOpts,
+  userEnvs: Record<string, string>
+): Promise<backend.Backend> {
+  const projectId = userEnvOpt.projectId;
+  let paramValues: Record<string, Field<string | number | boolean>> = {};
+  if (previews.functionsparams) {
+    paramValues = await params.resolveParams(build.params, projectId, userEnvs);
   }
 
+  return toBackend(build, paramValues);
+}
+
+/** Converts a build specification into a Backend representation, with all Params resolved and interpolated */
+// TODO(vsfan): handle Expression<T> types
+export function toBackend(
+  build: Build,
+  paramValues: Record<string, Field<string | number | boolean>>
+): backend.Backend {
   const bkEndpoints: Array<backend.Endpoint> = [];
   for (const endpointId of Object.keys(build.endpoints)) {
     const bdEndpoint = build.endpoints[endpointId];
@@ -286,7 +245,7 @@ export function resolveBackend(build: Build, userEnvs: Record<string, string>): 
       regions = [api.functionsDefaultRegion];
     }
     for (const region of regions) {
-      const trigger = discoverTrigger(bdEndpoint);
+      const trigger = discoverTrigger(bdEndpoint, paramValues);
 
       if (typeof bdEndpoint.platform === "undefined") {
         throw new FirebaseError("platform can't be undefined");
@@ -296,7 +255,7 @@ export function resolveBackend(build: Build, userEnvs: Record<string, string>): 
       }
       let timeout: number;
       if (bdEndpoint.timeoutSeconds) {
-        timeout = resolveInt(bdEndpoint.timeoutSeconds);
+        timeout = params.resolveInt(bdEndpoint.timeoutSeconds, paramValues);
       } else {
         timeout = 60;
       }
@@ -311,9 +270,33 @@ export function resolveBackend(build: Build, userEnvs: Record<string, string>): 
         timeoutSeconds: timeout,
         ...trigger,
       };
-      proto.renameIfPresent(bkEndpoint, bdEndpoint, "maxInstances", "maxInstances", resolveInt);
-      proto.renameIfPresent(bkEndpoint, bdEndpoint, "minInstances", "minInstances", resolveInt);
-      proto.renameIfPresent(bkEndpoint, bdEndpoint, "concurrency", "concurrency", resolveInt);
+      proto.renameIfPresent(
+        bkEndpoint,
+        bdEndpoint,
+        "maxInstances",
+        "maxInstances",
+        (from: number | Expression<number>): number => {
+          return params.resolveInt(from, paramValues);
+        }
+      );
+      proto.renameIfPresent(
+        bkEndpoint,
+        bdEndpoint,
+        "minInstances",
+        "minInstances",
+        (from: number | Expression<number>): number => {
+          return params.resolveInt(from, paramValues);
+        }
+      );
+      proto.renameIfPresent(
+        bkEndpoint,
+        bdEndpoint,
+        "concurrency",
+        "concurrency",
+        (from: number | Expression<number>): number => {
+          return params.resolveInt(from, paramValues);
+        }
+      );
       proto.copyIfPresent(
         bkEndpoint,
         bdEndpoint,
@@ -324,10 +307,7 @@ export function resolveBackend(build: Build, userEnvs: Record<string, string>): 
       );
       proto.copyIfPresent(bkEndpoint, bdEndpoint, "secretEnvironmentVariables");
       if (bdEndpoint.vpc) {
-        bkEndpoint.vpc = {
-          // $REGION is a token in the Build VPC connector because Build endpoints can have multiple regions, so we unroll here
-          connector: resolveString(bdEndpoint.vpc.connector).replace("$REGION", region),
-        };
+        bkEndpoint.vpc = { connector: params.resolveString(bdEndpoint.vpc.connector, paramValues) };
         proto.copyIfPresent(bkEndpoint.vpc, bdEndpoint.vpc, "egressSettings");
       }
       proto.renameIfPresent(bkEndpoint, bdEndpoint, "serviceAccountEmail", "serviceAccount");
@@ -345,12 +325,21 @@ export function resolveBackend(build: Build, userEnvs: Record<string, string>): 
   return bkend;
 }
 
-function discoverTrigger(endpoint: Endpoint): backend.Triggered {
+function discoverTrigger(
+  endpoint: Endpoint,
+  paramValues: Record<string, Field<string | number | boolean>>
+): backend.Triggered {
+  const resolveInt = (from: number | Expression<number>) => params.resolveInt(from, paramValues);
+  const resolveString = (from: string | Expression<string>) =>
+    params.resolveString(from, paramValues);
+  const resolveBoolean = (from: boolean | Expression<boolean>) =>
+    params.resolveBoolean(from, paramValues);
+
   let trigger: backend.Triggered;
   if ("httpsTrigger" in endpoint) {
     const bkHttps: backend.HttpsTrigger = {};
     if (endpoint.httpsTrigger.invoker) {
-      bkHttps.invoker = [endpoint.httpsTrigger.invoker];
+      bkHttps.invoker = endpoint.httpsTrigger.invoker;
     }
     trigger = { httpsTrigger: bkHttps };
   } else if ("callableTrigger" in endpoint) {
@@ -359,21 +348,29 @@ function discoverTrigger(endpoint: Endpoint): backend.Triggered {
     trigger = { blockingTrigger: endpoint.blockingTrigger };
   } else if ("eventTrigger" in endpoint) {
     const bkEventFilters: Record<string, string> = {};
-    for (const key in endpoint.eventTrigger.eventFilters) {
-      if (typeof key === "string") {
-        bkEventFilters[key] = resolveString(endpoint.eventTrigger.eventFilters[key]);
-      }
+    for (const [key, value] of Object.entries(endpoint.eventTrigger.eventFilters)) {
+      bkEventFilters[key] = params.resolveString(value, paramValues);
     }
     const bkEvent: backend.EventTrigger = {
       eventType: endpoint.eventTrigger.eventType,
       eventFilters: bkEventFilters,
-      retry: resolveBoolean(endpoint.eventTrigger.retry),
+      retry: resolveBoolean(endpoint.eventTrigger.retry || false),
     };
+    if (endpoint.eventTrigger.eventFilterPathPatterns) {
+      const bkEventFiltersPathPatterns: Record<string, string> = {};
+      for (const [key, value] of Object.entries(endpoint.eventTrigger.eventFilterPathPatterns)) {
+        bkEventFiltersPathPatterns[key] = params.resolveString(value, paramValues);
+      }
+      bkEvent.eventFilterPathPatterns = bkEventFiltersPathPatterns;
+    }
     if (endpoint.eventTrigger.serviceAccount) {
       bkEvent.serviceAccountEmail = endpoint.eventTrigger.serviceAccount;
     }
     if (endpoint.eventTrigger.region) {
       bkEvent.region = resolveString(endpoint.eventTrigger.region);
+    }
+    if (endpoint.eventTrigger.channel) {
+      bkEvent.channel = endpoint.eventTrigger.channel;
     }
     trigger = { eventTrigger: bkEvent };
   } else if ("scheduleTrigger" in endpoint) {
@@ -439,7 +436,7 @@ function discoverTrigger(endpoint: Endpoint): backend.Triggered {
         endpoint.taskQueueTrigger.retryConfig,
         "maxBackoffSeconds",
         "maxBackoffSeconds",
-        (from: number | Expression<number> | null): string => {
+        (from: number | Expression<number>): string => {
           return proto.durationFromSeconds(resolveInt(from));
         }
       );
@@ -448,7 +445,7 @@ function discoverTrigger(endpoint: Endpoint): backend.Triggered {
         endpoint.taskQueueTrigger.retryConfig,
         "minBackoffSeconds",
         "minBackoffSeconds",
-        (from: number | Expression<number> | null): string => {
+        (from: number | Expression<number>): string => {
           return proto.durationFromSeconds(resolveInt(from));
         }
       );
@@ -457,7 +454,7 @@ function discoverTrigger(endpoint: Endpoint): backend.Triggered {
         endpoint.taskQueueTrigger.retryConfig,
         "maxRetrySeconds",
         "maxRetryDurationSeconds",
-        (from: number | Expression<number> | null): string => {
+        (from: number | Expression<number>): string => {
           return proto.durationFromSeconds(resolveInt(from));
         }
       );

@@ -43,6 +43,7 @@ import {
   toBackendInfo,
   prepareEndpoints,
   BlockingTrigger,
+  getTemporarySocketPath,
 } from "./functionsEmulatorShared";
 import { EmulatorRegistry } from "./registry";
 import { EmulatorLogger, Verbosity } from "./emulatorLogger";
@@ -139,6 +140,8 @@ export interface FunctionsRuntimeInstance {
   exit: Promise<number>;
   // A cwd of the process
   cwd: string;
+  // Path to socket file used for HTTP-over-IPC comms.
+  socketPath: string;
 
   // A function to manually kill the child process as normal cleanup
   shutdown(): void;
@@ -514,15 +517,20 @@ export class FunctionsEmulator implements EmulatorInstance {
       logger.debug(`Building ${runtimeDelegate.name} source`);
       await runtimeDelegate.build();
       logger.debug(`Analyzing ${runtimeDelegate.name} backend spec`);
-      // Don't include user envs when parsing triggers.
+      // Don't include user envs when parsing triggers, but we need some of the options for handling params
       const environment = {
         ...this.getSystemEnvs(),
         ...this.getEmulatorEnvs(),
         FIREBASE_CONFIG: this.getFirebaseConfig(),
         ...emulatableBackend.env,
       };
+      const userEnvOpt: functionsEnv.UserEnvsOpts = {
+        functionsSource: emulatableBackend.functionsDir,
+        projectId: this.args.projectId,
+        projectAlias: this.args.projectAlias,
+      };
       const discoveredBuild = await runtimeDelegate.discoverBuild(runtimeConfig, environment);
-      const discoveredBackend = resolveBackend(discoveredBuild, environment);
+      const discoveredBackend = await resolveBackend(discoveredBuild, userEnvOpt, environment);
       const endpoints = backend.allEndpoints(discoveredBackend);
       prepareEndpoints(endpoints);
       for (const e of endpoints) {
@@ -1065,6 +1073,12 @@ export class FunctionsEmulator implements EmulatorInstance {
     envs.K_REVISION = "1";
     envs.PORT = "80";
 
+    // TODO(danielylee): Later, we want timeout to be enforce by the data plane. For now, we rely on the runtime to
+    // enforce timeout.
+    if (trigger?.timeoutSeconds) {
+      envs.FUNCTIONS_EMULATOR_TIMEOUT_SECONDS = trigger.timeoutSeconds.toString();
+    }
+
     if (trigger) {
       const target = trigger.entryPoint;
       envs.FUNCTION_TARGET = target;
@@ -1084,8 +1098,6 @@ export class FunctionsEmulator implements EmulatorInstance {
       skipTokenVerification: true,
       enableCors: true,
     });
-    // TODO(danielylee): Support timeouts. Temporarily dropping the feature until we finish refactoring.
-
     // Make firebase-admin point at the Firestore emulator
     const firestoreEmulator = this.getEmulatorInfo(Emulators.FIRESTORE);
     if (firestoreEmulator != null) {
@@ -1275,10 +1287,17 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     const runtimeEnv = this.getRuntimeEnvs(backend, trigger);
     const secretEnvs = await this.resolveSecretEnvs(backend, trigger);
+    const socketPath = getTemporarySocketPath();
 
     const childProcess = spawn(opts.nodeBinary, args, {
       cwd: backend.functionsDir,
-      env: { node: opts.nodeBinary, ...process.env, ...runtimeEnv, ...secretEnvs },
+      env: {
+        node: opts.nodeBinary,
+        ...process.env,
+        ...runtimeEnv,
+        ...secretEnvs,
+        PORT: socketPath,
+      },
       stdio: ["pipe", "pipe", "pipe", "ipc"],
     });
 
@@ -1320,6 +1339,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       }),
       events: emitter,
       cwd: backend.functionsDir,
+      socketPath,
       shutdown: () => {
         childProcess.kill();
       },
@@ -1524,16 +1544,6 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     this.logger.log("DEBUG", `[functions] Runtime ready! Sending request!`);
 
-    if (!worker.lastArgs) {
-      throw new FirebaseError("Cannot execute on a worker with no arguments");
-    }
-
-    if (!worker.lastArgs.frb.socketPath) {
-      throw new FirebaseError(
-        `Cannot execute on a worker without a socketPath: ${JSON.stringify(worker.lastArgs)}`
-      );
-    }
-
     // To match production behavior we need to drop the path prefix
     // req.url = /:projectId/:region/:trigger_name/*
     const url = new URL(`${req.protocol}://${req.hostname}${req.url}`);
@@ -1551,7 +1561,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         method,
         path,
         headers: req.headers,
-        socketPath: worker.lastArgs.frb.socketPath,
+        socketPath: worker.runtime.socketPath,
       },
       (runtimeRes: http.IncomingMessage) => {
         function forwardStatusAndHeaders(): void {

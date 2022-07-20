@@ -64,7 +64,7 @@ export async function prepare(
       /* silent=*/ true
     ),
     ensure.cloudBuildEnabled(projectId),
-    ensureApiEnabled.check(projectId, "artifactregistry.googleapis.com", "artifactregistry"),
+    ensureApiEnabled.ensure(projectId, "artifactregistry.googleapis.com", "artifactregistry"),
   ]);
 
   // Get the Firebase Config, and set it on each function in the deployment.
@@ -112,7 +112,11 @@ export async function prepare(
     const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
     const envs = { ...userEnvs, ...firebaseEnvs };
     const wantBuild: build.Build = await runtimeDelegate.discoverBuild(runtimeConfig, firebaseEnvs);
-    const wantBackend: backend.Backend = build.resolveBackend(wantBuild, userEnvs);
+    const wantBackend: backend.Backend = await build.resolveBackend(
+      wantBuild,
+      userEnvOpt,
+      userEnvs
+    );
     wantBackend.environmentVariables = envs;
     for (const endpoint of backend.allEndpoints(wantBackend)) {
       endpoint.environmentVariables = wantBackend.environmentVariables;
