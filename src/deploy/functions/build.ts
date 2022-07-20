@@ -65,7 +65,7 @@ type ServiceAccount = string;
 export interface HttpsTrigger {
   // Which service account should be able to trigger this function. No value means "make public
   // on create and don't do anything on update." For more, see go/cf3-http-access-control
-  invoker?: ServiceAccount | null;
+  invoker?: ServiceAccount[];
 }
 
 // Trigger definitions for RPCs servers using the HTTP protocol defined at
@@ -85,6 +85,7 @@ export interface BlockingTrigger {
 export interface EventTrigger {
   eventType: string;
   eventFilters: Record<string, Expression<string>>;
+  eventFilterPathPatterns?: Record<string, Expression<string>>;
 
   // whether failed function executions should retry the event execution.
   // Retries are indefinite, so developers should be sure to add some end condition (e.g. event
@@ -338,7 +339,7 @@ function discoverTrigger(
   if ("httpsTrigger" in endpoint) {
     const bkHttps: backend.HttpsTrigger = {};
     if (endpoint.httpsTrigger.invoker) {
-      bkHttps.invoker = [endpoint.httpsTrigger.invoker];
+      bkHttps.invoker = endpoint.httpsTrigger.invoker;
     }
     trigger = { httpsTrigger: bkHttps };
   } else if ("callableTrigger" in endpoint) {
@@ -355,11 +356,21 @@ function discoverTrigger(
       eventFilters: bkEventFilters,
       retry: resolveBoolean(endpoint.eventTrigger.retry || false),
     };
+    if (endpoint.eventTrigger.eventFilterPathPatterns) {
+      const bkEventFiltersPathPatterns: Record<string, string> = {};
+      for (const [key, value] of Object.entries(endpoint.eventTrigger.eventFilterPathPatterns)) {
+        bkEventFiltersPathPatterns[key] = params.resolveString(value, paramValues);
+      }
+      bkEvent.eventFilterPathPatterns = bkEventFiltersPathPatterns;
+    }
     if (endpoint.eventTrigger.serviceAccount) {
       bkEvent.serviceAccountEmail = endpoint.eventTrigger.serviceAccount;
     }
     if (endpoint.eventTrigger.region) {
       bkEvent.region = resolveString(endpoint.eventTrigger.region);
+    }
+    if (endpoint.eventTrigger.channel) {
+      bkEvent.channel = endpoint.eventTrigger.channel;
     }
     trigger = { eventTrigger: bkEvent };
   } else if ("scheduleTrigger" in endpoint) {

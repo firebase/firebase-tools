@@ -1,2 +1,1 @@
 - Fix bug where function timeout couldn't be configured in the Functions Emulator. (#4745)
-- Fix bug where functions:config get command failed on empty variable. (#4707)

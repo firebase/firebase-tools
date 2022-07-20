@@ -146,6 +146,48 @@ describe("buildFromV1Alpha", () => {
       expect(resolveBackend(parsed)).to.eventually.deep.equal(expectedBackend);
     });
 
+    it("copies event triggers with optional values", () => {
+      const eventTrigger: backend.EventTrigger = {
+        eventType: "some.event.type",
+        eventFilters: { resource: "my-resource" },
+        eventFilterPathPatterns: { instance: "my-instance" },
+        region: "us-central1",
+        serviceAccountEmail: "sa@",
+        retry: true,
+        channel: "projects/project/locations/region/channels/my-channel",
+      };
+      const newFormatTrigger: build.EventTrigger = {
+        eventType: "some.event.type",
+        eventFilters: { resource: "my-resource" },
+        eventFilterPathPatterns: { instance: "my-instance" },
+        region: "us-central1",
+        serviceAccount: "sa@",
+        retry: true,
+        channel: "projects/project/locations/region/channels/my-channel",
+      };
+      const yaml: v1alpha1.Manifest = {
+        specVersion: "v1alpha1",
+        endpoints: {
+          id: {
+            ...MIN_ENDPOINT,
+            eventTrigger,
+          },
+        },
+      };
+
+      const parsed = v1alpha1.buildFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME);
+      const expected: build.Build = build.of({
+        id: { ...DEFAULTED_ENDPOINT, eventTrigger: newFormatTrigger },
+      });
+      expect(parsed).to.deep.equal(expected);
+
+      const expectedBackend = backend.of({
+        ...DEFAULTED_BACKEND_ENDPOINT,
+        eventTrigger,
+      });
+      expect(resolveBackend(parsed)).to.eventually.deep.equal(expectedBackend);
+    });
+
     it("copies event triggers with full resource path", () => {
       const eventTrigger: backend.EventTrigger = {
         eventType: "google.pubsub.topic.v1.publish",
