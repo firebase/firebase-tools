@@ -175,8 +175,7 @@ export class Uploader {
         this.addHash(filePath, cached.hash);
         return;
       }
-  
-      if (this.skipHashCheckOnEmptyFile && stats.size == 0) {
+      if (this.skipHashCheckOnEmptyFile && stats.size === 0) {
         this.cacheNew.set(filePath, cached);
         this.addHash(filePath, cached.hash);
         return;
