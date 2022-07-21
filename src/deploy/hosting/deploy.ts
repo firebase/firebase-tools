@@ -84,6 +84,7 @@ export async function deploy(
       cwd: options.cwd,
       projectRoot: detectProjectRoot(options),
       uploadConcurrency: concurrency,
+      skipHashCheckOnEmptyFile: deploy.config?.skip_hash_check_on_empty_file || false,
     });
 
     const progressInterval = setInterval(

@@ -12,6 +12,7 @@ export interface HostingConfig {
     source: string;
   }[];
   i18n?: { root: string };
+  skip_hash_check_on_empty_file?: boolean;
 }
 
 export interface HostingDeploy {

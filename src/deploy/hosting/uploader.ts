@@ -35,6 +35,7 @@ export class Uploader {
   private public: string;
   private files: string[];
   private fileCount: number;
+  private skipHashCheckOnEmptyFile: boolean;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private cache: Map<string, HashRecord>;
   private cacheNew: Map<string, HashRecord>;
@@ -78,6 +79,7 @@ export class Uploader {
     this.public = options.public || this.cwd;
     this.files = options.files;
     this.fileCount = this.files.length;
+    this.skipHashCheckOnEmptyFile = options.skipHashCheckOnEmptyFile;
 
     this.cache = load(this.projectRoot, this.hashcacheName());
     this.cacheNew = new Map();
@@ -167,10 +169,18 @@ export class Uploader {
     const mtime = stats.mtime.getTime();
     this.sizeMap[filePath] = stats.size;
     const cached = this.cache.get(filePath);
-    if (cached && cached.mtime === mtime) {
-      this.cacheNew.set(filePath, cached);
-      this.addHash(filePath, cached.hash);
-      return;
+    if (cached) {
+      if (cached.mtime === mtime) {
+        this.cacheNew.set(filePath, cached);
+        this.addHash(filePath, cached.hash);
+        return;
+      }
+  
+      if (this.skipHashCheckOnEmptyFile && stats.size == 0) {
+        this.cacheNew.set(filePath, cached);
+        this.addHash(filePath, cached.hash);
+        return;
+      }
     }
 
     const fstream = this.zipStream(filePath);
