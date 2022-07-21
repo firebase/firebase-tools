@@ -154,7 +154,6 @@ export class StorageLayer {
    */
   public async getObject(request: GetObjectRequest): Promise<GetObjectResponse> {
     const metadata = this.getMetadata(request.bucketId, request.decodedObjectId);
-    console.log({ M1: metadata });
 
     // If a valid download token is present, skip Firebase Rules auth. Mainly used by the js sdk.
     const hasValidDownloadToken = (metadata?.downloadTokens || []).includes(
