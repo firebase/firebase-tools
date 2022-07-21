@@ -2,6 +2,8 @@ import { FirebaseError } from "../../error";
 import { HostingConfig, HostingRewrites, HostingHeaders } from "../../firebaseConfig";
 import { existingBackend, allEndpoints, isHttpsTriggered } from "../functions/backend";
 import { Payload } from "./args";
+import * as backend from "../functions/backend";
+import { Context } from "../functions/args";
 
 function has(obj: { [k: string]: unknown }, k: string): boolean {
   return obj[k] !== undefined;
@@ -36,6 +38,12 @@ function extractPattern(type: string, spec: HostingRewrites | HostingHeaders): a
   );
 }
 
+interface FunctionsEndpointInfo {
+  serviceId: string;
+  platform?: string;
+  region?: string;
+}
+
 /**
  * convertConfig takes a hosting config object from firebase.json and transforms it into
  * the valid format for sending to the Firebase Hosting REST API
@@ -57,25 +65,90 @@ export async function convertConfig(
     return out;
   }
 
-  const endpointBeingDeployed = (serviceId: string, region: string = "us-central1") => {
-    for (const { wantBackend } of Object.values(payload.functions || {})) {
-      const endpoint = wantBackend?.endpoints[region]?.[serviceId];
-      if (endpoint && isHttpsTriggered(endpoint) && endpoint.platform === "gcfv2") return endpoint;
+  const endpointFromBackend = (
+    targetBackend: backend.Backend,
+    functionsEndpointInfo: FunctionsEndpointInfo
+  ): backend.Endpoint | undefined => {
+    const backendsForId = backend.allEndpoints(targetBackend).filter((endpoint) => {
+      return endpoint.id === functionsEndpointInfo.serviceId;
+    });
+
+    const matchingBackends = backendsForId.filter((endpoint) => {
+      return (
+        (!functionsEndpointInfo.region || endpoint.region === functionsEndpointInfo.region) &&
+        (!functionsEndpointInfo.platform || endpoint.platform === functionsEndpointInfo.platform)
+      );
+    });
+
+    if (matchingBackends.length > 1) {
+      throw new FirebaseError(
+        `More than one backend found for function name: ${functionsEndpointInfo.serviceId}. If the function is deployed in multiple regions, you must specify a region.`
+      );
     }
-    return undefined;
+
+    if (matchingBackends.length === 1) {
+      const endpoint = matchingBackends[0];
+      if (endpoint && isHttpsTriggered(endpoint)) {
+        return endpoint;
+      }
+    }
+    return;
   };
 
-  const matchingEndpoint = async (serviceId: string, region: string = "us-central1") => {
-    const pendingEndpoint = endpointBeingDeployed(serviceId, region);
+  const endpointBeingDeployed = (
+    functionsEndpointInfo: FunctionsEndpointInfo
+  ): backend.Endpoint | undefined => {
+    for (const { wantBackend } of Object.values(payload.functions || {})) {
+      if (!wantBackend) {
+        continue;
+      }
+      const endpoint = endpointFromBackend(wantBackend, functionsEndpointInfo);
+      if (endpoint) {
+        return endpoint;
+      }
+    }
+    return;
+  };
+
+  const matchingEndpoint = async (
+    functionsEndpointInfo: FunctionsEndpointInfo
+  ): Promise<backend.Endpoint | undefined> => {
+    const pendingEndpoint = endpointBeingDeployed(functionsEndpointInfo);
     if (pendingEndpoint) return pendingEndpoint;
     const backend = await existingBackend(context);
     return allEndpoints(backend).find(
       (it) =>
         isHttpsTriggered(it) &&
-        it.platform === "gcfv2" &&
-        it.id === serviceId &&
-        it.region === region
+        it.id === functionsEndpointInfo.serviceId &&
+        (!functionsEndpointInfo.platform || it.platform === functionsEndpointInfo.platform) &&
+        (!functionsEndpointInfo.region || it.region === functionsEndpointInfo.region)
     );
+  };
+
+  const findEndpointWithValidRegion = async (
+    rewrite: HostingRewrites,
+    context: Context
+  ): Promise<backend.Endpoint | undefined> => {
+    if ("function" in rewrite) {
+      const foundEndpointToBeDeployed = endpointBeingDeployed({
+        serviceId: rewrite.function,
+        region: rewrite.region,
+      });
+      if (foundEndpointToBeDeployed) {
+        return foundEndpointToBeDeployed;
+      }
+
+      const existingBackend = await backend.existingBackend(context);
+
+      const endpointAlreadyDeployed = endpointFromBackend(existingBackend, {
+        serviceId: rewrite.function,
+        region: rewrite.region,
+      });
+      if (endpointAlreadyDeployed) {
+        return endpointAlreadyDeployed;
+      }
+    }
+    return;
   };
 
   // rewrites
@@ -87,25 +160,50 @@ export async function convertConfig(
         vRewrite.path = rewrite.destination;
       } else if ("function" in rewrite) {
         // Skip these rewrites during hosting prepare
-        if (!finalize && endpointBeingDeployed(rewrite.function, rewrite.region)) continue;
+        if (
+          !finalize &&
+          endpointBeingDeployed({
+            serviceId: rewrite.function,
+            platform: "gcfv2",
+            region: rewrite.region,
+          })
+        ) {
+          continue;
+        }
         // Convert function references to GCFv2 to their equivalent run config
         // we can't use the already fetched endpoints, since those are scoped to the codebase
-        const endpoint = await matchingEndpoint(rewrite.function, rewrite.region);
+        const endpoint = await matchingEndpoint({
+          serviceId: rewrite.function,
+          platform: "gcfv2",
+          region: rewrite.region,
+        });
         if (endpoint) {
           vRewrite.run = { serviceId: endpoint.id, region: endpoint.region };
         } else {
           vRewrite.function = rewrite.function;
-          if (rewrite.region) {
-            vRewrite.functionRegion = rewrite.region;
+          const foundEndpoint = await findEndpointWithValidRegion(rewrite, context);
+          if (foundEndpoint) {
+            vRewrite.functionRegion = foundEndpoint.region;
           } else {
-            vRewrite.functionRegion = "us-central1";
+            throw new FirebaseError(
+              `Unable to find a valid endpoint for function ${vRewrite.function}`
+            );
           }
         }
       } else if ("dynamicLinks" in rewrite) {
         vRewrite.dynamicLinks = rewrite.dynamicLinks;
       } else if ("run" in rewrite) {
         // Skip these rewrites during hosting prepare
-        if (!finalize && endpointBeingDeployed(rewrite.run.serviceId, rewrite.run.region)) continue;
+        if (
+          !finalize &&
+          endpointBeingDeployed({
+            serviceId: rewrite.run.serviceId,
+            platform: "gcfv2",
+            region: rewrite.run.region,
+          })
+        ) {
+          continue;
+        }
         vRewrite.run = Object.assign({ region: "us-central1" }, rewrite.run);
       }
       out.rewrites.push(vRewrite);
