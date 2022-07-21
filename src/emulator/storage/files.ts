@@ -601,7 +601,6 @@ export class StorageLayer {
       const blobDiskPath = this._persistence.getDiskPath(decodedBlobPath);
 
       const file = new StoredFile(metadata, blobDiskPath);
-      // this._files.set(decodedBlobPath, file);
       this._files.set(filepath, file);
 
       this._persistence.addDiskPathMapping(filepath, decodedBlobPath);

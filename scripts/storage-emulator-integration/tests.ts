@@ -1473,7 +1473,7 @@ describe("Storage emulator", () => {
 
           const uploadState = await uploadText(
             page,
-            "testing/longlonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglongimage.png",
+            `testing/${"long".repeat(60)}image.png`,
             IMAGE_FILE_BASE64,
             "base64"
           );

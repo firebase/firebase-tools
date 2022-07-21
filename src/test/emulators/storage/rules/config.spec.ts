@@ -5,22 +5,22 @@ import { Options } from "../../../../options";
 import { RC } from "../../../../rc";
 import { getStorageRulesConfig } from "../../../../emulator/storage/rules/config";
 import { createTmpDir, StorageRulesFiles } from "../../fixtures";
-import { Persistence } from "../../../../emulator/storage/persistence";
 import { FirebaseError } from "../../../../error";
 import { RulesConfig } from "../../../../emulator/storage";
 import { SourceFile } from "../../../../emulator/storage/rules/types";
+import { closeSync } from "fs";
+import * as fs from "fs";
 
 const PROJECT_ID = "test-project";
 
 describe("Storage Rules Config", () => {
   const tmpDir = createTmpDir("storage-files");
-  const persistence = new Persistence(tmpDir);
   const resolvePath = (fileName: string) => path.resolve(tmpDir, fileName);
 
   it("should parse rules config for single target", () => {
     const rulesFile = "storage.rules";
     const rulesContent = Buffer.from(StorageRulesFiles.readWriteIfTrue.content);
-    persistence.appendBytes(rulesFile, rulesContent);
+    appendBytes(tmpDir, rulesFile, rulesContent);
 
     const config = getOptions({
       data: { storage: { rules: rulesFile } },
@@ -35,8 +35,8 @@ describe("Storage Rules Config", () => {
   it("should parse rules file for multiple targets", () => {
     const mainRulesContent = Buffer.from(StorageRulesFiles.readWriteIfTrue.content);
     const otherRulesContent = Buffer.from(StorageRulesFiles.readWriteIfAuth.content);
-    persistence.appendBytes("storage_main.rules", mainRulesContent);
-    persistence.appendBytes("storage_other.rules", otherRulesContent);
+    appendBytes(tmpDir, "storage_main.rules", mainRulesContent);
+    appendBytes(tmpDir, "storage_other.rules", otherRulesContent);
 
     const config = getOptions({
       data: {
@@ -110,4 +110,17 @@ function getOptions(config: any): Options {
     rc: new RC(),
     project: PROJECT_ID,
   };
+}
+function appendBytes(dirPath: string, fileName: string, bytes: Buffer): string {
+  const filepath = path.join(dirPath, encodeURIComponent(fileName));
+  let fd;
+
+  try {
+    fs.appendFileSync(filepath, bytes);
+    return filepath;
+  } finally {
+    if (fd) {
+      closeSync(fd);
+    }
+  }
 }
