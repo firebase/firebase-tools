@@ -539,9 +539,11 @@ export class StorageLayer {
     const metadataDirPath = path.join(storageExportPath, "metadata");
     await fse.ensureDir(metadataDirPath);
 
-    for await (const [p, file] of this._files.entries()) {
-      const metadataExportPath = path.join(metadataDirPath, encodeURIComponent(p)) + ".json";
-
+    for await (const [, file] of this._files.entries()) {
+      // get file name from file path
+      const diskFileName = file.path.replace(/^.*[\\\/]/, "");
+      const metadataExportPath =
+        path.join(metadataDirPath, encodeURIComponent(diskFileName)) + ".json";
       await fse.writeFile(metadataExportPath, StoredFileMetadata.toJSON(file.metadata));
     }
   }
@@ -585,18 +587,22 @@ export class StorageLayer {
         continue;
       }
 
-      let decodedBlobPath = decodeURIComponent(blobPath);
-      const decodedBlobPathSep = getPathSep(decodedBlobPath);
+      let fileName = metadata.name;
+      const objectNameSep = getPathSep(fileName);
       // Replace all file separators with that of current platform for compatibility
-      if (decodedBlobPathSep !== path.sep) {
-        decodedBlobPath = decodedBlobPath.split(decodedBlobPathSep).join(path.sep);
+      if (fileName !== path.sep) {
+        fileName = fileName.split(objectNameSep).join(path.sep);
       }
 
+      const filepath = this.path(metadata.bucket, fileName);
+
+      const decodedBlobPath = decodeURIComponent(blobPath);
       const blobDiskPath = this._persistence.getDiskPath(decodedBlobPath);
 
       const file = new StoredFile(metadata, blobDiskPath);
-      this._files.set(decodedBlobPath, file);
+      this._files.set(filepath, file);
 
+      this._persistence.addDiskPathMapping(filepath, decodedBlobPath);
       fse.copyFileSync(blobAbsPath, blobDiskPath);
     }
   }
