@@ -1468,6 +1468,19 @@ describe("Storage emulator", () => {
           expect(uploadState).to.equal("success");
         });
 
+        it("should upload a file with a really long path name to check for os filename character limit", async function (this) {
+          this.timeout(TEST_SETUP_TIMEOUT);
+
+          const uploadState = await uploadText(
+            page,
+            `testing/${"long".repeat(60)}image.png`,
+            IMAGE_FILE_BASE64,
+            "base64"
+          );
+
+          expect(uploadState).to.equal("success");
+        });
+
         it("should upload replace existing file", async function (this) {
           this.timeout(TEST_SETUP_TIMEOUT);
           await uploadText(page, "upload/replace.txt", "some-content");

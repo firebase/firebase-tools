@@ -10,10 +10,12 @@ import {
   StorageRulesManager,
 } from "../../../src/emulator/storage/rules/manager";
 import { StorageRulesRuntime } from "../../../src/emulator/storage/rules/runtime";
-import { Persistence } from "../../../src/emulator/storage/persistence";
 import { RulesetOperationMethod, SourceFile } from "../../../src/emulator/storage/rules/types";
 import { isPermitted } from "../../../src/emulator/storage/rules/utils";
 import { readFile } from "../../../src/fsutils";
+import { closeSync, unlinkSync } from "fs";
+import * as fs from "fs";
+import * as path from "path";
 
 const EMULATOR_LOAD_RULESET_DELAY_MS = 2000;
 
@@ -63,8 +65,7 @@ describe("Storage Rules Manager", function () {
     // Write rules to file
     const fileName = "storage.rules";
     const testDir = createTmpDir("storage-files");
-    const persistence = new Persistence(testDir);
-    persistence.appendBytes(fileName, Buffer.from(StorageRulesFiles.readWriteIfTrue.content));
+    appendBytes(testDir, fileName, Buffer.from(StorageRulesFiles.readWriteIfTrue.content));
 
     const sourceFile = getSourceFile(testDir, fileName);
     rulesManager = createStorageRulesManager(sourceFile, rulesRuntime);
@@ -73,8 +74,8 @@ describe("Storage Rules Manager", function () {
     expect(await isPermitted({ ...opts, ruleset: rulesManager.getRuleset("bucket")! })).to.be.true;
 
     // Write new rules to file
-    persistence.deleteFile(fileName);
-    persistence.appendBytes(fileName, Buffer.from(StorageRulesFiles.readWriteIfAuth.content));
+    deleteFile(testDir, fileName);
+    appendBytes(testDir, fileName, Buffer.from(StorageRulesFiles.readWriteIfAuth.content));
 
     await new Promise((resolve) => setTimeout(resolve, EMULATOR_LOAD_RULESET_DELAY_MS));
     expect(await isPermitted({ ...opts, ruleset: rulesManager.getRuleset("bucket")! })).to.be.false;
@@ -84,4 +85,28 @@ describe("Storage Rules Manager", function () {
 function getSourceFile(testDir: string, fileName: string): SourceFile {
   const filePath = `${testDir}/${fileName}`;
   return { name: filePath, content: readFile(filePath) };
+}
+
+function appendBytes(dirPath: string, fileName: string, bytes: Buffer): string {
+  const filepath = path.join(dirPath, encodeURIComponent(fileName));
+  let fd;
+
+  try {
+    fs.appendFileSync(filepath, bytes);
+    return filepath;
+  } finally {
+    if (fd) {
+      closeSync(fd);
+    }
+  }
+}
+
+function deleteFile(dirPath: string, fileName: string, failSilently = false): void {
+  try {
+    unlinkSync(path.join(dirPath, encodeURIComponent(fileName)));
+  } catch (err: any) {
+    if (!failSilently) {
+      throw err;
+    }
+  }
 }
