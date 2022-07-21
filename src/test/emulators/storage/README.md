@@ -2,17 +2,21 @@
 
 The Firebase Storage Emulator can be used to help test and develop your firebase project.
 
-To get started with the Firebase Storage emulator or see what it can be used for, check out the [documentation](https://firebase.google.com/docs/emulator-suite/connect_storage).
+To get started with the Firebase Storage emulator or see what it can be used for,
+check out the [documentation](https://firebase.google.com/docs/emulator-suite/connect_storage).
 
-## Testing 
+## Testing
 
 The Firebase Storage Emulator has a full suite of unit and Integration tests
 
 To run integration tests run the following command:
+
 ```base
 npm run test:storage-emulator-integration
 ```
+
 To run unit tests run the following command:
+
 ```base
 npm run mocha src/emulator/storage
 ```
@@ -35,5 +39,5 @@ This link makes the `firebase` command execute against the code in your local
 repository, rather than your globally installed version of `firebase-tools`.
 This is great for manual testing.
 
-Alternatively adding ```"firebase-tools": "file:./YOUR_PATH_HERE/firebase-tools"``` into another repo's package.json dependencies will also execute code against the local repository.
-
+Alternatively adding `"firebase-tools": "file:./YOUR_PATH_HERE/firebase-tools"`
+into another repo's package.json dependencies will also execute code against the local repository.
