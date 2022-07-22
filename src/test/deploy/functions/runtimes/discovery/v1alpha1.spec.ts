@@ -24,9 +24,14 @@ describe("buildFromV1Alpha", () => {
     it("copies param fields", () => {
       const testParams: Param[] = [
         { param: "FOO", type: "string" },
-        { param: "ASDF", type: "string", default: "{{ params.FOO }}", description: "another test param"}
-        { param: "BAR", type: "int" }
-      ]
+        {
+          param: "ASDF",
+          type: "string",
+          default: "{{ params.FOO }}",
+          description: "another test param",
+        },
+        { param: "BAR", type: "int" },
+      ];
 
       const yaml: v1alpha1.Manifest = {
         specVersion: "v1alpha1",
