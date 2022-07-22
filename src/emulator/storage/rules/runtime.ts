@@ -5,6 +5,8 @@ import * as AsyncLock from "async-lock";
 import {
   RulesetOperationMethod,
   RuntimeActionBundle,
+  RuntimeActionFirestoreDataRequest,
+  RuntimeActionFirestoreDataResponse,
   RuntimeActionLoadRulesetBundle,
   RuntimeActionLoadRulesetResponse,
   RuntimeActionRequest,
@@ -190,9 +192,16 @@ export class StorageRulesRuntime {
           );
           return;
         }
-        const request = this._requests[rap.id];
 
-        if (rap.status !== "ok") {
+        const id = rap.id ?? rap.server_request_id;
+        if (id === undefined) {
+          console.log(`Received no ID from server response ${serializedRuntimeActionResponse}`);
+          return;
+        }
+
+        const request = this._requests[id];
+
+        if (rap.status !== "ok" && !("action" in rap)) {
           console.warn(`[RULES] ${rap.status}: ${rap.message}`);
           rap.errors.forEach(console.warn.bind(console));
           return;
@@ -318,7 +327,22 @@ export class StorageRulesRuntime {
         variables: runtimeVariables,
       },
     };
+
+    return this._completeVerifyWithRuleset(runtimeActionRequest);
+  }
+  
+  private async _completeVerifyWithRuleset(runtimeActionRequest: RuntimeActionBundle): Promise<
+  Promise<{
+    permitted?: boolean;
+    issues: StorageRulesIssues;
+  }>
+> {
     const response = (await this._sendRequest(runtimeActionRequest)) as RuntimeActionVerifyResponse;
+
+    if ("context" in response) {
+      const dataResponse = await fetchFirestoreDocument(response);
+      return this._completeVerifyWithRuleset(dataResponse);
+    }
 
     if (!response.errors) response.errors = [];
     if (!response.warnings) response.warnings = [];
@@ -397,6 +421,11 @@ function toExpressionValue(obj: any): ExpressionValue {
   throw new FirebaseError(
     `Cannot convert "${obj}" of type ${typeof obj} for Firebase Storage rules runtime`
   );
+}
+
+async function fetchFirestoreDocument(request: RuntimeActionFirestoreDataRequest): Promise<RuntimeActionFirestoreDataResponse> {
+  console.log("Sending firestore request");
+  return {id: request.server_request_id} as any;
 }
 
 function createAuthExpressionValue(opts: RulesetVerificationOpts): ExpressionValue {

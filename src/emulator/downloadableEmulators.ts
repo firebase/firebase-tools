@@ -25,6 +25,8 @@ const EMULATOR_INSTANCE_KILL_TIMEOUT = 4000; /* ms */
 const CACHE_DIR =
   process.env.FIREBASE_EMULATORS_PATH || path.join(os.homedir(), ".cache", "firebase", "emulators");
 
+console.log(CACHE_DIR);
+
 export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDetails } = {
   database: {
     downloadPath: path.join(CACHE_DIR, "firebase-database-emulator-v4.8.0.jar"),
