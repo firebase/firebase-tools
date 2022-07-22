@@ -11,6 +11,7 @@ import { assertExhaustive } from "../../src/functional";
 
 const FIREBASE_PROJECT = process.env.CF3_DEPLOY_TEST_PROJECT || "cf3-integration-test";
 const FUNCTIONS_DIR = path.join(__dirname, "functions");
+const FNS_COUNT = 12;
 
 function genRandomId(n = 10): string {
   const charset = "abcdefghijklmnopqrstuvwxyz";
@@ -142,9 +143,11 @@ describe("firebase deploy", function (this) {
       false
     );
 
-    expect(result.stdout, "deploy result").to.not.match(/There was an error deploying functions/);
+    expect(result.stdout, "deploy result").to.match(/Deploy complete!/);
 
     const endpoints = await listFns(RUN_ID);
+    expect(Object.keys(endpoints).length, "number of deployed functions").to.equal(FNS_COUNT);
+
     for (const [id, e] of Object.entries(endpoints)) {
       if (e.platform === "gcfv1") {
         expect(e.availableMemoryMb, `${id}.availableMemoryMb`).to.equal(128);
@@ -186,7 +189,7 @@ describe("firebase deploy", function (this) {
       v2IdpOpts: {},
     });
 
-    await cli.exec(
+    const result = await cli.exec(
       "deploy",
       FIREBASE_PROJECT,
       ["--only", "functions", "--non-interactive", "--force"],
@@ -194,7 +197,11 @@ describe("firebase deploy", function (this) {
       false
     );
 
+    expect(result.stdout, "deploy result").to.match(/Deploy complete!/);
+
     const endpoints = await listFns(RUN_ID);
+    expect(Object.keys(endpoints).length, "number of deployed functions").to.equal(FNS_COUNT);
+
     for (const [id, e] of Object.entries(endpoints)) {
       if (e.platform === "gcfv1") {
         expect(e.availableMemoryMb, `${id}.availableMemoryMb`).to.equal(128);
@@ -282,9 +289,11 @@ describe("firebase deploy", function (this) {
       __dirname,
       false
     );
-    expect(result.stdout, "deploy result").to.not.match(/There was an error deploying functions/);
+    expect(result.stdout, "deploy result").to.match(/Deploy complete!/);
 
     const endpoints = await listFns(RUN_ID);
+    expect(Object.keys(endpoints).length, "number of deployed functions").to.equal(FNS_COUNT);
+
     for (const [id, e] of Object.entries(endpoints)) {
       if (e.platform === "gcfv1") {
         expect(e.availableMemoryMb, `${id}.availableMemoryMb`).to.equal(128);
