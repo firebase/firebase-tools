@@ -540,7 +540,7 @@ export class StorageLayer {
     await fse.ensureDir(metadataDirPath);
 
     for await (const [, file] of this._files.entries()) {
-      // get file name from file path
+      // get filename from file path, needed to make sure the metadata and blob file have the same filename
       const diskFileName = file.path.replace(/^.*[\\\/]/, "");
       const metadataExportPath =
         path.join(metadataDirPath, encodeURIComponent(diskFileName)) + ".json";
@@ -596,14 +596,9 @@ export class StorageLayer {
 
       const filepath = this.path(metadata.bucket, fileName);
 
-      const decodedBlobPath = decodeURIComponent(blobPath);
-      const blobDiskPath = this._persistence.getDiskPath(decodedBlobPath);
-
-      const file = new StoredFile(metadata, blobDiskPath);
+      this._persistence.copyFromExternalPath(blobAbsPath, filepath);
+      const file = new StoredFile(metadata, this._persistence.getDiskPath(filepath));
       this._files.set(filepath, file);
-
-      this._persistence.addDiskPathMapping(filepath, decodedBlobPath);
-      fse.copyFileSync(blobAbsPath, blobDiskPath);
     }
   }
 

@@ -52,9 +52,6 @@ describe("Import Emulator Data", () => {
     await test.stopEmulators();
 
     expect(fs.readdirSync(path.join(exportedData, "storage_export", "blobs")).length).to.equal(1);
-    expect(fs.readdirSync(path.join(exportedData, "storage_export", "blobs"))[0]).to.equal(
-      encodeURIComponent(`${BUCKET}/1309f53f-1606-4290-93a2-4760f944a6b7`)
-    );
   });
 
   it("retrieves file from imported nested emulator data", async function (this) {

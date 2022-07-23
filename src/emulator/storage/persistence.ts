@@ -1,6 +1,7 @@
-import { openSync, closeSync, readSync, unlinkSync, renameSync, mkdirSync } from "fs";
+import { openSync, closeSync, readSync, unlinkSync, mkdirSync } from "fs";
 import * as rimraf from "rimraf";
 import * as fs from "fs";
+import * as fse from "fs-extra";
 import * as path from "path";
 import * as uuid from "uuid";
 
@@ -11,10 +12,9 @@ import * as uuid from "uuid";
 export class Persistence {
   private _dirPath!: string;
   // Mapping from emulator filePaths to unique identifiers on disk
-  private _diskPathMap: Map<string, string>;
+  private _diskPathMap: Map<string, string> = new Map();
   constructor(dirPath: string) {
     this.reset(dirPath);
-    this._diskPathMap = new Map();
   }
 
   public reset(dirPath: string) {
@@ -22,6 +22,7 @@ export class Persistence {
     mkdirSync(dirPath, {
       recursive: true,
     });
+    this._diskPathMap = new Map();
   }
 
   public get dirPath(): string {
@@ -29,7 +30,9 @@ export class Persistence {
   }
 
   appendBytes(fileName: string, bytes: Buffer): string {
-    this._diskPathMap.set(fileName, uuid.v4());
+    if (!this._diskPathMap.has(fileName)) {
+      this._diskPathMap.set(fileName, uuid.v4());
+    }
     const filepath = this.getDiskPath(fileName);
 
     let fd;
@@ -62,6 +65,7 @@ export class Persistence {
   deleteFile(fileName: string, failSilently = false): void {
     try {
       unlinkSync(this.getDiskPath(fileName));
+      this._diskPathMap.delete(fileName);
     } catch (err: any) {
       if (!failSilently) {
         throw err;
@@ -75,6 +79,7 @@ export class Persistence {
         if (err) {
           reject(err);
         } else {
+          this._diskPathMap = new Map();
           resolve();
         }
       });
@@ -82,19 +87,17 @@ export class Persistence {
   }
 
   renameFile(oldName: string, newName: string): void {
-    this._diskPathMap.set(newName, uuid.v4());
-    renameSync(this.getDiskPath(oldName), this.getDiskPath(newName));
+    const oldNameId = this._diskPathMap.get(oldName)!;
+    this._diskPathMap.set(newName, oldNameId);
   }
 
   getDiskPath(fileName: string): string {
-    const shortenedDiskPath = this._diskPathMap.get(fileName);
-    if (shortenedDiskPath !== undefined) {
-      return path.join(this._dirPath, encodeURIComponent(shortenedDiskPath));
-    }
-    return path.join(this._dirPath, encodeURIComponent(fileName));
+    const shortenedDiskPath = this._diskPathMap.get(fileName)!;
+    return path.join(this._dirPath, encodeURIComponent(shortenedDiskPath));
   }
 
-  addDiskPathMapping(fileName: string, diskPath: string): void {
-    this._diskPathMap.set(fileName, diskPath);
+  copyFromExternalPath(sourcePath: string, newName: string): void {
+    this._diskPathMap.set(newName, uuid.v4());
+    fse.copyFileSync(sourcePath, this.getDiskPath(newName));
   }
 }
