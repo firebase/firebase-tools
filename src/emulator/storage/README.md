@@ -47,7 +47,6 @@ into another repo's package.json dependencies will also execute code against the
 To un-link `firebase-tools` from your local repository, you can do any of the
 following:
 
-*   run `npm uninstall -g firebase-tools`
-*   run `npm unlink` in your local repository
-*   re-install `firebase-tools` globally using `npm i -g firebase-tools`
-
+- run `npm uninstall -g firebase-tools`
+- run `npm unlink` in your local repository
+- re-install `firebase-tools` globally using `npm i -g firebase-tools`
