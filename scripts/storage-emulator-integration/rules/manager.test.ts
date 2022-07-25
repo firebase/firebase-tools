@@ -64,26 +64,19 @@ describe("Storage Rules Manager", function () {
     const fileName = "storage.rules";
     const testDir = createTmpDir("storage-files");
     const persistence = new Persistence(testDir);
-    let diskPath = persistence.appendBytes(
+    const diskPath = persistence.appendBytes(
       fileName,
       Buffer.from(StorageRulesFiles.readWriteIfTrue.content)
     );
 
-    let sourceFile = getSourceFile(diskPath);
+    const sourceFile = getSourceFile(diskPath);
     rulesManager = createStorageRulesManager(sourceFile, rulesRuntime);
     await rulesManager.start();
 
     expect(await isPermitted({ ...opts, ruleset: rulesManager.getRuleset("bucket")! })).to.be.true;
 
     // Write new rules to file
-    persistence.deleteFile(fileName);
-    diskPath = persistence.appendBytes(
-      fileName,
-      Buffer.from(StorageRulesFiles.readWriteIfAuth.content)
-    );
-
-    sourceFile = getSourceFile(diskPath);
-    rulesManager = createStorageRulesManager(sourceFile, rulesRuntime);
+    persistence.overwriteBytes(fileName, Buffer.from(StorageRulesFiles.readWriteIfAuth.content));
 
     await new Promise((resolve) => setTimeout(resolve, EMULATOR_LOAD_RULESET_DELAY_MS));
     expect(await isPermitted({ ...opts, ruleset: rulesManager.getRuleset("bucket")! })).to.be.false;

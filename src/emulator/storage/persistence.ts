@@ -35,16 +35,18 @@ export class Persistence {
     }
     const filepath = this.getDiskPath(fileName);
 
-    let fd;
+    fs.appendFileSync(filepath, bytes);
+    return filepath;
+  }
 
-    try {
-      fs.appendFileSync(filepath, bytes);
-      return filepath;
-    } finally {
-      if (fd) {
-        closeSync(fd);
-      }
+  overwriteBytes(fileName: string, bytes: Buffer): string {
+    if (!this._diskPathMap.has(fileName)) {
+      this._diskPathMap.set(fileName, uuid.v4());
     }
+    const filepath = this.getDiskPath(fileName);
+
+    fs.writeFileSync(filepath, bytes);
+    return filepath;
   }
 
   readBytes(fileName: string, size: number, fileOffset?: number): Buffer {

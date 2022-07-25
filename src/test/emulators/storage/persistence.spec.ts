@@ -30,7 +30,7 @@ describe("Persistence", () => {
       expect(_persistence.readBytes(filename, data.byteLength).toString()).to.equal("hello world");
     });
     it("should handle really long filename read existing files", () => {
-      const filename = `${uuidV4()}%2F%${"long".repeat(60)}${uuidV4()}`;
+      const filename = `${uuidV4()}%2F%${"long".repeat(180)}${uuidV4()}`;
       const data = Buffer.from("hello world");
 
       _persistence.appendBytes(filename, data);
