@@ -1,13 +1,13 @@
 # Firebase Storage emulator
 
-The Firebase Storage Emulator can be used to help test and develop your firebase project.
+The Firebase Storage Emulator can be used to help test and develop your Firebase project.
 
 To get started with the Firebase Storage emulator or see what it can be used for,
 check out the [documentation](https://firebase.google.com/docs/emulator-suite/connect_storage).
 
 ## Testing
 
-The Firebase Storage Emulator has a full suite of unit and Integration tests
+The Firebase Storage Emulator has a full suite of unit and integration tests.
 
 To run integration tests run the following command:
 
@@ -41,3 +41,13 @@ This is great for manual testing.
 
 Alternatively adding `"firebase-tools": "file:./YOUR_PATH_HERE/firebase-tools"`
 into another repo's package.json dependencies will also execute code against the local repository.
+
+#### Unlink your local repository
+
+To un-link `firebase-tools` from your local repository, you can do any of the
+following:
+
+*   run `npm uninstall -g firebase-tools`
+*   run `npm unlink` in your local repository
+*   re-install `firebase-tools` globally using `npm i -g firebase-tools`
+
