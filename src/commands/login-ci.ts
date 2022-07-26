@@ -19,7 +19,7 @@ export const command = new Command("login:ci")
 
     utils.logWarning(
       "Authenticating with a `login:ci` token is deprecated and will be removed in a future major version of `firebase-tools`. " +
-        "Prefer using a service account key with GOOGLE_APPLICATION_CREDENTIALS: https://cloud.google.com/docs/authentication/getting-started"
+        "Instead, use a service account key with `GOOGLE_APPLICATION_CREDENTIALS`: https://cloud.google.com/docs/authentication/getting-started"
     );
 
     const userCredentials = await auth.loginGoogle(options.localhost);
