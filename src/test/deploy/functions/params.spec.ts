@@ -43,11 +43,11 @@ describe("resolveParams", () => {
   it("can pull a literal value out of the dotenvs", async () => {
     const paramsToResolve: params.Param[] = [
       {
-        param: "foo",
+        name: "foo",
         type: "string",
       },
       {
-        param: "bar",
+        name: "bar",
         type: "int",
       },
     ];
@@ -64,7 +64,7 @@ describe("resolveParams", () => {
   it("errors when the dotenvs provide a value of the wrong type", async () => {
     const paramsToResolve: params.Param[] = [
       {
-        param: "foo",
+        name: "foo",
         type: "string",
       },
     ];
@@ -77,7 +77,7 @@ describe("resolveParams", () => {
   it("can use a provided literal", async () => {
     const paramsToResolve: params.Param[] = [
       {
-        param: "foo",
+        name: "foo",
         default: "bar",
         type: "string",
         input: { type: "text", text: {} },
@@ -92,13 +92,13 @@ describe("resolveParams", () => {
   it("can resolve a CEL identity expression", async () => {
     const paramsToResolve: params.Param[] = [
       {
-        param: "foo",
+        name: "foo",
         default: "baz",
         type: "string",
         input: { type: "text", text: {} },
       },
       {
-        param: "bar",
+        name: "bar",
         default: "{{ params.foo }}",
         type: "string",
         input: { type: "text", text: {} },
@@ -112,13 +112,13 @@ describe("resolveParams", () => {
   it("can resolve a CEL expression containing only identities", async () => {
     const paramsToResolve: params.Param[] = [
       {
-        param: "foo",
+        name: "foo",
         default: "baz",
         type: "string",
         input: { type: "text", text: {} },
       },
       {
-        param: "bar",
+        name: "bar",
         default: "{{ params.foo }}/quox",
         type: "string",
         input: { type: "text", text: {} },
@@ -132,7 +132,7 @@ describe("resolveParams", () => {
   it("errors when the default is an unresolvable CEL expression", async () => {
     const paramsToResolve: params.Param[] = [
       {
-        param: "bar",
+        name: "bar",
         default: "{{ params.foo }}",
         type: "string",
         input: { type: "text", text: {} },
@@ -145,13 +145,13 @@ describe("resolveParams", () => {
   it("errors when the default is a CEL expression that resolves to the wrong type", async () => {
     const paramsToResolve: params.Param[] = [
       {
-        param: "foo",
+        name: "foo",
         default: "22",
         type: "string",
         input: { type: "text", text: {} },
       },
       {
-        param: "bar",
+        name: "bar",
         default: "{{ params.foo }}",
         type: "int",
         input: { type: "text", text: {} },

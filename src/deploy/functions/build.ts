@@ -14,9 +14,8 @@ export interface Build {
   params: params.Param[];
 }
 
-/* A utility function that returns an empty Build. */
 /**
- *
+ *  A utility function that returns an empty Build.
  */
 export function empty(): Build {
   return {
@@ -26,9 +25,8 @@ export function empty(): Build {
   };
 }
 
-/* A utility function that creates a Build containing a map of IDs to Endpoints. */
 /**
- *
+ * A utility function that creates a Build containing a map of IDs to Endpoints
  */
 export function of(endpoints: Record<string, Endpoint>): Build {
   const build = empty();
@@ -209,7 +207,10 @@ export type Endpoint = Triggered & {
   labels?: Record<string, string | Expression<string>>;
 };
 
-function isMemoryOption(value: backend.MemoryOptions | any): value is backend.MemoryOptions {
+/**
+ *
+ */
+export function isMemoryOption(value: backend.MemoryOptions | any): value is backend.MemoryOptions {
   return value == null || [128, 256, 512, 1024, 2048, 4096, 8192].includes(value);
 }
 
@@ -250,7 +251,10 @@ export function toBackend(
       if (typeof bdEndpoint.platform === "undefined") {
         throw new FirebaseError("platform can't be undefined");
       }
-      if (!isMemoryOption(bdEndpoint.availableMemoryMb)) {
+      if (
+        bdEndpoint.availableMemoryMb &&
+        !isMemoryOption(params.resolveInt(bdEndpoint.availableMemoryMb, paramValues))
+      ) {
         throw new FirebaseError("available memory must be a supported value, if present");
       }
       let timeout: number;
@@ -297,11 +301,19 @@ export function toBackend(
           return params.resolveInt(from, paramValues);
         }
       );
+      proto.renameIfPresent(
+        bkEndpoint,
+        bdEndpoint,
+        "availableMemoryMb",
+        "availableMemoryMb",
+        (from: number | Expression<number>): number => {
+          return params.resolveInt(from, paramValues);
+        }
+      );
       proto.copyIfPresent(
         bkEndpoint,
         bdEndpoint,
         "ingressSettings",
-        "availableMemoryMb",
         "environmentVariables",
         "labels"
       );

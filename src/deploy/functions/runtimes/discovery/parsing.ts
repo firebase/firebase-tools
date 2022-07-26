@@ -15,6 +15,9 @@ export type KeyType<T> =
       ? "object"
       : never)
   | "omit"
+  | "Field<string>"
+  | "Field<number>"
+  | "Field<boolean>"
   | ((t: T) => boolean);
 /**
  * Asserts that all yaml contains all required keys specified in the schema.
@@ -50,11 +53,19 @@ export function assertKeyTypes<T extends object>(
         `Unexpected key ${fullKey}. You may need to install a newer version of the Firebase CLI.`
       );
     }
+
     const schemaType = schema[key];
     if (typeof schemaType === "function") {
       if (!schemaType(value as T[keyof T])) {
         throw new FirebaseError(
           `${Array.isArray(value) ? "array" : typeof value} ${fullKey} failed validation`
+        );
+      }
+    } else if (schemaType.includes("Field")) {
+      const match = /^Field<(\w+)>$/.exec(schemaType);
+      if (match && typeof value !== "string" && typeof value !== match[1]) {
+        throw new FirebaseError(
+          `Expected ${fullKey} to be Field<${match[1]}>; was ${typeof value}`
         );
       }
     } else if (schemaType === "string") {
