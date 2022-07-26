@@ -17,7 +17,7 @@ export default async function (context: any, options: Options): Promise<void> {
   }
 
   const onlyTargets = new Set<string>();
-  let allStorage = false;
+  let allStorage = !options.only;
   if (options.only) {
     const split = options.only.split(",");
     if (split.includes("storage")) {
