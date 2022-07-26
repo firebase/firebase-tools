@@ -226,7 +226,7 @@ compatible with CI and other headless environments.
 
 Complete the following steps to run Firebase commands in a CI environment. Find detailed instructions for each step in Google Cloud's [Getting started with authentication](https://cloud.google.com/docs/authentication/getting-started) guide.
 
- 1. Create a service account and grant it the appropriate level of access to your project.
+1. Create a service account and grant it the appropriate level of access to your project.
 1. Create a service account key (JSON file) for that service account.
 1. Store the key file in a secure, accessible way in your CI system.
 1. Set `GOOGLE_APPLICATION_CREDENTIALS=/path/to/key.json` in your CI system when running Firebase commands.
