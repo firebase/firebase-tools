@@ -1,1 +1,2 @@
 - Fix bug where function timeout couldn't be configured in the Functions Emulator. (#4745)
+- Fix ENAMETOOLONG bug when uploading files with long paths in storage emulator. (#4470)
