@@ -11,6 +11,7 @@ interface PreviewFlags {
   emulatoruisnapshot: boolean;
   frameworkawareness: boolean;
   functionsparams: boolean;
+  parampersistence: boolean;
 }
 
 export const previews: PreviewFlags = {
@@ -24,6 +25,7 @@ export const previews: PreviewFlags = {
   emulatoruisnapshot: false,
   frameworkawareness: false,
   functionsparams: false,
+  parampersistence: false,
 
   ...(configstore.get("previews") as Partial<PreviewFlags>),
 };

@@ -5,7 +5,7 @@ import * as params from "./params";
 import { previews } from "../../previews";
 import { FirebaseError } from "../../error";
 import { assertExhaustive } from "../../functional";
-import { UserEnvsOpts } from "../../functions/env";
+import { UserEnvsOpts, writeUserEnvs } from "../../functions/env";
 
 /* The union of a customer-controlled deployment and potentially deploy-time defined parameters */
 export interface Build {
@@ -224,11 +224,36 @@ export async function resolveBackend(
   const projectId = userEnvOpt.projectId;
   let paramValues: Record<string, Field<string | number | boolean>> = {};
   if (previews.functionsparams) {
-    paramValues = await params.resolveParams(build.params, projectId, userEnvs);
+    paramValues = await params.resolveParams(build.params, projectId, envWithTypes(userEnvs));
+  }
+  if (previews.parampersistence) {
+    const toWrite:Record<string, string> = {};
+    for (const paramName of Object.keys(paramValues).filter((pn) => !userEnvs.hasOwnProperty(pn))) {
+      toWrite[paramName] = paramValues[paramName]?.toString() || "";
+    }
+    writeUserEnvs(toWrite, userEnvOpt);
   }
 
   return toBackend(build, paramValues);
 }
+
+function envWithTypes(rawEnvs: Record<string, string>): Record<string, string | number | boolean> {
+  let out: Record<string, string | number | boolean> = {}
+  for (const envName of Object.keys(rawEnvs)) {
+    const value = rawEnvs[envName];
+    if (!isNaN(+value)) {
+      out[envName] = +value;
+    } else if (value === "true") {
+      out[envName] = true;
+    } else if (value === "false") {
+      out[envName] = false;
+    } else {
+      out[envName] = value;
+    }
+  }
+  return out;
+}
+
 
 /** Converts a build specification into a Backend representation, with all Params resolved and interpolated */
 // TODO(vsfan): handle Expression<T> types
