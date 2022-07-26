@@ -1,0 +1,1 @@
+- Improves error messaging when deploying Hosting with Functions rewrites.

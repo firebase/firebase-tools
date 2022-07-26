@@ -82,7 +82,8 @@ export async function convertConfig(
 
     if (matchingBackends.length > 1) {
       throw new FirebaseError(
-        `More than one backend found for function name: ${functionsEndpointInfo.serviceId}. If the function is deployed in multiple regions, you must specify a region.`
+        `More than one backend found for function name: ${functionsEndpointInfo.serviceId}. ` +
+          `If the function is deployed in multiple regions, you must specify a single region in the Hosting rewrite configuration.`
       );
     }
 
