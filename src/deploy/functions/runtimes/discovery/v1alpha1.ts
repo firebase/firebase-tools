@@ -37,11 +37,11 @@ export type ManifestEndpoint = Base &
   };
 
 export type V2Endpoint =
-  backend.Triggered & { httpsTrigger?: Partial<build.HttpsTrigger> } & { callableTrigger?: {} } & {
-    eventTrigger?: Partial<build.EventTrigger>;
-  } & { taskQueueTrigger?: Partial<build.TaskQueueTrigger> } & {
-    blockingTrigger?: Partial<build.BlockingTrigger>;
-  } & { scheduleTrigger?: Partial<build.ScheduleTrigger> } & {
+  { httpsTrigger?: build.HttpsTrigger } & { callableTrigger?: {} } & {
+    eventTrigger?: build.EventTrigger;
+  } & { taskQueueTrigger?: build.TaskQueueTrigger } & {
+    blockingTrigger?: build.BlockingTrigger;
+  } & { scheduleTrigger?: build.ScheduleTrigger } & {
     labels?: Record<string, string>;
     environmentVariables?: Record<string, string>;
     availableMemoryMb?: backend.MemoryOptions | build.Expression<number>;
@@ -354,7 +354,7 @@ function assertBuildEndpoint(ep: V2Endpoint, id: string): void {
       maxBackoffSeconds: "Field<string>",
       maxRetrySeconds: "Field<number>",
     });
-  } else if (backend.isTaskQueueTriggered(ep)) {
+  } else if (ep.taskQueueTrigger) {
     assertKeyTypes(prefix + ".taskQueueTrigger", ep.taskQueueTrigger, {
       rateLimits: "object",
       retryConfig: "object",
@@ -401,11 +401,11 @@ function parseEndpointForBuild(
   runtime: runtimes.Runtime
 ): build.Endpoint {
   let triggered: build.Triggered;
-  if (backend.isEventTriggered(ep)) {
+  if (ep.eventTrigger) {
     const { ...newTrigger } = ep.eventTrigger;
-    delete newTrigger.serviceAccountEmail;
+    delete newTrigger.serviceAccount;
     triggered = { eventTrigger: newTrigger };
-    triggered.eventTrigger.serviceAccount = ep.eventTrigger.serviceAccountEmail;
+    triggered.eventTrigger.serviceAccount = ep.eventTrigger.serviceAccount;
     renameIfPresent(triggered.eventTrigger, ep.eventTrigger, "channel", "channel", (c) =>
       resolveChannelName(project, c, defaultRegion)
     );
@@ -415,12 +415,12 @@ function parseEndpointForBuild(
         triggered.eventTrigger.eventFilters[k] = `projects/${project}/topics/${v}`;
       }
     }
-  } else if (backend.isHttpsTriggered(ep)) {
+  } else if (ep.httpsTrigger) {
     triggered = { httpsTrigger: {} };
     copyIfPresent(triggered.httpsTrigger, ep.httpsTrigger, "invoker");
-  } else if (backend.isCallableTriggered(ep)) {
+  } else if (ep.callableTrigger) {
     triggered = { callableTrigger: {} };
-  } else if (backend.isScheduleTriggered(ep)) {
+  } else if (ep.scheduleTrigger) {
     const st: build.ScheduleTrigger = {
       schedule: ep.scheduleTrigger.schedule || "",
       timeZone: ep.scheduleTrigger.timeZone || "",
@@ -431,31 +431,27 @@ function parseEndpointForBuild(
         retryCount: ep.scheduleTrigger.retryConfig.retryCount,
         maxDoublings: ep.scheduleTrigger.retryConfig.maxDoublings,
       };
-      if (ep.scheduleTrigger.retryConfig.maxRetryDuration) {
-        st.retryConfig.maxRetrySeconds = secondsFromDuration(
-          ep.scheduleTrigger.retryConfig.maxRetryDuration
-        );
+      if (ep.scheduleTrigger.retryConfig.maxRetrySeconds) {
+        st.retryConfig.maxRetrySeconds = 
+          ep.scheduleTrigger.retryConfig.maxRetrySeconds;
       }
-      if (ep.scheduleTrigger.retryConfig.maxBackoffDuration) {
-        st.retryConfig.maxBackoffSeconds = secondsFromDuration(
-          ep.scheduleTrigger.retryConfig.maxBackoffDuration
-        );
+      if (ep.scheduleTrigger.retryConfig.maxBackoffSeconds) {
+        st.retryConfig.maxBackoffSeconds = 
+          ep.scheduleTrigger.retryConfig.maxBackoffSeconds;
       }
-      if (ep.scheduleTrigger.retryConfig.minBackoffDuration) {
-        st.retryConfig.minBackoffSeconds = secondsFromDuration(
-          ep.scheduleTrigger.retryConfig.minBackoffDuration
-        );
+      if (ep.scheduleTrigger.retryConfig.minBackoffSeconds) {
+          ep.scheduleTrigger.retryConfig.minBackoffSeconds;
       }
     }
     triggered = { scheduleTrigger: st };
-  } else if (backend.isTaskQueueTriggered(ep)) {
+  } else if (ep.taskQueueTrigger) {
     const tq: build.TaskQueueTrigger = {
       invoker: ep.taskQueueTrigger.invoker,
       rateLimits: ep.taskQueueTrigger.rateLimits,
     };
     if (ep.taskQueueTrigger.retryConfig) {
       tq.retryConfig = {
-        maxRetryDurationSeconds: ep.taskQueueTrigger.retryConfig.maxRetrySeconds,
+        maxRetryDurationSeconds: ep.taskQueueTrigger.retryConfig.maxRetryDurationSeconds,
         maxBackoffSeconds: ep.taskQueueTrigger.retryConfig.maxBackoffSeconds,
         minBackoffSeconds: ep.taskQueueTrigger.retryConfig.minBackoffSeconds,
         maxDoublings: ep.taskQueueTrigger.retryConfig.maxDoublings,
@@ -463,7 +459,7 @@ function parseEndpointForBuild(
       };
     }
     triggered = { taskQueueTrigger: tq };
-  } else if (backend.isBlockingTriggered(ep)) {
+  } else if (ep.blockingTrigger) {
     triggered = { blockingTrigger: ep.blockingTrigger };
   } else {
     throw new FirebaseError(

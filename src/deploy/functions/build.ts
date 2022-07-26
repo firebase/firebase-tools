@@ -5,7 +5,7 @@ import * as params from "./params";
 import { previews } from "../../previews";
 import { FirebaseError } from "../../error";
 import { assertExhaustive } from "../../functional";
-import { UserEnvsOpts } from "../../functions/env";
+import { UserEnvsOpts, writeUserEnvs } from "../../functions/env";
 
 /* The union of a customer-controlled deployment and potentially deploy-time defined parameters */
 export interface Build {

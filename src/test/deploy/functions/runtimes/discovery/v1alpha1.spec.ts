@@ -14,6 +14,9 @@ const RUNTIME: Runtime = "node14";
 const MIN_ENDPOINT: Omit<v1alpha1.ManifestEndpoint, "httpsTrigger"> = {
   entryPoint: "entryPoint",
 };
+const MIN_BUILD_ENDPOINT: Omit<v1alpha1.V2Endpoint, "httpsTrigger"> = {
+  entryPoint: "entryPoint",
+}
 
 async function resolveBackend(bd: build.Build): Promise<backend.Backend> {
   return build.resolveBackend(bd, { functionsSource: "", projectId: PROJECT }, {});
@@ -87,6 +90,23 @@ describe("buildFromV1Alpha", () => {
         httpsTrigger: {},
       });
       expect(resolveBackend(parsed)).to.eventually.deep.equal(expectedBackend);
+    });
+
+    it("allows some fields of the endpoint to have a Field<> type", () => {
+      const yaml: v1alpha1.V2Manifest = {
+        specVersion: "v1alpha1",
+        endpoints: {
+          id: {
+            ...MIN_BUILD_ENDPOINT,
+            httpsTrigger: {},
+            concurrency: "{{ params.CONCURRENCY }}",
+            availableMemoryMb: "{{ params.MEMORY }}",
+          },
+        },
+      };
+      const parsed = v1alpha1.buildFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME);
+      const expected: build.Build = build.of({ id: { ...DEFAULTED_ENDPOINT, httpsTrigger: {} } });
+      expect(parsed).to.deep.equal(expected);
     });
 
     it("copies schedules", () => {
