@@ -125,4 +125,19 @@ describe("Import Emulator Data", () => {
     this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
     await test.stopEmulators();
   });
+
+  it("retrieves file from imported mapped emulator data", async function (this) {
+    this.timeout(TEST_SETUP_TIMEOUT);
+    await test.startEmulators([
+      "--only",
+      Emulators.STORAGE,
+      "--import",
+      path.join(__dirname, "mapped-emulator-data"),
+    ]);
+
+    await supertest(STORAGE_EMULATOR_HOST)
+      .get(`/v0/b/${BUCKET}/o/test_upload.jpg`)
+      .set({ Authorization: "Bearer owner" })
+      .expect(200);
+  });
 });

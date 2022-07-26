@@ -31,21 +31,11 @@ export class Persistence {
 
   appendBytes(fileName: string, bytes: Buffer): string {
     if (!this._diskPathMap.has(fileName)) {
-      this._diskPathMap.set(fileName, uuid.v4());
+      this._diskPathMap.set(fileName, this.generateNewDiskName());
     }
     const filepath = this.getDiskPath(fileName);
 
     fs.appendFileSync(filepath, bytes);
-    return filepath;
-  }
-
-  overwriteBytes(fileName: string, bytes: Buffer): string {
-    if (!this._diskPathMap.has(fileName)) {
-      this._diskPathMap.set(fileName, uuid.v4());
-    }
-    const filepath = this.getDiskPath(fileName);
-
-    fs.writeFileSync(filepath, bytes);
     return filepath;
   }
 
@@ -89,17 +79,26 @@ export class Persistence {
   }
 
   renameFile(oldName: string, newName: string): void {
-    const oldNameId = this._diskPathMap.get(oldName)!;
+    const oldNameId = this.getDiskFileName(oldName);
     this._diskPathMap.set(newName, oldNameId);
+    this._diskPathMap.delete(oldName);
   }
 
   getDiskPath(fileName: string): string {
-    const shortenedDiskPath = this._diskPathMap.get(fileName)!;
+    const shortenedDiskPath = this.getDiskFileName(fileName);
     return path.join(this._dirPath, encodeURIComponent(shortenedDiskPath));
   }
 
+  getDiskFileName(fileName: string): string {
+    return this._diskPathMap.get(fileName)!;
+  }
+
   copyFromExternalPath(sourcePath: string, newName: string): void {
-    this._diskPathMap.set(newName, uuid.v4());
+    this._diskPathMap.set(newName, this.generateNewDiskName());
     fse.copyFileSync(sourcePath, this.getDiskPath(newName));
+  }
+
+  private generateNewDiskName(): string {
+    return uuid.v4();
   }
 }

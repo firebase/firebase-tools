@@ -33,17 +33,8 @@ export class StoredFile {
   public set metadata(value: StoredFileMetadata) {
     this._metadata = value;
   }
-  private _path: string;
-
-  constructor(metadata: StoredFileMetadata, path: string) {
+  constructor(metadata: StoredFileMetadata) {
     this.metadata = metadata;
-    this._path = path;
-  }
-  public get path(): string {
-    return this._path;
-  }
-  public set path(value: string) {
-    this._path = value;
   }
 }
 
@@ -326,7 +317,7 @@ export class StorageLayer {
     // Persist to permanent location on disk.
     this._persistence.deleteFile(filePath, /* failSilently = */ true);
     this._persistence.renameFile(upload.path, filePath);
-    this._files.set(filePath, new StoredFile(metadata, this._persistence.getDiskPath(filePath)));
+    this._files.set(filePath, new StoredFile(metadata));
     this._cloudFunctions.dispatch("finalize", new CloudStorageObjectMetadata(metadata));
     return metadata;
   }
@@ -387,10 +378,7 @@ export class StorageLayer {
       sourceBytes,
       incomingMetadata
     );
-    const file = new StoredFile(
-      copiedFileMetadata,
-      this._persistence.getDiskPath(destinationFilePath)
-    );
+    const file = new StoredFile(copiedFileMetadata);
     this._files.set(destinationFilePath, file);
 
     this._cloudFunctions.dispatch("finalize", new CloudStorageObjectMetadata(file.metadata));
@@ -540,8 +528,10 @@ export class StorageLayer {
     await fse.ensureDir(metadataDirPath);
 
     for await (const [, file] of this._files.entries()) {
-      // get filename from file path, needed to make sure the metadata and blob file have the same filename
-      const diskFileName = file.path.replace(/^.*[\\\/]/, "");
+      // get diskFilename from file path, needed to make sure the metadata and blob file have the same filename
+      const diskFileName = this._persistence.getDiskFileName(
+        this.path(file.metadata.bucket, file.metadata.name)
+      );
       const metadataExportPath =
         path.join(metadataDirPath, encodeURIComponent(diskFileName)) + ".json";
       await fse.writeFile(metadataExportPath, StoredFileMetadata.toJSON(file.metadata));
@@ -597,7 +587,7 @@ export class StorageLayer {
       const filepath = this.path(metadata.bucket, fileName);
 
       this._persistence.copyFromExternalPath(blobAbsPath, filepath);
-      const file = new StoredFile(metadata, this._persistence.getDiskPath(filepath));
+      const file = new StoredFile(metadata);
       this._files.set(filepath, file);
     }
   }
