@@ -2627,11 +2627,11 @@ function fakeFetchUserInfoFromIdp(
       response.lastName = claims.family_name;
       response.rawUserInfo = JSON.stringify({
         granted_scopes,
-        id: rawId,
+        sub: rawId,
         name: displayName,
         given_name: claims.given_name,
         family_name: claims.family_name,
-        verified_email: emailVerified,
+        email_verified: emailVerified,
         locale: "en",
         email,
         picture: photoUrl,
