@@ -67,9 +67,7 @@ export const deploy = async function (
     const target = TARGETS[targetName];
 
     if (!target) {
-      return Promise.reject(
-        new FirebaseError(bold(targetName) + " is not a valid deploy target", { exit: 1 })
-      );
+      return Promise.reject(new FirebaseError(`${bold(targetName)} is not a valid deploy target`));
     }
 
     predeploys.push(lifecycleHooks(targetName, "predeploy"));

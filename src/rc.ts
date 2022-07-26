@@ -207,15 +207,11 @@ export class RC {
     const target = this.target(project, type, name);
     if (!target.length) {
       throw new FirebaseError(
-        "Deploy target " +
-          clc.bold(name) +
-          " not configured for project " +
-          clc.bold(project) +
-          ". Configure with:\n\n  firebase target:apply " +
-          type +
-          " " +
-          name +
-          " <resources...>"
+        `Deploy target ${clc.bold(name)} not configured for project ${clc.bold(
+          project
+        )}. Configure with:
+
+  firebase target:apply ${type} ${name} <resources...>`
       );
     }
 
