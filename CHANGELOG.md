@@ -1,4 +1,0 @@
-- Adds the ability for the CLI to automatically detect the region for Functions rewrites.
-- Fixes bug where function timeout couldn't be configured in the Functions Emulator. (#4745)
-- Adjusts API call to test IAM permissions to use the users' project's quota.
-- Fixes issue where storage (and database) targets were not being recognized. (#4752)
