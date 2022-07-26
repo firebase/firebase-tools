@@ -83,7 +83,9 @@ export function getRulesConfig(projectId: string, options: Options): RulesInstan
 
   if (!allDatabases && onlyDatabases.size !== 0) {
     throw new FirebaseError(
-      `Could not find configurations in firebase.json for the following database targets: ${[...onlyDatabases].join(", ")}`
+      `Could not find configurations in firebase.json for the following database targets: ${[
+        ...onlyDatabases,
+      ].join(", ")}`
     );
   }
 
