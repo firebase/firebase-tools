@@ -1,8 +1,9 @@
 import * as _ from "lodash";
 
-import gcp = require("../../gcp");
+import * as gcp from "../../gcp";
 import { RulesDeploy, RulesetServiceType } from "../../rulesDeploy";
 import { Options } from "../../options";
+import { FirebaseError } from "../../error";
 
 /**
  * Prepares for a Firebase Storage deployment.
@@ -15,23 +16,48 @@ export default async function (context: any, options: Options): Promise<void> {
     return;
   }
 
+  const onlyTargets = new Set<string>();
+  let allStorage = !options.only;
+  if (options.only) {
+    const split = options.only.split(",");
+    if (split.includes("storage")) {
+      allStorage = true;
+    } else {
+      for (const value of split) {
+        if (value.startsWith("storage:")) {
+          onlyTargets.add(value.split(":")[1]);
+        }
+      }
+    }
+  }
+
   _.set(context, "storage.rules", rulesConfig);
 
   const rulesDeploy = new RulesDeploy(options, RulesetServiceType.FIREBASE_STORAGE);
   _.set(context, "storage.rulesDeploy", rulesDeploy);
 
-  if (typeof rulesConfig === "object" && rulesConfig !== null) {
+  if (!Array.isArray(rulesConfig)) {
     const defaultBucket = await gcp.storage.getDefaultBucket(options.project);
     rulesConfig = [Object.assign(rulesConfig, { bucket: defaultBucket })];
     _.set(context, "storage.rules", rulesConfig);
   }
 
-  rulesConfig.forEach((ruleConfig: any) => {
-    if (ruleConfig.target) {
-      (options.rc as any).requireTarget(context.projectId, "storage", ruleConfig.target);
+  for (const ruleConfig of rulesConfig) {
+    const target: string = ruleConfig.target;
+    if (target) {
+      options.rc.requireTarget(context.projectId, "storage", target);
     }
-    rulesDeploy.addFile(ruleConfig.rules);
-  });
+    if (allStorage || onlyTargets.has(target)) {
+      rulesDeploy.addFile(ruleConfig.rules);
+      onlyTargets.delete(target);
+    }
+  }
+
+  if (!allStorage && onlyTargets.size !== 0) {
+    throw new FirebaseError(
+      `Could not find rules for the following storage targets: ${[...onlyTargets].join(", ")}`
+    );
+  }
 
   await rulesDeploy.compile();
 }
