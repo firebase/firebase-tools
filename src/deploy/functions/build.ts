@@ -227,7 +227,7 @@ export async function resolveBackend(
     paramValues = await params.resolveParams(build.params, projectId, envWithTypes(userEnvs));
   }
   if (previews.parampersistence) {
-    const toWrite:Record<string, string> = {};
+    const toWrite: Record<string, string> = {};
     for (const paramName of Object.keys(paramValues).filter((pn) => !userEnvs.hasOwnProperty(pn))) {
       toWrite[paramName] = paramValues[paramName]?.toString() || "";
     }
@@ -238,7 +238,7 @@ export async function resolveBackend(
 }
 
 function envWithTypes(rawEnvs: Record<string, string>): Record<string, string | number | boolean> {
-  let out: Record<string, string | number | boolean> = {}
+  const out: Record<string, string | number | boolean> = {};
   for (const envName of Object.keys(rawEnvs)) {
     const value = rawEnvs[envName];
     if (!isNaN(+value)) {
@@ -253,7 +253,6 @@ function envWithTypes(rawEnvs: Record<string, string>): Record<string, string | 
   }
   return out;
 }
-
 
 /** Converts a build specification into a Backend representation, with all Params resolved and interpolated */
 // TODO(vsfan): handle Expression<T> types
