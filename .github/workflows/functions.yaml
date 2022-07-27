@@ -13,7 +13,8 @@
 # limitations under the License.
 name: Functions deploy test
 
-on: workflow_dispatch
+#on: workflow_dispatch
+on: [push]
 
 concurrency:
   group: functions-deploy-${{ github.ref }}
