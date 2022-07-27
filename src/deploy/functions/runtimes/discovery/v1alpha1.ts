@@ -295,7 +295,7 @@ function parseEndpointForBuild(
     };
     if (ep.taskQueueTrigger.retryConfig) {
       tq.retryConfig = {
-        maxRetryDurationSeconds: ep.taskQueueTrigger.retryConfig.maxRetrySeconds,
+        maxRetrySeconds: ep.taskQueueTrigger.retryConfig.maxRetrySeconds,
         maxBackoffSeconds: ep.taskQueueTrigger.retryConfig.maxBackoffSeconds,
         minBackoffSeconds: ep.taskQueueTrigger.retryConfig.minBackoffSeconds,
         maxDoublings: ep.taskQueueTrigger.retryConfig.maxDoublings,

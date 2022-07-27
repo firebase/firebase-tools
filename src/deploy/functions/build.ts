@@ -115,7 +115,7 @@ export interface TaskQueueRateLimits {
 
 export interface TaskQueueRetryConfig {
   maxAttempts?: Field<number>;
-  maxRetryDurationSeconds?: Field<number>;
+  maxRetrySeconds?: Field<number>;
   minBackoffSeconds?: Field<number>;
   maxBackoffSeconds?: Field<number>;
   maxDoublings?: Field<number>;
@@ -436,27 +436,21 @@ function discoverTrigger(
         endpoint.taskQueueTrigger.retryConfig,
         "maxBackoffSeconds",
         "maxBackoffSeconds",
-        (from: number | Expression<number>): string => {
-          return proto.durationFromSeconds(resolveInt(from));
-        }
+        resolveInt
       );
       proto.renameIfPresent(
         bkRetryConfig,
         endpoint.taskQueueTrigger.retryConfig,
         "minBackoffSeconds",
         "minBackoffSeconds",
-        (from: number | Expression<number>): string => {
-          return proto.durationFromSeconds(resolveInt(from));
-        }
+        resolveInt
       );
       proto.renameIfPresent(
         bkRetryConfig,
         endpoint.taskQueueTrigger.retryConfig,
         "maxRetrySeconds",
-        "maxRetryDurationSeconds",
-        (from: number | Expression<number>): string => {
-          return proto.durationFromSeconds(resolveInt(from));
-        }
+        "maxRetrySeconds",
+        resolveInt
       );
       proto.renameIfPresent(
         bkRetryConfig,
