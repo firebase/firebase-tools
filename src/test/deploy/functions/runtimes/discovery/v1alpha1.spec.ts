@@ -16,7 +16,7 @@ const MIN_ENDPOINT: Omit<v1alpha1.ManifestEndpoint, "httpsTrigger"> = {
 };
 const MIN_BUILD_ENDPOINT: Omit<v1alpha1.V2Endpoint, "httpsTrigger"> = {
   entryPoint: "entryPoint",
-}
+};
 
 async function resolveBackend(bd: build.Build): Promise<backend.Backend> {
   return build.resolveBackend(bd, { functionsSource: "", projectId: PROJECT }, {});
@@ -105,7 +105,14 @@ describe("buildFromV1Alpha", () => {
         },
       };
       const parsed = v1alpha1.buildFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME);
-      const expected: build.Build = build.of({ id: { ...DEFAULTED_ENDPOINT, httpsTrigger: {} } });
+      const expected: build.Build = build.of({
+        id: {
+          ...DEFAULTED_ENDPOINT,
+          concurrency: "{{ params.CONCURRENCY }}",
+          availableMemoryMb: "{{ params.MEMORY }}",
+          httpsTrigger: {},
+        },
+      });
       expect(parsed).to.deep.equal(expected);
     });
 
