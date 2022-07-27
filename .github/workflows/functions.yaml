@@ -36,5 +36,7 @@ jobs:
           credentials_json: '${{ secrets.CF3_INTEGRATION_TEST_GOOGLE_CREDENTIALS }}'
           create_credentials_file: true
 
-      - name: 'Run integration test'
+      - run: npm i
+
+      - name: 'Test function deploy'
         run: 'npm run test:functions-deploy'
