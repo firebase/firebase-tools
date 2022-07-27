@@ -1,1 +1,2 @@
 - Adds warnings about upcoming deprecation of `--token`, `FIREBASE_TOKEN`, and `login:ci`.
+- Fix bug where task queue function configuration values were incorrectly resolved. (#4788)
