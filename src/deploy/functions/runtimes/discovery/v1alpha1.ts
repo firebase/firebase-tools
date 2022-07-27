@@ -36,30 +36,32 @@ export type ManifestEndpoint = Base &
     secretEnvironmentVariables?: Array<ManifestSecretEnv>;
   };
 
-export type V2Endpoint = { httpsTrigger?: build.HttpsTrigger } & { callableTrigger?: {} } & {
-  eventTrigger?: build.EventTrigger;
-} & { taskQueueTrigger?: build.TaskQueueTrigger } & {
-  blockingTrigger?: build.BlockingTrigger;
-} & { scheduleTrigger?: build.ScheduleTrigger } & {
-  labels?: Record<string, string>;
-  environmentVariables?: Record<string, string>;
-  availableMemoryMb?: backend.MemoryOptions | build.Expression<number>;
-  concurrency?: number | build.Expression<number>;
-  cpu?: number | "gcf_gen1";
-  timeoutSeconds?: number | build.Expression<number>;
-  maxInstances?: number | build.Expression<number>;
-  minInstances?: number | build.Expression<number>;
-  vpc?: {
-    connector: string;
-    egressSettings?: backend.VpcEgressSettings;
+export type V2Endpoint = build.Triggered &
+  Partial<build.HttpsTriggered> &
+  Partial<build.CallableTriggered> &
+  Partial<build.EventTriggered> &
+  Partial<build.TaskQueueTriggered> &
+  Partial<build.BlockingTriggered> &
+  Partial<build.ScheduleTriggered> & {
+    labels?: Record<string, string>;
+    environmentVariables?: Record<string, string>;
+    availableMemoryMb?: backend.MemoryOptions | build.Expression<number>;
+    concurrency?: number | build.Expression<number>;
+    cpu?: number | "gcf_gen1";
+    timeoutSeconds?: number | build.Expression<number>;
+    maxInstances?: number | build.Expression<number>;
+    minInstances?: number | build.Expression<number>;
+    vpc?: {
+      connector: string;
+      egressSettings?: backend.VpcEgressSettings;
+    };
+    ingressSettings?: backend.IngressSettings;
+    serviceAccountEmail?: string;
+    region?: string[];
+    entryPoint: string;
+    platform?: backend.FunctionsPlatform;
+    secretEnvironmentVariables?: Array<ManifestSecretEnv>;
   };
-  ingressSettings?: backend.IngressSettings;
-  serviceAccountEmail?: string;
-  region?: string[];
-  entryPoint: string;
-  platform?: backend.FunctionsPlatform;
-  secretEnvironmentVariables?: Array<ManifestSecretEnv>;
-};
 
 export interface Manifest {
   specVersion: string;
@@ -82,7 +84,6 @@ export function buildFromV1Alpha1(
   region: string,
   runtime: runtimes.Runtime
 ): build.Build {
-  const oldManifest = JSON.parse(JSON.stringify(yaml)) as Manifest;
   const manifest = JSON.parse(JSON.stringify(yaml)) as V2Manifest;
   requireKeys("", manifest, "endpoints");
   assertKeyTypes("", manifest, {
@@ -95,8 +96,8 @@ export function buildFromV1Alpha1(
   bd.params = manifest.params || [];
   bd.requiredAPIs = parseRequiredAPIs(manifest);
   for (const id of Object.keys(manifest.endpoints)) {
-    assertManifestEndpoint(oldManifest.endpoints[id], id);
     const me: V2Endpoint = manifest.endpoints[id];
+    assertBuildEndpoint(me, id);
     const be: build.Endpoint = parseEndpointForBuild(id, me, project, region, runtime);
     bd.endpoints[id] = be;
   }
@@ -266,6 +267,141 @@ function assertManifestEndpoint(ep: ManifestEndpoint, id: string): void {
   }
 }
 
+function assertBuildEndpoint(ep: V2Endpoint, id: string): void {
+  const prefix = `endpoints[${id}]`;
+  assertKeyTypes(prefix, ep, {
+    region: "array",
+    platform: (platform) => backend.AllFunctionsPlatforms.includes(platform),
+    entryPoint: "string",
+    availableMemoryMb: (mem) => build.isMemoryOption(mem) || typeof mem === "string",
+    maxInstances: "Field<number>",
+    minInstances: "Field<number>",
+    concurrency: "Field<number>",
+    serviceAccountEmail: "string",
+    timeoutSeconds: "Field<number>",
+    vpc: "object",
+    labels: "object",
+    ingressSettings: (setting) => backend.AllIngressSettings.includes(setting),
+    environmentVariables: "object",
+    secretEnvironmentVariables: "array",
+    httpsTrigger: "object",
+    callableTrigger: "object",
+    eventTrigger: "object",
+    scheduleTrigger: "object",
+    taskQueueTrigger: "object",
+    blockingTrigger: "object",
+    cpu: (cpu: backend.Endpoint["cpu"]) => typeof cpu === "number" || cpu === "gcf_gen1",
+  });
+  if (ep.vpc) {
+    assertKeyTypes(prefix + ".vpc", ep.vpc, {
+      connector: "string",
+      egressSettings: (setting) => backend.AllVpcEgressSettings.includes(setting),
+    });
+    requireKeys(prefix + ".vpc", ep.vpc, "connector");
+  }
+  let triggerCount = 0;
+  if (ep.httpsTrigger) {
+    triggerCount++;
+  }
+  if (ep.callableTrigger) {
+    triggerCount++;
+  }
+  if (ep.eventTrigger) {
+    triggerCount++;
+  }
+  if (ep.scheduleTrigger) {
+    triggerCount++;
+  }
+  if (ep.taskQueueTrigger) {
+    triggerCount++;
+  }
+  if (ep.blockingTrigger) {
+    triggerCount++;
+  }
+  if (!triggerCount) {
+    throw new FirebaseError("Expected trigger in endpoint " + id);
+  }
+  if (triggerCount > 1) {
+    throw new FirebaseError("Multiple triggers defined for endpoint" + id);
+  }
+  if (build.isEventTriggered(ep)) {
+    requireKeys(prefix + ".eventTrigger", ep.eventTrigger, "eventType", "eventFilters");
+    assertKeyTypes(
+      prefix + ".eventTrigger",
+      ep.eventTrigger,
+      {
+        eventFilters: "object",
+        eventFilterPathPatterns: "object",
+        eventType: "string",
+        retry: "Field<boolean>",
+        region: "Field<string>",
+        serviceAccount: "string",
+        channel: "string",
+      },
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      (k: string, _v: any) => k === "serviceAccountEmail"
+    );
+  } else if (build.isHttpsTriggered(ep)) {
+    assertKeyTypes(prefix + ".httpsTrigger", ep.httpsTrigger, {
+      invoker: "array",
+    });
+  } else if (build.isCallableTriggered(ep)) {
+    // no-op
+  } else if (build.isScheduleTriggered(ep)) {
+    assertKeyTypes(prefix + ".scheduleTrigger", ep.scheduleTrigger, {
+      schedule: "Field<string>",
+      timeZone: "Field<string>",
+      retryConfig: "object",
+    });
+    assertKeyTypes(
+      prefix + ".scheduleTrigger.retryConfig",
+      ep.scheduleTrigger.retryConfig,
+      {
+        retryCount: "Field<number>",
+        maxDoublings: "Field<number>",
+        minBackoffSeconds: "Field<number>",
+        maxBackoffSeconds: "Field<number>",
+        maxRetrySeconds: "Field<number>",
+      },
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      (k: string, _v: any) =>
+        ["minBackoffDuration", "maxBackoffDuration", "maxRetryDuration"].includes(k)
+    );
+  } else if (build.isTaskQueueTriggered(ep)) {
+    assertKeyTypes(prefix + ".taskQueueTrigger", ep.taskQueueTrigger, {
+      rateLimits: "object",
+      retryConfig: "object",
+      invoker: "array",
+    });
+    if (ep.taskQueueTrigger.rateLimits) {
+      assertKeyTypes(prefix + ".taskQueueTrigger.rateLimits", ep.taskQueueTrigger.rateLimits, {
+        maxConcurrentDispatches: "Field<number>",
+        maxDispatchesPerSecond: "Field<number>",
+      });
+    }
+    if (ep.taskQueueTrigger.retryConfig) {
+      assertKeyTypes(prefix + ".taskQueueTrigger.retryConfig", ep.taskQueueTrigger.retryConfig, {
+        maxAttempts: "Field<number>",
+        maxRetryDurationSeconds: "Field<number>",
+        minBackoffSeconds: "Field<number>",
+        maxBackoffSeconds: "Field<number>",
+        maxDoublings: "Field<number>",
+      });
+    }
+  } else if (build.isBlockingTriggered(ep)) {
+    requireKeys(prefix + ".blockingTrigger", ep.blockingTrigger, "eventType");
+    assertKeyTypes(prefix + ".blockingTrigger", ep.blockingTrigger, {
+      eventType: "string",
+      options: "object",
+    });
+  } else {
+    throw new FirebaseError(
+      `Do not recognize trigger type for endpoint ${id}. Try upgrading ` +
+        "firebase-tools with npm install -g firebase-tools@latest"
+    );
+  }
+}
+
 function parseEndpointForBuild(
   id: string,
   ep: V2Endpoint,
@@ -306,13 +442,16 @@ function parseEndpointForBuild(
         maxDoublings: ep.scheduleTrigger.retryConfig.maxDoublings,
       };
       if (wireRetryConfig.maxRetryDuration) {
-        st.retryConfig.maxRetrySeconds = secondsFromDuration(wireRetryConfig.maxRetryDuration);
+        const secs = secondsFromDuration(wireRetryConfig.maxRetryDuration);
+        st.retryConfig.maxRetrySeconds = isNaN(secs) ? wireRetryConfig.maxRetryDuration : secs;
       }
       if (wireRetryConfig.maxBackoffDuration) {
-        st.retryConfig.maxBackoffSeconds = secondsFromDuration(wireRetryConfig.maxBackoffDuration);
+        const secs = secondsFromDuration(wireRetryConfig.maxBackoffDuration);
+        st.retryConfig.maxBackoffSeconds = isNaN(secs) ? wireRetryConfig.maxBackoffDuration : secs;
       }
       if (wireRetryConfig.minBackoffDuration) {
-        st.retryConfig.minBackoffSeconds = secondsFromDuration(wireRetryConfig.minBackoffDuration);
+        const secs = secondsFromDuration(wireRetryConfig.minBackoffDuration);
+        st.retryConfig.minBackoffSeconds = isNaN(secs) ? wireRetryConfig.minBackoffDuration : secs;
       }
     }
     triggered = { scheduleTrigger: st };

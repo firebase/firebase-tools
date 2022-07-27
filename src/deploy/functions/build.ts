@@ -243,9 +243,6 @@ export type Endpoint = Triggered & {
   labels?: Record<string, string | Expression<string>>;
 };
 
-/**
- *
- */
 export function isMemoryOption(value: backend.MemoryOptions | any): value is backend.MemoryOptions {
   return value == null || [128, 256, 512, 1024, 2048, 4096, 8192].includes(value);
 }

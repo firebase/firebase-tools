@@ -101,6 +101,9 @@ describe("buildFromV1Alpha", () => {
             httpsTrigger: {},
             concurrency: "{{ params.CONCURRENCY }}",
             availableMemoryMb: "{{ params.MEMORY }}",
+            timeoutSeconds: "{{ params.TIMEOUT }}",
+            maxInstances: "{{ params.MAX_INSTANCES }}",
+            minInstances: "{{ params.MIN_INSTANCES }}",
           },
         },
       };
@@ -110,6 +113,9 @@ describe("buildFromV1Alpha", () => {
           ...DEFAULTED_ENDPOINT,
           concurrency: "{{ params.CONCURRENCY }}",
           availableMemoryMb: "{{ params.MEMORY }}",
+          timeoutSeconds: "{{ params.TIMEOUT }}",
+          maxInstances: "{{ params.MAX_INSTANCES }}",
+          minInstances: "{{ params.MIN_INSTANCES }}",
           httpsTrigger: {},
         },
       });
@@ -159,6 +165,45 @@ describe("buildFromV1Alpha", () => {
         scheduleTrigger: scheduleBackendTrigger,
       });
       expect(resolveBackend(parsed)).to.eventually.deep.equal(expectedBackend);
+    });
+
+    it("copies schedules including Field types", () => {
+      const wireTrigger = {
+        schedule: "{{ params.SCHEDULE }}",
+        timeZone: "{{ params.TZ }}",
+        retryConfig: {
+          retryCount: "{{ params.RETRY }}",
+          minBackoffDuration: "{{ params.MIN_BACKOFF }}",
+          maxBackoffDuration: "{{ params.MAX_BACKOFF }}",
+          maxRetryDuration: "{{ params.RETRY_DURATION }}",
+          maxDoublings: "{{ params.DOUBLINGS }}",
+        },
+      };
+      const scheduleTrigger: build.ScheduleTrigger = {
+        schedule: "{{ params.SCHEDULE }}",
+        timeZone: "{{ params.TZ }}",
+        retryConfig: {
+          retryCount: "{{ params.RETRY }}",
+          minBackoffSeconds: "{{ params.MIN_BACKOFF }}",
+          maxBackoffSeconds: "{{ params.MAX_BACKOFF }}",
+          maxRetrySeconds: "{{ params.RETRY_DURATION }}",
+          maxDoublings: "{{ params.DOUBLINGS }}",
+        },
+      };
+
+      const yaml: v1alpha1.V2Manifest = {
+        specVersion: "v1alpha1",
+        endpoints: {
+          id: {
+            ...MIN_BUILD_ENDPOINT,
+            scheduleTrigger: wireTrigger,
+          },
+        },
+      };
+
+      const parsed = v1alpha1.buildFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME);
+      const expected: build.Build = build.of({ id: { ...DEFAULTED_ENDPOINT, scheduleTrigger } });
+      expect(parsed).to.deep.equal(expected);
     });
 
     it("copies event triggers", () => {
@@ -239,6 +284,42 @@ describe("buildFromV1Alpha", () => {
         eventTrigger,
       });
       expect(resolveBackend(parsed)).to.eventually.deep.equal(expectedBackend);
+    });
+
+    it("copies event triggers with optional values of Field<> types", () => {
+      const wireTrigger = {
+        eventType: "some.event.type",
+        eventFilters: { resource: "my-resource" },
+        eventFilterPathPatterns: { instance: "my-instance" },
+        region: "{{ params.REGION }}",
+        serviceAccountEmail: "sa@",
+        retry: "{{ params.RETRY }}",
+        channel: "projects/project/locations/region/channels/my-channel",
+      };
+      const newFormatTrigger: build.EventTrigger = {
+        eventType: "some.event.type",
+        eventFilters: { resource: "my-resource" },
+        eventFilterPathPatterns: { instance: "my-instance" },
+        region: "{{ params.REGION }}",
+        serviceAccount: "sa@",
+        retry: "{{ params.RETRY }}",
+        channel: "projects/project/locations/region/channels/my-channel",
+      };
+      const yaml: v1alpha1.V2Manifest = {
+        specVersion: "v1alpha1",
+        endpoints: {
+          id: {
+            ...MIN_BUILD_ENDPOINT,
+            eventTrigger: wireTrigger,
+          },
+        },
+      };
+
+      const parsed = v1alpha1.buildFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME);
+      const expected: build.Build = build.of({
+        id: { ...DEFAULTED_ENDPOINT, eventTrigger: newFormatTrigger },
+      });
+      expect(parsed).to.deep.equal(expected);
     });
 
     it("copies event triggers with full resource path", () => {

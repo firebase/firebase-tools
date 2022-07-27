@@ -35,11 +35,15 @@ export function requireKeys<T extends object>(prefix: string, yaml: T, ...keys: 
 
 /**
  * Asserts that runtime types of the given object matches the type specified in the schema.
+ * If a passthrough function is provided, skips validation if the function returns true on
+ * a given key-value pair, which is useful when dealing with known extra fields at runtime
+ * from the wire format.
  */
 export function assertKeyTypes<T extends object>(
   prefix: string,
   yaml: T | undefined,
-  schema: { [Key in keyof Required<T>]: KeyType<Required<T>[Key]> }
+  schema: { [Key in keyof Required<T>]: KeyType<Required<T>[Key]> },
+  passthrough?: (k: string, v: any) => boolean
 ): void {
   if (!yaml) {
     return;
@@ -48,6 +52,10 @@ export function assertKeyTypes<T extends object>(
     // I don't know why Object.entries(foo)[0] isn't type of keyof foo...
     const key = keyAsString as keyof T;
     const fullKey = prefix ? `${prefix}.${keyAsString}` : keyAsString;
+
+    if (passthrough && passthrough(keyAsString, value)) {
+      continue;
+    }
     if (!schema[key] || schema[key] === "omit") {
       throw new FirebaseError(
         `Unexpected key ${fullKey}. You may need to install a newer version of the Firebase CLI.`
