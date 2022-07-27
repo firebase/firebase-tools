@@ -5,7 +5,7 @@ import * as params from "./params";
 import { previews } from "../../previews";
 import { FirebaseError } from "../../error";
 import { assertExhaustive } from "../../functional";
-import { UserEnvsOpts, writeUserEnvs } from "../../functions/env";
+import { UserEnvsOpts } from "../../functions/env";
 
 /* The union of a customer-controlled deployment and potentially deploy-time defined parameters */
 export interface Build {
@@ -142,12 +142,48 @@ export interface ScheduleTrigger {
 }
 
 export type Triggered =
-  | { httpsTrigger: HttpsTrigger }
-  | { callableTrigger: CallableTrigger }
-  | { blockingTrigger: BlockingTrigger }
-  | { eventTrigger: EventTrigger }
-  | { scheduleTrigger: ScheduleTrigger }
-  | { taskQueueTrigger: TaskQueueTrigger };
+  | HttpsTriggered
+  | CallableTriggered
+  | BlockingTriggered
+  | EventTriggered
+  | ScheduleTriggered
+  | TaskQueueTriggered;
+export type HttpsTriggered = { httpsTrigger: HttpsTrigger };
+export type CallableTriggered = { callableTrigger: CallableTrigger };
+export type BlockingTriggered = { blockingTrigger: BlockingTrigger };
+export type EventTriggered = { eventTrigger: EventTrigger };
+export type ScheduleTriggered = { scheduleTrigger: ScheduleTrigger };
+export type TaskQueueTriggered = { taskQueueTrigger: TaskQueueTrigger };
+
+/** Whether something has an HttpsTrigger */
+export function isHttpsTriggered(triggered: Triggered): triggered is HttpsTriggered {
+  return {}.hasOwnProperty.call(triggered, "httpsTrigger");
+}
+
+/** Whether something has a CallableTrigger */
+export function isCallableTriggered(triggered: Triggered): triggered is CallableTriggered {
+  return {}.hasOwnProperty.call(triggered, "callableTrigger");
+}
+
+/** Whether something has an EventTrigger */
+export function isEventTriggered(triggered: Triggered): triggered is EventTriggered {
+  return {}.hasOwnProperty.call(triggered, "eventTrigger");
+}
+
+/** Whether something has a ScheduleTrigger */
+export function isScheduleTriggered(triggered: Triggered): triggered is ScheduleTriggered {
+  return {}.hasOwnProperty.call(triggered, "scheduleTrigger");
+}
+
+/** Whether something has a TaskQueueTrigger */
+export function isTaskQueueTriggered(triggered: Triggered): triggered is TaskQueueTriggered {
+  return {}.hasOwnProperty.call(triggered, "taskQueueTrigger");
+}
+
+/** Whether something has a BlockingTrigger */
+export function isBlockingTriggered(triggered: Triggered): triggered is BlockingTriggered {
+  return {}.hasOwnProperty.call(triggered, "blockingTrigger");
+}
 
 export interface VpcSettings {
   connector: string | Expression<string>;
@@ -348,17 +384,17 @@ function discoverTrigger(
     params.resolveBoolean(from, paramValues);
 
   let trigger: backend.Triggered;
-  if ("httpsTrigger" in endpoint) {
+  if (isHttpsTriggered(endpoint)) {
     const bkHttps: backend.HttpsTrigger = {};
     if (endpoint.httpsTrigger.invoker) {
       bkHttps.invoker = endpoint.httpsTrigger.invoker;
     }
     trigger = { httpsTrigger: bkHttps };
-  } else if ("callableTrigger" in endpoint) {
+  } else if (isCallableTriggered(endpoint)) {
     trigger = { callableTrigger: {} };
-  } else if ("blockingTrigger" in endpoint) {
+  } else if (isBlockingTriggered(endpoint)) {
     trigger = { blockingTrigger: endpoint.blockingTrigger };
-  } else if ("eventTrigger" in endpoint) {
+  } else if (isEventTriggered(endpoint)) {
     const bkEventFilters: Record<string, string> = {};
     for (const [key, value] of Object.entries(endpoint.eventTrigger.eventFilters)) {
       bkEventFilters[key] = params.resolveString(value, paramValues);
