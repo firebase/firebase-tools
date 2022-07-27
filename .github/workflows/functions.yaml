@@ -23,7 +23,7 @@ env:
   CI: true
 
 jobs:
-  postmerge:
+  deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -40,3 +40,7 @@ jobs:
 
       - name: 'Test function deploy'
         run: 'npm run test:functions-deploy'
+
+      - name: Print debug logs
+        if: failure()
+        run: find . -type f -name "*debug.log" | xargs cat
