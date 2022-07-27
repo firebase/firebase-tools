@@ -44,7 +44,7 @@ async function setOpts(opts: Opts) {
 }
 
 async function listFns(stripId = "dvtuqrxfjr"): Promise<Record<string, Endpoint>> {
-  const result = await cli.exec("functions:list", FIREBASE_PROJECT, ["--json"], __dirname);
+  const result = await cli.exec("functions:list", FIREBASE_PROJECT, ["--json"], __dirname, false);
   const output = JSON.parse(result.stdout);
 
   const eps: Record<string, Endpoint> = {};
