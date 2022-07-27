@@ -9,7 +9,7 @@ import * as cli from "./cli";
 import { Endpoint } from "../../src/deploy/functions/backend";
 import { assertExhaustive } from "../../src/functional";
 
-const FIREBASE_PROJECT = process.env.CF3_DEPLOY_TEST_PROJECT || "cf3-integration-test";
+const FIREBASE_PROJECT = process.env.GCLOUD_PROJECT || "";
 const FUNCTIONS_DIR = path.join(__dirname, "functions");
 const FNS_COUNT = 12;
 
