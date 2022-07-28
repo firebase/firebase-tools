@@ -205,7 +205,7 @@ describe("firebase deploy", function (this) {
 
     for (const e of Object.values(endpoints)) {
       expect(e).to.include({
-        availableMemoryMB: 128,
+        availableMemoryMb: 128,
         // TODO: Fix bug where timeout is being updated, not inferred from existing.
         // timeoutSeconds: 42,
         maxInstances: 42,
@@ -297,7 +297,7 @@ describe("firebase deploy", function (this) {
 
     for (const e of Object.values(endpoints)) {
       expect(e).to.include({
-        availableMemoryMB: 128,
+        availableMemoryMb: 128,
         // TODO: Fix bug where timeout is being updated, not inferred from existing.
         // timeoutSeconds: 42,
         maxInstances: 42,
