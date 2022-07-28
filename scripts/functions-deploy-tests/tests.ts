@@ -138,7 +138,7 @@ describe("firebase deploy", function (this) {
     const result = await cli.exec(
       "deploy",
       FIREBASE_PROJECT,
-      ["--only", "functions", "--non-interactive", "--force"],
+      ["--only", "functions", "--non-interactive", "--force", "--debug"],
       __dirname,
       false
     );
