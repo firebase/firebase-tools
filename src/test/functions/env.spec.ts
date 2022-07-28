@@ -5,6 +5,7 @@ import { sync as rimraf } from "rimraf";
 import { expect } from "chai";
 
 import * as env from "../../functions/env";
+import { FirebaseError } from "../../error";
 
 describe("functions/env", () => {
   describe("parse", () => {
@@ -279,6 +280,169 @@ FOO=foo
       expect(() => {
         env.validateKey("EXT_INSTANCE_ID");
       }).to.throw("starts with a reserved prefix");
+    });
+  });
+
+  describe("writeUserEnvs", () => {
+    const createEnvFiles = (sourceDir: string, envs: Record<string, string>): void => {
+      for (const [filename, data] of Object.entries(envs)) {
+        fs.writeFileSync(path.join(sourceDir, filename), data);
+      }
+    };
+    let tmpdir: string;
+
+    beforeEach(() => {
+      tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), "test"));
+    });
+
+    afterEach(() => {
+      rimraf(tmpdir);
+      expect(() => {
+        fs.statSync(tmpdir);
+      }).to.throw();
+    });
+
+    it("never affects the filesystem if the list of keys to write is empty", () => {
+      env.writeUserEnvs(
+        {},
+        { projectId: "project", projectAlias: "alias", functionsSource: tmpdir }
+      );
+      expect(() => fs.statSync(path.join(tmpdir, ".env.alias"))).throw;
+    });
+
+    it("touches .env.projectAlias if there are no .env files and project alias is available", () => {
+      env.writeUserEnvs(
+        { FOO: "bar" },
+        { projectId: "project", projectAlias: "alias", functionsSource: tmpdir }
+      );
+      expect(!!fs.statSync(path.join(tmpdir, ".env.alias"))).to.be.true;
+    });
+
+    it("touches .env.projectId if there are no .env files and project alias is not available", () => {
+      env.writeUserEnvs({ FOO: "bar" }, { projectId: "project", functionsSource: tmpdir });
+      expect(!!fs.statSync(path.join(tmpdir, ".env.project"))).to.be.true;
+    });
+
+    it("throws if asked to write a key that already exists in the most specific .env", () => {
+      createEnvFiles(tmpdir, {
+        [".env.alias"]: "FOO=foo",
+      });
+      expect(() =>
+        env.writeUserEnvs(
+          { FOO: "bar" },
+          { projectId: "project", projectAlias: "alias", functionsSource: tmpdir }
+        )
+      ).to.throw(FirebaseError);
+    });
+
+    it("throws if asked to write a key that already exists in any .env", () => {
+      createEnvFiles(tmpdir, {
+        [".env.alias"]: "BAR=foo",
+        ".env": "FOO=foo",
+      });
+      expect(() =>
+        env.writeUserEnvs(
+          { FOO: "bar" },
+          { projectId: "project", projectAlias: "alias", functionsSource: tmpdir }
+        )
+      ).to.throw(FirebaseError);
+    });
+
+    it("throws if asked to write a key that fails key format validation", () => {
+      expect(() =>
+        env.writeUserEnvs(
+          { lowercase: "bar" },
+          { projectId: "project", projectAlias: "alias", functionsSource: tmpdir }
+        )
+      ).to.throw(env.KeyValidationError);
+      expect(() =>
+        env.writeUserEnvs(
+          { GCP_PROJECT: "bar" },
+          { projectId: "project", projectAlias: "alias", functionsSource: tmpdir }
+        )
+      ).to.throw(env.KeyValidationError);
+      expect(() =>
+        env.writeUserEnvs(
+          { FIREBASE_KEY: "bar" },
+          { projectId: "project", projectAlias: "alias", functionsSource: tmpdir }
+        )
+      ).to.throw(env.KeyValidationError);
+    });
+
+    it("writes the specified key to a .env that it created", () => {
+      env.writeUserEnvs(
+        { FOO: "bar" },
+        { projectId: "project", projectAlias: "alias", functionsSource: tmpdir }
+      );
+      expect(
+        env.loadUserEnvs({ projectId: "project", projectAlias: "alias", functionsSource: tmpdir })[
+          "FOO"
+        ]
+      ).to.equal("bar");
+    });
+
+    it("writes the specified key to a .env that already existed", () => {
+      createEnvFiles(tmpdir, {
+        [".env.alias"]: "",
+      });
+      env.writeUserEnvs(
+        { FOO: "bar" },
+        { projectId: "project", projectAlias: "alias", functionsSource: tmpdir }
+      );
+      expect(
+        env.loadUserEnvs({ projectId: "project", projectAlias: "alias", functionsSource: tmpdir })[
+          "FOO"
+        ]
+      ).to.equal("bar");
+    });
+
+    it("writes multiple keys at once", () => {
+      env.writeUserEnvs(
+        { FOO: "foo", BAR: "bar" },
+        { projectId: "project", projectAlias: "alias", functionsSource: tmpdir }
+      );
+      const envs = env.loadUserEnvs({
+        projectId: "project",
+        projectAlias: "alias",
+        functionsSource: tmpdir,
+      });
+      expect(envs["FOO"]).to.equal("foo");
+      expect(envs["BAR"]).to.equal("bar");
+    });
+
+    it("escapes special characters so that parse() can reverse them", () => {
+      env.writeUserEnvs(
+        {
+          ESCAPES: "\n\r\t\v",
+          WITH_SLASHES: "\n\\\r\\\t\\\v",
+          QUOTES: "'\"'",
+        },
+        { projectId: "project", projectAlias: "alias", functionsSource: tmpdir }
+      );
+      const envs = env.loadUserEnvs({
+        projectId: "project",
+        projectAlias: "alias",
+        functionsSource: tmpdir,
+      });
+      expect(envs["ESCAPES"]).to.equal("\n\r\t\v");
+      expect(envs["WITH_SLASHES"]).to.equal("\n\\\r\\\t\\\v");
+      expect(envs["QUOTES"]).to.equal("'\"'");
+    });
+
+    it("shouldn't write anything if any of the keys fails key format validation", () => {
+      try {
+        env.writeUserEnvs(
+          { FOO: "bar", lowercase: "bar" },
+          { projectId: "project", projectAlias: "alias", functionsSource: tmpdir }
+        );
+      } catch (err: any) {
+        // no-op
+      }
+      expect(
+        env.loadUserEnvs({ projectId: "project", projectAlias: "alias", functionsSource: tmpdir })[
+          "FOO"
+        ]
+      ).to.be.undefined;
     });
   });
 

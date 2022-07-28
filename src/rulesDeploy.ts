@@ -1,11 +1,11 @@
-import _ = require("lodash");
-import clc = require("cli-color");
-import fs = require("fs");
+import * as _ from "lodash";
+import * as clc from "cli-color";
+import * as fs from "fs-extra";
 
-import gcp = require("./gcp");
+import * as gcp from "./gcp";
 import { logger } from "./logger";
 import { FirebaseError } from "./error";
-import utils = require("./utils");
+import * as utils from "./utils";
 
 import { promptOnce } from "./prompt";
 import { ListRulesetsEntry, Release, RulesetFile } from "./gcp/rules";

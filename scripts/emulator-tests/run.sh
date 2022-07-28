@@ -14,5 +14,8 @@ trap cleanup EXIT
 # Need to copy `package.json` to the directory so it can be referenced in code.
 cp package.json dev/package.json
 
+# Install deps required to run test triggers.
+(cd scripts/emulator-tests/functions && npm ci)
+
 # Run the tests from the built dev directory.
-mocha dev/scripts/emulator-tests/*.spec.*
+ mocha dev/scripts/emulator-tests/*.spec.*

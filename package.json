@@ -1,6 +1,6 @@
 {
   "name": "firebase-tools",
-  "version": "11.2.2",
+  "version": "11.4.0",
   "description": "Command-Line Interface for Firebase",
   "main": "./lib/index.js",
   "bin": {
@@ -30,6 +30,7 @@
     "test:extensions-deploy": "bash ./scripts/extensions-deploy-tests/run.sh",
     "test:extensions-emulator": "bash ./scripts/extensions-emulator-tests/run.sh",
     "test:hosting": "bash ./scripts/hosting-tests/run.sh",
+    "test:hosting-rewrites": "bash ./scripts/hosting-tests/rewrites-tests/run.sh",
     "test:triggers-end-to-end": "bash ./scripts/triggers-end-to-end-tests/run.sh",
     "test:storage-deploy": "bash ./scripts/storage-deploy-tests/run.sh",
     "test:storage-emulator-integration": "bash ./scripts/storage-emulator-integration/run.sh"

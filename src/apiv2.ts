@@ -18,6 +18,8 @@ import * as FormData from "form-data";
 const pkg = require("../package.json");
 const CLI_VERSION: string = pkg.version;
 
+const GOOG_QUOTA_USER = "x-goog-quota-user";
+
 export type HttpMethod = "GET" | "PUT" | "POST" | "DELETE" | "PATCH";
 
 interface BaseRequestOptions<T> extends VerbOptions {
@@ -465,6 +467,14 @@ export class Client {
     }
     const logURL = this.requestURL(options);
     logger.debug(`>>> [apiv2][query] ${options.method} ${logURL} ${queryParamsLog}`);
+    const headers = options.headers;
+    if (headers && headers.has(GOOG_QUOTA_USER)) {
+      logger.debug(
+        `>>> [apiv2][(partial)header] ${options.method} ${logURL} x-goog-quota-user=${
+          headers.get(GOOG_QUOTA_USER) || ""
+        }`
+      );
+    }
     if (options.body !== undefined) {
       let logBody = "[omitted]";
       if (!options.skipLog?.body) {
