@@ -120,7 +120,7 @@ export interface CloudFunction {
   serviceAccountEmail?: string | null;
 
   labels?: Record<string, string>;
-  environmentVariables?: Record<string, string>;
+  environmentVariables?: Record<string, string> | null;
   buildEnvironmentVariables?: Record<string, string>;
 
   network?: string | null;
@@ -589,8 +589,16 @@ export function functionFromEndpoint(
     dockerRegistry: "ARTIFACT_REGISTRY",
   };
 
-  proto.copyIfPresent(gcfFunction, endpoint, "labels");
+  // N.B. It has the same effect to set labels to the empty object as it does to
+  // set it to null, except the former is more effective for adding automatic
+  // lables for thigns like deployment-callable
+  if (typeof endpoint.labels !== "undefined") {
+    gcfFunction.labels = { ...endpoint.labels };
+  }
   if (backend.isEventTriggered(endpoint)) {
+    if (!endpoint.eventTrigger.eventFilters?.resource) {
+      throw new FirebaseError("Cannot create v1 function from an eventTrigger without a resource");
+    }
     gcfFunction.eventTrigger = {
       eventType: endpoint.eventTrigger.eventType,
       resource: endpoint.eventTrigger.eventFilters.resource,

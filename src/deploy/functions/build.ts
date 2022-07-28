@@ -4,7 +4,7 @@ import * as api from "../../.../../api";
 import * as params from "./params";
 import { previews } from "../../previews";
 import { FirebaseError } from "../../error";
-import { assertExhaustive } from "../../functional";
+import { assertExhaustive, mapObject, nullsafeVisitor } from "../../functional";
 import { UserEnvsOpts } from "../../functions/env";
 import { logger } from "../../logger";
 
@@ -85,7 +85,8 @@ export interface BlockingTrigger {
 // Google events for GCF gen 1)
 export interface EventTrigger {
   eventType: string;
-  eventFilters: Record<string, string | Expression<string>>;
+  eventFilters?: Record<string, string | Expression<string>>;
+  eventFilterPathPatterns?: Record<string, string | Expression<string>>;
 
   // whether failed function executions should retry the event execution.
   // Retries are indefinite, so developers should be sure to add some end condition (e.g. event
@@ -142,7 +143,7 @@ export interface ScheduleRetryConfig {
 export interface ScheduleTrigger {
   schedule: string | Expression<string>;
   timeZone: Field<string>;
-  retryConfig: ScheduleRetryConfig;
+  retryConfig?: ScheduleRetryConfig | null;
 }
 
 export type Triggered =
@@ -193,6 +194,9 @@ export type Endpoint = Triggered & {
   // Default of 256
   availableMemoryMb?: Field<number>;
 
+  // Default of 1 for GCF 2nd gen;
+  cpu?: Field<number>;
+
   // Default of 60
   timeoutSeconds?: Field<number>;
 
@@ -205,9 +209,9 @@ export type Endpoint = Triggered & {
   vpc?: VpcSettings | null;
   ingressSettings?: "ALLOW_ALL" | "ALLOW_INTERNAL_ONLY" | "ALLOW_INTERNAL_AND_GCLB" | null;
 
-  environmentVariables?: Record<string, string | Expression<string>>;
-  secretEnvironmentVariables?: SecretEnvVar[];
-  labels?: Record<string, string | Expression<string>>;
+  environmentVariables?: Record<string, string | Expression<string>> | null;
+  secretEnvironmentVariables?: SecretEnvVar[] | null;
+  labels?: Record<string, string | Expression<string>> | null;
 };
 
 /**
@@ -355,9 +359,17 @@ export function toBackend(
         "minInstances",
         "concurrency"
       );
+      proto.convertIfPresent(
+        bkEndpoint,
+        bdEndpoint,
+        "cpu",
+        nullsafeVisitor((cpu) => (cpu === "gcf_gen1" ? cpu : r.resolveInt(cpu)))
+      );
       if (bdEndpoint.vpc) {
         bkEndpoint.vpc = { connector: params.resolveString(bdEndpoint.vpc.connector, paramValues) };
         proto.copyIfPresent(bkEndpoint.vpc, bdEndpoint.vpc, "egressSettings");
+      } else if (bdEndpoint.vpc === null) {
+        bkEndpoint.vpc = null;
       }
       bkEndpoints.push(bkEndpoint);
     }
@@ -382,15 +394,19 @@ function discoverTrigger(endpoint: Endpoint, region: string, r: Resolver): backe
   } else if ("blockingTrigger" in endpoint) {
     return { blockingTrigger: endpoint.blockingTrigger };
   } else if ("eventTrigger" in endpoint) {
-    const eventFilters: Record<string, string> = {};
-    for (const [key, value] of Object.entries(endpoint.eventTrigger.eventFilters)) {
-      eventFilters[key] = r.resolveString(value);
-    }
     const eventTrigger: backend.EventTrigger = {
       eventType: endpoint.eventTrigger.eventType,
-      eventFilters,
       retry: r.resolveBoolean(endpoint.eventTrigger.retry) || false,
     };
+    if (endpoint.eventTrigger.eventFilters) {
+      eventTrigger.eventFilters = mapObject(endpoint.eventTrigger.eventFilters, r.resolveString);
+    }
+    if (endpoint.eventTrigger.eventFilterPathPatterns) {
+      eventTrigger.eventFilterPathPatterns = mapObject(
+        endpoint.eventTrigger.eventFilterPathPatterns,
+        r.resolveString
+      );
+    }
     r.resolveStrings(eventTrigger, endpoint.eventTrigger, "serviceAccount", "region");
     return { eventTrigger };
   } else if ("scheduleTrigger" in endpoint) {
@@ -410,6 +426,8 @@ function discoverTrigger(endpoint: Endpoint, region: string, r: Resolver): backe
         "maxDoublings"
       );
       bkSchedule.retryConfig = bkRetry;
+    } else if (endpoint.scheduleTrigger.retryConfig === null) {
+      bkSchedule.retryConfig = null;
     }
     return { scheduleTrigger: bkSchedule };
   } else if ("taskQueueTrigger" in endpoint) {
@@ -420,8 +438,10 @@ function discoverTrigger(endpoint: Endpoint, region: string, r: Resolver): backe
         taskQueueTrigger.rateLimits,
         endpoint.taskQueueTrigger.rateLimits,
         "maxConcurrentDispatches",
-        "maxConcurrentDispatches"
+        "maxDispatchesPerSecond"
       );
+    } else if (endpoint.taskQueueTrigger.rateLimits === null) {
+      taskQueueTrigger.rateLimits = null;
     }
     if (endpoint.taskQueueTrigger.retryConfig) {
       taskQueueTrigger.retryConfig = {};
@@ -434,9 +454,13 @@ function discoverTrigger(endpoint: Endpoint, region: string, r: Resolver): backe
         "maxRetrySeconds",
         "maxDoublings"
       );
+    } else if (endpoint.taskQueueTrigger.retryConfig === null) {
+      taskQueueTrigger.retryConfig = null;
     }
     if (endpoint.taskQueueTrigger.invoker) {
       taskQueueTrigger.invoker = endpoint.taskQueueTrigger.invoker.map(r.resolveString);
+    } else if (endpoint.taskQueueTrigger.invoker === null) {
+      taskQueueTrigger.invoker = null;
     }
     return { taskQueueTrigger };
   }

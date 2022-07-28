@@ -24,10 +24,10 @@ export interface ManifestSecretEnv {
 // something that may not be an email (e.g. it might be myAccount@ to be project-relative)
 // In future revisions we should change this.
 type Base = Omit<backend.ServiceConfiguration, "secretEnvironmentVariables"> & {
-  serviceAccountEmail?: string;
+  serviceAccountEmail?: string | null;
 };
 type EventTrigger = backend.EventTrigger & {
-  serviceAccountEmail?: string;
+  serviceAccountEmail?: string | null;
 };
 
 export type ManifestEndpoint = Base &
@@ -121,32 +121,32 @@ function assertManifestEndpoint(ep: ManifestEndpoint, id: string): void {
     region: "array",
     platform: (platform) => backend.AllFunctionsPlatforms.includes(platform),
     entryPoint: "string",
-    availableMemoryMb: backend.isValidMemoryOption,
-    maxInstances: "number",
-    minInstances: "number",
-    concurrency: "number",
-    serviceAccount: "string",
-    serviceAccountEmail: "string",
-    timeoutSeconds: "number",
-    vpc: "object",
-    labels: "object",
-    ingressSettings: (setting) =>
-      backend.AllIngressSettings.includes(setting as backend.IngressSettings),
-    environmentVariables: "object",
-    secretEnvironmentVariables: "array",
+    availableMemoryMb: (mem) => mem === null || backend.isValidMemoryOption(mem),
+    maxInstances: "number?",
+    minInstances: "number?",
+    concurrency: "number?",
+    serviceAccount: "string?",
+    serviceAccountEmail: "string?",
+    timeoutSeconds: "number?",
+    vpc: "object?",
+    labels: "object?",
+    ingressSettings: (setting) => setting === null || backend.AllIngressSettings.includes(setting),
+    environmentVariables: "object?",
+    secretEnvironmentVariables: "array?",
     httpsTrigger: "object",
     callableTrigger: "object",
     eventTrigger: "object",
     scheduleTrigger: "object",
     taskQueueTrigger: "object",
     blockingTrigger: "object",
-    cpu: (cpu: backend.Endpoint["cpu"]) => typeof cpu === "number" || cpu === "gcf_gen1",
+    cpu: (cpu: backend.Endpoint["cpu"]) =>
+      cpu === null || typeof cpu === "number" || cpu === "gcf_gen1",
   });
   if (ep.vpc) {
     assertKeyTypes(prefix + ".vpc", ep.vpc, {
       connector: "string",
       egressSettings: (setting) =>
-        backend.AllVpcEgressSettings.includes(setting as backend.VpcEgressSettings),
+        setting === null || backend.AllVpcEgressSettings.includes(setting),
     });
     requireKeys(prefix + ".vpc", ep.vpc, "connector");
   }
@@ -183,48 +183,48 @@ function assertManifestEndpoint(ep: ManifestEndpoint, id: string): void {
       eventType: "string",
       retry: "boolean",
       region: "string",
-      serviceAccount: "string",
-      serviceAccountEmail: "string",
+      serviceAccount: "string?",
+      serviceAccountEmail: "string?",
       channel: "string",
     });
   } else if (backend.isHttpsTriggered(ep)) {
     assertKeyTypes(prefix + ".httpsTrigger", ep.httpsTrigger, {
-      invoker: "array",
+      invoker: "array?",
     });
   } else if (backend.isCallableTriggered(ep)) {
     // no-op
   } else if (backend.isScheduleTriggered(ep)) {
     assertKeyTypes(prefix + ".scheduleTrigger", ep.scheduleTrigger, {
       schedule: "string",
-      timeZone: "string",
-      retryConfig: "object",
+      timeZone: "string?",
+      retryConfig: "object?",
     });
-    assertKeyTypes(prefix + ".scheduleTrigger.retryConfig", ep.scheduleTrigger.retryConfig, {
-      retryCount: "number",
-      maxDoublings: "number",
-      minBackoffSeconds: "number",
-      maxBackoffSeconds: "number",
-      maxRetrySeconds: "number",
+    assertKeyTypes(prefix + ".scheduleTrigger.retryConfig", ep.scheduleTrigger.retryConfig || {}, {
+      retryCount: "number?",
+      maxDoublings: "number?",
+      minBackoffSeconds: "number?",
+      maxBackoffSeconds: "number?",
+      maxRetrySeconds: "number?",
     });
   } else if (backend.isTaskQueueTriggered(ep)) {
     assertKeyTypes(prefix + ".taskQueueTrigger", ep.taskQueueTrigger, {
-      rateLimits: "object",
-      retryConfig: "object",
-      invoker: "array",
+      rateLimits: "object?",
+      retryConfig: "object?",
+      invoker: "array?",
     });
     if (ep.taskQueueTrigger.rateLimits) {
       assertKeyTypes(prefix + ".taskQueueTrigger.rateLimits", ep.taskQueueTrigger.rateLimits, {
-        maxConcurrentDispatches: "number",
-        maxDispatchesPerSecond: "number",
+        maxConcurrentDispatches: "number?",
+        maxDispatchesPerSecond: "number?",
       });
     }
     if (ep.taskQueueTrigger.retryConfig) {
       assertKeyTypes(prefix + ".taskQueueTrigger.retryConfig", ep.taskQueueTrigger.retryConfig, {
-        maxAttempts: "number",
-        maxRetrySeconds: "number",
-        minBackoffSeconds: "number",
-        maxBackoffSeconds: "number",
-        maxDoublings: "number",
+        maxAttempts: "number?",
+        maxRetrySeconds: "number?",
+        minBackoffSeconds: "number?",
+        maxBackoffSeconds: "number?",
+        maxDoublings: "number?",
       });
     }
   } else if (backend.isBlockingTriggered(ep)) {
@@ -250,19 +250,30 @@ function parseEndpointForBuild(
 ): build.Endpoint {
   let triggered: build.Triggered;
   if (backend.isEventTriggered(ep)) {
-    const { ...newTrigger } = ep.eventTrigger;
-    delete newTrigger.serviceAccount;
-    triggered = { eventTrigger: newTrigger };
-    triggered.eventTrigger.serviceAccount = ep.eventTrigger.serviceAccount;
-    convertIfPresent(triggered.eventTrigger, ep.eventTrigger, "channel", (c) =>
+    const eventTrigger: build.EventTrigger = {
+      eventType: ep.eventTrigger.eventType,
+      retry: ep.eventTrigger.retry,
+    };
+    // Allow serviceAccountEmail but prefer serviceAccount
+    renameIfPresent(eventTrigger, ep.eventTrigger, "serviceAccount", "serviceAccountEmail");
+    copyIfPresent(
+      eventTrigger,
+      ep.eventTrigger,
+      "serviceAccount",
+      "eventFilterPathPatterns",
+      "region"
+    );
+    convertIfPresent(eventTrigger, ep.eventTrigger, "channel", (c) =>
       resolveChannelName(project, c, defaultRegion)
     );
-    for (const [k, v] of Object.entries(triggered.eventTrigger.eventFilters)) {
-      if (k === "topic" && !v.startsWith("projects/")) {
-        // Construct full pubsub topic name.
-        triggered.eventTrigger.eventFilters[k] = `projects/${project}/topics/${v}`;
+    convertIfPresent(eventTrigger, ep.eventTrigger, "eventFilters", (filters) => {
+      const copy = { ...filters };
+      if (copy["topic"] && !copy["topic"].startsWith("projects/")) {
+        copy["topic"] = `projects/${project}/topics/${copy["topic"]}`;
       }
-    }
+      return copy;
+    });
+    triggered = { eventTrigger };
   } else if (backend.isHttpsTriggered(ep)) {
     triggered = { httpsTrigger: {} };
     copyIfPresent(triggered.httpsTrigger, ep.httpsTrigger, "invoker");
@@ -274,30 +285,38 @@ function parseEndpointForBuild(
       // invalid values before actually modifying prod.
       schedule: ep.scheduleTrigger.schedule || "",
       timeZone: ep.scheduleTrigger.timeZone ?? null,
-      retryConfig: {},
     };
-    copyIfPresent(
-      st.retryConfig,
-      ep.scheduleTrigger.retryConfig || {},
-      "retryCount",
-      "minBackoffSeconds",
-      "maxBackoffSeconds",
-      "maxRetrySeconds"
-    );
+    if (ep.scheduleTrigger.retryConfig) {
+      st.retryConfig = {};
+      copyIfPresent(
+        st.retryConfig,
+        ep.scheduleTrigger.retryConfig,
+        "retryCount",
+        "minBackoffSeconds",
+        "maxBackoffSeconds",
+        "maxRetrySeconds",
+        "maxDoublings"
+      );
+    } else if (ep.scheduleTrigger.retryConfig === null) {
+      st.retryConfig = null;
+    }
     triggered = { scheduleTrigger: st };
   } else if (backend.isTaskQueueTriggered(ep)) {
-    const tq: build.TaskQueueTrigger = {
-      invoker: ep.taskQueueTrigger.invoker,
-      rateLimits: ep.taskQueueTrigger.rateLimits,
-    };
+    const tq: build.TaskQueueTrigger = {};
+    if (ep.taskQueueTrigger.invoker) {
+      tq.invoker = ep.taskQueueTrigger.invoker;
+    } else if (ep.taskQueueTrigger.invoker === null) {
+      tq.invoker = null;
+    }
     if (ep.taskQueueTrigger.retryConfig) {
-      tq.retryConfig = {
-        maxRetryDurationSeconds: ep.taskQueueTrigger.retryConfig.maxRetrySeconds,
-        maxBackoffSeconds: ep.taskQueueTrigger.retryConfig.maxBackoffSeconds,
-        minBackoffSeconds: ep.taskQueueTrigger.retryConfig.minBackoffSeconds,
-        maxDoublings: ep.taskQueueTrigger.retryConfig.maxDoublings,
-        maxAttempts: ep.taskQueueTrigger.retryConfig.maxAttempts,
-      };
+      tq.retryConfig = { ...ep.taskQueueTrigger.retryConfig };
+    } else if (ep.taskQueueTrigger.retryConfig === null) {
+      tq.retryConfig = null;
+    }
+    if (ep.taskQueueTrigger.rateLimits) {
+      tq.rateLimits = { ...ep.taskQueueTrigger.rateLimits };
+    } else if (ep.taskQueueTrigger.rateLimits === null) {
+      tq.rateLimits = null;
     }
     triggered = { taskQueueTrigger: tq };
   } else if (backend.isBlockingTriggered(ep)) {
@@ -323,6 +342,7 @@ function parseEndpointForBuild(
     parsed,
     ep,
     "availableMemoryMb",
+    "cpu",
     "maxInstances",
     "minInstances",
     "concurrency",
@@ -334,18 +354,12 @@ function parseEndpointForBuild(
     "serviceAccount"
   );
   convertIfPresent(parsed, ep, "secretEnvironmentVariables", (senvs) => {
-    if (senvs === null) {
-      return [];
+    if (!senvs) {
+      return null;
     }
-    const secretEnvironmentVariables: backend.SecretEnvVar[] = [];
-    for (const { key, secret } of senvs) {
-      secretEnvironmentVariables.push({
-        key,
-        secret: secret || key, // if secret is undefined, assume env var key == secret name
-        projectId: project,
-      });
-    }
-    return secretEnvironmentVariables;
+    return senvs.map(({ key, secret }) => {
+      return { key, secret: secret || key, projectId: project } as build.SecretEnvVar;
+    });
   });
   return parsed;
 }
@@ -360,21 +374,36 @@ function parseEndpoints(
   const allParsed: backend.Endpoint[] = [];
   const prefix = `endpoints[${id}]`;
   const ep = manifest.endpoints[id];
-  assertManifestEndpoint(ep, prefix);
+  assertManifestEndpoint(ep, id);
 
   for (const region of ep.region || [defaultRegion]) {
     let triggered: backend.Triggered;
     if (backend.isEventTriggered(ep)) {
-      triggered = { eventTrigger: ep.eventTrigger };
-      convertIfPresent(triggered.eventTrigger, ep.eventTrigger, "channel", (c) =>
+      const eventTrigger: backend.EventTrigger = {
+        eventType: ep.eventTrigger.eventType,
+        retry: false,
+      };
+      // Allow "serviceAccountEmail" but prefer "serviceAccount"
+      renameIfPresent(eventTrigger, ep.eventTrigger, "serviceAccount", "serviceAccountEmail");
+      copyIfPresent(
+        eventTrigger,
+        ep.eventTrigger,
+        "eventFilterPathPatterns",
+        "retry",
+        "serviceAccount",
+        "region"
+      );
+      convertIfPresent(eventTrigger, ep.eventTrigger, "channel", (c) =>
         resolveChannelName(project, c, defaultRegion)
       );
-      for (const [k, v] of Object.entries(triggered.eventTrigger.eventFilters)) {
-        if (k === "topic" && !v.startsWith("projects/")) {
-          // Construct full pubsub topic name.
-          triggered.eventTrigger.eventFilters[k] = `projects/${project}/topics/${v}`;
+      convertIfPresent(eventTrigger, ep.eventTrigger, "eventFilters", (filters) => {
+        const copy = { ...filters };
+        if (copy["topic"] && !copy["topic"].startsWith("projects/")) {
+          copy["topic"] = `projects/${project}/topics/${copy["topic"]}`;
         }
-      }
+        return copy;
+      });
+      triggered = { eventTrigger };
     } else if (backend.isHttpsTriggered(ep)) {
       triggered = { httpsTrigger: {} };
       copyIfPresent(triggered.httpsTrigger, ep.httpsTrigger, "invoker");
@@ -421,18 +450,12 @@ function parseEndpoints(
       "cpu"
     );
     convertIfPresent(parsed, ep, "secretEnvironmentVariables", (senvs) => {
-      if (senvs === null) {
-        return [];
+      if (!senvs) {
+        return null;
       }
-      const secretEnvironmentVariables: backend.SecretEnvVar[] = [];
-      for (const { key, secret } of senvs) {
-        secretEnvironmentVariables.push({
-          key,
-          secret: secret || key, // if secret is undefined, assume env var key == secret name
-          projectId: project,
-        });
-      }
-      return secretEnvironmentVariables;
+      return senvs.map(({ key, secret }) => {
+        return { key, secret: secret || key, projectId: project };
+      });
     });
     allParsed.push(parsed);
   }

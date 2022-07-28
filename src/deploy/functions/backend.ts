@@ -23,7 +23,7 @@ export interface ScheduleTrigger {
   // be null, because there is no default to set it to.
   schedule?: string;
   timeZone?: string | null;
-  retryConfig?: ScheduleRetryConfig;
+  retryConfig?: ScheduleRetryConfig | null;
 }
 
 /** Something that has a ScheduleTrigger */
@@ -73,7 +73,7 @@ export interface EventTrigger {
    * V2 will have arbitrary filters and some EventArc filters will be
    * top-level keys in the GCF API (e.g. "pubsubTopic").
    */
-  eventFilters: Record<EventFilterKey, string>;
+  eventFilters?: Record<EventFilterKey, string>;
 
   /**
    * Additional path-pattern filters for narrowing down which events to receive.
@@ -123,8 +123,8 @@ export interface TaskQueueRetryConfig {
 }
 
 export interface TaskQueueTrigger {
-  rateLimits?: TaskQueueRateLimits;
-  retryConfig?: TaskQueueRetryConfig;
+  rateLimits?: TaskQueueRateLimits | null;
+  retryConfig?: TaskQueueRetryConfig | null;
   invoker?: string[] | null;
 }
 
@@ -276,8 +276,8 @@ export function secretVersionName(s: SecretEnvVar): string {
 
 export interface ServiceConfiguration {
   concurrency?: number | null;
-  labels?: Record<string, string>;
-  environmentVariables?: Record<string, string>;
+  labels?: Record<string, string> | null;
+  environmentVariables?: Record<string, string> | null;
   secretEnvironmentVariables?: SecretEnvVar[] | null;
   availableMemoryMb?: MemoryOptions | null;
   cpu?: number | "gcf_gen1" | null;
@@ -287,7 +287,7 @@ export interface ServiceConfiguration {
   vpc?: {
     connector: string;
     egressSettings?: VpcEgressSettings | null;
-  };
+  } | null;
   ingressSettings?: IngressSettings | null;
   serviceAccount?: string | null;
 }

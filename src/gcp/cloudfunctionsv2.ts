@@ -121,7 +121,7 @@ export interface ServiceConfig {
 
   timeoutSeconds?: number | null;
   availableMemory?: string | null;
-  environmentVariables?: Record<string, string>;
+  environmentVariables?: Record<string, string> | null;
   secretEnvironmentVariables?: SecretEnvVar[] | null;
   maxInstanceCount?: number | null;
   minInstanceCount?: number | null;
@@ -165,7 +165,7 @@ export interface CloudFunction {
   eventTrigger?: EventTrigger;
   state: FunctionState;
   updateTime: Date;
-  labels?: Record<string, string>;
+  labels?: Record<string, string> | null;
 }
 
 export interface OperationMetadata {
@@ -488,6 +488,12 @@ export function functionFromEndpoint(
       eventType: endpoint.eventTrigger.eventType,
     };
     if (gcfFunction.eventTrigger.eventType === PUBSUB_PUBLISH_EVENT) {
+      if (!endpoint.eventTrigger.eventFilters?.topic) {
+        throw new FirebaseError(
+          "Error: Pub/Sub event trigger is missing topic: " +
+            JSON.stringify(endpoint.eventTrigger, null, 2)
+        );
+      }
       gcfFunction.eventTrigger.pubsubTopic = endpoint.eventTrigger.eventFilters.topic;
       gcfFunction.eventTrigger.eventFilters = [];
       for (const [attribute, value] of Object.entries(endpoint.eventTrigger.eventFilters)) {
@@ -496,7 +502,7 @@ export function functionFromEndpoint(
       }
     } else {
       gcfFunction.eventTrigger.eventFilters = [];
-      for (const [attribute, value] of Object.entries(endpoint.eventTrigger.eventFilters)) {
+      for (const [attribute, value] of Object.entries(endpoint.eventTrigger.eventFilters || {})) {
         gcfFunction.eventTrigger.eventFilters.push({ attribute, value });
       }
       for (const [attribute, value] of Object.entries(
@@ -581,26 +587,30 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
       },
     };
   } else if (gcfFunction.eventTrigger) {
-    trigger = {
-      eventTrigger: {
-        eventType: gcfFunction.eventTrigger.eventType,
-        eventFilters: {},
-        retry: false,
-      },
-    };
+    const eventFilters: Record<string, string> = {};
+    const eventFilterPathPatterns: Record<string, string> = {};
     if (gcfFunction.eventTrigger.pubsubTopic) {
-      trigger.eventTrigger.eventFilters.topic = gcfFunction.eventTrigger.pubsubTopic;
+      eventFilters.topic = gcfFunction.eventTrigger.pubsubTopic;
     } else {
       for (const eventFilter of gcfFunction.eventTrigger.eventFilters || []) {
         if (eventFilter.operator === "match-path-pattern") {
-          if (!trigger.eventTrigger.eventFilterPathPatterns) {
-            trigger.eventTrigger.eventFilterPathPatterns = {};
-          }
-          trigger.eventTrigger.eventFilterPathPatterns[eventFilter.attribute] = eventFilter.value;
+          eventFilterPathPatterns[eventFilter.attribute] = eventFilter.value;
         } else {
-          trigger.eventTrigger.eventFilters[eventFilter.attribute] = eventFilter.value;
+          eventFilters[eventFilter.attribute] = eventFilter.value;
         }
       }
+    }
+    trigger = {
+      eventTrigger: {
+        eventType: gcfFunction.eventTrigger.eventType,
+        retry: false,
+      },
+    };
+    if (Object.keys(eventFilters).length) {
+      trigger.eventTrigger.eventFilters = eventFilters;
+    }
+    if (Object.keys(eventFilterPathPatterns).length) {
+      trigger.eventTrigger.eventFilterPathPatterns = eventFilterPathPatterns;
     }
     proto.copyIfPresent(trigger.eventTrigger, gcfFunction.eventTrigger, "channel");
     proto.renameIfPresent(
@@ -649,7 +659,7 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
     (prod) => {
       if (prod === null) {
         logger.debug("Prod should always return a valid memory amount");
-        return prod;
+        return prod as never;
       }
       const mem = mebibytes(prod);
       if (!backend.isValidMemoryOption(mem)) {
