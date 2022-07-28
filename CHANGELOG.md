@@ -1,0 +1,1 @@
+- Adds warnings about upcoming deprecation of `--token`, `FIREBASE_TOKEN`, and `login:ci`.

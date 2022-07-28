@@ -1,5 +1,6 @@
 import * as backend from "../../backend";
 import * as build from "../../build";
+import * as params from "../../params";
 import * as runtimes from "..";
 import { copyIfPresent, renameIfPresent, convertIfPresent } from "../../../../gcp/proto";
 import { assertKeyTypes, requireKeys } from "./parsing";
@@ -46,6 +47,7 @@ export type ManifestEndpoint = Base &
 
 export interface Manifest {
   specVersion: string;
+  params?: params.Param[];
   requiredAPIs?: backend.RequiredAPI[];
   endpoints: Record<string, ManifestEndpoint>;
 }
@@ -61,10 +63,12 @@ export function buildFromV1Alpha1(
   requireKeys("", manifest, "endpoints");
   assertKeyTypes("", manifest, {
     specVersion: "string",
+    params: "array",
     requiredAPIs: "array",
     endpoints: "object",
   });
   const bd: build.Build = build.empty();
+  bd.params = manifest.params || [];
   bd.requiredAPIs = parseRequiredAPIs(manifest);
   for (const id of Object.keys(manifest.endpoints)) {
     const me: ManifestEndpoint = manifest.endpoints[id];
@@ -88,6 +92,7 @@ export function backendFromV1Alpha1(
   requireKeys("", manifest, "endpoints");
   assertKeyTypes("", manifest, {
     specVersion: "string",
+    params: "array",
     requiredAPIs: "array",
     endpoints: "object",
   });

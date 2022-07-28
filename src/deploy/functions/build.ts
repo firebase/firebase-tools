@@ -407,7 +407,7 @@ function discoverTrigger(endpoint: Endpoint, region: string, r: Resolver): backe
         r.resolveString
       );
     }
-    r.resolveStrings(eventTrigger, endpoint.eventTrigger, "serviceAccount", "region");
+    r.resolveStrings(eventTrigger, endpoint.eventTrigger, "serviceAccount", "region", "channel");
     return { eventTrigger };
   } else if ("scheduleTrigger" in endpoint) {
     const bkSchedule: backend.ScheduleTrigger = {

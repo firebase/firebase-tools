@@ -537,7 +537,7 @@ describe("addResourcesToBackend", () => {
     const trigger: parseTriggers.TriggerAnnotation = {
       ...BASIC_TRIGGER,
       httpsTrigger: {
-        invoker: ["public"],
+        invoker: ["public", "other", "serviceAccount@"],
       },
       maxInstances: 42,
       minInstances: 1,
@@ -569,7 +569,7 @@ describe("addResourcesToBackend", () => {
     const expected: backend.Backend = backend.of({
       ...BASIC_ENDPOINT,
       httpsTrigger: {
-        invoker: ["public"],
+        invoker: ["public", "other", "serviceAccount@"],
       },
       ...config,
     });
