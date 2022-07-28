@@ -57,12 +57,12 @@ export class Persistence {
   deleteFile(fileName: string, failSilently = false): void {
     try {
       unlinkSync(this.getDiskPath(fileName));
-      this._diskPathMap.delete(fileName);
     } catch (err: any) {
       if (!failSilently) {
         throw err;
       }
     }
+    this._diskPathMap.delete(fileName);
   }
 
   deleteAll(): Promise<void> {

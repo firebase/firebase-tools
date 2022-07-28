@@ -88,7 +88,6 @@ function getSourceFile(testDir: string, fileName: string): SourceFile {
 
 function appendBytes(dirPath: string, fileName: string, bytes: Buffer): void {
   const filepath = path.join(dirPath, encodeURIComponent(fileName));
-
   fs.appendFileSync(filepath, bytes);
 }
 

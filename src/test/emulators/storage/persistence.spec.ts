@@ -1,5 +1,6 @@
 import { expect } from "chai";
 import { tmpdir } from "os";
+import * as fs from "fs";
 
 import { v4 as uuidV4 } from "uuid";
 import { Persistence } from "../../../emulator/storage/persistence";
@@ -34,6 +35,20 @@ describe("Persistence", () => {
       const data = Buffer.from("hello world");
 
       _persistence.appendBytes(filename, data);
+      expect(_persistence.readBytes(filename, data.byteLength).toString()).to.equal("hello world");
+    });
+  });
+
+  describe("#copyFromExternalPath()", () => {
+    it("should copy files existing files", () => {
+      const data = Buffer.from("hello world");
+      const externalFilename = `${uuidV4()}%2F${uuidV4()}`;
+      const externalFilePath = `${testDir}/${externalFilename}`;
+      fs.appendFileSync(externalFilePath, data);
+
+      const filename = `${uuidV4()}%2F${uuidV4()}`;
+
+      _persistence.copyFromExternalPath(externalFilePath, filename);
       expect(_persistence.readBytes(filename, data.byteLength).toString()).to.equal("hello world");
     });
   });

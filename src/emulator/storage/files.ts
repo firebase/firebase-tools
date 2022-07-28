@@ -518,20 +518,22 @@ export class StorageLayer {
     const bucketsFilePath = path.join(storageExportPath, "buckets.json");
     await fse.writeFile(bucketsFilePath, JSON.stringify(bucketsList, undefined, 2));
 
-    // Recursively copy all file blobs
+    // Create blobs directory
     const blobsDirPath = path.join(storageExportPath, "blobs");
     await fse.ensureDir(blobsDirPath);
-    await fse.copy(this.dirPath, blobsDirPath, { recursive: true });
 
-    // Store a metadata file for each file
+    // Create metadata directory
     const metadataDirPath = path.join(storageExportPath, "metadata");
     await fse.ensureDir(metadataDirPath);
 
+    // Copy data into metadata and blobs directory
     for await (const [, file] of this._files.entries()) {
-      // get diskFilename from file path, needed to make sure the metadata and blob file have the same filename
+      // get diskFilename from file path, metadata and blob files are persisted with this name
       const diskFileName = this._persistence.getDiskFileName(
         this.path(file.metadata.bucket, file.metadata.name)
       );
+
+      await fse.copy(path.join(this.dirPath, diskFileName), path.join(blobsDirPath, diskFileName));
       const metadataExportPath =
         path.join(metadataDirPath, encodeURIComponent(diskFileName)) + ".json";
       await fse.writeFile(metadataExportPath, StoredFileMetadata.toJSON(file.metadata));
@@ -607,8 +609,7 @@ export class StorageLayer {
 
 /** Returns file separator used in given path, either '\\' or '/'. */
 function getPathSep(decodedPath: string): string {
-  // Suffices to check first separator, which occurs immediately after bucket name.
-  // Bucket naming guidelines: https://cloud.google.com/storage/docs/naming-buckets
-  const firstSepIndex = decodedPath.search(/[^a-z0-9-_.]/g);
+  // Checks for the first matching file separator
+  const firstSepIndex = decodedPath.search(/[\/|\\\\]/g);
   return decodedPath[firstSepIndex];
 }
