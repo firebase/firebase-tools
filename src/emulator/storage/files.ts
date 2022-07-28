@@ -589,8 +589,7 @@ export class StorageLayer {
       const filepath = this.path(metadata.bucket, fileName);
 
       this._persistence.copyFromExternalPath(blobAbsPath, filepath);
-      const file = new StoredFile(metadata);
-      this._files.set(filepath, file);
+      this._files.set(filepath, new StoredFile(metadata));
     }
   }
 
