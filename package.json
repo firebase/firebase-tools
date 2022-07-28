@@ -26,15 +26,15 @@
     "test:client-integration": "bash ./scripts/client-integration-tests/run.sh",
     "test:compile": "tsc --project tsconfig.compile.json",
     "test:emulator": "bash ./scripts/emulator-tests/run.sh",
-    "test:import-export": "bash ./scripts/emulator-import-export-tests/run.sh",
     "test:extensions-deploy": "bash ./scripts/extensions-deploy-tests/run.sh",
     "test:extensions-emulator": "bash ./scripts/extensions-emulator-tests/run.sh",
+    "test:functions-deploy": "bash ./scripts/functions-deploy-tests/run.sh",
     "test:hosting": "bash ./scripts/hosting-tests/run.sh",
     "test:hosting-rewrites": "bash ./scripts/hosting-tests/rewrites-tests/run.sh",
+    "test:import-export": "bash ./scripts/emulator-import-export-tests/run.sh",
     "test:triggers-end-to-end": "bash ./scripts/triggers-end-to-end-tests/run.sh",
     "test:storage-deploy": "bash ./scripts/storage-deploy-tests/run.sh",
-    "test:storage-emulator-integration": "bash ./scripts/storage-emulator-integration/run.sh",
-    "test:functions-deploy": "bash ./scripts/functions-deploy-tests/run.sh"
+    "test:storage-emulator-integration": "bash ./scripts/storage-emulator-integration/run.sh"
   },
   "files": [
     "lib",
