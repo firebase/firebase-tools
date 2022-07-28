@@ -1,1 +1,2 @@
+- Adds warnings about upcoming deprecation of `--token`, `FIREBASE_TOKEN`, and `login:ci`.
 - Fix ENAMETOOLONG bug when uploading files with long paths in storage emulator. (#4470)
