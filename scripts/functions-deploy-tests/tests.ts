@@ -1,5 +1,5 @@
 import * as path from "node:path";
-import * as fs from "node:fs/promises";
+import * as fs from "fs-extra";
 
 import { expect } from "chai";
 import * as functions from "firebase-functions";
@@ -7,7 +7,6 @@ import * as functionsv2 from "firebase-functions/v2";
 
 import * as cli from "./cli";
 import { Endpoint } from "../../src/deploy/functions/backend";
-import { assertExhaustive } from "../../src/functional";
 
 const FIREBASE_PROJECT = process.env.GCLOUD_PROJECT || "";
 const FUNCTIONS_DIR = path.join(__dirname, "functions");
@@ -63,6 +62,7 @@ describe("firebase deploy", function (this) {
   this.timeout(1000_000);
 
   const RUN_ID = genRandomId();
+  console.log(`TEST RUN: ${RUN_ID}`);
 
   before(async () => {
     expect(FIREBASE_PROJECT).to.not.be.empty;
@@ -139,7 +139,8 @@ describe("firebase deploy", function (this) {
       "deploy",
       FIREBASE_PROJECT,
       ["--only", "functions", "--non-interactive", "--force"],
-      __dirname
+      __dirname,
+      false
     );
 
     expect(result.stdout, "deploy result").to.match(/Deploy complete!/);
@@ -147,32 +148,33 @@ describe("firebase deploy", function (this) {
     const endpoints = await listFns(RUN_ID);
     expect(Object.keys(endpoints).length, "number of deployed functions").to.equal(FNS_COUNT);
 
-    for (const [id, e] of Object.entries(endpoints)) {
-      if (e.platform === "gcfv1") {
-        expect(e.availableMemoryMb, `${id}.availableMemoryMb`).to.equal(128);
-        expect(e.timeoutSeconds, `${id}.timeoutSeconds`).to.equal(42);
-        expect(e.maxInstances, `${id}maxInstances`).to.equal(42);
-      } else if (e.platform === "gcfv2") {
-        expect(e.availableMemoryMb, `${id}.availableMemoryMb`).to.equal(128);
-        expect(e.timeoutSeconds, `${id}.timeoutSeconds`).to.equal(42);
-        expect(e.maxInstances, `${id}.maxInstances`).to.equal(42);
-        // TODO: Re-enable once https://github.com/firebase/firebase-tools/issues/4679 is fixed.
-        // expect(e.cpu, `${id}.cpu`).to.equal(2);
-        expect(e.concurrency, `${id}.concurrency`).to.equal(42);
-      } else {
-        assertExhaustive(e.platform);
+    for (const e of Object.values(endpoints)) {
+      expect(e).to.include({
+        availableMemoryMb: 128,
+        timeoutSeconds: 42,
+        maxInstances: 42,
+      });
+      if (e.platform === "gcfv2") {
+        expect(e).to.include({
+          // TODO: Re-enable once https://github.com/firebase/firebase-tools/issues/4679 is fixed.
+          // expect(e.cpu, `${id}.cpu`).to.equal(2);
+          // cpu: 2,
+          concurrency: 42,
+        });
       }
       if ("taskQueueTrigger" in e) {
-        expect(e.taskQueueTrigger.retryConfig, `${id}.taskQueueTrigger.retryConfig`).to.deep.equal({
-          maxAttempts: 42,
-          maxRetrySeconds: 42,
-          maxBackoffSeconds: 42,
-          maxDoublings: 42,
-          minBackoffSeconds: 42,
-        });
-        expect(e.taskQueueTrigger.rateLimits, `${id}.taskQueueTrigger.rateLimits`).to.deep.equal({
-          maxDispatchesPerSecond: 42,
-          maxConcurrentDispatches: 42,
+        expect(e.taskQueueTrigger).to.deep.equal({
+          retryConfig: {
+            maxAttempts: 42,
+            maxRetrySeconds: 42,
+            maxBackoffSeconds: 42,
+            maxDoublings: 42,
+            minBackoffSeconds: 42,
+          },
+          rateLimits: {
+            maxDispatchesPerSecond: 42,
+            maxConcurrentDispatches: 42,
+          },
         });
       }
     }
@@ -201,34 +203,34 @@ describe("firebase deploy", function (this) {
     const endpoints = await listFns(RUN_ID);
     expect(Object.keys(endpoints).length, "number of deployed functions").to.equal(FNS_COUNT);
 
-    for (const [id, e] of Object.entries(endpoints)) {
-      if (e.platform === "gcfv1") {
-        expect(e.availableMemoryMb, `${id}.availableMemoryMb`).to.equal(128);
+    for (const e of Object.values(endpoints)) {
+      expect(e).to.include({
+        availableMemoryMB: 128,
         // TODO: Fix bug where timeout is being updated, not inferred from existing.
-        // expect(e.timeoutSeconds, `${id}.timeoutSeconds`).to.equal(42);
-        expect(e.maxInstances, `${id}maxInstances`).to.equal(42);
-      } else if (e.platform === "gcfv2") {
-        expect(e.availableMemoryMb, `${id}.availableMemoryMb`).to.equal(128);
-        // TODO: Fix bug where timeout is being updated, not inferred from existing.
-        // expect(e.timeoutSeconds, `${id}.timeoutSeconds`).to.equal(42);
-        expect(e.maxInstances, `${id}.maxInstances`).to.equal(42);
-        // TODO: Re-enable once https://github.com/firebase/firebase-tools/issues/4679 is fixed.
-        // expect(e.cpu, `${id}.cpu`).to.equal(2);
-        expect(e.concurrency, `${id}.concurrency`).to.equal(42);
-      } else {
-        assertExhaustive(e.platform);
+        // timeoutSeconds: 42,
+        maxInstances: 42,
+      });
+      if (e.platform === "gcfv2") {
+        expect(e).to.include({
+          // TODO: Re-enable once https://github.com/firebase/firebase-tools/issues/4679 is fixed.
+          // expect(e.cpu, `${id}.cpu`).to.equal(2);
+          // cpu: 2,
+          concurrency: 42,
+        });
       }
       if ("taskQueueTrigger" in e) {
-        expect(e.taskQueueTrigger.retryConfig, `${id}.taskQueueTrigger.retryConfig`).to.deep.equal({
-          maxAttempts: 42,
-          maxRetrySeconds: 42,
-          maxBackoffSeconds: 42,
-          maxDoublings: 42,
-          minBackoffSeconds: 42,
-        });
-        expect(e.taskQueueTrigger.rateLimits, `${id}.taskQueueTrigger.rateLimits`).to.deep.equal({
-          maxDispatchesPerSecond: 42,
-          maxConcurrentDispatches: 42,
+        expect(e.taskQueueTrigger).to.deep.equal({
+          retryConfig: {
+            maxAttempts: 42,
+            maxRetrySeconds: 42,
+            maxBackoffSeconds: 42,
+            maxDoublings: 42,
+            minBackoffSeconds: 42,
+          },
+          rateLimits: {
+            maxDispatchesPerSecond: 42,
+            maxConcurrentDispatches: 42,
+          },
         });
       }
     }
@@ -293,33 +295,34 @@ describe("firebase deploy", function (this) {
     const endpoints = await listFns(RUN_ID);
     expect(Object.keys(endpoints).length, "number of deployed functions").to.equal(FNS_COUNT);
 
-    for (const [id, e] of Object.entries(endpoints)) {
-      if (e.platform === "gcfv1") {
-        expect(e.availableMemoryMb, `${id}.availableMemoryMb`).to.equal(128);
-        expect(e.timeoutSeconds, `${id}.timeoutSeconds`).to.equal(42);
-        expect(e.maxInstances, `${id}maxInstances`).to.equal(42);
-      } else if (e.platform === "gcfv2") {
-        expect(e.availableMemoryMb, `${id}.availableMemoryMb`).to.equal(128);
+    for (const e of Object.values(endpoints)) {
+      expect(e).to.include({
+        availableMemoryMB: 128,
         // TODO: Fix bug where timeout is being updated, not inferred from existing.
-        expect(e.timeoutSeconds, `${id}.timeoutSeconds`).to.equal(42);
-        expect(e.maxInstances, `${id}.maxInstances`).to.equal(42);
-        // TODO: Re-enable once https://github.com/firebase/firebase-tools/issues/4679 is fixed.
-        // expect(e.cpu, `${id}.cpu`).to.equal(2);
-        expect(e.concurrency, `${id}.concurrency`).to.equal(42);
-      } else {
-        assertExhaustive(e.platform);
+        // timeoutSeconds: 42,
+        maxInstances: 42,
+      });
+      if (e.platform === "gcfv2") {
+        expect(e).to.include({
+          // TODO: Re-enable once https://github.com/firebase/firebase-tools/issues/4679 is fixed.
+          // expect(e.cpu, `${id}.cpu`).to.equal(2);
+          // cpu: 2,
+          concurrency: 42,
+        });
       }
       if ("taskQueueTrigger" in e) {
-        expect(e.taskQueueTrigger.retryConfig, `${id}.taskQueueTrigger.retryConfig`).to.deep.equal({
-          maxAttempts: 42,
-          maxRetrySeconds: 42,
-          maxBackoffSeconds: 42,
-          maxDoublings: 42,
-          minBackoffSeconds: 42,
-        });
-        expect(e.taskQueueTrigger.rateLimits, `${id}.taskQueueTrigger.rateLimits`).to.deep.equal({
-          maxDispatchesPerSecond: 42,
-          maxConcurrentDispatches: 42,
+        expect(e.taskQueueTrigger).to.deep.equal({
+          retryConfig: {
+            maxAttempts: 42,
+            maxRetrySeconds: 42,
+            maxBackoffSeconds: 42,
+            maxDoublings: 42,
+            minBackoffSeconds: 42,
+          },
+          rateLimits: {
+            maxDispatchesPerSecond: 42,
+            maxConcurrentDispatches: 42,
+          },
         });
       }
     }
