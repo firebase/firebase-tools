@@ -15,10 +15,5 @@ export async function ensureTriggerRegions(want: backend.Backend): Promise<void>
     }
     regionLookups.push(serviceForEndpoint(ep).ensureTriggerRegion(ep));
   }
-  try {
-    await Promise.all(regionLookups);
-  } catch (e) {
-    console.log(e);
-    throw e;
-  }
+  await Promise.all(regionLookups);
 }

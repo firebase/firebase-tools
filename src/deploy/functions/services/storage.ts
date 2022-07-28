@@ -34,9 +34,10 @@ export async function ensureStorageTriggerRegion(
 ): Promise<void> {
   const { eventTrigger } = endpoint;
   if (!eventTrigger.region) {
-    logger.debug("Looking up bucket region for the storage event trigger");
+    logger.debug(
+      `Looking up bucket region for the storage event trigger on bucket ${eventTrigger.eventFilters.bucket}`
+    );
     try {
-      console.log(JSON.stringify(eventTrigger.eventFilters));
       const bucket: { location: string } = await storage.getBucket(
         eventTrigger.eventFilters.bucket!
       );

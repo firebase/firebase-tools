@@ -138,9 +138,8 @@ describe("firebase deploy", function (this) {
     const result = await cli.exec(
       "deploy",
       FIREBASE_PROJECT,
-      ["--only", "functions", "--non-interactive", "--force", "--debug"],
-      __dirname,
-      false
+      ["--only", "functions", "--non-interactive", "--force"],
+      __dirname
     );
 
     expect(result.stdout, "deploy result").to.match(/Deploy complete!/);
