@@ -1,7 +1,6 @@
 name: Functions deploy test
 
-#on: workflow_dispatch
-on: [push]
+on: workflow_dispatch
 
 concurrency:
   group: functions-deploy-${{ github.ref }}
