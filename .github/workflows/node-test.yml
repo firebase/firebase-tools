@@ -7,6 +7,9 @@ on:
 env:
   CI: true
 
+permissions:
+  contents: read
+
 jobs:
   lint:
     runs-on: ubuntu-latest
@@ -47,7 +50,10 @@ jobs:
 
       - run: npm i -g npm@8.7
       - run: npm ci
-      - run: npm test
+      - run: npm test -- -- --forbid-only
+
+      - uses: codecov/codecov-action@v3
+        if: matrix.node-version == '14'
 
   integration:
     needs: unit
@@ -61,6 +67,8 @@ jobs:
       CI_JOB_ID: ${{ github.action }}
       FBTOOLS_TARGET_PROJECT: ${{ secrets.FBTOOLS_TARGET_PROJECT }}
       FBTOOLS_CLIENT_INTEGRATION_SITE: ${{ secrets.FBTOOLS_CLIENT_INTEGRATION_SITE }}
+      CI_RUN_ID: ${{ github.run_id }}
+      CI_RUN_ATTEMPT: ${{ github.run_attempt }}
 
     strategy:
       fail-fast: false
@@ -69,6 +77,7 @@ jobs:
           - "16"
         script:
           - npm run test:hosting
+          # - npm run test:hosting-rewrites # Long-running test that might conflict across test runs. Run this manually.
           - npm run test:client-integration
           - npm run test:emulator
           - npm run test:import-export
@@ -112,6 +121,8 @@ jobs:
       CI_JOB_ID: ${{ github.action }}
       FBTOOLS_TARGET_PROJECT: ${{ secrets.FBTOOLS_TARGET_PROJECT }}
       FBTOOLS_CLIENT_INTEGRATION_SITE: ${{ secrets.FBTOOLS_CLIENT_INTEGRATION_SITE }}
+      CI_RUN_ID: ${{ github.run_id }}
+      CI_RUN_ATTEMPT: ${{ github.run_attempt }}
 
     strategy:
       fail-fast: false
@@ -120,6 +131,7 @@ jobs:
           - "16"
         script:
           - npm run test:hosting
+          # - npm run test:hosting-rewrites # Long-running test that might conflict across test runs. Run this manually.
           - npm run test:client-integration
           - npm run test:emulator
           # - npm run test:import-export # Fails becuase port 4000 is taken after first run - hub not shhutting down?

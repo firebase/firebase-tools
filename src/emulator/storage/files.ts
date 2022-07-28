@@ -33,17 +33,8 @@ export class StoredFile {
   public set metadata(value: StoredFileMetadata) {
     this._metadata = value;
   }
-  private _path: string;
-
-  constructor(metadata: StoredFileMetadata, path: string) {
+  constructor(metadata: StoredFileMetadata) {
     this.metadata = metadata;
-    this._path = path;
-  }
-  public get path(): string {
-    return this._path;
-  }
-  public set path(value: string) {
-    this._path = value;
   }
 }
 
@@ -326,7 +317,7 @@ export class StorageLayer {
     // Persist to permanent location on disk.
     this._persistence.deleteFile(filePath, /* failSilently = */ true);
     this._persistence.renameFile(upload.path, filePath);
-    this._files.set(filePath, new StoredFile(metadata, this._persistence.getDiskPath(filePath)));
+    this._files.set(filePath, new StoredFile(metadata));
     this._cloudFunctions.dispatch("finalize", new CloudStorageObjectMetadata(metadata));
     return metadata;
   }
@@ -387,10 +378,7 @@ export class StorageLayer {
       sourceBytes,
       incomingMetadata
     );
-    const file = new StoredFile(
-      copiedFileMetadata,
-      this._persistence.getDiskPath(destinationFilePath)
-    );
+    const file = new StoredFile(copiedFileMetadata);
     this._files.set(destinationFilePath, file);
 
     this._cloudFunctions.dispatch("finalize", new CloudStorageObjectMetadata(file.metadata));
@@ -530,18 +518,24 @@ export class StorageLayer {
     const bucketsFilePath = path.join(storageExportPath, "buckets.json");
     await fse.writeFile(bucketsFilePath, JSON.stringify(bucketsList, undefined, 2));
 
-    // Recursively copy all file blobs
+    // Create blobs directory
     const blobsDirPath = path.join(storageExportPath, "blobs");
     await fse.ensureDir(blobsDirPath);
-    await fse.copy(this.dirPath, blobsDirPath, { recursive: true });
 
-    // Store a metadata file for each file
+    // Create metadata directory
     const metadataDirPath = path.join(storageExportPath, "metadata");
     await fse.ensureDir(metadataDirPath);
 
-    for await (const [p, file] of this._files.entries()) {
-      const metadataExportPath = path.join(metadataDirPath, encodeURIComponent(p)) + ".json";
+    // Copy data into metadata and blobs directory
+    for await (const [, file] of this._files.entries()) {
+      // get diskFilename from file path, metadata and blob files are persisted with this name
+      const diskFileName = this._persistence.getDiskFileName(
+        this.path(file.metadata.bucket, file.metadata.name)
+      );
 
+      await fse.copy(path.join(this.dirPath, diskFileName), path.join(blobsDirPath, diskFileName));
+      const metadataExportPath =
+        path.join(metadataDirPath, encodeURIComponent(diskFileName)) + ".json";
       await fse.writeFile(metadataExportPath, StoredFileMetadata.toJSON(file.metadata));
     }
   }
@@ -585,19 +579,17 @@ export class StorageLayer {
         continue;
       }
 
-      let decodedBlobPath = decodeURIComponent(blobPath);
-      const decodedBlobPathSep = getPathSep(decodedBlobPath);
+      let fileName = metadata.name;
+      const objectNameSep = getPathSep(fileName);
       // Replace all file separators with that of current platform for compatibility
-      if (decodedBlobPathSep !== path.sep) {
-        decodedBlobPath = decodedBlobPath.split(decodedBlobPathSep).join(path.sep);
+      if (fileName !== path.sep) {
+        fileName = fileName.split(objectNameSep).join(path.sep);
       }
 
-      const blobDiskPath = this._persistence.getDiskPath(decodedBlobPath);
+      const filepath = this.path(metadata.bucket, fileName);
 
-      const file = new StoredFile(metadata, blobDiskPath);
-      this._files.set(decodedBlobPath, file);
-
-      fse.copyFileSync(blobAbsPath, blobDiskPath);
+      this._persistence.copyFromExternalPath(blobAbsPath, filepath);
+      this._files.set(filepath, new StoredFile(metadata));
     }
   }
 
@@ -616,8 +608,7 @@ export class StorageLayer {
 
 /** Returns file separator used in given path, either '\\' or '/'. */
 function getPathSep(decodedPath: string): string {
-  // Suffices to check first separator, which occurs immediately after bucket name.
-  // Bucket naming guidelines: https://cloud.google.com/storage/docs/naming-buckets
-  const firstSepIndex = decodedPath.search(/[^a-z0-9-_.]/g);
+  // Checks for the first matching file separator
+  const firstSepIndex = decodedPath.search(/[\/|\\\\]/g);
   return decodedPath[firstSepIndex];
 }
