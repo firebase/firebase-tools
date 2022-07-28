@@ -94,7 +94,7 @@
     "body-parser": "^1.19.0",
     "chokidar": "^3.0.2",
     "cjson": "^0.3.1",
-    "cli-color": "^2.0.2",
+    "cli-color": "2.0.1",
     "cli-table": "0.3.11",
     "commander": "^4.0.1",
     "configstore": "^5.0.1",
