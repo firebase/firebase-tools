@@ -9,12 +9,10 @@ import { FirebaseError } from "../../../error";
 /** Supported runtimes for new Cloud Functions. */
 const RUNTIMES: string[] = ["nodejs10", "nodejs12", "nodejs14", "nodejs16"];
 
-// We prompt for runtime selection on functions init, so these are separated.
-export const PYTHON_RUNTIMES: string[] = ["python37", "python38", "python39"];
 // Experimental runtimes are part of the Runtime type, but are in a
 // different list to help guard against some day accidentally iterating over
 // and printing a hidden runtime to the user.
-const EXPERIMENTAL_RUNTIMES = ["go113", ...PYTHON_RUNTIMES];
+const EXPERIMENTAL_RUNTIMES = ["go113", "python39"];
 export type Runtime = typeof RUNTIMES[number] | typeof EXPERIMENTAL_RUNTIMES[number];
 
 /** Runtimes that can be found in existing backends but not used for new functions. */
@@ -39,8 +37,6 @@ const MESSAGE_FRIENDLY_RUNTIMES: Record<Runtime | DeprecatedRuntime, string> = {
   nodejs14: "Node.js 14",
   nodejs16: "Node.js 16",
   go113: "Go 1.13",
-  python37: "Python 3.7",
-  python38: "Python 3.8",
   python39: "Python 3.9",
 };
 
