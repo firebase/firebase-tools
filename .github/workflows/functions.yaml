@@ -1,5 +1,7 @@
 name: Functions deploy test
 
+// Allow workflow to be triggered manually.
+//   https://docs.github.com/en/actions/managing-workflow-runs/manually-running-a-workflow
 on: workflow_dispatch
 
 concurrency:

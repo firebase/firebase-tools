@@ -1,6 +1,11 @@
 import * as spawn from "cross-spawn";
 import { ChildProcess } from "child_process";
 
+// NOTE: This code duplicates scripts/integration-helpers/cli.ts.
+// There are minor differences in handling stdout/stderr that triggered forking of the code,
+// but in an ideal world, we would have one, more feature-ful library for invoking CLI during tests.
+// Blame taeold@ for taking this shortcut.
+
 export interface Result {
   proc: ChildProcess;
   stdout: string;
