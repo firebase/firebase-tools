@@ -2,7 +2,7 @@ import { logger } from "../../logger";
 import { FirebaseError } from "../../error";
 import { promptOnce } from "../../prompt";
 import * as build from "./build";
-import { assertExhaustive } from "../../functional";
+import { assertExhaustive, partition } from "../../functional";
 
 type CEL = build.Expression<string> | build.Expression<number> | build.Expression<boolean>;
 
@@ -231,7 +231,10 @@ export async function resolveParams(
 ): Promise<Record<string, ParamValue>> {
   const paramValues: Record<string, ParamValue> = {};
 
-  for (const param of params.filter((param) => userEnvs.hasOwnProperty(param.name))) {
+  const [resolved, outstanding] = partition(params, (param) => {
+    return {}.hasOwnProperty.call(userEnvs, param.name);
+  });
+  for (const param of resolved) {
     if (!canSatisfyParam(param, userEnvs[param.name])) {
       throw new FirebaseError(
         "Parameter " +
@@ -244,7 +247,7 @@ export async function resolveParams(
     paramValues[param.name] = userEnvs[param.name];
   }
 
-  for (const param of params.filter((param) => !userEnvs.hasOwnProperty(param.name))) {
+  for (const param of outstanding) {
     let paramDefault: ParamValue | undefined = param.default;
     if (paramDefault && isCEL(paramDefault)) {
       paramDefault = resolveDefaultCEL(param.type, paramDefault, paramValues);

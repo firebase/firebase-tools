@@ -9,7 +9,6 @@ import { CloudFunction } from "firebase-functions";
 import * as backend from "../deploy/functions/backend";
 import { Constants } from "./constants";
 import { BackendInfo, EmulatableBackend, InvokeRuntimeOpts } from "./functionsEmulator";
-import { copyIfPresent } from "../gcp/proto";
 import { ENV_DIRECTORY } from "../extensions/manifest";
 import { substituteParams } from "../extensions/extensionsHelper";
 import { ExtensionSpec, ExtensionVersion } from "../extensions/types";
@@ -25,7 +24,7 @@ export interface ParsedTriggerDefinition {
   name: string;
   timeoutSeconds?: number;
   regions?: string[];
-  availableMemoryMb?: "128MB" | "256MB" | "512MB" | "1GB" | "2GB" | "4GB";
+  availableMemoryMb?: backend.MemoryOptions;
   httpsTrigger?: any;
   eventTrigger?: EventTrigger;
   schedule?: EventSchedule;
@@ -85,15 +84,6 @@ export interface FunctionsRuntimeFeatures {
   timeout?: boolean;
 }
 
-const memoryLookup = {
-  "128MB": 128,
-  "256MB": 256,
-  "512MB": 512,
-  "1GB": 1024,
-  "2GB": 2048,
-  "4GB": 4096,
-};
-
 export class HttpConstants {
   static readonly CALLABLE_AUTH_HEADER: string = "x-callable-context-auth";
   static readonly ORIGINAL_AUTH_HEADER: string = "x-original-auth";
@@ -108,7 +98,7 @@ export class EmulatedTrigger {
   constructor(public definition: EmulatedTriggerDefinition, private module: any) {}
 
   get memoryLimitBytes(): number {
-    return memoryLookup[this.definition.availableMemoryMb || "128MB"] * 1024 * 1024;
+    return (this.definition.availableMemoryMb || 128) * 1024 * 1024;
   }
 
   get timeoutMs(): number {
@@ -125,6 +115,9 @@ export class EmulatedTrigger {
   }
 }
 
+/**
+ *
+ */
 export function prepareEndpoints(endpoints: backend.Endpoint[]) {
   const bkend = backend.of(...endpoints);
   for (const ep of endpoints) {
@@ -157,15 +150,11 @@ export function emulatedFunctionsFromEndpoints(
       id: `${endpoint.region}-${endpoint.id}`,
       codebase: endpoint.codebase,
     };
-    copyIfPresent(
-      def,
-      endpoint,
-      "availableMemoryMb",
-      "labels",
-      "timeoutSeconds",
-      "platform",
-      "secretEnvironmentVariables"
-    );
+    def.availableMemoryMb = endpoint.availableMemoryMb || 256;
+    def.labels = endpoint.labels || {};
+    def.timeoutSeconds = endpoint.timeoutSeconds || 60;
+    def.secretEnvironmentVariables = endpoint.secretEnvironmentVariables || [];
+    def.platform = endpoint.platform;
     // TODO: This transformation is confusing but must be kept since the Firestore/RTDB trigger registration
     // process requires it in this form. Need to work in Firestore emulator for a proper fix...
     if (backend.isHttpsTriggered(endpoint)) {
@@ -178,11 +167,11 @@ export function emulatedFunctionsFromEndpoints(
       if (endpoint.platform === "gcfv1") {
         def.eventTrigger = {
           eventType: eventTrigger.eventType,
-          resource: eventTrigger.eventFilters.resource,
+          resource: eventTrigger.eventFilters!.resource,
         };
       } else {
         // Only pubsub and storage events are supported for gcfv2.
-        const { resource, topic, bucket } = endpoint.eventTrigger.eventFilters;
+        const { resource, topic, bucket } = endpoint.eventTrigger.eventFilters as any;
         const eventResource = resource || topic || bucket;
         if (!eventResource) {
           // Unsupported event type for GCFv2
@@ -249,7 +238,7 @@ export function emulatedFunctionsByRegion(
 /**
  * Converts an array of EmulatedTriggerDefinitions to a map of EmulatedTriggers, which contain information on execution,
  * @param {EmulatedTriggerDefinition[]} definitions An array of regionalized, parsed trigger definitions
- * @param {Object} module Actual module which contains multiple functions / definitions
+ * @param {object} module Actual module which contains multiple functions / definitions
  * @return a map of trigger ids to EmulatedTriggers
  */
 export function getEmulatedTriggersFromDefinitions(
@@ -265,6 +254,9 @@ export function getEmulatedTriggersFromDefinitions(
   );
 }
 
+/**
+ *
+ */
 export function getTemporarySocketPath(): string {
   // See "net" package docs for information about IPC pipes on Windows
   // https://nodejs.org/api/net.html#net_identifying_paths_for_ipc_connections
@@ -287,6 +279,9 @@ export function getTemporarySocketPath(): string {
   }
 }
 
+/**
+ *
+ */
 export function getFunctionService(def: ParsedTriggerDefinition): string {
   if (def.eventTrigger) {
     return def.eventTrigger.service ?? getServiceFromEventType(def.eventTrigger.eventType);
@@ -298,6 +293,9 @@ export function getFunctionService(def: ParsedTriggerDefinition): string {
   return "unknown";
 }
 
+/**
+ *
+ */
 export function getServiceFromEventType(eventType: string): string {
   if (eventType.includes("firestore")) {
     return Constants.SERVICE_FIRESTORE;
@@ -331,6 +329,9 @@ export function getServiceFromEventType(eventType: string): string {
   return "";
 }
 
+/**
+ *
+ */
 export function waitForBody(req: express.Request): Promise<string> {
   let data = "";
   return new Promise((resolve) => {
@@ -344,6 +345,9 @@ export function waitForBody(req: express.Request): Promise<string> {
   });
 }
 
+/**
+ *
+ */
 export function findModuleRoot(moduleName: string, filepath: string): string {
   const hierarchy = filepath.split(path.sep);
 
@@ -369,6 +373,9 @@ export function findModuleRoot(moduleName: string, filepath: string): string {
   return "";
 }
 
+/**
+ *
+ */
 export function formatHost(info: { host: string; port: number }): string {
   if (info.host.includes(":")) {
     return `[${info.host}]:${info.port}`;
@@ -377,6 +384,9 @@ export function formatHost(info: { host: string; port: number }): string {
   }
 }
 
+/**
+ *
+ */
 export function getSignatureType(def: EmulatedTriggerDefinition): SignatureType {
   if (def.httpsTrigger || def.blockingTrigger) {
     return "http";

@@ -246,7 +246,7 @@ describe("cloudfunctionsv2", () => {
           egressSettings: "ALL_TRAFFIC",
         },
         ingressSettings: "ALLOW_ALL",
-        serviceAccountEmail: "inlined@google.com",
+        serviceAccount: "inlined@google.com",
         labels: {
           foo: "bar",
         },
@@ -534,7 +534,6 @@ describe("cloudfunctionsv2", () => {
     it("should copy optional fields", () => {
       const extraFields: backend.ServiceConfiguration = {
         ingressSettings: "ALLOW_ALL",
-        serviceAccountEmail: "inlined@google.com",
         timeoutSeconds: 15,
         environmentVariables: {
           FOO: "bar",
@@ -550,6 +549,7 @@ describe("cloudfunctionsv2", () => {
           serviceConfig: {
             ...HAVE_CLOUD_FUNCTION_V2.serviceConfig,
             ...extraFields,
+            serviceAccountEmail: "inlined@google.com",
             vpcConnector: vpc.connector,
             vpcConnectorEgressSettings: vpc.egressSettings,
             availableMemory: "128Mi",
@@ -564,6 +564,7 @@ describe("cloudfunctionsv2", () => {
         httpsTrigger: {},
         uri: RUN_URI,
         ...extraFields,
+        serviceAccount: "inlined@google.com",
         vpc,
         availableMemoryMb: 128,
         labels: {

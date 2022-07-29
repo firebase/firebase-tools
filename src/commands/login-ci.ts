@@ -17,6 +17,11 @@ export const command = new Command("login:ci")
       throw new FirebaseError("Cannot run login:ci in non-interactive mode.");
     }
 
+    utils.logWarning(
+      "Authenticating with a `login:ci` token is deprecated and will be removed in a future major version of `firebase-tools`. " +
+        "Instead, use a service account key with `GOOGLE_APPLICATION_CREDENTIALS`: https://cloud.google.com/docs/authentication/getting-started"
+    );
+
     const userCredentials = await auth.loginGoogle(options.localhost);
     logger.info();
     utils.logSuccess(
