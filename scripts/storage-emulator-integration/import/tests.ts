@@ -52,9 +52,6 @@ describe("Import Emulator Data", () => {
     await test.stopEmulators();
 
     expect(fs.readdirSync(path.join(exportedData, "storage_export", "blobs")).length).to.equal(1);
-    expect(fs.readdirSync(path.join(exportedData, "storage_export", "blobs"))[0]).to.equal(
-      encodeURIComponent(`${BUCKET}/test_upload.jpg`)
-    );
   });
 
   it("retrieves file from imported nested emulator data", async function (this) {
@@ -127,5 +124,20 @@ describe("Import Emulator Data", () => {
   afterEach(async function (this) {
     this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
     await test.stopEmulators();
+  });
+
+  it("retrieves file from imported mapped emulator data", async function (this) {
+    this.timeout(TEST_SETUP_TIMEOUT);
+    await test.startEmulators([
+      "--only",
+      Emulators.STORAGE,
+      "--import",
+      path.join(__dirname, "mapped-emulator-data"),
+    ]);
+
+    await supertest(STORAGE_EMULATOR_HOST)
+      .get(`/v0/b/${BUCKET}/o/test_upload.jpg`)
+      .set({ Authorization: "Bearer owner" })
+      .expect(200);
   });
 });
