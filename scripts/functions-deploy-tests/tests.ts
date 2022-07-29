@@ -49,11 +49,11 @@ async function listFns(stripId = "dvtuqrxfjr"): Promise<Record<string, Endpoint>
   const eps: Record<string, Endpoint> = {};
   for (const ep of output.result as Endpoint[]) {
     const id = ep.id.replace(`${stripId}-`, "");
-    if (ep.id === id) {
-      // This endpoint is from another run. Ignore.
-      continue;
+    if (ep.id !== id) {
+      eps[id] = ep;
     }
-    eps[id] = ep;
+    // Ignore functions w/o matching RUN_ID as prefix.
+    // They are probably left over from previous test runs.
   }
   return eps;
 }
