@@ -1,7 +1,7 @@
 import * as spawn from "cross-spawn";
 import { ChildProcess } from "child_process";
 
-interface Result {
+export interface Result {
   proc: ChildProcess;
   stdout: string;
   stderr: string;

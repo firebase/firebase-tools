@@ -9,6 +9,7 @@ import * as cli from "./cli";
 import { Endpoint } from "../../src/deploy/functions/backend";
 
 const FIREBASE_PROJECT = process.env.GCLOUD_PROJECT || "";
+const FIREBASE_DEBUG = process.env.FIREBASE_DEBUG || "";
 const FUNCTIONS_DIR = path.join(__dirname, "functions");
 const FNS_COUNT = 12;
 
@@ -63,6 +64,15 @@ describe("firebase deploy", function (this) {
 
   const RUN_ID = genRandomId();
   console.log(`TEST RUN: ${RUN_ID}`);
+
+  async function setOptsAndDeploy(opts: Opts): Promise<cli.Result> {
+    await setOpts(opts);
+    const args = ["--only", "functions", "--non-interactive", "--force"];
+    if (FIREBASE_DEBUG) {
+      args.push("--debug");
+    }
+    return await cli.exec("deploy", FIREBASE_PROJECT, args, __dirname, false);
+  }
 
   before(async () => {
     expect(FIREBASE_PROJECT).to.not.be.empty;
@@ -133,16 +143,8 @@ describe("firebase deploy", function (this) {
         accessToken: true,
       },
     };
-    await setOpts(opts);
 
-    const result = await cli.exec(
-      "deploy",
-      FIREBASE_PROJECT,
-      ["--only", "functions", "--non-interactive", "--force"],
-      __dirname,
-      false
-    );
-
+    const result = await setOptsAndDeploy(opts);
     expect(result.stdout, "deploy result").to.match(/Deploy complete!/);
 
     const endpoints = await listFns(RUN_ID);
@@ -181,23 +183,16 @@ describe("firebase deploy", function (this) {
   });
 
   it("leaves existing options when unspecified", async () => {
-    await setOpts({
+    const opts: Opts = {
       v1Opts: {},
       v2Opts: {},
       v1TqOpts: {},
       v2TqOpts: {},
       v1IdpOpts: {},
       v2IdpOpts: {},
-    });
+    };
 
-    const result = await cli.exec(
-      "deploy",
-      FIREBASE_PROJECT,
-      ["--only", "functions", "--non-interactive", "--force"],
-      __dirname,
-      false
-    );
-
+    const result = await setOptsAndDeploy(opts);
     expect(result.stdout, "deploy result").to.match(/Deploy complete!/);
 
     const endpoints = await listFns(RUN_ID);
@@ -281,15 +276,8 @@ describe("firebase deploy", function (this) {
       },
       v2IdpOpts: {},
     };
-    await setOpts(opts);
 
-    const result = await cli.exec(
-      "deploy",
-      FIREBASE_PROJECT,
-      ["--only", "functions", "--non-interactive", "--force"],
-      __dirname,
-      false
-    );
+    const result = await setOptsAndDeploy(opts);
     expect(result.stdout, "deploy result").to.match(/Deploy complete!/);
 
     const endpoints = await listFns(RUN_ID);
