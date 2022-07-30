@@ -5,7 +5,6 @@ import { Payload } from "./args";
 import * as backend from "../functions/backend";
 import { Context } from "../functions/args";
 import { logLabeledWarning } from "../../utils";
-import { region } from "firebase-functions/v1";
 
 function has(obj: { [k: string]: unknown }, k: string): boolean {
   return obj[k] !== undefined;
