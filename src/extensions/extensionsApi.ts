@@ -462,7 +462,11 @@ export async function listExtensions(publisherId: string): Promise<Extension[]> 
 /**
  * @param ref user-friendly identifier for the ExtensionVersion (publisher-id/extension-id)
  */
-export async function listExtensionVersions(ref: string, filter = "", show_prereleases = false): Promise<ExtensionVersion[]> {
+export async function listExtensionVersions(
+  ref: string,
+  filter = "",
+  show_prereleases = false
+): Promise<ExtensionVersion[]> {
   const { publisherId, extensionId } = refs.parse(ref);
   const extensionVersions: ExtensionVersion[] = [];
   const getNextPage = async (pageToken = "") => {
