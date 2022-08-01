@@ -1,4 +1,0 @@
-- Adds warnings about upcoming deprecation of `--token`, `FIREBASE_TOKEN`, and `login:ci`.
-- Fixes ENAMETOOLONG bug when uploading files with long paths in storage emulator. (#4470)
-- Adds a bit more help for the `hosting:clone` command.
-- Restores behavior where Hosting will not fail to deploy if a function rewrite does not exist. (#4792)
