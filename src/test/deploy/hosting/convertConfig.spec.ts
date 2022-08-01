@@ -61,6 +61,27 @@ describe("convertConfig", () => {
       },
     },
     {
+      name: "discovers the function region of a callable function",
+      input: { rewrites: [{ glob: "/foo", function: "foofn" }] },
+      want: { rewrites: [{ glob: "/foo", function: "foofn", functionRegion: "us-central2" }] },
+      payload: {
+        functions: {
+          default: {
+            wantBackend: backend.of({
+              id: "foofn",
+              project: "my-project",
+              entryPoint: "foofn",
+              runtime: "nodejs14",
+              region: "us-central2",
+              platform: "gcfv1",
+              callableTrigger: {},
+            }),
+            haveBackend: backend.empty(),
+          },
+        },
+      },
+    },
+    {
       name: "returns rewrites for glob CF3",
       input: { rewrites: [{ glob: "/foo", function: "foofn", region: "europe-west2" }] },
       want: { rewrites: [{ glob: "/foo", function: "foofn", functionRegion: "europe-west2" }] },
