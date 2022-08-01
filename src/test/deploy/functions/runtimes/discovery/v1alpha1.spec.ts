@@ -6,6 +6,7 @@ import * as build from "../../../../../deploy/functions/build";
 import { Runtime } from "../../../../../deploy/functions/runtimes";
 import * as v1alpha1 from "../../../../../deploy/functions/runtimes/discovery/v1alpha1";
 import { BEFORE_CREATE_EVENT } from "../../../../../functions/events/v1";
+import { Param } from "../../../../../deploy/functions/params";
 
 const PROJECT = "project";
 const REGION = "region";
@@ -19,6 +20,31 @@ async function resolveBackend(bd: build.Build): Promise<backend.Backend> {
 }
 
 describe("buildFromV1Alpha", () => {
+  describe("Params", () => {
+    it("copies param fields", () => {
+      const testParams: Param[] = [
+        { param: "FOO", type: "string" },
+        {
+          param: "ASDF",
+          type: "string",
+          default: "{{ params.FOO }}",
+          description: "another test param",
+        },
+        { param: "BAR", type: "int" },
+      ];
+
+      const yaml: v1alpha1.Manifest = {
+        specVersion: "v1alpha1",
+        params: testParams,
+        endpoints: {},
+      };
+      const parsed = v1alpha1.buildFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME);
+      const expected: build.Build = build.empty();
+      expected.params = testParams;
+      expect(parsed).to.deep.equal(expected);
+    });
+  });
+
   describe("Endpoint keys", () => {
     const DEFAULTED_BACKEND_ENDPOINT: Omit<
       backend.Endpoint,

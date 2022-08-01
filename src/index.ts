@@ -14,7 +14,10 @@ program.option(
 );
 program.option("--account <email>", "the Google account to use for authorization");
 program.option("-j, --json", "output JSON instead of text, also triggers non-interactive mode");
-program.option("--token <token>", "supply an auth token for this command");
+program.option(
+  "--token <token>",
+  "DEPRECATED - will be removed in a future major version - supply an auth token for this command"
+);
 program.option("--non-interactive", "error out of the command instead of waiting for prompts");
 program.option("-i, --interactive", "force prompts to be displayed");
 program.option("--debug", "print verbose debug output and keep a debug log file");

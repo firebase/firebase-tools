@@ -4,6 +4,7 @@ import { existingBackend, allEndpoints, isHttpsTriggered } from "../functions/ba
 import { Payload } from "./args";
 import * as backend from "../functions/backend";
 import { Context } from "../functions/args";
+import { logLabeledWarning } from "../../utils";
 
 function has(obj: { [k: string]: unknown }, k: string): boolean {
   return obj[k] !== undefined;
@@ -185,8 +186,14 @@ export async function convertConfig(
           if (foundEndpoint) {
             vRewrite.functionRegion = foundEndpoint.region;
           } else {
-            throw new FirebaseError(
-              `Unable to find a valid endpoint for function ${vRewrite.function}`
+            if (rewrite.region && rewrite.region !== "us-central1") {
+              throw new FirebaseError(
+                `Unable to find a valid endpoint for function \`${vRewrite.function}\``
+              );
+            }
+            logLabeledWarning(
+              `hosting[${config.site}]`,
+              `Unable to find a valid endpoint for function \`${vRewrite.function}\`, but still including it in the config`
             );
           }
         }
