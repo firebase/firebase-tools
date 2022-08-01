@@ -177,7 +177,7 @@ export async function promptForMinInstances(
     .map((fn) => {
       return (
         `\t${getFunctionLabel(fn)}: ${fn.minInstances} instances, ` +
-        backend.memoryOptionDisplayName(fn.availableMemoryMb || 256) +
+        backend.memoryOptionDisplayName(fn.availableMemoryMb || backend.DEFAULT_MEMORY) +
         " of memory each"
       );
     })
