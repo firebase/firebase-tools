@@ -556,6 +556,12 @@ export class StorageLayer {
     const metadataDir = path.join(storageExportPath, "metadata");
     const blobsDir = path.join(storageExportPath, "blobs");
 
+    // Handle case where export contained empty metadata or blobs
+    if (!existsSync(metadataDir) || !existsSync(blobsDir)) {//
+      logger.warn(`Could not find metadata directory at "${metadataDir}" and/or blobs directory at "${blobsDir}".`);
+      return;
+    }
+
     // Restore all metadata
     const metadataList = this.walkDirSync(metadataDir);
 
