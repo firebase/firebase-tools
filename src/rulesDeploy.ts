@@ -110,7 +110,13 @@ export class RulesDeploy {
   }
 
   async checkStorageRulesIamPermissions(rulesContent?: string): Promise<void> {
+    // Skip if no cross-service rules
     if (rulesContent?.match(CROSS_SERVICE_FUNCTIONS) === null) {
+      return;
+    }
+
+    // Skip if non-interactive
+    if (this.options.nonInteractive) {
       return;
     }
 
@@ -144,10 +150,9 @@ export class RulesDeploy {
       }
     } catch (e: any) {
       logger.warn(
-        "[rules] Error checking or updating Cloud Storage for Firebase service account permissions.",
-        e.stack
+        "[rules] Error checking or updating Cloud Storage for Firebase service account permissions."
       );
-      logger.warn("[rules] Cross-service Storage rules may not function properly", e.stack);
+      logger.warn("[rules] Cross-service Storage rules may not function properly", e.message);
     }
   }
 
