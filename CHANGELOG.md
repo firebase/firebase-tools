@@ -1,0 +1,1 @@
+- Adds check for callable functions when discovering Hosting rewrite endpoints. (#4792)
