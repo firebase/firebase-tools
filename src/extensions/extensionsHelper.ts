@@ -21,7 +21,13 @@ import { checkResponse } from "./askUserForParam";
 import { ensure } from "../ensureApiEnabled";
 import { deleteObject, uploadObject } from "../gcp/storage";
 import { getProjectId } from "../projectUtils";
-import { createSource, getExtension, getInstance, listExtensionVersions, publishExtensionVersion } from "./extensionsApi";
+import {
+  createSource,
+  getExtension,
+  getInstance,
+  listExtensionVersions,
+  publishExtensionVersion,
+} from "./extensionsApi";
 import { ExtensionSource, ExtensionVersion, Param } from "./types";
 import * as refs from "./refs";
 import { getLocalExtensionSpec } from "./localHelper";
@@ -424,7 +430,7 @@ export async function publishExtensionVersionFromLocalSource(args: {
   );
   validateSpec(subbedSpec);
 
-  if (args.stage != "stable") {
+  if (args.stage !== "stable") {
     const version = semver.parse(extensionSpec.version)!;
     if (version.prerelease.length > 0 || version.build.length > 0) {
       throw new FirebaseError(
