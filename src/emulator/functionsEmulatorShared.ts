@@ -116,7 +116,7 @@ export class EmulatedTrigger {
 }
 
 /**
- *
+ * Validates that triggers are correctly formed and fills in some defaults.
  */
 export function prepareEndpoints(endpoints: backend.Endpoint[]) {
   const bkend = backend.of(...endpoints);
@@ -255,7 +255,7 @@ export function getEmulatedTriggersFromDefinitions(
 }
 
 /**
- *
+ * Create a path that used to create a tempfile for IPC over socket files.
  */
 export function getTemporarySocketPath(): string {
   // See "net" package docs for information about IPC pipes on Windows
@@ -280,7 +280,10 @@ export function getTemporarySocketPath(): string {
 }
 
 /**
- *
+ * In GCF 1st gen, there was a mostly undocumented "service" field
+ * which identified where an event was coming from. This is used in the emulator
+ * to determine which emulator serves these triggers. Now that GCF 2nd gen
+ * discontinued the "service" field this becomes more bespoke.
  */
 export function getFunctionService(def: ParsedTriggerDefinition): string {
   if (def.eventTrigger) {
@@ -294,7 +297,8 @@ export function getFunctionService(def: ParsedTriggerDefinition): string {
 }
 
 /**
- *
+ * Returns a service ID to use for GCF 2nd gen events. Used to connect the right
+ * emulator service.
  */
 export function getServiceFromEventType(eventType: string): string {
   if (eventType.includes("firestore")) {
@@ -330,7 +334,7 @@ export function getServiceFromEventType(eventType: string): string {
 }
 
 /**
- *
+ * Create a Promise which can be awaited to recieve request bodies as strings.
  */
 export function waitForBody(req: express.Request): Promise<string> {
   let data = "";
@@ -346,7 +350,7 @@ export function waitForBody(req: express.Request): Promise<string> {
 }
 
 /**
- *
+ * Find the root directory housing a node module.
  */
 export function findModuleRoot(moduleName: string, filepath: string): string {
   const hierarchy = filepath.split(path.sep);
@@ -374,7 +378,7 @@ export function findModuleRoot(moduleName: string, filepath: string): string {
 }
 
 /**
- *
+ * Format a hostname for TCP dialing.
  */
 export function formatHost(info: { host: string; port: number }): string {
   if (info.host.includes(":")) {
@@ -385,7 +389,8 @@ export function formatHost(info: { host: string; port: number }): string {
 }
 
 /**
- *
+ * Determines the correct value for the environment variable that tells the
+ * Functions Framework how to parse this functions' input.
  */
 export function getSignatureType(def: EmulatedTriggerDefinition): SignatureType {
   if (def.httpsTrigger || def.blockingTrigger) {

@@ -262,7 +262,7 @@ export function inferDetailsFromExisting(
     // If the instance size is set out of bounds or was previously set and is now
     // unset we still need to remember it so that the min instance price estimator
     // is accurate. If, on the other hand, we have a null value for availableMemoryMb
-    // we need to keep taht null (meaning "use defaults").
+    // we need to keep that null (meaning "use defaults").
     if (typeof wantE.availableMemoryMb === "undefined" && haveE.availableMemoryMb) {
       wantE.availableMemoryMb = haveE.availableMemoryMb;
     }
