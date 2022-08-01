@@ -21,7 +21,7 @@ import { checkResponse } from "./askUserForParam";
 import { ensure } from "../ensureApiEnabled";
 import { deleteObject, uploadObject } from "../gcp/storage";
 import { getProjectId } from "../projectUtils";
-import { createSource, getExtension, getInstance, publishExtensionVersion } from "./extensionsApi";
+import { createSource, getExtension, getInstance, listExtensionVersions, publishExtensionVersion } from "./extensionsApi";
 import { ExtensionSource, ExtensionVersion, Param } from "./types";
 import * as refs from "./refs";
 import { getLocalExtensionSpec } from "./localHelper";
@@ -405,6 +405,7 @@ export async function publishExtensionVersionFromLocalSource(args: {
   rootDirectory: string;
   nonInteractive: boolean;
   force: boolean;
+  stage: "rc" | "alpha" | "beta" | "stable";
 }): Promise<ExtensionVersion | undefined> {
   const extensionSpec = await getLocalExtensionSpec(args.rootDirectory);
   if (extensionSpec.name !== args.extensionId) {
@@ -422,6 +423,32 @@ export async function publishExtensionVersionFromLocalSource(args: {
     AUTOPOULATED_PARAM_PLACEHOLDERS
   );
   validateSpec(subbedSpec);
+
+  if (args.stage != "stable") {
+    const version = semver.parse(extensionSpec.version)!;
+    if (version.prerelease.length > 0 || version.build.length > 0) {
+      throw new FirebaseError(
+        `Cannot combine the --stage flag with a version with a prerelease annotation in extension.yaml.`
+      );
+    }
+    let extensionVersions: ExtensionVersion[] = [];
+    try {
+      extensionVersions = await listExtensionVersions(
+        `${args.publisherId}/${args.extensionId}`,
+        `id="${version.version}"`,
+        true
+      );
+    } catch (e) {
+      // Silently fail and continue the publish flow if extension not found.
+    }
+    const latestVersion =
+      extensionVersions
+        .map((version) => semver.parse(version.spec.version)!)
+        .filter((version) => version.prerelease.length > 0 && version.prerelease[0] === args.stage)
+        .sort((v1, v2) => semver.compare(v1, v2))
+        .pop() ?? `${version}-${args.stage}`;
+    extensionSpec.version = semver.inc(latestVersion, "prerelease", undefined, args.stage)!;
+  }
 
   let extension;
   try {
