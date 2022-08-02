@@ -167,7 +167,6 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       }
       throw err;
     }
-    console.log(JSON.stringify(listResponse));
     return res.status(200).json({
       nextPageToken: listResponse.nextPageToken,
       prefixes: (listResponse.prefixes ?? []).filter(isValidPrefix),
