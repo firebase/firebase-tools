@@ -69,8 +69,7 @@ describe("Storage emulator", () => {
   let test: TriggerEndToEndTest;
 
   let testBucket: Bucket;
-  let smallFilePath: string;
-  let largeFilePath: string;
+  const smallFilePath: string = createRandomFile("small_file", SMALL_FILE_SIZE, tmpDir);
 
   const DEFAULT_RULES = readFile("storage.rules");
 
@@ -136,11 +135,6 @@ describe("Storage emulator", () => {
   describe("Admin SDK Endpoints", function (this) {
     // eslint-disable-next-line @typescript-eslint/no-invalid-this
     this.timeout(TEST_SETUP_TIMEOUT);
-
-    before(async () => {
-      smallFilePath = createRandomFile("small_file", SMALL_FILE_SIZE, tmpDir);
-      largeFilePath = createRandomFile("large_file", LARGE_FILE_SIZE, tmpDir);
-    });
 
     beforeEach(async () => {
       await resetEmulatorState();
