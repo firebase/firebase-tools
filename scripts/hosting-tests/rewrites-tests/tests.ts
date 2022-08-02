@@ -430,6 +430,51 @@ describe("deploy function-targeted rewrites And functions", () => {
     expect(await functionsResponse.text()).to.contain("Hello from Firebase");
   }).timeout(1000 * 1e3);
 
+  it("should rewrite to the default of us-central1 if multiple regions including us-central1 are available", async () => {
+    const firebaseJson = {
+      hosting: {
+        public: "hosting",
+        rewrites: [
+          {
+            source: "/helloWorld",
+            function: functionName,
+          },
+        ],
+      },
+    };
+
+    const firebaseJsonFilePath = join(tempDirInfo.tempDir.name, ".", "firebase.json");
+    writeFileSync(firebaseJsonFilePath, JSON.stringify(firebaseJson));
+    ensureDirSync(tempDirInfo.hostingDirPath);
+    writeBasicHostingFile(tempDirInfo.hostingDirPath);
+
+    writeHelloWorldFunctionWithRegions(
+      functionName,
+      join(tempDirInfo.tempDir.name, ".", "functions"),
+      ["asia-northeast1", "us-central1"]
+    );
+
+    await client.deploy({
+      project: process.env.FBTOOLS_TARGET_PROJECT,
+      cwd: tempDirInfo.tempDir.name,
+      only: "hosting,functions",
+      force: true,
+    });
+
+    const staticResponse = await fetch(
+      `https://${process.env.FBTOOLS_CLIENT_INTEGRATION_SITE}.web.app/index.html`
+    );
+    expect(await staticResponse.text()).to.contain("Rabbit");
+
+    const functionsRequest = new Request(
+      `https://${process.env.FBTOOLS_CLIENT_INTEGRATION_SITE}.web.app/helloWorld`
+    );
+
+    const functionsResponse = await fetch(functionsRequest);
+
+    expect(await functionsResponse.text()).to.contain("Hello from Firebase");
+  }).timeout(1000 * 1e3);
+
   it("should fail when rewrite points to an invalid region for a function with multiple regions", async () => {
     const firebaseJson = {
       hosting: {
