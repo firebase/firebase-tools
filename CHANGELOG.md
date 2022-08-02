@@ -1,1 +1,1 @@
-- Add storage emulator support to init.js useEmulator flag (#4805)
+- Fix listAll in Storage Emulator ()
