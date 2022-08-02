@@ -64,6 +64,7 @@ Content-Type: text/plain\r
 // Temp directory to store generated files.
 let tmpDir: string;
 
+// TODO(b/241151246): Fix conformance tests.
 describe("Storage emulator", () => {
   let test: TriggerEndToEndTest;
 
