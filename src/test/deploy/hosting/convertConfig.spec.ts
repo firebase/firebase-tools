@@ -3,7 +3,6 @@ import { HostingConfig } from "../../../firebaseConfig";
 import { convertConfig } from "../../../deploy/hosting/convertConfig";
 import * as args from "../../../deploy/functions/args";
 import * as backend from "../../../deploy/functions/backend";
-import { FirebaseError } from "../../../error";
 
 const DEFAULT_CONTEXT = {
   loadedExistingBackend: true,
