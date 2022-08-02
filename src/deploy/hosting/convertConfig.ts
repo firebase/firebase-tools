@@ -9,7 +9,7 @@ import {
 import { Payload } from "./args";
 import * as backend from "../functions/backend";
 import { Context } from "../functions/args";
-import { logLabeledWarning } from "../../utils";
+import { logLabeledBullet, logLabeledWarning } from "../../utils";
 
 function has(obj: { [k: string]: unknown }, k: string): boolean {
   return obj[k] !== undefined;
@@ -87,6 +87,17 @@ export async function convertConfig(
     });
 
     if (matchingBackends.length > 1) {
+      // For now, if `us-central1` is specified, allow that to keep working.
+      for (const endpoint of matchingBackends) {
+        if (endpoint.region === "us-central1") {
+          logLabeledBullet(
+            `hosting[${config.site}]`,
+            `Function \`${functionsEndpointInfo.serviceId}\` found in multiple regions, defaulting to \`us-central1\`. ` +
+              `To rewrite to a different region, specify a \`region\` for the rewrite in \`firebase.json\`.`
+          );
+          return endpoint;
+        }
+      }
       throw new FirebaseError(
         `More than one backend found for function name: ${functionsEndpointInfo.serviceId}. If the function is deployed in multiple regions, you must specify a region.`
       );

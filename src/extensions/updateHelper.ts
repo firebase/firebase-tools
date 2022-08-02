@@ -15,11 +15,7 @@ import {
   isLocalOrURLPath,
 } from "./extensionsHelper";
 import * as utils from "../utils";
-import {
-  displayUpdateChangesNoInput,
-  displayUpdateChangesRequiringConfirmation,
-  displayExtInfo,
-} from "./displayExtensionInfo";
+import { displayExtInfo } from "./displayExtensionInfo";
 import * as changelog from "./changelog";
 
 function invalidSourceErrMsgTemplate(instanceId: string, source: string): string {
@@ -85,26 +81,6 @@ export function warningUpdateToOtherSource(sourceOrigin: SourceOrigin) {
   }
   const warning = `All the instance's resources and logic will be overwritten to use the source code and files from the ${targetText}.\n`;
   logger.info(marked(warning));
-}
-
-/**
- * Displays all differences between spec and newSpec.
- * First, displays all changes that do not require explicit confirmation,
- * then prompts the user for each change that requires confirmation.
- *
- * @param spec A current extensionSpec
- * @param newSpec A extensionSpec to compare to
- * @param published
- */
-export async function displayChanges(args: {
-  spec: ExtensionSpec;
-  newSpec: ExtensionSpec;
-  nonInteractive: boolean;
-  force: boolean;
-}): Promise<void> {
-  utils.logLabeledBullet("extensions", "This update contains the following changes:");
-  displayUpdateChangesNoInput(args.spec, args.newSpec);
-  await displayUpdateChangesRequiringConfirmation(args);
 }
 
 /**
