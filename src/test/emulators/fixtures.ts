@@ -232,36 +232,3 @@ service firebase.storage {
 `,
   },
 };
-
-/*
-service firebase.storage {
-  match /b/{bucket}/o {
-    match /authIsNotNull {
-      allow read, write: if request.auth != null;
-    }
-
-    match /authUidMatchesPath/{uid} {
-      allow read: if request.auth.uid == uid
-    }
-
-    match /imageSourceSizeUnder5MbAndContentTypeIsImage {
-      // Only allow uploads of any image file that's less than 5MB
-      allow write: if request.resource.size < 5 * 1024 * 1024
-                   && request.resource.contentType.matches('image/.*');
-    }
-
-    match /customMetadataAndcustomTokenField {
-      allow read: if resource.metadata.owner == request.auth.token.groupId;
-      allow write: if request.auth.token.groupId == groupId;
-    }
-
-    function signedInOrHasVisibility(visibility) {
-      return request.auth.uid != null || resource.metadata.visibility == visibility;
-    }
-    match /signInWithFuntion/{visiblityParams} {
-      allow read, write: if signedInOrHasVisibility(visiblityParams);
-    }
-
-  }
-}
- */

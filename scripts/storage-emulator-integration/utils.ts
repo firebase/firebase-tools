@@ -28,12 +28,15 @@ export const LARGE_FILE_SIZE = 20 * 1024 * 1024; /* 20 MiB */
  * @param filename name of the JSON file to be read. Must be in the current directory.
  */
 export function readJson(filename: string) {
+  return JSON.parse(readFile(filename));
+}
+
+export function readFile(filename: string): string {
   const fullPath = path.join(__dirname, filename);
   if (!fs.existsSync(fullPath)) {
     throw new Error(`Can't find file at ${filename}`);
   }
-  const data = fs.readFileSync(fullPath, "utf8");
-  return JSON.parse(data);
+  return fs.readFileSync(fullPath, "utf8");
 }
 
 export function readProdAppConfig() {
@@ -73,12 +76,15 @@ export function getStorageEmulatorHost(emulatorConfig: FrameworkOptions) {
 }
 
 export function createRandomFile(filename: string, sizeInBytes: number, tmpDir?: string): string {
+  return writeToFile(filename, crypto.randomBytes(sizeInBytes), tmpDir);
+}
+
+export function writeToFile(filename: string, contents: Buffer, tmpDir?: string): string {
   if (!tmpDir) {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "storage-files"));
   }
   const fullPath = path.join(tmpDir, filename);
-  const bytes = crypto.randomBytes(sizeInBytes);
-  fs.writeFileSync(fullPath, bytes);
+  fs.writeFileSync(fullPath, contents);
 
   return fullPath;
 }
