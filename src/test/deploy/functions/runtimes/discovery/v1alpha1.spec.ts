@@ -307,7 +307,7 @@ describe("buildFromV1Alpha", () => {
       await expect(resolveBackend(parsed)).to.eventually.deep.equal(expectedBackend);
     });
 
-    it("copies v1 schedules", async () => {
+    it("copies schedules that use *Duration in the retry config", async () => {
       const v1ScheduleTrigger = {
         schedule: "every 5 minutes",
         timeZone: "America/Los_Angeles",
@@ -364,7 +364,7 @@ describe("buildFromV1Alpha", () => {
       await expect(resolveBackend(parsed)).to.eventually.deep.equal(expectedBackend);
     });
 
-    it("copies schedules", async () => {
+    it("copies schedules that use *Seconds in the retry config", async () => {
       const scheduleBackendTrigger: backend.ScheduleTrigger = {
         schedule: "every 5 minutes",
         timeZone: "America/Los_Angeles",

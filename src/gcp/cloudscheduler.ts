@@ -181,7 +181,7 @@ export function jobNameForEndpoint(
   return `projects/${endpoint.project}/locations/${appEngineLocation}/jobs/${id}`;
 }
 
-/** The name of the Cloud Scheduler job we will use for this endpoint. */
+/** The name of the pubsub topic that the Cloud Scheduler job will use for this endpoint. */
 export function topicNameForEndpoint(
   endpoint: backend.Endpoint & backend.ScheduleTriggered
 ): string {

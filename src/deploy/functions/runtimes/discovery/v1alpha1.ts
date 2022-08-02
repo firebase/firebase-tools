@@ -37,6 +37,8 @@ type EventTrigger = backend.EventTrigger & {
   serviceAccountEmail?: string | null;
 };
 
+// Note: v1 schedule functions use *Duration instead of *Seconds
+// so this version of the API must allow these three retryConfig fields.
 type ScheduleTrigger = backend.ScheduleTrigger & {
   retryConfig?: {
     maxRetryDuration?: string | null;
