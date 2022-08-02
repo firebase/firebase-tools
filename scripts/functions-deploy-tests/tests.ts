@@ -6,12 +6,15 @@ import * as functions from "firebase-functions";
 import * as functionsv2 from "firebase-functions/v2";
 
 import * as cli from "./cli";
+import * as tasks from "../../src/gcp/cloudtasks";
 import { Endpoint } from "../../src/deploy/functions/backend";
+import { getGlobalDefaultAccount } from "../../src/auth";
+import { setRefreshToken } from "../../src/apiv2";
 
-const FIREBASE_PROJECT = process.env.GCLOUD_PROJECT || "";
+const FIREBASE_PROJECT = process.env.GCLOUD_PROJECT || "danielylee-test-6";
 const FIREBASE_DEBUG = process.env.FIREBASE_DEBUG || "";
 const FUNCTIONS_DIR = path.join(__dirname, "functions");
-const FNS_COUNT = 12;
+const FNS_COUNT = 14;
 
 function genRandomId(n = 10): string {
   const charset = "abcdefghijklmnopqrstuvwxyz";
@@ -31,6 +34,8 @@ interface Opts {
 
   v1IdpOpts: functions.auth.UserOptions;
   v2IdpOpts: functionsv2.identity.BlockingOptions;
+
+  v1ScheduleOpts: functions.ScheduleRetryConfig;
 }
 
 async function setOpts(opts: Opts) {
@@ -43,14 +48,21 @@ async function setOpts(opts: Opts) {
   await fs.writeFile(path.join(FUNCTIONS_DIR, "options.js"), stmt);
 }
 
-async function listFns(stripId = "dvtuqrxfjr"): Promise<Record<string, Endpoint>> {
+async function listFns(stripId = "qmbcmcaczd"): Promise<Record<string, Endpoint>> {
   const result = await cli.exec("functions:list", FIREBASE_PROJECT, ["--json"], __dirname, false);
   const output = JSON.parse(result.stdout);
 
   const eps: Record<string, Endpoint> = {};
   for (const ep of output.result as Endpoint[]) {
-    const id = ep.id.replace(`${stripId}-`, "");
+    // const id = ep.id.replace(`${stripId}-`, "");
+    const id = ep.id.replace(`znyakzsroj-`, "");
     if (ep.id !== id) {
+      // By default, functions list does not attempt to fully hydrate configuration options for task queue and schedule
+      // functions because they require extra API calls. Manually inject details.
+      if ("taskQueueTrigger" in ep) {
+        const queue = await tasks.getQueue(tasks.queueNameForEndpoint(ep));
+        ep.taskQueueTrigger = tasks.triggerFromQueue(queue);
+      }
       eps[id] = ep;
     }
     // Ignore functions w/o matching RUN_ID as prefix.
@@ -77,6 +89,10 @@ describe("firebase deploy", function (this) {
   before(async () => {
     expect(FIREBASE_PROJECT).to.not.be.empty;
 
+    const account = getGlobalDefaultAccount();
+    if (account?.tokens.refresh_token) {
+      setRefreshToken(account.tokens.refresh_token);
+    }
     // write up index.js to import trigger definition using unique group identifier.
     // All exported functions will have name {hash}-{trigger} e.g. 'abcdefg-v1storage'.
     await fs.writeFile(
@@ -86,7 +102,14 @@ describe("firebase deploy", function (this) {
   });
 
   after(async () => {
-    await fs.unlink(path.join(FUNCTIONS_DIR, "index.js"));
+    try {
+      await fs.unlink(path.join(FUNCTIONS_DIR, "index.js"));
+    } catch (e: any) {
+      if (e?.code === "ENOENT") {
+        return;
+      }
+      throw e;
+    }
   });
 
   it("deploys functions with runtime options", async () => {
@@ -100,8 +123,7 @@ describe("firebase deploy", function (this) {
         memory: "128MiB",
         maxInstances: 42,
         timeoutSeconds: 42,
-        // TODO: Re-enable once https://github.com/firebase/firebase-tools/issues/4679 is fixed.
-        // cpu: 2,
+        cpu: 2,
         concurrency: 42,
       },
       v1TqOpts: {
@@ -142,6 +164,7 @@ describe("firebase deploy", function (this) {
         refreshToken: true,
         accessToken: true,
       },
+      v1ScheduleOpts: {},
     };
 
     const result = await setOptsAndDeploy(opts);
@@ -158,9 +181,7 @@ describe("firebase deploy", function (this) {
       });
       if (e.platform === "gcfv2") {
         expect(e).to.include({
-          // TODO: Re-enable once https://github.com/firebase/firebase-tools/issues/4679 is fixed.
-          // expect(e.cpu, `${id}.cpu`).to.equal(2);
-          // cpu: 2,
+          cpu: 2,
           concurrency: 42,
         });
       }
@@ -182,7 +203,7 @@ describe("firebase deploy", function (this) {
     }
   });
 
-  it("leaves existing options when unspecified", async () => {
+  it.skip("leaves existing options when unspecified", async () => {
     const opts: Opts = {
       v1Opts: {},
       v2Opts: {},
@@ -190,6 +211,7 @@ describe("firebase deploy", function (this) {
       v2TqOpts: {},
       v1IdpOpts: {},
       v2IdpOpts: {},
+      v1ScheduleOpts: {},
     };
 
     const result = await setOptsAndDeploy(opts);
@@ -201,15 +223,12 @@ describe("firebase deploy", function (this) {
     for (const e of Object.values(endpoints)) {
       expect(e).to.include({
         availableMemoryMb: 128,
-        // TODO: Fix bug where timeout is being updated, not inferred from existing.
-        // timeoutSeconds: 42,
+        timeoutSeconds: 42,
         maxInstances: 42,
       });
       if (e.platform === "gcfv2") {
         expect(e).to.include({
-          // TODO: Re-enable once https://github.com/firebase/firebase-tools/issues/4679 is fixed.
-          // expect(e.cpu, `${id}.cpu`).to.equal(2);
-          // cpu: 2,
+          cpu: 2,
           concurrency: 42,
         });
       }
@@ -275,6 +294,13 @@ describe("firebase deploy", function (this) {
         blockingOptions: {},
       },
       v2IdpOpts: {},
+      v1ScheduleOpts: {
+        retryCount: undefined,
+        maxDoublings: undefined,
+        maxBackoffDuration: undefined,
+        maxRetryDuration: undefined,
+        minBackoffDuration: undefined,
+      },
     };
 
     const result = await setOptsAndDeploy(opts);
@@ -286,15 +312,12 @@ describe("firebase deploy", function (this) {
     for (const e of Object.values(endpoints)) {
       expect(e).to.include({
         availableMemoryMb: 128,
-        // TODO: Fix bug where timeout is being updated, not inferred from existing.
-        // timeoutSeconds: 42,
+        timeoutSeconds: 42,
         maxInstances: 42,
       });
       if (e.platform === "gcfv2") {
         expect(e).to.include({
-          // TODO: Re-enable once https://github.com/firebase/firebase-tools/issues/4679 is fixed.
-          // expect(e.cpu, `${id}.cpu`).to.equal(2);
-          // cpu: 2,
+          cpu: 2,
           concurrency: 42,
         });
       }
