@@ -1265,7 +1265,7 @@ describe("Storage emulator", () => {
       await page.close();
     });
 
-    after(async function (this) {
+    after(async () => {
       await browser.close();
     });
 
