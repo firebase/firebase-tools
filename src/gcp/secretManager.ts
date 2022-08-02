@@ -144,14 +144,15 @@ export async function listSecretVersions(
 
 /**
  * Returns secret version resource of given name and version in the project.
+ * If the version is not provided, uses 'latest', which is shorthand in the API.
  */
 export async function getSecretVersion(
   projectId: string,
   name: string,
-  version: string
+  version?: string
 ): Promise<Required<SecretVersion>> {
   const getRes = await client.get<SecretVersionResponse>(
-    `projects/${projectId}/secrets/${name}/versions/${version}`
+    `projects/${projectId}/secrets/${name}/versions/${version || "latest"}`
   );
   return {
     ...parseSecretVersionResourceName(getRes.body.name),

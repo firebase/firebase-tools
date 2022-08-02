@@ -259,7 +259,7 @@ export async function resolveBackend(
   const projectId = userEnvOpt.projectId;
   let paramValues: Record<string, Field<string | number | boolean>> = {};
   if (previews.functionsparams) {
-    paramValues = await params.resolveParams(build.params, projectId, userEnvs);
+    paramValues = await params.resolveParams(build.params, projectId, userEnvs, userEnvOpt);
   }
 
   return toBackend(build, paramValues);
