@@ -8,7 +8,7 @@ import { Readable } from "stream";
 import * as winston from "winston";
 import { SPLAT } from "triple-beam";
 import { AssertionError } from "assert";
-import { strip as ansiStrip } from "cli-color";
+const stripAnsi = require("strip-ansi");
 
 import { configstore } from "./configstore";
 import { FirebaseError } from "./error";
@@ -467,7 +467,7 @@ export function setupLoggers() {
         level: "debug",
         format: winston.format.printf((info) => {
           const segments = [info.message, ...(info[SPLAT] || [])].map(tryStringify);
-          return `${ansiStrip(segments.join(" "))}`;
+          return `${stripAnsi(segments.join(" "))}`;
         }),
       })
     );

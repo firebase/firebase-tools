@@ -56,6 +56,7 @@
         "semver": "^5.7.1",
         "stream-chain": "^2.2.4",
         "stream-json": "^1.7.3",
+        "strip-ansi": "^6.0.1",
         "superstatic": "^8.0.0",
         "tar": "^6.1.11",
         "tcp-port-used": "^1.0.2",
