@@ -11,7 +11,7 @@ import { Endpoint } from "../../src/deploy/functions/backend";
 import { getGlobalDefaultAccount } from "../../src/auth";
 import { setRefreshToken } from "../../src/apiv2";
 
-const FIREBASE_PROJECT = process.env.GCLOUD_PROJECT || "danielylee-test-6";
+const FIREBASE_PROJECT = process.env.GCLOUD_PROJECT || "";
 const FIREBASE_DEBUG = process.env.FIREBASE_DEBUG || "";
 const FUNCTIONS_DIR = path.join(__dirname, "functions");
 const FNS_COUNT = 14;
@@ -48,14 +48,13 @@ async function setOpts(opts: Opts) {
   await fs.writeFile(path.join(FUNCTIONS_DIR, "options.js"), stmt);
 }
 
-async function listFns(stripId = "qmbcmcaczd"): Promise<Record<string, Endpoint>> {
+async function listFns(stripId: string): Promise<Record<string, Endpoint>> {
   const result = await cli.exec("functions:list", FIREBASE_PROJECT, ["--json"], __dirname, false);
   const output = JSON.parse(result.stdout);
 
   const eps: Record<string, Endpoint> = {};
   for (const ep of output.result as Endpoint[]) {
-    // const id = ep.id.replace(`${stripId}-`, "");
-    const id = ep.id.replace(`znyakzsroj-`, "");
+    const id = ep.id.replace(`${stripId}-`, "");
     if (ep.id !== id) {
       // By default, functions list does not attempt to fully hydrate configuration options for task queue and schedule
       // functions because they require extra API calls. Manually inject details.
@@ -203,7 +202,7 @@ describe("firebase deploy", function (this) {
     }
   });
 
-  it.skip("leaves existing options when unspecified", async () => {
+  it("leaves existing options when unspecified", async () => {
     const opts: Opts = {
       v1Opts: {},
       v2Opts: {},
