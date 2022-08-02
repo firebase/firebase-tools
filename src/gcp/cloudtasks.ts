@@ -4,6 +4,7 @@ import { Client } from "../apiv2";
 import { cloudTasksOrigin } from "../api";
 import * as iam from "./iam";
 import * as backend from "../deploy/functions/backend";
+import { nullsafeVisitor } from "../functional";
 
 const API_VERSION = "v2";
 
@@ -21,16 +22,16 @@ export interface AppEngineRouting {
 }
 
 export interface RateLimits {
-  maxDispatchesPerSecond?: number;
-  maxConcurrentDispatches?: number;
+  maxDispatchesPerSecond?: number | null;
+  maxConcurrentDispatches?: number | null;
 }
 
 export interface RetryConfig {
-  maxAttempts?: number;
-  maxRetryDuration?: proto.Duration;
-  minBackoff?: proto.Duration;
-  maxBackoff?: proto.Duration;
-  maxDoublings?: number;
+  maxAttempts?: number | null;
+  maxRetryDuration?: proto.Duration | null;
+  minBackoff?: proto.Duration | null;
+  maxBackoff?: proto.Duration | null;
+  maxDoublings?: number | null;
 }
 
 export interface StackdriverLoggingConfig {
@@ -226,26 +227,26 @@ export function queueFromEndpoint(endpoint: backend.Endpoint & backend.TaskQueue
       "maxAttempts",
       "maxDoublings"
     );
-    proto.renameIfPresent(
+    proto.convertIfPresent(
       queue.retryConfig,
       endpoint.taskQueueTrigger.retryConfig,
       "maxRetryDuration",
       "maxRetrySeconds",
-      proto.durationFromSeconds
+      nullsafeVisitor(proto.durationFromSeconds)
     );
-    proto.renameIfPresent(
+    proto.convertIfPresent(
       queue.retryConfig,
       endpoint.taskQueueTrigger.retryConfig,
       "maxBackoff",
       "maxBackoffSeconds",
-      proto.durationFromSeconds
+      nullsafeVisitor(proto.durationFromSeconds)
     );
-    proto.renameIfPresent(
+    proto.convertIfPresent(
       queue.retryConfig,
       endpoint.taskQueueTrigger.retryConfig,
       "minBackoff",
       "minBackoffSeconds",
-      proto.durationFromSeconds
+      nullsafeVisitor(proto.durationFromSeconds)
     );
   }
   return queue;
