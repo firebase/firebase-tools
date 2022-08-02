@@ -1,4 +1,0 @@
-- Adds check for callable functions when discovering Hosting rewrite endpoints. (#4792)
-- Allows defaulting to a `us-central1` instance of a rewrite function if that function is deployed in multiple regions including `us-central1`. (#4810)
-- Fixes Storage emulator timeCreated metadata bug. (#4599)
-- Fixes Storage import failure due to missing directories. (#3823)
