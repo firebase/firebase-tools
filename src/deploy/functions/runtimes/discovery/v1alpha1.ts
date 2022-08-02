@@ -2,9 +2,15 @@ import * as backend from "../../backend";
 import * as build from "../../build";
 import * as params from "../../params";
 import * as runtimes from "..";
-import { copyIfPresent, renameIfPresent, convertIfPresent } from "../../../../gcp/proto";
+import {
+  copyIfPresent,
+  renameIfPresent,
+  convertIfPresent,
+  secondsFromDuration,
+} from "../../../../gcp/proto";
 import { assertKeyTypes, requireKeys } from "./parsing";
 import { FirebaseError } from "../../../../error";
+import { nullsafeVisitor } from "../../../../functional";
 
 const CHANNEL_NAME_REGEX = new RegExp(
   "(projects\\/" +
@@ -31,6 +37,14 @@ type EventTrigger = backend.EventTrigger & {
   serviceAccountEmail?: string | null;
 };
 
+type ScheduleTrigger = backend.ScheduleTrigger & {
+  retryConfig?: {
+    maxRetryDuration?: string | null;
+    minBackoffDuration?: string | null;
+    maxBackoffDuration?: string | null;
+  } | null;
+};
+
 export type ManifestEndpoint = Base &
   backend.Triggered &
   Partial<backend.HttpsTriggered> &
@@ -38,6 +52,7 @@ export type ManifestEndpoint = Base &
   Partial<{ eventTrigger: EventTrigger }> &
   Partial<backend.TaskQueueTriggered> &
   Partial<backend.BlockingTriggered> &
+  Partial<{ scheduleTrigger: ScheduleTrigger }> &
   Partial<backend.ScheduleTriggered> & {
     region?: string[];
     entryPoint: string;
@@ -210,6 +225,9 @@ function assertManifestEndpoint(ep: ManifestEndpoint, id: string): void {
       minBackoffSeconds: "number?",
       maxBackoffSeconds: "number?",
       maxRetrySeconds: "number?",
+      minBackoffDuration: "string?",
+      maxBackoffDuration: "string?",
+      maxRetryDuration: "string?",
     });
   } else if (backend.isTaskQueueTriggered(ep)) {
     assertKeyTypes(prefix + ".taskQueueTrigger", ep.taskQueueTrigger, {
@@ -301,6 +319,27 @@ function parseEndpointForBuild(
         "maxBackoffSeconds",
         "maxRetrySeconds",
         "maxDoublings"
+      );
+      convertIfPresent(
+        st.retryConfig,
+        ep.scheduleTrigger.retryConfig,
+        "minBackoffSeconds",
+        "minBackoffDuration",
+        nullsafeVisitor(secondsFromDuration)
+      );
+      convertIfPresent(
+        st.retryConfig,
+        ep.scheduleTrigger.retryConfig,
+        "maxBackoffSeconds",
+        "maxBackoffDuration",
+        nullsafeVisitor(secondsFromDuration)
+      );
+      convertIfPresent(
+        st.retryConfig,
+        ep.scheduleTrigger.retryConfig,
+        "maxRetrySeconds",
+        "maxRetryDuration",
+        nullsafeVisitor(secondsFromDuration)
       );
     } else if (ep.scheduleTrigger.retryConfig === null) {
       st.retryConfig = null;

@@ -307,6 +307,63 @@ describe("buildFromV1Alpha", () => {
       await expect(resolveBackend(parsed)).to.eventually.deep.equal(expectedBackend);
     });
 
+    it("copies v1 schedules", async () => {
+      const v1ScheduleTrigger = {
+        schedule: "every 5 minutes",
+        timeZone: "America/Los_Angeles",
+        retryConfig: {
+          retryCount: 20,
+          minBackoffDuration: "1s",
+          maxBackoffDuration: "20s",
+          maxRetryDuration: "120s",
+          maxDoublings: 10,
+        },
+      };
+
+      const scheduleBackendTrigger: backend.ScheduleTrigger = {
+        schedule: "every 5 minutes",
+        timeZone: "America/Los_Angeles",
+        retryConfig: {
+          retryCount: 20,
+          minBackoffSeconds: 1,
+          maxBackoffSeconds: 20,
+          maxRetrySeconds: 120,
+          maxDoublings: 10,
+        },
+      };
+      const scheduleTrigger: build.ScheduleTrigger = {
+        schedule: "every 5 minutes",
+        timeZone: "America/Los_Angeles",
+        retryConfig: {
+          retryCount: 20,
+          minBackoffSeconds: 1,
+          maxBackoffSeconds: 20,
+          maxRetrySeconds: 120,
+          maxDoublings: 10,
+        },
+      };
+
+      const yaml: v1alpha1.Manifest = {
+        specVersion: "v1alpha1",
+        endpoints: {
+          id: {
+            ...MIN_ENDPOINT,
+            scheduleTrigger: v1ScheduleTrigger,
+          },
+        },
+      };
+
+      const parsed = v1alpha1.buildFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME);
+      const expected: build.Build = build.of({ id: { ...DEFAULTED_ENDPOINT, scheduleTrigger } });
+      expect(parsed).to.deep.equal(expected);
+
+      const expectedBackend = backend.of({
+        ...DEFAULTED_BACKEND_ENDPOINT,
+        scheduleTrigger: scheduleBackendTrigger,
+      });
+      await expect(resolveBackend(parsed)).to.eventually.deep.equal(expectedBackend);
+    });
+
     it("copies schedules", async () => {
       const scheduleBackendTrigger: backend.ScheduleTrigger = {
         schedule: "every 5 minutes",
