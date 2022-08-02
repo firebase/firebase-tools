@@ -8,7 +8,7 @@ import * as https from "https";
 import fetch from "node-fetch";
 import * as puppeteer from "puppeteer";
 import { Bucket, Storage, CopyOptions } from "@google-cloud/storage";
-import supertest = require("supertest");
+import * as supertest from "supertest";
 
 import { IMAGE_FILE_BASE64, StorageRulesFiles } from "../../src/test/emulators/fixtures";
 import { TriggerEndToEndTest } from "../integration-helpers/framework";
@@ -87,6 +87,15 @@ describe("Storage emulator", () => {
 
   const emulatorSpecificDescribe = TEST_CONFIG.useProductionServers ? describe.skip : describe;
 
+  function initAdminSdk() {
+      // TODO: We should not need a real credential for emulator tests, but
+      //       today we do.
+      const credential = fs.existsSync(path.join(__dirname, SERVICE_ACCOUNT_KEY))
+        ? admin.credential.cert(readJson(SERVICE_ACCOUNT_KEY))
+        : admin.credential.applicationDefault();
+      admin.initializeApp({ credential });
+  };
+
   describe("Admin SDK Endpoints", function (this) {
     // eslint-disable-next-line @typescript-eslint/no-invalid-this
     this.timeout(TEST_SETUP_TIMEOUT);
@@ -100,16 +109,7 @@ describe("Storage emulator", () => {
         await test.startEmulators(["--only", "auth,storage"]);
       }
 
-      // TODO: We should not need a real credential for emulator tests, but
-      //       today we do.
-      const credential = fs.existsSync(path.join(__dirname, SERVICE_ACCOUNT_KEY))
-        ? admin.credential.cert(readJson(SERVICE_ACCOUNT_KEY))
-        : admin.credential.applicationDefault();
-
-      admin.initializeApp({
-        credential,
-      });
-
+      initAdminSdk();
       testBucket = admin.storage().bucket(storageBucket);
 
       smallFilePath = createRandomFile("small_file", SMALL_FILE_SIZE, tmpDir);
@@ -848,9 +848,8 @@ describe("Storage emulator", () => {
             kind: "storage#objectAccessControl",
             object: destination,
             id: `${testBucket.name}/${destination}/${generation}/allUsers`,
-            selfLink: `${STORAGE_EMULATOR_HOST}/storage/v1/b/${
-              testBucket.name
-            }/o/${encodeURIComponent(destination)}/acl/allUsers`,
+            selfLink: `${STORAGE_EMULATOR_HOST}/storage/v1/b/${testBucket.name
+              }/o/${encodeURIComponent(destination)}/acl/allUsers`,
             bucket: testBucket.name,
             entity: "allUsers",
             role: "READER",
@@ -1343,7 +1342,7 @@ describe("Storage emulator", () => {
    * TODO(abhisun): Add test coverage to validate how many times various cloud functions are triggered.
    */
   describe("Firebase Endpoints", () => {
-    let storage: Storage;
+    let testBucket: Bucket;
     let browser: puppeteer.Browser;
     let page: puppeteer.Page;
 
@@ -1354,11 +1353,14 @@ describe("Storage emulator", () => {
 
       if (TEST_CONFIG.useProductionServers) {
         process.env.GOOGLE_APPLICATION_CREDENTIALS = path.join(__dirname, SERVICE_ACCOUNT_KEY);
-        storage = new Storage();
       } else {
+        process.env.STORAGE_EMULATOR_HOST = STORAGE_EMULATOR_HOST;
         test = new TriggerEndToEndTest(FIREBASE_PROJECT, __dirname, emulatorConfig);
         await test.startEmulators(["--only", "auth,storage"]);
       }
+      
+      initAdminSdk();
+      testBucket = admin.storage().bucket(storageBucket);
 
       browser = await puppeteer.launch({
         headless: !TEST_CONFIG.showBrowser,
@@ -1373,15 +1375,13 @@ describe("Storage emulator", () => {
       await page.goto("https://example.com", { waitUntil: "networkidle2" });
 
       await page.addScriptTag({
-        url: "https://www.gstatic.com/firebasejs/7.24.0/firebase-app.js",
+        url: "https://www.gstatic.com/firebasejs/9.9.1/firebase-app-compat.js",
       });
       await page.addScriptTag({
-        url: "https://www.gstatic.com/firebasejs/7.24.0/firebase-auth.js",
+        url: "https://www.gstatic.com/firebasejs/9.9.1/firebase-auth-compat.js",
       });
       await page.addScriptTag({
-        url: TEST_CONFIG.useProductionServers
-          ? "https://www.gstatic.com/firebasejs/7.24.0/firebase-storage.js"
-          : "https://storage.googleapis.com/fir-tools-builds/firebase-storage.js",
+        url: "https://www.gstatic.com/firebasejs/9.9.1/firebase-storage-compat.js",
       });
 
       await page.evaluate(
@@ -1428,7 +1428,7 @@ describe("Storage emulator", () => {
         this.timeout(TEST_SETUP_TIMEOUT);
 
         if (TEST_CONFIG.useProductionServers) {
-          await storage.bucket(storageBucket).deleteFiles();
+          await testBucket.deleteFiles();
         } else {
           await resetStorageEmulator(STORAGE_EMULATOR_HOST);
         }
@@ -1595,73 +1595,43 @@ describe("Storage emulator", () => {
       describe("#listAll()", () => {
         beforeEach(async function (this) {
           this.timeout(TEST_SETUP_TIMEOUT);
+          smallFilePath = createRandomFile("small_file", SMALL_FILE_SIZE, tmpDir);
 
           const refs = [
             "testing/storage_ref/image.png",
             "testing/somePathEndsWithDoubleSlash//file.png",
           ];
           for (const ref of refs) {
-            await page.evaluate(
-              async (IMAGE_FILE_BASE64, filename) => {
-                const auth = (window as any).auth as firebase.auth.Auth;
-
-                try {
-                  await auth.signInAnonymously();
-                  const task = await firebase
-                    .storage()
-                    .ref(filename)
-                    .putString(IMAGE_FILE_BASE64, "base64");
-                  return task.state;
-                } catch (err: any) {
-                  throw err.message;
-                }
-              },
-              IMAGE_FILE_BASE64,
-              ref
-            );
+            await testBucket.upload(smallFilePath, { destination: ref });
           }
         });
 
         it("should list all files and prefixes", async function (this) {
           this.timeout(TEST_SETUP_TIMEOUT);
 
-          const itemNames = [...Array(5)].map((_, i) => `item#${i}`);
-          for (const item of itemNames) {
-            await page.evaluate(
-              async (IMAGE_FILE_BASE64, filename) => {
-                const auth = (window as any).auth as firebase.auth.Auth;
-
-                try {
-                  await auth.signInAnonymously();
-                  const task = await firebase
-                    .storage()
-                    .ref(filename)
-                    .putString(IMAGE_FILE_BASE64, "base64");
-                  return task.state;
-                } catch (err: any) {
-                  throw err.message;
-                }
-              },
-              IMAGE_FILE_BASE64,
-              `testing/${item}`
-            );
+          const refs = [
+            "listAll/subdir/storage_ref/image.png",
+            "listAll/subdir/somePathEndsWithDoubleSlash//file.png",
+            "listAll/subdir/item1",
+            "listAll/subdir/item2",
+          ];
+          for (const ref of refs) {
+            await testBucket.upload(smallFilePath, { destination: ref });
           }
 
-          const listResult = await page.evaluate(() => {
-            return firebase
+          const listResult = await page.evaluate(async () => {
+            const list = await firebase
               .storage()
-              .ref("testing")
-              .listAll()
-              .then((list) => {
-                return {
-                  prefixes: list.prefixes.map((prefix) => prefix.name),
-                  items: list.items.map((item) => item.name),
-                };
-              });
+              .ref("listAll/subdir/")
+              .listAll();
+            return {
+              prefixes: list.prefixes.map((prefix) => prefix.name),
+              items: list.items.map((item) => item.name),
+            };
           });
 
           expect(listResult).to.deep.equal({
-            items: itemNames,
+            items: ["item1", "item2"],
             prefixes: ["somePathEndsWithDoubleSlash", "storage_ref"],
           });
         });
