@@ -218,7 +218,7 @@ describe("ensureSecretAccess", () => {
       {
         ...e,
         id: "another-id",
-        serviceAccountEmail: "foo@bar.com",
+        serviceAccount: "foo@bar.com",
         secretEnvironmentVariables: [secret0],
       }
     );
@@ -251,7 +251,7 @@ describe("ensureSecretAccess", () => {
     const wantBackend = backend.of(haveEndpoint, {
       ...e,
       id: "another-id",
-      serviceAccountEmail: "foo@bar.com",
+      serviceAccount: "foo@bar.com",
       secretEnvironmentVariables: [secret0],
     });
     secretManagerMock

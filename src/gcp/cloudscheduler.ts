@@ -6,7 +6,7 @@ import { cloudschedulerOrigin } from "../api";
 import { Client } from "../apiv2";
 import * as backend from "../deploy/functions/backend";
 import * as proto from "./proto";
-import { assertExhaustive } from "../functional";
+import { assertExhaustive, nullsafeVisitor } from "../functional";
 
 const VERSION = "v1beta1";
 const DEFAULT_TIME_ZONE = "America/Los_Angeles";
@@ -52,7 +52,7 @@ export interface Job {
   name: string;
   schedule: string;
   description?: string;
-  timeZone?: string;
+  timeZone?: string | null;
 
   // oneof target
   httpTarget?: HttpTarget;
@@ -60,25 +60,12 @@ export interface Job {
   // end oneof target
 
   retryConfig?: {
-    retryCount?: number;
-    maxRetryDuration?: string;
-    minBackoffDuration?: string;
-    maxBackoffDuration?: string;
-    maxDoublings?: number;
+    retryCount?: number | null;
+    maxRetryDuration?: string | null;
+    minBackoffDuration?: string | null;
+    maxBackoffDuration?: string | null;
+    maxDoublings?: number | null;
   };
-}
-
-export function assertValidJob(job: Job) {
-  proto.assertOneOf("Scheduler Job", job, "target", "httpTarget", "pubsubTarget");
-  if (job.httpTarget) {
-    proto.assertOneOf(
-      "Scheduler Job",
-      job.httpTarget,
-      "httpTarget.authorizationHeader",
-      "oauthToken",
-      "odicToken"
-    );
-  }
 }
 
 const apiClient = new Client({ urlPrefix: cloudschedulerOrigin, apiVersion: VERSION });
@@ -212,7 +199,43 @@ export function jobFromEndpoint(
   } else {
     assertExhaustive(endpoint.platform);
   }
-  proto.copyIfPresent(job, endpoint.scheduleTrigger, "schedule", "retryConfig", "timeZone");
+  if (!endpoint.scheduleTrigger.schedule) {
+    throw new FirebaseError(
+      "Cannot create a scheduler job without a schedule:" + JSON.stringify(endpoint)
+    );
+  }
+  job.schedule = endpoint.scheduleTrigger.schedule;
+  job.timeZone = endpoint.scheduleTrigger.timeZone || DEFAULT_TIME_ZONE;
+  if (endpoint.scheduleTrigger.retryConfig) {
+    job.retryConfig = {};
+    proto.copyIfPresent(
+      job.retryConfig,
+      endpoint.scheduleTrigger.retryConfig,
+      "maxDoublings",
+      "retryCount"
+    );
+    proto.convertIfPresent(
+      job.retryConfig,
+      endpoint.scheduleTrigger.retryConfig,
+      "maxBackoffDuration",
+      "maxBackoffSeconds",
+      nullsafeVisitor(proto.durationFromSeconds)
+    );
+    proto.convertIfPresent(
+      job.retryConfig,
+      endpoint.scheduleTrigger.retryConfig,
+      "minBackoffDuration",
+      "minBackoffSeconds",
+      nullsafeVisitor(proto.durationFromSeconds)
+    );
+    proto.convertIfPresent(
+      job.retryConfig,
+      endpoint.scheduleTrigger.retryConfig,
+      "maxRetryDuration",
+      "maxRetrySeconds",
+      nullsafeVisitor(proto.durationFromSeconds)
+    );
+  }
 
   // TypeScript compiler isn't noticing that name is defined in all code paths.
   return job as Job;

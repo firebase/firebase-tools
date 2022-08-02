@@ -379,9 +379,9 @@ export class Fabricator {
     endpoint.uri = resultFunction?.httpsTrigger?.url;
     let invoker: string[] | undefined;
     if (backend.isHttpsTriggered(endpoint)) {
-      invoker = endpoint.httpsTrigger.invoker;
+      invoker = endpoint.httpsTrigger.invoker === null ? ["public"] : endpoint.httpsTrigger.invoker;
     } else if (backend.isTaskQueueTriggered(endpoint)) {
-      invoker = endpoint.taskQueueTrigger.invoker;
+      invoker = endpoint.taskQueueTrigger.invoker === null ? [] : endpoint.taskQueueTrigger.invoker;
     } else if (
       backend.isBlockingTriggered(endpoint) &&
       AUTH_BLOCKING_EVENTS.includes(endpoint.blockingTrigger.eventType as any)
@@ -426,9 +426,9 @@ export class Fabricator {
     const serviceName = resultFunction.serviceConfig.service!;
     let invoker: string[] | undefined;
     if (backend.isHttpsTriggered(endpoint)) {
-      invoker = endpoint.httpsTrigger.invoker;
+      invoker = endpoint.httpsTrigger.invoker === null ? ["public"] : endpoint.httpsTrigger.invoker;
     } else if (backend.isTaskQueueTriggered(endpoint)) {
-      invoker = endpoint.taskQueueTrigger.invoker;
+      invoker = endpoint.taskQueueTrigger.invoker === null ? [] : endpoint.taskQueueTrigger.invoker;
     } else if (
       backend.isBlockingTriggered(endpoint) &&
       AUTH_BLOCKING_EVENTS.includes(endpoint.blockingTrigger.eventType as any)
