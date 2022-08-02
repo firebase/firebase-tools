@@ -68,22 +68,6 @@ export interface Job {
   };
 }
 
-/**
- *
- */
-export function assertValidJob(job: Job) {
-  proto.assertOneOf("Scheduler Job", job, "target", "httpTarget", "pubsubTarget");
-  if (job.httpTarget) {
-    proto.assertOneOf(
-      "Scheduler Job",
-      job.httpTarget,
-      "httpTarget.authorizationHeader",
-      "oauthToken",
-      "odicToken"
-    );
-  }
-}
-
 const apiClient = new Client({ urlPrefix: cloudschedulerOrigin, apiVersion: VERSION });
 
 /**

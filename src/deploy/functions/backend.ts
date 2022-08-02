@@ -172,7 +172,11 @@ export type MemoryOptions = 128 | 256 | 512 | 1024 | 2048 | 4096 | 8192 | 16384 
 const allMemoryOptions: MemoryOptions[] = [128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768];
 
 /**
+<<<<<<< HEAD
  *
+=======
+ * Is a given number a valid MemoryOption?
+>>>>>>> origin
  */
 export function isValidMemoryOption(mem: unknown): mem is MemoryOptions {
   return allMemoryOptions.includes(mem as MemoryOptions);

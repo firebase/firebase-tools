@@ -64,7 +64,7 @@ export function assertKeyTypes<T extends object>(
   prefix: string,
   yaml: T | undefined,
   schema: Schema<T>,
-  passthrough?: (k: string, v: any) => boolean
+  passthrough?: (k: string, v?: any) => boolean
 ): void {
   if (!yaml) {
     return;
@@ -108,7 +108,19 @@ export function assertKeyTypes<T extends object>(
           `Expected ${fullKey} to be Field<${match[1]}>; was ${typeof value}`
         );
       }
-    } else if (schemaType === "string") {
+      continue;
+    }
+
+    if (value === null) {
+      if (schemaType.endsWith("?")) {
+        continue;
+      }
+      throw new FirebaseError(`Expected ${fullKey}} to be type ${schemaType}; was null`);
+    }
+    if (schemaType.endsWith("?")) {
+      schemaType = schemaType.slice(0, schemaType.length - 1);
+    }
+    if (schemaType === "string") {
       if (typeof value !== "string") {
         throw new FirebaseError(`Expected ${fullKey} to be type string; was ${typeof value}`);
       }

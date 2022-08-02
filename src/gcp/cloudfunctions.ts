@@ -110,7 +110,7 @@ export interface CloudFunction {
 
   entryPoint: string;
   runtime: runtimes.Runtime;
-  // Seconds. Default = 60
+  // Default = 60s
   timeout?: proto.Duration | null;
 
   // Default 256
@@ -591,7 +591,7 @@ export function functionFromEndpoint(
 
   // N.B. It has the same effect to set labels to the empty object as it does to
   // set it to null, except the former is more effective for adding automatic
-  // lables for thigns like deployment-callable
+  // lables for things like deployment-callable
   if (typeof endpoint.labels !== "undefined") {
     gcfFunction.labels = { ...endpoint.labels };
   }
@@ -666,6 +666,9 @@ export function functionFromEndpoint(
       "vpcConnectorEgressSettings",
       "egressSettings"
     );
+  } else if (endpoint.vpc === null) {
+    gcfFunction.vpcConnector = null;
+    gcfFunction.vpcConnectorEgressSettings = null;
   }
   const codebase = endpoint.codebase || projectConfig.DEFAULT_CODEBASE;
   if (codebase !== projectConfig.DEFAULT_CODEBASE) {

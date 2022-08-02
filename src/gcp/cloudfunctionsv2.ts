@@ -481,6 +481,9 @@ export function functionFromEndpoint(
       "vpcConnectorEgressSettings",
       "egressSettings"
     );
+  } else if (endpoint.vpc === null) {
+    gcfFunction.serviceConfig.vpcConnector = null;
+    gcfFunction.serviceConfig.vpcConnectorEgressSettings = null;
   }
 
   if (backend.isEventTriggered(endpoint)) {

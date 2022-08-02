@@ -56,7 +56,7 @@ export async function deploy(
       return runDeploys(deploys, debugging);
     }
 
-    logLabeledBullet("hosting[" + deploy.site + "]", "beginning deploy...");
+    logLabeledBullet(`hosting[${deploy.site}]`, "beginning deploy...");
     const t0 = Date.now();
 
     const publicDir = options.config.path(deploy.config.public);

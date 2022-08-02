@@ -231,10 +231,10 @@ export async function resolveParams(
 ): Promise<Record<string, ParamValue>> {
   const paramValues: Record<string, ParamValue> = {};
 
-  const [resolved, outstanding] = partition(params, (param) => {
+  const [provided, outstanding] = partition(params, (param) => {
     return {}.hasOwnProperty.call(userEnvs, param.name);
   });
-  for (const param of resolved) {
+  for (const param of provided) {
     if (!canSatisfyParam(param, userEnvs[param.name])) {
       throw new FirebaseError(
         "Parameter " +

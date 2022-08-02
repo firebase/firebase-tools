@@ -244,6 +244,19 @@ describe("convertConfig", () => {
       finalize: true,
     },
     {
+      name: "returns the specified rewrite even if it's not found",
+      input: { rewrites: [{ glob: "/foo", function: "foofn" }] },
+      payload: {
+        functions: {
+          default: {
+            wantBackend: backend.empty(),
+            haveBackend: backend.empty(),
+          },
+        },
+      },
+      want: { rewrites: [{ glob: "/foo", function: "foofn" }] },
+    },
+    {
       name: "returns rewrites for Run with specified regions",
       input: { rewrites: [{ glob: "/foo", run: { serviceId: "hello", region: "us-midwest" } }] },
       want: { rewrites: [{ glob: "/foo", run: { region: "us-midwest", serviceId: "hello" } }] },
@@ -370,18 +383,6 @@ describe("convertConfig throws expection if", () => {
     finalize?: boolean;
     context: any;
   }> = [
-    {
-      name: "no valid endpoints are found for function",
-      input: { rewrites: [{ glob: "/foo", function: "foofn" }] },
-      context: {
-        loadedExistingBackend: true,
-        existingBackend: {
-          endpoints: {},
-        },
-      },
-      payload: {},
-      errorString: "Unable to find a valid endpoint",
-    },
     {
       name: "multiple v2 endpoints are found for function and functionRegion is not specified",
       input: { rewrites: [{ glob: "/foo", function: "foofn" }] },

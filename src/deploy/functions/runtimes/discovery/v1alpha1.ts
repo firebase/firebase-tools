@@ -312,7 +312,7 @@ function assertBuildEndpoint(ep: V2Endpoint, id: string): void {
         cpu === null || typeof cpu === "number" || cpu === "gcf_gen1",
     },
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    (k: string, _v: any) => k === "serviceAccountEmail"
+    (k: string) => k === "serviceAccountEmail"
   );
   if (ep.vpc) {
     assertKeyTypes(prefix + ".vpc", ep.vpc, {

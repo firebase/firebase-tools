@@ -8,7 +8,7 @@ import { Resource } from "../../extensions/types";
 import * as proto from "../../gcp/proto";
 
 /**
- *
+ * Convert a Resource into a ParsedTriggerDefinition
  */
 export function functionResourceToEmulatedTriggerDefintion(
   resource: Resource
