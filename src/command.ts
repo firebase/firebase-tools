@@ -145,6 +145,7 @@ export class Command {
 
     if (this.helpText) {
       cmd.on("--help", () => {
+        console.log(); // Seperates the help text from global options.
         console.log(this.helpText);
       });
     }
