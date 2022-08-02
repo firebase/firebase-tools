@@ -17,7 +17,6 @@ import {
   EMULATORS_SHUTDOWN_DELAY_MS,
   getAuthEmulatorHost,
   getStorageEmulatorHost,
-  LARGE_FILE_SIZE,
   readEmulatorConfig,
   readFile,
   readJson,
@@ -91,7 +90,7 @@ describe("Storage emulator", () => {
 
   const emulatorSpecificDescribe = TEST_CONFIG.useProductionServers ? describe.skip : describe;
 
-  async function resetEmulatorState() {
+  async function resetEmulatorState(): Promise<void> {
     if (TEST_CONFIG.useProductionServers) {
       await testBucket.deleteFiles();
     } else {

@@ -20,7 +20,6 @@ export const SERVICE_ACCOUNT_KEY = "service-account-key.json";
 // Firebase Emulator config, for starting up emulators
 export const FIREBASE_EMULATOR_CONFIG = "firebase.json";
 export const SMALL_FILE_SIZE = 200 * 1024; /* 200 kB */
-export const LARGE_FILE_SIZE = 20 * 1024 * 1024; /* 20 MiB */
 
 /**
  * Reads a JSON file in the current directory.
