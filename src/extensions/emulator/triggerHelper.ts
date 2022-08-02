@@ -7,6 +7,9 @@ import { Emulators } from "../../emulator/types";
 import { Resource } from "../../extensions/types";
 import * as proto from "../../gcp/proto";
 
+/**
+ * Convert a Resource into a ParsedTriggerDefinition
+ */
 export function functionResourceToEmulatedTriggerDefintion(
   resource: Resource
 ): ParsedTriggerDefinition {
@@ -16,8 +19,8 @@ export function functionResourceToEmulatedTriggerDefintion(
     platform: "gcfv1",
   };
   const properties = resource.properties || {};
-  proto.renameIfPresent(etd, properties, "timeoutSeconds", "timeout", proto.secondsFromDuration);
-  proto.renameIfPresent(etd, properties, "regions", "location", (str: string) => [str]);
+  proto.convertIfPresent(etd, properties, "timeoutSeconds", "timeout", proto.secondsFromDuration);
+  proto.convertIfPresent(etd, properties, "regions", "location", (str: string) => [str]);
   proto.copyIfPresent(etd, properties, "availableMemoryMb");
   if (properties.httpsTrigger) {
     etd.httpsTrigger = properties.httpsTrigger;

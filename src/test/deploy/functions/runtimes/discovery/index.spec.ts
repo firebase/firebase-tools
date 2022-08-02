@@ -11,6 +11,7 @@ import * as build from "../../../../../deploy/functions/build";
 const MIN_ENDPOINT = {
   entryPoint: "entrypoint",
   httpsTrigger: {},
+  serviceAccount: null,
 };
 
 const ENDPOINT: build.Endpoint = {
@@ -94,11 +95,8 @@ describe("detectFromPort", () => {
     nock.cleanAll();
   });
 
-  // This test requires us to launch node and load express.js. On my 16" MBP this takes
-  // 600ms, which is dangerously close to the default limit of 1s. Increase limits so
-  // that this doesn't flake even when running on slower machines experiencing hiccup
   it("passes as smoke test", async () => {
-    nock("http://localhost:8080").get("/__/functions.yaml").times(20).replyWithError({
+    nock("http://localhost:8080").get("/__/functions.yaml").times(5).replyWithError({
       message: "Still booting",
       code: "ECONNREFUSED",
     });
