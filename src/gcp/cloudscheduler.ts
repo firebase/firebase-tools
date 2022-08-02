@@ -6,8 +6,8 @@ import { cloudschedulerOrigin } from "../api";
 import { Client } from "../apiv2";
 import * as backend from "../deploy/functions/backend";
 import * as proto from "./proto";
-import { assertExhaustive } from "../functional";
 import { getDefaultComputeServiceAgent } from "../deploy/functions/checkIam";
+import { assertExhaustive, nullsafeVisitor } from "../functional";
 
 const VERSION = "v1beta1";
 const DEFAULT_TIME_ZONE_V1 = "America/Los_Angeles";
@@ -54,7 +54,7 @@ export interface Job {
   name: string;
   schedule: string;
   description?: string;
-  timeZone?: string;
+  timeZone?: string | null;
 
   // oneof target
   httpTarget?: HttpTarget;
@@ -62,11 +62,11 @@ export interface Job {
   // end oneof target
 
   retryConfig?: {
-    retryCount?: number;
-    maxRetryDuration?: string;
-    minBackoffDuration?: string;
-    maxBackoffDuration?: string;
-    maxDoublings?: number;
+    retryCount?: number | null;
+    maxRetryDuration?: string | null;
+    minBackoffDuration?: string | null;
+    maxBackoffDuration?: string | null;
+    maxDoublings?: number | null;
   };
 }
 
@@ -198,6 +198,7 @@ export function jobFromEndpoint(
     const id = backend.scheduleIdForFunction(endpoint);
     const region = appEngineLocation;
     job.name = `projects/${endpoint.project}/locations/${region}/jobs/${id}`;
+    job.timeZone = endpoint.scheduleTrigger.timeZone || DEFAULT_TIME_ZONE_V1;
     job.pubsubTarget = {
       topicName: `projects/${endpoint.project}/topics/${id}`,
       attributes: {
@@ -214,7 +215,7 @@ export function jobFromEndpoint(
 
     const id = backend.scheduleIdForFunction(endpoint);
     job.name = `projects/${endpoint.project}/locations/${endpoint.region}/jobs/${id}`;
-    job.timeZone = DEFAULT_TIME_ZONE_V2;
+    job.timeZone = endpoint.scheduleTrigger.timeZone || DEFAULT_TIME_ZONE_V2;
     job.httpTarget = {
       uri: endpoint.uri!,
       httpMethod: "GET",
@@ -228,7 +229,43 @@ export function jobFromEndpoint(
   } else {
     assertExhaustive(endpoint.platform);
   }
-  proto.copyIfPresent(job, endpoint.scheduleTrigger, "schedule", "retryConfig", "timeZone");
+  if (!endpoint.scheduleTrigger.schedule) {
+    throw new FirebaseError(
+      "Cannot create a scheduler job without a schedule:" + JSON.stringify(endpoint)
+    );
+  }
+  job.schedule = endpoint.scheduleTrigger.schedule;
+  
+  if (endpoint.scheduleTrigger.retryConfig) {
+    job.retryConfig = {};
+    proto.copyIfPresent(
+      job.retryConfig,
+      endpoint.scheduleTrigger.retryConfig,
+      "maxDoublings",
+      "retryCount"
+    );
+    proto.convertIfPresent(
+      job.retryConfig,
+      endpoint.scheduleTrigger.retryConfig,
+      "maxBackoffDuration",
+      "maxBackoffSeconds",
+      nullsafeVisitor(proto.durationFromSeconds)
+    );
+    proto.convertIfPresent(
+      job.retryConfig,
+      endpoint.scheduleTrigger.retryConfig,
+      "minBackoffDuration",
+      "minBackoffSeconds",
+      nullsafeVisitor(proto.durationFromSeconds)
+    );
+    proto.convertIfPresent(
+      job.retryConfig,
+      endpoint.scheduleTrigger.retryConfig,
+      "maxRetryDuration",
+      "maxRetrySeconds",
+      nullsafeVisitor(proto.durationFromSeconds)
+    );
+  }
 
   // TypeScript compiler isn't noticing that name is defined in all code paths.
   return job as Job;

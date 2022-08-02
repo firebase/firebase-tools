@@ -144,6 +144,7 @@ describe("cloudscheduler", () => {
       ).to.deep.equal({
         name: "projects/project/locations/appEngineLocation/jobs/firebase-schedule-id-region",
         schedule: "every 1 minutes",
+        timeZone: "America/Los_Angeles",
         pubsubTarget: {
           topicName: "projects/project/topics/firebase-schedule-id-region",
           attributes: {
@@ -180,9 +181,9 @@ describe("cloudscheduler", () => {
               timeZone: "America/Los_Angeles",
               retryConfig: {
                 maxDoublings: 2,
-                maxBackoffDuration: "20s",
-                minBackoffDuration: "1s",
-                maxRetryDuration: "60s",
+                maxBackoffSeconds: 20,
+                minBackoffSeconds: 1,
+                maxRetrySeconds: 60,
               },
             },
           },
