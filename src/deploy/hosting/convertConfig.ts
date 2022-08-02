@@ -1,6 +1,11 @@
 import { FirebaseError } from "../../error";
 import { HostingConfig, HostingRewrites, HostingHeaders } from "../../firebaseConfig";
-import { existingBackend, allEndpoints, isHttpsTriggered } from "../functions/backend";
+import {
+  existingBackend,
+  allEndpoints,
+  isHttpsTriggered,
+  isCallableTriggered,
+} from "../functions/backend";
 import { Payload } from "./args";
 import * as backend from "../functions/backend";
 import { Context } from "../functions/args";
@@ -50,17 +55,17 @@ interface FunctionsEndpointInfo {
  * the valid format for sending to the Firebase Hosting REST API
  */
 export async function convertConfig(
-  context: any,
+  context: Context,
   payload: Payload,
   config: HostingConfig | undefined,
   finalize: boolean
-): Promise<{ [k: string]: any }> {
+): Promise<Record<string, any>> {
   if (Array.isArray(config)) {
     throw new FirebaseError(`convertConfig should be given a single configuration, not an array.`, {
       exit: 2,
     });
   }
-  const out: { [k: string]: any } = {};
+  const out: Record<string, any> = {};
 
   if (!config) {
     return out;
@@ -89,7 +94,7 @@ export async function convertConfig(
 
     if (matchingBackends.length === 1) {
       const endpoint = matchingBackends[0];
-      if (endpoint && isHttpsTriggered(endpoint)) {
+      if (endpoint && (isHttpsTriggered(endpoint) || isCallableTriggered(endpoint))) {
         return endpoint;
       }
     }

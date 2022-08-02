@@ -1,0 +1,3 @@
+- Adds check for callable functions when discovering Hosting rewrite endpoints. (#4792)
+- Fixes Storage emulator timeCreated metadata bug. (#4599)
+- Fixes Storage import failure due to missing directories. (#3823)
