@@ -1,14 +1,14 @@
 import * as _ from "lodash";
 import * as url from "url";
 import * as http from "http";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as ora from "ora";
 import * as process from "process";
 import { Readable } from "stream";
 import * as winston from "winston";
 import { SPLAT } from "triple-beam";
 import { AssertionError } from "assert";
-const ansiStrip = require("cli-color/strip") as (input: string) => string;
+import { strip as ansiStrip } from "cli-color";
 
 import { configstore } from "./configstore";
 import { FirebaseError } from "./error";
@@ -131,7 +131,7 @@ export function logSuccess(
   type: LogLevel = "info",
   data: LogDataOrUndefined = undefined
 ): void {
-  logger[type](clc.green.bold(`${SUCCESS_CHAR} `), message, data);
+  logger[type](clc.green(clc.bold(`${SUCCESS_CHAR} `)), message, data);
 }
 
 /**
@@ -143,7 +143,7 @@ export function logLabeledSuccess(
   type: LogLevel = "info",
   data: LogDataOrUndefined = undefined
 ): void {
-  logger[type](clc.green.bold(`${SUCCESS_CHAR}  ${label}:`), message, data);
+  logger[type](clc.green(clc.bold(`${SUCCESS_CHAR}  ${label}:`)), message, data);
 }
 
 /**
@@ -154,7 +154,7 @@ export function logBullet(
   type: LogLevel = "info",
   data: LogDataOrUndefined = undefined
 ): void {
-  logger[type](clc.cyan.bold("i "), message, data);
+  logger[type](clc.cyan(clc.bold("i ")), message, data);
 }
 
 /**
@@ -166,7 +166,7 @@ export function logLabeledBullet(
   type: LogLevel = "info",
   data: LogDataOrUndefined = undefined
 ): void {
-  logger[type](clc.cyan.bold(`i  ${label}:`), message, data);
+  logger[type](clc.cyan(clc.bold(`i  ${label}:`)), message, data);
 }
 
 /**
@@ -177,7 +177,7 @@ export function logWarning(
   type: LogLevel = "warn",
   data: LogDataOrUndefined = undefined
 ): void {
-  logger[type](clc.yellow.bold(`${WARNING_CHAR} `), message, data);
+  logger[type](clc.yellow(clc.bold(`${WARNING_CHAR} `)), message, data);
 }
 
 /**
@@ -189,7 +189,7 @@ export function logLabeledWarning(
   type: LogLevel = "warn",
   data: LogDataOrUndefined = undefined
 ): void {
-  logger[type](clc.yellow.bold(`${WARNING_CHAR}  ${label}:`), message, data);
+  logger[type](clc.yellow(clc.bold(`${WARNING_CHAR}  ${label}:`)), message, data);
 }
 
 /**
@@ -201,7 +201,7 @@ export function logLabeledError(
   type: LogLevel = "error",
   data: LogDataOrUndefined = undefined
 ): void {
-  logger[type](clc.red.bold(`${ERROR_CHAR}  ${label}:`), message, data);
+  logger[type](clc.red(clc.bold(`${ERROR_CHAR}  ${label}:`)), message, data);
 }
 
 /**

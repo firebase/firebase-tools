@@ -1,4 +1,4 @@
-import { bold } from "cli-color";
+import { bold } from "colorette";
 import * as ora from "ora";
 
 import { Command } from "../command";

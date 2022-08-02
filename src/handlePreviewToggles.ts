@@ -1,13 +1,13 @@
 "use strict";
 
 import { unset, has } from "lodash";
-import { bold } from "cli-color";
+import { bold, red } from "colorette";
 
 import { configstore } from "./configstore";
 import { previews } from "./previews";
 
 function _errorOut(name?: string) {
-  console.log(bold.red("Error:"), "Did not recognize preview feature", bold(name));
+  console.log(bold(red("Error:")), "Did not recognize preview feature", bold(name || ""));
   process.exit(1);
 }
 

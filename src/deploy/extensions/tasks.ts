@@ -1,4 +1,4 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import { FirebaseError } from "../../error";
 
 import * as extensionsApi from "../../extensions/extensionsApi";
@@ -177,5 +177,5 @@ export function deleteExtensionInstanceTask(
 
 function printSuccess(instanceId: string, type: DeploymentType, validateOnly: boolean) {
   const action = validateOnly ? `validated ${type} for` : `${type}d`;
-  utils.logSuccess(clc.bold.green("extensions") + ` Successfully ${action} ${instanceId}`);
+  utils.logSuccess(clc.bold(clc.green("extensions")) + ` Successfully ${action} ${instanceId}`);
 }

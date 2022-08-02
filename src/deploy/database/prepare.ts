@@ -1,4 +1,4 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as path from "path";
 
 import { FirebaseError } from "../../error";
@@ -45,14 +45,14 @@ export function prepare(context: any, options: Options): Promise<any> {
     deploys: deploys,
     ruleFiles: ruleFiles,
   };
-  utils.logBullet(clc.bold.cyan("database: ") + "checking rules syntax...");
+  utils.logBullet(clc.bold(clc.cyan("database: ")) + "checking rules syntax...");
   return Promise.all(
     deploys.map((deploy) => {
       return rtdb
         .updateRules(context.projectId, deploy.instance, ruleFiles[deploy.rules], { dryRun: true })
         .then(() => {
           utils.logSuccess(
-            clc.bold.green("database: ") +
+            clc.bold(clc.green("database: ")) +
               "rules syntax for database " +
               clc.bold(deploy.instance) +
               " is valid"

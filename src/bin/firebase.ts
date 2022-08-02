@@ -12,7 +12,7 @@ if (!semver.satisfies(nodeVersion, pkg.engines.node)) {
 }
 
 import * as updateNotifierPkg from "update-notifier";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as TerminalRenderer from "marked-terminal";
 const updateNotifier = updateNotifierPkg({ pkg: pkg });
 import { marked } from "marked";

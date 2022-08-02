@@ -5,7 +5,7 @@ import * as WebSocket from "ws";
 import { LogEntry } from "winston";
 import * as TransportStream from "winston-transport";
 import { logger } from "../logger";
-const ansiStrip = require("cli-color/strip");
+import { strip as ansiStrip } from "cli-color";
 
 export interface LoggingEmulatorArgs {
   port?: number;

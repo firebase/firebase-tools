@@ -5,8 +5,8 @@ import { logger } from "../../logger";
 import { track } from "../../track";
 import { envOverride, logLabeledBullet, logLabeledSuccess } from "../../utils";
 import { HostingDeploy } from "./hostingDeploy";
+import * as clc from "colorette";
 
-import * as clc from "cli-color";
 const SPINNER = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 
 // Feature from cli-color 2.0.0 that we want to use:
@@ -35,7 +35,7 @@ export async function deploy(
     } else {
       process.stdout.write(_ERASE_LINE + clc.move(-9999, 0));
       process.stdout.write(
-        clc.bold.cyan(SPINNER[spins % SPINNER.length] + "  hosting: ") + newMessage
+        clc.bold(clc.cyan(SPINNER[spins % SPINNER.length] + "  hosting: ")) + newMessage
       );
     }
     spins++;

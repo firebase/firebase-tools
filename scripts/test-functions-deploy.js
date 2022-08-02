@@ -24,7 +24,7 @@ var extractTriggers = require("../lib/deploy/functions/runtimes/node/extractTrig
 var functionsConfig = require("../lib/functionsConfig");
 var { last } = require("../lib/utils");
 
-var clc = require("cli-color");
+var clc = require("colorette");
 var firebase = require("firebase");
 
 var functionsSource = __dirname + "/assets/functions_to_test.js";

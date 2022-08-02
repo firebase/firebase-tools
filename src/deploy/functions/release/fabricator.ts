@@ -1,4 +1,4 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
 import { Executor } from "./executor";
 import { FirebaseError } from "../../../error";
@@ -647,7 +647,7 @@ export class Fabricator {
 
   logOpSuccess(op: string, endpoint: backend.Endpoint): void {
     const label = helper.getFunctionLabel(endpoint);
-    utils.logSuccess(`${clc.bold.green(`functions[${label}]`)} Successful ${op} operation.`);
+    utils.logSuccess(`${clc.bold(clc.green(`functions[${label}]`))} Successful ${op} operation.`);
   }
 }
 
