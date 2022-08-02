@@ -1,1 +1,2 @@
-Fixes Storage emulator timeCreated metadata bug. (#4599)
+- Adds check for callable functions when discovering Hosting rewrite endpoints. (#4792)
+- Fixes Storage emulator timeCreated metadata bug. (#4599)
