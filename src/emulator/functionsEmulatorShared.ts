@@ -116,11 +116,7 @@ export class EmulatedTrigger {
 }
 
 /**
-<<<<<<< HEAD
- *
-=======
  * Validates that triggers are correctly formed and fills in some defaults.
->>>>>>> origin
  */
 export function prepareEndpoints(endpoints: backend.Endpoint[]) {
   const bkend = backend.of(...endpoints);
