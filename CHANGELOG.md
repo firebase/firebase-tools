@@ -1,0 +1,1 @@
+- Add storage emulator support to init.js useEmulator flag (#4805)
