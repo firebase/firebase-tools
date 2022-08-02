@@ -1411,7 +1411,6 @@ describe("Storage emulator", () => {
       describe("#listAll()", () => {
         beforeEach(async function (this) {
           this.timeout(TEST_SETUP_TIMEOUT);
-          smallFilePath = createRandomFile("small_file", SMALL_FILE_SIZE, tmpDir);
 
           const refs = [
             "testing/storage_ref/image.png",
