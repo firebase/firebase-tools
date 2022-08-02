@@ -92,7 +92,6 @@ describe("Storage emulator", () => {
 
   const emulatorSpecificDescribe = TEST_CONFIG.useProductionServers ? describe.skip : describe;
 
-
   async function resetEmulatorState() {
     if (TEST_CONFIG.useProductionServers) {
       await testBucket.deleteFiles();
@@ -123,7 +122,7 @@ describe("Storage emulator", () => {
   after(async function (this) {
     this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
     if (tmpDir) {
-      fs.rmSync(tmpDir, { recursive: true, force: true })
+      fs.rmSync(tmpDir, { recursive: true, force: true });
     }
 
     if (TEST_CONFIG.useProductionServers) {
@@ -871,8 +870,9 @@ describe("Storage emulator", () => {
             kind: "storage#objectAccessControl",
             object: destination,
             id: `${testBucket.name}/${destination}/${generation}/allUsers`,
-            selfLink: `${STORAGE_EMULATOR_HOST}/storage/v1/b/${testBucket.name
-              }/o/${encodeURIComponent(destination)}/acl/allUsers`,
+            selfLink: `${STORAGE_EMULATOR_HOST}/storage/v1/b/${
+              testBucket.name
+            }/o/${encodeURIComponent(destination)}/acl/allUsers`,
             bucket: testBucket.name,
             entity: "allUsers",
             role: "READER",
@@ -1218,7 +1218,10 @@ describe("Storage emulator", () => {
 
     const filename = "testing/storage_ref/image.png";
     const image_filename = writeToFile(
-      "image_base64", Buffer.from(IMAGE_FILE_BASE64, "base64"), tmpDir);
+      "image_base64",
+      Buffer.from(IMAGE_FILE_BASE64, "base64"),
+      tmpDir
+    );
 
     before(async function (this) {
       this.timeout(TEST_SETUP_TIMEOUT);
@@ -1440,10 +1443,7 @@ describe("Storage emulator", () => {
           }
 
           const listResult = await page.evaluate(async () => {
-            const list = await firebase
-              .storage()
-              .ref("listAll/subdir/")
-              .listAll();
+            const list = await firebase.storage().ref("listAll/subdir/").listAll();
             return {
               prefixes: list.prefixes.map((prefix) => prefix.name),
               items: list.items.map((item) => item.name),
@@ -1475,10 +1475,7 @@ describe("Storage emulator", () => {
           );
 
           const listResult = await page.evaluate(async () => {
-            const list = await firebase
-              .storage()
-              .ref("testing/implicit")
-              .listAll();
+            const list = await firebase.storage().ref("testing/implicit").listAll();
             return {
               prefixes: list.prefixes.map((prefix) => prefix.name),
               items: list.items.map((item) => item.name),
@@ -1650,12 +1647,9 @@ describe("Storage emulator", () => {
           this.timeout(TEST_SETUP_TIMEOUT);
 
           const listItems = await page.evaluate(async () => {
-            const list = await firebase
-              .storage()
-              .ref("testing/list")
-              .list({
-                maxResults: 4,
-              });
+            const list = await firebase.storage().ref("testing/list").list({
+              maxResults: 4,
+            });
             return {
               items: list.items.map((item) => item.name),
               nextPageToken: list.nextPageToken,
@@ -1675,13 +1669,10 @@ describe("Storage emulator", () => {
 
           do {
             const listResponse = await page.evaluate(async (pageToken) => {
-              const list = await firebase
-                .storage()
-                .ref("testing/list")
-                .list({
-                  maxResults: 4,
-                  pageToken,
-                });
+              const list = await firebase.storage().ref("testing/list").list({
+                maxResults: 4,
+                pageToken,
+              });
               return {
                 items: list.items.map((item) => item.name),
                 nextPageToken: list.nextPageToken ?? "",
@@ -1896,11 +1887,13 @@ describe("Storage emulator", () => {
   });
 
   describe("Non-SDK Endpoints", () => {
-
     const filename = "testing/storage_ref/image.png";
     const encoded_filename = "testing%2Fstorage_ref%2Fimage.png";
     const image_filename = writeToFile(
-      "image_base64", Buffer.from(IMAGE_FILE_BASE64, "base64"), tmpDir);
+      "image_base64",
+      Buffer.from(IMAGE_FILE_BASE64, "base64"),
+      tmpDir
+    );
 
     beforeEach(async function (this) {
       this.timeout(TEST_SETUP_TIMEOUT);
@@ -1922,9 +1915,7 @@ describe("Storage emulator", () => {
 
       it("should return a 400 if create_token value is invalid", async () => {
         await supertest(STORAGE_EMULATOR_HOST)
-          .post(
-            `/v0/b/${storageBucket}/o/${encoded_filename}?create_token=someNonTrueParam`
-          )
+          .post(`/v0/b/${storageBucket}/o/${encoded_filename}?create_token=someNonTrueParam`)
           .set({ Authorization: "Bearer owner" })
           .expect(400);
       });
@@ -1940,7 +1931,7 @@ describe("Storage emulator", () => {
         await supertest(STORAGE_EMULATOR_HOST)
           .post(`/v0/b/${storageBucket}/o/${encoded_filename}?create_token=true`)
           .set({ Authorization: "Bearer owner" })
-          .expect(200)
+          .expect(200);
         const tokens = await supertest(STORAGE_EMULATOR_HOST)
           .post(`/v0/b/${storageBucket}/o/${encoded_filename}?create_token=true`)
           .set({ Authorization: "Bearer owner" })
@@ -1948,9 +1939,7 @@ describe("Storage emulator", () => {
           .then((res) => res.body.downloadTokens.split(","));
         // delete the newly added token
         await supertest(STORAGE_EMULATOR_HOST)
-          .post(
-            `/v0/b/${storageBucket}/o/${encoded_filename}?delete_token=${tokens[0]}`
-          )
+          .post(`/v0/b/${storageBucket}/o/${encoded_filename}?delete_token=${tokens[0]}`)
           .set({ Authorization: "Bearer owner" })
           .expect(200)
           .then((res) => {
@@ -1963,7 +1952,7 @@ describe("Storage emulator", () => {
         await supertest(STORAGE_EMULATOR_HOST)
           .post(`/v0/b/${storageBucket}/o/${encoded_filename}?create_token=true`)
           .set({ Authorization: "Bearer owner" })
-          .expect(200)
+          .expect(200);
         const token = await supertest(STORAGE_EMULATOR_HOST)
           .get(`/v0/b/${storageBucket}/o/${encoded_filename}`)
           .set({ Authorization: "Bearer owner" })
@@ -1971,9 +1960,7 @@ describe("Storage emulator", () => {
           .then((res) => res.body.downloadTokens);
 
         await supertest(STORAGE_EMULATOR_HOST)
-          .post(
-            `/v0/b/${storageBucket}/o/${encoded_filename}?delete_token=${token}`
-          )
+          .post(`/v0/b/${storageBucket}/o/${encoded_filename}?delete_token=${token}`)
           .set({ Authorization: "Bearer owner" })
           .expect(200)
           .then((res) => {
@@ -1985,9 +1972,7 @@ describe("Storage emulator", () => {
 
       it("should return a 403 for delete_token if auth header is invalid", async () => {
         await supertest(STORAGE_EMULATOR_HOST)
-          .post(
-            `/v0/b/${storageBucket}/o/${encoded_filename}?delete_token=someToken`
-          )
+          .post(`/v0/b/${storageBucket}/o/${encoded_filename}?delete_token=someToken`)
           .set({ Authorization: "Bearer somethingElse" })
           .expect(403);
       });
@@ -2006,9 +1991,7 @@ describe("Storage emulator", () => {
 
     it("should accept subsequent resumable upload commands without an auth header", async () => {
       const uploadURL = await supertest(STORAGE_EMULATOR_HOST)
-        .post(
-          `/v0/b/${storageBucket}/o/test_upload.jpg?uploadType=resumable&name=test_upload.jpg`
-        )
+        .post(`/v0/b/${storageBucket}/o/test_upload.jpg?uploadType=resumable&name=test_upload.jpg`)
         .set({
           Authorization: "Bearer owner",
           "X-Goog-Upload-Protocol": "resumable",
@@ -2046,9 +2029,7 @@ describe("Storage emulator", () => {
 
     it("should return 403 when resumable upload is unauthenticated", async () => {
       const uploadURL = await supertest(STORAGE_EMULATOR_HOST)
-        .post(
-          `/v0/b/${storageBucket}/o/test_upload.jpg?uploadType=resumable&name=test_upload.jpg`
-        )
+        .post(`/v0/b/${storageBucket}/o/test_upload.jpg?uploadType=resumable&name=test_upload.jpg`)
         .set({
           // Authorization missing
           "X-Goog-Upload-Protocol": "resumable",
@@ -2185,10 +2166,12 @@ describe("Storage emulator", () => {
         .put("/internal/setRules")
         .send({
           rules: {
-            files: [{
-              name: "/dev/null/storage.rules",
-              content: DEFAULT_RULES
-            }],
+            files: [
+              {
+                name: "/dev/null/storage.rules",
+                content: DEFAULT_RULES,
+              },
+            ],
           },
         })
         .expect(200);
@@ -2321,5 +2304,4 @@ describe("Storage emulator", () => {
       });
     });
   });
-
 });
