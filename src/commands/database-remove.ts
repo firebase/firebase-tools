@@ -8,7 +8,7 @@ import { populateInstanceDetails } from "../management/database";
 import { realtimeOriginOrEmulatorOrCustomUrl } from "../database/api";
 import * as utils from "../utils";
 import { promptOnce } from "../prompt";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
 export const command = new Command("database:remove <path>")
   .description("remove data from your Firebase at the specified path")

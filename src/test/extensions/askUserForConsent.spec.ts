@@ -1,4 +1,4 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as chai from "chai";
 chai.use(require("chai-as-promised"));
 import * as sinon from "sinon";

@@ -1,7 +1,7 @@
 import * as tty from "tty";
 import * as fs from "fs";
 
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
 import { ensureValidKey, ensureSecret } from "../functions/secrets";
 import { Command } from "../command";

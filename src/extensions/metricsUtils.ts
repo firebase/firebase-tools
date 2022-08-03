@@ -2,7 +2,7 @@ import * as semver from "semver";
 import { TimeSeries, TimeSeriesResponse } from "../gcp/cloudmonitoring";
 import { Bucket, BucketedMetric } from "./metricsTypeDef";
 import * as refs from "./refs";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
 /**
  * Parse TimeSeriesResponse into structured metric data.

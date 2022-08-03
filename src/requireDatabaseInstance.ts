@@ -1,12 +1,12 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import { FirebaseError } from "./error";
 import { getDefaultDatabaseInstance } from "./getDefaultDatabaseInstance";
 
 /**
  * Error message to be returned when the default database instance is found to be missing.
  */
-export const MISSING_DEFAULT_INSTANCE_ERROR_MESSAGE = `It looks like you haven't created a Realtime Database instance in this project before. Please run ${clc.bold.underline(
-  "firebase init database"
+export const MISSING_DEFAULT_INSTANCE_ERROR_MESSAGE = `It looks like you haven't created a Realtime Database instance in this project before. Please run ${clc.bold(
+  clc.underline("firebase init database")
 )} to create your default Realtime Database instance.`;
 
 /**

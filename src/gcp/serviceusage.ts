@@ -1,4 +1,4 @@
-import { bold } from "cli-color";
+import { bold } from "colorette";
 import { serviceUsageOrigin } from "../api";
 import { Client } from "../apiv2";
 import { FirebaseError } from "../error";

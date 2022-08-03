@@ -1,6 +1,6 @@
 import { parse } from "csv-parse";
 import * as Chain from "stream-chain";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as fs from "fs-extra";
 import * as Pick from "stream-json/filters/Pick";
 import * as StreamArray from "stream-json/streamers/StreamArray";
