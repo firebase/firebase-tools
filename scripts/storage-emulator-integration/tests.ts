@@ -34,22 +34,12 @@ const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "fake-project-id"
 const TEST_CONFIG = {
   // Set this to true to use production servers
   // (useful for writing tests against source of truth)
-  useProductionServers: true,
+  useProductionServers: false,
 
   // Set this to true to make the headless chrome window visible
   // (useful for ensuring the browser is running as expected)
   showBrowser: false,
 };
-
-const EMPTY_FOLDER_DATA = `--boundary\r
-Content-Type: application/json\r
-\r
-{"contentType":"text/plain"}\r
---boundary\r
-Content-Type: text/plain\r
-\r
---boundary--\r
-`;
 
 // Temp directory to store generated files.
 let tmpDir: string;
