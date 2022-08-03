@@ -38,17 +38,9 @@ const TEST_CONFIG = {
   // (useful for writing tests against source of truth)
   useProductionServers: false,
 
-  // Set this to true to log all emulator logs to console
-  // (useful for debugging)
-  useMockedLogging: false,
-
   // Set this to true to make the headless chrome window visible
   // (useful for ensuring the browser is running as expected)
   showBrowser: false,
-
-  // Set this to true to keep the browser open after tests finish
-  // (useful for checking browser logs for errors)
-  keepBrowserOpen: false,
 };
 
 const EMPTY_FOLDER_DATA = `--boundary\r
@@ -1407,35 +1399,28 @@ describe("Storage emulator", () => {
         });
       });
 
-      describe("#listAll()", () => {
+      describe.only("#listAll()", () => {
         beforeEach(async function (this) {
           this.timeout(TEST_SETUP_TIMEOUT);
-
           const refs = [
+            "listAll/storage_ref/image.png",
+            "listAll/somePathEndsWithDoubleSlash//file.png",
+            "listAll/item1",
+            "listAll/item2",
             "testing/storage_ref/image.png",
             "testing/somePathEndsWithDoubleSlash//file.png",
+            "listAllOtherDir/item3",
           ];
           for (const ref of refs) {
             await testBucket.upload(smallFilePath, { destination: ref });
           }
         });
 
-        // TODO(b/240637118): Skipping due to listAll functionality being broken.
-        it.skip("should list all files and prefixes", async function (this) {
+        it.only("should list all files and prefixes at path", async function (this) {
           this.timeout(TEST_SETUP_TIMEOUT);
-
-          const refs = [
-            "listAll/subdir/storage_ref/image.png",
-            "listAll/subdir/somePathEndsWithDoubleSlash//file.png",
-            "listAll/subdir/item1",
-            "listAll/subdir/item2",
-          ];
-          for (const ref of refs) {
-            await testBucket.upload(smallFilePath, { destination: ref });
-          }
-
           const listResult = await page.evaluate(async () => {
-            const list = await firebase.storage().ref("listAll/subdir/").listAll();
+            await firebase.auth().signInAnonymously();
+            const list = await firebase.storage().ref("listAll/").listAll();
             return {
               prefixes: list.prefixes.map((prefix) => prefix.name),
               items: list.items.map((item) => item.name),
@@ -1512,35 +1497,18 @@ describe("Storage emulator", () => {
             items: [],
           });
         });
+
         context("with folder placeholders", () => {
           beforeEach(async function (this) {
             this.timeout(TEST_SETUP_TIMEOUT);
-
-            const refs = [
-              "testing/abc", // empty folder inside testing/
-              "testing/storage_ref", // also an implicit prefix with files
-            ];
-            for (const ref of refs) {
-              // Use REST API to create the folder placeholders since SDK won't
-              // allow refs with trailing slashes.
-              await fetch(
-                `${STORAGE_EMULATOR_HOST}/upload/storage/v1/b/${storageBucket}/o?name=${encodeURIComponent(
-                  ref
-                )}/`,
-                {
-                  headers: {
-                    "Content-Type": "multipart/related; boundary=boundary",
-                  },
-                  method: "POST",
-                  body: Buffer.from(EMPTY_FOLDER_DATA, "utf8"),
-                }
-              );
-            }
+            const emptyFilepath = createRandomFile("empty_file", 0, tmpDir);
+            testBucket.upload(emptyFilepath, { destination: "listAll/abc/" });
+            testBucket.upload(emptyFilepath, { destination: "listAll/storage_ref/" });
           });
 
-          it("folder placeholder should not be listed under itself", async () => {
+          it.only("folder placeholder should not be listed under itself", async () => {
             const listResult = await page.evaluate(async () => {
-              const list = await firebase.storage().ref("/testing/abc").listAll();
+              const list = await firebase.storage().ref("/listAll/abc").listAll();
               return {
                 prefixes: list.prefixes.map((prefix) => prefix.name),
                 items: list.items.map((item) => item.name),
@@ -1555,7 +1523,7 @@ describe("Storage emulator", () => {
 
           it("folder placeholder should be listed as a prefix but not an item under parent", async () => {
             const listResult = await page.evaluate(async () => {
-              const list = await firebase.storage().ref("/testing").listAll();
+              const list = await firebase.storage().ref("/listAll").listAll();
               return {
                 prefixes: list.prefixes.map((prefix) => prefix.name),
                 items: list.items.map((item) => item.name),
@@ -1684,44 +1652,6 @@ describe("Storage emulator", () => {
         });
       });
 
-      it("updateMetadata throws on non-existent file", async () => {
-        const err = await page.evaluate(async () => {
-          try {
-            return await firebase
-              .storage()
-              .ref("testing/thisFileDoesntExist")
-              .updateMetadata({
-                contentType: "application/awesome-stream",
-                customMetadata: {
-                  testable: "true",
-                },
-              });
-          } catch (_err) {
-            return _err;
-          }
-        });
-
-        expect(err).to.not.be.empty;
-      });
-
-      it("updateMetadata updates metadata successfully", async () => {
-        const metadata = await page.evaluate(async (filename) => {
-          await firebase.auth().signInAnonymously();
-          return firebase
-            .storage()
-            .ref(filename)
-            .updateMetadata({
-              contentType: "application/awesome-stream",
-              customMetadata: {
-                testable: "true",
-              },
-            });
-        }, filename);
-
-        expect(metadata.contentType).to.equal("application/awesome-stream");
-        expect(metadata.customMetadata.testable).to.equal("true");
-      });
-
       describe("#getDownloadURL()", () => {
         it("returns url pointing to the expected host", async () => {
           const downloadUrl: string = await page.evaluate((filename) => {
@@ -1790,47 +1720,73 @@ describe("Storage emulator", () => {
         });
       });
 
-      describe("#setMetadata()", () => {
-        it("should allow for custom metadata to be set", async () => {
+      describe("#updateMetadata()", () => {
+        it("updates metadata successfully", async () => {
           const metadata = await page.evaluate(async (filename) => {
-            await firebase
+            await firebase.auth().signInAnonymously();
+            return firebase
               .storage()
               .ref(filename)
               .updateMetadata({
+                contentType: "application/awesome-stream",
                 customMetadata: {
-                  is_over: "9000",
+                  testable: "true",
                 },
               });
-            return await firebase.storage().ref(filename).getMetadata();
           }, filename);
 
-          expect(metadata.customMetadata.is_over).to.equal("9000");
+          expect(metadata.contentType).to.equal("application/awesome-stream");
+          expect(metadata.customMetadata.testable).to.equal("true");
         });
 
         it("should allow deletion of custom metadata by setting to null", async () => {
           const setMetadata = await page.evaluate((filename) => {
-            const storageReference = firebase.storage().ref(filename);
-            return storageReference.updateMetadata({
-              contentType: "text/plain",
-              customMetadata: {
-                removeMe: "please",
-              },
-            });
+            return firebase
+              .storage()
+              .ref(filename)
+              .updateMetadata({
+                contentType: "text/plain",
+                customMetadata: {
+                  removeMe: "please",
+                },
+              });
           }, filename);
 
           expect(setMetadata.customMetadata.removeMe).to.equal("please");
 
           const nulledMetadata = await page.evaluate((filename) => {
-            const storageReference = firebase.storage().ref(filename);
-            return storageReference.updateMetadata({
-              contentType: "text/plain",
-              customMetadata: {
-                removeMe: null as any,
-              },
-            });
+            return firebase
+              .storage()
+              .ref(filename)
+              .updateMetadata({
+                contentType: "text/plain",
+                customMetadata: {
+                  removeMe: null as any,
+                },
+              });
           }, filename);
 
           expect(nulledMetadata.customMetadata.removeMe).to.equal(undefined);
+        });
+
+        it("updateMetadata throws on non-existent file", async () => {
+          const err = await page.evaluate(async () => {
+            try {
+              return await firebase
+                .storage()
+                .ref("testing/thisFileDoesntExist")
+                .updateMetadata({
+                  contentType: "application/awesome-stream",
+                  customMetadata: {
+                    testable: "true",
+                  },
+                });
+            } catch (_err) {
+              return _err;
+            }
+          });
+
+          expect(err).to.not.be.empty;
         });
       });
 
