@@ -1,1 +1,2 @@
 - Replaces underlying terminal coloring library.
+- Make storage emulator content type case insensitive #3953

@@ -45,6 +45,25 @@ Content-Type: text/plain\r
       expect(dataRaw.byteLength).to.equal(data.byteLength);
     });
 
+    it("parses an upload object multipart request with lowercase content-type", () => {
+      const body = Buffer.from(`--b1d5b2e3-1845-4338-9400-6ac07ce53c1e\r
+content-type: application/json\r
+\r
+{"contentType":"text/plain"}\r
+--b1d5b2e3-1845-4338-9400-6ac07ce53c1e\r
+content-type: text/plain\r
+\r
+hello there!
+\r
+--b1d5b2e3-1845-4338-9400-6ac07ce53c1e--\r
+`);
+
+      const { metadataRaw, dataRaw } = parseObjectUploadMultipartRequest(CONTENT_TYPE_HEADER, body);
+
+      expect(metadataRaw).to.equal('{"contentType":"text/plain"}');
+      expect(dataRaw.toString()).to.equal("hello there!\n");
+    });
+
     it("fails to parse with invalid Content-Type value", () => {
       const invalidContentTypeHeader = "blah";
       expect(() => parseObjectUploadMultipartRequest(invalidContentTypeHeader, BODY)).to.throw(
