@@ -1,3 +1,4 @@
 - Replaces underlying terminal coloring library.
 - Make storage emulator multipart parsing handle quotes in boundary header #3953
 - Make storage emulator content type case insensitive #3953
+- Cleans up how errors are handled in the CLI, appropriately setting the exit code and not process.exit-ing manually.

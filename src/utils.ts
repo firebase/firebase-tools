@@ -457,10 +457,15 @@ export function tryParse(value: any) {
   }
 }
 
+let loggersSetUp = false;
+
 /**
- *
+ * Sets up Console loggers, depending on the environment configuration.
  */
-export function setupLoggers() {
+export function setupLoggers(): void {
+  if (loggersSetUp) {
+    return;
+  }
   if (process.env.DEBUG) {
     logger.add(
       new winston.transports.Console({
@@ -483,6 +488,7 @@ export function setupLoggers() {
       })
     );
   }
+  loggersSetUp = true;
 }
 
 /**

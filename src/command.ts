@@ -1,4 +1,4 @@
-import * as clc from "colorette";
+import { bold } from "colorette";
 import { CommanderStatic } from "commander";
 import { first, last, get, size, head, keys, values } from "lodash";
 
@@ -173,10 +173,7 @@ export class Command {
       if (args.length - 1 > cmd._args.length) {
         client.errorOut(
           new FirebaseError(
-            `Too many arguments. Run ${clc.bold(
-              "firebase help " + this.name
-            )} for usage instructions`,
-            { exit: 1 }
+            `Too many arguments. Run ${bold(`firebase help ${this.name}`)} for usage instructions`
           )
         );
         return;
@@ -369,7 +366,7 @@ export function validateProjectId(project: string): void {
     return;
   }
   track("Project ID Check", "invalid");
-  const invalidMessage = "Invalid project id: " + clc.bold(project) + ".";
+  const invalidMessage = "Invalid project id: " + bold(project) + ".";
   if (project.toLowerCase() !== project) {
     // Attempt to be more helpful in case uppercase letters are used.
     throw new FirebaseError(invalidMessage + "\nNote: Project id must be all lowercase.");
