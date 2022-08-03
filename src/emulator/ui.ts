@@ -24,7 +24,7 @@ export class EmulatorUI implements EmulatorInstance {
       );
     }
     const hubInfo = EmulatorRegistry.get(Emulators.HUB)!.getInfo();
-    const { auto_download, host, port, projectId } = this.args;
+    const { auto_download: autoDownload, host, port, projectId } = this.args;
     const env: NodeJS.ProcessEnv = {
       HOST: host.toString(),
       PORT: port.toString(),
@@ -37,7 +37,7 @@ export class EmulatorUI implements EmulatorInstance {
       env[Constants.FIREBASE_GA_SESSION] = JSON.stringify(session);
     }
 
-    return downloadableEmulators.start(Emulators.UI, { auto_download }, env);
+    return downloadableEmulators.start(Emulators.UI, { auto_download: autoDownload }, env);
   }
 
   connect(): Promise<void> {
