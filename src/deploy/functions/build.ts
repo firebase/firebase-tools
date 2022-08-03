@@ -260,6 +260,8 @@ export async function resolveBackend(
   let paramValues: Record<string, Field<string | number | boolean>> = {};
   if (previews.functionsparams) {
     paramValues = await params.resolveParams(build.params, projectId, userEnvs, userEnvOpt);
+    
+    logger.info(`Param resolution complete. Resolved environment: ${JSON.stringify(paramValues)}`)
   }
 
   return toBackend(build, paramValues);
@@ -327,7 +329,6 @@ class Resolver {
 }
 
 /** Converts a build specification into a Backend representation, with all Params resolved and interpolated */
-// TODO(vsfan): handle Expression<T> types
 export function toBackend(
   build: Build,
   paramValues: Record<string, Field<string | number | boolean>>
@@ -349,7 +350,7 @@ export function toBackend(
       }
       if (
         bdEndpoint.availableMemoryMb != null &&
-        !backend.isValidMemoryOption(bdEndpoint.availableMemoryMb)
+        !backend.isValidMemoryOption(r.resolveInt(bdEndpoint.availableMemoryMb))
       ) {
         throw new FirebaseError("available memory must be a supported value, if present");
       }

@@ -5,7 +5,9 @@ import * as build from "./build";
 import { assertExhaustive, partition } from "../../functional";
 import { UserEnvsOpts } from "../../functions/env";
 import * as secretManager from "../../gcp/secretManager";
+import { listBuckets } from "../../gcp/storage";
 
+// A convinience type containing options for Prompt's select
 interface ListItem {
   name?: string; // User friendly display name for the option
   value: string; // Value of the option
@@ -141,7 +143,7 @@ export interface StringParam extends ParamBase<string> {
   type: "string";
 
   // If omitted, defaults to TextInput<string>
-  input?: TextInput<string> | SelectInput<string>;
+  input?: TextInput<string> | SelectInput<string> | ResourceInput;
 }
 
 export interface IntParam extends ParamBase<number> {
@@ -162,12 +164,11 @@ export interface TextInput<T> { // eslint-disable-line
   type: "text";
 
   example?: string;
-}
 
-export interface StringTextInput extends TextInput<string> {
+  // If present, retry the prompt if the user provides a string that does not match this regexp
   validationRegex?: string;
-
-  validationErrorMessage?: string
+  // The error message to display if validationRegex is missing
+  validationErrorMessage?: string;
 }
 
 interface SelectOptions<T> {
@@ -187,9 +188,11 @@ export interface SelectInput<T> {
 
 // Future supported resource types will be added to this literal type. Tooling SHOULD fall back
 // to text entry if it encounters an unknown ResourceParamType
-type ResourceType = "storage.googleapis.com/Bucket"
+type ResourceType = "storage.googleapis.com/Bucket" | string
 
 interface ResourceInput {
+  type: "resource"
+
   resource: {
     type: ResourceType;
   };
@@ -335,7 +338,7 @@ export async function resolveParams(
         "Parameter " + param.name + " has default value " + paramDefault + " of wrong type"
       );
     }
-    paramValues[param.name] = await promptParam(param, paramDefault);
+    paramValues[param.name] = await promptParam(param, projectId, paramDefault);
 
     // TODO(vsfan@): Once we have writeUserEnvs in functions/env.ts implemented, call it to persist user-provided params
   }
@@ -354,7 +357,7 @@ async function handleSecret(secretParam: SecretParam, projectId: string): Promis
     const secretValue = await promptOnce({
       name: secretParam.name,
       type: "password",
-      message: `This secret will be stored in Cloud Secret Manager (https://cloud.google.com/secret-manager/pricing) as ${name} and managed by Firebase Hosting (Firebase Hosting Service Agent will be granted Secret Admin role on this secret).\nEnter a value for ${secretParam.label || secretParam.name}:`,
+      message: `This secret will be stored in Cloud Secret Manager (https://cloud.google.com/secret-manager/pricing) as ${secretParam.name} and managed by Firebase Hosting (Firebase Hosting Service Agent will be granted Secret Admin role on this secret).\nEnter a value for ${secretParam.label || secretParam.name}:`,
     });
     await secretManager.createSecret(projectId, secretParam.name, {});
     await secretManager.addVersion(projectId, secretParam.name, secretValue);
@@ -364,7 +367,7 @@ async function handleSecret(secretParam: SecretParam, projectId: string): Promis
   }
 
   // we need to test if the hosting service account can actually read
-  secretManager.ensureServiceAgentRole(metadata.secret, [`WTF.iam.gserviceaccount.com`], "roles/secretmanager.admin");
+  // secretManager.ensureServiceAgentRole(metadata.secret, [`what address goes here`], "roles/secretmanager.admin");
 
   return secretManager.accessSecretVersion(projectId, secretParam.name, "latest");
 }
@@ -397,9 +400,9 @@ async function getSecretMetadata(
  * For most param types, we check the contents of the dotenv files first for a matching key, then interactively prompt the user.
  * When the CLI is running in non-interactive mode or with the --force argument, it is an error for a param to be undefined in dotenvs.
  */
-async function promptParam(param: Param, resolvedDefault?: ParamValue): Promise<ParamValue> {
+async function promptParam(param: Param, projectId: string, resolvedDefault?: ParamValue): Promise<ParamValue> {
   if (param.type === "string") {
-    return promptStringParam(param, resolvedDefault as string | undefined);
+    return promptStringParam(param, projectId, resolvedDefault as string | undefined);
   } else if (param.type === "int") {
     return promptIntParam(param, resolvedDefault as number | undefined);
   } else if (param.type === "boolean") {
@@ -415,9 +418,8 @@ async function promptBooleanParam(param: BooleanParam, resolvedDefault?: boolean
     const defaultToText: TextInput<boolean> = { type: "text" };
     param.input = defaultToText;
   }
-
+  const isTruthyInput = (res: string) => ['true', 'y', 'yes', '1'].includes(res.toLowerCase());
   let prompt: string;
-  let response: boolean;
 
   switch (param.input.type) {
     case "select":
@@ -425,96 +427,46 @@ async function promptBooleanParam(param: BooleanParam, resolvedDefault?: boolean
       if (param.description) {
         prompt += ` \n(${param.description})`;
       }
-      response = await promptOnce({
-        name: "input",
-        type: "list",
-        default: () => {
-          if (resolvedDefault === true || resolvedDefault === false) {
-            return resolvedDefault;
-          }
-        },
-        message:
-          "Which option do you want enabled for this parameter? " +
-          "Select an option with the arrow keys, and use Enter to confirm your choice. " +
-          "You may only select one option.",
-        choices: param.input.select.map((option: SelectOptions<boolean>): ListItem => {
-          return {
-            checked: false,
-            name: option.label,
-            value: option.value.toString(),
-          };
-        })
-      });
-      return response;
+      prompt += "\nSelect an option with the arrow keys, and use Enter to confirm your choice. ";
+      return promptSelect<boolean>(prompt, param.input, resolvedDefault, isTruthyInput)
     case "text":
     default:
-      prompt = `Enter a value for ${param.label || param.name}:`;
+      prompt = `Enter a boolean value for ${param.label || param.name}:`;
       if (param.description) {
         prompt += ` \n(${param.description})`;
       }
-      const res = await promptOnce({
-        name: param.name,
-        type: "input",
-        default: resolvedDefault?.toString(),
-        message: prompt,
-      });
-      return ['true', 'y', 'yes', '1'].includes(res.toLowerCase());
+      return promptText<boolean>(prompt, param.input, resolvedDefault, isTruthyInput)
   }
 }
 
-async function promptStringParam(param: StringParam, resolvedDefault?: string): Promise<string> {
+async function promptStringParam(param: StringParam, projectId: string, resolvedDefault?: string): Promise<string> {
   if (!param.input) {
     const defaultToText: TextInput<string> = { type: "text"};
     param.input = defaultToText;
   }
   let prompt: string;
-  let response: string;
 
   switch (param.input.type) {
+    case "resource":
+      prompt = `Select a value for ${param.label || param.name}:`;
+      if (param.description) {
+        prompt += ` \n(${param.description})`;
+      }
+      return promptResourceString(prompt, param.input, projectId, resolvedDefault);
     case "select":
       prompt = `Select a value for ${param.label || param.name}:`;
       if (param.description) {
         prompt += ` \n(${param.description})`;
       }
-      response = await promptOnce({
-        name: "input",
-        type: "list",
-        default: () => {
-          if (resolvedDefault) {
-            return resolvedDefault;
-          }
-        },
-        message:
-          "Which option do you want enabled for this parameter? " +
-          "Select an option with the arrow keys, and use Enter to confirm your choice. " +
-          "You may only select one option.",
-        choices: param.input.select.map((option: SelectOptions<string>): ListItem => {
-          return {
-            checked: false,
-            name: option.label,
-            value: option.value,
-          };
-        })
-      });
-      return response;
+      prompt += "\nSelect an option with the arrow keys, and use Enter to confirm your choice. ";
+      return promptSelect<string>(prompt, param.input, resolvedDefault, (res: string) => res);
     case "text":
     default:
-      prompt = `Enter a value for ${param.label || param.name}:`;
+      prompt = `Enter a string value for ${param.label || param.name}:`;
       if (param.description) {
         prompt += ` \n(${param.description})`;
       }
-      let res: string;
-      while(true) {
-        res = await promptOnce({
-          name: param.name,
-          type: "input",
-          default: resolvedDefault,
-          message: prompt,
-        });
-        if ("validationRegex" in param.input) {
-
-        }
-      }
+      return promptText<string>(prompt, param.input, resolvedDefault, (res: string) => res);
   }
 }
 
@@ -524,7 +476,6 @@ async function promptIntParam(param: IntParam, resolvedDefault?: number): Promis
     param.input = defaultToText;
   }
   let prompt: string;
-  let response: number;
 
   switch (param.input.type) {
     case "select":
@@ -532,45 +483,85 @@ async function promptIntParam(param: IntParam, resolvedDefault?: number): Promis
       if (param.description) {
         prompt += ` \n(${param.description})`;
       }
-      response = await promptOnce({
-        name: "input",
-        type: "list",
-        default: () => {
-          if (resolvedDefault) {
-            return resolvedDefault;
-          }
-        },
-        message:
-          "Which option do you want enabled for this parameter? " +
-          "Select an option with the arrow keys, and use Enter to confirm your choice. " +
-          "You may only select one option.",
-        choices: param.input.select.map((option: SelectOptions<number>): ListItem => {
-          return {
-            checked: false,
-            name: option.label,
-            value: option.value.toString(),
-          };
-        })
-      });
-      return +response;
+      prompt += "\nSelect an option with the arrow keys, and use Enter to confirm your choice. ";
+      return promptSelect(prompt, param.input, resolvedDefault, (res: string) => +res);
     case "text":
     default:
-      prompt = `Enter a value for ${param.label || param.name}:`;
+      prompt = `Enter an integer value for ${param.label || param.name}:`;
       if (param.description) {
         prompt += ` \n(${param.description})`;
       }
-      let res: number;
-      while (true) {
-        res = await promptOnce({
-          name: param.name,
-          type: "number",
-          default: resolvedDefault,
-          message: prompt,
-        });
-        if (Number.isInteger(res)) {
-          return res;
+      return promptText<number>(prompt, param.input, resolvedDefault, (res: string) => {
+        if (isNaN(+res)) {
+          return {message: `"${res}" could not be converted to a number.`}
         }
-        logger.error(`${param.label || param.name} must be an integer; retrying...`);
-      }
+        if (res.includes(".")) {
+          return {message: `${res} is not an integer value.`}
+        }
+        return +res;
+      });
   }
+}
+
+async function promptResourceString(prompt: string, input:ResourceInput, projectId: string, resolvedDefault?: string): Promise<string> {
+  const notFound =  new FirebaseError(`No instances of ${input.resource.type} found.`);
+  switch (input.resource.type) {
+    case "storage.googleapis.com/Bucket":
+      const buckets = await listBuckets(projectId);
+      if (buckets.length == 0) {
+        throw notFound;
+      }
+      const forgedInput: SelectInput<string> = {type: "select", select: buckets.map((bucketName: string): SelectOptions<string> =>  { return {label: bucketName, value: bucketName} })};
+      return promptSelect<string>(prompt, forgedInput, resolvedDefault, (res: string) => res);
+    default:
+      logger.warn(`Warning: unknown resource type ${input.resource.type}; defaulting to raw text input...`);
+      return promptText<string>(prompt, {type: "text"}, resolvedDefault, (res: string) => res);
+  }
+
+}
+
+type retryInput = {message: string};
+async function promptText<T extends ParamValue>(
+  prompt: string,
+  input: TextInput<T>,
+  resolvedDefault: T | undefined,
+  converter: (res: string) => T | retryInput
+): Promise<T> {
+  const res = await promptOnce({
+    type: "input",
+    default: resolvedDefault,
+    message: prompt,
+  });
+  if (input.validationRegex) {
+    const userRe = new RegExp(input.validationRegex)
+    if (!userRe.test(res)) {
+      logger.error(input.validationErrorMessage || `Input did not match provided validator ${userRe.toString()}, retrying...`);
+      return promptText<T>(prompt, input, resolvedDefault, converter);
+    }
+  }
+  const converted = converter(res);
+  if (typeof converted === "object") {
+    logger.error(converted.message);
+    return promptText<T>(prompt, input, resolvedDefault, converter);
+  }
+  return converted as T;
+}
+
+async function promptSelect<T extends ParamValue>(
+  prompt: string, input: SelectInput<T>, resolvedDefault: T | undefined, converter: (res: string) => T
+): Promise<T> { 
+  const response = await promptOnce({
+    name: "input",
+    type: "list",
+    default: () => { resolvedDefault },
+    message: prompt,
+    choices: input.select.map((option: SelectOptions<T>): ListItem => {
+      return {
+        checked: false,
+        name: option.label,
+        value: option.value.toString(),
+      };
+    })
+  });
+  return converter(response);
 }
