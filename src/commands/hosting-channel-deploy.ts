@@ -1,4 +1,4 @@
-import { bold, yellow } from "cli-color";
+import { bold, yellow } from "colorette";
 
 import { Command } from "../command";
 import { FirebaseError } from "../error";
@@ -175,7 +175,7 @@ export const command = new Command("hosting:channel:deploy [channelId]")
         }
         logLabeledSuccess(
           LOG_TAG,
-          `Channel URL (${bold(d.site || d.target)}): ${d.url} ${expires}${version}`
+          `Channel URL (${bold(d.site || d.target || "")}): ${d.url} ${expires}${version}`
         );
       });
       return deploys;

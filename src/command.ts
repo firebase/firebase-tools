@@ -1,4 +1,4 @@
-import { bold } from "cli-color";
+import { bold } from "colorette";
 import { CommanderStatic } from "commander";
 import { first, last, get, size, head, keys, values } from "lodash";
 
@@ -9,7 +9,6 @@ import { Config } from "./config";
 import { configstore } from "./configstore";
 import { detectProjectRoot } from "./detectProjectRoot";
 import { track } from "./track";
-import clc = require("cli-color");
 import { selectAccount, setActiveAccount } from "./auth";
 import { getFirebaseProject } from "./management/projects";
 import { requireAuth } from "./requireAuth";
@@ -145,6 +144,7 @@ export class Command {
 
     if (this.helpText) {
       cmd.on("--help", () => {
+        console.log(); // Seperates the help text from global options.
         console.log(this.helpText);
       });
     }
@@ -366,7 +366,7 @@ export function validateProjectId(project: string): void {
     return;
   }
   track("Project ID Check", "invalid");
-  const invalidMessage = "Invalid project id: " + clc.bold(project) + ".";
+  const invalidMessage = "Invalid project id: " + bold(project) + ".";
   if (project.toLowerCase() !== project) {
     // Attempt to be more helpful in case uppercase letters are used.
     throw new FirebaseError(invalidMessage + "\nNote: Project id must be all lowercase.");

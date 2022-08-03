@@ -1,5 +1,5 @@
 import { setGracefulCleanup } from "tmp";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as fs from "fs";
 
 import { checkHttpIam } from "./checkIam";
@@ -80,7 +80,7 @@ async function uploadCodebase(
     const sourceDir = configForCodebase(context.config!, codebase).source;
     if (uploads.length) {
       logSuccess(
-        `${clc.green.bold("functions:")} ${clc.bold(sourceDir)} folder uploaded successfully`
+        `${clc.green(clc.bold("functions:"))} ${clc.bold(sourceDir)} folder uploaded successfully`
       );
     }
   } catch (err: any) {

@@ -1,7 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import * as express from "express";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as http from "http";
 import * as jwt from "jsonwebtoken";
 import * as cors from "cors";
@@ -1073,6 +1073,12 @@ export class FunctionsEmulator implements EmulatorInstance {
     envs.K_REVISION = "1";
     envs.PORT = "80";
 
+    // TODO(danielylee): Later, we want timeout to be enforce by the data plane. For now, we rely on the runtime to
+    // enforce timeout.
+    if (trigger?.timeoutSeconds) {
+      envs.FUNCTIONS_EMULATOR_TIMEOUT_SECONDS = trigger.timeoutSeconds.toString();
+    }
+
     if (trigger) {
       const target = trigger.entryPoint;
       envs.FUNCTION_TARGET = target;
@@ -1092,8 +1098,6 @@ export class FunctionsEmulator implements EmulatorInstance {
       skipTokenVerification: true,
       enableCors: true,
     });
-    // TODO(danielylee): Support timeouts. Temporarily dropping the feature until we finish refactoring.
-
     // Make firebase-admin point at the Firestore emulator
     const firestoreEmulator = this.getEmulatorInfo(Emulators.FIRESTORE);
     if (firestoreEmulator != null) {

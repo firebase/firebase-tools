@@ -1,5 +1,5 @@
 import { unset, has } from "lodash";
-import { bold } from "cli-color";
+import { bold, red } from "colorette";
 
 import { configstore } from "./configstore";
 import { previews } from "./previews";

@@ -1,4 +1,4 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as semver from "semver";
 
 import * as refs from "../extensions/refs";
