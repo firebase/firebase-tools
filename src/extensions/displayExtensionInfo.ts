@@ -1,22 +1,17 @@
-import * as _ from "lodash";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const { marked } = require("marked");
 import TerminalRenderer = require("marked-terminal");
 
-import * as extensionsApi from "./extensionsApi";
 import * as utils from "../utils";
-import { confirm, logPrefix } from "./extensionsHelper";
+import { logPrefix } from "./extensionsHelper";
 import { logger } from "../logger";
 import { FirebaseError } from "../error";
-import { promptOnce } from "../prompt";
+import { ExtensionSpec } from "./types";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),
 });
-
-const additionColor = clc.green;
-const deletionColor = clc.red;
 
 /**
  * displayExtInfo prints the extension info displayed when running ext:install.
@@ -28,7 +23,7 @@ const deletionColor = clc.red;
 export function displayExtInfo(
   extensionName: string,
   publisher: string,
-  spec: extensionsApi.ExtensionSpec,
+  spec: ExtensionSpec,
   published = false
 ): string[] {
   const lines = [];
@@ -64,199 +59,6 @@ export function displayExtInfo(
       }
     );
   }
-}
-
-/**
- * Prints out all changes to the spec that don't require explicit approval or input.
- *
- * @param spec The current spec of a ExtensionInstance.
- * @param newSpec The spec that the ExtensionInstance is being updated to
- * @param published whether or not this spec is for a published extension
- */
-export function displayUpdateChangesNoInput(
-  spec: extensionsApi.ExtensionSpec,
-  newSpec: extensionsApi.ExtensionSpec
-): string[] {
-  const lines: string[] = [];
-  if (spec.displayName !== newSpec.displayName) {
-    lines.push(
-      "",
-      "**Name:**",
-      deletionColor(`- ${spec.displayName}`),
-      additionColor(`+ ${newSpec.displayName}`)
-    );
-  }
-
-  if (spec.author?.authorName !== newSpec.author?.authorName) {
-    lines.push(
-      "",
-      "**Author:**",
-      deletionColor(`- ${spec.author?.authorName}`),
-      additionColor(`+ ${spec.author?.authorName}`)
-    );
-  }
-
-  if (spec.description !== newSpec.description) {
-    lines.push(
-      "",
-      "**Description:**",
-      deletionColor(`- ${spec.description}`),
-      additionColor(`+ ${newSpec.description}`)
-    );
-  }
-
-  if (spec.sourceUrl !== newSpec.sourceUrl) {
-    lines.push(
-      "",
-      "**Source code:**",
-      deletionColor(`- ${spec.sourceUrl}`),
-      additionColor(`+ ${newSpec.sourceUrl}`)
-    );
-  }
-
-  if (spec.billingRequired && !newSpec.billingRequired) {
-    lines.push("", "**Billing is no longer required for this extension.**");
-  }
-  logger.info(marked(lines.join("\n")));
-  return lines;
-}
-
-/**
- * Checks for spec changes that require explicit user consent,
- * and individually prompts the user for each changed field.
- *
- * @param spec The current spec of a ExtensionInstance
- * @param newSpec The spec that the ExtensionInstance is being updated to
- */
-export async function displayUpdateChangesRequiringConfirmation(args: {
-  spec: extensionsApi.ExtensionSpec;
-  newSpec: extensionsApi.ExtensionSpec;
-  nonInteractive: boolean;
-  force: boolean;
-}): Promise<void> {
-  const equals = (a: any, b: any) => {
-    return _.isEqual(a, b);
-  };
-  if (args.spec.license !== args.newSpec.license) {
-    const message =
-      "\n" +
-      "**License**\n" +
-      deletionColor(args.spec.license ? `- ${args.spec.license}\n` : "- None\n") +
-      additionColor(args.newSpec.license ? `+ ${args.newSpec.license}\n` : "+ None\n");
-    logger.info(message);
-    if (
-      !(await confirm({ nonInteractive: args.nonInteractive, force: args.force, default: true }))
-    ) {
-      throw new FirebaseError(
-        "Unable to update this extension instance without explicit consent for the change to 'License'."
-      );
-    }
-  }
-  const apisDiffDeletions = _.differenceWith(
-    args.spec.apis,
-    _.get(args.newSpec, "apis", []),
-    equals
-  );
-  const apisDiffAdditions = _.differenceWith(
-    args.newSpec.apis,
-    _.get(args.spec, "apis", []),
-    equals
-  );
-  if (apisDiffDeletions.length || apisDiffAdditions.length) {
-    let message = "\n**APIs:**\n";
-    apisDiffDeletions.forEach((api) => {
-      message += deletionColor(`- ${api.apiName} (${api.reason})\n`);
-    });
-    apisDiffAdditions.forEach((api) => {
-      message += additionColor(`+ ${api.apiName} (${api.reason})\n`);
-    });
-    logger.info(message);
-    if (
-      !(await confirm({ nonInteractive: args.nonInteractive, force: args.force, default: true }))
-    ) {
-      throw new FirebaseError(
-        "Unable to update this extension instance without explicit consent for the change to 'APIs'."
-      );
-    }
-  }
-
-  const resourcesDiffDeletions = _.differenceWith(
-    args.spec.resources,
-    _.get(args.newSpec, "resources", []),
-    compareResources
-  );
-  const resourcesDiffAdditions = _.differenceWith(
-    args.newSpec.resources,
-    _.get(args.spec, "resources", []),
-    compareResources
-  );
-  if (resourcesDiffDeletions.length || resourcesDiffAdditions.length) {
-    let message = "\n**Resources:**\n";
-    resourcesDiffDeletions.forEach((resource) => {
-      message += deletionColor(` - ${getResourceReadableName(resource)}`);
-    });
-    resourcesDiffAdditions.forEach((resource) => {
-      message += additionColor(`+ ${getResourceReadableName(resource)}`);
-    });
-    logger.info(message);
-    if (
-      !(await confirm({ nonInteractive: args.nonInteractive, force: args.force, default: true }))
-    ) {
-      throw new FirebaseError(
-        "Unable to update this extension instance without explicit consent for the change to 'Resources'."
-      );
-    }
-  }
-
-  const rolesDiffDeletions = _.differenceWith(
-    args.spec.roles,
-    _.get(args.newSpec, "roles", []),
-    equals
-  );
-  const rolesDiffAdditions = _.differenceWith(
-    args.newSpec.roles,
-    _.get(args.spec, "roles", []),
-    equals
-  );
-
-  if (rolesDiffDeletions.length || rolesDiffAdditions.length) {
-    let message = "\n**Permissions:**\n";
-    rolesDiffDeletions.forEach((role) => {
-      message += deletionColor(`- ${role.role} (${role.reason})\n`);
-    });
-    rolesDiffAdditions.forEach((role) => {
-      message += additionColor(`+ ${role.role} (${role.reason})\n`);
-    });
-    logger.info(message);
-    if (
-      !(await confirm({ nonInteractive: args.nonInteractive, force: args.force, default: true }))
-    ) {
-      throw new FirebaseError(
-        "Unable to update this extension instance without explicit consent for the change to 'Permissions'."
-      );
-    }
-  }
-
-  if (!args.spec.billingRequired && args.newSpec.billingRequired) {
-    logger.info("Billing is now required for the new version of this extension.");
-    if (
-      !(await confirm({ nonInteractive: args.nonInteractive, force: args.force, default: true }))
-    ) {
-      throw new FirebaseError(
-        "Unable to update this extension instance without explicit consent for the change to 'BillingRequired'."
-      );
-    }
-  }
-}
-
-function compareResources(resource1: extensionsApi.Resource, resource2: extensionsApi.Resource) {
-  return resource1.name === resource2.name && resource1.type === resource2.type;
-}
-
-function getResourceReadableName(resource: extensionsApi.Resource): string {
-  return resource.type === "firebaseextensions.v1beta.function"
-    ? `${resource.name} (Cloud Function): ${resource.description}\n`
-    : `${resource.name} (${resource.type})\n`;
 }
 
 /**

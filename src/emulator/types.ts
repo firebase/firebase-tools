@@ -1,6 +1,5 @@
 import { ChildProcess } from "child_process";
 import { EventEmitter } from "events";
-import { previews } from "../previews";
 
 export enum Emulators {
   AUTH = "auth",
@@ -46,7 +45,7 @@ export const ALL_SERVICE_EMULATORS = [
   Emulators.HOSTING,
   Emulators.PUBSUB,
   Emulators.STORAGE,
-].filter((v) => v) as Emulators[];
+].filter((v) => v);
 
 export const EMULATORS_SUPPORTED_BY_FUNCTIONS = [
   Emulators.FIRESTORE,
@@ -69,6 +68,7 @@ export const EMULATORS_SUPPORTED_BY_USE_EMULATOR = [
   Emulators.DATABASE,
   Emulators.FIRESTORE,
   Emulators.FUNCTIONS,
+  Emulators.STORAGE,
 ];
 
 // TODO: Is there a way we can just allow iteration over the enum?
@@ -213,7 +213,7 @@ export class EmulatorLog {
     type: string,
     filter?: (el: EmulatorLog) => boolean
   ): Promise<EmulatorLog> {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const listener = (el: EmulatorLog) => {
         const levelTypeMatch = el.level === level && el.type === type;
         let filterMatch = true;

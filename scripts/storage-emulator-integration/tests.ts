@@ -5,9 +5,10 @@ import * as fs from "fs";
 import * as path from "path";
 import * as http from "http";
 import * as https from "https";
+import fetch from "node-fetch";
 import * as puppeteer from "puppeteer";
-import { Bucket, Storage, CopyOptions } from "@google-cloud/storage";
-import supertest = require("supertest");
+import { Bucket, CopyOptions } from "@google-cloud/storage";
+import * as supertest from "supertest";
 
 import { IMAGE_FILE_BASE64, StorageRulesFiles } from "../../src/test/emulators/fixtures";
 import { TriggerEndToEndTest } from "../integration-helpers/framework";
@@ -16,8 +17,8 @@ import {
   EMULATORS_SHUTDOWN_DELAY_MS,
   getAuthEmulatorHost,
   getStorageEmulatorHost,
-  LARGE_FILE_SIZE,
   readEmulatorConfig,
+  readFile,
   readJson,
   readProdAppConfig,
   resetStorageEmulator,
@@ -25,6 +26,7 @@ import {
   SMALL_FILE_SIZE,
   TEST_SETUP_TIMEOUT,
   uploadText,
+  writeToFile,
 } from "./utils";
 
 const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "fake-project-id";
@@ -49,14 +51,27 @@ const TEST_CONFIG = {
   keepBrowserOpen: false,
 };
 
+const EMPTY_FOLDER_DATA = `--boundary\r
+Content-Type: application/json\r
+\r
+{"contentType":"text/plain"}\r
+--boundary\r
+Content-Type: text/plain\r
+\r
+--boundary--\r
+`;
+
 // Temp directory to store generated files.
 let tmpDir: string;
 
+// TODO(b/241151246): Fix conformance tests.
 describe("Storage emulator", () => {
   let test: TriggerEndToEndTest;
 
-  let smallFilePath: string;
-  let largeFilePath: string;
+  let testBucket: Bucket;
+  const smallFilePath: string = createRandomFile("small_file", SMALL_FILE_SIZE, tmpDir);
+
+  const DEFAULT_RULES = readFile("storage.rules");
 
   // Emulators accept fake app configs. This is sufficient for testing against the emulator.
   const FAKE_APP_CONFIG = {
@@ -76,41 +91,53 @@ describe("Storage emulator", () => {
 
   const emulatorSpecificDescribe = TEST_CONFIG.useProductionServers ? describe.skip : describe;
 
+  async function resetEmulatorState(): Promise<void> {
+    if (TEST_CONFIG.useProductionServers) {
+      await testBucket.deleteFiles();
+    } else {
+      await resetStorageEmulator(STORAGE_EMULATOR_HOST);
+    }
+  }
+
+  before(async function (this) {
+    this.timeout(TEST_SETUP_TIMEOUT);
+    if (TEST_CONFIG.useProductionServers) {
+      process.env.GOOGLE_APPLICATION_CREDENTIALS = path.join(__dirname, SERVICE_ACCOUNT_KEY);
+    } else {
+      process.env.STORAGE_EMULATOR_HOST = STORAGE_EMULATOR_HOST;
+      test = new TriggerEndToEndTest(FIREBASE_PROJECT, __dirname, emulatorConfig);
+      await test.startEmulators(["--only", "auth,storage"]);
+    }
+
+    // TODO: We should not need a real credential for emulator tests, but
+    //       today we do.
+    const credential = fs.existsSync(path.join(__dirname, SERVICE_ACCOUNT_KEY))
+      ? admin.credential.cert(readJson(SERVICE_ACCOUNT_KEY))
+      : admin.credential.applicationDefault();
+    admin.initializeApp({ credential });
+    testBucket = admin.storage().bucket(storageBucket);
+  });
+
+  after(async function (this) {
+    this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
+    if (tmpDir) {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+
+    if (TEST_CONFIG.useProductionServers) {
+      delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
+    } else {
+      delete process.env.STORAGE_EMULATOR_HOST;
+      await test.stopEmulators();
+    }
+  });
+
   describe("Admin SDK Endpoints", function (this) {
     // eslint-disable-next-line @typescript-eslint/no-invalid-this
     this.timeout(TEST_SETUP_TIMEOUT);
-    let testBucket: Bucket;
-
-    before(async () => {
-      if (!TEST_CONFIG.useProductionServers) {
-        process.env.STORAGE_EMULATOR_HOST = STORAGE_EMULATOR_HOST;
-
-        test = new TriggerEndToEndTest(FIREBASE_PROJECT, __dirname, emulatorConfig);
-        await test.startEmulators(["--only", "auth,storage"]);
-      }
-
-      // TODO: We should not need a real credential for emulator tests, but
-      //       today we do.
-      const credential = fs.existsSync(path.join(__dirname, SERVICE_ACCOUNT_KEY))
-        ? admin.credential.cert(readJson(SERVICE_ACCOUNT_KEY))
-        : admin.credential.applicationDefault();
-
-      admin.initializeApp({
-        credential,
-      });
-
-      testBucket = admin.storage().bucket(storageBucket);
-
-      smallFilePath = createRandomFile("small_file", SMALL_FILE_SIZE, tmpDir);
-      largeFilePath = createRandomFile("large_file", LARGE_FILE_SIZE, tmpDir);
-    });
 
     beforeEach(async () => {
-      if (!TEST_CONFIG.useProductionServers) {
-        await resetStorageEmulator(STORAGE_EMULATOR_HOST);
-      } else {
-        await testBucket.deleteFiles();
-      }
+      await resetEmulatorState();
     });
 
     describe(".bucket()", () => {
@@ -1174,30 +1201,973 @@ describe("Storage emulator", () => {
         });
       });
     });
+  });
+
+  /**
+   * TODO(abhisun): Add test coverage to validate how many times various cloud functions are triggered.
+   */
+  describe("Firebase Endpoints", () => {
+    let browser: puppeteer.Browser;
+    let page: puppeteer.Page;
+
+    const filename = "testing/storage_ref/image.png";
+    const image_filename = writeToFile(
+      "image_base64",
+      Buffer.from(IMAGE_FILE_BASE64, "base64"),
+      tmpDir
+    );
+
+    before(async function (this) {
+      this.timeout(TEST_SETUP_TIMEOUT);
+      browser = await puppeteer.launch({
+        headless: !TEST_CONFIG.showBrowser,
+        devtools: true,
+      });
+    });
+
+    beforeEach(async function (this) {
+      this.timeout(TEST_SETUP_TIMEOUT);
+
+      page = await browser.newPage();
+      await page.goto("https://example.com", { waitUntil: "networkidle2" });
+
+      await page.addScriptTag({
+        url: "https://www.gstatic.com/firebasejs/9.9.1/firebase-app-compat.js",
+      });
+      await page.addScriptTag({
+        url: "https://www.gstatic.com/firebasejs/9.9.1/firebase-auth-compat.js",
+      });
+      await page.addScriptTag({
+        url: "https://www.gstatic.com/firebasejs/9.9.1/firebase-storage-compat.js",
+      });
+
+      await page.evaluate(
+        (appConfig, useProductionServers, authEmulatorHost, storageEmulatorHost) => {
+          firebase.initializeApp(appConfig);
+          if (!useProductionServers) {
+            firebase.auth().useEmulator(authEmulatorHost);
+            const [storageHost, storagePort] = storageEmulatorHost.split(":") as string[];
+            (firebase.storage() as any).useEmulator(storageHost, storagePort);
+          }
+        },
+        appConfig,
+        TEST_CONFIG.useProductionServers,
+        AUTH_EMULATOR_HOST,
+        STORAGE_EMULATOR_HOST.replace(/^(https?:|)\/\//, "")
+      );
+
+      await resetEmulatorState();
+
+      await testBucket.upload(image_filename, { destination: filename });
+    });
+
+    afterEach(async () => {
+      await page.close();
+    });
 
     after(async () => {
-      if (tmpDir) {
-        fs.unlinkSync(smallFilePath);
-        fs.unlinkSync(largeFilePath);
-        fs.rmdirSync(tmpDir);
-      }
+      await browser.close();
+    });
 
-      if (!TEST_CONFIG.useProductionServers) {
-        delete process.env.STORAGE_EMULATOR_HOST;
-        await test.stopEmulators();
-      }
+    describe(".ref()", () => {
+      describe("#put()", () => {
+        it("should upload a file", async function (this) {
+          this.timeout(TEST_SETUP_TIMEOUT);
+
+          const uploadState = await uploadText(
+            page,
+            "testing/image.png",
+            IMAGE_FILE_BASE64,
+            "base64"
+          );
+
+          expect(uploadState).to.equal("success");
+        });
+
+        it("should upload a file with a really long path name to check for os filename character limit", async function (this) {
+          this.timeout(TEST_SETUP_TIMEOUT);
+
+          const uploadState = await uploadText(
+            page,
+            `testing/${"long".repeat(180)}image.png`,
+            IMAGE_FILE_BASE64,
+            "base64"
+          );
+
+          expect(uploadState).to.equal("success");
+        });
+
+        it("should upload replace existing file", async function (this) {
+          this.timeout(TEST_SETUP_TIMEOUT);
+          await uploadText(page, "upload/replace.txt", "some-content");
+          await uploadText(page, "upload/replace.txt", "some-other-content");
+
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const downloadUrl = await page.evaluate(() => {
+            return firebase.storage().ref("upload/replace.txt").getDownloadURL();
+          });
+
+          const requestClient = TEST_CONFIG.useProductionServers ? https : http;
+          await new Promise((resolve, reject) => {
+            requestClient.get(
+              downloadUrl,
+              {
+                headers: {
+                  // This is considered an authorized request in the emulator
+                  Authorization: "Bearer owner",
+                },
+              },
+              (response) => {
+                const data: any = [];
+                response
+                  .on("data", (chunk) => data.push(chunk))
+                  .on("end", () => {
+                    expect(Buffer.concat(data).toString()).to.equal("some-other-content");
+                  })
+                  .on("close", resolve)
+                  .on("error", reject);
+              }
+            );
+          });
+        });
+
+        it("should upload a file using put", async () => {
+          const uploadState = await page.evaluate(async (IMAGE_FILE_BASE64) => {
+            const task = await firebase
+              .storage()
+              .ref("testing/image_put.png")
+              .put(new File([IMAGE_FILE_BASE64], "toUpload.txt"));
+            return task.state;
+          }, IMAGE_FILE_BASE64);
+
+          expect(uploadState).to.equal("success");
+        });
+
+        it("should upload a file with custom metadata", async () => {
+          const uploadState = await page.evaluate(async (IMAGE_FILE_BASE64) => {
+            const task = await firebase
+              .storage()
+              .ref("upload/allowIfContentTypeImage.png")
+              .put(new File([IMAGE_FILE_BASE64], "toUpload.txt"), { contentType: "image/blah" });
+            return task.state;
+          }, IMAGE_FILE_BASE64);
+
+          expect(uploadState).to.equal("success");
+        });
+
+        it("should set custom metadata on resumable uploads", async () => {
+          const customMetadata = {
+            contentDisposition: "initialCommit",
+            contentType: "image/jpg",
+            name: "test_upload.jpg",
+          };
+
+          const uploadURL = await supertest(STORAGE_EMULATOR_HOST)
+            .post(
+              `/v0/b/${storageBucket}/o/test_upload.jpg?uploadType=resumable&name=test_upload.jpg`
+            )
+            .send(customMetadata)
+            .set({
+              Authorization: "Bearer owner",
+              "X-Goog-Upload-Protocol": "resumable",
+              "X-Goog-Upload-Command": "start",
+            })
+            .expect(200)
+            .then((res) => new URL(res.header["x-goog-upload-url"]));
+
+          const returnedMetadata = await supertest(STORAGE_EMULATOR_HOST)
+            .put(uploadURL.pathname + uploadURL.search)
+            .set({
+              "X-Goog-Upload-Protocol": "resumable",
+              "X-Goog-Upload-Command": "upload, finalize",
+            })
+            .expect(200)
+            .then((res) => res.body);
+          expect(returnedMetadata.name).to.equal(customMetadata.name);
+          expect(returnedMetadata.contentType).to.equal(customMetadata.contentType);
+          expect(returnedMetadata.contentDisposition).to.equal(customMetadata.contentDisposition);
+        });
+
+        it("should return a 403 on rules deny", async () => {
+          const uploadState = await page.evaluate(async (IMAGE_FILE_BASE64) => {
+            const _file = new File([IMAGE_FILE_BASE64], "toUpload.txt");
+            try {
+              const task = await firebase
+                .storage()
+                .ref("upload/allowIfContentTypeImage.png")
+                .put(_file, { contentType: "text/plain" });
+              return task.state;
+            } catch (err: any) {
+              if (err instanceof Error) {
+                return err.message;
+              }
+              throw err;
+            }
+          }, IMAGE_FILE_BASE64);
+          expect(uploadState!).to.include("User does not have permission");
+        });
+      });
+
+      describe("#listAll()", () => {
+        beforeEach(async function (this) {
+          this.timeout(TEST_SETUP_TIMEOUT);
+
+          const refs = [
+            "testing/storage_ref/image.png",
+            "testing/somePathEndsWithDoubleSlash//file.png",
+          ];
+          for (const ref of refs) {
+            await testBucket.upload(smallFilePath, { destination: ref });
+          }
+        });
+
+        // TODO(b/240637118): Skipping due to listAll functionality being broken.
+        it.skip("should list all files and prefixes", async function (this) {
+          this.timeout(TEST_SETUP_TIMEOUT);
+
+          const refs = [
+            "listAll/subdir/storage_ref/image.png",
+            "listAll/subdir/somePathEndsWithDoubleSlash//file.png",
+            "listAll/subdir/item1",
+            "listAll/subdir/item2",
+          ];
+          for (const ref of refs) {
+            await testBucket.upload(smallFilePath, { destination: ref });
+          }
+
+          const listResult = await page.evaluate(async () => {
+            const list = await firebase.storage().ref("listAll/subdir/").listAll();
+            return {
+              prefixes: list.prefixes.map((prefix) => prefix.name),
+              items: list.items.map((item) => item.name),
+            };
+          });
+
+          expect(listResult).to.deep.equal({
+            items: ["item1", "item2"],
+            prefixes: ["somePathEndsWithDoubleSlash", "storage_ref"],
+          });
+        });
+
+        it("should list implicit prefixes", async () => {
+          await page.evaluate(
+            async (IMAGE_FILE_BASE64, filename) => {
+              try {
+                await firebase.auth().signInAnonymously();
+                const task = await firebase
+                  .storage()
+                  .ref(filename)
+                  .putString(IMAGE_FILE_BASE64, "base64");
+                return task.state;
+              } catch (err: any) {
+                throw err.message;
+              }
+            },
+            IMAGE_FILE_BASE64,
+            `testing/implicit/deep/path/file.jpg`
+          );
+
+          const listResult = await page.evaluate(async () => {
+            const list = await firebase.storage().ref("testing/implicit").listAll();
+            return {
+              prefixes: list.prefixes.map((prefix) => prefix.name),
+              items: list.items.map((item) => item.name),
+            };
+          });
+
+          expect(listResult).to.deep.equal({
+            prefixes: ["deep"],
+            items: [],
+          });
+        });
+
+        it("should list at /", async () => {
+          await uploadText(page, "list/file.jpg", "hello");
+          await uploadText(page, "list/subdir/file.jpg", "world");
+
+          const listResult = await page.evaluate(async () => {
+            const list = await firebase.storage().ref("/list").listAll();
+            return {
+              prefixes: list.prefixes.map((prefix) => prefix.name),
+              items: list.items.map((item) => item.name),
+            };
+          });
+
+          expect(listResult).to.deep.equal({
+            prefixes: ["subdir"],
+            items: ["file.jpg"],
+          });
+        });
+
+        it("zero element list array should still be present in response", async () => {
+          const listResult = await page.evaluate(async () => {
+            const list = await firebase.storage().ref("/list").listAll();
+            return {
+              prefixes: list.prefixes.map((prefix) => prefix.name),
+              items: list.items.map((item) => item.name),
+            };
+          });
+
+          expect(listResult).to.deep.equal({
+            prefixes: [],
+            items: [],
+          });
+        });
+        context("with folder placeholders", () => {
+          beforeEach(async function (this) {
+            this.timeout(TEST_SETUP_TIMEOUT);
+
+            const refs = [
+              "testing/abc", // empty folder inside testing/
+              "testing/storage_ref", // also an implicit prefix with files
+            ];
+            for (const ref of refs) {
+              // Use REST API to create the folder placeholders since SDK won't
+              // allow refs with trailing slashes.
+              await fetch(
+                `${STORAGE_EMULATOR_HOST}/upload/storage/v1/b/${storageBucket}/o?name=${encodeURIComponent(
+                  ref
+                )}/`,
+                {
+                  headers: {
+                    "Content-Type": "multipart/related; boundary=boundary",
+                  },
+                  method: "POST",
+                  body: Buffer.from(EMPTY_FOLDER_DATA, "utf8"),
+                }
+              );
+            }
+          });
+
+          it("folder placeholder should not be listed under itself", async () => {
+            const listResult = await page.evaluate(async () => {
+              const list = await firebase.storage().ref("/testing/abc").listAll();
+              return {
+                prefixes: list.prefixes.map((prefix) => prefix.name),
+                items: list.items.map((item) => item.name),
+              };
+            });
+
+            expect(listResult).to.deep.equal({
+              prefixes: [],
+              items: [],
+            });
+          });
+
+          it("folder placeholder should be listed as a prefix but not an item under parent", async () => {
+            const listResult = await page.evaluate(async () => {
+              const list = await firebase.storage().ref("/testing").listAll();
+              return {
+                prefixes: list.prefixes.map((prefix) => prefix.name),
+                items: list.items.map((item) => item.name),
+              };
+            });
+
+            expect(listResult).to.deep.equal({
+              prefixes: ["abc", "somePathEndsWithDoubleSlash", "storage_ref"],
+              items: [],
+            });
+          });
+        });
+
+        context("with invalid prefixes and items", () => {
+          beforeEach(async function (this) {
+            this.timeout(TEST_SETUP_TIMEOUT);
+
+            const refs = ["list//foo", "list/bar//", "list/baz//qux"];
+            for (const ref of refs) {
+              // Use REST API to create the folder placeholders since SDK won't
+              // allow refs with trailing slashes.
+              await fetch(
+                `${STORAGE_EMULATOR_HOST}/upload/storage/v1/b/${storageBucket}/o?name=${encodeURIComponent(
+                  ref
+                )}`,
+                {
+                  headers: {
+                    "Content-Type": "multipart/related; boundary=boundary",
+                  },
+                  method: "POST",
+                  body: Buffer.from(EMPTY_FOLDER_DATA, "utf8"),
+                }
+              );
+            }
+          });
+
+          it("list result should not include show invalid prefixes and items", async () => {
+            const listResult = await page.evaluate(async () => {
+              const list = await firebase.storage().ref("/list").listAll();
+              return {
+                prefixes: list.prefixes.map((prefix) => prefix.name),
+                items: list.items.map((item) => item.name),
+              };
+            });
+
+            expect(listResult).to.deep.equal({
+              prefixes: ["bar", "baz"], // only implicit prefixes, (no bar//)
+              items: [], // no valid items
+            });
+          });
+        });
+      });
+
+      describe("#list()", () => {
+        const itemNames = [...Array(10)].map((_, i) => `item#${i}`);
+
+        beforeEach(async function (this) {
+          this.timeout(TEST_SETUP_TIMEOUT);
+
+          for (const item of itemNames) {
+            await page.evaluate(
+              async (IMAGE_FILE_BASE64, filename) => {
+                try {
+                  await firebase.auth().signInAnonymously();
+                  const task = await firebase
+                    .storage()
+                    .ref(filename)
+                    .putString(IMAGE_FILE_BASE64, "base64");
+                  return task.state;
+                } catch (err: any) {
+                  throw err.message;
+                }
+              },
+              IMAGE_FILE_BASE64,
+              `testing/list/${item}`
+            );
+          }
+        });
+
+        it("should list only maxResults items with nextPageToken, when maxResults is set", async function (this) {
+          this.timeout(TEST_SETUP_TIMEOUT);
+
+          const listItems = await page.evaluate(async () => {
+            const list = await firebase.storage().ref("testing/list").list({
+              maxResults: 4,
+            });
+            return {
+              items: list.items.map((item) => item.name),
+              nextPageToken: list.nextPageToken,
+            };
+          });
+
+          expect(listItems.items).to.have.lengthOf(4);
+          expect(itemNames).to.include.members(listItems.items);
+          expect(listItems.nextPageToken).to.not.be.empty;
+        });
+
+        it("should paginate when nextPageToken is provided", async function (this) {
+          this.timeout(TEST_SETUP_TIMEOUT);
+          let responses: string[] = [];
+          let pageToken = "";
+          let pageCount = 0;
+
+          do {
+            const listResponse = await page.evaluate(async (pageToken) => {
+              const list = await firebase.storage().ref("testing/list").list({
+                maxResults: 4,
+                pageToken,
+              });
+              return {
+                items: list.items.map((item) => item.name),
+                nextPageToken: list.nextPageToken ?? "",
+              };
+            }, pageToken);
+
+            responses = [...responses, ...listResponse.items];
+            pageToken = listResponse.nextPageToken;
+            pageCount++;
+
+            if (!listResponse.nextPageToken) {
+              expect(responses.sort()).to.deep.equal(itemNames);
+              expect(pageCount).to.be.equal(3);
+              break;
+            }
+          } while (true);
+        });
+      });
+
+      it("updateMetadata throws on non-existent file", async () => {
+        const err = await page.evaluate(async () => {
+          try {
+            return await firebase
+              .storage()
+              .ref("testing/thisFileDoesntExist")
+              .updateMetadata({
+                contentType: "application/awesome-stream",
+                customMetadata: {
+                  testable: "true",
+                },
+              });
+          } catch (_err) {
+            return _err;
+          }
+        });
+
+        expect(err).to.not.be.empty;
+      });
+
+      it("updateMetadata updates metadata successfully", async () => {
+        const metadata = await page.evaluate(async (filename) => {
+          await firebase.auth().signInAnonymously();
+          return firebase
+            .storage()
+            .ref(filename)
+            .updateMetadata({
+              contentType: "application/awesome-stream",
+              customMetadata: {
+                testable: "true",
+              },
+            });
+        }, filename);
+
+        expect(metadata.contentType).to.equal("application/awesome-stream");
+        expect(metadata.customMetadata.testable).to.equal("true");
+      });
+
+      describe("#getDownloadURL()", () => {
+        it("returns url pointing to the expected host", async () => {
+          const downloadUrl: string = await page.evaluate((filename) => {
+            return firebase.storage().ref(filename).getDownloadURL();
+          }, filename);
+          const expectedHost = TEST_CONFIG.useProductionServers
+            ? "https://firebasestorage.googleapis.com"
+            : STORAGE_EMULATOR_HOST;
+
+          expect(downloadUrl).to.contain(
+            `${expectedHost}/v0/b/${storageBucket}/o/testing%2Fstorage_ref%2Fimage.png?alt=media&token=`
+          );
+        });
+
+        it("serves the right content", async () => {
+          const downloadUrl = await page.evaluate((filename) => {
+            return firebase.storage().ref(filename).getDownloadURL();
+          }, filename);
+
+          const requestClient = TEST_CONFIG.useProductionServers ? https : http;
+          await new Promise((resolve, reject) => {
+            requestClient.get(downloadUrl, (response) => {
+              const data: any = [];
+              response
+                .on("data", (chunk) => data.push(chunk))
+                .on("end", () => {
+                  expect(Buffer.concat(data)).to.deep.equal(
+                    Buffer.from(IMAGE_FILE_BASE64, "base64")
+                  );
+                })
+                .on("close", resolve)
+                .on("error", reject);
+            });
+          });
+        });
+      });
+
+      it("#getMetadata()", async () => {
+        const metadata = await page.evaluate((filename) => {
+          return firebase.storage().ref(filename).getMetadata();
+        }, filename);
+
+        const metadataTypes: { [s: string]: string } = {};
+
+        for (const key in metadata) {
+          if (metadata[key]) {
+            metadataTypes[key] = typeof metadata[key];
+          }
+        }
+
+        expect(metadataTypes).to.deep.equal({
+          bucket: "string",
+          contentDisposition: "string",
+          contentEncoding: "string",
+          contentType: "string",
+          cacheControl: "string",
+          fullPath: "string",
+          generation: "string",
+          md5Hash: "string",
+          metageneration: "string",
+          name: "string",
+          size: "number",
+          timeCreated: "string",
+          type: "string",
+          updated: "string",
+        });
+      });
+
+      describe("#setMetadata()", () => {
+        it("should allow for custom metadata to be set", async () => {
+          const metadata = await page.evaluate(async (filename) => {
+            await firebase
+              .storage()
+              .ref(filename)
+              .updateMetadata({
+                customMetadata: {
+                  is_over: "9000",
+                },
+              });
+            return await firebase.storage().ref(filename).getMetadata();
+          }, filename);
+
+          expect(metadata.customMetadata.is_over).to.equal("9000");
+        });
+
+        it("should allow deletion of custom metadata by setting to null", async () => {
+          const setMetadata = await page.evaluate((filename) => {
+            const storageReference = firebase.storage().ref(filename);
+            return storageReference.updateMetadata({
+              contentType: "text/plain",
+              customMetadata: {
+                removeMe: "please",
+              },
+            });
+          }, filename);
+
+          expect(setMetadata.customMetadata.removeMe).to.equal("please");
+
+          const nulledMetadata = await page.evaluate((filename) => {
+            const storageReference = firebase.storage().ref(filename);
+            return storageReference.updateMetadata({
+              contentType: "text/plain",
+              customMetadata: {
+                removeMe: null as any,
+              },
+            });
+          }, filename);
+
+          expect(nulledMetadata.customMetadata.removeMe).to.equal(undefined);
+        });
+      });
+
+      describe("deleteFile", () => {
+        it("should delete file", async () => {
+          await page.evaluate((filename) => {
+            return firebase.storage().ref(filename).delete();
+          }, filename);
+
+          const error = await page.evaluate((filename) => {
+            return new Promise((resolve) => {
+              firebase
+                .storage()
+                .ref(filename)
+                .getDownloadURL()
+                .catch((err) => {
+                  resolve(err.message);
+                });
+            });
+          }, filename);
+
+          expect(error).to.contain("does not exist.");
+        });
+
+        it("should not delete file when security rule on resource object disallows it", async () => {
+          await uploadText(page, "delete/disallowIfContentTypeText", "some-content", undefined, {
+            contentType: "text/plain",
+          });
+
+          const error: string = await page.evaluate(async (filename) => {
+            try {
+              await firebase.storage().ref(filename).delete();
+              return "success";
+            } catch (err) {
+              if (err instanceof Error) {
+                return err.message;
+              }
+              throw err;
+            }
+          }, "delete/disallowIfContentTypeText");
+
+          expect(error).to.contain("does not have permission to access");
+        });
+      });
+    });
+  });
+
+  describe("Non-SDK Endpoints", () => {
+    const filename = "testing/storage_ref/image.png";
+    const encoded_filename = "testing%2Fstorage_ref%2Fimage.png";
+    const image_filename = writeToFile(
+      "image_base64",
+      Buffer.from(IMAGE_FILE_BASE64, "base64"),
+      tmpDir
+    );
+
+    beforeEach(async function (this) {
+      this.timeout(TEST_SETUP_TIMEOUT);
+      await resetEmulatorState();
+      await testBucket.upload(image_filename, { destination: filename });
+    });
+
+    describe("tokens", () => {
+      it("should generate new token on create_token", async () => {
+        await supertest(STORAGE_EMULATOR_HOST)
+          .post(`/v0/b/${storageBucket}/o/${encoded_filename}?create_token=true`)
+          .set({ Authorization: "Bearer owner" })
+          .expect(200)
+          .then((res) => {
+            const metadata = res.body;
+            expect(metadata.downloadTokens.split(",").length).to.deep.equal(1);
+          });
+      });
+
+      it("should return a 400 if create_token value is invalid", async () => {
+        await supertest(STORAGE_EMULATOR_HOST)
+          .post(`/v0/b/${storageBucket}/o/${encoded_filename}?create_token=someNonTrueParam`)
+          .set({ Authorization: "Bearer owner" })
+          .expect(400);
+      });
+
+      it("should return a 403 for create_token if auth header is invalid", async () => {
+        await supertest(STORAGE_EMULATOR_HOST)
+          .post(`/v0/b/${storageBucket}/o/${encoded_filename}?create_token=true`)
+          .set({ Authorization: "Bearer somethingElse" })
+          .expect(403);
+      });
+
+      it("should delete a download token", async () => {
+        await supertest(STORAGE_EMULATOR_HOST)
+          .post(`/v0/b/${storageBucket}/o/${encoded_filename}?create_token=true`)
+          .set({ Authorization: "Bearer owner" })
+          .expect(200);
+        const tokens = await supertest(STORAGE_EMULATOR_HOST)
+          .post(`/v0/b/${storageBucket}/o/${encoded_filename}?create_token=true`)
+          .set({ Authorization: "Bearer owner" })
+          .expect(200)
+          .then((res) => res.body.downloadTokens.split(","));
+        // delete the newly added token
+        await supertest(STORAGE_EMULATOR_HOST)
+          .post(`/v0/b/${storageBucket}/o/${encoded_filename}?delete_token=${tokens[0]}`)
+          .set({ Authorization: "Bearer owner" })
+          .expect(200)
+          .then((res) => {
+            const metadata = res.body;
+            expect(metadata.downloadTokens.split(",")).to.deep.equal([tokens[1]]);
+          });
+      });
+
+      it("should regenerate a new token if the last remaining one is deleted", async () => {
+        await supertest(STORAGE_EMULATOR_HOST)
+          .post(`/v0/b/${storageBucket}/o/${encoded_filename}?create_token=true`)
+          .set({ Authorization: "Bearer owner" })
+          .expect(200);
+        const token = await supertest(STORAGE_EMULATOR_HOST)
+          .get(`/v0/b/${storageBucket}/o/${encoded_filename}`)
+          .set({ Authorization: "Bearer owner" })
+          .expect(200)
+          .then((res) => res.body.downloadTokens);
+
+        await supertest(STORAGE_EMULATOR_HOST)
+          .post(`/v0/b/${storageBucket}/o/${encoded_filename}?delete_token=${token}`)
+          .set({ Authorization: "Bearer owner" })
+          .expect(200)
+          .then((res) => {
+            const metadata = res.body;
+            expect(metadata.downloadTokens.split(",").length).to.deep.equal(1);
+            expect(metadata.downloadTokens.split(",")).to.not.deep.equal([token]);
+          });
+      });
+
+      it("should return a 403 for delete_token if auth header is invalid", async () => {
+        await supertest(STORAGE_EMULATOR_HOST)
+          .post(`/v0/b/${storageBucket}/o/${encoded_filename}?delete_token=someToken`)
+          .set({ Authorization: "Bearer somethingElse" })
+          .expect(403);
+      });
+    });
+
+    it("should return an error message when uploading a file with invalid metadata", async () => {
+      const fileName = "test_upload.jpg";
+      const errorMessage = await supertest(STORAGE_EMULATOR_HOST)
+        .post(`/v0/b/${storageBucket}/o/?name=${fileName}`)
+        .set({ "x-goog-upload-protocol": "multipart", "content-type": "foo" })
+        .expect(400)
+        .then((res) => res.body.error.message);
+
+      expect(errorMessage).to.equal("Invalid Content-Type: foo");
+    });
+
+    it("should accept subsequent resumable upload commands without an auth header", async () => {
+      const uploadURL = await supertest(STORAGE_EMULATOR_HOST)
+        .post(`/v0/b/${storageBucket}/o/test_upload.jpg?uploadType=resumable&name=test_upload.jpg`)
+        .set({
+          Authorization: "Bearer owner",
+          "X-Goog-Upload-Protocol": "resumable",
+          "X-Goog-Upload-Command": "start",
+        })
+        .expect(200)
+        .then((res) => new URL(res.header["x-goog-upload-url"]));
+
+      await supertest(STORAGE_EMULATOR_HOST)
+        .put(uploadURL.pathname + uploadURL.search)
+        .set({
+          // No Authorization required in upload
+          "X-Goog-Upload-Protocol": "resumable",
+          "X-Goog-Upload-Command": "upload",
+        })
+        .expect(200);
+
+      const uploadStatus = await supertest(STORAGE_EMULATOR_HOST)
+        .put(uploadURL.pathname + uploadURL.search)
+        .set({
+          // No Authorization required in finalize
+          "X-Goog-Upload-Protocol": "resumable",
+          "X-Goog-Upload-Command": "upload, finalize",
+        })
+        .expect(200)
+        .then((res) => res.header["x-goog-upload-status"]);
+
+      expect(uploadStatus).to.equal("final");
+
+      await supertest(STORAGE_EMULATOR_HOST)
+        .get(`/v0/b/${storageBucket}/o/test_upload.jpg`)
+        .set({ Authorization: "Bearer owner" })
+        .expect(200);
+    });
+
+    it("should return 403 when resumable upload is unauthenticated", async () => {
+      const uploadURL = await supertest(STORAGE_EMULATOR_HOST)
+        .post(`/v0/b/${storageBucket}/o/test_upload.jpg?uploadType=resumable&name=test_upload.jpg`)
+        .set({
+          // Authorization missing
+          "X-Goog-Upload-Protocol": "resumable",
+          "X-Goog-Upload-Command": "start",
+        })
+        .expect(200)
+        .then((res) => new URL(res.header["x-goog-upload-url"]));
+
+      await supertest(STORAGE_EMULATOR_HOST)
+        .put(uploadURL.pathname + uploadURL.search)
+        .set({
+          "X-Goog-Upload-Protocol": "resumable",
+          "X-Goog-Upload-Command": "upload, finalize",
+        })
+        .expect(403);
+    });
+
+    describe("cancels upload", () => {
+      it("should cancel upload successfully", async () => {
+        const uploadURL = await supertest(STORAGE_EMULATOR_HOST)
+          .post(
+            `/v0/b/${storageBucket}/o/test_upload.jpg?uploadType=resumable&name=test_upload.jpg`
+          )
+          .set({
+            Authorization: "Bearer owner",
+            "X-Goog-Upload-Protocol": "resumable",
+            "X-Goog-Upload-Command": "start",
+          })
+          .expect(200)
+          .then((res) => new URL(res.header["x-goog-upload-url"]));
+
+        await supertest(STORAGE_EMULATOR_HOST)
+          .put(uploadURL.pathname + uploadURL.search)
+          .set({
+            "X-Goog-Upload-Protocol": "resumable",
+            "X-Goog-Upload-Command": "cancel",
+          })
+          .expect(200);
+
+        await supertest(STORAGE_EMULATOR_HOST)
+          .get(`/v0/b/${storageBucket}/o/test_upload.jpg`)
+          .set({ Authorization: "Bearer owner" })
+          .expect(404);
+      });
+
+      it("should return 200 when cancelling already cancelled upload", async () => {
+        const uploadURL = await supertest(STORAGE_EMULATOR_HOST)
+          .post(
+            `/v0/b/${storageBucket}/o/test_upload.jpg?uploadType=resumable&name=test_upload.jpg`
+          )
+          .set({
+            Authorization: "Bearer owner",
+            "X-Goog-Upload-Protocol": "resumable",
+            "X-Goog-Upload-Command": "start",
+          })
+          .expect(200)
+          .then((res) => new URL(res.header["x-goog-upload-url"]));
+
+        await supertest(STORAGE_EMULATOR_HOST)
+          .put(uploadURL.pathname + uploadURL.search)
+          .set({
+            "X-Goog-Upload-Protocol": "resumable",
+            "X-Goog-Upload-Command": "cancel",
+          })
+          .expect(200);
+
+        await supertest(STORAGE_EMULATOR_HOST)
+          .put(uploadURL.pathname + uploadURL.search)
+          .set({
+            "X-Goog-Upload-Protocol": "resumable",
+            "X-Goog-Upload-Command": "cancel",
+          })
+          .expect(200);
+      });
+
+      it("should return 400 when cancelling finalized resumable upload", async () => {
+        const uploadURL = await supertest(STORAGE_EMULATOR_HOST)
+          .post(
+            `/v0/b/${storageBucket}/o/test_upload.jpg?uploadType=resumable&name=test_upload.jpg`
+          )
+          .set({
+            Authorization: "Bearer owner",
+            "X-Goog-Upload-Protocol": "resumable",
+            "X-Goog-Upload-Command": "start",
+          })
+          .expect(200)
+          .then((res) => new URL(res.header["x-goog-upload-url"]));
+
+        await supertest(STORAGE_EMULATOR_HOST)
+          .put(uploadURL.pathname + uploadURL.search)
+          .set({
+            "X-Goog-Upload-Protocol": "resumable",
+            "X-Goog-Upload-Command": "upload, finalize",
+          })
+          .expect(200);
+
+        await supertest(STORAGE_EMULATOR_HOST)
+          .put(uploadURL.pathname + uploadURL.search)
+          .set({
+            "X-Goog-Upload-Protocol": "resumable",
+            "X-Goog-Upload-Command": "cancel",
+          })
+          .expect(400);
+      });
+
+      it("should return 404 when cancelling non-existent upload", async () => {
+        const uploadURL = await supertest(STORAGE_EMULATOR_HOST)
+          .post(
+            `/v0/b/${storageBucket}/o/test_upload.jpg?uploadType=resumable&name=test_upload.jpg`
+          )
+          .set({
+            Authorization: "Bearer owner",
+            "X-Goog-Upload-Protocol": "resumable",
+            "X-Goog-Upload-Command": "start",
+          })
+          .expect(200)
+          .then((res) => new URL(res.header["x-goog-upload-url"]));
+
+        await supertest(STORAGE_EMULATOR_HOST)
+          .put(uploadURL.pathname + uploadURL.search.replace(/(upload_id=).*?(&)/, "$1foo$2"))
+          .set({
+            "X-Goog-Upload-Protocol": "resumable",
+            "X-Goog-Upload-Command": "cancel",
+          })
+          .expect(404);
+      });
     });
   });
 
   emulatorSpecificDescribe("Internal Endpoints", () => {
-    before(async function (this) {
-      this.timeout(TEST_SETUP_TIMEOUT);
-      test = new TriggerEndToEndTest(FIREBASE_PROJECT, __dirname, emulatorConfig);
-      await test.startEmulators(["--only", "storage"]);
-    });
-
     after(async () => {
-      await test.stopEmulators();
+      // reset to default rules after this test suite finishes.
+      await supertest(STORAGE_EMULATOR_HOST)
+        .put("/internal/setRules")
+        .send({
+          rules: {
+            files: [
+              {
+                name: "/dev/null/storage.rules",
+                content: DEFAULT_RULES,
+              },
+            ],
+          },
+        })
+        .expect(200);
     });
 
     describe("setRules", () => {
@@ -1324,958 +2294,6 @@ describe("Storage emulator", () => {
         expect(errorMessage).to.equal(
           "There was an error updating rules, see logs for more details"
         );
-      });
-    });
-  });
-
-  /**
-   * TODO(abhisun): Add test coverage to validate how many times various cloud functions are triggered.
-   */
-  describe("Firebase Endpoints", () => {
-    let storage: Storage;
-    let browser: puppeteer.Browser;
-    let page: puppeteer.Page;
-
-    const filename = "testing/storage_ref/image.png";
-
-    before(async function (this) {
-      this.timeout(TEST_SETUP_TIMEOUT);
-
-      if (TEST_CONFIG.useProductionServers) {
-        process.env.GOOGLE_APPLICATION_CREDENTIALS = path.join(__dirname, SERVICE_ACCOUNT_KEY);
-        storage = new Storage();
-      } else {
-        test = new TriggerEndToEndTest(FIREBASE_PROJECT, __dirname, emulatorConfig);
-        await test.startEmulators(["--only", "auth,storage"]);
-      }
-
-      browser = await puppeteer.launch({
-        headless: !TEST_CONFIG.showBrowser,
-        devtools: true,
-      });
-    });
-
-    beforeEach(async function (this) {
-      this.timeout(TEST_SETUP_TIMEOUT);
-
-      page = await browser.newPage();
-      await page.goto("https://example.com", { waitUntil: "networkidle2" });
-
-      await page.addScriptTag({
-        url: "https://www.gstatic.com/firebasejs/7.24.0/firebase-app.js",
-      });
-      await page.addScriptTag({
-        url: "https://www.gstatic.com/firebasejs/7.24.0/firebase-auth.js",
-      });
-      await page.addScriptTag({
-        url: TEST_CONFIG.useProductionServers
-          ? "https://www.gstatic.com/firebasejs/7.24.0/firebase-storage.js"
-          : "https://storage.googleapis.com/fir-tools-builds/firebase-storage.js",
-      });
-
-      await page.evaluate(
-        (appConfig, useProductionServers, emulatorHost) => {
-          firebase.initializeApp(appConfig);
-          // Wiring the app to use either the auth emulator or production auth
-          // based on the config flag.
-          const auth = firebase.auth();
-          if (!useProductionServers) {
-            auth.useEmulator(emulatorHost);
-          }
-          (window as any).auth = auth;
-        },
-        appConfig,
-        TEST_CONFIG.useProductionServers,
-        AUTH_EMULATOR_HOST
-      );
-
-      if (!TEST_CONFIG.useProductionServers) {
-        await page.evaluate((hostAndPort) => {
-          const [host, port] = hostAndPort.split(":") as string[];
-          (firebase.storage() as any).useEmulator(host, port);
-        }, STORAGE_EMULATOR_HOST.replace(/^(https?:|)\/\//, ""));
-      }
-    });
-
-    afterEach(async () => {
-      await page.close();
-    });
-
-    after(async function (this) {
-      this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
-
-      await browser.close();
-      if (TEST_CONFIG.useProductionServers) {
-        delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
-      } else {
-        await test.stopEmulators();
-      }
-    });
-
-    describe(".ref()", () => {
-      beforeEach(async function (this) {
-        this.timeout(TEST_SETUP_TIMEOUT);
-
-        if (TEST_CONFIG.useProductionServers) {
-          await storage.bucket(storageBucket).deleteFiles();
-        } else {
-          await resetStorageEmulator(STORAGE_EMULATOR_HOST);
-        }
-
-        await page.evaluate(
-          (IMAGE_FILE_BASE64, filename) => {
-            const auth = (window as any).auth as firebase.auth.Auth;
-
-            return auth
-              .signInAnonymously()
-              .then(() => {
-                return firebase.storage().ref(filename).putString(IMAGE_FILE_BASE64, "base64");
-              })
-              .then((task) => {
-                return task.state;
-              })
-              .catch((err) => {
-                throw err.message;
-              });
-          },
-          IMAGE_FILE_BASE64,
-          filename
-        );
-      });
-
-      describe("#put()", () => {
-        it("should upload a file", async function (this) {
-          this.timeout(TEST_SETUP_TIMEOUT);
-
-          const uploadState = await uploadText(
-            page,
-            "testing/image.png",
-            IMAGE_FILE_BASE64,
-            "base64"
-          );
-
-          expect(uploadState).to.equal("success");
-        });
-
-        it("should upload replace existing file", async function (this) {
-          this.timeout(TEST_SETUP_TIMEOUT);
-          await uploadText(page, "upload/replace.txt", "some-content");
-          await uploadText(page, "upload/replace.txt", "some-other-content");
-
-          const downloadUrl = await page.evaluate((filename) => {
-            return firebase.storage().ref("upload/replace.txt").getDownloadURL();
-          }, filename);
-
-          const requestClient = TEST_CONFIG.useProductionServers ? https : http;
-          await new Promise((resolve, reject) => {
-            requestClient.get(
-              downloadUrl,
-              {
-                headers: {
-                  // This is considered an authorized request in the emulator
-                  Authorization: "Bearer owner",
-                },
-              },
-              (response) => {
-                const data: any = [];
-                response
-                  .on("data", (chunk) => data.push(chunk))
-                  .on("end", () => {
-                    expect(Buffer.concat(data).toString()).to.equal("some-other-content");
-                  })
-                  .on("close", resolve)
-                  .on("error", reject);
-              }
-            );
-          });
-        });
-
-        it("should upload a file using put", async () => {
-          const uploadState = await page.evaluate(async (IMAGE_FILE_BASE64) => {
-            const task = await firebase
-              .storage()
-              .ref("testing/image_put.png")
-              .put(new File([IMAGE_FILE_BASE64], "toUpload.txt"));
-            return task.state;
-          }, IMAGE_FILE_BASE64);
-
-          expect(uploadState).to.equal("success");
-        });
-
-        it("should upload a file with custom metadata", async () => {
-          const uploadState = await page.evaluate(async (IMAGE_FILE_BASE64) => {
-            const task = await firebase
-              .storage()
-              .ref("upload/allowIfContentTypeImage.png")
-              .put(new File([IMAGE_FILE_BASE64], "toUpload.txt"), { contentType: "image/blah" });
-            return task.state;
-          }, IMAGE_FILE_BASE64);
-
-          expect(uploadState).to.equal("success");
-        });
-
-        it("should set custom metadata on resumable uploads", async () => {
-          const customMetadata = {
-            contentDisposition: "initialCommit",
-            contentType: "image/jpg",
-            name: "test_upload.jpg",
-          };
-
-          const uploadURL = await supertest(STORAGE_EMULATOR_HOST)
-            .post(
-              `/v0/b/${storageBucket}/o/test_upload.jpg?uploadType=resumable&name=test_upload.jpg`
-            )
-            .send(customMetadata)
-            .set({
-              Authorization: "Bearer owner",
-              "X-Goog-Upload-Protocol": "resumable",
-              "X-Goog-Upload-Command": "start",
-            })
-            .expect(200)
-            .then((res) => new URL(res.header["x-goog-upload-url"]));
-
-          const returnedMetadata = await supertest(STORAGE_EMULATOR_HOST)
-            .put(uploadURL.pathname + uploadURL.search)
-            .set({
-              "X-Goog-Upload-Protocol": "resumable",
-              "X-Goog-Upload-Command": "upload, finalize",
-            })
-            .expect(200)
-            .then((res) => res.body);
-          expect(returnedMetadata.name).to.equal(customMetadata.name);
-          expect(returnedMetadata.contentType).to.equal(customMetadata.contentType);
-          expect(returnedMetadata.contentDisposition).to.equal(customMetadata.contentDisposition);
-        });
-
-        it("should return a 403 on rules deny", async () => {
-          const uploadState = await page.evaluate(async (IMAGE_FILE_BASE64) => {
-            const _file = new File([IMAGE_FILE_BASE64], "toUpload.txt");
-            try {
-              const task = await firebase
-                .storage()
-                .ref("upload/allowIfContentTypeImage.png")
-                .put(_file, { contentType: "text/plain" });
-              return task.state;
-            } catch (err: any) {
-              if (err instanceof Error) {
-                return err.message;
-              }
-              throw err;
-            }
-          }, IMAGE_FILE_BASE64);
-          expect(uploadState!).to.include("User does not have permission");
-        });
-      });
-
-      describe("#listAll()", () => {
-        beforeEach(async function (this) {
-          this.timeout(TEST_SETUP_TIMEOUT);
-
-          const refs = [
-            "testing/storage_ref/image.png",
-            "testing/somePathEndsWithDoubleSlash//file.png",
-          ];
-          for (const ref of refs) {
-            await page.evaluate(
-              async (IMAGE_FILE_BASE64, filename) => {
-                const auth = (window as any).auth as firebase.auth.Auth;
-
-                try {
-                  await auth.signInAnonymously();
-                  const task = await firebase
-                    .storage()
-                    .ref(filename)
-                    .putString(IMAGE_FILE_BASE64, "base64");
-                  return task.state;
-                } catch (err: any) {
-                  throw err.message;
-                }
-              },
-              IMAGE_FILE_BASE64,
-              ref
-            );
-          }
-        });
-
-        it("should list all files and prefixes", async function (this) {
-          this.timeout(TEST_SETUP_TIMEOUT);
-
-          const itemNames = [...Array(5)].map((_, i) => `item#${i}`);
-          for (const item of itemNames) {
-            await page.evaluate(
-              async (IMAGE_FILE_BASE64, filename) => {
-                const auth = (window as any).auth as firebase.auth.Auth;
-
-                try {
-                  await auth.signInAnonymously();
-                  const task = await firebase
-                    .storage()
-                    .ref(filename)
-                    .putString(IMAGE_FILE_BASE64, "base64");
-                  return task.state;
-                } catch (err: any) {
-                  throw err.message;
-                }
-              },
-              IMAGE_FILE_BASE64,
-              `testing/${item}`
-            );
-          }
-
-          const listResult = await page.evaluate(() => {
-            return firebase
-              .storage()
-              .ref("testing")
-              .listAll()
-              .then((list) => {
-                return {
-                  prefixes: list.prefixes.map((prefix) => prefix.name),
-                  items: list.items.map((item) => item.name),
-                };
-              });
-          });
-
-          expect(listResult).to.deep.equal({
-            items: itemNames,
-            prefixes: ["somePathEndsWithDoubleSlash", "storage_ref"],
-          });
-        });
-
-        it("should list implicit prefixes", async () => {
-          await page.evaluate(
-            async (IMAGE_FILE_BASE64, filename) => {
-              try {
-                await firebase.auth().signInAnonymously();
-                const task = await firebase
-                  .storage()
-                  .ref(filename)
-                  .putString(IMAGE_FILE_BASE64, "base64");
-                return task.state;
-              } catch (err: any) {
-                throw err.message;
-              }
-            },
-            IMAGE_FILE_BASE64,
-            `testing/implicit/deep/path/file.jpg`
-          );
-
-          const listResult = await page.evaluate(() => {
-            return firebase
-              .storage()
-              .ref("testing/implicit")
-              .listAll()
-              .then((list) => {
-                return {
-                  prefixes: list.prefixes.map((prefix) => prefix.name),
-                  items: list.items.map((item) => item.name),
-                };
-              });
-          });
-
-          expect(listResult).to.deep.equal({
-            prefixes: ["deep"],
-            items: [],
-          });
-        });
-
-        it("should list at /", async () => {
-          await uploadText(page, "list/file.jpg", "hello");
-          await uploadText(page, "list/subdir/file.jpg", "world");
-
-          const listResult = await page.evaluate(async () => {
-            const list = await firebase.storage().ref("/list").listAll();
-            return {
-              prefixes: list.prefixes.map((prefix) => prefix.name),
-              items: list.items.map((item) => item.name),
-            };
-          });
-
-          expect(listResult).to.deep.equal({
-            prefixes: ["subdir"],
-            items: ["file.jpg"],
-          });
-        });
-
-        it("zero element list array should still be present in response", async () => {
-          const listResult = await page.evaluate(async () => {
-            const list = await firebase.storage().ref("/list").listAll();
-            return {
-              prefixes: list.prefixes.map((prefix) => prefix.name),
-              items: list.items.map((item) => item.name),
-            };
-          });
-
-          expect(listResult).to.deep.equal({
-            prefixes: [],
-            items: [],
-          });
-        });
-      });
-
-      describe("#list()", () => {
-        const itemNames = [...Array(10)].map((_, i) => `item#${i}`);
-
-        beforeEach(async function (this) {
-          this.timeout(TEST_SETUP_TIMEOUT);
-
-          for (const item of itemNames) {
-            await page.evaluate(
-              async (IMAGE_FILE_BASE64, filename) => {
-                const auth = (window as any).auth as firebase.auth.Auth;
-
-                try {
-                  await auth.signInAnonymously();
-                  const task = await firebase
-                    .storage()
-                    .ref(filename)
-                    .putString(IMAGE_FILE_BASE64, "base64");
-                  return task.state;
-                } catch (err: any) {
-                  throw err.message;
-                }
-              },
-              IMAGE_FILE_BASE64,
-              `testing/list/${item}`
-            );
-          }
-        });
-
-        it("should list only maxResults items with nextPageToken, when maxResults is set", async function (this) {
-          this.timeout(TEST_SETUP_TIMEOUT);
-
-          const listItems = await page.evaluate(() => {
-            return firebase
-              .storage()
-              .ref("testing/list")
-              .list({
-                maxResults: 4,
-              })
-              .then((list) => {
-                return {
-                  items: list.items.map((item) => item.name),
-                  nextPageToken: list.nextPageToken,
-                };
-              });
-          });
-
-          expect(listItems.items).to.have.lengthOf(4);
-          expect(itemNames).to.include.members(listItems.items);
-          expect(listItems.nextPageToken).to.not.be.empty;
-        });
-
-        it("should paginate when nextPageToken is provided", async function (this) {
-          this.timeout(TEST_SETUP_TIMEOUT);
-          let responses: string[] = [];
-          let pageToken = "";
-          let pageCount = 0;
-
-          do {
-            const listResponse = await page.evaluate((pageToken) => {
-              return firebase
-                .storage()
-                .ref("testing/list")
-                .list({
-                  maxResults: 4,
-                  pageToken,
-                })
-                .then((list) => {
-                  return {
-                    items: list.items.map((item) => item.name),
-                    nextPageToken: list.nextPageToken ?? "",
-                  };
-                });
-            }, pageToken);
-
-            responses = [...responses, ...listResponse.items];
-            pageToken = listResponse.nextPageToken;
-            pageCount++;
-
-            if (!listResponse.nextPageToken) {
-              expect(responses.sort()).to.deep.equal(itemNames);
-              expect(pageCount).to.be.equal(3);
-              break;
-            }
-          } while (true);
-        });
-      });
-
-      it("updateMetadata throws on non-existent file", async () => {
-        const err = await page.evaluate(() => {
-          return firebase
-            .storage()
-            .ref("testing/thisFileDoesntExist")
-            .updateMetadata({
-              contentType: "application/awesome-stream",
-              customMetadata: {
-                testable: "true",
-              },
-            })
-            .catch((_err) => {
-              return _err;
-            });
-        });
-
-        expect(err).to.not.be.empty;
-      });
-
-      it("updateMetadata updates metadata successfully", async () => {
-        const metadata = await page.evaluate((filename) => {
-          return firebase
-            .storage()
-            .ref(filename)
-            .updateMetadata({
-              contentType: "application/awesome-stream",
-              customMetadata: {
-                testable: "true",
-              },
-            });
-        }, filename);
-
-        expect(metadata.contentType).to.equal("application/awesome-stream");
-        expect(metadata.customMetadata.testable).to.equal("true");
-      });
-
-      describe("#getDownloadURL()", () => {
-        it("returns url pointing to the expected host", async () => {
-          const downloadUrl: string = await page.evaluate((filename) => {
-            return firebase.storage().ref(filename).getDownloadURL();
-          }, filename);
-          const expectedHost = TEST_CONFIG.useProductionServers
-            ? "https://firebasestorage.googleapis.com"
-            : STORAGE_EMULATOR_HOST;
-
-          expect(downloadUrl).to.contain(
-            `${expectedHost}/v0/b/${storageBucket}/o/testing%2Fstorage_ref%2Fimage.png?alt=media&token=`
-          );
-        });
-
-        it("serves the right content", async () => {
-          const downloadUrl = await page.evaluate((filename) => {
-            return firebase.storage().ref(filename).getDownloadURL();
-          }, filename);
-
-          const requestClient = TEST_CONFIG.useProductionServers ? https : http;
-          await new Promise((resolve, reject) => {
-            requestClient.get(downloadUrl, (response) => {
-              const data: any = [];
-              response
-                .on("data", (chunk) => data.push(chunk))
-                .on("end", () => {
-                  expect(Buffer.concat(data)).to.deep.equal(
-                    Buffer.from(IMAGE_FILE_BASE64, "base64")
-                  );
-                })
-                .on("close", resolve)
-                .on("error", reject);
-            });
-          });
-        });
-      });
-
-      it("#getMetadata()", async () => {
-        const metadata = await page.evaluate((filename) => {
-          return firebase.storage().ref(filename).getMetadata();
-        }, filename);
-
-        const metadataTypes: { [s: string]: string } = {};
-
-        for (const key in metadata) {
-          if (metadata[key]) {
-            metadataTypes[key] = typeof metadata[key];
-          }
-        }
-
-        expect(metadataTypes).to.deep.equal({
-          bucket: "string",
-          contentDisposition: "string",
-          contentEncoding: "string",
-          contentType: "string",
-          cacheControl: "string",
-          fullPath: "string",
-          generation: "string",
-          md5Hash: "string",
-          metageneration: "string",
-          name: "string",
-          size: "number",
-          timeCreated: "string",
-          type: "string",
-          updated: "string",
-        });
-      });
-
-      describe("#setMetadata()", () => {
-        it("should allow for custom metadata to be set", async () => {
-          const metadata = await page.evaluate((filename) => {
-            return firebase
-              .storage()
-              .ref(filename)
-              .updateMetadata({
-                customMetadata: {
-                  is_over: "9000",
-                },
-              })
-              .then(() => {
-                return firebase.storage().ref(filename).getMetadata();
-              });
-          }, filename);
-
-          expect(metadata.customMetadata.is_over).to.equal("9000");
-        });
-
-        it("should allow deletion of custom metadata by setting to null", async () => {
-          const setMetadata = await page.evaluate((filename) => {
-            const storageReference = firebase.storage().ref(filename);
-            return storageReference.updateMetadata({
-              contentType: "text/plain",
-              customMetadata: {
-                removeMe: "please",
-              },
-            });
-          }, filename);
-
-          expect(setMetadata.customMetadata.removeMe).to.equal("please");
-
-          const nulledMetadata = await page.evaluate((filename) => {
-            const storageReference = firebase.storage().ref(filename);
-            return storageReference.updateMetadata({
-              contentType: "text/plain",
-              customMetadata: {
-                removeMe: null as any,
-              },
-            });
-          }, filename);
-
-          expect(nulledMetadata.customMetadata.removeMe).to.equal(undefined);
-        });
-      });
-
-      describe("deleteFile", () => {
-        it("should delete file", async () => {
-          await page.evaluate((filename) => {
-            return firebase.storage().ref(filename).delete();
-          }, filename);
-
-          const error = await page.evaluate((filename) => {
-            return new Promise((resolve) => {
-              firebase
-                .storage()
-                .ref(filename)
-                .getDownloadURL()
-                .catch((err) => {
-                  resolve(err.message);
-                });
-            });
-          }, filename);
-
-          expect(error).to.contain("does not exist.");
-        });
-
-        it("should not delete file when security rule on resource object disallows it", async () => {
-          await uploadText(page, "delete/disallowIfContentTypeText", "some-content", undefined, {
-            contentType: "text/plain",
-          });
-
-          const error: string = await page.evaluate(async (filename) => {
-            try {
-              await firebase.storage().ref(filename).delete();
-              return "success";
-            } catch (err) {
-              if (err instanceof Error) {
-                return err.message;
-              }
-              throw err;
-            }
-          }, "delete/disallowIfContentTypeText");
-
-          expect(error).to.contain("does not have permission to access");
-        });
-      });
-    });
-
-    emulatorSpecificDescribe("Non-SDK Endpoints", () => {
-      beforeEach(async () => {
-        await resetStorageEmulator(STORAGE_EMULATOR_HOST);
-
-        await page.evaluate(
-          (IMAGE_FILE_BASE64, filename) => {
-            const auth = (window as any).auth as firebase.auth.Auth;
-
-            return auth
-              .signInAnonymously()
-              .then(() => {
-                return firebase.storage().ref(filename).putString(IMAGE_FILE_BASE64, "base64");
-              })
-              .then((task) => {
-                return task.state;
-              })
-              .catch((err) => {
-                throw err.message;
-              });
-          },
-          IMAGE_FILE_BASE64,
-          filename
-        );
-      });
-
-      describe("tokens", () => {
-        it("should generate new token on create_token", async () => {
-          await supertest(STORAGE_EMULATOR_HOST)
-            .post(`/v0/b/${storageBucket}/o/testing%2Fstorage_ref%2Fimage.png?create_token=true`)
-            .set({ Authorization: "Bearer owner" })
-            .expect(200)
-            .then((res) => {
-              const metadata = res.body;
-              expect(metadata.downloadTokens.split(",").length).to.deep.equal(2);
-            });
-        });
-
-        it("should return a 400 if create_token value is invalid", async () => {
-          await supertest(STORAGE_EMULATOR_HOST)
-            .post(
-              `/v0/b/${storageBucket}/o/testing%2Fstorage_ref%2Fimage.png?create_token=someNonTrueParam`
-            )
-            .set({ Authorization: "Bearer owner" })
-            .expect(400);
-        });
-
-        it("should return a 403 for create_token if auth header is invalid", async () => {
-          await supertest(STORAGE_EMULATOR_HOST)
-            .post(`/v0/b/${storageBucket}/o/testing%2Fstorage_ref%2Fimage.png?create_token=true`)
-            .set({ Authorization: "Bearer somethingElse" })
-            .expect(403);
-        });
-
-        it("should delete a download token", async () => {
-          const tokens = await supertest(STORAGE_EMULATOR_HOST)
-            .post(`/v0/b/${storageBucket}/o/testing%2Fstorage_ref%2Fimage.png?create_token=true`)
-            .set({ Authorization: "Bearer owner" })
-            .expect(200)
-            .then((res) => res.body.downloadTokens.split(","));
-          // delete the newly added token
-          await supertest(STORAGE_EMULATOR_HOST)
-            .post(
-              `/v0/b/${storageBucket}/o/testing%2Fstorage_ref%2Fimage.png?delete_token=${tokens[0]}`
-            )
-            .set({ Authorization: "Bearer owner" })
-            .expect(200)
-            .then((res) => {
-              const metadata = res.body;
-              expect(metadata.downloadTokens.split(",")).to.deep.equal([tokens[1]]);
-            });
-        });
-
-        it("should regenerate a new token if the last remaining one is deleted", async () => {
-          const token = await supertest(STORAGE_EMULATOR_HOST)
-            .get(`/v0/b/${storageBucket}/o/testing%2Fstorage_ref%2Fimage.png`)
-            .set({ Authorization: "Bearer owner" })
-            .expect(200)
-            .then((res) => res.body.downloadTokens);
-
-          await supertest(STORAGE_EMULATOR_HOST)
-            .post(
-              `/v0/b/${storageBucket}/o/testing%2Fstorage_ref%2Fimage.png?delete_token=${token}`
-            )
-            .set({ Authorization: "Bearer owner" })
-            .expect(200)
-            .then((res) => {
-              const metadata = res.body;
-              expect(metadata.downloadTokens.split(",").length).to.deep.equal(1);
-              expect(metadata.downloadTokens.split(",")).to.not.deep.equal([token]);
-            });
-        });
-
-        it("should return a 403 for delete_token if auth header is invalid", async () => {
-          await supertest(STORAGE_EMULATOR_HOST)
-            .post(
-              `/v0/b/${storageBucket}/o/testing%2Fstorage_ref%2Fimage.png?delete_token=someToken`
-            )
-            .set({ Authorization: "Bearer somethingElse" })
-            .expect(403);
-        });
-      });
-
-      it("should return an error message when uploading a file with invalid metadata", async () => {
-        const fileName = "test_upload.jpg";
-        const errorMessage = await supertest(STORAGE_EMULATOR_HOST)
-          .post(`/v0/b/${storageBucket}/o/${fileName}?name=${fileName}`)
-          .set({ "x-goog-upload-protocol": "multipart", "content-type": "foo" })
-          .expect(400)
-          .then((res) => res.body.error.message);
-
-        expect(errorMessage).to.equal("Invalid Content-Type: foo");
-      });
-
-      it("should accept subsequent resumable upload commands without an auth header", async () => {
-        const uploadURL = await supertest(STORAGE_EMULATOR_HOST)
-          .post(
-            `/v0/b/${storageBucket}/o/test_upload.jpg?uploadType=resumable&name=test_upload.jpg`
-          )
-          .set({
-            Authorization: "Bearer owner",
-            "X-Goog-Upload-Protocol": "resumable",
-            "X-Goog-Upload-Command": "start",
-          })
-          .expect(200)
-          .then((res) => new URL(res.header["x-goog-upload-url"]));
-
-        await supertest(STORAGE_EMULATOR_HOST)
-          .put(uploadURL.pathname + uploadURL.search)
-          .set({
-            // No Authorization required in upload
-            "X-Goog-Upload-Protocol": "resumable",
-            "X-Goog-Upload-Command": "upload",
-          })
-          .expect(200);
-
-        const uploadStatus = await supertest(STORAGE_EMULATOR_HOST)
-          .put(uploadURL.pathname + uploadURL.search)
-          .set({
-            // No Authorization required in finalize
-            "X-Goog-Upload-Protocol": "resumable",
-            "X-Goog-Upload-Command": "upload, finalize",
-          })
-          .expect(200)
-          .then((res) => res.header["x-goog-upload-status"]);
-
-        expect(uploadStatus).to.equal("final");
-
-        await supertest(STORAGE_EMULATOR_HOST)
-          .get(`/v0/b/${storageBucket}/o/test_upload.jpg`)
-          .set({ Authorization: "Bearer owner" })
-          .expect(200);
-      });
-
-      it("should return 403 when resumable upload is unauthenticated", async () => {
-        const uploadURL = await supertest(STORAGE_EMULATOR_HOST)
-          .post(
-            `/v0/b/${storageBucket}/o/test_upload.jpg?uploadType=resumable&name=test_upload.jpg`
-          )
-          .set({
-            // Authorization missing
-            "X-Goog-Upload-Protocol": "resumable",
-            "X-Goog-Upload-Command": "start",
-          })
-          .expect(200)
-          .then((res) => new URL(res.header["x-goog-upload-url"]));
-
-        await supertest(STORAGE_EMULATOR_HOST)
-          .put(uploadURL.pathname + uploadURL.search)
-          .set({
-            "X-Goog-Upload-Protocol": "resumable",
-            "X-Goog-Upload-Command": "upload, finalize",
-          })
-          .expect(403);
-      });
-
-      describe("cancels upload", () => {
-        it("should cancel upload successfully", async () => {
-          const uploadURL = await supertest(STORAGE_EMULATOR_HOST)
-            .post(
-              `/v0/b/${storageBucket}/o/test_upload.jpg?uploadType=resumable&name=test_upload.jpg`
-            )
-            .set({
-              Authorization: "Bearer owner",
-              "X-Goog-Upload-Protocol": "resumable",
-              "X-Goog-Upload-Command": "start",
-            })
-            .expect(200)
-            .then((res) => new URL(res.header["x-goog-upload-url"]));
-
-          await supertest(STORAGE_EMULATOR_HOST)
-            .put(uploadURL.pathname + uploadURL.search)
-            .set({
-              "X-Goog-Upload-Protocol": "resumable",
-              "X-Goog-Upload-Command": "cancel",
-            })
-            .expect(200);
-
-          await supertest(STORAGE_EMULATOR_HOST)
-            .get(`/v0/b/${storageBucket}/o/test_upload.jpg`)
-            .set({ Authorization: "Bearer owner" })
-            .expect(404);
-        });
-
-        it("should return 200 when cancelling already cancelled upload", async () => {
-          const uploadURL = await supertest(STORAGE_EMULATOR_HOST)
-            .post(
-              `/v0/b/${storageBucket}/o/test_upload.jpg?uploadType=resumable&name=test_upload.jpg`
-            )
-            .set({
-              Authorization: "Bearer owner",
-              "X-Goog-Upload-Protocol": "resumable",
-              "X-Goog-Upload-Command": "start",
-            })
-            .expect(200)
-            .then((res) => new URL(res.header["x-goog-upload-url"]));
-
-          await supertest(STORAGE_EMULATOR_HOST)
-            .put(uploadURL.pathname + uploadURL.search)
-            .set({
-              "X-Goog-Upload-Protocol": "resumable",
-              "X-Goog-Upload-Command": "cancel",
-            })
-            .expect(200);
-
-          await supertest(STORAGE_EMULATOR_HOST)
-            .put(uploadURL.pathname + uploadURL.search)
-            .set({
-              "X-Goog-Upload-Protocol": "resumable",
-              "X-Goog-Upload-Command": "cancel",
-            })
-            .expect(200);
-        });
-
-        it("should return 400 when cancelling finalized resumable upload", async () => {
-          const uploadURL = await supertest(STORAGE_EMULATOR_HOST)
-            .post(
-              `/v0/b/${storageBucket}/o/test_upload.jpg?uploadType=resumable&name=test_upload.jpg`
-            )
-            .set({
-              Authorization: "Bearer owner",
-              "X-Goog-Upload-Protocol": "resumable",
-              "X-Goog-Upload-Command": "start",
-            })
-            .expect(200)
-            .then((res) => new URL(res.header["x-goog-upload-url"]));
-
-          await supertest(STORAGE_EMULATOR_HOST)
-            .put(uploadURL.pathname + uploadURL.search)
-            .set({
-              "X-Goog-Upload-Protocol": "resumable",
-              "X-Goog-Upload-Command": "upload, finalize",
-            })
-            .expect(200);
-
-          await supertest(STORAGE_EMULATOR_HOST)
-            .put(uploadURL.pathname + uploadURL.search)
-            .set({
-              "X-Goog-Upload-Protocol": "resumable",
-              "X-Goog-Upload-Command": "cancel",
-            })
-            .expect(400);
-        });
-
-        it("should return 404 when cancelling non-existent upload", async () => {
-          const uploadURL = await supertest(STORAGE_EMULATOR_HOST)
-            .post(
-              `/v0/b/${storageBucket}/o/test_upload.jpg?uploadType=resumable&name=test_upload.jpg`
-            )
-            .set({
-              Authorization: "Bearer owner",
-              "X-Goog-Upload-Protocol": "resumable",
-              "X-Goog-Upload-Command": "start",
-            })
-            .expect(200)
-            .then((res) => new URL(res.header["x-goog-upload-url"]));
-
-          await supertest(STORAGE_EMULATOR_HOST)
-            .put(uploadURL.pathname + uploadURL.search.replace(/(upload_id=).*?(&)/, "$1foo$2"))
-            .set({
-              "X-Goog-Upload-Protocol": "resumable",
-              "X-Goog-Upload-Command": "cancel",
-            })
-            .expect(404);
-        });
       });
     });
   });

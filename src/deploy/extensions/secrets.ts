@@ -1,4 +1,4 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
 import * as secretUtils from "../../extensions/secretsUtils";
 import * as secretManager from "../../gcp/secretManager";
@@ -11,7 +11,7 @@ import {
   getExtensionSpec,
 } from "./planner";
 import { promptCreateSecret } from "../../extensions/askUserForParam";
-import { ExtensionSpec, Param, ParamType } from "../../extensions/extensionsApi";
+import { ExtensionSpec, Param, ParamType } from "../../extensions/types";
 import { FirebaseError } from "../../error";
 import { logger } from "../../logger";
 import { logLabeledBullet } from "../../utils";

@@ -1,8 +1,16 @@
 import * as backend from "../../backend";
+import * as build from "../../build";
+import * as params from "../../params";
 import * as runtimes from "..";
-import { copyIfPresent, renameIfPresent } from "../../../../gcp/proto";
+import {
+  copyIfPresent,
+  renameIfPresent,
+  convertIfPresent,
+  secondsFromDuration,
+} from "../../../../gcp/proto";
 import { assertKeyTypes, requireKeys } from "./parsing";
 import { FirebaseError } from "../../../../error";
+import { nullsafeVisitor } from "../../../../functional";
 
 const CHANNEL_NAME_REGEX = new RegExp(
   "(projects\\/" +
@@ -13,23 +21,79 @@ const CHANNEL_NAME_REGEX = new RegExp(
     "(?<channel>[A-Za-z\\d\\-_]+)"
 );
 
-export type ManifestEndpoint = backend.ServiceConfiguration &
+export interface ManifestSecretEnv {
+  key: string;
+  secret?: string;
+  projectId?: string;
+}
+
+// Note: In this version of the API we used "serviceAccountEmail" to refer to
+// something that may not be an email (e.g. it might be myAccount@ to be project-relative)
+// In future revisions we should change this.
+type Base = Omit<backend.ServiceConfiguration, "secretEnvironmentVariables"> & {
+  serviceAccountEmail?: string | null;
+};
+type EventTrigger = backend.EventTrigger & {
+  serviceAccountEmail?: string | null;
+};
+
+// Note: v1 schedule functions use *Duration instead of *Seconds
+// so this version of the API must allow these three retryConfig fields.
+type ScheduleTrigger = backend.ScheduleTrigger & {
+  retryConfig?: {
+    maxRetryDuration?: string | null;
+    minBackoffDuration?: string | null;
+    maxBackoffDuration?: string | null;
+  } | null;
+};
+
+export type ManifestEndpoint = Base &
   backend.Triggered &
   Partial<backend.HttpsTriggered> &
   Partial<backend.CallableTriggered> &
-  Partial<backend.EventTriggered> &
+  Partial<{ eventTrigger: EventTrigger }> &
   Partial<backend.TaskQueueTriggered> &
   Partial<backend.BlockingTriggered> &
+  Partial<{ scheduleTrigger: ScheduleTrigger }> &
   Partial<backend.ScheduleTriggered> & {
     region?: string[];
     entryPoint: string;
     platform?: backend.FunctionsPlatform;
+    secretEnvironmentVariables?: Array<ManifestSecretEnv> | null;
   };
 
 export interface Manifest {
   specVersion: string;
+  params?: params.Param[];
   requiredAPIs?: backend.RequiredAPI[];
   endpoints: Record<string, ManifestEndpoint>;
+}
+
+/** Returns a Build from a v1alpha1 Manifest. */
+export function buildFromV1Alpha1(
+  yaml: unknown,
+  project: string,
+  region: string,
+  runtime: runtimes.Runtime
+): build.Build {
+  const manifest = JSON.parse(JSON.stringify(yaml)) as Manifest;
+  requireKeys("", manifest, "endpoints");
+  assertKeyTypes("", manifest, {
+    specVersion: "string",
+    params: "array",
+    requiredAPIs: "array",
+    endpoints: "object",
+  });
+  const bd: build.Build = build.empty();
+  bd.params = manifest.params || [];
+  bd.requiredAPIs = parseRequiredAPIs(manifest);
+  for (const id of Object.keys(manifest.endpoints)) {
+    const me: ManifestEndpoint = manifest.endpoints[id];
+    assertManifestEndpoint(me, id);
+    const be: build.Endpoint = parseEndpointForBuild(id, me, project, region, runtime);
+    bd.endpoints[id] = be;
+  }
+  return bd;
 }
 
 /** Returns a Backend from a v1alpha1 Manifest. */
@@ -45,6 +109,7 @@ export function backendFromV1Alpha1(
   requireKeys("", manifest, "endpoints");
   assertKeyTypes("", manifest, {
     specVersion: "string",
+    params: "array",
     requiredAPIs: "array",
     endpoints: "object",
   });
@@ -72,44 +137,38 @@ function parseRequiredAPIs(manifest: Manifest): backend.RequiredAPI[] {
   return requiredAPIs;
 }
 
-function parseEndpoints(
-  manifest: Manifest,
-  id: string,
-  project: string,
-  defaultRegion: string,
-  runtime: runtimes.Runtime
-): backend.Endpoint[] {
-  const allParsed: backend.Endpoint[] = [];
+function assertManifestEndpoint(ep: ManifestEndpoint, id: string): void {
   const prefix = `endpoints[${id}]`;
-  const ep = manifest.endpoints[id];
-
   assertKeyTypes(prefix, ep, {
     region: "array",
     platform: (platform) => backend.AllFunctionsPlatforms.includes(platform),
     entryPoint: "string",
-    availableMemoryMb: (mem) => backend.AllMemoryOptions.includes(mem),
-    maxInstances: "number",
-    minInstances: "number",
-    concurrency: "number",
-    serviceAccountEmail: "string",
-    timeoutSeconds: "number",
-    vpc: "object",
-    labels: "object",
-    ingressSettings: (setting) => backend.AllIngressSettings.includes(setting),
-    environmentVariables: "object",
-    secretEnvironmentVariables: "array",
+    availableMemoryMb: (mem) => mem === null || backend.isValidMemoryOption(mem),
+    maxInstances: "number?",
+    minInstances: "number?",
+    concurrency: "number?",
+    serviceAccount: "string?",
+    serviceAccountEmail: "string?",
+    timeoutSeconds: "number?",
+    vpc: "object?",
+    labels: "object?",
+    ingressSettings: (setting) => setting === null || backend.AllIngressSettings.includes(setting),
+    environmentVariables: "object?",
+    secretEnvironmentVariables: "array?",
     httpsTrigger: "object",
     callableTrigger: "object",
     eventTrigger: "object",
     scheduleTrigger: "object",
     taskQueueTrigger: "object",
     blockingTrigger: "object",
-    cpu: (cpu: backend.Endpoint["cpu"]) => typeof cpu === "number" || cpu === "gcf_gen1",
+    cpu: (cpu: backend.Endpoint["cpu"]) =>
+      cpu === null || typeof cpu === "number" || cpu === "gcf_gen1",
   });
   if (ep.vpc) {
     assertKeyTypes(prefix + ".vpc", ep.vpc, {
       connector: "string",
-      egressSettings: (setting) => backend.AllVpcEgressSettings.includes(setting),
+      egressSettings: (setting) =>
+        setting === null || backend.AllVpcEgressSettings.includes(setting),
     });
     requireKeys(prefix + ".vpc", ep.vpc, "connector");
   }
@@ -138,79 +197,269 @@ function parseEndpoints(
   if (triggerCount > 1) {
     throw new FirebaseError("Multiple triggers defined for endpoint" + id);
   }
+  if (backend.isEventTriggered(ep)) {
+    requireKeys(prefix + ".eventTrigger", ep.eventTrigger, "eventType", "eventFilters");
+    assertKeyTypes(prefix + ".eventTrigger", ep.eventTrigger, {
+      eventFilters: "object",
+      eventFilterPathPatterns: "object",
+      eventType: "string",
+      retry: "boolean",
+      region: "string",
+      serviceAccount: "string?",
+      serviceAccountEmail: "string?",
+      channel: "string",
+    });
+  } else if (backend.isHttpsTriggered(ep)) {
+    assertKeyTypes(prefix + ".httpsTrigger", ep.httpsTrigger, {
+      invoker: "array?",
+    });
+  } else if (backend.isCallableTriggered(ep)) {
+    // no-op
+  } else if (backend.isScheduleTriggered(ep)) {
+    assertKeyTypes(prefix + ".scheduleTrigger", ep.scheduleTrigger, {
+      schedule: "string",
+      timeZone: "string?",
+      retryConfig: "object?",
+    });
+    assertKeyTypes(prefix + ".scheduleTrigger.retryConfig", ep.scheduleTrigger.retryConfig || {}, {
+      retryCount: "number?",
+      maxDoublings: "number?",
+      minBackoffSeconds: "number?",
+      maxBackoffSeconds: "number?",
+      maxRetrySeconds: "number?",
+      minBackoffDuration: "string?",
+      maxBackoffDuration: "string?",
+      maxRetryDuration: "string?",
+    });
+  } else if (backend.isTaskQueueTriggered(ep)) {
+    assertKeyTypes(prefix + ".taskQueueTrigger", ep.taskQueueTrigger, {
+      rateLimits: "object?",
+      retryConfig: "object?",
+      invoker: "array?",
+    });
+    if (ep.taskQueueTrigger.rateLimits) {
+      assertKeyTypes(prefix + ".taskQueueTrigger.rateLimits", ep.taskQueueTrigger.rateLimits, {
+        maxConcurrentDispatches: "number?",
+        maxDispatchesPerSecond: "number?",
+      });
+    }
+    if (ep.taskQueueTrigger.retryConfig) {
+      assertKeyTypes(prefix + ".taskQueueTrigger.retryConfig", ep.taskQueueTrigger.retryConfig, {
+        maxAttempts: "number?",
+        maxRetrySeconds: "number?",
+        minBackoffSeconds: "number?",
+        maxBackoffSeconds: "number?",
+        maxDoublings: "number?",
+      });
+    }
+  } else if (backend.isBlockingTriggered(ep)) {
+    requireKeys(prefix + ".blockingTrigger", ep.blockingTrigger, "eventType");
+    assertKeyTypes(prefix + ".blockingTrigger", ep.blockingTrigger, {
+      eventType: "string",
+      options: "object",
+    });
+  } else {
+    throw new FirebaseError(
+      `Do not recognize trigger type for endpoint ${id}. Try upgrading ` +
+        "firebase-tools with npm install -g firebase-tools@latest"
+    );
+  }
+}
+
+function parseEndpointForBuild(
+  id: string,
+  ep: ManifestEndpoint,
+  project: string,
+  defaultRegion: string,
+  runtime: runtimes.Runtime
+): build.Endpoint {
+  let triggered: build.Triggered;
+  if (backend.isEventTriggered(ep)) {
+    const eventTrigger: build.EventTrigger = {
+      eventType: ep.eventTrigger.eventType,
+      retry: ep.eventTrigger.retry,
+    };
+    // Allow serviceAccountEmail but prefer serviceAccount
+    renameIfPresent(eventTrigger, ep.eventTrigger, "serviceAccount", "serviceAccountEmail");
+    copyIfPresent(
+      eventTrigger,
+      ep.eventTrigger,
+      "serviceAccount",
+      "eventFilterPathPatterns",
+      "region"
+    );
+    convertIfPresent(eventTrigger, ep.eventTrigger, "channel", (c) =>
+      resolveChannelName(project, c, defaultRegion)
+    );
+    convertIfPresent(eventTrigger, ep.eventTrigger, "eventFilters", (filters) => {
+      const copy = { ...filters };
+      if (copy["topic"] && !copy["topic"].startsWith("projects/")) {
+        copy["topic"] = `projects/${project}/topics/${copy["topic"]}`;
+      }
+      return copy;
+    });
+    triggered = { eventTrigger };
+  } else if (backend.isHttpsTriggered(ep)) {
+    triggered = { httpsTrigger: {} };
+    copyIfPresent(triggered.httpsTrigger, ep.httpsTrigger, "invoker");
+  } else if (backend.isCallableTriggered(ep)) {
+    triggered = { callableTrigger: {} };
+  } else if (backend.isScheduleTriggered(ep)) {
+    const st: build.ScheduleTrigger = {
+      // TODO: consider adding validation for fields like this that reject
+      // invalid values before actually modifying prod.
+      schedule: ep.scheduleTrigger.schedule || "",
+      timeZone: ep.scheduleTrigger.timeZone ?? null,
+    };
+    if (ep.scheduleTrigger.retryConfig) {
+      st.retryConfig = {};
+      copyIfPresent(
+        st.retryConfig,
+        ep.scheduleTrigger.retryConfig,
+        "retryCount",
+        "minBackoffSeconds",
+        "maxBackoffSeconds",
+        "maxRetrySeconds",
+        "maxDoublings"
+      );
+      convertIfPresent(
+        st.retryConfig,
+        ep.scheduleTrigger.retryConfig,
+        "minBackoffSeconds",
+        "minBackoffDuration",
+        nullsafeVisitor(secondsFromDuration)
+      );
+      convertIfPresent(
+        st.retryConfig,
+        ep.scheduleTrigger.retryConfig,
+        "maxBackoffSeconds",
+        "maxBackoffDuration",
+        nullsafeVisitor(secondsFromDuration)
+      );
+      convertIfPresent(
+        st.retryConfig,
+        ep.scheduleTrigger.retryConfig,
+        "maxRetrySeconds",
+        "maxRetryDuration",
+        nullsafeVisitor(secondsFromDuration)
+      );
+    } else if (ep.scheduleTrigger.retryConfig === null) {
+      st.retryConfig = null;
+    }
+    triggered = { scheduleTrigger: st };
+  } else if (backend.isTaskQueueTriggered(ep)) {
+    const tq: build.TaskQueueTrigger = {};
+    if (ep.taskQueueTrigger.invoker) {
+      tq.invoker = ep.taskQueueTrigger.invoker;
+    } else if (ep.taskQueueTrigger.invoker === null) {
+      tq.invoker = null;
+    }
+    if (ep.taskQueueTrigger.retryConfig) {
+      tq.retryConfig = { ...ep.taskQueueTrigger.retryConfig };
+    } else if (ep.taskQueueTrigger.retryConfig === null) {
+      tq.retryConfig = null;
+    }
+    if (ep.taskQueueTrigger.rateLimits) {
+      tq.rateLimits = { ...ep.taskQueueTrigger.rateLimits };
+    } else if (ep.taskQueueTrigger.rateLimits === null) {
+      tq.rateLimits = null;
+    }
+    triggered = { taskQueueTrigger: tq };
+  } else if (backend.isBlockingTriggered(ep)) {
+    triggered = { blockingTrigger: ep.blockingTrigger };
+  } else {
+    throw new FirebaseError(
+      `Do not recognize trigger type for endpoint ${id}. Try upgrading ` +
+        "firebase-tools with npm install -g firebase-tools@latest"
+    );
+  }
+
+  const parsed: build.Endpoint = {
+    platform: ep.platform || "gcfv2",
+    region: ep.region || [defaultRegion],
+    project,
+    runtime,
+    entryPoint: ep.entryPoint,
+    ...triggered,
+  };
+  // Allow "serviceAccountEmail" but prefer "serviceAccount"
+  renameIfPresent(parsed, ep, "serviceAccount", "serviceAccountEmail");
+  copyIfPresent(
+    parsed,
+    ep,
+    "availableMemoryMb",
+    "cpu",
+    "maxInstances",
+    "minInstances",
+    "concurrency",
+    "timeoutSeconds",
+    "vpc",
+    "labels",
+    "ingressSettings",
+    "environmentVariables",
+    "serviceAccount"
+  );
+  convertIfPresent(parsed, ep, "secretEnvironmentVariables", (senvs) => {
+    if (!senvs) {
+      return null;
+    }
+    return senvs.map(({ key, secret }) => {
+      return { key, secret: secret || key, projectId: project } as build.SecretEnvVar;
+    });
+  });
+  return parsed;
+}
+
+function parseEndpoints(
+  manifest: Manifest,
+  id: string,
+  project: string,
+  defaultRegion: string,
+  runtime: runtimes.Runtime
+): backend.Endpoint[] {
+  const allParsed: backend.Endpoint[] = [];
+  const prefix = `endpoints[${id}]`;
+  const ep = manifest.endpoints[id];
+  assertManifestEndpoint(ep, id);
+
   for (const region of ep.region || [defaultRegion]) {
     let triggered: backend.Triggered;
     if (backend.isEventTriggered(ep)) {
-      requireKeys(prefix + ".eventTrigger", ep.eventTrigger, "eventType", "eventFilters");
-      assertKeyTypes(prefix + ".eventTrigger", ep.eventTrigger, {
-        eventFilters: "object",
-        eventFilterPathPatterns: "object",
-        eventType: "string",
-        retry: "boolean",
-        region: "string",
-        serviceAccountEmail: "string",
-        channel: "string",
-      });
-      triggered = { eventTrigger: ep.eventTrigger };
-      renameIfPresent(triggered.eventTrigger, ep.eventTrigger, "channel", "channel", (c) =>
+      const eventTrigger: backend.EventTrigger = {
+        eventType: ep.eventTrigger.eventType,
+        retry: false,
+      };
+      // Allow "serviceAccountEmail" but prefer "serviceAccount"
+      renameIfPresent(eventTrigger, ep.eventTrigger, "serviceAccount", "serviceAccountEmail");
+      copyIfPresent(
+        eventTrigger,
+        ep.eventTrigger,
+        "eventFilterPathPatterns",
+        "retry",
+        "serviceAccount",
+        "region"
+      );
+      convertIfPresent(eventTrigger, ep.eventTrigger, "channel", (c) =>
         resolveChannelName(project, c, defaultRegion)
       );
-      for (const [k, v] of Object.entries(triggered.eventTrigger.eventFilters)) {
-        if (k === "topic" && !v.startsWith("projects/")) {
-          // Construct full pubsub topic name.
-          triggered.eventTrigger.eventFilters[k] = `projects/${project}/topics/${v}`;
+      convertIfPresent(eventTrigger, ep.eventTrigger, "eventFilters", (filters) => {
+        const copy = { ...filters };
+        if (copy["topic"] && !copy["topic"].startsWith("projects/")) {
+          copy["topic"] = `projects/${project}/topics/${copy["topic"]}`;
         }
-      }
-    } else if (backend.isHttpsTriggered(ep)) {
-      assertKeyTypes(prefix + ".httpsTrigger", ep.httpsTrigger, {
-        invoker: "array",
+        return copy;
       });
+      triggered = { eventTrigger };
+    } else if (backend.isHttpsTriggered(ep)) {
       triggered = { httpsTrigger: {} };
       copyIfPresent(triggered.httpsTrigger, ep.httpsTrigger, "invoker");
     } else if (backend.isCallableTriggered(ep)) {
       triggered = { callableTrigger: {} };
     } else if (backend.isScheduleTriggered(ep)) {
-      assertKeyTypes(prefix + ".scheduleTrigger", ep.scheduleTrigger, {
-        schedule: "string",
-        timeZone: "string",
-        retryConfig: "object",
-      });
-      assertKeyTypes(prefix + ".scheduleTrigger.retryConfig", ep.scheduleTrigger.retryConfig, {
-        retryCount: "number",
-        maxDoublings: "number",
-        minBackoffDuration: "string",
-        maxBackoffDuration: "string",
-        maxRetryDuration: "string",
-      });
       triggered = { scheduleTrigger: ep.scheduleTrigger };
     } else if (backend.isTaskQueueTriggered(ep)) {
-      assertKeyTypes(prefix + ".taskQueueTrigger", ep.taskQueueTrigger, {
-        rateLimits: "object",
-        retryConfig: "object",
-        invoker: "array",
-      });
-      if (ep.taskQueueTrigger.rateLimits) {
-        assertKeyTypes(prefix + ".taskQueueTrigger.rateLimits", ep.taskQueueTrigger.rateLimits, {
-          maxConcurrentDispatches: "number",
-          maxDispatchesPerSecond: "number",
-        });
-      }
-      if (ep.taskQueueTrigger.retryConfig) {
-        assertKeyTypes(prefix + ".taskQueueTrigger.retryConfig", ep.taskQueueTrigger.retryConfig, {
-          maxAttempts: "number",
-          maxRetrySeconds: "number",
-          minBackoffSeconds: "number",
-          maxBackoffSeconds: "number",
-          maxDoublings: "number",
-        });
-      }
       triggered = { taskQueueTrigger: ep.taskQueueTrigger };
     } else if (backend.isBlockingTriggered(ep)) {
-      requireKeys(prefix + ".blockingTrigger", ep.blockingTrigger, "eventType");
-      assertKeyTypes(prefix + ".blockingTrigger", ep.blockingTrigger, {
-        eventType: "string",
-        options: "object",
-      });
       triggered = { blockingTrigger: ep.blockingTrigger };
     } else {
       throw new FirebaseError(
@@ -229,6 +478,8 @@ function parseEndpoints(
       entryPoint: ep.entryPoint,
       ...triggered,
     };
+    // Allow "serviceAccountEmail" but prefer "serviceAccount"
+    renameIfPresent(parsed, ep, "serviceAccount", "serviceAccountEmail");
     copyIfPresent(
       parsed,
       ep,
@@ -236,13 +487,22 @@ function parseEndpoints(
       "maxInstances",
       "minInstances",
       "concurrency",
-      "serviceAccountEmail",
+      "serviceAccount",
       "timeoutSeconds",
       "vpc",
       "labels",
       "ingressSettings",
-      "environmentVariables"
+      "environmentVariables",
+      "cpu"
     );
+    convertIfPresent(parsed, ep, "secretEnvironmentVariables", (senvs) => {
+      if (!senvs) {
+        return null;
+      }
+      return senvs.map(({ key, secret }) => {
+        return { key, secret: secret || key, projectId: project };
+      });
+    });
     allParsed.push(parsed);
   }
 

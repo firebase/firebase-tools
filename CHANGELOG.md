@@ -1,4 +1,4 @@
-- Updates `superstatic` to `v8` to fix audit issues.
-- Make grantToken tenant-aware (#4475)
-- Fix database emulator rules error parsing (#4454).
-- Fix timestamp format in Auth Emulator events (#3093).
+- Replaces underlying terminal coloring library.
+- Make storage emulator multipart parsing handle quotes in boundary header #3953
+- Make storage emulator content type case insensitive #3953)
+- Add storage emulator support to init.js useEmulator flag #4805

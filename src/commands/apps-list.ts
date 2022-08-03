@@ -1,4 +1,4 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as ora from "ora";
 import Table = require("cli-table");
 
@@ -32,7 +32,7 @@ function logAppCount(count: number = 0): void {
   logger.info(`${count} app(s) total.`);
 }
 
-module.exports = new Command("apps:list [platform]")
+export const command = new Command("apps:list [platform]")
   .description(
     "list the registered apps of a Firebase project. " +
       "Optionally filter apps by [platform]: IOS, ANDROID or WEB (case insensitive)"

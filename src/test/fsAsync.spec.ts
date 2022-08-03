@@ -46,7 +46,7 @@ describe("fsAsync", () => {
     rimraf(baseDir);
     expect(() => {
       fs.statSync(baseDir);
-    }).to.throw;
+    }).to.throw();
   });
 
   describe("readdirRecursive", () => {

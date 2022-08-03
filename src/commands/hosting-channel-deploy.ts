@@ -1,4 +1,4 @@
-import { bold, yellow } from "cli-color";
+import { bold, yellow } from "colorette";
 
 import { Command } from "../command";
 import { FirebaseError } from "../error";
@@ -33,7 +33,7 @@ interface ChannelInfo {
   expireTime: string;
 }
 
-export default new Command("hosting:channel:deploy [channelId]")
+export const command = new Command("hosting:channel:deploy [channelId]")
   .description("deploy to a specific Firebase Hosting channel")
   .option(
     "-e, --expires <duration>",
@@ -175,7 +175,7 @@ export default new Command("hosting:channel:deploy [channelId]")
         }
         logLabeledSuccess(
           LOG_TAG,
-          `Channel URL (${bold(d.site || d.target)}): ${d.url} ${expires}${version}`
+          `Channel URL (${bold(d.site || d.target || "")}): ${d.url} ${expires}${version}`
         );
       });
       return deploys;

@@ -1,6 +1,5 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
-import * as api from "../api";
 import { logger } from "../logger";
 import * as utils from "../utils";
 import * as validator from "./validator";
@@ -10,8 +9,12 @@ import * as Spec from "./indexes-spec";
 import * as sort from "./indexes-sort";
 import * as util from "./util";
 import { promptOnce } from "../prompt";
+import { firestoreOrigin } from "../api";
+import { Client } from "../apiv2";
 
 export class FirestoreIndexes {
+  apiClient = new Client({ urlPrefix: firestoreOrigin, apiVersion: "v1" });
+
   /**
    * Deploy an index specification to the specified project.
    * @param options the CLI options.
@@ -163,13 +166,8 @@ export class FirestoreIndexes {
    * @param project the Firebase project id.
    */
   async listIndexes(project: string): Promise<API.Index[]> {
-    const url = `projects/${project}/databases/(default)/collectionGroups/-/indexes`;
-
-    const res = await api.request("GET", `/v1/${url}`, {
-      auth: true,
-      origin: api.firestoreOrigin,
-    });
-
+    const url = `/projects/${project}/databases/(default)/collectionGroups/-/indexes`;
+    const res = await this.apiClient.get<{ indexes?: API.Index[] }>(url);
     const indexes = res.body.indexes;
     if (!indexes) {
       return [];
@@ -197,14 +195,10 @@ export class FirestoreIndexes {
    */
   async listFieldOverrides(project: string): Promise<API.Field[]> {
     const parent = `projects/${project}/databases/(default)/collectionGroups/-`;
-    const url = `${parent}/fields?filter=indexConfig.usesAncestorConfig=false`;
+    const url = `/${parent}/fields?filter=indexConfig.usesAncestorConfig=false`;
 
-    const res = await api.request("GET", `/v1/${url}`, {
-      auth: true,
-      origin: api.firestoreOrigin,
-    });
-
-    const fields = res.body.fields as API.Field[];
+    const res = await this.apiClient.get<{ fields?: API.Field[] }>(url);
+    const fields = res.body.fields;
 
     // This should never be the case, since the API always returns the __default__
     // configuration, but this is a defensive check.
@@ -370,7 +364,7 @@ export class FirestoreIndexes {
    * @param spec the new field override specification.
    */
   async patchField(project: string, spec: Spec.FieldOverride): Promise<any> {
-    const url = `projects/${project}/databases/(default)/collectionGroups/${spec.collectionGroup}/fields/${spec.fieldPath}`;
+    const url = `/projects/${project}/databases/(default)/collectionGroups/${spec.collectionGroup}/fields/${spec.fieldPath}`;
 
     const indexes = spec.indexes.map((index) => {
       return {
@@ -391,11 +385,7 @@ export class FirestoreIndexes {
       },
     };
 
-    await api.request("PATCH", `/v1/${url}`, {
-      auth: true,
-      origin: api.firestoreOrigin,
-      data,
-    });
+    await this.apiClient.patch(url, data);
   }
 
   /**
@@ -405,25 +395,17 @@ export class FirestoreIndexes {
     const url = field.name;
     const data = {};
 
-    return api.request("PATCH", "/v1/" + url + "?updateMask=indexConfig", {
-      auth: true,
-      origin: api.firestoreOrigin,
-      data,
-    });
+    return this.apiClient.patch(`/${url}`, data, { queryParams: { updateMask: "indexConfig" } });
   }
 
   /**
    * Create a new index on the specified project.
    */
   createIndex(project: string, index: Spec.Index): Promise<any> {
-    const url = `projects/${project}/databases/(default)/collectionGroups/${index.collectionGroup}/indexes`;
-    return api.request("POST", "/v1/" + url, {
-      auth: true,
-      data: {
-        fields: index.fields,
-        queryScope: index.queryScope,
-      },
-      origin: api.firestoreOrigin,
+    const url = `/projects/${project}/databases/(default)/collectionGroups/${index.collectionGroup}/indexes`;
+    return this.apiClient.post(url, {
+      fields: index.fields,
+      queryScope: index.queryScope,
     });
   }
 
@@ -432,10 +414,7 @@ export class FirestoreIndexes {
    */
   deleteIndex(index: API.Index): Promise<any> {
     const url = index.name!;
-    return api.request("DELETE", "/v1/" + url, {
-      auth: true,
-      origin: api.firestoreOrigin,
-    });
+    return this.apiClient.delete(`/${url}`);
   }
 
   /**
@@ -537,7 +516,7 @@ export class FirestoreIndexes {
     // Try to detect use of the old API, warn the users.
     if (spec.indexes[0].collectionId) {
       utils.logBullet(
-        clc.bold.cyan("firestore:") +
+        clc.bold(clc.cyan("firestore:")) +
           " your indexes indexes are specified in the v1beta1 API format. " +
           "Please upgrade to the new index API format by running " +
           clc.bold("firebase firestore:indexes") +

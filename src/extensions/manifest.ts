@@ -1,4 +1,4 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as path from "path";
 import * as refs from "./refs";
 import { Config } from "../config";
@@ -9,7 +9,7 @@ import { readEnvFile } from "./paramHelper";
 import { FirebaseError } from "../error";
 import * as utils from "../utils";
 import { isLocalPath, logPrefix } from "./extensionsHelper";
-import { ParamType } from "./extensionsApi";
+import { ParamType } from "./types";
 
 export const ENV_DIRECTORY = "extensions";
 
@@ -78,7 +78,7 @@ export async function writeLocalSecrets(
 
     const writeBuffer: Record<string, string> = {};
     const locallyOverridenSecretParams = extensionSpec.params.filter(
-      (p) => p.type === ParamType.SECRET && spec.params[p.param].local
+      (p) => p.type === ParamType.SECRET && spec.params[p.param]?.local
     );
     for (const paramSpec of locallyOverridenSecretParams) {
       const key = paramSpec.param;
@@ -264,33 +264,17 @@ function readParamsFile(projectDir: string, fileName: string): Record<string, st
   return params;
 }
 
-// TODO(lihes): Add a docs link once exists.
 /**
- * Show deprecation warning about --local flag taking over current default bahaviors.
+ * Show post deprecation notice about --local flag taking over current default bahaviors.
  */
-export function showDeprecationWarning() {
-  utils.logLabeledWarning(
+export function showPostDeprecationNotice() {
+  utils.logLabeledBullet(
     logPrefix,
-    "The behavior of ext:install, ext:update, ext:configure, and ext:uninstall will change in firebase-tools@11.0.0. " +
+    "The behavior of ext:install, ext:update, ext:configure, and ext:uninstall has changed in firebase-tools@11.0.0. " +
       "Instead of deploying extensions directly, " +
       "changes to extension instances will be written to firebase.json and ./extensions/*.env. " +
       `Then ${clc.bold(
         "firebase deploy (--only extensions)"
-      )} will deploy the changes to your Firebase project. ` +
-      `To access this behavior now, pass the ${clc.bold("--local")} flag.`
-  );
-}
-
-// TODO(lihes): Add a docs link once exists.
-/**
- * Show preview warning about --local flag needing deploy to take effect in firebase project.
- */
-export function showPreviewWarning() {
-  utils.logLabeledWarning(
-    logPrefix,
-    `See these changes in your Firebase Emulator by running "firebase emulators:start". ` +
-      `Run ${clc.bold(
-        "firebase deploy (--only extensions)"
-      )} to deploy the changes to your Firebase project. `
+      )} will deploy the changes to your Firebase project. See https://firebase.google.com/docs/extensions/manifest for more details.`
   );
 }

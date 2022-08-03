@@ -1,12 +1,12 @@
 import { Command } from "../command";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as fsi from "../firestore/indexes";
 import { logger } from "../logger";
 import { requirePermissions } from "../requirePermissions";
 import { Emulators } from "../emulator/types";
 import { warnEmulatorNotSupported } from "../emulator/commandUtils";
 
-module.exports = new Command("firestore:indexes")
+export const command = new Command("firestore:indexes")
   .description("List indexes in your project's Cloud Firestore database.")
   .option(
     "--pretty",
@@ -24,12 +24,12 @@ module.exports = new Command("firestore:indexes")
     const indexSpec = indexApi.makeIndexSpec(indexes, fieldOverrides);
 
     if (options.pretty) {
-      logger.info(clc.bold.white("Compound Indexes"));
+      logger.info(clc.bold(clc.white("Compound Indexes")));
       indexApi.prettyPrintIndexes(indexes);
 
       if (fieldOverrides) {
         logger.info();
-        logger.info(clc.bold.white("Field Overrides"));
+        logger.info(clc.bold(clc.white("Field Overrides")));
         indexApi.printFieldOverrides(fieldOverrides);
       }
     } else {

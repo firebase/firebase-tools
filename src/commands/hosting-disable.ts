@@ -1,4 +1,4 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
 import { Client } from "../apiv2";
 import { Command } from "../command";
@@ -8,7 +8,7 @@ import { requireHostingSite } from "../requireHostingSite";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
 
-export default new Command("hosting:disable")
+export const command = new Command("hosting:disable")
   .description("stop serving web traffic to your Firebase Hosting site")
   .option("-f, --force", "skip confirmation")
   .option("-s, --site <siteName>", "the site to disable")

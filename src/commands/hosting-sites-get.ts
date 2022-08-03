@@ -7,7 +7,7 @@ import { needProjectId } from "../projectUtils";
 import { logger } from "../logger";
 import { FirebaseError } from "../error";
 
-export default new Command("hosting:sites:get <siteId>")
+export const command = new Command("hosting:sites:get <siteId>")
   .description("print info about a Firebase Hosting site")
   .before(requirePermissions, ["firebasehosting.sites.get"])
   .action(async (siteId: string, options): Promise<Site> => {

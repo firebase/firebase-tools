@@ -1,17 +1,17 @@
 import * as chokidar from "chokidar";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as fs from "fs";
 import * as path from "path";
 import * as http from "http";
 
-import * as api from "../api";
 import * as downloadableEmulators from "./downloadableEmulators";
 import { EmulatorInfo, EmulatorInstance, Emulators } from "../emulator/types";
 import { Constants } from "./constants";
 import { EmulatorRegistry } from "./registry";
 import { EmulatorLogger } from "./emulatorLogger";
 import { FirebaseError } from "../error";
-import * as parseBoltRules from "../parseBoltRules";
+import { parseBoltRules } from "../parseBoltRules";
+import { Client } from "../apiv2";
 
 export interface DatabaseEmulatorArgs {
   port?: number;
@@ -49,7 +49,7 @@ export class DatabaseEmulator implements EmulatorInstance {
         }
 
         this.rulesWatcher = chokidar.watch(c.rules, { persistent: true, ignoreInitial: true });
-        this.rulesWatcher.on("change", async (event, stats) => {
+        this.rulesWatcher.on("change", async () => {
           // There have been some race conditions reported (on Windows) where reading the
           // file too quickly after the watcher fires results in an empty file being read.
           // Adding a small delay prevents that at very little cost.
@@ -102,7 +102,7 @@ export class DatabaseEmulator implements EmulatorInstance {
   }
 
   getInfo(): EmulatorInfo {
-    const host = this.args.host || Constants.getDefaultHost(Emulators.DATABASE);
+    const host = this.args.host || Constants.getDefaultHost();
     const port = this.args.port || Constants.getDefaultPort(Emulators.DATABASE);
 
     return {
@@ -170,11 +170,13 @@ export class DatabaseEmulator implements EmulatorInstance {
 
     const info = this.getInfo();
     try {
-      await api.request("PUT", `/.settings/rules.json?ns=${instance}`, {
-        origin: `http://${EmulatorRegistry.getInfoHostString(info)}`,
+      const client = new Client({
+        urlPrefix: `http://${EmulatorRegistry.getInfoHostString(info)}`,
+        auth: false,
+      });
+      await client.put(`/.settings/rules.json`, content, {
         headers: { Authorization: "Bearer owner" },
-        data: content,
-        json: false,
+        queryParams: { ns: instance },
       });
     } catch (e: any) {
       // The body is already parsed as JSON

@@ -1,4 +1,4 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
 import { Command } from "../command";
 import { logger } from "../logger";
@@ -6,7 +6,7 @@ import * as utils from "../utils";
 import { FirebaseError } from "../error";
 import * as auth from "../auth";
 
-module.exports = new Command("login:add [email]")
+export const command = new Command("login:add [email]")
   .description("authorize the CLI for an additional account")
   .option(
     "--no-localhost",

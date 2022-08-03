@@ -1,6 +1,6 @@
-import * as api from "../api";
 import { EmulatorHub, Locator, GetEmulatorsResponse } from "./hub";
 import { FirebaseError } from "../error";
+import { Client } from "../apiv2";
 
 export class EmulatorHubClient {
   private locator: Locator | undefined;
@@ -13,31 +13,20 @@ export class EmulatorHubClient {
     return this.locator !== undefined;
   }
 
-  getStatus(): Promise<void> {
-    return api.request("GET", "/", {
-      origin: this.origin,
-    });
+  async getStatus(): Promise<void> {
+    const apiClient = new Client({ urlPrefix: this.origin, auth: false });
+    await apiClient.get("/");
   }
 
-  getEmulators(): Promise<GetEmulatorsResponse> {
-    return api
-      .request("GET", EmulatorHub.PATH_EMULATORS, {
-        origin: this.origin,
-        json: true,
-      })
-      .then((res) => {
-        return res.body as GetEmulatorsResponse;
-      });
+  async getEmulators(): Promise<GetEmulatorsResponse> {
+    const apiClient = new Client({ urlPrefix: this.origin, auth: false });
+    const res = await apiClient.get<GetEmulatorsResponse>(EmulatorHub.PATH_EMULATORS);
+    return res.body;
   }
 
-  postExport(path: string): Promise<void> {
-    return api.request("POST", EmulatorHub.PATH_EXPORT, {
-      origin: this.origin,
-      json: true,
-      data: {
-        path,
-      },
-    });
+  async postExport(path: string): Promise<void> {
+    const apiClient = new Client({ urlPrefix: this.origin, auth: false });
+    await apiClient.post(EmulatorHub.PATH_EXPORT, { path });
   }
 
   get origin(): string {

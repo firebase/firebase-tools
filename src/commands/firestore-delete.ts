@@ -1,6 +1,6 @@
 "use strict";
 
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import { Command } from "../command";
 import { Emulators } from "../emulator/types";
 import { printNoticeIfEmulated } from "../emulator/commandUtils";
@@ -13,7 +13,7 @@ function getConfirmationMessage(deleteOp: FirestoreDelete, options: any) {
   if (options.allCollections) {
     return (
       "You are about to delete " +
-      clc.bold.yellow.underline("THE ENTIRE DATABASE") +
+      clc.bold(clc.yellow(clc.underline("THE ENTIRE DATABASE"))) +
       " for " +
       clc.cyan(options.project) +
       ". Are you sure?"
@@ -65,7 +65,7 @@ function getConfirmationMessage(deleteOp: FirestoreDelete, options: any) {
   );
 }
 
-module.exports = new Command("firestore:delete [path]")
+export const command = new Command("firestore:delete [path]")
   .description("Delete data from Cloud Firestore.")
   .option(
     "-r, --recursive",

@@ -1,6 +1,7 @@
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
 import * as planner from "../deploy/extensions/planner";
+import { saveEtags } from "../extensions/etags";
 import {
   displayExportInfo,
   parameterizeProject,
@@ -17,7 +18,7 @@ import { needProjectId } from "../projectUtils";
 import { promptOnce } from "../prompt";
 import { requirePermissions } from "../requirePermissions";
 
-module.exports = new Command("ext:export")
+export const command = new Command("ext:export")
   .description(
     "export all Extension instances installed on a project to a local Firebase directory"
   )
@@ -64,11 +65,20 @@ module.exports = new Command("ext:export")
       return;
     }
 
-    const manifestSpecs = withRef.map((spec) => ({
-      instanceId: spec.instanceId,
-      ref: spec.ref,
-      params: buildBindingOptionsWithBaseValue(spec.params),
-    }));
+    const manifestSpecs = withRefSubbed.map((spec) => {
+      const paramCopy = { ...spec.params };
+      if (spec.eventarcChannel) {
+        paramCopy.EVENTARC_CHANNEL = spec.eventarcChannel;
+      }
+      if (spec.allowedEventTypes) {
+        paramCopy.ALLOWED_EVENT_TYPES = spec.allowedEventTypes.join(",");
+      }
+      return {
+        instanceId: spec.instanceId,
+        ref: spec.ref,
+        params: buildBindingOptionsWithBaseValue(paramCopy),
+      };
+    });
 
     const existingConfig = manifest.loadConfig(options);
     await manifest.writeToManifest(
@@ -80,4 +90,6 @@ module.exports = new Command("ext:export")
       },
       true /** allowOverwrite */
     );
+
+    saveEtags(options.rc, projectId, have);
   });

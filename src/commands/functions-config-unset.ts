@@ -1,4 +1,4 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
 import { Command } from "../command";
 import { logger } from "../logger";
@@ -9,7 +9,7 @@ import * as runtimeconfig from "../gcp/runtimeconfig";
 import * as utils from "../utils";
 import { FirebaseError } from "../error";
 
-export default new Command("functions:config:unset [keys...]")
+export const command = new Command("functions:config:unset [keys...]")
   .description("unset environment config at the specified path(s)")
   .before(requirePermissions, [
     "runtimeconfig.configs.list",

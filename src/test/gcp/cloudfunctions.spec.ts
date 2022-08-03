@@ -28,6 +28,7 @@ describe("cloudfunctions", () => {
     name: "projects/project/locations/region/functions/id",
     entryPoint: "function",
     runtime: "nodejs16",
+    dockerRegistry: "ARTIFACT_REGISTRY",
   };
 
   const HAVE_CLOUD_FUNCTION: cloudfunctions.CloudFunction = {
@@ -55,7 +56,7 @@ describe("cloudfunctions", () => {
           { ...ENDPOINT, platform: "gcfv2", httpsTrigger: {} },
           UPLOAD_URL
         );
-      }).to.throw;
+      }).to.throw();
     });
 
     it("should copy a minimal function", () => {
@@ -101,7 +102,7 @@ describe("cloudfunctions", () => {
           egressSettings: "ALL_TRAFFIC",
         },
         ingressSettings: "ALLOW_ALL",
-        serviceAccountEmail: "inlined@google.com",
+        serviceAccount: "inlined@google.com",
         labels: {
           foo: "bar",
         },
@@ -389,7 +390,7 @@ describe("cloudfunctions", () => {
         minInstances: 1,
         maxInstances: 42,
         ingressSettings: "ALLOW_ALL",
-        serviceAccountEmail: "inlined@google.com",
+        serviceAccount: "inlined@google.com",
         timeoutSeconds: 15,
         labels: {
           foo: "bar",

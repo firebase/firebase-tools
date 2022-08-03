@@ -9,7 +9,6 @@ import fetch from "node-fetch";
 import { FirebaseError } from "../../../../error";
 import { getRuntimeChoice } from "./parseRuntimeAndValidateSDK";
 import { logger } from "../../../../logger";
-import { previews } from "../../../../previews";
 import { logLabeledWarning } from "../../../../utils";
 import * as backend from "../../backend";
 import * as build from "../../build";
@@ -93,15 +92,23 @@ export class Delegate {
     return Promise.resolve(() => Promise.resolve());
   }
 
-  serve(port: number, envs: backend.EnvironmentVariables): Promise<() => Promise<void>> {
+  serve(
+    port: number,
+    config: backend.RuntimeConfigValues,
+    envs: backend.EnvironmentVariables
+  ): Promise<() => Promise<void>> {
+    const env: Record<string, string | undefined> = {
+      ...envs,
+      PORT: port.toString(),
+      FUNCTIONS_CONTROL_API: "true",
+      HOME: process.env.HOME,
+      PATH: process.env.PATH,
+    };
+    if (Object.keys(config || {}).length) {
+      env.CLOUD_RUNTIME_CONFIG = JSON.stringify(config);
+    }
     const childProcess = spawn("./node_modules/.bin/firebase-functions", [this.sourceDir], {
-      env: {
-        ...envs,
-        PORT: port.toString(),
-        FUNCTIONS_CONTROL_API: "true",
-        HOME: process.env.HOME,
-        PATH: process.env.PATH,
-      },
+      env,
       cwd: this.sourceDir,
       stdio: [/* stdin=*/ "ignore", /* stdout=*/ "pipe", /* stderr=*/ "inherit"],
     });
@@ -124,47 +131,37 @@ export class Delegate {
     });
   }
 
-  async discoverSpec(
-    config: backend.RuntimeConfigValues,
-    env: backend.EnvironmentVariables
-  ): Promise<backend.Backend> {
-    if (previews.functionsv2) {
-      if (semver.lt(this.sdkVersion, MIN_FUNCTIONS_SDK_VERSION)) {
-        logLabeledWarning(
-          "functions",
-          `You are using an old version of firebase-functions SDK (${this.sdkVersion}). ` +
-            `Please update firebase-functions SDK to >=${MIN_FUNCTIONS_SDK_VERSION}`
-        );
-        return parseTriggers.discoverBackend(
-          this.projectId,
-          this.sourceDir,
-          this.runtime,
-          config,
-          env
-        );
-      }
-      let discovered = await discovery.detectFromYaml(this.sourceDir, this.projectId, this.runtime);
-      if (!discovered) {
-        const getPort = promisify(portfinder.getPort) as () => Promise<number>;
-        const port = await getPort();
-        const kill = await this.serve(port, env);
-        try {
-          discovered = await discovery.detectFromPort(port, this.projectId, this.runtime);
-        } finally {
-          await kill();
-        }
-      }
-      discovered.environmentVariables = env;
-      return discovered;
-    }
-    return parseTriggers.discoverBackend(this.projectId, this.sourceDir, this.runtime, config, env);
-  }
-
   // eslint-disable-next-line require-await
   async discoverBuild(
     config: backend.RuntimeConfigValues,
     env: backend.EnvironmentVariables
   ): Promise<build.Build> {
-    return parseTriggers.discoverBuild(this.projectId, this.sourceDir, this.runtime, config, env);
+    if (!semver.valid(this.sdkVersion)) {
+      logger.debug(
+        `Could not parse firebase-functions version '${this.sdkVersion}' into semver. Falling back to parseTriggers.`
+      );
+      return parseTriggers.discoverBuild(this.projectId, this.sourceDir, this.runtime, config, env);
+    }
+    if (semver.lt(this.sdkVersion, MIN_FUNCTIONS_SDK_VERSION)) {
+      logLabeledWarning(
+        "functions",
+        `You are using an old version of firebase-functions SDK (${this.sdkVersion}). ` +
+          `Please update firebase-functions SDK to >=${MIN_FUNCTIONS_SDK_VERSION}`
+      );
+      return parseTriggers.discoverBuild(this.projectId, this.sourceDir, this.runtime, config, env);
+    }
+
+    let discovered = await discovery.detectFromYaml(this.sourceDir, this.projectId, this.runtime);
+    if (!discovered) {
+      const getPort = promisify(portfinder.getPort) as () => Promise<number>;
+      const port = await getPort();
+      const kill = await this.serve(port, config, env);
+      try {
+        discovered = await discovery.detectFromPort(port, this.projectId, this.runtime);
+      } finally {
+        await kill();
+      }
+    }
+    return discovered;
   }
 }

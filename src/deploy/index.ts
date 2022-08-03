@@ -1,12 +1,12 @@
 import { logger } from "../logger";
 import { hostingOrigin } from "../api";
-import { bold, white } from "cli-color";
+import { bold, underline, white } from "colorette";
 import { has, includes, each } from "lodash";
 import { needProjectId } from "../projectUtils";
 import { logBullet, logSuccess, consoleUrl, addSubdomain } from "../utils";
 import { FirebaseError } from "../error";
 import { track } from "../track";
-import * as lifecycleHooks from "./lifecycleHooks";
+import { lifecycleHooks } from "./lifecycleHooks";
 import { previews } from "../previews";
 import * as HostingTarget from "./hosting";
 import * as DatabaseTarget from "./database";
@@ -15,6 +15,7 @@ import * as FunctionsTarget from "./functions";
 import * as StorageTarget from "./storage";
 import * as RemoteConfigTarget from "./remoteconfig";
 import * as ExtensionsTarget from "./extensions";
+import { prepareFrameworks } from "../frameworks";
 
 const TARGETS = {
   hosting: HostingTarget,
@@ -58,7 +59,7 @@ export const deploy = async function (
   if (previews.frameworkawareness && targetNames.includes("hosting")) {
     const config = options.config.get("hosting");
     if (Array.isArray(config) ? config.some((it) => it.source) : config.source) {
-      await require("firebase-frameworks").prepare(targetNames, context, options);
+      await prepareFrameworks(targetNames, context, options);
     }
   }
 
@@ -66,9 +67,7 @@ export const deploy = async function (
     const target = TARGETS[targetName];
 
     if (!target) {
-      return Promise.reject(
-        new FirebaseError(bold(targetName) + " is not a valid deploy target", { exit: 1 })
-      );
+      return Promise.reject(new FirebaseError(`${bold(targetName)} is not a valid deploy target`));
     }
 
     predeploys.push(lifecycleHooks(targetName, "predeploy"));
@@ -98,7 +97,7 @@ export const deploy = async function (
   await track("Product Deploy", [...targetNames].sort().join(","), duration);
 
   logger.info();
-  logSuccess(bold.underline("Deploy complete!"));
+  logSuccess(bold(underline("Deploy complete!")));
   logger.info();
 
   const deployedHosting = includes(targetNames, "hosting");

@@ -1,6 +1,5 @@
-import * as _ from "lodash";
 import * as path from "path";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
 import { FirebaseError } from "../../../../error";
 import { track } from "../../../../track";

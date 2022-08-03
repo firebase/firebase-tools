@@ -7,6 +7,9 @@ on:
 env:
   CI: true
 
+permissions:
+  contents: read
+
 jobs:
   lint:
     runs-on: ubuntu-latest
@@ -14,18 +17,18 @@ jobs:
     strategy:
       matrix:
         node-version:
-          - 12.x
+          - "16"
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@v2
+      - uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
           cache-dependency-path: npm-shrinkwrap.json
 
-      - run: npm i -g npm@8.5
+      - run: npm i -g npm@8.7
       - run: npm ci
       - run: npm run lint:changed-files
 
@@ -34,20 +37,23 @@ jobs:
     strategy:
       matrix:
         node-version:
-          - 12.x
-          - 14.x
-          - 16.x
+          - "14"
+          - "16"
+          - "18"
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-node@v2
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
           cache-dependency-path: npm-shrinkwrap.json
 
-      - run: npm i -g npm@8.5
+      - run: npm i -g npm@8.7
       - run: npm ci
-      - run: npm test
+      - run: npm test -- -- --forbid-only
+
+      - uses: codecov/codecov-action@v3
+        if: matrix.node-version == '14'
 
   integration:
     needs: unit
@@ -61,36 +67,40 @@ jobs:
       CI_JOB_ID: ${{ github.action }}
       FBTOOLS_TARGET_PROJECT: ${{ secrets.FBTOOLS_TARGET_PROJECT }}
       FBTOOLS_CLIENT_INTEGRATION_SITE: ${{ secrets.FBTOOLS_CLIENT_INTEGRATION_SITE }}
+      CI_RUN_ID: ${{ github.run_id }}
+      CI_RUN_ATTEMPT: ${{ github.run_attempt }}
 
     strategy:
       fail-fast: false
       matrix:
         node-version:
-          - 12.x
+          - "16"
         script:
           - npm run test:hosting
+          # - npm run test:hosting-rewrites # Long-running test that might conflict across test runs. Run this manually.
           - npm run test:client-integration
           - npm run test:emulator
+          - npm run test:import-export
           - npm run test:extensions-emulator
           - npm run test:triggers-end-to-end
           - npm run test:storage-deploy
           - npm run test:storage-emulator-integration
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-node@v2
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
           cache-dependency-path: npm-shrinkwrap.json
 
       - name: Cache firebase emulators
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ${{ env.FIREBASE_EMULATORS_PATH }}
           key: ${{ runner.os }}-firebase-emulators-${{ hashFiles('emulator-cache/**') }}
         continue-on-error: true
 
-      - run: npm i -g npm@8.5
+      - run: npm i -g npm@8.7
       - run: npm ci
       - run: echo ${{ secrets.service_account_json_base64 }} | base64 -d > ./scripts/service-account.json
       - run: ${{ matrix.script }}
@@ -99,21 +109,83 @@ jobs:
         if: failure()
         run: find . -type f -name "*debug.log" | xargs cat
 
+  integration-windows:
+    needs: unit
+    if: github.event_name == 'push'
+    runs-on: windows-latest
+
+    env:
+      FIREBASE_CLI_PREVIEWS: none
+      FIREBASE_EMULATORS_PATH: ${{ github.workspace }}/emulator-cache
+      COMMIT_SHA: ${{ github.sha }}
+      CI_JOB_ID: ${{ github.action }}
+      FBTOOLS_TARGET_PROJECT: ${{ secrets.FBTOOLS_TARGET_PROJECT }}
+      FBTOOLS_CLIENT_INTEGRATION_SITE: ${{ secrets.FBTOOLS_CLIENT_INTEGRATION_SITE }}
+      CI_RUN_ID: ${{ github.run_id }}
+      CI_RUN_ATTEMPT: ${{ github.run_attempt }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version:
+          - "16"
+        script:
+          - npm run test:hosting
+          # - npm run test:hosting-rewrites # Long-running test that might conflict across test runs. Run this manually.
+          - npm run test:client-integration
+          - npm run test:emulator
+          # - npm run test:import-export # Fails becuase port 4000 is taken after first run - hub not shhutting down?
+          # - npm run test:extensions-emulator # Fails due to cannot find module sharp (not waiting for npm install?)
+          - npm run test:triggers-end-to-end
+          - npm run test:storage-deploy
+          # - npm run test:storage-emulator-integration
+    steps:
+      - name: Setup Java JDK
+        uses: actions/setup-java@v3.3.0
+        with:
+          java-version: 17
+          distribution: temurin
+
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+          cache-dependency-path: npm-shrinkwrap.json
+
+      - name: Cache firebase emulators
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.FIREBASE_EMULATORS_PATH }}
+          key: ${{ runner.os }}-firebase-emulators-${{ hashFiles('emulator-cache/**') }}
+        continue-on-error: true
+
+      - run: echo ${{ secrets.service_account_json_base64 }} > tmp.txt
+      - run: certutil -decode tmp.txt scripts/service-account.json
+      - run: npm i -g npm@8.7
+      - run: npm ci
+      - run: ${{ matrix.script }}
+      - name: Print debug logs
+        if: failure()
+        run: type *debug.log
+
   check-package-lock:
     runs-on: ubuntu-latest
 
     strategy:
       matrix:
         node-version:
-          - 12.x
+          - "16"
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
-      - run: npm i -g npm@8.5
+          cache: npm
+          cache-dependency-path: npm-shrinkwrap.json
+      - run: npm i -g npm@8.7
       # --ignore-scripts prevents the `prepare` script from being run.
       - run: npm install --package-lock-only --ignore-scripts
       - run: "git diff --exit-code -- npm-shrinkwrap.json || (echo 'Error: npm-shrinkwrap.json is changed during npm install! Please make sure to use npm >= 8 and commit npm-shrinkwrap.json.' && false)"
@@ -124,14 +196,16 @@ jobs:
     strategy:
       matrix:
         node-version:
-          - 12.x
+          - "16"
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
+          cache: npm
+          cache-dependency-path: npm-shrinkwrap.json
       - run: npm install
       - run: npm run generate:json-schema
       - run: "git diff --exit-code -- schema/*.json || (echo 'Error: JSON schema is changed! Please run npm run generate:json-schema and commit the results.' && false)"

@@ -1,4 +1,4 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
 import { logger } from "../../../logger";
 import { promptOnce } from "../../../prompt";
@@ -48,5 +48,5 @@ export async function doSetup(setup: any, config: any, options: Options) {
     default: "javascript",
     choices,
   });
-  return require("./" + language)(setup, config);
+  return require("./" + language).setup(setup, config);
 }

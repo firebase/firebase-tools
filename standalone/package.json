@@ -29,7 +29,7 @@
     ]
   },
   "devDependencies": {
-    "pkg": "^4.4.2",
+    "pkg": "^5.7.0",
     "prettier": "^1.15.3"
   }
 }

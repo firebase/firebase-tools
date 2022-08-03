@@ -1,20 +1,19 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import Table = require("cli-table");
-import * as _ from "lodash";
 
 import { Command } from "../command";
-import { logPrefix } from "../extensions/extensionsHelper";
 import { FirebaseError } from "../error";
-import * as utils from "../utils";
-import * as extensionsUtils from "../extensions/utils";
+import { last, logLabeledBullet } from "../utils";
 import { listExtensions } from "../extensions/extensionsApi";
 import { logger } from "../logger";
+import { logPrefix } from "../extensions/extensionsHelper";
 import { requireAuth } from "../requireAuth";
+import * as extensionsUtils from "../extensions/utils";
 
 /**
  * List all published extensions associated with this publisher ID.
  */
-export default new Command("ext:dev:list <publisherId>")
+export const command = new Command("ext:dev:list <publisherId>")
   .description("list all published extensions associated with this publisher ID")
   .before(requireAuth)
   .action(async (publisherId: string) => {
@@ -41,16 +40,18 @@ export default new Command("ext:dev:list <publisherId>")
       style: { head: ["yellow"] },
     });
     // Order extensions newest to oldest.
-    const sorted = _.sortBy(extensions, "createTime", "asc").reverse();
+    const sorted = extensions.sort(
+      (a, b) => new Date(b.createTime).valueOf() - new Date(a.createTime).valueOf()
+    );
     sorted.forEach((extension) => {
       table.push([
-        _.last(extension.ref.split("/")),
+        last(extension.ref.split("/")),
         extension.latestVersion,
         extension.createTime ? extensionsUtils.formatTimestamp(extension.createTime) : "",
       ]);
     });
 
-    utils.logLabeledBullet(
+    logLabeledBullet(
       logPrefix,
       `list of published extensions for publisher ${clc.bold(publisherId)}:`
     );

@@ -1,9 +1,9 @@
 import * as fs from "fs-extra";
 import * as os from "os";
 import * as path from "path";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import Table = require("cli-table");
-import { spawnSync } from "child_process";
+import * as spawn from "cross-spawn";
 
 import * as planner from "../deploy/extensions/planner";
 import { Options } from "../options";
@@ -27,9 +27,7 @@ export interface ExtensionEmulatorArgs {
   extensions: Record<string, string>;
   projectDir: string;
 }
-// TODO: Consider a different name, since this does not implement the EmulatorInstance interface
-// Note: At the moment, this doesn't really seem like it needs to be a class. However, I think the
-// statefulness that enables will be useful once we want to watch .env files for config changes.
+
 export class ExtensionsEmulator implements EmulatorInstance {
   private want: planner.DeploymentInstanceSpec[] = [];
   private backends: EmulatableBackend[] = [];
@@ -99,7 +97,7 @@ export class ExtensionsEmulator implements EmulatorInstance {
           `Tried to emulate local extension at ${instance.localPath}, but it was missing required files.`
         );
       }
-      return instance.localPath;
+      return path.resolve(instance.localPath);
     } else if (instance.ref) {
       const ref = toExtensionVersionRef(instance.ref);
       const cacheDir =
@@ -172,14 +170,21 @@ export class ExtensionsEmulator implements EmulatorInstance {
 
   private installAndBuildSourceCode(sourceCodePath: string): void {
     // TODO: Add logging during this so it is clear what is happening.
-    const npmInstall = spawnSync("npm", ["--prefix", `/${sourceCodePath}/functions/`, "install"], {
+    this.logger.logLabeled("DEBUG", "Extensions", `Running "npm install" for ${sourceCodePath}`);
+    const npmInstall = spawn.sync("npm", ["--prefix", `/${sourceCodePath}/functions/`, "install"], {
       encoding: "utf8",
     });
     if (npmInstall.error) {
       throw npmInstall.error;
     }
+    this.logger.logLabeled("DEBUG", "Extensions", `Finished "npm install" for ${sourceCodePath}`);
 
-    const npmRunGCPBuild = spawnSync(
+    this.logger.logLabeled(
+      "DEBUG",
+      "Extensions",
+      `Running "npm run gcp-build" for ${sourceCodePath}`
+    );
+    const npmRunGCPBuild = spawn.sync(
       "npm",
       ["--prefix", `/${sourceCodePath}/functions/`, "run", "gcp-build"],
       { encoding: "utf8" }
@@ -188,6 +193,12 @@ export class ExtensionsEmulator implements EmulatorInstance {
       // TODO: Make sure this does not error out if "gcp-build" is not defined, but does error if it fails otherwise.
       throw npmRunGCPBuild.error;
     }
+
+    this.logger.logLabeled(
+      "DEBUG",
+      "Extensions",
+      `Finished "npm run gcp-build" for ${sourceCodePath}`
+    );
   }
 
   /**
@@ -238,7 +249,7 @@ export class ExtensionsEmulator implements EmulatorInstance {
     return emulatableBackend;
   }
 
-  private autoPopulatedParams(instance: planner.InstanceSpec): Record<string, string> {
+  private autoPopulatedParams(instance: planner.DeploymentInstanceSpec): Record<string, string> {
     const projectId = this.args.projectId;
     return {
       PROJECT_ID: projectId ?? "", // TODO: Should this fallback to a default?
@@ -246,6 +257,8 @@ export class ExtensionsEmulator implements EmulatorInstance {
       DATABASE_INSTANCE: projectId ?? "",
       DATABASE_URL: `https://${projectId}.firebaseio.com`,
       STORAGE_BUCKET: `${projectId}.appspot.com`,
+      ALLOWED_EVENT_TYPES: instance.allowedEventTypes ? instance.allowedEventTypes.join(",") : "",
+      EVENTARC_CHANNEL: instance.eventarcChannel ?? "",
     };
   }
 
@@ -270,7 +283,7 @@ export class ExtensionsEmulator implements EmulatorInstance {
           apiToWarn.apiName,
           apiToWarn.instanceIds,
           apiToWarn.enabled ? "Yes" : "No",
-          apiToWarn.enabled ? "" : clc.bold.underline(enablementUri),
+          apiToWarn.enabled ? "" : clc.bold(clc.underline(enablementUri)),
         ]);
       }
       if (Constants.isDemoProject(this.args.projectId)) {

@@ -1,10 +1,10 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
 import { Command } from "../command";
 import { requireConfig } from "../requireConfig";
 import * as utils from "../utils";
 
-export default new Command("target:clear <type> <target>")
+export const command = new Command("target:clear <type> <target>")
   .description("clear all resources from a named resource target")
   .before(requireConfig)
   .action((type, name, options) => {

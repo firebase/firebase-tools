@@ -3,13 +3,19 @@ import RetriesExhaustedError from "./errors/retries-exhausted-error";
 import TimeoutError from "./errors/timeout-error";
 import TaskError from "./errors/task-error";
 
-function backoff(retryNumber: number, delay: number, maxDelay: number): Promise<void> {
+/**
+ * Creates a promise to wait for the nth backoff.
+ */
+export function backoff(retryNumber: number, delay: number, maxDelay: number): Promise<void> {
   return new Promise((resolve: () => void) => {
     setTimeout(resolve, timeToWait(retryNumber, delay, maxDelay));
   });
 }
 
 // Exported for unit testing.
+/**
+ * time to wait between backoffs
+ */
 export function timeToWait(retryNumber: number, delay: number, maxDelay: number): number {
   return Math.min(delay * Math.pow(2, retryNumber), maxDelay);
 }
@@ -43,7 +49,7 @@ export interface ThrottlerStats {
 interface TaskData<T, R> {
   task: T;
   retryCount: number;
-  wait?: { resolve: (R: any) => void; reject: (err: TaskError) => void };
+  wait?: { resolve: (value: R) => void; reject: (err: TaskError) => void };
   timeoutMillis?: number;
   timeoutId?: NodeJS.Timeout;
   isTimedOut: boolean;
@@ -58,26 +64,26 @@ interface TaskData<T, R> {
  * 2. Not specify the handler, but T must be () => R.
  */
 export abstract class Throttler<T, R> {
-  name: string = "";
-  concurrency: number = 200;
+  name = "";
+  concurrency = 200;
   handler: (task: T) => Promise<any> = DEFAULT_HANDLER;
-  active: number = 0;
-  complete: number = 0;
-  success: number = 0;
-  errored: number = 0;
-  retried: number = 0;
-  total: number = 0;
+  active = 0;
+  complete = 0;
+  success = 0;
+  errored = 0;
+  retried = 0;
+  total = 0;
   taskDataMap = new Map<number, TaskData<T, R>>();
   waits: Array<{ resolve: () => void; reject: (err: Error) => void }> = [];
-  min: number = 9999999999;
-  max: number = 0;
-  avg: number = 0;
-  retries: number = 0;
-  backoff: number = 200;
-  maxBackoff: number = 60000; // 1 minute
-  closed: boolean = false;
-  finished: boolean = false;
-  startTime: number = 0;
+  min = 9999999999;
+  max = 0;
+  avg = 0;
+  retries = 0;
+  backoff = 200;
+  maxBackoff = 60000; // 1 minute
+  closed = false;
+  finished = false;
+  startTime = 0;
 
   constructor(options: ThrottlerOptions<T, R>) {
     if (options.name) {

@@ -1,13 +1,13 @@
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const { marked } = require("marked");
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
-import { ExtensionVersion, RegistryLaunchStage } from "./extensionsApi";
+import { ExtensionVersion, RegistryLaunchStage } from "./types";
 import { printSourceDownloadLink } from "./displayExtensionInfo";
 import { logPrefix } from "./extensionsHelper";
 import { getTrustedPublishers } from "./resolveSource";
 import { humanReadable } from "../deploy/extensions/deploymentSummary";
-import { InstanceSpec, getExtension, getExtensionVersion } from "../deploy/extensions/planner";
+import { InstanceSpec, getExtension } from "../deploy/extensions/planner";
 import { partition } from "../functional";
 import * as utils from "../utils";
 import { logger } from "../logger";
@@ -35,7 +35,7 @@ function displayExperimentalWarning() {
   utils.logLabeledBullet(
     logPrefix,
     marked(
-      `${clc.yellow.bold("Important")}: This extension is ${clc.bold(
+      `${clc.yellow(clc.bold("Important"))}: This extension is ${clc.bold(
         "experimental"
       )} and may not be production-ready. Its functionality might change in backward-incompatible ways before its official release, or it may be discontinued.`
     )
@@ -102,7 +102,8 @@ export async function displayWarningsForDeploy(instancesToCreate: InstanceSpec[]
       marked(
         `The following are instances of ${clc.bold(
           "experimental"
-        )} extensions.They may not be production-ready. Their functionality may change in backward-incompatible ways before their official release, or they may be discontinued.\n${humanReadableList}\n`
+        )} extensions.They may not be production-ready. Their functionality may change in backward-incompatible ways before their official release, or they may be discontinued.\n${humanReadableList}\n`,
+        { gfm: false }
       )
     );
   }
@@ -112,9 +113,10 @@ export async function displayWarningsForDeploy(instancesToCreate: InstanceSpec[]
     utils.logLabeledBullet(
       logPrefix,
       marked(
-        `These extensions are in preview and are built by a developer in the Extensions Publisher Early Access Program (http://bit.ly/firex-provider. Their functionality might change in backwards-incompatible ways. Since these extensions aren't built by Firebase, reach out to their publisher with questions about them.` +
+        `These extensions are in preview and are built by a developer in the Extensions Publisher Early Access Program (http://bit.ly/firex-provider). Their functionality might change in backwards-incompatible ways. Since these extensions aren't built by Firebase, reach out to their publisher with questions about them.` +
           ` They are provided “AS IS”, without any warranty, express or implied, from Google.` +
-          ` Google disclaims all liability for any damages, direct or indirect, resulting from the use of these extensions\n${humanReadableList}`
+          ` Google disclaims all liability for any damages, direct or indirect, resulting from the use of these extensions\n${humanReadableList}`,
+        { gfm: false }
       )
     );
   }
@@ -129,5 +131,13 @@ export function paramsFlagDeprecationWarning() {
     "The --params flag is deprecated and will be removed in firebase-tools@11. " +
       "Instead, use an extensions manifest and `firebase deploy --only extensions` to deploy extensions noninteractively. " +
       "See https://firebase.google.com/docs/extensions/manifest for more details"
+  );
+}
+
+export function outOfBandChangesWarning(instanceIds: string[]) {
+  logger.warn(
+    "The following instances may have been changed in the Firebase console or by another machine since the last deploy from this machine.\n\t" +
+      clc.bold(instanceIds.join("\n\t")) +
+      "\nIf you proceed with this deployment, those changes will be overwritten. To avoid this, run `firebase ext:export` to sync these changes to your local extensions manifest."
   );
 }

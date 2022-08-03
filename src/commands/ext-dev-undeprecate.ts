@@ -1,4 +1,4 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as semver from "semver";
 
 import * as refs from "../extensions/refs";
@@ -14,7 +14,7 @@ import { FirebaseError } from "../error";
 /**
  * Undeprecate all extension versions that match the version predicate.
  */
-export default new Command("ext:dev:undeprecate <extensionRef> <versionPredicate>")
+export const command = new Command("ext:dev:undeprecate <extensionRef> <versionPredicate>")
   .description("undeprecate extension versions that match the version predicate")
   .before(requireAuth)
   .before(ensureExtensionsApiEnabled)

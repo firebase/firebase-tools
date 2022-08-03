@@ -1,4 +1,4 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const { marked } = require("marked");
 import TerminalRenderer = require("marked-terminal");
@@ -19,7 +19,7 @@ marked.setOptions({
 /**
  * Command for publishing an extension version.
  */
-export default new Command("ext:dev:publish <extensionRef>")
+export const command = new Command("ext:dev:publish <extensionRef>")
   .description(`publish a new version of an extension`)
   .withForce()
   .help(

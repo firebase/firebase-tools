@@ -5,7 +5,6 @@ import {
   randomDigits,
   isValidPhoneNumber,
   DeepPartial,
-  parseAbsoluteUri,
 } from "./utils";
 import { MakeRequired } from "./utils";
 import { AuthCloudFunction } from "./cloudFunctions";
@@ -30,6 +29,7 @@ export abstract class ProjectState {
   private oobs: Map<string, OobRecord> = new Map();
   private verificationCodes: Map<string, PhoneVerificationRecord> = new Map();
   private temporaryProofs: Map<string, TemporaryProofRecord> = new Map();
+  private pendingLocalIds: Set<string> = new Set();
 
   constructor(public readonly projectId: string) {}
 
@@ -43,8 +43,6 @@ export abstract class ProjectState {
 
   abstract get authCloudFunction(): AuthCloudFunction;
 
-  abstract get usageMode(): UsageMode;
-
   abstract get allowPasswordSignup(): boolean;
 
   abstract get disableAuth(): boolean;
@@ -55,14 +53,22 @@ export abstract class ProjectState {
 
   abstract get enableEmailLinkSignin(): boolean;
 
-  createUser(props: Omit<UserInfo, "localId" | "createdAt" | "lastRefreshAt">): UserInfo {
+  abstract shouldForwardCredentialToBlockingFunction(
+    type: "accessToken" | "idToken" | "refreshToken"
+  ): boolean;
+
+  abstract getBlockingFunctionUri(event: BlockingFunctionEvents): string | undefined;
+
+  generateLocalId(): string {
     for (let i = 0; i < 10; i++) {
       // Try this for 10 times to prevent ID collision (since our RNG is
       // Math.random() which isn't really that great).
       const localId = randomId(28);
-      const user = this.createUserWithLocalId(localId, props);
-      if (user) {
-        return user;
+      if (!this.users.has(localId) && !this.pendingLocalIds.has(localId)) {
+        // Create a pending localId until user is created. This creates a memory
+        // leak if a blocking functions throws and the localId is never used.
+        this.pendingLocalIds.add(localId);
+        return localId;
       }
     }
     // If we get 10 collisions in a row, there must be something very wrong.
@@ -76,12 +82,10 @@ export abstract class ProjectState {
     if (this.users.has(localId)) {
       return undefined;
     }
-    const timestamp = new Date();
     this.users.set(localId, {
       localId,
-      createdAt: props.createdAt || timestamp.getTime().toString(),
-      lastLoginAt: timestamp.getTime().toString(),
     });
+    this.pendingLocalIds.delete(localId);
 
     const user = this.updateUserByLocalId(localId, props, {
       upsertProviders: props.providerUserInfo,
@@ -571,7 +575,6 @@ export class AgentProjectState extends ProjectState {
   private readonly _authCloudFunction = new AuthCloudFunction(this.projectId);
   private _config: Config = {
     signIn: { allowDuplicateEmails: false },
-    usageMode: UsageMode.DEFAULT,
     blockingFunctions: {},
   };
 
@@ -589,14 +592,6 @@ export class AgentProjectState extends ProjectState {
 
   set oneAccountPerEmail(oneAccountPerEmail: boolean) {
     this._config.signIn.allowDuplicateEmails = !oneAccountPerEmail;
-  }
-
-  get usageMode() {
-    return this._config.usageMode;
-  }
-
-  set usageMode(usageMode: UsageMode) {
-    this._config.usageMode = usageMode;
   }
 
   get allowPasswordSignup() {
@@ -631,31 +626,37 @@ export class AgentProjectState extends ProjectState {
     this._config.blockingFunctions = blockingFunctions;
   }
 
-  // TODO(lisajian): Once v2 API discovery is updated, type of update should be
-  // changed to Schemas["GoogleCloudIdentitytoolkitAdminV2Config"] and validation
-  // of update.usageMode should be moved to operations.ts
+  shouldForwardCredentialToBlockingFunction(
+    type: "accessToken" | "idToken" | "refreshToken"
+  ): boolean {
+    switch (type) {
+      case "accessToken":
+        return this._config.blockingFunctions.forwardInboundCredentials?.accessToken ?? false;
+      case "idToken":
+        return this._config.blockingFunctions.forwardInboundCredentials?.idToken ?? false;
+      case "refreshToken":
+        return this._config.blockingFunctions.forwardInboundCredentials?.refreshToken ?? false;
+    }
+  }
+
+  getBlockingFunctionUri(event: BlockingFunctionEvents): string | undefined {
+    const triggers = this.blockingFunctionsConfig.triggers;
+    if (triggers) {
+      return Object.prototype.hasOwnProperty.call(triggers, event)
+        ? triggers![event].functionUri
+        : undefined;
+    }
+    return undefined;
+  }
+
   updateConfig(
-    update: Schemas["GoogleCloudIdentitytoolkitAdminV2Config"] & { usageMode?: UsageMode },
+    update: Schemas["GoogleCloudIdentitytoolkitAdminV2Config"],
     updateMask: string | undefined
   ): Config {
-    if (update.usageMode) {
-      assert(
-        update.usageMode !== UsageMode.USAGE_MODE_UNSPECIFIED,
-        "INVALID_USAGE_MODE: ((Invalid usage mode provided.))"
-      );
-      if (update.usageMode === UsageMode.PASSTHROUGH) {
-        assert(
-          this.getUserCount() === 0,
-          "USERS_STILL_EXIST: ((Users are present, unable to set passthrough mode.))"
-        );
-      }
-    }
-
     // Empty masks indicate a full update.
     if (!updateMask) {
       this.oneAccountPerEmail = !update.signIn?.allowDuplicateEmails ?? true;
       this.blockingFunctionsConfig = update.blockingFunctions ?? {};
-      this.usageMode = update.usageMode ?? UsageMode.DEFAULT;
       return this.config;
     }
     return applyMask(updateMask, this.config, update);
@@ -749,10 +750,6 @@ export class TenantProjectState extends ProjectState {
     return this.parentProject.authCloudFunction;
   }
 
-  get usageMode() {
-    return this.parentProject.usageMode;
-  }
-
   get tenantConfig() {
     return this._tenantConfig;
   }
@@ -775,6 +772,16 @@ export class TenantProjectState extends ProjectState {
 
   get enableEmailLinkSignin() {
     return this._tenantConfig.enableEmailLinkSignin;
+  }
+
+  shouldForwardCredentialToBlockingFunction(
+    type: "accessToken" | "idToken" | "refreshToken"
+  ): boolean {
+    return this.parentProject.shouldForwardCredentialToBlockingFunction(type);
+  }
+
+  getBlockingFunctionUri(event: BlockingFunctionEvents): string | undefined {
+    return this.parentProject.getBlockingFunctionUri(event);
   }
 
   delete(): void {
@@ -850,7 +857,6 @@ export type BlockingFunctionsConfig =
 // behavior, Config only stores the configurable fields.
 export type Config = {
   signIn: SignInConfig;
-  usageMode: UsageMode;
   blockingFunctions: BlockingFunctionsConfig;
 };
 
@@ -884,14 +890,6 @@ export interface PhoneVerificationRecord {
   code: string;
   phoneNumber: string;
   sessionInfo: string;
-}
-
-export enum UsageMode {
-  // Should never be used
-  USAGE_MODE_UNSPECIFIED = "USAGE_MODE_UNSPECIFIED",
-
-  DEFAULT = "DEFAULT",
-  PASSTHROUGH = "PASSTHROUGH",
 }
 
 export enum BlockingFunctionEvents {

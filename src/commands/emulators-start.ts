@@ -4,7 +4,7 @@ import * as commandUtils from "../emulator/commandUtils";
 import { logger } from "../logger";
 import { EmulatorRegistry } from "../emulator/registry";
 import { Emulators, EMULATORS_SUPPORTED_BY_UI } from "../emulator/types";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import { Constants } from "../emulator/constants";
 import { logLabeledWarning } from "../utils";
 import { ExtensionsEmulator } from "../emulator/extensionsEmulator";
@@ -16,7 +16,7 @@ function stylizeLink(url: string): string {
   return clc.underline(clc.bold(url));
 }
 
-module.exports = new Command("emulators:start")
+export const command = new Command("emulators:start")
   .before(commandUtils.setExportOnExitOptions)
   .before(commandUtils.beforeEmulatorCommand)
   .description("start the local Firebase emulators")

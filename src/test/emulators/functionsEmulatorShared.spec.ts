@@ -7,7 +7,7 @@ import {
   ExtensionVersion,
   RegistryLaunchStage,
   Visibility,
-} from "../../extensions/extensionsApi";
+} from "../../extensions/types";
 
 const baseDef = {
   platform: "gcfv1" as const,

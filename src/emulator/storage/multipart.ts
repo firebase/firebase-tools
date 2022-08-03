@@ -51,7 +51,9 @@ function splitBufferByDelimiter(buffer: Buffer, delimiter: string, maxResults = 
  * @param body multipart request body as a Buffer
  */
 function parseMultipartRequestBody(boundaryId: string, body: Buffer): MultipartRequestBody {
-  const boundaryString = `--${boundaryId}`;
+  // strip additional surrounding single and double quotes, cloud sdks have additional quote here
+  const cleanBoundaryId = boundaryId.replace(/^["'](.+(?=["']$))["']$/, "$1");
+  const boundaryString = `--${cleanBoundaryId}`;
   const bodyParts = splitBufferByDelimiter(body, boundaryString).map((buf) => {
     // Remove the \r\n and the beginning of each part left from the boundary line.
     return Buffer.from(buf.slice(2));

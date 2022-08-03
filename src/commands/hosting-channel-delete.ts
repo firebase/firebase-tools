@@ -1,4 +1,4 @@
-import { bold, underline } from "cli-color";
+import { bold, underline } from "colorette";
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const { marked } = require("marked");
 
@@ -12,7 +12,7 @@ import { needProjectId } from "../projectUtils";
 import { requireConfig } from "../requireConfig";
 import { logger } from "../logger";
 
-export default new Command("hosting:channel:delete <channelId>")
+export const command = new Command("hosting:channel:delete <channelId>")
   .description("delete a Firebase Hosting channel")
   .withForce()
   .option("--site <siteId>", "site in which the channel exists")

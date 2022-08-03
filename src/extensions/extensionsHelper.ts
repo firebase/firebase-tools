@@ -1,5 +1,4 @@
-import * as _ from "lodash";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as ora from "ora";
 import * as semver from "semver";
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
@@ -22,15 +21,8 @@ import { checkResponse } from "./askUserForParam";
 import { ensure } from "../ensureApiEnabled";
 import { deleteObject, uploadObject } from "../gcp/storage";
 import { getProjectId } from "../projectUtils";
-import {
-  createSource,
-  ExtensionSource,
-  ExtensionVersion,
-  getExtension,
-  getInstance,
-  Param,
-  publishExtensionVersion,
-} from "./extensionsApi";
+import { createSource, getExtension, getInstance, publishExtensionVersion } from "./extensionsApi";
+import { ExtensionSource, ExtensionVersion, Param } from "./types";
 import * as refs from "./refs";
 import { getLocalExtensionSpec } from "./localHelper";
 import { promptOnce } from "../prompt";
@@ -39,6 +31,7 @@ import { envOverride } from "../utils";
 import { getLocalChangelog } from "./changelog";
 import { getProjectNumber } from "../getProjectNumber";
 import { Constants } from "../emulator/constants";
+import { resolveVersion } from "../deploy/extensions/planner";
 
 /**
  * SpecParamType represents the exact strings that the extensions
@@ -157,9 +150,13 @@ export function substituteParams<T>(original: T, params: Record<string, string>)
     const substituteRegexMatches = (unsubstituted: string, regex: RegExp): string => {
       return unsubstituted.replace(regex, paramVal);
     };
-    return _.reduce(regexes, substituteRegexMatches, str);
+    return regexes.reduce(substituteRegexMatches, str);
   };
-  return JSON.parse(_.reduce(params, applySubstitution, startingString));
+  const s = Object.entries(params).reduce(
+    (str, [key, val]) => applySubstitution(str, val, key),
+    startingString
+  );
+  return JSON.parse(s);
 }
 
 /**
@@ -279,11 +276,11 @@ export function validateSpec(spec: any) {
     if (!param.label) {
       errors.push(`Param${param.param ? ` ${param.param}` : ""} is missing required field: label`);
     }
-    if (param.type && !_.includes(SpecParamType, param.type)) {
+    if (param.type && !Object.values(SpecParamType).includes(param.type)) {
       errors.push(
         `Invalid type ${param.type} for param${
           param.param ? ` ${param.param}` : ""
-        }. Valid types are ${_.values(SpecParamType).join(", ")}`
+        }. Valid types are ${Object.values(SpecParamType).join(", ")}`
       );
     }
     if (!param.type || param.type === SpecParamType.STRING) {
@@ -598,6 +595,7 @@ export function getPublisherProjectFromName(publisherName: string): number {
   const publisherNameRegex = /projects\/.+\/publisherProfile/;
 
   if (publisherNameRegex.test(publisherName)) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [_, projectNumber, __] = publisherName.split("/");
     return Number.parseInt(projectNumber);
   }
@@ -640,7 +638,7 @@ export async function promptForOfficialExtension(message: string): Promise<strin
     type: "list",
     message,
     choices: convertOfficialExtensionsToList(officialExts),
-    pageSize: _.size(officialExts),
+    pageSize: Object.keys(officialExts).length,
   });
 }
 
@@ -782,7 +780,7 @@ export async function diagnoseAndFixProject(options: any): Promise<void> {
  * 1. Infer firebase publisher if not provided
  * 2. Infer "latest" as the version if not provided
  */
-export function canonicalizeRefInput(extensionName: string): string {
+export async function canonicalizeRefInput(extensionName: string): Promise<string> {
   // Infer firebase if publisher ID not provided.
   if (extensionName.split("/").length < 2) {
     const [extensionID, version] = extensionName.split("@");
@@ -790,8 +788,6 @@ export function canonicalizeRefInput(extensionName: string): string {
   }
   // Get the correct version for a given extension reference from the Registry API.
   const ref = refs.parse(extensionName);
-  if (!ref.version) {
-    extensionName = `${extensionName}@latest`;
-  }
-  return extensionName;
+  ref.version = await resolveVersion(ref);
+  return refs.toExtensionVersionRef(ref);
 }
