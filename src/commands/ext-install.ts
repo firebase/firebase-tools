@@ -1,4 +1,4 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const { marked } = require("marked");
 import TerminalRenderer = require("marked-terminal");
@@ -135,7 +135,7 @@ export const command = new Command("ext:install [extensionName]")
     if (learnMore) {
       utils.logLabeledBullet(
         logPrefix,
-        `You selected: ${clc.bold(spec.displayName)}.\n` +
+        `You selected: ${clc.bold(spec.displayName || "")}.\n` +
           `${spec.description}\n` +
           `View details: https://firebase.google.com/products/extensions/${spec.name}\n`
       );

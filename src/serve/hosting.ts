@@ -1,4 +1,4 @@
-import clc = require("cli-color");
+import * as clc from "colorette";
 
 const superstatic = require("superstatic").server; // Superstatic has no types, requires odd importing.
 const morgan = require("morgan");

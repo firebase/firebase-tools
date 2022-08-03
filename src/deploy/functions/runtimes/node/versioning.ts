@@ -1,5 +1,5 @@
 import * as _ from "lodash";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as semver from "semver";
 import * as spawn from "cross-spawn";
 
@@ -27,7 +27,7 @@ interface NpmShowResult {
 const MIN_SDK_VERSION = "2.0.0";
 
 export const FUNCTIONS_SDK_VERSION_TOO_OLD_WARNING =
-  clc.bold.yellow("functions: ") +
+  clc.bold(clc.yellow("functions: ")) +
   "You must have a " +
   clc.bold("firebase-functions") +
   " version that is at least 2.0.0. Please run " +
@@ -98,14 +98,14 @@ export function checkFunctionsSDKVersion(currentVersion: string): void {
       return;
     }
     utils.logWarning(
-      clc.bold.yellow("functions: ") +
+      clc.bold(clc.yellow("functions: ")) +
         "package.json indicates an outdated version of firebase-functions. Please upgrade using " +
         clc.bold("npm install --save firebase-functions@latest") +
         " in your functions directory."
     );
     if (semver.major(currentVersion) < semver.major(latest)) {
       utils.logWarning(
-        clc.bold.yellow("functions: ") +
+        clc.bold(clc.yellow("functions: ")) +
           "Please note that there will be breaking changes when you upgrade."
       );
     }

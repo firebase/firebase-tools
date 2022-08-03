@@ -3,7 +3,7 @@
 // of writing, we can make 50K requests per 10m.
 // https://cloud.google.com/container-registry/quotas
 
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
 import { FirebaseError } from "../../error";
 import { artifactRegistryDomain, containerRegistryDomain } from "../../api";
@@ -43,7 +43,7 @@ export async function cleanupBuildImages(
   deletedFunctions: backend.TargetIds[],
   cleaners: { gcr?: ContainerRegistryCleaner; ar?: ArtifactRegistryCleaner } = {}
 ): Promise<void> {
-  utils.logBullet(clc.bold.cyan("functions: ") + "cleaning up build files...");
+  utils.logBullet(clc.bold(clc.cyan("functions: ")) + "cleaning up build files...");
   const failedDomains: Set<string> = new Set();
   const cleanup: Array<Promise<void>> = [];
   const arCleaner = cleaners.ar || new ArtifactRegistryCleaner();

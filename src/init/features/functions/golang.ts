@@ -2,6 +2,7 @@ import { promisify } from "util";
 import * as fs from "fs";
 import * as path from "path";
 import * as spawn from "cross-spawn";
+import * as clc from "colorette";
 
 import { FirebaseError } from "../../../error";
 import { Config } from "../../../config";
@@ -9,8 +10,6 @@ import { promptOnce } from "../../../prompt";
 import * as utils from "../../../utils";
 import * as go from "../../../deploy/functions/runtimes/golang";
 import { logger } from "../../../logger";
-
-const clc = require("cli-color");
 
 const RUNTIME_VERSION = "1.13";
 

@@ -1,5 +1,5 @@
 import * as _ from "lodash";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
 import { firebaseApiOrigin } from "./api";
 import { Client } from "./apiv2";
