@@ -1,1 +1,2 @@
 - Replaces underlying terminal coloring library.
+- Fix bug where invalid CPU was set for 16GiB functions. (#4823)
