@@ -235,7 +235,7 @@ export function jobFromEndpoint(
     );
   }
   job.schedule = endpoint.scheduleTrigger.schedule;
-  
+
   if (endpoint.scheduleTrigger.retryConfig) {
     job.retryConfig = {};
     proto.copyIfPresent(
