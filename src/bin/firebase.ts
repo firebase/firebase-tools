@@ -140,12 +140,12 @@ process.on("uncaughtExceptionMonitor", (err) => {
 });
 
 try {
-  handlePreviewToggles(args);
-  cmd = client.cli.parse(process.argv);
-
-  // determine if there are any non-option arguments. if not, display help
-  if (!args.some((arg) => !arg.includes("-"))) {
-    client.cli.help();
+  if (!handlePreviewToggles(args)) {
+    cmd = client.cli.parse(process.argv);
+    // determine if there are any non-option arguments. if not, display help
+    if (!args.some((arg) => !arg.includes("-"))) {
+      client.cli.help();
+    }
   }
 } catch (err: any) {
   errorOut(err);
