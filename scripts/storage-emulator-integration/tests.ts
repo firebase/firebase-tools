@@ -1422,13 +1422,13 @@ describe("Storage emulator", () => {
               throw err;
             }
           }
-          
+
           await uploadText(page, "upload/allowIfNoExistingFile.txt", "some-content");
 
           const uploadState = await shouldThrowOnUpload();
           expect(uploadState!).to.include("User does not have permission");
         });
-    });
+      });
 
       describe("#listAll()", () => {
         beforeEach(async function (this) {
