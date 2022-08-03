@@ -1,4 +1,4 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import Table = require("cli-table");
 import * as fs from "fs";
 import * as _ from "lodash";
@@ -594,7 +594,7 @@ export class ProfileReport {
       if (isFile) {
         write(title + "\n");
       } else {
-        write(clc.bold.yellow(title) + "\n");
+        write(clc.bold(clc.yellow(title)) + "\n");
       }
     };
     const writeTable = (title: string, table: Table) => {

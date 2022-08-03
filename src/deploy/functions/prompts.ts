@@ -1,4 +1,4 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
 import { getFunctionLabel } from "./functionsDeployHelper";
 import { FirebaseError } from "../../error";

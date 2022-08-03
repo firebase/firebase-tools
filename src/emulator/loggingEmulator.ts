@@ -5,7 +5,7 @@ import * as WebSocket from "ws";
 import { LogEntry } from "winston";
 import * as TransportStream from "winston-transport";
 import { logger } from "../logger";
-const ansiStrip = require("cli-color/strip");
+const stripAnsi = require("strip-ansi");
 
 export interface LoggingEmulatorArgs {
   port?: number;
@@ -145,7 +145,7 @@ class WebSocketTransport extends TransportStream {
       bundle.message = bundle.data.metadata.message;
     }
 
-    bundle.message = ansiStrip(bundle.message);
+    bundle.message = stripAnsi(bundle.message);
 
     this.history.push(bundle);
     this.connections.forEach((ws) => {
