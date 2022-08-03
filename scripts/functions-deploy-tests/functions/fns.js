@@ -22,6 +22,10 @@ export const v1tq = withOptions.tasks.taskQueue(v1TqOpts).onDispatch(() => {});
 // TODO: Deploying https fn fails because we can't make public functions in google.com GCP projecs.
 // export const v1req = withOptions.https.onRequest(() => {});
 // export const v1callable = withOptions.https.onCall(() => {});
+export const v1secret = v1
+  .runWith({ ...v1Opts, secrets: ["TOP"] })
+  .pubsub.topic("foo")
+  .onPublish(() => {});
 
 // v2 functions
 v2.setGlobalOptions(v2Opts);
@@ -36,3 +40,4 @@ export const v2tq = v2.tasks.onTaskDispatched(v2TqOpts, () => {});
 // export const v2call = v2.https.onCall(() => {});
 // TODO: Need a way to create default firebase custom channel as part of integration test.
 // export const v2custom = v2.eventarc.onCustomEventPublished("custom.event", () => {});
+export const v2secret = v2.pubsub.onMessagePublished({ topic: "foo", secrets: ["TOP"] }, () => {});
