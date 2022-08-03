@@ -6,34 +6,12 @@ import { promisify } from "util";
 
 import { logger } from "../../../../logger";
 import * as api from "../../.../../../../api";
-import * as backend from "../../backend";
 import * as build from "../../build";
 import * as runtimes from "..";
 import * as v1alpha1 from "./v1alpha1";
 import { FirebaseError } from "../../../../error";
 
 export const readFileAsync = promisify(fs.readFile);
-
-export function yamlToBackend(
-  yaml: any,
-  project: string,
-  region: string,
-  runtime: runtimes.Runtime
-): backend.Backend {
-  try {
-    if (!yaml.specVersion) {
-      throw new FirebaseError("Expect backend yaml to specify a version number");
-    }
-    if (yaml.specVersion === "v1alpha1") {
-      return v1alpha1.backendFromV1Alpha1(yaml, project, region, runtime);
-    }
-    throw new FirebaseError(
-      "It seems you are using a newer SDK than this version of the CLI can handle. Please update your CLI with `npm install -g firebase-tools`"
-    );
-  } catch (err: any) {
-    throw new FirebaseError("Failed to parse backend specification", { children: [err] });
-  }
-}
 
 export function yamlToBuild(
   yaml: any,

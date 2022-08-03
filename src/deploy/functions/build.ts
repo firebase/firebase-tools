@@ -140,7 +140,7 @@ export interface ScheduleRetryConfig {
 
 export interface ScheduleTrigger {
   schedule: string | Expression<string>;
-  timeZone: Field<string>;
+  timeZone?: Field<string>;
   retryConfig?: ScheduleRetryConfig | null;
 }
 
@@ -446,8 +446,10 @@ function discoverTrigger(endpoint: Endpoint, region: string, r: Resolver): backe
   } else if (isScheduleTriggered(endpoint)) {
     const bkSchedule: backend.ScheduleTrigger = {
       schedule: r.resolveString(endpoint.scheduleTrigger.schedule),
-      timeZone: r.resolveString(endpoint.scheduleTrigger.timeZone),
     };
+    if (endpoint.scheduleTrigger.timeZone !== undefined) {
+      bkSchedule.timeZone = r.resolveString(endpoint.scheduleTrigger.timeZone);
+    }
     if (endpoint.scheduleTrigger.retryConfig) {
       const bkRetry: backend.ScheduleRetryConfig = {};
       r.resolveInts(
