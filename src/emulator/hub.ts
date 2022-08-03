@@ -90,7 +90,7 @@ export class EmulatorHub implements EmulatorInstance {
 
     this.hub.post(EmulatorHub.PATH_EXPORT, async (req, res) => {
       const path: string = req.body.path;
-      const initiatedBy: string = req.body.initiatedBy || "api";
+      const initiatedBy: string = req.body.initiatedBy || "unknown";
       utils.logLabeledBullet("emulators", `Received export request. Exporting data to ${path}.`);
       try {
         await new HubExport(this.args.projectId, {
