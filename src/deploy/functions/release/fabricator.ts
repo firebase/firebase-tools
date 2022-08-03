@@ -1,4 +1,4 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
 import { Executor } from "./executor";
 import { FirebaseError } from "../../../error";
@@ -379,9 +379,9 @@ export class Fabricator {
     endpoint.uri = resultFunction?.httpsTrigger?.url;
     let invoker: string[] | undefined;
     if (backend.isHttpsTriggered(endpoint)) {
-      invoker = endpoint.httpsTrigger.invoker;
+      invoker = endpoint.httpsTrigger.invoker === null ? ["public"] : endpoint.httpsTrigger.invoker;
     } else if (backend.isTaskQueueTriggered(endpoint)) {
-      invoker = endpoint.taskQueueTrigger.invoker;
+      invoker = endpoint.taskQueueTrigger.invoker === null ? [] : endpoint.taskQueueTrigger.invoker;
     } else if (
       backend.isBlockingTriggered(endpoint) &&
       AUTH_BLOCKING_EVENTS.includes(endpoint.blockingTrigger.eventType as any)
@@ -426,9 +426,9 @@ export class Fabricator {
     const serviceName = resultFunction.serviceConfig.service!;
     let invoker: string[] | undefined;
     if (backend.isHttpsTriggered(endpoint)) {
-      invoker = endpoint.httpsTrigger.invoker;
+      invoker = endpoint.httpsTrigger.invoker === null ? ["public"] : endpoint.httpsTrigger.invoker;
     } else if (backend.isTaskQueueTriggered(endpoint)) {
-      invoker = endpoint.taskQueueTrigger.invoker;
+      invoker = endpoint.taskQueueTrigger.invoker === null ? [] : endpoint.taskQueueTrigger.invoker;
     } else if (
       backend.isBlockingTriggered(endpoint) &&
       AUTH_BLOCKING_EVENTS.includes(endpoint.blockingTrigger.eventType as any)
@@ -604,13 +604,14 @@ export class Fabricator {
   }
 
   async deleteScheduleV1(endpoint: backend.Endpoint & backend.ScheduleTriggered): Promise<void> {
-    const job = scheduler.jobFromEndpoint(endpoint, this.appEngineLocation);
+    const jobName = scheduler.jobNameForEndpoint(endpoint, this.appEngineLocation);
     await this.executor
-      .run(() => scheduler.deleteJob(job.name))
+      .run(() => scheduler.deleteJob(jobName))
       .catch(rethrowAs(endpoint, "delete schedule"));
 
+    const topicName = scheduler.topicNameForEndpoint(endpoint);
     await this.executor
-      .run(() => pubsub.deleteTopic(job.pubsubTarget!.topicName))
+      .run(() => pubsub.deleteTopic(topicName))
       .catch(rethrowAs(endpoint, "delete topic"));
   }
 
@@ -646,7 +647,7 @@ export class Fabricator {
 
   logOpSuccess(op: string, endpoint: backend.Endpoint): void {
     const label = helper.getFunctionLabel(endpoint);
-    utils.logSuccess(`${clc.bold.green(`functions[${label}]`)} Successful ${op} operation.`);
+    utils.logSuccess(`${clc.bold(clc.green(`functions[${label}]`))} Successful ${op} operation.`);
   }
 }
 

@@ -1,5 +1,5 @@
 // TODO(joehanley): Remove this entire command in v12.
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import { Command } from "../command";
 import * as commandUtils from "../emulator/commandUtils";
 import { FirebaseError } from "../error";

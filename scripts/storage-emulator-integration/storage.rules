@@ -14,6 +14,13 @@ service firebase.storage {
       allow create;
     }
 
+    match /listAll/{subDir}/{fileName} {
+      allow list;
+    }
+    match /listAll/{allPaths=**} {
+      allow write;
+    }
+
     match /delete {
       match /disallowIfContentTypeText {
         allow create;
@@ -27,6 +34,9 @@ service firebase.storage {
       }
       match /replace.txt {
         allow read, create;
+      }
+      match /allowIfNoExistingFile.txt {
+        allow create: if resource == null;
       }
     }
 

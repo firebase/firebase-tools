@@ -1,4 +1,4 @@
-import { bold } from "cli-color";
+import { bold } from "colorette";
 import { cloneDeep } from "lodash";
 
 import { FirebaseError } from "../error";

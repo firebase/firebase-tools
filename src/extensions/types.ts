@@ -1,6 +1,7 @@
 import * as proto from "../gcp/proto";
 import { SpecParamType } from "./extensionsHelper";
 import { Runtime } from "../deploy/functions/runtimes";
+import { MemoryOptions } from "../deploy/functions/backend";
 
 export enum RegistryLaunchStage {
   EXPERIMENTAL = "EXPERIMENTAL",
@@ -135,7 +136,7 @@ export interface FunctionResourceProperties {
     entryPoint?: string;
     sourceDirectory?: string;
     timeout?: proto.Duration;
-    availableMemoryMb?: number;
+    availableMemoryMb?: MemoryOptions;
     runtime?: Runtime;
     httpsTrigger?: Record<string, never>;
     eventTrigger?: {

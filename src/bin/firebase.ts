@@ -12,7 +12,7 @@ if (!semver.satisfies(nodeVersion, pkg.engines.node)) {
 }
 
 import * as updateNotifierPkg from "update-notifier";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as TerminalRenderer from "marked-terminal";
 const updateNotifier = updateNotifierPkg({ pkg: pkg });
 import { marked } from "marked";
@@ -20,7 +20,7 @@ marked.setOptions({
   renderer: new TerminalRenderer(),
 });
 const updateMessage =
-  `Update available ${clc.xterm(240)("{currentVersion}")} → ${clc.green("{latestVersion}")}\n` +
+  `Update available ${clc.gray("{currentVersion}")} → ${clc.green("{latestVersion}")}\n` +
   `To update to the latest version using npm, run\n${clc.cyan("npm install -g firebase-tools")}\n` +
   `For other CLI management options, visit the ${marked(
     "[CLI documentation](https://firebase.google.com/docs/cli#update-cli)"
@@ -30,7 +30,7 @@ updateNotifier.notify({ defer: true, isGlobal: true, message: updateMessage });
 import { Command } from "commander";
 import { join } from "node:path";
 import { SPLAT } from "triple-beam";
-import { strip } from "cli-color";
+const stripAnsi = require("strip-ansi");
 import * as fs from "node:fs";
 
 import { configstore } from "../configstore";
@@ -86,7 +86,7 @@ logger.add(
     filename: logFilename,
     format: winston.format.printf((info) => {
       const segments = [info.message, ...(info[SPLAT] || [])].map(utils.tryStringify);
-      return `[${info.level}] ${strip(segments.join(" "))}`;
+      return `[${info.level}] ${stripAnsi(segments.join(" "))}`;
     }),
   })
 );
