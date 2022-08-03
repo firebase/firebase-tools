@@ -1,5 +1,5 @@
 import * as backend from "../backend";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
 import { logger } from "../../../logger";
 import { track } from "../../../track";

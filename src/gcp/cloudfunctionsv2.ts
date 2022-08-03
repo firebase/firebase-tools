@@ -1,4 +1,4 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
 import { Client } from "../apiv2";
 import { FirebaseError } from "../error";
@@ -244,11 +244,11 @@ export function mebibytes(memory: string): number {
  * @param err The error returned from the operation.
  */
 function functionsOpLogReject(funcName: string, type: string, err: any): void {
-  utils.logWarning(clc.bold.yellow("functions:") + ` ${err?.message}`);
+  utils.logWarning(clc.bold(clc.yellow("functions:")) + ` ${err?.message}`);
   if (err?.context?.response?.statusCode === 429) {
     utils.logWarning(
-      `${clc.bold.yellow(
-        "functions:"
+      `${clc.bold(
+        clc.yellow("functions:")
       )} got "Quota Exceeded" error while trying to ${type} ${funcName}. Waiting to retry...`
     );
   } else if (
@@ -257,13 +257,13 @@ function functionsOpLogReject(funcName: string, type: string, err: any): void {
     )
   ) {
     utils.logWarning(
-      `${clc.bold.yellow(
-        "functions:"
+      `${clc.bold(
+        clc.yellow("functions:")
       )} since this is your first time using functions v2, we need a little bit longer to finish setting everything up, please retry the deployment in a few minutes.`
     );
   } else {
     utils.logWarning(
-      clc.bold.yellow("functions:") + " failed to " + type + " function " + funcName
+      clc.bold(clc.yellow("functions:")) + " failed to " + type + " function " + funcName
     );
   }
   throw new FirebaseError(`Failed to ${type} function ${funcName}`, {

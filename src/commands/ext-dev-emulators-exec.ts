@@ -1,5 +1,5 @@
 // TODO(joehanley): Remove this entire command in v12.
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";

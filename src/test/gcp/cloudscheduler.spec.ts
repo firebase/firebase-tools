@@ -219,9 +219,9 @@ describe("cloudscheduler", () => {
               timeZone: "America/Los_Angeles",
               retryConfig: {
                 maxDoublings: 2,
-                maxBackoffDuration: "20s",
-                minBackoffDuration: "1s",
-                maxRetryDuration: "60s",
+                maxBackoffSeconds: 20,
+                minBackoffSeconds: 1,
+                maxRetrySeconds: 60,
               },
             },
           },

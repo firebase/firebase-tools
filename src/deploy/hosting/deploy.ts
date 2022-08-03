@@ -5,13 +5,8 @@ import { logger } from "../../logger";
 import { track } from "../../track";
 import { envOverride, logLabeledBullet, logLabeledSuccess } from "../../utils";
 import { HostingDeploy } from "./hostingDeploy";
-
-import * as clc from "cli-color";
-const SPINNER = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
-
-// Feature from cli-color 2.0.0 that we want to use:
-// See: https://github.com/medikoo/cli-color/blob/master/erase.js
-const _ERASE_LINE = "\x1b[2K";
+import { bold, cyan } from "colorette";
+import * as ora from "ora";
 
 export async function deploy(
   context: { hosting?: { deploys?: HostingDeploy[] } },
@@ -27,18 +22,14 @@ export async function deploy(
     return;
   }
 
-  let spins = 0;
+  const spinner = ora();
   function updateSpinner(newMessage: string, debugging: boolean): void {
     // don't try to rewrite lines if debugging since it's likely to get interrupted
     if (debugging) {
       logLabeledBullet("hosting", newMessage);
     } else {
-      process.stdout.write(_ERASE_LINE + clc.move(-9999, 0));
-      process.stdout.write(
-        clc.bold.cyan(SPINNER[spins % SPINNER.length] + "  hosting: ") + newMessage
-      );
+      spinner.text = `${bold(cyan(" hosting:"))} ${newMessage}`;
     }
-    spins++;
   }
 
   async function runDeploys(deploys: HostingDeploy[], debugging: boolean): Promise<void> {
@@ -64,7 +55,7 @@ export async function deploy(
 
     logLabeledBullet(
       `hosting[${deploy.site}]`,
-      `found ${files.length} files in ${clc.bold(deploy.config.public)}`
+      `found ${files.length} files in ${bold(deploy.config.public)}`
     );
 
     let concurrency = 200;
@@ -91,6 +82,10 @@ export async function deploy(
       debugging ? 2000 : 200
     );
 
+    if (!debugging) {
+      spinner.start();
+    }
+
     try {
       await uploader.start();
     } catch (err: any) {
@@ -98,10 +93,11 @@ export async function deploy(
       throw err;
     } finally {
       clearInterval(progressInterval);
+      updateSpinner(uploader.statusMessage(), debugging);
     }
 
     if (!debugging) {
-      process.stdout.write(_ERASE_LINE + clc.move(-9999, 0));
+      spinner.stop();
     }
 
     logLabeledSuccess("hosting[" + deploy.site + "]", "file upload complete");
