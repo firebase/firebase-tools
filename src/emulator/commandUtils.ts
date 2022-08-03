@@ -223,7 +223,7 @@ export function setExportOnExitOptions(options: any) {
 
 function processKillSignal(
   signal: Signals,
-  res: (value?: unknown) => void,
+  res: (value?: void) => void,
   rej: (value?: unknown) => void,
   options: any
 ): SignalsListener {
@@ -305,23 +305,25 @@ function processKillSignal(
   };
 }
 
+/**
+ * Returns a promise that resolves when killing signals are received and processed.
+ *
+ * Fulfilled or rejected depending on the processing result (e.g. exporting).
+ * @return a promise that is pending until signals received and processed
+ */
 export function shutdownWhenKilled(options: any): Promise<void> {
-  return new Promise((res, rej) => {
+  return new Promise<void>((res, rej) => {
     ["SIGINT", "SIGTERM", "SIGHUP", "SIGQUIT"].forEach((signal: string) => {
       process.on(signal as Signals, processKillSignal(signal as Signals, res, rej, options));
     });
-  })
-    .then(() => {
-      process.exit(0);
-    })
-    .catch((e) => {
-      logger.debug(e);
-      utils.logLabeledWarning(
-        "emulators",
-        "emulators failed to shut down cleanly, see firebase-debug.log for details."
-      );
-      process.exit(1);
-    });
+  }).catch((e) => {
+    logger.debug(e);
+    utils.logLabeledWarning(
+      "emulators",
+      "emulators failed to shut down cleanly, see firebase-debug.log for details."
+    );
+    throw e;
+  });
 }
 
 async function runScript(script: string, extraEnv: Record<string, string>): Promise<number> {
@@ -417,14 +419,14 @@ async function runScript(script: string, extraEnv: Record<string, string>): Prom
   });
 }
 
-/** The action function for emulators:exec and ext:dev:emulators:exec.
- *  Starts the appropriate emulators, executes the provided script,
- *  and then exits.
- *  @param script: A script to run after starting the emulators.
- *  @param options: A Commander options object.
+/**
+ * The action function for emulators:exec.
+ * Starts the appropriate emulators, executes the provided script,
+ * and then exits.
+ * @param script A script to run after starting the emulators.
+ * @param options A Commander options object.
  */
-export async function emulatorExec(script: string, options: any) {
-  shutdownWhenKilled(options);
+export async function emulatorExec(script: string, options: any): Promise<void> {
   const projectId = getProjectId(options);
   const extraEnv: Record<string, string> = {};
   if (projectId) {
@@ -461,15 +463,14 @@ export async function emulatorExec(script: string, options: any) {
 // Regex to extract Java major version. Only works with Java >= 9.
 // See: http://openjdk.java.net/jeps/223
 const JAVA_VERSION_REGEX = /version "([1-9][0-9]*)/;
-const MIN_SUPPORTED_JAVA_MAJOR_VERSION = 11;
 const JAVA_HINT = "Please make sure Java is installed and on your system PATH.";
 
 /**
  * Return whether Java major verion is supported. Throws if Java not available.
  *
- * @returns true if Java >= 11, false otherwise
+ * @returns Java major version (for Java >= 9) or -1 otherwise
  */
-export async function checkJavaSupported(): Promise<boolean> {
+export async function checkJavaMajorVersion(): Promise<number> {
   return new Promise<string>((resolve, reject) => {
     let child;
     try {
@@ -528,10 +529,11 @@ export async function checkJavaSupported(): Promise<boolean> {
       }
     });
   }).then((output) => {
+    let versionInt = -1;
     const match = output.match(JAVA_VERSION_REGEX);
     if (match) {
       const version = match[1];
-      const versionInt = parseInt(version, 10);
+      versionInt = parseInt(version, 10);
       if (!versionInt) {
         utils.logLabeledWarning(
           "emulators",
@@ -540,16 +542,21 @@ export async function checkJavaSupported(): Promise<boolean> {
         );
       } else {
         logger.debug(`Parsed Java major version: ${versionInt}`);
-        return versionInt >= MIN_SUPPORTED_JAVA_MAJOR_VERSION;
       }
     } else {
+      // probably Java <= 8 (different version scheme) or unknown
       logger.debug("java -version outputs:", output);
       logger.warn(`Failed to parse Java version.`);
     }
-    return false;
+    const session = emulatorSession();
+    if (session) {
+      session.javaMajorVersion = versionInt;
+    }
+    return versionInt;
   });
 }
 
+export const MIN_SUPPORTED_JAVA_MAJOR_VERSION = 11;
 export const JAVA_DEPRECATION_WARNING =
   "firebase-tools no longer supports Java version before 11. " +
   "Please upgrade to Java version 11 or above to continue using the emulators.";

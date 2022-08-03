@@ -67,24 +67,46 @@ const EMULATOR_GA4_USER_PROPS = {
   },
 };
 
+export interface AnalyticsParams {
+  /** The command running right now (param for custom dimension) */
+  command_name?: string;
+
+  /** The emulator related to the event (param for custom dimension) */
+  emulator_name?: string;
+
+  /** The number of times or objects (param for custom metrics) */
+  count?: number;
+
+  /** The elapsed time in milliseconds (e.g. for command runs) (param for custom metrics) */
+  duration?: number;
+
+  /**
+   * One-off params (that may be used for custom params / metrics later).
+   *
+   * Custom parameter names should be in snake_case. (Formal requirement:
+   * length <= 40, alpha-numeric characters and underscores only (*no spaces*),
+   * and must start with an alphabetic character.)
+   *
+   * If the value is a string, it must have length <= 100. For convenience, the
+   * entire paramater is omitted (not sent to GA4) if value is set to undefined.
+   */
+  [key: string]: string | number | undefined;
+}
+
 /**
  * Record an emulator-related event for Analytics.
  *
- * @param eventName length <= 40, alpha-numeric characters and underscores only
- *                  (no spaces), and must start with an alphabetic character
- * @param params key: length <= 40, alpha-numeric characters and underscores
- *               only (no spaces), and must start with an alphabetic character.
- *               value: number or string with length <= 100
+ * @param eventName the event name in snake_case. (Formal requirement:
+ *                  length <= 40, alpha-numeric characters and underscores only
+ *                  (*no spaces*), and must start with an alphabetic character)
+ * @param params custom and standard parameters attached to the event
  * @returns a Promise fulfilled when the event reaches the server or fails
  *          (never rejects unless `emulatorSession().validateOnly` is set)
  *
  * Note: On performance or latency critical paths, the returned Promise may be
  * safely ignored with the statement `void trackEmulator(...)`.
  */
-export async function trackEmulator(
-  eventName: string,
-  params?: Record<string, string | number>
-): Promise<void> {
+export async function trackEmulator(eventName: string, params?: AnalyticsParams): Promise<void> {
   const session = emulatorSession();
   if (!session) {
     return;
@@ -96,6 +118,9 @@ export async function trackEmulator(
   const oldTotalEngagementSeconds = session.totalEngagementSeconds;
   session.totalEngagementSeconds = process.uptime();
 
+  // Memorize and set command_name throughout the session.
+  session.commandName = params?.command_name || session.commandName;
+
   const search = `?api_secret=${EMULATOR_GA4_API_SECRET}&measurement_id=${session.measurementId}`;
   const validate = session.validateOnly ? "debug/" : "";
   const url = `https://www.google-analytics.com/${validate}mp/collect${search}`;
@@ -104,8 +129,13 @@ export async function trackEmulator(
     // Not using multiplication due to JS number precision limit.
     timestamp_micros: `${Date.now()}000`,
     client_id: session.clientId,
-    user_properties: EMULATOR_GA4_USER_PROPS,
-    ...(session.validateOnly ? { validationBehavior: "ENFORCE_RECOMMENDATIONS" } : {}),
+    user_properties: {
+      ...EMULATOR_GA4_USER_PROPS,
+      java_major_version: session.javaMajorVersion
+        ? { value: session.javaMajorVersion }
+        : undefined,
+    },
+    validationBehavior: session.validateOnly ? "ENFORCE_RECOMMENDATIONS" : undefined,
     events: [
       {
         name: eventName,
@@ -125,7 +155,8 @@ export async function trackEmulator(
 
           // https://support.google.com/analytics/answer/7201382?hl=en
           // To turn debug mode off, `debug_mode` must be left out not `false`.
-          ...(session.debugMode ? { debug_mode: true } : {}),
+          debug_mode: session.debugMode ? true : undefined,
+          command_name: session.commandName,
           ...params,
         },
       },
@@ -184,6 +215,11 @@ export interface AnalyticsSession {
   // In the CLI, this is implemented by sending events to the GA4 measurement
   // validation API (which does not persist events) and printing the response.
   validateOnly: boolean;
+
+  // The Java major version, if known. Will be attached to subsequent events.
+  javaMajorVersion?: number;
+
+  commandName?: string;
 }
 
 export function emulatorSession(): AnalyticsSession | undefined {

@@ -413,6 +413,28 @@ export async function promiseWhile<T>(
 }
 
 /**
+ * Return a promise that rejects after timeoutMs but otherwise behave the same.
+ * @param timeoutMs the time in milliseconds before forced rejection
+ * @param promise the original promise
+ * @returns a promise wrapping the original promise with rejection on timeout
+ */
+export function withTimeout<T>(timeoutMs: number, promise: Promise<T>): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timeout = setTimeout(() => reject(new Error("Timed out.")), timeoutMs);
+    promise.then(
+      (value) => {
+        clearTimeout(timeout);
+        resolve(value);
+      },
+      (err) => {
+        clearTimeout(timeout);
+        reject(err);
+      }
+    );
+  });
+}
+
+/**
  * Resolves all Promises at every key in the given object. If a value is not a
  * Promise, it is returned as-is.
  */
