@@ -93,8 +93,8 @@ function parseMultipartRequestBodyPart(bodyPart: Buffer): MultipartRequestBodyPa
   // splitting the entire body part buffer.
   const sections = splitBufferByDelimiter(bodyPart, LINE_SEPARATOR, /* maxResults = */ 3);
 
-  const contentTypeRaw = sections[0].toString();
-  if (!contentTypeRaw.startsWith("Content-Type: ")) {
+  const contentTypeRaw = sections[0].toString().toLowerCase();
+  if (!contentTypeRaw.startsWith("content-type: ")) {
     throw new Error(`Failed to parse multipart request body part. Missing content type.`);
   }
 
