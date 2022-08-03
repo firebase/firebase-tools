@@ -4,6 +4,7 @@ import { promptOnce } from "../../prompt";
 import * as build from "./build";
 import { assertExhaustive, partition } from "../../functional";
 import * as secretManager from "../../gcp/secretManager";
+import { listBuckets } from "../../gcp/storage";
 
 // A convinience type containing options for Prompt's select
 interface ListItem {
