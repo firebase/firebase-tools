@@ -2,7 +2,6 @@ import { Bucket, CopyOptions } from "@google-cloud/storage";
 import { expect } from "chai";
 import * as firebase from "firebase";
 import * as admin from "firebase-admin";
-import { TaskQueueBuilder } from "firebase-functions/v1/tasks";
 import * as fs from "fs";
 import * as http from "http";
 import * as https from "https";
