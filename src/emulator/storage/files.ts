@@ -401,7 +401,7 @@ export class StorageLayer {
 
     const authorized = await this._rulesValidator.validate(
       // Firebase Rules expects the path without trailing slashes.
-      ["b", bucketId, "o", prefix.replace(TRAILING_SLASHES_PATTERN, '')].join("/"),
+      ["b", bucketId, "o", prefix.replace(TRAILING_SLASHES_PATTERN, "")].join("/"),
       bucketId,
       RulesetOperationMethod.LIST,
       {},
