@@ -3,6 +3,14 @@ import { FirebaseError } from "../../error";
 import { promptOnce } from "../../prompt";
 import * as build from "./build";
 import { assertExhaustive, partition } from "../../functional";
+import * as secretManager from "../../gcp/secretManager";
+
+// A convinience type containing options for Prompt's select
+interface ListItem {
+  name?: string; // User friendly display name for the option
+  value: string; // Value of the option
+  checked: boolean; // Whether the option should be checked by default
+}
 
 type CEL = build.Expression<string> | build.Expression<number> | build.Expression<boolean>;
 
@@ -113,7 +121,7 @@ export function resolveBoolean(
 
 interface ParamBase<T extends string | number | boolean> {
   // name of the param. Will be exposed as an environment variable with this name
-  param: string;
+  name: string;
 
   // A human friendly name for the param. Will be used in install/configure flows to describe
   // what param is being updated. If omitted, UX will use the value of "param" instead.
@@ -134,7 +142,7 @@ export interface StringParam extends ParamBase<string> {
   type: "string";
 
   // If omitted, defaults to TextInput<string>
-  input?: TextInput<string> | SelectInput<string>;
+  input?: TextInput<string> | SelectInput<string> | ResourceInput;
 }
 
 export interface IntParam extends ParamBase<number> {
@@ -144,14 +152,22 @@ export interface IntParam extends ParamBase<number> {
   input?: TextInput<number> | SelectInput<number>;
 }
 
-export interface TextInput<T, Extensions = {}> { // eslint-disable-line
+export interface BooleanParam extends ParamBase<number> {
+  type: "boolean";
+
+  // If omitted, defaults to TextInput<number>
+  input?: TextInput<boolean> | SelectInput<boolean>;
+}
+
+export interface TextInput<T> { // eslint-disable-line
   type: "text";
 
-  text:
-    | Extensions
-    | {
-        example?: string;
-      };
+  example?: string;
+
+  // If present, retry the prompt if the user provides a string that does not match this regexp
+  validationRegex?: string;
+  // The error message to display if validationRegex is missing
+  validationErrorMessage?: string;
 }
 
 interface SelectOptions<T> {
@@ -169,7 +185,36 @@ export interface SelectInput<T> {
   select: Array<SelectOptions<T>>;
 }
 
-export type Param = StringParam | IntParam;
+// Future supported resource types will be added to this literal type. Tooling SHOULD fall back
+// to text entry if it encounters an unknown ResourceParamType
+type ResourceType = "storage.googleapis.com/Bucket" | string
+
+interface ResourceInput {
+  type: "resource"
+
+  resource: {
+    type: ResourceType;
+  };
+}
+
+interface SecretParam {
+  type: "secret";
+
+  // name of the param. Will be exposed as an environment variable with this name
+  name: string;
+
+  // A human friendly name for the param. Will be used in install/configure flows to describe
+  // what param is being updated. If omitted, UX will use the value of "param" instead.
+  label?: string;
+
+  // A long description of the parameter's purpose and allowed values. If omitted, UX will not
+  // provide a description of the parameter
+  description?: string;
+
+  as?: "string" | "int" | "boolean"
+}
+
+export type Param = StringParam | IntParam | BooleanParam | SecretParam;
 type ParamValue = string | number | boolean;
 
 /**
@@ -193,6 +238,8 @@ function resolveDefaultCEL(
   }
 
   switch (type) {
+    case "boolean":
+      return resolveBoolean(expr, currentEnv);
     case "string":
       return resolveString(expr, currentEnv);
     case "int":
@@ -203,14 +250,19 @@ function resolveDefaultCEL(
       );
   }
 }
+
 /**
  * Tests whether a mooted ParamValue literal is of the correct type to be the value for a Param.
  */
-function canSatisfyParam(param: Param, value: ParamValue): boolean {
+ function canSatisfyParam(param: Param, value: ParamValue): boolean {
   if (param.type === "string") {
     return typeof value === "string";
   } else if (param.type === "int") {
     return typeof value === "number" && Number.isInteger(value);
+  } else if (param.type === "boolean") {
+    return typeof value === "boolean";
+  } else if (param.type === "secret") {
+    return false;
   }
   assertExhaustive(param);
 }
@@ -225,45 +277,121 @@ function canSatisfyParam(param: Param, value: ParamValue): boolean {
  *   - yes, this means that the same set of params may or may not throw depending on the order the SDK provides them to us in
  *   - after prompting, the resolved value of the param is written to the most specific .env file available
  */
-export async function resolveParams(
+ export async function resolveParams(
   params: Param[],
   projectId: string,
-  userEnvs: Record<string, ParamValue>
+  userEnvs: Record<string, ParamValue>,
 ): Promise<Record<string, ParamValue>> {
   const paramValues: Record<string, ParamValue> = {};
 
-  const [provided, outstanding] = partition(params, (param) => {
-    return {}.hasOwnProperty.call(userEnvs, param.param);
+  const [resolved, outstanding] = partition(params, (param) => {
+    return {}.hasOwnProperty.call(userEnvs, param.name);
   });
-  for (const param of provided) {
-    if (!canSatisfyParam(param, userEnvs[param.param])) {
+  for (const param of resolved) {
+    if (!canSatisfyParam(param, userEnvs[param.name])) {
       throw new FirebaseError(
         "Parameter " +
-          param.param +
+          param.name +
           " resolved to value from dotenv files " +
-          userEnvs[param.param] +
+          userEnvs[param.name] +
           " of wrong type"
       );
     }
-    paramValues[param.param] = userEnvs[param.param];
+    paramValues[param.name] = userEnvs[param.name];
   }
 
-  for (const param of outstanding) {
-    let paramDefault: ParamValue | undefined = param.default;
+  const [needSecret, needPrompt] = partition(outstanding, (param) => {
+    return param.type == "secret";
+  });
+  for (const param of needSecret) {
+    const secretParam = param as SecretParam;
+    const rawValue = await handleSecret(secretParam, projectId);
+    let value: ParamValue;
+    switch (secretParam.as) {
+      case "boolean":
+        if (rawValue === "true") {
+          value = true;
+        } else if (rawValue === "false") {
+          value = false;
+        } else {
+          throw new FirebaseError(`Secret parameter ${secretParam.name} should have been interpreted as ${secretParam.as} but had an illegal value in Cloud Secret Manager; must be 'true' or 'false'`);
+        }
+        break;
+      case "int":
+        value = +rawValue;
+        break;
+      case "string":
+      default:
+        value = rawValue;
+        break;
+    }
+    paramValues[secretParam.name] = value;
+  }
+  for (const param of needPrompt) {
+    const promptable = param as Exclude<Param, SecretParam>;
+    let paramDefault: ParamValue | undefined = promptable.default;
     if (paramDefault && isCEL(paramDefault)) {
       paramDefault = resolveDefaultCEL(param.type, paramDefault, paramValues);
     }
     if (paramDefault && !canSatisfyParam(param, paramDefault)) {
       throw new FirebaseError(
-        "Parameter " + param.param + " has default value " + paramDefault + " of wrong type"
+        "Parameter " + param.name + " has default value " + paramDefault + " of wrong type"
       );
     }
-    paramValues[param.param] = await promptParam(param, paramDefault);
+    paramValues[param.name] = await promptParam(param, projectId, paramDefault);
 
     // TODO(vsfan@): Once we have writeUserEnvs in functions/env.ts implemented, call it to persist user-provided params
   }
 
   return paramValues;
+}
+
+
+/**
+ * Handles a SecretParam, either by retrieving its latest value from Cloud Secret Manager if present,
+ * or prompting the user for the value of a new secret.
+ * Always returns a string, since secret values are stored as untyped bytes in CSM.
+ */
+ async function handleSecret(secretParam: SecretParam, projectId: string): Promise<string> {
+  const metadata = await getSecretMetadata(projectId, secretParam.name, "latest");
+  if (!metadata.secret) {
+    const secretValue = await promptOnce({
+      name: secretParam.name,
+      type: "password",
+      message: `This secret will be stored in Cloud Secret Manager (https://cloud.google.com/secret-manager/pricing) as ${secretParam.name} and managed by Firebase Hosting (Firebase Hosting Service Agent will be granted Secret Admin role on this secret).\nEnter a value for ${secretParam.label || secretParam.name}:`,
+    });
+    await secretManager.createSecret(projectId, secretParam.name, {});
+    await secretManager.addVersion(projectId, secretParam.name, secretValue);
+    return secretValue;
+  } else if (!metadata.secretVersion) {
+    // the secret exists, but version "latest" doesnt, which...is questionably possible?
+  }
+
+  // we need to test if the hosting service account can actually read
+  // secretManager.ensureServiceAgentRole(metadata.secret, [`what address goes here`], "roles/secretmanager.admin");
+
+  return secretManager.accessSecretVersion(projectId, secretParam.name, "latest");
+}
+
+async function getSecretMetadata(
+  projectId: string,
+  secretName: string,
+  version: string
+): Promise<{
+  secret?: secretManager.Secret;
+  secretVersion?: secretManager.SecretVersion;
+}> {
+  const secretInfo: any = {};
+  try {
+    secretInfo.secret = await secretManager.getSecret(projectId, secretName);
+    secretInfo.secretVersion = await secretManager.getSecretVersion(projectId, secretName, version);
+  } catch (err: any) {
+    // Throw anything other than the expected 404 errors.
+    if (err.status !== 404) {
+      throw err;
+    }
+  }
+  return secretInfo;
 }
 
 /**
@@ -273,70 +401,167 @@ export async function resolveParams(
  * For most param types, we check the contents of the dotenv files first for a matching key, then interactively prompt the user.
  * When the CLI is running in non-interactive mode or with the --force argument, it is an error for a param to be undefined in dotenvs.
  */
-async function promptParam(param: Param, resolvedDefault?: ParamValue): Promise<ParamValue> {
+ async function promptParam(param: Param, projectId: string, resolvedDefault?: ParamValue): Promise<ParamValue> {
   if (param.type === "string") {
-    return promptStringParam(param, resolvedDefault as string | undefined);
+    return promptStringParam(param, projectId, resolvedDefault as string | undefined);
   } else if (param.type === "int") {
     return promptIntParam(param, resolvedDefault as number | undefined);
+  } else if (param.type === "boolean") {
+    return promptBooleanParam(param, resolvedDefault as boolean | undefined);
+  } else if (param.type === "secret") {
+    throw new FirebaseError(`Somehow ended up trying to interactively prompt for secret parameter ${param.name}, which should never happen.`);
   }
   assertExhaustive(param);
 }
-
-async function promptStringParam(param: StringParam, resolvedDefault?: string): Promise<string> {
+async function promptBooleanParam(param: BooleanParam, resolvedDefault?: boolean): Promise<boolean> {
   if (!param.input) {
-    const defaultToText: TextInput<string> = { type: "text", text: {} };
+    const defaultToText: TextInput<boolean> = { type: "text" };
     param.input = defaultToText;
   }
+  const isTruthyInput = (res: string) => ['true', 'y', 'yes', '1'].includes(res.toLowerCase());
+  let prompt: string;
 
   switch (param.input.type) {
     case "select":
-      throw new FirebaseError(
-        "Build specified string parameter " + param.param + " with unsupported input type 'select'"
-      );
-    case "text":
-    default:
-      let prompt = `Enter a value for ${param.label || param.param}`;
+      prompt = `Select a value for ${param.label || param.name}:`;
       if (param.description) {
         prompt += ` \n(${param.description})`;
       }
-      return await promptOnce({
-        name: param.param,
-        type: "input",
-        default: resolvedDefault,
-        message: prompt,
-      });
+      prompt += "\nSelect an option with the arrow keys, and use Enter to confirm your choice. ";
+      return promptSelect<boolean>(prompt, param.input, resolvedDefault, isTruthyInput)
+    case "text":
+    default:
+      prompt = `Enter a boolean value for ${param.label || param.name}:`;
+      if (param.description) {
+        prompt += ` \n(${param.description})`;
+      }
+      return promptText<boolean>(prompt, param.input, resolvedDefault, isTruthyInput)
+  }
+}
+
+async function promptStringParam(param: StringParam, projectId: string, resolvedDefault?: string): Promise<string> {
+  if (!param.input) {
+    const defaultToText: TextInput<string> = { type: "text"};
+    param.input = defaultToText;
+  }
+  let prompt: string;
+
+  switch (param.input.type) {
+    case "resource":
+      prompt = `Select a value for ${param.label || param.name}:`;
+      if (param.description) {
+        prompt += ` \n(${param.description})`;
+      }
+      return promptResourceString(prompt, param.input, projectId, resolvedDefault);
+    case "select":
+      prompt = `Select a value for ${param.label || param.name}:`;
+      if (param.description) {
+        prompt += ` \n(${param.description})`;
+      }
+      prompt += "\nSelect an option with the arrow keys, and use Enter to confirm your choice. ";
+      return promptSelect<string>(prompt, param.input, resolvedDefault, (res: string) => res);
+    case "text":
+    default:
+      prompt = `Enter a string value for ${param.label || param.name}:`;
+      if (param.description) {
+        prompt += ` \n(${param.description})`;
+      }
+      return promptText<string>(prompt, param.input, resolvedDefault, (res: string) => res);
   }
 }
 
 async function promptIntParam(param: IntParam, resolvedDefault?: number): Promise<number> {
   if (!param.input) {
-    const defaultToText: TextInput<number> = { type: "text", text: {} };
+    const defaultToText: TextInput<number> = { type: "text" };
     param.input = defaultToText;
   }
+  let prompt: string;
 
   switch (param.input.type) {
     case "select":
-      throw new FirebaseError(
-        "Build specified int parameter " + param.param + " with unsupported input type 'select'"
-      );
-    case "text":
-    default:
-      let prompt = `Enter a value for ${param.label || param.param}`;
+      prompt = `Select a value for ${param.label || param.name}:`;
       if (param.description) {
         prompt += ` \n(${param.description})`;
       }
-      let res: number;
-      while (true) {
-        res = await promptOnce({
-          name: param.param,
-          type: "number",
-          default: resolvedDefault,
-          message: prompt,
-        });
-        if (Number.isInteger(res)) {
-          return res;
-        }
-        logger.error(`${param.label || param.param} must be an integer; retrying...`);
+      prompt += "\nSelect an option with the arrow keys, and use Enter to confirm your choice. ";
+      return promptSelect(prompt, param.input, resolvedDefault, (res: string) => +res);
+    case "text":
+    default:
+      prompt = `Enter an integer value for ${param.label || param.name}:`;
+      if (param.description) {
+        prompt += ` \n(${param.description})`;
       }
+      return promptText<number>(prompt, param.input, resolvedDefault, (res: string) => {
+        if (isNaN(+res)) {
+          return {message: `"${res}" could not be converted to a number.`}
+        }
+        if (res.includes(".")) {
+          return {message: `${res} is not an integer value.`}
+        }
+        return +res;
+      });
   }
+}
+
+async function promptResourceString(prompt: string, input:ResourceInput, projectId: string, resolvedDefault?: string): Promise<string> {
+  const notFound =  new FirebaseError(`No instances of ${input.resource.type} found.`);
+  switch (input.resource.type) {
+    case "storage.googleapis.com/Bucket":
+      const buckets = await listBuckets(projectId);
+      if (buckets.length == 0) {
+        throw notFound;
+      }
+      const forgedInput: SelectInput<string> = {type: "select", select: buckets.map((bucketName: string): SelectOptions<string> =>  { return {label: bucketName, value: bucketName} })};
+      return promptSelect<string>(prompt, forgedInput, resolvedDefault, (res: string) => res);
+    default:
+      logger.warn(`Warning: unknown resource type ${input.resource.type}; defaulting to raw text input...`);
+      return promptText<string>(prompt, {type: "text"}, resolvedDefault, (res: string) => res);
+  }
+
+}
+
+type retryInput = {message: string};
+async function promptText<T extends ParamValue>(
+  prompt: string,
+  input: TextInput<T>,
+  resolvedDefault: T | undefined,
+  converter: (res: string) => T | retryInput
+): Promise<T> {
+  const res = await promptOnce({
+    type: "input",
+    default: resolvedDefault,
+    message: prompt,
+  });
+  if (input.validationRegex) {
+    const userRe = new RegExp(input.validationRegex)
+    if (!userRe.test(res)) {
+      logger.error(input.validationErrorMessage || `Input did not match provided validator ${userRe.toString()}, retrying...`);
+      return promptText<T>(prompt, input, resolvedDefault, converter);
+    }
+  }
+  const converted = converter(res);
+  if (typeof converted === "object") {
+    logger.error(converted.message);
+    return promptText<T>(prompt, input, resolvedDefault, converter);
+  }
+  return converted as T;
+}
+
+async function promptSelect<T extends ParamValue>(
+  prompt: string, input: SelectInput<T>, resolvedDefault: T | undefined, converter: (res: string) => T
+): Promise<T> { 
+  const response = await promptOnce({
+    name: "input",
+    type: "list",
+    default: () => { resolvedDefault },
+    message: prompt,
+    choices: input.select.map((option: SelectOptions<T>): ListItem => {
+      return {
+        checked: false,
+        name: option.label,
+        value: option.value.toString(),
+      };
+    })
+  });
+  return converter(response);
 }
