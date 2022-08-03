@@ -1,4 +1,4 @@
-import { bold } from "cli-color";
+import * as clc from "colorette";
 import { CommanderStatic } from "commander";
 import { first, last, get, size, head, keys, values } from "lodash";
 
@@ -9,7 +9,6 @@ import { Config } from "./config";
 import { configstore } from "./configstore";
 import { detectProjectRoot } from "./detectProjectRoot";
 import { track } from "./track";
-import clc = require("cli-color");
 import { selectAccount, setActiveAccount } from "./auth";
 import { getFirebaseProject } from "./management/projects";
 import { requireAuth } from "./requireAuth";
@@ -174,7 +173,9 @@ export class Command {
       if (args.length - 1 > cmd._args.length) {
         client.errorOut(
           new FirebaseError(
-            `Too many arguments. Run ${bold("firebase help " + this.name)} for usage instructions`,
+            `Too many arguments. Run ${clc.bold(
+              "firebase help " + this.name
+            )} for usage instructions`,
             { exit: 1 }
           )
         );

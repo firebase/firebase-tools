@@ -1,4 +1,4 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
@@ -160,13 +160,13 @@ export type OutputOnlyFields = "status" | "buildId" | "updateTime" | "versionId"
 function functionsOpLogReject(funcName: string, type: string, err: any): void {
   if (err?.context?.response?.statusCode === 429) {
     utils.logWarning(
-      `${clc.bold.yellow(
-        "functions:"
+      `${clc.bold(
+        clc.yellow("functions:")
       )} got "Quota Exceeded" error while trying to ${type} ${funcName}. Waiting to retry...`
     );
   } else {
     utils.logWarning(
-      clc.bold.yellow("functions:") + " failed to " + type + " function " + funcName
+      clc.bold(clc.yellow("functions:")) + " failed to " + type + " function " + funcName
     );
   }
   throw new FirebaseError(`Failed to ${type} function ${funcName}`, {

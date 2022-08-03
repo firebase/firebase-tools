@@ -1,4 +1,4 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -281,7 +281,7 @@ export function writeUserEnvs(toWrite: Record<string, string>, envOpts: UserEnvs
 
   const mostSpecificEnv = path.join(functionsSource, envFiles[envFiles.length - 1]);
   logBullet(
-    clc.cyan.bold("functions: ") + `Writing new parameter values to disk: ${mostSpecificEnv}`
+    clc.cyan(clc.bold("functions: ")) + `Writing new parameter values to disk: ${mostSpecificEnv}`
   );
   for (const k of Object.keys(toWrite)) {
     fs.appendFileSync(mostSpecificEnv, formatUserEnvForWrite(k, toWrite[k]));
@@ -358,7 +358,7 @@ export function loadUserEnvs({
     }
   }
   logBullet(
-    clc.cyan.bold("functions: ") + `Loaded environment variables from ${envFiles.join(", ")}.`
+    clc.cyan(clc.bold("functions: ")) + `Loaded environment variables from ${envFiles.join(", ")}.`
   );
 
   return envs;

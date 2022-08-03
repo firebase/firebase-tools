@@ -1,5 +1,5 @@
 import * as program from "commander";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as leven from "leven";
 
 import { logger } from "./logger";
@@ -79,7 +79,7 @@ program.action((_, args) => {
   setupLoggers();
 
   const cmd = args[0];
-  logger.error(clc.bold.red("Error:"), clc.bold(cmd), "is not a Firebase command");
+  logger.error(clc.bold(clc.red("Error:")), clc.bold(cmd), "is not a Firebase command");
 
   if (RENAMED_COMMANDS[cmd]) {
     logger.error();
