@@ -1,1 +1,2 @@
 - Replaces underlying terminal coloring library.
+- Fix bug where failed function discovery crashed the entire emulator. #4826
