@@ -5,7 +5,6 @@ import * as admin from "firebase-admin";
 import * as fs from "fs";
 import * as http from "http";
 import * as https from "https";
-import fetch from "node-fetch";
 import * as path from "path";
 import * as puppeteer from "puppeteer";
 import * as supertest from "supertest";
