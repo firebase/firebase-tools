@@ -1,2 +1,4 @@
 - Replaces underlying terminal coloring library.
+- Make storage emulator multipart parsing handle quotes in boundary header #3953
+- Make storage emulator content type case insensitive #3953
 - Fix bug where invalid CPU was set for 16GiB functions. (#4823)
