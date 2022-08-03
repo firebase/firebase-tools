@@ -1415,7 +1415,7 @@ describe("Storage emulator", () => {
         });
       });
 
-      describe.only("#listAll()", () => {
+      describe("#listAll()", () => {
         async function uploadFiles(paths: string[], filename = SMALL_FILE_PATH): Promise<void> {
           await Promise.all(
             paths.map((destination) => testBucket.upload(SMALL_FILE_PATH, { destination }))
@@ -1505,7 +1505,7 @@ describe("Storage emulator", () => {
         });
       });
 
-      describe.only("#list()", () => {
+      describe("#list()", () => {
         async function uploadFiles(paths: string[], filename = SMALL_FILE_PATH): Promise<void> {
           await Promise.all(
             paths.map((destination) => testBucket.upload(SMALL_FILE_PATH, { destination }))
