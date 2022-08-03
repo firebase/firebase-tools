@@ -56,6 +56,7 @@ export interface RuntimeActionVerifyBundle extends RuntimeActionBundle {
     service: string;
     path: string;
     method: string;
+    delimiter?: string;
     variables: { [s: string]: ExpressionValue };
   };
 }

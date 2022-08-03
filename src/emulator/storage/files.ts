@@ -109,6 +109,9 @@ export type CopyObjectRequest = {
   authorization?: string;
 };
 
+// Matches any number of "/" at the end of a string.
+const TRAILING_SLASHES_PATTERN = /\/+$/;
+
 export class StorageLayer {
   constructor(
     private _projectId: string,
@@ -390,14 +393,16 @@ export class StorageLayer {
    * @throws {ForbiddenError} if the request is not authorized.
    */
   public async listObjects(request: ListObjectsRequest): Promise<ListObjectsResponse> {
-    console.log("listObjects: " + JSON.stringify(request));
     const { bucketId, prefix, delimiter, pageToken, authorization } = request;
+
     const authorized = await this._rulesValidator.validate(
-      ["b", bucketId, "o", prefix].join("/"),
+      // Firebase Rules expects the path without trailing slashes.
+      ["b", bucketId, "o", prefix.replace(TRAILING_SLASHES_PATTERN, '')].join("/"),
       bucketId,
       RulesetOperationMethod.LIST,
       {},
-      authorization
+      authorization,
+      delimiter
     );
     if (!authorized) {
       throw new ForbiddenError();
@@ -424,7 +429,7 @@ export class StorageLayer {
         includeMetadata = delimiterIdx === -1 || delimiterAfterPrefixIdx === -1;
         if (delimiterAfterPrefixIdx !== -1) {
           // prefixes[] contains truncated object names for objects whose names contain
-          // delimiter after any prefix. Object names are truncated beyond the first 
+          // delimiter after any prefix. Object names are truncated beyond the first
           // applicable instance of the delimiter.
           prefixes.add(name.slice(0, delimiterAfterPrefixIdx + delimiter.length));
         }

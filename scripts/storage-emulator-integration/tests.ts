@@ -36,7 +36,7 @@ const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "fake-project-id"
 const TEST_CONFIG = {
   // Set this to true to use production servers
   // (useful for writing tests against source of truth)
-  useProductionServers: false,
+  useProductionServers: true,
 
   // Set this to true to make the headless chrome window visible
   // (useful for ensuring the browser is running as expected)
@@ -61,7 +61,8 @@ describe("Storage emulator", () => {
   let test: TriggerEndToEndTest;
 
   let testBucket: Bucket;
-  const smallFilePath: string = createRandomFile("small_file", SMALL_FILE_SIZE, tmpDir);
+  const SMALL_FILE_PATH: string = createRandomFile("small_file", SMALL_FILE_SIZE, tmpDir);
+  const EMPTY_FILE_PATH: string = createRandomFile("empty_file", 0, tmpDir);
 
   const DEFAULT_RULES = readFile("storage.rules");
 
@@ -135,7 +136,7 @@ describe("Storage emulator", () => {
     describe(".bucket()", () => {
       describe("#upload()", () => {
         it("should handle non-resumable uploads", async () => {
-          await testBucket.upload(smallFilePath, {
+          await testBucket.upload(SMALL_FILE_PATH, {
             resumable: false,
           });
           // Doesn't require an assertion, will throw on failure
@@ -169,7 +170,7 @@ describe("Storage emulator", () => {
         it("should handle gzip'd uploads", async () => {
           // This appears to pass, but the file gets corrupted cause it's gzipped?
           // expect(true).to.be.false;
-          await testBucket.upload(smallFilePath, {
+          await testBucket.upload(SMALL_FILE_PATH, {
             gzip: true,
           });
         });
@@ -231,7 +232,7 @@ describe("Storage emulator", () => {
             contentLanguage: "de-DE",
             metadata: { foo: "bar" },
           };
-          const [, fileMetadata] = await testBucket.upload(smallFilePath, {
+          const [, fileMetadata] = await testBucket.upload(SMALL_FILE_PATH, {
             resumable: false,
             metadata,
           });
@@ -251,19 +252,19 @@ describe("Storage emulator", () => {
         });
 
         it("should be able to upload file named 'prefix/file.txt' when file named 'prefix' already exists", async () => {
-          await testBucket.upload(smallFilePath, {
+          await testBucket.upload(SMALL_FILE_PATH, {
             destination: "prefix",
           });
-          await testBucket.upload(smallFilePath, {
+          await testBucket.upload(SMALL_FILE_PATH, {
             destination: "prefix/file.txt",
           });
         });
 
         it("should be able to upload file named 'prefix' when file named 'prefix/file.txt' already exists", async () => {
-          await testBucket.upload(smallFilePath, {
+          await testBucket.upload(SMALL_FILE_PATH, {
             destination: "prefix/file.txt",
           });
-          await testBucket.upload(smallFilePath, {
+          await testBucket.upload(SMALL_FILE_PATH, {
             destination: "prefix",
           });
         });
@@ -285,7 +286,7 @@ describe("Storage emulator", () => {
               PREFIX_2_FILE,
               PREFIX_SUB_DIRECTORY_FILE,
             ].map(async (f) => {
-              await testBucket.upload(smallFilePath, {
+              await testBucket.upload(SMALL_FILE_PATH, {
                 destination: f,
               });
             })
@@ -520,7 +521,7 @@ describe("Storage emulator", () => {
           // We use a nested path to ensure that we don't need to decode
           // the objectId in the gcloud emulator API
           const bucketFilePath = "file/to/exists";
-          await testBucket.upload(smallFilePath, {
+          await testBucket.upload(SMALL_FILE_PATH, {
             destination: bucketFilePath,
           });
 
@@ -533,7 +534,7 @@ describe("Storage emulator", () => {
           // the objectId in the gcloud emulator API
           const path = "file/to";
           const bucketFilePath = path + "/exists";
-          await testBucket.upload(smallFilePath, {
+          await testBucket.upload(SMALL_FILE_PATH, {
             destination: bucketFilePath,
           });
 
@@ -547,7 +548,7 @@ describe("Storage emulator", () => {
           // We use a nested path to ensure that we don't need to decode
           // the objectId in the gcloud emulator API
           const bucketFilePath = "file/to/delete";
-          await testBucket.upload(smallFilePath, {
+          await testBucket.upload(SMALL_FILE_PATH, {
             destination: bucketFilePath,
           });
 
@@ -577,23 +578,23 @@ describe("Storage emulator", () => {
 
       describe("#download()", () => {
         it("should return the content of the file", async () => {
-          await testBucket.upload(smallFilePath);
+          await testBucket.upload(SMALL_FILE_PATH);
           const [downloadContent] = await testBucket
-            .file(smallFilePath.split("/").slice(-1)[0])
+            .file(SMALL_FILE_PATH.split("/").slice(-1)[0])
             .download();
 
-          const actualContent = fs.readFileSync(smallFilePath);
+          const actualContent = fs.readFileSync(SMALL_FILE_PATH);
           expect(downloadContent).to.deep.equal(actualContent);
         });
 
         it("should return partial content of the file", async () => {
-          await testBucket.upload(smallFilePath);
+          await testBucket.upload(SMALL_FILE_PATH);
           const [downloadContent] = await testBucket
-            .file(smallFilePath.split("/").slice(-1)[0])
+            .file(SMALL_FILE_PATH.split("/").slice(-1)[0])
             // Request 10 bytes (range requests are inclusive)
             .download({ start: 10, end: 19 });
 
-          const actualContent = fs.readFileSync(smallFilePath).slice(10, 20);
+          const actualContent = fs.readFileSync(SMALL_FILE_PATH).slice(10, 20);
           expect(downloadContent).to.have.lengthOf(10).and.deep.equal(actualContent);
         });
 
@@ -611,10 +612,12 @@ describe("Storage emulator", () => {
         const COPY_DESTINATION_FILENAME = "copied_file";
 
         it("should copy the file", async () => {
-          await testBucket.upload(smallFilePath);
+          await testBucket.upload(SMALL_FILE_PATH);
 
           const file = testBucket.file(COPY_DESTINATION_FILENAME);
-          const [, resp] = await testBucket.file(smallFilePath.split("/").slice(-1)[0]).copy(file);
+          const [, resp] = await testBucket
+            .file(SMALL_FILE_PATH.split("/").slice(-1)[0])
+            .copy(file);
 
           expect(resp)
             .to.have.all.keys(["kind", "totalBytesRewritten", "objectSize", "done", "resource"])
@@ -627,33 +630,33 @@ describe("Storage emulator", () => {
 
           const [copiedContent] = await file.download();
 
-          const actualContent = fs.readFileSync(smallFilePath);
+          const actualContent = fs.readFileSync(SMALL_FILE_PATH);
           expect(copiedContent).to.deep.equal(actualContent);
         });
 
         it("should copy the file to a different bucket", async () => {
-          await testBucket.upload(smallFilePath);
+          await testBucket.upload(SMALL_FILE_PATH);
 
           const otherBucket = testBucket.storage.bucket("other-bucket");
           const file = otherBucket.file(COPY_DESTINATION_FILENAME);
           const [, { resource: metadata }] = await testBucket
-            .file(smallFilePath.split("/").slice(-1)[0])
+            .file(SMALL_FILE_PATH.split("/").slice(-1)[0])
             .copy(file);
 
           expect(metadata).to.have.property("bucket", otherBucket.name);
 
           const [copiedContent] = await file.download();
 
-          const actualContent = fs.readFileSync(smallFilePath);
+          const actualContent = fs.readFileSync(SMALL_FILE_PATH);
           expect(copiedContent).to.deep.equal(actualContent);
         });
 
         it("should return the metadata of the destination file", async () => {
-          await testBucket.upload(smallFilePath);
+          await testBucket.upload(SMALL_FILE_PATH);
 
           const file = testBucket.file(COPY_DESTINATION_FILENAME);
           const [, { resource: actualMetadata }] = await testBucket
-            .file(smallFilePath.split("/").slice(-1)[0])
+            .file(SMALL_FILE_PATH.split("/").slice(-1)[0])
             .copy(file);
 
           const [expectedMetadata] = await file.getMetadata();
@@ -661,7 +664,7 @@ describe("Storage emulator", () => {
         });
 
         it("should copy the file preserving the original metadata", async () => {
-          const [, source] = await testBucket.upload(smallFilePath, {
+          const [, source] = await testBucket.upload(SMALL_FILE_PATH, {
             metadata: {
               cacheControl: "private,no-store",
               metadata: {
@@ -671,7 +674,7 @@ describe("Storage emulator", () => {
           });
 
           const file = testBucket.file(COPY_DESTINATION_FILENAME);
-          await testBucket.file(smallFilePath.split("/").slice(-1)[0]).copy(file);
+          await testBucket.file(SMALL_FILE_PATH.split("/").slice(-1)[0]).copy(file);
 
           const [metadata] = await file.getMetadata();
 
@@ -717,7 +720,7 @@ describe("Storage emulator", () => {
         });
 
         it("should copy the file and overwrite with the provided custom metadata", async () => {
-          const [, source] = await testBucket.upload(smallFilePath, {
+          const [, source] = await testBucket.upload(SMALL_FILE_PATH, {
             metadata: {
               cacheControl: "private,no-store",
               metadata: {
@@ -737,7 +740,7 @@ describe("Storage emulator", () => {
             cacheControl,
           };
           const [, { resource: metadata1 }] = await testBucket
-            .file(smallFilePath.split("/").slice(-1)[0])
+            .file(SMALL_FILE_PATH.split("/").slice(-1)[0])
             .copy(file, copyOpts);
 
           expect(metadata1).to.deep.include({
@@ -754,7 +757,7 @@ describe("Storage emulator", () => {
         });
 
         it("should set null custom metadata values to empty strings", async () => {
-          const [, source] = await testBucket.upload(smallFilePath);
+          const [, source] = await testBucket.upload(SMALL_FILE_PATH);
 
           const file = testBucket.file(COPY_DESTINATION_FILENAME);
           const metadata = { foo: "bar", nullMetadata: null };
@@ -767,7 +770,7 @@ describe("Storage emulator", () => {
             cacheControl,
           };
           const [, { resource: metadata1 }] = await testBucket
-            .file(smallFilePath.split("/").slice(-1)[0])
+            .file(SMALL_FILE_PATH.split("/").slice(-1)[0])
             .copy(file, copyOpts);
 
           expect(metadata1).to.deep.include({
@@ -789,7 +792,7 @@ describe("Storage emulator", () => {
 
         it("should preserve firebaseStorageDownloadTokens", async () => {
           const firebaseStorageDownloadTokens = "token1,token2";
-          await testBucket.upload(smallFilePath, {
+          await testBucket.upload(SMALL_FILE_PATH, {
             metadata: {
               metadata: {
                 firebaseStorageDownloadTokens,
@@ -799,7 +802,7 @@ describe("Storage emulator", () => {
 
           const file = testBucket.file(COPY_DESTINATION_FILENAME);
           const [, { resource: metadata }] = await testBucket
-            .file(smallFilePath.split("/").slice(-1)[0])
+            .file(SMALL_FILE_PATH.split("/").slice(-1)[0])
             .copy(file);
 
           expect(metadata).to.deep.include({
@@ -810,7 +813,7 @@ describe("Storage emulator", () => {
         });
 
         it("should remove firebaseStorageDownloadTokens when overwriting custom metadata", async () => {
-          await testBucket.upload(smallFilePath, {
+          await testBucket.upload(SMALL_FILE_PATH, {
             metadata: {
               metadata: {
                 firebaseStorageDownloadTokens: "token1,token2",
@@ -827,18 +830,20 @@ describe("Storage emulator", () => {
             metadata,
           };
           const [, { resource: metadataOut }] = await testBucket
-            .file(smallFilePath.split("/").slice(-1)[0])
+            .file(SMALL_FILE_PATH.split("/").slice(-1)[0])
             .copy(file, copyOpts);
 
           expect(metadataOut).to.deep.include({ metadata });
         });
 
         it("should not support the use of a rewriteToken", async () => {
-          await testBucket.upload(smallFilePath);
+          await testBucket.upload(SMALL_FILE_PATH);
 
           const file = testBucket.file(COPY_DESTINATION_FILENAME);
           await expect(
-            testBucket.file(smallFilePath.split("/").slice(-1)[0]).copy(file, { token: "foo-bar" })
+            testBucket
+              .file(SMALL_FILE_PATH.split("/").slice(-1)[0])
+              .copy(file, { token: "foo-bar" })
           ).to.eventually.be.rejected.and.have.property("code", 501);
         });
       });
@@ -846,7 +851,7 @@ describe("Storage emulator", () => {
       describe("#makePublic()", () => {
         it("should no-op", async () => {
           const destination = "a/b";
-          await testBucket.upload(smallFilePath, { destination });
+          await testBucket.upload(SMALL_FILE_PATH, { destination });
           const [aclMetadata] = await testBucket.file(destination).makePublic();
 
           const generation = aclMetadata.generation;
@@ -868,7 +873,7 @@ describe("Storage emulator", () => {
 
         it("should not interfere with downloading of bytes via public URL", async () => {
           const destination = "a/b";
-          await testBucket.upload(smallFilePath, { destination });
+          await testBucket.upload(SMALL_FILE_PATH, { destination });
           await testBucket.file(destination).makePublic();
 
           const publicLink = `${STORAGE_EMULATOR_HOST}/${testBucket.name}/${destination}`;
@@ -893,7 +898,7 @@ describe("Storage emulator", () => {
         it("should throw on non-existing file", async () => {
           let err: any;
           await testBucket
-            .file(smallFilePath)
+            .file(SMALL_FILE_PATH)
             .getMetadata()
             .catch((_err) => {
               err = _err;
@@ -903,9 +908,9 @@ describe("Storage emulator", () => {
         });
 
         it("should return generated metadata for new upload", async () => {
-          await testBucket.upload(smallFilePath);
+          await testBucket.upload(SMALL_FILE_PATH);
           const [metadata] = await testBucket
-            .file(smallFilePath.split("/").slice(-1)[0])
+            .file(SMALL_FILE_PATH.split("/").slice(-1)[0])
             .getMetadata();
 
           const metadataTypes: { [s: string]: string } = {};
@@ -971,9 +976,9 @@ describe("Storage emulator", () => {
         });
 
         it("should return a functional media link", async () => {
-          await testBucket.upload(smallFilePath);
+          await testBucket.upload(SMALL_FILE_PATH);
           const [{ mediaLink }] = await testBucket
-            .file(smallFilePath.split("/").slice(-1)[0])
+            .file(SMALL_FILE_PATH.split("/").slice(-1)[0])
             .getMetadata();
 
           const requestClient = TEST_CONFIG.useProductionServers ? https : http;
@@ -993,7 +998,7 @@ describe("Storage emulator", () => {
 
         it("should handle firebaseStorageDownloadTokens", async () => {
           const destination = "public/small_file";
-          await testBucket.upload(smallFilePath, {
+          await testBucket.upload(SMALL_FILE_PATH, {
             destination,
             metadata: {},
           });
@@ -1039,7 +1044,7 @@ describe("Storage emulator", () => {
         it("should throw on non-existing file", async () => {
           let err: any;
           await testBucket
-            .file(smallFilePath)
+            .file(SMALL_FILE_PATH)
             .setMetadata({ contentType: 9000 })
             .catch((_err) => {
               err = _err;
@@ -1049,9 +1054,9 @@ describe("Storage emulator", () => {
         });
 
         it("should allow overriding of default metadata", async () => {
-          await testBucket.upload(smallFilePath);
+          await testBucket.upload(SMALL_FILE_PATH);
           const [metadata] = await testBucket
-            .file(smallFilePath.split("/").slice(-1)[0])
+            .file(SMALL_FILE_PATH.split("/").slice(-1)[0])
             .setMetadata({ contentType: "very/fake" });
 
           const metadataTypes: { [s: string]: string } = {};
@@ -1088,9 +1093,9 @@ describe("Storage emulator", () => {
         });
 
         it("should allow setting of optional metadata", async () => {
-          await testBucket.upload(smallFilePath);
+          await testBucket.upload(SMALL_FILE_PATH);
           const [metadata] = await testBucket
-            .file(smallFilePath.split("/").slice(-1)[0])
+            .file(SMALL_FILE_PATH.split("/").slice(-1)[0])
             .setMetadata({ cacheControl: "no-cache", contentLanguage: "en" });
 
           const metadataTypes: { [s: string]: string } = {};
@@ -1107,7 +1112,7 @@ describe("Storage emulator", () => {
 
         it("should not duplicate data when called repeatedly", async () => {
           const destination = "public/small_file";
-          await testBucket.upload(smallFilePath, {
+          await testBucket.upload(SMALL_FILE_PATH, {
             destination,
             metadata: {},
           });
@@ -1143,18 +1148,18 @@ describe("Storage emulator", () => {
         });
 
         it("should allow fields under .metadata", async () => {
-          await testBucket.upload(smallFilePath);
+          await testBucket.upload(SMALL_FILE_PATH);
           const [metadata] = await testBucket
-            .file(smallFilePath.split("/").slice(-1)[0])
+            .file(SMALL_FILE_PATH.split("/").slice(-1)[0])
             .setMetadata({ metadata: { is_over: "9000" } });
 
           expect(metadata.metadata.is_over).to.equal("9000");
         });
 
         it("should convert non-string fields under .metadata to strings", async () => {
-          await testBucket.upload(smallFilePath);
+          await testBucket.upload(SMALL_FILE_PATH);
           const [metadata] = await testBucket
-            .file(smallFilePath.split("/").slice(-1)[0])
+            .file(SMALL_FILE_PATH.split("/").slice(-1)[0])
             .setMetadata({ metadata: { booleanValue: true, numberValue: -1 } });
 
           expect(metadata.metadata).to.deep.equal({
@@ -1164,9 +1169,9 @@ describe("Storage emulator", () => {
         });
 
         it("should remove fields under .metadata when setting to null", async () => {
-          await testBucket.upload(smallFilePath);
+          await testBucket.upload(SMALL_FILE_PATH);
           const [metadata1] = await testBucket
-            .file(smallFilePath.split("/").slice(-1)[0])
+            .file(SMALL_FILE_PATH.split("/").slice(-1)[0])
             .setMetadata({ metadata: { foo: "bar", hello: "world" } });
 
           expect(metadata1.metadata).to.deep.equal({
@@ -1175,7 +1180,7 @@ describe("Storage emulator", () => {
           });
 
           const [metadata2] = await testBucket
-            .file(smallFilePath.split("/").slice(-1)[0])
+            .file(SMALL_FILE_PATH.split("/").slice(-1)[0])
             .setMetadata({ metadata: { foo: null } });
 
           expect(metadata2.metadata).to.deep.equal({
@@ -1184,9 +1189,9 @@ describe("Storage emulator", () => {
         });
 
         it("should ignore any unknown fields", async () => {
-          await testBucket.upload(smallFilePath);
+          await testBucket.upload(SMALL_FILE_PATH);
           const [metadata] = await testBucket
-            .file(smallFilePath.split("/").slice(-1)[0])
+            .file(SMALL_FILE_PATH.split("/").slice(-1)[0])
             .setMetadata({ nada: "true" });
 
           expect(metadata.nada).to.be.undefined;
@@ -1400,27 +1405,22 @@ describe("Storage emulator", () => {
         });
       });
 
-      describe("#listAll()", () => {
-        beforeEach(async function (this) {
+      describe.only("#listAll()", () => {
+        async function uploadFiles(paths: string[], filename = SMALL_FILE_PATH): Promise<void> {
+          await Promise.all(
+            paths.map((destination) => testBucket.upload(SMALL_FILE_PATH, { destination }))
+          );
+        }
+
+        it("should list all files and prefixes at path", async function (this) {
           this.timeout(TEST_SETUP_TIMEOUT);
-          const refs = [
-            "listAll/storage_ref/image.png",
-            "listAll/somePathEndsWithDoubleSlash//file.png",
+          await uploadFiles([
+            "listAll/some/deeply/nested/directory/item1",
             "listAll/item1",
             "listAll/item2",
-            "testing/storage_ref/image.png",
-            "testing/somePathEndsWithDoubleSlash//file.png",
-            "listAllOtherDir/item3",
-          ];
-          for (const ref of refs) {
-            await testBucket.upload(smallFilePath, { destination: ref });
-          }
-        });
+          ]);
 
-        it.only("should list all files and prefixes at path", async function (this) {
-          this.timeout(TEST_SETUP_TIMEOUT);
           const listResult = await page.evaluate(async () => {
-            await firebase.auth().signInAnonymously();
             const list = await firebase.storage().ref("listAll/").listAll();
             return {
               prefixes: list.prefixes.map((prefix) => prefix.name),
@@ -1430,63 +1430,13 @@ describe("Storage emulator", () => {
 
           expect(listResult).to.deep.equal({
             items: ["item1", "item2"],
-            prefixes: ["somePathEndsWithDoubleSlash", "storage_ref"],
-          });
-        });
-
-        it("should list implicit prefixes", async () => {
-          await page.evaluate(
-            async (IMAGE_FILE_BASE64, filename) => {
-              try {
-                await firebase.auth().signInAnonymously();
-                const task = await firebase
-                  .storage()
-                  .ref(filename)
-                  .putString(IMAGE_FILE_BASE64, "base64");
-                return task.state;
-              } catch (err: any) {
-                throw err.message;
-              }
-            },
-            IMAGE_FILE_BASE64,
-            `testing/implicit/deep/path/file.jpg`
-          );
-
-          const listResult = await page.evaluate(async () => {
-            const list = await firebase.storage().ref("testing/implicit").listAll();
-            return {
-              prefixes: list.prefixes.map((prefix) => prefix.name),
-              items: list.items.map((item) => item.name),
-            };
-          });
-
-          expect(listResult).to.deep.equal({
-            prefixes: ["deep"],
-            items: [],
-          });
-        });
-
-        it("should list at /", async () => {
-          await uploadText(page, "list/file.jpg", "hello");
-          await uploadText(page, "list/subdir/file.jpg", "world");
-
-          const listResult = await page.evaluate(async () => {
-            const list = await firebase.storage().ref("/list").listAll();
-            return {
-              prefixes: list.prefixes.map((prefix) => prefix.name),
-              items: list.items.map((item) => item.name),
-            };
-          });
-
-          expect(listResult).to.deep.equal({
-            prefixes: ["subdir"],
-            items: ["file.jpg"],
+            prefixes: ["some"],
           });
         });
 
         it("zero element list array should still be present in response", async () => {
           const listResult = await page.evaluate(async () => {
-            const list = await firebase.storage().ref("/list").listAll();
+            const list = await firebase.storage().ref("listAll/").listAll();
             return {
               prefixes: list.prefixes.map((prefix) => prefix.name),
               items: list.items.map((item) => item.name),
@@ -1499,103 +1449,71 @@ describe("Storage emulator", () => {
           });
         });
 
-        context("with folder placeholders", () => {
-          beforeEach(async function (this) {
-            this.timeout(TEST_SETUP_TIMEOUT);
-            const emptyFilepath = createRandomFile("empty_file", 0, tmpDir);
-            testBucket.upload(emptyFilepath, { destination: "listAll/abc/" });
-            testBucket.upload(emptyFilepath, { destination: "listAll/storage_ref/" });
+        it("folder placeholder should not be listed under itself", async () => {
+          await uploadFiles(["listAll/abc/", EMPTY_FILE_PATH]);
+
+          let listResult = await page.evaluate(async () => {
+            const list = await firebase.storage().ref("/listAll/").listAll();
+            return {
+              prefixes: list.prefixes.map((prefix) => prefix.name),
+              items: list.items.map((item) => item.name),
+            };
+          });
+          expect(listResult).to.deep.equal({
+            prefixes: ["abc"],
+            items: [],
           });
 
-          it.only("folder placeholder should not be listed under itself", async () => {
-            const listResult = await page.evaluate(async () => {
-              const list = await firebase.storage().ref("/listAll/abc").listAll();
-              return {
-                prefixes: list.prefixes.map((prefix) => prefix.name),
-                items: list.items.map((item) => item.name),
-              };
-            });
-
-            expect(listResult).to.deep.equal({
-              prefixes: [],
-              items: [],
-            });
+          listResult = await page.evaluate(async () => {
+            const list = await firebase.storage().ref("/listAll/abc/").listAll();
+            return {
+              prefixes: list.prefixes.map((prefix) => prefix.name),
+              items: list.items.map((item) => item.name),
+            };
           });
 
-          it("folder placeholder should be listed as a prefix but not an item under parent", async () => {
-            const listResult = await page.evaluate(async () => {
-              const list = await firebase.storage().ref("/listAll").listAll();
-              return {
-                prefixes: list.prefixes.map((prefix) => prefix.name),
-                items: list.items.map((item) => item.name),
-              };
-            });
-
-            expect(listResult).to.deep.equal({
-              prefixes: ["abc", "somePathEndsWithDoubleSlash", "storage_ref"],
-              items: [],
-            });
+          expect(listResult).to.deep.equal({
+            prefixes: [],
+            items: [],
           });
         });
 
-        context("with invalid prefixes and items", () => {
-          beforeEach(async function (this) {
-            this.timeout(TEST_SETUP_TIMEOUT);
-
-            const emptyFilepath = createRandomFile("empty_file", 0, tmpDir);
-            for (const ref of ["list//foo", "list/bar//", "list/baz//qux"]) {
-              testBucket.upload(emptyFilepath, { destination: ref });
-            }
+        it("should not include show invalid prefixes and items", async () => {
+          await uploadFiles(["listAll//foo", "listAll/bar//", "listAll/baz//qux"], EMPTY_FILE_PATH);
+          const listResult = await page.evaluate(async () => {
+            const list = await firebase.storage().ref("listAll/").listAll();
+            return {
+              prefixes: list.prefixes.map((prefix) => prefix.name),
+              items: list.items.map((item) => item.name),
+            };
           });
 
-          it("list result should not include show invalid prefixes and items", async () => {
-            const listResult = await page.evaluate(async () => {
-              const list = await firebase.storage().ref("/list").listAll();
-              return {
-                prefixes: list.prefixes.map((prefix) => prefix.name),
-                items: list.items.map((item) => item.name),
-              };
-            });
-
-            expect(listResult).to.deep.equal({
-              prefixes: ["bar", "baz"], // only implicit prefixes, (no bar//)
-              items: [], // no valid items
-            });
+          expect(listResult).to.deep.equal({
+            prefixes: ["bar", "baz"],
+            items: [], // no valid items
           });
         });
       });
 
-      describe("#list()", () => {
+      describe.only("#list()", () => {
+        async function uploadFiles(paths: string[], filename = SMALL_FILE_PATH): Promise<void> {
+          await Promise.all(
+            paths.map((destination) => testBucket.upload(SMALL_FILE_PATH, { destination }))
+          );
+        }
         const itemNames = [...Array(10)].map((_, i) => `item#${i}`);
 
         beforeEach(async function (this) {
           this.timeout(TEST_SETUP_TIMEOUT);
 
-          for (const item of itemNames) {
-            await page.evaluate(
-              async (IMAGE_FILE_BASE64, filename) => {
-                try {
-                  await firebase.auth().signInAnonymously();
-                  const task = await firebase
-                    .storage()
-                    .ref(filename)
-                    .putString(IMAGE_FILE_BASE64, "base64");
-                  return task.state;
-                } catch (err: any) {
-                  throw err.message;
-                }
-              },
-              IMAGE_FILE_BASE64,
-              `testing/list/${item}`
-            );
-          }
+          await uploadFiles(itemNames.map((name) => `listAll/${name}`));
         });
 
         it("should list only maxResults items with nextPageToken, when maxResults is set", async function (this) {
           this.timeout(TEST_SETUP_TIMEOUT);
 
           const listItems = await page.evaluate(async () => {
-            const list = await firebase.storage().ref("testing/list").list({
+            const list = await firebase.storage().ref("listAll").list({
               maxResults: 4,
             });
             return {
@@ -1617,7 +1535,7 @@ describe("Storage emulator", () => {
 
           do {
             const listResponse = await page.evaluate(async (pageToken) => {
-              const list = await firebase.storage().ref("testing/list").list({
+              const list = await firebase.storage().ref("listAll").list({
                 maxResults: 4,
                 pageToken,
               });

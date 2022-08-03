@@ -1,10 +1,6 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    match /{allPaths=**} {
-      allow read, write;
-    }
-
     match /topLevel {
       allow list;
     }
@@ -13,20 +9,8 @@ service firebase.storage {
       allow read, create, update, delete: if request.auth != null;
     }
 
-    match /list/{allPaths=**} {
-      allow list;
-      allow create;
-    }
-
     match /listAll/{allPaths=**} {
-      allow list: if request.auth != null;
-
-    match /listAll/{subDir}/{fileName} {
       allow list;
-    }
-
-    match /listAll/{allPaths=**} {
-      allow write;
     }
 
     match /delete {
