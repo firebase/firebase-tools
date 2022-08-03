@@ -1,4 +1,4 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as semver from "semver";
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const { marked } = require("marked");
@@ -229,9 +229,9 @@ export async function updateToVersionFromPublisherSource(
   } catch (err: any) {
     throw new FirebaseError(
       `Could not find source '${clc.bold(extVersionRef)}' because (${clc.bold(
-        version
+        version || ""
       )}) is not a published version. To update, use the latest version of this extension (${clc.bold(
-        extension.latestVersion
+        extension.latestVersion || ""
       )}).`
     );
   }

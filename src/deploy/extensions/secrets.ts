@@ -1,4 +1,4 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
 import * as secretUtils from "../../extensions/secretsUtils";
 import * as secretManager from "../../gcp/secretManager";

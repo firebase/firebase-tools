@@ -1,5 +1,5 @@
 import * as _ from "lodash";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as fs from "fs-extra";
 
 import * as gcp from "./gcp";
@@ -143,8 +143,8 @@ export class RulesDeploy {
       if (addRole) {
         await addServiceAccountToRoles(projectNumber, saEmail, [CROSS_SERVICE_RULES_ROLE], true);
         utils.logBullet(
-          `${clc.bold.cyan(
-            RulesetType[this.type] + ":"
+          `${clc.bold(
+            clc.cyan(RulesetType[this.type] + ":")
           )} updated service account for cross-service rules...`
         );
       }
@@ -178,7 +178,7 @@ export class RulesDeploy {
     for (const [filename, files] of Object.entries(this.rulesFiles)) {
       if (latestRulesetName && _.isEqual(files, latestRulesetContent)) {
         utils.logBullet(
-          `${clc.bold.cyan(RulesetType[this.type] + ":")} latest version of ${clc.bold(
+          `${clc.bold(clc.cyan(RulesetType[this.type] + ":"))} latest version of ${clc.bold(
             filename
           )} already up to date, skipping upload...`
         );
@@ -190,7 +190,9 @@ export class RulesDeploy {
       }
 
       utils.logBullet(
-        `${clc.bold.cyan(RulesetType[this.type] + ":")} uploading rules ${clc.bold(filename)}...`
+        `${clc.bold(clc.cyan(RulesetType[this.type] + ":"))} uploading rules ${clc.bold(
+          filename
+        )}...`
       );
       newRulesetsByFilename.set(filename, gcp.rules.createRuleset(this.options.project, files));
     }
@@ -207,7 +209,7 @@ export class RulesDeploy {
         throw err;
       }
       utils.logBullet(
-        clc.bold.yellow(RulesetType[this.type] + ":") +
+        clc.bold(clc.yellow(RulesetType[this.type] + ":")) +
           " quota exceeded error while uploading rules"
       );
 
@@ -235,7 +237,9 @@ export class RulesDeploy {
             await gcp.rules.deleteRuleset(this.options.project, gcp.rules.getRulesetId(entry));
             logger.debug(`[rules] Deleted ${entry.name}`);
           }
-          utils.logBullet(clc.bold.yellow(RulesetType[this.type] + ":") + " retrying rules upload");
+          utils.logBullet(
+            clc.bold(clc.yellow(RulesetType[this.type] + ":")) + " retrying rules upload"
+          );
           return this.createRulesets(service);
         }
       }
@@ -267,7 +271,7 @@ export class RulesDeploy {
         : resourceName
     );
     utils.logSuccess(
-      `${clc.bold.green(RulesetType[this.type] + ":")} released rules ${clc.bold(
+      `${clc.bold(clc.green(RulesetType[this.type] + ":"))} released rules ${clc.bold(
         filename
       )} to ${clc.bold(resourceName)}`
     );
@@ -280,7 +284,9 @@ export class RulesDeploy {
    */
   private async compileRuleset(filename: string, files: RulesetFile[]): Promise<void> {
     utils.logBullet(
-      `${clc.bold.cyan(this.type + ":")} checking ${clc.bold(filename)} for compilation errors...`
+      `${clc.bold(clc.cyan(this.type + ":"))} checking ${clc.bold(
+        filename
+      )} for compilation errors...`
     );
     const response = await gcp.rules.testRuleset(this.options.project, files);
     if (_.get(response, "body.issues", []).length) {
@@ -312,7 +318,9 @@ export class RulesDeploy {
     }
 
     utils.logSuccess(
-      `${clc.bold.green(this.type + ":")} rules file ${clc.bold(filename)} compiled successfully`
+      `${clc.bold(clc.green(this.type + ":"))} rules file ${clc.bold(
+        filename
+      )} compiled successfully`
     );
   }
 }

@@ -172,6 +172,23 @@ function isIdentical(job: Job, otherJob: Job): boolean {
   );
 }
 
+/** The name of the Cloud Scheduler job we will use for this endpoint. */
+export function jobNameForEndpoint(
+  endpoint: backend.Endpoint & backend.ScheduleTriggered,
+  appEngineLocation: string
+): string {
+  const id = backend.scheduleIdForFunction(endpoint);
+  return `projects/${endpoint.project}/locations/${appEngineLocation}/jobs/${id}`;
+}
+
+/** The name of the pubsub topic that the Cloud Scheduler job will use for this endpoint. */
+export function topicNameForEndpoint(
+  endpoint: backend.Endpoint & backend.ScheduleTriggered
+): string {
+  const id = backend.scheduleIdForFunction(endpoint);
+  return `projects/${endpoint.project}/topics/${id}`;
+}
+
 /** Converts an Endpoint to a CloudScheduler v1 job */
 export function jobFromEndpoint(
   endpoint: backend.Endpoint & backend.ScheduleTriggered,
@@ -179,11 +196,9 @@ export function jobFromEndpoint(
 ): Job {
   const job: Partial<Job> = {};
   if (endpoint.platform === "gcfv1") {
-    const id = backend.scheduleIdForFunction(endpoint);
-    const region = appEngineLocation;
-    job.name = `projects/${endpoint.project}/locations/${region}/jobs/${id}`;
+    job.name = jobNameForEndpoint(endpoint, appEngineLocation);
     job.pubsubTarget = {
-      topicName: `projects/${endpoint.project}/topics/${id}`,
+      topicName: topicNameForEndpoint(endpoint),
       attributes: {
         scheduled: "true",
       },

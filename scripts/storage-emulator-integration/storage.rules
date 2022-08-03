@@ -20,6 +20,13 @@ service firebase.storage {
 
     match /listAll/{allPaths=**} {
       allow list: if request.auth != null;
+
+    match /listAll/{subDir}/{fileName} {
+      allow list;
+    }
+
+    match /listAll/{allPaths=**} {
+      allow write;
     }
 
     match /delete {

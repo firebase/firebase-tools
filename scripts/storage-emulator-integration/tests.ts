@@ -56,6 +56,7 @@ Content-Type: text/plain\r
 // Temp directory to store generated files.
 let tmpDir: string;
 
+// TODO(b/241151246): Fix conformance tests.
 describe("Storage emulator", () => {
   let test: TriggerEndToEndTest;
 
@@ -1399,7 +1400,7 @@ describe("Storage emulator", () => {
         });
       });
 
-      describe.only("#listAll()", () => {
+      describe("#listAll()", () => {
         beforeEach(async function (this) {
           this.timeout(TEST_SETUP_TIMEOUT);
           const refs = [
@@ -1541,22 +1542,9 @@ describe("Storage emulator", () => {
           beforeEach(async function (this) {
             this.timeout(TEST_SETUP_TIMEOUT);
 
-            const refs = ["list//foo", "list/bar//", "list/baz//qux"];
-            for (const ref of refs) {
-              // Use REST API to create the folder placeholders since SDK won't
-              // allow refs with trailing slashes.
-              await fetch(
-                `${STORAGE_EMULATOR_HOST}/upload/storage/v1/b/${storageBucket}/o?name=${encodeURIComponent(
-                  ref
-                )}`,
-                {
-                  headers: {
-                    "Content-Type": "multipart/related; boundary=boundary",
-                  },
-                  method: "POST",
-                  body: Buffer.from(EMPTY_FOLDER_DATA, "utf8"),
-                }
-              );
+            const emptyFilepath = createRandomFile("empty_file", 0, tmpDir);
+            for (const ref of ["list//foo", "list/bar//", "list/baz//qux"]) {
+              testBucket.upload(emptyFilepath, { destination: ref });
             }
           });
 
@@ -1741,35 +1729,31 @@ describe("Storage emulator", () => {
 
         it("should allow deletion of custom metadata by setting to null", async () => {
           const setMetadata = await page.evaluate((filename) => {
-            return firebase
-              .storage()
-              .ref(filename)
-              .updateMetadata({
-                contentType: "text/plain",
-                customMetadata: {
-                  removeMe: "please",
-                },
-              });
+            const storageReference = firebase.storage().ref(filename);
+            return storageReference.updateMetadata({
+              contentType: "text/plain",
+              customMetadata: {
+                removeMe: "please",
+              },
+            });
           }, filename);
 
           expect(setMetadata.customMetadata.removeMe).to.equal("please");
 
           const nulledMetadata = await page.evaluate((filename) => {
-            return firebase
-              .storage()
-              .ref(filename)
-              .updateMetadata({
-                contentType: "text/plain",
-                customMetadata: {
-                  removeMe: null as any,
-                },
-              });
+            const storageReference = firebase.storage().ref(filename);
+            return storageReference.updateMetadata({
+              contentType: "text/plain",
+              customMetadata: {
+                removeMe: null as any,
+              },
+            });
           }, filename);
 
           expect(nulledMetadata.customMetadata.removeMe).to.equal(undefined);
         });
 
-        it("updateMetadata throws on non-existent file", async () => {
+        it("throws on non-existent file", async () => {
           const err = await page.evaluate(async () => {
             try {
               return await firebase
