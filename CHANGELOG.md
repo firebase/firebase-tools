@@ -1,1 +1,2 @@
 - Replaces underlying terminal coloring library.
+- Make storage emulator multipart parsing handle quotes in boundary header #3953

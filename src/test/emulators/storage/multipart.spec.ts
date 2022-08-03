@@ -59,6 +59,28 @@ Content-Type: text/plain\r
       );
     });
 
+    it("parses an upload object multipart request with additional quotes in the boundary value", () => {
+      const contentTypeHeaderWithDoubleQuotes = `multipart/related; boundary="b1d5b2e3-1845-4338-9400-6ac07ce53c1e"`;
+
+      let { metadataRaw, dataRaw } = parseObjectUploadMultipartRequest(
+        contentTypeHeaderWithDoubleQuotes,
+        BODY
+      );
+
+      expect(metadataRaw).to.equal('{"contentType":"text/plain"}');
+      expect(dataRaw.toString()).to.equal("hello there!\n");
+
+      const contentTypeHeaderWithSingleQuotes = `multipart/related; boundary='b1d5b2e3-1845-4338-9400-6ac07ce53c1e'`;
+
+      ({ metadataRaw, dataRaw } = parseObjectUploadMultipartRequest(
+        contentTypeHeaderWithSingleQuotes,
+        BODY
+      ));
+
+      expect(metadataRaw).to.equal('{"contentType":"text/plain"}');
+      expect(dataRaw.toString()).to.equal("hello there!\n");
+    });
+
     it("fails to parse when body has wrong number of parts", () => {
       const invalidBody = Buffer.from(`--b1d5b2e3-1845-4338-9400-6ac07ce53c1e\r
 Content-Type: application/json\r
