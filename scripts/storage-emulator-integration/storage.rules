@@ -27,6 +27,9 @@ service firebase.storage {
       match /replace.txt {
         allow read, create;
       }
+      match /allowIfNoExistingFile.txt {
+        allow create: if resource == null;
+      }
     }
 
     match /public/{allPaths=**} {

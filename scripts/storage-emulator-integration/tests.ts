@@ -1,15 +1,14 @@
+import { Bucket, CopyOptions } from "@google-cloud/storage";
 import { expect } from "chai";
-import * as admin from "firebase-admin";
 import * as firebase from "firebase";
+import * as admin from "firebase-admin";
 import * as fs from "fs";
-import * as path from "path";
 import * as http from "http";
 import * as https from "https";
 import fetch from "node-fetch";
+import * as path from "path";
 import * as puppeteer from "puppeteer";
-import { Bucket, CopyOptions } from "@google-cloud/storage";
 import * as supertest from "supertest";
-
 import { IMAGE_FILE_BASE64, StorageRulesFiles } from "../../src/test/emulators/fixtures";
 import { TriggerEndToEndTest } from "../integration-helpers/framework";
 import {
@@ -1401,6 +1400,28 @@ describe("Storage emulator", () => {
               throw err;
             }
           }, IMAGE_FILE_BASE64);
+          expect(uploadState!).to.include("User does not have permission");
+        });
+
+        it("should return a 403 on rules deny when overwriting existing file", async () => {
+          async function shouldThrowOnUpload() {
+            try {
+              return await uploadText(
+                page,
+                "upload/allowIfNoExistingFile.txt",
+                "some-other-content"
+              );
+            } catch (err: any) {
+              if (err instanceof Error) {
+                return err.message;
+              }
+              throw err;
+            }
+          }
+
+          await uploadText(page, "upload/allowIfNoExistingFile.txt", "some-content");
+
+          const uploadState = await shouldThrowOnUpload();
           expect(uploadState!).to.include("User does not have permission");
         });
       });

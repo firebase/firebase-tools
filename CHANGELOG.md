@@ -1,3 +1,5 @@
 - Replaces underlying terminal coloring library.
-- Make storage emulator multipart parsing handle quotes in boundary header #3953
-- Make storage emulator content type case insensitive #3953
+- Make storage emulator multipart parsing handle quotes in boundary header. (#3953)
+- Make storage emulator content type case insensitive. (#3953)
+- Add storage emulator support to init.js useEmulator flag. (#4805)
+- Populate resource correctly in storage rules evaluation. (#4329)
