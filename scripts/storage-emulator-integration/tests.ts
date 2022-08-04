@@ -246,6 +246,46 @@ describe("Storage emulator", () => {
           expect(fileMetadata).to.deep.include(metadata);
         });
 
+        it("should handle resumable upload with name only in metadata", async () => {
+          const fileName = "test_upload.jpg";
+          const uploadURL = await supertest(STORAGE_EMULATOR_HOST)
+            .post(`/upload/storage/v1/b/${storageBucket}/o?uploadType=resumable`)
+            .send({ name: fileName })
+            .set({
+              Authorization: "Bearer owner",
+            })
+            .expect(200)
+            .then((res) => new URL(res.header["location"]));
+          expect(uploadURL.searchParams?.get("name")).to.equal(fileName);
+        });
+
+        it.only("should handle multipart upload with name only in metadata", async () => {
+          const contentTypeHeader =
+            "multipart/related; boundary=b1d5b2e3-1845-4338-9400-6ac07ce53c1e";
+          const body = Buffer.from(`--b1d5b2e3-1845-4338-9400-6ac07ce53c1e\r
+content-type: application/json\r
+\r
+{"name":"test_upload.jpg"}\r
+--b1d5b2e3-1845-4338-9400-6ac07ce53c1e\r
+content-type: text/plain\r
+\r
+hello there!
+\r
+--b1d5b2e3-1845-4338-9400-6ac07ce53c1e--\r
+`);
+          const fileName = "test_upload.jpg";
+          const responseName = await supertest(STORAGE_EMULATOR_HOST)
+            .post(`/upload/storage/v1/b/${storageBucket}/o?uploadType=multipart`)
+            .send(body)
+            .set({
+              Authorization: "Bearer owner",
+              "content-type": contentTypeHeader,
+            })
+            .expect(200)
+            .then((res) => res.body.name);
+          expect(responseName).to.equal(fileName);
+        });
+
         it("should return an error message when uploading a file with invalid metadata", async () => {
           const fileName = "test_upload.jpg";
           const errorMessage = await supertest(STORAGE_EMULATOR_HOST)
