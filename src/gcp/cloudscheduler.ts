@@ -8,7 +8,7 @@ import * as backend from "../deploy/functions/backend";
 import * as proto from "./proto";
 import { assertExhaustive, nullsafeVisitor } from "../functional";
 
-const VERSION = "v1beta1";
+const VERSION = "v1";
 const DEFAULT_TIME_ZONE = "America/Los_Angeles";
 
 export interface PubsubTarget {
@@ -109,8 +109,16 @@ export function getJob(name: string): Promise<any> {
  * @param job A job to update.
  */
 export function updateJob(job: Job): Promise<any> {
-  // Note that name cannot be updated.
-  return apiClient.patch(`/${job.name}`, Object.assign({ timeZone: DEFAULT_TIME_ZONE }, job));
+  const fieldMasks = proto.fieldMasks(job, "pubsubTarget");
+  return apiClient.patch(
+    `/${job.name}`,
+    { timeZone: DEFAULT_TIME_ZONE, ...job },
+    {
+      queryParams: {
+        updateMask: fieldMasks.join(","),
+      },
+    }
+  );
 }
 
 /**
@@ -148,7 +156,7 @@ export async function createOrReplaceJob(job: Job): Promise<any> {
     // We set this here to avoid recreating schedules that use the default timeZone
     job.timeZone = DEFAULT_TIME_ZONE;
   }
-  if (isIdentical(existingJob.body, job)) {
+  if (!needUpdate(existingJob.body, job)) {
     logger.debug(`scheduler job ${jobName} is up to date, no changes required`);
     return;
   }
@@ -159,17 +167,28 @@ export async function createOrReplaceJob(job: Job): Promise<any> {
 
 /**
  * Check if two jobs are functionally equivalent.
- * @param job a job to compare.
- * @param otherJob a job to compare.
+ * @param existingJob a job to compare.
+ * @param newJob a job to compare.
  */
-function isIdentical(job: Job, otherJob: Job): boolean {
-  return (
-    job &&
-    otherJob &&
-    job.schedule === otherJob.schedule &&
-    job.timeZone === otherJob.timeZone &&
-    _.isEqual(job.retryConfig, otherJob.retryConfig)
-  );
+function needUpdate(existingJob: Job, newJob: Job): boolean {
+  if (!existingJob) {
+    return true;
+  }
+  if (existingJob.schedule !== newJob.schedule) {
+    return true;
+  }
+  if (existingJob.timeZone !== newJob.timeZone) {
+    return true;
+  }
+  if (newJob.retryConfig) {
+    if (!existingJob.retryConfig) {
+      return true;
+    }
+    if (!_.isMatch(existingJob.retryConfig, newJob.retryConfig)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /** The name of the Cloud Scheduler job we will use for this endpoint. */
@@ -250,6 +269,10 @@ export function jobFromEndpoint(
       "maxRetrySeconds",
       nullsafeVisitor(proto.durationFromSeconds)
     );
+    // If no retry configuration exists, delete the key to preserve existing retry config.
+    if (!Object.keys(job.retryConfig).length) {
+      delete job.retryConfig;
+    }
   }
 
   // TypeScript compiler isn't noticing that name is defined in all code paths.
