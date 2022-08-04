@@ -71,6 +71,10 @@ describe("Storage emulator", () => {
   const STORAGE_EMULATOR_HOST = getStorageEmulatorHost(emulatorConfig);
   const AUTH_EMULATOR_HOST = getAuthEmulatorHost(emulatorConfig);
 
+  const expectedHost = TEST_CONFIG.useProductionServers
+  ? "https://firebasestorage.googleapis.com"
+  : STORAGE_EMULATOR_HOST;
+  
   const emulatorSpecificDescribe = TEST_CONFIG.useProductionServers ? describe.skip : describe;
 
   async function resetEmulatorState(): Promise<void> {
@@ -227,10 +231,6 @@ describe("Storage emulator", () => {
         });
         // TODO(b/241151246): Fix conformance tests.
         it("should handle resumable upload with name only in metadata", async () => {
-          const expectedHost = TEST_CONFIG.useProductionServers
-            ? "https://firebasestorage.googleapis.com"
-            : STORAGE_EMULATOR_HOST;
-
           const fileName = "test_upload.jpg";
           const uploadURL = await supertest(expectedHost)
             .post(`/upload/storage/v1/b/${storageBucket}/o?uploadType=resumable`)
@@ -244,10 +244,6 @@ describe("Storage emulator", () => {
         });
 
         it("should handle multipart upload with name only in metadata", async () => {
-          const expectedHost = TEST_CONFIG.useProductionServers
-            ? "https://firebasestorage.googleapis.com"
-            : STORAGE_EMULATOR_HOST;
-
           const body = Buffer.from(`--b1d5b2e3-1845-4338-9400-6ac07ce53c1e\r
 content-type: application/json\r
 \r
@@ -1609,10 +1605,6 @@ hello there!
           const downloadUrl: string = await page.evaluate((filename) => {
             return firebase.storage().ref(filename).getDownloadURL();
           }, filename);
-          const expectedHost = TEST_CONFIG.useProductionServers
-            ? "https://firebasestorage.googleapis.com"
-            : STORAGE_EMULATOR_HOST;
-
           expect(downloadUrl).to.contain(
             `${expectedHost}/v0/b/${storageBucket}/o/testing%2Fstorage_ref%2Fimage.png?alt=media&token=`
           );
