@@ -1206,10 +1206,7 @@ describe("Storage emulator", () => {
         headless: !TEST_CONFIG.showBrowser,
         devtools: true,
       });
-    });
 
-    beforeEach(async function (this) {
-      this.timeout(TEST_SETUP_TIMEOUT);
       page = await browser.newPage();
       await page.goto("https://example.com", { waitUntil: "networkidle2" });
 
@@ -1237,9 +1234,11 @@ describe("Storage emulator", () => {
         AUTH_EMULATOR_HOST,
         STORAGE_EMULATOR_HOST.replace(/^(https?:|)\/\//, "")
       );
+    });
 
+    beforeEach(async function (this) {
+      this.timeout(TEST_SETUP_TIMEOUT);
       await resetEmulatorState();
-
       await testBucket.upload(image_filename, { destination: filename });
     });
 
@@ -1248,11 +1247,11 @@ describe("Storage emulator", () => {
       await page.evaluate(async () => {
         await firebase.auth().signOut();
       });
-      await page.close();
     });
 
     after(async function (this) {
       this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
+      await page.close();
       await browser.close();
     });
 
