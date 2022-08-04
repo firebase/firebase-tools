@@ -1601,7 +1601,7 @@ describe("Storage emulator", () => {
         });
       });
 
-      describe("#getMetadata()", async () => {
+      describe("#getMetadata()", () => {
         it("should return file metadata", async () => {
           await signInToFirebaseAuth(page);
           const metadata = await page.evaluate(async (filename) => {
