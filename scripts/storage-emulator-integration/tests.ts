@@ -21,6 +21,7 @@ import {
   readProdAppConfig,
   resetStorageEmulator,
   SERVICE_ACCOUNT_KEY,
+  signInToFirebaseAuth,
   SMALL_FILE_SIZE,
   TEST_SETUP_TIMEOUT,
   uploadText,
@@ -113,10 +114,7 @@ describe("Storage emulator", () => {
     }
   });
 
-  describe("Admin SDK Endpoints", function (this) {
-    // eslint-disable-next-line @typescript-eslint/no-invalid-this
-    this.timeout(TEST_SETUP_TIMEOUT);
-
+  describe("Admin SDK Endpoints", () => {
     beforeEach(async () => {
       await resetEmulatorState();
     });
@@ -1212,7 +1210,6 @@ describe("Storage emulator", () => {
 
     beforeEach(async function (this) {
       this.timeout(TEST_SETUP_TIMEOUT);
-
       page = await browser.newPage();
       await page.goto("https://example.com", { waitUntil: "networkidle2" });
 
@@ -1246,19 +1243,23 @@ describe("Storage emulator", () => {
       await testBucket.upload(image_filename, { destination: filename });
     });
 
-    afterEach(async () => {
+    afterEach(async function (this) {
+      this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
+      await page.evaluate(async () => {
+        await firebase.auth().signOut();
+      });
       await page.close();
     });
 
-    after(async () => {
+    after(async function (this) {
+      this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
       await browser.close();
     });
 
     describe(".ref()", () => {
       describe("#put()", () => {
         it("should upload a file", async function (this) {
-          this.timeout(TEST_SETUP_TIMEOUT);
-
+          await signInToFirebaseAuth(page);
           const uploadState = await uploadText(
             page,
             "testing/image.png",
@@ -1270,8 +1271,7 @@ describe("Storage emulator", () => {
         });
 
         it("should upload a file with a really long path name to check for os filename character limit", async function (this) {
-          this.timeout(TEST_SETUP_TIMEOUT);
-
+          await signInToFirebaseAuth(page);
           const uploadState = await uploadText(
             page,
             `testing/${"long".repeat(180)}image.png`,
@@ -1283,7 +1283,6 @@ describe("Storage emulator", () => {
         });
 
         it("should upload replace existing file", async function (this) {
-          this.timeout(TEST_SETUP_TIMEOUT);
           await uploadText(page, "upload/replace.txt", "some-content");
           await uploadText(page, "upload/replace.txt", "some-other-content");
 
@@ -1317,6 +1316,7 @@ describe("Storage emulator", () => {
         });
 
         it("should upload a file using put", async () => {
+          await signInToFirebaseAuth(page);
           const uploadState = await page.evaluate(async (IMAGE_FILE_BASE64) => {
             const task = await firebase
               .storage()
@@ -1423,7 +1423,6 @@ describe("Storage emulator", () => {
         }
 
         it("should list all files and prefixes at path", async function (this) {
-          this.timeout(TEST_SETUP_TIMEOUT);
           await uploadFiles([
             "listAll/some/deeply/nested/directory/item1",
             "listAll/item1",
@@ -1514,14 +1513,10 @@ describe("Storage emulator", () => {
         const itemNames = [...Array(10)].map((_, i) => `item#${i}`);
 
         beforeEach(async function (this) {
-          this.timeout(TEST_SETUP_TIMEOUT);
-
           await uploadFiles(itemNames.map((name) => `listAll/${name}`));
         });
 
         it("should list only maxResults items with nextPageToken, when maxResults is set", async function (this) {
-          this.timeout(TEST_SETUP_TIMEOUT);
-
           const listItems = await page.evaluate(async () => {
             const list = await firebase.storage().ref("listAll").list({
               maxResults: 4,
@@ -1538,7 +1533,6 @@ describe("Storage emulator", () => {
         });
 
         it("should paginate when nextPageToken is provided", async function (this) {
-          this.timeout(TEST_SETUP_TIMEOUT);
           let responses: string[] = [];
           let pageToken = "";
           let pageCount = 0;
@@ -1570,6 +1564,7 @@ describe("Storage emulator", () => {
 
       describe("#getDownloadURL()", () => {
         it("returns url pointing to the expected host", async () => {
+          await signInToFirebaseAuth(page);
           const downloadUrl: string = await page.evaluate((filename) => {
             return firebase.storage().ref(filename).getDownloadURL();
           }, filename);
@@ -1583,6 +1578,7 @@ describe("Storage emulator", () => {
         });
 
         it("serves the right content", async () => {
+          await signInToFirebaseAuth(page);
           const downloadUrl = await page.evaluate((filename) => {
             return firebase.storage().ref(filename).getDownloadURL();
           }, filename);
@@ -1605,41 +1601,44 @@ describe("Storage emulator", () => {
         });
       });
 
-      it("#getMetadata()", async () => {
-        const metadata = await page.evaluate((filename) => {
-          return firebase.storage().ref(filename).getMetadata();
-        }, filename);
+      describe("#getMetadata()", async () => {
+        it("should return file metadata", async () => {
+          await signInToFirebaseAuth(page);
+          const metadata = await page.evaluate(async (filename) => {
+            return firebase.storage().ref(filename).getMetadata();
+          }, filename);
 
-        const metadataTypes: { [s: string]: string } = {};
+          const metadataTypes: { [s: string]: string } = {};
 
-        for (const key in metadata) {
-          if (metadata[key]) {
-            metadataTypes[key] = typeof metadata[key];
+          for (const key in metadata) {
+            if (metadata[key]) {
+              metadataTypes[key] = typeof metadata[key];
+            }
           }
-        }
 
-        expect(metadataTypes).to.deep.equal({
-          bucket: "string",
-          contentDisposition: "string",
-          contentEncoding: "string",
-          contentType: "string",
-          cacheControl: "string",
-          fullPath: "string",
-          generation: "string",
-          md5Hash: "string",
-          metageneration: "string",
-          name: "string",
-          size: "number",
-          timeCreated: "string",
-          type: "string",
-          updated: "string",
+          expect(metadataTypes).to.deep.equal({
+            bucket: "string",
+            contentDisposition: "string",
+            contentEncoding: "string",
+            contentType: "string",
+            cacheControl: "string",
+            fullPath: "string",
+            generation: "string",
+            md5Hash: "string",
+            metageneration: "string",
+            name: "string",
+            size: "number",
+            timeCreated: "string",
+            type: "string",
+            updated: "string",
+          });
         });
       });
 
       describe("#updateMetadata()", () => {
         it("updates metadata successfully", async () => {
+          await signInToFirebaseAuth(page);
           const metadata = await page.evaluate(async (filename) => {
-            await firebase.auth().signInAnonymously();
             return firebase
               .storage()
               .ref(filename)
@@ -1656,32 +1655,38 @@ describe("Storage emulator", () => {
         });
 
         it("should allow deletion of custom metadata by setting to null", async () => {
+          await signInToFirebaseAuth(page);
           const setMetadata = await page.evaluate((filename) => {
-            const storageReference = firebase.storage().ref(filename);
-            return storageReference.updateMetadata({
-              contentType: "text/plain",
-              customMetadata: {
-                removeMe: "please",
-              },
-            });
+            return firebase
+              .storage()
+              .ref(filename)
+              .updateMetadata({
+                contentType: "text/plain",
+                customMetadata: {
+                  removeMe: "please",
+                },
+              });
           }, filename);
 
           expect(setMetadata.customMetadata.removeMe).to.equal("please");
 
           const nulledMetadata = await page.evaluate((filename) => {
-            const storageReference = firebase.storage().ref(filename);
-            return storageReference.updateMetadata({
-              contentType: "text/plain",
-              customMetadata: {
-                removeMe: null as any,
-              },
-            });
+            return firebase
+              .storage()
+              .ref(filename)
+              .updateMetadata({
+                contentType: "text/plain",
+                customMetadata: {
+                  removeMe: null as any,
+                },
+              });
           }, filename);
 
           expect(nulledMetadata.customMetadata.removeMe).to.equal(undefined);
         });
 
         it("throws on non-existent file", async () => {
+          await signInToFirebaseAuth(page);
           const err = await page.evaluate(async () => {
             try {
               return await firebase
@@ -1704,6 +1709,7 @@ describe("Storage emulator", () => {
 
       describe("deleteFile", () => {
         it("should delete file", async () => {
+          await signInToFirebaseAuth(page);
           await page.evaluate((filename) => {
             return firebase.storage().ref(filename).delete();
           }, filename);
@@ -1756,7 +1762,7 @@ describe("Storage emulator", () => {
     );
 
     beforeEach(async function (this) {
-      this.timeout(TEST_SETUP_TIMEOUT);
+      this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
       await resetEmulatorState();
       await testBucket.upload(image_filename, { destination: filename });
     });
