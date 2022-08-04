@@ -239,9 +239,7 @@ describe("Storage emulator", () => {
           expect(uploadURL.searchParams?.get("name")).to.equal(fileName);
         });
 
-        it.only("should handle multipart upload with name only in metadata", async () => {
-          const contentTypeHeader =
-            "multipart/related; boundary=b1d5b2e3-1845-4338-9400-6ac07ce53c1e";
+        it("should handle multipart upload with name only in metadata", async () => {
           const body = Buffer.from(`--b1d5b2e3-1845-4338-9400-6ac07ce53c1e\r
 content-type: application/json\r
 \r
@@ -259,7 +257,7 @@ hello there!
             .send(body)
             .set({
               Authorization: "Bearer owner",
-              "content-type": contentTypeHeader,
+              "content-type": "multipart/related; boundary=b1d5b2e3-1845-4338-9400-6ac07ce53c1e",
             })
             .expect(200)
             .then((res) => res.body.name);
