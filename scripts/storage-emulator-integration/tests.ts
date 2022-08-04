@@ -72,9 +72,9 @@ describe("Storage emulator", () => {
   const AUTH_EMULATOR_HOST = getAuthEmulatorHost(emulatorConfig);
 
   const expectedHost = TEST_CONFIG.useProductionServers
-  ? "https://firebasestorage.googleapis.com"
-  : STORAGE_EMULATOR_HOST;
-  
+    ? "https://firebasestorage.googleapis.com"
+    : STORAGE_EMULATOR_HOST;
+
   const emulatorSpecificDescribe = TEST_CONFIG.useProductionServers ? describe.skip : describe;
 
   async function resetEmulatorState(): Promise<void> {
