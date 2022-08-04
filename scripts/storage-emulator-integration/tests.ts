@@ -1756,7 +1756,7 @@ describe("Storage emulator", () => {
       tmpDir
     );
 
-    beforeEach(async function (this) {
+    beforeEach(async () => {
       await resetEmulatorState();
       await testBucket.upload(image_filename, { destination: filename });
     });
