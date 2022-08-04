@@ -1200,7 +1200,8 @@ describe("Storage emulator", () => {
       tmpDir
     );
 
-    before(async () => {
+    before(async function (this) {
+      this.timeout(TEST_SETUP_TIMEOUT);
       browser = await puppeteer.launch({
         headless: !TEST_CONFIG.showBrowser,
         devtools: true,
@@ -1756,7 +1757,6 @@ describe("Storage emulator", () => {
     );
 
     beforeEach(async function (this) {
-      this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
       await resetEmulatorState();
       await testBucket.upload(image_filename, { destination: filename });
     });
