@@ -4,3 +4,4 @@
 - Make storage emulator content type case insensitive. (#3953)
 - Add storage emulator support to init.js useEmulator flag. (#4805)
 - Populate resource correctly in storage rules evaluation. (#4329)
+- Fix bug where invalid CPU was set for 16GiB functions. (#4823)
