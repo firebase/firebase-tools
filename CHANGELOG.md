@@ -3,3 +3,4 @@
 - Make storage emulator content type case insensitive. (#3953)
 - Add storage emulator support to init.js useEmulator flag. (#4805)
 - Populate resource correctly in storage rules evaluation. (#4329)
+- Read name from metadata as backup for gcs upload into storage emulator. (#3953)
