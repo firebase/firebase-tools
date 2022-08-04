@@ -1,5 +1,0 @@
-{
-  "functions": {
-    "source": "functions"
-  }
-}
