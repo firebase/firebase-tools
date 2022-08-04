@@ -476,28 +476,11 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
   }
 
-  /**
-   * When a user changes their code, we need to look for triggers defined in their updates sources.
-   *
-   * TODO(b/216167890): Gracefully handle removal of deleted function definitions
-   */
-  async loadTriggers(emulatableBackend: EmulatableBackend, force = false): Promise<void> {
-    // Before loading any triggers we need to make sure there are no 'stale' workers
-    // in the pool that would cause us to run old code.
-    this.workerPool.refresh();
-
-    if (!emulatableBackend.nodeBinary) {
-      throw new FirebaseError(
-        `No node binary for ${emulatableBackend.functionsDir}. This should never happen.`
-      );
-    }
-
-    // reset blocking functions config for reloads
-    this.blockingFunctionsConfig = {};
-
-    let triggerDefinitions: EmulatedTriggerDefinition[];
+  async discoverTriggers(
+    emulatableBackend: EmulatableBackend
+  ): Promise<EmulatedTriggerDefinition[]> {
     if (emulatableBackend.predefinedTriggers) {
-      triggerDefinitions = emulatedFunctionsByRegion(
+      return emulatedFunctionsByRegion(
         emulatableBackend.predefinedTriggers,
         emulatableBackend.secretEnv
       );
@@ -536,8 +519,46 @@ export class FunctionsEmulator implements EmulatorInstance {
       for (const e of endpoints) {
         e.codebase = emulatableBackend.codebase;
       }
-      triggerDefinitions = emulatedFunctionsFromEndpoints(endpoints);
+      return emulatedFunctionsFromEndpoints(endpoints);
     }
+  }
+
+  /**
+   * When a user changes their code, we need to look for triggers defined in their updates sources.
+   *
+   * TODO(b/216167890): Gracefully handle removal of deleted function definitions
+   */
+  async loadTriggers(emulatableBackend: EmulatableBackend, force = false): Promise<void> {
+    if (!emulatableBackend.nodeBinary) {
+      throw new FirebaseError(
+        `No node binary for ${emulatableBackend.functionsDir}. This should never happen.`
+      );
+    }
+
+    let triggerDefinitions: EmulatedTriggerDefinition[] = [];
+    try {
+      triggerDefinitions = await this.discoverTriggers(emulatableBackend);
+      this.logger.logLabeled(
+        "SUCCESS",
+        "functions",
+        `Loaded functions definitions from source: ${triggerDefinitions
+          .map((t) => t.entryPoint)
+          .join(", ")}.`
+      );
+    } catch (e) {
+      this.logger.logLabeled(
+        "ERROR",
+        "functions",
+        `Failed to load function definition from source: ${e}`
+      );
+      return;
+    }
+    // Before loading any triggers we need to make sure there are no 'stale' workers
+    // in the pool that would cause us to run old code.
+    this.workerPool.refresh();
+    // reset blocking functions config for reloads
+    this.blockingFunctionsConfig = {};
+
     // When force is true we set up all triggers, otherwise we only set up
     // triggers which have a unique function name
     const toSetup = triggerDefinitions.filter((definition) => {
