@@ -1200,13 +1200,11 @@ describe("Storage emulator", () => {
       tmpDir
     );
 
-    before(async function (this) {
-      this.timeout(TEST_SETUP_TIMEOUT);
+    before(async () => {
       browser = await puppeteer.launch({
         headless: !TEST_CONFIG.showBrowser,
         devtools: true,
       });
-
       page = await browser.newPage();
       await page.goto("https://example.com", { waitUntil: "networkidle2" });
 
@@ -1236,28 +1234,25 @@ describe("Storage emulator", () => {
       );
     });
 
-    beforeEach(async function (this) {
-      this.timeout(TEST_SETUP_TIMEOUT);
+    beforeEach(async () => {
       await resetEmulatorState();
       await testBucket.upload(image_filename, { destination: filename });
     });
 
-    afterEach(async function (this) {
-      this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
+    afterEach(async () => {
       await page.evaluate(async () => {
         await firebase.auth().signOut();
       });
     });
 
-    after(async function (this) {
-      this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
+    after(async () => {
       await page.close();
       await browser.close();
     });
 
     describe(".ref()", () => {
       describe("#put()", () => {
-        it("should upload a file", async function (this) {
+        it("should upload a file", async () => {
           await signInToFirebaseAuth(page);
           const uploadState = await uploadText(
             page,
@@ -1269,7 +1264,7 @@ describe("Storage emulator", () => {
           expect(uploadState).to.equal("success");
         });
 
-        it("should upload a file with a really long path name to check for os filename character limit", async function (this) {
+        it("should upload a file with a really long path name to check for os filename character limit", async () => {
           await signInToFirebaseAuth(page);
           const uploadState = await uploadText(
             page,
@@ -1281,7 +1276,7 @@ describe("Storage emulator", () => {
           expect(uploadState).to.equal("success");
         });
 
-        it("should upload replace existing file", async function (this) {
+        it("should upload replace existing file", async () => {
           await uploadText(page, "upload/replace.txt", "some-content");
           await uploadText(page, "upload/replace.txt", "some-other-content");
 
@@ -1421,7 +1416,7 @@ describe("Storage emulator", () => {
           );
         }
 
-        it("should list all files and prefixes at path", async function (this) {
+        it("should list all files and prefixes at path", async () => {
           await uploadFiles([
             "listAll/some/deeply/nested/directory/item1",
             "listAll/item1",
@@ -1511,11 +1506,11 @@ describe("Storage emulator", () => {
         }
         const itemNames = [...Array(10)].map((_, i) => `item#${i}`);
 
-        beforeEach(async function (this) {
+        beforeEach(async () => {
           await uploadFiles(itemNames.map((name) => `listAll/${name}`));
         });
 
-        it("should list only maxResults items with nextPageToken, when maxResults is set", async function (this) {
+        it("should list only maxResults items with nextPageToken, when maxResults is set", async () => {
           const listItems = await page.evaluate(async () => {
             const list = await firebase.storage().ref("listAll").list({
               maxResults: 4,
@@ -1531,7 +1526,7 @@ describe("Storage emulator", () => {
           expect(listItems.nextPageToken).to.not.be.empty;
         });
 
-        it("should paginate when nextPageToken is provided", async function (this) {
+        it("should paginate when nextPageToken is provided", async () => {
           let responses: string[] = [];
           let pageToken = "";
           let pageCount = 0;
@@ -1600,11 +1595,11 @@ describe("Storage emulator", () => {
         });
       });
 
-      describe("#getMetadata()", async () => {
+      describe("#getMetadata()", () => {
         it("should return file metadata", async () => {
           await signInToFirebaseAuth(page);
           const metadata = await page.evaluate(async (filename) => {
-            return firebase.storage().ref(filename).getMetadata();
+            return await firebase.storage().ref(filename).getMetadata();
           }, filename);
 
           const metadataTypes: { [s: string]: string } = {};
