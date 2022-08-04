@@ -287,6 +287,7 @@ export interface RulesResourceMetadata {
 }
 
 export interface IncomingMetadata {
+  name?: string;
   contentType?: string;
   contentLanguage?: string;
   contentEncoding?: string;
