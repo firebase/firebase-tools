@@ -1252,7 +1252,6 @@ describe("Storage emulator", () => {
     });
 
     after(async function (this) {
-      this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
       await browser.close();
     });
 
