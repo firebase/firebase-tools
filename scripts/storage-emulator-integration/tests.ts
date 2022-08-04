@@ -225,10 +225,14 @@ describe("Storage emulator", () => {
 
           expect(fileMetadata).to.deep.include(metadata);
         });
-
+        // TODO(b/241151246): Fix conformance tests.
         it("should handle resumable upload with name only in metadata", async () => {
+          const expectedHost = TEST_CONFIG.useProductionServers
+            ? "https://firebasestorage.googleapis.com"
+            : STORAGE_EMULATOR_HOST;
+
           const fileName = "test_upload.jpg";
-          const uploadURL = await supertest(STORAGE_EMULATOR_HOST)
+          const uploadURL = await supertest(expectedHost)
             .post(`/upload/storage/v1/b/${storageBucket}/o?uploadType=resumable`)
             .send({ name: fileName })
             .set({
@@ -240,6 +244,10 @@ describe("Storage emulator", () => {
         });
 
         it("should handle multipart upload with name only in metadata", async () => {
+          const expectedHost = TEST_CONFIG.useProductionServers
+            ? "https://firebasestorage.googleapis.com"
+            : STORAGE_EMULATOR_HOST;
+
           const body = Buffer.from(`--b1d5b2e3-1845-4338-9400-6ac07ce53c1e\r
 content-type: application/json\r
 \r
@@ -252,7 +260,7 @@ hello there!
 --b1d5b2e3-1845-4338-9400-6ac07ce53c1e--\r
 `);
           const fileName = "test_upload.jpg";
-          const responseName = await supertest(STORAGE_EMULATOR_HOST)
+          const responseName = await supertest(expectedHost)
             .post(`/upload/storage/v1/b/${storageBucket}/o?uploadType=multipart`)
             .send(body)
             .set({

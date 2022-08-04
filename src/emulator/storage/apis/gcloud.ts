@@ -209,8 +209,8 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
       if (emulatorInfo === undefined) {
         return res.sendStatus(500);
       }
-      const name = getValidName(req.query, req.body);
-      if (name == null) {
+      const name = getIncomingFileNameFromRequest(req.query, req.body);
+      if (name === undefined) {
         res.sendStatus(400);
         return;
       }
@@ -232,17 +232,11 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     // Multipart upload
     let metadataRaw: string;
     let dataRaw: Buffer;
-    let name: string | undefined;
     try {
       ({ metadataRaw, dataRaw } = parseObjectUploadMultipartRequest(
         contentTypeHeader!,
         await reqBodyToBuffer(req)
       ));
-      name = getValidName(req.query, JSON.parse(metadataRaw));
-      if (name == null) {
-        res.sendStatus(400);
-        return;
-      }
     } catch (err) {
       if (err instanceof Error) {
         return res.status(400).json({
@@ -253,6 +247,12 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
         });
       }
       throw err;
+    }
+
+    const name = getIncomingFileNameFromRequest(req.query, JSON.parse(metadataRaw));
+    if (name === undefined) {
+      res.sendStatus(400);
+      return;
     }
 
     const upload = uploadService.multipartUpload({
@@ -413,7 +413,10 @@ function sendObjectNotFound(req: Request, res: Response): void {
   }
 }
 
-function getValidName(query: Query, metadata: IncomingMetadata): string | undefined {
+function getIncomingFileNameFromRequest(
+  query: Query,
+  metadata: IncomingMetadata
+): string | undefined {
   const name = query?.name?.toString() || metadata?.name;
   return name?.startsWith("/") ? name.slice(1) : name;
 }
