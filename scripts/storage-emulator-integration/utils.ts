@@ -127,3 +127,9 @@ export async function uploadText(
     JSON.stringify(metadata ?? {})
   )!;
 }
+
+export async function signInToFirebaseAuth(page: puppeteer.Page): Promise<void> {
+  await page.evaluate(async () => {
+    await firebase.auth().signInAnonymously();
+  });
+}
