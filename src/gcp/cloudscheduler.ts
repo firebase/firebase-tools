@@ -174,6 +174,9 @@ function needUpdate(existingJob: Job, newJob: Job): boolean {
   if (!existingJob) {
     return true;
   }
+  if (!newJob) {
+    return true;
+  }
   if (existingJob.schedule !== newJob.schedule) {
     return true;
   }
