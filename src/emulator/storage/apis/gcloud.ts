@@ -17,6 +17,7 @@ import { parseObjectUploadMultipartRequest } from "../multipart";
 import { Upload, UploadNotActiveError } from "../upload";
 import { ForbiddenError, NotFoundError } from "../errors";
 import { reqBodyToBuffer } from "../../shared/request";
+import { Query } from "express-serve-static-core";
 
 export function createCloudEndpoints(emulator: StorageEmulator): Router {
   // eslint-disable-next-line new-cap
@@ -199,18 +200,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
   });
 
   gcloudStorageAPI.post("/upload/storage/v1/b/:bucketId/o", async (req, res) => {
-    if (!req.query.name) {
-      res.sendStatus(400);
-      return;
-    }
-    let name = req.query.name.toString();
-
-    if (name.startsWith("/")) {
-      name = name.slice(1);
-    }
-
     const contentTypeHeader = req.header("content-type") || req.header("x-upload-content-type");
-
     if (!contentTypeHeader) {
       return res.sendStatus(400);
     }
@@ -218,6 +208,11 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
       const emulatorInfo = EmulatorRegistry.getInfo(Emulators.STORAGE);
       if (emulatorInfo === undefined) {
         return res.sendStatus(500);
+      }
+      const name = getIncomingFileNameFromRequest(req.query, req.body);
+      if (name === undefined) {
+        res.sendStatus(400);
+        return;
       }
       const upload = uploadService.startResumableUpload({
         bucketId: req.params.bucketId,
@@ -252,6 +247,12 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
         });
       }
       throw err;
+    }
+
+    const name = getIncomingFileNameFromRequest(req.query, JSON.parse(metadataRaw));
+    if (name === undefined) {
+      res.sendStatus(400);
+      return;
     }
 
     const upload = uploadService.multipartUpload({
@@ -410,4 +411,12 @@ function sendObjectNotFound(req: Request, res: Response): void {
       },
     });
   }
+}
+
+function getIncomingFileNameFromRequest(
+  query: Query,
+  metadata: IncomingMetadata
+): string | undefined {
+  const name = query?.name?.toString() || metadata?.name;
+  return name?.startsWith("/") ? name.slice(1) : name;
 }

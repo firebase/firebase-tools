@@ -109,6 +109,9 @@ export type CopyObjectRequest = {
   authorization?: string;
 };
 
+// Matches any number of "/" at the end of a string.
+const TRAILING_SLASHES_PATTERN = /\/+$/;
+
 export class StorageLayer {
   constructor(
     private _projectId: string,
@@ -285,6 +288,7 @@ export class StorageLayer {
       throw new Error(`Unexpected upload status encountered: ${upload.status}.`);
     }
 
+    const storedMetadata = this.getMetadata(upload.bucketId, upload.objectId);
     const filePath = this.path(upload.bucketId, upload.objectId);
     const metadata = new StoredFileMetadata(
       {
@@ -306,7 +310,10 @@ export class StorageLayer {
       ["b", upload.bucketId, "o", upload.objectId].join("/"),
       upload.bucketId,
       RulesetOperationMethod.CREATE,
-      { after: metadata?.asRulesResource() },
+      {
+        before: storedMetadata?.asRulesResource(),
+        after: metadata?.asRulesResource(),
+      },
       upload.authorization
     );
     if (!authorized) {
@@ -391,12 +398,15 @@ export class StorageLayer {
    */
   public async listObjects(request: ListObjectsRequest): Promise<ListObjectsResponse> {
     const { bucketId, prefix, delimiter, pageToken, authorization } = request;
+
     const authorized = await this._rulesValidator.validate(
-      ["b", bucketId, "o", prefix].join("/"),
+      // Firebase Rules expects the path without trailing slashes.
+      ["b", bucketId, "o", prefix.replace(TRAILING_SLASHES_PATTERN, "")].join("/"),
       bucketId,
       RulesetOperationMethod.LIST,
       {},
-      authorization
+      authorization,
+      delimiter
     );
     if (!authorized) {
       throw new ForbiddenError();
@@ -418,10 +428,13 @@ export class StorageLayer {
       if (delimiter) {
         const delimiterIdx = name.indexOf(delimiter);
         const delimiterAfterPrefixIdx = name.indexOf(delimiter, prefix.length);
-        // items[] contains object metadata for objects whose names do not contain delimiter, or whose names only have instances of delimiter in their prefix.
+        // items[] contains object metadata for objects whose names do not contain
+        // delimiter, or whose names only have instances of delimiter in their prefix.
         includeMetadata = delimiterIdx === -1 || delimiterAfterPrefixIdx === -1;
         if (delimiterAfterPrefixIdx !== -1) {
-          // prefixes[] contains truncated object names for objects whose names contain delimiter after any prefix. Object names are truncated beyond the first applicable instance of the delimiter.
+          // prefixes[] contains truncated object names for objects whose names contain
+          // delimiter after any prefix. Object names are truncated beyond the first
+          // applicable instance of the delimiter.
           prefixes.add(name.slice(0, delimiterAfterPrefixIdx + delimiter.length));
         }
       }
