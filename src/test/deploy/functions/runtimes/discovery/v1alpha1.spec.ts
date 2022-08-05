@@ -662,7 +662,27 @@ describe("buildFromV1Alpha", () => {
       const expectedBackend = backend.of({
         ...DEFAULTED_BACKEND_ENDPOINT,
         httpsTrigger: {},
-        ...fields,
+        concurrency: 42,
+        labels: { hello: "world" },
+        environmentVariables: { foo: "bar" },
+        availableMemoryMb: 256,
+        cpu: 2,
+        timeoutSeconds: 60,
+        maxInstances: 20,
+        minInstances: 1,
+        vpc: {
+          connector: "projects/project/locations/region/connectors/hello",
+          egressSettings: "ALL_TRAFFIC",
+        },
+        ingressSettings: "ALLOW_INTERNAL_ONLY",
+        serviceAccount: "sa@",
+        secretEnvironmentVariables: [
+          {
+            key: "SECRET",
+            secret: "SECRET",
+            projectId: "project",
+          },
+        ],
       });
       await expect(resolveBackend(parsed)).to.eventually.deep.equal(expectedBackend);
     });
