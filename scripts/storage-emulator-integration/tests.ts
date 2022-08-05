@@ -71,6 +71,10 @@ describe("Storage emulator", () => {
   const STORAGE_EMULATOR_HOST = getStorageEmulatorHost(emulatorConfig);
   const AUTH_EMULATOR_HOST = getAuthEmulatorHost(emulatorConfig);
 
+  const expectedHost = TEST_CONFIG.useProductionServers
+    ? "https://firebasestorage.googleapis.com"
+    : STORAGE_EMULATOR_HOST;
+
   const emulatorSpecificDescribe = TEST_CONFIG.useProductionServers ? describe.skip : describe;
 
   async function resetEmulatorState(): Promise<void> {
@@ -224,6 +228,44 @@ describe("Storage emulator", () => {
           });
 
           expect(fileMetadata).to.deep.include(metadata);
+        });
+        // TODO(b/241151246): Fix conformance tests.
+        it("should handle resumable upload with name only in metadata", async () => {
+          const fileName = "test_upload.jpg";
+          const uploadURL = await supertest(expectedHost)
+            .post(`/upload/storage/v1/b/${storageBucket}/o?uploadType=resumable`)
+            .send({ name: fileName })
+            .set({
+              Authorization: "Bearer owner",
+            })
+            .expect(200)
+            .then((res) => new URL(res.header["location"]));
+          expect(uploadURL.searchParams?.get("name")).to.equal(fileName);
+        });
+
+        it("should handle multipart upload with name only in metadata", async () => {
+          const body = Buffer.from(`--b1d5b2e3-1845-4338-9400-6ac07ce53c1e\r
+content-type: application/json\r
+\r
+{"name":"test_upload.jpg"}\r
+--b1d5b2e3-1845-4338-9400-6ac07ce53c1e\r
+content-type: text/plain\r
+\r
+hello there!
+\r
+--b1d5b2e3-1845-4338-9400-6ac07ce53c1e--\r
+`);
+          const fileName = "test_upload.jpg";
+          const responseName = await supertest(expectedHost)
+            .post(`/upload/storage/v1/b/${storageBucket}/o?uploadType=multipart`)
+            .send(body)
+            .set({
+              Authorization: "Bearer owner",
+              "content-type": "multipart/related; boundary=b1d5b2e3-1845-4338-9400-6ac07ce53c1e",
+            })
+            .expect(200)
+            .then((res) => res.body.name);
+          expect(responseName).to.equal(fileName);
         });
 
         it("should return an error message when uploading a file with invalid metadata", async () => {
@@ -1206,10 +1248,6 @@ describe("Storage emulator", () => {
         headless: !TEST_CONFIG.showBrowser,
         devtools: true,
       });
-    });
-
-    beforeEach(async function (this) {
-      this.timeout(TEST_SETUP_TIMEOUT);
       page = await browser.newPage();
       await page.goto("https://example.com", { waitUntil: "networkidle2" });
 
@@ -1237,21 +1275,21 @@ describe("Storage emulator", () => {
         AUTH_EMULATOR_HOST,
         STORAGE_EMULATOR_HOST.replace(/^(https?:|)\/\//, "")
       );
+    });
 
+    beforeEach(async () => {
       await resetEmulatorState();
-
       await testBucket.upload(image_filename, { destination: filename });
     });
 
-    afterEach(async function (this) {
-      this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
+    afterEach(async () => {
       await page.evaluate(async () => {
         await firebase.auth().signOut();
       });
-      await page.close();
     });
 
     after(async () => {
+      await page.close();
       await browser.close();
     });
 
@@ -1567,10 +1605,6 @@ describe("Storage emulator", () => {
           const downloadUrl: string = await page.evaluate((filename) => {
             return firebase.storage().ref(filename).getDownloadURL();
           }, filename);
-          const expectedHost = TEST_CONFIG.useProductionServers
-            ? "https://firebasestorage.googleapis.com"
-            : STORAGE_EMULATOR_HOST;
-
           expect(downloadUrl).to.contain(
             `${expectedHost}/v0/b/${storageBucket}/o/testing%2Fstorage_ref%2Fimage.png?alt=media&token=`
           );
@@ -1760,8 +1794,7 @@ describe("Storage emulator", () => {
       tmpDir
     );
 
-    beforeEach(async function (this) {
-      this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
+    beforeEach(async () => {
       await resetEmulatorState();
       await testBucket.upload(image_filename, { destination: filename });
     });
