@@ -19,7 +19,7 @@ export const command = new Command("crashlytics:mappingfile:generateid")
   )
   .option(
     "--resource-file <resourceFile>",
-    "Path to the Android resource XML file that will be created or updated."
+    "path to the Android resource XML file that will be created or updated"
   )
   .option("--debug", "print debug output and logging")
   .action(async (options: CommandOptions) => {
