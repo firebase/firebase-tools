@@ -22,7 +22,7 @@ export const command = new Command("crashlytics:mappingfile:upload <mappingFile>
   .option("--app <appID>", "The app id of your Firebase app")
   .option(
     "--resource-file <resourceFile>",
-    "Path to the Android resource XML file that includes the mapping file id."
+    "path to the Android resource XML file that includes the mapping file id"
   )
   .option("--debug", "print debug output and logging from the underlying uploader tool")
   .action(async (mappingFile: string, options: CommandOptions) => {
