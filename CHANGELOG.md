@@ -8,5 +8,5 @@
 - Fixes bug where invalid CPU was set for 16GiB functions. (#4823)
 - Fixes bug where failed function discovery crashed the entire emulator. (#4826)
 - Fixes LIST security rule evaluation in storage emulator. (#4827)
-- Fix bug where vpc connector setting broke function deploy for old functions SDK. (#4834)
+- Fixes bug where vpc connector setting broke function deploy for old functions SDK. (#4834)
 - Fixes issue where storage deploy targets weren't being fully respected. (#3496)
