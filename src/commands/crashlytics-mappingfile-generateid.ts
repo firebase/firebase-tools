@@ -19,9 +19,8 @@ export const command = new Command("crashlytics:mappingfile:generateid")
   )
   .option(
     "--resource-file <resourceFile>",
-    "path to the Android resource XML file that will be created or updated"
+    "Path to the Android resource XML file that will be created or updated."
   )
-  .option("--debug", "print debug output and logging")
   .action(async (options: CommandOptions) => {
     const debug = !!options.debug;
     // Input errors will be caught in the buildtools jar.

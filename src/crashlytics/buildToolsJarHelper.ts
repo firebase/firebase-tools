@@ -20,9 +20,9 @@ const JAR_URL = `https://dl.google.com/android/maven2/com/google/firebase/fireba
  * Returns the path to the jar file, downloading it if necessary.
  */
 export async function fetchBuildtoolsJar(): Promise<string> {
-  // If you set LOCAL_JAR to a path it will override the downloaded buildtools.jar
-  if (process.env.LOCAL_JAR) {
-    return process.env.LOCAL_JAR;
+  // If you set CRASHLYTICS_LOCAL_JAR to a path it will override the downloaded buildtools.jar
+  if (process.env.CRASHLYTICS_LOCAL_JAR) {
+    return process.env.CRASHLYTICS_LOCAL_JAR;
   }
 
   const jarPath = path.join(JAR_CACHE_DIR, `crashlytics-buildtools-${JAR_VERSION}.jar`);

@@ -35,7 +35,6 @@ export const command = new Command("crashlytics:symbols:upload <symbolFiles...>"
   .option("--app <appID>", "the app id of your Firebase app")
   .option("--generator [breakpad|csym]", "the symbol generator being used, default is breakpad")
   .option("--dry-run", "generate symbols without uploading them")
-  .option("--debug", "print debug output and logging from the underlying uploader tool")
   .action(async (symbolFiles: string[], options: CommandOptions) => {
     const app = getGoogleAppID(options);
     const generator = getSymbolGenerator(options);

@@ -24,7 +24,6 @@ export const command = new Command("crashlytics:mappingfile:upload <mappingFile>
     "--resource-file <resourceFile>",
     "path to the Android resource XML file that includes the mapping file id"
   )
-  .option("--debug", "print debug output and logging from the underlying uploader tool")
   .action(async (mappingFile: string, options: CommandOptions) => {
     const app = getGoogleAppID(options);
     const debug = !!options.debug;
