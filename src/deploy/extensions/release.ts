@@ -1,10 +1,12 @@
 import Queue from "../../throttler/queue";
 import * as tasks from "./tasks";
+import * as planner from "./planner";
 import { Context, Payload } from "./args";
 import { FirebaseError } from "../../error";
 import { ErrorHandler } from "./errors";
 import { Options } from "../../options";
 import { needProjectId } from "../../projectUtils";
+import { saveEtags } from "../../extensions/etags";
 
 export async function release(context: Context, options: Options, payload: Payload) {
   const projectId = needProjectId(options);
@@ -43,6 +45,10 @@ export async function release(context: Context, options: Options, payload: Paylo
   deploymentQueue.close();
 
   await deploymentPromise;
+
+  // After deployment, write the latest etags to RC so we can detect out of band changes in the next deploy.
+  const newHave = await planner.have(projectId);
+  saveEtags(options.rc, projectId, newHave);
 
   if (errorHandler.hasErrors()) {
     errorHandler.print();

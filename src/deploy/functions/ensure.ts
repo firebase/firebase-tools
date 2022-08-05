@@ -1,15 +1,13 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
 import { ensure } from "../../ensureApiEnabled";
 import { FirebaseError, isBillingError } from "../../error";
 import { logLabeledBullet, logLabeledSuccess } from "../../utils";
 import { ensureServiceAgentRole } from "../../gcp/secretManager";
-import { previews } from "../../previews";
 import { getFirebaseProject } from "../../management/projects";
 import { assertExhaustive } from "../../functional";
 import { track } from "../../track";
 import * as backend from "./backend";
-import * as ensureApiEnabled from "../../ensureApiEnabled";
 
 const FAQ_URL = "https://firebase.google.com/support/faq#functions-runtime";
 const CLOUD_BUILD_API = "cloudbuild.googleapis.com";
@@ -82,30 +80,16 @@ export async function cloudBuildEnabled(projectId: string): Promise<void> {
   }
 }
 
-// We previously force-enabled AR. We want to wait on this to see if we can give
-// an upgrade warning in the future. If it already is enabled though we want to
-// remember this and still use the cleaner if necessary.
-export async function maybeEnableAR(projectId: string): Promise<boolean> {
-  if (!previews.artifactregistry) {
-    return ensureApiEnabled.check(
-      projectId,
-      "artifactregistry.googleapis.com",
-      "functions",
-      /* silent= */ true
-    );
-  }
-  await ensureApiEnabled.ensure(projectId, "artifactregistry.googleapis.com", "functions");
-  return true;
-}
-
 /**
  * Returns a mapping of all secrets declared in a stack to the bound service accounts.
  */
 async function secretsToServiceAccounts(b: backend.Backend): Promise<Record<string, Set<string>>> {
   const secretsToSa: Record<string, Set<string>> = {};
   for (const e of backend.allEndpoints(b)) {
-    const sa = e.serviceAccountEmail || (await module.exports.defaultServiceAccount(e));
-    for (const s of e.secretEnvironmentVariables! || []) {
+    // BUG BUG BUG? Test whether we've resolved e.serviceAccount to be project-relative
+    // by this point.
+    const sa = e.serviceAccount || ((await module.exports.defaultServiceAccount(e)) as string);
+    for (const s of e.secretEnvironmentVariables || []) {
       const serviceAccounts = secretsToSa[s.secret] || new Set();
       serviceAccounts.add(sa);
       secretsToSa[s.secret] = serviceAccounts;

@@ -1,5 +1,5 @@
 import * as utils from "../utils";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as childProcess from "child_process";
 import { FirebaseError } from "../error";
 const needProjectId = require("../projectUtils").needProjectId;
@@ -31,7 +31,7 @@ function runCommand(command: string, childOptions: childProcess.SpawnOptions) {
       if (signal) {
         reject(new Error("Command terminated with signal " + signal));
       } else if (code !== 0) {
-        reject(new Error("Command terminated with non-zero exit code" + code));
+        reject(new Error("Command terminated with non-zero exit code " + code));
       } else {
         resolve();
       }
@@ -87,7 +87,7 @@ function runTargetCommands(
   };
 
   const runAllCommands = commands.reduce((soFar: Promise<unknown>, command: string) => {
-    soFar.then(() => runCommand(command, childOptions));
+    return soFar.then(() => runCommand(command, childOptions));
   }, Promise.resolve());
 
   // We currently use the resource name in info logs in the rest of the deploy.
@@ -101,7 +101,10 @@ function runTargetCommands(
   return runAllCommands
     .then(() => {
       utils.logSuccess(
-        clc.green.bold(logIdentifier + ":") + " Finished running " + clc.bold(hook) + " script."
+        clc.green(clc.bold(logIdentifier + ":")) +
+          " Finished running " +
+          clc.bold(hook) +
+          " script."
       );
     })
     .catch((err: any) => {

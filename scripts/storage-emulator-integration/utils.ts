@@ -20,7 +20,6 @@ export const SERVICE_ACCOUNT_KEY = "service-account-key.json";
 // Firebase Emulator config, for starting up emulators
 export const FIREBASE_EMULATOR_CONFIG = "firebase.json";
 export const SMALL_FILE_SIZE = 200 * 1024; /* 200 kB */
-export const LARGE_FILE_SIZE = 20 * 1024 * 1024; /* 20 MiB */
 
 /**
  * Reads a JSON file in the current directory.
@@ -28,12 +27,15 @@ export const LARGE_FILE_SIZE = 20 * 1024 * 1024; /* 20 MiB */
  * @param filename name of the JSON file to be read. Must be in the current directory.
  */
 export function readJson(filename: string) {
+  return JSON.parse(readFile(filename));
+}
+
+export function readFile(filename: string): string {
   const fullPath = path.join(__dirname, filename);
   if (!fs.existsSync(fullPath)) {
     throw new Error(`Can't find file at ${filename}`);
   }
-  const data = fs.readFileSync(fullPath, "utf8");
-  return JSON.parse(data);
+  return fs.readFileSync(fullPath, "utf8");
 }
 
 export function readProdAppConfig() {
@@ -73,12 +75,15 @@ export function getStorageEmulatorHost(emulatorConfig: FrameworkOptions) {
 }
 
 export function createRandomFile(filename: string, sizeInBytes: number, tmpDir?: string): string {
+  return writeToFile(filename, crypto.randomBytes(sizeInBytes), tmpDir);
+}
+
+export function writeToFile(filename: string, contents: Buffer, tmpDir?: string): string {
   if (!tmpDir) {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "storage-files"));
   }
   const fullPath = path.join(tmpDir, filename);
-  const bytes = crypto.randomBytes(sizeInBytes);
-  fs.writeFileSync(fullPath, bytes);
+  fs.writeFileSync(fullPath, contents);
 
   return fullPath;
 }
@@ -121,4 +126,10 @@ export async function uploadText(
     format ?? "raw",
     JSON.stringify(metadata ?? {})
   )!;
+}
+
+export async function signInToFirebaseAuth(page: puppeteer.Page): Promise<void> {
+  await page.evaluate(async () => {
+    await firebase.auth().signInAnonymously();
+  });
 }

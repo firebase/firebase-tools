@@ -195,6 +195,30 @@ describe("function triggers", () => {
     it("should have have triggered cloud functions", () => {
       expect(test.authTriggerCount).to.equal(1);
     });
+
+    it("should create a user in the auth emulator", async function (this) {
+      this.timeout(EMULATOR_TEST_TIMEOUT * 2);
+      const response = await test.createUserFromAuth();
+      expect(response.status).to.equal(200);
+      await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS));
+    });
+
+    it("should have triggered cloud functions", () => {
+      expect(test.authBlockingCreateV2TriggerCount).to.equal(1);
+      // Creating a User also triggers the before sign in trigger
+      expect(test.authBlockingSignInV2TriggerCount).to.equal(1);
+    });
+
+    it("should sign in a user in the auth emulator", async function (this) {
+      this.timeout(EMULATOR_TEST_TIMEOUT * 2);
+      const response = await test.signInUserFromAuth();
+      expect(response.status).to.equal(200);
+      await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS));
+    });
+
+    it("should have triggered cloud functions", () => {
+      expect(test.authBlockingSignInV2TriggerCount).to.equal(2);
+    });
   });
 
   describe("storage emulator triggered functions", () => {

@@ -1,4 +1,4 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
 import * as utils from "../utils";
 import { logger } from "../logger";

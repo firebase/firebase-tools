@@ -68,6 +68,7 @@ export const EMULATORS_SUPPORTED_BY_USE_EMULATOR = [
   Emulators.DATABASE,
   Emulators.FIRESTORE,
   Emulators.FUNCTIONS,
+  Emulators.STORAGE,
 ];
 
 // TODO: Is there a way we can just allow iteration over the enum?

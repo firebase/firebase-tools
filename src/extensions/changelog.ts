@@ -1,4 +1,4 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const { marked } = require("marked");
 import * as path from "path";
@@ -59,7 +59,7 @@ export function displayReleaseNotes(releaseNotes: Record<string, string>, fromVe
   const table = new Table({ head: ["Version", "What's New"], style: { head: ["yellow", "bold"] } });
   for (const [version, note] of Object.entries(releaseNotes)) {
     if (breakingVersions.includes(version)) {
-      table.push([clc.yellow.bold(version), marked(note)]);
+      table.push([clc.yellow(clc.bold(version)), marked(note)]);
     } else {
       table.push([version, marked(note)]);
     }

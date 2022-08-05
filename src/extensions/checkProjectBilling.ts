@@ -1,4 +1,4 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as opn from "open";
 
 import * as cloudbilling from "../gcp/cloudbilling";
@@ -87,7 +87,7 @@ async function setUpBillingAccount(projectId: string) {
     `Extension require your project to be upgraded to the Blaze plan. Please visit the following link to add a billing account:`
   );
   logger.info();
-  logger.info(clc.bold.underline(billingURL));
+  logger.info(clc.bold(clc.underline(billingURL)));
   logger.info();
 
   const open = await prompt.promptOnce({
