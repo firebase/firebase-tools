@@ -1,7 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import * as express from "express";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as http from "http";
 import * as jwt from "jsonwebtoken";
 import * as cors from "cors";
@@ -476,28 +476,11 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
   }
 
-  /**
-   * When a user changes their code, we need to look for triggers defined in their updates sources.
-   *
-   * TODO(b/216167890): Gracefully handle removal of deleted function definitions
-   */
-  async loadTriggers(emulatableBackend: EmulatableBackend, force = false): Promise<void> {
-    // Before loading any triggers we need to make sure there are no 'stale' workers
-    // in the pool that would cause us to run old code.
-    this.workerPool.refresh();
-
-    if (!emulatableBackend.nodeBinary) {
-      throw new FirebaseError(
-        `No node binary for ${emulatableBackend.functionsDir}. This should never happen.`
-      );
-    }
-
-    // reset blocking functions config for reloads
-    this.blockingFunctionsConfig = {};
-
-    let triggerDefinitions: EmulatedTriggerDefinition[];
+  async discoverTriggers(
+    emulatableBackend: EmulatableBackend
+  ): Promise<EmulatedTriggerDefinition[]> {
     if (emulatableBackend.predefinedTriggers) {
-      triggerDefinitions = emulatedFunctionsByRegion(
+      return emulatedFunctionsByRegion(
         emulatableBackend.predefinedTriggers,
         emulatableBackend.secretEnv
       );
@@ -536,8 +519,46 @@ export class FunctionsEmulator implements EmulatorInstance {
       for (const e of endpoints) {
         e.codebase = emulatableBackend.codebase;
       }
-      triggerDefinitions = emulatedFunctionsFromEndpoints(endpoints);
+      return emulatedFunctionsFromEndpoints(endpoints);
     }
+  }
+
+  /**
+   * When a user changes their code, we need to look for triggers defined in their updates sources.
+   *
+   * TODO(b/216167890): Gracefully handle removal of deleted function definitions
+   */
+  async loadTriggers(emulatableBackend: EmulatableBackend, force = false): Promise<void> {
+    if (!emulatableBackend.nodeBinary) {
+      throw new FirebaseError(
+        `No node binary for ${emulatableBackend.functionsDir}. This should never happen.`
+      );
+    }
+
+    let triggerDefinitions: EmulatedTriggerDefinition[] = [];
+    try {
+      triggerDefinitions = await this.discoverTriggers(emulatableBackend);
+      this.logger.logLabeled(
+        "SUCCESS",
+        "functions",
+        `Loaded functions definitions from source: ${triggerDefinitions
+          .map((t) => t.entryPoint)
+          .join(", ")}.`
+      );
+    } catch (e) {
+      this.logger.logLabeled(
+        "ERROR",
+        "functions",
+        `Failed to load function definition from source: ${e}`
+      );
+      return;
+    }
+    // Before loading any triggers we need to make sure there are no 'stale' workers
+    // in the pool that would cause us to run old code.
+    this.workerPool.refresh();
+    // reset blocking functions config for reloads
+    this.blockingFunctionsConfig = {};
+
     // When force is true we set up all triggers, otherwise we only set up
     // triggers which have a unique function name
     const toSetup = triggerDefinitions.filter((definition) => {
@@ -1073,6 +1094,12 @@ export class FunctionsEmulator implements EmulatorInstance {
     envs.K_REVISION = "1";
     envs.PORT = "80";
 
+    // TODO(danielylee): Later, we want timeout to be enforce by the data plane. For now, we rely on the runtime to
+    // enforce timeout.
+    if (trigger?.timeoutSeconds) {
+      envs.FUNCTIONS_EMULATOR_TIMEOUT_SECONDS = trigger.timeoutSeconds.toString();
+    }
+
     if (trigger) {
       const target = trigger.entryPoint;
       envs.FUNCTION_TARGET = target;
@@ -1092,8 +1119,6 @@ export class FunctionsEmulator implements EmulatorInstance {
       skipTokenVerification: true,
       enableCors: true,
     });
-    // TODO(danielylee): Support timeouts. Temporarily dropping the feature until we finish refactoring.
-
     // Make firebase-admin point at the Firestore emulator
     const firestoreEmulator = this.getEmulatorInfo(Emulators.FIRESTORE);
     if (firestoreEmulator != null) {

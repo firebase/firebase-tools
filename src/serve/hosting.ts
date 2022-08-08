@@ -1,4 +1,4 @@
-import clc = require("cli-color");
+import * as clc from "colorette";
 
 const superstatic = require("superstatic").server; // Superstatic has no types, requires odd importing.
 const morgan = require("morgan");
@@ -78,6 +78,7 @@ function startServer(options: any, config: any, port: number, init: TemplateServ
     port: port,
     host: options.host,
     config: config,
+    compression: true,
     cwd: detectProjectRoot(options),
     stack: "strict",
     before: {

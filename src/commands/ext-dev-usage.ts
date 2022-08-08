@@ -1,5 +1,5 @@
 import Table = require("cli-table");
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as utils from "../utils";
 import { Command } from "../command";
 import { Aligner, CmQuery, queryTimeSeries, TimeSeriesView } from "../gcp/cloudmonitoring";

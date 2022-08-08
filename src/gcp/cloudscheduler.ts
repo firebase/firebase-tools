@@ -6,9 +6,9 @@ import { cloudschedulerOrigin } from "../api";
 import { Client } from "../apiv2";
 import * as backend from "../deploy/functions/backend";
 import * as proto from "./proto";
-import { assertExhaustive } from "../functional";
+import { assertExhaustive, nullsafeVisitor } from "../functional";
 
-const VERSION = "v1beta1";
+const VERSION = "v1";
 const DEFAULT_TIME_ZONE = "America/Los_Angeles";
 
 export interface PubsubTarget {
@@ -52,7 +52,7 @@ export interface Job {
   name: string;
   schedule: string;
   description?: string;
-  timeZone?: string;
+  timeZone?: string | null;
 
   // oneof target
   httpTarget?: HttpTarget;
@@ -60,25 +60,12 @@ export interface Job {
   // end oneof target
 
   retryConfig?: {
-    retryCount?: number;
-    maxRetryDuration?: string;
-    minBackoffDuration?: string;
-    maxBackoffDuration?: string;
-    maxDoublings?: number;
+    retryCount?: number | null;
+    maxRetryDuration?: string | null;
+    minBackoffDuration?: string | null;
+    maxBackoffDuration?: string | null;
+    maxDoublings?: number | null;
   };
-}
-
-export function assertValidJob(job: Job) {
-  proto.assertOneOf("Scheduler Job", job, "target", "httpTarget", "pubsubTarget");
-  if (job.httpTarget) {
-    proto.assertOneOf(
-      "Scheduler Job",
-      job.httpTarget,
-      "httpTarget.authorizationHeader",
-      "oauthToken",
-      "odicToken"
-    );
-  }
 }
 
 const apiClient = new Client({ urlPrefix: cloudschedulerOrigin, apiVersion: VERSION });
@@ -122,8 +109,16 @@ export function getJob(name: string): Promise<any> {
  * @param job A job to update.
  */
 export function updateJob(job: Job): Promise<any> {
-  // Note that name cannot be updated.
-  return apiClient.patch(`/${job.name}`, Object.assign({ timeZone: DEFAULT_TIME_ZONE }, job));
+  const fieldMasks = proto.fieldMasks(job, "pubsubTarget");
+  return apiClient.patch(
+    `/${job.name}`,
+    { timeZone: DEFAULT_TIME_ZONE, ...job },
+    {
+      queryParams: {
+        updateMask: fieldMasks.join(","),
+      },
+    }
+  );
 }
 
 /**
@@ -161,7 +156,7 @@ export async function createOrReplaceJob(job: Job): Promise<any> {
     // We set this here to avoid recreating schedules that use the default timeZone
     job.timeZone = DEFAULT_TIME_ZONE;
   }
-  if (isIdentical(existingJob.body, job)) {
+  if (!needUpdate(existingJob.body, job)) {
     logger.debug(`scheduler job ${jobName} is up to date, no changes required`);
     return;
   }
@@ -172,17 +167,48 @@ export async function createOrReplaceJob(job: Job): Promise<any> {
 
 /**
  * Check if two jobs are functionally equivalent.
- * @param job a job to compare.
- * @param otherJob a job to compare.
+ * @param existingJob a job to compare.
+ * @param newJob a job to compare.
  */
-function isIdentical(job: Job, otherJob: Job): boolean {
-  return (
-    job &&
-    otherJob &&
-    job.schedule === otherJob.schedule &&
-    job.timeZone === otherJob.timeZone &&
-    _.isEqual(job.retryConfig, otherJob.retryConfig)
-  );
+function needUpdate(existingJob: Job, newJob: Job): boolean {
+  if (!existingJob) {
+    return true;
+  }
+  if (!newJob) {
+    return true;
+  }
+  if (existingJob.schedule !== newJob.schedule) {
+    return true;
+  }
+  if (existingJob.timeZone !== newJob.timeZone) {
+    return true;
+  }
+  if (newJob.retryConfig) {
+    if (!existingJob.retryConfig) {
+      return true;
+    }
+    if (!_.isMatch(existingJob.retryConfig, newJob.retryConfig)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/** The name of the Cloud Scheduler job we will use for this endpoint. */
+export function jobNameForEndpoint(
+  endpoint: backend.Endpoint & backend.ScheduleTriggered,
+  appEngineLocation: string
+): string {
+  const id = backend.scheduleIdForFunction(endpoint);
+  return `projects/${endpoint.project}/locations/${appEngineLocation}/jobs/${id}`;
+}
+
+/** The name of the pubsub topic that the Cloud Scheduler job will use for this endpoint. */
+export function topicNameForEndpoint(
+  endpoint: backend.Endpoint & backend.ScheduleTriggered
+): string {
+  const id = backend.scheduleIdForFunction(endpoint);
+  return `projects/${endpoint.project}/topics/${id}`;
 }
 
 /** Converts an Endpoint to a CloudScheduler v1 job */
@@ -192,11 +218,9 @@ export function jobFromEndpoint(
 ): Job {
   const job: Partial<Job> = {};
   if (endpoint.platform === "gcfv1") {
-    const id = backend.scheduleIdForFunction(endpoint);
-    const region = appEngineLocation;
-    job.name = `projects/${endpoint.project}/locations/${region}/jobs/${id}`;
+    job.name = jobNameForEndpoint(endpoint, appEngineLocation);
     job.pubsubTarget = {
-      topicName: `projects/${endpoint.project}/topics/${id}`,
+      topicName: topicNameForEndpoint(endpoint),
       attributes: {
         scheduled: "true",
       },
@@ -212,7 +236,47 @@ export function jobFromEndpoint(
   } else {
     assertExhaustive(endpoint.platform);
   }
-  proto.copyIfPresent(job, endpoint.scheduleTrigger, "schedule", "retryConfig", "timeZone");
+  if (!endpoint.scheduleTrigger.schedule) {
+    throw new FirebaseError(
+      "Cannot create a scheduler job without a schedule:" + JSON.stringify(endpoint)
+    );
+  }
+  job.schedule = endpoint.scheduleTrigger.schedule;
+  job.timeZone = endpoint.scheduleTrigger.timeZone || DEFAULT_TIME_ZONE;
+  if (endpoint.scheduleTrigger.retryConfig) {
+    job.retryConfig = {};
+    proto.copyIfPresent(
+      job.retryConfig,
+      endpoint.scheduleTrigger.retryConfig,
+      "maxDoublings",
+      "retryCount"
+    );
+    proto.convertIfPresent(
+      job.retryConfig,
+      endpoint.scheduleTrigger.retryConfig,
+      "maxBackoffDuration",
+      "maxBackoffSeconds",
+      nullsafeVisitor(proto.durationFromSeconds)
+    );
+    proto.convertIfPresent(
+      job.retryConfig,
+      endpoint.scheduleTrigger.retryConfig,
+      "minBackoffDuration",
+      "minBackoffSeconds",
+      nullsafeVisitor(proto.durationFromSeconds)
+    );
+    proto.convertIfPresent(
+      job.retryConfig,
+      endpoint.scheduleTrigger.retryConfig,
+      "maxRetryDuration",
+      "maxRetrySeconds",
+      nullsafeVisitor(proto.durationFromSeconds)
+    );
+    // If no retry configuration exists, delete the key to preserve existing retry config.
+    if (!Object.keys(job.retryConfig).length) {
+      delete job.retryConfig;
+    }
+  }
 
   // TypeScript compiler isn't noticing that name is defined in all code paths.
   return job as Job;

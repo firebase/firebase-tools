@@ -1,4 +1,4 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
 import { ensure } from "../../ensureApiEnabled";
 import { FirebaseError, isBillingError } from "../../error";
@@ -86,8 +86,10 @@ export async function cloudBuildEnabled(projectId: string): Promise<void> {
 async function secretsToServiceAccounts(b: backend.Backend): Promise<Record<string, Set<string>>> {
   const secretsToSa: Record<string, Set<string>> = {};
   for (const e of backend.allEndpoints(b)) {
-    const sa = e.serviceAccountEmail || (await module.exports.defaultServiceAccount(e));
-    for (const s of e.secretEnvironmentVariables! || []) {
+    // BUG BUG BUG? Test whether we've resolved e.serviceAccount to be project-relative
+    // by this point.
+    const sa = e.serviceAccount || ((await module.exports.defaultServiceAccount(e)) as string);
+    for (const s of e.secretEnvironmentVariables || []) {
       const serviceAccounts = secretsToSa[s.secret] || new Set();
       serviceAccounts.add(sa);
       secretsToSa[s.secret] = serviceAccounts;

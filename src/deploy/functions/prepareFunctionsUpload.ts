@@ -1,5 +1,5 @@
 import * as archiver from "archiver";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as filesize from "filesize";
 import * as fs from "fs";
 import * as path from "path";
@@ -95,7 +95,7 @@ async function packageSource(
   }
 
   utils.logBullet(
-    clc.cyan.bold("functions:") +
+    clc.cyan(clc.bold("functions:")) +
       " packaged " +
       clc.bold(sourceDir) +
       " (" +
