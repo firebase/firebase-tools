@@ -1,4 +1,4 @@
-import { bold } from "cli-color";
+import { bold } from "colorette";
 
 import { track } from "./track";
 import { serviceUsageOrigin } from "./api";

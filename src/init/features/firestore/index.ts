@@ -7,12 +7,12 @@ import * as rules from "./rules";
 import * as indexes from "./indexes";
 import { FirebaseError } from "../../../error";
 
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
 async function checkProjectSetup(setup: any, config: any, options: any) {
   const firestoreUnusedError = new FirebaseError(
-    `It looks like you haven't used Cloud Firestore in this project before. Go to ${clc.bold.underline(
-      `https://console.firebase.google.com/project/${setup.projectId}/firestore`
+    `It looks like you haven't used Cloud Firestore in this project before. Go to ${clc.bold(
+      clc.underline(`https://console.firebase.google.com/project/${setup.projectId}/firestore`)
     )} to create your Cloud Firestore database.`,
     { exit: 1 }
   );

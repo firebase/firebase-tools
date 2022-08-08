@@ -1,4 +1,4 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
 import * as args from "./args";
 import * as backend from "./backend";
@@ -64,7 +64,7 @@ export async function prepare(
       /* silent=*/ true
     ),
     ensure.cloudBuildEnabled(projectId),
-    ensureApiEnabled.check(projectId, "artifactregistry.googleapis.com", "artifactregistry"),
+    ensureApiEnabled.ensure(projectId, "artifactregistry.googleapis.com", "artifactregistry"),
   ]);
 
   // Get the Firebase Config, and set it on each function in the deployment.
@@ -112,7 +112,11 @@ export async function prepare(
     const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
     const envs = { ...userEnvs, ...firebaseEnvs };
     const wantBuild: build.Build = await runtimeDelegate.discoverBuild(runtimeConfig, firebaseEnvs);
-    const wantBackend: backend.Backend = build.resolveBackend(wantBuild, userEnvs);
+    const wantBackend: backend.Backend = await build.resolveBackend(
+      wantBuild,
+      userEnvOpt,
+      userEnvs
+    );
     wantBackend.environmentVariables = envs;
     for (const endpoint of backend.allEndpoints(wantBackend)) {
       endpoint.environmentVariables = wantBackend.environmentVariables;
@@ -257,8 +261,9 @@ export function inferDetailsFromExisting(
 
     // If the instance size is set out of bounds or was previously set and is now
     // unset we still need to remember it so that the min instance price estimator
-    // is accurate.
-    if (!wantE.availableMemoryMb && haveE.availableMemoryMb) {
+    // is accurate. If, on the other hand, we have a null value for availableMemoryMb
+    // we need to keep that null (meaning "use defaults").
+    if (typeof wantE.availableMemoryMb === "undefined" && haveE.availableMemoryMb) {
       wantE.availableMemoryMb = haveE.availableMemoryMb;
     }
 
@@ -266,10 +271,10 @@ export function inferDetailsFromExisting(
     // the customer sets CPU <1. We'll instead error that you can't have both.
     // We may want to handle this case, though it might also be surprising to
     // customers if they _don't_ get an error and we silently drop concurrency.
-    if (!wantE.concurrency && haveE.concurrency) {
+    if (typeof wantE.concurrency === "undefined" && haveE.concurrency) {
       wantE.concurrency = haveE.concurrency;
     }
-    if (!wantE.cpu && haveE.cpu) {
+    if (typeof wantE.cpu === "undefined" && haveE.cpu) {
       wantE.cpu = haveE.cpu;
     }
 

@@ -147,10 +147,24 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
   firebaseStorageAPI.get("/b/:bucketId/o", async (req, res) => {
     const maxResults = req.query.maxResults?.toString();
     let listResponse: ListObjectsResponse;
+    // The prefix query param must be empty or end in a "/"
+    let prefix = "";
+    if (req.query.prefix) {
+      prefix = req.query.prefix.toString();
+      if (prefix.charAt(prefix.length - 1) !== "/") {
+        return res.status(400).json({
+          error: {
+            code: 400,
+            message:
+              "The prefix parameter is required to be empty or ends with a single / character.",
+          },
+        });
+      }
+    }
     try {
       listResponse = await storageLayer.listObjects({
         bucketId: req.params.bucketId,
-        prefix: req.query.prefix ? req.query.prefix.toString() : "",
+        prefix: prefix,
         delimiter: req.query.delimiter ? req.query.delimiter.toString() : "",
         pageToken: req.query.pageToken?.toString(),
         maxResults: maxResults ? +maxResults : undefined,

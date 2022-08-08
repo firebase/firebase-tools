@@ -1,7 +1,7 @@
 import * as fs from "fs-extra";
 import * as os from "os";
 import * as path from "path";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import Table = require("cli-table");
 import * as spawn from "cross-spawn";
 
@@ -283,7 +283,7 @@ export class ExtensionsEmulator implements EmulatorInstance {
           apiToWarn.apiName,
           apiToWarn.instanceIds,
           apiToWarn.enabled ? "Yes" : "No",
-          apiToWarn.enabled ? "" : clc.bold.underline(enablementUri),
+          apiToWarn.enabled ? "" : clc.bold(clc.underline(enablementUri)),
         ]);
       }
       if (Constants.isDemoProject(this.args.projectId)) {
