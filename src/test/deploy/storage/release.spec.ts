@@ -4,6 +4,7 @@ import * as sinon from "sinon";
 import { RulesDeploy } from "../../../rulesDeploy";
 
 import { default as release } from "../../../deploy/storage/release";
+import { RC } from "../../../rc";
 
 describe("storage.release", () => {
   it("should not release anything if there are no deployable configs", async () => {
@@ -24,6 +25,23 @@ describe("storage.release", () => {
     };
 
     await expect(release(context, {})).to.eventually.deep.equal(["foo"]);
+    expect(rulesDeploy.release).to.be.calledOnce;
+  });
+
+  it("should release rules based on targets", async () => {
+    const project = "my-project";
+    const rulesDeploy = sinon.createStubInstance(RulesDeploy);
+    rulesDeploy.release.resolves();
+    const rc = sinon.createStubInstance(RC);
+    rc.target.withArgs(project, "storage", "my-target").returns(["bar"]);
+    const context = {
+      storage: {
+        rulesDeploy,
+        rulesConfigsToDeploy: [{ target: "my-target", rules: "true" }],
+      },
+    };
+
+    await expect(release(context, { project, rc })).to.eventually.deep.equal(["bar"]);
     expect(rulesDeploy.release).to.be.calledOnce;
   });
 });
