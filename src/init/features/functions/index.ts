@@ -9,7 +9,7 @@ import { Options } from "../../../options";
 import { ensure } from "../../../ensureApiEnabled";
 
 /**
- * Setup a new firebase project for functions.
+ * Set up a new firebase project for functions.
  */
 export async function doSetup(setup: any, config: any, options: Options) {
   logger.info();
