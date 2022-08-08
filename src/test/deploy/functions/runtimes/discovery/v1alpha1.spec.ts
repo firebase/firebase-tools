@@ -6,6 +6,7 @@ import { Runtime } from "../../../../../deploy/functions/runtimes";
 import * as v1alpha1 from "../../../../../deploy/functions/runtimes/discovery/v1alpha1";
 import { BEFORE_CREATE_EVENT } from "../../../../../functions/events/v1";
 import { Param } from "../../../../../deploy/functions/params";
+import { FirebaseError } from "../../../../../error";
 
 const PROJECT = "project";
 const REGION = "region";
@@ -15,6 +16,293 @@ const MIN_WIRE_ENDPOINT: Omit<v1alpha1.WireEndpoint, "httpsTrigger"> = {
 };
 
 describe("buildFromV1Alpha", () => {
+  const MIN_ENDPOINT: Omit<build.Endpoint, "httpsTrigger"> = {
+    entryPoint: "entryPoint",
+    platform: "gcfv2",
+    project: PROJECT,
+    region: [REGION],
+    runtime: RUNTIME,
+  };
+
+  describe("parser errors", () => {
+    function assertParserError(obj: unknown): void {
+      expect(() => v1alpha1.buildFromV1Alpha1(obj, PROJECT, REGION, RUNTIME)).to.throw(
+        FirebaseError
+      );
+    }
+
+    describe("build keys", () => {
+      it("throws on the empty object", () => {
+        assertParserError({});
+      });
+
+      const invalidTopLevelKeys = {
+        requiredAPIS: ["cloudscheduler.googleapis.com"],
+        endpoints: [],
+      };
+      for (const [key, value] of Object.entries(invalidTopLevelKeys)) {
+        it(`throws on invalid value for top-level key ${key}`, () => {
+          const obj = {
+            requiredAPIs: [],
+            endpoints: {},
+            [key]: value,
+          };
+          assertParserError(obj);
+        });
+      }
+
+      it("throws on unknown keys", () => {
+        assertParserError({ eventArcTriggers: [] });
+      });
+    }); // top level keys
+
+    describe("Endpoint keys", () => {
+      it("invalid keys", () => {
+        assertParserError({
+          endpoints: {
+            id: {
+              ...MIN_WIRE_ENDPOINT,
+              httpsTrigger: {},
+              invalid: "key",
+            },
+          },
+        });
+      });
+
+      for (const key of Object.keys(MIN_ENDPOINT)) {
+        it(`missing Endpoint key ${key}`, () => {
+          const func = { ...MIN_ENDPOINT, httpsTrigger: {} } as Record<string, unknown>;
+          delete func[key];
+          assertParserError({ cloudFunctions: [func] });
+        });
+      }
+
+      const invalidFunctionEntries = {
+        platform: 2,
+        id: 1,
+        region: "us-central1",
+        project: 42,
+        runtime: null,
+        entryPoint: 5,
+        availableMemoryMb: "2GB",
+        maxInstances: "2",
+        minInstances: "1",
+        serviceAccount: { ldap: "inlined" },
+        timeoutSeconds: "60s",
+        trigger: [],
+        vpcConnector: 2,
+        vpcConnectorEgressSettings: {},
+        labels: "yes",
+        ingressSettings: true,
+        cpu: "gcf_gen6",
+      };
+      for (const [key, value] of Object.entries(invalidFunctionEntries)) {
+        it(`invalid value for CloudFunction key ${key}`, () => {
+          const endpoint = {
+            ...MIN_ENDPOINT,
+            httpsTrigger: {},
+            [key]: value,
+          };
+          assertParserError({ endpoints: { endpoint } });
+        });
+      }
+    }); // Top level function keys
+
+    describe("Event triggers", () => {
+      const validTrigger: backend.EventTrigger = {
+        eventType: "google.pubsub.v1.topic.publish",
+        eventFilters: { resource: "projects/p/topics/t" },
+        retry: true,
+        region: "global",
+        serviceAccount: "root@",
+      };
+      it(`missing event trigger key eventType`, () => {
+        const eventTrigger = { ...validTrigger } as Record<string, unknown>;
+        delete eventTrigger["eventType"];
+        assertParserError({
+          endpoints: {
+            func: { ...MIN_ENDPOINT, eventTrigger },
+          },
+        });
+      });
+
+      const invalidEntries = {
+        eventType: { foo: "bar" },
+        eventFilters: 42,
+        retry: {},
+        region: ["us-central1"],
+        serviceAccount: ["ldap"],
+        channel: "foo/bar/channel-id",
+      };
+      for (const [key, value] of Object.entries(invalidEntries)) {
+        it(`invalid value for event trigger key ${key}`, () => {
+          const eventTrigger = {
+            ...validTrigger,
+            [key]: value,
+          };
+          assertParserError({
+            endpoints: {
+              func: { ...MIN_ENDPOINT, eventTrigger },
+            },
+          });
+        });
+      }
+    }); // Event triggers
+
+    describe("httpsTriggers", () => {
+      it("invalid value for https trigger key invoker", () => {
+        assertParserError({
+          endpoints: {
+            func: {
+              ...MIN_ENDPOINT,
+              httpsTrigger: { invoker: 42 },
+            },
+          },
+        });
+      });
+    });
+
+    describe("scheduleTriggers", () => {
+      const validTrigger: backend.ScheduleTrigger = {
+        schedule: "every 5 minutes",
+        timeZone: "America/Los_Angeles",
+        retryConfig: {
+          retryCount: 42,
+          minBackoffSeconds: 1,
+          maxBackoffSeconds: 20,
+          maxDoublings: 20,
+          maxRetrySeconds: 120,
+        },
+      };
+
+      const invalidEntries = {
+        schedule: 46,
+        timeZone: {},
+      };
+      for (const [key, value] of Object.entries(invalidEntries)) {
+        it(`invalid value for schedule trigger key ${key}`, () => {
+          const scheduleTrigger = {
+            ...validTrigger,
+            [key]: value,
+          };
+          assertParserError({
+            endpoints: {
+              func: { ...MIN_ENDPOINT, scheduleTrigger },
+            },
+          });
+        });
+      }
+
+      const invalidRetryEntries = {
+        retryCount: "42",
+        minBackoffSeconds: "1s",
+        maxBackoffSeconds: "20s",
+        maxDoublings: "20",
+        maxRetrySeconds: "120s",
+      };
+      for (const [key, value] of Object.entries(invalidRetryEntries)) {
+        const retryConfig = {
+          ...validTrigger.retryConfig,
+          [key]: value,
+        };
+        const scheduleTrigger = { ...validTrigger, retryConfig };
+        assertParserError({
+          endpoints: {
+            func: { ...MIN_ENDPOINT, scheduleTrigger },
+          },
+        });
+      }
+    });
+
+    describe("taskQueueTriggers", () => {
+      const validTrigger: backend.TaskQueueTrigger = {
+        rateLimits: {
+          maxConcurrentDispatches: 10,
+          maxDispatchesPerSecond: 20,
+        },
+        retryConfig: {
+          maxAttempts: 3,
+          maxRetrySeconds: 120,
+          minBackoffSeconds: 1,
+          maxBackoffSeconds: 30,
+          maxDoublings: 5,
+        },
+        invoker: ["custom@"],
+      };
+
+      const invalidRateLimits = {
+        maxConcurrentDispatches: "10",
+        maxDispatchesPerSecond: "20",
+      };
+      for (const [key, value] of Object.entries(invalidRateLimits)) {
+        const rateLimits = {
+          ...validTrigger.rateLimits,
+          [key]: value,
+        };
+        const taskQueueTrigger = { ...validTrigger, rateLimits };
+        assertParserError({
+          endpoints: {
+            func: { ...MIN_ENDPOINT, taskQueueTrigger },
+          },
+        });
+      }
+
+      const invalidRetryConfigs = {
+        maxAttempts: "3",
+        maxRetrySeconds: "120s",
+        minBackoffSeconds: "1s",
+        maxBackoffSeconds: "30s",
+        maxDoublings: "5",
+      };
+      for (const [key, value] of Object.entries(invalidRetryConfigs)) {
+        const retryConfig = {
+          ...validTrigger.retryConfig,
+          [key]: value,
+        };
+        const taskQueueTrigger = { ...validTrigger, retryConfig };
+        assertParserError({
+          endpoints: {
+            func: { ...MIN_ENDPOINT, taskQueueTrigger },
+          },
+        });
+      }
+    });
+
+    describe("blockingTriggers", () => {
+      const validTrigger: backend.BlockingTrigger = {
+        eventType: BEFORE_CREATE_EVENT,
+        options: {
+          accessToken: true,
+          idToken: false,
+          refreshToken: true,
+        },
+      };
+
+      const invalidOptions = {
+        eventType: true,
+        options: 11,
+      };
+
+      for (const [key, value] of Object.entries(invalidOptions)) {
+        it(`invalid value for blocking trigger key ${key}`, () => {
+          const blockingTrigger = {
+            ...validTrigger,
+            [key]: value,
+          };
+          assertParserError({
+            endpoints: {
+              func: { ...MIN_ENDPOINT, blockingTrigger },
+            },
+          });
+        });
+      }
+    });
+
+    it("detects missing triggers", () => {
+      assertParserError({ endpoints: MIN_ENDPOINT });
+    });
+  }); // Parser errors;
+
   describe("null handling", () => {
     const ENDPOINT_BASE: Omit<build.Endpoint, "httpsTrigger"> = {
       entryPoint: "entryPoint",
