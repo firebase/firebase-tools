@@ -1,4 +1,3 @@
-import * as backend from "../../backend";
 import * as build from "../../build";
 import * as params from "../../params";
 import * as runtimes from "..";
@@ -40,17 +39,17 @@ export type WireEndpoint = build.Triggered &
   Partial<{ scheduleTrigger: ScheduleTrigger }> & {
     labels?: Record<string, string> | null;
     environmentVariables?: Record<string, string> | null;
-    availableMemoryMb?: backend.MemoryOptions | build.Expression<number> | null;
-    concurrency?: number | build.Expression<number> | null;
+    availableMemoryMb?: build.MemoryOption | build.Expression<number> | null;
+    concurrency?: build.Field<number>;
     cpu?: number | "gcf_gen1" | null;
-    timeoutSeconds?: number | build.Expression<number> | null;
-    maxInstances?: number | build.Expression<number> | null;
-    minInstances?: number | build.Expression<number> | null;
+    timeoutSeconds?: build.Field<number>;
+    maxInstances?: build.Field<number>;
+    minInstances?: build.Field<number>;
     vpc?: {
       connector: string;
-      egressSettings?: backend.VpcEgressSettings | null;
+      egressSettings?: build.VpcEgressSetting | null;
     } | null;
-    ingressSettings?: backend.IngressSettings | null;
+    ingressSettings?: build.IngressSetting | null;
     serviceAccount?: string | null;
     // Note: Historically we used "serviceAccountEmail" to refer to a thing that
     // might not be an email (e.g. it might be "myAccount@"" to be project-relative)
@@ -59,14 +58,14 @@ export type WireEndpoint = build.Triggered &
     serviceAccountEmail?: string | null;
     region?: string[];
     entryPoint: string;
-    platform?: backend.FunctionsPlatform;
+    platform?: build.FunctionsPlatform;
     secretEnvironmentVariables?: Array<ManifestSecretEnv> | null;
   };
 
 export interface WireManifest {
   specVersion: string;
   params?: params.Param[];
-  requiredAPIs?: backend.RequiredAPI[];
+  requiredAPIs?: build.RequiredAPI[];
   endpoints: Record<string, WireEndpoint>;
 }
 
@@ -97,8 +96,8 @@ export function buildFromV1Alpha1(
   return bd;
 }
 
-function parseRequiredAPIs(manifest: WireManifest): backend.RequiredAPI[] {
-  const requiredAPIs: backend.RequiredAPI[] = manifest.requiredAPIs || [];
+function parseRequiredAPIs(manifest: WireManifest): build.RequiredAPI[] {
+  const requiredAPIs: build.RequiredAPI[] = manifest.requiredAPIs || [];
   for (const { api, reason } of requiredAPIs) {
     if (typeof api !== "string") {
       throw new FirebaseError(`Invalid api "${JSON.stringify(api)}. Expected string`);
@@ -119,10 +118,10 @@ function assertBuildEndpoint(ep: WireEndpoint, id: string): void {
     ep,
     {
       region: "array",
-      platform: (platform) => backend.AllFunctionsPlatforms.includes(platform),
+      platform: (platform) => build.AllFunctionsPlatforms.includes(platform),
       entryPoint: "string",
       availableMemoryMb: (mem) =>
-        mem === null || backend.isValidMemoryOption(mem) || typeof mem === "string",
+        mem === null || build.isValidMemoryOption(mem) || typeof mem === "string",
       maxInstances: "Field<number>?",
       minInstances: "Field<number>?",
       concurrency: "Field<number>?",
@@ -131,8 +130,7 @@ function assertBuildEndpoint(ep: WireEndpoint, id: string): void {
       timeoutSeconds: "Field<number>?",
       vpc: "object?",
       labels: "object?",
-      ingressSettings: (setting) =>
-        setting === null || backend.AllIngressSettings.includes(setting),
+      ingressSettings: (setting) => setting === null || build.AllIngressSettings.includes(setting),
       environmentVariables: "object?",
       secretEnvironmentVariables: "array?",
       httpsTrigger: "object",
@@ -141,8 +139,7 @@ function assertBuildEndpoint(ep: WireEndpoint, id: string): void {
       scheduleTrigger: "object",
       taskQueueTrigger: "object",
       blockingTrigger: "object",
-      cpu: (cpu: backend.Endpoint["cpu"]) =>
-        cpu === null || typeof cpu === "number" || cpu === "gcf_gen1",
+      cpu: "Field<number>?",
     },
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     (k: string) => k === "serviceAccountEmail"
@@ -150,8 +147,7 @@ function assertBuildEndpoint(ep: WireEndpoint, id: string): void {
   if (ep.vpc) {
     assertKeyTypes(prefix + ".vpc", ep.vpc, {
       connector: "string",
-      egressSettings: (setting) =>
-        setting != null && backend.AllVpcEgressSettings.includes(setting),
+      egressSettings: (setting) => setting != null && build.AllVpcEgressSettings.includes(setting),
     });
     requireKeys(prefix + ".vpc", ep.vpc, "connector");
   }

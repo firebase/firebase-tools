@@ -199,6 +199,23 @@ export interface SecretEnvVar {
   projectId: string; // The project containing the Secret
 }
 
+export type MemoryOption = 128 | 256 | 512 | 1024 | 2048 | 4096 | 8192 | 16384 | 32768;
+const allMemoryOptions: MemoryOption[] = [128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768];
+/**
+ * Is a given number a valid MemoryOption?
+ */
+export function isValidMemoryOption(mem: unknown): mem is MemoryOption {
+  return allMemoryOptions.includes(mem as MemoryOption);
+}
+
+export type FunctionsPlatform = backend.FunctionsPlatform;
+export const AllFunctionsPlatforms: FunctionsPlatform[] = backend.AllFunctionsPlatforms;
+export type VpcEgressSetting = backend.VpcEgressSettings;
+export const AllVpcEgressSettings: VpcEgressSetting[] = backend.AllVpcEgressSettings;
+export type IngressSetting = backend.IngressSettings;
+export const AllIngressSettings: IngressSetting[] = backend.AllIngressSettings;
+export type RequiredAPI = backend.RequiredAPI;
+
 export type Endpoint = Triggered & {
   // Defaults to "gcfv2". "Run" will be an additional option defined later
   platform?: "gcfv1" | "gcfv2";
