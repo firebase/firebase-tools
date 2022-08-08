@@ -10,3 +10,4 @@
 - Fixes LIST security rule evaluation in storage emulator. (#4827)
 - Fixes bug where vpc connector setting broke function deploy for old functions SDK. (#4834)
 - Fixes issue where storage deploy targets weren't being fully respected. (#3496)
+- Fixes bug where request.path variable was not set relative to the service in storage emulator. (#4839)
