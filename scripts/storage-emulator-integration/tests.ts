@@ -1517,7 +1517,7 @@ hello there!
         it("should not include show invalid prefixes and items", async () => {
           await uploadFiles(["listAll//foo", "listAll/bar//", "listAll/baz//qux"], EMPTY_FILE_PATH);
 
-          let listResult = await executeListAllAtPath("listAll/");
+          const listResult = await executeListAllAtPath("listAll/");
 
           expect(listResult).to.deep.equal({
             prefixes: ["bar", "baz"],
