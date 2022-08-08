@@ -1365,13 +1365,10 @@ hello there!
           expect(uploadState).to.equal("success");
         });
 
-        it.only("should handle uploading empty bufferse", async() => {
+        it("should handle uploading empty buffer", async () => {
           await signInToFirebaseAuth(page);
           const uploadState = await page.evaluate(async () => {
-            const task = await firebase
-              .storage()
-              .ref("testing/empty_file")
-              .put(new ArrayBuffer(0));
+            const task = await firebase.storage().ref("testing/empty_file").put(new ArrayBuffer(0));
             return task.state;
           });
 
