@@ -1524,15 +1524,6 @@ hello there!
             items: [], // no valid items
           });
         });
-
-        it("should work when matching against request.path indexes", async () => {
-          const listResult = await executeListAllAtPath("pathTests/dir/subdir/");
-
-          expect(listResult).to.deep.equal({
-            items: [],
-            prefixes: [],
-          });
-        });
       });
 
       describe("#list()", () => {

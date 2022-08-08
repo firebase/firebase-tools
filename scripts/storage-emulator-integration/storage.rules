@@ -13,16 +13,6 @@ service firebase.storage {
       allow list;
     }
 
-    match /pathTests/{allPaths=**} {
-      // Test that request.path is relative to the service (firebase.storage) 
-      allow list: if request.path[0] == "b" &&
-        // Skip matching bucket to allow for bucket overrides when targeting prod.
-        request.path[2] == "o" &&
-        request.path[3] == "pathTests" &&
-        request.path[4] == "dir" &&
-        request.path[5] == "subdir";
-    }
-
     match /delete {
       match /disallowIfContentTypeText {
         allow create;
