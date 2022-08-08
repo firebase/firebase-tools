@@ -407,7 +407,6 @@ function createRequestExpressionValue(opts: RulesetVerificationOpts): Expression
         segments: opts.path
           .split("/")
           .filter((s) => s)
-          .slice(3)
           .map((simple) => ({
             simple,
           })),

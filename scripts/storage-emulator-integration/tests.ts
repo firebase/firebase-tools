@@ -1459,6 +1459,19 @@ hello there!
           );
         }
 
+        async function executeListAllAtPath(path: string): Promise<{
+          items: string[];
+          prefixes: string[];
+        }> {
+          return await page.evaluate(async (path) => {
+            const list = await firebase.storage().ref(path).listAll();
+            return {
+              prefixes: list.prefixes.map((prefix) => prefix.name),
+              items: list.items.map((item) => item.name),
+            };
+          }, path);
+        }
+
         it("should list all files and prefixes at path", async () => {
           await uploadFiles([
             "listAll/some/deeply/nested/directory/item1",
@@ -1466,13 +1479,7 @@ hello there!
             "listAll/item2",
           ]);
 
-          const listResult = await page.evaluate(async () => {
-            const list = await firebase.storage().ref("listAll/").listAll();
-            return {
-              prefixes: list.prefixes.map((prefix) => prefix.name),
-              items: list.items.map((item) => item.name),
-            };
-          });
+          const listResult = await executeListAllAtPath("listAll/");
 
           expect(listResult).to.deep.equal({
             items: ["item1", "item2"],
@@ -1481,13 +1488,7 @@ hello there!
         });
 
         it("zero element list array should still be present in response", async () => {
-          const listResult = await page.evaluate(async () => {
-            const list = await firebase.storage().ref("listAll/").listAll();
-            return {
-              prefixes: list.prefixes.map((prefix) => prefix.name),
-              items: list.items.map((item) => item.name),
-            };
-          });
+          const listResult = await executeListAllAtPath("listAll/");
 
           expect(listResult).to.deep.equal({
             prefixes: [],
@@ -1498,25 +1499,14 @@ hello there!
         it("folder placeholder should not be listed under itself", async () => {
           await uploadFiles(["listAll/abc/", EMPTY_FILE_PATH]);
 
-          let listResult = await page.evaluate(async () => {
-            const list = await firebase.storage().ref("/listAll/").listAll();
-            return {
-              prefixes: list.prefixes.map((prefix) => prefix.name),
-              items: list.items.map((item) => item.name),
-            };
-          });
+          let listResult = await executeListAllAtPath("listAll/");
+
           expect(listResult).to.deep.equal({
             prefixes: ["abc"],
             items: [],
           });
 
-          listResult = await page.evaluate(async () => {
-            const list = await firebase.storage().ref("/listAll/abc/").listAll();
-            return {
-              prefixes: list.prefixes.map((prefix) => prefix.name),
-              items: list.items.map((item) => item.name),
-            };
-          });
+          listResult = await executeListAllAtPath("listAll/abc/");
 
           expect(listResult).to.deep.equal({
             prefixes: [],
@@ -1526,17 +1516,21 @@ hello there!
 
         it("should not include show invalid prefixes and items", async () => {
           await uploadFiles(["listAll//foo", "listAll/bar//", "listAll/baz//qux"], EMPTY_FILE_PATH);
-          const listResult = await page.evaluate(async () => {
-            const list = await firebase.storage().ref("listAll/").listAll();
-            return {
-              prefixes: list.prefixes.map((prefix) => prefix.name),
-              items: list.items.map((item) => item.name),
-            };
-          });
+
+          let listResult = await executeListAllAtPath("listAll/");
 
           expect(listResult).to.deep.equal({
             prefixes: ["bar", "baz"],
             items: [], // no valid items
+          });
+        });
+
+        it("should work when matching against request.path indexes", async () => {
+          const listResult = await executeListAllAtPath("pathTests/dir/subdir/");
+
+          expect(listResult).to.deep.equal({
+            items: [],
+            prefixes: [],
           });
         });
       });
