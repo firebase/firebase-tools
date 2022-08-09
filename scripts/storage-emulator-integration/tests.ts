@@ -215,6 +215,34 @@ describe("Storage emulator", () => {
           });
         });
 
+        it("should handle resumable uploads with an empty buffer", async () => {
+          const fileName = "test_upload.jpg";
+          const uploadUrl = await supertest(expectedHost)
+            .post(`/v0/b/${storageBucket}/o?name=${fileName}&uploadType=resumable`)
+            .send({})
+            .set({
+              Authorization: "Bearer owner",
+              "X-Goog-Upload-Protocol": "resumable",
+              "X-Goog-Upload-Command": "start",
+            })
+            .expect(200)
+            .then((res) => {
+              return new URL(res.header["x-goog-upload-url"]);
+            });
+
+          const finalizeStatus = await supertest(expectedHost)
+            .post(uploadUrl.pathname + uploadUrl.search)
+            .send({})
+            .set({
+              Authorization: "Bearer owner",
+              "X-Goog-Upload-Protocol": "resumable",
+              "X-Goog-Upload-Command": "finalize",
+            })
+            .expect(200)
+            .then((res) => res.header["x-goog-upload-status"]);
+          expect(finalizeStatus).to.equal("final");
+        });
+
         it("should upload with provided metadata", async () => {
           const metadata = {
             contentDisposition: "attachment",
@@ -1361,6 +1389,16 @@ hello there!
               .put(new File([IMAGE_FILE_BASE64], "toUpload.txt"));
             return task.state;
           }, IMAGE_FILE_BASE64);
+
+          expect(uploadState).to.equal("success");
+        });
+
+        it("should handle uploading empty buffer", async () => {
+          await signInToFirebaseAuth(page);
+          const uploadState = await page.evaluate(async () => {
+            const task = await firebase.storage().ref("testing/empty_file").put(new ArrayBuffer(0));
+            return task.state;
+          });
 
           expect(uploadState).to.equal("success");
         });
