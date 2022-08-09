@@ -1,1 +1,2 @@
 - Fixes an issue where pushing an empty buffer from the android sdks crashes the storage emulator (#4843)
+- Adds emulation support for extensions that emit events / custom event triggers (#4464)
