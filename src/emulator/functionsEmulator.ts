@@ -264,7 +264,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     // The URL for the function that the other emulators (Firestore, etc) use.
     // TODO(abehaskins): Make the other emulators use the route below and remove this.
-    const backgroundFunctionRoute = `/functions/projects/:project_id/triggers/:trigger_name`;
+    const backgroundFunctionRoute = `/functions/projects/:project_id/triggers/:trigger_name(*)`;
 
     // The URL that the developer sees, this is the same URL that the legacy emulator used.
     const httpsFunctionRoute = `/${this.args.projectId}/:region/:trigger_name`;
@@ -565,7 +565,6 @@ export class FunctionsEmulator implements EmulatorInstance {
       if (force) {
         return true;
       }
-
       // We want to add a trigger if we don't already have an enabled trigger
       // with the same entryPoint / trigger.
       const anyEnabledMatch = Object.values(this.triggers).some((record) => {
@@ -596,12 +595,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         // To match prod behavior, only validate functionName
         functionIdsAreValid([{ ...definition, id: definition.name }]);
       } catch (e: any) {
-        this.logger.logLabeled(
-          "WARN",
-          `functions[${definition.id}]`,
-          `Invalid function id: ${e.message}`
-        );
-        continue;
+        throw new FirebaseError(`functions[${definition.id}]: Invalid function id: ${e.message}`);
       }
 
       let added = false;
@@ -644,6 +638,13 @@ export class FunctionsEmulator implements EmulatorInstance {
               definition.eventTrigger,
               signature,
               definition.schedule
+            );
+            break;
+          case Constants.SERVICE_EVENTARC:
+            added = await this.addEventarcTrigger(
+              this.args.projectId,
+              key,
+              definition.eventTrigger
             );
             break;
           case Constants.SERVICE_AUTH:
@@ -696,6 +697,31 @@ export class FunctionsEmulator implements EmulatorInstance {
     if (this.args.debugPort) {
       this.startRuntime(emulatableBackend, { nodeBinary: emulatableBackend.nodeBinary });
     }
+  }
+
+  addEventarcTrigger(projectId: string, key: string, eventTrigger: EventTrigger): Promise<boolean> {
+    const eventarcEmu = EmulatorRegistry.get(Emulators.EVENTARC);
+    if (!eventarcEmu) {
+      return Promise.resolve(false);
+    }
+    const bundle = {
+      eventTrigger: {
+        ...eventTrigger,
+        service: "eventarc.googleapis.com",
+      },
+    };
+    logger.debug(`addEventarcTrigger`, JSON.stringify(bundle));
+    const client = new Client({
+      urlPrefix: `http://${EmulatorRegistry.getInfoHostString(eventarcEmu.getInfo())}`,
+      auth: false,
+    });
+    return client
+      .post(`/emulator/v1/projects/${projectId}/triggers/${key}`, bundle)
+      .then(() => true)
+      .catch((err) => {
+        this.logger.log("WARN", "Error adding Eventarc function: " + err);
+        return false;
+      });
   }
 
   async performPostLoadOperations(): Promise<void> {
@@ -943,7 +969,12 @@ export class FunctionsEmulator implements EmulatorInstance {
 
   getTriggerKey(def: EmulatedTriggerDefinition): string {
     // For background triggers we attach the current generation as a suffix
-    return def.eventTrigger ? `${def.id}-${this.triggerGeneration}` : def.id;
+    if (def.eventTrigger) {
+      const triggerKey = `${def.id}-${this.triggerGeneration}`;
+      return def.eventTrigger.channel ? `${triggerKey}-${def.eventTrigger.channel}` : triggerKey;
+    } else {
+      return def.id;
+    }
   }
 
   getBackendInfo(): BackendInfo[] {
@@ -1150,6 +1181,11 @@ export class FunctionsEmulator implements EmulatorInstance {
     if (pubsubEmulator) {
       const pubsubHost = formatHost(pubsubEmulator);
       process.env.PUBSUB_EMULATOR_HOST = pubsubHost;
+    }
+
+    const eventarcEmulator = this.getEmulatorInfo(Emulators.EVENTARC);
+    if (eventarcEmulator) {
+      envs[Constants.CLOUD_EVENTARC_EMULATOR_HOST] = `http://${formatHost(eventarcEmulator)}`;
     }
 
     if (this.args.debugPort) {

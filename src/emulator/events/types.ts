@@ -75,6 +75,9 @@ export interface CloudEvent<T> {
    * actually receives.
    */
   params?: Record<string, string>;
+
+  /** Custom attributes. */
+  [key: string]: any;
 }
 
 export type CloudEventContext = Omit<CloudEvent<unknown>, "data" | "params">;
