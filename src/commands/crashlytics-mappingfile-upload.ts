@@ -29,7 +29,7 @@ export const command = new Command("crashlytics:mappingfile:upload <mappingFile>
     const debug = !!options.debug;
     if (!mappingFile) {
       throw new FirebaseError(
-        "set <mappingFile> to a valid mapping file path, e.g. app/build/outputs/mapping.txt"
+        "set `--mapping-file <mappingFile>` to a valid mapping file path, e.g. app/build/outputs/mapping.txt"
       );
     }
     const mappingFilePath = mappingFile;
