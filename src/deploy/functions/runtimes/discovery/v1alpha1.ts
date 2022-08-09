@@ -22,21 +22,26 @@ export interface ManifestSecretEnv {
 
 // Note: v1 schedule functions use *Duration instead of *Seconds
 // so this version of the API must allow these three retryConfig fields.
-type ScheduleTrigger = build.ScheduleTrigger & {
+type WireScheduleTrigger = build.ScheduleTrigger & {
   retryConfig?: {
     maxRetryDuration?: string | null;
     minBackoffDuration?: string | null;
     maxBackoffDuration?: string | null;
   } | null;
 };
+// Note: v1 event trigger allowed users to specify "serviceAccountEmail"
+// which has been changed for the same reasons as in the main endpoint.
+type WireEventTrigger = build.EventTrigger & {
+  serviceAccountEmail?: string | null;
+};
 
 export type WireEndpoint = build.Triggered &
   Partial<build.HttpsTriggered> &
   Partial<build.CallableTriggered> &
-  Partial<build.EventTriggered> &
+  Partial<{ eventTrigger: WireEventTrigger }> &
   Partial<build.TaskQueueTriggered> &
   Partial<build.BlockingTriggered> &
-  Partial<{ scheduleTrigger: ScheduleTrigger }> & {
+  Partial<{ scheduleTrigger: WireScheduleTrigger }> & {
     labels?: Record<string, string> | null;
     environmentVariables?: Record<string, string> | null;
     availableMemoryMb?: build.MemoryOption | build.Expression<number> | null;
@@ -172,21 +177,16 @@ function assertBuildEndpoint(ep: WireEndpoint, id: string): void {
   }
   if (build.isEventTriggered(ep)) {
     requireKeys(prefix + ".eventTrigger", ep.eventTrigger, "eventType", "eventFilters");
-    assertKeyTypes(
-      prefix + ".eventTrigger",
-      ep.eventTrigger,
-      {
-        eventFilters: "object",
-        eventFilterPathPatterns: "object",
-        eventType: "string",
-        retry: "Field<boolean>",
-        region: "Field<string>",
-        serviceAccount: "string?",
-        channel: "string",
-      },
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      (k: string, _v: any) => k === "serviceAccountEmail"
-    );
+    assertKeyTypes(prefix + ".eventTrigger", ep.eventTrigger, {
+      eventFilters: "object",
+      eventFilterPathPatterns: "object",
+      eventType: "string",
+      retry: "Field<boolean>",
+      region: "Field<string>",
+      serviceAccount: "string?",
+      serviceAccountEmail: "string?",
+      channel: "string",
+    });
   } else if (build.isHttpsTriggered(ep)) {
     assertKeyTypes(prefix + ".httpsTrigger", ep.httpsTrigger, {
       invoker: "array?",
