@@ -113,35 +113,31 @@ function parseRequiredAPIs(manifest: WireManifest): build.RequiredAPI[] {
 
 function assertBuildEndpoint(ep: WireEndpoint, id: string): void {
   const prefix = `endpoints[${id}]`;
-  assertKeyTypes(
-    prefix,
-    ep,
-    {
-      region: "array",
-      platform: (platform) => build.AllFunctionsPlatforms.includes(platform),
-      entryPoint: "string",
-      availableMemoryMb: (mem) =>
-        mem === null || build.isValidMemoryOption(mem) || typeof mem === "string",
-      maxInstances: "Field<number>?",
-      minInstances: "Field<number>?",
-      concurrency: "Field<number>?",
-      serviceAccount: "string?",
-      serviceAccountEmail: "string?",
-      timeoutSeconds: "Field<number>?",
-      vpc: "object?",
-      labels: "object?",
-      ingressSettings: (setting) => setting === null || build.AllIngressSettings.includes(setting),
-      environmentVariables: "object?",
-      secretEnvironmentVariables: "array?",
-      httpsTrigger: "object",
-      callableTrigger: "object",
-      eventTrigger: "object",
-      scheduleTrigger: "object",
-      taskQueueTrigger: "object",
-      blockingTrigger: "object",
-      cpu: "Field<number>?",
-    }
-  );
+  assertKeyTypes(prefix, ep, {
+    region: "array",
+    platform: (platform) => build.AllFunctionsPlatforms.includes(platform),
+    entryPoint: "string",
+    availableMemoryMb: (mem) =>
+      mem === null || build.isValidMemoryOption(mem) || typeof mem === "string",
+    maxInstances: "Field<number>?",
+    minInstances: "Field<number>?",
+    concurrency: "Field<number>?",
+    serviceAccount: "string?",
+    serviceAccountEmail: "string?",
+    timeoutSeconds: "Field<number>?",
+    vpc: "object?",
+    labels: "object?",
+    ingressSettings: (setting) => setting === null || build.AllIngressSettings.includes(setting),
+    environmentVariables: "object?",
+    secretEnvironmentVariables: "array?",
+    httpsTrigger: "object",
+    callableTrigger: "object",
+    eventTrigger: "object",
+    scheduleTrigger: "object",
+    taskQueueTrigger: "object",
+    blockingTrigger: "object",
+    cpu: "Field<number>?",
+  });
   if (ep.vpc) {
     assertKeyTypes(prefix + ".vpc", ep.vpc, {
       connector: "string",
