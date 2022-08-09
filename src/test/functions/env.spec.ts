@@ -310,35 +310,23 @@ FOO=foo
       expect(() => fs.statSync(path.join(tmpdir, ".env.alias"))).throw;
     });
 
-    it("touches .env.projectAlias if there are no .env files and project alias is available", () => {
-      env.writeUserEnvs(
-        { FOO: "bar" },
-        { projectId: "project", projectAlias: "alias", functionsSource: tmpdir }
-      );
-      expect(!!fs.statSync(path.join(tmpdir, ".env.alias"))).to.be.true;
-    });
-
-    it("touches .env.projectId if there are no .env files and project alias is not available", () => {
+    it("touches .env.projectId if it doesn't already exist", () => {
       env.writeUserEnvs({ FOO: "bar" }, { projectId: "project", functionsSource: tmpdir });
       expect(!!fs.statSync(path.join(tmpdir, ".env.project"))).to.be.true;
     });
 
-    it("throws if asked to write a key that already exists in the most specific .env", () => {
+    it("throws if asked to write a key that already exists in .env.projectId", () => {
       createEnvFiles(tmpdir, {
-        [".env.alias"]: "FOO=foo",
+        [".env.project"]: "FOO=foo",
       });
       expect(() =>
-        env.writeUserEnvs(
-          { FOO: "bar" },
-          { projectId: "project", projectAlias: "alias", functionsSource: tmpdir }
-        )
+        env.writeUserEnvs({ FOO: "bar" }, { projectId: "project", functionsSource: tmpdir })
       ).to.throw(FirebaseError);
     });
 
     it("throws if asked to write a key that already exists in any .env", () => {
       createEnvFiles(tmpdir, {
         [".env.alias"]: "BAR=foo",
-        ".env": "FOO=foo",
       });
       expect(() =>
         env.writeUserEnvs(
@@ -369,7 +357,7 @@ FOO=foo
       ).to.throw(env.KeyValidationError);
     });
 
-    it("writes the specified key to a .env that it created", () => {
+    it("writes the specified key to a .env.projectId that it created", () => {
       env.writeUserEnvs(
         { FOO: "bar" },
         { projectId: "project", projectAlias: "alias", functionsSource: tmpdir }
@@ -381,9 +369,9 @@ FOO=foo
       ).to.equal("bar");
     });
 
-    it("writes the specified key to a .env that already existed", () => {
+    it("writes the specified key to a .env.projectId that already existed", () => {
       createEnvFiles(tmpdir, {
-        [".env.alias"]: "",
+        [".env.project"]: "",
       });
       env.writeUserEnvs(
         { FOO: "bar" },
@@ -433,16 +421,13 @@ FOO=foo
       try {
         env.writeUserEnvs(
           { FOO: "bar", lowercase: "bar" },
-          { projectId: "project", projectAlias: "alias", functionsSource: tmpdir }
+          { projectId: "project", functionsSource: tmpdir }
         );
       } catch (err: any) {
         // no-op
       }
-      expect(
-        env.loadUserEnvs({ projectId: "project", projectAlias: "alias", functionsSource: tmpdir })[
-          "FOO"
-        ]
-      ).to.be.undefined;
+      expect(env.loadUserEnvs({ projectId: "project", functionsSource: tmpdir })["FOO"]).to.be
+        .undefined;
     });
   });
 
