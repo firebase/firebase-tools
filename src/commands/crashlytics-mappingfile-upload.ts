@@ -19,7 +19,7 @@ interface JarOptions {
 
 export const command = new Command("crashlytics:mappingfile:upload <mappingFile>")
   .description("upload a ProGuard/R8-compatible mapping file to deobfuscate stack traces")
-  .option("--app <appID>", "The app id of your Firebase app")
+  .option("--app <appID>", "the app id of your Firebase app")
   .option(
     "--resource-file <resourceFile>",
     "path to the Android resource XML file that includes the mapping file id"
@@ -37,7 +37,7 @@ export const command = new Command("crashlytics:mappingfile:upload <mappingFile>
     const resourceFilePath = options.resourceFile;
     if (!resourceFilePath) {
       throw new FirebaseError(
-        "set <resourceFile> to a valid Android resource file path, e.g. app/main/res/values/strings.xml"
+        "set --resource-file <resourceFile> to a valid Android resource file path, e.g. app/main/res/values/strings.xml"
       );
     }
 

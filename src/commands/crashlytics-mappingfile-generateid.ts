@@ -19,7 +19,7 @@ export const command = new Command("crashlytics:mappingfile:generateid")
   )
   .option(
     "--resource-file <resourceFile>",
-    "Path to the Android resource XML file that will be created or updated."
+    "path to the Android resource XML file that will be created or updated."
   )
   .action(async (options: CommandOptions) => {
     const debug = !!options.debug;
@@ -34,8 +34,8 @@ export const command = new Command("crashlytics:mappingfile:generateid")
     const jarOptions: JarOptions = { resourceFilePath };
 
     utils.logBullet(`Updating resource file: ${resourceFilePath}`);
-    const uploadArgs = buildArgs(jarOptions);
-    runBuildtoolsCommand(jarFile, uploadArgs, debug);
+    const generateIdArgs = buildArgs(jarOptions);
+    runBuildtoolsCommand(jarFile, generateIdArgs, debug);
     utils.logBullet("Successfully updated mapping file id");
   });
 
