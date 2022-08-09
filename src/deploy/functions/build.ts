@@ -225,8 +225,8 @@ export async function resolveBackend(
   let paramValues: Record<string, Field<string | number | boolean>> = {};
   if (previews.functionsparams) {
     paramValues = await params.resolveParams(build.params, projectId, envWithTypes(userEnvs));
-  }
-  if (previews.parampersistence) {
+
+    // TODO(vsfan@): when merging secrets support into the Build, make sure we aren't writing those to disk.
     const toWrite: Record<string, string> = {};
     for (const paramName of Object.keys(paramValues).filter((pn) => !userEnvs.hasOwnProperty(pn))) {
       toWrite[paramName] = paramValues[paramName]?.toString() || "";
