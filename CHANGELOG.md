@@ -10,3 +10,4 @@
 - Fixes LIST security rule evaluation in storage emulator. (#4827)
 - Fixes bug where vpc connector setting broke function deploy for old functions SDK. (#4834)
 - Fixes issue where storage deploy targets weren't being fully respected. (#3496)
+- Fixes an issue where pushing an empty buffer from the android sdks crashes the storage emulator
