@@ -209,11 +209,15 @@ export function isValidMemoryOption(mem: unknown): mem is MemoryOption {
 }
 
 export type FunctionsPlatform = backend.FunctionsPlatform;
-export const AllFunctionsPlatforms: FunctionsPlatform[] = backend.AllFunctionsPlatforms;
+export const AllFunctionsPlatforms: FunctionsPlatform[] = ["gcfv1", "gcfv2"];
 export type VpcEgressSetting = backend.VpcEgressSettings;
-export const AllVpcEgressSettings: VpcEgressSetting[] = backend.AllVpcEgressSettings;
+export const AllVpcEgressSettings: VpcEgressSetting[] = ["PRIVATE_RANGES_ONLY", "ALL_TRAFFIC"];
 export type IngressSetting = backend.IngressSettings;
-export const AllIngressSettings: IngressSetting[] = backend.AllIngressSettings;
+export const AllIngressSettings: IngressSetting[] = [
+  "ALLOW_ALL",
+  "ALLOW_INTERNAL_ONLY",
+  "ALLOW_INTERNAL_AND_GCLB",
+];
 export type RequiredAPI = backend.RequiredAPI;
 
 export type Endpoint = Triggered & {
