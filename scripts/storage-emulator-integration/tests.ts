@@ -1365,6 +1365,16 @@ hello there!
           expect(uploadState).to.equal("success");
         });
 
+        it("should handle uploading empty buffer", async () => {
+          await signInToFirebaseAuth(page);
+          const uploadState = await page.evaluate(async () => {
+            const task = await firebase.storage().ref("testing/empty_file").put(new ArrayBuffer(0));
+            return task.state;
+          });
+
+          expect(uploadState).to.equal("success");
+        });
+
         it("should upload a file with custom metadata", async () => {
           const uploadState = await page.evaluate(async (IMAGE_FILE_BASE64) => {
             const task = await firebase
