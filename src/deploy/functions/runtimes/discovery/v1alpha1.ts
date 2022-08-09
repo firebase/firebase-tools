@@ -145,7 +145,7 @@ function assertBuildEndpoint(ep: WireEndpoint, id: string): void {
   if (ep.vpc) {
     assertKeyTypes(prefix + ".vpc", ep.vpc, {
       connector: "string",
-      egressSettings: (setting) => setting != null && build.AllVpcEgressSettings.includes(setting),
+      egressSettings: (setting) => setting === null || build.AllVpcEgressSettings.includes(setting),
     });
     requireKeys(prefix + ".vpc", ep.vpc, "connector");
   }
