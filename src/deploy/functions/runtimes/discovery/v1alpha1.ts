@@ -140,9 +140,7 @@ function assertBuildEndpoint(ep: WireEndpoint, id: string): void {
       taskQueueTrigger: "object",
       blockingTrigger: "object",
       cpu: "Field<number>?",
-    },
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    (k: string) => k === "serviceAccountEmail"
+    }
   );
   if (ep.vpc) {
     assertKeyTypes(prefix + ".vpc", ep.vpc, {
