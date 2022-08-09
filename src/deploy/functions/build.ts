@@ -228,7 +228,10 @@ export async function resolveBackend(
 
     // TODO(vsfan@): when merging secrets support into the Build, make sure we aren't writing those to disk.
     const toWrite: Record<string, string> = {};
-    for (const paramName of Object.keys(paramValues).filter((pn) => !userEnvs.hasOwnProperty(pn))) {
+    for (const paramName of Object.keys(paramValues)) {
+      if (userEnvs.hasOwnProperty(paramName)) {
+        continue;
+      }
       toWrite[paramName] = paramValues[paramName]?.toString() || "";
     }
     writeUserEnvs(toWrite, userEnvOpt);
@@ -241,7 +244,7 @@ function envWithTypes(rawEnvs: Record<string, string>): Record<string, string | 
   const out: Record<string, string | number | boolean> = {};
   for (const envName of Object.keys(rawEnvs)) {
     const value = rawEnvs[envName];
-    if (!isNaN(+value)) {
+    if (!isNaN(+value) && isFinite(+value) && !value.includes("e")) {
       out[envName] = +value;
     } else if (value === "true") {
       out[envName] = true;
