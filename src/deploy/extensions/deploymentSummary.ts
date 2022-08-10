@@ -1,4 +1,4 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
 import * as planner from "./planner";
 import * as refs from "../../extensions/refs";

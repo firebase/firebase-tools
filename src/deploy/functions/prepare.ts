@@ -1,4 +1,4 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
 import * as args from "./args";
 import * as backend from "./backend";
@@ -261,8 +261,9 @@ export function inferDetailsFromExisting(
 
     // If the instance size is set out of bounds or was previously set and is now
     // unset we still need to remember it so that the min instance price estimator
-    // is accurate.
-    if (!wantE.availableMemoryMb && haveE.availableMemoryMb) {
+    // is accurate. If, on the other hand, we have a null value for availableMemoryMb
+    // we need to keep that null (meaning "use defaults").
+    if (typeof wantE.availableMemoryMb === "undefined" && haveE.availableMemoryMb) {
       wantE.availableMemoryMb = haveE.availableMemoryMb;
     }
 
@@ -270,10 +271,10 @@ export function inferDetailsFromExisting(
     // the customer sets CPU <1. We'll instead error that you can't have both.
     // We may want to handle this case, though it might also be surprising to
     // customers if they _don't_ get an error and we silently drop concurrency.
-    if (!wantE.concurrency && haveE.concurrency) {
+    if (typeof wantE.concurrency === "undefined" && haveE.concurrency) {
       wantE.concurrency = haveE.concurrency;
     }
-    if (!wantE.cpu && haveE.cpu) {
+    if (typeof wantE.cpu === "undefined" && haveE.cpu) {
       wantE.cpu = haveE.cpu;
     }
 

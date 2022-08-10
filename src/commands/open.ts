@@ -1,4 +1,4 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as open from "open";
 
 import { FirebaseError } from "../error";
@@ -91,14 +91,14 @@ export const command = new Command("open [link]")
 
     if (link.arg !== linkName) {
       logger.info(
-        `${clc.bold.cyan("Tip:")} You can also run ${clc.bold.underline(
-          `firebase open ${link.arg}`
+        `${clc.bold(clc.cyan("Tip:"))} You can also run ${clc.bold(
+          clc.underline(`firebase open ${link.arg}`)
         )}`
       );
       logger.info();
     }
     logger.info(`Opening ${clc.bold(link.name)} link in your default browser:`);
-    logger.info(clc.bold.underline(url));
+    logger.info(clc.bold(clc.underline(url)));
 
     open(url);
   });

@@ -1,4 +1,4 @@
-import { bold } from "cli-color";
+import { bold } from "colorette";
 
 import { logger } from "../../logger";
 import { getEndpointFilters, endpointMatchesAnyFilter } from "./functionsDeployHelper";
