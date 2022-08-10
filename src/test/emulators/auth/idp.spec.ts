@@ -63,9 +63,9 @@ describeAuthEmulator("sign-in with credential", ({ authApi, getClock }) => {
         expect(res.body).not.to.have.property("photoUrl");
 
         const raw = JSON.parse(res.body.rawUserInfo);
-        expect(raw.id).to.equal(FAKE_GOOGLE_ACCOUNT.rawId);
+        expect(raw.sub).to.equal(FAKE_GOOGLE_ACCOUNT.rawId);
         expect(raw.email).to.equal(FAKE_GOOGLE_ACCOUNT.email);
-        expect(raw.verified_email).to.equal(true);
+        expect(raw.email_verified).to.equal(true);
         expect(raw.locale).to.equal("en");
         // name, given_name, family_name, and picture are not populated since
         // they are not in the ID Token used above.
@@ -121,9 +121,9 @@ describeAuthEmulator("sign-in with credential", ({ authApi, getClock }) => {
         expect(res.body).not.to.have.property("photoUrl");
 
         const raw = JSON.parse(res.body.rawUserInfo);
-        expect(raw.id).to.equal(REAL_GOOGLE_ACCOUNT.rawId);
+        expect(raw.sub).to.equal(REAL_GOOGLE_ACCOUNT.rawId);
         expect(raw.email).to.equal(REAL_GOOGLE_ACCOUNT.email);
-        expect(raw.verified_email).to.equal(true);
+        expect(raw.email_verified).to.equal(true);
         expect(raw.locale).to.equal("en");
         // name, given_name, family_name, and picture are not populated since
         // they are not in the ID Token used above.
@@ -183,7 +183,7 @@ describeAuthEmulator("sign-in with credential", ({ authApi, getClock }) => {
         expect(res.body).to.have.property("refreshToken").that.is.a("string");
 
         const raw = JSON.parse(res.body.rawUserInfo);
-        expect(raw.id).to.equal(claims.sub);
+        expect(raw.sub).to.equal(claims.sub);
         expect(raw.name).to.equal(claims.name);
         expect(raw.given_name).to.equal(claims.given_name);
         expect(raw.family_name).to.equal(claims.family_name);
