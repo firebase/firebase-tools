@@ -64,6 +64,6 @@ export function runBuildtoolsCommand(jarFile: string, args: string[], debug: boo
     if (!debug) {
       utils.logWarning(outputs.stdout?.toString() || "An unknown error occurred");
     }
-    throw new FirebaseError("Command failed");
+    throw new FirebaseError(`java command failed with args: ${fullArgs}`);
   }
 }
