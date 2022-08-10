@@ -41,6 +41,7 @@ module.exports = {
         "no-invalid-this": "off", // Turned off in favor of @typescript-eslint/no-invalid-this.
         "no-unused-vars": "off", // Off in favor of @typescript-eslint/no-unused-vars.
         eqeqeq: ["error", "always", { null: "ignore" }],
+        camelcase: ["error", { properties: "never" }], // snake_case allowed in properties iif to satisfy an external contract / style
 
         "@typescript-eslint/ban-types": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/explicit-function-return-type": ["warn", { allowExpressions: true }], // TODO(bkendall): SET to error.
@@ -64,7 +65,6 @@ module.exports = {
         "no-case-declarations": "warn", // TODO(bkendall): remove, allow to error.
         "no-constant-condition": "warn", // TODO(bkendall): remove, allow to error.
         "no-fallthrough": "warn", // TODO(bkendall): remove, allow to error.
-        camelcase: ["warn", { ignoreDestructuring: true }], // TODO(bkendall): remove, allow to error.
       },
     },
     {
