@@ -4,6 +4,7 @@ import * as sinon from "sinon";
 import * as iam from "../../gcp/iam";
 import * as backend from "../../deploy/functions/backend";
 import * as cloudtasks from "../../gcp/cloudtasks";
+import * as proto from "../../gcp/proto";
 
 describe("CloudTasks", () => {
   let ct: sinon.SinonStubbedInstance<typeof cloudtasks>;
@@ -21,6 +22,7 @@ describe("CloudTasks", () => {
     ct = sinon.stub(cloudtasks);
     ct.queueNameForEndpoint.restore();
     ct.queueFromEndpoint.restore();
+    ct.triggerFromQueue.restore();
     ct.setEnqueuer.restore();
     ct.upsertQueue.restore();
   });
@@ -69,6 +71,54 @@ describe("CloudTasks", () => {
           minBackoff: "1s",
         },
         state: "RUNNING",
+      });
+    });
+  });
+
+  describe("triggerFromQueue", () => {
+    it("handles queue with default settings", () => {
+      expect(
+        cloudtasks.triggerFromQueue({
+          name: "projects/project/locations/region/queues/id",
+          ...cloudtasks.DEFAULT_SETTINGS,
+        })
+      ).to.deep.equal({
+        rateLimits: { ...cloudtasks.DEFAULT_SETTINGS.rateLimits },
+        retryConfig: {
+          maxAttempts: cloudtasks.DEFAULT_SETTINGS.retryConfig?.maxAttempts,
+          maxDoublings: cloudtasks.DEFAULT_SETTINGS.retryConfig?.maxDoublings,
+          maxBackoffSeconds: proto.secondsFromDuration(
+            cloudtasks.DEFAULT_SETTINGS.retryConfig?.maxBackoff || ""
+          ),
+          minBackoffSeconds: proto.secondsFromDuration(
+            cloudtasks.DEFAULT_SETTINGS.retryConfig?.minBackoff || ""
+          ),
+        },
+      });
+    });
+
+    it("handles queue with custom configs", () => {
+      expect(
+        cloudtasks.triggerFromQueue({
+          name: "projects/project/locations/region/queues/id",
+          rateLimits: {
+            maxConcurrentDispatches: 5,
+            maxDispatchesPerSecond: 5,
+          },
+          retryConfig: {
+            maxAttempts: 10,
+            maxDoublings: 9,
+          },
+        })
+      ).to.deep.equal({
+        rateLimits: {
+          maxConcurrentDispatches: 5,
+          maxDispatchesPerSecond: 5,
+        },
+        retryConfig: {
+          maxAttempts: 10,
+          maxDoublings: 9,
+        },
       });
     });
   });

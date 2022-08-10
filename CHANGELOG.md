@@ -1,1 +1,3 @@
-- Replaces underlying terminal coloring library.
+- Fixes an issue where pushing an empty buffer from the android sdks crashes the storage emulator (#4843)
+- Adds emulation support for extensions that emit events / custom event triggers (#4464)
+- Fixes issue with batchCreate in auth emulator in which it errored for empty mfaInfo (#4848)

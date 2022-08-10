@@ -35,6 +35,7 @@ export interface RulesetVerificationOpts {
   token?: string;
   method: RulesetOperationMethod;
   path: string;
+  delimiter?: string;
 }
 
 export class StorageRulesetInstance {
@@ -299,10 +300,10 @@ export class StorageRulesRuntime {
         service: "firebase.storage",
         path: opts.path,
         method: opts.method,
+        delimiter: opts.delimiter,
         variables: runtimeVariables,
       },
     };
-
     const response = (await this._sendRequest(runtimeActionRequest)) as RuntimeActionVerifyResponse;
 
     if (!response.errors) response.errors = [];
@@ -406,7 +407,6 @@ function createRequestExpressionValue(opts: RulesetVerificationOpts): Expression
         segments: opts.path
           .split("/")
           .filter((s) => s)
-          .slice(3)
           .map((simple) => ({
             simple,
           })),

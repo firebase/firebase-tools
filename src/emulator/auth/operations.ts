@@ -464,7 +464,7 @@ function batchCreate(
       fields.disabled = !!userInfo.disabled;
 
       // MFA
-      if (userInfo.mfaInfo) {
+      if (userInfo.mfaInfo && userInfo.mfaInfo.length > 0) {
         fields.mfaInfo = [];
         assert(fields.email, "Second factor account requires email to be presented.");
         assert(fields.emailVerified, "Second factor account requires email to be verified.");

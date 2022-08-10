@@ -69,6 +69,7 @@ export class EmulatorRegistry {
       pubsub: 3.2,
       auth: 3.3,
       storage: 3.5,
+      eventarc: 3.6,
 
       // Hub shuts down once almost everything else is done
       hub: 4,
