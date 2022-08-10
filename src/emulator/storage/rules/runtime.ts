@@ -108,12 +108,12 @@ export class StorageRulesRuntime {
     return this._alive;
   }
 
-  async start(auto_download = true) {
+  async start(autoDownload = true) {
     const downloadDetails = DownloadDetails[Emulators.STORAGE];
     const hasEmulator = fs.existsSync(downloadDetails.downloadPath);
 
     if (!hasEmulator) {
-      if (auto_download) {
+      if (autoDownload) {
         if (process.env.CI) {
           utils.logWarning(
             `It appears you are running in a CI environment. You can avoid downloading the ${Constants.description(
