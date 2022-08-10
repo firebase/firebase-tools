@@ -79,6 +79,7 @@ export class Constants {
 
   // Environment variable to discover the Emulator HUB
   static FIREBASE_EMULATOR_HUB = "FIREBASE_EMULATOR_HUB";
+  static FIREBASE_GA_SESSION = "FIREBASE_GA_SESSION";
 
   static SERVICE_FIRESTORE = "firestore.googleapis.com";
   static SERVICE_REALTIME_DATABASE = "firebaseio.com";

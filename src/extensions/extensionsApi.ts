@@ -465,7 +465,7 @@ export async function listExtensions(publisherId: string): Promise<Extension[]> 
 export async function listExtensionVersions(
   ref: string,
   filter = "",
-  show_prereleases = false
+  showPrereleases = false
 ): Promise<ExtensionVersion[]> {
   const { publisherId, extensionId } = refs.parse(ref);
   const extensionVersions: ExtensionVersion[] = [];
@@ -476,7 +476,7 @@ export async function listExtensionVersions(
     }>(`/publishers/${publisherId}/extensions/${extensionId}/versions`, {
       queryParams: {
         filter,
-        show_prereleases: String(show_prereleases),
+        showPrereleases: String(showPrereleases),
         pageSize: PAGE_SIZE_MAX,
         pageToken,
       },
