@@ -338,8 +338,6 @@ export class Fabricator {
         .run(() => run.setInvokerCreate(endpoint.project, serviceName, ["public"]))
         .catch(rethrowAs(endpoint, "set invoker"));
     } else if (backend.isScheduleTriggered(endpoint)) {
-      // TODO(colerogers): revisit adding 'invoker' into container contract for
-      // schedule triggers and use here.
       const invoker = [getDefaultComputeServiceAgent(this.projectNumber)];
       await this.executor
         .run(() => run.setInvokerCreate(endpoint.project, serviceName, invoker))
@@ -446,8 +444,6 @@ export class Fabricator {
     ) {
       invoker = ["public"];
     } else if (backend.isScheduleTriggered(endpoint)) {
-      // TODO(colerogers): revisit adding 'invoker' into container contract for
-      // schedule triggers and use here.
       invoker = [getDefaultComputeServiceAgent(this.projectNumber)];
     }
 
@@ -591,7 +587,7 @@ export class Fabricator {
   }
 
   async upsertScheduleV2(endpoint: backend.Endpoint & backend.ScheduleTriggered): Promise<void> {
-    const job = scheduler.jobFromEndpoint(endpoint, this.appEngineLocation, this.projectNumber);
+    const job = scheduler.jobFromEndpoint(endpoint, endpoint.region, this.projectNumber);
     await this.executor
       .run(() => scheduler.createOrReplaceJob(job))
       .catch(rethrowAs(endpoint, "upsert schedule"));
@@ -633,9 +629,9 @@ export class Fabricator {
   }
 
   async deleteScheduleV2(endpoint: backend.Endpoint & backend.ScheduleTriggered): Promise<void> {
-    const job = scheduler.jobFromEndpoint(endpoint, this.appEngineLocation, this.projectNumber);
+    const jobName = scheduler.jobNameForEndpoint(endpoint, endpoint.region);
     await this.executor
-      .run(() => scheduler.deleteJob(job.name))
+      .run(() => scheduler.deleteJob(jobName))
       .catch(rethrowAs(endpoint, "delete schedule"));
   }
 

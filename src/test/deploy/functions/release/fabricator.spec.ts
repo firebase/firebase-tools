@@ -1074,6 +1074,31 @@ describe("Fabricator", () => {
     });
   });
 
+  describe("upsertScheduleV2", () => {
+    const ep = {
+      ...endpoint({
+        scheduleTrigger: {
+          schedule: "every 5 minutes",
+        },
+      }),
+      platform: "gcfv2",
+    } as backend.Endpoint & backend.ScheduleTriggered;
+
+    it("upserts schedules", async () => {
+      scheduler.createOrReplaceJob.resolves();
+      await fab.upsertScheduleV2(ep);
+      expect(scheduler.createOrReplaceJob).to.have.been.called;
+    });
+
+    it("wraps errors", async () => {
+      scheduler.createOrReplaceJob.rejects(new Error("Fail"));
+      await expect(fab.upsertScheduleV2(ep)).to.eventually.be.rejectedWith(
+        reporter.DeploymentError,
+        "upsert schedule"
+      );
+    });
+  });
+
   describe("deleteScheduleV1", () => {
     const ep = endpoint({
       scheduleTrigger: {
@@ -1101,6 +1126,31 @@ describe("Fabricator", () => {
       await expect(fab.deleteScheduleV1(ep)).to.eventually.be.rejectedWith(
         reporter.DeploymentError,
         "delete topic"
+      );
+    });
+  });
+
+  describe("deleteScheduleV2", () => {
+    const ep = {
+      ...endpoint({
+        scheduleTrigger: {
+          schedule: "every 5 minutes",
+        },
+      }),
+      platform: "gcfv2",
+    } as backend.Endpoint & backend.ScheduleTriggered;
+
+    it("deletes schedules and topics", async () => {
+      scheduler.deleteJob.resolves();
+      await fab.deleteScheduleV2(ep);
+      expect(scheduler.deleteJob).to.have.been.called;
+    });
+
+    it("wraps errors", async () => {
+      scheduler.deleteJob.rejects(new Error("Fail"));
+      await expect(fab.deleteScheduleV2(ep)).to.eventually.be.rejectedWith(
+        reporter.DeploymentError,
+        "delete schedule"
       );
     });
   });

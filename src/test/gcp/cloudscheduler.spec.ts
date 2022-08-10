@@ -13,9 +13,11 @@ const TEST_JOB: cloudscheduler.Job = {
   name: "projects/test-project/locations/us-east1/jobs/test",
   schedule: "every 5 minutes",
   timeZone: "America/Los_Angeles",
-  httpTarget: {
-    uri: "https://afakeone.come",
-    httpMethod: "POST",
+  pubsubTarget: {
+    topicName: "projects/test-project/topics/test",
+    attributes: {
+      scheduled: "true",
+    },
   },
   retryConfig: {},
 };
@@ -190,14 +192,14 @@ describe("cloudscheduler", () => {
 
     it("should copy minimal fields for v2 endpoints", () => {
       expect(
-        cloudscheduler.jobFromEndpoint(V2_ENDPOINT, "appEngineLocation", "1234567")
+        cloudscheduler.jobFromEndpoint(V2_ENDPOINT, V2_ENDPOINT.region, "1234567")
       ).to.deep.equal({
         name: "projects/project/locations/region/jobs/firebase-schedule-id-region",
         schedule: "every 1 minutes",
-        timeZone: "utc",
+        timeZone: "UTC",
         httpTarget: {
           uri: "https://my-uri.com",
-          httpMethod: "GET",
+          httpMethod: "POST",
           oidcToken: {
             serviceAccountEmail: "1234567-compute@developer.gserviceaccount.com",
           },
@@ -259,7 +261,7 @@ describe("cloudscheduler", () => {
               },
             },
           },
-          "appEngineLocation",
+          V2_ENDPOINT.region,
           "1234567"
         )
       ).to.deep.equal({
@@ -274,7 +276,7 @@ describe("cloudscheduler", () => {
         },
         httpTarget: {
           uri: "https://my-uri.com",
-          httpMethod: "GET",
+          httpMethod: "POST",
           oidcToken: {
             serviceAccountEmail: "1234567-compute@developer.gserviceaccount.com",
           },
