@@ -57,13 +57,14 @@ export function createApp(
   );
 
   app.post("/internal/export", async (req, res) => {
-    const path = req.body.path;
+    const initiatedBy: string = req.body.initiatedBy || "unknown";
+    const path: string = req.body.path;
     if (!path) {
       res.status(400).send("Export request body must include 'path'.");
       return;
     }
 
-    await storageLayer.export(path);
+    await storageLayer.export(path, { initiatedBy });
     res.sendStatus(200);
   });
 

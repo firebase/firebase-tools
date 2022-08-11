@@ -11,7 +11,7 @@ import { EventEmitter } from "events";
 
 import { Account } from "../auth";
 import { logger } from "../logger";
-import { track } from "../track";
+import { track, trackEmulator } from "../track";
 import { Constants } from "./constants";
 import {
   EmulatorInfo,
@@ -70,7 +70,8 @@ import { BlockingFunctionsConfig } from "../gcp/identityPlatform";
 import { Client } from "../apiv2";
 import { resolveBackend } from "../deploy/functions/build";
 
-const EVENT_INVOKE = "functions:invoke";
+const EVENT_INVOKE = "functions:invoke"; // event name for UA
+const EVENT_INVOKE_GA4 = "functions_invoke"; // event name GA4 (alphanumertic)
 
 /*
  * The Realtime Database emulator expects the `path` field in its trigger
@@ -1484,6 +1485,9 @@ export class FunctionsEmulator implements EmulatorInstance {
 
       // For analytics, track the invoked service
       void track(EVENT_INVOKE, getFunctionService(trigger));
+      void trackEmulator(EVENT_INVOKE_GA4, {
+        function_service: getFunctionService(trigger),
+      });
 
       worker.waitForDone().then(() => {
         resolve({ status: "acknowledged" });
@@ -1598,6 +1602,9 @@ export class FunctionsEmulator implements EmulatorInstance {
     await worker.waitForSocketReady();
 
     void track(EVENT_INVOKE, "https");
+    void trackEmulator(EVENT_INVOKE_GA4, {
+      function_service: "https",
+    });
 
     this.logger.log("DEBUG", `[functions] Runtime ready! Sending request!`);
 
