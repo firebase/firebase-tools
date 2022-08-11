@@ -80,19 +80,21 @@ describe("files", () => {
           objectId: "dir%2Fobject",
           metadataRaw: "{}",
         });
+        _uploadService.startAuthorizedResumableUpload(upload);
 
         expect(storageLayer.uploadObject(upload)).to.be.rejectedWith("Unexpected upload status");
       });
 
       it("should throw if upload is not authorized", () => {
         const storageLayer = getStorageLayer(ALWAYS_FALSE_RULES_VALIDATOR);
-        const uploadId = _uploadService.startResumableUpload({
+        const initialUpload = _uploadService.startResumableUpload({
           bucketId: "bucket",
           objectId: "dir%2Fobject",
           metadataRaw: "{}",
-        }).id;
-        _uploadService.continueResumableUpload(uploadId, Buffer.from("hello world"));
-        const upload = _uploadService.finalizeResumableUpload(uploadId);
+        });
+        _uploadService.startAuthorizedResumableUpload(initialUpload);
+        _uploadService.continueResumableUpload(initialUpload.id, Buffer.from("hello world"));
+        const upload = _uploadService.finalizeResumableUpload(initialUpload.id);
 
         expect(storageLayer.uploadObject(upload)).to.be.rejectedWith(ForbiddenError);
       });

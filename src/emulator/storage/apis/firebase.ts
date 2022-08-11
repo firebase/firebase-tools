@@ -266,6 +266,17 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         // Store auth header for use in the finalize request
         authorization: req.header("authorization"),
       });
+      const authorized = await storageLayer.checkResumableUploadAuthorization(upload);
+      if (!authorized) {
+        res.header("x-goog-upload-status", "final");
+        return res.status(403).json({
+          error: {
+            code: 403,
+            message: `Permission denied. No WRITE permission.`,
+          },
+        });
+      }
+      uploadService.startAuthorizedResumableUpload(upload);
 
       res.header("x-goog-upload-chunk-granularity", "10000");
       res.header("x-goog-upload-control-url", "");

@@ -329,6 +329,37 @@ export class StorageLayer {
     return metadata;
   }
 
+  public async checkResumableUploadAuthorization(upload: Upload): Promise<boolean> {
+    const storedMetadata = this.getMetadata(upload.bucketId, upload.objectId);
+    const metadata = new StoredFileMetadata(
+      {
+        name: upload.objectId,
+        bucket: upload.bucketId,
+        contentType: upload.metadata.contentType || "application/octet-stream",
+        contentDisposition: upload.metadata.contentDisposition,
+        contentEncoding: upload.metadata.contentEncoding,
+        contentLanguage: upload.metadata.contentLanguage,
+        cacheControl: upload.metadata.cacheControl,
+        customMetadata: upload.metadata.metadata,
+      },
+      this._cloudFunctions,
+      Buffer.alloc(0)
+    );
+    metadata.update(upload.metadata, /* shouldTrigger = */ false);
+
+    const authorized = await this._rulesValidator.validate(
+      ["b", upload.bucketId, "o", upload.objectId].join("/"),
+      upload.bucketId,
+      RulesetOperationMethod.CREATE,
+      {
+        before: storedMetadata?.asRulesResource(),
+        after: metadata?.asRulesResource(),
+      },
+      upload.authorization
+    );
+    return authorized;
+  }
+
   public copyObject({
     sourceBucket,
     sourceObject,
