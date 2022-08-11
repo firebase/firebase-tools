@@ -11,11 +11,11 @@ export async function getBackendHash(backend: Backend, source?: args.Source) {
   if (source) {
     const sourceFile = source?.functionsSourceV2 || source?.functionsSourceV1;
     if (sourceFile) {
-      const readStream = fs.createReadStream(sourceFile);
-      readStream.pipe(hash);
       await new Promise((resolve, reject) => {
-        hash.on("end", () => resolve(hash.read()));
-        readStream.on("error", reject);
+        const readStream = fs.createReadStream(sourceFile);
+        readStream.on("error", (err) => reject(err));
+        readStream.on("data", (chunk) => chunk && hash.push(chunk));
+        readStream.on("end", () => resolve(hash.digest("hex")));
       });
     }
   }
