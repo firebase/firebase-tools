@@ -1264,7 +1264,7 @@ hello there!
     let page: puppeteer.Page;
 
     const filename = "testing/storage_ref/image.png";
-    const image_filename = writeToFile(
+    const imageFilename = writeToFile(
       "image_base64",
       Buffer.from(IMAGE_FILE_BASE64, "base64"),
       tmpDir
@@ -1307,7 +1307,7 @@ hello there!
 
     beforeEach(async () => {
       await resetEmulatorState();
-      await testBucket.upload(image_filename, { destination: filename });
+      await testBucket.upload(imageFilename, { destination: filename });
     });
 
     afterEach(async () => {
@@ -1810,8 +1810,8 @@ hello there!
 
   describe("Non-SDK Endpoints", () => {
     const filename = "testing/storage_ref/image.png";
-    const encoded_filename = "testing%2Fstorage_ref%2Fimage.png";
-    const image_filename = writeToFile(
+    const encodedFilename = "testing%2Fstorage_ref%2Fimage.png";
+    const imageFilename = writeToFile(
       "image_base64",
       Buffer.from(IMAGE_FILE_BASE64, "base64"),
       tmpDir
@@ -1819,13 +1819,13 @@ hello there!
 
     beforeEach(async () => {
       await resetEmulatorState();
-      await testBucket.upload(image_filename, { destination: filename });
+      await testBucket.upload(imageFilename, { destination: filename });
     });
 
     describe("tokens", () => {
       it("should generate new token on create_token", async () => {
         await supertest(STORAGE_EMULATOR_HOST)
-          .post(`/v0/b/${storageBucket}/o/${encoded_filename}?create_token=true`)
+          .post(`/v0/b/${storageBucket}/o/${encodedFilename}?create_token=true`)
           .set({ Authorization: "Bearer owner" })
           .expect(200)
           .then((res) => {
@@ -1836,31 +1836,31 @@ hello there!
 
       it("should return a 400 if create_token value is invalid", async () => {
         await supertest(STORAGE_EMULATOR_HOST)
-          .post(`/v0/b/${storageBucket}/o/${encoded_filename}?create_token=someNonTrueParam`)
+          .post(`/v0/b/${storageBucket}/o/${encodedFilename}?create_token=someNonTrueParam`)
           .set({ Authorization: "Bearer owner" })
           .expect(400);
       });
 
       it("should return a 403 for create_token if auth header is invalid", async () => {
         await supertest(STORAGE_EMULATOR_HOST)
-          .post(`/v0/b/${storageBucket}/o/${encoded_filename}?create_token=true`)
+          .post(`/v0/b/${storageBucket}/o/${encodedFilename}?create_token=true`)
           .set({ Authorization: "Bearer somethingElse" })
           .expect(403);
       });
 
       it("should delete a download token", async () => {
         await supertest(STORAGE_EMULATOR_HOST)
-          .post(`/v0/b/${storageBucket}/o/${encoded_filename}?create_token=true`)
+          .post(`/v0/b/${storageBucket}/o/${encodedFilename}?create_token=true`)
           .set({ Authorization: "Bearer owner" })
           .expect(200);
         const tokens = await supertest(STORAGE_EMULATOR_HOST)
-          .post(`/v0/b/${storageBucket}/o/${encoded_filename}?create_token=true`)
+          .post(`/v0/b/${storageBucket}/o/${encodedFilename}?create_token=true`)
           .set({ Authorization: "Bearer owner" })
           .expect(200)
           .then((res) => res.body.downloadTokens.split(","));
         // delete the newly added token
         await supertest(STORAGE_EMULATOR_HOST)
-          .post(`/v0/b/${storageBucket}/o/${encoded_filename}?delete_token=${tokens[0]}`)
+          .post(`/v0/b/${storageBucket}/o/${encodedFilename}?delete_token=${tokens[0]}`)
           .set({ Authorization: "Bearer owner" })
           .expect(200)
           .then((res) => {
@@ -1871,17 +1871,17 @@ hello there!
 
       it("should regenerate a new token if the last remaining one is deleted", async () => {
         await supertest(STORAGE_EMULATOR_HOST)
-          .post(`/v0/b/${storageBucket}/o/${encoded_filename}?create_token=true`)
+          .post(`/v0/b/${storageBucket}/o/${encodedFilename}?create_token=true`)
           .set({ Authorization: "Bearer owner" })
           .expect(200);
         const token = await supertest(STORAGE_EMULATOR_HOST)
-          .get(`/v0/b/${storageBucket}/o/${encoded_filename}`)
+          .get(`/v0/b/${storageBucket}/o/${encodedFilename}`)
           .set({ Authorization: "Bearer owner" })
           .expect(200)
           .then((res) => res.body.downloadTokens);
 
         await supertest(STORAGE_EMULATOR_HOST)
-          .post(`/v0/b/${storageBucket}/o/${encoded_filename}?delete_token=${token}`)
+          .post(`/v0/b/${storageBucket}/o/${encodedFilename}?delete_token=${token}`)
           .set({ Authorization: "Bearer owner" })
           .expect(200)
           .then((res) => {
@@ -1893,7 +1893,7 @@ hello there!
 
       it("should return a 403 for delete_token if auth header is invalid", async () => {
         await supertest(STORAGE_EMULATOR_HOST)
-          .post(`/v0/b/${storageBucket}/o/${encoded_filename}?delete_token=someToken`)
+          .post(`/v0/b/${storageBucket}/o/${encodedFilename}?delete_token=someToken`)
           .set({ Authorization: "Bearer somethingElse" })
           .expect(403);
       });

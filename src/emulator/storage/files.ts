@@ -18,6 +18,8 @@ import { RulesetOperationMethod } from "./rules/types";
 import { AdminCredentialValidator, FirebaseRulesValidator } from "./rules/utils";
 import { Persistence } from "./persistence";
 import { Upload, UploadStatus } from "./upload";
+import { trackEmulator } from "../../track";
+import { Emulators } from "../types";
 
 interface BucketsList {
   buckets: {
@@ -548,7 +550,7 @@ export class StorageLayer {
    * Export is implemented using async operations so that it does not block
    * the hub when invoked.
    */
-  async export(storageExportPath: string) {
+  async export(storageExportPath: string, options: { initiatedBy: string }): Promise<void> {
     // Export a list of all known bucket IDs, which can be used to reconstruct
     // the bucket metadata.
     const bucketsList: BucketsList = {
@@ -557,6 +559,11 @@ export class StorageLayer {
     for (const b of await this.listBuckets()) {
       bucketsList.buckets.push({ id: b.id });
     }
+    void trackEmulator("emulator_export", {
+      initiated_by: options.initiatedBy,
+      emulator_name: Emulators.STORAGE,
+      count: bucketsList.buckets.length,
+    });
     // Resulting path is platform-specific, e.g. foo%5Cbar on Windows, foo%2Fbar on Linux
     // after URI encoding. Similarly for metadata paths below.
     const bucketsFilePath = path.join(storageExportPath, "buckets.json");
@@ -588,10 +595,16 @@ export class StorageLayer {
    * Import can be implemented using sync operations because the emulator should
    * not be handling any other requests during import.
    */
-  import(storageExportPath: string) {
+  import(storageExportPath: string, options: { initiatedBy: string }): void {
     // Restore list of buckets
     const bucketsFile = path.join(storageExportPath, "buckets.json");
     const bucketsList = JSON.parse(readFileSync(bucketsFile, "utf-8")) as BucketsList;
+    void trackEmulator("emulator_import", {
+      initiated_by: options.initiatedBy,
+      emulator_name: Emulators.STORAGE,
+      count: bucketsList.buckets.length,
+    });
+
     for (const b of bucketsList.buckets) {
       const bucketMetadata = new CloudStorageBucketMetadata(b.id);
       this._buckets.set(b.id, bucketMetadata);
