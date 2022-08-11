@@ -31,9 +31,9 @@ export type NullSuffix<T> = "?" | "";
 export type FieldType<T> =
   | `${BaseType<T>}${NullSuffix<T>}`
   | "omit"
-  | `Field<string>${NullSuffix<string>}`
-  | `Field<number>${NullSuffix<number>}`
-  | `Field<boolean>${NullSuffix<boolean>}`
+  | `Field<string>${NullSuffix<T>}`
+  | `Field<number>${NullSuffix<T>}`
+  | `Field<boolean>${NullSuffix<T>}`
   | ((t: T) => boolean);
 
 export type Schema<T extends object> = {
@@ -63,8 +63,7 @@ export function requireKeys<T extends object>(prefix: string, yaml: T, ...keys: 
 export function assertKeyTypes<T extends object>(
   prefix: string,
   yaml: T | undefined,
-  schema: Schema<T>,
-  passthrough?: (k: string, v?: any) => boolean
+  schema: Schema<T>
 ): void {
   if (!yaml) {
     return;
@@ -74,9 +73,6 @@ export function assertKeyTypes<T extends object>(
     const key = keyAsString as keyof T;
     const fullKey = prefix ? `${prefix}.${keyAsString}` : keyAsString;
 
-    if (passthrough && passthrough(keyAsString, value)) {
-      continue;
-    }
     if (!schema[key] || schema[key] === "omit") {
       throw new FirebaseError(
         `Unexpected key ${fullKey}. You may need to install a newer version of the Firebase CLI.`

@@ -1,7 +1,7 @@
 import * as build from "../../build";
 import * as params from "../../params";
 import * as runtimes from "..";
-import { copyIfPresent, convertIfPresent } from "../../../../gcp/proto";
+import { copyIfPresent, convertIfPresent, secondsFromDuration } from "../../../../gcp/proto";
 import { assertKeyTypes, requireKeys } from "./parsing";
 import { FirebaseError } from "../../../../error";
 
@@ -70,7 +70,7 @@ export type WireEndpoint = build.Triggered &
 export interface WireManifest {
   specVersion: string;
   params?: params.Param[];
-  requiredAPIs?: build.RequiredAPI[];
+  requiredAPIs?: build.RequiredApi[];
   endpoints: Record<string, WireEndpoint>;
 }
 
@@ -101,8 +101,8 @@ export function buildFromV1Alpha1(
   return bd;
 }
 
-function parseRequiredAPIs(manifest: WireManifest): build.RequiredAPI[] {
-  const requiredAPIs: build.RequiredAPI[] = manifest.requiredAPIs || [];
+function parseRequiredAPIs(manifest: WireManifest): build.RequiredApi[] {
+  const requiredAPIs: build.RequiredApi[] = manifest.requiredAPIs || [];
   for (const { api, reason } of requiredAPIs) {
     if (typeof api !== "string") {
       throw new FirebaseError(`Invalid api "${JSON.stringify(api)}. Expected string`);
@@ -122,8 +122,7 @@ function assertBuildEndpoint(ep: WireEndpoint, id: string): void {
     region: "array",
     platform: (platform) => build.AllFunctionsPlatforms.includes(platform),
     entryPoint: "string",
-    availableMemoryMb: (mem) =>
-      mem === null || build.isValidMemoryOption(mem) || typeof mem === "string",
+    availableMemoryMb: (mem) => mem === null || isCEL(mem) || build.isValidMemoryOption(mem),
     maxInstances: "Field<number>?",
     minInstances: "Field<number>?",
     concurrency: "Field<number>?",
@@ -141,7 +140,7 @@ function assertBuildEndpoint(ep: WireEndpoint, id: string): void {
     scheduleTrigger: "object",
     taskQueueTrigger: "object",
     blockingTrigger: "object",
-    cpu: "Field<number>?",
+    cpu: (cpu) => cpu === null || isCEL(cpu) || cpu === "gcf_gen1" || typeof cpu === "number",
   });
   if (ep.vpc) {
     assertKeyTypes(prefix + ".vpc", ep.vpc, {
@@ -200,23 +199,18 @@ function assertBuildEndpoint(ep: WireEndpoint, id: string): void {
       retryConfig: "object?",
     });
     if (ep.scheduleTrigger.retryConfig) {
-      assertKeyTypes(
-        prefix + ".scheduleTrigger.retryConfig",
-        ep.scheduleTrigger.retryConfig,
-        {
-          retryCount: "Field<number>?",
-          maxDoublings: "Field<number>?",
-          minBackoffSeconds: "Field<number>?",
-          maxBackoffSeconds: "Field<number>?",
-          maxRetrySeconds: "Field<number>?",
-          maxRetryDuration: "Field<string>?",
-          minBackoffDuration: "Field<string>?",
-          maxBackoffDuration: "Field<string>?",
-        },
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        (k: string, _v: any) =>
-          ["minBackoffDuration", "maxBackoffDuration", "maxRetryDuration"].includes(k)
-      );
+      assertKeyTypes(prefix + ".scheduleTrigger.retryConfig", ep.scheduleTrigger.retryConfig, {
+        retryCount: "Field<number>?",
+        maxDoublings: "Field<number>?",
+        minBackoffSeconds: "Field<number>?",
+        maxBackoffSeconds: "Field<number>?",
+        maxRetrySeconds: "Field<number>?",
+        // The "duration" key types are supported for legacy compability reasons only.
+        // They are not parametized and are automatically converted by the parser to seconds.
+        maxRetryDuration: "string?",
+        minBackoffDuration: "string?",
+        maxBackoffDuration: "string?",
+      });
     }
   } else if (build.isTaskQueueTriggered(ep)) {
     assertKeyTypes(prefix + ".taskQueueTrigger", ep.taskQueueTrigger, {
@@ -302,6 +296,27 @@ function parseEndpointForBuild(
     };
     if (ep.scheduleTrigger.retryConfig) {
       st.retryConfig = {};
+      convertIfPresent(
+        st.retryConfig,
+        ep.scheduleTrigger.retryConfig,
+        "maxBackoffSeconds",
+        "maxBackoffDuration",
+        (duration) => (duration === null ? null : secondsFromDuration(duration))
+      );
+      convertIfPresent(
+        st.retryConfig,
+        ep.scheduleTrigger.retryConfig,
+        "minBackoffSeconds",
+        "minBackoffDuration",
+        (duration) => (duration === null ? null : secondsFromDuration(duration))
+      );
+      convertIfPresent(
+        st.retryConfig,
+        ep.scheduleTrigger.retryConfig,
+        "maxRetrySeconds",
+        "maxRetryDuration",
+        (duration) => (duration === null ? null : secondsFromDuration(duration))
+      );
       copyIfPresent(
         st.retryConfig,
         ep.scheduleTrigger.retryConfig,
@@ -398,4 +413,8 @@ function resolveChannelName(projectId: string, channel: string, defaultRegion: s
   } else {
     return "projects/" + projectId + "/locations/" + location + "/channels/" + channelId;
   }
+}
+
+function isCEL(expr: any) {
+  return typeof expr === "string" && expr.includes("{{") && expr.includes("}}");
 }

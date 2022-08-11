@@ -35,7 +35,7 @@ export function of(endpoints: Record<string, Endpoint>): Build {
   return build;
 }
 
-interface RequiredApi {
+export interface RequiredApi {
   // The API that should be enabled. For Google APIs, this should be a googleapis.com subdomain
   // (e.g. vision.googleapis.com)
   api: string;
@@ -144,6 +144,12 @@ export interface ScheduleTrigger {
   retryConfig?: ScheduleRetryConfig | null;
 }
 
+export type HttpsTriggered = { httpsTrigger: HttpsTrigger };
+export type CallableTriggered = { callableTrigger: CallableTrigger };
+export type BlockingTriggered = { blockingTrigger: BlockingTrigger };
+export type EventTriggered = { eventTrigger: EventTrigger };
+export type ScheduleTriggered = { scheduleTrigger: ScheduleTrigger };
+export type TaskQueueTriggered = { taskQueueTrigger: TaskQueueTrigger };
 export type Triggered =
   | HttpsTriggered
   | CallableTriggered
@@ -151,12 +157,6 @@ export type Triggered =
   | EventTriggered
   | ScheduleTriggered
   | TaskQueueTriggered;
-export type HttpsTriggered = { httpsTrigger: HttpsTrigger };
-export type CallableTriggered = { callableTrigger: CallableTrigger };
-export type BlockingTriggered = { blockingTrigger: BlockingTrigger };
-export type EventTriggered = { eventTrigger: EventTrigger };
-export type ScheduleTriggered = { scheduleTrigger: ScheduleTrigger };
-export type TaskQueueTriggered = { taskQueueTrigger: TaskQueueTrigger };
 
 /** Whether something has an HttpsTrigger */
 export function isHttpsTriggered(triggered: Triggered): triggered is HttpsTriggered {
@@ -218,7 +218,6 @@ export const AllIngressSettings: IngressSetting[] = [
   "ALLOW_INTERNAL_ONLY",
   "ALLOW_INTERNAL_AND_GCLB",
 ];
-export type RequiredAPI = backend.RequiredAPI;
 
 export type Endpoint = Triggered & {
   // Defaults to "gcfv2". "Run" will be an additional option defined later

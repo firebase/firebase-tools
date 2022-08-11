@@ -11,7 +11,7 @@ import * as build from "../../../../../deploy/functions/build";
 const MIN_ENDPOINT = {
   entryPoint: "entrypoint",
   httpsTrigger: {},
-  serviceAccount: "sa@",
+  serviceAccount: null,
 };
 
 const ENDPOINT: build.Endpoint = {
@@ -20,7 +20,7 @@ const ENDPOINT: build.Endpoint = {
   project: "project",
   runtime: "nodejs16",
   region: [api.functionsDefaultRegion],
-  serviceAccount: "sa@",
+  serviceAccount: null,
 };
 
 const YAML_OBJ = {
