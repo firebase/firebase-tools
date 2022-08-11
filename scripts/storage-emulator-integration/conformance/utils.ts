@@ -1,6 +1,4 @@
-import firebase from "firebase/compat/app";
-import "firebase/compat/auth";
-import "firebase/compat/storage";
+import * as firebase from "firebase";
 import * as fs from "fs";
 import * as path from "path";
 import * as puppeteer from "puppeteer";
@@ -87,7 +85,6 @@ export function getTmpDir(): string {
 export function writeToFile(filename: string, contents: Buffer, tmpDir: string): string {
   const fullPath = path.join(tmpDir, filename);
   fs.writeFileSync(fullPath, contents);
-
   return fullPath;
 }
 

@@ -1,9 +1,6 @@
 import { Bucket } from "@google-cloud/storage";
 import { expect } from "chai";
-import { getBlob } from "firebase/storage";
-import firebase from "firebase/compat/app";
-import "firebase/compat/auth";
-import "firebase/compat/storage";
+import * as firebase from "firebase";
 import * as admin from "firebase-admin";
 import * as fs from "fs";
 import * as http from "http";
@@ -175,25 +172,36 @@ describe("Firebase JavaScript SDK tests", () => {
     describe("#put()", () => {
       it("should upload a file", async () => {
         await signInToFirebaseAuth(page);
-        const metadata = { customMetadata: { someField: "someValue" } };
+        await page.evaluate(async (ref) => {
+          await firebase.storage().ref(ref).putString("hello world");
+        }, TEST_FILE_NAME);
 
-        page.evaluate(
-          async (ref, metadata) => {
-            await firebase.storage().ref(ref).putString("hello world", "utf-8", metadata);
-          },
-          TEST_FILE_NAME,
-          metadata
-        );
+        const downloadUrl = await page.evaluate(async (ref) => {
+          return await firebase.storage().ref(ref).getDownloadURL();
+        }, TEST_FILE_NAME);
 
-        const data = page.evaluate(
-          async (ref) => {
-            return await getBlob(firebase.storage().ref(ref));
-          },
-          TEST_FILE_NAME,
-          metadata
-        );
-
-        console.log(data);
+        const requestClient = TEST_CONFIG.useProductionServers ? https : http;
+        await new Promise((resolve, reject) => {
+          requestClient.get(
+            downloadUrl,
+            {
+              headers: {
+                // This is considered an authorized request in the emulator
+                Authorization: "Bearer owner",
+              },
+            },
+            (response) => {
+              const data: any = [];
+              response
+                .on("data", (chunk) => data.push(chunk))
+                .on("end", () => {
+                  expect(Buffer.concat(data).toString()).to.equal("hello world");
+                })
+                .on("close", resolve)
+                .on("error", reject);
+            }
+          );
+        });
       });
 
       it("should upload a file with a really long path name to check for os filename character limit", async () => {
@@ -208,7 +216,7 @@ describe("Firebase JavaScript SDK tests", () => {
         expect(uploadState).to.equal("success");
       });
 
-      it.only("should upload replace existing file", async () => {
+      it("should upload replace existing file", async () => {
         await uploadText(page, "upload/replace.txt", "some-content");
         await uploadText(page, "upload/replace.txt", "some-other-content");
 
@@ -486,19 +494,15 @@ describe("Firebase JavaScript SDK tests", () => {
       // it.skip("should return file metadata", async () => {
       //   await testBucket.upload(emptyFilePath, { destination: TEST_FILE_NAME });
       //   await signInToFirebaseAuth(page);
-
       //   const metadata = await page.evaluate(async (filename) => {
       //     return await firebase.storage().ref(filename).getMetadata();
       //   }, TEST_FILE_NAME);
-
       //   const metadataTypes: { [s: string]: string } = {};
-
       //   console.log(metadata);
       //   for (const key in Object.keys(metadata)) {
       //     console.log("KEY: " + key)
       //     metadataTypes[key] = typeof(metadata[key]);
       //   }
-
       //   expect(metadataTypes).to.deep.equal({
       //     bucket: "string",
       //     contentDisposition: "string",
