@@ -7,19 +7,25 @@ import { listSites, Site } from "../hosting/api";
 import { getAppConfig, AppPlatform } from "../management/apps";
 import { promises as fsPromises } from "fs";
 import { promptOnce } from "../prompt";
+import { Address } from "../emulator/types";
+import { getCredentialPathAsync } from "../defaultCredentials";
+import { getProjectDefaultAccount } from "../auth";
 
 const { writeFile } = fsPromises;
 
 export const shortSiteName = (site?: Site) => site?.name && site.name.split("/").pop();
 
-export const prepareFrameworks = async (targetNames: string[], context: any, options: any) => {
+export const prepareFrameworks = async (targetNames: string[], context: any, options: any, emulators: Record<string, Address|undefined>={}) => {
   const project = needProjectId(context);
+  const account = getProjectDefaultAccount(options.projectRoot)
   // options.site is not present when emulated. We could call requireHostingSite but IAM permissions haven't
   // been booted up (at this point) and we may be offline, so just use projectId. Most of the time
   // the default site is named the same as the project & for frameworks this is only used for naming the
   // function... unless you're using authenticated server-context TODO explore the implication here.
   const configs = normalizedHostingConfigs({ site: project, ...options }, { resolveTargets: true });
   options.normalizedHostingConfigs = configs;
+  // @ts-ignore
+  const { build, injectConfig } = await import("firebase-frameworks/tools");
   if (configs.length === 0) return;
   for (const config of configs) {
     const { source, site, public: publicDir } = config;
@@ -31,8 +37,25 @@ export const prepareFrameworks = async (targetNames: string[], context: any, opt
       throw new Error(`hosting.public and hosting.source cannot both be set in firebase.json`);
     const getProjectPath = (...args: string[]) => join(process.cwd(), source, ...args);
     const functionName = `ssr${site.replace(/-/g, "")}`;
-    const { build } = require("firebase-frameworks/tools");
-    const { usingCloudFunctions, rewrites, redirects, headers, usesFirebaseConfig } = await build(
+    if (account && Object.keys(emulators).length) {
+      if (account && !process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+        const defaultCredPath = await getCredentialPathAsync(account);
+        console.log({ defaultCredPath });
+        if (defaultCredPath) process.env.GOOGLE_APPLICATION_CREDENTIALS = defaultCredPath;
+      }
+      Object.entries(emulators).filter(([, it]) => it).forEach(([ key, value ]) => {
+        const { host, port } = value!;
+        let envVariable: string;
+        if (key === 'firestoreEmulatorAddress') envVariable = 'FIRESTORE_EMULATOR_HOST';
+        if (key === 'authEmulatorAddress') envVariable = 'AUTH_EMULATOR_HOST';
+        if (key === 'databaseEmulatorAddress') envVariable = 'DATABASE_EMULATOR_HOST';
+        if (key === 'storageEmulatorAddress') envVariable = 'STORAGE_EMULATOR_HOST';
+        if (key === 'functionsEmulatorAddress') envVariable = 'FUNCTIONS_EMULATOR_HOST';
+        console.log(key, host, port);
+        process.env[envVariable!] = `${host}:${port}`;
+      });
+    };
+    const { usingCloudFunctions, framework, rewrites, redirects, headers, usesFirebaseConfig } = await build(
       {
         dist,
         project,
@@ -109,13 +132,7 @@ You can link a Web app to a Hosting site here https://console.firebase.google.co
           }
         }
       }
-      writeFile(
-        join(functionsDist, ".env"),
-        `FRAMEWORKS_FIREBASE_PROJECT_CONFIG="${JSON.stringify(firebaseProjectConfig).replace(
-          /"/g,
-          '\\"'
-        )}"`
-      );
+      await injectConfig(dist, framework, firebaseProjectConfig, emulators, usingCloudFunctions);
     } else {
       config.rewrites = [
         ...(config.rewrites || []),
@@ -128,5 +145,6 @@ You can link a Web app to a Hosting site here https://console.firebase.google.co
     }
     config.redirects = [...(config.redirects || []), ...redirects];
     config.headers = [...(config.headers || []), ...headers];
+    config.cleanUrls ??= true;
   }
 };

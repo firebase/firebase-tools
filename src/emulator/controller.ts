@@ -403,10 +403,20 @@ export async function startAll(
     }
   }
 
+
+  const firestoreEmulatorAddress = shouldStart(options, Emulators.FIRESTORE) ? await getAndCheckAddress(Emulators.FIRESTORE, options) : undefined;
+  const databaseEmulatorAddress = shouldStart(options, Emulators.DATABASE) ? await getAndCheckAddress(Emulators.DATABASE, options) : undefined;
+  const authEmulatorAddress = shouldStart(options, Emulators.AUTH) ? await getAndCheckAddress(Emulators.AUTH, options) : undefined;
+  const storageEmulatorAddress = shouldStart(options, Emulators.STORAGE) ? await getAndCheckAddress(Emulators.STORAGE, options) : undefined;
+  let functionsEmulatorAddress = (shouldStart(options, Emulators.FUNCTIONS) || shouldStart(options, Emulators.EXTENSIONS)) ?
+    await getAndCheckAddress(Emulators.FUNCTIONS, options) :
+    undefined;
+
   if (previews.frameworkawareness) {
     const config = options.config.get("hosting");
+    const emulators = { firestoreEmulatorAddress, databaseEmulatorAddress, authEmulatorAddress, storageEmulatorAddress, functionsEmulatorAddress };
     if (Array.isArray(config) ? config.some((it) => it.source) : config?.source) {
-      await prepareFrameworks(targets, options, options);
+      await prepareFrameworks(targets, options, options, emulators);
     }
   }
 
@@ -443,7 +453,7 @@ export async function startAll(
 
   const emulatableBackends: EmulatableBackend[] = [];
   const projectDir = (options.extDevDir || options.config.projectDir) as string;
-  if (shouldStart(options, Emulators.FUNCTIONS)) {
+  if (shouldStart(options, Emulators.FIRESTORE)) {
     const functionsCfg = normalizeAndValidate(options.config.src.functions);
     // Note: ext:dev:emulators:* commands hit this path, not the Emulators.EXTENSIONS path
     utils.assertIsStringOrUndefined(options.extDevDir);
@@ -490,7 +500,6 @@ export async function startAll(
 
   if (emulatableBackends.length) {
     const functionsLogger = EmulatorLogger.forEmulator(Emulators.FUNCTIONS);
-    const functionsAddr = await getAndCheckAddress(Emulators.FUNCTIONS, options);
     const projectId = needProjectId(options);
 
     let inspectFunctions: number | undefined;
@@ -521,27 +530,29 @@ export async function startAll(
 
     const account = getProjectDefaultAccount(options.projectRoot);
 
+    // When we first fetched this address, for frameworks, shouldStart might have returned false so functionsEmulatorAddress might be undefined
+    functionsEmulatorAddress ||= await getAndCheckAddress(Emulators.FUNCTIONS, options);  
+
     // TODO(b/213241033): Figure out how to watch for changes to extensions .env files & reload triggers when they change.
     const functionsEmulator = new FunctionsEmulator({
       projectId,
       projectDir,
       emulatableBackends,
       account,
-      host: functionsAddr.host,
-      port: functionsAddr.port,
+      host: functionsEmulatorAddress.host,
+      port: functionsEmulatorAddress.port,
       debugPort: inspectFunctions,
       projectAlias: options.projectAlias,
     });
     await startEmulator(functionsEmulator);
   }
 
-  if (shouldStart(options, Emulators.FIRESTORE)) {
+  if (firestoreEmulatorAddress) {
     const firestoreLogger = EmulatorLogger.forEmulator(Emulators.FIRESTORE);
-    const firestoreAddr = await getAndCheckAddress(Emulators.FIRESTORE, options);
-
+    
     const args: FirestoreEmulatorArgs = {
-      host: firestoreAddr.host,
-      port: firestoreAddr.port,
+      host: firestoreEmulatorAddress.host,
+      port: firestoreEmulatorAddress.port,
       projectId,
       auto_download: true,
     };
@@ -597,13 +608,12 @@ export async function startAll(
     await startEmulator(firestoreEmulator);
   }
 
-  if (shouldStart(options, Emulators.DATABASE)) {
+  if (databaseEmulatorAddress) {
     const databaseLogger = EmulatorLogger.forEmulator(Emulators.DATABASE);
-    const databaseAddr = await getAndCheckAddress(Emulators.DATABASE, options);
-
+    
     const args: DatabaseEmulatorArgs = {
-      host: databaseAddr.host,
-      port: databaseAddr.port,
+      host: databaseEmulatorAddress.host,
+      port: databaseEmulatorAddress.port,
       projectId,
       auto_download: true,
     };
@@ -667,7 +677,7 @@ export async function startAll(
     }
   }
 
-  if (shouldStart(options, Emulators.AUTH)) {
+  if (authEmulatorAddress) {
     if (!projectId) {
       throw new FirebaseError(
         `Cannot start the ${Constants.description(
@@ -676,10 +686,9 @@ export async function startAll(
       );
     }
 
-    const authAddr = await getAndCheckAddress(Emulators.AUTH, options);
     const authEmulator = new AuthEmulator({
-      host: authAddr.host,
-      port: authAddr.port,
+      host: authEmulatorAddress.host,
+      port: authEmulatorAddress.port,
       projectId,
     });
     await startEmulator(authEmulator);
@@ -710,12 +719,11 @@ export async function startAll(
     await startEmulator(pubsubEmulator);
   }
 
-  if (shouldStart(options, Emulators.STORAGE)) {
-    const storageAddr = await getAndCheckAddress(Emulators.STORAGE, options);
+  if (storageEmulatorAddress) {
 
     const storageEmulator = new StorageEmulator({
-      host: storageAddr.host,
-      port: storageAddr.port,
+      host: storageEmulatorAddress.host,
+      port: storageEmulatorAddress.port,
       projectId: projectId,
       rules: getStorageRulesConfig(projectId, options),
     });

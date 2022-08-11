@@ -28,7 +28,7 @@
         "exegesis-express": "^4.0.0",
         "express": "^4.16.4",
         "filesize": "^6.1.0",
-        "firebase-frameworks": "^0.4.2",
+        "firebase-frameworks": "file:../firebase-next",
         "form-data": "^4.0.0",
         "fs-extra": "^10.1.0",
         "glob": "^7.1.2",
@@ -150,6 +150,43 @@
       },
       "engines": {
         "node": "^14.18.0 || >=16.4.0"
+      }
+    },
+    "../firebase-next": {
+      "version": "0.4.3",
+      "license": "Apache-2.0",
+      "dependencies": {
+        "fs-extra": "^10.1.0",
+        "jsonc-parser": "^3.0.0",
+        "replace-in-file": "^6.3.2",
+        "semver": "^7.3.7",
+        "tslib": "^2.3.1"
+      },
+      "devDependencies": {
+        "@angular-devkit/architect": "^0.1303.3",
+        "@angular-devkit/core": "^13.3.3",
+        "@nuxt/types": "^2.15.8",
+        "@types/cookie": "^0.5.1",
+        "@types/fs-extra": "^9.0.13",
+        "@types/inquirer": "^8.1.3",
+        "@types/lru-cache": "^7.6.1",
+        "@types/node": "^16.11.12",
+        "@types/semver": "^7.3.9",
+        "cookie": "^0.5.0",
+        "firebase": "^9.9.0",
+        "firebase-admin": "^11.0.0",
+        "firebase-functions": "^3.22.0",
+        "inquirer": "^8.2.0",
+        "lru-cache": "^7.8.1",
+        "next": "^12.0.7",
+        "nuxt": "^2.15.8",
+        "nuxt3": "^3.0.0-rc.6-27635653.88f4525",
+        "rimraf": "^3.0.2",
+        "ts-node": "^10.9.1",
+        "typescript": "^4.7.4"
+      },
+      "engines": {
+        "node": "^16.0.0 || ^18.0.0"
       }
     },
     "node_modules/@apidevtools/json-schema-ref-parser": {
@@ -6396,34 +6433,8 @@
       }
     },
     "node_modules/firebase-frameworks": {
-      "version": "0.4.2",
-      "resolved": "https://registry.npmjs.org/firebase-frameworks/-/firebase-frameworks-0.4.2.tgz",
-      "integrity": "sha512-a3xNE3wPh8JWq2WOgWlSypVS9O/y/3/3Im9EV7bNBF44wFV2oOAyFdVgDk6it81+lBRv7ci8PttgQZohtsFeVA==",
-      "dependencies": {
-        "fs-extra": "^10.1.0",
-        "jsonc-parser": "^3.0.0",
-        "semver": "^7.3.7",
-        "tslib": "^2.3.1"
-      }
-    },
-    "node_modules/firebase-frameworks/node_modules/semver": {
-      "version": "7.3.7",
-      "resolved": "https://registry.npmjs.org/semver/-/semver-7.3.7.tgz",
-      "integrity": "sha512-QlYTucUYOews+WeEujDoEGziz4K6c47V/Bd+LjSSYcA94p+DmINdf7ncaUinThfvZyu13lN9OY1XDxt8C0Tw0g==",
-      "dependencies": {
-        "lru-cache": "^6.0.0"
-      },
-      "bin": {
-        "semver": "bin/semver.js"
-      },
-      "engines": {
-        "node": ">=10"
-      }
-    },
-    "node_modules/firebase-frameworks/node_modules/tslib": {
-      "version": "2.3.1",
-      "resolved": "https://registry.npmjs.org/tslib/-/tslib-2.3.1.tgz",
-      "integrity": "sha512-77EbyPPpMz+FRFRuAFlWMtmgUWGe9UOG2Z25NqCwiIjRhOf5iKGuzSe5P2w1laq+FkRy4p+PCuVkJSGkzTEKVw=="
+      "resolved": "../firebase-next",
+      "link": true
     },
     "node_modules/firebase-functions": {
       "version": "3.18.1",
@@ -8389,11 +8400,6 @@
       "engines": {
         "node": ">=6"
       }
-    },
-    "node_modules/jsonc-parser": {
-      "version": "3.0.0",
-      "resolved": "https://registry.npmjs.org/jsonc-parser/-/jsonc-parser-3.0.0.tgz",
-      "integrity": "sha512-fQzRfAbIBnR0IQvftw9FJveWiHp72Fg20giDrHz6TdfB12UH/uue0D3hm57UB5KgAVuniLMCaS8P1IMj9NR7cA=="
     },
     "node_modules/jsonfile": {
       "version": "4.0.0",
@@ -19197,29 +19203,34 @@
       }
     },
     "firebase-frameworks": {
-      "version": "0.4.2",
-      "resolved": "https://registry.npmjs.org/firebase-frameworks/-/firebase-frameworks-0.4.2.tgz",
-      "integrity": "sha512-a3xNE3wPh8JWq2WOgWlSypVS9O/y/3/3Im9EV7bNBF44wFV2oOAyFdVgDk6it81+lBRv7ci8PttgQZohtsFeVA==",
+      "version": "file:../firebase-next",
       "requires": {
+        "@angular-devkit/architect": "^0.1303.3",
+        "@angular-devkit/core": "^13.3.3",
+        "@nuxt/types": "^2.15.8",
+        "@types/cookie": "^0.5.1",
+        "@types/fs-extra": "^9.0.13",
+        "@types/inquirer": "^8.1.3",
+        "@types/lru-cache": "^7.6.1",
+        "@types/node": "^16.11.12",
+        "@types/semver": "^7.3.9",
+        "cookie": "^0.5.0",
+        "firebase": "^9.9.0",
+        "firebase-admin": "^11.0.0",
+        "firebase-functions": "^3.22.0",
         "fs-extra": "^10.1.0",
+        "inquirer": "^8.2.0",
         "jsonc-parser": "^3.0.0",
+        "lru-cache": "^7.8.1",
+        "next": "^12.0.7",
+        "nuxt": "^2.15.8",
+        "nuxt3": "^3.0.0-rc.6-27635653.88f4525",
+        "replace-in-file": "^6.3.2",
+        "rimraf": "^3.0.2",
         "semver": "^7.3.7",
-        "tslib": "^2.3.1"
-      },
-      "dependencies": {
-        "semver": {
-          "version": "7.3.7",
-          "resolved": "https://registry.npmjs.org/semver/-/semver-7.3.7.tgz",
-          "integrity": "sha512-QlYTucUYOews+WeEujDoEGziz4K6c47V/Bd+LjSSYcA94p+DmINdf7ncaUinThfvZyu13lN9OY1XDxt8C0Tw0g==",
-          "requires": {
-            "lru-cache": "^6.0.0"
-          }
-        },
-        "tslib": {
-          "version": "2.3.1",
-          "resolved": "https://registry.npmjs.org/tslib/-/tslib-2.3.1.tgz",
-          "integrity": "sha512-77EbyPPpMz+FRFRuAFlWMtmgUWGe9UOG2Z25NqCwiIjRhOf5iKGuzSe5P2w1laq+FkRy4p+PCuVkJSGkzTEKVw=="
-        }
+        "ts-node": "^10.9.1",
+        "tslib": "^2.3.1",
+        "typescript": "^4.7.4"
       }
     },
     "firebase-functions": {
@@ -20757,11 +20768,6 @@
       "requires": {
         "minimist": "^1.2.5"
       }
-    },
-    "jsonc-parser": {
-      "version": "3.0.0",
-      "resolved": "https://registry.npmjs.org/jsonc-parser/-/jsonc-parser-3.0.0.tgz",
-      "integrity": "sha512-fQzRfAbIBnR0IQvftw9FJveWiHp72Fg20giDrHz6TdfB12UH/uue0D3hm57UB5KgAVuniLMCaS8P1IMj9NR7cA=="
     },
     "jsonfile": {
       "version": "4.0.0",
