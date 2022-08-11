@@ -154,7 +154,6 @@ export interface FunctionsRuntimeInstance {
 
 export interface InvokeRuntimeOpts {
   nodeBinary: string;
-  serializedTriggers?: string;
   extensionTriggers?: ParsedTriggerDefinition[];
   ignore_warnings?: boolean;
 }
