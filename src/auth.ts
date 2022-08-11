@@ -31,7 +31,6 @@ import {
   googleOrigin,
 } from "./api";
 
-/* eslint-disable camelcase */
 // The wire protocol for an access token returned by Google.
 // When we actually refresh from the server we should always have
 // these optional fields, but when a user passes --token we may
@@ -82,7 +81,6 @@ interface GitHubAuthResponse {
   scope: string;
   token_type: string;
 }
-/* eslint-enable camelcase */
 
 // Typescript emulates modules, which have constant exports. We can
 // overcome this by casting to any
