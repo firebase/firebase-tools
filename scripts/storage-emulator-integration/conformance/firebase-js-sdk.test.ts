@@ -57,7 +57,7 @@ const AUTH_EMULATOR_HOST = getAuthEmulatorHost(EMULATOR_CONFIG);
 
 const TEST_FILE_NAME = "testing/storage_ref/testFile";
 
-describe("Firebase JavaScript SDK tests", () => {
+describe("Firebase Storage JavaScript SDK conformance tests", () => {
   const appConfig = TEST_CONFIG.useProductionServers ? readProdAppConfig() : FAKE_APP_CONFIG;
   const storageBucket = appConfig.storageBucket;
 

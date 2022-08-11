@@ -36,7 +36,7 @@ const TEST_CONFIG = {
 };
 
 // TODO(b/241151246): Fix conformance tests.
-describe("GCS Javascript SDK tests", () => {
+describe("GCS Javascript SDK conformance tests", () => {
   let test: TriggerEndToEndTest;
 
   let testBucket: Bucket;
