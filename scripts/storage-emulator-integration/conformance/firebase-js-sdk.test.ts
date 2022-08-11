@@ -3,22 +3,14 @@ import { expect } from "chai";
 import * as firebase from "firebase";
 import * as admin from "firebase-admin";
 import * as fs from "fs";
-import * as http from "http";
-import * as https from "https";
-import * as path from "path";
 import * as puppeteer from "puppeteer";
+import { TEST_ENV } from "./env";
 import { IMAGE_FILE_BASE64 } from "../../../src/test/emulators/fixtures";
 import { TriggerEndToEndTest } from "../../integration-helpers/framework";
 import {
   createRandomFile,
   EMULATORS_SHUTDOWN_DELAY_MS,
-  getAuthEmulatorHost,
-  getStorageEmulatorHost,
-  readEmulatorConfig,
-  readJson,
-  readProdAppConfig,
   resetStorageEmulator,
-  SERVICE_ACCOUNT_KEY,
   signInToFirebaseAuth,
   SMALL_FILE_SIZE,
   TEST_SETUP_TIMEOUT,
@@ -27,43 +19,11 @@ import {
   writeToFile,
 } from "./utils";
 
-// Flip these flags for options during test debugging
-// all should be FALSE on commit
-const TEST_CONFIG = {
-  // Set this to true to use production servers
-  // (useful for writing tests against source of truth)
-  useProductionServers: false,
-
-  // Set this to true to make the headless chrome window visible
-  // (useful for ensuring the browser is running as expected)
-  showBrowser: false,
-};
-
-const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "fake-project-id";
-
-// Emulators accept fake app configs. This is sufficient for testing against the emulator.
-const FAKE_APP_CONFIG = {
-  apiKey: "fake-api-key",
-  projectId: `${FIREBASE_PROJECT}`,
-  authDomain: `${FIREBASE_PROJECT}.firebaseapp.com`,
-  storageBucket: `${FIREBASE_PROJECT}.appspot.com`,
-  appId: "fake-app-id",
-};
-
-// Reads in firebase.json
-const EMULATOR_CONFIG = readEmulatorConfig();
-const STORAGE_EMULATOR_HOST = getStorageEmulatorHost(EMULATOR_CONFIG);
-const AUTH_EMULATOR_HOST = getAuthEmulatorHost(EMULATOR_CONFIG);
-
 const TEST_FILE_NAME = "testing/storage_ref/testFile";
 
 describe("Firebase Storage JavaScript SDK conformance tests", () => {
-  const appConfig = TEST_CONFIG.useProductionServers ? readProdAppConfig() : FAKE_APP_CONFIG;
-  const storageBucket = appConfig.storageBucket;
-
-  const expectedFirebaseHost = TEST_CONFIG.useProductionServers
-    ? "https://firebasestorage.googleapis.com"
-    : STORAGE_EMULATOR_HOST;
+  const storageBucket = TEST_ENV.appConfig.storageBucket;
+  const expectedFirebaseHost = TEST_ENV.firebaseHost;
 
   // Temp directory to store generated files.
   const tmpDir = getTmpDir();
@@ -81,35 +41,31 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
   let page: puppeteer.Page;
 
   async function resetState(): Promise<void> {
-    if (TEST_CONFIG.useProductionServers) {
+    if (TEST_ENV.useProductionServers) {
       await testBucket.deleteFiles();
     } else {
-      await resetStorageEmulator(STORAGE_EMULATOR_HOST);
+      await resetStorageEmulator(TEST_ENV.storageEmulatorHost);
     }
   }
 
   before(async function (this) {
     this.timeout(TEST_SETUP_TIMEOUT);
-    if (TEST_CONFIG.useProductionServers) {
-      process.env.GOOGLE_APPLICATION_CREDENTIALS = path.join(__dirname, SERVICE_ACCOUNT_KEY);
-    } else {
-      process.env.STORAGE_EMULATOR_HOST = STORAGE_EMULATOR_HOST;
-      test = new TriggerEndToEndTest(FIREBASE_PROJECT, __dirname, EMULATOR_CONFIG);
+    TEST_ENV.applyEnvVars();
+    if (!TEST_ENV.useProductionServers) {
+      test = new TriggerEndToEndTest(TEST_ENV.projectId, __dirname, TEST_ENV.emulatorConfig);
       await test.startEmulators(["--only", "auth,storage"]);
     }
 
     // Init GCS admin SDK.
-    // TODO: We should not need a real credential for emulator tests, but
-    //       today we do.
-    const credential = fs.existsSync(path.join(__dirname, SERVICE_ACCOUNT_KEY))
-      ? admin.credential.cert(readJson(SERVICE_ACCOUNT_KEY))
+    const credential = TEST_ENV.prodServiceAccountKeyJson
+      ? admin.credential.cert(TEST_ENV.prodServiceAccountKeyJson)
       : admin.credential.applicationDefault();
     admin.initializeApp({ credential });
     testBucket = admin.storage().bucket(storageBucket);
 
     // Init fake browser page.
     browser = await puppeteer.launch({
-      headless: !TEST_CONFIG.showBrowser,
+      headless: !TEST_ENV.showBrowser,
       devtools: true,
     });
     page = await browser.newPage();
@@ -134,10 +90,10 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
           (firebase.storage() as any).useEmulator(storageHost, storagePort);
         }
       },
-      appConfig,
-      TEST_CONFIG.useProductionServers,
-      AUTH_EMULATOR_HOST,
-      STORAGE_EMULATOR_HOST.replace(/^(https?:|)\/\//, "")
+      TEST_ENV.appConfig,
+      TEST_ENV.useProductionServers,
+      TEST_ENV.authEmulatorHost,
+      TEST_ENV.storageEmulatorHost.replace(/^(https?:|)\/\//, "")
     );
   });
 
@@ -160,10 +116,8 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
     await page.close();
     await browser.close();
 
-    if (TEST_CONFIG.useProductionServers) {
-      delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
-    } else {
-      delete process.env.STORAGE_EMULATOR_HOST;
+    TEST_ENV.removeEnvVars();
+    if (!TEST_ENV.useProductionServers) {
       await test.stopEmulators();
     }
   });
@@ -180,9 +134,8 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
           return await firebase.storage().ref(ref).getDownloadURL();
         }, TEST_FILE_NAME);
 
-        const requestClient = TEST_CONFIG.useProductionServers ? https : http;
         await new Promise((resolve, reject) => {
-          requestClient.get(
+          TEST_ENV.requestClient.get(
             downloadUrl,
             {
               headers: {
@@ -225,9 +178,8 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
           return firebase.storage().ref("upload/replace.txt").getDownloadURL();
         });
 
-        const requestClient = TEST_CONFIG.useProductionServers ? https : http;
         await new Promise((resolve, reject) => {
-          requestClient.get(
+          TEST_ENV.requestClient.get(
             downloadUrl,
             {
               headers: {
@@ -473,9 +425,8 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
           return firebase.storage().ref(filename).getDownloadURL();
         }, TEST_FILE_NAME);
 
-        const requestClient = TEST_CONFIG.useProductionServers ? https : http;
         await new Promise((resolve, reject) => {
-          requestClient.get(downloadUrl, (response) => {
+          TEST_ENV.requestClient.get(downloadUrl, (response) => {
             const data: any = [];
             response
               .on("data", (chunk) => data.push(chunk))

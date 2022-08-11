@@ -17,9 +17,21 @@ export const EMULATORS_SHUTDOWN_DELAY_MS = 5000;
 export const PROD_APP_CONFIG = "storage-integration-config.json";
 export const SERVICE_ACCOUNT_KEY = "service-account-key.json";
 
+// Emulators accept fake app configs. This is sufficient for testing against the emulator.
+export function getFakeAppConfig(projectId: string) {
+  return {
+    apiKey: "fake-api-key",
+    projectId: `${projectId}`,
+    authDomain: `${projectId}.firebaseapp.com`,
+    storageBucket: `${projectId}.appspot.com`,
+    appId: "fake-app-id",
+  };
+}
+
 // Firebase Emulator config, for starting up emulators
 export const FIREBASE_EMULATOR_CONFIG = "firebase.json";
 export const SMALL_FILE_SIZE = 200 * 1024; /* 200 kB */
+
 
 /**
  * Reads a JSON file in the current directory.

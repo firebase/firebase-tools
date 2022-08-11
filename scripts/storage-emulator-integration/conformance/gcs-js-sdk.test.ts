@@ -11,6 +11,7 @@ import {
   createRandomFile,
   EMULATORS_SHUTDOWN_DELAY_MS,
   getStorageEmulatorHost,
+  getFakeAppConfig,
   readEmulatorConfig,
   readJson,
   readProdAppConfig,
@@ -29,10 +30,6 @@ const TEST_CONFIG = {
   // Set this to true to use production servers
   // (useful for writing tests against source of truth)
   useProductionServers: false,
-
-  // Set this to true to make the headless chrome window visible
-  // (useful for ensuring the browser is running as expected)
-  showBrowser: false,
 };
 
 // TODO(b/241151246): Fix conformance tests.
@@ -54,7 +51,7 @@ describe("GCS Javascript SDK conformance tests", () => {
     appId: "fake-app-id",
   };
 
-  const appConfig = TEST_CONFIG.useProductionServers ? readProdAppConfig() : FAKE_APP_CONFIG;
+  const appConfig = TEST_CONFIG.useProductionServers ? readProdAppConfig() : getFakeAppConfig(FIREBASE_PROJECT);
   const emulatorConfig = readEmulatorConfig();
 
   const storageBucket = appConfig.storageBucket;
@@ -82,8 +79,6 @@ describe("GCS Javascript SDK conformance tests", () => {
       await test.startEmulators(["--only", "auth,storage"]);
     }
 
-    // TODO: We should not need a real credential for emulator tests, but
-    //       today we do.
     const credential = fs.existsSync(path.join(__dirname, SERVICE_ACCOUNT_KEY))
       ? admin.credential.cert(readJson(SERVICE_ACCOUNT_KEY))
       : admin.credential.applicationDefault();
