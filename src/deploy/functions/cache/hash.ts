@@ -2,7 +2,7 @@ import * as fs from "fs";
 import * as crypto from "crypto";
 import * as args from "../args";
 import * as secrets from "../../../functions/secrets";
-import { Backend, Endpoint, EnvironmentVariables } from "../backend";
+import { Backend, Endpoint, EnvironmentVariables, allEndpoints } from "../backend";
 
 export async function getBackendHash(backend: Backend, source?: args.Source) {
   const hash = crypto.createHash("sha256");
@@ -44,12 +44,11 @@ function hasSecretVersions(secretVersions: Record<string, string>) {
 
 // Hash the secret versions.
 function getSecretVersions(backend: Backend): Record<string, string> {
-  const endpointsById = Object.values(backend?.endpoints || {});
-  const endpointsList: Endpoint[] = endpointsById
-    .map((endpoints) => Object.values(endpoints))
-    .reduce((memo, endpoints) => [...memo, ...endpoints], []);
+  const endpointsList: Endpoint[] = allEndpoints(backend);
   return secrets.of(endpointsList).reduce((memo, { secret, version }) => {
-    if (version) memo[secret] = version;
+    if (version) {
+      memo[secret] = version;
+    }
     return memo;
   }, {} as Record<string, string>);
 }

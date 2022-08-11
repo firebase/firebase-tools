@@ -1,14 +1,9 @@
 import { expect } from "chai";
 import { getBackendHash } from "../../../deploy/functions/cache/hash";
-import { Backend } from "../../../deploy/functions/backend";
+import { Endpoint, empty } from "../../../deploy/functions/backend";
 import { resolve } from "path";
-import { Endpoint } from "../../../deploy/functions/backend";
 
-const EMPTY_WANT_BACKEND = {
-  requiredAPIs: [],
-  environmentVariables: {},
-  endpoints: {},
-} as Backend;
+const EMPTY_WANT_BACKEND = empty();
 
 const EMPTY_ENDPOINT: Endpoint = {
   id: "id",
