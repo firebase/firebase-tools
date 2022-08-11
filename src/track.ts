@@ -62,9 +62,6 @@ const EMULATOR_GA4_USER_PROPS = {
   node_version: {
     value: process.version,
   },
-  firebase_tools_version: {
-    value: pkg.version,
-  },
   firepit_version: {
     value: process.env.FIREPIT_VERSION || "none",
   },
