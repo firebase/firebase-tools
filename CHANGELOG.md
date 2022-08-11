@@ -1,0 +1,1 @@
+- Fix bug where CLI configured wrong cpu for 16GB/32GB v2 functions. (#4845)
