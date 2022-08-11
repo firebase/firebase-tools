@@ -167,6 +167,8 @@ export type EmulatorsConfig = {
     host?: string;
     port?: number;
   };
+  single_project_mode?: boolean
+  single_project_mode_errors?: boolean
 };
 
 export type ExtensionsConfig = Record<string, string>;

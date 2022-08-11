@@ -321,6 +321,7 @@ function findExportMetadata(importPath: string): ExportMetadata | undefined {
 
 interface EmulatorOptions extends Options {
   extDevEnv?: Record<string, string>;
+  singleProjectMode?: Boolean;
 }
 
 export async function startAll(
@@ -616,6 +617,18 @@ export async function startAll(
         "firestore",
         "The emulator will default to allowing all reads and writes. Learn more about this option: https://firebase.google.com/docs/emulator-suite/install_and_configure#security_rules_configuration."
       );
+    }
+
+    if (big flag) {
+      if (projectId) {
+        args.single_project_mode = true;
+      } else {
+        firestoreLogger.logLabeled(
+          "DEBUG",
+          "firestore",
+          "Could not enable single_project_mode: missing projectId."
+        );
+      }
     }
 
     const firestoreEmulator = new FirestoreEmulator(args);
