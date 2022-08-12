@@ -6,10 +6,8 @@ import * as supertest from "supertest";
 import { EmulatorEndToEndTest } from "../../integration-helpers/framework";
 import { TEST_ENV } from "./env";
 import {
-  createRandomFile,
   EMULATORS_SHUTDOWN_DELAY_MS,
   resetStorageEmulator,
-  SMALL_FILE_SIZE,
   TEST_SETUP_TIMEOUT,
   getTmpDir,
 } from "../utils";
@@ -161,7 +159,7 @@ hello there!
           .expect(400)
           .then((res) => res.body.error.message);
 
-        expect(errorMessage).to.equal("Invalid Content-Type: foo");
+        expect(errorMessage).to.include("Bad content type.");
       });
     });
   });
