@@ -13,13 +13,16 @@ import { Constants } from "./constants";
 import {
   EmulatedTriggerMap,
   findModuleRoot,
-  FunctionsRuntimeBundle,
-  FunctionsRuntimeFeatures,
   FunctionsRuntimeArgs,
   HttpConstants,
   SignatureType,
 } from "./functionsEmulatorShared";
 import { compareVersionStrings, isLocalHost } from "./functionsEmulatorUtils";
+import { EventUtils } from "./events/types";
+
+interface RequestWithRawBody extends express.Request {
+  rawBody: Buffer;
+}
 
 let functionModule: any;
 let FUNCTION_TARGET_NAME: string;
@@ -768,12 +771,9 @@ function rawBodySaver(req: express.Request, res: express.Response, buf: Buffer):
 
 async function processBackground(
   trigger: CloudFunction<any>,
-  frb: FunctionsRuntimeBundle,
+  proto: any,
   signature: SignatureType
 ): Promise<void> {
-  const proto = frb.proto;
-  logDebug("ProcessBackground", proto);
-
   if (signature === "cloudevent") {
     return runCloudEvent(trigger, proto);
   }
@@ -871,58 +871,6 @@ function logDebug(msg: string, data?: any): void {
   new EmulatorLog("DEBUG", "runtime-status", `[${process.pid}] ${msg}`, data).log();
 }
 
-async function invokeTrigger(
-  trigger: CloudFunction<any>,
-  frb: FunctionsRuntimeBundle
-): Promise<void> {
-  new EmulatorLog("INFO", "runtime-status", `Beginning execution of "${FUNCTION_TARGET_NAME}"`, {
-    frb,
-  }).log();
-
-  logDebug(`Running ${FUNCTION_TARGET_NAME} in signature ${FUNCTION_SIGNATURE}`);
-
-  let seconds = 0;
-  const timerId = setInterval(() => {
-    seconds++;
-  }, 1000);
-
-  let timeoutId;
-  if (isFeatureEnabled(frb, "timeout")) {
-    let timeout = process.env.FUNCTIONS_EMULATOR_TIMEOUT_SECONDS || "60";
-    if (timeout.endsWith("s")) {
-      timeout = timeout.slice(0, -1);
-    }
-    const timeoutMs = parseInt(timeout, 10) * 1000;
-    timeoutId = setTimeout(() => {
-      new EmulatorLog(
-        "WARN",
-        "runtime-status",
-        `Your function timed out after ~${timeout}s. To configure this timeout, see
-      https://firebase.google.com/docs/functions/manage-functions#set_timeout_and_memory_allocation.`
-      ).log();
-      throw new Error("Function timed out.");
-    }, timeoutMs);
-  }
-
-  switch (FUNCTION_SIGNATURE) {
-    case "event":
-    case "cloudevent":
-      await processBackground(trigger, frb, FUNCTION_SIGNATURE);
-      break;
-  }
-
-  if (timeoutId) {
-    clearTimeout(timeoutId);
-  }
-  clearInterval(timerId);
-
-  new EmulatorLog(
-    "INFO",
-    "runtime-status",
-    `Finished "${FUNCTION_TARGET_NAME}" in ~${Math.max(seconds, 1)}s`
-  ).log();
-}
-
 async function initializeRuntime(): Promise<EmulatedTriggerMap | undefined> {
   FUNCTION_DEBUG_MODE = process.env.FUNCTION_DEBUG_MODE || "";
 
@@ -1010,28 +958,6 @@ async function handleMessage(message: string) {
     FUNCTION_TARGET_NAME = runtimeArgs.frb.debug!.functionTarget;
     FUNCTION_SIGNATURE = runtimeArgs.frb.debug!.functionSignature;
   }
-
-  if (FUNCTION_SIGNATURE === "http") {
-    logDebug(`Skipping invocation of HTTP function ${FUNCTION_TARGET_NAME}!`);
-    return;
-  }
-
-  const trigger = FUNCTION_TARGET_NAME.split(".").reduce((mod, functionTargetPart) => {
-    return mod?.[functionTargetPart];
-  }, functionModule) as CloudFunction<any>;
-  if (!trigger) {
-    throw new Error(`Failed to find function ${FUNCTION_TARGET_NAME} in the loaded module`);
-  }
-
-  logDebug(`Beginning invocation function ${FUNCTION_TARGET_NAME}!`);
-
-  try {
-    await invokeTrigger(trigger, runtimeArgs.frb);
-    await goIdle();
-  } catch (err: any) {
-    new EmulatorLog("FATAL", "runtime-error", err.stack ? err.stack : err).log();
-    await flushAndExit(1);
-  }
 }
 
 async function main(): Promise<void> {
@@ -1055,87 +981,6 @@ async function main(): Promise<void> {
   });
 
   await initializeRuntime();
-  try {
-    functionModule = await loadTriggers();
-  } catch (e: any) {
-    new EmulatorLog(
-      "FATAL",
-      "runtime-status",
-      `Failed to initialize and load triggers. This shouldn't happen: ${e.message}`
-    ).log();
-    await flushAndExit(1);
-  }
-
-  const app = express();
-  app.enable("trust proxy");
-  app.use(
-    bodyParser.json({
-      limit: "10mb",
-      verify: rawBodySaver,
-    })
-  );
-  app.use(
-    bodyParser.text({
-      limit: "10mb",
-      verify: rawBodySaver,
-    })
-  );
-  app.use(
-    bodyParser.urlencoded({
-      extended: true,
-      limit: "10mb",
-      verify: rawBodySaver,
-    })
-  );
-  app.use(
-    bodyParser.raw({
-      type: "*/*",
-      limit: "10mb",
-      verify: rawBodySaver,
-    })
-  );
-  app.get("/__/health", (req, res) => {
-    res.status(200).send();
-  });
-  app.all("/favicon.ico|/robots.txt", (req, res) => {
-    res.status(404).send();
-  });
-  app.all(`/*`, async (req: express.Request, res: express.Response) => {
-    try {
-      new EmulatorLog(
-        "INFO",
-        "runtime-status",
-        `Beginning execution of "${FUNCTION_TARGET_NAME}"`
-      ).log();
-
-      const trigger = FUNCTION_TARGET_NAME.split(".").reduce((mod, functionTargetPart) => {
-        return mod?.[functionTargetPart];
-      }, functionModule) as CloudFunction<unknown>;
-      if (!trigger) {
-        throw new Error(`Failed to find function ${FUNCTION_TARGET_NAME} in the loaded module`);
-      }
-      const startHrTime = process.hrtime();
-      res.on("finish", () => {
-        const elapsedHrTime = process.hrtime(startHrTime);
-        new EmulatorLog(
-          "INFO",
-          "runtime-status",
-          `Finished "${FUNCTION_TARGET_NAME}" in ${
-            elapsedHrTime[0] * 1000 + elapsedHrTime[1] / 1000000
-          }ms`
-        ).log();
-      });
-      await runHTTPS(trigger, [req, res]);
-    } catch (err: any) {
-      new EmulatorLog("FATAL", "runtime-error", err.stack ? err.stack : err).log();
-      res.status(500).send(err.message);
-    }
-    await goIdle();
-  });
-  app.listen(process.env.PORT, () => {
-    logDebug(`Listening to port: ${process.env.PORT}`);
-  });
-
   // Event emitters do not work well with async functions, so we
   // construct our own promise chain to make sure each message is
   // handled only after the previous message handling is complete.

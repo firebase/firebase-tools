@@ -336,6 +336,27 @@ export class FunctionsEmulator implements EmulatorInstance {
     return hub;
   }
 
+  async sendRequest(worker: RuntimeWorker, proto?: any) {
+    const reqBody = JSON.stringify(proto);
+    const headers = {
+      "Content-Type": "application/json",
+      "Content-Length": `${reqBody.length}`,
+    };
+    return new Promise((resolve, reject) => {
+      const req = http.request(
+        {
+          path: `/`,
+          socketPath: worker.runtime.socketPath,
+          headers: headers,
+        },
+        resolve
+      );
+      req.on("error", reject);
+      req.write(reqBody);
+      req.end();
+    });
+  }
+
   async invokeTrigger(
     trigger: EmulatedTriggerDefinition,
     proto?: any,
@@ -570,8 +591,8 @@ export class FunctionsEmulator implements EmulatorInstance {
       let added = false;
       let url: string | undefined = undefined;
 
+      const { host, port } = this.getInfo();
       if (definition.httpsTrigger) {
-        const { host, port } = this.getInfo();
         added = true;
         url = FunctionsEmulator.getHttpFunctionUrl(
           host,
@@ -1340,7 +1361,8 @@ export class FunctionsEmulator implements EmulatorInstance {
       ref: backend.extensionVersion?.ref,
     };
     const pool = this.workerPools[backend.codebase];
-    pool.addWorker(trigger?.id, runtime, extensionLogInfo);
+    const worker = pool.addWorker(trigger?.id, runtime, extensionLogInfo);
+    await worker.waitForSocketReady();
     return;
   }
 
@@ -1471,9 +1493,6 @@ export class FunctionsEmulator implements EmulatorInstance {
         res.status(500).send(el.text);
       }
     });
-
-    // Wait for the worker to set up its internal HTTP server
-    await worker.waitForSocketReady();
 
     void track(EVENT_INVOKE, "https");
     void trackEmulator(EVENT_INVOKE_GA4, {
