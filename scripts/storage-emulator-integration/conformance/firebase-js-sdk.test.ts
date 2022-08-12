@@ -38,7 +38,6 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
   let browser: puppeteer.Browser;
   let page: puppeteer.Page;
 
-
   async function uploadText(
     page: puppeteer.Page,
     filename: string,
@@ -67,7 +66,7 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
       JSON.stringify(metadata ?? {})
     )!;
   }
-  
+
   async function signInToFirebaseAuth(page: puppeteer.Page): Promise<void> {
     await page.evaluate(async () => {
       await firebase.auth().signInAnonymously();

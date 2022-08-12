@@ -18,7 +18,7 @@ import {
 const TEST_FILE_NAME = "public/testFile";
 
 // Tests files uploaded from one SDK are available in others.
-describe("Storage persistence conformance tests", function (this) {
+describe("Storage persistence conformance tests", () => {
   // Temp directory to store generated files.
   const tmpDir = getTmpDir();
   const smallFilePath: string = createRandomFile("small_file", SMALL_FILE_SIZE, tmpDir);
@@ -124,9 +124,13 @@ describe("Storage persistence conformance tests", function (this) {
 
   it("Firebase SDK persisted files should be accessible via gcloud API", async () => {
     const fileContent = "some-file-content";
-    await page.evaluate(async (testFileName, fileContent) => {
-      await firebase.storage().ref(testFileName).putString(fileContent);
-    }, TEST_FILE_NAME, fileContent);
+    await page.evaluate(
+      async (testFileName, fileContent) => {
+        await firebase.storage().ref(testFileName).putString(fileContent);
+      },
+      TEST_FILE_NAME,
+      fileContent
+    );
 
     const [downloadedFileContent] = await testBucket.file(TEST_FILE_NAME).download();
     expect(downloadedFileContent).to.deep.equal(Buffer.from(fileContent));

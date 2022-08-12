@@ -12,7 +12,6 @@ export const SMALL_FILE_SIZE = 200 * 1024; /* 200 kB */
 // Firebase Emulator config, for starting up emulators
 export const FIREBASE_EMULATOR_CONFIG = "firebase.json";
 
-
 export function readEmulatorConfig(config = FIREBASE_EMULATOR_CONFIG): FrameworkOptions {
   try {
     return readJson(config);
