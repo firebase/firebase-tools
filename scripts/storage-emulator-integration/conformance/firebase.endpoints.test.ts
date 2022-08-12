@@ -7,11 +7,9 @@ import { TEST_ENV } from "./env";
 
 import { EmulatorEndToEndTest } from "../../integration-helpers/framework";
 import {
-  createRandomFile,
   EMULATORS_SHUTDOWN_DELAY_MS,
   resetStorageEmulator,
   getTmpDir,
-  SMALL_FILE_SIZE,
   TEST_SETUP_TIMEOUT,
 } from "../utils";
 
@@ -23,7 +21,6 @@ const ENCODED_TEST_FILE_NAME = "testing%2Fstorage_ref%2Fimage.png";
 describe("Firebase Storage endpoint conformance tests", () => {
   // Temp directory to store generated files.
   const tmpDir = getTmpDir();
-  const smallFilePath: string = createRandomFile("small_file", SMALL_FILE_SIZE, tmpDir);
 
   const firebaseHost = TEST_ENV.firebaseHost;
   const storageBucket = TEST_ENV.appConfig.storageBucket;
