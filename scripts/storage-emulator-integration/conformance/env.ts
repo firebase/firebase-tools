@@ -13,8 +13,8 @@ const TEST_CONFIG = {
   // (useful for writing tests against source of truth)
   useProductionServers: false,
 
-  prodAppConfigFilePath: "",
-  prodServiceAccountKeyFilePath: "",
+  prodAppConfigFilePath: "storage-integration-config.json",
+  prodServiceAccountKeyFilePath: "service-account-key.json",
 
   emulatorConfigFilePath: "firebase.json",
 
@@ -101,12 +101,16 @@ class ConformanceTestEnvironment {
       : this.storageEmulatorHost;
   }
 
+  get storageHost() {
+    return this.useProductionServers ? "https://storage.googleapis.com" : this.storageEmulatorHost;
+  }
+
   get prodServiceAccountKeyJson() {
     if (this._prodServiceAccountKeyJson === undefined) {
-        const filePath = path.join(__dirname, TEST_CONFIG.prodServiceAccountKeyFilePath);
-        return TEST_CONFIG.prodServiceAccountKeyFilePath && fs.existsSync(filePath)
-          ? readJson(TEST_CONFIG.prodServiceAccountKeyFilePath)
-          : null;
+      const filePath = path.join(__dirname, TEST_CONFIG.prodServiceAccountKeyFilePath);
+      return TEST_CONFIG.prodServiceAccountKeyFilePath && fs.existsSync(filePath)
+        ? readJson(TEST_CONFIG.prodServiceAccountKeyFilePath)
+        : null;
     }
     return this._prodServiceAccountKeyJson;
   }
@@ -128,10 +132,10 @@ class ConformanceTestEnvironment {
 
   removeEnvVars() {
     if (this.useProductionServers) {
-        delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
-      } else {
-        delete process.env.STORAGE_EMULATOR_HOST;
-      }
+      delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
+    } else {
+      delete process.env.STORAGE_EMULATOR_HOST;
+    }
   }
 }
 

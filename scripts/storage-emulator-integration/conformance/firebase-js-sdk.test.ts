@@ -109,10 +109,7 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
 
   after(async function (this) {
     this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
-    if (tmpDir) {
-      fs.rmSync(tmpDir, { recursive: true, force: true });
-    }
-
+    fs.rmSync(tmpDir, { recursive: true, force: true });
     await page.close();
     await browser.close();
 

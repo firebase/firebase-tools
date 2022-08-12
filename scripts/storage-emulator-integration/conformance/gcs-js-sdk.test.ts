@@ -2,85 +2,47 @@ import { Bucket, CopyOptions } from "@google-cloud/storage";
 import { expect } from "chai";
 import * as admin from "firebase-admin";
 import * as fs from "fs";
-import * as http from "http";
-import * as https from "https";
-import * as path from "path";
-import * as supertest from "supertest";
 import { TriggerEndToEndTest } from "../../integration-helpers/framework";
+import { TEST_ENV } from "./env";
 import {
   createRandomFile,
   EMULATORS_SHUTDOWN_DELAY_MS,
-  getStorageEmulatorHost,
-  getFakeAppConfig,
-  readEmulatorConfig,
-  readJson,
-  readProdAppConfig,
   resetStorageEmulator,
-  SERVICE_ACCOUNT_KEY,
   SMALL_FILE_SIZE,
   TEST_SETUP_TIMEOUT,
   getTmpDir,
 } from "./utils";
 
-const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "fake-project-id";
-
-// Flip these flags for options during test debugging
-// all should be FALSE on commit
-const TEST_CONFIG = {
-  // Set this to true to use production servers
-  // (useful for writing tests against source of truth)
-  useProductionServers: false,
-};
-
 // TODO(b/241151246): Fix conformance tests.
 describe("GCS Javascript SDK conformance tests", () => {
-  let test: TriggerEndToEndTest;
-
-  let testBucket: Bucket;
-
   // Temp directory to store generated files.
   const tmpDir = getTmpDir();
-  const SMALL_FILE_PATH: string = createRandomFile("small_file", SMALL_FILE_SIZE, tmpDir);
+  const smallFilePath: string = createRandomFile("small_file", SMALL_FILE_SIZE, tmpDir);
 
-  // Emulators accept fake app configs. This is sufficient for testing against the emulator.
-  const FAKE_APP_CONFIG = {
-    apiKey: "fake-api-key",
-    projectId: `${FIREBASE_PROJECT}`,
-    authDomain: `${FIREBASE_PROJECT}.firebaseapp.com`,
-    storageBucket: `${FIREBASE_PROJECT}.appspot.com`,
-    appId: "fake-app-id",
-  };
+  const storageBucket = TEST_ENV.appConfig.storageBucket;
+  const storageHost = TEST_ENV.storageHost;
 
-  const appConfig = TEST_CONFIG.useProductionServers ? readProdAppConfig() : getFakeAppConfig(FIREBASE_PROJECT);
-  const emulatorConfig = readEmulatorConfig();
-
-  const storageBucket = appConfig.storageBucket;
-  const STORAGE_EMULATOR_HOST = getStorageEmulatorHost(emulatorConfig);
-
-  const expectedHost = TEST_CONFIG.useProductionServers
-    ? "https://firebasestorage.googleapis.com"
-    : STORAGE_EMULATOR_HOST;
+  let test: TriggerEndToEndTest;
+  let testBucket: Bucket;
 
   async function resetState(): Promise<void> {
-    if (TEST_CONFIG.useProductionServers) {
+    if (TEST_ENV.useProductionServers) {
       await testBucket.deleteFiles();
     } else {
-      await resetStorageEmulator(STORAGE_EMULATOR_HOST);
+      await resetStorageEmulator(TEST_ENV.storageEmulatorHost);
     }
   }
-
   before(async function (this) {
     this.timeout(TEST_SETUP_TIMEOUT);
-    if (TEST_CONFIG.useProductionServers) {
-      process.env.GOOGLE_APPLICATION_CREDENTIALS = path.join(__dirname, SERVICE_ACCOUNT_KEY);
-    } else {
-      process.env.STORAGE_EMULATOR_HOST = STORAGE_EMULATOR_HOST;
-      test = new TriggerEndToEndTest(FIREBASE_PROJECT, __dirname, emulatorConfig);
-      await test.startEmulators(["--only", "auth,storage"]);
+    TEST_ENV.applyEnvVars();
+    if (!TEST_ENV.useProductionServers) {
+      test = new TriggerEndToEndTest(TEST_ENV.projectId, __dirname, TEST_ENV.emulatorConfig);
+      await test.startEmulators(["--only", "storage"]);
     }
 
-    const credential = fs.existsSync(path.join(__dirname, SERVICE_ACCOUNT_KEY))
-      ? admin.credential.cert(readJson(SERVICE_ACCOUNT_KEY))
+    // Init GCS admin SDK.
+    const credential = TEST_ENV.prodServiceAccountKeyJson
+      ? admin.credential.cert(TEST_ENV.prodServiceAccountKeyJson)
       : admin.credential.applicationDefault();
     admin.initializeApp({ credential });
     testBucket = admin.storage().bucket(storageBucket);
@@ -92,14 +54,10 @@ describe("GCS Javascript SDK conformance tests", () => {
 
   after(async function (this) {
     this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
-    if (tmpDir) {
-      fs.rmSync(tmpDir, { recursive: true, force: true });
-    }
+    fs.rmSync(tmpDir, { recursive: true, force: true });
 
-    if (TEST_CONFIG.useProductionServers) {
-      delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
-    } else {
-      delete process.env.STORAGE_EMULATOR_HOST;
+    TEST_ENV.removeEnvVars();
+    if (!TEST_ENV.useProductionServers) {
       await test.stopEmulators();
     }
   });
@@ -107,7 +65,7 @@ describe("GCS Javascript SDK conformance tests", () => {
   describe(".bucket()", () => {
     describe("#upload()", () => {
       it("should handle non-resumable uploads", async () => {
-        await testBucket.upload(SMALL_FILE_PATH, {
+        await testBucket.upload(smallFilePath, {
           resumable: false,
         });
         // Doesn't require an assertion, will throw on failure
@@ -141,87 +99,9 @@ describe("GCS Javascript SDK conformance tests", () => {
       it("should handle gzip'd uploads", async () => {
         // This appears to pass, but the file gets corrupted cause it's gzipped?
         // expect(true).to.be.false;
-        await testBucket.upload(SMALL_FILE_PATH, {
+        await testBucket.upload(smallFilePath, {
           gzip: true,
         });
-      });
-
-      it("should handle resumable uploads", async () => {
-        const fileName = "test_upload.jpg";
-        const uploadURL = await supertest(STORAGE_EMULATOR_HOST)
-          .post(`/upload/storage/v1/b/${storageBucket}/o?name=${fileName}&uploadType=resumable`)
-          .send({})
-          .set({
-            Authorization: "Bearer owner",
-          })
-          .expect(200)
-          .then((res) => new URL(res.header["location"]));
-
-        const metadata = await supertest(STORAGE_EMULATOR_HOST)
-          .put(uploadURL.pathname + uploadURL.search)
-          .expect(200)
-          .then((res) => res.body);
-
-        const metadataTypes: { [s: string]: string } = {};
-
-        for (const key in metadata) {
-          if (metadata[key]) {
-            metadataTypes[key] = typeof metadata[key];
-          }
-        }
-
-        expect(metadata.name).to.equal(fileName);
-        expect(metadata.contentType).to.equal("application/octet-stream");
-        expect(metadataTypes).to.deep.equal({
-          kind: "string",
-          name: "string",
-          bucket: "string",
-          cacheControl: "string",
-          contentDisposition: "string",
-          contentEncoding: "string",
-          generation: "string",
-          metageneration: "string",
-          contentType: "string",
-          timeCreated: "string",
-          updated: "string",
-          storageClass: "string",
-          size: "string",
-          md5Hash: "string",
-          etag: "string",
-          crc32c: "string",
-          timeStorageClassUpdated: "string",
-          id: "string",
-          selfLink: "string",
-          mediaLink: "string",
-        });
-      });
-
-      it("should handle resumable uploads with an empty buffer", async () => {
-        const fileName = "test_upload.jpg";
-        const uploadUrl = await supertest(expectedHost)
-          .post(`/v0/b/${storageBucket}/o?name=${fileName}&uploadType=resumable`)
-          .send({})
-          .set({
-            Authorization: "Bearer owner",
-            "X-Goog-Upload-Protocol": "resumable",
-            "X-Goog-Upload-Command": "start",
-          })
-          .expect(200)
-          .then((res) => {
-            return new URL(res.header["x-goog-upload-url"]);
-          });
-
-        const finalizeStatus = await supertest(expectedHost)
-          .post(uploadUrl.pathname + uploadUrl.search)
-          .send({})
-          .set({
-            Authorization: "Bearer owner",
-            "X-Goog-Upload-Protocol": "resumable",
-            "X-Goog-Upload-Command": "finalize",
-          })
-          .expect(200)
-          .then((res) => res.header["x-goog-upload-status"]);
-        expect(finalizeStatus).to.equal("final");
       });
 
       it("should upload with provided metadata", async () => {
@@ -231,77 +111,28 @@ describe("GCS Javascript SDK conformance tests", () => {
           contentLanguage: "de-DE",
           metadata: { foo: "bar" },
         };
-        const [, fileMetadata] = await testBucket.upload(SMALL_FILE_PATH, {
+        const [, fileMetadata] = await testBucket.upload(smallFilePath, {
           resumable: false,
           metadata,
         });
 
         expect(fileMetadata).to.deep.include(metadata);
       });
-      // TODO(b/241151246): Fix conformance tests.
-      it("should handle resumable upload with name only in metadata", async () => {
-        const fileName = "test_upload.jpg";
-        const uploadURL = await supertest(expectedHost)
-          .post(`/upload/storage/v1/b/${storageBucket}/o?uploadType=resumable`)
-          .send({ name: fileName })
-          .set({
-            Authorization: "Bearer owner",
-          })
-          .expect(200)
-          .then((res) => new URL(res.header["location"]));
-        expect(uploadURL.searchParams?.get("name")).to.equal(fileName);
-      });
-
-      it("should handle multipart upload with name only in metadata", async () => {
-        const body = Buffer.from(`--b1d5b2e3-1845-4338-9400-6ac07ce53c1e\r
-content-type: application/json\r
-\r
-{"name":"test_upload.jpg"}\r
---b1d5b2e3-1845-4338-9400-6ac07ce53c1e\r
-content-type: text/plain\r
-\r
-hello there!
-\r
---b1d5b2e3-1845-4338-9400-6ac07ce53c1e--\r
-`);
-        const fileName = "test_upload.jpg";
-        const responseName = await supertest(expectedHost)
-          .post(`/upload/storage/v1/b/${storageBucket}/o?uploadType=multipart`)
-          .send(body)
-          .set({
-            Authorization: "Bearer owner",
-            "content-type": "multipart/related; boundary=b1d5b2e3-1845-4338-9400-6ac07ce53c1e",
-          })
-          .expect(200)
-          .then((res) => res.body.name);
-        expect(responseName).to.equal(fileName);
-      });
-
-      it("should return an error message when uploading a file with invalid metadata", async () => {
-        const fileName = "test_upload.jpg";
-        const errorMessage = await supertest(STORAGE_EMULATOR_HOST)
-          .post(`/upload/storage/v1/b/${storageBucket}/o?name=${fileName}`)
-          .set({ Authorization: "Bearer owner", "X-Upload-Content-Type": "foo" })
-          .expect(400)
-          .then((res) => res.body.error.message);
-
-        expect(errorMessage).to.equal("Invalid Content-Type: foo");
-      });
 
       it("should be able to upload file named 'prefix/file.txt' when file named 'prefix' already exists", async () => {
-        await testBucket.upload(SMALL_FILE_PATH, {
+        await testBucket.upload(smallFilePath, {
           destination: "prefix",
         });
-        await testBucket.upload(SMALL_FILE_PATH, {
+        await testBucket.upload(smallFilePath, {
           destination: "prefix/file.txt",
         });
       });
 
       it("should be able to upload file named 'prefix' when file named 'prefix/file.txt' already exists", async () => {
-        await testBucket.upload(SMALL_FILE_PATH, {
+        await testBucket.upload(smallFilePath, {
           destination: "prefix/file.txt",
         });
-        await testBucket.upload(SMALL_FILE_PATH, {
+        await testBucket.upload(smallFilePath, {
           destination: "prefix",
         });
       });
@@ -318,7 +149,7 @@ hello there!
         await Promise.all(
           [TESTING_FILE, PREFIX_FILE, PREFIX_1_FILE, PREFIX_2_FILE, PREFIX_SUB_DIRECTORY_FILE].map(
             async (f) => {
-              await testBucket.upload(SMALL_FILE_PATH, {
+              await testBucket.upload(smallFilePath, {
                 destination: f,
               });
             }
@@ -554,7 +385,7 @@ hello there!
         // We use a nested path to ensure that we don't need to decode
         // the objectId in the gcloud emulator API
         const bucketFilePath = "file/to/exists";
-        await testBucket.upload(SMALL_FILE_PATH, {
+        await testBucket.upload(smallFilePath, {
           destination: bucketFilePath,
         });
 
@@ -567,7 +398,7 @@ hello there!
         // the objectId in the gcloud emulator API
         const path = "file/to";
         const bucketFilePath = path + "/exists";
-        await testBucket.upload(SMALL_FILE_PATH, {
+        await testBucket.upload(smallFilePath, {
           destination: bucketFilePath,
         });
 
@@ -581,7 +412,7 @@ hello there!
         // We use a nested path to ensure that we don't need to decode
         // the objectId in the gcloud emulator API
         const bucketFilePath = "file/to/delete";
-        await testBucket.upload(SMALL_FILE_PATH, {
+        await testBucket.upload(smallFilePath, {
           destination: bucketFilePath,
         });
 
@@ -611,23 +442,23 @@ hello there!
 
     describe("#download()", () => {
       it("should return the content of the file", async () => {
-        await testBucket.upload(SMALL_FILE_PATH);
+        await testBucket.upload(smallFilePath);
         const [downloadContent] = await testBucket
-          .file(SMALL_FILE_PATH.split("/").slice(-1)[0])
+          .file(smallFilePath.split("/").slice(-1)[0])
           .download();
 
-        const actualContent = fs.readFileSync(SMALL_FILE_PATH);
+        const actualContent = fs.readFileSync(smallFilePath);
         expect(downloadContent).to.deep.equal(actualContent);
       });
 
       it("should return partial content of the file", async () => {
-        await testBucket.upload(SMALL_FILE_PATH);
+        await testBucket.upload(smallFilePath);
         const [downloadContent] = await testBucket
-          .file(SMALL_FILE_PATH.split("/").slice(-1)[0])
+          .file(smallFilePath.split("/").slice(-1)[0])
           // Request 10 bytes (range requests are inclusive)
           .download({ start: 10, end: 19 });
 
-        const actualContent = fs.readFileSync(SMALL_FILE_PATH).slice(10, 20);
+        const actualContent = fs.readFileSync(smallFilePath).slice(10, 20);
         expect(downloadContent).to.have.lengthOf(10).and.deep.equal(actualContent);
       });
 
@@ -645,10 +476,10 @@ hello there!
       const COPY_DESTINATION_FILENAME = "copied_file";
 
       it("should copy the file", async () => {
-        await testBucket.upload(SMALL_FILE_PATH);
+        await testBucket.upload(smallFilePath);
 
         const file = testBucket.file(COPY_DESTINATION_FILENAME);
-        const [, resp] = await testBucket.file(SMALL_FILE_PATH.split("/").slice(-1)[0]).copy(file);
+        const [, resp] = await testBucket.file(smallFilePath.split("/").slice(-1)[0]).copy(file);
 
         expect(resp)
           .to.have.all.keys(["kind", "totalBytesRewritten", "objectSize", "done", "resource"])
@@ -661,33 +492,33 @@ hello there!
 
         const [copiedContent] = await file.download();
 
-        const actualContent = fs.readFileSync(SMALL_FILE_PATH);
+        const actualContent = fs.readFileSync(smallFilePath);
         expect(copiedContent).to.deep.equal(actualContent);
       });
 
       it("should copy the file to a different bucket", async () => {
-        await testBucket.upload(SMALL_FILE_PATH);
+        await testBucket.upload(smallFilePath);
 
         const otherBucket = testBucket.storage.bucket("other-bucket");
         const file = otherBucket.file(COPY_DESTINATION_FILENAME);
         const [, { resource: metadata }] = await testBucket
-          .file(SMALL_FILE_PATH.split("/").slice(-1)[0])
+          .file(smallFilePath.split("/").slice(-1)[0])
           .copy(file);
 
         expect(metadata).to.have.property("bucket", otherBucket.name);
 
         const [copiedContent] = await file.download();
 
-        const actualContent = fs.readFileSync(SMALL_FILE_PATH);
+        const actualContent = fs.readFileSync(smallFilePath);
         expect(copiedContent).to.deep.equal(actualContent);
       });
 
       it("should return the metadata of the destination file", async () => {
-        await testBucket.upload(SMALL_FILE_PATH);
+        await testBucket.upload(smallFilePath);
 
         const file = testBucket.file(COPY_DESTINATION_FILENAME);
         const [, { resource: actualMetadata }] = await testBucket
-          .file(SMALL_FILE_PATH.split("/").slice(-1)[0])
+          .file(smallFilePath.split("/").slice(-1)[0])
           .copy(file);
 
         const [expectedMetadata] = await file.getMetadata();
@@ -695,7 +526,7 @@ hello there!
       });
 
       it("should copy the file preserving the original metadata", async () => {
-        const [, source] = await testBucket.upload(SMALL_FILE_PATH, {
+        const [, source] = await testBucket.upload(smallFilePath, {
           metadata: {
             cacheControl: "private,no-store",
             metadata: {
@@ -705,7 +536,7 @@ hello there!
         });
 
         const file = testBucket.file(COPY_DESTINATION_FILENAME);
-        await testBucket.file(SMALL_FILE_PATH.split("/").slice(-1)[0]).copy(file);
+        await testBucket.file(smallFilePath.split("/").slice(-1)[0]).copy(file);
 
         const [metadata] = await file.getMetadata();
 
@@ -751,7 +582,7 @@ hello there!
       });
 
       it("should copy the file and overwrite with the provided custom metadata", async () => {
-        const [, source] = await testBucket.upload(SMALL_FILE_PATH, {
+        const [, source] = await testBucket.upload(smallFilePath, {
           metadata: {
             cacheControl: "private,no-store",
             metadata: {
@@ -771,7 +602,7 @@ hello there!
           cacheControl,
         };
         const [, { resource: metadata1 }] = await testBucket
-          .file(SMALL_FILE_PATH.split("/").slice(-1)[0])
+          .file(smallFilePath.split("/").slice(-1)[0])
           .copy(file, copyOpts);
 
         expect(metadata1).to.deep.include({
@@ -788,7 +619,7 @@ hello there!
       });
 
       it("should set null custom metadata values to empty strings", async () => {
-        const [, source] = await testBucket.upload(SMALL_FILE_PATH);
+        const [, source] = await testBucket.upload(smallFilePath);
 
         const file = testBucket.file(COPY_DESTINATION_FILENAME);
         const metadata = { foo: "bar", nullMetadata: null };
@@ -801,7 +632,7 @@ hello there!
           cacheControl,
         };
         const [, { resource: metadata1 }] = await testBucket
-          .file(SMALL_FILE_PATH.split("/").slice(-1)[0])
+          .file(smallFilePath.split("/").slice(-1)[0])
           .copy(file, copyOpts);
 
         expect(metadata1).to.deep.include({
@@ -823,7 +654,7 @@ hello there!
 
       it("should preserve firebaseStorageDownloadTokens", async () => {
         const firebaseStorageDownloadTokens = "token1,token2";
-        await testBucket.upload(SMALL_FILE_PATH, {
+        await testBucket.upload(smallFilePath, {
           metadata: {
             metadata: {
               firebaseStorageDownloadTokens,
@@ -833,7 +664,7 @@ hello there!
 
         const file = testBucket.file(COPY_DESTINATION_FILENAME);
         const [, { resource: metadata }] = await testBucket
-          .file(SMALL_FILE_PATH.split("/").slice(-1)[0])
+          .file(smallFilePath.split("/").slice(-1)[0])
           .copy(file);
 
         expect(metadata).to.deep.include({
@@ -844,7 +675,7 @@ hello there!
       });
 
       it("should remove firebaseStorageDownloadTokens when overwriting custom metadata", async () => {
-        await testBucket.upload(SMALL_FILE_PATH, {
+        await testBucket.upload(smallFilePath, {
           metadata: {
             metadata: {
               firebaseStorageDownloadTokens: "token1,token2",
@@ -861,18 +692,18 @@ hello there!
           metadata,
         };
         const [, { resource: metadataOut }] = await testBucket
-          .file(SMALL_FILE_PATH.split("/").slice(-1)[0])
+          .file(smallFilePath.split("/").slice(-1)[0])
           .copy(file, copyOpts);
 
         expect(metadataOut).to.deep.include({ metadata });
       });
 
       it("should not support the use of a rewriteToken", async () => {
-        await testBucket.upload(SMALL_FILE_PATH);
+        await testBucket.upload(smallFilePath);
 
         const file = testBucket.file(COPY_DESTINATION_FILENAME);
         await expect(
-          testBucket.file(SMALL_FILE_PATH.split("/").slice(-1)[0]).copy(file, { token: "foo-bar" })
+          testBucket.file(smallFilePath.split("/").slice(-1)[0]).copy(file, { token: "foo-bar" })
         ).to.eventually.be.rejected.and.have.property("code", 501);
       });
     });
@@ -880,7 +711,7 @@ hello there!
     describe("#makePublic()", () => {
       it("should no-op", async () => {
         const destination = "a/b";
-        await testBucket.upload(SMALL_FILE_PATH, { destination });
+        await testBucket.upload(smallFilePath, { destination });
         const [aclMetadata] = await testBucket.file(destination).makePublic();
 
         const generation = aclMetadata.generation;
@@ -890,9 +721,9 @@ hello there!
           kind: "storage#objectAccessControl",
           object: destination,
           id: `${testBucket.name}/${destination}/${generation}/allUsers`,
-          selfLink: `${STORAGE_EMULATOR_HOST}/storage/v1/b/${
-            testBucket.name
-          }/o/${encodeURIComponent(destination)}/acl/allUsers`,
+          selfLink: `${storageHost}/storage/v1/b/${testBucket.name}/o/${encodeURIComponent(
+            destination
+          )}/acl/allUsers`,
           bucket: testBucket.name,
           entity: "allUsers",
           role: "READER",
@@ -902,14 +733,13 @@ hello there!
 
       it("should not interfere with downloading of bytes via public URL", async () => {
         const destination = "a/b";
-        await testBucket.upload(SMALL_FILE_PATH, { destination });
+        await testBucket.upload(smallFilePath, { destination });
         await testBucket.file(destination).makePublic();
 
-        const publicLink = `${STORAGE_EMULATOR_HOST}/${testBucket.name}/${destination}`;
+        const publicLink = `${storageHost}/${testBucket.name}/${destination}`;
 
-        const requestClient = TEST_CONFIG.useProductionServers ? https : http;
         await new Promise((resolve, reject) => {
-          requestClient.get(publicLink, {}, (response) => {
+          TEST_ENV.requestClient.get(publicLink, {}, (response) => {
             const data: any = [];
             response
               .on("data", (chunk) => data.push(chunk))
@@ -927,7 +757,7 @@ hello there!
       it("should throw on non-existing file", async () => {
         let err: any;
         await testBucket
-          .file(SMALL_FILE_PATH)
+          .file(smallFilePath)
           .getMetadata()
           .catch((_err) => {
             err = _err;
@@ -937,9 +767,9 @@ hello there!
       });
 
       it("should return generated metadata for new upload", async () => {
-        await testBucket.upload(SMALL_FILE_PATH);
+        await testBucket.upload(smallFilePath);
         const [metadata] = await testBucket
-          .file(SMALL_FILE_PATH.split("/").slice(-1)[0])
+          .file(smallFilePath.split("/").slice(-1)[0])
           .getMetadata();
 
         const metadataTypes: { [s: string]: string } = {};
@@ -976,41 +806,14 @@ hello there!
         });
       });
 
-      it("should return generated custom metadata for new upload", async () => {
-        const customMetadata = {
-          contentDisposition: "initialCommit",
-          contentType: "image/jpg",
-          name: "test_upload.jpg",
-        };
-
-        const uploadURL = await supertest(STORAGE_EMULATOR_HOST)
-          .post(`/upload/storage/v1/b/${storageBucket}/o?name=test_upload.jpg&uploadType=resumable`)
-          .send(customMetadata)
-          .set({
-            Authorization: "Bearer owner",
-          })
-          .expect(200)
-          .then((res) => new URL(res.header["location"]));
-
-        const returnedMetadata = await supertest(STORAGE_EMULATOR_HOST)
-          .put(uploadURL.pathname + uploadURL.search)
-          .expect(200)
-          .then((res) => res.body);
-
-        expect(returnedMetadata.name).to.equal(customMetadata.name);
-        expect(returnedMetadata.contentType).to.equal(customMetadata.contentType);
-        expect(returnedMetadata.contentDisposition).to.equal(customMetadata.contentDisposition);
-      });
-
       it("should return a functional media link", async () => {
-        await testBucket.upload(SMALL_FILE_PATH);
+        await testBucket.upload(smallFilePath);
         const [{ mediaLink }] = await testBucket
-          .file(SMALL_FILE_PATH.split("/").slice(-1)[0])
+          .file(smallFilePath.split("/").slice(-1)[0])
           .getMetadata();
 
-        const requestClient = TEST_CONFIG.useProductionServers ? https : http;
         await new Promise((resolve, reject) => {
-          requestClient.get(mediaLink, {}, (response) => {
+          TEST_ENV.requestClient.get(mediaLink, {}, (response) => {
             const data: any = [];
             response
               .on("data", (chunk) => data.push(chunk))
@@ -1021,40 +824,6 @@ hello there!
               .on("error", reject);
           });
         });
-      });
-
-      it("should handle firebaseStorageDownloadTokens", async () => {
-        const destination = "public/small_file";
-        await testBucket.upload(SMALL_FILE_PATH, {
-          destination,
-          metadata: {},
-        });
-
-        const cloudFile = testBucket.file(destination);
-        const incomingMetadata = {
-          metadata: {
-            firebaseStorageDownloadTokens: "myFirstToken,mySecondToken",
-          },
-        };
-
-        await cloudFile.setMetadata(incomingMetadata);
-
-        // Check that the tokens are saved in Firebase metadata
-        await supertest(STORAGE_EMULATOR_HOST)
-          .get(`/v0/b/${testBucket.name}/o/${encodeURIComponent(destination)}`)
-          .expect(200)
-          .then((res) => {
-            const firebaseMd = res.body;
-            expect(firebaseMd.downloadTokens).to.equal(
-              incomingMetadata.metadata.firebaseStorageDownloadTokens
-            );
-          });
-
-        // Check that the tokens are saved in Cloud metadata
-        const [storedMetadata] = await cloudFile.getMetadata();
-        expect(storedMetadata.metadata.firebaseStorageDownloadTokens).to.deep.equal(
-          incomingMetadata.metadata.firebaseStorageDownloadTokens
-        );
       });
 
       it("should throw 404 object error for file not found", async () => {
@@ -1071,7 +840,7 @@ hello there!
       it("should throw on non-existing file", async () => {
         let err: any;
         await testBucket
-          .file(SMALL_FILE_PATH)
+          .file(smallFilePath)
           .setMetadata({ contentType: 9000 })
           .catch((_err) => {
             err = _err;
@@ -1081,9 +850,9 @@ hello there!
       });
 
       it("should allow overriding of default metadata", async () => {
-        await testBucket.upload(SMALL_FILE_PATH);
+        await testBucket.upload(smallFilePath);
         const [metadata] = await testBucket
-          .file(SMALL_FILE_PATH.split("/").slice(-1)[0])
+          .file(smallFilePath.split("/").slice(-1)[0])
           .setMetadata({ contentType: "very/fake" });
 
         const metadataTypes: { [s: string]: string } = {};
@@ -1120,9 +889,9 @@ hello there!
       });
 
       it("should allow setting of optional metadata", async () => {
-        await testBucket.upload(SMALL_FILE_PATH);
+        await testBucket.upload(smallFilePath);
         const [metadata] = await testBucket
-          .file(SMALL_FILE_PATH.split("/").slice(-1)[0])
+          .file(smallFilePath.split("/").slice(-1)[0])
           .setMetadata({ cacheControl: "no-cache", contentLanguage: "en" });
 
         const metadataTypes: { [s: string]: string } = {};
@@ -1137,56 +906,19 @@ hello there!
         expect(metadata.contentLanguage).to.equal("en");
       });
 
-      it("should not duplicate data when called repeatedly", async () => {
-        const destination = "public/small_file";
-        await testBucket.upload(SMALL_FILE_PATH, {
-          destination,
-          metadata: {},
-        });
-
-        const cloudFile = testBucket.file(destination);
-        const incomingMetadata = {
-          metadata: {
-            firebaseStorageDownloadTokens: "myFirstToken,mySecondToken",
-          },
-        };
-
-        // Check that metadata isn't duplicated when setting multiple times in a row
-        await cloudFile.setMetadata(incomingMetadata);
-        await cloudFile.setMetadata(incomingMetadata);
-        await cloudFile.setMetadata(incomingMetadata);
-
-        // Check that the tokens are saved in Firebase metadata
-        await supertest(STORAGE_EMULATOR_HOST)
-          .get(`/v0/b/${testBucket.name}/o/${encodeURIComponent(destination)}`)
-          .expect(200)
-          .then((res) => {
-            const firebaseMd = res.body;
-            expect(firebaseMd.downloadTokens).to.equal(
-              incomingMetadata.metadata.firebaseStorageDownloadTokens
-            );
-          });
-
-        // Check that the tokens are saved in Cloud metadata
-        const [storedMetadata] = await cloudFile.getMetadata();
-        expect(storedMetadata.metadata.firebaseStorageDownloadTokens).to.equal(
-          incomingMetadata.metadata.firebaseStorageDownloadTokens
-        );
-      });
-
       it("should allow fields under .metadata", async () => {
-        await testBucket.upload(SMALL_FILE_PATH);
+        await testBucket.upload(smallFilePath);
         const [metadata] = await testBucket
-          .file(SMALL_FILE_PATH.split("/").slice(-1)[0])
+          .file(smallFilePath.split("/").slice(-1)[0])
           .setMetadata({ metadata: { is_over: "9000" } });
 
         expect(metadata.metadata.is_over).to.equal("9000");
       });
 
       it("should convert non-string fields under .metadata to strings", async () => {
-        await testBucket.upload(SMALL_FILE_PATH);
+        await testBucket.upload(smallFilePath);
         const [metadata] = await testBucket
-          .file(SMALL_FILE_PATH.split("/").slice(-1)[0])
+          .file(smallFilePath.split("/").slice(-1)[0])
           .setMetadata({ metadata: { booleanValue: true, numberValue: -1 } });
 
         expect(metadata.metadata).to.deep.equal({
@@ -1196,9 +928,9 @@ hello there!
       });
 
       it("should remove fields under .metadata when setting to null", async () => {
-        await testBucket.upload(SMALL_FILE_PATH);
+        await testBucket.upload(smallFilePath);
         const [metadata1] = await testBucket
-          .file(SMALL_FILE_PATH.split("/").slice(-1)[0])
+          .file(smallFilePath.split("/").slice(-1)[0])
           .setMetadata({ metadata: { foo: "bar", hello: "world" } });
 
         expect(metadata1.metadata).to.deep.equal({
@@ -1207,7 +939,7 @@ hello there!
         });
 
         const [metadata2] = await testBucket
-          .file(SMALL_FILE_PATH.split("/").slice(-1)[0])
+          .file(smallFilePath.split("/").slice(-1)[0])
           .setMetadata({ metadata: { foo: null } });
 
         expect(metadata2.metadata).to.deep.equal({
@@ -1216,9 +948,9 @@ hello there!
       });
 
       it("should ignore any unknown fields", async () => {
-        await testBucket.upload(SMALL_FILE_PATH);
+        await testBucket.upload(smallFilePath);
         const [metadata] = await testBucket
-          .file(SMALL_FILE_PATH.split("/").slice(-1)[0])
+          .file(smallFilePath.split("/").slice(-1)[0])
           .setMetadata({ nada: "true" });
 
         expect(metadata.nada).to.be.undefined;
