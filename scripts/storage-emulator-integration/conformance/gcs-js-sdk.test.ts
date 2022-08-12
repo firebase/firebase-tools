@@ -2,7 +2,7 @@ import { Bucket, CopyOptions } from "@google-cloud/storage";
 import { expect } from "chai";
 import * as admin from "firebase-admin";
 import * as fs from "fs";
-import { TriggerEndToEndTest } from "../../integration-helpers/framework";
+import { EmulatorEndToEndTest } from "../../integration-helpers/framework";
 import { TEST_ENV } from "./env";
 import {
   createRandomFile,
@@ -22,7 +22,7 @@ describe("GCS Javascript SDK conformance tests", () => {
   const storageBucket = TEST_ENV.appConfig.storageBucket;
   const storageHost = TEST_ENV.storageHost;
 
-  let test: TriggerEndToEndTest;
+  let test: EmulatorEndToEndTest;
   let testBucket: Bucket;
 
   async function resetState(): Promise<void> {
@@ -36,7 +36,7 @@ describe("GCS Javascript SDK conformance tests", () => {
     this.timeout(TEST_SETUP_TIMEOUT);
     TEST_ENV.applyEnvVars();
     if (!TEST_ENV.useProductionServers) {
-      test = new TriggerEndToEndTest(TEST_ENV.projectId, __dirname, TEST_ENV.emulatorConfig);
+      test = new EmulatorEndToEndTest(TEST_ENV.fakeProjectId, __dirname, TEST_ENV.emulatorConfig);
       await test.startEmulators(["--only", "storage"]);
     }
 
@@ -54,6 +54,7 @@ describe("GCS Javascript SDK conformance tests", () => {
 
   after(async function (this) {
     this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
+    admin.app().delete();
     fs.rmSync(tmpDir, { recursive: true, force: true });
 
     TEST_ENV.removeEnvVars();

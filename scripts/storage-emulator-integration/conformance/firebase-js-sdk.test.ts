@@ -6,7 +6,7 @@ import * as fs from "fs";
 import * as puppeteer from "puppeteer";
 import { TEST_ENV } from "./env";
 import { IMAGE_FILE_BASE64 } from "../../../src/test/emulators/fixtures";
-import { TriggerEndToEndTest } from "../../integration-helpers/framework";
+import { EmulatorEndToEndTest } from "../../integration-helpers/framework";
 import {
   createRandomFile,
   EMULATORS_SHUTDOWN_DELAY_MS,
@@ -35,7 +35,7 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
     tmpDir
   );
 
-  let test: TriggerEndToEndTest;
+  let test: EmulatorEndToEndTest;
   let testBucket: Bucket;
   let browser: puppeteer.Browser;
   let page: puppeteer.Page;
@@ -52,7 +52,7 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
     this.timeout(TEST_SETUP_TIMEOUT);
     TEST_ENV.applyEnvVars();
     if (!TEST_ENV.useProductionServers) {
-      test = new TriggerEndToEndTest(TEST_ENV.projectId, __dirname, TEST_ENV.emulatorConfig);
+      test = new EmulatorEndToEndTest(TEST_ENV.fakeProjectId, __dirname, TEST_ENV.emulatorConfig);
       await test.startEmulators(["--only", "auth,storage"]);
     }
 
@@ -109,6 +109,7 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
 
   after(async function (this) {
     this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
+    admin.app().delete();
     fs.rmSync(tmpDir, { recursive: true, force: true });
     await page.close();
     await browser.close();

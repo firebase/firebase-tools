@@ -13,24 +13,35 @@ const TEST_CONFIG = {
   // (useful for writing tests against source of truth)
   useProductionServers: false,
 
+  // The following two fields MUST be set if useProductionServers == true.
+  // The paths should be relative to this file.
+  //
+  // Follow the instructions here to get your app config:
+  // https://support.google.com/firebase/answer/7015592#web 
   prodAppConfigFilePath: "storage-integration-config.json",
+  // Follow the instructions here to create a service account key file:
+  // https://firebase.google.com/docs/admin/setup#initialize-sdk
   prodServiceAccountKeyFilePath: "service-account-key.json",
 
+  // Relative path to the emulator config to use in integration tests.
+  // Only used when useProductionServers == false.
   emulatorConfigFilePath: "firebase.json",
 
-  // Set this to true to make the headless chrome window visible
-  // (useful for ensuring the browser is running as expected)
+  // Set this to true to make the headless chrome window used in
+  // Firebase js sdk integration tests visible.
   showBrowser: false,
 };
 
-const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "fake-project-id";
+// Project id to use when testing against the emulator. Not used in prod
+// conformance tests.
+const FAKE_FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "fake-project-id";
 
 // Emulators accept fake app configs. This is sufficient for testing against the emulator.
 const FAKE_APP_CONFIG = {
   apiKey: "fake-api-key",
-  projectId: `${FIREBASE_PROJECT}`,
-  authDomain: `${FIREBASE_PROJECT}.firebaseapp.com`,
-  storageBucket: `${FIREBASE_PROJECT}.appspot.com`,
+  projectId: `${FAKE_FIREBASE_PROJECT}`,
+  authDomain: `${FAKE_FIREBASE_PROJECT}.firebaseapp.com`,
+  storageBucket: `${FAKE_FIREBASE_PROJECT}.appspot.com`,
   appId: "fake-app-id",
 };
 
@@ -63,8 +74,8 @@ class ConformanceTestEnvironment {
   get showBrowser() {
     return TEST_CONFIG.showBrowser;
   }
-  get projectId() {
-    return FIREBASE_PROJECT;
+  get fakeProjectId() {
+    return FAKE_FIREBASE_PROJECT;
   }
 
   private get prodAppConfig() {

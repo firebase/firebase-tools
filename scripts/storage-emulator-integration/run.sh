@@ -13,6 +13,6 @@ mocha scripts/storage-emulator-integration/import/tests.ts
 
 mocha scripts/storage-emulator-integration/multiple-targets/tests.ts
 
-mocha scripts/storage-emulator-integration/tests.ts
+mocha scripts/storage-emulator-integration/conformance/*.test.ts
 
 mocha scripts/storage-emulator-integration/*.test.ts
