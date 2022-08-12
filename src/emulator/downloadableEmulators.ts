@@ -80,15 +80,15 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
         },
       }
     : {
-        version: "1.8.1",
-        downloadPath: path.join(CACHE_DIR, "ui-v1.8.1.zip"),
-        unzipDir: path.join(CACHE_DIR, "ui-v1.8.1"),
-        binaryPath: path.join(CACHE_DIR, "ui-v1.8.1", "server", "server.js"),
+        version: "1.9.0",
+        downloadPath: path.join(CACHE_DIR, "ui-v1.9.0.zip"),
+        unzipDir: path.join(CACHE_DIR, "ui-v1.9.0"),
+        binaryPath: path.join(CACHE_DIR, "ui-v1.9.0", "server", "server.js"),
         opts: {
           cacheDir: CACHE_DIR,
-          remoteUrl: "https://storage.googleapis.com/firebase-preview-drop/emulator/ui-v1.8.1.zip",
-          expectedSize: 3056552,
-          expectedChecksum: "92590fdda20f9883588438d9551111b5",
+          remoteUrl: "https://storage.googleapis.com/firebase-preview-drop/emulator/ui-v1.9.0.zip",
+          expectedSize: 3062710,
+          expectedChecksum: "984597f41d497bd318dac131615eb9d5",
           namePrefix: "ui",
         },
       },
