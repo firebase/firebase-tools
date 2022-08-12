@@ -14,6 +14,7 @@ import {
   getTmpDir,
 } from "../utils";
 
+// TODO(b/242314185): add more coverage.
 describe("GCS endpoint conformance tests", () => {
   // Temp directory to store generated files.
   const tmpDir = getTmpDir();

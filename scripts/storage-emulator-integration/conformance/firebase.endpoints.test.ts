@@ -18,6 +18,7 @@ import {
 const TEST_FILE_NAME = "testing/storage_ref/image.png";
 
 // TODO(b/241151246): Fix conformance tests.
+// TODO(b/242314185): add more coverage.
 describe("Firebase Storage endpoint conformance tests", () => {
   // Temp directory to store generated files.
   const tmpDir = getTmpDir();
