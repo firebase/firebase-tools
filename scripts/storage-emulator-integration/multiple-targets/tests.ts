@@ -28,9 +28,18 @@ describe("Multiple Storage Deploy Targets", () => {
   });
 
   it("should enforce different rules for different targets", async () => {
-    await supertest(STORAGE_EMULATOR_HOST)
+    const uploadURL = await supertest(STORAGE_EMULATOR_HOST)
       .post(`/v0/b/${allowNoneBucket}/o/test_upload.jpg?uploadType=resumable&name=test_upload.jpg`)
       .set({ "X-Goog-Upload-Protocol": "resumable", "X-Goog-Upload-Command": "start" })
+      .expect(200)
+      .then((res) => new URL(res.header["x-goog-upload-url"]));
+
+    await supertest(STORAGE_EMULATOR_HOST)
+      .put(uploadURL.pathname + uploadURL.search)
+      .set({
+        "X-Goog-Upload-Protocol": "resumable",
+        "X-Goog-Upload-Command": "upload, finalize",
+      })
       .expect(403);
 
     const otherUploadURL = await supertest(STORAGE_EMULATOR_HOST)

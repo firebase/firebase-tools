@@ -116,19 +116,12 @@ export class UploadService {
       size: 0,
       authorization: request.authorization,
     };
-
-    return upload;
-  }
-
-  /**
-   * Starts persisting file after the resumable upload has been authorized
-   */
-  public startAuthorizedResumableUpload(upload: Upload): void {
     this._uploads.set(upload.id, upload);
     this._persistence.deleteFile(upload.path, /* failSilently = */ true);
 
     // create empty file to append to later
     this._persistence.appendBytes(upload.path, Buffer.alloc(0));
+    return upload;
   }
 
   /**
@@ -179,7 +172,7 @@ export class UploadService {
    */
   public finalizeResumableUpload(uploadId: string): Upload {
     const upload = this.getResumableUpload(uploadId);
-    if (upload.status === UploadStatus.CANCELLED) {
+    if (upload.status === UploadStatus.CANCELLED || upload.status === UploadStatus.FINISHED) {
       throw new UploadNotActiveError();
     }
     upload.status = UploadStatus.FINISHED;

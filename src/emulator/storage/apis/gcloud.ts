@@ -220,7 +220,6 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
         metadataRaw: JSON.stringify(req.body),
         authorization: req.header("authorization"),
       });
-      uploadService.startAuthorizedResumableUpload(upload);
 
       const uploadUrl = EmulatorRegistry.url(Emulators.STORAGE, req);
       uploadUrl.pathname = `/upload/storage/v1/b/${req.params.bucketId}/o`;
