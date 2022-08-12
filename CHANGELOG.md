@@ -1,0 +1,1 @@
+- Add v2 Schedule Triggers to function deploy (#4764).
