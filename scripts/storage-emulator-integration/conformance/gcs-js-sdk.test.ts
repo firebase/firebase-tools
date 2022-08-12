@@ -72,6 +72,13 @@ describe("GCS Javascript SDK conformance tests", () => {
         // Doesn't require an assertion, will throw on failure
       });
 
+      it("should handle resumable uploads", async () => {
+        await testBucket.upload(smallFilePath, {
+          resumable: true,
+        });
+        // Doesn't require an assertion, will throw on failure
+      });
+
       it("should replace existing file on upload", async () => {
         const path = "replace.txt";
         const content1 = createRandomFile("small_content_1", 10, tmpDir);

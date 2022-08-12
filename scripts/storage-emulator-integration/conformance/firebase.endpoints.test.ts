@@ -16,6 +16,7 @@ import {
 } from "../utils";
 
 const TEST_FILE_NAME = "testing/storage_ref/image.png";
+const ENCODED_TEST_FILE_NAME = "testing%2Fstorage_ref%2Fimage.png";
 
 // TODO(b/241151246): Fix conformance tests.
 // TODO(b/242314185): add more coverage.
@@ -239,6 +240,82 @@ describe("Firebase Storage endpoint conformance tests", () => {
           "X-Goog-Upload-Command": "cancel",
         })
         .expect(404);
+    });
+  });
+  describe("tokens", () => {
+    it("should generate new token on create_token", async () => {
+      await supertest(firebaseHost)
+        .post(`/v0/b/${storageBucket}/o/${ENCODED_TEST_FILE_NAME}?create_token=true`)
+        .set({ Authorization: "Bearer owner" })
+        .expect(200)
+        .then((res) => {
+          const metadata = res.body;
+          expect(metadata.downloadTokens.split(",").length).to.deep.equal(1);
+        });
+    });
+
+    it("should return a 400 if create_token value is invalid", async () => {
+      await supertest(firebaseHost)
+        .post(`/v0/b/${storageBucket}/o/${ENCODED_TEST_FILE_NAME}?create_token=someNonTrueParam`)
+        .set({ Authorization: "Bearer owner" })
+        .expect(400);
+    });
+
+    it("should return a 403 for create_token if auth header is invalid", async () => {
+      await supertest(firebaseHost)
+        .post(`/v0/b/${storageBucket}/o/${ENCODED_TEST_FILE_NAME}?create_token=true`)
+        .set({ Authorization: "Bearer somethingElse" })
+        .expect(403);
+    });
+
+    it("should delete a download token", async () => {
+      await supertest(firebaseHost)
+        .post(`/v0/b/${storageBucket}/o/${ENCODED_TEST_FILE_NAME}?create_token=true`)
+        .set({ Authorization: "Bearer owner" })
+        .expect(200);
+      const tokens = await supertest(firebaseHost)
+        .post(`/v0/b/${storageBucket}/o/${ENCODED_TEST_FILE_NAME}?create_token=true`)
+        .set({ Authorization: "Bearer owner" })
+        .expect(200)
+        .then((res) => res.body.downloadTokens.split(","));
+      // delete the newly added token
+      await supertest(firebaseHost)
+        .post(`/v0/b/${storageBucket}/o/${ENCODED_TEST_FILE_NAME}?delete_token=${tokens[0]}`)
+        .set({ Authorization: "Bearer owner" })
+        .expect(200)
+        .then((res) => {
+          const metadata = res.body;
+          expect(metadata.downloadTokens.split(",")).to.deep.equal([tokens[1]]);
+        });
+    });
+
+    it("should regenerate a new token if the last remaining one is deleted", async () => {
+      await supertest(firebaseHost)
+        .post(`/v0/b/${storageBucket}/o/${ENCODED_TEST_FILE_NAME}?create_token=true`)
+        .set({ Authorization: "Bearer owner" })
+        .expect(200);
+      const token = await supertest(firebaseHost)
+        .get(`/v0/b/${storageBucket}/o/${ENCODED_TEST_FILE_NAME}`)
+        .set({ Authorization: "Bearer owner" })
+        .expect(200)
+        .then((res) => res.body.downloadTokens);
+
+      await supertest(firebaseHost)
+        .post(`/v0/b/${storageBucket}/o/${ENCODED_TEST_FILE_NAME}?delete_token=${token}`)
+        .set({ Authorization: "Bearer owner" })
+        .expect(200)
+        .then((res) => {
+          const metadata = res.body;
+          expect(metadata.downloadTokens.split(",").length).to.deep.equal(1);
+          expect(metadata.downloadTokens.split(",")).to.not.deep.equal([token]);
+        });
+    });
+
+    it("should return a 403 for delete_token if auth header is invalid", async () => {
+      await supertest(firebaseHost)
+        .post(`/v0/b/${storageBucket}/o/${ENCODED_TEST_FILE_NAME}?delete_token=someToken`)
+        .set({ Authorization: "Bearer somethingElse" })
+        .expect(403);
     });
   });
 });
