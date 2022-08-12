@@ -97,6 +97,5 @@ export async function getProdAccessToken(serviceAccountKey: any): Promise<string
     null
   );
   const credentials = await jwtClient.authorize();
-  // Remove trailing "."
-  return credentials.access_token!; //.replace(/\.+$/, '');;
+  return credentials.access_token!;
 }
