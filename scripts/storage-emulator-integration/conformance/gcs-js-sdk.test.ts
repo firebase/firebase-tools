@@ -72,7 +72,7 @@ describe("GCS Javascript SDK conformance tests", () => {
         // Doesn't require an assertion, will throw on failure
       });
 
-      it("should handle resumable uploads", async () => {
+      it.skip("should handle resumable uploads", async () => {
         await testBucket.upload(smallFilePath, {
           resumable: true,
         });
