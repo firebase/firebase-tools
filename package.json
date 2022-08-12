@@ -22,7 +22,6 @@
     "lint:ts": "eslint --config .eslintrc.js --ext .ts,.js .",
     "mocha": "nyc mocha 'src/test/**/*.{ts,js}'",
     "mocha:storage-spec": "mocha 'src/test/emulators/storage/*.spec.ts'",
-    "mocha:storage-debug": "mocha 'scripts/storage-emulator-integration/conformance/gcs-js-sdk.test.ts' --timeout 5000",
     "mocha:storage-emulator-integration": "mocha 'scripts/storage-emulator-integration/tests.ts'",
     "prepare": "npm run clean && npm run build -- --build tsconfig.publish.json",
     "test": "npm run lint:quiet && npm run test:compile && npm run mocha",
