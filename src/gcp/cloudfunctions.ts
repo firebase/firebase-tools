@@ -14,6 +14,7 @@ import { AUTH_BLOCKING_EVENTS } from "../functions/events/v1";
 
 export const API_VERSION = "v1";
 export const CODEBASE_LABEL = "firebase-functions-codebase";
+export const HASH_LABEL = "firebase-functions-hash";
 const client = new Client({ urlPrefix: functionsOrigin, apiVersion: API_VERSION });
 
 export const BLOCKING_LABEL = "deployment-blocking";
@@ -559,6 +560,9 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
     );
   }
   endpoint.codebase = gcfFunction.labels?.[CODEBASE_LABEL] || projectConfig.DEFAULT_CODEBASE;
+  if (gcfFunction.labels?.[HASH_LABEL]) {
+    endpoint.hash = gcfFunction.labels?.[HASH_LABEL];
+  }
   return endpoint;
 }
 

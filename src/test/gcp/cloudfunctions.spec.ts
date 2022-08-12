@@ -302,7 +302,7 @@ describe("cloudfunctions", () => {
       ).to.deep.equal(want);
     });
 
-    it("should transalte scheduled triggers", () => {
+    it("should translate scheduled triggers", () => {
       expect(
         cloudfunctions.endpointFromFunction({
           ...HAVE_CLOUD_FUNCTION,
@@ -453,6 +453,30 @@ describe("cloudfunctions", () => {
           [cloudfunctions.CODEBASE_LABEL]: "my-codebase",
         },
         codebase: "my-codebase",
+      });
+    });
+
+    it("should derive hash from labels", () => {
+      expect(
+        cloudfunctions.endpointFromFunction({
+          ...HAVE_CLOUD_FUNCTION,
+          httpsTrigger: {},
+          labels: {
+            ...CLOUD_FUNCTION.labels,
+            [cloudfunctions.CODEBASE_LABEL]: "my-codebase",
+            [cloudfunctions.HASH_LABEL]: "my-hash",
+          },
+        })
+      ).to.deep.equal({
+        ...ENDPOINT,
+        httpsTrigger: {},
+        labels: {
+          ...ENDPOINT.labels,
+          [cloudfunctions.CODEBASE_LABEL]: "my-codebase",
+          [cloudfunctions.HASH_LABEL]: "my-hash",
+        },
+        codebase: "my-codebase",
+        hash: "my-hash",
       });
     });
   });
