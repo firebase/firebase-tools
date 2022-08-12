@@ -131,13 +131,15 @@ class ConformanceTestEnvironment {
   }
 
   get adminAccessTokenGetter(): Promise<string> {
-    return new Promise(async (resolve) => {
-      if (this._adminAccessToken === undefined) {
-        this._adminAccessToken = this.useProductionServers
-          ? await getProdAccessToken(this.prodServiceAccountKeyJson)
-          : "owner";
-      }
-      resolve(this._adminAccessToken);
+    if (this._adminAccessToken) {
+      return Promise.resolve(this._adminAccessToken);
+    }
+    const generateAdminAccessToken = this.useProductionServers
+      ? getProdAccessToken(this.prodServiceAccountKeyJson)
+      : Promise.resolve("owner");
+    return generateAdminAccessToken.then((token) => {
+      this._adminAccessToken = token;
+      return token;
     });
   }
 
