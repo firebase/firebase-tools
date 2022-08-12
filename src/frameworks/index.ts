@@ -157,6 +157,5 @@ You can link a Web app to a Hosting site here https://console.firebase.google.co
     config.redirects = [...(config.redirects || []), ...redirects];
     config.headers = [...(config.headers || []), ...headers];
     config.cleanUrls ??= true;
-    console.log('Done with prepare.');
   }
 };
