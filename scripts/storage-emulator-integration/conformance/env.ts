@@ -1,4 +1,9 @@
-import { readAbsoluteJson, getStorageEmulatorHost, getAuthEmulatorHost } from "../utils";
+import {
+  readAbsoluteJson,
+  getProdAccessToken,
+  getStorageEmulatorHost,
+  getAuthEmulatorHost,
+} from "../utils";
 import * as path from "path";
 import { FrameworkOptions } from "../../integration-helpers/framework";
 import * as fs from "fs";
@@ -65,6 +70,8 @@ class ConformanceTestEnvironment {
   private _prodAppConfig: any;
   private _emulatorConfig: any;
   private _prodServiceAccountKeyJson?: any;
+  private _adminAccessToken?: string;
+
   get useProductionServers() {
     return TEST_CONFIG.useProductionServers;
   }
@@ -118,6 +125,19 @@ class ConformanceTestEnvironment {
 
   get requestClient() {
     return this.useProductionServers ? https : http;
+  }
+
+  get adminAccessTokenGetter(): Promise<string> {
+    if (this._adminAccessToken) {
+      return Promise.resolve(this._adminAccessToken);
+    }
+    const generateAdminAccessToken = this.useProductionServers
+      ? getProdAccessToken(this.prodServiceAccountKeyJson)
+      : Promise.resolve("owner");
+    return generateAdminAccessToken.then((token) => {
+      this._adminAccessToken = token;
+      return token;
+    });
   }
 
   applyEnvVars() {
