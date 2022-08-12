@@ -61,7 +61,7 @@ export interface FrameworkOptions {
   };
 }
 
-export class TriggerEndToEndTest {
+export class EmulatorEndToEndTest {
   rtdbEmulatorHost = "localhost";
   rtdbEmulatorPort = 0;
   firestoreEmulatorHost = "localhost";
@@ -76,6 +76,43 @@ export class TriggerEndToEndTest {
   storageEmulatorPort = 0;
   allEmulatorsStarted = false;
 
+  cliProcess?: CLIProcess;
+
+  constructor(
+    public project: string,
+    protected readonly workdir: string,
+    config: FrameworkOptions
+  ) {
+    if (!config.emulators) {
+      return;
+    }
+    this.rtdbEmulatorPort = config.emulators.database?.port;
+    this.firestoreEmulatorPort = config.emulators.firestore?.port;
+    this.functionsEmulatorPort = config.emulators.functions?.port;
+    this.pubsubEmulatorPort = config.emulators.pubsub?.port;
+    this.authEmulatorPort = config.emulators.auth?.port;
+    this.storageEmulatorPort = config.emulators.storage?.port;
+  }
+
+  startEmulators(additionalArgs: string[] = []): Promise<void> {
+    const cli = new CLIProcess("default", this.workdir);
+    const started = cli.start("emulators:start", this.project, additionalArgs, (data: unknown) => {
+      if (typeof data !== "string" && !Buffer.isBuffer(data)) {
+        throw new Error(`data is not a string or buffer (${typeof data})`);
+      }
+      return data.includes(ALL_EMULATORS_STARTED_LOG);
+    });
+
+    this.cliProcess = cli;
+    return started;
+  }
+
+  stopEmulators(): Promise<void> {
+    return this.cliProcess ? this.cliProcess.stop() : Promise.resolve();
+  }
+}
+
+export class TriggerEndToEndTest extends EmulatorEndToEndTest {
   /* Functions V1 */
   rtdbTriggerCount = 0;
   firestoreTriggerCount = 0;
@@ -109,18 +146,6 @@ export class TriggerEndToEndTest {
   firestoreFromRtdb = false;
   rtdbFromRtdb = false;
   firestoreFromFirestore = false;
-  cliProcess?: CLIProcess;
-
-  constructor(public project: string, private readonly workdir: string, config: FrameworkOptions) {
-    if (config.emulators) {
-      this.rtdbEmulatorPort = config.emulators.database?.port;
-      this.firestoreEmulatorPort = config.emulators.firestore?.port;
-      this.functionsEmulatorPort = config.emulators.functions?.port;
-      this.pubsubEmulatorPort = config.emulators.pubsub?.port;
-      this.authEmulatorPort = config.emulators.auth?.port;
-      this.storageEmulatorPort = config.emulators.storage?.port;
-    }
-  }
 
   resetCounts(): void {
     /* Functions V1 */
@@ -166,16 +191,11 @@ export class TriggerEndToEndTest {
     );
   }
 
-  startEmulators(additionalArgs: string[] = []): Promise<void> {
-    const cli = new CLIProcess("default", this.workdir);
-    const started = cli.start("emulators:start", this.project, additionalArgs, (data: unknown) => {
-      if (typeof data !== "string" && !Buffer.isBuffer(data)) {
-        throw new Error(`data is not a string or buffer (${typeof data})`);
-      }
-      return data.includes(ALL_EMULATORS_STARTED_LOG);
-    });
+  async startEmulators(additionalArgs: string[] = []): Promise<void> {
+    // This must be called first to set this.cliProcess.
+    const startEmulators = super.startEmulators(additionalArgs);
 
-    cli.process?.stdout?.on("data", (data) => {
+    this.cliProcess?.process?.stdout?.on("data", (data) => {
       /* Functions V1 */
       if (data.includes(RTDB_FUNCTION_LOG)) {
         this.rtdbTriggerCount++;
@@ -250,8 +270,7 @@ export class TriggerEndToEndTest {
       }
     });
 
-    this.cliProcess = cli;
-    return started;
+    return startEmulators;
   }
 
   startExtEmulators(additionalArgs: string[]): Promise<void> {
@@ -270,10 +289,6 @@ export class TriggerEndToEndTest {
 
     this.cliProcess = cli;
     return started;
-  }
-
-  stopEmulators(): Promise<void> {
-    return this.cliProcess ? this.cliProcess.stop() : Promise.resolve();
   }
 
   applyTargets(emulatorType: Emulators, target: string, resource: string): Promise<void> {
