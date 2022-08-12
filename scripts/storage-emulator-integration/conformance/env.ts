@@ -1,4 +1,4 @@
-import { readAbsoluteJson } from "../utils";
+import { readAbsoluteJson, getProdAccessToken } from "../utils";
 import * as path from "path";
 import { FrameworkOptions } from "../../integration-helpers/framework";
 import * as fs from "fs";
@@ -65,6 +65,8 @@ class ConformanceTestEnvironment {
   private _prodAppConfig: any;
   private _emulatorConfig: any;
   private _prodServiceAccountKeyJson?: any;
+  private _adminAccessToken?: string;
+
   get useProductionServers() {
     return TEST_CONFIG.useProductionServers;
   }
@@ -126,6 +128,17 @@ class ConformanceTestEnvironment {
 
   get requestClient() {
     return this.useProductionServers ? https : http;
+  }
+
+  get adminAccessTokenGetter(): Promise<string> {
+    return new Promise(async (resolve) => {
+      if (this._adminAccessToken === undefined) {
+        this._adminAccessToken = this.useProductionServers
+          ? await getProdAccessToken(this.prodServiceAccountKeyJson)
+          : "owner";
+      }
+      resolve(this._adminAccessToken);
+    });
   }
 
   applyEnvVars() {
