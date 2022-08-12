@@ -1,7 +1,6 @@
 import { readJson } from "./utils";
 import * as path from "path";
 import { FrameworkOptions } from "../../integration-helpers/framework";
-import { _topicWithOptions } from "firebase-functions/v1/pubsub";
 import * as fs from "fs";
 import * as http from "http";
 import * as https from "https";
@@ -17,7 +16,7 @@ const TEST_CONFIG = {
   // The paths should be relative to this file.
   //
   // Follow the instructions here to get your app config:
-  // https://support.google.com/firebase/answer/7015592#web 
+  // https://support.google.com/firebase/answer/7015592#web
   prodAppConfigFilePath: "storage-integration-config.json",
   // Follow the instructions here to create a service account key file:
   // https://firebase.google.com/docs/admin/setup#initialize-sdk
