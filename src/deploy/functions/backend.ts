@@ -209,8 +209,8 @@ export function memoryToGen1Cpu(memory: MemoryOptions): number {
     2048: 1,
     4096: 2,
     8192: 2,
-    16384: 3,
-    32768: 4,
+    16384: 4,
+    32768: 8,
   }[memory];
 }
 
@@ -228,8 +228,8 @@ export function memoryToGen2Cpu(memory: MemoryOptions): number {
     2048: 1,
     4096: 2,
     8192: 2,
-    16384: 2,
-    32768: 4,
+    16384: 4,
+    32768: 8,
   }[memory];
 }
 
