@@ -12,7 +12,7 @@ import {
   SMALL_FILE_SIZE,
   TEST_SETUP_TIMEOUT,
   getTmpDir,
-} from "./utils";
+} from "../utils";
 
 describe("GCS endpoint conformance tests", () => {
   // Temp directory to store generated files.

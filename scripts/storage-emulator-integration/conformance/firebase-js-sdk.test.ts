@@ -11,13 +11,11 @@ import {
   createRandomFile,
   EMULATORS_SHUTDOWN_DELAY_MS,
   resetStorageEmulator,
-  signInToFirebaseAuth,
   SMALL_FILE_SIZE,
   TEST_SETUP_TIMEOUT,
   getTmpDir,
-  uploadText,
   writeToFile,
-} from "./utils";
+} from "../utils";
 
 const TEST_FILE_NAME = "testing/storage_ref/testFile";
 
@@ -39,6 +37,42 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
   let testBucket: Bucket;
   let browser: puppeteer.Browser;
   let page: puppeteer.Page;
+
+
+  async function uploadText(
+    page: puppeteer.Page,
+    filename: string,
+    text: string,
+    format?: string,
+    metadata?: firebase.storage.UploadMetadata
+  ): Promise<string> {
+    return page.evaluate(
+      async (filename, text, format, metadata) => {
+        try {
+          const task = await firebase
+            .storage()
+            .ref(filename)
+            .putString(text, format, JSON.parse(metadata));
+          return task.state;
+        } catch (err) {
+          if (err instanceof Error) {
+            throw err.message;
+          }
+          throw err;
+        }
+      },
+      filename,
+      text,
+      format ?? "raw",
+      JSON.stringify(metadata ?? {})
+    )!;
+  }
+  
+  async function signInToFirebaseAuth(page: puppeteer.Page): Promise<void> {
+    await page.evaluate(async () => {
+      await firebase.auth().signInAnonymously();
+    });
+  }
 
   async function resetState(): Promise<void> {
     if (TEST_ENV.useProductionServers) {

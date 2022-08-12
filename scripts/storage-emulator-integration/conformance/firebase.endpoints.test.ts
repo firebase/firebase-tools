@@ -13,7 +13,7 @@ import {
   getTmpDir,
   SMALL_FILE_SIZE,
   TEST_SETUP_TIMEOUT,
-} from "./utils";
+} from "../utils";
 
 const TEST_FILE_NAME = "testing/storage_ref/image.png";
 

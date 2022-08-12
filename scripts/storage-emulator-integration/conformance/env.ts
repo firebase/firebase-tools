@@ -1,12 +1,11 @@
-import { readJson } from "./utils";
+import { readAbsoluteJson } from "../utils";
 import * as path from "path";
 import { FrameworkOptions } from "../../integration-helpers/framework";
 import * as fs from "fs";
 import * as http from "http";
 import * as https from "https";
 
-// Flip these flags for options during test debugging
-// all should be FALSE on commit
+// Set these flags to control test behavior.
 const TEST_CONFIG = {
   // Set this to true to use production servers
   // (useful for writing tests against source of truth)
@@ -24,7 +23,7 @@ const TEST_CONFIG = {
 
   // Relative path to the emulator config to use in integration tests.
   // Only used when useProductionServers == false.
-  emulatorConfigFilePath: "firebase.json",
+  emulatorConfigFilePath: "../firebase.json",
 
   // Set this to true to make the headless chrome window used in
   // Firebase js sdk integration tests visible.
@@ -47,7 +46,7 @@ const FAKE_APP_CONFIG = {
 function readProdAppConfig() {
   const filePath = path.join(__dirname, TEST_CONFIG.prodAppConfigFilePath);
   try {
-    return readJson(TEST_CONFIG.prodAppConfigFilePath);
+    return readAbsoluteJson(filePath);
   } catch (error) {
     throw new Error(`Cannot read the prod app config file. Please ensure that ${filePath} exists.`);
   }
@@ -56,7 +55,7 @@ function readProdAppConfig() {
 function readEmulatorConfig(): FrameworkOptions {
   const filePath = path.join(__dirname, TEST_CONFIG.emulatorConfigFilePath);
   try {
-    return readJson(TEST_CONFIG.emulatorConfigFilePath);
+    return readAbsoluteJson(filePath);
   } catch (error) {
     throw new Error(`Cannot read the emulator config. Please ensure that ${filePath} exists.`);
   }
@@ -119,7 +118,7 @@ class ConformanceTestEnvironment {
     if (this._prodServiceAccountKeyJson === undefined) {
       const filePath = path.join(__dirname, TEST_CONFIG.prodServiceAccountKeyFilePath);
       return TEST_CONFIG.prodServiceAccountKeyFilePath && fs.existsSync(filePath)
-        ? readJson(TEST_CONFIG.prodServiceAccountKeyFilePath)
+        ? readAbsoluteJson(filePath)
         : null;
     }
     return this._prodServiceAccountKeyJson;

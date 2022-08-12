@@ -11,7 +11,7 @@ import {
   SMALL_FILE_SIZE,
   TEST_SETUP_TIMEOUT,
   getTmpDir,
-} from "./utils";
+} from "../utils";
 
 // TODO(b/241151246): Fix conformance tests.
 describe("GCS Javascript SDK conformance tests", () => {
