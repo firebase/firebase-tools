@@ -6,18 +6,20 @@ import * as supertest from "supertest";
 import { EmulatorEndToEndTest } from "../../integration-helpers/framework";
 import { TEST_ENV } from "./env";
 import {
+  createRandomFile,
   EMULATORS_SHUTDOWN_DELAY_MS,
   resetStorageEmulator,
+  SMALL_FILE_SIZE,
   TEST_SETUP_TIMEOUT,
   getTmpDir,
 } from "../utils";
 
+// TODO(b/242314185): add more coverage.
 const TEST_FILE_NAME = "gcs/testFile";
 
 describe("GCS endpoint conformance tests", () => {
   // Temp directory to store generated files.
   const tmpDir = getTmpDir();
-
   const storageBucket = TEST_ENV.appConfig.storageBucket;
   const storageHost = TEST_ENV.storageHost;
 
@@ -131,7 +133,11 @@ describe("GCS endpoint conformance tests", () => {
         const body = Buffer.from(`--b1d5b2e3-1845-4338-9400-6ac07ce53c1e\r
 content-type: application/json\r
 \r
+<<<<<<< HEAD
 {"name":"${TEST_FILE_NAME}"}\r
+=======
+{"name":"test_upload.jpg"}\r
+>>>>>>> master
 --b1d5b2e3-1845-4338-9400-6ac07ce53c1e\r
 content-type: text/plain\r
 \r

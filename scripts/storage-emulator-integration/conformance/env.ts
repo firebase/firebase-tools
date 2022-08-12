@@ -1,4 +1,9 @@
-import { readAbsoluteJson, getProdAccessToken } from "../utils";
+import {
+  readAbsoluteJson,
+  getProdAccessToken,
+  getStorageEmulatorHost,
+  getAuthEmulatorHost,
+} from "../utils";
 import * as path from "path";
 import { FrameworkOptions } from "../../integration-helpers/framework";
 import * as fs from "fs";
@@ -91,19 +96,11 @@ class ConformanceTestEnvironment {
   }
 
   get storageEmulatorHost() {
-    const port = this.emulatorConfig.emulators?.storage?.port;
-    if (port) {
-      return `http://localhost:${port}`;
-    }
-    throw new Error("Storage emulator config not found or invalid");
+    return getStorageEmulatorHost(this.emulatorConfig);
   }
 
   get authEmulatorHost() {
-    const port = this.emulatorConfig.emulators?.auth?.port;
-    if (port) {
-      return `http://localhost:${port}`;
-    }
-    throw new Error("Auth emulator config not found or invalid");
+    return getAuthEmulatorHost(this.emulatorConfig);
   }
 
   get firebaseHost() {

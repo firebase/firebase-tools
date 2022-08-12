@@ -147,18 +147,6 @@ export class TriggerEndToEndTest extends EmulatorEndToEndTest {
   rtdbFromRtdb = false;
   firestoreFromFirestore = false;
 
-  constructor(project: string, workdir: string, config: FrameworkOptions) {
-    super(project, workdir, config);
-    if (config.emulators) {
-      this.rtdbEmulatorPort = config.emulators.database?.port;
-      this.firestoreEmulatorPort = config.emulators.firestore?.port;
-      this.functionsEmulatorPort = config.emulators.functions?.port;
-      this.pubsubEmulatorPort = config.emulators.pubsub?.port;
-      this.authEmulatorPort = config.emulators.auth?.port;
-      this.storageEmulatorPort = config.emulators.storage?.port;
-    }
-  }
-
   resetCounts(): void {
     /* Functions V1 */
     this.firestoreTriggerCount = 0;
