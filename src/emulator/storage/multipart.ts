@@ -125,11 +125,11 @@ export function parseObjectUploadMultipartRequest(
   body: Buffer
 ): ObjectUploadMultipartData {
   if (!contentTypeHeader.startsWith("multipart/related")) {
-    throw new Error(`Invalid Content-Type: ${contentTypeHeader}`);
+    throw new Error(`Bad content type. ${contentTypeHeader}`);
   }
   const boundaryId = contentTypeHeader.split("boundary=")[1];
   if (!boundaryId) {
-    throw new Error(`Invalid Content-Type header: ${contentTypeHeader}`);
+    throw new Error(`Bad content type. ${contentTypeHeader}`);
   }
   const parsedBody = parseMultipartRequestBody(boundaryId, body);
   if (parsedBody.length !== 2) {

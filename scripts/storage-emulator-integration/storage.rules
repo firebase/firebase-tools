@@ -5,6 +5,10 @@ service firebase.storage {
       allow list;
     }
 
+    match /disallowSize0 {
+      allow create: if request.resource.size != 0;
+    }
+
     match /testing/{allPaths=**} {
       allow read, create, update, delete: if request.auth != null;
     }

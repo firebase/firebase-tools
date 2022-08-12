@@ -20,6 +20,7 @@ import { Persistence } from "./persistence";
 import { Upload, UploadStatus } from "./upload";
 import { trackEmulator } from "../../track";
 import { Emulators } from "../types";
+import { compareSpecIndex } from "../../firestore/indexes-sort";
 
 interface BucketsList {
   buckets: {

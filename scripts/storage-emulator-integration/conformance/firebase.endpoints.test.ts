@@ -15,7 +15,8 @@ import {
   TEST_SETUP_TIMEOUT,
 } from "../utils";
 
-const TEST_FILE_NAME = "testing/storage_ref/image.png";
+const TEST_FILE_NAME = "testing/storage_ref/testFile";
+const ENCODED_TEST_FILE_NAME = "testing%2Fstorage_ref%2FtestFile";
 
 // TODO(b/241151246): Fix conformance tests.
 describe("Firebase Storage endpoint conformance tests", () => {
@@ -28,6 +29,7 @@ describe("Firebase Storage endpoint conformance tests", () => {
 
   let test: EmulatorEndToEndTest;
   let testBucket: Bucket;
+  let authHeader: { Authorization: string };
 
   async function resetState(): Promise<void> {
     if (TEST_ENV.useProductionServers) {
@@ -51,6 +53,7 @@ describe("Firebase Storage endpoint conformance tests", () => {
       : admin.credential.applicationDefault();
     admin.initializeApp({ credential });
     testBucket = admin.storage().bucket(storageBucket);
+    authHeader = { Authorization: `Bearer ${await TEST_ENV.adminAccessTokenGetter}` };
   });
 
   after(async function (this) {
@@ -66,178 +69,213 @@ describe("Firebase Storage endpoint conformance tests", () => {
 
   beforeEach(async () => {
     await resetState();
-    await testBucket.upload(smallFilePath, { destination: TEST_FILE_NAME });
   });
 
-  it("should return an error message when uploading a file with invalid metadata", async () => {
-    const fileName = "test_upload.jpg";
-    const errorMessage = await supertest(firebaseHost)
-      .post(`/v0/b/${storageBucket}/o/?name=${fileName}`)
-      .set({ "x-goog-upload-protocol": "multipart", "content-type": "foo" })
-      .expect(400)
-      .then((res) => res.body.error.message);
-
-    expect(errorMessage).to.equal("Invalid Content-Type: foo");
-  });
-
-  it("should accept subsequent resumable upload commands without an auth header", async () => {
-    const uploadURL = await supertest(firebaseHost)
-      .post(`/v0/b/${storageBucket}/o/test_upload.jpg?uploadType=resumable&name=test_upload.jpg`)
-      .set({
-        Authorization: "Bearer owner",
-        "X-Goog-Upload-Protocol": "resumable",
-        "X-Goog-Upload-Command": "start",
-      })
-      .expect(200)
-      .then((res) => new URL(res.header["x-goog-upload-url"]));
-
-    await supertest(firebaseHost)
-      .put(uploadURL.pathname + uploadURL.search)
-      .set({
-        // No Authorization required in upload
-        "X-Goog-Upload-Protocol": "resumable",
-        "X-Goog-Upload-Command": "upload",
-      })
-      .expect(200);
-
-    const uploadStatus = await supertest(firebaseHost)
-      .put(uploadURL.pathname + uploadURL.search)
-      .set({
-        // No Authorization required in finalize
-        "X-Goog-Upload-Protocol": "resumable",
-        "X-Goog-Upload-Command": "upload, finalize",
-      })
-      .expect(200)
-      .then((res) => res.header["x-goog-upload-status"]);
-
-    expect(uploadStatus).to.equal("final");
-
-    await supertest(firebaseHost)
-      .get(`/v0/b/${storageBucket}/o/test_upload.jpg`)
-      .set({ Authorization: "Bearer owner" })
-      .expect(200);
-  });
-
-  it("should return 403 when resumable upload is unauthenticated", async () => {
-    const uploadURL = await supertest(firebaseHost)
-      .post(`/v0/b/${storageBucket}/o/test_upload.jpg?uploadType=resumable&name=test_upload.jpg`)
-      .set({
-        // Authorization missing
-        "X-Goog-Upload-Protocol": "resumable",
-        "X-Goog-Upload-Command": "start",
-      })
-      .expect(200)
-      .then((res) => new URL(res.header["x-goog-upload-url"]));
-
-    await supertest(firebaseHost)
-      .put(uploadURL.pathname + uploadURL.search)
-      .set({
-        "X-Goog-Upload-Protocol": "resumable",
-        "X-Goog-Upload-Command": "upload, finalize",
-      })
-      .expect(403);
-  });
-
-  describe("cancels upload", () => {
-    it("should cancel upload successfully", async () => {
-      const uploadURL = await supertest(firebaseHost)
-        .post(`/v0/b/${storageBucket}/o/test_upload.jpg?uploadType=resumable&name=test_upload.jpg`)
-        .set({
-          Authorization: "Bearer owner",
-          "X-Goog-Upload-Protocol": "resumable",
-          "X-Goog-Upload-Command": "start",
-        })
-        .expect(200)
-        .then((res) => new URL(res.header["x-goog-upload-url"]));
-
-      await supertest(firebaseHost)
-        .put(uploadURL.pathname + uploadURL.search)
-        .set({
-          "X-Goog-Upload-Protocol": "resumable",
-          "X-Goog-Upload-Command": "cancel",
-        })
-        .expect(200);
-
-      await supertest(firebaseHost)
-        .get(`/v0/b/${storageBucket}/o/test_upload.jpg`)
-        .set({ Authorization: "Bearer owner" })
-        .expect(404);
-    });
-
-    it("should return 200 when cancelling already cancelled upload", async () => {
-      const uploadURL = await supertest(firebaseHost)
-        .post(`/v0/b/${storageBucket}/o/test_upload.jpg?uploadType=resumable&name=test_upload.jpg`)
-        .set({
-          Authorization: "Bearer owner",
-          "X-Goog-Upload-Protocol": "resumable",
-          "X-Goog-Upload-Command": "start",
-        })
-        .expect(200)
-        .then((res) => new URL(res.header["x-goog-upload-url"]));
-
-      await supertest(firebaseHost)
-        .put(uploadURL.pathname + uploadURL.search)
-        .set({
-          "X-Goog-Upload-Protocol": "resumable",
-          "X-Goog-Upload-Command": "cancel",
-        })
-        .expect(200);
-
-      await supertest(firebaseHost)
-        .put(uploadURL.pathname + uploadURL.search)
-        .set({
-          "X-Goog-Upload-Protocol": "resumable",
-          "X-Goog-Upload-Command": "cancel",
-        })
-        .expect(200);
-    });
-
-    it("should return 400 when cancelling finalized resumable upload", async () => {
-      const uploadURL = await supertest(firebaseHost)
-        .post(`/v0/b/${storageBucket}/o/test_upload.jpg?uploadType=resumable&name=test_upload.jpg`)
-        .set({
-          Authorization: "Bearer owner",
-          "X-Goog-Upload-Protocol": "resumable",
-          "X-Goog-Upload-Command": "start",
-        })
-        .expect(200)
-        .then((res) => new URL(res.header["x-goog-upload-url"]));
-
-      await supertest(firebaseHost)
-        .put(uploadURL.pathname + uploadURL.search)
-        .set({
-          "X-Goog-Upload-Protocol": "resumable",
-          "X-Goog-Upload-Command": "upload, finalize",
-        })
-        .expect(200);
-
-      await supertest(firebaseHost)
-        .put(uploadURL.pathname + uploadURL.search)
-        .set({
-          "X-Goog-Upload-Protocol": "resumable",
-          "X-Goog-Upload-Command": "cancel",
-        })
+  describe("multipart upload", () => {
+    it("should return an error message when uploading a file with invalid content type", async () => {
+      const res = await supertest(firebaseHost)
+        .post(`/v0/b/${storageBucket}/o/?name=${ENCODED_TEST_FILE_NAME}`)
+        .set(authHeader)
+        .set({ "x-goog-upload-protocol": "multipart", "content-type": "foo" })
+        .send()
         .expect(400);
+      expect(res.text).to.include("Bad content type.");
+    });
+  });
+
+  describe("resumable upload", () => {
+    describe("upload", () => {
+      it("should accept subsequent resumable upload commands without an auth header", async () => {
+        const uploadURL = await supertest(firebaseHost)
+          .post(`/v0/b/${storageBucket}/o?uploadType=resumable&name=${TEST_FILE_NAME}`)
+          .set(authHeader)
+          .set({
+            "X-Goog-Upload-Protocol": "resumable",
+            "X-Goog-Upload-Command": "start",
+          })
+          .send()
+          .expect(200)
+          .then((res) => new URL(res.header["x-goog-upload-url"]));
+
+        await supertest(firebaseHost)
+          .put(uploadURL.pathname + uploadURL.search)
+          // No Authorization required in upload
+          .set({
+            "X-Goog-Upload-Protocol": "resumable",
+            "X-Goog-Upload-Command": "upload",
+            "X-Goog-Upload-Offset": 0,
+          })
+          .send()
+          .expect(200);
+        const uploadStatus = await supertest(firebaseHost)
+          .put(uploadURL.pathname + uploadURL.search)
+          // No Authorization required in finalize
+          .set({
+            "X-Goog-Upload-Protocol": "resumable",
+            "X-Goog-Upload-Command": "finalize",
+          })
+          .expect(200)
+          .then((res) => res.header["x-goog-upload-status"]);
+
+        expect(uploadStatus).to.equal("final");
+
+        await supertest(firebaseHost)
+          .get(`/v0/b/${storageBucket}/o/${ENCODED_TEST_FILE_NAME}`)
+          .set(authHeader)
+          .expect(200);
+      });
+
+      it("should handle resumable uploads with an empty buffer", async () => {
+        const uploadUrl = await supertest(firebaseHost)
+          .post(`/v0/b/${storageBucket}/o/${ENCODED_TEST_FILE_NAME}?uploadType=resumable`)
+          .set(authHeader)
+          .set({
+            "X-Goog-Upload-Protocol": "resumable",
+            "X-Goog-Upload-Command": "start",
+          })
+          .send({})
+          .expect(200)
+          .then((res) => {
+            return new URL(res.header["x-goog-upload-url"]);
+          });
+
+        const finalizeStatus = await supertest(firebaseHost)
+          .post(uploadUrl.pathname + uploadUrl.search)
+          .set(authHeader)
+          .set({
+            "X-Goog-Upload-Protocol": "resumable",
+            "X-Goog-Upload-Command": "finalize",
+          })
+          .send({})
+          .expect(200)
+          .then((res) => res.header["x-goog-upload-status"]);
+        expect(finalizeStatus).to.equal("final");
+      });
+
+      it("should return 403 when resumable upload is unauthenticated", async () => {
+        const testFileName = "disallowSize0";
+        const uploadURL = await supertest(firebaseHost)
+          .post(`/v0/b/${storageBucket}/o/${testFileName}?uploadType=resumable`)
+          // Authorization missing
+          .set({
+            "X-Goog-Upload-Protocol": "resumable",
+            "X-Goog-Upload-Command": "start",
+          })
+          .expect(200)
+          .then((res) => new URL(res.header["x-goog-upload-url"]));
+
+        await supertest(firebaseHost)
+          .put(uploadURL.pathname + uploadURL.search)
+          .set({
+            "X-Goog-Upload-Protocol": "resumable",
+            "X-Goog-Upload-Command": "upload, finalize",
+            "X-Goog-Upload-Offset": 0,
+          })
+          .expect(403);
+      });
     });
 
-    it("should return 404 when cancelling non-existent upload", async () => {
-      const uploadURL = await supertest(firebaseHost)
-        .post(`/v0/b/${storageBucket}/o/test_upload.jpg?uploadType=resumable&name=test_upload.jpg`)
-        .set({
-          Authorization: "Bearer owner",
-          "X-Goog-Upload-Protocol": "resumable",
-          "X-Goog-Upload-Command": "start",
-        })
-        .expect(200)
-        .then((res) => new URL(res.header["x-goog-upload-url"]));
+    describe("cancel", () => {
+      it("should cancel upload successfully", async () => {
+        const uploadURL = await supertest(firebaseHost)
+          .post(`/v0/b/${storageBucket}/o/${ENCODED_TEST_FILE_NAME}?uploadType=resumable`)
+          .set(authHeader)
+          .set({
+            "X-Goog-Upload-Protocol": "resumable",
+            "X-Goog-Upload-Command": "start",
+          })
+          .expect(200)
+          .then((res) => new URL(res.header["x-goog-upload-url"]));
+        await supertest(firebaseHost)
+          .put(uploadURL.pathname + uploadURL.search)
+          .set({
+            "X-Goog-Upload-Protocol": "resumable",
+            "X-Goog-Upload-Command": "cancel",
+          })
+          .expect(200);
 
-      await supertest(firebaseHost)
-        .put(uploadURL.pathname + uploadURL.search.replace(/(upload_id=).*?(&)/, "$1foo$2"))
-        .set({
-          "X-Goog-Upload-Protocol": "resumable",
-          "X-Goog-Upload-Command": "cancel",
-        })
-        .expect(404);
+        await supertest(firebaseHost)
+          .get(`/v0/b/${storageBucket}/o/${ENCODED_TEST_FILE_NAME}`)
+          .set(authHeader)
+          .expect(404);
+      });
+
+      it("should return 200 when cancelling already cancelled upload", async () => {
+        const uploadURL = await supertest(firebaseHost)
+          .post(`/v0/b/${storageBucket}/o/${ENCODED_TEST_FILE_NAME}?uploadType=resumable`)
+          .set(authHeader)
+          .set({
+            "X-Goog-Upload-Protocol": "resumable",
+            "X-Goog-Upload-Command": "start",
+          })
+          .expect(200)
+          .then((res) => new URL(res.header["x-goog-upload-url"]));
+
+        await supertest(firebaseHost)
+          .put(uploadURL.pathname + uploadURL.search)
+          .set({
+            "X-Goog-Upload-Protocol": "resumable",
+            "X-Goog-Upload-Command": "cancel",
+          })
+          .expect(200);
+
+        await supertest(firebaseHost)
+          .put(uploadURL.pathname + uploadURL.search)
+          .set({
+            "X-Goog-Upload-Protocol": "resumable",
+            "X-Goog-Upload-Command": "cancel",
+          })
+          .expect(200);
+      });
+
+      it("should return 400 when cancelling finalized resumable upload", async () => {
+        const uploadURL = await supertest(firebaseHost)
+          .post(`/v0/b/${storageBucket}/o/${ENCODED_TEST_FILE_NAME}?uploadType=resumable`)
+          .set(authHeader)
+          .set({
+            "X-Goog-Upload-Protocol": "resumable",
+            "X-Goog-Upload-Command": "start",
+          })
+          .expect(200)
+          .then((res) => new URL(res.header["x-goog-upload-url"]));
+
+        await supertest(firebaseHost)
+          .put(uploadURL.pathname + uploadURL.search)
+          .set({
+            "X-Goog-Upload-Protocol": "resumable",
+            "X-Goog-Upload-Command": "upload, finalize",
+            "X-Goog-Upload-Offset": 0,
+          })
+          .expect(200);
+
+        await supertest(firebaseHost)
+          .put(uploadURL.pathname + uploadURL.search)
+          .set({
+            "X-Goog-Upload-Protocol": "resumable",
+            "X-Goog-Upload-Command": "cancel",
+          })
+          .expect(400);
+      });
+
+      it("should return 404 when cancelling non-existent upload", async () => {
+        const uploadURL = await supertest(firebaseHost)
+          .post(`/v0/b/${storageBucket}/o/${ENCODED_TEST_FILE_NAME}?uploadType=resumable`)
+          .set(authHeader)
+          .set({
+            "X-Goog-Upload-Protocol": "resumable",
+            "X-Goog-Upload-Command": "start",
+          })
+          .expect(200)
+          .then((res) => new URL(res.header["x-goog-upload-url"]));
+
+        await supertest(firebaseHost)
+          .put(uploadURL.pathname + uploadURL.search.replace(/(upload_id=).*?(&)/, "$1foo$2"))
+          .set({
+            "X-Goog-Upload-Protocol": "resumable",
+            "X-Goog-Upload-Command": "cancel",
+          })
+          .expect(404);
+      });
     });
   });
 });
