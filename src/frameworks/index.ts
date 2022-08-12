@@ -55,6 +55,7 @@ export const prepareFrameworks = async (targetNames: string[], context: any, opt
     const firebaseAdminVersion = findDependency('firebase-admin', getProjectPath());
     const firebaseAppVersion = findDependency('@firebase/app', getProjectPath());
     if (firebaseAdminVersion && account) {
+      process.env.GOOGLE_CLOUD_PROJECT = project;
       if (account && !process.env.GOOGLE_APPLICATION_CREDENTIALS) {
         const defaultCredPath = await getCredentialPathAsync(account);
         if (defaultCredPath) process.env.GOOGLE_APPLICATION_CREDENTIALS = defaultCredPath;
