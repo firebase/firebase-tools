@@ -1949,7 +1949,7 @@ hello there!
     });
 
     it("should return 403 when resumable upload is unauthenticated", async () => {
-      const uploadURL = await supertest(expectedHost)
+      const uploadURL = await supertest(STORAGE_EMULATOR_HOST)
         .post(`/v0/b/${storageBucket}/o/test_upload.jpg?uploadType=resumable&name=test_upload.jpg`)
         .set({
           // Authorization missing
@@ -1959,7 +1959,7 @@ hello there!
         .expect(200)
         .then((res) => new URL(res.header["x-goog-upload-url"]));
 
-      await supertest(expectedHost)
+      await supertest(STORAGE_EMULATOR_HOST)
         .put(uploadURL.pathname + uploadURL.search)
         .set({
           "X-Goog-Upload-Protocol": "resumable",
