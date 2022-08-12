@@ -9,6 +9,7 @@ import { EmulatorRegistry } from "./registry";
 import {
   Address,
   ALL_SERVICE_EMULATORS,
+  EmulatorInfo,
   EmulatorInstance,
   Emulators,
   EMULATORS_SUPPORTED_BY_UI,
@@ -403,23 +404,6 @@ export async function startAll(
     }
   }
 
-
-  const firestoreEmulatorAddress = shouldStart(options, Emulators.FIRESTORE) ? await getAndCheckAddress(Emulators.FIRESTORE, options) : undefined;
-  const databaseEmulatorAddress = shouldStart(options, Emulators.DATABASE) ? await getAndCheckAddress(Emulators.DATABASE, options) : undefined;
-  const authEmulatorAddress = shouldStart(options, Emulators.AUTH) ? await getAndCheckAddress(Emulators.AUTH, options) : undefined;
-  const storageEmulatorAddress = shouldStart(options, Emulators.STORAGE) ? await getAndCheckAddress(Emulators.STORAGE, options) : undefined;
-  let functionsEmulatorAddress = (shouldStart(options, Emulators.FUNCTIONS) || shouldStart(options, Emulators.EXTENSIONS)) ?
-    await getAndCheckAddress(Emulators.FUNCTIONS, options) :
-    undefined;
-
-  if (previews.frameworkawareness) {
-    const config = options.config.get("hosting");
-    const emulators = { firestoreEmulatorAddress, databaseEmulatorAddress, authEmulatorAddress, storageEmulatorAddress, functionsEmulatorAddress };
-    if (Array.isArray(config) ? config.some((it) => it.source) : config?.source) {
-      await prepareFrameworks(targets, options, options, emulators);
-    }
-  }
-
   if (shouldStart(options, Emulators.HUB)) {
     const hubAddr = await getAndCheckAddress(Emulators.HUB, options);
     const hub = new EmulatorHub({ projectId, ...hubAddr });
@@ -451,108 +435,14 @@ export async function startAll(
     }
   }
 
-  const emulatableBackends: EmulatableBackend[] = [];
-  const projectDir = (options.extDevDir || options.config.projectDir) as string;
+
   if (shouldStart(options, Emulators.FIRESTORE)) {
-    const functionsCfg = normalizeAndValidate(options.config.src.functions);
-    // Note: ext:dev:emulators:* commands hit this path, not the Emulators.EXTENSIONS path
-    utils.assertIsStringOrUndefined(options.extDevDir);
-
-    for (const cfg of functionsCfg) {
-      const functionsDir = path.join(projectDir, cfg.source);
-      emulatableBackends.push({
-        functionsDir,
-        codebase: cfg.codebase,
-        env: {
-          ...options.extDevEnv,
-        },
-        secretEnv: [], // CF3 secrets are bound to specific functions, so we'll get them during trigger discovery.
-        // TODO(b/213335255): predefinedTriggers and nodeMajorVersion are here to support ext:dev:emulators:* commands.
-        // Ideally, we should handle that case via ExtensionEmulator.
-        predefinedTriggers: options.extDevTriggers as ParsedTriggerDefinition[] | undefined,
-        nodeMajorVersion: parseRuntimeVersion((options.extDevNodeVersion as string) || cfg.runtime),
-      });
-    }
-  }
-
-  if (shouldStart(options, Emulators.EXTENSIONS)) {
-    const projectNumber = Constants.isDemoProject(projectId)
-      ? Constants.FAKE_PROJECT_NUMBER
-      : await needProjectNumber(options);
-    const aliases = getAliases(options, projectId);
-    const extensionEmulator = new ExtensionsEmulator({
-      projectId,
-      projectDir: options.config.projectDir,
-      projectNumber,
-      aliases,
-      extensions: options.config.get("extensions"),
-    });
-    const extensionsBackends = await extensionEmulator.getExtensionBackends();
-    const filteredExtensionsBackends = extensionEmulator.filterUnemulatedTriggers(
-      options,
-      extensionsBackends
-    );
-    emulatableBackends.push(...filteredExtensionsBackends);
-    // Log the command for analytics
-    void track("Emulator Run", Emulators.EXTENSIONS);
-    await startEmulator(extensionEmulator);
-  }
-
-  if (emulatableBackends.length) {
-    const functionsLogger = EmulatorLogger.forEmulator(Emulators.FUNCTIONS);
-    const projectId = needProjectId(options);
-
-    let inspectFunctions: number | undefined;
-    if (options.inspectFunctions) {
-      inspectFunctions = commandUtils.parseInspectionPort(options);
-
-      // TODO(samstern): Add a link to documentation
-      functionsLogger.logLabeled(
-        "WARN",
-        "functions",
-        `You are running the Functions emulator in debug mode (port=${inspectFunctions}). This means that functions will execute in sequence rather than in parallel.`
-      );
-    }
-
-    // Warn the developer that the Functions/Extensions emulator can call out to production.
-    const emulatorsNotRunning = ALL_SERVICE_EMULATORS.filter((e) => {
-      return e !== Emulators.FUNCTIONS && !shouldStart(options, e);
-    });
-    if (emulatorsNotRunning.length > 0 && !Constants.isDemoProject(projectId)) {
-      functionsLogger.logLabeled(
-        "WARN",
-        "functions",
-        `The following emulators are not running, calls to these services from the Functions emulator will affect production: ${clc.bold(
-          emulatorsNotRunning.join(", ")
-        )}`
-      );
-    }
-
-    const account = getProjectDefaultAccount(options.projectRoot);
-
-    // When we first fetched this address, for frameworks, shouldStart might have returned false so functionsEmulatorAddress might be undefined
-    functionsEmulatorAddress ||= await getAndCheckAddress(Emulators.FUNCTIONS, options);  
-
-    // TODO(b/213241033): Figure out how to watch for changes to extensions .env files & reload triggers when they change.
-    const functionsEmulator = new FunctionsEmulator({
-      projectId,
-      projectDir,
-      emulatableBackends,
-      account,
-      host: functionsEmulatorAddress.host,
-      port: functionsEmulatorAddress.port,
-      debugPort: inspectFunctions,
-      projectAlias: options.projectAlias,
-    });
-    await startEmulator(functionsEmulator);
-  }
-
-  if (firestoreEmulatorAddress) {
     const firestoreLogger = EmulatorLogger.forEmulator(Emulators.FIRESTORE);
-    
+    const firestoreAddr = await getAndCheckAddress(Emulators.FIRESTORE, options);
+
     const args: FirestoreEmulatorArgs = {
-      host: firestoreEmulatorAddress.host,
-      port: firestoreEmulatorAddress.port,
+      host: firestoreAddr.host,
+      port: firestoreAddr.port,
       projectId,
       auto_download: true,
     };
@@ -608,12 +498,13 @@ export async function startAll(
     await startEmulator(firestoreEmulator);
   }
 
-  if (databaseEmulatorAddress) {
+  if (shouldStart(options, Emulators.DATABASE)) {
     const databaseLogger = EmulatorLogger.forEmulator(Emulators.DATABASE);
-    
+    const databaseAddr = await getAndCheckAddress(Emulators.DATABASE, options);
+
     const args: DatabaseEmulatorArgs = {
-      host: databaseEmulatorAddress.host,
-      port: databaseEmulatorAddress.port,
+      host: databaseAddr.host,
+      port: databaseAddr.port,
       projectId,
       auto_download: true,
     };
@@ -677,7 +568,7 @@ export async function startAll(
     }
   }
 
-  if (authEmulatorAddress) {
+  if (shouldStart(options, Emulators.AUTH)) {
     if (!projectId) {
       throw new FirebaseError(
         `Cannot start the ${Constants.description(
@@ -686,9 +577,10 @@ export async function startAll(
       );
     }
 
+    const authAddr = await getAndCheckAddress(Emulators.AUTH, options);
     const authEmulator = new AuthEmulator({
-      host: authEmulatorAddress.host,
-      port: authEmulatorAddress.port,
+      host: authAddr.host,
+      port: authAddr.port,
       projectId,
     });
     await startEmulator(authEmulator);
@@ -719,11 +611,12 @@ export async function startAll(
     await startEmulator(pubsubEmulator);
   }
 
-  if (storageEmulatorAddress) {
+  if (shouldStart(options, Emulators.STORAGE)) {
+    const storageAddr = await getAndCheckAddress(Emulators.STORAGE, options);
 
     const storageEmulator = new StorageEmulator({
-      host: storageEmulatorAddress.host,
-      port: storageEmulatorAddress.port,
+      host: storageAddr.host,
+      port: storageAddr.port,
       projectId: projectId,
       rules: getStorageRulesConfig(projectId, options),
     });
@@ -735,6 +628,113 @@ export async function startAll(
       const storageExportDir = path.resolve(importDirAbsPath, exportMetadata.storage.path);
       storageEmulator.storageLayer.import(storageExportDir);
     }
+  }
+
+  if (previews.frameworkawareness) {
+    const config = options.config.get("hosting");
+    const emulators: EmulatorInfo[]=[];
+    for (const e of EMULATORS_SUPPORTED_BY_UI) {
+      const info = EmulatorRegistry.getInfo(e);
+      if (info) emulators.push(info);
+    };
+    if (Array.isArray(config) ? config.some((it) => it.source) : config?.source) {
+      await prepareFrameworks(targets, options, options, emulators);
+    }
+  }
+
+
+  const emulatableBackends: EmulatableBackend[] = [];
+  const projectDir = (options.extDevDir || options.config.projectDir) as string;
+  if (shouldStart(options, Emulators.FUNCTIONS)) {
+    const functionsCfg = normalizeAndValidate(options.config.src.functions);
+    // Note: ext:dev:emulators:* commands hit this path, not the Emulators.EXTENSIONS path
+    utils.assertIsStringOrUndefined(options.extDevDir);
+
+    for (const cfg of functionsCfg) {
+      const functionsDir = path.join(projectDir, cfg.source);
+      emulatableBackends.push({
+        functionsDir,
+        codebase: cfg.codebase,
+        env: {
+          ...options.extDevEnv,
+        },
+        secretEnv: [], // CF3 secrets are bound to specific functions, so we'll get them during trigger discovery.
+        // TODO(b/213335255): predefinedTriggers and nodeMajorVersion are here to support ext:dev:emulators:* commands.
+        // Ideally, we should handle that case via ExtensionEmulator.
+        predefinedTriggers: options.extDevTriggers as ParsedTriggerDefinition[] | undefined,
+        nodeMajorVersion: parseRuntimeVersion((options.extDevNodeVersion as string) || cfg.runtime),
+      });
+    }
+  }
+
+  if (shouldStart(options, Emulators.EXTENSIONS)) {
+    const projectNumber = Constants.isDemoProject(projectId)
+      ? Constants.FAKE_PROJECT_NUMBER
+      : await needProjectNumber(options);
+    const aliases = getAliases(options, projectId);
+    const extensionEmulator = new ExtensionsEmulator({
+      projectId,
+      projectDir: options.config.projectDir,
+      projectNumber,
+      aliases,
+      extensions: options.config.get("extensions"),
+    });
+    const extensionsBackends = await extensionEmulator.getExtensionBackends();
+    const filteredExtensionsBackends = extensionEmulator.filterUnemulatedTriggers(
+      options,
+      extensionsBackends
+    );
+    emulatableBackends.push(...filteredExtensionsBackends);
+    // Log the command for analytics
+    void track("Emulator Run", Emulators.EXTENSIONS);
+    await startEmulator(extensionEmulator);
+  }
+
+  if (emulatableBackends.length) {
+    const functionsLogger = EmulatorLogger.forEmulator(Emulators.FUNCTIONS);
+    const functionsAddr = await getAndCheckAddress(Emulators.FUNCTIONS, options);
+    const projectId = needProjectId(options);
+
+    let inspectFunctions: number | undefined;
+    if (options.inspectFunctions) {
+      inspectFunctions = commandUtils.parseInspectionPort(options);
+
+      // TODO(samstern): Add a link to documentation
+      functionsLogger.logLabeled(
+        "WARN",
+        "functions",
+        `You are running the Functions emulator in debug mode (port=${inspectFunctions}). This means that functions will execute in sequence rather than in parallel.`
+      );
+    }
+
+    // Warn the developer that the Functions/Extensions emulator can call out to production.
+    const emulatorsNotRunning = ALL_SERVICE_EMULATORS.filter((e) => {
+      return e !== Emulators.FUNCTIONS && !shouldStart(options, e);
+    });
+    if (emulatorsNotRunning.length > 0 && !Constants.isDemoProject(projectId)) {
+      functionsLogger.logLabeled(
+        "WARN",
+        "functions",
+        `The following emulators are not running, calls to these services from the Functions emulator will affect production: ${clc.bold(
+          emulatorsNotRunning.join(", ")
+        )}`
+      );
+    }
+
+    const account = getProjectDefaultAccount(options.projectRoot);
+
+    // TODO(b/213241033): Figure out how to watch for changes to extensions .env files & reload triggers when they change.
+    const functionsEmulator = new FunctionsEmulator({
+      projectId,
+      projectDir,
+      emulatableBackends,
+      account,
+      host: functionsAddr.host,
+      port: functionsAddr.port,
+      debugPort: inspectFunctions,
+      projectAlias: options.projectAlias,
+    });
+    await startEmulator(functionsEmulator);
   }
 
   // Hosting emulator needs to start after all of the others so that we can detect

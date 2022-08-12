@@ -5,17 +5,32 @@ import { needProjectId } from "../projectUtils";
 import { normalizedHostingConfigs } from "../hosting/normalizedHostingConfigs";
 import { listSites, Site } from "../hosting/api";
 import { getAppConfig, AppPlatform } from "../management/apps";
-import { promises as fsPromises } from "fs";
 import { promptOnce } from "../prompt";
-import { Address } from "../emulator/types";
+import { EmulatorInfo, Emulators } from "../emulator/types";
 import { getCredentialPathAsync } from "../defaultCredentials";
 import { getProjectDefaultAccount } from "../auth";
-
-const { writeFile } = fsPromises;
+import { formatHost } from "../emulator/functionsEmulatorShared";
+import { Constants } from "../emulator/constants";
+import { spawnSync } from "child_process";
 
 export const shortSiteName = (site?: Site) => site?.name && site.name.split("/").pop();
 
-export const prepareFrameworks = async (targetNames: string[], context: any, options: any, emulators: Record<string, Address|undefined>={}) => {
+export const findDependency = (name: string, cwd=process.cwd()) => {
+  const result = spawnSync('npm', ['list', name, '--json', '--omit', 'dev'], { cwd });
+  if (!result.stdout) return undefined;
+  const json = JSON.parse(result.stdout.toString());
+  const search = (searchingFor: string, dependencies={}): any => {
+      for (const [name, dependency] of Object.entries(dependencies as Record<string, Record<string, any>>)) {
+          if (name === searchingFor && dependency.resolved) return dependency;
+          const result = search(searchingFor, dependency.dependencies);
+          if (result) return result;
+      }
+      return null;
+  }
+  return search(name, json.dependencies);
+};
+
+export const prepareFrameworks = async (targetNames: string[], context: any, options: any, emulators: EmulatorInfo[]=[]) => {
   const project = needProjectId(context);
   const account = getProjectDefaultAccount(options.projectRoot)
   // options.site is not present when emulated. We could call requireHostingSite but IAM permissions haven't
@@ -37,25 +52,46 @@ export const prepareFrameworks = async (targetNames: string[], context: any, opt
       throw new Error(`hosting.public and hosting.source cannot both be set in firebase.json`);
     const getProjectPath = (...args: string[]) => join(process.cwd(), source, ...args);
     const functionName = `ssr${site.replace(/-/g, "")}`;
-    if (account && Object.keys(emulators).length) {
+    const firebaseAdminVersion = findDependency('firebase-admin', getProjectPath());
+    const firebaseAppVersion = findDependency('@firebase/app', getProjectPath());
+    if (firebaseAdminVersion && account) {
       if (account && !process.env.GOOGLE_APPLICATION_CREDENTIALS) {
         const defaultCredPath = await getCredentialPathAsync(account);
-        console.log({ defaultCredPath });
         if (defaultCredPath) process.env.GOOGLE_APPLICATION_CREDENTIALS = defaultCredPath;
       }
-      Object.entries(emulators).filter(([, it]) => it).forEach(([ key, value ]) => {
-        const { host, port } = value!;
-        let envVariable: string;
-        if (key === 'firestoreEmulatorAddress') envVariable = 'FIRESTORE_EMULATOR_HOST';
-        if (key === 'authEmulatorAddress') envVariable = 'AUTH_EMULATOR_HOST';
-        if (key === 'databaseEmulatorAddress') envVariable = 'DATABASE_EMULATOR_HOST';
-        if (key === 'storageEmulatorAddress') envVariable = 'STORAGE_EMULATOR_HOST';
-        if (key === 'functionsEmulatorAddress') envVariable = 'FUNCTIONS_EMULATOR_HOST';
-        console.log(key, host, port);
-        process.env[envVariable!] = `${host}:${port}`;
-      });
     };
-    const { usingCloudFunctions, framework, rewrites, redirects, headers, usesFirebaseConfig } = await build(
+    emulators.forEach((info) => {
+      if (info.name === Emulators.FIRESTORE) process.env[Constants.FIRESTORE_EMULATOR_HOST] = formatHost(info);
+      if (info.name === Emulators.AUTH) process.env[Constants.FIREBASE_AUTH_EMULATOR_HOST] = formatHost(info);
+      if (info.name === Emulators.DATABASE) process.env[Constants.FIREBASE_DATABASE_EMULATOR_HOST] = formatHost(info);
+      if (info.name === Emulators.STORAGE) process.env[Constants.FIREBASE_STORAGE_EMULATOR_HOST] = formatHost(info);
+    });
+    let firebaseProjectConfig = null;
+    if (firebaseAppVersion) {
+      const sites = await listSites(project);
+      const selectedSite = sites.find((it) => shortSiteName(it) === site);
+      if (selectedSite) {
+        const { appId } = selectedSite;
+        if (appId) {
+          firebaseProjectConfig = await getAppConfig(appId, AppPlatform.WEB);
+        } else {
+          console.warn(
+            `No Firebase app associated with site ${site}, unable to provide authenticated server context.
+You can link a Web app to a Hosting site here https://console.firebase.google.com/project/_/settings/general/web`
+          );
+          if (!options.nonInteractive) {
+            const continueDeploy = await promptOnce({
+              type: "confirm",
+              default: true,
+              message: "Would you like to continue with the deploy?",
+            });
+            if (!continueDeploy) exit(1);
+          }
+        }
+      }
+    }
+    if (firebaseProjectConfig) process.env.FRAMEWORKS_APP_OPTIONS = JSON.stringify(firebaseProjectConfig);
+    const { usingCloudFunctions, framework, rewrites, redirects, headers } = await build(
       {
         dist,
         project,
@@ -68,6 +104,7 @@ export const prepareFrameworks = async (targetNames: string[], context: any, opt
       getProjectPath
     );
     config.public = hostingDist;
+    if (firebaseProjectConfig) await injectConfig(dist, framework, firebaseProjectConfig, emulators, usingCloudFunctions);
     if (usingCloudFunctions) {
       if (context.hostingChannel) {
         // TODO move to prompts
@@ -107,32 +144,6 @@ export const prepareFrameworks = async (targetNames: string[], context: any, opt
           function: functionName,
         },
       ];
-
-      let firebaseProjectConfig = null;
-      if (usesFirebaseConfig) {
-        const sites = await listSites(project);
-        const selectedSite = sites.find((it) => shortSiteName(it) === site);
-        if (selectedSite) {
-          const { appId } = selectedSite;
-          if (appId) {
-            firebaseProjectConfig = await getAppConfig(appId, AppPlatform.WEB);
-          } else {
-            console.warn(
-              `No Firebase app associated with site ${site}, unable to provide authenticated server context.
-You can link a Web app to a Hosting site here https://console.firebase.google.com/project/_/settings/general/web`
-            );
-            if (!options.nonInteractive) {
-              const continueDeploy = await promptOnce({
-                type: "confirm",
-                default: true,
-                message: "Would you like to continue with the deploy?",
-              });
-              if (!continueDeploy) exit(1);
-            }
-          }
-        }
-      }
-      await injectConfig(dist, framework, firebaseProjectConfig, emulators, usingCloudFunctions);
     } else {
       config.rewrites = [
         ...(config.rewrites || []),
@@ -146,5 +157,6 @@ You can link a Web app to a Hosting site here https://console.firebase.google.co
     config.redirects = [...(config.redirects || []), ...redirects];
     config.headers = [...(config.headers || []), ...headers];
     config.cleanUrls ??= true;
+    console.log('Done with prepare.');
   }
 };
