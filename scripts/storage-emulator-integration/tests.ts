@@ -215,6 +215,34 @@ describe("Storage emulator", () => {
           });
         });
 
+        it("should handle resumable uploads with an empty buffer", async () => {
+          const fileName = "test_upload.jpg";
+          const uploadUrl = await supertest(expectedHost)
+            .post(`/v0/b/${storageBucket}/o?name=${fileName}&uploadType=resumable`)
+            .send({})
+            .set({
+              Authorization: "Bearer owner",
+              "X-Goog-Upload-Protocol": "resumable",
+              "X-Goog-Upload-Command": "start",
+            })
+            .expect(200)
+            .then((res) => {
+              return new URL(res.header["x-goog-upload-url"]);
+            });
+
+          const finalizeStatus = await supertest(expectedHost)
+            .post(uploadUrl.pathname + uploadUrl.search)
+            .send({})
+            .set({
+              Authorization: "Bearer owner",
+              "X-Goog-Upload-Protocol": "resumable",
+              "X-Goog-Upload-Command": "finalize",
+            })
+            .expect(200)
+            .then((res) => res.header["x-goog-upload-status"]);
+          expect(finalizeStatus).to.equal("final");
+        });
+
         it("should upload with provided metadata", async () => {
           const metadata = {
             contentDisposition: "attachment",
@@ -1236,7 +1264,7 @@ hello there!
     let page: puppeteer.Page;
 
     const filename = "testing/storage_ref/image.png";
-    const image_filename = writeToFile(
+    const imageFilename = writeToFile(
       "image_base64",
       Buffer.from(IMAGE_FILE_BASE64, "base64"),
       tmpDir
@@ -1279,7 +1307,7 @@ hello there!
 
     beforeEach(async () => {
       await resetEmulatorState();
-      await testBucket.upload(image_filename, { destination: filename });
+      await testBucket.upload(imageFilename, { destination: filename });
     });
 
     afterEach(async () => {
@@ -1361,6 +1389,16 @@ hello there!
               .put(new File([IMAGE_FILE_BASE64], "toUpload.txt"));
             return task.state;
           }, IMAGE_FILE_BASE64);
+
+          expect(uploadState).to.equal("success");
+        });
+
+        it("should handle uploading empty buffer", async () => {
+          await signInToFirebaseAuth(page);
+          const uploadState = await page.evaluate(async () => {
+            const task = await firebase.storage().ref("testing/empty_file").put(new ArrayBuffer(0));
+            return task.state;
+          });
 
           expect(uploadState).to.equal("success");
         });
@@ -1459,6 +1497,19 @@ hello there!
           );
         }
 
+        async function executeListAllAtPath(path: string): Promise<{
+          items: string[];
+          prefixes: string[];
+        }> {
+          return await page.evaluate(async (path) => {
+            const list = await firebase.storage().ref(path).listAll();
+            return {
+              prefixes: list.prefixes.map((prefix) => prefix.name),
+              items: list.items.map((item) => item.name),
+            };
+          }, path);
+        }
+
         it("should list all files and prefixes at path", async () => {
           await uploadFiles([
             "listAll/some/deeply/nested/directory/item1",
@@ -1466,13 +1517,7 @@ hello there!
             "listAll/item2",
           ]);
 
-          const listResult = await page.evaluate(async () => {
-            const list = await firebase.storage().ref("listAll/").listAll();
-            return {
-              prefixes: list.prefixes.map((prefix) => prefix.name),
-              items: list.items.map((item) => item.name),
-            };
-          });
+          const listResult = await executeListAllAtPath("listAll/");
 
           expect(listResult).to.deep.equal({
             items: ["item1", "item2"],
@@ -1481,13 +1526,7 @@ hello there!
         });
 
         it("zero element list array should still be present in response", async () => {
-          const listResult = await page.evaluate(async () => {
-            const list = await firebase.storage().ref("listAll/").listAll();
-            return {
-              prefixes: list.prefixes.map((prefix) => prefix.name),
-              items: list.items.map((item) => item.name),
-            };
-          });
+          const listResult = await executeListAllAtPath("listAll/");
 
           expect(listResult).to.deep.equal({
             prefixes: [],
@@ -1498,25 +1537,14 @@ hello there!
         it("folder placeholder should not be listed under itself", async () => {
           await uploadFiles(["listAll/abc/", EMPTY_FILE_PATH]);
 
-          let listResult = await page.evaluate(async () => {
-            const list = await firebase.storage().ref("/listAll/").listAll();
-            return {
-              prefixes: list.prefixes.map((prefix) => prefix.name),
-              items: list.items.map((item) => item.name),
-            };
-          });
+          let listResult = await executeListAllAtPath("listAll/");
+
           expect(listResult).to.deep.equal({
             prefixes: ["abc"],
             items: [],
           });
 
-          listResult = await page.evaluate(async () => {
-            const list = await firebase.storage().ref("/listAll/abc/").listAll();
-            return {
-              prefixes: list.prefixes.map((prefix) => prefix.name),
-              items: list.items.map((item) => item.name),
-            };
-          });
+          listResult = await executeListAllAtPath("listAll/abc/");
 
           expect(listResult).to.deep.equal({
             prefixes: [],
@@ -1526,13 +1554,8 @@ hello there!
 
         it("should not include show invalid prefixes and items", async () => {
           await uploadFiles(["listAll//foo", "listAll/bar//", "listAll/baz//qux"], EMPTY_FILE_PATH);
-          const listResult = await page.evaluate(async () => {
-            const list = await firebase.storage().ref("listAll/").listAll();
-            return {
-              prefixes: list.prefixes.map((prefix) => prefix.name),
-              items: list.items.map((item) => item.name),
-            };
-          });
+
+          const listResult = await executeListAllAtPath("listAll/");
 
           expect(listResult).to.deep.equal({
             prefixes: ["bar", "baz"],
@@ -1787,8 +1810,8 @@ hello there!
 
   describe("Non-SDK Endpoints", () => {
     const filename = "testing/storage_ref/image.png";
-    const encoded_filename = "testing%2Fstorage_ref%2Fimage.png";
-    const image_filename = writeToFile(
+    const encodedFilename = "testing%2Fstorage_ref%2Fimage.png";
+    const imageFilename = writeToFile(
       "image_base64",
       Buffer.from(IMAGE_FILE_BASE64, "base64"),
       tmpDir
@@ -1796,13 +1819,13 @@ hello there!
 
     beforeEach(async () => {
       await resetEmulatorState();
-      await testBucket.upload(image_filename, { destination: filename });
+      await testBucket.upload(imageFilename, { destination: filename });
     });
 
     describe("tokens", () => {
       it("should generate new token on create_token", async () => {
         await supertest(STORAGE_EMULATOR_HOST)
-          .post(`/v0/b/${storageBucket}/o/${encoded_filename}?create_token=true`)
+          .post(`/v0/b/${storageBucket}/o/${encodedFilename}?create_token=true`)
           .set({ Authorization: "Bearer owner" })
           .expect(200)
           .then((res) => {
@@ -1813,31 +1836,31 @@ hello there!
 
       it("should return a 400 if create_token value is invalid", async () => {
         await supertest(STORAGE_EMULATOR_HOST)
-          .post(`/v0/b/${storageBucket}/o/${encoded_filename}?create_token=someNonTrueParam`)
+          .post(`/v0/b/${storageBucket}/o/${encodedFilename}?create_token=someNonTrueParam`)
           .set({ Authorization: "Bearer owner" })
           .expect(400);
       });
 
       it("should return a 403 for create_token if auth header is invalid", async () => {
         await supertest(STORAGE_EMULATOR_HOST)
-          .post(`/v0/b/${storageBucket}/o/${encoded_filename}?create_token=true`)
+          .post(`/v0/b/${storageBucket}/o/${encodedFilename}?create_token=true`)
           .set({ Authorization: "Bearer somethingElse" })
           .expect(403);
       });
 
       it("should delete a download token", async () => {
         await supertest(STORAGE_EMULATOR_HOST)
-          .post(`/v0/b/${storageBucket}/o/${encoded_filename}?create_token=true`)
+          .post(`/v0/b/${storageBucket}/o/${encodedFilename}?create_token=true`)
           .set({ Authorization: "Bearer owner" })
           .expect(200);
         const tokens = await supertest(STORAGE_EMULATOR_HOST)
-          .post(`/v0/b/${storageBucket}/o/${encoded_filename}?create_token=true`)
+          .post(`/v0/b/${storageBucket}/o/${encodedFilename}?create_token=true`)
           .set({ Authorization: "Bearer owner" })
           .expect(200)
           .then((res) => res.body.downloadTokens.split(","));
         // delete the newly added token
         await supertest(STORAGE_EMULATOR_HOST)
-          .post(`/v0/b/${storageBucket}/o/${encoded_filename}?delete_token=${tokens[0]}`)
+          .post(`/v0/b/${storageBucket}/o/${encodedFilename}?delete_token=${tokens[0]}`)
           .set({ Authorization: "Bearer owner" })
           .expect(200)
           .then((res) => {
@@ -1848,17 +1871,17 @@ hello there!
 
       it("should regenerate a new token if the last remaining one is deleted", async () => {
         await supertest(STORAGE_EMULATOR_HOST)
-          .post(`/v0/b/${storageBucket}/o/${encoded_filename}?create_token=true`)
+          .post(`/v0/b/${storageBucket}/o/${encodedFilename}?create_token=true`)
           .set({ Authorization: "Bearer owner" })
           .expect(200);
         const token = await supertest(STORAGE_EMULATOR_HOST)
-          .get(`/v0/b/${storageBucket}/o/${encoded_filename}`)
+          .get(`/v0/b/${storageBucket}/o/${encodedFilename}`)
           .set({ Authorization: "Bearer owner" })
           .expect(200)
           .then((res) => res.body.downloadTokens);
 
         await supertest(STORAGE_EMULATOR_HOST)
-          .post(`/v0/b/${storageBucket}/o/${encoded_filename}?delete_token=${token}`)
+          .post(`/v0/b/${storageBucket}/o/${encodedFilename}?delete_token=${token}`)
           .set({ Authorization: "Bearer owner" })
           .expect(200)
           .then((res) => {
@@ -1870,7 +1893,7 @@ hello there!
 
       it("should return a 403 for delete_token if auth header is invalid", async () => {
         await supertest(STORAGE_EMULATOR_HOST)
-          .post(`/v0/b/${storageBucket}/o/${encoded_filename}?delete_token=someToken`)
+          .post(`/v0/b/${storageBucket}/o/${encodedFilename}?delete_token=someToken`)
           .set({ Authorization: "Bearer somethingElse" })
           .expect(403);
       });

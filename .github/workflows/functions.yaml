@@ -2,9 +2,15 @@ name: Functions deploy test
 
 # Allow workflow to be triggered manually.
 #   https://docs.github.com/en/actions/managing-workflow-runs/manually-running-a-workflow
-on: workflow_dispatch
+on:
+  workflow_dispatch:
+  schedule:
+    # Run the action every 2 hours.
+    # * is a special character in YAML so you have to quote this string
+    - cron: "0 */2 * * *"
 
 concurrency:
+  # Limit at most 1 runs
   group: functions-deploy-${{ github.ref }}
 
 env:

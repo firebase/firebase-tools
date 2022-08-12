@@ -251,3 +251,48 @@ export function queueFromEndpoint(endpoint: backend.Endpoint & backend.TaskQueue
   }
   return queue;
 }
+
+/** Creates a trigger type from API type */
+export function triggerFromQueue(queue: Queue): backend.TaskQueueTriggered["taskQueueTrigger"] {
+  const taskQueueTrigger: backend.TaskQueueTriggered["taskQueueTrigger"] = {};
+  if (queue.rateLimits) {
+    taskQueueTrigger.rateLimits = {};
+    proto.copyIfPresent(
+      taskQueueTrigger.rateLimits,
+      queue.rateLimits,
+      "maxConcurrentDispatches",
+      "maxDispatchesPerSecond"
+    );
+  }
+  if (queue.retryConfig) {
+    taskQueueTrigger.retryConfig = {};
+    proto.copyIfPresent(
+      taskQueueTrigger.retryConfig,
+      queue.retryConfig,
+      "maxAttempts",
+      "maxDoublings"
+    );
+    proto.convertIfPresent(
+      taskQueueTrigger.retryConfig,
+      queue.retryConfig,
+      "maxRetrySeconds",
+      "maxRetryDuration",
+      nullsafeVisitor(proto.secondsFromDuration)
+    );
+    proto.convertIfPresent(
+      taskQueueTrigger.retryConfig,
+      queue.retryConfig,
+      "maxBackoffSeconds",
+      "maxBackoff",
+      nullsafeVisitor(proto.secondsFromDuration)
+    );
+    proto.convertIfPresent(
+      taskQueueTrigger.retryConfig,
+      queue.retryConfig,
+      "minBackoffSeconds",
+      "minBackoff",
+      nullsafeVisitor(proto.secondsFromDuration)
+    );
+  }
+  return taskQueueTrigger;
+}

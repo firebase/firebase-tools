@@ -31,15 +31,12 @@ export default async function (context: any, options: Options): Promise<void> {
     }
   }
 
-  _.set(context, "storage.rules", rulesConfig);
-
   const rulesDeploy = new RulesDeploy(options, RulesetServiceType.FIREBASE_STORAGE);
-  _.set(context, "storage.rulesDeploy", rulesDeploy);
+  const rulesConfigsToDeploy: any[] = [];
 
   if (!Array.isArray(rulesConfig)) {
     const defaultBucket = await gcp.storage.getDefaultBucket(options.project);
     rulesConfig = [Object.assign(rulesConfig, { bucket: defaultBucket })];
-    _.set(context, "storage.rules", rulesConfig);
   }
 
   for (const ruleConfig of rulesConfig) {
@@ -48,8 +45,9 @@ export default async function (context: any, options: Options): Promise<void> {
       options.rc.requireTarget(context.projectId, "storage", target);
     }
     if (allStorage || onlyTargets.has(target)) {
-      rulesDeploy.addFile(ruleConfig.rules);
-      onlyTargets.delete(target);
+      rulesDeploy.addFile(ruleConfig.rules); // Add the rules to the deploy object.
+      rulesConfigsToDeploy.push(ruleConfig); // Copy the rule config into our list of configs to deploy.
+      onlyTargets.delete(target); // Remove the target from our only list.
     }
   }
 
@@ -58,6 +56,10 @@ export default async function (context: any, options: Options): Promise<void> {
       `Could not find rules for the following storage targets: ${[...onlyTargets].join(", ")}`
     );
   }
+
+  _.set(context, "storage.rules", rulesConfig);
+  _.set(context, "storage.rulesConfigsToDeploy", rulesConfigsToDeploy);
+  _.set(context, "storage.rulesDeploy", rulesDeploy);
 
   await rulesDeploy.compile();
 }

@@ -423,6 +423,19 @@ describeAuthEmulator("accounts:batchCreate", ({ authApi }) => {
       });
   });
 
+  it("should not error for empty MFA info", async () => {
+    await authApi()
+      .post(`/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:batchCreate`)
+      .set("Authorization", "Bearer owner")
+      .send({
+        users: [{ localId: "test1", mfaInfo: [] }],
+      })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body.error || []).to.have.length(0);
+      });
+  });
+
   it("should return error for individual invalid entries", async () => {
     const longString = new Array(999).join("x");
 
