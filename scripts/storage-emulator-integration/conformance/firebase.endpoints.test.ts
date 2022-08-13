@@ -11,6 +11,7 @@ import {
   resetStorageEmulator,
   getTmpDir,
   TEST_SETUP_TIMEOUT,
+  createRandomFile,
 } from "../utils";
 
 const TEST_FILE_NAME = "testing/storage_ref/image.png";
@@ -21,6 +22,7 @@ const ENCODED_TEST_FILE_NAME = "testing%2Fstorage_ref%2Fimage.png";
 describe("Firebase Storage endpoint conformance tests", () => {
   // Temp directory to store generated files.
   const tmpDir = getTmpDir();
+  const smallFilePath = createRandomFile("small_file", 10, tmpDir);
 
   const firebaseHost = TEST_ENV.firebaseHost;
   const storageBucket = TEST_ENV.appConfig.storageBucket;
@@ -278,10 +280,14 @@ describe("Firebase Storage endpoint conformance tests", () => {
   });
 
   describe("tokens", () => {
+    beforeEach(async () => {
+      await testBucket.upload(smallFilePath, { destination: TEST_FILE_NAME });
+    });
+
     it("should generate new token on create_token", async () => {
       await supertest(firebaseHost)
         .post(`/v0/b/${storageBucket}/o/${ENCODED_TEST_FILE_NAME}?create_token=true`)
-        .set({ Authorization: "Bearer owner" })
+        .set(authHeader)
         .expect(200)
         .then((res) => {
           const metadata = res.body;
@@ -292,7 +298,7 @@ describe("Firebase Storage endpoint conformance tests", () => {
     it("should return a 400 if create_token value is invalid", async () => {
       await supertest(firebaseHost)
         .post(`/v0/b/${storageBucket}/o/${ENCODED_TEST_FILE_NAME}?create_token=someNonTrueParam`)
-        .set({ Authorization: "Bearer owner" })
+        .set(authHeader)
         .expect(400);
     });
 
@@ -306,17 +312,17 @@ describe("Firebase Storage endpoint conformance tests", () => {
     it("should delete a download token", async () => {
       await supertest(firebaseHost)
         .post(`/v0/b/${storageBucket}/o/${ENCODED_TEST_FILE_NAME}?create_token=true`)
-        .set({ Authorization: "Bearer owner" })
+        .set(authHeader)
         .expect(200);
       const tokens = await supertest(firebaseHost)
         .post(`/v0/b/${storageBucket}/o/${ENCODED_TEST_FILE_NAME}?create_token=true`)
-        .set({ Authorization: "Bearer owner" })
+        .set(authHeader)
         .expect(200)
         .then((res) => res.body.downloadTokens.split(","));
       // delete the newly added token
       await supertest(firebaseHost)
         .post(`/v0/b/${storageBucket}/o/${ENCODED_TEST_FILE_NAME}?delete_token=${tokens[0]}`)
-        .set({ Authorization: "Bearer owner" })
+        .set(authHeader)
         .expect(200)
         .then((res) => {
           const metadata = res.body;
@@ -327,17 +333,17 @@ describe("Firebase Storage endpoint conformance tests", () => {
     it("should regenerate a new token if the last remaining one is deleted", async () => {
       await supertest(firebaseHost)
         .post(`/v0/b/${storageBucket}/o/${ENCODED_TEST_FILE_NAME}?create_token=true`)
-        .set({ Authorization: "Bearer owner" })
+        .set(authHeader)
         .expect(200);
       const token = await supertest(firebaseHost)
         .get(`/v0/b/${storageBucket}/o/${ENCODED_TEST_FILE_NAME}`)
-        .set({ Authorization: "Bearer owner" })
+        .set(authHeader)
         .expect(200)
         .then((res) => res.body.downloadTokens);
 
       await supertest(firebaseHost)
         .post(`/v0/b/${storageBucket}/o/${ENCODED_TEST_FILE_NAME}?delete_token=${token}`)
-        .set({ Authorization: "Bearer owner" })
+        .set(authHeader)
         .expect(200)
         .then((res) => {
           const metadata = res.body;
