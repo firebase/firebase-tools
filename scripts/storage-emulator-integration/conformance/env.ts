@@ -14,7 +14,7 @@ import * as https from "https";
 const TEST_CONFIG = {
   // Set this to true to use production servers
   // (useful for writing tests against source of truth)
-  useProductionServers: true,
+  useProductionServers: false,
 
   // The following two fields MUST be set if useProductionServers == true.
   // The paths should be relative to this file.

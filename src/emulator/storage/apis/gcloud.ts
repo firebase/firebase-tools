@@ -39,7 +39,11 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
   });
 
   gcloudStorageAPI.get(
-    ["/b/:bucketId/o/:objectId", "/download/storage/v1/b/:bucketId/o/:objectId"],
+    [
+      "/b/:bucketId/o/:objectId",
+      "/download/storage/v1/b/:bucketId/o/:objectId",
+      "/storage/v1/b/:bucketId/o/:objectId",
+    ],
     async (req, res) => {
       let getObjectResponse: GetObjectResponse;
       try {
@@ -200,10 +204,6 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
   });
 
   gcloudStorageAPI.post("/upload/storage/v1/b/:bucketId/o", async (req, res) => {
-    const contentTypeHeader = req.header("content-type") || req.header("x-upload-content-type");
-    if (!contentTypeHeader) {
-      return res.sendStatus(400);
-    }
     if (req.query.uploadType === "resumable") {
       const emulatorInfo = EmulatorRegistry.getInfo(Emulators.STORAGE);
       if (emulatorInfo === undefined) {
@@ -229,6 +229,10 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
       return res.header("location", uploadUrl.toString()).sendStatus(200);
     }
 
+    const contentTypeHeader = req.header("content-type") || req.header("x-upload-content-type");
+    if (!contentTypeHeader) {
+      return res.sendStatus(400);
+    }
     // Multipart upload
     let metadataRaw: string;
     let dataRaw: Buffer;
