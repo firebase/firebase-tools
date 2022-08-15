@@ -4,6 +4,7 @@ import * as request from "request";
 import * as crypto from "crypto";
 import * as os from "os";
 import { FrameworkOptions } from "../integration-helpers/framework";
+const { google } = require("googleapis");
 
 /* Various delays needed when integration test spawns parallel emulator subprocesses. */
 export const TEST_SETUP_TIMEOUT = 60000;
@@ -85,4 +86,16 @@ export async function resetStorageEmulator(emulatorHost: string) {
       resolve();
     });
   });
+}
+
+export async function getProdAccessToken(serviceAccountKey: any): Promise<string> {
+  const jwtClient = new google.auth.JWT(
+    serviceAccountKey.client_email,
+    null,
+    serviceAccountKey.private_key,
+    ["https://www.googleapis.com/auth/cloud-platform"],
+    null
+  );
+  const credentials = await jwtClient.authorize();
+  return credentials.access_token!;
 }

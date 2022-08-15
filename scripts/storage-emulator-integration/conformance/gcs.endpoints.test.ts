@@ -6,25 +6,24 @@ import * as supertest from "supertest";
 import { EmulatorEndToEndTest } from "../../integration-helpers/framework";
 import { TEST_ENV } from "./env";
 import {
-  createRandomFile,
   EMULATORS_SHUTDOWN_DELAY_MS,
   resetStorageEmulator,
-  SMALL_FILE_SIZE,
   TEST_SETUP_TIMEOUT,
   getTmpDir,
 } from "../utils";
 
 // TODO(b/242314185): add more coverage.
+const TEST_FILE_NAME = "gcs/testFile";
+
 describe("GCS endpoint conformance tests", () => {
   // Temp directory to store generated files.
   const tmpDir = getTmpDir();
-  const smallFilePath: string = createRandomFile("small_file", SMALL_FILE_SIZE, tmpDir);
-
   const storageBucket = TEST_ENV.appConfig.storageBucket;
   const storageHost = TEST_ENV.storageHost;
 
   let test: EmulatorEndToEndTest;
   let testBucket: Bucket;
+  let authHeader: { Authorization: string };
 
   async function resetState(): Promise<void> {
     if (TEST_ENV.useProductionServers) {
@@ -48,6 +47,7 @@ describe("GCS endpoint conformance tests", () => {
       : admin.credential.applicationDefault();
     admin.initializeApp({ credential });
     testBucket = admin.storage().bucket(storageBucket);
+    authHeader = { Authorization: `Bearer ${await TEST_ENV.adminAccessTokenGetter}` };
   });
 
   beforeEach(async () => {
@@ -67,14 +67,14 @@ describe("GCS endpoint conformance tests", () => {
 
   describe(".bucket()", () => {
     describe("#upload()", () => {
+      // TODO(b/241813366): Metadata set in emulator is not consistent with prod
       it("should handle resumable uploads", async () => {
-        const fileName = "test_upload.jpg";
         const uploadURL = await supertest(storageHost)
-          .post(`/upload/storage/v1/b/${storageBucket}/o?name=${fileName}&uploadType=resumable`)
+          .post(
+            `/upload/storage/v1/b/${storageBucket}/o?name=${TEST_FILE_NAME}&uploadType=resumable`
+          )
+          .set(authHeader)
           .send({})
-          .set({
-            Authorization: "Bearer owner",
-          })
           .expect(200)
           .then((res) => new URL(res.header["location"]));
 
@@ -91,7 +91,7 @@ describe("GCS endpoint conformance tests", () => {
           }
         }
 
-        expect(metadata.name).to.equal(fileName);
+        expect(metadata.name).to.equal(TEST_FILE_NAME);
         expect(metadata.contentType).to.equal("application/octet-stream");
         expect(metadataTypes).to.deep.equal({
           kind: "string",
@@ -117,52 +117,21 @@ describe("GCS endpoint conformance tests", () => {
         });
       });
 
-      it("should handle resumable uploads with an empty buffer", async () => {
-        const fileName = "test_upload.jpg";
-        const uploadUrl = await supertest(storageHost)
-          .post(`/v0/b/${storageBucket}/o?name=${fileName}&uploadType=resumable`)
-          .send({})
-          .set({
-            Authorization: "Bearer owner",
-            "X-Goog-Upload-Protocol": "resumable",
-            "X-Goog-Upload-Command": "start",
-          })
-          .expect(200)
-          .then((res) => {
-            return new URL(res.header["x-goog-upload-url"]);
-          });
-
-        const finalizeStatus = await supertest(storageHost)
-          .post(uploadUrl.pathname + uploadUrl.search)
-          .send({})
-          .set({
-            Authorization: "Bearer owner",
-            "X-Goog-Upload-Protocol": "resumable",
-            "X-Goog-Upload-Command": "finalize",
-          })
-          .expect(200)
-          .then((res) => res.header["x-goog-upload-status"]);
-        expect(finalizeStatus).to.equal("final");
-      });
-
       it("should handle resumable upload with name only in metadata", async () => {
-        const fileName = "test_upload.jpg";
         const uploadURL = await supertest(storageHost)
           .post(`/upload/storage/v1/b/${storageBucket}/o?uploadType=resumable`)
-          .send({ name: fileName })
-          .set({
-            Authorization: "Bearer owner",
-          })
+          .set(authHeader)
+          .send({ name: TEST_FILE_NAME })
           .expect(200)
           .then((res) => new URL(res.header["location"]));
-        expect(uploadURL.searchParams?.get("name")).to.equal(fileName);
+        expect(uploadURL.searchParams?.get("name")).to.equal(TEST_FILE_NAME);
       });
 
       it("should handle multipart upload with name only in metadata", async () => {
         const body = Buffer.from(`--b1d5b2e3-1845-4338-9400-6ac07ce53c1e\r
 content-type: application/json\r
 \r
-{"name":"test_upload.jpg"}\r
+{"name":"${TEST_FILE_NAME}"}\r
 --b1d5b2e3-1845-4338-9400-6ac07ce53c1e\r
 content-type: text/plain\r
 \r
@@ -170,28 +139,27 @@ hello there!
 \r
 --b1d5b2e3-1845-4338-9400-6ac07ce53c1e--\r
 `);
-        const fileName = "test_upload.jpg";
         const responseName = await supertest(storageHost)
           .post(`/upload/storage/v1/b/${storageBucket}/o?uploadType=multipart`)
-          .send(body)
+          .set(authHeader)
           .set({
-            Authorization: "Bearer owner",
             "content-type": "multipart/related; boundary=b1d5b2e3-1845-4338-9400-6ac07ce53c1e",
           })
+          .send(body)
           .expect(200)
           .then((res) => res.body.name);
-        expect(responseName).to.equal(fileName);
+        expect(responseName).to.equal(TEST_FILE_NAME);
       });
 
       it("should return an error message when uploading a file with invalid metadata", async () => {
-        const fileName = "test_upload.jpg";
         const errorMessage = await supertest(storageHost)
-          .post(`/upload/storage/v1/b/${storageBucket}/o?name=${fileName}`)
-          .set({ Authorization: "Bearer owner", "X-Upload-Content-Type": "foo" })
+          .post(`/upload/storage/v1/b/${storageBucket}/o?name=${TEST_FILE_NAME}`)
+          .set(authHeader)
+          .set({ "X-Upload-Content-Type": "foo" })
           .expect(400)
           .then((res) => res.body.error.message);
 
-        expect(errorMessage).to.equal("Invalid Content-Type: foo");
+        expect(errorMessage).to.include("Bad content type.");
       });
     });
   });
@@ -202,15 +170,15 @@ hello there!
         const customMetadata = {
           contentDisposition: "initialCommit",
           contentType: "image/jpg",
-          name: "test_upload.jpg",
+          name: TEST_FILE_NAME,
         };
 
         const uploadURL = await supertest(storageHost)
-          .post(`/upload/storage/v1/b/${storageBucket}/o?name=test_upload.jpg&uploadType=resumable`)
+          .post(
+            `/upload/storage/v1/b/${storageBucket}/o?name=${TEST_FILE_NAME}&uploadType=resumable`
+          )
+          .set(authHeader)
           .send(customMetadata)
-          .set({
-            Authorization: "Bearer owner",
-          })
           .expect(200)
           .then((res) => new URL(res.header["location"]));
 
@@ -222,40 +190,6 @@ hello there!
         expect(returnedMetadata.name).to.equal(customMetadata.name);
         expect(returnedMetadata.contentType).to.equal(customMetadata.contentType);
         expect(returnedMetadata.contentDisposition).to.equal(customMetadata.contentDisposition);
-      });
-
-      it("should handle firebaseStorageDownloadTokens", async () => {
-        const destination = "public/small_file";
-        await testBucket.upload(smallFilePath, {
-          destination,
-          metadata: {},
-        });
-
-        const cloudFile = testBucket.file(destination);
-        const incomingMetadata = {
-          metadata: {
-            firebaseStorageDownloadTokens: "myFirstToken,mySecondToken",
-          },
-        };
-
-        await cloudFile.setMetadata(incomingMetadata);
-
-        // Check that the tokens are saved in Firebase metadata
-        await supertest(storageHost)
-          .get(`/v0/b/${testBucket.name}/o/${encodeURIComponent(destination)}`)
-          .expect(200)
-          .then((res) => {
-            const firebaseMd = res.body;
-            expect(firebaseMd.downloadTokens).to.equal(
-              incomingMetadata.metadata.firebaseStorageDownloadTokens
-            );
-          });
-
-        // Check that the tokens are saved in Cloud metadata
-        const [storedMetadata] = await cloudFile.getMetadata();
-        expect(storedMetadata.metadata.firebaseStorageDownloadTokens).to.deep.equal(
-          incomingMetadata.metadata.firebaseStorageDownloadTokens
-        );
       });
     });
   });

@@ -3,6 +3,7 @@ import { expect } from "chai";
 import * as admin from "firebase-admin";
 import * as fs from "fs";
 import { EmulatorEndToEndTest } from "../../integration-helpers/framework";
+import * as supertest from "supertest";
 import { TEST_ENV } from "./env";
 import {
   createRandomFile,
@@ -21,6 +22,7 @@ describe("GCS Javascript SDK conformance tests", () => {
 
   const storageBucket = TEST_ENV.appConfig.storageBucket;
   const storageHost = TEST_ENV.storageHost;
+  const firebaseHost = TEST_ENV.firebaseHost;
 
   let test: EmulatorEndToEndTest;
   let testBucket: Bucket;
@@ -125,6 +127,39 @@ describe("GCS Javascript SDK conformance tests", () => {
         });
 
         expect(fileMetadata).to.deep.include(metadata);
+      });
+
+      it("should handle firebaseStorageDownloadTokens", async () => {
+        const testFileName = "public/file";
+        await testBucket.upload(smallFilePath, {
+          destination: testFileName,
+          metadata: {},
+        });
+
+        const cloudFile = testBucket.file(testFileName);
+        const incomingMetadata = {
+          metadata: {
+            firebaseStorageDownloadTokens: "myFirstToken,mySecondToken",
+          },
+        };
+        await cloudFile.setMetadata(incomingMetadata);
+
+        // Check that the tokens are saved in Firebase metadata
+        await supertest(firebaseHost)
+          .get(`/v0/b/${testBucket.name}/o/${encodeURIComponent(testFileName)}`)
+          .expect(200)
+          .then((res) => {
+            const firebaseMd = res.body;
+            expect(firebaseMd.downloadTokens).to.equal(
+              incomingMetadata.metadata.firebaseStorageDownloadTokens
+            );
+          });
+
+        // Check that the tokens are saved in Cloud metadata
+        const [storedMetadata] = await cloudFile.getMetadata();
+        expect(storedMetadata.metadata.firebaseStorageDownloadTokens).to.deep.equal(
+          incomingMetadata.metadata.firebaseStorageDownloadTokens
+        );
       });
 
       it("should be able to upload file named 'prefix/file.txt' when file named 'prefix' already exists", async () => {

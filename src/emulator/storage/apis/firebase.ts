@@ -193,16 +193,18 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
   });
 
   const handleUpload = async (req: Request, res: Response) => {
-    if (!req.query.name) {
-      res.sendStatus(400);
-      return;
-    }
-
     const bucketId = req.params.bucketId;
-    const objectId = req.query.name.toString();
+    const objectId: string | null = req.params.objectId
+      ? decodeURIComponent(req.params.objectId)
+      : req.query.name?.toString() || null;
     const uploadType = req.header("x-goog-upload-protocol");
 
+    // Multipart upload
     if (uploadType === "multipart") {
+      if (!objectId) {
+        res.sendStatus(400);
+        return;
+      }
       const contentTypeHeader = req.header("content-type");
       if (!contentTypeHeader) {
         return res.sendStatus(400);
@@ -217,12 +219,8 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         ));
       } catch (err) {
         if (err instanceof Error) {
-          return res.status(400).json({
-            error: {
-              code: 400,
-              message: err.message,
-            },
-          });
+          // Matches server error text formatting.
+          return res.status(400).send(err.message);
         }
         throw err;
       }
@@ -259,6 +257,10 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
     }
 
     if (uploadCommand === "start") {
+      if (!objectId) {
+        res.sendStatus(400);
+        return;
+      }
       const upload = uploadService.startResumableUpload({
         bucketId,
         objectId,
@@ -278,7 +280,6 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       uploadUrl.searchParams.set("upload_id", upload.id);
       uploadUrl.searchParams.set("upload_protocol", "resumable");
       res.header("x-goog-upload-url", uploadUrl.toString());
-
       return res.sendStatus(200);
     }
 
@@ -347,7 +348,6 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         }
         throw err;
       }
-
       let storedMetadata: StoredFileMetadata;
       try {
         storedMetadata = await storageLayer.uploadObject(upload);
