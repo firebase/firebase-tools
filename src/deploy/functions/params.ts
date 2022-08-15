@@ -3,6 +3,7 @@ import { FirebaseError } from "../../error";
 import { promptOnce } from "../../prompt";
 import * as build from "./build";
 import { assertExhaustive, partition } from "../../functional";
+import { Options } from "../../options";
 
 type CEL = build.Expression<string> | build.Expression<number> | build.Expression<boolean>;
 
@@ -227,7 +228,8 @@ function canSatisfyParam(param: Param, value: ParamValue): boolean {
 export async function resolveParams(
   params: Param[],
   projectId: string,
-  userEnvs: Record<string, ParamValue>
+  userEnvs: Record<string, ParamValue>,
+  nonInteractive?: boolean,
 ): Promise<Record<string, ParamValue>> {
   const paramValues: Record<string, ParamValue> = {};
 
@@ -248,6 +250,13 @@ export async function resolveParams(
   }
 
   for (const param of outstanding) {
+    if (nonInteractive) {
+      throw new FirebaseError(
+        `In non-interactive mode but no value for ${param.name || param.label} found in .env.${projectId} file. ` +
+        "To set the value of a parameter non-interactively, add the key-value pair to the environment file."
+      )
+    }
+
     let paramDefault: ParamValue | undefined = param.default;
     if (paramDefault && isCEL(paramDefault)) {
       paramDefault = resolveDefaultCEL(param.type, paramDefault, paramValues);
@@ -271,6 +280,7 @@ export async function resolveParams(
  * When the CLI is running in non-interactive mode or with the --force argument, it is an error for a param to be undefined in dotenvs.
  */
 async function promptParam(param: Param, resolvedDefault?: ParamValue): Promise<ParamValue> {
+
   if (param.type === "string") {
     return promptStringParam(param, resolvedDefault as string | undefined);
   } else if (param.type === "int") {
