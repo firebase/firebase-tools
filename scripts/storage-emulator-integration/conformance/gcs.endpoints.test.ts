@@ -118,9 +118,10 @@ describe("GCS endpoint conformance tests", () => {
       });
 
       it("should handle upload step in resumable uploads", async () => {
-        const testFileName = "disallowSize0";
         const uploadURL = await supertest(storageHost)
-          .post(`/upload/storage/v1/b/${storageBucket}/o?name=${testFileName}&uploadType=resumable`)
+          .post(
+            `/upload/storage/v1/b/${storageBucket}/o?name=${TEST_FILE_NAME}&uploadType=resumable`
+          )
           .set(authHeader)
           .send({})
           .expect(200)
