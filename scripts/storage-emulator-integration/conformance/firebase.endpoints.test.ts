@@ -164,14 +164,16 @@ describe("Firebase Storage endpoint conformance tests", () => {
           .expect(200)
           .then((res) => new URL(res.header["x-goog-upload-url"]));
 
-        await supertest(firebaseHost)
+        const uploadStatus = await supertest(firebaseHost)
           .put(uploadURL.pathname + uploadURL.search)
           .set({
             "X-Goog-Upload-Protocol": "resumable",
             "X-Goog-Upload-Command": "upload, finalize",
             "X-Goog-Upload-Offset": 0,
           })
-          .expect(403);
+          .expect(403)
+          .then((res) => res.header["x-goog-upload-status"]);
+        expect(uploadStatus).to.equal("final");
       });
 
       it("should return 403 when resumable upload is unauthenticated and finalize is called again", async () => {
