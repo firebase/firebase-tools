@@ -7,7 +7,7 @@ import { StorageEmulator } from "../index";
 import { EmulatorRegistry } from "../../registry";
 import { parseObjectUploadMultipartRequest } from "../multipart";
 import { NotFoundError, ForbiddenError } from "../errors";
-import { NotCancellableError, Upload, UploadNotActiveError } from "../upload";
+import { NotCancellableError, Upload, UploadNotActiveError, UploadPreviouslyFinalizedError } from "../upload";
 import { reqBodyToBuffer } from "../../shared/request";
 import { ListObjectsResponse } from "../files";
 
@@ -344,6 +344,8 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         if (err instanceof NotFoundError) {
           return res.sendStatus(404);
         } else if (err instanceof UploadNotActiveError) {
+          return res.sendStatus(400);
+        } else if (err instanceof UploadPreviouslyFinalizedError) {
           res.header("x-goog-upload-status", "final");
           return res.sendStatus(400);
         }

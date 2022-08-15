@@ -173,6 +173,40 @@ describe("Firebase Storage endpoint conformance tests", () => {
           })
           .expect(403);
       });
+
+      it("should return 400 when calling finalize on an already finalized resumable upload", async () => {
+        const uploadURL = await supertest(firebaseHost)
+          .post(
+            `/v0/b/${storageBucket}/o/test_upload.jpg?uploadType=resumable&name=test_upload.jpg`
+          )
+          .set({
+            Authorization: "Bearer owner",
+            "X-Goog-Upload-Protocol": "resumable",
+            "X-Goog-Upload-Command": "start",
+          })
+          .expect(200)
+          .then((res) => new URL(res.header["x-goog-upload-url"]));
+
+        await supertest(firebaseHost)
+          .put(uploadURL.pathname + uploadURL.search)
+          .set({
+            "X-Goog-Upload-Protocol": "resumable",
+            "X-Goog-Upload-Command": "upload, finalize",
+            "X-Goog-Upload-Offset": 0,
+          })
+          .expect(200);
+
+        const uploadStatus = await supertest(firebaseHost)
+          .put(uploadURL.pathname + uploadURL.search)
+          .set({
+            "X-Goog-Upload-Protocol": "resumable",
+            "X-Goog-Upload-Command": "finalize",
+          })
+          .expect(400)
+          .then((res) => res.header["x-goog-upload-status"]);
+
+        expect(uploadStatus).to.equal("final");
+      });
     });
 
     describe("cancel", () => {
@@ -279,62 +313,6 @@ describe("Firebase Storage endpoint conformance tests", () => {
     });
   });
 
-  describe("tokens", () => {
-    beforeEach(async () => {
-      await testBucket.upload(smallFilePath, { destination: TEST_FILE_NAME });
-    });
-
-    it("should return 400 when calling finalize on an already finalized resumable upload", async () => {
-      const uploadURL = await supertest(firebaseHost)
-        .post(`/v0/b/${storageBucket}/o/test_upload.jpg?uploadType=resumable&name=test_upload.jpg`)
-        .set({
-          Authorization: "Bearer owner",
-          "X-Goog-Upload-Protocol": "resumable",
-          "X-Goog-Upload-Command": "start",
-        })
-        .expect(200)
-        .then((res) => new URL(res.header["x-goog-upload-url"]));
-
-      await supertest(firebaseHost)
-        .put(uploadURL.pathname + uploadURL.search)
-        .set({
-          "X-Goog-Upload-Protocol": "resumable",
-          "X-Goog-Upload-Command": "upload, finalize",
-        })
-        .expect(200);
-
-      const uploadStatus = await supertest(firebaseHost)
-        .put(uploadURL.pathname + uploadURL.search)
-        .set({
-          "X-Goog-Upload-Protocol": "resumable",
-          "X-Goog-Upload-Command": "finalize",
-        })
-        .expect(400)
-        .then((res) => res.header["x-goog-upload-status"]);
-
-      expect(uploadStatus).to.equal("final");
-    });
-
-    it("should return 404 when cancelling non-existent upload", async () => {
-      const uploadURL = await supertest(firebaseHost)
-        .post(`/v0/b/${storageBucket}/o/test_upload.jpg?uploadType=resumable&name=test_upload.jpg`)
-        .set({
-          Authorization: "Bearer owner",
-          "X-Goog-Upload-Protocol": "resumable",
-          "X-Goog-Upload-Command": "start",
-        })
-        .expect(200)
-        .then((res) => new URL(res.header["x-goog-upload-url"]));
-
-      await supertest(firebaseHost)
-        .put(uploadURL.pathname + uploadURL.search.replace(/(upload_id=).*?(&)/, "$1foo$2"))
-        .set({
-          "X-Goog-Upload-Protocol": "resumable",
-          "X-Goog-Upload-Command": "cancel",
-        })
-        .expect(404);
-    });
-  });
   describe("tokens", () => {
     it("should generate new token on create_token", async () => {
       await supertest(firebaseHost)

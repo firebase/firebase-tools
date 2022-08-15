@@ -50,6 +50,9 @@ export type StartResumableUploadRequest = {
 /** Error that signals a resumable upload that's expected to be active is not. */
 export class UploadNotActiveError extends Error {}
 
+/** Error that signals a resumable upload that shouldn't be finalized is */
+export class UploadPreviouslyFinalizedError extends Error {}
+
 /** Error that signals a resumable upload is not cancellable.  */
 export class NotCancellableError extends Error {}
 
@@ -172,7 +175,10 @@ export class UploadService {
    */
   public finalizeResumableUpload(uploadId: string): Upload {
     const upload = this.getResumableUpload(uploadId);
-    if (upload.status === UploadStatus.CANCELLED || upload.status === UploadStatus.FINISHED) {
+    if (upload.status === UploadStatus.FINISHED) {
+      throw new UploadPreviouslyFinalizedError();
+    }
+    if (upload.status === UploadStatus.CANCELLED) {
       throw new UploadNotActiveError();
     }
     upload.status = UploadStatus.FINISHED;
