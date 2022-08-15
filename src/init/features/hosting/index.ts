@@ -63,7 +63,7 @@ export async function doSetup(setup: any, config: any): Promise<void> {
           name: "overwriteDiscoveredFramework",
           type: "confirm",
           default: false,
-          message: `Detected an exsiting ${discoveredFramework.framework} codebase in ${setup.hosting.public}, should we overwrite this directory?`,
+          message: `Detected an existing ${discoveredFramework.framework} codebase in ${setup.hosting.source}, should we overwrite this directory?`,
         },
       ]);
 
@@ -90,9 +90,25 @@ export async function doSetup(setup: any, config: any): Promise<void> {
 
       if (setup.hosting.overwriteDiscoveredFramework) rimraf(setup.hosting.source);
 
-      if (setup.hosting.webFramework === WebFramework.Angular) execSync(`npx -p @angular/cli ng new ${setup.hosting.source} --skip-git`, {stdio: 'inherit'});
-      if (setup.hosting.webFramework === WebFramework.NextJS) execSync(`npx create-next-app ${setup.hosting.source}`, {stdio: 'inherit'});
-      if (setup.hosting.webFramework === WebFramework.Nuxt) execSync(`npx nuxi init ${setup.hosting.source}`, {stdio: 'inherit'});
+      if (setup.hosting.webFramework === WebFramework.Angular) {
+        execSync(`npx --yes -p @angular/cli ng new ${setup.hosting.source} --skip-git`, {stdio: 'inherit'})
+        await prompt(setup.hosting, [
+          {
+            name: "useAngularUniversal",
+            type: "confirm",
+            default: false,
+            message: `Would you like to setup Angular Universal?`,
+          },
+        ]);
+        if (setup.hosting.useAngularUniversal) {
+          execSync('ng add @nguniversal/express-engine --skip-confirmation', {stdio: 'inherit', cwd: setup.hosting.source });
+        }
+      };
+      if (setup.hosting.webFramework === WebFramework.NextJS) execSync(`npx --yes create-next-app ${setup.hosting.source}`, {stdio: 'inherit'});
+      if (setup.hosting.webFramework === WebFramework.Nuxt) {
+        execSync(`npx --yes nuxi init ${setup.hosting.source}`, {stdio: 'inherit'});
+        execSync(`npm install`, {stdio: 'inherit', cwd: setup.hosting.source });
+      }
     }
 
     setup.config.hosting = {
