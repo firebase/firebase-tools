@@ -767,38 +767,6 @@ describe("FunctionsEmulator-Runtime", function () {
         }
         expect(runtime.sysMsg["runtime-error"]?.length).to.eq(1);
       });
-
-      it("disables configured timeout when explicitly disabled", async () => {
-        const timeoutEnvs = {
-          FUNCTIONS_EMULATOR_TIMEOUT_SECONDS: "1",
-          FUNCTIONS_EMULATOR_DISABLE_TIMEOUT: "true",
-        };
-        runtime = await startRuntime(
-          "functionId",
-          "http",
-          () => {
-            return {
-              functionId: require("firebase-functions").https.onRequest(
-                (req: any, resp: any): Promise<void> => {
-                  return new Promise((resolve) => {
-                    setTimeout(() => {
-                      resp.sendStatus(200);
-                      resolve();
-                    }, 3_000);
-                  });
-                }
-              ),
-            };
-          },
-          timeoutEnvs
-        );
-        try {
-          await sendReq(runtime);
-        } catch (e: any) {
-          // Carry on
-        }
-        expect(runtime.sysMsg["runtime-error"]).to.be.undefined;
-      });
     });
   });
 
@@ -827,6 +795,42 @@ describe("FunctionsEmulator-Runtime", function () {
       await sendDebugBundle(runtime, { functionSignature: "http", functionTarget: "function1" });
       const fn1Res = await sendReq(runtime);
       expect(fn1Res).to.equal("function1");
+    });
+
+    it("disables configured timeout when in debug mode", async () => {
+      const timeoutEnvs = {
+        FUNCTIONS_EMULATOR_TIMEOUT_SECONDS: "1",
+        FUNCTION_DEBUG_MODE: "true",
+      };
+      runtime = await startRuntime(
+        "functionId",
+        "http",
+        () => {
+          return {
+            functionId: require("firebase-functions").https.onRequest(
+              (req: any, resp: any): Promise<void> => {
+                return new Promise((resolve) => {
+                  setTimeout(() => {
+                    resp.sendStatus(200);
+                    resolve();
+                  }, 3_000);
+                });
+              }
+            ),
+          };
+        },
+        timeoutEnvs
+      );
+      try {
+        await sendDebugBundle(runtime, {
+          functionSignature: "http",
+          functionTarget: "functionId",
+        });
+        await sendReq(runtime);
+      } catch (e: any) {
+        // Carry on
+      }
+      expect(runtime.sysMsg["runtime-error"]).to.be.undefined;
     });
   });
 });
