@@ -11,7 +11,11 @@ import { Change } from "firebase-functions";
 import { DocumentSnapshot } from "firebase-functions/lib/providers/firestore";
 
 import { FunctionRuntimeBundles, TIMEOUT_LONG, MODULE_ROOT } from "./fixtures";
-import { getTemporarySocketPath, SignatureType } from "../../src/emulator/functionsEmulatorShared";
+import {
+  FunctionsRuntimeBundle,
+  getTemporarySocketPath,
+  SignatureType,
+} from "../../src/emulator/functionsEmulatorShared";
 import { streamToString } from "../../src/utils";
 
 const FUNCTIONS_DIR = `./scripts/emulator-tests/functions`;
@@ -27,10 +31,48 @@ interface Runtime {
   rawMsg: string[];
   sysMsg: Record<string, string[]>;
   stdout: string[];
-  done: boolean;
 }
 
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function isSocketReady(socketPath: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const req = http
+      .request(
+        {
+          method: "GET",
+          path: "/__/health",
+          socketPath,
+        },
+        () => resolve()
+      )
+      .end();
+    req.on("error", (error) => {
+      reject(error);
+    });
+  });
+}
+
+async function waitForSocketReady(socketPath: string): Promise<void> {
+  const timeout = new Promise<never>((resolve, reject) => {
+    setTimeout(() => {
+      reject(new Error("Timeout - runtime server not ready"));
+    }, 10_000);
+  });
+  while (true) {
+    try {
+      await Promise.race([isSocketReady(socketPath), timeout]);
+      break;
+    } catch (err: any) {
+      // Allow us to wait until the server is listening.
+      if (["ECONNREFUSED", "ENOENT"].includes(err?.code)) {
+        await sleep(100);
+        continue;
+      }
+      throw err;
+    }
+  }
+}
 
 async function startRuntime(
   triggerName: string,
@@ -67,8 +109,7 @@ async function startRuntime(
     rawMsg: [],
     sysMsg: {},
     stdout: [],
-    port: env["PORT"],
-    done: false,
+    port: env.PORT,
   };
 
   proc.on("message", (message) => {
@@ -79,11 +120,6 @@ async function startRuntime(
       if (m.type) {
         runtime.sysMsg[m.type] = runtime.sysMsg[m.type] || [];
         runtime.sysMsg[m.type].push(`text: ${m.text};data: ${JSON.stringify(m.data)}`);
-        if (m.type === "runtime-status" && m.text) {
-          if (m.text.includes("Finished") || m.text.includes("Skipping")) {
-            runtime.done = true;
-          }
-        }
       }
     } catch {
       // Carry on;
@@ -98,24 +134,8 @@ async function startRuntime(
     runtime.stdout.push(data.toString());
   });
 
+  await waitForSocketReady(env.PORT);
   return runtime;
-}
-
-async function triggerRuntime(runtime: Runtime) {
-  runtime.proc.send(
-    JSON.stringify({
-      frb: {
-        proto: {},
-        disabled_features: {},
-      },
-    })
-  );
-
-  while (true) {
-    if (runtime.done) return;
-    await sleep(100);
-  }
-  return;
 }
 
 interface ReqOpts {
@@ -158,6 +178,16 @@ async function sendReq(runtime: Runtime, opts: ReqOpts = {}): Promise<string> {
   return result;
 }
 
+async function sendDebugBundle(runtime: Runtime, debug: FunctionsRuntimeBundle["debug"]) {
+  const frb: FunctionsRuntimeBundle = {
+    proto: {},
+    debug,
+  };
+  return new Promise((resolve) => {
+    runtime.proc.send(JSON.stringify({ frb }), resolve);
+  });
+}
+
 describe("FunctionsEmulator-Runtime", function () {
   // eslint-disable-next-line @typescript-eslint/no-invalid-this
   this.timeout(TIMEOUT_LONG);
@@ -184,7 +214,6 @@ describe("FunctionsEmulator-Runtime", function () {
               }),
           };
         });
-        await triggerRuntime(runtime);
         await sendEvent(runtime, FunctionRuntimeBundles.onCreate.proto);
         expect(runtime.sysMsg["unidentified-network-access"]?.length).to.gte(1);
       });
@@ -202,7 +231,6 @@ describe("FunctionsEmulator-Runtime", function () {
               }),
           };
         });
-        await triggerRuntime(runtime);
         await sendEvent(runtime, FunctionRuntimeBundles.onCreate.proto);
         expect(runtime.sysMsg["unidentified-network-access"]?.length).to.gte(1);
       });
@@ -220,7 +248,6 @@ describe("FunctionsEmulator-Runtime", function () {
               }),
           };
         });
-        await triggerRuntime(runtime);
         await sendEvent(runtime, FunctionRuntimeBundles.onCreate.proto);
         expect(runtime.sysMsg["googleapis-network-access"]?.length).to.gte(1);
       });
@@ -238,7 +265,6 @@ describe("FunctionsEmulator-Runtime", function () {
               }),
           };
         });
-        await triggerRuntime(runtime);
         await sendEvent(runtime, FunctionRuntimeBundles.onCreate.proto);
         expect(runtime.sysMsg["default-admin-app-used"]?.length).to.gte(1);
       });
@@ -254,7 +280,6 @@ describe("FunctionsEmulator-Runtime", function () {
               }),
           };
         });
-        await triggerRuntime(runtime);
         await sendEvent(runtime, FunctionRuntimeBundles.onCreate.proto);
         expect(runtime.sysMsg["default-admin-app-used"]?.length).to.gte(1);
         expect(runtime.sysMsg["default-admin-app-used"]?.join(" ")).to.match(/"custom":true/);
@@ -272,7 +297,6 @@ describe("FunctionsEmulator-Runtime", function () {
               }),
           };
         });
-        await triggerRuntime(runtime);
         await sendEvent(runtime, FunctionRuntimeBundles.onCreate.proto);
         expect(runtime.sysMsg["non-default-admin-app-used"]?.length).to.gte(1);
       });
@@ -291,7 +315,6 @@ describe("FunctionsEmulator-Runtime", function () {
               }),
           };
         });
-        await triggerRuntime(runtime);
         await sendEvent(runtime, FunctionRuntimeBundles.onCreate.proto);
         expect(runtime.stdout.join(" ")).to.match(/{"operand":4}/);
       });
@@ -307,7 +330,6 @@ describe("FunctionsEmulator-Runtime", function () {
             }),
           };
         });
-        await triggerRuntime(runtime);
         const data = await sendReq(runtime);
         const info = JSON.parse(data);
         expect(info.projectId).to.eql("fake-project-id");
@@ -331,7 +353,6 @@ describe("FunctionsEmulator-Runtime", function () {
           },
           { FIRESTORE_EMULATOR_HOST: "localhost:9090" }
         );
-        await triggerRuntime(runtime);
         const data = await sendReq(runtime);
         const info = JSON.parse(data);
         expect(info.projectId).to.eql("fake-project-id");
@@ -351,7 +372,6 @@ describe("FunctionsEmulator-Runtime", function () {
             }),
           };
         });
-        await triggerRuntime(runtime);
         const data = await sendReq(runtime);
         const info = JSON.parse(data);
         expect(info.url).to.eql("https://fake-project-id-default-rtdb.firebaseio.com/");
@@ -376,7 +396,6 @@ describe("FunctionsEmulator-Runtime", function () {
             FIREBASE_DATABASE_EMULATOR_HOST: "localhost:9090",
           }
         );
-        await triggerRuntime(runtime);
         const data = await sendReq(runtime);
         const info = JSON.parse(data);
         expect(info.url).to.eql("http://localhost:9090/");
@@ -409,7 +428,6 @@ describe("FunctionsEmulator-Runtime", function () {
             }),
         };
       });
-      await triggerRuntime(runtime);
       await sendEvent(runtime, FunctionRuntimeBundles.onCreate.proto);
       expect(runtime.sysMsg["functions-config-missing-value"]?.length).to.eq(2);
     });
@@ -426,7 +444,6 @@ describe("FunctionsEmulator-Runtime", function () {
           };
         });
 
-        await triggerRuntime(runtime);
         const data = await sendReq(runtime, { method: "GET" });
         expect(JSON.parse(data)).to.deep.equal({ from_trigger: true });
       });
@@ -440,7 +457,6 @@ describe("FunctionsEmulator-Runtime", function () {
           };
         });
 
-        await triggerRuntime(runtime);
         const reqData = "name=sparky";
         const data = await sendReq(runtime, {
           data: reqData,
@@ -461,7 +477,6 @@ describe("FunctionsEmulator-Runtime", function () {
           };
         });
 
-        await triggerRuntime(runtime);
         const reqData = '{"name": "sparky"}';
         const data = await sendReq(runtime, {
           data: reqData,
@@ -482,7 +497,6 @@ describe("FunctionsEmulator-Runtime", function () {
           };
         });
 
-        await triggerRuntime(runtime);
         const reqData = "name is sparky";
         const data = await sendReq(runtime, {
           data: reqData,
@@ -503,7 +517,6 @@ describe("FunctionsEmulator-Runtime", function () {
           };
         });
 
-        await triggerRuntime(runtime);
         const reqData = "name is sparky";
         const data = await sendReq(runtime, {
           data: reqData,
@@ -525,7 +538,6 @@ describe("FunctionsEmulator-Runtime", function () {
           };
         });
 
-        await triggerRuntime(runtime);
         const reqData = "name is sparky";
         const data = await sendReq(runtime, {
           data: reqData,
@@ -550,7 +562,6 @@ describe("FunctionsEmulator-Runtime", function () {
           };
         });
 
-        await triggerRuntime(runtime);
         const reqData = "name is sparky";
         const data = await sendReq(runtime, {
           data: reqData,
@@ -570,7 +581,6 @@ describe("FunctionsEmulator-Runtime", function () {
           };
         });
 
-        await triggerRuntime(runtime);
         const reqData = "name is sparky";
         const data = await sendReq(runtime, {
           data: reqData,
@@ -601,7 +611,6 @@ describe("FunctionsEmulator-Runtime", function () {
           };
         });
 
-        await triggerRuntime(runtime);
         await sendEvent(runtime, FunctionRuntimeBundles.onWrite.proto);
         expect(runtime.stdout.join(" ")).to.match(/{"before_exists":false,"after_exists":true}/);
       });
@@ -624,7 +633,6 @@ describe("FunctionsEmulator-Runtime", function () {
           };
         });
 
-        await triggerRuntime(runtime);
         await sendEvent(runtime, FunctionRuntimeBundles.onUpdate.proto);
         expect(runtime.stdout.join(" ")).to.match(/{"before_exists":true,"after_exists":true}/);
       });
@@ -646,7 +654,6 @@ describe("FunctionsEmulator-Runtime", function () {
           };
         });
 
-        await triggerRuntime(runtime);
         await sendEvent(runtime, FunctionRuntimeBundles.onDelete.proto);
         expect(runtime.stdout.join(" ")).to.match(/{"snap_exists":true}/);
       });
@@ -668,7 +675,6 @@ describe("FunctionsEmulator-Runtime", function () {
           };
         });
 
-        await triggerRuntime(runtime);
         await sendEvent(runtime, FunctionRuntimeBundles.onUpdate.proto);
         expect(runtime.stdout.join(" ")).to.match(/{"snap_exists":true}/);
       });
@@ -683,7 +689,6 @@ describe("FunctionsEmulator-Runtime", function () {
             }),
           };
         });
-        await triggerRuntime(runtime);
         try {
           await sendReq(runtime);
         } catch (e: any) {
@@ -701,7 +706,6 @@ describe("FunctionsEmulator-Runtime", function () {
             }),
           };
         });
-        await triggerRuntime(runtime);
         try {
           await sendReq(runtime);
         } catch (e: any) {
@@ -721,7 +725,6 @@ describe("FunctionsEmulator-Runtime", function () {
               }),
           };
         });
-        await triggerRuntime(runtime);
         try {
           await sendReq(runtime);
         } catch (e: any) {
@@ -732,7 +735,7 @@ describe("FunctionsEmulator-Runtime", function () {
       });
     });
 
-    describe.only("Timeout", () => {
+    describe("Timeout", () => {
       it("enforces configured timeout", async () => {
         const timeoutEnvs = {
           FUNCTIONS_EMULATOR_TIMEOUT_SECONDS: "1",
@@ -757,7 +760,6 @@ describe("FunctionsEmulator-Runtime", function () {
           },
           timeoutEnvs
         );
-        await triggerRuntime(runtime);
         try {
           await sendReq(runtime);
         } catch (e: any) {
@@ -766,7 +768,7 @@ describe("FunctionsEmulator-Runtime", function () {
         expect(runtime.sysMsg["runtime-error"]?.length).to.eq(1);
       });
 
-      it.only("disables configured timeout when explicitly disabled", async () => {
+      it("disables configured timeout when explicitly disabled", async () => {
         const timeoutEnvs = {
           FUNCTIONS_EMULATOR_TIMEOUT_SECONDS: "1",
           FUNCTIONS_EMULATOR_DISABLE_TIMEOUT: "true",
@@ -790,7 +792,6 @@ describe("FunctionsEmulator-Runtime", function () {
           },
           timeoutEnvs
         );
-        await triggerRuntime(runtime);
         try {
           await sendReq(runtime);
         } catch (e: any) {
@@ -798,6 +799,34 @@ describe("FunctionsEmulator-Runtime", function () {
         }
         expect(runtime.sysMsg["runtime-error"]).to.be.undefined;
       });
+    });
+  });
+
+  describe("Debug", () => {
+    it("handles debug message to change function target", async () => {
+      runtime = await startRuntime(
+        "function0",
+        "http",
+        () => {
+          return {
+            function0: require("firebase-functions").https.onRequest((req: any, res: any) => {
+              res.send("function0");
+            }),
+            function1: require("firebase-functions").https.onRequest((req: any, res: any) => {
+              res.send("function1");
+            }),
+          };
+        },
+        {
+          FUNCTION_DEBUG_MODE: "true",
+        }
+      );
+      await sendDebugBundle(runtime, { functionSignature: "http", functionTarget: "function0" });
+      const fn0Res = await sendReq(runtime);
+      expect(fn0Res).to.equal("function0");
+      await sendDebugBundle(runtime, { functionSignature: "http", functionTarget: "function1" });
+      const fn1Res = await sendReq(runtime);
+      expect(fn1Res).to.equal("function1");
     });
   });
 });
