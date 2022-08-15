@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as repl from "repl";
 import * as _ from "lodash";
 import * as request from "request";

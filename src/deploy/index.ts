@@ -1,6 +1,6 @@
 import { logger } from "../logger";
 import { hostingOrigin } from "../api";
-import { bold, white } from "cli-color";
+import { bold, underline, white } from "colorette";
 import { has, includes, each } from "lodash";
 import { needProjectId } from "../projectUtils";
 import { logBullet, logSuccess, consoleUrl, addSubdomain } from "../utils";
@@ -97,7 +97,7 @@ export const deploy = async function (
   await track("Product Deploy", [...targetNames].sort().join(","), duration);
 
   logger.info();
-  logSuccess(bold.underline("Deploy complete!"));
+  logSuccess(bold(underline("Deploy complete!")));
   logger.info();
 
   const deployedHosting = includes(targetNames, "hosting");

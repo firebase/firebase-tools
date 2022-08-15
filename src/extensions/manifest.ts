@@ -1,4 +1,4 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as path from "path";
 import * as refs from "./refs";
 import { Config } from "../config";

@@ -1,4 +1,4 @@
-import { bold } from "cli-color";
+import { bold, underline } from "colorette";
 import * as fs from "fs";
 import * as yaml from "js-yaml";
 import { safeLoad } from "js-yaml";
@@ -202,7 +202,7 @@ export async function initGitHub(setup: Setup): Promise<void> {
     `Visit this URL to revoke authorization for the Firebase CLI GitHub OAuth App:`
   );
   logger.info(
-    bold.underline(`https://github.com/settings/connections/applications/${githubClientId}`)
+    bold(underline(`https://github.com/settings/connections/applications/${githubClientId}`))
   );
   logLabeledBullet("Action required", `Push any new workflow file(s) to your repo`);
 }
@@ -408,7 +408,6 @@ async function promptForRepo(
         "For which GitHub repository would you like to set up a GitHub workflow? (format: user/repository)",
       validate: async (repo: string) => {
         try {
-          // eslint-disable-next-line camelcase
           const { body } = await githubApiClient.get<{ key: string; key_id: string }>(
             `/repos/${repo}/actions/secrets/public-key`,
             {
@@ -432,8 +431,8 @@ async function promptForRepo(
               `Visit this URL to ensure access has been granted to the appropriate organization(s) for the Firebase CLI GitHub OAuth App:`
             );
             logger.info(
-              bold.underline(
-                `https://github.com/settings/connections/applications/${githubClientId}`
+              bold(
+                underline(`https://github.com/settings/connections/applications/${githubClientId}`)
               )
             );
             logger.info();
@@ -520,7 +519,6 @@ async function getGitHubUserDetails(ghAccessToken: any): Promise<Record<string, 
 }
 
 async function getRepoDetails(repo: string, ghAccessToken: string) {
-  // eslint-disable-next-line camelcase
   const { body } = await githubApiClient.get<{ default_branch: string; id: string }>(
     `/repos/${repo}`,
     {

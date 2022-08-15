@@ -1,5 +1,5 @@
 import * as _ from "lodash";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
 import { loadCJSON } from "../../loadCJSON";
 import { RulesDeploy, RulesetServiceType } from "../../rulesDeploy";
@@ -36,7 +36,7 @@ function prepareIndexes(context: any, options: Options): void {
   const parsedSrc = loadCJSON(indexesPath);
 
   utils.logBullet(
-    `${clc.bold.cyan("firestore:")} reading indexes from ${clc.bold(indexesFileName)}...`
+    `${clc.bold(clc.cyan("firestore:"))} reading indexes from ${clc.bold(indexesFileName)}...`
   );
 
   context.firestore = context.firestore || {};

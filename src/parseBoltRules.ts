@@ -1,6 +1,6 @@
 import * as fs from "fs";
 import * as spawn from "cross-spawn";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as _ from "lodash";
 
 import { FirebaseError } from "./error";

@@ -4,6 +4,7 @@ import { Client } from "../apiv2";
 import { cloudTasksOrigin } from "../api";
 import * as iam from "./iam";
 import * as backend from "../deploy/functions/backend";
+import { nullsafeVisitor } from "../functional";
 
 const API_VERSION = "v2";
 
@@ -21,16 +22,16 @@ export interface AppEngineRouting {
 }
 
 export interface RateLimits {
-  maxDispatchesPerSecond?: number;
-  maxConcurrentDispatches?: number;
+  maxDispatchesPerSecond?: number | null;
+  maxConcurrentDispatches?: number | null;
 }
 
 export interface RetryConfig {
-  maxAttempts?: number;
-  maxRetryDuration?: proto.Duration;
-  minBackoff?: proto.Duration;
-  maxBackoff?: proto.Duration;
-  maxDoublings?: number;
+  maxAttempts?: number | null;
+  maxRetryDuration?: proto.Duration | null;
+  minBackoff?: proto.Duration | null;
+  maxBackoff?: proto.Duration | null;
+  maxDoublings?: number | null;
 }
 
 export interface StackdriverLoggingConfig {
@@ -226,27 +227,72 @@ export function queueFromEndpoint(endpoint: backend.Endpoint & backend.TaskQueue
       "maxAttempts",
       "maxDoublings"
     );
-    proto.renameIfPresent(
+    proto.convertIfPresent(
       queue.retryConfig,
       endpoint.taskQueueTrigger.retryConfig,
       "maxRetryDuration",
       "maxRetrySeconds",
-      proto.durationFromSeconds
+      nullsafeVisitor(proto.durationFromSeconds)
     );
-    proto.renameIfPresent(
+    proto.convertIfPresent(
       queue.retryConfig,
       endpoint.taskQueueTrigger.retryConfig,
       "maxBackoff",
       "maxBackoffSeconds",
-      proto.durationFromSeconds
+      nullsafeVisitor(proto.durationFromSeconds)
     );
-    proto.renameIfPresent(
+    proto.convertIfPresent(
       queue.retryConfig,
       endpoint.taskQueueTrigger.retryConfig,
       "minBackoff",
       "minBackoffSeconds",
-      proto.durationFromSeconds
+      nullsafeVisitor(proto.durationFromSeconds)
     );
   }
   return queue;
+}
+
+/** Creates a trigger type from API type */
+export function triggerFromQueue(queue: Queue): backend.TaskQueueTriggered["taskQueueTrigger"] {
+  const taskQueueTrigger: backend.TaskQueueTriggered["taskQueueTrigger"] = {};
+  if (queue.rateLimits) {
+    taskQueueTrigger.rateLimits = {};
+    proto.copyIfPresent(
+      taskQueueTrigger.rateLimits,
+      queue.rateLimits,
+      "maxConcurrentDispatches",
+      "maxDispatchesPerSecond"
+    );
+  }
+  if (queue.retryConfig) {
+    taskQueueTrigger.retryConfig = {};
+    proto.copyIfPresent(
+      taskQueueTrigger.retryConfig,
+      queue.retryConfig,
+      "maxAttempts",
+      "maxDoublings"
+    );
+    proto.convertIfPresent(
+      taskQueueTrigger.retryConfig,
+      queue.retryConfig,
+      "maxRetrySeconds",
+      "maxRetryDuration",
+      nullsafeVisitor(proto.secondsFromDuration)
+    );
+    proto.convertIfPresent(
+      taskQueueTrigger.retryConfig,
+      queue.retryConfig,
+      "maxBackoffSeconds",
+      "maxBackoff",
+      nullsafeVisitor(proto.secondsFromDuration)
+    );
+    proto.convertIfPresent(
+      taskQueueTrigger.retryConfig,
+      queue.retryConfig,
+      "minBackoffSeconds",
+      "minBackoff",
+      nullsafeVisitor(proto.secondsFromDuration)
+    );
+  }
+  return taskQueueTrigger;
 }

@@ -1,4 +1,4 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as ora from "ora";
 import * as semver from "semver";
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
@@ -21,7 +21,13 @@ import { checkResponse } from "./askUserForParam";
 import { ensure } from "../ensureApiEnabled";
 import { deleteObject, uploadObject } from "../gcp/storage";
 import { getProjectId } from "../projectUtils";
-import { createSource, getExtension, getInstance, publishExtensionVersion } from "./extensionsApi";
+import {
+  createSource,
+  getExtension,
+  getInstance,
+  listExtensionVersions,
+  publishExtensionVersion,
+} from "./extensionsApi";
 import { ExtensionSource, ExtensionVersion, Param } from "./types";
 import * as refs from "./refs";
 import { getLocalExtensionSpec } from "./localHelper";
@@ -82,6 +88,7 @@ export const AUTOPOULATED_PARAM_PLACEHOLDERS = {
 export const resourceTypeToNiceName: Record<string, string> = {
   "firebaseextensions.v1beta.function": "Cloud Function",
 };
+export type ReleaseStage = "stable" | "alpha" | "beta" | "rc";
 
 /**
  * Turns database URLs (e.g. https://my-db.firebaseio.com) into database instance names
@@ -394,6 +401,45 @@ async function archiveAndUploadSource(extPath: string, bucketName: string): Prom
 }
 
 /**
+ * Increments the pre-release annotation of the Extension version if the release stage is not stable.
+ * @param ref the ref to the Extension
+ * @param extensionVersion the version of the Extension
+ * @param stage the stage of this release
+ */
+export async function incrementPrereleaseVersion(
+  ref: string,
+  extensionVersion: string,
+  stage: ReleaseStage
+): Promise<string> {
+  const stageOptions = ["stable", "alpha", "beta", "rc"];
+  if (!stageOptions.includes(stage)) {
+    throw new FirebaseError(`--stage flag only supports the following values: ${stageOptions}`);
+  }
+  if (stage !== "stable") {
+    const version = semver.parse(extensionVersion)!;
+    if (version.prerelease.length > 0 || version.build.length > 0) {
+      throw new FirebaseError(
+        `Cannot combine the --stage flag with a version with a prerelease annotation in extension.yaml.`
+      );
+    }
+    let extensionVersions: ExtensionVersion[] = [];
+    try {
+      extensionVersions = await listExtensionVersions(ref, `id="${version.version}"`, true);
+    } catch (e) {
+      // Silently fail and continue the publish flow if extension not found.
+    }
+    const latestVersion =
+      extensionVersions
+        .map((version) => semver.parse(version.spec.version)!)
+        .filter((version) => version.prerelease.length > 0 && version.prerelease[0] === stage)
+        .sort((v1, v2) => semver.compare(v1, v2))
+        .pop() ?? `${version}-${stage}`;
+    return semver.inc(latestVersion, "prerelease", undefined, stage)!;
+  }
+  return extensionVersion;
+}
+
+/**
  *
  * @param publisherId the publisher profile to publish this extension under.
  * @param extensionId the ID of the extension. This must match the `name` field of extension.yaml.
@@ -405,6 +451,7 @@ export async function publishExtensionVersionFromLocalSource(args: {
   rootDirectory: string;
   nonInteractive: boolean;
   force: boolean;
+  stage: ReleaseStage;
 }): Promise<ExtensionVersion | undefined> {
   const extensionSpec = await getLocalExtensionSpec(args.rootDirectory);
   if (extensionSpec.name !== args.extensionId) {
@@ -422,6 +469,11 @@ export async function publishExtensionVersionFromLocalSource(args: {
     AUTOPOULATED_PARAM_PLACEHOLDERS
   );
   validateSpec(subbedSpec);
+  extensionSpec.version = await incrementPrereleaseVersion(
+    `${args.publisherId}/${args.extensionId}`,
+    extensionSpec.version,
+    args.stage
+  );
 
   let extension;
   try {

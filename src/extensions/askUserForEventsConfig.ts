@@ -2,7 +2,7 @@ import { promptOnce } from "../prompt";
 import * as extensionsApi from "../extensions/extensionsApi";
 import { EventDescriptor, ExtensionInstance } from "./types";
 import * as utils from "../utils";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import { logger } from "../logger";
 const { marked } = require("marked");
 

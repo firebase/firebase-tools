@@ -1,6 +1,6 @@
 import { Command } from "../command";
 import { logger } from "../logger";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
 import * as utils from "../utils";
 import * as auth from "../auth";

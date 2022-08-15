@@ -1,5 +1,5 @@
 import { last, sortBy } from "lodash";
-import { bold } from "cli-color";
+import { bold } from "colorette";
 import * as open from "open";
 
 import { Command } from "../command";

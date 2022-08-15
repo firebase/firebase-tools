@@ -7,15 +7,6 @@ import * as parseTriggers from "../../../../../deploy/functions/runtimes/node/pa
 import * as api from "../../../../../api";
 import { BEFORE_CREATE_EVENT } from "../../../../../functions/events/v1";
 
-function applyBuildDefaults(
-  endpoint: Omit<backend.Endpoint, "httpsTrigger">
-): Omit<backend.Endpoint, "httpsTrigger"> {
-  if (!endpoint.timeoutSeconds) {
-    endpoint.timeoutSeconds = 60;
-  }
-  return endpoint;
-}
-
 async function resolveBackend(bd: build.Build): Promise<backend.Backend> {
   return build.resolveBackend(bd, { functionsSource: "", projectId: "PROJECT" }, {});
 }
@@ -41,7 +32,6 @@ describe("addResourcesToBuild", () => {
     project: "project",
     runtime: "nodejs16",
     entryPoint: "func",
-    serviceAccount: null,
   });
 
   const BASIC_FUNCTION_NAME: backend.TargetIds = Object.freeze({
@@ -50,14 +40,12 @@ describe("addResourcesToBuild", () => {
     project: "project",
   });
 
-  const BASIC_BACKEND_ENDPOINT: Omit<backend.Endpoint, "httpsTrigger"> = Object.freeze(
-    applyBuildDefaults({
-      platform: "gcfv1",
-      ...BASIC_FUNCTION_NAME,
-      runtime: "nodejs16",
-      entryPoint: "func",
-    })
-  );
+  const BASIC_BACKEND_ENDPOINT: Omit<backend.Endpoint, "httpsTrigger"> = Object.freeze({
+    platform: "gcfv1",
+    ...BASIC_FUNCTION_NAME,
+    runtime: "nodejs16",
+    entryPoint: "func",
+  });
 
   it("should handle a minimal https trigger, yielding a build reversibly equivalent to the corresponding backend", async () => {
     const trigger: parseTriggers.TriggerAnnotation = {
@@ -192,7 +180,7 @@ describe("addResourcesToBuild", () => {
     const backendConfig: backend.ServiceConfiguration = {
       maxInstances: 42,
       minInstances: 1,
-      serviceAccountEmail: "inlined@google.com",
+      serviceAccount: "inlined@google.com",
       vpc: {
         connector: "projects/project/locations/region/connectors/connector",
         egressSettings: "PRIVATE_RANGES_ONLY",
@@ -244,6 +232,7 @@ describe("addResourcesToBuild", () => {
     const expectedBackend: backend.Backend = backend.of({
       ...BASIC_BACKEND_ENDPOINT,
       eventTrigger,
+      timeoutSeconds: 60,
     });
     const convertedBackend = resolveBackend(expected);
     await expect(convertedBackend).to.eventually.deep.equal(expectedBackend);
@@ -284,18 +273,11 @@ describe("addResourcesToBuild", () => {
   });
 
   it("should support schedules, yielding a build reversibly equivalent to the corresponding backend", async () => {
+    // N.B. A backend schedule fits in a build schedule but not vice versa
+    // aside from the fact that schedule is optional in backend because we don't
+    // load existing schedules from prod always and it is required in build
+    // because we need to know what to target.
     const schedule = {
-      schedule: "every 10 minutes",
-      timeZone: "America/Los_Angeles",
-      retryConfig: {
-        retryCount: 20,
-        maxRetryDuration: "200s",
-        minBackoffDuration: "1s",
-        maxBackoffDuration: "10s",
-        maxDoublings: 10,
-      },
-    };
-    const buildSschedule: build.ScheduleTrigger = {
       schedule: "every 10 minutes",
       timeZone: "America/Los_Angeles",
       retryConfig: {
@@ -305,7 +287,12 @@ describe("addResourcesToBuild", () => {
         maxBackoffSeconds: 10,
         maxDoublings: 10,
       },
-    };
+    } as const;
+    /* eslint-disable @typescript-eslint/no-unused-vars */
+    const typesafetyCheck1: build.ScheduleTrigger = schedule;
+    const typesafetyCheck2: backend.ScheduleTrigger = schedule;
+    /* eslint-enable @typescript-eslint/no-unused-vars */
+
     const trigger: parseTriggers.TriggerAnnotation = {
       ...BASIC_TRIGGER,
       eventTrigger: {
@@ -314,7 +301,17 @@ describe("addResourcesToBuild", () => {
         service: "pubsub.googleapis.com",
       },
       regions: ["us-central1", "europe-west1"],
-      schedule,
+      schedule: {
+        schedule: "every 10 minutes",
+        timeZone: "America/Los_Angeles",
+        retryConfig: {
+          retryCount: 20,
+          maxRetryDuration: "200s",
+          minBackoffDuration: "1s",
+          maxBackoffDuration: "10s",
+          maxDoublings: 10,
+        },
+      },
       labels: {
         test: "testing",
       },
@@ -326,7 +323,7 @@ describe("addResourcesToBuild", () => {
     const expected: build.Build = build.of({
       func: {
         ...BASIC_ENDPOINT,
-        scheduleTrigger: buildSschedule,
+        scheduleTrigger: schedule,
         labels: {
           test: "testing",
         },
@@ -367,6 +364,38 @@ describe("addResourcesToBuild", () => {
         },
       ],
     };
+    const convertedBackend = resolveBackend(expected);
+    await expect(convertedBackend).to.eventually.deep.equal(expectedBackend);
+  });
+
+  it("should expand vpc connector in w/ shorthand form", async () => {
+    const trigger: parseTriggers.TriggerAnnotation = {
+      ...BASIC_TRIGGER,
+      httpsTrigger: {},
+      vpcConnector: "hello-vpc",
+    };
+
+    const result = build.empty();
+    parseTriggers.addResourcesToBuild("project", "nodejs16", trigger, result);
+
+    const expected: build.Build = build.of({
+      func: {
+        ...BASIC_ENDPOINT,
+        httpsTrigger: {},
+        vpc: {
+          connector: "hello-vpc",
+        },
+      },
+    });
+    expect(result).to.deep.equal(expected);
+
+    const expectedBackend: backend.Backend = backend.of({
+      ...BASIC_BACKEND_ENDPOINT,
+      httpsTrigger: {},
+      vpc: {
+        connector: `projects/project/locations/${api.functionsDefaultRegion}/connectors/hello-vpc`,
+      },
+    });
     const convertedBackend = resolveBackend(expected);
     await expect(convertedBackend).to.eventually.deep.equal(expectedBackend);
   });
@@ -559,7 +588,7 @@ describe("addResourcesToBackend", () => {
     const config: backend.ServiceConfiguration = {
       maxInstances: 42,
       minInstances: 1,
-      serviceAccountEmail: "inlined@google.com",
+      serviceAccount: "inlined@google.com",
       vpc: {
         connector: "projects/project/locations/region/connectors/connector",
         egressSettings: "PRIVATE_RANGES_ONLY",
@@ -706,6 +735,27 @@ describe("addResourcesToBackend", () => {
         },
       ],
     };
+
+    expect(result).to.deep.equal(expected);
+  });
+
+  it("should expand vpc connector setting to full resource name", () => {
+    const trigger: parseTriggers.TriggerAnnotation = {
+      ...BASIC_TRIGGER,
+      httpsTrigger: {},
+      vpcConnector: "hello-vpc",
+    };
+
+    const result = backend.empty();
+    parseTriggers.addResourcesToBackend("project", "nodejs16", trigger, result);
+
+    const expected: backend.Backend = backend.of({
+      ...BASIC_ENDPOINT,
+      httpsTrigger: {},
+      vpc: {
+        connector: "projects/project/locations/us-central1/connectors/hello-vpc",
+      },
+    });
 
     expect(result).to.deep.equal(expected);
   });

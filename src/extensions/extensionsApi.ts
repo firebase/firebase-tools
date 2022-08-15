@@ -1,5 +1,5 @@
 import * as yaml from "js-yaml";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const { marked } = require("marked");
 
@@ -462,7 +462,11 @@ export async function listExtensions(publisherId: string): Promise<Extension[]> 
 /**
  * @param ref user-friendly identifier for the ExtensionVersion (publisher-id/extension-id)
  */
-export async function listExtensionVersions(ref: string, filter = ""): Promise<ExtensionVersion[]> {
+export async function listExtensionVersions(
+  ref: string,
+  filter = "",
+  showPrereleases = false
+): Promise<ExtensionVersion[]> {
   const { publisherId, extensionId } = refs.parse(ref);
   const extensionVersions: ExtensionVersion[] = [];
   const getNextPage = async (pageToken = "") => {
@@ -472,6 +476,7 @@ export async function listExtensionVersions(ref: string, filter = ""): Promise<E
     }>(`/publishers/${publisherId}/extensions/${extensionId}/versions`, {
       queryParams: {
         filter,
+        showPrereleases: String(showPrereleases),
         pageSize: PAGE_SIZE_MAX,
         pageToken,
       },

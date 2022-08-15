@@ -1,9 +1,15 @@
 import { FirebaseError } from "../../error";
 import { HostingConfig, HostingRewrites, HostingHeaders } from "../../firebaseConfig";
-import { existingBackend, allEndpoints, isHttpsTriggered } from "../functions/backend";
+import {
+  existingBackend,
+  allEndpoints,
+  isHttpsTriggered,
+  isCallableTriggered,
+} from "../functions/backend";
 import { Payload } from "./args";
 import * as backend from "../functions/backend";
 import { Context } from "../functions/args";
+import { logLabeledBullet, logLabeledWarning } from "../../utils";
 
 function has(obj: { [k: string]: unknown }, k: string): boolean {
   return obj[k] !== undefined;
@@ -49,17 +55,17 @@ interface FunctionsEndpointInfo {
  * the valid format for sending to the Firebase Hosting REST API
  */
 export async function convertConfig(
-  context: any,
+  context: Context,
   payload: Payload,
   config: HostingConfig | undefined,
   finalize: boolean
-): Promise<{ [k: string]: any }> {
+): Promise<Record<string, any>> {
   if (Array.isArray(config)) {
     throw new FirebaseError(`convertConfig should be given a single configuration, not an array.`, {
       exit: 2,
     });
   }
-  const out: { [k: string]: any } = {};
+  const out: Record<string, any> = {};
 
   if (!config) {
     return out;
@@ -81,6 +87,17 @@ export async function convertConfig(
     });
 
     if (matchingBackends.length > 1) {
+      // For now, if `us-central1` is specified, allow that to keep working.
+      for (const endpoint of matchingBackends) {
+        if (endpoint.region === "us-central1") {
+          logLabeledBullet(
+            `hosting[${config.site}]`,
+            `Function \`${functionsEndpointInfo.serviceId}\` found in multiple regions, defaulting to \`us-central1\`. ` +
+              `To rewrite to a different region, specify a \`region\` for the rewrite in \`firebase.json\`.`
+          );
+          return endpoint;
+        }
+      }
       throw new FirebaseError(
         `More than one backend found for function name: ${functionsEndpointInfo.serviceId}. If the function is deployed in multiple regions, you must specify a region.`
       );
@@ -88,7 +105,7 @@ export async function convertConfig(
 
     if (matchingBackends.length === 1) {
       const endpoint = matchingBackends[0];
-      if (endpoint && isHttpsTriggered(endpoint)) {
+      if (endpoint && (isHttpsTriggered(endpoint) || isCallableTriggered(endpoint))) {
         return endpoint;
       }
     }
@@ -185,8 +202,14 @@ export async function convertConfig(
           if (foundEndpoint) {
             vRewrite.functionRegion = foundEndpoint.region;
           } else {
-            throw new FirebaseError(
-              `Unable to find a valid endpoint for function ${vRewrite.function}`
+            if (rewrite.region && rewrite.region !== "us-central1") {
+              throw new FirebaseError(
+                `Unable to find a valid endpoint for function \`${vRewrite.function}\``
+              );
+            }
+            logLabeledWarning(
+              `hosting[${config.site}]`,
+              `Unable to find a valid endpoint for function \`${vRewrite.function}\`, but still including it in the config`
             );
           }
         }

@@ -1,4 +1,4 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -285,7 +285,8 @@ export function writeUserEnvs(toWrite: Record<string, string>, envOpts: UserEnvs
   }
 
   logBullet(
-    clc.cyan.bold("functions: ") + `Writing new parameter values to disk: ${projectScopedFileName}`
+    clc.cyan(clc.bold("functions: ")) +
+      `Writing new parameter values to disk: ${projectScopedFileName}`
   );
   for (const k of Object.keys(toWrite)) {
     fs.appendFileSync(
@@ -363,7 +364,7 @@ export function loadUserEnvs({
     }
   }
   logBullet(
-    clc.cyan.bold("functions: ") + `Loaded environment variables from ${envFiles.join(", ")}.`
+    clc.cyan(clc.bold("functions: ")) + `Loaded environment variables from ${envFiles.join(", ")}.`
   );
 
   return envs;

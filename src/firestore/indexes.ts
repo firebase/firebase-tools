@@ -1,4 +1,4 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
 import { logger } from "../logger";
 import * as utils from "../utils";
@@ -516,7 +516,7 @@ export class FirestoreIndexes {
     // Try to detect use of the old API, warn the users.
     if (spec.indexes[0].collectionId) {
       utils.logBullet(
-        clc.bold.cyan("firestore:") +
+        clc.bold(clc.cyan("firestore:")) +
           " your indexes indexes are specified in the v1beta1 API format. " +
           "Please upgrade to the new index API format by running " +
           clc.bold("firebase firestore:indexes") +
