@@ -540,21 +540,22 @@ export async function startAll(
       projectAlias: options.projectAlias,
     });
     await startEmulator(functionsEmulator);
-  }
-  // Since the functions emulator will always be started by default, and the eventarc emulator
-  // is only used by the functions emulator, we will start them in conjunction (using the default host/port)
-  // even if the app developer has not explicitly configured the eventarc emulator.
-  if (!shouldStart(options, Emulators.EVENTARC)) {
-    if (options.config.src.emulators) {
-      options.config.src.emulators.eventarc = { host: DEFAULT_HOST, port: DEFAULT_PORTS.eventarc };
+
+    // Since the functions emulator will always be started by default, and the eventarc emulator
+    // is only used by the functions emulator, we will start them in conjunction (using the default host/port)
+    // even if the app developer has not explicitly configured the eventarc emulator.
+    if (!shouldStart(options, Emulators.EVENTARC)) {
+      if (options.config.src.emulators) {
+        options.config.src.emulators.eventarc = { host: DEFAULT_HOST, port: DEFAULT_PORTS.eventarc };
+      }
     }
+    const eventarcAddr = await getAndCheckAddress(Emulators.EVENTARC, options);
+    const eventarcEmulator = new EventarcEmulator({
+      host: eventarcAddr.host,
+      port: eventarcAddr.port,
+    });
+    await startEmulator(eventarcEmulator);
   }
-  const eventarcAddr = await getAndCheckAddress(Emulators.EVENTARC, options);
-  const eventarcEmulator = new EventarcEmulator({
-    host: eventarcAddr.host,
-    port: eventarcAddr.port,
-  });
-  await startEmulator(eventarcEmulator);
 
   if (shouldStart(options, Emulators.FIRESTORE)) {
     const firestoreLogger = EmulatorLogger.forEmulator(Emulators.FIRESTORE);
