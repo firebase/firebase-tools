@@ -258,8 +258,6 @@ export async function resolveParams(
       );
     }
     paramValues[param.name] = await promptParam(param, paramDefault);
-
-    // TODO(vsfan@): Once we have writeUserEnvs in functions/env.ts implemented, call it to persist user-provided params
   }
 
   return paramValues;
