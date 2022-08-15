@@ -50,7 +50,7 @@ export type StartResumableUploadRequest = {
 /** Error that signals a resumable upload that's expected to be active is not. */
 export class UploadNotActiveError extends Error {}
 
-/** Error that signals a resumable upload that shouldn't be finalized is */
+/** Error that signals a resumable upload that shouldn't be finalized is. */
 export class UploadPreviouslyFinalizedError extends Error {}
 
 /** Error that signals a resumable upload is not cancellable.  */

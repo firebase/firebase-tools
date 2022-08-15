@@ -179,8 +179,8 @@ describe("Firebase Storage endpoint conformance tests", () => {
           .post(
             `/v0/b/${storageBucket}/o/test_upload.jpg?uploadType=resumable&name=test_upload.jpg`
           )
+          .set(authHeader)
           .set({
-            Authorization: "Bearer owner",
             "X-Goog-Upload-Protocol": "resumable",
             "X-Goog-Upload-Command": "start",
           })
@@ -314,6 +314,10 @@ describe("Firebase Storage endpoint conformance tests", () => {
   });
 
   describe("tokens", () => {
+    beforeEach(async () => {
+      await testBucket.upload(smallFilePath, { destination: TEST_FILE_NAME });
+    });
+
     it("should generate new token on create_token", async () => {
       await supertest(firebaseHost)
         .post(`/v0/b/${storageBucket}/o/${ENCODED_TEST_FILE_NAME}?create_token=true`)
