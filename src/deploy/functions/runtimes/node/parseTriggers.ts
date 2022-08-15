@@ -140,9 +140,6 @@ export function useStrategy(): Promise<boolean> {
   return Promise.resolve(true);
 }
 
-/**
- *
- */
 export async function discoverBuild(
   projectId: string,
   sourceDir: string,
@@ -162,9 +159,6 @@ export async function discoverBuild(
   return want;
 }
 
-/**
- *
- */
 export async function discoverBackend(
   projectId: string,
   sourceDir: string,
@@ -181,9 +175,6 @@ export async function discoverBackend(
 }
 
 /* @internal */
-/**
- *
- */
 export function mergeRequiredAPIs(backend: backend.Backend) {
   const apiToReasons: Record<string, Set<string>> = {};
   for (const { api, reason } of backend.requiredAPIs) {
@@ -202,9 +193,6 @@ export function mergeRequiredAPIs(backend: backend.Backend) {
   backend.requiredAPIs = merged;
 }
 
-/**
- *
- */
 export function addResourcesToBuild(
   projectId: string,
   runtime: runtimes.Runtime,
@@ -262,7 +250,7 @@ export function addResourcesToBuild(
       proto.convertIfPresent(
         triggered.taskQueueTrigger.retryConfig,
         annotation.taskQueueTrigger.retryConfig,
-        "maxRetryDurationSeconds",
+        "maxRetrySeconds",
         "maxRetryDuration",
         toSeconds
       );
