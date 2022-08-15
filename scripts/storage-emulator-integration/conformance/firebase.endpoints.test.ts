@@ -20,7 +20,6 @@ const expect = chai.expect;
 const TEST_FILE_NAME = "testing/storage_ref/testFile";
 const ENCODED_TEST_FILE_NAME = "testing%2Fstorage_ref%2FtestFile";
 
-// TODO(b/241151246): Fix conformance tests.
 // TODO(b/242314185): add more coverage.
 describe("Firebase Storage endpoint conformance tests", () => {
   // Temp directory to store generated files.

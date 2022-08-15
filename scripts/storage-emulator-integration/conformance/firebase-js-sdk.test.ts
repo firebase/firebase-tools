@@ -472,36 +472,35 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
     });
 
     describe("#getMetadata()", () => {
-      // TODO(tonyjhuang): Skip until we have more expressive metadata type checks.
-      // it.skip("should return file metadata", async () => {
-      //   await testBucket.upload(emptyFilePath, { destination: TEST_FILE_NAME });
-      //   await signInToFirebaseAuth(page);
-      //   const metadata = await page.evaluate(async (filename) => {
-      //     return await firebase.storage().ref(filename).getMetadata();
-      //   }, TEST_FILE_NAME);
-      //   const metadataTypes: { [s: string]: string } = {};
-      //   console.log(metadata);
-      //   for (const key in Object.keys(metadata)) {
-      //     console.log("KEY: " + key)
-      //     metadataTypes[key] = typeof(metadata[key]);
-      //   }
-      //   expect(metadataTypes).to.deep.equal({
-      //     bucket: "string",
-      //     contentDisposition: "string",
-      //     contentEncoding: "string",
-      //     contentType: "string",
-      //     cacheControl: "string",
-      //     fullPath: "string",
-      //     generation: "string",
-      //     md5Hash: "string",
-      //     metageneration: "string",
-      //     name: "string",
-      //     size: "number",
-      //     timeCreated: "string",
-      //     type: "string",
-      //     updated: "string",
-      //   });
-      // });
+      it.only("should return file metadata", async () => {
+        await testBucket.upload(emptyFilePath, { destination: TEST_FILE_NAME });
+        await signInToFirebaseAuth(page);
+        const metadata = await page.evaluate(async (filename) => {
+          return await firebase.storage().ref(filename).getMetadata();
+        }, TEST_FILE_NAME);
+        const metadataTypes: { [s: string]: string } = {};
+        console.log(metadata);
+        for (const key in Object.keys(metadata)) {
+          console.log("KEY: " + key)
+          metadataTypes[key] = typeof(metadata[key]);
+        }
+        expect(metadataTypes).to.deep.equal({
+          bucket: "string",
+          contentDisposition: "string",
+          contentEncoding: "string",
+          contentType: "string",
+          cacheControl: "string",
+          fullPath: "string",
+          generation: "string",
+          md5Hash: "string",
+          metageneration: "string",
+          name: "string",
+          size: "number",
+          timeCreated: "string",
+          type: "string",
+          updated: "string",
+        });
+      });
     });
 
     describe("#updateMetadata()", () => {
