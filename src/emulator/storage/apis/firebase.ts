@@ -7,7 +7,12 @@ import { StorageEmulator } from "../index";
 import { EmulatorRegistry } from "../../registry";
 import { parseObjectUploadMultipartRequest } from "../multipart";
 import { NotFoundError, ForbiddenError } from "../errors";
-import { NotCancellableError, Upload, UploadNotActiveError, UploadPreviouslyFinalizedError } from "../upload";
+import {
+  NotCancellableError,
+  Upload,
+  UploadNotActiveError,
+  UploadPreviouslyFinalizedError,
+} from "../upload";
 import { reqBodyToBuffer } from "../../shared/request";
 import { ListObjectsResponse } from "../files";
 
