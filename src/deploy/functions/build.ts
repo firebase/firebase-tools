@@ -7,7 +7,6 @@ import { FirebaseError } from "../../error";
 import { assertExhaustive, mapObject, nullsafeVisitor } from "../../functional";
 import { UserEnvsOpts, writeUserEnvs } from "../../functions/env";
 import { logger } from "../../logger";
-import { Options } from "../../options";
 
 /* The union of a customer-controlled deployment and potentially deploy-time defined parameters */
 export interface Build {
@@ -276,12 +275,17 @@ export async function resolveBackend(
   build: Build,
   userEnvOpt: UserEnvsOpts,
   userEnvs: Record<string, string>,
-  nonInteractive?: boolean,
+  nonInteractive?: boolean
 ): Promise<backend.Backend> {
   const projectId = userEnvOpt.projectId;
   let paramValues: Record<string, Field<string | number | boolean>> = {};
   if (previews.functionsparams) {
-    paramValues = await params.resolveParams(build.params, projectId, envWithTypes(userEnvs), nonInteractive);
+    paramValues = await params.resolveParams(
+      build.params,
+      projectId,
+      envWithTypes(userEnvs),
+      nonInteractive
+    );
 
     // TODO(vsfan@): when merging secrets support into the Build, make sure we aren't writing those to disk.
     const toWrite: Record<string, string> = {};
