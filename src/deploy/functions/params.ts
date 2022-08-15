@@ -17,7 +17,6 @@ function dependenciesCEL(expr: CEL): string[] {
   while ((match = paramCapture.exec(expr)) != null) {
     deps.push(match[1]);
   }
-  // return /{{ params\.\w+ }}/.exec(expr)?.slice(1) || [];
   return deps;
 }
 
@@ -33,7 +32,7 @@ export function resolveInt(
   if (typeof from === "number") {
     return from;
   }
-  const match = /\A{{ params\.(\w+) }}\z/.exec(from);
+  const match = /{{ params\.(\w+) }}/.exec(from);
   if (!match) {
     throw new FirebaseError("CEL evaluation of expression '" + from + "' not yet supported");
   }
@@ -113,7 +112,7 @@ export function resolveBoolean(
 
 interface ParamBase<T extends string | number | boolean> {
   // name of the param. Will be exposed as an environment variable with this name
-  param: string;
+  name: string;
 
   // A human friendly name for the param. Will be used in install/configure flows to describe
   // what param is being updated. If omitted, UX will use the value of "param" instead.
@@ -233,19 +232,19 @@ export async function resolveParams(
   const paramValues: Record<string, ParamValue> = {};
 
   const [provided, outstanding] = partition(params, (param) => {
-    return {}.hasOwnProperty.call(userEnvs, param.param);
+    return {}.hasOwnProperty.call(userEnvs, param.name);
   });
   for (const param of provided) {
-    if (!canSatisfyParam(param, userEnvs[param.param])) {
+    if (!canSatisfyParam(param, userEnvs[param.name])) {
       throw new FirebaseError(
         "Parameter " +
-          param.param +
+          param.name +
           " resolved to value from dotenv files " +
-          userEnvs[param.param] +
+          userEnvs[param.name] +
           " of wrong type"
       );
     }
-    paramValues[param.param] = userEnvs[param.param];
+    paramValues[param.name] = userEnvs[param.name];
   }
 
   for (const param of outstanding) {
@@ -255,10 +254,10 @@ export async function resolveParams(
     }
     if (paramDefault && !canSatisfyParam(param, paramDefault)) {
       throw new FirebaseError(
-        "Parameter " + param.param + " has default value " + paramDefault + " of wrong type"
+        "Parameter " + param.name + " has default value " + paramDefault + " of wrong type"
       );
     }
-    paramValues[param.param] = await promptParam(param, paramDefault);
+    paramValues[param.name] = await promptParam(param, paramDefault);
 
     // TODO(vsfan@): Once we have writeUserEnvs in functions/env.ts implemented, call it to persist user-provided params
   }
@@ -291,16 +290,16 @@ async function promptStringParam(param: StringParam, resolvedDefault?: string): 
   switch (param.input.type) {
     case "select":
       throw new FirebaseError(
-        "Build specified string parameter " + param.param + " with unsupported input type 'select'"
+        "Build specified string parameter " + param.name + " with unsupported input type 'select'"
       );
     case "text":
     default:
-      let prompt = `Enter a value for ${param.label || param.param}`;
+      let prompt = `Enter a value for ${param.label || param.name}:`;
       if (param.description) {
         prompt += ` \n(${param.description})`;
       }
       return await promptOnce({
-        name: param.param,
+        name: param.name,
         type: "input",
         default: resolvedDefault,
         message: prompt,
@@ -317,18 +316,18 @@ async function promptIntParam(param: IntParam, resolvedDefault?: number): Promis
   switch (param.input.type) {
     case "select":
       throw new FirebaseError(
-        "Build specified int parameter " + param.param + " with unsupported input type 'select'"
+        "Build specified int parameter " + param.name + " with unsupported input type 'select'"
       );
     case "text":
     default:
-      let prompt = `Enter a value for ${param.label || param.param}`;
+      let prompt = `Enter a value for ${param.label || param.name}:`;
       if (param.description) {
         prompt += ` \n(${param.description})`;
       }
       let res: number;
       while (true) {
         res = await promptOnce({
-          name: param.param,
+          name: param.name,
           type: "number",
           default: resolvedDefault,
           message: prompt,
@@ -336,7 +335,7 @@ async function promptIntParam(param: IntParam, resolvedDefault?: number): Promis
         if (Number.isInteger(res)) {
           return res;
         }
-        logger.error(`${param.label || param.param} must be an integer; retrying...`);
+        logger.error(`${param.label || param.name} must be an integer; retrying...`);
       }
   }
 }
