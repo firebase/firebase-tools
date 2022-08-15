@@ -68,7 +68,7 @@ describe("GCS endpoint conformance tests", () => {
   describe(".bucket()", () => {
     describe("#upload()", () => {
       // TODO(b/241813366): Metadata set in emulator is not consistent with prod
-      it("should handle resumable uploads", async () => {
+      it("should handle start resumable uploads", async () => {
         const uploadURL = await supertest(storageHost)
           .post(
             `/upload/storage/v1/b/${storageBucket}/o?name=${TEST_FILE_NAME}&uploadType=resumable`
@@ -115,6 +115,23 @@ describe("GCS endpoint conformance tests", () => {
           selfLink: "string",
           mediaLink: "string",
         });
+      });
+
+      it("should handle upload step in resumable uploads", async () => {
+        const testFileName = "disallowSize0";
+        const uploadURL = await supertest(storageHost)
+          .post(`/upload/storage/v1/b/${storageBucket}/o?name=${testFileName}&uploadType=resumable`)
+          .set(authHeader)
+          .send({})
+          .expect(200)
+          .then((res) => new URL(res.header["location"]));
+        await supertest(storageHost)
+          .put(uploadURL.pathname + uploadURL.search)
+          .set({
+            "Content-Length": 0,
+          })
+          .send()
+          .expect(200);
       });
 
       it("should handle resumable upload with name only in metadata", async () => {

@@ -352,7 +352,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
           return res.sendStatus(400);
         } else if (err instanceof UploadPreviouslyFinalizedError) {
           res.header("x-goog-upload-status", "final");
-          return res.sendStatus(400);
+          return res.sendStatus(403);
         }
         throw err;
       }
