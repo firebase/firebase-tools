@@ -5,7 +5,7 @@ import * as params from "./params";
 import { previews } from "../../previews";
 import { FirebaseError } from "../../error";
 import { assertExhaustive, mapObject, nullsafeVisitor } from "../../functional";
-import { UserEnvsOpts } from "../../functions/env";
+import { UserEnvsOpts, writeUserEnvs } from "../../functions/env";
 import { logger } from "../../logger";
 
 /* The union of a customer-controlled deployment and potentially deploy-time defined parameters */
@@ -279,10 +279,37 @@ export async function resolveBackend(
   const projectId = userEnvOpt.projectId;
   let paramValues: Record<string, Field<string | number | boolean>> = {};
   if (previews.functionsparams) {
-    paramValues = await params.resolveParams(build.params, projectId, userEnvs);
+    paramValues = await params.resolveParams(build.params, projectId, envWithTypes(userEnvs));
+
+    // TODO(vsfan@): when merging secrets support into the Build, make sure we aren't writing those to disk.
+    const toWrite: Record<string, string> = {};
+    for (const paramName of Object.keys(paramValues)) {
+      if (userEnvs.hasOwnProperty(paramName)) {
+        continue;
+      }
+      toWrite[paramName] = paramValues[paramName]?.toString() || "";
+    }
+    writeUserEnvs(toWrite, userEnvOpt);
   }
 
   return toBackend(build, paramValues);
+}
+
+function envWithTypes(rawEnvs: Record<string, string>): Record<string, string | number | boolean> {
+  const out: Record<string, string | number | boolean> = {};
+  for (const envName of Object.keys(rawEnvs)) {
+    const value = rawEnvs[envName];
+    if (!isNaN(+value) && isFinite(+value) && !value.includes("e")) {
+      out[envName] = +value;
+    } else if (value === "true") {
+      out[envName] = true;
+    } else if (value === "false") {
+      out[envName] = false;
+    } else {
+      out[envName] = value;
+    }
+  }
+  return out;
 }
 
 // Utility class to make it more fluent to use proto.convertIfPresent

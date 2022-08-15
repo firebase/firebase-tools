@@ -179,9 +179,11 @@ export function validateKey(key: string): void {
   }
 }
 
-// Parse dotenv file, but throw errors if:
-//   1. Input has any invalid lines.
-//   2. Any env key fails validation.
+/**
+ * Parse dotenv file, but throw errors if:
+ * 1. Input has any invalid lines.
+ * 2. Any env key fails validation.
+ */
 export function parseStrict(data: string): Record<string, string> {
   const { envs, errors } = parse(data);
 
@@ -264,9 +266,12 @@ export function writeUserEnvs(toWrite: Record<string, string>, envOpts: UserEnvs
   }
 
   const { functionsSource, projectId, projectAlias, isEmulator } = envOpts;
-  let envFiles = findEnvfiles(functionsSource, projectId, projectAlias, isEmulator);
-  if (envFiles.length === 0) {
-    envFiles = [createEnvFile(envOpts)];
+  const envFiles = findEnvfiles(functionsSource, projectId, projectAlias, isEmulator);
+  const projectScopedFileName = `.env.${projectId}`;
+
+  const projectScopedFileExists = envFiles.includes(projectScopedFileName);
+  if (!projectScopedFileExists) {
+    createEnvFile(envOpts);
   }
 
   const currentEnvs = loadUserEnvs(envOpts);
@@ -279,19 +284,20 @@ export function writeUserEnvs(toWrite: Record<string, string>, envOpts: UserEnvs
     }
   }
 
-  const mostSpecificEnv = path.join(functionsSource, envFiles[envFiles.length - 1]);
   logBullet(
-    clc.cyan(clc.bold("functions: ")) + `Writing new parameter values to disk: ${mostSpecificEnv}`
+    clc.cyan(clc.bold("functions: ")) +
+      `Writing new parameter values to disk: ${projectScopedFileName}`
   );
   for (const k of Object.keys(toWrite)) {
-    fs.appendFileSync(mostSpecificEnv, formatUserEnvForWrite(k, toWrite[k]));
+    fs.appendFileSync(
+      path.join(functionsSource, projectScopedFileName),
+      formatUserEnvForWrite(k, toWrite[k])
+    );
   }
 }
 
 function createEnvFile(envOpts: UserEnvsOpts): string {
-  const fileToWrite = envOpts.isEmulator
-    ? FUNCTIONS_EMULATOR_DOTENV
-    : `.env.${envOpts.projectAlias || envOpts.projectId}`;
+  const fileToWrite = envOpts.isEmulator ? FUNCTIONS_EMULATOR_DOTENV : `.env.${envOpts.projectId}`;
   logger.debug(`Creating ${fileToWrite}...`);
 
   fs.writeFileSync(path.join(envOpts.functionsSource, fileToWrite), "", { flag: "wx" });
