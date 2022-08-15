@@ -1,4 +1,0 @@
-- Fix bug where CLI configured wrong cpu for 16GB/32GB v2 functions. (#4845)
-- Adds `crashlytics:mappingfile:generateid` and `crashlytics:mappingfile:upload` commands. (#4611)
-- Add v2 Schedule Triggers to function deploy (#4764).
-- Fix bug where eventarc emulator was incorrectly started in certain cases (#4873)
