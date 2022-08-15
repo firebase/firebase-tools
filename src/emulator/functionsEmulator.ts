@@ -293,7 +293,16 @@ export class FunctionsEmulator implements EmulatorInstance {
       const { host, port } = this.getInfo();
       triggers.forEach((triggerId) => {
         this.workQueue.submit(() => {
-          return new Promise((resolve, reject) => {
+          return new Promise(async (resolve, reject) => {
+            const record = this.getTriggerRecordByKey(triggerId);
+            const trigger = record.def;
+
+            void track(EVENT_INVOKE, getFunctionService(trigger));
+            void trackEmulator(EVENT_INVOKE_GA4, {
+              function_service: getFunctionService(trigger),
+            });
+
+            await this.invokeTrigger(trigger);
             const trigReq = http.request(
               {
                 host,
@@ -1488,15 +1497,16 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
     const worker = await this.invokeTrigger(trigger);
 
+    // For analytics, track the invoked service
+    void track(EVENT_INVOKE, getFunctionService(trigger));
+    void trackEmulator(EVENT_INVOKE_GA4, {
+      function_service: getFunctionService(trigger),
+    });
+
     worker.onLogs((el: EmulatorLog) => {
       if (el.level === "FATAL") {
         res.status(500).send(el.text);
       }
-    });
-
-    void track(EVENT_INVOKE, "https");
-    void trackEmulator(EVENT_INVOKE_GA4, {
-      function_service: "https",
     });
 
     this.logger.log("DEBUG", `[functions] Runtime ready! Sending request!`);
