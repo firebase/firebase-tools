@@ -453,6 +453,31 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
           });
         });
       });
+
+      it.only("serves content successfully when spammed with calls", async () => {
+        const NUMBER_OF_FILES = 10;
+        let allFileNames : string[] = [];
+        for (let i = 0; i < NUMBER_OF_FILES; i++) {
+          const file_name = TEST_FILE_NAME.concat(i.toString());
+          allFileNames.push(file_name);
+          await testBucket.upload(smallFilePath, { destination: file_name });
+        }
+        await signInToFirebaseAuth(page);
+
+        var promises : Promise<any>[] = [];
+        for (var singleFileName of allFileNames) {
+          promises.push(
+            await page.evaluate((filename) => {
+              return firebase.storage().ref(filename).getDownloadURL();
+            }, singleFileName)
+          )
+        }
+
+        Promise.all(promises)
+        .then(values => {
+          expect(values.length).to.be.equal(10);
+        })
+      });
     });
 
     describe("#getMetadata()", () => {

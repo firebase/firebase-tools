@@ -206,18 +206,6 @@ export class StorageRulesRuntime {
       }
     });
 
-    this._childprocess.stdout?.on("finish", () => {
-      console.warn("Child process finished, no corresponding handler implemented");
-    });
-
-    this._childprocess.stdout?.on("close", () => {
-      console.warn("Child process closed, no corresponding handler implemented");
-    });
-
-    this._childprocess.stdout?.on("end", () => {
-      console.warn("Child process ended, no corresponding handler implemented");
-    });
-
     return startPromise;
   }
 
@@ -253,6 +241,7 @@ export class StorageRulesRuntime {
       // Without waiting to acquire the lock and allowing the child process enough time
       // (~15ms) to pipe the output back, the emulator will run into issues with
       // capturing the output and resolving corresponding promises en masse.
+
       lock.acquire(synchonizationKey, (done) => {
         childProcess?.stdin?.write(serializedRequest + "\n");
         setTimeout(function() {
