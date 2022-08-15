@@ -764,22 +764,22 @@ function rawBodySaver(req: express.Request, res: express.Response, buf: Buffer):
 
 async function processBackground(
   trigger: CloudFunction<any>,
-  proto: any,
+  reqBody: any,
   signature: SignatureType
 ): Promise<void> {
   if (signature === "cloudevent") {
-    return runCloudEvent(trigger, proto);
+    return runCloudEvent(trigger, reqBody);
   }
 
   // All formats of the payload should carry a "data" property. The "context" property does
   // not exist in all versions. Where it doesn't exist, context is everything besides data.
-  const data = proto.data;
-  delete proto.data;
-  const context = proto.context ? proto.context : proto;
+  const data = reqBody.data;
+  delete reqBody.data;
+  const context = reqBody.context ? reqBody.context : reqBody;
 
   // This is due to the fact that the Firestore emulator sends payloads in a newer
   // format than production firestore.
-  if (!proto.eventType || !proto.eventType.startsWith("google.storage")) {
+  if (!reqBody.eventType || !reqBody.eventType.startsWith("google.storage")) {
     if (context.resource && context.resource.name) {
       logDebug("ProcessBackground: lifting resource.name from resource", context.resource);
       context.resource = context.resource.name;
@@ -804,11 +804,11 @@ async function runFunction(func: () => Promise<any>): Promise<any> {
   }
 }
 
-async function runBackground(trigger: CloudFunction<any>, proto: any): Promise<any> {
-  logDebug("RunBackground", proto);
+async function runBackground(trigger: CloudFunction<any>, reqBody: any): Promise<any> {
+  logDebug("RunBackground", reqBody);
 
   await runFunction(() => {
-    return trigger(proto.data, proto.context);
+    return trigger(reqBody.data, reqBody.context);
   });
 }
 
@@ -974,6 +974,121 @@ async function main(): Promise<void> {
   });
 
   await initializeRuntime();
+  try {
+    functionModule = await loadTriggers();
+  } catch (e: any) {
+    new EmulatorLog(
+      "FATAL",
+      "runtime-status",
+      `Failed to initialize and load triggers. This shouldn't happen: ${e.message}`
+    ).log();
+    await flushAndExit(1);
+  }
+
+  const app = express();
+  app.enable("trust proxy");
+  app.use(
+    bodyParser.json({
+      limit: "10mb",
+      verify: rawBodySaver,
+    })
+  );
+  app.use(
+    bodyParser.text({
+      limit: "10mb",
+      verify: rawBodySaver,
+    })
+  );
+  app.use(
+    bodyParser.urlencoded({
+      extended: true,
+      limit: "10mb",
+      verify: rawBodySaver,
+    })
+  );
+  app.use(
+    bodyParser.raw({
+      type: "*/*",
+      limit: "10mb",
+      verify: rawBodySaver,
+    })
+  );
+  app.get("/__/health", (req, res) => {
+    res.status(200).send();
+  });
+  app.all("/favicon.ico|/robots.txt", (req, res) => {
+    res.status(404).send();
+  });
+  app.all(`/*`, async (req: express.Request, res: express.Response) => {
+    try {
+      new EmulatorLog(
+        "INFO",
+        "runtime-status",
+        `Beginning execution of "${FUNCTION_TARGET_NAME}"`
+      ).log();
+
+      const trigger = FUNCTION_TARGET_NAME.split(".").reduce((mod, functionTargetPart) => {
+        return mod?.[functionTargetPart];
+      }, functionModule) as CloudFunction<unknown>;
+      if (!trigger) {
+        throw new Error(`Failed to find function ${FUNCTION_TARGET_NAME} in the loaded module`);
+      }
+
+      const startHrTime = process.hrtime();
+      res.on("finish", () => {
+        const elapsedHrTime = process.hrtime(startHrTime);
+        new EmulatorLog(
+          "INFO",
+          "runtime-status",
+          `Finished "${FUNCTION_TARGET_NAME}" in ${
+            elapsedHrTime[0] * 1000 + elapsedHrTime[1] / 1000000
+          }ms`
+        ).log();
+      });
+
+      switch (FUNCTION_SIGNATURE) {
+        case "event":
+        case "cloudevent":
+          const rawBody = (req as RequestWithRawBody).rawBody;
+          let reqBody = JSON.parse(rawBody.toString());
+          if (req.headers["content-type"]?.includes("cloudevent")) {
+            if (EventUtils.isBinaryCloudEvent(req)) {
+              reqBody = EventUtils.extractBinaryCloudEventContext(req);
+              reqBody.data = req.body;
+            }
+          }
+          await processBackground(trigger, reqBody, FUNCTION_SIGNATURE);
+          res.send({ status: "acknowledged" });
+          break;
+        case "http":
+          await runHTTPS(trigger, [req, res]);
+      }
+    } catch (err: any) {
+      new EmulatorLog("FATAL", "runtime-error", err.stack ? err.stack : err).log();
+      res.status(500).send(err.message);
+    }
+    await goIdle();
+  });
+  const server = app.listen(process.env.PORT, () => {
+    logDebug(`Listening to port: ${process.env.PORT}`);
+  });
+  if (!FUNCTION_DEBUG_MODE) {
+    let timeout = process.env.FUNCTIONS_EMULATOR_TIMEOUT_SECONDS || "60";
+    if (timeout.endsWith("s")) {
+      timeout = timeout.slice(0, -1);
+    }
+    const timeoutMs = parseInt(timeout, 10) * 1000;
+    server.setTimeout(timeoutMs, () => {
+      new EmulatorLog(
+        "FATAL",
+        "runtime-error",
+        `Your function timed out after ~${timeout}s. To configure this timeout, see
+      https://firebase.google.com/docs/functions/manage-functions#set_timeout_and_memory_allocation.`
+      ).log();
+      return flushAndExit(1);
+    });
+  }
+
   // Event emitters do not work well with async functions, so we
   // construct our own promise chain to make sure each message is
   // handled only after the previous message handling is complete.

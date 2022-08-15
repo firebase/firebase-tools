@@ -277,16 +277,16 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     const multicastHandler: express.RequestHandler = (req: express.Request, res) => {
       const projectId = req.params.project_id;
-      const reqBody = (req as RequestWithRawBody).rawBody;
-      const proto = JSON.parse(reqBody.toString());
+      const rawBody = (req as RequestWithRawBody).rawBody;
+      const event = JSON.parse(rawBody.toString());
       let triggerKey: string;
       if (req.headers["content-type"]?.includes("cloudevent")) {
-        triggerKey = `${this.args.projectId}:${proto.type}`;
+        triggerKey = `${this.args.projectId}:${event.type}`;
       } else {
-        triggerKey = `${this.args.projectId}:${proto.eventType}`;
+        triggerKey = `${this.args.projectId}:${event.eventType}`;
       }
-      if (proto.data.bucket) {
-        triggerKey += `:${proto.data.bucket}`;
+      if (event.data.bucket) {
+        triggerKey += `:${event.data.bucket}`;
       }
       const triggers = this.multicastTriggers[triggerKey] || [];
 
@@ -294,15 +294,6 @@ export class FunctionsEmulator implements EmulatorInstance {
       triggers.forEach((triggerId) => {
         this.workQueue.submit(() => {
           return new Promise(async (resolve, reject) => {
-            const record = this.getTriggerRecordByKey(triggerId);
-            const trigger = record.def;
-
-            void track(EVENT_INVOKE, getFunctionService(trigger));
-            void trackEmulator(EVENT_INVOKE_GA4, {
-              function_service: getFunctionService(trigger),
-            });
-
-            await this.invokeTrigger(trigger);
             const trigReq = http.request(
               {
                 host,
@@ -314,12 +305,8 @@ export class FunctionsEmulator implements EmulatorInstance {
               resolve
             );
             trigReq.on("error", reject);
-            trigReq.write(reqBody);
+            trigReq.write(rawBody);
             trigReq.end();
-            this.logger.log(
-              "DEBUG",
-              `Accepted multicast request ${req.method} ${req.url} --> ${triggerId}`
-            );
             return;
           });
         });
@@ -345,8 +332,8 @@ export class FunctionsEmulator implements EmulatorInstance {
     return hub;
   }
 
-  async sendRequest(worker: RuntimeWorker, proto?: any) {
-    const reqBody = JSON.stringify(proto);
+  async sendRequest(worker: RuntimeWorker, body?: any) {
+    const reqBody = JSON.stringify(body);
     const headers = {
       "Content-Type": "application/json",
       "Content-Length": `${reqBody.length}`,
@@ -1129,7 +1116,6 @@ export class FunctionsEmulator implements EmulatorInstance {
     if (trigger?.timeoutSeconds) {
       envs.FUNCTIONS_EMULATOR_TIMEOUT_SECONDS = trigger.timeoutSeconds.toString();
     }
-    envs.FUNCTIONS_EMULATOR_DISABLE_TIMEOUT = `${!!this.args.debugPort}`;
 
     if (trigger) {
       const target = trigger.entryPoint;
