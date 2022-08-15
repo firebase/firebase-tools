@@ -13,9 +13,11 @@ const TEST_JOB: cloudscheduler.Job = {
   name: "projects/test-project/locations/us-east1/jobs/test",
   schedule: "every 5 minutes",
   timeZone: "America/Los_Angeles",
-  httpTarget: {
-    uri: "https://afakeone.come",
-    httpMethod: "POST",
+  pubsubTarget: {
+    topicName: "projects/test-project/topics/test",
+    attributes: {
+      scheduled: "true",
+    },
   },
   retryConfig: {},
 };
@@ -155,7 +157,7 @@ describe("cloudscheduler", () => {
   });
 
   describe("jobFromEndpoint", () => {
-    const ENDPOINT: backend.Endpoint = {
+    const V1_ENDPOINT: backend.Endpoint = {
       platform: "gcfv1",
       id: "id",
       region: "region",
@@ -166,8 +168,16 @@ describe("cloudscheduler", () => {
         schedule: "every 1 minutes",
       },
     };
-    it("should copy minimal fields", () => {
-      expect(cloudscheduler.jobFromEndpoint(ENDPOINT, "appEngineLocation")).to.deep.equal({
+    const V2_ENDPOINT: backend.Endpoint = {
+      ...V1_ENDPOINT,
+      platform: "gcfv2",
+      uri: "https://my-uri.com",
+    };
+
+    it("should copy minimal fields for v1 endpoints", () => {
+      expect(
+        cloudscheduler.jobFromEndpoint(V1_ENDPOINT, "appEngineLocation", "1234567")
+      ).to.deep.equal({
         name: "projects/project/locations/appEngineLocation/jobs/firebase-schedule-id-region",
         schedule: "every 1 minutes",
         timeZone: "America/Los_Angeles",
@@ -180,11 +190,28 @@ describe("cloudscheduler", () => {
       });
     });
 
-    it("should copy optional fields", () => {
+    it("should copy minimal fields for v2 endpoints", () => {
+      expect(
+        cloudscheduler.jobFromEndpoint(V2_ENDPOINT, V2_ENDPOINT.region, "1234567")
+      ).to.deep.equal({
+        name: "projects/project/locations/region/jobs/firebase-schedule-id-region",
+        schedule: "every 1 minutes",
+        timeZone: "UTC",
+        httpTarget: {
+          uri: "https://my-uri.com",
+          httpMethod: "POST",
+          oidcToken: {
+            serviceAccountEmail: "1234567-compute@developer.gserviceaccount.com",
+          },
+        },
+      });
+    });
+
+    it("should copy optional fields for v1 endpoints", () => {
       expect(
         cloudscheduler.jobFromEndpoint(
           {
-            ...ENDPOINT,
+            ...V1_ENDPOINT,
             scheduleTrigger: {
               schedule: "every 1 minutes",
               timeZone: "America/Los_Angeles",
@@ -196,7 +223,8 @@ describe("cloudscheduler", () => {
               },
             },
           },
-          "appEngineLocation"
+          "appEngineLocation",
+          "1234567"
         )
       ).to.deep.equal({
         name: "projects/project/locations/appEngineLocation/jobs/firebase-schedule-id-region",
@@ -212,6 +240,45 @@ describe("cloudscheduler", () => {
           topicName: "projects/project/topics/firebase-schedule-id-region",
           attributes: {
             scheduled: "true",
+          },
+        },
+      });
+    });
+
+    it("should copy optional fields for v2 endpoints", () => {
+      expect(
+        cloudscheduler.jobFromEndpoint(
+          {
+            ...V2_ENDPOINT,
+            scheduleTrigger: {
+              schedule: "every 1 minutes",
+              timeZone: "America/Los_Angeles",
+              retryConfig: {
+                maxDoublings: 2,
+                maxBackoffSeconds: 20,
+                minBackoffSeconds: 1,
+                maxRetrySeconds: 60,
+              },
+            },
+          },
+          V2_ENDPOINT.region,
+          "1234567"
+        )
+      ).to.deep.equal({
+        name: "projects/project/locations/region/jobs/firebase-schedule-id-region",
+        schedule: "every 1 minutes",
+        timeZone: "America/Los_Angeles",
+        retryConfig: {
+          maxDoublings: 2,
+          maxBackoffDuration: "20s",
+          minBackoffDuration: "1s",
+          maxRetryDuration: "60s",
+        },
+        httpTarget: {
+          uri: "https://my-uri.com",
+          httpMethod: "POST",
+          oidcToken: {
+            serviceAccountEmail: "1234567-compute@developer.gserviceaccount.com",
           },
         },
       });

@@ -117,12 +117,12 @@ export async function checkHttpIam(
 
 /** obtain the pubsub service agent */
 function getPubsubServiceAgent(projectNumber: string): string {
-  return `serviceAccount:service-${projectNumber}@gcp-sa-pubsub.iam.gserviceaccount.com`;
+  return `service-${projectNumber}@gcp-sa-pubsub.iam.gserviceaccount.com`;
 }
 
 /** obtain the default compute service agent */
-function getDefaultComputeServiceAgent(projectNumber: string): string {
-  return `serviceAccount:${projectNumber}-compute@developer.gserviceaccount.com`;
+export function getDefaultComputeServiceAgent(projectNumber: string): string {
+  return `${projectNumber}-compute@developer.gserviceaccount.com`;
 }
 
 /** Callback reducer function */
@@ -143,7 +143,7 @@ function reduceEventsToServices(services: Array<Service>, endpoint: backend.Endp
 export function obtainPubSubServiceAgentBindings(projectNumber: string): iam.Binding[] {
   const serviceAccountTokenCreatorBinding: iam.Binding = {
     role: SERVICE_ACCOUNT_TOKEN_CREATOR_ROLE,
-    members: [getPubsubServiceAgent(projectNumber)],
+    members: [`serviceAccount:${getPubsubServiceAgent(projectNumber)}`],
   };
   return [serviceAccountTokenCreatorBinding];
 }
@@ -155,7 +155,9 @@ export function obtainPubSubServiceAgentBindings(projectNumber: string): iam.Bin
  * @param existingPolicy the project level IAM policy
  */
 export function obtainDefaultComputeServiceAgentBindings(projectNumber: string): iam.Binding[] {
-  const defaultComputeServiceAgent = getDefaultComputeServiceAgent(projectNumber);
+  const defaultComputeServiceAgent = `serviceAccount:${getDefaultComputeServiceAgent(
+    projectNumber
+  )}`;
   const runInvokerBinding: iam.Binding = {
     role: RUN_INVOKER_ROLE,
     members: [defaultComputeServiceAgent],

@@ -1,2 +1,0 @@
-- Fix bug where CLI configured wrong cpu for 16GB/32GB v2 functions. (#4845)
-- Adds `crashlytics:mappingfile:generateid` and `crashlytics:mappingfile:upload` commands. (#4611)
