@@ -1,4 +1,4 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
 import { Executor } from "./executor";
 import { FirebaseError } from "../../../error";
@@ -604,13 +604,14 @@ export class Fabricator {
   }
 
   async deleteScheduleV1(endpoint: backend.Endpoint & backend.ScheduleTriggered): Promise<void> {
-    const job = scheduler.jobFromEndpoint(endpoint, this.appEngineLocation);
+    const jobName = scheduler.jobNameForEndpoint(endpoint, this.appEngineLocation);
     await this.executor
-      .run(() => scheduler.deleteJob(job.name))
+      .run(() => scheduler.deleteJob(jobName))
       .catch(rethrowAs(endpoint, "delete schedule"));
 
+    const topicName = scheduler.topicNameForEndpoint(endpoint);
     await this.executor
-      .run(() => pubsub.deleteTopic(job.pubsubTarget!.topicName))
+      .run(() => pubsub.deleteTopic(topicName))
       .catch(rethrowAs(endpoint, "delete topic"));
   }
 
@@ -646,7 +647,7 @@ export class Fabricator {
 
   logOpSuccess(op: string, endpoint: backend.Endpoint): void {
     const label = helper.getFunctionLabel(endpoint);
-    utils.logSuccess(`${clc.bold.green(`functions[${label}]`)} Successful ${op} operation.`);
+    utils.logSuccess(`${clc.bold(clc.green(`functions[${label}]`))} Successful ${op} operation.`);
   }
 }
 

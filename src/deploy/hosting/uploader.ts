@@ -1,6 +1,6 @@
 import { size } from "lodash";
 import AbortController from "abort-controller";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as crypto from "crypto";
 import * as fs from "fs";
 import * as path from "path";
@@ -19,7 +19,7 @@ const MAX_UPLOAD_TIMEOUT = 7200000; // 2h
 function progressMessage(message: string, current: number, total: number): string {
   current = Math.min(current, total);
   const percent = Math.floor(((current * 1.0) / total) * 100).toString();
-  return `${message} [${current}/${total}] (${clc.bold.green(`${percent}%`)})`;
+  return `${message} [${current}/${total}] (${clc.bold(clc.green(`${percent}%`))})`;
 }
 
 export class Uploader {

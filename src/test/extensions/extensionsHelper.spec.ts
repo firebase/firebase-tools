@@ -9,11 +9,60 @@ import * as functionsConfig from "../../functionsConfig";
 import { storage } from "../../gcp";
 import * as archiveDirectory from "../../archiveDirectory";
 import * as prompt from "../../prompt";
-import { ExtensionSource, ExtensionSpec, Param, ParamType } from "../../extensions/types";
+import {
+  ExtensionSource,
+  ExtensionSpec,
+  ExtensionVersion,
+  Param,
+  ParamType,
+} from "../../extensions/types";
 import { Readable } from "stream";
 import { ArchiveResult } from "../../archiveDirectory";
 import { canonicalizeRefInput } from "../../extensions/extensionsHelper";
 import * as planner from "../../deploy/extensions/planner";
+
+const EXT_SPEC_1: ExtensionSpec = {
+  name: "cool-things",
+  version: "0.0.1-rc.0",
+  resources: [
+    {
+      name: "cool-resource",
+      type: "firebaseextensions.v1beta.function",
+    },
+  ],
+  sourceUrl: "www.google.com/cool-things-here",
+  params: [],
+};
+const EXT_SPEC_2: ExtensionSpec = {
+  name: "cool-things",
+  version: "0.0.1-rc.1",
+  resources: [
+    {
+      name: "cool-resource",
+      type: "firebaseextensions.v1beta.function",
+    },
+  ],
+  sourceUrl: "www.google.com/cool-things-here",
+  params: [],
+};
+const TEST_EXT_VERSION_1: ExtensionVersion = {
+  name: "publishers/test-pub/extensions/ext-one/versions/0.0.1-rc.0",
+  ref: "test-pub/ext-one@0.0.1-rc.0",
+  spec: EXT_SPEC_1,
+  state: "PUBLISHED",
+  hash: "12345",
+  createTime: "2020-06-30T00:21:06.722782Z",
+  sourceDownloadUri: "",
+};
+const TEST_EXT_VERSION_2: ExtensionVersion = {
+  name: "publishers/test-pub/extensions/ext-one/versions/0.0.1-rc.1",
+  ref: "test-pub/ext-one@0.0.1-rc.1",
+  spec: EXT_SPEC_2,
+  state: "PUBLISHED",
+  hash: "23456",
+  createTime: "2020-06-30T00:21:06.722782Z",
+  sourceDownloadUri: "",
+};
 
 describe("extensionsHelper", () => {
   describe("substituteParams", () => {
@@ -412,6 +461,46 @@ describe("extensionsHelper", () => {
       expect(() => {
         extensionsHelper.validateCommandLineParams(testParams, testParamSpec);
       }).not.to.throw();
+    });
+  });
+
+  describe("incrementPrereleaseVersion", () => {
+    let listExtensionVersionsStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      listExtensionVersionsStub = sinon.stub(extensionsApi, "listExtensionVersions");
+      listExtensionVersionsStub.returns(Promise.resolve([TEST_EXT_VERSION_1, TEST_EXT_VERSION_2]));
+    });
+
+    afterEach(() => {
+      listExtensionVersionsStub.restore();
+    });
+
+    it("should increment rc version", async () => {
+      const newVersion = await extensionsHelper.incrementPrereleaseVersion(
+        "test-pub/ext-one",
+        "0.0.1",
+        "rc"
+      );
+      expect(newVersion).to.eql("0.0.1-rc.2");
+    });
+
+    it("should be first beta version", async () => {
+      const newVersion = await extensionsHelper.incrementPrereleaseVersion(
+        "test-pub/ext-one",
+        "0.0.1",
+        "beta"
+      );
+      expect(newVersion).to.eql("0.0.1-beta.0");
+    });
+
+    it("should not increment version", async () => {
+      const newVersion = await extensionsHelper.incrementPrereleaseVersion(
+        "test-pub/ext-one",
+        "0.0.1",
+        "stable"
+      );
+      expect(newVersion).to.eql("0.0.1");
     });
   });
 

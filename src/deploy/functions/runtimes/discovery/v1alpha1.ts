@@ -1,9 +1,11 @@
 import * as build from "../../build";
 import * as params from "../../params";
 import * as runtimes from "..";
+
 import { copyIfPresent, convertIfPresent, secondsFromDuration } from "../../../../gcp/proto";
 import { assertKeyTypes, requireKeys } from "./parsing";
 import { FirebaseError } from "../../../../error";
+import { nullsafeVisitor } from "../../../../functional";
 
 const CHANNEL_NAME_REGEX = new RegExp(
   "(projects\\/" +
@@ -325,6 +327,27 @@ function parseEndpointForBuild(
         "maxBackoffSeconds",
         "maxRetrySeconds",
         "maxDoublings"
+      );
+      convertIfPresent(
+        st.retryConfig,
+        ep.scheduleTrigger.retryConfig,
+        "minBackoffSeconds",
+        "minBackoffDuration",
+        nullsafeVisitor(secondsFromDuration)
+      );
+      convertIfPresent(
+        st.retryConfig,
+        ep.scheduleTrigger.retryConfig,
+        "maxBackoffSeconds",
+        "maxBackoffDuration",
+        nullsafeVisitor(secondsFromDuration)
+      );
+      convertIfPresent(
+        st.retryConfig,
+        ep.scheduleTrigger.retryConfig,
+        "maxRetrySeconds",
+        "maxRetryDuration",
+        nullsafeVisitor(secondsFromDuration)
       );
     } else if (ep.scheduleTrigger.retryConfig === null) {
       st.retryConfig = null;

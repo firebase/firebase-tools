@@ -1,5 +1,5 @@
 import * as path from "path";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
 import { FirebaseError } from "../../error";
 import { getSecretVersion, SecretVersion } from "../../gcp/secretManager";

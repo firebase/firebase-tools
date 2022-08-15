@@ -118,6 +118,9 @@ export class UploadService {
     };
     this._uploads.set(upload.id, upload);
     this._persistence.deleteFile(upload.path, /* failSilently = */ true);
+
+    // create empty file to append to later
+    this._persistence.appendBytes(upload.path, Buffer.alloc(0));
     return upload;
   }
 

@@ -287,6 +287,7 @@ export interface RulesResourceMetadata {
 }
 
 export interface IncomingMetadata {
+  name?: string;
   contentType?: string;
   contentLanguage?: string;
   contentEncoding?: string;
@@ -483,15 +484,15 @@ export class CloudStorageObjectMetadata {
  * @return the formatted date.
  */
 export function toSerializedDate(d: Date): string {
-  const day = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, "0")}-${d
-    .getDate()
+  const day = `${d.getUTCFullYear()}-${(d.getUTCMonth() + 1).toString().padStart(2, "0")}-${d
+    .getUTCDate()
     .toString()
     .padStart(2, "0")}`;
-  const time = `${d.getHours().toString().padStart(2, "0")}:${d
-    .getMinutes()
+  const time = `${d.getUTCHours().toString().padStart(2, "0")}:${d
+    .getUTCMinutes()
     .toString()
-    .padStart(2, "0")}:${d.getSeconds().toString().padStart(2, "0")}.${d
-    .getMilliseconds()
+    .padStart(2, "0")}:${d.getUTCSeconds().toString().padStart(2, "0")}.${d
+    .getUTCMilliseconds()
     .toString()
     .padStart(3, "0")}`;
   return `${day}T${time}Z`;

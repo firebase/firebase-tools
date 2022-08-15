@@ -1,5 +1,5 @@
 import * as utils from "../utils";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as childProcess from "child_process";
 import { FirebaseError } from "../error";
 const needProjectId = require("../projectUtils").needProjectId;
@@ -101,7 +101,10 @@ function runTargetCommands(
   return runAllCommands
     .then(() => {
       utils.logSuccess(
-        clc.green.bold(logIdentifier + ":") + " Finished running " + clc.bold(hook) + " script."
+        clc.green(clc.bold(logIdentifier + ":")) +
+          " Finished running " +
+          clc.bold(hook) +
+          " script."
       );
     })
     .catch((err: any) => {

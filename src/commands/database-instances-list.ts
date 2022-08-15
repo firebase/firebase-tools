@@ -1,6 +1,6 @@
 import { Command } from "../command";
 import Table = require("cli-table");
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as ora from "ora";
 
 import { logger } from "../logger";

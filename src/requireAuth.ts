@@ -1,5 +1,5 @@
 import { GoogleAuth, GoogleAuthOptions } from "google-auth-library";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
 import * as api from "./api";
 import * as apiv2 from "./apiv2";

@@ -332,6 +332,59 @@ describe("utils", () => {
     });
   });
 
+  describe("withTimeout", () => {
+    let clock: sinon.SinonFakeTimers;
+
+    beforeEach(() => {
+      clock = sinon.useFakeTimers();
+      clock.reset();
+    });
+
+    afterEach(() => {
+      clock.restore();
+    });
+
+    it("should fulfill if the original promise fulfills within timeout", async () => {
+      const promise = new Promise((resolve) => {
+        setTimeout(() => resolve("foo"), 1000);
+      });
+      const wrapped = utils.withTimeout(5000, promise);
+
+      clock.tick(1001);
+      await expect(wrapped).to.eventually.equal("foo");
+    });
+
+    it("should reject if the original promise rejects within timeout", async () => {
+      const promise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error("oh snap")), 1000);
+      });
+      const wrapped = utils.withTimeout(5000, promise);
+
+      clock.tick(1001);
+      await expect(wrapped).to.be.rejectedWith("oh snap");
+    });
+
+    it("should reject with timeout if the original promise takes too long to fulfill", async () => {
+      const promise = new Promise((resolve) => {
+        setTimeout(() => resolve(42), 1000);
+      });
+      const wrapped = utils.withTimeout(5000, promise);
+
+      clock.tick(5001);
+      await expect(wrapped).to.be.rejectedWith("Timed out.");
+    });
+
+    it("should reject with timeout if the original promise takes too long to reject", async () => {
+      const promise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error("oh snap")), 10000);
+      });
+      const wrapped = utils.withTimeout(5000, promise);
+
+      clock.tick(5001);
+      await expect(wrapped).to.be.rejectedWith("Timed out.");
+    });
+  });
+
   describe("debounce", () => {
     let clock: sinon.SinonFakeTimers;
 

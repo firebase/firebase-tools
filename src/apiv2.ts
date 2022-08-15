@@ -285,7 +285,6 @@ export class Client {
     }
     // TODO: remove the as any once auth.js is migrated to auth.ts
     interface AccessToken {
-      /* eslint-disable camelcase */
       access_token: string;
     }
     const data = (await auth.getAccessToken(refreshToken, [])) as AccessToken;

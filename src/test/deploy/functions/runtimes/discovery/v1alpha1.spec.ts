@@ -109,7 +109,7 @@ describe("buildFromV1Alpha", () => {
     }); // Top level function keys
 
     describe("Event triggers", () => {
-      const validTrigger: backend.EventTrigger = {
+      const validTrigger: build.EventTrigger = {
         eventType: "google.pubsub.v1.topic.publish",
         eventFilters: { resource: "projects/p/topics/t" },
         retry: true,
@@ -163,7 +163,7 @@ describe("buildFromV1Alpha", () => {
     });
 
     describe("scheduleTriggers", () => {
-      const validTrigger: backend.ScheduleTrigger = {
+      const validTrigger: build.ScheduleTrigger = {
         schedule: "every 5 minutes",
         timeZone: "America/Los_Angeles",
         retryConfig: {
@@ -215,7 +215,7 @@ describe("buildFromV1Alpha", () => {
     });
 
     describe("taskQueueTriggers", () => {
-      const validTrigger: backend.TaskQueueTrigger = {
+      const validTrigger: build.TaskQueueTrigger = {
         rateLimits: {
           maxConcurrentDispatches: 10,
           maxDispatchesPerSecond: 20,
@@ -269,7 +269,7 @@ describe("buildFromV1Alpha", () => {
     });
 
     describe("blockingTriggers", () => {
-      const validTrigger: backend.BlockingTrigger = {
+      const validTrigger: build.BlockingTrigger = {
         eventType: BEFORE_CREATE_EVENT,
         options: {
           accessToken: true,
@@ -666,14 +666,7 @@ describe("buildFromV1Alpha", () => {
     });
 
     it("copies event triggers", () => {
-      const eventTrigger: backend.EventTrigger = {
-        eventType: "google.pubsub.topic.v1.publish",
-        eventFilters: { resource: "projects/project/topics/t" },
-        region: "us-central1",
-        serviceAccount: "sa@",
-        retry: true,
-      };
-      const newFormatTrigger: build.EventTrigger = {
+      const eventTrigger: build.EventTrigger = {
         eventType: "google.pubsub.topic.v1.publish",
         eventFilters: { resource: "projects/project/topics/t" },
         region: "us-central1",
@@ -692,22 +685,13 @@ describe("buildFromV1Alpha", () => {
 
       const parsed = v1alpha1.buildFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME);
       const expected: build.Build = build.of({
-        id: { ...DEFAULTED_ENDPOINT, eventTrigger: newFormatTrigger },
+        id: { ...DEFAULTED_ENDPOINT, eventTrigger: eventTrigger },
       });
       expect(parsed).to.deep.equal(expected);
     });
 
     it("copies event triggers with optional values", () => {
-      const eventTrigger: backend.EventTrigger = {
-        eventType: "some.event.type",
-        eventFilters: { resource: "my-resource" },
-        eventFilterPathPatterns: { instance: "my-instance" },
-        region: "us-central1",
-        serviceAccount: "sa@",
-        retry: true,
-        channel: "projects/project/locations/region/channels/my-channel",
-      };
-      const newFormatTrigger: build.EventTrigger = {
+      const eventTrigger: build.EventTrigger = {
         eventType: "some.event.type",
         eventFilters: { resource: "my-resource" },
         eventFilterPathPatterns: { instance: "my-instance" },
@@ -728,7 +712,7 @@ describe("buildFromV1Alpha", () => {
 
       const parsed = v1alpha1.buildFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME);
       const expected: build.Build = build.of({
-        id: { ...DEFAULTED_ENDPOINT, eventTrigger: newFormatTrigger },
+        id: { ...DEFAULTED_ENDPOINT, eventTrigger: eventTrigger },
       });
       expect(parsed).to.deep.equal(expected);
     });
@@ -770,7 +754,7 @@ describe("buildFromV1Alpha", () => {
     });
 
     it("copies event triggers with full resource path", () => {
-      const eventTrigger: backend.EventTrigger = {
+      const eventTrigger: build.EventTrigger = {
         eventType: "google.pubsub.topic.v1.publish",
         eventFilters: { topic: "my-topic" },
         region: "us-central1",
@@ -801,7 +785,7 @@ describe("buildFromV1Alpha", () => {
     });
 
     it("copies blocking triggers", () => {
-      const blockingTrigger: backend.BlockingTrigger = {
+      const blockingTrigger: build.BlockingTrigger = {
         eventType: BEFORE_CREATE_EVENT,
         options: {
           accessToken: true,
@@ -825,7 +809,7 @@ describe("buildFromV1Alpha", () => {
     });
 
     it("copies blocking triggers without options", () => {
-      const blockingTrigger: backend.BlockingTrigger = {
+      const blockingTrigger: build.BlockingTrigger = {
         eventType: BEFORE_CREATE_EVENT,
       };
       const yaml: v1alpha1.WireManifest = {

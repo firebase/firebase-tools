@@ -1,4 +1,4 @@
-import { bold, yellow } from "cli-color";
+import { bold, yellow } from "colorette";
 
 import { Channel, createChannel, addAuthDomains, normalizeName } from "../hosting/api";
 import { Command } from "../command";

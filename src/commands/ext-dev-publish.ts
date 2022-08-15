@@ -1,4 +1,4 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const { marked } = require("marked");
 import TerminalRenderer = require("marked-terminal");
@@ -21,6 +21,7 @@ marked.setOptions({
  */
 export const command = new Command("ext:dev:publish <extensionRef>")
   .description(`publish a new version of an extension`)
+  .option(`-s, --stage <stage>`, `release stage (supports "rc", "alpha", "beta", and "stable")`)
   .withForce()
   .help(
     "if you have not previously published a version of this extension, this will " +
@@ -51,6 +52,7 @@ export const command = new Command("ext:dev:publish <extensionRef>")
       rootDirectory: extensionYamlDirectory,
       nonInteractive: options.nonInteractive,
       force: options.force,
+      stage: options.stage ?? "stable",
     });
     if (res) {
       utils.logLabeledBullet(logPrefix, marked(`[Install Link](${consoleInstallLink(res.ref)})`));

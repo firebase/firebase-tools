@@ -349,11 +349,7 @@ export function addResourcesToBuild(
   };
   proto.renameIfPresent(endpoint, annotation, "serviceAccount", "serviceAccountEmail");
   if (annotation.vpcConnector != null) {
-    let maybeId = annotation.vpcConnector;
-    if (maybeId && !maybeId.includes("/")) {
-      maybeId = `projects/${projectId}/locations/$REGION/connectors/${maybeId}`;
-    }
-    endpoint.vpc = { connector: maybeId };
+    endpoint.vpc = { connector: annotation.vpcConnector };
     proto.renameIfPresent(endpoint.vpc, annotation, "egressSettings", "vpcConnectorEgressSettings");
   }
   proto.copyIfPresent(

@@ -420,6 +420,9 @@ export function toBackend(
         nullsafeVisitor((cpu) => (cpu === "gcf_gen1" ? cpu : r.resolveInt(cpu)))
       );
       if (bdEndpoint.vpc) {
+        if (bdEndpoint.vpc.connector && !bdEndpoint.vpc.connector.includes("/")) {
+          bdEndpoint.vpc.connector = `projects/${bdEndpoint.project}/locations/${region}/connectors/${bdEndpoint.vpc.connector}`;
+        }
         bkEndpoint.vpc = { connector: params.resolveString(bdEndpoint.vpc.connector, paramValues) };
         proto.copyIfPresent(bkEndpoint.vpc, bdEndpoint.vpc, "egressSettings");
       } else if (bdEndpoint.vpc === null) {

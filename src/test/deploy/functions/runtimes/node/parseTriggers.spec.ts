@@ -368,6 +368,38 @@ describe("addResourcesToBuild", () => {
     await expect(convertedBackend).to.eventually.deep.equal(expectedBackend);
   });
 
+  it("should expand vpc connector in w/ shorthand form", async () => {
+    const trigger: parseTriggers.TriggerAnnotation = {
+      ...BASIC_TRIGGER,
+      httpsTrigger: {},
+      vpcConnector: "hello-vpc",
+    };
+
+    const result = build.empty();
+    parseTriggers.addResourcesToBuild("project", "nodejs16", trigger, result);
+
+    const expected: build.Build = build.of({
+      func: {
+        ...BASIC_ENDPOINT,
+        httpsTrigger: {},
+        vpc: {
+          connector: "hello-vpc",
+        },
+      },
+    });
+    expect(result).to.deep.equal(expected);
+
+    const expectedBackend: backend.Backend = backend.of({
+      ...BASIC_BACKEND_ENDPOINT,
+      httpsTrigger: {},
+      vpc: {
+        connector: `projects/project/locations/${api.functionsDefaultRegion}/connectors/hello-vpc`,
+      },
+    });
+    const convertedBackend = resolveBackend(expected);
+    await expect(convertedBackend).to.eventually.deep.equal(expectedBackend);
+  });
+
   it("should preserve empty vpc connector setting, yielding a build reversibly equivalent to the corresponding backend", async () => {
     const trigger: parseTriggers.TriggerAnnotation = {
       ...BASIC_TRIGGER,
@@ -703,6 +735,27 @@ describe("addResourcesToBackend", () => {
         },
       ],
     };
+
+    expect(result).to.deep.equal(expected);
+  });
+
+  it("should expand vpc connector setting to full resource name", () => {
+    const trigger: parseTriggers.TriggerAnnotation = {
+      ...BASIC_TRIGGER,
+      httpsTrigger: {},
+      vpcConnector: "hello-vpc",
+    };
+
+    const result = backend.empty();
+    parseTriggers.addResourcesToBackend("project", "nodejs16", trigger, result);
+
+    const expected: backend.Backend = backend.of({
+      ...BASIC_ENDPOINT,
+      httpsTrigger: {},
+      vpc: {
+        connector: "projects/project/locations/us-central1/connectors/hello-vpc",
+      },
+    });
 
     expect(result).to.deep.equal(expected);
   });

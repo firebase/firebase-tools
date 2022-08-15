@@ -1,7 +1,7 @@
 import * as fs from "fs-extra";
 import * as os from "os";
 import * as path from "path";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import Table = require("cli-table");
 import * as spawn from "cross-spawn";
 
@@ -90,7 +90,6 @@ export class ExtensionsEmulator implements EmulatorInstance {
   // ensureSourceCode checks the cache for the source code for a given extension version,
   // downloads and builds it if it is not found, then returns the path to that source code.
   private async ensureSourceCode(instance: planner.InstanceSpec): Promise<string> {
-    // TODO(b/213335255): Handle local extensions.
     if (instance.localPath) {
       if (!this.hasValidSource({ path: instance.localPath, extTarget: instance.localPath })) {
         throw new FirebaseError(
@@ -156,7 +155,7 @@ export class ExtensionsEmulator implements EmulatorInstance {
     for (const requiredFile of requiredFiles) {
       const f = path.join(args.path, requiredFile);
       if (!fs.existsSync(f)) {
-        EmulatorLogger.forExtension({ ref: args.extTarget }).logLabeled(
+        this.logger.logLabeled(
           "BULLET",
           "extensions",
           `Detected invalid source code for ${args.extTarget}, expected to find ${f}`
@@ -164,7 +163,7 @@ export class ExtensionsEmulator implements EmulatorInstance {
         return false;
       }
     }
-
+    this.logger.logLabeled("DEBUG", "extensions", `Source code valid for ${args.extTarget}`);
     return true;
   }
 
@@ -259,6 +258,7 @@ export class ExtensionsEmulator implements EmulatorInstance {
       STORAGE_BUCKET: `${projectId}.appspot.com`,
       ALLOWED_EVENT_TYPES: instance.allowedEventTypes ? instance.allowedEventTypes.join(",") : "",
       EVENTARC_CHANNEL: instance.eventarcChannel ?? "",
+      EVENTARC_CLOUD_EVENT_SOURCE: `projects/${projectId}/instances/${instance.instanceId}`,
     };
   }
 
@@ -283,7 +283,7 @@ export class ExtensionsEmulator implements EmulatorInstance {
           apiToWarn.apiName,
           apiToWarn.instanceIds,
           apiToWarn.enabled ? "Yes" : "No",
-          apiToWarn.enabled ? "" : clc.bold.underline(enablementUri),
+          apiToWarn.enabled ? "" : clc.bold(clc.underline(enablementUri)),
         ]);
       }
       if (Constants.isDemoProject(this.args.projectId)) {

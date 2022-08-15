@@ -3,7 +3,7 @@
 import { FirebaseConfig } from "./firebaseConfig";
 
 import * as _ from "lodash";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as fs from "fs-extra";
 import * as path from "path";
 const cjson = require("cjson");

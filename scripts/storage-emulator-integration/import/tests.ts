@@ -36,6 +36,16 @@ describe("Import Emulator Data", () => {
       .expect(200);
   });
 
+  it("imports directory that is missing blobs and metadata directories", async function (this) {
+    this.timeout(TEST_SETUP_TIMEOUT);
+    await test.startEmulators([
+      "--only",
+      Emulators.STORAGE,
+      "--import",
+      path.join(__dirname, "flattened-emulator-data-missing-blobs-and-metadata"),
+    ]);
+  });
+
   it("stores only the files as blobs when importing emulator data", async function (this) {
     this.timeout(TEST_SETUP_TIMEOUT);
     const exportedData = createTmpDir("exported-emulator-data");
