@@ -12,6 +12,31 @@ import { getProjectDefaultAccount } from "../auth";
 import { formatHost } from "../emulator/functionsEmulatorShared";
 import { Constants } from "../emulator/constants";
 import { spawnSync } from "child_process";
+import { existsSync } from "fs";
+import { readFile } from "fs/promises";
+
+export enum WebFramework {
+  NextJS = 'next.js',
+  ExpressCustom = 'express',
+  Nuxt = 'nuxt',
+  Angular = 'angular',
+}
+
+// TODO mix in the discovery from web frameworks
+export const discover = async (dir: string) => {
+  const fileExists = (...files: string[]) => files.some(file => existsSync(join(dir, file)));
+  if (!existsSync(dir) || !fileExists('package.json')) return undefined;
+  const packageJsonBuffer = await readFile(join(dir, 'package.json'));
+  const packageJson = JSON.parse(packageJsonBuffer.toString());
+  if (packageJson.directories?.serve) return { framework: WebFramework.ExpressCustom };
+  if (fileExists('next.config.js')) return { framework: WebFramework.NextJS };
+  // TODO breakout nuxt 2 vs 3
+  if (fileExists('nuxt.config.js', 'nuxt.config.ts')) return { framework: WebFramework.Nuxt };
+  if (fileExists('angular.json')) return { framework: WebFramework.Angular };
+  // TODO if dep Next.js
+  console.warn("We can't detirmine the web framework in use. TODO link");
+  return undefined;
+};
 
 export const shortSiteName = (site?: Site) => site?.name && site.name.split("/").pop();
 
