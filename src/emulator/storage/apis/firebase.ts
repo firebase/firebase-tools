@@ -361,6 +361,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         storedMetadata = await storageLayer.uploadObject(upload);
       } catch (err) {
         if (err instanceof ForbiddenError) {
+          res.header("x-goog-upload-status", "final");
           return res.status(403).json({
             error: {
               code: 403,
