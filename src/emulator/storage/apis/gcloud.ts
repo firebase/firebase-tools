@@ -25,6 +25,53 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
   // Use Admin StorageLayer to ensure Firebase Rules validation is skipped.
   const { adminStorageLayer, uploadService } = emulator;
 
+  // Debug statements
+  if (process.env.STORAGE_EMULATOR_DEBUG) {
+    gcloudStorageAPI.use((req, res, next) => {
+      console.log("--------------INCOMING REQUEST--------------");
+      console.log(`${req.method.toUpperCase()} ${req.path}`);
+      console.log("-- query:");
+      console.log(JSON.stringify(req.query, undefined, 2));
+      console.log("-- headers:");
+      console.log(JSON.stringify(req.headers, undefined, 2));
+      console.log("-- body:");
+
+      if (req.body instanceof Buffer) {
+        console.log(`Buffer of ${req.body.length}`);
+      } else if (req.body) {
+        console.log(req.body);
+      } else {
+        console.log("Empty body (could be stream)");
+      }
+
+      const resJson = res.json.bind(res);
+      res.json = (...args: any[]) => {
+        console.log("-- response:");
+        args.forEach((data) => console.log(JSON.stringify(data, undefined, 2)));
+
+        return resJson.call(res, ...args);
+      };
+
+      const resSendStatus = res.sendStatus.bind(res);
+      res.sendStatus = (status) => {
+        console.log("-- response status:");
+        console.log(status);
+
+        return resSendStatus.call(res, status);
+      };
+
+      const resStatus = res.status.bind(res);
+      res.status = (status) => {
+        console.log("-- response status:");
+        console.log(status);
+
+        return resStatus.call(res, status);
+      };
+
+      next();
+    });
+  }
+
   // Automatically create a bucket for any route which uses a bucket
   gcloudStorageAPI.use(/.*\/b\/(.+?)\/.*/, (req, res, next) => {
     adminStorageLayer.createBucket(req.params[0]);
