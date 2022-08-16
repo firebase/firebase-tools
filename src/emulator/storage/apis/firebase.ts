@@ -109,8 +109,8 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       throw err;
     }
 
-    if (!metadata!.downloadTokens.length) {
-      metadata!.addDownloadToken();
+    if (metadata.downloadTokens.length === 0) {
+      metadata.addDownloadToken();
     }
 
     // Object data request
@@ -217,7 +217,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       }
       metadata.addDownloadToken(/* shouldTrigger = */ false);
       if (!metadata.contentDisposition) {
-        metadata.update({ contentDisposition: "inline" }, /* shouldTrigger = */ false);
+        metadata.contentDisposition = "inline";
       }
       return res.status(200).json(new OutgoingFirebaseMetadata(metadata));
     }
