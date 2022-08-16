@@ -180,7 +180,6 @@ describe("Firebase Storage endpoint conformance tests", () => {
         const testFileName = "disallowSize0";
         const uploadURL = await supertest(firebaseHost)
           .post(`/v0/b/${storageBucket}/o/${testFileName}?uploadType=resumable`)
-          .set(authHeader)
           .set({
             "X-Goog-Upload-Protocol": "resumable",
             "X-Goog-Upload-Command": "start",
