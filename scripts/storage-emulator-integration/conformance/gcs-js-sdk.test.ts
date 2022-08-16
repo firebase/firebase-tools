@@ -780,7 +780,7 @@ describe("GCS Javascript SDK conformance tests", () => {
       it("should return generated metadata for new upload", async () => {
         const fileName = "test_file";
         await testBucket.upload(emptyFilePath, { destination: fileName });
-        
+
         const [metadata] = await testBucket.file(fileName).getMetadata();
 
         expect(Object.keys(metadata)).to.have.same.members([
