@@ -25,6 +25,53 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
   // Use Admin StorageLayer to ensure Firebase Rules validation is skipped.
   const { adminStorageLayer, uploadService } = emulator;
 
+  // Debug statements
+  if (process.env.STORAGE_EMULATOR_DEBUG) {
+    gcloudStorageAPI.use((req, res, next) => {
+      console.log("--------------INCOMING REQUEST--------------");
+      console.log(`${req.method.toUpperCase()} ${req.path}`);
+      console.log("-- query:");
+      console.log(JSON.stringify(req.query, undefined, 2));
+      console.log("-- headers:");
+      console.log(JSON.stringify(req.headers, undefined, 2));
+      console.log("-- body:");
+
+      if (req.body instanceof Buffer) {
+        console.log(`Buffer of ${req.body.length}`);
+      } else if (req.body) {
+        console.log(req.body);
+      } else {
+        console.log("Empty body (could be stream)");
+      }
+
+      const resJson = res.json.bind(res);
+      res.json = (...args: any[]) => {
+        console.log("-- response:");
+        args.forEach((data) => console.log(JSON.stringify(data, undefined, 2)));
+
+        return resJson.call(res, ...args);
+      };
+
+      const resSendStatus = res.sendStatus.bind(res);
+      res.sendStatus = (status) => {
+        console.log("-- response status:");
+        console.log(status);
+
+        return resSendStatus.call(res, status);
+      };
+
+      const resStatus = res.status.bind(res);
+      res.status = (status) => {
+        console.log("-- response status:");
+        console.log(status);
+
+        return resStatus.call(res, status);
+      };
+
+      next();
+    });
+  }
+
   // Automatically create a bucket for any route which uses a bucket
   gcloudStorageAPI.use(/.*\/b\/(.+?)\/.*/, (req, res, next) => {
     adminStorageLayer.createBucket(req.params[0]);
@@ -39,7 +86,11 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
   });
 
   gcloudStorageAPI.get(
-    ["/b/:bucketId/o/:objectId", "/download/storage/v1/b/:bucketId/o/:objectId"],
+    [
+      "/b/:bucketId/o/:objectId",
+      "/download/storage/v1/b/:bucketId/o/:objectId",
+      "/storage/v1/b/:bucketId/o/:objectId",
+    ],
     async (req, res) => {
       let getObjectResponse: GetObjectResponse;
       try {
@@ -103,7 +154,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
       throw err;
     }
     return res.status(200).json({
-      kind: "#storage/objects",
+      kind: "storage#objects",
       nextPageToken: listResponse.nextPageToken,
       prefixes: listResponse.prefixes,
       items: listResponse.items?.map((item) => new CloudStorageObjectMetadata(item)),
@@ -200,11 +251,10 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
   });
 
   gcloudStorageAPI.post("/upload/storage/v1/b/:bucketId/o", async (req, res) => {
-    const contentTypeHeader = req.header("content-type") || req.header("x-upload-content-type");
-    if (!contentTypeHeader) {
-      return res.sendStatus(400);
-    }
-    if (req.query.uploadType === "resumable") {
+    const uploadType = req.query.uploadType || req.header("X-Goog-Upload-Protocol");
+
+    // Resumable upload protocol.
+    if (uploadType === "resumable") {
       const emulatorInfo = EmulatorRegistry.getInfo(Emulators.STORAGE);
       if (emulatorInfo === undefined) {
         return res.sendStatus(500);
@@ -229,50 +279,73 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
       return res.header("location", uploadUrl.toString()).sendStatus(200);
     }
 
-    // Multipart upload
-    let metadataRaw: string;
-    let dataRaw: Buffer;
-    try {
-      ({ metadataRaw, dataRaw } = parseObjectUploadMultipartRequest(
-        contentTypeHeader!,
-        await reqBodyToBuffer(req)
-      ));
-    } catch (err) {
-      if (err instanceof Error) {
-        return res.status(400).json({
-          error: {
-            code: 400,
-            message: err.message,
-          },
-        });
+    async function finalizeOneShotUpload(upload: Upload) {
+      let metadata: StoredFileMetadata;
+      try {
+        metadata = await adminStorageLayer.uploadObject(upload);
+      } catch (err) {
+        if (err instanceof ForbiddenError) {
+          return res.sendStatus(403);
+        }
+        throw err;
       }
-      throw err;
+      return res.status(200).json(new CloudStorageObjectMetadata(metadata));
     }
 
-    const name = getIncomingFileNameFromRequest(req.query, JSON.parse(metadataRaw));
-    if (name === undefined) {
+    // Multipart upload protocol.
+    if (uploadType === "multipart") {
+      const contentTypeHeader = req.header("content-type") || req.header("x-upload-content-type");
+      if (!contentTypeHeader) {
+        return res.sendStatus(400);
+      }
+      let metadataRaw: string;
+      let dataRaw: Buffer;
+      try {
+        ({ metadataRaw, dataRaw } = parseObjectUploadMultipartRequest(
+          contentTypeHeader!,
+          await reqBodyToBuffer(req)
+        ));
+      } catch (err) {
+        if (err instanceof Error) {
+          return res.status(400).json({
+            error: {
+              code: 400,
+              message: err.message,
+            },
+          });
+        }
+        throw err;
+      }
+
+      const name = getIncomingFileNameFromRequest(req.query, JSON.parse(metadataRaw));
+      if (name === undefined) {
+        res.sendStatus(400);
+        return;
+      }
+
+      const upload = uploadService.multipartUpload({
+        bucketId: req.params.bucketId,
+        objectId: name,
+        metadataRaw: metadataRaw,
+        dataRaw: dataRaw,
+        authorization: req.header("authorization"),
+      });
+      return await finalizeOneShotUpload(upload);
+    }
+
+    // Default to media (data-only) upload protocol.
+    const name = req.query.name;
+    if (!name) {
       res.sendStatus(400);
-      return;
     }
 
-    const upload = uploadService.multipartUpload({
+    const upload = uploadService.mediaUpload({
       bucketId: req.params.bucketId,
-      objectId: name,
-      metadataRaw: metadataRaw,
-      dataRaw: dataRaw,
+      objectId: name!.toString(),
+      dataRaw: await reqBodyToBuffer(req),
       authorization: req.header("authorization"),
     });
-    let metadata: StoredFileMetadata;
-    try {
-      metadata = await adminStorageLayer.uploadObject(upload);
-    } catch (err) {
-      if (err instanceof ForbiddenError) {
-        return res.sendStatus(403);
-      }
-      throw err;
-    }
-
-    return res.status(200).json(new CloudStorageObjectMetadata(metadata));
+    return await finalizeOneShotUpload(upload);
   });
 
   gcloudStorageAPI.get("/:bucketId/:objectId(**)", async (req, res) => {
@@ -365,11 +438,11 @@ function sendFileBytes(md: StoredFileMetadata, data: Buffer, req: Request, res: 
   }
 
   res.setHeader("Accept-Ranges", "bytes");
-  res.setHeader("Content-Type", md.contentType);
-  res.setHeader("Content-Disposition", md.contentDisposition);
-  res.setHeader("Content-Encoding", isGZipped ? "identity" : md.contentEncoding);
+  res.setHeader("Content-Type", md.contentType || "application/octet-stream");
+  res.setHeader("Content-Disposition", md.contentDisposition || "attachment");
+  res.setHeader("Content-Encoding", isGZipped ? "identity" : md.contentEncoding || "");
   res.setHeader("ETag", md.etag);
-  res.setHeader("Cache-Control", md.cacheControl);
+  res.setHeader("Cache-Control", md.cacheControl || "");
   res.setHeader("x-goog-generation", `${md.generation}`);
   res.setHeader("x-goog-metadatageneration", `${md.metageneration}`);
   res.setHeader("x-goog-storage-class", md.storageClass);

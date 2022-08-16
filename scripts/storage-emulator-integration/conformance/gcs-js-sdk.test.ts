@@ -19,6 +19,7 @@ describe("GCS Javascript SDK conformance tests", () => {
   // Temp directory to store generated files.
   const tmpDir = getTmpDir();
   const smallFilePath: string = createRandomFile("small_file", SMALL_FILE_SIZE, tmpDir);
+  const emptyFilePath: string = createRandomFile("empty_file", 0, tmpDir);
 
   const storageBucket = TEST_ENV.appConfig.storageBucket;
   const storageHost = TEST_ENV.storageHost;
@@ -571,6 +572,7 @@ describe("GCS Javascript SDK conformance tests", () => {
       it("should copy the file preserving the original metadata", async () => {
         const [, source] = await testBucket.upload(smallFilePath, {
           metadata: {
+            contentType: "image/jpg",
             cacheControl: "private,no-store",
             metadata: {
               hello: "world",
@@ -585,42 +587,9 @@ describe("GCS Javascript SDK conformance tests", () => {
 
         expect(metadata).to.have.all.keys(source).and.deep.include({
           bucket: source.bucket,
-          contentType: source.contentType,
           crc32c: source.crc32c,
           cacheControl: source.cacheControl,
           metadata: source.metadata,
-        });
-
-        const metadataTypes: { [s: string]: string } = {};
-
-        for (const key in metadata) {
-          if (metadata[key]) {
-            metadataTypes[key] = typeof metadata[key];
-          }
-        }
-
-        expect(metadataTypes).to.deep.equal({
-          bucket: "string",
-          contentType: "string",
-          contentDisposition: "string",
-          contentEncoding: "string",
-          generation: "string",
-          md5Hash: "string",
-          crc32c: "string",
-          cacheControl: "string",
-          etag: "string",
-          metageneration: "string",
-          storageClass: "string",
-          name: "string",
-          size: "string",
-          timeCreated: "string",
-          updated: "string",
-          id: "string",
-          kind: "string",
-          mediaLink: "string",
-          selfLink: "string",
-          timeStorageClassUpdated: "string",
-          metadata: "object",
         });
       });
 
@@ -650,7 +619,6 @@ describe("GCS Javascript SDK conformance tests", () => {
 
         expect(metadata1).to.deep.include({
           bucket: source.bucket,
-          contentType: source.contentType,
           crc32c: source.crc32c,
           metadata,
           cacheControl,
@@ -680,7 +648,6 @@ describe("GCS Javascript SDK conformance tests", () => {
 
         expect(metadata1).to.deep.include({
           bucket: source.bucket,
-          contentType: source.contentType,
           crc32c: source.crc32c,
           metadata: {
             foo: "bar",
@@ -810,11 +777,9 @@ describe("GCS Javascript SDK conformance tests", () => {
       });
 
       it("should return generated metadata for new upload", async () => {
-        await testBucket.upload(smallFilePath);
-        const [metadata] = await testBucket
-          .file(smallFilePath.split("/").slice(-1)[0])
-          .getMetadata();
-
+        const fileName = "test_file";
+        await testBucket.upload(emptyFilePath, { destination: fileName });
+        const [metadata] = await testBucket.file(fileName).getMetadata();
         const metadataTypes: { [s: string]: string } = {};
 
         for (const key in metadata) {
@@ -823,17 +788,12 @@ describe("GCS Javascript SDK conformance tests", () => {
           }
         }
 
-        expect(metadata.name).to.equal("small_file");
-        expect(metadata.contentType).to.equal("application/octet-stream");
+        expect(metadata.name).to.equal(fileName);
         expect(metadataTypes).to.deep.equal({
           bucket: "string",
-          contentDisposition: "string",
-          contentEncoding: "string",
-          contentType: "string",
           generation: "string",
           md5Hash: "string",
           crc32c: "string",
-          cacheControl: "string",
           etag: "string",
           metageneration: "string",
           storageClass: "string",
@@ -909,13 +869,10 @@ describe("GCS Javascript SDK conformance tests", () => {
         expect(metadata.contentType).to.equal("very/fake");
         expect(metadataTypes).to.deep.equal({
           bucket: "string",
-          contentDisposition: "string",
-          contentEncoding: "string",
           contentType: "string",
           generation: "string",
           md5Hash: "string",
           crc32c: "string",
-          cacheControl: "string",
           etag: "string",
           metageneration: "string",
           storageClass: "string",

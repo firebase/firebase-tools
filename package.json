@@ -21,8 +21,6 @@
     "lint:quiet": "npm run lint:ts -- --quiet && npm run lint:other",
     "lint:ts": "eslint --config .eslintrc.js --ext .ts,.js .",
     "mocha": "nyc mocha 'src/test/**/*.{ts,js}'",
-    "mocha:storage-spec": "mocha 'src/test/emulators/storage/*.spec.ts'",
-    "mocha:storage-emulator-integration": "mocha 'scripts/storage-emulator-integration/tests.ts'",
     "prepare": "npm run clean && npm run build -- --build tsconfig.publish.json",
     "test": "npm run lint:quiet && npm run test:compile && npm run mocha",
     "test:client-integration": "bash ./scripts/client-integration-tests/run.sh",

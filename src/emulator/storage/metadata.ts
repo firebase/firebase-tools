@@ -23,16 +23,16 @@ export class StoredFileMetadata {
   bucket: string;
   generation: number;
   metageneration: number;
-  contentType: string;
+  contentType?: string;
   timeCreated: Date;
   updated: Date;
   storageClass: string;
   size: number;
   md5Hash: string;
-  contentEncoding: string;
-  contentDisposition: string;
+  contentEncoding?: string;
+  contentDisposition?: string;
   contentLanguage?: string;
-  cacheControl: string;
+  cacheControl?: string;
   customTime?: Date;
   crc32c: string;
   etag: string;
@@ -43,7 +43,6 @@ export class StoredFileMetadata {
     opts: Partial<SerializedFileMetadata> & {
       name: string;
       bucket: string;
-      contentType: string;
     },
     private _cloudFunctions: StorageCloudFunctions,
     bytes?: Buffer,
@@ -52,18 +51,17 @@ export class StoredFileMetadata {
     // Required fields
     this.name = opts.name;
     this.bucket = opts.bucket;
-    this.contentType = opts.contentType;
 
     // Optional fields
     this.metageneration = opts.metageneration || 1;
     this.generation = opts.generation || Date.now();
+    this.contentType = opts.contentType;
     this.storageClass = opts.storageClass || "STANDARD";
-    this.contentDisposition = opts.contentDisposition || "inline";
-    // Use same default value GCS uses (see https://cloud.google.com/storage/docs/metadata#caching_data)
-    this.cacheControl = opts.cacheControl || "public, max-age=3600";
+    this.contentDisposition = opts.contentDisposition;
+    this.cacheControl = opts.cacheControl;
     this.contentLanguage = opts.contentLanguage;
     this.customTime = opts.customTime;
-    this.contentEncoding = opts.contentEncoding || "identity";
+    this.contentEncoding = opts.contentEncoding;
     this.customMetadata = opts.customMetadata;
     this.downloadTokens = opts.downloadTokens || [];
     if (opts.etag) {
@@ -280,9 +278,9 @@ export interface RulesResourceMetadata {
   md5Hash: string;
   crc32c: string;
   etag: string;
-  contentDisposition: string;
-  contentEncoding: string;
-  contentType: string;
+  contentDisposition?: string;
+  contentEncoding?: string;
+  contentType?: string;
   metadata: { [s: string]: string };
 }
 
@@ -301,14 +299,14 @@ export class OutgoingFirebaseMetadata {
   bucket: string;
   generation: string;
   metageneration: string;
-  contentType: string;
+  contentType?: string;
   timeCreated: string;
   updated: string;
   storageClass: string;
   size: string;
   md5Hash: string;
-  contentEncoding: string;
-  contentDisposition: string;
+  contentEncoding?: string;
+  contentDisposition?: string;
   contentLanguage?: string;
   cacheControl?: string;
   crc32c: string;
@@ -330,7 +328,7 @@ export class OutgoingFirebaseMetadata {
     this.crc32c = metadata.crc32c;
     this.etag = metadata.etag;
     this.downloadTokens = metadata.downloadTokens.join(",");
-    this.contentEncoding = metadata.contentEncoding;
+    this.contentEncoding = metadata.contentEncoding || "identity";
     this.contentDisposition = metadata.contentDisposition;
     this.metadata = metadata.customMetadata;
     this.contentLanguage = metadata.contentLanguage;
@@ -339,7 +337,7 @@ export class OutgoingFirebaseMetadata {
 }
 
 export class CloudStorageBucketMetadata {
-  kind = "#storage/bucket";
+  kind = "storage#bucket";
   selfLink: string;
   id: string;
   name: string;
@@ -385,12 +383,12 @@ export class CloudStorageObjectAccessControlMetadata {
 }
 
 export class CloudStorageObjectMetadata {
-  kind = "#storage#object";
+  kind = "storage#object";
   name: string;
   bucket: string;
   generation: string;
   metageneration: string;
-  contentType: string;
+  contentType?: string;
   timeCreated: string;
   updated: string;
   storageClass: string;
@@ -400,7 +398,7 @@ export class CloudStorageObjectMetadata {
   etag: string;
   metadata?: { [s: string]: string };
   contentLanguage?: string;
-  contentDisposition: string;
+  contentDisposition?: string;
   cacheControl?: string;
   contentEncoding?: string;
   customTime?: string;
