@@ -232,8 +232,7 @@ describe("Firebase Storage endpoint conformance tests", () => {
             "X-Goog-Upload-Protocol": "resumable",
             "X-Goog-Upload-Command": "finalize",
           })
-          .expect(200)
-          .then((res) => res.header["x-goog-upload-status"]);
+          .expect(200);
       });
 
       it("should return 400 both times when finalize is called on cancelled upload", async () => {
@@ -261,8 +260,7 @@ describe("Firebase Storage endpoint conformance tests", () => {
             "X-Goog-Upload-Protocol": "resumable",
             "X-Goog-Upload-Command": "finalize",
           })
-          .expect(400)
-          .then((res) => res.header["x-goog-upload-status"]);
+          .expect(400);
 
         await supertest(firebaseHost)
           .put(uploadURL.pathname + uploadURL.search)
@@ -270,8 +268,7 @@ describe("Firebase Storage endpoint conformance tests", () => {
             "X-Goog-Upload-Protocol": "resumable",
             "X-Goog-Upload-Command": "finalize",
           })
-          .expect(400)
-          .then((res) => res.header["x-goog-upload-status"]);
+          .expect(400);
       });
     });
 
