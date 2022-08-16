@@ -115,7 +115,8 @@ export async function prepare(
     const wantBackend: backend.Backend = await build.resolveBackend(
       wantBuild,
       userEnvOpt,
-      userEnvs
+      userEnvs,
+      options.nonInteractive
     );
     wantBackend.environmentVariables = envs;
     for (const endpoint of backend.allEndpoints(wantBackend)) {

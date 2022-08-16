@@ -1,6 +1,6 @@
 {
   "name": "firebase-tools",
-  "version": "11.4.2",
+  "version": "11.7.0",
   "description": "Command-Line Interface for Firebase",
   "main": "./lib/index.js",
   "bin": {
@@ -21,6 +21,8 @@
     "lint:quiet": "npm run lint:ts -- --quiet && npm run lint:other",
     "lint:ts": "eslint --config .eslintrc.js --ext .ts,.js .",
     "mocha": "nyc mocha 'src/test/**/*.{ts,js}'",
+    "mocha:storage-spec": "mocha 'src/test/emulators/storage/*.spec.ts'",
+    "mocha:storage-emulator-integration": "mocha 'scripts/storage-emulator-integration/tests.ts'",
     "prepare": "npm run clean && npm run build -- --build tsconfig.publish.json",
     "test": "npm run lint:quiet && npm run test:compile && npm run mocha",
     "test:client-integration": "bash ./scripts/client-integration-tests/run.sh",
@@ -112,6 +114,7 @@
     "fs-extra": "^10.1.0",
     "glob": "^7.1.2",
     "google-auth-library": "^7.11.0",
+    "googleapis": "^105.0.0",
     "inquirer": "^8.2.0",
     "js-yaml": "^3.13.1",
     "jsonwebtoken": "^8.5.1",

@@ -52,6 +52,8 @@ export interface EventSchedule {
 export interface EventTrigger {
   resource: string;
   eventType: string;
+  channel?: string;
+  eventFilters?: Record<string, string>;
   // Deprecated
   service?: string;
 }
@@ -171,15 +173,18 @@ export function emulatedFunctionsFromEndpoints(
         };
       } else {
         // Only pubsub and storage events are supported for gcfv2.
+        // Custom events require a channel.
         const { resource, topic, bucket } = endpoint.eventTrigger.eventFilters as any;
         const eventResource = resource || topic || bucket;
-        if (!eventResource) {
+        if (!eventResource && !eventTrigger.channel) {
           // Unsupported event type for GCFv2
           continue;
         }
         def.eventTrigger = {
           eventType: eventTrigger.eventType,
           resource: eventResource,
+          channel: eventTrigger.channel,
+          eventFilters: eventTrigger.eventFilters,
         };
       }
     } else if (backend.isScheduleTriggered(endpoint)) {
@@ -287,6 +292,9 @@ export function getTemporarySocketPath(): string {
  */
 export function getFunctionService(def: ParsedTriggerDefinition): string {
   if (def.eventTrigger) {
+    if (def.eventTrigger.channel) {
+      return Constants.SERVICE_EVENTARC;
+    }
     return def.eventTrigger.service ?? getServiceFromEventType(def.eventTrigger.eventType);
   }
   if (def.blockingTrigger) {

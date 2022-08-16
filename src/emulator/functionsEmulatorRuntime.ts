@@ -1043,25 +1043,20 @@ async function initializeRuntime(): Promise<EmulatedTriggerMap | undefined> {
   await initializeFirebaseAdminStubs();
 }
 
-async function loadTriggers(serializedFunctionTrigger?: string): Promise<any> {
+async function loadTriggers(): Promise<any> {
   let triggerModule;
-  if (serializedFunctionTrigger) {
-    /* tslint:disable:no-eval */
-    triggerModule = eval(serializedFunctionTrigger)();
-  } else {
-    try {
-      triggerModule = require(process.cwd());
-    } catch (err: any) {
-      if (err.code !== "ERR_REQUIRE_ESM") {
-        // Try to run diagnostics to see what could've gone wrong before rethrowing the error.
-        await moduleResolutionDetective(err);
-        throw err;
-      }
-      const modulePath = require.resolve(process.cwd());
-      // Resolve module path to file:// URL. Required for windows support.
-      const moduleURL = pathToFileURL(modulePath).href;
-      triggerModule = await dynamicImport(moduleURL);
+  try {
+    triggerModule = require(process.cwd());
+  } catch (err: any) {
+    if (err.code !== "ERR_REQUIRE_ESM") {
+      // Try to run diagnostics to see what could've gone wrong before rethrowing the error.
+      await moduleResolutionDetective(err);
+      throw err;
     }
+    const modulePath = require.resolve(process.cwd());
+    // Resolve module path to file:// URL. Required for windows support.
+    const moduleURL = pathToFileURL(modulePath).href;
+    triggerModule = await dynamicImport(moduleURL);
   }
   return triggerModule;
 }
@@ -1088,8 +1083,7 @@ async function handleMessage(message: string) {
 
   if (!functionModule) {
     try {
-      const serializedTriggers = runtimeArgs.opts ? runtimeArgs.opts.serializedTriggers : undefined;
-      functionModule = await loadTriggers(serializedTriggers);
+      functionModule = await loadTriggers();
     } catch (e: any) {
       logDebug(e);
       new EmulatorLog(
@@ -1120,13 +1114,7 @@ async function handleMessage(message: string) {
 
   try {
     await invokeTrigger(trigger, runtimeArgs.frb);
-    // If we were passed serialized triggers we have to exit the runtime after,
-    // otherwise we can go IDLE and await another request.
-    if (runtimeArgs.opts && runtimeArgs.opts.serializedTriggers) {
-      await flushAndExit(0);
-    } else {
-      await goIdle();
-    }
+    await goIdle();
   } catch (err: any) {
     new EmulatorLog("FATAL", "runtime-error", err.stack ? err.stack : err).log();
     await flushAndExit(1);

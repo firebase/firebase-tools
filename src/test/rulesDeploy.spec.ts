@@ -128,7 +128,7 @@ describe("RulesDeploy", () => {
       const result = rd.compile();
       await expect(result).to.eventually.be.rejectedWith(
         Error,
-        /Compilation error in .+storage.rules.+:\n\[E\] 0:0 - oopsie/
+        /Compilation error in .*storage.rules.*:\n\[E\] 0:0 - oopsie/
       );
     });
 
@@ -159,7 +159,7 @@ describe("RulesDeploy", () => {
       const result = rd.compile();
       await expect(result).to.eventually.be.rejectedWith(
         Error,
-        /Compilation errors in .+storage.rules.+:\n\[E\] 0:0 - oopsie\n\[E\] 1:1 - daisey/
+        /Compilation errors in .*storage.rules.*:\n\[E\] 0:0 - oopsie\n\[E\] 1:1 - daisey/
       );
     });
 

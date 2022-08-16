@@ -3,6 +3,7 @@ import * as downloadableEmulators from "./downloadableEmulators";
 import { EmulatorRegistry } from "./registry";
 import { FirebaseError } from "../error";
 import { Constants } from "./constants";
+import { emulatorSession } from "../track";
 
 export interface EmulatorUIOptions {
   port: number;
@@ -23,7 +24,7 @@ export class EmulatorUI implements EmulatorInstance {
       );
     }
     const hubInfo = EmulatorRegistry.get(Emulators.HUB)!.getInfo();
-    const { auto_download, host, port, projectId } = this.args;
+    const { auto_download: autoDownload, host, port, projectId } = this.args;
     const env: NodeJS.ProcessEnv = {
       HOST: host.toString(),
       PORT: port.toString(),
@@ -31,7 +32,12 @@ export class EmulatorUI implements EmulatorInstance {
       [Constants.FIREBASE_EMULATOR_HUB]: EmulatorRegistry.getInfoHostString(hubInfo),
     };
 
-    return downloadableEmulators.start(Emulators.UI, { auto_download }, env);
+    const session = emulatorSession();
+    if (session) {
+      env[Constants.FIREBASE_GA_SESSION] = JSON.stringify(session);
+    }
+
+    return downloadableEmulators.start(Emulators.UI, { auto_download: autoDownload }, env);
   }
 
   connect(): Promise<void> {

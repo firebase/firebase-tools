@@ -78,6 +78,7 @@ function startServer(options: any, config: any, port: number, init: TemplateServ
     port: port,
     host: options.host,
     config: config,
+    compression: true,
     cwd: detectProjectRoot(options),
     stack: "strict",
     before: {

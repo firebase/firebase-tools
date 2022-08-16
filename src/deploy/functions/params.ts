@@ -26,7 +26,6 @@ function dependenciesCEL(expr: CEL): string[] {
   while ((match = paramCapture.exec(expr)) != null) {
     deps.push(match[1]);
   }
-  // return /{{ params\.\w+ }}/.exec(expr)?.slice(1) || [];
   return deps;
 }
 
@@ -42,7 +41,7 @@ export function resolveInt(
   if (typeof from === "number") {
     return from;
   }
-  const match = /\A{{ params\.(\w+) }}\z/.exec(from);
+  const match = /{{ params\.(\w+) }}/.exec(from);
   if (!match) {
     throw new FirebaseError("CEL evaluation of expression '" + from + "' not yet supported");
   }
@@ -273,6 +272,7 @@ function resolveDefaultCEL(
  * - the value of a Cloud Secret in the same project with name == param name (not implemented yet), but only if it's a SecretParam
  * - a literal value of the same type already defined in one of the .env files with key == param name
  * - the value returned by interactively prompting the user
+ *   - it is an error to have params that need to be prompted if the CLI is running in non-interactive mode
  *   - the default value of the prompt comes from the SDK via param.default, which may be a literal value or a CEL expression
  *   - if the default CEL expression is not resolvable--it depends on a param whose value is not yet known--we throw an error
  *   - yes, this means that the same set of params may or may not throw depending on the order the SDK provides them to us in
@@ -282,6 +282,7 @@ function resolveDefaultCEL(
   params: Param[],
   projectId: string,
   userEnvs: Record<string, ParamValue>,
+  nonInteractive?: boolean
 ): Promise<Record<string, ParamValue>> {
   const paramValues: Record<string, ParamValue> = {};
 
@@ -328,6 +329,15 @@ function resolveDefaultCEL(
     }
     paramValues[secretParam.name] = value;
   }
+
+  if (nonInteractive && needPrompt.length > 0) {
+    const envNames = outstanding.map((p) => p.name).join(", ");
+    throw new FirebaseError(
+      `In non-interactive mode but have no value for the following environment variables: ${envNames}\n` +
+        "To continue, either run `firebase deploy` with an interactive terminal, or add values to a dotenv file. " +
+        "For information regarding how to use dotenv files, see https://firebase.google.com/docs/functions/config-env"
+    );
+  }
   for (const param of needPrompt) {
     const promptable = param as Exclude<Param, SecretParam>;
     let paramDefault: ParamValue | undefined = promptable.default;
@@ -340,8 +350,6 @@ function resolveDefaultCEL(
       );
     }
     paramValues[param.name] = await promptParam(param, projectId, paramDefault);
-
-    // TODO(vsfan@): Once we have writeUserEnvs in functions/env.ts implemented, call it to persist user-provided params
   }
 
   return paramValues;
@@ -414,6 +422,7 @@ async function getSecretMetadata(
   }
   assertExhaustive(param);
 }
+
 async function promptBooleanParam(param: BooleanParam, resolvedDefault?: boolean): Promise<boolean> {
   if (!param.input) {
     const defaultToText: TextInput<boolean> = { type: "text" };

@@ -1,6 +1,7 @@
 import { EmulatorHub, Locator, GetEmulatorsResponse } from "./hub";
 import { FirebaseError } from "../error";
 import { Client } from "../apiv2";
+import { ExportOptions } from "./hubExport";
 
 export class EmulatorHubClient {
   private locator: Locator | undefined;
@@ -24,9 +25,9 @@ export class EmulatorHubClient {
     return res.body;
   }
 
-  async postExport(path: string): Promise<void> {
+  async postExport(options: ExportOptions): Promise<void> {
     const apiClient = new Client({ urlPrefix: this.origin, auth: false });
-    await apiClient.post(EmulatorHub.PATH_EXPORT, { path });
+    await apiClient.post(EmulatorHub.PATH_EXPORT, options);
   }
 
   get origin(): string {

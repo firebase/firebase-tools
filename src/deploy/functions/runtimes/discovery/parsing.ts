@@ -28,7 +28,13 @@ export type NullSuffix<T> = "?" | "";
 
 // Use "omit" for output only fields. This allows us to fully exhaust keyof T
 // while still recognizing output-only fields
-export type FieldType<T> = `${BaseType<T>}${NullSuffix<T>}` | "omit" | ((t: T) => boolean);
+export type FieldType<T> =
+  | `${BaseType<T>}${NullSuffix<T>}`
+  | "omit"
+  | `Field<string>${NullSuffix<T>}`
+  | `Field<number>${NullSuffix<T>}`
+  | `Field<boolean>${NullSuffix<T>}`
+  | ((t: T) => boolean);
 
 export type Schema<T extends object> = {
   [Key in keyof Required<T>]: FieldType<Required<T>[Key]>;
@@ -50,6 +56,9 @@ export function requireKeys<T extends object>(prefix: string, yaml: T, ...keys: 
 
 /**
  * Asserts that runtime types of the given object matches the type specified in the schema.
+ * If a passthrough function is provided, skips validation if the function returns true on
+ * a given key-value pair, which is useful when dealing with known extra fields at runtime
+ * from the wire format.
  */
 export function assertKeyTypes<T extends object>(
   prefix: string,
@@ -63,6 +72,7 @@ export function assertKeyTypes<T extends object>(
     // I don't know why Object.entries(foo)[0] isn't type of keyof foo...
     const key = keyAsString as keyof T;
     const fullKey = prefix ? `${prefix}.${keyAsString}` : keyAsString;
+
     if (!schema[key] || schema[key] === "omit") {
       throw new FirebaseError(
         `Unexpected key ${fullKey}. You may need to install a newer version of the Firebase CLI.`
@@ -74,6 +84,25 @@ export function assertKeyTypes<T extends object>(
         const friendlyName =
           value === null ? "null" : Array.isArray(value) ? "array" : typeof value;
         throw new FirebaseError(`${friendlyName} ${fullKey} failed validation`);
+      }
+      continue;
+    }
+
+    if (value === null) {
+      if (schemaType.endsWith("?")) {
+        continue;
+      }
+      throw new FirebaseError(`Expected ${fullKey} to be type ${schemaType}; was null`);
+    }
+    if (schemaType.endsWith("?")) {
+      schemaType = schemaType.slice(0, schemaType.length - 1);
+    }
+    if (schemaType.includes("Field")) {
+      const match = /^Field<(\w+)>$/.exec(schemaType);
+      if (match && typeof value !== "string" && typeof value !== match[1]) {
+        throw new FirebaseError(
+          `Expected ${fullKey} to be Field<${match[1]}>; was ${typeof value}`
+        );
       }
       continue;
     }

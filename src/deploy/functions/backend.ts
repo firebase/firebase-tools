@@ -209,8 +209,8 @@ export function memoryToGen1Cpu(memory: MemoryOptions): number {
     2048: 1,
     4096: 2,
     8192: 2,
-    16384: 3,
-    32768: 4,
+    16384: 4,
+    32768: 8,
   }[memory];
 }
 
@@ -228,8 +228,8 @@ export function memoryToGen2Cpu(memory: MemoryOptions): number {
     2048: 1,
     4096: 2,
     8192: 2,
-    16384: 3,
-    32768: 4,
+    16384: 4,
+    32768: 8,
   }[memory];
 }
 
@@ -466,7 +466,7 @@ export function functionName(cloudFunction: TargetIds): string {
 /**
  * The naming pattern used to create a Pub/Sub Topic or Scheduler Job ID for a given scheduled function.
  * This pattern is hard-coded and assumed throughout tooling, both in the Firebase Console and in the CLI.
- * For e.g., we automatically assume a schedule and topic with this name exists when we list funcitons and
+ * For e.g., we automatically assume a schedule and topic with this name exists when we list functions and
  * see a label that it has an attached schedule. This saves us from making extra API calls.
  * DANGER: We use the pattern defined here to deploy and delete schedules,
  * and to display scheduled functions in the Firebase console

@@ -408,7 +408,6 @@ async function promptForRepo(
         "For which GitHub repository would you like to set up a GitHub workflow? (format: user/repository)",
       validate: async (repo: string) => {
         try {
-          // eslint-disable-next-line camelcase
           const { body } = await githubApiClient.get<{ key: string; key_id: string }>(
             `/repos/${repo}/actions/secrets/public-key`,
             {
@@ -520,7 +519,6 @@ async function getGitHubUserDetails(ghAccessToken: any): Promise<Record<string, 
 }
 
 async function getRepoDetails(repo: string, ghAccessToken: string) {
-  // eslint-disable-next-line camelcase
   const { body } = await githubApiClient.get<{ default_branch: string; id: string }>(
     `/repos/${repo}`,
     {

@@ -1,5 +1,5 @@
 import * as _ from "lodash";
-import * as clc from "colorette";
+import { bold } from "colorette";
 import * as fs from "fs-extra";
 
 import * as gcp from "./gcp";
@@ -75,7 +75,7 @@ export class RulesDeploy {
       src = fs.readFileSync(fullPath, "utf8");
     } catch (e: any) {
       logger.debug("[rules read error]", e.stack);
-      throw new FirebaseError("Error reading rules file " + clc.bold(path));
+      throw new FirebaseError(`Error reading rules file ${bold(path)}`);
     }
 
     this.rulesFiles[path] = [{ name: path, content: src }];
@@ -142,10 +142,9 @@ export class RulesDeploy {
       // Try to add the role to the service account
       if (addRole) {
         await addServiceAccountToRoles(projectNumber, saEmail, [CROSS_SERVICE_RULES_ROLE], true);
-        utils.logBullet(
-          `${clc.bold(
-            clc.cyan(RulesetType[this.type] + ":")
-          )} updated service account for cross-service rules...`
+        utils.logLabeledBullet(
+          RulesetType[this.type],
+          "updated service account for cross-service rules..."
         );
       }
     } catch (e: any) {
@@ -177,10 +176,9 @@ export class RulesDeploy {
     const newRulesetsByFilename = new Map<string, Promise<string>>();
     for (const [filename, files] of Object.entries(this.rulesFiles)) {
       if (latestRulesetName && _.isEqual(files, latestRulesetContent)) {
-        utils.logBullet(
-          `${clc.bold(clc.cyan(RulesetType[this.type] + ":"))} latest version of ${clc.bold(
-            filename
-          )} already up to date, skipping upload...`
+        utils.logLabeledBullet(
+          RulesetType[this.type],
+          `latest version of ${bold(filename)} already up to date, skipping upload...`
         );
         this.rulesetNames[filename] = latestRulesetName;
         continue;
@@ -189,11 +187,7 @@ export class RulesDeploy {
         await this.checkStorageRulesIamPermissions(files[0]?.content);
       }
 
-      utils.logBullet(
-        `${clc.bold(clc.cyan(RulesetType[this.type] + ":"))} uploading rules ${clc.bold(
-          filename
-        )}...`
-      );
+      utils.logLabeledBullet(RulesetType[this.type], `uploading rules ${bold(filename)}...`);
       newRulesetsByFilename.set(filename, gcp.rules.createRuleset(this.options.project, files));
     }
 
@@ -208,10 +202,7 @@ export class RulesDeploy {
       if (err.status !== QUOTA_EXCEEDED_STATUS_CODE) {
         throw err;
       }
-      utils.logBullet(
-        clc.bold(clc.yellow(RulesetType[this.type] + ":")) +
-          " quota exceeded error while uploading rules"
-      );
+      utils.logLabeledBullet(RulesetType[this.type], "quota exceeded error while uploading rules");
 
       const history: ListRulesetsEntry[] = await gcp.rules.listAllRulesets(this.options.project);
 
@@ -237,9 +228,7 @@ export class RulesDeploy {
             await gcp.rules.deleteRuleset(this.options.project, gcp.rules.getRulesetId(entry));
             logger.debug(`[rules] Deleted ${entry.name}`);
           }
-          utils.logBullet(
-            clc.bold(clc.yellow(RulesetType[this.type] + ":")) + " retrying rules upload"
-          );
+          utils.logLabeledWarning(RulesetType[this.type], "retrying rules upload");
           return this.createRulesets(service);
         }
       }
@@ -270,10 +259,9 @@ export class RulesDeploy {
         ? `${resourceName}/${subResourceName}`
         : resourceName
     );
-    utils.logSuccess(
-      `${clc.bold(clc.green(RulesetType[this.type] + ":"))} released rules ${clc.bold(
-        filename
-      )} to ${clc.bold(resourceName)}`
+    utils.logLabeledSuccess(
+      RulesetType[this.type],
+      `released rules ${bold(filename)} to ${bold(resourceName)}`
     );
   }
 
@@ -283,11 +271,7 @@ export class RulesDeploy {
    * @param files The files to compile.
    */
   private async compileRuleset(filename: string, files: RulesetFile[]): Promise<void> {
-    utils.logBullet(
-      `${clc.bold(clc.cyan(this.type + ":"))} checking ${clc.bold(
-        filename
-      )} for compilation errors...`
-    );
+    utils.logLabeledBullet(this.type, `checking ${bold(filename)} for compilation errors...`);
     const response = await gcp.rules.testRuleset(this.options.project, files);
     if (_.get(response, "body.issues", []).length) {
       const warnings: string[] = [];
@@ -312,15 +296,11 @@ export class RulesDeploy {
 
       if (errors.length > 0) {
         const add = errors.length === 1 ? "" : "s";
-        const message = `Compilation error${add} in ${clc.bold(filename)}:\n${errors.join("\n")}`;
+        const message = `Compilation error${add} in ${bold(filename)}:\n${errors.join("\n")}`;
         throw new FirebaseError(message, { exit: 1 });
       }
     }
 
-    utils.logSuccess(
-      `${clc.bold(clc.green(this.type + ":"))} rules file ${clc.bold(
-        filename
-      )} compiled successfully`
-    );
+    utils.logLabeledSuccess(this.type, `rules file ${bold(filename)} compiled successfully`);
   }
 }

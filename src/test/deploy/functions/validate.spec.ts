@@ -293,11 +293,22 @@ describe("validate", () => {
       });
     }
 
-    it("Allows endpoints with no mem and no concurrency", () => {
+    for (const mem of [128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768] as const) {
+      it(`allows gcfv2 endpoints with mem ${mem} and no cpu`, () => {
+        const ep: backend.Endpoint = {
+          ...ENDPOINT_BASE,
+          platform: "gcfv2",
+          availableMemoryMb: mem,
+        };
+        expect(() => validate.endpointsAreValid(backend.of(ep))).to.not.throw();
+      });
+    }
+
+    it("allows endpoints with no mem and no concurrency", () => {
       expect(() => validate.endpointsAreValid(backend.of(ENDPOINT_BASE))).to.not.throw();
     });
 
-    it("Allows endpoints with mem and no concurrency", () => {
+    it("allows endpoints with mem and no concurrency", () => {
       const ep: backend.Endpoint = {
         ...ENDPOINT_BASE,
         availableMemoryMb: 256,
@@ -305,7 +316,7 @@ describe("validate", () => {
       expect(() => validate.endpointsAreValid(backend.of(ep))).to.not.throw();
     });
 
-    it("Allows explicitly one concurrent", () => {
+    it("allows explicitly one concurrent", () => {
       const ep: backend.Endpoint = {
         ...ENDPOINT_BASE,
         concurrency: 1,
@@ -313,7 +324,7 @@ describe("validate", () => {
       expect(() => validate.endpointsAreValid(backend.of(ep))).to.not.throw();
     });
 
-    it("Allows endpoints with enough mem and no concurrency", () => {
+    it("allows endpoints with enough mem and no concurrency", () => {
       for (const mem of [2 << 10, 4 << 10, 8 << 10] as backend.MemoryOptions[]) {
         const ep: backend.Endpoint = {
           ...ENDPOINT_BASE,
@@ -325,7 +336,7 @@ describe("validate", () => {
       }
     });
 
-    it("Allows endpoints with enough mem and explicit concurrency", () => {
+    it("allows endpoints with enough mem and explicit concurrency", () => {
       for (const mem of [2 << 10, 4 << 10, 8 << 10] as backend.MemoryOptions[]) {
         const ep: backend.Endpoint = {
           ...ENDPOINT_BASE,
