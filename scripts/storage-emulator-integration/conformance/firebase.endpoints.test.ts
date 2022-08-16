@@ -81,8 +81,7 @@ describe("Firebase Storage endpoint conformance tests", () => {
         .post(`/v0/b/${storageBucket}/o?name=${fileName}`)
         .set(authHeader)
         .send(Buffer.from("hello world"))
-        .expect(200)
-        .then((res) => res.body.name);
+        .expect(200);
 
       const metadata = await supertest(firebaseHost)
         .get(`/v0/b/${storageBucket}/o/${encodedFileName}`)
@@ -130,8 +129,7 @@ describe("Firebase Storage endpoint conformance tests", () => {
         .post(`/v0/b/${storageBucket}/o?name=${ENCODED_TEST_FILE_NAME}`)
         .set(authHeader)
         .send(Buffer.from("hello world"))
-        .expect(200)
-        .then((res) => res.body.name);
+        .expect(200);
 
       const data = await supertest(firebaseHost)
         .get(`/v0/b/${storageBucket}/o/${ENCODED_TEST_FILE_NAME}?alt=media`)
