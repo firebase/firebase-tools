@@ -172,7 +172,8 @@ export class UploadService {
   /**
    * Marks a ResumableUpload as finalized.
    * @throws {NotFoundError} if the resumable upload does not exist.
-   * @throws {NotActiveUploadError} if the resumable upload is not ACTIVE.
+   * @throws {UploadNotActiveError} if the resumable upload is not ACTIVE.
+   * @throws {UploadPreviouslyFinalizedError} if the resumable upload has already been finalized.
    */
   public finalizeResumableUpload(uploadId: string): Upload {
     const upload = this.getResumableUpload(uploadId);
@@ -198,7 +199,7 @@ export class UploadService {
 
   /**
    * Gets previous response code.
-   * In the case the previous response code doesn't exist (after importing) return 200
+   * In the case the uploadId doesn't exist (after importing) return 200
    */
   public getPreviousResponseCode(uploadId: string): number {
     return this._uploads.get(uploadId)?.prevResponseCode || 200;
