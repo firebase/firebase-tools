@@ -777,7 +777,7 @@ describe("GCS Javascript SDK conformance tests", () => {
         expect(err).to.not.be.empty;
       });
 
-      it.only("should return generated metadata for new upload", async () => {
+      it("should return generated metadata for new upload", async () => {
         const fileName = "test_file";
         await testBucket.upload(emptyFilePath, { destination: fileName });
         const [metadata] = await testBucket.file(fileName).getMetadata();

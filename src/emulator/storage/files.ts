@@ -314,7 +314,6 @@ export class StorageLayer {
       this._persistence.readBytes(upload.path, upload.size)
     );
 
-
     const authorized = await this._rulesValidator.validate(
       ["b", upload.bucketId, "o", upload.objectId].join("/"),
       upload.bucketId,

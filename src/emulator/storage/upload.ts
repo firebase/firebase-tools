@@ -16,6 +16,7 @@ export type Upload = {
   metadata?: IncomingMetadata;
   size: number;
   authorization?: string;
+  prevResponseCode?: number;
 };
 
 export enum UploadType {
@@ -67,6 +68,9 @@ type OneShotUploadRequest = {
 
 /** Error that signals a resumable upload that's expected to be active is not. */
 export class UploadNotActiveError extends Error {}
+
+/** Error that signals a resumable upload that shouldn't be finalized is. */
+export class UploadPreviouslyFinalizedError extends Error {}
 
 /** Error that signals a resumable upload is not cancellable.  */
 export class NotCancellableError extends Error {}
@@ -207,15 +211,37 @@ export class UploadService {
   /**
    * Marks a ResumableUpload as finalized.
    * @throws {NotFoundError} if the resumable upload does not exist.
-   * @throws {NotActiveUploadError} if the resumable upload is not ACTIVE.
+   * @throws {UploadNotActiveError} if the resumable upload is not ACTIVE.
+   * @throws {UploadPreviouslyFinalizedError} if the resumable upload has already been finalized.
    */
   public finalizeResumableUpload(uploadId: string): Upload {
     const upload = this.getResumableUpload(uploadId);
+    if (upload.status === UploadStatus.FINISHED) {
+      throw new UploadPreviouslyFinalizedError();
+    }
     if (upload.status === UploadStatus.CANCELLED) {
       throw new UploadNotActiveError();
     }
     upload.status = UploadStatus.FINISHED;
     return upload;
+  }
+
+  /**
+   * Sets previous response code.
+   */
+  public setResponseCode(uploadId: string, code: number): void {
+    const upload = this._uploads.get(uploadId);
+    if (upload) {
+      upload.prevResponseCode = code;
+    }
+  }
+
+  /**
+   * Gets previous response code.
+   * In the case the uploadId doesn't exist (after importing) return 200
+   */
+  public getPreviousResponseCode(uploadId: string): number {
+    return this._uploads.get(uploadId)?.prevResponseCode || 200;
   }
 
   private getStagingFileName(uploadId: string, bucketId: string, objectId: string): string {

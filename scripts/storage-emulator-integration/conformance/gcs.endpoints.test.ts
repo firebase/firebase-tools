@@ -183,14 +183,25 @@ describe("GCS endpoint conformance tests", () => {
           .expect(200)
           .then((res) => new URL(res.header["location"]));
 
+        const chunk1 = Buffer.from("hello ");
+        await supertest(storageHost)
+          .put(uploadURL.pathname + uploadURL.search)
+          .set({
+            "X-Goog-Upload-Protocol": "resumable",
+            "X-Goog-Upload-Command": "upload",
+            "X-Goog-Upload-Offset": 0,
+          })
+          .send(chunk1)
+          .expect(200);
+
         await supertest(storageHost)
           .put(uploadURL.pathname + uploadURL.search)
           .set({
             "X-Goog-Upload-Protocol": "resumable",
             "X-Goog-Upload-Command": "upload, finalize",
-            "X-Goog-Upload-Offset": 0,
+            "X-Goog-Upload-Offset": chunk1.byteLength,
           })
-          .send(Buffer.from("hello world"));
+          .send(Buffer.from("world"));
 
         const data = await supertest(storageHost)
           .get(`/storage/v1/b/${storageBucket}/o/${ENCODED_TEST_FILE_NAME}?alt=media`)
