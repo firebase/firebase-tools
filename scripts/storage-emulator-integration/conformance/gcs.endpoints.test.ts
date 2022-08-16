@@ -200,6 +200,24 @@ describe("GCS endpoint conformance tests", () => {
         expect(String(data)).to.eql("hello world");
       });
 
+      it("should handle upload step in resumable uploads", async () => {
+        const uploadURL = await supertest(storageHost)
+          .post(
+            `/upload/storage/v1/b/${storageBucket}/o?name=${TEST_FILE_NAME}&uploadType=resumable`
+          )
+          .set(authHeader)
+          .send({})
+          .expect(200)
+          .then((res) => new URL(res.header["location"]));
+        await supertest(storageHost)
+          .put(uploadURL.pathname + uploadURL.search)
+          .set({
+            "Content-Length": 0,
+          })
+          .send()
+          .expect(200);
+      });
+
       it("should handle resumable upload with name only in metadata", async () => {
         await supertest(storageHost)
           .post(`/upload/storage/v1/b/${storageBucket}/o?uploadType=resumable`)
