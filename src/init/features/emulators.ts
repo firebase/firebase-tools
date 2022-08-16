@@ -103,9 +103,9 @@ export async function doSetup(setup: any, config: any) {
     ]);
   }
 
-  // FIXME should we ask if they want single project mode?
-  if (someinput.singleProjectMod()) {
-    dosomething;
+  // Set the default behavior to be single project mode.
+  if (setup.config.emulators.singleProjectMode !== undefined) {
+    setup.config.emulators.singleProjectMode = true;
   }
 
   if (selections.download) {
