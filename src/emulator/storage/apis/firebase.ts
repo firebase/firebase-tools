@@ -217,7 +217,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       }
       metadata.addDownloadToken(/* shouldTrigger = */ false);
       if (!metadata.contentDisposition) {
-        metadata.update({ contentDisposition: "inline" }, /*shouldTrigger=*/ false);
+        metadata.update({ contentDisposition: "inline" }, /* shouldTrigger = */ false);
       }
       return res.status(200).json(new OutgoingFirebaseMetadata(metadata));
     }

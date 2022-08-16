@@ -306,7 +306,6 @@ export class StorageLayer {
       this._cloudFunctions,
       this._persistence.readBytes(upload.path, upload.size)
     );
-    //metadata.update(upload.metadata, /* shouldTrigger = */ false);
 
     const authorized = await this._rulesValidator.validate(
       ["b", upload.bucketId, "o", upload.objectId].join("/"),
