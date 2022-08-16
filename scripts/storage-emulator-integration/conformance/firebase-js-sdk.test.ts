@@ -35,7 +35,6 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
 
   let test: EmulatorEndToEndTest;
   let testBucket: Bucket;
-  let authHeader: { Authorization: string };
   let browser: puppeteer.Browser;
   let page: puppeteer.Page;
 
@@ -96,7 +95,6 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
       : admin.credential.applicationDefault();
     admin.initializeApp({ credential });
     testBucket = admin.storage().bucket(storageBucket);
-    authHeader = { Authorization: `Bearer ${await TEST_ENV.adminAccessTokenGetter}` };
 
     // Init fake browser page.
     browser = await puppeteer.launch({
@@ -168,16 +166,25 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
         }, TEST_FILE_NAME);
 
         await new Promise((resolve, reject) => {
-          TEST_ENV.requestClient.get(downloadUrl, { headers: authHeader }, (response) => {
-            const data: any = [];
-            response
-              .on("data", (chunk) => data.push(chunk))
-              .on("end", () => {
-                expect(Buffer.concat(data).toString()).to.equal("hello world");
-              })
-              .on("close", resolve)
-              .on("error", reject);
-          });
+          TEST_ENV.requestClient.get(
+            downloadUrl,
+            {
+              headers: {
+                // This is considered an authorized request in the emulator
+                Authorization: "Bearer owner",
+              },
+            },
+            (response) => {
+              const data: any = [];
+              response
+                .on("data", (chunk) => data.push(chunk))
+                .on("end", () => {
+                  expect(Buffer.concat(data).toString()).to.equal("hello world");
+                })
+                .on("close", resolve)
+                .on("error", reject);
+            }
+          );
         });
       });
 
@@ -203,16 +210,25 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
         });
 
         await new Promise((resolve, reject) => {
-          TEST_ENV.requestClient.get(downloadUrl, { headers: authHeader }, (response) => {
-            const data: any = [];
-            response
-              .on("data", (chunk) => data.push(chunk))
-              .on("end", () => {
-                expect(Buffer.concat(data).toString()).to.equal("some-other-content");
-              })
-              .on("close", resolve)
-              .on("error", reject);
-          });
+          TEST_ENV.requestClient.get(
+            downloadUrl,
+            {
+              headers: {
+                // This is considered an authorized request in the emulator
+                Authorization: "Bearer owner",
+              },
+            },
+            (response) => {
+              const data: any = [];
+              response
+                .on("data", (chunk) => data.push(chunk))
+                .on("end", () => {
+                  expect(Buffer.concat(data).toString()).to.equal("some-other-content");
+                })
+                .on("close", resolve)
+                .on("error", reject);
+            }
+          );
         });
       });
 
@@ -456,35 +472,36 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
     });
 
     describe("#getMetadata()", () => {
-      it.only("should return file metadata", async () => {
-        // await testBucket.upload(emptyFilePath, { destination: TEST_FILE_NAME });
-        // await signInToFirebaseAuth(page);
-        // const metadata = await page.evaluate(async (filename) => {
-        //   return await firebase.storage().ref(filename).getMetadata();
-        // }, TEST_FILE_NAME);
-        // const metadataTypes: { [s: string]: string } = {};
-        // console.log(metadata);
-        // for (const key in Object.keys(metadata)) {
-        //   console.log("KEY: " + key);
-        //   metadataTypes[key] = typeof metadata[key];
-        // }
-        // expect(metadataTypes).to.deep.equal({
-        //   bucket: "string",
-        //   contentDisposition: "string",
-        //   contentEncoding: "string",
-        //   contentType: "string",
-        //   cacheControl: "string",
-        //   fullPath: "string",
-        //   generation: "string",
-        //   md5Hash: "string",
-        //   metageneration: "string",
-        //   name: "string",
-        //   size: "number",
-        //   timeCreated: "string",
-        //   type: "string",
-        //   updated: "string",
-        // });
-      });
+      // TODO(tonyjhuang): Skip until we have more expressive metadata type checks.
+      // it.skip("should return file metadata", async () => {
+      //   await testBucket.upload(emptyFilePath, { destination: TEST_FILE_NAME });
+      //   await signInToFirebaseAuth(page);
+      //   const metadata = await page.evaluate(async (filename) => {
+      //     return await firebase.storage().ref(filename).getMetadata();
+      //   }, TEST_FILE_NAME);
+      //   const metadataTypes: { [s: string]: string } = {};
+      //   console.log(metadata);
+      //   for (const key in Object.keys(metadata)) {
+      //     console.log("KEY: " + key)
+      //     metadataTypes[key] = typeof(metadata[key]);
+      //   }
+      //   expect(metadataTypes).to.deep.equal({
+      //     bucket: "string",
+      //     contentDisposition: "string",
+      //     contentEncoding: "string",
+      //     contentType: "string",
+      //     cacheControl: "string",
+      //     fullPath: "string",
+      //     generation: "string",
+      //     md5Hash: "string",
+      //     metageneration: "string",
+      //     name: "string",
+      //     size: "number",
+      //     timeCreated: "string",
+      //     type: "string",
+      //     updated: "string",
+      //   });
+      // });
     });
 
     describe("#updateMetadata()", () => {
