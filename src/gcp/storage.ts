@@ -248,8 +248,10 @@ export async function getBucket(bucketName: string): Promise<BucketResponse> {
 export async function listBuckets(projectId: string): Promise<Array<string>> {
   try {
     const localAPIClient = new Client({ urlPrefix: storageOrigin });
-    const result = await localAPIClient.get<ListBucketsResponse>(`/storage/v1/b?project=${projectId}`);
-    return result.body.items.map((bucket: {name: string}) => bucket.name);
+    const result = await localAPIClient.get<ListBucketsResponse>(
+      `/storage/v1/b?project=${projectId}`
+    );
+    return result.body.items.map((bucket: { name: string }) => bucket.name);
   } catch (err: any) {
     logger.debug(err);
     throw new FirebaseError("Failed to read the storage buckets", {

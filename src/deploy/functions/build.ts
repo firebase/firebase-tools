@@ -278,7 +278,7 @@ export async function resolveBackend(
   nonInteractive?: boolean
 ): Promise<backend.Backend> {
   const projectId = userEnvOpt.projectId;
-  let paramValues: Record<string, Field<string | number | boolean>> = {};
+  let paramValues: Record<string, params.ParamValue> = {};
   if (previews.functionsparams) {
     paramValues = await params.resolveParams(
       build.params,
@@ -287,13 +287,13 @@ export async function resolveBackend(
       nonInteractive
     );
 
-    // TODO(vsfan@): when merging secrets support into the Build, make sure we aren't writing those to disk.
     const toWrite: Record<string, string> = {};
     for (const paramName of Object.keys(paramValues)) {
-      if (userEnvs.hasOwnProperty(paramName)) {
+      const paramValue = paramValues[paramName];
+      if (userEnvs.hasOwnProperty(paramName) || paramValue === undefined || paramValue.isSecret) {
         continue;
       }
-      toWrite[paramName] = paramValues[paramName]?.toString() || "";
+      toWrite[paramName] = paramValue.toString();
     }
     writeUserEnvs(toWrite, userEnvOpt);
   }
@@ -301,19 +301,15 @@ export async function resolveBackend(
   return toBackend(build, paramValues);
 }
 
-function envWithTypes(rawEnvs: Record<string, string>): Record<string, string | number | boolean> {
-  const out: Record<string, string | number | boolean> = {};
+function envWithTypes(rawEnvs: Record<string, string>): Record<string, params.ParamValue> {
+  const out: Record<string, params.ParamValue> = {};
   for (const envName of Object.keys(rawEnvs)) {
     const value = rawEnvs[envName];
-    if (!isNaN(+value) && isFinite(+value) && !value.includes("e")) {
-      out[envName] = +value;
-    } else if (value === "true") {
-      out[envName] = true;
-    } else if (value === "false") {
-      out[envName] = false;
-    } else {
-      out[envName] = value;
-    }
+    out[envName] = new params.ParamValue(value, false, {
+      string: true,
+      boolean: true,
+      number: true,
+    });
   }
   return out;
 }
@@ -324,7 +320,7 @@ function envWithTypes(rawEnvs: Record<string, string>): Record<string, string | 
 // The class also recognizes that if the input is not null the output cannot be
 // null.
 class Resolver {
-  constructor(private readonly paramValues: Record<string, Field<string | number | boolean>>) {}
+  constructor(private readonly paramValues: Record<string, params.ParamValue>) {}
 
   // NB: The (Extract<T, null> | number) says "If T can be null, the return value"
   // can be null. If we know input is not null, the return type is known to not
@@ -383,7 +379,7 @@ class Resolver {
 // TODO(vsfan): handle Expression<T> types
 export function toBackend(
   build: Build,
-  paramValues: Record<string, Field<string | number | boolean>>
+  paramValues: Record<string, params.ParamValue>
 ): backend.Backend {
   const r = new Resolver(paramValues);
   const bkEndpoints: Array<backend.Endpoint> = [];
