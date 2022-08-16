@@ -107,7 +107,7 @@ function printEmulatorOverview(options: any): void {
       .map((col) => col.slice(0, head.length))
       .filter((v) => v)
   );
-  let extensionsTable = "";
+  let extensionsTable: string = "";
   if (EmulatorRegistry.isRunning(Emulators.EXTENSIONS)) {
     const extensionsEmulatorInstance = EmulatorRegistry.get(
       Emulators.EXTENSIONS
