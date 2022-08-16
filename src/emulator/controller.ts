@@ -325,9 +325,6 @@ interface EmulatorOptions extends Options {
   singleProjectMode?: boolean;
 }
 
-/**
- *
- */
 export async function startAll(
   options: EmulatorOptions,
   showUI = true
