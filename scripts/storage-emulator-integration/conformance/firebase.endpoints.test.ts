@@ -206,6 +206,73 @@ describe("Firebase Storage endpoint conformance tests", () => {
           .then((res) => res.header["x-goog-upload-status"]);
         expect(uploadStatus).to.equal("final");
       });
+
+      it("should return 200 when resumable upload succeeds and finalize is called again", async () => {
+        const uploadURL = await supertest(firebaseHost)
+          .post(`/v0/b/${storageBucket}/o/${ENCODED_TEST_FILE_NAME}?uploadType=resumable`)
+          .set(authHeader)
+          .set({
+            "X-Goog-Upload-Protocol": "resumable",
+            "X-Goog-Upload-Command": "start",
+          })
+          .expect(200)
+          .then((res) => new URL(res.header["x-goog-upload-url"]));
+
+        await supertest(firebaseHost)
+          .put(uploadURL.pathname + uploadURL.search)
+          .set({
+            "X-Goog-Upload-Protocol": "resumable",
+            "X-Goog-Upload-Command": "upload, finalize",
+            "X-Goog-Upload-Offset": 0,
+          })
+          .expect(200);
+        await supertest(firebaseHost)
+          .put(uploadURL.pathname + uploadURL.search)
+          .set({
+            "X-Goog-Upload-Protocol": "resumable",
+            "X-Goog-Upload-Command": "finalize",
+          })
+          .expect(200)
+          .then((res) => res.header["x-goog-upload-status"]);
+      });
+
+      it("should return 400 both times when finalize is called on cancelled upload", async () => {
+        const uploadURL = await supertest(firebaseHost)
+          .post(`/v0/b/${storageBucket}/o/${ENCODED_TEST_FILE_NAME}?uploadType=resumable`)
+          .set(authHeader)
+          .set({
+            "X-Goog-Upload-Protocol": "resumable",
+            "X-Goog-Upload-Command": "start",
+          })
+          .expect(200)
+          .then((res) => new URL(res.header["x-goog-upload-url"]));
+
+        await supertest(firebaseHost)
+          .put(uploadURL.pathname + uploadURL.search)
+          .set({
+            "X-Goog-Upload-Protocol": "resumable",
+            "X-Goog-Upload-Command": "cancel",
+            "X-Goog-Upload-Offset": 0,
+          })
+          .expect(200);
+        await supertest(firebaseHost)
+          .put(uploadURL.pathname + uploadURL.search)
+          .set({
+            "X-Goog-Upload-Protocol": "resumable",
+            "X-Goog-Upload-Command": "finalize",
+          })
+          .expect(400)
+          .then((res) => res.header["x-goog-upload-status"]);
+
+        await supertest(firebaseHost)
+          .put(uploadURL.pathname + uploadURL.search)
+          .set({
+            "X-Goog-Upload-Protocol": "resumable",
+            "X-Goog-Upload-Command": "finalize",
+          })
+          .expect(400)
+          .then((res) => res.header["x-goog-upload-status"]);
+      });
     });
 
     describe("cancel", () => {

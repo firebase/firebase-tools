@@ -347,12 +347,14 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         upload = uploadService.finalizeResumableUpload(uploadId);
       } catch (err) {
         if (err instanceof NotFoundError) {
+          uploadService.setResponseCode(uploadId, 404);
           return res.sendStatus(404);
         } else if (err instanceof UploadNotActiveError) {
+          uploadService.setResponseCode(uploadId, 400);
           return res.sendStatus(400);
         } else if (err instanceof UploadPreviouslyFinalizedError) {
           res.header("x-goog-upload-status", "final");
-          return res.sendStatus(403);
+          return res.sendStatus(uploadService.getPreviousResponseCode(uploadId));
         }
         throw err;
       }
@@ -362,6 +364,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       } catch (err) {
         if (err instanceof ForbiddenError) {
           res.header("x-goog-upload-status", "final");
+          uploadService.setResponseCode(uploadId, 403);
           return res.status(403).json({
             error: {
               code: 403,
@@ -374,6 +377,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
 
       res.header("x-goog-upload-status", "final");
       storedMetadata.addDownloadToken(/* shouldTrigger = */ false);
+      uploadService.setResponseCode(uploadId, 200);
       return res.status(200).json(new OutgoingFirebaseMetadata(storedMetadata));
     }
 

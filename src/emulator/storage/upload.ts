@@ -16,6 +16,7 @@ export type Upload = {
   metadata: IncomingMetadata;
   size: number;
   authorization?: string;
+  prevResponseCode?: number;
 };
 
 export enum UploadType {
@@ -183,6 +184,24 @@ export class UploadService {
     }
     upload.status = UploadStatus.FINISHED;
     return upload;
+  }
+
+  /**
+   * Sets previous response code.
+   */
+  public setResponseCode(uploadId: string, code: number): void {
+    const upload = this._uploads.get(uploadId);
+    if (upload) {
+      upload.prevResponseCode = code;
+    }
+  }
+
+  /**
+   * Gets previous response code.
+   * In the case the previous response code doesn't exist (after importing) return 200
+   */
+  public getPreviousResponseCode(uploadId: string): number {
+    return this._uploads.get(uploadId)?.prevResponseCode || 200;
   }
 
   private getStagingFileName(uploadId: string, bucketId: string, objectId: string): string {

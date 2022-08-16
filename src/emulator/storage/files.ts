@@ -17,7 +17,7 @@ import {
 import { RulesetOperationMethod } from "./rules/types";
 import { AdminCredentialValidator, FirebaseRulesValidator } from "./rules/utils";
 import { Persistence } from "./persistence";
-import { Upload, UploadStatus } from "./upload";
+import { Upload, UploadService, UploadStatus } from "./upload";
 import { trackEmulator } from "../../track";
 import { Emulators } from "../types";
 
@@ -122,7 +122,8 @@ export class StorageLayer {
     private _rulesValidator: FirebaseRulesValidator,
     private _adminCredsValidator: AdminCredentialValidator,
     private _persistence: Persistence,
-    private _cloudFunctions: StorageCloudFunctions
+    private _cloudFunctions: StorageCloudFunctions,
+    private _uploadService: UploadService
   ) {}
 
   createBucket(id: string): void {

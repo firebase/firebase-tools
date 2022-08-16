@@ -67,7 +67,8 @@ export class StorageEmulator implements EmulatorInstance {
         rulesValidator,
         getAdminCredentialValidator(),
         this._persistence,
-        this._cloudFunctions
+        this._cloudFunctions,
+        this._uploadService
       );
     };
     this._storageLayer = createStorageLayer(
