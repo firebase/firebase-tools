@@ -320,9 +320,7 @@ function findExportMetadata(importPath: string): ExportMetadata | undefined {
 }
 
 interface EmulatorOptions extends Options {
-  // FIXME who converts this from the config then?
   extDevEnv?: Record<string, string>;
-  singleProjectMode?: boolean;
 }
 
 export async function startAll(
@@ -620,7 +618,7 @@ export async function startAll(
       );
     }
 
-    if (options.singleProjectMode) {
+    if (options.config.src.emulators?.single_project_mode) {
       if (projectId) {
         args.single_project_mode = true;
         args.single_project_mode_error = false;
