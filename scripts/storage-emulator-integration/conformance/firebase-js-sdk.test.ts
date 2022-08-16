@@ -525,6 +525,41 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
         expect(metadata.customMetadata?.testable).to.equal("true");
       });
 
+      it.only("shoud allow deletion of settable metadata fields by setting to null", async () => {
+        await testBucket.upload(emptyFilePath, {
+          destination: TEST_FILE_NAME,
+          metadata: {
+            cacheControl: "hello world",
+            contentDisposition: "hello world",
+            contentEncoding: "hello world",
+            contentLanguage: "hello world",
+            contentType: "hello world",
+            customMetadata: { key: "value" },
+          },
+        });
+        await signInToFirebaseAuth(page);
+
+        const updatedMetadata = await page.evaluate((filename) => {
+          return firebase.storage().ref(filename).updateMetadata({
+            cacheControl: null,
+            contentDisposition: null,
+            contentEncoding: null,
+            contentLanguage: null,
+            contentType: null,
+            customMetadata: null,
+          });
+        }, TEST_FILE_NAME);
+
+        expect(updatedMetadata).to.not.have.members([
+          "cacheControl",
+          "contentDisposition",
+          "contentEncoding",
+          "contentLanguage",
+          "contentType",
+          "customMetadata",
+        ]);
+      });
+
       it("should allow deletion of custom metadata by setting to null", async () => {
         await testBucket.upload(emptyFilePath, { destination: TEST_FILE_NAME });
         await signInToFirebaseAuth(page);
