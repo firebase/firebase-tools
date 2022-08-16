@@ -473,7 +473,7 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
 
     describe("#getMetadata()", () => {
       it("should return file metadata", async () => {
-        const [_, metadata1] = await testBucket.upload(emptyFilePath, {
+        await testBucket.upload(emptyFilePath, {
           destination: TEST_FILE_NAME,
         });
         await signInToFirebaseAuth(page);

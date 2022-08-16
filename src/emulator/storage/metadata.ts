@@ -41,7 +41,7 @@ export class StoredFileMetadata {
       bucket: string;
     },
     private _cloudFunctions: StorageCloudFunctions,
-    private _bytes?: Buffer
+    bytes?: Buffer
   ) {
     // Required fields
     this.name = opts.name;
@@ -70,10 +70,10 @@ export class StoredFileMetadata {
     this.updated = opts.updated ? new Date(opts.updated) : this.timeCreated;
 
     // Fields derived from bytes
-    if (_bytes) {
-      this.size = _bytes.byteLength;
-      this.md5Hash = generateMd5Hash(_bytes);
-      this.crc32c = `${crc32c(_bytes)}`;
+    if (bytes) {
+      this.size = bytes.byteLength;
+      this.md5Hash = generateMd5Hash(bytes);
+      this.crc32c = `${crc32c(bytes)}`;
     } else if (opts.size !== undefined && opts.md5Hash && opts.crc32c) {
       this.size = opts.size;
       this.md5Hash = opts.md5Hash;
@@ -108,8 +108,7 @@ export class StoredFileMetadata {
         downloadTokens: this.downloadTokens,
         customMetadata: this.customMetadata,
       },
-      this._cloudFunctions,
-      this._bytes
+      this._cloudFunctions
     );
     clone.timeCreated = this.timeCreated;
     clone.updated = this.updated;
