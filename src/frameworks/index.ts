@@ -75,7 +75,7 @@ export const prepareFrameworks = async (targetNames: string[], context: any, opt
     const functionsDist = join(dist, "functions");
     if (publicDir)
       throw new Error(`hosting.public and hosting.source cannot both be set in firebase.json`);
-    const getProjectPath = (...args: string[]) => join(context.projectRoot, source, ...args);
+    const getProjectPath = (...args: string[]) => join(options.projectRoot, source, ...args);
     const functionName = `ssr${site.replace(/-/g, "")}`;
     const firebaseAdminVersion = findDependency('firebase-admin', getProjectPath());
     const firebaseAppVersion = findDependency('@firebase/app', getProjectPath());
@@ -119,7 +119,7 @@ You can link a Web app to a Hosting site here https://console.firebase.google.co
     if (firebaseProjectConfig) process.env.FRAMEWORKS_APP_OPTIONS = JSON.stringify(firebaseProjectConfig);
     const { usingCloudFunctions, framework, rewrites, redirects, headers } = await build(
       {
-        dist: join(context.projectRoot, dist),
+        dist: join(options.projectRoot, dist),
         project,
         site,
         function: {
