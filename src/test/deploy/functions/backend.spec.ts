@@ -597,6 +597,12 @@ describe("Backend", () => {
       region: "europe-west1",
     };
 
+    const endpointREMOVED: backend.Endpoint = {
+      ...endpointUS,
+      id: "endpointREMOVED",
+      region: "europe-west1",
+    };
+
     const bkend: backend.Backend = {
       ...backend.empty(),
     };
@@ -627,6 +633,19 @@ describe("Backend", () => {
     it("someEndpoint", () => {
       expect(backend.someEndpoint(bkend, (fn) => fn.id === "endpointUS")).to.be.true;
       expect(backend.someEndpoint(bkend, (fn) => fn.id === "missing")).to.be.false;
+    });
+
+    it("removeEndpoints", () => {
+      // Add our endpoint
+      bkend.endpoints[endpointEU.region] = { [endpointREMOVED.id]: endpointREMOVED };
+      // Verify its there given our someEndpoint check
+      expect(backend.someEndpoint(bkend, (fn) => fn.id === "endpointREMOVED")).to.be.true;
+
+      // Test
+      backend.removeEndpoints(bkend, (fn) => fn.id === "endpointREMOVED");
+
+      // Verify removal was successful
+      expect(backend.someEndpoint(bkend, (fn) => fn.id === "endpointREMOVED")).to.be.false;
     });
 
     it("findEndpoint", () => {

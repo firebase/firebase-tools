@@ -654,6 +654,23 @@ export function findEndpoint(
   }
 }
 
+/** A helper utility for removing endpoints that match a predicate. */
+export function removeEndpoints(
+  backend: Backend,
+  predicate: (endpoint: Endpoint) => boolean
+): boolean {
+  let removed = false;
+  for (const endpoints of Object.values(backend.endpoints)) {
+    for (const [id, endpoint] of Object.entries(endpoints)) {
+      if (predicate(endpoint)) {
+        removed = true;
+        delete endpoints[id];
+      }
+    }
+  }
+  return removed;
+}
+
 /** A helper utility function that returns a subset of the backend that includes only matching endpoints */
 export function matchingBackend(
   backend: Backend,
