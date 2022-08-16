@@ -1,6 +1,5 @@
 import { Bucket } from "@google-cloud/storage";
-import * as chai from "chai";
-import * as deepEqualInAnyOrder from "deep-equal-in-any-order";
+import { expect } from "chai";
 import * as admin from "firebase-admin";
 import * as fs from "fs";
 import * as supertest from "supertest";
@@ -13,9 +12,6 @@ import {
   TEST_SETUP_TIMEOUT,
   createRandomFile,
 } from "../utils";
-
-chai.use(deepEqualInAnyOrder);
-const expect = chai.expect;
 
 const TEST_FILE_NAME = "testing/storage_ref/testFile";
 const ENCODED_TEST_FILE_NAME = "testing%2Fstorage_ref%2FtestFile";
@@ -88,8 +84,7 @@ describe("Firebase Storage endpoint conformance tests", () => {
         .set(authHeader)
         .expect(200)
         .then((res) => res.body);
-
-      expect(Object.keys(metadata)).to.deep.equalInAnyOrder([
+      expect(Object.keys(metadata)).to.have.same.members([
         "name",
         "bucket",
         "generation",

@@ -1,6 +1,5 @@
 import { Bucket } from "@google-cloud/storage";
-import * as chai from "chai";
-import * as deepEqualInAnyOrder from "deep-equal-in-any-order";
+import { expect } from "chai";
 import * as admin from "firebase-admin";
 import * as fs from "fs";
 import * as supertest from "supertest";
@@ -12,9 +11,6 @@ import {
   TEST_SETUP_TIMEOUT,
   getTmpDir,
 } from "../utils";
-
-chai.use(deepEqualInAnyOrder);
-const expect = chai.expect;
 
 const TEST_FILE_NAME = "gcs/testFile";
 const ENCODED_TEST_FILE_NAME = "gcs%2FtestFile";
@@ -116,7 +112,7 @@ describe("GCS endpoint conformance tests", () => {
         .expect(200)
         .then((res) => res.body);
 
-      expect(Object.keys(metadata)).to.deep.equalInAnyOrder([
+      expect(Object.keys(metadata)).to.have.same.members([
         "kind",
         "id",
         "selfLink",
