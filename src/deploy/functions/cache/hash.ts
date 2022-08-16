@@ -1,23 +1,24 @@
 import * as fs from "fs";
 import * as crypto from "crypto";
-import * as args from "../args";
 import * as secrets from "../../../functions/secrets";
 import { Backend, Endpoint, EnvironmentVariables, allEndpoints } from "../backend";
 
-export async function getBackendHash(backend: Backend, source?: args.Source) {
+/**
+ * Retrieves the unique hash given a {@link Backend} and sourceFile.
+ * @param backend Backend of a set of functions
+ * @param sourceFile Packaged file contents of functions
+ */
+export async function getBackendHash(backend: Backend, sourceFile?: string) {
   const hash = crypto.createHash("sha256");
 
   // If present, hash the contents of the source file
-  if (source) {
-    const sourceFile = source?.functionsSourceV2 || source?.functionsSourceV1;
-    if (sourceFile) {
-      await new Promise((resolve, reject) => {
-        const readStream = fs.createReadStream(sourceFile);
-        readStream.on("error", (err) => reject(err));
-        readStream.on("data", (chunk) => chunk && hash.push(chunk));
-        readStream.on("end", () => resolve(hash.digest("hex")));
-      });
-    }
+  if (sourceFile) {
+    await new Promise((resolve, reject) => {
+      const readStream = fs.createReadStream(sourceFile);
+      readStream.on("error", (err) => reject(err));
+      readStream.on("data", (chunk) => chunk && hash.push(chunk));
+      readStream.on("end", () => resolve(hash.digest("hex")));
+    });
   }
 
   // Hash the contents of the dotenv variables

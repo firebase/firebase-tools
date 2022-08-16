@@ -176,11 +176,8 @@ describe("getBackendHash", () => {
     const file1 = resolve("./mockdata/function_source_v1.txt");
     const file2 = resolve("./mockdata/function_source_v2.txt");
 
-    const source1 = { functionsSourceV1: file1 };
-    const source2 = { functionsSourceV1: file2 };
-
-    const hash1 = await getBackendHash(EMPTY_WANT_BACKEND, source1);
-    const hash2 = await getBackendHash(EMPTY_WANT_BACKEND, source2);
+    const hash1 = await getBackendHash(EMPTY_WANT_BACKEND, file1);
+    const hash2 = await getBackendHash(EMPTY_WANT_BACKEND, file2);
 
     expect(hash1).to.not.equal(hash2);
   });
@@ -189,11 +186,8 @@ describe("getBackendHash", () => {
     const file1 = resolve("./mockdata/function_source_v1.txt");
     const file2 = resolve("./mockdata/function_source_v1.txt");
 
-    const source1 = { functionsSourceV1: file1 };
-    const source2 = { functionsSourceV1: file2 };
-
-    const hash1 = await getBackendHash(EMPTY_WANT_BACKEND, source1);
-    const hash2 = await getBackendHash(EMPTY_WANT_BACKEND, source2);
+    const hash1 = await getBackendHash(EMPTY_WANT_BACKEND, file1);
+    const hash2 = await getBackendHash(EMPTY_WANT_BACKEND, file2);
 
     expect(hash1).to.equal(hash2);
   });
