@@ -598,7 +598,7 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
             });
         }, TEST_FILE_NAME);
 
-        expect(nulledMetadata.customMetadata!.hasOwnProperty("removeMe")).to.equal(false);
+        expect(nulledMetadata.customMetadata).to.be.undefined;
       });
 
       it("throws on non-existent file", async () => {

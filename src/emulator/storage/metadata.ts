@@ -219,6 +219,10 @@ export class StoredFileMetadata {
             this.customMetadata[k] = String(v);
           }
         }
+        // Clear out custom metadata if there are no more keys.
+        if (Object.keys(this.customMetadata).length === 0) {
+          this.customMetadata = undefined;
+        }
       }
     }
 
@@ -315,7 +319,7 @@ export class OutgoingFirebaseMetadata {
   crc32c: string;
   etag: string;
   downloadTokens: string;
-  metadata: object | undefined;
+  metadata?: object;
 
   constructor(metadata: StoredFileMetadata) {
     this.name = metadata.name;
