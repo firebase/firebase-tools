@@ -72,6 +72,9 @@ const DEFAULT_CONFIG = new Config(
   {}
 );
 
+/**
+ *
+ */
 export function printNoticeIfEmulated(
   options: any,
   emulator: Emulators.DATABASE | Emulators.FIRESTORE
@@ -95,6 +98,9 @@ export function printNoticeIfEmulated(
   }
 }
 
+/**
+ *
+ */
 export function warnEmulatorNotSupported(
   options: any,
   emulator: Emulators.DATABASE | Emulators.FIRESTORE
@@ -132,6 +138,9 @@ export function warnEmulatorNotSupported(
   }
 }
 
+/**
+ *
+ */
 export async function beforeEmulatorCommand(options: any): Promise<any> {
   const optionsWithDefaultConfig = {
     ...options,
@@ -167,6 +176,9 @@ export async function beforeEmulatorCommand(options: any): Promise<any> {
   }
 }
 
+/**
+ *
+ */
 export function parseInspectionPort(options: any): number {
   let port = options.inspectFunctions;
   if (port === true) {
@@ -468,7 +480,7 @@ const JAVA_HINT = "Please make sure Java is installed and on your system PATH.";
 /**
  * Return whether Java major verion is supported. Throws if Java not available.
  *
- * @returns Java major version (for Java >= 9) or -1 otherwise
+ * @return Java major version (for Java >= 9) or -1 otherwise
  */
 export async function checkJavaMajorVersion(): Promise<number> {
   return new Promise<string>((resolve, reject) => {
@@ -530,7 +542,7 @@ export async function checkJavaMajorVersion(): Promise<number> {
     });
   }).then((output) => {
     let versionInt = -1;
-    const match = output.match(JAVA_VERSION_REGEX);
+    const match = JAVA_VERSION_REGEX.exec(output);
     if (match) {
       const version = match[1];
       versionInt = parseInt(version, 10);

@@ -11,6 +11,9 @@ interface EmulatorsInitSelections {
   download?: boolean;
 }
 
+/**
+ *
+ */
 export async function doSetup(setup: any, config: any) {
   const choices = ALL_SERVICE_EMULATORS.map((e) => {
     return {
@@ -49,7 +52,7 @@ export async function doSetup(setup: any, config: any) {
           type: "number",
           name: "port",
           message: `Which port do you want to use for the ${clc.underline(selected)} emulator?`,
-          default: Constants.getDefaultPort(selected as Emulators),
+          default: Constants.getDefaultPort(selected),
         },
       ]);
     }
@@ -98,6 +101,11 @@ export async function doSetup(setup: any, config: any) {
         default: false,
       },
     ]);
+  }
+
+  // FIXME should we ask if they want single project mode?
+  if (someinput.singleProjectMod()) {
+    dosomething;
   }
 
   if (selections.download) {

@@ -320,10 +320,14 @@ function findExportMetadata(importPath: string): ExportMetadata | undefined {
 }
 
 interface EmulatorOptions extends Options {
+  // FIXME who converts this from the config then?
   extDevEnv?: Record<string, string>;
-  singleProjectMode?: Boolean;
+  singleProjectMode?: boolean;
 }
 
+/**
+ *
+ */
 export async function startAll(
   options: EmulatorOptions,
   showUI = true
@@ -619,9 +623,10 @@ export async function startAll(
       );
     }
 
-    if (big flag) {
+    if (options.singleProjectMode) {
       if (projectId) {
         args.single_project_mode = true;
+        args.single_project_mode_error = false;
       } else {
         firestoreLogger.logLabeled(
           "DEBUG",
