@@ -4,7 +4,6 @@ import * as admin from "firebase-admin";
 import * as fs from "fs";
 import * as supertest from "supertest";
 import { TEST_ENV } from "./env";
-
 import { EmulatorEndToEndTest } from "../../integration-helpers/framework";
 import {
   EMULATORS_SHUTDOWN_DELAY_MS,
@@ -14,10 +13,9 @@ import {
   createRandomFile,
 } from "../utils";
 
-const TEST_FILE_NAME = "testing/storage_ref/image.png";
-const ENCODED_TEST_FILE_NAME = "testing%2Fstorage_ref%2Fimage.png";
+const TEST_FILE_NAME = "testing/storage_ref/testFile";
+const ENCODED_TEST_FILE_NAME = "testing%2Fstorage_ref%2FtestFile";
 
-// TODO(b/241151246): Fix conformance tests.
 // TODO(b/242314185): add more coverage.
 describe("Firebase Storage endpoint conformance tests", () => {
   // Temp directory to store generated files.
@@ -71,6 +69,72 @@ describe("Firebase Storage endpoint conformance tests", () => {
     await resetState();
   });
 
+  describe("metadata", () => {
+    it("should set default metadata", async () => {
+      const fileName = "dir/someFile";
+      const encodedFileName = "dir%2FsomeFile";
+      await supertest(firebaseHost)
+        .post(`/v0/b/${storageBucket}/o?name=${fileName}`)
+        .set(authHeader)
+        .send(Buffer.from("hello world"))
+        .expect(200);
+
+      const metadata = await supertest(firebaseHost)
+        .get(`/v0/b/${storageBucket}/o/${encodedFileName}`)
+        .set(authHeader)
+        .expect(200)
+        .then((res) => res.body);
+      expect(Object.keys(metadata)).to.have.same.members([
+        "name",
+        "bucket",
+        "generation",
+        "metageneration",
+        "timeCreated",
+        "updated",
+        "storageClass",
+        "size",
+        "md5Hash",
+        "contentEncoding",
+        "contentDisposition",
+        "crc32c",
+        "etag",
+        "downloadTokens",
+      ]);
+
+      expect(metadata.name).to.be.eql(fileName);
+      expect(metadata.bucket).to.be.eql(storageBucket);
+      expect(metadata.generation).to.be.a("string");
+      expect(metadata.metageneration).to.be.eql("1");
+      expect(metadata.timeCreated).to.be.a("string");
+      expect(metadata.updated).to.be.a("string");
+      expect(metadata.storageClass).to.be.a("string");
+      expect(metadata.size).to.be.eql("11");
+      expect(metadata.md5Hash).to.be.a("string");
+      expect(metadata.contentEncoding).to.be.eql("identity");
+      expect(metadata.contentDisposition).to.be.a("string");
+      expect(metadata.crc32c).to.be.a("string");
+      expect(metadata.etag).to.be.a("string");
+      expect(metadata.downloadTokens).to.be.a("string");
+    });
+  });
+
+  describe("media upload", () => {
+    it("should default to media upload if upload type is not provided", async () => {
+      await supertest(firebaseHost)
+        .post(`/v0/b/${storageBucket}/o?name=${ENCODED_TEST_FILE_NAME}`)
+        .set(authHeader)
+        .send(Buffer.from("hello world"))
+        .expect(200);
+
+      const data = await supertest(firebaseHost)
+        .get(`/v0/b/${storageBucket}/o/${ENCODED_TEST_FILE_NAME}?alt=media`)
+        .set(authHeader)
+        .expect(200)
+        .then((res) => res.body);
+      expect(String(data)).to.eql("hello world");
+    });
+  });
+
   describe("multipart upload", () => {
     it("should return an error message when uploading a file with invalid content type", async () => {
       const res = await supertest(firebaseHost)
@@ -87,13 +151,12 @@ describe("Firebase Storage endpoint conformance tests", () => {
     describe("upload", () => {
       it("should accept subsequent resumable upload commands without an auth header", async () => {
         const uploadURL = await supertest(firebaseHost)
-          .post(`/v0/b/${storageBucket}/o?uploadType=resumable&name=${TEST_FILE_NAME}`)
+          .post(`/v0/b/${storageBucket}/o?name=${TEST_FILE_NAME}`)
           .set(authHeader)
           .set({
             "X-Goog-Upload-Protocol": "resumable",
             "X-Goog-Upload-Command": "start",
           })
-          .send()
           .expect(200)
           .then((res) => new URL(res.header["x-goog-upload-url"]));
 
@@ -105,7 +168,6 @@ describe("Firebase Storage endpoint conformance tests", () => {
             "X-Goog-Upload-Command": "upload",
             "X-Goog-Upload-Offset": 0,
           })
-          .send()
           .expect(200);
         const uploadStatus = await supertest(firebaseHost)
           .put(uploadURL.pathname + uploadURL.search)
@@ -127,7 +189,7 @@ describe("Firebase Storage endpoint conformance tests", () => {
 
       it("should handle resumable uploads with an empty buffer", async () => {
         const uploadUrl = await supertest(firebaseHost)
-          .post(`/v0/b/${storageBucket}/o/${ENCODED_TEST_FILE_NAME}?uploadType=resumable`)
+          .post(`/v0/b/${storageBucket}/o/${ENCODED_TEST_FILE_NAME}`)
           .set(authHeader)
           .set({
             "X-Goog-Upload-Protocol": "resumable",
@@ -155,7 +217,7 @@ describe("Firebase Storage endpoint conformance tests", () => {
       it("should return 403 when resumable upload is unauthenticated", async () => {
         const testFileName = "disallowSize0";
         const uploadURL = await supertest(firebaseHost)
-          .post(`/v0/b/${storageBucket}/o/${testFileName}?uploadType=resumable`)
+          .post(`/v0/b/${storageBucket}/o/${testFileName}`)
           // Authorization missing
           .set({
             "X-Goog-Upload-Protocol": "resumable",
@@ -178,7 +240,7 @@ describe("Firebase Storage endpoint conformance tests", () => {
     describe("cancel", () => {
       it("should cancel upload successfully", async () => {
         const uploadURL = await supertest(firebaseHost)
-          .post(`/v0/b/${storageBucket}/o/${ENCODED_TEST_FILE_NAME}?uploadType=resumable`)
+          .post(`/v0/b/${storageBucket}/o/${ENCODED_TEST_FILE_NAME}`)
           .set(authHeader)
           .set({
             "X-Goog-Upload-Protocol": "resumable",
@@ -202,7 +264,7 @@ describe("Firebase Storage endpoint conformance tests", () => {
 
       it("should return 200 when cancelling already cancelled upload", async () => {
         const uploadURL = await supertest(firebaseHost)
-          .post(`/v0/b/${storageBucket}/o/${ENCODED_TEST_FILE_NAME}?uploadType=resumable`)
+          .post(`/v0/b/${storageBucket}/o/${ENCODED_TEST_FILE_NAME}`)
           .set(authHeader)
           .set({
             "X-Goog-Upload-Protocol": "resumable",
@@ -230,7 +292,7 @@ describe("Firebase Storage endpoint conformance tests", () => {
 
       it("should return 400 when cancelling finalized resumable upload", async () => {
         const uploadURL = await supertest(firebaseHost)
-          .post(`/v0/b/${storageBucket}/o/${ENCODED_TEST_FILE_NAME}?uploadType=resumable`)
+          .post(`/v0/b/${storageBucket}/o/${ENCODED_TEST_FILE_NAME}`)
           .set(authHeader)
           .set({
             "X-Goog-Upload-Protocol": "resumable",
@@ -259,7 +321,7 @@ describe("Firebase Storage endpoint conformance tests", () => {
 
       it("should return 404 when cancelling non-existent upload", async () => {
         const uploadURL = await supertest(firebaseHost)
-          .post(`/v0/b/${storageBucket}/o/${ENCODED_TEST_FILE_NAME}?uploadType=resumable`)
+          .post(`/v0/b/${storageBucket}/o/${ENCODED_TEST_FILE_NAME}`)
           .set(authHeader)
           .set({
             "X-Goog-Upload-Protocol": "resumable",

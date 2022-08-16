@@ -12,14 +12,28 @@ import {
   getTmpDir,
 } from "../utils";
 
-// TODO(b/242314185): add more coverage.
 const TEST_FILE_NAME = "gcs/testFile";
+const ENCODED_TEST_FILE_NAME = "gcs%2FtestFile";
 
+const MULTIPART_REQUEST_BODY = Buffer.from(`--b1d5b2e3-1845-4338-9400-6ac07ce53c1e\r
+content-type: application/json\r
+\r
+{"name":"${TEST_FILE_NAME}"}\r
+--b1d5b2e3-1845-4338-9400-6ac07ce53c1e\r
+content-type: text/plain\r
+\r
+hello there!
+\r
+--b1d5b2e3-1845-4338-9400-6ac07ce53c1e--\r
+`);
+
+// TODO(b/242314185): add more coverage.
 describe("GCS endpoint conformance tests", () => {
   // Temp directory to store generated files.
   const tmpDir = getTmpDir();
   const storageBucket = TEST_ENV.appConfig.storageBucket;
   const storageHost = TEST_ENV.storageHost;
+  const googleapisHost = TEST_ENV.googleapisHost;
 
   let test: EmulatorEndToEndTest;
   let testBucket: Bucket;
@@ -65,107 +79,135 @@ describe("GCS endpoint conformance tests", () => {
     }
   });
 
-  describe(".bucket()", () => {
-    describe("#upload()", () => {
-      // TODO(b/241813366): Metadata set in emulator is not consistent with prod
+  describe("Headers", () => {
+    it("should set default response headers on object download", async () => {
+      await supertest(storageHost)
+        .post(`/upload/storage/v1/b/${storageBucket}/o?name=${TEST_FILE_NAME}`)
+        .set(authHeader)
+        .send(Buffer.from("hello world"))
+        .expect(200);
+
+      const res = await supertest(storageHost)
+        .get(`/storage/v1/b/${storageBucket}/o/${ENCODED_TEST_FILE_NAME}?alt=media`)
+        .set(authHeader)
+        .expect(200)
+        .then((res) => res);
+
+      expect(res.header["content-type"]).to.be.eql("application/octet-stream");
+      expect(res.header["content-disposition"]).to.be.eql("attachment");
+    });
+  });
+
+  describe("Metadata", () => {
+    it("should set default metadata", async () => {
+      await supertest(storageHost)
+        .post(`/upload/storage/v1/b/${storageBucket}/o?name=${TEST_FILE_NAME}`)
+        .set(authHeader)
+        .send(Buffer.from("hello world"))
+        .expect(200);
+
+      const metadata = await supertest(storageHost)
+        .get(`/storage/v1/b/${storageBucket}/o/${ENCODED_TEST_FILE_NAME}`)
+        .set(authHeader)
+        .expect(200)
+        .then((res) => res.body);
+
+      expect(Object.keys(metadata)).to.have.same.members([
+        "kind",
+        "id",
+        "selfLink",
+        "mediaLink",
+        "name",
+        "bucket",
+        "generation",
+        "metageneration",
+        "storageClass",
+        "size",
+        "md5Hash",
+        "crc32c",
+        "etag",
+        "timeCreated",
+        "updated",
+        "timeStorageClassUpdated",
+      ]);
+
+      expect(metadata.kind).to.be.eql("storage#object");
+      expect(metadata.id).to.be.include(`${storageBucket}/${TEST_FILE_NAME}`);
+      expect(metadata.selfLink).to.be.eql(
+        `${googleapisHost}/storage/v1/b/${storageBucket}/o/${ENCODED_TEST_FILE_NAME}`
+      );
+      expect(metadata.mediaLink).to.include(
+        `${storageHost}/download/storage/v1/b/${storageBucket}/o/${ENCODED_TEST_FILE_NAME}`
+      );
+      expect(metadata.mediaLink).to.include(`alt=media`);
+      expect(metadata.name).to.be.eql(TEST_FILE_NAME);
+      expect(metadata.bucket).to.be.eql(storageBucket);
+      expect(metadata.generation).to.be.a("string");
+      expect(metadata.metageneration).to.be.eql("1");
+      expect(metadata.storageClass).to.be.a("string");
+      expect(metadata.size).to.be.eql("11");
+      expect(metadata.md5Hash).to.be.a("string");
+      expect(metadata.crc32c).to.be.a("string");
+      expect(metadata.etag).to.be.a("string");
+      expect(metadata.timeCreated).to.be.a("string");
+      expect(metadata.updated).to.be.a("string");
+      expect(metadata.timeStorageClassUpdated).to.be.a("string");
+    });
+  });
+
+  describe("Upload protocols", () => {
+    describe("media upload", () => {
+      it("should default to media upload if upload type is not provided", async () => {
+        await supertest(storageHost)
+          .post(`/upload/storage/v1/b/${storageBucket}/o?name=${TEST_FILE_NAME}`)
+          .set(authHeader)
+          .send(Buffer.from("hello world"))
+          .expect(200);
+
+        const data = await supertest(storageHost)
+          .get(`/storage/v1/b/${storageBucket}/o/${ENCODED_TEST_FILE_NAME}?alt=media`)
+          .set(authHeader)
+          .expect(200)
+          .then((res) => res.body);
+        expect(String(data)).to.eql("hello world");
+      });
+    });
+
+    describe("resumable upload", () => {
       it("should handle resumable uploads", async () => {
         const uploadURL = await supertest(storageHost)
           .post(
             `/upload/storage/v1/b/${storageBucket}/o?name=${TEST_FILE_NAME}&uploadType=resumable`
           )
           .set(authHeader)
-          .send({})
           .expect(200)
           .then((res) => new URL(res.header["location"]));
 
-        const metadata = await supertest(storageHost)
+        await supertest(storageHost)
           .put(uploadURL.pathname + uploadURL.search)
+          .set({
+            "X-Goog-Upload-Protocol": "resumable",
+            "X-Goog-Upload-Command": "upload, finalize",
+            "X-Goog-Upload-Offset": 0,
+          })
+          .send(Buffer.from("hello world"));
+
+        const data = await supertest(storageHost)
+          .get(`/storage/v1/b/${storageBucket}/o/${ENCODED_TEST_FILE_NAME}?alt=media`)
+          .set(authHeader)
           .expect(200)
           .then((res) => res.body);
-
-        const metadataTypes: { [s: string]: string } = {};
-
-        for (const key in metadata) {
-          if (metadata[key]) {
-            metadataTypes[key] = typeof metadata[key];
-          }
-        }
-
-        expect(metadata.name).to.equal(TEST_FILE_NAME);
-        expect(metadata.contentType).to.equal("application/octet-stream");
-        expect(metadataTypes).to.deep.equal({
-          kind: "string",
-          name: "string",
-          bucket: "string",
-          cacheControl: "string",
-          contentDisposition: "string",
-          contentEncoding: "string",
-          generation: "string",
-          metageneration: "string",
-          contentType: "string",
-          timeCreated: "string",
-          updated: "string",
-          storageClass: "string",
-          size: "string",
-          md5Hash: "string",
-          etag: "string",
-          crc32c: "string",
-          timeStorageClassUpdated: "string",
-          id: "string",
-          selfLink: "string",
-          mediaLink: "string",
-        });
+        expect(String(data)).to.eql("hello world");
       });
 
       it("should handle resumable upload with name only in metadata", async () => {
-        const uploadURL = await supertest(storageHost)
+        await supertest(storageHost)
           .post(`/upload/storage/v1/b/${storageBucket}/o?uploadType=resumable`)
           .set(authHeader)
           .send({ name: TEST_FILE_NAME })
-          .expect(200)
-          .then((res) => new URL(res.header["location"]));
-        expect(uploadURL.searchParams?.get("name")).to.equal(TEST_FILE_NAME);
+          .expect(200);
       });
 
-      it("should handle multipart upload with name only in metadata", async () => {
-        const body = Buffer.from(`--b1d5b2e3-1845-4338-9400-6ac07ce53c1e\r
-content-type: application/json\r
-\r
-{"name":"${TEST_FILE_NAME}"}\r
---b1d5b2e3-1845-4338-9400-6ac07ce53c1e\r
-content-type: text/plain\r
-\r
-hello there!
-\r
---b1d5b2e3-1845-4338-9400-6ac07ce53c1e--\r
-`);
-        const responseName = await supertest(storageHost)
-          .post(`/upload/storage/v1/b/${storageBucket}/o?uploadType=multipart`)
-          .set(authHeader)
-          .set({
-            "content-type": "multipart/related; boundary=b1d5b2e3-1845-4338-9400-6ac07ce53c1e",
-          })
-          .send(body)
-          .expect(200)
-          .then((res) => res.body.name);
-        expect(responseName).to.equal(TEST_FILE_NAME);
-      });
-
-      it("should return an error message when uploading a file with invalid metadata", async () => {
-        const errorMessage = await supertest(storageHost)
-          .post(`/upload/storage/v1/b/${storageBucket}/o?name=${TEST_FILE_NAME}`)
-          .set(authHeader)
-          .set({ "X-Upload-Content-Type": "foo" })
-          .expect(400)
-          .then((res) => res.body.error.message);
-
-        expect(errorMessage).to.include("Bad content type.");
-      });
-    });
-  });
-
-  describe(".file()", () => {
-    describe("#getMetadata()", () => {
       it("should return generated custom metadata for new upload", async () => {
         const customMetadata = {
           contentDisposition: "initialCommit",
@@ -190,6 +232,47 @@ hello there!
         expect(returnedMetadata.name).to.equal(customMetadata.name);
         expect(returnedMetadata.contentType).to.equal(customMetadata.contentType);
         expect(returnedMetadata.contentDisposition).to.equal(customMetadata.contentDisposition);
+      });
+    });
+
+    describe("multipart upload", () => {
+      it("should handle multipart upload with name only in metadata", async () => {
+        const responseName = await supertest(storageHost)
+          .post(`/upload/storage/v1/b/${storageBucket}/o?uploadType=multipart`)
+          .set(authHeader)
+          .set({
+            "content-type": "multipart/related; boundary=b1d5b2e3-1845-4338-9400-6ac07ce53c1e",
+          })
+          .send(MULTIPART_REQUEST_BODY)
+          .expect(200)
+          .then((res) => res.body.name);
+        expect(responseName).to.equal(TEST_FILE_NAME);
+      });
+
+      it("should respect X-Goog-Upload-Protocol header", async () => {
+        const responseName = await supertest(storageHost)
+          .post(`/upload/storage/v1/b/${storageBucket}/o`)
+          .set(authHeader)
+          .set({
+            "content-type": "multipart/related; boundary=b1d5b2e3-1845-4338-9400-6ac07ce53c1e",
+            "X-Goog-Upload-Protocol": "multipart",
+          })
+          .send(MULTIPART_REQUEST_BODY)
+          .expect(200)
+          .then((res) => res.body.name);
+        expect(responseName).to.equal(TEST_FILE_NAME);
+      });
+
+      it("should return an error message on invalid content type", async () => {
+        const res = await supertest(storageHost)
+          .post(`/upload/storage/v1/b/${storageBucket}/o?name=${TEST_FILE_NAME}`)
+          .set(authHeader)
+          .set({ "content-type": "foo" })
+          .set({ "X-Goog-Upload-Protocol": "multipart" })
+          .send(MULTIPART_REQUEST_BODY)
+          .expect(400);
+
+        expect(res.text).to.include("Bad content type.");
       });
     });
   });

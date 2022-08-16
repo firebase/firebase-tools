@@ -296,17 +296,16 @@ export class StorageLayer {
       {
         name: upload.objectId,
         bucket: upload.bucketId,
-        contentType: upload.metadata.contentType || "application/octet-stream",
-        contentDisposition: upload.metadata.contentDisposition,
-        contentEncoding: upload.metadata.contentEncoding,
-        contentLanguage: upload.metadata.contentLanguage,
-        cacheControl: upload.metadata.cacheControl,
-        customMetadata: upload.metadata.metadata,
+        contentType: upload.metadata?.contentType,
+        contentDisposition: upload.metadata?.contentDisposition,
+        contentEncoding: upload.metadata?.contentEncoding,
+        contentLanguage: upload.metadata?.contentLanguage,
+        cacheControl: upload.metadata?.cacheControl,
+        customMetadata: upload.metadata?.metadata,
       },
       this._cloudFunctions,
       this._persistence.readBytes(upload.path, upload.size)
     );
-    metadata.update(upload.metadata, /* shouldTrigger = */ false);
 
     const authorized = await this._rulesValidator.validate(
       ["b", upload.bucketId, "o", upload.objectId].join("/"),
@@ -314,7 +313,7 @@ export class StorageLayer {
       RulesetOperationMethod.CREATE,
       {
         before: storedMetadata?.asRulesResource(),
-        after: metadata?.asRulesResource(),
+        after: metadata.asRulesResource(),
       },
       upload.authorization
     );

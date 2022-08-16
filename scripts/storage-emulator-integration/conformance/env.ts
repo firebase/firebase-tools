@@ -113,6 +113,10 @@ class ConformanceTestEnvironment {
     return this.useProductionServers ? "https://storage.googleapis.com" : this.storageEmulatorHost;
   }
 
+  get googleapisHost() {
+    return this.useProductionServers ? "https://www.googleapis.com" : this.storageEmulatorHost;
+  }
+
   get prodServiceAccountKeyJson() {
     if (this._prodServiceAccountKeyJson === undefined) {
       const filePath = path.join(__dirname, TEST_CONFIG.prodServiceAccountKeyFilePath);

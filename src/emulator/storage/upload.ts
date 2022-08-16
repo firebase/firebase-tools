@@ -13,12 +13,13 @@ export type Upload = {
   // status !== FINISHED.
   path: string;
   status: UploadStatus;
-  metadata: IncomingMetadata;
+  metadata?: IncomingMetadata;
   size: number;
   authorization?: string;
 };
 
 export enum UploadType {
+  MEDIA,
   MULTIPART,
   RESUMABLE,
 }
@@ -29,6 +30,14 @@ export enum UploadStatus {
   CANCELLED,
   FINISHED,
 }
+
+/** Request object for {@link UploadService#mediaUpload}. */
+export type MediaUploadRequest = {
+  bucketId: string;
+  objectId: string;
+  dataRaw: Buffer;
+  authorization?: string;
+};
 
 /** Request object for {@link UploadService#multipartUpload}. */
 export type MultipartUploadRequest = {
@@ -44,6 +53,15 @@ export type StartResumableUploadRequest = {
   bucketId: string;
   objectId: string;
   metadataRaw: string;
+  authorization?: string;
+};
+
+type OneShotUploadRequest = {
+  bucketId: string;
+  objectId: string;
+  uploadType: UploadType;
+  dataRaw: Buffer;
+  metadata?: any;
   authorization?: string;
 };
 
@@ -71,28 +89,49 @@ export class UploadService {
     this._uploads = new Map();
   }
 
-  /**
-   * Handles a multipart file upload which is expected to have the entirety of
-   * the file's contents in a single request.
-   */
-  public multipartUpload(request: MultipartUploadRequest): Upload {
-    const upload = this.startMultipartUpload(request, request.dataRaw.byteLength);
+  /** Handles a media (data-only) file upload. */
+  public mediaUpload(request: MediaUploadRequest): Upload {
+    const upload = this.startOneShotUpload({
+      bucketId: request.bucketId,
+      objectId: request.objectId,
+      uploadType: UploadType.MEDIA,
+      dataRaw: request.dataRaw,
+      authorization: request.authorization,
+    });
     this._persistence.deleteFile(upload.path, /* failSilently = */ true);
     this._persistence.appendBytes(upload.path, request.dataRaw);
     return upload;
   }
 
-  private startMultipartUpload(request: MultipartUploadRequest, sizeInBytes: number): Upload {
-    const id = uuidV4();
-    const upload: Upload = {
-      id: uuidV4(),
+  /**
+   * Handles a multipart file upload which is expected to have the entirety of
+   * the file's contents in a single request.
+   */
+  public multipartUpload(request: MultipartUploadRequest): Upload {
+    const upload = this.startOneShotUpload({
       bucketId: request.bucketId,
       objectId: request.objectId,
-      type: UploadType.MULTIPART,
+      uploadType: UploadType.MULTIPART,
+      dataRaw: request.dataRaw,
+      metadata: JSON.parse(request.metadataRaw),
+      authorization: request.authorization,
+    });
+    this._persistence.deleteFile(upload.path, /* failSilently = */ true);
+    this._persistence.appendBytes(upload.path, request.dataRaw);
+    return upload;
+  }
+
+  private startOneShotUpload(request: OneShotUploadRequest): Upload {
+    const id = uuidV4();
+    const upload: Upload = {
+      id,
+      bucketId: request.bucketId,
+      objectId: request.objectId,
+      type: request.uploadType,
       path: this.getStagingFileName(id, request.bucketId, request.objectId),
       status: UploadStatus.FINISHED,
-      metadata: JSON.parse(request.metadataRaw),
-      size: sizeInBytes,
+      metadata: request.metadata,
+      size: request.dataRaw.byteLength,
       authorization: request.authorization,
     };
     this._uploads.set(upload.id, upload);
