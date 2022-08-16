@@ -130,7 +130,13 @@ You can link a Web app to a Hosting site here https://console.firebase.google.co
       getProjectPath
     );
     config.public = hostingDist;
-    if (firebaseProjectConfig) await injectConfig(dist, framework, firebaseProjectConfig, emulators, usingCloudFunctions);
+    if (firebaseProjectConfig) await injectConfig(
+      join(options.projectRoot, dist),
+      framework,
+      firebaseProjectConfig,
+      emulators,
+      usingCloudFunctions
+    );
     if (usingCloudFunctions) {
       if (context.hostingChannel) {
         // TODO move to prompts
