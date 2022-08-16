@@ -281,7 +281,7 @@ export class RemoteConfigEmulator implements EmulatorInstance {
   }
 
   getInfo(): EmulatorInfo {
-    const host = this.args.host || Constants.getDefaultHost(Emulators.REMOTE_CONFIG);
+    const host = this.args.host || Constants.getDefaultHost();
     const port = this.args.port || Constants.getDefaultPort(Emulators.REMOTE_CONFIG);
 
     return {
