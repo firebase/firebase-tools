@@ -206,28 +206,13 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
     const uploadType = req.header("x-goog-upload-protocol")?.toString();
 
     async function finalizeOneShotUpload(upload: Upload) {
-    
-        if (err instanceof ForbiddenError) {
-          res.header("x-goog-upload-status", "final");
-          uploadService.setResponseCode(uploadId, 403);
-          return res.status(403).json({
-            error: {
-              code: 403,
-              message: `Permission denied. No WRITE permission.`,
-            },
-          });
-        }
-        throw err;
-      }
-      
-      
       let metadata: StoredFileMetadata;
       try {
         metadata = await storageLayer.uploadObject(upload);
       } catch (err) {
         if (err instanceof ForbiddenError) {
           res.header("x-goog-upload-status", "final");
-          uploadService.setResponseCode(uploadId, 403);
+          uploadService.setResponseCode(upload.id, 403);
           return res.status(403).json({
             error: {
               code: 403,
@@ -237,7 +222,6 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         }
         throw err;
       }
-      res.header("x-goog-upload-status", "final");
       metadata.addDownloadToken(/* shouldTrigger = */ false);
       if (!metadata.contentDisposition) {
         metadata.update({ contentDisposition: "inline" }, /* shouldTrigger = */ false);
