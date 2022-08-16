@@ -1,5 +1,7 @@
+import { execSync } from "child_process";
 import * as clc from "cli-color";
 import * as fs from "fs";
+import { sync as rimraf } from "rimraf";
 
 import { Client } from "../../../apiv2";
 import { initGitHub } from "./github";
@@ -7,8 +9,6 @@ import { prompt } from "../../../prompt";
 import { logger } from "../../../logger";
 import { discover, WebFramework } from "../../../frameworks";
 import { previews } from "../../../previews";
-import { execSync } from "child_process";
-import { sync as rimraf } from "rimraf";
 
 const INDEX_TEMPLATE = fs.readFileSync(
   __dirname + "/../../../../templates/init/hosting/index.html",
@@ -33,52 +33,71 @@ export async function doSetup(setup: any, config: any): Promise<void> {
   logger.info("have a build process for your assets, use your build's output directory.");
   logger.info();
 
+  let discoveredFramework = previews.frameworkawareness ?
+    await discover(config.projectDir, false) :
+    undefined;
+
   if (previews.frameworkawareness) {
-    await prompt(setup.hosting, [
+
+    if (discoveredFramework) await prompt(setup.hosting, [
       {
-        name: "useWebFrameworks",
+        name: "useDiscoveredFramework",
         type: "confirm",
-        default: false,
-        message: `Do you want to use a web framework?`,
+        default: true,
+        message: `Detected an existing ${discoveredFramework.framework} codebase in ., should we use this?`,
       },
     ]);
+
+    if (setup.hosting.useDiscoveredFramework) {
+      setup.hosting.source = '.';
+      setup.hosting.useWebFrameworks = true;
+    } else {
+      await prompt(setup.hosting, [
+        {
+          name: "useWebFrameworks",
+          type: "confirm",
+          default: false,
+          message: `Do you want to use a web framework?`,
+        },
+      ]);
+    }
   }
 
   if (setup.hosting.useWebFrameworks) {
 
     await prompt(setup.hosting, [
+        {
+          name: "source",
+          type: "input",
+          default: "hosting",
+          message: "What folder would you like to use for your web application's root directory?",
+        },
+      ]
+    );
+
+    if (setup.hosting.source !== '.') delete setup.hosting.useDiscoveredFramework;
+    discoveredFramework = await discover(setup.hosting.source);
+
+    if (discoveredFramework) await prompt(setup.hosting, [
       {
-        name: "source",
-        type: "input",
-        default: "hosting",
-        message: "What do you want to use as your source directory?",
+        name: "useDiscoveredFramework",
+        type: "confirm",
+        default: true,
+        message: `Detected an existing ${discoveredFramework.framework} codebase in ${setup.hosting.source}, should we use this?`,
       },
     ]);
 
-    const discoveredFramework = await discover(setup.hosting.source);
-    if (discoveredFramework) {
+    if (setup.hosting.useDiscoveredFramework) {
 
-      await prompt(setup.hosting, [
-        {
-          name: "overwriteDiscoveredFramework",
-          type: "confirm",
-          default: false,
-          message: `Detected an existing ${discoveredFramework.framework} codebase in ${setup.hosting.source}, should we overwrite this directory?`,
-        },
-      ]);
+      setup.hosting.webFramework = discoveredFramework!.framework;
 
-      if (!setup.hosting.overwriteDiscoveredFramework) {
-        setup.hosting.webFramework = discoveredFramework.framework;
-      }
+    } else {
 
-    }
-
-    if (!discoveredFramework || setup.hosting.overwriteDiscoveredFramework) {
       await prompt(setup.hosting, [
         {
           name: "webFramework",
           type: "list",
-          message: "Please choose the platform of the app:",
+          message: "Please choose the framework:",
           default: discoveredFramework?.framework,
           choices: [
             { name: "Angular", value: WebFramework.Angular },
@@ -88,10 +107,10 @@ export async function doSetup(setup: any, config: any): Promise<void> {
         },
       ]);
 
-      if (setup.hosting.overwriteDiscoveredFramework) rimraf(setup.hosting.source);
+      if (discoveredFramework) rimraf(setup.hosting.source);
 
       if (setup.hosting.webFramework === WebFramework.Angular) {
-        execSync(`npx --yes -p @angular/cli ng new ${setup.hosting.source} --skip-git`, {stdio: 'inherit'})
+        execSync(`npx --yes -p @angular/cli@latest ng new ${setup.hosting.source} --skip-git`, {stdio: 'inherit'})
         await prompt(setup.hosting, [
           {
             name: "useAngularUniversal",
@@ -104,9 +123,9 @@ export async function doSetup(setup: any, config: any): Promise<void> {
           execSync('ng add @nguniversal/express-engine --skip-confirmation', {stdio: 'inherit', cwd: setup.hosting.source });
         }
       };
-      if (setup.hosting.webFramework === WebFramework.NextJS) execSync(`npx --yes create-next-app ${setup.hosting.source}`, {stdio: 'inherit'});
+      if (setup.hosting.webFramework === WebFramework.NextJS) execSync(`npx --yes create-next-app@latest ${setup.hosting.source}`, {stdio: 'inherit'});
       if (setup.hosting.webFramework === WebFramework.Nuxt) {
-        execSync(`npx --yes nuxi init ${setup.hosting.source}`, {stdio: 'inherit'});
+        execSync(`npx --yes nuxi@latest init ${setup.hosting.source}`, {stdio: 'inherit'});
         execSync(`npm install`, {stdio: 'inherit', cwd: setup.hosting.source });
       }
     }
