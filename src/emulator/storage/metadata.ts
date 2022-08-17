@@ -5,10 +5,6 @@ import { Emulators } from "../types";
 import { StorageCloudFunctions } from "./cloudFunctions";
 import { crc32c, crc32cToString } from "./crc";
 
-type RulesResourceMetadataOverrides = {
-  [Property in keyof RulesResourceMetadata]?: RulesResourceMetadata[Property];
-};
-
 type SerializedFileMetadata = Omit<StoredFileMetadata, "timeCreated" | "updated"> & {
   timeCreated: string;
   updated: string;
@@ -45,8 +41,7 @@ export class StoredFileMetadata {
       bucket: string;
     },
     private _cloudFunctions: StorageCloudFunctions,
-    bytes?: Buffer,
-    incomingMetadata?: IncomingMetadata
+    bytes?: Buffer
   ) {
     // Required fields
     this.name = opts.name;
@@ -55,7 +50,7 @@ export class StoredFileMetadata {
     // Optional fields
     this.metageneration = opts.metageneration || 1;
     this.generation = opts.generation || Date.now();
-    this.contentType = opts.contentType;
+    this.contentType = opts.contentType || "application/octet-stream";
     this.storageClass = opts.storageClass || "STANDARD";
     this.contentDisposition = opts.contentDisposition;
     this.cacheControl = opts.cacheControl;
@@ -87,51 +82,60 @@ export class StoredFileMetadata {
       throw new Error("Must pass bytes array or opts object with size, md5hash, and crc32c");
     }
 
-    if (incomingMetadata) {
-      this.update(incomingMetadata, /* shouldTrigger = */ false);
-    }
-
     this.deleteFieldsSetAsNull();
     this.setDownloadTokensFromCustomMetadata();
   }
 
-  asRulesResource(proposedChanges?: RulesResourceMetadataOverrides): RulesResourceMetadata {
-    let rulesResource: RulesResourceMetadata = {
-      name: this.name,
-      bucket: this.bucket,
-      generation: this.generation,
-      metageneration: this.metageneration,
-      size: this.size,
-      timeCreated: this.timeCreated,
-      updated: this.updated,
-      md5Hash: this.md5Hash,
-      crc32c: this.crc32c,
-      etag: this.etag,
-      contentDisposition: this.contentDisposition,
-      contentEncoding: this.contentEncoding,
-      contentType: this.contentType,
-      metadata: this.customMetadata || {},
-    };
+  /** Creates a deep copy of a StoredFileMetadata. */
+  clone(): StoredFileMetadata {
+    const clone = new StoredFileMetadata(
+      {
+        name: this.name,
+        bucket: this.bucket,
+        generation: this.generation,
+        metageneration: this.metageneration,
+        contentType: this.contentType,
+        storageClass: this.storageClass,
+        size: this.size,
+        md5Hash: this.md5Hash,
+        contentEncoding: this.contentEncoding,
+        contentDisposition: this.contentDisposition,
+        contentLanguage: this.contentLanguage,
+        cacheControl: this.cacheControl,
+        customTime: this.customTime,
+        crc32c: this.crc32c,
+        etag: this.etag,
+        downloadTokens: this.downloadTokens,
+        customMetadata: this.customMetadata,
+      },
+      this._cloudFunctions
+    );
+    clone.timeCreated = this.timeCreated;
+    clone.updated = this.updated;
+    return clone;
+  }
 
+  asRulesResource(proposedChanges?: IncomingMetadata): RulesResourceMetadata {
+    const proposedMetadata: StoredFileMetadata = this.clone();
     if (proposedChanges) {
-      if (proposedChanges.md5Hash !== rulesResource.md5Hash) {
-        // Step the generation forward and reset values
-        rulesResource.generation = Date.now();
-        rulesResource.metageneration = 1;
-        rulesResource.timeCreated = new Date();
-        rulesResource.updated = rulesResource.timeCreated;
-      } else {
-        // Otherwise this was just a metadata change
-        rulesResource.metageneration++;
-      }
-
-      rulesResource = {
-        ...rulesResource,
-        ...proposedChanges,
-      };
+      proposedMetadata.update(proposedChanges, /* shouldTrigger = */ false);
     }
-
-    return rulesResource;
+    return {
+      name: proposedMetadata.name,
+      bucket: proposedMetadata.bucket,
+      generation: proposedMetadata.generation,
+      metageneration: proposedMetadata.metageneration,
+      size: proposedMetadata.size,
+      timeCreated: proposedMetadata.timeCreated,
+      updated: proposedMetadata.updated,
+      md5Hash: proposedMetadata.md5Hash,
+      crc32c: proposedMetadata.crc32c,
+      etag: proposedMetadata.etag,
+      contentDisposition: proposedMetadata.contentDisposition,
+      contentEncoding: proposedMetadata.contentEncoding,
+      contentType: proposedMetadata.contentType,
+      metadata: proposedMetadata.customMetadata || {},
+    };
   }
 
   private setDownloadTokensFromCustomMetadata() {
@@ -175,60 +179,63 @@ export class StoredFileMetadata {
     }
   }
 
-  /**
-   * TODO(abhisun): Move all cloud function triggers to the storage layer to
-   * avoid needing the shouldTrigger field
-   */
+  // IncomingMetadata fields are set to `null` by clients to unset the metadata fields.
+  // If they are undefined in IncomingMetadata, then the fields should be ignored.
   update(incoming: IncomingMetadata, shouldTrigger = true): void {
-    if (incoming.contentDisposition) {
-      this.contentDisposition = incoming.contentDisposition;
+    if (incoming.contentDisposition !== undefined) {
+      this.contentDisposition =
+        incoming.contentDisposition === null ? undefined : incoming.contentDisposition;
     }
 
-    if (incoming.contentType) {
-      this.contentType = incoming.contentType;
+    if (incoming.contentType !== undefined) {
+      this.contentType = incoming.contentType === null ? undefined : incoming.contentType;
     }
 
-    if (incoming.metadata) {
-      // Convert all values to strings
-      this.customMetadata = this.customMetadata ? { ...this.customMetadata } : {};
-      for (const [k, v] of Object.entries(incoming.metadata)) {
-        this.customMetadata[k] = v === null ? (null as unknown as string) : String(v);
+    if (incoming.contentLanguage !== undefined) {
+      this.contentLanguage =
+        incoming.contentLanguage === null ? undefined : incoming.contentLanguage;
+    }
+
+    if (incoming.contentEncoding !== undefined) {
+      this.contentEncoding =
+        incoming.contentEncoding === null ? undefined : incoming.contentEncoding;
+    }
+
+    if (incoming.cacheControl !== undefined) {
+      this.cacheControl = incoming.cacheControl === null ? undefined : incoming.cacheControl;
+    }
+
+    if (incoming.metadata !== undefined) {
+      if (incoming.metadata === null) {
+        this.customMetadata = undefined;
+      } else {
+        this.customMetadata = this.customMetadata || {};
+        for (const [k, v] of Object.entries(incoming.metadata)) {
+          // Clients can set custom metadata fields to null to unset them.
+          if (v === null) {
+            delete this.customMetadata[k];
+          } else {
+            // Convert all values to strings
+            this.customMetadata[k] = String(v);
+          }
+        }
+        // Clear out custom metadata if there are no more keys.
+        if (Object.keys(this.customMetadata).length === 0) {
+          this.customMetadata = undefined;
+        }
       }
     }
 
-    if (incoming.contentLanguage) {
-      this.contentLanguage = incoming.contentLanguage;
-    }
-
-    if (incoming.contentEncoding) {
-      this.contentEncoding = incoming.contentEncoding;
-    }
-
-    if (this.generation) {
-      this.generation++;
-    }
-
+    this.metageneration++;
     this.updated = new Date();
-
-    if (incoming.cacheControl) {
-      this.cacheControl = incoming.cacheControl;
-    }
-
     this.setDownloadTokensFromCustomMetadata();
-    this.deleteFieldsSetAsNull();
-
     if (shouldTrigger) {
       this._cloudFunctions.dispatch("metadataUpdate", new CloudStorageObjectMetadata(this));
     }
   }
 
   addDownloadToken(shouldTrigger = true): void {
-    if (!this.downloadTokens.length) {
-      this.downloadTokens.push(uuid.v4());
-      return;
-    }
-
-    this.downloadTokens = [...this.downloadTokens, uuid.v4()];
+    this.downloadTokens = [...(this.downloadTokens || []), uuid.v4()];
     this.update({}, shouldTrigger);
   }
 
@@ -286,12 +293,12 @@ export interface RulesResourceMetadata {
 
 export interface IncomingMetadata {
   name?: string;
-  contentType?: string;
-  contentLanguage?: string;
-  contentEncoding?: string;
-  contentDisposition?: string;
-  cacheControl?: string;
-  metadata?: { [s: string]: string };
+  contentType?: string | null;
+  contentLanguage?: string | null;
+  contentEncoding?: string | null;
+  contentDisposition?: string | null;
+  cacheControl?: string | null;
+  metadata?: { [s: string]: string | null } | null;
 }
 
 export class OutgoingFirebaseMetadata {
@@ -312,7 +319,7 @@ export class OutgoingFirebaseMetadata {
   crc32c: string;
   etag: string;
   downloadTokens: string;
-  metadata: object | undefined;
+  metadata?: object;
 
   constructor(metadata: StoredFileMetadata) {
     this.name = metadata.name;

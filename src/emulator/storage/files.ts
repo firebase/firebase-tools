@@ -259,7 +259,6 @@ export class StorageLayer {
     request: UpdateObjectMetadataRequest
   ): Promise<StoredFileMetadata> {
     const storedMetadata = this.getMetadata(request.bucketId, request.decodedObjectId);
-
     const authorized = await this._rulesValidator.validate(
       ["b", request.bucketId, "o", request.decodedObjectId].join("/"),
       request.bucketId,
@@ -292,16 +291,24 @@ export class StorageLayer {
 
     const storedMetadata = this.getMetadata(upload.bucketId, upload.objectId);
     const filePath = this.path(upload.bucketId, upload.objectId);
+    // Pulls fields out of upload.metadata and ignores null values.
+    function getIncomingMetadata(field: string): any {
+      if (!upload.metadata) {
+        return undefined;
+      }
+      const value: any | undefined = (upload.metadata! as any)[field];
+      return value === null ? undefined : value;
+    }
     const metadata = new StoredFileMetadata(
       {
         name: upload.objectId,
         bucket: upload.bucketId,
-        contentType: upload.metadata?.contentType,
-        contentDisposition: upload.metadata?.contentDisposition,
-        contentEncoding: upload.metadata?.contentEncoding,
-        contentLanguage: upload.metadata?.contentLanguage,
-        cacheControl: upload.metadata?.cacheControl,
-        customMetadata: upload.metadata?.metadata,
+        contentType: getIncomingMetadata("contentType"),
+        contentDisposition: getIncomingMetadata("contentDisposition"),
+        contentEncoding: getIncomingMetadata("contentEncoding"),
+        contentLanguage: getIncomingMetadata("contentLanguage"),
+        cacheControl: getIncomingMetadata("cacheControl"),
+        customMetadata: getIncomingMetadata("metadata"),
       },
       this._cloudFunctions,
       this._persistence.readBytes(upload.path, upload.size)
@@ -371,20 +378,24 @@ export class StorageLayer {
       }
     }
 
+    // Pulls fields out of newMetadata and ignores null values.
+    function getMetadata(field: string): any {
+      const value: any | undefined = (newMetadata as any)[field];
+      return value === null ? undefined : value;
+    }
     const copiedFileMetadata = new StoredFileMetadata(
       {
         name: destinationObject,
         bucket: destinationBucket,
-        contentType: newMetadata.contentType || "application/octet-stream",
-        contentDisposition: newMetadata.contentDisposition,
-        contentEncoding: newMetadata.contentEncoding,
-        contentLanguage: newMetadata.contentLanguage,
-        cacheControl: newMetadata.cacheControl,
-        customMetadata: newMetadata.metadata,
+        contentType: getMetadata("contentType"),
+        contentDisposition: getMetadata("contentDisposition"),
+        contentEncoding: getMetadata("contentEncoding"),
+        contentLanguage: getMetadata("contentLanguage"),
+        cacheControl: getMetadata("cacheControl"),
+        customMetadata: getMetadata("metadata"),
       },
       this._cloudFunctions,
-      sourceBytes,
-      incomingMetadata
+      sourceBytes
     );
     const file = new StoredFile(copiedFileMetadata);
     this._files.set(destinationFilePath, file);
