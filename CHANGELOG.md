@@ -3,3 +3,4 @@
 - Removes extraneous default metadata fields from storage emulator (#4869)
 - Fixes an issue where a blocked upload from the android sdks crashes the storage emulator (#4860)
 - Fix deleting metadata fields in storage emulator (#4889)
+- Fix storage emulator bug where rapid calls to the rules runtime results in no returns and non-resolving promises (#3915)
