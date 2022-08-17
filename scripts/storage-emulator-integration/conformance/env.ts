@@ -27,7 +27,7 @@ const TEST_CONFIG = {
   prodServiceAccountKeyFilePath: "service-account-key.json",
 
   // Name of secondary GCS bucket used in tests that need two buckets.
-  secondTestBucket: "tonyjhuang-test0003",
+  secondTestBucket: "other-bucket",
 
   // Relative path to the emulator config to use in integration tests.
   // Only used when useProductionServers == false.
