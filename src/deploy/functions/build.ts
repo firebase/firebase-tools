@@ -274,12 +274,18 @@ export type Endpoint = Triggered & {
 export async function resolveBackend(
   build: Build,
   userEnvOpt: UserEnvsOpts,
-  userEnvs: Record<string, string>
+  userEnvs: Record<string, string>,
+  nonInteractive?: boolean
 ): Promise<backend.Backend> {
   const projectId = userEnvOpt.projectId;
   let paramValues: Record<string, Field<string | number | boolean>> = {};
   if (previews.functionsparams) {
-    paramValues = await params.resolveParams(build.params, projectId, envWithTypes(userEnvs));
+    paramValues = await params.resolveParams(
+      build.params,
+      projectId,
+      envWithTypes(userEnvs),
+      nonInteractive
+    );
 
     // TODO(vsfan@): when merging secrets support into the Build, make sure we aren't writing those to disk.
     const toWrite: Record<string, string> = {};
