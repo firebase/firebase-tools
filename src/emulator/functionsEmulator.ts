@@ -293,7 +293,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       const { host, port } = this.getInfo();
       triggers.forEach((triggerId) => {
         this.workQueue.submit(() => {
-          return new Promise(async (resolve, reject) => {
+          return new Promise((resolve, reject) => {
             const trigReq = http.request(
               {
                 host,
@@ -307,7 +307,6 @@ export class FunctionsEmulator implements EmulatorInstance {
             trigReq.on("error", reject);
             trigReq.write(rawBody);
             trigReq.end();
-            return;
           });
         });
       });
