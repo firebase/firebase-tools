@@ -263,7 +263,7 @@
                     },
                     "type": "object"
                 },
-                "single_project_mode": {
+                "singleProjectMode": {
                     "type": "boolean"
                 },
                 "storage": {

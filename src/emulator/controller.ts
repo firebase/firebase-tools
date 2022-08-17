@@ -618,7 +618,7 @@ export async function startAll(
       );
     }
 
-    if (options.config.src.emulators?.single_project_mode) {
+    if (options.config.src.emulators?.singleProjectMode) {
       if (projectId) {
         args.single_project_mode = true;
         args.single_project_mode_error = false;
