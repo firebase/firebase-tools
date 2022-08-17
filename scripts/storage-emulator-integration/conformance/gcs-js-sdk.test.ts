@@ -84,13 +84,6 @@ describe("GCS Javascript SDK conformance tests", () => {
         // Doesn't require an assertion, will throw on failure
       });
 
-      it("should handle resumable uploads", async () => {
-        await testBucket.upload(smallFilePath, {
-          resumable: true,
-        });
-        // Doesn't require an assertion, will throw on failure
-      });
-
       it("should replace existing file on upload", async () => {
         const path = "replace.txt";
         const content1 = createRandomFile("small_content_1", 10, tmpDir);
@@ -399,32 +392,6 @@ describe("GCS Javascript SDK conformance tests", () => {
   });
 
   describe(".file()", () => {
-    describe("#save()", () => {
-      it("should accept a zero-byte file", async () => {
-        await testBucket.file("testing/dir/").save("");
-
-        const [files] = await testBucket.getFiles({
-          directory: "testing",
-        });
-
-        expect(files.map((file) => file.name)).to.contain("testing/dir/");
-      });
-    });
-
-    describe("#get()", () => {
-      it("should complete an save/get/download cycle", async () => {
-        const p = "testing/dir/hello.txt";
-        const content = "hello, world";
-
-        await testBucket.file(p).save(content);
-
-        const [f] = await testBucket.file(p).get();
-        const [buf] = await f.download();
-
-        expect(buf.toString()).to.equal(content);
-      });
-    });
-
     describe("#exists()", () => {
       it("should return false for a file that does not exist", async () => {
         // Ensure that the file exists on the bucket before deleting it
