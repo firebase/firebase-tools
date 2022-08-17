@@ -85,7 +85,7 @@ describe("Firebase Storage endpoint conformance tests", () => {
         .expect(200)
         .then((res) => res.body);
 
-        expect(Object.keys(metadata)).to.include.members([
+      expect(Object.keys(metadata)).to.include.members([
         "name",
         "bucket",
         "generation",
