@@ -213,7 +213,7 @@ export class StorageRulesRuntime {
     this._childprocess?.kill("SIGINT");
   }
 
-  private async _sendRequest(rab: RuntimeActionBundle, childProcess: ChildProcess) {
+  private async _sendRequest(rab: RuntimeActionBundle) {
     if (!this._childprocess) {
       throw new FirebaseError(
         "Attempted to send Cloud Storage rules request before child was ready"
@@ -241,12 +241,11 @@ export class StorageRulesRuntime {
       // Without waiting to acquire the lock and allowing the child process enough time
       // (~15ms) to pipe the output back, the emulator will run into issues with
       // capturing the output and resolving corresponding promises en masse.
-
       lock.acquire(synchonizationKey, (done) => {
-        childProcess?.stdin?.write(serializedRequest + "\n");
-        setTimeout(function() {
+        this._childprocess?.stdin?.write(serializedRequest + "\n");
+        setTimeout(() => {
           done();
-        }, 15)
+        }, 15);
       });
     });
   }
@@ -265,7 +264,7 @@ export class StorageRulesRuntime {
     };
 
     const response = (await this._sendRequest(
-      runtimeActionRequest, this._childprocess as ChildProcess
+      runtimeActionRequest
     )) as RuntimeActionLoadRulesetResponse;
 
     if (response.errors.length || response.warnings.length) {
@@ -319,7 +318,7 @@ export class StorageRulesRuntime {
         variables: runtimeVariables,
       },
     };
-    const response = (await this._sendRequest(runtimeActionRequest, this._childprocess as ChildProcess)) as RuntimeActionVerifyResponse;
+    const response = (await this._sendRequest(runtimeActionRequest)) as RuntimeActionVerifyResponse;
 
     if (!response.errors) response.errors = [];
     if (!response.warnings) response.warnings = [];
