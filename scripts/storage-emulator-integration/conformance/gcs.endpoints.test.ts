@@ -12,6 +12,10 @@ import {
   getTmpDir,
 } from "../utils";
 
+// Test case that should only run when targeting the emulator.
+// Example use: emulatorOnly.it("Local only test case", () => {...});
+const emulatorOnly = { it: TEST_ENV.useProductionServers ? it.skip : it };
+
 const TEST_FILE_NAME = "gcs/testFile";
 const ENCODED_TEST_FILE_NAME = "gcs%2FtestFile";
 
@@ -174,7 +178,8 @@ describe("GCS endpoint conformance tests", () => {
     });
 
     describe("resumable upload", () => {
-      it("should handle resumable uploads", async () => {
+      // GCS emulator resumable upload capabilities are limited and this test asserts its broken state.
+      emulatorOnly.it("should handle resumable uploads", async () => {
         const uploadURL = await supertest(storageHost)
           .post(
             `/upload/storage/v1/b/${storageBucket}/o?name=${TEST_FILE_NAME}&uploadType=resumable`

@@ -14,7 +14,10 @@ import {
   getTmpDir,
 } from "../utils";
 
-// TODO(b/241151246): Fix conformance tests.
+// Test case that should only run when targeting the emulator.
+// Example use: emulatorOnly.it("Local only test case", () => {...});
+const emulatorOnly = { it: TEST_ENV.useProductionServers ? it.skip : it };
+
 describe("GCS Javascript SDK conformance tests", () => {
   // Temp directory to store generated files.
   const tmpDir = getTmpDir();
@@ -22,12 +25,15 @@ describe("GCS Javascript SDK conformance tests", () => {
   const emptyFilePath: string = createRandomFile("empty_file", 0, tmpDir);
 
   const storageBucket = TEST_ENV.appConfig.storageBucket;
+  const otherStorageBucket = TEST_ENV.secondTestBucket;
   const storageHost = TEST_ENV.storageHost;
   const firebaseHost = TEST_ENV.firebaseHost;
   const googleapisHost = TEST_ENV.googleapisHost;
 
   let test: EmulatorEndToEndTest;
   let testBucket: Bucket;
+  let otherTestBucket: Bucket;
+  let authHeader: { Authorization: string };
 
   async function resetState(): Promise<void> {
     if (TEST_ENV.useProductionServers) {
@@ -50,6 +56,8 @@ describe("GCS Javascript SDK conformance tests", () => {
       : admin.credential.applicationDefault();
     admin.initializeApp({ credential });
     testBucket = admin.storage().bucket(storageBucket);
+    otherTestBucket = admin.storage().bucket(otherStorageBucket);
+    authHeader = { Authorization: `Bearer ${await TEST_ENV.adminAccessTokenGetter}` };
   });
 
   beforeEach(async () => {
@@ -76,7 +84,7 @@ describe("GCS Javascript SDK conformance tests", () => {
         // Doesn't require an assertion, will throw on failure
       });
 
-      it.skip("should handle resumable uploads", async () => {
+      it("should handle resumable uploads", async () => {
         await testBucket.upload(smallFilePath, {
           resumable: true,
         });
@@ -120,7 +128,7 @@ describe("GCS Javascript SDK conformance tests", () => {
         const metadata = {
           contentDisposition: "attachment",
           cacheControl: "private,max-age=30",
-          contentLanguage: "de-DE",
+          contentLanguage: "en",
           metadata: { foo: "bar" },
         };
         const [, fileMetadata] = await testBucket.upload(smallFilePath, {
@@ -392,8 +400,7 @@ describe("GCS Javascript SDK conformance tests", () => {
 
   describe(".file()", () => {
     describe("#save()", () => {
-      // TODO(abehaskins): This test is temporarily disabled due to a credentials issue
-      it.skip("should accept a zero-byte file", async () => {
+      it("should accept a zero-byte file", async () => {
         await testBucket.file("testing/dir/").save("");
 
         const [files] = await testBucket.getFiles({
@@ -405,8 +412,7 @@ describe("GCS Javascript SDK conformance tests", () => {
     });
 
     describe("#get()", () => {
-      // TODO(abehaskins): This test is temporarily disabled due to a credentials issue
-      it.skip("should complete an save/get/download cycle", async () => {
+      it("should complete an save/get/download cycle", async () => {
         const p = "testing/dir/hello.txt";
         const content = "hello, world";
 
@@ -544,13 +550,12 @@ describe("GCS Javascript SDK conformance tests", () => {
       it("should copy the file to a different bucket", async () => {
         await testBucket.upload(smallFilePath);
 
-        const otherBucket = testBucket.storage.bucket("other-bucket");
-        const file = otherBucket.file(COPY_DESTINATION_FILENAME);
+        const file = otherTestBucket.file(COPY_DESTINATION_FILENAME);
         const [, { resource: metadata }] = await testBucket
           .file(smallFilePath.split("/").slice(-1)[0])
           .copy(file);
 
-        expect(metadata).to.have.property("bucket", otherBucket.name);
+        expect(metadata).to.have.property("bucket", otherStorageBucket);
 
         const [copiedContent] = await file.download();
 
@@ -567,6 +572,7 @@ describe("GCS Javascript SDK conformance tests", () => {
           .copy(file);
 
         const [expectedMetadata] = await file.getMetadata();
+        delete actualMetadata["owner"];
         expect(actualMetadata).to.deep.equal(expectedMetadata);
       });
 
@@ -618,6 +624,7 @@ describe("GCS Javascript SDK conformance tests", () => {
           .file(smallFilePath.split("/").slice(-1)[0])
           .copy(file, copyOpts);
 
+        delete metadata1["owner"];
         expect(metadata1).to.deep.include({
           bucket: source.bucket,
           crc32c: source.crc32c,
@@ -647,6 +654,7 @@ describe("GCS Javascript SDK conformance tests", () => {
           .file(smallFilePath.split("/").slice(-1)[0])
           .copy(file, copyOpts);
 
+        delete metadata1["owner"];
         expect(metadata1).to.deep.include({
           bucket: source.bucket,
           crc32c: source.crc32c,
@@ -709,7 +717,7 @@ describe("GCS Javascript SDK conformance tests", () => {
         expect(metadataOut).to.deep.include({ metadata });
       });
 
-      it("should not support the use of a rewriteToken", async () => {
+      emulatorOnly.it("should not support the use of a rewriteToken", async () => {
         await testBucket.upload(smallFilePath);
 
         const file = testBucket.file(COPY_DESTINATION_FILENAME);
@@ -728,18 +736,20 @@ describe("GCS Javascript SDK conformance tests", () => {
         const generation = aclMetadata.generation;
         delete aclMetadata.generation;
 
-        expect(aclMetadata).to.deep.equal({
-          kind: "storage#objectAccessControl",
-          object: destination,
-          id: `${testBucket.name}/${destination}/${generation}/allUsers`,
-          selfLink: `${storageHost}/storage/v1/b/${testBucket.name}/o/${encodeURIComponent(
+        expect(aclMetadata.kind).to.be.eql("storage#objectAccessControl");
+        expect(aclMetadata.object).to.be.eql(destination);
+        expect(aclMetadata.id).to.be.eql(
+          `${testBucket.name}/${destination}/${generation}/allUsers`
+        );
+        expect(aclMetadata.selfLink).to.be.eql(
+          `${googleapisHost}/storage/v1/b/${testBucket.name}/o/${encodeURIComponent(
             destination
-          )}/acl/allUsers`,
-          bucket: testBucket.name,
-          entity: "allUsers",
-          role: "READER",
-          etag: "someEtag",
-        });
+          )}/acl/allUsers`
+        );
+        expect(aclMetadata.bucket).to.be.eql(testBucket.name);
+        expect(aclMetadata.entity).to.be.eql("allUsers");
+        expect(aclMetadata.role).to.be.eql("READER");
+        expect(aclMetadata.etag).to.be.a("string");
       });
 
       it("should not interfere with downloading of bytes via public URL", async () => {
@@ -833,7 +843,7 @@ describe("GCS Javascript SDK conformance tests", () => {
           .getMetadata();
 
         await new Promise((resolve, reject) => {
-          TEST_ENV.requestClient.get(mediaLink, {}, (response) => {
+          TEST_ENV.requestClient.get(mediaLink, { headers: authHeader }, (response) => {
             const data: any = [];
             response
               .on("data", (chunk) => data.push(chunk))

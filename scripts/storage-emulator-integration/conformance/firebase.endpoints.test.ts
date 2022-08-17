@@ -73,12 +73,30 @@ describe("Firebase Storage endpoint conformance tests", () => {
     it("should set default metadata", async () => {
       const fileName = "dir/someFile";
       const encodedFileName = "dir%2FsomeFile";
+      console.log(
+        JSON.stringify(
+          await supertest(firebaseHost)
+            .post(`/v0/b/${storageBucket}/o?name=${fileName}`)
+            .set(authHeader)
+            .send(Buffer.from("hello world")),
+          null,
+          2
+        )
+      );
       await supertest(firebaseHost)
         .post(`/v0/b/${storageBucket}/o?name=${fileName}`)
         .set(authHeader)
         .send(Buffer.from("hello world"))
         .expect(200);
-
+      console.log(
+        JSON.stringify(
+          await supertest(firebaseHost)
+            .get(`/v0/b/${storageBucket}/o/${encodedFileName}`)
+            .set(authHeader),
+          null,
+          2
+        )
+      );
       const metadata = await supertest(firebaseHost)
         .get(`/v0/b/${storageBucket}/o/${encodedFileName}`)
         .set(authHeader)
