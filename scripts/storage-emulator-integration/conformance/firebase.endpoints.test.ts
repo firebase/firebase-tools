@@ -122,7 +122,7 @@ describe("Firebase Storage endpoint conformance tests", () => {
       expect(metadata.name).to.be.eql(fileName);
       expect(metadata.bucket).to.be.eql(storageBucket);
       expect(metadata.generation).to.be.a("string");
-      expect(metadata.metageneration).to.be.eql("2");
+      expect(metadata.metageneration).to.be.eql("1");
       expect(metadata.timeCreated).to.be.a("string");
       expect(metadata.updated).to.be.a("string");
       expect(metadata.storageClass).to.be.a("string");

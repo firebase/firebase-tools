@@ -1,5 +1,6 @@
 import { EmulatorLogger } from "../../emulatorLogger";
 import { Emulators } from "../../types";
+import * as uuid from "uuid";
 import { gunzipSync } from "zlib";
 import { IncomingMetadata, OutgoingFirebaseMetadata, StoredFileMetadata } from "../metadata";
 import { Request, Response, Router } from "express";
@@ -115,7 +116,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
     }
 
     if (metadata.downloadTokens.length === 0) {
-      metadata.addDownloadToken();
+      metadata.addDownloadToken(/* shouldTrigger = */ true);
     }
 
     // Object data request
@@ -206,6 +207,14 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
     const uploadType = req.header("x-goog-upload-protocol")?.toString();
 
     async function finalizeOneShotUpload(upload: Upload) {
+      // Set default download token if it isn't available.
+      if (!upload.metadata?.metadata?.firebaseStorageDownloadTokens) {
+        const customMetadata = {
+          ...(upload.metadata?.metadata || {}),
+          firebaseStorageDownloadTokens: uuid.v4(),
+        };
+        upload.metadata = { ...(upload.metadata || {}), metadata: customMetadata };
+      }
       let metadata: StoredFileMetadata;
       try {
         metadata = await storageLayer.uploadObject(upload);
@@ -222,7 +231,6 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         }
         throw err;
       }
-      metadata.addDownloadToken(/* shouldTrigger = */ false);
       if (!metadata.contentDisposition) {
         metadata.contentDisposition = "inline";
       }
