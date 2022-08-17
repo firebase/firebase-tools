@@ -26,6 +26,11 @@ const TEST_CONFIG = {
   // https://firebase.google.com/docs/admin/setup#initialize-sdk
   prodServiceAccountKeyFilePath: "service-account-key.json",
 
+  // Name of secondary GCS bucket used in tests that need two buckets.
+  // When useProductionServers == true, this must be a bucket that
+  // the prod service account has write access to.
+  secondTestBucket: "other-bucket",
+
   // Relative path to the emulator config to use in integration tests.
   // Only used when useProductionServers == false.
   emulatorConfigFilePath: "../firebase.json",
@@ -142,6 +147,10 @@ class ConformanceTestEnvironment {
       this._adminAccessToken = token;
       return token;
     });
+  }
+
+  get secondTestBucket() {
+    return TEST_CONFIG.secondTestBucket;
   }
 
   applyEnvVars() {

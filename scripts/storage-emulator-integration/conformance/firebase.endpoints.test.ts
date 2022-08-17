@@ -84,6 +84,7 @@ describe("Firebase Storage endpoint conformance tests", () => {
         .set(authHeader)
         .expect(200)
         .then((res) => res.body);
+
       expect(Object.keys(metadata)).to.include.members([
         "name",
         "bucket",

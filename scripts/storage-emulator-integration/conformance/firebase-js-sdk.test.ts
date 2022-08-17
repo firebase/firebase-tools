@@ -35,6 +35,7 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
 
   let test: EmulatorEndToEndTest;
   let testBucket: Bucket;
+  let authHeader: { Authorization: string };
   let browser: puppeteer.Browser;
   let page: puppeteer.Page;
 
@@ -95,6 +96,7 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
       : admin.credential.applicationDefault();
     admin.initializeApp({ credential });
     testBucket = admin.storage().bucket(storageBucket);
+    authHeader = { Authorization: `Bearer ${await TEST_ENV.adminAccessTokenGetter}` };
 
     // Init fake browser page.
     browser = await puppeteer.launch({
@@ -166,25 +168,16 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
         }, TEST_FILE_NAME);
 
         await new Promise((resolve, reject) => {
-          TEST_ENV.requestClient.get(
-            downloadUrl,
-            {
-              headers: {
-                // This is considered an authorized request in the emulator
-                Authorization: "Bearer owner",
-              },
-            },
-            (response) => {
-              const data: any = [];
-              response
-                .on("data", (chunk) => data.push(chunk))
-                .on("end", () => {
-                  expect(Buffer.concat(data).toString()).to.equal("hello world");
-                })
-                .on("close", resolve)
-                .on("error", reject);
-            }
-          );
+          TEST_ENV.requestClient.get(downloadUrl, { headers: authHeader }, (response) => {
+            const data: any = [];
+            response
+              .on("data", (chunk) => data.push(chunk))
+              .on("end", () => {
+                expect(Buffer.concat(data).toString()).to.equal("hello world");
+              })
+              .on("close", resolve)
+              .on("error", reject);
+          });
         });
       });
 
@@ -210,25 +203,16 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
         });
 
         await new Promise((resolve, reject) => {
-          TEST_ENV.requestClient.get(
-            downloadUrl,
-            {
-              headers: {
-                // This is considered an authorized request in the emulator
-                Authorization: "Bearer owner",
-              },
-            },
-            (response) => {
-              const data: any = [];
-              response
-                .on("data", (chunk) => data.push(chunk))
-                .on("end", () => {
-                  expect(Buffer.concat(data).toString()).to.equal("some-other-content");
-                })
-                .on("close", resolve)
-                .on("error", reject);
-            }
-          );
+          TEST_ENV.requestClient.get(downloadUrl, { headers: authHeader }, (response) => {
+            const data: any = [];
+            response
+              .on("data", (chunk) => data.push(chunk))
+              .on("end", () => {
+                expect(Buffer.concat(data).toString()).to.equal("some-other-content");
+              })
+              .on("close", resolve)
+              .on("error", reject);
+          });
         });
       });
 
