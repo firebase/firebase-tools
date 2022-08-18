@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 import crypto from "node:crypto";
-import debugPkg from "debug";
 import fs from "node:fs";
-import minimist from "minimist";
 import path from "node:path";
 import zlib from "node:zlib";
+
+import debugPkg from "debug";
+import minimist from "minimist";
 import { GoogleAuth } from "google-auth-library";
 
 const debug = debugPkg("update-single-file");
@@ -29,15 +30,21 @@ async function main(): Promise<void> {
     const hasher = crypto.createHash("sha256");
     const gzipper = zlib.createGzip({ level: 9 });
     const gzipStream = fs.createReadStream(path.resolve(process.cwd(), file)).pipe(gzipper);
-    gzipStream.pipe(hasher);
-    await new Promise<void>((resolve, reject) => {
-      gzipStream.on("end", () => {
-        const hash: string = hasher.read().toString("hex");
-        filesByHash[hash] = file;
+    const p = new Promise<void>((resolve, reject) => {
+      hasher.once("readable", () => {
+        debug(`Hashed file ${file}`);
+        const data = hasher.read() as Buffer | string | undefined;
+        if (data && typeof data === "string") {
+          filesByHash[data] = file;
+        } else if (data && Buffer.isBuffer(data)) {
+          filesByHash[data.toString("hex")] = file;
+        }
         resolve();
       });
-      gzipStream.on("error", reject);
+      gzipStream.once("error", reject);
     });
+    gzipStream.pipe(hasher);
+    await p;
   }
 
   const auth = new GoogleAuth({
@@ -57,12 +64,19 @@ async function main(): Promise<void> {
   debug(`Release name: ${release}`);
   debug(`Current version name: ${currentVersion}`);
 
+  const exclude: string[] = [];
+  for (let f of Object.values(filesByHash)) {
+    f = f.startsWith("/") ? f : `/${f}`;
+    exclude.push(`^${f.replace("/", "\\/")}$`);
+  }
+  debug("Excludes:", exclude);
   const cloneRes = await client.request<{ name: string }>({
     method: "POST",
     url: `${HOSTING_URL}/projects/${PROJECT_ID}/sites/${SITE_ID}/versions:clone`,
     body: JSON.stringify({
       sourceVersion: currentVersion,
       finalize: false,
+      // exclude: { regexes: exclude },
     }),
   });
 
@@ -100,7 +114,7 @@ async function main(): Promise<void> {
   debug("%d %j", populateRes.status, populateRes.data);
 
   const uploadURL = populateRes.data.uploadUrl;
-  const uploadRequiredHashes = populateRes.data.uploadRequiredHashes;
+  const uploadRequiredHashes = populateRes.data.uploadRequiredHashes || [];
   if (Array.isArray(uploadRequiredHashes) && uploadRequiredHashes.length) {
     for (const h of uploadRequiredHashes) {
       const uploadRes = await client.request({
