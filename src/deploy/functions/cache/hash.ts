@@ -1,52 +1,78 @@
-import * as fs from "fs";
+import { readFile } from "node:fs/promises";
 import * as crypto from "crypto";
-import * as secrets from "../../../functions/secrets";
-import { Backend, Endpoint, EnvironmentVariables, allEndpoints } from "../backend";
+import { Backend, Endpoint, EnvironmentVariables } from "../backend";
 
 /**
- * Retrieves the unique hash given a {@link Backend} and sourceFile.
+ * Generates a hash from the environment variables of a {@link Backend}.
  * @param backend Backend of a set of functions
- * @param sourceFile Packaged file contents of functions
  */
-export async function getBackendHash(backend: Backend, sourceFile?: string) {
+export function getEnvironmentVariablesHash(backend: Backend) {
   const hash = crypto.createHash("sha256");
-
-  // If present, hash the contents of the source file
-  if (sourceFile) {
-    await new Promise((resolve, reject) => {
-      const readStream = fs.createReadStream(sourceFile);
-      readStream.on("error", (err) => reject(err));
-      readStream.on("data", (chunk) => chunk && hash.push(chunk));
-      readStream.on("end", () => resolve(hash.digest("hex")));
-    });
-  }
 
   // Hash the contents of the dotenv variables
   if (hasEnvironmentVariables(backend.environmentVariables)) {
-    hash.push(JSON.stringify(backend.environmentVariables));
+    hash.update(JSON.stringify(backend.environmentVariables));
   }
+
+  return hash.digest("hex");
+}
+
+/**
+ * Retrieves the unique hash given a pathToGeneratedPackageFile.
+ * @param backend Backend of a set of functions
+ * @param pathToGeneratedPackageFile Packaged file contents of functions
+ */
+export async function getSourceHash(pathToGeneratedPackageFile?: string) {
+  const hash = crypto.createHash("sha256");
+
+  // If present, hash the contents of the source file
+  if (pathToGeneratedPackageFile) {
+    const data = await readFile(pathToGeneratedPackageFile);
+    hash.update(data);
+  }
+
+  return hash.digest("hex");
+}
+
+/**
+ * Retrieves a hash generated from the secrest of {@link Endpoint}.
+ * @param endpoint Endpoint
+ */
+export function getSecretsHash(endpoint: Endpoint) {
+  const hash = crypto.createHash("sha256");
 
   // Hash the secret versions.
-  const secretVersions = getSecretVersions(backend);
+  const secretVersions = getSecretVersions(endpoint);
   if (hasSecretVersions(secretVersions)) {
-    hash.push(JSON.stringify(secretVersions));
+    hash.update(JSON.stringify(secretVersions));
   }
 
-  return hash.read().toString("hex");
+  return hash.digest("hex");
 }
 
-function hasEnvironmentVariables(environmentVariables: EnvironmentVariables) {
-  return Object.keys(environmentVariables).length;
+/**
+ * Generates a unique hash derived from the hashes generated from the package source, environment variables, and endpoint secrets.
+ */
+export function getEndpointHash(sourceHash: string, envHash: string, secretsHash: string) {
+  const hash = crypto.createHash("sha256");
+
+  const combined = [envHash, sourceHash, secretsHash].join("");
+  hash.update(combined);
+
+  return hash.digest("hex");
 }
 
-function hasSecretVersions(secretVersions: Record<string, string>) {
-  return Object.keys(secretVersions).length;
+function hasEnvironmentVariables(environmentVariables: EnvironmentVariables): boolean {
+  return !!Object.keys(environmentVariables).length;
+}
+
+function hasSecretVersions(secretVersions: Record<string, string>): boolean {
+  return !!Object.keys(secretVersions).length;
 }
 
 // Hash the secret versions.
-function getSecretVersions(backend: Backend): Record<string, string> {
-  const endpointsList: Endpoint[] = allEndpoints(backend);
-  return secrets.of(endpointsList).reduce((memo, { secret, version }) => {
+function getSecretVersions(endpoint: Endpoint): Record<string, string> {
+  return (endpoint.secretEnvironmentVariables || []).reduce((memo, { secret, version }) => {
     if (version) {
       memo[secret] = version;
     }
