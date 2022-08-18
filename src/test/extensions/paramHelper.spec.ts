@@ -4,7 +4,7 @@ import * as fs from "fs-extra";
 
 import { FirebaseError } from "../../error";
 import { logger } from "../../logger";
-import { ExtensionInstance, Param, ParamType } from "../../extensions/extensionsApi";
+import { ExtensionInstance, Param, ParamType } from "../../extensions/types";
 import * as extensionsHelper from "../../extensions/extensionsHelper";
 import * as paramHelper from "../../extensions/paramHelper";
 import * as env from "../../functions/env";

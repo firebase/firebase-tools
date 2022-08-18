@@ -6,10 +6,12 @@ import { cloudschedulerOrigin } from "../api";
 import { Client } from "../apiv2";
 import * as backend from "../deploy/functions/backend";
 import * as proto from "./proto";
-import { assertExhaustive } from "../functional";
+import { getDefaultComputeServiceAgent } from "../deploy/functions/checkIam";
+import { assertExhaustive, nullsafeVisitor } from "../functional";
 
-const VERSION = "v1beta1";
-const DEFAULT_TIME_ZONE = "America/Los_Angeles";
+const VERSION = "v1";
+const DEFAULT_TIME_ZONE_V1 = "America/Los_Angeles";
+const DEFAULT_TIME_ZONE_V2 = "UTC";
 
 export interface PubsubTarget {
   topicName: string;
@@ -24,9 +26,9 @@ export interface OauthToken {
   scope: string;
 }
 
-export interface OdicToken {
+export interface OidcToken {
   serviceAccountEmail: string;
-  audiences: string[];
+  audience?: string;
 }
 
 export interface HttpTarget {
@@ -37,7 +39,7 @@ export interface HttpTarget {
 
   // oneof authorizationHeader
   oauthToken?: OauthToken;
-  odicToken?: OdicToken;
+  oidcToken?: OidcToken;
   // end oneof authorizationHeader;
 }
 
@@ -52,7 +54,7 @@ export interface Job {
   name: string;
   schedule: string;
   description?: string;
-  timeZone?: string;
+  timeZone?: string | null;
 
   // oneof target
   httpTarget?: HttpTarget;
@@ -60,25 +62,12 @@ export interface Job {
   // end oneof target
 
   retryConfig?: {
-    retryCount?: number;
-    maxRetryDuration?: string;
-    minBackoffDuration?: string;
-    maxBackoffDuration?: string;
-    maxDoublings?: number;
+    retryCount?: number | null;
+    maxRetryDuration?: string | null;
+    minBackoffDuration?: string | null;
+    maxBackoffDuration?: string | null;
+    maxDoublings?: number | null;
   };
-}
-
-export function assertValidJob(job: Job) {
-  proto.assertOneOf("Scheduler Job", job, "target", "httpTarget", "pubsubTarget");
-  if (job.httpTarget) {
-    proto.assertOneOf(
-      "Scheduler Job",
-      job.httpTarget,
-      "httpTarget.authorizationHeader",
-      "oauthToken",
-      "odicToken"
-    );
-  }
 }
 
 const apiClient = new Client({ urlPrefix: cloudschedulerOrigin, apiVersion: VERSION });
@@ -88,12 +77,15 @@ const apiClient = new Client({ urlPrefix: cloudschedulerOrigin, apiVersion: VERS
  * If another job with that name already exists, this will return a 409.
  * @param job The job to create.
  */
-export function createJob(job: Job): Promise<any> {
+function createJob(job: Job): Promise<any> {
   // the replace below removes the portion of the schedule name after the last /
   // ie: projects/my-proj/locations/us-central1/jobs/firebase-schedule-func-us-east1 would become
   // projects/my-proj/locations/us-central1/jobs
   const strippedName = job.name.substring(0, job.name.lastIndexOf("/"));
-  return apiClient.post(`/${strippedName}`, Object.assign({ timeZone: DEFAULT_TIME_ZONE }, job));
+  const json: Job = job.pubsubTarget
+    ? { timeZone: DEFAULT_TIME_ZONE_V1, ...job }
+    : { timeZone: DEFAULT_TIME_ZONE_V2, ...job };
+  return apiClient.post(`/${strippedName}`, json);
 }
 
 /**
@@ -110,7 +102,7 @@ export function deleteJob(name: string): Promise<any> {
  * If no job with that name exists, this will return a 404.
  * @param name The name of the job to get.
  */
-export function getJob(name: string): Promise<any> {
+function getJob(name: string): Promise<any> {
   return apiClient.get(`/${name}`, {
     resolveOnHTTPError: true,
   });
@@ -121,9 +113,24 @@ export function getJob(name: string): Promise<any> {
  * Returns a 404 if no job with that name exists.
  * @param job A job to update.
  */
-export function updateJob(job: Job): Promise<any> {
-  // Note that name cannot be updated.
-  return apiClient.patch(`/${job.name}`, Object.assign({ timeZone: DEFAULT_TIME_ZONE }, job));
+function updateJob(job: Job): Promise<any> {
+  let fieldMasks: string[];
+  let json: Job;
+  if (job.pubsubTarget) {
+    // v1 uses pubsub
+    fieldMasks = proto.fieldMasks(job, "pubsubTarget");
+    json = { timeZone: DEFAULT_TIME_ZONE_V1, ...job };
+  } else {
+    // v2 uses http
+    fieldMasks = proto.fieldMasks(job, "httpTarget");
+    json = { timeZone: DEFAULT_TIME_ZONE_V2, ...job };
+  }
+
+  return apiClient.patch(`/${job.name}`, json, {
+    queryParams: {
+      updateMask: fieldMasks.join(","),
+    },
+  });
 }
 
 /**
@@ -159,9 +166,9 @@ export async function createOrReplaceJob(job: Job): Promise<any> {
   }
   if (!job.timeZone) {
     // We set this here to avoid recreating schedules that use the default timeZone
-    job.timeZone = DEFAULT_TIME_ZONE;
+    job.timeZone = job.pubsubTarget ? DEFAULT_TIME_ZONE_V1 : DEFAULT_TIME_ZONE_V2;
   }
-  if (isIdentical(existingJob.body, job)) {
+  if (!needUpdate(existingJob.body, job)) {
     logger.debug(`scheduler job ${jobName} is up to date, no changes required`);
     return;
   }
@@ -172,47 +179,120 @@ export async function createOrReplaceJob(job: Job): Promise<any> {
 
 /**
  * Check if two jobs are functionally equivalent.
- * @param job a job to compare.
- * @param otherJob a job to compare.
+ * @param existingJob a job to compare.
+ * @param newJob a job to compare.
  */
-function isIdentical(job: Job, otherJob: Job): boolean {
-  return (
-    job &&
-    otherJob &&
-    job.schedule === otherJob.schedule &&
-    job.timeZone === otherJob.timeZone &&
-    _.isEqual(job.retryConfig, otherJob.retryConfig)
-  );
+function needUpdate(existingJob: Job, newJob: Job): boolean {
+  if (!existingJob) {
+    return true;
+  }
+  if (!newJob) {
+    return true;
+  }
+  if (existingJob.schedule !== newJob.schedule) {
+    return true;
+  }
+  if (existingJob.timeZone !== newJob.timeZone) {
+    return true;
+  }
+  if (newJob.retryConfig) {
+    if (!existingJob.retryConfig) {
+      return true;
+    }
+    if (!_.isMatch(existingJob.retryConfig, newJob.retryConfig)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/** The name of the Cloud Scheduler job we will use for this endpoint. */
+export function jobNameForEndpoint(
+  endpoint: backend.Endpoint & backend.ScheduleTriggered,
+  location: string
+): string {
+  const id = backend.scheduleIdForFunction(endpoint);
+  return `projects/${endpoint.project}/locations/${location}/jobs/${id}`;
+}
+
+/** The name of the pubsub topic that the Cloud Scheduler job will use for this endpoint. */
+export function topicNameForEndpoint(
+  endpoint: backend.Endpoint & backend.ScheduleTriggered
+): string {
+  const id = backend.scheduleIdForFunction(endpoint);
+  return `projects/${endpoint.project}/topics/${id}`;
 }
 
 /** Converts an Endpoint to a CloudScheduler v1 job */
 export function jobFromEndpoint(
   endpoint: backend.Endpoint & backend.ScheduleTriggered,
-  appEngineLocation: string
+  location: string,
+  projectNumber: string
 ): Job {
   const job: Partial<Job> = {};
+  job.name = jobNameForEndpoint(endpoint, location);
   if (endpoint.platform === "gcfv1") {
-    const id = backend.scheduleIdForFunction(endpoint);
-    const region = appEngineLocation;
-    job.name = `projects/${endpoint.project}/locations/${region}/jobs/${id}`;
+    job.timeZone = endpoint.scheduleTrigger.timeZone || DEFAULT_TIME_ZONE_V1;
     job.pubsubTarget = {
-      topicName: `projects/${endpoint.project}/topics/${id}`,
+      topicName: topicNameForEndpoint(endpoint),
       attributes: {
         scheduled: "true",
       },
     };
   } else if (endpoint.platform === "gcfv2") {
-    // NB: We should figure out whether there's a good service account we can use
-    // to get ODIC tokens from while invoking the function. Hopefully either
-    // CloudScheduler has an account we can use or we can use the default compute
-    // account credentials (it's a project editor, so it should have permissions
-    // to invoke a function and editor deployers should have permission to actAs
-    // it)
-    throw new FirebaseError("Do not know how to create a scheduled GCFv2 function");
+    job.timeZone = endpoint.scheduleTrigger.timeZone || DEFAULT_TIME_ZONE_V2;
+    job.httpTarget = {
+      uri: endpoint.uri!,
+      httpMethod: "POST",
+      oidcToken: {
+        // TODO(colerogers): revisit adding 'invoker' to the container contract
+        // for schedule functions and use as the odic token service account.
+        serviceAccountEmail: getDefaultComputeServiceAgent(projectNumber),
+      },
+    };
   } else {
     assertExhaustive(endpoint.platform);
   }
-  proto.copyIfPresent(job, endpoint.scheduleTrigger, "schedule", "retryConfig", "timeZone");
+  if (!endpoint.scheduleTrigger.schedule) {
+    throw new FirebaseError(
+      "Cannot create a scheduler job without a schedule:" + JSON.stringify(endpoint)
+    );
+  }
+  job.schedule = endpoint.scheduleTrigger.schedule;
+  if (endpoint.scheduleTrigger.retryConfig) {
+    job.retryConfig = {};
+    proto.copyIfPresent(
+      job.retryConfig,
+      endpoint.scheduleTrigger.retryConfig,
+      "maxDoublings",
+      "retryCount"
+    );
+    proto.convertIfPresent(
+      job.retryConfig,
+      endpoint.scheduleTrigger.retryConfig,
+      "maxBackoffDuration",
+      "maxBackoffSeconds",
+      nullsafeVisitor(proto.durationFromSeconds)
+    );
+    proto.convertIfPresent(
+      job.retryConfig,
+      endpoint.scheduleTrigger.retryConfig,
+      "minBackoffDuration",
+      "minBackoffSeconds",
+      nullsafeVisitor(proto.durationFromSeconds)
+    );
+    proto.convertIfPresent(
+      job.retryConfig,
+      endpoint.scheduleTrigger.retryConfig,
+      "maxRetryDuration",
+      "maxRetrySeconds",
+      nullsafeVisitor(proto.durationFromSeconds)
+    );
+    // If no retry configuration exists, delete the key to preserve existing retry config.
+    if (!Object.keys(job.retryConfig).length) {
+      delete job.retryConfig;
+    }
+  }
 
   // TypeScript compiler isn't noticing that name is defined in all code paths.
   return job as Job;

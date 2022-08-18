@@ -1,5 +1,4 @@
-import * as _ from "lodash";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as path from "path";
 
 import { FirebaseError } from "../../error";
@@ -29,7 +28,7 @@ export function prepare(context: any, options: Options): Promise<any> {
     deploys.push(ruleConfig);
   });
 
-  _.forEach(ruleFiles, (v, file) => {
+  for (const file of Object.keys(ruleFiles)) {
     switch (path.extname(file)) {
       case ".json":
         ruleFiles[file] = options.config.readProjectFile(file);
@@ -40,20 +39,20 @@ export function prepare(context: any, options: Options): Promise<any> {
       default:
         throw new FirebaseError("Unexpected rules format " + path.extname(file));
     }
-  });
+  }
 
   context.database = {
     deploys: deploys,
     ruleFiles: ruleFiles,
   };
-  utils.logBullet(clc.bold.cyan("database: ") + "checking rules syntax...");
+  utils.logBullet(clc.bold(clc.cyan("database: ")) + "checking rules syntax...");
   return Promise.all(
     deploys.map((deploy) => {
       return rtdb
         .updateRules(context.projectId, deploy.instance, ruleFiles[deploy.rules], { dryRun: true })
         .then(() => {
           utils.logSuccess(
-            clc.bold.green("database: ") +
+            clc.bold(clc.green("database: ")) +
               "rules syntax for database " +
               clc.bold(deploy.instance) +
               " is valid"

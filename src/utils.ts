@@ -1,14 +1,14 @@
 import * as _ from "lodash";
 import * as url from "url";
 import * as http from "http";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as ora from "ora";
 import * as process from "process";
 import { Readable } from "stream";
 import * as winston from "winston";
 import { SPLAT } from "triple-beam";
 import { AssertionError } from "assert";
-const ansiStrip = require("cli-color/strip") as (input: string) => string;
+const stripAnsi = require("strip-ansi");
 
 import { configstore } from "./configstore";
 import { FirebaseError } from "./error";
@@ -39,7 +39,7 @@ export function consoleUrl(project: string, path: string): string {
 export function getInheritedOption(options: any, key: string): any {
   let target = options;
   while (target) {
-    if (_.has(target, key)) {
+    if (target[key] !== undefined) {
       return target[key];
     }
     target = target.parent;
@@ -131,7 +131,7 @@ export function logSuccess(
   type: LogLevel = "info",
   data: LogDataOrUndefined = undefined
 ): void {
-  logger[type](clc.green.bold(`${SUCCESS_CHAR} `), message, data);
+  logger[type](clc.green(clc.bold(`${SUCCESS_CHAR} `)), message, data);
 }
 
 /**
@@ -143,7 +143,7 @@ export function logLabeledSuccess(
   type: LogLevel = "info",
   data: LogDataOrUndefined = undefined
 ): void {
-  logger[type](clc.green.bold(`${SUCCESS_CHAR}  ${label}:`), message, data);
+  logger[type](clc.green(clc.bold(`${SUCCESS_CHAR}  ${label}:`)), message, data);
 }
 
 /**
@@ -154,7 +154,7 @@ export function logBullet(
   type: LogLevel = "info",
   data: LogDataOrUndefined = undefined
 ): void {
-  logger[type](clc.cyan.bold("i "), message, data);
+  logger[type](clc.cyan(clc.bold("i ")), message, data);
 }
 
 /**
@@ -166,7 +166,7 @@ export function logLabeledBullet(
   type: LogLevel = "info",
   data: LogDataOrUndefined = undefined
 ): void {
-  logger[type](clc.cyan.bold(`i  ${label}:`), message, data);
+  logger[type](clc.cyan(clc.bold(`i  ${label}:`)), message, data);
 }
 
 /**
@@ -177,7 +177,7 @@ export function logWarning(
   type: LogLevel = "warn",
   data: LogDataOrUndefined = undefined
 ): void {
-  logger[type](clc.yellow.bold(`${WARNING_CHAR} `), message, data);
+  logger[type](clc.yellow(clc.bold(`${WARNING_CHAR} `)), message, data);
 }
 
 /**
@@ -189,7 +189,7 @@ export function logLabeledWarning(
   type: LogLevel = "warn",
   data: LogDataOrUndefined = undefined
 ): void {
-  logger[type](clc.yellow.bold(`${WARNING_CHAR}  ${label}:`), message, data);
+  logger[type](clc.yellow(clc.bold(`${WARNING_CHAR}  ${label}:`)), message, data);
 }
 
 /**
@@ -201,7 +201,7 @@ export function logLabeledError(
   type: LogLevel = "error",
   data: LogDataOrUndefined = undefined
 ): void {
-  logger[type](clc.red.bold(`${ERROR_CHAR}  ${label}:`), message, data);
+  logger[type](clc.red(clc.bold(`${ERROR_CHAR}  ${label}:`)), message, data);
 }
 
 /**
@@ -326,7 +326,7 @@ export function makeActiveProject(projectDir: string, newActive?: string): void 
  * Creates API endpoint string, e.g. /v1/projects/pid/cloudfunctions
  */
 export function endpoint(parts: string[]): string {
-  return `/${_.join(parts, "/")}`;
+  return `/${parts.join("/")}`;
 }
 
 /**
@@ -337,7 +337,7 @@ export function getFunctionsEventProvider(eventType: string): string {
   // Legacy event types:
   const parts = eventType.split("/");
   if (parts.length > 1) {
-    const provider = _.last(parts[1].split("."));
+    const provider = last(parts[1].split("."));
     return _.capitalize(provider);
   }
   // New event types:
@@ -376,7 +376,7 @@ export type SettledPromise = SettledPromiseResolved | SettledPromiseRejected;
  * either resolved or rejected.
  */
 export function promiseAllSettled(promises: Array<Promise<any>>): Promise<SettledPromise[]> {
-  const wrappedPromises = _.map(promises, async (p) => {
+  const wrappedPromises = promises.map(async (p) => {
     try {
       const val = await Promise.resolve(p);
       return { state: "fulfilled", value: val } as SettledPromiseResolved;
@@ -413,12 +413,34 @@ export async function promiseWhile<T>(
 }
 
 /**
+ * Return a promise that rejects after timeoutMs but otherwise behave the same.
+ * @param timeoutMs the time in milliseconds before forced rejection
+ * @param promise the original promise
+ * @returns a promise wrapping the original promise with rejection on timeout
+ */
+export function withTimeout<T>(timeoutMs: number, promise: Promise<T>): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timeout = setTimeout(() => reject(new Error("Timed out.")), timeoutMs);
+    promise.then(
+      (value) => {
+        clearTimeout(timeout);
+        resolve(value);
+      },
+      (err) => {
+        clearTimeout(timeout);
+        reject(err);
+      }
+    );
+  });
+}
+
+/**
  * Resolves all Promises at every key in the given object. If a value is not a
  * Promise, it is returned as-is.
  */
 export async function promiseProps(obj: any): Promise<any> {
   const resultObj: any = {};
-  const promises = _.keys(obj).map(async (key) => {
+  const promises = Object.keys(obj).map(async (key) => {
     const r = await Promise.resolve(obj[key]);
     resultObj[key] = r;
   });
@@ -467,7 +489,7 @@ export function setupLoggers() {
         level: "debug",
         format: winston.format.printf((info) => {
           const segments = [info.message, ...(info[SPLAT] || [])].map(tryStringify);
-          return `${ansiStrip(segments.join(" "))}`;
+          return `${stripAnsi(segments.join(" "))}`;
         }),
       })
     );
@@ -672,4 +694,50 @@ export function cloneDeep<T>(obj: T): T {
     return new Map(obj.entries()) as typeof obj;
   }
   return cloneObject(obj as Record<string, unknown>) as typeof obj;
+}
+
+/**
+ * Returns the last element in the array, or undefined if no array is passed or
+ * the array is empty.
+ */
+export function last<T>(arr?: Array<T>): T | undefined {
+  if (!Array.isArray(arr)) {
+    return;
+  }
+  return arr[arr.length - 1];
+}
+
+/**
+ * Options for debounce.
+ */
+type DebounceOptions = {
+  leading?: boolean;
+};
+
+/**
+ * Returns a function that delays invoking `fn` until `delay` ms have
+ * passed since the last time `fn` was invoked.
+ */
+export function debounce<T>(
+  fn: (...args: T[]) => void,
+  delay: number,
+  { leading }: DebounceOptions = {}
+): (...args: T[]) => void {
+  let timer: NodeJS.Timeout;
+  return (...args) => {
+    if (!timer && leading) {
+      fn(...args);
+    }
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), delay);
+  };
+}
+
+/**
+ * Returns a random number between min and max, inclusive.
+ */
+export function randomInt(min: number, max: number): number {
+  min = Math.floor(min);
+  max = Math.ceil(max) + 1;
+  return Math.floor(Math.random() * (max - min) + min);
 }

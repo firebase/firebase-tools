@@ -53,6 +53,7 @@ export function flatten<T extends unknown[] | object>(objOrArr: T): unknown {
 }
 
 type RecursiveElems<T extends unknown[]> = {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   [Key in keyof T]: T[Key] extends unknown[] ? T[Key] | RecursiveElems<T[Key]> : T[Key];
 }[number];
 
@@ -100,8 +101,8 @@ export function assertExhaustive(val: never): never {
  * Returns a Array containing two Array<T>. The first array contains all elements that returned true,
  * the second contains all elements that returned false.
  */
-export function partition<T>(arr: T[], callbackFn: (elem: T) => boolean): T[][] {
-  return arr.reduce<T[][]>(
+export function partition<T>(arr: T[], callbackFn: (elem: T) => boolean): [T[], T[]] {
+  return arr.reduce<[T[], T[]]>(
     (acc, elem) => {
       acc[callbackFn(elem) ? 0 : 1].push(elem);
       return acc;
@@ -109,3 +110,26 @@ export function partition<T>(arr: T[], callbackFn: (elem: T) => boolean): T[][] 
     [[], []]
   );
 }
+
+/**
+ * Create a map of transformed values for all keys.
+ */
+export function mapObject<T, V>(
+  input: Record<string, T>,
+  transform: (t: T) => V
+): Record<string, V> {
+  const result: Record<string, V> = {};
+  for (const [k, v] of Object.entries(input)) {
+    result[k] = transform(v);
+  }
+  return result;
+}
+
+export const nullsafeVisitor =
+  <First, Rest extends unknown[], Ret>(func: (first: First, ...rest: Rest) => Ret, ...rest: Rest) =>
+  (first: First | null): Ret | null => {
+    if (first === null) {
+      return null;
+    }
+    return func(first, ...rest);
+  };

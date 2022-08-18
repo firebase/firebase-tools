@@ -1,11 +1,10 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as fs from "fs";
 
 import { Client } from "../../../apiv2";
 import { initGitHub } from "./github";
 import { prompt } from "../../../prompt";
 import { logger } from "../../../logger";
-import { Options } from "../../../options";
 
 const INDEX_TEMPLATE = fs.readFileSync(
   __dirname + "/../../../../templates/init/hosting/index.html",
@@ -17,7 +16,7 @@ const MISSING_TEMPLATE = fs.readFileSync(
 );
 const DEFAULT_IGNORES = ["firebase.json", "**/.*", "**/node_modules/**"];
 
-export async function doSetup(setup: any, config: any, options: Options): Promise<void> {
+export async function doSetup(setup: any, config: any): Promise<void> {
   setup.hosting = {};
 
   logger.info();
@@ -70,6 +69,6 @@ export async function doSetup(setup: any, config: any, options: Options): Promis
     INDEX_TEMPLATE.replace(/{{VERSION}}/g, response.body.current.version)
   );
   if (setup.hosting.github) {
-    return initGitHub(setup, config, options);
+    return initGitHub(setup);
   }
 }

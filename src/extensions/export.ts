@@ -1,8 +1,4 @@
-import {
-  getExtensionVersion,
-  DeploymentInstanceSpec,
-  InstanceSpec,
-} from "../deploy/extensions/planner";
+import { getExtensionVersion, DeploymentInstanceSpec } from "../deploy/extensions/planner";
 import { humanReadable } from "../deploy/extensions/deploymentSummary";
 import { logger } from "../logger";
 import { parseSecretVersionResourceName, toSecretVersionResourceName } from "../gcp/secretManager";

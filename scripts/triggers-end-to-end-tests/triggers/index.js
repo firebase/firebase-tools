@@ -1,6 +1,15 @@
 const admin = require("firebase-admin");
 const functions = require("firebase-functions");
 const { PubSub } = require("@google-cloud/pubsub");
+const { initializeApp } = require("firebase/app");
+const {
+  getAuth,
+  connectAuthEmulator,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+} = require("firebase/auth");
+
+const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "";
 
 /*
  * We install onWrite triggers for START_DOCUMENT_NAME in both the firestore and
@@ -16,7 +25,23 @@ const PUBSUB_SCHEDULED_TOPIC = "firebase-schedule-pubsubScheduled";
 const STORAGE_FILE_NAME = "test-file.txt";
 
 const pubsub = new PubSub();
+
+// init the Firebase Admin SDK
 admin.initializeApp();
+
+// init the Firebase JS SDK
+const app = initializeApp(
+  {
+    apiKey: "fake-api-key",
+    projectId: `${FIREBASE_PROJECT}`,
+    authDomain: `${FIREBASE_PROJECT}.firebaseapp.com`,
+    storageBucket: `${FIREBASE_PROJECT}.appspot.com`,
+    appId: "fake-app-id",
+  },
+  "TRIGGERS_END_TO_END"
+);
+const auth = getAuth(app);
+connectAuthEmulator(auth, `http://${process.env.FIREBASE_AUTH_EMULATOR_HOST}`);
 
 exports.deleteFromFirestore = functions.https.onRequest(async (req, res) => {
   await admin.firestore().doc(START_DOCUMENT_NAME).delete();
@@ -68,6 +93,18 @@ exports.writeToAuth = functions.https.onRequest(async (req, res) => {
   });
 
   res.json({ created: "ok" });
+});
+
+exports.createUserFromAuth = functions.https.onRequest(async (req, res) => {
+  await createUserWithEmailAndPassword(auth, "email@gmail.com", "mypassword");
+
+  res.json({ created: "ok" });
+});
+
+exports.signInUserFromAuth = functions.https.onRequest(async (req, res) => {
+  await signInWithEmailAndPassword(auth, "email@gmail.com", "mypassword");
+
+  res.json({ done: "ok" });
 });
 
 exports.writeToDefaultStorage = functions.https.onRequest(async (req, res) => {

@@ -1,0 +1,47 @@
+{
+  "database": {},
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "storage": {
+    "rules": "storage.rules"
+  },
+  "functions": [
+    {
+      "codebase": "triggers",
+      "source": "triggers"
+    },
+    {
+      "codebase": "v1",
+      "source": "v1"
+    },
+    {
+      "codebase": "v2",
+      "source": "v2"
+    }
+
+  ],
+  "emulators": {
+    "hub": {
+      "port": 4000
+    },
+    "database": {
+      "port": 9000
+    },
+    "firestore": {
+      "port": 9001
+    },
+    "functions": {
+      "port": 9002
+    },
+    "pubsub": {
+      "port": 8085
+    },
+    "auth": {
+      "port": 9099
+    },
+    "storage": {
+      "port": 9199
+    }
+  }
+}

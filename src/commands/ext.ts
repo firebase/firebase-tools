@@ -1,5 +1,4 @@
-import * as _ from "lodash";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
@@ -29,11 +28,11 @@ export const command = new Command("ext")
       "ext:uninstall",
     ];
 
-    _.forEach(commandNames, (commandName) => {
+    for (const commandName of commandNames) {
       const command: CommanderStatic = firebaseTools.getCommand(commandName);
       logger.info(clc.bold("\n" + command.name()));
       command.outputHelp();
-    });
+    }
     logger.info();
 
     // Print out a list of all extension instances on project, if called with a project.

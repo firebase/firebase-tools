@@ -4,7 +4,7 @@ import * as sinon from "sinon";
 import { FirebaseError } from "../../error";
 import * as nodejsMigrationHelper from "../../extensions/billingMigrationHelper";
 import * as prompt from "../../prompt";
-import { ExtensionSpec } from "../../extensions/extensionsApi";
+import { ExtensionSpec } from "../../extensions/types";
 import { cloneDeep } from "../../utils";
 
 const NO_RUNTIME_SPEC: ExtensionSpec = {

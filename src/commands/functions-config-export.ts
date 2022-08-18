@@ -1,6 +1,6 @@
 import * as path from "path";
 
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
 import requireInteractive from "../requireInteractive";
 import { Command } from "../command";

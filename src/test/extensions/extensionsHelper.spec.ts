@@ -9,11 +9,60 @@ import * as functionsConfig from "../../functionsConfig";
 import { storage } from "../../gcp";
 import * as archiveDirectory from "../../archiveDirectory";
 import * as prompt from "../../prompt";
-import { ExtensionSource } from "../../extensions/extensionsApi";
+import {
+  ExtensionSource,
+  ExtensionSpec,
+  ExtensionVersion,
+  Param,
+  ParamType,
+} from "../../extensions/types";
 import { Readable } from "stream";
 import { ArchiveResult } from "../../archiveDirectory";
 import { canonicalizeRefInput } from "../../extensions/extensionsHelper";
 import * as planner from "../../deploy/extensions/planner";
+
+const EXT_SPEC_1: ExtensionSpec = {
+  name: "cool-things",
+  version: "0.0.1-rc.0",
+  resources: [
+    {
+      name: "cool-resource",
+      type: "firebaseextensions.v1beta.function",
+    },
+  ],
+  sourceUrl: "www.google.com/cool-things-here",
+  params: [],
+};
+const EXT_SPEC_2: ExtensionSpec = {
+  name: "cool-things",
+  version: "0.0.1-rc.1",
+  resources: [
+    {
+      name: "cool-resource",
+      type: "firebaseextensions.v1beta.function",
+    },
+  ],
+  sourceUrl: "www.google.com/cool-things-here",
+  params: [],
+};
+const TEST_EXT_VERSION_1: ExtensionVersion = {
+  name: "publishers/test-pub/extensions/ext-one/versions/0.0.1-rc.0",
+  ref: "test-pub/ext-one@0.0.1-rc.0",
+  spec: EXT_SPEC_1,
+  state: "PUBLISHED",
+  hash: "12345",
+  createTime: "2020-06-30T00:21:06.722782Z",
+  sourceDownloadUri: "",
+};
+const TEST_EXT_VERSION_2: ExtensionVersion = {
+  name: "publishers/test-pub/extensions/ext-one/versions/0.0.1-rc.1",
+  ref: "test-pub/ext-one@0.0.1-rc.1",
+  spec: EXT_SPEC_2,
+  state: "PUBLISHED",
+  hash: "23456",
+  createTime: "2020-06-30T00:21:06.722782Z",
+  sourceDownloadUri: "",
+};
 
 describe("extensionsHelper", () => {
   describe("substituteParams", () => {
@@ -109,7 +158,7 @@ describe("extensionsHelper", () => {
       ENV_VAR_THREE: "https://${PROJECT_ID}.web.app/?acceptInvitation={token}",
     };
 
-    const exampleParamSpec: extensionsApi.Param[] = [
+    const exampleParamSpec: Param[] = [
       {
         param: "ENV_VAR_ONE",
         label: "env1",
@@ -167,7 +216,7 @@ describe("extensionsHelper", () => {
   });
 
   describe("validateCommandLineParams", () => {
-    const exampleParamSpec: extensionsApi.Param[] = [
+    const exampleParamSpec: Param[] = [
       {
         param: "ENV_VAR_ONE",
         label: "env1",
@@ -307,7 +356,7 @@ describe("extensionsHelper", () => {
         {
           param: "HI",
           label: "hello",
-          type: extensionsApi.ParamType.MULTISELECT,
+          type: ParamType.MULTISELECT,
           options: [
             {
               value: "val",
@@ -330,7 +379,7 @@ describe("extensionsHelper", () => {
         {
           param: "HI",
           label: "hello",
-          type: extensionsApi.ParamType.MULTISELECT,
+          type: ParamType.MULTISELECT,
           options: [],
           validationRegex: "FAIL",
           required: true,
@@ -350,7 +399,7 @@ describe("extensionsHelper", () => {
         {
           param: "HI",
           label: "hello",
-          type: extensionsApi.ParamType.SELECT,
+          type: ParamType.SELECT,
           validationRegex: "FAIL",
           options: [],
           required: true,
@@ -370,7 +419,7 @@ describe("extensionsHelper", () => {
         {
           param: "HI",
           label: "hello",
-          type: extensionsApi.ParamType.SELECT,
+          type: ParamType.SELECT,
           options: [
             {
               value: "val",
@@ -393,7 +442,7 @@ describe("extensionsHelper", () => {
         {
           param: "HI",
           label: "hello",
-          type: extensionsApi.ParamType.MULTISELECT,
+          type: ParamType.MULTISELECT,
           options: [
             {
               value: "val",
@@ -415,9 +464,49 @@ describe("extensionsHelper", () => {
     });
   });
 
+  describe("incrementPrereleaseVersion", () => {
+    let listExtensionVersionsStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      listExtensionVersionsStub = sinon.stub(extensionsApi, "listExtensionVersions");
+      listExtensionVersionsStub.returns(Promise.resolve([TEST_EXT_VERSION_1, TEST_EXT_VERSION_2]));
+    });
+
+    afterEach(() => {
+      listExtensionVersionsStub.restore();
+    });
+
+    it("should increment rc version", async () => {
+      const newVersion = await extensionsHelper.incrementPrereleaseVersion(
+        "test-pub/ext-one",
+        "0.0.1",
+        "rc"
+      );
+      expect(newVersion).to.eql("0.0.1-rc.2");
+    });
+
+    it("should be first beta version", async () => {
+      const newVersion = await extensionsHelper.incrementPrereleaseVersion(
+        "test-pub/ext-one",
+        "0.0.1",
+        "beta"
+      );
+      expect(newVersion).to.eql("0.0.1-beta.0");
+    });
+
+    it("should not increment version", async () => {
+      const newVersion = await extensionsHelper.incrementPrereleaseVersion(
+        "test-pub/ext-one",
+        "0.0.1",
+        "stable"
+      );
+      expect(newVersion).to.eql("0.0.1");
+    });
+  });
+
   describe("validateSpec", () => {
     it("should not error on a valid spec", () => {
-      const testSpec: extensionsApi.ExtensionSpec = {
+      const testSpec: ExtensionSpec = {
         name: "test",
         version: "0.1.0",
         specVersion: "v1beta",
@@ -432,7 +521,7 @@ describe("extensionsHelper", () => {
       }).not.to.throw();
     });
     it("should error if license is missing", () => {
-      const testSpec: extensionsApi.ExtensionSpec = {
+      const testSpec: ExtensionSpec = {
         name: "test",
         version: "0.1.0",
         specVersion: "v1beta",
@@ -446,7 +535,7 @@ describe("extensionsHelper", () => {
       }).to.throw(FirebaseError, /license/);
     });
     it("should error if license is invalid", () => {
-      const testSpec: extensionsApi.ExtensionSpec = {
+      const testSpec: ExtensionSpec = {
         name: "test",
         version: "0.1.0",
         specVersion: "v1beta",

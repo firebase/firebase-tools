@@ -1,4 +1,4 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
 import * as args from "./args";
 import * as backend from "./backend";
@@ -26,7 +26,6 @@ import { ensureTriggerRegions } from "./triggerRegionHelper";
 import { ensureServiceAgentRoles } from "./checkIam";
 import { FirebaseError } from "../../error";
 import { configForCodebase, normalizeAndValidate } from "../../functions/projectConfig";
-import { previews } from "../../previews";
 import { AUTH_BLOCKING_EVENTS } from "../../functions/events/v1";
 import { generateServiceIdentity } from "../../gcp/serviceusage";
 
@@ -65,9 +64,8 @@ export async function prepare(
       /* silent=*/ true
     ),
     ensure.cloudBuildEnabled(projectId),
-    ensure.maybeEnableAR(projectId),
+    ensureApiEnabled.ensure(projectId, "artifactregistry.googleapis.com", "artifactregistry"),
   ]);
-  context.artifactRegistryEnabled = checkAPIsEnabled[3];
 
   // Get the Firebase Config, and set it on each function in the deployment.
   const firebaseConfig = await functionsConfig.getFirebaseConfig(options);
@@ -113,14 +111,13 @@ export async function prepare(
     };
     const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
     const envs = { ...userEnvs, ...firebaseEnvs };
-    let wantBackend: backend.Backend;
-    if (previews.functionsparams) {
-      const wantBuild = await runtimeDelegate.discoverBuild(runtimeConfig, firebaseEnvs);
-      wantBackend = build.resolveBackend(wantBuild, userEnvs);
-    } else {
-      logger.debug(`Analyzing ${runtimeDelegate.name} backend spec`);
-      wantBackend = await runtimeDelegate.discoverSpec(runtimeConfig, firebaseEnvs);
-    }
+    const wantBuild: build.Build = await runtimeDelegate.discoverBuild(runtimeConfig, firebaseEnvs);
+    const wantBackend: backend.Backend = await build.resolveBackend(
+      wantBuild,
+      userEnvOpt,
+      userEnvs,
+      options.nonInteractive
+    );
     wantBackend.environmentVariables = envs;
     for (const endpoint of backend.allEndpoints(wantBackend)) {
       endpoint.environmentVariables = wantBackend.environmentVariables;
@@ -204,7 +201,6 @@ export async function prepare(
     // We'd eventually have to add special error handling for billing APIs, but
     // enableCloudBuild is called above and has this special casing already.
     const V2_APIS = [
-      "artifactregistry.googleapis.com",
       "run.googleapis.com",
       "eventarc.googleapis.com",
       "pubsub.googleapis.com",
@@ -266,8 +262,9 @@ export function inferDetailsFromExisting(
 
     // If the instance size is set out of bounds or was previously set and is now
     // unset we still need to remember it so that the min instance price estimator
-    // is accurate.
-    if (!wantE.availableMemoryMb && haveE.availableMemoryMb) {
+    // is accurate. If, on the other hand, we have a null value for availableMemoryMb
+    // we need to keep that null (meaning "use defaults").
+    if (typeof wantE.availableMemoryMb === "undefined" && haveE.availableMemoryMb) {
       wantE.availableMemoryMb = haveE.availableMemoryMb;
     }
 
@@ -275,10 +272,10 @@ export function inferDetailsFromExisting(
     // the customer sets CPU <1. We'll instead error that you can't have both.
     // We may want to handle this case, though it might also be surprising to
     // customers if they _don't_ get an error and we silently drop concurrency.
-    if (!wantE.concurrency && haveE.concurrency) {
+    if (typeof wantE.concurrency === "undefined" && haveE.concurrency) {
       wantE.concurrency = haveE.concurrency;
     }
-    if (!wantE.cpu && haveE.cpu) {
+    if (typeof wantE.cpu === "undefined" && haveE.cpu) {
       wantE.cpu = haveE.cpu;
     }
 

@@ -1,4 +1,4 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as FormData from "form-data";
 import * as fs from "fs";
 import * as http from "http";
@@ -19,7 +19,6 @@ import * as scopes from "./scopes";
 import { clearCredentials } from "./defaultCredentials";
 import { v4 as uuidv4 } from "uuid";
 import { randomBytes, createHash } from "crypto";
-import { bold } from "cli-color";
 import { track } from "./track";
 import {
   authOrigin,
@@ -32,7 +31,6 @@ import {
   googleOrigin,
 } from "./api";
 
-/* eslint-disable camelcase */
 // The wire protocol for an access token returned by Google.
 // When we actually refresh from the server we should always have
 // these optional fields, but when a user passes --token we may
@@ -83,7 +81,6 @@ interface GitHubAuthResponse {
   scope: string;
   token_type: string;
 }
-/* eslint-enable camelcase */
 
 // Typescript emulates modules, which have constant exports. We can
 // overcome this by casting to any
@@ -447,7 +444,7 @@ function urlsafeBase64(base64string: string) {
   return base64string.replace(/\+/g, "-").replace(/=+$/, "").replace(/\//g, "_");
 }
 
-async function loginRemotely(userHint?: string): Promise<UserCredentials> {
+async function loginRemotely(): Promise<UserCredentials> {
   const authProxyClient = new apiv2.Client({
     urlPrefix: authProxyOrigin,
     auth: false,
@@ -471,7 +468,7 @@ async function loginRemotely(userHint?: string): Promise<UserCredentials> {
   logger.info();
   logger.info("1. Take note of your session ID:");
   logger.info();
-  logger.info(`   ${bold(sessionId.substring(0, 5).toUpperCase())}`);
+  logger.info(`   ${clc.bold(sessionId.substring(0, 5).toUpperCase())}`);
   logger.info();
   logger.info("2. Visit the URL below on any device and follow the instructions to get your code:");
   logger.info();
@@ -550,7 +547,6 @@ async function loginWithLocalhost<ResultType>(
 ): Promise<ResultType> {
   return new Promise<ResultType>((resolve, reject) => {
     const server = http.createServer(async (req, res) => {
-      let tokens: Tokens;
       const query = url.parse(`${req.url}`, true).query || {};
       const queryState = query.state;
       const queryCode = query.code;
@@ -577,7 +573,7 @@ async function loginWithLocalhost<ResultType>(
     server.listen(port, () => {
       logger.info();
       logger.info("Visit this URL on this device to log in:");
-      logger.info(clc.bold.underline(authUrl));
+      logger.info(clc.bold(clc.underline(authUrl)));
       logger.info();
       logger.info("Waiting for authentication...");
 
@@ -592,15 +588,14 @@ async function loginWithLocalhost<ResultType>(
 
 export async function loginGoogle(localhost: boolean, userHint?: string): Promise<UserCredentials> {
   if (localhost) {
-    const port = await getPort();
     try {
       const port = await getPort();
       return await loginWithLocalhostGoogle(port, userHint);
     } catch {
-      return await loginRemotely(userHint);
+      return await loginRemotely();
     }
   }
-  return await loginRemotely(userHint);
+  return await loginRemotely();
 }
 
 export async function loginGithub(): Promise<string> {

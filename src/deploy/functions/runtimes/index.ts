@@ -3,7 +3,6 @@ import * as build from "../build";
 import * as golang from "./golang";
 import * as node from "./node";
 import * as validate from "../validate";
-import * as projectPath from "../../../projectPath";
 import { FirebaseError } from "../../../error";
 
 /** Supported runtimes for new Cloud Functions. */
@@ -98,11 +97,6 @@ export interface RuntimeDelegate {
     configValues: backend.RuntimeConfigValues,
     envs: backend.EnvironmentVariables
   ): Promise<build.Build>;
-
-  discoverSpec(
-    configValues: backend.RuntimeConfigValues,
-    envs: backend.EnvironmentVariables
-  ): Promise<backend.Backend>;
 }
 
 export interface DelegateContext {

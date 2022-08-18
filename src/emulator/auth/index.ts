@@ -7,6 +7,7 @@ import { EmulatorLogger } from "../emulatorLogger";
 import { Emulators, EmulatorInstance, EmulatorInfo } from "../types";
 import { createApp } from "./server";
 import { FirebaseError } from "../../error";
+import { trackEmulator } from "../../track";
 
 export interface AuthEmulatorArgs {
   projectId: string;
@@ -35,7 +36,7 @@ export class AuthEmulator implements EmulatorInstance {
   }
 
   getInfo(): EmulatorInfo {
-    const host = this.args.host || Constants.getDefaultHost(Emulators.AUTH);
+    const host = this.args.host || Constants.getDefaultHost();
     const port = this.args.port || Constants.getDefaultPort(Emulators.AUTH);
 
     return {
@@ -49,8 +50,17 @@ export class AuthEmulator implements EmulatorInstance {
     return Emulators.AUTH;
   }
 
-  async importData(authExportDir: string, projectId: string): Promise<void> {
-    const logger = EmulatorLogger.forEmulator(Emulators.DATABASE);
+  async importData(
+    authExportDir: string,
+    projectId: string,
+    options: { initiatedBy: string }
+  ): Promise<void> {
+    void trackEmulator("emulator_import", {
+      initiated_by: options.initiatedBy,
+      emulator_name: Emulators.AUTH,
+    });
+
+    const logger = EmulatorLogger.forEmulator(Emulators.AUTH);
     const { host, port } = this.getInfo();
 
     // TODO: In the future when we support import on demand, clear data first.

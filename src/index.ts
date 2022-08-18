@@ -1,5 +1,5 @@
 import * as program from "commander";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as leven from "leven";
 
 import { logger } from "./logger";
@@ -14,7 +14,10 @@ program.option(
 );
 program.option("--account <email>", "the Google account to use for authorization");
 program.option("-j, --json", "output JSON instead of text, also triggers non-interactive mode");
-program.option("--token <token>", "supply an auth token for this command");
+program.option(
+  "--token <token>",
+  "DEPRECATED - will be removed in a future major version - supply an auth token for this command"
+);
 program.option("--non-interactive", "error out of the command instead of waiting for prompts");
 program.option("-i, --interactive", "force prompts to be displayed");
 program.option("--debug", "print verbose debug output and keep a debug log file");
@@ -76,7 +79,7 @@ program.action((_, args) => {
   setupLoggers();
 
   const cmd = args[0];
-  logger.error(clc.bold.red("Error:"), clc.bold(cmd), "is not a Firebase command");
+  logger.error(clc.bold(clc.red("Error:")), clc.bold(cmd), "is not a Firebase command");
 
   if (RENAMED_COMMANDS[cmd]) {
     logger.error();

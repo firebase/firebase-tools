@@ -1,5 +1,4 @@
-import * as _ from "lodash";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as ora from "ora";
 
 import { Client } from "../apiv2";
@@ -167,15 +166,15 @@ async function selectProjectByPrompting(): Promise<FirebaseProjectMetadata> {
 async function selectProjectFromList(
   projects: FirebaseProjectMetadata[] = []
 ): Promise<FirebaseProjectMetadata> {
-  let choices = projects
+  const choices = projects
     .filter((p: FirebaseProjectMetadata) => !!p)
     .map((p) => {
       return {
         name: p.projectId + (p.displayName ? ` (${p.displayName})` : ""),
         value: p.projectId,
       };
-    });
-  choices = _.orderBy(choices, ["name"], ["asc"]);
+    })
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   if (choices.length >= 25) {
     utils.logBullet(
@@ -227,7 +226,7 @@ export async function promptAvailableProjectId(): Promise<string> {
       message: "Please input the ID of the Google Cloud Project you would like to add Firebase:",
     });
   } else {
-    let choices = projects
+    const choices = projects
       .filter((p: CloudProjectInfo) => !!p)
       .map((p) => {
         const projectId = getProjectId(p);
@@ -235,8 +234,8 @@ export async function promptAvailableProjectId(): Promise<string> {
           name: projectId + (p.displayName ? ` (${p.displayName})` : ""),
           value: projectId,
         };
-      });
-    choices = _.orderBy(choices, ["name"], ["asc"]);
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
     return await promptOnce({
       type: "list",
       name: "id",

@@ -3,7 +3,7 @@ const { marked } = require("marked");
 import TerminalRenderer = require("marked-terminal");
 
 import { FirebaseError } from "../error";
-import * as extensionsApi from "./extensionsApi";
+import { ExtensionSpec } from "./types";
 import { logPrefix } from "./extensionsHelper";
 import { promptOnce } from "../prompt";
 import * as utils from "../utils";
@@ -37,7 +37,7 @@ const defaultRuntimes: { [key: string]: string } = {
   v1beta: "nodejs8",
 };
 
-function hasRuntime(spec: extensionsApi.ExtensionSpec, runtime: string): boolean {
+function hasRuntime(spec: ExtensionSpec, runtime: string): boolean {
   const specVersion = spec.specVersion || defaultSpecVersion;
   const defaultRuntime = defaultRuntimes[specVersion];
   const resources = spec.resources || [];
@@ -51,8 +51,8 @@ function hasRuntime(spec: extensionsApi.ExtensionSpec, runtime: string): boolean
  * @param newSpec A extensionSpec to compare to
  */
 export function displayNode10UpdateBillingNotice(
-  curSpec: extensionsApi.ExtensionSpec,
-  newSpec: extensionsApi.ExtensionSpec
+  curSpec: ExtensionSpec,
+  newSpec: ExtensionSpec
 ): void {
   if (hasRuntime(curSpec, "nodejs8") && hasRuntime(newSpec, "nodejs10")) {
     utils.logLabeledWarning(logPrefix, marked(billingMsgUpdate));
@@ -66,7 +66,7 @@ export function displayNode10UpdateBillingNotice(
  * @param prompt If true, prompts user for confirmation
  */
 export async function displayNode10CreateBillingNotice(
-  spec: extensionsApi.ExtensionSpec,
+  spec: ExtensionSpec,
   prompt: boolean
 ): Promise<void> {
   if (hasRuntime(spec, "nodejs10")) {

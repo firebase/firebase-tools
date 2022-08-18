@@ -3,7 +3,7 @@
 import { FirebaseConfig } from "./firebaseConfig";
 
 import * as _ from "lodash";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as fs from "fs-extra";
 import * as path from "path";
 const cjson = require("cjson");
@@ -61,9 +61,9 @@ export class Config {
       );
     }
 
-    // Move the deprecated top-level "rules" ket into the "database" object
-    if (_.has(this._src, "rules")) {
-      _.set(this._src, "database.rules", this._src.rules);
+    // Move the deprecated top-level "rules" key into the "database" object
+    if (this._src?.rules) {
+      this._src.database = { ...this._src.database, rules: this._src.rules };
     }
 
     // If a top-level key contains a string path pointing to a suported file
@@ -97,7 +97,7 @@ export class Config {
       // if e.g. rules.json has {"rules": {}} use that
       const segments = target.split(".");
       const lastSegment = segments[segments.length - 1];
-      if (Object.keys(out).length === 1 && _.has(out, lastSegment)) {
+      if (Object.keys(out).length === 1 && out[lastSegment]) {
         out = out[lastSegment];
       }
       return out;
@@ -167,7 +167,7 @@ export class Config {
     return _.set(this.data, key, value);
   }
 
-  has(key: string) {
+  has(key: string): boolean {
     return _.has(this.data, key);
   }
 

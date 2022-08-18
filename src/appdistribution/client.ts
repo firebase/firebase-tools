@@ -1,4 +1,3 @@
-import * as _ from "lodash";
 import { ReadStream } from "fs";
 
 import * as utils from "../utils";
@@ -150,13 +149,11 @@ export class AppDistributionClient {
       await this.appDistroV2Client.post(`/${releaseName}:distribute`, data);
     } catch (err: any) {
       let errorMessage = err.message;
-      if (_.has(err, "context.body.error")) {
-        const errorStatus = _.get(err, "context.body.error.status");
-        if (errorStatus === "FAILED_PRECONDITION") {
-          errorMessage = "invalid testers";
-        } else if (errorStatus === "INVALID_ARGUMENT") {
-          errorMessage = "invalid groups";
-        }
+      const errorStatus = err?.context?.body?.error?.status;
+      if (errorStatus === "FAILED_PRECONDITION") {
+        errorMessage = "invalid testers";
+      } else if (errorStatus === "INVALID_ARGUMENT") {
+        errorMessage = "invalid groups";
       }
       throw new FirebaseError(`failed to distribute to testers/groups: ${errorMessage}`, {
         exit: 1,

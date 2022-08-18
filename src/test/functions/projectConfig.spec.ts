@@ -4,7 +4,6 @@ import * as projectConfig from "../../functions/projectConfig";
 import { FirebaseError } from "../../error";
 
 const TEST_CONFIG_0 = { source: "foo" };
-const TEST_CONFIG_1 = { source: "bar", codebase: "bar" };
 
 describe("projectConfig", () => {
   describe("normalize", () => {

@@ -1,4 +1,4 @@
-import { bold, underline } from "cli-color";
+import { bold, underline } from "colorette";
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const { marked } = require("marked");
 

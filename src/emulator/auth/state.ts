@@ -5,7 +5,6 @@ import {
   randomDigits,
   isValidPhoneNumber,
   DeepPartial,
-  parseAbsoluteUri,
 } from "./utils";
 import { MakeRequired } from "./utils";
 import { AuthCloudFunction } from "./cloudFunctions";
@@ -30,6 +29,7 @@ export abstract class ProjectState {
   private oobs: Map<string, OobRecord> = new Map();
   private verificationCodes: Map<string, PhoneVerificationRecord> = new Map();
   private temporaryProofs: Map<string, TemporaryProofRecord> = new Map();
+  private pendingLocalIds: Set<string> = new Set();
 
   constructor(public readonly projectId: string) {}
 
@@ -53,14 +53,22 @@ export abstract class ProjectState {
 
   abstract get enableEmailLinkSignin(): boolean;
 
-  createUser(props: Omit<UserInfo, "localId" | "createdAt" | "lastRefreshAt">): UserInfo {
+  abstract shouldForwardCredentialToBlockingFunction(
+    type: "accessToken" | "idToken" | "refreshToken"
+  ): boolean;
+
+  abstract getBlockingFunctionUri(event: BlockingFunctionEvents): string | undefined;
+
+  generateLocalId(): string {
     for (let i = 0; i < 10; i++) {
       // Try this for 10 times to prevent ID collision (since our RNG is
       // Math.random() which isn't really that great).
       const localId = randomId(28);
-      const user = this.createUserWithLocalId(localId, props);
-      if (user) {
-        return user;
+      if (!this.users.has(localId) && !this.pendingLocalIds.has(localId)) {
+        // Create a pending localId until user is created. This creates a memory
+        // leak if a blocking functions throws and the localId is never used.
+        this.pendingLocalIds.add(localId);
+        return localId;
       }
     }
     // If we get 10 collisions in a row, there must be something very wrong.
@@ -74,12 +82,10 @@ export abstract class ProjectState {
     if (this.users.has(localId)) {
       return undefined;
     }
-    const timestamp = new Date();
     this.users.set(localId, {
       localId,
-      createdAt: props.createdAt || timestamp.getTime().toString(),
-      lastLoginAt: timestamp.getTime().toString(),
     });
+    this.pendingLocalIds.delete(localId);
 
     const user = this.updateUserByLocalId(localId, props, {
       upsertProviders: props.providerUserInfo,
@@ -620,6 +626,29 @@ export class AgentProjectState extends ProjectState {
     this._config.blockingFunctions = blockingFunctions;
   }
 
+  shouldForwardCredentialToBlockingFunction(
+    type: "accessToken" | "idToken" | "refreshToken"
+  ): boolean {
+    switch (type) {
+      case "accessToken":
+        return this._config.blockingFunctions.forwardInboundCredentials?.accessToken ?? false;
+      case "idToken":
+        return this._config.blockingFunctions.forwardInboundCredentials?.idToken ?? false;
+      case "refreshToken":
+        return this._config.blockingFunctions.forwardInboundCredentials?.refreshToken ?? false;
+    }
+  }
+
+  getBlockingFunctionUri(event: BlockingFunctionEvents): string | undefined {
+    const triggers = this.blockingFunctionsConfig.triggers;
+    if (triggers) {
+      return Object.prototype.hasOwnProperty.call(triggers, event)
+        ? triggers![event].functionUri
+        : undefined;
+    }
+    return undefined;
+  }
+
   updateConfig(
     update: Schemas["GoogleCloudIdentitytoolkitAdminV2Config"],
     updateMask: string | undefined
@@ -743,6 +772,16 @@ export class TenantProjectState extends ProjectState {
 
   get enableEmailLinkSignin() {
     return this._tenantConfig.enableEmailLinkSignin;
+  }
+
+  shouldForwardCredentialToBlockingFunction(
+    type: "accessToken" | "idToken" | "refreshToken"
+  ): boolean {
+    return this.parentProject.shouldForwardCredentialToBlockingFunction(type);
+  }
+
+  getBlockingFunctionUri(event: BlockingFunctionEvents): string | undefined {
+    return this.parentProject.getBlockingFunctionUri(event);
   }
 
   delete(): void {

@@ -1,6 +1,7 @@
 import { spawn } from "cross-spawn";
 import { ChildProcess } from "child_process";
 import { FirebaseError } from "../../../error";
+import * as AsyncLock from "async-lock";
 import {
   RulesetOperationMethod,
   RuntimeActionBundle,
@@ -27,6 +28,9 @@ import {
   handleEmulatorProcessError,
 } from "../../downloadableEmulators";
 
+const lock = new AsyncLock();
+const synchonizationKey: string = "key";
+
 export interface RulesetVerificationOpts {
   file: {
     before?: RulesResourceMetadata;
@@ -35,6 +39,7 @@ export interface RulesetVerificationOpts {
   token?: string;
   method: RulesetOperationMethod;
   path: string;
+  delimiter?: string;
 }
 
 export class StorageRulesetInstance {
@@ -107,12 +112,12 @@ export class StorageRulesRuntime {
     return this._alive;
   }
 
-  async start(auto_download = true) {
+  async start(autoDownload = true) {
     const downloadDetails = DownloadDetails[Emulators.STORAGE];
     const hasEmulator = fs.existsSync(downloadDetails.downloadPath);
 
     if (!hasEmulator) {
-      if (auto_download) {
+      if (autoDownload) {
         if (process.env.CI) {
           utils.logWarning(
             `It appears you are running in a CI environment. You can avoid downloading the ${Constants.description(
@@ -208,7 +213,7 @@ export class StorageRulesRuntime {
     this._childprocess?.kill("SIGINT");
   }
 
-  private async _sendRequest<T>(rab: RuntimeActionBundle) {
+  private async _sendRequest(rab: RuntimeActionBundle) {
     if (!this._childprocess) {
       throw new FirebaseError(
         "Attempted to send Cloud Storage rules request before child was ready"
@@ -231,7 +236,17 @@ export class StorageRulesRuntime {
       };
 
       const serializedRequest = JSON.stringify(runtimeActionRequest);
-      this._childprocess?.stdin?.write(serializedRequest + "\n");
+
+      // Added due to https://github.com/firebase/firebase-tools/issues/3915
+      // Without waiting to acquire the lock and allowing the child process enough time
+      // (~15ms) to pipe the output back, the emulator will run into issues with
+      // capturing the output and resolving corresponding promises en masse.
+      lock.acquire(synchonizationKey, (done) => {
+        this._childprocess?.stdin?.write(serializedRequest + "\n");
+        setTimeout(() => {
+          done();
+        }, 15);
+      });
     });
   }
 
@@ -299,10 +314,10 @@ export class StorageRulesRuntime {
         service: "firebase.storage",
         path: opts.path,
         method: opts.method,
+        delimiter: opts.delimiter,
         variables: runtimeVariables,
       },
     };
-
     const response = (await this._sendRequest(runtimeActionRequest)) as RuntimeActionVerifyResponse;
 
     if (!response.errors) response.errors = [];
@@ -406,7 +421,6 @@ function createRequestExpressionValue(opts: RulesetVerificationOpts): Expression
         segments: opts.path
           .split("/")
           .filter((s) => s)
-          .slice(3)
           .map((simple) => ({
             simple,
           })),

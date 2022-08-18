@@ -1,4 +1,4 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as path from "path";
 import * as refs from "./refs";
 import { Config } from "../config";
@@ -9,7 +9,7 @@ import { readEnvFile } from "./paramHelper";
 import { FirebaseError } from "../error";
 import * as utils from "../utils";
 import { isLocalPath, logPrefix } from "./extensionsHelper";
-import { ParamType } from "./extensionsApi";
+import { ParamType } from "./types";
 
 export const ENV_DIRECTORY = "extensions";
 

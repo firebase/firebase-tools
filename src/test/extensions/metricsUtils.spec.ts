@@ -1,6 +1,5 @@
-import * as _ from "lodash";
 import { expect } from "chai";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
 import {
   buildMetricsTableRow,

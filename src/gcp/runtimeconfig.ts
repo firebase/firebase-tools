@@ -7,16 +7,16 @@ import { logger } from "../logger";
 const API_VERSION = "v1beta1";
 const apiClient = new Client({ urlPrefix: runtimeconfigOrigin, apiVersion: API_VERSION });
 
-function listConfigs(projectId: string): Promise<any> {
+function listConfigs(projectId: string): Promise<unknown[] | undefined> {
   return apiClient
-    .get<{ configs: any }>(`/projects/${projectId}/configs`, {
+    .get<{ configs?: unknown[] }>(`/projects/${projectId}/configs`, {
       retryCodes: [500, 503],
     })
     .then((resp) => resp.body.configs);
 }
 
 function createConfig(projectId: string, configId: string): Promise<any> {
-  const path = _.join(["projects", projectId, "configs"], "/");
+  const path = ["projects", projectId, "configs"].join("/");
   return apiClient
     .post(
       `/projects/${projectId}/configs`,
@@ -50,13 +50,13 @@ function deleteConfig(projectId: string, configId: string): Promise<any> {
     });
 }
 
-function listVariables(configPath: string): Promise<any> {
+function listVariables(configPath: string): Promise<{ name: string }[]> {
   return apiClient
     .get<{ variables: any }>(`${configPath}/variables`, {
       retryCodes: [500, 503],
     })
     .then((resp) => {
-      return Promise.resolve(resp.body.variables);
+      return Promise.resolve(resp.body.variables || []);
     });
 }
 
@@ -119,7 +119,7 @@ function updateVariable(
 }
 
 function setVariable(projectId: string, configId: string, varId: string, value: any): Promise<any> {
-  const path = _.join(["projects", projectId, "configs", configId, "variables", varId], "/");
+  const path = ["projects", projectId, "configs", configId, "variables", varId].join("/");
   return getVariable(path)
     .then(() => {
       return updateVariable(projectId, configId, varId, value);

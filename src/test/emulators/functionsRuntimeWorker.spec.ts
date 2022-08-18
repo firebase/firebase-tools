@@ -1,10 +1,7 @@
 import { expect } from "chai";
 import { FunctionsRuntimeInstance } from "../../emulator/functionsEmulator";
 import { EventEmitter } from "events";
-import {
-  FunctionsRuntimeArgs,
-  FunctionsRuntimeBundle,
-} from "../../emulator/functionsEmulatorShared";
+import { FunctionsRuntimeBundle } from "../../emulator/functionsEmulatorShared";
 import {
   RuntimeWorker,
   RuntimeWorkerState,
@@ -22,6 +19,7 @@ class MockRuntimeInstance implements FunctionsRuntimeInstance {
   events: EventEmitter = new EventEmitter();
   exit: Promise<number>;
   cwd = "/home/users/dir";
+  socketPath = "/path/to/socket/foo.sock";
 
   constructor(private success: boolean) {
     this.exit = new Promise((res) => {
@@ -33,11 +31,11 @@ class MockRuntimeInstance implements FunctionsRuntimeInstance {
     this.events.emit("exit", { reason: "shutdown" });
   }
 
-  kill(signal?: number): void {
+  kill(): void {
     this.events.emit("exit", { reason: "kill" });
   }
 
-  send(args: FunctionsRuntimeArgs): boolean {
+  send(): boolean {
     setTimeout(() => {
       if (this.success) {
         this.logRuntimeStatus({ state: "idle" });

@@ -1,4 +1,4 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -67,6 +67,18 @@ const ESCAPE_SEQUENCES_TO_CHARACTERS: Record<string, string> = {
   "\\'": "'",
   '\\"': '"',
 };
+const ALL_ESCAPE_SEQUENCES_RE = /\\[nrtv\\'"]/g;
+
+const CHARACTERS_TO_ESCAPE_SEQUENCES: Record<string, string> = {
+  "\n": "\\n",
+  "\r": "\\r",
+  "\t": "\\t",
+  "\v": "\\v",
+  "\\": "\\\\",
+  "'": "\\'",
+  '"': '\\"',
+};
+const ALL_ESCAPABLE_CHARACTERS_RE = /[\n\r\t\v\\'"]/g;
 
 interface ParseResult {
   envs: Record<string, string>;
@@ -116,7 +128,7 @@ export function parse(data: string): ParseResult {
       if (quotesMatch[1] === '"') {
         // Substitute escape sequences. The regex passed to replace() must
         // match every key in ESCAPE_SEQUENCES_TO_CHARACTERS.
-        v = v.replace(/\\[nrtv\\'"]/g, (match) => ESCAPE_SEQUENCES_TO_CHARACTERS[match]);
+        v = v.replace(ALL_ESCAPE_SEQUENCES_RE, (match) => ESCAPE_SEQUENCES_TO_CHARACTERS[match]);
       }
     }
 
@@ -167,9 +179,11 @@ export function validateKey(key: string): void {
   }
 }
 
-// Parse dotenv file, but throw errors if:
-//   1. Input has any invalid lines.
-//   2. Any env key fails validation.
+/**
+ * Parse dotenv file, but throw errors if:
+ * 1. Input has any invalid lines.
+ * 2. Any env key fails validation.
+ */
 export function parseStrict(data: string): Record<string, string> {
   const { envs, errors } = parse(data);
 
@@ -241,6 +255,67 @@ export function hasUserEnvs({
 }
 
 /**
+ * Write new environment variables into a dotenv file.
+ *
+ * Identifies one and only one dotenv file to touch using the same rules as loadUserEnvs().
+ * It is an error to provide a key-value pair which is already in the file.
+ */
+export function writeUserEnvs(toWrite: Record<string, string>, envOpts: UserEnvsOpts) {
+  if (Object.keys(toWrite).length === 0) {
+    return;
+  }
+
+  const { functionsSource, projectId, projectAlias, isEmulator } = envOpts;
+  const envFiles = findEnvfiles(functionsSource, projectId, projectAlias, isEmulator);
+  const projectScopedFileName = `.env.${projectId}`;
+
+  const projectScopedFileExists = envFiles.includes(projectScopedFileName);
+  if (!projectScopedFileExists) {
+    createEnvFile(envOpts);
+  }
+
+  const currentEnvs = loadUserEnvs(envOpts);
+  for (const k of Object.keys(toWrite)) {
+    validateKey(k);
+    if (currentEnvs.hasOwnProperty(k)) {
+      throw new FirebaseError(
+        `Attempted to write param-defined key ${k} to .env files, but it was already defined.`
+      );
+    }
+  }
+
+  logBullet(
+    clc.cyan(clc.bold("functions: ")) +
+      `Writing new parameter values to disk: ${projectScopedFileName}`
+  );
+  for (const k of Object.keys(toWrite)) {
+    fs.appendFileSync(
+      path.join(functionsSource, projectScopedFileName),
+      formatUserEnvForWrite(k, toWrite[k])
+    );
+  }
+}
+
+function createEnvFile(envOpts: UserEnvsOpts): string {
+  const fileToWrite = envOpts.isEmulator ? FUNCTIONS_EMULATOR_DOTENV : `.env.${envOpts.projectId}`;
+  logger.debug(`Creating ${fileToWrite}...`);
+
+  fs.writeFileSync(path.join(envOpts.functionsSource, fileToWrite), "", { flag: "wx" });
+  return fileToWrite;
+}
+
+function formatUserEnvForWrite(key: string, value: string): string {
+  const escapedValue = value.replace(
+    ALL_ESCAPABLE_CHARACTERS_RE,
+    (match) => CHARACTERS_TO_ESCAPE_SEQUENCES[match]
+  );
+  if (escapedValue !== value) {
+    return `${key}="${escapedValue}"\n`;
+  }
+  return `${key}=${escapedValue}\n`;
+}
+
+/**
  * Load user-specified environment variables.
  *
  * Look for .env files at the root of functions source directory
@@ -289,7 +364,7 @@ export function loadUserEnvs({
     }
   }
   logBullet(
-    clc.cyan.bold("functions: ") + `Loaded environment variables from ${envFiles.join(", ")}.`
+    clc.cyan(clc.bold("functions: ")) + `Loaded environment variables from ${envFiles.join(", ")}.`
   );
 
   return envs;

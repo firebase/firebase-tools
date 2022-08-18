@@ -1,4 +1,3 @@
-import * as _ from "lodash";
 import { logger } from "../logger";
 import { Client } from "../apiv2";
 import { firebaseExtensionsRegistryOrigin } from "../api";
@@ -17,17 +16,24 @@ export interface RegistryEntry {
  * @param onlyFeatured If true, only return the featured extensions.
  */
 export async function getExtensionRegistry(
-  onlyFeatured?: boolean
-): Promise<{ [key: string]: RegistryEntry }> {
+  onlyFeatured = false
+): Promise<Record<string, RegistryEntry>> {
   const client = new Client({ urlPrefix: firebaseExtensionsRegistryOrigin });
-  const res = await client.get(EXTENSIONS_REGISTRY_ENDPOINT);
-  const extensions = _.get(res, "body.mods") as { [key: string]: RegistryEntry };
+  const res = await client.get<{
+    mods?: Record<string, RegistryEntry>;
+    featured?: { discover?: string[] };
+  }>(EXTENSIONS_REGISTRY_ENDPOINT);
+  const extensions: Record<string, RegistryEntry> = res.body.mods || {};
 
   if (onlyFeatured) {
-    const featuredList = _.get(res, "body.featured.discover");
-    return _.pickBy(extensions, (_entry, extensionName: string) => {
-      return _.includes(featuredList, extensionName);
-    });
+    const featuredList = new Set(res.body.featured?.discover || []);
+    const filteredExtensions: Record<string, RegistryEntry> = {};
+    for (const [name, extension] of Object.entries(extensions)) {
+      if (featuredList.has(name)) {
+        filteredExtensions[name] = extension;
+      }
+    }
+    return filteredExtensions;
   }
   return extensions;
 }

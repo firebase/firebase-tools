@@ -1,5 +1,4 @@
-import * as clc from "cli-color";
-import * as _ from "lodash";
+import * as clc from "colorette";
 
 import { Command } from "../command";
 import { logger } from "../logger";
@@ -13,18 +12,14 @@ import { FirebaseError } from "../error";
 
 const VALID_TARGETS = ["hosting", "functions"];
 const REQUIRES_AUTH = ["hosting", "functions"];
-const ALL_TARGETS = _.union(VALID_TARGETS, ["database", "firestore"]);
+const ALL_TARGETS = Array.from(new Set(["database", "firestore", ...VALID_TARGETS]));
 
 function filterOnly(list: string[], only = ""): string[] {
   if (!only) {
     return [];
   }
-  return _.intersection(
-    list,
-    only.split(",").map((opt) => {
-      return opt.split(":")[0];
-    })
-  );
+  const targets = only.split(",").map((o) => o.split(":")[0]);
+  return targets.filter((t) => list.includes(t));
 }
 
 export const command = new Command("serve")
