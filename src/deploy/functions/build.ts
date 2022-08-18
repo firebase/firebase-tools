@@ -290,7 +290,7 @@ export async function resolveBackend(
     const toWrite: Record<string, string> = {};
     for (const paramName of Object.keys(paramValues)) {
       const paramValue = paramValues[paramName];
-      if (userEnvs.hasOwnProperty(paramName) || paramValue === undefined || paramValue.isSecret) {
+      if (Object.prototype.hasOwnProperty.call(userEnvs, paramName) || paramValue.secret) {
         continue;
       }
       toWrite[paramName] = paramValue.toString();

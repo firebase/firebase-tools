@@ -155,7 +155,7 @@ export interface IntParam extends ParamBase<number> {
 export interface BooleanParam extends ParamBase<number> {
   type: "boolean";
 
-  // If omitted, defaults to TextInput<number>
+  // If omitted, defaults to TextInput<boolean>
   input?: TextInput<boolean> | SelectInput<boolean>;
 }
 
@@ -227,24 +227,28 @@ type RawParamValue = string | number | boolean;
  *   and isSecret = true, telling the Build process not to write the value to .env files.
  */
 export class ParamValue {
-  rawValue: string;
-  isSecret: boolean;
+  // Whether this param value can be sensibly interpreted as a string
+  legalString: boolean;
+  // Whether this param value can be sensibly interpreted as a boolean
+  legalBoolean: boolean;
+  // Whether this param value can be sensibly interpreted as a number
+  legalNumber: boolean;
 
   constructor(
-    rawValue: string,
-    secret: boolean,
+    private readonly rawValue: string,
+    readonly secret: boolean,
     types: { string?: boolean; boolean?: boolean; number?: boolean }
   ) {
     this.rawValue = rawValue;
-    this.isSecret = secret;
+    this.secret = secret;
     this.legalString = types.string || false;
     this.legalBoolean = types.boolean || false;
     this.legalNumber = types.number || false;
   }
 
   // Call this when we figure out the actual type of a ParamValue from the .envs
-  narrowType(isType: Param["type"]): void {
-    switch (isType) {
+  narrowType(paramType: Param["type"]): void {
+    switch (paramType) {
       case "string":
         this.legalString = true;
         this.legalBoolean = false;
@@ -261,9 +265,10 @@ export class ParamValue {
         this.legalNumber = true;
         break;
       case "secret":
+      // Secrets can't be populated from envs, so falling through to the error is intentional
       default:
         throw new FirebaseError(
-          `ParamValue.narrowType() called on a param of type ${isType}, which cannot have values from .env files.`
+          `ParamValue.narrowType() called on a param of type ${paramType}, which cannot have values from .env files.`
         );
     }
   }
@@ -272,17 +277,14 @@ export class ParamValue {
     return this.rawValue;
   }
 
-  legalString: boolean;
   asString(): string {
     return this.rawValue;
   }
 
-  legalBoolean: boolean;
   asBoolean(): boolean {
     return ["true", "y", "yes", "1"].includes(this.rawValue);
   }
 
-  legalNumber: boolean;
   asNumber(): number {
     return +this.rawValue;
   }
@@ -300,7 +302,8 @@ function resolveDefaultCEL(
 ): RawParamValue {
   const deps = dependenciesCEL(expr);
   const allDepsFound = deps.every((dep) => !!currentEnv[dep]);
-  if (!allDepsFound) {
+  const dependsOnSecret = deps.some((dep) => currentEnv[dep].secret);
+  if (!allDepsFound || dependsOnSecret) {
     throw new FirebaseError(
       "Build specified parameter with un-resolvable default value " +
         expr +
@@ -362,14 +365,12 @@ export async function resolveParams(
     return {}.hasOwnProperty.call(userEnvs, param.name);
   });
   for (const param of resolved) {
-    const valueFromEnvs = Object.create(userEnvs[param.name]) as ParamValue;
+    const valueFromEnvs = userEnvs[param.name];
     valueFromEnvs.narrowType(param.type);
     paramValues[param.name] = valueFromEnvs;
   }
 
-  const [needSecret, needPrompt] = partition(outstanding, (param) => {
-    return param.type === "secret";
-  });
+  const [needSecret, needPrompt] = partition(outstanding, (param) => param.type === "secret");
   for (const param of needSecret) {
     const secretParam = param as SecretParam;
     const rawValue = await handleSecret(secretParam, projectId);
