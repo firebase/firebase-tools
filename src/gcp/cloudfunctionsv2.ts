@@ -17,7 +17,7 @@ import {
   BLOCKING_LABEL_KEY_TO_EVENT,
   CODEBASE_LABEL,
   HASH_LABEL,
-} from "./constants";
+} from "../functions/constants";
 
 export const API_VERSION = "v2alpha";
 

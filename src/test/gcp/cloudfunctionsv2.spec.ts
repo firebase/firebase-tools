@@ -4,7 +4,7 @@ import * as cloudfunctionsv2 from "../../gcp/cloudfunctionsv2";
 import * as backend from "../../deploy/functions/backend";
 import * as events from "../../functions/events";
 import * as projectConfig from "../../functions/projectConfig";
-import { BLOCKING_LABEL, CODEBASE_LABEL, HASH_LABEL } from "../../gcp/constants";
+import { BLOCKING_LABEL, CODEBASE_LABEL, HASH_LABEL } from "../../functions/constants";
 
 describe("cloudfunctionsv2", () => {
   const FUNCTION_NAME: backend.TargetIds = {
