@@ -1,4 +1,3 @@
-import * as http from "http";
 import * as fs from "fs";
 
 import { CloudFunction, DeploymentOptions, https } from "firebase-functions";
@@ -767,77 +766,6 @@ function rawBodySaver(req: express.Request, res: express.Response, buf: Buffer):
   (req as any).rawBody = buf;
 }
 
-async function processHTTPS(trigger: CloudFunction<any>): Promise<void> {
-  const ephemeralServer = express();
-
-  await new Promise<void>((resolveEphemeralServer, rejectEphemeralServer) => {
-    ephemeralServer.enable("trust proxy");
-    ephemeralServer.use(
-      bodyParser.json({
-        limit: "10mb",
-        verify: rawBodySaver,
-      })
-    );
-    ephemeralServer.use(
-      bodyParser.text({
-        limit: "10mb",
-        verify: rawBodySaver,
-      })
-    );
-    ephemeralServer.use(
-      bodyParser.urlencoded({
-        extended: true,
-        limit: "10mb",
-        verify: rawBodySaver,
-      })
-    );
-    ephemeralServer.use(
-      bodyParser.raw({
-        type: "*/*",
-        limit: "10mb",
-        verify: rawBodySaver,
-      })
-    );
-
-    // eslint-disable-next-line prefer-const
-    let server: http.Server;
-    function closeServer() {
-      if (server) {
-        server.close((err) => {
-          if (err) {
-            rejectEphemeralServer(err);
-          } else {
-            resolveEphemeralServer();
-          }
-        });
-      }
-    }
-    // Endpoint used by the Functions Emulator to check if runtime process is ready to accept requests.
-    // Notice that unlike other endpoints, this route does not call closeServer() at the end of request since
-    // we expect one additional request that actually invokes the handler.
-    ephemeralServer.get("/__/health", (req, res) => {
-      res.status(200).send();
-    });
-    ephemeralServer.all("/favicon.ico|/robots.txt", (req, res) => {
-      res.on("finish", closeServer);
-      res.status(404).send();
-    });
-    ephemeralServer.all(`/*`, async (req: express.Request, res: express.Response) => {
-      try {
-        logDebug(`Ephemeral server handling ${req.method} request`);
-        res.on("finish", closeServer);
-        await runHTTPS(trigger, [req, res]);
-      } catch (err: any) {
-        rejectEphemeralServer(err);
-      }
-    });
-
-    server = ephemeralServer.listen(process.env.PORT);
-    logDebug(`Listening to port: ${process.env.PORT}`);
-    server.on("error", rejectEphemeralServer);
-  });
-}
-
 async function processBackground(
   trigger: CloudFunction<any>,
   frb: FunctionsRuntimeBundle,
@@ -878,8 +806,6 @@ async function runFunction(func: () => Promise<any>): Promise<any> {
   } catch (err: any) {
     caughtErr = err;
   }
-
-  logDebug(`Ephemeral server survived.`);
   if (caughtErr) {
     throw caughtErr;
   }
@@ -983,9 +909,6 @@ async function invokeTrigger(
     case "cloudevent":
       await processBackground(trigger, frb, FUNCTION_SIGNATURE);
       break;
-    case "http":
-      await processHTTPS(trigger);
-      break;
   }
 
   if (timeoutId) {
@@ -1081,26 +1004,16 @@ async function handleMessage(message: string) {
     return;
   }
 
-  if (!functionModule) {
-    try {
-      functionModule = await loadTriggers();
-    } catch (e: any) {
-      logDebug(e);
-      new EmulatorLog(
-        "FATAL",
-        "runtime-status",
-        `Failed to initialize and load triggers. This shouldn't happen: ${e.message}`
-      ).log();
-      await flushAndExit(1);
-      return;
-    }
-  }
-
   if (FUNCTION_DEBUG_MODE) {
     // In debug mode, all function triggers run in a single process.
     // Target trigger is dynamically defined in the FunctionRuntimeBundle.
     FUNCTION_TARGET_NAME = runtimeArgs.frb.debug!.functionTarget;
     FUNCTION_SIGNATURE = runtimeArgs.frb.debug!.functionSignature;
+  }
+
+  if (FUNCTION_SIGNATURE === "http") {
+    logDebug(`Skipping invocation of HTTP function ${FUNCTION_TARGET_NAME}!`);
+    return;
   }
 
   const trigger = FUNCTION_TARGET_NAME.split(".").reduce((mod, functionTargetPart) => {
@@ -1142,6 +1055,87 @@ async function main(): Promise<void> {
   });
 
   await initializeRuntime();
+  try {
+    functionModule = await loadTriggers();
+  } catch (e: any) {
+    new EmulatorLog(
+      "FATAL",
+      "runtime-status",
+      `Failed to initialize and load triggers. This shouldn't happen: ${e.message}`
+    ).log();
+    await flushAndExit(1);
+  }
+
+  const app = express();
+  app.enable("trust proxy");
+  app.use(
+    bodyParser.json({
+      limit: "10mb",
+      verify: rawBodySaver,
+    })
+  );
+  app.use(
+    bodyParser.text({
+      limit: "10mb",
+      verify: rawBodySaver,
+    })
+  );
+  app.use(
+    bodyParser.urlencoded({
+      extended: true,
+      limit: "10mb",
+      verify: rawBodySaver,
+    })
+  );
+  app.use(
+    bodyParser.raw({
+      type: "*/*",
+      limit: "10mb",
+      verify: rawBodySaver,
+    })
+  );
+  app.get("/__/health", (req, res) => {
+    res.status(200).send();
+  });
+  app.all("/favicon.ico|/robots.txt", (req, res) => {
+    res.status(404).send();
+  });
+  app.all(`/*`, async (req: express.Request, res: express.Response) => {
+    try {
+      new EmulatorLog(
+        "INFO",
+        "runtime-status",
+        `Beginning execution of "${FUNCTION_TARGET_NAME}"`
+      ).log();
+
+      const trigger = FUNCTION_TARGET_NAME.split(".").reduce((mod, functionTargetPart) => {
+        return mod?.[functionTargetPart];
+      }, functionModule) as CloudFunction<unknown>;
+      if (!trigger) {
+        throw new Error(`Failed to find function ${FUNCTION_TARGET_NAME} in the loaded module`);
+      }
+      const startHrTime = process.hrtime();
+      res.on("finish", () => {
+        const elapsedHrTime = process.hrtime(startHrTime);
+        new EmulatorLog(
+          "INFO",
+          "runtime-status",
+          `Finished "${FUNCTION_TARGET_NAME}" in ${
+            elapsedHrTime[0] * 1000 + elapsedHrTime[1] / 1000000
+          }ms`
+        ).log();
+      });
+      await runHTTPS(trigger, [req, res]);
+    } catch (err: any) {
+      new EmulatorLog("FATAL", "runtime-error", err.stack ? err.stack : err).log();
+      res.status(500).send(err.message);
+    }
+    await goIdle();
+  });
+  app.listen(process.env.PORT, () => {
+    logDebug(`Listening to port: ${process.env.PORT}`);
+  });
+
   // Event emitters do not work well with async functions, so we
   // construct our own promise chain to make sure each message is
   // handled only after the previous message handling is complete.
