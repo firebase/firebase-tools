@@ -1,16 +1,17 @@
 import { readFile } from "node:fs/promises";
 import * as crypto from "crypto";
-import { Backend, Endpoint, EnvironmentVariables } from "../backend";
+import { Backend, Endpoint } from "../backend";
 
 /**
  * Generates a hash from the environment variables of a {@link Backend}.
  * @param backend Backend of a set of functions
  */
-export function getEnvironmentVariablesHash(backend: Backend) {
+export function getEnvironmentVariablesHash(backend: Backend): string {
   const hash = crypto.createHash("sha256");
 
   // Hash the contents of the dotenv variables
-  if (hasEnvironmentVariables(backend.environmentVariables)) {
+  const hasEnvironmentVariables = !!Object.keys(backend.environmentVariables).length;
+  if (hasEnvironmentVariables) {
     hash.update(JSON.stringify(backend.environmentVariables));
   }
 
@@ -19,10 +20,9 @@ export function getEnvironmentVariablesHash(backend: Backend) {
 
 /**
  * Retrieves the unique hash given a pathToGeneratedPackageFile.
- * @param backend Backend of a set of functions
  * @param pathToGeneratedPackageFile Packaged file contents of functions
  */
-export async function getSourceHash(pathToGeneratedPackageFile?: string) {
+export async function getSourceHash(pathToGeneratedPackageFile?: string): Promise<string> {
   const hash = crypto.createHash("sha256");
 
   // If present, hash the contents of the source file
@@ -35,15 +35,16 @@ export async function getSourceHash(pathToGeneratedPackageFile?: string) {
 }
 
 /**
- * Retrieves a hash generated from the secrest of {@link Endpoint}.
+ * Retrieves a hash generated from the secrets of an {@link Endpoint}.
  * @param endpoint Endpoint
  */
-export function getSecretsHash(endpoint: Endpoint) {
+export function getSecretsHash(endpoint: Endpoint): string {
   const hash = crypto.createHash("sha256");
 
   // Hash the secret versions.
   const secretVersions = getSecretVersions(endpoint);
-  if (hasSecretVersions(secretVersions)) {
+  const hasSecretVersions = !!Object.keys(secretVersions).length;
+  if (hasSecretVersions) {
     hash.update(JSON.stringify(secretVersions));
   }
 
@@ -51,9 +52,13 @@ export function getSecretsHash(endpoint: Endpoint) {
 }
 
 /**
- * Generates a unique hash derived from the hashes generated from the package source, environment variables, and endpoint secrets.
+ * Generates a unique hash derived from the hashes generated from the
+ * package source, environment variables, and endpoint secrets.
+ * @param sourceHash
+ * @param envHash
+ * @param secretsHash
  */
-export function getEndpointHash(sourceHash: string, envHash: string, secretsHash: string) {
+export function getEndpointHash(sourceHash: string, envHash: string, secretsHash: string): string {
   const hash = crypto.createHash("sha256");
 
   const combined = [envHash, sourceHash, secretsHash].join("");
@@ -62,15 +67,11 @@ export function getEndpointHash(sourceHash: string, envHash: string, secretsHash
   return hash.digest("hex");
 }
 
-function hasEnvironmentVariables(environmentVariables: EnvironmentVariables): boolean {
-  return !!Object.keys(environmentVariables).length;
-}
-
-function hasSecretVersions(secretVersions: Record<string, string>): boolean {
-  return !!Object.keys(secretVersions).length;
-}
-
 // Hash the secret versions.
+/**
+ * Generates an object mapping secret's with their versions.
+ * @param endpoint
+ */
 function getSecretVersions(endpoint: Endpoint): Record<string, string> {
   return (endpoint.secretEnvironmentVariables || []).reduce((memo, { secret, version }) => {
     if (version) {
