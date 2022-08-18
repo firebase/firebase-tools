@@ -18,6 +18,7 @@ export interface Changeset {
   endpointsToCreate: backend.Endpoint[];
   endpointsToUpdate: EndpointUpdate[];
   endpointsToDelete: backend.Endpoint[];
+  endpointsToSkip: backend.Endpoint[];
 }
 
 export type DeploymentPlan = Record<string, Changeset>;
@@ -55,8 +56,17 @@ export function calculateChangesets(
   const toUpdate = utils.groupBy(
     Object.keys(want)
       .filter((id) => have[id])
+      .filter((id) => want[id].hash && (want[id].hash !== have[id].hash))
       .map((id) => calculateUpdate(want[id], have[id])),
     (eu: EndpointUpdate) => keyFn(eu.endpoint)
+  );
+
+  const toSkip = utils.groupBy(
+    Object.keys(want)
+      .filter((id) => have[id])
+      .filter((id) => want[id].hash && (want[id].hash === have[id].hash))
+      .map((id) => want[id]),
+    keyFn
   );
 
   const result: Record<string, Changeset> = {};
@@ -64,12 +74,14 @@ export function calculateChangesets(
     ...Object.keys(toCreate),
     ...Object.keys(toDelete),
     ...Object.keys(toUpdate),
+    ...Object.keys(toSkip),
   ]);
   for (const key of keys) {
     result[key] = {
       endpointsToCreate: toCreate[key] || [],
       endpointsToUpdate: toUpdate[key] || [],
       endpointsToDelete: toDelete[key] || [],
+      endpointsToSkip: toSkip[key] || [],
     };
   }
   return result;

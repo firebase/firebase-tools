@@ -144,6 +144,27 @@ describe("planner", () => {
             },
           ],
           endpointsToDelete: [deleted],
+          endpointsToSkip: [],
+        },
+      });
+    });
+
+    it("will add endpoints with matching hashes to skip list", () => {
+      const updatedWant = func("updated", "region");
+      updatedWant.hash = "local_hash";
+      const updatedHave = func("updated", "region");
+      updatedHave.hash = "server_hash";
+
+      const want = { updatedWant };
+      const have = { updatedHave };
+
+      // note: pantheon is not updated in any way
+      expect(planner.calculateChangesets(want, have, (e) => e.region)).to.deep.equal({
+        region: {
+          endpointsToCreate: [],
+          endpointsToUpdate: [],
+          endpointsToDelete: [],
+          endpointsToSkip: [updatedWant],
         },
       });
     });
@@ -168,6 +189,7 @@ describe("planner", () => {
             },
           ],
           endpointsToDelete: [deleted, pantheon],
+          endpointsToSkip: [],
         },
       });
     });
