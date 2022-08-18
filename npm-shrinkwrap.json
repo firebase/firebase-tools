@@ -28,7 +28,7 @@
         "exegesis-express": "^4.0.0",
         "express": "^4.16.4",
         "filesize": "^6.1.0",
-        "firebase-frameworks": "0.5.0-canary.955072b",
+        "firebase-frameworks": "0.5.0-canary.a1eb7c9",
         "form-data": "^4.0.0",
         "fs-extra": "^10.1.0",
         "glob": "^7.1.2",
@@ -6396,9 +6396,9 @@
       }
     },
     "node_modules/firebase-frameworks": {
-      "version": "0.5.0-canary.955072b",
-      "resolved": "https://registry.npmjs.org/firebase-frameworks/-/firebase-frameworks-0.5.0-canary.955072b.tgz",
-      "integrity": "sha512-6tyHltQeFoIJC+lF3ObcdJlWBNQrYrIY+LeON2AxkoWi4ycd4elUid7PhMr05m0q8IRjrooxD3MHg2wyDmiSfA==",
+      "version": "0.5.0-canary.a1eb7c9",
+      "resolved": "https://registry.npmjs.org/firebase-frameworks/-/firebase-frameworks-0.5.0-canary.a1eb7c9.tgz",
+      "integrity": "sha512-pNExGESoGP+ye5Sjk73LuIlwSuHgk655zXBxNwUBpemiMgrlSk2QCndSw5cb9dTU6K8xPs4KZjb51fBL6vuaeA==",
       "dependencies": {
         "fs-extra": "^10.1.0",
         "jsonc-parser": "^3.0.0",
@@ -19314,9 +19314,9 @@
       }
     },
     "firebase-frameworks": {
-      "version": "0.5.0-canary.955072b",
-      "resolved": "https://registry.npmjs.org/firebase-frameworks/-/firebase-frameworks-0.5.0-canary.955072b.tgz",
-      "integrity": "sha512-6tyHltQeFoIJC+lF3ObcdJlWBNQrYrIY+LeON2AxkoWi4ycd4elUid7PhMr05m0q8IRjrooxD3MHg2wyDmiSfA==",
+      "version": "0.5.0-canary.a1eb7c9",
+      "resolved": "https://registry.npmjs.org/firebase-frameworks/-/firebase-frameworks-0.5.0-canary.a1eb7c9.tgz",
+      "integrity": "sha512-pNExGESoGP+ye5Sjk73LuIlwSuHgk655zXBxNwUBpemiMgrlSk2QCndSw5cb9dTU6K8xPs4KZjb51fBL6vuaeA==",
       "requires": {
         "fs-extra": "^10.1.0",
         "jsonc-parser": "^3.0.0",
