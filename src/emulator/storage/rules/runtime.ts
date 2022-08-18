@@ -139,11 +139,10 @@ export class StorageRulesRuntime {
       stdio: ["pipe", "pipe", "pipe"],
     });
 
-    this._childprocess.on("exit", (code) => {
+    this._childprocess.on("exit", () => {
       this._alive = false;
-      if (code !== 130 /* SIGINT */) {
-        throw new FirebaseError("Storage Emulator Rules runtime exited unexpectedly.");
-      }
+      this._childprocess?.removeAllListeners();
+      this._childprocess = undefined;
     });
 
     const startPromise = new Promise((resolve) => {
@@ -210,13 +209,14 @@ export class StorageRulesRuntime {
   }
 
   stop() {
-    this._childprocess?.kill("SIGINT");
+    EmulatorLogger.forEmulator(Emulators.STORAGE).log("DEBUG", "Stopping rules runtime.");
+    this._childprocess?.kill();
   }
 
   private async _sendRequest(rab: RuntimeActionBundle) {
     if (!this._childprocess) {
       throw new FirebaseError(
-        "Attempted to send Cloud Storage rules request before child was ready"
+        "Failed to send Cloud Storage rules request due to rules runtime not available."
       );
     }
 

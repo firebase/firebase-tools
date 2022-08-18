@@ -71,6 +71,9 @@ class DefaultStorageRulesManager implements StorageRulesManager {
 
   async stop(): Promise<void> {
     await this._watcher.close();
+    if (this._runtime.alive) {
+      this._runtime.stop();
+    }
   }
 
   private updateWatcher(rulesFile: string): void {
