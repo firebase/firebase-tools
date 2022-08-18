@@ -1613,12 +1613,13 @@ describe("Fabricator", () => {
     const createEP = endpoint({ httpsTrigger: {} }, { id: "A" });
     const updateEP = endpoint({ httpsTrigger: {} }, { id: "B" });
     const deleteEP = endpoint({ httpsTrigger: {} }, { id: "C" });
+    const skipEP = endpoint({ httpsTrigger: {} }, { id: "D" });
     const update: planner.EndpointUpdate = { endpoint: updateEP };
     const changes: planner.Changeset = {
       endpointsToCreate: [createEP],
       endpointsToUpdate: [update],
       endpointsToDelete: [deleteEP],
-      endpointsToSkip: [],
+      endpointsToSkip: [skipEP],
     };
 
     const createEndpoint = sinon.stub(fab, "createEndpoint");
@@ -1627,17 +1628,24 @@ describe("Fabricator", () => {
     updateEndpoint.resolves();
     const deleteEndpoint = sinon.stub(fab, "deleteEndpoint");
     deleteEndpoint.resolves();
+    const skipEndpoint = sinon.stub(fab, "skipEndpoint");
+    skipEndpoint.resolves();
+    const skipEndpointsCompleted = sinon.stub(fab, "skipEndpointsCompleted");
+    skipEndpointsCompleted.resolves();
 
     const results = await fab.applyChangeset(changes);
     expect(createEndpoint).to.have.been.calledWithMatch(createEP);
     expect(updateEndpoint).to.have.been.calledWithMatch(update);
     expect(deleteEndpoint).to.have.been.calledWith(deleteEP);
+    expect(skipEndpoint).to.have.been.calledWith(skipEP);
+    expect(skipEndpointsCompleted).to.have.been.calledWith([skipEP]);
 
     // We can't actually verify that the timing isn't zero because tests
     // have run in <1ms and failed.
     expect(results[0].error).to.be.undefined;
     expect(results[1].error).to.be.undefined;
     expect(results[2].error).to.be.undefined;
+    expect(results[3].error).to.be.undefined;
   });
 
   describe("applyPlan", () => {
