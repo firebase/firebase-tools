@@ -10,8 +10,7 @@ import * as proto from "../../src/gcp/proto";
 import * as tasks from "../../src/gcp/cloudtasks";
 import * as scheduler from "../../src/gcp/cloudscheduler";
 import { Endpoint } from "../../src/deploy/functions/backend";
-import { getGlobalDefaultAccount } from "../../src/auth";
-import { setRefreshToken } from "../../src/apiv2";
+import { requireAuth } from "../../src/requireAuth";
 
 const FIREBASE_PROJECT = process.env.GCLOUD_PROJECT || "";
 const FIREBASE_DEBUG = process.env.FIREBASE_DEBUG || "";
@@ -117,10 +116,7 @@ describe("firebase deploy", function (this) {
   before(async () => {
     expect(FIREBASE_PROJECT).to.not.be.empty;
 
-    const account = getGlobalDefaultAccount();
-    if (account?.tokens.refresh_token) {
-      setRefreshToken(account.tokens.refresh_token);
-    }
+    await requireAuth({});
     // write up index.js to import trigger definition using unique group identifier.
     // All exported functions will have name {hash}-{trigger} e.g. 'abcdefg-v1storage'.
     await fs.writeFile(
