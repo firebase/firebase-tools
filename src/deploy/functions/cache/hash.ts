@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import * as crypto from "crypto";
 import { Backend, Endpoint } from "../backend";
+import { getSecretVersions } from "../../../functions/secrets";
 
 /**
  * Generates a hash from the environment variables of a {@link Backend}.
@@ -65,18 +66,4 @@ export function getEndpointHash(sourceHash: string, envHash: string, secretsHash
   hash.update(combined);
 
   return hash.digest("hex");
-}
-
-// Hash the secret versions.
-/**
- * Generates an object mapping secret's with their versions.
- * @param endpoint
- */
-function getSecretVersions(endpoint: Endpoint): Record<string, string> {
-  return (endpoint.secretEnvironmentVariables || []).reduce((memo, { secret, version }) => {
-    if (version) {
-      memo[secret] = version;
-    }
-    return memo;
-  }, {} as Record<string, string>);
 }
