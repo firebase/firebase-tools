@@ -226,11 +226,13 @@ describe("planner", () => {
             },
           ],
           endpointsToDelete: [],
+          endpointsToSkip: [],
         },
         "default-region2-default": {
           endpointsToCreate: [region2mem1Created],
           endpointsToUpdate: [],
           endpointsToDelete: [],
+          endpointsToSkip: [],
         },
         "default-region2-512": {
           endpointsToCreate: [],
@@ -240,6 +242,7 @@ describe("planner", () => {
             },
           ],
           endpointsToDelete: [region2mem2Deleted],
+          endpointsToSkip: [],
         },
       });
     });
@@ -275,6 +278,7 @@ describe("planner", () => {
             },
           ],
           endpointsToDelete: [group1Deleted],
+          endpointsToSkip: [],
         },
       });
     });
