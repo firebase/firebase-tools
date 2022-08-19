@@ -41,7 +41,7 @@ cd my-app/public/
 update-single-file --project <project-id> [--site <site-id>] <files...>
 ```
 
-Running the script *from your `public` directory is important*. For example, if you want to update `/team/about.html` in your site you would:
+Running the script _from your `public` directory is important_. For example, if you want to update `/team/about.html` in your site you would:
 
 ```bash
 cd my-app/public/
