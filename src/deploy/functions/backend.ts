@@ -359,6 +359,10 @@ export type Endpoint = TargetIds &
     // This is a temporary fix to address https://github.com/firebase/firebase-tools/issues/4171
     // GCFv1 can be http or https and GCFv2 is always https
     securityLevel?: gcf.SecurityLevel;
+
+    // "Hash" is a value derived from function labels that is used to check if there are any changes
+    // between the serverside and local copies of the function.
+    hash?: string;
   };
 
 export interface RequiredAPI {
