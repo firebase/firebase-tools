@@ -4,26 +4,48 @@ This is an example script for how to use `google-auth-library` to upload a singl
 
 ## Getting Started
 
+The easiest way to run the tool is to link it into your Node environment, set up authentication, and run the script in your project folder.
+
+### Build the Script
+
 To run this, clone the repository, go to this directory, and build it:
 
 ```bash
+cd firebase-tools/scripts/examples/hosting/update-single-file/
 npm install
 npm run build
+npm link
 ```
 
-The easiest way to run the tool is to link it into your Node environment, set up authentication using `gcloud`, and run the script in your project.
+### Set up Credentials
+
+Two options exist to set up credentials. If you're running in a GCP environment (like Cloud Shell), you may be able to skip this step entirely.
+
+First option, set up application default credentials via `gcloud`:
 
 ```bash
-# In the `update-single-file` directory:
-npm link
-
 # Set up application default credentials using gcloud (optional if in GCP environment).
 gcloud auth application-default login
-# It may be required to set a billing quota project for the credentials.
+# It may be required to set a quota project for the credentials - used to account for the API usage.
 gcloud auth application-default set-quota-project <project-id>
+```
 
-# In your `public` directory (with your Hosting files):
+Alternatively, if you (want to) use a service account and set `GOOGLE_APPLICATION_CREDENTIALS` instead of using `gcloud`, that works well too. See Google Cloud's [getting started with authentication](https://cloud.google.com/docs/authentication/getting-started) for more infromation on how to set one up.
+
+### Run the Script
+
+In your `public` directory (with your Hosting files):
+
+```bash
+cd my-app/public/
 update-single-file --project <project-id> [--site <site-id>] <files...>
+```
+
+Running the script *from your `public` directory is important*. For example, if you want to update `/team/about.html` in your site you would:
+
+```bash
+cd my-app/public/
+update-single-file --project my-app team/about.html
 ```
 
 ## Options
