@@ -34,14 +34,14 @@ Alternatively, if you (want to) use a service account and set `GOOGLE_APPLICATIO
 
 ### Run the Script
 
-In your `public` directory (with your Hosting files):
+In the directory that you specified as `public` in your Firebase Hosting configuration:
 
 ```bash
 cd my-app/public/
 update-single-file --project <project-id> [--site <site-id>] <files...>
 ```
 
-Running the script _from your `public` directory is important_. For example, if you want to update `/team/about.html` in your site you would:
+For example, if you want to update `/team/about.html` in your site you would:
 
 ```bash
 cd my-app/public/
