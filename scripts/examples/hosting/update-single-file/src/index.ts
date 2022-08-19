@@ -48,24 +48,8 @@ async function main(): Promise<void> {
 
   const filesByHash: Record<string, string> = {};
   for (const file of files) {
-    const hasher = crypto.createHash("sha256");
-    const gzipper = zlib.createGzip({ level: 9 });
-    const gzipStream = fs.createReadStream(path.resolve(process.cwd(), file)).pipe(gzipper);
-    const p = new Promise<void>((resolve, reject) => {
-      hasher.once("readable", () => {
-        debug(`Hashed file ${file}`);
-        const data = hasher.read() as Buffer | string | undefined;
-        if (data && typeof data === "string") {
-          filesByHash[data] = file;
-        } else if (data && Buffer.isBuffer(data)) {
-          filesByHash[data.toString("hex")] = file;
-        }
-        resolve();
-      });
-      gzipStream.once("error", reject);
-    });
-    gzipStream.pipe(hasher);
-    await p;
+    const hash = await hashFile(file);
+    filesByHash[hash] = file;
   }
 
   const auth = new GoogleAuth({
@@ -114,7 +98,7 @@ async function main(): Promise<void> {
     debug("%d %j", opRes.status, opRes.data);
     done = !!opRes.data.done;
     newVersion = opRes.data.response?.name;
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    await new Promise((resolve) => setTimeout(resolve, 1_000));
   }
 
   debug(`New version: ${newVersion}`);
@@ -176,6 +160,27 @@ async function main(): Promise<void> {
   debug("%d %j", siteRes.status, siteRes.data);
 
   console.log(`Successfully deployed! Site URL: ${siteRes.data.defaultUrl}`);
+}
+
+async function hashFile(file: string): Promise<string> {
+  const hasher = crypto.createHash("sha256");
+  const gzipper = zlib.createGzip({ level: 9 });
+  const gzipStream = fs.createReadStream(path.resolve(process.cwd(), file)).pipe(gzipper);
+  const p = new Promise<string>((resolve, reject) => {
+    hasher.once("readable", () => {
+      debug(`Hashed file ${file}`);
+      const data = hasher.read() as Buffer | string | undefined;
+      if (data && typeof data === "string") {
+        return resolve(data);
+      } else if (data && Buffer.isBuffer(data)) {
+        return resolve(data.toString("hex"));
+      }
+      reject(new Error(`could not get the hash for file ${file}`));
+    });
+    gzipStream.once("error", reject);
+  });
+  gzipStream.pipe(hasher);
+  return p;
 }
 
 void main();
