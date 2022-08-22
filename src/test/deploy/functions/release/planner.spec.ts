@@ -130,9 +130,13 @@ describe("planner", () => {
       const deleted = func("deleted", "region");
       deleted.labels = deploymentTool.labels();
       const pantheon = func("pantheon", "region");
+      const skipWant = func("skip", "region");
+      skipWant.hash = "skip";
+      const skipHave = func("skip", "region");
+      skipHave.hash = "skip";
 
-      const want = { created, updated };
-      const have = { updated, deleted, pantheon };
+      const want = { created, updated, skip: skipWant };
+      const have = { updated, deleted, pantheon, skip: skipHave };
 
       // note: pantheon is not updated in any way
       expect(planner.calculateChangesets(want, have, (e) => e.region)).to.deep.equal({
@@ -144,19 +148,21 @@ describe("planner", () => {
             },
           ],
           endpointsToDelete: [deleted],
-          endpointsToSkip: [],
+          endpointsToSkip: [skipWant],
         },
       });
     });
 
     it("will add endpoints with matching hashes to skip list", () => {
+      // Note: the two functions share the same id
       const updatedWant = func("updated", "region");
-      updatedWant.hash = "local_hash";
       const updatedHave = func("updated", "region");
-      updatedHave.hash = "server_hash";
+      // But their hash are the same (aka a no-op function)
+      updatedWant.hash = "to_skip";
+      updatedHave.hash = "to_skip";
 
-      const want = { updatedWant };
-      const have = { updatedHave };
+      const want = { updated: updatedWant };
+      const have = { updated: updatedHave };
 
       // note: pantheon is not updated in any way
       expect(planner.calculateChangesets(want, have, (e) => e.region)).to.deep.equal({
@@ -165,6 +171,32 @@ describe("planner", () => {
           endpointsToUpdate: [],
           endpointsToDelete: [],
           endpointsToSkip: [updatedWant],
+        },
+      });
+    });
+
+    it("will add endpoints to update list if they have different hashes", () => {
+      // Note: the two functions share the same id
+      const updatedWant = func("updated", "region");
+      const updatedHave = func("updated", "region");
+      // But their hash is different
+      updatedWant.hash = "local_hash";
+      updatedHave.hash = "server_hash";
+
+      const want = { updated: updatedWant };
+      const have = { updated: updatedHave };
+
+      // note: pantheon is not updated in any way
+      expect(planner.calculateChangesets(want, have, (e) => e.region)).to.deep.equal({
+        region: {
+          endpointsToCreate: [],
+          endpointsToUpdate: [
+            {
+              endpoint: updatedWant,
+            },
+          ],
+          endpointsToDelete: [],
+          endpointsToSkip: [],
         },
       });
     });

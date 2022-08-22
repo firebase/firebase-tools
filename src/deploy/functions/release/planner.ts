@@ -53,10 +53,17 @@ export function calculateChangesets(
     keyFn
   );
 
+  // If the hashes are matching, that means our local function is different.
+  const toSkipPredicate = (id: string) =>
+    have[id].hash && want[id].hash && want[id].hash === have[id].hash;
+
+  /* previews.skipdeployingnoopfunctions && */
+  const skipdeployingnoopfunctions = true;
+
   const toUpdate = utils.groupBy(
     Object.keys(want)
       .filter((id) => have[id])
-      .filter((id) => want[id].hash && (want[id].hash !== have[id].hash))
+      .filter((id) => skipdeployingnoopfunctions && !toSkipPredicate(id))
       .map((id) => calculateUpdate(want[id], have[id])),
     (eu: EndpointUpdate) => keyFn(eu.endpoint)
   );
@@ -64,7 +71,7 @@ export function calculateChangesets(
   const toSkip = utils.groupBy(
     Object.keys(want)
       .filter((id) => have[id])
-      .filter((id) => want[id].hash && (want[id].hash === have[id].hash))
+      .filter((id) => skipdeployingnoopfunctions && toSkipPredicate(id))
       .map((id) => want[id]),
     keyFn
   );
