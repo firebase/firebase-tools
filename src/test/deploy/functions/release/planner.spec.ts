@@ -153,7 +153,7 @@ describe("planner", () => {
       });
     });
 
-    it("will add endpoints with matching hashes to skip list", () => {
+    it("adds endpoints with matching hashes to skip list", () => {
       // Note: the two functions share the same id
       const updatedWant = func("updated", "region");
       const updatedHave = func("updated", "region");
