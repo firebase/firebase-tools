@@ -7,6 +7,7 @@ import { Command } from "../command";
 import { FirebaseError } from "../error";
 import { needProjectId, getProjectId } from "../projectUtils";
 import * as extensionsApi from "../extensions/extensionsApi";
+import { ExtensionSpec, Param } from "../extensions/types";
 import {
   logPrefix,
   diagnoseAndFixProject,
@@ -21,7 +22,7 @@ import * as refs from "../extensions/refs";
 import * as manifest from "../extensions/manifest";
 import { Options } from "../options";
 import { partition } from "../functional";
-import { buildBindingOptionsWithBaseValue, getBaseParamBindings } from "../extensions/paramHelper";
+import { buildBindingOptionsWithBaseValue } from "../extensions/paramHelper";
 import * as askUserForEventsConfig from "../extensions/askUserForEventsConfig";
 
 marked.setOptions({
@@ -31,7 +32,7 @@ marked.setOptions({
 /**
  * Command for configuring an existing extension instance
  */
-export default new Command("ext:configure <extensionInstanceId>")
+export const command = new Command("ext:configure <extensionInstanceId>")
   .description("configure an existing extension instance")
   .withForce()
   .option("--local", "deprecated")
@@ -62,7 +63,7 @@ export default new Command("ext:configure <extensionInstanceId>")
     const refOrPath = manifest.getInstanceTarget(instanceId, config);
     const isLocalSource = isLocalPath(refOrPath);
 
-    let spec: extensionsApi.ExtensionSpec;
+    let spec: ExtensionSpec;
     if (isLocalSource) {
       const source = await createSourceFromLocation(needProjectId({ projectId }), refOrPath);
       spec = source.spec;
@@ -135,10 +136,7 @@ export default new Command("ext:configure <extensionInstanceId>")
     return;
   });
 
-function infoImmutableParams(
-  immutableParams: extensionsApi.Param[],
-  paramValues: { [key: string]: string }
-) {
+function infoImmutableParams(immutableParams: Param[], paramValues: { [key: string]: string }) {
   if (!immutableParams.length) {
     return;
   }

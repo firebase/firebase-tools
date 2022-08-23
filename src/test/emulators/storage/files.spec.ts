@@ -7,7 +7,7 @@ import { StorageLayer } from "../../../emulator/storage/files";
 import { ForbiddenError, NotFoundError } from "../../../emulator/storage/errors";
 import { Persistence } from "../../../emulator/storage/persistence";
 import { FirebaseRulesValidator } from "../../../emulator/storage/rules/utils";
-import { Upload, UploadService, UploadStatus, UploadType } from "../../../emulator/storage/upload";
+import { UploadService } from "../../../emulator/storage/upload";
 
 const ALWAYS_TRUE_RULES_VALIDATOR = {
   validate: () => Promise.resolve(true),
@@ -47,23 +47,32 @@ describe("files", () => {
     let _persistence: Persistence;
     let _uploadService: UploadService;
 
-    const UPLOAD: Upload = {
-      id: "uploadId",
-      bucketId: "bucket",
-      objectId: "dir%2Fobject",
-      path: "",
-      type: UploadType.RESUMABLE,
-      status: UploadStatus.FINISHED,
-      metadata: {},
-      size: 10,
+    type UploadFileOptions = {
+      data?: string;
+      metadata?: Object;
     };
+
+    async function uploadFile(
+      storageLayer: StorageLayer,
+      bucketId: string,
+      objectId: string,
+      opts?: UploadFileOptions
+    ) {
+      const upload = _uploadService.multipartUpload({
+        bucketId,
+        objectId: encodeURIComponent(objectId),
+        dataRaw: Buffer.from(opts?.data ?? "hello world"),
+        metadataRaw: JSON.stringify(opts?.metadata ?? {}),
+      });
+      await storageLayer.uploadObject(upload);
+    }
 
     beforeEach(() => {
       _persistence = new Persistence(getPersistenceTmpDir());
       _uploadService = new UploadService(_persistence);
     });
 
-    describe("#handleUploadObject()", () => {
+    describe("#uploadObject()", () => {
       it("should throw if upload is not finished", () => {
         const storageLayer = getStorageLayer(ALWAYS_TRUE_RULES_VALIDATOR);
         const upload = _uploadService.startResumableUpload({
@@ -82,7 +91,6 @@ describe("files", () => {
           objectId: "dir%2Fobject",
           metadataRaw: "{}",
         }).id;
-        const data = Buffer.from("hello world");
         _uploadService.continueResumableUpload(uploadId, Buffer.from("hello world"));
         const upload = _uploadService.finalizeResumableUpload(uploadId);
 
@@ -90,16 +98,13 @@ describe("files", () => {
       });
     });
 
-    describe("#handleGetObject()", () => {
+    describe("#getObject()", () => {
       it("should return data and metadata", async () => {
         const storageLayer = getStorageLayer(ALWAYS_TRUE_RULES_VALIDATOR);
-        const upload = _uploadService.multipartUpload({
-          bucketId: "bucket",
-          objectId: "dir%2Fobject",
-          metadataRaw: `{"contentType": "mime/type"}`,
-          dataRaw: Buffer.from("Hello, World!"),
+        await uploadFile(storageLayer, "bucket", "dir/object", {
+          data: "Hello, World!",
+          metadata: { contentType: "mime/type" },
         });
-        await storageLayer.uploadObject(upload);
 
         const { metadata, data } = await storageLayer.getObject({
           bucketId: "bucket",

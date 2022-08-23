@@ -1,15 +1,10 @@
-"use strict";
-
-import * as _ from "lodash";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as chai from "chai";
 chai.use(require("chai-as-promised"));
 import * as sinon from "sinon";
 
 import * as askUserForConsent from "../../extensions/askUserForConsent";
 import * as iam from "../../gcp/iam";
-import * as resolveSource from "../../extensions/resolveSource";
-import * as extensionHelper from "../../extensions/extensionsHelper";
 
 const expect = chai.expect;
 
@@ -43,7 +38,7 @@ describe("askUserForConsent", () => {
       const storageDescription = "- Storage Object Admin (Full control of GCS objects.)";
       const datastoreDescription =
         "- Cloud Datastore Viewer (Read access to all Cloud Datastore resources.)";
-      const expected = _.join([question, storageDescription, datastoreDescription], "\n");
+      const expected = [question, storageDescription, datastoreDescription].join("\n");
 
       getRoleStub.onFirstCall().resolves(storageRole);
       getRoleStub.onSecondCall().resolves(datastoreRole);

@@ -190,7 +190,7 @@ describeAuthEmulator("authentication", ({ authApi }) => {
       disableAuth: false,
       allowPasswordSignup: true,
     });
-    const { idToken, localId } = await registerUser(authApi(), {
+    const { idToken } = await registerUser(authApi(), {
       email: "alice@example.com",
       password: "notasecret",
       tenantId: tenant.tenantId,

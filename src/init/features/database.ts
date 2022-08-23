@@ -1,4 +1,4 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import { prompt, promptOnce } from "../../prompt";
 import { logger } from "../../logger";
 import * as utils from "../../utils";

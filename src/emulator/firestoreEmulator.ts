@@ -1,6 +1,6 @@
 import * as chokidar from "chokidar";
 import * as fs from "fs";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as path from "path";
 
 import * as utils from "../utils";
@@ -37,7 +37,7 @@ export class FirestoreEmulator implements EmulatorInstance {
     if (this.args.rules && this.args.projectId) {
       const rulesPath = this.args.rules;
       this.rulesWatcher = chokidar.watch(rulesPath, { persistent: true, ignoreInitial: true });
-      this.rulesWatcher.on("change", async (event, stats) => {
+      this.rulesWatcher.on("change", async () => {
         // There have been some race conditions reported (on Windows) where reading the
         // file too quickly after the watcher fires results in an empty file being read.
         // Adding a small delay prevents that at very little cost.
@@ -75,7 +75,7 @@ export class FirestoreEmulator implements EmulatorInstance {
   }
 
   getInfo(): EmulatorInfo {
-    const host = this.args.host || Constants.getDefaultHost(Emulators.FIRESTORE);
+    const host = this.args.host || Constants.getDefaultHost();
     const port = this.args.port || Constants.getDefaultPort(Emulators.FIRESTORE);
 
     return {

@@ -2,7 +2,7 @@ import { expect } from "chai";
 
 import { parameterizeProject, setSecretParamsToLatest } from "../../extensions/export";
 import { DeploymentInstanceSpec } from "../../deploy/extensions/planner";
-import { ParamType } from "../../extensions/extensionsApi";
+import { ParamType } from "../../extensions/types";
 
 describe("ext:export helpers", () => {
   describe("parameterizeProject", () => {

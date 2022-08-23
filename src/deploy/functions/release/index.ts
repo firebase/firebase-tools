@@ -1,4 +1,4 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
 import { Options } from "../../../options";
 import { logger } from "../../../logger";
@@ -11,12 +11,10 @@ import * as fabricator from "./fabricator";
 import * as reporter from "./reporter";
 import * as executor from "./executor";
 import * as prompts from "../prompts";
-import * as secrets from "../../../functions/secrets";
 import { getAppEngineLocation } from "../../../functionsConfig";
 import { getFunctionLabel } from "../functionsDeployHelper";
 import { FirebaseError } from "../../../error";
-import { needProjectId, needProjectNumber } from "../../../projectUtils";
-import { logLabeledBullet, logLabeledWarning } from "../../../utils";
+import { getProjectNumber } from "../../../getProjectNumber";
 
 /** Releases new versions of functions to prod. */
 export async function release(
@@ -73,6 +71,7 @@ export async function release(
     executor: new executor.QueueExecutor({}),
     sources: context.sources,
     appEngineLocation: getAppEngineLocation(context.firebaseConfig),
+    projectNumber: options.projectNumber || (await getProjectNumber(context.projectId)),
   });
 
   const summary = await fab.applyPlan(plan);
@@ -91,15 +90,15 @@ export async function release(
   const deletedEndpoints = Object.values(plan)
     .map((r) => r.endpointsToDelete)
     .reduce(reduceFlat, []);
-  const opts: { ar?: containerCleaner.ArtifactRegistryCleaner } = {};
-  if (!context.artifactRegistryEnabled) {
-    opts.ar = new containerCleaner.NoopArtifactRegistryCleaner();
-  }
-  await containerCleaner.cleanupBuildImages(haveEndpoints, deletedEndpoints, opts);
+  await containerCleaner.cleanupBuildImages(haveEndpoints, deletedEndpoints);
 
   const allErrors = summary.results.filter((r) => r.error).map((r) => r.error) as Error[];
   if (allErrors.length) {
     const opts = allErrors.length === 1 ? { original: allErrors[0] } : { children: allErrors };
+    logger.debug("Functions deploy failed.");
+    for (const error of allErrors) {
+      logger.debug(JSON.stringify(error, null, 2));
+    }
     throw new FirebaseError("There was an error deploying functions", { ...opts, exit: 2 });
   }
 }

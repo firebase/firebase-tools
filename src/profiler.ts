@@ -8,7 +8,7 @@ import { Client } from "./apiv2";
 import { realtimeOriginOrEmulatorOrCustomUrl } from "./database/api";
 import { logger } from "./logger";
 import { ProfileReport, ProfileReportOptions } from "./profileReport";
-import * as responseToError from "./responseToError";
+import { responseToError } from "./responseToError";
 import * as utils from "./utils";
 
 tmp.setGracefulCleanup();

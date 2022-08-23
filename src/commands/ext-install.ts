@@ -1,4 +1,4 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const { marked } = require("marked");
 import TerminalRenderer = require("marked-terminal");
@@ -10,6 +10,7 @@ import { Command } from "../command";
 import { FirebaseError } from "../error";
 import { getProjectId, needProjectId } from "../projectUtils";
 import * as extensionsApi from "../extensions/extensionsApi";
+import { ExtensionVersion, ExtensionSource } from "../extensions/types";
 import * as refs from "../extensions/refs";
 import { displayWarningPrompts } from "../extensions/warnings";
 import * as paramHelper from "../extensions/paramHelper";
@@ -40,7 +41,7 @@ marked.setOptions({
 /**
  * Command for installing an extension
  */
-export default new Command("ext:install [extensionName]")
+export const command = new Command("ext:install [extensionName]")
   .description(
     "install an official extension if [extensionName] or [extensionName@version] is provided; " +
       (previews.extdev
@@ -134,7 +135,7 @@ export default new Command("ext:install [extensionName]")
     if (learnMore) {
       utils.logLabeledBullet(
         logPrefix,
-        `You selected: ${clc.bold(spec.displayName)}.\n` +
+        `You selected: ${clc.bold(spec.displayName || "")}.\n` +
           `${spec.description}\n` +
           `View details: https://firebase.google.com/products/extensions/${spec.name}\n`
       );
@@ -162,7 +163,7 @@ export default new Command("ext:install [extensionName]")
 
 async function infoExtensionVersion(args: {
   extensionName: string;
-  extensionVersion: extensionsApi.ExtensionVersion;
+  extensionVersion: ExtensionVersion;
 }): Promise<void> {
   const ref = refs.parse(args.extensionName);
   const extension = await extensionsApi.getExtension(refs.toExtensionRef(ref));
@@ -178,8 +179,8 @@ interface InstallExtensionOptions {
   paramsEnvPath?: string;
   projectId?: string;
   extensionName: string;
-  source?: extensionsApi.ExtensionSource;
-  extVersion?: extensionsApi.ExtensionVersion;
+  source?: ExtensionSource;
+  extVersion?: ExtensionVersion;
   nonInteractive: boolean;
   force?: boolean;
 }

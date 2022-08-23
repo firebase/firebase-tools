@@ -1,5 +1,5 @@
 import * as path from "path";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
 import { FirebaseError } from "../../error";
 import { resolveProjectPath } from "../../projectPath";
@@ -45,7 +45,7 @@ export function validateDeploy(deploy: HostingDeploy, options: any) {
           "hosting",
           `Couldn't find specified i18n root directory ${clc.bold(
             cfg.i18n.root
-          )} in public directory ${clc.bold(cfg.public)}.`
+          )} in public directory ${clc.bold(cfg.public || "")}.`
         );
       }
     }

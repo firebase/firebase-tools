@@ -1,3 +1,1 @@
-- Updates the minimum required version of Node.js to be `~14.18.0 || >=16.4.0` (#4580).
-- Fixes issue where `init` would fail to write existing RTDB rules containing comments (#4596).
-- Adds `access-control-allow-private-network=true` header to Auth and Storage emulators. Enables accessing at localhost:#### when site is exposed via tunnel [#4227](https://github.com/firebase/firebase-tools/issues/4227).
+Adds `access-control-allow-private-network=true` header to Auth and Storage emulators. Enables accessing at localhost:#### when site is exposed via tunnel [#4227](https://github.com/firebase/firebase-tools/issues/4227).

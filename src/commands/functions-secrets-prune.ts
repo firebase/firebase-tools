@@ -10,7 +10,7 @@ import { logBullet, logSuccess } from "../utils";
 import { promptOnce } from "../prompt";
 import { destroySecretVersion } from "../gcp/secretManager";
 
-export default new Command("functions:secrets:prune")
+export const command = new Command("functions:secrets:prune")
   .withForce("Destroys unused secrets without prompt")
   .description("Destroys unused secrets")
   .before(requirePermissions, [

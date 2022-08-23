@@ -1,4 +1,4 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as semver from "semver";
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const { marked } = require("marked");
@@ -6,6 +6,7 @@ const { marked } = require("marked");
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import * as extensionsApi from "./extensionsApi";
+import { ExtensionSource, ExtensionSpec } from "./types";
 import * as refs from "./refs";
 import {
   createSourceFromLocation,
@@ -14,11 +15,7 @@ import {
   isLocalOrURLPath,
 } from "./extensionsHelper";
 import * as utils from "../utils";
-import {
-  displayUpdateChangesNoInput,
-  displayUpdateChangesRequiringConfirmation,
-  displayExtInfo,
-} from "./displayExtensionInfo";
+import { displayExtInfo } from "./displayExtensionInfo";
 import * as changelog from "./changelog";
 
 function invalidSourceErrMsgTemplate(instanceId: string, source: string): string {
@@ -33,9 +30,7 @@ function invalidSourceErrMsgTemplate(instanceId: string, source: string): string
 
 export async function getExistingSourceOrigin(
   projectId: string,
-  instanceId: string,
-  extensionName: string,
-  existingSource: string
+  instanceId: string
 ): Promise<SourceOrigin> {
   const instance = await extensionsApi.getInstance(projectId, instanceId);
   return instance && instance.config.extensionRef
@@ -89,26 +84,6 @@ export function warningUpdateToOtherSource(sourceOrigin: SourceOrigin) {
 }
 
 /**
- * Displays all differences between spec and newSpec.
- * First, displays all changes that do not require explicit confirmation,
- * then prompts the user for each change that requires confirmation.
- *
- * @param spec A current extensionSpec
- * @param newSpec A extensionSpec to compare to
- * @param published
- */
-export async function displayChanges(args: {
-  spec: extensionsApi.ExtensionSpec;
-  newSpec: extensionsApi.ExtensionSpec;
-  nonInteractive: boolean;
-  force: boolean;
-}): Promise<void> {
-  utils.logLabeledBullet("extensions", "This update contains the following changes:");
-  displayUpdateChangesNoInput(args.spec, args.newSpec);
-  await displayUpdateChangesRequiringConfirmation(args);
-}
-
-/**
  * @param projectId Id of the project containing the instance to update
  * @param instanceId Id of the instance to update
  * @param extRef Extension reference
@@ -119,7 +94,7 @@ export async function displayChanges(args: {
 export interface UpdateOptions {
   projectId: string;
   instanceId: string;
-  source?: extensionsApi.ExtensionSource;
+  source?: ExtensionSource;
   extRef?: string;
   params?: { [key: string]: string };
   canEmitEvents: boolean;
@@ -183,7 +158,7 @@ export async function updateFromLocalSource(
   projectId: string,
   instanceId: string,
   localSource: string,
-  existingSpec: extensionsApi.ExtensionSpec
+  existingSpec: ExtensionSpec
 ): Promise<string> {
   displayExtInfo(instanceId, "", existingSpec, false);
   let source;
@@ -213,7 +188,7 @@ export async function updateFromUrlSource(
   projectId: string,
   instanceId: string,
   urlSource: string,
-  existingSpec: extensionsApi.ExtensionSpec
+  existingSpec: ExtensionSpec
 ): Promise<string> {
   displayExtInfo(instanceId, "", existingSpec, false);
   let source;
@@ -241,7 +216,7 @@ export async function updateToVersionFromPublisherSource(
   projectId: string,
   instanceId: string,
   extVersionRef: string,
-  existingSpec: extensionsApi.ExtensionSpec
+  existingSpec: ExtensionSpec
 ): Promise<string> {
   let source;
   const ref = refs.parse(extVersionRef);
@@ -254,9 +229,9 @@ export async function updateToVersionFromPublisherSource(
   } catch (err: any) {
     throw new FirebaseError(
       `Could not find source '${clc.bold(extVersionRef)}' because (${clc.bold(
-        version
+        version || ""
       )}) is not a published version. To update, use the latest version of this extension (${clc.bold(
-        extension.latestVersion
+        extension.latestVersion || ""
       )}).`
     );
   }
@@ -284,7 +259,7 @@ export async function updateFromPublisherSource(
   projectId: string,
   instanceId: string,
   extRef: string,
-  existingSpec: extensionsApi.ExtensionSpec
+  existingSpec: ExtensionSpec
 ): Promise<string> {
   return updateToVersionFromPublisherSource(
     projectId,

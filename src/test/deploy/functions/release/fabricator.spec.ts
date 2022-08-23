@@ -19,7 +19,6 @@ import * as v1events from "../../../../functions/events/v1";
 import * as servicesNS from "../../../../deploy/functions/services";
 import * as identityPlatformNS from "../../../../gcp/identityPlatform";
 import { AuthBlockingService } from "../../../../deploy/functions/services/auth";
-import { define } from "mime";
 
 describe("Fabricator", () => {
   // Stub all GCP APIs to make sure this test is hermetic
@@ -104,6 +103,7 @@ describe("Fabricator", () => {
       },
     },
     appEngineLocation: "us-central1",
+    projectNumber: "1234567",
   };
   let fab: fabricator.Fabricator;
   beforeEach(() => {
@@ -660,7 +660,10 @@ describe("Fabricator", () => {
       gcfv2.createFunction.resolves({ name: "op", done: false });
       poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
       run.setInvokerCreate.resolves();
-      const ep = endpoint({ scheduleTrigger: {} }, { platform: "gcfv2" });
+      const ep = endpoint(
+        { eventTrigger: { eventType: "event", eventFilters: {}, retry: false } },
+        { platform: "gcfv2" }
+      );
 
       await fab.createV2Function(ep);
       expect(run.setInvokerCreate).to.not.have.been.called;
@@ -763,7 +766,10 @@ describe("Fabricator", () => {
       gcfv2.updateFunction.resolves({ name: "op", done: false });
       poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
       run.setInvokerUpdate.resolves();
-      const ep = endpoint({ scheduleTrigger: {} }, { platform: "gcfv2" });
+      const ep = endpoint(
+        { eventTrigger: { eventType: "event", eventFilters: {}, retry: false } },
+        { platform: "gcfv2" }
+      );
 
       await fab.updateV2Function(ep);
       expect(run.setInvokerUpdate).to.not.have.been.called;
@@ -1068,6 +1074,31 @@ describe("Fabricator", () => {
     });
   });
 
+  describe("upsertScheduleV2", () => {
+    const ep = {
+      ...endpoint({
+        scheduleTrigger: {
+          schedule: "every 5 minutes",
+        },
+      }),
+      platform: "gcfv2",
+    } as backend.Endpoint & backend.ScheduleTriggered;
+
+    it("upserts schedules", async () => {
+      scheduler.createOrReplaceJob.resolves();
+      await fab.upsertScheduleV2(ep);
+      expect(scheduler.createOrReplaceJob).to.have.been.called;
+    });
+
+    it("wraps errors", async () => {
+      scheduler.createOrReplaceJob.rejects(new Error("Fail"));
+      await expect(fab.upsertScheduleV2(ep)).to.eventually.be.rejectedWith(
+        reporter.DeploymentError,
+        "upsert schedule"
+      );
+    });
+  });
+
   describe("deleteScheduleV1", () => {
     const ep = endpoint({
       scheduleTrigger: {
@@ -1095,6 +1126,31 @@ describe("Fabricator", () => {
       await expect(fab.deleteScheduleV1(ep)).to.eventually.be.rejectedWith(
         reporter.DeploymentError,
         "delete topic"
+      );
+    });
+  });
+
+  describe("deleteScheduleV2", () => {
+    const ep = {
+      ...endpoint({
+        scheduleTrigger: {
+          schedule: "every 5 minutes",
+        },
+      }),
+      platform: "gcfv2",
+    } as backend.Endpoint & backend.ScheduleTriggered;
+
+    it("deletes schedules and topics", async () => {
+      scheduler.deleteJob.resolves();
+      await fab.deleteScheduleV2(ep);
+      expect(scheduler.deleteJob).to.have.been.called;
+    });
+
+    it("wraps errors", async () => {
+      scheduler.deleteJob.rejects(new Error("Fail"));
+      await expect(fab.deleteScheduleV2(ep)).to.eventually.be.rejectedWith(
+        reporter.DeploymentError,
+        "delete schedule"
       );
     });
   });

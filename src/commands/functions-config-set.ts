@@ -1,4 +1,4 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
 import { Command } from "../command";
 import { FirebaseError } from "../error";
@@ -8,7 +8,7 @@ import { requirePermissions } from "../requirePermissions";
 import * as functionsConfig from "../functionsConfig";
 import * as utils from "../utils";
 
-export default new Command("functions:config:set [values...]")
+export const command = new Command("functions:config:set [values...]")
   .description("set environment config with key=value syntax")
   .before(requirePermissions, [
     "runtimeconfig.configs.list",

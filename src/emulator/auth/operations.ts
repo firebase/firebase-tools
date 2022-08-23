@@ -1,6 +1,8 @@
 import { URLSearchParams } from "url";
 import { decode as decodeJwt, sign as signJwt, JwtHeader } from "jsonwebtoken";
 import * as express from "express";
+import fetch from "node-fetch";
+import AbortController from "abort-controller";
 import { ExegesisContext } from "exegesis-express";
 import {
   toUnixTimestamp,
@@ -12,6 +14,7 @@ import {
   authEmulatorUrl,
   MakeRequired,
   isValidPhoneNumber,
+  randomBase64UrlStr,
 } from "./utils";
 import { NotImplementedError, assert, BadRequestError, InternalError } from "./errors";
 import { Emulators } from "../types";
@@ -29,7 +32,6 @@ import {
   OobRecord,
   PROVIDER_GAME_CENTER,
   SecondFactorRecord,
-  UsageMode,
   AgentProjectState,
   TenantProjectState,
   MfaConfig,
@@ -145,16 +147,16 @@ const MFA_INELIGIBLE_PROVIDER = new Set([
   PROVIDER_GAME_CENTER,
 ]);
 
-function signUp(
+async function signUp(
   state: ProjectState,
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1SignUpRequest"],
   ctx: ExegesisContext
-): Schemas["GoogleCloudIdentitytoolkitV1SignUpResponse"] {
+): Promise<Schemas["GoogleCloudIdentitytoolkitV1SignUpResponse"]> {
   assert(!state.disableAuth, "PROJECT_DISABLED");
-  assert(state.usageMode !== UsageMode.PASSTHROUGH, "UNSUPPORTED_PASSTHROUGH_OPERATION");
   let provider: string | undefined;
-  const updates: Omit<Partial<UserInfo>, "localId" | "providerUserInfo"> = {
-    lastLoginAt: Date.now().toString(),
+  const timestamp = new Date();
+  let updates: Omit<Partial<UserInfo>, "localId" | "providerUserInfo"> = {
+    lastLoginAt: timestamp.getTime().toString(),
   };
 
   if (ctx.security?.Oauth2) {
@@ -225,12 +227,39 @@ function signUp(
     ({ user } = parseIdToken(state, reqBody.idToken));
   }
 
+  let extraClaims;
   if (!user) {
-    if (reqBody.localId) {
-      user = state.createUserWithLocalId(reqBody.localId, updates);
-      assert(user, "DUPLICATE_LOCAL_ID");
-    } else {
-      user = state.createUser(updates);
+    updates.createdAt = timestamp.getTime().toString();
+    const localId = reqBody.localId ?? state.generateLocalId();
+    if (reqBody.email && !ctx.security?.Oauth2) {
+      const userBeforeCreate = { localId, ...updates };
+      const blockingResponse = await fetchBlockingFunction(
+        state,
+        BlockingFunctionEvents.BEFORE_CREATE,
+        userBeforeCreate,
+        { signInMethod: "password" }
+      );
+      updates = { ...updates, ...blockingResponse.updates };
+    }
+
+    user = state.createUserWithLocalId(localId, updates);
+    assert(user, "DUPLICATE_LOCAL_ID");
+
+    if (reqBody.email && !ctx.security?.Oauth2) {
+      if (!user.disabled) {
+        const blockingResponse = await fetchBlockingFunction(
+          state,
+          BlockingFunctionEvents.BEFORE_SIGN_IN,
+          user,
+          { signInMethod: "password" }
+        );
+        updates = blockingResponse.updates;
+        extraClaims = blockingResponse.extraClaims;
+        user = state.updateUserByLocalId(user.localId, updates);
+      }
+      // User may have been disabled after either blocking function, but
+      // only throw after writing user to store
+      assert(!user.disabled, "USER_DISABLED");
     }
   } else {
     user = state.updateUserByLocalId(user.localId, updates);
@@ -241,7 +270,7 @@ function signUp(
     localId: user.localId,
     displayName: user.displayName,
     email: user.email,
-    ...(provider ? issueTokens(state, user, provider) : {}),
+    ...(provider ? issueTokens(state, user, provider, { extraClaims }) : {}),
   };
 }
 
@@ -299,7 +328,6 @@ function batchCreate(
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1UploadAccountRequest"]
 ): Schemas["GoogleCloudIdentitytoolkitV1UploadAccountResponse"] {
   assert(!state.disableAuth, "PROJECT_DISABLED");
-  assert(state.usageMode !== UsageMode.PASSTHROUGH, "UNSUPPORTED_PASSTHROUGH_OPERATION");
   assert(reqBody.users?.length, "MISSING_USER_ACCOUNT");
 
   if (reqBody.sanityCheck) {
@@ -436,7 +464,7 @@ function batchCreate(
       fields.disabled = !!userInfo.disabled;
 
       // MFA
-      if (userInfo.mfaInfo) {
+      if (userInfo.mfaInfo && userInfo.mfaInfo.length > 0) {
         fields.mfaInfo = [];
         assert(fields.email, "Second factor account requires email to be presented.");
         assert(fields.emailVerified, "Second factor account requires email to be verified.");
@@ -554,7 +582,6 @@ function createAuthUri(
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1CreateAuthUriRequest"]
 ): Schemas["GoogleCloudIdentitytoolkitV1CreateAuthUriResponse"] {
   assert(!state.disableAuth, "PROJECT_DISABLED");
-  assert(state.usageMode !== UsageMode.PASSTHROUGH, "UNSUPPORTED_PASSTHROUGH_OPERATION");
   const sessionId = reqBody.sessionId || randomId(27);
   if (reqBody.providerId) {
     throw new NotImplementedError("Sign-in with IDP is not yet supported.");
@@ -623,10 +650,8 @@ export const SESSION_COOKIE_MAX_VALID_DURATION = 14 * 24 * 60 * 60; /* 14 days i
 
 function createSessionCookie(
   state: ProjectState,
-  reqBody: Schemas["GoogleCloudIdentitytoolkitV1CreateSessionCookieRequest"],
-  ctx: ExegesisContext
+  reqBody: Schemas["GoogleCloudIdentitytoolkitV1CreateSessionCookieRequest"]
 ): Schemas["GoogleCloudIdentitytoolkitV1CreateSessionCookieResponse"] {
-  assert(state.usageMode !== UsageMode.PASSTHROUGH, "UNSUPPORTED_PASSTHROUGH_OPERATION");
   assert(reqBody.idToken, "MISSING_ID_TOKEN");
   const validDuration = Number(reqBody.validDuration) || SESSION_COOKIE_MAX_VALID_DURATION;
   assert(
@@ -777,7 +802,6 @@ export function resetPassword(
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1ResetPasswordRequest"]
 ): Schemas["GoogleCloudIdentitytoolkitV1ResetPasswordResponse"] {
   assert(!state.disableAuth, "PROJECT_DISABLED");
-  assert(state.usageMode !== UsageMode.PASSTHROUGH, "UNSUPPORTED_PASSTHROUGH_OPERATION");
   assert(state.allowPasswordSignup, "PASSWORD_LOGIN_DISABLED");
   assert(reqBody.oobCode, "MISSING_OOB_CODE");
   const oob = state.validateOobCode(reqBody.oobCode);
@@ -825,7 +849,6 @@ function sendOobCode(
   ctx: ExegesisContext
 ): Schemas["GoogleCloudIdentitytoolkitV1GetOobCodeResponse"] {
   assert(!state.disableAuth, "PROJECT_DISABLED");
-  assert(state.usageMode !== UsageMode.PASSTHROUGH, "UNSUPPORTED_PASSTHROUGH_OPERATION");
   assert(
     reqBody.requestType && reqBody.requestType !== "OOB_REQ_TYPE_UNSPECIFIED",
     "MISSING_REQ_TYPE"
@@ -915,7 +938,6 @@ function sendVerificationCode(
 ): Schemas["GoogleCloudIdentitytoolkitV1SendVerificationCodeResponse"] {
   assert(!state.disableAuth, "PROJECT_DISABLED");
   assert(state instanceof AgentProjectState, "UNSUPPORTED_TENANT_OPERATION");
-  assert(state.usageMode !== UsageMode.PASSTHROUGH, "UNSUPPORTED_PASSTHROUGH_OPERATION");
   // reqBody.iosReceipt, iosSecret, and recaptchaToken are intentionally ignored.
 
   // Production Firebase Auth service also throws INVALID_PHONE_NUMBER instead
@@ -951,7 +973,6 @@ function setAccountInfo(
   ctx: ExegesisContext
 ): Schemas["GoogleCloudIdentitytoolkitV1SetAccountInfoResponse"] {
   assert(!state.disableAuth, "PROJECT_DISABLED");
-  assert(state.usageMode !== UsageMode.PASSTHROUGH, "UNSUPPORTED_PASSTHROUGH_OPERATION");
   const url = authEmulatorUrl(ctx.req as express.Request);
   return setAccountInfoImpl(state, reqBody, {
     privileged: !!ctx.security?.Oauth2,
@@ -1268,7 +1289,6 @@ function signInWithCustomToken(
   assert(!state.disableAuth, "PROJECT_DISABLED");
   assert(reqBody.token, "MISSING_CUSTOM_TOKEN");
 
-  // eslint-disable-next-line camelcase
   let payload: {
     aud?: unknown;
     uid?: unknown;
@@ -1327,11 +1347,12 @@ function signInWithCustomToken(
   }
 
   let user = state.getUserByLocalId(localId);
-  const isNewUser = state.usageMode === UsageMode.PASSTHROUGH ? false : !user;
+  const isNewUser = !user;
 
-  const updates = {
+  const timestamp = new Date();
+  const updates: Partial<UserInfo> = {
     customAuth: true,
-    lastLoginAt: Date.now().toString(),
+    lastLoginAt: timestamp.getTime().toString(),
     tenantId: state instanceof TenantProjectState ? state.tenantId : undefined,
   };
 
@@ -1339,6 +1360,7 @@ function signInWithCustomToken(
     assert(!user.disabled, "USER_DISABLED");
     user = state.updateUserByLocalId(localId, updates);
   } else {
+    updates.createdAt = timestamp.getTime().toString();
     user = state.createUserWithLocalId(localId, updates);
     if (!user) {
       throw new Error(`Internal assertion error: trying to create duplicate localId: ${localId}`);
@@ -1352,13 +1374,12 @@ function signInWithCustomToken(
   };
 }
 
-function signInWithEmailLink(
+async function signInWithEmailLink(
   state: ProjectState,
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1SignInWithEmailLinkRequest"]
-): Schemas["GoogleCloudIdentitytoolkitV1SignInWithEmailLinkResponse"] {
+): Promise<Schemas["GoogleCloudIdentitytoolkitV1SignInWithEmailLinkResponse"]> {
   assert(!state.disableAuth, "PROJECT_DISABLED");
   assert(state.enableEmailLinkSignin, "OPERATION_NOT_ALLOWED");
-  assert(state.usageMode !== UsageMode.PASSTHROUGH, "UNSUPPORTED_PASSTHROUGH_OPERATION");
   const userFromIdToken = reqBody.idToken ? parseIdToken(state, reqBody.idToken).user : undefined;
   assert(reqBody.email, "MISSING_EMAIL");
   const email = canonicalizeEmailAddress(reqBody.email);
@@ -1369,10 +1390,14 @@ function signInWithEmailLink(
     email === oob.email,
     "INVALID_EMAIL : The email provided does not match the sign-in email address."
   );
-
   state.deleteOobCode(reqBody.oobCode);
 
-  const updates: Omit<Partial<UserInfo>, "localId" | "providerUserInfo"> = {
+  const userFromEmail = state.getUserByEmail(email);
+  let user = userFromIdToken || userFromEmail;
+  const isNewUser = !user;
+
+  const timestamp = new Date();
+  let updates: Omit<Partial<UserInfo>, "localId" | "providerUserInfo"> = {
     email,
     emailVerified: true,
     emailLinkSignin: true,
@@ -1382,17 +1407,49 @@ function signInWithEmailLink(
     updates.tenantId = state.tenantId;
   }
 
-  let user = state.getUserByEmail(email);
-  const isNewUser = !user && !userFromIdToken;
+  let extraClaims;
   if (!user) {
-    if (userFromIdToken) {
-      user = state.updateUserByLocalId(userFromIdToken.localId, updates);
-    } else {
-      user = state.createUser(updates);
+    updates.createdAt = timestamp.getTime().toString();
+    const localId = state.generateLocalId();
+    const userBeforeCreate = { localId, ...updates };
+    const blockingResponse = await fetchBlockingFunction(
+      state,
+      BlockingFunctionEvents.BEFORE_CREATE,
+      userBeforeCreate,
+      { signInMethod: "emailLink" }
+    );
+
+    updates = { ...updates, ...blockingResponse.updates };
+    user = state.createUserWithLocalId(localId, updates)!;
+
+    if (!user.disabled && !isMfaEnabled(state, user)) {
+      const blockingResponse = await fetchBlockingFunction(
+        state,
+        BlockingFunctionEvents.BEFORE_SIGN_IN,
+        user,
+        { signInMethod: "emailLink" }
+      );
+      updates = blockingResponse.updates;
+      extraClaims = blockingResponse.extraClaims;
+      user = state.updateUserByLocalId(user.localId, updates);
     }
   } else {
     assert(!user.disabled, "USER_DISABLED");
-    assert(!userFromIdToken || userFromIdToken.localId === user.localId, "EMAIL_EXISTS");
+    if (userFromIdToken && userFromEmail) {
+      assert(userFromIdToken.localId === userFromEmail.localId, "EMAIL_EXISTS");
+    }
+
+    if (!user.disabled && !isMfaEnabled(state, user)) {
+      const blockingResponse = await fetchBlockingFunction(
+        state,
+        BlockingFunctionEvents.BEFORE_SIGN_IN,
+        { ...user, ...updates },
+        { signInMethod: "emailLink" }
+      );
+      updates = { ...updates, ...blockingResponse.updates };
+      extraClaims = blockingResponse.extraClaims;
+    }
+
     user = state.updateUserByLocalId(user.localId, updates);
   }
 
@@ -1403,25 +1460,24 @@ function signInWithEmailLink(
     isNewUser,
   };
 
-  if (
-    (state.mfaConfig.state === "ENABLED" || state.mfaConfig.state === "MANDATORY") &&
-    user.mfaInfo?.length
-  ) {
+  // User may have been disabled but only throw after writing user to store
+  assert(!user.disabled, "USER_DISABLED");
+
+  if (isMfaEnabled(state, user)) {
     return { ...response, ...mfaPending(state, user, PROVIDER_PASSWORD) };
   } else {
     user = state.updateUserByLocalId(user.localId, { lastLoginAt: Date.now().toString() });
-    return { ...response, ...issueTokens(state, user, PROVIDER_PASSWORD) };
+    return { ...response, ...issueTokens(state, user, PROVIDER_PASSWORD, { extraClaims }) };
   }
 }
 
 type SignInWithIdpResponse = Schemas["GoogleCloudIdentitytoolkitV1SignInWithIdpResponse"];
 
-function signInWithIdp(
+async function signInWithIdp(
   state: ProjectState,
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1SignInWithIdpRequest"]
-): SignInWithIdpResponse {
+): Promise<SignInWithIdpResponse> {
   assert(!state.disableAuth, "PROJECT_DISABLED");
-  assert(state.usageMode !== UsageMode.PASSTHROUGH, "UNSUPPORTED_PASSTHROUGH_OPERATION");
 
   if (reqBody.returnRefreshToken) {
     throw new NotImplementedError("returnRefreshToken is not implemented yet.");
@@ -1541,27 +1597,87 @@ function signInWithIdp(
   };
 
   let user: UserInfo;
+  let extraClaims;
+  const oauthTokens = {
+    oauthIdToken: response.oauthIdToken,
+    oauthAccessToken: response.oauthAccessToken,
+
+    // The below are not set by our fake IdP fetch currently
+    oauthRefreshToken: response.oauthRefreshToken,
+    oauthTokenSecret: response.oauthTokenSecret,
+    oauthExpiresIn: coercePrimitiveToString(response.oauthExpireIn),
+  };
   if (response.isNewUser) {
-    user = state.createUser({
+    let updates: Partial<UserInfo> = {
       ...accountUpdates.fields,
       lastLoginAt: Date.now().toString(),
       providerUserInfo: [providerUserInfo],
       tenantId: state instanceof TenantProjectState ? state.tenantId : undefined,
-    });
+    };
+    const localId = state.generateLocalId();
+    const userBeforeCreate = { localId, ...updates };
+    const blockingResponse = await fetchBlockingFunction(
+      state,
+      BlockingFunctionEvents.BEFORE_CREATE,
+      userBeforeCreate,
+      {
+        signInMethod: response.providerId,
+        rawUserInfo: response.rawUserInfo,
+        signInAttributes: JSON.stringify(signInAttributes),
+      },
+      oauthTokens
+    );
+
+    updates = { ...updates, ...blockingResponse.updates };
+    user = state.createUserWithLocalId(localId, updates)!;
     response.localId = user.localId;
+
+    if (!user.disabled && !isMfaEnabled(state, user)) {
+      const blockingResponse = await fetchBlockingFunction(
+        state,
+        BlockingFunctionEvents.BEFORE_SIGN_IN,
+        user,
+        {
+          signInMethod: response.providerId,
+          rawUserInfo: response.rawUserInfo,
+          signInAttributes: JSON.stringify(signInAttributes),
+        },
+        oauthTokens
+      );
+      updates = blockingResponse.updates;
+      extraClaims = blockingResponse.extraClaims;
+      user = state.updateUserByLocalId(user.localId, updates);
+    }
   } else {
     if (!response.localId) {
       throw new Error("Internal assertion error: localId not set for exising user.");
     }
-    user = state.updateUserByLocalId(
-      response.localId,
-      {
-        ...accountUpdates.fields,
-      },
-      {
-        upsertProviders: [providerUserInfo],
-      }
-    );
+
+    const maybeUser = state.getUserByLocalId(response.localId);
+    assert(maybeUser, "USER_NOT_FOUND");
+    user = maybeUser;
+
+    let updates = { ...accountUpdates.fields };
+
+    if (!user.disabled && !isMfaEnabled(state, user)) {
+      const blockingResponse = await fetchBlockingFunction(
+        state,
+        BlockingFunctionEvents.BEFORE_SIGN_IN,
+        { ...user, ...updates },
+        {
+          signInMethod: response.providerId,
+          rawUserInfo: response.rawUserInfo,
+          signInAttributes: JSON.stringify(signInAttributes),
+        },
+        oauthTokens
+      );
+      extraClaims = blockingResponse.extraClaims;
+      updates = { ...updates, ...blockingResponse.updates };
+    }
+
+    user = state.updateUserByLocalId(response.localId, updates, {
+      upsertProviders: [providerUserInfo],
+    });
   }
 
   if (user.email === response.email) {
@@ -1572,24 +1688,26 @@ function signInWithIdp(
     response.tenantId = state.tenantId;
   }
 
-  if (
-    (state.mfaConfig.state === "ENABLED" || state.mfaConfig.state === "MANDATORY") &&
-    user.mfaInfo?.length
-  ) {
+  if (isMfaEnabled(state, user)) {
     return { ...response, ...mfaPending(state, user, providerId) };
   } else {
     user = state.updateUserByLocalId(user.localId, { lastLoginAt: Date.now().toString() });
-    return { ...response, ...issueTokens(state, user, providerId, { signInAttributes }) };
+    // User may have been disabled after either blocking function, but
+    // only throw after writing user to store
+    assert(!user?.disabled, "USER_DISABLED");
+    return {
+      ...response,
+      ...issueTokens(state, user, providerId, { signInAttributes, extraClaims }),
+    };
   }
 }
 
-function signInWithPassword(
+async function signInWithPassword(
   state: ProjectState,
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1SignInWithPasswordRequest"]
-): Schemas["GoogleCloudIdentitytoolkitV1SignInWithPasswordResponse"] {
+): Promise<Schemas["GoogleCloudIdentitytoolkitV1SignInWithPasswordResponse"]> {
   assert(!state.disableAuth, "PROJECT_DISABLED");
   assert(state.allowPasswordSignup, "PASSWORD_LOGIN_DISABLED");
-  assert(state.usageMode !== UsageMode.PASSTHROUGH, "UNSUPPORTED_PASSTHROUGH_OPERATION");
   assert(reqBody.email, "MISSING_EMAIL");
   assert(reqBody.password, "MISSING_PASSWORD");
   if (reqBody.captchaResponse || reqBody.captchaChallenge) {
@@ -1615,24 +1733,32 @@ function signInWithPassword(
     email,
   };
 
-  if (
-    (state.mfaConfig.state === "ENABLED" || state.mfaConfig.state === "MANDATORY") &&
-    user.mfaInfo?.length
-  ) {
+  if (isMfaEnabled(state, user)) {
     return { ...response, ...mfaPending(state, user, PROVIDER_PASSWORD) };
   } else {
-    user = state.updateUserByLocalId(user.localId, { lastLoginAt: Date.now().toString() });
-    return { ...response, ...issueTokens(state, user, PROVIDER_PASSWORD) };
+    const { updates, extraClaims } = await fetchBlockingFunction(
+      state,
+      BlockingFunctionEvents.BEFORE_SIGN_IN,
+      user,
+      { signInMethod: "password" }
+    );
+    user = state.updateUserByLocalId(user.localId, {
+      ...updates,
+      lastLoginAt: Date.now().toString(),
+    });
+    // User may have been disabled after blocking function, but only throw after
+    // writing user to store
+    assert(!user.disabled, "USER_DISABLED");
+    return { ...response, ...issueTokens(state, user, PROVIDER_PASSWORD, { extraClaims }) };
   }
 }
 
-function signInWithPhoneNumber(
+async function signInWithPhoneNumber(
   state: ProjectState,
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1SignInWithPhoneNumberRequest"]
-): Schemas["GoogleCloudIdentitytoolkitV1SignInWithPhoneNumberResponse"] {
+): Promise<Schemas["GoogleCloudIdentitytoolkitV1SignInWithPhoneNumberResponse"]> {
   assert(!state.disableAuth, "PROJECT_DISABLED");
   assert(state instanceof AgentProjectState, "UNSUPPORTED_TENANT_OPERATION");
-  assert(state.usageMode !== UsageMode.PASSTHROUGH, "UNSUPPORTED_PASSTHROUGH_OPERATION");
   let phoneNumber: string;
   if (reqBody.temporaryProof) {
     assert(reqBody.phoneNumber, "MISSING_PHONE_NUMBER");
@@ -1646,42 +1772,83 @@ function signInWithPhoneNumber(
     phoneNumber = verifyPhoneNumber(state, reqBody.sessionInfo, reqBody.code);
   }
 
-  let user = state.getUserByPhoneNumber(phoneNumber);
-  let isNewUser = false;
-  const updates = {
+  const userFromPhoneNumber = state.getUserByPhoneNumber(phoneNumber);
+  const userFromIdToken = reqBody.idToken ? parseIdToken(state, reqBody.idToken).user : undefined;
+  if (userFromPhoneNumber && userFromIdToken) {
+    if (userFromPhoneNumber.localId !== userFromIdToken.localId) {
+      assert(!reqBody.temporaryProof, "PHONE_NUMBER_EXISTS");
+      // By now, the verification has succeeded, but we cannot proceed since
+      // the phone number is linked to a different account. If a sessionInfo
+      // is consumed, a temporaryProof should be returned with 200.
+      return {
+        ...state.createTemporaryProof(phoneNumber),
+      };
+    }
+  }
+
+  let user = userFromIdToken || userFromPhoneNumber;
+  const isNewUser = !user;
+
+  const timestamp = new Date();
+  let updates: Partial<UserInfo> = {
     phoneNumber,
-    lastLoginAt: Date.now().toString(),
+    lastLoginAt: timestamp.getTime().toString(),
   };
 
-  const userFromIdToken = reqBody.idToken ? parseIdToken(state, reqBody.idToken).user : undefined;
+  let extraClaims;
   if (!user) {
-    if (userFromIdToken) {
-      assert(
-        !userFromIdToken.mfaInfo?.length,
-        "UNSUPPORTED_FIRST_FACTOR : A phone number cannot be set as a first factor on an SMS based MFA user."
+    updates.createdAt = timestamp.getTime().toString();
+    const localId = state.generateLocalId();
+    const userBeforeCreate = { localId, ...updates };
+    const blockingResponse = await fetchBlockingFunction(
+      state,
+      BlockingFunctionEvents.BEFORE_CREATE,
+      userBeforeCreate,
+      { signInMethod: "phone" }
+    );
+
+    updates = { ...updates, ...blockingResponse.updates };
+    user = state.createUserWithLocalId(localId, updates)!;
+
+    if (!user.disabled) {
+      const blockingResponse = await fetchBlockingFunction(
+        state,
+        BlockingFunctionEvents.BEFORE_SIGN_IN,
+        user,
+        { signInMethod: "phone" }
       );
-      user = state.updateUserByLocalId(userFromIdToken.localId, updates);
-    } else {
-      isNewUser = true;
-      user = state.createUser(updates);
+      updates = blockingResponse.updates;
+      extraClaims = blockingResponse.extraClaims;
+      user = state.updateUserByLocalId(user.localId, updates);
     }
   } else {
     assert(!user.disabled, "USER_DISABLED");
-    if (userFromIdToken && userFromIdToken.localId !== user.localId) {
-      if (!reqBody.temporaryProof) {
-        // By now, the verification has succeeded, but we cannot proceed since
-        // the phone number is linked to a different account. If a sessionInfo
-        // is consumed, a temporaryProof should be returned with 200.
-        return {
-          ...state.createTemporaryProof(phoneNumber),
-        };
-      }
-      throw new BadRequestError("PHONE_NUMBER_EXISTS");
+    assert(
+      !user.mfaInfo?.length,
+      "UNSUPPORTED_FIRST_FACTOR : A phone number cannot be set as a first factor on an SMS based MFA user."
+    );
+
+    if (!user.disabled) {
+      const blockingResponse = await fetchBlockingFunction(
+        state,
+        BlockingFunctionEvents.BEFORE_SIGN_IN,
+        { ...user, ...updates },
+        { signInMethod: "phone" }
+      );
+      updates = { ...updates, ...blockingResponse.updates };
+      extraClaims = blockingResponse.extraClaims;
     }
+
     user = state.updateUserByLocalId(user.localId, updates);
   }
 
-  const tokens = issueTokens(state, user, PROVIDER_PHONE);
+  // User may have been disabled after either blocking function, but
+  // only throw after writing user to store
+  assert(!user?.disabled, "USER_DISABLED");
+
+  const tokens = issueTokens(state, user, PROVIDER_PHONE, {
+    extraClaims,
+  });
 
   return {
     isNewUser,
@@ -1698,7 +1865,6 @@ function grantToken(
 ): Schemas["GrantTokenResponse"] {
   // https://developers.google.com/identity/toolkit/reference/securetoken/rest/v1/token
   // reqBody.code is intentionally ignored.
-  assert(state.usageMode !== UsageMode.PASSTHROUGH, "UNSUPPORTED_PASSTHROUGH_OPERATION");
   assert(reqBody.grantType, "MISSING_GRANT_TYPE");
   assert(reqBody.grantType === "refresh_token", "INVALID_GRANT_TYPE");
   assert(reqBody.refreshToken, "MISSING_REFRESH_TOKEN");
@@ -1710,7 +1876,6 @@ function grantToken(
     secondFactor: refreshTokenRecord.secondFactor,
   });
   return {
-    /* eslint-disable camelcase */
     id_token: tokens.idToken,
     access_token: tokens.idToken,
     expires_in: tokens.expiresIn,
@@ -1721,7 +1886,6 @@ function grantToken(
     // According to API docs (and production behavior), this should be the
     // automatically generated number, not the customizable alphanumeric ID.
     project_id: state.projectNumber,
-    /* eslint-enable camelcase */
   };
 }
 
@@ -1735,7 +1899,6 @@ function getEmulatorProjectConfig(state: ProjectState): Schemas["EmulatorV1Proje
     signIn: {
       allowDuplicateEmails: !state.oneAccountPerEmail,
     },
-    usageMode: state.usageMode,
   };
 }
 
@@ -1745,14 +1908,10 @@ function updateEmulatorProjectConfig(
   ctx: ExegesisContext
 ): Schemas["EmulatorV1ProjectsConfig"] {
   // New developers should not use updateEmulatorProjectConfig to update the
-  // allowDuplicateEmails and usageMode settings and should instead use
-  // updateConfig to do so.
+  // allowDuplicateEmails setting and should instead use updateConfig to do so.
   const updateMask = [];
   if (reqBody.signIn?.allowDuplicateEmails != null) {
     updateMask.push("signIn.allowDuplicateEmails");
-  }
-  if (reqBody.usageMode) {
-    updateMask.push("usageMode");
   }
   ctx.params.query.updateMask = updateMask.join();
 
@@ -1957,10 +2116,10 @@ function mfaSignInStart(
   };
 }
 
-function mfaSignInFinalize(
+async function mfaSignInFinalize(
   state: ProjectState,
   reqBody: Schemas["GoogleCloudIdentitytoolkitV2FinalizeMfaSignInRequest"]
-): Schemas["GoogleCloudIdentitytoolkitV2FinalizeMfaSignInResponse"] {
+): Promise<Schemas["GoogleCloudIdentitytoolkitV2FinalizeMfaSignInResponse"]> {
   assert(!state.disableAuth, "PROJECT_DISABLED");
   assert(
     (state.mfaConfig.state === "ENABLED" || state.mfaConfig.state === "MANDATORY") &&
@@ -1985,13 +2144,25 @@ function mfaSignInFinalize(
   const enrollment = user.mfaInfo?.find(
     (enrollment) => enrollment.unobfuscatedPhoneInfo === phoneNumber
   );
+
+  const { updates, extraClaims } = await fetchBlockingFunction(
+    state,
+    BlockingFunctionEvents.BEFORE_SIGN_IN,
+    user,
+    { signInMethod: signInProvider, signInSecondFactor: "phone" }
+  );
+  user = state.updateUserByLocalId(user.localId, {
+    ...updates,
+    lastLoginAt: Date.now().toString(),
+  });
+
   assert(enrollment && enrollment.mfaEnrollmentId, "MFA_ENROLLMENT_NOT_FOUND");
-
-  user = state.updateUserByLocalId(user.localId, { lastLoginAt: Date.now().toString() });
-
+  // User may have been disabled after blocking function, but only throw after
+  // writing user to store
   assert(!user.disabled, "USER_DISABLED");
 
   const { idToken, refreshToken } = issueTokens(state, user, signInProvider, {
+    extraClaims,
     secondFactor: { identifier: enrollment.mfaEnrollmentId, provider: PROVIDER_PHONE },
   });
   return {
@@ -2000,11 +2171,7 @@ function mfaSignInFinalize(
   };
 }
 
-function getConfig(
-  state: ProjectState,
-  reqBody: unknown,
-  ctx: ExegesisContext
-): Schemas["GoogleCloudIdentitytoolkitAdminV2Config"] {
+function getConfig(state: ProjectState): Schemas["GoogleCloudIdentitytoolkitAdminV2Config"] {
   // Shouldn't error on this but need assertion for type checking
   assert(
     state instanceof AgentProjectState,
@@ -2090,8 +2257,6 @@ function issueTokens(
 ): { idToken: string; refreshToken?: string; expiresIn: string } {
   user = state.updateUserByLocalId(user.localId, { lastRefreshAt: new Date().toISOString() });
 
-  const usageMode = state.usageMode === UsageMode.PASSTHROUGH ? "passthrough" : undefined;
-
   const tenantId = state instanceof TenantProjectState ? state.tenantId : undefined;
 
   const expiresInSeconds = 60 * 60;
@@ -2101,17 +2266,13 @@ function issueTokens(
     expiresInSeconds,
     extraClaims,
     secondFactor,
-    usageMode,
     tenantId,
     signInAttributes,
   });
-  const refreshToken =
-    state.usageMode === UsageMode.DEFAULT
-      ? state.createRefreshTokenFor(user, signInProvider, {
-          extraClaims,
-          secondFactor,
-        })
-      : undefined;
+  const refreshToken = state.createRefreshTokenFor(user, signInProvider, {
+    extraClaims,
+    secondFactor,
+  });
   return {
     idToken,
     refreshToken,
@@ -2127,7 +2288,6 @@ function parseIdToken(
   payload: FirebaseJwtPayload;
   signInProvider: string;
 } {
-  assert(state.usageMode !== UsageMode.PASSTHROUGH, "UNSUPPORTED_PASSTHROUGH_OPERATION");
   const decoded = decodeJwt(idToken, { complete: true }) as {
     header: JwtHeader;
     payload: FirebaseJwtPayload;
@@ -2170,7 +2330,6 @@ function generateJwt(
     expiresInSeconds,
     extraClaims = {},
     secondFactor,
-    usageMode,
     tenantId,
     signInAttributes,
   }: {
@@ -2179,7 +2338,6 @@ function generateJwt(
     expiresInSeconds: number;
     extraClaims?: Record<string, unknown>;
     secondFactor?: SecondFactorRecord;
-    usageMode?: string;
     tenantId?: string;
     signInAttributes?: unknown;
   }
@@ -2203,7 +2361,6 @@ function generateJwt(
   }
 
   const customAttributes = JSON.parse(user.customAttributes || "{}") as Record<string, unknown>;
-  /* eslint-disable camelcase */
   const customPayloadFields: Partial<FirebaseJwtPayload> = {
     // Non-reserved fields (set before custom attributes):
     name: user.displayName,
@@ -2226,12 +2383,10 @@ function generateJwt(
       sign_in_provider: signInProvider,
       second_factor_identifier: secondFactor?.identifier,
       sign_in_second_factor: secondFactor?.provider,
-      usage_mode: usageMode,
       tenant: tenantId,
       sign_in_attributes: signInAttributes,
     },
   };
-  /* eslint-enable camelcase */
 
   const jwtStr = signJwt(customPayloadFields, "", {
     // Generate a unsigned (insecure) JWT. This is accepted by many other
@@ -2455,18 +2610,17 @@ function fakeFetchUserInfoFromIdp(
   };
 
   let federatedId = rawId;
-  /* eslint-disable camelcase */
   switch (providerId) {
     case "google.com": {
       federatedId = `https://accounts.google.com/${rawId}`;
-      let granted_scopes = "openid https://www.googleapis.com/auth/userinfo.profile";
+      let grantedScopes = "openid https://www.googleapis.com/auth/userinfo.profile";
       if (email) {
-        granted_scopes += " https://www.googleapis.com/auth/userinfo.email";
+        grantedScopes += " https://www.googleapis.com/auth/userinfo.email";
       }
       response.firstName = claims.given_name;
       response.lastName = claims.family_name;
       response.rawUserInfo = JSON.stringify({
-        granted_scopes,
+        granted_scopes: grantedScopes,
         id: rawId,
         name: displayName,
         given_name: claims.given_name,
@@ -2801,21 +2955,13 @@ function listTenants(
   };
 }
 
-function deleteTenant(
-  state: ProjectState,
-  reqBody: unknown,
-  ctx: ExegesisContext
-): Schemas["GoogleProtobufEmpty"] {
+function deleteTenant(state: ProjectState): Schemas["GoogleProtobufEmpty"] {
   assert(state instanceof TenantProjectState, "((Can only delete tenant on tenant projects.))");
   state.delete();
   return {};
 }
 
-function getTenant(
-  state: ProjectState,
-  reqBody: unknown,
-  ctx: ExegesisContext
-): Schemas["GoogleCloudIdentitytoolkitAdminV2Tenant"] {
+function getTenant(state: ProjectState): Schemas["GoogleCloudIdentitytoolkitAdminV2Tenant"] {
   assert(state instanceof TenantProjectState, "((Can only get tenant on tenant projects.))");
   return state.tenantConfig;
 }
@@ -2829,6 +2975,272 @@ function updateTenant(
   return state.updateTenant(reqBody, ctx.params.query.updateMask);
 }
 
+function isMfaEnabled(state: ProjectState, user: UserInfo) {
+  return (
+    (state.mfaConfig.state === "ENABLED" || state.mfaConfig.state === "MANDATORY") &&
+    user.mfaInfo?.length
+  );
+}
+
+// TODO: Timeout is 60s. Should we make the timeout an emulator configuration?
+async function fetchBlockingFunction(
+  state: ProjectState,
+  event: BlockingFunctionEvents,
+  user: UserInfo,
+  options: {
+    signInMethod?: string;
+    signInSecondFactor?: string;
+    rawUserInfo?: string;
+    signInAttributes?: string;
+  } = {},
+  oauthTokens: {
+    oauthIdToken?: string;
+    oauthAccessToken?: string;
+    oauthRefreshToken?: string;
+    oauthTokenSecret?: string;
+    oauthExpiresIn?: string;
+  } = {},
+  timeoutMs: number = 60000
+): Promise<{
+  updates: BlockingFunctionUpdates;
+  extraClaims?: Record<string, unknown>;
+}> {
+  const url = state.getBlockingFunctionUri(event);
+
+  // No-op if blocking function is not present
+  if (!url) {
+    return { updates: {} };
+  }
+
+  const jwt = generateBlockingFunctionJwt(state, event, url, timeoutMs, user, options, oauthTokens);
+  const reqBody = {
+    data: {
+      jwt,
+    },
+  };
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => {
+    controller.abort();
+  }, timeoutMs);
+
+  let response;
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(reqBody),
+      signal: controller.signal,
+    });
+    const text = await res.text();
+    assert(
+      res.ok,
+      `BLOCKING_FUNCTION_ERROR_RESPONSE: ((HTTP request to ${url} returned HTTP error${res.status}: ${text}))`
+    );
+    response = JSON.parse(text) as BlockingFunctionResponsePayload;
+  } catch (thrown: any) {
+    const err = thrown instanceof Error ? thrown : new Error(thrown);
+    const isAbortError = err.name.includes("AbortError");
+    if (isAbortError) {
+      throw new InternalError(
+        `BLOCKING_FUNCTION_ERROR_RESPONSE: ((Deadline exceeded making request to ${url}.))`,
+        err.message
+      );
+    }
+    throw new InternalError(
+      `BLOCKING_FUNCTION_ERROR_RESPONSE: ((Failed to make request to ${url}.))`,
+      err.message
+    );
+  } finally {
+    clearTimeout(timeout);
+  }
+
+  return processBlockingFunctionResponse(event, response);
+}
+
+function processBlockingFunctionResponse(
+  event: BlockingFunctionEvents,
+  response: BlockingFunctionResponsePayload
+): {
+  updates: BlockingFunctionUpdates;
+  extraClaims?: Record<string, unknown>;
+} {
+  // Only return updates that are specified in the update mask
+  let extraClaims;
+  const updates: BlockingFunctionUpdates = {};
+  if (response.userRecord) {
+    const userRecord = response.userRecord;
+    assert(
+      userRecord.updateMask,
+      "BLOCKING_FUNCTION_ERROR_RESPONSE: ((Response UserRecord is missing updateMask.))"
+    );
+    const mask = userRecord.updateMask;
+    const fields = mask.split(",");
+
+    for (const field of fields) {
+      switch (field) {
+        case "displayName":
+        case "photoUrl":
+          updates[field] = coercePrimitiveToString(userRecord[field]);
+          break;
+        case "disabled":
+        case "emailVerified":
+          updates[field] = !!userRecord[field];
+          break;
+        case "customClaims":
+          validateSerializedCustomClaims(userRecord.customClaims!);
+          updates.customAttributes = userRecord.customClaims;
+          break;
+        // Session claims are only returned in beforeSignIn and will be ignored
+        // otherwise. For more info, see
+        // https://cloud.google.com/identity-platform/docs/blocking-functions#modifying_a_user
+        case "sessionClaims":
+          if (event !== BlockingFunctionEvents.BEFORE_SIGN_IN) {
+            break;
+          }
+          try {
+            extraClaims = JSON.parse(userRecord.sessionClaims!);
+          } catch {
+            throw new BadRequestError(
+              "BLOCKING_FUNCTION_ERROR_RESPONSE: ((Response has malformed session claims.))"
+            );
+          }
+          break;
+        default:
+          break;
+      }
+    }
+  }
+
+  return { updates, extraClaims };
+}
+
+function generateBlockingFunctionJwt(
+  state: ProjectState,
+  event: BlockingFunctionEvents,
+  url: string,
+  timeoutMs: number,
+  user: UserInfo,
+  options: {
+    signInMethod?: string;
+    signInSecondFactor?: string;
+    rawUserInfo?: string;
+    signInAttributes?: string;
+  },
+  oauthTokens: {
+    oauthIdToken?: string;
+    oauthAccessToken?: string;
+    oauthRefreshToken?: string;
+    oauthTokenSecret?: string;
+    oauthExpiresIn?: string;
+  }
+): string {
+  const issuedAt = toUnixTimestamp(new Date());
+  const jwt: BlockingFunctionsJwtPayload = {
+    iss: `https://securetoken.google.com/${state.projectId}`,
+    aud: url,
+    iat: issuedAt,
+    exp: issuedAt + timeoutMs / 100,
+    event_id: randomBase64UrlStr(16),
+    event_type: event,
+    user_agent: "NotYetSupportedInFirebaseAuthEmulator", // TODO: switch to express.js to get UserAgent
+    ip_address: "127.0.0.1", // TODO: switch to express.js to get IP address
+    locale: "en",
+    user_record: {
+      uid: user.localId,
+      email: user.email,
+      email_verified: user.emailVerified,
+      display_name: user.displayName,
+      photo_url: user.photoUrl,
+      disabled: user.disabled,
+      phone_number: user.phoneNumber,
+      custom_claims: user.customAttributes,
+    },
+    sub: user.localId,
+    sign_in_method: options.signInMethod,
+    sign_in_second_factor: options.signInSecondFactor,
+    sign_in_attributes: options.signInAttributes,
+    raw_user_info: options.rawUserInfo,
+  };
+
+  if (state instanceof TenantProjectState) {
+    jwt.tenant_id = state.tenantId;
+    jwt.user_record.tenant_id = state.tenantId;
+  }
+
+  const providerData = [];
+  if (user.providerUserInfo) {
+    for (const providerUserInfo of user.providerUserInfo) {
+      const provider: Provider = {
+        provider_id: providerUserInfo.providerId,
+        display_name: providerUserInfo.displayName,
+        photo_url: providerUserInfo.photoUrl,
+        email: providerUserInfo.email,
+        uid: providerUserInfo.rawId,
+        phone_number: providerUserInfo.phoneNumber,
+      };
+      providerData.push(provider);
+    }
+  }
+  jwt.user_record.provider_data = providerData;
+
+  if (user.mfaInfo) {
+    const enrolledFactors = [];
+    for (const mfaEnrollment of user.mfaInfo) {
+      if (!mfaEnrollment.mfaEnrollmentId) {
+        continue;
+      }
+      const enrolledFactor: EnrolledFactor = {
+        uid: mfaEnrollment.mfaEnrollmentId,
+        display_name: mfaEnrollment.displayName,
+        enrollment_time: mfaEnrollment.enrolledAt,
+        phone_number: mfaEnrollment.phoneInfo,
+        factor_id: PROVIDER_PHONE,
+      };
+      enrolledFactors.push(enrolledFactor);
+    }
+    jwt.user_record.multi_factor = {
+      enrolled_factors: enrolledFactors,
+    };
+  }
+
+  if (user.lastLoginAt || user.createdAt) {
+    jwt.user_record.metadata = {
+      last_sign_in_time: user.lastLoginAt,
+      creation_time: user.createdAt,
+    };
+  }
+
+  if (state.shouldForwardCredentialToBlockingFunction("accessToken")) {
+    jwt.oauth_access_token = oauthTokens.oauthAccessToken;
+    jwt.oauth_token_secret = oauthTokens.oauthTokenSecret;
+    jwt.oauth_expires_in = oauthTokens.oauthExpiresIn;
+  }
+
+  if (state.shouldForwardCredentialToBlockingFunction("idToken")) {
+    jwt.oauth_id_token = oauthTokens.oauthIdToken;
+  }
+
+  if (state.shouldForwardCredentialToBlockingFunction("refreshToken")) {
+    jwt.oauth_refresh_token = oauthTokens.oauthRefreshToken;
+  }
+
+  const jwtStr = signJwt(jwt, "", {
+    algorithm: "none",
+  });
+
+  return jwtStr;
+}
+
+export function parseBlockingFunctionJwt(jwt: string): BlockingFunctionsJwtPayload {
+  const decoded = decodeJwt(jwt, { json: true }) as BlockingFunctionsJwtPayload;
+  assert(decoded, "((Invalid blocking function jwt.))");
+  assert(decoded.iss, "((Invalid blocking function jwt, missing `iss` claim.))");
+  assert(decoded.aud, "((Invalid blocking function jwt, missing `aud` claim.))");
+  assert(decoded.user_record, "((Invalid blocking function jwt, missing `user_record` claim.))");
+  return decoded;
+}
+
 export interface SamlAssertion {
   subject?: {
     nameId?: string;
@@ -2840,7 +3252,6 @@ export interface SamlResponse {
   assertion?: SamlAssertion;
 }
 
-/* eslint-disable camelcase */
 export interface FirebaseJwtPayload {
   // Standard fields:
   iat: number; // issuedAt (in seconds since epoch)
@@ -2868,7 +3279,6 @@ export interface FirebaseJwtPayload {
     sign_in_provider: string;
     sign_in_second_factor?: string;
     second_factor_identifier?: string;
-    usage_mode?: string;
     tenant?: string;
     sign_in_attributes?: unknown;
   };
@@ -2970,4 +3380,93 @@ export interface IdpJwtPayload {
   locale?: string;
   hd?: string;
 }
-/* eslint-enable camelcase */
+
+export interface BlockingFunctionResponsePayload {
+  userRecord?: {
+    updateMask?: string;
+    displayName?: string;
+    photoUrl?: string;
+    disabled?: boolean;
+    emailVerified?: boolean;
+    customClaims?: string;
+    sessionClaims?: string;
+  };
+}
+
+export interface BlockingFunctionUpdates {
+  displayName?: string;
+  photoUrl?: string;
+  disabled?: boolean;
+  emailVerified?: boolean;
+  customAttributes?: string;
+}
+
+/**
+ * Information corresponding to a sign in provider.
+ */
+export interface Provider {
+  provider_id?: string;
+  display_name?: string;
+  photo_url?: string;
+  email?: string;
+  uid?: string;
+  phone_number?: string;
+}
+
+/**
+ * Enrolled factors for MFA.
+ */
+export interface EnrolledFactor {
+  uid: string;
+  display_name?: string;
+  enrollment_time?: string;
+  phone_number?: string;
+  factor_id: string;
+}
+
+/**
+ * Typing for payload passed to blocking function requests.
+ */
+export interface BlockingFunctionsJwtPayload {
+  iss: string; // issuer (=`https://securetoken.google.com/{projectId}`)
+  aud: string; // audience (=`{functionUri}`)
+  iat: number; // issuedAt (in seconds since epoch)
+  exp: number; // expiresAt (in seconds since epoch)
+  event_id: string; // event identifier (=randomly generated base 64 string)
+  event_type: string; // one of BlockingFunctionEvents
+  user_agent: string;
+  ip_address: string;
+  locale: string;
+  user_record: {
+    uid?: string;
+    email?: string;
+    email_verified?: boolean;
+    display_name?: string;
+    photo_url?: string;
+    disabled?: boolean;
+    phone_number?: string;
+    provider_data?: Provider[];
+    multi_factor?: {
+      enrolled_factors: EnrolledFactor[];
+    };
+    metadata?: {
+      last_sign_in_time?: string;
+      creation_time?: string;
+    };
+    custom_claims?: string;
+    tenant_id?: string; // should match top level tenant_id
+  };
+  tenant_id?: string; // `tenantId` if present
+  sign_in_method?: string;
+  sign_in_second_factor?: string;
+  sign_in_attributes?: string;
+  raw_user_info?: string;
+  sub?: string;
+
+  // Presence of these fields depends on blocking functions configuration
+  oauth_id_token?: string;
+  oauth_access_token?: string;
+  oauth_token_secret?: string;
+  oauth_refresh_token?: string;
+  oauth_expires_in?: string;
+}

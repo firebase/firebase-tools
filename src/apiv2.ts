@@ -10,12 +10,15 @@ import util from "util";
 import * as auth from "./auth";
 import { FirebaseError } from "./error";
 import { logger } from "./logger";
-import * as responseToError from "./responseToError";
+import { responseToError } from "./responseToError";
+import * as FormData from "form-data";
 
 // Using import would require resolveJsonModule, which seems to break the
 // build/output format.
 const pkg = require("../package.json");
 const CLI_VERSION: string = pkg.version;
+
+const GOOG_QUOTA_USER = "x-goog-quota-user";
 
 export type HttpMethod = "GET" | "PUT" | "POST" | "DELETE" | "PATCH";
 
@@ -282,7 +285,6 @@ export class Client {
     }
     // TODO: remove the as any once auth.js is migrated to auth.ts
     interface AccessToken {
-      /* eslint-disable camelcase */
       access_token: string;
     }
     const data = (await auth.getAccessToken(refreshToken, [])) as AccessToken;
@@ -464,6 +466,14 @@ export class Client {
     }
     const logURL = this.requestURL(options);
     logger.debug(`>>> [apiv2][query] ${options.method} ${logURL} ${queryParamsLog}`);
+    const headers = options.headers;
+    if (headers && headers.has(GOOG_QUOTA_USER)) {
+      logger.debug(
+        `>>> [apiv2][(partial)header] ${options.method} ${logURL} x-goog-quota-user=${
+          headers.get(GOOG_QUOTA_USER) || ""
+        }`
+      );
+    }
     if (options.body !== undefined) {
       let logBody = "[omitted]";
       if (!options.skipLog?.body) {
@@ -507,5 +517,5 @@ function bodyToString(body: unknown): string {
 }
 
 function isStream(o: unknown): o is NodeJS.ReadableStream {
-  return o instanceof Readable;
+  return o instanceof Readable || o instanceof FormData;
 }

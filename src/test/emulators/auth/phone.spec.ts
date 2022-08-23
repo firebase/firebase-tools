@@ -1,4 +1,5 @@
 import { expect } from "chai";
+import * as nock from "nock";
 import { decode as decodeJwt, JwtHeader } from "jsonwebtoken";
 import { FirebaseJwtPayload } from "../../../emulator/auth/operations";
 import { describeAuthEmulator, PROJECT_ID } from "./setup";
@@ -13,8 +14,15 @@ import {
   TEST_PHONE_NUMBER,
   TEST_PHONE_NUMBER_2,
   enrollPhoneMfa,
-  updateProjectConfig,
   registerTenant,
+  updateConfig,
+  BEFORE_CREATE_PATH,
+  BEFORE_CREATE_URL,
+  BLOCKING_FUNCTION_HOST,
+  DISPLAY_NAME,
+  PHOTO_URL,
+  BEFORE_SIGN_IN_PATH,
+  BEFORE_SIGN_IN_URL,
 } from "./helpers";
 
 describeAuthEmulator("phone auth sign-in", ({ authApi }) => {
@@ -73,22 +81,6 @@ describeAuthEmulator("phone auth sign-in", ({ authApi }) => {
         expect(res.body.error)
           .to.have.property("message")
           .equals("INVALID_PHONE_NUMBER : Invalid format.");
-      });
-  });
-
-  it("should error on sendVerificationMode if usageMode is passthrough", async () => {
-    const phoneNumber = TEST_PHONE_NUMBER;
-    await updateProjectConfig(authApi(), { usageMode: "PASSTHROUGH" });
-
-    const sessionInfo = await authApi()
-      .post("/identitytoolkit.googleapis.com/v1/accounts:sendVerificationCode")
-      .query({ key: "fake-api-key" })
-      .send({ phoneNumber, recaptchaToken: "ignored" })
-      .then((res) => {
-        expectStatusCode(400, res);
-        expect(res.body.error)
-          .to.have.property("message")
-          .equals("UNSUPPORTED_PASSTHROUGH_OPERATION");
       });
   });
 
@@ -404,32 +396,6 @@ describeAuthEmulator("phone auth sign-in", ({ authApi }) => {
       });
   });
 
-  it("should error on signInWithPhoneNumber if usageMode is passthrough", async () => {
-    const phoneNumber = TEST_PHONE_NUMBER;
-    const sessionInfo = await authApi()
-      .post("/identitytoolkit.googleapis.com/v1/accounts:sendVerificationCode")
-      .query({ key: "fake-api-key" })
-      .send({ phoneNumber, recaptchaToken: "ignored" })
-      .then((res) => {
-        expectStatusCode(200, res);
-        return res.body.sessionInfo;
-      });
-    const codes = await inspectVerificationCodes(authApi());
-    const code = codes[0].code;
-    await updateProjectConfig(authApi(), { usageMode: "PASSTHROUGH" });
-
-    await authApi()
-      .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithPhoneNumber")
-      .query({ key: "fake-api-key" })
-      .send({ sessionInfo, code })
-      .then((res) => {
-        expectStatusCode(400, res);
-        expect(res.body.error)
-          .to.have.property("message")
-          .equals("UNSUPPORTED_PASSTHROUGH_OPERATION");
-      });
-  });
-
   it("should error if auth is disabled", async () => {
     const tenant = await registerTenant(authApi(), PROJECT_ID, { disableAuth: true });
 
@@ -454,5 +420,262 @@ describeAuthEmulator("phone auth sign-in", ({ authApi }) => {
         expectStatusCode(400, res);
         expect(res.body.error).to.have.property("message").equals("UNSUPPORTED_TENANT_OPERATION");
       });
+  });
+
+  describe("when blocking functions are present", () => {
+    afterEach(() => {
+      expect(nock.isDone()).to.be.true;
+      nock.cleanAll();
+    });
+
+    it("should update modifiable fields for new users", async () => {
+      await updateConfig(
+        authApi(),
+        PROJECT_ID,
+        {
+          blockingFunctions: {
+            triggers: {
+              beforeCreate: {
+                functionUri: BEFORE_CREATE_URL,
+              },
+            },
+          },
+        },
+        "blockingFunctions"
+      );
+      nock(BLOCKING_FUNCTION_HOST)
+        .post(BEFORE_CREATE_PATH)
+        .reply(200, {
+          userRecord: {
+            updateMask: "displayName,photoUrl,emailVerified,customClaims",
+            displayName: DISPLAY_NAME,
+            photoUrl: PHOTO_URL,
+            emailVerified: true,
+            customClaims: JSON.stringify({ customAttribute: "custom" }),
+          },
+        });
+      const phoneNumber = TEST_PHONE_NUMBER;
+      const sessionInfo = await authApi()
+        .post("/identitytoolkit.googleapis.com/v1/accounts:sendVerificationCode")
+        .query({ key: "fake-api-key" })
+        .send({ phoneNumber, recaptchaToken: "ignored" })
+        .then((res) => {
+          expectStatusCode(200, res);
+          return res.body.sessionInfo;
+        });
+      const codes = await inspectVerificationCodes(authApi());
+      const code = codes[0].code;
+
+      await authApi()
+        .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithPhoneNumber")
+        .query({ key: "fake-api-key" })
+        .send({ sessionInfo, code })
+        .then((res) => {
+          expectStatusCode(200, res);
+          expect(res.body).to.have.property("isNewUser").equals(true);
+          expect(res.body).to.have.property("phoneNumber").equals(phoneNumber);
+          expect(res.body).to.have.property("refreshToken").that.is.a("string");
+
+          const idToken = res.body.idToken;
+          const decoded = decodeJwt(idToken, { complete: true }) as {
+            header: JwtHeader;
+            payload: FirebaseJwtPayload;
+          } | null;
+          expect(decoded, "JWT returned by emulator is invalid").not.to.be.null;
+          expect(decoded!.header.alg).to.eql("none");
+
+          expect(decoded!.payload.name).to.equal(DISPLAY_NAME);
+          expect(decoded!.payload.picture).to.equal(PHOTO_URL);
+          expect(decoded!.payload.email_verified).to.be.true;
+          expect(decoded!.payload).to.have.property("customAttribute").equals("custom");
+        });
+    });
+
+    it("should update modifiable fields for existing users", async () => {
+      await updateConfig(
+        authApi(),
+        PROJECT_ID,
+        {
+          blockingFunctions: {
+            triggers: {
+              beforeSignIn: {
+                functionUri: BEFORE_SIGN_IN_URL,
+              },
+            },
+          },
+        },
+        "blockingFunctions"
+      );
+      nock(BLOCKING_FUNCTION_HOST)
+        .post(BEFORE_SIGN_IN_PATH)
+        .reply(200, {
+          userRecord: {
+            updateMask: "displayName,photoUrl,emailVerified,customClaims,sessionClaims",
+            displayName: DISPLAY_NAME,
+            photoUrl: PHOTO_URL,
+            emailVerified: true,
+            customClaims: JSON.stringify({ customAttribute: "custom" }),
+            sessionClaims: JSON.stringify({ sessionAttribute: "session" }),
+          },
+        });
+      const phoneNumber = TEST_PHONE_NUMBER;
+      const sessionInfo = await authApi()
+        .post("/identitytoolkit.googleapis.com/v1/accounts:sendVerificationCode")
+        .query({ key: "fake-api-key" })
+        .send({ phoneNumber, recaptchaToken: "ignored" })
+        .then((res) => {
+          expectStatusCode(200, res);
+          return res.body.sessionInfo;
+        });
+      const codes = await inspectVerificationCodes(authApi());
+      const code = codes[0].code;
+
+      await authApi()
+        .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithPhoneNumber")
+        .query({ key: "fake-api-key" })
+        .send({ sessionInfo, code })
+        .then((res) => {
+          expectStatusCode(200, res);
+          expect(res.body).to.have.property("isNewUser").equals(true);
+          expect(res.body).to.have.property("phoneNumber").equals(phoneNumber);
+          expect(res.body).to.have.property("refreshToken").that.is.a("string");
+
+          const idToken = res.body.idToken;
+          const decoded = decodeJwt(idToken, { complete: true }) as {
+            header: JwtHeader;
+            payload: FirebaseJwtPayload;
+          } | null;
+          expect(decoded, "JWT returned by emulator is invalid").not.to.be.null;
+          expect(decoded!.header.alg).to.eql("none");
+
+          expect(decoded!.payload.name).to.equal(DISPLAY_NAME);
+          expect(decoded!.payload.picture).to.equal(PHOTO_URL);
+          expect(decoded!.payload.email_verified).to.be.true;
+          expect(decoded!.payload).to.have.property("customAttribute").equals("custom");
+          expect(decoded!.payload).to.have.property("sessionAttribute").equals("session");
+        });
+    });
+
+    it("beforeSignIn fields should overwrite beforeCreate fields", async () => {
+      await updateConfig(
+        authApi(),
+        PROJECT_ID,
+        {
+          blockingFunctions: {
+            triggers: {
+              beforeCreate: {
+                functionUri: BEFORE_CREATE_URL,
+              },
+              beforeSignIn: {
+                functionUri: BEFORE_SIGN_IN_URL,
+              },
+            },
+          },
+        },
+        "blockingFunctions"
+      );
+      nock(BLOCKING_FUNCTION_HOST)
+        .post(BEFORE_CREATE_PATH)
+        .reply(200, {
+          userRecord: {
+            updateMask: "displayName,photoUrl,emailVerified,customClaims",
+            displayName: "oldDisplayName",
+            photoUrl: "oldPhotoUrl",
+            emailVerified: false,
+            customClaims: JSON.stringify({ customAttribute: "oldCustom" }),
+          },
+        })
+        .post(BEFORE_SIGN_IN_PATH)
+        .reply(200, {
+          userRecord: {
+            updateMask: "displayName,photoUrl,emailVerified,customClaims,sessionClaims",
+            displayName: DISPLAY_NAME,
+            photoUrl: PHOTO_URL,
+            emailVerified: true,
+            customClaims: JSON.stringify({ customAttribute: "custom" }),
+            sessionClaims: JSON.stringify({ sessionAttribute: "session" }),
+          },
+        });
+      const phoneNumber = TEST_PHONE_NUMBER;
+      const sessionInfo = await authApi()
+        .post("/identitytoolkit.googleapis.com/v1/accounts:sendVerificationCode")
+        .query({ key: "fake-api-key" })
+        .send({ phoneNumber, recaptchaToken: "ignored" })
+        .then((res) => {
+          expectStatusCode(200, res);
+          return res.body.sessionInfo;
+        });
+      const codes = await inspectVerificationCodes(authApi());
+      const code = codes[0].code;
+
+      await authApi()
+        .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithPhoneNumber")
+        .query({ key: "fake-api-key" })
+        .send({ sessionInfo, code })
+        .then((res) => {
+          expectStatusCode(200, res);
+          expect(res.body).to.have.property("isNewUser").equals(true);
+          expect(res.body).to.have.property("phoneNumber").equals(phoneNumber);
+          expect(res.body).to.have.property("refreshToken").that.is.a("string");
+
+          const idToken = res.body.idToken;
+          const decoded = decodeJwt(idToken, { complete: true }) as {
+            header: JwtHeader;
+            payload: FirebaseJwtPayload;
+          } | null;
+          expect(decoded, "JWT returned by emulator is invalid").not.to.be.null;
+          expect(decoded!.header.alg).to.eql("none");
+
+          expect(decoded!.payload.name).to.equal(DISPLAY_NAME);
+          expect(decoded!.payload.picture).to.equal(PHOTO_URL);
+          expect(decoded!.payload.email_verified).to.be.true;
+          expect(decoded!.payload).to.have.property("customAttribute").equals("custom");
+          expect(decoded!.payload).to.have.property("sessionAttribute").equals("session");
+        });
+    });
+
+    it("should disable user if set", async () => {
+      await updateConfig(
+        authApi(),
+        PROJECT_ID,
+        {
+          blockingFunctions: {
+            triggers: {
+              beforeCreate: {
+                functionUri: BEFORE_CREATE_URL,
+              },
+            },
+          },
+        },
+        "blockingFunctions"
+      );
+      nock(BLOCKING_FUNCTION_HOST)
+        .post(BEFORE_CREATE_PATH)
+        .reply(200, {
+          userRecord: {
+            updateMask: "disabled",
+            disabled: true,
+          },
+        });
+      const phoneNumber = TEST_PHONE_NUMBER;
+      const sessionInfo = await authApi()
+        .post("/identitytoolkit.googleapis.com/v1/accounts:sendVerificationCode")
+        .query({ key: "fake-api-key" })
+        .send({ phoneNumber, recaptchaToken: "ignored" })
+        .then((res) => {
+          expectStatusCode(200, res);
+          return res.body.sessionInfo;
+        });
+      const codes = await inspectVerificationCodes(authApi());
+
+      return authApi()
+        .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithPhoneNumber")
+        .query({ key: "fake-api-key" })
+        .send({ sessionInfo, code: codes[0].code })
+        .then((res) => {
+          expectStatusCode(400, res);
+          expect(res.body.error).to.have.property("message").equals("USER_DISABLED");
+        });
+    });
   });
 });

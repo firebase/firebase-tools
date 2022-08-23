@@ -9,7 +9,7 @@ import {
 import { prompt } from "../prompt";
 import { requireAuth } from "../requireAuth";
 
-module.exports = new Command("projects:create [projectId]")
+export const command = new Command("projects:create [projectId]")
   .description(
     "creates a new Google Cloud Platform project, then adds Firebase resources to the project"
   )

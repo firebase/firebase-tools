@@ -1,4 +1,3 @@
-import * as proto from "../../gcp/proto";
 import * as gcf from "../../gcp/cloudfunctions";
 import * as gcfV2 from "../../gcp/cloudfunctionsv2";
 import * as run from "../../gcp/run";
@@ -10,20 +9,21 @@ import { flattenArray, zip } from "../../functional";
 
 /** Retry settings for a ScheduleSpec. */
 export interface ScheduleRetryConfig {
-  retryCount?: number;
-  maxRetryDuration?: proto.Duration;
-  minBackoffDuration?: proto.Duration;
-  maxBackoffDuration?: proto.Duration;
-  maxDoublings?: number;
+  retryCount?: number | null;
+  maxRetrySeconds?: number | null;
+  minBackoffSeconds?: number | null;
+  maxBackoffSeconds?: number | null;
+  maxDoublings?: number | null;
 }
 
 export interface ScheduleTrigger {
   // Note: schedule is missing in the existingBackend because we
   // don't actually spend the API call looking up the schedule;
-  // we just infer identifiers from function labels.
+  // we just infer identifiers from function labels. OTOH, schedule cannot
+  // be null, because there is no default to set it to.
   schedule?: string;
-  timeZone?: string;
-  retryConfig?: ScheduleRetryConfig;
+  timeZone?: string | null;
+  retryConfig?: ScheduleRetryConfig | null;
 }
 
 /** Something that has a ScheduleTrigger */
@@ -33,7 +33,7 @@ export interface ScheduleTriggered {
 
 /** API agnostic version of a Cloud Function's HTTPs trigger. */
 export interface HttpsTrigger {
-  invoker?: string[];
+  invoker?: string[] | null;
 }
 
 /** Something that has an HTTPS trigger */
@@ -73,7 +73,7 @@ export interface EventTrigger {
    * V2 will have arbitrary filters and some EventArc filters will be
    * top-level keys in the GCF API (e.g. "pubsubTopic").
    */
-  eventFilters: Record<EventFilterKey, string>;
+  eventFilters?: Record<EventFilterKey, string>;
 
   /**
    * Additional path-pattern filters for narrowing down which events to receive.
@@ -95,7 +95,7 @@ export interface EventTrigger {
    * Which service account EventArc should use to emit a function.
    * This field is ignored for v1 and defaults to the
    */
-  serviceAccountEmail?: string;
+  serviceAccount?: string | null;
 
   /**
    * The name of the channel where the function receive events.
@@ -110,22 +110,22 @@ export interface EventTriggered {
 }
 
 export interface TaskQueueRateLimits {
-  maxConcurrentDispatches?: number;
-  maxDispatchesPerSecond?: number;
+  maxConcurrentDispatches?: number | null;
+  maxDispatchesPerSecond?: number | null;
 }
 
 export interface TaskQueueRetryConfig {
-  maxAttempts?: number;
-  maxRetrySeconds?: number;
-  maxBackoffSeconds?: number;
-  maxDoublings?: number;
-  minBackoffSeconds?: number;
+  maxAttempts?: number | null;
+  maxRetrySeconds?: number | null;
+  maxBackoffSeconds?: number | null;
+  maxDoublings?: number | null;
+  minBackoffSeconds?: number | null;
 }
 
 export interface TaskQueueTrigger {
-  rateLimits?: TaskQueueRateLimits;
-  retryConfig?: TaskQueueRetryConfig;
-  invoker?: string[];
+  rateLimits?: TaskQueueRateLimits | null;
+  retryConfig?: TaskQueueRetryConfig | null;
+  invoker?: string[] | null;
 }
 
 export interface TaskQueueTriggered {
@@ -169,9 +169,14 @@ export const AllIngressSettings: IngressSettings[] = [
   "ALLOW_INTERNAL_AND_GCLB",
 ];
 export type MemoryOptions = 128 | 256 | 512 | 1024 | 2048 | 4096 | 8192 | 16384 | 32768;
-export const AllMemoryOptions: MemoryOptions[] = [
-  128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768,
-];
+const allMemoryOptions: MemoryOptions[] = [128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768];
+
+/**
+ * Is a given number a valid MemoryOption?
+ */
+export function isValidMemoryOption(mem: unknown): mem is MemoryOptions {
+  return allMemoryOptions.includes(mem as MemoryOptions);
+}
 
 /** Returns a human-readable name with MB or GB suffix for a MemoryOption (MB). */
 export function memoryOptionDisplayName(option: MemoryOptions): string {
@@ -204,8 +209,8 @@ export function memoryToGen1Cpu(memory: MemoryOptions): number {
     2048: 1,
     4096: 2,
     8192: 2,
-    16384: 3,
-    32768: 4,
+    16384: 4,
+    32768: 8,
   }[memory];
 }
 
@@ -223,8 +228,8 @@ export function memoryToGen2Cpu(memory: MemoryOptions): number {
     2048: 1,
     4096: 2,
     8192: 2,
-    16384: 3,
-    32768: 4,
+    16384: 4,
+    32768: 8,
   }[memory];
 }
 
@@ -270,21 +275,21 @@ export function secretVersionName(s: SecretEnvVar): string {
 }
 
 export interface ServiceConfiguration {
-  concurrency?: number;
-  labels?: Record<string, string>;
-  environmentVariables?: Record<string, string>;
-  secretEnvironmentVariables?: SecretEnvVar[];
-  availableMemoryMb?: MemoryOptions;
-  cpu?: number | "gcf_gen1";
-  timeoutSeconds?: number;
-  maxInstances?: number;
-  minInstances?: number;
+  concurrency?: number | null;
+  labels?: Record<string, string> | null;
+  environmentVariables?: Record<string, string> | null;
+  secretEnvironmentVariables?: SecretEnvVar[] | null;
+  availableMemoryMb?: MemoryOptions | null;
+  cpu?: number | "gcf_gen1" | null;
+  timeoutSeconds?: number | null;
+  maxInstances?: number | null;
+  minInstances?: number | null;
   vpc?: {
     connector: string;
-    egressSettings?: VpcEgressSettings;
-  };
-  ingressSettings?: IngressSettings;
-  serviceAccountEmail?: "default" | string;
+    egressSettings?: VpcEgressSettings | null;
+  } | null;
+  ingressSettings?: IngressSettings | null;
+  serviceAccount?: string | null;
 }
 
 export type FunctionsPlatform = "gcfv1" | "gcfv2";
@@ -354,6 +359,10 @@ export type Endpoint = TargetIds &
     // This is a temporary fix to address https://github.com/firebase/firebase-tools/issues/4171
     // GCFv1 can be http or https and GCFv2 is always https
     securityLevel?: gcf.SecurityLevel;
+
+    // "Hash" is a value derived from function labels that is used to check if there are any changes
+    // between the serverside and local copies of the function.
+    hash?: string;
   };
 
 export interface RequiredAPI {
@@ -461,7 +470,7 @@ export function functionName(cloudFunction: TargetIds): string {
 /**
  * The naming pattern used to create a Pub/Sub Topic or Scheduler Job ID for a given scheduled function.
  * This pattern is hard-coded and assumed throughout tooling, both in the Firebase Console and in the CLI.
- * For e.g., we automatically assume a schedule and topic with this name exists when we list funcitons and
+ * For e.g., we automatically assume a schedule and topic with this name exists when we list functions and
  * see a label that it has an attached schedule. This saves us from making extra API calls.
  * DANGER: We use the pattern defined here to deploy and delete schedules,
  * and to display scheduled functions in the Firebase console

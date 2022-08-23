@@ -1,19 +1,22 @@
 import * as backend from "./backend";
 import * as proto from "../../gcp/proto";
 import * as api from "../../.../../api";
+import * as params from "./params";
+import { previews } from "../../previews";
 import { FirebaseError } from "../../error";
-import { assertExhaustive } from "../../functional";
+import { assertExhaustive, mapObject, nullsafeVisitor } from "../../functional";
+import { UserEnvsOpts, writeUserEnvs } from "../../functions/env";
+import { logger } from "../../logger";
 
 /* The union of a customer-controlled deployment and potentially deploy-time defined parameters */
 export interface Build {
   requiredAPIs: RequiredApi[];
   endpoints: Record<string, Endpoint>;
-  params: Param[];
+  params: params.Param[];
 }
 
-/* A utility function that returns an empty Build. */
 /**
- *
+ *  A utility function that returns an empty Build.
  */
 export function empty(): Build {
   return {
@@ -23,9 +26,8 @@ export function empty(): Build {
   };
 }
 
-/* A utility function that creates a Build containing a map of IDs to Endpoints. */
 /**
- *
+ * A utility function that creates a Build containing a map of IDs to Endpoints
  */
 export function of(endpoints: Record<string, Endpoint>): Build {
   const build = empty();
@@ -33,7 +35,7 @@ export function of(endpoints: Record<string, Endpoint>): Build {
   return build;
 }
 
-interface RequiredApi {
+export interface RequiredApi {
   // The API that should be enabled. For Google APIs, this should be a googleapis.com subdomain
   // (e.g. vision.googleapis.com)
   api: string;
@@ -50,35 +52,8 @@ interface RequiredApi {
 // expressions.
 // `Expression<Foo> == Expression<Foo>` is an Expression<boolean>
 // `Expression<boolean> ? Expression<T> : Expression<T>` is an Expression<T>
-type Expression<T extends string | number | boolean> = string;
-type Field<T extends string | number | boolean> = T | Expression<T> | null;
-
-function resolveInt(from: number | Expression<number> | null): number {
-  if (from == null) {
-    return 0;
-  } else if (typeof from === "string") {
-    throw new FirebaseError("CEL evaluation of expression '" + from + "' not yet supported");
-  }
-  return from;
-}
-
-function resolveString(from: string | Expression<string> | null): string {
-  if (from == null) {
-    return "";
-  } else if (from.includes("{{") && from.includes("}}")) {
-    throw new FirebaseError("CEL evaluation of expression '" + from + "' not yet supported");
-  }
-  return from;
-}
-
-function resolveBoolean(from: boolean | Expression<boolean> | null): boolean {
-  if (from == null) {
-    return false;
-  } else if (typeof from === "string") {
-    throw new FirebaseError("CEL evaluation of expression '" + from + "' not yet supported");
-  }
-  return from;
-}
+export type Expression<T extends string | number | boolean> = string; // eslint-disable-line
+export type Field<T extends string | number | boolean> = T | Expression<T> | null;
 
 // A service account must either:
 // 1. Be a project-relative email that ends with "@" (e.g. database-users@)
@@ -89,7 +64,7 @@ type ServiceAccount = string;
 export interface HttpsTrigger {
   // Which service account should be able to trigger this function. No value means "make public
   // on create and don't do anything on update." For more, see go/cf3-http-access-control
-  invoker?: ServiceAccount | null;
+  invoker?: Array<ServiceAccount | Expression<ServiceAccount>> | null;
 }
 
 // Trigger definitions for RPCs servers using the HTTP protocol defined at
@@ -101,13 +76,15 @@ interface CallableTrigger { }
 // For example, before user login.
 export interface BlockingTrigger {
   eventType: string;
+  options?: Record<string, unknown>;
 }
 
 // Trigger definitions for endpoints that listen to CloudEvents emitted by other systems (or legacy
 // Google events for GCF gen 1)
 export interface EventTrigger {
   eventType: string;
-  eventFilters: Record<string, Expression<string>>;
+  eventFilters?: Record<string, string | Expression<string>>;
+  eventFilterPathPatterns?: Record<string, string | Expression<string>>;
 
   // whether failed function executions should retry the event execution.
   // Retries are indefinite, so developers should be sure to add some end condition (e.g. event
@@ -117,23 +94,29 @@ export interface EventTrigger {
   // Region of the EventArc trigger. Must be the same region or multi-region as the event
   // trigger or be us-central1. All first party triggers (all triggers as of Jan 2022) need not
   // specify this field because tooling determines the correct value automatically.
-  region?: Field<string>;
+  // N.B. This is an Expression<string> not Field<string> because it cannot be reset
+  // by setting to null
+  region?: string | Expression<string>;
 
   // The service account that EventArc should use to invoke this function. Setting this field
   // requires the EventArc P4SA to be granted the "ActAs" permission to this service account and
   // will cause the "invoker" role to be granted to this service account on the endpoint
   // (Function or Route)
   serviceAccount?: ServiceAccount | null;
+
+  // The name of the channel where the function receives events.
+  // Must be provided to receive CF3v2 custom events.
+  channel?: string;
 }
 
-interface TaskQueueRateLimits {
+export interface TaskQueueRateLimits {
   maxConcurrentDispatches?: Field<number>;
   maxDispatchesPerSecond?: Field<number>;
 }
 
-interface TaskQueueRetryConfig {
+export interface TaskQueueRetryConfig {
   maxAttempts?: Field<number>;
-  maxRetryDurationSeconds: Field<number>;
+  maxRetrySeconds?: Field<number>;
   minBackoffSeconds?: Field<number>;
   maxBackoffSeconds?: Field<number>;
   maxDoublings?: Field<number>;
@@ -144,10 +127,10 @@ export interface TaskQueueTrigger {
   retryConfig?: TaskQueueRetryConfig | null;
 
   // empty array means private
-  invoker?: Array<ServiceAccount | Expression<string>> | null;
+  invoker?: Array<ServiceAccount | Expression<ServiceAccount>> | null;
 }
 
-interface ScheduleRetryConfig {
+export interface ScheduleRetryConfig {
   retryCount?: Field<number>;
   maxRetrySeconds?: Field<number>;
   minBackoffSeconds?: Field<number>;
@@ -157,22 +140,84 @@ interface ScheduleRetryConfig {
 
 export interface ScheduleTrigger {
   schedule: string | Expression<string>;
-  timeZone: string | Expression<string>;
-  retryConfig: ScheduleRetryConfig;
+  timeZone?: Field<string>;
+  retryConfig?: ScheduleRetryConfig | null;
 }
 
+export type HttpsTriggered = { httpsTrigger: HttpsTrigger };
+export type CallableTriggered = { callableTrigger: CallableTrigger };
+export type BlockingTriggered = { blockingTrigger: BlockingTrigger };
+export type EventTriggered = { eventTrigger: EventTrigger };
+export type ScheduleTriggered = { scheduleTrigger: ScheduleTrigger };
+export type TaskQueueTriggered = { taskQueueTrigger: TaskQueueTrigger };
 export type Triggered =
-  | { httpsTrigger: HttpsTrigger }
-  | { callableTrigger: CallableTrigger }
-  | { blockingTrigger: BlockingTrigger }
-  | { eventTrigger: EventTrigger }
-  | { scheduleTrigger: ScheduleTrigger }
-  | { taskQueueTrigger: TaskQueueTrigger };
+  | HttpsTriggered
+  | CallableTriggered
+  | BlockingTriggered
+  | EventTriggered
+  | ScheduleTriggered
+  | TaskQueueTriggered;
 
-interface VpcSettings {
-  connector: string | Expression<string>;
-  egressSettings?: "PRIVATE_RANGES_ONLY" | "ALL_TRAFFIC";
+/** Whether something has an HttpsTrigger */
+export function isHttpsTriggered(triggered: Triggered): triggered is HttpsTriggered {
+  return {}.hasOwnProperty.call(triggered, "httpsTrigger");
 }
+
+/** Whether something has a CallableTrigger */
+export function isCallableTriggered(triggered: Triggered): triggered is CallableTriggered {
+  return {}.hasOwnProperty.call(triggered, "callableTrigger");
+}
+
+/** Whether something has an EventTrigger */
+export function isEventTriggered(triggered: Triggered): triggered is EventTriggered {
+  return {}.hasOwnProperty.call(triggered, "eventTrigger");
+}
+
+/** Whether something has a ScheduleTrigger */
+export function isScheduleTriggered(triggered: Triggered): triggered is ScheduleTriggered {
+  return {}.hasOwnProperty.call(triggered, "scheduleTrigger");
+}
+
+/** Whether something has a TaskQueueTrigger */
+export function isTaskQueueTriggered(triggered: Triggered): triggered is TaskQueueTriggered {
+  return {}.hasOwnProperty.call(triggered, "taskQueueTrigger");
+}
+
+/** Whether something has a BlockingTrigger */
+export function isBlockingTriggered(triggered: Triggered): triggered is BlockingTriggered {
+  return {}.hasOwnProperty.call(triggered, "blockingTrigger");
+}
+
+export interface VpcSettings {
+  connector: string | Expression<string>;
+  egressSettings?: "PRIVATE_RANGES_ONLY" | "ALL_TRAFFIC" | null;
+}
+
+export interface SecretEnvVar {
+  key: string; // The environment variable this secret is accessible at
+  secret: string; // The id of the SecretVersion - ie for projects/myproject/secrets/mysecret, this is 'mysecret'
+  projectId: string; // The project containing the Secret
+}
+
+export type MemoryOption = 128 | 256 | 512 | 1024 | 2048 | 4096 | 8192 | 16384 | 32768;
+const allMemoryOptions: MemoryOption[] = [128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768];
+/**
+ * Is a given number a valid MemoryOption?
+ */
+export function isValidMemoryOption(mem: unknown): mem is MemoryOption {
+  return allMemoryOptions.includes(mem as MemoryOption);
+}
+
+export type FunctionsPlatform = backend.FunctionsPlatform;
+export const AllFunctionsPlatforms: FunctionsPlatform[] = ["gcfv1", "gcfv2"];
+export type VpcEgressSetting = backend.VpcEgressSettings;
+export const AllVpcEgressSettings: VpcEgressSetting[] = ["PRIVATE_RANGES_ONLY", "ALL_TRAFFIC"];
+export type IngressSetting = backend.IngressSettings;
+export const AllIngressSettings: IngressSetting[] = [
+  "ALLOW_ALL",
+  "ALLOW_INTERNAL_ONLY",
+  "ALLOW_INTERNAL_AND_GCLB",
+];
 
 export type Endpoint = Triggered & {
   // Defaults to "gcfv2". "Run" will be an additional option defined later
@@ -182,11 +227,10 @@ export type Endpoint = Triggered & {
   // Will become optional once "run" is supported as a platform
   entryPoint: string;
 
-  // The services account that this function should run as. Has no effect for a Run service.
+  // The services account that this function should run as.
   // defaults to the GAE service account when a function is first created as a GCF gen 1 function.
-  // Defaults to the compute service account when a function is first created as a GCF gen 2 function
-  // or when using Cloud Run.
-  serviceAccount: ServiceAccount | null;
+  // Defaults to the compute service account when a function is first created as a GCF gen 2 function.
+  serviceAccount?: ServiceAccount | null;
 
   // defaults to ["us-central1"], overridable in firebase-tools with
   //  process.env.FIREBASE_FUNCTIONS_DEFAULT_REGION
@@ -204,6 +248,9 @@ export type Endpoint = Triggered & {
   // Default of 256
   availableMemoryMb?: Field<number>;
 
+  // Default of 1 for GCF 2nd gen;
+  cpu?: Field<number>;
+
   // Default of 60
   timeoutSeconds?: Field<number>;
 
@@ -216,111 +263,204 @@ export type Endpoint = Triggered & {
   vpc?: VpcSettings | null;
   ingressSettings?: "ALLOW_ALL" | "ALLOW_INTERNAL_ONLY" | "ALLOW_INTERNAL_AND_GCLB" | null;
 
-  environmentVariables?: Record<string, string | Expression<string>>;
-  labels?: Record<string, string | Expression<string>>;
+  environmentVariables?: Record<string, string | Expression<string>> | null;
+  secretEnvironmentVariables?: SecretEnvVar[] | null;
+  labels?: Record<string, string | Expression<string>> | null;
 };
 
-interface ParamBase<T extends string | number | boolean> {
-  // name of the param. Will be exposed as an environment variable with this name
-  param: string;
+/**
+ *  Resolves user-defined parameters inside a Build, and returns a Backend ready for upload to the API
+ */
+export async function resolveBackend(
+  build: Build,
+  userEnvOpt: UserEnvsOpts,
+  userEnvs: Record<string, string>,
+  nonInteractive?: boolean
+): Promise<backend.Backend> {
+  const projectId = userEnvOpt.projectId;
+  let paramValues: Record<string, Field<string | number | boolean>> = {};
+  if (previews.functionsparams) {
+    paramValues = await params.resolveParams(
+      build.params,
+      projectId,
+      envWithTypes(userEnvs),
+      nonInteractive
+    );
 
-  // A human friendly name for the param. Will be used in install/configure flows to describe
-  // what param is being updated. If omitted, UX will use the value of "param" instead.
-  label?: string;
+    // TODO(vsfan@): when merging secrets support into the Build, make sure we aren't writing those to disk.
+    const toWrite: Record<string, string> = {};
+    for (const paramName of Object.keys(paramValues)) {
+      if (userEnvs.hasOwnProperty(paramName)) {
+        continue;
+      }
+      toWrite[paramName] = paramValues[paramName]?.toString() || "";
+    }
+    writeUserEnvs(toWrite, userEnvOpt);
+  }
 
-  // A long description of the parameter's purpose and allowed values. If omitted, UX will not
-  // provide a description of the parameter
-  description?: string;
-
-  // Default value. If not provided, a param must be supplied.
-  default?: T | Expression<T>;
-
-  // default: false
-  immutable?: boolean;
+  return toBackend(build, paramValues);
 }
 
-interface StringParam extends ParamBase<string> {
-  type?: "string";
+function envWithTypes(rawEnvs: Record<string, string>): Record<string, string | number | boolean> {
+  const out: Record<string, string | number | boolean> = {};
+  for (const envName of Object.keys(rawEnvs)) {
+    const value = rawEnvs[envName];
+    if (!isNaN(+value) && isFinite(+value) && !value.includes("e")) {
+      out[envName] = +value;
+    } else if (value === "true") {
+      out[envName] = true;
+    } else if (value === "false") {
+      out[envName] = false;
+    } else {
+      out[envName] = value;
+    }
+  }
+  return out;
 }
 
-type Param = StringParam;
+// Utility class to make it more fluent to use proto.convertIfPresent
+// The class usese const lambdas so it doesn't loose the this context when
+// passing Resolver.resolveFoo as a proto.convertIfPresent arg.
+// The class also recognizes that if the input is not null the output cannot be
+// null.
+class Resolver {
+  constructor(private readonly paramValues: Record<string, Field<string | number | boolean>>) {}
 
-function isMemoryOption(value: backend.MemoryOptions | any): value is backend.MemoryOptions {
-  return value == null || [128, 256, 512, 1024, 2048, 4096, 8192].includes(value);
-}
+  // NB: The (Extract<T, null> | number) says "If T can be null, the return value"
+  // can be null. If we know input is not null, the return type is known to not
+  // be null.
+  readonly resolveInt = <T extends Field<number>>(i: T): Extract<T, null> | number => {
+    if (i === null) {
+      return i as Extract<T, null>;
+    }
+    return params.resolveInt(i, this.paramValues);
+  };
 
-/** Converts a build specification into a Backend representation, with all Params resolved and interpolated */
-// TODO(vsfan): resolve build.Params
-// TODO(vsfan): handle Expression<T> types
-export function resolveBackend(build: Build, userEnvs: Record<string, string>): backend.Backend {
-  for (const param of build.params) {
-    const expectedEnv = param.param;
-    if (!userEnvs.hasOwnProperty(expectedEnv)) {
-      throw new FirebaseError(
-        "Build specified parameter " +
-          expectedEnv +
-          " but it was not present in the user dotenv files"
-      );
+  readonly resolveBoolean = <T extends Field<boolean>>(i: T): Extract<T, null> | boolean => {
+    if (i === null) {
+      return i as Extract<T, null>;
+    }
+    return params.resolveBoolean(i, this.paramValues);
+  };
+
+  readonly resolveString = <T extends Field<string>>(i: T): Extract<T, null> | string => {
+    if (i === null) {
+      return i as Extract<T, null>;
+    }
+    return params.resolveString(i, this.paramValues);
+  };
+
+  resolveStrings<Key extends string>(
+    dest: { [K in Key]?: string | null },
+    src: { [K in Key]?: Field<string> },
+    ...keys: Key[]
+  ): void {
+    for (const key of keys) {
+      const orig = src[key];
+      if (typeof orig === "undefined") {
+        continue;
+      }
+      dest[key] = orig === null ? null : params.resolveString(orig, this.paramValues);
     }
   }
 
+  resolveInts<Key extends string>(
+    dest: { [K in Key]?: number | null },
+    src: { [K in Key]?: Field<number> },
+    ...keys: Key[]
+  ): void {
+    for (const key of keys) {
+      const orig = src[key];
+      if (typeof orig === "undefined") {
+        continue;
+      }
+      dest[key] = orig === null ? null : params.resolveInt(orig, this.paramValues);
+    }
+  }
+}
+
+/** Converts a build specification into a Backend representation, with all Params resolved and interpolated */
+// TODO(vsfan): handle Expression<T> types
+export function toBackend(
+  build: Build,
+  paramValues: Record<string, Field<string | number | boolean>>
+): backend.Backend {
+  const r = new Resolver(paramValues);
   const bkEndpoints: Array<backend.Endpoint> = [];
   for (const endpointId of Object.keys(build.endpoints)) {
-    const endpoint = build.endpoints[endpointId];
+    const bdEndpoint = build.endpoints[endpointId];
 
-    let regions = endpoint.region;
+    let regions = bdEndpoint.region;
     if (typeof regions === "undefined") {
       regions = [api.functionsDefaultRegion];
     }
     for (const region of regions) {
-      const trigger = discoverTrigger(endpoint);
+      const trigger = discoverTrigger(bdEndpoint, region, r);
 
-      if (typeof endpoint.platform === "undefined") {
+      if (typeof bdEndpoint.platform === "undefined") {
         throw new FirebaseError("platform can't be undefined");
       }
-      if (!isMemoryOption(endpoint.availableMemoryMb)) {
+      if (
+        bdEndpoint.availableMemoryMb != null &&
+        !backend.isValidMemoryOption(bdEndpoint.availableMemoryMb)
+      ) {
         throw new FirebaseError("available memory must be a supported value, if present");
       }
-      let timeout: number;
-      if (endpoint.timeoutSeconds) {
-        timeout = resolveInt(endpoint.timeoutSeconds);
-      } else {
-        timeout = 60;
-      }
-
       const bkEndpoint: backend.Endpoint = {
         id: endpointId,
-        project: endpoint.project,
+        project: bdEndpoint.project,
         region: region,
-        entryPoint: endpoint.entryPoint,
-        platform: endpoint.platform,
-        runtime: endpoint.runtime,
-        timeoutSeconds: timeout,
+        entryPoint: bdEndpoint.entryPoint,
+        platform: bdEndpoint.platform,
+        runtime: bdEndpoint.runtime,
         ...trigger,
       };
-      proto.renameIfPresent(bkEndpoint, endpoint, "maxInstances", "maxInstances", resolveInt);
-      proto.renameIfPresent(bkEndpoint, endpoint, "minInstances", "minInstances", resolveInt);
-      proto.renameIfPresent(bkEndpoint, endpoint, "concurrency", "concurrency", resolveInt);
       proto.copyIfPresent(
         bkEndpoint,
-        endpoint,
-        "ingressSettings",
-        "availableMemoryMb",
+        bdEndpoint,
         "environmentVariables",
-        "labels"
+        "labels",
+        "secretEnvironmentVariables",
+        "serviceAccount"
       );
-      // proto.copyIfPresent(bkEndpoint, endpoint, "secretEnvironmentVariables");
-      if (endpoint.vpc) {
-        bkEndpoint.vpc = {
-          // $REGION is a token in the Build VPC connector because Build endpoints can have multiple regions, so we unroll here
-          connector: resolveString(endpoint.vpc.connector).replace("$REGION", region),
-        };
-        proto.copyIfPresent(bkEndpoint.vpc, endpoint.vpc, "egressSettings");
-      }
-      if (endpoint.serviceAccount) {
-        bkEndpoint.serviceAccountEmail = endpoint.serviceAccount;
-      }
 
+      proto.convertIfPresent(bkEndpoint, bdEndpoint, "ingressSettings", (from) => {
+        if (from !== null && !backend.AllIngressSettings.includes(from)) {
+          throw new FirebaseError(`Cannot set ingress settings to invalid value ${from}`);
+        }
+        return from;
+      });
+      proto.convertIfPresent(bkEndpoint, bdEndpoint, "availableMemoryMb", (from) => {
+        const mem = r.resolveInt(from);
+        if (mem !== null && !backend.isValidMemoryOption(mem)) {
+          logger.debug("Warning; setting memory to unexpected value", mem);
+        }
+        return mem as backend.MemoryOptions | null;
+      });
+
+      r.resolveInts(
+        bkEndpoint,
+        bdEndpoint,
+        "timeoutSeconds",
+        "maxInstances",
+        "minInstances",
+        "concurrency"
+      );
+      proto.convertIfPresent(
+        bkEndpoint,
+        bdEndpoint,
+        "cpu",
+        nullsafeVisitor((cpu) => (cpu === "gcf_gen1" ? cpu : r.resolveInt(cpu)))
+      );
+      if (bdEndpoint.vpc) {
+        if (bdEndpoint.vpc.connector && !bdEndpoint.vpc.connector.includes("/")) {
+          bdEndpoint.vpc.connector = `projects/${bdEndpoint.project}/locations/${region}/connectors/${bdEndpoint.vpc.connector}`;
+        }
+        bkEndpoint.vpc = { connector: params.resolveString(bdEndpoint.vpc.connector, paramValues) };
+        proto.copyIfPresent(bkEndpoint.vpc, bdEndpoint.vpc, "egressSettings");
+      } else if (bdEndpoint.vpc === null) {
+        bkEndpoint.vpc = null;
+      }
       bkEndpoints.push(bkEndpoint);
     }
   }
@@ -330,121 +470,91 @@ export function resolveBackend(build: Build, userEnvs: Record<string, string>): 
   return bkend;
 }
 
-function discoverTrigger(endpoint: Endpoint): backend.Triggered {
-  let trigger: backend.Triggered;
-  if ("httpsTrigger" in endpoint) {
-    const bkHttps: backend.HttpsTrigger = {};
-    if (endpoint.httpsTrigger.invoker) {
-      bkHttps.invoker = [endpoint.httpsTrigger.invoker];
+function discoverTrigger(endpoint: Endpoint, region: string, r: Resolver): backend.Triggered {
+  if (isHttpsTriggered(endpoint)) {
+    const httpsTrigger: backend.HttpsTrigger = {};
+    if (endpoint.httpsTrigger.invoker === null) {
+      httpsTrigger.invoker = null;
+    } else if (typeof endpoint.httpsTrigger.invoker !== "undefined") {
+      httpsTrigger.invoker = endpoint.httpsTrigger.invoker.map(r.resolveString);
     }
-    trigger = { httpsTrigger: bkHttps };
-  } else if ("callableTrigger" in endpoint) {
-    trigger = { callableTrigger: {} };
-  } else if ("blockingTrigger" in endpoint) {
-    throw new FirebaseError("blocking triggers not supported");
-  } else if ("eventTrigger" in endpoint) {
-    const bkEventFilters: Record<string, string> = {};
-    for (const key in endpoint.eventTrigger.eventFilters) {
-      if (typeof key === "string") {
-        bkEventFilters[key] = resolveString(endpoint.eventTrigger.eventFilters[key]);
-      }
-    }
-    const bkEvent: backend.EventTrigger = {
+    return { httpsTrigger };
+  } else if (isCallableTriggered(endpoint)) {
+    return { callableTrigger: {} };
+  } else if (isBlockingTriggered(endpoint)) {
+    return { blockingTrigger: endpoint.blockingTrigger };
+  } else if (isEventTriggered(endpoint)) {
+    const eventTrigger: backend.EventTrigger = {
       eventType: endpoint.eventTrigger.eventType,
-      eventFilters: bkEventFilters,
-      retry: resolveBoolean(endpoint.eventTrigger.retry),
+      retry: r.resolveBoolean(endpoint.eventTrigger.retry) || false,
     };
-    if (endpoint.eventTrigger.serviceAccount) {
-      bkEvent.serviceAccountEmail = endpoint.eventTrigger.serviceAccount;
+    if (endpoint.eventTrigger.eventFilters) {
+      eventTrigger.eventFilters = mapObject(endpoint.eventTrigger.eventFilters, r.resolveString);
     }
-    if (endpoint.eventTrigger.region) {
-      bkEvent.region = resolveString(endpoint.eventTrigger.region);
+    if (endpoint.eventTrigger.eventFilterPathPatterns) {
+      eventTrigger.eventFilterPathPatterns = mapObject(
+        endpoint.eventTrigger.eventFilterPathPatterns,
+        r.resolveString
+      );
     }
-    trigger = { eventTrigger: bkEvent };
-  } else if ("scheduleTrigger" in endpoint) {
+    r.resolveStrings(eventTrigger, endpoint.eventTrigger, "serviceAccount", "region", "channel");
+    return { eventTrigger };
+  } else if (isScheduleTriggered(endpoint)) {
     const bkSchedule: backend.ScheduleTrigger = {
-      schedule: resolveString(endpoint.scheduleTrigger.schedule),
-      timeZone: resolveString(endpoint.scheduleTrigger.timeZone),
+      schedule: r.resolveString(endpoint.scheduleTrigger.schedule),
     };
-    proto.renameIfPresent(
-      bkSchedule,
-      endpoint.scheduleTrigger,
-      "retryConfig",
-      "retryConfig",
-      resolveInt
-    );
-    trigger = { scheduleTrigger: bkSchedule };
+    if (endpoint.scheduleTrigger.timeZone !== undefined) {
+      bkSchedule.timeZone = r.resolveString(endpoint.scheduleTrigger.timeZone);
+    }
+    if (endpoint.scheduleTrigger.retryConfig) {
+      const bkRetry: backend.ScheduleRetryConfig = {};
+      r.resolveInts(
+        bkRetry,
+        endpoint.scheduleTrigger.retryConfig,
+        "maxBackoffSeconds",
+        "minBackoffSeconds",
+        "maxRetrySeconds",
+        "retryCount",
+        "maxDoublings"
+      );
+      bkSchedule.retryConfig = bkRetry;
+    } else if (endpoint.scheduleTrigger.retryConfig === null) {
+      bkSchedule.retryConfig = null;
+    }
+    return { scheduleTrigger: bkSchedule };
   } else if ("taskQueueTrigger" in endpoint) {
-    const bkTaskQueue: backend.TaskQueueTrigger = {};
+    const taskQueueTrigger: backend.TaskQueueTrigger = {};
     if (endpoint.taskQueueTrigger.rateLimits) {
-      const bkRateLimits: backend.TaskQueueRateLimits = {};
-      proto.renameIfPresent(
-        bkRateLimits,
+      taskQueueTrigger.rateLimits = {};
+      r.resolveInts(
+        taskQueueTrigger.rateLimits,
         endpoint.taskQueueTrigger.rateLimits,
         "maxConcurrentDispatches",
-        "maxConcurrentDispatches",
-        resolveInt
+        "maxDispatchesPerSecond"
       );
-      proto.renameIfPresent(
-        bkRateLimits,
-        endpoint.taskQueueTrigger.rateLimits,
-        "maxDispatchesPerSecond",
-        "maxDispatchesPerSecond",
-        resolveInt
-      );
-      bkTaskQueue.rateLimits = bkRateLimits;
+    } else if (endpoint.taskQueueTrigger.rateLimits === null) {
+      taskQueueTrigger.rateLimits = null;
     }
     if (endpoint.taskQueueTrigger.retryConfig) {
-      const bkRetryConfig: backend.TaskQueueRetryConfig = {};
-      proto.renameIfPresent(
-        bkRetryConfig,
+      taskQueueTrigger.retryConfig = {};
+      r.resolveInts(
+        taskQueueTrigger.retryConfig,
         endpoint.taskQueueTrigger.retryConfig,
         "maxAttempts",
-        "maxAttempts",
-        resolveInt
-      );
-      proto.renameIfPresent(
-        bkRetryConfig,
-        endpoint.taskQueueTrigger.retryConfig,
         "maxBackoffSeconds",
-        "maxBackoffSeconds",
-        (from: number | Expression<number> | null): string => {
-          return proto.durationFromSeconds(resolveInt(from));
-        }
-      );
-      proto.renameIfPresent(
-        bkRetryConfig,
-        endpoint.taskQueueTrigger.retryConfig,
         "minBackoffSeconds",
-        "minBackoffSeconds",
-        (from: number | Expression<number> | null): string => {
-          return proto.durationFromSeconds(resolveInt(from));
-        }
-      );
-      proto.renameIfPresent(
-        bkRetryConfig,
-        endpoint.taskQueueTrigger.retryConfig,
         "maxRetrySeconds",
-        "maxRetryDurationSeconds",
-        (from: number | Expression<number> | null): string => {
-          return proto.durationFromSeconds(resolveInt(from));
-        }
+        "maxDoublings"
       );
-      proto.renameIfPresent(
-        bkRetryConfig,
-        endpoint.taskQueueTrigger.retryConfig,
-        "maxDoublings",
-        "maxDoublings",
-        resolveInt
-      );
-      bkTaskQueue.retryConfig = bkRetryConfig;
+    } else if (endpoint.taskQueueTrigger.retryConfig === null) {
+      taskQueueTrigger.retryConfig = null;
     }
     if (endpoint.taskQueueTrigger.invoker) {
-      bkTaskQueue.invoker = endpoint.taskQueueTrigger.invoker.map((sa) => resolveString(sa));
+      taskQueueTrigger.invoker = endpoint.taskQueueTrigger.invoker.map(r.resolveString);
+    } else if (endpoint.taskQueueTrigger.invoker === null) {
+      taskQueueTrigger.invoker = null;
     }
-    trigger = { taskQueueTrigger: bkTaskQueue };
-  } else {
-    assertExhaustive(endpoint);
+    return { taskQueueTrigger };
   }
-  return trigger;
+  assertExhaustive(endpoint);
 }

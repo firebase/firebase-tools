@@ -1,4 +1,4 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import Table = require("cli-table");
 import * as fs from "fs";
 import * as _ from "lodash";
@@ -67,7 +67,7 @@ export function formatBytes(bytes: number) {
 }
 
 export function extractReadableIndex(query: Record<string, any>): string {
-  if (_.has(query, "orderBy")) {
+  if (query.orderBy) {
     return query.orderBy;
   }
   const indexPath: string[] = _.get(query, "index.path");
@@ -118,7 +118,7 @@ export class ProfileReport {
     if (!data.unIndexed) {
       return;
     }
-    if (!_.has(this.state.unindexed, path)) {
+    if (!this.state.unindexed.path) {
       this.state.unindexed[path] = {};
     }
     const pathNode = this.state.unindexed[path];
@@ -126,7 +126,7 @@ export class ProfileReport {
     const query = data.querySet[0];
     // Get a unique string for this query.
     const index = JSON.stringify(query.index);
-    if (!_.has(pathNode, index)) {
+    if (!pathNode[index]) {
       pathNode[index] = {
         times: 0,
         query: query,
@@ -160,7 +160,7 @@ export class ProfileReport {
   }
 
   collectSpeed(data: any, path: string, opType: any) {
-    if (!_.has(opType, path)) {
+    if (!opType[path]) {
       opType[path] = {
         times: 0,
         millis: 0,
@@ -191,7 +191,7 @@ export class ProfileReport {
   }
 
   collectBandwidth(bytes: number, path: string, direction: any) {
-    if (!_.has(direction, path)) {
+    if (!direction[path]) {
       direction[path] = {
         times: 0,
         bytes: 0,
@@ -289,7 +289,7 @@ export class ProfileReport {
       // Don't do this if the --no-collapse flag is specified
       return pathedObject;
     }
-    const allSegments = _.keys(pathedObject).map((path) => {
+    const allSegments = Object.keys(pathedObject).map((path) => {
       return path.split("/").filter((s) => {
         return s !== "";
       });
@@ -353,15 +353,15 @@ export class ProfileReport {
         };
       });
     });
-    const paths = _.keys(unindexed);
-    paths.forEach((path) => {
-      const indices = _.keys(unindexed[path]);
-      indices.forEach((index) => {
+    const paths = Object.keys(unindexed);
+    for (const path of paths) {
+      const indices = Object.keys(unindexed[path]);
+      for (const index of indices) {
         const data = unindexed[path][index];
         const row = [path, extractReadableIndex(data.query), formatNumber(data.times)];
         table.push(row);
-      });
-    });
+      }
+    }
     return table;
   }
 
@@ -379,8 +379,10 @@ export class ProfileReport {
         times: b1.times + b2.times,
       };
     });
-    const paths = _.orderBy(_.keys(data), [(p) => data[p].bytes], ["desc"]);
-    paths.forEach((path) => {
+    const paths = Object.keys(data).sort((a: string, b: string) => {
+      return data[b].bytes - data[a].bytes;
+    });
+    for (const path of paths) {
       const bandwidth = data[path];
       const row = [
         path,
@@ -389,7 +391,7 @@ export class ProfileReport {
         formatBytes(bandwidth.bytes / bandwidth.times),
       ];
       table.push(row);
-    });
+    }
     return table;
   }
 
@@ -462,16 +464,12 @@ export class ProfileReport {
         rejected: s1.rejected + s2.rejected,
       };
     });
-    let paths = _.keys(data);
-    paths = _.orderBy(
-      paths,
-      (path) => {
-        const speed = data[path];
-        return speed.millis / speed.times;
-      },
-      ["desc"]
-    );
-    paths.forEach((path) => {
+    const paths = Object.keys(data).sort((a, b) => {
+      const speedA = data[a].millis / data[a].times;
+      const speedB = data[b].millis / data[b].times;
+      return speedB - speedA;
+    });
+    for (const path of paths) {
       const speed = data[path];
       const row = [
         path,
@@ -483,7 +481,7 @@ export class ProfileReport {
         row.push(formatNumber(speed.rejected));
       }
       table.push(row);
-    });
+    }
     return table;
   }
 
@@ -596,7 +594,7 @@ export class ProfileReport {
       if (isFile) {
         write(title + "\n");
       } else {
-        write(clc.bold.yellow(title) + "\n");
+        write(clc.bold(clc.yellow(title)) + "\n");
       }
     };
     const writeTable = (title: string, table: Table) => {

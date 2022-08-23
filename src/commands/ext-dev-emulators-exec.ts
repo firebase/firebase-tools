@@ -1,12 +1,12 @@
 // TODO(joehanley): Remove this entire command in v12.
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
 import { FirebaseError } from "../error";
 import * as commandUtils from "../emulator/commandUtils";
 
-module.exports = new Command("ext:dev:emulators:exec <script>")
+export const command = new Command("ext:dev:emulators:exec <script>")
   .description("deprecated: please use `firebase emulators:exec` instead")
   .before(commandUtils.setExportOnExitOptions)
   .option(commandUtils.FLAG_INSPECT_FUNCTIONS, commandUtils.DESC_INSPECT_FUNCTIONS)
@@ -16,7 +16,7 @@ module.exports = new Command("ext:dev:emulators:exec <script>")
   .option(commandUtils.FLAG_EXPORT_ON_EXIT, commandUtils.DESC_EXPORT_ON_EXIT)
   .option(commandUtils.FLAG_UI, commandUtils.DESC_UI)
   .before(checkMinRequiredVersion, "extDevMinVersion")
-  .action((script: string, options: any) => {
+  .action((script: string) => {
     const localInstallCommand = `firebase ext:install ${process.cwd()}`;
     const emulatorsExecCommand = `firebase emulators:exec '${script}`;
     throw new FirebaseError(

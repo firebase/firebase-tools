@@ -1,7 +1,8 @@
-import * as subprocess from "child_process";
+import { ChildProcess } from "child_process";
+import * as spawn from "cross-spawn";
 
 export class CLIProcess {
-  process?: subprocess.ChildProcess;
+  process?: ChildProcess;
 
   constructor(private readonly name: string, private readonly workdir: string) {}
 
@@ -17,7 +18,7 @@ export class CLIProcess {
       args.push(...additionalArgs);
     }
 
-    const p = subprocess.spawn("firebase", args, { cwd: this.workdir });
+    const p = spawn("firebase", args, { cwd: this.workdir });
     if (!p) {
       throw new Error("Failed to start firebase CLI");
     }
@@ -37,16 +38,16 @@ export class CLIProcess {
         const customCallback = (data: unknown): void => {
           if (logDoneFn(data)) {
             // eslint-disable-next-line @typescript-eslint/no-use-before-define
-            p.stdout.removeListener("close", customFailure);
+            p.stdout?.removeListener("close", customFailure);
             resolve();
           }
         };
         const customFailure = (): void => {
-          p.stdout.removeListener("data", customCallback);
+          p.stdout?.removeListener("data", customCallback);
           reject(new Error("failed to resolve startup before process.stdout closed"));
         };
-        p.stdout.on("data", customCallback);
-        p.stdout.on("close", customFailure);
+        p.stdout?.on("data", customCallback);
+        p.stdout?.on("close", customFailure);
       });
     } else {
       started = new Promise((resolve) => {

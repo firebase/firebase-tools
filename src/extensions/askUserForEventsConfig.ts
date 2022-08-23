@@ -1,8 +1,8 @@
-import * as _ from "lodash";
 import { promptOnce } from "../prompt";
 import * as extensionsApi from "../extensions/extensionsApi";
+import { EventDescriptor, ExtensionInstance } from "./types";
 import * as utils from "../utils";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import { logger } from "../logger";
 const { marked } = require("marked");
 
@@ -13,7 +13,7 @@ export interface InstanceEventsConfig {
 
 export function checkAllowedEventTypesResponse(
   response: string[],
-  validEvents: extensionsApi.EventDescriptor[]
+  validEvents: EventDescriptor[]
 ): boolean {
   const validEventTypes = validEvents.map((e) => e.type);
   if (response.length === 0) {
@@ -31,7 +31,7 @@ export function checkAllowedEventTypesResponse(
 }
 
 export async function askForEventsConfig(
-  events: extensionsApi.EventDescriptor[],
+  events: EventDescriptor[],
   projectId: string,
   instanceId: string
 ): Promise<InstanceEventsConfig | undefined> {
@@ -43,7 +43,7 @@ export async function askForEventsConfig(
   if (!(await askShouldCollectEventsConfig())) {
     return undefined;
   }
-  let existingInstance: extensionsApi.ExtensionInstance | undefined;
+  let existingInstance: ExtensionInstance | undefined;
   try {
     existingInstance = instanceId
       ? await extensionsApi.getInstance(projectId, instanceId)
@@ -60,7 +60,7 @@ export async function askForEventsConfig(
 }
 
 export async function askForAllowedEventTypes(
-  eventDescriptors: extensionsApi.EventDescriptor[],
+  eventDescriptors: EventDescriptor[],
   preselectedTypes?: string[]
 ): Promise<string[]> {
   let valid = false;
