@@ -8,6 +8,9 @@
         }
     },
     "properties": {
+        "$schema": {
+            "type": "string"
+        },
         "database": {
             "anyOf": [
                 {
