@@ -177,6 +177,29 @@ describe("planner", () => {
       });
     });
 
+    it("adds endpoints to update list if they dont have hashes", () => {
+      // Note: the two functions share the same id
+      const updatedWant = func("updated", "region");
+      const updatedHave = func("updated", "region");
+      // Their hashes are not set
+
+      const want = { updated: updatedWant };
+      const have = { updated: updatedHave };
+
+      expect(planner.calculateChangesets(want, have, (e) => e.region)).to.deep.equal({
+        region: {
+          endpointsToCreate: [],
+          endpointsToUpdate: [
+            {
+              endpoint: updatedWant,
+            },
+          ],
+          endpointsToDelete: [],
+          endpointsToSkip: [],
+        },
+      });
+    });
+
     it("adds endpoints to update list if they have different hashes", () => {
       // Note: the two functions share the same id
       const updatedWant = func("updated", "region");
