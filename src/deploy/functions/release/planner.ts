@@ -53,7 +53,7 @@ export function calculateChangesets(
     keyFn
   );
 
-  // If the hashes are matching, that means our local function is different.
+  // If the hashes are matching, that means the local function is the same as the server copy.
   const toSkipPredicate = (id: string) =>
     have[id].hash && want[id].hash && want[id].hash === have[id].hash;
 
