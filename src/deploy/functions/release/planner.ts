@@ -54,26 +54,33 @@ export function calculateChangesets(
     keyFn
   );
 
+  const { skipdeployingnoopfunctions } = previews;
+
   // If the hashes are matching, that means the local function is the same as the server copy.
   const toSkipPredicate = (id: string): boolean =>
-    !!(have[id].hash && want[id].hash && want[id].hash === have[id].hash);
+    !!(
+      skipdeployingnoopfunctions &&
+      have[id].hash &&
+      want[id].hash &&
+      want[id].hash === have[id].hash
+    );
 
-  const { skipdeployingnoopfunctions } = previews;
+  const toSkipEndpointsMap = Object.keys(want)
+    .filter((id) => have[id])
+    .filter((id) => toSkipPredicate(id))
+    .reduce((memo: Record<string, backend.Endpoint>, id) => {
+      memo[id] = want[id];
+      return memo;
+    }, {});
+
+  const toSkip = utils.groupBy(Object.values(toSkipEndpointsMap), keyFn);
 
   const toUpdate = utils.groupBy(
     Object.keys(want)
       .filter((id) => have[id])
-      .filter((id) => !(skipdeployingnoopfunctions && toSkipPredicate(id)))
+      .filter((id) => !toSkipEndpointsMap[id])
       .map((id) => calculateUpdate(want[id], have[id])),
     (eu: EndpointUpdate) => keyFn(eu.endpoint)
-  );
-
-  const toSkip = utils.groupBy(
-    Object.keys(want)
-      .filter((id) => have[id])
-      .filter((id) => skipdeployingnoopfunctions && toSkipPredicate(id))
-      .map((id) => want[id]),
-    keyFn
   );
 
   const result: Record<string, Changeset> = {};

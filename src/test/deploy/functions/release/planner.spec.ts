@@ -182,8 +182,8 @@ describe("planner", () => {
       const updatedWant = func("updated", "region");
       const updatedHave = func("updated", "region");
       // But their hashes are the same (aka a no-op function)
-      updatedWant.hash = "to_skip";
-      updatedHave.hash = "to_skip";
+      updatedWant.hash = "local";
+      updatedHave.hash = "server";
 
       const want = { updated: updatedWant };
       const have = { updated: updatedHave };
@@ -202,7 +202,7 @@ describe("planner", () => {
       });
     });
 
-    it("does not add endpoints to skip list if they have same hashes", () => {
+    it("does not add endpoints to skip list if preview flag is false", () => {
       // Note: the two functions share the same id
       const updatedWant = func("updated", "region");
       const updatedHave = func("updated", "region");
