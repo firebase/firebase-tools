@@ -8,6 +8,7 @@ import { FirebaseError } from "../../../error";
 import * as utils from "../../../utils";
 import * as backend from "../backend";
 import * as v2events from "../../../functions/events/v2";
+import { previews } from "../../../previews";
 
 export interface EndpointUpdate {
   endpoint: backend.Endpoint;
@@ -54,16 +55,15 @@ export function calculateChangesets(
   );
 
   // If the hashes are matching, that means the local function is the same as the server copy.
-  const toSkipPredicate = (id: string) =>
-    have[id].hash && want[id].hash && want[id].hash === have[id].hash;
+  const toSkipPredicate = (id: string): boolean =>
+    !!(have[id].hash && want[id].hash && want[id].hash === have[id].hash);
 
-  /* previews.skipdeployingnoopfunctions && */
-  const skipdeployingnoopfunctions = true;
+  const { skipdeployingnoopfunctions } = previews;
 
   const toUpdate = utils.groupBy(
     Object.keys(want)
       .filter((id) => have[id])
-      .filter((id) => skipdeployingnoopfunctions && !toSkipPredicate(id))
+      .filter((id) => !(skipdeployingnoopfunctions && toSkipPredicate(id)))
       .map((id) => calculateUpdate(want[id], have[id])),
     (eu: EndpointUpdate) => keyFn(eu.endpoint)
   );
