@@ -1592,6 +1592,41 @@ describe("Fabricator", () => {
     });
   });
 
+  describe("getLogSuccessMessage", () => {
+    it("should return appropriate messaging for create case", () => {
+      const ep = endpoint({ httpsTrigger: {} }, { id: "potato" });
+
+      const message = fab.getLogSuccessMessage("create", ep);
+
+      expect(message).to.contain(`functions[potato(us-central1)]`);
+      expect(message).to.contain(`Successful create operation`);
+    });
+
+    it("should return appropriate messaging for skip case", () => {
+      const ep = endpoint({ httpsTrigger: {} }, { id: "tomato" });
+      ep.hash = "hashyhash";
+
+      const message = fab.getLogSuccessMessage("skip", ep);
+
+      expect(message).to.contain(`Not deploying `);
+      expect(message).to.contain(`functions[tomato(us-central1)]`);
+      expect(message).to.contain(` - no change since last deploy (hash=hashyhash)`);
+    });
+  });
+
+  describe("getSkippedDeployingNopOpMessage", () => {
+    it("should return appropriate messaging", () => {
+      const ep1 = endpoint({ httpsTrigger: {} }, { id: "function1" });
+      const ep2 = endpoint({ httpsTrigger: {} }, { id: "function2" });
+
+      const message = fab.getSkippedDeployingNopOpMessage([ep1, ep2]);
+
+      expect(message).to.contain(`To force deploy these functions, run command `);
+      expect(message).to.contain(`firebase deploy --only functions:`);
+      expect(message).to.contain(`function1,function2`);
+    });
+  });
+
   it("does not delete if there are upsert errors", async () => {
     // when it hits a real API it will fail.
     const createEP = endpoint({ httpsTrigger: {} }, { id: "A" });

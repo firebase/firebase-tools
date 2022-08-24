@@ -126,7 +126,7 @@ export class Fabricator {
       upserts.push(handle("create", endpoint, () => this.createEndpoint(endpoint, scraper)));
     }
     for (const endpoint of changes.endpointsToSkip) {
-      upserts.push(handle("skip", endpoint, () => this.skipEndpoint()));
+      upserts.push(handle("skip", endpoint, () => this.skipEndpoint(endpoint)));
     }
     if (changes.endpointsToSkip.length) {
       upserts.push(this.skipEndpointsCompleted(changes.endpointsToSkip));
@@ -173,14 +173,13 @@ export class Fabricator {
     await this.setTrigger(endpoint);
   }
 
-  async skipEndpoint(): Promise<void> {
+  /* eslint-disable @typescript-eslint/no-unused-vars */
+  async skipEndpoint(endpoint: backend.Endpoint): Promise<void> {
     await Promise.resolve();
   }
 
   async skipEndpointsCompleted(endpointsToSkip: backend.Endpoint[]): Promise<void> {
-    return await Promise.resolve(
-      utils.logSuccess(getSkippedDeployingNopOpMessage(endpointsToSkip))
-    );
+    await Promise.resolve(utils.logSuccess(this.getSkippedDeployingNopOpMessage(endpointsToSkip)));
   }
 
   async updateEndpoint(update: planner.EndpointUpdate, scraper: SourceTokenScraper): Promise<void> {
@@ -676,7 +675,32 @@ export class Fabricator {
   }
 
   logOpSuccess(op: string, endpoint: backend.Endpoint): void {
-    utils.logSuccess(getLogSuccessMessage(op, endpoint));
+    utils.logSuccess(this.getLogSuccessMessage(op, endpoint));
+  }
+
+  /**
+   * Returns the log messaging for a successful operation.
+   */
+  getLogSuccessMessage(op: string, endpoint: backend.Endpoint) {
+    const label = helper.getFunctionLabel(endpoint);
+    switch (op) {
+      case "skip":
+        return `Not deploying ${clc.bold(
+          clc.green(`functions[${label}]`)
+        )} - no change since last deploy (hash=${endpoint.hash})`;
+      default:
+        return `${clc.bold(clc.green(`functions[${label}]`))} Successful ${op} operation.`;
+    }
+  }
+
+  /**
+   * Returns the log messaging for no-op functions that were skipped.
+   */
+  getSkippedDeployingNopOpMessage(endpoints: backend.Endpoint[]) {
+    const functionNames = endpoints.map((endpoint) => endpoint.id).join(",");
+    return `To force deploy these functions, run command ${clc.bold(
+      `firebase deploy --only functions:${clc.green(functionNames)}`
+    )}`;
   }
 }
 
@@ -713,29 +737,4 @@ export function serviceIsResolved(service: run.Service): boolean {
   throw new FirebaseError(
     `Unexpected Status ${readyCondition?.status} for service ${service.metadata.name}`
   );
-}
-
-/**
- * Returns the Log Success Message
- */
-function getLogSuccessMessage(op: string, endpoint: backend.Endpoint) {
-  const label = helper.getFunctionLabel(endpoint);
-  switch (op) {
-    case "skip":
-      return `Not deploying ${clc.bold(
-        clc.green(`functions[${label}]`)
-      )} - no change since last deploy (hash=${endpoint.hash}`;
-    default:
-      return `${clc.bold(clc.green(`functions[${label}]`))} Successful ${op} operation.`;
-  }
-}
-
-/**
- * Returns the Log Success Message
- */
-function getSkippedDeployingNopOpMessage(endpoints: backend.Endpoint[]) {
-  const functionNames = endpoints.map((endpoint) => endpoint.id).join(",");
-  return `To force deploy these functions, run command ${clc.bold(
-    `firebase deploy --only functions:${clc.green(functionNames)}`
-  )}`;
 }
