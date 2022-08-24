@@ -5,7 +5,6 @@ import * as clc from "colorette";
 import * as http from "http";
 import * as jwt from "jsonwebtoken";
 import * as cors from "cors";
-import * as stream from "stream";
 import { URL } from "url";
 import { EventEmitter } from "events";
 
@@ -30,7 +29,6 @@ import {
   EventSchedule,
   EventTrigger,
   formatHost,
-  FunctionsRuntimeArgs,
   FunctionsRuntimeBundle,
   FunctionsRuntimeFeatures,
   getFunctionService,
@@ -133,23 +131,13 @@ export interface FunctionsEmulatorArgs {
 
 // FunctionsRuntimeInstance is the handler for a running function invocation
 export interface FunctionsRuntimeInstance {
-  // Process ID
-  pid: number;
+  process: ChildProcess;
   // An emitter which sends our EmulatorLog events from the runtime.
   events: EventEmitter;
-  // A promise which is fulfilled when the runtime has exited
-  exit: Promise<number>;
   // A cwd of the process
   cwd: string;
   // Path to socket file used for HTTP-over-IPC comms.
   socketPath: string;
-
-  // A function to manually kill the child process as normal cleanup
-  shutdown(): void;
-  // A function to manually kill the child process in case of errors
-  kill(signal?: number): void;
-  // Send an IPC message to the child process
-  send(args: FunctionsRuntimeArgs): boolean;
 }
 
 export interface InvokeRuntimeOpts {
@@ -1358,55 +1346,11 @@ export class FunctionsEmulator implements EmulatorInstance {
       stdio: ["pipe", "pipe", "pipe", "ipc"],
     });
 
-    if (!childProcess.stderr) {
-      throw new FirebaseError(`childProcess.stderr is undefined.`);
-    }
-    if (!childProcess.stdout) {
-      throw new FirebaseError(`childProcess.stdout is undefined.`);
-    }
-
-    const buffers: {
-      [pipe: string]: {
-        pipe: stream.Readable;
-        value: string;
-      };
-    } = {
-      stderr: { pipe: childProcess.stderr, value: "" },
-      stdout: { pipe: childProcess.stdout, value: "" },
-    };
-
-    const ipcBuffer = { value: "" };
-    childProcess.on("message", (message: any) => {
-      this.onData(childProcess, emitter, ipcBuffer, message);
-    });
-
-    for (const id in buffers) {
-      if (buffers.hasOwnProperty(id)) {
-        const buffer = buffers[id];
-        buffer.pipe.on("data", (buf: Buffer) => {
-          this.onData(childProcess, emitter, buffer, buf);
-        });
-      }
-    }
-
     const runtime: FunctionsRuntimeInstance = {
-      pid: childProcess.pid,
-      exit: new Promise<number>((resolve) => {
-        childProcess.on("exit", resolve);
-      }),
+      process: childProcess,
       events: emitter,
       cwd: backend.functionsDir,
       socketPath,
-      shutdown: () => {
-        childProcess.kill();
-      },
-      kill: (signal?: number) => {
-        childProcess.kill(signal);
-        emitter.emit("log", new EmulatorLog("SYSTEM", "runtime-status", "killed"));
-      },
-      send: (args: FunctionsRuntimeArgs) => {
-        return childProcess.send(JSON.stringify(args));
-      },
     };
     const extensionLogInfo = {
       instanceId: backend.extensionInstanceId,
@@ -1673,32 +1617,5 @@ export class FunctionsEmulator implements EmulatorInstance {
     });
 
     await worker.waitForDone();
-  }
-
-  private onData(
-    runtime: ChildProcess,
-    emitter: EventEmitter,
-    buffer: { value: string },
-    buf: Buffer
-  ): void {
-    buffer.value += buf.toString();
-
-    const lines = buffer.value.split("\n");
-
-    if (lines.length > 1) {
-      // slice(0, -1) returns all elements but the last
-      lines.slice(0, -1).forEach((line: string) => {
-        const log = EmulatorLog.fromJSON(line);
-        emitter.emit("log", log);
-
-        if (log.level === "FATAL") {
-          // Something went wrong, if we don't kill the process it'll wait for timeoutMs.
-          emitter.emit("log", new EmulatorLog("SYSTEM", "runtime-status", "killed"));
-          runtime.kill();
-        }
-      });
-    }
-
-    buffer.value = lines[lines.length - 1];
   }
 }
