@@ -4,8 +4,8 @@ import {
   getEndpointHash,
   getSecretsHash,
   getSourceHash,
-} from "../../../deploy/functions/cache/hash";
-import { Endpoint, empty } from "../../../deploy/functions/backend";
+} from "../../../../deploy/functions/cache/hash";
+import { Endpoint, empty } from "../../../../deploy/functions/backend";
 import { resolve } from "path";
 
 const EMPTY_WANT_BACKEND = empty();
