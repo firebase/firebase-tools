@@ -160,7 +160,7 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
       "webchannel_port",
       "host",
       "rules",
-      "ui_websocket_port",
+      "websocket_port",
       "functions_emulator",
       "seed_from_export",
     ],

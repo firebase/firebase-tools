@@ -56,11 +56,11 @@ function printEmulatorOverview(options: any): void {
   for (const internalEmulator of [Emulators.LOGGING]) {
     const info = EmulatorRegistry.getInfo(internalEmulator);
     if (info) {
-      reservedPorts.push(info.port);    
+      reservedPorts.push(info.port);
     }
     controller.filterEmulatorTargets(options).forEach((emulator: Emulators) => {
-      reservedPorts.push(...EmulatorRegistry.getInfo(emulator)?.reservedPorts||[])
-    })
+      reservedPorts.push(...(EmulatorRegistry.getInfo(emulator)?.reservedPorts || []));
+    });
   }
   const reservedPortsString = reservedPorts.length > 0 ? reservedPorts.join(", ") : "None";
 

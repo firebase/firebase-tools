@@ -200,7 +200,7 @@
                         "port": {
                             "type": "number"
                         },
-                        "ui_websocket_port": {
+                        "websocket_port": {
                             "type": "number"
                         }
                     },
