@@ -302,6 +302,7 @@ export async function resolveBackend(
 }
 
 function envWithTypes(rawEnvs: Record<string, string>): Record<string, params.ParamValue> {
+  /*
   const out: Record<string, params.ParamValue> = {};
   for (const envName of Object.keys(rawEnvs)) {
     const value = rawEnvs[envName];
@@ -311,7 +312,8 @@ function envWithTypes(rawEnvs: Record<string, string>): Record<string, params.Pa
       number: true,
     });
   }
-  return out;
+  return out;*/
+  return {};
 }
 
 // Utility class to make it more fluent to use proto.convertIfPresent
