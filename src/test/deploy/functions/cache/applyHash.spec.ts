@@ -68,8 +68,8 @@ describe("applyHash", () => {
       const backend1 = backend.of(endpoint1);
       const backend2 = backend.of(endpoint2);
 
-      backend1.environmentVariables.test = "shared_environment_variables";
-      backend2.environmentVariables = backend1.environmentVariables;
+      backend1.environmentVariables.test = "backend1_env_hash";
+      backend2.environmentVariables.test = "backend2_env_hash";
 
       const backends = { backend1, backend2 };
 
@@ -96,23 +96,22 @@ describe("applyHash", () => {
       // Expect
       expect(getEndpointHash).to.have.been.calledWith(
         "source=backend1_sourceV1",
-        "env=shared_environment_variables",
+        "env=backend1_env_hash",
         "secret=secret1"
       );
       expect(endpoint1.hash).to.equal(
-        "source=backend1_sourceV1&env=shared_environment_variables&secret=secret1"
+        "source=backend1_sourceV1&env=backend1_env_hash&secret=secret1"
       );
       expect(getEndpointHash).to.have.been.calledWith(
         "source=backend2_sourceV2",
-        "env=shared_environment_variables",
+        "env=backend2_env_hash",
         "secret=secret2"
       );
       expect(endpoint2.hash).to.equal(
-        "source=backend2_sourceV2&env=shared_environment_variables&secret=secret2"
+        "source=backend2_sourceV2&env=backend2_env_hash&secret=secret2"
       );
-      // Note: env variables only derived from the first backend
-      // (since all backends in wantBackends shared the same environment variables)
       expect(getEnvironmentVariablesHash).to.have.been.calledWith(backend1);
+      expect(getEnvironmentVariablesHash).to.have.been.calledWith(backend2);
     });
   });
 });

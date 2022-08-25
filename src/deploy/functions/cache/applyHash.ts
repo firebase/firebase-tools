@@ -15,8 +15,6 @@ export async function applyBackendHashToBackends(
   wantBackends: Record<string, Backend>,
   context: args.Context
 ): Promise<void> {
-  // envHash
-  const envHash = getEnvHash(wantBackends);
   for (const [codebase, wantBackend] of Object.entries(wantBackends)) {
     const source = context?.sources?.[codebase]; // populated earlier in prepare flow
     const sourceV1Hash = source?.functionsSourceV1
@@ -25,6 +23,7 @@ export async function applyBackendHashToBackends(
     const sourceV2Hash = source?.functionsSourceV2
       ? await getSourceHash(source?.functionsSourceV2)
       : undefined;
+    const envHash = getEnvironmentVariablesHash(wantBackend);
     applyBackendHashToBackend(wantBackend, envHash, sourceV1Hash, sourceV2Hash);
   }
 }
@@ -44,13 +43,4 @@ export function applyBackendHashToBackend(
     const sourceHash = isV2 ? sourceV2Hash : sourceV1Hash;
     endpoint.hash = getEndpointHash(sourceHash, envHash, secretsHash);
   }
-}
-
-/** @returns hash of first wantBackend */
-function getEnvHash(wantBackends: Record<string, Backend>): string {
-  const backends = Object.values(wantBackends);
-  if (backends.length) {
-    return getEnvironmentVariablesHash(backends[0]);
-  }
-  return "";
 }
