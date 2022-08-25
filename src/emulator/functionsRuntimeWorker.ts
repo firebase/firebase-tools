@@ -7,6 +7,7 @@ import { FunctionsRuntimeArgs, FunctionsRuntimeBundle } from "./functionsEmulato
 import { EventEmitter } from "events";
 import { EmulatorLogger, ExtensionLogInfo } from "./emulatorLogger";
 import { FirebaseError } from "../error";
+import { Serializable } from "child_process";
 
 type LogListener = (el: EmulatorLog) => any;
 
@@ -47,16 +48,55 @@ export class RuntimeWorker {
             this.state = RuntimeWorkerState.IDLE;
           } else if (this.state === RuntimeWorkerState.FINISHING) {
             this.log(`IDLE --> FINISHING`);
-            this.runtime.shutdown();
+            this.runtime.process.kill();
           }
         }
       }
     });
 
-    this.runtime.exit.then(() => {
+    const childProc = this.runtime.process;
+    let msgBuffer = "";
+    childProc.on("message", (msg) => {
+      msgBuffer = this.processStream(msg, msgBuffer);
+    });
+
+    let stdBuffer = "";
+    if (childProc.stdout) {
+      childProc.stdout.on("data", (data) => {
+        stdBuffer = this.processStream(data, stdBuffer);
+      });
+    }
+
+    if (childProc.stderr) {
+      childProc.stderr.on("data", (data) => {
+        stdBuffer = this.processStream(data, stdBuffer);
+      });
+    }
+
+    childProc.on("exit", () => {
       this.log("exited");
       this.state = RuntimeWorkerState.FINISHED;
     });
+  }
+
+  private processStream(s: Serializable, buf: string): string {
+    buf += s.toString();
+
+    const lines = buf.split("\n");
+    if (lines.length > 1) {
+      // slice(0, -1) returns all elements but the last
+      lines.slice(0, -1).forEach((line: string) => {
+        const log = EmulatorLog.fromJSON(line);
+        this.runtime.events.emit("log", log);
+
+        if (log.level === "FATAL") {
+          // Something went wrong, if we don't kill the process it'll wait for timeoutMs.
+          this.runtime.events.emit("log", new EmulatorLog("SYSTEM", "runtime-status", "killed"));
+          this.runtime.process.kill();
+        }
+      });
+    }
+    return lines[lines.length - 1];
   }
 
   execute(frb: FunctionsRuntimeBundle, opts?: InvokeRuntimeOpts): void {
@@ -64,7 +104,7 @@ export class RuntimeWorker {
     const execFrb: FunctionsRuntimeBundle = { ...frb };
     const args: FunctionsRuntimeArgs = { frb: execFrb, opts };
     this.state = RuntimeWorkerState.BUSY;
-    this.runtime.send(args);
+    this.runtime.process.send(JSON.stringify(args));
   }
 
   get state(): RuntimeWorkerState {
@@ -138,7 +178,7 @@ export class RuntimeWorker {
     const timeout = new Promise<never>((resolve, reject) => {
       setTimeout(() => {
         reject(new FirebaseError("Failed to load function."));
-      }, 7_000);
+      }, 10_000);
     });
     while (true) {
       try {
@@ -188,7 +228,7 @@ export class RuntimeWorkerPool {
         if (w.state === RuntimeWorkerState.IDLE) {
           this.log(`Shutting down IDLE worker (${w.key})`);
           w.state = RuntimeWorkerState.FINISHING;
-          w.runtime.shutdown();
+          w.runtime.process.kill();
         } else if (w.state === RuntimeWorkerState.BUSY) {
           this.log(`Marking BUSY worker to finish (${w.key})`);
           w.state = RuntimeWorkerState.FINISHING;
@@ -204,9 +244,9 @@ export class RuntimeWorkerPool {
     for (const arr of this.workers.values()) {
       arr.forEach((w) => {
         if (w.state === RuntimeWorkerState.IDLE) {
-          w.runtime.shutdown();
+          w.runtime.process.kill();
         } else {
-          w.runtime.kill();
+          w.runtime.process.kill();
         }
       });
     }

@@ -1550,6 +1550,7 @@ describe("Fabricator", () => {
         endpointsToCreate: [ep1, ep2],
         endpointsToUpdate: [{ endpoint: ep3 }],
         endpointsToDelete: [],
+        endpointsToSkip: [],
       };
 
       let sourceTokenScraper: scraper.SourceTokenScraper | undefined;
@@ -1582,6 +1583,7 @@ describe("Fabricator", () => {
         endpointsToCreate: [ep],
         endpointsToUpdate: [],
         endpointsToDelete: [],
+        endpointsToSkip: [],
       };
 
       const results = await fab.applyChangeset(changes);
@@ -1598,6 +1600,7 @@ describe("Fabricator", () => {
       endpointsToCreate: [createEP],
       endpointsToUpdate: [],
       endpointsToDelete: [deleteEP],
+      endpointsToSkip: [],
     };
 
     const results = await fab.applyChangeset(changes);
@@ -1615,6 +1618,7 @@ describe("Fabricator", () => {
       endpointsToCreate: [createEP],
       endpointsToUpdate: [update],
       endpointsToDelete: [deleteEP],
+      endpointsToSkip: [],
     };
 
     const createEndpoint = sinon.stub(fab, "createEndpoint");
@@ -1645,11 +1649,13 @@ describe("Fabricator", () => {
           endpointsToCreate: [ep1],
           endpointsToUpdate: [],
           endpointsToDelete: [],
+          endpointsToSkip: [],
         },
         "us-west1": {
           endpointsToCreate: [],
           endpointsToUpdate: [],
           endpointsToDelete: [ep2],
+          endpointsToSkip: [],
         },
       };
 
