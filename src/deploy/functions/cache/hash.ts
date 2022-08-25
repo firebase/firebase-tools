@@ -23,14 +23,12 @@ export function getEnvironmentVariablesHash(backend: Backend): string {
  * Retrieves the unique hash given a pathToGeneratedPackageFile.
  * @param pathToGeneratedPackageFile Packaged file contents of functions
  */
-export async function getSourceHash(pathToGeneratedPackageFile?: string): Promise<string> {
+export async function getSourceHash(pathToGeneratedPackageFile: string): Promise<string> {
   const hash = crypto.createHash("sha256");
 
-  // If present, hash the contents of the source file
-  if (pathToGeneratedPackageFile) {
-    const data = await readFile(pathToGeneratedPackageFile);
-    hash.update(data);
-  }
+  // Hash the contents of the source file
+  const data = await readFile(pathToGeneratedPackageFile);
+  hash.update(data);
 
   return hash.digest("hex");
 }
@@ -67,3 +65,4 @@ export function getEndpointHash(sourceHash: string, envHash: string, secretsHash
 
   return hash.digest("hex");
 }
+
