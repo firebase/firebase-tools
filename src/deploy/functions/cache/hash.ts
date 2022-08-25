@@ -57,12 +57,15 @@ export function getSecretsHash(endpoint: Endpoint): string {
  * @param envHash
  * @param secretsHash
  */
-export function getEndpointHash(sourceHash: string, envHash: string, secretsHash: string): string {
+export function getEndpointHash(
+  sourceHash?: string,
+  envHash?: string,
+  secretsHash?: string
+): string {
   const hash = crypto.createHash("sha256");
 
-  const combined = [envHash, sourceHash, secretsHash].join("");
+  const combined = [sourceHash, envHash, secretsHash].filter((hash) => !!hash).join("");
   hash.update(combined);
 
   return hash.digest("hex");
 }
-

@@ -220,5 +220,13 @@ describe("getBackendHash", () => {
 
       expect(hash1).to.equal(hash2);
     });
+
+    it("should filter out undefined hashes", () => {
+      // hash1 + hash2 === hash1 + hash2
+      const hash1 = getEndpointHash("hash1", undefined, "hash2");
+      const hash2 = getEndpointHash("hash1", "hash2", undefined);
+
+      expect(hash1).to.equal(hash2);
+    });
   });
 });
