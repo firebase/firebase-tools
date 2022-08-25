@@ -501,7 +501,8 @@ export class FunctionsEmulator implements EmulatorInstance {
         projectAlias: this.args.projectAlias,
       };
       const discoveredBuild = await runtimeDelegate.discoverBuild(runtimeConfig, environment);
-      const discoveredBackend = await resolveBackend(discoveredBuild, userEnvOpt, environment);
+      const resolution = await resolveBackend(discoveredBuild, userEnvOpt, environment);
+      const discoveredBackend = resolution.backend;
       const endpoints = backend.allEndpoints(discoveredBackend);
       prepareEndpoints(endpoints);
       for (const e of endpoints) {
