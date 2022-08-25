@@ -201,6 +201,7 @@ describe("functions/secret", () => {
 
       expect(secrets.getSecretVersions(endpoint)).to.deep.eq({
         [secret1.secret]: secret1.version,
+        // [secret2.secret] is missing because it lacks a version
         [secret3.secret]: secret3.version,
       });
     });
