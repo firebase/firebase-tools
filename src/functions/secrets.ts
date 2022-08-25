@@ -140,9 +140,7 @@ export function of(endpoints: backend.Endpoint[]): backend.SecretEnvVar[] {
  */
 export function getSecretVersions(endpoint: backend.Endpoint): Record<string, string> {
   return (endpoint.secretEnvironmentVariables || []).reduce((memo, { secret, version }) => {
-    if (version) {
-      memo[secret] = version;
-    }
+    memo[secret] = version || "";
     return memo;
   }, {} as Record<string, string>);
 }

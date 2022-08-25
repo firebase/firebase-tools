@@ -191,7 +191,7 @@ describe("functions/secret", () => {
 
     it("returns object mapping secrets and their versions", () => {
       const secret1 = makeSecret("SECRET1", "1");
-      const secret2 = makeSecret("SECRET_NO_VERSION");
+      const secret2 = makeSecret("SECRET2", "100");
       const secret3 = makeSecret("SECRET3", "2");
 
       const endpoint = {
@@ -201,7 +201,7 @@ describe("functions/secret", () => {
 
       expect(secrets.getSecretVersions(endpoint)).to.deep.eq({
         [secret1.secret]: secret1.version,
-        // [secret2.secret] is missing because it lacks a version
+        [secret2.secret]: secret2.version,
         [secret3.secret]: secret3.version,
       });
     });
