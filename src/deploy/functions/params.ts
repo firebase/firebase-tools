@@ -218,9 +218,7 @@ type RawParamValue = string | number | boolean;
 /**
  * A type which contains the resolved value of a param, and metadata ensuring
  * that it's used in the correct way:
- * - ParamValues coming from a dotenv file will have all three legal type fields set
- *   but, we currently shallow copy the ParamValue and set the copy's type fields when
- *   assigning a dotenv ParamValue to a specific Param.
+ * - ParamValues coming from a dotenv file will have all three legal type fields set.
  * - ParamValues coming from prompting a param will have type fields corresponding to
  *   the type of the Param.
  * - ParamValues coming from Cloud Secrets Manager will have a string type field set
@@ -244,33 +242,6 @@ export class ParamValue {
     this.legalString = types.string || false;
     this.legalBoolean = types.boolean || false;
     this.legalNumber = types.number || false;
-  }
-
-  // Call this when we figure out the actual type of a ParamValue from the .envs
-  narrowType(paramType: Param["type"]): void {
-    switch (paramType) {
-      case "string":
-        this.legalString = true;
-        this.legalBoolean = false;
-        this.legalNumber = false;
-        break;
-      case "boolean":
-        this.legalString = false;
-        this.legalBoolean = true;
-        this.legalNumber = false;
-        break;
-      case "int":
-        this.legalString = false;
-        this.legalBoolean = false;
-        this.legalNumber = true;
-        break;
-      case "secret":
-      // Secrets can't be populated from envs, so falling through to the error is intentional
-      default:
-        throw new FirebaseError(
-          `ParamValue.narrowType() called on a param of type ${paramType}, which cannot have values from .env files.`
-        );
-    }
   }
 
   toString(): string {
@@ -365,9 +336,7 @@ export async function resolveParams(
     return {}.hasOwnProperty.call(userEnvs, param.name);
   });
   for (const param of resolved) {
-    const valueFromEnvs = userEnvs[param.name];
-    valueFromEnvs.narrowType(param.type);
-    paramValues[param.name] = valueFromEnvs;
+    paramValues[param.name] = userEnvs[param.name];
   }
 
   const [needSecret, needPrompt] = partition(outstanding, (param) => param.type === "secret");
@@ -565,7 +534,15 @@ async function promptIntParam(param: IntParam, resolvedDefault?: number): Promis
         prompt += ` \n(${param.description})`;
       }
       prompt += "\nSelect an option with the arrow keys, and use Enter to confirm your choice. ";
-      return promptSelect(prompt, param.input, resolvedDefault, (res: string) => +res);
+      return promptSelect(prompt, param.input, resolvedDefault, (res: string) => {
+        if (isNaN(+res)) {
+          return { message: `"${res}" could not be converted to a number.` };
+        }
+        if (res.includes(".")) {
+          return { message: `${res} is not an integer value.` };
+        }
+        return +res;
+      });
     case "text":
     default:
       prompt = `Enter an integer value for ${param.label || param.name}:`;
@@ -646,7 +623,7 @@ async function promptSelect<T extends RawParamValue>(
   prompt: string,
   input: SelectInput<T>,
   resolvedDefault: T | undefined,
-  converter: (res: string) => T
+  converter: (res: string) => T | retryInput
 ): Promise<T> {
   const response = await promptOnce({
     name: "input",
@@ -663,5 +640,10 @@ async function promptSelect<T extends RawParamValue>(
       };
     }),
   });
-  return converter(response);
+  const converted = converter(response);
+  if (typeof converted === "object") {
+    logger.error(converted.message);
+    return promptSelect<T>(prompt, input, resolvedDefault, converter);
+  }
+  return converted;
 }

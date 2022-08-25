@@ -57,7 +57,7 @@ describe("resolveParams", () => {
     promptOnce.restore();
   });
 
-  it("can pull a literal value out of the dotenvs while narrowing type", async () => {
+  it("can pull a literal value out of the dotenvs, with any type valid", async () => {
     const paramsToResolve: params.Param[] = [
       {
         name: "foo",
@@ -71,10 +71,11 @@ describe("resolveParams", () => {
     const userEnv: Record<string, params.ParamValue> = {
       foo: new params.ParamValue("bar", false, { string: true, number: true, boolean: true }),
       bar: new params.ParamValue("24", false, { string: true, number: true, boolean: true }),
+      baz: new params.ParamValue("true", false, { string: true, number: true, boolean: true }),
     };
     await expect(params.resolveParams(paramsToResolve, "", userEnv)).to.eventually.deep.equal({
-      foo: new params.ParamValue("bar", false, { string: true, number: false, boolean: false }),
-      bar: new params.ParamValue("24", false, { string: false, number: true, boolean: false }),
+      foo: new params.ParamValue("bar", false, { string: true, number: true, boolean: true }),
+      bar: new params.ParamValue("24", false, { string: true, number: true, boolean: true }),
     });
 
     /* TODO(vsfan@): should we ever reject param values from .env files based on the appearance of the string?
