@@ -11,27 +11,21 @@ import * as runtimes from "../deploy/functions/runtimes";
 import * as proto from "./proto";
 import * as utils from "../utils";
 import * as projectConfig from "../functions/projectConfig";
+import {
+  BLOCKING_EVENT_TO_LABEL_KEY,
+  BLOCKING_LABEL,
+  BLOCKING_LABEL_KEY_TO_EVENT,
+  CODEBASE_LABEL,
+  HASH_LABEL,
+} from "../functions/constants";
 
 export const API_VERSION = "v2alpha";
-export const CODEBASE_LABEL = "firebase-functions-codebase";
 
 const client = new Client({
   urlPrefix: functionsV2Origin,
   auth: true,
   apiVersion: API_VERSION,
 });
-
-export const BLOCKING_LABEL = "deployment-blocking";
-
-const BLOCKING_LABEL_KEY_TO_EVENT: Record<string, typeof AUTH_BLOCKING_EVENTS[number]> = {
-  "before-create": "providers/cloud.auth/eventTypes/user.beforeCreate",
-  "before-sign-in": "providers/cloud.auth/eventTypes/user.beforeSignIn",
-};
-
-const BLOCKING_EVENT_TO_LABEL_KEY: Record<typeof AUTH_BLOCKING_EVENTS[number], string> = {
-  "providers/cloud.auth/eventTypes/user.beforeCreate": "before-create",
-  "providers/cloud.auth/eventTypes/user.beforeSignIn": "before-sign-in",
-};
 
 export type VpcConnectorEgressSettings = "PRIVATE_RANGES_ONLY" | "ALL_TRAFFIC";
 export type IngressSettings = "ALLOW_ALL" | "ALLOW_INTERNAL_ONLY" | "ALLOW_INTERNAL_AND_GCLB";
@@ -562,6 +556,12 @@ export function functionFromEndpoint(
   } else {
     delete gcfFunction.labels?.[CODEBASE_LABEL];
   }
+  if (endpoint.hash) {
+    gcfFunction.labels = {
+      ...gcfFunction.labels,
+      [HASH_LABEL]: endpoint.hash,
+    };
+  }
   return gcfFunction;
 }
 
@@ -684,5 +684,8 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
     );
   }
   endpoint.codebase = gcfFunction.labels?.[CODEBASE_LABEL] || projectConfig.DEFAULT_CODEBASE;
+  if (gcfFunction.labels?.[HASH_LABEL]) {
+    endpoint.hash = gcfFunction.labels[HASH_LABEL];
+  }
   return endpoint;
 }
