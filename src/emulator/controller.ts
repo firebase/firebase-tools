@@ -553,9 +553,42 @@ export async function startAll(
     const firestoreLogger = EmulatorLogger.forEmulator(Emulators.FIRESTORE);
     const firestoreAddr = await getAndCheckAddress(Emulators.FIRESTORE, options);
 
+    const portVal = options.config.src.emulators?.firestore?.ui_websocket_port;
+    let ui_websocket_port;
+    if (portVal) {
+      const portOpen = await portUtils.checkPortOpen(portVal, firestoreAddr.host);
+      if (!portOpen) {
+        await cleanShutdown();
+        firestoreLogger.logLabeled(
+          "WARN",
+          Emulators.FIRESTORE,
+          `Port ${portVal} is not open on ${firestoreAddr.host}, could not start websocket.`
+        );
+        firestoreLogger.logLabeled(
+          "WARN",
+          Emulators.FIRESTORE,
+          `To select a different port, specify that port in a firebase.json config file:
+        {
+          // ...
+          "emulators": {
+            "${Emulators.FIRESTORE}": {
+              "host": "${clc.yellow("HOST")}",
+              "port": "${clc.yellow("PORT")}",
+              "ui_websocket_port": "${clc.yellow("WEBSOCKET_PORT")}"
+            }
+          }
+        }`
+        );
+        return utils.reject(`Could not start websocket, port taken.`, {});
+      }
+      ui_websocket_port = portVal;
+    } else {
+      ui_websocket_port = await portUtils.findAvailablePort(firestoreAddr.host, 9150);
+    }
     const args: FirestoreEmulatorArgs = {
       host: firestoreAddr.host,
       port: firestoreAddr.port,
+      ui_websocket_port: ui_websocket_port,
       projectId,
       auto_download: true,
     };
@@ -613,6 +646,11 @@ export async function startAll(
 
     const firestoreEmulator = new FirestoreEmulator(args);
     await startEmulator(firestoreEmulator);
+    firestoreLogger.logLabeled(
+      "SUCCESS",
+      Emulators.FIRESTORE,
+      `Firestore Emulator UI websocket is running on ${ui_websocket_port}.`
+    );
   }
 
   if (shouldStart(options, Emulators.DATABASE)) {

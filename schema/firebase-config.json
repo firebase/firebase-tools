@@ -199,6 +199,9 @@
                         },
                         "port": {
                             "type": "number"
+                        },
+                        "ui_websocket_port": {
+                            "type": "number"
                         }
                     },
                     "type": "object"

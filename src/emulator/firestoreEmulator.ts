@@ -14,6 +14,7 @@ import { Client } from "../apiv2";
 export interface FirestoreEmulatorArgs {
   port?: number;
   host?: string;
+  ui_websocket_port?: number;
   projectId?: string;
   rules?: string;
   functions_emulator?: string;
@@ -77,12 +78,14 @@ export class FirestoreEmulator implements EmulatorInstance {
   getInfo(): EmulatorInfo {
     const host = this.args.host || Constants.getDefaultHost();
     const port = this.args.port || Constants.getDefaultPort(Emulators.FIRESTORE);
+    const reservedPorts = this.args.ui_websocket_port ? [this.args.ui_websocket_port]: [];
 
     return {
       name: this.getName(),
       host,
       port,
       pid: downloadableEmulators.getPID(Emulators.FIRESTORE),
+      reservedPorts: reservedPorts
     };
   }
 
