@@ -389,16 +389,30 @@ async function handleSecret(secretParam: SecretParam, projectId: string): Promis
         secretParam.label || secretParam.name
       }:`,
     });
-    await secretManager.createSecret(projectId, secretParam.name, {});
+    const secretLabel: Record<string, string> = { "firebase-hosting-managed": "yes" };
+    await secretManager.createSecret(projectId, secretParam.name, secretLabel);
     await secretManager.addVersion(projectId, secretParam.name, secretValue);
     return secretValue;
   } else if (!metadata.secretVersion) {
-    // the secret exists, but version "latest" doesnt, which...is questionably possible?
+    throw new FirebaseError(
+      `Cloud Secret Manager has no latest version of the secret defined by param ${
+        secretParam.label || secretParam.name
+      }`
+    );
+  }
+  if (metadata.secretVersion.state === "DESTROYED" || metadata.secretVersion.state === "DISABLED") {
+    throw new FirebaseError(
+      `Cloud Secret Manager's latest version of secret '${
+        secretParam.label || secretParam.name
+      } is in illegal state ${metadata.secretVersion.state}`
+    );
   }
 
-  // we need to test if the hosting service account can actually read
-  // secretManager.ensureServiceAgentRole(metadata.secret, [`what address goes here`], "roles/secretmanager.admin");
-
+  secretManager.ensureServiceAgentRole(
+    metadata.secret,
+    [`${projectId}@appspot.gserviceaccount.com`],
+    "roles/secretmanager.admin"
+  );
   return secretManager.accessSecretVersion(projectId, secretParam.name, "latest");
 }
 
