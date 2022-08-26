@@ -301,7 +301,7 @@ export async function resolveBackend(
   return toBackend(build, paramValues);
 }
 
-/*function envWithTypes(rawEnvs: Record<string, string>): Record<string, params.ParamValue> {
+function envWithTypes(rawEnvs: Record<string, string>): Record<string, params.ParamValue> {
   const out: Record<string, params.ParamValue> = {};
   for (const envName of Object.keys(rawEnvs)) {
     const value = rawEnvs[envName];
@@ -312,11 +312,6 @@ export async function resolveBackend(
     });
   }
   return out;
-  return {};
-}*/
-
-function envWithTypes(foo: any): any {
-  return {};
 }
 
 // Utility class to make it more fluent to use proto.convertIfPresent
