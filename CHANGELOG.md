@@ -1,0 +1,1 @@
+- Fix bug with function deploy where secrets were not attached when using older Functions SDK (#4797).

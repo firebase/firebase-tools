@@ -49,7 +49,7 @@
         "node-fetch": "^2.6.7",
         "open": "^6.3.0",
         "ora": "^5.4.1",
-        "portfinder": "^1.0.23",
+        "portfinder": "^1.0.32",
         "progress": "^2.0.3",
         "proxy-agent": "^5.0.0",
         "request": "^2.87.0",
@@ -9568,11 +9568,11 @@
       }
     },
     "node_modules/mkdirp": {
-      "version": "0.5.5",
-      "resolved": "https://registry.npmjs.org/mkdirp/-/mkdirp-0.5.5.tgz",
-      "integrity": "sha512-NKmAlESf6jMGym1++R0Ra7wvhV+wFW63FaSOFPwRahvea0gMUcGUhVeAg/0BC0wiv9ih5NYPB1Wn1UEI1/L+xQ==",
+      "version": "0.5.6",
+      "resolved": "https://registry.npmjs.org/mkdirp/-/mkdirp-0.5.6.tgz",
+      "integrity": "sha512-FP+p8RB8OWpF3YZBCrP5gtADmtXApB5AMLn+vdyA+PyxCjrCs00mjyUozssO33cwDeT3wNGdLxJ5M//YqtHAJw==",
       "dependencies": {
-        "minimist": "^1.2.5"
+        "minimist": "^1.2.6"
       },
       "bin": {
         "mkdirp": "bin/cmd.js"
@@ -10909,13 +10909,13 @@
       }
     },
     "node_modules/portfinder": {
-      "version": "1.0.28",
-      "resolved": "https://registry.npmjs.org/portfinder/-/portfinder-1.0.28.tgz",
-      "integrity": "sha512-Se+2isanIcEqf2XMHjyUKskczxbPH7dQnlMjXX6+dybayyHvAf/TCgyMRlzf/B6QDhAEFOGes0pzRo3by4AbMA==",
+      "version": "1.0.32",
+      "resolved": "https://registry.npmjs.org/portfinder/-/portfinder-1.0.32.tgz",
+      "integrity": "sha512-on2ZJVVDXRADWE6jnQaX0ioEylzgBpQk8r55NE4wjXW1ZxO+BgDlY6DXwj20i0V8eB4SenDQ00WEaxfiIQPcxg==",
       "dependencies": {
-        "async": "^2.6.2",
-        "debug": "^3.1.1",
-        "mkdirp": "^0.5.5"
+        "async": "^2.6.4",
+        "debug": "^3.2.7",
+        "mkdirp": "^0.5.6"
       },
       "engines": {
         "node": ">= 0.12.0"
@@ -21853,11 +21853,11 @@
       }
     },
     "mkdirp": {
-      "version": "0.5.5",
-      "resolved": "https://registry.npmjs.org/mkdirp/-/mkdirp-0.5.5.tgz",
-      "integrity": "sha512-NKmAlESf6jMGym1++R0Ra7wvhV+wFW63FaSOFPwRahvea0gMUcGUhVeAg/0BC0wiv9ih5NYPB1Wn1UEI1/L+xQ==",
+      "version": "0.5.6",
+      "resolved": "https://registry.npmjs.org/mkdirp/-/mkdirp-0.5.6.tgz",
+      "integrity": "sha512-FP+p8RB8OWpF3YZBCrP5gtADmtXApB5AMLn+vdyA+PyxCjrCs00mjyUozssO33cwDeT3wNGdLxJ5M//YqtHAJw==",
       "requires": {
-        "minimist": "^1.2.5"
+        "minimist": "^1.2.6"
       }
     },
     "mkdirp-classic": {
@@ -22876,13 +22876,13 @@
       }
     },
     "portfinder": {
-      "version": "1.0.28",
-      "resolved": "https://registry.npmjs.org/portfinder/-/portfinder-1.0.28.tgz",
-      "integrity": "sha512-Se+2isanIcEqf2XMHjyUKskczxbPH7dQnlMjXX6+dybayyHvAf/TCgyMRlzf/B6QDhAEFOGes0pzRo3by4AbMA==",
+      "version": "1.0.32",
+      "resolved": "https://registry.npmjs.org/portfinder/-/portfinder-1.0.32.tgz",
+      "integrity": "sha512-on2ZJVVDXRADWE6jnQaX0ioEylzgBpQk8r55NE4wjXW1ZxO+BgDlY6DXwj20i0V8eB4SenDQ00WEaxfiIQPcxg==",
       "requires": {
-        "async": "^2.6.2",
-        "debug": "^3.1.1",
-        "mkdirp": "^0.5.5"
+        "async": "^2.6.4",
+        "debug": "^3.2.7",
+        "mkdirp": "^0.5.6"
       },
       "dependencies": {
         "debug": {
