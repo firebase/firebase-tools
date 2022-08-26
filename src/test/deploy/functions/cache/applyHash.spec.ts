@@ -36,7 +36,7 @@ describe("applyHash", () => {
           },
         },
       };
-      const endpoint1 = {
+      const endpoint1: backend.Endpoint = {
         ...EMPTY_ENDPOINT,
         id: "endpoint1",
         platform: "gcfv1",
@@ -49,8 +49,8 @@ describe("applyHash", () => {
             version: "1",
           },
         ],
-      } as backend.Endpoint;
-      const endpoint2 = {
+      };
+      const endpoint2: backend.Endpoint = {
         ...EMPTY_ENDPOINT,
         id: "endpoint2",
         platform: "gcfv2",
@@ -63,7 +63,7 @@ describe("applyHash", () => {
             version: "2",
           },
         ],
-      } as backend.Endpoint;
+      };
 
       const backend1 = backend.of(endpoint1);
       const backend2 = backend.of(endpoint2);

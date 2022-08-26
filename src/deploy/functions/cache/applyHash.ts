@@ -24,14 +24,14 @@ export async function applyBackendHashToBackends(
       ? await getSourceHash(source?.functionsSourceV2)
       : undefined;
     const envHash = getEnvironmentVariablesHash(wantBackend);
-    applyBackendHashToBackend(wantBackend, envHash, sourceV1Hash, sourceV2Hash);
+    applyBackendHashToEndpoints(wantBackend, envHash, sourceV1Hash, sourceV2Hash);
   }
 }
 
 /**
  * Updates {@link Backend}, applying a unique hash to each {@link Endpoint}.
  */
-export function applyBackendHashToBackend(
+function applyBackendHashToEndpoints(
   wantBackend: Backend,
   envHash: string,
   sourceV1Hash?: string,
