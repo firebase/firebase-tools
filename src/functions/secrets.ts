@@ -136,6 +136,16 @@ export function of(endpoints: backend.Endpoint[]): backend.SecretEnvVar[] {
 }
 
 /**
+ * Generates an object mapping secret's with their versions.
+ */
+export function getSecretVersions(endpoint: backend.Endpoint): Record<string, string> {
+  return (endpoint.secretEnvironmentVariables || []).reduce((memo, { secret, version }) => {
+    memo[secret] = version || "";
+    return memo;
+  }, {} as Record<string, string>);
+}
+
+/**
  * Checks whether a secret is in use by the given endpoint.
  */
 export function inUse(projectInfo: ProjectInfo, secret: Secret, endpoint: backend.Endpoint) {

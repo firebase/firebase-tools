@@ -55,6 +55,8 @@ export function track(action: string, label: string, duration: number = 0): Prom
 const EMULATOR_GA4_API_SECRET =
   process.env.FIREBASE_EMULATOR_GA4_API_SECRET || "2V_zBYc4TdeoppzDaIu0zw";
 
+// Prop name length must <= 24 and cannot begin with google_/ga_/firebase_.
+// https://developers.google.com/analytics/devguides/collection/protocol/ga4/reference?client_type=firebase#reserved_parameter_names
 const EMULATOR_GA4_USER_PROPS = {
   node_platform: {
     value: process.platform,
@@ -62,7 +64,7 @@ const EMULATOR_GA4_USER_PROPS = {
   node_version: {
     value: process.version,
   },
-  firebase_tools_version: {
+  cli_version: {
     value: pkg.version,
   },
   firepit_version: {

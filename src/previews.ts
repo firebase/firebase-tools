@@ -12,6 +12,7 @@ interface PreviewFlags {
   frameworkawareness: boolean;
   functionsparams: boolean;
   crossservicerules: boolean;
+  skipdeployingnoopfunctions: boolean;
 }
 
 export const previews: PreviewFlags = {
@@ -26,6 +27,7 @@ export const previews: PreviewFlags = {
   frameworkawareness: false,
   functionsparams: false,
   crossservicerules: false,
+  skipdeployingnoopfunctions: false,
 
   ...(configstore.get("previews") as Partial<PreviewFlags>),
 };

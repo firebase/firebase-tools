@@ -8,6 +8,7 @@ import { FirebaseError } from "../../../error";
 import * as utils from "../../../utils";
 import * as backend from "../backend";
 import * as v2events from "../../../functions/events/v2";
+import { previews } from "../../../previews";
 
 export interface EndpointUpdate {
   endpoint: backend.Endpoint;
@@ -18,6 +19,7 @@ export interface Changeset {
   endpointsToCreate: backend.Endpoint[];
   endpointsToUpdate: EndpointUpdate[];
   endpointsToDelete: backend.Endpoint[];
+  endpointsToSkip: backend.Endpoint[];
 }
 
 export type DeploymentPlan = Record<string, Changeset>;
@@ -52,9 +54,31 @@ export function calculateChangesets(
     keyFn
   );
 
+  const { skipdeployingnoopfunctions } = previews;
+
+  // If the hashes are matching, that means the local function is the same as the server copy.
+  const toSkipPredicate = (id: string): boolean =>
+    !!(
+      skipdeployingnoopfunctions &&
+      have[id].hash &&
+      want[id].hash &&
+      want[id].hash === have[id].hash
+    );
+
+  const toSkipEndpointsMap = Object.keys(want)
+    .filter((id) => have[id])
+    .filter((id) => toSkipPredicate(id))
+    .reduce((memo: Record<string, backend.Endpoint>, id) => {
+      memo[id] = want[id];
+      return memo;
+    }, {});
+
+  const toSkip = utils.groupBy(Object.values(toSkipEndpointsMap), keyFn);
+
   const toUpdate = utils.groupBy(
     Object.keys(want)
       .filter((id) => have[id])
+      .filter((id) => !toSkipEndpointsMap[id])
       .map((id) => calculateUpdate(want[id], have[id])),
     (eu: EndpointUpdate) => keyFn(eu.endpoint)
   );
@@ -64,12 +88,14 @@ export function calculateChangesets(
     ...Object.keys(toCreate),
     ...Object.keys(toDelete),
     ...Object.keys(toUpdate),
+    ...Object.keys(toSkip),
   ]);
   for (const key of keys) {
     result[key] = {
       endpointsToCreate: toCreate[key] || [],
       endpointsToUpdate: toUpdate[key] || [],
       endpointsToDelete: toDelete[key] || [],
+      endpointsToSkip: toSkip[key] || [],
     };
   }
   return result;

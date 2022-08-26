@@ -11,22 +11,16 @@ import * as projectConfig from "../functions/projectConfig";
 import { Client } from "../apiv2";
 import { functionsOrigin } from "../api";
 import { AUTH_BLOCKING_EVENTS } from "../functions/events/v1";
+import {
+  BLOCKING_EVENT_TO_LABEL_KEY,
+  BLOCKING_LABEL,
+  BLOCKING_LABEL_KEY_TO_EVENT,
+  CODEBASE_LABEL,
+  HASH_LABEL,
+} from "../functions/constants";
 
 export const API_VERSION = "v1";
-export const CODEBASE_LABEL = "firebase-functions-codebase";
 const client = new Client({ urlPrefix: functionsOrigin, apiVersion: API_VERSION });
-
-export const BLOCKING_LABEL = "deployment-blocking";
-
-const BLOCKING_LABEL_KEY_TO_EVENT: Record<string, typeof AUTH_BLOCKING_EVENTS[number]> = {
-  "before-create": "providers/cloud.auth/eventTypes/user.beforeCreate",
-  "before-sign-in": "providers/cloud.auth/eventTypes/user.beforeSignIn",
-};
-
-const BLOCKING_EVENT_TO_LABEL_KEY: Record<typeof AUTH_BLOCKING_EVENTS[number], string> = {
-  "providers/cloud.auth/eventTypes/user.beforeCreate": "before-create",
-  "providers/cloud.auth/eventTypes/user.beforeSignIn": "before-sign-in",
-};
 
 interface Operation {
   name: string;
@@ -559,6 +553,9 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
     );
   }
   endpoint.codebase = gcfFunction.labels?.[CODEBASE_LABEL] || projectConfig.DEFAULT_CODEBASE;
+  if (gcfFunction.labels?.[HASH_LABEL]) {
+    endpoint.hash = gcfFunction.labels[HASH_LABEL];
+  }
   return endpoint;
 }
 
@@ -678,6 +675,12 @@ export function functionFromEndpoint(
     };
   } else {
     delete gcfFunction.labels?.[CODEBASE_LABEL];
+  }
+  if (endpoint.hash) {
+    gcfFunction.labels = {
+      ...gcfFunction.labels,
+      [HASH_LABEL]: endpoint.hash,
+    };
   }
   return gcfFunction;
 }

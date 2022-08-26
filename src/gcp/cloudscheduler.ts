@@ -102,7 +102,7 @@ export function deleteJob(name: string): Promise<any> {
  * If no job with that name exists, this will return a 404.
  * @param name The name of the job to get.
  */
-function getJob(name: string): Promise<any> {
+export function getJob(name: string): Promise<any> {
   return apiClient.get(`/${name}`, {
     resolveOnHTTPError: true,
   });
