@@ -390,18 +390,14 @@ export function addResourcesToBuild(
     proto.secondsFromDuration
   );
   if (annotation.secrets) {
-    const secretEnvs: backend.SecretEnvVar[] = [];
-    for (const secret of annotation.secrets) {
-      const secretEnv: backend.SecretEnvVar = {
+    endpoint.secretEnvironmentVariables = annotation.secrets.map<backend.SecretEnvVar>((secret) => {
+      return {
         secret,
         projectId,
         key: secret,
       };
-      secretEnvs.push(secretEnv);
-    }
-    endpoint.secretEnvironmentVariables = secretEnvs;
+    });
   }
-
   want.endpoints[endpointId] = endpoint;
 }
 
