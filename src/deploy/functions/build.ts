@@ -269,14 +269,16 @@ export type Endpoint = Triggered & {
 };
 
 /**
- *  Resolves user-defined parameters inside a Build, and returns a Backend ready for upload to the API
+ * Resolves user-defined parameters inside a Build, and generates a Backend.
+ * Returns both the Backend and the literal resolved values of any params, since
+ * the latter also have to be uploaded so user code can see them in process.env
  */
 export async function resolveBackend(
   build: Build,
   userEnvOpt: UserEnvsOpts,
   userEnvs: Record<string, string>,
   nonInteractive?: boolean
-): Promise<backend.Backend> {
+): Promise<{ backend: backend.Backend; envs: Record<string, Field<string | number | boolean>> }> {
   const projectId = userEnvOpt.projectId;
   let paramValues: Record<string, Field<string | number | boolean>> = {};
   if (previews.functionsparams) {
@@ -298,7 +300,7 @@ export async function resolveBackend(
     writeUserEnvs(toWrite, userEnvOpt);
   }
 
-  return toBackend(build, paramValues);
+  return { backend: toBackend(build, paramValues), envs: paramValues };
 }
 
 function envWithTypes(rawEnvs: Record<string, string>): Record<string, string | number | boolean> {
