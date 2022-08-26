@@ -278,7 +278,7 @@ export async function resolveBackend(
   userEnvOpt: UserEnvsOpts,
   userEnvs: Record<string, string>,
   nonInteractive?: boolean
-): Promise<{ backend: backend.Backend; envs: Record<string, Field<string | number | boolean>> }> {
+): Promise<{ backend: backend.Backend; envs: Record<string, params.ParamValue> }> {
   const projectId = userEnvOpt.projectId;
   let paramValues: Record<string, params.ParamValue> = {};
   if (previews.functionsparams) {
