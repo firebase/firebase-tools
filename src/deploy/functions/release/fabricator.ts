@@ -125,11 +125,11 @@ export class Fabricator {
       this.logOpStart("creating", endpoint);
       upserts.push(handle("create", endpoint, () => this.createEndpoint(endpoint, scraper)));
     }
-    for (const endpoint of changes.endpointsToSkip) {
-      upserts.push(handle("skip", endpoint, () => this.skipEndpoint(endpoint)));
-    }
     if (changes.endpointsToSkip.length) {
-      upserts.push(this.skipEndpointsCompleted(changes.endpointsToSkip));
+      for (const endpoint of changes.endpointsToSkip) {
+        utils.logSuccess(this.getLogSuccessMessage("skip", endpoint));
+      }
+      utils.logSuccess(this.getSkippedDeployingNopOpMessage(changes.endpointsToSkip));
     }
     for (const update of changes.endpointsToUpdate) {
       this.logOpStart("updating", update.endpoint);
@@ -171,15 +171,6 @@ export class Fabricator {
     }
 
     await this.setTrigger(endpoint);
-  }
-
-  /* eslint-disable @typescript-eslint/no-unused-vars */
-  async skipEndpoint(endpoint: backend.Endpoint): Promise<void> {
-    await Promise.resolve();
-  }
-
-  async skipEndpointsCompleted(endpointsToSkip: backend.Endpoint[]): Promise<void> {
-    await Promise.resolve(utils.logSuccess(this.getSkippedDeployingNopOpMessage(endpointsToSkip)));
   }
 
   async updateEndpoint(update: planner.EndpointUpdate, scraper: SourceTokenScraper): Promise<void> {
