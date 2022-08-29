@@ -32,6 +32,7 @@ import {
 } from "../../downloadableEmulators";
 import { EmulatorRegistry } from "../../registry";
 import { Client } from "../../../apiv2";
+import { previews } from "../../../previews";
 
 const lock = new AsyncLock();
 const synchonizationKey: string = "key";
@@ -336,21 +337,28 @@ export class StorageRulesRuntime {
 
     return this._completeVerifyWithRuleset(opts.projectId, runtimeActionRequest);
   }
-  
+
   /**
    * Completes a verification flow, including calling Firestore as necessary for cross-service calls
-   * @param projectId 
-   * @param runtimeActionRequest 
-   * @param overrideId 
-   * @returns 
+   * @param projectId
+   * @param runtimeActionRequest
+   * @param overrideId
+   * @returns
    */
-  private async _completeVerifyWithRuleset(projectId: string, runtimeActionRequest: RuntimeActionBundle, overrideId?: number): Promise<
-  Promise<{
-    permitted?: boolean;
-    issues: StorageRulesIssues;
-  }>
-> {
-    const response = (await this._sendRequest(runtimeActionRequest, overrideId)) as RuntimeActionVerifyResponse;
+  private async _completeVerifyWithRuleset(
+    projectId: string,
+    runtimeActionRequest: RuntimeActionBundle,
+    overrideId?: number
+  ): Promise<
+    Promise<{
+      permitted?: boolean;
+      issues: StorageRulesIssues;
+    }>
+  > {
+    const response = (await this._sendRequest(
+      runtimeActionRequest,
+      overrideId
+    )) as RuntimeActionVerifyResponse;
 
     if ("context" in response) {
       const dataResponse = await fetchFirestoreDocument(projectId, response);
@@ -436,23 +444,31 @@ function toExpressionValue(obj: any): ExpressionValue {
   );
 }
 
-async function fetchFirestoreDocument(projectId: string, request: RuntimeActionFirestoreDataRequest): Promise<RuntimeActionFirestoreDataResponse> {
+async function fetchFirestoreDocument(
+  projectId: string,
+  request: RuntimeActionFirestoreDataRequest
+): Promise<RuntimeActionFirestoreDataResponse> {
+  // If preview not enabled, just throw an error
+  if (!previews.crossservicerules) {
+    return { status: DataLoadStatus.INVALID_STATE, warnings: [], errors: [] };
+  }
+
   const url = EmulatorRegistry.url(Emulators.FIRESTORE);
   const pathname = `projects/${projectId}${request.context.path}`;
 
   const client = new Client({
     urlPrefix: url.toString(),
-    apiVersion: 'v1',
+    apiVersion: "v1",
   });
 
   try {
     const doc = await client.get(pathname);
-    const {name, fields} = doc.body as {name: string, fields: string};
-    const result = {name, fields};
-    return {result, status: DataLoadStatus.OK, warnings: [], errors: []};
+    const { name, fields } = doc.body as { name: string; fields: string };
+    const result = { name, fields };
+    return { result, status: DataLoadStatus.OK, warnings: [], errors: [] };
   } catch (e) {
     // Don't care what the error is, just return not_found
-    return {status: DataLoadStatus.NOT_FOUND, warnings: [], errors: []};
+    return { status: DataLoadStatus.NOT_FOUND, warnings: [], errors: [] };
   }
 }
 

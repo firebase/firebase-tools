@@ -101,7 +101,7 @@ export async function isPermitted(opts: {
   };
   path: string;
   method: RulesetOperationMethod;
-  projectId: string,
+  projectId: string;
   authorization?: string;
   delimiter?: string;
 }): Promise<boolean> {

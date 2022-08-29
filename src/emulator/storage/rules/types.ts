@@ -13,6 +13,7 @@ export enum RulesetOperationMethod {
 export enum DataLoadStatus {
   OK = "ok",
   NOT_FOUND = "not_found",
+  INVALID_STATE = "invalid_state",
 }
 
 export interface Source {
@@ -40,18 +41,22 @@ export interface RuntimeActionLoadRulesetResponse extends RuntimeActionResponse 
   };
 }
 
-export type RuntimeActionVerifyResponse = RuntimeActionVerifyCompleteResponse | RuntimeActionFirestoreDataRequest;
+export type RuntimeActionVerifyResponse =
+  | RuntimeActionVerifyCompleteResponse
+  | RuntimeActionFirestoreDataRequest;
 
 export interface RuntimeActionVerifyCompleteResponse extends RuntimeActionResponse {
   result: { permit: boolean };
 }
 
 export interface RuntimeActionFirestoreDataRequest extends RuntimeActionResponse {
-  action: "fetch_firestore_document",
-  context: { path: string },
+  action: "fetch_firestore_document";
+  context: { path: string };
 }
 
-export interface RuntimeActionFirestoreDataResponse extends RuntimeActionResponse, RuntimeActionBundle {
+export interface RuntimeActionFirestoreDataResponse
+  extends RuntimeActionResponse,
+    RuntimeActionBundle {
   result?: unknown;
 }
 
