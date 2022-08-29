@@ -1,6 +1,7 @@
 import { spawn } from "cross-spawn";
 import { ChildProcess } from "child_process";
 import { FirebaseError } from "../../../error";
+import * as AsyncLock from "async-lock";
 import {
   RulesetOperationMethod,
   RuntimeActionBundle,
@@ -26,6 +27,9 @@ import {
   DownloadDetails,
   handleEmulatorProcessError,
 } from "../../downloadableEmulators";
+
+const lock = new AsyncLock();
+const synchonizationKey: string = "key";
 
 export interface RulesetVerificationOpts {
   file: {
@@ -232,7 +236,17 @@ export class StorageRulesRuntime {
       };
 
       const serializedRequest = JSON.stringify(runtimeActionRequest);
-      this._childprocess?.stdin?.write(serializedRequest + "\n");
+
+      // Added due to https://github.com/firebase/firebase-tools/issues/3915
+      // Without waiting to acquire the lock and allowing the child process enough time
+      // (~15ms) to pipe the output back, the emulator will run into issues with
+      // capturing the output and resolving corresponding promises en masse.
+      lock.acquire(synchonizationKey, (done) => {
+        this._childprocess?.stdin?.write(serializedRequest + "\n");
+        setTimeout(() => {
+          done();
+        }, 15);
+      });
     });
   }
 

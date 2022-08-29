@@ -19,6 +19,7 @@ export interface Summary {
 
 export type OperationType =
   | "create"
+  | "skip"
   | "update"
   | "delete"
   | "upsert schedule"

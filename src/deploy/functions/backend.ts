@@ -359,6 +359,10 @@ export type Endpoint = TargetIds &
     // This is a temporary fix to address https://github.com/firebase/firebase-tools/issues/4171
     // GCFv1 can be http or https and GCFv2 is always https
     securityLevel?: gcf.SecurityLevel;
+
+    // "Hash" is a value derived from function labels that is used to check if there are any changes
+    // between the serverside and local copies of the function.
+    hash?: string;
   };
 
 export interface RequiredAPI {
@@ -466,7 +470,7 @@ export function functionName(cloudFunction: TargetIds): string {
 /**
  * The naming pattern used to create a Pub/Sub Topic or Scheduler Job ID for a given scheduled function.
  * This pattern is hard-coded and assumed throughout tooling, both in the Firebase Console and in the CLI.
- * For e.g., we automatically assume a schedule and topic with this name exists when we list funcitons and
+ * For e.g., we automatically assume a schedule and topic with this name exists when we list functions and
  * see a label that it has an attached schedule. This saves us from making extra API calls.
  * DANGER: We use the pattern defined here to deploy and delete schedules,
  * and to display scheduled functions in the Firebase console

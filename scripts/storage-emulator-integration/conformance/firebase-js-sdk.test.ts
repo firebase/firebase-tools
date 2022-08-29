@@ -35,6 +35,7 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
 
   let test: EmulatorEndToEndTest;
   let testBucket: Bucket;
+  let authHeader: { Authorization: string };
   let browser: puppeteer.Browser;
   let page: puppeteer.Page;
 
@@ -95,6 +96,7 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
       : admin.credential.applicationDefault();
     admin.initializeApp({ credential });
     testBucket = admin.storage().bucket(storageBucket);
+    authHeader = { Authorization: `Bearer ${await TEST_ENV.adminAccessTokenGetter}` };
 
     // Init fake browser page.
     browser = await puppeteer.launch({
@@ -166,25 +168,16 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
         }, TEST_FILE_NAME);
 
         await new Promise((resolve, reject) => {
-          TEST_ENV.requestClient.get(
-            downloadUrl,
-            {
-              headers: {
-                // This is considered an authorized request in the emulator
-                Authorization: "Bearer owner",
-              },
-            },
-            (response) => {
-              const data: any = [];
-              response
-                .on("data", (chunk) => data.push(chunk))
-                .on("end", () => {
-                  expect(Buffer.concat(data).toString()).to.equal("hello world");
-                })
-                .on("close", resolve)
-                .on("error", reject);
-            }
-          );
+          TEST_ENV.requestClient.get(downloadUrl, { headers: authHeader }, (response) => {
+            const data: any = [];
+            response
+              .on("data", (chunk) => data.push(chunk))
+              .on("end", () => {
+                expect(Buffer.concat(data).toString()).to.equal("hello world");
+              })
+              .on("close", resolve)
+              .on("error", reject);
+          });
         });
       });
 
@@ -210,25 +203,16 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
         });
 
         await new Promise((resolve, reject) => {
-          TEST_ENV.requestClient.get(
-            downloadUrl,
-            {
-              headers: {
-                // This is considered an authorized request in the emulator
-                Authorization: "Bearer owner",
-              },
-            },
-            (response) => {
-              const data: any = [];
-              response
-                .on("data", (chunk) => data.push(chunk))
-                .on("end", () => {
-                  expect(Buffer.concat(data).toString()).to.equal("some-other-content");
-                })
-                .on("close", resolve)
-                .on("error", reject);
-            }
-          );
+          TEST_ENV.requestClient.get(downloadUrl, { headers: authHeader }, (response) => {
+            const data: any = [];
+            response
+              .on("data", (chunk) => data.push(chunk))
+              .on("end", () => {
+                expect(Buffer.concat(data).toString()).to.equal("some-other-content");
+              })
+              .on("close", resolve)
+              .on("error", reject);
+          });
         });
       });
 
@@ -469,39 +453,72 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
           });
         });
       });
+
+      it("serves content successfully when spammed with calls", async () => {
+        const NUMBER_OF_FILES = 10;
+        const allFileNames: string[] = [];
+        for (let i = 0; i < NUMBER_OF_FILES; i++) {
+          const fileName = TEST_FILE_NAME.concat(i.toString());
+          allFileNames.push(fileName);
+          await testBucket.upload(smallFilePath, { destination: fileName });
+        }
+        await signInToFirebaseAuth(page);
+
+        const promises: Promise<any>[] = [];
+        for (const singleFileName of allFileNames) {
+          promises.push(
+            await page.evaluate((filename) => {
+              return firebase.storage().ref(filename).getDownloadURL();
+            }, singleFileName)
+          );
+        }
+
+        Promise.all(promises).then((values) => {
+          expect(values.length).to.be.equal(10);
+        });
+      });
     });
 
     describe("#getMetadata()", () => {
-      // TODO(tonyjhuang): Skip until we have more expressive metadata type checks.
-      // it.skip("should return file metadata", async () => {
-      //   await testBucket.upload(emptyFilePath, { destination: TEST_FILE_NAME });
-      //   await signInToFirebaseAuth(page);
-      //   const metadata = await page.evaluate(async (filename) => {
-      //     return await firebase.storage().ref(filename).getMetadata();
-      //   }, TEST_FILE_NAME);
-      //   const metadataTypes: { [s: string]: string } = {};
-      //   console.log(metadata);
-      //   for (const key in Object.keys(metadata)) {
-      //     console.log("KEY: " + key)
-      //     metadataTypes[key] = typeof(metadata[key]);
-      //   }
-      //   expect(metadataTypes).to.deep.equal({
-      //     bucket: "string",
-      //     contentDisposition: "string",
-      //     contentEncoding: "string",
-      //     contentType: "string",
-      //     cacheControl: "string",
-      //     fullPath: "string",
-      //     generation: "string",
-      //     md5Hash: "string",
-      //     metageneration: "string",
-      //     name: "string",
-      //     size: "number",
-      //     timeCreated: "string",
-      //     type: "string",
-      //     updated: "string",
-      //   });
-      // });
+      it("should return file metadata", async () => {
+        await testBucket.upload(emptyFilePath, {
+          destination: TEST_FILE_NAME,
+        });
+        await signInToFirebaseAuth(page);
+
+        const metadata = await page.evaluate(async (filename) => {
+          return await firebase.storage().ref(filename).getMetadata();
+        }, TEST_FILE_NAME);
+
+        expect(Object.keys(metadata)).to.have.same.members([
+          "type",
+          "bucket",
+          "generation",
+          "metageneration",
+          "fullPath",
+          "name",
+          "size",
+          "timeCreated",
+          "updated",
+          "md5Hash",
+          "contentEncoding",
+          "contentType",
+        ]);
+        expect(metadata.type).to.be.eql("file");
+        expect(metadata.bucket).to.be.eql(storageBucket);
+        expect(metadata.generation).to.be.a("string");
+        // Firebase Storage automatically updates metadata with a download token on data or
+        // metadata fetch it isn't provided at uplaod time.
+        expect(metadata.metageneration).to.be.eql("2");
+        expect(metadata.fullPath).to.be.eql(TEST_FILE_NAME);
+        expect(metadata.name).to.be.eql("testFile");
+        expect(metadata.size).to.be.eql(0);
+        expect(metadata.timeCreated).to.be.a("string");
+        expect(metadata.updated).to.be.a("string");
+        expect(metadata.md5Hash).to.be.a("string");
+        expect(metadata.contentEncoding).to.be.eql("identity");
+        expect(metadata.contentType).to.be.eql("application/octet-stream");
+      });
     });
 
     describe("#updateMetadata()", () => {
@@ -525,6 +542,40 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
         expect(metadata.customMetadata?.testable).to.equal("true");
       });
 
+      it("shoud allow deletion of settable metadata fields by setting to null", async () => {
+        await testBucket.upload(emptyFilePath, {
+          destination: TEST_FILE_NAME,
+          metadata: {
+            cacheControl: "hello world",
+            contentDisposition: "hello world",
+            contentEncoding: "hello world",
+            contentLanguage: "en",
+            contentType: "hello world",
+            metadata: { key: "value" },
+          },
+        });
+        await signInToFirebaseAuth(page);
+
+        const updatedMetadata = await page.evaluate(async (filename) => {
+          return firebase.storage().ref(filename).updateMetadata({
+            cacheControl: null,
+            contentDisposition: null,
+            contentEncoding: null,
+            contentLanguage: null,
+            contentType: null,
+            customMetadata: null,
+          });
+        }, TEST_FILE_NAME);
+        expect(Object.keys(updatedMetadata)).to.not.have.members([
+          "cacheControl",
+          "contentDisposition",
+          "contentLanguage",
+          "contentType",
+          "customMetadata",
+        ]);
+        expect(updatedMetadata.contentEncoding).to.be.eql("identity");
+      });
+
       it("should allow deletion of custom metadata by setting to null", async () => {
         await testBucket.upload(emptyFilePath, { destination: TEST_FILE_NAME });
         await signInToFirebaseAuth(page);
@@ -541,7 +592,7 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
             });
         }, TEST_FILE_NAME);
 
-        expect(setMetadata.customMetadata?.removeMe).to.equal("please");
+        expect(setMetadata.customMetadata!.removeMe).to.equal("please");
 
         const nulledMetadata = await page.evaluate((filename) => {
           return firebase
@@ -555,7 +606,7 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
             });
         }, TEST_FILE_NAME);
 
-        expect(nulledMetadata.customMetadata?.removeMe).to.equal(undefined);
+        expect(nulledMetadata.customMetadata).to.be.undefined;
       });
 
       it("throws on non-existent file", async () => {

@@ -29,7 +29,7 @@ export const FIND_AVAILBLE_PORT_BY_DEFAULT: Record<Emulators, boolean> = {
   auth: false,
   storage: false,
   extensions: false,
-  eventarc: false,
+  eventarc: true,
 };
 
 export const EMULATOR_DESCRIPTION: Record<Emulators, string> = {

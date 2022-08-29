@@ -25,6 +25,7 @@ import * as utils from "../../../utils";
 import * as services from "../services";
 import { AUTH_BLOCKING_EVENTS } from "../../../functions/events/v1";
 import { backoff } from "../../../throttler/throttler";
+import { getDefaultComputeServiceAgent } from "../checkIam";
 
 // TODO: Tune this for better performance.
 const gcfV1PollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
@@ -46,6 +47,7 @@ export interface FabricatorArgs {
   functionExecutor: Executor;
   appEngineLocation: string;
   sources: Record<string, args.Source>;
+  projectNumber: string;
 }
 
 const rethrowAs =
@@ -61,12 +63,14 @@ export class Fabricator {
   functionExecutor: Executor;
   sources: Record<string, args.Source>;
   appEngineLocation: string;
+  projectNumber: string;
 
   constructor(args: FabricatorArgs) {
     this.executor = args.executor;
     this.functionExecutor = args.functionExecutor;
     this.sources = args.sources;
     this.appEngineLocation = args.appEngineLocation;
+    this.projectNumber = args.projectNumber;
   }
 
   async applyPlan(plan: planner.DeploymentPlan): Promise<reporter.Summary> {
@@ -120,6 +124,12 @@ export class Fabricator {
     for (const endpoint of changes.endpointsToCreate) {
       this.logOpStart("creating", endpoint);
       upserts.push(handle("create", endpoint, () => this.createEndpoint(endpoint, scraper)));
+    }
+    if (changes.endpointsToSkip.length) {
+      for (const endpoint of changes.endpointsToSkip) {
+        utils.logSuccess(this.getLogSuccessMessage("skip", endpoint));
+      }
+      utils.logSuccess(this.getSkippedDeployingNopOpMessage(changes.endpointsToSkip));
     }
     for (const update of changes.endpointsToUpdate) {
       this.logOpStart("updating", update.endpoint);
@@ -333,6 +343,11 @@ export class Fabricator {
       await this.executor
         .run(() => run.setInvokerCreate(endpoint.project, serviceName, ["public"]))
         .catch(rethrowAs(endpoint, "set invoker"));
+    } else if (backend.isScheduleTriggered(endpoint)) {
+      const invoker = [getDefaultComputeServiceAgent(this.projectNumber)];
+      await this.executor
+        .run(() => run.setInvokerCreate(endpoint.project, serviceName, invoker))
+        .catch(rethrowAs(endpoint, "set invoker"));
     }
 
     const mem = endpoint.availableMemoryMb || backend.DEFAULT_MEMORY;
@@ -434,7 +449,10 @@ export class Fabricator {
       AUTH_BLOCKING_EVENTS.includes(endpoint.blockingTrigger.eventType as any)
     ) {
       invoker = ["public"];
+    } else if (backend.isScheduleTriggered(endpoint)) {
+      invoker = [getDefaultComputeServiceAgent(this.projectNumber)];
     }
+
     if (invoker) {
       await this.executor
         .run(() => run.setInvokerUpdate(endpoint.project, serviceName, invoker!))
@@ -568,16 +586,17 @@ export class Fabricator {
 
   async upsertScheduleV1(endpoint: backend.Endpoint & backend.ScheduleTriggered): Promise<void> {
     // The Pub/Sub topic is already created
-    const job = scheduler.jobFromEndpoint(endpoint, this.appEngineLocation);
+    const job = scheduler.jobFromEndpoint(endpoint, this.appEngineLocation, this.projectNumber);
     await this.executor
       .run(() => scheduler.createOrReplaceJob(job))
       .catch(rethrowAs(endpoint, "upsert schedule"));
   }
 
-  upsertScheduleV2(endpoint: backend.Endpoint & backend.ScheduleTriggered): Promise<void> {
-    return Promise.reject(
-      new reporter.DeploymentError(endpoint, "upsert schedule", new Error("Not implemented"))
-    );
+  async upsertScheduleV2(endpoint: backend.Endpoint & backend.ScheduleTriggered): Promise<void> {
+    const job = scheduler.jobFromEndpoint(endpoint, endpoint.region, this.projectNumber);
+    await this.executor
+      .run(() => scheduler.createOrReplaceJob(job))
+      .catch(rethrowAs(endpoint, "upsert schedule"));
   }
 
   async upsertTaskQueue(endpoint: backend.Endpoint & backend.TaskQueueTriggered): Promise<void> {
@@ -615,10 +634,11 @@ export class Fabricator {
       .catch(rethrowAs(endpoint, "delete topic"));
   }
 
-  deleteScheduleV2(endpoint: backend.Endpoint & backend.ScheduleTriggered): Promise<void> {
-    return Promise.reject(
-      new reporter.DeploymentError(endpoint, "delete schedule", new Error("Not implemented"))
-    );
+  async deleteScheduleV2(endpoint: backend.Endpoint & backend.ScheduleTriggered): Promise<void> {
+    const jobName = scheduler.jobNameForEndpoint(endpoint, endpoint.region);
+    await this.executor
+      .run(() => scheduler.deleteJob(jobName))
+      .catch(rethrowAs(endpoint, "delete schedule"));
   }
 
   async disableTaskQueue(endpoint: backend.Endpoint & backend.TaskQueueTriggered): Promise<void> {
@@ -646,8 +666,32 @@ export class Fabricator {
   }
 
   logOpSuccess(op: string, endpoint: backend.Endpoint): void {
+    utils.logSuccess(this.getLogSuccessMessage(op, endpoint));
+  }
+
+  /**
+   * Returns the log messaging for a successful operation.
+   */
+  getLogSuccessMessage(op: string, endpoint: backend.Endpoint) {
     const label = helper.getFunctionLabel(endpoint);
-    utils.logSuccess(`${clc.bold(clc.green(`functions[${label}]`))} Successful ${op} operation.`);
+    switch (op) {
+      case "skip":
+        return `Not deploying ${clc.bold(
+          clc.green(`functions[${label}]`)
+        )} - no change since last deploy (hash=${endpoint.hash})`;
+      default:
+        return `${clc.bold(clc.green(`functions[${label}]`))} Successful ${op} operation.`;
+    }
+  }
+
+  /**
+   * Returns the log messaging for no-op functions that were skipped.
+   */
+  getSkippedDeployingNopOpMessage(endpoints: backend.Endpoint[]) {
+    const functionNames = endpoints.map((endpoint) => endpoint.id).join(",");
+    return `To force deploy these functions, run command ${clc.bold(
+      `firebase deploy --only functions:${clc.green(functionNames)}`
+    )}`;
   }
 }
 
