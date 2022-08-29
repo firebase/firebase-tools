@@ -80,7 +80,7 @@ describe("resolveParams", () => {
         name: "foo",
         default: "bar",
         type: "string",
-        textInput: { text: {} },
+        input: { text: {} },
       },
     ];
     promptOnce.resolves("bar");
@@ -95,13 +95,13 @@ describe("resolveParams", () => {
         name: "foo",
         default: "baz",
         type: "string",
-        textInput: { text: {} },
+        input: { text: {} },
       },
       {
         name: "bar",
         default: "{{ params.foo }}",
         type: "string",
-        textInput: { text: {} },
+        input: { text: {} },
       },
     ];
     promptOnce.resolves("baz");
@@ -115,13 +115,13 @@ describe("resolveParams", () => {
         name: "foo",
         default: "baz",
         type: "string",
-        textInput: { text: {} },
+        input: { text: {} },
       },
       {
         name: "bar",
         default: "{{ params.foo }}/quox",
         type: "string",
-        textInput: { text: {} },
+        input: { text: {} },
       },
     ];
     promptOnce.resolves("baz");
@@ -135,7 +135,7 @@ describe("resolveParams", () => {
         name: "bar",
         default: "{{ params.foo }}",
         type: "string",
-        textInput: { text: {} },
+        input: { text: {} },
       },
     ];
     promptOnce.resolves("");
@@ -148,13 +148,13 @@ describe("resolveParams", () => {
         name: "foo",
         default: "22",
         type: "string",
-        textInput: { text: {} },
+        input: { text: {} },
       },
       {
         name: "bar",
         default: "{{ params.foo }}",
         type: "int",
-        textInput: { text: {} },
+        input: { text: {} },
       },
     ];
     promptOnce.resolves("22");

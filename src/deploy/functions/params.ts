@@ -110,6 +110,8 @@ export function resolveBoolean(
   return from;
 }
 
+type ParamInput<T> = TextInput<T> | SelectInput<T>;
+
 type ParamBase<T extends string | number | boolean> = {
   // name of the param. Will be exposed as an environment variable with this name
   name: string;
@@ -127,28 +129,29 @@ type ParamBase<T extends string | number | boolean> = {
 
   // default: false
   immutable?: boolean;
+
+  // Defines how the CLI will prompt for the value of the param if it's not in .env files
+  input?: ParamInput<T>;
 };
 
-type HasTextInput<T> = { textInput: TextInput<T> };
-type HasSelectInput<T> = { selectInput: SelectInput<T> };
-type HasAtMostOneInput<T> = Partial<HasTextInput<T> & HasSelectInput<T>>;
-
-export function hasNoInput<T>(param: HasAtMostOneInput<T>): boolean {
-  return !hasTextInput(param) && !hasSelectInput(param);
+/**
+ *
+ */
+export function isTextInput<T>(input: ParamInput<T>): input is TextInput<T> {
+  return {}.hasOwnProperty.call(input, "text");
 }
-export function hasTextInput<T>(param: HasAtMostOneInput<T>): param is HasTextInput<T> {
-  return {}.hasOwnProperty.call(param, "textInput");
-}
-export function hasSelectInput<T>(param: HasAtMostOneInput<T>): param is HasSelectInput<T> {
-  return {}.hasOwnProperty.call(param, "selectInput");
+/**
+ *
+ */
+export function isSelectInput<T>(input: ParamInput<T>): input is SelectInput<T> {
+  return {}.hasOwnProperty.call(input, "select");
 }
 
-export type StringParam = HasAtMostOneInput<string> & ParamBase<string> & { type: "string" };
+export type StringParam = ParamBase<string> & { type: "string" };
 
-export type IntParam = ParamBase<number> &
-  HasAtMostOneInput<number> & {
-    type: "int";
-  };
+export type IntParam = ParamBase<number> & {
+  type: "int";
+};
 
 export interface TextInput<T, Extensions = {}> { // eslint-disable-line
   text:
@@ -293,16 +296,16 @@ async function promptParam(param: Param, resolvedDefault?: ParamValue): Promise<
 }
 
 async function promptStringParam(param: StringParam, resolvedDefault?: string): Promise<string> {
-  if (hasNoInput(param)) {
+  if (!param.input) {
     const defaultToText: TextInput<string> = { text: {} };
-    param.textInput = defaultToText;
+    param.input = defaultToText;
   }
 
-  if (hasSelectInput(param)) {
+  if (isSelectInput(param.input)) {
     throw new FirebaseError(
       "Build specified string parameter " + param.name + " with unsupported input type 'select'"
     );
-  } else if (hasTextInput(param)) {
+  } else if (isTextInput(param.input)) {
     let prompt = `Enter a value for ${param.label || param.name}:`;
     if (param.description) {
       prompt += ` \n(${param.description})`;
@@ -321,16 +324,16 @@ async function promptStringParam(param: StringParam, resolvedDefault?: string): 
 }
 
 async function promptIntParam(param: IntParam, resolvedDefault?: number): Promise<number> {
-  if (hasNoInput(param)) {
+  if (!param.input) {
     const defaultToText: TextInput<number> = { text: {} };
-    param.textInput = defaultToText;
+    param.input = defaultToText;
   }
 
-  if (hasSelectInput(param)) {
+  if (isSelectInput(param.input)) {
     throw new FirebaseError(
       "Build specified int parameter " + param.name + " with unsupported input type 'select'"
     );
-  } else if (hasTextInput(param)) {
+  } else if (isTextInput(param.input)) {
     let prompt = `Enter a value for ${param.label || param.name}:`;
     if (param.description) {
       prompt += ` \n(${param.description})`;
