@@ -3,6 +3,7 @@ import { ChildProcess } from "child_process";
 import { FirebaseError } from "../../../error";
 import * as AsyncLock from "async-lock";
 import {
+  DataLoadStatus,
   RulesetOperationMethod,
   RuntimeActionBundle,
   RuntimeActionFirestoreDataRequest,
@@ -29,6 +30,8 @@ import {
   DownloadDetails,
   handleEmulatorProcessError,
 } from "../../downloadableEmulators";
+import { EmulatorRegistry } from "../../registry";
+import { Client } from "../../../apiv2";
 
 const lock = new AsyncLock();
 const synchonizationKey: string = "key";
@@ -42,6 +45,7 @@ export interface RulesetVerificationOpts {
   method: RulesetOperationMethod;
   path: string;
   delimiter?: string;
+  projectId: string;
 }
 
 export class StorageRulesetInstance {
@@ -222,7 +226,7 @@ export class StorageRulesRuntime {
     this._childprocess?.kill("SIGINT");
   }
 
-  private async _sendRequest(rab: RuntimeActionBundle) {
+  private async _sendRequest(rab: RuntimeActionBundle, overrideId?: number) {
     if (!this._childprocess) {
       throw new FirebaseError(
         "Attempted to send Cloud Storage rules request before child was ready"
@@ -231,10 +235,12 @@ export class StorageRulesRuntime {
 
     const runtimeActionRequest: RuntimeActionRequest = {
       ...rab,
-      id: this._requestCount++,
+      id: overrideId ?? this._requestCount++,
     };
 
-    if (this._requests[runtimeActionRequest.id]) {
+    if (overrideId !== undefined) {
+      delete this._requests[overrideId];
+    } else if (this._requests[runtimeActionRequest.id]) {
       throw new FirebaseError("Attempted to send Cloud Storage rules request with stale id");
     }
 
@@ -328,20 +334,27 @@ export class StorageRulesRuntime {
       },
     };
 
-    return this._completeVerifyWithRuleset(runtimeActionRequest);
+    return this._completeVerifyWithRuleset(opts.projectId, runtimeActionRequest);
   }
   
-  private async _completeVerifyWithRuleset(runtimeActionRequest: RuntimeActionBundle): Promise<
+  /**
+   * Completes a verification flow, including calling Firestore as necessary for cross-service calls
+   * @param projectId 
+   * @param runtimeActionRequest 
+   * @param overrideId 
+   * @returns 
+   */
+  private async _completeVerifyWithRuleset(projectId: string, runtimeActionRequest: RuntimeActionBundle, overrideId?: number): Promise<
   Promise<{
     permitted?: boolean;
     issues: StorageRulesIssues;
   }>
 > {
-    const response = (await this._sendRequest(runtimeActionRequest)) as RuntimeActionVerifyResponse;
+    const response = (await this._sendRequest(runtimeActionRequest, overrideId)) as RuntimeActionVerifyResponse;
 
     if ("context" in response) {
-      const dataResponse = await fetchFirestoreDocument(response);
-      return this._completeVerifyWithRuleset(dataResponse);
+      const dataResponse = await fetchFirestoreDocument(projectId, response);
+      return this._completeVerifyWithRuleset(projectId, dataResponse, response.server_request_id);
     }
 
     if (!response.errors) response.errors = [];
@@ -423,9 +436,24 @@ function toExpressionValue(obj: any): ExpressionValue {
   );
 }
 
-async function fetchFirestoreDocument(request: RuntimeActionFirestoreDataRequest): Promise<RuntimeActionFirestoreDataResponse> {
-  console.log("Sending firestore request");
-  return {id: request.server_request_id} as any;
+async function fetchFirestoreDocument(projectId: string, request: RuntimeActionFirestoreDataRequest): Promise<RuntimeActionFirestoreDataResponse> {
+  const url = EmulatorRegistry.url(Emulators.FIRESTORE);
+  const pathname = `projects/${projectId}${request.context.path}`;
+
+  const client = new Client({
+    urlPrefix: url.toString(),
+    apiVersion: 'v1',
+  });
+
+  try {
+    const doc = await client.get(pathname);
+    const {name, fields} = doc.body as {name: string, fields: string};
+    const result = {name, fields};
+    return {result, status: DataLoadStatus.OK, warnings: [], errors: []};
+  } catch (e) {
+    // Don't care what the error is, just return not_found
+    return {status: DataLoadStatus.NOT_FOUND, warnings: [], errors: []};
+  }
 }
 
 function createAuthExpressionValue(opts: RulesetVerificationOpts): ExpressionValue {

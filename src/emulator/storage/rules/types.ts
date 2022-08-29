@@ -10,6 +10,11 @@ export enum RulesetOperationMethod {
   DELETE = "delete",
 }
 
+export enum DataLoadStatus {
+  OK = "ok",
+  NOT_FOUND = "not_found",
+}
+
 export interface Source {
   files: SourceFile[];
 }
