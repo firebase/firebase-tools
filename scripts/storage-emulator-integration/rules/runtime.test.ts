@@ -367,7 +367,7 @@ async function testIfPermitted(
   }
 
   const { permitted, issues } = await loadResult.ruleset.verify(
-    {...verificationOpts, projectId: "project-id"},
+    { ...verificationOpts, projectId: "project-id" },
     runtimeVariableOverrides
   );
 
