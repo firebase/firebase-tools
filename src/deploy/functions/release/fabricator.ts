@@ -125,6 +125,12 @@ export class Fabricator {
       this.logOpStart("creating", endpoint);
       upserts.push(handle("create", endpoint, () => this.createEndpoint(endpoint, scraper)));
     }
+    if (changes.endpointsToSkip.length) {
+      for (const endpoint of changes.endpointsToSkip) {
+        utils.logSuccess(this.getLogSuccessMessage("skip", endpoint));
+      }
+      utils.logSuccess(this.getSkippedDeployingNopOpMessage(changes.endpointsToSkip));
+    }
     for (const update of changes.endpointsToUpdate) {
       this.logOpStart("updating", update.endpoint);
       upserts.push(handle("update", update.endpoint, () => this.updateEndpoint(update, scraper)));
@@ -660,8 +666,32 @@ export class Fabricator {
   }
 
   logOpSuccess(op: string, endpoint: backend.Endpoint): void {
+    utils.logSuccess(this.getLogSuccessMessage(op, endpoint));
+  }
+
+  /**
+   * Returns the log messaging for a successful operation.
+   */
+  getLogSuccessMessage(op: string, endpoint: backend.Endpoint) {
     const label = helper.getFunctionLabel(endpoint);
-    utils.logSuccess(`${clc.bold(clc.green(`functions[${label}]`))} Successful ${op} operation.`);
+    switch (op) {
+      case "skip":
+        return `Not deploying ${clc.bold(
+          clc.green(`functions[${label}]`)
+        )} - no change since last deploy (hash=${endpoint.hash})`;
+      default:
+        return `${clc.bold(clc.green(`functions[${label}]`))} Successful ${op} operation.`;
+    }
+  }
+
+  /**
+   * Returns the log messaging for no-op functions that were skipped.
+   */
+  getSkippedDeployingNopOpMessage(endpoints: backend.Endpoint[]) {
+    const functionNames = endpoints.map((endpoint) => endpoint.id).join(",");
+    return `To force deploy these functions, run command ${clc.bold(
+      `firebase deploy --only functions:${clc.green(functionNames)}`
+    )}`;
   }
 }
 

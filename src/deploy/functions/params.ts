@@ -119,7 +119,9 @@ export function resolveBoolean(
   return from;
 }
 
-interface ParamBase<T extends string | number | boolean> {
+type ParamInput<T> = TextInput<T> | SelectInput<T> | ResourceInput;
+
+type ParamBase<T extends string | number | boolean> = {
   // name of the param. Will be exposed as an environment variable with this name
   name: string;
 
@@ -136,38 +138,51 @@ interface ParamBase<T extends string | number | boolean> {
 
   // default: false
   immutable?: boolean;
+
+  // Defines how the CLI will prompt for the value of the param if it's not in .env files
+  input?: ParamInput<T>;
+};
+
+/**
+ *
+ */
+export function isTextInput<T>(input: ParamInput<T>): input is TextInput<T> {
+  return {}.hasOwnProperty.call(input, "text");
+}
+/**
+ *
+ */
+export function isSelectInput<T>(input: ParamInput<T>): input is SelectInput<T> {
+  return {}.hasOwnProperty.call(input, "select");
+}
+/**
+ *
+ */
+export function isResourceInput<T>(input: ParamInput<T>): input is ResourceInput {
+  return {}.hasOwnProperty.call(input, "resource");
 }
 
 export interface StringParam extends ParamBase<string> {
   type: "string";
-
-  // If omitted, defaults to TextInput<string>
-  input?: TextInput<string> | SelectInput<string> | ResourceInput;
 }
 
 export interface IntParam extends ParamBase<number> {
   type: "int";
-
-  // If omitted, defaults to TextInput<number>
-  input?: TextInput<number> | SelectInput<number>;
 }
 
-export interface BooleanParam extends ParamBase<number> {
+export interface BooleanParam extends ParamBase<boolean> {
   type: "boolean";
-
-  // If omitted, defaults to TextInput<boolean>
-  input?: TextInput<boolean> | SelectInput<boolean>;
 }
 
 export interface TextInput<T> { // eslint-disable-line
-  type: "text";
+  text: {
+    example?: string;
 
-  example?: string;
-
-  // If present, retry the prompt if the user provides a string that does not match this regexp
-  validationRegex?: string;
-  // The error message to display if validationRegex is missing
-  validationErrorMessage?: string;
+    // If present, retry the prompt if the user provides a string that does not match this regexp
+    validationRegex?: string;
+    // The error message to display if validationRegex is missing
+    validationErrorMessage?: string;
+  };
 }
 
 interface SelectOptions<T> {
@@ -180,9 +195,9 @@ interface SelectOptions<T> {
 }
 
 export interface SelectInput<T> {
-  type: "select";
-
-  select: Array<SelectOptions<T>>;
+  select: {
+    options: Array<SelectOptions<T>>;
+  };
 }
 
 // Future supported resource types will be added to this literal type. Tooling SHOULD fall back
@@ -190,8 +205,6 @@ export interface SelectInput<T> {
 type ResourceType = "storage.googleapis.com/Bucket" | string;
 
 interface ResourceInput {
-  type: "resource";
-
   resource: {
     type: ResourceType;
   };
@@ -475,27 +488,29 @@ async function promptBooleanParam(
   resolvedDefault?: boolean
 ): Promise<boolean> {
   if (!param.input) {
-    const defaultToText: TextInput<boolean> = { type: "text" };
+    const defaultToText: TextInput<string> = { text: {} };
     param.input = defaultToText;
   }
   const isTruthyInput = (res: string) => ["true", "y", "yes", "1"].includes(res.toLowerCase());
   let prompt: string;
 
-  switch (param.input.type) {
-    case "select":
-      prompt = `Select a value for ${param.label || param.name}:`;
-      if (param.description) {
-        prompt += ` \n(${param.description})`;
-      }
-      prompt += "\nSelect an option with the arrow keys, and use Enter to confirm your choice. ";
-      return promptSelect<boolean>(prompt, param.input, resolvedDefault, isTruthyInput);
-    case "text":
-    default:
-      prompt = `Enter a boolean value for ${param.label || param.name}:`;
-      if (param.description) {
-        prompt += ` \n(${param.description})`;
-      }
-      return promptText<boolean>(prompt, param.input, resolvedDefault, isTruthyInput);
+  if (isSelectInput(param.input)) {
+    prompt = `Select a value for ${param.label || param.name}:`;
+    if (param.description) {
+      prompt += ` \n(${param.description})`;
+    }
+    prompt += "\nSelect an option with the arrow keys, and use Enter to confirm your choice. ";
+    return promptSelect<boolean>(prompt, param.input, resolvedDefault, isTruthyInput);
+  } else if (isTextInput(param.input)) {
+    prompt = `Enter a boolean value for ${param.label || param.name}:`;
+    if (param.description) {
+      prompt += ` \n(${param.description})`;
+    }
+    return promptText<boolean>(prompt, param.input, resolvedDefault, isTruthyInput);
+  } else if (isResourceInput(param.input)) {
+    throw new FirebaseError("Boolean params cannot have Cloud Resource selector inputs");
+  } else {
+    assertExhaustive(param.input);
   }
 }
 
@@ -505,73 +520,76 @@ async function promptStringParam(
   resolvedDefault?: string
 ): Promise<string> {
   if (!param.input) {
-    const defaultToText: TextInput<string> = { type: "text" };
+    const defaultToText: TextInput<string> = { text: {} };
     param.input = defaultToText;
   }
   let prompt: string;
 
-  switch (param.input.type) {
-    case "resource":
-      prompt = `Select a value for ${param.label || param.name}:`;
-      if (param.description) {
-        prompt += ` \n(${param.description})`;
-      }
-      return promptResourceString(prompt, param.input, projectId, resolvedDefault);
-    case "select":
-      prompt = `Select a value for ${param.label || param.name}:`;
-      if (param.description) {
-        prompt += ` \n(${param.description})`;
-      }
-      prompt += "\nSelect an option with the arrow keys, and use Enter to confirm your choice. ";
-      return promptSelect<string>(prompt, param.input, resolvedDefault, (res: string) => res);
-    case "text":
-    default:
-      prompt = `Enter a string value for ${param.label || param.name}:`;
-      if (param.description) {
-        prompt += ` \n(${param.description})`;
-      }
-      return promptText<string>(prompt, param.input, resolvedDefault, (res: string) => res);
+  if (isResourceInput(param.input)) {
+    prompt = `Select a value for ${param.label || param.name}:`;
+    if (param.description) {
+      prompt += ` \n(${param.description})`;
+    }
+    return promptResourceString(prompt, param.input, projectId, resolvedDefault);
+  } else if (isSelectInput(param.input)) {
+    prompt = `Select a value for ${param.label || param.name}:`;
+    if (param.description) {
+      prompt += ` \n(${param.description})`;
+    }
+    prompt += "\nSelect an option with the arrow keys, and use Enter to confirm your choice. ";
+    return promptSelect<string>(prompt, param.input, resolvedDefault, (res: string) => res);
+  } else if (isTextInput(param.input)) {
+    prompt = `Enter a string value for ${param.label || param.name}:`;
+    if (param.description) {
+      prompt += ` \n(${param.description})`;
+    }
+    return promptText<string>(prompt, param.input, resolvedDefault, (res: string) => res);
+  } else {
+    assertExhaustive(param.input);
   }
 }
 
 async function promptIntParam(param: IntParam, resolvedDefault?: number): Promise<number> {
   if (!param.input) {
-    const defaultToText: TextInput<number> = { type: "text" };
+    const defaultToText: TextInput<number> = { text: {} };
     param.input = defaultToText;
   }
   let prompt: string;
 
-  switch (param.input.type) {
-    case "select":
-      prompt = `Select a value for ${param.label || param.name}:`;
-      if (param.description) {
-        prompt += ` \n(${param.description})`;
+  if (isSelectInput(param.input)) {
+    prompt = `Select a value for ${param.label || param.name}:`;
+    if (param.description) {
+      prompt += ` \n(${param.description})`;
+    }
+    prompt += "\nSelect an option with the arrow keys, and use Enter to confirm your choice. ";
+    return promptSelect(prompt, param.input, resolvedDefault, (res: string) => {
+      if (isNaN(+res)) {
+        return { message: `"${res}" could not be converted to a number.` };
       }
-      prompt += "\nSelect an option with the arrow keys, and use Enter to confirm your choice. ";
-      return promptSelect(prompt, param.input, resolvedDefault, (res: string) => {
-        if (isNaN(+res)) {
-          return { message: `"${res}" could not be converted to a number.` };
-        }
-        if (res.includes(".")) {
-          return { message: `${res} is not an integer value.` };
-        }
-        return +res;
-      });
-    case "text":
-    default:
-      prompt = `Enter an integer value for ${param.label || param.name}:`;
-      if (param.description) {
-        prompt += ` \n(${param.description})`;
+      if (res.includes(".")) {
+        return { message: `${res} is not an integer value.` };
       }
-      return promptText<number>(prompt, param.input, resolvedDefault, (res: string) => {
-        if (isNaN(+res)) {
-          return { message: `"${res}" could not be converted to a number.` };
-        }
-        if (res.includes(".")) {
-          return { message: `${res} is not an integer value.` };
-        }
-        return +res;
-      });
+      return +res;
+    });
+  }
+  if (isTextInput(param.input)) {
+    prompt = `Enter an integer value for ${param.label || param.name}:`;
+    if (param.description) {
+      prompt += ` \n(${param.description})`;
+    }
+    return promptText<number>(prompt, param.input, resolvedDefault, (res: string) => {
+      if (isNaN(+res)) {
+        return { message: `"${res}" could not be converted to a number.` };
+      }
+      if (res.includes(".")) {
+        return { message: `${res} is not an integer value.` };
+      }
+      return +res;
+    });
+  } else if (isResourceInput(param.input)) {
+    throw new FirebaseError("Numeric params cannot have Cloud Resource selector inputs");
+  } else {
+    assertExhaustive(param.input);
   }
 }
 
@@ -589,17 +607,18 @@ async function promptResourceString(
         throw notFound;
       }
       const forgedInput: SelectInput<string> = {
-        type: "select",
-        select: buckets.map((bucketName: string): SelectOptions<string> => {
-          return { label: bucketName, value: bucketName };
-        }),
+        select: {
+          options: buckets.map((bucketName: string): SelectOptions<string> => {
+            return { label: bucketName, value: bucketName };
+          }),
+        },
       };
       return promptSelect<string>(prompt, forgedInput, resolvedDefault, (res: string) => res);
     default:
       logger.warn(
         `Warning: unknown resource type ${input.resource.type}; defaulting to raw text input...`
       );
-      return promptText<string>(prompt, { type: "text" }, resolvedDefault, (res: string) => res);
+      return promptText<string>(prompt, { text: {} }, resolvedDefault, (res: string) => res);
   }
 }
 
@@ -615,11 +634,11 @@ async function promptText<T extends RawParamValue>(
     default: resolvedDefault,
     message: prompt,
   });
-  if (input.validationRegex) {
-    const userRe = new RegExp(input.validationRegex);
+  if (input.text.validationRegex) {
+    const userRe = new RegExp(input.text.validationRegex);
     if (!userRe.test(res)) {
       logger.error(
-        input.validationErrorMessage ||
+        input.text.validationErrorMessage ||
           `Input did not match provided validator ${userRe.toString()}, retrying...`
       );
       return promptText<T>(prompt, input, resolvedDefault, converter);
@@ -646,7 +665,7 @@ async function promptSelect<T extends RawParamValue>(
       resolvedDefault;
     },
     message: prompt,
-    choices: input.select.map((option: SelectOptions<T>): ListItem => {
+    choices: input.select.options.map((option: SelectOptions<T>): ListItem => {
       return {
         checked: false,
         name: option.label,
