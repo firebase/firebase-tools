@@ -27,7 +27,7 @@ export interface SourceFile {
 
 export interface RuntimeActionResponse {
   id?: number;
-  server_request_id?: number;
+  server_request_id?: number;  // Snake case comes from the server
   status?: string;
   action?: string;
   message?: string;
