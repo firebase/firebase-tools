@@ -239,6 +239,10 @@ export class StorageRulesRuntime {
       id: overrideId ?? this._requestCount++,
     };
 
+    // If `overrideId` is set, we are to use this ID to send to Rules.
+    // This happens when there is a back-and-forth interaction with Rules,
+    // meaning we also need to delete the old request and await the new
+    // response with the same ID.
     if (overrideId !== undefined) {
       delete this._requests[overrideId];
     } else if (this._requests[runtimeActionRequest.id]) {
@@ -338,13 +342,6 @@ export class StorageRulesRuntime {
     return this._completeVerifyWithRuleset(opts.projectId, runtimeActionRequest);
   }
 
-  /**
-   * Completes a verification flow, including calling Firestore as necessary for cross-service calls
-   * @param projectId
-   * @param runtimeActionRequest
-   * @param overrideId
-   * @returns
-   */
   private async _completeVerifyWithRuleset(
     projectId: string,
     runtimeActionRequest: RuntimeActionBundle,
