@@ -142,6 +142,11 @@ export async function prepare(
     if (functionsEnv.hasUserEnvs(userEnvOpt) || hasEnvsFromParams) {
       codebaseUsesEnvs.push(codebase);
     }
+
+    if (wantBuild.params.length > 0) {
+      // TODO(vsfan@): distinguish between params using secrets and those without
+      void track("functions_params_in_build", "env_only");
+    }
   }
 
   // ===Phase 1.5. Before proceeding further, let's make sure that we don't have conflicting function names.
