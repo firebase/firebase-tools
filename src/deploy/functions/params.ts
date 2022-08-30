@@ -250,8 +250,6 @@ export class ParamValue {
     readonly secret: boolean,
     types: { string?: boolean; boolean?: boolean; number?: boolean }
   ) {
-    this.rawValue = rawValue;
-    this.secret = secret;
     this.legalString = types.string || false;
     this.legalBoolean = types.boolean || false;
     this.legalNumber = types.number || false;
@@ -354,10 +352,7 @@ export async function resolveParams(
 
   const [needSecret, needPrompt] = partition(outstanding, (param) => param.type === "secret");
   for (const param of needSecret) {
-    const secretParam = param as SecretParam;
-    const rawValue = await handleSecret(secretParam, projectId);
-    const value = new ParamValue(rawValue, true, { string: true });
-    paramValues[secretParam.name] = value;
+    await handleSecret(param as SecretParam, projectId);
   }
 
   if (nonInteractive && needPrompt.length > 0) {
@@ -386,19 +381,28 @@ export async function resolveParams(
 }
 
 /**
- * Handles a SecretParam, either by retrieving its latest value from Cloud Secret Manager if present,
- * or prompting the user for the value of a new secret.
- * Always returns a string, since secret values are stored as untyped bytes in CSM.
+ * Handles a SecretParam by checking for the presence of a corresponding secret
+ * in Cloud Secrets Manager. If not present, we currently ask the user to
+ * create a corresponding one using functions:secret:set.
+ * Firebase-tools is not responsible for providing secret values to the Functions
+ * runtime environment, since having viewer permissions on a function is enough
+ * to read its environment variables. They are instead provided through GCF's own
+ * Secret Manager integration.
  */
-async function handleSecret(secretParam: SecretParam, projectId: string): Promise<string> {
+async function handleSecret(secretParam: SecretParam, projectId: string) {
   const metadata = await getSecretMetadata(projectId, secretParam.name, "latest");
   if (!metadata.secret) {
+    throw new FirebaseError(
+      `Your project currently doesn't have any secret named ${secretParam.name}. Create one by running firebase functions:secret:set FOO command and try the deploy again.`
+    );
+    /*
+    TODO(vsfan@): we need to come to a final decision as to whether prompting as part of the flow, as extensions does, is proper here
     const secretValue = await promptOnce({
       name: secretParam.name,
       type: "password",
       message: `This secret will be stored in Cloud Secret Manager (https://cloud.google.com/secret-manager/pricing) as ${
         secretParam.name
-      } and managed by Firebase Hosting (Firebase Hosting Service Agent will be granted Secret Admin role on this secret).\nEnter a value for ${
+      }. Enter a value for ${
         secretParam.label || secretParam.name
       }:`,
     });
@@ -406,27 +410,23 @@ async function handleSecret(secretParam: SecretParam, projectId: string): Promis
     await secretManager.createSecret(projectId, secretParam.name, secretLabel);
     await secretManager.addVersion(projectId, secretParam.name, secretValue);
     return secretValue;
+    */
   } else if (!metadata.secretVersion) {
     throw new FirebaseError(
       `Cloud Secret Manager has no latest version of the secret defined by param ${
         secretParam.label || secretParam.name
       }`
     );
-  }
-  if (metadata.secretVersion.state === "DESTROYED" || metadata.secretVersion.state === "DISABLED") {
+  } else if (
+    metadata.secretVersion.state === "DESTROYED" ||
+    metadata.secretVersion.state === "DISABLED"
+  ) {
     throw new FirebaseError(
       `Cloud Secret Manager's latest version of secret '${
         secretParam.label || secretParam.name
       } is in illegal state ${metadata.secretVersion.state}`
     );
   }
-
-  secretManager.ensureServiceAgentRole(
-    metadata.secret,
-    [`${projectId}@appspot.gserviceaccount.com`],
-    "roles/secretmanager.admin"
-  );
-  return secretManager.accessSecretVersion(projectId, secretParam.name, "latest");
 }
 
 async function getSecretMetadata(
