@@ -24095,7 +24095,7 @@
     },
     "superstatic": {
       "version": "git+ssh://git@github.com/firebase/superstatic.git#e50a1453a2f33bfb0072077a14c68850f9d83554",
-      "from": "superstatic@firebase/superstatic#master",
+      "from": "superstatic@github:firebase/superstatic#master",
       "requires": {
         "basic-auth-connect": "^1.0.0",
         "commander": "^9.4.0",
