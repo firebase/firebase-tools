@@ -1,7 +1,8 @@
 {
   "name": "functions",
   "scripts": {
-    "build": "tsc"
+    "build": "tsc",
+    "build:watch": "tsc --watch"
   },
   "main": "lib/index.js",
   "dependencies": {

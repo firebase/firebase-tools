@@ -51,7 +51,9 @@ function splitBufferByDelimiter(buffer: Buffer, delimiter: string, maxResults = 
  * @param body multipart request body as a Buffer
  */
 function parseMultipartRequestBody(boundaryId: string, body: Buffer): MultipartRequestBody {
-  const boundaryString = `--${boundaryId}`;
+  // strip additional surrounding single and double quotes, cloud sdks have additional quote here
+  const cleanBoundaryId = boundaryId.replace(/^["'](.+(?=["']$))["']$/, "$1");
+  const boundaryString = `--${cleanBoundaryId}`;
   const bodyParts = splitBufferByDelimiter(body, boundaryString).map((buf) => {
     // Remove the \r\n and the beginning of each part left from the boundary line.
     return Buffer.from(buf.slice(2));
@@ -91,8 +93,8 @@ function parseMultipartRequestBodyPart(bodyPart: Buffer): MultipartRequestBodyPa
   // splitting the entire body part buffer.
   const sections = splitBufferByDelimiter(bodyPart, LINE_SEPARATOR, /* maxResults = */ 3);
 
-  const contentTypeRaw = sections[0].toString();
-  if (!contentTypeRaw.startsWith("Content-Type: ")) {
+  const contentTypeRaw = sections[0].toString().toLowerCase();
+  if (!contentTypeRaw.startsWith("content-type: ")) {
     throw new Error(`Failed to parse multipart request body part. Missing content type.`);
   }
 
@@ -123,11 +125,11 @@ export function parseObjectUploadMultipartRequest(
   body: Buffer
 ): ObjectUploadMultipartData {
   if (!contentTypeHeader.startsWith("multipart/related")) {
-    throw new Error(`Invalid Content-Type: ${contentTypeHeader}`);
+    throw new Error(`Bad content type. ${contentTypeHeader}`);
   }
   const boundaryId = contentTypeHeader.split("boundary=")[1];
   if (!boundaryId) {
-    throw new Error(`Invalid Content-Type header: ${contentTypeHeader}`);
+    throw new Error(`Bad content type. ${contentTypeHeader}`);
   }
   const parsedBody = parseMultipartRequestBody(boundaryId, body);
   if (parsedBody.length !== 2) {

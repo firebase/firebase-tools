@@ -9,11 +9,11 @@ import { validateOptions, serialExportUsers } from "../accountExporter";
 describe("accountExporter", () => {
   describe("validateOptions", () => {
     it("should reject when no format provided", () => {
-      expect(() => validateOptions({}, "output_file")).to.throw;
+      expect(() => validateOptions({}, "output_file")).to.throw();
     });
 
     it("should reject when format is not csv or json", () => {
-      expect(() => validateOptions({ format: "txt" }, "output_file")).to.throw;
+      expect(() => validateOptions({ format: "txt" }, "output_file")).to.throw();
     });
 
     it("should ignore format param when implicitly specified in file name", () => {

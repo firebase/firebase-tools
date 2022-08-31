@@ -4,7 +4,7 @@ import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
 import { accessSecretVersion } from "../gcp/secretManager";
 
-export default new Command("functions:secrets:access <KEY>[@version]")
+export const command = new Command("functions:secrets:access <KEY>[@version]")
   .description(
     "Access secret value given secret and its version. Defaults to accessing the latest version."
   )

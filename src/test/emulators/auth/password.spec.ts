@@ -1,16 +1,21 @@
 import { expect } from "chai";
+import * as nock from "nock";
 import { decode as decodeJwt, JwtHeader } from "jsonwebtoken";
 import { FirebaseJwtPayload } from "../../../emulator/auth/operations";
 import { describeAuthEmulator, PROJECT_ID } from "./setup";
 import {
-  deleteAccount,
+  BEFORE_SIGN_IN_PATH,
+  BEFORE_SIGN_IN_URL,
+  BLOCKING_FUNCTION_HOST,
+  DISPLAY_NAME,
   expectStatusCode,
   getAccountInfoByLocalId,
+  PHOTO_URL,
   registerTenant,
   registerUser,
   TEST_MFA_INFO,
   updateAccountByLocalId,
-  updateProjectConfig,
+  updateConfig,
 } from "./helpers";
 
 describeAuthEmulator("accounts:signInWithPassword", ({ authApi, getClock }) => {
@@ -157,24 +162,6 @@ describeAuthEmulator("accounts:signInWithPassword", ({ authApi, getClock }) => {
       });
   });
 
-  it("should error if usageMode is passthrough", async () => {
-    const user = { email: "alice@example.com", password: "notasecret" };
-    const { localId, idToken } = await registerUser(authApi(), user);
-    await deleteAccount(authApi(), { idToken });
-    await updateProjectConfig(authApi(), { usageMode: "PASSTHROUGH" });
-
-    await authApi()
-      .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword")
-      .query({ key: "fake-api-key" })
-      .send({ email: user.email, password: user.password })
-      .then((res) => {
-        expectStatusCode(400, res);
-        expect(res.body.error)
-          .to.have.property("message")
-          .equals("UNSUPPORTED_PASSTHROUGH_OPERATION");
-      });
-  });
-
   it("should error if auth is disabled", async () => {
     const tenant = await registerTenant(authApi(), PROJECT_ID, { disableAuth: true });
 
@@ -231,5 +218,152 @@ describeAuthEmulator("accounts:signInWithPassword", ({ authApi, getClock }) => {
         expect(res.body.mfaPendingCredential).to.be.a("string");
         expect(res.body.mfaInfo).to.be.an("array").with.lengthOf(1);
       });
+  });
+
+  describe("when blocking functions are present", () => {
+    afterEach(() => {
+      expect(nock.isDone()).to.be.true;
+      nock.cleanAll();
+    });
+
+    it("should update modifiable fields before sign in", async () => {
+      const user = { email: "alice@example.com", password: "notasecret" };
+      const { localId } = await registerUser(authApi(), user);
+      await updateConfig(
+        authApi(),
+        PROJECT_ID,
+        {
+          blockingFunctions: {
+            triggers: {
+              beforeSignIn: {
+                functionUri: BEFORE_SIGN_IN_URL,
+              },
+            },
+          },
+        },
+        "blockingFunctions"
+      );
+      nock(BLOCKING_FUNCTION_HOST)
+        .post(BEFORE_SIGN_IN_PATH)
+        .reply(200, {
+          userRecord: {
+            updateMask: "displayName,photoUrl,emailVerified,customClaims,sessionClaims",
+            displayName: DISPLAY_NAME,
+            photoUrl: PHOTO_URL,
+            emailVerified: true,
+            customClaims: JSON.stringify({ customAttribute: "custom" }),
+            sessionClaims: JSON.stringify({ sessionAttribute: "session" }),
+          },
+        });
+
+      await authApi()
+        .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword")
+        .query({ key: "fake-api-key" })
+        .send({ email: user.email, password: user.password })
+        .then((res) => {
+          expectStatusCode(200, res);
+          expect(res.body.localId).equals(localId);
+          expect(res.body.email).equals(user.email);
+          expect(res.body).to.have.property("registered").equals(true);
+          expect(res.body).to.have.property("refreshToken").that.is.a("string");
+
+          const idToken = res.body.idToken;
+          const decoded = decodeJwt(idToken, { complete: true }) as {
+            header: JwtHeader;
+            payload: FirebaseJwtPayload;
+          } | null;
+          expect(decoded, "JWT returned by emulator is invalid").not.to.be.null;
+          expect(decoded!.header.alg).to.eql("none");
+
+          expect(decoded!.payload.name).to.equal(DISPLAY_NAME);
+          expect(decoded!.payload.picture).to.equal(PHOTO_URL);
+          expect(decoded!.payload.email_verified).to.be.true;
+          expect(decoded!.payload).to.have.property("customAttribute").equals("custom");
+          expect(decoded!.payload).to.have.property("sessionAttribute").equals("session");
+        });
+    });
+
+    it("should disable user if set", async () => {
+      const user = { email: "alice@example.com", password: "notasecret" };
+      await registerUser(authApi(), user);
+      await updateConfig(
+        authApi(),
+        PROJECT_ID,
+        {
+          blockingFunctions: {
+            triggers: {
+              beforeSignIn: {
+                functionUri: BEFORE_SIGN_IN_URL,
+              },
+            },
+          },
+        },
+        "blockingFunctions"
+      );
+      nock(BLOCKING_FUNCTION_HOST)
+        .post(BEFORE_SIGN_IN_PATH)
+        .reply(200, {
+          userRecord: {
+            updateMask: "disabled",
+            disabled: true,
+          },
+        });
+
+      await authApi()
+        .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword")
+        .query({ key: "fake-api-key" })
+        .send({ email: user.email, password: user.password })
+        .then((res) => {
+          expectStatusCode(400, res);
+          expect(res.body.error.message).to.equal("USER_DISABLED");
+        });
+    });
+
+    it("should not trigger blocking function if user has MFA", async () => {
+      const user = {
+        email: "alice@example.com",
+        password: "notasecret",
+        mfaInfo: [TEST_MFA_INFO],
+      };
+      await registerUser(authApi(), user);
+      await updateConfig(
+        authApi(),
+        PROJECT_ID,
+        {
+          blockingFunctions: {
+            triggers: {
+              beforeSignIn: {
+                functionUri: BEFORE_SIGN_IN_URL,
+              },
+            },
+          },
+        },
+        "blockingFunctions"
+      );
+      nock(BLOCKING_FUNCTION_HOST)
+        .post(BEFORE_SIGN_IN_PATH)
+        .reply(200, {
+          userRecord: {
+            updateMask: "disabled",
+            disabled: true,
+          },
+        });
+
+      await authApi()
+        .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword")
+        .query({ key: "fake-api-key" })
+        .send({ email: user.email, password: user.password })
+        .then((res) => {
+          expectStatusCode(200, res);
+          expect(res.body).not.to.have.property("idToken");
+          expect(res.body).not.to.have.property("refreshToken");
+          expect(res.body.mfaPendingCredential).to.be.a("string");
+          expect(res.body.mfaInfo).to.be.an("array").with.lengthOf(1);
+        });
+
+      // Shouldn't trigger nock calls
+      expect(nock.isDone()).to.be.false;
+      nock.cleanAll();
+    });
   });
 });

@@ -1,5 +1,4 @@
-import * as _ from "lodash";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as fs from "fs";
 
 import { Client } from "../apiv2";
@@ -16,7 +15,7 @@ import { logger } from "../logger";
 import { requireDatabaseInstance } from "../requireDatabaseInstance";
 import * as utils from "../utils";
 
-export default new Command("database:set <path> [infile]")
+export const command = new Command("database:set <path> [infile]")
   .description("store JSON data at the specified path via STDIN, arg, or file")
   .option("-d, --data <data>", "specify escaped JSON directly")
   .option("-f, --force", "pass this option to bypass confirmation prompt")
@@ -28,8 +27,8 @@ export default new Command("database:set <path> [infile]")
   .before(requireDatabaseInstance)
   .before(populateInstanceDetails)
   .before(printNoticeIfEmulated, Emulators.DATABASE)
-  .action(async (path, infile, options) => {
-    if (!_.startsWith(path, "/")) {
+  .action(async (path: string, infile, options) => {
+    if (!path.startsWith("/")) {
       throw new FirebaseError("Path must begin with /");
     }
     const origin = realtimeOriginOrEmulatorOrCustomUrl(options.instanceDetails.databaseUrl);

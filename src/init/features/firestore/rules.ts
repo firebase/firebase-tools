@@ -1,4 +1,4 @@
-import clc = require("cli-color");
+import * as clc from "colorette";
 import fs = require("fs");
 
 import gcp = require("../../../gcp");

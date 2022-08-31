@@ -136,15 +136,21 @@ Detailed doc is [here](https://firebase.google.com/docs/cli/auth).
 
 ### Cloud Functions Commands
 
-| Command                    | Description                                                                                                  |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| **functions:log**          | Read logs from deployed Cloud Functions.                                                                     |
-| **functions:config:set**   | Store runtime configuration values for the current project's Cloud Functions.                                |
-| **functions:config:get**   | Retrieve existing configuration values for the current project's Cloud Functions.                            |
-| **functions:config:unset** | Remove values from the current project's runtime configuration.                                              |
-| **functions:config:clone** | Copy runtime configuration from one project environment to another.                                          |
-| **functions:delete**       | Delete one or more Cloud Functions by name or group name.                                                    |
-| **functions:shell**        | Locally emulate functions and start Node.js shell where these local functions can be invoked with test data. |
+| Command                       | Description                                                                                                  |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| **functions:log**             | Read logs from deployed Cloud Functions.                                                                     |
+| **functions:list**            | List all deployed functions in your Firebase project.                                                        |
+| **functions:config:set**      | Store runtime configuration values for the current project's Cloud Functions.                                |
+| **functions:config:get**      | Retrieve existing configuration values for the current project's Cloud Functions.                            |
+| **functions:config:unset**    | Remove values from the current project's runtime configuration.                                              |
+| **functions:config:clone**    | Copy runtime configuration from one project environment to another.                                          |
+| **functions:secrets:set**     | Create or update a secret for use in Cloud Functions for Firebase.                                           |
+| **functions:secrets:get**     | Get metadata for secret and its versions.                                                                    |
+| **functions:secrets:access**  | Access secret value given secret and its version. Defaults to accessing the latest version.                  |
+| **functions:secrets:prune**   | Destroys unused secrets.                                                                                     |
+| **functions:secrets:destroy** | Destroy a secret. Defaults to destroying the latest version.                                                 |
+| **functions:delete**          | Delete one or more Cloud Functions by name or group name.                                                    |
+| **functions:shell**           | Locally emulate functions and start Node.js shell where these local functions can be invoked with test data. |
 
 ### Hosting Commands
 
@@ -168,11 +174,11 @@ Use `firebase:deploy --only remoteconfig` to update and publish a project's Fire
 
 The Firebase CLI can use one of four authentication methods listed in descending priority:
 
-- **User Token** - provide an explicit long-lived Firebase user token generated from `firebase login:ci`. Note that these tokens are extremely sensitive long-lived credentials and are not the right option for most cases. Consider using service account authorization instead. The token can be set in one of two ways:
+- **User Token** - **DEPRECATED: this authentication method will be removed in a future major version of `firebase-tools`; use a service account to authenticate instead** - provide an explicit long-lived Firebase user token generated from `firebase login:ci`. Note that these tokens are extremely sensitive long-lived credentials and are not the right option for most cases. Consider using service account authorization instead. The token can be set in one of two ways:
   - Set the `--token` flag on any command, for example `firebase --token="<token>" projects:list`.
   - Set the `FIREBASE_TOKEN` environment variable.
 - **Local Login** - run `firebase login` to log in to the CLI directly as yourself. The CLI will cache an authorized user credential on your machine.
-- **Service Account** - set the `GOOGLE_APPLICATION_CREDENTIALS` environment variable to point to the path of a JSON service account key file.
+- **Service Account** - set the `GOOGLE_APPLICATION_CREDENTIALS` environment variable to point to the path of a JSON service account key file. For more details, see Google Cloud's [Getting started with authentication](https://cloud.google.com/docs/authentication/getting-started) guide.
 - **Application Default Credentials** - if you use the `gcloud` CLI and log in with `gcloud auth application-default login`, the Firebase CLI will use them if none of the above credentials are present.
 
 ### Multiple Accounts
@@ -218,21 +224,14 @@ or `HTTP_PROXY` value in your environment to the URL of your proxy (e.g.
 The Firebase CLI requires a browser to complete authentication, but is fully
 compatible with CI and other headless environments.
 
-1. On a machine with a browser, install the Firebase CLI.
-2. Run `firebase login:ci` to log in and print out a new [refresh token](https://developers.google.com/identity/protocols/OAuth2)
-   (the current CLI session will not be affected).
-3. Store the output token in a secure but accessible way in your CI system.
+Complete the following steps to run Firebase commands in a CI environment. Find detailed instructions for each step in Google Cloud's [Getting started with authentication](https://cloud.google.com/docs/authentication/getting-started) guide.
 
-There are two ways to use this token when running Firebase commands:
+1. Create a service account and grant it the appropriate level of access to your project.
+1. Create a service account key (JSON file) for that service account.
+1. Store the key file in a secure, accessible way in your CI system.
+1. Set `GOOGLE_APPLICATION_CREDENTIALS=/path/to/key.json` in your CI system when running Firebase commands.
 
-1. Store the token as the environment variable `FIREBASE_TOKEN` and it will
-   automatically be utilized.
-2. Run all commands with the `--token <token>` flag in your CI system.
-
-The order of precedence for token loading is flag, environment variable, active project.
-
-On any machine with the Firebase CLI, running `firebase logout --token <token>`
-will immediately revoke access for the specified token.
+To disable access for the service account, [find the service account](https://console.cloud.google.com/projectselector/iam-admin/serviceaccounts) for your project in the Google Cloud Console, and then either remove the key, or disable or delete the service account.
 
 ## Using as a Module
 

@@ -1,51 +1,47 @@
 import { expect } from "chai";
 import { FunctionsRuntimeInstance } from "../../emulator/functionsEmulator";
 import { EventEmitter } from "events";
-import {
-  FunctionsRuntimeArgs,
-  FunctionsRuntimeBundle,
-} from "../../emulator/functionsEmulatorShared";
+import { FunctionsRuntimeBundle } from "../../emulator/functionsEmulatorShared";
 import {
   RuntimeWorker,
   RuntimeWorkerState,
   RuntimeWorkerPool,
 } from "../../emulator/functionsRuntimeWorker";
-import { FunctionsExecutionMode } from "../../emulator/types";
+import { EmulatorLog, FunctionsExecutionMode } from "../../emulator/types";
+import { ChildProcess } from "child_process";
 
 /**
  * Fake runtime instance we can use to simulate different subprocess conditions.
  * It automatically fails or succeeds 10ms after being given work to do.
  */
 class MockRuntimeInstance implements FunctionsRuntimeInstance {
-  pid: number = 12345;
+  process: ChildProcess;
   metadata: { [key: string]: any } = {};
   events: EventEmitter = new EventEmitter();
   exit: Promise<number>;
   cwd = "/home/users/dir";
+  socketPath = "/path/to/socket/foo.sock";
 
   constructor(private success: boolean) {
     this.exit = new Promise((res) => {
       this.events.on("exit", res);
     });
-  }
-
-  shutdown(): void {
-    this.events.emit("exit", { reason: "shutdown" });
-  }
-
-  kill(signal?: number): void {
-    this.events.emit("exit", { reason: "kill" });
-  }
-
-  send(args: FunctionsRuntimeArgs): boolean {
-    setTimeout(() => {
-      if (this.success) {
-        this.logRuntimeStatus({ state: "idle" });
-      } else {
-        this.kill();
-      }
-    }, 10);
-    return true;
+    this.process = new EventEmitter() as ChildProcess;
+    this.process.kill = () => {
+      this.events.emit("log", new EmulatorLog("SYSTEM", "runtime-status", "killed"));
+      this.process.emit("exit");
+      return true;
+    };
+    this.process.send = () => {
+      setTimeout(() => {
+        if (this.success) {
+          this.logRuntimeStatus({ state: "idle" });
+        } else {
+          this.process.kill();
+        }
+      }, 10);
+      return true;
+    };
   }
 
   logRuntimeStatus(data: any) {

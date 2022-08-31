@@ -1,10 +1,11 @@
-import * as _ from "lodash";
-import * as api from "../api";
+import { ReadStream } from "fs";
+
 import * as utils from "../utils";
 import * as operationPoller from "../operation-poller";
 import { Distribution } from "./distribution";
 import { FirebaseError } from "../error";
-import { Client, ClientResponse } from "../apiv2";
+import { Client } from "../apiv2";
+import { appDistributionOrigin } from "../api";
 
 /**
  * Helper interface for an app that is provisioned with App Distribution
@@ -65,39 +66,35 @@ export interface BatchRemoveTestersResponse {
  */
 export class AppDistributionClient {
   appDistroV2Client = new Client({
-    urlPrefix: api.appDistributionOrigin,
+    urlPrefix: appDistributionOrigin,
     apiVersion: "v1",
   });
 
   async getAabInfo(appName: string): Promise<AabInfo> {
-    const apiResponse = await api.request("GET", `/v1/${appName}/aabInfo`, {
-      origin: api.appDistributionOrigin,
-      auth: true,
-    });
-
-    return _.get(apiResponse, "body");
+    const apiResponse = await this.appDistroV2Client.get<AabInfo>(`/${appName}/aabInfo`);
+    return apiResponse.body;
   }
 
   async uploadRelease(appName: string, distribution: Distribution): Promise<string> {
-    const apiResponse = await api.request("POST", `/upload/v1/${appName}/releases:upload`, {
-      auth: true,
-      origin: api.appDistributionOrigin,
+    const client = new Client({ urlPrefix: appDistributionOrigin });
+    const apiResponse = await client.request<ReadStream, { name: string }>({
+      method: "POST",
+      path: `/upload/v1/${appName}/releases:upload`,
       headers: {
         "X-Goog-Upload-File-Name": distribution.getFileName(),
         "X-Goog-Upload-Protocol": "raw",
         "Content-Type": "application/octet-stream",
       },
-      data: distribution.readStream(),
-      json: false,
+      responseType: "json",
+      body: distribution.readStream(),
     });
-
-    return _.get(JSON.parse(apiResponse.body), "name");
+    return apiResponse.body.name;
   }
 
   async pollUploadStatus(operationName: string): Promise<UploadReleaseResponse> {
     return operationPoller.pollOperation<UploadReleaseResponse>({
       pollerName: "App Distribution Upload Poller",
-      apiOrigin: api.appDistributionOrigin,
+      apiOrigin: appDistributionOrigin,
       apiVersion: "v1",
       operationResourceName: operationName,
       masterTimeout: 5 * 60 * 1000,
@@ -120,15 +117,12 @@ export class AppDistributionClient {
         text: releaseNotes,
       },
     };
+    const queryParams = { updateMask: "release_notes.text" };
 
     try {
-      await api.request("PATCH", `/v1/${releaseName}?updateMask=release_notes.text`, {
-        origin: api.appDistributionOrigin,
-        auth: true,
-        data,
-      });
+      await this.appDistroV2Client.patch(`/${releaseName}`, data, { queryParams });
     } catch (err: any) {
-      throw new FirebaseError(`failed to update release notes with ${err?.message}`, { exit: 1 });
+      throw new FirebaseError(`failed to update release notes with ${err?.message}`);
     }
 
     utils.logSuccess("added release notes successfully");
@@ -152,20 +146,14 @@ export class AppDistributionClient {
     };
 
     try {
-      await api.request("POST", `/v1/${releaseName}:distribute`, {
-        origin: api.appDistributionOrigin,
-        auth: true,
-        data,
-      });
+      await this.appDistroV2Client.post(`/${releaseName}:distribute`, data);
     } catch (err: any) {
       let errorMessage = err.message;
-      if (_.has(err, "context.body.error")) {
-        const errorStatus = _.get(err, "context.body.error.status");
-        if (errorStatus === "FAILED_PRECONDITION") {
-          errorMessage = "invalid testers";
-        } else if (errorStatus === "INVALID_ARGUMENT") {
-          errorMessage = "invalid groups";
-        }
+      const errorStatus = err?.context?.body?.error?.status;
+      if (errorStatus === "FAILED_PRECONDITION") {
+        errorMessage = "invalid testers";
+      } else if (errorStatus === "INVALID_ARGUMENT") {
+        errorMessage = "invalid groups";
       }
       throw new FirebaseError(`failed to distribute to testers/groups: ${errorMessage}`, {
         exit: 1,

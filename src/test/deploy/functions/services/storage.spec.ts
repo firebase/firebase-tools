@@ -10,11 +10,6 @@ const STORAGE_RES = {
   kind: "storage#serviceAccount",
 };
 
-const BINDING = {
-  role: "some/role",
-  members: ["someuser"],
-};
-
 describe("obtainStorageBindings", () => {
   let storageStub: sinon.SinonStub;
 
@@ -28,55 +23,11 @@ describe("obtainStorageBindings", () => {
     sinon.verifyAndRestore();
   });
 
-  it("should return pubsub binding when missing from the policy", async () => {
+  it("should return the correct storage binding", async () => {
     storageStub.resolves(STORAGE_RES);
-    const existingPolicy = {
-      etag: "etag",
-      version: 3,
-      bindings: [BINDING],
-    };
 
-    const bindings = await obtainStorageBindings(projectNumber, existingPolicy);
+    const bindings = await obtainStorageBindings(projectNumber);
 
-    expect(bindings.length).to.equal(1);
-    expect(bindings[0]).to.deep.equal({
-      role: "roles/pubsub.publisher",
-      members: [`serviceAccount:${STORAGE_RES.email_address}`],
-    });
-  });
-
-  it("should return the updated pubsub binding from the policy", async () => {
-    storageStub.resolves(STORAGE_RES);
-    const existingPolicy = {
-      etag: "etag",
-      version: 3,
-      bindings: [BINDING, { role: "roles/pubsub.publisher", members: ["someuser"] }],
-    };
-
-    const bindings = await obtainStorageBindings(projectNumber, existingPolicy);
-
-    expect(bindings.length).to.equal(1);
-    expect(bindings[0]).to.deep.equal({
-      role: "roles/pubsub.publisher",
-      members: ["someuser", `serviceAccount:${STORAGE_RES.email_address}`],
-    });
-  });
-
-  it("should return the binding from policy if already present", async () => {
-    storageStub.resolves(STORAGE_RES);
-    const existingPolicy = {
-      etag: "etag",
-      version: 3,
-      bindings: [
-        BINDING,
-        {
-          role: "roles/pubsub.publisher",
-          members: [`serviceAccount:${STORAGE_RES.email_address}`],
-        },
-      ],
-    };
-
-    const bindings = await obtainStorageBindings(projectNumber, existingPolicy);
     expect(bindings.length).to.equal(1);
     expect(bindings[0]).to.deep.equal({
       role: "roles/pubsub.publisher",

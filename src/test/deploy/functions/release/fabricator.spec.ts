@@ -103,6 +103,7 @@ describe("Fabricator", () => {
       },
     },
     appEngineLocation: "us-central1",
+    projectNumber: "1234567",
   };
   let fab: fabricator.Fabricator;
   beforeEach(() => {
@@ -123,6 +124,8 @@ describe("Fabricator", () => {
       region: "us-central1",
       entryPoint: "entrypoint",
       runtime: "nodejs16",
+      availableMemoryMb: 256,
+      cpu: backend.memoryToGen1Cpu(256),
       codebase: "default",
       ...JSON.parse(JSON.stringify(base)),
       ...trigger,
@@ -421,11 +424,11 @@ describe("Fabricator", () => {
   });
 
   describe("createV2Function", () => {
-    let setConcurrency: sinon.SinonStub;
+    let setRunTraits: sinon.SinonStub;
 
     beforeEach(() => {
-      setConcurrency = sinon.stub(fab, "setConcurrency");
-      setConcurrency.resolves();
+      setRunTraits = sinon.stub(fab, "setRunTraits");
+      setRunTraits.resolves();
     });
 
     it("handles topics that already exist", async () => {
@@ -501,25 +504,49 @@ describe("Fabricator", () => {
       );
     });
 
-    it("sets concurrency by default for large functions", async () => {
+    it("sets run traits by default for large functions", async () => {
       gcfv2.createFunction.resolves({ name: "op", done: false });
       poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
       run.setInvokerCreate.resolves();
-      const ep = endpoint({ httpsTrigger: {} }, { platform: "gcfv2", availableMemoryMb: 2048 });
+      const ep = endpoint(
+        { httpsTrigger: {} },
+        { platform: "gcfv2", availableMemoryMb: 256, cpu: 1 }
+      );
 
       await fab.createV2Function(ep);
-      expect(setConcurrency).to.have.been.calledWith(ep, "service", 80);
+      expect(setRunTraits).to.have.been.calledWith("service", ep);
+    });
+
+    it("sets run traits for functions with concurrency", async () => {
+      gcfv2.createFunction.resolves({ name: "op", done: false });
+      poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
+      run.setInvokerCreate.resolves();
+      const ep = endpoint(
+        { httpsTrigger: {} },
+        { platform: "gcfv2", availableMemoryMb: 2048, cpu: 1, concurrency: 80 }
+      );
+
+      await fab.createV2Function(ep);
+      expect(setRunTraits).to.have.been.calledWith("service", ep);
     });
 
     it("does not set concurrency by default for small functions", async () => {
       gcfv2.createFunction.resolves({ name: "op", done: false });
       poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
       run.setInvokerCreate.resolves();
-      const ep = endpoint({ httpsTrigger: {} }, { platform: "gcfv2", availableMemoryMb: 256 });
+      const ep = endpoint(
+        { httpsTrigger: {} },
+        {
+          platform: "gcfv2",
+          availableMemoryMb: 256,
+          cpu: backend.memoryToGen1Cpu(256),
+          concurrency: 1,
+        }
+      );
 
       await fab.createV2Function(ep);
       expect(run.setInvokerCreate).to.have.been.calledWith(ep.project, "service", ["public"]);
-      expect(setConcurrency).to.not.have.been.called;
+      expect(setRunTraits).to.not.have.been.called;
     });
 
     it("sets explicit concurrency", async () => {
@@ -528,11 +555,11 @@ describe("Fabricator", () => {
       run.setInvokerCreate.resolves();
       const ep = endpoint(
         { httpsTrigger: {} },
-        { platform: "gcfv2", availableMemoryMb: 2048, concurrency: 2 }
+        { platform: "gcfv2", availableMemoryMb: 2048, cpu: 1, concurrency: 2 }
       );
 
       await fab.createV2Function(ep);
-      expect(setConcurrency).to.have.been.calledWith(ep, "service", 2);
+      expect(setRunTraits).to.have.been.calledWith("service", ep);
     });
 
     describe("httpsTrigger", () => {
@@ -633,7 +660,10 @@ describe("Fabricator", () => {
       gcfv2.createFunction.resolves({ name: "op", done: false });
       poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
       run.setInvokerCreate.resolves();
-      const ep = endpoint({ scheduleTrigger: {} }, { platform: "gcfv2" });
+      const ep = endpoint(
+        { eventTrigger: { eventType: "event", eventFilters: {}, retry: false } },
+        { platform: "gcfv2" }
+      );
 
       await fab.createV2Function(ep);
       expect(run.setInvokerCreate).to.not.have.been.called;
@@ -641,6 +671,13 @@ describe("Fabricator", () => {
   });
 
   describe("updateV2Function", () => {
+    let setRunTraits: sinon.SinonStub;
+
+    beforeEach(() => {
+      setRunTraits = sinon.stub(fab, "setRunTraits");
+      setRunTraits.rejects(new Error("Unexpected setRunTraits call"));
+    });
+
     it("throws on update function failure", async () => {
       gcfv2.updateFunction.rejects(new Error("Server failure"));
 
@@ -729,10 +766,34 @@ describe("Fabricator", () => {
       gcfv2.updateFunction.resolves({ name: "op", done: false });
       poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
       run.setInvokerUpdate.resolves();
-      const ep = endpoint({ scheduleTrigger: {} }, { platform: "gcfv2" });
+      const ep = endpoint(
+        { eventTrigger: { eventType: "event", eventFilters: {}, retry: false } },
+        { platform: "gcfv2" }
+      );
 
       await fab.updateV2Function(ep);
       expect(run.setInvokerUpdate).to.not.have.been.called;
+    });
+
+    it("Reapplies customer VM preferences after GCF overwrite", async () => {
+      setRunTraits.resolves();
+      gcfv2.updateFunction.resolves({ name: "op", done: false });
+      poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
+      run.setInvokerUpdate.resolves();
+      const ep = endpoint(
+        { httpsTrigger: {} },
+        {
+          platform: "gcfv2",
+          availableMemoryMb: 256,
+          cpu: 1,
+        }
+      );
+
+      await fab.updateV2Function(ep);
+      expect(setRunTraits).to.have.been.calledWithMatch("service", {
+        cpu: 1,
+        concurrency: backend.DEFAULT_CONCURRENCY,
+      });
     });
   });
 
@@ -750,12 +811,18 @@ describe("Fabricator", () => {
     });
   });
 
-  describe("setConcurrency", () => {
+  describe("setRunTraits", () => {
     let service: runNS.Service;
+    let serviceIsResolved: sinon.SinonStub;
+
     beforeEach(() => {
+      serviceIsResolved = sinon
+        .stub(fabricator, "serviceIsResolved")
+        .throws(new Error("Unexpected serviceIsResolved call"));
+
       service = {
         apiVersion: "serving.knative.dev/v1",
-        kind: "service",
+        kind: "Service",
         metadata: {
           name: "service",
           namespace: "project",
@@ -767,7 +834,25 @@ describe("Fabricator", () => {
               namespace: "project",
             },
             spec: {
-              containerConcurrency: 80,
+              containerConcurrency: 1,
+              containers: [
+                {
+                  image: "image",
+                  ports: [
+                    {
+                      name: "main",
+                      containerPort: 8080,
+                    },
+                  ],
+                  env: {},
+                  resources: {
+                    limits: {
+                      memory: "256M",
+                      cpu: "0.1667",
+                    },
+                  },
+                },
+              ],
             },
           },
           traffic: [],
@@ -775,44 +860,195 @@ describe("Fabricator", () => {
       };
     });
 
-    it("sets concurrency when necessary", async () => {
+    afterEach(() => {
+      serviceIsResolved.restore();
+    });
+
+    it("replaces the service to set concurrency", async () => {
       run.getService.resolves(service);
       run.replaceService.callsFake((name: string, svc: runNS.Service) => {
-        expect(svc.spec.template.spec.containerConcurrency).equals(1);
+        expect(svc.spec.template.spec.containerConcurrency).equals(80);
+        expect(svc.spec.template.spec.containers[0].resources.limits.cpu).equals("1");
         // Run throws if this field is set
         expect(svc.spec.template.metadata.name).is.undefined;
         return Promise.resolve(service);
       });
 
-      await fab.setConcurrency(endpoint(), "service", 1);
+      serviceIsResolved.onFirstCall().returns(false).onSecondCall().returns(true);
+
+      await fab.setRunTraits(
+        service.metadata.name,
+        endpoint(
+          { httpsTrigger: {} },
+          {
+            cpu: 1,
+            concurrency: 80,
+          }
+        )
+      );
       expect(run.replaceService).to.have.been.called;
+      expect(serviceIsResolved).to.have.been.calledTwice;
     });
 
-    it("doesn't set concurrency when already at the correct value", async () => {
+    it("replaces the service to set CPU", async () => {
+      service.spec.template.spec.containers[0].resources.limits.cpu = (1 / 6).toString();
+      run.getService.resolves(service);
+      run.replaceService.callsFake((name: string, svc: runNS.Service) => {
+        expect(svc.spec.template.spec.containerConcurrency).equals(1);
+        expect(svc.spec.template.spec.containers[0].resources.limits.cpu).equals("1");
+        // Run throws if this field is set
+        expect(svc.spec.template.metadata.name).is.undefined;
+        return Promise.resolve(service);
+      });
+      serviceIsResolved.onFirstCall().returns(false).onSecondCall().returns(true);
+
+      await fab.setRunTraits(
+        service.metadata.name,
+        endpoint(
+          { httpsTrigger: {} },
+          {
+            cpu: 1,
+            concurrency: 1,
+          }
+        )
+      );
+      expect(run.replaceService).to.have.been.called;
+      expect(serviceIsResolved).to.have.been.calledTwice;
+    });
+
+    it("doesn't setRunTraits when already at the correct value", async () => {
+      service.spec.template.spec.containerConcurrency = 80;
+      service.spec.template.spec.containers[0].resources.limits.cpu = "1";
       run.getService.resolves(service);
 
-      await fab.setConcurrency(
-        endpoint(),
+      await fab.setRunTraits(
         "service",
-        service.spec.template.spec.containerConcurrency!
+        endpoint(
+          {
+            httpsTrigger: {},
+          },
+          {
+            cpu: 1,
+            concurrency: 80,
+          }
+        )
       );
       expect(run.replaceService).to.not.have.been.called;
+      expect(serviceIsResolved).to.not.have.been.called;
     });
 
     it("wraps errors", async () => {
       run.getService.rejects(new Error("Oh noes!"));
 
-      await expect(fab.setConcurrency(endpoint(), "service", 1)).to.eventually.be.rejectedWith(
+      await expect(fab.setRunTraits("service", endpoint())).to.eventually.be.rejectedWith(
         reporter.DeploymentError,
         "set concurrency"
       );
 
       run.getService.resolves(service);
       run.replaceService.rejects(new Error("read only"));
-      await expect(fab.setConcurrency(endpoint(), "service", 1)).to.eventually.be.rejectedWith(
+      await expect(fab.setRunTraits("service", endpoint())).to.eventually.be.rejectedWith(
         reporter.DeploymentError,
         "set concurrency"
       );
+    });
+  });
+
+  describe("serviceIsResolved", () => {
+    let service: runNS.Service;
+    beforeEach(() => {
+      service = {
+        apiVersion: "serving.knative.dev/v1",
+        kind: "Service",
+        metadata: {
+          name: "service",
+          namespace: "project",
+          generation: 2,
+        },
+        spec: {
+          template: {
+            metadata: {
+              name: "service",
+              namespace: "project",
+            },
+            spec: {
+              containerConcurrency: 1,
+              containers: [
+                {
+                  image: "image",
+                  ports: [
+                    {
+                      name: "main",
+                      containerPort: 8080,
+                    },
+                  ],
+                  env: {},
+                  resources: {
+                    limits: {
+                      memory: "256M",
+                      cpu: "0.1667",
+                    },
+                  },
+                },
+              ],
+            },
+          },
+          traffic: [],
+        },
+        status: {
+          observedGeneration: 2,
+          conditions: [
+            {
+              status: "True",
+              type: "Ready",
+              reason: "Testing",
+              lastTransitionTime: "",
+              message: "",
+              severity: "Info",
+            },
+          ],
+          latestCreatedRevisionName: "",
+          latestRevisionName: "",
+          traffic: [],
+          url: "",
+          address: {
+            url: "",
+          },
+        },
+      };
+    });
+
+    it("returns false if the observed generation isn't the metageneration", () => {
+      service.status!.observedGeneration = 1;
+      service.metadata.generation = 2;
+      expect(fabricator.serviceIsResolved(service)).to.be.false;
+    });
+
+    it("returns false if the status is not ready", () => {
+      service.status!.observedGeneration = 2;
+      service.metadata.generation = 2;
+      service.status!.conditions[0].status = "Unknown";
+      service.status!.conditions[0].type = "Ready";
+
+      expect(fabricator.serviceIsResolved(service)).to.be.false;
+    });
+
+    it("throws if we have an failed status", () => {
+      service.status!.observedGeneration = 2;
+      service.metadata.generation = 2;
+      service.status!.conditions[0].status = "False";
+      service.status!.conditions[0].type = "Ready";
+
+      expect(() => fabricator.serviceIsResolved(service)).to.throw;
+    });
+
+    it("returns true if resolved", () => {
+      service.status!.observedGeneration = 2;
+      service.metadata.generation = 2;
+      service.status!.conditions[0].status = "True";
+      service.status!.conditions[0].type = "Ready";
+
+      expect(fabricator.serviceIsResolved(service)).to.be.true;
     });
   });
 
@@ -832,6 +1068,31 @@ describe("Fabricator", () => {
     it("wraps errors", async () => {
       scheduler.createOrReplaceJob.rejects(new Error("Fail"));
       await expect(fab.upsertScheduleV1(ep)).to.eventually.be.rejectedWith(
+        reporter.DeploymentError,
+        "upsert schedule"
+      );
+    });
+  });
+
+  describe("upsertScheduleV2", () => {
+    const ep = {
+      ...endpoint({
+        scheduleTrigger: {
+          schedule: "every 5 minutes",
+        },
+      }),
+      platform: "gcfv2",
+    } as backend.Endpoint & backend.ScheduleTriggered;
+
+    it("upserts schedules", async () => {
+      scheduler.createOrReplaceJob.resolves();
+      await fab.upsertScheduleV2(ep);
+      expect(scheduler.createOrReplaceJob).to.have.been.called;
+    });
+
+    it("wraps errors", async () => {
+      scheduler.createOrReplaceJob.rejects(new Error("Fail"));
+      await expect(fab.upsertScheduleV2(ep)).to.eventually.be.rejectedWith(
         reporter.DeploymentError,
         "upsert schedule"
       );
@@ -865,6 +1126,31 @@ describe("Fabricator", () => {
       await expect(fab.deleteScheduleV1(ep)).to.eventually.be.rejectedWith(
         reporter.DeploymentError,
         "delete topic"
+      );
+    });
+  });
+
+  describe("deleteScheduleV2", () => {
+    const ep = {
+      ...endpoint({
+        scheduleTrigger: {
+          schedule: "every 5 minutes",
+        },
+      }),
+      platform: "gcfv2",
+    } as backend.Endpoint & backend.ScheduleTriggered;
+
+    it("deletes schedules and topics", async () => {
+      scheduler.deleteJob.resolves();
+      await fab.deleteScheduleV2(ep);
+      expect(scheduler.deleteJob).to.have.been.called;
+    });
+
+    it("wraps errors", async () => {
+      scheduler.deleteJob.rejects(new Error("Fail"));
+      await expect(fab.deleteScheduleV2(ep)).to.eventually.be.rejectedWith(
+        reporter.DeploymentError,
+        "delete schedule"
       );
     });
   });
@@ -1264,6 +1550,7 @@ describe("Fabricator", () => {
         endpointsToCreate: [ep1, ep2],
         endpointsToUpdate: [{ endpoint: ep3 }],
         endpointsToDelete: [],
+        endpointsToSkip: [],
       };
 
       let sourceTokenScraper: scraper.SourceTokenScraper | undefined;
@@ -1296,11 +1583,47 @@ describe("Fabricator", () => {
         endpointsToCreate: [ep],
         endpointsToUpdate: [],
         endpointsToDelete: [],
+        endpointsToSkip: [],
       };
 
       const results = await fab.applyChangeset(changes);
       expect(results[0].error).to.be.instanceOf(reporter.DeploymentError);
       expect(results[0].error?.message).to.match(/create function/);
+    });
+  });
+
+  describe("getLogSuccessMessage", () => {
+    it("should return appropriate messaging for create case", () => {
+      const ep = endpoint({ httpsTrigger: {} }, { id: "potato" });
+
+      const message = fab.getLogSuccessMessage("create", ep);
+
+      expect(message).to.contain(`functions[potato(us-central1)]`);
+      expect(message).to.contain(`Successful create operation`);
+    });
+
+    it("should return appropriate messaging for skip case", () => {
+      const ep = endpoint({ httpsTrigger: {} }, { id: "tomato" });
+      ep.hash = "hashyhash";
+
+      const message = fab.getLogSuccessMessage("skip", ep);
+
+      expect(message).to.contain(`Not deploying `);
+      expect(message).to.contain(`functions[tomato(us-central1)]`);
+      expect(message).to.contain(` - no change since last deploy (hash=hashyhash)`);
+    });
+  });
+
+  describe("getSkippedDeployingNopOpMessage", () => {
+    it("should return appropriate messaging", () => {
+      const ep1 = endpoint({ httpsTrigger: {} }, { id: "function1" });
+      const ep2 = endpoint({ httpsTrigger: {} }, { id: "function2" });
+
+      const message = fab.getSkippedDeployingNopOpMessage([ep1, ep2]);
+
+      expect(message).to.contain(`To force deploy these functions, run command `);
+      expect(message).to.contain(`firebase deploy --only functions:`);
+      expect(message).to.contain(`function1,function2`);
     });
   });
 
@@ -1312,6 +1635,7 @@ describe("Fabricator", () => {
       endpointsToCreate: [createEP],
       endpointsToUpdate: [],
       endpointsToDelete: [deleteEP],
+      endpointsToSkip: [],
     };
 
     const results = await fab.applyChangeset(changes);
@@ -1324,11 +1648,13 @@ describe("Fabricator", () => {
     const createEP = endpoint({ httpsTrigger: {} }, { id: "A" });
     const updateEP = endpoint({ httpsTrigger: {} }, { id: "B" });
     const deleteEP = endpoint({ httpsTrigger: {} }, { id: "C" });
+    const skipEP = endpoint({ httpsTrigger: {} }, { id: "D" });
     const update: planner.EndpointUpdate = { endpoint: updateEP };
     const changes: planner.Changeset = {
       endpointsToCreate: [createEP],
       endpointsToUpdate: [update],
       endpointsToDelete: [deleteEP],
+      endpointsToSkip: [skipEP],
     };
 
     const createEndpoint = sinon.stub(fab, "createEndpoint");
@@ -1359,11 +1685,13 @@ describe("Fabricator", () => {
           endpointsToCreate: [ep1],
           endpointsToUpdate: [],
           endpointsToDelete: [],
+          endpointsToSkip: [],
         },
         "us-west1": {
           endpointsToCreate: [],
           endpointsToUpdate: [],
           endpointsToDelete: [ep2],
+          endpointsToSkip: [],
         },
       };
 

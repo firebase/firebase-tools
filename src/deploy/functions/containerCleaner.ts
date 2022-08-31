@@ -3,10 +3,9 @@
 // of writing, we can make 50K requests per 10m.
 // https://cloud.google.com/container-registry/quotas
 
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
 import { FirebaseError } from "../../error";
-import { previews } from "../../previews";
 import { artifactRegistryDomain, containerRegistryDomain } from "../../api";
 import { logger } from "../../logger";
 import * as artifactregistry from "../../gcp/artifactregistry";
@@ -44,7 +43,7 @@ export async function cleanupBuildImages(
   deletedFunctions: backend.TargetIds[],
   cleaners: { gcr?: ContainerRegistryCleaner; ar?: ArtifactRegistryCleaner } = {}
 ): Promise<void> {
-  utils.logBullet(clc.bold.cyan("functions: ") + "cleaning up build files...");
+  utils.logBullet(clc.bold(clc.cyan("functions: ")) + "cleaning up build files...");
   const failedDomains: Set<string> = new Set();
   const cleanup: Array<Promise<void>> = [];
   const arCleaner = cleaners.ar || new ArtifactRegistryCleaner();
@@ -250,7 +249,6 @@ function getHelper(cache: Record<string, DockerHelper>, subdomain: string): Dock
  * @param projectId: the current project that contains GCF artifacts
  * @param location: the specific region to search for artifacts. If omitted, will search all locations.
  * @param dockerHelpers: a map of {@link SUBDOMAINS} to {@link DockerHelper}. If omitted, will use the default value and create each {@link DockerHelper} internally.
- *
  * @throws {@link FirebaseError}
  * Thrown if the provided location is not a valid Google Cloud region or we fail to search subdomains.
  */
@@ -313,7 +311,6 @@ export async function listGcfPaths(
  * @param projectId: the current project that contains GCF artifacts
  * @param location: the specific region to be clean up. If omitted, will delete all locations.
  * @param dockerHelpers: a map of {@link SUBDOMAINS} to {@link DockerHelper}. If omitted, will use the default value and create each {@link DockerHelper} internally.
- *
  * @throws {@link FirebaseError}
  * Thrown if the provided location is not a valid Google Cloud region or we fail to delete subdomains.
  */
@@ -360,20 +357,24 @@ export interface Stat {
 
 export class DockerHelper {
   readonly client: docker.Client;
-  readonly cache: Record<string, Stat> = {};
+  readonly cache: Record<string, Promise<Stat>> = {};
 
   constructor(origin: string) {
     this.client = new docker.Client(origin);
   }
 
+  // N.B. It is very important that this function assigns to the cache before
+  // yielding the runloop or parallel executions will race their LS calls, which
+  // are each recursive, leading to possible N^2 executions.
   async ls(path: string): Promise<Stat> {
-    if (!this.cache[path]) {
-      const raw = await retry(() => this.client.listTags(path));
-      this.cache[path] = {
-        tags: raw.tags,
-        digests: Object.keys(raw.manifest),
-        children: raw.child,
-      };
+    if (!(path in this.cache)) {
+      this.cache[path] = retry(() => this.client.listTags(path)).then((res) => {
+        return {
+          tags: res.tags,
+          digests: Object.keys(res.manifest),
+          children: res.child,
+        };
+      });
     }
     return this.cache[path];
   }

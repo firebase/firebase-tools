@@ -8,7 +8,7 @@ import * as refs from "../../extensions/refs";
 import { Config } from "../../config";
 import * as prompt from "../../prompt";
 import { FirebaseError } from "../../error";
-import { ParamType } from "../../extensions/extensionsApi";
+import { ParamType } from "../../extensions/types";
 
 /**
  * Returns a base Config with some extensions data.
@@ -122,7 +122,7 @@ describe("manifest", () => {
     });
 
     it("should remove from firebase.json and remove .env file", () => {
-      const result = manifest.removeFromManifest("delete-user-data", generateBaseConfig());
+      manifest.removeFromManifest("delete-user-data", generateBaseConfig());
 
       expect(writeProjectFileStub).calledWithExactly("firebase.json", {
         extensions: {
@@ -309,6 +309,121 @@ describe("manifest", () => {
       expect(askWriteProjectFileStub).calledWithExactly(
         "extensions/instance-2.env",
         `e=eevee\ns=squirtle`,
+        false
+      );
+    });
+
+    it("should write events-related env vars", async () => {
+      await manifest.writeToManifest(
+        [
+          {
+            instanceId: "instance-1",
+            ref: {
+              publisherId: "firebase",
+              extensionId: "bigquery-export",
+              version: "1.0.0",
+            },
+            params: {
+              b: { baseValue: "bulbasaur" },
+              a: { baseValue: "absol" },
+              EVENTARC_CHANNEL: {
+                baseValue: "projects/test-project/locations/us-central1/channels/firebase",
+              },
+              ALLOWED_EVENT_TYPES: { baseValue: "google.firebase.custom-event-occurred" },
+            },
+            extensionSpec: {
+              name: "bigquery-export",
+              version: "1.0.0",
+              resources: [],
+              sourceUrl: "",
+              events: [
+                {
+                  type: "google.firebase.custom-event-occurred",
+                  description: "Custom event occurred",
+                },
+              ],
+              params: [
+                {
+                  param: "a",
+                  label: "",
+                  type: ParamType.STRING,
+                },
+                {
+                  param: "b",
+                  label: "",
+                  type: ParamType.STRING,
+                },
+              ],
+            },
+          },
+          {
+            instanceId: "instance-2",
+            ref: {
+              publisherId: "firebase",
+              extensionId: "bigquery-export",
+              version: "2.0.0",
+            },
+            params: {
+              e: { baseValue: "eevee" },
+              s: { baseValue: "squirtle" },
+              EVENTARC_CHANNEL: {
+                baseValue: "projects/test-project/locations/us-central1/channels/firebase",
+              },
+              ALLOWED_EVENT_TYPES: { baseValue: "google.firebase.custom-event-occurred" },
+            },
+            extensionSpec: {
+              name: "bigquery-export",
+              version: "2.0.0",
+              resources: [],
+              sourceUrl: "",
+              events: [
+                {
+                  type: "google.firebase.custom-event-occurred",
+                  description: "Custom event occurred",
+                },
+              ],
+              params: [
+                {
+                  param: "a",
+                  label: "",
+                  type: ParamType.STRING,
+                },
+                {
+                  param: "b",
+                  label: "",
+                  type: ParamType.STRING,
+                },
+              ],
+            },
+          },
+        ],
+        generateBaseConfig(),
+        { nonInteractive: false, force: false }
+      );
+      expect(writeProjectFileStub).calledWithExactly("firebase.json", {
+        extensions: {
+          "delete-user-data": "firebase/delete-user-data@0.1.12",
+          "delete-user-data-gm2h": "firebase/delete-user-data@0.1.12",
+          "instance-1": "firebase/bigquery-export@1.0.0",
+          "instance-2": "firebase/bigquery-export@2.0.0",
+        },
+      });
+
+      expect(askWriteProjectFileStub).to.have.been.calledTwice;
+      expect(askWriteProjectFileStub).calledWithExactly(
+        "extensions/instance-1.env",
+        "a=absol\n" +
+          "ALLOWED_EVENT_TYPES=google.firebase.custom-event-occurred\n" +
+          "b=bulbasaur\n" +
+          "EVENTARC_CHANNEL=projects/test-project/locations/us-central1/channels/firebase",
+        false
+      );
+      expect(askWriteProjectFileStub).calledWithExactly(
+        "extensions/instance-2.env",
+        "ALLOWED_EVENT_TYPES=google.firebase.custom-event-occurred\n" +
+          "e=eevee\n" +
+          "EVENTARC_CHANNEL=projects/test-project/locations/us-central1/channels/firebase\n" +
+          "s=squirtle",
         false
       );
     });

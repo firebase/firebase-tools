@@ -19,7 +19,7 @@ async function materialize(projectId: string, path?: string): Promise<any> {
   return query ? get(result, query) : result;
 }
 
-export default new Command("functions:config:get [path]")
+export const command = new Command("functions:config:get [path]")
   .description("fetch environment config stored at the given path")
   .before(requirePermissions, [
     "runtimeconfig.configs.list",

@@ -11,7 +11,7 @@ import { requirePermissions } from "../requirePermissions";
 /**
  * Command for creating a extension source
  */
-export default new Command("ext:sources:create <sourceLocation>")
+export const command = new Command("ext:sources:create <sourceLocation>")
   .description(`create a extension source from sourceLocation`)
   .help(
     "sourceLocation can be a local directory containing an extension, or URL pointing to a zipped extension. " +

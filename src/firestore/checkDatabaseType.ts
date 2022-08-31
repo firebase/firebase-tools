@@ -1,4 +1,5 @@
-import * as api from "../api";
+import { appengineOrigin } from "../api";
+import { Client } from "../apiv2";
 import { logger } from "../logger";
 
 /**
@@ -12,11 +13,8 @@ import { logger } from "../logger";
  */
 export async function checkDatabaseType(projectId: string): Promise<string | undefined> {
   try {
-    const resp = await api.request("GET", "/v1/apps/" + projectId, {
-      auth: true,
-      origin: api.appengineOrigin,
-    });
-
+    const client = new Client({ urlPrefix: appengineOrigin, apiVersion: "v1" });
+    const resp = await client.get<{ databaseType?: string }>(`/apps/${projectId}`);
     return resp.body.databaseType;
   } catch (err: any) {
     logger.debug("error getting database type", err);

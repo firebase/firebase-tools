@@ -3,12 +3,12 @@
   "description": "Greet the world",
   "main": "index.js",
   "dependencies": {
-    "firebase-admin": "^9.8.0",
-    "firebase-functions": "^3.14.1"
+    "firebase-admin": "^10.2.0",
+    "firebase-functions": "^3.21.0"
   },
   "devDependencies": {
-    "eslint": "^4.13.1",
-    "eslint-plugin-promise": "^3.6.0"
+    "eslint": "^8.15.1",
+    "eslint-plugin-promise": "^6.0.0"
   },
   "scripts": {
     "lint": "./node_modules/.bin/eslint --max-warnings=0 .."

@@ -3,7 +3,6 @@ import * as fs from "fs";
 import * as fse from "fs-extra";
 import * as http from "http";
 
-import * as api from "../api";
 import { logger } from "../logger";
 import { IMPORT_EXPORT_EMULATORS, Emulators, ALL_EMULATORS } from "./types";
 import { EmulatorRegistry } from "./registry";
@@ -13,6 +12,8 @@ import { getDownloadDetails } from "./downloadableEmulators";
 import { DatabaseEmulator } from "./databaseEmulator";
 import { StorageEmulator } from "./storage";
 import * as rimraf from "rimraf";
+import { Client } from "../apiv2";
+import { trackEmulator } from "../track";
 
 export interface FirestoreExportMetadata {
   version: string;
@@ -43,12 +44,19 @@ export interface ExportMetadata {
   storage?: StorageExportMetadata;
 }
 
+export interface ExportOptions {
+  path: string;
+  initiatedBy: string;
+}
+
 export class HubExport {
   static METADATA_FILE_NAME = "firebase-export-metadata.json";
 
   private tmpDir: string;
+  private exportPath: string;
 
-  constructor(private projectId: string, private exportPath: string) {
+  constructor(private projectId: string, private options: ExportOptions) {
+    this.exportPath = options.path;
     this.tmpDir = fs.mkdtempSync(`firebase-export-${new Date().getTime()}`);
   }
 
@@ -112,6 +120,11 @@ export class HubExport {
       fs.mkdirSync(this.exportPath);
     }
 
+    void trackEmulator("emulator_export", {
+      initiated_by: this.options.initiatedBy,
+      emulator_name: Emulators.HUB,
+    });
+
     // Write the metadata file after everything else has succeeded
     const metadataPath = path.join(this.tmpDir, HubExport.METADATA_FILE_NAME);
     fs.writeFileSync(metadataPath, JSON.stringify(metadata, undefined, 2));
@@ -124,6 +137,11 @@ export class HubExport {
   }
 
   private async exportFirestore(metadata: ExportMetadata): Promise<void> {
+    void trackEmulator("emulator_export", {
+      initiated_by: this.options.initiatedBy,
+      emulator_name: Emulators.FIRESTORE,
+    });
+
     const firestoreInfo = EmulatorRegistry.get(Emulators.FIRESTORE)!.getInfo();
     const firestoreHost = `http://${EmulatorRegistry.getInfoHostString(firestoreInfo)}`;
 
@@ -133,29 +151,32 @@ export class HubExport {
       export_name: metadata.firestore!!.path,
     };
 
-    return api.request("POST", `/emulator/v1/projects/${this.projectId}:export`, {
-      origin: firestoreHost,
-      json: true,
-      data: firestoreExportBody,
-    });
+    const client = new Client({ urlPrefix: firestoreHost, auth: false });
+    await client.post(`/emulator/v1/projects/${this.projectId}:export`, firestoreExportBody);
   }
 
   private async exportDatabase(metadata: ExportMetadata): Promise<void> {
     const databaseEmulator = EmulatorRegistry.get(Emulators.DATABASE) as DatabaseEmulator;
     const databaseAddr = `http://${EmulatorRegistry.getInfoHostString(databaseEmulator.getInfo())}`;
+    const client = new Client({ urlPrefix: databaseAddr, auth: true });
 
     // Get the list of namespaces
-    const inspectURL = `/.inspect/databases.json?ns=${this.projectId}`;
-    const inspectRes = await api.request("GET", inspectURL, { origin: databaseAddr, auth: true });
+    const inspectURL = `/.inspect/databases.json`;
+    const inspectRes = await client.get<Array<{ name: string }>>(inspectURL, {
+      queryParams: { ns: this.projectId },
+    });
     const namespaces = inspectRes.body.map((instance: any) => instance.name);
 
     // Check each one for actual data
     const namespacesToExport: string[] = [];
     for (const ns of namespaces) {
-      const checkDataPath = `/.json?ns=${ns}&shallow=true&limitToFirst=1`;
-      const checkDataRes = await api.request("GET", checkDataPath, {
-        origin: databaseAddr,
-        auth: true,
+      const checkDataPath = `/.json`;
+      const checkDataRes = await client.get(checkDataPath, {
+        queryParams: {
+          ns,
+          shallow: "true",
+          limitToFirst: 1,
+        },
       });
       if (checkDataRes.body !== null) {
         namespacesToExport.push(ns);
@@ -171,6 +192,11 @@ export class HubExport {
         namespacesToExport.push(ns);
       }
     }
+    void trackEmulator("emulator_export", {
+      initiated_by: this.options.initiatedBy,
+      emulator_name: Emulators.DATABASE,
+      count: namespacesToExport.length,
+    });
 
     const dbExportPath = path.join(this.tmpDir, metadata.database!.path);
     if (!fs.existsSync(dbExportPath)) {
@@ -195,6 +221,10 @@ export class HubExport {
   }
 
   private async exportAuth(metadata: ExportMetadata): Promise<void> {
+    void trackEmulator("emulator_export", {
+      initiated_by: this.options.initiatedBy,
+      emulator_name: Emulators.AUTH,
+    });
     const { host, port } = EmulatorRegistry.get(Emulators.AUTH)!.getInfo();
 
     const authExportPath = path.join(this.tmpDir, metadata.auth!.path);
@@ -242,13 +272,21 @@ export class HubExport {
     const storageHost = `http://${EmulatorRegistry.getInfoHostString(storageEmulator.getInfo())}`;
     const storageExportBody = {
       path: storageExportPath,
+      initiatedBy: this.options.initiatedBy,
     };
 
-    return api.request("POST", "/internal/export", {
-      origin: storageHost,
-      json: true,
-      data: storageExportBody,
+    const client = new Client({ urlPrefix: storageHost, auth: false });
+    const res = await client.request({
+      method: "POST",
+      path: "/internal/export",
+      headers: { "Content-Type": "application/json" },
+      body: storageExportBody,
+      responseType: "stream",
+      resolveOnHTTPError: true,
     });
+    if (res.status >= 400) {
+      throw new FirebaseError(`Failed to export storage: ${await res.response.text()}`);
+    }
   }
 }
 

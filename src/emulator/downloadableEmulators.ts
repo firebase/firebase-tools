@@ -12,7 +12,7 @@ import * as childProcess from "child_process";
 import * as utils from "../utils";
 import { EmulatorLogger } from "./emulatorLogger";
 
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as fs from "fs-extra";
 import * as path from "path";
 import * as os from "os";
@@ -27,26 +27,26 @@ const CACHE_DIR =
 
 export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDetails } = {
   database: {
-    downloadPath: path.join(CACHE_DIR, "firebase-database-emulator-v4.7.3.jar"),
-    version: "4.7.3",
+    downloadPath: path.join(CACHE_DIR, "firebase-database-emulator-v4.8.0.jar"),
+    version: "4.8.0",
     opts: {
       cacheDir: CACHE_DIR,
       remoteUrl:
-        "https://storage.googleapis.com/firebase-preview-drop/emulator/firebase-database-emulator-v4.7.3.jar",
-      expectedSize: 28862098,
-      expectedChecksum: "8f696f24ee89c937a789498a0c0e4899",
+        "https://storage.googleapis.com/firebase-preview-drop/emulator/firebase-database-emulator-v4.8.0.jar",
+      expectedSize: 33676395,
+      expectedChecksum: "e5ae0085d9c88ed14b0bd9c25fe62916",
       namePrefix: "firebase-database-emulator",
     },
   },
   firestore: {
-    downloadPath: path.join(CACHE_DIR, "cloud-firestore-emulator-v1.14.3.jar"),
-    version: "1.14.3",
+    downloadPath: path.join(CACHE_DIR, "cloud-firestore-emulator-v1.14.4.jar"),
+    version: "1.14.4",
     opts: {
       cacheDir: CACHE_DIR,
       remoteUrl:
-        "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v1.14.3.jar",
-      expectedSize: 60442855,
-      expectedChecksum: "63517534875818689639ee5dee57dd52",
+        "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v1.14.4.jar",
+      expectedSize: 61017177,
+      expectedChecksum: "953d10e73798484aa0b84c45005faadb",
       namePrefix: "cloud-firestore-emulator",
     },
   },
@@ -62,29 +62,12 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
       namePrefix: "cloud-storage-rules-emulator",
     },
   },
-  ui: previews.extensionsemulator
-    ? {
-        version: "EXTENSIONS",
-        downloadPath: path.join(CACHE_DIR, "ui-vEXTENSIONS.zip"),
-        unzipDir: path.join(CACHE_DIR, "ui-vEXTENSIONS"),
-        binaryPath: path.join(CACHE_DIR, "ui-vEXTENSIONS", "server.bundle.js"),
-        opts: {
-          cacheDir: CACHE_DIR,
-          remoteUrl:
-            "https://storage.googleapis.com/firebase-preview-drop/emulator/ui-vEXTENSIONS.zip",
-          expectedSize: -1,
-          expectedChecksum: "",
-          skipCache: true,
-          skipChecksumAndSize: true,
-          namePrefix: "ui",
-        },
-      }
-    : previews.emulatoruisnapshot
+  ui: previews.emulatoruisnapshot
     ? {
         version: "SNAPSHOT",
         downloadPath: path.join(CACHE_DIR, "ui-vSNAPSHOT.zip"),
         unzipDir: path.join(CACHE_DIR, "ui-vSNAPSHOT"),
-        binaryPath: path.join(CACHE_DIR, "ui-vSNAPSHOT", "server.bundle.js"),
+        binaryPath: path.join(CACHE_DIR, "ui-vSNAPSHOT", "server", "server.js"),
         opts: {
           cacheDir: CACHE_DIR,
           remoteUrl:
@@ -97,15 +80,15 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
         },
       }
     : {
-        version: "1.6.5",
-        downloadPath: path.join(CACHE_DIR, "ui-v1.6.5.zip"),
-        unzipDir: path.join(CACHE_DIR, "ui-v1.6.5"),
-        binaryPath: path.join(CACHE_DIR, "ui-v1.6.5", "server.bundle.js"),
+        version: "1.9.0",
+        downloadPath: path.join(CACHE_DIR, "ui-v1.9.0.zip"),
+        unzipDir: path.join(CACHE_DIR, "ui-v1.9.0"),
+        binaryPath: path.join(CACHE_DIR, "ui-v1.9.0", "server", "server.js"),
         opts: {
           cacheDir: CACHE_DIR,
-          remoteUrl: "https://storage.googleapis.com/firebase-preview-drop/emulator/ui-v1.6.5.zip",
-          expectedSize: 3816994,
-          expectedChecksum: "92dfff4b2ef8ab616e8a60cc93e0a00b",
+          remoteUrl: "https://storage.googleapis.com/firebase-preview-drop/emulator/ui-v1.9.0.zip",
+          expectedSize: 3062710,
+          expectedChecksum: "984597f41d497bd318dac131615eb9d5",
           namePrefix: "ui",
         },
       },

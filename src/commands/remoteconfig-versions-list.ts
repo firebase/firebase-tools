@@ -19,7 +19,7 @@ function pushTableContents(table: Table, version: Version): number {
   ]);
 }
 
-module.exports = new Command("remoteconfig:versions:list")
+export const command = new Command("remoteconfig:versions:list")
   .description(
     "get a list of Remote Config template versions that have been published for a Firebase project"
   )

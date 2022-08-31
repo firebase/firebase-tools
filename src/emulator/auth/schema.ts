@@ -975,7 +975,13 @@ export interface components {
      * Response message for SetAccountInfo
      */
     GoogleCloudIdentitytoolkitV1SetAccountInfoResponse: {
+      /**
+       * The account's display name.
+       */
       displayName?: string;
+      /**
+       * The account's email address.
+       */
       email?: string;
       /**
        * Whether the account's email has been verified.
@@ -998,7 +1004,13 @@ export interface components {
        * The new email that has been set on the user's account attributes.
        */
       newEmail?: string;
+      /**
+       * Deprecated. No actual password hash is currently returned.
+       */
       passwordHash?: string;
+      /**
+       * The user's photo URL for the account's profile photo.
+       */
       photoUrl?: string;
       /**
        * The linked Identity Providers on the account.
@@ -1858,24 +1870,6 @@ export interface components {
       suggestedTimeout?: string;
     };
     /**
-     * Defines a policy of allowing every region by default and adding disallowed regions to a disallow list.
-     */
-    GoogleCloudIdentitytoolkitAdminV2AllowByDefault: {
-      /**
-       * Two letter unicode region codes to disallow as defined by https://cldr.unicode.org/ The full list of these region codes is here: https://github.com/unicode-cldr/cldr-localenames-full/blob/master/main/en/territories.json
-       */
-      disallowedRegions?: string[];
-    };
-    /**
-     * Defines a policy of only allowing regions by explicitly adding them to an allowlist.
-     */
-    GoogleCloudIdentitytoolkitAdminV2AllowlistOnly: {
-      /**
-       * Two letter unicode region codes to allow as defined by https://cldr.unicode.org/ The full list of these region codes is here: https://github.com/unicode-cldr/cldr-localenames-full/blob/master/main/en/territories.json
-       */
-      allowedRegions?: string[];
-    };
-    /**
      * Configuration options related to authenticating an anonymous user.
      */
     GoogleCloudIdentitytoolkitAdminV2Anonymous: {
@@ -2427,13 +2421,6 @@ export interface components {
       phoneNumber?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2PhoneNumber"];
     };
     /**
-     * Configures the regions where users are allowed to send verification SMS for the project or tenant. This is based on the calling code of the destination phone number.
-     */
-    GoogleCloudIdentitytoolkitAdminV2SmsRegionConfig: {
-      allowByDefault?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2AllowByDefault"];
-      allowlistOnly?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2AllowlistOnly"];
-    };
-    /**
      * The template to use when sending an SMS.
      */
     GoogleCloudIdentitytoolkitAdminV2SmsTemplate: {
@@ -2549,7 +2536,6 @@ export interface components {
        * Output only. Resource name of a tenant. For example: "projects/{project-id}/tenants/{tenant-id}"
        */
       name?: string;
-      smsRegionConfig?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2SmsRegionConfig"];
       /**
        * A map of pairs that can be used for MFA. The phone number should be in E.164 format (https://www.itu.int/rec/T-REC-E.164/) and a maximum of 10 pairs can be added (error will be thrown once exceeded).
        */
@@ -2785,7 +2771,7 @@ export interface components {
       refreshToken?: string;
     };
     /**
-     * Specifies the audit configuration for a service. The configuration determines which permission types are logged, and what identities, if any, are exempted from logging. An AuditConfig must have one or more AuditLogConfigs. If there are AuditConfigs for both `allServices` and a specific service, the union of the two AuditConfigs is used for that service: the log_types specified in each AuditConfig are enabled, and the exempted_members in each AuditLogConfig are exempted. Example Policy with multiple AuditConfigs: { "audit_configs": [ { "service": "allServices", "audit_log_configs": [ { "log_type": "DATA_READ", "exempted_members": [ "user:jose@example.com" ] }, { "log_type": "DATA_WRITE" }, { "log_type": "ADMIN_READ" } ] }, { "service": "sampleservice.googleapis.com", "audit_log_configs": [ { "log_type": "DATA_READ" }, { "log_type": "DATA_WRITE", "exempted_members": [ "user:aliya@example.com" ] } ] } ] } For sampleservice, this policy enables DATA_READ, DATA_WRITE and ADMIN_READ logging. It also exempts jose@example.com from DATA_READ logging, and aliya@example.com from DATA_WRITE logging.
+     * Specifies the audit configuration for a service. The configuration determines which permission types are logged, and what identities, if any, are exempted from logging. An AuditConfig must have one or more AuditLogConfigs. If there are AuditConfigs for both `allServices` and a specific service, the union of the two AuditConfigs is used for that service: the log_types specified in each AuditConfig are enabled, and the exempted_members in each AuditLogConfig are exempted. Example Policy with multiple AuditConfigs: { "audit_configs": [ { "service": "allServices", "audit_log_configs": [ { "log_type": "DATA_READ", "exempted_members": [ "user:jose@example.com" ] }, { "log_type": "DATA_WRITE" }, { "log_type": "ADMIN_READ" } ] }, { "service": "sampleservice.googleapis.com", "audit_log_configs": [ { "log_type": "DATA_READ" }, { "log_type": "DATA_WRITE", "exempted_members": [ "user:aliya@example.com" ] } ] } ] } For sampleservice, this policy enables DATA_READ, DATA_WRITE and ADMIN_READ logging. It also exempts `jose@example.com` from DATA_READ logging, and `aliya@example.com` from DATA_WRITE logging.
      */
     GoogleIamV1AuditConfig: {
       /**
@@ -2816,7 +2802,7 @@ export interface components {
     GoogleIamV1Binding: {
       condition?: components["schemas"]["GoogleTypeExpr"];
       /**
-       * Specifies the principals requesting access for a Cloud Platform resource. `members` can have the following values: * `allUsers`: A special identifier that represents anyone who is on the internet; with or without a Google account. * `allAuthenticatedUsers`: A special identifier that represents anyone who is authenticated with a Google account or a service account. * `user:{emailid}`: An email address that represents a specific Google account. For example, `alice@example.com` . * `serviceAccount:{emailid}`: An email address that represents a service account. For example, `my-other-app@appspot.gserviceaccount.com`. * `group:{emailid}`: An email address that represents a Google group. For example, `admins@example.com`. * `deleted:user:{emailid}?uid={uniqueid}`: An email address (plus unique identifier) representing a user that has been recently deleted. For example, `alice@example.com?uid=123456789012345678901`. If the user is recovered, this value reverts to `user:{emailid}` and the recovered user retains the role in the binding. * `deleted:serviceAccount:{emailid}?uid={uniqueid}`: An email address (plus unique identifier) representing a service account that has been recently deleted. For example, `my-other-app@appspot.gserviceaccount.com?uid=123456789012345678901`. If the service account is undeleted, this value reverts to `serviceAccount:{emailid}` and the undeleted service account retains the role in the binding. * `deleted:group:{emailid}?uid={uniqueid}`: An email address (plus unique identifier) representing a Google group that has been recently deleted. For example, `admins@example.com?uid=123456789012345678901`. If the group is recovered, this value reverts to `group:{emailid}` and the recovered group retains the role in the binding. * `domain:{domain}`: The G Suite domain (primary) that represents all the users of that domain. For example, `google.com` or `example.com`.
+       * Specifies the principals requesting access for a Google Cloud resource. `members` can have the following values: * `allUsers`: A special identifier that represents anyone who is on the internet; with or without a Google account. * `allAuthenticatedUsers`: A special identifier that represents anyone who is authenticated with a Google account or a service account. * `user:{emailid}`: An email address that represents a specific Google account. For example, `alice@example.com` . * `serviceAccount:{emailid}`: An email address that represents a service account. For example, `my-other-app@appspot.gserviceaccount.com`. * `group:{emailid}`: An email address that represents a Google group. For example, `admins@example.com`. * `deleted:user:{emailid}?uid={uniqueid}`: An email address (plus unique identifier) representing a user that has been recently deleted. For example, `alice@example.com?uid=123456789012345678901`. If the user is recovered, this value reverts to `user:{emailid}` and the recovered user retains the role in the binding. * `deleted:serviceAccount:{emailid}?uid={uniqueid}`: An email address (plus unique identifier) representing a service account that has been recently deleted. For example, `my-other-app@appspot.gserviceaccount.com?uid=123456789012345678901`. If the service account is undeleted, this value reverts to `serviceAccount:{emailid}` and the undeleted service account retains the role in the binding. * `deleted:group:{emailid}?uid={uniqueid}`: An email address (plus unique identifier) representing a Google group that has been recently deleted. For example, `admins@example.com?uid=123456789012345678901`. If the group is recovered, this value reverts to `group:{emailid}` and the recovered group retains the role in the binding. * `domain:{domain}`: The G Suite domain (primary) that represents all the users of that domain. For example, `google.com` or `example.com`.
        */
       members?: string[];
       /**
@@ -2875,7 +2861,7 @@ export interface components {
      */
     GoogleIamV1TestIamPermissionsRequest: {
       /**
-       * The set of permissions to check for the `resource`. Permissions with wildcards (such as '*' or 'storage.*') are not allowed. For more information see [IAM Overview](https://cloud.google.com/iam/docs/overview#permissions).
+       * The set of permissions to check for the `resource`. Permissions with wildcards (such as `*` or `storage.*`) are not allowed. For more information see [IAM Overview](https://cloud.google.com/iam/docs/overview#permissions).
        */
       permissions?: string[];
     };
@@ -2889,7 +2875,7 @@ export interface components {
       permissions?: string[];
     };
     /**
-     * A generic empty message that you can re-use to avoid defining duplicated empty messages in your APIs. A typical example is to use it as the request or the response type of an API method. For instance: service Foo { rpc Bar(google.protobuf.Empty) returns (google.protobuf.Empty); } The JSON representation for `Empty` is empty JSON object `{}`.
+     * A generic empty message that you can re-use to avoid defining duplicated empty messages in your APIs. A typical example is to use it as the request or the response type of an API method. For instance: service Foo { rpc Bar(google.protobuf.Empty) returns (google.protobuf.Empty); }
      */
     GoogleProtobufEmpty: { [key: string]: any };
     /**
@@ -2960,10 +2946,7 @@ export interface components {
     /**
      * Emulator-specific configuration.
      */
-    EmulatorV1ProjectsConfig: {
-      signIn?: { allowDuplicateEmails?: boolean };
-      usageMode?: "USAGE_MODE_UNSPECIFIED" | "DEFAULT" | "PASSTHROUGH";
-    };
+    EmulatorV1ProjectsConfig: { signIn?: { allowDuplicateEmails?: boolean } };
     /**
      * Details of all pending confirmation codes.
      */

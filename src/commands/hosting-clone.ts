@@ -1,4 +1,4 @@
-import { bold } from "cli-color";
+import { bold } from "colorette";
 import * as ora from "ora";
 
 import { Command } from "../command";
@@ -17,8 +17,15 @@ import { requireAuth } from "../requireAuth";
 const { marked } = require("marked");
 import { logger } from "../logger";
 
-export default new Command("hosting:clone <source> <targetChannel>")
+export const command = new Command("hosting:clone <source> <targetChannel>")
   .description("clone a version from one site to another")
+  .help(
+    `<source> and <targetChannel> accept the following format: <siteId>:<channelId>
+
+For example, to copy the content for a site \`my-site\` from a preview channel \`staging\` to a \`live\` channel, the command would look be:
+
+  firebase hosting:clone my-site:foo my-site:live`
+  )
   .before(requireAuth)
   .action(async (source = "", targetChannel = "") => {
     // sites/{site}/versions/{version}

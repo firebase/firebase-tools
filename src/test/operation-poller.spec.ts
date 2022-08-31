@@ -104,7 +104,7 @@ describe("OperationPoller", () => {
       const opResult = { done: true, response: "completed" };
       nock(TEST_ORIGIN).get(FULL_RESOURCE_NAME).reply(200, { done: false });
       nock(TEST_ORIGIN).get(FULL_RESOURCE_NAME).reply(200, opResult);
-      const onPollSpy = sinon.spy((op: any) => {
+      const onPollSpy = sinon.spy(() => {
         return;
       });
       pollerOptions.onPoll = onPollSpy;

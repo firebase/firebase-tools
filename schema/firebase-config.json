@@ -174,6 +174,18 @@
                     },
                     "type": "object"
                 },
+                "eventarc": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "host": {
+                            "type": "string"
+                        },
+                        "port": {
+                            "type": "number"
+                        }
+                    },
+                    "type": "object"
+                },
                 "extensions": {
                     "properties": {
                     },
@@ -910,6 +922,9 @@
                         "site": {
                             "type": "string"
                         },
+                        "source": {
+                            "type": "string"
+                        },
                         "target": {
                             "type": "string"
                         },
@@ -1392,6 +1407,9 @@
                                     "site": {
                                         "type": "string"
                                     },
+                                    "source": {
+                                        "type": "string"
+                                    },
                                     "target": {
                                         "type": "string"
                                     },
@@ -1872,6 +1890,9 @@
                                         "type": "array"
                                     },
                                     "site": {
+                                        "type": "string"
+                                    },
+                                    "source": {
                                         "type": "string"
                                     },
                                     "target": {

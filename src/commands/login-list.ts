@@ -1,4 +1,4 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
 import { User } from "../auth";
 import { Command } from "../command";
@@ -6,7 +6,7 @@ import { logger } from "../logger";
 import * as utils from "../utils";
 import * as auth from "../auth";
 
-module.exports = new Command("login:list")
+export const command = new Command("login:list")
   .description("list authorized CLI accounts")
   .action((options: any) => {
     const user = options.user as User | undefined;

@@ -18,7 +18,7 @@ export function getValidator(): ValidateFunction {
   if (!_VALIDATOR) {
     const schemaStr = fs.readFileSync(
       path.resolve(__dirname, "../schema/firebase-config.json"),
-      "UTF-8"
+      "utf-8"
     );
     const schema = JSON.parse(schemaStr);
 

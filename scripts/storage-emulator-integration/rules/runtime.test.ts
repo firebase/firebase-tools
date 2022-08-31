@@ -221,8 +221,15 @@ describe("Storage Rules Runtime", function () {
         rules_version = '2';
         service firebase.storage {
           match /b/{bucket}/o {
-            match /sizes/{size} {
-              allow read,write: if request.path[1] == "xl";
+            match /{allPaths=**} {
+              // Test that request.path is relative to the service (firebase.storage) 
+              allow read: if request.path[0] == "b" &&
+                request.path[1] == "BUCKET_NAME" &&
+                request.path[2] == "o" &&
+                request.path[3] == "dir" &&
+                request.path[4] == "subdir" &&
+                request.path[5] == "image.png" &&
+                request.path == path("/b/BUCKET_NAME/o/dir/subdir/image.png");
             }
           }
         }`;
@@ -231,7 +238,7 @@ describe("Storage Rules Runtime", function () {
         await testIfPermitted(runtime, rulesContent, {
           token: TOKENS.signedInUser,
           method: RulesetOperationMethod.GET,
-          path: "/b/BUCKET_NAME/o/sizes/md",
+          path: "/b/BUCKET_NAME/o/dir/subdir/disallowed.png",
           file: {},
         })
       ).to.be.false;
@@ -239,7 +246,7 @@ describe("Storage Rules Runtime", function () {
         await testIfPermitted(runtime, rulesContent, {
           token: TOKENS.signedInUser,
           method: RulesetOperationMethod.GET,
-          path: "/b/BUCKET_NAME/o/sizes/xl",
+          path: "/b/BUCKET_NAME/o/dir/subdir/image.png",
           file: {},
         })
       ).to.be.true;

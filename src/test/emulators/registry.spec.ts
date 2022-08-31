@@ -52,6 +52,9 @@ describe("EmulatorRegistry", () => {
     let ipv6Supported = false;
     before(() => {
       for (const ifaces of Object.values(os.networkInterfaces())) {
+        if (!ifaces) {
+          continue;
+        }
         for (const iface of ifaces) {
           switch (iface.family) {
             case "IPv4":

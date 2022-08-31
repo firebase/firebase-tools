@@ -4,6 +4,7 @@ import * as events from "../../../functions/events";
 import { AuthBlockingService } from "./auth";
 import { obtainStorageBindings, ensureStorageTriggerRegion } from "./storage";
 import { ensureFirebaseAlertsTriggerRegion } from "./firebaseAlerts";
+import { ensureDatabaseTriggerRegion } from "./database";
 
 /** A standard void No Op */
 export const noop = (): Promise<void> => Promise.resolve();
@@ -12,7 +13,7 @@ export const noop = (): Promise<void> => Promise.resolve();
 export const noopProjectBindings = (): Promise<Array<iam.Binding>> => Promise.resolve([]);
 
 /** A name of a service */
-export type Name = "noop" | "pubsub" | "storage" | "firebasealerts" | "authblocking";
+export type Name = "noop" | "pubsub" | "storage" | "firebasealerts" | "authblocking" | "database";
 
 /** A service interface for the underlying GCP event services */
 export interface Service {
@@ -20,10 +21,7 @@ export interface Service {
   readonly api: string;
 
   // dispatch functions
-  requiredProjectBindings?: (
-    projectNumber: string,
-    policy: iam.Policy
-  ) => Promise<Array<iam.Binding>>;
+  requiredProjectBindings?: (projectNumber: string) => Promise<Array<iam.Binding>>;
   ensureTriggerRegion: (ep: backend.Endpoint & backend.EventTriggered) => Promise<void>;
   validateTrigger: (ep: backend.Endpoint, want: backend.Backend) => void;
   registerTrigger: (ep: backend.Endpoint) => Promise<void>;
@@ -76,6 +74,17 @@ const firebaseAlertsService: Service = {
 /** A auth blocking service object */
 const authBlockingService = new AuthBlockingService();
 
+/** A database service object */
+const databaseService: Service = {
+  name: "database",
+  api: "firebasedatabase.googleapis.com",
+  requiredProjectBindings: noopProjectBindings,
+  ensureTriggerRegion: ensureDatabaseTriggerRegion,
+  validateTrigger: noop,
+  registerTrigger: noop,
+  unregisterTrigger: noop,
+};
+
 /** Mapping from event type string to service object */
 const EVENT_SERVICE_MAPPING: Record<events.Event, Service> = {
   "google.cloud.pubsub.topic.v1.messagePublished": pubSubService,
@@ -86,6 +95,10 @@ const EVENT_SERVICE_MAPPING: Record<events.Event, Service> = {
   "google.firebase.firebasealerts.alerts.v1.published": firebaseAlertsService,
   "providers/cloud.auth/eventTypes/user.beforeCreate": authBlockingService,
   "providers/cloud.auth/eventTypes/user.beforeSignIn": authBlockingService,
+  "google.firebase.database.ref.v1.written": databaseService,
+  "google.firebase.database.ref.v1.created": databaseService,
+  "google.firebase.database.ref.v1.updated": databaseService,
+  "google.firebase.database.ref.v1.deleted": databaseService,
 };
 
 /**

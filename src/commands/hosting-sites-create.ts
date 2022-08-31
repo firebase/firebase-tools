@@ -1,4 +1,4 @@
-import { bold, yellow } from "cli-color";
+import { bold } from "colorette";
 
 import { logLabeledSuccess } from "../utils";
 import { Command } from "../command";
@@ -11,7 +11,7 @@ import { logger } from "../logger";
 
 const LOG_TAG = "hosting:sites";
 
-export default new Command("hosting:sites:create [siteId]")
+export const command = new Command("hosting:sites:create [siteId]")
   .description("create a Firebase Hosting site")
   .option("--app <appId>", "specify an existing Firebase Web App ID")
   .before(requirePermissions, ["firebasehosting.sites.update"])

@@ -5,11 +5,9 @@ import * as sinon from "sinon";
 
 import * as changelog from "../../extensions/changelog";
 import * as extensionApi from "../../extensions/extensionsApi";
+import { ExtensionVersion } from "../../extensions/types";
 
-function testExtensionVersion(
-  version: string,
-  releaseNotes?: string
-): extensionApi.ExtensionVersion {
+function testExtensionVersion(version: string, releaseNotes?: string): ExtensionVersion {
   return {
     name: `publishers/test/extensions/test/versions/${version}`,
     ref: `test/test@${version}`,
@@ -40,7 +38,7 @@ describe("changelog", () => {
     });
 
     it("should return release notes for each version in the update", async () => {
-      const extensionVersions: extensionApi.ExtensionVersion[] = [
+      const extensionVersions: ExtensionVersion[] = [
         testExtensionVersion("0.1.1", "foo"),
         testExtensionVersion("0.1.2", "bar"),
       ];
@@ -62,7 +60,7 @@ describe("changelog", () => {
     });
 
     it("should exclude versions that don't have releaseNotes", async () => {
-      const extensionVersions: extensionApi.ExtensionVersion[] = [
+      const extensionVersions: ExtensionVersion[] = [
         testExtensionVersion("0.1.1", "foo"),
         testExtensionVersion("0.1.2"),
       ];

@@ -7,6 +7,7 @@ import * as backend from "../../deploy/functions/backend";
 import { BEFORE_CREATE_EVENT, BEFORE_SIGN_IN_EVENT } from "../../functions/events/v1";
 import * as cloudfunctions from "../../gcp/cloudfunctions";
 import * as projectConfig from "../../functions/projectConfig";
+import { BLOCKING_LABEL, CODEBASE_LABEL, HASH_LABEL } from "../../functions/constants";
 
 describe("cloudfunctions", () => {
   const FUNCTION_NAME: backend.TargetIds = {
@@ -28,6 +29,7 @@ describe("cloudfunctions", () => {
     name: "projects/project/locations/region/functions/id",
     entryPoint: "function",
     runtime: "nodejs16",
+    dockerRegistry: "ARTIFACT_REGISTRY",
   };
 
   const HAVE_CLOUD_FUNCTION: cloudfunctions.CloudFunction = {
@@ -55,7 +57,7 @@ describe("cloudfunctions", () => {
           { ...ENDPOINT, platform: "gcfv2", httpsTrigger: {} },
           UPLOAD_URL
         );
-      }).to.throw;
+      }).to.throw();
     });
 
     it("should copy a minimal function", () => {
@@ -101,7 +103,7 @@ describe("cloudfunctions", () => {
           egressSettings: "ALL_TRAFFIC",
         },
         ingressSettings: "ALLOW_ALL",
-        serviceAccountEmail: "inlined@google.com",
+        serviceAccount: "inlined@google.com",
         labels: {
           foo: "bar",
         },
@@ -199,7 +201,7 @@ describe("cloudfunctions", () => {
           httpsTrigger: {},
           labels: {
             ...CLOUD_FUNCTION.labels,
-            [cloudfunctions.BLOCKING_LABEL]: "before-create",
+            [BLOCKING_LABEL]: "before-create",
           },
         };
 
@@ -222,7 +224,7 @@ describe("cloudfunctions", () => {
           httpsTrigger: {},
           labels: {
             ...CLOUD_FUNCTION.labels,
-            [cloudfunctions.BLOCKING_LABEL]: "before-sign-in",
+            [BLOCKING_LABEL]: "before-sign-in",
           },
         };
 
@@ -245,7 +247,25 @@ describe("cloudfunctions", () => {
         ...CLOUD_FUNCTION,
         sourceUploadUrl: UPLOAD_URL,
         httpsTrigger: {},
-        labels: { ...CLOUD_FUNCTION.labels, [cloudfunctions.CODEBASE_LABEL]: "my-codebase" },
+        labels: { ...CLOUD_FUNCTION.labels, [CODEBASE_LABEL]: "my-codebase" },
+      });
+    });
+
+    it("should export hash as label", () => {
+      expect(
+        cloudfunctions.functionFromEndpoint(
+          {
+            ...ENDPOINT,
+            hash: "my-hash",
+            httpsTrigger: {},
+          },
+          UPLOAD_URL
+        )
+      ).to.deep.equal({
+        ...CLOUD_FUNCTION,
+        sourceUploadUrl: UPLOAD_URL,
+        httpsTrigger: {},
+        labels: { ...CLOUD_FUNCTION.labels, [HASH_LABEL]: "my-hash" },
       });
     });
   });
@@ -301,7 +321,7 @@ describe("cloudfunctions", () => {
       ).to.deep.equal(want);
     });
 
-    it("should transalte scheduled triggers", () => {
+    it("should translate scheduled triggers", () => {
       expect(
         cloudfunctions.endpointFromFunction({
           ...HAVE_CLOUD_FUNCTION,
@@ -389,7 +409,7 @@ describe("cloudfunctions", () => {
         minInstances: 1,
         maxInstances: 42,
         ingressSettings: "ALLOW_ALL",
-        serviceAccountEmail: "inlined@google.com",
+        serviceAccount: "inlined@google.com",
         timeoutSeconds: 15,
         labels: {
           foo: "bar",
@@ -441,7 +461,7 @@ describe("cloudfunctions", () => {
           httpsTrigger: {},
           labels: {
             ...CLOUD_FUNCTION.labels,
-            [cloudfunctions.CODEBASE_LABEL]: "my-codebase",
+            [CODEBASE_LABEL]: "my-codebase",
           },
         })
       ).to.deep.equal({
@@ -449,9 +469,33 @@ describe("cloudfunctions", () => {
         httpsTrigger: {},
         labels: {
           ...ENDPOINT.labels,
-          [cloudfunctions.CODEBASE_LABEL]: "my-codebase",
+          [CODEBASE_LABEL]: "my-codebase",
         },
         codebase: "my-codebase",
+      });
+    });
+
+    it("should derive hash from labels", () => {
+      expect(
+        cloudfunctions.endpointFromFunction({
+          ...HAVE_CLOUD_FUNCTION,
+          httpsTrigger: {},
+          labels: {
+            ...CLOUD_FUNCTION.labels,
+            [CODEBASE_LABEL]: "my-codebase",
+            [HASH_LABEL]: "my-hash",
+          },
+        })
+      ).to.deep.equal({
+        ...ENDPOINT,
+        httpsTrigger: {},
+        labels: {
+          ...ENDPOINT.labels,
+          [CODEBASE_LABEL]: "my-codebase",
+          [HASH_LABEL]: "my-hash",
+        },
+        codebase: "my-codebase",
+        hash: "my-hash",
       });
     });
   });

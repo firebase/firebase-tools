@@ -137,7 +137,7 @@ export function canCalculateMinInstanceCost(endpoint: backend.Endpoint): boolean
   }
 
   if (endpoint.platform === "gcfv1") {
-    if (!MB_TO_GHZ[endpoint.availableMemoryMb || 256]) {
+    if (!MB_TO_GHZ[endpoint.availableMemoryMb || backend.DEFAULT_MEMORY]) {
       return false;
     }
 
@@ -176,7 +176,7 @@ export function monthlyMinInstanceCost(endpoints: backend.Endpoint[]): number {
       continue;
     }
 
-    const ramMb = endpoint.availableMemoryMb || 256;
+    const ramMb = endpoint.availableMemoryMb || backend.DEFAULT_MEMORY;
     const ramGb = ramMb / 1024;
     if (endpoint.platform === "gcfv1") {
       const cpu = MB_TO_GHZ[ramMb];
@@ -187,12 +187,12 @@ export function monthlyMinInstanceCost(endpoints: backend.Endpoint[]): number {
         usage["gcfv1"][tier].cpu + cpu * SECONDS_PER_MONTH * endpoint.minInstances;
     } else {
       // V2 is currently fixed at 1vCPU.
-      const cpu = 1;
       const tier = V2_REGION_TO_TIER[endpoint.region];
       usage["gcfv2"][tier].ram =
         usage["gcfv2"][tier].ram + ramGb * SECONDS_PER_MONTH * endpoint.minInstances;
       usage["gcfv2"][tier].cpu =
-        usage["gcfv2"][tier].cpu + cpu * SECONDS_PER_MONTH * endpoint.minInstances;
+        usage["gcfv2"][tier].cpu +
+        (endpoint.cpu as number) * SECONDS_PER_MONTH * endpoint.minInstances;
     }
   }
 

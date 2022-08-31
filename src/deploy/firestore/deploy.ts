@@ -1,5 +1,5 @@
 import * as _ from "lodash";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
 import { FirebaseError } from "../../error";
 import { FirestoreIndexes } from "../../firestore/indexes";
@@ -45,7 +45,9 @@ async function deployIndexes(context: any, options: any): Promise<void> {
 
   await new FirestoreIndexes().deploy(options, indexes, fieldOverrides);
   utils.logSuccess(
-    `${clc.bold.green("firestore:")} deployed indexes in ${clc.bold(indexesFileName)} successfully`
+    `${clc.bold(clc.green("firestore:"))} deployed indexes in ${clc.bold(
+      indexesFileName
+    )} successfully`
   );
 }
 

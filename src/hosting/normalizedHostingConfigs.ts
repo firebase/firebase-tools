@@ -1,11 +1,16 @@
-import { bold } from "cli-color";
+import { bold } from "colorette";
 import { cloneDeep } from "lodash";
 
 import { FirebaseError } from "../error";
 
 interface HostingConfig {
+  source?: string;
+  public?: string;
   site: string;
   target: string;
+  rewrites?: any[];
+  redirects?: any[];
+  headers?: any[];
 }
 
 function filterOnly(configs: HostingConfig[], onlyString: string): HostingConfig[] {
@@ -90,6 +95,9 @@ export function normalizedHostingConfigs(
   cmdOptions: any, // eslint-disable-line @typescript-eslint/no-explicit-any
   options: { resolveTargets?: boolean } = {}
 ): HostingConfig[] {
+  // First see if there's a momoized copy on the options, from frameworks
+  const normalizedHostingConfigs = cmdOptions.normalizedHostingConfigs;
+  if (normalizedHostingConfigs) return normalizedHostingConfigs;
   let configs = cloneDeep(cmdOptions.config.get("hosting"));
   if (!configs) {
     return [];

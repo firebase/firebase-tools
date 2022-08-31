@@ -85,8 +85,12 @@ export class AuthCloudFunction {
       phoneNumber: user.phoneNumber,
       disabled: user.disabled,
       metadata: {
-        creationTime: user.createdAt,
-        lastSignInTime: user.lastLoginAt,
+        creationTime: user.createdAt
+          ? new Date(parseInt(user.createdAt, 10)).toISOString()
+          : undefined,
+        lastSignInTime: user.lastLoginAt
+          ? new Date(parseInt(user.lastLoginAt, 10)).toISOString()
+          : undefined,
       },
       customClaims: JSON.parse(user.customAttributes || "{}"),
       providerData: user.providerUserInfo,

@@ -1,7 +1,8 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
 import * as args from "./args";
 import * as backend from "./backend";
+import * as build from "./build";
 import * as ensureApiEnabled from "../../ensureApiEnabled";
 import * as functionsConfig from "../../functionsConfig";
 import * as functionsEnv from "../../functions/env";
@@ -25,8 +26,10 @@ import { ensureTriggerRegions } from "./triggerRegionHelper";
 import { ensureServiceAgentRoles } from "./checkIam";
 import { FirebaseError } from "../../error";
 import { configForCodebase, normalizeAndValidate } from "../../functions/projectConfig";
-import { previews } from "../../previews";
 import { AUTH_BLOCKING_EVENTS } from "../../functions/events/v1";
+import { generateServiceIdentity } from "../../gcp/serviceusage";
+import { previews } from "../../previews";
+import { applyBackendHashToBackends } from "./cache/applyHash";
 
 function hasUserConfig(config: Record<string, unknown>): boolean {
   // "firebase" key is always going to exist in runtime config.
@@ -34,6 +37,9 @@ function hasUserConfig(config: Record<string, unknown>): boolean {
   return Object.keys(config).length > 1;
 }
 
+/**
+ * Prepare functions codebases for deploy.
+ */
 export async function prepare(
   context: args.Context,
   options: Options,
@@ -60,9 +66,8 @@ export async function prepare(
       /* silent=*/ true
     ),
     ensure.cloudBuildEnabled(projectId),
-    ensure.maybeEnableAR(projectId),
+    ensureApiEnabled.ensure(projectId, "artifactregistry.googleapis.com", "artifactregistry"),
   ]);
-  context.artifactRegistryEnabled = checkAPIsEnabled[3];
 
   // Get the Firebase Config, and set it on each function in the deployment.
   const firebaseConfig = await functionsConfig.getFirebaseConfig(options);
@@ -107,16 +112,45 @@ export async function prepare(
       projectAlias: options.projectAlias,
     };
     const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
-    logger.debug(`Analyzing ${runtimeDelegate.name} backend spec`);
-    const wantBackend = await runtimeDelegate.discoverSpec(runtimeConfig, firebaseEnvs);
-    wantBackend.environmentVariables = { ...userEnvs, ...firebaseEnvs };
+    const envs = { ...userEnvs, ...firebaseEnvs };
+    const wantBuild: build.Build = await runtimeDelegate.discoverBuild(runtimeConfig, firebaseEnvs);
+    const { backend: wantBackend, envs: resolvedEnvs } = await build.resolveBackend(
+      wantBuild,
+      userEnvOpt,
+      userEnvs,
+      options.nonInteractive
+    );
+
+    let hasEnvsFromParams = false;
+    wantBackend.environmentVariables = envs;
+    for (const envName of Object.keys(resolvedEnvs)) {
+      const envValue = resolvedEnvs[envName]?.toString();
+      if (
+        envValue &&
+        !Object.prototype.hasOwnProperty.call(wantBackend.environmentVariables, envName)
+      ) {
+        wantBackend.environmentVariables[envName] = envValue;
+        hasEnvsFromParams = true;
+      }
+    }
+
     for (const endpoint of backend.allEndpoints(wantBackend)) {
       endpoint.environmentVariables = wantBackend.environmentVariables;
       endpoint.codebase = codebase;
     }
     wantBackends[codebase] = wantBackend;
-    if (functionsEnv.hasUserEnvs(userEnvOpt)) {
+    if (functionsEnv.hasUserEnvs(userEnvOpt) || hasEnvsFromParams) {
       codebaseUsesEnvs.push(codebase);
+    }
+
+    if (wantBuild.params.length > 0) {
+      if (wantBuild.params.every((p) => p.type !== "secret")) {
+        void track("functions_params_in_build", "env_only");
+      } else {
+        void track("functions_params_in_build", "with_secrets");
+      }
+    } else {
+      void track("functions_params_in_build", "none");
     }
   }
 
@@ -136,17 +170,6 @@ export async function prepare(
       );
     }
     if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv2")) {
-      if (!previews.functionsv2) {
-        throw new FirebaseError(
-          "This version of firebase-tools does not support Google Cloud " +
-            "Functions gen 2\n" +
-            "If Cloud Functions for Firebase gen 2 is still in alpha, sign up " +
-            "for the alpha program at " +
-            "https://services.google.com/fb/forms/firebasealphaprogram/\n" +
-            "If Cloud Functions for Firebase gen 2 is in beta, get the latest " +
-            "version of Firebse Tools with `npm i -g firebase-tools@latest`"
-        );
-      }
       source.functionsSourceV2 = await prepareFunctionsUpload(sourceDir, config);
     }
     if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv1")) {
@@ -163,12 +186,13 @@ export async function prepare(
     backend.allEndpoints(await backend.existingBackend(context))
   );
   for (const [codebase, wantBackend] of Object.entries(wantBackends)) {
-    const haveBackend = haveBackends[codebase] || { ...backend.empty() };
+    const haveBackend = haveBackends[codebase] || backend.empty();
     payload.functions[codebase] = { wantBackend, haveBackend };
   }
   for (const [codebase, { wantBackend, haveBackend }] of Object.entries(payload.functions)) {
     inferDetailsFromExisting(wantBackend, haveBackend, codebaseUsesEnvs.includes(codebase));
     await ensureTriggerRegions(wantBackend);
+    resolveCpu(wantBackend);
     validate.endpointsAreValid(wantBackend);
     inferBlockingDetails(wantBackend);
   }
@@ -197,12 +221,11 @@ export async function prepare(
       return ensureApiEnabled.ensure(projectId, api, "functions", /* silent=*/ false);
     })
   );
-  // Note: Some of these are premium APIs that require billing to be enabled.
-  // We'd eventually have to add special error handling for billing APIs, but
-  // enableCloudBuild is called above and has this special casing already.
   if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv2")) {
+    // Note: Some of these are premium APIs that require billing to be enabled.
+    // We'd eventually have to add special error handling for billing APIs, but
+    // enableCloudBuild is called above and has this special casing already.
     const V2_APIS = [
-      "artifactregistry.googleapis.com",
       "run.googleapis.com",
       "eventarc.googleapis.com",
       "pubsub.googleapis.com",
@@ -212,6 +235,13 @@ export async function prepare(
       return ensureApiEnabled.ensure(context.projectId, api, "functions");
     });
     await Promise.all(enablements);
+    // Need to manually kick off the p4sa activation of services
+    // that we use with IAM roles assignment.
+    const services = ["pubsub.googleapis.com", "eventarc.googleapis.com"];
+    const generateServiceAccounts = services.map((service) => {
+      return generateServiceIdentity(projectNumber, service, "functions");
+    });
+    await Promise.all(generateServiceAccounts);
   }
 
   // ===Phase 5. Ask for user prompts for things might warrant user attentions.
@@ -225,9 +255,17 @@ export async function prepare(
   // ===Phase 6. Finalize preparation by "fixing" all extraneous environment issues like IAM policies.
   // We limit the scope endpoints being deployed.
   await backend.checkAvailability(context, matchingBackend);
-  await ensureServiceAgentRoles(projectNumber, matchingBackend, haveBackend);
+  await ensureServiceAgentRoles(projectId, projectNumber, matchingBackend, haveBackend);
   await validate.secretsAreValid(projectId, matchingBackend);
   await ensure.secretAccess(projectId, matchingBackend, haveBackend);
+
+  /**
+   * ===Phase 7 Generates the hashes for each of the functions now that secret versions have been resolved.
+   * This must be called after `await validate.secretsAreValid`.
+   */
+  if (previews.skipdeployingnoopfunctions) {
+    await applyBackendHashToBackends(wantBackends, context);
+  }
 }
 
 /**
@@ -257,9 +295,21 @@ export function inferDetailsFromExisting(
 
     // If the instance size is set out of bounds or was previously set and is now
     // unset we still need to remember it so that the min instance price estimator
-    // is accurate.
-    if (!wantE.availableMemoryMb && haveE.availableMemoryMb) {
+    // is accurate. If, on the other hand, we have a null value for availableMemoryMb
+    // we need to keep that null (meaning "use defaults").
+    if (typeof wantE.availableMemoryMb === "undefined" && haveE.availableMemoryMb) {
       wantE.availableMemoryMb = haveE.availableMemoryMb;
+    }
+
+    // N.B. This code doesn't handle automatic downgrading of concurrency if
+    // the customer sets CPU <1. We'll instead error that you can't have both.
+    // We may want to handle this case, though it might also be surprising to
+    // customers if they _don't_ get an error and we silently drop concurrency.
+    if (typeof wantE.concurrency === "undefined" && haveE.concurrency) {
+      wantE.concurrency = haveE.concurrency;
+    }
+    if (typeof wantE.cpu === "undefined" && haveE.cpu) {
+      wantE.cpu = haveE.cpu;
     }
 
     wantE.securityLevel = haveE.securityLevel ? haveE.securityLevel : "SECURE_ALWAYS";
@@ -316,5 +366,23 @@ export function inferBlockingDetails(want: backend.Backend): void {
     blockingEp.blockingTrigger.options.accessToken = accessToken;
     blockingEp.blockingTrigger.options.idToken = idToken;
     blockingEp.blockingTrigger.options.refreshToken = refreshToken;
+  }
+}
+
+/**
+ * Assigns the CPU level to a function based on its memory if CPU is not
+ * provided and sets concurrency based on the CPU level if not provided.
+ * After this function, CPU will be a real number and not "gcf_gen1".
+ */
+export function resolveCpu(want: backend.Backend): void {
+  for (const e of backend.allEndpoints(want)) {
+    if (e.platform === "gcfv1") {
+      continue;
+    }
+    if (e.cpu === "gcf_gen1") {
+      e.cpu = backend.memoryToGen1Cpu(e.availableMemoryMb || backend.DEFAULT_MEMORY);
+    } else if (!e.cpu) {
+      e.cpu = backend.memoryToGen2Cpu(e.availableMemoryMb || backend.DEFAULT_MEMORY);
+    }
   }
 }

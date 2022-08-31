@@ -21,7 +21,7 @@ describe("checkMinRequiredVersion", () => {
 
     expect(() => {
       checkMinRequiredVersion({}, "key");
-    }).to.throw;
+    }).to.throw();
   });
 
   it("should not error if installed version is above the min required version", () => {
@@ -29,6 +29,6 @@ describe("checkMinRequiredVersion", () => {
 
     expect(() => {
       checkMinRequiredVersion({}, "key");
-    }).not.to.throw;
+    }).not.to.throw();
   });
 });

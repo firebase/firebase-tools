@@ -1,15 +1,15 @@
 import * as chokidar from "chokidar";
 import * as fs from "fs";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as path from "path";
 
-import * as api from "../api";
 import * as utils from "../utils";
 import * as downloadableEmulators from "./downloadableEmulators";
 import { EmulatorInfo, EmulatorInstance, Emulators, Severity } from "../emulator/types";
 import { EmulatorRegistry } from "./registry";
 import { Constants } from "./constants";
 import { Issue } from "./types";
+import { Client } from "../apiv2";
 
 export interface FirestoreEmulatorArgs {
   port?: number;
@@ -37,7 +37,7 @@ export class FirestoreEmulator implements EmulatorInstance {
     if (this.args.rules && this.args.projectId) {
       const rulesPath = this.args.rules;
       this.rulesWatcher = chokidar.watch(rulesPath, { persistent: true, ignoreInitial: true });
-      this.rulesWatcher.on("change", async (event, stats) => {
+      this.rulesWatcher.on("change", async () => {
         // There have been some race conditions reported (on Windows) where reading the
         // file too quickly after the watcher fires results in an empty file being read.
         // Adding a small delay prevents that at very little cost.
@@ -75,7 +75,7 @@ export class FirestoreEmulator implements EmulatorInstance {
   }
 
   getInfo(): EmulatorInfo {
-    const host = this.args.host || Constants.getDefaultHost(Emulators.FIRESTORE);
+    const host = this.args.host || Constants.getDefaultHost();
     const port = this.args.port || Constants.getDefaultPort(Emulators.FIRESTORE);
 
     return {
@@ -90,7 +90,7 @@ export class FirestoreEmulator implements EmulatorInstance {
     return Emulators.FIRESTORE;
   }
 
-  private updateRules(content: string): Promise<Issue[]> {
+  private async updateRules(content: string): Promise<Issue[]> {
     const projectId = this.args.projectId;
 
     const info = this.getInfo();
@@ -107,18 +107,18 @@ export class FirestoreEmulator implements EmulatorInstance {
       },
     };
 
-    return api
-      .request("PUT", `/emulator/v1/projects/${projectId}:securityRules`, {
-        origin: `http://${EmulatorRegistry.getInfoHostString(info)}`,
-        data: body,
-      })
-      .then((res) => {
-        if (res.body && res.body.issues) {
-          return res.body.issues as Issue[];
-        }
-
-        return [];
-      });
+    const client = new Client({
+      urlPrefix: `http://${EmulatorRegistry.getInfoHostString(info)}`,
+      auth: false,
+    });
+    const res = await client.put<any, { issues?: Issue[] }>(
+      `/emulator/v1/projects/${projectId}:securityRules`,
+      body
+    );
+    if (res.body && Array.isArray(res.body.issues)) {
+      return res.body.issues;
+    }
+    return [];
   }
 
   /**

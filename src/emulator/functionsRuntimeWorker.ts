@@ -1,14 +1,13 @@
+import * as http from "http";
 import * as uuid from "uuid";
+
 import { FunctionsRuntimeInstance, InvokeRuntimeOpts } from "./functionsEmulator";
 import { EmulatorLog, Emulators, FunctionsExecutionMode } from "./types";
-import {
-  FunctionsRuntimeArgs,
-  FunctionsRuntimeBundle,
-  getTemporarySocketPath,
-} from "./functionsEmulatorShared";
+import { FunctionsRuntimeArgs, FunctionsRuntimeBundle } from "./functionsEmulatorShared";
 import { EventEmitter } from "events";
 import { EmulatorLogger, ExtensionLogInfo } from "./emulatorLogger";
 import { FirebaseError } from "../error";
+import { Serializable } from "child_process";
 
 type LogListener = (el: EmulatorLog) => any;
 
@@ -32,10 +31,8 @@ export class RuntimeWorker {
   readonly key: string;
   readonly runtime: FunctionsRuntimeInstance;
 
-  lastArgs?: FunctionsRuntimeArgs;
   stateEvents: EventEmitter = new EventEmitter();
 
-  private socketReady?: Promise<any>;
   private logListeners: Array<LogListener> = [];
   private _state: RuntimeWorkerState = RuntimeWorkerState.IDLE;
 
@@ -51,32 +48,63 @@ export class RuntimeWorker {
             this.state = RuntimeWorkerState.IDLE;
           } else if (this.state === RuntimeWorkerState.FINISHING) {
             this.log(`IDLE --> FINISHING`);
-            this.runtime.shutdown();
+            this.runtime.process.kill();
           }
         }
       }
     });
 
-    this.runtime.exit.then(() => {
+    const childProc = this.runtime.process;
+    let msgBuffer = "";
+    childProc.on("message", (msg) => {
+      msgBuffer = this.processStream(msg, msgBuffer);
+    });
+
+    let stdBuffer = "";
+    if (childProc.stdout) {
+      childProc.stdout.on("data", (data) => {
+        stdBuffer = this.processStream(data, stdBuffer);
+      });
+    }
+
+    if (childProc.stderr) {
+      childProc.stderr.on("data", (data) => {
+        stdBuffer = this.processStream(data, stdBuffer);
+      });
+    }
+
+    childProc.on("exit", () => {
       this.log("exited");
       this.state = RuntimeWorkerState.FINISHED;
     });
   }
 
+  private processStream(s: Serializable, buf: string): string {
+    buf += s.toString();
+
+    const lines = buf.split("\n");
+    if (lines.length > 1) {
+      // slice(0, -1) returns all elements but the last
+      lines.slice(0, -1).forEach((line: string) => {
+        const log = EmulatorLog.fromJSON(line);
+        this.runtime.events.emit("log", log);
+
+        if (log.level === "FATAL") {
+          // Something went wrong, if we don't kill the process it'll wait for timeoutMs.
+          this.runtime.events.emit("log", new EmulatorLog("SYSTEM", "runtime-status", "killed"));
+          this.runtime.process.kill();
+        }
+      });
+    }
+    return lines[lines.length - 1];
+  }
+
   execute(frb: FunctionsRuntimeBundle, opts?: InvokeRuntimeOpts): void {
     // Make a copy so we don't edit it
     const execFrb: FunctionsRuntimeBundle = { ...frb };
-
-    // TODO(samstern): I would like to do this elsewhere...
-    if (!execFrb.socketPath) {
-      execFrb.socketPath = getTemporarySocketPath(this.runtime.pid, this.runtime.cwd);
-      this.log(`Assigning socketPath: ${execFrb.socketPath}`);
-    }
-
     const args: FunctionsRuntimeArgs = { frb: execFrb, opts };
     this.state = RuntimeWorkerState.BUSY;
-    this.lastArgs = args;
-    this.runtime.send(args);
+    this.runtime.process.send(JSON.stringify(args));
   }
 
   get state(): RuntimeWorkerState {
@@ -84,24 +112,12 @@ export class RuntimeWorker {
   }
 
   set state(state: RuntimeWorkerState) {
-    if (state === RuntimeWorkerState.BUSY) {
-      this.socketReady = EmulatorLog.waitForLog(
-        this.runtime.events,
-        "SYSTEM",
-        "runtime-status",
-        (el) => {
-          return el.data.state === "ready";
-        }
-      );
-    }
-
     if (state === RuntimeWorkerState.IDLE) {
       // Remove all temporary log listeners every time we move to IDLE
       for (const l of this.logListeners) {
         this.runtime.events.removeListener("log", l);
       }
       this.logListeners = [];
-      this.socketReady = undefined;
     }
 
     if (state === RuntimeWorkerState.FINISHED) {
@@ -139,11 +155,44 @@ export class RuntimeWorker {
     });
   }
 
-  waitForSocketReady(): Promise<any> {
-    return (
-      this.socketReady ||
-      Promise.reject(new Error("Cannot call waitForSocketReady() if runtime is not BUSY"))
-    );
+  isSocketReady(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const req = http
+        .request(
+          {
+            method: "GET",
+            path: "/__/health",
+            socketPath: this.runtime.socketPath,
+          },
+          () => resolve()
+        )
+        .end();
+      req.on("error", (error) => {
+        reject(error);
+      });
+    });
+  }
+
+  async waitForSocketReady(): Promise<void> {
+    const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+    const timeout = new Promise<never>((resolve, reject) => {
+      setTimeout(() => {
+        reject(new FirebaseError("Failed to load function."));
+      }, 10_000);
+    });
+    while (true) {
+      try {
+        await Promise.race([this.isSocketReady(), timeout]);
+        break;
+      } catch (err: any) {
+        // Allow us to wait until the server is listening.
+        if (["ECONNREFUSED", "ENOENT"].includes(err?.code)) {
+          await sleep(100);
+          continue;
+        }
+        throw err;
+      }
+    }
   }
 
   private log(msg: string): void {
@@ -179,7 +228,7 @@ export class RuntimeWorkerPool {
         if (w.state === RuntimeWorkerState.IDLE) {
           this.log(`Shutting down IDLE worker (${w.key})`);
           w.state = RuntimeWorkerState.FINISHING;
-          w.runtime.shutdown();
+          w.runtime.process.kill();
         } else if (w.state === RuntimeWorkerState.BUSY) {
           this.log(`Marking BUSY worker to finish (${w.key})`);
           w.state = RuntimeWorkerState.FINISHING;
@@ -195,9 +244,9 @@ export class RuntimeWorkerPool {
     for (const arr of this.workers.values()) {
       arr.forEach((w) => {
         if (w.state === RuntimeWorkerState.IDLE) {
-          w.runtime.shutdown();
+          w.runtime.process.kill();
         } else {
-          w.runtime.kill();
+          w.runtime.process.kill();
         }
       });
     }

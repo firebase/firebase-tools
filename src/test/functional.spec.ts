@@ -86,7 +86,7 @@ describe("functional", () => {
       expect([...f.zip([1], ["a"])]).to.deep.equal([[1, "a"]]);
     });
     it("throws on length mismatch", () => {
-      expect(() => f.zip([1], [])).to.throw;
+      expect(() => [...f.zip([1], [])]).to.throw();
     });
   });
 

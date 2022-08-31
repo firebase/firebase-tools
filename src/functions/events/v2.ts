@@ -9,7 +9,15 @@ export const STORAGE_EVENTS = [
 
 export const FIREBASE_ALERTS_PUBLISH_EVENT = "google.firebase.firebasealerts.alerts.v1.published";
 
+export const DATABASE_EVENTS = [
+  "google.firebase.database.ref.v1.written",
+  "google.firebase.database.ref.v1.created",
+  "google.firebase.database.ref.v1.updated",
+  "google.firebase.database.ref.v1.deleted",
+] as const;
+
 export type Event =
   | typeof PUBSUB_PUBLISH_EVENT
   | typeof STORAGE_EVENTS[number]
-  | typeof FIREBASE_ALERTS_PUBLISH_EVENT;
+  | typeof FIREBASE_ALERTS_PUBLISH_EVENT
+  | typeof DATABASE_EVENTS[number];

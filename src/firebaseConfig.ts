@@ -59,6 +59,7 @@ export type HostingHeaders = HostingSource & {
 
 type HostingBase = {
   public?: string;
+  source?: string;
   ignore?: string[];
   appAssociation?: string;
   cleanUrls?: boolean;
@@ -162,6 +163,10 @@ export type EmulatorsConfig = {
     port?: number | string;
   };
   extensions?: {};
+  eventarc?: {
+    host?: string;
+    port?: number;
+  };
 };
 
 export type ExtensionsConfig = Record<string, string>;

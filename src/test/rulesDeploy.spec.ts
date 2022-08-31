@@ -4,12 +4,15 @@ import * as sinon from "sinon";
 
 import { FirebaseError } from "../error";
 import * as prompt from "../prompt";
+import * as resourceManager from "../gcp/resourceManager";
+import * as projectNumber from "../getProjectNumber";
 import { readFileSync } from "fs-extra";
 import { RulesetFile } from "../gcp/rules";
 import { Config } from "../config";
 import gcp = require("../gcp");
 
 import { RulesDeploy, RulesetServiceType } from "../rulesDeploy";
+import { previews } from "../previews";
 
 describe("RulesDeploy", () => {
   const FIXTURE_DIR = path.resolve(__dirname, "fixtures/rulesDeploy");
@@ -29,7 +32,7 @@ describe("RulesDeploy", () => {
 
       expect(() => {
         rd.addFile("firestore.rules");
-      }).to.not.throw;
+      }).to.not.throw();
     });
 
     it("should throw an error if the file does not exist", () => {
@@ -125,7 +128,7 @@ describe("RulesDeploy", () => {
       const result = rd.compile();
       await expect(result).to.eventually.be.rejectedWith(
         Error,
-        /Compilation error in .+storage.rules.+:\n\[E\] 0:0 - oopsie/
+        /Compilation error in .*storage.rules.*:\n\[E\] 0:0 - oopsie/
       );
     });
 
@@ -156,7 +159,7 @@ describe("RulesDeploy", () => {
       const result = rd.compile();
       await expect(result).to.eventually.be.rejectedWith(
         Error,
-        /Compilation errors in .+storage.rules.+:\n\[E\] 0:0 - oopsie\n\[E\] 1:1 - daisey/
+        /Compilation errors in .*storage.rules.*:\n\[E\] 0:0 - oopsie\n\[E\] 1:1 - daisey/
       );
     });
 
@@ -334,6 +337,105 @@ describe("RulesDeploy", () => {
         expect(gcp.rules.createRuleset).calledWithExactly(BASE_OPTIONS.project, [
           { name: "storage.rules", content: sinon.match.string },
         ]);
+      });
+    });
+
+    describe("with cross-service rules", () => {
+      const FIXTURE_DIR = path.resolve(__dirname, "fixtures/rulesDeployCrossService");
+      const CROSS_SERVICE_OPTIONS: { cwd: string; project: string; config: any } = {
+        cwd: FIXTURE_DIR,
+        project: "test-project",
+        config: null,
+      };
+      CROSS_SERVICE_OPTIONS.config = Config.load(CROSS_SERVICE_OPTIONS, false);
+
+      beforeEach(() => {
+        previews.crossservicerules = true;
+        (gcp.rules.getLatestRulesetName as sinon.SinonStub).resolves(null);
+        (gcp.rules.createRuleset as sinon.SinonStub).onFirstCall().resolves("compiled");
+        sinon.stub(projectNumber, "getProjectNumber").resolves("12345");
+        rd = new RulesDeploy(CROSS_SERVICE_OPTIONS, RulesetServiceType.FIREBASE_STORAGE);
+        rd.addFile("storage.rules");
+      });
+
+      afterEach(() => {
+        sinon.restore();
+        previews.crossservicerules = false;
+      });
+
+      it("should deploy even with IAM failure", async () => {
+        sinon.stub(resourceManager, "serviceAccountHasRoles").rejects();
+        const result = rd.createRulesets(RulesetServiceType.FIREBASE_STORAGE);
+        await expect(result).to.eventually.deep.equal(["compiled"]);
+
+        expect(gcp.rules.createRuleset).calledOnceWithExactly(BASE_OPTIONS.project, [
+          { name: "storage.rules", content: sinon.match.string },
+        ]);
+        expect(resourceManager.serviceAccountHasRoles).calledOnce;
+      });
+
+      it("should update permissions if prompted", async () => {
+        sinon.stub(resourceManager, "serviceAccountHasRoles").resolves(false);
+        sinon.stub(resourceManager, "addServiceAccountToRoles").resolves();
+        sinon.stub(prompt, "promptOnce").onFirstCall().resolves(true);
+
+        const result = rd.createRulesets(RulesetServiceType.FIREBASE_STORAGE);
+        await expect(result).to.eventually.deep.equal(["compiled"]);
+
+        expect(gcp.rules.createRuleset).calledOnceWithExactly(BASE_OPTIONS.project, [
+          { name: "storage.rules", content: sinon.match.string },
+        ]);
+        expect(resourceManager.addServiceAccountToRoles).calledOnceWithExactly(
+          "12345",
+          "service-12345@gcp-sa-firebasestorage.iam.gserviceaccount.com",
+          ["roles/firebaserules.firestoreServiceAgent"],
+          true
+        );
+      });
+
+      it("should not update permissions if declined", async () => {
+        sinon.stub(resourceManager, "serviceAccountHasRoles").resolves(false);
+        sinon.stub(resourceManager, "addServiceAccountToRoles").resolves();
+        sinon.stub(prompt, "promptOnce").onFirstCall().resolves(false);
+
+        const result = rd.createRulesets(RulesetServiceType.FIREBASE_STORAGE);
+        await expect(result).to.eventually.deep.equal(["compiled"]);
+
+        expect(gcp.rules.createRuleset).calledOnceWithExactly(BASE_OPTIONS.project, [
+          { name: "storage.rules", content: sinon.match.string },
+        ]);
+        expect(resourceManager.addServiceAccountToRoles).not.called;
+      });
+
+      it("should not prompt if role already granted", async () => {
+        sinon.stub(resourceManager, "serviceAccountHasRoles").resolves(true);
+        sinon.stub(resourceManager, "addServiceAccountToRoles").resolves();
+        const promptSpy = sinon.spy(prompt, "promptOnce");
+
+        const result = rd.createRulesets(RulesetServiceType.FIREBASE_STORAGE);
+        await expect(result).to.eventually.deep.equal(["compiled"]);
+
+        expect(gcp.rules.createRuleset).calledOnceWithExactly(BASE_OPTIONS.project, [
+          { name: "storage.rules", content: sinon.match.string },
+        ]);
+        expect(resourceManager.addServiceAccountToRoles).not.called;
+        expect(promptSpy).not.called;
+      });
+
+      it("should not prompt if feature is disabled", async () => {
+        previews.crossservicerules = false;
+        sinon.stub(resourceManager, "serviceAccountHasRoles").resolves(false);
+        sinon.stub(resourceManager, "addServiceAccountToRoles").resolves();
+        sinon.spy(prompt, "promptOnce");
+
+        const result = rd.createRulesets(RulesetServiceType.FIREBASE_STORAGE);
+        await expect(result).to.eventually.deep.equal(["compiled"]);
+
+        expect(gcp.rules.createRuleset).calledOnceWithExactly(BASE_OPTIONS.project, [
+          { name: "storage.rules", content: sinon.match.string },
+        ]);
+        expect(resourceManager.addServiceAccountToRoles).not.called;
+        expect(prompt.promptOnce).not.called;
       });
     });
 

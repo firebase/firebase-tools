@@ -1,11 +1,18 @@
-import { openSync, closeSync, readSync, unlinkSync, renameSync, mkdirSync } from "fs";
+import { openSync, closeSync, readSync, unlinkSync, mkdirSync } from "fs";
 import * as rimraf from "rimraf";
 import * as fs from "fs";
+import * as fse from "fs-extra";
 import * as path from "path";
+import * as uuid from "uuid";
 
-/** Helper for disk I/O operations. */
+/**
+ * Helper for disk I/O operations.
+ * Assigns a unique identifier to each file and stores it on disk based on that identifier
+ */
 export class Persistence {
   private _dirPath!: string;
+  // Mapping from emulator filePaths to unique identifiers on disk
+  private _diskPathMap: Map<string, string> = new Map();
   constructor(dirPath: string) {
     this.reset(dirPath);
   }
@@ -15,6 +22,7 @@ export class Persistence {
     mkdirSync(dirPath, {
       recursive: true,
     });
+    this._diskPathMap = new Map();
   }
 
   public get dirPath(): string {
@@ -22,18 +30,13 @@ export class Persistence {
   }
 
   appendBytes(fileName: string, bytes: Buffer): string {
+    if (!this._diskPathMap.has(fileName)) {
+      this._diskPathMap.set(fileName, this.generateNewDiskName());
+    }
     const filepath = this.getDiskPath(fileName);
 
-    let fd;
-
-    try {
-      fs.appendFileSync(filepath, bytes);
-      return filepath;
-    } finally {
-      if (fd) {
-        closeSync(fd);
-      }
-    }
+    fs.appendFileSync(filepath, bytes);
+    return filepath;
   }
 
   readBytes(fileName: string, size: number, fileOffset?: number): Buffer {
@@ -59,6 +62,7 @@ export class Persistence {
         throw err;
       }
     }
+    this._diskPathMap.delete(fileName);
   }
 
   deleteAll(): Promise<void> {
@@ -67,6 +71,7 @@ export class Persistence {
         if (err) {
           reject(err);
         } else {
+          this._diskPathMap = new Map();
           resolve();
         }
       });
@@ -74,10 +79,26 @@ export class Persistence {
   }
 
   renameFile(oldName: string, newName: string): void {
-    renameSync(this.getDiskPath(oldName), this.getDiskPath(newName));
+    const oldNameId = this.getDiskFileName(oldName);
+    this._diskPathMap.set(newName, oldNameId);
+    this._diskPathMap.delete(oldName);
   }
 
   getDiskPath(fileName: string): string {
-    return path.join(this._dirPath, encodeURIComponent(fileName));
+    const shortenedDiskPath = this.getDiskFileName(fileName);
+    return path.join(this._dirPath, encodeURIComponent(shortenedDiskPath));
+  }
+
+  getDiskFileName(fileName: string): string {
+    return this._diskPathMap.get(fileName)!;
+  }
+
+  copyFromExternalPath(sourcePath: string, newName: string): void {
+    this._diskPathMap.set(newName, this.generateNewDiskName());
+    fse.copyFileSync(sourcePath, this.getDiskPath(newName));
+  }
+
+  private generateNewDiskName(): string {
+    return uuid.v4();
   }
 }

@@ -1,10 +1,10 @@
-import { bold } from "cli-color";
+import { bold, underline } from "colorette";
 import * as fs from "fs";
 import * as yaml from "js-yaml";
 import { safeLoad } from "js-yaml";
 import * as ora from "ora";
 import * as path from "path";
-import * as sodium from "tweetsodium";
+import * as libsodium from "libsodium-wrappers";
 
 import { Setup } from "../..";
 import { loginGithub } from "../../../auth";
@@ -49,7 +49,7 @@ const githubApiClient = new Client({ urlPrefix: githubApiOrigin, auth: false });
  * @param config Configuration for the project.
  * @param options Command line options.
  */
-export async function initGitHub(setup: Setup, config: any, options: any): Promise<void> {
+export async function initGitHub(setup: Setup): Promise<void> {
   if (!setup.projectId) {
     return reject("Could not determine Project ID, can't set up GitHub workflow.", { exit: 1 });
   }
@@ -117,7 +117,7 @@ export async function initGitHub(setup: Setup, config: any, options: any): Promi
   await uploadSecretToGitHub(
     repo,
     ghAccessToken,
-    encryptedServiceAccountJSON,
+    await encryptedServiceAccountJSON,
     keyId,
     githubSecretName
   );
@@ -202,7 +202,7 @@ export async function initGitHub(setup: Setup, config: any, options: any): Promi
     `Visit this URL to revoke authorization for the Firebase CLI GitHub OAuth App:`
   );
   logger.info(
-    bold.underline(`https://github.com/settings/connections/applications/${githubClientId}`)
+    bold(underline(`https://github.com/settings/connections/applications/${githubClientId}`))
   );
   logLabeledBullet("Action required", `Push any new workflow file(s) to your repo`);
 }
@@ -408,7 +408,6 @@ async function promptForRepo(
         "For which GitHub repository would you like to set up a GitHub workflow? (format: user/repository)",
       validate: async (repo: string) => {
         try {
-          // eslint-disable-next-line camelcase
           const { body } = await githubApiClient.get<{ key: string; key_id: string }>(
             `/repos/${repo}/actions/secrets/public-key`,
             {
@@ -432,8 +431,8 @@ async function promptForRepo(
               `Visit this URL to ensure access has been granted to the appropriate organization(s) for the Firebase CLI GitHub OAuth App:`
             );
             logger.info(
-              bold.underline(
-                `https://github.com/settings/connections/applications/${githubClientId}`
+              bold(
+                underline(`https://github.com/settings/connections/applications/${githubClientId}`)
               )
             );
             logger.info();
@@ -520,7 +519,6 @@ async function getGitHubUserDetails(ghAccessToken: any): Promise<Record<string, 
 }
 
 async function getRepoDetails(repo: string, ghAccessToken: string) {
-  // eslint-disable-next-line camelcase
   const { body } = await githubApiClient.get<{ default_branch: string; id: string }>(
     `/repos/${repo}`,
     {
@@ -622,14 +620,15 @@ async function createServiceAccountAndKey(
  * @param serviceAccountJSON A service account's JSON private key
  * @param key a GitHub repository's public key
  *
- * @return {string} The encrypted service account key
+ * @return The encrypted service account key
  */
-function encryptServiceAccountJSON(serviceAccountJSON: string, key: string): string {
+async function encryptServiceAccountJSON(serviceAccountJSON: string, key: string): Promise<string> {
   const messageBytes = Buffer.from(serviceAccountJSON);
   const keyBytes = Buffer.from(key, "base64");
 
   // Encrypt using LibSodium.
-  const encryptedBytes = sodium.seal(messageBytes, keyBytes);
+  await libsodium.ready;
+  const encryptedBytes = libsodium.crypto_box_seal(messageBytes, keyBytes);
 
   // Base64 the encrypted secret
   return Buffer.from(encryptedBytes).toString("base64");

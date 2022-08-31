@@ -1,5 +1,5 @@
 import * as _ from "lodash";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
 import { firebaseApiOrigin } from "./api";
 import { Client } from "./apiv2";
@@ -40,7 +40,7 @@ function setVariable(
 }
 
 function isReservedNamespace(id: Id) {
-  return _.some(RESERVED_NAMESPACES, (reserved) => {
+  return RESERVED_NAMESPACES.some((reserved) => {
     return id.config.toLowerCase().startsWith(reserved);
   });
 }
@@ -58,7 +58,7 @@ export function varNameToIds(varName: string): Id {
 }
 
 export function idsToVarName(projectId: string, configId: string, varId: string): string {
-  return _.join(["projects", projectId, "configs", configId, "variables", varId], "/");
+  return ["projects", projectId, "configs", configId, "variables", varId].join("/");
 }
 
 // TODO(inlined): Yank and inline into Fabricator
@@ -88,7 +88,7 @@ export async function setVariablesRecursive(
   val: string | { [key: string]: any }
 ): Promise<any> {
   let parsed = val;
-  if (_.isString(val)) {
+  if (typeof val === "string") {
     try {
       // Only attempt to parse 'val' if it is a String (takes care of unparsed JSON, numbers, quoted string, etc.)
       parsed = JSON.parse(val);
@@ -97,10 +97,10 @@ export async function setVariablesRecursive(
     }
   }
   // If 'parsed' is object, call again
-  if (_.isPlainObject(parsed)) {
+  if (typeof parsed === "object" && parsed !== null) {
     return Promise.all(
-      _.map(parsed, (item: any, key: string) => {
-        const newVarPath = varPath ? _.join([varPath, key], "/") : key;
+      Object.entries(parsed).map(([key, item]) => {
+        const newVarPath = varPath ? [varPath, key].join("/") : key;
         return setVariablesRecursive(projectId, configId, newVarPath, item);
       })
     );
@@ -118,9 +118,9 @@ export async function materializeConfig(configName: string, output: any): Promis
     _.set(output, key, variable.text);
   };
 
-  const traverseVariables = async function (variables: any) {
+  const traverseVariables = async function (variables: { name: string }[]) {
     return Promise.all(
-      _.map(variables, (variable) => {
+      variables.map((variable) => {
         return materializeVariable(variable.name);
       })
     );
@@ -131,11 +131,14 @@ export async function materializeConfig(configName: string, output: any): Promis
   return output;
 }
 
-export async function materializeAll(projectId: string): Promise<{ [key: string]: any }> {
+export async function materializeAll(projectId: string): Promise<Record<string, any>> {
   const output = {};
   const configs = await runtimeconfig.configs.list(projectId);
+  if (!Array.isArray(configs) || !configs.length) {
+    return output;
+  }
   await Promise.all(
-    _.map(configs, (config) => {
+    configs.map<Promise<any> | undefined>((config: any) => {
       if (config.name.match(new RegExp("configs/firebase"))) {
         // ignore firebase config
         return;
@@ -154,7 +157,7 @@ interface ParsedArg {
 
 export function parseSetArgs(args: string[]): ParsedArg[] {
   const parsed: ParsedArg[] = [];
-  _.forEach(args, (arg) => {
+  for (const arg of args) {
     const parts = arg.split("=");
     const key = parts[0];
     if (parts.length < 2) {
@@ -175,18 +178,18 @@ export function parseSetArgs(args: string[]): ParsedArg[] {
       varId: id.variable,
       val: val,
     });
-  });
+  }
   return parsed;
 }
 
 export function parseUnsetArgs(args: string[]): ParsedArg[] {
   const parsed: ParsedArg[] = [];
   let splitArgs: string[] = [];
-  _.forEach(args, (arg) => {
-    splitArgs = _.union(splitArgs, arg.split(","));
-  });
+  for (const arg of args) {
+    splitArgs = Array.from(new Set([...splitArgs, ...arg.split(",")]));
+  }
 
-  _.forEach(splitArgs, (key) => {
+  for (const key of splitArgs) {
     const id = keyToIds(key);
     if (isReservedNamespace(id)) {
       throw new FirebaseError("Cannot unset reserved namespace " + clc.bold(id.config));
@@ -196,6 +199,6 @@ export function parseUnsetArgs(args: string[]): ParsedArg[] {
       configId: id.config,
       varId: id.variable,
     });
-  });
+  }
   return parsed;
 }

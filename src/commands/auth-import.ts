@@ -1,6 +1,6 @@
 import { parse } from "csv-parse";
 import * as Chain from "stream-chain";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as fs from "fs-extra";
 import * as Pick from "stream-json/filters/Pick";
 import * as StreamArray from "stream-json/streamers/StreamArray";
@@ -11,15 +11,16 @@ import { logger } from "../logger";
 import { needProjectId } from "../projectUtils";
 import { Options } from "../options";
 import { requirePermissions } from "../requirePermissions";
-import * as accountImporter from "../accountImporter";
+import {
+  serialImportUsers,
+  transArrayToUser,
+  validateOptions,
+  validateUserJson,
+} from "../accountImporter";
 
 const MAX_BATCH_SIZE = 1000;
-const validateOptions = accountImporter.validateOptions;
-const validateUserJson = accountImporter.validateUserJson;
-const transArrayToUser = accountImporter.transArrayToUser;
-const serialImportUsers = accountImporter.serialImportUsers;
 
-module.exports = new Command("auth:import [dataFile]")
+export const command = new Command("auth:import [dataFile]")
   .description("import users into your Firebase project from a data file(.csv or .json)")
   .option(
     "--hash-algo <hashAlgo>",

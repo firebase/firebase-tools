@@ -17,7 +17,7 @@ describe("hashcache", () => {
     const name = "testcache";
     const data = new Map<string, HashRecord>([["foo", { mtime: 0, hash: "deadbeef" }]]);
 
-    expect(dump(dir.name, name, data)).to.not.throw;
+    expect(() => dump(dir.name, name, data)).to.not.throw();
 
     expect(existsSync(join(dir.name, ".firebase", `hosting.${name}.cache`))).to.be.true;
     expect(readFileSync(join(dir.name, ".firebase", `hosting.${name}.cache`), "utf8")).to.equal(

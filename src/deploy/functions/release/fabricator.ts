@@ -1,4 +1,4 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
 import { Executor } from "./executor";
 import { FirebaseError } from "../../../error";
@@ -24,6 +24,8 @@ import * as scheduler from "../../../gcp/cloudscheduler";
 import * as utils from "../../../utils";
 import * as services from "../services";
 import { AUTH_BLOCKING_EVENTS } from "../../../functions/events/v1";
+import { backoff } from "../../../throttler/throttler";
+import { getDefaultComputeServiceAgent } from "../checkIam";
 
 // TODO: Tune this for better performance.
 const gcfV1PollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
@@ -40,13 +42,12 @@ const gcfV2PollerOptions: Omit<poller.OperationPollerOptions, "operationResource
   maxBackoff: 10_000,
 };
 
-const DEFAULT_GCFV2_CONCURRENCY = 80;
-
 export interface FabricatorArgs {
   executor: Executor;
   functionExecutor: Executor;
   appEngineLocation: string;
   sources: Record<string, args.Source>;
+  projectNumber: string;
 }
 
 const rethrowAs =
@@ -62,12 +63,14 @@ export class Fabricator {
   functionExecutor: Executor;
   sources: Record<string, args.Source>;
   appEngineLocation: string;
+  projectNumber: string;
 
   constructor(args: FabricatorArgs) {
     this.executor = args.executor;
     this.functionExecutor = args.functionExecutor;
     this.sources = args.sources;
     this.appEngineLocation = args.appEngineLocation;
+    this.projectNumber = args.projectNumber;
   }
 
   async applyPlan(plan: planner.DeploymentPlan): Promise<reporter.Summary> {
@@ -121,6 +124,12 @@ export class Fabricator {
     for (const endpoint of changes.endpointsToCreate) {
       this.logOpStart("creating", endpoint);
       upserts.push(handle("create", endpoint, () => this.createEndpoint(endpoint, scraper)));
+    }
+    if (changes.endpointsToSkip.length) {
+      for (const endpoint of changes.endpointsToSkip) {
+        utils.logSuccess(this.getLogSuccessMessage("skip", endpoint));
+      }
+      utils.logSuccess(this.getSkippedDeployingNopOpMessage(changes.endpointsToSkip));
     }
     for (const update of changes.endpointsToUpdate) {
       this.logOpStart("updating", update.endpoint);
@@ -334,15 +343,31 @@ export class Fabricator {
       await this.executor
         .run(() => run.setInvokerCreate(endpoint.project, serviceName, ["public"]))
         .catch(rethrowAs(endpoint, "set invoker"));
+    } else if (backend.isScheduleTriggered(endpoint)) {
+      const invoker = [getDefaultComputeServiceAgent(this.projectNumber)];
+      await this.executor
+        .run(() => run.setInvokerCreate(endpoint.project, serviceName, invoker))
+        .catch(rethrowAs(endpoint, "set invoker"));
     }
 
     const mem = endpoint.availableMemoryMb || backend.DEFAULT_MEMORY;
-    if (mem >= backend.MIN_MEMORY_FOR_CONCURRENCY && endpoint.concurrency !== 1) {
-      await this.setConcurrency(
-        endpoint,
-        serviceName,
-        endpoint.concurrency || DEFAULT_GCFV2_CONCURRENCY
-      );
+
+    // "CustomCPU" here means "not the CPU that GCF gives us". GCF automatically
+    // sets the CPU for a Run service based on the RAM settings. The value GCF
+    // uses is memoryToGen1Cpu.
+    const hasCustomCPU = endpoint.cpu !== backend.memoryToGen1Cpu(mem);
+    // I don't love editing an input in this function, but the code gets ugly
+    // otherwise. It's nice to not resolve concurrency in the prepare stage
+    // because it helps us know whether we should call setRunTraits on update.
+    if (!endpoint.concurrency) {
+      endpoint.concurrency =
+        (endpoint.cpu as number) >= backend.MIN_CPU_FOR_CONCURRENCY
+          ? backend.DEFAULT_CONCURRENCY
+          : 1;
+    }
+    const hasConcurrency = endpoint.concurrency !== 1;
+    if (hasCustomCPU || hasConcurrency) {
+      await this.setRunTraits(serviceName, endpoint);
     }
   }
 
@@ -369,9 +394,9 @@ export class Fabricator {
     endpoint.uri = resultFunction?.httpsTrigger?.url;
     let invoker: string[] | undefined;
     if (backend.isHttpsTriggered(endpoint)) {
-      invoker = endpoint.httpsTrigger.invoker;
+      invoker = endpoint.httpsTrigger.invoker === null ? ["public"] : endpoint.httpsTrigger.invoker;
     } else if (backend.isTaskQueueTriggered(endpoint)) {
-      invoker = endpoint.taskQueueTrigger.invoker;
+      invoker = endpoint.taskQueueTrigger.invoker === null ? [] : endpoint.taskQueueTrigger.invoker;
     } else if (
       backend.isBlockingTriggered(endpoint) &&
       AUTH_BLOCKING_EVENTS.includes(endpoint.blockingTrigger.eventType as any)
@@ -416,23 +441,42 @@ export class Fabricator {
     const serviceName = resultFunction.serviceConfig.service!;
     let invoker: string[] | undefined;
     if (backend.isHttpsTriggered(endpoint)) {
-      invoker = endpoint.httpsTrigger.invoker;
+      invoker = endpoint.httpsTrigger.invoker === null ? ["public"] : endpoint.httpsTrigger.invoker;
     } else if (backend.isTaskQueueTriggered(endpoint)) {
-      invoker = endpoint.taskQueueTrigger.invoker;
+      invoker = endpoint.taskQueueTrigger.invoker === null ? [] : endpoint.taskQueueTrigger.invoker;
     } else if (
       backend.isBlockingTriggered(endpoint) &&
       AUTH_BLOCKING_EVENTS.includes(endpoint.blockingTrigger.eventType as any)
     ) {
       invoker = ["public"];
+    } else if (backend.isScheduleTriggered(endpoint)) {
+      invoker = [getDefaultComputeServiceAgent(this.projectNumber)];
     }
+
     if (invoker) {
       await this.executor
         .run(() => run.setInvokerUpdate(endpoint.project, serviceName, invoker!))
         .catch(rethrowAs(endpoint, "set invoker"));
     }
 
-    if (endpoint.concurrency) {
-      await this.setConcurrency(endpoint, serviceName, endpoint.concurrency);
+    // Ideally we'd avoid a read of the Cloud Run service. We need to read if we
+    // believe a setting (CPU or concurrency) has changed because the user
+    // changed their mind or if GCF has stamped over the user's choice (we're
+    // using custom VM shapes).
+    const hasCustomCPU =
+      endpoint.cpu !==
+      backend.memoryToGen1Cpu(endpoint.availableMemoryMb || backend.DEFAULT_MEMORY);
+    const explicitConcurrency = endpoint.concurrency !== undefined;
+    if (hasCustomCPU || explicitConcurrency) {
+      // GCF may have stamped over the CPU to be <1 which would reset concurrency.
+      // We may have to reapply defaults.
+      if (endpoint.concurrency === undefined) {
+        endpoint.concurrency =
+          (endpoint.cpu as number) < backend.MIN_CPU_FOR_CONCURRENCY
+            ? 1
+            : backend.DEFAULT_CONCURRENCY;
+      }
+      await this.setRunTraits(serviceName, endpoint);
     }
   }
 
@@ -466,23 +510,40 @@ export class Fabricator {
       .catch(rethrowAs(endpoint, "delete"));
   }
 
-  async setConcurrency(
-    endpoint: backend.Endpoint,
-    serviceName: string,
-    concurrency: number
-  ): Promise<void> {
+  async setRunTraits(serviceName: string, endpoint: backend.Endpoint): Promise<void> {
     await this.functionExecutor
       .run(async () => {
-        const service = await run.getService(serviceName);
-        if (service.spec.template.spec.containerConcurrency === concurrency) {
-          logger.debug("Skipping setConcurrency on", serviceName, " because it already matches");
+        let service = await run.getService(serviceName);
+        let changed = false;
+        if (service.spec.template.spec.containerConcurrency !== endpoint.concurrency) {
+          service.spec.template.spec.containerConcurrency = endpoint.concurrency;
+          changed = true;
+        }
+
+        if (+service.spec.template.spec.containers[0].resources.limits.cpu !== endpoint.cpu) {
+          service.spec.template.spec.containers[0].resources.limits.cpu = `${
+            endpoint.cpu as number
+          }`;
+          changed = true;
+        }
+
+        if (!changed) {
+          logger.debug("Skipping setRunTraits on", serviceName, " because it already matches");
           return;
         }
 
         delete service.status;
         delete (service.spec.template.metadata as any).name;
-        service.spec.template.spec.containerConcurrency = concurrency;
-        await run.replaceService(serviceName, service);
+        service = await run.replaceService(serviceName, service);
+
+        // Now we need to wait for reconciliation or we might delete the docker
+        // image while the service is still rolling out a new revision.
+        let retry = 0;
+        while (!exports.serviceIsResolved(service)) {
+          await backoff(retry, 2, 30);
+          retry = retry + 1;
+          service = await run.getService(serviceName);
+        }
       })
       .catch(rethrowAs(endpoint, "set concurrency"));
   }
@@ -525,16 +586,17 @@ export class Fabricator {
 
   async upsertScheduleV1(endpoint: backend.Endpoint & backend.ScheduleTriggered): Promise<void> {
     // The Pub/Sub topic is already created
-    const job = scheduler.jobFromEndpoint(endpoint, this.appEngineLocation);
+    const job = scheduler.jobFromEndpoint(endpoint, this.appEngineLocation, this.projectNumber);
     await this.executor
       .run(() => scheduler.createOrReplaceJob(job))
       .catch(rethrowAs(endpoint, "upsert schedule"));
   }
 
-  upsertScheduleV2(endpoint: backend.Endpoint & backend.ScheduleTriggered): Promise<void> {
-    return Promise.reject(
-      new reporter.DeploymentError(endpoint, "upsert schedule", new Error("Not implemented"))
-    );
+  async upsertScheduleV2(endpoint: backend.Endpoint & backend.ScheduleTriggered): Promise<void> {
+    const job = scheduler.jobFromEndpoint(endpoint, endpoint.region, this.projectNumber);
+    await this.executor
+      .run(() => scheduler.createOrReplaceJob(job))
+      .catch(rethrowAs(endpoint, "upsert schedule"));
   }
 
   async upsertTaskQueue(endpoint: backend.Endpoint & backend.TaskQueueTriggered): Promise<void> {
@@ -561,20 +623,22 @@ export class Fabricator {
   }
 
   async deleteScheduleV1(endpoint: backend.Endpoint & backend.ScheduleTriggered): Promise<void> {
-    const job = scheduler.jobFromEndpoint(endpoint, this.appEngineLocation);
+    const jobName = scheduler.jobNameForEndpoint(endpoint, this.appEngineLocation);
     await this.executor
-      .run(() => scheduler.deleteJob(job.name))
+      .run(() => scheduler.deleteJob(jobName))
       .catch(rethrowAs(endpoint, "delete schedule"));
 
+    const topicName = scheduler.topicNameForEndpoint(endpoint);
     await this.executor
-      .run(() => pubsub.deleteTopic(job.pubsubTarget!.topicName))
+      .run(() => pubsub.deleteTopic(topicName))
       .catch(rethrowAs(endpoint, "delete topic"));
   }
 
-  deleteScheduleV2(endpoint: backend.Endpoint & backend.ScheduleTriggered): Promise<void> {
-    return Promise.reject(
-      new reporter.DeploymentError(endpoint, "delete schedule", new Error("Not implemented"))
-    );
+  async deleteScheduleV2(endpoint: backend.Endpoint & backend.ScheduleTriggered): Promise<void> {
+    const jobName = scheduler.jobNameForEndpoint(endpoint, endpoint.region);
+    await this.executor
+      .run(() => scheduler.deleteJob(jobName))
+      .catch(rethrowAs(endpoint, "delete schedule"));
   }
 
   async disableTaskQueue(endpoint: backend.Endpoint & backend.TaskQueueTriggered): Promise<void> {
@@ -602,7 +666,66 @@ export class Fabricator {
   }
 
   logOpSuccess(op: string, endpoint: backend.Endpoint): void {
-    const label = helper.getFunctionLabel(endpoint);
-    utils.logSuccess(`${clc.bold.green(`functions[${label}]`)} Successful ${op} operation.`);
+    utils.logSuccess(this.getLogSuccessMessage(op, endpoint));
   }
+
+  /**
+   * Returns the log messaging for a successful operation.
+   */
+  getLogSuccessMessage(op: string, endpoint: backend.Endpoint) {
+    const label = helper.getFunctionLabel(endpoint);
+    switch (op) {
+      case "skip":
+        return `Not deploying ${clc.bold(
+          clc.green(`functions[${label}]`)
+        )} - no change since last deploy (hash=${endpoint.hash})`;
+      default:
+        return `${clc.bold(clc.green(`functions[${label}]`))} Successful ${op} operation.`;
+    }
+  }
+
+  /**
+   * Returns the log messaging for no-op functions that were skipped.
+   */
+  getSkippedDeployingNopOpMessage(endpoints: backend.Endpoint[]) {
+    const functionNames = endpoints.map((endpoint) => endpoint.id).join(",");
+    return `To force deploy these functions, run command ${clc.bold(
+      `firebase deploy --only functions:${clc.green(functionNames)}`
+    )}`;
+  }
+}
+
+/**
+ * Returns whether a service is resolved (all transitions have completed).
+ */
+export function serviceIsResolved(service: run.Service): boolean {
+  if (service.status?.observedGeneration !== service.metadata.generation) {
+    logger.debug(
+      `Service ${service.metadata.name} is not resolved because` +
+        `observed generation ${service.status?.observedGeneration} does not ` +
+        `match spec generation ${service.metadata.generation}`
+    );
+    return false;
+  }
+  const readyCondition = service.status?.conditions?.find((condition) => {
+    return condition.type === "Ready";
+  });
+
+  if (readyCondition?.status === "Unknown") {
+    logger.debug(
+      `Waiting for service ${service.metadata.name} to be ready. ` +
+        `Status is ${JSON.stringify(service.status?.conditions)}`
+    );
+    return false;
+  } else if (readyCondition?.status === "True") {
+    return true;
+  }
+  logger.debug(
+    `Service ${service.metadata.name} has unexpected ready status ${JSON.stringify(
+      readyCondition
+    )}. It may have failed rollout.`
+  );
+  throw new FirebaseError(
+    `Unexpected Status ${readyCondition?.status} for service ${service.metadata.name}`
+  );
 }

@@ -1,4 +1,5 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
+import * as _ from "lodash";
 
 import { logger } from "../../../logger";
 import { promptOnce } from "../../../prompt";
@@ -7,6 +8,9 @@ import { previews } from "../../../previews";
 import { Options } from "../../../options";
 import { ensure } from "../../../ensureApiEnabled";
 
+/**
+ * Set up a new firebase project for functions.
+ */
 export async function doSetup(setup: any, config: any, options: Options) {
   logger.info();
   logger.info(
@@ -48,5 +52,11 @@ export async function doSetup(setup: any, config: any, options: Options) {
     default: "javascript",
     choices,
   });
-  return require("./" + language)(setup, config);
+  _.set(setup, "config.functions.ignore", [
+    "node_modules",
+    ".git",
+    "firebase-debug.log",
+    "firebase-debug.*.log",
+  ]);
+  return require("./" + language).setup(setup, config);
 }

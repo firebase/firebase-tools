@@ -1,4 +1,4 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const { marked } = require("marked");
 
@@ -15,7 +15,7 @@ import * as utils from "../utils";
 /**
  * Register a publisher ID; run this before publishing any extensions.
  */
-export default new Command("ext:dev:register")
+export const command = new Command("ext:dev:register")
   .description("register a publisher ID; run this before publishing your first extension.")
   // temporary until registry-specific permissions are available
   .before(requirePermissions, ["firebaseextensions.sources.create"])
