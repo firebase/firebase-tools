@@ -8,7 +8,7 @@ import { getSecretVersions } from "../../../functions/secrets";
  * @param backend Backend of a set of functions
  */
 export function getEnvironmentVariablesHash(backend: Backend): string {
-  const hash = crypto.createHash("sha256");
+  const hash = crypto.createHash("sha1");
 
   // Hash the contents of the dotenv variables
   const hasEnvironmentVariables = !!Object.keys(backend.environmentVariables).length;
@@ -24,7 +24,7 @@ export function getEnvironmentVariablesHash(backend: Backend): string {
  * @param pathToGeneratedPackageFile Packaged file contents of functions
  */
 export async function getSourceHash(pathToGeneratedPackageFile: string): Promise<string> {
-  const hash = crypto.createHash("sha256");
+  const hash = crypto.createHash("sha1");
 
   // Hash the contents of the source file
   const data = await readFile(pathToGeneratedPackageFile);
@@ -38,7 +38,7 @@ export async function getSourceHash(pathToGeneratedPackageFile: string): Promise
  * @param endpoint Endpoint
  */
 export function getSecretsHash(endpoint: Endpoint): string {
-  const hash = crypto.createHash("sha256");
+  const hash = crypto.createHash("sha1");
 
   // Hash the secret versions.
   const secretVersions = getSecretVersions(endpoint);
@@ -62,7 +62,7 @@ export function getEndpointHash(
   envHash?: string,
   secretsHash?: string
 ): string {
-  const hash = crypto.createHash("sha256");
+  const hash = crypto.createHash("sha1");
 
   const combined = [sourceHash, envHash, secretsHash].filter((hash) => !!hash).join("");
   hash.update(combined);

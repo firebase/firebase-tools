@@ -1,30 +1,24 @@
 import { Backend, allEndpoints } from "../backend";
 import * as args from "../args";
-import {
-  getEndpointHash,
-  getEnvironmentVariablesHash,
-  getSecretsHash,
-  getSourceHash,
-} from "./hash";
+import { getEndpointHash, getEnvironmentVariablesHash, getSecretsHash } from "./hash";
 
 /**
  *
  * Updates all the CodeBase {@link Backend}, applying a hash to each of their {@link Endpoint}.
  */
-export async function applyBackendHashToBackends(
+export function applyBackendHashToBackends(
   wantBackends: Record<string, Backend>,
   context: args.Context
-): Promise<void> {
+): void {
   for (const [codebase, wantBackend] of Object.entries(wantBackends)) {
     const source = context?.sources?.[codebase]; // populated earlier in prepare flow
-    const sourceV1Hash = source?.functionsSourceV1
-      ? await getSourceHash(source?.functionsSourceV1)
-      : undefined;
-    const sourceV2Hash = source?.functionsSourceV2
-      ? await getSourceHash(source?.functionsSourceV2)
-      : undefined;
     const envHash = getEnvironmentVariablesHash(wantBackend);
-    applyBackendHashToEndpoints(wantBackend, envHash, sourceV1Hash, sourceV2Hash);
+    applyBackendHashToEndpoints(
+      wantBackend,
+      envHash,
+      source?.functionsSourceV1Hash,
+      source?.functionsSourceV2Hash
+    );
   }
 }
 

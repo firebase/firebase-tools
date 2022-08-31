@@ -15,6 +15,10 @@ export interface Source {
   functionsSourceV1?: string;
   functionsSourceV2?: string;
 
+  // Filled in the "prepare" phase.
+  functionsSourceV1Hash?: string;
+  functionsSourceV2Hash?: string;
+
   // Filled in the "deploy" phase.
   sourceUrl?: string;
   storage?: gcfV2.StorageSource;
