@@ -129,7 +129,7 @@ export class Fabricator {
       for (const endpoint of changes.endpointsToSkip) {
         utils.logSuccess(this.getLogSuccessMessage("skip", endpoint));
       }
-      utils.logSuccess(this.getSkippedDeployingNopOpMessage(changes.endpointsToSkip));
+      utils.logBullet(this.getSkippedDeployingNopOpMessage(changes.endpointsToSkip));
     }
     for (const update of changes.endpointsToUpdate) {
       this.logOpStart("updating", update.endpoint);
@@ -676,9 +676,7 @@ export class Fabricator {
     const label = helper.getFunctionLabel(endpoint);
     switch (op) {
       case "skip":
-        return `Not deploying ${clc.bold(
-          clc.green(`functions[${label}]`)
-        )} - no change since last deploy (hash=${endpoint.hash})`;
+        return `${clc.bold(clc.magenta(`functions[${label}]`))} Skipped (No changes detected)`;
       default:
         return `${clc.bold(clc.green(`functions[${label}]`))} Successful ${op} operation.`;
     }
@@ -689,8 +687,9 @@ export class Fabricator {
    */
   getSkippedDeployingNopOpMessage(endpoints: backend.Endpoint[]) {
     const functionNames = endpoints.map((endpoint) => endpoint.id).join(",");
-    return `To force deploy these functions, run command ${clc.bold(
-      `firebase deploy --only functions:${clc.green(functionNames)}`
+    return `${clc.bold(clc.magenta(`functions:`))} You can re-deploy skipped functions with:
+              ${clc.bold(`firebase deploy --only functions:${functionNames}`)} or ${clc.bold(
+      `FUNCTIONS_DEPLOY_UNCHANGED=true; firebase deploy`
     )}`;
   }
 }
