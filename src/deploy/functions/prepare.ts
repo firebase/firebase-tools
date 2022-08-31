@@ -28,6 +28,8 @@ import { FirebaseError } from "../../error";
 import { configForCodebase, normalizeAndValidate } from "../../functions/projectConfig";
 import { AUTH_BLOCKING_EVENTS } from "../../functions/events/v1";
 import { generateServiceIdentity } from "../../gcp/serviceusage";
+import { previews } from "../../previews";
+import { applyBackendHashToBackends } from "./cache/applyHash";
 
 function hasUserConfig(config: Record<string, unknown>): boolean {
   // "firebase" key is always going to exist in runtime config.
@@ -140,6 +142,11 @@ export async function prepare(
     if (functionsEnv.hasUserEnvs(userEnvOpt) || hasEnvsFromParams) {
       codebaseUsesEnvs.push(codebase);
     }
+
+    if (wantBuild.params.length > 0) {
+      // TODO(vsfan@): distinguish between params using secrets and those without
+      void track("functions_params_in_build", "env_only");
+    }
   }
 
   // ===Phase 1.5. Before proceeding further, let's make sure that we don't have conflicting function names.
@@ -246,6 +253,14 @@ export async function prepare(
   await ensureServiceAgentRoles(projectId, projectNumber, matchingBackend, haveBackend);
   await validate.secretsAreValid(projectId, matchingBackend);
   await ensure.secretAccess(projectId, matchingBackend, haveBackend);
+
+  /**
+   * ===Phase 7 Generates the hashes for each of the functions now that secret versions have been resolved.
+   * This must be called after `await validate.secretsAreValid`.
+   */
+  if (previews.skipdeployingnoopfunctions) {
+    await applyBackendHashToBackends(wantBackends, context);
+  }
 }
 
 /**

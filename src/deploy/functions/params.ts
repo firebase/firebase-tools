@@ -110,7 +110,9 @@ export function resolveBoolean(
   return from;
 }
 
-interface ParamBase<T extends string | number | boolean> {
+type ParamInput<T> = TextInput<T> | SelectInput<T>;
+
+type ParamBase<T extends string | number | boolean> = {
   // name of the param. Will be exposed as an environment variable with this name
   name: string;
 
@@ -127,25 +129,31 @@ interface ParamBase<T extends string | number | boolean> {
 
   // default: false
   immutable?: boolean;
+
+  // Defines how the CLI will prompt for the value of the param if it's not in .env files
+  input?: ParamInput<T>;
+};
+
+/**
+ *
+ */
+export function isTextInput<T>(input: ParamInput<T>): input is TextInput<T> {
+  return {}.hasOwnProperty.call(input, "text");
+}
+/**
+ *
+ */
+export function isSelectInput<T>(input: ParamInput<T>): input is SelectInput<T> {
+  return {}.hasOwnProperty.call(input, "select");
 }
 
-export interface StringParam extends ParamBase<string> {
-  type: "string";
+export type StringParam = ParamBase<string> & { type: "string" };
 
-  // If omitted, defaults to TextInput<string>
-  input?: TextInput<string> | SelectInput<string>;
-}
-
-export interface IntParam extends ParamBase<number> {
+export type IntParam = ParamBase<number> & {
   type: "int";
-
-  // If omitted, defaults to TextInput<number>
-  input?: TextInput<number> | SelectInput<number>;
-}
+};
 
 export interface TextInput<T, Extensions = {}> { // eslint-disable-line
-  type: "text";
-
   text:
     | Extensions
     | {
@@ -163,8 +171,6 @@ interface SelectOptions<T> {
 }
 
 export interface SelectInput<T> {
-  type: "select";
-
   select: Array<SelectOptions<T>>;
 }
 
@@ -291,59 +297,63 @@ async function promptParam(param: Param, resolvedDefault?: ParamValue): Promise<
 
 async function promptStringParam(param: StringParam, resolvedDefault?: string): Promise<string> {
   if (!param.input) {
-    const defaultToText: TextInput<string> = { type: "text", text: {} };
+    const defaultToText: TextInput<string> = { text: {} };
     param.input = defaultToText;
   }
 
-  switch (param.input.type) {
-    case "select":
-      throw new FirebaseError(
-        "Build specified string parameter " + param.name + " with unsupported input type 'select'"
-      );
-    case "text":
-    default:
-      let prompt = `Enter a value for ${param.label || param.name}:`;
-      if (param.description) {
-        prompt += ` \n(${param.description})`;
-      }
-      return await promptOnce({
-        name: param.name,
-        type: "input",
-        default: resolvedDefault,
-        message: prompt,
-      });
+  if (isSelectInput(param.input)) {
+    throw new FirebaseError(
+      "Build specified string parameter " + param.name + " with unsupported input type 'select'"
+    );
+  } else if (isTextInput(param.input)) {
+    let prompt = `Enter a value for ${param.label || param.name}:`;
+    if (param.description) {
+      prompt += ` \n(${param.description})`;
+    }
+    return await promptOnce({
+      name: param.name,
+      type: "input",
+      default: resolvedDefault,
+      message: prompt,
+    });
+  } else {
+    throw new FirebaseError(
+      "Build specified parameter " + param.name + " with no known input type"
+    );
   }
 }
 
 async function promptIntParam(param: IntParam, resolvedDefault?: number): Promise<number> {
   if (!param.input) {
-    const defaultToText: TextInput<number> = { type: "text", text: {} };
+    const defaultToText: TextInput<number> = { text: {} };
     param.input = defaultToText;
   }
 
-  switch (param.input.type) {
-    case "select":
-      throw new FirebaseError(
-        "Build specified int parameter " + param.name + " with unsupported input type 'select'"
-      );
-    case "text":
-    default:
-      let prompt = `Enter a value for ${param.label || param.name}:`;
-      if (param.description) {
-        prompt += ` \n(${param.description})`;
+  if (isSelectInput(param.input)) {
+    throw new FirebaseError(
+      "Build specified int parameter " + param.name + " with unsupported input type 'select'"
+    );
+  } else if (isTextInput(param.input)) {
+    let prompt = `Enter a value for ${param.label || param.name}:`;
+    if (param.description) {
+      prompt += ` \n(${param.description})`;
+    }
+    let res: number;
+    while (true) {
+      res = await promptOnce({
+        name: param.name,
+        type: "number",
+        default: resolvedDefault,
+        message: prompt,
+      });
+      if (Number.isInteger(res)) {
+        return res;
       }
-      let res: number;
-      while (true) {
-        res = await promptOnce({
-          name: param.name,
-          type: "number",
-          default: resolvedDefault,
-          message: prompt,
-        });
-        if (Number.isInteger(res)) {
-          return res;
-        }
-        logger.error(`${param.label || param.name} must be an integer; retrying...`);
-      }
+      logger.error(`${param.label || param.name} must be an integer; retrying...`);
+    }
+  } else {
+    throw new FirebaseError(
+      "Build specified parameter " + param.name + " with no known input type"
+    );
   }
 }
