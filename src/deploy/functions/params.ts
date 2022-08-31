@@ -5,6 +5,7 @@ import * as build from "./build";
 import { assertExhaustive, partition } from "../../functional";
 import * as secretManager from "../../gcp/secretManager";
 import { listBuckets } from "../../gcp/storage";
+import { CelExpression, resolveExpression } from "./cel";
 
 // A convinience type containing options for Prompt's select
 interface ListItem {
@@ -41,20 +42,7 @@ export function resolveInt(
   if (typeof from === "number") {
     return from;
   }
-  const match = /{{ params\.(\w+) }}/.exec(from);
-  if (!match) {
-    throw new FirebaseError("CEL evaluation of expression '" + from + "' not yet supported");
-  }
-  const referencedParamValue = paramValues[match[1]];
-  if (!referencedParamValue.legalNumber) {
-    throw new FirebaseError(
-      "Referenced numeric parameter '" +
-        match +
-        "' resolved to non-number value " +
-        referencedParamValue
-    );
-  }
-  return referencedParamValue.asNumber();
+  return resolveExpression("number", from, paramValues) as number;
 }
 
 /**
@@ -70,25 +58,21 @@ export function resolveString(
     return from;
   }
   let output = from;
-  const paramCapture = /{{ params\.(\w+) }}/g;
+  const paramCapture = /{{ (.+) }}/g;
+  let infiniteLoopGuard = 0;
   let match: RegExpMatchArray | null;
   while ((match = paramCapture.exec(from)) != null) {
-    const referencedParamValue = paramValues[match[1]];
-    if (!referencedParamValue.legalString) {
+    infiniteLoopGuard += 1;
+    if (infiniteLoopGuard > 100) {
       throw new FirebaseError(
-        "Referenced string parameter '" +
-          match[1] +
-          "' resolved to non-string value " +
-          referencedParamValue
+        `CEL string expression ${from} spectacularily broke the CEL parser; we would very much appreciate you opening a Github issue.`
       );
     }
-    output = output.replace(`{{ params.${match[1]} }}`, referencedParamValue.asString());
+    const subExpr = match[1];
+    const resolvesTo = resolveExpression("string", `{{ ${subExpr} }}`, paramValues) as string;
+    output = output.replace(`{{ ${subExpr} }}`, resolvesTo);
   }
-  if (isCEL(output)) {
-    throw new FirebaseError(
-      "CEL evaluation of non-identity expression '" + from + "' not yet supported"
-    );
-  }
+
   return output;
 }
 
@@ -101,22 +85,10 @@ export function resolveBoolean(
   from: boolean | build.Expression<boolean>,
   paramValues: Record<string, ParamValue>
 ): boolean {
-  if (typeof from === "string" && /{{ params\.(\w+) }}/.test(from)) {
-    const match = /{{ params\.(\w+) }}/.exec(from);
-    const referencedParamValue = paramValues[match![1]];
-    if (!referencedParamValue.legalBoolean) {
-      throw new FirebaseError(
-        "Referenced boolean parameter '" +
-          match +
-          "' resolved to non-boolean value " +
-          referencedParamValue
-      );
-    }
-    return referencedParamValue.asBoolean();
-  } else if (typeof from === "string") {
-    throw new FirebaseError("CEL evaluation of expression '" + from + "' not yet supported");
+  if (typeof from === "boolean") {
+    return from;
   }
-  return from;
+  return resolveExpression("boolean", from, paramValues) as boolean;
 }
 
 type ParamInput<T> = TextInput<T> | SelectInput<T> | ResourceInput;
