@@ -325,7 +325,7 @@ function canSatisfyParam(param: Param, value: RawParamValue): boolean {
 
 /**
  * A param defined by the SDK may resolve to:
- * - the value of a Cloud Secret in the same project with name == param name (not implemented yet), but only if it's a SecretParam
+ * - a reference to a secret in Cloud Secret Manager, which we only validate existence for and leave the fetch up to GCF
  * - a literal value of the same type already defined in one of the .env files with key == param name
  * - the value returned by interactively prompting the user
  *   - it is an error to have params that need to be prompted if the CLI is running in non-interactive mode
@@ -390,7 +390,7 @@ export async function resolveParams(
  * Secret Manager integration.
  */
 async function handleSecret(secretParam: SecretParam, projectId: string) {
-  const metadata = await getSecretMetadata(projectId, secretParam.name, "latest");
+  const metadata = await secretManager.getSecretMetadata(projectId, secretParam.name, "latest");
   if (!metadata.secret) {
     throw new FirebaseError(
       `Your project currently doesn't have any secret named ${secretParam.name}. Create one by running firebase functions:secret:set FOO command and try the deploy again.`
@@ -427,27 +427,6 @@ async function handleSecret(secretParam: SecretParam, projectId: string) {
       } is in illegal state ${metadata.secretVersion.state}`
     );
   }
-}
-
-async function getSecretMetadata(
-  projectId: string,
-  secretName: string,
-  version: string
-): Promise<{
-  secret?: secretManager.Secret;
-  secretVersion?: secretManager.SecretVersion;
-}> {
-  const secretInfo: any = {};
-  try {
-    secretInfo.secret = await secretManager.getSecret(projectId, secretName);
-    secretInfo.secretVersion = await secretManager.getSecretVersion(projectId, secretName, version);
-  } catch (err: any) {
-    // Throw anything other than the expected 404 errors.
-    if (err.status !== 404) {
-      throw err;
-    }
-  }
-  return secretInfo;
 }
 
 /**
