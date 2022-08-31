@@ -553,6 +553,12 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
     );
   }
   endpoint.codebase = gcfFunction.labels?.[CODEBASE_LABEL] || projectConfig.DEFAULT_CODEBASE;
+
+  console.log(
+    "endpointFromFunction: cloudfunctinosv1",
+    gcfFunction.labels,
+    gcfFunction.labels?.[HASH_LABEL]
+  );
   if (gcfFunction.labels?.[HASH_LABEL]) {
     endpoint.hash = gcfFunction.labels[HASH_LABEL];
   }

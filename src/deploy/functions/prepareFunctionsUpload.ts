@@ -82,7 +82,7 @@ async function packageSource(
         mode: 420 /* 0o644 */,
       });
     }
-    archive.finalize();
+    await archive.finalize();
     await pipeAsync(archive, fileStream);
   } catch (err: any) {
     throw new FirebaseError(

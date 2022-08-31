@@ -1,14 +1,16 @@
-import { readFile } from "node:fs/promises";
 import * as crypto from "crypto";
 import { Backend, Endpoint } from "../backend";
 import { getSecretVersions } from "../../../functions/secrets";
+import * as unzipper from "unzipper";
+import * as fs from "fs";
+import * as stream from "stream";
 
 /**
  * Generates a hash from the environment variables of a {@link Backend}.
  * @param backend Backend of a set of functions
  */
 export function getEnvironmentVariablesHash(backend: Backend): string {
-  const hash = crypto.createHash("sha256");
+  const hash = crypto.createHash("sha1");
 
   // Hash the contents of the dotenv variables
   const hasEnvironmentVariables = !!Object.keys(backend.environmentVariables).length;
@@ -19,16 +21,60 @@ export function getEnvironmentVariablesHash(backend: Backend): string {
   return hash.digest("hex");
 }
 
+interface PathHash {
+  path: string;
+  hash: number;
+}
+
 /**
  * Retrieves the unique hash given a pathToGeneratedPackageFile.
  * @param pathToGeneratedPackageFile Packaged file contents of functions
  */
 export async function getSourceHash(pathToGeneratedPackageFile: string): Promise<string> {
-  const hash = crypto.createHash("sha256");
+  const hash = crypto.createHash("sha1");
 
-  // Hash the contents of the source file
-  const data = await readFile(pathToGeneratedPackageFile);
-  hash.update(data);
+  const pathHashes: PathHash[] = [];
+
+  const zip = fs
+    .createReadStream(pathToGeneratedPackageFile)
+    // eslint-disable-next-line new-cap
+    .pipe(unzipper.Parse({ forceStream: true }))
+    .pipe(
+      new stream.Transform({
+        objectMode: true,
+        transform: async (entry) => {
+          console.log(entry, entry.path, entry.vars);
+          if (entry?.path && entry?.vars?.crc32) {
+            pathHashes.push({
+              path: entry.path,
+              hash: entry.vars.crc32,
+            });
+          }
+          await entry.autodrain().promise();
+        },
+      })
+    );
+
+  for await (const entry of zip) {
+    await entry.autodrain().promise();
+    console.log(entry, entry.path, entry.vars);
+    if (entry?.path && entry?.vars?.crc32) {
+      pathHashes.push({
+        path: entry.path,
+        hash: entry.vars.crc32,
+      });
+    }
+  }
+
+  const pathHashString = pathHashes
+    .sort((p1: PathHash, p2: PathHash) => {
+      if (p1.path < p2.path) return -1;
+      if (p1.path > p2.path) return 1;
+      return 0;
+    })
+    .map((pathHash: PathHash) => pathHash.hash)
+    .join(":");
+  hash.update(pathHashString);
 
   return hash.digest("hex");
 }
@@ -38,7 +84,7 @@ export async function getSourceHash(pathToGeneratedPackageFile: string): Promise
  * @param endpoint Endpoint
  */
 export function getSecretsHash(endpoint: Endpoint): string {
-  const hash = crypto.createHash("sha256");
+  const hash = crypto.createHash("sha1");
 
   // Hash the secret versions.
   const secretVersions = getSecretVersions(endpoint);
@@ -62,7 +108,7 @@ export function getEndpointHash(
   envHash?: string,
   secretsHash?: string
 ): string {
-  const hash = crypto.createHash("sha256");
+  const hash = crypto.createHash("sha1");
 
   const combined = [sourceHash, envHash, secretsHash].filter((hash) => !!hash).join("");
   hash.update(combined);

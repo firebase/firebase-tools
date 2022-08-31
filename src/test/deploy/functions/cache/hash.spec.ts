@@ -155,8 +155,8 @@ describe("getBackendHash", () => {
 
   describe("getSourceHash", () => {
     it("should return different hash given different files", async () => {
-      const file1 = resolve("./mockdata/function_source_v1.txt");
-      const file2 = resolve("./mockdata/function_source_v2.txt");
+      const file1 = resolve("./mockdata/function_source_v1.zip");
+      const file2 = resolve("./mockdata/function_source_v2.zip");
 
       const hash1 = await getSourceHash(file1);
       const hash2 = await getSourceHash(file2);
@@ -165,8 +165,8 @@ describe("getBackendHash", () => {
     });
 
     it("should return the same hash given the same file", async () => {
-      const file1 = resolve("./mockdata/function_source_v1.txt");
-      const file2 = resolve("./mockdata/function_source_v1.txt");
+      const file1 = resolve("./mockdata/function_source_v1.zip");
+      const file2 = resolve("./mockdata/function_source_v1_duplicate.zip");
 
       const hash1 = await getSourceHash(file1);
       const hash2 = await getSourceHash(file2);

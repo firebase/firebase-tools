@@ -17,6 +17,7 @@ export async function applyBackendHashToBackends(
 ): Promise<void> {
   for (const [codebase, wantBackend] of Object.entries(wantBackends)) {
     const source = context?.sources?.[codebase]; // populated earlier in prepare flow
+    console.log(source);
     const sourceV1Hash = source?.functionsSourceV1
       ? await getSourceHash(source?.functionsSourceV1)
       : undefined;
@@ -42,5 +43,7 @@ function applyBackendHashToEndpoints(
     const isV2 = endpoint.platform === "gcfv2";
     const sourceHash = isV2 ? sourceV2Hash : sourceV1Hash;
     endpoint.hash = getEndpointHash(sourceHash, envHash, secretsHash);
+    console.log(sourceHash, envHash, secretsHash);
+    console.log(endpoint.hash);
   }
 }
