@@ -6,7 +6,6 @@ import { previews } from "../../previews";
 import { FirebaseError } from "../../error";
 import { assertExhaustive, mapObject, nullsafeVisitor } from "../../functional";
 import { UserEnvsOpts, writeUserEnvs } from "../../functions/env";
-import { logger } from "../../logger";
 
 /* The union of a customer-controlled deployment and potentially deploy-time defined parameters */
 export interface Build {
@@ -398,12 +397,6 @@ export function toBackend(
       if (typeof bdEndpoint.platform === "undefined") {
         throw new FirebaseError("platform can't be undefined");
       }
-      if (
-        bdEndpoint.availableMemoryMb != null &&
-        !backend.isValidMemoryOption(bdEndpoint.availableMemoryMb)
-      ) {
-        throw new FirebaseError("available memory must be a supported value, if present");
-      }
       const bkEndpoint: backend.Endpoint = {
         id: endpointId,
         project: bdEndpoint.project,
@@ -431,7 +424,11 @@ export function toBackend(
       proto.convertIfPresent(bkEndpoint, bdEndpoint, "availableMemoryMb", (from) => {
         const mem = r.resolveInt(from);
         if (mem !== null && !backend.isValidMemoryOption(mem)) {
-          logger.debug("Warning; setting memory to unexpected value", mem);
+          throw new FirebaseError(
+            `Function memory (${mem}) must resolve to a supported value, if present: ${JSON.stringify(
+              allMemoryOptions
+            )}`
+          );
         }
         return mem as backend.MemoryOptions | null;
       });

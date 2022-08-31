@@ -393,7 +393,7 @@ async function handleSecret(secretParam: SecretParam, projectId: string) {
   const metadata = await secretManager.getSecretMetadata(projectId, secretParam.name, "latest");
   if (!metadata.secret) {
     throw new FirebaseError(
-      `Your project currently doesn't have any secret named ${secretParam.name}. Create one by running firebase functions:secret:set FOO command and try the deploy again.`
+      `Your project currently doesn't have any secret named ${secretParam.name}. Create one by running firebase functions:secrets:set ${secretParam.name} command and try the deploy again.`
     );
     /*
     TODO(vsfan@): we need to come to a final decision as to whether prompting as part of the flow, as extensions does, is proper here
