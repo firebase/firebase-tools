@@ -328,7 +328,7 @@ function envWithTypes(
             boolean: false,
             number: true,
           };
-        } else if (param.type == "boolean") {
+        } else if (param.type === "boolean") {
           providedType = {
             string: false,
             boolean: true,
@@ -457,7 +457,7 @@ export function toBackend(
             )}`
           );
         }
-        return mem;
+        return (mem as backend.MemoryOptions) || null;
       });
 
       r.resolveInts(

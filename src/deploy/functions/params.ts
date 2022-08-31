@@ -5,7 +5,7 @@ import * as build from "./build";
 import { assertExhaustive, partition } from "../../functional";
 import * as secretManager from "../../gcp/secretManager";
 import { listBuckets } from "../../gcp/storage";
-import { CelExpression, resolveExpression } from "./cel";
+import { isCelExpression, resolveExpression } from "./cel";
 
 // A convinience type containing options for Prompt's select
 interface ListItem {
@@ -17,7 +17,7 @@ interface ListItem {
 type CEL = build.Expression<string> | build.Expression<number> | build.Expression<boolean>;
 
 function isCEL(expr: string | number | boolean): expr is CEL {
-  return typeof expr === "string" && expr.includes("{{") && expr.includes("}}");
+  return isCelExpression(expr);
 }
 
 function dependenciesCEL(expr: CEL): string[] {
@@ -54,14 +54,11 @@ export function resolveString(
   from: string | build.Expression<string>,
   paramValues: Record<string, ParamValue>
 ): string {
-  if (!isCEL(from)) {
-    return from;
-  }
   let output = from;
-  const paramCapture = /{{ (.+) }}/g;
+  const celCapture = /{{ (.+?) }}/;
   let infiniteLoopGuard = 0;
   let match: RegExpMatchArray | null;
-  while ((match = paramCapture.exec(from)) != null) {
+  while ((match = celCapture.exec(output)) != null) {
     infiniteLoopGuard += 1;
     if (infiniteLoopGuard > 100) {
       throw new FirebaseError(

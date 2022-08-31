@@ -19,11 +19,8 @@ const ternaryRegexp = /{{ params\.(\S+) == (.+) \? (.+) : (.+) }/;
 const literalTernaryRegexp = /{{ params\.(\S+) \? (.+) : (.+) }/;
 const paramRegexp = /params\.(\S+)/;
 
-/**
- *
- */
 export function isCelExpression(value: any): value is CelExpression {
-  return typeof value === "string" && value.startsWith("{{") && value.endsWith("}}");
+  return typeof value === "string" && value.includes("{{") && value.includes("}}");
 }
 function isIdentityExpression(value: CelExpression): value is IdentityExpression {
   return identityRegexp.test(value);
@@ -42,7 +39,17 @@ function isLiteralTernaryExpression(value: CelExpression): value is LiteralTerna
 }
 
 /**
- *
+ * Resolves a CEL expression of a supported form, with the provided primitive type:
+ * - {{ params.foo }}
+ * - {{ params.foo == 24 }}
+ * - {{ params.foo == params.bar }}
+ * - {{ params.foo == 24 ? "asdf" : "jkl;" }}
+ * - {{ params.foo ? "asdf" : "jkl;" }}, when foo is of boolean type
+ * Values interpolated from params retain their type defined in the param;
+ * it is an error to provide a CEL expression that coerces param types
+ * (i.e testing equality between a IntParam and a BooleanParam). It is also
+ * an error to provide a CEL expression that evaluates to a value of a type
+ * other than provided as wantType.
  */
 export function resolveExpression(
   wantType: L,
@@ -171,21 +178,21 @@ function resolveDualEquality(
         `CEL equality expression ${expr} has type mismatch between the operands`
       );
     }
-    return lhsVal.asString() == rhsVal.asString();
+    return lhsVal.asString() === rhsVal.asString();
   } else if (lhsVal.legalNumber) {
     if (!rhsVal.legalNumber) {
       throw new FirebaseError(
         `CEL equality expression ${expr} has type mismatch between the operands`
       );
     }
-    return lhsVal.asNumber() == rhsVal.asNumber();
+    return lhsVal.asNumber() === rhsVal.asNumber();
   } else if (lhsVal.legalBoolean) {
     if (!rhsVal.legalBoolean) {
       throw new FirebaseError(
         `CEL equality expression ${expr} has type mismatch between the operands`
       );
     }
-    return lhsVal.asBoolean() == rhsVal.asBoolean();
+    return lhsVal.asBoolean() === rhsVal.asBoolean();
   } else {
     throw new FirebaseError(`could not infer type of param ${lhsName} used in equality operation`);
   }
