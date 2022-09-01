@@ -19,6 +19,9 @@ const ternaryRegexp = /{{ params\.(\S+) == (.+) \? (.+) : (.+) }/;
 const literalTernaryRegexp = /{{ params\.(\S+) \? (.+) : (.+) }/;
 const paramRegexp = /params\.(\S+)/;
 
+/**
+ *
+ */
 export function isCelExpression(value: any): value is CelExpression {
   return typeof value === "string" && value.includes("{{") && value.includes("}}");
 }
@@ -37,6 +40,8 @@ function isTernaryExpression(value: CelExpression): value is TernaryExpression {
 function isLiteralTernaryExpression(value: CelExpression): value is LiteralTernaryExpression {
   return literalTernaryRegexp.test(value);
 }
+
+export class ExprParseError extends FirebaseError {}
 
 /**
  * Resolves a CEL expression of a supported form, with the provided primitive type:
@@ -67,7 +72,7 @@ export function resolveExpression(
   } else if (isEqualityExpression(expr)) {
     return resolveEquality(expr, params);
   } else {
-    throw new FirebaseError("CEL expression '" + expr + "' is of an unsupported form");
+    throw new ExprParseError("CEL expression '" + expr + "' is of an unsupported form");
   }
 }
 
@@ -77,7 +82,7 @@ function assertType(wantType: L, paramName: string, paramValue: ParamValue) {
     (wantType === "number" && !paramValue.legalNumber) ||
     (wantType === "boolean" && !paramValue.legalBoolean)
   ) {
-    throw new FirebaseError(`illegal type coercion of param ${paramName} to type ${wantType}`);
+    throw new ExprParseError(`illegal type coercion of param ${paramName} to type ${wantType}`);
   }
 }
 function readParamValue(wantType: L, paramName: string, paramValue: ParamValue): Literal {
@@ -103,12 +108,14 @@ function resolveIdentity(
 ): Literal {
   const match = identityRegexp.exec(expr);
   if (!match) {
-    throw new FirebaseError("malformed CEL identity expression '" + expr + "'");
+    throw new ExprParseError("malformed CEL identity expression '" + expr + "'");
   }
   const name = match[1];
   const value = params[name];
   if (!value) {
-    throw new FirebaseError("CEL identity expression '" + expr + "' was not resolvable to a param");
+    throw new ExprParseError(
+      "CEL identity expression '" + expr + "' was not resolvable to a param"
+    );
   }
   return readParamValue(wantType, name, value);
 }
@@ -119,13 +126,13 @@ function resolveIdentity(
 function resolveEquality(expr: EqualityExpression, params: Record<string, ParamValue>): boolean {
   const match = equalityRegexp.exec(expr);
   if (!match) {
-    throw new FirebaseError("malformed CEL equality expression '" + expr + "'");
+    throw new ExprParseError("malformed CEL equality expression '" + expr + "'");
   }
 
   const lhsName = match[1];
   const lhsVal = params[lhsName];
   if (!lhsVal) {
-    throw new FirebaseError(
+    throw new ExprParseError(
       "CEL equality expression '" + expr + "' references missing param " + lhsName
     );
   }
@@ -140,7 +147,7 @@ function resolveEquality(expr: EqualityExpression, params: Record<string, ParamV
     rhs = resolveLiteral("boolean", match[2]);
     return lhsVal.asBoolean() === rhs;
   } else {
-    throw new FirebaseError(`could not infer type of param ${lhsName} used in equality operation`);
+    throw new ExprParseError(`could not infer type of param ${lhsName} used in equality operation`);
   }
 }
 
@@ -153,13 +160,13 @@ function resolveDualEquality(
 ): boolean {
   const match = dualEqualityRegexp.exec(expr);
   if (!match) {
-    throw new FirebaseError("malformed CEL equality expression '" + expr + "'");
+    throw new ExprParseError("malformed CEL equality expression '" + expr + "'");
   }
 
   const lhsName = match[1];
   const lhsVal = params[lhsName];
   if (!lhsVal) {
-    throw new FirebaseError(
+    throw new ExprParseError(
       "CEL equality expression '" + expr + "' references missing param " + lhsName
     );
   }
@@ -167,34 +174,34 @@ function resolveDualEquality(
   const rhsName = match[2];
   const rhsVal = params[rhsName];
   if (!rhsVal) {
-    throw new FirebaseError(
+    throw new ExprParseError(
       "CEL equality expression '" + expr + "' references missing param " + lhsName
     );
   }
 
   if (lhsVal.legalString) {
     if (!rhsVal.legalString) {
-      throw new FirebaseError(
+      throw new ExprParseError(
         `CEL equality expression ${expr} has type mismatch between the operands`
       );
     }
     return lhsVal.asString() === rhsVal.asString();
   } else if (lhsVal.legalNumber) {
     if (!rhsVal.legalNumber) {
-      throw new FirebaseError(
+      throw new ExprParseError(
         `CEL equality expression ${expr} has type mismatch between the operands`
       );
     }
     return lhsVal.asNumber() === rhsVal.asNumber();
   } else if (lhsVal.legalBoolean) {
     if (!rhsVal.legalBoolean) {
-      throw new FirebaseError(
+      throw new ExprParseError(
         `CEL equality expression ${expr} has type mismatch between the operands`
       );
     }
     return lhsVal.asBoolean() === rhsVal.asBoolean();
   } else {
-    throw new FirebaseError(`could not infer type of param ${lhsName} used in equality operation`);
+    throw new ExprParseError(`could not infer type of param ${lhsName} used in equality operation`);
   }
 }
 
@@ -208,7 +215,7 @@ function resolveTernary(
 ): Literal {
   const match = ternaryRegexp.exec(expr);
   if (!match) {
-    throw new FirebaseError("malformed CEL ternary expression '" + expr + "'");
+    throw new ExprParseError("malformed CEL ternary expression '" + expr + "'");
   }
 
   // left-hand side of the ternary must be a params.FIELD, supporting any type
@@ -234,18 +241,18 @@ function resolveLiteralTernary(
 ): Literal {
   const match = literalTernaryRegexp.exec(expr);
   if (!match) {
-    throw new FirebaseError("malformed CEL ternary expression '" + expr + "'");
+    throw new ExprParseError("malformed CEL ternary expression '" + expr + "'");
   }
 
   const paramName = match[1];
   const paramValue = params[match[1]];
   if (!paramValue) {
-    throw new FirebaseError(
+    throw new ExprParseError(
       "CEL ternary expression '" + expr + "' references missing param " + paramName
     );
   }
   if (!paramValue.legalBoolean) {
-    throw new FirebaseError(
+    throw new ExprParseError(
       "CEL ternary expression '" + expr + "' is conditional on non-boolean param " + paramName
     );
   }
@@ -272,19 +279,21 @@ function resolveParamOrLiteral(
 
 function resolveLiteral(wantType: L, value: string): Literal {
   if (paramRegexp.exec(value)) {
-    throw new FirebaseError(
+    throw new ExprParseError(
       "CEL tried to evaluate param." + value + " in a context which only permits literal values"
     );
   }
 
   if (wantType === "number") {
     if (isNaN(+value)) {
-      throw new FirebaseError("CEL literal " + value + " does not seem to be a number");
+      throw new ExprParseError("CEL literal " + value + " does not seem to be a number");
     }
     return +value;
   } else if (wantType === "string") {
     if (!value.startsWith('"') || !value.endsWith('"')) {
-      throw new FirebaseError("CEL literal " + value + ' does not seem to be a "-delimited string');
+      throw new ExprParseError(
+        "CEL literal " + value + ' does not seem to be a "-delimited string'
+      );
     }
     return value.slice(1, -1);
   } else if (wantType === "boolean") {
@@ -293,10 +302,10 @@ function resolveLiteral(wantType: L, value: string): Literal {
     } else if (value === "false") {
       return false;
     } else {
-      throw new FirebaseError("CEL literal " + value + "does not seem to be a true/false boolean");
+      throw new ExprParseError("CEL literal " + value + "does not seem to be a true/false boolean");
     }
   } else {
-    throw new FirebaseError(
+    throw new ExprParseError(
       "CEL literal '" + value + "' somehow was resolved with a non-string/number/boolean type"
     );
   }
