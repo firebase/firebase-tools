@@ -167,7 +167,7 @@ async function getWebSocketPort(
           "${emulator}": {
             "host": "${clc.yellow("HOST")}",
             "port": "${clc.yellow("PORT")}",
-            "websocket_port": "${clc.yellow("WEBSOCKET_PORT")}"
+            "websocketPort": "${clc.yellow("WEBSOCKET_PORT")}"
           }
         }
       }`
@@ -597,7 +597,7 @@ export async function startAll(
   if (shouldStart(options, Emulators.FIRESTORE)) {
     const firestoreLogger = EmulatorLogger.forEmulator(Emulators.FIRESTORE);
     const firestoreAddr = await getAndCheckAddress(Emulators.FIRESTORE, options);
-    const portVal = options.config.src.emulators?.firestore?.websocket_port;
+    const portVal = options.config.src.emulators?.firestore?.websocketPort;
     const websocketPort = await getWebSocketPort(firestoreAddr.host, portVal, Emulators.FIRESTORE);
 
     const args: FirestoreEmulatorArgs = {
