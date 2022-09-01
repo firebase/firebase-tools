@@ -1,0 +1,1 @@
+- Fix bug where secrets were not attached to functions when using older Functions SDK (#4797).
