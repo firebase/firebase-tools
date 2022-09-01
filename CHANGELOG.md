@@ -1,1 +1,2 @@
 - Fix bug where secrets were not attached to functions when using older Functions SDK (#4797).
+- Increase timeout of the Functions Emulator to wait for spawned process to initialize (#4944).
