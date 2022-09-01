@@ -155,7 +155,7 @@ async function getWebSocketPort(
       logger.logLabeled(
         "WARN",
         emulator,
-        `Port ${port} is not open on ${host}, could not start websocket.`
+        `Port ${port} is not open on ${host}, could not start websocket server for Firestore emulator.`
       );
       logger.logLabeled(
         "WARN",
