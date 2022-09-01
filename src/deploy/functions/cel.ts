@@ -2,14 +2,15 @@ import { FirebaseError } from "../../error";
 import { assertExhaustive } from "../../functional";
 import { ParamValue } from "./params";
 
-export type CelExpression = string;
-export type IdentityExpression = CelExpression;
-export type EqualityExpression = CelExpression;
-export type DualEqualityExpression = CelExpression;
-export type TernaryExpression = CelExpression;
-export type LiteralTernaryExpression = CelExpression;
+type CelExpression = string;
+type IdentityExpression = CelExpression;
+type EqualityExpression = CelExpression;
+type DualEqualityExpression = CelExpression;
+type TernaryExpression = CelExpression;
+type LiteralTernaryExpression = CelExpression;
+type DualTernaryExpression = CelExpression;
 
-export type Literal = string | number | boolean;
+type Literal = string | number | boolean;
 type L = "string" | "number" | "boolean";
 
 const identityRegexp = /{{ params\.(\S+) }}/;
@@ -17,10 +18,12 @@ const equalityRegexp = /{{ params\.(\S+) == (.+) }}/;
 const dualEqualityRegexp = /{{ params\.(\S+) == params\.(\S+) }}/;
 const ternaryRegexp = /{{ params\.(\S+) == (.+) \? (.+) : (.+) }/;
 const literalTernaryRegexp = /{{ params\.(\S+) \? (.+) : (.+) }/;
+const dualTernaryRegexp = /{{ params\.(\S+) == params\.(\S+) \? (.+) : (.+) }/;
 const paramRegexp = /params\.(\S+)/;
 
 /**
- *
+ * Determines if something is a string that looks vaguely like a CEL expression.
+ * No guarantees as to whether it'll actually evaluate.
  */
 export function isCelExpression(value: any): value is CelExpression {
   return typeof value === "string" && value.includes("{{") && value.includes("}}");
@@ -40,16 +43,20 @@ function isTernaryExpression(value: CelExpression): value is TernaryExpression {
 function isLiteralTernaryExpression(value: CelExpression): value is LiteralTernaryExpression {
   return literalTernaryRegexp.test(value);
 }
+function isDualTernaryExpression(value: CelExpression): value is DualTernaryExpression {
+  return dualTernaryRegexp.test(value);
+}
 
 export class ExprParseError extends FirebaseError {}
 
 /**
- * Resolves a CEL expression of a supported form, with the provided primitive type:
+ * Resolves a CEL expression of a supported form, guaranteeing the provided primitive type:
  * - {{ params.foo }}
  * - {{ params.foo == 24 }}
  * - {{ params.foo == params.bar }}
- * - {{ params.foo == 24 ? "asdf" : "jkl;" }}
- * - {{ params.foo ? "asdf" : "jkl;" }}, when foo is of boolean type
+ * - {{ params.foo == 24 ? "asdf" : params.jkl }}
+ * - {{ params.foo == params.bar ? "asdf" : params.jkl }}
+ * - {{ params.foo ? "asdf" : params.jkl }}, when foo is of boolean type
  * Values interpolated from params retain their type defined in the param;
  * it is an error to provide a CEL expression that coerces param types
  * (i.e testing equality between a IntParam and a BooleanParam). It is also
@@ -67,6 +74,8 @@ export function resolveExpression(
     return resolveTernary(wantType, expr, params);
   } else if (isLiteralTernaryExpression(expr)) {
     return resolveLiteralTernary(wantType, expr, params);
+  } else if (isDualTernaryExpression(expr)) {
+    return resolveDualTernary(wantType, expr, params);
   } else if (isDualEqualityExpression(expr)) {
     return resolveDualEquality(expr, params);
   } else if (isEqualityExpression(expr)) {
@@ -206,7 +215,7 @@ function resolveDualEquality(
 }
 
 /**
- *  {{ params.foo == 24 ? "asdf" : "jkl;" }}
+ *  {{ params.foo == 24 ? "asdf" : params.jkl }}
  */
 function resolveTernary(
   wantType: L,
@@ -231,7 +240,32 @@ function resolveTernary(
 }
 
 /**
- *  {{ params.foo ? "asdf" : "jkl;" }}
+ *  {{ params.foo == params.bar ? "asdf" : params.jkl }}
+ */
+function resolveDualTernary(
+  wantType: L,
+  expr: DualTernaryExpression,
+  params: Record<string, ParamValue>
+): Literal {
+  const match = dualTernaryRegexp.exec(expr);
+  if (!match) {
+    throw new ExprParseError("malformed CEL ternary expression '" + expr + "'");
+  }
+
+  // left-hand side of the ternary must be a params.FIELD, supporting any type
+  // right-hand side must be a literal, not of type T but of the same type as the LHS
+  const equalityExpr = `{{ params.${match[1]} == params.${match[2]} }}`;
+  const isTrue = resolveEquality(equalityExpr, params);
+
+  if (isTrue) {
+    return resolveParamOrLiteral(wantType, match[3], params);
+  } else {
+    return resolveParamOrLiteral(wantType, match[4], params);
+  }
+}
+
+/**
+ *  {{ params.foo ? "asdf" : params.jkl }}
  *  only when the paramValue associated with params.foo is validBoolean
  */
 function resolveLiteralTernary(

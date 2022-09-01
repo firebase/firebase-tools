@@ -2,6 +2,16 @@ import { expect } from "chai";
 import { resolveExpression, ExprParseError } from "../../../deploy/functions/cel";
 import { ParamValue } from "../../../deploy/functions/params";
 
+function stringV(value: string): ParamValue {
+  return new ParamValue(value, false, { string: true, number: false, boolean: false });
+}
+function numberV(value: number): ParamValue {
+  return new ParamValue(value.toString(), false, { string: false, number: true, boolean: false });
+}
+function boolV(value: boolean): ParamValue {
+  return new ParamValue(value.toString(), false, { string: false, number: false, boolean: true });
+}
+
 describe("CEL evaluation", () => {
   describe("Identity expressions", () => {
     it("raises when the referenced parameter does not exist", () => {
@@ -13,15 +23,15 @@ describe("CEL evaluation", () => {
     it("raises when the referenced parameter is of the wrong type", () => {
       expect(() => {
         resolveExpression("number", "{{ params.FOO }}", {
-          FOO: new ParamValue("true", false, { boolean: true }),
+          FOO: boolV(true),
         });
       }).to.throw(ExprParseError);
     });
 
     it("pulls number parameters", () => {
       const params: Record<string, ParamValue> = {
-        FOO: new ParamValue("22", false, { number: true }),
-        BAR: new ParamValue("true", false, { boolean: true }),
+        FOO: numberV(22),
+        BAR: boolV(true),
         BAZ: new ParamValue("quox", false, { string: true }),
       };
 
@@ -41,7 +51,7 @@ describe("CEL evaluation", () => {
     it("raises when the type of the LHS and RHS do not match", () => {
       expect(() => {
         resolveExpression("boolean", "{{ params.FOO == 'asdf' }}", {
-          FOO: new ParamValue("22", false, { number: true }),
+          FOO: numberV(22),
         });
       }).to.throw(ExprParseError);
     });
@@ -49,12 +59,12 @@ describe("CEL evaluation", () => {
     it("it determines whether the LHS resolves to the same thing as the RHS", () => {
       expect(
         resolveExpression("boolean", "{{ params.FOO == 22 }}", {
-          FOO: new ParamValue("22", false, { number: true }),
+          FOO: numberV(22),
         })
       ).to.be.true;
       expect(
         resolveExpression("boolean", "{{ params.FOO == 11 }}", {
-          FOO: new ParamValue("22", false, { number: true }),
+          FOO: numberV(22),
         })
       ).to.be.false;
       expect(
@@ -64,17 +74,17 @@ describe("CEL evaluation", () => {
       ).to.be.true;
       expect(
         resolveExpression("boolean", '{{ params.FOO == "baz" }}', {
-          FOO: new ParamValue("bar", false, { string: true }),
+          FOO: stringV("bar"),
         })
       ).to.be.false;
       expect(
         resolveExpression("boolean", "{{ params.FOO == true }}", {
-          FOO: new ParamValue("true", false, { boolean: true }),
+          FOO: boolV(true),
         })
       ).to.be.true;
       expect(
         resolveExpression("boolean", "{{ params.FOO == false }}", {
-          FOO: new ParamValue("true", false, { boolean: true }),
+          FOO: boolV(true),
         })
       ).to.be.false;
     });
@@ -84,7 +94,7 @@ describe("CEL evaluation", () => {
     it("raises when the LHS param does not exist", () => {
       expect(() => {
         resolveExpression("boolean", "{{ params.FOO == params.BAR }}", {
-          BAR: new ParamValue("22", false, { number: true }),
+          BAR: numberV(22),
         });
       }).to.throw(ExprParseError);
     });
@@ -92,7 +102,7 @@ describe("CEL evaluation", () => {
     it("raises when the RHS param does not exist", () => {
       expect(() => {
         resolveExpression("boolean", "{{ params.FOO == params.BAR }}", {
-          FOO: new ParamValue("22", false, { number: true }),
+          FOO: numberV(22),
         });
       }).to.throw(ExprParseError);
     });
@@ -106,8 +116,8 @@ describe("CEL evaluation", () => {
     it("raises when the type of the LHS and RHS do not match", () => {
       expect(() => {
         resolveExpression("boolean", "{{ params.FOO == params.BAR }}", {
-          FOO: new ParamValue("22", false, { number: true }),
-          BAR: new ParamValue("true", false, { boolean: true }),
+          FOO: numberV(22),
+          BAR: boolV(true),
         });
       }).to.throw(ExprParseError);
     });
@@ -115,38 +125,38 @@ describe("CEL evaluation", () => {
     it("it determines whether the LHS resolves to the same thing as the RHS", () => {
       expect(
         resolveExpression("boolean", "{{ params.FOO == params.BAR }}", {
-          FOO: new ParamValue("22", false, { number: true }),
-          BAR: new ParamValue("22", false, { number: true }),
+          FOO: numberV(22),
+          BAR: numberV(22),
         })
       ).to.be.true;
       expect(
         resolveExpression("boolean", "{{ params.FOO == params.BAR }}", {
-          FOO: new ParamValue("22", false, { number: true }),
-          BAR: new ParamValue("11", false, { number: true }),
+          FOO: numberV(22),
+          BAR: numberV(11),
         })
       ).to.be.false;
       expect(
         resolveExpression("boolean", "{{ params.FOO == params.BAR }}", {
-          FOO: new ParamValue("bar", false, { string: true }),
-          BAR: new ParamValue("bar", false, { string: true }),
+          FOO: stringV("bar"),
+          BAR: stringV("bar"),
         })
       ).to.be.true;
       expect(
         resolveExpression("boolean", "{{ params.FOO == params.BAR }}", {
-          FOO: new ParamValue("bar", false, { string: true }),
-          BAR: new ParamValue("baz", false, { string: true }),
+          FOO: stringV("bar"),
+          BAR: stringV("baz"),
         })
       ).to.be.false;
       expect(
         resolveExpression("boolean", "{{ params.FOO == params.BAR }}", {
-          FOO: new ParamValue("true", false, { boolean: true }),
-          BAR: new ParamValue("true", false, { boolean: true }),
+          FOO: boolV(true),
+          BAR: boolV(true),
         })
       ).to.be.true;
       expect(
         resolveExpression("boolean", "{{ params.FOO == params.BAR }}", {
-          FOO: new ParamValue("true", false, { boolean: true }),
-          BAR: new ParamValue("false", false, { boolean: true }),
+          FOO: boolV(true),
+          BAR: boolV(false),
         })
       ).to.be.false;
     });
@@ -162,8 +172,8 @@ describe("CEL evaluation", () => {
     it("raises when a parameter is provided as the RHS", () => {
       expect(() => {
         resolveExpression("number", "{{ params.FOO == params.BAR ? 10 : 0 }}", {
-          FOO: new ParamValue("22", false, { number: true }),
-          BAR: new ParamValue("11", false, { number: true }),
+          FOO: numberV(22),
+          BAR: numberV(11),
         });
       }).to.throw(ExprParseError);
     });
@@ -171,25 +181,28 @@ describe("CEL evaluation", () => {
     it("raises when the type of the LHS and RHS do not match", () => {
       expect(() => {
         resolveExpression("number", "{{ params.FOO == 'asdf' ? 10 : 0 }}", {
-          FOO: new ParamValue("22", false, { number: true }),
+          FOO: numberV(22),
         });
       }).to.throw(ExprParseError);
     });
 
     it("raises when the ternary expression evaluates to something of the wrong type", () => {
       expect(() => {
-        resolveExpression("boolean", "{{ params.FOO == params.BAR ? 10 : 0 }}", {
-          FOO: new ParamValue("22", false, { number: true }),
-          BAR: new ParamValue("11", false, { number: true }),
+        resolveExpression("boolean", "{{ params.FOO == 22? 10 : 0 }}", {
+          FOO: numberV(22),
         });
       }).to.throw(ExprParseError);
     });
 
     it("raises when the ternary expression evaluates to a missing parameter", () => {
       expect(() => {
-        resolveExpression("number", "{{ params.FOO == params.BAR ? params.BAZ : params.QUOZ }}", {
-          FOO: new ParamValue("22", false, { number: true }),
-          BAR: new ParamValue("11", false, { number: true }),
+        resolveExpression("number", "{{ params.FOO == 22 ? params.BAZ : params.QUOZ }}", {
+          FOO: numberV(22),
+        });
+      }).to.throw(ExprParseError);
+      expect(() => {
+        resolveExpression("number", "{{ params.FOO == 22 ? params.BAZ : params.QUOZ }}", {
+          FOO: numberV(11),
         });
       }).to.throw(ExprParseError);
     });
@@ -197,44 +210,44 @@ describe("CEL evaluation", () => {
     it("it provides resolved parameters when the ternary expression calls for them", () => {
       expect(
         resolveExpression("number", "{{ params.FOO == 22 ? params.IF_T : params.IF_F }}", {
-          FOO: new ParamValue("22", false, { number: true }),
-          IF_T: new ParamValue("10", false, { number: true }),
-          IF_F: new ParamValue("0", false, { number: true }),
+          FOO: numberV(22),
+          IF_T: numberV(10),
+          IF_F: numberV(0),
         })
       ).to.equal(10);
       expect(
         resolveExpression("number", "{{ params.FOO == 22 ? params.IF_T : params.IF_F }}", {
-          FOO: new ParamValue("11", false, { number: true }),
-          IF_T: new ParamValue("10", false, { number: true }),
-          IF_F: new ParamValue("0", false, { number: true }),
+          FOO: numberV(11),
+          IF_T: numberV(10),
+          IF_F: numberV(0),
         })
       ).to.equal(0);
       expect(
         resolveExpression("boolean", "{{ params.FOO == 22 ? params.IF_T : params.IF_F }}", {
-          FOO: new ParamValue("22", false, { number: true }),
-          IF_T: new ParamValue("true", false, { boolean: true }),
-          IF_F: new ParamValue("false", false, { boolean: true }),
+          FOO: numberV(22),
+          IF_T: boolV(true),
+          IF_F: boolV(false),
         })
       ).to.be.true;
       expect(
         resolveExpression("boolean", "{{ params.FOO == 22 ? params.IF_T : params.IF_F }}", {
-          FOO: new ParamValue("11", false, { number: true }),
-          IF_T: new ParamValue("true", false, { boolean: true }),
-          IF_F: new ParamValue("false", false, { boolean: true }),
+          FOO: numberV(11),
+          IF_T: boolV(true),
+          IF_F: boolV(false),
         })
       ).to.be.false;
       expect(
         resolveExpression("string", "{{ params.FOO == 22 ? params.IF_T : params.IF_F }}", {
-          FOO: new ParamValue("22", false, { number: true }),
-          IF_T: new ParamValue("bar", false, { string: true }),
-          IF_F: new ParamValue("baz", false, { string: true }),
+          FOO: numberV(22),
+          IF_T: stringV("bar"),
+          IF_F: stringV("baz"),
         })
       ).to.equal("bar");
       expect(
         resolveExpression("string", "{{ params.FOO == 22 ? params.IF_T : params.IF_F }}", {
-          FOO: new ParamValue("11", false, { number: true }),
-          IF_T: new ParamValue("bar", false, { string: true }),
-          IF_F: new ParamValue("baz", false, { string: true }),
+          FOO: numberV(11),
+          IF_T: stringV("bar"),
+          IF_F: stringV("baz"),
         })
       ).to.equal("baz");
     });
@@ -242,32 +255,173 @@ describe("CEL evaluation", () => {
     it("it provides literal expressions when the ternary expression calls for them", () => {
       expect(
         resolveExpression("number", "{{ params.FOO == 22 ? 10 : 0 }}", {
-          FOO: new ParamValue("22", false, { number: true }),
+          FOO: numberV(22),
         })
       ).to.equal(10);
       expect(
         resolveExpression("number", "{{ params.FOO == 22 ? 10 : 0 }}", {
-          FOO: new ParamValue("11", false, { number: true }),
+          FOO: numberV(11),
         })
       ).to.equal(0);
       expect(
         resolveExpression("boolean", "{{ params.FOO == 22 ? true : false }}", {
-          FOO: new ParamValue("22", false, { number: true }),
+          FOO: numberV(22),
         })
       ).to.be.true;
       expect(
         resolveExpression("boolean", "{{ params.FOO == 22 ? true : false }}", {
-          FOO: new ParamValue("11", false, { number: true }),
+          FOO: numberV(11),
         })
       ).to.be.false;
       expect(
         resolveExpression("string", '{{ params.FOO == 22 ? "bar" : "baz" }}', {
-          FOO: new ParamValue("22", false, { number: true }),
+          FOO: numberV(22),
         })
       ).to.equal("bar");
       expect(
         resolveExpression("string", '{{ params.FOO == 22 ? "bar" : "baz" }}', {
-          FOO: new ParamValue("11", false, { number: true }),
+          FOO: numberV(11),
+        })
+      ).to.equal("baz");
+    });
+  });
+
+  describe("Ternary expressions conditioned on an equality test between two params", () => {
+    it("raises when one of the params to compare doesn't exist", () => {
+      expect(() => {
+        resolveExpression("number", "{{ params.FOO == params.BAR ? 10 : 0 }}", {
+          FOO: numberV(22),
+        });
+      }).to.throw(ExprParseError);
+      expect(() => {
+        resolveExpression("number", "{{ params.FOO == params.BAR ? 10 : 0 }}", {
+          BAR: numberV(22),
+        });
+      }).to.throw(ExprParseError);
+      expect(() => {
+        resolveExpression("number", "{{ params.FOO == params.BAR ? 10 : 0 }}", {});
+      }).to.throw(ExprParseError);
+    });
+
+    it("raises when the type of the LHS and RHS do not match", () => {
+      expect(() => {
+        resolveExpression("number", "{{ params.FOO == params.BAR ? 10 : 0 }}", {
+          FOO: numberV(22),
+          BAR: boolV(true),
+        });
+      }).to.throw(ExprParseError);
+    });
+
+    it("raises when the ternary expression evaluates to something of the wrong type", () => {
+      expect(() => {
+        resolveExpression("boolean", "{{ params.FOO == params.BAR ? 10 : 0 }}", {
+          FOO: numberV(22),
+          BAR: numberV(11),
+        });
+      }).to.throw(ExprParseError);
+    });
+
+    it("raises when the ternary expression evaluates to a missing parameter", () => {
+      expect(() => {
+        resolveExpression("number", "{{ params.FOO == params.BAR ? params.BAZ : params.QUOZ }}", {
+          FOO: numberV(22),
+          BAR: numberV(22),
+        });
+      }).to.throw(ExprParseError);
+      expect(() => {
+        resolveExpression("number", "{{ params.FOO == params.BAR ? params.BAZ : params.QUOZ }}", {
+          FOO: numberV(22),
+          BAR: numberV(11),
+        });
+      }).to.throw(ExprParseError);
+    });
+
+    it("it provides resolved parameters when the ternary expression calls for them", () => {
+      expect(
+        resolveExpression("number", "{{ params.FOO == params.BAR ? params.IF_T : params.IF_F }}", {
+          FOO: numberV(22),
+          BAR: numberV(22),
+          IF_T: numberV(10),
+          IF_F: numberV(0),
+        })
+      ).to.equal(10);
+      expect(
+        resolveExpression("number", "{{ params.FOO == params.BAR ? params.IF_T : params.IF_F }}", {
+          FOO: numberV(11),
+          BAR: numberV(22),
+          IF_T: numberV(10),
+          IF_F: numberV(0),
+        })
+      ).to.equal(0);
+      expect(
+        resolveExpression("boolean", "{{ params.FOO == params.BAR ? params.IF_T : params.IF_F }}", {
+          FOO: numberV(22),
+          BAR: numberV(22),
+          IF_T: boolV(true),
+          IF_F: boolV(false),
+        })
+      ).to.be.true;
+      expect(
+        resolveExpression("boolean", "{{ params.FOO == params.BAR ? params.IF_T : params.IF_F }}", {
+          FOO: numberV(11),
+          BAR: numberV(22),
+          IF_T: boolV(true),
+          IF_F: boolV(false),
+        })
+      ).to.be.false;
+      expect(
+        resolveExpression("string", "{{ params.FOO == params.BAR ? params.IF_T : params.IF_F }}", {
+          FOO: numberV(22),
+          BAR: numberV(22),
+          IF_T: stringV("bar"),
+          IF_F: stringV("baz"),
+        })
+      ).to.equal("bar");
+      expect(
+        resolveExpression("string", "{{ params.FOO == params.BAR ? params.IF_T : params.IF_F }}", {
+          FOO: numberV(11),
+          BAR: numberV(22),
+          IF_T: stringV("bar"),
+          IF_F: stringV("baz"),
+        })
+      ).to.equal("baz");
+    });
+
+    it("it provides literal expressions when the ternary expression calls for them", () => {
+      expect(
+        resolveExpression("number", "{{ params.FOO == params.BAR ? 10 : 0 }}", {
+          FOO: numberV(22),
+          BAR: numberV(22),
+        })
+      ).to.equal(10);
+      expect(
+        resolveExpression("number", "{{ params.FOO == params.BAR ? 10 : 0 }}", {
+          FOO: numberV(11),
+          BAR: numberV(22),
+        })
+      ).to.equal(0);
+      expect(
+        resolveExpression("boolean", "{{ params.FOO == params.BAR ? true : false }}", {
+          FOO: numberV(22),
+          BAR: numberV(22),
+        })
+      ).to.be.true;
+      expect(
+        resolveExpression("boolean", "{{ params.FOO == params.BAR ? true : false }}", {
+          FOO: numberV(11),
+          BAR: numberV(22),
+        })
+      ).to.be.false;
+      expect(
+        resolveExpression("string", '{{ params.FOO == params.BAR ? "bar" : "baz" }}', {
+          FOO: numberV(22),
+          BAR: numberV(22),
+        })
+      ).to.equal("bar");
+      expect(
+        resolveExpression("string", '{{ params.FOO == params.BAR ? "bar" : "baz" }}', {
+          FOO: numberV(11),
+          BAR: numberV(22),
         })
       ).to.equal("baz");
     });
@@ -283,7 +437,7 @@ describe("CEL evaluation", () => {
     it("raises when the condition param is not a boolean", () => {
       expect(() => {
         resolveExpression("number", "{{ params.FOO ? 10 : 0 }}", {
-          FOO: new ParamValue("22", false, { number: true }),
+          FOO: numberV(22),
         });
       }).to.throw(ExprParseError);
     });
@@ -291,7 +445,7 @@ describe("CEL evaluation", () => {
     it("raises when the ternary expression evaluates to something of the wrong type", () => {
       expect(() => {
         resolveExpression("boolean", "{{ params.FOO ? 10 : 0 }}", {
-          FOO: new ParamValue("22", false, { number: true }),
+          FOO: numberV(22),
         });
       }).to.throw(ExprParseError);
     });
@@ -299,7 +453,7 @@ describe("CEL evaluation", () => {
     it("raises when the ternary expression evaluates to a missing parameter", () => {
       expect(() => {
         resolveExpression("number", "{{ params.FOO ? params.BAZ : params.QUOZ }}", {
-          FOO: new ParamValue("22", false, { number: true }),
+          FOO: numberV(22),
         });
       }).to.throw(ExprParseError);
     });
@@ -307,44 +461,44 @@ describe("CEL evaluation", () => {
     it("it provides resolved parameters when the ternary expression calls for them", () => {
       expect(
         resolveExpression("number", "{{ params.FOO ? params.IF_T : params.IF_F }}", {
-          FOO: new ParamValue("true", false, { boolean: true }),
-          IF_T: new ParamValue("10", false, { number: true }),
-          IF_F: new ParamValue("0", false, { number: true }),
+          FOO: boolV(true),
+          IF_T: numberV(10),
+          IF_F: numberV(0),
         })
       ).to.equal(10);
       expect(
         resolveExpression("number", "{{ params.FOO ? params.IF_T : params.IF_F }}", {
-          FOO: new ParamValue("false", false, { boolean: true }),
-          IF_T: new ParamValue("10", false, { number: true }),
-          IF_F: new ParamValue("0", false, { number: true }),
+          FOO: boolV(false),
+          IF_T: numberV(10),
+          IF_F: numberV(0),
         })
       ).to.equal(0);
       expect(
         resolveExpression("boolean", "{{ params.FOO ? params.IF_T : params.IF_F }}", {
-          FOO: new ParamValue("true", false, { boolean: true }),
-          IF_T: new ParamValue("true", false, { boolean: true }),
-          IF_F: new ParamValue("false", false, { boolean: true }),
+          FOO: boolV(true),
+          IF_T: boolV(true),
+          IF_F: boolV(false),
         })
       ).to.be.true;
       expect(
         resolveExpression("boolean", "{{ params.FOO ? params.IF_T : params.IF_F }}", {
-          FOO: new ParamValue("false", false, { boolean: true }),
-          IF_T: new ParamValue("true", false, { boolean: true }),
-          IF_F: new ParamValue("false", false, { boolean: true }),
+          FOO: boolV(false),
+          IF_T: boolV(true),
+          IF_F: boolV(false),
         })
       ).to.be.false;
       expect(
         resolveExpression("string", "{{ params.FOO ? params.IF_T : params.IF_F }}", {
-          FOO: new ParamValue("true", false, { boolean: true }),
-          IF_T: new ParamValue("bar", false, { string: true }),
-          IF_F: new ParamValue("baz", false, { string: true }),
+          FOO: boolV(true),
+          IF_T: stringV("bar"),
+          IF_F: stringV("baz"),
         })
       ).to.equal("bar");
       expect(
         resolveExpression("string", "{{ params.FOO ? params.IF_T : params.IF_F }}", {
-          FOO: new ParamValue("false", false, { boolean: true }),
-          IF_T: new ParamValue("bar", false, { string: true }),
-          IF_F: new ParamValue("baz", false, { string: true }),
+          FOO: boolV(false),
+          IF_T: stringV("bar"),
+          IF_F: stringV("baz"),
         })
       ).to.equal("baz");
     });
@@ -352,32 +506,32 @@ describe("CEL evaluation", () => {
     it("it provides literal expressions when the ternary expression calls for them", () => {
       expect(
         resolveExpression("number", "{{ params.FOO ? 10 : 0 }}", {
-          FOO: new ParamValue("true", false, { boolean: true }),
+          FOO: boolV(true),
         })
       ).to.equal(10);
       expect(
         resolveExpression("number", "{{ params.FOO ? 10 : 0 }}", {
-          FOO: new ParamValue("false", false, { boolean: true }),
+          FOO: boolV(false),
         })
       ).to.equal(0);
       expect(
         resolveExpression("boolean", "{{ params.FOO ? true : false }}", {
-          FOO: new ParamValue("true", false, { boolean: true }),
+          FOO: boolV(true),
         })
       ).to.be.true;
       expect(
         resolveExpression("boolean", "{{ params.FOO ? true : false }}", {
-          FOO: new ParamValue("false", false, { boolean: true }),
+          FOO: boolV(false),
         })
       ).to.be.false;
       expect(
         resolveExpression("string", '{{ params.FOO ? "bar" : "baz" }}', {
-          FOO: new ParamValue("true", false, { boolean: true }),
+          FOO: boolV(true),
         })
       ).to.equal("bar");
       expect(
         resolveExpression("string", '{{ params.FOO ? "bar" : "baz" }}', {
-          FOO: new ParamValue("false", false, { boolean: true }),
+          FOO: boolV(false),
         })
       ).to.equal("baz");
     });
