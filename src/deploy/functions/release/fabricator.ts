@@ -125,11 +125,8 @@ export class Fabricator {
       this.logOpStart("creating", endpoint);
       upserts.push(handle("create", endpoint, () => this.createEndpoint(endpoint, scraper)));
     }
-    if (changes.endpointsToSkip.length) {
-      for (const endpoint of changes.endpointsToSkip) {
-        utils.logSuccess(this.getLogSuccessMessage("skip", endpoint));
-      }
-      utils.logBullet(this.getSkippedDeployingNopOpMessage(changes.endpointsToSkip));
+    for (const endpoint of changes.endpointsToSkip) {
+      utils.logSuccess(this.getLogSuccessMessage("skip", endpoint));
     }
     for (const update of changes.endpointsToUpdate) {
       this.logOpStart("updating", update.endpoint);
