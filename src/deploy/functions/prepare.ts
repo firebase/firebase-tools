@@ -144,8 +144,13 @@ export async function prepare(
     }
 
     if (wantBuild.params.length > 0) {
-      // TODO(vsfan@): distinguish between params using secrets and those without
-      void track("functions_params_in_build", "env_only");
+      if (wantBuild.params.every((p) => p.type !== "secret")) {
+        void track("functions_params_in_build", "env_only");
+      } else {
+        void track("functions_params_in_build", "with_secrets");
+      }
+    } else {
+      void track("functions_params_in_build", "none");
     }
   }
 

@@ -140,6 +140,9 @@ export function useStrategy(): Promise<boolean> {
   return Promise.resolve(true);
 }
 
+/**
+ * Parse trigger annotations in sourceDir to generate backed.Build.
+ */
 export async function discoverBuild(
   projectId: string,
   sourceDir: string,
@@ -159,6 +162,9 @@ export async function discoverBuild(
   return want;
 }
 
+/**
+ * Parse trigger annotations in sourceDir to generate backed.Backend.
+ */
 export async function discoverBackend(
   projectId: string,
   sourceDir: string,
@@ -174,7 +180,10 @@ export async function discoverBackend(
   return want;
 }
 
-/* @internal */
+/**
+ * Merge duplicate entries of requireAPIs in backend.Build.
+ * @internal
+ */
 export function mergeRequiredAPIs(backend: backend.Backend) {
   const apiToReasons: Record<string, Set<string>> = {};
   for (const { api, reason } of backend.requiredAPIs) {
@@ -193,6 +202,9 @@ export function mergeRequiredAPIs(backend: backend.Backend) {
   backend.requiredAPIs = merged;
 }
 
+/**
+ * Transform trigger annotation into endpoints in backend.Build.
+ */
 export function addResourcesToBuild(
   projectId: string,
   runtime: runtimes.Runtime,
@@ -377,12 +389,20 @@ export function addResourcesToBuild(
     "timeout",
     proto.secondsFromDuration
   );
-
+  if (annotation.secrets) {
+    endpoint.secretEnvironmentVariables = annotation.secrets.map<backend.SecretEnvVar>((secret) => {
+      return {
+        secret,
+        projectId,
+        key: secret,
+      };
+    });
+  }
   want.endpoints[endpointId] = endpoint;
 }
 
 /**
- *
+ * Transform trigger annotation into endpoints in backend.Backend.
  */
 export function addResourcesToBackend(
   projectId: string,
