@@ -169,15 +169,6 @@ describe("CEL evaluation", () => {
       }).to.throw(ExprParseError);
     });
 
-    it("raises when a parameter is provided as the RHS", () => {
-      expect(() => {
-        resolveExpression("number", "{{ params.FOO == params.BAR ? 10 : 0 }}", {
-          FOO: numberV(22),
-          BAR: numberV(11),
-        });
-      }).to.throw(ExprParseError);
-    });
-
     it("raises when the type of the LHS and RHS do not match", () => {
       expect(() => {
         resolveExpression("number", "{{ params.FOO == 'asdf' ? 10 : 0 }}", {

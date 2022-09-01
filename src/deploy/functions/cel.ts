@@ -14,11 +14,11 @@ type Literal = string | number | boolean;
 type L = "string" | "number" | "boolean";
 
 const identityRegexp = /{{ params\.(\S+) }}/;
-const equalityRegexp = /{{ params\.(\S+) == (.+) }}/;
 const dualEqualityRegexp = /{{ params\.(\S+) == params\.(\S+) }}/;
+const equalityRegexp = /{{ params\.(\S+) == (.+) }}/;
+const dualTernaryRegexp = /{{ params\.(\S+) == params\.(\S+) \? (.+) : (.+) }/;
 const ternaryRegexp = /{{ params\.(\S+) == (.+) \? (.+) : (.+) }/;
 const literalTernaryRegexp = /{{ params\.(\S+) \? (.+) : (.+) }/;
-const dualTernaryRegexp = /{{ params\.(\S+) == params\.(\S+) \? (.+) : (.+) }/;
 const paramRegexp = /params\.(\S+)/;
 
 /**
@@ -68,14 +68,16 @@ export function resolveExpression(
   expr: CelExpression,
   params: Record<string, ParamValue>
 ): Literal {
+  // N.B: Since some of these regexps are supersets of others--anything that is
+  // params\.(\S+) is also (.+)--the order in which they are tested matters
   if (isIdentityExpression(expr)) {
     return resolveIdentity(wantType, expr, params);
-  } else if (isTernaryExpression(expr)) {
-    return resolveTernary(wantType, expr, params);
-  } else if (isLiteralTernaryExpression(expr)) {
-    return resolveLiteralTernary(wantType, expr, params);
   } else if (isDualTernaryExpression(expr)) {
     return resolveDualTernary(wantType, expr, params);
+  } else if (isLiteralTernaryExpression(expr)) {
+    return resolveLiteralTernary(wantType, expr, params);
+  } else if (isTernaryExpression(expr)) {
+    return resolveTernary(wantType, expr, params);
   } else if (isDualEqualityExpression(expr)) {
     return resolveDualEquality(expr, params);
   } else if (isEqualityExpression(expr)) {
@@ -227,11 +229,8 @@ function resolveTernary(
     throw new ExprParseError("malformed CEL ternary expression '" + expr + "'");
   }
 
-  // left-hand side of the ternary must be a params.FIELD, supporting any type
-  // right-hand side must be a literal, not of type T but of the same type as the LHS
   const equalityExpr = `{{ params.${match[1]} == ${match[2]} }}`;
   const isTrue = resolveEquality(equalityExpr, params);
-
   if (isTrue) {
     return resolveParamOrLiteral(wantType, match[3], params);
   } else {
@@ -252,11 +251,8 @@ function resolveDualTernary(
     throw new ExprParseError("malformed CEL ternary expression '" + expr + "'");
   }
 
-  // left-hand side of the ternary must be a params.FIELD, supporting any type
-  // right-hand side must be a literal, not of type T but of the same type as the LHS
   const equalityExpr = `{{ params.${match[1]} == params.${match[2]} }}`;
-  const isTrue = resolveEquality(equalityExpr, params);
-
+  const isTrue = resolveDualEquality(equalityExpr, params);
   if (isTrue) {
     return resolveParamOrLiteral(wantType, match[3], params);
   } else {
@@ -308,6 +304,9 @@ function resolveParamOrLiteral(
     return resolveLiteral(wantType, field);
   }
   const paramValue = params[match[1]];
+  if (!paramValue) {
+    throw new ExprParseError("CEL expression resolved to the value of a missing param " + match[1]);
+  }
   return readParamValue(wantType, match[1], paramValue);
 }
 
