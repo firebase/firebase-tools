@@ -4,6 +4,7 @@ import * as path from "path";
 
 import { askInstallDependencies } from "./npm-dependencies";
 import { prompt } from "../../../prompt";
+import { configForCodebase } from "../../../functions/projectConfig";
 
 const TEMPLATE_ROOT = path.resolve(__dirname, "../../../../templates/init/functions/typescript/");
 const PACKAGE_LINTING_TEMPLATE = fs.readFileSync(
@@ -34,32 +35,33 @@ export function setup(setup: any, config: any): Promise<any> {
   ])
     .then(() => {
       if (setup.functions.lint) {
-        _.set(setup, "config.functions.predeploy", [
+        const cbconfig = configForCodebase(setup.config.functions, setup.functions.codebase);
+        cbconfig.predeploy = [
           'npm --prefix "$RESOURCE_DIR" run lint',
           'npm --prefix "$RESOURCE_DIR" run build',
-        ]);
+        ];
         return config
-          .askWriteProjectFile("functions/package.json", PACKAGE_LINTING_TEMPLATE)
+          .askWriteProjectFile(`${setup.functions.source}/package.json`, PACKAGE_LINTING_TEMPLATE)
           .then(() => {
-            return config.askWriteProjectFile("functions/.eslintrc.js", ESLINT_TEMPLATE);
+            return config.askWriteProjectFile(`${setup.functions.source}/.eslintrc.js`, ESLINT_TEMPLATE);
           });
       }
       _.set(setup, "config.functions.predeploy", 'npm --prefix "$RESOURCE_DIR" run build');
-      return config.askWriteProjectFile("functions/package.json", PACKAGE_NO_LINTING_TEMPLATE);
+      return config.askWriteProjectFile(`${setup.functions.source}/package.json`, PACKAGE_NO_LINTING_TEMPLATE);
     })
     .then(() => {
-      return config.askWriteProjectFile("functions/tsconfig.json", TSCONFIG_TEMPLATE);
+      return config.askWriteProjectFile(`${setup.functions.source}/tsconfig.json`, TSCONFIG_TEMPLATE);
     })
     .then(() => {
       if (setup.functions.lint) {
-        return config.askWriteProjectFile("functions/tsconfig.dev.json", TSCONFIG_DEV_TEMPLATE);
+        return config.askWriteProjectFile(`${setup.functions.source}/tsconfig.dev.json`, TSCONFIG_DEV_TEMPLATE);
       }
     })
     .then(() => {
-      return config.askWriteProjectFile("functions/src/index.ts", INDEX_TEMPLATE);
+      return config.askWriteProjectFile(`${setup.functions.source}/src/index.ts`, INDEX_TEMPLATE);
     })
     .then(() => {
-      return config.askWriteProjectFile("functions/.gitignore", GITIGNORE_TEMPLATE);
+      return config.askWriteProjectFile(`${setup.functions.source}/.gitignore`, GITIGNORE_TEMPLATE);
     })
     .then(() => {
       return askInstallDependencies(setup.functions, config);

@@ -41,13 +41,14 @@ export async function doSetup(setup: any, config: Config, options: Options) {
     // aware 'firebase init functions' will cause this side effect.
     setup.config.functions = normalizeAndValidate(setup.config.functions);
 
+    logger.info();
     logger.info("Detected " + clc.bold("existing codebase(s)."));
     logger.info();
 
     const choices = [
-      { name: "initialize",
+      { name: "Initialize",
         value: "new" },
-      { name: "re-initialize",
+      { name: "Re-initialize",
         value: "reinit" }
     ];
     const initOpt = await promptOnce({
@@ -64,7 +65,6 @@ export async function doSetup(setup: any, config: Config, options: Options) {
  *  User dialogue to set up configuration for functions codebase.
  */
 async function codebaseSetup(setup: any, config: Config, reinit: boolean): Promise<any> {
-  // TODO: what if the firebase config has legacy functions configuration?
   if (reinit) {
     const choices = setup.config.functions.map((cbconfig: any) => { 
       return { 
@@ -85,6 +85,7 @@ async function codebaseSetup(setup: any, config: Config, reinit: boolean): Promi
     logger.info();
 
   } else {
+    logger.info();
     logger.info("Let's create a new codebase to contain and manage your functions.");
     logger.info("A directory corresponding to the codebase will be created in your project");
     logger.info("with sample code pre-configured.");
@@ -104,7 +105,7 @@ async function codebaseSetup(setup: any, config: Config, reinit: boolean): Promi
       message: "What should be the name of this codebase?",
       default: source // TODO: codebase-name-ify the dir name
     })
-    setup.config.functions.push({
+    setup.config.functions.push({ // add new codebase to functions codebase config
       source: source,
       codebase: codebase,
       ignore: [
@@ -114,7 +115,8 @@ async function codebaseSetup(setup: any, config: Config, reinit: boolean): Promi
         "firebase-debug.*.log", 
       ]
     });
-    // also checks if the user-specified codebase name is valid
+    // checks if the updated functions codebase config is valid
+    // also checks if the user-specified codebase name and source are valid
     setup.config.functions = normalizeAndValidate(setup.config.functions);
     _.set(setup, "functions.source", source);
     _.set(setup, "functions.codebase", codebase);
