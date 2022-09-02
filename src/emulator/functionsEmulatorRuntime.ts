@@ -13,7 +13,7 @@ import { Constants } from "./constants";
 import {
   EmulatedTriggerMap,
   findModuleRoot,
-  FunctionsRuntimeArgs,
+  FunctionsRuntimeBundle,
   HttpConstants,
   SignatureType,
 } from "./functionsEmulatorShared";
@@ -930,15 +930,10 @@ async function flushAndExit(code: number) {
   process.exit(code);
 }
 
-async function goIdle() {
-  new EmulatorLog("SYSTEM", "runtime-status", "Runtime is now idle", { state: "idle" }).log();
-  await EmulatorLog.waitForFlush();
-}
-
 async function handleMessage(message: string) {
-  let runtimeArgs: FunctionsRuntimeArgs;
+  let debug: FunctionsRuntimeBundle["debug"];
   try {
-    runtimeArgs = JSON.parse(message) as FunctionsRuntimeArgs;
+    debug = JSON.parse(message) as FunctionsRuntimeBundle["debug"];
   } catch (e: any) {
     new EmulatorLog("FATAL", "runtime-error", `Got unexpected message body: ${message}`).log();
     await flushAndExit(1);
@@ -946,10 +941,12 @@ async function handleMessage(message: string) {
   }
 
   if (FUNCTION_DEBUG_MODE) {
-    // In debug mode, all function triggers run in a single process.
-    // Target trigger is dynamically defined in the FunctionRuntimeBundle.
-    FUNCTION_TARGET_NAME = runtimeArgs.frb.debug!.functionTarget;
-    FUNCTION_SIGNATURE = runtimeArgs.frb.debug!.functionSignature;
+    if (debug) {
+      FUNCTION_TARGET_NAME = debug.functionTarget;
+      FUNCTION_SIGNATURE = debug.functionSignature;
+    } else {
+      new EmulatorLog("WARN", "runtime-warning", "Expected debug payload while in debug mode.");
+    }
   }
 }
 
@@ -1067,7 +1064,6 @@ async function main(): Promise<void> {
       new EmulatorLog("FATAL", "runtime-error", err.stack ? err.stack : err).log();
       res.status(500).send(err.message);
     }
-    await goIdle();
   });
   const server = app.listen(process.env.PORT, () => {
     logDebug(`Listening to port: ${process.env.PORT}`);
