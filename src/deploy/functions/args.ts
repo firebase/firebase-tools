@@ -14,8 +14,6 @@ export interface Source {
   // Filled in the "prepare" phase.
   functionsSourceV1?: string;
   functionsSourceV2?: string;
-
-  // Filled in the "prepare" phase.
   functionsSourceV1Hash?: string;
   functionsSourceV2Hash?: string;
 
