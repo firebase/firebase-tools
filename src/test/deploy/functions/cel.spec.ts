@@ -69,7 +69,7 @@ describe("CEL evaluation", () => {
       ).to.be.false;
       expect(
         resolveExpression("boolean", '{{ params.FOO == "bar" }}', {
-          FOO: stringV("bar")
+          FOO: stringV("bar"),
         })
       ).to.be.true;
       expect(
