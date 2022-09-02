@@ -56,7 +56,7 @@ async function packageSource(
   sourceDir: string,
   config: projectConfig.ValidatedSingle,
   runtimeConfig: any
-) {
+): Promise<PackagedSourceInfo | undefined> {
   const tmpFile = tmp.fileSync({ prefix: "firebase-functions-", postfix: ".zip" }).name;
   const fileStream = fs.createWriteStream(tmpFile, {
     flags: "w",
@@ -113,7 +113,7 @@ async function packageSource(
       ") for uploading"
   );
   const hash = fileHashes.join(".");
-  return { pathToSource: tmpFile, hash: hash };
+  return { pathToSource: tmpFile, hash };
 }
 
 export async function prepareFunctionsUpload(
