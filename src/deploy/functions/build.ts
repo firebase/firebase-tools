@@ -284,7 +284,7 @@ export async function resolveBackend(
     paramValues = await params.resolveParams(
       build.params,
       projectId,
-      envWithTypes(userEnvs),
+      envWithTypes(build.params, userEnvs),
       nonInteractive
     );
 
@@ -302,15 +302,42 @@ export async function resolveBackend(
   return { backend: toBackend(build, paramValues), envs: paramValues };
 }
 
-function envWithTypes(rawEnvs: Record<string, string>): Record<string, params.ParamValue> {
+function envWithTypes(
+  definedParams: params.Param[],
+  rawEnvs: Record<string, string>
+): Record<string, params.ParamValue> {
   const out: Record<string, params.ParamValue> = {};
   for (const envName of Object.keys(rawEnvs)) {
     const value = rawEnvs[envName];
-    out[envName] = new params.ParamValue(value, false, {
+    let providedType = {
       string: true,
       boolean: true,
       number: true,
-    });
+    };
+    for (const param of definedParams) {
+      if (param.name === envName) {
+        if (param.type === "string") {
+          providedType = {
+            string: true,
+            boolean: false,
+            number: false,
+          };
+        } else if (param.type === "int") {
+          providedType = {
+            string: false,
+            boolean: false,
+            number: true,
+          };
+        } else if (param.type === "boolean") {
+          providedType = {
+            string: false,
+            boolean: true,
+            number: false,
+          };
+        }
+      }
+    }
+    out[envName] = new params.ParamValue(value, false, providedType);
   }
   return out;
 }
@@ -430,7 +457,7 @@ export function toBackend(
             )}`
           );
         }
-        return mem as backend.MemoryOptions | null;
+        return (mem as backend.MemoryOptions) || null;
       });
 
       r.resolveInts(
