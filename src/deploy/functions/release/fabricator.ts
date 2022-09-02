@@ -686,7 +686,7 @@ export class Fabricator {
     const functionNames = endpoints.map((endpoint) => endpoint.id).join(",");
     return `${clc.bold(clc.magenta(`functions:`))} You can re-deploy skipped functions with:
               ${clc.bold(`firebase deploy --only functions:${functionNames}`)} or ${clc.bold(
-      `FUNCTIONS_DEPLOY_UNCHANGED=true; firebase deploy`
+      `FUNCTIONS_DEPLOY_UNCHANGED=true firebase deploy`
     )}`;
   }
 }
