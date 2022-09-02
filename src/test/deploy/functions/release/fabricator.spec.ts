@@ -1623,7 +1623,7 @@ describe("Fabricator", () => {
       expect(message).to.contain(`functions:`);
       expect(message).to.contain(`You can re-deploy skipped functions with:`);
       expect(message).to.contain(`firebase deploy --only functions:function1,function2`);
-      expect(message).to.contain(`FUNCTIONS_DEPLOY_UNCHANGED=true; firebase deploy`);
+      expect(message).to.contain(`FUNCTIONS_DEPLOY_UNCHANGED=true firebase deploy`);
     });
   });
 
