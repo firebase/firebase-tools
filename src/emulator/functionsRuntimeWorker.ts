@@ -1,9 +1,9 @@
 import * as http from "http";
 import * as uuid from "uuid";
 
-import { FunctionsRuntimeInstance, InvokeRuntimeOpts } from "./functionsEmulator";
+import { FunctionsRuntimeInstance } from "./functionsEmulator";
 import { EmulatorLog, Emulators, FunctionsExecutionMode } from "./types";
-import { FunctionsRuntimeArgs, FunctionsRuntimeBundle } from "./functionsEmulatorShared";
+import { FunctionsRuntimeBundle } from "./functionsEmulatorShared";
 import { EventEmitter } from "events";
 import { EmulatorLogger, ExtensionLogInfo } from "./emulatorLogger";
 import { FirebaseError } from "../error";
