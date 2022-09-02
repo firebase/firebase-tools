@@ -3,11 +3,16 @@ import * as uuid from "uuid";
 
 import { FunctionsRuntimeInstance } from "./functionsEmulator";
 import { EmulatorLog, Emulators, FunctionsExecutionMode } from "./types";
+<<<<<<< HEAD
 import { FunctionsRuntimeBundle } from "./functionsEmulatorShared";
+=======
+import { FunctionsRuntimeBundle, getTemporarySocketPath } from "./functionsEmulatorShared";
+>>>>>>> f580f427 (Refactor how function runtime process is spawned.)
 import { EventEmitter } from "events";
 import { EmulatorLogger, ExtensionLogInfo } from "./emulatorLogger";
 import { FirebaseError } from "../error";
 import { Serializable } from "child_process";
+import * as spawn from "cross-spawn";
 
 type LogListener = (el: EmulatorLog) => any;
 
@@ -321,6 +326,43 @@ export class RuntimeWorkerPool {
     }
 
     return;
+  }
+
+  mustGetIdleWorker(triggerId: string | undefined): RuntimeWorker {
+    const maybeWorker = this.getIdleWorker(triggerId);
+    if (!maybeWorker) {
+      throw new FirebaseError(
+        `Internal Error: No idle worker for trigger=${triggerId}. Did you forget to call spawnWorker?`
+      );
+    }
+    return maybeWorker;
+  }
+
+  async spawnWorker(
+    triggerId: string,
+    bin: string,
+    args: string[],
+    cwd: string,
+    env: Record<string, string>,
+    extensionLogInfo: ExtensionLogInfo
+  ): Promise<RuntimeWorker> {
+    const socketPath = getTemporarySocketPath();
+    const childProcess = spawn(bin, args, {
+      cwd,
+      env: { ...env, PORT: socketPath },
+      stdio: ["pipe", "pipe", "pipe", "ipc"],
+    });
+    const emitter = new EventEmitter();
+
+    const runtime: FunctionsRuntimeInstance = {
+      process: childProcess,
+      events: emitter,
+      cwd,
+      socketPath,
+    };
+    const worker = this.addWorker(triggerId, runtime, extensionLogInfo);
+    await worker.waitForSocketReady();
+    return worker;
   }
 
   addWorker(

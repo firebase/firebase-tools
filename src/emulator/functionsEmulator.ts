@@ -34,7 +34,6 @@ import {
   toBackendInfo,
   prepareEndpoints,
   BlockingTrigger,
-  getTemporarySocketPath,
 } from "./functionsEmulatorShared";
 import { EmulatorRegistry } from "./registry";
 import { EmulatorLogger, Verbosity } from "./emulatorLogger";
@@ -1274,17 +1273,27 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     const runtimeEnv = this.getRuntimeEnvs(backend, trigger);
     const secretEnvs = await this.resolveSecretEnvs(backend, trigger);
+<<<<<<< HEAD
     const socketPath = getTemporarySocketPath();
 
     const childProcess = spawn(backend.nodeBinary!, args, {
       cwd: backend.functionsDir,
       env: {
         node: backend.nodeBinary,
+=======
+    return await this.workerPool.spawnWorker(
+      trigger?.id || "debug",
+      backend.nodeBinary!,
+      args,
+      backend.functionsDir,
+      {
+        node: backend.nodeBinary!,
+>>>>>>> f580f427 (Refactor how function runtime process is spawned.)
         ...process.env,
         ...runtimeEnv,
         ...secretEnvs,
-        PORT: socketPath,
       },
+<<<<<<< HEAD
       stdio: ["pipe", "pipe", "pipe", "ipc"],
     });
 
@@ -1302,6 +1311,13 @@ export class FunctionsEmulator implements EmulatorInstance {
     const worker = pool.addWorker(trigger?.id, runtime, extensionLogInfo);
     await worker.waitForSocketReady();
     return worker;
+=======
+      {
+        instanceId: backend.extensionInstanceId,
+        ref: backend.extensionVersion?.ref,
+      }
+    );
+>>>>>>> f580f427 (Refactor how function runtime process is spawned.)
   }
 
   async disableBackgroundTriggers() {
