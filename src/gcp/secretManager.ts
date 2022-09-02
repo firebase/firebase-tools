@@ -107,6 +107,30 @@ export async function listSecrets(projectId: string, filter?: string): Promise<S
 }
 
 /**
+ * Retrieves a specific Secret and SecretVersion from CSM, if available.
+ */
+export async function getSecretMetadata(
+  projectId: string,
+  secretName: string,
+  version: string
+): Promise<{
+  secret?: Secret;
+  secretVersion?: SecretVersion;
+}> {
+  const secretInfo: any = {};
+  try {
+    secretInfo.secret = await getSecret(projectId, secretName);
+    secretInfo.secretVersion = getSecretVersion(projectId, secretName, version);
+  } catch (err: any) {
+    // Throw anything other than the expected 404 errors.
+    if (err.status !== 404) {
+      throw err;
+    }
+  }
+  return secretInfo;
+}
+
+/**
  * List all secret versions associated with a secret.
  */
 export async function listSecretVersions(
