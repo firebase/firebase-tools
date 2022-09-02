@@ -32,7 +32,7 @@ describe("CEL evaluation", () => {
       const params: Record<string, ParamValue> = {
         FOO: numberV(22),
         BAR: boolV(true),
-        BAZ: new ParamValue("quox", false, { string: true }),
+        BAZ: stringV("quox"),
       };
 
       expect(resolveExpression("number", "{{ params.FOO }}", params)).to.equal(22);
@@ -68,8 +68,8 @@ describe("CEL evaluation", () => {
         })
       ).to.be.false;
       expect(
-        resolveExpression("boolean", '{{ params.FOO == "bar baz" }}', {
-          FOO: new ParamValue("bar baz", false, { string: true }),
+        resolveExpression("boolean", '{{ params.FOO == "bar" }}', {
+          FOO: stringV("bar")
         })
       ).to.be.true;
       expect(
