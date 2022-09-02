@@ -16,10 +16,6 @@ interface ListItem {
 
 type CEL = build.Expression<string> | build.Expression<number> | build.Expression<boolean>;
 
-function isCEL(expr: string | number | boolean): expr is CEL {
-  return isCelExpression(expr);
-}
-
 function dependenciesCEL(expr: CEL): string[] {
   const deps: string[] = [];
   const paramCapture = /{{ params\.(\w+) }}/g;
@@ -32,8 +28,9 @@ function dependenciesCEL(expr: CEL): string[] {
 
 /**
  * Resolves a numeric field in a Build to an an actual numeric value.
- * Fields can be literal or a {{ }} delimited CEL expression referencing param values.
- * Currently only the CEL identity {{ params.PARAMNAME }} is implemented.
+ * Fields can be literal or an expression written in a subset of the CEL specification.
+ * We support the identity CEL {{ params.FOO }} and equality/ternary operators like
+ * {{ params.FOO == "asdf"}} or {{ params.FOO == 24 ? params.BAR : 0 }}
  */
 export function resolveInt(
   from: number | build.Expression<number>,
@@ -47,36 +44,31 @@ export function resolveInt(
 
 /**
  * Resolves a string field in a Build to an an actual string.
- * Fields can be literal or a {{ }} delimited CEL expression referencing param values.
- * Currently only the CEL identity {{ params.PARAMNAME }} is implemented.
+ * Fields can be literal or an expression written in a subset of the CEL specification.
+ * We support the identity CEL {{ params.FOO }} and ternary operators {{ params.FOO == 24 ? params.BAR : 0 }}.
+ * You can also use string-typed CEl expressions as part of an interpolation, region: "us-central-{{ params.ZONE }}"
  */
 export function resolveString(
   from: string | build.Expression<string>,
   paramValues: Record<string, ParamValue>
 ): string {
   let output = from;
-  const celCapture = /{{ (.+?) }}/;
-  let infiniteLoopGuard = 0;
-  let match: RegExpMatchArray | null;
-  while ((match = celCapture.exec(output)) != null) {
-    infiniteLoopGuard += 1;
-    if (infiniteLoopGuard > 100) {
-      throw new FirebaseError(
-        `CEL string expression ${from} spectacularily broke the CEL parser; we would very much appreciate you opening a Github issue.`
-      );
-    }
-    const subExpr = match[1];
-    const resolvesTo = resolveExpression("string", `{{ ${subExpr} }}`, paramValues) as string;
-    output = output.replace(`{{ ${subExpr} }}`, resolvesTo);
+  const celCapture = /{{ .+? }}/g;
+  const subExprs = from.match(celCapture);
+  if (!subExprs || subExprs.length === 0) {
+    return output;
   }
-
+  for (const expr of subExprs) {
+    const resolved = resolveExpression("string", expr, paramValues) as string;
+    output = output.replace(expr, resolved);
+  }
   return output;
 }
 
 /**
  * Resolves a boolean field in a Build to an an actual boolean value.
- * Fields can be literal or a {{ }} delimited CEL expression referencing param values.
- * Currently only the CEL identity {{ params.PARAMNAME }} is implemented.
+ * Fields can be literal or an expression written in a subset of the CEL specification.
+ * We support the identity CEL {{ params.FOO }} and ternary operators {{ params.FOO == 24 ? params.BAR : true }}
  */
 export function resolveBoolean(
   from: boolean | build.Expression<boolean>,
@@ -112,21 +104,12 @@ type ParamBase<T extends string | number | boolean> = {
   input?: ParamInput<T>;
 };
 
-/**
- *
- */
 export function isTextInput<T>(input: ParamInput<T>): input is TextInput<T> {
   return {}.hasOwnProperty.call(input, "text");
 }
-/**
- *
- */
 export function isSelectInput<T>(input: ParamInput<T>): input is SelectInput<T> {
   return {}.hasOwnProperty.call(input, "select");
 }
-/**
- *
- */
 export function isResourceInput<T>(input: ParamInput<T>): input is ResourceInput {
   return {}.hasOwnProperty.call(input, "resource");
 }
@@ -335,7 +318,7 @@ export async function resolveParams(
   for (const param of needPrompt) {
     const promptable = param as Exclude<Param, SecretParam>;
     let paramDefault: RawParamValue | undefined = promptable.default;
-    if (paramDefault && isCEL(paramDefault)) {
+    if (paramDefault && isCelExpression(paramDefault)) {
       paramDefault = resolveDefaultCEL(param.type, paramDefault, paramValues);
     }
     if (paramDefault && !canSatisfyParam(param, paramDefault)) {

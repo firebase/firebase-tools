@@ -56,7 +56,7 @@ describe("CEL evaluation", () => {
       }).to.throw(ExprParseError);
     });
 
-    it("it determines whether the LHS resolves to the same thing as the RHS", () => {
+    it("it determines whether or not the LHS resolves to the same thing as the RHS", () => {
       expect(
         resolveExpression("boolean", "{{ params.FOO == 22 }}", {
           FOO: numberV(22),
@@ -122,7 +122,7 @@ describe("CEL evaluation", () => {
       }).to.throw(ExprParseError);
     });
 
-    it("it determines whether the LHS resolves to the same thing as the RHS", () => {
+    it("it determines whether or not the LHS resolves to the same thing as the RHS", () => {
       expect(
         resolveExpression("boolean", "{{ params.FOO == params.BAR }}", {
           FOO: numberV(22),

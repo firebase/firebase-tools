@@ -93,7 +93,7 @@ function assertType(wantType: L, paramName: string, paramValue: ParamValue) {
     (wantType === "number" && !paramValue.legalNumber) ||
     (wantType === "boolean" && !paramValue.legalBoolean)
   ) {
-    throw new ExprParseError(`illegal type coercion of param ${paramName} to type ${wantType}`);
+    throw new ExprParseError(`Illegal type coercion of param ${paramName} to type ${wantType}`);
   }
 }
 function readParamValue(wantType: L, paramName: string, paramValue: ParamValue): Literal {
@@ -119,7 +119,7 @@ function resolveIdentity(
 ): Literal {
   const match = identityRegexp.exec(expr);
   if (!match) {
-    throw new ExprParseError("malformed CEL identity expression '" + expr + "'");
+    throw new ExprParseError("Malformed CEL identity expression '" + expr + "'");
   }
   const name = match[1];
   const value = params[name];
@@ -137,7 +137,7 @@ function resolveIdentity(
 function resolveEquality(expr: EqualityExpression, params: Record<string, ParamValue>): boolean {
   const match = equalityRegexp.exec(expr);
   if (!match) {
-    throw new ExprParseError("malformed CEL equality expression '" + expr + "'");
+    throw new ExprParseError("Malformed CEL equality expression '" + expr + "'");
   }
 
   const lhsName = match[1];
@@ -158,7 +158,7 @@ function resolveEquality(expr: EqualityExpression, params: Record<string, ParamV
     rhs = resolveLiteral("boolean", match[2]);
     return lhsVal.asBoolean() === rhs;
   } else {
-    throw new ExprParseError(`could not infer type of param ${lhsName} used in equality operation`);
+    throw new ExprParseError(`Could not infer type of param ${lhsName} used in equality operation`);
   }
 }
 
@@ -171,7 +171,7 @@ function resolveDualEquality(
 ): boolean {
   const match = dualEqualityRegexp.exec(expr);
   if (!match) {
-    throw new ExprParseError("malformed CEL equality expression '" + expr + "'");
+    throw new ExprParseError("Malformed CEL equality expression '" + expr + "'");
   }
 
   const lhsName = match[1];
@@ -248,7 +248,7 @@ function resolveDualTernary(
 ): Literal {
   const match = dualTernaryRegexp.exec(expr);
   if (!match) {
-    throw new ExprParseError("malformed CEL ternary expression '" + expr + "'");
+    throw new ExprParseError("Malformed CEL ternary expression '" + expr + "'");
   }
 
   const equalityExpr = `{{ params.${match[1]} == params.${match[2]} }}`;
@@ -271,7 +271,7 @@ function resolveLiteralTernary(
 ): Literal {
   const match = literalTernaryRegexp.exec(expr);
   if (!match) {
-    throw new ExprParseError("malformed CEL ternary expression '" + expr + "'");
+    throw new ExprParseError("Malformed CEL ternary expression '" + expr + "'");
   }
 
   const paramName = match[1];
