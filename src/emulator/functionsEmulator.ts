@@ -329,7 +329,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     if (!this.workerPool.readyForWork(trigger.id)) {
       await this.startRuntime(record.backend, trigger);
     }
-    const worker = this.workerPool.mustGetIdleWorker(trigger.id);
+    const worker = this.workerPool.getIdleWorker(trigger.id)!;
     const reqBody = JSON.stringify(body);
     const headers = {
       "Content-Type": "application/json",
@@ -1241,6 +1241,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     backend: EmulatableBackend,
     trigger?: EmulatedTriggerDefinition
   ): Promise<RuntimeWorker> {
+    const emitter = new EventEmitter();
     const args = [path.join(__dirname, "functionsEmulatorRuntime")];
 
     if (this.args.debugPort) {
@@ -1274,10 +1275,10 @@ export class FunctionsEmulator implements EmulatorInstance {
     const secretEnvs = await this.resolveSecretEnvs(backend, trigger);
     const socketPath = getTemporarySocketPath();
 
-    const childProcess = spawn(opts.nodeBinary, args, {
+    const childProcess = spawn(backend.nodeBinary!, args, {
       cwd: backend.functionsDir,
       env: {
-        node: opts.nodeBinary,
+        node: backend.nodeBinary,
         ...process.env,
         ...runtimeEnv,
         ...secretEnvs,
@@ -1299,7 +1300,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     const pool = this.workerPools[backend.codebase];
     const worker = pool.addWorker(trigger?.id, runtime, extensionLogInfo);
     await worker.waitForSocketReady();
-    return;
+    return worker;
   }
 
   async disableBackgroundTriggers() {
