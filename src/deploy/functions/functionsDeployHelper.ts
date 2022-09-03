@@ -206,7 +206,7 @@ export function groupEndpointsByCodebase(
 }
 
 /** Checks if a codebase should be filtered */
-export function isCodebaseFiltered(codebase: string, filters: EndpointFilter[]) {
+export function isCodebaseFiltered(codebase: string, filters: EndpointFilter[]): boolean {
   return filters.some((filter) => {
     // For a codebase to be filtered, the id chunks MUST be empty.
     const noIdChunks = (filter.idChunks || []).length === 0;
