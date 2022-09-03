@@ -19,12 +19,10 @@ export function applyBackendHashToBackends(
     }
     const source = context?.sources?.[codebase]; // populated earlier in prepare flow
     const envHash = getEnvironmentVariablesHash(wantBackend);
-    const filtersFilteredByCodebase =
-      context.filters?.filter((filter) => filter.codebase === codebase) || [];
     applyBackendHashToEndpoints(
       wantBackend,
       envHash,
-      filtersFilteredByCodebase,
+      context.filters || [],
       source?.functionsSourceV1Hash,
       source?.functionsSourceV2Hash
     );

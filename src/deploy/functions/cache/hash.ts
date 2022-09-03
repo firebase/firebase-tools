@@ -1,8 +1,8 @@
 import { readFile } from "node:fs/promises";
 import * as crypto from "crypto";
+import { BinaryLike } from "crypto";
 import { Backend, Endpoint } from "../backend";
 import { getSecretVersions } from "../../../functions/secrets";
-import { BinaryLike } from "crypto";
 
 /**
  * Generates a hash from the environment variables of a {@link Backend}.
@@ -10,8 +10,7 @@ import { BinaryLike } from "crypto";
  */
 export function getEnvironmentVariablesHash(backend: Backend): string {
   // Hash the contents of the dotenv variables
-  const hasEnvironmentVariables = !!Object.keys(backend.environmentVariables).length;
-  return createHash(hasEnvironmentVariables ? JSON.stringify(backend.environmentVariables) : "");
+  return createHash(JSON.stringify(backend.environmentVariables || {}));
 }
 
 /**
@@ -33,8 +32,7 @@ export async function getSourceHash(pathToFile: string): Promise<string> {
 export function getSecretsHash(endpoint: Endpoint): string {
   // Hash the secret versions.
   const secretVersions = getSecretVersions(endpoint);
-  const hasSecretVersions = !!Object.keys(secretVersions).length;
-  return createHash(hasSecretVersions ? JSON.stringify(secretVersions) : "");
+  return createHash(JSON.stringify(secretVersions || {}));
 }
 
 /**
