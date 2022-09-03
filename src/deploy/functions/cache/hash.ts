@@ -19,7 +19,9 @@ export function getEnvironmentVariablesHash(backend: Backend): string {
  * @param pathToFile Packaged file contents of functions
  */
 export async function getSourceHash(pathToFile: string): Promise<string> {
-  // Hash the contents of a file
+  // Hash the contents of a file, ignoring metadata.
+  // Excluding metadata in the hash is important because some
+  // files are dynamically generated on deploy.
   const data = await readFile(pathToFile);
   return createHash(data);
 }
