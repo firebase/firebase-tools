@@ -1608,9 +1608,8 @@ describe("Fabricator", () => {
 
       const message = fab.getLogSuccessMessage("skip", ep);
 
-      expect(message).to.contain(`Not deploying `);
       expect(message).to.contain(`functions[tomato(us-central1)]`);
-      expect(message).to.contain(` - no change since last deploy (hash=hashyhash)`);
+      expect(message).to.contain(`Skipped (No changes detected)`);
     });
   });
 
@@ -1621,9 +1620,10 @@ describe("Fabricator", () => {
 
       const message = fab.getSkippedDeployingNopOpMessage([ep1, ep2]);
 
-      expect(message).to.contain(`To force deploy these functions, run command `);
-      expect(message).to.contain(`firebase deploy --only functions:`);
-      expect(message).to.contain(`function1,function2`);
+      expect(message).to.contain(`functions:`);
+      expect(message).to.contain(`You can re-deploy skipped functions with:`);
+      expect(message).to.contain(`firebase deploy --only functions:function1,function2`);
+      expect(message).to.contain(`FUNCTIONS_DEPLOY_UNCHANGED=true firebase deploy`);
     });
   });
 

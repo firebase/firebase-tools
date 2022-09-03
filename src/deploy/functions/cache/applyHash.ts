@@ -1,30 +1,31 @@
 import { Backend, allEndpoints } from "../backend";
 import * as args from "../args";
-import {
-  getEndpointHash,
-  getEnvironmentVariablesHash,
-  getSecretsHash,
-  getSourceHash,
-} from "./hash";
+import { getEndpointHash, getEnvironmentVariablesHash, getSecretsHash } from "./hash";
+import { EndpointFilter, isCodebaseFiltered, isEndpointFiltered } from "../functionsDeployHelper";
 
 /**
  *
  * Updates all the CodeBase {@link Backend}, applying a hash to each of their {@link Endpoint}.
  */
-export async function applyBackendHashToBackends(
+export function applyBackendHashToBackends(
   wantBackends: Record<string, Backend>,
   context: args.Context
-): Promise<void> {
+): void {
   for (const [codebase, wantBackend] of Object.entries(wantBackends)) {
+    // If an entire codebase is filtered, then don't set the hash for the functions in the codebase.
+    // This effectively forces all the functions to deploy without the duplication check.
+    if (isCodebaseFiltered(codebase, context.filters || [])) {
+      continue;
+    }
     const source = context?.sources?.[codebase]; // populated earlier in prepare flow
-    const sourceV1Hash = source?.functionsSourceV1
-      ? await getSourceHash(source?.functionsSourceV1)
-      : undefined;
-    const sourceV2Hash = source?.functionsSourceV2
-      ? await getSourceHash(source?.functionsSourceV2)
-      : undefined;
     const envHash = getEnvironmentVariablesHash(wantBackend);
-    applyBackendHashToEndpoints(wantBackend, envHash, sourceV1Hash, sourceV2Hash);
+    applyBackendHashToEndpoints(
+      wantBackend,
+      envHash,
+      context.filters || [],
+      source?.functionsSourceV1Hash,
+      source?.functionsSourceV2Hash
+    );
   }
 }
 
@@ -34,6 +35,7 @@ export async function applyBackendHashToBackends(
 function applyBackendHashToEndpoints(
   wantBackend: Backend,
   envHash: string,
+  endpointFilters: EndpointFilter[],
   sourceV1Hash?: string,
   sourceV2Hash?: string
 ): void {
@@ -41,6 +43,10 @@ function applyBackendHashToEndpoints(
     const secretsHash = getSecretsHash(endpoint);
     const isV2 = endpoint.platform === "gcfv2";
     const sourceHash = isV2 ? sourceV2Hash : sourceV1Hash;
+    // If the endpoint is in the filtered list, then skip setting a hash (effectively forcing a deploy).
+    if (isEndpointFiltered(endpoint, endpointFilters)) {
+      continue;
+    }
     endpoint.hash = getEndpointHash(sourceHash, envHash, secretsHash);
   }
 }
