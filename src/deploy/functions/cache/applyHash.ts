@@ -19,11 +19,12 @@ export function applyBackendHashToBackends(
     }
     const source = context?.sources?.[codebase]; // populated earlier in prepare flow
     const envHash = getEnvironmentVariablesHash(wantBackend);
-    const codebaseFilters = context.filters?.filter((filter) => filter.codebase === codebase) || [];
+    const filtersFilteredByCodebase =
+      context.filters?.filter((filter) => filter.codebase === codebase) || [];
     applyBackendHashToEndpoints(
       wantBackend,
       envHash,
-      codebaseFilters,
+      filtersFilteredByCodebase,
       source?.functionsSourceV1Hash,
       source?.functionsSourceV2Hash
     );
@@ -36,7 +37,7 @@ export function applyBackendHashToBackends(
 function applyBackendHashToEndpoints(
   wantBackend: Backend,
   envHash: string,
-  codebaseFilters: EndpointFilter[],
+  endpointFilters: EndpointFilter[],
   sourceV1Hash?: string,
   sourceV2Hash?: string
 ): void {
@@ -45,7 +46,7 @@ function applyBackendHashToEndpoints(
     const isV2 = endpoint.platform === "gcfv2";
     const sourceHash = isV2 ? sourceV2Hash : sourceV1Hash;
     // If the endpoint is in the filtered list, then skip setting a hash (effectively forcing a deploy).
-    if (isEndpointFiltered(endpoint, codebaseFilters)) {
+    if (isEndpointFiltered(endpoint, endpointFilters)) {
       continue;
     }
     endpoint.hash = getEndpointHash(sourceHash, envHash, secretsHash);
