@@ -409,14 +409,14 @@ describe("function triggers", () => {
     });
   });
 
-  it.skip("should disable timeout", async function (this) {
+  it.skip("should enforce timeout", async function (this) {
     this.timeout(TEST_SETUP_TIMEOUT);
     const v2response = await test.invokeHttpFunction("onreqv2timeout");
     expect(v2response.status).to.equal(500);
   });
 });
 
-describe("inspect triggers", () => {
+describe.only("inspect function triggers", () => {
   let test: TriggerEndToEndTest;
 
   before(async function (this) {
@@ -426,7 +426,7 @@ describe("inspect triggers", () => {
 
     const config = readConfig();
     test = new TriggerEndToEndTest(FIREBASE_PROJECT, __dirname, config);
-    await test.startEmulators(["--only", "functions", "--inspect-functions"]);
+    await test.startEmulators(["--only", "functions", "--inspect-functions", "--debug"]);
   });
 
   after(async function (this) {

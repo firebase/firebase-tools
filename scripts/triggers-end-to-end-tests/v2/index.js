@@ -118,7 +118,10 @@ exports.onreqv2b = functionsV2.https.onRequest((req, res) => {
 });
 
 exports.onreqv2timeout = functionsV2.https.onRequest({ timeoutSeconds: 1 }, async (req, res) => {
-  return new Promise(() => {
-    setTimeout(() => res.send("onreqv2timeout"), 3_000);
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      res.send("onreqv2timeout");
+      resolve();
+    }, 3_000);
   });
 });
