@@ -416,7 +416,7 @@ describe("function triggers", () => {
   });
 });
 
-describe.only("inspect function triggers", () => {
+describe("inspect function triggers", () => {
   let test: TriggerEndToEndTest;
 
   before(async function (this) {
@@ -426,7 +426,7 @@ describe.only("inspect function triggers", () => {
 
     const config = readConfig();
     test = new TriggerEndToEndTest(FIREBASE_PROJECT, __dirname, config);
-    await test.startEmulators(["--only", "functions", "--inspect-functions", "--debug"]);
+    await test.startEmulators(["--only", "functions", "--inspect-functions"]);
   });
 
   after(async function (this) {
