@@ -326,10 +326,11 @@ export class FunctionsEmulator implements EmulatorInstance {
 
   async sendRequest(trigger: EmulatedTriggerDefinition, body?: any) {
     const record = this.getTriggerRecordByKey(this.getTriggerKey(trigger));
-    if (!this.workerPool.readyForWork(trigger.id)) {
+    const pool = this.workerPools[record.backend.codebase];
+    if (!pool.readyForWork(trigger.id)) {
       await this.startRuntime(record.backend, trigger);
     }
-    const worker = this.workerPool.getIdleWorker(trigger.id)!;
+    const worker = pool.getIdleWorker(trigger.id)!;
     const reqBody = JSON.stringify(body);
     const headers = {
       "Content-Type": "application/json",
@@ -1444,7 +1445,8 @@ export class FunctionsEmulator implements EmulatorInstance {
     // a socketPath (IPC socket) instead of consuming yet another port which is probably faster as well.
     this.logger.log("DEBUG", `[functions] Got req.url=${req.url}, mapping to path=${path}`);
 
-    if (!this.workerPool.readyForWork(trigger.id)) {
+    const pool = this.workerPools[record.backend.codebase];
+    if (!pool.readyForWork(trigger.id)) {
       await this.startRuntime(record.backend, trigger);
     }
     const debugBundle = this.args.debugPort
@@ -1453,7 +1455,7 @@ export class FunctionsEmulator implements EmulatorInstance {
           functionSignature: getSignatureType(trigger),
         }
       : undefined;
-    await this.workerPool.submitRequest(
+    await pool.submitRequest(
       trigger.id,
       {
         method,

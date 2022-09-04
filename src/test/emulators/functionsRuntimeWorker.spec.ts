@@ -86,8 +86,8 @@ describe("FunctionsRuntimeWorker", () => {
         { method: "GET", path: "/" },
         httpMocks.createResponse({ eventEmitter: EventEmitter })
       );
-
       scope.done();
+
       expect(counter.counts.BUSY).to.eql(1);
       expect(counter.counts.IDLE).to.eql(2);
       expect(counter.total).to.eql(3);
@@ -103,8 +103,8 @@ describe("FunctionsRuntimeWorker", () => {
         { method: "GET", path: "/" },
         httpMocks.createResponse({ eventEmitter: EventEmitter })
       );
-
       scope.done();
+
       expect(counter.counts.IDLE).to.eql(1);
       expect(counter.counts.BUSY).to.eql(1);
       expect(counter.counts.FINISHED).to.eql(1);
@@ -122,8 +122,8 @@ describe("FunctionsRuntimeWorker", () => {
         worker.state = RuntimeWorkerState.FINISHING;
       });
       await worker.request({ method: "GET", path: "/" }, resp);
-
       scope.done();
+
       expect(counter.counts.IDLE).to.eql(1);
       expect(counter.counts.BUSY).to.eql(1);
       expect(counter.counts.FINISHING).to.eql(1);
@@ -150,43 +150,40 @@ describe("FunctionsRuntimeWorker", () => {
 
       const resp = httpMocks.createResponse({ eventEmitter: EventEmitter });
       resp.on("end", () => {
-        // Make the worker busy, confirm nothing is idle
+        // Finished sending response. About to go back to IDLE state.
         expect(pool.getIdleWorker(trigger)).to.be.undefined;
       });
       await worker.request({ method: "GET", path: "/" }, resp);
-
       scope.done();
-      // When the worker is finished work, confirm it's idle again
+
+      // Completed handling request. Worker should be IDLE again.
       expect(pool.getIdleWorker(trigger)).to.eql(worker);
     });
 
     it("does not consider failed workers idle", async () => {
-      const scope = nock("http://localhost").get("/").replyWithError("boom");
-
       const pool = new RuntimeWorkerPool();
       const trigger = "trigger1";
 
       // No idle workers to begin
       expect(pool.getIdleWorker(trigger)).to.be.undefined;
 
-      // Add a worker to the pool that will fail, confirm it begins idle
+      // Add a worker to the pool that's destined to fail.
+      const scope = nock("http://localhost").get("/").replyWithError("boom");
       const worker = pool.addWorker(trigger, new MockRuntimeInstance());
       expect(pool.getIdleWorker(trigger)).to.eql(worker);
 
-      // Make the worker execute (and fail)
+      // Send request to the worker. Request should fail, killing the worker.
       await worker.request(
         { method: "GET", path: "/" },
         httpMocks.createResponse({ eventEmitter: EventEmitter })
       );
-
       scope.done();
-      // Confirm there are no idle workers
+
+      // Confirm there are no idle workers.
       expect(pool.getIdleWorker(trigger)).to.be.undefined;
     });
 
     it("exit() kills idle and busy workers", async () => {
-      const scope = nock("http://localhost").get("/").reply(200);
-
       const pool = new RuntimeWorkerPool();
       const trigger = "trigger1";
 
@@ -196,7 +193,8 @@ describe("FunctionsRuntimeWorker", () => {
       const idleWorker = pool.addWorker(trigger, new MockRuntimeInstance());
       const idleWorkerCounter = new WorkerStateCounter(idleWorker);
 
-      // Make the worker execute (and fail)
+      // Add a worker to the pool that's destined to fail.
+      const scope = nock("http://localhost").get("/").reply(200);
       const resp = httpMocks.createResponse({ eventEmitter: EventEmitter });
       resp.on("end", () => {
         pool.exit();
@@ -215,8 +213,6 @@ describe("FunctionsRuntimeWorker", () => {
     });
 
     it("refresh() kills idle workers and marks busy ones as finishing", async () => {
-      const scope = nock("http://localhost").get("/").reply(200);
-
       const pool = new RuntimeWorkerPool();
       const trigger = "trigger1";
 
@@ -226,7 +222,8 @@ describe("FunctionsRuntimeWorker", () => {
       const idleWorker = pool.addWorker(trigger, new MockRuntimeInstance());
       const idleWorkerCounter = new WorkerStateCounter(idleWorker);
 
-      // Make the worker execute (and fail)
+      // Add a worker to the pool that's destined to fail.
+      const scope = nock("http://localhost").get("/").reply(200);
       const resp = httpMocks.createResponse({ eventEmitter: EventEmitter });
       resp.on("end", () => {
         pool.refresh();
@@ -252,7 +249,6 @@ describe("FunctionsRuntimeWorker", () => {
       const pool = new RuntimeWorkerPool(FunctionsExecutionMode.SEQUENTIAL);
       const worker = pool.addWorker(trigger1, new MockRuntimeInstance());
 
-      // Make the worker execute (and fail)
       const resp = httpMocks.createResponse({ eventEmitter: EventEmitter });
       resp.on("end", () => {
         expect(pool.readyForWork(trigger1)).to.be.false;
