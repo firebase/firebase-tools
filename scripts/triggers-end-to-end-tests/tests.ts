@@ -409,9 +409,69 @@ describe("function triggers", () => {
     });
   });
 
+<<<<<<< HEAD
   it("should enforce timeout", async function (this) {
+=======
+  it.skip("should enforce timeout", async function (this) {
+>>>>>>> 93e85968 (Fix flakey tests.)
     this.timeout(TEST_SETUP_TIMEOUT);
     const v2response = await test.invokeHttpFunction("onreqv2timeout");
     expect(v2response.status).to.equal(500);
   });
 });
+<<<<<<< HEAD
+=======
+
+describe.only("inspect function triggers", () => {
+  let test: TriggerEndToEndTest;
+
+  before(async function (this) {
+    this.timeout(TEST_SETUP_TIMEOUT);
+
+    expect(FIREBASE_PROJECT).to.exist.and.not.be.empty;
+
+    const config = readConfig();
+    test = new TriggerEndToEndTest(FIREBASE_PROJECT, __dirname, config);
+    await test.startEmulators(["--only", "functions", "--inspect-functions", "--debug"]);
+  });
+
+  after(async function (this) {
+    this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
+    await test.stopEmulators();
+  });
+
+  it("should invoke correct function in the same codebase", async function (this) {
+    this.timeout(TEST_SETUP_TIMEOUT);
+    const v1response = await test.invokeHttpFunction("onreqv2b");
+    expect(v1response.status).to.equal(200);
+    const v1body = await v1response.text();
+    expect(v1body).to.deep.equal("onreqv2b");
+
+    const v2response = await test.invokeHttpFunction("onreqv2a");
+    expect(v2response.status).to.equal(200);
+    const v2body = await v2response.text();
+    expect(v2body).to.deep.equal("onreqv2a");
+  });
+
+  it("should invoke correct function across codebases", async function (this) {
+    this.timeout(TEST_SETUP_TIMEOUT);
+    const v1response = await test.invokeHttpFunction("onReq");
+    expect(v1response.status).to.equal(200);
+    const v1body = await v1response.text();
+    expect(v1body).to.deep.equal("onReq");
+
+    const v2response = await test.invokeHttpFunction("onreqv2a");
+    expect(v2response.status).to.equal(200);
+    const v2body = await v2response.text();
+    expect(v2body).to.deep.equal("onreqv2a");
+  });
+
+  it("should disable timeout", async function (this) {
+    this.timeout(TEST_SETUP_TIMEOUT);
+    const v2response = await test.invokeHttpFunction("onreqv2timeout");
+    expect(v2response.status).to.equal(200);
+    const v2body = await v2response.text();
+    expect(v2body).to.deep.equal("onreqv2timeout");
+  });
+});
+>>>>>>> 93e85968 (Fix flakey tests.)
