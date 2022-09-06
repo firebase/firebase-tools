@@ -138,7 +138,7 @@ async function getAndCheckAddress(emulator: Emulators, options: Options): Promis
   return { host, port };
 }
 
-async function getWebSocketPort(
+async function getFirestoreWebSocketPort(
   host: string,
   port: number | undefined,
   emulator: Emulators
@@ -166,7 +166,7 @@ async function getWebSocketPort(
         "emulators": {
           "${emulator}": {
             "host": "${clc.yellow("HOST")}",
-            "port": "${clc.yellow("PORT")}",
+            ...
             "websocketPort": "${clc.yellow("WEBSOCKET_PORT")}"
           }
         }
@@ -598,7 +598,7 @@ export async function startAll(
     const firestoreLogger = EmulatorLogger.forEmulator(Emulators.FIRESTORE);
     const firestoreAddr = await getAndCheckAddress(Emulators.FIRESTORE, options);
     const portVal = options.config.src.emulators?.firestore?.websocketPort;
-    const websocketPort = await getWebSocketPort(firestoreAddr.host, portVal, Emulators.FIRESTORE);
+    const websocketPort = await getFirestoreWebSocketPort(firestoreAddr.host, portVal, Emulators.FIRESTORE);
 
     const args: FirestoreEmulatorArgs = {
       host: firestoreAddr.host,
