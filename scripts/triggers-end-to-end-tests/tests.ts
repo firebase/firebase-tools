@@ -420,6 +420,7 @@ describe("function triggers", () => {
   });
 });
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 
 describe("inspect function triggers", () => {
@@ -475,3 +476,5 @@ describe("inspect function triggers", () => {
   });
 });
 >>>>>>> 93e85968 (Fix flakey tests.)
+=======
+>>>>>>> 93ff7492 (Separate out inspect flag end-to-end emulator test.)
