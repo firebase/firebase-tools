@@ -204,3 +204,17 @@ export function groupEndpointsByCodebase(
   // defined in other project repositories.
   return grouped;
 }
+
+/** Checks if a codebase should be filtered */
+export function isCodebaseFiltered(codebase: string, filters: EndpointFilter[]): boolean {
+  return filters.some((filter) => {
+    // For a codebase to be filtered, the id chunks MUST be empty.
+    const noIdChunks = (filter.idChunks || []).length === 0;
+    return noIdChunks && filter.codebase === codebase;
+  });
+}
+
+/** Checks if a function should be filtered given a list of endpoints. */
+export function isEndpointFiltered(endpoint: backend.Endpoint, filters: EndpointFilter[]) {
+  return filters.some((filter) => endpointMatchesFilter(endpoint, filter));
+}
