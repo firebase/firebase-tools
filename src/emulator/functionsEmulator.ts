@@ -690,7 +690,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     // In debug mode, we eagerly start a runtime process to allow debuggers to attach
     // before invoking a function.
     if (this.args.debugPort) {
-      this.startRuntime(emulatableBackend, { nodeBinary: emulatableBackend.nodeBinary });
+      await this.startRuntime(emulatableBackend, { nodeBinary: emulatableBackend.nodeBinary });
     }
   }
 
