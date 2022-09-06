@@ -408,6 +408,7 @@ describe("function triggers", () => {
       expect(body).to.deep.equal({ result: "foobar" });
     });
   });
+<<<<<<< HEAD
 
 <<<<<<< HEAD
   it("should enforce timeout", async function (this) {
@@ -418,6 +419,8 @@ describe("function triggers", () => {
     const v2response = await test.invokeHttpFunction("onreqv2timeout");
     expect(v2response.status).to.equal(500);
   });
+=======
+>>>>>>> 2f42de81 (Fix bug w/ missing await clause.)
 });
 <<<<<<< HEAD
 <<<<<<< HEAD
