@@ -8,23 +8,40 @@ const expect = chai.expect;
 
 describe("CEL resolution", () => {
   it("can interpolate a provided param into a CEL expression", () => {
-    expect(params.resolveString("{{ params.foo }} baz", { foo: "bar" })).to.equal("bar baz");
+    expect(
+      params.resolveString("{{ params.foo }} baz", {
+        foo: new params.ParamValue("bar", false, { string: true }),
+      })
+    ).to.equal("bar baz");
   });
 
   it("can interpolate multiple params into a CEL expression", () => {
     expect(
-      params.resolveString("{{ params.foo }} {{ params.bar }}", { foo: "asdf", bar: "jkl;" })
+      params.resolveString("{{ params.foo }} {{ params.bar }}", {
+        foo: new params.ParamValue("asdf", false, { string: true }),
+        bar: new params.ParamValue("jkl;", false, { string: true }),
+      })
     ).to.equal("asdf jkl;");
   });
 
   it("throws instead of coercing a param value with the wrong type", () => {
-    expect(() => params.resolveString("{{ params.foo }}", { foo: 0 })).to.throw();
-    expect(() => params.resolveInt("{{ params.foo }}", { foo: "asdf" })).to.throw();
+    expect(() =>
+      params.resolveString("{{ params.foo }}", {
+        foo: new params.ParamValue("0", false, { number: true }),
+      })
+    ).to.throw();
+    expect(() =>
+      params.resolveInt("{{ params.foo }}", {
+        foo: new params.ParamValue("asdf", false, { string: true }),
+      })
+    ).to.throw();
   });
 
   it("can't handle non-identity CEL expressions yet", () => {
     expect(() =>
-      params.resolveString("{{ params.foo == 0 ? 'asdf' : 'jkl;' }}", { foo: 0 })
+      params.resolveString("{{ params.foo == 0 ? 'asdf' : 'jkl;' }}", {
+        foo: new params.ParamValue("0", false, { number: true }),
+      })
     ).to.throw();
   });
 });
@@ -40,7 +57,7 @@ describe("resolveParams", () => {
     promptOnce.restore();
   });
 
-  it("can pull a literal value out of the dotenvs", async () => {
+  it("can pull a literal value out of the dotenvs, with any type valid", async () => {
     const paramsToResolve: params.Param[] = [
       {
         name: "foo",
@@ -51,16 +68,17 @@ describe("resolveParams", () => {
         type: "int",
       },
     ];
-    const userEnv: Record<string, string | number | boolean> = {
-      foo: "bar",
-      bar: 24,
+    const userEnv: Record<string, params.ParamValue> = {
+      foo: new params.ParamValue("bar", false, { string: true, number: true, boolean: true }),
+      bar: new params.ParamValue("24", false, { string: true, number: true, boolean: true }),
+      baz: new params.ParamValue("true", false, { string: true, number: true, boolean: true }),
     };
     await expect(params.resolveParams(paramsToResolve, "", userEnv)).to.eventually.deep.equal({
-      foo: "bar",
-      bar: 24,
+      foo: new params.ParamValue("bar", false, { string: true, number: true, boolean: true }),
+      bar: new params.ParamValue("24", false, { string: true, number: true, boolean: true }),
     });
-  });
 
+    /* TODO(vsfan@): should we ever reject param values from .env files based on the appearance of the string?
   it("errors when the dotenvs provide a value of the wrong type", async () => {
     const paramsToResolve: params.Param[] = [
       {
@@ -68,10 +86,11 @@ describe("resolveParams", () => {
         type: "string",
       },
     ];
-    const userEnv: Record<string, string | number | boolean> = {
-      foo: 22,
+    const userEnv: Record<string, params.ParamValue> = {
+      foo: new params.ParamValue("22", false, { number: true }),
     };
     await expect(params.resolveParams(paramsToResolve, "", userEnv)).to.eventually.be.rejected;
+    */
   });
 
   it("can use a provided literal", async () => {
@@ -85,7 +104,7 @@ describe("resolveParams", () => {
     ];
     promptOnce.resolves("bar");
     await expect(params.resolveParams(paramsToResolve, "", {})).to.eventually.deep.equal({
-      foo: "bar",
+      foo: new params.ParamValue("bar", false, { string: true }),
     });
   });
 

@@ -432,6 +432,45 @@ describe("addResourcesToBuild", () => {
     const convertedBackend = resolveBackend(expected);
     await expect(convertedBackend).to.eventually.deep.equal(expectedBackend);
   });
+
+  it("should parse secret", async () => {
+    const trigger: parseTriggers.TriggerAnnotation = {
+      ...BASIC_TRIGGER,
+      httpsTrigger: {},
+      secrets: ["MY_SECRET"],
+    };
+    const result = build.empty();
+    parseTriggers.addResourcesToBuild("project", "nodejs16", trigger, result);
+
+    const expected: build.Build = build.of({
+      func: {
+        ...BASIC_ENDPOINT,
+        httpsTrigger: {},
+        secretEnvironmentVariables: [
+          {
+            projectId: "project",
+            secret: "MY_SECRET",
+            key: "MY_SECRET",
+          },
+        ],
+      },
+    });
+    expect(result).to.deep.equal(expected);
+
+    const expectedBackend: backend.Backend = backend.of({
+      ...BASIC_BACKEND_ENDPOINT,
+      httpsTrigger: {},
+      secretEnvironmentVariables: [
+        {
+          projectId: "project",
+          secret: "MY_SECRET",
+          key: "MY_SECRET",
+        },
+      ],
+    });
+    const convertedBackend = resolveBackend(expected);
+    await expect(convertedBackend).to.eventually.deep.equal(expectedBackend);
+  });
 });
 
 describe("addResourcesToBackend", () => {
