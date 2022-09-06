@@ -78,7 +78,7 @@ export class FirestoreEmulator implements EmulatorInstance {
   getInfo(): EmulatorInfo {
     const host = this.args.host || Constants.getDefaultHost();
     const port = this.args.port || Constants.getDefaultPort(Emulators.FIRESTORE);
-    const reservedPorts = this.args.websocketPort ? [this.args.websocketPort] : [];
+    const reservedPorts = this.args.websocket_port ? [this.args.websocket_port] : [];
 
     return {
       name: this.getName(),
