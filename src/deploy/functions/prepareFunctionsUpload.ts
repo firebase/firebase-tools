@@ -7,6 +7,7 @@ import * as tmp from "tmp";
 
 import { FirebaseError } from "../../error";
 import { logger } from "../../logger";
+import { getSourceHash } from "./cache/hash";
 import * as backend from "./backend";
 import * as functionsConfig from "../../functionsConfig";
 import * as utils from "../../utils";
@@ -14,6 +15,11 @@ import * as fsAsync from "../../fsAsync";
 import * as projectConfig from "../../functions/projectConfig";
 
 const CONFIG_DEST_FILE = ".runtimeconfig.json";
+
+interface PackagedSourceInfo {
+  pathToSource: string;
+  hash: string;
+}
 
 // TODO(inlined): move to a file that's not about uploading source code
 export async function getFunctionsConfig(projectId: string): Promise<Record<string, unknown>> {
@@ -50,13 +56,14 @@ async function packageSource(
   sourceDir: string,
   config: projectConfig.ValidatedSingle,
   runtimeConfig: any
-) {
+): Promise<PackagedSourceInfo | undefined> {
   const tmpFile = tmp.fileSync({ prefix: "firebase-functions-", postfix: ".zip" }).name;
   const fileStream = fs.createWriteStream(tmpFile, {
     flags: "w",
     encoding: "binary",
   });
   const archive = archiver("zip");
+  const fileHashes: string[] = [];
 
   // We must ignore firebase-debug.log or weird things happen if
   // you're in the public dir when you deploy.
@@ -71,8 +78,11 @@ async function packageSource(
   try {
     const files = await fsAsync.readdirRecursive({ path: sourceDir, ignore: ignore });
     for (const file of files) {
+      const name = path.relative(sourceDir, file.name);
+      const fileHash = await getSourceHash(file.name);
+      fileHashes.push(fileHash);
       archive.file(file.name, {
-        name: path.relative(sourceDir, file.name),
+        name,
         mode: file.mode,
       });
     }
@@ -82,7 +92,7 @@ async function packageSource(
         mode: 420 /* 0o644 */,
       });
     }
-    archive.finalize();
+    await archive.finalize();
     await pipeAsync(archive, fileStream);
   } catch (err: any) {
     throw new FirebaseError(
@@ -102,13 +112,14 @@ async function packageSource(
       filesize(archive.pointer()) +
       ") for uploading"
   );
-  return tmpFile;
+  const hash = fileHashes.join(".");
+  return { pathToSource: tmpFile, hash };
 }
 
 export async function prepareFunctionsUpload(
   sourceDir: string,
   config: projectConfig.ValidatedSingle,
   runtimeConfig?: backend.RuntimeConfigValues
-): Promise<string | undefined> {
+): Promise<PackagedSourceInfo | undefined> {
   return packageSource(sourceDir, config, runtimeConfig);
 }
