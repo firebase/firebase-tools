@@ -70,9 +70,7 @@ export class StoredFileMetadata {
         if (typeof stringVal !== "string") {
           stringVal = JSON.stringify(v);
         }
-        if (stringVal) {
-          this.customMetadata[k] = stringVal;
-        }
+        this.customMetadata[k] = stringVal || "";
       }
     }
 
