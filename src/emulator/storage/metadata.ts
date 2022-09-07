@@ -57,12 +57,21 @@ export class StoredFileMetadata {
     this.contentLanguage = opts.contentLanguage;
     this.customTime = opts.customTime;
     this.contentEncoding = opts.contentEncoding;
-    this.customMetadata = opts.customMetadata;
     this.downloadTokens = opts.downloadTokens || [];
     if (opts.etag) {
       this.etag = opts.etag;
     } else {
       this.etag = generateETag(this.generation, this.metageneration);
+    }
+    if (opts.customMetadata) {
+      this.customMetadata = {};
+      for (const [k, v] of Object.entries(opts.customMetadata)) {
+        let stringVal = v;
+        if (typeof stringVal !== "string") {
+          stringVal = JSON.stringify(v);
+        }
+        this.customMetadata[k] = stringVal || "";
+      }
     }
 
     // Special handling for date fields
