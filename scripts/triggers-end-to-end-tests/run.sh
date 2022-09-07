@@ -1,5 +1,18 @@
 #!/bin/bash
 
+function cleanup() {
+  # Kill all emulator processes
+  for PORT in 4000 9000 9001 9002 8085 9099 9199
+  do
+    PID=$(lsof -t -i:$PORT || true)
+    if [ -n "$PID" ]
+    then
+      kill -9 $PID
+    fi
+  done
+}
+trap cleanup EXIT
+
 source scripts/set-default-credentials.sh
 ./scripts/npm-link.sh
 
@@ -10,4 +23,9 @@ for dir in triggers v1 v2; do
   )
 done
 
-npx mocha --exit scripts/triggers-end-to-end-tests/tests.ts
+if [ "$1" == "inspect" ]
+then
+  npx mocha --exit scripts/triggers-end-to-end-tests/tests.inspect.ts
+else
+  npx mocha --exit scripts/triggers-end-to-end-tests/tests.ts
+fi

@@ -91,7 +91,7 @@ export interface EmulatableBackend {
   functionsDir: string;
   env: Record<string, string>;
   secretEnv: backend.SecretEnvVar[];
-  codebase?: string;
+  codebase: string;
   predefinedTriggers?: ParsedTriggerDefinition[];
   nodeMajorVersion?: number;
   nodeBinary?: string;
@@ -176,7 +176,7 @@ export class FunctionsEmulator implements EmulatorInstance {
   // Keep a "generation number" for triggers so that we can disable functions
   // and reload them with a new name.
   private triggerGeneration = 0;
-  private workerPool: RuntimeWorkerPool;
+  private workerPools: Record<string, RuntimeWorkerPool>;
   private workQueue: WorkQueue;
   private logger = EmulatorLogger.forEmulator(Emulators.FUNCTIONS);
   private multicastTriggers: { [s: string]: string[] } = {};
@@ -200,7 +200,11 @@ export class FunctionsEmulator implements EmulatorInstance {
     const mode = this.args.debugPort
       ? FunctionsExecutionMode.SEQUENTIAL
       : FunctionsExecutionMode.AUTO;
-    this.workerPool = new RuntimeWorkerPool(mode);
+    this.workerPools = {};
+    for (const backend of this.args.emulatableBackends) {
+      const pool = new RuntimeWorkerPool(mode);
+      this.workerPools[backend.codebase] = pool;
+    }
     this.workQueue = new WorkQueue(mode);
   }
 
@@ -458,7 +462,9 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
 
     this.workQueue.stop();
-    this.workerPool.exit();
+    for (const pool of Object.values(this.workerPools)) {
+      pool.exit();
+    }
     if (this.destroyServer) {
       await this.destroyServer();
     }
@@ -544,7 +550,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
     // Before loading any triggers we need to make sure there are no 'stale' workers
     // in the pool that would cause us to run old code.
-    this.workerPool.refresh();
+    this.workerPools[emulatableBackend.codebase].refresh();
     // reset blocking functions config for reloads
     this.blockingFunctionsConfig = {};
 
@@ -684,7 +690,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     // In debug mode, we eagerly start a runtime process to allow debuggers to attach
     // before invoking a function.
     if (this.args.debugPort) {
-      this.startRuntime(emulatableBackend, { nodeBinary: emulatableBackend.nodeBinary });
+      await this.startRuntime(emulatableBackend, { nodeBinary: emulatableBackend.nodeBinary });
     }
   }
 
@@ -1285,10 +1291,11 @@ export class FunctionsEmulator implements EmulatorInstance {
     frb: FunctionsRuntimeBundle,
     opts: InvokeRuntimeOpts
   ): Promise<RuntimeWorker> {
-    if (!this.workerPool.readyForWork(trigger.id)) {
+    const pool = this.workerPools[backend.codebase];
+    if (!pool.readyForWork(trigger.id)) {
       await this.startRuntime(backend, opts, trigger);
     }
-    return this.workerPool.submitWork(trigger.id, frb, opts);
+    return pool.submitWork(trigger.id, frb, opts);
   }
 
   async startRuntime(
@@ -1357,7 +1364,8 @@ export class FunctionsEmulator implements EmulatorInstance {
       instanceId: backend.extensionInstanceId,
       ref: backend.extensionVersion?.ref,
     };
-    this.workerPool.addWorker(trigger?.id, runtime, extensionLogInfo);
+    const pool = this.workerPools[backend.codebase];
+    pool.addWorker(trigger?.id, runtime, extensionLogInfo);
     return;
   }
 

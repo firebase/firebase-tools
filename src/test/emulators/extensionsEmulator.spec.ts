@@ -119,6 +119,7 @@ describe("Extensions Emulator", () => {
           ],
           extension: TEST_EXTENSION,
           extensionVersion: TEST_EXTENSION_VERSION,
+          codebase: "",
         },
       },
     ];
