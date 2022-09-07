@@ -21,7 +21,7 @@ const EMULATOR_LOAD_RULESET_DELAY_MS = 2000;
 describe("Storage Rules Manager", function () {
   const rulesRuntime = new StorageRulesRuntime();
   const opts = { method: RulesetOperationMethod.GET, file: {}, path: "/b/bucket_0/o/" };
-  const projectId = "project-id";
+  const projectId = "demo-project-id";
   let rulesManager: StorageRulesManager;
 
   // eslint-disable-next-line @typescript-eslint/no-invalid-this

@@ -346,12 +346,10 @@ export class StorageRulesRuntime {
     projectId: string,
     runtimeActionRequest: RuntimeActionBundle,
     overrideId?: number
-  ): Promise<
-    Promise<{
-      permitted?: boolean;
-      issues: StorageRulesIssues;
-    }>
-  > {
+  ): Promise<{
+    permitted?: boolean;
+    issues: StorageRulesIssues;
+  }> {
     const response = (await this._sendRequest(
       runtimeActionRequest,
       overrideId
