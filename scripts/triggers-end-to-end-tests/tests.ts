@@ -409,7 +409,7 @@ describe("function triggers", () => {
     });
   });
 
-  it.skip("should enforce timeout", async function (this) {
+  it("should enforce timeout", async function (this) {
     this.timeout(TEST_SETUP_TIMEOUT);
     const v2response = await test.invokeHttpFunction("onreqv2timeout");
     expect(v2response.status).to.equal(500);
