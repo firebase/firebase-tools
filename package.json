@@ -33,6 +33,7 @@
     "test:hosting-rewrites": "bash ./scripts/hosting-tests/rewrites-tests/run.sh",
     "test:import-export": "bash ./scripts/emulator-import-export-tests/run.sh",
     "test:triggers-end-to-end": "bash ./scripts/triggers-end-to-end-tests/run.sh",
+    "test:triggers-end-to-end:inspect": "bash ./scripts/triggers-end-to-end-tests/run.sh inspect",
     "test:storage-deploy": "bash ./scripts/storage-deploy-tests/run.sh",
     "test:storage-emulator-integration": "bash ./scripts/storage-emulator-integration/run.sh"
   },

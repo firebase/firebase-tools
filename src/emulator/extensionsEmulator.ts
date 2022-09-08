@@ -234,6 +234,7 @@ export class ExtensionsEmulator implements EmulatorInstance {
     const emulatableBackend: EmulatableBackend = {
       functionsDir,
       env: nonSecretEnv,
+      codebase: "",
       secretEnv: secretEnvVariables,
       predefinedTriggers: extensionTriggers,
       nodeMajorVersion: nodeMajorVersion,
