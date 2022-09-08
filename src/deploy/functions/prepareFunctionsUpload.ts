@@ -63,7 +63,7 @@ async function packageSource(
     encoding: "binary",
   });
   const archive = archiver("zip");
-  const fileHashes: string[] = [];
+  const hashes: string[] = [];
 
   // We must ignore firebase-debug.log or weird things happen if
   // you're in the public dir when you deploy.
@@ -80,14 +80,16 @@ async function packageSource(
     for (const file of files) {
       const name = path.relative(sourceDir, file.name);
       const fileHash = await getSourceHash(file.name);
-      fileHashes.push(fileHash);
+      hashes.push(fileHash);
       archive.file(file.name, {
         name,
         mode: file.mode,
       });
     }
     if (typeof runtimeConfig !== "undefined") {
-      archive.append(JSON.stringify(runtimeConfig, null, 2), {
+      const runtimeConfigString = JSON.stringify(runtimeConfig, null, 2);
+      hashes.push(runtimeConfigString);
+      archive.append(runtimeConfigString, {
         name: CONFIG_DEST_FILE,
         mode: 420 /* 0o644 */,
       });
@@ -112,7 +114,7 @@ async function packageSource(
       filesize(archive.pointer()) +
       ") for uploading"
   );
-  const hash = fileHashes.join(".");
+  const hash = hashes.join(".");
   return { pathToSource: tmpFile, hash };
 }
 
