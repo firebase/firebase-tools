@@ -1,4 +1,3 @@
-import * as _ from "lodash";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -34,27 +33,39 @@ export function setup(setup: any, config: any): Promise<any> {
     },
   ])
     .then(() => {
+      const cbconfig = configForCodebase(setup.config.functions, setup.functions.codebase);
+      cbconfig.predeploy = []; // does order of predeploy commands matter?
       if (setup.functions.lint) {
-        const cbconfig = configForCodebase(setup.config.functions, setup.functions.codebase);
-        cbconfig.predeploy = [
-          'npm --prefix "$RESOURCE_DIR" run lint',
-          'npm --prefix "$RESOURCE_DIR" run build',
-        ];
+        cbconfig.predeploy.push('npm --prefix "$RESOURCE_DIR" run lint');
+        cbconfig.predeploy.push('npm --prefix "$RESOURCE_DIR" run build');
         return config
           .askWriteProjectFile(`${setup.functions.source}/package.json`, PACKAGE_LINTING_TEMPLATE)
           .then(() => {
-            return config.askWriteProjectFile(`${setup.functions.source}/.eslintrc.js`, ESLINT_TEMPLATE);
+            return config.askWriteProjectFile(
+              `${setup.functions.source}/.eslintrc.js`,
+              ESLINT_TEMPLATE
+            );
           });
+      } else {
+        cbconfig.predeploy.push('npm --prefix "$RESOURCE_DIR" run build');
       }
-      _.set(setup, "config.functions.predeploy", 'npm --prefix "$RESOURCE_DIR" run build');
-      return config.askWriteProjectFile(`${setup.functions.source}/package.json`, PACKAGE_NO_LINTING_TEMPLATE);
+      return config.askWriteProjectFile(
+        `${setup.functions.source}/package.json`,
+        PACKAGE_NO_LINTING_TEMPLATE
+      );
     })
     .then(() => {
-      return config.askWriteProjectFile(`${setup.functions.source}/tsconfig.json`, TSCONFIG_TEMPLATE);
+      return config.askWriteProjectFile(
+        `${setup.functions.source}/tsconfig.json`,
+        TSCONFIG_TEMPLATE
+      );
     })
     .then(() => {
       if (setup.functions.lint) {
-        return config.askWriteProjectFile(`${setup.functions.source}/tsconfig.dev.json`, TSCONFIG_DEV_TEMPLATE);
+        return config.askWriteProjectFile(
+          `${setup.functions.source}/tsconfig.dev.json`,
+          TSCONFIG_DEV_TEMPLATE
+        );
       }
     })
     .then(() => {

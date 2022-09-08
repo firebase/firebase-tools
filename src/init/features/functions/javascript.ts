@@ -1,9 +1,8 @@
-import * as _ from "lodash";
 import * as fs from "fs";
 import * as path from "path";
 
 import { askInstallDependencies } from "./npm-dependencies";
-import { prompt } from "../../../prompt";
+import { prompt, Question } from "../../../prompt";
 import { configForCodebase } from "../../../functions/projectConfig";
 
 const TEMPLATE_ROOT = path.resolve(__dirname, "../../../../templates/init/functions/javascript/");
@@ -20,7 +19,6 @@ const ESLINT_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "_eslintrc"), "
 const GITIGNORE_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "_gitignore"), "utf8");
 
 export function setup(setup: any, config: any): Promise<any> {
-
   return prompt(setup.functions, [
     {
       name: "lint",
@@ -39,7 +37,10 @@ export function setup(setup: any, config: any): Promise<any> {
             config.askWriteProjectFile(`${setup.functions.source}/.eslintrc.js`, ESLINT_TEMPLATE);
           });
       }
-      return config.askWriteProjectFile(`${setup.functions.source}/package.json`, PACKAGE_NO_LINTING_TEMPLATE);
+      return config.askWriteProjectFile(
+        `${setup.functions.source}/package.json`,
+        PACKAGE_NO_LINTING_TEMPLATE
+      );
     })
     .then(() => {
       return config.askWriteProjectFile(`${setup.functions.source}/index.js`, INDEX_TEMPLATE);
