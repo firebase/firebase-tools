@@ -234,6 +234,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       if (!metadata.contentDisposition) {
         metadata.contentDisposition = "inline";
       }
+      res.header("x-goog-upload-status", "final");
       return res.status(200).json(new OutgoingFirebaseMetadata(metadata));
     }
 
@@ -342,7 +343,6 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
           }
           throw err;
         }
-        res.header("x-goog-upload-status", "final");
         return await finalizeOneShotUpload(upload);
       }
     }
