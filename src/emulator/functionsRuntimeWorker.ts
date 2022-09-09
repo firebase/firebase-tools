@@ -41,19 +41,6 @@ export class RuntimeWorker {
     this.key = key;
     this.runtime = runtime;
 
-    this.runtime.events.on("log", (log: EmulatorLog) => {
-      if (log.type === "runtime-status") {
-        if (log.data.state === "idle") {
-          if (this.state === RuntimeWorkerState.BUSY) {
-            this.state = RuntimeWorkerState.IDLE;
-          } else if (this.state === RuntimeWorkerState.FINISHING) {
-            this.log(`IDLE --> FINISHING`);
-            this.runtime.process.kill();
-          }
-        }
-      }
-    });
-
     const childProc = this.runtime.process;
     let msgBuffer = "";
     childProc.on("message", (msg) => {
