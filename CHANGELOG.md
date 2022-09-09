@@ -1,0 +1,1 @@
+- Add v2 Remote Config triggers to deploy (#4937).
