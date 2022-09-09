@@ -2,7 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 import { askInstallDependencies } from "./npm-dependencies";
-import { prompt, Question } from "../../../prompt";
+import { prompt } from "../../../prompt";
 import { configForCodebase } from "../../../functions/projectConfig";
 
 const TEMPLATE_ROOT = path.resolve(__dirname, "../../../../templates/init/functions/javascript/");
