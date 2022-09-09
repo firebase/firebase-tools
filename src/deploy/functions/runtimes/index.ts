@@ -4,6 +4,7 @@ import * as backend from "../backend";
 import * as build from "../build";
 import * as golang from "./golang";
 import * as node from "./node";
+import * as python from "./python";
 import * as validate from "../validate";
 import { FirebaseError } from "../../../error";
 
@@ -12,7 +13,7 @@ const RUNTIMES: string[] = ["nodejs10", "nodejs12", "nodejs14", "nodejs16"];
 // Experimental runtimes are part of the Runtime type, but are in a
 // different list to help guard against some day accidentally iterating over
 // and printing a hidden runtime to the user.
-const EXPERIMENTAL_RUNTIMES = ["go113"];
+const EXPERIMENTAL_RUNTIMES = ["go113", "python310"];
 export type Runtime = typeof RUNTIMES[number] | typeof EXPERIMENTAL_RUNTIMES[number];
 
 /** Runtimes that can be found in existing backends but not used for new functions. */
@@ -37,6 +38,7 @@ const MESSAGE_FRIENDLY_RUNTIMES: Record<Runtime | DeprecatedRuntime, string> = {
   nodejs14: "Node.js 14",
   nodejs16: "Node.js 16",
   go113: "Go 1.13",
+  python310: "Python 3.10",
 };
 
 /**
@@ -116,7 +118,11 @@ export interface DelegateContext {
 }
 
 type Factory = (context: DelegateContext) => Promise<RuntimeDelegate | undefined>;
-const factories: Factory[] = [node.tryCreateDelegate, golang.tryCreateDelegate];
+const factories: Factory[] = [
+  node.tryCreateDelegate,
+  python.tryCreateDelegate,
+  golang.tryCreateDelegate,
+];
 
 /**
  *
