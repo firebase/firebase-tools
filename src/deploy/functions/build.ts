@@ -6,6 +6,7 @@ import { previews } from "../../previews";
 import { FirebaseError } from "../../error";
 import { assertExhaustive, mapObject, nullsafeVisitor } from "../../functional";
 import { UserEnvsOpts, writeUserEnvs } from "../../functions/env";
+import { FirebaseConfig } from "./args";
 
 /* The union of a customer-controlled deployment and potentially deploy-time defined parameters */
 export interface Build {
@@ -274,16 +275,16 @@ export type Endpoint = Triggered & {
  */
 export async function resolveBackend(
   build: Build,
+  firebaseConfig: FirebaseConfig,
   userEnvOpt: UserEnvsOpts,
   userEnvs: Record<string, string>,
   nonInteractive?: boolean
 ): Promise<{ backend: backend.Backend; envs: Record<string, params.ParamValue> }> {
-  const projectId = userEnvOpt.projectId;
   let paramValues: Record<string, params.ParamValue> = {};
   if (previews.functionsparams) {
     paramValues = await params.resolveParams(
       build.params,
-      projectId,
+      firebaseConfig,
       envWithTypes(build.params, userEnvs),
       nonInteractive
     );
@@ -291,7 +292,7 @@ export async function resolveBackend(
     const toWrite: Record<string, string> = {};
     for (const paramName of Object.keys(paramValues)) {
       const paramValue = paramValues[paramName];
-      if (Object.prototype.hasOwnProperty.call(userEnvs, paramName) || paramValue.secret) {
+      if (Object.prototype.hasOwnProperty.call(userEnvs, paramName) || paramValue.internal) {
         continue;
       }
       toWrite[paramName] = paramValue.toString();
