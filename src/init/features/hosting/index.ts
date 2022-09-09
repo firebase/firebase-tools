@@ -103,6 +103,7 @@ export async function doSetup(setup: any, config: any): Promise<void> {
             { name: "Angular", value: WebFramework.Angular },
             { name: "Next.js", value: WebFramework.NextJS },
             { name: "Nuxt", value: WebFramework.Nuxt },
+            { name: "Vite", value: WebFramework.Vite },
           ],
         },
       ]);
@@ -126,6 +127,11 @@ export async function doSetup(setup: any, config: any): Promise<void> {
       if (setup.hosting.webFramework === WebFramework.NextJS) execSync(`npx --yes create-next-app@latest ${setup.hosting.source}`, {stdio: 'inherit'});
       if (setup.hosting.webFramework === WebFramework.Nuxt) {
         execSync(`npx --yes nuxi@latest init ${setup.hosting.source}`, {stdio: 'inherit'});
+        execSync(`npm install`, {stdio: 'inherit', cwd: setup.hosting.source });
+      }
+      if (setup.hosting.webFramework === WebFramework.Vite) {
+        execSync(`npx create-vite ${setup.hosting.source}`, {stdio: 'inherit'});
+        execSync(`cd ${setup.hosting.source}`, {stdio: 'inherit'});
         execSync(`npm install`, {stdio: 'inherit', cwd: setup.hosting.source });
       }
     }

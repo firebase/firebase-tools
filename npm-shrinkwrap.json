@@ -6399,6 +6399,7 @@
       "version": "0.5.0-canary.a1eb7c9",
       "resolved": "https://registry.npmjs.org/firebase-frameworks/-/firebase-frameworks-0.5.0-canary.a1eb7c9.tgz",
       "integrity": "sha512-pNExGESoGP+ye5Sjk73LuIlwSuHgk655zXBxNwUBpemiMgrlSk2QCndSw5cb9dTU6K8xPs4KZjb51fBL6vuaeA==",
+      "license": "Apache-2.0",
       "dependencies": {
         "fs-extra": "^10.1.0",
         "jsonc-parser": "^3.0.0",

@@ -20,6 +20,7 @@ export enum WebFramework {
   ExpressCustom = 'express',
   Nuxt = 'nuxt',
   Angular = 'angular',
+  Vite = 'vite',
 }
 
 // TODO mix in the discovery from web frameworks
@@ -33,6 +34,7 @@ export const discover = async (dir: string, warn: boolean=true) => {
   // TODO breakout nuxt 2 vs 3
   if (fileExists('nuxt.config.js', 'nuxt.config.ts')) return { framework: WebFramework.Nuxt };
   if (fileExists('angular.json')) return { framework: WebFramework.Angular };
+  if (fileExists('vite.config.js')) return { framework: WebFramework.Vite };
   // TODO if dep Next.js
   if (warn) console.warn("We can't detirmine the web framework in use. TODO link");
   return undefined;
