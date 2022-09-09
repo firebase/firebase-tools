@@ -16,8 +16,11 @@ export const DATABASE_EVENTS = [
   "google.firebase.database.ref.v1.deleted",
 ] as const;
 
+export const REMOTE_CONFIG_EVENT = "google.firebase.remoteconfig.remoteConfig.v1.updated";
+
 export type Event =
   | typeof PUBSUB_PUBLISH_EVENT
   | typeof STORAGE_EVENTS[number]
   | typeof FIREBASE_ALERTS_PUBLISH_EVENT
-  | typeof DATABASE_EVENTS[number];
+  | typeof DATABASE_EVENTS[number]
+  | typeof REMOTE_CONFIG_EVENT;
