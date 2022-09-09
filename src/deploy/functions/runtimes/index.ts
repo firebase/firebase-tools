@@ -1,3 +1,5 @@
+import { ChildProcess } from "child_process";
+
 import * as backend from "../backend";
 import * as build from "../build";
 import * as golang from "./golang";
@@ -85,6 +87,11 @@ export interface RuntimeDelegate {
    * Returns a cancel function.
    */
   watch(): Promise<() => Promise<void>>;
+
+  /**
+   * Spawns process to serve customer's code.
+   */
+  serve(port: string, envs: Record<string, string | undefined>, extraArgs?: string[]): ChildProcess;
 
   /**
    * Inspect the customer's source for the backend spec it describes.

@@ -1,5 +1,5 @@
 import { promisify } from "util";
-import fetch from "node-fetch";
+import { ChildProcess } from "child_process";
 import * as fs from "fs";
 import * as path from "path";
 import * as spawn from "cross-spawn";
@@ -105,16 +105,11 @@ export class Delegate {
     return Promise.resolve(() => Promise.resolve());
   }
 
-  serve(
-    port: number,
-    adminPort: number,
-    envs: backend.EnvironmentVariables
-  ): Promise<() => Promise<void>> {
+  serve(port: string, envs: backend.EnvironmentVariables): ChildProcess {
     const childProcess = spawn("go", ["run", "./autogen"], {
       env: {
         ...envs,
-        PORT: port.toString(),
-        ADMIN_PORT: adminPort.toString(),
+        PORT: port,
         HOME: process.env.HOME,
         PATH: process.env.PATH,
         GOPATH: process.env.GOPATH,
@@ -125,22 +120,7 @@ export class Delegate {
     childProcess.stdout?.on("data", (chunk) => {
       logger.debug(chunk.toString());
     });
-    return Promise.resolve(async () => {
-      const p = new Promise<void>((resolve, reject) => {
-        childProcess.once("exit", resolve);
-        childProcess.once("error", reject);
-      });
-
-      // If we SIGKILL the child process we're actually going to kill the go
-      // runner and the webserver it launched will keep running.
-      await fetch(`http://localhost:${adminPort}/__/quitquitquit`);
-      setTimeout(() => {
-        if (!childProcess.killed) {
-          childProcess.kill("SIGKILL");
-        }
-      }, 10_000);
-      return p;
-    });
+    return childProcess;
   }
 
   async discoverBuild(): Promise<build.Build> {
