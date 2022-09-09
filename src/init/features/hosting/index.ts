@@ -7,7 +7,7 @@ import { Client } from "../../../apiv2";
 import { initGitHub } from "./github";
 import { prompt } from "../../../prompt";
 import { logger } from "../../../logger";
-import { discover, WebFramework } from "../../../frameworks";
+import { discover, FrameworkType, SupportLevel, WebFrameworks } from "../../../frameworks";
 import { previews } from "../../../previews";
 
 const INDEX_TEMPLATE = fs.readFileSync(
@@ -44,7 +44,7 @@ export async function doSetup(setup: any, config: any): Promise<void> {
         name: "useDiscoveredFramework",
         type: "confirm",
         default: true,
-        message: `Detected an existing ${discoveredFramework.framework} codebase in ., should we use this?`,
+        message: `Detected an existing ${WebFrameworks[discoveredFramework.framework].name} codebase in the current directory, should we use this?`,
       },
     ]);
 
@@ -83,7 +83,7 @@ export async function doSetup(setup: any, config: any): Promise<void> {
         name: "useDiscoveredFramework",
         type: "confirm",
         default: true,
-        message: `Detected an existing ${discoveredFramework.framework} codebase in ${setup.hosting.source}, should we use this?`,
+        message: `Detected an existing ${WebFrameworks[discoveredFramework.framework].name} codebase in ${setup.hosting.source}, should we use this?`,
       },
     ]);
 
@@ -93,47 +93,32 @@ export async function doSetup(setup: any, config: any): Promise<void> {
 
     } else {
 
+      const choices: { name: string, value: string}[] = [];
+      for (const value in WebFrameworks) {
+        const { name, init, support, type } = WebFrameworks[value];
+        // We should not be exposing community-supported frameworks to hosting init ATM
+        // let's also stick with Frameworks & Meta-frameworks ATM
+        if (support === SupportLevel.Community) continue;
+        if (type !== FrameworkType.Framework && type !== FrameworkType.MetaFramework) continue;
+        if (init) choices.push({ name, value });
+      }
+
+      const defaultChoice = choices.find(({ value }) => value === discoveredFramework?.framework)?.value;
+
       await prompt(setup.hosting, [
         {
           name: "webFramework",
           type: "list",
           message: "Please choose the framework:",
-          default: discoveredFramework?.framework,
-          choices: [
-            { name: "Angular", value: WebFramework.Angular },
-            { name: "Next.js", value: WebFramework.NextJS },
-            { name: "Nuxt", value: WebFramework.Nuxt },
-            { name: "Vite", value: WebFramework.Vite },
-          ],
+          default: defaultChoice,
+          choices
         },
       ]);
 
       if (discoveredFramework) rimraf(setup.hosting.source);
 
-      if (setup.hosting.webFramework === WebFramework.Angular) {
-        execSync(`npx --yes -p @angular/cli@latest ng new ${setup.hosting.source} --skip-git`, {stdio: 'inherit'})
-        await prompt(setup.hosting, [
-          {
-            name: "useAngularUniversal",
-            type: "confirm",
-            default: false,
-            message: `Would you like to setup Angular Universal?`,
-          },
-        ]);
-        if (setup.hosting.useAngularUniversal) {
-          execSync('ng add @nguniversal/express-engine --skip-confirmation', {stdio: 'inherit', cwd: setup.hosting.source });
-        }
-      };
-      if (setup.hosting.webFramework === WebFramework.NextJS) execSync(`npx --yes create-next-app@latest ${setup.hosting.source}`, {stdio: 'inherit'});
-      if (setup.hosting.webFramework === WebFramework.Nuxt) {
-        execSync(`npx --yes nuxi@latest init ${setup.hosting.source}`, {stdio: 'inherit'});
-        execSync(`npm install`, {stdio: 'inherit', cwd: setup.hosting.source });
-      }
-      if (setup.hosting.webFramework === WebFramework.Vite) {
-        execSync(`npx create-vite ${setup.hosting.source}`, {stdio: 'inherit'});
-        execSync(`cd ${setup.hosting.source}`, {stdio: 'inherit'});
-        execSync(`npm install`, {stdio: 'inherit', cwd: setup.hosting.source });
-      }
+      await WebFrameworks[setup.hosting.webFramework].init!(setup);
+
     }
 
     setup.config.hosting = {

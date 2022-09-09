@@ -73,6 +73,8 @@
         "firebase": "lib/bin/firebase.js"
       },
       "devDependencies": {
+        "@angular-devkit/architect": "^0.1402.2",
+        "@angular-devkit/core": "^14.2.2",
         "@google/events": "^5.1.1",
         "@manifoldco/swagger-to-ts": "^2.0.0",
         "@types/archiver": "^5.1.0",
@@ -150,6 +152,102 @@
       },
       "engines": {
         "node": "^14.18.0 || >=16.4.0"
+      }
+    },
+    "node_modules/@angular-devkit/architect": {
+      "version": "0.1402.2",
+      "resolved": "https://registry.npmjs.org/@angular-devkit/architect/-/architect-0.1402.2.tgz",
+      "integrity": "sha512-ICcK7OKViMhLkj4btnH/8nv0wjxuKchT/LDN6jfb9gUYUuoon190q0/L/U6ORDwvmjD6sUTurStzOxjuiS0KIg==",
+      "dev": true,
+      "dependencies": {
+        "@angular-devkit/core": "14.2.2",
+        "rxjs": "6.6.7"
+      },
+      "engines": {
+        "node": "^14.15.0 || >=16.10.0",
+        "npm": "^6.11.0 || ^7.5.6 || >=8.0.0",
+        "yarn": ">= 1.13.0"
+      }
+    },
+    "node_modules/@angular-devkit/architect/node_modules/rxjs": {
+      "version": "6.6.7",
+      "resolved": "https://registry.npmjs.org/rxjs/-/rxjs-6.6.7.tgz",
+      "integrity": "sha512-hTdwr+7yYNIT5n4AMYp85KA6yw2Va0FLa3Rguvbpa4W3I5xynaBZo41cM3XM+4Q6fRMj3sBYIR1VAmZMXYJvRQ==",
+      "dev": true,
+      "dependencies": {
+        "tslib": "^1.9.0"
+      },
+      "engines": {
+        "npm": ">=2.0.0"
+      }
+    },
+    "node_modules/@angular-devkit/core": {
+      "version": "14.2.2",
+      "resolved": "https://registry.npmjs.org/@angular-devkit/core/-/core-14.2.2.tgz",
+      "integrity": "sha512-ofDhTmJqoAkmkJP0duwUaCxDBMxPlc+AWYwgs3rKKZeJBb0d+tchEXHXevD5bYbbRfXtnwM+Vye2XYHhA4nWAA==",
+      "dev": true,
+      "dependencies": {
+        "ajv": "8.11.0",
+        "ajv-formats": "2.1.1",
+        "jsonc-parser": "3.1.0",
+        "rxjs": "6.6.7",
+        "source-map": "0.7.4"
+      },
+      "engines": {
+        "node": "^14.15.0 || >=16.10.0",
+        "npm": "^6.11.0 || ^7.5.6 || >=8.0.0",
+        "yarn": ">= 1.13.0"
+      },
+      "peerDependencies": {
+        "chokidar": "^3.5.2"
+      },
+      "peerDependenciesMeta": {
+        "chokidar": {
+          "optional": true
+        }
+      }
+    },
+    "node_modules/@angular-devkit/core/node_modules/ajv": {
+      "version": "8.11.0",
+      "resolved": "https://registry.npmjs.org/ajv/-/ajv-8.11.0.tgz",
+      "integrity": "sha512-wGgprdCvMalC0BztXvitD2hC04YffAvtsUn93JbGXYLAtCUO4xd17mCCZQxUOItiBwZvJScWo8NIvQMQ71rdpg==",
+      "dev": true,
+      "dependencies": {
+        "fast-deep-equal": "^3.1.1",
+        "json-schema-traverse": "^1.0.0",
+        "require-from-string": "^2.0.2",
+        "uri-js": "^4.2.2"
+      },
+      "funding": {
+        "type": "github",
+        "url": "https://github.com/sponsors/epoberezkin"
+      }
+    },
+    "node_modules/@angular-devkit/core/node_modules/json-schema-traverse": {
+      "version": "1.0.0",
+      "resolved": "https://registry.npmjs.org/json-schema-traverse/-/json-schema-traverse-1.0.0.tgz",
+      "integrity": "sha512-NM8/P9n3XjXhIZn1lLhkFaACTOURQXjWhV4BA/RnOv8xvgqtqpAX9IO4mRQxSx1Rlo4tqzeqb0sOlruaOy3dug==",
+      "dev": true
+    },
+    "node_modules/@angular-devkit/core/node_modules/rxjs": {
+      "version": "6.6.7",
+      "resolved": "https://registry.npmjs.org/rxjs/-/rxjs-6.6.7.tgz",
+      "integrity": "sha512-hTdwr+7yYNIT5n4AMYp85KA6yw2Va0FLa3Rguvbpa4W3I5xynaBZo41cM3XM+4Q6fRMj3sBYIR1VAmZMXYJvRQ==",
+      "dev": true,
+      "dependencies": {
+        "tslib": "^1.9.0"
+      },
+      "engines": {
+        "npm": ">=2.0.0"
+      }
+    },
+    "node_modules/@angular-devkit/core/node_modules/source-map": {
+      "version": "0.7.4",
+      "resolved": "https://registry.npmjs.org/source-map/-/source-map-0.7.4.tgz",
+      "integrity": "sha512-l3BikUxvPOcn5E74dZiq5BGsTb5yEwhaTSzccU6t4sDOH8NWJCstKO5QT2CvtFoK6F0saL7p9xHAqHOlCPJygA==",
+      "dev": true,
+      "engines": {
+        "node": ">= 8"
       }
     },
     "node_modules/@apidevtools/json-schema-ref-parser": {
@@ -8396,9 +8494,9 @@
       }
     },
     "node_modules/jsonc-parser": {
-      "version": "3.0.0",
-      "resolved": "https://registry.npmjs.org/jsonc-parser/-/jsonc-parser-3.0.0.tgz",
-      "integrity": "sha512-fQzRfAbIBnR0IQvftw9FJveWiHp72Fg20giDrHz6TdfB12UH/uue0D3hm57UB5KgAVuniLMCaS8P1IMj9NR7cA=="
+      "version": "3.1.0",
+      "resolved": "https://registry.npmjs.org/jsonc-parser/-/jsonc-parser-3.1.0.tgz",
+      "integrity": "sha512-DRf0QjnNeCUds3xTjKlQQ3DpJD51GvDjJfnxUVWg6PZTo2otSm+slzNAxU/35hF8/oJIKoG9slq30JYOsF2azg=="
     },
     "node_modules/jsonfile": {
       "version": "4.0.0",
@@ -14212,6 +14310,75 @@
     }
   },
   "dependencies": {
+    "@angular-devkit/architect": {
+      "version": "0.1402.2",
+      "resolved": "https://registry.npmjs.org/@angular-devkit/architect/-/architect-0.1402.2.tgz",
+      "integrity": "sha512-ICcK7OKViMhLkj4btnH/8nv0wjxuKchT/LDN6jfb9gUYUuoon190q0/L/U6ORDwvmjD6sUTurStzOxjuiS0KIg==",
+      "dev": true,
+      "requires": {
+        "@angular-devkit/core": "14.2.2",
+        "rxjs": "6.6.7"
+      },
+      "dependencies": {
+        "rxjs": {
+          "version": "6.6.7",
+          "resolved": "https://registry.npmjs.org/rxjs/-/rxjs-6.6.7.tgz",
+          "integrity": "sha512-hTdwr+7yYNIT5n4AMYp85KA6yw2Va0FLa3Rguvbpa4W3I5xynaBZo41cM3XM+4Q6fRMj3sBYIR1VAmZMXYJvRQ==",
+          "dev": true,
+          "requires": {
+            "tslib": "^1.9.0"
+          }
+        }
+      }
+    },
+    "@angular-devkit/core": {
+      "version": "14.2.2",
+      "resolved": "https://registry.npmjs.org/@angular-devkit/core/-/core-14.2.2.tgz",
+      "integrity": "sha512-ofDhTmJqoAkmkJP0duwUaCxDBMxPlc+AWYwgs3rKKZeJBb0d+tchEXHXevD5bYbbRfXtnwM+Vye2XYHhA4nWAA==",
+      "dev": true,
+      "requires": {
+        "ajv": "8.11.0",
+        "ajv-formats": "2.1.1",
+        "jsonc-parser": "3.1.0",
+        "rxjs": "6.6.7",
+        "source-map": "0.7.4"
+      },
+      "dependencies": {
+        "ajv": {
+          "version": "8.11.0",
+          "resolved": "https://registry.npmjs.org/ajv/-/ajv-8.11.0.tgz",
+          "integrity": "sha512-wGgprdCvMalC0BztXvitD2hC04YffAvtsUn93JbGXYLAtCUO4xd17mCCZQxUOItiBwZvJScWo8NIvQMQ71rdpg==",
+          "dev": true,
+          "requires": {
+            "fast-deep-equal": "^3.1.1",
+            "json-schema-traverse": "^1.0.0",
+            "require-from-string": "^2.0.2",
+            "uri-js": "^4.2.2"
+          }
+        },
+        "json-schema-traverse": {
+          "version": "1.0.0",
+          "resolved": "https://registry.npmjs.org/json-schema-traverse/-/json-schema-traverse-1.0.0.tgz",
+          "integrity": "sha512-NM8/P9n3XjXhIZn1lLhkFaACTOURQXjWhV4BA/RnOv8xvgqtqpAX9IO4mRQxSx1Rlo4tqzeqb0sOlruaOy3dug==",
+          "dev": true
+        },
+        "rxjs": {
+          "version": "6.6.7",
+          "resolved": "https://registry.npmjs.org/rxjs/-/rxjs-6.6.7.tgz",
+          "integrity": "sha512-hTdwr+7yYNIT5n4AMYp85KA6yw2Va0FLa3Rguvbpa4W3I5xynaBZo41cM3XM+4Q6fRMj3sBYIR1VAmZMXYJvRQ==",
+          "dev": true,
+          "requires": {
+            "tslib": "^1.9.0"
+          }
+        },
+        "source-map": {
+          "version": "0.7.4",
+          "resolved": "https://registry.npmjs.org/source-map/-/source-map-0.7.4.tgz",
+          "integrity": "sha512-l3BikUxvPOcn5E74dZiq5BGsTb5yEwhaTSzccU6t4sDOH8NWJCstKO5QT2CvtFoK6F0saL7p9xHAqHOlCPJygA==",
+          "dev": true
+        }
+      }
+    },
     "@apidevtools/json-schema-ref-parser": {
       "version": "9.0.7",
       "resolved": "https://registry.npmjs.org/@apidevtools/json-schema-ref-parser/-/json-schema-ref-parser-9.0.7.tgz",
@@ -20878,9 +21045,9 @@
       }
     },
     "jsonc-parser": {
-      "version": "3.0.0",
-      "resolved": "https://registry.npmjs.org/jsonc-parser/-/jsonc-parser-3.0.0.tgz",
-      "integrity": "sha512-fQzRfAbIBnR0IQvftw9FJveWiHp72Fg20giDrHz6TdfB12UH/uue0D3hm57UB5KgAVuniLMCaS8P1IMj9NR7cA=="
+      "version": "3.1.0",
+      "resolved": "https://registry.npmjs.org/jsonc-parser/-/jsonc-parser-3.1.0.tgz",
+      "integrity": "sha512-DRf0QjnNeCUds3xTjKlQQ3DpJD51GvDjJfnxUVWg6PZTo2otSm+slzNAxU/35hF8/oJIKoG9slq30JYOsF2azg=="
     },
     "jsonfile": {
       "version": "4.0.0",
