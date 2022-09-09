@@ -45,11 +45,13 @@ export async function getFunctionsConfig(projectId: string): Promise<Record<stri
 }
 
 async function pipeAsync(from: archiver.Archiver, to: fs.WriteStream) {
-  return new Promise((resolve, reject) => {
+  const promise = new Promise((resolve, reject) => {
     to.on("finish", resolve);
     to.on("error", reject);
-    from.pipe(to);
   });
+  from.pipe(to);
+  await from.finalize();
+  return promise;
 }
 
 async function packageSource(
@@ -94,7 +96,6 @@ async function packageSource(
         mode: 420 /* 0o644 */,
       });
     }
-    await archive.finalize();
     await pipeAsync(archive, fileStream);
   } catch (err: any) {
     throw new FirebaseError(
