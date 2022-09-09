@@ -1,3 +1,4 @@
+import { ChildProcess } from "child_process";
 import { promisify } from "util";
 import * as fs from "fs";
 import * as path from "path";
@@ -92,44 +93,33 @@ export class Delegate {
     return Promise.resolve(() => Promise.resolve());
   }
 
-  serve(
-    port: number,
-    config: backend.RuntimeConfigValues,
-    envs: backend.EnvironmentVariables
-  ): Promise<() => Promise<void>> {
-    const env: NodeJS.ProcessEnv = {
-      ...envs,
-      PORT: port.toString(),
-      FUNCTIONS_CONTROL_API: "true",
-      HOME: process.env.HOME,
-      PATH: process.env.PATH,
-      NODE_ENV: process.env.NODE_ENV,
-    };
-    if (Object.keys(config || {}).length) {
-      env.CLOUD_RUNTIME_CONFIG = JSON.stringify(config);
+  serve(port: string, env: Record<string, string | undefined>, extraArgs?: string[]): ChildProcess {
+    const serviceControl = !!env["FUNCTIONS_CONTROL_API"];
+
+    let command: string;
+    let args: string[];
+
+    if (serviceControl) {
+      command = "./node_modules/.bin/firebase-functions";
+      args = [this.sourceDir];
+    } else {
+      command = process.execPath;
+      args = [path.join(__dirname, "..", "..", "..", "..", "emulator", "functionsEmulatorRuntime")];
     }
-    const childProcess = spawn("./node_modules/.bin/firebase-functions", [this.sourceDir], {
-      env,
+    args.push(...(extraArgs || []));
+
+    const childProcess = spawn(command, args, {
+      env: { ...env, PORT: port },
       cwd: this.sourceDir,
-      stdio: [/* stdin=*/ "ignore", /* stdout=*/ "pipe", /* stderr=*/ "inherit"],
+      stdio: [/* stdin=*/ "pipe", /* stdout=*/ "pipe", /* stderr=*/ "pipe", "ipc"],
     });
     childProcess.stdout?.on("data", (chunk) => {
       logger.debug(chunk.toString());
     });
-    return Promise.resolve(async () => {
-      const p = new Promise<void>((resolve, reject) => {
-        childProcess.once("exit", resolve);
-        childProcess.once("error", reject);
-      });
-
-      await fetch(`http://localhost:${port}/__/quitquitquit`);
-      setTimeout(() => {
-        if (!childProcess.killed) {
-          childProcess.kill("SIGKILL");
-        }
-      }, 10_000);
-      return p;
+    childProcess.stderr?.on("data", (chunk) => {
+      logger.debug(chunk.toString());
     });
+    return childProcess;
   }
 
   // eslint-disable-next-line require-await
@@ -156,11 +146,35 @@ export class Delegate {
     if (!discovered) {
       const getPort = promisify(portfinder.getPort) as () => Promise<number>;
       const port = await getPort();
-      const kill = await this.serve(port, config, env);
+      const serveEnv: Record<string, string | undefined> = {
+        ...env,
+        FUNCTIONS_CONTROL_API: "true",
+        HOME: process.env.HOME,
+        PATH: process.env.PATH,
+        NODE_ENV: process.env.NODE_ENV,
+      };
+      if (Object.keys(config || {}).length) {
+        env.CLOUD_RUNTIME_CONFIG = JSON.stringify(serveEnv);
+      }
+      const proc = this.serve(port.toString(), serveEnv);
       try {
         discovered = await discovery.detectFromPort(port, this.projectId, this.runtime);
       } finally {
-        await kill();
+        try {
+          await fetch(`http://localhost:${port}/__/quitquitquit`);
+        } catch (e: unknown) {
+          logger.debug("Could not kill server w/ __/quitquitquit", e);
+        }
+        await new Promise<void>((resolve, reject) => {
+          proc.once("exit", resolve);
+          proc.once("error", reject);
+          setTimeout(() => {
+            if (!proc.killed) {
+              proc.kill("SIGKILL");
+            }
+            resolve();
+          }, 5_000);
+        });
       }
     }
     return discovered;

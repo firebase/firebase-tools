@@ -1242,7 +1242,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     trigger?: EmulatedTriggerDefinition
   ): Promise<RuntimeWorker> {
     const emitter = new EventEmitter();
-    const args = [path.join(__dirname, "functionsEmulatorRuntime")];
+    const args = [];
 
     if (this.args.debugPort) {
       if (process.env.FIREPIT_VERSION && process.execPath === backend.nodeBinary) {
@@ -1275,17 +1275,24 @@ export class FunctionsEmulator implements EmulatorInstance {
     const secretEnvs = await this.resolveSecretEnvs(backend, trigger);
     const socketPath = getTemporarySocketPath();
 
-    const childProcess = spawn(backend.nodeBinary!, args, {
-      cwd: backend.functionsDir,
-      env: {
-        node: backend.nodeBinary,
+    const runtimeDelegateContext: runtimes.DelegateContext = {
+      projectId: this.args.projectId,
+      projectDir: this.args.projectDir,
+      sourceDir: backend.functionsDir,
+    };
+    if (backend.nodeMajorVersion) {
+      runtimeDelegateContext.runtime = `nodejs${backend.nodeMajorVersion}`;
+    }
+    const runtimeDelegate = await runtimes.getRuntimeDelegate(runtimeDelegateContext);
+    const childProcess = runtimeDelegate.serve(
+      socketPath,
+      {
         ...process.env,
         ...runtimeEnv,
         ...secretEnvs,
-        PORT: socketPath,
       },
-      stdio: ["pipe", "pipe", "pipe", "ipc"],
-    });
+      args
+    );
 
     const runtime: FunctionsRuntimeInstance = {
       process: childProcess,
