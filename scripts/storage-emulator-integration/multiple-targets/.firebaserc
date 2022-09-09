@@ -1,0 +1,16 @@
+{
+  "projects": {},
+  "targets": {
+    "danielylee-cf3v2": {
+      "storage": {
+        "allowNone": [
+          "danielylee-cf3v2.appspot.com"
+        ],
+        "allowAll": [
+          "danielylee-cf3v2-2.appspot.com"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}
