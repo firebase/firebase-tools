@@ -105,7 +105,6 @@
     "exegesis-express": "^4.0.0",
     "express": "^4.16.4",
     "filesize": "^6.1.0",
-    "firebase-frameworks": "0.5.0-canary.a1eb7c9",
     "form-data": "^4.0.0",
     "fs-extra": "^10.1.0",
     "glob": "^7.1.2",

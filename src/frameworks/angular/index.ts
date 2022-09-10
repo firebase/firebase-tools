@@ -2,11 +2,13 @@ import type { Target } from '@angular-devkit/architect';
 import { join } from 'path';
 import { parse } from 'jsonc-parser';
 import { existsSync } from 'fs';
+import { execSync, spawn } from 'child_process';
+import { copy } from 'fs-extra';
+import { mkdir } from 'fs/promises';
 
-import { BuildResult, Discovery, FrameworkType, relativeRequire, SupportLevel } from '..';
-import { execSync } from 'child_process';
+import { BuildResult, Discovery, findDependency, FrameworkType, relativeRequire, SupportLevel } from '..';
 import { prompt } from '../../prompt';
-import { IncomingMessage, ServerResponse } from 'http';
+import { proxyRequestHandler } from '../../hosting/proxy';
 
 class MyError extends Error {
     constructor(reason: string) {
@@ -18,6 +20,8 @@ class MyError extends Error {
 export const name = 'Angular';
 export const support = SupportLevel.Expirimental;
 export const type = FrameworkType.Framework;
+
+const CLI_COMMAND = process.platform === 'win32' ? 'ng.cmd' : 'ng';
 
 export const discover = async (dir: string): Promise<Discovery> => {
     if (!existsSync(join(dir, 'angular.json'))) return undefined;
@@ -63,7 +67,7 @@ export const build = async (dir: string): Promise<BuildResult> => {
         // TODO there is a bug here. Spawn for now.
         // await scheduleTarget(prerenderTarget);
         execSync(
-            `${process.platform === 'win32' ? 'ng.cmd' : 'ng'} run ${targetStringFromTarget(prerenderTarget)}`,
+            `${CLI_COMMAND} run ${targetStringFromTarget(prerenderTarget)}`,
             { cwd: dir, stdio: 'inherit' }
         );
     } else {
@@ -77,30 +81,75 @@ export const build = async (dir: string): Promise<BuildResult> => {
 };
 
 export const getDevModeHandle = async (dir: string) => {
-    const { serverTarget, architect } = await getContext(dir);
-    if (!serverTarget) {
-        console.warn('Something something server target not found.');
+    
+    const { targetStringFromTarget } = relativeRequire(dir, '@angular-devkit/architect');
+
+    let resolvePort: (it:string) => void;
+    const portThatWasPromised = new Promise<string>((resolve, reject) => resolvePort = resolve);
+    const { serveTarget, architect } = await getContext(dir);
+    if (!serveTarget) {
+        console.warn('Something something serve target not found.');
         return undefined;
     }
-    const run = await architect.scheduleTarget(serverTarget);
-    return (req: IncomingMessage, res: ServerResponse, next: () => void) => {
-        // intercept 404 => return undefined;
-        // cloud function
-        res.write('hello world.');
-        res.end();
-        //next();
-    };
+
+    // Can't use scheduleTarget since that—like prerender—is failing on an ESM bug
+    // TODO handle error
+    const serve = spawn(CLI_COMMAND, ['run', targetStringFromTarget(serveTarget), '--host', 'localhost'], { cwd: dir });
+    serve.stdout.on("data", (data: any) => {
+        process.stdout.write(data);
+        const match = data.toString().match(/(http:\/\/localhost:\d+)/);
+        if (match) resolvePort(match[1]);
+    });
+
+    serve.stderr.on("data", (data: any) => {
+        process.stderr.write(data);
+    });
+    
+    const host = await portThatWasPromised;
+    return proxyRequestHandler(host, 'Angular Live Development Server');
 };
 
 export const ɵcodegenPublicDirectory = async (sourceDir: string, destDir: string) => {
-    // find the dist directory
+    const { architectHost, browserTarget } = await getContext(sourceDir);
+    if (!browserTarget) throw 'No browser target';
+    const browserTargetOptions = await architectHost.getOptionsForTarget(browserTarget);
+    if (typeof browserTargetOptions?.outputPath !== 'string') throw new MyError('browserTarget output path is not a string');
+    const browserOutputPath = browserTargetOptions.outputPath;
+    await mkdir(destDir, { recursive: true });
+    await copy(join(sourceDir, browserOutputPath), destDir);
 };
 
-export const ɵcodegenFunctionsDirectory = async () => {
+export const ɵcodegenFunctionsDirectory = async (sourceDir: string, destDir: string) => {
+    const { architectHost, host, serverTarget, browserTarget } = await getContext(sourceDir);
+    if (!serverTarget) throw 'No server target';
+    if (!browserTarget) throw 'No browser target';
+    const packageJson = JSON.parse(await host.readFile(join(sourceDir, 'package.json')));
+    const serverTargetOptions = await architectHost.getOptionsForTarget(serverTarget);
+    if (typeof serverTargetOptions?.outputPath !== 'string') throw new MyError('serverTarget output path is not a string');
+    const browserTargetOptions = await architectHost.getOptionsForTarget(browserTarget);
+    if (typeof browserTargetOptions?.outputPath !== 'string') throw new MyError('browserTarget output path is not a string');
+    const browserOutputPath = browserTargetOptions.outputPath;
+    const serverOutputPath = serverTargetOptions.outputPath;
+    await mkdir(join(destDir, serverOutputPath), { recursive: true });
+    await mkdir(join(destDir, browserOutputPath), { recursive: true });
+    await copy(join(sourceDir, serverOutputPath), join(destDir, serverOutputPath));
+    await copy(join(sourceDir, browserOutputPath), join(destDir, browserOutputPath));
+    const bootstrapScript = `exports.handle = require('./${serverOutputPath}/main.js').app();\n`;
+    const bundleDependencies = serverTargetOptions.bundleDependencies ?? true;
+    if (bundleDependencies) {
+        const dependencies: Record<string, string> = {};
+        const externalDependencies: string[] = serverTargetOptions.externalDependencies as any || [];
+        externalDependencies.forEach(externalDependency => {
+            const packageVersion = findDependency(externalDependency)?.version;
+            if (packageVersion) { dependencies[externalDependency] = packageVersion; }
+        });
+        packageJson.dependencies = dependencies;
+    }
+    return { bootstrapScript, packageJson };
 };
 
+// TODO memoize, dry up
 const getContext = async (dir:string) => {
-
     const { NodeJsAsyncHost } = relativeRequire(dir, '@angular-devkit/core/node');
     const { workspaces } = relativeRequire(dir, '@angular-devkit/core');
     const { WorkspaceNodeModulesArchitectHost } = relativeRequire(dir, '@angular-devkit/architect/node');
@@ -203,5 +252,5 @@ const getContext = async (dir:string) => {
         serveTarget = { project, target: 'serve', configuration };
     }
 
-    return { architect, browserTarget, prerenderTarget, serverTarget, serveTarget };
+    return { architect, architectHost, host, browserTarget, prerenderTarget, serverTarget, serveTarget };
 }
