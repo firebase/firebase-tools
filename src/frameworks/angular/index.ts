@@ -23,11 +23,12 @@ export const type = FrameworkType.Framework;
 
 const CLI_COMMAND = process.platform === 'win32' ? 'ng.cmd' : 'ng';
 
-export const discover = async (dir: string): Promise<Discovery> => {
+export const discover = async (dir: string): Promise<Discovery|undefined> => {
+    if (!existsSync(join(dir, 'package.json'))) return undefined;
     if (!existsSync(join(dir, 'angular.json'))) return undefined;
     const { serverTarget } = await getContext(dir);
     // TODO don't hardcode assets dir
-    return { headers: [], redirects: [], rewrites: [], mayWantBackend: !!serverTarget, publicDirectory: join(dir, 'src', 'assets') };
+    return { mayWantBackend: !!serverTarget, publicDirectory: join(dir, 'src', 'assets') };
 }
 
 export const init = async (setup: any) => {
@@ -77,7 +78,7 @@ export const build = async (dir: string): Promise<BuildResult> => {
 
     const wantsBackend = !!serverTarget;
 
-    return { wantsBackend, rewrites: [], redirects: [], headers: [] };
+    return { wantsBackend, headers: [], redirects: [], rewrites: [], };
 };
 
 export const getDevModeHandle = async (dir: string) => {

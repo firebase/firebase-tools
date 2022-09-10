@@ -308,7 +308,7 @@ export function requiresJava(emulator: Emulators): boolean {
 async function _runBinary(
   emulator: DownloadableEmulatorDetails,
   command: DownloadableEmulatorCommand,
-  extraEnv: NodeJS.ProcessEnv
+  extraEnv: Partial<NodeJS.ProcessEnv>
 ): Promise<void> {
   return new Promise((resolve) => {
     const logger = EmulatorLogger.forEmulator(emulator.name);
@@ -452,7 +452,7 @@ export async function downloadIfNecessary(targetName: DownloadableEmulators): Pr
 export async function start(
   targetName: DownloadableEmulators,
   args: any,
-  extraEnv: NodeJS.ProcessEnv = {}
+  extraEnv: Partial<NodeJS.ProcessEnv> = {}
 ): Promise<void> {
   const downloadDetails = DownloadDetails[targetName];
   const emulator = get(targetName);

@@ -28,29 +28,30 @@ export function relativeRequire(dir: string, mod: '@angular-devkit/core'): typeo
 export function relativeRequire(dir: string, mod: '@angular-devkit/core/node'): typeof import('@angular-devkit/core/node');
 export function relativeRequire(dir: string, mod: '@angular-devkit/architect'): typeof import('@angular-devkit/architect');
 export function relativeRequire(dir: string, mod: '@angular-devkit/architect/node'): typeof import('@angular-devkit/architect/node');
+export function relativeRequire(dir: string, mod: 'next/dist/build'): typeof import('next/dist/build');
+export function relativeRequire(dir: string, mod: 'next/dist/server/config'): typeof import('next/dist/server/config');
+export function relativeRequire(dir: string, mod: 'next/constants'): typeof import('next/constants');
+export function relativeRequire(dir: string, mod: 'next'): typeof import('next');
 export function relativeRequire(dir: string, mod: string) {
     const path = require.resolve(mod, { paths: [ dir ]});
     if (!path) throw `Can't find ${mod}.`;
     return require(path);
 }
 
-type CommonDiscovery = {
+export type Discovery = {
+  mayWantBackend: boolean,
+  publicDirectory: string,
+};
+
+export type BuildResult = {
   rewrites: any[],
   redirects: any[],
   headers: any[],
+  wantsBackend: boolean,
 };
 
-export type Discovery = ({
-  mayWantBackend: boolean,
-  publicDirectory: string,
-} & CommonDiscovery) | undefined;
-
-export type BuildResult = {
-  wantsBackend: boolean,
-} & CommonDiscovery;
-
 export interface Framework {
-  discover: (dir:string) => Promise<Discovery>,
+  discover: (dir:string) => Promise<Discovery|undefined>,
   type: FrameworkType,
   name: string,
   build: (dir:string) => Promise<BuildResult>,
@@ -67,8 +68,7 @@ export const WebFrameworks: Record<string, Framework> = Object.fromEntries(
     filter(path => statSync(join(__dirname, path)).isDirectory()).
     map(path => [path, require(join(__dirname, path))]).
     // TODO guard this better
-    filter(([, obj]) => obj.name && obj.discover && obj.build && obj.type != undefined && obj.support).
-    sort(([[,a], [,b]]) => a.type - b.type)
+    filter(([, obj]) => obj.name && obj.discover && obj.build && obj.type != undefined && obj.support)
 );
 
 // These serve as the order of operations for discovery
@@ -170,7 +170,6 @@ export const prepareFrameworks = async (targetNames: string[], context: any, opt
         if (defaultCredPath) process.env.GOOGLE_APPLICATION_CREDENTIALS = defaultCredPath;
       }
     };
-    console.log(emulators);
     emulators.forEach((info) => {
       if (info.name === Emulators.FIRESTORE) process.env[Constants.FIRESTORE_EMULATOR_HOST] = formatHost(info);
       if (info.name === Emulators.AUTH) process.env[Constants.FIREBASE_AUTH_EMULATOR_HOST] = formatHost(info);
@@ -205,7 +204,7 @@ You can link a Web app to a Hosting site here https://console.firebase.google.co
     const results = await discover(getProjectPath());
     if (!results) throw 'Epic fail.';
     let usingCloudFunctions = false;
-    const { framework, rewrites, redirects, headers, mayWantBackend, publicDirectory } = results;
+    const { framework, mayWantBackend, publicDirectory } = results;
     const { build, ɵcodegenPublicDirectory, ɵcodegenFunctionsDirectory, getDevModeHandle } = WebFrameworks[framework];
     // TODO do this better
     const isDevMode = context._name === 'serve' || context._name === 'emulators:start';
@@ -216,7 +215,7 @@ You can link a Web app to a Hosting site here https://console.firebase.google.co
       // TODO add a noop firebase aware function for Auth+SSR dev server
       // if (mayWantBackend && firebaseProjectConfig) codegenNullFunctionsDirectory();
     } else {
-      const { wantsBackend } = await build(getProjectPath());
+      const { wantsBackend, rewrites, redirects, headers } = await build(getProjectPath());
       await ɵcodegenPublicDirectory(getProjectPath(), hostingDist);
       config.public = hostingDist;
       if (wantsBackend && ɵcodegenFunctionsDirectory) {
@@ -276,59 +275,58 @@ exports.ssr = onRequest((req, res) => server.then(({handle}) => handle(req, res)
             // TODO(jamesdaniels) add persistent disk if needed
             requiredAPIs: []
         }, null, 2));
-      }
-    }
-    if (usingCloudFunctions) {
-      if (!isDevMode && context.hostingChannel) {
-        // TODO move to prompts
-        const message =
-          "Cannot preview changes to the backend, you will only see changes to the static content on this channel.";
-        if (!options.nonInteractive) {
-          const continueDeploy = await promptOnce({
-            type: "confirm",
-            default: true,
-            message: `${message} Would you like to continue with the deploy?`,
-          });
-          if (!continueDeploy) exit(1);
-        } else {
-          console.error(message);
-        }
-      } else {
-        const functionConfig = {
-          source: functionsDist,
-          codebase: `firebase-frameworks-${site}`,
-        };
-        if (targetNames.includes("functions")) {
-          const combinedFunctionsConfig = [functionConfig].concat(
-            options.config.get("functions") || []
-          );
-          options.config.set("functions", combinedFunctionsConfig);
-        } else {
-          targetNames.unshift("functions");
-          options.config.set("functions", functionConfig);
-        }
-      }
 
-      config.rewrites = [
-        ...(config.rewrites || []),
-        ...rewrites,
-        {
-          source: "**",
-          function: functionName,
-        },
-      ];
-    } else {
-      config.rewrites = [
-        ...(config.rewrites || []),
-        ...rewrites,
-        {
-          source: "**",
-          destination: "/index.html",
-        },
-      ];
+        if (!isDevMode && context.hostingChannel) {
+          // TODO move to prompts
+          const message =
+            "Cannot preview changes to the backend, you will only see changes to the static content on this channel.";
+          if (!options.nonInteractive) {
+            const continueDeploy = await promptOnce({
+              type: "confirm",
+              default: true,
+              message: `${message} Would you like to continue with the deploy?`,
+            });
+            if (!continueDeploy) exit(1);
+          } else {
+            console.error(message);
+          }
+        } else {
+          const functionConfig = {
+            source: functionsDist,
+            codebase: `firebase-frameworks-${site}`,
+          };
+          if (targetNames.includes("functions")) {
+            const combinedFunctionsConfig = [functionConfig].concat(
+              options.config.get("functions") || []
+            );
+            options.config.set("functions", combinedFunctionsConfig);
+          } else {
+            targetNames.unshift("functions");
+            options.config.set("functions", functionConfig);
+          }
+        }
+  
+        config.rewrites = [
+          ...(config.rewrites || []),
+          ...rewrites,
+          {
+            source: "**",
+            function: functionName,
+          },
+        ];
+      } else {
+        config.rewrites = [
+          ...(config.rewrites || []),
+          ...rewrites,
+          {
+            source: "**",
+            destination: "/index.html",
+          },
+        ];
+      }
+      config.redirects = [...(config.redirects || []), ...redirects];
+      config.headers = [...(config.headers || []), ...headers];
     }
-    config.redirects = [...(config.redirects || []), ...redirects];
-    config.headers = [...(config.headers || []), ...headers];
     config.cleanUrls ??= true;
   }
 };

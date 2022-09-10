@@ -86,6 +86,7 @@ export class Delegate {
         HOME: process.env.HOME,
         PATH: process.env.PATH,
         GOPATH: process.env.GOPATH,
+        NODE_ENV: process.env.NODE_ENV,
       },
       stdio: [/* stdin=*/ "ignore", /* stdout=*/ "pipe", /* stderr=*/ "pipe"],
     });
@@ -118,6 +119,7 @@ export class Delegate {
         HOME: process.env.HOME,
         PATH: process.env.PATH,
         GOPATH: process.env.GOPATH,
+        NODE_ENV: process.env.NODE_ENV,
       },
       cwd: this.sourceDir,
       stdio: [/* stdin=*/ "ignore", /* stdout=*/ "pipe", /* stderr=*/ "inherit"],

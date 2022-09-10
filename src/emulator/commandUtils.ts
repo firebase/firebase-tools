@@ -319,7 +319,7 @@ export function shutdownWhenKilled(options: any): Promise<void> {
 async function runScript(script: string, extraEnv: Record<string, string>): Promise<number> {
   utils.logBullet(`Running script: ${clc.bold(script)}`);
 
-  const env: NodeJS.ProcessEnv = { ...process.env, ...extraEnv };
+  const env: NodeJS.ProcessEnv = { ...process.env, ...extraEnv, NODE_ENV: process.env.NODE_ENV };
 
   const databaseInstance = EmulatorRegistry.get(Emulators.DATABASE);
   if (databaseInstance) {
