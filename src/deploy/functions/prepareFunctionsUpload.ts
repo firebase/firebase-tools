@@ -45,13 +45,12 @@ export async function getFunctionsConfig(projectId: string): Promise<Record<stri
 }
 
 async function pipeAsync(from: archiver.Archiver, to: fs.WriteStream) {
-  const promise = new Promise((resolve, reject) => {
+  from.pipe(to);
+  await from.finalize();
+  return new Promise((resolve, reject) => {
     to.on("finish", resolve);
     to.on("error", reject);
   });
-  from.pipe(to);
-  await from.finalize();
-  return promise;
 }
 
 async function packageSource(

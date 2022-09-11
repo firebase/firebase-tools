@@ -1,2 +1,2 @@
 - Add v2 Remote Config triggers to deploy (#4937).
-- Fix deployment failure for larger releases (#4969)
+- Fixes issue where large CF3 releases were failing to deploy (#4969)
