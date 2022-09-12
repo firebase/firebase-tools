@@ -42,7 +42,6 @@ describe("functions", () => {
   beforeEach(() => {
     promptOnceStub = sandbox.stub(prompt, "promptOnce").throws("Unexpected promptOnce call");
     promptStub = sandbox.stub(prompt, "prompt").throws("Unexpected prompt call");
-    askWriteProjectFileStub = sandbox.stub(emptyConfig, "askWriteProjectFile");
 
     emptyConfig = new Config("{}", {});
     options = {
@@ -80,6 +79,7 @@ describe("functions", () => {
         });
         // do not install dependencies
         promptStub.onSecondCall().resolves();
+        askWriteProjectFileStub = sandbox.stub(emptyConfig, "askWriteProjectFile");
         askWriteProjectFileStub.resolves();
 
         await doSetup(setup, emptyConfig, options);
@@ -108,6 +108,7 @@ describe("functions", () => {
           return Promise.resolve();
         });
         promptStub.onSecondCall().resolves();
+        askWriteProjectFileStub = sandbox.stub(emptyConfig, "askWriteProjectFile");
         askWriteProjectFileStub.resolves();
 
         await doSetup(setup, emptyConfig, options);
@@ -132,7 +133,7 @@ describe("functions", () => {
       });
     });
     describe("with an existing functions codebase in Firebase repository", () => {
-      it("initializes a new codebase", async () => {
+      it.only("initializes a new codebase", async () => {
         const { setup, config } = createExistingTestSetupAndConfig();
         promptOnceStub.onCall(0).resolves("new");
         promptOnceStub.onCall(1).resolves("testsource2");
@@ -143,6 +144,7 @@ describe("functions", () => {
           return Promise.resolve();
         });
         promptStub.onSecondCall().resolves();
+        askWriteProjectFileStub = sandbox.stub(config, "askWriteProjectFile");
         askWriteProjectFileStub.resolves();
 
         await doSetup(setup, config, options);
@@ -169,16 +171,16 @@ describe("functions", () => {
         ]);
       });
 
-      it("reinitializes an existing codebase", async () => {
+      it.only("reinitializes an existing codebase", async () => {
         const { setup, config } = createExistingTestSetupAndConfig();
-        promptOnceStub.onCall(0).resolves("reinit");
-        promptOnceStub.onCall(1).resolves(TEST_CODEBASE);
-        promptOnceStub.onCall(2).resolves("javascript");
+        promptOnceStub.onFirstCall().resolves("reinit");
+        promptOnceStub.onSecondCall().resolves("javascript");
         promptStub.onFirstCall().callsFake((functions: any): Promise<void> => {
           functions.lint = true;
           return Promise.resolve();
         });
         promptStub.onSecondCall().resolves(false);
+        askWriteProjectFileStub = sandbox.stub(config, "askWriteProjectFile");
         askWriteProjectFileStub.resolves();
 
         await doSetup(setup, config, options);
