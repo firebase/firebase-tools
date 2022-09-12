@@ -133,7 +133,7 @@ describe("functions", () => {
       });
     });
     describe("with an existing functions codebase in Firebase repository", () => {
-      it.only("initializes a new codebase", async () => {
+      it("initializes a new codebase", async () => {
         const { setup, config } = createExistingTestSetupAndConfig();
         promptOnceStub.onCall(0).resolves("new");
         promptOnceStub.onCall(1).resolves("testsource2");
@@ -171,7 +171,7 @@ describe("functions", () => {
         ]);
       });
 
-      it.only("reinitializes an existing codebase", async () => {
+      it("reinitializes an existing codebase", async () => {
         const { setup, config } = createExistingTestSetupAndConfig();
         promptOnceStub.onFirstCall().resolves("reinit");
         promptOnceStub.onSecondCall().resolves("javascript");
