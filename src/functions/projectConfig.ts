@@ -92,5 +92,5 @@ export function suggestCodebaseName(name: string): string {
   return name
     .substring(0, 63)
     .toLowerCase()
-    .replaceAll(/[^a-z0-9_-]/g, "_");
+    .replace(/[^a-z0-9_-]/g, "_");
 }
