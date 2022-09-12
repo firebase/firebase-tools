@@ -1,2 +1,3 @@
 - Add v2 Remote Config triggers to deploy (#4937).
+- Fixes issue where large CF3 releases were failing to deploy (#4969)
 - Allow Firestore emulator UI websocket port to be configurable (#4925).
