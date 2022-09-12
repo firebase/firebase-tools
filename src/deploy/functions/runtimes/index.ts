@@ -12,7 +12,7 @@ const RUNTIMES: string[] = ["nodejs10", "nodejs12", "nodejs14", "nodejs16"];
 // Experimental runtimes are part of the Runtime type, but are in a
 // different list to help guard against some day accidentally iterating over
 // and printing a hidden runtime to the user.
-const EXPERIMENTAL_RUNTIMES = ["go113", "python39"];
+const EXPERIMENTAL_RUNTIMES = ["go113", "python310"];
 export type Runtime = typeof RUNTIMES[number] | typeof EXPERIMENTAL_RUNTIMES[number];
 
 /** Runtimes that can be found in existing backends but not used for new functions. */
@@ -38,6 +38,7 @@ const MESSAGE_FRIENDLY_RUNTIMES: Record<Runtime | DeprecatedRuntime, string> = {
   nodejs16: "Node.js 16",
   go113: "Go 1.13",
   python39: "Python 3.9",
+  python310: "Python 3.10",
 };
 
 /**
