@@ -34,7 +34,7 @@ export function setup(setup: any, config: any): Promise<any> {
   ])
     .then(() => {
       const cbconfig = configForCodebase(setup.config.functions, setup.functions.codebase);
-      cbconfig.predeploy = []; // does order of predeploy commands matter?
+      cbconfig.predeploy = [];
       if (setup.functions.lint) {
         cbconfig.predeploy.push('npm --prefix "$RESOURCE_DIR" run lint');
         cbconfig.predeploy.push('npm --prefix "$RESOURCE_DIR" run build');

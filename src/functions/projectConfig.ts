@@ -34,7 +34,7 @@ function validateSingle(config: FunctionConfig): ValidatedSingle {
   }
   if (config.codebase.length > 63 || !/^[a-z0-9_-]+$/.test(config.codebase)) {
     throw new FirebaseError(
-      "Invalid codebase name. Codebase must be less than 63 characters and " +
+      "Invalid codebase name. Codebase must be less than or equal to 63 characters and " +
         "can contain only lowercase letters, numeric characters, underscores, and dashes."
     );
   }
@@ -83,4 +83,14 @@ export function configForCodebase(config: ValidatedConfig, codebase: string): Va
     throw new FirebaseError(`No functions config found for codebase ${codebase}`);
   }
   return codebaseCfg;
+}
+
+/**
+ * Given an initial naming attempt, suggest a similar but valid codebase name
+ */
+export function suggestCodebaseName(name: string): string {
+  return name
+    .substring(0, 63)
+    .toLowerCase()
+    .replaceAll(/[^a-z0-9_-]/g, "_");
 }
