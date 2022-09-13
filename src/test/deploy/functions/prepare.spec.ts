@@ -206,10 +206,10 @@ describe("prepare", () => {
       prepare.updateEndpointTargetedStatus(backends, filters);
 
       // Expect
-      expect(endpoint1InBackend1.targetedByOnly).to.equal(true);
-      expect(endpoint2InBackend1.targetedByOnly).to.equal(true);
-      expect(endpoint1InBackend2.targetedByOnly).to.equal(false);
-      expect(endpoint2InBackend2.targetedByOnly).to.equal(false);
+      expect(endpoint1InBackend1.targetedByOnly).to.be.true;
+      expect(endpoint2InBackend1.targetedByOnly).to.be.true;
+      expect(endpoint1InBackend2.targetedByOnly).to.be.false;
+      expect(endpoint2InBackend2.targetedByOnly).to.be.false;
     });
 
     it("should mark targeted codebases + ids", () => {
@@ -219,10 +219,10 @@ describe("prepare", () => {
       prepare.updateEndpointTargetedStatus(backends, filters);
 
       // Expect
-      expect(endpoint1InBackend1.targetedByOnly).to.equal(true);
-      expect(endpoint2InBackend1.targetedByOnly).to.equal(false);
-      expect(endpoint1InBackend2.targetedByOnly).to.equal(false);
-      expect(endpoint2InBackend2.targetedByOnly).to.equal(false);
+      expect(endpoint1InBackend1.targetedByOnly).to.be.true;
+      expect(endpoint2InBackend1.targetedByOnly).to.be.false;
+      expect(endpoint1InBackend2.targetedByOnly).to.be.false;
+      expect(endpoint2InBackend2.targetedByOnly).to.be.false;
     });
 
     it("should mark targeted ids", () => {
@@ -232,10 +232,10 @@ describe("prepare", () => {
       prepare.updateEndpointTargetedStatus(backends, filters);
 
       // Expect
-      expect(endpoint1InBackend1.targetedByOnly).to.equal(true);
-      expect(endpoint2InBackend1.targetedByOnly).to.equal(false);
-      expect(endpoint1InBackend1.targetedByOnly).to.equal(true);
-      expect(endpoint2InBackend2.targetedByOnly).to.equal(false);
+      expect(endpoint1InBackend1.targetedByOnly).to.be.true;
+      expect(endpoint2InBackend1.targetedByOnly).to.be.false;
+      expect(endpoint1InBackend1.targetedByOnly).to.be.true;
+      expect(endpoint2InBackend2.targetedByOnly).to.be.false;
     });
   });
 });

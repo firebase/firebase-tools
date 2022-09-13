@@ -15,8 +15,6 @@ import {
   endpointMatchesAnyFilter,
   getEndpointFilters,
   groupEndpointsByCodebase,
-  isCodebaseFiltered,
-  isEndpointFiltered,
   targetCodebases,
 } from "./functionsDeployHelper";
 import { logLabeledBullet } from "../../utils";
@@ -350,16 +348,9 @@ export function updateEndpointTargetedStatus(
   wantBackends: Record<string, Backend>,
   endpointFilters: EndpointFilter[]
 ): void {
-  for (const [codebase, wantBackend] of Object.entries(wantBackends)) {
-    // If an entire codebase is filtered, then iterate each endpoint.
-    if (isCodebaseFiltered(codebase, endpointFilters)) {
-      for (const endpoint of allEndpoints(wantBackend)) {
-        endpoint.targetedByOnly = true;
-      }
-      continue;
-    }
+  for (const wantBackend of Object.values(wantBackends)) {
     for (const endpoint of allEndpoints(wantBackend)) {
-      endpoint.targetedByOnly = isEndpointFiltered(endpoint, endpointFilters);
+      endpoint.targetedByOnly = endpointMatchesAnyFilter(endpoint, endpointFilters);
     }
   }
 }
