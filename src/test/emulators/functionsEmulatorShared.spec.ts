@@ -31,12 +31,12 @@ describe("FunctionsEmulatorShared", () => {
       expect(functionsEmulatorShared.getFunctionService(def)).to.be.eql("pubsub.googleapis.com");
     });
 
-    it("should return unknown if trigger definition is not event-based", () => {
+    it("should infer https service from http trigger", () => {
       const def = {
         ...baseDef,
         httpsTrigger: {},
       };
-      expect(functionsEmulatorShared.getFunctionService(def)).to.be.eql("unknown");
+      expect(functionsEmulatorShared.getFunctionService(def)).to.be.eql("https");
     });
 
     it("should infer pubsub service based on eventType", () => {

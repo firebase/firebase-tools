@@ -408,4 +408,10 @@ describe("function triggers", () => {
       expect(body).to.deep.equal({ result: "foobar" });
     });
   });
+
+  it("should enforce timeout", async function (this) {
+    this.timeout(TEST_SETUP_TIMEOUT);
+    const v2response = await test.invokeHttpFunction("onreqv2timeout");
+    expect(v2response.status).to.equal(500);
+  });
 });

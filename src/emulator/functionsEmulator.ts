@@ -56,7 +56,6 @@ import {
   constructDefaultAdminSdkConfig,
   getProjectAdminSdkConfigOrCached,
 } from "./adminSdkConfig";
-import { EventUtils } from "./events/types";
 import { functionIdsAreValid } from "../deploy/functions/validate";
 import { Extension, ExtensionSpec, ExtensionVersion } from "../extensions/types";
 import { accessSecretVersion } from "../gcp/secretManager";
@@ -270,77 +269,47 @@ export class FunctionsEmulator implements EmulatorInstance {
     // The URL for the listBackends endpoint, which is used by the Emulator UI.
     const listBackendsRoute = `/backends`;
 
-    const backgroundHandler: express.RequestHandler = (req, res) => {
-      const triggerId = req.params.trigger_name;
-      const projectId = req.params.project_id;
-
-      const reqBody = (req as RequestWithRawBody).rawBody;
-      let proto = JSON.parse(reqBody.toString());
-
-      if (req.headers["content-type"]?.includes("cloudevent")) {
-        // Convert request payload to CloudEvent.
-        // TODO(taeold): Converting request payload to CloudEvent object should be done by the functions runtime.
-        // However, the Functions Emulator communicates with the runtime via socket not HTTP, and CE metadata
-        // embedded in HTTP header may get lost. Once the Functions Emulator is refactored to communicate to the
-        // runtime instances via HTTP, move this logic there.
-        if (EventUtils.isBinaryCloudEvent(req)) {
-          proto = EventUtils.extractBinaryCloudEventContext(req);
-          proto.data = req.body;
-        }
-      }
-
-      this.workQueue.submit(() => {
-        this.logger.log("DEBUG", `Accepted request ${req.method} ${req.url} --> ${triggerId}`);
-
-        return this.handleBackgroundTrigger(projectId, triggerId, proto)
-          .then((x) => res.json(x))
-          .catch((errorBundle: { code: number; body?: string }) => {
-            if (errorBundle.body) {
-              res.status(errorBundle.code).send(errorBundle.body);
-            } else {
-              res.sendStatus(errorBundle.code);
-            }
-          });
-      });
-    };
-
     const httpsHandler: express.RequestHandler = (req, res) => {
       this.workQueue.submit(() => {
         return this.handleHttpsTrigger(req, res);
       });
     };
 
-    const multicastHandler: express.RequestHandler = (req, res) => {
+    const multicastHandler: express.RequestHandler = (req: express.Request, res) => {
       const projectId = req.params.project_id;
-      const reqBody = (req as RequestWithRawBody).rawBody;
-      let proto = JSON.parse(reqBody.toString());
+      const rawBody = (req as RequestWithRawBody).rawBody;
+      const event = JSON.parse(rawBody.toString());
       let triggerKey: string;
       if (req.headers["content-type"]?.includes("cloudevent")) {
-        triggerKey = `${this.args.projectId}:${proto.type}`;
-
-        if (EventUtils.isBinaryCloudEvent(req)) {
-          proto = EventUtils.extractBinaryCloudEventContext(req);
-          proto.data = req.body;
-        }
+        triggerKey = `${this.args.projectId}:${event.type}`;
       } else {
-        triggerKey = `${this.args.projectId}:${proto.eventType}`;
+        triggerKey = `${this.args.projectId}:${event.eventType}`;
       }
-      if (proto.data.bucket) {
-        triggerKey += `:${proto.data.bucket}`;
+      if (event.data.bucket) {
+        triggerKey += `:${event.data.bucket}`;
       }
       const triggers = this.multicastTriggers[triggerKey] || [];
 
+      const { host, port } = this.getInfo();
       triggers.forEach((triggerId) => {
         this.workQueue.submit(() => {
-          this.logger.log(
-            "DEBUG",
-            `Accepted multicast request ${req.method} ${req.url} --> ${triggerId}`
-          );
-
-          return this.handleBackgroundTrigger(projectId, triggerId, proto);
+          return new Promise((resolve, reject) => {
+            const trigReq = http.request(
+              {
+                host,
+                port,
+                method: req.method,
+                path: `/functions/projects/${projectId}/triggers/${triggerId}`,
+                headers: req.headers,
+              },
+              resolve
+            );
+            trigReq.on("error", reject);
+            trigReq.write(rawBody);
+            trigReq.end();
+          });
         });
       });
-
       res.json({ status: "multicast_acknowledged" });
     };
 
@@ -352,7 +321,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     // need to be registered first otherwise the HTTP functions consume
     // all events.
     hub.get(listBackendsRoute, cors({ origin: true }), listBackendsHandler); // This route needs CORS so the Emulator UI can call it.
-    hub.post(backgroundFunctionRoute, dataMiddleware, backgroundHandler);
+    hub.post(backgroundFunctionRoute, dataMiddleware, httpsHandler);
     hub.post(multicastFunctionRoute, dataMiddleware, multicastHandler);
     hub.all(httpsFunctionRoutes, dataMiddleware, httpsHandler);
     hub.all("*", dataMiddleware, (req, res) => {
@@ -360,6 +329,27 @@ export class FunctionsEmulator implements EmulatorInstance {
       res.sendStatus(404);
     });
     return hub;
+  }
+
+  async sendRequest(worker: RuntimeWorker, body?: any) {
+    const reqBody = JSON.stringify(body);
+    const headers = {
+      "Content-Type": "application/json",
+      "Content-Length": `${reqBody.length}`,
+    };
+    return new Promise((resolve, reject) => {
+      const req = http.request(
+        {
+          path: `/`,
+          socketPath: worker.runtime.socketPath,
+          headers: headers,
+        },
+        resolve
+      );
+      req.on("error", reject);
+      req.write(reqBody);
+      req.end();
+    });
   }
 
   async invokeTrigger(
@@ -596,8 +586,8 @@ export class FunctionsEmulator implements EmulatorInstance {
       let added = false;
       let url: string | undefined = undefined;
 
+      const { host, port } = this.getInfo();
       if (definition.httpsTrigger) {
-        const { host, port } = this.getInfo();
         added = true;
         url = FunctionsEmulator.getHttpFunctionUrl(
           host,
@@ -1365,7 +1355,8 @@ export class FunctionsEmulator implements EmulatorInstance {
       ref: backend.extensionVersion?.ref,
     };
     const pool = this.workerPools[backend.codebase];
-    pool.addWorker(trigger?.id, runtime, extensionLogInfo);
+    const worker = pool.addWorker(trigger?.id, runtime, extensionLogInfo);
+    await worker.waitForSocketReady();
     return;
   }
 
@@ -1391,60 +1382,6 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
     await this.performPostLoadOperations();
     return;
-  }
-
-  private async handleBackgroundTrigger(projectId: string, triggerKey: string, proto: any) {
-    // If background triggers are disabled, exit early
-    const record = this.getTriggerRecordByKey(triggerKey);
-    if (record && !record.enabled) {
-      return Promise.reject({ code: 204, body: "Background triggers are curently disabled." });
-    }
-    const trigger = record.def;
-    const service = getFunctionService(trigger);
-    const worker = await this.invokeTrigger(trigger, proto);
-
-    return new Promise((resolve, reject) => {
-      if (projectId !== this.args.projectId) {
-        // RTDB considers each namespace a "project", but for any other trigger we want to reject
-        // incoming triggers to a different project.
-        if (service !== Constants.SERVICE_REALTIME_DATABASE) {
-          logger.debug(
-            `Received functions trigger for service "${service}" for unknown project "${projectId}".`
-          );
-          reject({ code: 404 });
-          return;
-        }
-
-        // The eventTrigger 'resource' property will look something like this:
-        // "projects/_/instances/<project>/refs/foo/bar"
-        // If the trigger's resource does not match the invoked projet ID, we should 404.
-        if (!trigger.eventTrigger!.resource.startsWith(`projects/_/instances/${projectId}`)) {
-          logger.debug(
-            `Received functions trigger for function "${
-              trigger.name
-            }" of project "${projectId}" that did not match definition: ${JSON.stringify(trigger)}.`
-          );
-          reject({ code: 404 });
-          return;
-        }
-      }
-
-      worker.onLogs((el: EmulatorLog) => {
-        if (el.level === "FATAL") {
-          reject({ code: 500, body: el.text });
-        }
-      });
-
-      // For analytics, track the invoked service
-      void track(EVENT_INVOKE, getFunctionService(trigger));
-      void trackEmulator(EVENT_INVOKE_GA4, {
-        function_service: getFunctionService(trigger),
-      });
-
-      worker.waitForDone().then(() => {
-        resolve({ status: "acknowledged" });
-      });
-    });
   }
 
   /**
@@ -1500,9 +1437,10 @@ export class FunctionsEmulator implements EmulatorInstance {
 
   private async handleHttpsTrigger(req: express.Request, res: express.Response) {
     const method = req.method;
-    const region = req.params.region;
-    const triggerName = req.params.trigger_name;
-    const triggerId = `${region}-${triggerName}`;
+    let triggerId: string = req.params.trigger_name;
+    if (req.params.region) {
+      triggerId = `${req.params.region}-${triggerId}`;
+    }
 
     if (!this.triggers[triggerId]) {
       res
@@ -1544,18 +1482,16 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
     const worker = await this.invokeTrigger(trigger);
 
+    // For analytics, track the invoked service
+    void track(EVENT_INVOKE, getFunctionService(trigger));
+    void trackEmulator(EVENT_INVOKE_GA4, {
+      function_service: getFunctionService(trigger),
+    });
+
     worker.onLogs((el: EmulatorLog) => {
       if (el.level === "FATAL") {
         res.status(500).send(el.text);
       }
-    });
-
-    // Wait for the worker to set up its internal HTTP server
-    await worker.waitForSocketReady();
-
-    void track(EVENT_INVOKE, "https");
-    void trackEmulator(EVENT_INVOKE_GA4, {
-      function_service: "https",
     });
 
     this.logger.log("DEBUG", `[functions] Runtime ready! Sending request!`);
@@ -1564,7 +1500,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     // req.url = /:projectId/:region/:trigger_name/*
     const url = new URL(`${req.protocol}://${req.hostname}${req.url}`);
     const path = `${url.pathname}${url.search}`.replace(
-      new RegExp(`\/${this.args.projectId}\/[^\/]*\/${triggerName}\/?`),
+      new RegExp(`\/${this.args.projectId}\/[^\/]*\/${req.params.trigger_name}\/?`),
       "/"
     );
 
