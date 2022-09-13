@@ -95,11 +95,7 @@ export async function doSetup(setup: any, config: any): Promise<void> {
 
       const choices: { name: string, value: string}[] = [];
       for (const value in WebFrameworks) {
-        const { name, init, support, type } = WebFrameworks[value];
-        // We should not be exposing community-supported frameworks to hosting init ATM
-        // let's also stick with Frameworks & Meta-frameworks ATM
-        if (support === SupportLevel.Community) continue;
-        if (type !== FrameworkType.Framework && type !== FrameworkType.MetaFramework) continue;
+        const { name, init } = WebFrameworks[value];
         if (init) choices.push({ name, value });
       }
 

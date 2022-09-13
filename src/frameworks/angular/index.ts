@@ -78,7 +78,7 @@ export const build = async (dir: string): Promise<BuildResult> => {
 
     const wantsBackend = !!serverTarget;
 
-    return { wantsBackend, headers: [], redirects: [], rewrites: [], };
+    return { wantsBackend };
 };
 
 export const getDevModeHandle = async (dir: string) => {

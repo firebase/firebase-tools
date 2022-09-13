@@ -32,6 +32,7 @@ export function relativeRequire(dir: string, mod: 'next/dist/build'): typeof imp
 export function relativeRequire(dir: string, mod: 'next/dist/server/config'): typeof import('next/dist/server/config');
 export function relativeRequire(dir: string, mod: 'next/constants'): typeof import('next/constants');
 export function relativeRequire(dir: string, mod: 'next'): typeof import('next');
+export function relativeRequire(dir: string, mod: 'vite'): typeof import('vite');
 export function relativeRequire(dir: string, mod: string) {
     const path = require.resolve(mod, { paths: [ dir ]});
     if (!path) throw `Can't find ${mod}.`;
@@ -44,11 +45,11 @@ export type Discovery = {
 };
 
 export type BuildResult = {
-  rewrites: any[],
-  redirects: any[],
-  headers: any[],
-  wantsBackend: boolean,
-};
+  rewrites?: any[],
+  redirects?: any[],
+  headers?: any[],
+  wantsBackend?: boolean,
+} | void;
 
 export interface Framework {
   discover: (dir:string) => Promise<Discovery|undefined>,
@@ -60,7 +61,7 @@ export interface Framework {
   // TODO types
   getDevModeHandle?: (dir:string) => Promise<(req: IncomingMessage, res: ServerResponse, next: () => void) => void>;
   ɵcodegenPublicDirectory: (dir:string, dest:string) => Promise<void>,
-  ɵcodegenFunctionsDirectory?: (dir:string, dest:string) => Promise<{ bootstrapScript: string, packageJson: any }>,
+  ɵcodegenFunctionsDirectory?: (dir:string, dest:string) => Promise<{ bootstrapScript?: string, packageJson: any }>,
 };
 
 export const WebFrameworks: Record<string, Framework> = Object.fromEntries(
@@ -211,11 +212,11 @@ You can link a Web app to a Hosting site here https://console.firebase.google.co
     const devModeHandle = isDevMode && getDevModeHandle && await getDevModeHandle(getProjectPath());
     if (devModeHandle) {
       config.public = publicDirectory;
-      options.frameworksDevModeHandle= devModeHandle;
+      options.frameworksDevModeHandle = devModeHandle;
       // TODO add a noop firebase aware function for Auth+SSR dev server
       // if (mayWantBackend && firebaseProjectConfig) codegenNullFunctionsDirectory();
     } else {
-      const { wantsBackend, rewrites, redirects, headers } = await build(getProjectPath());
+      const { wantsBackend=false, rewrites=[], redirects=[], headers=[] } = await build(getProjectPath()) || {};
       await ɵcodegenPublicDirectory(getProjectPath(), hostingDist);
       config.public = hostingDist;
       if (wantsBackend && ɵcodegenFunctionsDirectory) {

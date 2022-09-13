@@ -8,6 +8,7 @@ import { pathToFileURL } from 'url';
 import { existsSync } from 'fs';
 import { BuildResult, findDependency, FrameworkType, relativeRequire, SupportLevel } from "..";
 import { proxyRequestHandler } from "../../hosting/proxy";
+import { prompt } from "../../prompt";
 
 const CLI_COMMAND = process.platform === 'win32' ? 'next.cmd' : 'next';
 
@@ -22,22 +23,6 @@ export const discover = async (dir: string) => {
     return { mayWantBackend: true, publicDirectory: join(dir, 'public') };
 };
 
-export const getNextConfig = async (dir: string): Promise<NextConfig> => {
-    if (existsSync(join(dir, 'next.config.js'))) {
-        try {
-            const { default: loadConfig } = relativeRequire(dir, 'next/dist/server/config');
-            const { PHASE_PRODUCTION_BUILD } = relativeRequire(dir, 'next/constants');
-            return await loadConfig(PHASE_PRODUCTION_BUILD, dir, null);
-        } catch(e) { }
-        // Try just importing it, incase of Next 11
-        try {
-            return await import(pathToFileURL(join(dir, 'next.config.js')).toString());
-        } catch(e) { }
-        throw new Error('Unable to load next.config.js.');
-    } else {
-        return {};
-    }
-};
 
 export const build = async (dir: string): Promise<BuildResult> => {
 
@@ -98,8 +83,15 @@ export const build = async (dir: string): Promise<BuildResult> => {
 }
 
 export const init = async (setup: any) => {
-    execSync(`npx --yes create-next-app@latest ${setup.hosting.source}`, {stdio: 'inherit'});
-}
+    await prompt(setup.hosting, [{
+        name: "frameworksLanguage",
+        type: "list",
+        default: "typescript",
+        message: "What language would you like to use?",
+        choices: ["javascript", "typescript"],
+    }]);
+    execSync(`npx --yes create-next-app@latest ${setup.hosting.source} ${setup.hosting.frameworksLanguage === 'tyescript' ? '--ts': ''}`, {stdio: 'inherit'});
+};
 
 export const ɵcodegenPublicDirectory = async (sourceDir: string, destDir: string) => {
     // SEMVER these defaults are only needed for Next 11
@@ -154,7 +146,6 @@ export const ɵcodegenFunctionsDirectory = async (sourceDir: string, destDir: st
     return { packageJson };
 };
 
-
 export const getDevModeHandle = async (dir: string) => {
     let resolvePort: (it:string) => void;
     const portThatWasPromised = new Promise<string>((resolve, reject) => resolvePort = resolve);
@@ -169,6 +160,22 @@ export const getDevModeHandle = async (dir: string) => {
     return proxyRequestHandler(host, 'Next.js Development Server');
 };
 
+const getNextConfig = async (dir: string): Promise<NextConfig> => {
+    if (existsSync(join(dir, 'next.config.js'))) {
+        try {
+            const { default: loadConfig } = relativeRequire(dir, 'next/dist/server/config');
+            const { PHASE_PRODUCTION_BUILD } = relativeRequire(dir, 'next/constants');
+            return await loadConfig(PHASE_PRODUCTION_BUILD, dir, null);
+        } catch(e) { }
+        // Try just importing it, incase of Next 11
+        try {
+            return await import(pathToFileURL(join(dir, 'next.config.js')).toString());
+        } catch(e) { }
+        throw new Error('Unable to load next.config.js.');
+    } else {
+        return {};
+    }
+};
 
 type Manifest = {
     distDir?: string,
