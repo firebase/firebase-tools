@@ -60,6 +60,7 @@ export function calculateChangesets(
   const toSkipPredicate = (id: string): boolean =>
     !!(
       skipdeployingnoopfunctions &&
+      !want[id].targetedByOnly && // Don't skip the function if its --only targeted.
       have[id].hash &&
       want[id].hash &&
       want[id].hash === have[id].hash
