@@ -1,6 +1,11 @@
 #!/bin/bash
 
 function cleanup() {
+  if ! command -v lsof &> /dev/null
+  then
+      echo "lsof could not be found"
+      exit
+  fi
   # Kill all emulator processes
   for PORT in 4000 9000 9001 9002 8085 9099 9199
   do

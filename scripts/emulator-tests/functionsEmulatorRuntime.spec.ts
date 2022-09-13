@@ -84,16 +84,13 @@ async function startRuntime(
         runtime.sysMsg[m.type] = runtime.sysMsg[m.type] || [];
         runtime.sysMsg[m.type].push(`text: ${m.text};data: ${JSON.stringify(m.data)}`);
         if (m.type === "runtime-status" && m.text) {
-          if (m.text.includes("Finished") || m.text.includes("ready")) {
+          if (m.text.includes("Finished") || m.text.includes("Skipping")) {
             runtime.done = true;
           }
         }
       }
     } catch {
       // Carry on;
-    }
-    if (msg.includes(`Finished "${triggerName}" in`) || msg.includes("Listening to port")) {
-      runtime.done = true;
     }
   });
 
@@ -164,6 +161,7 @@ describe("FunctionsEmulator-Runtime", function () {
     runtime?.proc.kill(9);
     runtime = undefined;
   });
+
   describe("Stubs, Mocks, and Helpers", () => {
     describe("_InitializeNetworkFiltering", () => {
       it("should log outgoing unknown HTTP requests via 'http'", async () => {
