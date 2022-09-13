@@ -5,6 +5,7 @@ import * as build from "./build";
 import { assertExhaustive, partition } from "../../functional";
 import * as secretManager from "../../gcp/secretManager";
 import { listBuckets } from "../../gcp/storage";
+import { isCelExpression, resolveExpression } from "./cel";
 
 // A convinience type containing options for Prompt's select
 interface ListItem {
@@ -14,10 +15,6 @@ interface ListItem {
 }
 
 type CEL = build.Expression<string> | build.Expression<number> | build.Expression<boolean>;
-
-function isCEL(expr: string | number | boolean): expr is CEL {
-  return typeof expr === "string" && expr.includes("{{") && expr.includes("}}");
-}
 
 function dependenciesCEL(expr: CEL): string[] {
   const deps: string[] = [];
@@ -31,8 +28,9 @@ function dependenciesCEL(expr: CEL): string[] {
 
 /**
  * Resolves a numeric field in a Build to an an actual numeric value.
- * Fields can be literal or a {{ }} delimited CEL expression referencing param values.
- * Currently only the CEL identity {{ params.PARAMNAME }} is implemented.
+ * Fields can be literal or an expression written in a subset of the CEL specification.
+ * We support the identity CEL {{ params.FOO }} and equality/ternary operators like
+ * {{ params.FOO == "asdf"}} or {{ params.FOO == 24 ? params.BAR : 0 }}
  */
 export function resolveInt(
   from: number | build.Expression<number>,
@@ -41,82 +39,45 @@ export function resolveInt(
   if (typeof from === "number") {
     return from;
   }
-  const match = /{{ params\.(\w+) }}/.exec(from);
-  if (!match) {
-    throw new FirebaseError("CEL evaluation of expression '" + from + "' not yet supported");
-  }
-  const referencedParamValue = paramValues[match[1]];
-  if (!referencedParamValue.legalNumber) {
-    throw new FirebaseError(
-      "Referenced numeric parameter '" +
-        match +
-        "' resolved to non-number value " +
-        referencedParamValue
-    );
-  }
-  return referencedParamValue.asNumber();
+  return resolveExpression("number", from, paramValues) as number;
 }
 
 /**
  * Resolves a string field in a Build to an an actual string.
- * Fields can be literal or a {{ }} delimited CEL expression referencing param values.
- * Currently only the CEL identity {{ params.PARAMNAME }} is implemented.
+ * Fields can be literal or an expression written in a subset of the CEL specification.
+ * We support the identity CEL {{ params.FOO }} and ternary operators {{ params.FOO == 24 ? params.BAR : 0 }}.
+ * You can also use string-typed CEl expressions as part of an interpolation, region: "us-central-{{ params.ZONE }}"
  */
 export function resolveString(
   from: string | build.Expression<string>,
   paramValues: Record<string, ParamValue>
 ): string {
-  if (!isCEL(from)) {
-    return from;
-  }
   let output = from;
-  const paramCapture = /{{ params\.(\w+) }}/g;
-  let match: RegExpMatchArray | null;
-  while ((match = paramCapture.exec(from)) != null) {
-    const referencedParamValue = paramValues[match[1]];
-    if (!referencedParamValue.legalString) {
-      throw new FirebaseError(
-        "Referenced string parameter '" +
-          match[1] +
-          "' resolved to non-string value " +
-          referencedParamValue
-      );
-    }
-    output = output.replace(`{{ params.${match[1]} }}`, referencedParamValue.asString());
+  const celCapture = /{{ .+? }}/g;
+  const subExprs = from.match(celCapture);
+  if (!subExprs || subExprs.length === 0) {
+    return output;
   }
-  if (isCEL(output)) {
-    throw new FirebaseError(
-      "CEL evaluation of non-identity expression '" + from + "' not yet supported"
-    );
+  for (const expr of subExprs) {
+    const resolved = resolveExpression("string", expr, paramValues) as string;
+    output = output.replace(expr, resolved);
   }
   return output;
 }
 
 /**
  * Resolves a boolean field in a Build to an an actual boolean value.
- * Fields can be literal or a {{ }} delimited CEL expression referencing param values.
- * Currently only the CEL identity {{ params.PARAMNAME }} is implemented.
+ * Fields can be literal or an expression written in a subset of the CEL specification.
+ * We support the identity CEL {{ params.FOO }} and ternary operators {{ params.FOO == 24 ? params.BAR : true }}
  */
 export function resolveBoolean(
   from: boolean | build.Expression<boolean>,
   paramValues: Record<string, ParamValue>
 ): boolean {
-  if (typeof from === "string" && /{{ params\.(\w+) }}/.test(from)) {
-    const match = /{{ params\.(\w+) }}/.exec(from);
-    const referencedParamValue = paramValues[match![1]];
-    if (!referencedParamValue.legalBoolean) {
-      throw new FirebaseError(
-        "Referenced boolean parameter '" +
-          match +
-          "' resolved to non-boolean value " +
-          referencedParamValue
-      );
-    }
-    return referencedParamValue.asBoolean();
-  } else if (typeof from === "string") {
-    throw new FirebaseError("CEL evaluation of expression '" + from + "' not yet supported");
+  if (typeof from === "boolean") {
+    return from;
   }
-  return from;
+  return resolveExpression("boolean", from, paramValues) as boolean;
 }
 
 type ParamInput<T> = TextInput<T> | SelectInput<T> | ResourceInput;
@@ -143,21 +104,12 @@ type ParamBase<T extends string | number | boolean> = {
   input?: ParamInput<T>;
 };
 
-/**
- *
- */
 export function isTextInput<T>(input: ParamInput<T>): input is TextInput<T> {
   return {}.hasOwnProperty.call(input, "text");
 }
-/**
- *
- */
 export function isSelectInput<T>(input: ParamInput<T>): input is SelectInput<T> {
   return {}.hasOwnProperty.call(input, "select");
 }
-/**
- *
- */
 export function isResourceInput<T>(input: ParamInput<T>): input is ResourceInput {
   return {}.hasOwnProperty.call(input, "resource");
 }
@@ -366,7 +318,7 @@ export async function resolveParams(
   for (const param of needPrompt) {
     const promptable = param as Exclude<Param, SecretParam>;
     let paramDefault: RawParamValue | undefined = promptable.default;
-    if (paramDefault && isCEL(paramDefault)) {
+    if (paramDefault && isCelExpression(paramDefault)) {
       paramDefault = resolveDefaultCEL(param.type, paramDefault, paramValues);
     }
     if (paramDefault && !canSatisfyParam(param, paramDefault)) {

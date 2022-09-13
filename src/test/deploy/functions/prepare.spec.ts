@@ -159,4 +159,83 @@ describe("prepare", () => {
       expect(beforeSignIn.blockingTrigger.options?.refreshToken).to.be.false;
     });
   });
+
+  describe("updateEndpointTargetedStatus", () => {
+    let endpoint1InBackend1: backend.Endpoint;
+    let endpoint2InBackend1: backend.Endpoint;
+    let endpoint1InBackend2: backend.Endpoint;
+    let endpoint2InBackend2: backend.Endpoint;
+
+    let backends: Record<string, backend.Backend>;
+
+    beforeEach(() => {
+      endpoint1InBackend1 = {
+        ...ENDPOINT,
+        id: "endpoint1",
+        platform: "gcfv1",
+        codebase: "backend1",
+      };
+      endpoint2InBackend1 = {
+        ...ENDPOINT,
+        id: "endpoint2",
+        platform: "gcfv1",
+        codebase: "backend1",
+      };
+      endpoint1InBackend2 = {
+        ...ENDPOINT,
+        id: "endpoint1",
+        platform: "gcfv2",
+        codebase: "backend2",
+      };
+      endpoint2InBackend2 = {
+        ...ENDPOINT,
+        id: "endpoint2",
+        platform: "gcfv2",
+        codebase: "backend2",
+      };
+
+      const backend1 = backend.of(endpoint1InBackend1, endpoint2InBackend1);
+      const backend2 = backend.of(endpoint1InBackend2, endpoint2InBackend2);
+
+      backends = { backend1, backend2 };
+    });
+
+    it("should mark targeted codebases", () => {
+      const filters = [{ codebase: "backend1" }];
+      // Execute
+      prepare.updateEndpointTargetedStatus(backends, filters);
+
+      // Expect
+      expect(endpoint1InBackend1.targetedByOnly).to.be.true;
+      expect(endpoint2InBackend1.targetedByOnly).to.be.true;
+      expect(endpoint1InBackend2.targetedByOnly).to.be.false;
+      expect(endpoint2InBackend2.targetedByOnly).to.be.false;
+    });
+
+    it("should mark targeted codebases + ids", () => {
+      const filters = [{ codebase: "backend1", idChunks: ["endpoint1"] }];
+
+      // Execute
+      prepare.updateEndpointTargetedStatus(backends, filters);
+
+      // Expect
+      expect(endpoint1InBackend1.targetedByOnly).to.be.true;
+      expect(endpoint2InBackend1.targetedByOnly).to.be.false;
+      expect(endpoint1InBackend2.targetedByOnly).to.be.false;
+      expect(endpoint2InBackend2.targetedByOnly).to.be.false;
+    });
+
+    it("should mark targeted ids", () => {
+      const filters = [{ idChunks: ["endpoint1"] }];
+
+      // Execute
+      prepare.updateEndpointTargetedStatus(backends, filters);
+
+      // Expect
+      expect(endpoint1InBackend1.targetedByOnly).to.be.true;
+      expect(endpoint2InBackend1.targetedByOnly).to.be.false;
+      expect(endpoint1InBackend1.targetedByOnly).to.be.true;
+      expect(endpoint2InBackend2.targetedByOnly).to.be.false;
+    });
+  });
 });

@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import * as crypto from "crypto";
+import { BinaryLike } from "crypto";
 import { Backend, Endpoint } from "../backend";
 import { getSecretVersions } from "../../../functions/secrets";
 
@@ -8,29 +9,20 @@ import { getSecretVersions } from "../../../functions/secrets";
  * @param backend Backend of a set of functions
  */
 export function getEnvironmentVariablesHash(backend: Backend): string {
-  const hash = crypto.createHash("sha256");
-
   // Hash the contents of the dotenv variables
-  const hasEnvironmentVariables = !!Object.keys(backend.environmentVariables).length;
-  if (hasEnvironmentVariables) {
-    hash.update(JSON.stringify(backend.environmentVariables));
-  }
-
-  return hash.digest("hex");
+  return createHash(JSON.stringify(backend.environmentVariables || {}));
 }
 
 /**
- * Retrieves the unique hash given a pathToGeneratedPackageFile.
- * @param pathToGeneratedPackageFile Packaged file contents of functions
+ * Retrieves the unique hash given a pathToFile.
+ * @param pathToFile Packaged file contents of functions
  */
-export async function getSourceHash(pathToGeneratedPackageFile: string): Promise<string> {
-  const hash = crypto.createHash("sha256");
-
-  // Hash the contents of the source file
-  const data = await readFile(pathToGeneratedPackageFile);
-  hash.update(data);
-
-  return hash.digest("hex");
+export async function getSourceHash(pathToFile: string): Promise<string> {
+  // Hash the contents of a file, ignoring metadata.
+  // Excluding metadata in the hash is important because some
+  // files are dynamically generated on deploy.
+  const data = await readFile(pathToFile);
+  return createHash(data);
 }
 
 /**
@@ -38,16 +30,9 @@ export async function getSourceHash(pathToGeneratedPackageFile: string): Promise
  * @param endpoint Endpoint
  */
 export function getSecretsHash(endpoint: Endpoint): string {
-  const hash = crypto.createHash("sha256");
-
   // Hash the secret versions.
   const secretVersions = getSecretVersions(endpoint);
-  const hasSecretVersions = !!Object.keys(secretVersions).length;
-  if (hasSecretVersions) {
-    hash.update(JSON.stringify(secretVersions));
-  }
-
-  return hash.digest("hex");
+  return createHash(JSON.stringify(secretVersions || {}));
 }
 
 /**
@@ -62,10 +47,13 @@ export function getEndpointHash(
   envHash?: string,
   secretsHash?: string
 ): string {
-  const hash = crypto.createHash("sha256");
-
   const combined = [sourceHash, envHash, secretsHash].filter((hash) => !!hash).join("");
-  hash.update(combined);
+  return createHash(combined);
+}
 
+// Helper method to create hashes consistently
+function createHash(data: BinaryLike, algorithm = "sha1") {
+  const hash = crypto.createHash(algorithm);
+  hash.update(data);
   return hash.digest("hex");
 }

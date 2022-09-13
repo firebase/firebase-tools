@@ -21,18 +21,18 @@ describe("applyHash", () => {
   });
 
   describe("applyBackendHashToBackends", () => {
-    it("should applyHash to each endpoint of a given backend", async () => {
+    it("should applyHash to each endpoint of a given backend", () => {
       // Prepare
       const context = {
         projectId: "projectId",
         sources: {
           backend1: {
-            functionsSourceV1: "backend1_sourceV1",
-            functionsSourceV2: "backend1_sourceV2",
+            functionsSourceV1Hash: "backend1_sourceV1",
+            functionsSourceV2Hash: "backend1_sourceV2",
           },
           backend2: {
-            functionsSourceV1: "backend2_sourceV1",
-            functionsSourceV2: "backend2_sourceV2",
+            functionsSourceV1Hash: "backend2_sourceV1",
+            functionsSourceV2Hash: "backend2_sourceV2",
           },
         },
       };
@@ -73,9 +73,6 @@ describe("applyHash", () => {
 
       const backends = { backend1, backend2 };
 
-      const getSourceHash = sinon.stub(hash, "getSourceHash");
-      getSourceHash.callsFake((path: string) => Promise.resolve("source=" + path));
-
       const getEnvironmentVariablesHash = sinon.stub(hash, "getEnvironmentVariablesHash");
       getEnvironmentVariablesHash.callsFake(
         (backend: backend.Backend) => "env=" + backend.environmentVariables.test
@@ -91,25 +88,21 @@ describe("applyHash", () => {
       );
 
       // Execute
-      await applyBackendHashToBackends(backends, context);
+      applyBackendHashToBackends(backends, context);
 
       // Expect
       expect(getEndpointHash).to.have.been.calledWith(
-        "source=backend1_sourceV1",
+        "backend1_sourceV1",
         "env=backend1_env_hash",
         "secret=secret1"
       );
-      expect(endpoint1.hash).to.equal(
-        "source=backend1_sourceV1&env=backend1_env_hash&secret=secret1"
-      );
+      expect(endpoint1.hash).to.equal("backend1_sourceV1&env=backend1_env_hash&secret=secret1");
       expect(getEndpointHash).to.have.been.calledWith(
-        "source=backend2_sourceV2",
+        "backend2_sourceV2",
         "env=backend2_env_hash",
         "secret=secret2"
       );
-      expect(endpoint2.hash).to.equal(
-        "source=backend2_sourceV2&env=backend2_env_hash&secret=secret2"
-      );
+      expect(endpoint2.hash).to.equal("backend2_sourceV2&env=backend2_env_hash&secret=secret2");
       expect(getEnvironmentVariablesHash).to.have.been.calledWith(backend1);
       expect(getEnvironmentVariablesHash).to.have.been.calledWith(backend2);
     });

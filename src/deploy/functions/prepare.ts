@@ -11,6 +11,7 @@ import * as validate from "./validate";
 import * as ensure from "./ensure";
 import { Options } from "../../options";
 import {
+  EndpointFilter,
   endpointMatchesAnyFilter,
   getEndpointFilters,
   groupEndpointsByCodebase,
@@ -30,6 +31,7 @@ import { AUTH_BLOCKING_EVENTS } from "../../functions/events/v1";
 import { generateServiceIdentity } from "../../gcp/serviceusage";
 import { previews } from "../../previews";
 import { applyBackendHashToBackends } from "./cache/applyHash";
+import { allEndpoints, Backend } from "./backend";
 
 function hasUserConfig(config: Record<string, unknown>): boolean {
   // "firebase" key is always going to exist in runtime config.
@@ -170,10 +172,14 @@ export async function prepare(
       );
     }
     if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv2")) {
-      source.functionsSourceV2 = await prepareFunctionsUpload(sourceDir, config);
+      const packagedSource = await prepareFunctionsUpload(sourceDir, config);
+      source.functionsSourceV2 = packagedSource?.pathToSource;
+      source.functionsSourceV2Hash = packagedSource?.hash;
     }
     if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv1")) {
-      source.functionsSourceV1 = await prepareFunctionsUpload(sourceDir, config, runtimeConfig);
+      const packagedSource = await prepareFunctionsUpload(sourceDir, config, runtimeConfig);
+      source.functionsSourceV1 = packagedSource?.pathToSource;
+      source.functionsSourceV1Hash = packagedSource?.hash;
     }
     context.sources[codebase] = source;
   }
@@ -263,8 +269,9 @@ export async function prepare(
    * ===Phase 7 Generates the hashes for each of the functions now that secret versions have been resolved.
    * This must be called after `await validate.secretsAreValid`.
    */
+  updateEndpointTargetedStatus(wantBackends, context.filters || []);
   if (previews.skipdeployingnoopfunctions) {
-    await applyBackendHashToBackends(wantBackends, context);
+    applyBackendHashToBackends(wantBackends, context);
   }
 }
 
@@ -335,6 +342,17 @@ function maybeCopyTriggerRegion(wantE: backend.Endpoint, haveE: backend.Endpoint
     return;
   }
   wantE.eventTrigger.region = haveE.eventTrigger.region;
+}
+
+export function updateEndpointTargetedStatus(
+  wantBackends: Record<string, Backend>,
+  endpointFilters: EndpointFilter[]
+): void {
+  for (const wantBackend of Object.values(wantBackends)) {
+    for (const endpoint of allEndpoints(wantBackend)) {
+      endpoint.targetedByOnly = endpointMatchesAnyFilter(endpoint, endpointFilters);
+    }
+  }
 }
 
 /** Figures out the blocking endpoint options by taking the OR of every trigger option and reassigning that value back to the endpoint. */
