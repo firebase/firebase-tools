@@ -144,8 +144,13 @@ export async function prepare(
     }
 
     if (wantBuild.params.length > 0) {
-      // TODO(vsfan@): distinguish between params using secrets and those without
-      void track("functions_params_in_build", "env_only");
+      if (wantBuild.params.every((p) => p.type !== "secret")) {
+        void track("functions_params_in_build", "env_only");
+      } else {
+        void track("functions_params_in_build", "with_secrets");
+      }
+    } else {
+      void track("functions_params_in_build", "none");
     }
   }
 
@@ -165,10 +170,14 @@ export async function prepare(
       );
     }
     if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv2")) {
-      source.functionsSourceV2 = await prepareFunctionsUpload(sourceDir, config);
+      const packagedSource = await prepareFunctionsUpload(sourceDir, config);
+      source.functionsSourceV2 = packagedSource?.pathToSource;
+      source.functionsSourceV2Hash = packagedSource?.hash;
     }
     if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv1")) {
-      source.functionsSourceV1 = await prepareFunctionsUpload(sourceDir, config, runtimeConfig);
+      const packagedSource = await prepareFunctionsUpload(sourceDir, config, runtimeConfig);
+      source.functionsSourceV1 = packagedSource?.pathToSource;
+      source.functionsSourceV1Hash = packagedSource?.hash;
     }
     context.sources[codebase] = source;
   }
@@ -259,7 +268,7 @@ export async function prepare(
    * This must be called after `await validate.secretsAreValid`.
    */
   if (previews.skipdeployingnoopfunctions) {
-    await applyBackendHashToBackends(wantBackends, context);
+    applyBackendHashToBackends(wantBackends, context);
   }
 }
 

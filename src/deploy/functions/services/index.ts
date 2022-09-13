@@ -5,6 +5,7 @@ import { AuthBlockingService } from "./auth";
 import { obtainStorageBindings, ensureStorageTriggerRegion } from "./storage";
 import { ensureFirebaseAlertsTriggerRegion } from "./firebaseAlerts";
 import { ensureDatabaseTriggerRegion } from "./database";
+import { ensureRemoteConfigTriggerRegion } from "./remoteConfig";
 
 /** A standard void No Op */
 export const noop = (): Promise<void> => Promise.resolve();
@@ -13,7 +14,14 @@ export const noop = (): Promise<void> => Promise.resolve();
 export const noopProjectBindings = (): Promise<Array<iam.Binding>> => Promise.resolve([]);
 
 /** A name of a service */
-export type Name = "noop" | "pubsub" | "storage" | "firebasealerts" | "authblocking" | "database";
+export type Name =
+  | "noop"
+  | "pubsub"
+  | "storage"
+  | "firebasealerts"
+  | "authblocking"
+  | "database"
+  | "remoteconfig";
 
 /** A service interface for the underlying GCP event services */
 export interface Service {
@@ -85,6 +93,17 @@ const databaseService: Service = {
   unregisterTrigger: noop,
 };
 
+/** A remote config service object */
+const remoteConfigService: Service = {
+  name: "remoteconfig",
+  api: "firebaseremoteconfig.googleapis.com",
+  requiredProjectBindings: noopProjectBindings,
+  ensureTriggerRegion: ensureRemoteConfigTriggerRegion,
+  validateTrigger: noop,
+  registerTrigger: noop,
+  unregisterTrigger: noop,
+};
+
 /** Mapping from event type string to service object */
 const EVENT_SERVICE_MAPPING: Record<events.Event, Service> = {
   "google.cloud.pubsub.topic.v1.messagePublished": pubSubService,
@@ -99,6 +118,7 @@ const EVENT_SERVICE_MAPPING: Record<events.Event, Service> = {
   "google.firebase.database.ref.v1.created": databaseService,
   "google.firebase.database.ref.v1.updated": databaseService,
   "google.firebase.database.ref.v1.deleted": databaseService,
+  "google.firebase.remoteconfig.remoteConfig.v1.updated": remoteConfigService,
 };
 
 /**
