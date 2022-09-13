@@ -1,14 +1,16 @@
 import { execSync, spawn } from "child_process";
-import { readFile, mkdir, copyFile, stat } from 'fs/promises';
+import { readFile, mkdir, copyFile, stat, writeFile } from 'fs/promises';
 import { dirname, extname, join } from 'path';
 import type { Header, Rewrite, Redirect } from 'next/dist/lib/load-custom-routes';
 import type { NextConfig } from 'next';
-import { copy } from 'fs-extra';
+import { copy, mkdirp } from 'fs-extra';
 import { pathToFileURL } from 'url';
 import { existsSync } from 'fs';
-import { BuildResult, findDependency, FrameworkType, relativeRequire, SupportLevel } from "..";
+import { BuildResult, findDependency, FrameworkType, NODE_VERSION, relativeRequire, SupportLevel } from "..";
 import { proxyRequestHandler } from "../../hosting/proxy";
 import { prompt } from "../../prompt";
+import { gte } from 'semver';
+import esbuild from 'esbuild';
 
 const CLI_COMMAND = process.platform === 'win32' ? 'next.cmd' : 'next';
 
@@ -16,13 +18,14 @@ export const name = 'Next.js';
 export const support = SupportLevel.Expirimental;
 export const type = FrameworkType.MetaFramework;
 
+const getNextVersion = (cwd: string) => findDependency('next', { cwd, depth: 0, omitDev: false })?.version;
+
 export const discover = async (dir: string) => {
     if (!existsSync(join(dir, 'package.json'))) return undefined;
-    if (!existsSync('next.config.js') && !findDependency('next', { cwd: dir, depth: 0, omitDev: false })) return undefined;
+    if (!existsSync('next.config.js') && !getNextVersion(dir)) return undefined;
     // TODO don't hardcode public dir
     return { mayWantBackend: true, publicDirectory: join(dir, 'public') };
 };
-
 
 export const build = async (dir: string): Promise<BuildResult> => {
 
@@ -40,7 +43,7 @@ export const build = async (dir: string): Promise<BuildResult> => {
     } catch(e) { }
 
     let wantsBackend = true;
-    const { distDir='.next' } = await getNextConfig(dir);
+    const { distDir } = await getConfig(dir);
     const exportDetailJson = await readFile(join(dir, distDir, 'export-detail.json')).then(it => JSON.parse(it.toString()), () => { success: false });
     // SEMVER these defaults are only needed for Next 11
     if (exportDetailJson.success) {
@@ -94,9 +97,7 @@ export const init = async (setup: any) => {
 };
 
 export const ɵcodegenPublicDirectory = async (sourceDir: string, destDir: string) => {
-    // SEMVER these defaults are only needed for Next 11
-    // TODO use basePath
-    const { distDir='.next', basePath='' } = await getNextConfig(sourceDir);
+    const { distDir } = await getConfig(sourceDir);
     const exportDetailJson = await readFile(join(sourceDir, distDir, 'export-detail.json')).then(it => JSON.parse(it.toString()), () => { success: false });
     if (exportDetailJson.success) {
         copy(exportDetailJson.outDirectory, destDir);
@@ -135,18 +136,28 @@ export const ɵcodegenPublicDirectory = async (sourceDir: string, destDir: strin
 };
 
 export const ɵcodegenFunctionsDirectory = async (sourceDir: string, destDir: string) => {
-    const { distDir='.next', basePath='' } = await getNextConfig(sourceDir);
-    await mkdir(destDir, { recursive: true });
-    // TODO bundle the next.config so dev-deps are captured
-    await copyFile(join(sourceDir, 'next.config.js'), join(destDir, 'next.config.js'));
-    await copy(join(sourceDir, 'public'), join(destDir, 'public'));
-    await copy(join(sourceDir, distDir), join(destDir, distDir));
+    const { distDir } = await getConfig(sourceDir);
     const packageJsonBuffer = await readFile(join(sourceDir, 'package.json'));
     const packageJson = JSON.parse(packageJsonBuffer.toString());
+    if (existsSync(join(sourceDir, 'next.config.js'))) {
+        await esbuild.build({
+            bundle: true,
+            external: Object.keys(packageJson.dependencies),
+            absWorkingDir: sourceDir,
+            entryPoints: ['next.config.js'],
+            outfile: join(destDir, 'next.config.js'),
+            target: `node${NODE_VERSION}`,
+            platform: 'node',
+        });
+    };
+    await mkdir(join(join(destDir, 'public')));
+    await mkdirp(join(destDir, distDir));
+    await copy(join(sourceDir, 'public'), join(destDir, 'public'));
+    await copy(join(sourceDir, distDir), join(destDir, distDir));
     return { packageJson };
 };
 
-export const getDevModeHandle = async (dir: string) => {
+const getDevModeHandle = async (dir: string) => {
     let resolvePort: (it:string) => void;
     const portThatWasPromised = new Promise<string>((resolve, reject) => resolvePort = resolve);
     // TODO implement custom server
@@ -160,21 +171,24 @@ export const getDevModeHandle = async (dir: string) => {
     return proxyRequestHandler(host, 'Next.js Development Server');
 };
 
-const getNextConfig = async (dir: string): Promise<NextConfig> => {
+const getConfig = async (dir: string): Promise<NextConfig & { distDir: string }> => {
+    let config: NextConfig = {};
     if (existsSync(join(dir, 'next.config.js'))) {
-        try {
+        const version = getNextVersion(dir);
+        if (!version) throw new Error('Unable to find the next dep, try NPM installing?');
+        if (gte(version, '12.0.0')) {
             const { default: loadConfig } = relativeRequire(dir, 'next/dist/server/config');
             const { PHASE_PRODUCTION_BUILD } = relativeRequire(dir, 'next/constants');
-            return await loadConfig(PHASE_PRODUCTION_BUILD, dir, null);
-        } catch(e) { }
-        // Try just importing it, incase of Next 11
-        try {
-            return await import(pathToFileURL(join(dir, 'next.config.js')).toString());
-        } catch(e) { }
-        throw new Error('Unable to load next.config.js.');
-    } else {
-        return {};
+            config = await loadConfig(PHASE_PRODUCTION_BUILD, dir, null);
+        } else {
+            try {
+                config = await import(pathToFileURL(join(dir, 'next.config.js')).toString());
+            } catch(e) {
+                throw new Error('Unable to load next.config.js.');
+            }
+        }
     }
+    return { distDir: '.next', ...config };
 };
 
 type Manifest = {

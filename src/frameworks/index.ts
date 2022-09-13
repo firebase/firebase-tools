@@ -1,6 +1,6 @@
-import { join } from "path";
+import { join, relative } from "path";
 import { exit } from "process";
-import { execSync, spawn, spawnSync } from "child_process";
+import { execSync, spawnSync } from "child_process";
 import { existsSync, readdirSync, statSync } from "fs";
 
 import { needProjectId } from "../projectUtils";
@@ -14,7 +14,8 @@ import { getProjectDefaultAccount } from "../auth";
 import { formatHost } from "../emulator/functionsEmulatorShared";
 import { Constants } from "../emulator/constants";
 import { IncomingMessage, ServerResponse } from "http";
-import { copyFile, writeFile } from "fs/promises";
+import { copyFile, readdir, rm, writeFile } from "fs/promises";
+import { mkdirp, stat } from "fs-extra";
 
 export const FIREBASE_ADMIN_VERSION = '^11.0.0';
 export const FIREBASE_FUNCTIONS_VERSION = '^3.22.0';
@@ -22,7 +23,7 @@ export const COOKIE_VERSION = '~0.5.0';
 export const LRU_CACHE_VERSION = '^7.8.1';
 export const FIREBASE_FRAMEWORKS_VERSION = 'canary';
 export const DEFAULT_REGION = 'us-central1';
-const NODE_VERSION = parseInt(process.versions.node, 10).toString();
+export const NODE_VERSION = parseInt(process.versions.node, 10).toString();
 
 export function relativeRequire(dir: string, mod: '@angular-devkit/core'): typeof import('@angular-devkit/core');
 export function relativeRequire(dir: string, mod: '@angular-devkit/core/node'): typeof import('@angular-devkit/core/node');
@@ -144,7 +145,8 @@ export const findDependency = (name: string, options: Partial<FindDepOptions>={}
 
 export const prepareFrameworks = async (targetNames: string[], context: any, options: any, emulators: EmulatorInfo[]=[]) => {
   const project = needProjectId(context);
-  const account = getProjectDefaultAccount(options.projectRoot)
+  const { projectRoot } = options;
+  const account = getProjectDefaultAccount(projectRoot)
   // options.site is not present when emulated. We could call requireHostingSite but IAM permissions haven't
   // been booted up (at this point) and we may be offline, so just use projectId. Most of the time
   // the default site is named the same as the project & for frameworks this is only used for naming the
@@ -155,12 +157,12 @@ export const prepareFrameworks = async (targetNames: string[], context: any, opt
   for (const config of configs) {
     const { source, site, public: publicDir } = config;
     if (!source) continue;
-    const dist = join(".firebase", site);
+    const dist = join(projectRoot, ".firebase", site);
     const hostingDist = join(dist, "hosting");
     const functionsDist = join(dist, "functions");
     if (publicDir)
       throw new Error(`hosting.public and hosting.source cannot both be set in firebase.json`);
-    const getProjectPath = (...args: string[]) => join(options.projectRoot, source, ...args);
+    const getProjectPath = (...args: string[]) => join(projectRoot, source, ...args);
     const functionName = `ssr${site.replace(/-/g, "")}`;
     const firebaseAdminVersion = findDependency('firebase-admin', { cwd: getProjectPath() });
     const firebaseAppVersion = findDependency('@firebase/app', { cwd: getProjectPath() });
@@ -204,23 +206,38 @@ You can link a Web app to a Hosting site here https://console.firebase.google.co
     if (firebaseConfig) process.env.FRAMEWORKS_APP_OPTIONS = JSON.stringify(firebaseConfig);
     const results = await discover(getProjectPath());
     if (!results) throw 'Epic fail.';
-    let usingCloudFunctions = false;
     const { framework, mayWantBackend, publicDirectory } = results;
     const { build, ɵcodegenPublicDirectory, ɵcodegenFunctionsDirectory, getDevModeHandle } = WebFrameworks[framework];
     // TODO do this better
     const isDevMode = context._name === 'serve' || context._name === 'emulators:start';
     const devModeHandle = isDevMode && getDevModeHandle && await getDevModeHandle(getProjectPath());
     if (devModeHandle) {
-      config.public = publicDirectory;
+      config.public = relative(projectRoot, publicDirectory);
       options.frameworksDevModeHandle = devModeHandle;
       // TODO add a noop firebase aware function for Auth+SSR dev server
       // if (mayWantBackend && firebaseProjectConfig) codegenNullFunctionsDirectory();
     } else {
       const { wantsBackend=false, rewrites=[], redirects=[], headers=[] } = await build(getProjectPath()) || {};
+      await rm(hostingDist, { recursive: true });
+      await mkdirp(hostingDist);
       await ɵcodegenPublicDirectory(getProjectPath(), hostingDist);
-      config.public = hostingDist;
+      config.public = relative(projectRoot, hostingDist);
       if (wantsBackend && ɵcodegenFunctionsDirectory) {
-        usingCloudFunctions = true;
+        // if exists, delete everything but the node_modules directory and package-lock.json
+        // this should speed up repeated NPM installs
+        if (existsSync(functionsDist)) {
+          const functionsDistStat = await stat(functionsDist);
+          if (functionsDistStat?.isDirectory()) {
+            const files = await readdir(functionsDist);
+            for (const file of files) {
+              if (file !== 'node_modules' && file !== 'package-lock.json') rm(join(functionsDist, file), { recursive: true });
+            }
+          } else {
+            await rm(functionsDist);
+          }
+        } else {
+          await mkdirp(functionsDist);
+        }
         const { packageJson, bootstrapScript } = await ɵcodegenFunctionsDirectory(getProjectPath(), functionsDist);
         packageJson.main = 'server.js';
         delete packageJson.devDependencies;
@@ -291,21 +308,22 @@ exports.ssr = onRequest((req, res) => server.then(({handle}) => handle(req, res)
           } else {
             console.error(message);
           }
-        } else {
-          const functionConfig = {
-            source: functionsDist,
-            codebase: `firebase-frameworks-${site}`,
-          };
-          if (targetNames.includes("functions")) {
-            const combinedFunctionsConfig = [functionConfig].concat(
-              options.config.get("functions") || []
-            );
-            options.config.set("functions", combinedFunctionsConfig);
-          } else {
-            targetNames.unshift("functions");
-            options.config.set("functions", functionConfig);
-          }
         }
+
+        const functionConfig = {
+          source: relative(projectRoot, functionsDist),
+          codebase: `firebase-frameworks-${site}`,
+        };
+        if (targetNames.includes("functions")) {
+          const combinedFunctionsConfig = [functionConfig].concat(
+            options.config.get("functions") || []
+          );
+          options.config.set("functions", combinedFunctionsConfig);
+        } else {
+          targetNames.unshift("functions");
+          options.config.set("functions", functionConfig);
+        }
+        console.log(options.config.get("functions"));
   
         config.rewrites = [
           ...(config.rewrites || []),
@@ -329,5 +347,6 @@ exports.ssr = onRequest((req, res) => server.then(({handle}) => handle(req, res)
       config.headers = [...(config.headers || []), ...headers];
     }
     config.cleanUrls ??= true;
+    console.log(config);
   }
 };

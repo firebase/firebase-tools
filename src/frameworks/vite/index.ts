@@ -19,12 +19,13 @@ export const init = (setup: any) => {
 export const discover = async (dir: string) => {
     if (!existsSync(join(dir, 'package.json'))) return undefined;
     if (
-        !existsSync('vite.config.js') &&
-        !existsSync('vite.config.ts') &&
+        !existsSync(join(dir, 'vite.config.js')) &&
+        !existsSync(join(dir, 'vite.config.ts')) &&
         !findDependency('vite', { cwd: dir, depth: 0, omitDev: false })
     ) return undefined;
     const config = await getConfig(dir);
-    return { mayWantBackend: true, publicDirectory: config.publicDir };
+    const publicDirectory = join(dir, config.publicDir);
+    return { mayWantBackend: true, publicDirectory };
 };
 
 export const build = async (root: string): Promise<BuildResult> => {
