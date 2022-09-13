@@ -105,12 +105,21 @@ type ParamBase<T extends string | number | boolean> = {
   input?: ParamInput<T>;
 };
 
+/**
+ *
+ */
 export function isTextInput<T>(input: ParamInput<T>): input is TextInput<T> {
   return {}.hasOwnProperty.call(input, "text");
 }
+/**
+ *
+ */
 export function isSelectInput<T>(input: ParamInput<T>): input is SelectInput<T> {
   return {}.hasOwnProperty.call(input, "select");
 }
+/**
+ *
+ */
 export function isResourceInput<T>(input: ParamInput<T>): input is ResourceInput {
   return {}.hasOwnProperty.call(input, "resource");
 }
@@ -334,11 +343,13 @@ export async function resolveParams(
 
 function populateDefaultParams(config: FirebaseConfig): Record<string, ParamValue> {
   const defaultParams: Record<string, ParamValue> = {};
-  defaultParams["DATABASE_URL"] = new ParamValue(config.databaseURL, true, {
-    string: true,
-    boolean: false,
-    number: false,
-  });
+  if (config.databaseURL !== "") {
+    defaultParams["DATABASE_URL"] = new ParamValue(config.databaseURL, true, {
+      string: true,
+      boolean: false,
+      number: false,
+    });
+  }
   defaultParams["PROJECT_ID"] = new ParamValue(config.projectId, true, {
     string: true,
     boolean: false,
@@ -349,11 +360,13 @@ function populateDefaultParams(config: FirebaseConfig): Record<string, ParamValu
     boolean: false,
     number: false,
   });
-  defaultParams["STORAGE_BUCKET"] = new ParamValue(config.storageBucket, true, {
-    string: true,
-    boolean: false,
-    number: false,
-  });
+  if (config.storageBucket !== "") {
+    defaultParams["STORAGE_BUCKET"] = new ParamValue(config.storageBucket, true, {
+      string: true,
+      boolean: false,
+      number: false,
+    });
+  }
   return defaultParams;
 }
 

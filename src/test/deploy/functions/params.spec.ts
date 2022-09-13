@@ -114,6 +114,21 @@ describe("resolveParams", () => {
     );
   });
 
+  it("does not create the corresponding internal params if database url/storage bucket are not configured", async () => {
+    const paramsToResolve: params.Param[] = [];
+    const userEnv: Record<string, params.ParamValue> = {};
+    await expect(
+      params.resolveParams(
+        paramsToResolve,
+        { locationId: "", projectId: "foo", storageBucket: "", databaseURL: "" },
+        userEnv
+      )
+    ).to.eventually.deep.equal({
+      GCLOUD_PROJECT: expectedInternalParams.GCLOUD_PROJECT,
+      PROJECT_ID: expectedInternalParams.PROJECT_ID,
+    });
+  });
+
   it("can use a provided literal", async () => {
     const paramsToResolve: params.Param[] = [
       {
