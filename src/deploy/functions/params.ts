@@ -106,19 +106,19 @@ type ParamBase<T extends string | number | boolean> = {
 };
 
 /**
- *
+ * Determines whether an Input field value can be coerced to TextInput.
  */
 export function isTextInput<T>(input: ParamInput<T>): input is TextInput<T> {
   return {}.hasOwnProperty.call(input, "text");
 }
 /**
- *
+ * Determines whether an Input field value can be coerced to SelectInput.
  */
 export function isSelectInput<T>(input: ParamInput<T>): input is SelectInput<T> {
   return {}.hasOwnProperty.call(input, "select");
 }
 /**
- *
+ * Determines whether an Input field value can be coerced to ResourceInput.
  */
 export function isResourceInput<T>(input: ParamInput<T>): input is ResourceInput {
   return {}.hasOwnProperty.call(input, "resource");
