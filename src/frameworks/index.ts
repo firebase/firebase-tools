@@ -1,4 +1,4 @@
-import { join, relative } from "path";
+import { join, relative, extname } from "path";
 import { exit } from "process";
 import { execSync, spawnSync } from "child_process";
 import { existsSync, readdirSync, statSync } from "fs";
@@ -26,6 +26,9 @@ export const FIREBASE_FRAMEWORKS_VERSION = 'canary';
 export const DEFAULT_REGION = 'us-central1';
 export const NODE_VERSION = parseInt(process.versions.node, 10).toString();
 
+// Typescript is converting dynamic imports to requires, eval for now
+const dynamicImport = (mod:string) => eval(`import('${mod}')`);
+
 export function relativeRequire(dir: string, mod: '@angular-devkit/core'): typeof import('@angular-devkit/core');
 export function relativeRequire(dir: string, mod: '@angular-devkit/core/node'): typeof import('@angular-devkit/core/node');
 export function relativeRequire(dir: string, mod: '@angular-devkit/architect'): typeof import('@angular-devkit/architect');
@@ -35,11 +38,16 @@ export function relativeRequire(dir: string, mod: 'next/dist/server/config'): ty
 export function relativeRequire(dir: string, mod: 'next/constants'): typeof import('next/constants');
 export function relativeRequire(dir: string, mod: 'next'): typeof import('next');
 export function relativeRequire(dir: string, mod: 'vite'): typeof import('vite');
+export function relativeRequire(dir: string, mod: '@nuxt/kit'): Promise<typeof import('@nuxt/kit')>;
 export function relativeRequire(dir: string, mod: string) {
     const path = require.resolve(mod, { paths: [ dir ]});
     if (!path) throw `Can't find ${mod}.`;
-    return require(path);
-}
+    if (extname(path) === '.mjs') {
+      return dynamicImport(path);
+    } else {
+      return require(path);
+    }
+};
 
 export type Discovery = {
   mayWantBackend: boolean,
@@ -51,6 +59,7 @@ export type BuildResult = {
   redirects?: any[],
   headers?: any[],
   wantsBackend?: boolean,
+  overrideFramework?: string,
 } | void;
 
 export interface Framework {
@@ -224,7 +233,7 @@ You can link a Web app to a Hosting site here https://console.firebase.google.co
       // TODO add a noop firebase aware function for Auth+SSR dev server
       // if (mayWantBackend && firebaseProjectConfig) codegenNullFunctionsDirectory();
     } else {
-      let { wantsBackend=false, rewrites=[], redirects=[], headers=[] } = await build(getProjectPath()) || {};
+      let { wantsBackend=false, rewrites=[], redirects=[], headers=[], overrideFramework=framework } = await build(getProjectPath()) || {};
       if (existsSync(hostingDist)) await rm(hostingDist, { recursive: true });
       await mkdirp(hostingDist);
       await ɵcodegenPublicDirectory(getProjectPath(), hostingDist);
@@ -305,14 +314,14 @@ You can link a Web app to a Hosting site here https://console.firebase.google.co
             await writeFile(join(functionsDist, 'server.js'), `const { onRequest } = require('firebase-functions/v2/https');
 
 const firebaseAwareServer = import('firebase-frameworks/server/firebase-aware');
-const frameworkServer = import('firebase-frameworks/frameworks/${framework}/server');
+const frameworkServer = import('firebase-frameworks/frameworks/${overrideFramework}/server');
 const server = Promise.all([firebaseAwareServer, frameworkServer]).then(([ {handleFactory}, {handle} ]) => handleFactory(handle));
 
 exports.ssr = onRequest((req, res) => server.then(it => it(req, res)));
 `);
         } else {
             await writeFile(join(functionsDist, 'server.js'), `const { onRequest } = require('firebase-functions/v2/https');
-const server = import('firebase-frameworks/frameworks/${framework}/server');
+const server = import('firebase-frameworks/frameworks/${overrideFramework}/server');
 
 exports.ssr = onRequest((req, res) => server.then(({handle}) => handle(req, res)));
 `);

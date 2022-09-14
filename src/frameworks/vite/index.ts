@@ -11,7 +11,7 @@ export const type = FrameworkType.Toolchain;
 
 const CLI_COMMAND = process.platform === 'win32' ? 'vite.cmd' : 'vite';
 
-export const init = (setup: any) => {
+export const init = async (setup: any) => {
     execSync(`npx --yes create-vite ${setup.hosting.source}`, {stdio: 'inherit'});
     execSync(`npm install`, {stdio: 'inherit', cwd: setup.hosting.source });
 };

@@ -151,6 +151,7 @@
     "@angular-devkit/core": "^14.2.2",
     "@google/events": "^5.1.1",
     "@manifoldco/swagger-to-ts": "^2.0.0",
+    "@nuxt/kit": "^3.0.0-rc.9",
     "@types/archiver": "^5.1.0",
     "@types/body-parser": "^1.17.0",
     "@types/chai": "^4.3.0",
