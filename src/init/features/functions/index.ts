@@ -31,16 +31,14 @@ export async function doSetup(setup: any, config: Config, options: Options): Pro
     ]);
   }
   setup.functions = {};
+  // check if functions have been initialized yet
   if (!config.src.functions) {
-    // if functions have not been initialized yet
     setup.config.functions = [];
     return initNewCodebase(setup, config);
   }
-  // if functions have already been initialized, make sure config is validated and normalized
-  setup.config.functions = normalizeAndValidate(setup.config.functions);
 
   logger.info(`\nDetected ${clc.bold("existing codebase(s).\n")}`);
-
+  setup.config.functions = normalizeAndValidate(setup.config.functions);
   const choices = [
     {
       name: "Initialize",
@@ -57,7 +55,6 @@ export async function doSetup(setup: any, config: Config, options: Options): Pro
     default: "new",
     choices,
   });
-
   return initOpt === "new" ? initNewCodebase(setup, config) : reinitCodebase(setup, config);
 }
 

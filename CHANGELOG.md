@@ -1,0 +1,2 @@
+- update `firebase init functions` flow to be codebase-aware.
+- add unit tests for `init functions`.
