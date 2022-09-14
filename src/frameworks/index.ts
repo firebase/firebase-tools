@@ -218,7 +218,7 @@ You can link a Web app to a Hosting site here https://console.firebase.google.co
       // if (mayWantBackend && firebaseProjectConfig) codegenNullFunctionsDirectory();
     } else {
       const { wantsBackend=false, rewrites=[], redirects=[], headers=[] } = await build(getProjectPath()) || {};
-      await rm(hostingDist, { recursive: true });
+      if (existsSync(hostingDist)) await rm(hostingDist, { recursive: true });
       await mkdirp(hostingDist);
       await ɵcodegenPublicDirectory(getProjectPath(), hostingDist);
       config.public = relative(projectRoot, hostingDist);
@@ -323,7 +323,6 @@ exports.ssr = onRequest((req, res) => server.then(({handle}) => handle(req, res)
           targetNames.unshift("functions");
           options.config.set("functions", functionConfig);
         }
-        console.log(options.config.get("functions"));
   
         config.rewrites = [
           ...(config.rewrites || []),
@@ -347,6 +346,5 @@ exports.ssr = onRequest((req, res) => server.then(({handle}) => handle(req, res)
       config.headers = [...(config.headers || []), ...headers];
     }
     config.cleanUrls ??= true;
-    console.log(config);
   }
 };
