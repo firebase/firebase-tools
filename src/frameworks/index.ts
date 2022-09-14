@@ -16,6 +16,7 @@ import { Constants } from "../emulator/constants";
 import { IncomingMessage, ServerResponse } from "http";
 import { copyFile, readdir, rm, writeFile } from "fs/promises";
 import { mkdirp, stat } from "fs-extra";
+import clc = require("cli-color");
 
 export const FIREBASE_ADMIN_VERSION = '^11.0.0';
 export const FIREBASE_FUNCTIONS_VERSION = '^3.22.0';
@@ -88,6 +89,11 @@ export const enum SupportLevel {
   Expirimental = 'expirimental',
   Community = 'community-supported',
 }
+
+const SupportLevelWarnings = {
+  [SupportLevel.Expirimental]: clc.yellow(`This is an expirimental integration, proceed with caution.`),
+  [SupportLevel.Community]: clc.yellow(`This is a community-supported integration, support is best effort.`),
+};
 
 // TODO mix in the discovery from web frameworks
 export const discover = async (dir: string, warn: boolean=true) => {
@@ -207,7 +213,8 @@ You can link a Web app to a Hosting site here https://console.firebase.google.co
     const results = await discover(getProjectPath());
     if (!results) throw 'Epic fail.';
     const { framework, mayWantBackend, publicDirectory } = results;
-    const { build, ɵcodegenPublicDirectory, ɵcodegenFunctionsDirectory, getDevModeHandle } = WebFrameworks[framework];
+    const { build, ɵcodegenPublicDirectory, ɵcodegenFunctionsDirectory, getDevModeHandle, name, support } = WebFrameworks[framework];
+    console.log(`Detected a ${name} codebase. ${SupportLevelWarnings[support] || ''}\n`);
     // TODO do this better
     const isDevMode = context._name === 'serve' || context._name === 'emulators:start';
     const devModeHandle = isDevMode && getDevModeHandle && await getDevModeHandle(getProjectPath());
@@ -217,12 +224,28 @@ You can link a Web app to a Hosting site here https://console.firebase.google.co
       // TODO add a noop firebase aware function for Auth+SSR dev server
       // if (mayWantBackend && firebaseProjectConfig) codegenNullFunctionsDirectory();
     } else {
-      const { wantsBackend=false, rewrites=[], redirects=[], headers=[] } = await build(getProjectPath()) || {};
+      let { wantsBackend=false, rewrites=[], redirects=[], headers=[] } = await build(getProjectPath()) || {};
       if (existsSync(hostingDist)) await rm(hostingDist, { recursive: true });
       await mkdirp(hostingDist);
       await ɵcodegenPublicDirectory(getProjectPath(), hostingDist);
       config.public = relative(projectRoot, hostingDist);
       if (wantsBackend && ɵcodegenFunctionsDirectory) {
+        rewrites.push({
+          source: "**",
+          function: functionName,
+        });
+
+        options.config.set("functions", [
+          ...(options.config.get("functions") || []),
+          {
+            source: relative(projectRoot, functionsDist),
+            codebase: `firebase-frameworks-${site}`,
+          }
+        ]);
+        
+        if (!targetNames.includes("functions")) targetNames.unshift("functions");
+
+
         // if exists, delete everything but the node_modules directory and package-lock.json
         // this should speed up repeated NPM installs
         if (existsSync(functionsDist)) {
@@ -238,7 +261,23 @@ You can link a Web app to a Hosting site here https://console.firebase.google.co
         } else {
           await mkdirp(functionsDist);
         }
+
+        await writeFile(join(functionsDist, 'functions.yaml'), JSON.stringify({
+            endpoints: {
+                [functionName]: {
+                    platform:  'gcfv2',
+                    region: [DEFAULT_REGION],
+                    labels: {},
+                    httpsTrigger: {},
+                    entryPoint: 'ssr'
+                }
+            },
+            specVersion: 'v1alpha1',
+            requiredAPIs: []
+        }, null, 2));
+
         const { packageJson, bootstrapScript } = await ɵcodegenFunctionsDirectory(getProjectPath(), functionsDist);
+
         packageJson.main = 'server.js';
         delete packageJson.devDependencies;
         packageJson.dependencies ||= {};
@@ -279,68 +318,13 @@ exports.ssr = onRequest((req, res) => server.then(({handle}) => handle(req, res)
 `);
         }
 
-        await writeFile(join(functionsDist, 'functions.yaml'), JSON.stringify({
-            endpoints: {
-                [functionName]: {
-                    platform:  'gcfv2',
-                    region: [DEFAULT_REGION],
-                    labels: {},
-                    httpsTrigger: {},
-                    entryPoint: 'ssr'
-                }
-            },
-            specVersion: 'v1alpha1',
-            // TODO(jamesdaniels) add persistent disk if needed
-            requiredAPIs: []
-        }, null, 2));
-
-        if (!isDevMode && context.hostingChannel) {
-          // TODO move to prompts
-          const message =
-            "Cannot preview changes to the backend, you will only see changes to the static content on this channel.";
-          if (!options.nonInteractive) {
-            const continueDeploy = await promptOnce({
-              type: "confirm",
-              default: true,
-              message: `${message} Would you like to continue with the deploy?`,
-            });
-            if (!continueDeploy) exit(1);
-          } else {
-            console.error(message);
-          }
-        }
-
-        const functionConfig = {
-          source: relative(projectRoot, functionsDist),
-          codebase: `firebase-frameworks-${site}`,
-        };
-        if (targetNames.includes("functions")) {
-          const combinedFunctionsConfig = [functionConfig].concat(
-            options.config.get("functions") || []
-          );
-          options.config.set("functions", combinedFunctionsConfig);
-        } else {
-          targetNames.unshift("functions");
-          options.config.set("functions", functionConfig);
-        }
-  
-        config.rewrites = [
-          ...(config.rewrites || []),
-          ...rewrites,
-          {
-            source: "**",
-            function: functionName,
-          },
-        ];
       } else {
-        config.rewrites = [
-          ...(config.rewrites || []),
-          ...rewrites,
-          {
-            source: "**",
-            destination: "/index.html",
-          },
-        ];
+        // No function, treat as an SPA
+        // TODO(jamesdaniels) be smarter about this, leave it to the framework?
+        rewrites.push({
+          source: "**",
+          destination: "/index.html",
+        });
       }
       config.redirects = [...(config.redirects || []), ...redirects];
       config.headers = [...(config.headers || []), ...headers];

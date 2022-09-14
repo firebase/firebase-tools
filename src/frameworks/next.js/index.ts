@@ -157,7 +157,7 @@ export const ɵcodegenFunctionsDirectory = async (sourceDir: string, destDir: st
     return { packageJson };
 };
 
-const getDevModeHandle = async (dir: string) => {
+export const getDevModeHandle = async (dir: string) => {
     let resolvePort: (it:string) => void;
     const portThatWasPromised = new Promise<string>((resolve, reject) => resolvePort = resolve);
     // TODO implement custom server
