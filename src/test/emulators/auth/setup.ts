@@ -45,7 +45,7 @@ const projectStateForId = new Map<string, AgentProjectState>();
 
 async function createOrReuseApp(): Promise<Express.Application> {
   if (!cachedAuthApp) {
-    cachedAuthApp = await createApp(PROJECT_ID, projectStateForId);
+    cachedAuthApp = await createApp(PROJECT_ID, true, true, projectStateForId); // FIXME parameterize this?
   }
   // Clear the state every time to make it work like brand new.
   // NOTE: This probably won't work with parallel mode if we ever enable it.

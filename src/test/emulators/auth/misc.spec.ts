@@ -343,6 +343,20 @@ describeAuthEmulator("accounts:lookup", ({ authApi }) => {
       });
   });
 
+  it("BOOM WHEN MISMATCH PROJECT ID", async () => {
+    const { localId } = await registerAnonUser(authApi());
+
+    await authApi()
+      .post(`/identitytoolkit.googleapis.com/v1/projects/someprojectid/accounts:lookup`)
+      .set("Authorization", "Bearer owner")
+      .send({ localId: [localId] })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body.users).to.have.length(1);
+        expect(res.body.users[0].localId).to.equal(localId);
+      });
+  });
+
   it("should deduplicate users", async () => {
     const { localId } = await registerAnonUser(authApi());
 
@@ -493,6 +507,24 @@ describeAuthEmulator("emulator utility APIs", ({ authApi }) => {
     });
     await authApi()
       .delete(`/emulator/v1/projects/${PROJECT_ID}/accounts`)
+      .send()
+      .then((res) => expectStatusCode(200, res));
+
+    await expectUserNotExistsForIdToken(authApi(), user1.idToken);
+    await expectUserNotExistsForIdToken(authApi(), user2.idToken);
+  });
+
+  it("should BOOM", async () => {
+    const user1 = await registerUser(authApi(), {
+      email: "alice@example.com",
+      password: "notasecret",
+    });
+    const user2 = await registerUser(authApi(), {
+      email: "bob@example.com",
+      password: "notasecret2",
+    });
+    await authApi()
+      .delete(`/emulator/v1/projects/someprojectid/accounts`)
       .send()
       .then((res) => expectStatusCode(200, res));
 

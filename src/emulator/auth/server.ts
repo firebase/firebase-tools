@@ -40,6 +40,8 @@ const API_SPEC_PATH = "/emulator/openapi.json";
 
 const AUTH_HEADER_PREFIX = "bearer ";
 const SERVICE_ACCOUNT_TOKEN_PREFIX = "ya29.";
+var p1 = false;
+var p2 = false;
 
 function specForRouter(): OpenAPIObject {
   const paths: PathsObject = {};
@@ -116,10 +118,14 @@ function specWithEmulatorServer(protocol: string, host: string | undefined): Ope
  */
 export async function createApp(
   defaultProjectId: string,
+  singleProjectModeWarning = false,
+  singleProjectModeError = false,
   projectStateForId = new Map<string, AgentProjectState>()
 ): Promise<express.Express> {
   const app = express();
   app.set("json spaces", 2);
+  p1 = singleProjectModeWarning; // TODO find a better vehicle for passing these to function calls
+  p2 = singleProjectModeError;
   // Enable CORS for all APIs, all origins (reflected), and all headers (reflected).
   // This is similar to production behavior. Safe since all APIs are cookieless.
   app.use(cors({ origin: true }));
@@ -436,7 +442,6 @@ function toExegesisController(
 ): Record<string, PromiseController> {
   const result: Record<string, PromiseController> = {};
   processNested(ops, "");
-
   // Exegesis checks if all operationIds exist in controller on starting, so we
   // need to return a stub for operations that are not implemented in emulator.
   return new Proxy(result, {
@@ -486,7 +491,6 @@ function toExegesisController(
         // See: https://cloud.google.com/identity-platform/docs/reference/rest/v1/accounts/signUp
         targetProjectId = ctx.user;
       }
-
       let targetTenantId: string | undefined = undefined;
       if (ctx.params.path.tenantId && ctx.requestBody?.tenantId) {
         assert(ctx.params.path.tenantId === ctx.requestBody.tenantId, "TENANT_ID_MISMATCH");
@@ -518,8 +522,16 @@ function toExegesisController(
         }
         targetTenantId = targetTenantId || refreshTokenRecord.tenantId;
       }
+      const projectState = getProjectStateById(targetProjectId, targetTenantId);
 
-      return operation(getProjectStateById(targetProjectId, targetTenantId), ctx.requestBody, ctx);
+      if (p2 && targetProjectId && projectState.projectId !== targetProjectId) {
+        // FIXME codepoint
+        // FIXME singleProjectModeWarning
+        throw new Error(
+          "Single project mode enabled but target project ID differs from default project id."
+        );
+      }
+      return operation(projectState, ctx.requestBody, ctx);
     };
   }
 }

@@ -31,7 +31,7 @@ export abstract class ProjectState {
   private temporaryProofs: Map<string, TemporaryProofRecord> = new Map();
   private pendingLocalIds: Set<string> = new Set();
 
-  constructor(public readonly projectId: string) {}
+  constructor(public readonly projectId: string) {} // FIXME verify this is defaultProjectId and not target
 
   get projectNumber(): string {
     // TODO: Shall we generate something different for each project?
