@@ -214,6 +214,7 @@
     "google-discovery-to-swagger": "^2.1.0",
     "mocha": "^9.1.3",
     "nock": "^13.0.5",
+    "node-mocks-http": "^1.11.0",
     "nyc": "^15.1.0",
     "openapi-merge": "^1.0.23",
     "prettier": "^2.5.1",

@@ -63,10 +63,7 @@ export class FunctionsEmulatorShell implements FunctionsShellController {
       auth: opts.auth,
       data,
     };
-
-    this.emu.invokeTrigger(trigger).then((worker) => {
-      this.emu.sendRequest(worker, proto);
-    });
+    this.emu.sendRequest(trigger, proto);
   }
 
   private getTrigger(name: string): EmulatedTriggerDefinition {

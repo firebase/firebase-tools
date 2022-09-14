@@ -179,12 +179,8 @@ async function sendReq(runtime: Runtime, opts: ReqOpts = {}): Promise<string> {
 }
 
 async function sendDebugBundle(runtime: Runtime, debug: FunctionsRuntimeBundle["debug"]) {
-  const frb: FunctionsRuntimeBundle = {
-    proto: {},
-    debug,
-  };
   return new Promise((resolve) => {
-    runtime.proc.send(JSON.stringify({ frb }), resolve);
+    runtime.proc.send(JSON.stringify(debug), resolve);
   });
 }
 
