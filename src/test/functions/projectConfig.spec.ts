@@ -120,4 +120,26 @@ describe("projectConfig", () => {
       ).to.throw(FirebaseError, /functions.codebase must be unique/);
     });
   });
+
+  describe("suggestCodebaseName", () => {
+    it("changes uppercase characters to lowercase", () => {
+      expect(projectConfig.suggestCodebaseName("COdeBaSE")).to.equal("codebase");
+    });
+
+    it("replaces invalid characters with underscores", () => {
+      expect(projectConfig.suggestCodebaseName("c!o@d#e$b%a^s&e*")).to.equal("c_o_d_e_b_a_s_e_");
+    });
+
+    it("truncates names that are too long", () => {
+      expect(
+        projectConfig.suggestCodebaseName(
+          "1234567812345678123456781234567812345678123456781234567812345678"
+        )
+      ).to.equal("123456781234567812345678123456781234567812345678123456781234567");
+    });
+
+    it("suggests valid name based on name with multiple issues", () => {
+      expect(projectConfig.suggestCodebaseName("Codebase#1")).to.equal("codebase_1");
+    });
+  });
 });

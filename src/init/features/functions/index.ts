@@ -11,8 +11,12 @@ import {
   normalizeAndValidate,
   configForCodebase,
   suggestCodebaseName,
+  validateCodebase,
+  assertUnique,
 } from "../../../functions/projectConfig";
-import { FunctionsConfig } from "../../../firebaseConfig";
+import { FirebaseError } from "../../../error";
+
+const MAX_ATTEMPTS = 5;
 
 /**
  * Set up a new firebase project for functions.
@@ -30,14 +34,12 @@ export async function doSetup(setup: any, config: Config, options: Options): Pro
   if (!config.src.functions) {
     // if functions have not been initialized yet
     setup.config.functions = [];
-    return codebaseSetup(setup, config, false);
+    return initNewCodebase(setup, config);
   }
   // if functions have already been initialized, make sure config is validated and normalized
   setup.config.functions = normalizeAndValidate(setup.config.functions);
 
-  logger.info();
-  logger.info("Detected " + clc.bold("existing codebase(s)."));
-  logger.info();
+  logger.info(`\nDetected ${clc.bold("existing codebase(s).\n")}`);
 
   const choices = [
     {
@@ -55,70 +57,99 @@ export async function doSetup(setup: any, config: Config, options: Options): Pro
     default: "new",
     choices,
   });
-  return codebaseSetup(setup, config, initOpt === "reinit");
+
+  return initOpt === "new" ? initNewCodebase(setup, config) : reinitCodebase(setup, config);
 }
 
 /**
  *  User dialogue to set up configuration for functions codebase.
  */
-async function codebaseSetup(setup: any, config: Config, reinit: boolean): Promise<any> {
-  if (reinit) {
-    let codebase;
-    if (setup.config.functions.length > 1) {
-      const choices = setup.config.functions.map((cfg: any) => ({
-        name: cfg["codebase"],
-        value: cfg["codebase"],
-      }));
-      codebase = await promptOnce({
-        type: "list",
-        message: "Which codebase would you like to re-initialize?",
-        choices,
-      });
-    } else {
-      codebase = setup.config.functions[0].codebase; // only one codebase exists
+async function initNewCodebase(setup: any, config: Config): Promise<any> {
+  logger.info("Let's create a new codebase for your functions.");
+  logger.info("A directory corresponding to the codebase will be created in your project");
+  logger.info("with sample code pre-configured.\n");
+
+  logger.info("See https://firebase.google.com/docs/functions/organize-functions for");
+  logger.info("more information on organizing your functions using codebases.\n");
+
+  logger.info(`Functions can be deployed with ${clc.bold("firebase deploy")}.\n`);
+
+  let source: string;
+  let codebase: string;
+
+  let attempts = 0;
+  while (true) {
+    if (attempts >= MAX_ATTEMPTS) {
+      throw new FirebaseError(
+        "Exceeded max number of attempts to input valid source. Please restart."
+      );
     }
-
-    const cbconfig = configForCodebase(setup.config.functions, codebase);
-    setup.functions.source = cbconfig.source;
-    setup.functions.codebase = cbconfig.codebase;
-
-    logger.info("\nRe-initializing " + clc.bold(`codebase ${codebase}...\n`));
-  } else {
-    logger.info("Let's create a new codebase for your functions.");
-    logger.info("A directory corresponding to the codebase will be created in your project");
-    logger.info("with sample code pre-configured.\n");
-
-    logger.info("See https://firebase.google.com/docs/functions/organize-functions for");
-    logger.info("more information on organizing your functions using codebases.\n");
-
-    logger.info("Functions can be deployed with " + clc.bold("firebase deploy") + ".\n");
-
-    const source = await promptOnce({
+    attempts++;
+    source = await promptOnce({
       type: "input",
       message: "Where would you like to initialize your new functions source?",
       default: "functions",
     });
-    const codebase = await promptOnce({
+    try {
+      assertUnique(setup.config.functions, "source", source);
+      break;
+    } catch (err: any) {
+      logger.error(err as FirebaseError);
+    }
+  }
+
+  attempts = 0;
+  while (true) {
+    if (attempts >= MAX_ATTEMPTS) {
+      throw new FirebaseError(
+        "Exceeded max number of attempts to input valid codebase name. Please restart."
+      );
+    }
+    attempts++;
+    codebase = await promptOnce({
       type: "input",
       message: "What should be the name of this codebase?",
       default: suggestCodebaseName(source),
     });
-    let functionsConfig: FunctionsConfig = setup.config.functions.slice().concat({
-      source: source,
-      codebase: codebase,
-    });
-    // checks if the updated functions codebase config is valid
-    // also checks if the user-specified codebase name and source are valid
     try {
-      functionsConfig = normalizeAndValidate(functionsConfig);
-      setup.config.functions = functionsConfig;
-      setup.functions.source = source;
-      setup.functions.codebase = codebase;
+      validateCodebase(codebase);
+      assertUnique(setup.config.functions, "codebase", codebase);
+      break;
     } catch (err: any) {
-      logger.info(err);
-      return codebaseSetup(setup, config, false);
+      logger.error(err as FirebaseError);
     }
   }
+
+  setup.config.functions.push({
+    source,
+    codebase,
+  });
+  setup.functions.source = source;
+  setup.functions.codebase = codebase;
+  return languageSetup(setup, config);
+}
+
+async function reinitCodebase(setup: any, config: Config): Promise<any> {
+  let codebase;
+  if (setup.config.functions.length > 1) {
+    const choices = setup.config.functions.map((cfg: any) => ({
+      name: cfg["codebase"],
+      value: cfg["codebase"],
+    }));
+    codebase = await promptOnce({
+      type: "list",
+      message: "Which codebase would you like to re-initialize?",
+      choices,
+    });
+  } else {
+    codebase = setup.config.functions[0].codebase; // only one codebase exists
+  }
+
+  const cbconfig = configForCodebase(setup.config.functions, codebase);
+  setup.functions.source = cbconfig.source;
+  setup.functions.codebase = cbconfig.codebase;
+
+  logger.info(`\nRe-initializing ${clc.bold(`codebase ${codebase}...\n`)}`);
   return languageSetup(setup, config);
 }
 
@@ -156,7 +187,6 @@ async function languageSetup(setup: any, config: Config): Promise<any> {
     case "typescript":
       cbconfig.ignore = ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log"];
       break;
-    // add other cases as more languages are supported
   }
   return require("./" + language).setup(setup, config);
 }
