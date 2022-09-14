@@ -6,6 +6,7 @@ import { assertExhaustive, partition } from "../../functional";
 import * as secretManager from "../../gcp/secretManager";
 import { listBuckets } from "../../gcp/storage";
 import { isCelExpression, resolveExpression } from "./cel";
+import { FirebaseConfig } from "./args";
 
 // A convinience type containing options for Prompt's select
 interface ListItem {
@@ -104,12 +105,21 @@ type ParamBase<T extends string | number | boolean> = {
   input?: ParamInput<T>;
 };
 
+/**
+ * Determines whether an Input field value can be coerced to TextInput.
+ */
 export function isTextInput<T>(input: ParamInput<T>): input is TextInput<T> {
   return {}.hasOwnProperty.call(input, "text");
 }
+/**
+ * Determines whether an Input field value can be coerced to SelectInput.
+ */
 export function isSelectInput<T>(input: ParamInput<T>): input is SelectInput<T> {
   return {}.hasOwnProperty.call(input, "select");
 }
+/**
+ * Determines whether an Input field value can be coerced to ResourceInput.
+ */
 export function isResourceInput<T>(input: ParamInput<T>): input is ResourceInput {
   return {}.hasOwnProperty.call(input, "resource");
 }
@@ -199,7 +209,7 @@ export class ParamValue {
 
   constructor(
     private readonly rawValue: string,
-    readonly secret: boolean,
+    readonly internal: boolean,
     types: { string?: boolean; boolean?: boolean; number?: boolean }
   ) {
     this.legalString = types.string || false;
@@ -236,8 +246,7 @@ function resolveDefaultCEL(
 ): RawParamValue {
   const deps = dependenciesCEL(expr);
   const allDepsFound = deps.every((dep) => !!currentEnv[dep]);
-  const dependsOnSecret = deps.some((dep) => currentEnv[dep].secret);
-  if (!allDepsFound || dependsOnSecret) {
+  if (!allDepsFound) {
     throw new FirebaseError(
       "Build specified parameter with un-resolvable default value " +
         expr +
@@ -288,11 +297,11 @@ function canSatisfyParam(param: Param, value: RawParamValue): boolean {
  */
 export async function resolveParams(
   params: Param[],
-  projectId: string,
+  firebaseConfig: FirebaseConfig,
   userEnvs: Record<string, ParamValue>,
   nonInteractive?: boolean
 ): Promise<Record<string, ParamValue>> {
-  const paramValues: Record<string, ParamValue> = {};
+  const paramValues: Record<string, ParamValue> = populateDefaultParams(firebaseConfig);
 
   // TODO(vsfan@): should we ever reject param values from .env files based on the appearance of the string?
   const [resolved, outstanding] = partition(params, (param) => {
@@ -304,7 +313,7 @@ export async function resolveParams(
 
   const [needSecret, needPrompt] = partition(outstanding, (param) => param.type === "secret");
   for (const param of needSecret) {
-    await handleSecret(param as SecretParam, projectId);
+    await handleSecret(param as SecretParam, firebaseConfig.projectId);
   }
 
   if (nonInteractive && needPrompt.length > 0) {
@@ -326,10 +335,39 @@ export async function resolveParams(
         "Parameter " + param.name + " has default value " + paramDefault + " of wrong type"
       );
     }
-    paramValues[param.name] = await promptParam(param, projectId, paramDefault);
+    paramValues[param.name] = await promptParam(param, firebaseConfig.projectId, paramDefault);
   }
 
   return paramValues;
+}
+
+function populateDefaultParams(config: FirebaseConfig): Record<string, ParamValue> {
+  const defaultParams: Record<string, ParamValue> = {};
+  if (config.databaseURL !== "") {
+    defaultParams["DATABASE_URL"] = new ParamValue(config.databaseURL, true, {
+      string: true,
+      boolean: false,
+      number: false,
+    });
+  }
+  defaultParams["PROJECT_ID"] = new ParamValue(config.projectId, true, {
+    string: true,
+    boolean: false,
+    number: false,
+  });
+  defaultParams["GCLOUD_PROJECT"] = new ParamValue(config.projectId, true, {
+    string: true,
+    boolean: false,
+    number: false,
+  });
+  if (config.storageBucket !== "") {
+    defaultParams["STORAGE_BUCKET"] = new ParamValue(config.storageBucket, true, {
+      string: true,
+      boolean: false,
+      number: false,
+    });
+  }
+  return defaultParams;
 }
 
 /**

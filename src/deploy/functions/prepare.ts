@@ -118,6 +118,7 @@ export async function prepare(
     const wantBuild: build.Build = await runtimeDelegate.discoverBuild(runtimeConfig, firebaseEnvs);
     const { backend: wantBackend, envs: resolvedEnvs } = await build.resolveBackend(
       wantBuild,
+      firebaseConfig,
       userEnvOpt,
       userEnvs,
       options.nonInteractive
@@ -129,6 +130,7 @@ export async function prepare(
       const envValue = resolvedEnvs[envName]?.toString();
       if (
         envValue &&
+        !resolvedEnvs[envName].internal &&
         !Object.prototype.hasOwnProperty.call(wantBackend.environmentVariables, envName)
       ) {
         wantBackend.environmentVariables[envName] = envValue;
