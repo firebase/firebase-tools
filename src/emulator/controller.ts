@@ -14,7 +14,7 @@ import {
   EMULATORS_SUPPORTED_BY_UI,
   isEmulator,
 } from "./types";
-import { Constants, FIND_AVAILBLE_PORT_BY_DEFAULT, DEFAULT_HOST, DEFAULT_PORTS } from "./constants";
+import { Constants, FIND_AVAILBLE_PORT_BY_DEFAULT } from "./constants";
 import { EmulatableBackend, FunctionsEmulator } from "./functionsEmulator";
 import { parseRuntimeVersion } from "./functionsEmulatorUtils";
 import { AuthEmulator } from "./auth";
@@ -540,21 +540,14 @@ export async function startAll(
       projectAlias: options.projectAlias,
     });
     await startEmulator(functionsEmulator);
+
+    const eventarcAddr = await getAndCheckAddress(Emulators.EVENTARC, options);
+    const eventarcEmulator = new EventarcEmulator({
+      host: eventarcAddr.host,
+      port: eventarcAddr.port,
+    });
+    await startEmulator(eventarcEmulator);
   }
-  // Since the functions emulator will always be started by default, and the eventarc emulator
-  // is only used by the functions emulator, we will start them in conjunction (using the default host/port)
-  // even if the app developer has not explicitly configured the eventarc emulator.
-  if (!shouldStart(options, Emulators.EVENTARC)) {
-    if (options.config.src.emulators) {
-      options.config.src.emulators.eventarc = { host: DEFAULT_HOST, port: DEFAULT_PORTS.eventarc };
-    }
-  }
-  const eventarcAddr = await getAndCheckAddress(Emulators.EVENTARC, options);
-  const eventarcEmulator = new EventarcEmulator({
-    host: eventarcAddr.host,
-    port: eventarcAddr.port,
-  });
-  await startEmulator(eventarcEmulator);
 
   if (shouldStart(options, Emulators.FIRESTORE)) {
     const firestoreLogger = EmulatorLogger.forEmulator(Emulators.FIRESTORE);
@@ -616,19 +609,6 @@ export async function startAll(
         "firestore",
         "The emulator will default to allowing all reads and writes. Learn more about this option: https://firebase.google.com/docs/emulator-suite/install_and_configure#security_rules_configuration."
       );
-    }
-
-    if (options.config.src.emulators?.singleProjectMode) {
-      if (projectId) {
-        args.single_project_mode = true;
-        args.single_project_mode_error = false;
-      } else {
-        firestoreLogger.logLabeled(
-          "DEBUG",
-          "firestore",
-          "Could not enable single_project_mode: missing projectId."
-        );
-      }
     }
 
     const firestoreEmulator = new FirestoreEmulator(args);
