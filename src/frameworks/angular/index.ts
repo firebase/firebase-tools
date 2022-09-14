@@ -1,6 +1,5 @@
 import type { Target } from '@angular-devkit/architect';
 import { join } from 'path';
-import { parse } from 'jsonc-parser';
 import { existsSync } from 'fs';
 import { execSync, spawn } from 'child_process';
 import { copy } from 'fs-extra';
@@ -155,6 +154,7 @@ const getContext = async (dir:string) => {
     const { workspaces } = relativeRequire(dir, '@angular-devkit/core');
     const { WorkspaceNodeModulesArchitectHost } = relativeRequire(dir, '@angular-devkit/architect/node');
     const { Architect, targetFromTargetString, targetStringFromTarget } = relativeRequire(dir, '@angular-devkit/architect');
+    const { parse } = relativeRequire(dir, 'jsonc-parser');
 
     const host = workspaces.createWorkspaceHost(new NodeJsAsyncHost());
     const { workspace } = await workspaces.readWorkspace(dir, host);

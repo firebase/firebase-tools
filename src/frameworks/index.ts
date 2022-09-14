@@ -38,6 +38,7 @@ export function relativeRequire(dir: string, mod: 'next/dist/server/config'): ty
 export function relativeRequire(dir: string, mod: 'next/constants'): typeof import('next/constants');
 export function relativeRequire(dir: string, mod: 'next'): typeof import('next');
 export function relativeRequire(dir: string, mod: 'vite'): typeof import('vite');
+export function relativeRequire(dir: string, mod: 'jsonc-parser'): typeof import('jsonc-parser');
 export function relativeRequire(dir: string, mod: '@nuxt/kit'): Promise<typeof import('@nuxt/kit')>;
 export function relativeRequire(dir: string, mod: string) {
     const path = require.resolve(mod, { paths: [ dir ]});
@@ -253,7 +254,6 @@ You can link a Web app to a Hosting site here https://console.firebase.google.co
         ]);
         
         if (!targetNames.includes("functions")) targetNames.unshift("functions");
-
 
         // if exists, delete everything but the node_modules directory and package-lock.json
         // this should speed up repeated NPM installs
