@@ -15,7 +15,7 @@ import { requireAuth } from "../../src/requireAuth";
 const FIREBASE_PROJECT = process.env.GCLOUD_PROJECT || "";
 const FIREBASE_DEBUG = process.env.FIREBASE_DEBUG || "";
 const FUNCTIONS_DIR = path.join(__dirname, "functions");
-const FNS_COUNT = 16;
+const FNS_COUNT = 17;
 
 function genRandomId(n = 10): string {
   const charset = "abcdefghijklmnopqrstuvwxyz";
@@ -37,6 +37,7 @@ interface Opts {
   v2IdpOpts: functionsv2.identity.BlockingOptions;
 
   v1ScheduleOpts: functions.ScheduleRetryConfig;
+  v2ScheduleOpts: functionsv2.scheduler.ScheduleOptions;
 }
 
 async function setOpts(opts: Opts) {
@@ -195,6 +196,14 @@ describe("firebase deploy", function (this) {
         maxDoublings: 42,
         maxBackoffDuration: "42s",
       },
+      v2ScheduleOpts: {
+        schedule: "every 30 minutes",
+        retryCount: 3,
+        minBackoffSeconds: 42,
+        maxRetrySeconds: 42,
+        maxDoublings: 42,
+        maxBackoffSeconds: 42,
+      },
     };
 
     const result = await setOptsAndDeploy(opts);
@@ -260,6 +269,7 @@ describe("firebase deploy", function (this) {
       v1IdpOpts: {},
       v2IdpOpts: {},
       v1ScheduleOpts: {},
+      v2ScheduleOpts: { schedule: "every 30 minutes" },
     };
 
     const result = await setOptsAndDeploy(opts);
@@ -370,6 +380,14 @@ describe("firebase deploy", function (this) {
         maxBackoffDuration: undefined,
         maxRetryDuration: undefined,
         minBackoffDuration: undefined,
+      },
+      v2ScheduleOpts: {
+        schedule: "every 30 minutes",
+        retryCount: undefined,
+        maxDoublings: undefined,
+        maxBackoffSeconds: undefined,
+        maxRetrySeconds: undefined,
+        minBackoffSeconds: undefined,
       },
     };
 
