@@ -300,6 +300,9 @@ export function getFunctionService(def: ParsedTriggerDefinition): string {
   if (def.blockingTrigger) {
     return def.blockingTrigger.eventType;
   }
+  if (def.httpsTrigger) {
+    return "https";
+  }
 
   return "unknown";
 }

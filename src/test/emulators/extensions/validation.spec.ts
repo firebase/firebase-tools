@@ -60,6 +60,7 @@ function getTestEmulatableBackend(
     functionsDir: ".",
     env: {},
     secretEnv: [],
+    codebase: "",
     predefinedTriggers,
   };
 }
