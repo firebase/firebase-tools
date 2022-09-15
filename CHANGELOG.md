@@ -1,1 +1,1 @@
-Adds `access-control-allow-private-network=true` header to Auth and Storage emulators. Enables accessing at localhost:#### when site is exposed via tunnel [#4227](https://github.com/firebase/firebase-tools/issues/4227).
+# Changes
