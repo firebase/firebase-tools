@@ -17,7 +17,7 @@ describeAuthEmulator("REST API mapping", ({ authApi }) => {
       .options("/")
       .set("Origin", "example.com")
       .set("Access-Control-Request-Headers", "Authorization,X-Client-Version,X-Whatever-Header")
-      .set("Access-Control-Request-Private-Network")
+      .set("Access-Control-Request-Private-Network", "true")
       .then((res) => {
         expectStatusCode(204, res);
 
