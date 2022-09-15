@@ -4,8 +4,8 @@ import { ParamValue } from "./params";
 
 type CelExpression = string;
 type IdentityExpression = CelExpression;
-type EqualityExpression = CelExpression;
-type DualEqualityExpression = CelExpression;
+type ComparisonExpression = CelExpression;
+type DualComparisonExpression = CelExpression;
 type TernaryExpression = CelExpression;
 type LiteralTernaryExpression = CelExpression;
 type DualTernaryExpression = CelExpression;
@@ -13,13 +13,20 @@ type DualTernaryExpression = CelExpression;
 type Literal = string | number | boolean;
 type L = "string" | "number" | "boolean";
 
-const identityRegexp = /{{ params\.(\S+) }}/;
-const dualEqualityRegexp = /{{ params\.(\S+) == params\.(\S+) }}/;
-const equalityRegexp = /{{ params\.(\S+) == (.+) }}/;
-const dualTernaryRegexp = /{{ params\.(\S+) == params\.(\S+) \? (.+) : (.+) }/;
-const ternaryRegexp = /{{ params\.(\S+) == (.+) \? (.+) : (.+) }/;
-const literalTernaryRegexp = /{{ params\.(\S+) \? (.+) : (.+) }/;
 const paramRegexp = /params\.(\S+)/;
+const CMP = /((?:!=)|(?:==)|(?:>=)|(?:<=)|>|<)/.source; // !=, ==, >=, <=, >, <
+const identityRegexp = /{{ params\.(\S+) }}/;
+const dualComparisonRegexp = new RegExp(
+  /{{ params\.(\S+) CMP params\.(\S+) }}/.source.replace("CMP", CMP)
+);
+const comparisonRegexp = new RegExp(/{{ params\.(\S+) CMP (.+) }}/.source.replace("CMP", CMP));
+const dualTernaryRegexp = new RegExp(
+  /{{ params\.(\S+) CMP params\.(\S+) \? (.+) : (.+) }/.source.replace("CMP", CMP)
+);
+const ternaryRegexp = new RegExp(
+  /{{ params\.(\S+) CMP (.+) \? (.+) : (.+) }/.source.replace("CMP", CMP)
+);
+const literalTernaryRegexp = /{{ params\.(\S+) \? (.+) : (.+) }/;
 
 /**
  * Determines if something is a string that looks vaguely like a CEL expression.
@@ -31,11 +38,11 @@ export function isCelExpression(value: any): value is CelExpression {
 function isIdentityExpression(value: CelExpression): value is IdentityExpression {
   return identityRegexp.test(value);
 }
-function isEqualityExpression(value: CelExpression): value is EqualityExpression {
-  return equalityRegexp.test(value);
+function isComparisonExpression(value: CelExpression): value is ComparisonExpression {
+  return comparisonRegexp.test(value);
 }
-function isDualEqualityExpression(value: CelExpression): value is DualEqualityExpression {
-  return dualEqualityRegexp.test(value);
+function isDualComparisonExpression(value: CelExpression): value is DualComparisonExpression {
+  return dualComparisonRegexp.test(value);
 }
 function isTernaryExpression(value: CelExpression): value is TernaryExpression {
   return ternaryRegexp.test(value);
@@ -52,10 +59,10 @@ export class ExprParseError extends FirebaseError {}
 /**
  * Resolves a CEL expression of a supported form, guaranteeing the provided primitive type:
  * - {{ params.foo }}
- * - {{ params.foo == 24 }}
- * - {{ params.foo == params.bar }}
+ * - {{ params.foo <= 24 }}
+ * - {{ params.foo != params.bar }}
  * - {{ params.foo == 24 ? "asdf" : params.jkl }}
- * - {{ params.foo == params.bar ? "asdf" : params.jkl }}
+ * - {{ params.foo > params.bar ? "asdf" : params.jkl }}
  * - {{ params.foo ? "asdf" : params.jkl }}, when foo is of boolean type
  * Values interpolated from params retain their type defined in the param;
  * it is an error to provide a CEL expression that coerces param types
@@ -78,10 +85,10 @@ export function resolveExpression(
     return resolveLiteralTernary(wantType, expr, params);
   } else if (isTernaryExpression(expr)) {
     return resolveTernary(wantType, expr, params);
-  } else if (isDualEqualityExpression(expr)) {
-    return resolveDualEquality(expr, params);
-  } else if (isEqualityExpression(expr)) {
-    return resolveEquality(expr, params);
+  } else if (isDualComparisonExpression(expr)) {
+    return resolveDualComparison(expr, params);
+  } else if (isComparisonExpression(expr)) {
+    return resolveComparison(expr, params);
   } else {
     throw new ExprParseError("CEL expression '" + expr + "' is of an unsupported form");
   }
@@ -132,87 +139,134 @@ function resolveIdentity(
 }
 
 /**
- *  {{ params.foo == 24 }}
+ *  {{ params.foo <= 24 }}
  */
-function resolveEquality(expr: EqualityExpression, params: Record<string, ParamValue>): boolean {
-  const match = equalityRegexp.exec(expr);
+function resolveComparison(
+  expr: ComparisonExpression,
+  params: Record<string, ParamValue>
+): boolean {
+  const match = comparisonRegexp.exec(expr);
   if (!match) {
-    throw new ExprParseError("Malformed CEL equality expression '" + expr + "'");
+    throw new ExprParseError("Malformed CEL comparison expression '" + expr + "'");
   }
+
+  const cmp = match[2];
+  const test = function (a: Literal, b: Literal): boolean {
+    switch (cmp) {
+      case "!=":
+        return a !== b;
+      case "==":
+        return a === b;
+      case ">=":
+        return a >= b;
+      case "<=":
+        return a <= b;
+      case ">":
+        return a > b;
+      case "<":
+        return a < b;
+      default:
+        throw new ExprParseError("Illegal comparison operator '" + cmp + "'");
+    }
+  };
 
   const lhsName = match[1];
   const lhsVal = params[lhsName];
   if (!lhsVal) {
     throw new ExprParseError(
-      "CEL equality expression '" + expr + "' references missing param " + lhsName
+      "CEL comparison expression '" + expr + "' references missing param " + lhsName
     );
   }
   let rhs: Literal;
   if (lhsVal.legalString) {
-    rhs = resolveLiteral("string", match[2]);
-    return lhsVal.asString() === rhs;
+    rhs = resolveLiteral("string", match[3]);
+    return test(lhsVal.asString(), rhs);
   } else if (lhsVal.legalNumber) {
-    rhs = resolveLiteral("number", match[2]);
-    return lhsVal.asNumber() === rhs;
+    rhs = resolveLiteral("number", match[3]);
+    return test(lhsVal.asNumber(), rhs);
   } else if (lhsVal.legalBoolean) {
-    rhs = resolveLiteral("boolean", match[2]);
-    return lhsVal.asBoolean() === rhs;
+    rhs = resolveLiteral("boolean", match[3]);
+    return test(lhsVal.asBoolean(), rhs);
   } else {
-    throw new ExprParseError(`Could not infer type of param ${lhsName} used in equality operation`);
+    throw new ExprParseError(
+      `Could not infer type of param ${lhsName} used in comparison operation`
+    );
   }
 }
 
 /**
- *  {{ params.foo == params.bar }}
+ *  {{ params.foo != params.bar }}
  */
-function resolveDualEquality(
-  expr: EqualityExpression,
+function resolveDualComparison(
+  expr: ComparisonExpression,
   params: Record<string, ParamValue>
 ): boolean {
-  const match = dualEqualityRegexp.exec(expr);
+  const match = dualComparisonRegexp.exec(expr);
   if (!match) {
-    throw new ExprParseError("Malformed CEL equality expression '" + expr + "'");
+    throw new ExprParseError("Malformed CEL comparison expression '" + expr + "'");
   }
+
+  const cmp = match[2];
+  const test = function (a: Literal, b: Literal): boolean {
+    switch (cmp) {
+      case "!=":
+        return a !== b;
+      case "==":
+        return a === b;
+      case ">=":
+        return a >= b;
+      case "<=":
+        return a <= b;
+      case ">":
+        return a > b;
+      case "<":
+        return a < b;
+      default:
+        throw new ExprParseError("Illegal comparison operator '" + cmp + "'");
+    }
+  };
 
   const lhsName = match[1];
   const lhsVal = params[lhsName];
   if (!lhsVal) {
     throw new ExprParseError(
-      "CEL equality expression '" + expr + "' references missing param " + lhsName
+      "CEL comparison expression '" + expr + "' references missing param " + lhsName
     );
   }
 
-  const rhsName = match[2];
+  const rhsName = match[3];
   const rhsVal = params[rhsName];
   if (!rhsVal) {
     throw new ExprParseError(
-      "CEL equality expression '" + expr + "' references missing param " + lhsName
+      "CEL comparison expression '" + expr + "' references missing param " + lhsName
     );
   }
 
   if (lhsVal.legalString) {
     if (!rhsVal.legalString) {
       throw new ExprParseError(
-        `CEL equality expression ${expr} has type mismatch between the operands`
+        `CEL comparison expression ${expr} has type mismatch between the operands`
       );
     }
-    return lhsVal.asString() === rhsVal.asString();
+    return test(lhsVal.asString(), rhsVal.asString());
   } else if (lhsVal.legalNumber) {
     if (!rhsVal.legalNumber) {
       throw new ExprParseError(
-        `CEL equality expression ${expr} has type mismatch between the operands`
+        `CEL comparison expression ${expr} has type mismatch between the operands`
       );
     }
-    return lhsVal.asNumber() === rhsVal.asNumber();
+    return test(lhsVal.asNumber(), rhsVal.asNumber());
   } else if (lhsVal.legalBoolean) {
     if (!rhsVal.legalBoolean) {
       throw new ExprParseError(
-        `CEL equality expression ${expr} has type mismatch between the operands`
+        `CEL comparison expression ${expr} has type mismatch between the operands`
       );
     }
-    return lhsVal.asBoolean() === rhsVal.asBoolean();
+    return test(lhsVal.asBoolean(), rhsVal.asBoolean());
   } else {
-    throw new ExprParseError(`could not infer type of param ${lhsName} used in equality operation`);
+    throw new ExprParseError(
+      `could not infer type of param ${lhsName} used in comparison operation`
+    );
   }
 }
 
@@ -229,17 +283,17 @@ function resolveTernary(
     throw new ExprParseError("malformed CEL ternary expression '" + expr + "'");
   }
 
-  const equalityExpr = `{{ params.${match[1]} == ${match[2]} }}`;
-  const isTrue = resolveEquality(equalityExpr, params);
+  const comparisonExpr = `{{ params.${match[1]} ${match[2]} ${match[3]} }}`;
+  const isTrue = resolveComparison(comparisonExpr, params);
   if (isTrue) {
-    return resolveParamOrLiteral(wantType, match[3], params);
-  } else {
     return resolveParamOrLiteral(wantType, match[4], params);
+  } else {
+    return resolveParamOrLiteral(wantType, match[5], params);
   }
 }
 
 /**
- *  {{ params.foo == params.bar ? "asdf" : params.jkl }}
+ *  {{ params.foo > params.bar ? "asdf" : params.jkl }}
  */
 function resolveDualTernary(
   wantType: L,
@@ -251,12 +305,12 @@ function resolveDualTernary(
     throw new ExprParseError("Malformed CEL ternary expression '" + expr + "'");
   }
 
-  const equalityExpr = `{{ params.${match[1]} == params.${match[2]} }}`;
-  const isTrue = resolveDualEquality(equalityExpr, params);
+  const comparisonExpr = `{{ params.${match[1]} ${match[2]} params.${match[3]} }}`;
+  const isTrue = resolveDualComparison(comparisonExpr, params);
   if (isTrue) {
-    return resolveParamOrLiteral(wantType, match[3], params);
-  } else {
     return resolveParamOrLiteral(wantType, match[4], params);
+  } else {
+    return resolveParamOrLiteral(wantType, match[5], params);
   }
 }
 

@@ -5,6 +5,34 @@ import * as prompt from "../../../prompt";
 import * as params from "../../../deploy/functions/params";
 
 const expect = chai.expect;
+const fakeConfig = {
+  locationId: "",
+  projectId: "foo",
+  storageBucket: "foo.appspot.com",
+  databaseURL: "https://foo.firebaseio.com",
+};
+const expectedInternalParams = {
+  DATABASE_URL: new params.ParamValue(fakeConfig.databaseURL, true, {
+    string: true,
+    boolean: false,
+    number: false,
+  }),
+  GCLOUD_PROJECT: new params.ParamValue(fakeConfig.projectId, true, {
+    string: true,
+    boolean: false,
+    number: false,
+  }),
+  PROJECT_ID: new params.ParamValue(fakeConfig.projectId, true, {
+    string: true,
+    boolean: false,
+    number: false,
+  }),
+  STORAGE_BUCKET: new params.ParamValue(fakeConfig.storageBucket, true, {
+    string: true,
+    boolean: false,
+    number: false,
+  }),
+};
 
 describe("CEL resolution", () => {
   it("can interpolate a provided param into a CEL expression", () => {
@@ -57,7 +85,15 @@ describe("resolveParams", () => {
     promptOnce.restore();
   });
 
-  it("can pull a literal value out of the dotenvs, with any type valid", async () => {
+  it("always contains the precanned internal param values", async () => {
+    const paramsToResolve: params.Param[] = [];
+    const userEnv: Record<string, params.ParamValue> = {};
+    await expect(
+      params.resolveParams(paramsToResolve, fakeConfig, userEnv)
+    ).to.eventually.deep.equal(expectedInternalParams);
+  });
+
+  it("can pull a literal value out of the dotenvs", async () => {
     const paramsToResolve: params.Param[] = [
       {
         name: "foo",
@@ -69,28 +105,76 @@ describe("resolveParams", () => {
       },
     ];
     const userEnv: Record<string, params.ParamValue> = {
-      foo: new params.ParamValue("bar", false, { string: true, number: true, boolean: true }),
-      bar: new params.ParamValue("24", false, { string: true, number: true, boolean: true }),
-      baz: new params.ParamValue("true", false, { string: true, number: true, boolean: true }),
+      foo: new params.ParamValue("bar", false, { string: true, number: false, boolean: false }),
+      bar: new params.ParamValue("24", false, { string: false, number: true, boolean: false }),
+      baz: new params.ParamValue("true", false, { string: false, number: false, boolean: true }),
     };
-    await expect(params.resolveParams(paramsToResolve, "", userEnv)).to.eventually.deep.equal({
-      foo: new params.ParamValue("bar", false, { string: true, number: true, boolean: true }),
-      bar: new params.ParamValue("24", false, { string: true, number: true, boolean: true }),
-    });
+    await expect(
+      params.resolveParams(paramsToResolve, fakeConfig, userEnv)
+    ).to.eventually.deep.equal(
+      Object.assign(
+        {
+          foo: new params.ParamValue("bar", false, { string: true, number: false, boolean: false }),
+          bar: new params.ParamValue("24", false, { string: false, number: true, boolean: false }),
+        },
+        expectedInternalParams
+      )
+    );
+  });
 
-    /* TODO(vsfan@): should we ever reject param values from .env files based on the appearance of the string?
-  it("errors when the dotenvs provide a value of the wrong type", async () => {
+  it("params from dotenvs override internal params of the same name", async () => {
     const paramsToResolve: params.Param[] = [
       {
-        name: "foo",
+        name: "PROJECT_ID",
         type: "string",
       },
     ];
     const userEnv: Record<string, params.ParamValue> = {
-      foo: new params.ParamValue("22", false, { number: true }),
+      PROJECT_ID: new params.ParamValue("other_value", false, {
+        string: true,
+        number: false,
+        boolean: false,
+      }),
     };
-    await expect(params.resolveParams(paramsToResolve, "", userEnv)).to.eventually.be.rejected;
-    */
+    await expect(
+      params.resolveParams(paramsToResolve, fakeConfig, userEnv)
+    ).to.eventually.deep.equal({
+      DATABASE_URL: new params.ParamValue(fakeConfig.databaseURL, true, {
+        string: true,
+        boolean: false,
+        number: false,
+      }),
+      GCLOUD_PROJECT: new params.ParamValue(fakeConfig.projectId, true, {
+        string: true,
+        boolean: false,
+        number: false,
+      }),
+      PROJECT_ID: new params.ParamValue("other_value", false, {
+        string: true,
+        boolean: false,
+        number: false,
+      }),
+      STORAGE_BUCKET: new params.ParamValue(fakeConfig.storageBucket, true, {
+        string: true,
+        boolean: false,
+        number: false,
+      }),
+    });
+  });
+
+  it("does not create the corresponding internal params if database url/storage bucket are not configured", async () => {
+    const paramsToResolve: params.Param[] = [];
+    const userEnv: Record<string, params.ParamValue> = {};
+    await expect(
+      params.resolveParams(
+        paramsToResolve,
+        { locationId: "", projectId: "foo", storageBucket: "", databaseURL: "" },
+        userEnv
+      )
+    ).to.eventually.deep.equal({
+      GCLOUD_PROJECT: expectedInternalParams.GCLOUD_PROJECT,
+      PROJECT_ID: expectedInternalParams.PROJECT_ID,
+    });
   });
 
   it("can use a provided literal", async () => {
@@ -103,9 +187,14 @@ describe("resolveParams", () => {
       },
     ];
     promptOnce.resolves("bar");
-    await expect(params.resolveParams(paramsToResolve, "", {})).to.eventually.deep.equal({
-      foo: new params.ParamValue("bar", false, { string: true }),
-    });
+    await expect(params.resolveParams(paramsToResolve, fakeConfig, {})).to.eventually.deep.equal(
+      Object.assign(
+        {
+          foo: new params.ParamValue("bar", false, { string: true }),
+        },
+        expectedInternalParams
+      )
+    );
   });
 
   it("can resolve a CEL identity expression", async () => {
@@ -124,7 +213,7 @@ describe("resolveParams", () => {
       },
     ];
     promptOnce.resolves("baz");
-    await params.resolveParams(paramsToResolve, "", {});
+    await params.resolveParams(paramsToResolve, fakeConfig, {});
     expect(promptOnce.getCall(1).args[0].default).to.eq("baz");
   });
 
@@ -144,8 +233,38 @@ describe("resolveParams", () => {
       },
     ];
     promptOnce.resolves("baz");
-    await params.resolveParams(paramsToResolve, "", {});
+    await params.resolveParams(paramsToResolve, fakeConfig, {});
     expect(promptOnce.getCall(1).args[0].default).to.eq("baz/quox");
+  });
+
+  it("can resolve a CEL expression depending on the internal params", async () => {
+    const paramsToResolve: params.Param[] = [
+      {
+        name: "foo",
+        default: "{{ params.DATABASE_URL }}/quox",
+        type: "string",
+        input: { text: {} },
+      },
+      {
+        name: "foo",
+        default: "projectID: {{ params.GCLOUD_PROJECT }}",
+        type: "string",
+        input: { text: {} },
+      },
+      {
+        name: "foo",
+        default: "http://{{ params.STORAGE_BUCKET }}.storage.googleapis.com/",
+        type: "string",
+        input: { text: {} },
+      },
+    ];
+    promptOnce.resolves("baz");
+    await params.resolveParams(paramsToResolve, fakeConfig, {});
+    expect(promptOnce.getCall(0).args[0].default).to.eq("https://foo.firebaseio.com/quox");
+    expect(promptOnce.getCall(1).args[0].default).to.eq("projectID: foo");
+    expect(promptOnce.getCall(2).args[0].default).to.eq(
+      "http://foo.appspot.com.storage.googleapis.com/"
+    );
   });
 
   it("errors when the default is an unresolvable CEL expression", async () => {
@@ -158,7 +277,7 @@ describe("resolveParams", () => {
       },
     ];
     promptOnce.resolves("");
-    await expect(params.resolveParams(paramsToResolve, "", {})).to.eventually.be.rejected;
+    await expect(params.resolveParams(paramsToResolve, fakeConfig, {})).to.eventually.be.rejected;
   });
 
   it("errors when the default is a CEL expression that resolves to the wrong type", async () => {
@@ -177,6 +296,6 @@ describe("resolveParams", () => {
       },
     ];
     promptOnce.resolves("22");
-    await expect(params.resolveParams(paramsToResolve, "", {})).to.eventually.be.rejected;
+    await expect(params.resolveParams(paramsToResolve, fakeConfig, {})).to.eventually.be.rejected;
   });
 });
