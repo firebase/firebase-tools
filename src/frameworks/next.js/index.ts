@@ -8,7 +8,7 @@ import { pathToFileURL } from 'url';
 import { existsSync } from 'fs';
 import { BuildResult, findDependency, FrameworkType, NODE_VERSION, relativeRequire, SupportLevel } from "..";
 import { proxyRequestHandler } from "../../hosting/proxy";
-import { prompt } from "../../prompt";
+import { promptOnce } from "../../prompt";
 import { gte } from 'semver';
 import esbuild from 'esbuild';
 
@@ -86,14 +86,13 @@ export const build = async (dir: string): Promise<BuildResult> => {
 }
 
 export const init = async (setup: any) => {
-    await prompt(setup.hosting, [{
-        name: "frameworksLanguage",
+    const language = await promptOnce({
         type: "list",
-        default: "typescript",
+        default: "JavaScript",
         message: "What language would you like to use?",
-        choices: ["javascript", "typescript"],
-    }]);
-    execSync(`npx --yes create-next-app@latest ${setup.hosting.source} ${setup.hosting.frameworksLanguage === 'tyescript' ? '--ts': ''}`, {stdio: 'inherit'});
+        choices: ["JavaScript", "TypeScript"],
+    });
+    execSync(`npx --yes create-next-app@latest ${setup.hosting.source} ${language === 'TypeScript' ? '--ts': ''}`, {stdio: 'inherit'});
 };
 
 export const ɵcodegenPublicDirectory = async (sourceDir: string, destDir: string) => {

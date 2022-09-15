@@ -4,6 +4,7 @@ import { copy } from "fs-extra";
 import { join } from "path";
 import { BuildResult, findDependency, FrameworkType, relativeRequire, SupportLevel } from "..";
 import { proxyRequestHandler } from "../../hosting/proxy";
+import { promptOnce } from "../../prompt";
 
 export const name = 'Vite';
 export const support = SupportLevel.Expirimental;
@@ -11,26 +12,45 @@ export const type = FrameworkType.Toolchain;
 
 const CLI_COMMAND = process.platform === 'win32' ? 'vite.cmd' : 'vite';
 
-export const init = async (setup: any) => {
-    execSync(`npx --yes create-vite ${setup.hosting.source}`, {stdio: 'inherit'});
+export const initViteTemplate = (template: string) => async (setup: any) => await init(setup, template);
+
+export const init = async (setup: any, baseTemplate: string='vanilla') => {
+    const template = await promptOnce({
+        type: "list",
+        default: "JavaScript",
+        message: "What language would you like to use?",
+        choices: [{ name: "JavaScript", value: baseTemplate }, { name: "TypeScript", value: `${baseTemplate}-ts` }],
+    });
+    execSync(`npm create vite@latest ${setup.hosting.source} --yes -- --template ${template}`, {stdio: 'inherit'});
     execSync(`npm install`, {stdio: 'inherit', cwd: setup.hosting.source });
 };
 
-export const discover = async (dir: string) => {
+
+export const viteDiscoverWithNpmDependency = (dep: string) => async (dir: string) => await discover(dir, undefined, dep);
+
+export const vitePluginDiscover = (plugin: string) => async (dir: string) => await discover(dir, plugin);
+
+export const discover = async (dir: string, plugin?: string, npmDependency?: string) => {
     if (!existsSync(join(dir, 'package.json'))) return undefined;
+    // If we're not searching for a vite plugin, depth has to be zero
+    const depth = plugin ? undefined : 0;
     if (
         !existsSync(join(dir, 'vite.config.js')) &&
         !existsSync(join(dir, 'vite.config.ts')) &&
-        !findDependency('vite', { cwd: dir, depth: 0, omitDev: false })
+        !findDependency('vite', { cwd: dir, depth, omitDev: false }) &&
+        (!npmDependency || !findDependency(npmDependency, { cwd: dir, depth: 0, omitDev: true })) 
     ) return undefined;
-    const config = await getConfig(dir);
-    const publicDirectory = join(dir, config.publicDir);
-    return { mayWantBackend: true, publicDirectory };
+    const { appType, publicDir: publicDirectory, plugins } = await getConfig(dir);
+    if (plugin && !plugins.find(({ name }) => name === plugin)) return undefined;
+    return { mayWantBackend: appType !== 'spa', publicDirectory };
 };
 
 export const build = async (root: string): Promise<BuildResult> => {
+    const { appType } = await getConfig(root);
     const { build } = relativeRequire(root, 'vite');
     await build({ root });
+    // TODO figure this out 
+    // return { wantsBackend: appType !== 'spa' };
 };
 
 export const ɵcodegenPublicDirectory = async (root: string, dest: string) => {
