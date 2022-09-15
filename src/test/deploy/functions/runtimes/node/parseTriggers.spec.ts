@@ -8,8 +8,19 @@ import * as api from "../../../../../api";
 import { BEFORE_CREATE_EVENT } from "../../../../../functions/events/v1";
 
 async function resolveBackend(bd: build.Build): Promise<backend.Backend> {
-  return (await build.resolveBackend(bd, { functionsSource: "", projectId: "PROJECT" }, {}))
-    .backend;
+  return (
+    await build.resolveBackend(
+      bd,
+      {
+        locationId: "",
+        projectId: "foo",
+        storageBucket: "foo.appspot.com",
+        databaseURL: "https://foo.firebaseio.com",
+      },
+      { functionsSource: "", projectId: "PROJECT" },
+      {}
+    )
+  ).backend;
 }
 
 describe("addResourcesToBuild", () => {

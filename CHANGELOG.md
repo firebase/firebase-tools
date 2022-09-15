@@ -1,1 +1,3 @@
+- Fix Storage Emulator crashing with NoClassDefFoundError in some cases (#3481).
+- Refactor mechanism for invoking function triggers (#4886).
 - Allow Firestore emulator UI websocket port to be configurable (#4925).

@@ -162,6 +162,7 @@ export class StorageLayer {
         request.bucketId,
         RulesetOperationMethod.GET,
         { before: metadata?.asRulesResource() },
+        this._projectId,
         request.authorization
       );
     }
@@ -213,6 +214,7 @@ export class StorageLayer {
       request.bucketId,
       RulesetOperationMethod.DELETE,
       { before: storedMetadata?.asRulesResource() },
+      this._projectId,
       request.authorization
     );
     if (!authorized) {
@@ -267,6 +269,7 @@ export class StorageLayer {
         before: storedMetadata?.asRulesResource(),
         after: storedMetadata?.asRulesResource(request.metadata),
       },
+      this._projectId,
       request.authorization
     );
     if (!authorized) {
@@ -322,6 +325,7 @@ export class StorageLayer {
         before: storedMetadata?.asRulesResource(),
         after: metadata.asRulesResource(),
       },
+      this._projectId,
       upload.authorization
     );
     if (!authorized) {
@@ -417,6 +421,7 @@ export class StorageLayer {
       bucketId,
       RulesetOperationMethod.LIST,
       {},
+      this._projectId,
       authorization,
       delimiter
     );

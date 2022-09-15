@@ -363,6 +363,9 @@ export type Endpoint = TargetIds &
     // "Hash" is a value derived from function labels that is used to check if there are any changes
     // between the serverside and local copies of the function.
     hash?: string;
+
+    // Marked as true if a user specifically called this function or codebase with the --only flag.
+    targetedByOnly?: boolean;
   };
 
 export interface RequiredAPI {

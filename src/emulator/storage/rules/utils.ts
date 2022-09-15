@@ -17,6 +17,7 @@ export interface FirebaseRulesValidator {
     bucketId: string,
     method: RulesetOperationMethod,
     variableOverrides: RulesVariableOverrides,
+    projectId: string,
     authorization?: string,
     delimiter?: string
   ): Promise<boolean>;
@@ -42,6 +43,7 @@ export function getFirebaseRulesValidator(
       bucketId: string,
       method: RulesetOperationMethod,
       variableOverrides: RulesVariableOverrides,
+      projectId: string,
       authorization?: string,
       delimiter?: string
     ) => {
@@ -50,6 +52,7 @@ export function getFirebaseRulesValidator(
         file: variableOverrides,
         path,
         method,
+        projectId,
         authorization,
         delimiter,
       });
@@ -98,6 +101,7 @@ export async function isPermitted(opts: {
   };
   path: string;
   method: RulesetOperationMethod;
+  projectId: string;
   authorization?: string;
   delimiter?: string;
 }): Promise<boolean> {
@@ -118,6 +122,7 @@ export async function isPermitted(opts: {
     method: opts.method,
     path: opts.path,
     file: opts.file,
+    projectId: opts.projectId,
     token: opts.authorization ? opts.authorization.split(" ")[1] : undefined,
     delimiter: opts.delimiter,
   });
