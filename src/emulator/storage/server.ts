@@ -25,7 +25,7 @@ export function createApp(
     `Temp file directory for storage emulator: ${storageLayer.dirPath}`
   );
 
-  // Retrun access-control-allow-private-network heder if requested
+  // Retrun access-control-allow-private-network header if requested
   // Enables accessing locahost when site is exposed via tunnel see https://github.com/firebase/firebase-tools/issues/4227
   // Aligns with https://wicg.github.io/private-network-access/#headers
   // Replace with cors option if adopted, see https://github.com/expressjs/cors/issues/236
