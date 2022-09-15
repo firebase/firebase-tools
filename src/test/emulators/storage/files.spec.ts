@@ -43,6 +43,27 @@ describe("files", () => {
     expect(deserialized).to.deep.equal(metadata);
   });
 
+  it("converts non-string custom metadata to string", () => {
+    const cf = new StorageCloudFunctions("demo-project");
+    const customMetadata = {
+      foo: true as unknown as string,
+    };
+    const metadata = new StoredFileMetadata(
+      {
+        customMetadata,
+        name: "name",
+        bucket: "bucket",
+        contentType: "mime/type",
+        downloadTokens: ["token123"],
+      },
+      cf,
+      Buffer.from("Hello, World!")
+    );
+    const json = StoredFileMetadata.toJSON(metadata);
+    const deserialized = StoredFileMetadata.fromJSON(json, cf);
+    expect(deserialized.customMetadata).to.deep.equal({ foo: "true" });
+  });
+
   describe("StorageLayer", () => {
     let _persistence: Persistence;
     let _uploadService: UploadService;

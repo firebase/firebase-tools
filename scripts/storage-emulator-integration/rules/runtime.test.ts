@@ -350,7 +350,7 @@ describe("Storage Rules Runtime", function () {
 async function testIfPermitted(
   runtime: StorageRulesRuntime,
   rulesetContent: string,
-  verificationOpts: RulesetVerificationOpts,
+  verificationOpts: Omit<RulesetVerificationOpts, "projectId">,
   runtimeVariableOverrides: { [s: string]: ExpressionValue } = {}
 ) {
   const loadResult = await runtime.loadRuleset({
@@ -367,7 +367,7 @@ async function testIfPermitted(
   }
 
   const { permitted, issues } = await loadResult.ruleset.verify(
-    verificationOpts,
+    { ...verificationOpts, projectId: "demo-project-id" },
     runtimeVariableOverrides
   );
 

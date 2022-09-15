@@ -1,9 +1,9 @@
 import * as http from "http";
 import * as uuid from "uuid";
 
-import { FunctionsRuntimeInstance, InvokeRuntimeOpts } from "./functionsEmulator";
+import { FunctionsRuntimeInstance } from "./functionsEmulator";
 import { EmulatorLog, Emulators, FunctionsExecutionMode } from "./types";
-import { FunctionsRuntimeArgs, FunctionsRuntimeBundle } from "./functionsEmulatorShared";
+import { FunctionsRuntimeBundle } from "./functionsEmulatorShared";
 import { EventEmitter } from "events";
 import { EmulatorLogger, ExtensionLogInfo } from "./emulatorLogger";
 import { FirebaseError } from "../error";
@@ -40,19 +40,6 @@ export class RuntimeWorker {
     this.id = uuid.v4();
     this.key = key;
     this.runtime = runtime;
-
-    this.runtime.events.on("log", (log: EmulatorLog) => {
-      if (log.type === "runtime-status") {
-        if (log.data.state === "idle") {
-          if (this.state === RuntimeWorkerState.BUSY) {
-            this.state = RuntimeWorkerState.IDLE;
-          } else if (this.state === RuntimeWorkerState.FINISHING) {
-            this.log(`IDLE --> FINISHING`);
-            this.runtime.process.kill();
-          }
-        }
-      }
-    });
 
     const childProc = this.runtime.process;
     let msgBuffer = "";
@@ -99,12 +86,57 @@ export class RuntimeWorker {
     return lines[lines.length - 1];
   }
 
-  execute(frb: FunctionsRuntimeBundle, opts?: InvokeRuntimeOpts): void {
-    // Make a copy so we don't edit it
-    const execFrb: FunctionsRuntimeBundle = { ...frb };
-    const args: FunctionsRuntimeArgs = { frb: execFrb, opts };
+  sendDebugMsg(debug: FunctionsRuntimeBundle["debug"]): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this.runtime.process.send(JSON.stringify(debug), (err) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve();
+        }
+      });
+    });
+  }
+
+  request(req: http.RequestOptions, resp: http.ServerResponse, body?: unknown): Promise<void> {
     this.state = RuntimeWorkerState.BUSY;
-    this.runtime.process.send(JSON.stringify(args));
+    const onFinish = (): void => {
+      if (this.state === RuntimeWorkerState.BUSY) {
+        this.state = RuntimeWorkerState.IDLE;
+      } else if (this.state === RuntimeWorkerState.FINISHING) {
+        this.log(`IDLE --> FINISHING`);
+        this.runtime.process.kill();
+      }
+    };
+    return new Promise((resolve) => {
+      const proxy = http.request(
+        {
+          method: req.method,
+          path: req.path,
+          headers: req.headers,
+          socketPath: this.runtime.socketPath,
+        },
+        (_resp) => {
+          resp.writeHead(_resp.statusCode || 200, _resp.headers);
+          const piped = _resp.pipe(resp);
+          piped.on("finish", () => {
+            onFinish();
+            resolve();
+          });
+        }
+      );
+      proxy.on("error", (err) => {
+        resp.writeHead(500);
+        resp.write(JSON.stringify(err));
+        resp.end();
+        this.runtime.process.kill();
+        resolve();
+      });
+      if (body) {
+        proxy.write(body);
+      }
+      proxy.end();
+    });
   }
 
   get state(): RuntimeWorkerState {
@@ -135,24 +167,6 @@ export class RuntimeWorker {
     }
 
     this.runtime.events.on("log", listener);
-  }
-
-  waitForDone(): Promise<any> {
-    if (this.state === RuntimeWorkerState.IDLE || this.state === RuntimeWorkerState.FINISHED) {
-      return Promise.resolve();
-    }
-
-    return new Promise<void>((res) => {
-      const listener = () => {
-        this.stateEvents.removeListener(RuntimeWorkerState.IDLE, listener);
-        this.stateEvents.removeListener(RuntimeWorkerState.FINISHED, listener);
-        res();
-      };
-
-      // Finish on either IDLE or FINISHED states
-      this.stateEvents.once(RuntimeWorkerState.IDLE, listener);
-      this.stateEvents.once(RuntimeWorkerState.FINISHED, listener);
-    });
   }
 
   isSocketReady(): Promise<void> {
@@ -263,29 +277,33 @@ export class RuntimeWorkerPool {
   }
 
   /**
-   * Submit work to be run by an idle worker for the givenn triggerId.
-   * Calls to this function should be guarded by readyForWork() to avoid throwing
-   * an exception.
+   * Submit request to be handled by an idle worker for the given triggerId.
+   * Caller should ensure that there is an idle worker to handle the request.
    *
    * @param triggerId
-   * @param frb
-   * @param opts
+   * @param req Request to send to the trigger.
+   * @param resp Response to proxy the response from the worker.
+   * @param body Request body.
+   * @param debug Debug payload to send prior to making request.
    */
-  submitWork(
-    triggerId: string | undefined,
-    frb: FunctionsRuntimeBundle,
-    opts?: InvokeRuntimeOpts
-  ): RuntimeWorker {
-    this.log(`submitWork(triggerId=${triggerId})`);
+  async submitRequest(
+    triggerId: string,
+    req: http.RequestOptions,
+    resp: http.ServerResponse,
+    body: unknown,
+    debug?: FunctionsRuntimeBundle["debug"]
+  ): Promise<void> {
+    this.log(`submitRequest(triggerId=${triggerId})`);
     const worker = this.getIdleWorker(triggerId);
     if (!worker) {
       throw new FirebaseError(
-        "Internal Error: can't call submitWork without checking for idle workers"
+        "Internal Error: can't call submitRequest without checking for idle workers"
       );
     }
-
-    worker.execute(frb, opts);
-    return worker;
+    if (debug) {
+      await worker.sendDebugMsg(debug);
+    }
+    return worker.request(req, resp, body);
   }
 
   getIdleWorker(triggerId: string | undefined): RuntimeWorker | undefined {

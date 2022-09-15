@@ -10,6 +10,12 @@ export enum RulesetOperationMethod {
   DELETE = "delete",
 }
 
+export enum DataLoadStatus {
+  OK = "ok",
+  NOT_FOUND = "not_found",
+  INVALID_STATE = "invalid_state",
+}
+
 export interface Source {
   files: SourceFile[];
 }
@@ -20,8 +26,10 @@ export interface SourceFile {
 }
 
 export interface RuntimeActionResponse {
-  id: number;
+  id?: number;
+  server_request_id?: number; // Snake case comes from the server
   status?: string;
+  action?: string;
   message?: string;
   warnings: string[];
   errors: string[];
@@ -33,12 +41,27 @@ export interface RuntimeActionLoadRulesetResponse extends RuntimeActionResponse 
   };
 }
 
-export interface RuntimeActionVerifyResponse extends RuntimeActionResponse {
+export type RuntimeActionVerifyResponse =
+  | RuntimeActionVerifyCompleteResponse
+  | RuntimeActionFirestoreDataRequest;
+
+export interface RuntimeActionVerifyCompleteResponse extends RuntimeActionResponse {
   result: { permit: boolean };
 }
 
+export interface RuntimeActionFirestoreDataRequest extends RuntimeActionResponse {
+  action: "fetch_firestore_document";
+  context: { path: string };
+}
+
+export interface RuntimeActionFirestoreDataResponse
+  extends RuntimeActionResponse,
+    RuntimeActionBundle {
+  result?: unknown;
+}
+
 export interface RuntimeActionBundle {
-  action: string;
+  action?: string;
 }
 
 export interface RuntimeActionLoadRulesetBundle extends RuntimeActionBundle {
