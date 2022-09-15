@@ -117,7 +117,10 @@ export const discover = async (dir: string, warn: boolean=true) => {
       const result = await discover(dir);
       if (result) frameworksDiscovered.push({ framework, ...result });
     };
-    if (frameworksDiscovered.length > 1) throw 'Yada';
+    if (frameworksDiscovered.length > 1) {
+      if (warn) console.error("Multiple conflicting frameworks discovered. TODO link");
+      return undefined;
+    }
     if (frameworksDiscovered.length == 1) return frameworksDiscovered[0];
   }
   if (warn) console.warn("We can't detirmine the web framework in use. TODO link");

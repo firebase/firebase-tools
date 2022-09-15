@@ -8,7 +8,7 @@ import { BuildResult, FrameworkType, SupportLevel } from "..";
 
 export const name = 'Express.js';
 export const support = SupportLevel.Expirimental;
-export const type = FrameworkType.Framework;
+export const type = FrameworkType.Custom;
 
 const getConfig = async (root:string) => {
     const packageJsonBuffer = await readFile(join(root, 'package.json'));

@@ -33,24 +33,22 @@ export const vitePluginDiscover = (plugin: string) => async (dir: string) => awa
 export const discover = async (dir: string, plugin?: string, npmDependency?: string) => {
     if (!existsSync(join(dir, 'package.json'))) return undefined;
     // If we're not searching for a vite plugin, depth has to be zero
+    const additionalDep = npmDependency && findDependency(npmDependency, { cwd: dir, depth: 0, omitDev: true });
     const depth = plugin ? undefined : 0;
     if (
         !existsSync(join(dir, 'vite.config.js')) &&
         !existsSync(join(dir, 'vite.config.ts')) &&
-        !findDependency('vite', { cwd: dir, depth, omitDev: false }) &&
-        (!npmDependency || !findDependency(npmDependency, { cwd: dir, depth: 0, omitDev: true })) 
+        !findDependency('vite', { cwd: dir, depth, omitDev: false })
     ) return undefined;
+    if (npmDependency && !additionalDep) return undefined;
     const { appType, publicDir: publicDirectory, plugins } = await getConfig(dir);
     if (plugin && !plugins.find(({ name }) => name === plugin)) return undefined;
     return { mayWantBackend: appType !== 'spa', publicDirectory };
 };
 
 export const build = async (root: string): Promise<BuildResult> => {
-    const { appType } = await getConfig(root);
     const { build } = relativeRequire(root, 'vite');
     await build({ root });
-    // TODO figure this out 
-    // return { wantsBackend: appType !== 'spa' };
 };
 
 export const ɵcodegenPublicDirectory = async (root: string, dest: string) => {
