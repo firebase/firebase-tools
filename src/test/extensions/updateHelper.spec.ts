@@ -41,23 +41,6 @@ const SOURCE = {
   spec: SPEC,
 };
 
-const EXTENSION_VERSION = {
-  name: "publishers/test-publisher/extensions/test/versions/0.2.0",
-  ref: "test-publisher/test@0.2.0",
-  spec: SPEC,
-  state: "PUBLISHED",
-  hash: "abcdefg",
-  createTime: "2020-06-30T00:21:06.722782Z",
-};
-
-const EXTENSION = {
-  name: "publishers/test-publisher/extensions/test",
-  ref: "test-publisher/test",
-  state: "PUBLISHED",
-  createTime: "2020-06-30T00:21:06.722782Z",
-  latestVersion: "0.2.0",
-};
-
 const INSTANCE = {
   name: "projects/invader-zim/instances/instance-of-official-ext",
   createTime: "2019-05-19T00:20:10.416947Z",
@@ -186,102 +169,6 @@ describe("updateHelper", () => {
           SPEC
         )
       ).to.be.rejectedWith(FirebaseError, "Unable to update from the source");
-    });
-  });
-
-  describe("updateToVersionFromPublisherSource", () => {
-    let getExtensionStub: sinon.SinonStub;
-    let createSourceStub: sinon.SinonStub;
-    let listExtensionVersionStub: sinon.SinonStub;
-    let getInstanceStub: sinon.SinonStub;
-
-    beforeEach(() => {
-      getExtensionStub = sinon.stub(extensionsApi, "getExtension");
-      createSourceStub = sinon.stub(extensionsApi, "getExtensionVersion");
-      listExtensionVersionStub = sinon.stub(extensionsApi, "listExtensionVersions");
-      getInstanceStub = sinon.stub(extensionsApi, "getInstance").resolves(REGISTRY_INSTANCE);
-    });
-
-    afterEach(() => {
-      getExtensionStub.restore();
-      createSourceStub.restore();
-      listExtensionVersionStub.restore();
-      getInstanceStub.restore();
-    });
-
-    it("should return the correct source name for a valid published extension version source", async () => {
-      getExtensionStub.resolves(EXTENSION);
-      createSourceStub.resolves(EXTENSION_VERSION);
-      listExtensionVersionStub.resolves([]);
-      const name = await updateHelper.updateToVersionFromPublisherSource(
-        "test-project",
-        "test-instance",
-        "test-publisher/test@0.2.0",
-        SPEC
-      );
-      expect(name).to.equal(EXTENSION_VERSION.name);
-    });
-
-    it("should throw an error for an invalid source", async () => {
-      getExtensionStub.throws(Error("NOT FOUND"));
-      createSourceStub.throws(Error("NOT FOUND"));
-      listExtensionVersionStub.resolves([]);
-      await expect(
-        updateHelper.updateToVersionFromPublisherSource(
-          "test-project",
-          "test-instance",
-          "test-publisher/test@1.2.3",
-          SPEC
-        )
-      ).to.be.rejectedWith("NOT FOUND");
-    });
-  });
-
-  describe("updateFromPublisherSource", () => {
-    let getExtensionStub: sinon.SinonStub;
-    let createSourceStub: sinon.SinonStub;
-    let listExtensionVersionStub: sinon.SinonStub;
-    let getInstanceStub: sinon.SinonStub;
-
-    beforeEach(() => {
-      getExtensionStub = sinon.stub(extensionsApi, "getExtension");
-      createSourceStub = sinon.stub(extensionsApi, "getExtensionVersion");
-      listExtensionVersionStub = sinon.stub(extensionsApi, "listExtensionVersions");
-      getInstanceStub = sinon.stub(extensionsApi, "getInstance").resolves(REGISTRY_INSTANCE);
-    });
-
-    afterEach(() => {
-      getExtensionStub.restore();
-      createSourceStub.restore();
-      listExtensionVersionStub.restore();
-      getInstanceStub.restore();
-    });
-
-    it("should return the correct source name for the latest published extension source", async () => {
-      getExtensionStub.resolves(EXTENSION);
-      createSourceStub.resolves(EXTENSION_VERSION);
-      listExtensionVersionStub.resolves([]);
-      const name = await updateHelper.updateToVersionFromPublisherSource(
-        "test-project",
-        "test-instance",
-        "test-publisher/test",
-        SPEC
-      );
-      expect(name).to.equal(EXTENSION_VERSION.name);
-    });
-
-    it("should throw an error for an invalid source", async () => {
-      getExtensionStub.throws(Error("NOT FOUND"));
-      createSourceStub.throws(Error("NOT FOUND"));
-      listExtensionVersionStub.resolves([]);
-      await expect(
-        updateHelper.updateToVersionFromPublisherSource(
-          "test-project",
-          "test-instance",
-          "test-publisher/test",
-          SPEC
-        )
-      ).to.be.rejectedWith("NOT FOUND");
     });
   });
 });
