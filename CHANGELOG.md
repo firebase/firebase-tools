@@ -1,2 +1,3 @@
 - Fix Storage Emulator crashing with NoClassDefFoundError in some cases (#3481).
 - Refactor mechanism for invoking function triggers (#4886).
+- Add support for `HTTP_PROXY` and `HTTPS_PROXY` environment variables to `crashlytics:mappingfile:upload` and `crashlytics:symbols:upload` commands (#4604).
