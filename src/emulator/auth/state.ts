@@ -417,8 +417,10 @@ export abstract class ProjectState {
       // Shouldn't ever reach this assertion, but adding for completeness
       assert(record.tenantId === this.tenantId, "TENANT_ID_MISMATCH");
     }
+    const user = this.getUserByLocalId(record.localId);
+    assert(user, "INVALID_REFRESH_TOKEN");
     return {
-      user: this.getUserByLocalIdAssertingExists(record.localId),
+      user,
       provider: record.provider,
       extraClaims: record.extraClaims,
       secondFactor: record.secondFactor,
