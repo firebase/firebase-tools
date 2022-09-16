@@ -8,6 +8,7 @@ import * as extensionsApi from "../../extensions/extensionsApi";
 import { ExtensionSpec, Resource } from "../../extensions/types";
 import * as extensionsHelper from "../../extensions/extensionsHelper";
 import * as updateHelper from "../../extensions/updateHelper";
+import * as iam from "../../gcp/iam";
 
 const SPEC: ExtensionSpec = {
   name: "test",
@@ -94,11 +95,15 @@ describe("updateHelper", () => {
   describe("updateFromLocalSource", () => {
     let createSourceStub: sinon.SinonStub;
     let getInstanceStub: sinon.SinonStub;
-
+    let getRoleStub: sinon.SinonStub;
     beforeEach(() => {
       createSourceStub = sinon.stub(extensionsHelper, "createSourceFromLocation");
       getInstanceStub = sinon.stub(extensionsApi, "getInstance").resolves(INSTANCE);
-
+      getRoleStub = sinon.stub(iam, "getRole");
+      getRoleStub.resolves({
+        title: "Role 1",
+        description: "a role",
+      });
       // The logic will fetch the extensions registry, but it doesn't need to receive anything.
       nock(firebaseExtensionsRegistryOrigin).get("/extensions.json").reply(200, {});
     });
@@ -106,6 +111,7 @@ describe("updateHelper", () => {
     afterEach(() => {
       createSourceStub.restore();
       getInstanceStub.restore();
+      getRoleStub.restore();
 
       nock.cleanAll();
     });
@@ -132,11 +138,15 @@ describe("updateHelper", () => {
   describe("updateFromUrlSource", () => {
     let createSourceStub: sinon.SinonStub;
     let getInstanceStub: sinon.SinonStub;
-
+    let getRoleStub: sinon.SinonStub;
     beforeEach(() => {
       createSourceStub = sinon.stub(extensionsHelper, "createSourceFromLocation");
       getInstanceStub = sinon.stub(extensionsApi, "getInstance").resolves(INSTANCE);
-
+      getRoleStub = sinon.stub(iam, "getRole");
+      getRoleStub.resolves({
+        title: "Role 1",
+        description: "a role",
+      });
       // The logic will fetch the extensions registry, but it doesn't need to receive anything.
       nock(firebaseExtensionsRegistryOrigin).get("/extensions.json").reply(200, {});
     });
@@ -144,6 +154,7 @@ describe("updateHelper", () => {
     afterEach(() => {
       createSourceStub.restore();
       getInstanceStub.restore();
+      getRoleStub.restore();
 
       nock.cleanAll();
     });
