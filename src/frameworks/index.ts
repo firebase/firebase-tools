@@ -41,12 +41,17 @@ export function relativeRequire(dir: string, mod: 'vite'): typeof import('vite')
 export function relativeRequire(dir: string, mod: 'jsonc-parser'): typeof import('jsonc-parser');
 export function relativeRequire(dir: string, mod: '@nuxt/kit'): Promise<typeof import('@nuxt/kit')>;
 export function relativeRequire(dir: string, mod: string) {
-    const path = require.resolve(mod, { paths: [ dir ]});
-    if (!path) throw `Can't find ${mod}.`;
-    if (extname(path) === '.mjs') {
-      return dynamicImport(path);
-    } else {
-      return require(path);
+    try {
+      const path = require.resolve(mod, { paths: [ dir ]});
+      if (extname(path) === '.mjs') {
+        return dynamicImport(path);
+      } else {
+        return require(path);
+      }
+    } catch (e) {
+      const path = relative(process.cwd(), dir);
+      console.error(`Could not load dependency ${mod} in ${path.startsWith('..') ? path : `./${path}`}, have you run \`npm install\`?`);
+      throw e;
     }
 };
 
@@ -162,6 +167,13 @@ export const findDependency = (name: string, options: Partial<FindDepOptions>={}
   return search(name, json.dependencies);
 };
 
+// TODO pull from @firebase/util when published
+type FirebaseDefaults = {
+  config?: Object,
+  emulatorHosts?: Record<string, string>,
+  _authTokenSyncURL?: string,
+}
+
 export const prepareFrameworks = async (targetNames: string[], context: any, options: any, emulators: EmulatorInfo[]=[]) => {
   const project = needProjectId(context);
   const { projectRoot } = options;
@@ -172,6 +184,7 @@ export const prepareFrameworks = async (targetNames: string[], context: any, opt
   // function... unless you're using authenticated server-context TODO explore the implication here.
   const configs = normalizedHostingConfigs({ site: project, ...options }, { resolveTargets: true });
   options.normalizedHostingConfigs = configs;
+  let firebaseDefaults: FirebaseDefaults|undefined = undefined;
   if (configs.length === 0) return;
   for (const config of configs) {
     const { source, site, public: publicDir } = config;
@@ -197,6 +210,9 @@ export const prepareFrameworks = async (targetNames: string[], context: any, opt
       if (info.name === Emulators.AUTH) process.env[Constants.FIREBASE_AUTH_EMULATOR_HOST] = formatHost(info);
       if (info.name === Emulators.DATABASE) process.env[Constants.FIREBASE_DATABASE_EMULATOR_HOST] = formatHost(info);
       if (info.name === Emulators.STORAGE) process.env[Constants.FIREBASE_STORAGE_EMULATOR_HOST] = formatHost(info);
+      firebaseDefaults ||= {};
+      firebaseDefaults.emulatorHosts ||= {};
+      firebaseDefaults.emulatorHosts![info.name] = formatHost(info);
     });
     let firebaseConfig = null;
     if (firebaseAppVersion) {
@@ -206,6 +222,8 @@ export const prepareFrameworks = async (targetNames: string[], context: any, opt
         const { appId } = selectedSite;
         if (appId) {
           firebaseConfig = await getAppConfig(appId, AppPlatform.WEB);
+          firebaseDefaults ||= {};
+          firebaseDefaults.config = firebaseConfig;
         } else {
           console.warn(
             `No Firebase app associated with site ${site}, unable to provide authenticated server context.
@@ -222,7 +240,7 @@ You can link a Web app to a Hosting site here https://console.firebase.google.co
         }
       }
     }
-    if (firebaseConfig) process.env.FRAMEWORKS_APP_OPTIONS = JSON.stringify(firebaseConfig);
+    if (firebaseDefaults) process.env.__FIREBASE_DEFAULTS__ = JSON.stringify(firebaseDefaults);
     const results = await discover(getProjectPath());
     if (!results) throw 'Epic fail.';
     const { framework, mayWantBackend, publicDirectory } = results;
@@ -243,6 +261,9 @@ You can link a Web app to a Hosting site here https://console.firebase.google.co
       await ɵcodegenPublicDirectory(getProjectPath(), hostingDist);
       config.public = relative(projectRoot, hostingDist);
       if (wantsBackend && ɵcodegenFunctionsDirectory) {
+
+        if (firebaseDefaults) firebaseDefaults._authTokenSyncURL = '/__session';
+
         rewrites.push({
           source: "**",
           function: functionName,
@@ -338,9 +359,23 @@ exports.ssr = onRequest((req, res) => server.then(({handle}) => handle(req, res)
           destination: "/index.html",
         });
       }
+      config.rewrites = [...(config.rewrites || []), ...rewrites];
       config.redirects = [...(config.redirects || []), ...redirects];
       config.headers = [...(config.headers || []), ...headers];
     }
     config.cleanUrls ??= true;
+    if (firebaseDefaults) {
+      const encodedDefaults = Buffer.from(JSON.stringify(firebaseDefaults)).toString('base64url');
+      const expires = new Date(new Date().getTime() + 60_000_000_000);
+      const path = `/`;
+      config.headers ||= [];
+      config.headers.push({
+        "source": "**/*.js",
+        "headers": [{
+          "key": "Set-Cookie",
+          "value": `__FIREBASE_DEFAULTS__=${encodedDefaults}; SameSite=Strict; Expires=${expires.toISOString()}; Path=${path};`
+        }]
+      });
+    }
   }
 };
