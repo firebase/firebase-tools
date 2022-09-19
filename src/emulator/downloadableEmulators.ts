@@ -18,7 +18,7 @@ import * as path from "path";
 import * as os from "os";
 import { EmulatorRegistry } from "./registry";
 import { downloadEmulator } from "../emulator/download";
-import { previews } from "../previews";
+import * as experiments from "../experiments";
 
 const EMULATOR_INSTANCE_KILL_TIMEOUT = 4000; /* ms */
 
@@ -62,7 +62,7 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
       namePrefix: "cloud-storage-rules-emulator",
     },
   },
-  ui: previews.emulatoruisnapshot
+  ui: experiments.isEnabled("emulatoruisnapshot")
     ? {
         version: "SNAPSHOT",
         downloadPath: path.join(CACHE_DIR, "ui-vSNAPSHOT.zip"),
@@ -286,6 +286,9 @@ async function _fatal(emulator: Emulators, errorMsg: string): Promise<void> {
   }
 }
 
+/**
+ *
+ */
 export async function handleEmulatorProcessError(emulator: Emulators, err: any): Promise<void> {
   const description = Constants.description(emulator);
   if (err.path === "java" && err.code === "ENOENT") {
@@ -298,6 +301,9 @@ export async function handleEmulatorProcessError(emulator: Emulators, err: any):
   }
 }
 
+/**
+ *
+ */
 export function requiresJava(emulator: Emulators): boolean {
   if (emulator in Commands) {
     return Commands[emulator as keyof typeof Commands].binary === "java";

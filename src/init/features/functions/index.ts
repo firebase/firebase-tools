@@ -4,7 +4,7 @@ import * as _ from "lodash";
 import { logger } from "../../../logger";
 import { promptOnce } from "../../../prompt";
 import { requirePermissions } from "../../../requirePermissions";
-import { previews } from "../../../previews";
+import * as experiments from "../../../experiments";
 import { Options } from "../../../options";
 import { ensure } from "../../../ensureApiEnabled";
 
@@ -40,9 +40,9 @@ export async function doSetup(setup: any, config: any, options: Options) {
       value: "typescript",
     },
   ];
-  if (previews.golang) {
+  if (experiments.isEnabled("golang")) {
     choices.push({
-      name: "Go",
+      name: `Go ${clc.bold("experimental")}`,
       value: "golang",
     });
   }

@@ -61,7 +61,6 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      FIREBASE_CLI_PREVIEWS: none
       FIREBASE_EMULATORS_PATH: ${{ github.workspace }}/emulator-cache
       COMMIT_SHA: ${{ github.sha }}
       CI_JOB_ID: ${{ github.action }}
@@ -116,7 +115,6 @@ jobs:
     runs-on: windows-latest
 
     env:
-      FIREBASE_CLI_PREVIEWS: none
       FIREBASE_EMULATORS_PATH: ${{ github.workspace }}/emulator-cache
       COMMIT_SHA: ${{ github.sha }}
       CI_JOB_ID: ${{ github.action }}

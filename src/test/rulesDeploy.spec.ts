@@ -12,7 +12,7 @@ import { Config } from "../config";
 import gcp = require("../gcp");
 
 import { RulesDeploy, RulesetServiceType } from "../rulesDeploy";
-import { previews } from "../previews";
+import * as experiments from "../experiments";
 
 describe("RulesDeploy", () => {
   const FIXTURE_DIR = path.resolve(__dirname, "fixtures/rulesDeploy");
@@ -350,7 +350,7 @@ describe("RulesDeploy", () => {
       CROSS_SERVICE_OPTIONS.config = Config.load(CROSS_SERVICE_OPTIONS, false);
 
       beforeEach(() => {
-        previews.crossservicerules = true;
+        experiments.setEnabled("crossservicerules", true);
         (gcp.rules.getLatestRulesetName as sinon.SinonStub).resolves(null);
         (gcp.rules.createRuleset as sinon.SinonStub).onFirstCall().resolves("compiled");
         sinon.stub(projectNumber, "getProjectNumber").resolves("12345");
@@ -360,7 +360,7 @@ describe("RulesDeploy", () => {
 
       afterEach(() => {
         sinon.restore();
-        previews.crossservicerules = false;
+        experiments.setEnabled("crossservicerules", false);
       });
 
       it("should deploy even with IAM failure", async () => {
@@ -423,7 +423,7 @@ describe("RulesDeploy", () => {
       });
 
       it("should not prompt if feature is disabled", async () => {
-        previews.crossservicerules = false;
+        experiments.setEnabled("crossservicerules", false);
         sinon.stub(resourceManager, "serviceAccountHasRoles").resolves(false);
         sinon.stub(resourceManager, "addServiceAccountToRoles").resolves();
         sinon.spy(prompt, "promptOnce");

@@ -32,10 +32,10 @@ import {
 } from "../../downloadableEmulators";
 import { EmulatorRegistry } from "../../registry";
 import { Client } from "../../../apiv2";
-import { previews } from "../../../previews";
+import * as experiments from "../../../experiments";
 
 const lock = new AsyncLock();
-const synchonizationKey: string = "key";
+const synchonizationKey = "key";
 
 export interface RulesetVerificationOpts {
   file: {
@@ -443,8 +443,9 @@ async function fetchFirestoreDocument(
   projectId: string,
   request: RuntimeActionFirestoreDataRequest
 ): Promise<RuntimeActionFirestoreDataResponse> {
-  // If preview not enabled, just throw an error
-  if (!previews.crossservicerules) {
+  // If experiment is not enabled, just throw an error
+  // TODO: should this be an assertEnabled instead?
+  if (!experiments.isEnabled("crossservicerules")) {
     return { status: DataLoadStatus.INVALID_STATE, warnings: [], errors: [] };
   }
 

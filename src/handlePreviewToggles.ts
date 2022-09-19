@@ -1,36 +1,41 @@
 "use strict";
 
-import { unset, has } from "lodash";
-import { bold, red } from "colorette";
+import * as clc from "colorette";
 
-import { configstore } from "./configstore";
-import { previews } from "./previews";
+import * as experiments from "./experiments";
 
-function _errorOut(name?: string) {
-  console.log(bold(red("Error:")), "Did not recognize preview feature", bold(name || ""));
+function errorOut(name?: string): void {
+  console.log(
+    `${clc.bold(clc.red("Error:"))} Did not recognize preview feature ${clc.bold(name || "")}`
+  );
   process.exit(1);
 }
 
-export function handlePreviewToggles(args: string[]) {
-  const isValidPreview = has(previews, args[1]);
+/**
+ * Implement --open-sesame and --close-sesame
+ */
+export function handlePreviewToggles(args: string[]): boolean {
+  const name = args[1];
+  const isValid = experiments.isValidExperiment(name);
   if (args[0] === "--open-sesame") {
-    if (isValidPreview) {
-      console.log("Enabling preview feature", bold(args[1]) + "...");
-      (previews as any)[args[1]] = true;
-      configstore.set("previews", previews);
+    if (isValid) {
+      console.log(`Enabling preview feature ${clc.bold(name)} ...`);
+      experiments.setEnabled(name, true);
+      experiments.flushToDisk();
       console.log("Preview feature enabled!");
       return process.exit(0);
     }
 
-    _errorOut();
+    errorOut();
   } else if (args[0] === "--close-sesame") {
-    if (isValidPreview) {
-      console.log("Disabling preview feature", bold(args[1]));
-      unset(previews, args[1]);
-      configstore.set("previews", previews);
+    if (isValid) {
+      console.log(`Disabling preview feature ${clc.bold(name)}...`);
+      experiments.setEnabled(name, false);
+      experiments.flushToDisk();
       return process.exit(0);
     }
 
-    _errorOut();
+    errorOut();
   }
+  return false;
 }
