@@ -1,5 +1,5 @@
 import { execSync, spawn } from "child_process";
-import { readFile, mkdir, copyFile, stat, writeFile } from 'fs/promises';
+import { readFile, mkdir, copyFile, stat } from 'fs/promises';
 import { dirname, extname, join } from 'path';
 import type { Header, Rewrite, Redirect } from 'next/dist/lib/load-custom-routes';
 import type { NextConfig } from 'next';
@@ -12,7 +12,7 @@ import { promptOnce } from "../../prompt";
 import { gte } from 'semver';
 import esbuild from 'esbuild';
 
-const CLI_COMMAND = process.platform === 'win32' ? 'next.cmd' : 'next';
+const CLI_COMMAND = join('node_modules', '.bin', process.platform === 'win32' ? 'next.cmd' : 'next');
 
 export const name = 'Next.js';
 export const support = SupportLevel.Expirimental;

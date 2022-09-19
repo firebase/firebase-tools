@@ -295,21 +295,21 @@ You can link a Web app to a Hosting site here https://console.firebase.google.co
           await mkdirp(functionsDist);
         }
 
-        await writeFile(join(functionsDist, 'functions.yaml'), JSON.stringify({
-            endpoints: {
-                [functionName]: {
-                    platform:  'gcfv2',
-                    region: [DEFAULT_REGION],
-                    labels: {},
-                    httpsTrigger: {},
-                    entryPoint: 'ssr'
-                }
-            },
-            specVersion: 'v1alpha1',
-            requiredAPIs: []
-        }, null, 2));
-
         const { packageJson, bootstrapScript } = await ɵcodegenFunctionsDirectory(getProjectPath(), functionsDist);
+
+        await writeFile(join(functionsDist, 'functions.yaml'), JSON.stringify({
+          endpoints: {
+              [functionName]: {
+                  platform:  'gcfv2',
+                  region: [DEFAULT_REGION],
+                  labels: {},
+                  httpsTrigger: {},
+                  entryPoint: 'ssr'
+              }
+          },
+          specVersion: 'v1alpha1',
+          requiredAPIs: []
+        }, null, 2));
 
         packageJson.main = 'server.js';
         delete packageJson.devDependencies;
@@ -370,7 +370,7 @@ exports.ssr = onRequest((req, res) => server.then(({handle}) => handle(req, res)
       const path = `/`;
       config.headers ||= [];
       config.headers.push({
-        "source": "**/*.js",
+        "source": "**",
         "headers": [{
           "key": "Set-Cookie",
           "value": `__FIREBASE_DEFAULTS__=${encodedDefaults}; SameSite=Strict; Expires=${expires.toISOString()}; Path=${path};`

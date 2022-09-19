@@ -10,7 +10,7 @@ export const name = 'Vite';
 export const support = SupportLevel.Expirimental;
 export const type = FrameworkType.Toolchain;
 
-const CLI_COMMAND = process.platform === 'win32' ? 'vite.cmd' : 'vite';
+const CLI_COMMAND = join('node_modules', '.bin', process.platform === 'win32' ? 'vite.cmd' : 'vite');
 
 export const initViteTemplate = (template: string) => async (setup: any) => await init(setup, template);
 

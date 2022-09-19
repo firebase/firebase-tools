@@ -1,7 +1,7 @@
 import { execSync } from "child_process";
 import { existsSync } from "fs";
 import { copy } from "fs-extra";
-import { readdir, readFile, rename } from "fs/promises";
+import { readFile } from "fs/promises";
 import { basename, join } from "path";
 import { gte } from "semver";
 import { BuildResult, findDependency, FrameworkType, relativeRequire, SupportLevel } from "..";
