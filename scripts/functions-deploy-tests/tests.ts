@@ -11,6 +11,7 @@ import * as tasks from "../../src/gcp/cloudtasks";
 import * as scheduler from "../../src/gcp/cloudscheduler";
 import { Endpoint } from "../../src/deploy/functions/backend";
 import { requireAuth } from "../../src/requireAuth";
+import { previews } from "../../src/previews";
 
 const FIREBASE_PROJECT = process.env.GCLOUD_PROJECT || "";
 const FIREBASE_DEBUG = process.env.FIREBASE_DEBUG || "";
@@ -103,6 +104,7 @@ describe("firebase deploy", function (this) {
   this.timeout(1000_000);
 
   const RUN_ID = genRandomId();
+  const ORIGINAL_SKIP_DEPLOYING_NOOP_FUNCTIONS = previews.skipdeployingnoopfunctions;
   console.log(`TEST RUN: ${RUN_ID}`);
 
   async function setOptsAndDeploy(opts: Opts): Promise<cli.Result> {
@@ -128,6 +130,7 @@ describe("firebase deploy", function (this) {
 
   after(async () => {
     try {
+      previews.skipdeployingnoopfunctions = ORIGINAL_SKIP_DEPLOYING_NOOP_FUNCTIONS;
       await fs.unlink(path.join(FUNCTIONS_DIR, "index.js"));
     } catch (e: any) {
       if (e?.code === "ENOENT") {
@@ -258,6 +261,83 @@ describe("firebase deploy", function (this) {
         });
       }
     }
+  });
+
+  it("skips duplicate deploys functions with runtime options", async () => {
+    const opts: Opts = {
+      v1Opts: {
+        memory: "128MB",
+        maxInstances: 42,
+        timeoutSeconds: 42,
+      },
+      v2Opts: {
+        memory: "128MiB",
+        maxInstances: 42,
+        timeoutSeconds: 42,
+        cpu: 2,
+        concurrency: 42,
+      },
+      v1TqOpts: {
+        retryConfig: {
+          maxAttempts: 42,
+          maxRetrySeconds: 42,
+          maxBackoffSeconds: 42,
+          maxDoublings: 42,
+          minBackoffSeconds: 42,
+        },
+        rateLimits: {
+          maxDispatchesPerSecond: 42,
+          maxConcurrentDispatches: 42,
+        },
+      },
+      v2TqOpts: {
+        retryConfig: {
+          maxAttempts: 42,
+          maxRetrySeconds: 42,
+          maxBackoffSeconds: 42,
+          maxDoublings: 42,
+          minBackoffSeconds: 42,
+        },
+        rateLimits: {
+          maxDispatchesPerSecond: 42,
+          maxConcurrentDispatches: 42,
+        },
+      },
+      v1IdpOpts: {
+        blockingOptions: {
+          idToken: true,
+          refreshToken: true,
+          accessToken: false,
+        },
+      },
+      v2IdpOpts: {
+        idToken: true,
+        refreshToken: true,
+        accessToken: true,
+      },
+      v1ScheduleOpts: {
+        retryCount: 3,
+        minBackoffDuration: "42s",
+        maxRetryDuration: "42s",
+        maxDoublings: 42,
+        maxBackoffDuration: "42s",
+      },
+      v2ScheduleOpts: {
+        schedule: "every 30 minutes",
+        retryCount: 3,
+        minBackoffSeconds: 42,
+        maxRetrySeconds: 42,
+        maxDoublings: 42,
+        maxBackoffSeconds: 42,
+      },
+    };
+
+    previews.skipdeployingnoopfunctions = true;
+    const result = await setOptsAndDeploy(opts);
+    expect(result.stdout, "deploy result").to.match(/Deploy complete!/);
+
+    const result2 = await setOptsAndDeploy(opts);
+    expect(result.stdout, "deploy result").to.match(/Skipped (No changes detected)/);
   });
 
   it("leaves existing options when unspecified", async () => {
