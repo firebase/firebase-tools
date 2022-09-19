@@ -1,7 +1,7 @@
 import * as experiments from "../experiments";
 
 /**
- *
+ * Loads all commands for our parser.
  */
 export function load(client: any): any {
   function loadCommand(name: string) {

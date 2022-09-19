@@ -324,7 +324,7 @@ interface EmulatorOptions extends Options {
 }
 
 /**
- *
+ * Start all emulators.
  */
 export async function startAll(
   options: EmulatorOptions,

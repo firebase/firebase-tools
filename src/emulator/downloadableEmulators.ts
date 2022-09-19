@@ -287,7 +287,7 @@ async function _fatal(emulator: Emulators, errorMsg: string): Promise<void> {
 }
 
 /**
- *
+ * Handle errors in an emulator process.
  */
 export async function handleEmulatorProcessError(emulator: Emulators, err: any): Promise<void> {
   const description = Constants.description(emulator);
@@ -302,7 +302,7 @@ export async function handleEmulatorProcessError(emulator: Emulators, err: any):
 }
 
 /**
- *
+ * Do the selected list of emulators depend on the JRE.
  */
 export function requiresJava(emulator: Emulators): boolean {
   if (emulator in Commands) {

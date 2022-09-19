@@ -347,7 +347,7 @@ function maybeCopyTriggerRegion(wantE: backend.Endpoint, haveE: backend.Endpoint
 }
 
 /**
- *
+ * Determines whether endpoints are targeted by an --only flag.
  */
 export function updateEndpointTargetedStatus(
   wantBackends: Record<string, Backend>,

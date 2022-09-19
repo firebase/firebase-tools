@@ -1,13 +1,11 @@
 "use strict";
 
-import * as clc from "colorette";
+import { bold, red } from "colorette";
 
 import * as experiments from "./experiments";
 
 function errorOut(name?: string): void {
-  console.log(
-    `${clc.bold(clc.red("Error:"))} Did not recognize preview feature ${clc.bold(name || "")}`
-  );
+  console.log(`${bold(red("Error:"))} Did not recognize preview feature ${bold(name || "")}`);
   process.exit(1);
 }
 
@@ -19,7 +17,7 @@ export function handlePreviewToggles(args: string[]): boolean {
   const isValid = experiments.isValidExperiment(name);
   if (args[0] === "--open-sesame") {
     if (isValid) {
-      console.log(`Enabling preview feature ${clc.bold(name)} ...`);
+      console.log(`Enabling preview feature ${bold(name)} ...`);
       experiments.setEnabled(name, true);
       experiments.flushToDisk();
       console.log("Preview feature enabled!");
@@ -29,7 +27,7 @@ export function handlePreviewToggles(args: string[]): boolean {
     errorOut();
   } else if (args[0] === "--close-sesame") {
     if (isValid) {
-      console.log(`Disabling preview feature ${clc.bold(name)}...`);
+      console.log(`Disabling preview feature ${bold(name)}...`);
       experiments.setEnabled(name, false);
       experiments.flushToDisk();
       return process.exit(0);
