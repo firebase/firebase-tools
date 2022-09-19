@@ -96,11 +96,6 @@ export const EXPERIMENTS = Object.freeze([
   // Access experiments
   experiment("crossservicerules", "Allow Firebase Rules to reference resources in other services"),
 ] as const);
-/*
-  
-  
-] as const);
-*/
 
 export type ExperimentName = typeof EXPERIMENTS[number]["name"];
 
