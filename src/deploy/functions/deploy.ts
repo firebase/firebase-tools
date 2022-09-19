@@ -120,7 +120,13 @@ export async function deploy(
   await Promise.all(uploads);
 }
 
-export function shouldUploadBeSkipped(wantBackend: backend.Backend, haveBackend: backend.Backend) {
+/**
+ * @return True IFF wantBackend + haveBackend are the same
+ */
+export function shouldUploadBeSkipped(
+  wantBackend: backend.Backend,
+  haveBackend: backend.Backend
+): boolean {
   const wantEndpoints = backend.allEndpoints(wantBackend);
   const haveEndpoints = backend.allEndpoints(haveBackend);
 
