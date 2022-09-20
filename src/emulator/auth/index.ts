@@ -13,6 +13,8 @@ export interface AuthEmulatorArgs {
   projectId: string;
   port?: number;
   host?: string;
+  singleProjectModeWarning?: boolean;
+  singleProjectModeError?: boolean;
 }
 
 export class AuthEmulator implements EmulatorInstance {
@@ -22,7 +24,11 @@ export class AuthEmulator implements EmulatorInstance {
 
   async start(): Promise<void> {
     const { host, port } = this.getInfo();
-    const app = await createApp(this.args.projectId);
+    const app = await createApp(
+      this.args.projectId,
+      this.args.singleProjectModeWarning,
+      this.args.singleProjectModeError
+    );
     const server = app.listen(port, host);
     this.destroyServer = utils.createDestroyer(server);
   }

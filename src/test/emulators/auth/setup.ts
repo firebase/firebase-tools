@@ -14,13 +14,14 @@ export const PROJECT_ID = "example";
  */
 export function describeAuthEmulator(
   title: string,
-  fn: (this: Suite, utils: AuthTestUtils) => void
+  fn: (this: Suite, utils: AuthTestUtils) => void,
+  singleProjectMode = false
 ): Suite {
   return describe(`Auth Emulator: ${title}`, function (this) {
     let authApp: Express.Application;
     beforeEach("setup or reuse auth server", async function (this) {
       this.timeout(20000);
-      authApp = await createOrReuseApp();
+      authApp = await createOrReuseApp(singleProjectMode);
     });
 
     let clock: sinon.SinonFakeTimers;
@@ -43,9 +44,14 @@ export type AuthTestUtils = {
 let cachedAuthApp: Express.Application;
 const projectStateForId = new Map<string, AgentProjectState>();
 
-async function createOrReuseApp(): Promise<Express.Application> {
+async function createOrReuseApp(singleProjectMode: boolean): Promise<Express.Application> {
   if (!cachedAuthApp) {
-    cachedAuthApp = await createApp(PROJECT_ID, projectStateForId);
+    cachedAuthApp = await createApp(
+      PROJECT_ID,
+      singleProjectMode,
+      singleProjectMode,
+      projectStateForId
+    );
   }
   // Clear the state every time to make it work like brand new.
   // NOTE: This probably won't work with parallel mode if we ever enable it.

@@ -116,6 +116,8 @@ function specWithEmulatorServer(protocol: string, host: string | undefined): Ope
  */
 export async function createApp(
   defaultProjectId: string,
+  singleProjectModeWarning = false,
+  singleProjectModeError = false,
   projectStateForId = new Map<string, AgentProjectState>()
 ): Promise<express.Express> {
   const app = express();
@@ -362,6 +364,26 @@ export async function createApp(
 
   function getProjectStateById(projectId: string, tenantId?: string): ProjectState {
     let agentState = projectStateForId.get(projectId);
+
+    if (
+      (singleProjectModeWarning || singleProjectModeError) &&
+      projectId &&
+      defaultProjectId !== projectId
+    ) {
+      const errorString =
+        `Multiple projectIds are not recommended in single project mode. ` +
+        `Requested project ID ${projectId}, but the emulator is configured for ` +
+        `${defaultProjectId}. This warning will become an error in the future. To opt-out of ` +
+        `single project mode add/set the \'"single_project_mode"\' false' property in the` +
+        ` firebase.json emulators config.`;
+      EmulatorLogger.forEmulator(Emulators.AUTH).log("WARN", errorString);
+      if (singleProjectModeError) {
+        throw new BadRequestError(errorString);
+      }
+    }
+    if (defaultProjectId !== projectId) {
+      throw new Error("exploding");
+    }
     if (!agentState) {
       agentState = new AgentProjectState(projectId);
       projectStateForId.set(projectId, agentState);
