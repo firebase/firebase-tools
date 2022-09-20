@@ -131,11 +131,15 @@ export function shouldUploadBeSkipped(
   const haveEndpoints = backend.allEndpoints(haveBackend);
 
   // Mismatching length immediately tells us they are different, and we should not skip.
-  if (wantEndpoints.length !== haveEndpoints.length) return false;
+  if (wantEndpoints.length !== haveEndpoints.length) {
+    return false;
+  }
 
   return wantEndpoints.every((wantEndpoint) => {
     const haveEndpoint = findEndpoint(haveBackend, (endpoint) => endpoint.id === wantEndpoint.id);
-    if (!haveEndpoint) return false;
+    if (!haveEndpoint) {
+      return false;
+    }
     return haveEndpoint.hash && wantEndpoint.hash && haveEndpoint.hash === wantEndpoint.hash;
   });
 }
