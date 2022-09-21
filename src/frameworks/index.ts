@@ -194,7 +194,7 @@ function scanDependencyTree(searchingFor: string, dependencies = {}): any {
   for (const [name, dependency] of Object.entries(
     dependencies as Record<string, Record<string, any>>
   )) {
-    if (name === searchingFor && dependency.resolved) return dependency;
+    if (name === searchingFor) return dependency;
     const result = scanDependencyTree(searchingFor, dependency.dependencies);
     if (result) return result;
   }
