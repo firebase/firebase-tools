@@ -7,8 +7,8 @@
     "firebase": "./lib/bin/firebase.js"
   },
   "scripts": {
-    "build": "tsc",
-    "build:watch": "tsc --watch",
+    "build": "mkdir -p lib && cp src/dynamicImport.js lib && tsc",
+    "build:watch": "mkdir -p lib && cp src/dynamicImport.js lib && tsc --watch",
     "clean": "rimraf lib dev",
     "format": "npm run format:ts && npm run format:other",
     "format:other": "npm run lint:other -- --write",

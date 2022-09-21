@@ -3,10 +3,14 @@ import { exit } from "process";
 import { execSync, spawnSync } from "child_process";
 import { readdirSync, statSync } from "fs";
 import { pathToFileURL } from "url";
+import { IncomingMessage, ServerResponse } from "http";
+import { copyFile, readdir, rm, writeFile } from "fs/promises";
+import { mkdirp, pathExists, stat } from "fs-extra";
+import clc = require("cli-color");
 
 import { needProjectId } from "../projectUtils";
 import { normalizedHostingConfigs } from "../hosting/normalizedHostingConfigs";
-import { listSites, Site } from "../hosting/api";
+import { listSites } from "../hosting/api";
 import { getAppConfig, AppPlatform } from "../management/apps";
 import { promptOnce } from "../prompt";
 import { EmulatorInfo, Emulators } from "../emulator/types";
@@ -14,10 +18,10 @@ import { getCredentialPathAsync } from "../defaultCredentials";
 import { getProjectDefaultAccount } from "../auth";
 import { formatHost } from "../emulator/functionsEmulatorShared";
 import { Constants } from "../emulator/constants";
-import { IncomingMessage, ServerResponse } from "http";
-import { copyFile, readdir, rm, writeFile } from "fs/promises";
-import { mkdirp, pathExists, stat } from "fs-extra";
-import clc = require("cli-color");
+
+// Use "true &&"" to keep typescript from compiling this file and rewriting
+// the import statement into a require
+const { dynamicImport } = require(true && "../dynamicImport");
 
 export interface Discovery {
   mayWantBackend: boolean;
@@ -111,9 +115,6 @@ export const WebFrameworks: Record<string, Framework> = Object.fromEntries(
       ([, obj]) => obj.name && obj.discover && obj.build && obj.type !== undefined && obj.support
     )
 );
-
-// Typescript is converting dynamic imports to requires, eval for now
-const dynamicImport = (mod: string) => eval(`import('${mod}')`);
 
 export function relativeRequire(
   dir: string,
