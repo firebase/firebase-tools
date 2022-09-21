@@ -4,6 +4,10 @@ import { mkdir, readFile } from "fs/promises";
 import { join } from "path";
 import { BuildResult, FrameworkType, SupportLevel } from "..";
 
+// Use "true &&"" to keep typescript from compiling this file and rewriting
+// the import statement into a require
+const { dynamicImport } = require(true && "../../dynamicImport");
+
 export const name = "Express.js";
 export const support = SupportLevel.Expirimental;
 export const type = FrameworkType.Custom;
@@ -25,7 +29,7 @@ export async function discover(dir: string) {
 
 export async function build(cwd: string): Promise<BuildResult> {
   execSync(`npm run build`, { stdio: "inherit", cwd });
-  const wantsBackend = !!(await findServerRenderMethod(cwd));
+  const wantsBackend = !!(await getBootstrapScript(cwd));
   return { wantsBackend };
 }
 
@@ -34,73 +38,66 @@ export async function ɵcodegenPublicDirectory(root: string, dest: string) {
   await copy(serveDir!, dest);
 }
 
-async function findServerRenderMethod(
+async function getBootstrapScript(
   root: string,
-  method: string[] = [],
-  entry?: any
-): Promise<string[] | undefined> {
+  _bootstrapScript = "",
+  _entry?: any
+): Promise<string | undefined> {
+  let entry = _entry;
+  let bootstrapScript = _bootstrapScript;
   const allowRecursion = !entry;
-  entry ||= await (async () => {
+  if (!entry) {
+    const {
+      packageJson: { name },
+    } = await getConfig(root);
     try {
-      const requiredProject = require(root);
-      if (requiredProject) method = ["require"];
-      return requiredProject;
+      entry = require(root);
+      bootstrapScript = `const bootstrap = Promise.resolve(require('${name}'))`;
     } catch (e) {
-      const importedProject = await import(root).catch(() => undefined);
-      if (importedProject) method = ["import"];
-      return importedProject;
+      entry = await dynamicImport(root).catch(() => undefined);
+      bootstrapScript = `const bootstrap = import('${name}')`;
     }
-  })();
+  }
   if (!entry) return undefined;
   const { default: defaultExport, app, handle } = entry;
-  if (typeof handle === "function") return [...method, "handle"];
+  if (typeof handle === "function") {
+    return (
+      bootstrapScript +
+      ";\nexports.handle = async (req, res) => (await bootstrap).handle(req, res);"
+    );
+  }
   if (typeof app === "function") {
     try {
       const express = app();
-      if (typeof express.render === "function") return [...method, "app"];
+      if (typeof express.render === "function") {
+        return (
+          bootstrapScript +
+          ";\nexports.handle = async (req, res) => (await bootstrap).app(req, res);"
+        );
+      }
     } catch (e) {
-      // continue
+      // continue, failure here is expected
     }
   }
   if (!allowRecursion) return undefined;
   if (typeof defaultExport === "object") {
+    bootstrapScript += ".then(({ default }) => default)";
     if (typeof defaultExport.then === "function") {
       const awaitedDefaultExport = await defaultExport;
-      return findServerRenderMethod(root, [...method, "default"], awaitedDefaultExport);
+      return getBootstrapScript(root, bootstrapScript, awaitedDefaultExport);
     } else {
-      return findServerRenderMethod(root, [...method, "default"], defaultExport);
+      return getBootstrapScript(root, bootstrapScript, defaultExport);
     }
   }
   return undefined;
 }
 
 export async function ɵcodegenFunctionsDirectory(root: string, dest: string) {
-  const serverRenderMethod = await findServerRenderMethod(root);
-  if (!serverRenderMethod) return;
+  const bootstrapScript = await getBootstrapScript(root);
+  if (!bootstrapScript) return;
   await mkdir(dest, { recursive: true });
 
   const { packageJson } = await getConfig(root);
-  let bootstrapScript = "";
-  const stack = serverRenderMethod.slice();
-  const entry = packageJson.name;
-  if (stack.shift() === "require") {
-    bootstrapScript += `const bootstrap = Promise.resolve(require('${entry}'))`;
-  } else {
-    bootstrapScript += `const bootstrap = import('${entry}')`;
-  }
-  if (stack[0] === "default") {
-    stack.shift();
-    bootstrapScript += ".then(({ default }) => default)";
-  }
-  if (stack[0] === "app") {
-    stack.shift();
-    bootstrapScript += ".then(({ app }) => app())";
-  }
-  bootstrapScript += ";\n";
-  const method = stack.shift();
-  bootstrapScript += `exports.handle = async (req, res) => (await bootstrap)${
-    method ? `.${method}` : ""
-  }(req, res);`;
 
   const packResults = execSync(`npm pack ${root} --json`, { cwd: dest });
   const npmPackResults = JSON.parse(packResults.toString());
