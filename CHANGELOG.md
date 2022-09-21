@@ -5,4 +5,3 @@
 - Adds `access-control-allow-private-network=true` header to Auth and Storage emulators. Enables accessing at localhost:port when site is exposed via tunnel (#4227).
 - Improves detection of in-use ports for Hosting Emulator on macOS (#4628).
 - Add Eventarc multi-db triggers support to RTDB Emulator (#5000).
-
