@@ -91,9 +91,9 @@ function startServer(options: any, config: any, port: number, init: TemplateServ
         firebaseMiddleware(req, res, next);
       },
     },
-    ...(options.frameworksDevModeHandle
-      ? { after: { files: options.frameworksDevModeHandle } }
-      : {}),
+    after: {
+      files: options.frameworksDevModeHandle,
+    },
     rewriters: {
       function: functionsProxy(options),
       run: cloudRunProxy(options),
