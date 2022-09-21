@@ -215,7 +215,7 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
       platform: "node",
     });
   }
-  await mkdir(join(join(destDir, "public")));
+  await mkdir(join(destDir, "public"));
   await mkdirp(join(destDir, distDir));
   await copy(join(sourceDir, "public"), join(destDir, "public"));
   await copy(join(sourceDir, distDir), join(destDir, distDir));
