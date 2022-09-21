@@ -147,7 +147,8 @@ export function relativeRequire(
 export function relativeRequire(dir: string, mod: "next"): typeof import("next");
 export function relativeRequire(dir: string, mod: "vite"): typeof import("vite");
 export function relativeRequire(dir: string, mod: "jsonc-parser"): typeof import("jsonc-parser");
-export function relativeRequire(dir: string, mod: "@nuxt/kit"): Promise<typeof import("@nuxt/kit")>;
+// TODO the types for @nuxt/kit are causing a lot of troubles, need to do something other than any
+export function relativeRequire(dir: string, mod: "@nuxt/kit"): Promise<any>;
 export function relativeRequire(dir: string, mod: string) {
   try {
     const path = require.resolve(mod, { paths: [dir] });
