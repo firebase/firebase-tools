@@ -96,7 +96,7 @@ function parseTriggers(
   envs: backend.EnvironmentVariables
 ): Promise<TriggerAnnotation[]> {
   return new Promise((resolve, reject) => {
-    const env = { ...envs, NODE_ENV: process.env.NODE_ENV } as NodeJS.ProcessEnv;
+    const env = { ...envs } as NodeJS.ProcessEnv;
     env.GCLOUD_PROJECT = projectId;
     if (!_.isEmpty(configValues)) {
       env.CLOUD_RUNTIME_CONFIG = JSON.stringify(configValues);
