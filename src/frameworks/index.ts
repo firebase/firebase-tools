@@ -2,6 +2,7 @@ import { join, relative, extname } from "path";
 import { exit } from "process";
 import { execSync, spawnSync } from "child_process";
 import { readdirSync, statSync } from "fs";
+import { pathToFileURL } from "url";
 
 import { needProjectId } from "../projectUtils";
 import { normalizedHostingConfigs } from "../hosting/normalizedHostingConfigs";
@@ -18,7 +19,7 @@ import { copyFile, readdir, rm, writeFile } from "fs/promises";
 import { mkdirp, pathExists, stat } from "fs-extra";
 import clc = require("cli-color");
 
-export const FIREBASE_FRAMEWORKS_VERSION = "file:///Users/jamesdaniels/Code/firebase-next";
+export const FIREBASE_FRAMEWORKS_VERSION = "canary";
 export const FIREBASE_FUNCTIONS_VERSION = "^3.23.0";
 export const FIREBASE_ADMIN_VERSION = "^11.0.1";
 export const DEFAULT_REGION = "us-central1";
@@ -63,7 +64,7 @@ export function relativeRequire(dir: string, mod: string) {
   try {
     const path = require.resolve(mod, { paths: [dir] });
     if (extname(path) === ".mjs") {
-      return dynamicImport(path);
+      return dynamicImport(pathToFileURL(path).toString());
     } else {
       return require(path);
     }
