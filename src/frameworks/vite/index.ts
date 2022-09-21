@@ -33,7 +33,7 @@ export async function init(setup: any, baseTemplate: string = "vanilla") {
     stdio: "inherit",
   });
   execSync(`npm install`, { stdio: "inherit", cwd: setup.hosting.source });
-};
+}
 
 export const viteDiscoverWithNpmDependency = (dep: string) => async (dir: string) =>
   await discover(dir, undefined, dep);
@@ -52,26 +52,23 @@ export async function discover(dir: string, plugin?: string, npmDependency?: str
     pathExists(join(dir, "vite.config.ts")),
   ]);
   const anyConfigFileExists = configFilesExist.some((it) => it);
-  if (
-    !anyConfigFileExists &&
-    !findDependency("vite", { cwd: dir, depth, omitDev: false })
-  ) return;
+  if (!anyConfigFileExists && !findDependency("vite", { cwd: dir, depth, omitDev: false })) return;
   if (npmDependency && !additionalDep) return;
   const { appType, publicDir: publicDirectory, plugins } = await getConfig(dir);
   if (plugin && !plugins.find(({ name }) => name === plugin)) return;
   return { mayWantBackend: appType !== "spa", publicDirectory };
-};
+}
 
 export async function build(root: string) {
   const { build } = relativeRequire(root, "vite");
   await build({ root });
-};
+}
 
 export async function ɵcodegenPublicDirectory(root: string, dest: string) {
   const viteConfig = await getConfig(root);
   const viteDistPath = join(root, viteConfig.build.outDir);
   await copy(viteDistPath, dest);
-};
+}
 
 export async function getDevModeHandle(dir: string) {
   let resolvePort: (it: string) => void;
@@ -85,9 +82,9 @@ export async function getDevModeHandle(dir: string) {
   });
   const host = await portThatWasPromised;
   return proxyRequestHandler(host, "Vite Development Server", { forceCascade: true });
-};
+}
 
 async function getConfig(root: string) {
   const { resolveConfig } = relativeRequire(root, "vite");
   return await resolveConfig({ root }, "build", "production");
-};
+}

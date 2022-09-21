@@ -116,4 +116,5 @@ module.exports = {
     },
   },
   parser: "@typescript-eslint/parser",
+  ignorePatterns: ["src/dynamicImport.js"],
 };

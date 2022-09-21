@@ -21,13 +21,13 @@ export const type = FrameworkType.Framework;
 
 const CLI_COMMAND = join("node_modules", ".bin", process.platform === "win32" ? "ng.cmd" : "ng");
 
-export async function discover (dir: string): Promise<Discovery | undefined> {
+export async function discover(dir: string): Promise<Discovery | undefined> {
   if (!(await pathExists(join(dir, "package.json")))) return;
   if (!(await pathExists(join(dir, "angular.json")))) return;
   const { serverTarget } = await getContext(dir);
   // TODO don't hardcode assets dir
   return { mayWantBackend: !!serverTarget, publicDirectory: join(dir, "src", "assets") };
-};
+}
 
 export async function init(setup: any) {
   execSync(`npx --yes -p @angular/cli@latest ng new ${setup.hosting.source} --skip-git`, {
@@ -45,7 +45,7 @@ export async function init(setup: any) {
       cwd: setup.hosting.source,
     });
   }
-};
+}
 
 export async function build(dir: string): Promise<BuildResult> {
   const { targetStringFromTarget } = relativeRequire(dir, "@angular-devkit/architect");
@@ -74,7 +74,7 @@ export async function build(dir: string): Promise<BuildResult> {
   const wantsBackend = !!serverTarget;
 
   return { wantsBackend };
-};
+}
 
 export async function getDevModeHandle(dir: string) {
   const { targetStringFromTarget } = relativeRequire(dir, "@angular-devkit/architect");
@@ -98,7 +98,7 @@ export async function getDevModeHandle(dir: string) {
     });
   });
   return proxyRequestHandler(await host, "Angular Live Development Server", { forceCascade: true });
-};
+}
 
 export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: string) {
   const { architectHost, browserTarget } = await getContext(sourceDir);
@@ -109,7 +109,7 @@ export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: strin
   const browserOutputPath = browserTargetOptions.outputPath;
   await mkdir(destDir, { recursive: true });
   await copy(join(sourceDir, browserOutputPath), destDir);
-};
+}
 
 export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: string) {
   const { architectHost, host, serverTarget, browserTarget } = await getContext(sourceDir);
@@ -142,7 +142,7 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
     packageJson.dependencies = dependencies;
   }
   return { bootstrapScript, packageJson };
-};
+}
 
 // TODO memoize, dry up
 async function getContext(dir: string) {
@@ -287,8 +287,7 @@ async function getContext(dir: string) {
     const configuration = configurations.includes("development")
       ? "development"
       : target.defaultConfiguration;
-    if (!configuration)
-      throw new Error("No development or default configutation found for serve.");
+    if (!configuration) throw new Error("No development or default configutation found for serve.");
     if (configuration !== "development")
       console.warn(
         `Using ${configuration} configuration for the local server, we suggest adding a development target.`
@@ -305,4 +304,4 @@ async function getContext(dir: string) {
     serverTarget,
     serveTarget,
   };
-};
+}

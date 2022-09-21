@@ -33,7 +33,7 @@ interface Manifest {
         afterFiles?: (Rewrite & { regex: string })[];
         fallback?: (Rewrite & { regex: string })[];
       };
-};
+}
 
 const CLI_COMMAND = join(
   "node_modules",
@@ -54,7 +54,7 @@ export async function discover(dir: string) {
   if (!(await pathExists("next.config.js")) && !getNextVersion(dir)) return;
   // TODO don't hardcode public dir
   return { mayWantBackend: true, publicDirectory: join(dir, "public") };
-};
+}
 
 export async function build(dir: string): Promise<BuildResult> {
   const { default: nextBuild } = relativeRequire(dir, "next/dist/build");
@@ -129,7 +129,7 @@ export async function build(dir: string): Promise<BuildResult> {
     .filter((it) => it);
 
   return { wantsBackend, headers, redirects, rewrites };
-};
+}
 
 export async function init(setup: any) {
   const language = await promptOnce({
@@ -144,7 +144,7 @@ export async function init(setup: any) {
     }`,
     { stdio: "inherit" }
   );
-};
+}
 
 export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: string) {
   const { distDir } = await getConfig(sourceDir);
@@ -198,7 +198,7 @@ export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: strin
       }
     }
   }
-};
+}
 
 export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: string) {
   const { distDir } = await getConfig(sourceDir);
@@ -220,7 +220,7 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
   await copy(join(sourceDir, "public"), join(destDir, "public"));
   await copy(join(sourceDir, distDir), join(destDir, distDir));
   return { packageJson };
-};
+}
 
 export async function getDevModeHandle(dir: string) {
   let resolvePort: (it: string) => void;
@@ -234,7 +234,7 @@ export async function getDevModeHandle(dir: string) {
   });
   const host = await portThatWasPromised;
   return proxyRequestHandler(host, "Next.js Development Server", { forceCascade: true });
-};
+}
 
 async function getConfig(dir: string): Promise<NextConfig & { distDir: string }> {
   let config: NextConfig = {};
@@ -254,4 +254,4 @@ async function getConfig(dir: string): Promise<NextConfig & { distDir: string }>
     }
   }
   return { distDir: ".next", ...config };
-};
+}

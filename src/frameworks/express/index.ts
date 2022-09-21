@@ -1,5 +1,4 @@
 import { execSync } from "child_process";
-import { existsSync } from "fs";
 import { copy, pathExists } from "fs-extra";
 import { mkdir, readFile } from "fs/promises";
 import { join } from "path";
@@ -15,25 +14,25 @@ async function getConfig(root: string) {
   const serve: string | undefined = packageJson.directories?.serve;
   const serveDir = serve && join(root, packageJson.directories?.serve);
   return { serveDir, packageJson };
-};
+}
 
 export async function discover(dir: string) {
   if (!(await pathExists(join(dir, "package.json")))) return;
   const { serveDir } = await getConfig(dir);
   if (!serveDir) return;
   return { mayWantBackend: true };
-};
+}
 
 export async function build(cwd: string): Promise<BuildResult> {
   execSync(`npm run build`, { stdio: "inherit", cwd });
   const wantsBackend = !!(await findServerRenderMethod(cwd));
   return { wantsBackend };
-};
+}
 
 export async function ɵcodegenPublicDirectory(root: string, dest: string) {
   const { serveDir } = await getConfig(root);
   await copy(serveDir!, dest);
-};
+}
 
 async function findServerRenderMethod(
   root: string,
@@ -73,7 +72,7 @@ async function findServerRenderMethod(
     }
   }
   return undefined;
-};
+}
 
 export async function ɵcodegenFunctionsDirectory(root: string, dest: string) {
   const serverRenderMethod = await findServerRenderMethod(root);
@@ -110,4 +109,4 @@ export async function ɵcodegenFunctionsDirectory(root: string, dest: string) {
   packageJson.dependencies ||= {};
   packageJson.dependencies[packageJson.name] = `file:${filename}`;
   return { bootstrapScript, packageJson };
-};
+}

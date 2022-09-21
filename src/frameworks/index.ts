@@ -26,20 +26,20 @@ const { dynamicImport } = require(true && "../dynamicImport");
 export interface Discovery {
   mayWantBackend: boolean;
   publicDirectory: string;
-};
+}
 
 export interface BuildResult {
   rewrites?: any[];
   redirects?: any[];
   headers?: any[];
   wantsBackend?: boolean;
-};
+}
 
 export interface Framework {
   discover: (dir: string) => Promise<Discovery | undefined>;
   type: FrameworkType;
   name: string;
-  build: (dir: string) => Promise<BuildResult|void>;
+  build: (dir: string) => Promise<BuildResult | void>;
   support: SupportLevel;
   init?: (setup: any) => Promise<void>;
   getDevModeHandle?: (
@@ -61,13 +61,13 @@ interface FirebaseDefaults {
   config?: Object;
   emulatorHosts?: Record<string, string>;
   _authTokenSyncURL?: string;
-};
+}
 
 interface FindDepOptions {
   cwd: string;
   depth?: number;
   omitDev: boolean;
-};
+}
 
 // These serve as the order of operations for discovery
 // E.g, a framework utilizing Vite should be given priority
@@ -190,7 +190,7 @@ export async function discover(dir: string, warn: boolean = true) {
   }
   if (warn) console.warn("We can't detirmine the web framework in use. TODO link");
   return;
-};
+}
 
 function scanDependencyTree(searchingFor: string, dependencies = {}): any {
   for (const [name, dependency] of Object.entries(
@@ -201,7 +201,7 @@ function scanDependencyTree(searchingFor: string, dependencies = {}): any {
     if (result) return result;
   }
   return;
-};
+}
 
 export function findDependency(name: string, options: Partial<FindDepOptions> = {}) {
   const { cwd, depth, omitDev } = { ...DEFAULT_FIND_DEP_OPTIONS, ...options };
@@ -219,7 +219,7 @@ export function findDependency(name: string, options: Partial<FindDepOptions> = 
   if (!result.stdout) return;
   const json = JSON.parse(result.stdout.toString());
   return scanDependencyTree(name, json.dependencies);
-};
+}
 
 export async function prepareFrameworks(
   targetNames: string[],
@@ -353,7 +353,9 @@ You can link a Web app to a Hosting site here https://console.firebase.google.co
         function: functionName,
       });
 
-      const existingFunctionsConfig = options.config.get("functions") ? [].concat(options.config.get("functions")) : [];
+      const existingFunctionsConfig = options.config.get("functions")
+        ? [].concat(options.config.get("functions"))
+        : [];
       options.config.set("functions", [
         ...existingFunctionsConfig,
         {
@@ -474,9 +476,9 @@ exports.ssr = onRequest((req, res) => server.then(it => it.handle(req, res)));
       });
     }
   }
-};
+}
 
 function codegenDevModeFunctionsDirectory() {
   const packageJson = {};
   return Promise.resolve({ packageJson, frameworksEntry: "_devMode" });
-};
+}
