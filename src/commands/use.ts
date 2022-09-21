@@ -1,5 +1,4 @@
-import * as _ from "lodash";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
 import { Command } from "../command";
 import {
@@ -16,16 +15,16 @@ import * as utils from "../utils";
 
 function listAliases(options: Options) {
   if (options.rc.hasProjects) {
-    logger.info("Project aliases for", clc.bold(options.projectRoot) + ":");
+    logger.info("Project aliases for", clc.bold(options.projectRoot || "") + ":");
     logger.info();
-    _.forEach(options.rc.projects, (projectId, alias) => {
+    for (const [alias, projectId] of Object.entries(options.rc.projects)) {
       const listing = alias + " (" + projectId + ")";
       if (options.project === projectId || options.projectAlias === alias) {
-        logger.info(clc.cyan.bold("* " + listing));
+        logger.info(clc.cyan(clc.bold("* " + listing)));
       } else {
         logger.info("  " + listing);
       }
-    });
+    }
     logger.info();
   }
   logger.info("Run", clc.bold("firebase use --add"), "to define a new project alias.");
@@ -145,8 +144,11 @@ export const command = new Command("use [alias_or_project_id]")
           options.rc.addProjectAlias(results.alias, results.project);
           utils.makeActiveProject(options.projectRoot, results.alias);
           logger.info();
-          logger.info("Created alias", clc.bold(results.alias), "for", results.project + ".");
-          logger.info("Now using alias", clc.bold(results.alias) + " (" + results.project + ")");
+          logger.info("Created alias", clc.bold(results.alias || ""), "for", results.project + ".");
+          logger.info(
+            "Now using alias",
+            clc.bold(results.alias || "") + " (" + results.project + ")"
+          );
         });
       });
     } else if (options.clear) {
@@ -170,10 +172,10 @@ export const command = new Command("use [alias_or_project_id]")
       if (options.projectAlias) {
         logger.info(
           "Active Project:",
-          clc.bold.cyan(options.projectAlias + " (" + options.project + ")")
+          clc.bold(clc.cyan(options.projectAlias + " (" + options.project + ")"))
         );
       } else if (options.project) {
-        logger.info("Active Project:", clc.bold.cyan(options.project));
+        logger.info("Active Project:", clc.bold(clc.cyan(options.project)));
       } else {
         let msg = "No project is currently active";
         if (options.rc.hasProjects) {

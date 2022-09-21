@@ -1,4 +1,4 @@
-import { bold, yellow } from "cli-color";
+import { bold } from "colorette";
 
 import { logLabeledSuccess } from "../utils";
 import { Command } from "../command";

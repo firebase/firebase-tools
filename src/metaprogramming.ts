@@ -40,6 +40,7 @@ export type LeafKeysOf<T extends object> = {
  */
 export type SameType<T, V> = T extends V ? (V extends T ? true : false) : false;
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 type HeadOf<T extends string> = [T extends `${infer Head}.${infer Tail}` ? Head : T][number];
 
 type TailsOf<T extends string, Head extends string> = [

@@ -8,10 +8,11 @@ interface PreviewFlags {
   rtdbmanagement: boolean;
   golang: boolean;
   deletegcfartifacts: boolean;
-  artifactregistry: boolean;
   emulatoruisnapshot: boolean;
   frameworkawareness: boolean;
   functionsparams: boolean;
+  crossservicerules: boolean;
+  skipdeployingnoopfunctions: boolean;
 }
 
 export const previews: PreviewFlags = {
@@ -22,10 +23,11 @@ export const previews: PreviewFlags = {
   rtdbmanagement: false,
   golang: false,
   deletegcfartifacts: false,
-  artifactregistry: false,
   emulatoruisnapshot: false,
   frameworkawareness: false,
   functionsparams: false,
+  crossservicerules: false,
+  skipdeployingnoopfunctions: false,
 
   ...(configstore.get("previews") as Partial<PreviewFlags>),
 };

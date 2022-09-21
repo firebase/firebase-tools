@@ -7,7 +7,6 @@ import * as cloudlogging from "../gcp/cloudlogging";
 import * as functionsLog from "../functions/functionslog";
 import { needProjectId } from "../projectUtils";
 import { requirePermissions } from "../requirePermissions";
-import { previews } from "../previews";
 
 export const command = new Command("functions:log")
   .description("read logs from deployed functions")

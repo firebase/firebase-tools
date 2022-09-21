@@ -187,6 +187,7 @@ const paramPattern = /{([^}]+)}/g;
 
 function replaceWithFlatPath(discovery: Resource | Resources): void {
   if (discovery.methods) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     Object.entries(discovery.methods).forEach(([_, method]) => {
       // Replace flat path param names with path param names
       // e.g. for endpoint identitytoolkit.projects.defaultSupportedIdpConfigs.get:

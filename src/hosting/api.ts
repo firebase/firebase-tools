@@ -217,8 +217,8 @@ export async function getChannel(
       `/projects/${project}/sites/${site}/channels/${channelId}`
     );
     return res.body;
-  } catch (e: any) {
-    if (e.status === 404) {
+  } catch (e: unknown) {
+    if (e instanceof FirebaseError && e.status === 404) {
       return null;
     }
     throw e;
@@ -242,16 +242,16 @@ export async function listChannels(
         `/projects/${project}/sites/${site}/channels`,
         { queryParams: { pageToken: nextPageToken, pageSize: 10 } }
       );
-      const c = res.body?.channels;
+      const c = res.body.channels;
       if (c) {
         channels.push(...c);
       }
-      nextPageToken = res.body?.nextPageToken || "";
+      nextPageToken = res.body.nextPageToken || "";
       if (!nextPageToken) {
         return channels;
       }
-    } catch (e: any) {
-      if (e.status === 404) {
+    } catch (e: unknown) {
+      if (e instanceof FirebaseError && e.status === 404) {
         throw new FirebaseError(`could not find channels for site "${site}"`, {
           original: e,
         });
@@ -377,16 +377,16 @@ export async function listSites(project: string): Promise<Site[]> {
         `/projects/${project}/sites`,
         { queryParams: { pageToken: nextPageToken, pageSize: 10 } }
       );
-      const c = res.body?.sites;
+      const c = res.body.sites;
       if (c) {
         sites.push(...c);
       }
-      nextPageToken = res.body?.nextPageToken || "";
+      nextPageToken = res.body.nextPageToken || "";
       if (!nextPageToken) {
         return sites;
       }
-    } catch (e: any) {
-      if (e.status === 404) {
+    } catch (e: unknown) {
+      if (e instanceof FirebaseError && e.status === 404) {
         throw new FirebaseError(`could not find sites for project "${project}"`, {
           original: e,
         });
@@ -406,8 +406,8 @@ export async function getSite(project: string, site: string): Promise<Site> {
   try {
     const res = await apiClient.get<Site>(`/projects/${project}/sites/${site}`);
     return res.body;
-  } catch (e: any) {
-    if (e.status === 404) {
+  } catch (e: unknown) {
+    if (e instanceof FirebaseError && e.status === 404) {
       throw new FirebaseError(`could not find site "${site}" for project "${project}"`, {
         original: e,
       });
@@ -427,7 +427,7 @@ export async function createSite(project: string, site: string, appId = ""): Pro
   const res = await apiClient.post<{ appId: string }, Site>(
     `/projects/${project}/sites`,
     { appId: appId },
-    { queryParams: { site_id: site } }
+    { queryParams: { siteId: site } }
   );
   return res.body;
 }

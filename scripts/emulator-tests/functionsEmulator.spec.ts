@@ -1,4 +1,5 @@
 import * as fs from "fs";
+import * as fsp from "fs/promises";
 
 import { expect } from "chai";
 import * as express from "express";
@@ -6,12 +7,10 @@ import * as sinon from "sinon";
 import * as supertest from "supertest";
 import * as winston from "winston";
 import * as logform from "logform";
-import * as path from "path";
 
 import { EmulatedTriggerDefinition } from "../../src/emulator/functionsEmulatorShared";
-import { FunctionsEmulator, InvokeRuntimeOpts } from "../../src/emulator/functionsEmulator";
+import { FunctionsEmulator } from "../../src/emulator/functionsEmulator";
 import { Emulators } from "../../src/emulator/types";
-import { RuntimeWorker } from "../../src/emulator/functionsRuntimeWorker";
 import { TIMEOUT_LONG, TIMEOUT_MED, MODULE_ROOT } from "./fixtures";
 import { logger } from "../../src/logger";
 import * as registry from "../../src/emulator/registry";
@@ -30,120 +29,72 @@ if ((process.env.DEBUG || "").toLowerCase().includes("spec")) {
   );
 }
 
-const functionsEmulator = new FunctionsEmulator({
-  projectId: "fake-project-id",
-  projectDir: MODULE_ROOT,
-  emulatableBackends: [
-    {
-      functionsDir: MODULE_ROOT,
-      env: {},
-      secretEnv: [],
-    },
-  ],
-  quiet: true,
-});
+const FUNCTIONS_DIR = `./scripts/emulator-tests/functions`;
 
-const testBackend = {
-  functionsDir: MODULE_ROOT,
+const TEST_BACKEND = {
+  functionsDir: FUNCTIONS_DIR,
   env: {},
   secretEnv: [],
+  codebase: "default",
   nodeBinary: process.execPath,
+  // NOTE: Use the following nodeBinary path if you want to run test cases directly from your IDE.
+  // nodeBinary: path.join(MODULE_ROOT, "node_modules/.bin/ts-node"),
 };
 
-functionsEmulator.setTriggersForTesting(
-  [
-    {
-      platform: "gcfv1",
-      name: "function_id",
-      id: "us-central1-function_id",
-      region: "us-central1",
-      entryPoint: "function_id",
-      httpsTrigger: {},
-      labels: {},
-    },
-    {
-      platform: "gcfv1",
-      name: "function_id",
-      id: "europe-west2-function_id",
-      region: "europe-west2",
-      entryPoint: "function_id",
-      httpsTrigger: {},
-      labels: {},
-    },
-    {
-      platform: "gcfv1",
-      name: "function_id",
-      id: "europe-west3-function_id",
-      region: "europe-west3",
-      entryPoint: "function_id",
-      httpsTrigger: {},
-      labels: {},
-    },
-    {
-      platform: "gcfv1",
-      name: "callable_function_id",
-      id: "us-central1-callable_function_id",
-      region: "us-central1",
-      entryPoint: "callable_function_id",
-      httpsTrigger: {},
-      labels: {
-        "deployment-callable": "true",
-      },
-    },
-    {
-      platform: "gcfv1",
-      name: "nested-function_id",
-      id: "us-central1-nested-function_id",
-      region: "us-central1",
-      entryPoint: "nested.function_id",
-      httpsTrigger: {},
-      labels: {},
-    },
-    {
-      platform: "gcfv1",
-      name: "secrets_function_id",
-      id: "us-central1-secrets_function_id",
-      region: "us-central1",
-      entryPoint: "secrets_function_id",
-      secretEnvironmentVariables: [
-        {
-          projectId: "fake-project-id",
-          secret: "MY_SECRET",
-          key: "MY_SECRET",
-          version: "1",
-        },
-      ],
-      httpsTrigger: {},
-      labels: {},
-    },
-  ],
-  testBackend
-);
+async function useFunction(
+  emu: FunctionsEmulator,
+  triggerName: string,
+  triggerSource: () => {},
+  regions: string[] = ["us-central1"],
+  triggerOverrides?: Partial<EmulatedTriggerDefinition>
+): Promise<void> {
+  const sourceCode = `module.exports = (${triggerSource.toString()})();\n`;
+  await fsp.writeFile(`${FUNCTIONS_DIR}/index.js`, sourceCode);
 
-// TODO(samstern): This is an ugly way to just override the InvokeRuntimeOpts on each call
-const invokeTrigger = functionsEmulator.invokeTrigger.bind(functionsEmulator);
-function useFunctions(triggers: () => {}): void {
-  const serializedTriggers = triggers.toString();
-
-  // eslint-disable-next-line @typescript-eslint/unbound-method
-  functionsEmulator.invokeTrigger = (
-    trigger: EmulatedTriggerDefinition,
-    proto?: any,
-    runtimeOpts?: InvokeRuntimeOpts
-  ): Promise<RuntimeWorker> => {
-    return invokeTrigger(trigger, proto, {
-      nodeBinary: process.execPath,
-      serializedTriggers,
+  const triggers: EmulatedTriggerDefinition[] = [];
+  for (const region of regions) {
+    triggers.push({
+      platform: "gcfv1",
+      name: triggerName,
+      entryPoint: triggerName.replace(/-/g, "."),
+      id: `${region}-${triggerName}`,
+      region,
+      codebase: "default",
+      httpsTrigger: {},
+      ...triggerOverrides,
     });
-  };
+  }
+  emu.setTriggersForTesting(triggers, TEST_BACKEND);
 }
 
-describe("FunctionsEmulator-Hub", () => {
+describe("FunctionsEmulator-Hub", function () {
+  // eslint-disable-next-line @typescript-eslint/no-invalid-this
+  this.timeout(TIMEOUT_LONG);
+
+  let emu: FunctionsEmulator;
+
+  beforeEach(() => {
+    emu = new FunctionsEmulator({
+      projectId: "fake-project-id",
+      projectDir: MODULE_ROOT,
+      emulatableBackends: [TEST_BACKEND],
+      quiet: true,
+      adminSdkConfig: {
+        projectId: "fake-project-id",
+        databaseURL: "https://fake-project-id-default-rtdb.firebaseio.com",
+        storageBucket: "fake-project-id.appspot.com",
+      },
+    });
+  });
+
+  afterEach(async () => {
+    await emu.stop();
+  });
+
   it("should route requests to /:project_id/us-central1/:trigger_id to default region HTTPS Function", async () => {
-    useFunctions(() => {
-      require("firebase-admin").initializeApp();
+    await useFunction(emu, "functionId", () => {
       return {
-        function_id: require("firebase-functions").https.onRequest(
+        functionId: require("firebase-functions").https.onRequest(
           (req: express.Request, res: express.Response) => {
             res.json({ path: req.path });
           }
@@ -151,56 +102,63 @@ describe("FunctionsEmulator-Hub", () => {
       };
     });
 
-    await supertest(functionsEmulator.createHubServer())
-      .get("/fake-project-id/us-central1/function_id")
+    await supertest(emu.createHubServer())
+      .get("/fake-project-id/us-central1/functionId")
       .expect(200)
       .then((res) => {
         expect(res.body.path).to.deep.equal("/");
       });
-  }).timeout(TIMEOUT_LONG);
+  });
 
   it("should route requests to /:project_id/:other-region/:trigger_id to the region's HTTPS Function", async () => {
-    useFunctions(() => {
-      require("firebase-admin").initializeApp();
-      return {
-        function_id: require("firebase-functions")
-          .region("us-central1", "europe-west2")
-          .https.onRequest((req: express.Request, res: express.Response) => {
-            res.json({ path: req.path });
-          }),
-      };
-    });
+    await useFunction(
+      emu,
+      "functionId",
+      () => {
+        require("firebase-admin").initializeApp();
+        return {
+          functionId: require("firebase-functions")
+            .region("us-central1", "europe-west2")
+            .https.onRequest((req: express.Request, res: express.Response) => {
+              res.json({ path: req.path });
+            }),
+        };
+      },
+      ["us-central1", "europe-west2"]
+    );
 
-    await supertest(functionsEmulator.createHubServer())
-      .get("/fake-project-id/europe-west2/function_id")
+    await supertest(emu.createHubServer())
+      .get("/fake-project-id/europe-west2/functionId")
       .expect(200)
       .then((res) => {
         expect(res.body.path).to.deep.equal("/");
       });
-  }).timeout(TIMEOUT_LONG);
+  });
 
   it("should 404 when a function doesn't exist in the region", async () => {
-    useFunctions(() => {
-      require("firebase-admin").initializeApp();
-      return {
-        function_id: require("firebase-functions")
-          .region("us-central1", "europe-west2")
-          .https.onRequest((req: express.Request, res: express.Response) => {
-            res.json({ path: req.path });
-          }),
-      };
-    });
+    await useFunction(
+      emu,
+      "functionId",
+      () => {
+        require("firebase-admin").initializeApp();
+        return {
+          functionId: require("firebase-functions")
+            .region("us-central1", "europe-west2")
+            .https.onRequest((req: express.Request, res: express.Response) => {
+              res.json({ path: req.path });
+            }),
+        };
+      },
+      ["us-central1", "europe-west2"]
+    );
 
-    await supertest(functionsEmulator.createHubServer())
-      .get("/fake-project-id/us-east1/function_id")
-      .expect(404);
-  }).timeout(TIMEOUT_LONG);
+    await supertest(emu.createHubServer()).get("/fake-project-id/us-east1/functionId").expect(404);
+  });
 
   it("should route requests to /:project_id/:region/:trigger_id/ to HTTPS Function", async () => {
-    useFunctions(() => {
-      require("firebase-admin").initializeApp();
+    await useFunction(emu, "functionId", () => {
       return {
-        function_id: require("firebase-functions").https.onRequest(
+        functionId: require("firebase-functions").https.onRequest(
           (req: express.Request, res: express.Response) => {
             res.json({ path: req.path });
           }
@@ -208,19 +166,18 @@ describe("FunctionsEmulator-Hub", () => {
       };
     });
 
-    await supertest(functionsEmulator.createHubServer())
-      .get("/fake-project-id/us-central1/function_id/")
+    await supertest(emu.createHubServer())
+      .get("/fake-project-id/us-central1/functionId/")
       .expect(200)
       .then((res) => {
         expect(res.body.path).to.deep.equal("/");
       });
-  }).timeout(TIMEOUT_LONG);
+  });
 
   it("should 404 when a function does not exist", async () => {
-    useFunctions(() => {
-      require("firebase-admin").initializeApp();
+    await useFunction(emu, "functionId", () => {
       return {
-        function_id: require("firebase-functions").https.onRequest(
+        functionId: require("firebase-functions").https.onRequest(
           (req: express.Request, res: express.Response) => {
             res.json({ path: req.path });
           }
@@ -228,17 +185,16 @@ describe("FunctionsEmulator-Hub", () => {
       };
     });
 
-    await supertest(functionsEmulator.createHubServer())
-      .get("/fake-project-id/us-central1/function_dne")
+    await supertest(emu.createHubServer())
+      .get("/fake-project-id/us-central1/functionDNE")
       .expect(404);
-  }).timeout(TIMEOUT_LONG);
+  });
 
   it("should properly route to a namespaced/grouped HTTPs function", async () => {
-    useFunctions(() => {
-      require("firebase-admin").initializeApp();
+    await useFunction(emu, "nested-functionId", () => {
       return {
         nested: {
-          function_id: require("firebase-functions").https.onRequest(
+          functionId: require("firebase-functions").https.onRequest(
             (req: express.Request, res: express.Response) => {
               res.json({ path: req.path });
             }
@@ -247,19 +203,18 @@ describe("FunctionsEmulator-Hub", () => {
       };
     });
 
-    await supertest(functionsEmulator.createHubServer())
-      .get("/fake-project-id/us-central1/nested-function_id")
+    await supertest(emu.createHubServer())
+      .get("/fake-project-id/us-central1/nested-functionId")
       .expect(200)
       .then((res) => {
         expect(res.body.path).to.deep.equal("/");
       });
-  }).timeout(TIMEOUT_LONG);
+  });
 
   it("should route requests to /:project_id/:region/:trigger_id/a/b to HTTPS Function", async () => {
-    useFunctions(() => {
-      require("firebase-admin").initializeApp();
+    await useFunction(emu, "functionId", () => {
       return {
-        function_id: require("firebase-functions").https.onRequest(
+        functionId: require("firebase-functions").https.onRequest(
           (req: express.Request, res: express.Response) => {
             res.json({ path: req.path });
           }
@@ -267,18 +222,18 @@ describe("FunctionsEmulator-Hub", () => {
       };
     });
 
-    await supertest(functionsEmulator.createHubServer())
-      .get("/fake-project-id/us-central1/function_id/a/b")
+    await supertest(emu.createHubServer())
+      .get("/fake-project-id/us-central1/functionId/a/b")
       .expect(200)
       .then((res) => {
         expect(res.body.path).to.deep.equal("/a/b");
       });
-  }).timeout(TIMEOUT_LONG);
+  });
 
   it("should reject requests to a non-emulator path", async () => {
-    useFunctions(() => {
+    await useFunction(emu, "functionId", () => {
       return {
-        function_id: require("firebase-functions").https.onRequest(
+        functionId: require("firebase-functions").https.onRequest(
           (req: express.Request, res: express.Response) => {
             res.json({ path: req.path });
           }
@@ -286,14 +241,13 @@ describe("FunctionsEmulator-Hub", () => {
       };
     });
 
-    await supertest(functionsEmulator.createHubServer()).get("/foo/bar/baz").expect(404);
-  }).timeout(TIMEOUT_LONG);
+    await supertest(emu.createHubServer()).get("/foo/bar/baz").expect(404);
+  });
 
   it("should rewrite req.path to hide /:project_id/:region/:trigger_id", async () => {
-    useFunctions(() => {
-      require("firebase-admin").initializeApp();
+    await useFunction(emu, "functionId", () => {
       return {
-        function_id: require("firebase-functions").https.onRequest(
+        functionId: require("firebase-functions").https.onRequest(
           (req: express.Request, res: express.Response) => {
             res.json({ path: req.path });
           }
@@ -301,19 +255,18 @@ describe("FunctionsEmulator-Hub", () => {
       };
     });
 
-    await supertest(functionsEmulator.createHubServer())
-      .get("/fake-project-id/us-central1/function_id/sub/route/a")
+    await supertest(emu.createHubServer())
+      .get("/fake-project-id/us-central1/functionId/sub/route/a")
       .expect(200)
       .then((res) => {
         expect(res.body.path).to.eq("/sub/route/a");
       });
-  }).timeout(TIMEOUT_LONG);
+  });
 
   it("should return the correct url, baseUrl, originalUrl for the root route", async () => {
-    useFunctions(() => {
-      require("firebase-admin").initializeApp();
+    await useFunction(emu, "functionId", () => {
       return {
-        function_id: require("firebase-functions").https.onRequest(
+        functionId: require("firebase-functions").https.onRequest(
           (req: express.Request, res: express.Response) => {
             res.json({
               url: req.url,
@@ -325,21 +278,20 @@ describe("FunctionsEmulator-Hub", () => {
       };
     });
 
-    await supertest(functionsEmulator.createHubServer())
-      .get("/fake-project-id/us-central1/function_id")
+    await supertest(emu.createHubServer())
+      .get("/fake-project-id/us-central1/functionId")
       .expect(200)
       .then((res) => {
         expect(res.body.url).to.eq("/");
         expect(res.body.baseUrl).to.eq("");
         expect(res.body.originalUrl).to.eq("/");
       });
-  }).timeout(TIMEOUT_LONG);
+  });
 
   it("should return the correct url, baseUrl, originalUrl with query params", async () => {
-    useFunctions(() => {
-      require("firebase-admin").initializeApp();
+    await useFunction(emu, "functionId", () => {
       return {
-        function_id: require("firebase-functions").https.onRequest(
+        functionId: require("firebase-functions").https.onRequest(
           (req: express.Request, res: express.Response) => {
             res.json({
               url: req.url,
@@ -352,8 +304,8 @@ describe("FunctionsEmulator-Hub", () => {
       };
     });
 
-    await supertest(functionsEmulator.createHubServer())
-      .get("/fake-project-id/us-central1/function_id?a=1&b=2")
+    await supertest(emu.createHubServer())
+      .get("/fake-project-id/us-central1/functionId?a=1&b=2")
       .expect(200)
       .then((res) => {
         expect(res.body.url).to.eq("/?a=1&b=2");
@@ -361,13 +313,12 @@ describe("FunctionsEmulator-Hub", () => {
         expect(res.body.originalUrl).to.eq("/?a=1&b=2");
         expect(res.body.query).to.deep.eq({ a: "1", b: "2" });
       });
-  }).timeout(TIMEOUT_LONG);
+  });
 
   it("should return the correct url, baseUrl, originalUrl for a subroute", async () => {
-    useFunctions(() => {
-      require("firebase-admin").initializeApp();
+    await useFunction(emu, "functionId", () => {
       return {
-        function_id: require("firebase-functions").https.onRequest(
+        functionId: require("firebase-functions").https.onRequest(
           (req: express.Request, res: express.Response) => {
             res.json({
               url: req.url,
@@ -379,47 +330,52 @@ describe("FunctionsEmulator-Hub", () => {
       };
     });
 
-    await supertest(functionsEmulator.createHubServer())
-      .get("/fake-project-id/us-central1/function_id/sub/route/a")
+    await supertest(emu.createHubServer())
+      .get("/fake-project-id/us-central1/functionId/sub/route/a")
       .expect(200)
       .then((res) => {
         expect(res.body.url).to.eq("/sub/route/a");
         expect(res.body.baseUrl).to.eq("");
         expect(res.body.originalUrl).to.eq("/sub/route/a");
       });
-  }).timeout(TIMEOUT_LONG);
+  });
 
   it("should return the correct url, baseUrl, originalUrl for any region", async () => {
-    useFunctions(() => {
-      require("firebase-admin").initializeApp();
-      return {
-        function_id: require("firebase-functions")
-          .region("europe-west3")
-          .https.onRequest((req: express.Request, res: express.Response) => {
-            res.json({
-              url: req.url,
-              baseUrl: req.baseUrl,
-              originalUrl: req.originalUrl,
-            });
-          }),
-      };
-    });
+    await useFunction(
+      emu,
+      "functionId",
+      () => {
+        return {
+          functionId: require("firebase-functions")
+            .region("europe-west3")
+            .https.onRequest((req: express.Request, res: express.Response) => {
+              res.json({
+                url: req.url,
+                baseUrl: req.baseUrl,
+                originalUrl: req.originalUrl,
+                query: req.query,
+              });
+            }),
+        };
+      },
+      ["europe-west3"]
+    );
 
-    await supertest(functionsEmulator.createHubServer())
-      .get("/fake-project-id/europe-west3/function_id")
+    await supertest(emu.createHubServer())
+      .get("/fake-project-id/europe-west3/functionId?a=1&b=2")
       .expect(200)
       .then((res) => {
-        expect(res.body.url).to.eq("/");
+        expect(res.body.url).to.eq("/?a=1&b=2");
         expect(res.body.baseUrl).to.eq("");
-        expect(res.body.originalUrl).to.eq("/");
+        expect(res.body.originalUrl).to.eq("/?a=1&b=2");
+        expect(res.body.query).to.deep.eq({ a: "1", b: "2" });
       });
-  }).timeout(TIMEOUT_LONG);
+  });
 
   it("should route request body", async () => {
-    useFunctions(() => {
-      require("firebase-admin").initializeApp();
+    await useFunction(emu, "functionId", () => {
       return {
-        function_id: require("firebase-functions").https.onRequest(
+        functionId: require("firebase-functions").https.onRequest(
           (req: express.Request, res: express.Response) => {
             res.json(req.body);
           }
@@ -427,20 +383,19 @@ describe("FunctionsEmulator-Hub", () => {
       };
     });
 
-    await supertest(functionsEmulator.createHubServer())
-      .post("/fake-project-id/us-central1/function_id/sub/route/a")
+    await supertest(emu.createHubServer())
+      .post("/fake-project-id/us-central1/functionId/sub/route/a")
       .send({ hello: "world" })
       .expect(200)
       .then((res) => {
         expect(res.body).to.deep.equal({ hello: "world" });
       });
-  }).timeout(TIMEOUT_LONG);
+  });
 
   it("should route query parameters", async () => {
-    useFunctions(() => {
-      require("firebase-admin").initializeApp();
+    await useFunction(emu, "functionId", () => {
       return {
-        function_id: require("firebase-functions").https.onRequest(
+        functionId: require("firebase-functions").https.onRequest(
           (req: express.Request, res: express.Response) => {
             res.json(req.query);
           }
@@ -448,18 +403,18 @@ describe("FunctionsEmulator-Hub", () => {
       };
     });
 
-    await supertest(functionsEmulator.createHubServer())
-      .get("/fake-project-id/us-central1/function_id/sub/route/a?hello=world")
+    await supertest(emu.createHubServer())
+      .get("/fake-project-id/us-central1/functionId/sub/route/a?hello=world")
       .expect(200)
       .then((res) => {
         expect(res.body).to.deep.equal({ hello: "world" });
       });
-  }).timeout(TIMEOUT_LONG);
+  });
 
   it("should override callable auth", async () => {
-    useFunctions(() => {
+    await useFunction(emu, "callableFunctionId", () => {
       return {
-        callable_function_id: require("firebase-functions").https.onCall((data: any, ctx: any) => {
+        callableFunctionId: require("firebase-functions").https.onCall((data: any, ctx: any) => {
           return {
             auth: ctx.auth,
           };
@@ -469,8 +424,8 @@ describe("FunctionsEmulator-Hub", () => {
 
     // For token info:
     // https://jwt.io/#debugger-io?token=eyJhbGciOiJSUzI1NiIsImtpZCI6IjFmODhiODE0MjljYzQ1MWEzMzVjMmY1Y2RiM2RmYjM0ZWIzYmJjN2YiLCJ0eXAiOiJKV1QifQ.eyJwcm92aWRlcl9pZCI6ImFub255bW91cyIsImlzcyI6Imh0dHBzOi8vc2VjdXJldG9rZW4uZ29vZ2xlLmNvbS9maXItZHVtcHN0ZXIiLCJhdWQiOiJmaXItZHVtcHN0ZXIiLCJhdXRoX3RpbWUiOjE1ODUwNTMyNjQsInVzZXJfaWQiOiJTbW56OE8xcmxkZmptZHg4QVJVdE12WG1tdzYyIiwic3ViIjoiU21uejhPMXJsZGZqbWR4OEFSVXRNdlhtbXc2MiIsImlhdCI6MTU4NTA1MzI2NCwiZXhwIjoxNTg1MDU2ODY0LCJmaXJlYmFzZSI6eyJpZGVudGl0aWVzIjp7fSwic2lnbl9pbl9wcm92aWRlciI6ImFub255bW91cyJ9fQ.ujOthXwov9NJAOmJfumkDzMQgj8P1YRWkhFeq_HqHpPmth1BbtrQ_duwFoFmAPGjnGTuozUi0YUl8eKh4p2CqXi-Wf_OLSumxNnJWhj_tm7OvYWjvUy0ZvjilPBrhQ17_lRnhyOVSLSXfneqehYvE85YkBkFy3GtOpN49fRdmBT7B71Yx8E8SM7fohlia-ah7_uSNpuJXzQ9-0rv6HH9uBYCmjUxb9MiuKwkIjDoYtjTuaqG8-4w8bPrKHmg6V7HeDSNItUcfDbALZiTsM5uob_uuVTwjCCQnwryB5Y3bmdksTqCvp8U7ZTU04HS9CJawTa-zuDXIwlOvsC-J8oQQw
-    await supertest(functionsEmulator.createHubServer())
-      .post("/fake-project-id/us-central1/callable_function_id")
+    await supertest(emu.createHubServer())
+      .post("/fake-project-id/us-central1/callableFunctionId")
       .set({
         "Content-Type": "application/json",
         Authorization:
@@ -502,12 +457,12 @@ describe("FunctionsEmulator-Hub", () => {
           },
         });
       });
-  }).timeout(TIMEOUT_LONG);
+  });
 
   it("should override callable auth with unicode", async () => {
-    useFunctions(() => {
+    await useFunction(emu, "callableFunctionId", () => {
       return {
-        callable_function_id: require("firebase-functions").https.onCall((data: any, ctx: any) => {
+        callableFunctionId: require("firebase-functions").https.onCall((data: any, ctx: any) => {
           return {
             auth: ctx.auth,
           };
@@ -517,8 +472,8 @@ describe("FunctionsEmulator-Hub", () => {
 
     // For token info:
     // https://jwt.io/#debugger-io?token=eyJhbGciOiJSUzI1NiIsImtpZCI6IjFmODhiODE0MjljYzQ1MWEzMzVjMmY1Y2RiM2RmYjM0ZWIzYmJjN2YiLCJ0eXAiOiJKV1QifQ.eyJwcm92aWRlcl9pZCI6ImFub255bW91cyIsImlzcyI6Imh0dHBzOi8vc2VjdXJldG9rZW4uZ29vZ2xlLmNvbS9maXItZHVtcHN0ZXIiLCJhdWQiOiJmaXItZHVtcHN0ZXIiLCJhdXRoX3RpbWUiOjE1ODUwNTMyNjQsIm5hbWUiOiLlsbHnlLDlpKrpg44iLCJ1c2VyX2lkIjoiU21uejhPMXJsZGZqbWR4OEFSVXRNdlhtbXc2MiIsInN1YiI6IlNtbno4TzFybGRmam1keDhBUlV0TXZYbW13NjIiLCJpYXQiOjE1ODUwNTMyNjQsImV4cCI6MTU4NTA1Njg2NCwiZmlyZWJhc2UiOnsiaWRlbnRpdGllcyI6e30sInNpZ25faW5fcHJvdmlkZXIiOiJhbm9ueW1vdXMifX0.ujOthXwov9NJAOmJfumkDzMQgj8P1YRWkhFeq_HqHpPmth1BbtrQ_duwFoFmAPGjnGTuozUi0YUl8eKh4p2CqXi-Wf_OLSumxNnJWhj_tm7OvYWjvUy0ZvjilPBrhQ17_lRnhyOVSLSXfneqehYvE85YkBkFy3GtOpN49fRdmBT7B71Yx8E8SM7fohlia-ah7_uSNpuJXzQ9-0rv6HH9uBYCmjUxb9MiuKwkIjDoYtjTuaqG8-4w8bPrKHmg6V7HeDSNItUcfDbALZiTsM5uob_uuVTwjCCQnwryB5Y3bmdksTqCvp8U7ZTU04HS9CJawTa-zuDXIwlOvsC-J8oQQw
-    await supertest(functionsEmulator.createHubServer())
-      .post("/fake-project-id/us-central1/callable_function_id")
+    await supertest(emu.createHubServer())
+      .post("/fake-project-id/us-central1/callableFunctionId")
       .set({
         "Content-Type": "application/json",
         Authorization:
@@ -551,12 +506,12 @@ describe("FunctionsEmulator-Hub", () => {
           },
         });
       });
-  }).timeout(TIMEOUT_LONG);
+  });
 
   it("should override callable auth with a poorly padded ID Token", async () => {
-    useFunctions(() => {
+    await useFunction(emu, "callableFunctionId", () => {
       return {
-        callable_function_id: require("firebase-functions").https.onCall((data: any, ctx: any) => {
+        callableFunctionId: require("firebase-functions").https.onCall((data: any, ctx: any) => {
           return {
             auth: ctx.auth,
           };
@@ -566,8 +521,8 @@ describe("FunctionsEmulator-Hub", () => {
 
     // For token info:
     // https://jwt.io/#debugger-io?token=eyJhbGciOiJub25lIiwia2lkIjoiZmFrZWtpZCJ9.eyJ1aWQiOiJhbGljZSIsImVtYWlsIjoiYWxpY2VAZXhhbXBsZS5jb20iLCJpYXQiOjAsInN1YiI6ImFsaWNlIn0%3D.
-    await supertest(functionsEmulator.createHubServer())
-      .post("/fake-project-id/us-central1/callable_function_id")
+    await supertest(emu.createHubServer())
+      .post("/fake-project-id/us-central1/callableFunctionId")
       .set({
         "Content-Type": "application/json",
         Authorization:
@@ -590,12 +545,12 @@ describe("FunctionsEmulator-Hub", () => {
           },
         });
       });
-  }).timeout(TIMEOUT_LONG);
+  });
 
   it("should preserve the Authorization header for callable auth", async () => {
-    useFunctions(() => {
+    await useFunction(emu, "callableFunctionId", () => {
       return {
-        callable_function_id: require("firebase-functions").https.onCall((data: any, ctx: any) => {
+        callableFunctionId: require("firebase-functions").https.onCall((data: any, ctx: any) => {
           return {
             header: ctx.rawRequest.headers["authorization"],
           };
@@ -605,11 +560,10 @@ describe("FunctionsEmulator-Hub", () => {
 
     const authHeader =
       "Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6IjFmODhiODE0MjljYzQ1MWEzMzVjMmY1Y2RiM2RmYjM0ZWIzYmJjN2YiLCJ0eXAiOiJKV1QifQ.eyJwcm92aWRlcl9pZCI6ImFub255bW91cyIsImlzcyI6Imh0dHBzOi8vc2VjdXJldG9rZW4uZ29vZ2xlLmNvbS9maXItZHVtcHN0ZXIiLCJhdWQiOiJmaXItZHVtcHN0ZXIiLCJhdXRoX3RpbWUiOjE1ODUwNTMyNjQsInVzZXJfaWQiOiJTbW56OE8xcmxkZmptZHg4QVJVdE12WG1tdzYyIiwic3ViIjoiU21uejhPMXJsZGZqbWR4OEFSVXRNdlhtbXc2MiIsImlhdCI6MTU4NTA1MzI2NCwiZXhwIjoxNTg1MDU2ODY0LCJmaXJlYmFzZSI6eyJpZGVudGl0aWVzIjp7fSwic2lnbl9pbl9wcm92aWRlciI6ImFub255bW91cyJ9fQ.ujOthXwov9NJAOmJfumkDzMQgj8P1YRWkhFeq_HqHpPmth1BbtrQ_duwFoFmAPGjnGTuozUi0YUl8eKh4p2CqXi-Wf_OLSumxNnJWhj_tm7OvYWjvUy0ZvjilPBrhQ17_lRnhyOVSLSXfneqehYvE85YkBkFy3GtOpN49fRdmBT7B71Yx8E8SM7fohlia-ah7_uSNpuJXzQ9-0rv6HH9uBYCmjUxb9MiuKwkIjDoYtjTuaqG8-4w8bPrKHmg6V7HeDSNItUcfDbALZiTsM5uob_uuVTwjCCQnwryB5Y3bmdksTqCvp8U7ZTU04HS9CJawTa-zuDXIwlOvsC-J8oQQw";
-
     // For token info:
     // https://jwt.io/#debugger-io?token=eyJhbGciOiJSUzI1NiIsImtpZCI6IjFmODhiODE0MjljYzQ1MWEzMzVjMmY1Y2RiM2RmYjM0ZWIzYmJjN2YiLCJ0eXAiOiJKV1QifQ.eyJwcm92aWRlcl9pZCI6ImFub255bW91cyIsImlzcyI6Imh0dHBzOi8vc2VjdXJldG9rZW4uZ29vZ2xlLmNvbS9maXItZHVtcHN0ZXIiLCJhdWQiOiJmaXItZHVtcHN0ZXIiLCJhdXRoX3RpbWUiOjE1ODUwNTMyNjQsInVzZXJfaWQiOiJTbW56OE8xcmxkZmptZHg4QVJVdE12WG1tdzYyIiwic3ViIjoiU21uejhPMXJsZGZqbWR4OEFSVXRNdlhtbXc2MiIsImlhdCI6MTU4NTA1MzI2NCwiZXhwIjoxNTg1MDU2ODY0LCJmaXJlYmFzZSI6eyJpZGVudGl0aWVzIjp7fSwic2lnbl9pbl9wcm92aWRlciI6ImFub255bW91cyJ9fQ.ujOthXwov9NJAOmJfumkDzMQgj8P1YRWkhFeq_HqHpPmth1BbtrQ_duwFoFmAPGjnGTuozUi0YUl8eKh4p2CqXi-Wf_OLSumxNnJWhj_tm7OvYWjvUy0ZvjilPBrhQ17_lRnhyOVSLSXfneqehYvE85YkBkFy3GtOpN49fRdmBT7B71Yx8E8SM7fohlia-ah7_uSNpuJXzQ9-0rv6HH9uBYCmjUxb9MiuKwkIjDoYtjTuaqG8-4w8bPrKHmg6V7HeDSNItUcfDbALZiTsM5uob_uuVTwjCCQnwryB5Y3bmdksTqCvp8U7ZTU04HS9CJawTa-zuDXIwlOvsC-J8oQQw
-    await supertest(functionsEmulator.createHubServer())
-      .post("/fake-project-id/us-central1/callable_function_id")
+    await supertest(emu.createHubServer())
+      .post("/fake-project-id/us-central1/callableFunctionId")
       .set({
         "Content-Type": "application/json",
         Authorization: authHeader,
@@ -623,13 +577,13 @@ describe("FunctionsEmulator-Hub", () => {
           },
         });
       });
-  }).timeout(TIMEOUT_LONG);
+  });
 
   it("should respond to requests to /backends to with info about the running backends", async () => {
-    useFunctions(() => {
+    await useFunction(emu, "functionId", () => {
       require("firebase-admin").initializeApp();
       return {
-        function_id: require("firebase-functions").https.onRequest(
+        functionId: require("firebase-functions").https.onRequest(
           (req: express.Request, res: express.Response) => {
             res.json({ path: req.path });
           }
@@ -637,86 +591,25 @@ describe("FunctionsEmulator-Hub", () => {
       };
     });
 
-    await supertest(functionsEmulator.createHubServer())
+    await supertest(emu.createHubServer())
       .get("/backends")
       .expect(200)
       .then((res) => {
         // TODO(b/216642962): Add tests for this endpoint that validate behavior when there are Extensions running
-        const expectedDirectory = path.resolve(`${__dirname}/../..`);
-        expect(res.body.backends).to.deep.equal([
+        expect(res.body.backends.length).to.equal(1);
+        expect(res.body.backends[0].functionTriggers).to.deep.equal([
           {
-            directory: expectedDirectory,
-            env: {},
-            functionTriggers: [
-              {
-                entryPoint: "function_id",
-                httpsTrigger: {},
-                id: "us-central1-function_id",
-                labels: {},
-                name: "function_id",
-                platform: "gcfv1",
-                region: "us-central1",
-              },
-              {
-                entryPoint: "function_id",
-                httpsTrigger: {},
-                id: "europe-west2-function_id",
-                labels: {},
-                name: "function_id",
-                platform: "gcfv1",
-                region: "europe-west2",
-              },
-              {
-                entryPoint: "function_id",
-                httpsTrigger: {},
-                id: "europe-west3-function_id",
-                labels: {},
-                name: "function_id",
-                platform: "gcfv1",
-                region: "europe-west3",
-              },
-              {
-                entryPoint: "callable_function_id",
-                httpsTrigger: {},
-                id: "us-central1-callable_function_id",
-                labels: {
-                  "deployment-callable": "true",
-                },
-                name: "callable_function_id",
-                platform: "gcfv1",
-                region: "us-central1",
-              },
-              {
-                entryPoint: "nested.function_id",
-                httpsTrigger: {},
-                id: "us-central1-nested-function_id",
-                labels: {},
-                name: "nested-function_id",
-                platform: "gcfv1",
-                region: "us-central1",
-              },
-              {
-                entryPoint: "secrets_function_id",
-                httpsTrigger: {},
-                id: "us-central1-secrets_function_id",
-                labels: {},
-                name: "secrets_function_id",
-                platform: "gcfv1",
-                region: "us-central1",
-                secretEnvironmentVariables: [
-                  {
-                    key: "MY_SECRET",
-                    projectId: "fake-project-id",
-                    secret: "MY_SECRET",
-                    version: "1",
-                  },
-                ],
-              },
-            ],
+            entryPoint: "functionId",
+            httpsTrigger: {},
+            id: "us-central1-functionId",
+            name: "functionId",
+            platform: "gcfv1",
+            codebase: "default",
+            region: "us-central1",
           },
         ]);
       });
-  }).timeout(TIMEOUT_LONG);
+  });
 
   describe("environment variables", () => {
     let emulatorRegistryStub: sinon.SinonStub;
@@ -736,9 +629,9 @@ describe("FunctionsEmulator-Hub", () => {
         port: 9090,
       });
 
-      useFunctions(() => {
+      await useFunction(emu, "functionId", () => {
         return {
-          function_id: require("firebase-functions").https.onRequest(
+          functionId: require("firebase-functions").https.onRequest(
             (_req: express.Request, res: express.Response) => {
               res.json({
                 var: process.env.FIREBASE_DATABASE_EMULATOR_HOST,
@@ -748,8 +641,8 @@ describe("FunctionsEmulator-Hub", () => {
         };
       });
 
-      await supertest(functionsEmulator.createHubServer())
-        .get("/fake-project-id/us-central1/function_id")
+      await supertest(emu.createHubServer())
+        .get("/fake-project-id/us-central1/functionId")
         .expect(200)
         .then((res) => {
           expect(res.body.var).to.eql("localhost:9090");
@@ -763,9 +656,9 @@ describe("FunctionsEmulator-Hub", () => {
         port: 9090,
       });
 
-      useFunctions(() => {
+      await useFunction(emu, "functionId", () => {
         return {
-          function_id: require("firebase-functions").https.onRequest(
+          functionId: require("firebase-functions").https.onRequest(
             (_req: express.Request, res: express.Response) => {
               res.json({
                 var: process.env.FIRESTORE_EMULATOR_HOST,
@@ -775,24 +668,24 @@ describe("FunctionsEmulator-Hub", () => {
         };
       });
 
-      await supertest(functionsEmulator.createHubServer())
-        .get("/fake-project-id/us-central1/function_id")
+      await supertest(emu.createHubServer())
+        .get("/fake-project-id/us-central1/functionId")
         .expect(200)
         .then((res) => {
           expect(res.body.var).to.eql("localhost:9090");
         });
-    }).timeout(5000);
+    }).timeout(TIMEOUT_MED);
 
-    it("should set FIREBASE_AUTH_EMULATOR_HOST when the emulator is running", async () => {
+    it("should set AUTH_EMULATOR_HOST when the emulator is running", async () => {
       emulatorRegistryStub.withArgs(Emulators.AUTH).returns({
-        name: Emulators.FIRESTORE,
+        name: Emulators.AUTH,
         host: "localhost",
         port: 9099,
       });
 
-      useFunctions(() => {
+      await useFunction(emu, "functionId", () => {
         return {
-          function_id: require("firebase-functions").https.onRequest(
+          functionId: require("firebase-functions").https.onRequest(
             (_req: express.Request, res: express.Response) => {
               res.json({
                 var: process.env.FIREBASE_AUTH_EMULATOR_HOST,
@@ -802,11 +695,79 @@ describe("FunctionsEmulator-Hub", () => {
         };
       });
 
-      await supertest(functionsEmulator.createHubServer())
-        .get("/fake-project-id/us-central1/function_id")
+      await supertest(emu.createHubServer())
+        .get("/fake-project-id/us-central1/functionId")
         .expect(200)
         .then((res) => {
           expect(res.body.var).to.eql("localhost:9099");
+        });
+    }).timeout(TIMEOUT_MED);
+
+    it("should return an emulated databaseURL when RTDB emulator is running", async () => {
+      emulatorRegistryStub.withArgs(Emulators.DATABASE).returns({
+        name: Emulators.DATABASE,
+        host: "localhost",
+        port: 9090,
+      });
+
+      await useFunction(emu, "functionId", () => {
+        return {
+          functionId: require("firebase-functions").https.onRequest(
+            (_req: express.Request, res: express.Response) => {
+              res.json(JSON.parse(process.env.FIREBASE_CONFIG!));
+            }
+          ),
+        };
+      });
+
+      await supertest(emu.createHubServer())
+        .get("/fake-project-id/us-central1/functionId")
+        .expect(200)
+        .then((res) => {
+          expect(res.body.databaseURL).to.eql(
+            "http://localhost:9090/?ns=fake-project-id-default-rtdb"
+          );
+        });
+    }).timeout(TIMEOUT_MED);
+
+    it("should return a real databaseURL when RTDB emulator is not running", async () => {
+      await useFunction(emu, "functionId", () => {
+        return {
+          functionId: require("firebase-functions").https.onRequest(
+            (_req: express.Request, res: express.Response) => {
+              res.json(JSON.parse(process.env.FIREBASE_CONFIG!));
+            }
+          ),
+        };
+      });
+
+      await supertest(emu.createHubServer())
+        .get("/fake-project-id/us-central1/functionId")
+        .expect(200)
+        .then((res) => {
+          expect(res.body.databaseURL).to.eql(
+            "https://fake-project-id-default-rtdb.firebaseio.com"
+          );
+        });
+    }).timeout(TIMEOUT_MED);
+
+    it("should report GMT time zone", async () => {
+      await useFunction(emu, "functionId", () => {
+        return {
+          functionId: require("firebase-functions").https.onRequest(
+            (_req: express.Request, res: express.Response) => {
+              const now = new Date();
+              res.json({ offset: now.getTimezoneOffset() });
+            }
+          ),
+        };
+      });
+
+      await supertest(emu.createHubServer())
+        .get("/fake-project-id/us-central1/functionId")
+        .expect(200)
+        .then((res) => {
+          expect(res.body.offset).to.eql(0);
         });
     }).timeout(TIMEOUT_MED);
   });
@@ -830,44 +791,74 @@ describe("FunctionsEmulator-Hub", () => {
     it("should load secret values from local secrets file if one exists", async () => {
       readFileSyncStub.returns("MY_SECRET=local");
 
-      useFunctions(() => {
-        return {
-          secrets_function_id: require("firebase-functions").https.onRequest(
-            (req: express.Request, res: express.Response) => {
-              res.json({ secret: process.env.MY_SECRET });
-            }
-          ),
-        };
-      });
+      await useFunction(
+        emu,
+        "secretsFunctionId",
+        () => {
+          return {
+            secretsFunctionId: require("firebase-functions").https.onRequest(
+              (req: express.Request, res: express.Response) => {
+                res.json({ secret: process.env.MY_SECRET });
+              }
+            ),
+          };
+        },
+        ["us-central1"],
+        {
+          secretEnvironmentVariables: [
+            {
+              projectId: "fake-project-id",
+              secret: "MY_SECRET",
+              key: "MY_SECRET",
+              version: "1",
+            },
+          ],
+        }
+      );
 
-      await supertest(functionsEmulator.createHubServer())
-        .get("/fake-project-id/us-central1/secrets_function_id")
+      await supertest(emu.createHubServer())
+        .get("/fake-project-id/us-central1/secretsFunctionId")
         .expect(200)
         .then((res) => {
           expect(res.body.secret).to.equal("local");
         });
-    }).timeout(TIMEOUT_LONG);
+    });
 
     it("should try to access secret values from Secret Manager", async () => {
       readFileSyncStub.throws({ code: "ENOENT" });
       accessSecretVersionStub.resolves("secretManager");
 
-      useFunctions(() => {
-        return {
-          secrets_function_id: require("firebase-functions").https.onRequest(
-            (req: express.Request, res: express.Response) => {
-              res.json({ secret: process.env.MY_SECRET });
-            }
-          ),
-        };
-      });
+      await useFunction(
+        emu,
+        "secretsFunctionId",
+        () => {
+          return {
+            secretsFunctionId: require("firebase-functions").https.onRequest(
+              (req: express.Request, res: express.Response) => {
+                res.json({ secret: process.env.MY_SECRET });
+              }
+            ),
+          };
+        },
+        ["us-central1"],
+        {
+          secretEnvironmentVariables: [
+            {
+              projectId: "fake-project-id",
+              secret: "MY_SECRET",
+              key: "MY_SECRET",
+              version: "1",
+            },
+          ],
+        }
+      );
 
-      await supertest(functionsEmulator.createHubServer())
-        .get("/fake-project-id/us-central1/secrets_function_id")
+      await supertest(emu.createHubServer())
+        .get("/fake-project-id/us-central1/secretsFunctionId")
         .expect(200)
         .then((res) => {
           expect(res.body.secret).to.equal("secretManager");
         });
-    }).timeout(TIMEOUT_LONG);
+    });
   });
 });

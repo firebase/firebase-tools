@@ -36,8 +36,8 @@ export const DEFAULT_DURATION = 7 * Duration.DAY;
  * @param flag string duration (e.g. "1d").
  * @return a duration in milliseconds.
  */
-export function calculateChannelExpireTTL(flag?: string): number {
-  const match = DURATION_REGEX.exec(flag || "");
+export function calculateChannelExpireTTL(flag = ""): number {
+  const match = DURATION_REGEX.exec(flag);
   if (!match) {
     throw new FirebaseError(
       `"expires" flag must be a duration string (e.g. 24h or 7d) at most 30d`

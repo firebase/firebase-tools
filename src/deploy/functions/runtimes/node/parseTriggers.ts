@@ -8,9 +8,9 @@ import * as backend from "../../backend";
 import * as build from "../../build";
 import * as api from "../../../../api";
 import * as proto from "../../../../gcp/proto";
-import * as args from "../../args";
 import * as runtimes from "../../runtimes";
 import * as events from "../../../../functions/events";
+import { nullsafeVisitor } from "../../../../functional";
 
 const TRIGGER_PARSER = path.resolve(__dirname, "./triggerParser.js");
 
@@ -136,12 +136,12 @@ function parseTriggers(
 }
 
 /** Currently we always use JS trigger parsing */
-export function useStrategy(context: args.Context): Promise<boolean> {
+export function useStrategy(): Promise<boolean> {
   return Promise.resolve(true);
 }
 
 /**
- *
+ * Parse trigger annotations in sourceDir to generate backed.Build.
  */
 export async function discoverBuild(
   projectId: string,
@@ -163,7 +163,7 @@ export async function discoverBuild(
 }
 
 /**
- *
+ * Parse trigger annotations in sourceDir to generate backed.Backend.
  */
 export async function discoverBackend(
   projectId: string,
@@ -180,9 +180,9 @@ export async function discoverBackend(
   return want;
 }
 
-/* @internal */
 /**
- *
+ * Merge duplicate entries of requireAPIs in backend.Build.
+ * @internal
  */
 export function mergeRequiredAPIs(backend: backend.Backend) {
   const apiToReasons: Record<string, Set<string>> = {};
@@ -203,7 +203,7 @@ export function mergeRequiredAPIs(backend: backend.Backend) {
 }
 
 /**
- *
+ * Transform trigger annotation into endpoints in backend.Build.
  */
 export function addResourcesToBuild(
   projectId: string,
@@ -212,7 +212,7 @@ export function addResourcesToBuild(
   want: build.Build
 ): void {
   Object.freeze(annotation);
-  // for (const region of annotation.regions || [api.functionsDefaultRegion]) {
+  const toSeconds = nullsafeVisitor(proto.secondsFromDuration);
   const regions = annotation.regions || [api.functionsDefaultRegion];
   let triggered: build.Triggered;
 
@@ -238,13 +238,33 @@ export function addResourcesToBuild(
     proto.copyIfPresent(triggered.taskQueueTrigger, annotation.taskQueueTrigger, "invoker");
     proto.copyIfPresent(triggered.taskQueueTrigger, annotation.taskQueueTrigger, "rateLimits");
     if (annotation.taskQueueTrigger.retryConfig) {
-      triggered.taskQueueTrigger.retryConfig = Object.assign(
+      triggered.taskQueueTrigger.retryConfig = {};
+      proto.copyIfPresent(
+        triggered.taskQueueTrigger.retryConfig,
         annotation.taskQueueTrigger.retryConfig,
-        {
-          maxRetryDurationSeconds: proto.secondsFromDuration(
-            annotation.taskQueueTrigger.retryConfig.maxRetryDuration || "0"
-          ),
-        }
+        "maxAttempts",
+        "maxDoublings"
+      );
+      proto.convertIfPresent(
+        triggered.taskQueueTrigger.retryConfig,
+        annotation.taskQueueTrigger.retryConfig,
+        "minBackoffSeconds",
+        "minBackoff",
+        toSeconds
+      );
+      proto.convertIfPresent(
+        triggered.taskQueueTrigger.retryConfig,
+        annotation.taskQueueTrigger.retryConfig,
+        "maxBackoffSeconds",
+        "maxBackoff",
+        toSeconds
+      );
+      proto.convertIfPresent(
+        triggered.taskQueueTrigger.retryConfig,
+        annotation.taskQueueTrigger.retryConfig,
+        "maxRetrySeconds",
+        "maxRetryDuration",
+        toSeconds
       );
     }
   } else if (annotation.httpsTrigger) {
@@ -257,7 +277,7 @@ export function addResourcesToBuild(
         logger.warn(`Ignoring retry policy for HTTPS function ${annotation.name}`);
       }
       if (annotation.httpsTrigger.invoker) {
-        trigger.invoker = annotation.httpsTrigger.invoker[0];
+        trigger.invoker = annotation.httpsTrigger.invoker;
       }
       triggered = { httpsTrigger: trigger };
     }
@@ -269,31 +289,38 @@ export function addResourcesToBuild(
     triggered = {
       scheduleTrigger: {
         schedule: annotation.schedule.schedule,
-        timeZone: annotation.schedule.timeZone || "America/Los_Angeles",
+        timeZone: annotation.schedule.timeZone ?? null,
         retryConfig: {},
       },
     };
     if (annotation.schedule.retryConfig) {
-      if (annotation.schedule.retryConfig.maxBackoffDuration) {
-        triggered.scheduleTrigger.retryConfig.maxBackoffSeconds = proto.secondsFromDuration(
-          annotation.schedule.retryConfig.maxBackoffDuration
-        );
-      }
-      if (annotation.schedule.retryConfig.minBackoffDuration) {
-        triggered.scheduleTrigger.retryConfig.minBackoffSeconds = proto.secondsFromDuration(
-          annotation.schedule.retryConfig.minBackoffDuration
-        );
-      }
-      if (annotation.schedule.retryConfig.maxRetryDuration) {
-        triggered.scheduleTrigger.retryConfig.maxRetrySeconds = proto.secondsFromDuration(
-          annotation.schedule.retryConfig.maxRetryDuration
-        );
-      }
+      triggered.scheduleTrigger.retryConfig = {};
       proto.copyIfPresent(
         triggered.scheduleTrigger.retryConfig,
         annotation.schedule.retryConfig,
-        "maxDoublings",
-        "retryCount"
+        "retryCount",
+        "maxDoublings"
+      );
+      proto.convertIfPresent(
+        triggered.scheduleTrigger.retryConfig,
+        annotation.schedule.retryConfig,
+        "maxRetrySeconds",
+        "maxRetryDuration",
+        toSeconds
+      );
+      proto.convertIfPresent(
+        triggered.scheduleTrigger.retryConfig,
+        annotation.schedule.retryConfig,
+        "minBackoffSeconds",
+        "minBackoffDuration",
+        toSeconds
+      );
+      proto.convertIfPresent(
+        triggered.scheduleTrigger.retryConfig,
+        annotation.schedule.retryConfig,
+        "maxBackoffSeconds",
+        "maxBackoffDuration",
+        toSeconds
       );
     }
   } else if (annotation.blockingTrigger) {
@@ -308,14 +335,19 @@ export function addResourcesToBuild(
         eventType: annotation.blockingTrigger.eventType,
       },
     };
-  } else {
+  } else if (annotation.eventTrigger) {
     triggered = {
       eventTrigger: {
-        eventType: annotation.eventTrigger!.eventType,
-        eventFilters: { resource: annotation.eventTrigger!.resource },
+        eventType: annotation.eventTrigger.eventType,
+        eventFilters: { resource: annotation.eventTrigger.resource },
         retry: !!annotation.failurePolicy,
       },
     };
+  } else {
+    throw new FirebaseError(
+      "Do not understand Cloud Function annotation without a trigger" +
+        JSON.stringify(annotation, null, 2)
+    );
   }
 
   const endpointId: string = annotation.name;
@@ -325,15 +357,11 @@ export function addResourcesToBuild(
     project: projectId,
     entryPoint: annotation.entryPoint,
     runtime: runtime,
-    serviceAccount: annotation.serviceAccountEmail || "default",
     ...triggered,
   };
+  proto.renameIfPresent(endpoint, annotation, "serviceAccount", "serviceAccountEmail");
   if (annotation.vpcConnector != null) {
-    let maybeId = annotation.vpcConnector;
-    if (maybeId && !maybeId.includes("/")) {
-      maybeId = `projects/${projectId}/locations/$REGION/connectors/${maybeId}`;
-    }
-    endpoint.vpc = { connector: maybeId };
+    endpoint.vpc = { connector: annotation.vpcConnector };
     proto.renameIfPresent(endpoint.vpc, annotation, "egressSettings", "vpcConnectorEgressSettings");
   }
   proto.copyIfPresent(
@@ -341,24 +369,40 @@ export function addResourcesToBuild(
     annotation,
     "concurrency",
     "labels",
-    "ingressSettings",
     "maxInstances",
     "minInstances",
     "availableMemoryMb"
   );
-  proto.renameIfPresent(
+  proto.convertIfPresent(endpoint, annotation, "ingressSettings", (str) => {
+    if (str === null) {
+      return null;
+    }
+    if (!backend.AllIngressSettings.includes(str as backend.IngressSettings)) {
+      throw new Error(`Invalid ingress setting ${str}`);
+    }
+    return str as backend.IngressSettings;
+  });
+  proto.convertIfPresent(
     endpoint,
     annotation,
     "timeoutSeconds",
     "timeout",
     proto.secondsFromDuration
   );
-
+  if (annotation.secrets) {
+    endpoint.secretEnvironmentVariables = annotation.secrets.map<backend.SecretEnvVar>((secret) => {
+      return {
+        secret,
+        projectId,
+        key: secret,
+      };
+    });
+  }
   want.endpoints[endpointId] = endpoint;
 }
 
 /**
- *
+ * Transform trigger annotation into endpoints in backend.Backend.
  */
 export function addResourcesToBackend(
   projectId: string,
@@ -486,14 +530,33 @@ export function addResourcesToBackend(
       endpoint,
       annotation,
       "concurrency",
-      "serviceAccountEmail",
       "labels",
-      "ingressSettings",
       "maxInstances",
-      "minInstances",
-      "availableMemoryMb"
+      "minInstances"
     );
-    proto.renameIfPresent(
+    proto.renameIfPresent(endpoint, annotation, "serviceAccount", "serviceAccountEmail");
+
+    proto.convertIfPresent(endpoint, annotation, "ingressSettings", (ingress) => {
+      if (ingress == null) {
+        return null;
+      }
+      if (!backend.AllIngressSettings.includes(ingress as backend.IngressSettings)) {
+        throw new FirebaseError(`Invalid ingress setting ${ingress}`);
+      }
+      return ingress as backend.IngressSettings;
+    });
+    proto.convertIfPresent(endpoint, annotation, "availableMemoryMb", (mem) => {
+      if (mem === null) {
+        return null;
+      }
+      if (!backend.isValidMemoryOption(mem)) {
+        throw new FirebaseError(
+          `This version of firebase-tools does not know about the memory option ${mem}. Is an upgrade necessary?`
+        );
+      }
+      return mem;
+    });
+    proto.convertIfPresent(
       endpoint,
       annotation,
       "timeoutSeconds",

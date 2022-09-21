@@ -14,7 +14,7 @@ interface Operation {
   error?: any;
 }
 
-async function handler(op: Operation): Promise<undefined> {
+async function handler(op: Operation): Promise<void> {
   try {
     op.result = await op.func();
   } catch (err: any) {

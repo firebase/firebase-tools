@@ -1,5 +1,4 @@
-import * as clc from "cli-color";
-import * as _ from "lodash";
+import * as clc from "colorette";
 
 import { Client } from "./apiv2";
 import { googleOrigin } from "./api";
@@ -68,12 +67,12 @@ function genUploadAccountPostBody(projectId: string, accounts: any[], hashOption
       if (account.salt) {
         account.salt = toWebSafeBase64(account.salt);
       }
-      _.each(ALLOWED_JSON_KEYS_RENAMING, (value, key) => {
+      for (const [key, value] of Object.entries(ALLOWED_JSON_KEYS_RENAMING)) {
         if (account[key]) {
           account[value] = account[key];
           delete account[key];
         }
-      });
+      }
       return account;
     }),
   };
@@ -255,12 +254,14 @@ function validateRequiredParameters(options: any): any {
 function validateProviderUserInfo(providerUserInfo: { providerId: string; error?: string }): {
   error?: string;
 } {
-  if (!_.includes(ALLOWED_PROVIDER_IDS, providerUserInfo.providerId)) {
+  if (!ALLOWED_PROVIDER_IDS.includes(providerUserInfo.providerId)) {
     return {
       error: JSON.stringify(providerUserInfo, null, 2) + " has unsupported providerId",
     };
   }
-  const keydiff = _.difference(_.keys(providerUserInfo), ALLOWED_PROVIDER_USER_INFO_KEYS);
+  const keydiff = Object.keys(providerUserInfo).filter(
+    (k) => !ALLOWED_PROVIDER_USER_INFO_KEYS.includes(k)
+  );
   if (keydiff.length) {
     return {
       error:
@@ -271,7 +272,7 @@ function validateProviderUserInfo(providerUserInfo: { providerId: string; error?
 }
 
 export function validateUserJson(userJson: any): { error?: string } {
-  const keydiff = _.difference(_.keys(userJson), ALLOWED_JSON_KEYS);
+  const keydiff = Object.keys(userJson).filter((k) => !ALLOWED_JSON_KEYS.includes(k));
   if (keydiff.length) {
     return {
       error: JSON.stringify(userJson, null, 2) + " has unsupported keys: " + keydiff.join(","),

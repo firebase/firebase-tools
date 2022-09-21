@@ -1,4 +1,3 @@
-import * as _ from "lodash";
 import { requireDatabaseInstance } from "../requireDatabaseInstance";
 import { requirePermissions } from "../requirePermissions";
 import { checkServiceAccountIam } from "../deploy/functions/checkIam";
@@ -10,7 +9,7 @@ import { filterTargets } from "../filterTargets";
 import { requireHostingSite } from "../requireHostingSite";
 
 // in order of least time-consuming to most time-consuming
-const VALID_TARGETS = [
+export const VALID_DEPLOY_TARGETS = [
   "database",
   "storage",
   "firestore",
@@ -61,7 +60,7 @@ export const command = new Command("deploy")
   .option("--except <targets>", 'deploy to all targets except specified (e.g. "database")')
   .before(requireConfig)
   .before((options) => {
-    options.filteredTargets = filterTargets(options, VALID_TARGETS);
+    options.filteredTargets = filterTargets(options, VALID_DEPLOY_TARGETS);
     const permissions = options.filteredTargets.reduce((perms: string[], target: string) => {
       return perms.concat(TARGET_PERMISSIONS[target]);
     }, []);
@@ -74,11 +73,11 @@ export const command = new Command("deploy")
   })
   .before(async (options) => {
     // only fetch the default instance for hosting or database deploys
-    if (_.includes(options.filteredTargets, "database")) {
+    if (options.filteredTargets.includes("database")) {
       await requireDatabaseInstance(options);
     }
 
-    if (_.includes(options.filteredTargets, "hosting")) {
+    if (options.filteredTargets.includes("hosting")) {
       await requireHostingSite(options);
     }
   })

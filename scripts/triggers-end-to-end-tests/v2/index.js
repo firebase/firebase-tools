@@ -18,6 +18,10 @@ const STORAGE_BUCKET_FUNCTION_FINALIZED_LOG =
   "========== STORAGE BUCKET V2 FUNCTION FINALIZED ==========";
 const STORAGE_BUCKET_FUNCTION_METADATA_LOG =
   "========== STORAGE BUCKET V2 FUNCTION METADATA ==========";
+const AUTH_BLOCKING_CREATE_V2_LOG =
+  "========== AUTH BLOCKING CREATE V2 FUNCTION METADATA ==========";
+const AUTH_BLOCKING_SIGN_IN_V2_LOG =
+  "========== AUTH BLOCKING SIGN IN V2 FUNCTION METADATA ==========";
 
 const PUBSUB_TOPIC = "test-topic";
 
@@ -93,4 +97,31 @@ exports.storagebucketv2metadatareaction = functionsV2.storage.onObjectMetadataUp
 exports.oncallv2 = functionsV2.https.onCall((req) => {
   console.log("data", JSON.stringify(req.data));
   return req.data;
+});
+
+exports.authblockingcreatereaction = functionsV2.identity.beforeUserCreated((event) => {
+  console.log(AUTH_BLOCKING_CREATE_V2_LOG);
+  return;
+});
+
+exports.authblockingsigninreaction = functionsV2.identity.beforeUserSignedIn((event) => {
+  console.log(AUTH_BLOCKING_SIGN_IN_V2_LOG);
+  return;
+});
+
+exports.onreqv2a = functionsV2.https.onRequest((req, res) => {
+  res.send("onreqv2a");
+});
+
+exports.onreqv2b = functionsV2.https.onRequest((req, res) => {
+  res.send("onreqv2b");
+});
+
+exports.onreqv2timeout = functionsV2.https.onRequest({ timeoutSeconds: 1 }, async (req, res) => {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      res.send("onreqv2timeout");
+      resolve();
+    }, 3_000);
+  });
 });

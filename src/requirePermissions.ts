@@ -1,4 +1,4 @@
-import { bold } from "cli-color";
+import { bold } from "colorette";
 import { getProjectId } from "./projectUtils";
 import { requireAuth } from "./requireAuth";
 import { logger } from "./logger";

@@ -4,7 +4,7 @@ import * as yaml from "js-yaml";
 
 import { fileExistsSync } from "../fsutils";
 import { FirebaseError } from "../error";
-import { ExtensionSpec } from "./extensionsApi";
+import { ExtensionSpec } from "./types";
 import { logger } from "../logger";
 
 const EXTENSIONS_SPEC_FILE = "extension.yaml";

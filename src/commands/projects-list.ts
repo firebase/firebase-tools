@@ -1,4 +1,4 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as ora from "ora";
 import Table = require("cli-table");
 
@@ -23,7 +23,7 @@ function logProjectsList(projects: FirebaseProjectMetadata[], currentProjectId: 
   const table = new Table({ head: tableHead, style: { head: ["green"] } });
   projects.forEach(({ projectId, projectNumber, displayName, resources }) => {
     if (projectId === currentProjectId) {
-      projectId = clc.cyan.bold(`${projectId} (current)`);
+      projectId = clc.cyan(clc.bold(`${projectId} (current)`));
     }
     table.push([
       displayName || NOT_SPECIFIED,

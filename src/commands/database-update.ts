@@ -1,5 +1,5 @@
 import { URL } from "url";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as fs from "fs";
 
 import { Client } from "../apiv2";

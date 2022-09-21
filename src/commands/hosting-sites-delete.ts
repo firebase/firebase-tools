@@ -1,4 +1,4 @@
-import { bold, underline } from "cli-color";
+import { bold, underline } from "colorette";
 import { Command } from "../command";
 import { logLabeledSuccess } from "../utils";
 import { getSite, deleteSite } from "../hosting/api";

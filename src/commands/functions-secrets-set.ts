@@ -1,14 +1,14 @@
 import * as tty from "tty";
 import * as fs from "fs";
 
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
-import { ensureValidKey, ensureSecret, pruneAndDestroySecrets } from "../functions/secrets";
+import { ensureValidKey, ensureSecret } from "../functions/secrets";
 import { Command } from "../command";
 import { requirePermissions } from "../requirePermissions";
 import { Options } from "../options";
 import { promptOnce } from "../prompt";
-import { logBullet, logSuccess, logWarning } from "../utils";
+import { logBullet, logSuccess } from "../utils";
 import { needProjectId, needProjectNumber } from "../projectUtils";
 import { addVersion, toSecretVersionResourceName } from "../gcp/secretManager";
 import * as secrets from "../functions/secrets";

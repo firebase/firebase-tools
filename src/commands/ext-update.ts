@@ -1,4 +1,4 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const { marked } = require("marked");
 import TerminalRenderer = require("marked-terminal");
@@ -19,7 +19,7 @@ import {
 import * as paramHelper from "../extensions/paramHelper";
 import { inferUpdateSource } from "../extensions/updateHelper";
 import * as refs from "../extensions/refs";
-import { getProjectId, needProjectId } from "../projectUtils";
+import { getProjectId } from "../projectUtils";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
 import { previews } from "../previews";

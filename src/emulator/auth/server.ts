@@ -120,6 +120,18 @@ export async function createApp(
 ): Promise<express.Express> {
   const app = express();
   app.set("json spaces", 2);
+
+  // Retrun access-control-allow-private-network heder if requested
+  // Enables accessing locahost when site is exposed via tunnel see https://github.com/firebase/firebase-tools/issues/4227
+  // Aligns with https://wicg.github.io/private-network-access/#headers
+  // Replace with cors option if adopted, see https://github.com/expressjs/cors/issues/236
+  app.use("/", (req, res, next) => {
+    if (req.headers["access-control-request-private-network"]) {
+      res.setHeader("access-control-allow-private-network", "true");
+    }
+    next();
+  });
+
   // Enable CORS for all APIs, all origins (reflected), and all headers (reflected).
   // This is similar to production behavior. Safe since all APIs are cookieless.
   app.use(cors({ origin: true }));
@@ -537,7 +549,7 @@ function wrapValidateBody(pluginContext: ExegesisPluginContext): void {
   if (op.validateBody && !op._authEmulatorValidateBodyWrapped) {
     const validateBody = op.validateBody.bind(op);
     op.validateBody = (body) => {
-      return validateAndFixRestMappingRequestBody(validateBody, body, pluginContext.api);
+      return validateAndFixRestMappingRequestBody(validateBody, body);
     };
     op._authEmulatorValidateBodyWrapped = true;
   }
@@ -546,9 +558,7 @@ function wrapValidateBody(pluginContext: ExegesisPluginContext): void {
 function validateAndFixRestMappingRequestBody(
   validate: ValidatorFunction,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  body: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  api: any
+  body: any
 ): ReturnType<ValidatorFunction> {
   body = convertKeysToCamelCase(body);
 

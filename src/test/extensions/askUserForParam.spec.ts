@@ -10,7 +10,7 @@ import {
 } from "../../extensions/askUserForParam";
 import * as utils from "../../utils";
 import * as prompt from "../../prompt";
-import { ParamType } from "../../extensions/extensionsApi";
+import { ParamType } from "../../extensions/types";
 import * as extensionsHelper from "../../extensions/extensionsHelper";
 import * as secretManagerApi from "../../gcp/secretManager";
 import * as secretsUtils from "../../extensions/secretsUtils";
@@ -84,6 +84,30 @@ describe("askUserForParam", () => {
           type: ParamType.STRING,
           validationRegex: "foo",
           required: false,
+        })
+      ).to.equal(true);
+    });
+
+    it("should not check against list of options if no value is passed for an optional SELECT", () => {
+      expect(
+        checkResponse("", {
+          param: "param",
+          label: "fill in the blank!",
+          type: ParamType.SELECT,
+          required: false,
+          options: [{ value: "aaa" }, { value: "bbb" }, { value: "ccc" }],
+        })
+      ).to.equal(true);
+    });
+
+    it("should not check against list of options if no value is passed for an optional MULTISELECT", () => {
+      expect(
+        checkResponse("", {
+          param: "param",
+          label: "fill in the blank!",
+          type: ParamType.MULTISELECT,
+          required: false,
+          options: [{ value: "aaa" }, { value: "bbb" }, { value: "ccc" }],
         })
       ).to.equal(true);
     });

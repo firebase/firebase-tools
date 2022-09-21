@@ -79,9 +79,16 @@ describe("proto", () => {
     });
 
     it("should support transformations", () => {
+      const dest: SrcType = {};
+      const src: SrcType = { srcFoo: "baz" };
+      proto.convertIfPresent(dest, src, "srcFoo", (str: string) => str + " transformed");
+      expect(dest.srcFoo).to.equal("baz transformed");
+    });
+
+    it("should support transformations with renames", () => {
       const dest: DestType = {};
       const src: SrcType = { srcFoo: "baz" };
-      proto.renameIfPresent(dest, src, "destFoo", "srcFoo", (str: string) => str + " transformed");
+      proto.convertIfPresent(dest, src, "destFoo", "srcFoo", (str: string) => str + " transformed");
       expect(dest.destFoo).to.equal("baz transformed");
     });
 
@@ -135,7 +142,9 @@ describe("proto", () => {
     });
 
     it("should support map types", () => {
-      const obj = {
+      // Note: we need to erase type info, because the template args to fieldMasks
+      // will otherwise know that "missing" isn't possible and fail to compile.
+      const obj: Record<string, unknown> = {
         map: {
           userDefined: "value",
         },

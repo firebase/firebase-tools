@@ -1,5 +1,3 @@
-import * as _ from "lodash";
-
 import { Command } from "../command";
 import { requireDatabaseInstance } from "../requireDatabaseInstance";
 import { populateInstanceDetails } from "../management/database";
@@ -41,11 +39,11 @@ export const command = new Command("database:profile")
       });
     } else if (options.parent.json && options.raw) {
       return utils.reject("Cannot output raw data in json format", { exit: 1 });
-    } else if (options.input && _.has(options, "duration")) {
+    } else if (options.input && options.duration !== undefined) {
       return utils.reject("Cannot specify a duration for input files", {
         exit: 1,
       });
-    } else if (_.has(options, "duration") && options.duration <= 0) {
+    } else if (options.duration !== undefined && options.duration <= 0) {
       return utils.reject("Must specify a positive number of seconds", {
         exit: 1,
       });

@@ -1,10 +1,8 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
-import { previews } from "../previews";
 import * as backend from "../deploy/functions/backend";
-import * as events from "../functions/events";
 import * as utils from "../utils";
 import * as proto from "./proto";
 import * as runtimes from "../deploy/functions/runtimes";
@@ -13,22 +11,16 @@ import * as projectConfig from "../functions/projectConfig";
 import { Client } from "../apiv2";
 import { functionsOrigin } from "../api";
 import { AUTH_BLOCKING_EVENTS } from "../functions/events/v1";
+import {
+  BLOCKING_EVENT_TO_LABEL_KEY,
+  BLOCKING_LABEL,
+  BLOCKING_LABEL_KEY_TO_EVENT,
+  CODEBASE_LABEL,
+  HASH_LABEL,
+} from "../functions/constants";
 
 export const API_VERSION = "v1";
-export const CODEBASE_LABEL = "firebase-functions-codebase";
 const client = new Client({ urlPrefix: functionsOrigin, apiVersion: API_VERSION });
-
-export const BLOCKING_LABEL = "deployment-blocking";
-
-const BLOCKING_LABEL_KEY_TO_EVENT: Record<string, typeof AUTH_BLOCKING_EVENTS[number]> = {
-  "before-create": "providers/cloud.auth/eventTypes/user.beforeCreate",
-  "before-sign-in": "providers/cloud.auth/eventTypes/user.beforeSignIn",
-};
-
-const BLOCKING_EVENT_TO_LABEL_KEY: Record<typeof AUTH_BLOCKING_EVENTS[number], string> = {
-  "providers/cloud.auth/eventTypes/user.beforeCreate": "before-create",
-  "providers/cloud.auth/eventTypes/user.beforeSignIn": "before-sign-in",
-};
 
 interface Operation {
   name: string;
@@ -61,7 +53,7 @@ export interface SecretEnvVar {
   key: string;
   projectId: string;
   secret: string;
-  version: string;
+  version?: string;
 }
 
 export interface SecretVolume {
@@ -88,6 +80,10 @@ export interface FailurePolicy {
   // end oneof action
 }
 
+/**
+ * API type for Cloud Functions in the v1 API. Fields that are nullable can
+ * be set to null in UpdateFunction to reset them to default server-side values.
+ */
 export interface CloudFunction {
   name: string;
   description?: string;
@@ -108,32 +104,33 @@ export interface CloudFunction {
 
   entryPoint: string;
   runtime: runtimes.Runtime;
-  // Seconds. Default = 60
-  timeout?: proto.Duration;
+  // Default = 60s
+  timeout?: proto.Duration | null;
 
   // Default 256
-  availableMemoryMb?: number;
+  availableMemoryMb?: number | null;
 
   // Default <projectID>@appspot.gserviceaccount.com
-  serviceAccountEmail?: string;
+  serviceAccountEmail?: string | null;
 
   labels?: Record<string, string>;
-  environmentVariables?: Record<string, string>;
+  environmentVariables?: Record<string, string> | null;
   buildEnvironmentVariables?: Record<string, string>;
 
-  network?: string;
-  maxInstances?: number;
-  minInstances?: number;
+  network?: string | null;
+  maxInstances?: number | null;
+  minInstances?: number | null;
 
   corsPolicy?: CorsPolicy;
-  vpcConnector?: string;
-  vpcConnectorEgressSettings?: "PRIVATE_RANGES_ONLY" | "ALL_TRAFFIC";
-  ingressSettings?: "ALLOW_ALL" | "ALLOW_INTERNAL_ONLY" | "ALLOW_INTERNAL_AND_GCLB";
+  vpcConnector?: string | null;
+  vpcConnectorEgressSettings?: "PRIVATE_RANGES_ONLY" | "ALL_TRAFFIC" | null;
+  ingressSettings?: "ALLOW_ALL" | "ALLOW_INTERNAL_ONLY" | "ALLOW_INTERNAL_AND_GCLB" | null;
 
-  kmsKeyName?: string;
-  buildWorkerPool?: string;
-  secretEnvironmentVariables?: SecretEnvVar[];
-  secretVolumes?: SecretVolume[];
+  kmsKeyName?: string | null;
+  buildWorkerPool?: string | null;
+  secretEnvironmentVariables?: SecretEnvVar[] | null;
+  secretVolumes?: SecretVolume[] | null;
+  dockerRegistry?: "CONTAINER_REGISTRY" | "ARTIFACT_REGISTRY";
 
   // Input-only parameter. Source token originally comes from the Operation
   // of another Create/Update function call.
@@ -148,18 +145,6 @@ export interface CloudFunction {
 
 export type OutputOnlyFields = "status" | "buildId" | "updateTime" | "versionId";
 
-function validateFunction(func: CloudFunction) {
-  proto.assertOneOf(
-    "Cloud Function",
-    func,
-    "sourceCode",
-    "sourceArchiveUrl",
-    "sourceRepository",
-    "sourceUploadUrl"
-  );
-  proto.assertOneOf("Cloud Function", func, "trigger", "httpsTrigger", "eventTrigger");
-}
-
 /**
  * Logs an error from a failed function deployment.
  * @param funcName Name of the function that was unsuccessfully deployed.
@@ -169,13 +154,13 @@ function validateFunction(func: CloudFunction) {
 function functionsOpLogReject(funcName: string, type: string, err: any): void {
   if (err?.context?.response?.statusCode === 429) {
     utils.logWarning(
-      `${clc.bold.yellow(
-        "functions:"
+      `${clc.bold(
+        clc.yellow("functions:")
       )} got "Quota Exceeded" error while trying to ${type} ${funcName}. Waiting to retry...`
     );
   } else {
     utils.logWarning(
-      clc.bold.yellow("functions:") + " failed to " + type + " function " + funcName
+      clc.bold(clc.yellow("functions:")) + " failed to " + type + " function " + funcName
     );
   }
   throw new FirebaseError(`Failed to ${type} function ${funcName}`, {
@@ -221,14 +206,9 @@ export async function createFunction(
   const endpoint = `/${apiPath}`;
 
   try {
-    const headers: Record<string, string> = {};
-    if (previews.artifactregistry) {
-      headers["X-Firebase-Artifact-Registry"] = "optin";
-    }
     const res = await client.post<Omit<CloudFunction, OutputOnlyFields>, CloudFunction>(
       endpoint,
-      cloudFunction,
-      { headers }
+      cloudFunction
     );
     return {
       name: res.body.name,
@@ -382,15 +362,10 @@ export async function updateFunction(
   // Failure policy is always an explicit policy and is only signified by the presence or absence of
   // a protobuf.Empty value, so we have to manually add it in the missing case.
   try {
-    const headers: Record<string, string> = {};
-    if (previews.artifactregistry) {
-      headers["X-Firebase-Artifact-Registry"] = "optin";
-    }
     const res = await client.patch<Omit<CloudFunction, OutputOnlyFields>, CloudFunction>(
       endpoint,
       cloudFunction,
       {
-        headers,
         queryParams: {
           updateMask: fieldMasks.join(","),
         },
@@ -549,8 +524,6 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
   proto.copyIfPresent(
     endpoint,
     gcfFunction,
-    "serviceAccountEmail",
-    "availableMemoryMb",
     "minInstances",
     "maxInstances",
     "ingressSettings",
@@ -559,23 +532,30 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
     "secretEnvironmentVariables",
     "sourceUploadUrl"
   );
-  proto.renameIfPresent(
+  proto.renameIfPresent(endpoint, gcfFunction, "serviceAccount", "serviceAccountEmail");
+  proto.convertIfPresent(
     endpoint,
     gcfFunction,
-    "timeoutSeconds",
-    "timeout",
-    proto.secondsFromDuration
+    "availableMemoryMb",
+    (raw) => raw as backend.MemoryOptions
+  );
+  proto.convertIfPresent(endpoint, gcfFunction, "timeoutSeconds", "timeout", (dur) =>
+    dur === null ? null : proto.secondsFromDuration(dur)
   );
   if (gcfFunction.vpcConnector) {
     endpoint.vpc = { connector: gcfFunction.vpcConnector };
-    proto.renameIfPresent(
+    proto.convertIfPresent(
       endpoint.vpc,
       gcfFunction,
       "egressSettings",
-      "vpcConnectorEgressSettings"
+      "vpcConnectorEgressSettings",
+      (raw) => raw as backend.VpcEgressSettings
     );
   }
   endpoint.codebase = gcfFunction.labels?.[CODEBASE_LABEL] || projectConfig.DEFAULT_CODEBASE;
+  if (gcfFunction.labels?.[HASH_LABEL]) {
+    endpoint.hash = gcfFunction.labels[HASH_LABEL];
+  }
   return endpoint;
 }
 
@@ -603,10 +583,19 @@ export function functionFromEndpoint(
     sourceUploadUrl: sourceUploadUrl,
     entryPoint: endpoint.entryPoint,
     runtime: endpoint.runtime,
+    dockerRegistry: "ARTIFACT_REGISTRY",
   };
 
-  proto.copyIfPresent(gcfFunction, endpoint, "labels");
+  // N.B. It has the same effect to set labels to the empty object as it does to
+  // set it to null, except the former is more effective for adding automatic
+  // lables for things like deployment-callable
+  if (typeof endpoint.labels !== "undefined") {
+    gcfFunction.labels = { ...endpoint.labels };
+  }
   if (backend.isEventTriggered(endpoint)) {
+    if (!endpoint.eventTrigger.eventFilters?.resource) {
+      throw new FirebaseError("Cannot create v1 function from an eventTrigger without a resource");
+    }
     gcfFunction.eventTrigger = {
       eventType: endpoint.eventTrigger.eventType,
       resource: endpoint.eventTrigger.eventFilters.resource,
@@ -650,20 +639,21 @@ export function functionFromEndpoint(
   proto.copyIfPresent(
     gcfFunction,
     endpoint,
-    "serviceAccountEmail",
-    "availableMemoryMb",
     "minInstances",
     "maxInstances",
     "ingressSettings",
     "environmentVariables",
     "secretEnvironmentVariables"
   );
-  proto.renameIfPresent(
+  proto.renameIfPresent(gcfFunction, endpoint, "serviceAccountEmail", "serviceAccount");
+  proto.convertIfPresent(
     gcfFunction,
     endpoint,
-    "timeout",
-    "timeoutSeconds",
-    proto.durationFromSeconds
+    "availableMemoryMb",
+    (mem) => mem as backend.MemoryOptions
+  );
+  proto.convertIfPresent(gcfFunction, endpoint, "timeout", "timeoutSeconds", (sec) =>
+    sec ? proto.durationFromSeconds(sec) : null
   );
   if (endpoint.vpc) {
     proto.renameIfPresent(gcfFunction, endpoint.vpc, "vpcConnector", "connector");
@@ -673,6 +663,9 @@ export function functionFromEndpoint(
       "vpcConnectorEgressSettings",
       "egressSettings"
     );
+  } else if (endpoint.vpc === null) {
+    gcfFunction.vpcConnector = null;
+    gcfFunction.vpcConnectorEgressSettings = null;
   }
   const codebase = endpoint.codebase || projectConfig.DEFAULT_CODEBASE;
   if (codebase !== projectConfig.DEFAULT_CODEBASE) {
@@ -682,6 +675,12 @@ export function functionFromEndpoint(
     };
   } else {
     delete gcfFunction.labels?.[CODEBASE_LABEL];
+  }
+  if (endpoint.hash) {
+    gcfFunction.labels = {
+      ...gcfFunction.labels,
+      [HASH_LABEL]: endpoint.hash,
+    };
   }
   return gcfFunction;
 }
