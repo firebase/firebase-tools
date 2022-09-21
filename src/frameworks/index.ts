@@ -351,8 +351,9 @@ You can link a Web app to a Hosting site here https://console.firebase.google.co
         function: functionName,
       });
 
+      const existingFunctionsConfig = options.config.get("functions") ? [].concat(options.config.get("functions")) : [];
       options.config.set("functions", [
-        ...(options.config.get("functions") || []),
+        ...existingFunctionsConfig,
         {
           source: relative(projectRoot, functionsDist),
           codebase: `firebase-frameworks-${site}`,
