@@ -19,7 +19,7 @@ import { copyFile, readdir, rm, writeFile } from "fs/promises";
 import { mkdirp, pathExists, stat } from "fs-extra";
 import clc = require("cli-color");
 
-export const FIREBASE_FRAMEWORKS_VERSION = "canary";
+export const FIREBASE_FRAMEWORKS_VERSION = "^0.6.0";
 export const FIREBASE_FUNCTIONS_VERSION = "^3.23.0";
 export const FIREBASE_ADMIN_VERSION = "^11.0.1";
 export const DEFAULT_REGION = "us-central1";
