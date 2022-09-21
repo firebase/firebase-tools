@@ -1,6 +1,6 @@
 import { execSync } from "child_process";
 import { existsSync } from "fs";
-import { copy } from "fs-extra";
+import { copy, pathExists } from "fs-extra";
 import { mkdir, readFile } from "fs/promises";
 import { join } from "path";
 import { BuildResult, FrameworkType, SupportLevel } from "..";
@@ -9,7 +9,7 @@ export const name = "Express.js";
 export const support = SupportLevel.Expirimental;
 export const type = FrameworkType.Custom;
 
-const getConfig = async (root: string) => {
+async function getConfig(root: string) {
   const packageJsonBuffer = await readFile(join(root, "package.json"));
   const packageJson = JSON.parse(packageJsonBuffer.toString());
   const serve: string | undefined = packageJson.directories?.serve;
@@ -17,29 +17,29 @@ const getConfig = async (root: string) => {
   return { serveDir, packageJson };
 };
 
-export const discover = async (dir: string) => {
-  if (!existsSync(join(dir, "package.json"))) return undefined;
+export async function discover(dir: string) {
+  if (!(await pathExists(join(dir, "package.json")))) return;
   const { serveDir } = await getConfig(dir);
-  if (!serveDir) return undefined;
+  if (!serveDir) return;
   return { mayWantBackend: true };
 };
 
-export const build = async (cwd: string): Promise<BuildResult> => {
+export async function build(cwd: string): Promise<BuildResult> {
   execSync(`npm run build`, { stdio: "inherit", cwd });
   const wantsBackend = !!(await findServerRenderMethod(cwd));
   return { wantsBackend };
 };
 
-export const ɵcodegenPublicDirectory = async (root: string, dest: string) => {
+export async function ɵcodegenPublicDirectory(root: string, dest: string) {
   const { serveDir } = await getConfig(root);
   await copy(serveDir!, dest);
 };
 
-const findServerRenderMethod = async (
+async function findServerRenderMethod(
   root: string,
   method: string[] = [],
   entry?: any
-): Promise<string[] | undefined> => {
+): Promise<string[] | undefined> {
   const allowRecursion = !entry;
   entry ||= await (async () => {
     try {
@@ -75,7 +75,7 @@ const findServerRenderMethod = async (
   return undefined;
 };
 
-export const ɵcodegenFunctionsDirectory = async (root: string, dest: string) => {
+export async function ɵcodegenFunctionsDirectory(root: string, dest: string) {
   const serverRenderMethod = await findServerRenderMethod(root);
   if (!serverRenderMethod) return;
   await mkdir(dest, { recursive: true });

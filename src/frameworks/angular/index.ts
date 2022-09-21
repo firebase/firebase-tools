@@ -12,15 +12,8 @@ import {
   relativeRequire,
   SupportLevel,
 } from "..";
-import { prompt } from "../../prompt";
+import { promptOnce } from "../../prompt";
 import { proxyRequestHandler } from "../../hosting/proxy";
-
-class MyError extends Error {
-  constructor(reason: string) {
-    console.error(reason);
-    super();
-  }
-}
 
 export const name = "Angular";
 export const support = SupportLevel.Expirimental;
@@ -28,27 +21,25 @@ export const type = FrameworkType.Framework;
 
 const CLI_COMMAND = join("node_modules", ".bin", process.platform === "win32" ? "ng.cmd" : "ng");
 
-export const discover = async (dir: string): Promise<Discovery | undefined> => {
-  if (!(await pathExists(join(dir, "package.json")))) return undefined;
-  if (!(await pathExists(join(dir, "angular.json")))) return undefined;
+export async function discover (dir: string): Promise<Discovery | undefined> {
+  if (!(await pathExists(join(dir, "package.json")))) return;
+  if (!(await pathExists(join(dir, "angular.json")))) return;
   const { serverTarget } = await getContext(dir);
   // TODO don't hardcode assets dir
   return { mayWantBackend: !!serverTarget, publicDirectory: join(dir, "src", "assets") };
 };
 
-export const init = async (setup: any) => {
+export async function init(setup: any) {
   execSync(`npx --yes -p @angular/cli@latest ng new ${setup.hosting.source} --skip-git`, {
     stdio: "inherit",
   });
-  await prompt(setup.hosting, [
-    {
-      name: "useAngularUniversal",
-      type: "confirm",
-      default: false,
-      message: `Would you like to setup Angular Universal?`,
-    },
-  ]);
-  if (setup.hosting.useAngularUniversal) {
+  const useAngularUniversal = await promptOnce({
+    name: "useAngularUniversal",
+    type: "confirm",
+    default: false,
+    message: `Would you like to setup Angular Universal?`,
+  });
+  if (useAngularUniversal) {
     execSync("ng add @nguniversal/express-engine --skip-confirmation", {
       stdio: "inherit",
       cwd: setup.hosting.source,
@@ -56,22 +47,17 @@ export const init = async (setup: any) => {
   }
 };
 
-export const build = async (dir: string): Promise<BuildResult> => {
-  const { logging } = relativeRequire(dir, "@angular-devkit/core");
+export async function build(dir: string): Promise<BuildResult> {
   const { targetStringFromTarget } = relativeRequire(dir, "@angular-devkit/architect");
   const { architect, browserTarget, prerenderTarget, serverTarget } = await getContext(dir);
 
-  // TODO log to firebase-tools
-  const logger = new logging.Logger("firebase-tools");
-  logger.subscribe((it) => console.log(it.message));
-
   const scheduleTarget = async (target: Target) => {
-    const run = await architect.scheduleTarget(target, undefined, { logger });
+    const run = await architect.scheduleTarget(target, undefined);
     const { success, error } = await run.output.toPromise();
     if (!success) throw new Error(error);
   };
 
-  if (!browserTarget) throw new MyError("No build target...");
+  if (!browserTarget) throw new Error("No build target...");
 
   if (prerenderTarget) {
     // TODO there is a bug here. Spawn for now.
@@ -90,60 +76,52 @@ export const build = async (dir: string): Promise<BuildResult> => {
   return { wantsBackend };
 };
 
-export const getDevModeHandle = async (dir: string) => {
+export async function getDevModeHandle(dir: string) {
   const { targetStringFromTarget } = relativeRequire(dir, "@angular-devkit/architect");
-
-  let resolvePort: (it: string) => void;
-  const portThatWasPromised = new Promise<string>((resolve) => (resolvePort = resolve));
   const { serveTarget } = await getContext(dir);
-  if (!serveTarget) {
-    console.warn("Something something serve target not found.");
-    return undefined;
-  }
-
-  // Can't use scheduleTarget since that—like prerender—is failing on an ESM bug
-  // TODO handle error
-  const serve = spawn(
-    CLI_COMMAND,
-    ["run", targetStringFromTarget(serveTarget), "--host", "localhost"],
-    { cwd: dir }
-  );
-  serve.stdout.on("data", (data: any) => {
-    process.stdout.write(data);
-    const match = data.toString().match(/(http:\/\/localhost:\d+)/);
-    if (match) resolvePort(match[1]);
+  if (!serveTarget) return;
+  const host = new Promise<string>((resolve) => {
+    // Can't use scheduleTarget since that—like prerender—is failing on an ESM bug
+    // will just grep for the hostname
+    const serve = spawn(
+      CLI_COMMAND,
+      ["run", targetStringFromTarget(serveTarget), "--host", "localhost"],
+      { cwd: dir }
+    );
+    serve.stdout.on("data", (data: any) => {
+      process.stdout.write(data);
+      const match = data.toString().match(/(http:\/\/localhost:\d+)/);
+      if (match) resolve(match[1]);
+    });
+    serve.stderr.on("data", (data: any) => {
+      process.stderr.write(data);
+    });
   });
-
-  serve.stderr.on("data", (data: any) => {
-    process.stderr.write(data);
-  });
-
-  const host = await portThatWasPromised;
-  return proxyRequestHandler(host, "Angular Live Development Server", { forceCascade: true });
+  return proxyRequestHandler(await host, "Angular Live Development Server", { forceCascade: true });
 };
 
-export const ɵcodegenPublicDirectory = async (sourceDir: string, destDir: string) => {
+export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: string) {
   const { architectHost, browserTarget } = await getContext(sourceDir);
-  if (!browserTarget) throw new MyError("No browser target");
+  if (!browserTarget) throw new Error("No browser target");
   const browserTargetOptions = await architectHost.getOptionsForTarget(browserTarget);
   if (typeof browserTargetOptions?.outputPath !== "string")
-    throw new MyError("browserTarget output path is not a string");
+    throw new Error("browserTarget output path is not a string");
   const browserOutputPath = browserTargetOptions.outputPath;
   await mkdir(destDir, { recursive: true });
   await copy(join(sourceDir, browserOutputPath), destDir);
 };
 
-export const ɵcodegenFunctionsDirectory = async (sourceDir: string, destDir: string) => {
+export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: string) {
   const { architectHost, host, serverTarget, browserTarget } = await getContext(sourceDir);
-  if (!serverTarget) throw new MyError("No server target");
-  if (!browserTarget) throw new MyError("No browser target");
+  if (!serverTarget) throw new Error("No server target");
+  if (!browserTarget) throw new Error("No browser target");
   const packageJson = JSON.parse(await host.readFile(join(sourceDir, "package.json")));
   const serverTargetOptions = await architectHost.getOptionsForTarget(serverTarget);
   if (typeof serverTargetOptions?.outputPath !== "string")
-    throw new MyError("serverTarget output path is not a string");
+    throw new Error("serverTarget output path is not a string");
   const browserTargetOptions = await architectHost.getOptionsForTarget(browserTarget);
   if (typeof browserTargetOptions?.outputPath !== "string")
-    throw new MyError("browserTarget output path is not a string");
+    throw new Error("browserTarget output path is not a string");
   const browserOutputPath = browserTargetOptions.outputPath;
   const serverOutputPath = serverTargetOptions.outputPath;
   await mkdir(join(destDir, serverOutputPath), { recursive: true });
@@ -167,7 +145,7 @@ export const ɵcodegenFunctionsDirectory = async (sourceDir: string, destDir: st
 };
 
 // TODO memoize, dry up
-const getContext = async (dir: string) => {
+async function getContext(dir: string) {
   const { NodeJsAsyncHost } = relativeRequire(dir, "@angular-devkit/core/node");
   const { workspaces } = relativeRequire(dir, "@angular-devkit/core");
   const { WorkspaceNodeModulesArchitectHost } = relativeRequire(
@@ -205,12 +183,12 @@ const getContext = async (dir: string) => {
   }
 
   if (!project)
-    throw new MyError(
+    throw new Error(
       "Unable to detirmine the application to deploy, you should use `ng deploy` via @angular/fire."
     );
 
   const workspaceProject = workspace.projects.get(project);
-  if (!workspaceProject) throw new MyError(`No project ${project} found.`);
+  if (!workspaceProject) throw new Error(`No project ${project} found.`);
   const deployTargetDefinition = workspaceProject.targets.get("deploy");
 
   if (deployTargetDefinition?.builder === "@angular/fire:deploy") {
@@ -222,15 +200,15 @@ const getContext = async (dir: string) => {
     if (typeof options?.serverTarget === "string")
       serverTarget = targetFromTargetString(options.serverTarget);
     if (!browserTarget)
-      throw new MyError("ng-deploy is missing a browser target. Plase check your angular.json.");
+      throw new Error("ng-deploy is missing a browser target. Plase check your angular.json.");
     if (prerenderTarget) {
       const prerenderOptions = await architectHost.getOptionsForTarget(prerenderTarget);
       if (targetStringFromTarget(browserTarget) !== prerenderOptions?.browserTarget)
-        throw new MyError(
+        throw new Error(
           "ng-deploy's browserTarget and prerender's browserTarget do not match. Please check your angular.json"
         );
       if (serverTarget && targetStringFromTarget(serverTarget) !== prerenderOptions?.serverTarget)
-        throw new MyError(
+        throw new Error(
           "ng-deploy's serverTarget and prerender's serverTarget do not match. Please check your angular.json"
         );
       if (!serverTarget)
@@ -245,7 +223,7 @@ const getContext = async (dir: string) => {
       ? "production"
       : target.defaultConfiguration;
     if (!configuration)
-      throw new MyError("No production or default configutation found for prerender.");
+      throw new Error("No production or default configutation found for prerender.");
     if (configuration !== "production")
       console.warn(
         `Using ${configuration} configuration for the prerender, we suggest adding a production target.`
@@ -253,10 +231,10 @@ const getContext = async (dir: string) => {
     prerenderTarget = { project, target: "prerender", configuration };
     const production = await architectHost.getOptionsForTarget(prerenderTarget);
     if (typeof production?.browserTarget !== "string")
-      throw new MyError("Prerender browserTarget expected to be string, check your angular.json.");
+      throw new Error("Prerender browserTarget expected to be string, check your angular.json.");
     browserTarget = targetFromTargetString(production.browserTarget);
     if (typeof production?.serverTarget !== "string")
-      throw new MyError("Prerender serverTarget expected to be string, check your angular.json.");
+      throw new Error("Prerender serverTarget expected to be string, check your angular.json.");
     serverTarget = targetFromTargetString(production.serverTarget);
   } else {
     if (workspaceProject.targets.has("build")) {
@@ -266,7 +244,7 @@ const getContext = async (dir: string) => {
         ? "production"
         : target.defaultConfiguration;
       if (!configuration)
-        throw new MyError("No production or default configutation found for build.");
+        throw new Error("No production or default configutation found for build.");
       if (configuration !== "production")
         console.warn(
           `Using ${configuration} configuration for the browser deploy, we suggest adding a production target.`
@@ -280,7 +258,7 @@ const getContext = async (dir: string) => {
         ? "production"
         : target.defaultConfiguration;
       if (!configuration)
-        throw new MyError("No production or default configutation found for server.");
+        throw new Error("No production or default configutation found for server.");
       if (configuration !== "production")
         console.warn(
           `Using ${configuration} configuration for the server deploy, we suggest adding a production target.`
@@ -296,7 +274,7 @@ const getContext = async (dir: string) => {
       ? "development"
       : target.defaultConfiguration;
     if (!configuration)
-      throw new MyError("No development or default configutation found for serve-ssr.");
+      throw new Error("No development or default configutation found for serve-ssr.");
     if (configuration !== "development")
       console.warn(
         `Using ${configuration} configuration for the local server, we suggest adding a development target.`
@@ -310,7 +288,7 @@ const getContext = async (dir: string) => {
       ? "development"
       : target.defaultConfiguration;
     if (!configuration)
-      throw new MyError("No development or default configutation found for serve.");
+      throw new Error("No development or default configutation found for serve.");
     if (configuration !== "development")
       console.warn(
         `Using ${configuration} configuration for the local server, we suggest adding a development target.`

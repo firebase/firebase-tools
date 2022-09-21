@@ -19,11 +19,98 @@ import { copyFile, readdir, rm, writeFile } from "fs/promises";
 import { mkdirp, pathExists, stat } from "fs-extra";
 import clc = require("cli-color");
 
+export interface Discovery {
+  mayWantBackend: boolean;
+  publicDirectory: string;
+};
+
+export interface BuildResult {
+  rewrites?: any[];
+  redirects?: any[];
+  headers?: any[];
+  wantsBackend?: boolean;
+};
+
+export interface Framework {
+  discover: (dir: string) => Promise<Discovery | undefined>;
+  type: FrameworkType;
+  name: string;
+  build: (dir: string) => Promise<BuildResult|void>;
+  support: SupportLevel;
+  init?: (setup: any) => Promise<void>;
+  getDevModeHandle?: (
+    dir: string
+  ) => Promise<(req: IncomingMessage, res: ServerResponse, next: () => void) => void>;
+  ɵcodegenPublicDirectory: (dir: string, dest: string) => Promise<void>;
+  ɵcodegenFunctionsDirectory?: (
+    dir: string,
+    dest: string
+  ) => Promise<{
+    bootstrapScript?: string;
+    packageJson: any;
+    frameworksEntry?: string;
+  }>;
+}
+
+// TODO pull from @firebase/util when published
+interface FirebaseDefaults {
+  config?: Object;
+  emulatorHosts?: Record<string, string>;
+  _authTokenSyncURL?: string;
+};
+
+interface FindDepOptions {
+  cwd: string;
+  depth?: number;
+  omitDev: boolean;
+};
+
+// These serve as the order of operations for discovery
+// E.g, a framework utilizing Vite should be given priority
+// over the vite tooling
+export const enum FrameworkType {
+  Custom = 0, // express
+  Monorep, // nx, lerna
+  MetaFramework, // next.js, nest.js
+  Framework, // angular, react
+  Toolchain, // vite
+}
+
+export const enum SupportLevel {
+  Expirimental = "expirimental",
+  Community = "community-supported",
+}
+
+const SupportLevelWarnings = {
+  [SupportLevel.Expirimental]: clc.yellow(
+    `This is an expirimental integration, proceed with caution.`
+  ),
+  [SupportLevel.Community]: clc.yellow(
+    `This is a community-supported integration, support is best effort.`
+  ),
+};
+
 export const FIREBASE_FRAMEWORKS_VERSION = "^0.6.0";
 export const FIREBASE_FUNCTIONS_VERSION = "^3.23.0";
 export const FIREBASE_ADMIN_VERSION = "^11.0.1";
 export const DEFAULT_REGION = "us-central1";
 export const NODE_VERSION = parseInt(process.versions.node, 10).toString();
+
+const DEFAULT_FIND_DEP_OPTIONS: FindDepOptions = {
+  cwd: process.cwd(),
+  omitDev: true,
+};
+
+const NPM_COMMAND = process.platform === "win32" ? "npm.cmd" : "npm";
+
+export const WebFrameworks: Record<string, Framework> = Object.fromEntries(
+  readdirSync(__dirname)
+    .filter((path) => statSync(join(__dirname, path)).isDirectory())
+    .map((path) => [path, require(join(__dirname, path))])
+    .filter(
+      ([, obj]) => obj.name && obj.discover && obj.build && obj.type !== undefined && obj.support
+    )
+);
 
 // Typescript is converting dynamic imports to requires, eval for now
 const dynamicImport = (mod: string) => eval(`import('${mod}')`);
@@ -79,75 +166,7 @@ export function relativeRequire(dir: string, mod: string) {
   }
 }
 
-export type Discovery = {
-  mayWantBackend: boolean;
-  publicDirectory: string;
-};
-
-export type BuildResult = {
-  rewrites?: any[];
-  redirects?: any[];
-  headers?: any[];
-  wantsBackend?: boolean;
-} | void;
-
-export interface Framework {
-  discover: (dir: string) => Promise<Discovery | undefined>;
-  type: FrameworkType;
-  name: string;
-  build: (dir: string) => Promise<BuildResult>;
-  support: SupportLevel;
-  init?: (setup: any) => Promise<void>;
-  getDevModeHandle?: (
-    dir: string
-  ) => Promise<(req: IncomingMessage, res: ServerResponse, next: () => void) => void>;
-  ɵcodegenPublicDirectory: (dir: string, dest: string) => Promise<void>;
-  ɵcodegenFunctionsDirectory?: (
-    dir: string,
-    dest: string
-  ) => Promise<{
-    bootstrapScript?: string;
-    packageJson: any;
-    frameworksEntry?: string;
-  }>;
-}
-
-export const WebFrameworks: Record<string, Framework> = Object.fromEntries(
-  readdirSync(__dirname)
-    .filter((path) => statSync(join(__dirname, path)).isDirectory())
-    .map((path) => [path, require(join(__dirname, path))])
-    // TODO guard this better
-    .filter(
-      ([, obj]) => obj.name && obj.discover && obj.build && obj.type !== undefined && obj.support
-    )
-);
-
-// These serve as the order of operations for discovery
-// E.g, a framework utilizing Vite should be given priority
-// over the vite tooling
-export const enum FrameworkType {
-  Custom = 0, // express
-  Monorep, // nx, lerna
-  MetaFramework, // next.js, nest.js
-  Framework, // angular, react
-  Toolchain, // vite
-}
-
-export const enum SupportLevel {
-  Expirimental = "expirimental",
-  Community = "community-supported",
-}
-
-const SupportLevelWarnings = {
-  [SupportLevel.Expirimental]: clc.yellow(
-    `This is an expirimental integration, proceed with caution.`
-  ),
-  [SupportLevel.Community]: clc.yellow(
-    `This is a community-supported integration, support is best effort.`
-  ),
-};
-
-export const discover = async (dir: string, warn: boolean = true) => {
+export async function discover(dir: string, warn: boolean = true) {
   const allFrameworkTypes = [
     ...new Set(Object.values(WebFrameworks).map(({ type }) => type)),
   ].sort();
@@ -163,29 +182,26 @@ export const discover = async (dir: string, warn: boolean = true) => {
     }
     if (frameworksDiscovered.length > 1) {
       if (warn) console.error("Multiple conflicting frameworks discovered. TODO link");
-      return undefined;
+      return;
     }
     if (frameworksDiscovered.length === 1) return frameworksDiscovered[0];
   }
   if (warn) console.warn("We can't detirmine the web framework in use. TODO link");
-  return undefined;
+  return;
 };
 
-export const shortSiteName = (site?: Site) => site?.name && site.name.split("/").pop();
-type FindDepOptions = {
-  cwd: string;
-  depth?: number;
-  omitDev: boolean;
+function scanDependencyTree(searchingFor: string, dependencies = {}): any {
+  for (const [name, dependency] of Object.entries(
+    dependencies as Record<string, Record<string, any>>
+  )) {
+    if (name === searchingFor && dependency.resolved) return dependency;
+    const result = scanDependencyTree(searchingFor, dependency.dependencies);
+    if (result) return result;
+  }
+  return;
 };
 
-const DEFAULT_FIND_DEP_OPTIONS: FindDepOptions = {
-  cwd: process.cwd(),
-  omitDev: true,
-};
-
-const NPM_COMMAND = process.platform === "win32" ? "npm.cmd" : "npm";
-
-export const findDependency = (name: string, options: Partial<FindDepOptions> = {}) => {
+export function findDependency(name: string, options: Partial<FindDepOptions> = {}) {
   const { cwd, depth, omitDev } = { ...DEFAULT_FIND_DEP_OPTIONS, ...options };
   const result = spawnSync(
     NPM_COMMAND,
@@ -198,34 +214,17 @@ export const findDependency = (name: string, options: Partial<FindDepOptions> = 
     ],
     { cwd }
   );
-  if (!result.stdout) return undefined;
+  if (!result.stdout) return;
   const json = JSON.parse(result.stdout.toString());
-  const search = (searchingFor: string, dependencies = {}): any => {
-    for (const [name, dependency] of Object.entries(
-      dependencies as Record<string, Record<string, any>>
-    )) {
-      if (name === searchingFor && dependency.resolved) return dependency;
-      const result = search(searchingFor, dependency.dependencies);
-      if (result) return result;
-    }
-    return null;
-  };
-  return search(name, json.dependencies);
+  return scanDependencyTree(name, json.dependencies);
 };
 
-// TODO pull from @firebase/util when published
-type FirebaseDefaults = {
-  config?: Object;
-  emulatorHosts?: Record<string, string>;
-  _authTokenSyncURL?: string;
-};
-
-export const prepareFrameworks = async (
+export async function prepareFrameworks(
   targetNames: string[],
   context: any,
   options: any,
   emulators: EmulatorInfo[] = []
-) => {
+) {
   const project = needProjectId(context);
   const { projectRoot } = options;
   const account = getProjectDefaultAccount(projectRoot);
@@ -280,7 +279,7 @@ export const prepareFrameworks = async (
     let firebaseConfig = null;
     if (usesFirebaseJsSdk) {
       const sites = await listSites(project);
-      const selectedSite = sites.find((it) => shortSiteName(it) === site);
+      const selectedSite = sites.find((it) => it.name && it.name.split("/").pop() === site);
       if (selectedSite) {
         const { appId } = selectedSite;
         if (appId) {
@@ -474,7 +473,7 @@ exports.ssr = onRequest((req, res) => server.then(it => it.handle(req, res)));
   }
 };
 
-const codegenDevModeFunctionsDirectory = () => {
+function codegenDevModeFunctionsDirectory() {
   const packageJson = {};
   return Promise.resolve({ packageJson, frameworksEntry: "_devMode" });
 };

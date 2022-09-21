@@ -19,6 +19,22 @@ import { promptOnce } from "../../prompt";
 import { gte } from "semver";
 import esbuild from "esbuild";
 
+// Next.js's exposed interface is incomplete here
+// TODO see if there's a better way to grab this
+interface Manifest {
+  distDir?: string;
+  basePath?: string;
+  headers?: (Header & { regex: string })[];
+  redirects?: (Redirect & { regex: string })[];
+  rewrites?:
+    | (Rewrite & { regex: string })[]
+    | {
+        beforeFiles?: (Rewrite & { regex: string })[];
+        afterFiles?: (Rewrite & { regex: string })[];
+        fallback?: (Rewrite & { regex: string })[];
+      };
+};
+
 const CLI_COMMAND = join(
   "node_modules",
   ".bin",
@@ -29,20 +45,23 @@ export const name = "Next.js";
 export const support = SupportLevel.Expirimental;
 export const type = FrameworkType.MetaFramework;
 
-const getNextVersion = (cwd: string) =>
-  findDependency("next", { cwd, depth: 0, omitDev: false })?.version;
+function getNextVersion(cwd: string) {
+  return findDependency("next", { cwd, depth: 0, omitDev: false })?.version;
+}
 
-export const discover = async (dir: string) => {
-  if (!(await pathExists(join(dir, "package.json")))) return undefined;
-  if (!(await pathExists("next.config.js")) && !getNextVersion(dir)) return undefined;
+export async function discover(dir: string) {
+  if (!(await pathExists(join(dir, "package.json")))) return;
+  if (!(await pathExists("next.config.js")) && !getNextVersion(dir)) return;
   // TODO don't hardcode public dir
   return { mayWantBackend: true, publicDirectory: join(dir, "public") };
 };
 
-export const build = async (dir: string): Promise<BuildResult> => {
+export async function build(dir: string): Promise<BuildResult> {
   const { default: nextBuild } = relativeRequire(dir, "next/dist/build");
 
   await nextBuild(dir, null, false, false, true).catch((e) => {
+    // Err on the side of displaying this error, since this is likely a bug in
+    // the developer's code that we want to display immediately
     console.error(e.message);
     throw e;
   });
@@ -57,14 +76,11 @@ export const build = async (dir: string): Promise<BuildResult> => {
 
   let wantsBackend = true;
   const { distDir } = await getConfig(dir);
-  const exportDetailJson = await readFile(join(dir, distDir, "export-detail.json")).then(
-    (it) => JSON.parse(it.toString()),
-    () => {
-      false;
-    }
-  );
-  // SEMVER these defaults are only needed for Next 11
-  if (exportDetailJson.success) {
+  const exportDetailPath = join(dir, distDir, "export-detail.json");
+  const exportDetailExists = await pathExists(exportDetailPath);
+  const exportDetailBuffer = exportDetailExists ? await readFile(exportDetailPath) : undefined;
+  const exportDetailJson = exportDetailBuffer && JSON.parse(exportDetailBuffer.toString());
+  if (exportDetailJson?.success) {
     const prerenderManifestJSON = await readFile(
       join(dir, distDir, "prerender-manifest.json")
     ).then((it) => JSON.parse(it.toString()));
@@ -115,7 +131,7 @@ export const build = async (dir: string): Promise<BuildResult> => {
   return { wantsBackend, headers, redirects, rewrites };
 };
 
-export const init = async (setup: any) => {
+export async function init(setup: any) {
   const language = await promptOnce({
     type: "list",
     default: "JavaScript",
@@ -130,7 +146,7 @@ export const init = async (setup: any) => {
   );
 };
 
-export const ɵcodegenPublicDirectory = async (sourceDir: string, destDir: string) => {
+export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: string) {
   const { distDir } = await getConfig(sourceDir);
   const exportDetailPath = join(sourceDir, distDir, "export-detail.json");
   const exportDetailExists = await pathExists(exportDetailPath);
@@ -184,7 +200,7 @@ export const ɵcodegenPublicDirectory = async (sourceDir: string, destDir: strin
   }
 };
 
-export const ɵcodegenFunctionsDirectory = async (sourceDir: string, destDir: string) => {
+export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: string) {
   const { distDir } = await getConfig(sourceDir);
   const packageJsonBuffer = await readFile(join(sourceDir, "package.json"));
   const packageJson = JSON.parse(packageJsonBuffer.toString());
@@ -206,7 +222,7 @@ export const ɵcodegenFunctionsDirectory = async (sourceDir: string, destDir: st
   return { packageJson };
 };
 
-export const getDevModeHandle = async (dir: string) => {
+export async function getDevModeHandle(dir: string) {
   let resolvePort: (it: string) => void;
   const portThatWasPromised = new Promise<string>((resolve) => (resolvePort = resolve));
   // TODO implement custom server
@@ -220,7 +236,7 @@ export const getDevModeHandle = async (dir: string) => {
   return proxyRequestHandler(host, "Next.js Development Server", { forceCascade: true });
 };
 
-const getConfig = async (dir: string): Promise<NextConfig & { distDir: string }> => {
+async function getConfig(dir: string): Promise<NextConfig & { distDir: string }> {
   let config: NextConfig = {};
   if (existsSync(join(dir, "next.config.js"))) {
     const version = getNextVersion(dir);
@@ -238,18 +254,4 @@ const getConfig = async (dir: string): Promise<NextConfig & { distDir: string }>
     }
   }
   return { distDir: ".next", ...config };
-};
-
-type Manifest = {
-  distDir?: string;
-  basePath?: string;
-  headers?: (Header & { regex: string })[];
-  redirects?: (Redirect & { regex: string })[];
-  rewrites?:
-    | (Rewrite & { regex: string })[]
-    | {
-        beforeFiles?: (Rewrite & { regex: string })[];
-        afterFiles?: (Rewrite & { regex: string })[];
-        fallback?: (Rewrite & { regex: string })[];
-      };
 };

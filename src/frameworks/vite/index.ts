@@ -1,8 +1,8 @@
 import { execSync, spawn } from "child_process";
 import { existsSync } from "fs";
-import { copy } from "fs-extra";
+import { copy, pathExists } from "fs-extra";
 import { join } from "path";
-import { BuildResult, findDependency, FrameworkType, relativeRequire, SupportLevel } from "..";
+import { findDependency, FrameworkType, relativeRequire, SupportLevel } from "..";
 import { proxyRequestHandler } from "../../hosting/proxy";
 import { promptOnce } from "../../prompt";
 
@@ -19,7 +19,7 @@ const CLI_COMMAND = join(
 export const initViteTemplate = (template: string) => async (setup: any) =>
   await init(setup, template);
 
-export const init = async (setup: any, baseTemplate: string = "vanilla") => {
+export async function init(setup: any, baseTemplate: string = "vanilla") {
   const template = await promptOnce({
     type: "list",
     default: "JavaScript",
@@ -41,36 +41,39 @@ export const viteDiscoverWithNpmDependency = (dep: string) => async (dir: string
 export const vitePluginDiscover = (plugin: string) => async (dir: string) =>
   await discover(dir, plugin);
 
-export const discover = async (dir: string, plugin?: string, npmDependency?: string) => {
-  if (!existsSync(join(dir, "package.json"))) return undefined;
+export async function discover(dir: string, plugin?: string, npmDependency?: string) {
+  if (!existsSync(join(dir, "package.json"))) return;
   // If we're not searching for a vite plugin, depth has to be zero
   const additionalDep =
     npmDependency && findDependency(npmDependency, { cwd: dir, depth: 0, omitDev: true });
   const depth = plugin ? undefined : 0;
+  const configFilesExist = await Promise.all([
+    pathExists(join(dir, "vite.config.js")),
+    pathExists(join(dir, "vite.config.ts")),
+  ]);
+  const anyConfigFileExists = configFilesExist.some((it) => it);
   if (
-    !existsSync(join(dir, "vite.config.js")) &&
-    !existsSync(join(dir, "vite.config.ts")) &&
+    !anyConfigFileExists &&
     !findDependency("vite", { cwd: dir, depth, omitDev: false })
-  )
-    return undefined;
-  if (npmDependency && !additionalDep) return undefined;
+  ) return;
+  if (npmDependency && !additionalDep) return;
   const { appType, publicDir: publicDirectory, plugins } = await getConfig(dir);
-  if (plugin && !plugins.find(({ name }) => name === plugin)) return undefined;
+  if (plugin && !plugins.find(({ name }) => name === plugin)) return;
   return { mayWantBackend: appType !== "spa", publicDirectory };
 };
 
-export const build = async (root: string): Promise<BuildResult> => {
+export async function build(root: string) {
   const { build } = relativeRequire(root, "vite");
   await build({ root });
 };
 
-export const ɵcodegenPublicDirectory = async (root: string, dest: string) => {
+export async function ɵcodegenPublicDirectory(root: string, dest: string) {
   const viteConfig = await getConfig(root);
   const viteDistPath = join(root, viteConfig.build.outDir);
   await copy(viteDistPath, dest);
 };
 
-export const getDevModeHandle = async (dir: string) => {
+export async function getDevModeHandle(dir: string) {
   let resolvePort: (it: string) => void;
   const portThatWasPromised = new Promise<string>((resolve) => (resolvePort = resolve));
   // TODO implement custom server
@@ -84,7 +87,7 @@ export const getDevModeHandle = async (dir: string) => {
   return proxyRequestHandler(host, "Vite Development Server", { forceCascade: true });
 };
 
-export const getConfig = async (root: string) => {
+async function getConfig(root: string) {
   const { resolveConfig } = relativeRequire(root, "vite");
   return await resolveConfig({ root }, "build", "production");
 };
