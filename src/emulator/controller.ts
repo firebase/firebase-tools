@@ -435,7 +435,6 @@ export async function startAll(
     }
   }
 
-
   if (shouldStart(options, Emulators.FIRESTORE)) {
     const firestoreLogger = EmulatorLogger.forEmulator(Emulators.FIRESTORE);
     const firestoreAddr = await getAndCheckAddress(Emulators.FIRESTORE, options);
@@ -632,16 +631,15 @@ export async function startAll(
 
   if (previews.frameworkawareness) {
     const config = options.config.get("hosting");
-    const emulators: EmulatorInfo[]=[];
+    const emulators: EmulatorInfo[] = [];
     for (const e of EMULATORS_SUPPORTED_BY_UI) {
       const info = EmulatorRegistry.getInfo(e);
       if (info) emulators.push(info);
-    };
+    }
     if (Array.isArray(config) ? config.some((it) => it.source) : config?.source) {
       await prepareFrameworks(targets, options, options, emulators);
     }
   }
-
 
   const emulatableBackends: EmulatableBackend[] = [];
   const projectDir = (options.extDevDir || options.config.projectDir) as string;

@@ -1,4 +1,3 @@
-import { execSync } from "child_process";
 import * as clc from "cli-color";
 import * as fs from "fs";
 import { sync as rimraf } from "rimraf";
@@ -7,7 +6,7 @@ import { Client } from "../../../apiv2";
 import { initGitHub } from "./github";
 import { prompt } from "../../../prompt";
 import { logger } from "../../../logger";
-import { discover, FrameworkType, SupportLevel, WebFrameworks } from "../../../frameworks";
+import { discover, WebFrameworks } from "../../../frameworks";
 import { previews } from "../../../previews";
 
 const INDEX_TEMPLATE = fs.readFileSync(
@@ -33,23 +32,25 @@ export async function doSetup(setup: any, config: any): Promise<void> {
   logger.info("have a build process for your assets, use your build's output directory.");
   logger.info();
 
-  let discoveredFramework = previews.frameworkawareness ?
-    await discover(config.projectDir, false) :
-    undefined;
+  let discoveredFramework = previews.frameworkawareness
+    ? await discover(config.projectDir, false)
+    : undefined;
 
   if (previews.frameworkawareness) {
-
-    if (discoveredFramework) await prompt(setup.hosting, [
-      {
-        name: "useDiscoveredFramework",
-        type: "confirm",
-        default: true,
-        message: `Detected an existing ${WebFrameworks[discoveredFramework.framework].name} codebase in the current directory, should we use this?`,
-      },
-    ]);
+    if (discoveredFramework)
+      await prompt(setup.hosting, [
+        {
+          name: "useDiscoveredFramework",
+          type: "confirm",
+          default: true,
+          message: `Detected an existing ${
+            WebFrameworks[discoveredFramework.framework].name
+          } codebase in the current directory, should we use this?`,
+        },
+      ]);
 
     if (setup.hosting.useDiscoveredFramework) {
-      setup.hosting.source = '.';
+      setup.hosting.source = ".";
       setup.hosting.useWebFrameworks = true;
     } else {
       await prompt(setup.hosting, [
@@ -64,42 +65,44 @@ export async function doSetup(setup: any, config: any): Promise<void> {
   }
 
   if (setup.hosting.useWebFrameworks) {
-
     await prompt(setup.hosting, [
-        {
-          name: "source",
-          type: "input",
-          default: "hosting",
-          message: "What folder would you like to use for your web application's root directory?",
-        },
-      ]
-    );
-
-    if (setup.hosting.source !== '.') delete setup.hosting.useDiscoveredFramework;
-    discoveredFramework = await discover(setup.hosting.source);
-
-    if (discoveredFramework) await prompt(setup.hosting, [
       {
-        name: "useDiscoveredFramework",
-        type: "confirm",
-        default: true,
-        message: `Detected an existing ${WebFrameworks[discoveredFramework.framework].name} codebase in ${setup.hosting.source}, should we use this?`,
+        name: "source",
+        type: "input",
+        default: "hosting",
+        message: "What folder would you like to use for your web application's root directory?",
       },
     ]);
 
+    if (setup.hosting.source !== ".") delete setup.hosting.useDiscoveredFramework;
+    discoveredFramework = await discover(setup.hosting.source);
+
+    if (discoveredFramework)
+      await prompt(setup.hosting, [
+        {
+          name: "useDiscoveredFramework",
+          type: "confirm",
+          default: true,
+          message: `Detected an existing ${
+            WebFrameworks[discoveredFramework.framework].name
+          } codebase in ${setup.hosting.source}, should we use this?`,
+        },
+      ]);
+
     if (setup.hosting.useDiscoveredFramework) {
-
       setup.hosting.webFramework = discoveredFramework!.framework;
-
     } else {
-
-      const choices: { name: string, value: string}[] = [];
+      const choices: { name: string; value: string }[] = [];
       for (const value in WebFrameworks) {
-        const { name, init } = WebFrameworks[value];
-        if (init) choices.push({ name, value });
+        if (WebFrameworks[value]) {
+          const { name, init } = WebFrameworks[value];
+          if (init) choices.push({ name, value });
+        }
       }
 
-      const defaultChoice = choices.find(({ value }) => value === discoveredFramework?.framework)?.value;
+      const defaultChoice = choices.find(
+        ({ value }) => value === discoveredFramework?.framework
+      )?.value;
 
       await prompt(setup.hosting, [
         {
@@ -107,14 +110,13 @@ export async function doSetup(setup: any, config: any): Promise<void> {
           type: "list",
           message: "Please choose the framework:",
           default: defaultChoice,
-          choices
+          choices,
         },
       ]);
 
       if (discoveredFramework) rimraf(setup.hosting.source);
 
       await WebFrameworks[setup.hosting.webFramework].init!(setup);
-
     }
 
     setup.config.hosting = {
@@ -122,9 +124,7 @@ export async function doSetup(setup: any, config: any): Promise<void> {
       // TODO swap out for framework ignores
       ignore: DEFAULT_IGNORES,
     };
-
   } else {
-
     await prompt(setup.hosting, [
       {
         name: "public",
@@ -147,7 +147,6 @@ export async function doSetup(setup: any, config: any): Promise<void> {
       public: setup.hosting.public,
       ignore: DEFAULT_IGNORES,
     };
-
   }
 
   await prompt(setup.hosting, [
@@ -160,7 +159,6 @@ export async function doSetup(setup: any, config: any): Promise<void> {
   ]);
 
   if (!setup.hosting.useWebFrameworks) {
-
     if (setup.hosting.spa) {
       setup.config.hosting.rewrites = [{ source: "**", destination: "/index.html" }];
     } else {
@@ -174,7 +172,6 @@ export async function doSetup(setup: any, config: any): Promise<void> {
       `${setup.hosting.public}/index.html`,
       INDEX_TEMPLATE.replace(/{{VERSION}}/g, response.body.current.version)
     );
-
   }
 
   if (setup.hosting.github) {

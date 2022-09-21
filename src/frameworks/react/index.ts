@@ -1,10 +1,10 @@
-import { FrameworkType } from '..';
-import { initViteTemplate, vitePluginDiscover } from '../vite';
+import { FrameworkType } from "..";
+import { initViteTemplate, vitePluginDiscover } from "../vite";
 
-export * from '../vite';
+export * from "../vite";
 
-export const name = 'React';
+export const name = "React";
 export const type = FrameworkType.Framework;
 
-export const init = initViteTemplate('react');
-export const discover = vitePluginDiscover('vite:react-jsx');
+export const init = initViteTemplate("react");
+export const discover = vitePluginDiscover("vite:react-jsx");
