@@ -3,3 +3,4 @@
 - Add support for `HTTP_PROXY` and `HTTPS_PROXY` environment variables to `crashlytics:mappingfile:upload` and `crashlytics:symbols:upload` commands (#4604).
 - Fix Emulators not shutting down / exporting correctly when CLI update available (#4981).
 - Adds `access-control-allow-private-network=true` header to Auth and Storage emulators. Enables accessing at localhost:port when site is exposed via tunnel (#4227).
+- Improves detection of in-use ports for Hosting Emulator on macOS (#4628).
