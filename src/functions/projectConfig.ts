@@ -26,7 +26,7 @@ export function normalize(config?: FunctionsConfig): NormalizedConfig {
 }
 
 /**
- *
+ * Check that the codebase name is less than 64 characters and only contains allowed characters.
  */
 export function validateCodebase(codebase: string): void {
   if (codebase.length === 0 || codebase.length > 63 || !/^[a-z0-9_-]+$/.test(codebase)) {
@@ -50,7 +50,7 @@ function validateSingle(config: FunctionConfig): ValidatedSingle {
 }
 
 /**
- *
+ * Check that the property is unique in the given config.
  */
 export function assertUnique(
   config: ValidatedConfig,
@@ -100,14 +100,4 @@ export function configForCodebase(config: ValidatedConfig, codebase: string): Va
     throw new FirebaseError(`No functions config found for codebase ${codebase}`);
   }
   return codebaseCfg;
-}
-
-/**
- * Given an initial naming attempt, suggest a similar but valid codebase name
- */
-export function suggestCodebaseName(name: string): string {
-  return name
-    .substring(0, 63)
-    .toLowerCase()
-    .replace(/[^a-z0-9_-]/g, "_");
 }

@@ -10,7 +10,6 @@ import { Config } from "../../../config";
 import {
   normalizeAndValidate,
   configForCodebase,
-  suggestCodebaseName,
   validateCodebase,
   assertUnique,
 } from "../../../functions/projectConfig";
@@ -36,8 +35,9 @@ export async function doSetup(setup: any, config: Config, options: Options): Pro
     setup.config.functions = [];
     return initNewCodebase(setup, config);
   }
+  const codebases = setup.config.functions.map((cfg: any) => clc.bold(cfg.codebase));
+  logger.info(`\nDetected existing codebase(s): ${codebases.join(", ")}\n`);
 
-  logger.info(`\nDetected ${clc.bold("existing codebase(s).\n")}`);
   setup.config.functions = normalizeAndValidate(setup.config.functions);
   const choices = [
     {
@@ -45,17 +45,17 @@ export async function doSetup(setup: any, config: Config, options: Options): Pro
       value: "new",
     },
     {
-      name: "Re-initialize",
-      value: "reinit",
+      name: "Overwrite",
+      value: "overwrite",
     },
   ];
   const initOpt = await promptOnce({
     type: "list",
-    message: "Would you like to initialize a new codebase, or reinitialize an existing one?",
+    message: "Would you like to initialize a new codebase, or overwrite an existing one?",
     default: "new",
     choices,
   });
-  return initOpt === "new" ? initNewCodebase(setup, config) : reinitCodebase(setup, config);
+  return initOpt === "new" ? initNewCodebase(setup, config) : overwriteCodebase(setup, config);
 }
 
 /**
@@ -74,46 +74,51 @@ async function initNewCodebase(setup: any, config: Config): Promise<any> {
   let source: string;
   let codebase: string;
 
-  let attempts = 0;
-  while (true) {
-    if (attempts >= MAX_ATTEMPTS) {
-      throw new FirebaseError(
-        "Exceeded max number of attempts to input valid source. Please restart."
-      );
+  if (setup.config.functions.length === 0) {
+    source = "functions";
+    codebase = "default";
+  } else {
+    let attempts = 0;
+    while (true) {
+      if (attempts++ >= MAX_ATTEMPTS) {
+        throw new FirebaseError(
+          "Exceeded max number of attempts to input valid codebase name. Please restart."
+        );
+      }
+      codebase = await promptOnce({
+        type: "input",
+        message: "What should be the name of this codebase?",
+      });
+      try {
+        validateCodebase(codebase);
+        assertUnique(setup.config.functions, "codebase", codebase);
+        break;
+      } catch (err: any) {
+        logger.error(err as FirebaseError);
+      }
     }
-    attempts++;
-    source = await promptOnce({
-      type: "input",
-      message: "Where would you like to initialize your new functions source?",
-      default: "functions",
-    });
-    try {
-      assertUnique(setup.config.functions, "source", source);
-      break;
-    } catch (err: any) {
-      logger.error(err as FirebaseError);
-    }
-  }
 
-  attempts = 0;
-  while (true) {
-    if (attempts >= MAX_ATTEMPTS) {
-      throw new FirebaseError(
-        "Exceeded max number of attempts to input valid codebase name. Please restart."
-      );
-    }
-    attempts++;
-    codebase = await promptOnce({
-      type: "input",
-      message: "What should be the name of this codebase?",
-      default: suggestCodebaseName(source),
-    });
-    try {
-      validateCodebase(codebase);
-      assertUnique(setup.config.functions, "codebase", codebase);
-      break;
-    } catch (err: any) {
-      logger.error(err as FirebaseError);
+    attempts = 0;
+    while (true) {
+      if (attempts >= MAX_ATTEMPTS) {
+        throw new FirebaseError(
+          "Exceeded max number of attempts to input valid source. Please restart."
+        );
+      }
+      attempts++;
+      source = await promptOnce({
+        type: "input",
+        message: `In what sub-directory would you like to initialize your functions for codebase ${clc.bold(
+          codebase
+        )}?`,
+        default: codebase,
+      });
+      try {
+        assertUnique(setup.config.functions, "source", source);
+        break;
+      } catch (err: any) {
+        logger.error(err as FirebaseError);
+      }
     }
   }
 
@@ -126,7 +131,7 @@ async function initNewCodebase(setup: any, config: Config): Promise<any> {
   return languageSetup(setup, config);
 }
 
-async function reinitCodebase(setup: any, config: Config): Promise<any> {
+async function overwriteCodebase(setup: any, config: Config): Promise<any> {
   let codebase;
   if (setup.config.functions.length > 1) {
     const choices = setup.config.functions.map((cfg: any) => ({
@@ -135,7 +140,7 @@ async function reinitCodebase(setup: any, config: Config): Promise<any> {
     }));
     codebase = await promptOnce({
       type: "list",
-      message: "Which codebase would you like to re-initialize?",
+      message: "Which codebase would you like to overwrite?",
       choices,
     });
   } else {
@@ -146,7 +151,7 @@ async function reinitCodebase(setup: any, config: Config): Promise<any> {
   setup.functions.source = cbconfig.source;
   setup.functions.codebase = cbconfig.codebase;
 
-  logger.info(`\nRe-initializing ${clc.bold(`codebase ${codebase}...\n`)}`);
+  logger.info(`\nOverwriting ${clc.bold(`codebase ${codebase}...\n`)}`);
   return languageSetup(setup, config);
 }
 
