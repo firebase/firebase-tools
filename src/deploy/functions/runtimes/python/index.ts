@@ -78,7 +78,7 @@ class Delegate implements runtimes.RuntimeDelegate {
     if (!this.modulesDir_) {
       const out = await runWithVirtualEnv(
         [
-          "python3.9",
+          "python3.10",
           "-c",
           "'import firebase_functions; import os; print(os.path.dirname(firebase_functions.__file__))'",
         ],
@@ -120,7 +120,7 @@ class Delegate implements runtimes.RuntimeDelegate {
       ...envs,
       ADMIN_PORT: port.toString(),
     };
-    const args = ["python3.9", path.join(modulesDir, "serving.py")];
+    const args = ["python3.10", path.join(modulesDir, "serving.py")];
     logger.debug(
       `Running admin server with args: ${JSON.stringify(args)} and env: ${JSON.stringify(
         envWithAdminPort
