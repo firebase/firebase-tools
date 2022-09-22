@@ -1,6 +1,6 @@
-import * as clc from "colorette";
-import { KeyPairSyncResult } from "crypto";
+import { bold } from "colorette";
 import * as leven from "leven";
+
 import { configstore } from "./configstore";
 import { FirebaseError } from "./error";
 
@@ -57,17 +57,17 @@ export const ALL_EXPERIMENTS = experiments({
       "Golang support, tell our support team.",
   },
   deletegcfartifacts: {
-    shortDescription: `Add the ${clc.bold(
+    shortDescription: `Add the ${bold(
       "firebase functions:deletegcfartifacts"
     )} command to purge docker build images`,
     fullDescription:
-      `Add the ${clc.bold("firebase functions:deletegcfartifacts")}` +
+      `Add the ${bold("firebase functions:deletegcfartifacts")}` +
       "command. Google Cloud Functions creates Docker images when building your " +
       "functions. Cloud Functions for Firebase automatically cleans up these " +
       "images for you on deploy. Customers who predated this cleanup, or customers " +
       "who also deploy Google Cloud Functions with non-Firebase tooling may have " +
       "old Docker images stored in either Google Container Repository or Artifact " +
-      `Registry. The ${clc.bold("firebase functions:deletegcfartifacts")} command ` +
+      `Registry. The ${bold("firebase functions:deletegcfartifacts")} command ` +
       "will delete all Docker images created by Google Cloud Functions irrespective " +
       "of how that image was created.",
     public: true,
@@ -167,9 +167,9 @@ export function setEnabled(name: ExperimentName, to: boolean | null): void {
 export function assertEnabled(name: ExperimentName, task: string): void {
   if (!isEnabled(name)) {
     throw new FirebaseError(
-      `Cannot ${task} because the experiment ${clc.bold(name)} is not enabled. To enable ${clc.bold(
+      `Cannot ${task} because the experiment ${bold(name)} is not enabled. To enable ${bold(
         name
-      )} run ${clc.bold(`firebase experiments:enable ${name}`)}`
+      )} run ${bold(`firebase experiments:enable ${name}`)}`
     );
   }
 }
