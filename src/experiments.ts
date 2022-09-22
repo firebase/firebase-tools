@@ -25,18 +25,18 @@ export const ALL_EXPERIMENTS = experiments({
 
   // Realtime Database experiments
   rtdbrules: {
-    shortDescription: "TODO",
+    shortDescription: "Advanced security rules management",
   },
   rtdbmanagement: {
-    shortDescription: "TODO",
+    shortDescription: "Use new endpoint to administer realtime database instances",
   },
 
   // Extensions experiments
   ext: {
-    shortDescription: "Enables the 'ext:sources:create' command",
+    shortDescription: `Enables the ${bold("ext:sources:create")} command`,
   },
   extdev: {
-    shortDescription: "Enalbes the 'ext:dev' family of commands",
+    shortDescription: `Enables the ${bold("ext:dev")} family of commands`,
     docsUri: "https://firebase.google.com/docs/extensions/alpha/overview-build-extensions",
   },
 
@@ -50,16 +50,16 @@ export const ALL_EXPERIMENTS = experiments({
   },
   deletegcfartifacts: {
     shortDescription: `Add the ${bold(
-      "firebase functions:deletegcfartifacts"
+      "functions:deletegcfartifacts"
     )} command to purge docker build images`,
     fullDescription:
-      `Add the ${bold("firebase functions:deletegcfartifacts")}` +
+      `Add the ${bold("functions:deletegcfartifacts")}` +
       "command. Google Cloud Functions creates Docker images when building your " +
       "functions. Cloud Functions for Firebase automatically cleans up these " +
       "images for you on deploy. Customers who predated this cleanup, or customers " +
       "who also deploy Google Cloud Functions with non-Firebase tooling may have " +
       "old Docker images stored in either Google Container Repository or Artifact " +
-      `Registry. The ${bold("firebase functions:deletegcfartifacts")} command ` +
+      `Registry. The ${bold("functions:deletegcfartifacts")} command ` +
       "will delete all Docker images created by Google Cloud Functions irrespective " +
       "of how that image was created.",
     public: true,
@@ -73,7 +73,7 @@ export const ALL_EXPERIMENTS = experiments({
 
   // Emulator experiments
   emulatoruisnapshot: {
-    shortDescription: "Load pre-release versions of hte emulator UI",
+    shortDescription: "Load pre-release versions of the emulator UI",
   },
 
   // Hosting experiments
