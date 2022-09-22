@@ -220,7 +220,7 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
   await mkdirp(join(destDir, distDir));
   await copy(join(sourceDir, "public"), join(destDir, "public"));
   await copy(join(sourceDir, distDir), join(destDir, distDir));
-  return { packageJson };
+  return { packageJson, frameworksEntry: "next.js" };
 }
 
 export async function getDevModeHandle(dir: string) {
