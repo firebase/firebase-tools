@@ -1,1 +1,1 @@
-- Update `firebase init functions` flow to be codebase-aware.
+- Adds support for codebases in `firebase init functions` flow (#4965).
