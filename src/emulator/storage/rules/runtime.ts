@@ -32,7 +32,6 @@ import {
 } from "../../downloadableEmulators";
 import { EmulatorRegistry } from "../../registry";
 import { Client } from "../../../apiv2";
-import * as experiments from "../../../experiments";
 
 const lock = new AsyncLock();
 const synchonizationKey = "key";
@@ -443,12 +442,6 @@ async function fetchFirestoreDocument(
   projectId: string,
   request: RuntimeActionFirestoreDataRequest
 ): Promise<RuntimeActionFirestoreDataResponse> {
-  // If experiment is not enabled, just throw an error
-  // TODO: should this be an assertEnabled instead?
-  if (!experiments.isEnabled("crossservicerules")) {
-    return { status: DataLoadStatus.INVALID_STATE, warnings: [], errors: [] };
-  }
-
   const url = EmulatorRegistry.url(Emulators.FIRESTORE);
   const pathname = `projects/${projectId}${request.context.path}`;
 

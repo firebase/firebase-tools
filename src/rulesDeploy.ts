@@ -11,7 +11,6 @@ import { promptOnce } from "./prompt";
 import { ListRulesetsEntry, Release, RulesetFile } from "./gcp/rules";
 import { getProjectNumber } from "./getProjectNumber";
 import { addServiceAccountToRoles, serviceAccountHasRoles } from "./gcp/resourceManager";
-import * as experiments from "./experiments";
 
 // The status code the Firebase Rules backend sends to indicate too many rulesets.
 const QUOTA_EXCEEDED_STATUS_CODE = 429;
@@ -184,13 +183,6 @@ export class RulesDeploy {
         continue;
       }
       if (service === RulesetServiceType.FIREBASE_STORAGE) {
-        experiments.assertEnabled(
-          "crossservicerules",
-          "deploy rules with cross-service dependencies"
-        );
-        console.log(
-          `Deploying rules with ${bold("experimental")} support for cross-service dependencies`
-        );
         await this.checkStorageRulesIamPermissions(files[0]?.content);
       }
 
