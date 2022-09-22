@@ -482,3 +482,50 @@ function codegenDevModeFunctionsDirectory() {
   const packageJson = {};
   return Promise.resolve({ packageJson, frameworksEntry: "_devMode" });
 }
+
+export function createServerResponseProxy(
+  req: IncomingMessage,
+  res: ServerResponse,
+  next: () => void
+) {
+  const proxiedRes = new ServerResponse(req);
+  const buffer: [string, any[]][] = [];
+  proxiedRes.write = new Proxy(proxiedRes.write.bind(proxiedRes), {
+    apply: (target: any, thisArg, args) => {
+      target.call(thisArg, ...args);
+      buffer.push(["write", args]);
+    },
+  });
+  proxiedRes.setHeader = new Proxy(proxiedRes.setHeader.bind(proxiedRes), {
+    apply: (target: any, thisArg, args) => {
+      target.call(thisArg, ...args);
+      buffer.push(["setHeader", args]);
+    },
+  });
+  proxiedRes.removeHeader = new Proxy(proxiedRes.removeHeader.bind(proxiedRes), {
+    apply: (target: any, thisArg, args) => {
+      target.call(thisArg, ...args);
+      buffer.push(["removeHeader", args]);
+    },
+  });
+  proxiedRes.writeHead = new Proxy(proxiedRes.writeHead.bind(proxiedRes), {
+    apply: (target: any, thisArg, args) => {
+      target.call(thisArg, ...args);
+      buffer.push(["writeHead", args]);
+    },
+  });
+  proxiedRes.end = new Proxy(proxiedRes.end.bind(proxiedRes), {
+    apply: (target: any, thisArg, args) => {
+      target.call(thisArg, ...args);
+      if (proxiedRes.statusCode === 404) {
+        next();
+      } else {
+        for (const [fn, args] of buffer) {
+          (res as any)[fn](...args);
+        }
+        res.end(...args);
+      }
+    },
+  });
+  return proxiedRes;
+}

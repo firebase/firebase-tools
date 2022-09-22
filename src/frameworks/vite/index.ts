@@ -71,17 +71,20 @@ export async function ɵcodegenPublicDirectory(root: string, dest: string) {
 }
 
 export async function getDevModeHandle(dir: string) {
-  let resolvePort: (it: string) => void;
-  const portThatWasPromised = new Promise<string>((resolve) => (resolvePort = resolve));
-  // TODO implement custom server
-  const serve = spawn(CLI_COMMAND, [], { cwd: dir });
-  serve.stdout.on("data", (data: any) => {
-    process.stdout.write(data);
-    const match = data.toString().match(/(http:\/\/.+:\d+)/);
-    if (match) resolvePort(match[1]);
+  const host = new Promise<string>((resolve) => {
+    // Can't use scheduleTarget since that—like prerender—is failing on an ESM bug
+    // will just grep for the hostname
+    const serve = spawn(CLI_COMMAND, [], { cwd: dir });
+    serve.stdout.on("data", (data: any) => {
+      process.stdout.write(data);
+      const match = data.toString().match(/(http:\/\/.+:\d+)/);
+      if (match) resolve(match[1]);
+    });
+    serve.stderr.on("data", (data: any) => {
+      process.stderr.write(data);
+    });
   });
-  const host = await portThatWasPromised;
-  return proxyRequestHandler(host, "Vite Development Server", { forceCascade: true });
+  return proxyRequestHandler(await host, "Vite Development Server", { forceCascade: true });
 }
 
 async function getConfig(root: string) {

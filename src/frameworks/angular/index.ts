@@ -111,6 +111,7 @@ export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: strin
   await copy(join(sourceDir, browserOutputPath), destDir);
 }
 
+// TODO(jamesdaniels) dry up
 export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: string) {
   const { architectHost, host, serverTarget, browserTarget } = await getContext(sourceDir);
   if (!serverTarget) throw new Error("No server target");
@@ -144,7 +145,7 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
   return { bootstrapScript, packageJson };
 }
 
-// TODO memoize, dry up
+// TODO(jamesdaniels) memoize, dry up
 async function getContext(dir: string) {
   const { NodeJsAsyncHost } = relativeRequire(dir, "@angular-devkit/core/node");
   const { workspaces } = relativeRequire(dir, "@angular-devkit/core");

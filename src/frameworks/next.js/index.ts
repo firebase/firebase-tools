@@ -1,23 +1,24 @@
-import { execSync, spawn } from "child_process";
+import { execSync } from "child_process";
 import { readFile, mkdir, copyFile, stat } from "fs/promises";
 import { dirname, extname, join } from "path";
 import type { Header, Rewrite, Redirect } from "next/dist/lib/load-custom-routes";
 import type { NextConfig } from "next";
 import { copy, mkdirp, pathExists } from "fs-extra";
-import { pathToFileURL } from "url";
+import { pathToFileURL, parse } from "url";
 import { existsSync } from "fs";
 import {
   BuildResult,
+  createServerResponseProxy,
   findDependency,
   FrameworkType,
   NODE_VERSION,
   relativeRequire,
   SupportLevel,
 } from "..";
-import { proxyRequestHandler } from "../../hosting/proxy";
 import { promptOnce } from "../../prompt";
 import { gte } from "semver";
 import esbuild from "esbuild";
+import { IncomingMessage, ServerResponse } from "http";
 
 // Next.js's exposed interface is incomplete here
 // TODO see if there's a better way to grab this
@@ -223,17 +224,18 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
 }
 
 export async function getDevModeHandle(dir: string) {
-  let resolvePort: (it: string) => void;
-  const portThatWasPromised = new Promise<string>((resolve) => (resolvePort = resolve));
-  // TODO implement custom server
-  const serve = spawn(CLI_COMMAND, ["dev"], { cwd: dir });
-  serve.stdout.on("data", (data: any) => {
-    process.stdout.write(data);
-    const match = data.toString().match(/(http:\/\/localhost:\d+)/);
-    if (match) resolvePort(match[1]);
+  const { default: next } = relativeRequire(dir, "next");
+  const nextApp = next({
+    dev: true,
+    dir,
   });
-  const host = await portThatWasPromised;
-  return proxyRequestHandler(host, "Next.js Development Server", { forceCascade: true });
+  const handler = nextApp.getRequestHandler();
+  await nextApp.prepare();
+  return (req: IncomingMessage, res: ServerResponse, next: () => void) => {
+    const parsedUrl = parse(req.url!, true);
+    const proxy = createServerResponseProxy(req, res, next);
+    handler(req, proxy, parsedUrl);
+  };
 }
 
 async function getConfig(dir: string): Promise<NextConfig & { distDir: string }> {
