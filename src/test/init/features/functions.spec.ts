@@ -8,13 +8,13 @@ import { doSetup } from "../../../init/features/functions";
 import { Options } from "../../../options";
 import { RC } from "../../../rc";
 
-const TEST_SOURCE = "testsource";
-const TEST_CODEBASE = "testcodebase";
+const TEST_SOURCE_DEFAULT = "functions";
+const TEST_CODEBASE_DEFAULT = "default";
 
 function createExistingTestSetupAndConfig(): { setup: Setup; config: Config } {
   const cbconfig = {
-    source: TEST_SOURCE,
-    codebase: TEST_CODEBASE,
+    source: TEST_SOURCE_DEFAULT,
+    codebase: TEST_CODEBASE_DEFAULT,
     ignore: ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log"],
     predeploy: ['npm --prefix "$RESOURCE_DIR" run lint'],
   };
@@ -68,9 +68,7 @@ describe("functions", () => {
     describe("with an uninitialized Firebase project repository", () => {
       it("creates a new javascript codebase with the correct configuration", async () => {
         const setup = { config: { functions: [] }, rcfile: {} };
-        promptOnceStub.onFirstCall().resolves(TEST_SOURCE);
-        promptOnceStub.onSecondCall().resolves(TEST_CODEBASE);
-        promptOnceStub.onThirdCall().resolves("javascript");
+        promptOnceStub.onFirstCall().resolves("javascript");
 
         // say "yes" to enabling eslint for the js project
         promptStub.onFirstCall().callsFake((functions: any): Promise<void> => {
@@ -85,24 +83,22 @@ describe("functions", () => {
         await doSetup(setup, emptyConfig, options);
 
         expect(setup.config.functions[0]).to.deep.equal({
-          source: TEST_SOURCE,
-          codebase: TEST_CODEBASE,
+          source: TEST_SOURCE_DEFAULT,
+          codebase: TEST_CODEBASE_DEFAULT,
           ignore: ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log"],
           predeploy: ['npm --prefix "$RESOURCE_DIR" run lint'],
         });
         expect(askWriteProjectFileStub.getCalls().map((call) => call.args[0])).to.deep.equal([
-          `${TEST_SOURCE}/package.json`,
-          `${TEST_SOURCE}/.eslintrc.js`,
-          `${TEST_SOURCE}/index.js`,
-          `${TEST_SOURCE}/.gitignore`,
+          `${TEST_SOURCE_DEFAULT}/package.json`,
+          `${TEST_SOURCE_DEFAULT}/.eslintrc.js`,
+          `${TEST_SOURCE_DEFAULT}/index.js`,
+          `${TEST_SOURCE_DEFAULT}/.gitignore`,
         ]);
       });
 
       it("creates a new typescript codebase with the correct configuration", async () => {
         const setup = { config: { functions: [] }, rcfile: {} };
-        promptOnceStub.onFirstCall().resolves(TEST_SOURCE);
-        promptOnceStub.onSecondCall().resolves(TEST_CODEBASE);
-        promptOnceStub.onThirdCall().resolves("typescript");
+        promptOnceStub.onFirstCall().resolves("typescript");
         promptStub.onFirstCall().callsFake((functions: any): Promise<void> => {
           functions.lint = true;
           return Promise.resolve();
@@ -114,8 +110,8 @@ describe("functions", () => {
         await doSetup(setup, emptyConfig, options);
 
         expect(setup.config.functions[0]).to.deep.equal({
-          source: TEST_SOURCE,
-          codebase: TEST_CODEBASE,
+          source: TEST_SOURCE_DEFAULT,
+          codebase: TEST_CODEBASE_DEFAULT,
           ignore: ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log"],
           predeploy: [
             'npm --prefix "$RESOURCE_DIR" run lint',
@@ -123,12 +119,12 @@ describe("functions", () => {
           ],
         });
         expect(askWriteProjectFileStub.getCalls().map((call) => call.args[0])).to.deep.equal([
-          `${TEST_SOURCE}/package.json`,
-          `${TEST_SOURCE}/.eslintrc.js`,
-          `${TEST_SOURCE}/tsconfig.json`,
-          `${TEST_SOURCE}/tsconfig.dev.json`,
-          `${TEST_SOURCE}/src/index.ts`,
-          `${TEST_SOURCE}/.gitignore`,
+          `${TEST_SOURCE_DEFAULT}/package.json`,
+          `${TEST_SOURCE_DEFAULT}/.eslintrc.js`,
+          `${TEST_SOURCE_DEFAULT}/tsconfig.json`,
+          `${TEST_SOURCE_DEFAULT}/tsconfig.dev.json`,
+          `${TEST_SOURCE_DEFAULT}/src/index.ts`,
+          `${TEST_SOURCE_DEFAULT}/.gitignore`,
         ]);
       });
     });
@@ -136,8 +132,8 @@ describe("functions", () => {
       it("initializes a new codebase", async () => {
         const { setup, config } = createExistingTestSetupAndConfig();
         promptOnceStub.onCall(0).resolves("new");
-        promptOnceStub.onCall(1).resolves("testsource2");
-        promptOnceStub.onCall(2).resolves("testcodebase2");
+        promptOnceStub.onCall(1).resolves("testcodebase2");
+        promptOnceStub.onCall(2).resolves("testsource2");
         promptOnceStub.onCall(3).resolves("javascript");
         promptStub.onFirstCall().callsFake((functions: any): Promise<void> => {
           functions.lint = true;
@@ -151,8 +147,8 @@ describe("functions", () => {
 
         expect(setup.config.functions).to.deep.equal([
           {
-            source: TEST_SOURCE,
-            codebase: TEST_CODEBASE,
+            source: TEST_SOURCE_DEFAULT,
+            codebase: TEST_CODEBASE_DEFAULT,
             ignore: ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log"],
             predeploy: ['npm --prefix "$RESOURCE_DIR" run lint'],
           },
@@ -187,17 +183,17 @@ describe("functions", () => {
 
         expect(setup.config.functions).to.deep.equal([
           {
-            source: TEST_SOURCE,
-            codebase: TEST_CODEBASE,
+            source: TEST_SOURCE_DEFAULT,
+            codebase: TEST_CODEBASE_DEFAULT,
             ignore: ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log"],
             predeploy: ['npm --prefix "$RESOURCE_DIR" run lint'],
           },
         ]);
         expect(askWriteProjectFileStub.getCalls().map((call) => call.args[0])).to.deep.equal([
-          `${TEST_SOURCE}/package.json`,
-          `${TEST_SOURCE}/.eslintrc.js`,
-          `${TEST_SOURCE}/index.js`,
-          `${TEST_SOURCE}/.gitignore`,
+          `${TEST_SOURCE_DEFAULT}/package.json`,
+          `${TEST_SOURCE_DEFAULT}/.eslintrc.js`,
+          `${TEST_SOURCE_DEFAULT}/index.js`,
+          `${TEST_SOURCE_DEFAULT}/.gitignore`,
         ]);
       });
     });
