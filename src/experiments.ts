@@ -37,6 +37,7 @@ export const ALL_EXPERIMENTS = experiments({
   },
   extdev: {
     shortDescription: "Enalbes the 'ext:dev' family of commands",
+    docsUri: "https://firebase.google.com/docs/extensions/alpha/overview-build-extensions",
   },
 
   // Cloud Functions for Firebase experiments
@@ -46,15 +47,6 @@ export const ALL_EXPERIMENTS = experiments({
       "Adds the ability to initializea and deploy Cloud " +
       "Functions for Firebase in Python. While this feature is experimental " +
       "breaking API changes are allowed in MINOR API revisions",
-  },
-  golang: {
-    shortDescription: "Golang support for Cloud Functions for Firebase. Does not work.",
-    fullDescription:
-      "Code paths to play with adding support for Golang to Cloud " +
-      "Functions for Firebase. This was written to target 1st gen functions, which " +
-      "will never be released (all new languages will be 2nd gen only). If you " +
-      "are lurking in our experiments folder and are excited about the prospect of " +
-      "Golang support, tell our support team.",
   },
   deletegcfartifacts: {
     shortDescription: `Add the ${bold(
