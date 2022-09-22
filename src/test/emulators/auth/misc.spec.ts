@@ -15,6 +15,7 @@ import {
 } from "./helpers";
 import { describeAuthEmulator } from "./setup";
 import {
+  deleteAccount,
   expectStatusCode,
   registerUser,
   registerAnonUser,
@@ -221,6 +222,22 @@ describeAuthEmulator("token refresh", ({ authApi, getClock }) => {
       .then((res) => {
         expectStatusCode(400, res);
         expect(res.body.error).to.have.property("message").equals("INVALID_REFRESH_TOKEN");
+      });
+  });
+
+  it("should error if the refresh token is for a user that does not exist", async () => {
+    const { refreshToken, idToken } = await registerAnonUser(authApi());
+    await deleteAccount(authApi(), { idToken });
+
+    await authApi()
+      .post("/securetoken.googleapis.com/v1/token")
+      .type("form")
+      // snake_case parameters also work, per OAuth 2.0 spec.
+      .send({ refresh_token: refreshToken, grantType: "refresh_token" })
+      .query({ key: "fake-api-key" })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error.message).to.contain("INVALID_REFRESH_TOKEN");
       });
   });
 });

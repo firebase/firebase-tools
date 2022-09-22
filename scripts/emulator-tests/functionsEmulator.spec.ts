@@ -35,6 +35,7 @@ const TEST_BACKEND = {
   functionsDir: FUNCTIONS_DIR,
   env: {},
   secretEnv: [],
+  codebase: "default",
   nodeBinary: process.execPath,
   // NOTE: Use the following nodeBinary path if you want to run test cases directly from your IDE.
   // nodeBinary: path.join(MODULE_ROOT, "node_modules/.bin/ts-node"),
@@ -58,6 +59,7 @@ async function useFunction(
       entryPoint: triggerName.replace(/-/g, "."),
       id: `${region}-${triggerName}`,
       region,
+      codebase: "default",
       httpsTrigger: {},
       ...triggerOverrides,
     });
@@ -602,6 +604,7 @@ describe("FunctionsEmulator-Hub", function () {
             id: "us-central1-functionId",
             name: "functionId",
             platform: "gcfv1",
+            codebase: "default",
             region: "us-central1",
           },
         ]);

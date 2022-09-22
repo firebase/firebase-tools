@@ -17,6 +17,7 @@ describeAuthEmulator("REST API mapping", ({ authApi }) => {
       .options("/")
       .set("Origin", "example.com")
       .set("Access-Control-Request-Headers", "Authorization,X-Client-Version,X-Whatever-Header")
+      .set("Access-Control-Request-Private-Network", "true")
       .then((res) => {
         expectStatusCode(204, res);
 
@@ -29,6 +30,10 @@ describeAuthEmulator("REST API mapping", ({ authApi }) => {
           "X-Client-Version",
           "X-Whatever-Header",
         ]);
+
+        // Check that access-control-allow-private-network = true
+        // Enables accessing locahost when site is exposed via tunnel see https://github.com/firebase/firebase-tools/issues/4227
+        expect(res.header["access-control-allow-private-network"]).to.eql("true");
       });
   });
 
