@@ -32,7 +32,6 @@ import {
 } from "../../downloadableEmulators";
 import { EmulatorRegistry } from "../../registry";
 import { Client } from "../../../apiv2";
-import { previews } from "../../../previews";
 
 const lock = new AsyncLock();
 const synchonizationKey: string = "key";
@@ -443,11 +442,6 @@ async function fetchFirestoreDocument(
   projectId: string,
   request: RuntimeActionFirestoreDataRequest
 ): Promise<RuntimeActionFirestoreDataResponse> {
-  // If preview not enabled, just throw an error
-  if (!previews.crossservicerules) {
-    return { status: DataLoadStatus.INVALID_STATE, warnings: [], errors: [] };
-  }
-
   const url = EmulatorRegistry.url(Emulators.FIRESTORE);
   const pathname = `projects/${projectId}${request.context.path}`;
 
