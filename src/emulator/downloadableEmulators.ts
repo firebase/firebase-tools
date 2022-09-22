@@ -12,7 +12,7 @@ import * as childProcess from "child_process";
 import * as utils from "../utils";
 import { EmulatorLogger } from "./emulatorLogger";
 
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as fs from "fs-extra";
 import * as path from "path";
 import * as os from "os";
@@ -27,14 +27,14 @@ const CACHE_DIR =
 
 export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDetails } = {
   database: {
-    downloadPath: path.join(CACHE_DIR, "firebase-database-emulator-v4.8.0.jar"),
-    version: "4.8.0",
+    downloadPath: path.join(CACHE_DIR, "firebase-database-emulator-v4.9.0.jar"),
+    version: "4.9.0",
     opts: {
       cacheDir: CACHE_DIR,
       remoteUrl:
-        "https://storage.googleapis.com/firebase-preview-drop/emulator/firebase-database-emulator-v4.8.0.jar",
-      expectedSize: 33676395,
-      expectedChecksum: "e5ae0085d9c88ed14b0bd9c25fe62916",
+        "https://storage.googleapis.com/firebase-preview-drop/emulator/firebase-database-emulator-v4.9.0.jar",
+      expectedSize: 34204485,
+      expectedChecksum: "1c3f5974f0ee5559ebf27b56f2e62108",
       namePrefix: "firebase-database-emulator",
     },
   },
@@ -51,14 +51,14 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
     },
   },
   storage: {
-    downloadPath: path.join(CACHE_DIR, "cloud-storage-rules-runtime-v1.0.2.jar"),
-    version: "1.0.2",
+    downloadPath: path.join(CACHE_DIR, "cloud-storage-rules-runtime-v1.1.0.jar"),
+    version: "1.1.0",
     opts: {
       cacheDir: CACHE_DIR,
       remoteUrl:
-        "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-storage-rules-runtime-v1.0.2.jar",
-      expectedSize: 35704306,
-      expectedChecksum: "0dd3e17939610fc3dbdf53fb24cfda86",
+        "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-storage-rules-runtime-v1.1.0.jar",
+      expectedSize: 46239317,
+      expectedChecksum: "7a72b40430709fb946c2cde2eb3f93f5",
       namePrefix: "cloud-storage-rules-emulator",
     },
   },
@@ -80,15 +80,15 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
         },
       }
     : {
-        version: "1.8.1",
-        downloadPath: path.join(CACHE_DIR, "ui-v1.8.1.zip"),
-        unzipDir: path.join(CACHE_DIR, "ui-v1.8.1"),
-        binaryPath: path.join(CACHE_DIR, "ui-v1.8.1", "server", "server.js"),
+        version: "1.9.0",
+        downloadPath: path.join(CACHE_DIR, "ui-v1.9.0.zip"),
+        unzipDir: path.join(CACHE_DIR, "ui-v1.9.0"),
+        binaryPath: path.join(CACHE_DIR, "ui-v1.9.0", "server", "server.js"),
         opts: {
           cacheDir: CACHE_DIR,
-          remoteUrl: "https://storage.googleapis.com/firebase-preview-drop/emulator/ui-v1.8.1.zip",
-          expectedSize: 3056552,
-          expectedChecksum: "92590fdda20f9883588438d9551111b5",
+          remoteUrl: "https://storage.googleapis.com/firebase-preview-drop/emulator/ui-v1.9.0.zip",
+          expectedSize: 3062710,
+          expectedChecksum: "984597f41d497bd318dac131615eb9d5",
           namePrefix: "ui",
         },
       },

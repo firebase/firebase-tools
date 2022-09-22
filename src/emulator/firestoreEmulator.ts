@@ -1,6 +1,6 @@
 import * as chokidar from "chokidar";
 import * as fs from "fs";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as path from "path";
 
 import * as utils from "../utils";

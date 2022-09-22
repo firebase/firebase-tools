@@ -6,7 +6,7 @@ import { pathToFileURL } from "url";
 import { IncomingMessage, ServerResponse } from "http";
 import { copyFile, readdir, rm, writeFile } from "fs/promises";
 import { mkdirp, pathExists, stat } from "fs-extra";
-import clc = require("cli-color");
+import * as clc from "colorette";
 
 import { needProjectId } from "../projectUtils";
 import { normalizedHostingConfigs } from "../hosting/normalizedHostingConfigs";

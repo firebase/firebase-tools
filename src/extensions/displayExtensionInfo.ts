@@ -1,21 +1,18 @@
-import * as _ from "lodash";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const { marked } = require("marked");
 import TerminalRenderer = require("marked-terminal");
 
 import * as utils from "../utils";
-import { confirm, logPrefix } from "./extensionsHelper";
+import { logPrefix } from "./extensionsHelper";
 import { logger } from "../logger";
 import { FirebaseError } from "../error";
-import { ExtensionSpec, Resource } from "./types";
+import { Api, ExtensionSpec, Role } from "./types";
+import * as iam from "../gcp/iam";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),
 });
-
-const additionColor = clc.green;
-const deletionColor = clc.red;
 
 /**
  * displayExtInfo prints the extension info displayed when running ext:install.
@@ -24,12 +21,12 @@ const deletionColor = clc.red;
  * @param spec extension spec
  * @param published whether or not the extension is a published extension
  */
-export function displayExtInfo(
+export async function displayExtInfo(
   extensionName: string,
   publisher: string,
   spec: ExtensionSpec,
   published = false
-): string[] {
+): Promise<string[]> {
   const lines = [];
   lines.push(`**Name**: ${spec.displayName}`);
   if (publisher) {
@@ -43,6 +40,12 @@ export function displayExtInfo(
       lines.push(`**License**: ${spec.license}`);
     }
     lines.push(`**Source code**: ${spec.sourceUrl}`);
+  }
+  if (spec.apis?.length) {
+    lines.push(displayApis(spec.apis));
+  }
+  if (spec.roles?.length) {
+    lines.push(await displayRoles(spec.roles));
   }
   if (lines.length > 0) {
     utils.logLabeledBullet(logPrefix, `information about '${clc.bold(extensionName)}':`);
@@ -66,199 +69,37 @@ export function displayExtInfo(
 }
 
 /**
- * Prints out all changes to the spec that don't require explicit approval or input.
- *
- * @param spec The current spec of a ExtensionInstance.
- * @param newSpec The spec that the ExtensionInstance is being updated to
- * @param published whether or not this spec is for a published extension
- */
-export function displayUpdateChangesNoInput(spec: ExtensionSpec, newSpec: ExtensionSpec): string[] {
-  const lines: string[] = [];
-  if (spec.displayName !== newSpec.displayName) {
-    lines.push(
-      "",
-      "**Name:**",
-      deletionColor(`- ${spec.displayName}`),
-      additionColor(`+ ${newSpec.displayName}`)
-    );
-  }
-
-  if (spec.author?.authorName !== newSpec.author?.authorName) {
-    lines.push(
-      "",
-      "**Author:**",
-      deletionColor(`- ${spec.author?.authorName}`),
-      additionColor(`+ ${spec.author?.authorName}`)
-    );
-  }
-
-  if (spec.description !== newSpec.description) {
-    lines.push(
-      "",
-      "**Description:**",
-      deletionColor(`- ${spec.description}`),
-      additionColor(`+ ${newSpec.description}`)
-    );
-  }
-
-  if (spec.sourceUrl !== newSpec.sourceUrl) {
-    lines.push(
-      "",
-      "**Source code:**",
-      deletionColor(`- ${spec.sourceUrl}`),
-      additionColor(`+ ${newSpec.sourceUrl}`)
-    );
-  }
-
-  if (spec.billingRequired && !newSpec.billingRequired) {
-    lines.push("", "**Billing is no longer required for this extension.**");
-  }
-  logger.info(marked(lines.join("\n")));
-  return lines;
-}
-
-/**
- * Checks for spec changes that require explicit user consent,
- * and individually prompts the user for each changed field.
- *
- * @param spec The current spec of a ExtensionInstance
- * @param newSpec The spec that the ExtensionInstance is being updated to
- */
-export async function displayUpdateChangesRequiringConfirmation(args: {
-  spec: ExtensionSpec;
-  newSpec: ExtensionSpec;
-  nonInteractive: boolean;
-  force: boolean;
-}): Promise<void> {
-  const equals = (a: any, b: any) => {
-    return _.isEqual(a, b);
-  };
-  if (args.spec.license !== args.newSpec.license) {
-    const message =
-      "\n" +
-      "**License**\n" +
-      deletionColor(args.spec.license ? `- ${args.spec.license}\n` : "- None\n") +
-      additionColor(args.newSpec.license ? `+ ${args.newSpec.license}\n` : "+ None\n");
-    logger.info(message);
-    if (
-      !(await confirm({ nonInteractive: args.nonInteractive, force: args.force, default: true }))
-    ) {
-      throw new FirebaseError(
-        "Unable to update this extension instance without explicit consent for the change to 'License'."
-      );
-    }
-  }
-  const apisDiffDeletions = _.differenceWith(
-    args.spec.apis,
-    _.get(args.newSpec, "apis", []),
-    equals
-  );
-  const apisDiffAdditions = _.differenceWith(
-    args.newSpec.apis,
-    _.get(args.spec, "apis", []),
-    equals
-  );
-  if (apisDiffDeletions.length || apisDiffAdditions.length) {
-    let message = "\n**APIs:**\n";
-    apisDiffDeletions.forEach((api) => {
-      message += deletionColor(`- ${api.apiName} (${api.reason})\n`);
-    });
-    apisDiffAdditions.forEach((api) => {
-      message += additionColor(`+ ${api.apiName} (${api.reason})\n`);
-    });
-    logger.info(message);
-    if (
-      !(await confirm({ nonInteractive: args.nonInteractive, force: args.force, default: true }))
-    ) {
-      throw new FirebaseError(
-        "Unable to update this extension instance without explicit consent for the change to 'APIs'."
-      );
-    }
-  }
-
-  const resourcesDiffDeletions = _.differenceWith(
-    args.spec.resources,
-    _.get(args.newSpec, "resources", []),
-    compareResources
-  );
-  const resourcesDiffAdditions = _.differenceWith(
-    args.newSpec.resources,
-    _.get(args.spec, "resources", []),
-    compareResources
-  );
-  if (resourcesDiffDeletions.length || resourcesDiffAdditions.length) {
-    let message = "\n**Resources:**\n";
-    resourcesDiffDeletions.forEach((resource) => {
-      message += deletionColor(` - ${getResourceReadableName(resource)}`);
-    });
-    resourcesDiffAdditions.forEach((resource) => {
-      message += additionColor(`+ ${getResourceReadableName(resource)}`);
-    });
-    logger.info(message);
-    if (
-      !(await confirm({ nonInteractive: args.nonInteractive, force: args.force, default: true }))
-    ) {
-      throw new FirebaseError(
-        "Unable to update this extension instance without explicit consent for the change to 'Resources'."
-      );
-    }
-  }
-
-  const rolesDiffDeletions = _.differenceWith(
-    args.spec.roles,
-    _.get(args.newSpec, "roles", []),
-    equals
-  );
-  const rolesDiffAdditions = _.differenceWith(
-    args.newSpec.roles,
-    _.get(args.spec, "roles", []),
-    equals
-  );
-
-  if (rolesDiffDeletions.length || rolesDiffAdditions.length) {
-    let message = "\n**Permissions:**\n";
-    rolesDiffDeletions.forEach((role) => {
-      message += deletionColor(`- ${role.role} (${role.reason})\n`);
-    });
-    rolesDiffAdditions.forEach((role) => {
-      message += additionColor(`+ ${role.role} (${role.reason})\n`);
-    });
-    logger.info(message);
-    if (
-      !(await confirm({ nonInteractive: args.nonInteractive, force: args.force, default: true }))
-    ) {
-      throw new FirebaseError(
-        "Unable to update this extension instance without explicit consent for the change to 'Permissions'."
-      );
-    }
-  }
-
-  if (!args.spec.billingRequired && args.newSpec.billingRequired) {
-    logger.info("Billing is now required for the new version of this extension.");
-    if (
-      !(await confirm({ nonInteractive: args.nonInteractive, force: args.force, default: true }))
-    ) {
-      throw new FirebaseError(
-        "Unable to update this extension instance without explicit consent for the change to 'BillingRequired'."
-      );
-    }
-  }
-}
-
-function compareResources(resource1: Resource, resource2: Resource) {
-  return resource1.name === resource2.name && resource1.type === resource2.type;
-}
-
-function getResourceReadableName(resource: Resource): string {
-  return resource.type === "firebaseextensions.v1beta.function"
-    ? `${resource.name} (Cloud Function): ${resource.description}\n`
-    : `${resource.name} (${resource.type})\n`;
-}
-
-/**
  * Prints a clickable link where users can download the source code for an Extension Version.
  */
 export function printSourceDownloadLink(sourceDownloadUri: string): void {
   const sourceDownloadMsg = `Want to review the source code that will be installed? Download it here: ${sourceDownloadUri}`;
   utils.logBullet(marked(sourceDownloadMsg));
+}
+
+/**
+ * Returns a string representing a Role, see
+ * https://cloud.google.com/iam/reference/rest/v1/organizations.roles#Role
+ * for more details on parameters of a Role.
+ * @param role to get info for
+ * @return {string} string representation for role
+ */
+export async function retrieveRoleInfo(role: string) {
+  const res = await iam.getRole(role);
+  return `  ${res.title} (${res.description})`;
+}
+
+async function displayRoles(roles: Role[]): Promise<string> {
+  const lines: string[] = await Promise.all(
+    roles.map((role: Role) => {
+      return retrieveRoleInfo(role.role);
+    })
+  );
+  return clc.bold("**Roles granted to this Extension**:\n") + lines.join("\n");
+}
+
+function displayApis(apis: Api[]): string {
+  const lines: string[] = apis.map((api: Api) => {
+    return `  ${api.apiName} (${api.reason})`;
+  });
+  return "**APIs used by this Extension**:\n" + lines.join("\n");
 }

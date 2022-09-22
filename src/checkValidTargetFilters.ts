@@ -23,6 +23,8 @@ function targetsHaveNoFilters(...targets: string[]): boolean {
   return targets.some((t) => !t.includes(":"));
 }
 
+const FILTERABLE_TARGETS = new Set(["hosting", "functions", "firestore", "storage", "database"]);
+
 /**
  * Validates that the target filters in options.only are valid.
  * Throws an error (rejects) if it is invalid.
@@ -37,14 +39,12 @@ export async function checkValidTargetFilters(options: Options): Promise<void> {
     if (options.except) {
       return reject(new FirebaseError("Cannot specify both --only and --except"));
     }
-    const nonFilteredTypes = VALID_DEPLOY_TARGETS.filter(
-      (t) => !["hosting", "functions", "firestore"].includes(t)
-    );
+    const nonFilteredTypes = VALID_DEPLOY_TARGETS.filter((t) => !FILTERABLE_TARGETS.has(t));
     const targetsForNonFilteredTypes = targetsForTypes(only, ...nonFilteredTypes);
     if (targetsForNonFilteredTypes.length && targetsHaveFilters(...targetsForNonFilteredTypes)) {
       return reject(
         new FirebaseError(
-          "Filters specified with colons (e.g. --only functions:func1,functions:func2) are only supported for functions, hosting, and firestore"
+          "Filters specified with colons (e.g. --only functions:func1,functions:func2) are only supported for functions, hosting, storage, and firestore"
         )
       );
     }

@@ -37,6 +37,9 @@ export function load(client: any): any {
   client.crashlytics = {};
   client.crashlytics.symbols = {};
   client.crashlytics.symbols.upload = loadCommand("crashlytics-symbols-upload");
+  client.crashlytics.mappingfile = {};
+  client.crashlytics.mappingfile.generateid = loadCommand("crashlytics-mappingfile-generateid");
+  client.crashlytics.mappingfile.upload = loadCommand("crashlytics-mappingfile-upload");
   client.database = {};
   client.database.get = loadCommand("database-get");
   client.database.instances = {};

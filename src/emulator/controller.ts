@@ -1,9 +1,9 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as fs from "fs";
 import * as path from "path";
 
 import { logger } from "../logger";
-import { track } from "../track";
+import { track, trackEmulator } from "../track";
 import * as utils from "../utils";
 import { EmulatorRegistry } from "./registry";
 import {
@@ -22,6 +22,7 @@ import { AuthEmulator } from "./auth";
 import { DatabaseEmulator, DatabaseEmulatorArgs } from "./databaseEmulator";
 import { FirestoreEmulator, FirestoreEmulatorArgs } from "./firestoreEmulator";
 import { HostingEmulator } from "./hostingEmulator";
+import { EventarcEmulator } from "./eventarcEmulator";
 import { FirebaseError } from "../error";
 import { getProjectId, needProjectId, getAliases, needProjectNumber } from "../projectUtils";
 import { PubsubEmulator } from "./pubsubEmulator";
@@ -35,7 +36,11 @@ import { EmulatorLogger } from "./emulatorLogger";
 import * as portUtils from "./portUtils";
 import { EmulatorHubClient } from "./hubClient";
 import { promptOnce } from "../prompt";
-import { FLAG_EXPORT_ON_EXIT_NAME, JAVA_DEPRECATION_WARNING } from "./commandUtils";
+import {
+  FLAG_EXPORT_ON_EXIT_NAME,
+  JAVA_DEPRECATION_WARNING,
+  MIN_SUPPORTED_JAVA_MAJOR_VERSION,
+} from "./commandUtils";
 import { fileExistsSync } from "../fsutils";
 import { StorageEmulator } from "./storage";
 import { getStorageRulesConfig } from "./storage/rules/config";
@@ -135,19 +140,6 @@ async function getAndCheckAddress(emulator: Emulators, options: Options): Promis
 }
 
 /**
- * Starts a specific emulator instance
- * @param instance
- */
-export async function startEmulator(instance: EmulatorInstance): Promise<void> {
-  const name = instance.getName();
-
-  // Log the command for analytics
-  void track("Emulator Run", name);
-
-  await EmulatorRegistry.start(instance);
-}
-
-/**
  * Exports emulator data on clean exit (SIGINT or process end)
  * @param options
  */
@@ -159,7 +151,7 @@ export async function exportOnExit(options: any) {
         `Automatically exporting data using ${FLAG_EXPORT_ON_EXIT_NAME} "${exportOnExitDir}" ` +
           "please wait for the export to finish..."
       );
-      await exportEmulatorData(exportOnExitDir, options);
+      await exportEmulatorData(exportOnExitDir, options, /* initiatedBy= */ "exit");
     } catch (e: any) {
       utils.logWarning(e);
       utils.logWarning(`Automatic export to "${exportOnExitDir}" failed, going to exit now...`);
@@ -356,9 +348,8 @@ export async function startAll(
       `No emulators to start, run ${clc.bold("firebase init emulators")} to get started.`
     );
   }
-  const deprecationNotices: string[] = [];
   if (targets.some(requiresJava)) {
-    if (!(await commandUtils.checkJavaSupported())) {
+    if ((await commandUtils.checkJavaMajorVersion()) < MIN_SUPPORTED_JAVA_MAJOR_VERSION) {
       utils.logLabeledError("emulators", JAVA_DEPRECATION_WARNING, "warn");
       throw new FirebaseError(JAVA_DEPRECATION_WARNING);
     }
@@ -367,7 +358,8 @@ export async function startAll(
   hubLogger.logLabeled("BULLET", "emulators", `Starting emulators: ${targets.join(", ")}`);
 
   const projectId: string = getProjectId(options) || ""; // TODO: Next breaking change, consider making this fall back to demo project.
-  if (Constants.isDemoProject(projectId)) {
+  const isDemoProject = Constants.isDemoProject(projectId);
+  if (isDemoProject) {
     hubLogger.logLabeled(
       "BULLET",
       "emulators",
@@ -404,6 +396,19 @@ export async function startAll(
     }
   }
 
+  function startEmulator(instance: EmulatorInstance): Promise<void> {
+    const name = instance.getName();
+
+    // Log the command for analytics
+    void track("Emulator Run", name);
+    void trackEmulator("emulator_run", {
+      emulator_name: name,
+      is_demo_project: String(isDemoProject),
+    });
+
+    return EmulatorRegistry.start(instance);
+  }
+
   if (shouldStart(options, Emulators.HUB)) {
     const hubAddr = await getAndCheckAddress(Emulators.HUB, options);
     const hub = new EmulatorHub({ projectId, ...hubAddr });
@@ -426,6 +431,10 @@ export async function startAll(
     const foundMetadata = findExportMetadata(importDir);
     if (foundMetadata) {
       exportMetadata = foundMetadata;
+      void trackEmulator("emulator_import", {
+        initiated_by: "start",
+        emulator_name: Emulators.HUB,
+      });
     } else {
       hubLogger.logLabeled(
         "WARN",
@@ -460,6 +469,10 @@ export async function startAll(
         `Importing data from ${exportMetadataFilePath}`
       );
       args.seed_from_export = exportMetadataFilePath;
+      void trackEmulator("emulator_import", {
+        initiated_by: "start",
+        emulator_name: Emulators.FIRESTORE,
+      });
     }
 
     const config = options.config;
@@ -559,6 +572,11 @@ export async function startAll(
       const databaseExportDir = path.resolve(importDirAbsPath, exportMetadata.database.path);
 
       const files = fs.readdirSync(databaseExportDir).filter((f) => f.endsWith(".json"));
+      void trackEmulator("emulator_import", {
+        initiated_by: "start",
+        emulator_name: Emulators.DATABASE,
+        count: files.length,
+      });
       for (const f of files) {
         const fPath = path.join(databaseExportDir, f);
         const ns = path.basename(f, ".json");
@@ -589,7 +607,7 @@ export async function startAll(
       const importDirAbsPath = path.resolve(options.import);
       const authExportDir = path.resolve(importDirAbsPath, exportMetadata.auth.path);
 
-      await authEmulator.importData(authExportDir, projectId);
+      await authEmulator.importData(authExportDir, projectId, { initiatedBy: "start" });
     }
   }
 
@@ -625,7 +643,7 @@ export async function startAll(
       utils.assertIsString(options.import);
       const importDirAbsPath = path.resolve(options.import);
       const storageExportDir = path.resolve(importDirAbsPath, exportMetadata.storage.path);
-      storageEmulator.storageLayer.import(storageExportDir);
+      storageEmulator.storageLayer.import(storageExportDir, { initiatedBy: "start" });
     }
   }
 
@@ -666,7 +684,7 @@ export async function startAll(
   }
 
   if (shouldStart(options, Emulators.EXTENSIONS)) {
-    const projectNumber = Constants.isDemoProject(projectId)
+    const projectNumber = isDemoProject
       ? Constants.FAKE_PROJECT_NUMBER
       : await needProjectNumber(options);
     const aliases = getAliases(options, projectId);
@@ -683,8 +701,6 @@ export async function startAll(
       extensionsBackends
     );
     emulatableBackends.push(...filteredExtensionsBackends);
-    // Log the command for analytics
-    void track("Emulator Run", Emulators.EXTENSIONS);
     await startEmulator(extensionEmulator);
   }
 
@@ -733,6 +749,13 @@ export async function startAll(
       projectAlias: options.projectAlias,
     });
     await startEmulator(functionsEmulator);
+
+    const eventarcAddr = await getAndCheckAddress(Emulators.EVENTARC, options);
+    const eventarcEmulator = new EventarcEmulator({
+      host: eventarcAddr.host,
+      port: eventarcAddr.port,
+    });
+    await startEmulator(eventarcEmulator);
   }
 
   // Hosting emulator needs to start after all of the others so that we can detect
@@ -778,15 +801,25 @@ export async function startAll(
     await startEmulator(ui);
   }
 
+  let serviceEmulatorCount = 0;
   const running = EmulatorRegistry.listRunning();
   for (const name of running) {
     const instance = EmulatorRegistry.get(name);
     if (instance) {
       await instance.connect();
     }
+    if (ALL_SERVICE_EMULATORS.includes(name)) {
+      serviceEmulatorCount++;
+    }
   }
 
-  return { deprecationNotices };
+  void trackEmulator("emulators_started", {
+    count: serviceEmulatorCount,
+    count_all: running.length,
+    is_demo_project: String(isDemoProject),
+  });
+
+  return { deprecationNotices: [] };
 }
 
 /**
@@ -794,7 +827,7 @@ export async function startAll(
  * @param exportPath
  * @param options
  */
-export async function exportEmulatorData(exportPath: string, options: any) {
+export async function exportEmulatorData(exportPath: string, options: any, initiatedBy: string) {
   const projectId = options.project;
   if (!projectId) {
     throw new FirebaseError(
@@ -855,7 +888,7 @@ export async function exportEmulatorData(exportPath: string, options: any) {
 
   utils.logBullet(`Exporting data to: ${exportAbsPath}`);
   try {
-    await hubClient.postExport(exportAbsPath);
+    await hubClient.postExport({ path: exportAbsPath, initiatedBy });
   } catch (e: any) {
     throw new FirebaseError("Export request failed, see emulator logs for more information.", {
       exit: 1,

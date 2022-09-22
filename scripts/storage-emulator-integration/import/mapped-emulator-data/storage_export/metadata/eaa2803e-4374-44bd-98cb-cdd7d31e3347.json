@@ -1,0 +1,20 @@
+{
+  "name": "test_upload.jpg",
+  "bucket": "fake-project-id.appspot.com",
+  "contentType": "application/octet-stream",
+  "metageneration": 1,
+  "generation": 1648084940926,
+  "storageClass": "STANDARD",
+  "contentDisposition": "inline",
+  "cacheControl": "public, max-age=3600",
+  "contentEncoding": "identity",
+  "downloadTokens": [
+    "c3c71086-95a8-445d-96e7-f625972de4b0"
+  ],
+  "etag": "PQJQBXRweACX9yRsBEInQjOJ/0s",
+  "timeCreated": "2022-03-24T01:22:20.926Z",
+  "updated": "2022-03-24T01:22:20.926Z",
+  "size": 0,
+  "md5Hash": "1B2M2Y8AsgTpgAmY7PhCfg==",
+  "crc32c": "0"
+}

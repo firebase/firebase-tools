@@ -20,7 +20,7 @@ const SAMPLE_OPTIONS: Options = {
   filteredTargets: [],
   rc: new RC(),
 };
-const UNFILTERABLE_TARGETS = ["database", "storage", "remoteconfig", "extensions"];
+const UNFILTERABLE_TARGETS = ["remoteconfig", "extensions"];
 
 describe("checkValidTargetFilters", () => {
   it("should resolve", async () => {

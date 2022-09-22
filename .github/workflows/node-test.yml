@@ -67,6 +67,8 @@ jobs:
       CI_JOB_ID: ${{ github.action }}
       FBTOOLS_TARGET_PROJECT: ${{ secrets.FBTOOLS_TARGET_PROJECT }}
       FBTOOLS_CLIENT_INTEGRATION_SITE: ${{ secrets.FBTOOLS_CLIENT_INTEGRATION_SITE }}
+      CI_RUN_ID: ${{ github.run_id }}
+      CI_RUN_ATTEMPT: ${{ github.run_attempt }}
 
     strategy:
       fail-fast: false
@@ -75,11 +77,13 @@ jobs:
           - "16"
         script:
           - npm run test:hosting
+          # - npm run test:hosting-rewrites # Long-running test that might conflict across test runs. Run this manually.
           - npm run test:client-integration
           - npm run test:emulator
           - npm run test:import-export
           - npm run test:extensions-emulator
           - npm run test:triggers-end-to-end
+          - npm run test:triggers-end-to-end:inspect
           - npm run test:storage-deploy
           - npm run test:storage-emulator-integration
     steps:
@@ -118,6 +122,8 @@ jobs:
       CI_JOB_ID: ${{ github.action }}
       FBTOOLS_TARGET_PROJECT: ${{ secrets.FBTOOLS_TARGET_PROJECT }}
       FBTOOLS_CLIENT_INTEGRATION_SITE: ${{ secrets.FBTOOLS_CLIENT_INTEGRATION_SITE }}
+      CI_RUN_ID: ${{ github.run_id }}
+      CI_RUN_ATTEMPT: ${{ github.run_attempt }}
 
     strategy:
       fail-fast: false
@@ -126,11 +132,13 @@ jobs:
           - "16"
         script:
           - npm run test:hosting
+          # - npm run test:hosting-rewrites # Long-running test that might conflict across test runs. Run this manually.
           - npm run test:client-integration
           - npm run test:emulator
           # - npm run test:import-export # Fails becuase port 4000 is taken after first run - hub not shhutting down?
           # - npm run test:extensions-emulator # Fails due to cannot find module sharp (not waiting for npm install?)
           - npm run test:triggers-end-to-end
+          - npm run test:triggers-end-to-end:inspect
           - npm run test:storage-deploy
           # - npm run test:storage-emulator-integration
     steps:

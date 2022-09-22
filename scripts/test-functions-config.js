@@ -9,7 +9,7 @@
  * - projectId defaults to `functions-integration-test`
  */
 
-var clc = require("cli-color");
+var clc = require("colorette");
 var exec = require("child_process").exec;
 var execSync = require("child_process").execSync;
 var expect = require("chai").expect;

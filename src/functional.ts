@@ -110,3 +110,26 @@ export function partition<T>(arr: T[], callbackFn: (elem: T) => boolean): [T[], 
     [[], []]
   );
 }
+
+/**
+ * Create a map of transformed values for all keys.
+ */
+export function mapObject<T, V>(
+  input: Record<string, T>,
+  transform: (t: T) => V
+): Record<string, V> {
+  const result: Record<string, V> = {};
+  for (const [k, v] of Object.entries(input)) {
+    result[k] = transform(v);
+  }
+  return result;
+}
+
+export const nullsafeVisitor =
+  <First, Rest extends unknown[], Ret>(func: (first: First, ...rest: Rest) => Ret, ...rest: Rest) =>
+  (first: First | null): Ret | null => {
+    if (first === null) {
+      return null;
+    }
+    return func(first, ...rest);
+  };

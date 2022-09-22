@@ -1,5 +1,5 @@
 import * as chokidar from "chokidar";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as fs from "fs";
 import * as path from "path";
 import * as http from "http";

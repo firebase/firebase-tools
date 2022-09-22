@@ -1,4 +1,4 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
 import * as rtdb from "../../rtdb";
 import * as utils from "../../utils";
@@ -16,7 +16,7 @@ export function release(context: any): Promise<any> {
   const deploys = context.database.deploys;
   const ruleFiles = context.database.ruleFiles;
 
-  utils.logBullet(clc.bold.cyan("database: ") + "releasing rules...");
+  utils.logBullet(clc.bold(clc.cyan("database: ")) + "releasing rules...");
   return Promise.all(
     deploys.map((deploy: any) => {
       return rtdb
@@ -25,7 +25,7 @@ export function release(context: any): Promise<any> {
         })
         .then(() => {
           utils.logSuccess(
-            clc.bold.green("database: ") +
+            clc.bold(clc.green("database: ")) +
               "rules for database " +
               clc.bold(deploy.instance) +
               " released successfully"

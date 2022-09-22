@@ -1,5 +1,5 @@
 import { Command } from "../command";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as fsi from "../firestore/indexes";
 import { logger } from "../logger";
 import { requirePermissions } from "../requirePermissions";
@@ -24,12 +24,12 @@ export const command = new Command("firestore:indexes")
     const indexSpec = indexApi.makeIndexSpec(indexes, fieldOverrides);
 
     if (options.pretty) {
-      logger.info(clc.bold.white("Compound Indexes"));
+      logger.info(clc.bold(clc.white("Compound Indexes")));
       indexApi.prettyPrintIndexes(indexes);
 
       if (fieldOverrides) {
         logger.info();
-        logger.info(clc.bold.white("Field Overrides"));
+        logger.info(clc.bold(clc.white("Field Overrides")));
         indexApi.printFieldOverrides(fieldOverrides);
       }
     } else {

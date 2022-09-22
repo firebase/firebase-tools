@@ -1,6 +1,6 @@
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const { marked } = require("marked");
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
 import { ExtensionVersion, RegistryLaunchStage } from "./types";
 import { printSourceDownloadLink } from "./displayExtensionInfo";
@@ -35,7 +35,7 @@ function displayExperimentalWarning() {
   utils.logLabeledBullet(
     logPrefix,
     marked(
-      `${clc.yellow.bold("Important")}: This extension is ${clc.bold(
+      `${clc.yellow(clc.bold("Important"))}: This extension is ${clc.bold(
         "experimental"
       )} and may not be production-ready. Its functionality might change in backward-incompatible ways before its official release, or it may be discontinued.`
     )

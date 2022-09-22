@@ -1,4 +1,4 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as semver from "semver";
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const { marked } = require("marked");
@@ -7,7 +7,6 @@ import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import * as extensionsApi from "./extensionsApi";
 import { ExtensionSource, ExtensionSpec } from "./types";
-import * as refs from "./refs";
 import {
   createSourceFromLocation,
   logPrefix,
@@ -15,12 +14,7 @@ import {
   isLocalOrURLPath,
 } from "./extensionsHelper";
 import * as utils from "../utils";
-import {
-  displayUpdateChangesNoInput,
-  displayUpdateChangesRequiringConfirmation,
-  displayExtInfo,
-} from "./displayExtensionInfo";
-import * as changelog from "./changelog";
+import { displayExtInfo } from "./displayExtensionInfo";
 
 function invalidSourceErrMsgTemplate(instanceId: string, source: string): string {
   return `Unable to update from the source \`${clc.bold(
@@ -85,26 +79,6 @@ export function warningUpdateToOtherSource(sourceOrigin: SourceOrigin) {
   }
   const warning = `All the instance's resources and logic will be overwritten to use the source code and files from the ${targetText}.\n`;
   logger.info(marked(warning));
-}
-
-/**
- * Displays all differences between spec and newSpec.
- * First, displays all changes that do not require explicit confirmation,
- * then prompts the user for each change that requires confirmation.
- *
- * @param spec A current extensionSpec
- * @param newSpec A extensionSpec to compare to
- * @param published
- */
-export async function displayChanges(args: {
-  spec: ExtensionSpec;
-  newSpec: ExtensionSpec;
-  nonInteractive: boolean;
-  force: boolean;
-}): Promise<void> {
-  utils.logLabeledBullet("extensions", "This update contains the following changes:");
-  displayUpdateChangesNoInput(args.spec, args.newSpec);
-  await displayUpdateChangesRequiringConfirmation(args);
 }
 
 /**
@@ -184,7 +158,7 @@ export async function updateFromLocalSource(
   localSource: string,
   existingSpec: ExtensionSpec
 ): Promise<string> {
-  displayExtInfo(instanceId, "", existingSpec, false);
+  await displayExtInfo(instanceId, "", existingSpec, false);
   let source;
   try {
     source = await createSourceFromLocation(projectId, localSource);
@@ -214,7 +188,7 @@ export async function updateFromUrlSource(
   urlSource: string,
   existingSpec: ExtensionSpec
 ): Promise<string> {
-  displayExtInfo(instanceId, "", existingSpec, false);
+  await displayExtInfo(instanceId, "", existingSpec, false);
   let source;
   try {
     source = await createSourceFromLocation(projectId, urlSource);
@@ -228,69 +202,6 @@ export async function updateFromUrlSource(
   showUpdateVersionInfo(instanceId, existingSpec.version, source.spec.version, urlSource);
   warningUpdateToOtherSource(SourceOrigin.URL);
   return source.name;
-}
-
-/**
- * @param instanceId Id of the instance to update
- * @param extVersionRef extension reference of extension source to update to (publisherId/extensionId@versionId)
- * @param existingSpec ExtensionSpec of existing instance source
- * @param existingSource name of existing instance source
- */
-export async function updateToVersionFromPublisherSource(
-  projectId: string,
-  instanceId: string,
-  extVersionRef: string,
-  existingSpec: ExtensionSpec
-): Promise<string> {
-  let source;
-  const ref = refs.parse(extVersionRef);
-  const version = ref.version;
-  const extensionRef = refs.toExtensionRef(ref);
-  displayExtInfo(instanceId, ref.publisherId, existingSpec, true);
-  const extension = await extensionsApi.getExtension(extensionRef);
-  try {
-    source = await extensionsApi.getExtensionVersion(extVersionRef);
-  } catch (err: any) {
-    throw new FirebaseError(
-      `Could not find source '${clc.bold(extVersionRef)}' because (${clc.bold(
-        version
-      )}) is not a published version. To update, use the latest version of this extension (${clc.bold(
-        extension.latestVersion
-      )}).`
-    );
-  }
-
-  showUpdateVersionInfo(instanceId, existingSpec.version, source.spec.version, extVersionRef);
-  warningUpdateToOtherSource(SourceOrigin.PUBLISHED_EXTENSION);
-  const releaseNotes = await changelog.getReleaseNotesForUpdate({
-    extensionRef,
-    fromVersion: existingSpec.version,
-    toVersion: source.spec.version,
-  });
-  if (Object.keys(releaseNotes).length) {
-    changelog.displayReleaseNotes(releaseNotes, existingSpec.version);
-  }
-  return source.name;
-}
-
-/**
- * @param instanceId Id of the instance to update
- * @param extRef extension reference of extension source to update to (publisherId/extensionId)
- * @param existingSpec ExtensionSpec of existing instance source
- * @param existingSource name of existing instance source
- */
-export async function updateFromPublisherSource(
-  projectId: string,
-  instanceId: string,
-  extRef: string,
-  existingSpec: ExtensionSpec
-): Promise<string> {
-  return updateToVersionFromPublisherSource(
-    projectId,
-    instanceId,
-    `${extRef}@latest`,
-    existingSpec
-  );
 }
 
 export function inferUpdateSource(updateSource: string, existingRef: string): string {

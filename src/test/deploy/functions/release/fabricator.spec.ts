@@ -103,6 +103,7 @@ describe("Fabricator", () => {
       },
     },
     appEngineLocation: "us-central1",
+    projectNumber: "1234567",
   };
   let fab: fabricator.Fabricator;
   beforeEach(() => {
@@ -659,7 +660,10 @@ describe("Fabricator", () => {
       gcfv2.createFunction.resolves({ name: "op", done: false });
       poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
       run.setInvokerCreate.resolves();
-      const ep = endpoint({ scheduleTrigger: {} }, { platform: "gcfv2" });
+      const ep = endpoint(
+        { eventTrigger: { eventType: "event", eventFilters: {}, retry: false } },
+        { platform: "gcfv2" }
+      );
 
       await fab.createV2Function(ep);
       expect(run.setInvokerCreate).to.not.have.been.called;
@@ -762,7 +766,10 @@ describe("Fabricator", () => {
       gcfv2.updateFunction.resolves({ name: "op", done: false });
       poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
       run.setInvokerUpdate.resolves();
-      const ep = endpoint({ scheduleTrigger: {} }, { platform: "gcfv2" });
+      const ep = endpoint(
+        { eventTrigger: { eventType: "event", eventFilters: {}, retry: false } },
+        { platform: "gcfv2" }
+      );
 
       await fab.updateV2Function(ep);
       expect(run.setInvokerUpdate).to.not.have.been.called;
@@ -1067,6 +1074,31 @@ describe("Fabricator", () => {
     });
   });
 
+  describe("upsertScheduleV2", () => {
+    const ep = {
+      ...endpoint({
+        scheduleTrigger: {
+          schedule: "every 5 minutes",
+        },
+      }),
+      platform: "gcfv2",
+    } as backend.Endpoint & backend.ScheduleTriggered;
+
+    it("upserts schedules", async () => {
+      scheduler.createOrReplaceJob.resolves();
+      await fab.upsertScheduleV2(ep);
+      expect(scheduler.createOrReplaceJob).to.have.been.called;
+    });
+
+    it("wraps errors", async () => {
+      scheduler.createOrReplaceJob.rejects(new Error("Fail"));
+      await expect(fab.upsertScheduleV2(ep)).to.eventually.be.rejectedWith(
+        reporter.DeploymentError,
+        "upsert schedule"
+      );
+    });
+  });
+
   describe("deleteScheduleV1", () => {
     const ep = endpoint({
       scheduleTrigger: {
@@ -1094,6 +1126,31 @@ describe("Fabricator", () => {
       await expect(fab.deleteScheduleV1(ep)).to.eventually.be.rejectedWith(
         reporter.DeploymentError,
         "delete topic"
+      );
+    });
+  });
+
+  describe("deleteScheduleV2", () => {
+    const ep = {
+      ...endpoint({
+        scheduleTrigger: {
+          schedule: "every 5 minutes",
+        },
+      }),
+      platform: "gcfv2",
+    } as backend.Endpoint & backend.ScheduleTriggered;
+
+    it("deletes schedules and topics", async () => {
+      scheduler.deleteJob.resolves();
+      await fab.deleteScheduleV2(ep);
+      expect(scheduler.deleteJob).to.have.been.called;
+    });
+
+    it("wraps errors", async () => {
+      scheduler.deleteJob.rejects(new Error("Fail"));
+      await expect(fab.deleteScheduleV2(ep)).to.eventually.be.rejectedWith(
+        reporter.DeploymentError,
+        "delete schedule"
       );
     });
   });
@@ -1493,6 +1550,7 @@ describe("Fabricator", () => {
         endpointsToCreate: [ep1, ep2],
         endpointsToUpdate: [{ endpoint: ep3 }],
         endpointsToDelete: [],
+        endpointsToSkip: [],
       };
 
       let sourceTokenScraper: scraper.SourceTokenScraper | undefined;
@@ -1525,11 +1583,47 @@ describe("Fabricator", () => {
         endpointsToCreate: [ep],
         endpointsToUpdate: [],
         endpointsToDelete: [],
+        endpointsToSkip: [],
       };
 
       const results = await fab.applyChangeset(changes);
       expect(results[0].error).to.be.instanceOf(reporter.DeploymentError);
       expect(results[0].error?.message).to.match(/create function/);
+    });
+  });
+
+  describe("getLogSuccessMessage", () => {
+    it("should return appropriate messaging for create case", () => {
+      const ep = endpoint({ httpsTrigger: {} }, { id: "potato" });
+
+      const message = fab.getLogSuccessMessage("create", ep);
+
+      expect(message).to.contain(`functions[potato(us-central1)]`);
+      expect(message).to.contain(`Successful create operation`);
+    });
+
+    it("should return appropriate messaging for skip case", () => {
+      const ep = endpoint({ httpsTrigger: {} }, { id: "tomato" });
+      ep.hash = "hashyhash";
+
+      const message = fab.getLogSuccessMessage("skip", ep);
+
+      expect(message).to.contain(`functions[tomato(us-central1)]`);
+      expect(message).to.contain(`Skipped (No changes detected)`);
+    });
+  });
+
+  describe("getSkippedDeployingNopOpMessage", () => {
+    it("should return appropriate messaging", () => {
+      const ep1 = endpoint({ httpsTrigger: {} }, { id: "function1" });
+      const ep2 = endpoint({ httpsTrigger: {} }, { id: "function2" });
+
+      const message = fab.getSkippedDeployingNopOpMessage([ep1, ep2]);
+
+      expect(message).to.contain(`functions:`);
+      expect(message).to.contain(`You can re-deploy skipped functions with:`);
+      expect(message).to.contain(`firebase deploy --only functions:function1,function2`);
+      expect(message).to.contain(`FUNCTIONS_DEPLOY_UNCHANGED=true firebase deploy`);
     });
   });
 
@@ -1541,6 +1635,7 @@ describe("Fabricator", () => {
       endpointsToCreate: [createEP],
       endpointsToUpdate: [],
       endpointsToDelete: [deleteEP],
+      endpointsToSkip: [],
     };
 
     const results = await fab.applyChangeset(changes);
@@ -1553,11 +1648,13 @@ describe("Fabricator", () => {
     const createEP = endpoint({ httpsTrigger: {} }, { id: "A" });
     const updateEP = endpoint({ httpsTrigger: {} }, { id: "B" });
     const deleteEP = endpoint({ httpsTrigger: {} }, { id: "C" });
+    const skipEP = endpoint({ httpsTrigger: {} }, { id: "D" });
     const update: planner.EndpointUpdate = { endpoint: updateEP };
     const changes: planner.Changeset = {
       endpointsToCreate: [createEP],
       endpointsToUpdate: [update],
       endpointsToDelete: [deleteEP],
+      endpointsToSkip: [skipEP],
     };
 
     const createEndpoint = sinon.stub(fab, "createEndpoint");
@@ -1588,11 +1685,13 @@ describe("Fabricator", () => {
           endpointsToCreate: [ep1],
           endpointsToUpdate: [],
           endpointsToDelete: [],
+          endpointsToSkip: [],
         },
         "us-west1": {
           endpointsToCreate: [],
           endpointsToUpdate: [],
           endpointsToDelete: [ep2],
+          endpointsToSkip: [],
         },
       };
 

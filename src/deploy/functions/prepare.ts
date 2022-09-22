@@ -1,4 +1,4 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
 import * as args from "./args";
 import * as backend from "./backend";
@@ -11,6 +11,7 @@ import * as validate from "./validate";
 import * as ensure from "./ensure";
 import { Options } from "../../options";
 import {
+  EndpointFilter,
   endpointMatchesAnyFilter,
   getEndpointFilters,
   groupEndpointsByCodebase,
@@ -28,6 +29,9 @@ import { FirebaseError } from "../../error";
 import { configForCodebase, normalizeAndValidate } from "../../functions/projectConfig";
 import { AUTH_BLOCKING_EVENTS } from "../../functions/events/v1";
 import { generateServiceIdentity } from "../../gcp/serviceusage";
+import { previews } from "../../previews";
+import { applyBackendHashToBackends } from "./cache/applyHash";
+import { allEndpoints, Backend } from "./backend";
 
 function hasUserConfig(config: Record<string, unknown>): boolean {
   // "firebase" key is always going to exist in runtime config.
@@ -112,19 +116,45 @@ export async function prepare(
     const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
     const envs = { ...userEnvs, ...firebaseEnvs };
     const wantBuild: build.Build = await runtimeDelegate.discoverBuild(runtimeConfig, firebaseEnvs);
-    const wantBackend: backend.Backend = await build.resolveBackend(
+    const { backend: wantBackend, envs: resolvedEnvs } = await build.resolveBackend(
       wantBuild,
+      firebaseConfig,
       userEnvOpt,
-      userEnvs
+      userEnvs,
+      options.nonInteractive
     );
+
+    let hasEnvsFromParams = false;
     wantBackend.environmentVariables = envs;
+    for (const envName of Object.keys(resolvedEnvs)) {
+      const envValue = resolvedEnvs[envName]?.toString();
+      if (
+        envValue &&
+        !resolvedEnvs[envName].internal &&
+        !Object.prototype.hasOwnProperty.call(wantBackend.environmentVariables, envName)
+      ) {
+        wantBackend.environmentVariables[envName] = envValue;
+        hasEnvsFromParams = true;
+      }
+    }
+
     for (const endpoint of backend.allEndpoints(wantBackend)) {
       endpoint.environmentVariables = wantBackend.environmentVariables;
       endpoint.codebase = codebase;
     }
     wantBackends[codebase] = wantBackend;
-    if (functionsEnv.hasUserEnvs(userEnvOpt)) {
+    if (functionsEnv.hasUserEnvs(userEnvOpt) || hasEnvsFromParams) {
       codebaseUsesEnvs.push(codebase);
+    }
+
+    if (wantBuild.params.length > 0) {
+      if (wantBuild.params.every((p) => p.type !== "secret")) {
+        void track("functions_params_in_build", "env_only");
+      } else {
+        void track("functions_params_in_build", "with_secrets");
+      }
+    } else {
+      void track("functions_params_in_build", "none");
     }
   }
 
@@ -144,10 +174,14 @@ export async function prepare(
       );
     }
     if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv2")) {
-      source.functionsSourceV2 = await prepareFunctionsUpload(sourceDir, config);
+      const packagedSource = await prepareFunctionsUpload(sourceDir, config);
+      source.functionsSourceV2 = packagedSource?.pathToSource;
+      source.functionsSourceV2Hash = packagedSource?.hash;
     }
     if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv1")) {
-      source.functionsSourceV1 = await prepareFunctionsUpload(sourceDir, config, runtimeConfig);
+      const packagedSource = await prepareFunctionsUpload(sourceDir, config, runtimeConfig);
+      source.functionsSourceV1 = packagedSource?.pathToSource;
+      source.functionsSourceV1Hash = packagedSource?.hash;
     }
     context.sources[codebase] = source;
   }
@@ -232,6 +266,15 @@ export async function prepare(
   await ensureServiceAgentRoles(projectId, projectNumber, matchingBackend, haveBackend);
   await validate.secretsAreValid(projectId, matchingBackend);
   await ensure.secretAccess(projectId, matchingBackend, haveBackend);
+
+  /**
+   * ===Phase 7 Generates the hashes for each of the functions now that secret versions have been resolved.
+   * This must be called after `await validate.secretsAreValid`.
+   */
+  updateEndpointTargetedStatus(wantBackends, context.filters || []);
+  if (previews.skipdeployingnoopfunctions) {
+    applyBackendHashToBackends(wantBackends, context);
+  }
 }
 
 /**
@@ -261,8 +304,9 @@ export function inferDetailsFromExisting(
 
     // If the instance size is set out of bounds or was previously set and is now
     // unset we still need to remember it so that the min instance price estimator
-    // is accurate.
-    if (!wantE.availableMemoryMb && haveE.availableMemoryMb) {
+    // is accurate. If, on the other hand, we have a null value for availableMemoryMb
+    // we need to keep that null (meaning "use defaults").
+    if (typeof wantE.availableMemoryMb === "undefined" && haveE.availableMemoryMb) {
       wantE.availableMemoryMb = haveE.availableMemoryMb;
     }
 
@@ -270,10 +314,10 @@ export function inferDetailsFromExisting(
     // the customer sets CPU <1. We'll instead error that you can't have both.
     // We may want to handle this case, though it might also be surprising to
     // customers if they _don't_ get an error and we silently drop concurrency.
-    if (!wantE.concurrency && haveE.concurrency) {
+    if (typeof wantE.concurrency === "undefined" && haveE.concurrency) {
       wantE.concurrency = haveE.concurrency;
     }
-    if (!wantE.cpu && haveE.cpu) {
+    if (typeof wantE.cpu === "undefined" && haveE.cpu) {
       wantE.cpu = haveE.cpu;
     }
 
@@ -300,6 +344,17 @@ function maybeCopyTriggerRegion(wantE: backend.Endpoint, haveE: backend.Endpoint
     return;
   }
   wantE.eventTrigger.region = haveE.eventTrigger.region;
+}
+
+export function updateEndpointTargetedStatus(
+  wantBackends: Record<string, Backend>,
+  endpointFilters: EndpointFilter[]
+): void {
+  for (const wantBackend of Object.values(wantBackends)) {
+    for (const endpoint of allEndpoints(wantBackend)) {
+      endpoint.targetedByOnly = endpointMatchesAnyFilter(endpoint, endpointFilters);
+    }
+  }
 }
 
 /** Figures out the blocking endpoint options by taking the OR of every trigger option and reassigning that value back to the endpoint. */

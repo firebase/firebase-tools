@@ -1,4 +1,4 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const { marked } = require("marked");
 import TerminalRenderer = require("marked-terminal");
@@ -99,7 +99,7 @@ export const command = new Command("ext:install [extensionName]")
       // TODO(b/228444119): Create source should happen at deploy time.
       // Should parse spec locally so we don't need project ID.
       source = await createSourceFromLocation(needProjectId({ projectId }), extensionName);
-      displayExtInfo(extensionName, "", source.spec);
+      await displayExtInfo(extensionName, "", source.spec);
       void track("Extension Install", "Install by Source", options.interactive ? 1 : 0);
     } else {
       void track("Extension Install", "Install by Extension Ref", options.interactive ? 1 : 0);
@@ -135,7 +135,7 @@ export const command = new Command("ext:install [extensionName]")
     if (learnMore) {
       utils.logLabeledBullet(
         logPrefix,
-        `You selected: ${clc.bold(spec.displayName)}.\n` +
+        `You selected: ${clc.bold(spec.displayName || "")}.\n` +
           `${spec.description}\n` +
           `View details: https://firebase.google.com/products/extensions/${spec.name}\n`
       );
@@ -167,7 +167,7 @@ async function infoExtensionVersion(args: {
 }): Promise<void> {
   const ref = refs.parse(args.extensionName);
   const extension = await extensionsApi.getExtension(refs.toExtensionRef(ref));
-  displayExtInfo(args.extensionName, ref.publisherId, args.extensionVersion.spec, true);
+  await displayExtInfo(args.extensionName, ref.publisherId, args.extensionVersion.spec, true);
   await displayWarningPrompts(
     ref.publisherId,
     extension.registryLaunchStage,
