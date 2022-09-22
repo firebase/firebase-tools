@@ -345,45 +345,12 @@ describeAuthEmulator("createSessionCookie", ({ authApi }) => {
   });
 });
 
-describeAuthEmulator(
-  "accounts:lookup",
-  ({ authApi }) => {
-    it("should throw exception when project ID doesn't match the defaultProjectId", async () => {
-      const { localId } = await registerAnonUser(authApi());
-
-      await authApi()
-        .post(`/identitytoolkit.googleapis.com/v1/projects/someprojectid/accounts:lookup`)
-        .set("Authorization", "Bearer owner")
-        .send({ localId: [localId] })
-        .then((res) => {
-          expectStatusCode(400, res);
-          expect(res.body.error.message).to.contain("Single project mode enabled");
-        });
-    });
-  },
-  /* singleProjectMode= */ true
-);
-
 describeAuthEmulator("accounts:lookup", ({ authApi }) => {
   it("should return user by localId when privileged", async () => {
     const { localId } = await registerAnonUser(authApi());
 
     await authApi()
       .post(`/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:lookup`)
-      .set("Authorization", "Bearer owner")
-      .send({ localId: [localId] })
-      .then((res) => {
-        expectStatusCode(200, res);
-        expect(res.body.users).to.have.length(1);
-        expect(res.body.users[0].localId).to.equal(localId);
-      });
-  });
-
-  it("should not throw an exception on project ID mismatch if singleProjectMode is false", async () => {
-    const { localId } = await registerAnonUser(authApi());
-
-    await authApi()
-      .post(`/identitytoolkit.googleapis.com/v1/projects/someprojectid/accounts:lookup`)
       .set("Authorization", "Bearer owner")
       .send({ localId: [localId] })
       .then((res) => {
@@ -587,6 +554,15 @@ describeAuthEmulator("emulator utility APIs", ({ authApi }) => {
       });
   });
 
+  it("should not throw an exception on project ID mismatch if singleProjectMode is false", async () => {
+    await authApi()
+      .get(`/emulator/v1/projects/someproject/config`) // note the "wrong" project ID here
+      .send()
+      .then((res) => {
+        expectStatusCode(200, res);
+      });
+  });
+
   it("should update allowDuplicateEmails on PATCH /emulator/v1/projects/{PROJECT_ID}/config", async () => {
     await authApi()
       .patch(`/emulator/v1/projects/${PROJECT_ID}/config`)
@@ -608,3 +584,19 @@ describeAuthEmulator("emulator utility APIs", ({ authApi }) => {
       });
   });
 });
+
+describeAuthEmulator(
+  "emulator utility API; singleProjectMode=true",
+  ({ authApi }) => {
+    it("should throw an exception on project ID mismatch if singleProjectMode is true", async () => {
+      await authApi()
+        .get(`/emulator/v1/projects/someproject/config`) // note the "wrong" project ID here
+        .send()
+        .then((res) => {
+          expectStatusCode(400, res);
+          expect(res.body.error.message).to.contain("single project mode");
+        });
+    });
+  },
+  /* singleProjectMode= */ true
+);

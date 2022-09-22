@@ -41,17 +41,19 @@ export type AuthTestUtils = {
 };
 
 // Keep a global auth server since start-up takes too long:
-let cachedAuthApp: Express.Application;
+const cachedAuthAppMap = new Map<boolean, Express.Application>();
 const projectStateForId = new Map<string, AgentProjectState>();
 
 async function createOrReuseApp(singleProjectMode: boolean): Promise<Express.Application> {
-  if (!cachedAuthApp) {
+  let cachedAuthApp: Express.Application | undefined = cachedAuthAppMap.get(singleProjectMode);
+  if (cachedAuthApp === undefined) {
     cachedAuthApp = await createApp(
       PROJECT_ID,
       singleProjectMode,
       singleProjectMode,
       projectStateForId
     );
+    cachedAuthAppMap.set(singleProjectMode, cachedAuthApp);
   }
   // Clear the state every time to make it work like brand new.
   // NOTE: This probably won't work with parallel mode if we ever enable it.

@@ -381,9 +381,6 @@ export async function createApp(
         throw new BadRequestError(errorString);
       }
     }
-    if (defaultProjectId !== projectId) {
-      throw new Error("exploding");
-    }
     if (!agentState) {
       agentState = new AgentProjectState(projectId);
       projectStateForId.set(projectId, agentState);
