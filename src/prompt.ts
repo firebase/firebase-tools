@@ -21,7 +21,7 @@ type Options = Record<string, any> & { nonInteractive?: boolean };
  * prompt is used to prompt the user for values. Specifically, any `name` of a
  * provided question will be checked against the `options` object. If `name`
  * exists as a key in `options`, it will *not* be prompted for. If `options`
- * contatins `nonInteractive = true`, then any `question.name` that does not
+ * contains `nonInteractive = true`, then any `question.name` that does not
  * have a value in `options` will cause an error to be returned. Once the values
  * are queried, the values for them are put onto the `options` object, and the
  * answers are returned.

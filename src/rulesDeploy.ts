@@ -11,7 +11,6 @@ import { promptOnce } from "./prompt";
 import { ListRulesetsEntry, Release, RulesetFile } from "./gcp/rules";
 import { getProjectNumber } from "./getProjectNumber";
 import { addServiceAccountToRoles, serviceAccountHasRoles } from "./gcp/resourceManager";
-import { previews } from "./previews";
 
 // The status code the Firebase Rules backend sends to indicate too many rulesets.
 const QUOTA_EXCEEDED_STATUS_CODE = 429;
@@ -183,7 +182,7 @@ export class RulesDeploy {
         this.rulesetNames[filename] = latestRulesetName;
         continue;
       }
-      if (previews.crossservicerules && service === RulesetServiceType.FIREBASE_STORAGE) {
+      if (service === RulesetServiceType.FIREBASE_STORAGE) {
         await this.checkStorageRulesIamPermissions(files[0]?.content);
       }
 
