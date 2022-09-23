@@ -121,7 +121,7 @@ export function experimentNameAutocorrect(malformed: string): string[] | null {
 let localPreferencesCache: Record<ExperimentName, boolean> | undefined = undefined;
 function localPreferences(): Record<ExperimentName, boolean> {
   if (!localPreferencesCache) {
-    localPreferencesCache = configstore.get("previews") as Record<ExperimentName, boolean>;
+    localPreferencesCache = (configstore.get("previews") || {}) as Record<ExperimentName, boolean>;
     for (const key of Object.keys(localPreferencesCache)) {
       if (!isValidExperiment(key)) {
         delete localPreferencesCache[key as ExperimentName];
