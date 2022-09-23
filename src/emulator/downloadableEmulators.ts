@@ -44,7 +44,7 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
     opts: {
       cacheDir: CACHE_DIR,
       remoteUrl:
-        "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v1.15.0.jar",
+        "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v1.15.1.jar",
       expectedSize: 61475851,
       expectedChecksum: "4f41d24a3c0f3b55ea22804a424cc0ee",
       namePrefix: "cloud-firestore-emulator",
