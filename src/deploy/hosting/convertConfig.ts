@@ -5,7 +5,7 @@ import * as api from "../../hosting/api";
 import { Payload } from "./args";
 import * as backend from "../functions/backend";
 import { Context } from "../functions/args";
-import { logLabeledBullet } from "../../utils";
+import { logLabeledBullet, logLabeledWarning, stringToStream } from "../../utils";
 import * as proto from "../../gcp/proto";
 import { bold } from "colorette";
 import * as tags from "../../hosting/serverlessTags";
@@ -43,45 +43,32 @@ function extractPattern(type: string, source: HostingSource): api.HasPattern {
 }
 
 /**
- * Finds a backend.Endpoint suitable for use as a Hosting rewrite target.
+ * Finds an endpoint suitable for deploy at a site given an id and optional region
  */
 export function findEndpointForRewrite(
   site: string,
   targetBackend: backend.Backend,
   id: string,
-  region?: string,
-  platform?: backend.FunctionsPlatform
+  region: string | undefined
 ): backend.Endpoint | undefined {
-  const matches = backend.allEndpoints(targetBackend).filter((e: backend.Endpoint) => {
-    if (platform && platform !== e.platform) {
-      return false;
-    }
-    if (region && region !== e.region) {
-      return false;
-    }
-    return id === e.id;
-  });
+  const endpoints = backend.allEndpoints(targetBackend).filter((e) => e.id === id);
 
-  const assertUsable = (e: backend.Endpoint): void => {
-    if (backend.isHttpsTriggered(e) || backend.isCallableTriggered(e)) {
+  if (endpoints.length === 0) {
+    return;
+  }
+  if (endpoints.length === 1) {
+    if (region && region !== endpoints[0].region) {
       return;
     }
-    throw new FirebaseError(
-      `Cannot rewrite to function ${e.id} because it is neither an HTTPS or Callable function`
-    );
-  };
-
-  if (matches.length === 0) {
-    return undefined;
-  } else if (matches.length === 1) {
-    assertUsable(matches[0]);
-    return matches[0];
+    return endpoints[0];
   }
-
-  // For now, if `us-central1` is specified, allow that to keep working.
-  const us = matches.find((e) => e.region === "us-central1");
-  if (us) {
-    assertUsable(us);
+  if (!region) {
+    const us = endpoints.find((e) => e.region === "us-central1");
+    if (!us) {
+      throw new FirebaseError(
+        `More than one backend found for function name: ${id}. If the function is deployed in multiple regions, you must specify a region.`
+      );
+    }
     logLabeledBullet(
       `hosting[${site}]`,
       `Function \`${id}\` found in multiple regions, defaulting to \`us-central1\`. ` +
@@ -89,9 +76,7 @@ export function findEndpointForRewrite(
     );
     return us;
   }
-  throw new FirebaseError(
-    `More than one backend found for function name: ${id}. If the function is deployed in multiple regions, you must specify a region.`
-  );
+  return endpoints.find((e) => e.region === region);
 }
 
 /**
@@ -114,10 +99,18 @@ export async function convertConfig(
   // We need to be able to do a rewrite to an existing function that is may not
   // even be part of Firebase's control or a function that we're currently
   // deploying.
-  const targetBackend: backend.Backend = backend.merge(
-    await backend.existingBackend(context),
-    ...Object.values(payload.functions || {}).map((payload) => payload.wantBackend)
-  );
+  let targetBackend: backend.Backend;
+  // N.B. havebackend is a partioned version of existingBackned so these cases
+  // could be consolidated, but tests currently test existence of endpoints in
+  // different locations.
+  if (payload.functions) {
+    targetBackend = backend.merge(
+      ...Object.values(payload.functions).map((p) => p.haveBackend),
+      ...Object.values(payload.functions).map((p) => p.wantBackend)
+    );
+  } else {
+    targetBackend = await backend.existingBackend(context);
+  }
 
   config.rewrites = deploy.config.rewrites
     ?.map((rewrite) => {
@@ -135,17 +128,29 @@ export async function convertConfig(
             "Expected firebase config to be normalized, but got legacy functions format"
           );
         }
-        const endpoint = findEndpointForRewrite(
-          deploy.site,
-          targetBackend,
-          rewrite.function.functionId,
-          rewrite.function.region
-        );
+        const id = rewrite.function.functionId;
+        const region = rewrite.function.region;
+        const endpoint = findEndpointForRewrite(deploy.site, targetBackend, id, region);
         if (!endpoint) {
-          throw new FirebaseError(`Unable to find function ${rewrite.function.functionId}`);
+          // This could possibly succeed if there has been a function written
+          // outside firebase tooling. But it will break in v2. We might need to
+          // revisit this.
+          logLabeledWarning(
+            `hosting[${deploy.site}]`,
+            `Unable to find a valid endpoint for function \`${id}\`, but still including it in the config`
+          );
+          const apiRewrite: api.Rewrite = { ...target, function: id };
+          if (region) {
+            apiRewrite.functionRegion = region;
+          }
+          return apiRewrite;
         }
-
         if (endpoint.platform === "gcfv1") {
+          if (!backend.isHttpsTriggered(endpoint) && !backend.isCallableTriggered(endpoint)) {
+            throw new FirebaseError(
+              `Function ${endpoint.id} is a gen 1 function and therefore must be an https function type`
+            );
+          }
           if (rewrite.function.pinTag) {
             throw new FirebaseError(
               `Function ${
@@ -256,5 +261,6 @@ export async function convertConfig(
     b ? "ADD" : "REMOVE"
   );
 
+  proto.pruneUndefiends(config);
   return config;
 }

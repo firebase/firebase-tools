@@ -262,10 +262,14 @@ export function normalize(configs: HostingMultiple): void {
 /**
  * Converts all configs from having a target to having a soruce
  */
-export function resolveTargets(configs: HostingMultiple, options: MockableOptions): void {
-  for (const config of configs) {
+export function resolveTargets(
+  configs: HostingMultiple,
+  options: MockableOptions
+): HostingMultiple {
+  return configs.map((config) => {
+    const newConfig = cloneDeep(config);
     if (!config.target) {
-      continue;
+      return newConfig;
     }
     const matchingTargets = options.rc.requireTarget(options.project!, "hosting", config.target);
     if (matchingTargets.length > 1) {
@@ -275,8 +279,9 @@ export function resolveTargets(configs: HostingMultiple, options: MockableOption
           `To clear, run:\n\n  firebase target:clear hosting ${config.target}`
       );
     }
-    config.site = matchingTargets[0];
-  }
+    newConfig.site = matchingTargets[0];
+    return newConfig;
+  });
 }
 
 /**
@@ -294,7 +299,7 @@ export function hostingConfig(options: MockableOptions): HostingMultiple {
     // we won't recognize a --only <site> when the config has a target.
     // This is the way I found this code and should bring up to others whether
     // we should change the behavior.
-    resolveTargets(configs, options);
+    configs = resolveTargets(configs, options);
     options.normalizedHostingConfig = configs;
   }
   return options.normalizedHostingConfig;

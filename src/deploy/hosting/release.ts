@@ -1,6 +1,5 @@
 import * as api from "../../hosting/api";
 import { logger } from "../../logger";
-import { needProjectNumber } from "../../projectUtils";
 import * as utils from "../../utils";
 import { convertConfig } from "./convertConfig";
 import { Payload } from "./args";
@@ -14,8 +13,6 @@ export async function release(context: Context, options: Options, payload: Paylo
   if (!context.hosting || !context.hosting.deploys) {
     return;
   }
-
-  const projectNumber = await needProjectNumber(options);
 
   logger.debug(JSON.stringify(context.hosting.deploys, null, 2));
   await Promise.all(

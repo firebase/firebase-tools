@@ -229,3 +229,27 @@ export function formatServiceAccount(serviceAccount: string, projectId: string):
   }
   return `serviceAccount:${serviceAccount}`;
 }
+
+/**
+ * Remove keys whose values are undefined.
+ * When we write an interface { foo?: number } there are three possible
+ * forms: { foo: 1 }, {}, and { foo: undefined }. The latter surprises
+ * most people and make unit test comparison flaky. This cleans up.
+ */
+// TODO: find out how to type this function so a struct can be passed in.
+export function pruneUndefiends(obj: any): void {
+  if (typeof obj !== "object") {
+    throw new FirebaseError("pruneUndefineds can only be called on an object");
+  }
+  for (const key of Object.keys(obj)) {
+    if (obj[key] === undefined) {
+      delete obj[key];
+    } else if (typeof obj[key] === object) {
+      if (Array.isArray(obj)) {
+        obj[key] = obj.map((v) => pruneUndefiends(v));
+      } else {
+        obj[key] = pruneUndefiends(obj[key]);
+      }
+    }
+  }
+}

@@ -5,6 +5,7 @@ import * as backend from "../../../deploy/functions/backend";
 import { Context, HostingDeploy } from "../../../deploy/hosting/context";
 import { HostingSingle } from "../../../firebaseConfig";
 import * as api from "../../../hosting/api";
+import { cloneDeep } from "../../../utils";
 
 const FUNCTION_ID = "function";
 const PROJECT_ID = "project";
@@ -15,7 +16,7 @@ const DEFAULT_CONTEXT: Context = {
   existingBackend: backend.empty(),
 };
 
-const DEFAULT_PAYLOAD = {};
+const DEFAULT_PAYLOAD: args.Payload = {};
 
 function endpoint(opts?: Partial<backend.Endpoint>): backend.Endpoint {
   // Createa type that allows us to not have a trigger
@@ -65,12 +66,12 @@ describe("convertConfig", () => {
     },
     {
       name: "checks for function region if unspecified",
-      input: { rewrites: [{ glob: "/foo", function: FUNCTION_ID }] },
-      want: { rewrites: [{ glob: "/foo", function: FUNCTION_ID, functionRegion: REGION }] },
+      input: { rewrites: [{ glob: "/foo", function: { functionId: FUNCTION_ID } }] },
+      want: { rewrites: [{ glob: "/foo", function: FUNCTION_ID, functionRegion: "us-central1" }] },
       payload: {
         functions: {
           default: {
-            wantBackend: backend.of(endpoint()),
+            wantBackend: backend.of(endpoint({ region: "us-central1" })),
             haveBackend: backend.empty(),
           },
         },
@@ -78,12 +79,12 @@ describe("convertConfig", () => {
     },
     {
       name: "discovers the function region of a callable function",
-      input: { rewrites: [{ glob: "/foo", function: FUNCTION_ID }] },
-      want: { rewrites: [{ glob: "/foo", function: FUNCTION_ID, functionRegion: REGION }] },
+      input: { rewrites: [{ glob: "/foo", function: { functionId: FUNCTION_ID } }] },
+      want: { rewrites: [{ glob: "/foo", function: FUNCTION_ID, functionRegion: "us-central1" }] },
       payload: {
         functions: {
           default: {
-            wantBackend: backend.of(endpoint({ callableTrigger: {} })),
+            wantBackend: backend.of(endpoint({ callableTrigger: {}, region: "us-central1" })),
             haveBackend: backend.empty(),
           },
         },
@@ -91,12 +92,14 @@ describe("convertConfig", () => {
     },
     {
       name: "returns rewrites for glob CF3",
-      input: { rewrites: [{ glob: "/foo", function: FUNCTION_ID, region: "europe-west2" }] },
+      input: {
+        rewrites: [{ glob: "/foo", function: { functionId: FUNCTION_ID, region: "europe-west2" } }],
+      },
       want: { rewrites: [{ glob: "/foo", function: FUNCTION_ID, functionRegion: "europe-west2" }] },
       payload: {
         functions: {
           default: {
-            wantBackend: backend.of(endpoint({ region: "europe_west2" }), endpoint()),
+            wantBackend: backend.of(endpoint({ region: "europe-west2" }), endpoint()),
             haveBackend: backend.empty(),
           },
         },
@@ -104,7 +107,7 @@ describe("convertConfig", () => {
     },
     {
       name: "defaults to a us-central1 rewrite if one is avaiable, v1 edition",
-      input: { rewrites: [{ glob: "/foo", function: FUNCTION_ID }] },
+      input: { rewrites: [{ glob: "/foo", function: { functionId: FUNCTION_ID } }] },
       want: { rewrites: [{ glob: "/foo", function: FUNCTION_ID, functionRegion: "us-central1" }] },
       payload: {
         functions: {
@@ -117,7 +120,7 @@ describe("convertConfig", () => {
     },
     {
       name: "defaults to a us-central1 rewrite if one is avaiable, v2 edition",
-      input: { rewrites: [{ glob: "/foo", function: FUNCTION_ID }] },
+      input: { rewrites: [{ glob: "/foo", function: { functionId: FUNCTION_ID } }] },
       want: {
         rewrites: [{ glob: "/foo", run: { region: "us-central1", serviceId: FUNCTION_ID } }],
       },
@@ -135,7 +138,9 @@ describe("convertConfig", () => {
     },
     {
       name: "returns rewrites for regex CF3",
-      input: { rewrites: [{ regex: "/foo$", function: FUNCTION_ID, region: REGION }] },
+      input: {
+        rewrites: [{ regex: "/foo$", function: { functionId: FUNCTION_ID, region: REGION } }],
+      },
       want: {
         rewrites: [{ regex: "/foo$", function: FUNCTION_ID, functionRegion: REGION }],
       },
@@ -150,7 +155,7 @@ describe("convertConfig", () => {
     },
     {
       name: "skips functions referencing CF3v2 functions being deployed (during prepare)",
-      input: { rewrites: [{ regex: "/foo$", function: FUNCTION_ID }] },
+      input: { rewrites: [{ regex: "/foo$", function: { functionId: FUNCTION_ID } }] },
       payload: {
         functions: {
           default: {
@@ -164,7 +169,7 @@ describe("convertConfig", () => {
     },
     {
       name: "rewrites referencing CF3v2 functions being deployed are changed to Cloud Run (during release)",
-      input: { rewrites: [{ regex: "/foo$", function: FUNCTION_ID }] },
+      input: { rewrites: [{ regex: "/foo$", function: { functionId: FUNCTION_ID } }] },
       payload: {
         functions: {
           default: {
@@ -178,7 +183,11 @@ describe("convertConfig", () => {
     },
     {
       name: "rewrites referencing existing CF3v2 functions are changed to Cloud Run (during prepare)",
-      input: { rewrites: [{ regex: "/foo$", function: FUNCTION_ID, region: "us-central1" }] },
+      input: {
+        rewrites: [
+          { regex: "/foo$", function: { functionId: FUNCTION_ID, region: "us-central1" } },
+        ],
+      },
       context: {
         projectId: PROJECT_ID,
         loadedExistingBackend: true,
@@ -189,7 +198,11 @@ describe("convertConfig", () => {
     },
     {
       name: "rewrites referencing existing CF3v2 functions are changed to Cloud Run (during release)",
-      input: { rewrites: [{ regex: "/foo$", function: FUNCTION_ID, region: "us-central1" }] },
+      input: {
+        rewrites: [
+          { regex: "/foo$", function: { functionId: FUNCTION_ID, region: "us-central1" } },
+        ],
+      },
       context: {
         projectId: PROJECT_ID,
         loadedExistingBackend: true,

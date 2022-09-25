@@ -3,6 +3,7 @@ import * as api from "./api";
 import { FirebaseError } from "../error";
 import { flattenArray } from "../functional";
 import * as utils from "../utils";
+import { logger } from "../logger";
 
 /**
  * Sentinel to be used when creating an api.Rewrite with the tag option but
@@ -119,7 +120,11 @@ export async function setRewriteTags(
     if (!("run" in rewrite) || rewrite.run.tag !== "__TODO__") {
       continue;
     }
-    rewrite.run.tag = tags[rewrite.run.region][rewrite.run.serviceId];
+    const tag = tags[rewrite.run.region][rewrite.run.serviceId];
+    // Swap these lines to launch the feature
+    // rewrite.run.tag = tag;
+    logger.info(`Pretending to pin rewrite to service ${rewrite.run.serviceId} to tag ${tag}`);
+    delete rewrite.run.tag;
   }
 }
 
