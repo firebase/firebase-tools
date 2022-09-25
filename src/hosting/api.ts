@@ -4,6 +4,7 @@ import { Client } from "../apiv2";
 import * as operationPoller from "../operation-poller";
 import { DEFAULT_DURATION } from "../hosting/expireUtils";
 import { getAuthDomains, updateAuthDomains } from "../gcp/auth";
+import * as proto from "../gcp/proto";
 
 const ONE_WEEK_MS = 604800000; // 7 * 24 * 60 * 60 * 1000
 
@@ -37,7 +38,7 @@ interface Release {
 
   // The configuration and content that was released.
   // TODO: create a Version type interface.
-  readonly version: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+  readonly version: Version;
 
   // Explains the reason for the release.
   // Specify a value for this field only when creating a `SITE_DISABLE`
@@ -87,30 +88,60 @@ export interface Channel {
   labels: { [key: string]: string };
 }
 
-enum VersionStatus {
-  // The default status; should not be intentionally used.
-  VERSION_STATUS_UNSPECIFIED = "VERSION_STATUS_UNSPECIFIED",
+type VersionStatus =
   // The version has been created, and content is currently being added to the
   // version.
-  CREATED = "CREATED",
+  | "CREATED"
   // All content has been added to the version, and the version can no longer be
   // changed.
-  FINALIZED = "FINALIZED",
+  | "FINALIZED"
   // The version has been deleted.
-  DELETED = "DELETED",
+  | "DELETED"
   // The version was not updated to `FINALIZED` within 12&nbsp;hours and was
   // automatically deleted.
-  ABANDONED = "ABANDONED",
+  | "ABANDONED"
   // The version is outside the site-configured limit for the number of
   // retained versions, so the version's content is scheduled for deletion.
-  EXPIRED = "EXPIRED",
+  | "EXPIRED"
   // The version is being cloned from another version. All content is still
   // being copied over.
-  CLONING = "CLONING",
+  | "CLONING";
+
+export type HasPattern = { glob: string } | { regex: string };
+
+export type Header = HasPattern & {
+  regex?: string;
+  headers: Record<string, string>;
+};
+
+export type Redirect = HasPattern & {
+  statusCode?: number;
+  location: string;
+};
+
+export interface RunRewrite {
+  serviceId: string;
+  region: string;
+  tag?: string;
 }
 
-// TODO: define ServingConfig.
-enum ServingConfig {}
+export type RewriteBehavior =
+  | { path: string }
+  | { function: string; functionRegion?: string }
+  | { dynamicLinks: true }
+  | { run: RunRewrite };
+
+export type Rewrite = HasPattern & RewriteBehavior;
+
+export interface ServingConfig {
+  headers?: Header[];
+  redirects?: Redirect[];
+  rewrites?: Rewrite[];
+  cleanUrls?: boolean;
+  trailingSlashBehavior?: "ADD" | "REMOVE";
+  appAssociation?: "AUTO" | "NONE";
+  i18n?: { root: string };
+}
 
 export interface Version {
   // The unique identifier for a version, in the format:
@@ -124,7 +155,7 @@ export interface Version {
   config: ServingConfig;
 
   // The labels used for extra metadata and/or filtering.
-  labels: Map<string, string>;
+  labels: Record<string, string>;
 
   // The time at which the version was created.
   readonly createTime: string;
@@ -150,6 +181,18 @@ export interface Version {
   // The total stored bytesize of the version.
   readonly versionBytes: number;
 }
+
+export type VERSION_OUTPUT_FIELDS =
+  | "name"
+  | "status"
+  | "createTime"
+  | "createUser"
+  | "finalizeTime"
+  | "finalizeUser"
+  | "deleteTime"
+  | "deleteUser"
+  | "fileCount"
+  | "versionBytes";
 
 interface CloneVersionRequest {
   // The name of the version to be cloned, in the format:
@@ -314,6 +357,56 @@ export async function deleteChannel(
   channelId: string
 ): Promise<void> {
   await apiClient.delete(`/projects/${project}/sites/${site}/channels/${channelId}`);
+}
+
+/**
+ * Creates a version
+ */
+export async function createVersion(
+  projectId: string,
+  siteId: string,
+  version: Omit<Version, VERSION_OUTPUT_FIELDS>
+): Promise<string> {
+  const res = await apiClient.post<typeof version, { name: string }>(
+    `projects/${projectId}/sites/${siteId}/versions`,
+    version
+  );
+  return res.body.name;
+}
+
+/**
+ * Updates a version.
+ */
+export async function updateVersion(name: string, version: Partial<Version>): Promise<Version> {
+  const res = await apiClient.patch<Partial<Version>, Version>(name, version, {
+    queryParams: {
+      updateMask: proto.fieldMasks(version).join(","),
+    },
+  });
+  return res.body;
+}
+
+interface ListVersionsResponse {
+  versions: Version[];
+  nextPageToken?: string;
+}
+
+/**
+ * Get a list of all versions for a site, automatically handling pagination.
+ */
+export async function listVersions(siteName: string): Promise<Version[]> {
+  let pageToken: string | undefined = undefined;
+  const versions: Version[] = [];
+  do {
+    const queryParams: Record<string, string> = {};
+    if (pageToken) {
+      queryParams.pageToken = pageToken;
+    }
+    const res = await apiClient.get<ListVersionsResponse>(`${siteName}/versions`, { queryParams });
+    versions.push(...res.body.versions);
+    pageToken = res.body.nextPageToken;
+  } while (pageToken);
+  return versions;
 }
 
 /**

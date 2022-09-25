@@ -2,6 +2,7 @@ import { expect } from "chai";
 
 import { calculateChannelExpireTTL } from "../../hosting/expireUtils";
 import { FirebaseError } from "../../error";
+import { Options } from "../../options";
 
 describe("calculateChannelExpireTTL", () => {
   const goodTests = [
@@ -10,7 +11,7 @@ describe("calculateChannelExpireTTL", () => {
     { input: "2d", want: 2 * 24 * 60 * 60 * 1000 },
     { input: "2h", want: 2 * 60 * 60 * 1000 },
     { input: "56m", want: 56 * 60 * 1000 },
-  ];
+  ] as const;
 
   for (const test of goodTests) {
     it(`should be able to parse time ${test.input}`, () => {
@@ -24,11 +25,10 @@ describe("calculateChannelExpireTTL", () => {
     { input: "2x" },
     { input: "2dd" },
     { input: "0.5m" },
-    { input: undefined },
-  ];
+  ] as unknown as Array<{ input: NonNullable<Options["expires"]> }>;
 
   for (const test of badTests) {
-    it(`should be able to parse time ${test.input || "undefined"}`, () => {
+    it(`should be able to parse time ${test.input}`, () => {
       expect(() => calculateChannelExpireTTL(test.input)).to.throw(
         FirebaseError,
         /flag must be a duration string/

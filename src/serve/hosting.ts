@@ -7,7 +7,7 @@ import { detectProjectRoot } from "../detectProjectRoot";
 import { FirebaseError } from "../error";
 import { implicitInit, TemplateServerResponse } from "../hosting/implicitInit";
 import { initMiddleware } from "../hosting/initMiddleware";
-import { normalizedHostingConfigs } from "../hosting/normalizedHostingConfigs";
+import * as config from "../hosting/config";
 import cloudRunProxy from "../hosting/cloudRunProxy";
 import { functionsProxy } from "../hosting/functionsProxy";
 import { NextFunction, Request, Response } from "express";
@@ -139,7 +139,13 @@ export function stop(): Promise<void> {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function start(options: any): Promise<void> {
   const init = await implicitInit(options);
-  const configs = normalizedHostingConfigs(options);
+  // Note: we cannot use the hostingConfig() method because it would resolve
+  // targets and we don't want to crash the emulator just because the target
+  // doesn't exist (nor do we want to depend on API calls);
+  let configs = config.extract(options);
+  configs = config.filterExcept(configs, options);
+  configs = config.filterOnly(configs, options);
+  config.normalize(configs);
 
   for (let i = 0; i < configs.length; i++) {
     // skip over the functions emulator ports to avoid breaking changes
