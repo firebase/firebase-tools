@@ -35,10 +35,9 @@ export async function doSetup(setup: any, config: Config, options: Options): Pro
     setup.config.functions = [];
     return initNewCodebase(setup, config);
   }
+  setup.config.functions = normalizeAndValidate(setup.config.functions);
   const codebases = setup.config.functions.map((cfg: any) => clc.bold(cfg.codebase));
   logger.info(`\nDetected existing codebase(s): ${codebases.join(", ")}\n`);
-
-  setup.config.functions = normalizeAndValidate(setup.config.functions);
   const choices = [
     {
       name: "Initialize",
