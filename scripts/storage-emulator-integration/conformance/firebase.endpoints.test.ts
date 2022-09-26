@@ -333,7 +333,7 @@ describe("Firebase Storage endpoint conformance tests", () => {
           .expect(400);
       });
 
-      it("hould handle resumable uploads with without upload protocol set", async () => {
+      it("should handle resumable uploads with without upload protocol set", async () => {
         const uploadURL = await supertest(firebaseHost)
           .post(`/v0/b/${storageBucket}/o?name=${TEST_FILE_NAME}`)
           .set(authHeader)
