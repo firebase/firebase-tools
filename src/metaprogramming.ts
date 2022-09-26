@@ -1,5 +1,12 @@
 type Primitive = string | number | boolean | Function;
 
+export type Implements<Test, MaybeBase> = Test extends MaybeBase ? true : never;
+
+// Sourced from - https://docs.microsoft.com/en-us/javascript/api/@azure/keyvault-certificates/requireatleastone?view=azure-node-latest
+export type RequireAtLeastOne<T> = {
+  [K in keyof T]-?: Required<Pick<T, K>> & Partial<Pick<T, Exclude<keyof T, K>>>;
+}[keyof T];
+
 /**
  * RecursiveKeyOf is a type for keys of an objet usind dots for subfields.
  * For a given object: {a: {b: {c: number}}, d } the RecursiveKeysOf are

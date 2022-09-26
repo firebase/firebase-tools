@@ -4,11 +4,13 @@ import { needProjectNumber } from "../../projectUtils";
 import * as utils from "../../utils";
 import { convertConfig } from "./convertConfig";
 import { Payload } from "./args";
+import { Context } from "./context";
+import { Options } from "../../options";
 
 /**
  *  Release finalized a Hosting release.
  */
-export async function release(context: any, options: any, payload: Payload): Promise<void> {
+export async function release(context: Context, options: Options, payload: Payload): Promise<void> {
   if (!context.hosting || !context.hosting.deploys) {
     return;
   }
@@ -17,14 +19,14 @@ export async function release(context: any, options: any, payload: Payload): Pro
 
   logger.debug(JSON.stringify(context.hosting.deploys, null, 2));
   await Promise.all(
-    context.hosting.deploys.map(async (deploy: any) => {
+    context.hosting.deploys.map(async (deploy) => {
       utils.logLabeledBullet(`hosting[${deploy.site}]`, "finalizing version...");
 
       const config = await convertConfig(context, payload, deploy.config, true);
       const data = { status: "FINALIZED", config };
       const queryParams = { updateMask: "status,config" };
 
-      const finalizeResult = await client.patch(`/${deploy.version}`, data, { queryParams });
+      const finalizeResult = await client.patch(`/${deploy.version!}`, data, { queryParams });
 
       logger.debug(`[hosting] finalized version for ${deploy.site}:${finalizeResult.body}`);
       utils.logLabeledSuccess(`hosting[${deploy.site}]`, "version finalized");
@@ -42,7 +44,7 @@ export async function release(context: any, options: any, payload: Payload): Pro
       const releaseResult = await client.post(
         `/projects/${projectNumber}/sites/${deploy.site}${channelSegment}/releases`,
         { message: options.message || null },
-        { queryParams: { versionName: deploy.version } }
+        { queryParams: { versionName: deploy.version! } }
       );
       logger.debug("[hosting] release:", releaseResult.body);
       utils.logLabeledSuccess(`hosting[${deploy.site}]`, "release complete");

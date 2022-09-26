@@ -4,20 +4,15 @@ import { listFiles } from "../../listFiles";
 import { logger } from "../../logger";
 import { track } from "../../track";
 import { envOverride, logLabeledBullet, logLabeledSuccess } from "../../utils";
-import { HostingDeploy } from "./hostingDeploy";
 import { bold, cyan } from "colorette";
 import * as ora from "ora";
+import { Context, HostingDeploy } from "./context";
+import { Options } from "../../options";
 
-export async function deploy(
-  context: { hosting?: { deploys?: HostingDeploy[] } },
-  options: {
-    cwd?: string;
-    configPath?: string;
-    debug?: boolean;
-    nonInteractive?: boolean;
-    config: { path: (path: string) => string };
-  }
-): Promise<void> {
+/**
+ * Uploads static assets to the upcoming Hosting versions.
+ */
+export async function deploy(context: Context, options: Options): Promise<void> {
   if (!context.hosting?.deploys) {
     return;
   }
