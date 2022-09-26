@@ -1,1 +1,2 @@
 - Adds support for codebases in `firebase init functions` flow (#4965).
+- Fixes errors on exit related to `update-notifier` (#5010).
