@@ -1,5 +1,4 @@
 import { expect } from "chai";
-import { assert } from "console";
 import * as nock from "nock";
 
 import { identityOrigin, hostingApiOrigin } from "../../api";
