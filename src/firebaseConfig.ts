@@ -41,7 +41,6 @@ export type RunRewrite = {
   run: {
     serviceId: string;
     region?: string;
-    pinTag?: boolean;
   };
 };
 export type DynamicLinksRewrite = { dynamicLinks: boolean };
