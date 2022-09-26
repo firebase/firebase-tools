@@ -1,6 +1,6 @@
 import * as clc from "colorette";
 
-import { Client } from "../apiv2";
+import { Client, ClientVerbOptions } from "../apiv2";
 import { FirebaseError } from "../error";
 import { functionsV2Origin } from "../api";
 import { logger } from "../logger";
@@ -19,7 +19,7 @@ import {
   HASH_LABEL,
 } from "../functions/constants";
 
-export const API_VERSION = "v2alpha";
+export const API_VERSION = "v2";
 
 const client = new Client({
   urlPrefix: functionsV2Origin,
@@ -351,7 +351,11 @@ async function listFunctionsInternal(
   let pageToken = "";
   while (true) {
     const url = `projects/${projectId}/locations/${region}/functions`;
-    const opts = pageToken === "" ? {} : { queryParams: { pageToken } };
+    // V2 API returns both V1 and V2 Functions. Add filter condition to return only V2 functions.
+    const opts: ClientVerbOptions = { queryParams: { filter: `environment="GEN_2"` } };
+    if (pageToken !== "") {
+      opts.queryParams = { ...opts.queryParams, pageToken };
+    }
     const res = await client.get<Response>(url, opts);
     functions.push(...(res.body.functions || []));
     for (const region of res.body.unreachable || []) {

@@ -14,18 +14,11 @@ if (!semver.satisfies(nodeVersion, pkg.engines.node)) {
 import * as updateNotifierPkg from "update-notifier";
 import * as clc from "colorette";
 import * as TerminalRenderer from "marked-terminal";
-const updateNotifier = updateNotifierPkg({ pkg: pkg });
+const updateNotifier = updateNotifierPkg({ pkg });
 import { marked } from "marked";
 marked.setOptions({
   renderer: new TerminalRenderer(),
 });
-const updateMessage =
-  `Update available ${clc.gray("{currentVersion}")} → ${clc.green("{latestVersion}")}\n` +
-  `To update to the latest version using npm, run\n${clc.cyan("npm install -g firebase-tools")}\n` +
-  `For other CLI management options, visit the ${marked(
-    "[CLI documentation](https://firebase.google.com/docs/cli#update-cli)"
-  )}`;
-updateNotifier.notify({ defer: true, isGlobal: true, message: updateMessage });
 
 import { Command } from "commander";
 import { join } from "node:path";
@@ -132,6 +125,20 @@ process.on("exit", (code) => {
   } else {
     configstore.delete("lastError");
   }
+
+  // Notify about updates right before process exit.
+  const updateMessage =
+    `Update available ${clc.gray("{currentVersion}")} → ${clc.green("{latestVersion}")}\n` +
+    `To update to the latest version using npm, run\n${clc.cyan(
+      "npm install -g firebase-tools"
+    )}\n` +
+    `For other CLI management options, visit the ${marked(
+      "[CLI documentation](https://firebase.google.com/docs/cli#update-cli)"
+    )}`;
+  // `defer: true` would interfere with commands that perform tasks (emulators etc.)
+  // before exit since it installs a SIGINT handler that immediately exits. See:
+  // https://github.com/firebase/firebase-tools/issues/4981
+  updateNotifier.notify({ defer: false, isGlobal: true, message: updateMessage });
 });
 
 process.on("uncaughtException", (err) => {
