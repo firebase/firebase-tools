@@ -332,6 +332,43 @@ describe("Firebase Storage endpoint conformance tests", () => {
           })
           .expect(400);
       });
+
+      it("hould handle resumable uploads with without upload protocol set", async () => {
+        const uploadURL = await supertest(firebaseHost)
+          .post(`/v0/b/${storageBucket}/o?name=${TEST_FILE_NAME}`)
+          .set(authHeader)
+          .set({
+            "X-Goog-Upload-Protocol": "resumable",
+            "X-Goog-Upload-Command": "start",
+          })
+          .expect(200)
+          .then((res) => {
+            console.log(res);
+            return new URL(res.header["x-goog-upload-url"]);
+          });
+
+        await supertest(firebaseHost)
+          .put(uploadURL.pathname + uploadURL.search)
+          .set({
+            "X-Goog-Upload-Command": "upload",
+            "X-Goog-Upload-Offset": 0,
+          })
+          .expect(200);
+        const uploadStatus = await supertest(firebaseHost)
+          .put(uploadURL.pathname + uploadURL.search)
+          .set({
+            "X-Goog-Upload-Command": "finalize",
+          })
+          .expect(200)
+          .then((res) => res.header["x-goog-upload-status"]);
+
+        expect(uploadStatus).to.equal("final");
+
+        await supertest(firebaseHost)
+          .get(`/v0/b/${storageBucket}/o/${ENCODED_TEST_FILE_NAME}`)
+          .set(authHeader)
+          .expect(200);
+      });
     });
 
     describe("cancel", () => {
