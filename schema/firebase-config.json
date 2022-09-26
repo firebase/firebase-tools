@@ -456,6 +456,10 @@
                     "additionalProperties": false,
                     "properties": {
                         "appAssociation": {
+                            "enum": [
+                                "AUTO",
+                                "NONE"
+                            ],
                             "type": "string"
                         },
                         "cleanUrls": {
@@ -941,6 +945,10 @@
                                 "additionalProperties": false,
                                 "properties": {
                                     "appAssociation": {
+                                        "enum": [
+                                            "AUTO",
+                                            "NONE"
+                                        ],
                                         "type": "string"
                                     },
                                     "cleanUrls": {
@@ -1426,6 +1434,10 @@
                                 "additionalProperties": false,
                                 "properties": {
                                     "appAssociation": {
+                                        "enum": [
+                                            "AUTO",
+                                            "NONE"
+                                        ],
                                         "type": "string"
                                     },
                                     "cleanUrls": {
