@@ -5,7 +5,6 @@ import * as backend from "../../../deploy/functions/backend";
 import { Context, HostingDeploy } from "../../../deploy/hosting/context";
 import { HostingSingle } from "../../../firebaseConfig";
 import * as api from "../../../hosting/api";
-import { cloneDeep } from "../../../utils";
 
 const FUNCTION_ID = "function";
 const PROJECT_ID = "project";
@@ -191,9 +190,11 @@ describe("convertConfig", () => {
       context: {
         projectId: PROJECT_ID,
         loadedExistingBackend: true,
-        existingBackend: backend.of(endpoint({ platform: "gcfv2" })),
+        existingBackend: backend.of(endpoint({ platform: "gcfv2", region: "us-central1" })),
       },
-      want: { rewrites: [{ regex: "/foo$", run: { serviceId: FUNCTION_ID, region: REGION } }] },
+      want: {
+        rewrites: [{ regex: "/foo$", run: { serviceId: FUNCTION_ID, region: "us-central1" } }],
+      },
       finalize: true,
     },
     {
@@ -206,9 +207,11 @@ describe("convertConfig", () => {
       context: {
         projectId: PROJECT_ID,
         loadedExistingBackend: true,
-        existingBackend: backend.of(endpoint({ platform: "gcfv2" })),
+        existingBackend: backend.of(endpoint({ platform: "gcfv2", region: "us-central1" })),
       },
-      want: { rewrites: [{ regex: "/foo$", run: { serviceId: FUNCTION_ID, region: REGION } }] },
+      want: {
+        rewrites: [{ regex: "/foo$", run: { serviceId: FUNCTION_ID, region: "us-central1" } }],
+      },
       finalize: true,
     },
     {

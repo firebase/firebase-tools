@@ -5,7 +5,7 @@ import * as api from "../../hosting/api";
 import { Payload } from "./args";
 import * as backend from "../functions/backend";
 import { Context } from "../functions/args";
-import { logLabeledBullet, logLabeledWarning, stringToStream } from "../../utils";
+import { logLabeledBullet, logLabeledWarning } from "../../utils";
 import * as proto from "../../gcp/proto";
 import { bold } from "colorette";
 import * as tags from "../../hosting/serverlessTags";
@@ -139,11 +139,14 @@ export async function convertConfig(
             `hosting[${deploy.site}]`,
             `Unable to find a valid endpoint for function \`${id}\`, but still including it in the config`
           );
+          throw new FirebaseError("Not handling this case right now");
+          /*
           const apiRewrite: api.Rewrite = { ...target, function: id };
           if (region) {
             apiRewrite.functionRegion = region;
           }
           return apiRewrite;
+          */
         }
         if (endpoint.platform === "gcfv1") {
           if (!backend.isHttpsTriggered(endpoint) && !backend.isCallableTriggered(endpoint)) {
@@ -158,12 +161,11 @@ export async function convertConfig(
               } is a gen 1 function and therefore does not support the ${bold("pinTag")} option`
             );
           }
-          const apiRewrite: api.Rewrite = {
+          return {
             ...target,
-            function: rewrite.function.functionId,
-          };
-          proto.renameIfPresent(apiRewrite, rewrite.function, "functionRegion", "region");
-          return apiRewrite;
+            function: endpoint.id,
+            functionRegion: endpoint.region,
+          } as api.Rewrite;
         }
 
         // If we still haven't hit the release phase, the run service may not have
