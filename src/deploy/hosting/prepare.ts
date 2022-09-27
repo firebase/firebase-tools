@@ -46,9 +46,9 @@ export async function prepare(context: Context, options: Options, payload: Paylo
 
     versionCreates.push(
       (async () => {
-        const fullVersionName = await api.createVersion(deploy.site, data);
-        const parts = fullVersionName.split("/");
-        deploy.version = parts[parts.length - 1];
+        // TODO: Fix this inconsistency. Site and project are ids but version
+        // is a name.
+        deploy.version = await api.createVersion(deploy.site, data);
       })()
     );
   }

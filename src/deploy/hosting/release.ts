@@ -24,7 +24,9 @@ export async function release(context: Context, options: Options, payload: Paylo
         config: await convertConfig(context, payload, deploy.config, /* finalize= */ true),
       };
 
-      const finalizedVersion = await api.updateVersion(deploy.site, deploy.version!, update);
+      const parts = deploy.version!.split("/");
+      const versionId = parts[parts.length - 1];
+      const finalizedVersion = await api.updateVersion(deploy.site, versionId, update);
 
       logger.debug(
         `[hosting] finalized version for ${deploy.site}:${JSON.stringify(
