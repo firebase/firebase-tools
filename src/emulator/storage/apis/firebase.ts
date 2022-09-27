@@ -238,7 +238,8 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
     }
 
     // Resumable upload
-    if (uploadType === "resumable") {
+    // sdk can set uploadType or just set upload command to indicate resumable upload
+    if (uploadType === "resumable" || req.header("x-goog-upload-command")) {
       const uploadCommand = req.header("x-goog-upload-command");
       if (!uploadCommand) {
         res.sendStatus(400);
