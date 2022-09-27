@@ -83,6 +83,7 @@ export class Delegate {
     const genBinary = spawn.sync("go", ["run", FUNCTIONS_CODEGEN, this.module.module], {
       cwd: this.sourceDir,
       env: {
+        ...process.env,
         HOME: process.env.HOME,
         PATH: process.env.PATH,
         GOPATH: process.env.GOPATH,
@@ -112,6 +113,7 @@ export class Delegate {
   ): Promise<() => Promise<void>> {
     const childProcess = spawn("go", ["run", "./autogen"], {
       env: {
+        ...process.env,
         ...envs,
         PORT: port.toString(),
         ADMIN_PORT: adminPort.toString(),

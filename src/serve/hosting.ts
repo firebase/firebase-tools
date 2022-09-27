@@ -73,6 +73,10 @@ function startServer(options: any, config: any, port: number, init: TemplateServ
     }
   }
 
+  const after = options.frameworksDevModeHandle && {
+    files: options.frameworksDevModeHandle,
+  };
+
   const server = superstatic({
     debug: false,
     port: port,
@@ -92,6 +96,7 @@ function startServer(options: any, config: any, port: number, init: TemplateServ
         firebaseMiddleware(req, res, next);
       },
     },
+    after,
     rewriters: {
       function: functionsProxy(options),
       run: cloudRunProxy(options),

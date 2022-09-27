@@ -9,6 +9,7 @@ import { EmulatorRegistry } from "./registry";
 import {
   Address,
   ALL_SERVICE_EMULATORS,
+  EmulatorInfo,
   EmulatorInstance,
   Emulators,
   EMULATORS_SUPPORTED_BY_UI,
@@ -395,13 +396,6 @@ export async function startAll(
     }
   }
 
-  if (previews.frameworkawareness) {
-    const config = options.config.get("hosting");
-    if (Array.isArray(config) ? config.some((it) => it.source) : config?.source) {
-      await prepareFrameworks(targets, options, options);
-    }
-  }
-
   function startEmulator(instance: EmulatorInstance): Promise<void> {
     const name = instance.getName();
 
@@ -447,6 +441,18 @@ export async function startAll(
         "emulators",
         `Could not find import/export metadata file, ${clc.bold("skipping data import!")}`
       );
+    }
+  }
+
+  if (previews.frameworkawareness) {
+    const config = options.config.get("hosting");
+    const emulators: EmulatorInfo[] = [];
+    for (const e of EMULATORS_SUPPORTED_BY_UI) {
+      const info = EmulatorRegistry.getInfo(e);
+      if (info) emulators.push(info);
+    }
+    if (Array.isArray(config) ? config.some((it) => it.source) : config?.source) {
+      await prepareFrameworks(targets, options, options, emulators);
     }
   }
 
