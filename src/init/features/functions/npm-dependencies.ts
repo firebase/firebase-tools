@@ -15,7 +15,7 @@ export function askInstallDependencies(setup: any, config: any): Promise<void> {
     if (setup.npm) {
       return new Promise<void>((resolve) => {
         const installer = spawn("npm", ["install"], {
-          cwd: config.projectDir + "/functions",
+          cwd: config.projectDir + `/${setup.source}`,
           stdio: "inherit",
         });
 

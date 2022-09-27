@@ -6,6 +6,7 @@ on:
 
 env:
   CI: true
+  NO_COLOR: true
 
 permissions:
   contents: read
