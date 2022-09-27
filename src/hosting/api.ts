@@ -339,7 +339,7 @@ export async function updateChannelTtl(
   const res = await apiClient.patch<{ ttl: string }, Channel>(
     `/projects/${project}/sites/${site}/channels/${channelId}`,
     { ttl: `${ttlMillis / 1000}s` },
-    { queryParams: { updateMask: ["ttl"].join(",") } }
+    { queryParams: { updateMask: "ttl" } }
   );
   return res.body;
 }
@@ -385,7 +385,7 @@ export async function updateVersion(
     version,
     {
       queryParams: {
-        updateMask: proto.fieldMasks(version).join(","),
+        updateMask: proto.fieldMasks(version, config", "labels").join(","),
       },
     }
   );
