@@ -1,15 +1,16 @@
 {
   "name": "firebase-tools",
-  "version": "11.10.0",
+  "version": "11.11.0",
   "description": "Command-Line Interface for Firebase",
   "main": "./lib/index.js",
   "bin": {
     "firebase": "./lib/bin/firebase.js"
   },
   "scripts": {
-    "build": "tsc",
-    "build:watch": "tsc --watch",
+    "build": "tsc && npm run copyfiles",
+    "build:watch": "npm run build && tsc --watch",
     "clean": "rimraf lib dev",
+    "copyfiles": "node -e \"const fs = require('fs'); fs.mkdirSync('./lib', {recursive:true}); fs.copyFileSync('./src/dynamicImport.js', './lib/dynamicImport.js')\"",
     "format": "npm run format:ts && npm run format:other",
     "format:other": "npm run lint:other -- --write",
     "format:ts": "npm run lint:ts -- --fix --quiet",
@@ -105,11 +106,11 @@
     "cross-env": "^5.1.3",
     "cross-spawn": "^7.0.3",
     "csv-parse": "^5.0.4",
+    "esbuild": "^0.15.7",
     "exegesis": "^4.1.0",
     "exegesis-express": "^4.0.0",
     "express": "^4.16.4",
     "filesize": "^6.1.0",
-    "firebase-frameworks": "^0.4.2",
     "form-data": "^4.0.0",
     "fs-extra": "^10.1.0",
     "glob": "^7.1.2",
@@ -153,6 +154,8 @@
     "ws": "^7.2.3"
   },
   "devDependencies": {
+    "@angular-devkit/architect": "^0.1402.2",
+    "@angular-devkit/core": "^14.2.2",
     "@google/events": "^5.1.1",
     "@manifoldco/swagger-to-ts": "^2.0.0",
     "@types/archiver": "^5.1.0",
@@ -182,6 +185,8 @@
     "@types/node-fetch": "^2.5.12",
     "@types/progress": "^2.0.3",
     "@types/puppeteer": "^5.4.2",
+    "@types/react": "^18.0.20",
+    "@types/react-dom": "^18.0.6",
     "@types/request": "^2.48.1",
     "@types/retry": "^0.12.1",
     "@types/rimraf": "^2.0.3",
@@ -213,6 +218,7 @@
     "firebase-functions": "^3.23.0",
     "google-discovery-to-swagger": "^2.1.0",
     "mocha": "^9.1.3",
+    "next": "^12.3.0",
     "nock": "^13.0.5",
     "node-mocks-http": "^1.11.0",
     "nyc": "^15.1.0",
@@ -227,6 +233,7 @@
     "swagger2openapi": "^6.0.3",
     "ts-node": "^10.4.0",
     "typescript": "^4.5.4",
-    "typescript-json-schema": "^0.50.1"
+    "typescript-json-schema": "^0.50.1",
+    "vite": "^3.1.0"
   }
 }

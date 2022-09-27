@@ -1,2 +1,1 @@
-- Adds support for codebases in `firebase init functions` flow (#4965).
 - Fix Storage Emulator crashing with NoClassDefFoundError in some cases (#3481).

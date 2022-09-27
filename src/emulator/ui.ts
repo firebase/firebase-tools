@@ -25,7 +25,7 @@ export class EmulatorUI implements EmulatorInstance {
     }
     const hubInfo = EmulatorRegistry.get(Emulators.HUB)!.getInfo();
     const { auto_download: autoDownload, host, port, projectId } = this.args;
-    const env: NodeJS.ProcessEnv = {
+    const env: Partial<NodeJS.ProcessEnv> = {
       HOST: host.toString(),
       PORT: port.toString(),
       GCLOUD_PROJECT: projectId,
