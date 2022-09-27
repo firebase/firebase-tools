@@ -138,9 +138,8 @@ export function extract(options: MockableOptions): HostingMultiple {
     // RTDB instance creation is now deferred and decoupled from project creation.
     // the fallback hosting site is now filled in through requireHostingSite.
     if (!res.target && !res.site) {
-      if (!options.site) {
-        throw new FirebaseError("Must specify a site or target in hosting configs");
-      }
+      // Fun fact. Site can be the empty string if someone just downloads code
+      // and launches the emulator before configuring a project.
       res.site = options.site;
     }
     assertOneTarget(res);
