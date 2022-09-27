@@ -99,7 +99,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ${{ env.FIREBASE_EMULATORS_PATH }}
-          key: ${{ runner.os }}-firebase-emulators-${{ hashFiles('emulator-cache/**') }}
+          key: ${{ runner.os }}-firebase-emulators-${{ hashFiles('src/emulator/downloadableEmulators.ts') }}
         continue-on-error: true
 
       - run: npm i -g npm@8.7
@@ -160,7 +160,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ${{ env.FIREBASE_EMULATORS_PATH }}
-          key: ${{ runner.os }}-firebase-emulators-${{ hashFiles('emulator-cache/**') }}
+          key: ${{ runner.os }}-firebase-emulators-${{ hashFiles('src/emulator/downloadableEmulators.ts') }}
         continue-on-error: true
 
       - run: echo ${{ secrets.service_account_json_base64 }} > tmp.txt
