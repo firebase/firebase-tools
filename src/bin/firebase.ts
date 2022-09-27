@@ -127,18 +127,29 @@ process.on("exit", (code) => {
   }
 
   // Notify about updates right before process exit.
-  const updateMessage =
-    `Update available ${clc.gray("{currentVersion}")} → ${clc.green("{latestVersion}")}\n` +
-    `To update to the latest version using npm, run\n${clc.cyan(
-      "npm install -g firebase-tools"
-    )}\n` +
-    `For other CLI management options, visit the ${marked(
-      "[CLI documentation](https://firebase.google.com/docs/cli#update-cli)"
-    )}`;
-  // `defer: true` would interfere with commands that perform tasks (emulators etc.)
-  // before exit since it installs a SIGINT handler that immediately exits. See:
-  // https://github.com/firebase/firebase-tools/issues/4981
-  updateNotifier.notify({ defer: false, isGlobal: true, message: updateMessage });
+  try {
+    const updateMessage =
+      `Update available ${clc.gray("{currentVersion}")} → ${clc.green("{latestVersion}")}\n` +
+      `To update to the latest version using npm, run\n${clc.cyan(
+        "npm install -g firebase-tools"
+      )}\n` +
+      `For other CLI management options, visit the ${marked(
+        "[CLI documentation](https://firebase.google.com/docs/cli#update-cli)"
+      )}`;
+    // `defer: true` would interfere with commands that perform tasks (emulators etc.)
+    // before exit since it installs a SIGINT handler that immediately exits. See:
+    // https://github.com/firebase/firebase-tools/issues/4981
+    updateNotifier.notify({ defer: false, isGlobal: true, message: updateMessage });
+  } catch (err) {
+    // This is not a fatal error -- let's debug log, swallow, and exit cleanly.
+    logger.debug("Error when notifying about new CLI updates:");
+    if (err instanceof Error) {
+      logger.debug(err);
+    } else {
+      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+      logger.debug(`${err}`);
+    }
+  }
 });
 
 process.on("uncaughtException", (err) => {
