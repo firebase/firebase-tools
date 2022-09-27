@@ -1,0 +1,1 @@
+- Fixes issue resolving a Hosting site using `open`. (#3145)
