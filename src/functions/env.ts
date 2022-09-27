@@ -267,11 +267,11 @@ export function writeUserEnvs(toWrite: Record<string, string>, envOpts: UserEnvs
 
   const { functionsSource, projectId, projectAlias, isEmulator } = envOpts;
   const envFiles = findEnvfiles(functionsSource, projectId, projectAlias, isEmulator);
-  const projectScopedFileName = `.env.${projectId}`;
 
+  let projectScopedFileName = `.env.${projectId}`;
   const projectScopedFileExists = envFiles.includes(projectScopedFileName);
   if (!projectScopedFileExists) {
-    createEnvFile(envOpts);
+    projectScopedFileName = createEnvFile(envOpts);
   }
 
   const currentEnvs = loadUserEnvs(envOpts);
@@ -284,21 +284,27 @@ export function writeUserEnvs(toWrite: Record<string, string>, envOpts: UserEnvs
     }
   }
 
-  logBullet(
-    clc.cyan(clc.bold("functions: ")) +
-      `Writing new parameter values to disk: ${projectScopedFileName}`
-  );
   for (const k of Object.keys(toWrite)) {
     fs.appendFileSync(
       path.join(functionsSource, projectScopedFileName),
       formatUserEnvForWrite(k, toWrite[k])
     );
   }
+
+  if (!projectScopedFileExists) {
+    logBullet(
+      clc.yellow(clc.bold("functions: ")) +
+        `Created new local file ${projectScopedFileName} to store param values. We suggest explicitly adding or excluding this file from version control.`
+    );
+  }
+  logBullet(
+    clc.cyan(clc.bold("functions: ")) +
+      `Writing new parameter values to disk: ${projectScopedFileName}`
+  );
 }
 
 function createEnvFile(envOpts: UserEnvsOpts): string {
   const fileToWrite = envOpts.isEmulator ? FUNCTIONS_EMULATOR_DOTENV : `.env.${envOpts.projectId}`;
-  logger.debug(`Creating ${fileToWrite}...`);
 
   fs.writeFileSync(path.join(envOpts.functionsSource, fileToWrite), "", { flag: "wx" });
   return fileToWrite;
