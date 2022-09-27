@@ -267,11 +267,18 @@ export function writeUserEnvs(toWrite: Record<string, string>, envOpts: UserEnvs
   const { functionsSource, projectId, projectAlias, isEmulator } = envOpts;
 
   const allEnvFiles = findEnvfiles(functionsSource, projectId, projectAlias, isEmulator);
-  const targetEnvFile = envOpts.isEmulator ? FUNCTIONS_EMULATOR_DOTENV : `.env.${envOpts.projectId}`;
+  const targetEnvFile = envOpts.isEmulator
+    ? FUNCTIONS_EMULATOR_DOTENV
+    : `.env.${envOpts.projectId}`;
   const targetEnvFileExists = allEnvFiles.includes(targetEnvFile);
   if (!targetEnvFileExists) {
-    logger.debug(`Creating ${targetEnvFile}...`);
     fs.writeFileSync(path.join(envOpts.functionsSource, targetEnvFile), "", { flag: "wx" });
+    if (!isEmulator) {
+      logBullet(
+        clc.yellow(clc.bold("functions: ")) +
+          `Created new local file ${targetEnvFile} to store param values. We suggest explicitly adding or excluding this file from version control.`
+      );
+    }
   }
 
   for (const k of Object.keys(toWrite)) {
@@ -284,8 +291,7 @@ export function writeUserEnvs(toWrite: Record<string, string>, envOpts: UserEnvs
   }
 
   logBullet(
-    clc.cyan(clc.bold("functions: ")) +
-      `Writing new parameter values to disk: ${targetEnvFile}`
+    clc.cyan(clc.bold("functions: ")) + `Writing new parameter values to disk: ${targetEnvFile}`
   );
   for (const k of Object.keys(toWrite)) {
     fs.appendFileSync(
@@ -298,7 +304,7 @@ export function writeUserEnvs(toWrite: Record<string, string>, envOpts: UserEnvs
 /**
  * Returns whether we should error on trying to write a key because it's already
  * defined in the .env fields. This seems like a simple presence, check, but...
- * 
+ *
  * For emulator deploys, it's legal to write a key to .env.local even if it's
  * already defined in .env.projectId. This is a special case designed to follow
  * the principle of least surprise for emulator users.
@@ -307,7 +313,9 @@ export function isAlreadyDefinedWrite(key: string, envOpts: UserEnvsOpts): boole
   const definedInEnv = loadUserEnvs(envOpts).hasOwnProperty(key);
 
   if (envOpts.isEmulator) {
-    const stillDefinedWithoutLocal = loadUserEnvs({...envOpts, isEmulator: false}).hasOwnProperty(key)
+    const stillDefinedWithoutLocal = loadUserEnvs({ ...envOpts, isEmulator: false }).hasOwnProperty(
+      key
+    );
     if (definedInEnv && stillDefinedWithoutLocal) {
       logWarning(
         clc.cyan(clc.yellow("functions: ")) +

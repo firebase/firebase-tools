@@ -324,7 +324,10 @@ FOO=foo
     });
 
     it("touches .env.local if it doesn't already exist in emulator mode", () => {
-      env.writeUserEnvs({ FOO: "bar" }, { projectId: "project", functionsSource: tmpdir, isEmulator: true });
+      env.writeUserEnvs(
+        { FOO: "bar" },
+        { projectId: "project", functionsSource: tmpdir, isEmulator: true }
+      );
       expect(() => fs.statSync(path.join(tmpdir, ".env.alias"))).to.throw;
       expect(() => fs.statSync(path.join(tmpdir, ".env.project"))).to.throw;
       expect(!!fs.statSync(path.join(tmpdir, ".env.local"))).to.be.true;
@@ -343,11 +346,17 @@ FOO=foo
       createEnvFiles(tmpdir, {
         [".env.project"]: "FOO=foo",
       });
-      env.writeUserEnvs({ FOO: "bar" }, { projectId: "project", functionsSource: tmpdir, isEmulator: true })
+      env.writeUserEnvs(
+        { FOO: "bar" },
+        { projectId: "project", functionsSource: tmpdir, isEmulator: true }
+      );
       expect(
-        env.loadUserEnvs({ projectId: "project", projectAlias: "alias", functionsSource: tmpdir, isEmulator: true })[
-          "FOO"
-        ]
+        env.loadUserEnvs({
+          projectId: "project",
+          projectAlias: "alias",
+          functionsSource: tmpdir,
+          isEmulator: true,
+        })["FOO"]
       ).to.equal("bar");
     });
 
@@ -370,10 +379,14 @@ FOO=foo
       env.writeUserEnvs(
         { FOO: "baz" },
         { projectId: "project", projectAlias: "alias", functionsSource: tmpdir, isEmulator: true }
-      )
-      expect(        env.loadUserEnvs({ projectId: "project", projectAlias: "alias", functionsSource: tmpdir, isEmulator: true })[
-        "FOO"
-      ]
+      );
+      expect(
+        env.loadUserEnvs({
+          projectId: "project",
+          projectAlias: "alias",
+          functionsSource: tmpdir,
+          isEmulator: true,
+        })["FOO"]
       ).to.equal("baz");
     });
 
@@ -382,7 +395,10 @@ FOO=foo
         [".env.local"]: "ASDF=foo",
       });
       expect(() =>
-        env.writeUserEnvs({ ASDF: "bar" }, { projectId: "project", functionsSource: tmpdir, isEmulator: true })
+        env.writeUserEnvs(
+          { ASDF: "bar" },
+          { projectId: "project", functionsSource: tmpdir, isEmulator: true }
+        )
       ).to.throw(FirebaseError);
     });
 
