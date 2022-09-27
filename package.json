@@ -7,9 +7,10 @@
     "firebase": "./lib/bin/firebase.js"
   },
   "scripts": {
-    "build": "mkdir -p lib && cp src/dynamicImport.js lib && tsc",
-    "build:watch": "mkdir -p lib && cp src/dynamicImport.js lib && tsc --watch",
+    "build": "tsc && npm run copyfiles",
+    "build:watch": "npm run build && tsc --watch",
     "clean": "rimraf lib dev",
+    "copyfiles": "node -e \"const fs = require('fs'); fs.mkdirSync('./lib', {recursive:true}); fs.copyFileSync('./src/dynamicImport.js', './lib/dynamicImport.js')\"",
     "format": "npm run format:ts && npm run format:other",
     "format:other": "npm run lint:other -- --write",
     "format:ts": "npm run lint:ts -- --fix --quiet",
