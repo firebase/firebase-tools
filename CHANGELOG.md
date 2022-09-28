@@ -1,1 +1,2 @@
 - Fix Storage Emulator crashing with NoClassDefFoundError in some cases (#3481).
+- Removes unused dependency, updates `vm2` dependency flagged by `npm audit`.
