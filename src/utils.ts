@@ -704,7 +704,7 @@ export function last<T>(arr?: T[]): T {
   // The type system should never allow this, so return something that violates
   // the type system when passing in something that violates the type system.
   if (!Array.isArray(arr)) {
-    return undefined as T;
+    return undefined as unknown as T;
   }
   return arr[arr.length - 1];
 }
