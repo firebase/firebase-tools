@@ -1,0 +1,1 @@
+- Fix Storage Emulator crashing with NoClassDefFoundError in some cases (#3481).
