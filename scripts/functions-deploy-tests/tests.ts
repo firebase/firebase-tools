@@ -281,7 +281,7 @@ describe("firebase deploy", function (this) {
     expect(result.stdout, "deploy result").to.match(/Deploy complete!/);
 
     const result2 = await setOptsAndDeploy(opts);
-    expect(result.stdout, "deploy result").to.match(/Skipped (No changes detected)/);
+    expect(result2.stdout, "deploy result").to.match(/Skipped (No changes detected)/);
   });
 
   it("leaves existing options when unspecified", async () => {
