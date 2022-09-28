@@ -1,1 +1,2 @@
 - Fix Storage Emulator crashing with NoClassDefFoundError in some cases (#3481).
+- Fixes `init functions` throwing error when detecting existing legacy singleton functions configuration (#5020).
