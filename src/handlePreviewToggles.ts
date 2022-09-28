@@ -16,24 +16,36 @@ export function handlePreviewToggles(args: string[]): boolean {
   const name = args[1];
   const isValid = experiments.isValidExperiment(name);
   if (args[0] === "--open-sesame") {
+    console.log(
+      `${bold("firebase --open-sesame")} is deprecated and wil be removed in a future ` +
+        `version. Use the new "expirments" family of commands, including ${bold(
+          "firebase experiments:enable"
+        )}`
+    );
     if (isValid) {
-      console.log(`Enabling preview feature ${bold(name)} ...`);
+      console.log(`Enabling experiment ${bold(name)} ...`);
       experiments.setEnabled(name, true);
       experiments.flushToDisk();
       console.log("Preview feature enabled!");
       return process.exit(0);
     }
 
-    errorOut();
+    errorOut(name);
   } else if (args[0] === "--close-sesame") {
+    console.log(
+      `${bold("firebase --open-sesame")} is deprecated and wil be removed in a future ` +
+        `version. Use the new "expirments" family of commands, including ${bold(
+          "firebase experiments:disable"
+        )}`
+    );
     if (isValid) {
-      console.log(`Disabling preview feature ${bold(name)}...`);
+      console.log(`Disabling experiment ${bold(name)}...`);
       experiments.setEnabled(name, false);
       experiments.flushToDisk();
       return process.exit(0);
     }
 
-    errorOut();
+    errorOut(name);
   }
   return false;
 }

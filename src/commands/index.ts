@@ -72,14 +72,12 @@ export function load(client: any): any {
   client.experimental = {};
   client.experimental.functions = {};
   client.experimental.functions.shell = loadCommand("experimental-functions-shell");
-  if (experiments.isEnabled("experiments")) {
-    client.experiments = {};
-    client.experiments.list = loadCommand("experiments-list");
-    client.experiments.describe = loadCommand("experiments-describe");
-    client.experiments.enable = loadCommand("experiments-enable");
-    client.experiments.disable = loadCommand("experiments-disable");
-    client.experiments.clear = loadCommand("experiments-clear");
-  }
+  client.experiments = {};
+  client.experiments.list = loadCommand("experiments-list");
+  client.experiments.describe = loadCommand("experiments-describe");
+  client.experiments.enable = loadCommand("experiments-enable");
+  client.experiments.disable = loadCommand("experiments-disable");
+  client.experiments.clear = loadCommand("experiments-clear");
   client.ext = loadCommand("ext");
   client.ext.configure = loadCommand("ext-configure");
   client.ext.info = loadCommand("ext-info");

@@ -106,9 +106,12 @@ export function isValidExperiment(name: string): name is ExperimentName {
  * Returns null if the malformed name is actually an experiment. Returns all
  * possible typos.
  */
-export function experimentNameAutocorrect(malformed: string): string[] | null {
+export function experimentNameAutocorrect(malformed: string): string[] {
   if (isValidExperiment(malformed)) {
-    return null;
+    throw new FirebaseError(
+      "Assertion failed: experimentNameAutocorrect given actual experiment name",
+      { exit: 2 }
+    );
   }
 
   // N.B. I personally would use < (name.length + malformed.length) * 0.2
@@ -118,6 +121,7 @@ export function experimentNameAutocorrect(malformed: string): string[] | null {
     (name) => leven(name, malformed) < malformed.length * 0.4
   );
 }
+
 let localPreferencesCache: Record<ExperimentName, boolean> | undefined = undefined;
 function localPreferences(): Record<ExperimentName, boolean> {
   if (!localPreferencesCache) {

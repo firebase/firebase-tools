@@ -9,10 +9,10 @@ export const command = new Command("experiments:list").action(() => {
     head: ["Enabled", "Name", "Description"],
     style: { head: ["yellow"] },
   });
-  const [enalbed, disabled] = partition(Object.entries(experiments.ALL_EXPERIMENTS), ([name]) => {
+  const [enabled, disabled] = partition(Object.entries(experiments.ALL_EXPERIMENTS), ([name]) => {
     return experiments.isEnabled(name as experiments.ExperimentName);
   });
-  for (const [name, exp] of enalbed) {
+  for (const [name, exp] of enabled) {
     table.push(["y", name, exp.shortDescription]);
   }
   for (const [name, exp] of disabled) {
