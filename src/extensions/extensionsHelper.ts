@@ -34,7 +34,7 @@ import { getLocalExtensionSpec } from "./localHelper";
 import { promptOnce } from "../prompt";
 import { logger } from "../logger";
 import { envOverride } from "../utils";
-import { getLocalChangelog } from "./changelog";
+import { getLocalChangelog } from "./change-log";
 import { getProjectNumber } from "../getProjectNumber";
 import { Constants } from "../emulator/constants";
 import { resolveVersion } from "../deploy/extensions/planner";

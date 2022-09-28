@@ -1,3 +1,2 @@
-- Adds support for codebases in `firebase init functions` flow (#4965).
-- Fixes storage emulator resumable uploads (#5018)
-- Fixes errors on exit related to `update-notifier` (#5010).
+- Fix Storage Emulator crashing with NoClassDefFoundError in some cases (#3481).
+- Add the "experiments" family of commands (#4994)
