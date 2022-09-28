@@ -26,7 +26,7 @@ export function handlePreviewToggles(args: string[]): boolean {
       console.log(`Enabling experiment ${bold(name)} ...`);
       experiments.setEnabled(name, true);
       experiments.flushToDisk();
-      console.log("Preview feature enabled!");
+      console.log("Experiment enabled!");
       return process.exit(0);
     }
 

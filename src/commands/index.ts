@@ -77,7 +77,6 @@ export function load(client: any): any {
   client.experiments.describe = loadCommand("experiments-describe");
   client.experiments.enable = loadCommand("experiments-enable");
   client.experiments.disable = loadCommand("experiments-disable");
-  client.experiments.clear = loadCommand("experiments-clear");
   client.ext = loadCommand("ext");
   client.ext.configure = loadCommand("ext-configure");
   client.ext.info = loadCommand("ext-info");

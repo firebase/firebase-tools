@@ -1,6 +1,7 @@
 import { bold } from "colorette";
 
 import { Command } from "../command";
+import { FirebaseError } from "../error";
 import * as experiments from "../experiments";
 import { logger } from "../logger";
 import { last } from "../utils";
@@ -9,14 +10,16 @@ export const command = new Command("experiments:describe <experiment>")
   .description("enable an experiment on this machine")
   .action((experiment: string) => {
     if (!experiments.isValidExperiment(experiment)) {
-      logger.error(`Cannot find experiment ${bold(experiment)}`);
+      let message = `Cannot find experiment ${bold(experiment)}`;
       const potentials = experiments.experimentNameAutocorrect(experiment);
       if (potentials.length === 1) {
-        logger.error(`Did you mean ${potentials[0]}?`);
+        message = `${message}\nDid you mean ${potentials[0]}?`;
       } else if (potentials.length) {
-        logger.error(`Did you mean ${potentials.slice(0, -1).join(",")} or ${last(potentials)}?`);
+        message = `${message}\nDid you mean ${potentials.slice(0, -1).join(",")} or ${last(
+          potentials
+        )}?`;
       }
-      return;
+      throw new FirebaseError(message);
     }
 
     const spec = experiments.ALL_EXPERIMENTS[experiment];
