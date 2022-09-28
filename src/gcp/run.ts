@@ -109,7 +109,7 @@ export interface TrafficTarget {
   configurationName?: string;
   // RevisionName can be used to target a specific revision,
   // or customers can set latestRevision = true
-  revisionName: string;
+  revisionName?: string;
   latestRevision?: boolean;
   percent?: number; // optional when tagged
   tag?: string;

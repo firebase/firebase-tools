@@ -385,7 +385,7 @@ export async function updateVersion(
     version,
     {
       queryParams: {
-        updateMask: proto.fieldMasks(version, config", "labels").join(","),
+        updateMask: proto.fieldMasks(version, "labels").join(","),
       },
     }
   );
