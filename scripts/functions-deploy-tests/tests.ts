@@ -265,73 +265,17 @@ describe("firebase deploy", function (this) {
 
   it("skips duplicate deploys functions with runtime options", async () => {
     const opts: Opts = {
-      v1Opts: {
-        memory: "128MB",
-        maxInstances: 42,
-        timeoutSeconds: 42,
-      },
-      v2Opts: {
-        memory: "128MiB",
-        maxInstances: 42,
-        timeoutSeconds: 42,
-        cpu: 2,
-        concurrency: 42,
-      },
-      v1TqOpts: {
-        retryConfig: {
-          maxAttempts: 42,
-          maxRetrySeconds: 42,
-          maxBackoffSeconds: 42,
-          maxDoublings: 42,
-          minBackoffSeconds: 42,
-        },
-        rateLimits: {
-          maxDispatchesPerSecond: 42,
-          maxConcurrentDispatches: 42,
-        },
-      },
-      v2TqOpts: {
-        retryConfig: {
-          maxAttempts: 42,
-          maxRetrySeconds: 42,
-          maxBackoffSeconds: 42,
-          maxDoublings: 42,
-          minBackoffSeconds: 42,
-        },
-        rateLimits: {
-          maxDispatchesPerSecond: 42,
-          maxConcurrentDispatches: 42,
-        },
-      },
-      v1IdpOpts: {
-        blockingOptions: {
-          idToken: true,
-          refreshToken: true,
-          accessToken: false,
-        },
-      },
-      v2IdpOpts: {
-        idToken: true,
-        refreshToken: true,
-        accessToken: true,
-      },
-      v1ScheduleOpts: {
-        retryCount: 3,
-        minBackoffDuration: "42s",
-        maxRetryDuration: "42s",
-        maxDoublings: 42,
-        maxBackoffDuration: "42s",
-      },
-      v2ScheduleOpts: {
-        schedule: "every 30 minutes",
-        retryCount: 3,
-        minBackoffSeconds: 42,
-        maxRetrySeconds: 42,
-        maxDoublings: 42,
-        maxBackoffSeconds: 42,
-      },
+      v1Opts: {},
+      v2Opts: {},
+      v1TqOpts: {},
+      v2TqOpts: {},
+      v1IdpOpts: {},
+      v2IdpOpts: {},
+      v1ScheduleOpts: {},
+      v2ScheduleOpts: { schedule: "every 30 minutes" },
     };
 
+    // TODO(tystark) remove preview flag when its globally enabled.
     previews.skipdeployingnoopfunctions = true;
     const result = await setOptsAndDeploy(opts);
     expect(result.stdout, "deploy result").to.match(/Deploy complete!/);
