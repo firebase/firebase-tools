@@ -79,7 +79,7 @@ export function filterOnly(configs: HostingMultiple, onlyString?: string): Hosti
     .filter((target) => target.startsWith("hosting:"))
     .map((target) => target.replace("hosting:", ""));
 
-  return matchingConfigs(configs, onlyTargets, /* assertMatch=*/ true);
+  return matchingConfigs(configs, onlyTargets, /* assertMatch= */ true);
 }
 
 /**
