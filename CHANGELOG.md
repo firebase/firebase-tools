@@ -1,2 +1,3 @@
 - Fix Storage Emulator crashing with NoClassDefFoundError in some cases (#3481).
 - Add the "experiments" family of commands (#4994)
+- Fixes `init functions` throwing error when detecting existing legacy singleton functions configuration (#5020).
