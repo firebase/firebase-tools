@@ -1,1 +1,2 @@
 - Fix Storage Emulator crashing with NoClassDefFoundError in some cases (#3481).
+- Catches errors when fetching CLI MOTD, allowing process to continue (#4998).

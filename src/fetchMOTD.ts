@@ -3,9 +3,9 @@ import * as semver from "semver";
 
 import { Client } from "./apiv2";
 import { configstore } from "./configstore";
+import { logger } from "./logger";
 import { realtimeOrigin } from "./api";
 import * as utils from "./utils";
-import { FirebaseError } from "./error";
 
 const pkg = require("../package.json"); // eslint-disable-line @typescript-eslint/no-var-requires
 
@@ -51,19 +51,8 @@ export function fetchMOTD(): void {
         configstore.set("motd.fetched", Date.now());
       })
       .catch((err) => {
-        const args = process.argv.slice(2);
-
-        if (args.findIndex((arg) => arg.startsWith("emulators:")) === -1) {
-          throw new FirebaseError(
-            "Unable to fetch the CLI version check configuration. Make sure that you are online and try again.",
-            { original: err }
-          );
-        }
-
-        utils.logLabeledWarning(
-          "emulators",
-          "Unable to fetch the CLI version check configuration, emulator functionality may be incorrect."
-        );
+        utils.logWarning("Unable to fetch the CLI MOTD and remote config.");
+        logger.debug(`Failed to fetch MOTD ${err}`);
       });
   }
 }
