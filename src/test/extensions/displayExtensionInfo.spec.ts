@@ -56,7 +56,13 @@ describe("displayExtensionInfo", () => {
         "**APIs used by this Extension**:\n  api1 ()\n  api2 ()",
         "\u001b[1m**Roles granted to this Extension**:\n\u001b[22m  Role 1 (a role)\n  Role 2 (a role)",
       ];
-      expect(loggedLines).to.eql(expected);
+      expect(loggedLines.length).to.eql(expected.length);
+      expect(loggedLines[0]).to.include("Old");
+      expect(loggedLines[1]).to.include("descriptive");
+      expect(loggedLines[2]).to.include("api1");
+      expect(loggedLines[2]).to.include("api2");
+      expect(loggedLines[3]).to.include("Role 1");
+      expect(loggedLines[3]).to.include("Role 2");
     });
     it("should display additional information for a published extension", async () => {
       const loggedLines = await displayExtensionInfo.displayExtInfo(
@@ -74,7 +80,16 @@ describe("displayExtensionInfo", () => {
         "**APIs used by this Extension**:\n  api1 ()\n  api2 ()",
         "\u001b[1m**Roles granted to this Extension**:\n\u001b[22m  Role 1 (a role)\n  Role 2 (a role)",
       ];
-      expect(loggedLines).to.eql(expected);
+      expect(loggedLines.length).to.eql(expected.length);
+      expect(loggedLines[0]).to.include("Old");
+      expect(loggedLines[1]).to.include("testpublisher");
+      expect(loggedLines[2]).to.include("descriptive");
+      expect(loggedLines[3]).to.include("MIT");
+      expect(loggedLines[4]).to.include("test.com");
+      expect(loggedLines[5]).to.include("api1");
+      expect(loggedLines[5]).to.include("api2");
+      expect(loggedLines[6]).to.include("Role 1");
+      expect(loggedLines[6]).to.include("Role 2");
     });
   });
 });

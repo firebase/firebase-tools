@@ -58,6 +58,9 @@ function printEmulatorOverview(options: any): void {
     if (info) {
       reservedPorts.push(info.port);
     }
+    controller.filterEmulatorTargets(options).forEach((emulator: Emulators) => {
+      reservedPorts.push(...(EmulatorRegistry.getInfo(emulator)?.reservedPorts || []));
+    });
   }
   const reservedPortsString = reservedPorts.length > 0 ? reservedPorts.join(", ") : "None";
 

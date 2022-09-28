@@ -11,6 +11,7 @@ interface HostingConfig {
   rewrites?: any[];
   redirects?: any[];
   headers?: any[];
+  cleanUrls?: boolean;
 }
 
 function filterOnly(configs: HostingConfig[], onlyString: string): HostingConfig[] {
