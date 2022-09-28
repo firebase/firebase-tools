@@ -62,10 +62,7 @@ function matchingConfigs(
 /**
  * Returns a subset of configs that match the only string
  */
-export function filterOnly(
-  configs: HostingMultiple,
-  onlyString: string | undefined
-): HostingMultiple {
+export function filterOnly(configs: HostingMultiple, onlyString?: string): HostingMultiple {
   if (!onlyString) {
     return configs;
   }
@@ -88,10 +85,7 @@ export function filterOnly(
 /**
  * Returns a subset of configs that match the except string;
  */
-export function filterExcept(
-  configs: HostingMultiple,
-  exceptOption: string | undefined
-): HostingMultiple {
+export function filterExcept(configs: HostingMultiple, exceptOption?: string): HostingMultiple {
   if (!exceptOption) {
     return configs;
   }

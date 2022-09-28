@@ -137,7 +137,6 @@ export function stop(): Promise<void> {
  * Start the Hosting server.
  * @param options the Firebase CLI options.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function start(options: Options): Promise<void> {
   const init = await implicitInit(options);
   // Note: we cannot use the hostingConfig() method because it would resolve
@@ -148,9 +147,16 @@ export async function start(options: Options): Promise<void> {
   configs = config.filterExcept(configs, options.except);
   config.validate(configs, options);
 
+  if (!options.port) {
+    throw new FirebaseError(
+      "Assertion failed: options.port must be defined when serving the hosting emulator",
+      { exit: 2 }
+    );
+  }
+
   for (let i = 0; i < configs.length; i++) {
     // skip over the functions emulator ports to avoid breaking changes
-    const port = i === 0 ? options.port! : options.port! + 4 + i;
+    const port = i === 0 ? options.port : options.port + 4 + i;
     startServer(options, configs[i], port, init);
   }
 }

@@ -6,6 +6,7 @@ import { convertConfig } from "./convertConfig";
 import { Payload } from "./args";
 import { Context } from "./context";
 import { Options } from "../../options";
+import { FirebaseError } from "../../error";
 
 /**
  *  Release finalized a Hosting release.
@@ -20,13 +21,19 @@ export async function release(context: Context, options: Options, payload: Paylo
   logger.debug(JSON.stringify(context.hosting.deploys, null, 2));
   await Promise.all(
     context.hosting.deploys.map(async (deploy) => {
+      if (!deploy.version) {
+        throw new FirebaseError(
+          "Assertion failed: Hosting version should have been set in the prepare phase",
+          { exit: 2 }
+        );
+      }
       utils.logLabeledBullet(`hosting[${deploy.site}]`, "finalizing version...");
 
       const config = await convertConfig(context, payload, deploy.config, true);
       const data = { status: "FINALIZED", config };
       const queryParams = { updateMask: "status,config" };
 
-      const finalizeResult = await client.patch(`/${deploy.version!}`, data, { queryParams });
+      const finalizeResult = await client.patch(`/${deploy.version}`, data, { queryParams });
 
       logger.debug(`[hosting] finalized version for ${deploy.site}:${finalizeResult.body}`);
       utils.logLabeledSuccess(`hosting[${deploy.site}]`, "version finalized");
@@ -44,7 +51,7 @@ export async function release(context: Context, options: Options, payload: Paylo
       const releaseResult = await client.post(
         `/projects/${projectNumber}/sites/${deploy.site}${channelSegment}/releases`,
         { message: options.message || null },
-        { queryParams: { versionName: deploy.version! } }
+        { queryParams: { versionName: deploy.version } }
       );
       logger.debug("[hosting] release:", releaseResult.body);
       utils.logLabeledSuccess(`hosting[${deploy.site}]`, "release complete");
