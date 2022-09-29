@@ -11,6 +11,11 @@ env:
 permissions:
   contents: read
 
+concurrency:
+  # node-test-[pull_request|push]-[branch], typically. Will cancel previous runs that match!
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
 jobs:
   lint:
     runs-on: ubuntu-latest
