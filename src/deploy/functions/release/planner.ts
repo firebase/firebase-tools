@@ -10,7 +10,6 @@ import { FirebaseError } from "../../../error";
 import * as utils from "../../../utils";
 import * as backend from "../backend";
 import * as v2events from "../../../functions/events/v2";
-import * as experiments from "../../../experiments";
 
 export interface EndpointUpdate {
   endpoint: backend.Endpoint;
@@ -56,12 +55,9 @@ export function calculateChangesets(
     keyFn
   );
 
-  const skipdeployingnoopfunctions = experiments.isEnabled("skipdeployingnoopfunctions");
-
   // If the hashes are matching, that means the local function is the same as the server copy.
   const toSkipPredicate = (id: string): boolean =>
     !!(
-      skipdeployingnoopfunctions &&
       !want[id].targetedByOnly && // Don't skip the function if its --only targeted.
       have[id].hash &&
       want[id].hash &&
