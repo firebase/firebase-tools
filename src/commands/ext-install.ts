@@ -30,7 +30,7 @@ import { getRandomString } from "../extensions/utils";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
 import { track } from "../track";
-import { previews } from "../previews";
+import * as experiments from "../experiments";
 import { Options } from "../options";
 import * as manifest from "../extensions/manifest";
 
@@ -44,7 +44,7 @@ marked.setOptions({
 export const command = new Command("ext:install [extensionName]")
   .description(
     "install an official extension if [extensionName] or [extensionName@version] is provided; " +
-      (previews.extdev
+      (experiments.isEnabled("extdev")
         ? "install a local extension if [localPathOrUrl] or [url#root] is provided; install a published extension (not authored by Firebase) if [publisherId/extensionId] is provided "
         : "") +
       "or run with `-i` to see all available extensions."
@@ -99,7 +99,7 @@ export const command = new Command("ext:install [extensionName]")
       // TODO(b/228444119): Create source should happen at deploy time.
       // Should parse spec locally so we don't need project ID.
       source = await createSourceFromLocation(needProjectId({ projectId }), extensionName);
-      displayExtInfo(extensionName, "", source.spec);
+      await displayExtInfo(extensionName, "", source.spec);
       void track("Extension Install", "Install by Source", options.interactive ? 1 : 0);
     } else {
       void track("Extension Install", "Install by Extension Ref", options.interactive ? 1 : 0);
@@ -167,7 +167,7 @@ async function infoExtensionVersion(args: {
 }): Promise<void> {
   const ref = refs.parse(args.extensionName);
   const extension = await extensionsApi.getExtension(refs.toExtensionRef(ref));
-  displayExtInfo(args.extensionName, ref.publisherId, args.extensionVersion.spec, true);
+  await displayExtInfo(args.extensionName, ref.publisherId, args.extensionVersion.spec, true);
   await displayWarningPrompts(
     ref.publisherId,
     extension.registryLaunchStage,

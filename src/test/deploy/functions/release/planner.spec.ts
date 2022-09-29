@@ -6,7 +6,6 @@ import * as planner from "../../../../deploy/functions/release/planner";
 import * as deploymentTool from "../../../../deploymentTool";
 import * as utils from "../../../../utils";
 import * as v2events from "../../../../functions/events/v2";
-import { previews } from "../../../../previews";
 
 describe("planner", () => {
   let logLabeledBullet: sinon.SinonStub;
@@ -16,12 +15,10 @@ describe("planner", () => {
   }
 
   beforeEach(() => {
-    previews.skipdeployingnoopfunctions = true;
     logLabeledBullet = sinon.stub(utils, "logLabeledBullet");
   });
 
   afterEach(() => {
-    previews.skipdeployingnoopfunctions = false;
     sinon.verifyAndRestore();
   });
 
@@ -225,15 +222,14 @@ describe("planner", () => {
       });
     });
 
-    it("does not add endpoints to skip list if preview flag is false", () => {
+    it("does not add endpoints to skip list if not targeted for deploy", () => {
       // Note: the two functions share the same id
       const updatedWant = func("updated", "region");
       const updatedHave = func("updated", "region");
       // But their hash are the same (aka a no-op function)
       updatedWant.hash = "to_skip";
       updatedHave.hash = "to_skip";
-
-      previews.skipdeployingnoopfunctions = false;
+      updatedWant.targetedByOnly = true;
 
       const want = { updated: updatedWant };
       const have = { updated: updatedHave };

@@ -24,7 +24,6 @@ import * as scheduler from "../../../gcp/cloudscheduler";
 import * as utils from "../../../utils";
 import * as services from "../services";
 import { AUTH_BLOCKING_EVENTS } from "../../../functions/events/v1";
-import { backoff } from "../../../throttler/throttler";
 import { getDefaultComputeServiceAgent } from "../checkIam";
 
 // TODO: Tune this for better performance.
@@ -125,11 +124,8 @@ export class Fabricator {
       this.logOpStart("creating", endpoint);
       upserts.push(handle("create", endpoint, () => this.createEndpoint(endpoint, scraper)));
     }
-    if (changes.endpointsToSkip.length) {
-      for (const endpoint of changes.endpointsToSkip) {
-        utils.logSuccess(this.getLogSuccessMessage("skip", endpoint));
-      }
-      utils.logSuccess(this.getSkippedDeployingNopOpMessage(changes.endpointsToSkip));
+    for (const endpoint of changes.endpointsToSkip) {
+      utils.logSuccess(this.getLogSuccessMessage("skip", endpoint));
     }
     for (const update of changes.endpointsToUpdate) {
       this.logOpStart("updating", update.endpoint);
@@ -513,7 +509,7 @@ export class Fabricator {
   async setRunTraits(serviceName: string, endpoint: backend.Endpoint): Promise<void> {
     await this.functionExecutor
       .run(async () => {
-        let service = await run.getService(serviceName);
+        const service = await run.getService(serviceName);
         let changed = false;
         if (service.spec.template.spec.containerConcurrency !== endpoint.concurrency) {
           service.spec.template.spec.containerConcurrency = endpoint.concurrency;
@@ -532,18 +528,7 @@ export class Fabricator {
           return;
         }
 
-        delete service.status;
-        delete (service.spec.template.metadata as any).name;
-        service = await run.replaceService(serviceName, service);
-
-        // Now we need to wait for reconciliation or we might delete the docker
-        // image while the service is still rolling out a new revision.
-        let retry = 0;
-        while (!exports.serviceIsResolved(service)) {
-          await backoff(retry, 2, 30);
-          retry = retry + 1;
-          service = await run.getService(serviceName);
-        }
+        await run.updateService(serviceName, service);
       })
       .catch(rethrowAs(endpoint, "set concurrency"));
   }
@@ -676,9 +661,7 @@ export class Fabricator {
     const label = helper.getFunctionLabel(endpoint);
     switch (op) {
       case "skip":
-        return `Not deploying ${clc.bold(
-          clc.green(`functions[${label}]`)
-        )} - no change since last deploy (hash=${endpoint.hash})`;
+        return `${clc.bold(clc.magenta(`functions[${label}]`))} Skipped (No changes detected)`;
       default:
         return `${clc.bold(clc.green(`functions[${label}]`))} Successful ${op} operation.`;
     }
@@ -689,43 +672,9 @@ export class Fabricator {
    */
   getSkippedDeployingNopOpMessage(endpoints: backend.Endpoint[]) {
     const functionNames = endpoints.map((endpoint) => endpoint.id).join(",");
-    return `To force deploy these functions, run command ${clc.bold(
-      `firebase deploy --only functions:${clc.green(functionNames)}`
+    return `${clc.bold(clc.magenta(`functions:`))} You can re-deploy skipped functions with:
+              ${clc.bold(`firebase deploy --only functions:${functionNames}`)} or ${clc.bold(
+      `FUNCTIONS_DEPLOY_UNCHANGED=true firebase deploy`
     )}`;
   }
-}
-
-/**
- * Returns whether a service is resolved (all transitions have completed).
- */
-export function serviceIsResolved(service: run.Service): boolean {
-  if (service.status?.observedGeneration !== service.metadata.generation) {
-    logger.debug(
-      `Service ${service.metadata.name} is not resolved because` +
-        `observed generation ${service.status?.observedGeneration} does not ` +
-        `match spec generation ${service.metadata.generation}`
-    );
-    return false;
-  }
-  const readyCondition = service.status?.conditions?.find((condition) => {
-    return condition.type === "Ready";
-  });
-
-  if (readyCondition?.status === "Unknown") {
-    logger.debug(
-      `Waiting for service ${service.metadata.name} to be ready. ` +
-        `Status is ${JSON.stringify(service.status?.conditions)}`
-    );
-    return false;
-  } else if (readyCondition?.status === "True") {
-    return true;
-  }
-  logger.debug(
-    `Service ${service.metadata.name} has unexpected ready status ${JSON.stringify(
-      readyCondition
-    )}. It may have failed rollout.`
-  );
-  throw new FirebaseError(
-    `Unexpected Status ${readyCondition?.status} for service ${service.metadata.name}`
-  );
 }

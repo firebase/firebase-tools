@@ -2,11 +2,11 @@ import * as backend from "./backend";
 import * as proto from "../../gcp/proto";
 import * as api from "../../.../../api";
 import * as params from "./params";
-import { previews } from "../../previews";
+import * as experiments from "../../experiments";
 import { FirebaseError } from "../../error";
 import { assertExhaustive, mapObject, nullsafeVisitor } from "../../functional";
 import { UserEnvsOpts, writeUserEnvs } from "../../functions/env";
-import { logger } from "../../logger";
+import { FirebaseConfig } from "./args";
 
 /* The union of a customer-controlled deployment and potentially deploy-time defined parameters */
 export interface Build {
@@ -275,27 +275,27 @@ export type Endpoint = Triggered & {
  */
 export async function resolveBackend(
   build: Build,
+  firebaseConfig: FirebaseConfig,
   userEnvOpt: UserEnvsOpts,
   userEnvs: Record<string, string>,
   nonInteractive?: boolean
-): Promise<{ backend: backend.Backend; envs: Record<string, Field<string | number | boolean>> }> {
-  const projectId = userEnvOpt.projectId;
-  let paramValues: Record<string, Field<string | number | boolean>> = {};
-  if (previews.functionsparams) {
+): Promise<{ backend: backend.Backend; envs: Record<string, params.ParamValue> }> {
+  let paramValues: Record<string, params.ParamValue> = {};
+  if (experiments.isEnabled("functionsparams")) {
     paramValues = await params.resolveParams(
       build.params,
-      projectId,
-      envWithTypes(userEnvs),
+      firebaseConfig,
+      envWithTypes(build.params, userEnvs),
       nonInteractive
     );
 
-    // TODO(vsfan@): when merging secrets support into the Build, make sure we aren't writing those to disk.
     const toWrite: Record<string, string> = {};
     for (const paramName of Object.keys(paramValues)) {
-      if (userEnvs.hasOwnProperty(paramName)) {
+      const paramValue = paramValues[paramName];
+      if (Object.prototype.hasOwnProperty.call(userEnvs, paramName) || paramValue.internal) {
         continue;
       }
-      toWrite[paramName] = paramValues[paramName]?.toString() || "";
+      toWrite[paramName] = paramValue.toString();
     }
     writeUserEnvs(toWrite, userEnvOpt);
   }
@@ -303,19 +303,42 @@ export async function resolveBackend(
   return { backend: toBackend(build, paramValues), envs: paramValues };
 }
 
-function envWithTypes(rawEnvs: Record<string, string>): Record<string, string | number | boolean> {
-  const out: Record<string, string | number | boolean> = {};
+function envWithTypes(
+  definedParams: params.Param[],
+  rawEnvs: Record<string, string>
+): Record<string, params.ParamValue> {
+  const out: Record<string, params.ParamValue> = {};
   for (const envName of Object.keys(rawEnvs)) {
     const value = rawEnvs[envName];
-    if (!isNaN(+value) && isFinite(+value) && !value.includes("e")) {
-      out[envName] = +value;
-    } else if (value === "true") {
-      out[envName] = true;
-    } else if (value === "false") {
-      out[envName] = false;
-    } else {
-      out[envName] = value;
+    let providedType = {
+      string: true,
+      boolean: true,
+      number: true,
+    };
+    for (const param of definedParams) {
+      if (param.name === envName) {
+        if (param.type === "string") {
+          providedType = {
+            string: true,
+            boolean: false,
+            number: false,
+          };
+        } else if (param.type === "int") {
+          providedType = {
+            string: false,
+            boolean: false,
+            number: true,
+          };
+        } else if (param.type === "boolean") {
+          providedType = {
+            string: false,
+            boolean: true,
+            number: false,
+          };
+        }
+      }
     }
+    out[envName] = new params.ParamValue(value, false, providedType);
   }
   return out;
 }
@@ -326,7 +349,7 @@ function envWithTypes(rawEnvs: Record<string, string>): Record<string, string | 
 // The class also recognizes that if the input is not null the output cannot be
 // null.
 class Resolver {
-  constructor(private readonly paramValues: Record<string, Field<string | number | boolean>>) {}
+  constructor(private readonly paramValues: Record<string, params.ParamValue>) {}
 
   // NB: The (Extract<T, null> | number) says "If T can be null, the return value"
   // can be null. If we know input is not null, the return type is known to not
@@ -385,7 +408,7 @@ class Resolver {
 // TODO(vsfan): handle Expression<T> types
 export function toBackend(
   build: Build,
-  paramValues: Record<string, Field<string | number | boolean>>
+  paramValues: Record<string, params.ParamValue>
 ): backend.Backend {
   const r = new Resolver(paramValues);
   const bkEndpoints: Array<backend.Endpoint> = [];
@@ -401,12 +424,6 @@ export function toBackend(
 
       if (typeof bdEndpoint.platform === "undefined") {
         throw new FirebaseError("platform can't be undefined");
-      }
-      if (
-        bdEndpoint.availableMemoryMb != null &&
-        !backend.isValidMemoryOption(bdEndpoint.availableMemoryMb)
-      ) {
-        throw new FirebaseError("available memory must be a supported value, if present");
       }
       const bkEndpoint: backend.Endpoint = {
         id: endpointId,
@@ -435,9 +452,13 @@ export function toBackend(
       proto.convertIfPresent(bkEndpoint, bdEndpoint, "availableMemoryMb", (from) => {
         const mem = r.resolveInt(from);
         if (mem !== null && !backend.isValidMemoryOption(mem)) {
-          logger.debug("Warning; setting memory to unexpected value", mem);
+          throw new FirebaseError(
+            `Function memory (${mem}) must resolve to a supported value, if present: ${JSON.stringify(
+              allMemoryOptions
+            )}`
+          );
         }
-        return mem as backend.MemoryOptions | null;
+        return (mem as backend.MemoryOptions) || null;
       });
 
       r.resolveInts(

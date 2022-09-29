@@ -64,13 +64,17 @@ function startServer(options: any, config: any, port: number, init: TemplateServ
   // enough devexp that we should special case and ensure it's available.
   if (process.platform === "darwin") {
     try {
-      execSync(`lsof -i :${port}`);
+      execSync(`lsof -i :${port} -sTCP:LISTEN`);
       portInUse();
       return;
     } catch (e) {
       // if lsof errored the port is NOT in use, continue
     }
   }
+
+  const after = options.frameworksDevModeHandle && {
+    files: options.frameworksDevModeHandle,
+  };
 
   const server = superstatic({
     debug: false,
@@ -87,6 +91,7 @@ function startServer(options: any, config: any, port: number, init: TemplateServ
         firebaseMiddleware(req, res, next);
       },
     },
+    after,
     rewriters: {
       function: functionsProxy(options),
       run: cloudRunProxy(options),

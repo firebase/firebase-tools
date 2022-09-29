@@ -1,4 +1,3 @@
-import * as http from "http";
 import * as fs from "fs";
 
 import { CloudFunction, DeploymentOptions, https } from "firebase-functions";
@@ -15,12 +14,15 @@ import {
   EmulatedTriggerMap,
   findModuleRoot,
   FunctionsRuntimeBundle,
-  FunctionsRuntimeFeatures,
-  FunctionsRuntimeArgs,
   HttpConstants,
   SignatureType,
 } from "./functionsEmulatorShared";
 import { compareVersionStrings, isLocalHost } from "./functionsEmulatorUtils";
+import { EventUtils } from "./events/types";
+
+interface RequestWithRawBody extends express.Request {
+  rawBody: Buffer;
+}
 
 let functionModule: any;
 let FUNCTION_TARGET_NAME: string;
@@ -37,13 +39,6 @@ let developerPkgJSON: PackageJSON | undefined;
  */
 // eslint-disable-next-line @typescript-eslint/no-implied-eval
 const dynamicImport = new Function("modulePath", "return import(modulePath)");
-
-function isFeatureEnabled(
-  frb: FunctionsRuntimeBundle,
-  feature: keyof FunctionsRuntimeFeatures
-): boolean {
-  return frb.disabled_features ? !frb.disabled_features[feature] : true;
-}
 
 function noOp(): false {
   return false;
@@ -767,98 +762,24 @@ function rawBodySaver(req: express.Request, res: express.Response, buf: Buffer):
   (req as any).rawBody = buf;
 }
 
-async function processHTTPS(trigger: CloudFunction<any>): Promise<void> {
-  const ephemeralServer = express();
-
-  await new Promise<void>((resolveEphemeralServer, rejectEphemeralServer) => {
-    ephemeralServer.enable("trust proxy");
-    ephemeralServer.use(
-      bodyParser.json({
-        limit: "10mb",
-        verify: rawBodySaver,
-      })
-    );
-    ephemeralServer.use(
-      bodyParser.text({
-        limit: "10mb",
-        verify: rawBodySaver,
-      })
-    );
-    ephemeralServer.use(
-      bodyParser.urlencoded({
-        extended: true,
-        limit: "10mb",
-        verify: rawBodySaver,
-      })
-    );
-    ephemeralServer.use(
-      bodyParser.raw({
-        type: "*/*",
-        limit: "10mb",
-        verify: rawBodySaver,
-      })
-    );
-
-    // eslint-disable-next-line prefer-const
-    let server: http.Server;
-    function closeServer() {
-      if (server) {
-        server.close((err) => {
-          if (err) {
-            rejectEphemeralServer(err);
-          } else {
-            resolveEphemeralServer();
-          }
-        });
-      }
-    }
-    // Endpoint used by the Functions Emulator to check if runtime process is ready to accept requests.
-    // Notice that unlike other endpoints, this route does not call closeServer() at the end of request since
-    // we expect one additional request that actually invokes the handler.
-    ephemeralServer.get("/__/health", (req, res) => {
-      res.status(200).send();
-    });
-    ephemeralServer.all("/favicon.ico|/robots.txt", (req, res) => {
-      res.on("finish", closeServer);
-      res.status(404).send();
-    });
-    ephemeralServer.all(`/*`, async (req: express.Request, res: express.Response) => {
-      try {
-        logDebug(`Ephemeral server handling ${req.method} request`);
-        res.on("finish", closeServer);
-        await runHTTPS(trigger, [req, res]);
-      } catch (err: any) {
-        rejectEphemeralServer(err);
-      }
-    });
-
-    server = ephemeralServer.listen(process.env.PORT);
-    logDebug(`Listening to port: ${process.env.PORT}`);
-    server.on("error", rejectEphemeralServer);
-  });
-}
-
 async function processBackground(
   trigger: CloudFunction<any>,
-  frb: FunctionsRuntimeBundle,
+  reqBody: any,
   signature: SignatureType
 ): Promise<void> {
-  const proto = frb.proto;
-  logDebug("ProcessBackground", proto);
-
   if (signature === "cloudevent") {
-    return runCloudEvent(trigger, proto);
+    return runCloudEvent(trigger, reqBody);
   }
 
   // All formats of the payload should carry a "data" property. The "context" property does
   // not exist in all versions. Where it doesn't exist, context is everything besides data.
-  const data = proto.data;
-  delete proto.data;
-  const context = proto.context ? proto.context : proto;
+  const data = reqBody.data;
+  delete reqBody.data;
+  const context = reqBody.context ? reqBody.context : reqBody;
 
   // This is due to the fact that the Firestore emulator sends payloads in a newer
   // format than production firestore.
-  if (!proto.eventType || !proto.eventType.startsWith("google.storage")) {
+  if (!reqBody.eventType || !reqBody.eventType.startsWith("google.storage")) {
     if (context.resource && context.resource.name) {
       logDebug("ProcessBackground: lifting resource.name from resource", context.resource);
       context.resource = context.resource.name;
@@ -878,18 +799,16 @@ async function runFunction(func: () => Promise<any>): Promise<any> {
   } catch (err: any) {
     caughtErr = err;
   }
-
-  logDebug(`Ephemeral server survived.`);
   if (caughtErr) {
     throw caughtErr;
   }
 }
 
-async function runBackground(trigger: CloudFunction<any>, proto: any): Promise<any> {
-  logDebug("RunBackground", proto);
+async function runBackground(trigger: CloudFunction<any>, reqBody: any): Promise<any> {
+  logDebug("RunBackground", reqBody);
 
   await runFunction(() => {
-    return trigger(proto.data, proto.context);
+    return trigger(reqBody.data, reqBody.context);
   });
 }
 
@@ -943,61 +862,6 @@ async function moduleResolutionDetective(error: Error): Promise<void> {
 
 function logDebug(msg: string, data?: any): void {
   new EmulatorLog("DEBUG", "runtime-status", `[${process.pid}] ${msg}`, data).log();
-}
-
-async function invokeTrigger(
-  trigger: CloudFunction<any>,
-  frb: FunctionsRuntimeBundle
-): Promise<void> {
-  new EmulatorLog("INFO", "runtime-status", `Beginning execution of "${FUNCTION_TARGET_NAME}"`, {
-    frb,
-  }).log();
-
-  logDebug(`Running ${FUNCTION_TARGET_NAME} in signature ${FUNCTION_SIGNATURE}`);
-
-  let seconds = 0;
-  const timerId = setInterval(() => {
-    seconds++;
-  }, 1000);
-
-  let timeoutId;
-  if (isFeatureEnabled(frb, "timeout")) {
-    let timeout = process.env.FUNCTIONS_EMULATOR_TIMEOUT_SECONDS || "60";
-    if (timeout.endsWith("s")) {
-      timeout = timeout.slice(0, -1);
-    }
-    const timeoutMs = parseInt(timeout, 10) * 1000;
-    timeoutId = setTimeout(() => {
-      new EmulatorLog(
-        "WARN",
-        "runtime-status",
-        `Your function timed out after ~${timeout}s. To configure this timeout, see
-      https://firebase.google.com/docs/functions/manage-functions#set_timeout_and_memory_allocation.`
-      ).log();
-      throw new Error("Function timed out.");
-    }, timeoutMs);
-  }
-
-  switch (FUNCTION_SIGNATURE) {
-    case "event":
-    case "cloudevent":
-      await processBackground(trigger, frb, FUNCTION_SIGNATURE);
-      break;
-    case "http":
-      await processHTTPS(trigger);
-      break;
-  }
-
-  if (timeoutId) {
-    clearTimeout(timeoutId);
-  }
-  clearInterval(timerId);
-
-  new EmulatorLog(
-    "INFO",
-    "runtime-status",
-    `Finished "${FUNCTION_TARGET_NAME}" in ~${Math.max(seconds, 1)}s`
-  ).log();
 }
 
 async function initializeRuntime(): Promise<EmulatedTriggerMap | undefined> {
@@ -1066,58 +930,23 @@ async function flushAndExit(code: number) {
   process.exit(code);
 }
 
-async function goIdle() {
-  new EmulatorLog("SYSTEM", "runtime-status", "Runtime is now idle", { state: "idle" }).log();
-  await EmulatorLog.waitForFlush();
-}
-
 async function handleMessage(message: string) {
-  let runtimeArgs: FunctionsRuntimeArgs;
+  let debug: FunctionsRuntimeBundle["debug"];
   try {
-    runtimeArgs = JSON.parse(message) as FunctionsRuntimeArgs;
+    debug = JSON.parse(message) as FunctionsRuntimeBundle["debug"];
   } catch (e: any) {
     new EmulatorLog("FATAL", "runtime-error", `Got unexpected message body: ${message}`).log();
     await flushAndExit(1);
     return;
   }
 
-  if (!functionModule) {
-    try {
-      functionModule = await loadTriggers();
-    } catch (e: any) {
-      logDebug(e);
-      new EmulatorLog(
-        "FATAL",
-        "runtime-status",
-        `Failed to initialize and load triggers. This shouldn't happen: ${e.message}`
-      ).log();
-      await flushAndExit(1);
-      return;
-    }
-  }
-
   if (FUNCTION_DEBUG_MODE) {
-    // In debug mode, all function triggers run in a single process.
-    // Target trigger is dynamically defined in the FunctionRuntimeBundle.
-    FUNCTION_TARGET_NAME = runtimeArgs.frb.debug!.functionTarget;
-    FUNCTION_SIGNATURE = runtimeArgs.frb.debug!.functionSignature;
-  }
-
-  const trigger = FUNCTION_TARGET_NAME.split(".").reduce((mod, functionTargetPart) => {
-    return mod?.[functionTargetPart];
-  }, functionModule) as CloudFunction<any>;
-  if (!trigger) {
-    throw new Error(`Failed to find function ${FUNCTION_TARGET_NAME} in the loaded module`);
-  }
-
-  logDebug(`Beginning invocation function ${FUNCTION_TARGET_NAME}!`);
-
-  try {
-    await invokeTrigger(trigger, runtimeArgs.frb);
-    await goIdle();
-  } catch (err: any) {
-    new EmulatorLog("FATAL", "runtime-error", err.stack ? err.stack : err).log();
-    await flushAndExit(1);
+    if (debug) {
+      FUNCTION_TARGET_NAME = debug.functionTarget;
+      FUNCTION_SIGNATURE = debug.functionSignature;
+    } else {
+      new EmulatorLog("WARN", "runtime-warning", "Expected debug payload while in debug mode.");
+    }
   }
 }
 
@@ -1142,6 +971,120 @@ async function main(): Promise<void> {
   });
 
   await initializeRuntime();
+  try {
+    functionModule = await loadTriggers();
+  } catch (e: any) {
+    new EmulatorLog(
+      "FATAL",
+      "runtime-status",
+      `Failed to initialize and load triggers. This shouldn't happen: ${e.message}`
+    ).log();
+    await flushAndExit(1);
+  }
+
+  const app = express();
+  app.enable("trust proxy");
+  app.use(
+    bodyParser.json({
+      limit: "10mb",
+      verify: rawBodySaver,
+    })
+  );
+  app.use(
+    bodyParser.text({
+      limit: "10mb",
+      verify: rawBodySaver,
+    })
+  );
+  app.use(
+    bodyParser.urlencoded({
+      extended: true,
+      limit: "10mb",
+      verify: rawBodySaver,
+    })
+  );
+  app.use(
+    bodyParser.raw({
+      type: "*/*",
+      limit: "10mb",
+      verify: rawBodySaver,
+    })
+  );
+  app.get("/__/health", (req, res) => {
+    res.status(200).send();
+  });
+  app.all("/favicon.ico|/robots.txt", (req, res) => {
+    res.status(404).send();
+  });
+  app.all(`/*`, async (req: express.Request, res: express.Response) => {
+    try {
+      new EmulatorLog(
+        "INFO",
+        "runtime-status",
+        `Beginning execution of "${FUNCTION_TARGET_NAME}"`
+      ).log();
+
+      const trigger = FUNCTION_TARGET_NAME.split(".").reduce((mod, functionTargetPart) => {
+        return mod?.[functionTargetPart];
+      }, functionModule) as CloudFunction<unknown>;
+      if (!trigger) {
+        throw new Error(`Failed to find function ${FUNCTION_TARGET_NAME} in the loaded module`);
+      }
+
+      const startHrTime = process.hrtime();
+      res.on("finish", () => {
+        const elapsedHrTime = process.hrtime(startHrTime);
+        new EmulatorLog(
+          "INFO",
+          "runtime-status",
+          `Finished "${FUNCTION_TARGET_NAME}" in ${
+            elapsedHrTime[0] * 1000 + elapsedHrTime[1] / 1000000
+          }ms`
+        ).log();
+      });
+
+      switch (FUNCTION_SIGNATURE) {
+        case "event":
+        case "cloudevent":
+          const rawBody = (req as RequestWithRawBody).rawBody;
+          let reqBody = JSON.parse(rawBody.toString());
+          if (req.headers["content-type"]?.includes("cloudevent")) {
+            if (EventUtils.isBinaryCloudEvent(req)) {
+              reqBody = EventUtils.extractBinaryCloudEventContext(req);
+              reqBody.data = req.body;
+            }
+          }
+          await processBackground(trigger, reqBody, FUNCTION_SIGNATURE);
+          res.send({ status: "acknowledged" });
+          break;
+        case "http":
+          await runHTTPS(trigger, [req, res]);
+      }
+    } catch (err: any) {
+      new EmulatorLog("FATAL", "runtime-error", err.stack ? err.stack : err).log();
+      res.status(500).send(err.message);
+    }
+  });
+  const server = app.listen(process.env.PORT, () => {
+    logDebug(`Listening to port: ${process.env.PORT}`);
+  });
+  if (!FUNCTION_DEBUG_MODE) {
+    let timeout = process.env.FUNCTIONS_EMULATOR_TIMEOUT_SECONDS || "60";
+    if (timeout.endsWith("s")) {
+      timeout = timeout.slice(0, -1);
+    }
+    const timeoutMs = parseInt(timeout, 10) * 1000;
+    server.setTimeout(timeoutMs, () => {
+      new EmulatorLog(
+        "FATAL",
+        "runtime-error",
+        `Your function timed out after ~${timeout}s. To configure this timeout, see
+      https://firebase.google.com/docs/functions/manage-functions#set_timeout_and_memory_allocation.`
+      ).log();
+      return flushAndExit(1);
+    });
+  }
+
   // Event emitters do not work well with async functions, so we
   // construct our own promise chain to make sure each message is
   // handled only after the previous message handling is complete.
