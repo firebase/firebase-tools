@@ -52,7 +52,7 @@ import { ExtensionsEmulator } from "./extensionsEmulator";
 import { normalizeAndValidate } from "../functions/projectConfig";
 import { requiresJava } from "./downloadableEmulators";
 import { prepareFrameworks } from "../frameworks";
-import { previews } from "../previews";
+import * as experiments from "../experiments";
 
 const START_LOGGING_EMULATOR = utils.envOverride(
   "START_LOGGING_EMULATOR",
@@ -369,6 +369,9 @@ interface EmulatorOptions extends Options {
   extDevEnv?: Record<string, string>;
 }
 
+/**
+ * Start all emulators.
+ */
 export async function startAll(
   options: EmulatorOptions,
   showUI = true
@@ -489,16 +492,21 @@ export async function startAll(
     }
   }
 
-  if (previews.frameworkawareness) {
-    const config = options.config.get("hosting");
+  // TODO: turn this into hostingConfig.extract or hostingConfig.hostingConfig
+  // once those branches merge
+  const hostingConfig = options.config.get("hosting");
+  if (
+    Array.isArray(hostingConfig) ? hostingConfig.some((it) => it.source) : hostingConfig?.source
+  ) {
+    experiments.assertEnabled("frameworkawareness", "emulate a web framework");
     const emulators: EmulatorInfo[] = [];
-    for (const e of EMULATORS_SUPPORTED_BY_UI) {
-      const info = EmulatorRegistry.getInfo(e);
-      if (info) emulators.push(info);
+    if (experiments.isEnabled("frameworkawareness")) {
+      for (const e of EMULATORS_SUPPORTED_BY_UI) {
+        const info = EmulatorRegistry.getInfo(e);
+        if (info) emulators.push(info);
+      }
     }
-    if (Array.isArray(config) ? config.some((it) => it.source) : config?.source) {
-      await prepareFrameworks(targets, options, options, emulators);
-    }
+    await prepareFrameworks(targets, options, options, emulators);
   }
 
   const emulatableBackends: EmulatableBackend[] = [];

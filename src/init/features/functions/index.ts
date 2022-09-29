@@ -3,7 +3,6 @@ import * as clc from "colorette";
 import { logger } from "../../../logger";
 import { promptOnce } from "../../../prompt";
 import { requirePermissions } from "../../../requirePermissions";
-import { previews } from "../../../previews";
 import { Options } from "../../../options";
 import { ensure } from "../../../ensureApiEnabled";
 import { Config } from "../../../config";
@@ -168,12 +167,6 @@ async function languageSetup(setup: any, config: Config): Promise<any> {
       value: "typescript",
     },
   ];
-  if (previews.golang) {
-    choices.push({
-      name: "Go",
-      value: "golang",
-    });
-  }
   const language = await promptOnce({
     type: "list",
     message: "What language would you like to use to write Cloud Functions?",

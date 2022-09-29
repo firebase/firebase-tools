@@ -7,7 +7,7 @@ import { initGitHub } from "./github";
 import { prompt, promptOnce } from "../../../prompt";
 import { logger } from "../../../logger";
 import { discover, WebFrameworks } from "../../../frameworks";
-import { previews } from "../../../previews";
+import * as experiments from "../../../experiments";
 
 const INDEX_TEMPLATE = fs.readFileSync(
   __dirname + "/../../../../templates/init/hosting/index.html",
@@ -19,14 +19,17 @@ const MISSING_TEMPLATE = fs.readFileSync(
 );
 const DEFAULT_IGNORES = ["firebase.json", "**/.*", "**/node_modules/**"];
 
+/**
+ *
+ */
 export async function doSetup(setup: any, config: any): Promise<void> {
   setup.hosting = {};
 
-  let discoveredFramework = previews.frameworkawareness
+  let discoveredFramework = experiments.isEnabled("frameworkawareness")
     ? await discover(config.projectDir, false)
     : undefined;
 
-  if (previews.frameworkawareness) {
+  if (experiments.isEnabled("frameworkawareness")) {
     if (discoveredFramework) {
       const name = WebFrameworks[discoveredFramework.framework].name;
       await promptOnce(
@@ -48,7 +51,7 @@ export async function doSetup(setup: any, config: any): Promise<void> {
           name: "useWebFrameworks",
           type: "confirm",
           default: false,
-          message: `Do you want to use a web framework?`,
+          message: `Do you want to use a web framework? (${clc.bold("experimental")})`,
         },
         setup.hosting
       );
@@ -82,8 +85,8 @@ export async function doSetup(setup: any, config: any): Promise<void> {
       );
     }
 
-    if (setup.hosting.useDiscoveredFramework) {
-      setup.hosting.webFramework = discoveredFramework!.framework;
+    if (setup.hosting.useDiscoveredFramework && discoveredFramework) {
+      setup.hosting.webFramework = discoveredFramework.framework;
     } else {
       const choices: { name: string; value: string }[] = [];
       for (const value in WebFrameworks) {

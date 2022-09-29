@@ -6,7 +6,7 @@ import * as planner from "../../../../deploy/functions/release/planner";
 import * as deploymentTool from "../../../../deploymentTool";
 import * as utils from "../../../../utils";
 import * as v2events from "../../../../functions/events/v2";
-import { previews } from "../../../../previews";
+import * as experiments from "../../../../experiments";
 
 describe("planner", () => {
   let logLabeledBullet: sinon.SinonStub;
@@ -16,12 +16,12 @@ describe("planner", () => {
   }
 
   beforeEach(() => {
-    previews.skipdeployingnoopfunctions = true;
+    experiments.setEnabled("skipdeployingnoopfunctions", true);
     logLabeledBullet = sinon.stub(utils, "logLabeledBullet");
   });
 
   afterEach(() => {
-    previews.skipdeployingnoopfunctions = false;
+    experiments.setEnabled("skipdeployingnoopfunctions", false);
     sinon.verifyAndRestore();
   });
 
@@ -233,7 +233,7 @@ describe("planner", () => {
       updatedWant.hash = "to_skip";
       updatedHave.hash = "to_skip";
 
-      previews.skipdeployingnoopfunctions = false;
+      experiments.setEnabled("skipdeployingnoopfunctions", false);
 
       const want = { updated: updatedWant };
       const have = { updated: updatedHave };
@@ -261,7 +261,7 @@ describe("planner", () => {
       updatedHave.hash = "to_skip";
       updatedWant.targetedByOnly = true;
 
-      previews.skipdeployingnoopfunctions = true;
+      experiments.setEnabled("skipdeployingnoopfunctions", true);
 
       const want = { updated: updatedWant };
       const have = { updated: updatedHave };
