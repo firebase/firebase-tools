@@ -25,11 +25,11 @@ const DEFAULT_IGNORES = ["firebase.json", "**/.*", "**/node_modules/**"];
 export async function doSetup(setup: any, config: any): Promise<void> {
   setup.hosting = {};
 
-  let discoveredFramework = experiments.isEnabled("frameworkawareness")
+  let discoveredFramework = experiments.isEnabled("webframeworks")
     ? await discover(config.projectDir, false)
     : undefined;
 
-  if (experiments.isEnabled("frameworkawareness")) {
+  if (experiments.isEnabled("webframeworks")) {
     if (discoveredFramework) {
       const name = WebFrameworks[discoveredFramework.framework].name;
       await promptOnce(
