@@ -2,8 +2,14 @@ import { Config } from "./config";
 import { HostingResolved } from "./firebaseConfig";
 import { RC } from "./rc";
 
-// Options come from command-line options and stored config values
-// TODO: actually define all of this stuff in command.ts and import it from there.
+/**
+ * Options are values passed from command-line options, the contents of
+ * firebase.json, and target mappings.
+ * This is a monolith that is hard to mock for unit testing. It is recommended
+ * that each codebase implements a smaller interface that Options conforms to
+ * that documents the needs for each codebase. For an example of this, and how
+ * to keep the two types in sync, see src/hosting/options.ts
+ */
 export interface Options {
   cwd: string;
   configPath: string;
