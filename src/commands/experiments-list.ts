@@ -3,7 +3,6 @@ import Table = require("cli-table");
 import * as experiments from "../experiments";
 import { partition } from "../functional";
 import { logger } from "../logger";
-import { Options } from "../options";
 
 export const command = new Command("experiments:list").action(() => {
   const table = new Table({
