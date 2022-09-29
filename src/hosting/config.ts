@@ -2,7 +2,7 @@ import { bold } from "colorette";
 import { cloneDeep, logLabeledWarning } from "../utils";
 
 import { FirebaseError } from "../error";
-import { HostingMultiple, HostingSingle, FirebaseConfig } from "../firebaseConfig";
+import { HostingMultiple, HostingSingle, FirebaseConfig, HostingResolved } from "../firebaseConfig";
 import { Options } from "../options";
 import { partition } from "../functional";
 import { Implements, RequireAtLeastOne } from "../metaprogramming";
@@ -28,7 +28,7 @@ export interface MockableOptions {
   configPath?: string;
   only?: string;
   except?: string;
-  normalizedHostingConfig?: HostingMultiple;
+  normalizedHostingConfig?: HostingMultiple & { site: string }[];
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -216,11 +216,18 @@ function validateOne(config: HostingMultiple[number], options: MockableOptions):
 export function resolveTargets(
   configs: HostingMultiple,
   options: MockableOptions
-): HostingMultiple {
+): HostingResolved[] {
   return configs.map((config) => {
     const newConfig = cloneDeep(config);
+    if (config.site) {
+      return newConfig as HostingResolved;
+    }
     if (!config.target) {
-      return newConfig;
+      throw new FirebaseError(
+        "Assertion failed: resolving hosting target of a site with no site name " +
+          "or target name. This should have caused an error earlier",
+        { exit: 2 }
+      );
     }
     const matchingTargets = options.rc.requireTarget(options.project!, "hosting", config.target);
     if (matchingTargets.length > 1) {
@@ -231,7 +238,7 @@ export function resolveTargets(
       );
     }
     newConfig.site = matchingTargets[0];
-    return newConfig;
+    return newConfig as HostingResolved;
   });
 }
 
@@ -239,7 +246,7 @@ export function resolveTargets(
  * Extract a validated normalized set of Hosting configs from the command options.
  * This also resolves targets, so it is not suitable for the emulator.
  */
-export function hostingConfig(options: MockableOptions): HostingMultiple {
+export function hostingConfig(options: MockableOptions): HostingResolved[] {
   if (!options.normalizedHostingConfig) {
     let configs: HostingMultiple = extract(options);
     configs = filterOnly(configs, options.only);
@@ -249,8 +256,8 @@ export function hostingConfig(options: MockableOptions): HostingMultiple {
     // we won't recognize a --only <site> when the config has a target.
     // This is the way I found this code and should bring up to others whether
     // we should change the behavior.
-    configs = resolveTargets(configs, options);
-    options.normalizedHostingConfig = configs;
+    const resolved = resolveTargets(configs, options);
+    options.normalizedHostingConfig = resolved;
   }
   return options.normalizedHostingConfig;
 }

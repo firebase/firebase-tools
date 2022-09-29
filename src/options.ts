@@ -1,5 +1,5 @@
 import { Config } from "./config";
-import { HostingMultiple } from "./firebaseConfig";
+import { HostingResolved } from "./firebaseConfig";
 import { RC } from "./rc";
 
 // Options come from command-line options and stored config values
@@ -28,7 +28,7 @@ export interface Options {
   rc: RC;
 
   // Hosting-specific (including web frameworks) options
-  normalizedHostingConfig?: HostingMultiple;
+  normalizedHostingConfig?: HostingResolved[];
   site?: string; // When using a single hosting site, this may be filled by firedata
   expires?: `${number}${"h" | "d" | "m"}`;
 
