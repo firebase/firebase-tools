@@ -21,6 +21,7 @@ export interface HostingOptions {
   only?: string;
   except?: string;
   normalizedHostingConfig?: Array<HostingResolved>;
+  expires?: `${number}${"h" | "d" | "m"}`;
 }
 
 // This line caues a compile-time error if HostingOptions has a field that is

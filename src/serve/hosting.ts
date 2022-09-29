@@ -16,7 +16,6 @@ import { EmulatorLogger } from "../emulator/emulatorLogger";
 import { Emulators } from "../emulator/types";
 import { createDestroyer } from "../utils";
 import { execSync } from "child_process";
-import { Options } from "../options";
 
 const MAX_PORT_ATTEMPTS = 10;
 let attempts = 0;
@@ -74,6 +73,10 @@ function startServer(options: any, config: any, port: number, init: TemplateServ
     }
   }
 
+  const after = options.frameworksDevModeHandle && {
+    files: options.frameworksDevModeHandle,
+  };
+
   const server = superstatic({
     debug: false,
     port: port,
@@ -93,6 +96,7 @@ function startServer(options: any, config: any, port: number, init: TemplateServ
         firebaseMiddleware(req, res, next);
       },
     },
+    after,
     rewriters: {
       function: functionsProxy(options),
       run: cloudRunProxy(options),
@@ -137,7 +141,8 @@ export function stop(): Promise<void> {
  * Start the Hosting server.
  * @param options the Firebase CLI options.
  */
-export async function start(options: Options): Promise<void> {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function start(options: any): Promise<void> {
   const init = await implicitInit(options);
   // Note: we cannot use the hostingConfig() method because it would resolve
   // targets and we don't want to crash the emulator just because the target
@@ -146,13 +151,6 @@ export async function start(options: Options): Promise<void> {
   configs = config.filterOnly(configs, options.only);
   configs = config.filterExcept(configs, options.except);
   config.validate(configs, options);
-
-  if (!options.port) {
-    throw new FirebaseError(
-      "Assertion failed: options.port must be defined when serving the hosting emulator",
-      { exit: 2 }
-    );
-  }
 
   for (let i = 0; i < configs.length; i++) {
     // skip over the functions emulator ports to avoid breaking changes

@@ -22,6 +22,7 @@ import { hostingConfig } from "../hosting/config";
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const { marked } = require("marked");
 import { requireHostingSite } from "../requireHostingSite";
+import { HostingOptions } from "../hosting/options";
 import { Options } from "../options";
 
 const LOG_TAG = "hosting:channel";
@@ -49,7 +50,7 @@ export const command = new Command("hosting:channel:deploy [channelId]")
   .action(
     async (
       channelId: string,
-      options: Options
+      options: Options & HostingOptions
     ): Promise<{ [targetOrSite: string]: ChannelInfo }> => {
       const projectId = needProjectId(options);
 
@@ -91,8 +92,7 @@ export const command = new Command("hosting:channel:deploy [channelId]")
       const sites: ChannelInfo[] = hostingConfig(options).map((config) => {
         return {
           target: config.target,
-          // safe because hostingConfig() resolves sites from targets
-          site: config.site!,
+          site: config.site,
           url: "",
           version: "",
           expireTime: "",
