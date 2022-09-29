@@ -11,7 +11,6 @@ import * as tasks from "../../src/gcp/cloudtasks";
 import * as scheduler from "../../src/gcp/cloudscheduler";
 import { Endpoint } from "../../src/deploy/functions/backend";
 import { requireAuth } from "../../src/requireAuth";
-import { previews } from "../../src/previews";
 
 const FIREBASE_PROJECT = process.env.GCLOUD_PROJECT || "";
 const FIREBASE_DEBUG = process.env.FIREBASE_DEBUG || "";
@@ -104,7 +103,6 @@ describe("firebase deploy", function (this) {
   this.timeout(1000_000);
 
   const RUN_ID = genRandomId();
-  const ORIGINAL_SKIP_DEPLOYING_NOOP_FUNCTIONS = previews.skipdeployingnoopfunctions;
   console.log(`TEST RUN: ${RUN_ID}`);
 
   async function setOptsAndDeploy(opts: Opts): Promise<cli.Result> {
@@ -130,7 +128,6 @@ describe("firebase deploy", function (this) {
 
   after(async () => {
     try {
-      previews.skipdeployingnoopfunctions = ORIGINAL_SKIP_DEPLOYING_NOOP_FUNCTIONS;
       await fs.unlink(path.join(FUNCTIONS_DIR, "index.js"));
     } catch (e: any) {
       if (e?.code === "ENOENT") {
@@ -275,8 +272,6 @@ describe("firebase deploy", function (this) {
       v2ScheduleOpts: { schedule: "every 30 minutes" },
     };
 
-    // TODO(tystark) remove preview flag when its globally enabled.
-    previews.skipdeployingnoopfunctions = true;
     const result = await setOptsAndDeploy(opts);
     expect(result.stdout, "deploy result").to.match(/Deploy complete!/);
 
