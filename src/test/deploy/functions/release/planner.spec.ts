@@ -6,7 +6,6 @@ import * as planner from "../../../../deploy/functions/release/planner";
 import * as deploymentTool from "../../../../deploymentTool";
 import * as utils from "../../../../utils";
 import * as v2events from "../../../../functions/events/v2";
-import * as experiments from "../../../../experiments";
 
 describe("planner", () => {
   let logLabeledBullet: sinon.SinonStub;
@@ -16,12 +15,10 @@ describe("planner", () => {
   }
 
   beforeEach(() => {
-    experiments.setEnabled("skipdeployingnoopfunctions", true);
     logLabeledBullet = sinon.stub(utils, "logLabeledBullet");
   });
 
   afterEach(() => {
-    experiments.setEnabled("skipdeployingnoopfunctions", false);
     sinon.verifyAndRestore();
   });
 
@@ -225,33 +222,6 @@ describe("planner", () => {
       });
     });
 
-    it("does not add endpoints to skip list if preview flag is false", () => {
-      // Note: the two functions share the same id
-      const updatedWant = func("updated", "region");
-      const updatedHave = func("updated", "region");
-      // But their hash are the same (aka a no-op function)
-      updatedWant.hash = "to_skip";
-      updatedHave.hash = "to_skip";
-
-      experiments.setEnabled("skipdeployingnoopfunctions", false);
-
-      const want = { updated: updatedWant };
-      const have = { updated: updatedHave };
-
-      expect(planner.calculateChangesets(want, have, (e) => e.region)).to.deep.equal({
-        region: {
-          endpointsToCreate: [],
-          endpointsToUpdate: [
-            {
-              endpoint: updatedWant,
-            },
-          ],
-          endpointsToDelete: [],
-          endpointsToSkip: [],
-        },
-      });
-    });
-
     it("does not add endpoints to skip list if not targeted for deploy", () => {
       // Note: the two functions share the same id
       const updatedWant = func("updated", "region");
@@ -260,8 +230,6 @@ describe("planner", () => {
       updatedWant.hash = "to_skip";
       updatedHave.hash = "to_skip";
       updatedWant.targetedByOnly = true;
-
-      experiments.setEnabled("skipdeployingnoopfunctions", true);
 
       const want = { updated: updatedWant };
       const have = { updated: updatedHave };

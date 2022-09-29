@@ -29,7 +29,6 @@ import { FirebaseError } from "../../error";
 import { configForCodebase, normalizeAndValidate } from "../../functions/projectConfig";
 import { AUTH_BLOCKING_EVENTS } from "../../functions/events/v1";
 import { generateServiceIdentity } from "../../gcp/serviceusage";
-import * as experiments from "../../experiments";
 import { applyBackendHashToBackends } from "./cache/applyHash";
 import { allEndpoints, Backend } from "./backend";
 
@@ -272,9 +271,7 @@ export async function prepare(
    * This must be called after `await validate.secretsAreValid`.
    */
   updateEndpointTargetedStatus(wantBackends, context.filters || []);
-  if (experiments.isEnabled("skipdeployingnoopfunctions")) {
-    applyBackendHashToBackends(wantBackends, context);
-  }
+  applyBackendHashToBackends(wantBackends, context);
 }
 
 /**
