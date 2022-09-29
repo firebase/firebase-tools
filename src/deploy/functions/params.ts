@@ -630,9 +630,7 @@ async function promptSelect<T extends RawParamValue>(
   const response = await promptOnce({
     name: "input",
     type: "list",
-    default: () => {
-      resolvedDefault;
-    },
+    default: resolvedDefault,
     message: prompt,
     choices: input.select.options.map((option: SelectOptions<T>): ListItem => {
       return {
