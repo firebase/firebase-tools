@@ -1,4 +1,4 @@
-- Fix Storage Emulator crashing with NoClassDefFoundError in some cases (#3481).
+- Allow Firestore emulator UI websocket port to be configurable (#4925).
 - Fixes `init functions` throwing error when detecting existing legacy singleton functions configuration (#5020).
 - Removes unused dependency, updates `vm2` dependency flagged by `npm audit`.
 - Fixes issue resolving a Hosting site using `open`. (#3145)
