@@ -7,7 +7,7 @@ import { logBullet, logSuccess, consoleUrl, addSubdomain } from "../utils";
 import { FirebaseError } from "../error";
 import { track } from "../track";
 import { lifecycleHooks } from "./lifecycleHooks";
-import { previews } from "../previews";
+import * as experiments from "../experiments";
 import * as HostingTarget from "./hosting";
 import * as DatabaseTarget from "./database";
 import * as FirestoreTarget from "./firestore";
@@ -56,9 +56,10 @@ export const deploy = async function (
   const postdeploys: Chain = [];
   const startTime = Date.now();
 
-  if (previews.frameworkawareness && targetNames.includes("hosting")) {
+  if (targetNames.includes("hosting")) {
     const config = options.config.get("hosting");
     if (Array.isArray(config) ? config.some((it) => it.source) : config.source) {
+      experiments.assertEnabled("frameworkawareness", "deploy a web framework to hosting");
       await prepareFrameworks(targetNames, context, options);
     }
   }
