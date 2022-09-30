@@ -131,22 +131,34 @@ exports.onreqv2timeout = functionsV2.https.onRequest({ timeoutSeconds: 1 }, asyn
   });
 });
 
-exports.rtdbv2writtenreaction = functionsV2.database.onValueWritten(START_DOCUMENT_NAME, (event) => {
-  console.log(RTDB_WRITTEN_LOG);
-  return;
-});
+exports.rtdbv2writtenreaction = functionsV2.database.onValueWritten(
+  START_DOCUMENT_NAME,
+  (event) => {
+    console.log(RTDB_WRITTEN_LOG);
+    return;
+  }
+);
 
-exports.rtdbv2createdreaction = functionsV2.database.onValueCreated(START_DOCUMENT_NAME, (event) => {
-  console.log(RTDB_CREATED_LOG);
-  return;
-});
+exports.rtdbv2createdreaction = functionsV2.database.onValueCreated(
+  START_DOCUMENT_NAME,
+  (event) => {
+    console.log(RTDB_CREATED_LOG);
+    return;
+  }
+);
 
-exports.rtdbv2updatedreaction = functionsV2.database.onValueUpdated(START_DOCUMENT_NAME, (event) => {
-  console.log(RTDB_UPDATED_LOG);
-  return;
-});
+exports.rtdbv2updatedreaction = functionsV2.database.onValueUpdated(
+  START_DOCUMENT_NAME,
+  (event) => {
+    console.log(RTDB_UPDATED_LOG);
+    return;
+  }
+);
 
-exports.rtdbv2deletedreaction = functionsV2.database.onValueDeleted(START_DOCUMENT_NAME, (event) => {
-  console.log(RTDB_DELETED_LOG);
-  return;
-});
+exports.rtdbv2deletedreaction = functionsV2.database.onValueDeleted(
+  START_DOCUMENT_NAME,
+  (event) => {
+    console.log(RTDB_DELETED_LOG);
+    return;
+  }
+);
