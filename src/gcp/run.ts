@@ -127,6 +127,22 @@ export interface IamPolicy {
   etag?: string;
 }
 
+export interface GCPIds {
+  serviceId: string;
+  region: string;
+  projectNumber: string;
+}
+
+/**
+ * Gets the standard project/location/id tuple from the K8S style resource.
+ */
+export function gcpIds(service: Pick<Service, "metadata">): GCPIds {
+  return {
+    serviceId: service.metadata.name,
+    projectNumber: service.metadata.namespace,
+    region: service.metadata.labels?.[LOCATION_LABEL] || "unknown-region",
+  };
+}
 /**
  * Gets a service with a given name.
  */

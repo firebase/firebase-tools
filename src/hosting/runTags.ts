@@ -2,8 +2,6 @@ import * as run from "../gcp/run";
 import * as api from "./api";
 import { FirebaseError } from "../error";
 import { flattenArray } from "../functional";
-import * as utils from "../utils";
-import { logger } from "../logger";
 
 /**
  * Sentinel to be used when creating an api.Rewrite with the tag option but
@@ -20,8 +18,6 @@ export const TODO_TAG_NAME = "this is an invalid tag name so it cannot be real";
  * because we want to possibly insert a new tagged target before saving.
  */
 export async function gcTagsForServices(project: string, services: run.Service[]): Promise<void> {
-  utils.logLabeledBullet("hosting", "Cleaning up unused tags for Run services");
-
   // region -> service -> tags
   // We cannot simplify this into a single map because we might be mixing project
   // id and number.
@@ -45,8 +41,9 @@ export async function gcTagsForServices(project: string, services: run.Service[]
 
   // Erase all traffic targets that have an expired tag and no serving percentage
   for (const service of services) {
-    const region = service.metadata?.labels?.["cloud.googleapis.com/location"] || "";
-    const serviceId = service.metadata?.name || "";
+    // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+    console.log(`gcpIds of metadta ${JSON.stringify(service.metadata)} is ${run.gcpIds(service)}`);
+    const { region, serviceId } = run.gcpIds(service);
     service.spec.traffic = (service.spec.traffic || [])
       .map((traffic) => {
         // If we're serving traffic irrespective of the tag, leave this target
@@ -64,11 +61,6 @@ export async function gcTagsForServices(project: string, services: run.Service[]
         if (validTags[region]?.[serviceId]?.has(traffic.tag)) {
           return traffic;
         }
-        console.log(
-          `Rejecting tag ${traffic.tag} because it is not in ${[
-            ...(validTags[region]?.[serviceId] || []),
-          ].join(",")}`
-        );
         return null;
       })
       // Note: the filter command doesn't update the type info to drop null
@@ -77,7 +69,7 @@ export async function gcTagsForServices(project: string, services: run.Service[]
 }
 
 // The number of tags after which we start applying GC pressure.
-export let garbageCollectionThreshold = 500;
+let garbageCollectionThreshold = 500;
 
 /**
  * Sets the garbage collection threshold for testing.
@@ -85,16 +77,6 @@ export let garbageCollectionThreshold = 500;
  */
 export function setGarbageCollectionThreshold(threshold: number): void {
   garbageCollectionThreshold = threshold;
-}
-
-// The backend for this feature is not ready yet, so actually adding the test
-// will cause the API to fail. But without setting the tag there's nothing to
-// test. So production will currently run in dryRun=true and tests will mock and
-// run in dryRun=false
-let dryRun = true;
-/** Sets whether the library makes observable changes. defaults false. */
-export function setDryRun(isDryRun: boolean): void {
-  dryRun = isDryRun;
 }
 
 /**
@@ -124,6 +106,10 @@ export async function setRewriteTags(
       // filter does not drop the null annotation
       .filter((s) => s !== null) as Array<Promise<run.Service>>
   );
+  // Unnecessary due to functional programming, but creates an observable side effect for tests
+  if (!services.length) {
+    return;
+  }
 
   const needsGC = services
     .map((service) => {
@@ -135,21 +121,16 @@ export async function setRewriteTags(
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-  const tags: Record<string, Record<string, string>> = exports.ensureLatestRevisionTagged(
+  const tags: Record<string, Record<string, string>> = await exports.ensureLatestRevisionTagged(
     services,
     `fh-${version}`
   );
   for (const rewrite of rewrites) {
-    if (!("run" in rewrite) || rewrite.run.tag !== "__TODO__") {
+    if (!("run" in rewrite) || rewrite.run.tag !== TODO_TAG_NAME) {
       continue;
     }
     const tag = tags[rewrite.run.region][rewrite.run.serviceId];
-    if (dryRun) {
-      logger.info(`Pretending to pin rewrite to service ${rewrite.run.serviceId} to tag ${tag}`);
-      delete rewrite.run.tag;
-    } else {
-      rewrite.run.tag = tag;
-    }
+    rewrite.run.tag = tag;
   }
 }
 
@@ -168,9 +149,7 @@ export async function ensureLatestRevisionTagged(
   const tags: Record<string, Record<string, string>> = {};
   const updateServices: Array<Promise<unknown>> = [];
   for (const service of services) {
-    const parts = service.metadata.name.split("/");
-    const region = parts[3];
-    const serviceId = parts[5];
+    const { projectNumber, region, serviceId } = run.gcpIds(service);
     tags[region] = tags[region] || {};
     const latestRevisionTarget = service.status?.traffic.find((target) => target.latestRevision);
     if (!latestRevisionTarget) {
@@ -191,7 +170,12 @@ export async function ensureLatestRevisionTagged(
       revisionName: latestRevision,
       tag: defaultTag,
     });
-    updateServices.push(run.updateService(service.metadata.name, service));
+    updateServices.push(
+      run.updateService(
+        `projects/${projectNumber}/locations/${region}/services/${serviceId}`,
+        service
+      )
+    );
   }
 
   await Promise.all(updateServices);
