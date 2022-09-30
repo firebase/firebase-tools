@@ -15,6 +15,14 @@ import { ExtensionSpec, ExtensionVersion } from "../extensions/types";
 import { replaceConsoleLinks } from "./extensions/postinstall";
 import { serviceForEndpoint } from "../deploy/functions/services";
 import { inferBlockingDetails } from "../deploy/functions/prepare";
+import * as events from "../functions/events";
+
+/** The current v2 events that are implemented in the emulator */
+const V2_EVENTS = [
+  ...events.v2.PUBSUB_PUBLISH_EVENT,
+  ...events.v2.STORAGE_EVENTS,
+  ...events.v2.DATABASE_EVENTS,
+];
 
 export type SignatureType = "http" | "event" | "cloudevent";
 
@@ -50,10 +58,11 @@ export interface EventSchedule {
 }
 
 export interface EventTrigger {
-  resource: string;
+  resource: string | undefined;
   eventType: string;
   channel?: string;
   eventFilters?: Record<string, string>;
+  eventFilterPathPatterns?: Record<string, string>;
   // Deprecated
   service?: string;
 }
@@ -118,6 +127,13 @@ export class EmulatedTrigger {
 }
 
 /**
+ * Checks if the v2 event service has been implemented in the emulator
+ */
+export function eventServiceImplemented(eventType: string): boolean {
+  return V2_EVENTS.includes(eventType);
+}
+
+/**
  * Validates that triggers are correctly formed and fills in some defaults.
  */
 export function prepareEndpoints(endpoints: backend.Endpoint[]) {
@@ -172,19 +188,22 @@ export function emulatedFunctionsFromEndpoints(
           resource: eventTrigger.eventFilters!.resource,
         };
       } else {
+        // v2 events allowed: pubsub, storage, rtdb, custom events
+        if (!eventServiceImplemented(eventTrigger.eventType) && !eventTrigger.channel) {
+          continue;
+        }
+
         // Only pubsub and storage events are supported for gcfv2.
         // Custom events require a channel.
         const { resource, topic, bucket } = endpoint.eventTrigger.eventFilters as any;
         const eventResource = resource || topic || bucket;
-        if (!eventResource && !eventTrigger.channel) {
-          // Unsupported event type for GCFv2
-          continue;
-        }
+
         def.eventTrigger = {
           eventType: eventTrigger.eventType,
           resource: eventResource,
           channel: eventTrigger.channel,
           eventFilters: eventTrigger.eventFilters,
+          eventFilterPathPatterns: eventTrigger.eventFilterPathPatterns,
         };
       }
     } else if (backend.isScheduleTriggered(endpoint)) {

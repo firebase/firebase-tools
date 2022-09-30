@@ -589,7 +589,9 @@ export class FunctionsEmulator implements EmulatorInstance {
             added = await this.addRealtimeDatabaseTrigger(
               this.args.projectId,
               key,
-              definition.eventTrigger
+              definition.eventTrigger,
+              signature,
+              definition.region
             );
             break;
           case Constants.SERVICE_PUBSUB:
@@ -721,21 +723,12 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
   }
 
-  async addRealtimeDatabaseTrigger(
-    projectId: string,
-    key: string,
-    eventTrigger: EventTrigger
-  ): Promise<boolean> {
-    const databaseEmu = EmulatorRegistry.get(Emulators.DATABASE);
-    if (!databaseEmu) {
-      return false;
-    }
-
-    const result: string[] | null = DATABASE_PATH_PATTERN.exec(eventTrigger.resource);
+  private getV1DatabaseApiAttributes(projectId: string, key: string, eventTrigger: EventTrigger) {
+    const result: string[] | null = DATABASE_PATH_PATTERN.exec(eventTrigger.resource!);
     if (result === null || result.length !== 3) {
       this.logger.log(
         "WARN",
-        `Event function "${key}" has malformed "resource" member. ` + `${eventTrigger.resource}`
+        `Event function "${key}" has malformed "resource" member. ` + `${eventTrigger.resource!}`
       );
       throw new FirebaseError(`Event function ${key} has malformed resource member`);
     }
@@ -748,11 +741,9 @@ export class FunctionsEmulator implements EmulatorInstance {
       topic: `projects/${projectId}/topics/${key}`,
     });
 
-    logger.debug(`addRealtimeDatabaseTrigger[${instance}]`, JSON.stringify(bundle));
-
-    let setTriggersPath = "/.settings/functionTriggers.json";
+    let apiPath = "/.settings/functionTriggers.json";
     if (instance !== "") {
-      setTriggersPath += `?ns=${instance}`;
+      apiPath += `?ns=${instance}`;
     } else {
       this.logger.log(
         "WARN",
@@ -760,12 +751,64 @@ export class FunctionsEmulator implements EmulatorInstance {
       );
     }
 
+    return { bundle, apiPath, instance };
+  }
+
+  private getV2DatabaseApiAttributes(
+    projectId: string,
+    key: string,
+    eventTrigger: EventTrigger,
+    region: string
+  ) {
+    const instance =
+      eventTrigger.eventFilters?.instance || eventTrigger.eventFilterPathPatterns?.instance;
+    if (!instance) {
+      throw new FirebaseError("A database instance must be supplied.");
+    }
+
+    const ref = eventTrigger.eventFilterPathPatterns?.ref;
+    if (!ref) {
+      throw new FirebaseError("A database reference must be supplied.");
+    }
+
+    const bundle = JSON.stringify({
+      name: `projects/${projectId}/locations/${region}/triggers/${key}`,
+      path: ref,
+      event: eventTrigger.eventType,
+      topic: `projects/${projectId}/topics/${key}`,
+      namespacePattern: instance,
+    });
+
+    const apiPath = "/.settings/functionTriggers.json";
+
+    return { bundle, apiPath, instance };
+  }
+
+  async addRealtimeDatabaseTrigger(
+    projectId: string,
+    key: string,
+    eventTrigger: EventTrigger,
+    signature: SignatureType,
+    region: string
+  ): Promise<boolean> {
+    const databaseEmu = EmulatorRegistry.get(Emulators.DATABASE);
+    if (!databaseEmu) {
+      return false;
+    }
+
+    const { bundle, apiPath, instance } =
+      signature === "cloudevent"
+        ? this.getV2DatabaseApiAttributes(projectId, key, eventTrigger, region)
+        : this.getV1DatabaseApiAttributes(projectId, key, eventTrigger);
+
+    logger.debug(`addRealtimeDatabaseTrigger[${instance}]`, JSON.stringify(bundle));
+
     const client = new Client({
       urlPrefix: `http://${EmulatorRegistry.getInfoHostString(databaseEmu.getInfo())}`,
       auth: false,
     });
     try {
-      await client.post(setTriggersPath, bundle, { headers: { Authorization: "Bearer owner" } });
+      await client.post(apiPath, bundle, { headers: { Authorization: "Bearer owner" } });
     } catch (err: any) {
       this.logger.log("WARN", "Error adding Realtime Database function: " + err);
       throw err;
@@ -819,7 +862,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     logger.debug(`addPubsubTrigger`, JSON.stringify({ eventTrigger }));
 
     // "resource":\"projects/{PROJECT_ID}/topics/{TOPIC_ID}";
-    const resource = eventTrigger.resource;
+    const resource = eventTrigger.resource!;
     let topic;
     if (schedule) {
       // In production this topic looks like
@@ -852,8 +895,8 @@ export class FunctionsEmulator implements EmulatorInstance {
   addStorageTrigger(projectId: string, key: string, eventTrigger: EventTrigger): boolean {
     logger.debug(`addStorageTrigger`, JSON.stringify({ eventTrigger }));
 
-    const bucket = eventTrigger.resource.startsWith("projects/_/buckets/")
-      ? eventTrigger.resource.split("/")[3]
+    const bucket = eventTrigger.resource!.startsWith("projects/_/buckets/")
+      ? eventTrigger.resource!.split("/")[3]
       : eventTrigger.resource;
     const eventTriggerId = `${projectId}:${eventTrigger.eventType}:${bucket}`;
     const triggers = this.multicastTriggers[eventTriggerId] || [];
