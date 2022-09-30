@@ -23,6 +23,10 @@ const STORAGE_BUCKET_FUNCTION_V2_FINALIZED_LOG =
   "========== STORAGE BUCKET V2 FUNCTION FINALIZED ==========";
 const STORAGE_BUCKET_FUNCTION_V2_METADATA_LOG =
   "========== STORAGE BUCKET V2 FUNCTION METADATA ==========";
+const RTDB_V2_WRITTEN_LOG = "========== RTDB V2 FUNCTION WRITTEN ==========";
+const RTDB_V2_CREATED_LOG = "========== RTDB V2 FUNCTION CREATED ==========";
+const RTDB_V2_UPDATED_LOG = "========== RTDB V2 FUNCTION UPDATED ==========";
+const RTDB_V2_DELETED_LOG = "========== RTDB V2 FUNCTION DELETED ==========";
 /* Functions V1 */
 const RTDB_FUNCTION_LOG = "========== RTDB FUNCTION ==========";
 const FIRESTORE_FUNCTION_LOG = "========== FIRESTORE FUNCTION ==========";
@@ -141,6 +145,10 @@ export class TriggerEndToEndTest extends EmulatorEndToEndTest {
   storageBucketV2MetadataTriggerCount = 0;
   authBlockingCreateV2TriggerCount = 0;
   authBlockingSignInV2TriggerCount = 0;
+  rtdbV2WrittenTriggerCount = 0;
+  rtdbV2CreatedTriggerCount = 0;
+  rtdbV2UpdatedTriggerCount = 0;
+  rtdbV2DeletedTriggerCount = 0;
 
   rtdbFromFirestore = false;
   firestoreFromRtdb = false;
@@ -176,6 +184,10 @@ export class TriggerEndToEndTest extends EmulatorEndToEndTest {
     this.storageBucketV2MetadataTriggerCount = 0;
     this.authBlockingCreateV2TriggerCount = 0;
     this.authBlockingSignInV2TriggerCount = 0;
+    this.rtdbV2WrittenTriggerCount = 0;
+    this.rtdbV2CreatedTriggerCount = 0;
+    this.rtdbV2UpdatedTriggerCount = 0;
+    this.rtdbV2DeletedTriggerCount = 0;
   }
 
   /*
@@ -268,6 +280,18 @@ export class TriggerEndToEndTest extends EmulatorEndToEndTest {
       if (data.includes(AUTH_BLOCKING_SIGN_IN_V2_LOG)) {
         this.authBlockingSignInV2TriggerCount++;
       }
+      if (data.includes(RTDB_V2_WRITTEN_LOG)) {
+        this.rtdbV2WrittenTriggerCount++;
+      }
+      if (data.includes(RTDB_V2_CREATED_LOG)) {
+        this.rtdbV2CreatedTriggerCount++;
+      }
+      if (data.includes(RTDB_V2_UPDATED_LOG)) {
+        this.rtdbV2UpdatedTriggerCount++;
+      }
+      if (data.includes(RTDB_V2_DELETED_LOG)) {
+        this.rtdbV2DeletedTriggerCount++;
+      }
     });
 
     return startEmulators;
@@ -338,8 +362,8 @@ export class TriggerEndToEndTest extends EmulatorEndToEndTest {
     return this.invokeHttpFunction("signInUserFromAuth");
   }
 
-  writeToRtdb(): Promise<Response> {
-    return this.invokeHttpFunction("writeToRtdb");
+  writeUpdateDeleteToRtdb(): Promise<Response> {
+    return this.invokeHttpFunction("writeUpdateDeleteToRtdb");
   }
 
   writeToFirestore(): Promise<Response> {
