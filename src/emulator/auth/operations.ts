@@ -3088,8 +3088,9 @@ function processBlockingFunctionResponse(
           updates[field] = !!userRecord[field];
           break;
         case "customClaims":
-          validateSerializedCustomClaims(userRecord.customClaims!);
-          updates.customAttributes = userRecord.customClaims;
+          const customClaims = JSON.stringify(userRecord.customClaims!);
+          validateSerializedCustomClaims(customClaims);
+          updates.customAttributes = customClaims;
           break;
         // Session claims are only returned in beforeSignIn and will be ignored
         // otherwise. For more info, see
@@ -3099,7 +3100,7 @@ function processBlockingFunctionResponse(
             break;
           }
           try {
-            extraClaims = JSON.parse(userRecord.sessionClaims!);
+            extraClaims = userRecord.sessionClaims;
           } catch {
             throw new BadRequestError(
               "BLOCKING_FUNCTION_ERROR_RESPONSE: ((Response has malformed session claims.))"
@@ -3388,8 +3389,8 @@ export interface BlockingFunctionResponsePayload {
     photoUrl?: string;
     disabled?: boolean;
     emailVerified?: boolean;
-    customClaims?: string;
-    sessionClaims?: string;
+    customClaims?: Record<string, unknown>;
+    sessionClaims?: Record<string, unknown>;
   };
 }
 

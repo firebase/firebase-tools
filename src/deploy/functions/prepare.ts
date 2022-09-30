@@ -29,7 +29,6 @@ import { FirebaseError } from "../../error";
 import { configForCodebase, normalizeAndValidate } from "../../functions/projectConfig";
 import { AUTH_BLOCKING_EVENTS } from "../../functions/events/v1";
 import { generateServiceIdentity } from "../../gcp/serviceusage";
-import { previews } from "../../previews";
 import { applyBackendHashToBackends } from "./cache/applyHash";
 import { allEndpoints, Backend } from "./backend";
 
@@ -272,9 +271,7 @@ export async function prepare(
    * This must be called after `await validate.secretsAreValid`.
    */
   updateEndpointTargetedStatus(wantBackends, context.filters || []);
-  if (previews.skipdeployingnoopfunctions) {
-    applyBackendHashToBackends(wantBackends, context);
-  }
+  applyBackendHashToBackends(wantBackends, context);
 }
 
 /**
@@ -346,6 +343,9 @@ function maybeCopyTriggerRegion(wantE: backend.Endpoint, haveE: backend.Endpoint
   wantE.eventTrigger.region = haveE.eventTrigger.region;
 }
 
+/**
+ * Determines whether endpoints are targeted by an --only flag.
+ */
 export function updateEndpointTargetedStatus(
   wantBackends: Record<string, Backend>,
   endpointFilters: EndpointFilter[]

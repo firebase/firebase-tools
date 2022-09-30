@@ -81,6 +81,13 @@ export type HostingMultiple = (HostingBase &
   }> &
   Deployable)[];
 
+// After validating a HostingMultiple and resolving targets, we will instead
+// have a HostingResolved.
+export type HostingResolved = HostingBase & {
+  site: string;
+  target?: string;
+} & Deployable;
+
 type StorageSingle = {
   rules: string;
   target?: string;
@@ -129,6 +136,7 @@ export type EmulatorsConfig = {
   firestore?: {
     host?: string;
     port?: number;
+    websocketPort?: number;
   };
   functions?: {
     host?: string;

@@ -97,12 +97,13 @@ export class Delegate {
     config: backend.RuntimeConfigValues,
     envs: backend.EnvironmentVariables
   ): Promise<() => Promise<void>> {
-    const env: Record<string, string | undefined> = {
+    const env: NodeJS.ProcessEnv = {
       ...envs,
       PORT: port.toString(),
       FUNCTIONS_CONTROL_API: "true",
       HOME: process.env.HOME,
       PATH: process.env.PATH,
+      NODE_ENV: process.env.NODE_ENV,
     };
     if (Object.keys(config || {}).length) {
       env.CLOUD_RUNTIME_CONFIG = JSON.stringify(config);
