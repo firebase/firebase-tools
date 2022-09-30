@@ -19,7 +19,7 @@ import * as events from "../functions/events";
 
 /** The current v2 events that are implemented in the emulator */
 const V2_EVENTS = [
-  ...events.v2.PUBSUB_PUBLISH_EVENT,
+  events.v2.PUBSUB_PUBLISH_EVENT,
   ...events.v2.STORAGE_EVENTS,
   ...events.v2.DATABASE_EVENTS,
 ];
@@ -188,13 +188,12 @@ export function emulatedFunctionsFromEndpoints(
           resource: eventTrigger.eventFilters!.resource,
         };
       } else {
-        // v2 events allowed: pubsub, storage, rtdb, custom events
+        // TODO(colerogers): v2 events implemented are pubsub, storage, rtdb, and custom events
         if (!eventServiceImplemented(eventTrigger.eventType) && !eventTrigger.channel) {
           continue;
         }
 
-        // Only pubsub and storage events are supported for gcfv2.
-        // Custom events require a channel.
+        // We use resource for pubsub & storage
         const { resource, topic, bucket } = endpoint.eventTrigger.eventFilters as any;
         const eventResource = resource || topic || bucket;
 

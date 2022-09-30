@@ -1,4 +1,4 @@
-export const PUBSUB_PUBLISH_EVENT = "google.cloud.pubsub.topic.v1.messagePublished" as const;
+export const PUBSUB_PUBLISH_EVENT = "google.cloud.pubsub.topic.v1.messagePublished";
 
 export const STORAGE_EVENTS = [
   "google.cloud.storage.object.v1.finalized",
