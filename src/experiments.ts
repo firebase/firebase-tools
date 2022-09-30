@@ -86,6 +86,17 @@ export const ALL_EXPERIMENTS = experiments({
       "may be required when the non-experimental support for these frameworks " +
       "is released",
   },
+  pintags: {
+    shortDescription: "Adds the pinTag option to Run and Functions rewrites",
+    fullDescription:
+      "Adds support for the 'pinTag' boolean on Runction and Run rewrites for " +
+      "Firebase Hosting. With this option, newly released hosting sites will be " +
+      "bound to the current latest version of their referenced functions or services. " +
+      "This option depends on Run pinned traffic targets, of which only 2000 can " +
+      "exist per region. firebase-tools aggressively garbage collects tags it creates " +
+      "if any service exceeds 500 tags, but it is theoretically possible that a project " +
+      "exceeds the region-wide limit of tags and an old site version fails",
+  },
 
   // Access experiments
   crossservicerules: {

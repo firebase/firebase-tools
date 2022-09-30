@@ -9,6 +9,7 @@ import * as proto from "../../gcp/proto";
 import { bold } from "colorette";
 import * as runTags from "../../hosting/runTags";
 import { assertExhaustive } from "../../functional";
+import * as experiments from "../../experiments";
 
 /**
  * extractPattern contains the logic for extracting exactly one glob/regexp
@@ -154,6 +155,7 @@ export async function convertConfig(
         },
       };
       if (rewrite.function.pinTag) {
+        experiments.assertEnabled("pintags", "pin a function version");
         apiRewrite.run.tag = runTags.TODO_TAG_NAME;
       }
       return apiRewrite;
@@ -167,15 +169,17 @@ export async function convertConfig(
     }
 
     if ("run" in rewrite) {
-      // It's easier to do both GCF 2nd gen and Run rewrites in the second pass
-      // so that we can do a single pass generating tagged traffic targets.
-      return {
+      const apiRewrite: api.Rewrite = {
         ...target,
         run: {
           region: "us-central1",
           ...rewrite.run,
         },
       };
+      if (apiRewrite.run.tag) {
+        experiments.assertEnabled("pintags", "pin to a run service revision");
+      }
+      return apiRewrite;
     }
 
     // This line makes sure this function breaks if there is ever added a new
