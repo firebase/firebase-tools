@@ -248,10 +248,17 @@ export function pruneUndefiends(obj: unknown): void {
   }
   const keyable = obj as Record<string, unknown>;
   for (const key of Object.keys(keyable)) {
-    // Temp is necessary for type inference to keep
-    const sub = keyable[key];
-    if (sub === undefined) {
+    if (keyable[key] === undefined) {
       delete keyable[key];
+    } else if (typeof keyable[key] === "object") {
+      if (Array.isArray(keyable[key])) {
+        for (const sub of keyable[key] as unknown[]) {
+          pruneUndefiends(sub);
+        }
+        keyable[key] = (keyable[key] as unknown[]).filter((e) => e !== undefined);
+      } else {
+        pruneUndefiends(keyable[key]);
+      }
     }
   }
 }
