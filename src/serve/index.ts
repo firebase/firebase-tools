@@ -28,7 +28,7 @@ export async function serve(options: any): Promise<void> {
     targetNames.includes("hosting") &&
     [].concat(options.config.get("hosting")).some((it: any) => it.source)
   ) {
-    experiments.assertEnabled("frameworkawareness", "emulate a web framework");
+    experiments.assertEnabled("webframeworks", "emulate a web framework");
     await prepareFrameworks(targetNames, options, options);
   }
   const isDemoProject = Constants.isDemoProject(getProjectId(options) || "");
