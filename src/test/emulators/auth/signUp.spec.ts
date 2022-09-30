@@ -611,7 +611,7 @@ describeAuthEmulator("accounts:signUp", ({ authApi }) => {
             displayName: DISPLAY_NAME,
             photoUrl: PHOTO_URL,
             emailVerified: true,
-            customClaims: JSON.stringify({ customAttribute: "custom" }),
+            customClaims: { customAttribute: "custom" },
           },
         });
 
@@ -666,8 +666,8 @@ describeAuthEmulator("accounts:signUp", ({ authApi }) => {
             displayName: DISPLAY_NAME,
             photoUrl: PHOTO_URL,
             emailVerified: true,
-            customClaims: JSON.stringify({ customAttribute: "custom" }),
-            sessionClaims: JSON.stringify({ sessionAttribute: "session" }),
+            customClaims: { customAttribute: "custom" },
+            sessionClaims: { sessionAttribute: "session" },
           },
         });
 
@@ -726,7 +726,7 @@ describeAuthEmulator("accounts:signUp", ({ authApi }) => {
             displayName: "oldDisplayName",
             photoUrl: "oldPhotoUrl",
             emailVerified: false,
-            customClaims: JSON.stringify({ customAttribute: "oldCustom" }),
+            customClaims: { customAttribute: "oldCustom" },
           },
         })
         .post(BEFORE_SIGN_IN_PATH)
@@ -736,8 +736,8 @@ describeAuthEmulator("accounts:signUp", ({ authApi }) => {
             displayName: DISPLAY_NAME,
             photoUrl: PHOTO_URL,
             emailVerified: true,
-            customClaims: JSON.stringify({ customAttribute: "custom" }),
-            sessionClaims: JSON.stringify({ sessionAttribute: "session" }),
+            customClaims: { customAttribute: "custom" },
+            sessionClaims: { sessionAttribute: "session" },
           },
         });
 

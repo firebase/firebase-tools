@@ -1,2 +1,3 @@
-- Fix Storage Emulator crashing with NoClassDefFoundError in some cases (#3481).
+- Add the "experiments" family of commands (#4994)
+- Enable detecting and skipping no-op function deploys (#5032).
 - Catches errors when fetching CLI MOTD, allowing process to continue (#4998).
