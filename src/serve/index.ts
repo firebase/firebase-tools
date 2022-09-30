@@ -1,7 +1,7 @@
 import { EmulatorServer } from "../emulator/emulatorServer";
 import { logger } from "../logger";
 import { prepareFrameworks } from "../frameworks";
-import { previews } from "../previews";
+import * as experiments from "../experiments";
 import { trackEmulator } from "../track";
 import { getProjectId } from "../projectUtils";
 import { Constants } from "../emulator/constants";
@@ -25,10 +25,10 @@ export async function serve(options: any): Promise<void> {
   const targetNames: string[] = options.targets || [];
   options.port = parseInt(options.port, 10);
   if (
-    previews.frameworkawareness &&
     targetNames.includes("hosting") &&
     [].concat(options.config.get("hosting")).some((it: any) => it.source)
   ) {
+    experiments.assertEnabled("frameworkawareness", "emulate a web framework");
     await prepareFrameworks(targetNames, options, options);
   }
   const isDemoProject = Constants.isDemoProject(getProjectId(options) || "");

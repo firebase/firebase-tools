@@ -1,3 +1,5 @@
+import * as clc from "colorette";
+
 import {
   EndpointFilter,
   endpointMatchesAnyFilter,
@@ -8,7 +10,6 @@ import { FirebaseError } from "../../../error";
 import * as utils from "../../../utils";
 import * as backend from "../backend";
 import * as v2events from "../../../functions/events/v2";
-import { previews } from "../../../previews";
 
 export interface EndpointUpdate {
   endpoint: backend.Endpoint;
@@ -54,12 +55,9 @@ export function calculateChangesets(
     keyFn
   );
 
-  const { skipdeployingnoopfunctions } = previews;
-
   // If the hashes are matching, that means the local function is the same as the server copy.
   const toSkipPredicate = (id: string): boolean =>
     !!(
-      skipdeployingnoopfunctions &&
       !want[id].targetedByOnly && // Don't skip the function if its --only targeted.
       have[id].hash &&
       want[id].hash &&
@@ -75,6 +73,14 @@ export function calculateChangesets(
     }, {});
 
   const toSkip = utils.groupBy(Object.values(toSkipEndpointsMap), keyFn);
+  if (Object.keys(toSkip).length) {
+    utils.logLabeledBullet(
+      "functions",
+      `Skipping the deploy of unchanged functions with ${clc.bold(
+        "experimental"
+      )} support for skipdeployingnoopfunctions`
+    );
+  }
 
   const toUpdate = utils.groupBy(
     Object.keys(want)

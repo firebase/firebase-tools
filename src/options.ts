@@ -1,5 +1,4 @@
 import { Config } from "./config";
-import { HostingMultiple } from "./firebaseConfig";
 import { RC } from "./rc";
 
 // Options come from command-line options and stored config values
@@ -26,14 +25,6 @@ export interface Options {
   debug: boolean;
 
   rc: RC;
-
-  // Hosting-specific (including web frameworks) options
-  normalizedHostingConfig?: HostingMultiple;
-  site?: string; // When using a single hosting site, this may be filled by firedata
-  expires?: `${number}${"h" | "d" | "m"}`;
-
-  // Emulator options:
-  port?: number;
 
   // TODO(samstern): Remove this once options is better typed
   [key: string]: unknown;

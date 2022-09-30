@@ -95,9 +95,9 @@ export async function deploy(context: Context, options: Options): Promise<void> 
       spinner.stop();
     }
 
-    logLabeledSuccess("hosting[" + deploy.site + "]", "file upload complete");
+    logLabeledSuccess(`hosting[${deploy.site}]`, "file upload complete");
     const dt = Date.now() - t0;
-    logger.debug("[hosting] deploy completed after " + dt + "ms");
+    logger.debug(`[hosting] deploy completed after ${dt}ms`);
 
     void track("Hosting Deploy", "success", dt);
     return runDeploys(deploys, debugging);

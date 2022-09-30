@@ -96,7 +96,7 @@ cat CHANGELOG.md >> "${RELEASE_NOTES_FILE}"
 echo "Made the release notes."
 
 echo "Publishing to npm..."
-npm publish
+npx clean-publish --before-script ./scripts/clean-shrinkwrap.sh
 echo "Published to npm."
 
 echo "Cleaning up release notes..."

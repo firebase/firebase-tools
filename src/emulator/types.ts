@@ -134,6 +134,7 @@ export interface EmulatorInfo {
   host: string;
   port: number;
   pid?: number;
+  reservedPorts?: number[];
 }
 
 export interface DownloadableEmulatorCommand {
