@@ -199,6 +199,9 @@
                         },
                         "port": {
                             "type": "number"
+                        },
+                        "websocketPort": {
+                            "type": "number"
                         }
                     },
                     "type": "object"
