@@ -459,7 +459,7 @@ export async function createRelease(
   const res = await apiClient.request<void, Release>({
     method: "POST",
     path: `/projects/-/sites/${site}/channels/${channel}/releases`,
-    queryParams: { versionName: version },
+    queryParams: { versionName: `sites/${site}/versions/${version}` },
   });
   return res.body;
 }
