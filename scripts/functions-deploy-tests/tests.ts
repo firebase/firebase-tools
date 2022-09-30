@@ -260,6 +260,25 @@ describe("firebase deploy", function (this) {
     }
   });
 
+  it("skips duplicate deploys functions with runtime options", async () => {
+    const opts: Opts = {
+      v1Opts: {},
+      v2Opts: {},
+      v1TqOpts: {},
+      v2TqOpts: {},
+      v1IdpOpts: {},
+      v2IdpOpts: {},
+      v1ScheduleOpts: {},
+      v2ScheduleOpts: { schedule: "every 30 minutes" },
+    };
+
+    const result = await setOptsAndDeploy(opts);
+    expect(result.stdout, "deploy result").to.match(/Deploy complete!/);
+
+    const result2 = await setOptsAndDeploy(opts);
+    expect(result2.stdout, "deploy result").to.match(/Skipped (No changes detected)/);
+  });
+
   it("leaves existing options when unspecified", async () => {
     const opts: Opts = {
       v1Opts: {},

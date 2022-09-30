@@ -540,8 +540,8 @@ describeAuthEmulator("mfa enrollment", ({ authApi, getClock }) => {
             displayName: DISPLAY_NAME,
             photoUrl: PHOTO_URL,
             emailVerified: true,
-            customClaims: JSON.stringify({ customAttribute: "custom" }),
-            sessionClaims: JSON.stringify({ sessionAttribute: "session" }),
+            customClaims: { customAttribute: "custom" },
+            sessionClaims: { sessionAttribute: "session" },
           },
         });
 

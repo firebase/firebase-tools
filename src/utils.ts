@@ -341,19 +341,19 @@ export function getFunctionsEventProvider(eventType: string): string {
     return _.capitalize(provider);
   }
   // New event types:
-  if (eventType.match(/google.pubsub/)) {
+  if (/google.pubsub/.exec(eventType)) {
     return "PubSub";
-  } else if (eventType.match(/google.storage/)) {
+  } else if (/google.storage/.exec(eventType)) {
     return "Storage";
-  } else if (eventType.match(/google.analytics/)) {
+  } else if (/google.analytics/.exec(eventType)) {
     return "Analytics";
-  } else if (eventType.match(/google.firebase.database/)) {
+  } else if (/google.firebase.database/.exec(eventType)) {
     return "Database";
-  } else if (eventType.match(/google.firebase.auth/)) {
+  } else if (/google.firebase.auth/.exec(eventType)) {
     return "Auth";
-  } else if (eventType.match(/google.firebase.crashlytics/)) {
+  } else if (/google.firebase.crashlytics/.exec(eventType)) {
     return "Crashlytics";
-  } else if (eventType.match(/google.firestore/)) {
+  } else if (/google.firestore/.exec(eventType)) {
     return "Firestore";
   }
   return _.capitalize(eventType.split(".")[1]);
@@ -416,7 +416,7 @@ export async function promiseWhile<T>(
  * Return a promise that rejects after timeoutMs but otherwise behave the same.
  * @param timeoutMs the time in milliseconds before forced rejection
  * @param promise the original promise
- * @returns a promise wrapping the original promise with rejection on timeout
+ * @return a promise wrapping the original promise with rejection on timeout
  */
 export function withTimeout<T>(timeoutMs: number, promise: Promise<T>): Promise<T> {
   return new Promise<T>((resolve, reject) => {
@@ -700,9 +700,11 @@ export function cloneDeep<T>(obj: T): T {
  * Returns the last element in the array, or undefined if no array is passed or
  * the array is empty.
  */
-export function last<T>(arr?: Array<T>): T | undefined {
+export function last<T>(arr?: T[]): T {
+  // The type system should never allow this, so return something that violates
+  // the type system when passing in something that violates the type system.
   if (!Array.isArray(arr)) {
-    return;
+    return undefined as unknown as T;
   }
   return arr[arr.length - 1];
 }

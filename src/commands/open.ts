@@ -9,6 +9,7 @@ import { promptOnce } from "../prompt";
 import { requirePermissions } from "../requirePermissions";
 import { requireDatabaseInstance } from "../requireDatabaseInstance";
 import * as utils from "../utils";
+import { requireHostingSite } from "../requireHostingSite";
 
 interface Link {
   name: string;
@@ -54,6 +55,7 @@ export const command = new Command("open [link]")
   .description("quickly open a browser to relevant project resources")
   .before(requirePermissions)
   .before(requireDatabaseInstance)
+  .before(requireHostingSite)
   .action(async (linkName: string, options: any): Promise<void> => {
     let link = LINKS.find((l) => l.arg === linkName);
     if (linkName && !link) {
@@ -82,7 +84,7 @@ export const command = new Command("open [link]")
     } else if (link.url) {
       url = link.url;
     } else if (link.arg === "hosting:site") {
-      url = utils.addSubdomain(api.hostingOrigin, options.instance);
+      url = utils.addSubdomain(api.hostingOrigin, options.site);
     } else if (link.arg === "functions:log") {
       url = `https://console.developers.google.com/logs/viewer?resource=cloudfunctions.googleapis.com&project=${options.project}`;
     } else {

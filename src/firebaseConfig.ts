@@ -129,6 +129,7 @@ export type EmulatorsConfig = {
   firestore?: {
     host?: string;
     port?: number;
+    websocketPort?: number;
   };
   functions?: {
     host?: string;
