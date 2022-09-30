@@ -3,15 +3,16 @@ import { FirebaseError } from "../../error";
 import { HostingConfig, HostingMultiple, HostingSingle } from "../../firebaseConfig";
 
 import * as config from "../../hosting/config";
+import { HostingOptions } from "../../hosting/options";
 import { RequireAtLeastOne } from "../../metaprogramming";
 
 function options(
   hostingConfig: HostingConfig,
-  base?: Omit<config.MockableOptions, "config" | "rc">,
+  base?: Omit<HostingOptions, "config" | "rc">,
   targetsToSites?: Record<string, string[]>
-): config.MockableOptions {
+): HostingOptions {
   return {
-    ...base,
+    project: "project",
     config: {
       src: {
         hosting: hostingConfig,
@@ -24,6 +25,7 @@ function options(
     },
     cwd: __dirname + "/../fixtures/simplehosting",
     configPath: __dirname + "/../fixtures/simplehosting/firebase.json",
+    ...base,
   };
 }
 

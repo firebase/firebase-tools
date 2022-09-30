@@ -2,37 +2,13 @@ import { bold } from "colorette";
 import { cloneDeep, logLabeledWarning } from "../utils";
 
 import { FirebaseError } from "../error";
-import { HostingMultiple, HostingSingle, FirebaseConfig } from "../firebaseConfig";
-import { Options } from "../options";
+import { HostingMultiple, HostingSingle, HostingResolved } from "../firebaseConfig";
 import { partition } from "../functional";
-import { Implements, RequireAtLeastOne } from "../metaprogramming";
+import { RequireAtLeastOne } from "../metaprogramming";
 import { dirExistsSync } from "../fsutils";
 import { resolveProjectPath } from "../projectPath";
+import { HostingOptions } from "./options";
 import path from "path";
-
-// TODO: Consider putting this type along with the Options type.
-// I haven't tried to do this yet because true options embeds classes, not just
-// interfaces.
-// We should consider either refactoring options so it can be more easily mocked,
-// or creating a utility for constructing options easily in tests.
-export interface MockableOptions {
-  project?: string;
-  site?: string;
-  config: {
-    src: FirebaseConfig;
-  };
-  rc: {
-    requireTarget(project: string, type: string, name: string): string[];
-  };
-  cwd?: string;
-  configPath?: string;
-  only?: string;
-  except?: string;
-  normalizedHostingConfig?: HostingMultiple;
-}
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const mockableOptionsIsCompatibleWithOptions: Implements<Options, MockableOptions> = true;
 
 // assertMatches allows us to throw when an --only flag doesn't match a target
 // but an --except flag doesn't. Is this desirable behavior?
@@ -62,10 +38,7 @@ function matchingConfigs(
 /**
  * Returns a subset of configs that match the only string
  */
-export function filterOnly(
-  configs: HostingMultiple,
-  onlyString: string | undefined
-): HostingMultiple {
+export function filterOnly(configs: HostingMultiple, onlyString?: string): HostingMultiple {
   if (!onlyString) {
     return configs;
   }
@@ -82,16 +55,13 @@ export function filterOnly(
     .filter((target) => target.startsWith("hosting:"))
     .map((target) => target.replace("hosting:", ""));
 
-  return matchingConfigs(configs, onlyTargets, /* assertMatch=*/ true);
+  return matchingConfigs(configs, onlyTargets, /* assertMatch= */ true);
 }
 
 /**
  * Returns a subset of configs that match the except string;
  */
-export function filterExcept(
-  configs: HostingMultiple,
-  exceptOption: string | undefined
-): HostingMultiple {
+export function filterExcept(configs: HostingMultiple, exceptOption?: string): HostingMultiple {
   if (!exceptOption) {
     return configs;
   }
@@ -104,7 +74,7 @@ export function filterExcept(
   const exceptValues = exceptTargets
     .filter((t) => t.startsWith("hosting:"))
     .map((t) => t.replace("hosting:", ""));
-  const toReject = matchingConfigs(configs, exceptValues, /* assertMatch=*/ false);
+  const toReject = matchingConfigs(configs, exceptValues, /* assertMatch= */ false);
 
   return configs.filter((c) => !toReject.find((r) => c.site === r.site && c.target === r.target));
 }
@@ -114,7 +84,7 @@ export function filterExcept(
  * @param options options from the command library
  * @return a deep copy of validated configs
  */
-export function extract(options: MockableOptions): HostingMultiple {
+export function extract(options: HostingOptions): HostingMultiple {
   const config = options.config.src;
   if (!config.hosting) {
     return [];
@@ -151,13 +121,13 @@ export function extract(options: MockableOptions): HostingMultiple {
 }
 
 /** Validates hosting configs for semantic correctness. */
-export function validate(configs: HostingMultiple, options: MockableOptions): void {
+export function validate(configs: HostingMultiple, options: HostingOptions): void {
   for (const config of configs) {
     validateOne(config, options);
   }
 }
 
-function validateOne(config: HostingMultiple[number], options: MockableOptions): void {
+function validateOne(config: HostingMultiple[number], options: HostingOptions): void {
   // NOTE: a possible validation is to make sure site and target are not both
   // specified, but this expectation is broken after calling resolveTargets.
   // Thus that one validation is tucked into extract() where we know we haven't
@@ -181,7 +151,7 @@ function validateOne(config: HostingMultiple[number], options: MockableOptions):
     throw new FirebaseError(
       `Specified "public" directory "${
         config.public
-      }" does not exist, can't deploy hosting to site "${config.site || config.target}"`
+      }" does not exist, can't deploy hosting to site "${config.site || config.target || ""}"`
     );
   }
 
@@ -217,27 +187,40 @@ function validateOne(config: HostingMultiple[number], options: MockableOptions):
 }
 
 /**
- * Converts all configs from having a target to having a soruce
+ * Converts all configs from having a target to having a source
  */
 export function resolveTargets(
   configs: HostingMultiple,
-  options: MockableOptions
-): HostingMultiple {
+  options: HostingOptions
+): HostingResolved[] {
   return configs.map((config) => {
     const newConfig = cloneDeep(config);
-    if (!config.target) {
-      return newConfig;
+    if (config.site) {
+      return newConfig as HostingResolved;
     }
-    const matchingTargets = options.rc.requireTarget(options.project!, "hosting", config.target);
+    if (!config.target) {
+      throw new FirebaseError(
+        "Assertion failed: resolving hosting target of a site with no site name " +
+          "or target name. This should have caused an error earlier",
+        { exit: 2 }
+      );
+    }
+    if (!options.project) {
+      throw new FirebaseError(
+        "Assertion failed: options.project is not set. Commands depending on hosting.config should use requireProject",
+        { exit: 2 }
+      );
+    }
+    const matchingTargets = options.rc.requireTarget(options.project, "hosting", config.target);
     if (matchingTargets.length > 1) {
       throw new FirebaseError(
         `Hosting target ${bold(config.target)} is linked to multiple sites, ` +
           `but only one is permitted. ` +
-          `To clear, run:\n\n  firebase target:clear hosting ${config.target}`
+          `To clear, run:\n\n  ${bold(`firebase target:clear hosting ${config.target}`)}`
       );
     }
     newConfig.site = matchingTargets[0];
-    return newConfig;
+    return newConfig as HostingResolved;
   });
 }
 
@@ -245,7 +228,7 @@ export function resolveTargets(
  * Extract a validated normalized set of Hosting configs from the command options.
  * This also resolves targets, so it is not suitable for the emulator.
  */
-export function hostingConfig(options: MockableOptions): HostingMultiple {
+export function hostingConfig(options: HostingOptions): HostingResolved[] {
   if (!options.normalizedHostingConfig) {
     let configs: HostingMultiple = extract(options);
     configs = filterOnly(configs, options.only);
@@ -255,8 +238,8 @@ export function hostingConfig(options: MockableOptions): HostingMultiple {
     // we won't recognize a --only <site> when the config has a target.
     // This is the way I found this code and should bring up to others whether
     // we should change the behavior.
-    configs = resolveTargets(configs, options);
-    options.normalizedHostingConfig = configs;
+    const resolved = resolveTargets(configs, options);
+    options.normalizedHostingConfig = resolved;
   }
   return options.normalizedHostingConfig;
 }

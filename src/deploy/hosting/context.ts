@@ -1,10 +1,8 @@
-import { HostingSingle } from "../../firebaseConfig";
+import { HostingResolved } from "../../firebaseConfig";
 import { Context as FunctionsContext } from "../functions/args";
 
 export interface HostingDeploy {
-  // Note: a HostingMultiple[number] is a stronger guarantee than a HostingSingle
-  // because at least one of site and target must exist.
-  config: HostingSingle;
+  config: HostingResolved;
   site: string;
   version?: string;
 }

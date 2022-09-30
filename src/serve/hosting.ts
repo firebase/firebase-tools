@@ -16,7 +16,6 @@ import { EmulatorLogger } from "../emulator/emulatorLogger";
 import { Emulators } from "../emulator/types";
 import { createDestroyer } from "../utils";
 import { execSync } from "child_process";
-import { Options } from "../options";
 
 const MAX_PORT_ATTEMPTS = 10;
 let attempts = 0;
@@ -143,7 +142,7 @@ export function stop(): Promise<void> {
  * @param options the Firebase CLI options.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function start(options: Options): Promise<void> {
+export async function start(options: any): Promise<void> {
   const init = await implicitInit(options);
   // Note: we cannot use the hostingConfig() method because it would resolve
   // targets and we don't want to crash the emulator just because the target
@@ -155,7 +154,7 @@ export async function start(options: Options): Promise<void> {
 
   for (let i = 0; i < configs.length; i++) {
     // skip over the functions emulator ports to avoid breaking changes
-    const port = i === 0 ? options.port! : options.port! + 4 + i;
+    const port = i === 0 ? options.port : options.port + 4 + i;
     startServer(options, configs[i], port, init);
   }
 }

@@ -256,13 +256,13 @@ export async function prepareFrameworks(
     config.redirects ||= [];
     config.headers ||= [];
     config.cleanUrls ??= true;
-    const dist = join(projectRoot, ".firebase", site!);
+    const dist = join(projectRoot, ".firebase", site);
     const hostingDist = join(dist, "hosting");
     const functionsDist = join(dist, "functions");
     if (publicDir)
       throw new Error(`hosting.public and hosting.source cannot both be set in firebase.json`);
     const getProjectPath = (...args: string[]) => join(projectRoot, source, ...args);
-    const functionName = `ssr${site!.replace(/-/g, "")}`;
+    const functionName = `ssr${site.replace(/-/g, "")}`;
     const usesFirebaseAdminSdk = !!findDependency("firebase-admin", { cwd: getProjectPath() });
     const usesFirebaseJsSdk = !!findDependency("@firebase/app", { cwd: getProjectPath() });
     if (usesFirebaseAdminSdk) {

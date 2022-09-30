@@ -27,9 +27,7 @@ export async function prepare(context: Context, options: Options, payload: Paylo
 
   context.hosting = {
     deploys: configs.map((cfg) => {
-      // The null assertion is safe because the hostingConfig helper also calls
-      // config.resolveTargets which ensures all configs have a site.
-      return { config: cfg, site: cfg.site! };
+      return { config: cfg, site: cfg.site };
     }),
   };
 
