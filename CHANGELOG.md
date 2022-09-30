@@ -1,3 +1,4 @@
 - Add the "experiments" family of commands (#4994)
 - Enable detecting and skipping no-op function deploys (#5032).
 - Catches errors when fetching CLI MOTD, allowing process to continue (#4998).
+- Adds test lab triggers to firebase deploy (#5011).

@@ -6,6 +6,7 @@ import { obtainStorageBindings, ensureStorageTriggerRegion } from "./storage";
 import { ensureFirebaseAlertsTriggerRegion } from "./firebaseAlerts";
 import { ensureDatabaseTriggerRegion } from "./database";
 import { ensureRemoteConfigTriggerRegion } from "./remoteConfig";
+import { ensureTestLabTriggerRegion } from "./testLab";
 
 /** A standard void No Op */
 export const noop = (): Promise<void> => Promise.resolve();
@@ -21,7 +22,8 @@ export type Name =
   | "firebasealerts"
   | "authblocking"
   | "database"
-  | "remoteconfig";
+  | "remoteconfig"
+  | "testlab";
 
 /** A service interface for the underlying GCP event services */
 export interface Service {
@@ -104,6 +106,17 @@ const remoteConfigService: Service = {
   unregisterTrigger: noop,
 };
 
+/** A test lab service object */
+const testLabService: Service = {
+  name: "testlab",
+  api: "testing.googleapis.com",
+  requiredProjectBindings: noopProjectBindings,
+  ensureTriggerRegion: ensureTestLabTriggerRegion,
+  validateTrigger: noop,
+  registerTrigger: noop,
+  unregisterTrigger: noop,
+};
+
 /** Mapping from event type string to service object */
 const EVENT_SERVICE_MAPPING: Record<events.Event, Service> = {
   "google.cloud.pubsub.topic.v1.messagePublished": pubSubService,
@@ -119,6 +132,7 @@ const EVENT_SERVICE_MAPPING: Record<events.Event, Service> = {
   "google.firebase.database.ref.v1.updated": databaseService,
   "google.firebase.database.ref.v1.deleted": databaseService,
   "google.firebase.remoteconfig.remoteConfig.v1.updated": remoteConfigService,
+  "google.firebase.testlab.testMatrix.v1.completed": testLabService,
 };
 
 /**
