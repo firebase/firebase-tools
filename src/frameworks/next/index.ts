@@ -17,8 +17,9 @@ import {
 } from "..";
 import { promptOnce } from "../../prompt";
 import { gte } from "semver";
-import esbuild from "esbuild";
 import { IncomingMessage, ServerResponse } from "http";
+import { logger } from "../../logger";
+import { FirebaseError } from "../../error";
 
 // Next.js's exposed interface is incomplete here
 // TODO see if there's a better way to grab this
@@ -206,6 +207,16 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
   const packageJsonBuffer = await readFile(join(sourceDir, "package.json"));
   const packageJson = JSON.parse(packageJsonBuffer.toString());
   if (existsSync(join(sourceDir, "next.config.js"))) {
+    let esbuild;
+    try {
+      esbuild = await import("esbuild");
+    } catch (e: unknown) {
+      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+      logger.debug(`Failed to load 'esbuild': ${e}`);
+      throw new FirebaseError(
+        `Unable to find 'esbuild'. Install it into your local dev dependencies with 'npm i --save-dev esbuild''`
+      );
+    }
     await esbuild.build({
       bundle: true,
       external: Object.keys(packageJson.dependencies),

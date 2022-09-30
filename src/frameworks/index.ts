@@ -7,6 +7,8 @@ import { IncomingMessage, ServerResponse } from "http";
 import { copyFile, readdir, rm, writeFile } from "fs/promises";
 import { mkdirp, pathExists, stat } from "fs-extra";
 import * as clc from "colorette";
+import * as process from "node:process";
+import * as semver from "semver";
 
 import { needProjectId } from "../projectUtils";
 import { normalizedHostingConfigs } from "../hosting/normalizedHostingConfigs";
@@ -18,6 +20,7 @@ import { getCredentialPathAsync } from "../defaultCredentials";
 import { getProjectDefaultAccount } from "../auth";
 import { formatHost } from "../emulator/functionsEmulatorShared";
 import { Constants } from "../emulator/constants";
+import { FirebaseError } from "../error";
 
 // Use "true &&"" to keep typescript from compiling this file and rewriting
 // the import statement into a require
@@ -227,6 +230,14 @@ export async function prepareFrameworks(
   options: any,
   emulators: EmulatorInfo[] = []
 ) {
+  // `firebase-frameworks` requires Node >= 16. We must check for this to avoid horrible errors.
+  const nodeVersion = process.version;
+  if (!semver.satisfies(nodeVersion, ">=16.0.0")) {
+    throw new FirebaseError(
+      `The frameworks awareness feature requires Node.JS >= 16 and npm >= 8 in order to work correctly, due to some of the downstream dependencies. Please upgrade your version of Node.JS, reinstall firebase-tools, and give it another go.`
+    );
+  }
+
   const project = needProjectId(context);
   const { projectRoot } = options;
   const account = getProjectDefaultAccount(projectRoot);
