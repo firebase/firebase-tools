@@ -252,14 +252,6 @@ export function pruneUndefiends(obj: unknown): void {
     const sub = keyable[key];
     if (sub === undefined) {
       delete keyable[key];
-    } /* else if (typeof sub === "object" && sub !== null) {
-      if (Array.isArray(sub)) {
-        keyable[key] = sub.map((v: unknown) => {
-          pruneUndefiends(v);
-        });
-      } else {
-        pruneUndefiends(sub as Record<string, unknown>);
-      }
-    }*/
+    }
   }
 }
