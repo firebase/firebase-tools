@@ -498,9 +498,9 @@ export async function startAll(
   if (
     Array.isArray(hostingConfig) ? hostingConfig.some((it) => it.source) : hostingConfig?.source
   ) {
-    experiments.assertEnabled("frameworkawareness", "emulate a web framework");
+    experiments.assertEnabled("webframeworks", "emulate a web framework");
     const emulators: EmulatorInfo[] = [];
-    if (experiments.isEnabled("frameworkawareness")) {
+    if (experiments.isEnabled("webframeworks")) {
       for (const e of EMULATORS_SUPPORTED_BY_UI) {
         const info = EmulatorRegistry.getInfo(e);
         if (info) emulators.push(info);
