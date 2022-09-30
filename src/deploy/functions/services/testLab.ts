@@ -12,7 +12,7 @@ export function ensureTestLabTriggerRegion(
     endpoint.eventTrigger.region = "global";
   }
   if (endpoint.eventTrigger.region !== "global") {
-    throw new FirebaseError("A test lab trigger must specify 'global' trigger location");
+    throw new FirebaseError("A Test Lab trigger must specify 'global' trigger location");
   }
   return Promise.resolve();
 }
