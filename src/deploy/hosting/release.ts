@@ -2,15 +2,13 @@ import * as api from "../../hosting/api";
 import { logger } from "../../logger";
 import * as utils from "../../utils";
 import { convertConfig } from "./convertConfig";
-import { Payload } from "./args";
 import { Context } from "./context";
-import { Options } from "../../options";
 import { FirebaseError } from "../../error";
 
 /**
  *  Release finalized a Hosting release.
  */
-export async function release(context: Context, options: Options, payload: Payload): Promise<void> {
+export async function release(context: Context): Promise<void> {
   if (!context.hosting || !context.hosting.deploys) {
     return;
   }
@@ -24,36 +22,31 @@ export async function release(context: Context, options: Options, payload: Paylo
           { exit: 2 }
         );
       }
-      utils.logLabeledBullet(`hosting[${deploy.site}]`, "finalizing version...");
+      utils.logLabeledBullet(`hosting[${deploy.config.site}]`, "finalizing version...");
 
       const update: Partial<api.Version> = {
         status: "FINALIZED",
-        config: await convertConfig(context, payload, deploy.config, /* finalize= */ true),
+        config: await convertConfig(context, deploy),
       };
 
       const versionId = utils.last(deploy.version.split("/"));
-      const finalizedVersion = await api.updateVersion(deploy.site, versionId, update);
-      logger.debug(
-        `[hosting] finalized version for ${deploy.site}:${JSON.stringify(
-          finalizedVersion,
-          null,
-          2
-        )}`
-      );
-      utils.logLabeledSuccess(`hosting[${deploy.site}]`, "version finalized");
-      utils.logLabeledBullet(`hosting[${deploy.site}]`, "releasing new version...");
+      const finalizedVersion = await api.updateVersion(deploy.config.site, versionId, update);
+
+      logger.debug(`[hosting] finalized version for ${deploy.config.site}:${finalizedVersion}`);
+      utils.logLabeledSuccess(`hosting[${deploy.config.site}]`, "version finalized");
+      utils.logLabeledBullet(`hosting[${deploy.config.site}]`, "releasing new version...");
 
       if (context.hostingChannel) {
         logger.debug("[hosting] releasing to channel:", context.hostingChannel);
       }
 
       const release = await api.createRelease(
-        deploy.site,
+        deploy.config.site,
         context.hostingChannel || "live",
         versionId
       );
-      logger.debug("[hosting] release:", JSON.stringify(release, null, 2));
-      utils.logLabeledSuccess(`hosting[${deploy.site}]`, "release complete");
+      logger.debug("[hosting] release:", release);
+      utils.logLabeledSuccess(`hosting[${deploy.config.site}]`, "release complete");
     })
   );
 }

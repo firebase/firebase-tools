@@ -235,3 +235,31 @@ export function formatServiceAccount(serviceAccount: string, projectId: string):
   }
   return `serviceAccount:${serviceAccount}`;
 }
+
+/**
+ * Remove keys whose values are undefined.
+ * When we write an interface { foo?: number } there are three possible
+ * forms: { foo: 1 }, {}, and { foo: undefined }. The latter surprises
+ * most people and make unit test comparison flaky. This cleans up.
+ */
+export function pruneUndefiends(obj: unknown): void {
+  if (typeof obj !== "object" || obj === null) {
+    return;
+  }
+  const keyable = obj as Record<string, unknown>;
+  for (const key of Object.keys(keyable)) {
+    // Temp is necessary for type inference to keep
+    const sub = keyable[key];
+    if (sub === undefined) {
+      delete keyable[key];
+    } /* else if (typeof sub === "object" && sub !== null) {
+      if (Array.isArray(sub)) {
+        keyable[key] = sub.map((v: unknown) => {
+          pruneUndefiends(v);
+        });
+      } else {
+        pruneUndefiends(sub as Record<string, unknown>);
+      }
+    }*/
+  }
+}

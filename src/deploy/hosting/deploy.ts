@@ -36,20 +36,20 @@ export async function deploy(context: Context, options: Options): Promise<void> 
     // No need to run Uploader for no-file deploys
     if (!deploy.config?.public) {
       logLabeledBullet(
-        `hosting[${deploy.site}]`,
+        `hosting[${deploy.config.site}]`,
         'no "public" directory to upload, continuing with release'
       );
       return runDeploys(deploys, debugging);
     }
 
-    logLabeledBullet(`hosting[${deploy.site}]`, "beginning deploy...");
+    logLabeledBullet(`hosting[${deploy.config.site}]`, "beginning deploy...");
     const t0 = Date.now();
 
     const publicDir = options.config.path(deploy.config.public);
     const files = listFiles(publicDir, deploy.config.ignore);
 
     logLabeledBullet(
-      `hosting[${deploy.site}]`,
+      `hosting[${deploy.config.site}]`,
       `found ${files.length} files in ${bold(deploy.config.public)}`
     );
 
@@ -95,7 +95,7 @@ export async function deploy(context: Context, options: Options): Promise<void> 
       spinner.stop();
     }
 
-    logLabeledSuccess(`hosting[${deploy.site}]`, "file upload complete");
+    logLabeledSuccess(`hosting[${deploy.config.site}]`, "file upload complete");
     const dt = Date.now() - t0;
     logger.debug(`[hosting] deploy completed after ${dt}ms`);
 

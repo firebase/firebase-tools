@@ -36,16 +36,29 @@ type HostingRedirects = HostingSource & {
 
 export type DestinationRewrite = { destination: string };
 export type LegacyFunctionsRewrite = { function: string; region?: string };
-// TODO: add new format for FunctionsRewrite that looks like RunRewrite
+export type FunctionsRewrite = {
+  function: {
+    functionId: string;
+    region?: string;
+    pinTag?: boolean;
+  };
+};
 export type RunRewrite = {
   run: {
     serviceId: string;
     region?: string;
+    pinTag?: boolean;
   };
 };
 export type DynamicLinksRewrite = { dynamicLinks: boolean };
 export type HostingRewrites = HostingSource &
-  (DestinationRewrite | LegacyFunctionsRewrite | RunRewrite | DynamicLinksRewrite);
+  (
+    | DestinationRewrite
+    | LegacyFunctionsRewrite
+    | FunctionsRewrite
+    | RunRewrite
+    | DynamicLinksRewrite
+  );
 
 export type HostingHeaders = HostingSource & {
   headers: {

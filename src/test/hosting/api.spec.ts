@@ -347,7 +347,7 @@ describe("hosting", () => {
       name: `projects/-/sites/${SITE}/versions/v2`,
     };
 
-    it("Returns a single page of versions", async () => {
+    it("returns a single page of versions", async () => {
       nock(hostingApiOrigin)
         .get(`/v1beta1/projects/-/sites/${SITE}/versions`)
         .reply(200, { versions: [VERSION_1] });

@@ -729,6 +729,9 @@
                                             "run": {
                                                 "additionalProperties": false,
                                                 "properties": {
+                                                    "pinTag": {
+                                                        "type": "boolean"
+                                                    },
                                                     "region": {
                                                         "type": "string"
                                                     },
@@ -805,6 +808,9 @@
                                             "run": {
                                                 "additionalProperties": false,
                                                 "properties": {
+                                                    "pinTag": {
+                                                        "type": "boolean"
+                                                    },
                                                     "region": {
                                                         "type": "string"
                                                     },
@@ -887,6 +893,9 @@
                                             "run": {
                                                 "additionalProperties": false,
                                                 "properties": {
+                                                    "pinTag": {
+                                                        "type": "boolean"
+                                                    },
                                                     "region": {
                                                         "type": "string"
                                                     },
@@ -1218,6 +1227,9 @@
                                                         "run": {
                                                             "additionalProperties": false,
                                                             "properties": {
+                                                                "pinTag": {
+                                                                    "type": "boolean"
+                                                                },
                                                                 "region": {
                                                                     "type": "string"
                                                                 },
@@ -1294,6 +1306,9 @@
                                                         "run": {
                                                             "additionalProperties": false,
                                                             "properties": {
+                                                                "pinTag": {
+                                                                    "type": "boolean"
+                                                                },
                                                                 "region": {
                                                                     "type": "string"
                                                                 },
@@ -1376,6 +1391,9 @@
                                                         "run": {
                                                             "additionalProperties": false,
                                                             "properties": {
+                                                                "pinTag": {
+                                                                    "type": "boolean"
+                                                                },
                                                                 "region": {
                                                                     "type": "string"
                                                                 },
@@ -1707,6 +1725,9 @@
                                                         "run": {
                                                             "additionalProperties": false,
                                                             "properties": {
+                                                                "pinTag": {
+                                                                    "type": "boolean"
+                                                                },
                                                                 "region": {
                                                                     "type": "string"
                                                                 },
@@ -1783,6 +1804,9 @@
                                                         "run": {
                                                             "additionalProperties": false,
                                                             "properties": {
+                                                                "pinTag": {
+                                                                    "type": "boolean"
+                                                                },
                                                                 "region": {
                                                                     "type": "string"
                                                                 },
@@ -1865,6 +1889,9 @@
                                                         "run": {
                                                             "additionalProperties": false,
                                                             "properties": {
+                                                                "pinTag": {
+                                                                    "type": "boolean"
+                                                                },
                                                                 "region": {
                                                                     "type": "string"
                                                                 },

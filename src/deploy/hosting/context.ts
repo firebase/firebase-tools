@@ -2,9 +2,10 @@ import { HostingResolved } from "../../firebaseConfig";
 import { Context as FunctionsContext } from "../functions/args";
 
 export interface HostingDeploy {
+  // Note: a HostingMultiple[number] is a stronger guarantee than a HostingSingle
+  // because at least one of site and target must exist.
   config: HostingResolved;
-  site: string;
-  version?: string;
+  version: string;
 }
 
 export interface Context extends FunctionsContext {
