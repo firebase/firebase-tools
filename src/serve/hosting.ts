@@ -1,7 +1,7 @@
-import * as clc from "colorette";
-
-const superstatic = require("superstatic").server; // Superstatic has no types, requires odd importing.
 const morgan = require("morgan");
+import { IncomingMessage, ServerResponse } from "http";
+import { server as superstatic } from "superstatic";
+import * as clc from "colorette";
 
 import { detectProjectRoot } from "../detectProjectRoot";
 import { FirebaseError } from "../error";
@@ -10,7 +10,6 @@ import { initMiddleware } from "../hosting/initMiddleware";
 import { normalizedHostingConfigs } from "../hosting/normalizedHostingConfigs";
 import cloudRunProxy from "../hosting/cloudRunProxy";
 import { functionsProxy } from "../hosting/functionsProxy";
-import { NextFunction, Request, Response } from "express";
 import { Writable } from "stream";
 import { EmulatorLogger } from "../emulator/emulatorLogger";
 import { Emulators } from "../emulator/types";
@@ -80,19 +79,15 @@ function startServer(options: any, config: any, port: number, init: TemplateServ
   const server = superstatic({
     debug: false,
     port: port,
-    host: options.host,
+    hostname: options.host,
     config: config,
     compression: true,
-    cwd: detectProjectRoot(options),
+    cwd: detectProjectRoot(options) || undefined,
     stack: "strict",
     before: {
-      files: (req: Request, res: Response, next: NextFunction) => {
+      files: (req: IncomingMessage, res: ServerResponse, next: (err?: unknown) => void) => {
         // We do these in a single method to ensure order of operations
-        morganMiddleware(req, res, () => {
-          /*
-          NoOp next function
-        */
-        });
+        morganMiddleware(req, res, () => null);
         firebaseMiddleware(req, res, next);
       },
     },
