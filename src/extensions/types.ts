@@ -98,7 +98,7 @@ export interface ExtensionSpec {
   contributors?: Author[];
   license?: string;
   releaseNotesUrl?: string;
-  sourceUrl: string;
+  sourceUrl?: string;
   params: Param[];
   preinstallContent?: string;
   postinstallContent?: string;
