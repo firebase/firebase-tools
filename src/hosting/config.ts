@@ -9,6 +9,7 @@ import {
   HostingRewrites,
   FunctionsRewrite,
   LegacyFunctionsRewrite,
+  HostingSource,
 } from "../firebaseConfig";
 import { partition } from "../functional";
 import { RequireAtLeastOne } from "../metaprogramming";
@@ -231,6 +232,12 @@ export function resolveTargets(
   });
 }
 
+function isLegacyFunctionsRewrite(
+  rewrite: HostingRewrites
+): rewrite is HostingSource & LegacyFunctionsRewrite {
+  return "function" in rewrite && typeof rewrite.function === "string";
+}
+
 /**
  * Ensures that all configs are of a single modern format
  */
@@ -240,7 +247,7 @@ export function normalize(configs: HostingMultiple): void {
       if (!("function" in rewrite)) {
         return rewrite;
       }
-      if (typeof rewrite.function === "string") {
+      if (isLegacyFunctionsRewrite(rewrite)) {
         const modern: HostingRewrites & FunctionsRewrite = {
           // Note: this copied in a bad "function" and "rewrite" in this splat
           // we'll overwrite function and delete rewrite.
@@ -254,10 +261,8 @@ export function normalize(configs: HostingMultiple): void {
         if ("region" in rewrite && typeof rewrite.region === "string") {
           modern.function.region = rewrite.region;
         }
-        // Somebody shoot me... why is it taht these type narrowings compile
-        // but are somehow necessary?
-        if ((rewrite as LegacyFunctionsRewrite).region) {
-          modern.function.region = (rewrite as LegacyFunctionsRewrite).region;
+        if (rewrite.region) {
+          modern.function.region = rewrite.region;
         }
         return modern;
       }

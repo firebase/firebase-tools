@@ -240,7 +240,7 @@ export function formatServiceAccount(serviceAccount: string, projectId: string):
  * Remove keys whose values are undefined.
  * When we write an interface { foo?: number } there are three possible
  * forms: { foo: 1 }, {}, and { foo: undefined }. The latter surprises
- * most people and make unit test comparison flaky. This cleans up.
+ * most people and make unit test comparison flaky. This cleans that up.
  */
 export function pruneUndefiends(obj: unknown): void {
   if (typeof obj !== "object" || obj === null) {
