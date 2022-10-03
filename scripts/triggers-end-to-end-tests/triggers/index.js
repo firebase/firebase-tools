@@ -61,15 +61,12 @@ exports.writeToFirestore = functions.https.onRequest(async (req, res) => {
   });
 });
 
-exports.writeUpdateDeleteToRtdb = functions.https.onRequest(async (req, res) => {
+exports.writeToRtdb = functions.https.onRequest(async (req, res) => {
   const ref = admin.database().ref(START_DOCUMENT_NAME);
   await ref.set({ start: new Date().toISOString() });
-  console.log("Wrote to RTDB");
-  await ref.update({ start: new Date().toISOString() });
-  console.log("Update to RTDB");
-  await ref.remove();
-  console.log("Delete from RTDB");
-  res.json({ status: "done" });
+  ref.once("value", (snap) => {
+    res.json({ data: snap });
+  });
 });
 
 exports.writeToPubsub = functions.https.onRequest(async (req, res) => {

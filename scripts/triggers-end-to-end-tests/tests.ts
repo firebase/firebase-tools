@@ -115,7 +115,7 @@ describe("function triggers", () => {
   });
 
   after(async function (this) {
-    this.timeout(EMULATORS_SHUTDOWN_DELAY_MS * 2);
+    this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
     database?.goOffline();
     for (const fn of firestoreUnsub) fn();
     await firestore?.terminate();
@@ -126,7 +126,7 @@ describe("function triggers", () => {
     it("should write to the database emulator", async function (this) {
       this.timeout(EMULATOR_TEST_TIMEOUT);
 
-      const response = await test.writeUpdateDeleteToRtdb();
+      const response = await test.writeToRtdb();
       expect(response.status).to.equal(200);
     });
 
@@ -148,10 +148,7 @@ describe("function triggers", () => {
 
     it("should have have triggered cloud functions", () => {
       expect(test.rtdbTriggerCount).to.equal(1);
-      expect(test.rtdbV2WrittenTriggerCount).to.eq(1);
-      expect(test.rtdbV2CreatedTriggerCount).to.eq(1);
-      expect(test.rtdbV2UpdatedTriggerCount).to.eq(1);
-      expect(test.rtdbV2DeletedTriggerCount).to.eq(1);
+      expect(test.rtdbV2TriggerCount).to.eq(1);
       expect(test.firestoreTriggerCount).to.equal(1);
       /*
        * Check for the presence of all expected documents in the firestore
