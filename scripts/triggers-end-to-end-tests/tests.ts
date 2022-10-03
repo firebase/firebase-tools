@@ -115,7 +115,7 @@ describe("function triggers", () => {
   });
 
   after(async function (this) {
-    this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
+    this.timeout(EMULATORS_SHUTDOWN_DELAY_MS * 2);
     database?.goOffline();
     for (const fn of firestoreUnsub) fn();
     await firestore?.terminate();
