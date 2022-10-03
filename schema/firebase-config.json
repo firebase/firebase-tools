@@ -266,6 +266,9 @@
                     },
                     "type": "object"
                 },
+                "singleProjectMode": {
+                    "type": "boolean"
+                },
                 "storage": {
                     "additionalProperties": false,
                     "properties": {
@@ -295,9 +298,6 @@
                         }
                     },
                     "type": "object"
-                },
-                "singleProjectMode": {
-                    "type": "boolean"
                 }
             },
             "type": "object"
