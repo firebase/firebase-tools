@@ -100,6 +100,11 @@ export async function doSetup(setup: any, config: any) {
     ]);
   }
 
+  // Set the default behavior to be single project mode.
+  if (setup.config.emulators.singleProjectMode === undefined) {
+    setup.config.emulators.singleProjectMode = true;
+  }
+  
   if (selections.download) {
     for (const selected of selections.emulators) {
       if (isDownloadableEmulator(selected)) {

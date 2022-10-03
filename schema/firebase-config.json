@@ -295,6 +295,9 @@
                         }
                     },
                     "type": "object"
+                },
+                "singleProjectMode": {
+                    "type": "boolean"
                 }
             },
             "type": "object"

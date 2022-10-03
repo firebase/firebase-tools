@@ -163,6 +163,10 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
       "websocket_port",
       "functions_emulator",
       "seed_from_export",
+      "project_id",
+      "single_project_mode",
+      // TODO(christhompson) Re-enable after firestore accepts this flag.
+      // "single_project_mode_error",
     ],
     joinArgs: false,
   },
