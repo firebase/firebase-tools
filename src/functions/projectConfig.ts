@@ -39,7 +39,7 @@ export function validateCodebase(codebase: string): void {
 
 function validateSingle(config: FunctionConfig): ValidatedSingle {
   if (!config.source) {
-    throw new FirebaseError("functions.source must be specified");
+    throw new FirebaseError("codebase source must be specified");
   }
   if (!config.codebase) {
     config.codebase = DEFAULT_CODEBASE;

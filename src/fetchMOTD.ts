@@ -3,6 +3,7 @@ import * as semver from "semver";
 
 import { Client } from "./apiv2";
 import { configstore } from "./configstore";
+import { logger } from "./logger";
 import { realtimeOrigin } from "./api";
 import * as utils from "./utils";
 
@@ -43,10 +44,15 @@ export function fetchMOTD(): void {
   } else {
     const origin = utils.addSubdomain(realtimeOrigin, "firebase-public");
     const c = new Client({ urlPrefix: origin, auth: false });
-    c.get("/cli.json").then((res) => {
-      motd = Object.assign({}, res.body);
-      configstore.set("motd", motd);
-      configstore.set("motd.fetched", Date.now());
-    });
+    c.get("/cli.json")
+      .then((res) => {
+        motd = Object.assign({}, res.body);
+        configstore.set("motd", motd);
+        configstore.set("motd.fetched", Date.now());
+      })
+      .catch((err) => {
+        utils.logWarning("Unable to fetch the CLI MOTD and remote config.");
+        logger.debug(`Failed to fetch MOTD ${err}`);
+      });
   }
 }

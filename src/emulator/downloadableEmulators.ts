@@ -18,7 +18,7 @@ import * as path from "path";
 import * as os from "os";
 import { EmulatorRegistry } from "./registry";
 import { downloadEmulator } from "../emulator/download";
-import { previews } from "../previews";
+import * as experiments from "../experiments";
 
 const EMULATOR_INSTANCE_KILL_TIMEOUT = 4000; /* ms */
 
@@ -39,14 +39,14 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
     },
   },
   firestore: {
-    downloadPath: path.join(CACHE_DIR, "cloud-firestore-emulator-v1.14.4.jar"),
-    version: "1.14.4",
+    downloadPath: path.join(CACHE_DIR, "cloud-firestore-emulator-v1.15.1.jar"),
+    version: "1.15.1",
     opts: {
       cacheDir: CACHE_DIR,
       remoteUrl:
-        "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v1.14.4.jar",
-      expectedSize: 61017177,
-      expectedChecksum: "953d10e73798484aa0b84c45005faadb",
+        "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v1.15.1.jar",
+      expectedSize: 61475851,
+      expectedChecksum: "4f41d24a3c0f3b55ea22804a424cc0ee",
       namePrefix: "cloud-firestore-emulator",
     },
   },
@@ -62,7 +62,7 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
       namePrefix: "cloud-storage-rules-emulator",
     },
   },
-  ui: previews.emulatoruisnapshot
+  ui: experiments.isEnabled("emulatoruisnapshot")
     ? {
         version: "SNAPSHOT",
         downloadPath: path.join(CACHE_DIR, "ui-vSNAPSHOT.zip"),
@@ -160,6 +160,7 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
       "webchannel_port",
       "host",
       "rules",
+      "websocket_port",
       "functions_emulator",
       "seed_from_export",
     ],
@@ -286,6 +287,9 @@ async function _fatal(emulator: Emulators, errorMsg: string): Promise<void> {
   }
 }
 
+/**
+ * Handle errors in an emulator process.
+ */
 export async function handleEmulatorProcessError(emulator: Emulators, err: any): Promise<void> {
   const description = Constants.description(emulator);
   if (err.path === "java" && err.code === "ENOENT") {
@@ -298,6 +302,9 @@ export async function handleEmulatorProcessError(emulator: Emulators, err: any):
   }
 }
 
+/**
+ * Do the selected list of emulators depend on the JRE.
+ */
 export function requiresJava(emulator: Emulators): boolean {
   if (emulator in Commands) {
     return Commands[emulator as keyof typeof Commands].binary === "java";
@@ -308,7 +315,7 @@ export function requiresJava(emulator: Emulators): boolean {
 async function _runBinary(
   emulator: DownloadableEmulatorDetails,
   command: DownloadableEmulatorCommand,
-  extraEnv: NodeJS.ProcessEnv
+  extraEnv: Partial<NodeJS.ProcessEnv>
 ): Promise<void> {
   return new Promise((resolve) => {
     const logger = EmulatorLogger.forEmulator(emulator.name);
@@ -452,7 +459,7 @@ export async function downloadIfNecessary(targetName: DownloadableEmulators): Pr
 export async function start(
   targetName: DownloadableEmulators,
   args: any,
-  extraEnv: NodeJS.ProcessEnv = {}
+  extraEnv: Partial<NodeJS.ProcessEnv> = {}
 ): Promise<void> {
   const downloadDetails = DownloadDetails[targetName];
   const emulator = get(targetName);
