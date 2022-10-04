@@ -442,7 +442,7 @@ describe("hosting", () => {
         .query({ versionName: VERSION_NAME })
         .reply(201, RELEASE);
 
-      const res = await hostingApi.createRelease(SITE, CHANNEL_ID, VERSION);
+      const res = await hostingApi.createRelease(SITE, CHANNEL_ID, VERSION_NAME);
 
       expect(res).to.deep.equal(RELEASE);
       expect(nock.isDone()).to.be.true;
@@ -458,7 +458,7 @@ describe("hosting", () => {
         .reply(500, { error: "server boo-boo" });
 
       await expect(
-        hostingApi.createRelease(SITE, CHANNEL_ID, VERSION)
+        hostingApi.createRelease(SITE, CHANNEL_ID, VERSION_NAME)
       ).to.eventually.be.rejectedWith(FirebaseError, /server boo-boo/);
 
       expect(nock.isDone()).to.be.true;
