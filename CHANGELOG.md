@@ -1,0 +1,1 @@
+- Validation of the firebase.json should allow use of the "source" directory in-lieu of "public"

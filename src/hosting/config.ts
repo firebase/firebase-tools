@@ -137,13 +137,13 @@ function validateOne(config: HostingMultiple[number], options: HostingOptions): 
   const hasAnyDynamicRewrites = !!config.rewrites?.find((rw) => !("destination" in rw));
   const hasAnyRedirects = !!config.redirects?.length;
 
-  if (!config.public && hasAnyStaticRewrites) {
-    throw new FirebaseError('Must supply a "public" directory when using "destination" rewrites.');
+  if (!config.source && !config.public && hasAnyStaticRewrites) {
+    throw new FirebaseError('Must supply a "public" or "source" directory when using "destination" rewrites.');
   }
 
-  if (!config.public && !hasAnyDynamicRewrites && !hasAnyRedirects) {
+  if (!config.source && !config.public && !hasAnyDynamicRewrites && !hasAnyRedirects) {
     throw new FirebaseError(
-      'Must supply a "public" directory or at least one rewrite or redirect in each "hosting" config.'
+      'Must supply a "public" directory, "source" directory, or at least one rewrite or redirect in each "hosting" config.'
     );
   }
 
@@ -151,6 +151,14 @@ function validateOne(config: HostingMultiple[number], options: HostingOptions): 
     throw new FirebaseError(
       `Specified "public" directory "${
         config.public
+      }" does not exist, can't deploy hosting to site "${config.site || config.target || ""}"`
+    );
+  }
+
+  if (config.source && !dirExistsSync(resolveProjectPath(options, config.source))) {
+    throw new FirebaseError(
+      `Specified "source" directory "${
+        config.source
       }" does not exist, can't deploy hosting to site "${config.site || config.target || ""}"`
     );
   }
