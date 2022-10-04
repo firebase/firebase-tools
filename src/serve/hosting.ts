@@ -145,7 +145,7 @@ export async function start(options: any): Promise<void> {
   let configs = config.extract(options);
   configs = config.filterOnly(configs, options.only);
   configs = config.filterExcept(configs, options.except);
-  config.validate(configs, options);
+  // Do not validate because we might still have "source" instead of "public"
 
   for (let i = 0; i < configs.length; i++) {
     // skip over the functions emulator ports to avoid breaking changes
