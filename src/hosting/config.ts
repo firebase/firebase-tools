@@ -1,4 +1,4 @@
-t git import { bold } from "colorette";
+import { bold } from "colorette";
 import { cloneDeep, logLabeledWarning } from "../utils";
 
 import { FirebaseError } from "../error";
