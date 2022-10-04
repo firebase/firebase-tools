@@ -165,7 +165,13 @@ function fieldMasksHelper(
   doNotRecurseIn: string[],
   masks: string[]
 ): void {
-  if (typeof cursor !== "object" || Array.isArray(cursor) || cursor === null) {
+  // Empty arrays should never be sent because they're dropped by the one platform
+  // gateway and then services get confused why there's an update mask for a missing field"
+  if (Array.isArray(cursor) && !cursor.length) {
+    return;
+  }
+
+  if (typeof cursor !== "object" || (Array.isArray(cursor) && cursor.length) || cursor === null) {
     masks.push(prefixes.join("."));
     return;
   }

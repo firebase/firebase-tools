@@ -34,7 +34,7 @@ import { EmulatorRegistry } from "../../registry";
 import { Client } from "../../../apiv2";
 
 const lock = new AsyncLock();
-const synchonizationKey: string = "key";
+const synchonizationKey = "key";
 
 export interface RulesetVerificationOpts {
   file: {

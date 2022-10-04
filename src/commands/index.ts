@@ -1,5 +1,8 @@
-import { previews } from "../previews";
+import * as experiments from "../experiments";
 
+/**
+ * Loads all commands for our parser.
+ */
 export function load(client: any): any {
   function loadCommand(name: string) {
     const t0 = process.hrtime.bigint();
@@ -48,7 +51,7 @@ export function load(client: any): any {
   client.database.profile = loadCommand("database-profile");
   client.database.push = loadCommand("database-push");
   client.database.remove = loadCommand("database-remove");
-  if (previews.rtdbrules) {
+  if (experiments.isEnabled("rtdbrules")) {
     client.database.rules = {};
     client.database.rules.get = loadCommand("database-rules-get");
     client.database.rules.list = loadCommand("database-rules-list");
@@ -69,6 +72,11 @@ export function load(client: any): any {
   client.experimental = {};
   client.experimental.functions = {};
   client.experimental.functions.shell = loadCommand("experimental-functions-shell");
+  client.experiments = {};
+  client.experiments.list = loadCommand("experiments-list");
+  client.experiments.describe = loadCommand("experiments-describe");
+  client.experiments.enable = loadCommand("experiments-enable");
+  client.experiments.disable = loadCommand("experiments-disable");
   client.ext = loadCommand("ext");
   client.ext.configure = loadCommand("ext-configure");
   client.ext.info = loadCommand("ext-info");
@@ -77,11 +85,11 @@ export function load(client: any): any {
   client.ext.list = loadCommand("ext-list");
   client.ext.uninstall = loadCommand("ext-uninstall");
   client.ext.update = loadCommand("ext-update");
-  if (previews.ext) {
+  if (experiments.isEnabled("ext")) {
     client.ext.sources = {};
     client.ext.sources.create = loadCommand("ext-sources-create");
   }
-  if (previews.extdev) {
+  if (experiments.isEnabled("extdev")) {
     client.ext.dev = {};
     client.ext.dev.init = loadCommand("ext-dev-init");
     client.ext.dev.list = loadCommand("ext-dev-list");
@@ -110,7 +118,7 @@ export function load(client: any): any {
   client.functions.log = loadCommand("functions-log");
   client.functions.shell = loadCommand("functions-shell");
   client.functions.list = loadCommand("functions-list");
-  if (previews.deletegcfartifacts) {
+  if (experiments.isEnabled("deletegcfartifacts")) {
     client.functions.deletegcfartifacts = loadCommand("functions-deletegcfartifacts");
   }
   client.functions.secrets = {};
