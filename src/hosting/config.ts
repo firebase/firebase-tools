@@ -17,6 +17,8 @@ import { dirExistsSync } from "../fsutils";
 import { resolveProjectPath } from "../projectPath";
 import { HostingOptions } from "./options";
 import path from "path";
+import * as experiments from "../experiments";
+import { r } from "tar";
 
 // assertMatches allows us to throw when an --only flag doesn't match a target
 // but an --except flag doesn't. Is this desirable behavior?
@@ -145,21 +147,33 @@ function validateOne(config: HostingMultiple[number], options: HostingOptions): 
   const hasAnyDynamicRewrites = !!config.rewrites?.find((rw) => !("destination" in rw));
   const hasAnyRedirects = !!config.redirects?.length;
 
-  if (!config.public && hasAnyStaticRewrites) {
-    throw new FirebaseError('Must supply a "public" directory when using "destination" rewrites.');
+  if (config.source && config.public) {
+    throw new FirebaseError('Can only specify "source" or "public" in a Hosting config, not both');
   }
+  const root = experiments.isEnabled("webframeworks")
+    ? config.source || config.public
+    : config.public;
+  const orSource = experiments.isEnabled("webframeworks") ? ' or "source"' : "";
 
-  if (!config.public && !hasAnyDynamicRewrites && !hasAnyRedirects) {
+  if (!root && hasAnyStaticRewrites) {
     throw new FirebaseError(
-      'Must supply a "public" directory or at least one rewrite or redirect in each "hosting" config.'
+      `Must supply a "public"${orSource} directory when using "destination" rewrites.`
     );
   }
 
-  if (config.public && !dirExistsSync(resolveProjectPath(options, config.public))) {
+  if (!root && !hasAnyDynamicRewrites && !hasAnyRedirects) {
     throw new FirebaseError(
-      `Specified "public" directory "${
-        config.public
-      }" does not exist, can't deploy hosting to site "${config.site || config.target || ""}"`
+      `Must supply a "public"${orSource} directory or at least one rewrite or redirect in each "hosting" config.`
+    );
+  }
+
+  if (root && !dirExistsSync(resolveProjectPath(options, root))) {
+    throw new FirebaseError(
+      `Specified "${
+        config.source ? "source" : "public"
+      }" directory "${root}" does not exist, can't deploy hosting to site "${
+        config.site || config.target || ""
+      }"`
     );
   }
 
