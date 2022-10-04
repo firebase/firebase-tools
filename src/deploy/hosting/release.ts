@@ -43,7 +43,7 @@ export async function release(context: Context): Promise<void> {
       const release = await api.createRelease(
         deploy.config.site,
         context.hostingChannel || "live",
-        versionId
+        deploy.version
       );
       logger.debug("[hosting] release:", release);
       utils.logLabeledSuccess(`hosting[${deploy.config.site}]`, "release complete");
