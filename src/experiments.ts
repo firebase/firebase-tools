@@ -77,7 +77,7 @@ export const ALL_EXPERIMENTS = experiments({
   },
 
   // Hosting experiments
-  frameworkawareness: {
+  webframeworks: {
     shortDescription: "Native support for popular web frameworks",
     fullDescription:
       "Adds support for popular web frameworks such as Next.js " +

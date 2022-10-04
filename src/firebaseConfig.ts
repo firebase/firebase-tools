@@ -87,6 +87,13 @@ export type HostingSingle = HostingBase & {
   target?: string;
 } & Deployable;
 
+// N.B. You would expect that a HostingMultiple is a HostingSingle[], but not
+// quite. When you only have one hosting object you can omit both `site` and
+// `target` because the default site will be looked up and provided for you.
+// When you have a list of hosting targets, though, we require all configs
+// to specify which site is being targeted.
+// If you can assume we've resolved targets, you probably want to use
+// HostingResolved, which says you must have site and may have target.
 export type HostingMultiple = (HostingBase &
   RequireAtLeastOne<{
     site: string;

@@ -137,7 +137,7 @@ describe("runTags", () => {
   });
 
   afterEach(() => {
-    sinon.verifyAndRestore();
+    sinon.restore();
   });
 
   function tagsIn(service: runNS.Service): string[] {
