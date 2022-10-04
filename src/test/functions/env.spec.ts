@@ -372,7 +372,7 @@ FOO=foo
       ).to.throw(FirebaseError);
     });
 
-    it("is fine writing a key that already exists in any .env not not .env.local, in emulator mode", () => {
+    it("is fine writing a key that already exists in any .env but not .env.local, in emulator mode", () => {
       createEnvFiles(tmpdir, {
         [".env"]: "FOO=bar",
       });

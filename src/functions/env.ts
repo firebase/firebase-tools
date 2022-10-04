@@ -266,6 +266,7 @@ export function writeUserEnvs(toWrite: Record<string, string>, envOpts: UserEnvs
   }
   const { functionsSource, projectId, projectAlias, isEmulator } = envOpts;
 
+  // Determine which .env file to write to, and create it if it doesn't exist
   const allEnvFiles = findEnvfiles(functionsSource, projectId, projectAlias, isEmulator);
   const targetEnvFile = envOpts.isEmulator
     ? FUNCTIONS_EMULATOR_DOTENV
@@ -273,58 +274,62 @@ export function writeUserEnvs(toWrite: Record<string, string>, envOpts: UserEnvs
   const targetEnvFileExists = allEnvFiles.includes(targetEnvFile);
   if (!targetEnvFileExists) {
     fs.writeFileSync(path.join(envOpts.functionsSource, targetEnvFile), "", { flag: "wx" });
-    if (!isEmulator) {
-      logBullet(
-        clc.yellow(clc.bold("functions: ")) +
-          `Created new local file ${targetEnvFile} to store param values. We suggest explicitly adding or excluding this file from version control.`
-      );
-    }
+    logBullet(
+      clc.yellow(clc.bold("functions: ")) +
+        `Created new local file ${targetEnvFile} to store param values. We suggest explicitly adding or excluding this file from version control.`
+    );
   }
 
+  // Throw if any of the keys are duplicate (note special case if emulator) or malformed
+  const fullEnvs = loadUserEnvs(envOpts);
+  const prodEnvs = isEmulator
+    ? loadUserEnvs({ ...envOpts, isEmulator: false })
+    : loadUserEnvs(envOpts);
+  checkForDuplicateKeys(isEmulator || false, Object.keys(toWrite), fullEnvs, prodEnvs);
   for (const k of Object.keys(toWrite)) {
     validateKey(k);
-    if (isAlreadyDefinedWrite(k, envOpts)) {
-      throw new FirebaseError(
-        `Attempted to write param-defined key ${k} to .env files, but it was already defined.`
-      );
-    }
   }
 
+  // Write all the keys in a single filesystem access
   logBullet(
     clc.cyan(clc.bold("functions: ")) + `Writing new parameter values to disk: ${targetEnvFile}`
   );
+  let lines = "";
   for (const k of Object.keys(toWrite)) {
-    fs.appendFileSync(
-      path.join(functionsSource, targetEnvFile),
-      formatUserEnvForWrite(k, toWrite[k])
-    );
+    lines += formatUserEnvForWrite(k, toWrite[k]);
   }
+  fs.appendFileSync(path.join(functionsSource, targetEnvFile), lines);
 }
 
 /**
- * Returns whether we should error on trying to write a key because it's already
- * defined in the .env fields. This seems like a simple presence, check, but...
+ * Errors if any of the provided keys are aleady defined in the .env fields.
+ * This seems like a simple presence check, but...
  *
  * For emulator deploys, it's legal to write a key to .env.local even if it's
  * already defined in .env.projectId. This is a special case designed to follow
  * the principle of least surprise for emulator users.
  */
-export function isAlreadyDefinedWrite(key: string, envOpts: UserEnvsOpts): boolean {
-  const definedInEnv = loadUserEnvs(envOpts).hasOwnProperty(key);
-
-  if (envOpts.isEmulator) {
-    const stillDefinedWithoutLocal = loadUserEnvs({ ...envOpts, isEmulator: false }).hasOwnProperty(
-      key
-    );
-    if (definedInEnv && stillDefinedWithoutLocal) {
-      logWarning(
-        clc.cyan(clc.yellow("functions: ")) +
-          `Writing parameter ${key} to emulator-specific config .env.local. This will overwrite your existing definition only when emulating.`
+export function checkForDuplicateKeys(
+  isEmulator: boolean,
+  keys: string[],
+  fullEnv: Record<string, string>,
+  envsWithoutLocal?: Record<string, string>
+): void {
+  for (const key of keys) {
+    const definedInEnv = fullEnv.hasOwnProperty(key);
+    if (definedInEnv) {
+      if (envsWithoutLocal && isEmulator && envsWithoutLocal.hasOwnProperty(key)) {
+        logWarning(
+          clc.cyan(clc.yellow("functions: ")) +
+            `Writing parameter ${key} to emulator-specific config .env.local. This will overwrite your existing definition only when emulating.`
+        );
+        continue;
+      }
+      throw new FirebaseError(
+        `Attempted to write param-defined key ${key} to .env files, but it was already defined.`
       );
-      return false;
     }
   }
-  return definedInEnv;
 }
 
 function formatUserEnvForWrite(key: string, value: string): string {
