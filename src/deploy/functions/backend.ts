@@ -500,6 +500,7 @@ export async function existingBackend(context: Context, forceRefresh?: boolean):
   if (!context.loadedExistingBackend || forceRefresh) {
     await loadExistingBackend(context);
   }
+  // loadExisting guarantees the validity of existingBackend and unreachableRegions
   return context.existingBackend!;
 }
 
