@@ -146,7 +146,7 @@ export async function start(options: any): Promise<void> {
   let configs = config.extract(options);
   configs = config.filterOnly(configs, options.only);
   configs = config.filterExcept(configs, options.except);
-  validate(configs, options);
+  config.validate(configs, options);
 
   for (let i = 0; i < configs.length; i++) {
     // skip over the functions emulator ports to avoid breaking changes
