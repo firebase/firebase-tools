@@ -1,6 +1,5 @@
 import { FirebaseError } from "../../error";
-import { client } from "./client";
-import { needProjectNumber } from "../../projectUtils";
+import * as api from "../../hosting/api";
 import * as config from "../../hosting/config";
 import { convertConfig } from "./convertConfig";
 import * as deploymentTool from "../../deploymentTool";
@@ -21,8 +20,6 @@ export async function prepare(context: Context, options: Options, payload: Paylo
     options.config.set("hosting.public", options.public);
   }
 
-  const projectNumber = await needProjectNumber(options);
-
   const configs = config.hostingConfig(options);
   if (configs.length === 0) {
     return Promise.resolve();
@@ -39,20 +36,18 @@ export async function prepare(context: Context, options: Options, payload: Paylo
   for (const deploy of context.hosting.deploys) {
     const cfg = deploy.config;
 
-    const data = {
+    const data: Omit<api.Version, api.VERSION_OUTPUT_FIELDS> = {
+      status: "CREATED",
       config: await convertConfig(context, payload, cfg, false),
       labels: deploymentTool.labels(),
     };
 
     versionCreates.push(
-      client
-        .post<{ config: unknown; labels: { [k: string]: string } }, { name: string }>(
-          `/projects/${projectNumber}/sites/${deploy.site}/versions`,
-          data
-        )
-        .then((res) => {
-          deploy.version = res.body.name;
-        })
+      (async () => {
+        // TODO: Fix this inconsistency. Site and project are ids but version
+        // is a name.
+        deploy.version = await api.createVersion(deploy.site, data);
+      })()
     );
   }
 
