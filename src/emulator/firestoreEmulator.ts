@@ -15,11 +15,13 @@ export interface FirestoreEmulatorArgs {
   port?: number;
   host?: string;
   websocket_port?: number;
-  projectId?: string;
+  project_id?: string;
   rules?: string;
   functions_emulator?: string;
   auto_download?: boolean;
   seed_from_export?: string;
+  single_project_mode?: boolean;
+  single_project_mode_error?: boolean;
 }
 
 export class FirestoreEmulator implements EmulatorInstance {
@@ -35,7 +37,7 @@ export class FirestoreEmulator implements EmulatorInstance {
       this.args.functions_emulator = EmulatorRegistry.getInfoHostString(functionsInfo);
     }
 
-    if (this.args.rules && this.args.projectId) {
+    if (this.args.rules && this.args.project_id) {
       const rulesPath = this.args.rules;
       this.rulesWatcher = chokidar.watch(rulesPath, { persistent: true, ignoreInitial: true });
       this.rulesWatcher.on("change", async () => {
@@ -94,7 +96,7 @@ export class FirestoreEmulator implements EmulatorInstance {
   }
 
   private async updateRules(content: string): Promise<Issue[]> {
-    const projectId = this.args.projectId;
+    const projectId = this.args.project_id;
 
     const info = this.getInfo();
     const body = {
