@@ -622,7 +622,7 @@ export async function startAll(
       host: firestoreAddr.host,
       port: firestoreAddr.port,
       websocket_port: websocketPort,
-      projectId,
+      project_id: projectId,
       auto_download: true,
     };
 
@@ -675,6 +675,23 @@ export async function startAll(
         "firestore",
         "The emulator will default to allowing all reads and writes. Learn more about this option: https://firebase.google.com/docs/emulator-suite/install_and_configure#security_rules_configuration."
       );
+    }
+
+    // undefined in the config defaults to setting single_project_mode.
+    if (
+      options.config.src.emulators?.singleProjectMode === undefined ||
+      options.config.src.emulators?.singleProjectMode
+    ) {
+      if (projectId) {
+        args.single_project_mode = true;
+        args.single_project_mode_error = false;
+      } else {
+        firestoreLogger.logLabeled(
+          "DEBUG",
+          "firestore",
+          "Could not enable single_project_mode: missing projectId."
+        );
+      }
     }
 
     const firestoreEmulator = new FirestoreEmulator(args);
