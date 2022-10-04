@@ -1,16 +1,17 @@
 import { FirebaseError } from "../../error";
 import { client } from "./client";
 import { needProjectNumber } from "../../projectUtils";
-import { normalizedHostingConfigs } from "../../hosting/normalizedHostingConfigs";
-import { validateDeploy } from "./validate";
+import * as config from "../../hosting/config";
 import { convertConfig } from "./convertConfig";
 import * as deploymentTool from "../../deploymentTool";
 import { Payload } from "./args";
+import { Context } from "./context";
+import { Options } from "../../options";
 
 /**
  *  Prepare creates versions for each Hosting site to be deployed.
  */
-export async function prepare(context: any, options: any, payload: Payload): Promise<void> {
+export async function prepare(context: Context, options: Options, payload: Payload): Promise<void> {
   // Allow the public directory to be overridden by the --public flag
   if (options.public) {
     if (Array.isArray(options.config.get("hosting"))) {
@@ -22,7 +23,7 @@ export async function prepare(context: any, options: any, payload: Payload): Pro
 
   const projectNumber = await needProjectNumber(options);
 
-  const configs = normalizedHostingConfigs(options, { resolveTargets: true });
+  const configs = config.hostingConfig(options);
   if (configs.length === 0) {
     return Promise.resolve();
   }
@@ -37,8 +38,6 @@ export async function prepare(context: any, options: any, payload: Payload): Pro
 
   for (const deploy of context.hosting.deploys) {
     const cfg = deploy.config;
-
-    validateDeploy(deploy, options);
 
     const data = {
       config: await convertConfig(context, payload, cfg, false),

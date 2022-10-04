@@ -432,8 +432,8 @@ describe("convertConfig", () => {
     // App Association.
     {
       name: "returns app association as it is set",
-      input: { appAssociation: "myApp" },
-      want: { appAssociation: "myApp" },
+      input: { appAssociation: "AUTO" },
+      want: { appAssociation: "AUTO" },
     },
     // i18n.
     {

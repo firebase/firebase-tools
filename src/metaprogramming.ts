@@ -1,6 +1,26 @@
 type Primitive = string | number | boolean | Function;
 
 /**
+ * Assert that one implementation conforms to another in a static type assertion.
+ * This is useful because unlike trying to cast a value from one type
+ * to another, this will exhaustively check all fields as they are added.
+ * Usage: const test: Implements<A, B> = true;
+ * This line will fail to compile with "true cannot be assigned to never" if
+ * A does not implement B.
+ */
+export type Implements<Test, MaybeBase> = Test extends MaybeBase ? true : never;
+
+/**
+ * Creates a type that requires at least one key to be present in an interface
+ * type. For example, RequireAtLeastOne<{ foo: string; bar: string }> can hold
+ * a value of { foo: "a" }, { bar: "b" }, or { foo: "a", bar: "b" } but not {}
+ * Sourced from - https://docs.microsoft.com/en-us/javascript/api/@azure/keyvault-certificates/requireatleastone?view=azure-node-latest
+ */
+export type RequireAtLeastOne<T> = {
+  [K in keyof T]-?: Required<Pick<T, K>> & Partial<Pick<T, Exclude<keyof T, K>>>;
+}[keyof T];
+
+/**
  * RecursiveKeyOf is a type for keys of an objet usind dots for subfields.
  * For a given object: {a: {b: {c: number}}, d } the RecursiveKeysOf are
  * 'a' | 'a.b' | 'a.b.c' | 'd'

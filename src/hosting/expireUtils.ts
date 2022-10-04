@@ -1,4 +1,5 @@
 import { FirebaseError } from "../error";
+import { HostingOptions } from "./options";
 
 /**
  * A regex to test for valid duration strings.
@@ -36,7 +37,7 @@ export const DEFAULT_DURATION = 7 * Duration.DAY;
  * @param flag string duration (e.g. "1d").
  * @return a duration in milliseconds.
  */
-export function calculateChannelExpireTTL(flag = ""): number {
+export function calculateChannelExpireTTL(flag: NonNullable<HostingOptions["expires"]>): number {
   const match = DURATION_REGEX.exec(flag);
   if (!match) {
     throw new FirebaseError(
