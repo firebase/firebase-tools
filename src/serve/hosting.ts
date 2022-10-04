@@ -15,7 +15,6 @@ import { EmulatorLogger } from "../emulator/emulatorLogger";
 import { Emulators } from "../emulator/types";
 import { createDestroyer } from "../utils";
 import { execSync } from "child_process";
-import { validate } from "../hosting/config";
 
 const MAX_PORT_ATTEMPTS = 10;
 let attempts = 0;
