@@ -42,29 +42,25 @@ export async function gcTagsForServices(project: string, services: run.Service[]
   // Erase all traffic targets that have an expired tag and no serving percentage
   for (const service of services) {
     // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-    console.log(`gcpIds of metadta ${JSON.stringify(service.metadata)} is ${run.gcpIds(service)}`);
     const { region, serviceId } = run.gcpIds(service);
-    service.spec.traffic = (service.spec.traffic || [])
-      .map((traffic) => {
-        // If we're serving traffic irrespective of the tag, leave this target
-        if (traffic.percent) {
-          return traffic;
-        }
-        // Only GC targets with tags
-        if (!traffic.tag) {
-          return traffic;
-        }
-        // Only GC targets with tags that look like we added them
-        if (!traffic.tag.startsWith("fh-")) {
-          return traffic;
-        }
-        if (validTags[region]?.[serviceId]?.has(traffic.tag)) {
-          return traffic;
-        }
-        return null;
-      })
-      // Note: the filter command doesn't update the type info to drop null
-      .filter((t) => t !== null) as run.TrafficTarget[];
+    service.spec.traffic = (service.spec.traffic || []).filter((traffic) => {
+      // If we're serving traffic irrespective of the tag, leave this target
+      if (traffic.percent) {
+        return true;
+      }
+      // Only GC targets with tags
+      if (!traffic.tag) {
+        return true;
+      }
+      // Only GC targets with tags that look like we added them
+      if (!traffic.tag.startsWith("fh-")) {
+        return true;
+      }
+      if (validTags[region]?.[serviceId]?.has(traffic.tag)) {
+        return true;
+      }
+      return false;
+    });
   }
 }
 
@@ -162,6 +158,8 @@ export async function ensureLatestRevisionTagged(
       (target) => target.revisionName === latestRevision && target.tag
     );
     if (alreadyTagged) {
+      // Null assertion is safe because the predicate that found alreadyTagged
+      // checked for tag.
       tags[region][serviceId] = alreadyTagged.tag!;
       continue;
     }
