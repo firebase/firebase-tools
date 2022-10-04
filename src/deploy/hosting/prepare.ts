@@ -1,16 +1,16 @@
 import { FirebaseError } from "../../error";
-import { client } from "./client";
-import { needProjectNumber } from "../../projectUtils";
-import { normalizedHostingConfigs } from "../../hosting/normalizedHostingConfigs";
-import { validateDeploy } from "./validate";
-import { convertConfig } from "./convertConfig";
+import * as api from "../../hosting/api";
+import * as config from "../../hosting/config";
 import * as deploymentTool from "../../deploymentTool";
-import { Payload } from "./args";
+import { Context } from "./context";
+import { Options } from "../../options";
+import { HostingOptions } from "../../hosting/options";
+import { zipIn } from "../../functional";
 
 /**
  *  Prepare creates versions for each Hosting site to be deployed.
  */
-export async function prepare(context: any, options: any, payload: Payload): Promise<void> {
+export async function prepare(context: Context, options: HostingOptions & Options): Promise<void> {
   // Allow the public directory to be overridden by the --public flag
   if (options.public) {
     if (Array.isArray(options.config.get("hosting"))) {
@@ -20,42 +20,22 @@ export async function prepare(context: any, options: any, payload: Payload): Pro
     options.config.set("hosting.public", options.public);
   }
 
-  const projectNumber = await needProjectNumber(options);
-
-  const configs = normalizedHostingConfigs(options, { resolveTargets: true });
+  const configs = config.hostingConfig(options);
   if (configs.length === 0) {
     return Promise.resolve();
   }
 
-  context.hosting = {
-    deploys: configs.map((cfg) => {
-      return { config: cfg, site: cfg.site };
-    }),
+  const version: Omit<api.Version, api.VERSION_OUTPUT_FIELDS> = {
+    status: "CREATED",
+    labels: deploymentTool.labels(),
   };
-
-  const versionCreates: unknown[] = [];
-
-  for (const deploy of context.hosting.deploys) {
-    const cfg = deploy.config;
-
-    validateDeploy(deploy, options);
-
-    const data = {
-      config: await convertConfig(context, payload, cfg, false),
-      labels: deploymentTool.labels(),
-    };
-
-    versionCreates.push(
-      client
-        .post<{ config: unknown; labels: { [k: string]: string } }, { name: string }>(
-          `/projects/${projectNumber}/sites/${deploy.site}/versions`,
-          data
-        )
-        .then((res) => {
-          deploy.version = res.body.name;
-        })
-    );
+  const versions = await Promise.all(
+    configs.map((config) => api.createVersion(config.site, version))
+  );
+  context.hosting = {
+    deploys: [],
+  };
+  for (const [config, version] of configs.map(zipIn(versions))) {
+    context.hosting.deploys.push({ config, version });
   }
-
-  await Promise.all(versionCreates);
 }

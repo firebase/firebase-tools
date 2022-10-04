@@ -11,7 +11,7 @@ import * as process from "node:process";
 import * as semver from "semver";
 
 import { needProjectId } from "../projectUtils";
-import { normalizedHostingConfigs } from "../hosting/normalizedHostingConfigs";
+import { hostingConfig } from "../hosting/config";
 import { listSites } from "../hosting/api";
 import { getAppConfig, AppPlatform } from "../management/apps";
 import { promptOnce } from "../prompt";
@@ -152,6 +152,9 @@ export function relativeRequire(dir: string, mod: "vite"): typeof import("vite")
 export function relativeRequire(dir: string, mod: "jsonc-parser"): typeof import("jsonc-parser");
 // TODO the types for @nuxt/kit are causing a lot of troubles, need to do something other than any
 export function relativeRequire(dir: string, mod: "@nuxt/kit"): Promise<any>;
+/**
+ *
+ */
 export function relativeRequire(dir: string, mod: string) {
   try {
     const path = require.resolve(mod, { paths: [dir] });
@@ -171,7 +174,10 @@ export function relativeRequire(dir: string, mod: string) {
   }
 }
 
-export async function discover(dir: string, warn: boolean = true) {
+/**
+ *
+ */
+export async function discover(dir: string, warn = true) {
   const allFrameworkTypes = [
     ...new Set(Object.values(WebFrameworks).map(({ type }) => type)),
   ].sort();
@@ -206,6 +212,9 @@ function scanDependencyTree(searchingFor: string, dependencies = {}): any {
   return;
 }
 
+/**
+ *
+ */
 export function findDependency(name: string, options: Partial<FindDepOptions> = {}) {
   const { cwd, depth, omitDev } = { ...DEFAULT_FIND_DEP_OPTIONS, ...options };
   const result = spawnSync(
@@ -224,6 +233,9 @@ export function findDependency(name: string, options: Partial<FindDepOptions> = 
   return scanDependencyTree(name, json.dependencies);
 }
 
+/**
+ *
+ */
 export async function prepareFrameworks(
   targetNames: string[],
   context: any,
@@ -245,8 +257,7 @@ export async function prepareFrameworks(
   // been booted up (at this point) and we may be offline, so just use projectId. Most of the time
   // the default site is named the same as the project & for frameworks this is only used for naming the
   // function... unless you're using authenticated server-context TODO explore the implication here.
-  const configs = normalizedHostingConfigs({ site: project, ...options }, { resolveTargets: true });
-  options.normalizedHostingConfigs = configs;
+  const configs = hostingConfig({ site: project, ...options });
   let firebaseDefaults: FirebaseDefaults | undefined = undefined;
   if (configs.length === 0) return;
   for (const config of configs) {
@@ -286,7 +297,7 @@ export async function prepareFrameworks(
       if (usesFirebaseJsSdk) {
         firebaseDefaults ||= {};
         firebaseDefaults.emulatorHosts ||= {};
-        firebaseDefaults.emulatorHosts![info.name] = formatHost(info);
+        firebaseDefaults.emulatorHosts[info.name] = formatHost(info);
       }
     });
     let firebaseConfig = null;
@@ -494,6 +505,9 @@ function codegenDevModeFunctionsDirectory() {
   return Promise.resolve({ packageJson, frameworksEntry: "_devMode" });
 }
 
+/**
+ *
+ */
 export function createServerResponseProxy(
   req: IncomingMessage,
   res: ServerResponse,

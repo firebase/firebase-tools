@@ -212,4 +212,42 @@ describe("proto", () => {
       expect(formatted).to.eq(`serviceAccount:${serviceAccount}`);
     });
   });
+
+  it("pruneUndefindes", () => {
+    interface Interface {
+      foo?: string;
+      bar: string;
+      baz: {
+        alpha: Array<string | undefined>;
+        bravo?: string;
+        charlie?: string;
+      };
+      qux?: Record<string, string>;
+    }
+    const src: Interface = {
+      foo: undefined,
+      bar: "bar",
+      baz: {
+        alpha: ["alpha", undefined],
+        bravo: undefined,
+        charlie: "charlie",
+      },
+      qux: undefined,
+    };
+
+    const trimmed: Interface = {
+      bar: "bar",
+      baz: {
+        alpha: ["alpha"],
+        charlie: "charlie",
+      },
+    };
+
+    // Show there is a problem
+    expect(src).to.not.deep.equal(trimmed);
+
+    // Show we have the fix
+    proto.pruneUndefiends(src);
+    expect(src).to.deep.equal(trimmed);
+  });
 });

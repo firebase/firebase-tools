@@ -1,1 +1,2 @@
-- Enable single project mode for firestore by default (#4890).
+- Add functions emulator support for RTDB v2 triggers (#5045).
+- Enables single project mode for Firestore by default (#4890).

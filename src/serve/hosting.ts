@@ -1,16 +1,15 @@
-import * as clc from "colorette";
-
-const superstatic = require("superstatic").server; // Superstatic has no types, requires odd importing.
 const morgan = require("morgan");
+import { IncomingMessage, ServerResponse } from "http";
+import { server as superstatic } from "superstatic";
+import * as clc from "colorette";
 
 import { detectProjectRoot } from "../detectProjectRoot";
 import { FirebaseError } from "../error";
 import { implicitInit, TemplateServerResponse } from "../hosting/implicitInit";
 import { initMiddleware } from "../hosting/initMiddleware";
-import { normalizedHostingConfigs } from "../hosting/normalizedHostingConfigs";
+import * as config from "../hosting/config";
 import cloudRunProxy from "../hosting/cloudRunProxy";
 import { functionsProxy } from "../hosting/functionsProxy";
-import { NextFunction, Request, Response } from "express";
 import { Writable } from "stream";
 import { EmulatorLogger } from "../emulator/emulatorLogger";
 import { Emulators } from "../emulator/types";
@@ -80,19 +79,15 @@ function startServer(options: any, config: any, port: number, init: TemplateServ
   const server = superstatic({
     debug: false,
     port: port,
-    host: options.host,
+    hostname: options.host,
     config: config,
     compression: true,
-    cwd: detectProjectRoot(options),
+    cwd: detectProjectRoot(options) || undefined,
     stack: "strict",
     before: {
-      files: (req: Request, res: Response, next: NextFunction) => {
+      files: (req: IncomingMessage, res: ServerResponse, next: (err?: unknown) => void) => {
         // We do these in a single method to ensure order of operations
-        morganMiddleware(req, res, () => {
-          /*
-          NoOp next function
-        */
-        });
+        morganMiddleware(req, res, () => null);
         firebaseMiddleware(req, res, next);
       },
     },
@@ -144,7 +139,13 @@ export function stop(): Promise<void> {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function start(options: any): Promise<void> {
   const init = await implicitInit(options);
-  const configs = normalizedHostingConfigs(options);
+  // Note: we cannot use the hostingConfig() method because it would resolve
+  // targets and we don't want to crash the emulator just because the target
+  // doesn't exist (nor do we want to depend on API calls);
+  let configs = config.extract(options);
+  configs = config.filterOnly(configs, options.only);
+  configs = config.filterExcept(configs, options.except);
+  config.validate(configs, options);
 
   for (let i = 0; i < configs.length; i++) {
     // skip over the functions emulator ports to avoid breaking changes
