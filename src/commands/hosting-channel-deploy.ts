@@ -28,7 +28,7 @@ import { Options } from "../options";
 const LOG_TAG = "hosting:channel";
 
 interface ChannelInfo {
-  target: string | undefined;
+  target?: string;
   site: string;
   url: string;
   version: string;

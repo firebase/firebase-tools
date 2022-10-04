@@ -100,7 +100,7 @@ describe("config", () => {
       {
         desc: string;
         cfg: HostingMultiple;
-        only: string | undefined;
+        only?: string;
       } & RequireAtLeastOne<{
         want?: HostingMultiple;
         wantErr?: RegExp;
@@ -151,7 +151,6 @@ describe("config", () => {
       {
         desc: "a hosting config without an only string",
         cfg: [{ site: "site" }],
-        only: undefined,
         want: [{ site: "site" }],
       },
       {
@@ -179,7 +178,7 @@ describe("config", () => {
       {
         desc: string;
         cfg: HostingMultiple;
-        except: string | undefined;
+        except?: string;
       } & RequireAtLeastOne<{
         want: HostingMultiple;
         wantErr: RegExp;
@@ -218,7 +217,6 @@ describe("config", () => {
       {
         desc: "a hosting config with no excpet string",
         cfg: [{ target: "target" }],
-        except: undefined,
         want: [{ target: "target" }],
       },
       {
@@ -246,7 +244,7 @@ describe("config", () => {
     const tests: Array<{
       desc: string;
       site: HostingSingle;
-      wantErr: RegExp | false;
+      wantErr?: RegExp;
     }> = [
       {
         desc: "should error out if there is no puyblic directory but a 'destination' rewrite",
@@ -302,28 +300,24 @@ describe("config", () => {
       {
         desc: "should pass with public and nothing else",
         site: { public: "public" },
-        wantErr: false,
       },
       {
         desc: "should pass with no public but a function rewrite",
         site: {
           rewrites: [{ source: "/", function: "app" }],
         },
-        wantErr: false,
       },
       {
         desc: "should pass with no public but a run rewrite",
         site: {
           rewrites: [{ source: "/", run: { serviceId: "app" } }],
         },
-        wantErr: false,
       },
       {
         desc: "should pass with no public but a redirect",
         site: {
           redirects: [{ source: "/", destination: "https://google.com", type: 302 }],
         },
-        wantErr: false,
       },
     ];
 
