@@ -1,0 +1,1 @@
+- Add functions emulator support for RTDB v2 triggers (#5045).
