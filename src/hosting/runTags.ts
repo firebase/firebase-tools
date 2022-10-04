@@ -21,7 +21,7 @@ export async function gcTagsForServices(project: string, services: run.Service[]
   // region -> service -> tags
   // We cannot simplify this into a single map because we might be mixing project
   // id and number.
-  const validTags: Record<string, Record<string, Set<string>>> = {};
+  const validTagsByServiceByRegion: Record<string, Record<string, Set<string>>> = {};
   const sites = await api.listSites(project);
   const allVersionsNested = await Promise.all(sites.map((site) => api.listVersions(site.name)));
   const activeVersions = [...flattenArray(allVersionsNested)].filter((version) => {
@@ -32,10 +32,11 @@ export async function gcTagsForServices(project: string, services: run.Service[]
       if (!("run" in rewrite) || !rewrite.run.tag) {
         continue;
       }
-      validTags[rewrite.run.region] = validTags[rewrite.run.region] || {};
-      validTags[rewrite.run.region][rewrite.run.serviceId] =
-        validTags[rewrite.run.region][rewrite.run.serviceId] || new Set<string>();
-      validTags[rewrite.run.region][rewrite.run.serviceId].add(rewrite.run.tag);
+      validTagsByServiceByRegion[rewrite.run.region] =
+        validTagsByServiceByRegion[rewrite.run.region] || {};
+      validTagsByServiceByRegion[rewrite.run.region][rewrite.run.serviceId] =
+        validTagsByServiceByRegion[rewrite.run.region][rewrite.run.serviceId] || new Set<string>();
+      validTagsByServiceByRegion[rewrite.run.region][rewrite.run.serviceId].add(rewrite.run.tag);
     }
   }
 
@@ -56,7 +57,7 @@ export async function gcTagsForServices(project: string, services: run.Service[]
       if (!traffic.tag.startsWith("fh-")) {
         return true;
       }
-      if (validTags[region]?.[serviceId]?.has(traffic.tag)) {
+      if (validTagsByServiceByRegion[region]?.[serviceId]?.has(traffic.tag)) {
         return true;
       }
       return false;
