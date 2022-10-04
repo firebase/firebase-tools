@@ -188,21 +188,23 @@ function validateOne(config: HostingMultiple[number], options: HostingOptions): 
   }
 
   if (config.i18n) {
-    if (!config.public) {
-      throw new FirebaseError('Must supply a "public" directory when using "i18n" configuration.');
+    if (!root) {
+      throw new FirebaseError(
+        `Must supply a "public"${orSource} directory when using "i18n" configuration.`
+      );
     }
 
     if (!config.i18n.root) {
       throw new FirebaseError('Must supply a "root" in "i18n" config.');
     }
 
-    const i18nPath = path.join(config.public, config.i18n.root);
+    const i18nPath = path.join(root, config.i18n.root);
     if (!dirExistsSync(resolveProjectPath(options, i18nPath))) {
       logLabeledWarning(
         "hosting",
         `Couldn't find specified i18n root directory ${bold(
           config.i18n.root
-        )} in public directory ${bold(config.public)}`
+        )} in public directory ${bold(root)}`
       );
     }
   }
