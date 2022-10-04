@@ -723,12 +723,46 @@
                                     {
                                         "additionalProperties": false,
                                         "properties": {
+                                            "function": {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "functionId": {
+                                                        "type": "string"
+                                                    },
+                                                    "pinTag": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "region": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "required": [
+                                                    "functionId"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            "glob": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "function",
+                                            "glob"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    {
+                                        "additionalProperties": false,
+                                        "properties": {
                                             "glob": {
                                                 "type": "string"
                                             },
                                             "run": {
                                                 "additionalProperties": false,
                                                 "properties": {
+                                                    "pinTag": {
+                                                        "type": "boolean"
+                                                    },
                                                     "region": {
                                                         "type": "string"
                                                     },
@@ -802,9 +836,43 @@
                                     {
                                         "additionalProperties": false,
                                         "properties": {
+                                            "function": {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "functionId": {
+                                                        "type": "string"
+                                                    },
+                                                    "pinTag": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "region": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "required": [
+                                                    "functionId"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            "source": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "function",
+                                            "source"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    {
+                                        "additionalProperties": false,
+                                        "properties": {
                                             "run": {
                                                 "additionalProperties": false,
                                                 "properties": {
+                                                    "pinTag": {
+                                                        "type": "boolean"
+                                                    },
                                                     "region": {
                                                         "type": "string"
                                                     },
@@ -881,12 +949,46 @@
                                     {
                                         "additionalProperties": false,
                                         "properties": {
+                                            "function": {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "functionId": {
+                                                        "type": "string"
+                                                    },
+                                                    "pinTag": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "region": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "required": [
+                                                    "functionId"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            "regex": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "function",
+                                            "regex"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    {
+                                        "additionalProperties": false,
+                                        "properties": {
                                             "regex": {
                                                 "type": "string"
                                             },
                                             "run": {
                                                 "additionalProperties": false,
                                                 "properties": {
+                                                    "pinTag": {
+                                                        "type": "boolean"
+                                                    },
                                                     "region": {
                                                         "type": "string"
                                                     },
@@ -1212,12 +1314,46 @@
                                                 {
                                                     "additionalProperties": false,
                                                     "properties": {
+                                                        "function": {
+                                                            "additionalProperties": false,
+                                                            "properties": {
+                                                                "functionId": {
+                                                                    "type": "string"
+                                                                },
+                                                                "pinTag": {
+                                                                    "type": "boolean"
+                                                                },
+                                                                "region": {
+                                                                    "type": "string"
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "functionId"
+                                                            ],
+                                                            "type": "object"
+                                                        },
+                                                        "glob": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "function",
+                                                        "glob"
+                                                    ],
+                                                    "type": "object"
+                                                },
+                                                {
+                                                    "additionalProperties": false,
+                                                    "properties": {
                                                         "glob": {
                                                             "type": "string"
                                                         },
                                                         "run": {
                                                             "additionalProperties": false,
                                                             "properties": {
+                                                                "pinTag": {
+                                                                    "type": "boolean"
+                                                                },
                                                                 "region": {
                                                                     "type": "string"
                                                                 },
@@ -1291,9 +1427,43 @@
                                                 {
                                                     "additionalProperties": false,
                                                     "properties": {
+                                                        "function": {
+                                                            "additionalProperties": false,
+                                                            "properties": {
+                                                                "functionId": {
+                                                                    "type": "string"
+                                                                },
+                                                                "pinTag": {
+                                                                    "type": "boolean"
+                                                                },
+                                                                "region": {
+                                                                    "type": "string"
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "functionId"
+                                                            ],
+                                                            "type": "object"
+                                                        },
+                                                        "source": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "function",
+                                                        "source"
+                                                    ],
+                                                    "type": "object"
+                                                },
+                                                {
+                                                    "additionalProperties": false,
+                                                    "properties": {
                                                         "run": {
                                                             "additionalProperties": false,
                                                             "properties": {
+                                                                "pinTag": {
+                                                                    "type": "boolean"
+                                                                },
                                                                 "region": {
                                                                     "type": "string"
                                                                 },
@@ -1370,12 +1540,46 @@
                                                 {
                                                     "additionalProperties": false,
                                                     "properties": {
+                                                        "function": {
+                                                            "additionalProperties": false,
+                                                            "properties": {
+                                                                "functionId": {
+                                                                    "type": "string"
+                                                                },
+                                                                "pinTag": {
+                                                                    "type": "boolean"
+                                                                },
+                                                                "region": {
+                                                                    "type": "string"
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "functionId"
+                                                            ],
+                                                            "type": "object"
+                                                        },
+                                                        "regex": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "function",
+                                                        "regex"
+                                                    ],
+                                                    "type": "object"
+                                                },
+                                                {
+                                                    "additionalProperties": false,
+                                                    "properties": {
                                                         "regex": {
                                                             "type": "string"
                                                         },
                                                         "run": {
                                                             "additionalProperties": false,
                                                             "properties": {
+                                                                "pinTag": {
+                                                                    "type": "boolean"
+                                                                },
                                                                 "region": {
                                                                     "type": "string"
                                                                 },
@@ -1701,12 +1905,46 @@
                                                 {
                                                     "additionalProperties": false,
                                                     "properties": {
+                                                        "function": {
+                                                            "additionalProperties": false,
+                                                            "properties": {
+                                                                "functionId": {
+                                                                    "type": "string"
+                                                                },
+                                                                "pinTag": {
+                                                                    "type": "boolean"
+                                                                },
+                                                                "region": {
+                                                                    "type": "string"
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "functionId"
+                                                            ],
+                                                            "type": "object"
+                                                        },
+                                                        "glob": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "function",
+                                                        "glob"
+                                                    ],
+                                                    "type": "object"
+                                                },
+                                                {
+                                                    "additionalProperties": false,
+                                                    "properties": {
                                                         "glob": {
                                                             "type": "string"
                                                         },
                                                         "run": {
                                                             "additionalProperties": false,
                                                             "properties": {
+                                                                "pinTag": {
+                                                                    "type": "boolean"
+                                                                },
                                                                 "region": {
                                                                     "type": "string"
                                                                 },
@@ -1780,9 +2018,43 @@
                                                 {
                                                     "additionalProperties": false,
                                                     "properties": {
+                                                        "function": {
+                                                            "additionalProperties": false,
+                                                            "properties": {
+                                                                "functionId": {
+                                                                    "type": "string"
+                                                                },
+                                                                "pinTag": {
+                                                                    "type": "boolean"
+                                                                },
+                                                                "region": {
+                                                                    "type": "string"
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "functionId"
+                                                            ],
+                                                            "type": "object"
+                                                        },
+                                                        "source": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "function",
+                                                        "source"
+                                                    ],
+                                                    "type": "object"
+                                                },
+                                                {
+                                                    "additionalProperties": false,
+                                                    "properties": {
                                                         "run": {
                                                             "additionalProperties": false,
                                                             "properties": {
+                                                                "pinTag": {
+                                                                    "type": "boolean"
+                                                                },
                                                                 "region": {
                                                                     "type": "string"
                                                                 },
@@ -1859,12 +2131,46 @@
                                                 {
                                                     "additionalProperties": false,
                                                     "properties": {
+                                                        "function": {
+                                                            "additionalProperties": false,
+                                                            "properties": {
+                                                                "functionId": {
+                                                                    "type": "string"
+                                                                },
+                                                                "pinTag": {
+                                                                    "type": "boolean"
+                                                                },
+                                                                "region": {
+                                                                    "type": "string"
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "functionId"
+                                                            ],
+                                                            "type": "object"
+                                                        },
+                                                        "regex": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "function",
+                                                        "regex"
+                                                    ],
+                                                    "type": "object"
+                                                },
+                                                {
+                                                    "additionalProperties": false,
+                                                    "properties": {
                                                         "regex": {
                                                             "type": "string"
                                                         },
                                                         "run": {
                                                             "additionalProperties": false,
                                                             "properties": {
+                                                                "pinTag": {
+                                                                    "type": "boolean"
+                                                                },
                                                                 "region": {
                                                                     "type": "string"
                                                                 },

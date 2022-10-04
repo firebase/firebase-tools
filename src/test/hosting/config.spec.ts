@@ -5,6 +5,7 @@ import { HostingConfig, HostingMultiple, HostingSingle } from "../../firebaseCon
 import * as config from "../../hosting/config";
 import { HostingOptions } from "../../hosting/options";
 import { RequireAtLeastOne } from "../../metaprogramming";
+import { cloneDeep } from "../../utils";
 
 function options(
   hostingConfig: HostingConfig,
@@ -237,6 +238,84 @@ describe("config", () => {
         }
       });
     }
+  });
+
+  it("normalize", () => {
+    it("upgrades function configs", () => {
+      const configs: HostingMultiple = [
+        {
+          site: "site",
+          public: "public",
+          rewrites: [
+            {
+              glob: "**",
+              function: "functionId",
+            },
+            {
+              glob: "**",
+              function: "function2",
+              region: "region",
+            },
+          ],
+        },
+      ];
+      config.normalize(configs);
+      expect(configs).to.deep.equal([
+        {
+          site: "site",
+          public: "public",
+          rewrites: [
+            {
+              glob: "**",
+              function: {
+                functionid: "functionId",
+              },
+            },
+            {
+              glob: "**",
+              function: {
+                functionId: "function2",
+                region: "region",
+              },
+            },
+          ],
+        },
+      ]);
+    });
+
+    it("leaves other rewrites alone", () => {
+      const configs: HostingMultiple = [
+        {
+          site: "site",
+          public: "public",
+          rewrites: [
+            {
+              glob: "**",
+              destination: "index.html",
+            },
+            {
+              glob: "**",
+              function: {
+                functionId: "functionId",
+              },
+            },
+            {
+              glob: "**",
+              run: {
+                serviceId: "service",
+              },
+            },
+            {
+              glob: "**",
+              dynamicLinks: true,
+            },
+          ],
+        },
+      ];
+      const expected = cloneDeep(configs);
+      config.normalize(configs);
+      expect(configs).to.deep.equal(expected);
+    });
   });
 
   const PUBLIC_DIR_ERROR_PREFIX = /Must supply a "public" directory/;

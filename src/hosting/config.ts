@@ -2,7 +2,15 @@ import { bold } from "colorette";
 import { cloneDeep, logLabeledWarning } from "../utils";
 
 import { FirebaseError } from "../error";
-import { HostingMultiple, HostingSingle, HostingResolved } from "../firebaseConfig";
+import {
+  HostingMultiple,
+  HostingSingle,
+  HostingResolved,
+  HostingRewrites,
+  FunctionsRewrite,
+  LegacyFunctionsRewrite,
+  HostingSource,
+} from "../firebaseConfig";
 import { partition } from "../functional";
 import { RequireAtLeastOne } from "../metaprogramming";
 import { dirExistsSync } from "../fsutils";
@@ -224,6 +232,45 @@ export function resolveTargets(
   });
 }
 
+function isLegacyFunctionsRewrite(
+  rewrite: HostingRewrites
+): rewrite is HostingSource & LegacyFunctionsRewrite {
+  return "function" in rewrite && typeof rewrite.function === "string";
+}
+
+/**
+ * Ensures that all configs are of a single modern format
+ */
+export function normalize(configs: HostingMultiple): void {
+  for (const config of configs) {
+    config.rewrites = config.rewrites?.map((rewrite) => {
+      if (!("function" in rewrite)) {
+        return rewrite;
+      }
+      if (isLegacyFunctionsRewrite(rewrite)) {
+        const modern: HostingRewrites & FunctionsRewrite = {
+          // Note: this copied in a bad "function" and "rewrite" in this splat
+          // we'll overwrite function and delete rewrite.
+          ...rewrite,
+          function: {
+            functionId: rewrite.function,
+            // Do not set pinTag so we can track how often it is used
+          },
+        };
+        delete (modern as unknown as LegacyFunctionsRewrite).region;
+        if ("region" in rewrite && typeof rewrite.region === "string") {
+          modern.function.region = rewrite.region;
+        }
+        if (rewrite.region) {
+          modern.function.region = rewrite.region;
+        }
+        return modern;
+      }
+      return rewrite;
+    });
+  }
+}
+
 /**
  * Extract a validated normalized set of Hosting configs from the command options.
  * This also resolves targets, so it is not suitable for the emulator.
@@ -233,6 +280,7 @@ export function hostingConfig(options: HostingOptions): HostingResolved[] {
     let configs: HostingMultiple = extract(options);
     configs = filterOnly(configs, options.only);
     configs = filterExcept(configs, options.except);
+    normalize(configs);
 
     // N.B. We're calling resolveTargets after filterOnly/except, which means
     // we won't recognize a --only <site> when the config has a target.
