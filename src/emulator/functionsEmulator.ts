@@ -771,6 +771,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       throw new FirebaseError("A database reference must be supplied.");
     }
 
+    // The 'namespacePattern' determines that we are using the v2 interface
     const bundle = JSON.stringify({
       name: `projects/${projectId}/locations/${region}/triggers/${key}`,
       path: ref,
@@ -779,6 +780,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       namespacePattern: instance,
     });
 
+    // The query parameter '?ns=${instance}' is ignored in v2
     const apiPath = "/.settings/functionTriggers.json";
 
     return { bundle, apiPath, instance };

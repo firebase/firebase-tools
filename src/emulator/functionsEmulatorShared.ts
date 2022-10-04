@@ -58,7 +58,7 @@ export interface EventSchedule {
 }
 
 export interface EventTrigger {
-  resource: string | undefined;
+  resource?: string;
   eventType: string;
   channel?: string;
   eventFilters?: Record<string, string>;
