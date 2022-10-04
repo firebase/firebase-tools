@@ -24,7 +24,6 @@ export async function prepare(context: Context, options: HostingOptions & Option
   if (configs.length === 0) {
     return Promise.resolve();
   }
-  config.validate(configs, options);
 
   const version: Omit<api.Version, api.VERSION_OUTPUT_FIELDS> = {
     status: "CREATED",

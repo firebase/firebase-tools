@@ -1,4 +1,4 @@
-import { bold } from "colorette";
+t git import { bold } from "colorette";
 import { cloneDeep, logLabeledWarning } from "../utils";
 
 import { FirebaseError } from "../error";
@@ -17,6 +17,7 @@ import { dirExistsSync } from "../fsutils";
 import { resolveProjectPath } from "../projectPath";
 import { HostingOptions } from "./options";
 import path from "path";
+import * as experiments from "../experiments";
 
 // assertMatches allows us to throw when an --only flag doesn't match a target
 // but an --except flag doesn't. Is this desirable behavior?
@@ -145,21 +146,33 @@ function validateOne(config: HostingMultiple[number], options: HostingOptions): 
   const hasAnyDynamicRewrites = !!config.rewrites?.find((rw) => !("destination" in rw));
   const hasAnyRedirects = !!config.redirects?.length;
 
-  if (!config.public && hasAnyStaticRewrites) {
-    throw new FirebaseError('Must supply a "public" directory when using "destination" rewrites.');
+  if (config.source && config.public) {
+    throw new FirebaseError('Can only specify "source" or "public" in a Hosting config, not both');
   }
+  const root = experiments.isEnabled("webframeworks")
+    ? config.source || config.public
+    : config.public;
+  const orSource = experiments.isEnabled("webframeworks") ? ' or "source"' : "";
 
-  if (!config.public && !hasAnyDynamicRewrites && !hasAnyRedirects) {
+  if (!root && hasAnyStaticRewrites) {
     throw new FirebaseError(
-      'Must supply a "public" directory or at least one rewrite or redirect in each "hosting" config.'
+      `Must supply a "public"${orSource} directory when using "destination" rewrites.`
     );
   }
 
-  if (config.public && !dirExistsSync(resolveProjectPath(options, config.public))) {
+  if (!root && !hasAnyDynamicRewrites && !hasAnyRedirects) {
     throw new FirebaseError(
-      `Specified "public" directory "${
-        config.public
-      }" does not exist, can't deploy hosting to site "${config.site || config.target || ""}"`
+      `Must supply a "public"${orSource} directory or at least one rewrite or redirect in each "hosting" config.`
+    );
+  }
+
+  if (root && !dirExistsSync(resolveProjectPath(options, root))) {
+    throw new FirebaseError(
+      `Specified "${
+        config.source ? "source" : "public"
+      }" directory "${root}" does not exist, can't deploy hosting to site "${
+        config.site || config.target || ""
+      }"`
     );
   }
 
@@ -174,21 +187,23 @@ function validateOne(config: HostingMultiple[number], options: HostingOptions): 
   }
 
   if (config.i18n) {
-    if (!config.public) {
-      throw new FirebaseError('Must supply a "public" directory when using "i18n" configuration.');
+    if (!root) {
+      throw new FirebaseError(
+        `Must supply a "public"${orSource} directory when using "i18n" configuration.`
+      );
     }
 
     if (!config.i18n.root) {
       throw new FirebaseError('Must supply a "root" in "i18n" config.');
     }
 
-    const i18nPath = path.join(config.public, config.i18n.root);
+    const i18nPath = path.join(root, config.i18n.root);
     if (!dirExistsSync(resolveProjectPath(options, i18nPath))) {
       logLabeledWarning(
         "hosting",
         `Couldn't find specified i18n root directory ${bold(
           config.i18n.root
-        )} in public directory ${bold(config.public)}`
+        )} in public directory ${bold(root)}`
       );
     }
   }
@@ -281,6 +296,7 @@ export function hostingConfig(options: HostingOptions): HostingResolved[] {
     configs = filterOnly(configs, options.only);
     configs = filterExcept(configs, options.except);
     normalize(configs);
+    validate(configs, options);
 
     // N.B. We're calling resolveTargets after filterOnly/except, which means
     // we won't recognize a --only <site> when the config has a target.

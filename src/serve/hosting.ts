@@ -15,6 +15,7 @@ import { EmulatorLogger } from "../emulator/emulatorLogger";
 import { Emulators } from "../emulator/types";
 import { createDestroyer } from "../utils";
 import { execSync } from "child_process";
+import { validate } from "../functions/projectConfig";
 
 const MAX_PORT_ATTEMPTS = 10;
 let attempts = 0;
@@ -145,7 +146,7 @@ export async function start(options: any): Promise<void> {
   let configs = config.extract(options);
   configs = config.filterOnly(configs, options.only);
   configs = config.filterExcept(configs, options.except);
-  // Do not validate because we might still have "source" instead of "public"
+  validate(configs, options);
 
   for (let i = 0; i < configs.length; i++) {
     // skip over the functions emulator ports to avoid breaking changes
