@@ -387,9 +387,7 @@ async function handleSecret(secretParam: SecretParam, projectId: string) {
       type: "password",
       message: `This secret will be stored in Cloud Secret Manager (https://cloud.google.com/secret-manager/pricing) as ${
         secretParam.name
-      }. Enter a value for ${
-        secretParam.label || secretParam.name
-      }:`,
+      }. Enter a value for ${secretParam.label || secretParam.name}:`,
     });
     const secretLabel: Record<string, string> = { "firebase-hosting-managed": "yes" };
     await secretManager.createSecret(projectId, secretParam.name, secretLabel);
