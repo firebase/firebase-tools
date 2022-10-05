@@ -385,7 +385,13 @@ export async function updateVersion(
     version,
     {
       queryParams: {
-        updateMask: proto.fieldMasks(version, "labels").join(","),
+        // N.B. It's not clear why we need "config". If the Hosting server acted
+        // like a normal OP service, we could update config.foo and config.bar
+        // in a PATCH command even if config was the empty object already. But
+        // not setting config in createVersion and then setting config subfields
+        // in updateVersion is failing with
+        // "HTTP Error: 40 Unknown path in `updateMask`: `config.rewrites`"
+        updateMask: proto.fieldMasks(version, "labels", "config").join(","),
       },
     }
   );
