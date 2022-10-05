@@ -21,6 +21,9 @@ import { getProjectDefaultAccount } from "../auth";
 import { formatHost } from "../emulator/functionsEmulatorShared";
 import { Constants } from "../emulator/constants";
 import { FirebaseError } from "../error";
+import { requireHostingSite } from "../requireHostingSite";
+import { HostingRewrites } from "../firebaseConfig";
+import * as experiments from "../experiments";
 
 // Use "true &&"" to keep typescript from compiling this file and rewriting
 // the import statement into a require
@@ -257,7 +260,23 @@ export async function prepareFrameworks(
   // been booted up (at this point) and we may be offline, so just use projectId. Most of the time
   // the default site is named the same as the project & for frameworks this is only used for naming the
   // function... unless you're using authenticated server-context TODO explore the implication here.
-  const configs = hostingConfig({ site: project, ...options });
+
+  // N.B. Trying to work around this in a rush but it's not 100% clear what to do here.
+  // The code previously injected a cache for the hosting options after specifying site: project
+  // temporarily in options. But that means we're caching configs with the wrong
+  // site specified. As a compromise we'll do our best to set the correct site,
+  // which should succeed when this method is being called from "deploy". I don't
+  // think this breaks any other situation because we don't need a site during
+  // emulation unless we have multiple sites, in which case we're guaranteed to
+  // either have site or target set.
+  if (!options.site) {
+    try {
+      await requireHostingSite(options);
+    } catch {
+      options.site = project;
+    }
+  }
+  const configs = hostingConfig(options);
   let firebaseDefaults: FirebaseDefaults | undefined = undefined;
   if (configs.length === 0) return;
   for (const config of configs) {
@@ -370,10 +389,16 @@ You can link a Web app to a Hosting site here https://console.firebase.google.co
     if (codegenFunctionsDirectory) {
       if (firebaseDefaults) firebaseDefaults._authTokenSyncURL = "/__session";
 
-      config.rewrites.push({
+      const rewrite: HostingRewrites = {
         source: "**",
-        function: functionName,
-      });
+        function: {
+          functionId: functionName,
+        },
+      };
+      if (experiments.isEnabled("pintags")) {
+        rewrite.function.pinTag = true;
+      }
+      config.rewrites.push(rewrite);
 
       const existingFunctionsConfig = options.config.get("functions")
         ? [].concat(options.config.get("functions"))
