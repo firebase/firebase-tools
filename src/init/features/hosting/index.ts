@@ -6,8 +6,7 @@ import { Client } from "../../../apiv2";
 import { initGitHub } from "./github";
 import { prompt, promptOnce } from "../../../prompt";
 import { logger } from "../../../logger";
-import {discover, isWebframeworksEnabled, WebFrameworks} from "../../../frameworks";
-import * as experiments from "../../../experiments";
+import { discover, isWebframeworksEnabled, WebFrameworks } from "../../../frameworks";
 
 const INDEX_TEMPLATE = fs.readFileSync(
   __dirname + "/../../../../templates/init/hosting/index.html",

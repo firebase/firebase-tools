@@ -7,7 +7,6 @@ import { logBullet, logSuccess, consoleUrl, addSubdomain } from "../utils";
 import { FirebaseError } from "../error";
 import { track } from "../track";
 import { lifecycleHooks } from "./lifecycleHooks";
-import * as experiments from "../experiments";
 import * as HostingTarget from "./hosting";
 import * as DatabaseTarget from "./database";
 import * as FirestoreTarget from "./firestore";
@@ -15,7 +14,7 @@ import * as FunctionsTarget from "./functions";
 import * as StorageTarget from "./storage";
 import * as RemoteConfigTarget from "./remoteconfig";
 import * as ExtensionsTarget from "./extensions";
-import {assertWebframeworksEnabled, prepareFrameworks} from "../frameworks";
+import { assertWebframeworksEnabled, prepareFrameworks } from "../frameworks";
 
 const TARGETS = {
   hosting: HostingTarget,
