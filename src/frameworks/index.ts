@@ -561,10 +561,7 @@ export function createServerResponseProxy(
  * checking if we are in the Github action deploy workflow.
  */
 export function isWebframeworksEnabled(): boolean {
-  return (
-    experiments.isEnabled("webframeworks") ||
-    process.env.FIREBASE_DEPLOY_AGENT === "action-hosting-deploy"
-  );
+  return !!(experiments.isEnabled("webframeworks") || isEnabledForCli());
 }
 
 /**
@@ -574,8 +571,15 @@ export function isWebframeworksEnabled(): boolean {
  */
 export function assertWebframeworksEnabled(task: string) {
   // CI/CD flows should not assert to enable a feature.
-  if (process.env.FIREBASE_DEPLOY_AGENT === "action-hosting-deploy") {
+  if (isEnabledForCli()) {
     return;
   }
   experiments.assertEnabled("webframeworks", task);
+}
+
+function isEnabledForCli() {
+  return (
+    process.env.FIREBASE_CLI_EXPERIMENTS &&
+    process.env.FIREBASE_CLI_EXPERIMENTS.includes("webframeworks")
+  );
 }
