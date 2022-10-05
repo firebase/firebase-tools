@@ -51,7 +51,7 @@ import { ParsedTriggerDefinition } from "./functionsEmulatorShared";
 import { ExtensionsEmulator } from "./extensionsEmulator";
 import { normalizeAndValidate } from "../functions/projectConfig";
 import { requiresJava } from "./downloadableEmulators";
-import { prepareFrameworks } from "../frameworks";
+import {assertWebframeworksEnabled, isWebframeworksEnabled, prepareFrameworks} from "../frameworks";
 import * as experiments from "../experiments";
 
 const START_LOGGING_EMULATOR = utils.envOverride(
@@ -498,9 +498,9 @@ export async function startAll(
   if (
     Array.isArray(hostingConfig) ? hostingConfig.some((it) => it.source) : hostingConfig?.source
   ) {
-    experiments.assertEnabled("webframeworks", "emulate a web framework");
+    assertWebframeworksEnabled("emulate a web framework");
     const emulators: EmulatorInfo[] = [];
-    if (experiments.isEnabled("webframeworks")) {
+    if (isWebframeworksEnabled()) {
       for (const e of EMULATORS_SUPPORTED_BY_UI) {
         const info = EmulatorRegistry.getInfo(e);
         if (info) emulators.push(info);

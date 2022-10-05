@@ -21,6 +21,7 @@ import { getProjectDefaultAccount } from "../auth";
 import { formatHost } from "../emulator/functionsEmulatorShared";
 import { Constants } from "../emulator/constants";
 import { FirebaseError } from "../error";
+import * as experiments from "../experiments";
 
 // Use "true &&"" to keep typescript from compiling this file and rewriting
 // the import statement into a require
@@ -553,4 +554,28 @@ export function createServerResponseProxy(
     },
   });
   return proxiedRes;
+}
+
+/**
+ * Checks if Webframeworks are enabled, either by feature-flag or by
+ * checking if we are in the Github action deploy workflow.
+ */
+export function isWebframeworksEnabled(): boolean {
+  return (
+    experiments.isEnabled("webframeworks") ||
+    process.env.FIREBASE_DEPLOY_AGENT === "action-hosting-deploy"
+  );
+}
+
+/**
+ *
+ * Assert if the webframework feature is enabled... with a slight twist
+ * of skipping assertion if this flow is being triggered by a Github Action.
+ */
+export function assertWebframeworksEnabled(task: string) {
+  // CI/CD flows should not assert to enable a feature.
+  if (process.env.FIREBASE_DEPLOY_AGENT === "action-hosting-deploy") {
+    return;
+  }
+  experiments.assertEnabled("webframeworks", task);
 }

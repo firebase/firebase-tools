@@ -15,7 +15,7 @@ import * as FunctionsTarget from "./functions";
 import * as StorageTarget from "./storage";
 import * as RemoteConfigTarget from "./remoteconfig";
 import * as ExtensionsTarget from "./extensions";
-import { prepareFrameworks } from "../frameworks";
+import {assertWebframeworksEnabled, prepareFrameworks} from "../frameworks";
 
 const TARGETS = {
   hosting: HostingTarget,
@@ -59,7 +59,7 @@ export const deploy = async function (
   if (targetNames.includes("hosting")) {
     const config = options.config.get("hosting");
     if (Array.isArray(config) ? config.some((it) => it.source) : config.source) {
-      experiments.assertEnabled("webframeworks", "deploy a web framework to hosting");
+      assertWebframeworksEnabled("deploy a web framework to hosting");
       await prepareFrameworks(targetNames, context, options);
     }
   }

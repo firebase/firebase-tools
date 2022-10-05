@@ -1,6 +1,6 @@
 import { EmulatorServer } from "../emulator/emulatorServer";
 import { logger } from "../logger";
-import { prepareFrameworks } from "../frameworks";
+import {assertWebframeworksEnabled, prepareFrameworks} from "../frameworks";
 import * as experiments from "../experiments";
 import { trackEmulator } from "../track";
 import { getProjectId } from "../projectUtils";
@@ -28,7 +28,7 @@ export async function serve(options: any): Promise<void> {
     targetNames.includes("hosting") &&
     [].concat(options.config.get("hosting")).some((it: any) => it.source)
   ) {
-    experiments.assertEnabled("webframeworks", "emulate a web framework");
+    assertWebframeworksEnabled("emulate a web framework");
     await prepareFrameworks(targetNames, options, options);
   }
   const isDemoProject = Constants.isDemoProject(getProjectId(options) || "");

@@ -6,7 +6,7 @@ import { Client } from "../../../apiv2";
 import { initGitHub } from "./github";
 import { prompt, promptOnce } from "../../../prompt";
 import { logger } from "../../../logger";
-import { discover, WebFrameworks } from "../../../frameworks";
+import {discover, isWebframeworksEnabled, WebFrameworks} from "../../../frameworks";
 import * as experiments from "../../../experiments";
 
 const INDEX_TEMPLATE = fs.readFileSync(
@@ -25,11 +25,11 @@ const DEFAULT_IGNORES = ["firebase.json", "**/.*", "**/node_modules/**"];
 export async function doSetup(setup: any, config: any): Promise<void> {
   setup.hosting = {};
 
-  let discoveredFramework = experiments.isEnabled("webframeworks")
+  let discoveredFramework = isWebframeworksEnabled()
     ? await discover(config.projectDir, false)
     : undefined;
 
-  if (experiments.isEnabled("webframeworks")) {
+  if (isWebframeworksEnabled()) {
     if (discoveredFramework) {
       const name = WebFrameworks[discoveredFramework.framework].name;
       await promptOnce(
