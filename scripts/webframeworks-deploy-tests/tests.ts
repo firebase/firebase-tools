@@ -40,7 +40,10 @@ describe("webframeworks deploy", function (this) {
   });
 
   it("deploys functions with runtime options", async () => {
+    process.env.FIREBASE_CLI_EXPERIMENTS = "webframeworks";
+
     const result = await setOptsAndDeploy();
+
     expect(result.stdout, "deploy result").to.match(/file upload complete/);
     expect(result.stdout, "deploy result").to.match(/found 16 files/);
     expect(result.stdout, "deploy result").to.match(/Deploy complete!/);
