@@ -1,21 +1,30 @@
 import { expect } from "chai";
-import {
-  enableExperimentsFromCliEnvVariable,
-  getSnapshotOfExperimentPreferences,
-} from "../experiments";
+import { enableExperimentsFromCliEnvVariable, isEnabled } from "../experiments";
 
 describe("experiments", () => {
+  let originalCLIState = process.env.FIREBASE_CLI_EXPERIMENTS;
+
+  before(() => {
+    originalCLIState = process.env.FIREBASE_CLI_EXPERIMENTS;
+  });
+
+  beforeEach(() => {
+    process.env.FIREBASE_CLI_EXPERIMENTS = originalCLIState;
+  });
+
+  afterEach(() => {
+    process.env.FIREBASE_CLI_EXPERIMENTS = originalCLIState;
+  });
+
   describe("enableExperimentsFromCliEnvVariable", () => {
     it("should enable some experiments", () => {
+      expect(isEnabled("experiments")).to.be.false;
       process.env.FIREBASE_CLI_EXPERIMENTS = "experiments,not_an_experiment";
 
       enableExperimentsFromCliEnvVariable();
 
       // Note: type-casting so that we can check on the not_an_experiment bit
-      const localState = getSnapshotOfExperimentPreferences() as Record<string, boolean>;
-
-      expect(localState.experiments).to.be.true;
-      expect(localState.not_an_experiment).to.equal(undefined);
+      expect(isEnabled("experiments")).to.be.true;
     });
   });
 });

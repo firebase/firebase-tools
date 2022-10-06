@@ -165,15 +165,6 @@ export function setEnabled(name: ExperimentName, to: boolean | null): void {
 }
 
 /**
- * Returns the unsaved set of preferences.
- */
-export function getSnapshotOfExperimentPreferences() {
-  return {
-    ...localPreferences(),
-  };
-}
-
-/**
  * Enables multiple experiments given a comma-delimited environment variable:
  * `FIREBASE_CLI_EXPERIMENTS`.
  *
