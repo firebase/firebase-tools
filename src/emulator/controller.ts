@@ -389,8 +389,6 @@ export async function startAll(
   // 1) The service must have a top-level entry in firebase.json or an entry in the emulators{} object
   // 2) If the --only flag is passed, then this list is the intersection
   const targets = filterEmulatorTargets(options);
-  const singleProjectModeEnabled = options.config.src.emulators?.singleProjectMode === undefined ||
-  options.config.src.emulators?.singleProjectMode
   options.targets = targets;
   const singleProjectModeEnabled =
     options.config.src.emulators?.singleProjectMode === undefined ||
