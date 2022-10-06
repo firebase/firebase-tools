@@ -3,6 +3,7 @@ import * as express from "express";
 import * as exegesisExpress from "exegesis-express";
 import { ValidationError } from "exegesis/lib/errors";
 import * as _ from "lodash";
+import { SingleProjectMode } from "./index";
 import { OpenAPIObject, PathsObject, ServerObject, OperationObject } from "openapi3-ts";
 import { EmulatorLogger } from "../emulatorLogger";
 import { Emulators } from "../types";
@@ -116,8 +117,7 @@ function specWithEmulatorServer(protocol: string, host: string | undefined): Ope
  */
 export async function createApp(
   defaultProjectId: string,
-  singleProjectModeWarning = false,
-  singleProjectModeError = false,
+  singleProjectMode = SingleProjectMode.NO_WARNING,
   projectStateForId = new Map<string, AgentProjectState>()
 ): Promise<express.Express> {
   const app = express();
@@ -366,7 +366,7 @@ export async function createApp(
     let agentState = projectStateForId.get(projectId);
 
     if (
-      (singleProjectModeWarning || singleProjectModeError) &&
+      singleProjectMode !== SingleProjectMode.NO_WARNING &&
       projectId &&
       defaultProjectId !== projectId
     ) {
@@ -377,7 +377,7 @@ export async function createApp(
         `single project mode add/set the \'"single_project_mode"\' false' property in the` +
         ` firebase.json emulators config.`;
       EmulatorLogger.forEmulator(Emulators.AUTH).log("WARN", errorString);
-      if (singleProjectModeError) {
+      if (singleProjectMode === SingleProjectMode.ERROR) {
         throw new BadRequestError(errorString);
       }
     }
