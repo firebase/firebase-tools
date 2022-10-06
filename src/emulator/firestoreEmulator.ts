@@ -26,7 +26,7 @@ export interface FirestoreEmulatorArgs {
 
 export interface FirestoreEmulatorInfo extends EmulatorInfo {
   // Used for the Emulator UI to connect to the WebSocket server.
-  // The casing of the fields below are sensitive and important.
+  // The casing of the fields below is sensitive and important.
   // https://github.com/firebase/firebase-tools-ui/blob/2de1e80cce28454da3afeeb373fbbb45a67cb5ef/src/store/config/types.ts#L26-L27
   webSocketHost?: string;
   webSocketPort?: number;
