@@ -9,6 +9,7 @@ import { EmulatorRegistry } from "./registry";
 import {
   Address,
   ALL_SERVICE_EMULATORS,
+  EmulatorInfo,
   EmulatorInstance,
   Emulators,
   EMULATORS_SUPPORTED_BY_UI,
@@ -501,7 +502,16 @@ export async function startAll(
     Array.isArray(hostingConfig) ? hostingConfig.some((it) => it.source) : hostingConfig?.source
   ) {
     experiments.assertEnabled("webframeworks", "emulate a web framework");
-    await prepareFrameworks(targets, options, options);
+    const emulators: EmulatorInfo[] = [];
+    if (experiments.isEnabled("webframeworks")) {
+      for (const e of EMULATORS_SUPPORTED_BY_UI) {
+        // TODO: Double check if this actually works -- we're early in the startup
+        // process and emulators are probably not yet running / registered.
+        const info = EmulatorRegistry.getInfo(e);
+        if (info) emulators.push(info);
+      }
+    }
+    await prepareFrameworks(targets, options, options, emulators);
   }
 
   const emulatableBackends: EmulatableBackend[] = [];

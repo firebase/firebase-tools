@@ -15,15 +15,15 @@ import { hostingConfig } from "../hosting/config";
 import { listSites } from "../hosting/api";
 import { getAppConfig, AppPlatform } from "../management/apps";
 import { promptOnce } from "../prompt";
-import { EMULATORS_SUPPORTED_BY_USE_EMULATOR } from "../emulator/types";
+import { EmulatorInfo, Emulators } from "../emulator/types";
 import { getCredentialPathAsync } from "../defaultCredentials";
 import { getProjectDefaultAccount } from "../auth";
+import { formatHost } from "../emulator/functionsEmulatorShared";
+import { Constants } from "../emulator/constants";
 import { FirebaseError } from "../error";
 import { requireHostingSite } from "../requireHostingSite";
 import { HostingRewrites } from "../firebaseConfig";
 import * as experiments from "../experiments";
-import { setEnvVarsForEmulators } from "../emulator/commandUtils";
-import { EmulatorRegistry } from "../emulator/registry";
 
 // Use "true &&"" to keep typescript from compiling this file and rewriting
 // the import statement into a require
@@ -242,8 +242,9 @@ export function findDependency(name: string, options: Partial<FindDepOptions> = 
 export async function prepareFrameworks(
   targetNames: string[],
   context: any,
-  options: any
-): Promise<void> {
+  options: any,
+  emulators: EmulatorInfo[] = []
+) {
   // `firebase-frameworks` requires Node >= 16. We must check for this to avoid horrible errors.
   const nodeVersion = process.version;
   if (!semver.satisfies(nodeVersion, ">=16.0.0")) {
@@ -301,19 +302,23 @@ export async function prepareFrameworks(
         if (defaultCredPath) process.env.GOOGLE_APPLICATION_CREDENTIALS = defaultCredPath;
       }
     }
-    if (usesFirebaseAdminSdk) {
-      setEnvVarsForEmulators(process.env);
-    }
-    if (usesFirebaseJsSdk) {
-      // Same logic as https://github.com/firebase/firebase-tools/blob/master/src/hosting/implicitInit.ts
-      for (const e of EMULATORS_SUPPORTED_BY_USE_EMULATOR) {
-        if (EmulatorRegistry.isRunning(e)) {
-          firebaseDefaults ||= {};
-          firebaseDefaults.emulatorHosts ||= {};
-          firebaseDefaults.emulatorHosts[e] = EmulatorRegistry.url(e).host;
-        }
+    emulators.forEach((info) => {
+      if (usesFirebaseAdminSdk) {
+        if (info.name === Emulators.FIRESTORE)
+          process.env[Constants.FIRESTORE_EMULATOR_HOST] = formatHost(info);
+        if (info.name === Emulators.AUTH)
+          process.env[Constants.FIREBASE_AUTH_EMULATOR_HOST] = formatHost(info);
+        if (info.name === Emulators.DATABASE)
+          process.env[Constants.FIREBASE_DATABASE_EMULATOR_HOST] = formatHost(info);
+        if (info.name === Emulators.STORAGE)
+          process.env[Constants.FIREBASE_STORAGE_EMULATOR_HOST] = formatHost(info);
       }
-    }
+      if (usesFirebaseJsSdk) {
+        firebaseDefaults ||= {};
+        firebaseDefaults.emulatorHosts ||= {};
+        firebaseDefaults.emulatorHosts[info.name] = formatHost(info);
+      }
+    });
     let firebaseConfig = null;
     if (usesFirebaseJsSdk) {
       const sites = await listSites(project);
