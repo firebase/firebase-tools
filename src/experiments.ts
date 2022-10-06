@@ -165,6 +165,33 @@ export function setEnabled(name: ExperimentName, to: boolean | null): void {
 }
 
 /**
+ * Returns the unsaved set of preferences.
+ */
+export function getSnapshotOfExperimentPreferences() {
+  return {
+    ...localPreferences(),
+  };
+}
+
+/**
+ * Enables multiple experiments given a comma-delimited environment variable:
+ * `FIREBASE_CLI_EXPERIMENTS`.
+ *
+ * Example:
+ * FIREBASE_CLI_PREVIEWS=experiment1,experiment2,turtle
+ *
+ * Would silently enable `experiment1` and `experiment2`, but would not enable `turtle`.
+ */
+export function enableExperimentsFromCliEnvVariable(): void {
+  const experiments = process.env.FIREBASE_CLI_EXPERIMENTS || "";
+  for (const experiment of experiments.split(",")) {
+    if (isValidExperiment(experiment)) {
+      setEnabled(experiment, true);
+    }
+  }
+}
+
+/**
  * Assert that an experiment is enabled before following a code path.
  * This code is unnecessary in code paths guarded by ifEnabled. When
  * a customer's project was clearly written against an experiment that

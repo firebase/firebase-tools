@@ -96,7 +96,10 @@ if (utils.envOverrides.length) {
 logger.debug("-".repeat(70));
 logger.debug();
 
+import { enableExperimentsFromCliEnvVariable } from "../experiments";
 import { fetchMOTD } from "../fetchMOTD";
+
+enableExperimentsFromCliEnvVariable();
 fetchMOTD();
 
 process.on("exit", (code) => {
@@ -161,7 +164,7 @@ if (!handlePreviewToggles(args)) {
 
   // determine if there are any non-option arguments. if not, display help
   args = args.filter((arg) => {
-    return arg.indexOf("-") < 0;
+    return !arg.includes("-");
   });
   if (!args.length) {
     client.cli.help();
