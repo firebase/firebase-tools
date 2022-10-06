@@ -144,7 +144,13 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
   database: {
     binary: "java",
     args: ["-Duser.language=en", "-jar", getExecPath(Emulators.DATABASE)],
-    optionalArgs: ["port", "host", "functions_emulator_port", "functions_emulator_host"],
+    optionalArgs: [
+      "port",
+      "host",
+      "functions_emulator_port",
+      "functions_emulator_host",
+      "single_project_mode",
+    ],
     joinArgs: false,
   },
   firestore: {

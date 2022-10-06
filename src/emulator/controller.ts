@@ -389,6 +389,8 @@ export async function startAll(
   // 1) The service must have a top-level entry in firebase.json or an entry in the emulators{} object
   // 2) If the --only flag is passed, then this list is the intersection
   const targets = filterEmulatorTargets(options);
+  const singleProjectModeEnabled = options.config.src.emulators?.singleProjectMode === undefined ||
+  options.config.src.emulators?.singleProjectMode
   options.targets = targets;
   const singleProjectModeEnabled =
     options.config.src.emulators?.singleProjectMode === undefined ||
@@ -712,6 +714,7 @@ export async function startAll(
       port: databaseAddr.port,
       projectId,
       auto_download: true,
+      single_project_mode: "Warning",
     };
 
     // Try to fetch the default RTDB instance for a project, but don't hard-fail if we
