@@ -1,1 +1,3 @@
-- Enable single project mode for the auth emulator (#5068).
+- Enables single project mode for the auth emulator (#5068).
+- Fixes issue deploying to Hosting with i18n enabled.
+- Fixes issue where deploying to Hosting without Functions permissions would cause deployments to fail with 403 "Permission Denied" errors. (#5071)
