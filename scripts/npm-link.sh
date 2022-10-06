@@ -3,3 +3,5 @@ set -e
 
 echo "Running npm link..."
 npm link
+
+chmod u+rx ./lib/bin/firebase.js

@@ -18,7 +18,7 @@ import {
 import { Constants, FIND_AVAILBLE_PORT_BY_DEFAULT } from "./constants";
 import { EmulatableBackend, FunctionsEmulator } from "./functionsEmulator";
 import { parseRuntimeVersion } from "./functionsEmulatorUtils";
-import { AuthEmulator } from "./auth";
+import { AuthEmulator, SingleProjectMode } from "./auth";
 import { DatabaseEmulator, DatabaseEmulatorArgs } from "./databaseEmulator";
 import { FirestoreEmulator, FirestoreEmulatorArgs } from "./firestoreEmulator";
 import { HostingEmulator } from "./hostingEmulator";
@@ -390,6 +390,9 @@ export async function startAll(
   // 2) If the --only flag is passed, then this list is the intersection
   const targets = filterEmulatorTargets(options);
   options.targets = targets;
+  const singleProjectModeEnabled =
+    options.config.src.emulators?.singleProjectMode === undefined ||
+    options.config.src.emulators?.singleProjectMode;
 
   if (targets.length === 0) {
     throw new FirebaseError(
@@ -622,7 +625,7 @@ export async function startAll(
       host: firestoreAddr.host,
       port: firestoreAddr.port,
       websocket_port: websocketPort,
-      projectId,
+      project_id: projectId,
       auto_download: true,
     };
 
@@ -675,6 +678,20 @@ export async function startAll(
         "firestore",
         "The emulator will default to allowing all reads and writes. Learn more about this option: https://firebase.google.com/docs/emulator-suite/install_and_configure#security_rules_configuration."
       );
+    }
+
+    // undefined in the config defaults to setting single_project_mode.
+    if (singleProjectModeEnabled) {
+      if (projectId) {
+        args.single_project_mode = true;
+        args.single_project_mode_error = false;
+      } else {
+        firestoreLogger.logLabeled(
+          "DEBUG",
+          "firestore",
+          "Could not enable single_project_mode: missing projectId."
+        );
+      }
     }
 
     const firestoreEmulator = new FirestoreEmulator(args);
@@ -775,6 +792,9 @@ export async function startAll(
       host: authAddr.host,
       port: authAddr.port,
       projectId,
+      singleProjectMode: singleProjectModeEnabled
+        ? SingleProjectMode.WARNING
+        : SingleProjectMode.NO_WARNING,
     });
     await startEmulator(authEmulator);
 

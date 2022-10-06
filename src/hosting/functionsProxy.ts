@@ -6,7 +6,7 @@ import { needProjectId } from "../projectUtils";
 import { EmulatorRegistry } from "../emulator/registry";
 import { Emulators } from "../emulator/types";
 import { FunctionsEmulator } from "../emulator/functionsEmulator";
-import { HostingRewrites } from "../firebaseConfig";
+import { HostingRewrites, LegacyFunctionsRewrite } from "../firebaseConfig";
 import { FirebaseError } from "../error";
 
 export interface FunctionsProxyOptions {
@@ -31,10 +31,16 @@ export function functionsProxy(
           exit: 2,
         });
       }
-      if (!rewrite.region) {
-        rewrite.region = "us-central1";
+      let functionId: string;
+      let region: string;
+      if (typeof rewrite.function === "string") {
+        functionId = rewrite.function;
+        region = (rewrite as LegacyFunctionsRewrite).region || "us-central1";
+      } else {
+        functionId = rewrite.function.functionId;
+        region = rewrite.function.region || "us-central1";
       }
-      let url = `https://${rewrite.region}-${projectId}.cloudfunctions.net/${rewrite.function}`;
+      let url = `https://${region}-${projectId}.cloudfunctions.net/${functionId}`;
       let destLabel = "live";
 
       if (includes(options.targets, "functions")) {
@@ -48,15 +54,13 @@ export function functionsProxy(
             functionsEmu.getInfo().host,
             functionsEmu.getInfo().port,
             projectId,
-            rewrite.function,
-            rewrite.region
+            functionId,
+            region
           );
         }
       }
 
-      resolve(
-        proxyRequestHandler(url, `${destLabel} Function ${rewrite.region}/${rewrite.function}`)
-      );
+      resolve(proxyRequestHandler(url, `${destLabel} Function ${region}/${functionId}`));
     });
   };
 }
