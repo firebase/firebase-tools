@@ -1,1 +1,2 @@
-- Enable single project mode for the auth emulator (#5068).
+- Enables single project mode for the auth emulator (#5068).
+- Fixes issue deploying to Hosting with i18n enabled.
