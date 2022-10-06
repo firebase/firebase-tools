@@ -2,3 +2,4 @@
 - Fixes issue deploying to Hosting with i18n enabled.
 - Fixes issue where deploying to Hosting without Functions permissions would cause deployments to fail with 403 "Permission Denied" errors. (#5071)
 - Fixes issue where Firestore Emulator UI Requests tab wrongly show error requiring updates (#5051)
+- Fixes issue where Hosting configurations were being validated before predeploys could have been run (#5072).
