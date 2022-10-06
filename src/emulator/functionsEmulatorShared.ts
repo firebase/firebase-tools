@@ -407,7 +407,13 @@ export function findModuleRoot(moduleName: string, filepath: string): string {
 }
 
 /**
- * Format a hostname for TCP dialing.
+ * Format a hostname for TCP dialing. Should only be used in Functions emulator.
+ *
+ * This is similar to EmulatorRegistry.url but with no explicit dependency on
+ * the registry and so on and thus can work in functions shell.
+ *
+ * For any other part of the CLI, please use EmulatorRegistry.url(...).host
+ * instead, which handles discovery, formatting, and fixing host in one go.
  */
 export function formatHost(info: { host: string; port: number }): string {
   if (info.host.includes(":")) {

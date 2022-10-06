@@ -276,7 +276,7 @@ function processKillSignal(
         const pids: number[] = [];
 
         const emulatorsTable = new Table({
-          head: ["Emulator", "Host:Port", "PID"],
+          head: ["Emulator", "Host", "Port", "PID"],
           style: {
             head: ["yellow"],
           },
@@ -284,9 +284,11 @@ function processKillSignal(
 
         for (const emulatorInfo of runningEmulatorsInfosWithPid) {
           pids.push(emulatorInfo.pid as number);
+          const info = EmulatorRegistry.getRawInfo(emulatorInfo.name);
           emulatorsTable.push([
             Constants.description(emulatorInfo.name),
-            EmulatorRegistry.getInfoHostString(emulatorInfo),
+            info?.host || "unknown",
+            info?.port || "unknown",
             emulatorInfo.pid,
           ]);
         }
@@ -331,51 +333,7 @@ async function runScript(script: string, extraEnv: Record<string, string>): Prom
 
   const env: NodeJS.ProcessEnv = { ...process.env, ...extraEnv };
 
-  const databaseInstance = EmulatorRegistry.get(Emulators.DATABASE);
-  if (databaseInstance) {
-    const info = databaseInstance.getInfo();
-    const address = EmulatorRegistry.getInfoHostString(info);
-    env[Constants.FIREBASE_DATABASE_EMULATOR_HOST] = address;
-  }
-
-  const firestoreInstance = EmulatorRegistry.get(Emulators.FIRESTORE);
-  if (firestoreInstance) {
-    const info = firestoreInstance.getInfo();
-    const address = EmulatorRegistry.getInfoHostString(info);
-
-    env[Constants.FIRESTORE_EMULATOR_HOST] = address;
-    env[FirestoreEmulator.FIRESTORE_EMULATOR_ENV_ALT] = address;
-  }
-
-  const storageInstance = EmulatorRegistry.get(Emulators.STORAGE);
-  if (storageInstance) {
-    const info = storageInstance.getInfo();
-    const address = EmulatorRegistry.getInfoHostString(info);
-
-    env[Constants.FIREBASE_STORAGE_EMULATOR_HOST] = address;
-    env[Constants.CLOUD_STORAGE_EMULATOR_HOST] = `http://${address}`;
-  }
-
-  const authInstance = EmulatorRegistry.get(Emulators.AUTH);
-  if (authInstance) {
-    const info = authInstance.getInfo();
-    const address = EmulatorRegistry.getInfoHostString(info);
-    env[Constants.FIREBASE_AUTH_EMULATOR_HOST] = address;
-  }
-
-  const hubInstance = EmulatorRegistry.get(Emulators.HUB);
-  if (hubInstance) {
-    const info = hubInstance.getInfo();
-    const address = EmulatorRegistry.getInfoHostString(info);
-    env[Constants.FIREBASE_EMULATOR_HUB] = address;
-  }
-
-  const eventarcInstance = EmulatorRegistry.get(Emulators.EVENTARC);
-  if (eventarcInstance) {
-    const info = eventarcInstance.getInfo();
-    const address = EmulatorRegistry.getInfoHostString(info);
-    env[Constants.CLOUD_EVENTARC_EMULATOR_HOST] = address;
-  }
+  setEnvVarsForEmulators(env);
 
   const proc = childProcess.spawn(script, {
     stdio: ["inherit", "inherit", "inherit"] as childProcess.StdioOptions,
@@ -417,6 +375,45 @@ async function runScript(script: string, extraEnv: Record<string, string>): Prom
       }, exitDelayMs);
     });
   });
+}
+
+/**
+ * Adds or replaces emulator-related env vars (for Admin SDKs, etc.).
+ * @param env a `process.env`-like object or Record to be modified
+ */
+export function setEnvVarsForEmulators(env: Record<string, string | undefined>): void {
+  if (EmulatorRegistry.isRunning(Emulators.DATABASE)) {
+    env[Constants.FIREBASE_DATABASE_EMULATOR_HOST] = EmulatorRegistry.url(Emulators.DATABASE).host;
+  }
+
+  if (EmulatorRegistry.isRunning(Emulators.FIRESTORE)) {
+    const { host } = EmulatorRegistry.url(Emulators.FIRESTORE);
+    env[Constants.FIRESTORE_EMULATOR_HOST] = host;
+    env[FirestoreEmulator.FIRESTORE_EMULATOR_ENV_ALT] = host;
+  }
+
+  if (EmulatorRegistry.isRunning(Emulators.STORAGE)) {
+    const { host } = EmulatorRegistry.url(Emulators.STORAGE);
+    env[Constants.FIREBASE_STORAGE_EMULATOR_HOST] = host;
+    env[Constants.CLOUD_STORAGE_EMULATOR_HOST] = `http://${host}`;
+  }
+
+  if (EmulatorRegistry.isRunning(Emulators.AUTH)) {
+    env[Constants.FIREBASE_AUTH_EMULATOR_HOST] = EmulatorRegistry.url(Emulators.AUTH).host;
+  }
+
+  if (EmulatorRegistry.isRunning(Emulators.HUB)) {
+    env[Constants.FIREBASE_EMULATOR_HUB] = EmulatorRegistry.url(Emulators.HUB).host;
+  }
+
+  const pubsubEmulator = EmulatorRegistry.isRunning(Emulators.PUBSUB);
+  if (pubsubEmulator) {
+    env[Constants.PUBSUB_EMULATOR_HOST] = EmulatorRegistry.url(Emulators.PUBSUB).host;
+  }
+
+  if (EmulatorRegistry.isRunning(Emulators.EVENTARC)) {
+    env[Constants.CLOUD_EVENTARC_EMULATOR_HOST] = EmulatorRegistry.url(Emulators.EVENTARC).host;
+  }
 }
 
 /**

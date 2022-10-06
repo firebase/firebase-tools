@@ -1,5 +1,3 @@
-import * as url from "url";
-
 import { Emulators } from "./types";
 
 export const DEFAULT_PORTS: { [s in Emulators]: number } = {
@@ -75,6 +73,9 @@ export class Constants {
   static CLOUD_STORAGE_EMULATOR_HOST = "STORAGE_EMULATOR_HOST";
 
   // Environment variable to discover the eventarc emulator.
+  static PUBSUB_EMULATOR_HOST = "PUBSUB_EMULATOR_HOST";
+
+  // Environment variable to discover the eventarc emulator.
   static CLOUD_EVENTARC_EMULATOR_HOST = "CLOUD_EVENTARC_EMULATOR_HOST";
 
   // Environment variable to discover the Emulator HUB
@@ -131,16 +132,6 @@ export class Constants {
 
   static description(name: Emulators): string {
     return EMULATOR_DESCRIPTION[name];
-  }
-
-  static normalizeHost(host: string): string {
-    let normalized = host;
-    if (!normalized.startsWith("http")) {
-      normalized = `http://${normalized}`;
-    }
-
-    const u = url.parse(normalized);
-    return u.hostname || DEFAULT_HOST;
   }
 
   static isDemoProject(projectId?: string): boolean {

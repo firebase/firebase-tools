@@ -9,7 +9,6 @@ import { EmulatorInfo, EmulatorInstance, Emulators, Severity } from "../emulator
 import { EmulatorRegistry } from "./registry";
 import { Constants } from "./constants";
 import { Issue } from "./types";
-import { Client } from "../apiv2";
 
 export interface FirestoreEmulatorArgs {
   port?: number;
@@ -40,9 +39,8 @@ export class FirestoreEmulator implements EmulatorInstance {
   constructor(private args: FirestoreEmulatorArgs) {}
 
   async start(): Promise<void> {
-    const functionsInfo = EmulatorRegistry.getInfo(Emulators.FUNCTIONS);
-    if (functionsInfo) {
-      this.args.functions_emulator = EmulatorRegistry.getInfoHostString(functionsInfo);
+    if (EmulatorRegistry.isRunning(Emulators.FUNCTIONS)) {
+      this.args.functions_emulator = EmulatorRegistry.url(Emulators.FUNCTIONS).host;
     }
 
     if (this.args.rules && this.args.project_id) {
@@ -108,7 +106,6 @@ export class FirestoreEmulator implements EmulatorInstance {
   private async updateRules(content: string): Promise<Issue[]> {
     const projectId = this.args.project_id;
 
-    const info = this.getInfo();
     const body = {
       // Invalid rulesets will still result in a 200 response but with more information
       ignore_errors: true,
@@ -122,11 +119,7 @@ export class FirestoreEmulator implements EmulatorInstance {
       },
     };
 
-    const client = new Client({
-      urlPrefix: `http://${EmulatorRegistry.getInfoHostString(info)}`,
-      auth: false,
-    });
-    const res = await client.put<any, { issues?: Issue[] }>(
+    const res = await EmulatorRegistry.client(Emulators.FIRESTORE).put<any, { issues?: Issue[] }>(
       `/emulator/v1/projects/${projectId}:securityRules`,
       body
     );

@@ -61,7 +61,7 @@ export class ExtensionsEmulator implements EmulatorInstance {
   }
 
   public getInfo(): EmulatorInfo {
-    const info = EmulatorRegistry.getInfo(Emulators.FUNCTIONS);
+    const info = EmulatorRegistry.getRawInfo(Emulators.FUNCTIONS);
     if (!info) {
       throw new FirebaseError(
         "Extensions Emulator is running but Functions emulator is not. This should never happen."
@@ -344,15 +344,13 @@ export class ExtensionsEmulator implements EmulatorInstance {
   }
 
   private extensionDetailsUILink(backend: EmulatableBackend): string {
-    const uiInfo = EmulatorRegistry.getInfo(Emulators.UI);
-    if (!uiInfo || !backend.extensionInstanceId) {
+    if (!EmulatorRegistry.isRunning(Emulators.UI) || !backend.extensionInstanceId) {
       // If the Emulator UI is not running, or if this is not an Extension backend, return an empty string
       return "";
     }
-    const uiUrl = EmulatorRegistry.getInfoHostString(uiInfo);
-    return clc.underline(
-      clc.bold(`http://${uiUrl}/${Emulators.EXTENSIONS}/${backend.extensionInstanceId}`)
-    );
+    const uiUrl = EmulatorRegistry.url(Emulators.UI);
+    uiUrl.pathname = `/${Emulators.EXTENSIONS}/${backend.extensionInstanceId}`;
+    return clc.underline(clc.bold(uiUrl.toString()));
   }
 
   public extensionsInfoTable(options: Options): string {
