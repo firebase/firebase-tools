@@ -16,6 +16,10 @@ export interface AuthEmulatorArgs {
   singleProjectMode?: SingleProjectMode;
 }
 
+/**
+ * An enum that dictates the behavior when the project ID in the request doesn't match the
+ * defaultProjectId.
+ */
 export enum SingleProjectMode {
   NO_WARNING,
   WARNING,
