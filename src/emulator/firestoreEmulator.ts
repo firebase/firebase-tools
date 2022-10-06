@@ -24,6 +24,14 @@ export interface FirestoreEmulatorArgs {
   single_project_mode_error?: boolean;
 }
 
+export interface FirestoreEmulatorInfo extends EmulatorInfo {
+  // Used for the Emulator UI to connect to the WebSocket server.
+  // The casing of the fields below are sensitive and important.
+  // https://github.com/firebase/firebase-tools-ui/blob/2de1e80cce28454da3afeeb373fbbb45a67cb5ef/src/store/config/types.ts#L26-L27
+  webSocketHost?: string;
+  webSocketPort?: number;
+}
+
 export class FirestoreEmulator implements EmulatorInstance {
   static FIRESTORE_EMULATOR_ENV_ALT = "FIREBASE_FIRESTORE_EMULATOR_ADDRESS";
 
@@ -77,7 +85,7 @@ export class FirestoreEmulator implements EmulatorInstance {
     return downloadableEmulators.stop(Emulators.FIRESTORE);
   }
 
-  getInfo(): EmulatorInfo {
+  getInfo(): FirestoreEmulatorInfo {
     const host = this.args.host || Constants.getDefaultHost();
     const port = this.args.port || Constants.getDefaultPort(Emulators.FIRESTORE);
     const reservedPorts = this.args.websocket_port ? [this.args.websocket_port] : [];
@@ -88,6 +96,8 @@ export class FirestoreEmulator implements EmulatorInstance {
       port,
       pid: downloadableEmulators.getPID(Emulators.FIRESTORE),
       reservedPorts: reservedPorts,
+      webSocketHost: this.args.websocket_port ? host : undefined,
+      webSocketPort: this.args.websocket_port ? this.args.websocket_port : undefined,
     };
   }
 
