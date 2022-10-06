@@ -120,5 +120,5 @@ module.exports = {
   // don't want Typescript to turn the imports into requires. Ignoring as eslint
   // is complaining it doesn't belong to a project.
   // TODO(jamesdaniels): add this to overrides instead
-  ignorePatterns: ["src/dynamicImport.js"],
+  ignorePatterns: ["src/dynamicImport.js", "scripts/webframeworks-deploy-tests/hosting/*"],
 };

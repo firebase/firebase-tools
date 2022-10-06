@@ -1,2 +1,4 @@
-- Add functions emulator support for RTDB v2 triggers (#5045).
-- Enables single project mode for Firestore by default (#4890).
+- Enables single project mode for the auth emulator (#5068).
+- Fixes issue deploying to Hosting with i18n enabled.
+- Fixes issue where deploying to Hosting without Functions permissions would cause deployments to fail with 403 "Permission Denied" errors. (#5071)
+- Fixes issue where Firestore Emulator UI Requests tab wrongly show error requiring updates (#5051)
