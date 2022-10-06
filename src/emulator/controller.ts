@@ -18,7 +18,7 @@ import {
 import { Constants, FIND_AVAILBLE_PORT_BY_DEFAULT } from "./constants";
 import { EmulatableBackend, FunctionsEmulator } from "./functionsEmulator";
 import { parseRuntimeVersion } from "./functionsEmulatorUtils";
-import { AuthEmulator } from "./auth";
+import { AuthEmulator, SingleProjectMode } from "./auth";
 import { DatabaseEmulator, DatabaseEmulatorArgs } from "./databaseEmulator";
 import { FirestoreEmulator, FirestoreEmulatorArgs } from "./firestoreEmulator";
 import { HostingEmulator } from "./hostingEmulator";
@@ -390,6 +390,9 @@ export async function startAll(
   // 2) If the --only flag is passed, then this list is the intersection
   const targets = filterEmulatorTargets(options);
   options.targets = targets;
+  const singleProjectModeEnabled =
+    options.config.src.emulators?.singleProjectMode === undefined ||
+    options.config.src.emulators?.singleProjectMode;
 
   if (targets.length === 0) {
     throw new FirebaseError(
@@ -678,10 +681,7 @@ export async function startAll(
     }
 
     // undefined in the config defaults to setting single_project_mode.
-    if (
-      options.config.src.emulators?.singleProjectMode === undefined ||
-      options.config.src.emulators?.singleProjectMode
-    ) {
+    if (singleProjectModeEnabled) {
       if (projectId) {
         args.single_project_mode = true;
         args.single_project_mode_error = false;
@@ -792,6 +792,9 @@ export async function startAll(
       host: authAddr.host,
       port: authAddr.port,
       projectId,
+      singleProjectMode: singleProjectModeEnabled
+        ? SingleProjectMode.WARNING
+        : SingleProjectMode.NO_WARNING,
     });
     await startEmulator(authEmulator);
 

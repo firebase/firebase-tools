@@ -1,0 +1,1 @@
+- Enable single project mode for the auth emulator (#5068).
