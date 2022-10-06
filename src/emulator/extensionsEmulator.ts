@@ -61,13 +61,13 @@ export class ExtensionsEmulator implements EmulatorInstance {
   }
 
   public getInfo(): EmulatorInfo {
-    const info = EmulatorRegistry.getRawInfo(Emulators.FUNCTIONS);
-    if (!info) {
+    const functionsEmulator = EmulatorRegistry.get(Emulators.FUNCTIONS);
+    if (!functionsEmulator) {
       throw new FirebaseError(
         "Extensions Emulator is running but Functions emulator is not. This should never happen."
       );
     }
-    return info;
+    return functionsEmulator.getInfo();
   }
 
   public getName(): Emulators {

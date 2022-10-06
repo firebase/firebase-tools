@@ -65,7 +65,7 @@ function printEmulatorOverview(options: any): void {
   const reservedPortsString = reservedPorts.length > 0 ? reservedPorts.join(", ") : "None";
 
   const uiRunning = EmulatorRegistry.isRunning(Emulators.UI);
-  const head = ["Emulator", "Host", "Port"];
+  const head = ["Emulator", "Host:Port"];
 
   if (uiRunning) {
     head.push(`View in ${Constants.description(Emulators.UI)}`);
@@ -95,9 +95,12 @@ function printEmulatorOverview(options: any): void {
       .map((emulator) => {
         const emulatorName = Constants.description(emulator).replace(/ emulator/i, "");
         const isSupportedByUi = EMULATORS_SUPPORTED_BY_UI.includes(emulator);
-        const info = EmulatorRegistry.getRawInfo(emulator);
-        if (!info) {
-          return [emulatorName, "Failed to initialize (see above)", "", ""];
+        const listen = commandUtils.getListenOverview(emulator);
+        if (!listen) {
+          const row = [emulatorName, "Failed to initialize (see above)"];
+          if (uiRunning) {
+            row.push("");
+          }
         }
         let uiLink = "n/a";
         if (isSupportedByUi && uiRunning) {
@@ -106,7 +109,7 @@ function printEmulatorOverview(options: any): void {
           uiLink = stylizeLink(url.toString());
         }
 
-        return [emulatorName, info.host, info.port, uiLink];
+        return [emulatorName, listen, uiLink];
       })
       .map((col) => col.slice(0, head.length))
       .filter((v) => v)

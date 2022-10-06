@@ -124,7 +124,7 @@ export class EmulatorRegistry {
    * Get information about an emulator. Use `url` instead for creating URLs.
    */
   static getInfo(emulator: Emulators): EmulatorInfo | undefined {
-    const info = EmulatorRegistry.getRawInfo(emulator);
+    const info = EmulatorRegistry.get(emulator)?.getInfo();
     if (!info) {
       return undefined;
     }
@@ -132,21 +132,6 @@ export class EmulatorRegistry {
       ...info,
       host: connectableHostname(info.host),
     };
-  }
-
-  /**
-   * Get raw info about an emulator. Use getInfo/url/client instead for connecting.
-   */
-  static getRawInfo(emulator: Emulators): EmulatorInfo | undefined {
-    // For Extensions, return the info for the Functions Emulator.
-    const instance = this.INSTANCES.get(
-      emulator === Emulators.EXTENSIONS ? Emulators.FUNCTIONS : emulator
-    );
-    if (!instance) {
-      return undefined;
-    }
-
-    return instance.getInfo();
   }
 
   /**

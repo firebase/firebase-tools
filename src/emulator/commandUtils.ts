@@ -276,7 +276,7 @@ function processKillSignal(
         const pids: number[] = [];
 
         const emulatorsTable = new Table({
-          head: ["Emulator", "Host", "Port", "PID"],
+          head: ["Emulator", "Host:Port", "PID"],
           style: {
             head: ["yellow"],
           },
@@ -284,11 +284,9 @@ function processKillSignal(
 
         for (const emulatorInfo of runningEmulatorsInfosWithPid) {
           pids.push(emulatorInfo.pid as number);
-          const info = EmulatorRegistry.getRawInfo(emulatorInfo.name);
           emulatorsTable.push([
             Constants.description(emulatorInfo.name),
-            info?.host || "unknown",
-            info?.port || "unknown",
+            getListenOverview(emulatorInfo.name) ?? "unknown",
             emulatorInfo.pid,
           ]);
         }
@@ -413,6 +411,30 @@ export function setEnvVarsForEmulators(env: Record<string, string | undefined>):
 
   if (EmulatorRegistry.isRunning(Emulators.EVENTARC)) {
     env[Constants.CLOUD_EVENTARC_EMULATOR_HOST] = EmulatorRegistry.url(Emulators.EVENTARC).host;
+  }
+}
+
+/**
+ * For overview tables ONLY. Use EmulatorRegistry methods instead for connecting.
+ *
+ * This method returns a string suitable for printing into CLI outputs, resembling
+ * a netloc part of URL. This makes it clickable in many terminal emulators, a
+ * specific customer request.
+ *
+ * Note that this method does not transform the hostname and may return 0.0.0.0
+ * etc. that may not work in some browser / OS combinations. When trying to send
+ * a network request, use `EmulatorRegistry.client()` instead. When constructing
+ * URLs (especially links printed/shown), use `EmulatorRegistry.url()`.
+ */
+export function getListenOverview(emulator: Emulators): string | undefined {
+  const info = EmulatorRegistry.get(emulator)?.getInfo();
+  if (!info) {
+    return undefined;
+  }
+  if (info.host.includes(":")) {
+    return `[${info.host}]:${info.port}`;
+  } else {
+    return `${info.host}:${info.port}`;
   }
 }
 
