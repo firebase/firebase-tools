@@ -1,2 +1,1 @@
-- Add functions emulator support for RTDB v2 triggers (#5045).
-- Enables single project mode for Firestore by default (#4890).
+- Enable single project mode for the auth emulator (#5068).
