@@ -16,7 +16,7 @@ import { RequireAtLeastOne } from "../metaprogramming";
 import { dirExistsSync } from "../fsutils";
 import { resolveProjectPath } from "../projectPath";
 import { HostingOptions } from "./options";
-import path from "path";
+import * as path from "node:path";
 import * as experiments from "../experiments";
 
 // assertMatches allows us to throw when an --only flag doesn't match a target
