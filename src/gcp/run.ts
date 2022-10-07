@@ -162,9 +162,6 @@ export async function getService(name: string): Promise<Service> {
  */
 export async function updateService(name: string, service: Service): Promise<Service> {
   delete service.status;
-  // if (service.spec.template?.metadata?.name) {
-  //  delete (service.spec.template.metadata as any).name;
-  // }
   service = await exports.replaceService(name, service);
 
   // Now we need to wait for reconciliation or we might delete the docker
