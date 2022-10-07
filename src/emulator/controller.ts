@@ -444,7 +444,11 @@ export async function startAll(
   }
 
   if (listenForEmulator.hub) {
-    const hub = new EmulatorHub({ projectId, listen: listenForEmulator[Emulators.HUB] });
+    const hub = new EmulatorHub({
+      projectId,
+      listen: listenForEmulator[Emulators.HUB],
+      listenForEmulator,
+    });
 
     // Log the command for analytics, we only report this for "hub"
     // since we originally mistakenly reported emulators:start events
@@ -820,11 +824,10 @@ export async function startAll(
   }
 
   if (listenForEmulator.ui) {
-    const uiAddr = legacyGetFirstAddr(Emulators.UI);
     const ui = new EmulatorUI({
       projectId: projectId,
       auto_download: true,
-      ...uiAddr,
+      listen: listenForEmulator[Emulators.UI],
     });
     await startEmulator(ui);
   }

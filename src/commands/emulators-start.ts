@@ -101,6 +101,7 @@ function printEmulatorOverview(options: any): void {
           if (uiRunning) {
             row.push("");
           }
+          return row;
         }
         let uiLink = "n/a";
         if (isSupportedByUi && uiRunning) {
