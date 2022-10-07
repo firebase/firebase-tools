@@ -295,6 +295,7 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
       });
 
       it("should default to application/octet-stream", async () => {
+        await signInToFirebaseAuth(page);
         const uploadState = await page.evaluate(async (TEST_FILE_NAME) => {
           const task = await firebase.storage().ref(TEST_FILE_NAME).put(new ArrayBuffer(8));
           return task.state;
