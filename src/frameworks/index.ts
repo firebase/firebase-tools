@@ -15,7 +15,7 @@ import { hostingConfig } from "../hosting/config";
 import { listSites } from "../hosting/api";
 import { getAppConfig, AppPlatform } from "../management/apps";
 import { promptOnce } from "../prompt";
-import { EmulatorInfo, Emulators } from "../emulator/types";
+import { EmulatorInfo, Emulators, EMULATORS_SUPPORTED_BY_USE_EMULATOR } from "../emulator/types";
 import { getCredentialPathAsync } from "../defaultCredentials";
 import { getProjectDefaultAccount } from "../auth";
 import { formatHost } from "../emulator/functionsEmulatorShared";
@@ -313,7 +313,7 @@ export async function prepareFrameworks(
         if (info.name === Emulators.STORAGE)
           process.env[Constants.FIREBASE_STORAGE_EMULATOR_HOST] = formatHost(info);
       }
-      if (usesFirebaseJsSdk) {
+      if (usesFirebaseJsSdk && EMULATORS_SUPPORTED_BY_USE_EMULATOR.includes(info.name)) {
         firebaseDefaults ||= {};
         firebaseDefaults.emulatorHosts ||= {};
         firebaseDefaults.emulatorHosts[info.name] = formatHost(info);

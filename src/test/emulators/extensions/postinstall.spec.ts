@@ -1,17 +1,16 @@
 import { expect } from "chai";
 import * as postinstall from "../../../emulator/extensions/postinstall";
-import { findAvailablePort } from "../../../emulator/portUtils";
 import { EmulatorRegistry } from "../../../emulator/registry";
 import { Emulators } from "../../../emulator/types";
 import { FakeEmulator } from "../fakeEmulator";
 
 describe("replaceConsoleLinks", () => {
-  const host = "localhost";
-  let port = 4000;
+  let host: string;
+  let port: number;
   before(async () => {
-    port = await findAvailablePort(host, port);
-
-    const emu = new FakeEmulator(Emulators.UI, host, port);
+    const emu = await FakeEmulator.create(Emulators.UI);
+    host = emu.getInfo().host;
+    port = emu.getInfo().port;
     return EmulatorRegistry.start(emu);
   });
 

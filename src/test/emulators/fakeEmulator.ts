@@ -1,37 +1,25 @@
-import { EmulatorInfo, EmulatorInstance, Emulators } from "../../emulator/types";
-import * as express from "express";
-import { createDestroyer } from "../../utils";
+import { Emulators, ListenSpec } from "../../emulator/types";
+import { ExpressBasedEmulator } from "../../emulator/ExpressBasedEmulator";
+import { resolveHostAndAssignPorts } from "../../emulator/portUtils";
 
 /**
  * A thing that acts like an emulator by just occupying a port.
  */
-export class FakeEmulator implements EmulatorInstance {
-  private exp: express.Express;
-  private destroyServer?: () => Promise<void>;
-
-  constructor(public name: Emulators, public host: string, public port: number) {
-    this.exp = express();
-  }
-
-  start(): Promise<void> {
-    const server = this.exp.listen(this.port);
-    this.destroyServer = createDestroyer(server);
-    return Promise.resolve();
-  }
-  connect(): Promise<void> {
-    return Promise.resolve();
-  }
-  stop(): Promise<void> {
-    return this.destroyServer ? this.destroyServer() : Promise.resolve();
-  }
-  getInfo(): EmulatorInfo {
-    return {
-      name: this.getName(),
-      host: this.host,
-      port: this.port,
-    };
+export class FakeEmulator extends ExpressBasedEmulator {
+  constructor(public name: Emulators, listen: ListenSpec[]) {
+    super({ listen, noBodyParser: true, noCors: true });
   }
   getName(): Emulators {
     return this.name;
+  }
+
+  static async create(name: Emulators, host = "127.0.0.1"): Promise<FakeEmulator> {
+    const listen = await resolveHostAndAssignPorts({
+      [name]: {
+        host,
+        port: 4000,
+      },
+    });
+    return new FakeEmulator(name, listen[name]);
   }
 }
