@@ -41,6 +41,14 @@ export interface Context {
 
   // Filled in the "prepare" and "deploy" phase.
   sources?: Record<string, Source>; // codebase -> source
+
+  // Caching fields for backend.existingBackend()
+  existingBackend?: backend.Backend;
+  loadedExistingBackend?: boolean;
+  unreachableRegions?: {
+    gcfV1: string[];
+    gcfV2: string[];
+  };
 }
 
 export interface FirebaseConfig {

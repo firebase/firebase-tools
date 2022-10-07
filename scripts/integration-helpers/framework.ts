@@ -23,6 +23,7 @@ const STORAGE_BUCKET_FUNCTION_V2_FINALIZED_LOG =
   "========== STORAGE BUCKET V2 FUNCTION FINALIZED ==========";
 const STORAGE_BUCKET_FUNCTION_V2_METADATA_LOG =
   "========== STORAGE BUCKET V2 FUNCTION METADATA ==========";
+const RTDB_V2_FUNCTION_LOG = "========== RTDB V2 FUNCTION ==========";
 /* Functions V1 */
 const RTDB_FUNCTION_LOG = "========== RTDB FUNCTION ==========";
 const FIRESTORE_FUNCTION_LOG = "========== FIRESTORE FUNCTION ==========";
@@ -141,6 +142,7 @@ export class TriggerEndToEndTest extends EmulatorEndToEndTest {
   storageBucketV2MetadataTriggerCount = 0;
   authBlockingCreateV2TriggerCount = 0;
   authBlockingSignInV2TriggerCount = 0;
+  rtdbV2TriggerCount = 0;
 
   rtdbFromFirestore = false;
   firestoreFromRtdb = false;
@@ -176,6 +178,7 @@ export class TriggerEndToEndTest extends EmulatorEndToEndTest {
     this.storageBucketV2MetadataTriggerCount = 0;
     this.authBlockingCreateV2TriggerCount = 0;
     this.authBlockingSignInV2TriggerCount = 0;
+    this.rtdbV2TriggerCount = 0;
   }
 
   /*
@@ -267,6 +270,9 @@ export class TriggerEndToEndTest extends EmulatorEndToEndTest {
       }
       if (data.includes(AUTH_BLOCKING_SIGN_IN_V2_LOG)) {
         this.authBlockingSignInV2TriggerCount++;
+      }
+      if (data.includes(RTDB_V2_FUNCTION_LOG)) {
+        this.rtdbV2TriggerCount++;
       }
     });
 

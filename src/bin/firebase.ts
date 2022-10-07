@@ -96,7 +96,10 @@ if (utils.envOverrides.length) {
 logger.debug("-".repeat(70));
 logger.debug();
 
+import { enableExperimentsFromCliEnvVariable } from "../experiments";
 import { fetchMOTD } from "../fetchMOTD";
+
+enableExperimentsFromCliEnvVariable();
 fetchMOTD();
 
 process.on("exit", (code) => {
@@ -127,18 +130,29 @@ process.on("exit", (code) => {
   }
 
   // Notify about updates right before process exit.
-  const updateMessage =
-    `Update available ${clc.gray("{currentVersion}")} → ${clc.green("{latestVersion}")}\n` +
-    `To update to the latest version using npm, run\n${clc.cyan(
-      "npm install -g firebase-tools"
-    )}\n` +
-    `For other CLI management options, visit the ${marked(
-      "[CLI documentation](https://firebase.google.com/docs/cli#update-cli)"
-    )}`;
-  // `defer: true` would interfere with commands that perform tasks (emulators etc.)
-  // before exit since it installs a SIGINT handler that immediately exits. See:
-  // https://github.com/firebase/firebase-tools/issues/4981
-  updateNotifier.notify({ defer: false, isGlobal: true, message: updateMessage });
+  try {
+    const updateMessage =
+      `Update available ${clc.gray("{currentVersion}")} → ${clc.green("{latestVersion}")}\n` +
+      `To update to the latest version using npm, run\n${clc.cyan(
+        "npm install -g firebase-tools"
+      )}\n` +
+      `For other CLI management options, visit the ${marked(
+        "[CLI documentation](https://firebase.google.com/docs/cli#update-cli)"
+      )}`;
+    // `defer: true` would interfere with commands that perform tasks (emulators etc.)
+    // before exit since it installs a SIGINT handler that immediately exits. See:
+    // https://github.com/firebase/firebase-tools/issues/4981
+    updateNotifier.notify({ defer: false, isGlobal: true, message: updateMessage });
+  } catch (err) {
+    // This is not a fatal error -- let's debug log, swallow, and exit cleanly.
+    logger.debug("Error when notifying about new CLI updates:");
+    if (err instanceof Error) {
+      logger.debug(err);
+    } else {
+      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+      logger.debug(`${err}`);
+    }
+  }
 });
 
 process.on("uncaughtException", (err) => {
@@ -149,9 +163,7 @@ if (!handlePreviewToggles(args)) {
   cmd = client.cli.parse(process.argv);
 
   // determine if there are any non-option arguments. if not, display help
-  args = args.filter((arg) => {
-    return arg.indexOf("-") < 0;
-  });
+  args = args.filter((arg) => !arg.includes("-"));
   if (!args.length) {
     client.cli.help();
   }

@@ -2,7 +2,7 @@ import * as backend from "./backend";
 import * as proto from "../../gcp/proto";
 import * as api from "../../.../../api";
 import * as params from "./params";
-import { previews } from "../../previews";
+import * as experiments from "../../experiments";
 import { FirebaseError } from "../../error";
 import { assertExhaustive, mapObject, nullsafeVisitor } from "../../functional";
 import { UserEnvsOpts, writeUserEnvs } from "../../functions/env";
@@ -281,7 +281,7 @@ export async function resolveBackend(
   nonInteractive?: boolean
 ): Promise<{ backend: backend.Backend; envs: Record<string, params.ParamValue> }> {
   let paramValues: Record<string, params.ParamValue> = {};
-  if (previews.functionsparams) {
+  if (experiments.isEnabled("functionsparams")) {
     paramValues = await params.resolveParams(
       build.params,
       firebaseConfig,

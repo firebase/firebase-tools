@@ -1,4 +1,4 @@
-export const PUBSUB_PUBLISH_EVENT = "google.cloud.pubsub.topic.v1.messagePublished" as const;
+export const PUBSUB_PUBLISH_EVENT = "google.cloud.pubsub.topic.v1.messagePublished";
 
 export const STORAGE_EVENTS = [
   "google.cloud.storage.object.v1.finalized",
@@ -18,9 +18,12 @@ export const DATABASE_EVENTS = [
 
 export const REMOTE_CONFIG_EVENT = "google.firebase.remoteconfig.remoteConfig.v1.updated";
 
+export const TEST_LAB_EVENT = "google.firebase.testlab.testMatrix.v1.completed";
+
 export type Event =
   | typeof PUBSUB_PUBLISH_EVENT
   | typeof STORAGE_EVENTS[number]
   | typeof FIREBASE_ALERTS_PUBLISH_EVENT
   | typeof DATABASE_EVENTS[number]
-  | typeof REMOTE_CONFIG_EVENT;
+  | typeof REMOTE_CONFIG_EVENT
+  | typeof TEST_LAB_EVENT;

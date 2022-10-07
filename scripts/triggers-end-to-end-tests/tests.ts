@@ -148,6 +148,7 @@ describe("function triggers", () => {
 
     it("should have have triggered cloud functions", () => {
       expect(test.rtdbTriggerCount).to.equal(1);
+      expect(test.rtdbV2TriggerCount).to.eq(1);
       expect(test.firestoreTriggerCount).to.equal(1);
       /*
        * Check for the presence of all expected documents in the firestore

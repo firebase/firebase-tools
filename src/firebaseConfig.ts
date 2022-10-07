@@ -5,10 +5,7 @@
 // 'npm run generate:json-schema' to regenerate the schema files.
 //
 
-// Sourced from - https://docs.microsoft.com/en-us/javascript/api/@azure/keyvault-certificates/requireatleastone?view=azure-node-latest
-type RequireAtLeastOne<T> = {
-  [K in keyof T]-?: Required<Pick<T, K>> & Partial<Pick<T, Exclude<keyof T, K>>>;
-}[keyof T];
+import { RequireAtLeastOne } from "./metaprogramming";
 
 // should be sourced from - https://github.com/firebase/firebase-tools/blob/master/src/deploy/functions/runtimes/index.ts#L15
 type CloudFunctionRuntimes = "nodejs10" | "nodejs12" | "nodejs14" | "nodejs16";
@@ -30,24 +27,37 @@ type DatabaseMultiple = ({
 }> &
   Deployable)[];
 
-type HostingSource = { glob: string } | { source: string } | { regex: string };
+export type HostingSource = { glob: string } | { source: string } | { regex: string };
 
 type HostingRedirects = HostingSource & {
   destination: string;
   type?: number;
 };
 
+export type DestinationRewrite = { destination: string };
+export type LegacyFunctionsRewrite = { function: string; region?: string };
+export type FunctionsRewrite = {
+  function: {
+    functionId: string;
+    region?: string;
+    pinTag?: boolean;
+  };
+};
+export type RunRewrite = {
+  run: {
+    serviceId: string;
+    region?: string;
+    pinTag?: boolean;
+  };
+};
+export type DynamicLinksRewrite = { dynamicLinks: boolean };
 export type HostingRewrites = HostingSource &
   (
-    | { destination: string }
-    | { function: string; region?: string }
-    | {
-        run: {
-          serviceId: string;
-          region?: string;
-        };
-      }
-    | { dynamicLinks: boolean }
+    | DestinationRewrite
+    | LegacyFunctionsRewrite
+    | FunctionsRewrite
+    | RunRewrite
+    | DynamicLinksRewrite
   );
 
 export type HostingHeaders = HostingSource & {
@@ -61,7 +71,7 @@ type HostingBase = {
   public?: string;
   source?: string;
   ignore?: string[];
-  appAssociation?: string;
+  appAssociation?: "AUTO" | "NONE";
   cleanUrls?: boolean;
   trailingSlash?: boolean;
   redirects?: HostingRedirects[];
@@ -72,17 +82,31 @@ type HostingBase = {
   };
 };
 
-type HostingSingle = HostingBase & {
+export type HostingSingle = HostingBase & {
   site?: string;
   target?: string;
 } & Deployable;
 
-type HostingMultiple = (HostingBase &
+// N.B. You would expect that a HostingMultiple is a HostingSingle[], but not
+// quite. When you only have one hosting object you can omit both `site` and
+// `target` because the default site will be looked up and provided for you.
+// When you have a list of hosting targets, though, we require all configs
+// to specify which site is being targeted.
+// If you can assume we've resolved targets, you probably want to use
+// HostingResolved, which says you must have site and may have target.
+export type HostingMultiple = (HostingBase &
   RequireAtLeastOne<{
     site: string;
     target: string;
   }> &
   Deployable)[];
+
+// After validating a HostingMultiple and resolving targets, we will instead
+// have a HostingResolved.
+export type HostingResolved = HostingBase & {
+  site: string;
+  target?: string;
+} & Deployable;
 
 type StorageSingle = {
   rules: string;
@@ -132,6 +156,7 @@ export type EmulatorsConfig = {
   firestore?: {
     host?: string;
     port?: number;
+    websocketPort?: number;
   };
   functions?: {
     host?: string;
@@ -167,6 +192,7 @@ export type EmulatorsConfig = {
     host?: string;
     port?: number;
   };
+  singleProjectMode?: boolean;
 };
 
 export type ExtensionsConfig = Record<string, string>;

@@ -27,6 +27,7 @@ import {
   SESSION_COOKIE_MAX_VALID_DURATION,
 } from "../../../emulator/auth/operations";
 import { toUnixTimestamp } from "../../../emulator/auth/utils";
+import { SingleProjectMode } from "../../../emulator/auth";
 
 describeAuthEmulator("token refresh", ({ authApi, getClock }) => {
   it("should exchange refresh token for new tokens", async () => {
@@ -554,6 +555,15 @@ describeAuthEmulator("emulator utility APIs", ({ authApi }) => {
       });
   });
 
+  it("should not throw an exception on project ID mismatch if singleProjectMode is NO_WARNING", async () => {
+    await authApi()
+      .get(`/emulator/v1/projects/someproject/config`) // note the "wrong" project ID here
+      .send()
+      .then((res) => {
+        expectStatusCode(200, res);
+      });
+  });
+
   it("should update allowDuplicateEmails on PATCH /emulator/v1/projects/{PROJECT_ID}/config", async () => {
     await authApi()
       .patch(`/emulator/v1/projects/${PROJECT_ID}/config`)
@@ -575,3 +585,19 @@ describeAuthEmulator("emulator utility APIs", ({ authApi }) => {
       });
   });
 });
+
+describeAuthEmulator(
+  "emulator utility API; singleProjectMode=ERROR",
+  ({ authApi }) => {
+    it("should throw an exception on project ID mismatch if singleProjectMode is ERROR", async () => {
+      await authApi()
+        .get(`/emulator/v1/projects/someproject/config`) // note the "wrong" project ID here
+        .send()
+        .then((res) => {
+          expectStatusCode(400, res);
+          expect(res.body.error.message).to.contain("single project mode");
+        });
+    });
+  },
+  SingleProjectMode.ERROR
+);

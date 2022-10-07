@@ -26,7 +26,7 @@ export function readEmulatorConfig(config = FIREBASE_EMULATOR_CONFIG): Framework
 export function getStorageEmulatorHost(emulatorConfig: FrameworkOptions) {
   const port = emulatorConfig.emulators?.storage?.port;
   if (port) {
-    return `http://localhost:${port}`;
+    return `http://127.0.0.1:${port}`;
   }
   throw new Error("Storage emulator config not found or invalid");
 }
@@ -34,7 +34,7 @@ export function getStorageEmulatorHost(emulatorConfig: FrameworkOptions) {
 export function getAuthEmulatorHost(emulatorConfig: FrameworkOptions) {
   const port = emulatorConfig.emulators?.auth?.port;
   if (port) {
-    return `http://localhost:${port}`;
+    return `http://127.0.0.1:${port}`;
   }
   throw new Error("Auth emulator config not found or invalid");
 }
