@@ -1,0 +1,1 @@
+- Enable single project mode for the database emulator (#5068).
