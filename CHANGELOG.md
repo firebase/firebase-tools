@@ -1,2 +1,3 @@
 - Enable single project mode for the database emulator (#5068).
 - Ravamp emulator networking to assign ports early and explictly listen on IP addresses (#5083).
+- Adds additional Hosting site information to `hosting:sites:list`.
