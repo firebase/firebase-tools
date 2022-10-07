@@ -505,6 +505,8 @@ export async function startAll(
     const emulators: EmulatorInfo[] = [];
     if (experiments.isEnabled("webframeworks")) {
       for (const e of EMULATORS_SUPPORTED_BY_UI) {
+        // TODO: Double check if this actually works -- we're early in the startup
+        // process and emulators are probably not yet running / registered.
         const info = EmulatorRegistry.getInfo(e);
         if (info) emulators.push(info);
       }
@@ -712,6 +714,8 @@ export async function startAll(
       port: databaseAddr.port,
       projectId,
       auto_download: true,
+      // Only set the flag (at all) if singleProjectMode is enabled.
+      single_project_mode: singleProjectModeEnabled ? "Warning" : undefined,
     };
 
     // Try to fetch the default RTDB instance for a project, but don't hard-fail if we

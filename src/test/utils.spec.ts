@@ -450,4 +450,18 @@ describe("utils", () => {
       expect(fn).to.be.calledWith(99);
     });
   });
+
+  describe("connnectableHostname", () => {
+    it("should change wildcard IP addresses to corresponding loopbacks", () => {
+      expect(utils.connectableHostname("0.0.0.0")).to.equal("127.0.0.1");
+      expect(utils.connectableHostname("::")).to.equal("::1");
+      expect(utils.connectableHostname("[::]")).to.equal("[::1]");
+    });
+    it("should not change non-wildcard IP addresses or hostnames", () => {
+      expect(utils.connectableHostname("169.254.20.1")).to.equal("169.254.20.1");
+      expect(utils.connectableHostname("fe80::1")).to.equal("fe80::1");
+      expect(utils.connectableHostname("[fe80::2]")).to.equal("[fe80::2]");
+      expect(utils.connectableHostname("example.com")).to.equal("example.com");
+    });
+  });
 });

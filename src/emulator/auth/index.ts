@@ -84,7 +84,7 @@ export class AuthEmulator implements EmulatorInstance {
       await importFromFile(
         {
           method: "PATCH",
-          host,
+          host: utils.connectableHostname(host),
           port,
           path: `/emulator/v1/projects/${projectId}/config`,
           headers: {
@@ -110,7 +110,7 @@ export class AuthEmulator implements EmulatorInstance {
       await importFromFile(
         {
           method: "POST",
-          host,
+          host: utils.connectableHostname(host),
           port,
           path: `/identitytoolkit.googleapis.com/v1/projects/${projectId}/accounts:batchCreate`,
           headers: {

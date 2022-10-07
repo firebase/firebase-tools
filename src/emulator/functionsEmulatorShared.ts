@@ -16,6 +16,7 @@ import { replaceConsoleLinks } from "./extensions/postinstall";
 import { serviceForEndpoint } from "../deploy/functions/services";
 import { inferBlockingDetails } from "../deploy/functions/prepare";
 import * as events from "../functions/events";
+import { connectableHostname } from "../utils";
 
 /** The current v2 events that are implemented in the emulator */
 const V2_EVENTS = [
@@ -407,13 +408,20 @@ export function findModuleRoot(moduleName: string, filepath: string): string {
 }
 
 /**
- * Format a hostname for TCP dialing.
+ * Format a hostname for TCP dialing. Should only be used in Functions emulator.
+ *
+ * This is similar to EmulatorRegistry.url but with no explicit dependency on
+ * the registry and so on and thus can work in functions shell.
+ *
+ * For any other part of the CLI, please use EmulatorRegistry.url(...).host
+ * instead, which handles discovery, formatting, and fixing host in one go.
  */
 export function formatHost(info: { host: string; port: number }): string {
-  if (info.host.includes(":")) {
-    return `[${info.host}]:${info.port}`;
+  const host = connectableHostname(info.host);
+  if (host.includes(":")) {
+    return `[${host}]:${info.port}`;
   } else {
-    return `${info.host}:${info.port}`;
+    return `${host}:${info.port}`;
   }
 }
 
