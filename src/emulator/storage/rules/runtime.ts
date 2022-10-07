@@ -31,7 +31,6 @@ import {
   handleEmulatorProcessError,
 } from "../../downloadableEmulators";
 import { EmulatorRegistry } from "../../registry";
-import { Client } from "../../../apiv2";
 
 const lock = new AsyncLock();
 const synchonizationKey = "key";
@@ -442,14 +441,9 @@ async function fetchFirestoreDocument(
   projectId: string,
   request: RuntimeActionFirestoreDataRequest
 ): Promise<RuntimeActionFirestoreDataResponse> {
-  const url = EmulatorRegistry.url(Emulators.FIRESTORE);
   const pathname = `projects/${projectId}${request.context.path}`;
 
-  const client = new Client({
-    urlPrefix: url.toString(),
-    apiVersion: "v1",
-  });
-
+  const client = EmulatorRegistry.client(Emulators.FIRESTORE, { apiVersion: "v1", auth: true });
   try {
     const doc = await client.get(pathname);
     const { name, fields } = doc.body as { name: string; fields: string };

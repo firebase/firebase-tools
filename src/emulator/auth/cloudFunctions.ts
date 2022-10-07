@@ -1,9 +1,8 @@
 import * as uuid from "uuid";
 
 import { EventContext } from "firebase-functions";
-import { Client } from "../../apiv2";
 
-import { EmulatorInfo, Emulators } from "../types";
+import { Emulators } from "../types";
 import { EmulatorLogger } from "../emulatorLogger";
 import { EmulatorRegistry } from "../registry";
 import { UserInfo } from "./state";
@@ -16,22 +15,10 @@ type CreateEvent = EventContext & {
 
 export class AuthCloudFunction {
   private logger = EmulatorLogger.forEmulator(Emulators.AUTH);
-  private functionsEmulatorInfo?: EmulatorInfo;
-  private multicastOrigin = "";
-  private multicastPath = "";
   private enabled = false;
 
   constructor(private projectId: string) {
-    const functionsEmulator = EmulatorRegistry.get(Emulators.FUNCTIONS);
-
-    if (functionsEmulator) {
-      this.enabled = true;
-      this.functionsEmulatorInfo = functionsEmulator.getInfo();
-      this.multicastOrigin = `http://${EmulatorRegistry.getInfoHostString(
-        this.functionsEmulatorInfo
-      )}`;
-      this.multicastPath = `/functions/projects/${projectId}/trigger_multicast`;
-    }
+    this.enabled = EmulatorRegistry.isRunning(Emulators.FUNCTIONS);
   }
 
   public async dispatch(action: AuthCloudFunctionAction, user: UserInfo): Promise<void> {
@@ -40,11 +27,14 @@ export class AuthCloudFunction {
     const userInfoPayload = this.createUserInfoPayload(user);
     const multicastEventBody = this.createEventRequestBody(action, userInfoPayload);
 
-    const c = new Client({ urlPrefix: this.multicastOrigin, auth: false });
+    const c = EmulatorRegistry.client(Emulators.FUNCTIONS);
     let res;
     let err: Error | undefined;
     try {
-      res = await c.post(this.multicastPath, multicastEventBody);
+      res = await c.post(
+        `/functions/projects/${this.projectId}/trigger_multicast`,
+        multicastEventBody
+      );
     } catch (e: any) {
       err = e;
     }

@@ -81,9 +81,8 @@ export class EmulatorHub implements EmulatorInstance {
 
     this.hub.get(EmulatorHub.PATH_EMULATORS, (req, res) => {
       const body: GetEmulatorsResponse = {};
-      for (const emulator of EmulatorRegistry.listRunning()) {
-        const info = EmulatorRegistry.getInfo(emulator);
-        body[emulator] = info!;
+      for (const info of EmulatorRegistry.listRunningWithInfo()) {
+        body[info.name] = info;
       }
       res.json(body);
     });

@@ -505,6 +505,8 @@ export async function startAll(
     const emulators: EmulatorInfo[] = [];
     if (experiments.isEnabled("webframeworks")) {
       for (const e of EMULATORS_SUPPORTED_BY_UI) {
+        // TODO: Double check if this actually works -- we're early in the startup
+        // process and emulators are probably not yet running / registered.
         const info = EmulatorRegistry.getInfo(e);
         if (info) emulators.push(info);
       }
