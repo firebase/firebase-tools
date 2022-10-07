@@ -712,6 +712,8 @@ export async function startAll(
       port: databaseAddr.port,
       projectId,
       auto_download: true,
+      // Only set the flag (at all) if singleProjectMode is enabled.
+      single_project_mode: singleProjectModeEnabled ? "Warning" : undefined,
     };
 
     // Try to fetch the default RTDB instance for a project, but don't hard-fail if we

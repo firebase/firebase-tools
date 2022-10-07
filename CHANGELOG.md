@@ -1,1 +1,1 @@
-- Enable single project mode for the auth emulator (#5068).
+- Enable single project mode for the database emulator (#5068).

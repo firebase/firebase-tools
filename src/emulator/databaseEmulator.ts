@@ -21,6 +21,7 @@ export interface DatabaseEmulatorArgs {
   functions_emulator_port?: number;
   functions_emulator_host?: string;
   auto_download?: boolean;
+  single_project_mode?: string;
 }
 
 export class DatabaseEmulator implements EmulatorInstance {
