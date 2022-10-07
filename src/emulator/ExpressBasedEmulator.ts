@@ -14,6 +14,12 @@ export interface ExpressBasedEmulatorOptions {
   noBodyParser?: boolean;
 }
 
+/**
+ * An EmulatorInstance that starts express servers with multi-listen support.
+ *
+ * This class correctly destroys the server(s) when `stop()`-ed. When overriding
+ * life-cycle methods, make sure to call the super methods for those behaviors.
+ */
 export abstract class ExpressBasedEmulator implements EmulatorInstance {
   static PATH_EXPORT = "/_admin/export";
   static PATH_DISABLE_FUNCTIONS = "/functions/disableBackgroundTriggers";

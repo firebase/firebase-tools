@@ -5,7 +5,7 @@ import { createServer } from "node:net";
 
 import { FirebaseError } from "../error";
 import * as utils from "../utils";
-import { Resolver } from "./dns";
+import { IPV4_UNSPECIFIED, IPV6_UNSPECIFIED, Resolver } from "./dns";
 import { Emulators, ListenSpec } from "./types";
 import { Constants } from "./constants";
 import { EmulatorLogger } from "./emulatorLogger";
@@ -225,6 +225,19 @@ export async function resolveHostAndAssignPorts(
       const emuLogger = EmulatorLogger.forEmulator(
         name === "firestore.websocket" ? Emulators.FIRESTORE : name
       );
+      if (addrs.some((addr) => addr.address === IPV6_UNSPECIFIED.address)) {
+        if (!addrs.some((addr) => addr.address === IPV4_UNSPECIFIED.address)) {
+          // In normal Node.js code (including CLI versions so far), listening
+          // on IPv6 :: will also listen on IPv4 0.0.0.0 (a.k.a. "dual stack").
+          // Maintain that behavior if both are listenable. Warn otherwise.
+          emuLogger.logLabeled(
+            "DEBUG",
+            name,
+            `testing listening on IPv4 wildcard in addition to IPv6. To listen on IPv6 only, use "::0" instead.`
+          );
+          addrs.push(IPV4_UNSPECIFIED);
+        }
+      }
       for (let p = port; p <= MAX_PORT; p++) {
         if (takenPorts.has(p)) {
           continue;
