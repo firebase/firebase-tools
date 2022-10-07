@@ -1134,11 +1134,6 @@ export class FunctionsEmulator implements EmulatorInstance {
     });
 
     setEnvVarsForEmulators(envs);
-    const eventarcEmulator = this.getEmulatorInfo(Emulators.EVENTARC);
-    if (eventarcEmulator) {
-      // TODO: Why do we set the protocol here, but no protocol during emulators:exec?
-      envs[Constants.CLOUD_EVENTARC_EMULATOR_HOST] = `http://${formatHost(eventarcEmulator)}`;
-    }
 
     if (this.args.debugPort) {
       // Start runtime in debug mode to allow triggers to share single runtime process.

@@ -21,6 +21,7 @@ export function setEnvVarsForEmulators(env: Record<string, string | undefined>):
   if (EmulatorRegistry.isRunning(Emulators.STORAGE)) {
     const { host } = EmulatorRegistry.url(Emulators.STORAGE);
     env[Constants.FIREBASE_STORAGE_EMULATOR_HOST] = host;
+    // The protocol is required for the Google Cloud Storage Node.js Client SDK.
     env[Constants.CLOUD_STORAGE_EMULATOR_HOST] = `http://${host}`;
   }
 
@@ -38,6 +39,10 @@ export function setEnvVarsForEmulators(env: Record<string, string | undefined>):
   }
 
   if (EmulatorRegistry.isRunning(Emulators.EVENTARC)) {
-    env[Constants.CLOUD_EVENTARC_EMULATOR_HOST] = EmulatorRegistry.url(Emulators.EVENTARC).host;
+    // The protocol is required for the Firebase Admin Node.js SDK for Eventarc.
+    // https://github.com/firebase/firebase-admin-node/blob/ee60cd1acb8722ba4081b9837d2f90101e2b3227/src/eventarc/eventarc-client-internal.ts#L105
+    env[Constants.CLOUD_EVENTARC_EMULATOR_HOST] = `http://${
+      EmulatorRegistry.url(Emulators.EVENTARC).host
+    }`;
   }
 }
