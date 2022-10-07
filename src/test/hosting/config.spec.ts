@@ -5,6 +5,8 @@ import { HostingConfig, HostingMultiple, HostingSingle } from "../../firebaseCon
 import * as config from "../../hosting/config";
 import { HostingOptions } from "../../hosting/options";
 import { RequireAtLeastOne } from "../../metaprogramming";
+import { cloneDeep } from "../../utils";
+import { setEnabled } from "../../experiments";
 
 function options(
   hostingConfig: HostingConfig,
@@ -239,6 +241,84 @@ describe("config", () => {
     }
   });
 
+  it("normalize", () => {
+    it("upgrades function configs", () => {
+      const configs: HostingMultiple = [
+        {
+          site: "site",
+          public: "public",
+          rewrites: [
+            {
+              glob: "**",
+              function: "functionId",
+            },
+            {
+              glob: "**",
+              function: "function2",
+              region: "region",
+            },
+          ],
+        },
+      ];
+      config.normalize(configs);
+      expect(configs).to.deep.equal([
+        {
+          site: "site",
+          public: "public",
+          rewrites: [
+            {
+              glob: "**",
+              function: {
+                functionid: "functionId",
+              },
+            },
+            {
+              glob: "**",
+              function: {
+                functionId: "function2",
+                region: "region",
+              },
+            },
+          ],
+        },
+      ]);
+    });
+
+    it("leaves other rewrites alone", () => {
+      const configs: HostingMultiple = [
+        {
+          site: "site",
+          public: "public",
+          rewrites: [
+            {
+              glob: "**",
+              destination: "index.html",
+            },
+            {
+              glob: "**",
+              function: {
+                functionId: "functionId",
+              },
+            },
+            {
+              glob: "**",
+              run: {
+                serviceId: "service",
+              },
+            },
+            {
+              glob: "**",
+              dynamicLinks: true,
+            },
+          ],
+        },
+      ];
+      const expected = cloneDeep(configs);
+      config.normalize(configs);
+      expect(configs).to.deep.equal(expected);
+    });
+  });
+
   const PUBLIC_DIR_ERROR_PREFIX = /Must supply a "public" directory/;
   describe("validate", () => {
     const tests: Array<{
@@ -247,7 +327,7 @@ describe("config", () => {
       wantErr?: RegExp;
     }> = [
       {
-        desc: "should error out if there is no puyblic directory but a 'destination' rewrite",
+        desc: "should error out if there is no public directory but a 'destination' rewrite",
         site: {
           rewrites: [
             { source: "/foo", destination: "/bar.html" },
@@ -257,7 +337,7 @@ describe("config", () => {
         wantErr: PUBLIC_DIR_ERROR_PREFIX,
       },
       {
-        desc: "should error out if htere is no public directory and an i18n with root",
+        desc: "should error out if there is no public directory and an i18n with root",
         site: {
           i18n: { root: "/foo" },
           rewrites: [{ source: "/foo", function: "pass" }],
@@ -323,6 +403,9 @@ describe("config", () => {
 
     for (const t of tests) {
       it(t.desc, () => {
+        // Setting experiment to "false" to handle mismatched error message.
+        setEnabled("webframeworks", false);
+
         const configs: HostingMultiple = [{ site: "site", ...t.site }];
         if (t.wantErr) {
           expect(() => config.validate(configs, options(t.site))).to.throw(

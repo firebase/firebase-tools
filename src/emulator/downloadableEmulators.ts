@@ -27,14 +27,14 @@ const CACHE_DIR =
 
 export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDetails } = {
   database: {
-    downloadPath: path.join(CACHE_DIR, "firebase-database-emulator-v4.9.0.jar"),
-    version: "4.9.0",
+    downloadPath: path.join(CACHE_DIR, "firebase-database-emulator-v4.10.0.jar"),
+    version: "4.10.0",
     opts: {
       cacheDir: CACHE_DIR,
       remoteUrl:
-        "https://storage.googleapis.com/firebase-preview-drop/emulator/firebase-database-emulator-v4.9.0.jar",
-      expectedSize: 34204485,
-      expectedChecksum: "1c3f5974f0ee5559ebf27b56f2e62108",
+        "https://storage.googleapis.com/firebase-preview-drop/emulator/firebase-database-emulator-v4.10.0.jar",
+      expectedSize: 34230230,
+      expectedChecksum: "e99b23f0e723813de4f4ea0e879b46b0",
       namePrefix: "firebase-database-emulator",
     },
   },
@@ -80,15 +80,15 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
         },
       }
     : {
-        version: "1.9.0",
-        downloadPath: path.join(CACHE_DIR, "ui-v1.9.0.zip"),
-        unzipDir: path.join(CACHE_DIR, "ui-v1.9.0"),
-        binaryPath: path.join(CACHE_DIR, "ui-v1.9.0", "server", "server.js"),
+        version: "1.11.0",
+        downloadPath: path.join(CACHE_DIR, "ui-v1.11.0.zip"),
+        unzipDir: path.join(CACHE_DIR, "ui-v1.11.0"),
+        binaryPath: path.join(CACHE_DIR, "ui-v1.11.0", "server", "server.js"),
         opts: {
           cacheDir: CACHE_DIR,
-          remoteUrl: "https://storage.googleapis.com/firebase-preview-drop/emulator/ui-v1.9.0.zip",
-          expectedSize: 3062710,
-          expectedChecksum: "984597f41d497bd318dac131615eb9d5",
+          remoteUrl: "https://storage.googleapis.com/firebase-preview-drop/emulator/ui-v1.11.0.zip",
+          expectedSize: 3061915,
+          expectedChecksum: "94679756dc270754e9a4dc9d1c6fc4e1",
           namePrefix: "ui",
         },
       },
@@ -144,7 +144,13 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
   database: {
     binary: "java",
     args: ["-Duser.language=en", "-jar", getExecPath(Emulators.DATABASE)],
-    optionalArgs: ["port", "host", "functions_emulator_port", "functions_emulator_host"],
+    optionalArgs: [
+      "port",
+      "host",
+      "functions_emulator_port",
+      "functions_emulator_host",
+      "single_project_mode",
+    ],
     joinArgs: false,
   },
   firestore: {
@@ -163,6 +169,10 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
       "websocket_port",
       "functions_emulator",
       "seed_from_export",
+      "project_id",
+      "single_project_mode",
+      // TODO(christhompson) Re-enable after firestore accepts this flag.
+      // "single_project_mode_error",
     ],
     joinArgs: false,
   },

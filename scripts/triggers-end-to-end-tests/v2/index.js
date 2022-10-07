@@ -22,8 +22,10 @@ const AUTH_BLOCKING_CREATE_V2_LOG =
   "========== AUTH BLOCKING CREATE V2 FUNCTION METADATA ==========";
 const AUTH_BLOCKING_SIGN_IN_V2_LOG =
   "========== AUTH BLOCKING SIGN IN V2 FUNCTION METADATA ==========";
+const RTDB_LOG = "========== RTDB V2 FUNCTION ==========";
 
 const PUBSUB_TOPIC = "test-topic";
+const START_DOCUMENT_NAME = "test/start";
 
 admin.initializeApp();
 
@@ -124,4 +126,9 @@ exports.onreqv2timeout = functionsV2.https.onRequest({ timeoutSeconds: 1 }, asyn
       resolve();
     }, 3_000);
   });
+});
+
+exports.rtdbv2reaction = functionsV2.database.onValueWritten(START_DOCUMENT_NAME, (event) => {
+  console.log(RTDB_LOG);
+  return;
 });

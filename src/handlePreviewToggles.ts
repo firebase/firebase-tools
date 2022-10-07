@@ -18,7 +18,7 @@ export function handlePreviewToggles(args: string[]): boolean {
   if (args[0] === "--open-sesame") {
     console.log(
       `${bold("firebase --open-sesame")} is deprecated and wil be removed in a future ` +
-        `version. Use the new "expirments" family of commands, including ${bold(
+        `version. Use the new "experiments" family of commands, including ${bold(
           "firebase experiments:enable"
         )}`
     );
@@ -34,7 +34,7 @@ export function handlePreviewToggles(args: string[]): boolean {
   } else if (args[0] === "--close-sesame") {
     console.log(
       `${bold("firebase --open-sesame")} is deprecated and wil be removed in a future ` +
-        `version. Use the new "expirments" family of commands, including ${bold(
+        `version. Use the new "experiments" family of commands, including ${bold(
           "firebase experiments:disable"
         )}`
     );

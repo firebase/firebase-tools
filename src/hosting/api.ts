@@ -339,7 +339,7 @@ export async function updateChannelTtl(
   const res = await apiClient.patch<{ ttl: string }, Channel>(
     `/projects/${project}/sites/${site}/channels/${channelId}`,
     { ttl: `${ttlMillis / 1000}s` },
-    { queryParams: { updateMask: ["ttl"].join(",") } }
+    { queryParams: { updateMask: "ttl" } }
   );
   return res.body;
 }
@@ -385,7 +385,13 @@ export async function updateVersion(
     version,
     {
       queryParams: {
-        updateMask: proto.fieldMasks(version).join(","),
+        // N.B. It's not clear why we need "config". If the Hosting server acted
+        // like a normal OP service, we could update config.foo and config.bar
+        // in a PATCH command even if config was the empty object already. But
+        // not setting config in createVersion and then setting config subfields
+        // in updateVersion is failing with
+        // "HTTP Error: 40 Unknown path in `updateMask`: `config.rewrites`"
+        updateMask: proto.fieldMasks(version, "labels", "config").join(","),
       },
     }
   );

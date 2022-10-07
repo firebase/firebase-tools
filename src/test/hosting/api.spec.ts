@@ -435,7 +435,8 @@ describe("hosting", () => {
     it("should make the API request to create a release", async () => {
       const CHANNEL_ID = "my-channel";
       const RELEASE = { name: "my-new-release" };
-      const VERSION_NAME = "versions/me";
+      const VERSION = "version";
+      const VERSION_NAME = `sites/${SITE}/versions/${VERSION}`;
       nock(hostingApiOrigin)
         .post(`/v1beta1/projects/-/sites/${SITE}/channels/${CHANNEL_ID}/releases`)
         .query({ versionName: VERSION_NAME })
@@ -449,7 +450,8 @@ describe("hosting", () => {
 
     it("should throw an error if the server returns an error", async () => {
       const CHANNEL_ID = "my-channel";
-      const VERSION_NAME = "versions/me";
+      const VERSION = "VERSION";
+      const VERSION_NAME = `sites/${SITE}/versions/${VERSION}`;
       nock(hostingApiOrigin)
         .post(`/v1beta1/projects/-/sites/${SITE}/channels/${CHANNEL_ID}/releases`)
         .query({ versionName: VERSION_NAME })

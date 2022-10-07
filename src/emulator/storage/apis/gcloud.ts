@@ -235,13 +235,15 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     const { metadata } = getObjectResponse;
     // We do an empty update to step metageneration forward;
     metadata.update({});
+    const selfLink = EmulatorRegistry.url(Emulators.STORAGE);
+    selfLink.pathname = `/storage/v1/b/${metadata.bucket}/o/${encodeURIComponent(
+      metadata.name
+    )}/acl/allUsers`;
     return res.json({
       kind: "storage#objectAccessControl",
       object: metadata.name,
       id: `${req.params.bucketId}/${metadata.name}/${metadata.generation}/allUsers`,
-      selfLink: `http://${EmulatorRegistry.getInfo(Emulators.STORAGE)?.host}:${
-        EmulatorRegistry.getInfo(Emulators.STORAGE)?.port
-      }/storage/v1/b/${metadata.bucket}/o/${encodeURIComponent(metadata.name)}/acl/allUsers`,
+      selfLink: selfLink.toString(),
       bucket: metadata.bucket,
       entity: req.body.entity,
       role: req.body.role,
@@ -255,10 +257,6 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
 
     // Resumable upload protocol.
     if (uploadType === "resumable") {
-      const emulatorInfo = EmulatorRegistry.getInfo(Emulators.STORAGE);
-      if (emulatorInfo === undefined) {
-        return res.sendStatus(500);
-      }
       const name = getIncomingFileNameFromRequest(req.query, req.body);
       if (name === undefined) {
         res.sendStatus(400);

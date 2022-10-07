@@ -1,0 +1,4 @@
+- Enable single project mode for the database emulator (#5068).
+- Ravamp emulator networking to assign ports early and explictly listen on IP addresses (#5083).
+- Emulator UI and hub now listen on both IPv4 and IPv6 address by default (if possible) (#5088).
+- Fix Firestore emulator excessive logs about discovery endpoint not found (#5088).

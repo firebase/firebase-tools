@@ -15,6 +15,15 @@ import { ExtensionSpec, ExtensionVersion } from "../extensions/types";
 import { replaceConsoleLinks } from "./extensions/postinstall";
 import { serviceForEndpoint } from "../deploy/functions/services";
 import { inferBlockingDetails } from "../deploy/functions/prepare";
+import * as events from "../functions/events";
+import { connectableHostname } from "../utils";
+
+/** The current v2 events that are implemented in the emulator */
+const V2_EVENTS = [
+  events.v2.PUBSUB_PUBLISH_EVENT,
+  ...events.v2.STORAGE_EVENTS,
+  ...events.v2.DATABASE_EVENTS,
+];
 
 export type SignatureType = "http" | "event" | "cloudevent";
 
@@ -50,10 +59,11 @@ export interface EventSchedule {
 }
 
 export interface EventTrigger {
-  resource: string;
+  resource?: string;
   eventType: string;
   channel?: string;
   eventFilters?: Record<string, string>;
+  eventFilterPathPatterns?: Record<string, string>;
   // Deprecated
   service?: string;
 }
@@ -118,6 +128,13 @@ export class EmulatedTrigger {
 }
 
 /**
+ * Checks if the v2 event service has been implemented in the emulator
+ */
+export function eventServiceImplemented(eventType: string): boolean {
+  return V2_EVENTS.includes(eventType);
+}
+
+/**
  * Validates that triggers are correctly formed and fills in some defaults.
  */
 export function prepareEndpoints(endpoints: backend.Endpoint[]) {
@@ -172,19 +189,21 @@ export function emulatedFunctionsFromEndpoints(
           resource: eventTrigger.eventFilters!.resource,
         };
       } else {
-        // Only pubsub and storage events are supported for gcfv2.
-        // Custom events require a channel.
-        const { resource, topic, bucket } = endpoint.eventTrigger.eventFilters as any;
-        const eventResource = resource || topic || bucket;
-        if (!eventResource && !eventTrigger.channel) {
-          // Unsupported event type for GCFv2
+        // TODO(colerogers): v2 events implemented are pubsub, storage, rtdb, and custom events
+        if (!eventServiceImplemented(eventTrigger.eventType) && !eventTrigger.channel) {
           continue;
         }
+
+        // We use resource for pubsub & storage
+        const { resource, topic, bucket } = endpoint.eventTrigger.eventFilters as any;
+        const eventResource = resource || topic || bucket;
+
         def.eventTrigger = {
           eventType: eventTrigger.eventType,
           resource: eventResource,
           channel: eventTrigger.channel,
           eventFilters: eventTrigger.eventFilters,
+          eventFilterPathPatterns: eventTrigger.eventFilterPathPatterns,
         };
       }
     } else if (backend.isScheduleTriggered(endpoint)) {
@@ -389,13 +408,20 @@ export function findModuleRoot(moduleName: string, filepath: string): string {
 }
 
 /**
- * Format a hostname for TCP dialing.
+ * Format a hostname for TCP dialing. Should only be used in Functions emulator.
+ *
+ * This is similar to EmulatorRegistry.url but with no explicit dependency on
+ * the registry and so on and thus can work in functions shell.
+ *
+ * For any other part of the CLI, please use EmulatorRegistry.url(...).host
+ * instead, which handles discovery, formatting, and fixing host in one go.
  */
 export function formatHost(info: { host: string; port: number }): string {
-  if (info.host.includes(":")) {
-    return `[${info.host}]:${info.port}`;
+  const host = connectableHostname(info.host);
+  if (host.includes(":")) {
+    return `[${host}]:${info.port}`;
   } else {
-    return `${info.host}:${info.port}`;
+    return `${host}:${info.port}`;
   }
 }
 
