@@ -13,9 +13,10 @@ describe("EmulatorController", () => {
 
     expect(EmulatorRegistry.isRunning(name)).to.be.false;
 
-    await EmulatorRegistry.start(new FakeEmulator(name, "localhost", 7777));
+    const fake = await FakeEmulator.create(name);
+    await EmulatorRegistry.start(fake);
 
     expect(EmulatorRegistry.isRunning(name)).to.be.true;
-    expect(EmulatorRegistry.getInfo(name)!.port).to.eql(7777);
+    expect(EmulatorRegistry.getInfo(name)!.port).to.eql(fake.getInfo().port);
   });
 });
