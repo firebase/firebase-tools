@@ -411,7 +411,12 @@ You can link a Web app to a Hosting site here https://console.firebase.google.co
         },
       ]);
 
-      if (!targetNames.includes("functions")) targetNames.unshift("functions");
+      if (!targetNames.includes("functions")) {
+        targetNames.unshift("functions");
+        if (options.only) {
+          options.only = `${options.only},functions:firebase-frameworks-${site}`;
+        }
+      }
 
       // if exists, delete everything but the node_modules directory and package-lock.json
       // this should speed up repeated NPM installs
