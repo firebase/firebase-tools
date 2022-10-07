@@ -12,15 +12,14 @@ import { requireConfig } from "../requireConfig";
 import { Emulators, ALL_SERVICE_EMULATORS } from "./types";
 import { FirebaseError } from "../error";
 import { EmulatorRegistry } from "./registry";
-import { FirestoreEmulator } from "./firestoreEmulator";
 import { getProjectId } from "../projectUtils";
 import { promptOnce } from "../prompt";
-import { onExit } from "./controller";
 import * as fsutils from "../fsutils";
 import Signals = NodeJS.Signals;
 import SignalsListener = NodeJS.SignalsListener;
 import Table = require("cli-table");
 import { emulatorSession } from "../track";
+import { setEnvVarsForEmulators } from "./env";
 
 export const FLAG_ONLY = "--only <emulators>";
 export const DESC_ONLY =
@@ -256,7 +255,7 @@ function processKillSignal(
           `Please wait for a clean shutdown or send the ${signalDisplay} signal again to stop right now.`
         );
         // in case of a double 'Ctrl-C' we do not want to cleanly exit with onExit/cleanShutdown
-        await onExit(options);
+        await controller.onExit(options);
         await controller.cleanShutdown();
       } else {
         logger.debug(`Skipping clean onExit() and cleanShutdown()`);
@@ -376,45 +375,6 @@ async function runScript(script: string, extraEnv: Record<string, string>): Prom
 }
 
 /**
- * Adds or replaces emulator-related env vars (for Admin SDKs, etc.).
- * @param env a `process.env`-like object or Record to be modified
- */
-export function setEnvVarsForEmulators(env: Record<string, string | undefined>): void {
-  if (EmulatorRegistry.isRunning(Emulators.DATABASE)) {
-    env[Constants.FIREBASE_DATABASE_EMULATOR_HOST] = EmulatorRegistry.url(Emulators.DATABASE).host;
-  }
-
-  if (EmulatorRegistry.isRunning(Emulators.FIRESTORE)) {
-    const { host } = EmulatorRegistry.url(Emulators.FIRESTORE);
-    env[Constants.FIRESTORE_EMULATOR_HOST] = host;
-    env[FirestoreEmulator.FIRESTORE_EMULATOR_ENV_ALT] = host;
-  }
-
-  if (EmulatorRegistry.isRunning(Emulators.STORAGE)) {
-    const { host } = EmulatorRegistry.url(Emulators.STORAGE);
-    env[Constants.FIREBASE_STORAGE_EMULATOR_HOST] = host;
-    env[Constants.CLOUD_STORAGE_EMULATOR_HOST] = `http://${host}`;
-  }
-
-  if (EmulatorRegistry.isRunning(Emulators.AUTH)) {
-    env[Constants.FIREBASE_AUTH_EMULATOR_HOST] = EmulatorRegistry.url(Emulators.AUTH).host;
-  }
-
-  if (EmulatorRegistry.isRunning(Emulators.HUB)) {
-    env[Constants.FIREBASE_EMULATOR_HUB] = EmulatorRegistry.url(Emulators.HUB).host;
-  }
-
-  const pubsubEmulator = EmulatorRegistry.isRunning(Emulators.PUBSUB);
-  if (pubsubEmulator) {
-    env[Constants.PUBSUB_EMULATOR_HOST] = EmulatorRegistry.url(Emulators.PUBSUB).host;
-  }
-
-  if (EmulatorRegistry.isRunning(Emulators.EVENTARC)) {
-    env[Constants.CLOUD_EVENTARC_EMULATOR_HOST] = EmulatorRegistry.url(Emulators.EVENTARC).host;
-  }
-}
-
-/**
  * For overview tables ONLY. Use EmulatorRegistry methods instead for connecting.
  *
  * This method returns a string suitable for printing into CLI outputs, resembling
@@ -463,7 +423,7 @@ export async function emulatorExec(script: string, options: any): Promise<void> 
     const showUI = !!options.ui;
     ({ deprecationNotices } = await controller.startAll(options, showUI));
     exitCode = await runScript(script, extraEnv);
-    await onExit(options);
+    await controller.onExit(options);
   } finally {
     await controller.cleanShutdown();
   }
