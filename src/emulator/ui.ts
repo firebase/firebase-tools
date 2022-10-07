@@ -1,13 +1,13 @@
-import { EmulatorInstance, EmulatorInfo, Emulators } from "./types";
+import { EmulatorInstance, EmulatorInfo, Emulators, ListenSpec } from "./types";
 import * as downloadableEmulators from "./downloadableEmulators";
 import { EmulatorRegistry } from "./registry";
 import { FirebaseError } from "../error";
 import { Constants } from "./constants";
 import { emulatorSession } from "../track";
+import { ExpressBasedEmulator } from "./ExpressBasedEmulator";
 
 export interface EmulatorUIOptions {
-  port: number;
-  host: string;
+  listen: ListenSpec[];
   projectId: string;
   auto_download?: boolean;
 }
@@ -23,10 +23,9 @@ export class EmulatorUI implements EmulatorInstance {
         )}!`
       );
     }
-    const { auto_download: autoDownload, host, port, projectId } = this.args;
+    const { auto_download: autoDownload, projectId } = this.args;
     const env: Partial<NodeJS.ProcessEnv> = {
-      HOST: host.toString(),
-      PORT: port.toString(),
+      LISTEN: JSON.stringify(ExpressBasedEmulator.listenOptionsFromSpecs(this.args.listen)),
       GCLOUD_PROJECT: projectId,
       [Constants.FIREBASE_EMULATOR_HUB]: EmulatorRegistry.url(Emulators.HUB).host,
     };
@@ -50,8 +49,8 @@ export class EmulatorUI implements EmulatorInstance {
   getInfo(): EmulatorInfo {
     return {
       name: this.getName(),
-      host: this.args.host,
-      port: this.args.port,
+      host: this.args.listen[0].address,
+      port: this.args.listen[0].port,
       pid: downloadableEmulators.getPID(Emulators.UI),
     };
   }

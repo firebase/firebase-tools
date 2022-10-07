@@ -174,11 +174,11 @@ const EMULATOR_CAN_LISTEN_ON_PRIMARY_ONLY: Record<PortName, boolean> = {
   // Listening on multiple addresses to maximize the chance of discovery.
   hub: false,
 
-  // TODO: Modify the following emulators to listen on multiple addresses.
+  // Separate Node.js process that supports multi-listen. For consistency, we
+  // resolve the addresses in the CLI and pass the result to the UI.
+  ui: false,
 
-  // Separate Node.js process that requires a separate update.
-  // For consistency, we can resolve in the CLI and pass in the results.
-  ui: true,
+  // TODO: Modify the following emulators to listen on multiple addresses.
 
   // Express-based servers, can be reused for multiple listen sockets.
   auth: true,
