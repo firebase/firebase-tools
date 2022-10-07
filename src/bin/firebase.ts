@@ -163,9 +163,7 @@ if (!handlePreviewToggles(args)) {
   cmd = client.cli.parse(process.argv);
 
   // determine if there are any non-option arguments. if not, display help
-  args = args.filter((arg) => {
-    return !arg.includes("-");
-  });
+  args = args.filter((arg) => !arg.includes("-"));
   if (!args.length) {
     client.cli.help();
   }
