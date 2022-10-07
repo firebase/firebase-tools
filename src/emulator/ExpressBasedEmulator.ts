@@ -62,6 +62,22 @@ export abstract class ExpressBasedEmulator implements EmulatorInstance {
     const promises = [];
     const specs = this.options.listen;
 
+    for (const opt of ExpressBasedEmulator.listenOptionsFromSpecs(specs)) {
+      promises.push(
+        new Promise((resolve, reject) => {
+          const server = createServer(app).listen(opt);
+          server.once("listening", resolve);
+          server.once("error", reject);
+          this.destroyers.add(utils.createDestroyer(server));
+        })
+      );
+    }
+  }
+
+  /**
+   * Translate addresses and ports to low-level net/http server options.
+   */
+  static listenOptionsFromSpecs(specs: ListenSpec[]): ListenOptions[] {
     const listenOptions: ListenOptions[] = [];
 
     const dualStackPorts = new Set();
@@ -89,17 +105,7 @@ export abstract class ExpressBasedEmulator implements EmulatorInstance {
         });
       }
     }
-
-    for (const opt of listenOptions) {
-      promises.push(
-        new Promise((resolve, reject) => {
-          const server = createServer(app).listen(opt);
-          server.once("listening", resolve);
-          server.once("error", reject);
-          this.destroyers.add(utils.createDestroyer(server));
-        })
-      );
-    }
+    return listenOptions;
   }
 
   async connect(): Promise<void> {

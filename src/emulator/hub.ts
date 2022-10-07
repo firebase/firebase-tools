@@ -10,6 +10,7 @@ import { HubExport } from "./hubExport";
 import { EmulatorRegistry } from "./registry";
 import { FunctionsEmulator } from "./functionsEmulator";
 import { ExpressBasedEmulator } from "./ExpressBasedEmulator";
+import { PortName } from "./portUtils";
 
 // We use the CLI version from package.json
 const pkg = require("../../package.json");
@@ -23,6 +24,7 @@ export interface Locator {
 export interface EmulatorHubArgs {
   projectId: string;
   listen: ListenSpec[];
+  listenForEmulator: Record<PortName, ListenSpec[]>;
 }
 
 export type GetEmulatorsResponse = Record<string, EmulatorInfo>;
@@ -87,7 +89,10 @@ export class EmulatorHub extends ExpressBasedEmulator {
     app.get(EmulatorHub.PATH_EMULATORS, (req, res) => {
       const body: GetEmulatorsResponse = {};
       for (const info of EmulatorRegistry.listRunningWithInfo()) {
-        body[info.name] = info;
+        body[info.name] = {
+          listen: this.args.listenForEmulator[info.name],
+          ...info,
+        };
       }
       res.json(body);
     });
