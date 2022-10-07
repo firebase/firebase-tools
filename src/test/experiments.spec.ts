@@ -23,7 +23,6 @@ describe("experiments", () => {
 
       enableExperimentsFromCliEnvVariable();
 
-      // Note: type-casting so that we can check on the not_an_experiment bit
       expect(isEnabled("experiments")).to.be.true;
     });
   });
