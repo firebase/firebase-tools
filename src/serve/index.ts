@@ -1,4 +1,3 @@
-import { EmulatorServer } from "../emulator/emulatorServer";
 import { logger } from "../logger";
 import { prepareFrameworks } from "../frameworks";
 import * as experiments from "../experiments";
@@ -9,9 +8,7 @@ import { Constants } from "../emulator/constants";
 const { FunctionsServer } = require("./functions");
 
 const TARGETS: {
-  [key: string]:
-    | EmulatorServer
-    | { start: (o: any) => void; stop: (o: any) => void; connect: () => void };
+  [key: string]: { start: (o: any) => void; stop: (o: any) => void; connect: () => void };
 } = {
   hosting: require("./hosting"),
   functions: new FunctionsServer(),

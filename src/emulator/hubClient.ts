@@ -14,25 +14,45 @@ export class EmulatorHubClient {
     return this.locator !== undefined;
   }
 
-  async getStatus(): Promise<void> {
-    const apiClient = new Client({ urlPrefix: this.origin, auth: false });
-    await apiClient.get("/");
+  /**
+   * Ping possible hub origins for status and return the first successful.
+   */
+  getStatus(): Promise<string> {
+    return this.tryOrigins(async (client, origin) => {
+      await client.get("/");
+      return origin;
+    });
+  }
+
+  private async tryOrigins<T>(task: (client: Client, origin: string) => Promise<T>): Promise<T> {
+    const origins = this.assertLocator().origins;
+    let err: any = undefined;
+    for (const origin of origins) {
+      try {
+        const apiClient = new Client({ urlPrefix: origin, auth: false });
+        return await task(apiClient, origin);
+      } catch (e) {
+        if (!err) {
+          err = e; // Only record the first error and only throw if all fails.
+        }
+      }
+    }
+    throw err ?? new Error("Cannot find working hub origin. Tried:" + origins.join(" "));
   }
 
   async getEmulators(): Promise<GetEmulatorsResponse> {
-    const apiClient = new Client({ urlPrefix: this.origin, auth: false });
-    const res = await apiClient.get<GetEmulatorsResponse>(EmulatorHub.PATH_EMULATORS);
+    const res = await this.tryOrigins((client) =>
+      client.get<GetEmulatorsResponse>(EmulatorHub.PATH_EMULATORS)
+    );
     return res.body;
   }
 
   async postExport(options: ExportOptions): Promise<void> {
-    const apiClient = new Client({ urlPrefix: this.origin, auth: false });
+    // This is a POST operation that should not be retried / multicast, so we
+    // will try to find the right origin first via GET.
+    const origin = await this.getStatus();
+    const apiClient = new Client({ urlPrefix: origin, auth: false });
     await apiClient.post(EmulatorHub.PATH_EXPORT, options);
-  }
-
-  get origin(): string {
-    const locator = this.assertLocator();
-    return `http://${locator.host}:${locator.port}`;
   }
 
   private assertLocator(): Locator {

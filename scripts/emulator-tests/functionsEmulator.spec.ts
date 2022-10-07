@@ -10,13 +10,12 @@ import * as logform from "logform";
 
 import { EmulatedTriggerDefinition } from "../../src/emulator/functionsEmulatorShared";
 import { FunctionsEmulator } from "../../src/emulator/functionsEmulator";
-import { Emulators } from "../../src/emulator/types";
+import { EmulatorInfo, Emulators } from "../../src/emulator/types";
 import { FakeEmulator } from "../../src/test/emulators/fakeEmulator";
 import { TIMEOUT_LONG, TIMEOUT_MED, MODULE_ROOT } from "./fixtures";
 import { logger } from "../../src/logger";
 import * as registry from "../../src/emulator/registry";
 import * as secretManager from "../../src/gcp/secretManager";
-import { findAvailablePort } from "../../src/emulator/portUtils";
 
 if ((process.env.DEBUG || "").toLowerCase().includes("spec")) {
   const dropLogLevels = (info: logform.TransformableInfo) => info.message;
@@ -614,12 +613,10 @@ describe("FunctionsEmulator-Hub", function () {
   });
 
   describe("environment variables", () => {
-    const host = "127.0.0.1";
-    const startFakeEmulator = async (emulator: Emulators): Promise<number> => {
-      const port = await findAvailablePort(host, 4000);
-      const fake = new FakeEmulator(emulator, host, port);
+    const startFakeEmulator = async (emulator: Emulators): Promise<EmulatorInfo> => {
+      const fake = await FakeEmulator.create(emulator);
       await registry.EmulatorRegistry.start(fake);
-      return port;
+      return fake.getInfo();
     };
 
     afterEach(() => {
@@ -627,9 +624,9 @@ describe("FunctionsEmulator-Hub", function () {
     });
 
     it("should set env vars when the emulator is running", async () => {
-      const databasePort = await startFakeEmulator(Emulators.DATABASE);
-      const firestorePort = await startFakeEmulator(Emulators.FIRESTORE);
-      const authPort = await startFakeEmulator(Emulators.AUTH);
+      const database = await startFakeEmulator(Emulators.DATABASE);
+      const firestore = await startFakeEmulator(Emulators.FIRESTORE);
+      const auth = await startFakeEmulator(Emulators.AUTH);
 
       await useFunction(emu, "functionId", () => {
         return {
@@ -649,9 +646,9 @@ describe("FunctionsEmulator-Hub", function () {
         .get("/fake-project-id/us-central1/functionId")
         .expect(200)
         .then((res) => {
-          expect(res.body.databaseHost).to.eql(`${host}:${databasePort}`);
-          expect(res.body.firestoreHost).to.eql(`${host}:${firestorePort}`);
-          expect(res.body.authHost).to.eql(`${host}:${authPort}`);
+          expect(res.body.databaseHost).to.eql(`${database.host}:${database.port}`);
+          expect(res.body.firestoreHost).to.eql(`${firestore.host}:${firestore.port}`);
+          expect(res.body.authHost).to.eql(`${auth.host}:${auth.port}`);
         });
     }).timeout(TIMEOUT_MED);
 
