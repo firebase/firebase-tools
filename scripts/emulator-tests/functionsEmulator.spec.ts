@@ -653,7 +653,7 @@ describe("FunctionsEmulator-Hub", function () {
     }).timeout(TIMEOUT_MED);
 
     it("should return an emulated databaseURL when RTDB emulator is running", async () => {
-      const databasePort = await startFakeEmulator(Emulators.DATABASE);
+      const database = await startFakeEmulator(Emulators.DATABASE);
 
       await useFunction(emu, "functionId", () => {
         return {
@@ -670,7 +670,7 @@ describe("FunctionsEmulator-Hub", function () {
         .expect(200)
         .then((res) => {
           expect(res.body.databaseURL).to.eql(
-            `http://${host}:${databasePort}/?ns=fake-project-id-default-rtdb`
+            `http://${database.host}:${database.port}/?ns=fake-project-id-default-rtdb`
           );
         });
     }).timeout(TIMEOUT_MED);
