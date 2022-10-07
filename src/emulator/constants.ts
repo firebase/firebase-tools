@@ -58,6 +58,9 @@ export class Constants {
   // Environment variable to override SDK/CLI to point at the Firestore emulator.
   static FIRESTORE_EMULATOR_HOST = "FIRESTORE_EMULATOR_HOST";
 
+  // Alternative (deprecated) env var for Firestore Emulator.
+  static FIRESTORE_EMULATOR_ENV_ALT = "FIREBASE_FIRESTORE_EMULATOR_ADDRESS";
+
   // Environment variable to override SDK/CLI to point at the Realtime Database emulator.
   static FIREBASE_DATABASE_EMULATOR_HOST = "FIREBASE_DATABASE_EMULATOR_HOST";
 

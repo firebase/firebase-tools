@@ -1,7 +1,6 @@
 import { Constants } from "./constants";
 import { Emulators } from "./types";
 import { EmulatorRegistry } from "./registry";
-import { FirestoreEmulator } from "./firestoreEmulator";
 
 /**
  * Adds or replaces emulator-related env vars (for Admin SDKs, etc.).
@@ -15,7 +14,7 @@ export function setEnvVarsForEmulators(env: Record<string, string | undefined>):
   if (EmulatorRegistry.isRunning(Emulators.FIRESTORE)) {
     const { host } = EmulatorRegistry.url(Emulators.FIRESTORE);
     env[Constants.FIRESTORE_EMULATOR_HOST] = host;
-    env[FirestoreEmulator.FIRESTORE_EMULATOR_ENV_ALT] = host;
+    env[Constants.FIRESTORE_EMULATOR_ENV_ALT] = host;
   }
 
   if (EmulatorRegistry.isRunning(Emulators.STORAGE)) {

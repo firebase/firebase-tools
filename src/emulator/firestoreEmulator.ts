@@ -32,8 +32,6 @@ export interface FirestoreEmulatorInfo extends EmulatorInfo {
 }
 
 export class FirestoreEmulator implements EmulatorInstance {
-  static FIRESTORE_EMULATOR_ENV_ALT = "FIREBASE_FIRESTORE_EMULATOR_ADDRESS";
-
   rulesWatcher?: chokidar.FSWatcher;
 
   constructor(private args: FirestoreEmulatorArgs) {}
