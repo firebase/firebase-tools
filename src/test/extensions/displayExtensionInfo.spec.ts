@@ -3,7 +3,8 @@ import { expect } from "chai";
 
 import * as iam from "../../gcp/iam";
 import * as displayExtensionInfo from "../../extensions/displayExtensionInfo";
-import { ExtensionSpec, Resource } from "../../extensions/types";
+import { ExtensionSpec, Param, Resource } from "../../extensions/types";
+import { ParamType } from "../../extensions/types";
 
 const SPEC: ExtensionSpec = {
   name: "test",
@@ -30,6 +31,20 @@ const SPEC: ExtensionSpec = {
   params: [],
 };
 
+const TASK_FUNCTION_RESOURCE: Resource = {
+  name: "taskResource",
+  type: "firebaseextensions.v1beta.function",
+  properties: {
+    taskQueueTrigger: {},
+  },
+};
+
+const SECRET_PARAM: Param = {
+  param: "secret",
+  label: "Secret",
+  type: ParamType.SECRET,
+};
+
 describe("displayExtensionInfo", () => {
   describe("displayExtInfo", () => {
     let getRoleStub: sinon.SinonStub;
@@ -43,11 +58,20 @@ describe("displayExtensionInfo", () => {
         title: "Role 2",
         description: "a role",
       });
+      getRoleStub.withArgs("cloudtasks.enqueuer").resolves({
+        title: "Cloud Task Enqueuer",
+        description: "Enqueue tasks",
+      });
+      getRoleStub.withArgs("secretmanager.secretAccessor").resolves({
+        title: "Secret Accessor",
+        description: "Access Secrets",
+      });
     });
 
     afterEach(() => {
       getRoleStub.restore();
     });
+
     it("should display info during install", async () => {
       const loggedLines = await displayExtensionInfo.displayExtInfo(SPEC.name, "", SPEC);
       const expected: string[] = [
@@ -64,6 +88,7 @@ describe("displayExtensionInfo", () => {
       expect(loggedLines[3]).to.include("Role 1");
       expect(loggedLines[3]).to.include("Role 2");
     });
+
     it("should display additional information for a published extension", async () => {
       const loggedLines = await displayExtensionInfo.displayExtInfo(
         SPEC.name,
@@ -90,6 +115,49 @@ describe("displayExtensionInfo", () => {
       expect(loggedLines[5]).to.include("api2");
       expect(loggedLines[6]).to.include("Role 1");
       expect(loggedLines[6]).to.include("Role 2");
+    });
+
+    it("should display role and api for Cloud Tasks during install", async () => {
+      const specWithTasks = JSON.parse(JSON.stringify(SPEC)) as ExtensionSpec;
+      specWithTasks.resources.push(TASK_FUNCTION_RESOURCE);
+
+      const loggedLines = await displayExtensionInfo.displayExtInfo(SPEC.name, "", specWithTasks);
+      const expected: string[] = [
+        "**Name**: Old",
+        "**Description**: descriptive",
+        "**APIs used by this Extension**:\n  api1 ()\n  api2 ()",
+        "\u001b[1m**Roles granted to this Extension**:\n\u001b[22m  Role 1 (a role)\n  Role 2 (a role)\n  Cloud Task Enqueuer (Enqueue tasks)",
+      ];
+      expect(loggedLines.length).to.eql(expected.length);
+      expect(loggedLines[0]).to.include("Old");
+      expect(loggedLines[1]).to.include("descriptive");
+      expect(loggedLines[2]).to.include("api1");
+      expect(loggedLines[2]).to.include("api2");
+      expect(loggedLines[2]).to.include("Cloud Tasks");
+      expect(loggedLines[3]).to.include("Role 1");
+      expect(loggedLines[3]).to.include("Role 2");
+      expect(loggedLines[3]).to.include("Cloud Task Enqueuer");
+    });
+
+    it("should display role for Cloud Secret Manager during install", async () => {
+      const specWithSecret = JSON.parse(JSON.stringify(SPEC)) as ExtensionSpec;
+      specWithSecret.params.push(SECRET_PARAM);
+
+      const loggedLines = await displayExtensionInfo.displayExtInfo(SPEC.name, "", specWithSecret);
+      const expected: string[] = [
+        "**Name**: Old",
+        "**Description**: descriptive",
+        "**APIs used by this Extension**:\n  api1 ()\n  api2 ()",
+        "\u001b[1m**Roles granted to this Extension**:\n\u001b[22m  Role 1 (a role)\n  Role 2 (a role)\n  Secret Accessor (Access secrets)",
+      ];
+      expect(loggedLines.length).to.eql(expected.length);
+      expect(loggedLines[0]).to.include("Old");
+      expect(loggedLines[1]).to.include("descriptive");
+      expect(loggedLines[2]).to.include("api1");
+      expect(loggedLines[2]).to.include("api2");
+      expect(loggedLines[3]).to.include("Role 1");
+      expect(loggedLines[3]).to.include("Role 2");
+      expect(loggedLines[3]).to.include("Secret Accessor");
     });
   });
 });

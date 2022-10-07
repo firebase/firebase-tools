@@ -98,7 +98,7 @@ export interface ExtensionSpec {
   contributors?: Author[];
   license?: string;
   releaseNotesUrl?: string;
-  sourceUrl: string;
+  sourceUrl?: string;
   params: Param[];
   preinstallContent?: string;
   postinstallContent?: string;
@@ -139,6 +139,19 @@ export interface FunctionResourceProperties {
     availableMemoryMb?: MemoryOptions;
     runtime?: Runtime;
     httpsTrigger?: Record<string, never>;
+    taskQueueTrigger?: {
+      rateLimits?: {
+        maxConcurrentDispatchs?: number;
+        maxDispatchesPerSecond?: number;
+      };
+      retryConfig?: {
+        maxAttempts?: number;
+        maxRetrySeconds?: number;
+        maxBackoffSeconds?: number;
+        maxDoublings?: number;
+        minBackoffSeconds?: number;
+      };
+    };
     eventTrigger?: {
       eventType: string;
       resource: string;
