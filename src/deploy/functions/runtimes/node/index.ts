@@ -1,5 +1,4 @@
 import { promisify } from "util";
-import * as AsyncLock from "async-lock";
 import * as fs from "fs";
 import * as path from "path";
 import * as portfinder from "portfinder";
@@ -20,7 +19,7 @@ import * as versioning from "./versioning";
 import * as parseTriggers from "./parseTriggers";
 
 const MIN_FUNCTIONS_SDK_VERSION = "3.20.0";
-const serverLock = new AsyncLock();
+const serverLock = Promise.resolve();
 
 /**
  *
@@ -171,7 +170,7 @@ export class Delegate {
 
     let discovered = await discovery.detectFromYaml(this.sourceDir, this.projectId, this.runtime);
     if (!discovered) {
-      const spawnedServerInfo = await serverLock.acquire("server", async () => {
+      const spawnedServerInfo = await serverLock.then(async () => {
         return await this.startServer(config, env);
       });
       try {

@@ -72,6 +72,9 @@ const DEFAULT_CONFIG = new Config(
   {}
 );
 
+/**
+ * Prints a notice that the current command will run against an emulated target.
+ */
 export function printNoticeIfEmulated(
   options: any,
   emulator: Emulators.DATABASE | Emulators.FIRESTORE
@@ -95,12 +98,18 @@ export function printNoticeIfEmulated(
   }
 }
 
+/**
+ * Warns that the emulator is not supported for this command and and prompts
+ * the user to continue (against prod) or abort.
+ *
+ * @return a promise that rejects if emulation is not supported for this command.
+ */
 export function warnEmulatorNotSupported(
   options: any,
   emulator: Emulators.DATABASE | Emulators.FIRESTORE
-): void | Promise<void> {
+): Promise<void> {
   if (emulator !== Emulators.DATABASE && emulator !== Emulators.FIRESTORE) {
-    return;
+    return Promise.resolve();
   }
 
   const emuName = Constants.description(emulator);
@@ -130,6 +139,7 @@ export function warnEmulatorNotSupported(
       }
     });
   }
+  return Promise.resolve();
 }
 
 export async function beforeEmulatorCommand(options: any): Promise<any> {
@@ -191,7 +201,7 @@ export function parseInspectionPort(options: any): number {
  * export data the first time they start developing on a clean project.
  * @param options
  */
-export function setExportOnExitOptions(options: any) {
+export function setExportOnExitOptions(options: any): void {
   if (options.exportOnExit || typeof options.exportOnExit === "string") {
     // note that options.exportOnExit may be a bool when used as a flag without a [dir] argument:
     // --import ./data --export-on-exit

@@ -7,10 +7,11 @@ import * as firebase from "../../../src";
 import { execSync } from "child_process";
 import { command as functionsDelete } from "../../../src/commands/functions-delete";
 import { command as sitesCreate } from "../../../src/commands/hosting-sites-create";
+import { command as sitesList } from "../../../src/commands/hosting-sites-list";
 import { command as sitesDelete } from "../../../src/commands/hosting-sites-delete";
 import fetch, { Request } from "node-fetch";
 import { FirebaseError } from "../../../src/error";
-import * as AsyncLock from "async-lock";
+import { QueueExecutor } from "../../../src/deploy/functions/release/executor";
 
 tmp.setGracefulCleanup();
 
@@ -52,7 +53,7 @@ async function deleteSite(siteName: string, cwd: string): Promise<void> {
       force: true,
       cwd: cwd,
     });
-  } catch (FirebaseError) {
+  } catch (e) {
     // site might not exist
   }
 }
@@ -63,8 +64,8 @@ async function deleteDeployedFunctions(functionName: string): Promise<void> {
       projectId: process.env.FBTOOLS_TARGET_PROJECT,
       force: true,
     });
-  } catch (FirebaseError) {
-    // functions might not already exist
+  } catch (e) {
+    // function might not exist
   }
 }
 
@@ -132,6 +133,47 @@ class TempDirectoryInfo {
   functionsDirPath = join(this.tempDir.name, ".", "functions");
 }
 
+async function deleteOldSites(): Promise<void> {
+  const sites = await sitesList.runner()({
+    projectId: process.env.FBTOOLS_TARGET_PROJECT as string,
+  });
+
+  const validDateCutoff = new Date("2021-06-01");
+  for (const site of sites) {
+    if (!site.name.includes("testingsite")) {
+      continue;
+    }
+    const siteName = site.name.substring(site.name.lastIndexOf("testingsite"));
+    const siteNameParts = siteName.split("-");
+    if (siteNameParts.length !== 5) {
+      throw new FirebaseError(
+        `Found a site that begins with 'testingsite' but the name looks malformed: ${site.name}`
+      );
+    }
+    const siteTimestamp = parseInt(siteNameParts[3]);
+    if (siteTimestamp < validDateCutoff.getSeconds() || siteTimestamp > Date.now()) {
+      // Date doesn't make sense and we don't know what's going on.
+      throw new FirebaseError(
+        `Parsed a date for an existing site that looks unexpected: ${siteTimestamp.toString()}`
+      );
+    }
+    if (siteTimestamp > Date.now() - 3600) {
+      // Don't delete sites less than an hour old.
+      continue;
+    }
+    const tempDirInfo = new TempDirectoryInfo();
+    const firebaseJson = {
+      hosting: {
+        public: "hosting",
+        target: siteName,
+      },
+    };
+    const firebaseJsonFilePath = join(tempDirInfo.tempDir.name, ".", "firebase.json");
+    writeFileSync(firebaseJsonFilePath, JSON.stringify(firebaseJson));
+    await deleteSite(siteName, tempDirInfo.tempDir.name);
+  }
+}
+
 const functionNamePrefix = `helloworld_${process.env.CI_RUN_ID || "xx"}_${
   process.env.CI_RUN_ATTEMPT || "yy"
 }_${Date.now()}`;
@@ -139,22 +181,16 @@ const functionNamePrefix = `helloworld_${process.env.CI_RUN_ID || "xx"}_${
 const siteNamePrefix = `testingsite-${process.env.CI_RUN_ID || "xx"}-${
   process.env.CI_RUN_ATTEMPT || "yy"
 }-${Date.now()}`;
+
 class TestCase {
   private static testNumbering = 1;
   private testNumber = TestCase.testNumbering++;
-
-  tempDirInfo = new TempDirectoryInfo();
+  private tempDirInfo = new TempDirectoryInfo();
 
   siteName = siteNamePrefix + "-" + this.testNumber.toString();
   functionName = functionNamePrefix + "_" + this.testNumber.toString();
 
   description: string;
-
-  private testFn: (
-    siteName: string,
-    functionName: string,
-    tempDirInfo: TempDirectoryInfo
-  ) => Promise<void>;
 
   constructor(
     description: string,
@@ -167,6 +203,24 @@ class TestCase {
     this.description = description;
     this.testFn = testFunction;
   }
+
+  private doneLock = Promise.resolve();
+  // doneLock: AsyncLock = new AsyncLock();
+  donePromise: Promise<void> | undefined;
+  async getDonePromise(): Promise<void> {
+    return await this.doneLock.then(() => {
+      if (this.donePromise === undefined) {
+        this.donePromise = this.testFunction();
+      }
+      return this.donePromise;
+    });
+  }
+
+  private testFn: (
+    siteName: string,
+    functionName: string,
+    tempDirInfo: TempDirectoryInfo
+  ) => Promise<void>;
 
   private async cleanup(): Promise<void> {
     await deleteDeployedFunctions(this.functionName);
@@ -184,18 +238,8 @@ class TestCase {
       await this.cleanup();
     }
   }
-
-  doneLock: AsyncLock = new AsyncLock();
-  donePromise: Promise<void> | undefined;
-  async getDonePromise(): Promise<void> {
-    return await this.doneLock.acquire(this.description, () => {
-      if (this.donePromise === undefined) {
-        this.donePromise = this.testFunction();
-      }
-      return this.donePromise;
-    });
-  }
 }
+
 const testCases: TestCase[] = [];
 
 testCases.push(
@@ -1182,16 +1226,24 @@ testCases.push(
 );
 
 describe("deploy function-targeted rewrites and functions", () => {
+  before("clean up failed test runs", async function (this: Mocha.Context) {
+    this.timeout(1000 * 1e3);
+    await deleteOldSites();
+  });
+
   // All test cases run concurrently. Isolation is handled by creating separate hosting
   // sites and deploying to separate functions codebases.
+  const executor = new QueueExecutor({ concurrency: 20 });
+  const testQueue = testCases.map((testCase) => {
+    return executor.run(() => {
+      return testCase.getDonePromise();
+    });
+  });
+
   testCases.forEach((testCase) => {
     it(testCase.description, async () => {
       try {
-        await Promise.allSettled(
-          testCases.map((testCase) => {
-            return testCase.getDonePromise();
-          })
-        );
+        await Promise.allSettled(testQueue);
       } catch (e) {
         // We want to wait for all tests to be finished, but don't care if any fail.
       }
@@ -1199,7 +1251,7 @@ describe("deploy function-targeted rewrites and functions", () => {
     }).timeout(900 * 1e3);
   });
 
-  // For serial execution, uncomment the block below:
+  // For serial execution, comment the block above and uncomment the block below:
   // testCases.forEach((testCase) => {
   //   it(testCase.description, async () => {
   //     await testCase.getDonePromise();
