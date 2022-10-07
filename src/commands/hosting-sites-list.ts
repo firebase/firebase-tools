@@ -14,7 +14,7 @@ const TABLE_HEAD = [
   "Default URL",
   "App ID (if set)",
   "Logging Enabled",
-  "Retained Versions",
+  "Maximum Retained Versions",
 ];
 
 export const command = new Command("hosting:sites:list")
