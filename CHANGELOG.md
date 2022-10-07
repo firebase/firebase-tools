@@ -1,4 +1,2 @@
-- Enables single project mode for the auth emulator (#5068).
-- Fixes issue deploying to Hosting with i18n enabled.
-- Fixes issue where deploying to Hosting without Functions permissions would cause deployments to fail with 403 "Permission Denied" errors. (#5071)
-- Fixes issue where Firestore Emulator UI Requests tab wrongly show error requiring updates (#5051)
+- Enable single project mode for the database emulator (#5068).
+- Ravamp emulator networking to assign ports early and explictly listen on IP addresses (#5083).

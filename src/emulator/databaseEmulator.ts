@@ -11,7 +11,7 @@ import { EmulatorRegistry } from "./registry";
 import { EmulatorLogger } from "./emulatorLogger";
 import { FirebaseError } from "../error";
 import { parseBoltRules } from "../parseBoltRules";
-import { Client } from "../apiv2";
+import { connectableHostname } from "../utils";
 
 export interface DatabaseEmulatorArgs {
   port?: number;
@@ -21,6 +21,7 @@ export interface DatabaseEmulatorArgs {
   functions_emulator_port?: number;
   functions_emulator_host?: string;
   auto_download?: boolean;
+  single_project_mode?: string;
 }
 
 export class DatabaseEmulator implements EmulatorInstance {
@@ -131,7 +132,7 @@ export class DatabaseEmulator implements EmulatorInstance {
       const req = http.request(
         {
           method: "PUT",
-          host,
+          host: connectableHostname(host),
           port,
           path: `/.json?ns=${ns}&disableTriggers=true&writeSizeLimit=unlimited`,
           headers: {
@@ -168,13 +169,8 @@ export class DatabaseEmulator implements EmulatorInstance {
         ? parseBoltRules(rulesPath).toString()
         : fs.readFileSync(rulesPath, "utf8");
 
-    const info = this.getInfo();
     try {
-      const client = new Client({
-        urlPrefix: `http://${EmulatorRegistry.getInfoHostString(info)}`,
-        auth: false,
-      });
-      await client.put(`/.settings/rules.json`, content, {
+      await EmulatorRegistry.client(Emulators.DATABASE).put(`/.settings/rules.json`, content, {
         headers: { Authorization: "Bearer owner" },
         queryParams: { ns: instance },
       });

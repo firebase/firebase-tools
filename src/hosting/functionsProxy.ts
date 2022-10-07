@@ -48,15 +48,8 @@ export function functionsProxy(
 
         // If the functions emulator is running we know the port, otherwise
         // things still point to production.
-        const functionsEmu = EmulatorRegistry.get(Emulators.FUNCTIONS);
-        if (functionsEmu) {
-          url = FunctionsEmulator.getHttpFunctionUrl(
-            functionsEmu.getInfo().host,
-            functionsEmu.getInfo().port,
-            projectId,
-            functionId,
-            region
-          );
+        if (EmulatorRegistry.isRunning(Emulators.FUNCTIONS)) {
+          url = FunctionsEmulator.getHttpFunctionUrl(projectId, functionId, region);
         }
       }
 

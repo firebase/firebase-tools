@@ -42,7 +42,7 @@ import { RuntimeWorker, RuntimeWorkerPool } from "./functionsRuntimeWorker";
 import { PubsubEmulator } from "./pubsubEmulator";
 import { FirebaseError } from "../error";
 import { WorkQueue } from "./workQueue";
-import { allSettled, createDestroyer, debounce } from "../utils";
+import { allSettled, connectableHostname, createDestroyer, debounce } from "../utils";
 import { getCredentialPathAsync } from "../defaultCredentials";
 import {
   AdminSdkConfig,
@@ -57,8 +57,8 @@ import * as backend from "../deploy/functions/backend";
 import * as functionsEnv from "../functions/env";
 import { AUTH_BLOCKING_EVENTS, BEFORE_CREATE_EVENT } from "../functions/events/v1";
 import { BlockingFunctionsConfig } from "../gcp/identityPlatform";
-import { Client } from "../apiv2";
 import { resolveBackend } from "../deploy/functions/build";
+import { setEnvVarsForEmulators } from "./env";
 
 const EVENT_INVOKE = "functions:invoke"; // event name for UA
 const EVENT_INVOKE_GA4 = "functions_invoke"; // event name GA4 (alphanumertic)
@@ -153,13 +153,19 @@ interface EmulatedTriggerRecord {
 
 export class FunctionsEmulator implements EmulatorInstance {
   static getHttpFunctionUrl(
-    host: string,
-    port: number,
     projectId: string,
     name: string,
-    region: string
+    region: string,
+    info?: { host: string; port: number }
   ): string {
-    return `http://${host}:${port}/${projectId}/${region}/${name}`;
+    let url: URL;
+    if (info) {
+      url = new URL("http://" + formatHost(info));
+    } else {
+      url = EmulatorRegistry.url(Emulators.FUNCTIONS);
+    }
+    url.pathname = `/${projectId}/${region}/${name}`;
+    return url.toString();
   }
 
   private destroyServer?: () => Promise<void>;
@@ -289,7 +295,7 @@ export class FunctionsEmulator implements EmulatorInstance {
           return new Promise((resolve, reject) => {
             const trigReq = http.request(
               {
-                host,
+                host: connectableHostname(host),
                 port,
                 method: req.method,
                 path: `/functions/projects/${projectId}/triggers/${triggerId}`,
@@ -562,12 +568,9 @@ export class FunctionsEmulator implements EmulatorInstance {
       let added = false;
       let url: string | undefined = undefined;
 
-      const { host, port } = this.getInfo();
       if (definition.httpsTrigger) {
         added = true;
         url = FunctionsEmulator.getHttpFunctionUrl(
-          host,
-          port,
           this.args.projectId,
           definition.name,
           definition.region
@@ -621,10 +624,7 @@ export class FunctionsEmulator implements EmulatorInstance {
             break;
         }
       } else if (definition.blockingTrigger) {
-        const { host, port } = this.getInfo();
         url = FunctionsEmulator.getHttpFunctionUrl(
-          host,
-          port,
           this.args.projectId,
           definition.name,
           definition.region
@@ -663,8 +663,7 @@ export class FunctionsEmulator implements EmulatorInstance {
   }
 
   addEventarcTrigger(projectId: string, key: string, eventTrigger: EventTrigger): Promise<boolean> {
-    const eventarcEmu = EmulatorRegistry.get(Emulators.EVENTARC);
-    if (!eventarcEmu) {
+    if (!EmulatorRegistry.isRunning(Emulators.EVENTARC)) {
       return Promise.resolve(false);
     }
     const bundle = {
@@ -674,11 +673,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       },
     };
     logger.debug(`addEventarcTrigger`, JSON.stringify(bundle));
-    const client = new Client({
-      urlPrefix: `http://${EmulatorRegistry.getInfoHostString(eventarcEmu.getInfo())}`,
-      auth: false,
-    });
-    return client
+    return EmulatorRegistry.client(Emulators.EVENTARC)
       .post(`/emulator/v1/projects/${projectId}/triggers/${key}`, bundle)
       .then(() => true)
       .catch((err) => {
@@ -695,18 +690,14 @@ export class FunctionsEmulator implements EmulatorInstance {
       return;
     }
 
-    const authEmu = EmulatorRegistry.get(Emulators.AUTH);
-    if (!authEmu) {
+    if (!EmulatorRegistry.isRunning(Emulators.AUTH)) {
       return;
     }
 
     const path = `/identitytoolkit.googleapis.com/v2/projects/${this.getProjectId()}/config?updateMask=blockingFunctions`;
 
     try {
-      const client = new Client({
-        urlPrefix: `http://${EmulatorRegistry.getInfoHostString(authEmu.getInfo())}`,
-        auth: false,
-      });
+      const client = EmulatorRegistry.client(Emulators.AUTH);
       await client.patch(
         path,
         { blockingFunctions: this.blockingFunctionsConfig },
@@ -793,8 +784,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     signature: SignatureType,
     region: string
   ): Promise<boolean> {
-    const databaseEmu = EmulatorRegistry.get(Emulators.DATABASE);
-    if (!databaseEmu) {
+    if (!EmulatorRegistry.isRunning(Emulators.DATABASE)) {
       return false;
     }
 
@@ -805,10 +795,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     logger.debug(`addRealtimeDatabaseTrigger[${instance}]`, JSON.stringify(bundle));
 
-    const client = new Client({
-      urlPrefix: `http://${EmulatorRegistry.getInfoHostString(databaseEmu.getInfo())}`,
-      auth: false,
-    });
+    const client = EmulatorRegistry.client(Emulators.DATABASE);
     try {
       await client.post(apiPath, bundle, { headers: { Authorization: "Bearer owner" } });
     } catch (err: any) {
@@ -823,8 +810,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     key: string,
     eventTrigger: EventTrigger
   ): Promise<boolean> {
-    const firestoreEmu = EmulatorRegistry.get(Emulators.FIRESTORE);
-    if (!firestoreEmu) {
+    if (!EmulatorRegistry.isRunning(Emulators.FIRESTORE)) {
       return Promise.resolve(false);
     }
 
@@ -836,10 +822,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     });
     logger.debug(`addFirestoreTrigger`, JSON.stringify(bundle));
 
-    const client = new Client({
-      urlPrefix: `http://${EmulatorRegistry.getInfoHostString(firestoreEmu.getInfo())}`,
-      auth: false,
-    });
+    const client = EmulatorRegistry.client(Emulators.FIRESTORE);
     try {
       await client.put(`/emulator/v1/projects/${projectId}/triggers/${key}`, bundle);
     } catch (err: any) {
@@ -1149,43 +1132,8 @@ export class FunctionsEmulator implements EmulatorInstance {
       skipTokenVerification: true,
       enableCors: true,
     });
-    // Make firebase-admin point at the Firestore emulator
-    const firestoreEmulator = this.getEmulatorInfo(Emulators.FIRESTORE);
-    if (firestoreEmulator != null) {
-      envs[Constants.FIRESTORE_EMULATOR_HOST] = formatHost(firestoreEmulator);
-    }
 
-    // Make firebase-admin point at the Database emulator
-    const databaseEmulator = this.getEmulatorInfo(Emulators.DATABASE);
-    if (databaseEmulator) {
-      envs[Constants.FIREBASE_DATABASE_EMULATOR_HOST] = formatHost(databaseEmulator);
-    }
-
-    // Make firebase-admin point at the Auth emulator
-    const authEmulator = this.getEmulatorInfo(Emulators.AUTH);
-    if (authEmulator) {
-      envs[Constants.FIREBASE_AUTH_EMULATOR_HOST] = formatHost(authEmulator);
-    }
-
-    // Make firebase-admin point at the Storage emulator
-    const storageEmulator = this.getEmulatorInfo(Emulators.STORAGE);
-    if (storageEmulator) {
-      envs[Constants.FIREBASE_STORAGE_EMULATOR_HOST] = formatHost(storageEmulator);
-      // TODO(taeold): We only need FIREBASE_STORAGE_EMULATOR_HOST, as long as the users are using new-ish SDKs.
-      //   Clean up and update documentation in a subsequent patch.
-      envs[Constants.CLOUD_STORAGE_EMULATOR_HOST] = `http://${formatHost(storageEmulator)}`;
-    }
-
-    const pubsubEmulator = this.getEmulatorInfo(Emulators.PUBSUB);
-    if (pubsubEmulator) {
-      const pubsubHost = formatHost(pubsubEmulator);
-      process.env.PUBSUB_EMULATOR_HOST = pubsubHost;
-    }
-
-    const eventarcEmulator = this.getEmulatorInfo(Emulators.EVENTARC);
-    if (eventarcEmulator) {
-      envs[Constants.CLOUD_EVENTARC_EMULATOR_HOST] = `http://${formatHost(eventarcEmulator)}`;
-    }
+    setEnvVarsForEmulators(envs);
 
     if (this.args.debugPort) {
       // Start runtime in debug mode to allow triggers to share single runtime process.
@@ -1304,7 +1252,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         );
       } else {
         const { host } = this.getInfo();
-        args.unshift(`--inspect=${host}:${this.args.debugPort}`);
+        args.unshift(`--inspect=${connectableHostname(host)}:${this.args.debugPort}`);
       }
     }
 

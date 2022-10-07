@@ -42,10 +42,10 @@ export class EmulatorLogger {
   static verbosity: Verbosity = Verbosity.DEBUG;
   static warnOnceCache = new Set<string>();
 
-  constructor(private data: LogData = {}) {}
+  constructor(public readonly name: string, private data: LogData = {}) {}
 
   static forEmulator(emulator: Emulators) {
-    return new EmulatorLogger({
+    return new EmulatorLogger(emulator, {
       metadata: {
         emulator: {
           name: emulator,
@@ -55,10 +55,10 @@ export class EmulatorLogger {
   }
 
   static forFunction(functionName: string, extensionLogInfo?: ExtensionLogInfo): EmulatorLogger {
-    return new EmulatorLogger({
+    return new EmulatorLogger(Emulators.FUNCTIONS, {
       metadata: {
         emulator: {
-          name: "functions",
+          name: Emulators.FUNCTIONS,
         },
         function: {
           name: functionName,
@@ -69,10 +69,10 @@ export class EmulatorLogger {
   }
 
   static forExtension(extensionLogInfo: ExtensionLogInfo): EmulatorLogger {
-    return new EmulatorLogger({
+    return new EmulatorLogger(Emulators.EXTENSIONS, {
       metadata: {
         emulator: {
-          name: "extensions",
+          name: Emulators.EXTENSIONS,
         },
         extension: extensionLogInfo,
       },
@@ -274,7 +274,14 @@ You can probably fix this by running "npm install ${systemLog.data.name}@latest"
    * @param text
    * @param data
    */
-  logLabeled(type: LogType, label: string, text: string): void {
+  logLabeled(type: LogType, text: string): void;
+  logLabeled(type: LogType, label: string, text: string): void;
+  logLabeled(type: LogType, labelOrText: string, text?: string): void {
+    let label = labelOrText;
+    if (text === undefined) {
+      text = label;
+      label = this.name;
+    }
     if (EmulatorLogger.shouldSupress(type)) {
       logger.debug(`[${label}] ${text}`);
       return;
