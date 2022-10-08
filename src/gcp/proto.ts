@@ -1,4 +1,5 @@
 import { FirebaseError } from "../error";
+import { RecursiveKeyOf } from "../metaprogramming";
 
 /**
  * A type alias used to annotate interfaces as using a google.protobuf.Duration.
@@ -42,42 +43,102 @@ export function assertOneOf<T>(typename: string, obj: T, oneof: string, ...field
   }
 }
 
-// eslint-disable @typescript-eslint/no-unsafe-returns @typescript-eslint/no-explicit-any
-
 /**
  * Utility function to help copy fields from type A to B.
  * As a safety net, catches typos or fields that aren't named the same
  * in A and B, but cannot verify that both Src and Dest have the same type for the same field.
  */
-export function copyIfPresent<Src, Dest>(
+export function copyIfPresent<Dest extends object, Keys extends (keyof Dest)[]>(
   dest: Dest,
-  src: Src,
-  ...fields: (keyof Src & keyof Dest)[]
-) {
+  src: { [Key in Keys[number]]?: Dest[Key] },
+  ...fields: Keys
+): void {
   for (const field of fields) {
     if (!Object.prototype.hasOwnProperty.call(src, field)) {
       continue;
     }
-    dest[field] = src[field] as any;
+    dest[field] = src[field]!;
   }
 }
 
-export function renameIfPresent<Src, Dest>(
+/**
+ * Utility function to help convert a field from type A to B if they are present.
+ */
+export function convertIfPresent<
+  Dest extends object,
+  Src extends object,
+  Key extends keyof Src & keyof Dest
+>(
   dest: Dest,
   src: Src,
-  destField: keyof Dest,
-  srcField: keyof Src,
-  converter: (from: any) => any = (from: any) => {
-    return from;
-  }
-) {
-  if (!Object.prototype.hasOwnProperty.call(src, srcField)) {
+  key: Key,
+  converter: (from: Required<Src>[Key]) => Required<Dest>[Key]
+): void;
+
+/**
+ * Utility function to help convert a field from type A to type B while renaming.
+ */
+export function convertIfPresent<
+  Dest extends object,
+  Src extends object,
+  DestKey extends keyof Dest,
+  SrcKey extends keyof Src
+>(
+  dest: Dest,
+  src: Src,
+  destKey: DestKey,
+  srcKey: SrcKey,
+  converter: (from: Required<Src>[SrcKey]) => Required<Dest>[DestKey]
+): void;
+
+/** Overload */
+export function convertIfPresent<
+  Dest extends object,
+  Src extends object,
+  DestKey extends keyof Dest,
+  SrcKey extends keyof Src,
+  MutualKey extends keyof Dest & keyof Src
+>(
+  ...args:
+    | [
+        dest: Dest,
+        src: Src,
+        key: MutualKey,
+        converter: (from: Required<Src>[MutualKey]) => Required<Dest>[MutualKey]
+      ]
+    | [
+        dest: Dest,
+        src: Src,
+        destKey: DestKey,
+        srcKey: SrcKey,
+        converter: (from: Required<Src>[SrcKey]) => Required<Dest>[DestKey]
+      ]
+): void {
+  if (args.length === 4) {
+    const [dest, src, key, converter] = args;
+    if (Object.prototype.hasOwnProperty.call(src, key)) {
+      dest[key] = converter(src[key]);
+    }
     return;
   }
-  dest[destField] = converter(src[srcField]);
+  const [dest, src, destKey, srcKey, converter] = args;
+  if (Object.prototype.hasOwnProperty.call(src, srcKey)) {
+    dest[destKey] = converter(src[srcKey]);
+  }
 }
 
-// eslint-enable @typescript-eslint/no-unsafe-returns @typescript-eslint/no-explicit-any
+/** Moves a field from one key in source to another key in dest */
+export function renameIfPresent<DestKey extends string, SrcKey extends string, ValType>(
+  dest: { [Key in DestKey]?: ValType },
+  src: { [Key in SrcKey]?: ValType },
+  destKey: DestKey,
+  srcKey: SrcKey
+): void {
+  if (!Object.prototype.hasOwnProperty.call(src, srcKey)) {
+    return;
+  }
+  dest[destKey] = src[srcKey];
+}
 
 /**
  * Calculate a field mask of all values set in object.
@@ -89,7 +150,10 @@ export function renameIfPresent<Src, Dest>(
  * @param doNotRecurseIn the dot-delimited address of fields which, if present, are proto map
  *                       types and their keys are not part of the field mask.
  */
-export function fieldMasks(object: Record<string, any>, ...doNotRecurseIn: string[]): string[] {
+export function fieldMasks<T extends object>(
+  object: T,
+  ...doNotRecurseIn: Array<RecursiveKeyOf<T>>
+): string[] {
   const masks: string[] = [];
   fieldMasksHelper([], object, doNotRecurseIn, masks);
   return masks;
@@ -100,8 +164,14 @@ function fieldMasksHelper(
   cursor: unknown,
   doNotRecurseIn: string[],
   masks: string[]
-) {
-  if (typeof cursor !== "object" || Array.isArray(cursor) || cursor === null) {
+): void {
+  // Empty arrays should never be sent because they're dropped by the one platform
+  // gateway and then services get confused why there's an update mask for a missing field"
+  if (Array.isArray(cursor) && !cursor.length) {
+    return;
+  }
+
+  if (typeof cursor !== "object" || (Array.isArray(cursor) && cursor.length) || cursor === null) {
     masks.push(prefixes.join("."));
     return;
   }
@@ -128,8 +198,7 @@ function fieldMasksHelper(
  * Gets the correctly invoker members to be used with the invoker role for IAM API calls.
  * @param invoker the array of non-formatted invoker members
  * @param projectId the ID of the current project
- * @returns an array of correctly formatted invoker members
- *
+ * @return an array of correctly formatted invoker members
  * @throws {@link FirebaseError} if any invoker string is empty or not of the correct form
  */
 export function getInvokerMembers(invoker: string[], projectId: string): string[] {
@@ -147,8 +216,7 @@ export function getInvokerMembers(invoker: string[], projectId: string): string[
  * '{service-account}@' or '{service-account}@{project}.iam.gserviceaccount.com'.
  * @param serviceAccount the custom service account created by the user
  * @param projectId the ID of the current project
- * @returns a correctly formatted service account string
- *
+ * @return a correctly formatted service account string
  * @throws {@link FirebaseError} if the supplied service account string is empty or not of the correct form
  */
 export function formatServiceAccount(serviceAccount: string, projectId: string): string {
@@ -166,4 +234,31 @@ export function formatServiceAccount(serviceAccount: string, projectId: string):
     return `serviceAccount:${serviceAccount}${suffix}`;
   }
   return `serviceAccount:${serviceAccount}`;
+}
+
+/**
+ * Remove keys whose values are undefined.
+ * When we write an interface { foo?: number } there are three possible
+ * forms: { foo: 1 }, {}, and { foo: undefined }. The latter surprises
+ * most people and make unit test comparison flaky. This cleans that up.
+ */
+export function pruneUndefiends(obj: unknown): void {
+  if (typeof obj !== "object" || obj === null) {
+    return;
+  }
+  const keyable = obj as Record<string, unknown>;
+  for (const key of Object.keys(keyable)) {
+    if (keyable[key] === undefined) {
+      delete keyable[key];
+    } else if (typeof keyable[key] === "object") {
+      if (Array.isArray(keyable[key])) {
+        for (const sub of keyable[key] as unknown[]) {
+          pruneUndefiends(sub);
+        }
+        keyable[key] = (keyable[key] as unknown[]).filter((e) => e !== undefined);
+      } else {
+        pruneUndefiends(keyable[key]);
+      }
+    }
+  }
 }

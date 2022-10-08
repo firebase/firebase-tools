@@ -1,5 +1,5 @@
 import * as _ from "lodash";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as cjson from "cjson";
 import * as fs from "fs";
 import * as path from "path";

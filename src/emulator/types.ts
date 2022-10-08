@@ -13,6 +13,7 @@ export enum Emulators {
   LOGGING = "logging",
   STORAGE = "storage",
   EXTENSIONS = "extensions",
+  EVENTARC = "eventarc",
 }
 
 export type DownloadableEmulators =
@@ -45,6 +46,7 @@ export const ALL_SERVICE_EMULATORS = [
   Emulators.HOSTING,
   Emulators.PUBSUB,
   Emulators.STORAGE,
+  Emulators.EVENTARC,
 ].filter((v) => v);
 
 export const EMULATORS_SUPPORTED_BY_FUNCTIONS = [
@@ -52,6 +54,7 @@ export const EMULATORS_SUPPORTED_BY_FUNCTIONS = [
   Emulators.DATABASE,
   Emulators.PUBSUB,
   Emulators.STORAGE,
+  Emulators.EVENTARC,
 ];
 
 export const EMULATORS_SUPPORTED_BY_UI = [
@@ -68,6 +71,7 @@ export const EMULATORS_SUPPORTED_BY_USE_EMULATOR = [
   Emulators.DATABASE,
   Emulators.FIRESTORE,
   Emulators.FUNCTIONS,
+  Emulators.STORAGE,
 ];
 
 // TODO: Is there a way we can just allow iteration over the enum?
@@ -127,9 +131,15 @@ export interface EmulatorInstance {
 
 export interface EmulatorInfo {
   name: Emulators;
+  pid?: number;
+  reservedPorts?: number[];
+
+  /** All addresses that an emulator listens on. */
+  listen?: ListenSpec[];
+
+  /** The primary IP address that the emulator listens on. */
   host: string;
   port: number;
-  pid?: number;
 }
 
 export interface DownloadableEmulatorCommand {
@@ -173,9 +183,10 @@ export interface DownloadableEmulatorDetails {
   stdout: any | null;
 }
 
-export interface Address {
-  host: string;
+export interface ListenSpec {
+  address: string;
   port: number;
+  family: "IPv4" | "IPv6";
 }
 
 export enum FunctionsExecutionMode {

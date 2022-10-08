@@ -1,4 +1,4 @@
-import { bold } from "cli-color";
+import { bold } from "colorette";
 import Table = require("cli-table");
 
 import { Channel, listChannels } from "../hosting/api";

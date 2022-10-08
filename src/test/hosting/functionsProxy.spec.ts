@@ -25,7 +25,9 @@ describe("functionsProxy", () => {
   } as HostingRewrites;
 
   beforeEach(async () => {
-    const fakeFunctionsEmulator = new FakeEmulator(Emulators.FUNCTIONS, "localhost", 7778);
+    const fakeFunctionsEmulator = new FakeEmulator(Emulators.FUNCTIONS, [
+      { address: "127.0.0.1", family: "IPv4", port: 7778 },
+    ]);
     await EmulatorRegistry.start(fakeFunctionsEmulator);
   });
 
@@ -69,7 +71,7 @@ describe("functionsProxy", () => {
   });
 
   it("should resolve a function that returns middleware that proxies to a local version", async () => {
-    nock("http://localhost:7778").get("/project-foo/us-central1/bar/").reply(200, "local version");
+    nock("http://127.0.0.1:7778").get("/project-foo/us-central1/bar/").reply(200, "local version");
 
     const options = cloneDeep(fakeOptions);
     options.targets = ["functions"];
@@ -87,7 +89,7 @@ describe("functionsProxy", () => {
   });
 
   it("should resolve a function that returns middleware that proxies to a local version in another region", async () => {
-    nock("http://localhost:7778").get("/project-foo/europe-west3/bar/").reply(200, "local version");
+    nock("http://127.0.0.1:7778").get("/project-foo/europe-west3/bar/").reply(200, "local version");
 
     const options = cloneDeep(fakeOptions);
     options.targets = ["functions"];
@@ -105,7 +107,7 @@ describe("functionsProxy", () => {
   });
 
   it("should maintain the location header as returned by the function", async () => {
-    nock("http://localhost:7778")
+    nock("http://127.0.0.1:7778")
       .get("/project-foo/us-central1/bar/")
       .reply(301, "", { location: "/over-here" });
 
@@ -126,7 +128,7 @@ describe("functionsProxy", () => {
   });
 
   it("should allow location headers that wouldn't redirect to itself", async () => {
-    nock("http://localhost:7778")
+    nock("http://127.0.0.1:7778")
       .get("/project-foo/us-central1/bar/")
       .reply(301, "", { location: "https://example.com/foo" });
 
@@ -147,7 +149,7 @@ describe("functionsProxy", () => {
   });
 
   it("should proxy a request body on a POST request", async () => {
-    nock("http://localhost:7778")
+    nock("http://127.0.0.1:7778")
       .post("/project-foo/us-central1/bar/", "data")
       .reply(200, "you got post data");
 
@@ -168,7 +170,7 @@ describe("functionsProxy", () => {
   });
 
   it("should proxy with a query string", async () => {
-    nock("http://localhost:7778")
+    nock("http://127.0.0.1:7778")
       .get("/project-foo/us-central1/bar/")
       .query({ key: "value" })
       .reply(200, "query!");
@@ -190,7 +192,7 @@ describe("functionsProxy", () => {
   });
 
   it("should return 3xx responses directly", async () => {
-    nock("http://localhost:7778")
+    nock("http://127.0.0.1:7778")
       .get("/project-foo/us-central1/bar/")
       .reply(301, "redirected", { Location: "https://example.com" });
 
@@ -210,7 +212,7 @@ describe("functionsProxy", () => {
   });
 
   it("should pass through multiple set-cookie headers", async () => {
-    nock("http://localhost:7778")
+    nock("http://127.0.0.1:7778")
       .get("/project-foo/us-central1/bar/")
       .reply(200, "crisp", {
         "Set-Cookie": ["foo=bar", "bar=zap"],

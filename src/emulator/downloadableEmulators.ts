@@ -12,13 +12,13 @@ import * as childProcess from "child_process";
 import * as utils from "../utils";
 import { EmulatorLogger } from "./emulatorLogger";
 
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as fs from "fs-extra";
 import * as path from "path";
 import * as os from "os";
 import { EmulatorRegistry } from "./registry";
 import { downloadEmulator } from "../emulator/download";
-import { previews } from "../previews";
+import * as experiments from "../experiments";
 
 const EMULATOR_INSTANCE_KILL_TIMEOUT = 4000; /* ms */
 
@@ -27,42 +27,42 @@ const CACHE_DIR =
 
 export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDetails } = {
   database: {
-    downloadPath: path.join(CACHE_DIR, "firebase-database-emulator-v4.8.0.jar"),
-    version: "4.8.0",
+    downloadPath: path.join(CACHE_DIR, "firebase-database-emulator-v4.10.0.jar"),
+    version: "4.10.0",
     opts: {
       cacheDir: CACHE_DIR,
       remoteUrl:
-        "https://storage.googleapis.com/firebase-preview-drop/emulator/firebase-database-emulator-v4.8.0.jar",
-      expectedSize: 33676395,
-      expectedChecksum: "e5ae0085d9c88ed14b0bd9c25fe62916",
+        "https://storage.googleapis.com/firebase-preview-drop/emulator/firebase-database-emulator-v4.10.0.jar",
+      expectedSize: 34230230,
+      expectedChecksum: "e99b23f0e723813de4f4ea0e879b46b0",
       namePrefix: "firebase-database-emulator",
     },
   },
   firestore: {
-    downloadPath: path.join(CACHE_DIR, "cloud-firestore-emulator-v1.14.4.jar"),
-    version: "1.14.4",
+    downloadPath: path.join(CACHE_DIR, "cloud-firestore-emulator-v1.15.1.jar"),
+    version: "1.15.1",
     opts: {
       cacheDir: CACHE_DIR,
       remoteUrl:
-        "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v1.14.4.jar",
-      expectedSize: 61017177,
-      expectedChecksum: "953d10e73798484aa0b84c45005faadb",
+        "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v1.15.1.jar",
+      expectedSize: 61475851,
+      expectedChecksum: "4f41d24a3c0f3b55ea22804a424cc0ee",
       namePrefix: "cloud-firestore-emulator",
     },
   },
   storage: {
-    downloadPath: path.join(CACHE_DIR, "cloud-storage-rules-runtime-v1.0.2.jar"),
-    version: "1.0.2",
+    downloadPath: path.join(CACHE_DIR, "cloud-storage-rules-runtime-v1.1.1.jar"),
+    version: "1.1.1",
     opts: {
       cacheDir: CACHE_DIR,
       remoteUrl:
-        "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-storage-rules-runtime-v1.0.2.jar",
-      expectedSize: 35704306,
-      expectedChecksum: "0dd3e17939610fc3dbdf53fb24cfda86",
+        "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-storage-rules-runtime-v1.1.1.jar",
+      expectedSize: 46448285,
+      expectedChecksum: "691982db4019d49d345a97151bdea7e2",
       namePrefix: "cloud-storage-rules-emulator",
     },
   },
-  ui: previews.emulatoruisnapshot
+  ui: experiments.isEnabled("emulatoruisnapshot")
     ? {
         version: "SNAPSHOT",
         downloadPath: path.join(CACHE_DIR, "ui-vSNAPSHOT.zip"),
@@ -80,15 +80,15 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
         },
       }
     : {
-        version: "1.8.1",
-        downloadPath: path.join(CACHE_DIR, "ui-v1.8.1.zip"),
-        unzipDir: path.join(CACHE_DIR, "ui-v1.8.1"),
-        binaryPath: path.join(CACHE_DIR, "ui-v1.8.1", "server", "server.js"),
+        version: "1.11.0",
+        downloadPath: path.join(CACHE_DIR, "ui-v1.11.0.zip"),
+        unzipDir: path.join(CACHE_DIR, "ui-v1.11.0"),
+        binaryPath: path.join(CACHE_DIR, "ui-v1.11.0", "server", "server.js"),
         opts: {
           cacheDir: CACHE_DIR,
-          remoteUrl: "https://storage.googleapis.com/firebase-preview-drop/emulator/ui-v1.8.1.zip",
-          expectedSize: 3056552,
-          expectedChecksum: "92590fdda20f9883588438d9551111b5",
+          remoteUrl: "https://storage.googleapis.com/firebase-preview-drop/emulator/ui-v1.11.0.zip",
+          expectedSize: 3061915,
+          expectedChecksum: "94679756dc270754e9a4dc9d1c6fc4e1",
           namePrefix: "ui",
         },
       },
@@ -144,7 +144,13 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
   database: {
     binary: "java",
     args: ["-Duser.language=en", "-jar", getExecPath(Emulators.DATABASE)],
-    optionalArgs: ["port", "host", "functions_emulator_port", "functions_emulator_host"],
+    optionalArgs: [
+      "port",
+      "host",
+      "functions_emulator_port",
+      "functions_emulator_host",
+      "single_project_mode",
+    ],
     joinArgs: false,
   },
   firestore: {
@@ -160,8 +166,13 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
       "webchannel_port",
       "host",
       "rules",
+      "websocket_port",
       "functions_emulator",
       "seed_from_export",
+      "project_id",
+      "single_project_mode",
+      // TODO(christhompson) Re-enable after firestore accepts this flag.
+      // "single_project_mode_error",
     ],
     joinArgs: false,
   },
@@ -286,6 +297,9 @@ async function _fatal(emulator: Emulators, errorMsg: string): Promise<void> {
   }
 }
 
+/**
+ * Handle errors in an emulator process.
+ */
 export async function handleEmulatorProcessError(emulator: Emulators, err: any): Promise<void> {
   const description = Constants.description(emulator);
   if (err.path === "java" && err.code === "ENOENT") {
@@ -298,6 +312,9 @@ export async function handleEmulatorProcessError(emulator: Emulators, err: any):
   }
 }
 
+/**
+ * Do the selected list of emulators depend on the JRE.
+ */
 export function requiresJava(emulator: Emulators): boolean {
   if (emulator in Commands) {
     return Commands[emulator as keyof typeof Commands].binary === "java";
@@ -308,7 +325,7 @@ export function requiresJava(emulator: Emulators): boolean {
 async function _runBinary(
   emulator: DownloadableEmulatorDetails,
   command: DownloadableEmulatorCommand,
-  extraEnv: NodeJS.ProcessEnv
+  extraEnv: Partial<NodeJS.ProcessEnv>
 ): Promise<void> {
   return new Promise((resolve) => {
     const logger = EmulatorLogger.forEmulator(emulator.name);
@@ -452,7 +469,7 @@ export async function downloadIfNecessary(targetName: DownloadableEmulators): Pr
 export async function start(
   targetName: DownloadableEmulators,
   args: any,
-  extraEnv: NodeJS.ProcessEnv = {}
+  extraEnv: Partial<NodeJS.ProcessEnv> = {}
 ): Promise<void> {
   const downloadDetails = DownloadDetails[targetName];
   const emulator = get(targetName);

@@ -14,6 +14,8 @@ export interface Source {
   // Filled in the "prepare" phase.
   functionsSourceV1?: string;
   functionsSourceV2?: string;
+  functionsSourceV1Hash?: string;
+  functionsSourceV2Hash?: string;
 
   // Filled in the "deploy" phase.
   sourceUrl?: string;
@@ -39,6 +41,14 @@ export interface Context {
 
   // Filled in the "prepare" and "deploy" phase.
   sources?: Record<string, Source>; // codebase -> source
+
+  // Caching fields for backend.existingBackend()
+  existingBackend?: backend.Backend;
+  loadedExistingBackend?: boolean;
+  unreachableRegions?: {
+    gcfV1: string[];
+    gcfV2: string[];
+  };
 }
 
 export interface FirebaseConfig {

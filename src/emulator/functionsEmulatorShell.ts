@@ -25,11 +25,10 @@ export class FunctionsEmulatorShell implements FunctionsShellController {
     for (const trigger of this.triggers) {
       if (trigger.httpsTrigger) {
         this.urls[trigger.id] = FunctionsEmulator.getHttpFunctionUrl(
-          this.emu.getInfo().host,
-          this.emu.getInfo().port,
           this.emu.getProjectId(),
           trigger.name,
-          trigger.region
+          trigger.region,
+          this.emu.getInfo() // EmulatorRegistry is not available in shell
         );
       }
     }
@@ -63,8 +62,7 @@ export class FunctionsEmulatorShell implements FunctionsShellController {
       auth: opts.auth,
       data,
     };
-
-    this.emu.invokeTrigger(trigger, proto);
+    this.emu.sendRequest(trigger, proto);
   }
 
   private getTrigger(name: string): EmulatedTriggerDefinition {

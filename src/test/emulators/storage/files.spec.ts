@@ -43,16 +43,57 @@ describe("files", () => {
     expect(deserialized).to.deep.equal(metadata);
   });
 
+  it("converts non-string custom metadata to string", () => {
+    const cf = new StorageCloudFunctions("demo-project");
+    const customMetadata = {
+      foo: true as unknown as string,
+    };
+    const metadata = new StoredFileMetadata(
+      {
+        customMetadata,
+        name: "name",
+        bucket: "bucket",
+        contentType: "mime/type",
+        downloadTokens: ["token123"],
+      },
+      cf,
+      Buffer.from("Hello, World!")
+    );
+    const json = StoredFileMetadata.toJSON(metadata);
+    const deserialized = StoredFileMetadata.fromJSON(json, cf);
+    expect(deserialized.customMetadata).to.deep.equal({ foo: "true" });
+  });
+
   describe("StorageLayer", () => {
     let _persistence: Persistence;
     let _uploadService: UploadService;
+
+    type UploadFileOptions = {
+      data?: string;
+      metadata?: Object;
+    };
+
+    async function uploadFile(
+      storageLayer: StorageLayer,
+      bucketId: string,
+      objectId: string,
+      opts?: UploadFileOptions
+    ) {
+      const upload = _uploadService.multipartUpload({
+        bucketId,
+        objectId: encodeURIComponent(objectId),
+        dataRaw: Buffer.from(opts?.data ?? "hello world"),
+        metadataRaw: JSON.stringify(opts?.metadata ?? {}),
+      });
+      await storageLayer.uploadObject(upload);
+    }
 
     beforeEach(() => {
       _persistence = new Persistence(getPersistenceTmpDir());
       _uploadService = new UploadService(_persistence);
     });
 
-    describe("#handleUploadObject()", () => {
+    describe("#uploadObject()", () => {
       it("should throw if upload is not finished", () => {
         const storageLayer = getStorageLayer(ALWAYS_TRUE_RULES_VALIDATOR);
         const upload = _uploadService.startResumableUpload({
@@ -78,16 +119,13 @@ describe("files", () => {
       });
     });
 
-    describe("#handleGetObject()", () => {
+    describe("#getObject()", () => {
       it("should return data and metadata", async () => {
         const storageLayer = getStorageLayer(ALWAYS_TRUE_RULES_VALIDATOR);
-        const upload = _uploadService.multipartUpload({
-          bucketId: "bucket",
-          objectId: "dir%2Fobject",
-          metadataRaw: `{"contentType": "mime/type"}`,
-          dataRaw: Buffer.from("Hello, World!"),
+        await uploadFile(storageLayer, "bucket", "dir/object", {
+          data: "Hello, World!",
+          metadata: { contentType: "mime/type" },
         });
-        await storageLayer.uploadObject(upload);
 
         const { metadata, data } = await storageLayer.getObject({
           bucketId: "bucket",

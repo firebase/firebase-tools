@@ -17,7 +17,9 @@ export interface FirebaseRulesValidator {
     bucketId: string,
     method: RulesetOperationMethod,
     variableOverrides: RulesVariableOverrides,
-    authorization?: string
+    projectId: string,
+    authorization?: string,
+    delimiter?: string
   ): Promise<boolean>;
 }
 
@@ -41,14 +43,18 @@ export function getFirebaseRulesValidator(
       bucketId: string,
       method: RulesetOperationMethod,
       variableOverrides: RulesVariableOverrides,
-      authorization?: string
+      projectId: string,
+      authorization?: string,
+      delimiter?: string
     ) => {
       return await isPermitted({
         ruleset: rulesetProvider(bucketId),
         file: variableOverrides,
         path,
         method,
+        projectId,
         authorization,
+        delimiter,
       });
     },
   };
@@ -66,7 +72,8 @@ export function getAdminOnlyFirebaseRulesValidator(): FirebaseRulesValidator {
       _bucketId: string,
       _method: RulesetOperationMethod,
       _variableOverrides: RulesVariableOverrides,
-      _authorization?: string
+      _authorization?: string,
+      delimiter?: string
     ) => {
       // TODO(tonyjhuang): This should check for valid admin credentials some day.
       // Unfortunately today, there's no easy way to set up the GCS SDK to pass
@@ -94,7 +101,9 @@ export async function isPermitted(opts: {
   };
   path: string;
   method: RulesetOperationMethod;
+  projectId: string;
   authorization?: string;
+  delimiter?: string;
 }): Promise<boolean> {
   if (!opts.ruleset) {
     EmulatorLogger.forEmulator(Emulators.STORAGE).log(
@@ -113,7 +122,9 @@ export async function isPermitted(opts: {
     method: opts.method,
     path: opts.path,
     file: opts.file,
+    projectId: opts.projectId,
     token: opts.authorization ? opts.authorization.split(" ")[1] : undefined,
+    delimiter: opts.delimiter,
   });
 
   if (issues.exist()) {

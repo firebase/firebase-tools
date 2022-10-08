@@ -6,8 +6,8 @@ if (firebaseConfig) {
   /*--EMULATORS--*/
   if (firebaseEmulators) {
     console.log("Automatically connecting Firebase SDKs to running emulators:");
-    Object.keys(firebaseEmulators).forEach(function(key) {
-      console.log('\t' + key + ': http://' +  firebaseEmulators[key].host + ':' + firebaseEmulators[key].port );
+    Object.keys(firebaseEmulators).forEach(function (key) {
+      console.log('\t' + key + ': http://' + firebaseEmulators[key].hostAndPort);
     });
 
     if (firebaseEmulators.database && typeof firebase.database === 'function') {
@@ -23,7 +23,12 @@ if (firebaseConfig) {
     }
 
     if (firebaseEmulators.auth && typeof firebase.auth === 'function') {
-      firebase.auth().useEmulator('http://' + firebaseEmulators.auth.host + ':' + firebaseEmulators.auth.port);
+      // TODO: Consider using location.protocol + '//' instead (may help HTTPS).
+      firebase.auth().useEmulator('http://' + firebaseEmulators.auth.hostAndPort);
+    }
+
+    if (firebaseEmulators.storage && typeof firebase.storage === 'function') {
+      firebase.storage().useEmulator(firebaseEmulators.storage.host, firebaseEmulators.storage.port);
     }
   } else {
     console.log("To automatically connect the Firebase SDKs to running emulators, replace '/__/firebase/init.js' with '/__/firebase/init.js?useEmulator=true' in your index.html");

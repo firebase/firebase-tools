@@ -464,7 +464,7 @@ function batchCreate(
       fields.disabled = !!userInfo.disabled;
 
       // MFA
-      if (userInfo.mfaInfo) {
+      if (userInfo.mfaInfo && userInfo.mfaInfo.length > 0) {
         fields.mfaInfo = [];
         assert(fields.email, "Second factor account requires email to be presented.");
         assert(fields.emailVerified, "Second factor account requires email to be verified.");
@@ -1289,7 +1289,6 @@ function signInWithCustomToken(
   assert(!state.disableAuth, "PROJECT_DISABLED");
   assert(reqBody.token, "MISSING_CUSTOM_TOKEN");
 
-  // eslint-disable-next-line camelcase
   let payload: {
     aud?: unknown;
     uid?: unknown;
@@ -1877,7 +1876,6 @@ function grantToken(
     secondFactor: refreshTokenRecord.secondFactor,
   });
   return {
-    /* eslint-disable camelcase */
     id_token: tokens.idToken,
     access_token: tokens.idToken,
     expires_in: tokens.expiresIn,
@@ -1888,7 +1886,6 @@ function grantToken(
     // According to API docs (and production behavior), this should be the
     // automatically generated number, not the customizable alphanumeric ID.
     project_id: state.projectNumber,
-    /* eslint-enable camelcase */
   };
 }
 
@@ -2364,7 +2361,6 @@ function generateJwt(
   }
 
   const customAttributes = JSON.parse(user.customAttributes || "{}") as Record<string, unknown>;
-  /* eslint-disable camelcase */
   const customPayloadFields: Partial<FirebaseJwtPayload> = {
     // Non-reserved fields (set before custom attributes):
     name: user.displayName,
@@ -2391,7 +2387,6 @@ function generateJwt(
       sign_in_attributes: signInAttributes,
     },
   };
-  /* eslint-enable camelcase */
 
   const jwtStr = signJwt(customPayloadFields, "", {
     // Generate a unsigned (insecure) JWT. This is accepted by many other
@@ -2615,18 +2610,17 @@ function fakeFetchUserInfoFromIdp(
   };
 
   let federatedId = rawId;
-  /* eslint-disable camelcase */
   switch (providerId) {
     case "google.com": {
       federatedId = `https://accounts.google.com/${rawId}`;
-      let granted_scopes = "openid https://www.googleapis.com/auth/userinfo.profile";
+      let grantedScopes = "openid https://www.googleapis.com/auth/userinfo.profile";
       if (email) {
-        granted_scopes += " https://www.googleapis.com/auth/userinfo.email";
+        grantedScopes += " https://www.googleapis.com/auth/userinfo.email";
       }
       response.firstName = claims.given_name;
       response.lastName = claims.family_name;
       response.rawUserInfo = JSON.stringify({
-        granted_scopes,
+        granted_scopes: grantedScopes,
         id: rawId,
         name: displayName,
         given_name: claims.given_name,
@@ -3094,8 +3088,9 @@ function processBlockingFunctionResponse(
           updates[field] = !!userRecord[field];
           break;
         case "customClaims":
-          validateSerializedCustomClaims(userRecord.customClaims!);
-          updates.customAttributes = userRecord.customClaims;
+          const customClaims = JSON.stringify(userRecord.customClaims!);
+          validateSerializedCustomClaims(customClaims);
+          updates.customAttributes = customClaims;
           break;
         // Session claims are only returned in beforeSignIn and will be ignored
         // otherwise. For more info, see
@@ -3105,7 +3100,7 @@ function processBlockingFunctionResponse(
             break;
           }
           try {
-            extraClaims = JSON.parse(userRecord.sessionClaims!);
+            extraClaims = userRecord.sessionClaims;
           } catch {
             throw new BadRequestError(
               "BLOCKING_FUNCTION_ERROR_RESPONSE: ((Response has malformed session claims.))"
@@ -3174,7 +3169,7 @@ function generateBlockingFunctionJwt(
     jwt.user_record.tenant_id = state.tenantId;
   }
 
-  const provider_data = [];
+  const providerData = [];
   if (user.providerUserInfo) {
     for (const providerUserInfo of user.providerUserInfo) {
       const provider: Provider = {
@@ -3185,13 +3180,13 @@ function generateBlockingFunctionJwt(
         uid: providerUserInfo.rawId,
         phone_number: providerUserInfo.phoneNumber,
       };
-      provider_data.push(provider);
+      providerData.push(provider);
     }
   }
-  jwt.user_record.provider_data = provider_data;
+  jwt.user_record.provider_data = providerData;
 
   if (user.mfaInfo) {
-    const enrolled_factors = [];
+    const enrolledFactors = [];
     for (const mfaEnrollment of user.mfaInfo) {
       if (!mfaEnrollment.mfaEnrollmentId) {
         continue;
@@ -3203,10 +3198,10 @@ function generateBlockingFunctionJwt(
         phone_number: mfaEnrollment.phoneInfo,
         factor_id: PROVIDER_PHONE,
       };
-      enrolled_factors.push(enrolledFactor);
+      enrolledFactors.push(enrolledFactor);
     }
     jwt.user_record.multi_factor = {
-      enrolled_factors,
+      enrolled_factors: enrolledFactors,
     };
   }
 
@@ -3258,7 +3253,6 @@ export interface SamlResponse {
   assertion?: SamlAssertion;
 }
 
-/* eslint-disable camelcase */
 export interface FirebaseJwtPayload {
   // Standard fields:
   iat: number; // issuedAt (in seconds since epoch)
@@ -3395,8 +3389,8 @@ export interface BlockingFunctionResponsePayload {
     photoUrl?: string;
     disabled?: boolean;
     emailVerified?: boolean;
-    customClaims?: string;
-    sessionClaims?: string;
+    customClaims?: Record<string, unknown>;
+    sessionClaims?: Record<string, unknown>;
   };
 }
 
@@ -3477,4 +3471,3 @@ export interface BlockingFunctionsJwtPayload {
   oauth_refresh_token?: string;
   oauth_expires_in?: string;
 }
-/* eslint-enable camelcase */

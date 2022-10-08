@@ -1,4 +1,4 @@
-import { bold } from "cli-color";
+import { bold } from "colorette";
 
 import { track } from "./track";
 import { serviceUsageOrigin } from "./api";
@@ -30,6 +30,7 @@ export async function check(
   silent = false
 ): Promise<boolean> {
   const res = await apiClient.get<{ state: string }>(`/projects/${projectId}/services/${apiName}`, {
+    headers: { "x-goog-quota-user": `projects/${projectId}` },
     skipLog: { resBody: true },
   });
   const isEnabled = res.body.state === "ENABLED";
@@ -54,6 +55,7 @@ async function enable(projectId: string, apiName: string): Promise<void> {
       `/projects/${projectId}/services/${apiName}:enable`,
       undefined,
       {
+        headers: { "x-goog-quota-user": `projects/${projectId}` },
         skipLog: { resBody: true },
       }
     );

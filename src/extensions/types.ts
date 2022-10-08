@@ -1,6 +1,7 @@
 import * as proto from "../gcp/proto";
 import { SpecParamType } from "./extensionsHelper";
 import { Runtime } from "../deploy/functions/runtimes";
+import { MemoryOptions } from "../deploy/functions/backend";
 
 export enum RegistryLaunchStage {
   EXPERIMENTAL = "EXPERIMENTAL",
@@ -97,7 +98,7 @@ export interface ExtensionSpec {
   contributors?: Author[];
   license?: string;
   releaseNotesUrl?: string;
-  sourceUrl: string;
+  sourceUrl?: string;
   params: Param[];
   preinstallContent?: string;
   postinstallContent?: string;
@@ -135,9 +136,22 @@ export interface FunctionResourceProperties {
     entryPoint?: string;
     sourceDirectory?: string;
     timeout?: proto.Duration;
-    availableMemoryMb?: number;
+    availableMemoryMb?: MemoryOptions;
     runtime?: Runtime;
     httpsTrigger?: Record<string, never>;
+    taskQueueTrigger?: {
+      rateLimits?: {
+        maxConcurrentDispatchs?: number;
+        maxDispatchesPerSecond?: number;
+      };
+      retryConfig?: {
+        maxAttempts?: number;
+        maxRetrySeconds?: number;
+        maxBackoffSeconds?: number;
+        maxDoublings?: number;
+        minBackoffSeconds?: number;
+      };
+    };
     eventTrigger?: {
       eventType: string;
       resource: string;

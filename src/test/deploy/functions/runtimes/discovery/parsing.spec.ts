@@ -35,7 +35,18 @@ describe("requireKeys", () => {
 });
 
 describe("assertKeyTypes", () => {
-  const tests = ["string", "number", "boolean", "array", "object"];
+  const tests = [
+    "string",
+    "number",
+    "boolean",
+    "array",
+    "object",
+    "string?",
+    "number?",
+    "boolean?",
+    "array?",
+    "object?",
+  ];
   const values = {
     null: null,
     undefined: undefined,
@@ -47,10 +58,18 @@ describe("assertKeyTypes", () => {
   };
   for (const type of tests) {
     for (const [testType, val] of Object.entries(values)) {
-      const schema = { [type]: type as parsing.KeyType<typeof val> };
+      const schema = { [type]: type as parsing.FieldType<typeof val> };
       it(`handles a ${testType} when expecting a ${type}`, () => {
         const obj = { [type]: val };
-        if (type === testType) {
+        const isNullable = type.endsWith("?");
+        const baseType = type.split("?")[0];
+        if (testType === "null") {
+          if (isNullable) {
+            expect(() => parsing.assertKeyTypes("", obj, schema)).not.to.throw();
+          } else {
+            expect(() => parsing.assertKeyTypes("", obj, schema)).to.throw(FirebaseError);
+          }
+        } else if (testType === baseType) {
           expect(() => parsing.assertKeyTypes("", obj, schema)).not.to.throw();
         } else {
           expect(() => parsing.assertKeyTypes("", obj, schema)).to.throw(FirebaseError);
@@ -103,7 +122,7 @@ describe("assertKeyTypes", () => {
         foo: "string",
         number: "omit",
       })
-    );
+    ).to.throw(/Unexpected key/);
   });
 
   it("Handles prefixes", () => {
@@ -114,6 +133,6 @@ describe("assertKeyTypes", () => {
       parsing.assertKeyTypes("outer", obj, {
         foo: "array",
       })
-    ).to.throw(FirebaseError, "Expected outer.foo to be an array");
+    ).to.throw(FirebaseError, "Expected outer.foo to be type array");
   });
 });

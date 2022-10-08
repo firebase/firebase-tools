@@ -148,6 +148,7 @@ describe("function triggers", () => {
 
     it("should have have triggered cloud functions", () => {
       expect(test.rtdbTriggerCount).to.equal(1);
+      expect(test.rtdbV2TriggerCount).to.eq(1);
       expect(test.firestoreTriggerCount).to.equal(1);
       /*
        * Check for the presence of all expected documents in the firestore
@@ -407,5 +408,11 @@ describe("function triggers", () => {
       const body = await response.json();
       expect(body).to.deep.equal({ result: "foobar" });
     });
+  });
+
+  it("should enforce timeout", async function (this) {
+    this.timeout(TEST_SETUP_TIMEOUT);
+    const v2response = await test.invokeHttpFunction("onreqv2timeout");
+    expect(v2response.status).to.equal(500);
   });
 });

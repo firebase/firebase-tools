@@ -1,13 +1,13 @@
 import { logger } from "../logger";
 import { hostingOrigin } from "../api";
-import { bold, white } from "cli-color";
+import { bold, underline, white } from "colorette";
 import { has, includes, each } from "lodash";
 import { needProjectId } from "../projectUtils";
 import { logBullet, logSuccess, consoleUrl, addSubdomain } from "../utils";
 import { FirebaseError } from "../error";
 import { track } from "../track";
 import { lifecycleHooks } from "./lifecycleHooks";
-import { previews } from "../previews";
+import * as experiments from "../experiments";
 import * as HostingTarget from "./hosting";
 import * as DatabaseTarget from "./database";
 import * as FirestoreTarget from "./firestore";
@@ -16,6 +16,7 @@ import * as StorageTarget from "./storage";
 import * as RemoteConfigTarget from "./remoteconfig";
 import * as ExtensionsTarget from "./extensions";
 import { prepareFrameworks } from "../frameworks";
+import { HostingDeploy } from "./hosting/context";
 
 const TARGETS = {
   hosting: HostingTarget,
@@ -56,9 +57,10 @@ export const deploy = async function (
   const postdeploys: Chain = [];
   const startTime = Date.now();
 
-  if (previews.frameworkawareness && targetNames.includes("hosting")) {
+  if (targetNames.includes("hosting")) {
     const config = options.config.get("hosting");
     if (Array.isArray(config) ? config.some((it) => it.source) : config.source) {
+      experiments.assertEnabled("webframeworks", "deploy a web framework to hosting");
       await prepareFrameworks(targetNames, context, options);
     }
   }
@@ -97,14 +99,14 @@ export const deploy = async function (
   await track("Product Deploy", [...targetNames].sort().join(","), duration);
 
   logger.info();
-  logSuccess(bold.underline("Deploy complete!"));
+  logSuccess(bold(underline("Deploy complete!")));
   logger.info();
 
   const deployedHosting = includes(targetNames, "hosting");
   logger.info(bold("Project Console:"), consoleUrl(options.project, "/overview"));
   if (deployedHosting) {
-    each(context.hosting.deploys, (deploy) => {
-      logger.info(bold("Hosting URL:"), addSubdomain(hostingOrigin, deploy.site));
+    each(context.hosting.deploys as HostingDeploy[], (deploy) => {
+      logger.info(bold("Hosting URL:"), addSubdomain(hostingOrigin, deploy.config.site));
     });
     const versionNames = context.hosting.deploys.map((deploy: any) => deploy.version);
     return { hosting: versionNames.length === 1 ? versionNames[0] : versionNames };

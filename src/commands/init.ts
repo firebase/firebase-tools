@@ -1,4 +1,4 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
@@ -112,13 +112,13 @@ export const command = new Command("init [feature]")
     if (warnings.length) {
       warningText =
         "\nBefore we get started, keep in mind:\n\n  " +
-        clc.yellow.bold("* ") +
-        warnings.join("\n  " + clc.yellow.bold("* ")) +
+        clc.yellow(clc.bold("* ")) +
+        warnings.join("\n  " + clc.yellow(clc.bold("* "))) +
         "\n";
     }
 
     logger.info(
-      clc.yellow.bold(BANNER_TEXT) +
+      clc.yellow(clc.bold(BANNER_TEXT)) +
         "\nYou're about to initialize a Firebase project in this directory:\n\n  " +
         clc.bold(config.projectDir) +
         "\n" +
@@ -171,7 +171,7 @@ export const command = new Command("init [feature]")
         if (!setup.features || setup.features?.length === 0) {
           return utils.reject(
             "Must select at least one feature. Use " +
-              clc.bold.underline("SPACEBAR") +
+              clc.bold(clc.underline("SPACEBAR")) +
               " to select features, or specify a feature by running " +
               clc.bold("firebase init [feature_name]")
           );

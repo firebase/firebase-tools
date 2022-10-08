@@ -4,6 +4,7 @@ import * as cloudfunctionsv2 from "../../gcp/cloudfunctionsv2";
 import * as backend from "../../deploy/functions/backend";
 import * as events from "../../functions/events";
 import * as projectConfig from "../../functions/projectConfig";
+import { BLOCKING_LABEL, CODEBASE_LABEL, HASH_LABEL } from "../../functions/constants";
 
 describe("cloudfunctionsv2", () => {
   const FUNCTION_NAME: backend.TargetIds = {
@@ -212,7 +213,7 @@ describe("cloudfunctionsv2", () => {
         ...CLOUD_FUNCTION_V2,
         labels: {
           ...CLOUD_FUNCTION_V2.labels,
-          [cloudfunctionsv2.BLOCKING_LABEL]: "before-create",
+          [BLOCKING_LABEL]: "before-create",
         },
       });
 
@@ -231,7 +232,7 @@ describe("cloudfunctionsv2", () => {
         ...CLOUD_FUNCTION_V2,
         labels: {
           ...CLOUD_FUNCTION_V2.labels,
-          [cloudfunctionsv2.BLOCKING_LABEL]: "before-sign-in",
+          [BLOCKING_LABEL]: "before-sign-in",
         },
       });
     });
@@ -246,7 +247,7 @@ describe("cloudfunctionsv2", () => {
           egressSettings: "ALL_TRAFFIC",
         },
         ingressSettings: "ALLOW_ALL",
-        serviceAccountEmail: "inlined@google.com",
+        serviceAccount: "inlined@google.com",
         labels: {
           foo: "bar",
         },
@@ -351,7 +352,19 @@ describe("cloudfunctionsv2", () => {
         )
       ).to.deep.equal({
         ...CLOUD_FUNCTION_V2,
-        labels: { ...CLOUD_FUNCTION_V2.labels, [cloudfunctionsv2.CODEBASE_LABEL]: "my-codebase" },
+        labels: { ...CLOUD_FUNCTION_V2.labels, [CODEBASE_LABEL]: "my-codebase" },
+      });
+    });
+
+    it("should export hash as label", () => {
+      expect(
+        cloudfunctionsv2.functionFromEndpoint(
+          { ...ENDPOINT, hash: "my-hash", httpsTrigger: {} },
+          CLOUD_FUNCTION_V2_SOURCE
+        )
+      ).to.deep.equal({
+        ...CLOUD_FUNCTION_V2,
+        labels: { ...CLOUD_FUNCTION_V2.labels, [HASH_LABEL]: "my-hash" },
       });
     });
   });
@@ -534,7 +547,6 @@ describe("cloudfunctionsv2", () => {
     it("should copy optional fields", () => {
       const extraFields: backend.ServiceConfiguration = {
         ingressSettings: "ALLOW_ALL",
-        serviceAccountEmail: "inlined@google.com",
         timeoutSeconds: 15,
         environmentVariables: {
           FOO: "bar",
@@ -550,6 +562,7 @@ describe("cloudfunctionsv2", () => {
           serviceConfig: {
             ...HAVE_CLOUD_FUNCTION_V2.serviceConfig,
             ...extraFields,
+            serviceAccountEmail: "inlined@google.com",
             vpcConnector: vpc.connector,
             vpcConnectorEgressSettings: vpc.egressSettings,
             availableMemory: "128Mi",
@@ -564,6 +577,7 @@ describe("cloudfunctionsv2", () => {
         httpsTrigger: {},
         uri: RUN_URI,
         ...extraFields,
+        serviceAccount: "inlined@google.com",
         vpc,
         availableMemoryMb: 128,
         labels: {
@@ -606,7 +620,7 @@ describe("cloudfunctionsv2", () => {
           ...HAVE_CLOUD_FUNCTION_V2,
           labels: {
             ...CLOUD_FUNCTION_V2.labels,
-            [cloudfunctionsv2.CODEBASE_LABEL]: "my-codebase",
+            [CODEBASE_LABEL]: "my-codebase",
           },
         })
       ).to.deep.equal({
@@ -616,9 +630,34 @@ describe("cloudfunctionsv2", () => {
         httpsTrigger: {},
         labels: {
           ...ENDPOINT.labels,
-          [cloudfunctionsv2.CODEBASE_LABEL]: "my-codebase",
+          [CODEBASE_LABEL]: "my-codebase",
         },
         codebase: "my-codebase",
+      });
+    });
+
+    it("should derive hash from labels", () => {
+      expect(
+        cloudfunctionsv2.endpointFromFunction({
+          ...HAVE_CLOUD_FUNCTION_V2,
+          labels: {
+            ...CLOUD_FUNCTION_V2.labels,
+            [CODEBASE_LABEL]: "my-codebase",
+            [HASH_LABEL]: "my-hash",
+          },
+        })
+      ).to.deep.equal({
+        ...ENDPOINT,
+        platform: "gcfv2",
+        uri: RUN_URI,
+        httpsTrigger: {},
+        labels: {
+          ...ENDPOINT.labels,
+          [CODEBASE_LABEL]: "my-codebase",
+          [HASH_LABEL]: "my-hash",
+        },
+        codebase: "my-codebase",
+        hash: "my-hash",
       });
     });
   });

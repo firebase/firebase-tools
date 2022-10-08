@@ -3,6 +3,7 @@ import * as express from "express";
 import * as exegesisExpress from "exegesis-express";
 import { ValidationError } from "exegesis/lib/errors";
 import * as _ from "lodash";
+import { SingleProjectMode } from "./index";
 import { OpenAPIObject, PathsObject, ServerObject, OperationObject } from "openapi3-ts";
 import { EmulatorLogger } from "../emulatorLogger";
 import { Emulators } from "../types";
@@ -116,10 +117,23 @@ function specWithEmulatorServer(protocol: string, host: string | undefined): Ope
  */
 export async function createApp(
   defaultProjectId: string,
+  singleProjectMode = SingleProjectMode.NO_WARNING,
   projectStateForId = new Map<string, AgentProjectState>()
 ): Promise<express.Express> {
   const app = express();
   app.set("json spaces", 2);
+
+  // Retrun access-control-allow-private-network heder if requested
+  // Enables accessing locahost when site is exposed via tunnel see https://github.com/firebase/firebase-tools/issues/4227
+  // Aligns with https://wicg.github.io/private-network-access/#headers
+  // Replace with cors option if adopted, see https://github.com/expressjs/cors/issues/236
+  app.use("/", (req, res, next) => {
+    if (req.headers["access-control-request-private-network"]) {
+      res.setHeader("access-control-allow-private-network", "true");
+    }
+    next();
+  });
+
   // Enable CORS for all APIs, all origins (reflected), and all headers (reflected).
   // This is similar to production behavior. Safe since all APIs are cookieless.
   app.use(cors({ origin: true }));
@@ -350,6 +364,23 @@ export async function createApp(
 
   function getProjectStateById(projectId: string, tenantId?: string): ProjectState {
     let agentState = projectStateForId.get(projectId);
+
+    if (
+      singleProjectMode !== SingleProjectMode.NO_WARNING &&
+      projectId &&
+      defaultProjectId !== projectId
+    ) {
+      const errorString =
+        `Multiple projectIds are not recommended in single project mode. ` +
+        `Requested project ID ${projectId}, but the emulator is configured for ` +
+        `${defaultProjectId}. This warning will become an error in the future. To opt-out of ` +
+        `single project mode add/set the \'"single_project_mode"\' false' property in the` +
+        ` firebase.json emulators config.`;
+      EmulatorLogger.forEmulator(Emulators.AUTH).log("WARN", errorString);
+      if (singleProjectMode === SingleProjectMode.ERROR) {
+        throw new BadRequestError(errorString);
+      }
+    }
     if (!agentState) {
       agentState = new AgentProjectState(projectId);
       projectStateForId.set(projectId, agentState);

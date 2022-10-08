@@ -1,4 +1,4 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as _ from "lodash";
 import * as utils from "../../utils";
 import { prompt } from "../../prompt";
@@ -98,6 +98,11 @@ export async function doSetup(setup: any, config: any) {
         default: false,
       },
     ]);
+  }
+
+  // Set the default behavior to be single project mode.
+  if (setup.config.emulators.singleProjectMode === undefined) {
+    setup.config.emulators.singleProjectMode = true;
   }
 
   if (selections.download) {

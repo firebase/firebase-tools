@@ -9,13 +9,21 @@ import { CloudFunction } from "firebase-functions";
 import * as backend from "../deploy/functions/backend";
 import { Constants } from "./constants";
 import { BackendInfo, EmulatableBackend, InvokeRuntimeOpts } from "./functionsEmulator";
-import { copyIfPresent } from "../gcp/proto";
 import { ENV_DIRECTORY } from "../extensions/manifest";
 import { substituteParams } from "../extensions/extensionsHelper";
 import { ExtensionSpec, ExtensionVersion } from "../extensions/types";
 import { replaceConsoleLinks } from "./extensions/postinstall";
 import { serviceForEndpoint } from "../deploy/functions/services";
 import { inferBlockingDetails } from "../deploy/functions/prepare";
+import * as events from "../functions/events";
+import { connectableHostname } from "../utils";
+
+/** The current v2 events that are implemented in the emulator */
+const V2_EVENTS = [
+  events.v2.PUBSUB_PUBLISH_EVENT,
+  ...events.v2.STORAGE_EVENTS,
+  ...events.v2.DATABASE_EVENTS,
+];
 
 export type SignatureType = "http" | "event" | "cloudevent";
 
@@ -25,7 +33,7 @@ export interface ParsedTriggerDefinition {
   name: string;
   timeoutSeconds?: number;
   regions?: string[];
-  availableMemoryMb?: "128MB" | "256MB" | "512MB" | "1GB" | "2GB" | "4GB";
+  availableMemoryMb?: backend.MemoryOptions;
   httpsTrigger?: any;
   eventTrigger?: EventTrigger;
   schedule?: EventSchedule;
@@ -51,8 +59,11 @@ export interface EventSchedule {
 }
 
 export interface EventTrigger {
-  resource: string;
+  resource?: string;
   eventType: string;
+  channel?: string;
+  eventFilters?: Record<string, string>;
+  eventFilterPathPatterns?: Record<string, string>;
   // Deprecated
   service?: string;
 }
@@ -85,15 +96,6 @@ export interface FunctionsRuntimeFeatures {
   timeout?: boolean;
 }
 
-const memoryLookup = {
-  "128MB": 128,
-  "256MB": 256,
-  "512MB": 512,
-  "1GB": 1024,
-  "2GB": 2048,
-  "4GB": 4096,
-};
-
 export class HttpConstants {
   static readonly CALLABLE_AUTH_HEADER: string = "x-callable-context-auth";
   static readonly ORIGINAL_AUTH_HEADER: string = "x-original-auth";
@@ -108,7 +110,7 @@ export class EmulatedTrigger {
   constructor(public definition: EmulatedTriggerDefinition, private module: any) {}
 
   get memoryLimitBytes(): number {
-    return memoryLookup[this.definition.availableMemoryMb || "128MB"] * 1024 * 1024;
+    return (this.definition.availableMemoryMb || 128) * 1024 * 1024;
   }
 
   get timeoutMs(): number {
@@ -125,6 +127,16 @@ export class EmulatedTrigger {
   }
 }
 
+/**
+ * Checks if the v2 event service has been implemented in the emulator
+ */
+export function eventServiceImplemented(eventType: string): boolean {
+  return V2_EVENTS.includes(eventType);
+}
+
+/**
+ * Validates that triggers are correctly formed and fills in some defaults.
+ */
 export function prepareEndpoints(endpoints: backend.Endpoint[]) {
   const bkend = backend.of(...endpoints);
   for (const ep of endpoints) {
@@ -157,15 +169,11 @@ export function emulatedFunctionsFromEndpoints(
       id: `${endpoint.region}-${endpoint.id}`,
       codebase: endpoint.codebase,
     };
-    copyIfPresent(
-      def,
-      endpoint,
-      "availableMemoryMb",
-      "labels",
-      "timeoutSeconds",
-      "platform",
-      "secretEnvironmentVariables"
-    );
+    def.availableMemoryMb = endpoint.availableMemoryMb || 256;
+    def.labels = endpoint.labels || {};
+    def.timeoutSeconds = endpoint.timeoutSeconds || 60;
+    def.secretEnvironmentVariables = endpoint.secretEnvironmentVariables || [];
+    def.platform = endpoint.platform;
     // TODO: This transformation is confusing but must be kept since the Firestore/RTDB trigger registration
     // process requires it in this form. Need to work in Firestore emulator for a proper fix...
     if (backend.isHttpsTriggered(endpoint)) {
@@ -178,19 +186,24 @@ export function emulatedFunctionsFromEndpoints(
       if (endpoint.platform === "gcfv1") {
         def.eventTrigger = {
           eventType: eventTrigger.eventType,
-          resource: eventTrigger.eventFilters.resource,
+          resource: eventTrigger.eventFilters!.resource,
         };
       } else {
-        // Only pubsub and storage events are supported for gcfv2.
-        const { resource, topic, bucket } = endpoint.eventTrigger.eventFilters;
-        const eventResource = resource || topic || bucket;
-        if (!eventResource) {
-          // Unsupported event type for GCFv2
+        // TODO(colerogers): v2 events implemented are pubsub, storage, rtdb, and custom events
+        if (!eventServiceImplemented(eventTrigger.eventType) && !eventTrigger.channel) {
           continue;
         }
+
+        // We use resource for pubsub & storage
+        const { resource, topic, bucket } = endpoint.eventTrigger.eventFilters as any;
+        const eventResource = resource || topic || bucket;
+
         def.eventTrigger = {
           eventType: eventTrigger.eventType,
           resource: eventResource,
+          channel: eventTrigger.channel,
+          eventFilters: eventTrigger.eventFilters,
+          eventFilterPathPatterns: eventTrigger.eventFilterPathPatterns,
         };
       }
     } else if (backend.isScheduleTriggered(endpoint)) {
@@ -249,7 +262,7 @@ export function emulatedFunctionsByRegion(
 /**
  * Converts an array of EmulatedTriggerDefinitions to a map of EmulatedTriggers, which contain information on execution,
  * @param {EmulatedTriggerDefinition[]} definitions An array of regionalized, parsed trigger definitions
- * @param {Object} module Actual module which contains multiple functions / definitions
+ * @param {object} module Actual module which contains multiple functions / definitions
  * @return a map of trigger ids to EmulatedTriggers
  */
 export function getEmulatedTriggersFromDefinitions(
@@ -265,6 +278,9 @@ export function getEmulatedTriggersFromDefinitions(
   );
 }
 
+/**
+ * Create a path that used to create a tempfile for IPC over socket files.
+ */
 export function getTemporarySocketPath(): string {
   // See "net" package docs for information about IPC pipes on Windows
   // https://nodejs.org/api/net.html#net_identifying_paths_for_ipc_connections
@@ -287,17 +303,33 @@ export function getTemporarySocketPath(): string {
   }
 }
 
+/**
+ * In GCF 1st gen, there was a mostly undocumented "service" field
+ * which identified where an event was coming from. This is used in the emulator
+ * to determine which emulator serves these triggers. Now that GCF 2nd gen
+ * discontinued the "service" field this becomes more bespoke.
+ */
 export function getFunctionService(def: ParsedTriggerDefinition): string {
   if (def.eventTrigger) {
+    if (def.eventTrigger.channel) {
+      return Constants.SERVICE_EVENTARC;
+    }
     return def.eventTrigger.service ?? getServiceFromEventType(def.eventTrigger.eventType);
   }
   if (def.blockingTrigger) {
     return def.blockingTrigger.eventType;
   }
+  if (def.httpsTrigger) {
+    return "https";
+  }
 
   return "unknown";
 }
 
+/**
+ * Returns a service ID to use for GCF 2nd gen events. Used to connect the right
+ * emulator service.
+ */
 export function getServiceFromEventType(eventType: string): string {
   if (eventType.includes("firestore")) {
     return Constants.SERVICE_FIRESTORE;
@@ -331,6 +363,9 @@ export function getServiceFromEventType(eventType: string): string {
   return "";
 }
 
+/**
+ * Create a Promise which can be awaited to recieve request bodies as strings.
+ */
 export function waitForBody(req: express.Request): Promise<string> {
   let data = "";
   return new Promise((resolve) => {
@@ -344,6 +379,9 @@ export function waitForBody(req: express.Request): Promise<string> {
   });
 }
 
+/**
+ * Find the root directory housing a node module.
+ */
 export function findModuleRoot(moduleName: string, filepath: string): string {
   const hierarchy = filepath.split(path.sep);
 
@@ -369,14 +407,28 @@ export function findModuleRoot(moduleName: string, filepath: string): string {
   return "";
 }
 
+/**
+ * Format a hostname for TCP dialing. Should only be used in Functions emulator.
+ *
+ * This is similar to EmulatorRegistry.url but with no explicit dependency on
+ * the registry and so on and thus can work in functions shell.
+ *
+ * For any other part of the CLI, please use EmulatorRegistry.url(...).host
+ * instead, which handles discovery, formatting, and fixing host in one go.
+ */
 export function formatHost(info: { host: string; port: number }): string {
-  if (info.host.includes(":")) {
-    return `[${info.host}]:${info.port}`;
+  const host = connectableHostname(info.host);
+  if (host.includes(":")) {
+    return `[${host}]:${info.port}`;
   } else {
-    return `${info.host}:${info.port}`;
+    return `${host}:${info.port}`;
   }
 }
 
+/**
+ * Determines the correct value for the environment variable that tells the
+ * Functions Framework how to parse this functions' input.
+ */
 export function getSignatureType(def: EmulatedTriggerDefinition): SignatureType {
   if (def.httpsTrigger || def.blockingTrigger) {
     return "http";

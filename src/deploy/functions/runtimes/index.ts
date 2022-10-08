@@ -1,6 +1,5 @@
 import * as backend from "../backend";
 import * as build from "../build";
-import * as golang from "./golang";
 import * as python from "./python";
 import * as node from "./node";
 import * as validate from "../validate";
@@ -113,11 +112,9 @@ export interface DelegateContext {
 }
 
 type Factory = (context: DelegateContext) => Promise<RuntimeDelegate | undefined>;
-const factories: Factory[] = [
-  node.tryCreateDelegate,
-  golang.tryCreateDelegate,
-  python.tryCreateDelegate,
-];
+// Note: golang has been removed from delegates because it does not work and it
+// is not worth having an experiment for yet.
+const factories: Factory[] = [node.tryCreateDelegate, python.tryCreateDelegate];
 
 /**
  *

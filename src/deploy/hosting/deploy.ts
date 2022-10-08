@@ -4,41 +4,29 @@ import { listFiles } from "../../listFiles";
 import { logger } from "../../logger";
 import { track } from "../../track";
 import { envOverride, logLabeledBullet, logLabeledSuccess } from "../../utils";
-import { HostingDeploy } from "./hostingDeploy";
+import { bold, cyan } from "colorette";
+import * as ora from "ora";
+import { Context, HostingDeploy } from "./context";
+import { Options } from "../../options";
+import { dirExistsSync } from "../../fsutils";
+import { FirebaseError } from "../../error";
 
-import * as clc from "cli-color";
-const SPINNER = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
-
-// Feature from cli-color 2.0.0 that we want to use:
-// See: https://github.com/medikoo/cli-color/blob/master/erase.js
-const _ERASE_LINE = "\x1b[2K";
-
-export async function deploy(
-  context: { hosting?: { deploys?: HostingDeploy[] } },
-  options: {
-    cwd?: string;
-    configPath?: string;
-    debug?: boolean;
-    nonInteractive?: boolean;
-    config: { path: (path: string) => string };
-  }
-): Promise<void> {
+/**
+ * Uploads static assets to the upcoming Hosting versions.
+ */
+export async function deploy(context: Context, options: Options): Promise<void> {
   if (!context.hosting?.deploys) {
     return;
   }
 
-  let spins = 0;
+  const spinner = ora();
   function updateSpinner(newMessage: string, debugging: boolean): void {
     // don't try to rewrite lines if debugging since it's likely to get interrupted
     if (debugging) {
       logLabeledBullet("hosting", newMessage);
     } else {
-      process.stdout.write(_ERASE_LINE + clc.move(-9999, 0));
-      process.stdout.write(
-        clc.bold.cyan(SPINNER[spins % SPINNER.length] + "  hosting: ") + newMessage
-      );
+      spinner.text = `${bold(cyan(" hosting:"))} ${newMessage}`;
     }
-    spins++;
   }
 
   async function runDeploys(deploys: HostingDeploy[], debugging: boolean): Promise<void> {
@@ -50,21 +38,24 @@ export async function deploy(
     // No need to run Uploader for no-file deploys
     if (!deploy.config?.public) {
       logLabeledBullet(
-        `hosting[${deploy.site}]`,
+        `hosting[${deploy.config.site}]`,
         'no "public" directory to upload, continuing with release'
       );
       return runDeploys(deploys, debugging);
     }
 
-    logLabeledBullet("hosting[" + deploy.site + "]", "beginning deploy...");
+    logLabeledBullet(`hosting[${deploy.config.site}]`, "beginning deploy...");
     const t0 = Date.now();
 
     const publicDir = options.config.path(deploy.config.public);
+    if (!dirExistsSync(`${publicDir}`)) {
+      throw new FirebaseError(`Directory '${deploy.config.public}' for Hosting does not exist.`);
+    }
     const files = listFiles(publicDir, deploy.config.ignore);
 
     logLabeledBullet(
-      `hosting[${deploy.site}]`,
-      `found ${files.length} files in ${clc.bold(deploy.config.public)}`
+      `hosting[${deploy.config.site}]`,
+      `found ${files.length} files in ${bold(deploy.config.public)}`
     );
 
     let concurrency = 200;
@@ -91,6 +82,10 @@ export async function deploy(
       debugging ? 2000 : 200
     );
 
+    if (!debugging) {
+      spinner.start();
+    }
+
     try {
       await uploader.start();
     } catch (err: any) {
@@ -98,15 +93,16 @@ export async function deploy(
       throw err;
     } finally {
       clearInterval(progressInterval);
+      updateSpinner(uploader.statusMessage(), debugging);
     }
 
     if (!debugging) {
-      process.stdout.write(_ERASE_LINE + clc.move(-9999, 0));
+      spinner.stop();
     }
 
-    logLabeledSuccess("hosting[" + deploy.site + "]", "file upload complete");
+    logLabeledSuccess(`hosting[${deploy.config.site}]`, "file upload complete");
     const dt = Date.now() - t0;
-    logger.debug("[hosting] deploy completed after " + dt + "ms");
+    logger.debug(`[hosting] deploy completed after ${dt}ms`);
 
     void track("Hosting Deploy", "success", dt);
     return runDeploys(deploys, debugging);

@@ -1,14 +1,14 @@
 import * as _ from "lodash";
 import * as url from "url";
 import * as http from "http";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as ora from "ora";
 import * as process from "process";
 import { Readable } from "stream";
 import * as winston from "winston";
 import { SPLAT } from "triple-beam";
 import { AssertionError } from "assert";
-const ansiStrip = require("cli-color/strip") as (input: string) => string;
+const stripAnsi = require("strip-ansi");
 
 import { configstore } from "./configstore";
 import { FirebaseError } from "./error";
@@ -131,7 +131,7 @@ export function logSuccess(
   type: LogLevel = "info",
   data: LogDataOrUndefined = undefined
 ): void {
-  logger[type](clc.green.bold(`${SUCCESS_CHAR} `), message, data);
+  logger[type](clc.green(clc.bold(`${SUCCESS_CHAR} `)), message, data);
 }
 
 /**
@@ -143,7 +143,7 @@ export function logLabeledSuccess(
   type: LogLevel = "info",
   data: LogDataOrUndefined = undefined
 ): void {
-  logger[type](clc.green.bold(`${SUCCESS_CHAR}  ${label}:`), message, data);
+  logger[type](clc.green(clc.bold(`${SUCCESS_CHAR}  ${label}:`)), message, data);
 }
 
 /**
@@ -154,7 +154,7 @@ export function logBullet(
   type: LogLevel = "info",
   data: LogDataOrUndefined = undefined
 ): void {
-  logger[type](clc.cyan.bold("i "), message, data);
+  logger[type](clc.cyan(clc.bold("i ")), message, data);
 }
 
 /**
@@ -166,7 +166,7 @@ export function logLabeledBullet(
   type: LogLevel = "info",
   data: LogDataOrUndefined = undefined
 ): void {
-  logger[type](clc.cyan.bold(`i  ${label}:`), message, data);
+  logger[type](clc.cyan(clc.bold(`i  ${label}:`)), message, data);
 }
 
 /**
@@ -177,7 +177,7 @@ export function logWarning(
   type: LogLevel = "warn",
   data: LogDataOrUndefined = undefined
 ): void {
-  logger[type](clc.yellow.bold(`${WARNING_CHAR} `), message, data);
+  logger[type](clc.yellow(clc.bold(`${WARNING_CHAR} `)), message, data);
 }
 
 /**
@@ -189,7 +189,7 @@ export function logLabeledWarning(
   type: LogLevel = "warn",
   data: LogDataOrUndefined = undefined
 ): void {
-  logger[type](clc.yellow.bold(`${WARNING_CHAR}  ${label}:`), message, data);
+  logger[type](clc.yellow(clc.bold(`${WARNING_CHAR}  ${label}:`)), message, data);
 }
 
 /**
@@ -201,7 +201,7 @@ export function logLabeledError(
   type: LogLevel = "error",
   data: LogDataOrUndefined = undefined
 ): void {
-  logger[type](clc.red.bold(`${ERROR_CHAR}  ${label}:`), message, data);
+  logger[type](clc.red(clc.bold(`${ERROR_CHAR}  ${label}:`)), message, data);
 }
 
 /**
@@ -341,19 +341,19 @@ export function getFunctionsEventProvider(eventType: string): string {
     return _.capitalize(provider);
   }
   // New event types:
-  if (eventType.match(/google.pubsub/)) {
+  if (/google.pubsub/.exec(eventType)) {
     return "PubSub";
-  } else if (eventType.match(/google.storage/)) {
+  } else if (/google.storage/.exec(eventType)) {
     return "Storage";
-  } else if (eventType.match(/google.analytics/)) {
+  } else if (/google.analytics/.exec(eventType)) {
     return "Analytics";
-  } else if (eventType.match(/google.firebase.database/)) {
+  } else if (/google.firebase.database/.exec(eventType)) {
     return "Database";
-  } else if (eventType.match(/google.firebase.auth/)) {
+  } else if (/google.firebase.auth/.exec(eventType)) {
     return "Auth";
-  } else if (eventType.match(/google.firebase.crashlytics/)) {
+  } else if (/google.firebase.crashlytics/.exec(eventType)) {
     return "Crashlytics";
-  } else if (eventType.match(/google.firestore/)) {
+  } else if (/google.firestore/.exec(eventType)) {
     return "Firestore";
   }
   return _.capitalize(eventType.split(".")[1]);
@@ -413,6 +413,28 @@ export async function promiseWhile<T>(
 }
 
 /**
+ * Return a promise that rejects after timeoutMs but otherwise behave the same.
+ * @param timeoutMs the time in milliseconds before forced rejection
+ * @param promise the original promise
+ * @return a promise wrapping the original promise with rejection on timeout
+ */
+export function withTimeout<T>(timeoutMs: number, promise: Promise<T>): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timeout = setTimeout(() => reject(new Error("Timed out.")), timeoutMs);
+    promise.then(
+      (value) => {
+        clearTimeout(timeout);
+        resolve(value);
+      },
+      (err) => {
+        clearTimeout(timeout);
+        reject(err);
+      }
+    );
+  });
+}
+
+/**
  * Resolves all Promises at every key in the given object. If a value is not a
  * Promise, it is returned as-is.
  */
@@ -467,7 +489,7 @@ export function setupLoggers() {
         level: "debug",
         format: winston.format.printf((info) => {
           const segments = [info.message, ...(info[SPLAT] || [])].map(tryStringify);
-          return `${ansiStrip(segments.join(" "))}`;
+          return `${stripAnsi(segments.join(" "))}`;
         }),
       })
     );
@@ -678,9 +700,11 @@ export function cloneDeep<T>(obj: T): T {
  * Returns the last element in the array, or undefined if no array is passed or
  * the array is empty.
  */
-export function last<T>(arr?: Array<T>): T | undefined {
+export function last<T>(arr?: T[]): T {
+  // The type system should never allow this, so return something that violates
+  // the type system when passing in something that violates the type system.
   if (!Array.isArray(arr)) {
-    return;
+    return undefined as unknown as T;
   }
   return arr[arr.length - 1];
 }
@@ -718,4 +742,25 @@ export function randomInt(min: number, max: number): number {
   min = Math.floor(min);
   max = Math.ceil(max) + 1;
   return Math.floor(Math.random() * (max - min) + min);
+}
+
+/**
+ * Return a connectable hostname, replacing wildcard 0.0.0.0 or :: with loopback
+ * addresses 127.0.0.1 / ::1 correspondingly. See below for why this is needed:
+ * https://github.com/firebase/firebase-tools-ui/issues/286
+ *
+ * This assumes that the consumer (i.e. client SDK, etc.) is located on the same
+ * device as the Emulator hub (i.e. CLI), which may not be true on multi-device
+ * setups, etc. In that case, the customer can work around this by specifying a
+ * non-wildcard IP address (like the IP address on LAN, if accessing via LAN).
+ */
+export function connectableHostname(hostname: string): string {
+  if (hostname === "0.0.0.0") {
+    hostname = "127.0.0.1";
+  } else if (hostname === "::" /* unquoted IPv6 wildcard */) {
+    hostname = "::1";
+  } else if (hostname === "[::]" /* quoted IPv6 wildcard */) {
+    hostname = "[::1]";
+  }
+  return hostname;
 }

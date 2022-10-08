@@ -1,4 +1,4 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
 import { Command } from "../command";
 import { FirebaseError } from "../error";
@@ -26,7 +26,7 @@ export const command = new Command("login:ci")
     logger.info();
     utils.logSuccess(
       "Success! Use this token to login on a CI server:\n\n" +
-        clc.bold(userCredentials.tokens.refresh_token) +
+        clc.bold(userCredentials.tokens.refresh_token || "") +
         '\n\nExample: firebase deploy --token "$FIREBASE_TOKEN"\n'
     );
     return userCredentials;
