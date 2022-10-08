@@ -36,7 +36,6 @@ const MESSAGE_FRIENDLY_RUNTIMES: Record<Runtime | DeprecatedRuntime, string> = {
   nodejs14: "Node.js 14",
   nodejs16: "Node.js 16",
   go113: "Go 1.13",
-  python39: "Python 3.9",
   python310: "Python 3.10",
 };
 
