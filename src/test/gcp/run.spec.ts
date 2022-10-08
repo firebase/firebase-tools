@@ -409,7 +409,7 @@ describe("run", () => {
             },
           ],
           latestCreatedRevisionName: "",
-          latestRevisionName: "",
+          latestReadyRevisionName: "",
           traffic: [],
           url: "",
           address: {

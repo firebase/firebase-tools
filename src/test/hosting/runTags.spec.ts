@@ -84,7 +84,7 @@ describe("runTags", () => {
       status: {
         observedGeneration: 50,
         latestCreatedRevisionName: "latest",
-        latestRevisionName: "latest",
+        latestReadyRevisionName: "latest",
         traffic: [
           {
             revisionName: "latest",
