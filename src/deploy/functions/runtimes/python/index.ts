@@ -112,7 +112,7 @@ class Delegate implements runtimes.RuntimeDelegate {
       ...envs,
       ADMIN_PORT: port.toString(),
     };
-    const args = ["python3.10", path.join(modulesDir, "serving.py")];
+    const args = ["python3.10", path.join(modulesDir, "private", "serving.py")];
     logger.debug(
       `Running admin server with args: ${JSON.stringify(args)} and env: ${JSON.stringify(
         envWithAdminPort
