@@ -23,7 +23,7 @@ export async function setup(_setup: unknown, config: Config): Promise<void> {
   );
   await config.askWriteProjectFile(`${Config.DEFAULT_FUNCTIONS_SOURCE}/main.py`, MAIN_TEMPLATE);
 
-  // Write the lastest supported runtime version to the config.
+  // Write the latest supported runtime version to the config.
   config.set("functions.runtime", LATEST_VERSION);
   // Add python specific ignores to config.
   config.set("functions.ignore", ["venv", "__pycache__"]);
