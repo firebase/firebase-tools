@@ -119,7 +119,10 @@ class Delegate implements runtimes.RuntimeDelegate {
       )} in ${this.sourceDir}`
     );
     const childProcess = runWithVirtualEnv(args, this.sourceDir, true, {
-      env: envWithAdminPort,
+      // Linting disabled since internal types expect NODE_ENV
+      // which does not apply to Python runtimes.
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
+      env: envWithAdminPort as any,
     });
     return Promise.resolve(async () => {
       // Tell the process to exit.
