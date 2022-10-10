@@ -405,7 +405,6 @@ class Resolver {
 }
 
 /** Converts a build specification into a Backend representation, with all Params resolved and interpolated */
-// TODO(vsfan): handle Expression<T> types
 export function toBackend(
   build: Build,
   paramValues: Record<string, params.ParamValue>

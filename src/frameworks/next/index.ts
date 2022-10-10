@@ -44,7 +44,7 @@ const CLI_COMMAND = join(
 );
 
 export const name = "Next.js";
-export const support = SupportLevel.Expirimental;
+export const support = SupportLevel.Experimental;
 export const type = FrameworkType.MetaFramework;
 
 function getNextVersion(cwd: string) {

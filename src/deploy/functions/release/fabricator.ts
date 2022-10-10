@@ -528,6 +528,8 @@ export class Fabricator {
           return;
         }
 
+        // Without this there will be a conflict creating the new spec from the tempalte
+        delete service.spec.template.metadata.name;
         await run.updateService(serviceName, service);
       })
       .catch(rethrowAs(endpoint, "set concurrency"));

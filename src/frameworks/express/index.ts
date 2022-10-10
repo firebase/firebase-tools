@@ -9,7 +9,7 @@ import { BuildResult, FrameworkType, SupportLevel } from "..";
 const { dynamicImport } = require(true && "../../dynamicImport");
 
 export const name = "Express.js";
-export const support = SupportLevel.Expirimental;
+export const support = SupportLevel.Experimental;
 export const type = FrameworkType.Custom;
 
 async function getConfig(root: string) {
