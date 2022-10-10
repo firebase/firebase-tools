@@ -17,6 +17,8 @@ import * as RemoteConfigTarget from "./remoteconfig";
 import * as ExtensionsTarget from "./extensions";
 import { prepareFrameworks } from "../frameworks";
 import { HostingDeploy } from "./hosting/context";
+import { requirePermissions } from "../requirePermissions";
+import { TARGET_PERMISSIONS } from "../commands/deploy";
 
 const TARGETS = {
   hosting: HostingTarget,
@@ -61,7 +63,12 @@ export const deploy = async function (
     const config = options.config.get("hosting");
     if (Array.isArray(config) ? config.some((it) => it.source) : config.source) {
       experiments.assertEnabled("webframeworks", "deploy a web framework to hosting");
+      const usedToTargetFunctions = targetNames.includes("functions");
       await prepareFrameworks(targetNames, context, options);
+      const nowTargetsFunctions = targetNames.includes("functions");
+      if (nowTargetsFunctions && !usedToTargetFunctions) {
+        await requirePermissions(TARGET_PERMISSIONS["functions"]);
+      }
     }
   }
 
