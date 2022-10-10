@@ -24,6 +24,7 @@ import { FirebaseError } from "../error";
 import { requireHostingSite } from "../requireHostingSite";
 import { HostingRewrites } from "../firebaseConfig";
 import * as experiments from "../experiments";
+import { ensureTargeted } from "../functions/ensureTargeted";
 import { implicitInit } from "../hosting/implicitInit";
 
 // Use "true &&"" to keep typescript from compiling this file and rewriting
@@ -413,6 +414,7 @@ export async function prepareFrameworks(
       }
       config.rewrites.push(rewrite);
 
+      const codebase = `firebase-frameworks-${site}`;
       const existingFunctionsConfig = options.config.get("functions")
         ? [].concat(options.config.get("functions"))
         : [];
@@ -420,11 +422,16 @@ export async function prepareFrameworks(
         ...existingFunctionsConfig,
         {
           source: relative(projectRoot, functionsDist),
-          codebase: `firebase-frameworks-${site}`,
+          codebase,
         },
       ]);
 
-      if (!targetNames.includes("functions")) targetNames.unshift("functions");
+      if (!targetNames.includes("functions")) {
+        targetNames.unshift("functions");
+      }
+      if (options.only) {
+        options.only = ensureTargeted(options.only, codebase);
+      }
 
       // if exists, delete everything but the node_modules directory and package-lock.json
       // this should speed up repeated NPM installs
