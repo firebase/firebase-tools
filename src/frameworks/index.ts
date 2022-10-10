@@ -21,6 +21,7 @@ import { getProjectDefaultAccount } from "../auth";
 import { formatHost } from "../emulator/functionsEmulatorShared";
 import { Constants } from "../emulator/constants";
 import { FirebaseError } from "../error";
+import { normalizedHostingConfigs } from "../hosting/normalizedHostingConfigs";
 
 // Use "true &&"" to keep typescript from compiling this file and rewriting
 // the import statement into a require
@@ -257,7 +258,11 @@ export async function prepareFrameworks(
   // been booted up (at this point) and we may be offline, so just use projectId. Most of the time
   // the default site is named the same as the project & for frameworks this is only used for naming the
   // function... unless you're using authenticated server-context TODO explore the implication here.
-  const configs = hostingConfig({ site: project, ...options });
+  // const configs = hostingConfig({ site: project, ...options });
+
+  const configs = normalizedHostingConfigs({ site: project, ...options }, { resolveTargets: true });
+  options.normalizedHostingConfigs = configs;
+
   let firebaseDefaults: FirebaseDefaults | undefined = undefined;
   if (configs.length === 0) return;
   for (const config of configs) {

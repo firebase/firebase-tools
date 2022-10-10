@@ -137,17 +137,17 @@ function validateOne(config: HostingMultiple[number], options: HostingOptions): 
   const hasAnyDynamicRewrites = !!config.rewrites?.find((rw) => !("destination" in rw));
   const hasAnyRedirects = !!config.redirects?.length;
 
-  if (!config.public && hasAnyStaticRewrites) {
+  if (!config.source && !config.public && hasAnyStaticRewrites) {
     throw new FirebaseError('Must supply a "public" directory when using "destination" rewrites.');
   }
 
-  if (!config.public && !hasAnyDynamicRewrites && !hasAnyRedirects) {
+  if (!config.source && !config.public && !hasAnyDynamicRewrites && !hasAnyRedirects) {
     throw new FirebaseError(
       'Must supply a "public" directory or at least one rewrite or redirect in each "hosting" config.'
     );
   }
 
-  if (config.public && !dirExistsSync(resolveProjectPath(options, config.public))) {
+  if (!config.source && config.public && !dirExistsSync(resolveProjectPath(options, config.public))) {
     throw new FirebaseError(
       `Specified "public" directory "${
         config.public

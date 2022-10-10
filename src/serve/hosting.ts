@@ -1,3 +1,5 @@
+import {normalizedHostingConfigs} from "../hosting/normalizedHostingConfigs";
+
 const morgan = require("morgan");
 import { IncomingMessage, ServerResponse } from "http";
 import { server as superstatic } from "superstatic";
@@ -142,10 +144,11 @@ export async function start(options: any): Promise<void> {
   // Note: we cannot use the hostingConfig() method because it would resolve
   // targets and we don't want to crash the emulator just because the target
   // doesn't exist (nor do we want to depend on API calls);
-  let configs = config.extract(options);
-  configs = config.filterOnly(configs, options.only);
-  configs = config.filterExcept(configs, options.except);
-  config.validate(configs, options);
+  const configs = normalizedHostingConfigs(options);
+  //let configs = config.extract(options);
+  //configs = config.filterOnly(configs, options.only);
+  //configs = config.filterExcept(configs, options.except);
+  //config.validate(configs, options);
 
   for (let i = 0; i < configs.length; i++) {
     // skip over the functions emulator ports to avoid breaking changes
