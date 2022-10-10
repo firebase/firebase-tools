@@ -1,4 +1,4 @@
-import { FirebaseConfig, HostingResolved } from "../firebaseConfig";
+import { FirebaseConfig, HostingMultiple, HostingResolved } from "../firebaseConfig";
 import { Implements } from "../metaprogramming";
 import { Options } from "../options";
 
@@ -21,6 +21,7 @@ export interface HostingOptions {
   only?: string;
   except?: string;
   normalizedHostingConfig?: Array<HostingResolved>;
+  normalizedHostingConfigForEmulator?: HostingMultiple;
   expires?: `${number}${"h" | "d" | "m"}`;
 }
 

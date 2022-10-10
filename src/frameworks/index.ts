@@ -11,7 +11,7 @@ import * as process from "node:process";
 import * as semver from "semver";
 
 import { needProjectId } from "../projectUtils";
-import { hostingConfig } from "../hosting/config";
+import { hostingConfig, hostingConfigForEmulator } from "../hosting/config";
 import { listSites } from "../hosting/api";
 import { getAppConfig, AppPlatform } from "../management/apps";
 import { promptOnce } from "../prompt";
@@ -237,14 +237,14 @@ export function findDependency(name: string, options: Partial<FindDepOptions> = 
 }
 
 /**
- *
+ * Build frameworks and update options accordingly for deploy / emulators.
  */
 export async function prepareFrameworks(
   targetNames: string[],
   context: any,
   options: any,
-  emulators: EmulatorInfo[] = []
-) {
+  emulators?: EmulatorInfo[]
+): Promise<void> {
   // `firebase-frameworks` requires Node >= 16. We must check for this to avoid horrible errors.
   const nodeVersion = process.version;
   if (!semver.satisfies(nodeVersion, ">=16.0.0")) {
@@ -276,7 +276,7 @@ export async function prepareFrameworks(
       options.site = project;
     }
   }
-  const configs = hostingConfig(options);
+  const configs = emulators ? hostingConfigForEmulator(options) : hostingConfig(options);
   let firebaseDefaults: FirebaseDefaults | undefined = undefined;
   if (configs.length === 0) return;
   for (const config of configs) {
@@ -286,13 +286,14 @@ export async function prepareFrameworks(
     config.redirects ||= [];
     config.headers ||= [];
     config.cleanUrls ??= true;
-    const dist = join(projectRoot, ".firebase", site);
+    const id = site ?? config.target ?? "hosting"; // Use site or fallbacks for emulators.
+    const dist = join(projectRoot, ".firebase", id);
     const hostingDist = join(dist, "hosting");
     const functionsDist = join(dist, "functions");
     if (publicDir)
       throw new Error(`hosting.public and hosting.source cannot both be set in firebase.json`);
     const getProjectPath = (...args: string[]) => join(projectRoot, source, ...args);
-    const functionName = `ssr${site.toLowerCase().replace(/-/g, "")}`;
+    const functionName = `ssr${id.toLowerCase().replace(/-/g, "")}`;
     const usesFirebaseAdminSdk = !!findDependency("firebase-admin", { cwd: getProjectPath() });
     const usesFirebaseJsSdk = !!findDependency("@firebase/app", { cwd: getProjectPath() });
     if (usesFirebaseAdminSdk) {
@@ -302,7 +303,7 @@ export async function prepareFrameworks(
         if (defaultCredPath) process.env.GOOGLE_APPLICATION_CREDENTIALS = defaultCredPath;
       }
     }
-    emulators.forEach((info) => {
+    emulators?.forEach((info) => {
       if (usesFirebaseAdminSdk) {
         if (info.name === Emulators.FIRESTORE)
           process.env[Constants.FIRESTORE_EMULATOR_HOST] = formatHost(info);
@@ -320,7 +321,7 @@ export async function prepareFrameworks(
       }
     });
     let firebaseConfig = null;
-    if (usesFirebaseJsSdk) {
+    if (usesFirebaseJsSdk && site) {
       const sites = await listSites(project);
       const selectedSite = sites.find((it) => it.name && it.name.split("/").pop() === site);
       if (selectedSite) {
@@ -338,7 +339,9 @@ You can link a Web app to a Hosting site here https://console.firebase.google.co
             const continueDeploy = await promptOnce({
               type: "confirm",
               default: true,
-              message: "Would you like to continue with the deploy?",
+              message: emulators
+                ? "Would you like to continue starting the emulators?"
+                : "Would you like to continue with the deploy?",
             });
             if (!continueDeploy) exit(1);
           }
@@ -407,7 +410,7 @@ You can link a Web app to a Hosting site here https://console.firebase.google.co
         ...existingFunctionsConfig,
         {
           source: relative(projectRoot, functionsDist),
-          codebase: `firebase-frameworks-${site}`,
+          codebase: `firebase-frameworks-${id}`,
         },
       ]);
 

@@ -7,7 +7,6 @@ import { detectProjectRoot } from "../detectProjectRoot";
 import { FirebaseError } from "../error";
 import { implicitInit, TemplateServerResponse } from "../hosting/implicitInit";
 import { initMiddleware } from "../hosting/initMiddleware";
-import * as config from "../hosting/config";
 import cloudRunProxy from "../hosting/cloudRunProxy";
 import { functionsProxy } from "../hosting/functionsProxy";
 import { Writable } from "stream";
@@ -15,6 +14,7 @@ import { EmulatorLogger } from "../emulator/emulatorLogger";
 import { Emulators } from "../emulator/types";
 import { createDestroyer } from "../utils";
 import { execSync } from "child_process";
+import { hostingConfigForEmulator } from "../hosting/config";
 
 const MAX_PORT_ATTEMPTS = 10;
 let attempts = 0;
@@ -139,13 +139,7 @@ export function stop(): Promise<void> {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function start(options: any): Promise<void> {
   const init = await implicitInit(options);
-  // Note: we cannot use the hostingConfig() method because it would resolve
-  // targets and we don't want to crash the emulator just because the target
-  // doesn't exist (nor do we want to depend on API calls);
-  let configs = config.extract(options);
-  configs = config.filterOnly(configs, options.only);
-  configs = config.filterExcept(configs, options.except);
-  config.validate(configs, options);
+  const configs = hostingConfigForEmulator(options);
 
   for (let i = 0; i < configs.length; i++) {
     // skip over the functions emulator ports to avoid breaking changes

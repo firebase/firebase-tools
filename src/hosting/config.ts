@@ -289,7 +289,9 @@ export function normalize(configs: HostingMultiple): void {
 
 /**
  * Extract a validated normalized set of Hosting configs from the command options.
- * This also resolves targets, so it is not suitable for the emulator.
+ *
+ * This also resolves targets, so it is not suitable for the emulator. Use
+ * `hostingConfigForEmulator` for that.
  */
 export function hostingConfig(options: HostingOptions): HostingResolved[] {
   if (!options.normalizedHostingConfig) {
@@ -307,4 +309,20 @@ export function hostingConfig(options: HostingOptions): HostingResolved[] {
     options.normalizedHostingConfig = resolved;
   }
   return options.normalizedHostingConfig;
+}
+
+/**
+ * Extract a validated normalized set of Hosting configs from the command options for emulators.
+ */
+export function hostingConfigForEmulator(options: HostingOptions): HostingMultiple {
+  if (!options.normalizedHostingConfigForEmulator) {
+    let configs: HostingMultiple = extract(options);
+    configs = filterOnly(configs, options.only);
+    configs = filterExcept(configs, options.except);
+    normalize(configs);
+    validate(configs, options);
+    // Do not resolve targets for the emulator.
+    options.normalizedHostingConfigForEmulator = configs;
+  }
+  return options.normalizedHostingConfigForEmulator;
 }

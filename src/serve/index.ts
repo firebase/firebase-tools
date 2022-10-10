@@ -26,7 +26,8 @@ export async function serve(options: any): Promise<void> {
     [].concat(options.config.get("hosting")).some((it: any) => it.source)
   ) {
     experiments.assertEnabled("webframeworks", "emulate a web framework");
-    await prepareFrameworks(targetNames, options, options);
+    // TODO: Consider allocating a port for Functions emulator (if needed) and pass it in.
+    await prepareFrameworks(targetNames, options, options, /* emulators= */ []);
   }
   const isDemoProject = Constants.isDemoProject(getProjectId(options) || "");
   targetNames.forEach((targetName) => {
