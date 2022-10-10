@@ -334,7 +334,8 @@ export async function prepareFrameworks(
           const defaultConfig = await implicitInit(options);
           if (defaultConfig.json) {
             console.warn(
-              `Site ${site} is not associated with an app ID. Injecting default app config`
+              `No Firebase app associated with site ${site}, injecting project default config.
+  You can link a Web app to a Hosting site here https://console.firebase.google.com/project/${project}/settings/general/web`
             );
             firebaseDefaults ||= {};
             firebaseDefaults.config = JSON.parse(defaultConfig.json);
@@ -344,7 +345,7 @@ export async function prepareFrameworks(
             // on a project that never initialized hosting?
             console.warn(
               `No Firebase app associated with site ${site}, unable to provide authenticated server context.
-  You can link a Web app to a Hosting site here https://console.firebase.google.com/project/_/settings/general/web`
+  You can link a Web app to a Hosting site here https://console.firebase.google.com/project/${project}/settings/general/web`
             );
             if (!options.nonInteractive) {
               const continueDeploy = await promptOnce({
