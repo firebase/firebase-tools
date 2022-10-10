@@ -82,7 +82,7 @@ jobs:
           - "16"
         script:
           - npm run test:hosting
-          - npm run test:hosting-rewrites.
+          - npm run test:hosting-rewrites
           - npm run test:client-integration
           - npm run test:emulator
           - npm run test:import-export
