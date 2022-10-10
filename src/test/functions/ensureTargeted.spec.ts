@@ -17,7 +17,9 @@ describe("ensureTargeted", () => {
   });
 
   it("does nothing if the function is targeted", () => {
-    expect(ensureTargeted("functions:codebase:id", "codebase", "id"));
+    expect(ensureTargeted("hosting,functions:codebase:id", "codebase", "id")).to.equal(
+      "hosting,functions:codebase:id"
+    );
   });
 
   it("adds the codebase if missing and no id is provided", () => {
