@@ -196,12 +196,12 @@ export async function discover(dir: string, warn = true) {
       }
     }
     if (frameworksDiscovered.length > 1) {
-      if (warn) console.error("Multiple conflicting frameworks discovered. TODO link");
+      if (warn) console.error("Multiple conflicting frameworks discovered.");
       return;
     }
     if (frameworksDiscovered.length === 1) return frameworksDiscovered[0];
   }
-  if (warn) console.warn("We can't detirmine the web framework in use. TODO link");
+  if (warn) console.warn("We can't detirmine the web framework in use.");
   return;
 }
 
