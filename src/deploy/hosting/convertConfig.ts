@@ -4,7 +4,7 @@ import { HostingDeploy } from "./context";
 import * as api from "../../hosting/api";
 import * as backend from "../functions/backend";
 import { Context } from "../functions/args";
-import { logLabeledBullet, logLabeledWarning } from "../../utils";
+import { last, logLabeledBullet, logLabeledWarning } from "../../utils";
 import * as proto from "../../gcp/proto";
 import { bold } from "colorette";
 import * as runTags from "../../hosting/runTags";
@@ -215,7 +215,8 @@ export async function convertConfig(
   });
 
   if (config.rewrites) {
-    await runTags.setRewriteTags(config.rewrites, context.projectId, deploy.version);
+    const versionId = last(deploy.version.split("/"));
+    await runTags.setRewriteTags(config.rewrites, context.projectId, versionId);
   }
 
   config.redirects = deploy.config.redirects?.map((redirect) => {
