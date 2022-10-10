@@ -24,6 +24,7 @@ import { FirebaseError } from "../error";
 import { requireHostingSite } from "../requireHostingSite";
 import { HostingRewrites } from "../firebaseConfig";
 import * as experiments from "../experiments";
+import { implicitInit } from "../hosting/implicitInit";
 
 // Use "true &&"" to keep typescript from compiling this file and rewriting
 // the import statement into a require
@@ -330,17 +331,29 @@ export async function prepareFrameworks(
           firebaseDefaults ||= {};
           firebaseDefaults.config = firebaseConfig;
         } else {
-          console.warn(
-            `No Firebase app associated with site ${site}, unable to provide authenticated server context.
-You can link a Web app to a Hosting site here https://console.firebase.google.com/project/_/settings/general/web`
-          );
-          if (!options.nonInteractive) {
-            const continueDeploy = await promptOnce({
-              type: "confirm",
-              default: true,
-              message: "Would you like to continue with the deploy?",
-            });
-            if (!continueDeploy) exit(1);
+          const defaultConfig = await implicitInit(options);
+          if (defaultConfig.json) {
+            console.warn(
+              `Site ${site} is not associated with an app ID. Injecting default app config`
+            );
+            firebaseDefaults ||= {};
+            firebaseDefaults.config = JSON.parse(defaultConfig.json);
+          } else {
+            // N.B. None of us know when this can ever happen and the deploy would
+            // still succeed. Maaaaybe if someone tried calling firebase serve
+            // on a project that never initialized hosting?
+            console.warn(
+              `No Firebase app associated with site ${site}, unable to provide authenticated server context.
+  You can link a Web app to a Hosting site here https://console.firebase.google.com/project/_/settings/general/web`
+            );
+            if (!options.nonInteractive) {
+              const continueDeploy = await promptOnce({
+                type: "confirm",
+                default: true,
+                message: "Would you like to continue with the deploy?",
+              });
+              if (!continueDeploy) exit(1);
+            }
           }
         }
       }
