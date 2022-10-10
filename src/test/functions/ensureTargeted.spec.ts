@@ -3,8 +3,8 @@ import { ensureTargeted } from "../../functions/ensureTargeted";
 
 describe("ensureTargeted", () => {
   it("does nothing if 'functions' is included", () => {
-    expect(ensureTargeted("hosting,functions", "codeebase")).to.equal("hosting,functions");
-    expect(ensureTargeted("hosting,functions", "codeebase", "id")).to.equal("hosting,functions");
+    expect(ensureTargeted("hosting,functions", "codebase")).to.equal("hosting,functions");
+    expect(ensureTargeted("hosting,functions", "codebase", "id")).to.equal("hosting,functions");
   });
 
   it("does nothing if the codebase is targeted", () => {
