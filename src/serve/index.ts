@@ -4,6 +4,7 @@ import * as experiments from "../experiments";
 import { trackEmulator } from "../track";
 import { getProjectId } from "../projectUtils";
 import { Constants } from "../emulator/constants";
+import * as config from "../hosting/config";
 
 const { FunctionsServer } = require("./functions");
 
@@ -21,10 +22,7 @@ const TARGETS: {
 export async function serve(options: any): Promise<void> {
   const targetNames: string[] = options.targets || [];
   options.port = parseInt(options.port, 10);
-  if (
-    targetNames.includes("hosting") &&
-    [].concat(options.config.get("hosting")).some((it: any) => it.source)
-  ) {
+  if (targetNames.includes("hosting") && config.extract(options).some((it: any) => it.source)) {
     experiments.assertEnabled("webframeworks", "emulate a web framework");
     await prepareFrameworks(targetNames, options, options);
   }
