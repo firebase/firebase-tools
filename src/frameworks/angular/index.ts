@@ -16,7 +16,7 @@ import { promptOnce } from "../../prompt";
 import { proxyRequestHandler } from "../../hosting/proxy";
 
 export const name = "Angular";
-export const support = SupportLevel.Expirimental;
+export const support = SupportLevel.Experimental;
 export const type = FrameworkType.Framework;
 
 const CLI_COMMAND = join("node_modules", ".bin", process.platform === "win32" ? "ng.cmd" : "ng");
