@@ -468,7 +468,7 @@ describe("hosting", () => {
   describe("getSite", () => {
     afterEach(nock.cleanAll);
 
-    it("should make the API request for a channel", async () => {
+    it("should make the API request for a site", async () => {
       const SITE_BODY = { name: "my-site" };
       nock(hostingApiOrigin)
         .get(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}`)
@@ -497,6 +497,49 @@ describe("hosting", () => {
         .reply(500, { error: "server boo-boo" });
 
       await expect(hostingApi.getSite(PROJECT_ID, SITE)).to.eventually.be.rejectedWith(
+        FirebaseError,
+        /server boo-boo/
+      );
+
+      expect(nock.isDone()).to.be.true;
+    });
+  });
+
+  describe("getSiteConfig", () => {
+    afterEach(nock.cleanAll);
+
+    it("should make the API request for a site's config", async () => {
+      const SITE_CONFIG = { cloudLoggingEnabled: true, maxVersions: "100" };
+      nock(hostingApiOrigin)
+        .get(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/config`)
+        .reply(200, SITE_CONFIG);
+
+      const res = await hostingApi.getSiteConfig(PROJECT_ID, SITE);
+
+      // The API returns maxVersions as a _string_, so we change it to a number.
+      expect(res).to.deep.equal({ cloudLoggingEnabled: true, maxVersions: 100 });
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should throw an error if the site config doesn't exist", async () => {
+      nock(hostingApiOrigin)
+        .get(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/config`)
+        .reply(404, {});
+
+      await expect(hostingApi.getSiteConfig(PROJECT_ID, SITE)).to.eventually.be.rejectedWith(
+        FirebaseError,
+        /could not find site/
+      );
+
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should throw an error if the server returns an error", async () => {
+      nock(hostingApiOrigin)
+        .get(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/config`)
+        .reply(500, { error: "server boo-boo" });
+
+      await expect(hostingApi.getSiteConfig(PROJECT_ID, SITE)).to.eventually.be.rejectedWith(
         FirebaseError,
         /server boo-boo/
       );

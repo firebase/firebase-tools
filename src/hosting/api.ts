@@ -213,7 +213,7 @@ interface LongRunningOperation<T> {
   readonly metadata: T | undefined;
 }
 
-export type Site = {
+export interface Site {
   // Fully qualified name of the site.
   name: string;
 
@@ -222,7 +222,15 @@ export type Site = {
   readonly appId: string;
 
   labels: { [key: string]: string };
-};
+}
+
+export interface SiteConfig {
+  // Max number of FINALIZED sites that will be retained.
+  maxVersions?: number;
+
+  // True if Cloud Logging is enabled for the site.
+  cloudLoggingEnabled?: boolean;
+}
 
 /**
  * normalizeName normalizes a name given to it. Most useful for normalizing
@@ -513,6 +521,31 @@ export async function getSite(project: string, site: string): Promise<Site> {
   try {
     const res = await apiClient.get<Site>(`/projects/${project}/sites/${site}`);
     return res.body;
+  } catch (e: unknown) {
+    if (e instanceof FirebaseError && e.status === 404) {
+      throw new FirebaseError(`could not find site "${site}" for project "${project}"`, {
+        original: e,
+      });
+    }
+    throw e;
+  }
+}
+
+/**
+ * Get a Hosting site's configuration.
+ * @param project project name or number.
+ * @param site site name.
+ * @return site information.
+ */
+export async function getSiteConfig(project: string, site: string): Promise<SiteConfig> {
+  try {
+    const res = await apiClient.get<{ cloudLoggingEnabled?: boolean; maxVersions?: string }>(
+      `/projects/${project}/sites/${site}/config`
+    );
+    return {
+      cloudLoggingEnabled: res.body.cloudLoggingEnabled,
+      maxVersions: res.body.maxVersions ? parseInt(res.body.maxVersions, 10) : undefined,
+    };
   } catch (e: unknown) {
     if (e instanceof FirebaseError && e.status === 404) {
       throw new FirebaseError(`could not find site "${site}" for project "${project}"`, {
