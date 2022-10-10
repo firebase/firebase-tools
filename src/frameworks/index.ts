@@ -24,6 +24,7 @@ import { FirebaseError } from "../error";
 import { requireHostingSite } from "../requireHostingSite";
 import { HostingRewrites } from "../firebaseConfig";
 import * as experiments from "../experiments";
+import { ensureTargeted } from "../functions/ensureTargeted";
 
 // Use "true &&"" to keep typescript from compiling this file and rewriting
 // the import statement into a require
@@ -400,6 +401,7 @@ You can link a Web app to a Hosting site here https://console.firebase.google.co
       }
       config.rewrites.push(rewrite);
 
+      const codebase = `firebase-frameworks-${site}`;
       const existingFunctionsConfig = options.config.get("functions")
         ? [].concat(options.config.get("functions"))
         : [];
@@ -407,15 +409,15 @@ You can link a Web app to a Hosting site here https://console.firebase.google.co
         ...existingFunctionsConfig,
         {
           source: relative(projectRoot, functionsDist),
-          codebase: `firebase-frameworks-${site}`,
+          codebase,
         },
       ]);
 
       if (!targetNames.includes("functions")) {
         targetNames.unshift("functions");
-        if (options.only) {
-          options.only = `${options.only},functions:firebase-frameworks-${site}`;
-        }
+      }
+      if (options.only) {
+        options.only = ensureTargeted(options.only, codebase);
       }
 
       // if exists, delete everything but the node_modules directory and package-lock.json
