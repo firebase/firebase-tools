@@ -24,6 +24,7 @@ import { FirebaseError } from "../error";
 import { requireHostingSite } from "../requireHostingSite";
 import { HostingRewrites } from "../firebaseConfig";
 import * as experiments from "../experiments";
+import { ensureTargeted } from "../functions/ensureTargeted";
 import { implicitInit } from "../hosting/implicitInit";
 
 // Use "true &&"" to keep typescript from compiling this file and rewriting
@@ -196,12 +197,12 @@ export async function discover(dir: string, warn = true) {
       }
     }
     if (frameworksDiscovered.length > 1) {
-      if (warn) console.error("Multiple conflicting frameworks discovered. TODO link");
+      if (warn) console.error("Multiple conflicting frameworks discovered.");
       return;
     }
     if (frameworksDiscovered.length === 1) return frameworksDiscovered[0];
   }
-  if (warn) console.warn("We can't detirmine the web framework in use. TODO link");
+  if (warn) console.warn("Could not determine the web framework in use.");
   return;
 }
 
@@ -334,7 +335,8 @@ export async function prepareFrameworks(
           const defaultConfig = await implicitInit(options);
           if (defaultConfig.json) {
             console.warn(
-              `Site ${site} is not associated with an app ID. Injecting default app config`
+              `No Firebase app associated with site ${site}, injecting project default config.
+  You can link a Web app to a Hosting site here https://console.firebase.google.com/project/${project}/settings/general/web`
             );
             firebaseDefaults ||= {};
             firebaseDefaults.config = JSON.parse(defaultConfig.json);
@@ -344,7 +346,7 @@ export async function prepareFrameworks(
             // on a project that never initialized hosting?
             console.warn(
               `No Firebase app associated with site ${site}, unable to provide authenticated server context.
-  You can link a Web app to a Hosting site here https://console.firebase.google.com/project/_/settings/general/web`
+  You can link a Web app to a Hosting site here https://console.firebase.google.com/project/${project}/settings/general/web`
             );
             if (!options.nonInteractive) {
               const continueDeploy = await promptOnce({
@@ -413,6 +415,7 @@ export async function prepareFrameworks(
       }
       config.rewrites.push(rewrite);
 
+      const codebase = `firebase-frameworks-${site}`;
       const existingFunctionsConfig = options.config.get("functions")
         ? [].concat(options.config.get("functions"))
         : [];
@@ -420,11 +423,16 @@ export async function prepareFrameworks(
         ...existingFunctionsConfig,
         {
           source: relative(projectRoot, functionsDist),
-          codebase: `firebase-frameworks-${site}`,
+          codebase,
         },
       ]);
 
-      if (!targetNames.includes("functions")) targetNames.unshift("functions");
+      if (!targetNames.includes("functions")) {
+        targetNames.unshift("functions");
+      }
+      if (options.only) {
+        options.only = ensureTargeted(options.only, codebase);
+      }
 
       // if exists, delete everything but the node_modules directory and package-lock.json
       // this should speed up repeated NPM installs
