@@ -148,13 +148,12 @@ export async function ensureLatestRevisionTagged(
   for (const service of services) {
     const { projectNumber, region, serviceId } = run.gcpIds(service);
     tags[region] = tags[region] || {};
-    const latestRevisionTarget = service.status?.traffic.find((target) => target.latestRevision);
-    if (!latestRevisionTarget) {
+    const latestRevision = service.status?.latestReadyRevisionName;
+    if (!latestRevision) {
       throw new FirebaseError(
-        `Assertion failed: service ${service.metadata.name} has no latestRevision traffic target`
+        `Assertion failed: service ${service.metadata.name} has no ready revision`
       );
     }
-    const latestRevision = latestRevisionTarget.revisionName;
     const alreadyTagged = service.spec.traffic.find(
       (target) => target.revisionName === latestRevision && target.tag
     );

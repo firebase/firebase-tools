@@ -203,19 +203,29 @@ const MAX_PORT = 65535; // max TCP port
 /**
  * Resolve the hostname and assign ports to a subset of emulators.
  *
- * @param listenConfig the config for each emulator
+ * @param listenConfig the config for each emulator or previously resolved specs
  * @return a map from emulator to its resolved addresses with port.
  */
 export async function resolveHostAndAssignPorts(
-  listenConfig: Partial<Record<PortName, EmulatorListenConfig>>
+  listenConfig: Partial<Record<PortName, EmulatorListenConfig | ListenSpec[]>>
 ): Promise<Record<PortName, ListenSpec[]>> {
-  const entries = Object.entries(listenConfig) as [PortName, EmulatorListenConfig][];
   const lookupForHost = new Map<string, Promise<dns.LookupAddress[]>>();
   const takenPorts = new Map<number, PortName>();
 
   const result = {} as Record<PortName, ListenSpec[]>;
   const tasks = [];
-  for (const [name, { host, port, portFixed }] of entries) {
+  for (const name of Object.keys(listenConfig) as PortName[]) {
+    const config = listenConfig[name];
+    if (!config) {
+      continue;
+    } else if (config instanceof Array) {
+      result[name] = config;
+      for (const { port } of config) {
+        takenPorts.set(port, name);
+      }
+      continue;
+    }
+    const { host, port, portFixed } = config;
     let lookup = lookupForHost.get(host);
     if (!lookup) {
       lookup = Resolver.DEFAULT.lookupAll(host);

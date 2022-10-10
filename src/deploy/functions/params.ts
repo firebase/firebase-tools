@@ -286,7 +286,7 @@ function canSatisfyParam(param: Param, value: RawParamValue): boolean {
 
 /**
  * A param defined by the SDK may resolve to:
- * - a reference to a secret in Cloud Secret Manager, which we only validate existence for and leave the fetch up to GCF
+ * - a reference to a secret in Cloud Secret Manager, which we validate the existence of and prompt for if missing
  * - a literal value of the same type already defined in one of the .env files with key == param name
  * - the value returned by interactively prompting the user
  *   - it is an error to have params that need to be prompted if the CLI is running in non-interactive mode
@@ -382,25 +382,17 @@ function populateDefaultParams(config: FirebaseConfig): Record<string, ParamValu
 async function handleSecret(secretParam: SecretParam, projectId: string) {
   const metadata = await secretManager.getSecretMetadata(projectId, secretParam.name, "latest");
   if (!metadata.secret) {
-    throw new FirebaseError(
-      `Your project currently doesn't have any secret named ${secretParam.name}. Create one by running firebase functions:secrets:set ${secretParam.name} command and try the deploy again.`
-    );
-    /*
-    TODO(vsfan@): we need to come to a final decision as to whether prompting as part of the flow, as extensions does, is proper here
     const secretValue = await promptOnce({
       name: secretParam.name,
       type: "password",
       message: `This secret will be stored in Cloud Secret Manager (https://cloud.google.com/secret-manager/pricing) as ${
         secretParam.name
-      }. Enter a value for ${
-        secretParam.label || secretParam.name
-      }:`,
+      }. Enter a value for ${secretParam.label || secretParam.name}:`,
     });
     const secretLabel: Record<string, string> = { "firebase-hosting-managed": "yes" };
     await secretManager.createSecret(projectId, secretParam.name, secretLabel);
     await secretManager.addVersion(projectId, secretParam.name, secretValue);
     return secretValue;
-    */
   } else if (!metadata.secretVersion) {
     throw new FirebaseError(
       `Cloud Secret Manager has no latest version of the secret defined by param ${
