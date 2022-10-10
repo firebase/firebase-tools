@@ -5,7 +5,7 @@ import { gte } from "semver";
 import { BuildResult, findDependency, FrameworkType, relativeRequire, SupportLevel } from "..";
 
 export const name = "Nuxt";
-export const support = SupportLevel.Expirimental;
+export const support = SupportLevel.Experimental;
 export const type = FrameworkType.Toolchain;
 
 export async function discover(dir: string) {

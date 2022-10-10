@@ -87,13 +87,13 @@ export const enum FrameworkType {
 }
 
 export const enum SupportLevel {
-  Expirimental = "expirimental",
+  Experimental = "experimental",
   Community = "community-supported",
 }
 
 const SupportLevelWarnings = {
-  [SupportLevel.Expirimental]: clc.yellow(
-    `This is an expirimental integration, proceed with caution.`
+  [SupportLevel.Experimental]: clc.yellow(
+    `This is an experimental integration, proceed with caution.`
   ),
   [SupportLevel.Community]: clc.yellow(
     `This is a community-supported integration, support is best effort.`
