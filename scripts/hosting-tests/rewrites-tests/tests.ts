@@ -15,6 +15,9 @@ import { QueueExecutor } from "../../../src/deploy/functions/release/executor";
 
 tmp.setGracefulCleanup();
 
+const siteNamePrefixLabel = "rwtestsite";
+const testConcurrency = 10;
+
 // Run this test manually by:
 // - Setting the target project to any project that can create publicly invokable functions.
 // - Disabling mockAuth in .mocharc
@@ -133,6 +136,14 @@ class TempDirectoryInfo {
   functionsDirPath = join(this.tempDir.name, ".", "functions");
 }
 
+const functionNamePrefix = `helloworld_${process.env.CI_RUN_ID || "xx"}_${
+  process.env.CI_RUN_ATTEMPT || "yy"
+}_${Date.now()}`;
+
+const siteNamePrefix = `${siteNamePrefixLabel}-${process.env.CI_RUN_ID || "xx"}-${
+  process.env.CI_RUN_ATTEMPT || "yy"
+}-${Date.now()}`;
+
 async function deleteOldSites(): Promise<void> {
   const sites = await sitesList.runner()({
     projectId: process.env.FBTOOLS_TARGET_PROJECT as string,
@@ -140,14 +151,14 @@ async function deleteOldSites(): Promise<void> {
 
   const validDateCutoff = new Date("2021-06-01");
   for (const site of sites) {
-    if (!site.name.includes("testingsite")) {
+    if (!site.name.includes(siteNamePrefixLabel)) {
       continue;
     }
-    const siteName = site.name.substring(site.name.lastIndexOf("testingsite"));
+    const siteName = site.name.substring(site.name.lastIndexOf(siteNamePrefixLabel));
     const siteNameParts = siteName.split("-");
     if (siteNameParts.length !== 5) {
       throw new FirebaseError(
-        `Found a site that begins with 'testingsite' but the name looks malformed: ${site.name}`
+        `Found a site that begins with '${siteNamePrefixLabel}' but the name looks malformed: ${site.name}`
       );
     }
     const siteTimestamp = parseInt(siteNameParts[3]);
@@ -173,14 +184,6 @@ async function deleteOldSites(): Promise<void> {
     await deleteSite(siteName, tempDirInfo.tempDir.name);
   }
 }
-
-const functionNamePrefix = `helloworld_${process.env.CI_RUN_ID || "xx"}_${
-  process.env.CI_RUN_ATTEMPT || "yy"
-}_${Date.now()}`;
-
-const siteNamePrefix = `testingsite-${process.env.CI_RUN_ID || "xx"}-${
-  process.env.CI_RUN_ATTEMPT || "yy"
-}-${Date.now()}`;
 
 class TestCase {
   private static testNumbering = 1;
@@ -1233,7 +1236,7 @@ describe("deploy function-targeted rewrites and functions", () => {
 
   // All test cases run concurrently. Isolation is handled by creating separate hosting
   // sites and deploying to separate functions codebases.
-  const executor = new QueueExecutor({ concurrency: 20 });
+  const executor = new QueueExecutor({ concurrency: testConcurrency });
   const testQueue = testCases.map((testCase) => {
     return executor.run(() => {
       return testCase.getDonePromise();
