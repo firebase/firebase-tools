@@ -27,7 +27,6 @@ import * as experiments from "../experiments";
 import { ensureTargeted } from "../functions/ensureTargeted";
 import { implicitInit } from "../hosting/implicitInit";
 
-
 // Use "true &&"" to keep typescript from compiling this file and rewriting
 // the import statement into a require
 const { dynamicImport } = require(true && "../dynamicImport");
