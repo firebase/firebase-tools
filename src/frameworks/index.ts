@@ -201,7 +201,7 @@ export async function discover(dir: string, warn = true) {
     }
     if (frameworksDiscovered.length === 1) return frameworksDiscovered[0];
   }
-  if (warn) console.warn("We can't detirmine the web framework in use.");
+  if (warn) console.warn("Could not determine the web framework in use.");
   return;
 }
 
