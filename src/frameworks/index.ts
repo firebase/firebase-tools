@@ -330,10 +330,6 @@ export async function prepareFrameworks(
           firebaseDefaults ||= {};
           firebaseDefaults.config = firebaseConfig;
         } else {
-          console.warn(
-            `No Firebase app associated with site ${site}, unable to provide authenticated server context.
-You can link a Web app to a Hosting site here https://console.firebase.google.com/project/_/settings/general/web`
-          );
           if (!options.nonInteractive) {
             const continueDeploy = await promptOnce({
               type: "confirm",
