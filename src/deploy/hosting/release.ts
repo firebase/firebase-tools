@@ -8,7 +8,7 @@ import { FirebaseError } from "../../error";
 /**
  *  Release finalized a Hosting release.
  */
-export async function release(context: Context): Promise<void> {
+export async function release(context: Context, options: { message?: string }): Promise<void> {
   if (!context.hosting || !context.hosting.deploys) {
     return;
   }
@@ -40,10 +40,15 @@ export async function release(context: Context): Promise<void> {
         logger.debug("[hosting] releasing to channel:", context.hostingChannel);
       }
 
+      const otherReleaseOpts: Partial<Pick<api.Release, "message">> = {};
+      if (options.message) {
+        otherReleaseOpts.message = options.message;
+      }
       const release = await api.createRelease(
         deploy.config.site,
         context.hostingChannel || "live",
-        deploy.version
+        deploy.version,
+        otherReleaseOpts
       );
       logger.debug("[hosting] release:", release);
       utils.logLabeledSuccess(`hosting[${deploy.config.site}]`, "release complete");
