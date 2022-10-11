@@ -1,9 +1,12 @@
 import { expect } from "chai";
+import * as sinon from "sinon";
+
 import { convertConfig } from "../../../deploy/hosting/convertConfig";
 import * as backend from "../../../deploy/functions/backend";
 import { Context, HostingDeploy } from "../../../deploy/hosting/context";
 import { HostingSingle } from "../../../firebaseConfig";
 import * as api from "../../../hosting/api";
+import { FirebaseError } from "../../../error";
 
 const FUNCTION_ID = "function";
 const PROJECT_ID = "project";
@@ -273,4 +276,37 @@ describe("convertConfig", () => {
       expect(config).to.deep.equal(want);
     });
   }
+
+  describe("with permissions issues", () => {
+    let existingBackendStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      existingBackendStub = sinon
+        .stub(backend, "existingBackend")
+        .rejects("existingBackend unspecified behavior");
+    });
+
+    afterEach(() => {
+      sinon.restore();
+    });
+
+    it("should not throw when resolving backends", async () => {
+      existingBackendStub.rejects(
+        new FirebaseError("Some permissions 403 error (that should be caught)", { status: 403 })
+      );
+
+      await expect(
+        convertConfig(
+          { projectId: "1" },
+          {
+            config: {
+              site: "foo",
+              rewrites: [{ glob: "/foo", function: { functionId: FUNCTION_ID } }],
+            },
+            version: "14",
+          }
+        )
+      ).to.not.be.rejected;
+    });
+  });
 });
