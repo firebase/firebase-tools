@@ -1,0 +1,1 @@
+- Fixes issue where errors were not properly propagating when listing backends. (#5071)
