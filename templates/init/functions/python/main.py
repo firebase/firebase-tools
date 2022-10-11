@@ -2,15 +2,17 @@
 # To get started, simply uncomment the below code or create your own.
 # Deploy with `firebase deploy`
 
-from firebase_functions import https
+# from firebase_functions import https
+# from firebase_admin import initialize_app
 
-
-# @https.on_call()
-# def hello_function_on_call(request: https.CallableRequest):
-#     return 'Hello, world!'
+# initialize_app()
 
 
 # @https.on_request()
-# def hello_function_on_request(request: https.Request, response: https.Response):
-#     response.status_code = 200
-#     response.set_data('Hello World!')
+# def on_request_example(req: https.Request) -> https.Response:
+#     return https.Response("Hello world!")
+
+
+# @https.on_call()
+# def on_call_example(req: https.CallableRequest):
+#     return "Hello world!"
