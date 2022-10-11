@@ -141,7 +141,7 @@ export async function init(setup: any) {
     choices: ["JavaScript", "TypeScript"],
   });
   execSync(
-    `npx --yes create-next-app@latest ${setup.hosting.source} ${
+    `npx --yes create-next-app@latest -e https://github.com/TheIronDev/webframeworks-templates/tree/main/templates/nextjs ${setup.hosting.source} ${
       language === "TypeScript" ? "--ts" : ""
     }`,
     { stdio: "inherit" }
