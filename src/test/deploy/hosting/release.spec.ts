@@ -27,6 +27,15 @@ describe("release", () => {
     sinon.restore();
   });
 
+  describe("with no Hosting deploys", () => {
+    it("should bail", async () => {
+      await release({ projectId: "foo" }, {});
+
+      expect(updateVersionStub).to.have.been.not.called;
+      expect(createReleaseStub).to.have.been.not.called;
+    });
+  });
+
   describe("a single site", () => {
     const CONTEXT: Context = {
       projectId: PROJECT,
@@ -52,6 +61,22 @@ describe("release", () => {
         UPDATE
       );
       expect(createReleaseStub).to.have.been.calledOnceWithExactly(SITE, "live", VERSION, {});
+    });
+
+    it("should update a version and make a release with a message", async () => {
+      updateVersionStub.resolves({});
+      createReleaseStub.resolves({});
+
+      await release(CONTEXT, { message: "hello world" });
+
+      expect(updateVersionStub).to.have.been.calledOnceWithExactly(
+        SITE,
+        last(VERSION.split("/")),
+        UPDATE
+      );
+      expect(createReleaseStub).to.have.been.calledOnceWithExactly(SITE, "live", VERSION, {
+        message: "hello world",
+      });
     });
   });
 
