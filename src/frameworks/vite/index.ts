@@ -7,7 +7,7 @@ import { proxyRequestHandler } from "../../hosting/proxy";
 import { promptOnce } from "../../prompt";
 
 export const name = "Vite";
-export const support = SupportLevel.Expirimental;
+export const support = SupportLevel.Experimental;
 export const type = FrameworkType.Toolchain;
 
 const CLI_COMMAND = join(

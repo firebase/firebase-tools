@@ -15,6 +15,7 @@ import { EmulatorLogger } from "../emulator/emulatorLogger";
 import { Emulators } from "../emulator/types";
 import { createDestroyer } from "../utils";
 import { execSync } from "child_process";
+import { requireHostingSite } from "../requireHostingSite";
 
 const MAX_PORT_ATTEMPTS = 10;
 let attempts = 0;
@@ -139,13 +140,21 @@ export function stop(): Promise<void> {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function start(options: any): Promise<void> {
   const init = await implicitInit(options);
-  // Note: we cannot use the hostingConfig() method because it would resolve
-  // targets and we don't want to crash the emulator just because the target
-  // doesn't exist (nor do we want to depend on API calls);
-  let configs = config.extract(options);
-  configs = config.filterOnly(configs, options.only);
-  configs = config.filterExcept(configs, options.except);
-  config.validate(configs, options);
+  // N.B. Originally we didn't call this method because it could try to resolve
+  // targets and cause us to fail. But we might be calling prepareFrameworks,
+  // which modifies the cached result of config.hostingConfig. So if we don't
+  // call this, we won't get web frameworks. But we might need to change this
+  // as well to avoid validation errors.
+  // But hostingConfig tries to resolve targets and a customer might not have
+  // site/targets defined
+  if (!options.site) {
+    try {
+      await requireHostingSite(options);
+    } catch {
+      options.site = JSON.parse(init.json).projectId;
+    }
+  }
+  const configs = config.hostingConfig(options);
 
   for (let i = 0; i < configs.length; i++) {
     // skip over the functions emulator ports to avoid breaking changes

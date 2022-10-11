@@ -324,29 +324,9 @@ export async function startAll(
   }
 
   const emulatableBackends: EmulatableBackend[] = [];
-  const projectDir = (options.extDevDir || options.config.projectDir) as string;
-  if (shouldStart(options, Emulators.FUNCTIONS)) {
-    const functionsCfg = normalizeAndValidate(options.config.src.functions);
-    // Note: ext:dev:emulators:* commands hit this path, not the Emulators.EXTENSIONS path
-    utils.assertIsStringOrUndefined(options.extDevDir);
 
-    for (const cfg of functionsCfg) {
-      const functionsDir = path.join(projectDir, cfg.source);
-      emulatableBackends.push({
-        functionsDir,
-        codebase: cfg.codebase,
-        env: {
-          ...options.extDevEnv,
-        },
-        secretEnv: [], // CF3 secrets are bound to specific functions, so we'll get them during trigger discovery.
-        // TODO(b/213335255): predefinedTriggers and nodeMajorVersion are here to support ext:dev:emulators:* commands.
-        // Ideally, we should handle that case via ExtensionEmulator.
-        predefinedTriggers: options.extDevTriggers as ParsedTriggerDefinition[] | undefined,
-        nodeMajorVersion: parseRuntimeVersion((options.extDevNodeVersion as string) || cfg.runtime),
-      });
-    }
-  }
-
+  // Process extensions config early so that we have a better guess at whether
+  // the Functions emulator needs to start.
   let extensionEmulator: ExtensionsEmulator | undefined = undefined;
   if (shouldStart(options, Emulators.EXTENSIONS)) {
     const projectNumber = isDemoProject
@@ -369,57 +349,39 @@ export async function startAll(
   }
 
   const listenConfig = {} as Record<PortName, EmulatorListenConfig>;
+  if (emulatableBackends.length) {
+    // If we already know we need Functions (and Eventarc), assign them now.
+    listenConfig[Emulators.FUNCTIONS] = getListenConfig(options, Emulators.FUNCTIONS);
+    listenConfig[Emulators.EVENTARC] = getListenConfig(options, Emulators.EVENTARC);
+  }
   for (const emulator of ALL_EMULATORS) {
-    if (emulator === Emulators.EXTENSIONS) {
-      // Same port as function, no need for separate assignment
-      continue;
-    }
-    if (emulator === Emulators.UI && !showUI) {
+    if (
+      emulator === Emulators.FUNCTIONS ||
+      emulator === Emulators.EVENTARC ||
+      // Same port as Functions, no need for separate assignment
+      emulator === Emulators.EXTENSIONS ||
+      (emulator === Emulators.UI && !showUI)
+    ) {
       continue;
     }
     if (
       shouldStart(options, emulator) ||
-      (emulator === Emulators.EVENTARC && emulatableBackends.length > 0) ||
       (emulator === Emulators.LOGGING &&
         ((showUI && shouldStart(options, Emulators.UI)) || START_LOGGING_EMULATOR))
     ) {
-      let host = options.config.src.emulators?.[emulator]?.host || Constants.getDefaultHost();
-      if (host === "localhost" && utils.isRunningInWSL()) {
-        // HACK(https://github.com/firebase/firebase-tools-ui/issues/332): Use IPv4
-        // 127.0.0.1 instead of localhost. This, combined with the hack in
-        // downloadableEmulators.ts, forces the emulator to listen on IPv4 ONLY.
-        // The CLI (including the hub) will also consistently report 127.0.0.1,
-        // causing clients to connect via IPv4 only (which mitigates the problem of
-        // some clients resolving localhost to IPv6 and get connection refused).
-        host = "127.0.0.1";
-      }
-
-      const portVal = options.config.src.emulators?.[emulator]?.port;
-      let port: number;
-      let portFixed: boolean;
-      if (portVal) {
-        port = parseInt(`${portVal}`, 10);
-        portFixed = true;
-      } else {
-        port = Constants.getDefaultPort(emulator);
-        portFixed = !FIND_AVAILBLE_PORT_BY_DEFAULT[emulator];
-      }
-      listenConfig[emulator] = {
-        host,
-        port,
-        portFixed,
-      };
+      const config = getListenConfig(options, emulator);
+      listenConfig[emulator] = config;
       if (emulator === Emulators.FIRESTORE) {
         const wsPortConfig = options.config.src.emulators?.firestore?.websocketPort;
         listenConfig["firestore.websocket"] = {
-          host,
+          host: config.host,
           port: wsPortConfig || 9150,
           portFixed: !!wsPortConfig,
         };
       }
     }
   }
-  const listenForEmulator = await resolveHostAndAssignPorts(listenConfig);
+  let listenForEmulator = await resolveHostAndAssignPorts(listenConfig);
   hubLogger.log("DEBUG", "assigned listening specs for emulators", { user: listenForEmulator });
 
   function legacyGetFirstAddr(name: PortName): { host: string; port: number } {
@@ -491,6 +453,8 @@ export async function startAll(
     const emulators: EmulatorInfo[] = [];
     if (experiments.isEnabled("webframeworks")) {
       for (const e of ALL_SERVICE_EMULATORS) {
+        // TODO(yuchenshi): Functions and Eventarc may be missing if they are not
+        // yet known to be needed and then prepareFrameworks adds extra functions.
         if (listenForEmulator[e]) {
           emulators.push({
             name: e,
@@ -500,7 +464,31 @@ export async function startAll(
         }
       }
     }
+    // This may add additional sources for Functions emulator and must be done before it.
     await prepareFrameworks(targets, options, options, emulators);
+  }
+
+  const projectDir = (options.extDevDir || options.config.projectDir) as string;
+  if (shouldStart(options, Emulators.FUNCTIONS)) {
+    const functionsCfg = normalizeAndValidate(options.config.src.functions);
+    // Note: ext:dev:emulators:* commands hit this path, not the Emulators.EXTENSIONS path
+    utils.assertIsStringOrUndefined(options.extDevDir);
+
+    for (const cfg of functionsCfg) {
+      const functionsDir = path.join(projectDir, cfg.source);
+      emulatableBackends.push({
+        functionsDir,
+        codebase: cfg.codebase,
+        env: {
+          ...options.extDevEnv,
+        },
+        secretEnv: [], // CF3 secrets are bound to specific functions, so we'll get them during trigger discovery.
+        // TODO(b/213335255): predefinedTriggers and nodeMajorVersion are here to support ext:dev:emulators:* commands.
+        // Ideally, we should handle that case via ExtensionEmulator.
+        predefinedTriggers: options.extDevTriggers as ParsedTriggerDefinition[] | undefined,
+        nodeMajorVersion: parseRuntimeVersion((options.extDevNodeVersion as string) || cfg.runtime),
+      });
+    }
   }
 
   if (extensionEmulator) {
@@ -508,6 +496,17 @@ export async function startAll(
   }
 
   if (emulatableBackends.length) {
+    if (!listenForEmulator.functions || !listenForEmulator.eventarc) {
+      // We did not know that we need Functions and Eventarc earlier but now we do.
+      listenForEmulator = await resolveHostAndAssignPorts({
+        ...listenForEmulator,
+        functions: listenForEmulator.functions ?? getListenConfig(options, Emulators.FUNCTIONS),
+        eventarc: listenForEmulator.eventarc ?? getListenConfig(options, Emulators.EVENTARC),
+      });
+      hubLogger.log("DEBUG", "late-assigned ports for functions and eventarc emulators", {
+        user: listenForEmulator,
+      });
+    }
     const functionsLogger = EmulatorLogger.forEmulator(Emulators.FUNCTIONS);
     const functionsAddr = legacyGetFirstAddr(Emulators.FUNCTIONS);
     const projectId = needProjectId(options);
@@ -851,6 +850,38 @@ export async function startAll(
   });
 
   return { deprecationNotices: [] };
+}
+
+function getListenConfig(
+  options: EmulatorOptions,
+  emulator: Exclude<Emulators, Emulators.EXTENSIONS>
+): EmulatorListenConfig {
+  let host = options.config.src.emulators?.[emulator]?.host || Constants.getDefaultHost();
+  if (host === "localhost" && utils.isRunningInWSL()) {
+    // HACK(https://github.com/firebase/firebase-tools-ui/issues/332): Use IPv4
+    // 127.0.0.1 instead of localhost. This, combined with the hack in
+    // downloadableEmulators.ts, forces the emulator to listen on IPv4 ONLY.
+    // The CLI (including the hub) will also consistently report 127.0.0.1,
+    // causing clients to connect via IPv4 only (which mitigates the problem of
+    // some clients resolving localhost to IPv6 and get connection refused).
+    host = "127.0.0.1";
+  }
+
+  const portVal = options.config.src.emulators?.[emulator]?.port;
+  let port: number;
+  let portFixed: boolean;
+  if (portVal) {
+    port = parseInt(`${portVal}`, 10);
+    portFixed = true;
+  } else {
+    port = Constants.getDefaultPort(emulator);
+    portFixed = !FIND_AVAILBLE_PORT_BY_DEFAULT[emulator];
+  }
+  return {
+    host,
+    port,
+    portFixed,
+  };
 }
 
 /**
