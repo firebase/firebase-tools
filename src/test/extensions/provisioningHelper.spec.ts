@@ -1,9 +1,11 @@
 import * as nock from "nock";
 import { expect } from "chai";
+import * as sinon from "sinon";
 
 import * as api from "../../api";
 import * as provisioningHelper from "../../extensions/provisioningHelper";
 import { Api, ExtensionSpec, Resource, Role } from "../../extensions/types";
+import * as ensureApiEnabled from "../../ensureApiEnabled";
 import { FirebaseError } from "../../error";
 
 const PROJECT_ID = "test-project";
@@ -82,8 +84,14 @@ const instanceSpec = (version: string) => {
 };
 
 describe("provisioningHelper", () => {
+  let ensureStub: sinon.SinonStub;
+  beforeEach(() => {
+    ensureStub = sinon.stub(ensureApiEnabled, "ensure").resolves();
+  });
+
   afterEach(() => {
     nock.cleanAll();
+    ensureStub.restore();
   });
 
   describe("getUsedProducts", () => {
