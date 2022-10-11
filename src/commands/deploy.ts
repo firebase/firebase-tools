@@ -18,7 +18,7 @@ export const VALID_DEPLOY_TARGETS = [
   "remoteconfig",
   "extensions",
 ];
-const TARGET_PERMISSIONS: Record<string, string[]> = {
+export const TARGET_PERMISSIONS: Record<string, string[]> = {
   database: ["firebasedatabase.instances.update"],
   hosting: ["firebasehosting.sites.update"],
   functions: [
