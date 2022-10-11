@@ -451,6 +451,8 @@ export async function cloneVersion(
   return pollRes;
 }
 
+type PartialRelease = Partial<Pick<Release, "message" | "type">>;
+
 /**
  * Create a release on a channel.
  * @param site the site for the version.
@@ -461,9 +463,9 @@ export async function createRelease(
   site: string,
   channel: string,
   version: string,
-  partialRelease?: Partial<Pick<Release, "message" | "type">>
+  partialRelease?: PartialRelease
 ): Promise<Release> {
-  const res = await apiClient.post<Partial<Pick<Release, "message">>, Release>(
+  const res = await apiClient.post<PartialRelease, Release>(
     `/projects/-/sites/${site}/channels/${channel}/releases`,
     partialRelease,
     { queryParams: { versionName: version } }
