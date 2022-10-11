@@ -1,1 +1,2 @@
+- Fixes issue where errors were not properly propagating when listing backends. (#5071)
 - Fixes issue where message from `-m` on deploy was not being properly applied. (#5107)
