@@ -6,6 +6,7 @@ import { firebaseStorageOrigin, firedataOrigin } from "../api";
 import { Client } from "../apiv2";
 import { flattenArray } from "../functional";
 import { FirebaseError } from "../error";
+import { ensure } from "../ensureApiEnabled";
 import { getExtensionSpec, InstanceSpec } from "../deploy/extensions/planner";
 
 /** Product for which provisioning can be (or is) deferred */
@@ -119,6 +120,7 @@ function getTriggerType(propertiesYaml: string | undefined) {
 }
 
 async function isStorageProvisioned(projectId: string): Promise<boolean> {
+  await ensure(projectId, firebaseStorageOrigin, "extensions", true);
   const client = new Client({ urlPrefix: firebaseStorageOrigin, apiVersion: "v1beta" });
   const resp = await client.get<{ buckets: { name: string }[] }>(`/projects/${projectId}/buckets`);
   return !!resp.body?.buckets?.find((bucket: any) => {
@@ -132,6 +134,7 @@ async function isStorageProvisioned(projectId: string): Promise<boolean> {
 }
 
 async function isAuthProvisioned(projectId: string): Promise<boolean> {
+  await ensure(projectId, firedataOrigin, "extensions", true);
   const client = new Client({ urlPrefix: firedataOrigin, apiVersion: "v1" });
   const resp = await client.get<{ activation: { service: string }[] }>(
     `/projects/${projectId}/products`
