@@ -18,7 +18,7 @@ export interface TemplateServerResponse {
   emulatorsJs: string;
 
   // firebaseConfig JSON
-  json: string;
+  json?: string;
 }
 
 /**

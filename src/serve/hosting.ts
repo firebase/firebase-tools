@@ -151,7 +151,11 @@ export async function start(options: any): Promise<void> {
     try {
       await requireHostingSite(options);
     } catch {
-      options.site = JSON.parse(init.json).projectId;
+      if (init.json) {
+        options.site = JSON.parse(init.json).projectId;
+      } else {
+        options.site = "site";
+      }
     }
   }
   const configs = config.hostingConfig(options);
