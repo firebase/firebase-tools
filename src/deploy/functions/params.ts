@@ -590,7 +590,7 @@ async function promptText<T extends RawParamValue>(
   resolvedDefault: T | undefined,
   converter: (res: string) => T | retryInput
 ): Promise<T> {
-  const res = await promptOnce({
+  const res: any = await promptOnce({
     type: "input",
     default: resolvedDefault,
     message: prompt,
@@ -605,7 +605,7 @@ async function promptText<T extends RawParamValue>(
       return promptText<T>(prompt, input, resolvedDefault, converter);
     }
   }
-  const converted = converter(res);
+  const converted = converter(typeof res === "string" ? res : res.toString());
   if (typeof converted === "object") {
     logger.error(converted.message);
     return promptText<T>(prompt, input, resolvedDefault, converter);
