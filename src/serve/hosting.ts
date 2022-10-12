@@ -16,6 +16,7 @@ import { Emulators } from "../emulator/types";
 import { createDestroyer } from "../utils";
 import { execSync } from "child_process";
 import { requireHostingSite } from "../requireHostingSite";
+import { getProjectId } from "../projectUtils";
 
 const MAX_PORT_ATTEMPTS = 10;
 let attempts = 0;
@@ -154,7 +155,7 @@ export async function start(options: any): Promise<void> {
       if (init.json) {
         options.site = JSON.parse(init.json).projectId;
       } else {
-        options.site = "site";
+        options.site = getProjectId(options) || "site";
       }
     }
   }
