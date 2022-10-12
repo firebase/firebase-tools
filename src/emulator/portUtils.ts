@@ -9,6 +9,7 @@ import { IPV4_UNSPECIFIED, IPV6_UNSPECIFIED, Resolver } from "./dns";
 import { Emulators, ListenSpec } from "./types";
 import { Constants } from "./constants";
 import { EmulatorLogger } from "./emulatorLogger";
+import { logger } from "../logger";
 
 // See:
 // - https://stackoverflow.com/questions/4313403/why-do-browsers-block-some-ports
@@ -127,10 +128,22 @@ export async function checkListenable(
     dummyServer.once("error", (err) => {
       dummyServer.removeAllListeners();
       const e = err as Error & { code?: string };
-      if (e.code === "EADDRINUSE" || e.code === "EACCES") {
+      if (
+        e.code === "EADDRINUSE" ||
+        e.code === "EACCES" ||
+        // Where the address is not bindable (not just the port), e.g. in Docker:
+        // https://github.com/firebase/firebase-tools/issues/4741#issuecomment-1275318134
+        e.code === "EADDRNOTAVAIL" ||
+        e.code === "EINVAL"
+      ) {
         resolve(false);
       } else {
-        reject(e);
+        // Other unknown issues -- we'll log a warning and return unavailable.
+        logger.warn(
+          `portUtils: Error when trying to check port ${addr.port} (on ${addr.address}): ${e.code}`
+        );
+        logger.warn(e);
+        resolve(false);
       }
     });
     dummyServer.once("listening", () => {
