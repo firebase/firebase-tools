@@ -1,1 +1,2 @@
-- Fix error handling for auth blocking functions
+- Fixes a crash in integer params when a default value is selected in the prompt. (#5118)
+- Fixes error handling for auth blocking functions.

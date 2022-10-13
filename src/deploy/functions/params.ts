@@ -605,7 +605,10 @@ async function promptText<T extends RawParamValue>(
       return promptText<T>(prompt, input, resolvedDefault, converter);
     }
   }
-  const converted = converter(res);
+  // TODO(vsfan): the toString() is because PromptOnce()'s return type of string
+  // is wrong--it will return the type of the default if selected. Remove this
+  // hack once we fix the prompt.ts metaprogramming.
+  const converted = converter(res.toString());
   if (typeof converted === "object") {
     logger.error(converted.message);
     return promptText<T>(prompt, input, resolvedDefault, converter);
