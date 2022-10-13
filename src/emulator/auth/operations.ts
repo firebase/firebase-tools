@@ -3025,34 +3025,47 @@ async function fetchBlockingFunction(
   }, timeoutMs);
 
   let response;
+  let res;
   try {
-    const res = await fetch(url, {
+    res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(reqBody),
       signal: controller.signal,
     });
-    const text = await res.text();
-    assert(
-      res.ok,
-      `BLOCKING_FUNCTION_ERROR_RESPONSE: ((HTTP request to ${url} returned HTTP error${res.status}: ${text}))`
-    );
-    response = JSON.parse(text) as BlockingFunctionResponsePayload;
   } catch (thrown: any) {
     const err = thrown instanceof Error ? thrown : new Error(thrown);
     const isAbortError = err.name.includes("AbortError");
     if (isAbortError) {
       throw new InternalError(
-        `BLOCKING_FUNCTION_ERROR_RESPONSE: ((Deadline exceeded making request to ${url}.))`,
+        `BLOCKING_FUNCTION_ERROR_RESPONSE : ((Deadline exceeded making request to ${url}.))`,
         err.message
       );
     }
+    // All other errors server errors
     throw new InternalError(
       `BLOCKING_FUNCTION_ERROR_RESPONSE: ((Failed to make request to ${url}.))`,
       err.message
     );
   } finally {
     clearTimeout(timeout);
+  }
+
+  assert(res, `BLOCKING_FUNCTION_ERROR_RESPONSE : ((Failed to make request to ${url}.))`);
+  const text = await res.text();
+  assert(
+    res.ok,
+    `BLOCKING_FUNCTION_ERROR_RESPONSE : ((HTTP request to ${url} returned HTTP error ${res.status}: ${text}))`
+  );
+
+  try {
+    response = JSON.parse(text) as BlockingFunctionResponsePayload;
+  } catch (thrown: any) {
+    const err = thrown instanceof Error ? thrown : new Error(thrown);
+    throw new InternalError(
+      `BLOCKING_FUNCTION_ERROR_RESPONSE : ((Response has malformed claims.))`,
+      err.message
+    );
   }
 
   return processBlockingFunctionResponse(event, response);
