@@ -1,0 +1,1 @@
+- Fix error handling for auth blocking functions
