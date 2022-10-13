@@ -3024,16 +3024,19 @@ async function fetchBlockingFunction(
     controller.abort();
   }, timeoutMs);
 
-  let response;
-  let res;
-  let text;
+  let response: BlockingFunctionResponsePayload;
+  let ok: boolean;
+  let status: number;
+  let text: string;
   try {
-    res = await fetch(url, {
+    const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(reqBody),
       signal: controller.signal,
     });
+    ok = res.ok;
+    status = res.status;
     text = await res.text();
   } catch (thrown: any) {
     const err = thrown instanceof Error ? thrown : new Error(thrown);
@@ -3054,8 +3057,8 @@ async function fetchBlockingFunction(
   }
 
   assert(
-    res.ok,
-    `BLOCKING_FUNCTION_ERROR_RESPONSE : ((HTTP request to ${url} returned HTTP error ${res.status}: ${text}))`
+    ok,
+    `BLOCKING_FUNCTION_ERROR_RESPONSE : ((HTTP request to ${url} returned HTTP error ${status}: ${text}))`
   );
 
   try {
