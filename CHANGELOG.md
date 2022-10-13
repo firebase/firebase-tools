@@ -1,4 +1,0 @@
-- Fixes issue where errors were not properly propagating when listing backends. (#5071)
-- Fixes issue where message from `-m` on deploy was not being properly applied. (#5107)
-- Fixes error `EADDRNOTAVAIL` when running emulators in Docker.
-- Fixes further issues where ports were not correctly recognized as unavailable.
