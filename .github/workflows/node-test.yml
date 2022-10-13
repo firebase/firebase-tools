@@ -82,7 +82,7 @@ jobs:
           - "16"
         script:
           - npm run test:hosting
-          # - npm run test:hosting-rewrites # Long-running test that might conflict across test runs. Run this manually.
+          - npm run test:hosting-rewrites
           - npm run test:client-integration
           - npm run test:emulator
           - npm run test:import-export
@@ -136,7 +136,7 @@ jobs:
           - "16"
         script:
           - npm run test:hosting
-          # - npm run test:hosting-rewrites # Long-running test that might conflict across test runs. Run this manually.
+          - npm run test:hosting-rewrites
           - npm run test:client-integration
           - npm run test:emulator
           # - npm run test:import-export # Fails becuase port 4000 is taken after first run - hub not shhutting down?

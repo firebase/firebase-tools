@@ -5,7 +5,7 @@ import { Command, validateProjectId } from "../command";
 import { FirebaseError } from "../error";
 
 describe("Command", () => {
-  let command: Command;
+  let command: Command<void>;
 
   beforeEach(() => {
     command = new Command("example");
@@ -17,8 +17,9 @@ describe("Command", () => {
       command.option("-x, --foobar", "description", "value");
       command.withForce();
       command.before(
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         (arr: string[]) => {
-          return arr;
+          return;
         },
         ["foo", "bar"]
       );

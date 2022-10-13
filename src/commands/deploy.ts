@@ -70,6 +70,7 @@ export const command = new Command("deploy")
     if (options.filteredTargets.includes("functions")) {
       return checkServiceAccountIam(options.project);
     }
+    return Promise.resolve();
   })
   .before(async (options) => {
     // only fetch the default instance for hosting or database deploys

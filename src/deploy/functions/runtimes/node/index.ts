@@ -19,6 +19,7 @@ import * as versioning from "./versioning";
 import * as parseTriggers from "./parseTriggers";
 
 const MIN_FUNCTIONS_SDK_VERSION = "3.20.0";
+const serverLock = Promise.resolve();
 
 /**
  *
@@ -46,6 +47,11 @@ export async function tryCreateDelegate(
   }
 
   return new Delegate(context.projectId, context.projectDir, context.sourceDir, runtime);
+}
+
+interface SpawnedServerInfo {
+  port: number;
+  killFunction: () => Promise<void>;
 }
 
 // TODO(inlined): Consider moving contents in parseRuntimeAndValidateSDK and validate around.
@@ -132,6 +138,17 @@ export class Delegate {
     });
   }
 
+  async startServer(
+    config: backend.RuntimeConfigValues,
+    env: backend.EnvironmentVariables
+  ): Promise<SpawnedServerInfo> {
+    const getPort = promisify(portfinder.getPort) as () => Promise<number>;
+    const port = await getPort();
+    const pkill = await this.serve(port, config, env);
+    await new Promise((res) => setTimeout(res, 5000));
+    return { killFunction: pkill, port: port };
+  }
+
   // eslint-disable-next-line require-await
   async discoverBuild(
     config: backend.RuntimeConfigValues,
@@ -154,13 +171,17 @@ export class Delegate {
 
     let discovered = await discovery.detectFromYaml(this.sourceDir, this.projectId, this.runtime);
     if (!discovered) {
-      const getPort = promisify(portfinder.getPort) as () => Promise<number>;
-      const port = await getPort();
-      const kill = await this.serve(port, config, env);
+      const spawnedServerInfo = await serverLock.then(async () => {
+        return await this.startServer(config, env);
+      });
       try {
-        discovered = await discovery.detectFromPort(port, this.projectId, this.runtime);
+        discovered = await discovery.detectFromPort(
+          spawnedServerInfo.port,
+          this.projectId,
+          this.runtime
+        );
       } finally {
-        await kill();
+        await spawnedServerInfo.killFunction();
       }
     }
     return discovered;

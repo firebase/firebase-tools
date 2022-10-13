@@ -34,17 +34,17 @@ export const command = new Command("serve")
     "--except <targets>",
     "serve all except specified targets (valid targets are: " + VALID_TARGETS.join(", ") + ")"
   )
-  .before((options) => {
+  .before(async (options) => {
     if (
       options.only &&
       options.only.length > 0 &&
       filterOnly(REQUIRES_AUTH, options.only).length === 0
     ) {
-      return Promise.resolve();
+      return;
     }
-    return requireConfig(options)
-      .then(() => requirePermissions(options))
-      .then(() => needProjectNumber(options));
+    await requireConfig(options);
+    await requirePermissions(options);
+    await needProjectNumber(options);
   })
   .action((options) => {
     options.targets = filterOnly(ALL_TARGETS, options.only);
