@@ -590,7 +590,7 @@ async function promptText<T extends RawParamValue>(
   resolvedDefault: T | undefined,
   converter: (res: string) => T | retryInput
 ): Promise<T> {
-  const res: any = await promptOnce({
+  const res = await promptOnce({
     type: "input",
     default: resolvedDefault,
     message: prompt,
@@ -607,8 +607,8 @@ async function promptText<T extends RawParamValue>(
   }
   // TODO(vsfan): the toString() is because PromptOnce()'s return type of string
   // is wrong--it will return the type of the default if selected. Remove this
-  // hack, and the `any` coercion above, once we fix the prompt.ts metaprogramming.
-  const converted = converter(typeof res === "string" ? res : res.toString());
+  // hack once we fix the prompt.ts metaprogramming.
+  const converted = converter(res.toString());
   if (typeof converted === "object") {
     logger.error(converted.message);
     return promptText<T>(prompt, input, resolvedDefault, converter);
