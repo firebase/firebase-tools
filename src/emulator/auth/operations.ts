@@ -3026,6 +3026,7 @@ async function fetchBlockingFunction(
 
   let response;
   let res;
+  let text;
   try {
     res = await fetch(url, {
       method: "POST",
@@ -3033,6 +3034,7 @@ async function fetchBlockingFunction(
       body: JSON.stringify(reqBody),
       signal: controller.signal,
     });
+    text = await res.text();
   } catch (thrown: any) {
     const err = thrown instanceof Error ? thrown : new Error(thrown);
     const isAbortError = err.name.includes("AbortError");
@@ -3051,8 +3053,6 @@ async function fetchBlockingFunction(
     clearTimeout(timeout);
   }
 
-  assert(res, `BLOCKING_FUNCTION_ERROR_RESPONSE : ((Failed to make request to ${url}.))`);
-  const text = await res.text();
   assert(
     res.ok,
     `BLOCKING_FUNCTION_ERROR_RESPONSE : ((HTTP request to ${url} returned HTTP error ${res.status}: ${text}))`
