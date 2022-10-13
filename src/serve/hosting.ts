@@ -133,14 +133,7 @@ export async function start(options: any): Promise<{ ports: number[] }> {
   for (let i = 0; i < configs.length; i++) {
     // skip over the functions emulator ports to avoid breaking changes
     let port = i === 0 ? options.port : options.port + 4 + i;
-    while (
-      assignedPorts.has(port) ||
-      !(await checkListenable({
-        address: options.host,
-        port,
-        family: isIPv4(options.host) ? "IPv4" : "IPv6",
-      }))
-    ) {
+    while (assignedPorts.has(port) || !(await availablePort(options.host, port))) {
       port += 1;
     }
     assignedPorts.add(port);
@@ -158,4 +151,12 @@ export async function start(options: any): Promise<{ ports: number[] }> {
  */
 export async function connect(): Promise<void> {
   await Promise.resolve();
+}
+
+function availablePort(host: string, port: number): Promise<boolean> {
+  return checkListenable({
+    address: host,
+    port,
+    family: isIPv4(host) ? "IPv4" : "IPv6",
+  });
 }
