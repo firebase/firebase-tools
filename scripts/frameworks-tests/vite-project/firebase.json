@@ -6,5 +6,10 @@
       "**/.*",
       "**/node_modules/**"
     ]
+  },
+  "emulators": {
+    "hosting": {
+      "port": "8534"
+    }
   }
 }

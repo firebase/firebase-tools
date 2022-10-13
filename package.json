@@ -30,6 +30,7 @@
     "test:emulator": "bash ./scripts/emulator-tests/run.sh",
     "test:extensions-deploy": "bash ./scripts/extensions-deploy-tests/run.sh",
     "test:extensions-emulator": "bash ./scripts/extensions-emulator-tests/run.sh",
+    "test:frameworks": "bash ./scripts/frameworks-tests/run.sh",
     "test:functions-deploy": "bash ./scripts/functions-deploy-tests/run.sh",
     "test:hosting": "bash ./scripts/hosting-tests/run.sh",
     "test:hosting-rewrites": "bash ./scripts/hosting-tests/rewrites-tests/run.sh",
