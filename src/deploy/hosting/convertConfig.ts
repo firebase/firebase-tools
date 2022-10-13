@@ -119,6 +119,7 @@ export async function convertConfig(
     }
   }
 
+  // TODO: Track the use of pin in functions/run rewrites.
   config.rewrites = deploy.config.rewrites?.map((rewrite) => {
     const target = extractPattern("rewrite", rewrite);
     if ("destination" in rewrite) {
@@ -199,12 +200,13 @@ export async function convertConfig(
       const apiRewrite: api.Rewrite = {
         ...target,
         run: {
-          region: "us-central1",
-          ...rewrite.run,
+          serviceId: rewrite.run.serviceId,
+          region: rewrite.run.region || "us-central1",
         },
       };
-      if (apiRewrite.run.tag) {
+      if (rewrite.run.pinTag) {
         experiments.assertEnabled("pintags", "pin to a run service revision");
+        apiRewrite.run.tag = runTags.TODO_TAG_NAME;
       }
       return apiRewrite;
     }
