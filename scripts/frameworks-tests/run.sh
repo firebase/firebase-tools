@@ -13,6 +13,10 @@ echo "Installing firebase-tools..."
 ./scripts/npm-link.sh
 echo "Installed firebase-tools: $(which firebase)"
 
+echo "Enabling experiment..."
+firebase experiments:enable webframeworks
+echo "Enabled experiment."
+
 echo "Vite..."
 cd scripts/frameworks-tests/vite-project
 npm ci
