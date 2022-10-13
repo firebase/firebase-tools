@@ -44,7 +44,7 @@ const CLI_COMMAND = join(
 );
 
 export const name = "Next.js";
-export const support = SupportLevel.Expirimental;
+export const support = SupportLevel.Experimental;
 export const type = FrameworkType.MetaFramework;
 
 function getNextVersion(cwd: string) {
@@ -141,7 +141,7 @@ export async function init(setup: any) {
     choices: ["JavaScript", "TypeScript"],
   });
   execSync(
-    `npx --yes create-next-app@latest ${setup.hosting.source} ${
+    `npx --yes create-next-app@latest -e hello-world ${setup.hosting.source} ${
       language === "TypeScript" ? "--ts" : ""
     }`,
     { stdio: "inherit" }

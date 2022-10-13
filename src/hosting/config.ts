@@ -18,6 +18,7 @@ import { resolveProjectPath } from "../projectPath";
 import { HostingOptions } from "./options";
 import * as path from "node:path";
 import * as experiments from "../experiments";
+import { logger } from "../logger";
 
 // assertMatches allows us to throw when an --only flag doesn't match a target
 // but an --except flag doesn't. Is this desirable behavior?
@@ -167,12 +168,12 @@ function validateOne(config: HostingMultiple[number], options: HostingOptions): 
   }
 
   if (root && !dirExistsSync(resolveProjectPath(options, root))) {
-    throw new FirebaseError(
+    logger.debug(
       `Specified "${
         config.source ? "source" : "public"
-      }" directory "${root}" does not exist, can't deploy hosting to site "${
+      }" directory "${root}" does not exist; Deploy to Hosting site "${
         config.site || config.target || ""
-      }"`
+      }" may fail or be empty.`
     );
   }
 

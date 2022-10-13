@@ -15,7 +15,7 @@ import { hostingConfig } from "../hosting/config";
 import { listSites } from "../hosting/api";
 import { getAppConfig, AppPlatform } from "../management/apps";
 import { promptOnce } from "../prompt";
-import { EmulatorInfo, Emulators } from "../emulator/types";
+import { EmulatorInfo, Emulators, EMULATORS_SUPPORTED_BY_USE_EMULATOR } from "../emulator/types";
 import { getCredentialPathAsync } from "../defaultCredentials";
 import { getProjectDefaultAccount } from "../auth";
 import { formatHost } from "../emulator/functionsEmulatorShared";
@@ -24,6 +24,8 @@ import { FirebaseError } from "../error";
 import { requireHostingSite } from "../requireHostingSite";
 import { HostingRewrites } from "../firebaseConfig";
 import * as experiments from "../experiments";
+import { ensureTargeted } from "../functions/ensureTargeted";
+import { implicitInit } from "../hosting/implicitInit";
 
 // Use "true &&"" to keep typescript from compiling this file and rewriting
 // the import statement into a require
@@ -87,13 +89,13 @@ export const enum FrameworkType {
 }
 
 export const enum SupportLevel {
-  Expirimental = "expirimental",
+  Experimental = "experimental",
   Community = "community-supported",
 }
 
 const SupportLevelWarnings = {
-  [SupportLevel.Expirimental]: clc.yellow(
-    `This is an expirimental integration, proceed with caution.`
+  [SupportLevel.Experimental]: clc.yellow(
+    `This is an experimental integration, proceed with caution.`
   ),
   [SupportLevel.Community]: clc.yellow(
     `This is a community-supported integration, support is best effort.`
@@ -195,12 +197,12 @@ export async function discover(dir: string, warn = true) {
       }
     }
     if (frameworksDiscovered.length > 1) {
-      if (warn) console.error("Multiple conflicting frameworks discovered. TODO link");
+      if (warn) console.error("Multiple conflicting frameworks discovered.");
       return;
     }
     if (frameworksDiscovered.length === 1) return frameworksDiscovered[0];
   }
-  if (warn) console.warn("We can't detirmine the web framework in use. TODO link");
+  if (warn) console.warn("Could not determine the web framework in use.");
   return;
 }
 
@@ -292,7 +294,7 @@ export async function prepareFrameworks(
     if (publicDir)
       throw new Error(`hosting.public and hosting.source cannot both be set in firebase.json`);
     const getProjectPath = (...args: string[]) => join(projectRoot, source, ...args);
-    const functionName = `ssr${site.replace(/-/g, "")}`;
+    const functionName = `ssr${site.toLowerCase().replace(/-/g, "")}`;
     const usesFirebaseAdminSdk = !!findDependency("firebase-admin", { cwd: getProjectPath() });
     const usesFirebaseJsSdk = !!findDependency("@firebase/app", { cwd: getProjectPath() });
     if (usesFirebaseAdminSdk) {
@@ -313,7 +315,7 @@ export async function prepareFrameworks(
         if (info.name === Emulators.STORAGE)
           process.env[Constants.FIREBASE_STORAGE_EMULATOR_HOST] = formatHost(info);
       }
-      if (usesFirebaseJsSdk) {
+      if (usesFirebaseJsSdk && EMULATORS_SUPPORTED_BY_USE_EMULATOR.includes(info.name)) {
         firebaseDefaults ||= {};
         firebaseDefaults.emulatorHosts ||= {};
         firebaseDefaults.emulatorHosts[info.name] = formatHost(info);
@@ -330,17 +332,30 @@ export async function prepareFrameworks(
           firebaseDefaults ||= {};
           firebaseDefaults.config = firebaseConfig;
         } else {
-          console.warn(
-            `No Firebase app associated with site ${site}, unable to provide authenticated server context.
-You can link a Web app to a Hosting site here https://console.firebase.google.com/project/_/settings/general/web`
-          );
-          if (!options.nonInteractive) {
-            const continueDeploy = await promptOnce({
-              type: "confirm",
-              default: true,
-              message: "Would you like to continue with the deploy?",
-            });
-            if (!continueDeploy) exit(1);
+          const defaultConfig = await implicitInit(options);
+          if (defaultConfig.json) {
+            console.warn(
+              `No Firebase app associated with site ${site}, injecting project default config.
+  You can link a Web app to a Hosting site here https://console.firebase.google.com/project/${project}/settings/general/web`
+            );
+            firebaseDefaults ||= {};
+            firebaseDefaults.config = JSON.parse(defaultConfig.json);
+          } else {
+            // N.B. None of us know when this can ever happen and the deploy would
+            // still succeed. Maaaaybe if someone tried calling firebase serve
+            // on a project that never initialized hosting?
+            console.warn(
+              `No Firebase app associated with site ${site}, unable to provide authenticated server context.
+  You can link a Web app to a Hosting site here https://console.firebase.google.com/project/${project}/settings/general/web`
+            );
+            if (!options.nonInteractive) {
+              const continueDeploy = await promptOnce({
+                type: "confirm",
+                default: true,
+                message: "Would you like to continue with the deploy?",
+              });
+              if (!continueDeploy) exit(1);
+            }
           }
         }
       }
@@ -400,6 +415,7 @@ You can link a Web app to a Hosting site here https://console.firebase.google.co
       }
       config.rewrites.push(rewrite);
 
+      const codebase = `firebase-frameworks-${site}`;
       const existingFunctionsConfig = options.config.get("functions")
         ? [].concat(options.config.get("functions"))
         : [];
@@ -407,11 +423,16 @@ You can link a Web app to a Hosting site here https://console.firebase.google.co
         ...existingFunctionsConfig,
         {
           source: relative(projectRoot, functionsDist),
-          codebase: `firebase-frameworks-${site}`,
+          codebase,
         },
       ]);
 
-      if (!targetNames.includes("functions")) targetNames.unshift("functions");
+      if (!targetNames.includes("functions")) {
+        targetNames.unshift("functions");
+      }
+      if (options.only) {
+        options.only = ensureTargeted(options.only, codebase);
+      }
 
       // if exists, delete everything but the node_modules directory and package-lock.json
       // this should speed up repeated NPM installs

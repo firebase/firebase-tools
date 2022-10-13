@@ -10,7 +10,8 @@ import * as logform from "logform";
 
 import { EmulatedTriggerDefinition } from "../../src/emulator/functionsEmulatorShared";
 import { FunctionsEmulator } from "../../src/emulator/functionsEmulator";
-import { Emulators } from "../../src/emulator/types";
+import { EmulatorInfo, Emulators } from "../../src/emulator/types";
+import { FakeEmulator } from "../../src/test/emulators/fakeEmulator";
 import { TIMEOUT_LONG, TIMEOUT_MED, MODULE_ROOT } from "./fixtures";
 import { logger } from "../../src/logger";
 import * as registry from "../../src/emulator/registry";
@@ -612,29 +613,29 @@ describe("FunctionsEmulator-Hub", function () {
   });
 
   describe("environment variables", () => {
-    let emulatorRegistryStub: sinon.SinonStub;
-
-    beforeEach(() => {
-      emulatorRegistryStub = sinon.stub(registry.EmulatorRegistry, "getInfo").returns(undefined);
-    });
+    const startFakeEmulator = async (emulator: Emulators): Promise<EmulatorInfo> => {
+      const fake = await FakeEmulator.create(emulator);
+      await registry.EmulatorRegistry.start(fake);
+      return fake.getInfo();
+    };
 
     afterEach(() => {
-      emulatorRegistryStub.restore();
+      return registry.EmulatorRegistry.stopAll();
     });
 
-    it("should set FIREBASE_DATABASE_EMULATOR_HOST when the emulator is running", async () => {
-      emulatorRegistryStub.withArgs(Emulators.DATABASE).returns({
-        name: Emulators.DATABASE,
-        host: "localhost",
-        port: 9090,
-      });
+    it("should set env vars when the emulator is running", async () => {
+      const database = await startFakeEmulator(Emulators.DATABASE);
+      const firestore = await startFakeEmulator(Emulators.FIRESTORE);
+      const auth = await startFakeEmulator(Emulators.AUTH);
 
       await useFunction(emu, "functionId", () => {
         return {
           functionId: require("firebase-functions").https.onRequest(
             (_req: express.Request, res: express.Response) => {
               res.json({
-                var: process.env.FIREBASE_DATABASE_EMULATOR_HOST,
+                databaseHost: process.env.FIREBASE_DATABASE_EMULATOR_HOST,
+                firestoreHost: process.env.FIRESTORE_EMULATOR_HOST,
+                authHost: process.env.FIREBASE_AUTH_EMULATOR_HOST,
               });
             }
           ),
@@ -645,70 +646,14 @@ describe("FunctionsEmulator-Hub", function () {
         .get("/fake-project-id/us-central1/functionId")
         .expect(200)
         .then((res) => {
-          expect(res.body.var).to.eql("localhost:9090");
-        });
-    }).timeout(TIMEOUT_MED);
-
-    it("should set FIRESTORE_EMULATOR_HOST when the emulator is running", async () => {
-      emulatorRegistryStub.withArgs(Emulators.FIRESTORE).returns({
-        name: Emulators.FIRESTORE,
-        host: "localhost",
-        port: 9090,
-      });
-
-      await useFunction(emu, "functionId", () => {
-        return {
-          functionId: require("firebase-functions").https.onRequest(
-            (_req: express.Request, res: express.Response) => {
-              res.json({
-                var: process.env.FIRESTORE_EMULATOR_HOST,
-              });
-            }
-          ),
-        };
-      });
-
-      await supertest(emu.createHubServer())
-        .get("/fake-project-id/us-central1/functionId")
-        .expect(200)
-        .then((res) => {
-          expect(res.body.var).to.eql("localhost:9090");
-        });
-    }).timeout(TIMEOUT_MED);
-
-    it("should set AUTH_EMULATOR_HOST when the emulator is running", async () => {
-      emulatorRegistryStub.withArgs(Emulators.AUTH).returns({
-        name: Emulators.AUTH,
-        host: "localhost",
-        port: 9099,
-      });
-
-      await useFunction(emu, "functionId", () => {
-        return {
-          functionId: require("firebase-functions").https.onRequest(
-            (_req: express.Request, res: express.Response) => {
-              res.json({
-                var: process.env.FIREBASE_AUTH_EMULATOR_HOST,
-              });
-            }
-          ),
-        };
-      });
-
-      await supertest(emu.createHubServer())
-        .get("/fake-project-id/us-central1/functionId")
-        .expect(200)
-        .then((res) => {
-          expect(res.body.var).to.eql("localhost:9099");
+          expect(res.body.databaseHost).to.eql(`${database.host}:${database.port}`);
+          expect(res.body.firestoreHost).to.eql(`${firestore.host}:${firestore.port}`);
+          expect(res.body.authHost).to.eql(`${auth.host}:${auth.port}`);
         });
     }).timeout(TIMEOUT_MED);
 
     it("should return an emulated databaseURL when RTDB emulator is running", async () => {
-      emulatorRegistryStub.withArgs(Emulators.DATABASE).returns({
-        name: Emulators.DATABASE,
-        host: "localhost",
-        port: 9090,
-      });
+      const database = await startFakeEmulator(Emulators.DATABASE);
 
       await useFunction(emu, "functionId", () => {
         return {
@@ -725,7 +670,7 @@ describe("FunctionsEmulator-Hub", function () {
         .expect(200)
         .then((res) => {
           expect(res.body.databaseURL).to.eql(
-            "http://localhost:9090/?ns=fake-project-id-default-rtdb"
+            `http://${database.host}:${database.port}/?ns=fake-project-id-default-rtdb`
           );
         });
     }).timeout(TIMEOUT_MED);

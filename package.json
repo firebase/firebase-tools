@@ -1,6 +1,6 @@
 {
   "name": "firebase-tools",
-  "version": "11.14.0",
+  "version": "11.14.2",
   "description": "Command-Line Interface for Firebase",
   "main": "./lib/index.js",
   "bin": {
@@ -37,7 +37,8 @@
     "test:triggers-end-to-end": "bash ./scripts/triggers-end-to-end-tests/run.sh",
     "test:triggers-end-to-end:inspect": "bash ./scripts/triggers-end-to-end-tests/run.sh inspect",
     "test:storage-deploy": "bash ./scripts/storage-deploy-tests/run.sh",
-    "test:storage-emulator-integration": "bash ./scripts/storage-emulator-integration/run.sh"
+    "test:storage-emulator-integration": "bash ./scripts/storage-emulator-integration/run.sh",
+    "test:webframeworks-deploy": "bash ./scripts/webframeworks-deploy-tests/run.sh"
   },
   "files": [
     "lib",

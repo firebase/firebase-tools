@@ -51,7 +51,7 @@ describe("CF3 and Extensions emulator", () => {
 
     const config = readConfig();
     const storagePort = config.emulators!.storage.port;
-    process.env.STORAGE_EMULATOR_HOST = `http://localhost:${storagePort}`;
+    process.env.STORAGE_EMULATOR_HOST = `http://127.0.0.1:${storagePort}`;
 
     const firestorePort = config.emulators!.firestore.port;
     process.env.FIRESTORE_EMULATOR_HOST = `localhost:${firestorePort}`;

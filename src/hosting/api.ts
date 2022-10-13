@@ -31,7 +31,7 @@ enum ReleaseType {
   SITE_DISABLE = "SITE_DISABLE",
 }
 
-interface Release {
+export interface Release {
   // The unique identifier for the release, in the format:
   // <code>sites/<var>site-name</var>/releases/<var>releaseID</var></code>
   readonly name: string;
@@ -451,6 +451,8 @@ export async function cloneVersion(
   return pollRes;
 }
 
+type PartialRelease = Partial<Pick<Release, "message" | "type">>;
+
 /**
  * Create a release on a channel.
  * @param site the site for the version.
@@ -460,13 +462,14 @@ export async function cloneVersion(
 export async function createRelease(
   site: string,
   channel: string,
-  version: string
+  version: string,
+  partialRelease?: PartialRelease
 ): Promise<Release> {
-  const res = await apiClient.request<void, Release>({
-    method: "POST",
-    path: `/projects/-/sites/${site}/channels/${channel}/releases`,
-    queryParams: { versionName: version },
-  });
+  const res = await apiClient.post<PartialRelease, Release>(
+    `/projects/-/sites/${site}/channels/${channel}/releases`,
+    partialRelease,
+    { queryParams: { versionName: version } }
+  );
   return res.body;
 }
 
