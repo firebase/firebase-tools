@@ -1,2 +1,3 @@
 - Fixes a crash in integer params when a default value is selected in the prompt. (#5118)
 - Fixes error handling for auth blocking functions.
+- Fixes bug preventing Storage Rules from updating when ruleset compilation completed successfully but with warnings
