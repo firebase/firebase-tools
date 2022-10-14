@@ -10,8 +10,5 @@
     "firebase-admin": "^11.1.0",
     "firebase-functions": "^4.0.0-rc.0"
   },
-  "devDependencies": {
-    "firebase-functions-test": "^0.2.0"
-  },
   "private": true
 }
