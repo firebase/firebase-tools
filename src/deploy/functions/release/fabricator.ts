@@ -14,6 +14,7 @@ import * as cloudtasks from "../../../gcp/cloudtasks";
 import * as deploymentTool from "../../../deploymentTool";
 import * as gcf from "../../../gcp/cloudfunctions";
 import * as gcfV2 from "../../../gcp/cloudfunctionsv2";
+import * as eventarc from "../../../gcp/eventarc";
 import * as helper from "../functionsDeployHelper";
 import * as planner from "./planner";
 import * as poller from "../../../operation-poller";
@@ -551,6 +552,8 @@ export class Fabricator {
       await this.upsertTaskQueue(endpoint);
     } else if (backend.isBlockingTriggered(endpoint)) {
       await this.registerBlockingTrigger(endpoint);
+    } else if (backend.isEventTriggered(endpoint)) {
+      await this.upsertChannel(endpoint);
     }
   }
 
@@ -569,6 +572,10 @@ export class Fabricator {
     } else if (backend.isBlockingTriggered(endpoint)) {
       await this.unregisterBlockingTrigger(endpoint);
     }
+    // N.B. Like Pub/Sub topics, we don't delete Eventarc channels because we
+    // don't know if there are any subscriers or not. If we start supporting 2P
+    // channels, we might need to revist this or else the events will still get
+    // published and the customer will still get charged.
   }
 
   async upsertScheduleV1(endpoint: backend.Endpoint & backend.ScheduleTriggered): Promise<void> {
@@ -607,6 +614,25 @@ export class Fabricator {
     await this.executor
       .run(() => services.serviceForEndpoint(endpoint).registerTrigger(endpoint))
       .catch(rethrowAs(endpoint, "register blocking trigger"));
+  }
+
+  async upsertChannel(endpoint: backend.Endpoint & backend.EventTriggered): Promise<void> {
+    // N.B.: This may get a lot more complicated if we ever add 2P channel integrations
+    const channelId = endpoint.eventTrigger.channel;
+    if (!channelId) {
+      return;
+    }
+
+    const name = `projects/${endpoint.project}/locations/${endpoint.region}/channels/${channelId}`;
+    await this.executor
+      .run(async () => {
+        const existing = await eventarc.getChannel(name);
+        if (existing) {
+          return;
+        }
+        await eventarc.createChannel({ name });
+      })
+      .catch(rethrowAs(endpoint, "upsert eventarc channel"));
   }
 
   async deleteScheduleV1(endpoint: backend.Endpoint & backend.ScheduleTriggered): Promise<void> {

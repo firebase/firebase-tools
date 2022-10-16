@@ -6,6 +6,7 @@ import * as reporter from "../../../../deploy/functions/release/reporter";
 import * as executor from "../../../../deploy/functions/release/executor";
 import * as gcfNSV2 from "../../../../gcp/cloudfunctionsv2";
 import * as gcfNS from "../../../../gcp/cloudfunctions";
+import * as eventarcNS from "../../../../gcp/eventarc";
 import * as pollerNS from "../../../../operation-poller";
 import * as pubsubNS from "../../../../gcp/pubsub";
 import * as schedulerNS from "../../../../gcp/cloudscheduler";
@@ -19,11 +20,13 @@ import * as v1events from "../../../../functions/events/v1";
 import * as servicesNS from "../../../../deploy/functions/services";
 import * as identityPlatformNS from "../../../../gcp/identityPlatform";
 import { AuthBlockingService } from "../../../../deploy/functions/services/auth";
+import { cloneDeep } from "../../../../utils";
 
 describe("Fabricator", () => {
   // Stub all GCP APIs to make sure this test is hermetic
   let gcf: sinon.SinonStubbedInstance<typeof gcfNS>;
   let gcfv2: sinon.SinonStubbedInstance<typeof gcfNSV2>;
+  let eventarc: sinon.SinonStubbedInstance<typeof eventarcNS>;
   let poller: sinon.SinonStubbedInstance<typeof pollerNS>;
   let pubsub: sinon.SinonStubbedInstance<typeof pubsubNS>;
   let scheduler: sinon.SinonStubbedInstance<typeof schedulerNS>;
@@ -35,6 +38,7 @@ describe("Fabricator", () => {
   beforeEach(() => {
     gcf = sinon.stub(gcfNS);
     gcfv2 = sinon.stub(gcfNSV2);
+    eventarc = sinon.stub(eventarcNS);
     poller = sinon.stub(pollerNS);
     pubsub = sinon.stub(pubsubNS);
     scheduler = sinon.stub(schedulerNS);
@@ -58,6 +62,10 @@ describe("Fabricator", () => {
     gcfv2.createFunction.rejects(new Error("unexpected gcfv2.createFunction"));
     gcfv2.updateFunction.rejects(new Error("unexpected gcfv2.updateFunction"));
     gcfv2.deleteFunction.rejects(new Error("unexpected gcfv2.deleteFunction"));
+    eventarc.createChannel.rejects(new Error("unexpected eventarc.createChannel"));
+    eventarc.deleteChannel.rejects(new Error("unexpected eventarc.deleteChannel"));
+    eventarc.getChannel.rejects(new Error("unexpected eventarc.getChannel"));
+    eventarc.updateChannel.rejects(new Error("unexpected eventarc.updateChannel"));
     run.getIamPolicy.rejects(new Error("unexpected run.getIamPolicy"));
     run.setIamPolicy.rejects(new Error("unexpected run.setIamPolicy"));
     run.setInvokerCreate.rejects(new Error("unexpected run.setInvokerCreate"));
@@ -1162,13 +1170,52 @@ describe("Fabricator", () => {
     });
   });
 
+  describe("upsertChannel", () => {
+    const ep = endpoint({
+      eventTrigger: {
+        eventType: "custom-event",
+        channel: "my-channel",
+        retry: true,
+      },
+    }) as backend.Endpoint & backend.EventTriggered;
+    const name = `projects/${ep.project}/locations/${ep.region}/channels/my-channel`;
+
+    it("does nothing if there is no channel", async () => {
+      // Note: all API calls throw
+      const cloned = cloneDeep(ep);
+      delete cloned.eventTrigger.channel;
+      await fab.upsertChannel(cloned);
+    });
+
+    it("does nothing if the channel already exists", async () => {
+      eventarc.getChannel.resolves({ name });
+      await fab.upsertChannel(ep);
+      expect(eventarc.getChannel).to.have.been.calledOnce;
+    });
+
+    it("creates channels if necessary", async () => {
+      eventarc.getChannel.resolves(undefined);
+      eventarc.createChannel.resolves();
+      await fab.upsertChannel(ep);
+      expect(eventarc.getChannel).to.have.been.calledOnce;
+      expect(eventarc.createChannel).to.have.been.calledOnceWith({ name });
+    });
+
+    it("wraps errors", async () => {
+      await expect(fab.upsertChannel(ep)).to.eventually.be.rejectedWith(
+        reporter.DeploymentError,
+        "upsert eventarc channel"
+      );
+    });
+  });
+
   describe("setTrigger", () => {
     it("does nothing for HTTPS functions", async () => {
       // all APIs throw by default
       await fab.setTrigger(endpoint({ httpsTrigger: {} }));
     });
 
-    it("does nothing for event triggers", async () => {
+    it("does nothing for event triggers without channels", async () => {
       // all APIs throw by default
       const ep = endpoint({
         eventTrigger: {
@@ -1178,6 +1225,22 @@ describe("Fabricator", () => {
         },
       });
       await fab.setTrigger(ep);
+    });
+
+    it("upserts channels for event triggers with channels", async () => {
+      const ep = endpoint({
+        eventTrigger: {
+          eventType: "custom-event",
+          channel: "channel",
+          retry: false,
+        },
+      });
+
+      const upsertChannel = sinon.stub(fab, "upsertChannel");
+      upsertChannel.resolves();
+
+      await fab.setTrigger(ep);
+      expect(upsertChannel).to.have.been.called;
     });
 
     it("sets schedule triggers", async () => {
