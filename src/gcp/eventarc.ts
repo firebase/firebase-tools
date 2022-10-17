@@ -31,6 +31,8 @@ export interface Channel {
   cryptoKeyName?: string;
 }
 
+interface Operation {}
+
 const client = new Client({
   urlPrefix: eventarcOrigin,
   auth: true,
@@ -51,7 +53,7 @@ export async function getChannel(name: string): Promise<Channel | undefined> {
 /**
  * Creates a channel.
  */
-export async function createChannel(channel: Channel): Promise<Channel> {
+export async function createChannel(channel: Channel): Promise<Operation> {
   const body: Partial<Channel> = cloneDeep(channel);
   delete body.name;
   const pathParts = channel.name.split("/");

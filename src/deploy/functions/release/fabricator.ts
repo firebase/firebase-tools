@@ -296,6 +296,32 @@ export class Fabricator {
         .catch(rethrowAs(endpoint, "create topic"));
     }
 
+    // Like Pub/Sub, GCF requires a channel to exist before allowing the fucntion
+    // to be created. Like Pub/Sub we currently only support setting the name
+    // of a channel, so we can do this once during createFunction alone. But if
+    // Eventarc adds new features that we indulge in (e.g. 2P event providers)
+    // things will get much more complicated. We'll have to make sure we keep
+    // up to date on updates, and we will also have to worry about channels leftover
+    // after deletion possibly incurring bills due to events still being sent.
+    const channel = apiFunction.eventTrigger?.channel;
+    if (channel) {
+      const name = `projects/${endpoint.project}/locations/${endpoint.region}/channels/${channel}`;
+      await this.executor
+        .run(async () => {
+          try {
+            await eventarc.createChannel({ name });
+          } catch (err: any) {
+            if (err.status === 409) {
+              return;
+            }
+            throw new FirebaseError("Unexpected error creating Eventarc channel", {
+              original: err as Error,
+            });
+          }
+        })
+        .catch(rethrowAs(endpoint, "upsert eventarc channel"));
+    }
+
     const resultFunction = await this.functionExecutor
       .run(async () => {
         const op: { name: string } = await gcfV2.createFunction(apiFunction);
@@ -552,8 +578,6 @@ export class Fabricator {
       await this.upsertTaskQueue(endpoint);
     } else if (backend.isBlockingTriggered(endpoint)) {
       await this.registerBlockingTrigger(endpoint);
-    } else if (backend.isEventTriggered(endpoint)) {
-      await this.upsertChannel(endpoint);
     }
   }
 
@@ -614,25 +638,6 @@ export class Fabricator {
     await this.executor
       .run(() => services.serviceForEndpoint(endpoint).registerTrigger(endpoint))
       .catch(rethrowAs(endpoint, "register blocking trigger"));
-  }
-
-  async upsertChannel(endpoint: backend.Endpoint & backend.EventTriggered): Promise<void> {
-    // N.B.: This may get a lot more complicated if we ever add 2P channel integrations
-    const channelId = endpoint.eventTrigger.channel;
-    if (!channelId) {
-      return;
-    }
-
-    const name = `projects/${endpoint.project}/locations/${endpoint.region}/channels/${channelId}`;
-    await this.executor
-      .run(async () => {
-        const existing = await eventarc.getChannel(name);
-        if (existing) {
-          return;
-        }
-        await eventarc.createChannel({ name });
-      })
-      .catch(rethrowAs(endpoint, "upsert eventarc channel"));
   }
 
   async deleteScheduleV1(endpoint: backend.Endpoint & backend.ScheduleTriggered): Promise<void> {

@@ -489,6 +489,50 @@ describe("Fabricator", () => {
       );
     });
 
+    it("handles already exising eventarc channels", async () => {
+      eventarc.createChannel.callsFake(({ name }) => {
+        expect(name).to.equal(`projects/${ep.project}/locations/${ep.}`)
+        const err = new Error("Already exists");
+        (err as any).status = 409;
+        return Promise.reject(err);
+      });
+      gcfv2.createFunction.resolves({ name: "op", done: false });
+      poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
+
+      const ep = endpoint(
+        {
+          eventTrigger: {
+            eventType: v2events.PUBSUB_PUBLISH_EVENT,
+            eventFilters: { topic: "topic" },
+            retry: false,
+          },
+        },
+        {
+          platform: "gcfv2",
+        }
+      );
+
+      await fab.createV2Function(ep);
+      expect(eventarc.createChannel).to.have.been.called;
+      expect(gcfv2.createFunction).to.have.been.called;
+    });
+
+    it("creates channels if necessary", async () => {
+      eventarc.getChannel.resolves(undefined);
+      eventarc.createChannel.resolves();
+      await fab.upsertChannel(ep);
+      expect(eventarc.getChannel).to.have.been.calledOnce;
+      expect(eventarc.createChannel).to.have.been.calledOnceWith({ name });
+    });
+
+    it("wraps errors", async () => {
+      await expect(fab.upsertChannel(ep)).to.eventually.be.rejectedWith(
+        reporter.DeploymentError,
+        "upsert eventarc channel"
+      );
+    });
+  });
+
     it("throws on create function failure", async () => {
       gcfv2.createFunction.rejects(new Error("Server failure"));
 
@@ -1166,45 +1210,6 @@ describe("Fabricator", () => {
       await expect(fab.unregisterBlockingTrigger(ep)).to.eventually.be.rejectedWith(
         reporter.DeploymentError,
         "unregister blocking trigger"
-      );
-    });
-  });
-
-  describe("upsertChannel", () => {
-    const ep = endpoint({
-      eventTrigger: {
-        eventType: "custom-event",
-        channel: "my-channel",
-        retry: true,
-      },
-    }) as backend.Endpoint & backend.EventTriggered;
-    const name = `projects/${ep.project}/locations/${ep.region}/channels/my-channel`;
-
-    it("does nothing if there is no channel", async () => {
-      // Note: all API calls throw
-      const cloned = cloneDeep(ep);
-      delete cloned.eventTrigger.channel;
-      await fab.upsertChannel(cloned);
-    });
-
-    it("does nothing if the channel already exists", async () => {
-      eventarc.getChannel.resolves({ name });
-      await fab.upsertChannel(ep);
-      expect(eventarc.getChannel).to.have.been.calledOnce;
-    });
-
-    it("creates channels if necessary", async () => {
-      eventarc.getChannel.resolves(undefined);
-      eventarc.createChannel.resolves();
-      await fab.upsertChannel(ep);
-      expect(eventarc.getChannel).to.have.been.calledOnce;
-      expect(eventarc.createChannel).to.have.been.calledOnceWith({ name });
-    });
-
-    it("wraps errors", async () => {
-      await expect(fab.upsertChannel(ep)).to.eventually.be.rejectedWith(
-        reporter.DeploymentError,
-        "upsert eventarc channel"
       );
     });
   });
