@@ -17,9 +17,9 @@ describe("CEL evaluation", () => {
     it("can pull lists directly otu of paramvalues", () => {
       expect(
         resolveExpression("string[]", "{{ params.FOO }}", {
-          FOO: new ParamValue("[1]", false, { list: true }),
+          FOO: new ParamValue('["1"]', false, { list: true }),
         })
-      );
+      ).to.deep.equal(["1"]);
     });
   });
 
