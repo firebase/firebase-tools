@@ -206,18 +206,24 @@ export class ParamValue {
   legalBoolean: boolean;
   // Whether this param value can be sensibly interpreted as a number
   legalNumber: boolean;
+  // Whether this param value can be sensibly interpreted as a list
+  legalList: boolean;
 
   constructor(
     private readonly rawValue: string,
     readonly internal: boolean,
-    types: { string?: boolean; boolean?: boolean; number?: boolean }
+    types: { string?: boolean; boolean?: boolean; number?: boolean; list?: boolean }
   ) {
     this.legalString = types.string || false;
     this.legalBoolean = types.boolean || false;
     this.legalNumber = types.number || false;
+    this.legalList = types.list || false;
   }
 
   toString(): string {
+    if (this.legalList) {
+      return encodeURI(JSON.stringify(this.rawValue));
+    }
     return this.rawValue;
   }
 
@@ -227,6 +233,14 @@ export class ParamValue {
 
   asBoolean(): boolean {
     return ["true", "y", "yes", "1"].includes(this.rawValue);
+  }
+
+  asList(): string[] {
+    const parsed = JSON.parse(decodeURI(this.rawValue));
+    if (!Array.isArray(parsed)) {
+      // uh-oh
+    }
+    return parsed;
   }
 
   asNumber(): number {

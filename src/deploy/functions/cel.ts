@@ -10,8 +10,8 @@ type TernaryExpression = CelExpression;
 type LiteralTernaryExpression = CelExpression;
 type DualTernaryExpression = CelExpression;
 
-type Literal = string | number | boolean;
-type L = "string" | "number" | "boolean";
+type Literal = string | number | boolean | string[];
+type L = "string" | "number" | "boolean" | "string[]";
 
 const paramRegexp = /params\.(\S+)/;
 const CMP = /((?:!=)|(?:==)|(?:>=)|(?:<=)|>|<)/.source; // !=, ==, >=, <=, >, <
@@ -98,7 +98,8 @@ function assertType(wantType: L, paramName: string, paramValue: ParamValue) {
   if (
     (wantType === "string" && !paramValue.legalString) ||
     (wantType === "number" && !paramValue.legalNumber) ||
-    (wantType === "boolean" && !paramValue.legalBoolean)
+    (wantType === "boolean" && !paramValue.legalBoolean) ||
+    (wantType === "string[]" && !paramValue.legalList)
   ) {
     throw new ExprParseError(`Illegal type coercion of param ${paramName} to type ${wantType}`);
   }
@@ -111,6 +112,8 @@ function readParamValue(wantType: L, paramName: string, paramValue: ParamValue):
     return paramValue.asNumber();
   } else if (wantType === "boolean") {
     return paramValue.asBoolean();
+  } else if (wantType === "string[]") {
+    return paramValue.asList();
   } else {
     assertExhaustive(wantType);
   }
@@ -286,9 +289,9 @@ function resolveTernary(
   const comparisonExpr = `{{ params.${match[1]} ${match[2]} ${match[3]} }}`;
   const isTrue = resolveComparison(comparisonExpr, params);
   if (isTrue) {
-    return resolveParamOrLiteral(wantType, match[4], params);
+    return resolveParamListOrLiteral(wantType, match[4], params);
   } else {
-    return resolveParamOrLiteral(wantType, match[5], params);
+    return resolveParamListOrLiteral(wantType, match[5], params);
   }
 }
 
@@ -308,9 +311,9 @@ function resolveDualTernary(
   const comparisonExpr = `{{ params.${match[1]} ${match[2]} params.${match[3]} }}`;
   const isTrue = resolveDualComparison(comparisonExpr, params);
   if (isTrue) {
-    return resolveParamOrLiteral(wantType, match[4], params);
+    return resolveParamListOrLiteral(wantType, match[4], params);
   } else {
-    return resolveParamOrLiteral(wantType, match[5], params);
+    return resolveParamListOrLiteral(wantType, match[5], params);
   }
 }
 
@@ -342,20 +345,22 @@ function resolveLiteralTernary(
   }
 
   if (paramValue.asBoolean()) {
-    return resolveParamOrLiteral(wantType, match[2], params);
+    return resolveParamListOrLiteral(wantType, match[2], params);
   } else {
-    return resolveParamOrLiteral(wantType, match[3], params);
+    return resolveParamListOrLiteral(wantType, match[3], params);
   }
 }
 
-function resolveParamOrLiteral(
+function resolveParamListOrLiteral(
   wantType: L,
   field: string,
   params: Record<string, ParamValue>
 ): Literal {
   const match = paramRegexp.exec(field);
   if (!match) {
-    return resolveLiteral(wantType, field);
+    return wantType === "string[]"
+      ? resolveList("string", field, params)
+      : resolveLiteral(wantType, field);
   }
   const paramValue = params[match[1]];
   if (!paramValue) {
@@ -364,7 +369,44 @@ function resolveParamOrLiteral(
   return readParamValue(wantType, match[1], paramValue);
 }
 
-function resolveLiteral(wantType: L, value: string): Literal {
+/**
+ * A List in Functions CEL is a []-bracketed string with comma-seperated values that can be:
+ * - A double quoted string literal
+ * - A reference to a param value (params.FOO) which must resolve with type string
+ * - A sub-CEL expression {{ params.BAR == 0 ? "a" : "b" }} which must resolve with type string
+ */
+function resolveList(
+  wantType: "string",
+  list: string,
+  params: Record<string, ParamValue>
+): string[] {
+  if (!list.startsWith("[") || !list.endsWith("]")) {
+    throw new ExprParseError("");
+  }
+  const rv: string[] = [];
+  const entries = list.slice(1, -1).split(",");
+
+  for (const entry of entries) {
+    const trimmed = entry.trim();
+    if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
+      rv.push(trimmed.slice(1, -1));
+    } else if (trimmed.startsWith("{{") && trimmed.endsWith("}}")) {
+      rv.push(resolveExpression("string", trimmed, params) as string);
+    } else {
+      const paramMatch = paramRegexp.exec(trimmed);
+      if (!paramMatch) {
+        throw new ExprParseError("");
+      } else if (!(paramMatch[1] in params)) {
+        throw new ExprParseError("");
+      }
+      rv.push(resolveParamListOrLiteral("string", trimmed, params) as string);
+    }
+  }
+
+  return rv;
+}
+
+function resolveLiteral(wantType: Omit<L, "string[]">, value: string): Literal {
   if (paramRegexp.exec(value)) {
     throw new ExprParseError(
       "CEL tried to evaluate param." + value + " in a context which only permits literal values"

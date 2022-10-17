@@ -13,6 +13,16 @@ function boolV(value: boolean): ParamValue {
 }
 
 describe("CEL evaluation", () => {
+  describe("String list resolution", () => {
+    it("can pull lists directly otu of paramvalues", () => {
+      expect(
+        resolveExpression("string[]", "{{ params.FOO }}", {
+          FOO: new ParamValue("[1]", false, { list: true }),
+        })
+      );
+    });
+  });
+
   describe("Identity expressions", () => {
     it("raises when the referenced parameter does not exist", () => {
       expect(() => {
