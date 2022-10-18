@@ -591,6 +591,7 @@ export class FunctionsEmulator implements EmulatorInstance {
           case Constants.SERVICE_REALTIME_DATABASE:
             added = await this.addRealtimeDatabaseTrigger(
               this.args.projectId,
+              definition.id,
               key,
               definition.eventTrigger,
               signature,
@@ -747,6 +748,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
   private getV2DatabaseApiAttributes(
     projectId: string,
+    id: string,
     key: string,
     eventTrigger: EventTrigger,
     region: string
@@ -760,6 +762,15 @@ export class FunctionsEmulator implements EmulatorInstance {
     const ref = eventTrigger.eventFilterPathPatterns?.ref;
     if (!ref) {
       throw new FirebaseError("A database reference must be supplied.");
+    }
+
+    // TODO(colerogers): yank/change if RTDB emulator ever supports multiple regions
+    if (region !== "us-central1") {
+      this.logger.logLabeled(
+        "WARN",
+        `functions[${id}]`,
+        `function region is defined outside the database region, will not trigger.`
+      );
     }
 
     // The 'namespacePattern' determines that we are using the v2 interface
@@ -779,6 +790,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
   async addRealtimeDatabaseTrigger(
     projectId: string,
+    id: string,
     key: string,
     eventTrigger: EventTrigger,
     signature: SignatureType,
@@ -790,7 +802,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     const { bundle, apiPath, instance } =
       signature === "cloudevent"
-        ? this.getV2DatabaseApiAttributes(projectId, key, eventTrigger, region)
+        ? this.getV2DatabaseApiAttributes(projectId, id, key, eventTrigger, region)
         : this.getV1DatabaseApiAttributes(projectId, key, eventTrigger);
 
     logger.debug(`addRealtimeDatabaseTrigger[${instance}]`, JSON.stringify(bundle));
