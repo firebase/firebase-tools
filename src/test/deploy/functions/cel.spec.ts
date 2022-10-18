@@ -14,12 +14,64 @@ function boolV(value: boolean): ParamValue {
 
 describe("CEL evaluation", () => {
   describe("String list resolution", () => {
-    it("can pull lists directly otu of paramvalues", () => {
+    it("can pull lists directly out of paramvalues", () => {
       expect(
         resolveExpression("string[]", "{{ params.FOO }}", {
           FOO: new ParamValue('["1"]', false, { list: true }),
         })
       ).to.deep.equal(["1"]);
+    });
+
+    it("can handle literals in a list", () => {
+      expect(
+        resolveExpression("string[]", '{{ params.FOO == params.FOO ? ["asdf"] : [] }}', {
+          FOO: numberV(1),
+        })
+      ).to.deep.equal(["asdf"]);
+    });
+
+    it("can handle CEL expressions in a list", () => {
+      expect(
+        resolveExpression("string[]", "{{ params.FOO == params.FOO ? [{{ params.BAR }}] : [] }}", {
+          FOO: numberV(1),
+          BAR: stringV("asdf"),
+        })
+      ).to.deep.equal(["asdf"]);
+    });
+
+    it("can handle direct references to string params in a list", () => {
+      expect(
+        resolveExpression("string[]", "{{ params.FOO == params.FOO ? [params.BAR] : [] }}", {
+          FOO: numberV(1),
+          BAR: stringV("asdf"),
+        })
+      ).to.deep.equal(["asdf"]);
+    });
+
+    it("can handle a list with multiple elements", () => {
+      expect(
+        resolveExpression(
+          "string[]",
+          '{{ params.FOO == params.FOO ? ["foo", params.BAR, {{ params.BAR }} ] : [] }}',
+          {
+            FOO: numberV(1),
+            BAR: stringV("asdf"),
+          }
+        )
+      ).to.deep.equal(["foo", "asdf", "asdf"]);
+    });
+
+    it("isn't picky about whitespace around the commas", () => {
+      expect(
+        resolveExpression(
+          "string[]",
+          '{{ params.FOO == params.FOO ? ["foo",params.BAR,{{ params.BAR }}] : [] }}',
+          {
+            FOO: numberV(1),
+            BAR: stringV("asdf"),
+          }
+        )
+      ).to.deep.equal(["foo", "asdf", "asdf"]);
     });
   });
 

@@ -83,7 +83,7 @@ export function resolveBoolean(
 
 type ParamInput<T> = TextInput<T> | SelectInput<T> | ResourceInput;
 
-type ParamBase<T extends string | number | boolean> = {
+type ParamBase<T extends string | number | boolean | string[]> = {
   // name of the param. Will be exposed as an environment variable with this name
   name: string;
 
@@ -134,6 +134,10 @@ export interface IntParam extends ParamBase<number> {
 
 export interface BooleanParam extends ParamBase<boolean> {
   type: "boolean";
+}
+
+export interface ListParam extends ParamBase<string[]> {
+  type: "list";
 }
 
 export interface TextInput<T> { // eslint-disable-line
@@ -187,8 +191,8 @@ interface SecretParam {
   description?: string;
 }
 
-export type Param = StringParam | IntParam | BooleanParam | SecretParam;
-type RawParamValue = string | number | boolean;
+export type Param = StringParam | IntParam | BooleanParam | ListParam | SecretParam;
+type RawParamValue = string | number | boolean | string[];
 
 /**
  * A type which contains the resolved value of a param, and metadata ensuring
@@ -292,6 +296,8 @@ function canSatisfyParam(param: Param, value: RawParamValue): boolean {
     return typeof value === "number" && Number.isInteger(value);
   } else if (param.type === "boolean") {
     return typeof value === "boolean";
+  } else if (param.type === "list") {
+    return Array.isArray(value);
   } else if (param.type === "secret") {
     return false;
   }
@@ -450,6 +456,8 @@ async function promptParam(
   } else if (param.type === "boolean") {
     const provided = await promptBooleanParam(param, resolvedDefault as boolean | undefined);
     return new ParamValue(provided.toString(), false, { boolean: true });
+  } else if (param.type === "list") {
+    throw new FirebaseError(`Unimplemented`);
   } else if (param.type === "secret") {
     throw new FirebaseError(
       `Somehow ended up trying to interactively prompt for secret parameter ${param.name}, which should never happen.`
@@ -598,6 +606,10 @@ async function promptResourceString(
 }
 
 type retryInput = { message: string };
+function shouldRetry(obj: any): obj is retryInput {
+  return (obj as retryInput).message !== undefined;
+}
+
 async function promptText<T extends RawParamValue>(
   prompt: string,
   input: TextInput<T>,
@@ -620,7 +632,7 @@ async function promptText<T extends RawParamValue>(
     }
   }
   const converted = converter(res);
-  if (typeof converted === "object") {
+  if (shouldRetry(converted)) {
     logger.error(converted.message);
     return promptText<T>(prompt, input, resolvedDefault, converter);
   }
@@ -647,7 +659,7 @@ async function promptSelect<T extends RawParamValue>(
     }),
   });
   const converted = converter(response);
-  if (typeof converted === "object") {
+  if (shouldRetry(converted)) {
     logger.error(converted.message);
     return promptSelect<T>(prompt, input, resolvedDefault, converter);
   }

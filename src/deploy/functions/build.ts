@@ -52,8 +52,9 @@ export interface RequiredApi {
 // expressions.
 // `Expression<Foo> == Expression<Foo>` is an Expression<boolean>
 // `Expression<boolean> ? Expression<T> : Expression<T>` is an Expression<T>
-export type Expression<T extends string | number | boolean> = string; // eslint-disable-line
+export type Expression<T extends string | number | boolean | string[]> = string; // eslint-disable-line
 export type Field<T extends string | number | boolean> = T | Expression<T> | null;
+export type FieldList = Expression<string[]> | (string | Expression<string>)[] | null;
 
 // A service account must either:
 // 1. Be a project-relative email that ends with "@" (e.g. database-users@)
@@ -314,6 +315,7 @@ function envWithTypes(
       string: true,
       boolean: true,
       number: true,
+      list: true,
     };
     for (const param of definedParams) {
       if (param.name === envName) {
@@ -322,18 +324,28 @@ function envWithTypes(
             string: true,
             boolean: false,
             number: false,
+            list: false,
           };
         } else if (param.type === "int") {
           providedType = {
             string: false,
             boolean: false,
             number: true,
+            list: false,
           };
         } else if (param.type === "boolean") {
           providedType = {
             string: false,
             boolean: true,
             number: false,
+            list: false,
+          };
+        } else if (param.type === "list") {
+          providedType = {
+            string: false,
+            boolean: false,
+            number: false,
+            list: true,
           };
         }
       }

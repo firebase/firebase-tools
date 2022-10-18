@@ -75,6 +75,10 @@ export function resolveExpression(
   expr: CelExpression,
   params: Record<string, ParamValue>
 ): Literal {
+  // N.B: List literals [] can contain CEL inside them, so we need to process them
+  // first and resolve them. This isn't (and can't be) recursive, but the fact that
+  // we only support string[] types mostly saves us here.
+  expr = preprocessLists(wantType, expr, params);
   // N.B: Since some of these regexps are supersets of others--anything that is
   // params\.(\S+) is also (.+)--the order in which they are tested matters
   if (isIdentityExpression(expr)) {
@@ -92,6 +96,66 @@ export function resolveExpression(
   } else {
     throw new ExprParseError("CEL expression '" + expr + "' is of an unsupported form");
   }
+}
+
+/**
+ * Replaces all lists in a CEL expression string, which can contain string-type CEL
+ * subexpressions or references to params, with their literal resolved values.
+ * Not recursive.
+ */
+function preprocessLists(
+  wantType: L,
+  expr: CelExpression,
+  params: Record<string, ParamValue>
+): CelExpression {
+  let rv = expr;
+  const listMatcher = /\[[^\[\]]*\]/g;
+  let match: RegExpMatchArray | null;
+  while ((match = listMatcher.exec(expr)) != null) {
+    const list = match[0];
+    const resolved = resolveList("string", list, params);
+    rv = rv.replace(list, JSON.stringify(resolved));
+  }
+  return rv;
+}
+
+/**
+ * A List in Functions CEL is a []-bracketed string with comma-seperated values that can be:
+ * - A double quoted string literal
+ * - A reference to a param value (params.FOO) which must resolve with type string
+ * - A sub-CEL expression {{ params.BAR == 0 ? "a" : "b" }} which must resolve with type string
+ */
+function resolveList(
+  wantType: "string",
+  list: string,
+  params: Record<string, ParamValue>
+): string[] {
+  if (!list.startsWith("[") || !list.endsWith("]")) {
+    throw new ExprParseError("");
+  } else if (list === "[]") {
+    return [];
+  }
+  const rv: string[] = [];
+  const entries = list.slice(1, -1).split(",");
+
+  for (const entry of entries) {
+    const trimmed = entry.trim();
+    if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
+      rv.push(trimmed.slice(1, -1));
+    } else if (trimmed.startsWith("{{") && trimmed.endsWith("}}")) {
+      rv.push(resolveExpression("string", trimmed, params) as string);
+    } else {
+      const paramMatch = paramRegexp.exec(trimmed);
+      if (!paramMatch) {
+        throw new ExprParseError(`Malformed list component ${trimmed}`);
+      } else if (!(paramMatch[1] in params)) {
+        throw new ExprParseError("");
+      }
+      rv.push(resolveParamListOrLiteral("string", trimmed, params) as string);
+    }
+  }
+
+  return rv;
 }
 
 function assertType(wantType: L, paramName: string, paramValue: ParamValue) {
@@ -307,7 +371,6 @@ function resolveDualTernary(
   if (!match) {
     throw new ExprParseError("Malformed CEL ternary expression '" + expr + "'");
   }
-
   const comparisonExpr = `{{ params.${match[1]} ${match[2]} params.${match[3]} }}`;
   const isTrue = resolveDualComparison(comparisonExpr, params);
   if (isTrue) {
@@ -358,9 +421,7 @@ function resolveParamListOrLiteral(
 ): Literal {
   const match = paramRegexp.exec(field);
   if (!match) {
-    return wantType === "string[]"
-      ? resolveList("string", field, params)
-      : resolveLiteral(wantType, field);
+    return resolveLiteral(wantType, field);
   }
   const paramValue = params[match[1]];
   if (!paramValue) {
@@ -369,51 +430,27 @@ function resolveParamListOrLiteral(
   return readParamValue(wantType, match[1], paramValue);
 }
 
-/**
- * A List in Functions CEL is a []-bracketed string with comma-seperated values that can be:
- * - A double quoted string literal
- * - A reference to a param value (params.FOO) which must resolve with type string
- * - A sub-CEL expression {{ params.BAR == 0 ? "a" : "b" }} which must resolve with type string
- */
-function resolveList(
-  wantType: "string",
-  list: string,
-  params: Record<string, ParamValue>
-): string[] {
-  if (!list.startsWith("[") || !list.endsWith("]")) {
-    throw new ExprParseError("");
-  }
-  const rv: string[] = [];
-  const entries = list.slice(1, -1).split(",");
-
-  for (const entry of entries) {
-    const trimmed = entry.trim();
-    if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
-      rv.push(trimmed.slice(1, -1));
-    } else if (trimmed.startsWith("{{") && trimmed.endsWith("}}")) {
-      rv.push(resolveExpression("string", trimmed, params) as string);
-    } else {
-      const paramMatch = paramRegexp.exec(trimmed);
-      if (!paramMatch) {
-        throw new ExprParseError("");
-      } else if (!(paramMatch[1] in params)) {
-        throw new ExprParseError("");
-      }
-      rv.push(resolveParamListOrLiteral("string", trimmed, params) as string);
-    }
-  }
-
-  return rv;
-}
-
-function resolveLiteral(wantType: Omit<L, "string[]">, value: string): Literal {
+function resolveLiteral(wantType: L, value: string): Literal {
   if (paramRegexp.exec(value)) {
     throw new ExprParseError(
       "CEL tried to evaluate param." + value + " in a context which only permits literal values"
     );
   }
 
-  if (wantType === "number") {
+  if (wantType === "string[]") {
+    // N.B: value being a literal list that can just be JSON.parsed should be guaranteed
+    // by the preprocessLists() invocation at the beginning of CEL resolution
+    const parsed = JSON.parse(value);
+    if (!Array.isArray(parsed)) {
+      throw new ExprParseError("");
+    }
+    for (const shouldBeString of parsed) {
+      if (typeof shouldBeString !== "string") {
+        throw new ExprParseError("");
+      }
+    }
+    return parsed as string[];
+  } else if (wantType === "number") {
     if (isNaN(+value)) {
       throw new ExprParseError("CEL literal " + value + " does not seem to be a number");
     }
