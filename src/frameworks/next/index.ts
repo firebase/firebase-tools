@@ -158,7 +158,9 @@ export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: strin
     copy(exportDetailJson.outDirectory, destDir);
   } else {
     await mkdir(join(destDir, "_next", "static"), { recursive: true });
-    await copy(join(sourceDir, "public"), destDir);
+    await copy(join(sourceDir, "public"), destDir).catch(() => {
+      // public directory is optional, proceed
+    });
     await copy(join(sourceDir, distDir, "static"), join(destDir, "_next", "static"));
 
     const serverPagesDir = join(sourceDir, distDir, "server", "pages");
@@ -229,7 +231,9 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
   }
   await mkdir(join(destDir, "public"));
   await mkdirp(join(destDir, distDir));
-  await copy(join(sourceDir, "public"), join(destDir, "public"));
+  await copy(join(sourceDir, "public"), join(destDir, "public")).catch(() => {
+    // public directory is optional, proceed
+  });
   await copy(join(sourceDir, distDir), join(destDir, distDir));
   return { packageJson, frameworksEntry: "next.js" };
 }
