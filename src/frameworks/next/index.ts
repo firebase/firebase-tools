@@ -3,8 +3,9 @@ import { readFile, mkdir, copyFile, stat } from "fs/promises";
 import { dirname, extname, join } from "path";
 import type { Header, Rewrite, Redirect } from "next/dist/lib/load-custom-routes";
 import type { NextConfig } from "next";
-import { copy, existsSync, mkdirp, pathExists } from "fs-extra";
+import { copy, mkdirp, pathExists } from "fs-extra";
 import { pathToFileURL, parse } from "url";
+import { existsSync } from "fs";
 import {
   BuildResult,
   createServerResponseProxy,
@@ -51,7 +52,7 @@ function getNextVersion(cwd: string) {
 }
 
 /**
- *
+ * Returns whether this codebase is a Next.js backend.
  */
 export async function discover(dir: string) {
   if (!(await pathExists(join(dir, "package.json")))) return;
@@ -61,7 +62,7 @@ export async function discover(dir: string) {
 }
 
 /**
- *
+ * Build a next.js application.
  */
 export async function build(dir: string): Promise<BuildResult> {
   const { default: nextBuild } = relativeRequire(dir, "next/dist/build");
@@ -139,7 +140,7 @@ export async function build(dir: string): Promise<BuildResult> {
 }
 
 /**
- *
+ * Utility method used during project initialization.
  */
 export async function init(setup: any) {
   const language = await promptOnce({
@@ -157,7 +158,7 @@ export async function init(setup: any) {
 }
 
 /**
- *
+ * Create a directory for SSG content.
  */
 export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: string) {
   const { distDir } = await getConfig(sourceDir);
@@ -217,7 +218,7 @@ export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: strin
 }
 
 /**
- *
+ * Create a directory for SSR content.
  */
 export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: string) {
   const { distDir } = await getConfig(sourceDir);
@@ -254,7 +255,7 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
 }
 
 /**
- *
+ * Create a dev server.
  */
 export async function getDevModeHandle(dir: string) {
   const { default: next } = relativeRequire(dir, "next");
