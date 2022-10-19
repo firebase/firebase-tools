@@ -29,6 +29,15 @@ const ternaryRegexp = new RegExp(
 const literalTernaryRegexp = /{{ params\.(\S+) \? (.+) : (.+) }/;
 
 /**
+ * An array equality test for use on resolved list literal ParamValues only;
+ * skips a lot of the null/undefined/object-y/nested-list checks that something
+ * like Underscore's isEqual() would make because args have to be string[].
+ */
+function listEquals(a: string[], b: string[]): boolean {
+  return a.every((item) => b.includes(item)) && b.every((item) => a.includes(item));
+}
+
+/**
  * Determines if something is a string that looks vaguely like a CEL expression.
  * No guarantees as to whether it'll actually evaluate.
  */
@@ -221,9 +230,9 @@ function resolveComparison(
   const test = function (a: Literal, b: Literal): boolean {
     switch (cmp) {
       case "!=":
-        return a !== b;
+        return Array.isArray(a) ? !listEquals(a, b as string[]) : a !== b;
       case "==":
-        return a === b;
+        return Array.isArray(a) ? listEquals(a, b as string[]) : a === b;
       case ">=":
         return a >= b;
       case "<=":
@@ -254,6 +263,14 @@ function resolveComparison(
   } else if (lhsVal.legalBoolean) {
     rhs = resolveLiteral("boolean", match[3]);
     return test(lhsVal.asBoolean(), rhs);
+  } else if (lhsVal.legalList) {
+    if (!["==", "!="].includes(cmp)) {
+      throw new ExprParseError(
+        `Unsupported comparison operation ${cmp} on list operands in expression ${expr}`
+      );
+    }
+    rhs = resolveLiteral("string[]", match[3]);
+    return test(lhsVal.asList(), rhs);
   } else {
     throw new ExprParseError(
       `Could not infer type of param ${lhsName} used in comparison operation`
@@ -277,9 +294,9 @@ function resolveDualComparison(
   const test = function (a: Literal, b: Literal): boolean {
     switch (cmp) {
       case "!=":
-        return a !== b;
+        return Array.isArray(a) ? !listEquals(a, b as string[]) : a !== b;
       case "==":
-        return a === b;
+        return Array.isArray(a) ? listEquals(a, b as string[]) : a === b;
       case ">=":
         return a >= b;
       case "<=":
@@ -330,6 +347,18 @@ function resolveDualComparison(
       );
     }
     return test(lhsVal.asBoolean(), rhsVal.asBoolean());
+  } else if (lhsVal.legalList) {
+    if (!rhsVal.legalList) {
+      throw new ExprParseError(
+        `CEL comparison expression ${expr} has type mismatch between the operands`
+      );
+    }
+    if (!["==", "!="].includes(cmp)) {
+      throw new ExprParseError(
+        `Unsupported comparison operation ${cmp} on list operands in expression ${expr}`
+      );
+    }
+    return test(lhsVal.asList(), rhsVal.asList());
   } else {
     throw new ExprParseError(
       `could not infer type of param ${lhsName} used in comparison operation`
