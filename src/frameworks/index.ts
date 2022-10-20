@@ -222,6 +222,8 @@ function scanDependencyTree(searchingFor: string, dependencies = {}): any {
  */
 export function findDependency(name: string, options: Partial<FindDepOptions> = {}) {
   const { cwd, depth, omitDev } = { ...DEFAULT_FIND_DEP_OPTIONS, ...options };
+  const env: any = Object.assign({}, process.env);
+  delete env.NODE_ENV;
   const result = spawnSync(
     NPM_COMMAND,
     [
@@ -231,7 +233,7 @@ export function findDependency(name: string, options: Partial<FindDepOptions> = 
       ...(omitDev ? ["--omit", "dev"] : []),
       ...(depth === undefined ? [] : ["--depth", depth.toString(10)]),
     ],
-    { cwd }
+    { cwd, env }
   );
   if (!result.stdout) return;
   const json = JSON.parse(result.stdout.toString());
