@@ -3,7 +3,7 @@ import { HostingSource } from "../../firebaseConfig";
 import { HostingDeploy } from "./context";
 import * as api from "../../hosting/api";
 import * as backend from "../functions/backend";
-import { Context } from "../functions/args";
+import { Context, Payload as FunctionsPayload } from "../functions/args";
 import { last, logLabeledBullet, logLabeledWarning } from "../../utils";
 import * as proto from "../../gcp/proto";
 import { bold } from "colorette";
@@ -51,7 +51,6 @@ export function findEndpointForRewrite(
   region: string | undefined
 ): backend.Endpoint | undefined {
   const endpoints = backend.allEndpoints(targetBackend).filter((e) => e.id === id);
-
   if (endpoints.length === 0) {
     return;
   }
@@ -88,6 +87,7 @@ export function findEndpointForRewrite(
  */
 export async function convertConfig(
   context: Context,
+  functionsPayload: FunctionsPayload,
   deploy: HostingDeploy
 ): Promise<api.ServingConfig> {
   const config: api.ServingConfig = {};
@@ -96,9 +96,16 @@ export async function convertConfig(
   // rewrites to see if it's necessary.
   const hasBackends = !!deploy.config.rewrites?.some((r) => "function" in r || "run" in r);
 
-  // We need to be able to do a rewrite to an existing function that is may not
-  // even be part of Firebase's control or a function that we're currently
-  // deploying.
+  // We need to be able to do a rewrite to an existing function that may not be
+  // under Firebase's control or a function that we're currently deploying.
+
+  let wantBackends: backend.Backend[] = [];
+  if (functionsPayload.functions) {
+    wantBackends = Object.values(functionsPayload.functions).map((codebasePayload) => {
+      return codebasePayload.wantBackend;
+    });
+  }
+
   let haveBackend = backend.empty();
   if (hasBackends) {
     try {
@@ -136,7 +143,16 @@ export async function convertConfig(
       }
       const id = rewrite.function.functionId;
       const region = rewrite.function.region;
-      const endpoint = findEndpointForRewrite(deploy.config.site, haveBackend, id, region);
+      let endpoint: backend.Endpoint | undefined = undefined;
+      for (const backend of wantBackends) {
+        const possibleEndpoint = findEndpointForRewrite(deploy.config.site, backend, id, region);
+        if (possibleEndpoint) {
+          endpoint = possibleEndpoint;
+        }
+      }
+      if (!endpoint) {
+        endpoint = findEndpointForRewrite(deploy.config.site, haveBackend, id, region);
+      }
       if (!endpoint) {
         // This could possibly succeed if there has been a function written
         // outside firebase tooling. But it will break in v2. We might need to
