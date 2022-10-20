@@ -235,7 +235,7 @@ export type Endpoint = Triggered & {
 
   // defaults to ["us-central1"], overridable in firebase-tools with
   //  process.env.FIREBASE_FUNCTIONS_DEFAULT_REGION
-  region?: string[];
+  region?: FieldList;
 
   // The Cloud project associated with this endpoint.
   project: string;
@@ -426,9 +426,11 @@ export function toBackend(
   for (const endpointId of Object.keys(build.endpoints)) {
     const bdEndpoint = build.endpoints[endpointId];
 
-    let regions = bdEndpoint.region;
-    if (typeof regions === "undefined") {
+    let regions: string[] = [];
+    if (!bdEndpoint.region) {
       regions = [api.functionsDefaultRegion];
+    } else {
+      regions = params.resolveList(bdEndpoint.region, paramValues);
     }
     for (const region of regions) {
       const trigger = discoverTrigger(bdEndpoint, region, r);

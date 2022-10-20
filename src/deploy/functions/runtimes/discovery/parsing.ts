@@ -34,6 +34,7 @@ export type FieldType<T> =
   | `Field<string>${NullSuffix<T>}`
   | `Field<number>${NullSuffix<T>}`
   | `Field<boolean>${NullSuffix<T>}`
+  | `List${NullSuffix<T>}`
   | ((t: T) => boolean);
 
 export type Schema<T extends object> = {
@@ -49,7 +50,7 @@ export function requireKeys<T extends object>(prefix: string, yaml: T, ...keys: 
   }
   for (const key of keys) {
     if (!yaml[key]) {
-      throw new FirebaseError(`Expected key ${prefix + key}`);
+      throw new FirebaseError(`Expected key ${prefix + key.toString()}`);
     }
   }
 }
@@ -102,6 +103,14 @@ export function assertKeyTypes<T extends object>(
       if (match && typeof value !== "string" && typeof value !== match[1]) {
         throw new FirebaseError(
           `Expected ${fullKey} to be Field<${match[1]}>; was ${typeof value}`
+        );
+      }
+      continue;
+    }
+    if (schemaType === "List") {
+      if (typeof value !== "string" && !Array.isArray(value)) {
+        throw new FirebaseError(
+          `Expected ${fullKey} to be a field list (array or list expression); was ${typeof value}`
         );
       }
       continue;

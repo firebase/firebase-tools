@@ -66,6 +66,21 @@ export function resolveString(
   return output;
 }
 
+export function resolveList(
+  from: build.FieldList,
+  paramValues: Record<string, ParamValue>
+): string[] {
+  if (!from) {
+    return [];
+  } else if (Array.isArray(from)) {
+    return from.map((entry) => resolveString(entry, paramValues));
+  } else if (typeof from === "string") {
+    return resolveExpression("string[]", from, paramValues) as string[];
+  } else {
+    assertExhaustive(from);
+  }
+}
+
 /**
  * Resolves a boolean field in a Build to an an actual boolean value.
  * Fields can be literal or an expression written in a subset of the CEL specification.
