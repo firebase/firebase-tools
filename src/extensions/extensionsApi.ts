@@ -606,8 +606,10 @@ export async function undeprecateExtensionVersion(extensionRef: string): Promise
  */
 export async function publishExtensionVersion(
   extensionVersionRef: string,
-  packageUri: string,
-  extensionRoot?: string
+  packageUri?: string,
+  extensionRoot?: string,
+  repoUri?: string,
+  sourceRef?: string
 ): Promise<ExtensionVersion> {
   const ref = refs.parse(extensionVersionRef);
   if (!ref.version) {
@@ -617,12 +619,14 @@ export async function publishExtensionVersion(
   // TODO(b/185176470): Publishing an extension with a previously deleted name will return 409.
   // Need to surface a better error, potentially by calling getExtension.
   const publishRes = await apiClient.post<
-    { versionId: string; packageUri: string; extensionRoot: string },
+    { versionId: string; packageUri: string; extensionRoot: string, repoUri: string, sourceRef: string },
     ExtensionVersion
   >(`/${refs.toExtensionName(ref)}/versions:publish`, {
     versionId: ref.version,
-    packageUri,
+    packageUri: packageUri ?? "",
     extensionRoot: extensionRoot ?? "/",
+    repoUri: repoUri ?? "",
+    sourceRef: sourceRef ?? ""
   });
   const pollRes = await operationPoller.pollOperation<ExtensionVersion>({
     apiOrigin: extensionsOrigin,

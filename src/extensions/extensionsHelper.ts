@@ -24,11 +24,12 @@ import { getProjectId } from "../projectUtils";
 import {
   createSource,
   getExtension,
+  getExtensionVersion,
   getInstance,
   listExtensionVersions,
   publishExtensionVersion,
 } from "./extensionsApi";
-import { ExtensionSource, ExtensionVersion, Param } from "./types";
+import { Extension, ExtensionSource, ExtensionVersion, Param } from "./types";
 import * as refs from "./refs";
 import { getLocalExtensionSpec } from "./localHelper";
 import { promptOnce } from "../prompt";
@@ -89,6 +90,7 @@ export const resourceTypeToNiceName: Record<string, string> = {
   "firebaseextensions.v1beta.function": "Cloud Function",
 };
 export type ReleaseStage = "stable" | "alpha" | "beta" | "rc";
+const repoRegex = new RegExp("^https://github.com/[^/]+/[^/]+/?$");
 
 /**
  * Turns database URLs (e.g. https://my-db.firebaseio.com) into database instance names
@@ -372,6 +374,26 @@ export async function promptForValidInstanceId(instanceId: string): Promise<stri
   return newInstanceId;
 }
 
+/**
+ * Prompts for a valid repo URI.
+ */
+export async function promptForValidRepoURI(): Promise<string> {
+  let repoIsValid = false;
+  let extensionRoot = "";
+  while (!repoIsValid) {
+    extensionRoot = await promptOnce({
+      type: "input",
+      message: "Please enter the repo URI where this Extension's source code is located:",
+    });
+    if (!repoRegex.test(extensionRoot)) {
+      logger.info("Repo URI must follow this format: https://github.com/<user>/<repo>");
+    } else {
+      repoIsValid = true;
+    }
+  }
+  return extensionRoot;
+}
+
 export async function ensureExtensionsApiEnabled(options: any): Promise<void> {
   const projectId = getProjectId(options);
   if (!projectId) {
@@ -437,6 +459,113 @@ export async function incrementPrereleaseVersion(
     return semver.inc(latestVersion, "prerelease", undefined, stage)!;
   }
   return extensionVersion;
+}
+
+/**
+ * Publishes an ExtensionVersion from a remote repo.
+ *
+ * @param publisherId the publisher profile to publish this extension under.
+ * @param extensionId the ID of the extension. This must match the `name` field of extension.yaml.
+ * @param rootDirectory the directory containing extension.yaml
+ */
+export async function publishExtensionVersionFromRemoteRepo(args: {
+  publisherId: string;
+  extensionId: string;
+  repoUri: string;
+  sourceRef: string;
+  extensionRoot: string;
+  stage: ReleaseStage;
+  nonInteractive: boolean;
+  force: boolean;
+}): Promise<ExtensionVersion | undefined> {
+  const extensionRef = `${args.publisherId}/${args.extensionId}`;
+  let extension: Extension | undefined;
+  try {
+    extension = await getExtension(extensionRef);
+  } catch (err: any) {
+    // Silently fail and continue the publish flow if Extension not found.
+  }
+  if (args.repoUri && !repoRegex.test(args.repoUri)) {
+    throw new FirebaseError("Repo URI must follow this format: https://github.com/<user>/<repo>");
+  }
+  let repoUri = args.repoUri || extension?.repoUri;
+  if (!repoUri) {
+    repoUri = await promptForValidRepoURI();
+  }
+  if (extension?.repoUri) {
+    if (repoUri !== extension.repoUri) {
+      throw new FirebaseError(
+        `Repo URI '${clc.bold(args.repoUri)}' does not match repo URI '${clc.bold(
+          extension.repoUri!
+        )}' already associated with Extension ${clc.bold(
+          extensionRef
+        )}. Repo URI cannot be changed.`
+      );
+    } else {
+      logger.info(`Extension ${clc.bold(extensionRef)} is published from ${clc.bold(extension?.repoUri)}.`);
+    }
+  } else {
+    logger.info(
+      `${clc.red("Warning:")} You are about to associate repo URI ${clc.bold(
+        repoUri
+      )} with Extension ${clc.bold(
+        extensionRef
+      )}. This cannot be changed. All future verifiable versions must be published from this repo. ` +
+        `You can continue publishing unverifiable versions from local source.`
+    );
+    const confirmed = await confirm({
+      nonInteractive: args.nonInteractive,
+      force: args.force,
+      default: false,
+    });
+    if (!confirmed) {
+      return;
+    }
+  }
+  let extensionRoot = args.extensionRoot;
+  if (!extensionRoot) {
+    let defaultRoot = "/";
+    if (extension) {
+      const extensionVersionRef = `${extensionRef}@${extension.latestVersion}`;
+      const extensionVersion = await getExtensionVersion(extensionVersionRef);
+      defaultRoot = extensionVersion.extensionRoot ?? defaultRoot;
+    }
+    extensionRoot = await promptOnce({
+      type: "input",
+      default: defaultRoot,
+      message:
+        "Enter this Extension's root directory in the repo (defaults to previous root if set):",
+    });
+  }
+  // TODO: Get version and do client-side validations on zip package.
+  const version = "";
+  const extensionVersionRef = `${extensionRef}@${version}`;
+  const publishSpinner = ora(`Publishing ${clc.bold(extensionVersionRef)}`);
+  let res;
+  try {
+    publishSpinner.start();
+    res = await publishExtensionVersion(
+      extensionVersionRef,
+      "",
+      extensionRoot,
+      repoUri,
+      args.sourceRef
+    );
+    publishSpinner.succeed(` Successfully published ${clc.bold(extensionRef)}`);
+  } catch (err: any) {
+    publishSpinner.fail();
+    if (err.status === 404) {
+      throw new FirebaseError(
+        marked(
+          `Couldn't find publisher ID '${clc.bold(
+            args.publisherId
+          )}'. Please ensure that you have registered this ID. To register as a publisher, you can check out the [Firebase documentation](https://firebase.google.com/docs/extensions/alpha/share#register_as_an_extensions_publisher) for step-by-step instructions.`
+        )
+      );
+    }
+    throw err;
+  }
+  return res;
 }
 
 /**

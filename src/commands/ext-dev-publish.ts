@@ -4,13 +4,18 @@ const { marked } = require("marked");
 import TerminalRenderer = require("marked-terminal");
 
 import { Command } from "../command";
-import { publishExtensionVersionFromLocalSource, logPrefix } from "../extensions/extensionsHelper";
+import {
+  publishExtensionVersionFromLocalSource,
+  logPrefix,
+  publishExtensionVersionFromRemoteRepo,
+} from "../extensions/extensionsHelper";
 import * as refs from "../extensions/refs";
 import { findExtensionYaml } from "../extensions/localHelper";
 import { consoleInstallLink } from "../extensions/publishHelpers";
 import { requireAuth } from "../requireAuth";
 import { FirebaseError } from "../error";
 import * as utils from "../utils";
+import { logger } from "..";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),
@@ -22,6 +27,12 @@ marked.setOptions({
 export const command = new Command("ext:dev:publish <extensionRef>")
   .description(`publish a new version of an extension`)
   .option(`-s, --stage <stage>`, `release stage (supports "rc", "alpha", "beta", and "stable")`)
+  .option(`--repo <repo>`, `Public Git repo URI (only required for first version)`)
+  .option(
+    `-r, --ref <ref>`,
+    `commit hash, branch, or tag to build from the repo (defaults to "master" branch)`
+  )
+  .option(`--root <root>`, `root of the Extension to publish (defaults to the root of the repo "/")`)
   .withForce()
   .help(
     "if you have not previously published a version of this extension, this will " +
@@ -45,15 +56,29 @@ export const command = new Command("ext:dev:publish <extensionRef>")
         )}'. Please use the format '${clc.bold("<publisherId>/<extensionId>")}'.`
       );
     }
-    const extensionYamlDirectory = findExtensionYaml(process.cwd());
-    const res = await publishExtensionVersionFromLocalSource({
-      publisherId,
-      extensionId,
-      rootDirectory: extensionYamlDirectory,
-      nonInteractive: options.nonInteractive,
-      force: options.force,
-      stage: options.stage ?? "stable",
-    });
+    let res;
+    if (options.ref) {
+      res = await publishExtensionVersionFromRemoteRepo({
+        publisherId,
+        extensionId,
+        repoUri: options.repo,
+        sourceRef: options.ref,
+        extensionRoot: options.root,
+        nonInteractive: options.nonInteractive,
+        force: options.force,
+        stage: options.stage ?? "rc",
+      });
+    } else {
+      const extensionYamlDirectory = findExtensionYaml(process.cwd());
+      res = await publishExtensionVersionFromLocalSource({
+        publisherId,
+        extensionId,
+        rootDirectory: extensionYamlDirectory,
+        nonInteractive: options.nonInteractive,
+        force: options.force,
+        stage: options.stage ?? "stable",
+      });
+    }
     if (res) {
       utils.logLabeledBullet(logPrefix, marked(`[Install Link](${consoleInstallLink(res.ref)})`));
     }
