@@ -1047,7 +1047,7 @@ async function main(): Promise<void> {
         case "event":
         case "cloudevent":
           const rawBody = (req as RequestWithRawBody).rawBody;
-          let reqBody = JSON.parse(rawBody.toString());
+          let reqBody = rawBody ? JSON.parse(rawBody.toString()) : {};
           if (EventUtils.isBinaryCloudEvent(req)) {
             reqBody = EventUtils.extractBinaryCloudEventContext(req);
             reqBody.data = req.body;
