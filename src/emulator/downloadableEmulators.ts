@@ -27,14 +27,14 @@ const CACHE_DIR =
 
 export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDetails } = {
   database: {
-    downloadPath: path.join(CACHE_DIR, "firebase-database-emulator-v4.10.0.jar"),
-    version: "4.10.0",
+    downloadPath: path.join(CACHE_DIR, "firebase-database-emulator-v4.11.0.jar"),
+    version: "4.11.0",
     opts: {
       cacheDir: CACHE_DIR,
       remoteUrl:
-        "https://storage.googleapis.com/firebase-preview-drop/emulator/firebase-database-emulator-v4.10.0.jar",
-      expectedSize: 34230230,
-      expectedChecksum: "e99b23f0e723813de4f4ea0e879b46b0",
+        "https://storage.googleapis.com/firebase-preview-drop/emulator/firebase-database-emulator-v4.11.0.jar",
+      expectedSize: 34318940,
+      expectedChecksum: "311609538bd65666eb724ef47c2e6466",
       namePrefix: "firebase-database-emulator",
     },
   },
