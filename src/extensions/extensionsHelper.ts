@@ -1,6 +1,11 @@
 import * as clc from "colorette";
 import * as ora from "ora";
 import * as semver from "semver";
+import * as tmp from "tmp";
+import * as fs from "fs-extra";
+import * as unzipper from "unzipper";
+import fetch from "node-fetch";
+import * as path from "path";
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const { marked } = require("marked");
 
@@ -29,7 +34,7 @@ import {
   listExtensionVersions,
   publishExtensionVersion,
 } from "./extensionsApi";
-import { Extension, ExtensionSource, ExtensionVersion, Param } from "./types";
+import { Extension, ExtensionSource, ExtensionSpec, ExtensionVersion, Param } from "./types";
 import * as refs from "./refs";
 import { getLocalExtensionSpec } from "./localHelper";
 import { promptOnce } from "../prompt";
@@ -462,6 +467,101 @@ export async function incrementPrereleaseVersion(
 }
 
 /**
+ * Validates the Extension spec.
+ *
+ * @param publisherId the ID of the Publisher
+ * @param extensionId the ID of the Extension
+ * @param rootDirectory the directory with the Extension's source
+ * @param latestVersion the latest version of the Extension (if any)
+ * @param stage the release stage
+ *
+ */
+async function validateExtensionSpec(args: {
+  publisherId: string;
+  extensionId: string;
+  rootDirectory: string;
+  latestVersion?: string;
+  stage: ReleaseStage;
+}): Promise<{ extensionSpec: ExtensionSpec; notes: string }> {
+  const extensionRef = `${args.publisherId}/${args.extensionId}`;
+  const extensionSpec = await getLocalExtensionSpec(args.rootDirectory);
+  if (extensionSpec.name !== args.extensionId) {
+    throw new FirebaseError(
+      `Extension ID '${clc.bold(
+        args.extensionId
+      )}' does not match the name in extension.yaml '${clc.bold(extensionSpec.name)}'.`
+    );
+  }
+
+  // Substitute deepcopied spec with autopopulated params, and make sure that it passes basic extension.yaml validation.
+  const subbedSpec = JSON.parse(JSON.stringify(extensionSpec));
+  subbedSpec.params = substituteParams<Param[]>(
+    extensionSpec.params || [],
+    AUTOPOULATED_PARAM_PLACEHOLDERS
+  );
+  validateSpec(subbedSpec);
+
+  // Increment the pre-release annotation if it is not a stable version.
+  extensionSpec.version = await incrementPrereleaseVersion(
+    extensionRef,
+    extensionSpec.version,
+    args.stage
+  );
+
+  let notes: string;
+  try {
+    const changes = getLocalChangelog(args.rootDirectory);
+    notes = changes[extensionSpec.version];
+  } catch (err: any) {
+    throw new FirebaseError(
+      "No CHANGELOG.md file found. " +
+        "Please create one and add an entry for this version. " +
+        marked(
+          "See https://firebase.google.com/docs/extensions/alpha/create-user-docs#writing-changelog for more details."
+        )
+    );
+  }
+  // Notes are required for all stable versions after the initial release.
+  if (!notes && !semver.prerelease(extensionSpec.version) && args.latestVersion) {
+    throw new FirebaseError(
+      `No entry for version ${extensionSpec.version} found in CHANGELOG.md. ` +
+        "Please add one so users know what has changed in this version. " +
+        marked(
+          "See https://firebase.google.com/docs/extensions/alpha/create-user-docs#writing-changelog for more details."
+        )
+    );
+  }
+
+  if (args.latestVersion) {
+    if (semver.lt(extensionSpec.version, args.latestVersion)) {
+      throw new FirebaseError(
+        `The version you are trying to publish (${clc.bold(
+          extensionSpec.version
+        )}) is lower than the current version (${clc.bold(
+          args.latestVersion
+        )}) for the extension '${clc.bold(
+          extensionRef
+        )}'. Please make sure this version is greater than the current version (${clc.bold(
+          args.latestVersion
+        )}) inside of extension.yaml.\n`,
+        { exit: 104 }
+      );
+    } else if (semver.eq(extensionSpec.version, args.latestVersion)) {
+      throw new FirebaseError(
+        `The version you are trying to publish (${clc.bold(
+          extensionSpec.version
+        )}) already exists for Extension '${clc.bold(
+          extensionRef
+        )}'. Please increment the version inside of extension.yaml.\n`,
+        { exit: 103 }
+      );
+    }
+  }
+
+  return { extensionSpec, notes };
+}
+
+/**
  * Publishes an ExtensionVersion from a remote repo.
  *
  * @param publisherId the publisher profile to publish this extension under.
@@ -479,12 +579,16 @@ export async function publishExtensionVersionFromRemoteRepo(args: {
   force: boolean;
 }): Promise<ExtensionVersion | undefined> {
   const extensionRef = `${args.publisherId}/${args.extensionId}`;
+
+  // Check if Extension already exists.
   let extension: Extension | undefined;
   try {
     extension = await getExtension(extensionRef);
   } catch (err: any) {
     // Silently fail and continue the publish flow if Extension not found.
   }
+
+  // Prompt for repo URI and validate that it hasn't changed if previously set.
   if (args.repoUri && !repoRegex.test(args.repoUri)) {
     throw new FirebaseError("Repo URI must follow this format: https://github.com/<user>/<repo>");
   }
@@ -502,7 +606,9 @@ export async function publishExtensionVersionFromRemoteRepo(args: {
         )}. Repo URI cannot be changed.`
       );
     } else {
-      logger.info(`Extension ${clc.bold(extensionRef)} is published from ${clc.bold(extension?.repoUri)}.`);
+      logger.info(
+        `Extension ${clc.bold(extensionRef)} is published from ${clc.bold(extension?.repoUri)}.`
+      );
     }
   } else {
     logger.info(
@@ -522,24 +628,82 @@ export async function publishExtensionVersionFromRemoteRepo(args: {
       return;
     }
   }
+
+  // Prompt for Extension root and default to last root used.
   let extensionRoot = args.extensionRoot;
+  let defaultRoot = "/";
   if (!extensionRoot) {
-    let defaultRoot = "/";
-    if (extension) {
-      const extensionVersionRef = `${extensionRef}@${extension.latestVersion}`;
-      const extensionVersion = await getExtensionVersion(extensionVersionRef);
-      defaultRoot = extensionVersion.extensionRoot ?? defaultRoot;
+    if (!args.nonInteractive) {
+      if (extension) {
+        const extensionVersionRef = `${extensionRef}@${extension.latestVersion}`;
+        const extensionVersion = await getExtensionVersion(extensionVersionRef);
+        defaultRoot = extensionVersion.extensionRoot ?? defaultRoot;
+      }
+      extensionRoot = await promptOnce({
+        type: "input",
+        message:
+          "Enter this Extension's root directory in the repo (defaults to previous root if set):",
+        default: defaultRoot,
+      });
+    } else {
+      extensionRoot = defaultRoot;
     }
-    extensionRoot = await promptOnce({
-      type: "input",
-      default: defaultRoot,
-      message:
-        "Enter this Extension's root directory in the repo (defaults to previous root if set):",
-    });
   }
-  // TODO: Get version and do client-side validations on zip package.
-  const version = "";
-  const extensionVersionRef = `${extensionRef}@${version}`;
+
+  // Prompt for source ref and default to HEAD.
+  let sourceRef = args.sourceRef;
+  const defaultSourceRef = "HEAD";
+  if (!sourceRef) {
+    if (!args.nonInteractive) {
+      sourceRef = await promptOnce({
+        type: "input",
+        message: "Enter the commit hash, branch, or tag name to build from in the repo:",
+        default: defaultSourceRef,
+      });
+    } else {
+      sourceRef = defaultSourceRef;
+    }
+  }
+
+  // Fetch and validate Extension spec from remote repo.
+  const archiveUri = `${repoUri}/archive/${sourceRef}.zip`;
+  const tempDirectory = tmp.dirSync({ unsafeCleanup: true });
+  try {
+    const response = await fetch(archiveUri);
+    if (response.ok) {
+      await response.body.pipe(unzipper.Extract({ path: tempDirectory.name })).promise();
+    }
+  } catch (err: any) {
+    throw new FirebaseError(
+      `Failed to fetch Extension archive ${archiveUri}. Please check the repo URI and source ref. ${err}`
+    );
+  }
+  const archiveName = fs.readdirSync(tempDirectory.name)[0];
+  const { extensionSpec, notes } = await validateExtensionSpec({
+    publisherId: args.publisherId,
+    extensionId: args.extensionId,
+    rootDirectory: path.join(tempDirectory.name, archiveName, extensionRoot),
+    latestVersion: extension?.latestVersion,
+    stage: args.stage,
+  });
+
+  // TODO: Display release notes.
+  logger.info(
+    `\nYou are about to publish version ${clc.bold(extensionSpec.version)} of Extension ${clc.bold(
+      extensionRef
+    )} from ${clc.bold(path.join(repoUri, extensionRoot))} at source ref ${clc.bold(sourceRef)}.`
+  );
+  const confirmed = await confirm({
+    nonInteractive: args.nonInteractive,
+    force: args.force,
+    default: true,
+  });
+  if (!confirmed) {
+    return;
+  }
+
+  // Publish the Extension version.
+  const extensionVersionRef = `${extensionRef}@${extensionSpec.version}`;
   const publishSpinner = ora(`Publishing ${clc.bold(extensionVersionRef)}`);
   let res;
   try {
@@ -582,28 +746,6 @@ export async function publishExtensionVersionFromLocalSource(args: {
   force: boolean;
   stage: ReleaseStage;
 }): Promise<ExtensionVersion | undefined> {
-  const extensionSpec = await getLocalExtensionSpec(args.rootDirectory);
-  if (extensionSpec.name !== args.extensionId) {
-    throw new FirebaseError(
-      `Extension ID '${clc.bold(
-        args.extensionId
-      )}' does not match the name in extension.yaml '${clc.bold(extensionSpec.name)}'.`
-    );
-  }
-
-  // Substitute deepcopied spec with autopopulated params, and make sure that it passes basic extension.yaml validation.
-  const subbedSpec = JSON.parse(JSON.stringify(extensionSpec));
-  subbedSpec.params = substituteParams<Param[]>(
-    extensionSpec.params || [],
-    AUTOPOULATED_PARAM_PLACEHOLDERS
-  );
-  validateSpec(subbedSpec);
-  extensionSpec.version = await incrementPrereleaseVersion(
-    `${args.publisherId}/${args.extensionId}`,
-    extensionSpec.version,
-    args.stage
-  );
-
   let extension;
   try {
     extension = await getExtension(`${args.publisherId}/${args.extensionId}`);
@@ -611,73 +753,22 @@ export async function publishExtensionVersionFromLocalSource(args: {
     // Silently fail and continue the publish flow if extension not found.
   }
 
-  let notes: string;
-  try {
-    const changes = getLocalChangelog(args.rootDirectory);
-    notes = changes[extensionSpec.version];
-  } catch (err: any) {
-    throw new FirebaseError(
-      "No CHANGELOG.md file found. " +
-        "Please create one and add an entry for this version. " +
-        marked(
-          "See https://firebase.google.com/docs/extensions/alpha/create-user-docs#writing-changelog for more details."
-        )
-    );
-  }
-  // Skip this check for prerelease versions
-  if (!notes && !semver.prerelease(extensionSpec.version) && extension) {
-    // If this is not the first version of this extension, we require release notes
-    throw new FirebaseError(
-      `No entry for version ${extensionSpec.version} found in CHANGELOG.md. ` +
-        "Please add one so users know what has changed in this version. " +
-        marked(
-          "See https://firebase.google.com/docs/extensions/alpha/create-user-docs#writing-changelog for more details."
-        )
-    );
-  }
-  displayReleaseNotes(args.publisherId, args.extensionId, extensionSpec.version, notes);
-  if (
-    !(await confirm({
-      nonInteractive: args.nonInteractive,
-      force: args.force,
-      default: false,
-    }))
-  ) {
-    return;
-  }
+  const { extensionSpec, notes } = await validateExtensionSpec({
+    publisherId: args.publisherId,
+    extensionId: args.extensionId,
+    rootDirectory: args.rootDirectory,
+    latestVersion: extension?.latestVersion,
+    stage: args.stage,
+  });
 
-  if (
-    extension &&
-    extension.latestVersion &&
-    semver.lt(extensionSpec.version, extension.latestVersion)
-  ) {
-    // publisher's version is less than current latest version.
-    throw new FirebaseError(
-      `The version you are trying to publish (${clc.bold(
-        extensionSpec.version
-      )}) is lower than the current version (${clc.bold(
-        extension.latestVersion
-      )}) for the extension '${clc.bold(
-        `${args.publisherId}/${args.extensionId}`
-      )}'. Please make sure this version is greater than the current version (${clc.bold(
-        extension.latestVersion
-      )}) inside of extension.yaml.\n`,
-      { exit: 104 }
-    );
-  } else if (
-    extension &&
-    extension.latestVersion &&
-    semver.eq(extensionSpec.version, extension.latestVersion)
-  ) {
-    // publisher's version is equal to the current latest version.
-    throw new FirebaseError(
-      `The version you are trying to publish (${clc.bold(
-        extensionSpec.version
-      )}) already exists for the extension '${clc.bold(
-        `${args.publisherId}/${args.extensionId}`
-      )}'. Please increment the version inside of extension.yaml.\n`,
-      { exit: 103 }
-    );
+  displayReleaseNotes(args.publisherId, args.extensionId, extensionSpec.version, notes);
+  const confirmed = await confirm({
+    nonInteractive: args.nonInteractive,
+    force: args.force,
+    default: false,
+  });
+  if (!confirmed) {
+    return;
   }
 
   const ref = `${args.publisherId}/${args.extensionId}@${extensionSpec.version}`;
