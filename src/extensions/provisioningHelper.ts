@@ -7,7 +7,7 @@ import { Client } from "../apiv2";
 import { flattenArray } from "../functional";
 import { FirebaseError } from "../error";
 import { getExtensionSpec, InstanceSpec } from "../deploy/extensions/planner";
-import { logger } from "..";
+import { logger } from "../logger";
 
 /** Product for which provisioning can be (or is) deferred */
 export enum DeferredProduct {
