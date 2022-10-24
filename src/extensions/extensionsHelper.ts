@@ -640,9 +640,13 @@ export async function publishExtensionVersionFromRemoteRepo(args: {
   if (!extensionRoot) {
     if (!args.nonInteractive) {
       if (extension) {
-        const extensionVersionRef = `${extensionRef}@${extension.latestVersion}`;
-        const extensionVersion = await getExtensionVersion(extensionVersionRef);
-        defaultRoot = extensionVersion.extensionRoot ?? defaultRoot;
+        try {
+          const extensionVersionRef = `${extensionRef}@${extension.latestVersion}`;
+          const extensionVersion = await getExtensionVersion(extensionVersionRef);
+          defaultRoot = extensionVersion.extensionRoot ?? defaultRoot;
+        } catch (err: any) {
+          // Not a critical error so continue with default root.
+        }
       }
       extensionRoot = await promptOnce({
         type: "input",
