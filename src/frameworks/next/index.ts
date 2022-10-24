@@ -44,13 +44,16 @@ const CLI_COMMAND = join(
 );
 
 export const name = "Next.js";
-export const support = SupportLevel.Expirimental;
+export const support = SupportLevel.Experimental;
 export const type = FrameworkType.MetaFramework;
 
 function getNextVersion(cwd: string) {
   return findDependency("next", { cwd, depth: 0, omitDev: false })?.version;
 }
 
+/**
+ * Returns whether this codebase is a Next.js backend.
+ */
 export async function discover(dir: string) {
   if (!(await pathExists(join(dir, "package.json")))) return;
   if (!(await pathExists("next.config.js")) && !getNextVersion(dir)) return;
@@ -58,6 +61,9 @@ export async function discover(dir: string) {
   return { mayWantBackend: true, publicDirectory: join(dir, "public") };
 }
 
+/**
+ * Build a next.js application.
+ */
 export async function build(dir: string): Promise<BuildResult> {
   const { default: nextBuild } = relativeRequire(dir, "next/dist/build");
 
@@ -133,6 +139,9 @@ export async function build(dir: string): Promise<BuildResult> {
   return { wantsBackend, headers, redirects, rewrites };
 }
 
+/**
+ * Utility method used during project initialization.
+ */
 export async function init(setup: any) {
   const language = await promptOnce({
     type: "list",
@@ -141,13 +150,16 @@ export async function init(setup: any) {
     choices: ["JavaScript", "TypeScript"],
   });
   execSync(
-    `npx --yes create-next-app@latest ${setup.hosting.source} ${
+    `npx --yes create-next-app@latest -e hello-world ${setup.hosting.source} ${
       language === "TypeScript" ? "--ts" : ""
     }`,
     { stdio: "inherit" }
   );
 }
 
+/**
+ * Create a directory for SSG content.
+ */
 export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: string) {
   const { distDir } = await getConfig(sourceDir);
   const exportDetailPath = join(sourceDir, distDir, "export-detail.json");
@@ -157,8 +169,11 @@ export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: strin
   if (exportDetailJson?.success) {
     copy(exportDetailJson.outDirectory, destDir);
   } else {
+    const publicPath = join(sourceDir, "public");
     await mkdir(join(destDir, "_next", "static"), { recursive: true });
-    await copy(join(sourceDir, "public"), destDir);
+    if (await pathExists(publicPath)) {
+      await copy(publicPath, destDir);
+    }
     await copy(join(sourceDir, distDir, "static"), join(destDir, "_next", "static"));
 
     const serverPagesDir = join(sourceDir, distDir, "server", "pages");
@@ -202,6 +217,9 @@ export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: strin
   }
 }
 
+/**
+ * Create a directory for SSR content.
+ */
 export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: string) {
   const { distDir } = await getConfig(sourceDir);
   const packageJsonBuffer = await readFile(join(sourceDir, "package.json"));
@@ -227,13 +245,18 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
       platform: "node",
     });
   }
-  await mkdir(join(destDir, "public"));
+  if (await pathExists(join(sourceDir, "public"))) {
+    await mkdir(join(destDir, "public"));
+    await copy(join(sourceDir, "public"), join(destDir, "public"));
+  }
   await mkdirp(join(destDir, distDir));
-  await copy(join(sourceDir, "public"), join(destDir, "public"));
   await copy(join(sourceDir, distDir), join(destDir, distDir));
   return { packageJson, frameworksEntry: "next.js" };
 }
 
+/**
+ * Create a dev server.
+ */
 export async function getDevModeHandle(dir: string) {
   const { default: next } = relativeRequire(dir, "next");
   const nextApp = next({

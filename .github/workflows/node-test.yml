@@ -81,16 +81,17 @@ jobs:
         node-version:
           - "16"
         script:
-          - npm run test:hosting
-          # - npm run test:hosting-rewrites # Long-running test that might conflict across test runs. Run this manually.
           - npm run test:client-integration
           - npm run test:emulator
-          - npm run test:import-export
           - npm run test:extensions-emulator
-          - npm run test:triggers-end-to-end
-          - npm run test:triggers-end-to-end:inspect
+          - npm run test:frameworks
+          - npm run test:hosting
+          # - npm run test:hosting-rewrites # Long-running test that might conflict across test runs. Run this manually.
+          - npm run test:import-export
           - npm run test:storage-deploy
           - npm run test:storage-emulator-integration
+          - npm run test:triggers-end-to-end
+          - npm run test:triggers-end-to-end:inspect
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3

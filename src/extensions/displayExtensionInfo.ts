@@ -7,12 +7,16 @@ import * as utils from "../utils";
 import { logPrefix } from "./extensionsHelper";
 import { logger } from "../logger";
 import { FirebaseError } from "../error";
-import { Api, ExtensionSpec, Role } from "./types";
+import { Api, ExtensionSpec, Role, Resource } from "./types";
 import * as iam from "../gcp/iam";
+import { SECRET_ROLE, usesSecrets } from "./secretsUtils";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),
 });
+
+const TASKS_ROLE = "cloudtasks.enqueuer";
+const TASKS_API = "cloudtasks.googleapis.com";
 
 /**
  * displayExtInfo prints the extension info displayed when running ext:install.
@@ -39,13 +43,17 @@ export async function displayExtInfo(
     if (spec.license) {
       lines.push(`**License**: ${spec.license}`);
     }
-    lines.push(`**Source code**: ${spec.sourceUrl}`);
+    if (spec.sourceUrl) {
+      lines.push(`**Source code**: ${spec.sourceUrl}`);
+    }
   }
-  if (spec.apis?.length) {
-    lines.push(displayApis(spec.apis));
+  const apis = impliedApis(spec);
+  if (apis.length) {
+    lines.push(displayApis(apis));
   }
-  if (spec.roles?.length) {
-    lines.push(await displayRoles(spec.roles));
+  const roles = impliedRoles(spec);
+  if (roles.length) {
+    lines.push(await displayRoles(roles));
   }
   if (lines.length > 0) {
     utils.logLabeledBullet(logPrefix, `information about '${clc.bold(extensionName)}':`);
@@ -102,4 +110,37 @@ function displayApis(apis: Api[]): string {
     return `  ${api.apiName} (${api.reason})`;
   });
   return "**APIs used by this Extension**:\n" + lines.join("\n");
+}
+
+function usesTasks(spec: ExtensionSpec): boolean {
+  return spec.resources.some((r: Resource) => r.properties?.taskQueueTrigger !== undefined);
+}
+
+function impliedRoles(spec: ExtensionSpec): Role[] {
+  const roles: Role[] = [];
+  if (usesSecrets(spec) && !spec.roles?.some((r: Role) => r.role === SECRET_ROLE)) {
+    roles.push({
+      role: SECRET_ROLE,
+      reason: "Allows the extension to read secret values from Cloud Secret Manager",
+    });
+  }
+  if (usesTasks(spec) && !spec.roles?.some((r: Role) => r.role === TASKS_ROLE)) {
+    roles.push({
+      role: TASKS_ROLE,
+      reason: "Allows the extension to enqueue Cloud Tasks",
+    });
+  }
+  return roles.concat(spec.roles ?? []);
+}
+
+function impliedApis(spec: ExtensionSpec): Api[] {
+  const apis: Api[] = [];
+  if (usesTasks(spec) && !spec.apis?.some((a: Api) => a.apiName === TASKS_API)) {
+    apis.push({
+      apiName: TASKS_API,
+      reason: "Allows the extension to enqueue Cloud Tasks",
+    });
+  }
+
+  return apis.concat(spec.apis ?? []);
 }

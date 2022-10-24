@@ -192,6 +192,7 @@ export type EmulatorsConfig = {
     host?: string;
     port?: number;
   };
+  singleProjectMode?: boolean;
 };
 
 export type ExtensionsConfig = Record<string, string>;

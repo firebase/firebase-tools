@@ -859,7 +859,7 @@ function sendOobCode(
   if (reqBody.continueUrl) {
     assert(
       parseAbsoluteUri(reqBody.continueUrl),
-      "INVALID_CONTINUE_URI: ((expected an absolute URI with valid scheme and host))"
+      "INVALID_CONTINUE_URI : ((expected an absolute URI with valid scheme and host))"
     );
   }
 
@@ -2193,11 +2193,11 @@ function updateConfig(
     if (Object.prototype.hasOwnProperty.call(reqBody.blockingFunctions!.triggers, event)) {
       assert(
         Object.values(BlockingFunctionEvents).includes(event as BlockingFunctionEvents),
-        "INVALID_BLOCKING_FUNCTION: ((Event type is invalid.))"
+        "INVALID_BLOCKING_FUNCTION : ((Event type is invalid.))"
       );
       assert(
         parseAbsoluteUri(reqBody.blockingFunctions!.triggers[event].functionUri!),
-        "INVALID_BLOCKING_FUNCTION: ((Expected an absolute URI with valid scheme and host.))"
+        "INVALID_BLOCKING_FUNCTION : ((Expected an absolute URI with valid scheme and host.))"
       );
     }
   }
@@ -2907,7 +2907,7 @@ function createTenant(
   reqBody: Schemas["GoogleCloudIdentitytoolkitAdminV2Tenant"]
 ): Schemas["GoogleCloudIdentitytoolkitAdminV2Tenant"] {
   if (!(state instanceof AgentProjectState)) {
-    throw new InternalError("INTERNAL_ERROR: Can only create tenant in agent project", "INTERNAL");
+    throw new InternalError("INTERNAL_ERROR : Can only create tenant in agent project", "INTERNAL");
   }
 
   const mfaConfig = reqBody.mfaConfig ?? {};
@@ -3024,7 +3024,10 @@ async function fetchBlockingFunction(
     controller.abort();
   }, timeoutMs);
 
-  let response;
+  let response: BlockingFunctionResponsePayload;
+  let ok: boolean;
+  let status: number;
+  let text: string;
   try {
     const res = await fetch(url, {
       method: "POST",
@@ -3032,27 +3035,40 @@ async function fetchBlockingFunction(
       body: JSON.stringify(reqBody),
       signal: controller.signal,
     });
-    const text = await res.text();
-    assert(
-      res.ok,
-      `BLOCKING_FUNCTION_ERROR_RESPONSE: ((HTTP request to ${url} returned HTTP error${res.status}: ${text}))`
-    );
-    response = JSON.parse(text) as BlockingFunctionResponsePayload;
+    ok = res.ok;
+    status = res.status;
+    text = await res.text();
   } catch (thrown: any) {
     const err = thrown instanceof Error ? thrown : new Error(thrown);
     const isAbortError = err.name.includes("AbortError");
     if (isAbortError) {
       throw new InternalError(
-        `BLOCKING_FUNCTION_ERROR_RESPONSE: ((Deadline exceeded making request to ${url}.))`,
+        `BLOCKING_FUNCTION_ERROR_RESPONSE : ((Deadline exceeded making request to ${url}.))`,
         err.message
       );
     }
+    // All other server errors
     throw new InternalError(
-      `BLOCKING_FUNCTION_ERROR_RESPONSE: ((Failed to make request to ${url}.))`,
+      `BLOCKING_FUNCTION_ERROR_RESPONSE : ((Failed to make request to ${url}.))`,
       err.message
     );
   } finally {
     clearTimeout(timeout);
+  }
+
+  assert(
+    ok,
+    `BLOCKING_FUNCTION_ERROR_RESPONSE : ((HTTP request to ${url} returned HTTP error ${status}: ${text}))`
+  );
+
+  try {
+    response = JSON.parse(text) as BlockingFunctionResponsePayload;
+  } catch (thrown: any) {
+    const err = thrown instanceof Error ? thrown : new Error(thrown);
+    throw new InternalError(
+      `BLOCKING_FUNCTION_ERROR_RESPONSE : ((Response body is not valid JSON.))`,
+      err.message
+    );
   }
 
   return processBlockingFunctionResponse(event, response);
@@ -3072,7 +3088,7 @@ function processBlockingFunctionResponse(
     const userRecord = response.userRecord;
     assert(
       userRecord.updateMask,
-      "BLOCKING_FUNCTION_ERROR_RESPONSE: ((Response UserRecord is missing updateMask.))"
+      "BLOCKING_FUNCTION_ERROR_RESPONSE : ((Response UserRecord is missing updateMask.))"
     );
     const mask = userRecord.updateMask;
     const fields = mask.split(",");
@@ -3103,7 +3119,7 @@ function processBlockingFunctionResponse(
             extraClaims = userRecord.sessionClaims;
           } catch {
             throw new BadRequestError(
-              "BLOCKING_FUNCTION_ERROR_RESPONSE: ((Response has malformed session claims.))"
+              "BLOCKING_FUNCTION_ERROR_RESPONSE : ((Response has malformed session claims.))"
             );
           }
           break;

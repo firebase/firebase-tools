@@ -156,8 +156,8 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
   });
 
   describe(".ref()", () => {
-    describe("#put()", () => {
-      it("should upload a file", async () => {
+    describe("#putString()", () => {
+      it("should upload a string", async () => {
         await signInToFirebaseAuth(page);
         await page.evaluate(async (ref) => {
           await firebase.storage().ref(ref).putString("hello world");
@@ -180,7 +180,9 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
           });
         });
       });
+    });
 
+    describe("#put()", () => {
       it("should upload a file with a really long path name to check for os filename character limit", async () => {
         await signInToFirebaseAuth(page);
         const uploadState = await uploadText(
@@ -249,6 +251,10 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
         }, IMAGE_FILE_BASE64);
 
         expect(uploadState).to.equal("success");
+        const [metadata] = await testBucket
+          .file("upload/allowIfContentTypeImage.png")
+          .getMetadata();
+        expect(metadata.contentType).to.equal("image/blah");
       });
 
       it("should return a 403 on rules deny", async () => {
@@ -286,6 +292,18 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
 
         const uploadState = await shouldThrowOnUpload();
         expect(uploadState!).to.include("User does not have permission");
+      });
+
+      it("should default to application/octet-stream", async () => {
+        await signInToFirebaseAuth(page);
+        const uploadState = await page.evaluate(async (TEST_FILE_NAME) => {
+          const task = await firebase.storage().ref(TEST_FILE_NAME).put(new ArrayBuffer(8));
+          return task.state;
+        }, TEST_FILE_NAME);
+
+        expect(uploadState).to.equal("success");
+        const [metadata] = await testBucket.file(TEST_FILE_NAME).getMetadata();
+        expect(metadata.contentType).to.equal("application/octet-stream");
       });
     });
 
@@ -526,7 +544,7 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
         await testBucket.upload(emptyFilePath, { destination: TEST_FILE_NAME });
         await signInToFirebaseAuth(page);
 
-        const metadata = await page.evaluate(async (filename) => {
+        const metadata = await page.evaluate((filename) => {
           return firebase
             .storage()
             .ref(filename)
@@ -556,7 +574,7 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
         });
         await signInToFirebaseAuth(page);
 
-        const updatedMetadata = await page.evaluate(async (filename) => {
+        const updatedMetadata = await page.evaluate((filename) => {
           return firebase.storage().ref(filename).updateMetadata({
             cacheControl: null,
             contentDisposition: null,
@@ -631,7 +649,7 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
       });
     });
 
-    describe("deleteFile", () => {
+    describe("#delete()", () => {
       it("should delete file", async () => {
         await testBucket.upload(emptyFilePath, { destination: TEST_FILE_NAME });
         await signInToFirebaseAuth(page);

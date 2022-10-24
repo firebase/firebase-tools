@@ -4,6 +4,8 @@ import * as portUtils from "./portUtils";
 import { Constants } from "./constants";
 import { EmulatorLogger } from "./emulatorLogger";
 import * as express from "express";
+import { connectableHostname } from "../utils";
+import { Client, ClientOptions } from "../apiv2";
 
 /**
  * Static registry for running emulators to discover each other.
@@ -26,7 +28,7 @@ export class EmulatorRegistry {
     // No need to wait for the Extensions emulator to close its port, since it runs on the Functions emulator.
     if (instance.getName() !== Emulators.EXTENSIONS) {
       const info = instance.getInfo();
-      await portUtils.waitForPortClosed(info.port, info.host);
+      await portUtils.waitForPortClosed(info.port, connectableHostname(info.host));
     }
   }
 
@@ -122,37 +124,25 @@ export class EmulatorRegistry {
    * Get information about an emulator. Use `url` instead for creating URLs.
    */
   static getInfo(emulator: Emulators): EmulatorInfo | undefined {
-    // For Extensions, return the info for the Functions Emulator.
-    const instance = this.INSTANCES.get(
-      emulator === Emulators.EXTENSIONS ? Emulators.FUNCTIONS : emulator
-    );
-    if (!instance) {
+    const info = EmulatorRegistry.get(emulator)?.getInfo();
+    if (!info) {
       return undefined;
     }
-
-    return instance.getInfo();
-  }
-
-  /**
-   * Get the host:port string for emulator. Use `url` instead for creating URLs.
-   */
-  static getInfoHostString(info: EmulatorInfo): string {
-    const { host, port } = info;
-
-    // Quote IPv6 addresses
-    if (host.includes(":")) {
-      return `[${host}]:${port}`;
-    } else {
-      return `${host}:${port}`;
-    }
+    return {
+      ...info,
+      host: connectableHostname(info.host),
+    };
   }
 
   /**
    * Return a URL object with the emulator protocol, host, and port populated.
+   *
+   * Need to make an API request? Use `.client` instead.
+   *
    * @param emulator for retrieving host and port from the registry
    * @param req if provided, will prefer reflecting back protocol+host+port from
    *            the express request (if header available) instead of registry
-   * @returns a WHATWG URL object with .host set to the emulator host + port
+   * @return a WHATWG URL object with .host set to the emulator host + port
    */
   static url(emulator: Emulators, req?: express.Request): URL {
     // WHATWG URL API has no way to create from parts, so let's use a minimal
@@ -175,14 +165,7 @@ export class EmulatorRegistry {
     // another host, e.g. in Dockers or behind reverse proxies.
     const info = EmulatorRegistry.getInfo(emulator);
     if (info) {
-      // If listening to all IPv4/6 addresses, use loopback addresses instead.
-      // All-zero addresses are invalid and not tolerated by some browsers / OS.
-      // See: https://github.com/firebase/firebase-tools-ui/issues/286
-      if (info.host === "0.0.0.0") {
-        url.hostname = "127.0.0.1";
-      } else if (info.host === "::") {
-        url.hostname = "[::1]";
-      } else if (info.host.includes(":")) {
+      if (info.host.includes(":")) {
         url.hostname = `[${info.host}]`; // IPv6 addresses need to be quoted.
       } else {
         url.hostname = info.host;
@@ -194,6 +177,14 @@ export class EmulatorRegistry {
     }
 
     return url;
+  }
+
+  static client(emulator: Emulators, options: Omit<ClientOptions, "urlPrefix"> = {}): Client {
+    return new Client({
+      urlPrefix: EmulatorRegistry.url(emulator).toString(),
+      auth: false,
+      ...options,
+    });
   }
 
   private static INSTANCES: Map<Emulators, EmulatorInstance> = new Map();

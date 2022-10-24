@@ -743,3 +743,24 @@ export function randomInt(min: number, max: number): number {
   max = Math.ceil(max) + 1;
   return Math.floor(Math.random() * (max - min) + min);
 }
+
+/**
+ * Return a connectable hostname, replacing wildcard 0.0.0.0 or :: with loopback
+ * addresses 127.0.0.1 / ::1 correspondingly. See below for why this is needed:
+ * https://github.com/firebase/firebase-tools-ui/issues/286
+ *
+ * This assumes that the consumer (i.e. client SDK, etc.) is located on the same
+ * device as the Emulator hub (i.e. CLI), which may not be true on multi-device
+ * setups, etc. In that case, the customer can work around this by specifying a
+ * non-wildcard IP address (like the IP address on LAN, if accessing via LAN).
+ */
+export function connectableHostname(hostname: string): string {
+  if (hostname === "0.0.0.0") {
+    hostname = "127.0.0.1";
+  } else if (hostname === "::" /* unquoted IPv6 wildcard */) {
+    hostname = "::1";
+  } else if (hostname === "[::]" /* quoted IPv6 wildcard */) {
+    hostname = "[::1]";
+  }
+  return hostname;
+}

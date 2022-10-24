@@ -4,12 +4,13 @@ import { HostingDeploy } from "./context";
 import * as api from "../../hosting/api";
 import * as backend from "../functions/backend";
 import { Context } from "../functions/args";
-import { logLabeledBullet, logLabeledWarning } from "../../utils";
+import { last, logLabeledBullet, logLabeledWarning } from "../../utils";
 import * as proto from "../../gcp/proto";
 import { bold } from "colorette";
 import * as runTags from "../../hosting/runTags";
 import { assertExhaustive } from "../../functional";
 import * as experiments from "../../experiments";
+import { logger } from "../../logger";
 
 /**
  * extractPattern contains the logic for extracting exactly one glob/regexp
@@ -79,7 +80,11 @@ export function findEndpointForRewrite(
 
 /**
  * convertConfig takes a hosting config object from firebase.json and transforms it into
- * the valid format for sending to the Firebase Hosting REST API
+ * the valid format for sending to the Firebase Hosting REST API.
+ *
+ * TODO: this currently lists remote backends (functions) and attemtps to validate them.
+ * We currently catch 403 issues and handle them, but it's probably not the best solution
+ * to have a required permission in functions when a deploy may "only" be to Hosting.
  */
 export async function convertConfig(
   context: Context,
@@ -87,10 +92,32 @@ export async function convertConfig(
 ): Promise<api.ServingConfig> {
   const config: api.ServingConfig = {};
 
+  // Instead of *always* fetching backends, let's roughly sanity check our
+  // rewrites to see if it's necessary.
+  const hasBackends = !!deploy.config.rewrites?.some((r) => "function" in r || "run" in r);
+
   // We need to be able to do a rewrite to an existing function that is may not
   // even be part of Firebase's control or a function that we're currently
   // deploying.
-  const haveBackend = await backend.existingBackend(context);
+  let haveBackend = backend.empty();
+  if (hasBackends) {
+    try {
+      haveBackend = await backend.existingBackend(context);
+    } catch (err: unknown) {
+      if (err instanceof FirebaseError) {
+        if (err.status === 403) {
+          // If the callee doesn't have permission to list backends, we just won't
+          // be able to validate them. This is fine.
+          logger.debug(
+            `Deploying hosting site ${deploy.config.site}, did not have permissions to check for backends: `,
+            err
+          );
+        }
+      } else {
+        throw err;
+      }
+    }
+  }
 
   config.rewrites = deploy.config.rewrites?.map((rewrite) => {
     const target = extractPattern("rewrite", rewrite);
@@ -188,7 +215,8 @@ export async function convertConfig(
   });
 
   if (config.rewrites) {
-    await runTags.setRewriteTags(config.rewrites, context.projectId, deploy.version);
+    const versionId = last(deploy.version.split("/"));
+    await runTags.setRewriteTags(config.rewrites, context.projectId, versionId);
   }
 
   config.redirects = deploy.config.redirects?.map((redirect) => {

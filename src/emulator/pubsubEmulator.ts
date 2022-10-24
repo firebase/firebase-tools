@@ -25,7 +25,7 @@ interface Trigger {
 }
 
 export class PubsubEmulator implements EmulatorInstance {
-  pubsub: PubSub;
+  private _pubsub: PubSub | undefined;
 
   // Map of topic name to a list of functions to trigger
   triggersForTopic: Map<string, Trigger[]>;
@@ -38,12 +38,17 @@ export class PubsubEmulator implements EmulatorInstance {
 
   private logger = EmulatorLogger.forEmulator(Emulators.PUBSUB);
 
+  get pubsub(): PubSub {
+    if (!this._pubsub) {
+      this._pubsub = new PubSub({
+        apiEndpoint: EmulatorRegistry.url(Emulators.PUBSUB).host,
+        projectId: this.args.projectId,
+      });
+    }
+    return this._pubsub;
+  }
+
   constructor(private args: PubsubEmulatorArgs) {
-    const { host, port } = this.getInfo();
-    this.pubsub = new PubSub({
-      apiEndpoint: `${host}:${port}`,
-      projectId: this.args.projectId,
-    });
     this.triggersForTopic = new Map();
     this.subscriptionForTopic = new Map();
   }
@@ -138,16 +143,12 @@ export class PubsubEmulator implements EmulatorInstance {
   private ensureFunctionsClient() {
     if (this.client !== undefined) return;
 
-    const funcEmulator = EmulatorRegistry.get(Emulators.FUNCTIONS);
-    if (!funcEmulator) {
+    if (!EmulatorRegistry.isRunning(Emulators.FUNCTIONS)) {
       throw new FirebaseError(
         `Attempted to execute pubsub trigger but could not find the Functions emulator`
       );
     }
-    this.client = new Client({
-      urlPrefix: `http://${EmulatorRegistry.getInfoHostString(funcEmulator.getInfo())}`,
-      auth: false,
-    });
+    this.client = EmulatorRegistry.client(Emulators.FUNCTIONS);
   }
 
   private createLegacyEventRequestBody(topic: string, message: Message) {
