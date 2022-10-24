@@ -25,12 +25,9 @@ marked.setOptions({
  */
 export const command = new Command("ext:dev:publish <extensionRef>")
   .description(`publish a new version of an extension`)
-  .option(`-s, --stage <stage>`, `release stage (supports "rc", "alpha", "beta", and "stable")`)
-  .option(`--repo <repo>`, `Public Git repo URI (only required for first version)`)
-  .option(
-    `-r, --ref <ref>`,
-    `commit hash, branch, or tag to build from the repo (defaults to HEAD)`
-  )
+  .option(`-s, --stage <stage>`, `release stage (supports "alpha", "beta", "rc", and "stable")`)
+  .option(`--repo <repo>`, `Public Git repo URI (only required for first version, cannot be changed)`)
+  .option(`--ref <ref>`, `commit hash, branch, or tag to build from the repo (defaults to HEAD)`)
   .option(
     `--root <root>`,
     `root directory that contains this Extension (defaults to previous version's root or root of repo if none set)`
@@ -69,7 +66,7 @@ export const command = new Command("ext:dev:publish <extensionRef>")
         extensionRoot: options.root,
         nonInteractive: options.nonInteractive,
         force: options.force,
-        stage: options.stage ?? "rc",
+        stage: options.stage,
       });
     } else {
       const extensionYamlDirectory = findExtensionYaml(process.cwd());

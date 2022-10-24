@@ -94,8 +94,9 @@ export const AUTOPOULATED_PARAM_PLACEHOLDERS = {
 export const resourceTypeToNiceName: Record<string, string> = {
   "firebaseextensions.v1beta.function": "Cloud Function",
 };
-export type ReleaseStage = "stable" | "alpha" | "beta" | "rc";
+export type ReleaseStage = "alpha" | "beta" | "rc" | "stable";
 const repoRegex = new RegExp("^https://github.com/[^/]+/[^/]+/?$");
+const stageOptions = ["alpha", "beta", "rc", "stable"];
 
 /**
  * Turns database URLs (e.g. https://my-db.firebaseio.com) into database instance names
@@ -438,7 +439,6 @@ export async function incrementPrereleaseVersion(
   extensionVersion: string,
   stage: ReleaseStage
 ): Promise<string> {
-  const stageOptions = ["stable", "alpha", "beta", "rc"];
   if (!stageOptions.includes(stage)) {
     throw new FirebaseError(`--stage flag only supports the following values: ${stageOptions}`);
   }
@@ -674,6 +674,22 @@ export async function publishExtensionVersionFromRemoteRepo(args: {
     }
   }
 
+  // Prompt for release stage.
+  let stage = args.stage;
+  const defaultStage = "rc";
+  if (!stage) {
+    if (!args.nonInteractive) {
+      stage = await promptOnce({
+        type: "list",
+        message: "Choose the release stage (pre-release annotations will be auto-incremented):",
+        choices: stageOptions,
+        default: defaultStage,
+      });
+    } else {
+      stage = defaultStage;
+    }
+  }
+
   // Fetch and validate Extension from remote repo.
   const archiveUri = path.join(repoUri, `archive/${sourceRef}.zip`);
   const tempDirectory = tmp.dirSync({ unsafeCleanup: true });
@@ -694,7 +710,7 @@ export async function publishExtensionVersionFromRemoteRepo(args: {
     extensionId: args.extensionId,
     rootDirectory: rootDirectory,
     latestVersion: extension?.latestVersion,
-    stage: args.stage,
+    stage: stage,
   });
 
   const sourceUri = path.join(repoUri, "tree", sourceRef, extensionRoot);
