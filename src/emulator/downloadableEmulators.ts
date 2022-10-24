@@ -25,38 +25,52 @@ const EMULATOR_INSTANCE_KILL_TIMEOUT = 4000; /* ms */
 const CACHE_DIR =
   process.env.FIREBASE_EMULATORS_PATH || path.join(os.homedir(), ".cache", "firebase", "emulators");
 
+const EMULATOR_VERSIONS = {
+  database: "4.11.0",
+  firestore: "1.15.1",
+  storage: "1.1.1",
+  ui: experiments.isEnabled("emulatoruisnapshot") ? "SNAPSHOT" : "1.11.1",
+  pubsub: "0.1.0",
+};
+
 export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDetails } = {
   database: {
-    downloadPath: path.join(CACHE_DIR, "firebase-database-emulator-v4.11.0.jar"),
-    version: "4.11.0",
+    downloadPath: path.join(
+      CACHE_DIR,
+      `firebase-database-emulator-v${EMULATOR_VERSIONS.database}.jar`
+    ),
+    version: EMULATOR_VERSIONS.database,
     opts: {
       cacheDir: CACHE_DIR,
-      remoteUrl:
-        "https://storage.googleapis.com/firebase-preview-drop/emulator/firebase-database-emulator-v4.11.0.jar",
+      remoteUrl: `https://storage.googleapis.com/firebase-preview-drop/emulator/firebase-database-emulator-v${EMULATOR_VERSIONS.database}.jar`,
       expectedSize: 34318940,
       expectedChecksum: "311609538bd65666eb724ef47c2e6466",
       namePrefix: "firebase-database-emulator",
     },
   },
   firestore: {
-    downloadPath: path.join(CACHE_DIR, "cloud-firestore-emulator-v1.15.1.jar"),
-    version: "1.15.1",
+    downloadPath: path.join(
+      CACHE_DIR,
+      `cloud-firestore-emulator-v${EMULATOR_VERSIONS.firestore}.jar`
+    ),
+    version: EMULATOR_VERSIONS.firestore,
     opts: {
       cacheDir: CACHE_DIR,
-      remoteUrl:
-        "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v1.15.1.jar",
+      remoteUrl: `https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v${EMULATOR_VERSIONS.firestore}.jar`,
       expectedSize: 61475851,
       expectedChecksum: "4f41d24a3c0f3b55ea22804a424cc0ee",
       namePrefix: "cloud-firestore-emulator",
     },
   },
   storage: {
-    downloadPath: path.join(CACHE_DIR, "cloud-storage-rules-runtime-v1.1.1.jar"),
-    version: "1.1.1",
+    downloadPath: path.join(
+      CACHE_DIR,
+      `cloud-storage-rules-runtime-v${EMULATOR_VERSIONS.storage}.jar`
+    ),
+    version: EMULATOR_VERSIONS.storage,
     opts: {
       cacheDir: CACHE_DIR,
-      remoteUrl:
-        "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-storage-rules-runtime-v1.1.1.jar",
+      remoteUrl: `https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-storage-rules-runtime-v${EMULATOR_VERSIONS.storage}.jar`,
       expectedSize: 46448285,
       expectedChecksum: "691982db4019d49d345a97151bdea7e2",
       namePrefix: "cloud-storage-rules-emulator",
@@ -64,14 +78,13 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
   },
   ui: experiments.isEnabled("emulatoruisnapshot")
     ? {
-        version: "SNAPSHOT",
-        downloadPath: path.join(CACHE_DIR, "ui-vSNAPSHOT.zip"),
-        unzipDir: path.join(CACHE_DIR, "ui-vSNAPSHOT"),
-        binaryPath: path.join(CACHE_DIR, "ui-vSNAPSHOT", "server", "server.js"),
+        version: EMULATOR_VERSIONS.ui,
+        downloadPath: path.join(CACHE_DIR, `ui-v${EMULATOR_VERSIONS.ui}.zip`),
+        unzipDir: path.join(CACHE_DIR, `ui-v${EMULATOR_VERSIONS.ui}`),
+        binaryPath: path.join(CACHE_DIR, `ui-v${EMULATOR_VERSIONS.ui}`, "server", "server.js"),
         opts: {
           cacheDir: CACHE_DIR,
-          remoteUrl:
-            "https://storage.googleapis.com/firebase-preview-drop/emulator/ui-vSNAPSHOT.zip",
+          remoteUrl: `https://storage.googleapis.com/firebase-preview-drop/emulator/ui-v${EMULATOR_VERSIONS.ui}.zip`,
           expectedSize: -1,
           expectedChecksum: "",
           skipCache: true,
@@ -80,31 +93,30 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
         },
       }
     : {
-        version: "1.11.1",
-        downloadPath: path.join(CACHE_DIR, "ui-v1.11.1.zip"),
-        unzipDir: path.join(CACHE_DIR, "ui-v1.11.1"),
-        binaryPath: path.join(CACHE_DIR, "ui-v1.11.1", "server", "server.js"),
+        version: EMULATOR_VERSIONS.ui,
+        downloadPath: path.join(CACHE_DIR, `ui-v${EMULATOR_VERSIONS.ui}.zip`),
+        unzipDir: path.join(CACHE_DIR, `ui-v${EMULATOR_VERSIONS.ui}`),
+        binaryPath: path.join(CACHE_DIR, `ui-v${EMULATOR_VERSIONS.ui}`, "server", "server.js"),
         opts: {
           cacheDir: CACHE_DIR,
-          remoteUrl: "https://storage.googleapis.com/firebase-preview-drop/emulator/ui-v1.11.1.zip",
+          remoteUrl: `https://storage.googleapis.com/firebase-preview-drop/emulator/ui-v${EMULATOR_VERSIONS.ui}.zip`,
           expectedSize: 3061713,
           expectedChecksum: "a4944414518be206280b495f526f18bf",
           namePrefix: "ui",
         },
       },
   pubsub: {
-    downloadPath: path.join(CACHE_DIR, "pubsub-emulator-0.1.0.zip"),
-    version: "0.1.0",
-    unzipDir: path.join(CACHE_DIR, "pubsub-emulator-0.1.0"),
+    downloadPath: path.join(CACHE_DIR, `pubsub-emulator-${EMULATOR_VERSIONS.pubsub}.zip`),
+    version: EMULATOR_VERSIONS.pubsub,
+    unzipDir: path.join(CACHE_DIR, `pubsub-emulator-${EMULATOR_VERSIONS.pubsub}`),
     binaryPath: path.join(
       CACHE_DIR,
-      "pubsub-emulator-0.1.0",
+      `pubsub-emulator-${EMULATOR_VERSIONS.pubsub}`,
       `pubsub-emulator/bin/cloud-pubsub-emulator${process.platform === "win32" ? ".bat" : ""}`
     ),
     opts: {
       cacheDir: CACHE_DIR,
-      remoteUrl:
-        "https://storage.googleapis.com/firebase-preview-drop/emulator/pubsub-emulator-0.1.0.zip",
+      remoteUrl: `https://storage.googleapis.com/firebase-preview-drop/emulator/pubsub-emulator-${EMULATOR_VERSIONS.pubsub}.zip`,
       expectedSize: 36623622,
       expectedChecksum: "81704b24737d4968734d3e175f4cde71",
       namePrefix: "pubsub-emulator",
