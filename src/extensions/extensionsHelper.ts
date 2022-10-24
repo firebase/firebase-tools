@@ -36,7 +36,7 @@ import {
 } from "./extensionsApi";
 import { Extension, ExtensionSource, ExtensionSpec, ExtensionVersion, Param } from "./types";
 import * as refs from "./refs";
-import { getLocalExtensionSpec } from "./localHelper";
+import { EXTENSIONS_SPEC_FILE, readFile, getLocalExtensionSpec } from "./localHelper";
 import { promptOnce } from "../prompt";
 import { logger } from "../logger";
 import { envOverride } from "../utils";
@@ -617,7 +617,7 @@ export async function publishExtensionVersionFromRemoteRepo(args: {
     }
   } else {
     logger.info(
-      `${clc.red("Warning:")} You are about to associate repo URI ${clc.bold(
+      `\n${clc.red("Warning:")} You are about to associate repo URI ${clc.bold(
         repoUri
       )} with Extension ${clc.bold(
         extensionRef
@@ -705,6 +705,12 @@ export async function publishExtensionVersionFromRemoteRepo(args: {
   }
   const archiveName = fs.readdirSync(tempDirectory.name)[0];
   const rootDirectory = path.join(tempDirectory.name, archiveName, extensionRoot);
+  // Pre-validation to show a more useful error message in the context of a temp directory.
+  try {
+    readFile(path.resolve(rootDirectory, EXTENSIONS_SPEC_FILE));
+  } catch (err: any) {
+    throw new FirebaseError(`Failed to find ${clc.bold(EXTENSIONS_SPEC_FILE)} in directory ${clc.bold(extensionRoot)}. Please verify the root and try again.`);
+  }
   const { extensionSpec, notes } = await validateExtensionSpec({
     publisherId: args.publisherId,
     extensionId: args.extensionId,
@@ -718,7 +724,7 @@ export async function publishExtensionVersionFromRemoteRepo(args: {
   const confirmed = await confirm({
     nonInteractive: args.nonInteractive,
     force: args.force,
-    default: true,
+    default: false,
   });
   if (!confirmed) {
     return;
