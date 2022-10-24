@@ -15,7 +15,6 @@ import { consoleInstallLink } from "../extensions/publishHelpers";
 import { requireAuth } from "../requireAuth";
 import { FirebaseError } from "../error";
 import * as utils from "../utils";
-import { logger } from "..";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),

@@ -676,7 +676,7 @@ export async function publishExtensionVersionFromRemoteRepo(args: {
   try {
     const response = await fetch(archiveUri);
     if (response.ok) {
-      await response.body.pipe(unzipper.Extract({ path: tempDirectory.name })).promise();
+      await response.body.pipe(unzipper.Extract({ path: tempDirectory.name })).promise(); // eslint-disable-line new-cap
     }
   } catch (err: any) {
     throw new FirebaseError(
