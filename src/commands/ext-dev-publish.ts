@@ -26,7 +26,10 @@ marked.setOptions({
 export const command = new Command("ext:dev:publish <extensionRef>")
   .description(`publish a new version of an extension`)
   .option(`-s, --stage <stage>`, `release stage (supports "alpha", "beta", "rc", and "stable")`)
-  .option(`--repo <repo>`, `Public Git repo URI (only required for first version, cannot be changed)`)
+  .option(
+    `--repo <repo>`,
+    `Public Git repo URI (only required for first version, cannot be changed)`
+  )
   .option(`--ref <ref>`, `commit hash, branch, or tag to build from the repo (defaults to HEAD)`)
   .option(
     `--root <root>`,
