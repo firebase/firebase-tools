@@ -28,7 +28,7 @@ const CACHE_DIR =
 export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDetails } = {
   database: {
     downloadPath: path.join(CACHE_DIR, "firebase-database-emulator-v4.11.0.jar"),
-    version: "4.10.0",
+    version: "4.11.0",
     opts: {
       cacheDir: CACHE_DIR,
       remoteUrl:
