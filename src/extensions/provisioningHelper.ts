@@ -7,6 +7,7 @@ import { Client } from "../apiv2";
 import { flattenArray } from "../functional";
 import { FirebaseError } from "../error";
 import { getExtensionSpec, InstanceSpec } from "../deploy/extensions/planner";
+import { logger } from "..";
 
 /** Product for which provisioning can be (or is) deferred */
 export enum DeferredProduct {
@@ -55,12 +56,16 @@ async function checkProducts(projectId: string, usedProducts: DeferredProduct[])
   if (usedProducts.includes(DeferredProduct.AUTH)) {
     isAuthProvisionedPromise = isAuthProvisioned(projectId);
   }
-
-  if (isStorageProvisionedPromise && !(await isStorageProvisionedPromise)) {
-    needProvisioning.push(DeferredProduct.STORAGE);
-  }
-  if (isAuthProvisionedPromise && !(await isAuthProvisionedPromise)) {
-    needProvisioning.push(DeferredProduct.AUTH);
+  try {
+    if (isStorageProvisionedPromise && !(await isStorageProvisionedPromise)) {
+      needProvisioning.push(DeferredProduct.STORAGE);
+    }
+    if (isAuthProvisionedPromise && !(await isAuthProvisionedPromise)) {
+      needProvisioning.push(DeferredProduct.AUTH);
+    }
+  } catch (err: any) {
+    // If a provisioning check throws, we should fail open since this is best effort.
+    logger.debug(`Error while checking product provisioning, failing open: ${err}`);
   }
 
   if (needProvisioning.length > 0) {

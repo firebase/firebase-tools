@@ -1,0 +1,1 @@
+- Fixes an issue where an error during product provisioning check would block `firebase deploy --only extensions` (#5074).
