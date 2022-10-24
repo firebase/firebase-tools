@@ -30,9 +30,9 @@ export const command = new Command("ext:dev:publish <extensionRef>")
   .option(`--repo <repo>`, `Public Git repo URI (only required for first version)`)
   .option(
     `-r, --ref <ref>`,
-    `commit hash, branch, or tag to build from the repo (defaults to "master" branch)`
+    `commit hash, branch, or tag to build from the repo (defaults to HEAD)`
   )
-  .option(`--root <root>`, `root of the Extension to publish (defaults to the root of the repo "/")`)
+  .option(`--root <root>`, `root directory that contains this Extension (defaults to previous version's root or root of repo if none set)`)
   .withForce()
   .help(
     "if you have not previously published a version of this extension, this will " +

@@ -562,11 +562,16 @@ async function validateExtensionSpec(args: {
 }
 
 /**
- * Publishes an ExtensionVersion from a remote repo.
+ * Publishes an Extension version from a remote repo.
  *
- * @param publisherId the publisher profile to publish this extension under.
- * @param extensionId the ID of the extension. This must match the `name` field of extension.yaml.
- * @param rootDirectory the directory containing extension.yaml
+ * @param publisherId the ID of the Publisher this Extension will be published under
+ * @param extensionId the ID of the Extension to be published
+ * @param repoUri the URI of the repo where this Extension's source exists
+ * @param sourceRef the commit hash, branch, or tag name in the repo to publish from
+ * @param extensionRoot the root directory that contains this Extension's source
+ * @param stage the release stage to publish
+ * @param nonInteractive whether to display prompts
+ * @param force whether to force confirmations
  */
 export async function publishExtensionVersionFromRemoteRepo(args: {
   publisherId: string;
@@ -665,8 +670,8 @@ export async function publishExtensionVersionFromRemoteRepo(args: {
     }
   }
 
-  // Fetch and validate Extension spec from remote repo.
-  const archiveUri = `${repoUri}/archive/${sourceRef}.zip`;
+  // Fetch and validate Extension from remote repo.
+  const archiveUri = path.join(repoUri, `archive/${sourceRef}.zip`);
   const tempDirectory = tmp.dirSync({ unsafeCleanup: true });
   try {
     const response = await fetch(archiveUri);
@@ -679,20 +684,17 @@ export async function publishExtensionVersionFromRemoteRepo(args: {
     );
   }
   const archiveName = fs.readdirSync(tempDirectory.name)[0];
+  const rootDirectory = path.join(tempDirectory.name, archiveName, extensionRoot);
   const { extensionSpec, notes } = await validateExtensionSpec({
     publisherId: args.publisherId,
     extensionId: args.extensionId,
-    rootDirectory: path.join(tempDirectory.name, archiveName, extensionRoot),
+    rootDirectory: rootDirectory,
     latestVersion: extension?.latestVersion,
     stage: args.stage,
   });
 
-  // TODO: Display release notes.
-  logger.info(
-    `\nYou are about to publish version ${clc.bold(extensionSpec.version)} of Extension ${clc.bold(
-      extensionRef
-    )} from ${clc.bold(path.join(repoUri, extensionRoot))} at source ref ${clc.bold(sourceRef)}.`
-  );
+  const sourceUri = path.join(repoUri, "tree", sourceRef, extensionRoot);
+  displayReleaseNotes(extensionRef, extensionSpec.version, notes, sourceUri);
   const confirmed = await confirm({
     nonInteractive: args.nonInteractive,
     force: args.force,
@@ -733,18 +735,22 @@ export async function publishExtensionVersionFromRemoteRepo(args: {
 }
 
 /**
+ * Publishes an Extension version from local source.
  *
- * @param publisherId the publisher profile to publish this extension under.
- * @param extensionId the ID of the extension. This must match the `name` field of extension.yaml.
- * @param rootDirectory the directory containing  extension.yaml
+ * @param publisherId the ID of the Publisher this Extension will be published under
+ * @param extensionId the ID of the Extension to be published
+ * @param rootDirectory the root directory that contains this Extension's source
+ * @param stage the release stage to publish
+ * @param nonInteractive whether to display prompts
+ * @param force whether to force confirmations
  */
 export async function publishExtensionVersionFromLocalSource(args: {
   publisherId: string;
   extensionId: string;
   rootDirectory: string;
+  stage: ReleaseStage;
   nonInteractive: boolean;
   force: boolean;
-  stage: ReleaseStage;
 }): Promise<ExtensionVersion | undefined> {
   let extension;
   try {
@@ -761,7 +767,8 @@ export async function publishExtensionVersionFromLocalSource(args: {
     stage: args.stage,
   });
 
-  displayReleaseNotes(args.publisherId, args.extensionId, extensionSpec.version, notes);
+  const extensionRef = `${args.publisherId}/${args.extensionId}`;
+  displayReleaseNotes(extensionRef, extensionSpec.version, notes);
   const confirmed = await confirm({
     nonInteractive: args.nonInteractive,
     force: args.force,
@@ -771,7 +778,7 @@ export async function publishExtensionVersionFromLocalSource(args: {
     return;
   }
 
-  const ref = `${args.publisherId}/${args.extensionId}@${extensionSpec.version}`;
+  const extensionVersionRef = `${extensionRef}@${extensionSpec.version}`;
   let packageUri: string;
   let objectPath = "";
   const uploadSpinner = ora(" Archiving and uploading extension source code");
@@ -786,12 +793,12 @@ export async function publishExtensionVersionFromLocalSource(args: {
       original: err,
     });
   }
-  const publishSpinner = ora(`Publishing ${clc.bold(ref)}`);
+  const publishSpinner = ora(`Publishing ${clc.bold(extensionVersionRef)}`);
   let res;
   try {
     publishSpinner.start();
-    res = await publishExtensionVersion(ref, packageUri);
-    publishSpinner.succeed(` Successfully published ${clc.bold(ref)}`);
+    res = await publishExtensionVersion(extensionVersionRef, packageUri);
+    publishSpinner.succeed(` Successfully published ${clc.bold(extensionVersionRef)}`);
   } catch (err: any) {
     publishSpinner.fail();
     if (err.status === 404) {
@@ -876,26 +883,30 @@ export function getPublisherProjectFromName(publisherName: string): number {
 }
 
 /**
- * Confirm the version number in extension.yaml with the user .
+ * Displays the release notes and confirmation message for an Extension about to be published.
  *
- * @param publisherId the publisher ID of the extension being installed
- * @param extensionId the extension ID of the extension being installed
- * @param versionId the version ID of the extension being installed
+ * @param extensionRef the ref of the Extension being published
+ * @param versionId the version ID of the Extension being published
+ * @param releaseNotes the release notes for the version being published (if any)
+ * @param sourceUri the repo URI + root from which the Extension will be published
+ * @param sourceRef the source ref in the repo from which the Extension will be published
  */
 export function displayReleaseNotes(
-  publisherId: string,
-  extensionId: string,
+  extensionRef: string,
   versionId: string,
-  releaseNotes?: string
+  releaseNotes?: string,
+  sourceUri?: string
 ): void {
+  const source = sourceUri || "local source";
   const releaseNotesMessage = releaseNotes
-    ? ` Release notes for this version:\n${marked(releaseNotes)}\n`
-    : "\n";
+    ? `Release notes for this version:\n${marked(releaseNotes)}\n`
+    : "";
   const message =
-    `You are about to publish version ${clc.green(versionId)} of ${clc.green(
-      `${publisherId}/${extensionId}`
-    )} to Firebase's registry of extensions.${releaseNotesMessage}` +
-    "Once an extension version is published, it cannot be changed. If you wish to make changes after publishing, you will need to publish a new version.\n\n";
+    `\nYou are about to publish version ${clc.green(clc.bold(versionId))} of Extension ${clc.bold(
+      `${extensionRef}`
+    )} from ${clc.bold(source)} to Firebase's registry of Extensions. ` +
+    releaseNotesMessage +
+    `Once an Extension version is published, it cannot be changed. If you wish to make changes after publishing, you will need to publish a new version.\n`;
   logger.info(message);
 }
 
