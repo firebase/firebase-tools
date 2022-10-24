@@ -9,6 +9,7 @@ import { IPV4_UNSPECIFIED, IPV6_UNSPECIFIED, Resolver } from "./dns";
 import { Emulators, ListenSpec } from "./types";
 import { Constants } from "./constants";
 import { EmulatorLogger } from "./emulatorLogger";
+import { execSync } from "node:child_process";
 
 // See:
 // - https://stackoverflow.com/questions/4313403/why-do-browsers-block-some-ports
@@ -121,9 +122,19 @@ export async function checkListenable(
   // Not using tcpport.check since it is based on trying to establish a Socket
   // connection, not on *listening* on a host:port.
   return new Promise((resolve, reject) => {
-    const dummyServer = createServer(() => {
-      // noop
-    });
+    // For SOME REASON, we can still create a server on port 5000 on macOS. Why
+    // we do not know, but we need to keep this stupid check here because we
+    // *do* want to still *try* to default to 5000.
+    if (process.platform === "darwin") {
+      try {
+        execSync(`lsof -i :${addr.port} -sTCP:LISTEN`);
+        // If this succeeds, it found something listening. Fail.
+        return resolve(false);
+      } catch (e) {
+        // If lsof errored the port is NOT in use, continue.
+      }
+    }
+    const dummyServer = createServer();
     dummyServer.once("error", (err) => {
       dummyServer.removeAllListeners();
       const e = err as Error & { code?: string };
@@ -256,6 +267,10 @@ export async function resolveHostAndAssignPorts(
           emuLogger.logLabeled("DEBUG", name, `portUtils: skipping restricted port ${p}`);
           continue;
         }
+        if (p === 5001 && /^hosting/i.exec(name)) {
+          // We don't want Hosting to ever try to take port 5001.
+          continue;
+        }
         const available: ListenSpec[] = [];
         const unavailable: string[] = [];
         let i;
@@ -263,7 +278,22 @@ export async function resolveHostAndAssignPorts(
           const addr = addrs[i];
           const listen = listenSpec(addr, p);
           // This must be done one by one since the addresses may overlap.
-          if (await checkListenable(listen)) {
+          let listenable: boolean;
+          try {
+            listenable = await checkListenable(listen);
+          } catch (err) {
+            emuLogger.logLabeled(
+              "WARN",
+              name,
+              `Error when trying to check port ${p} on ${addr.address}: ${err}`
+            );
+            // Even if portFixed is false, don't try other ports since the
+            // address may be entirely unavailable on all ports (e.g. no IPv6).
+            // https://github.com/firebase/firebase-tools/issues/4741#issuecomment-1275318134
+            unavailable.push(addr.address);
+            continue;
+          }
+          if (listenable) {
             available.push(listen);
           } else {
             if (!portFixed) {

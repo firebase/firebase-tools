@@ -8,6 +8,7 @@ import { BEFORE_CREATE_EVENT, BEFORE_SIGN_IN_EVENT } from "../../functions/event
 import * as cloudfunctions from "../../gcp/cloudfunctions";
 import * as projectConfig from "../../functions/projectConfig";
 import { BLOCKING_LABEL, CODEBASE_LABEL, HASH_LABEL } from "../../functions/constants";
+import { FirebaseError } from "../../error";
 
 describe("cloudfunctions", () => {
   const FUNCTION_NAME: backend.TargetIds = {
@@ -718,6 +719,26 @@ describe("cloudfunctions", () => {
           "service-account1@",
         ])
       ).to.not.be.rejected;
+    });
+  });
+
+  describe("listFunctions", () => {
+    it("should pass back an error with the correct status", async () => {
+      nock(functionsOrigin)
+        .get("/v1/projects/foo/locations/-/functions")
+        .reply(403, { error: "You don't have permissions." });
+
+      let errCaught = false;
+      try {
+        await cloudfunctions.listFunctions("foo", "-");
+      } catch (err: unknown) {
+        errCaught = true;
+        expect(err).instanceOf(FirebaseError);
+        expect(err).has.property("status", 403);
+      }
+
+      expect(errCaught, "should have caught an error").to.be.true;
+      expect(nock.isDone()).to.be.true;
     });
   });
 });

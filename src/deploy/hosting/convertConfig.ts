@@ -112,9 +112,9 @@ export async function convertConfig(
             `Deploying hosting site ${deploy.config.site}, did not have permissions to check for backends: `,
             err
           );
-        } else {
-          throw err;
         }
+      } else {
+        throw err;
       }
     }
   }

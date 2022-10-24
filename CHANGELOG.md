@@ -1,1 +1,2 @@
 - Fixes an issue where an error during product provisioning check would block `firebase deploy --only extensions` (#5074).
+- Releases RTDB Emulator v4.11.0: Wire protocol update for `startAfter`, `endBefore`.

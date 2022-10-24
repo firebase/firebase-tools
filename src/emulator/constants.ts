@@ -19,7 +19,7 @@ export const FIND_AVAILBLE_PORT_BY_DEFAULT: Record<Emulators, boolean> = {
   ui: true,
   hub: true,
   logging: true,
-  hosting: false,
+  hosting: true,
   functions: false,
   firestore: false,
   database: false,
