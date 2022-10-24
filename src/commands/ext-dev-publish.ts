@@ -57,6 +57,7 @@ export const command = new Command("ext:dev:publish <extensionRef>")
       );
     }
     let res;
+    // TODO: Default to this path instead of local source in a major version.
     if (options.ref) {
       res = await publishExtensionVersionFromRemoteRepo({
         publisherId,
