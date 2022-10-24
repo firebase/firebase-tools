@@ -32,7 +32,10 @@ export const command = new Command("ext:dev:publish <extensionRef>")
     `-r, --ref <ref>`,
     `commit hash, branch, or tag to build from the repo (defaults to HEAD)`
   )
-  .option(`--root <root>`, `root directory that contains this Extension (defaults to previous version's root or root of repo if none set)`)
+  .option(
+    `--root <root>`,
+    `root directory that contains this Extension (defaults to previous version's root or root of repo if none set)`
+  )
   .withForce()
   .help(
     "if you have not previously published a version of this extension, this will " +
