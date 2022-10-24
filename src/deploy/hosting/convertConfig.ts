@@ -49,16 +49,16 @@ export function findEndpointForRewrite(
   targetBackend: backend.Backend,
   id: string,
   region: string | undefined
-): backend.Endpoint | undefined {
+): [backend.Endpoint | undefined, boolean] {
   const endpoints = backend.allEndpoints(targetBackend).filter((e) => e.id === id);
   if (endpoints.length === 0) {
-    return;
+    return [undefined, false];
   }
   if (endpoints.length === 1) {
     if (region && region !== endpoints[0].region) {
-      return;
+      return [undefined, true];
     }
-    return endpoints[0];
+    return [endpoints[0], true];
   }
   if (!region) {
     const us = endpoints.find((e) => e.region === "us-central1");
@@ -72,9 +72,9 @@ export function findEndpointForRewrite(
       `Function \`${id}\` found in multiple regions, defaulting to \`us-central1\`. ` +
         `To rewrite to a different region, specify a \`region\` for the rewrite in \`firebase.json\`.`
     );
-    return us;
+    return [us, true];
   }
-  return endpoints.find((e) => e.region === region);
+  return [endpoints.find((e) => e.region === region), true];
 }
 
 /**
@@ -144,16 +144,33 @@ export async function convertConfig(
       const id = rewrite.function.functionId;
       const region = rewrite.function.region;
       let endpoint: backend.Endpoint | undefined = undefined;
+      let fnIsPresent = false;
       for (const backend of wantBackends) {
         const possibleEndpoint = findEndpointForRewrite(deploy.config.site, backend, id, region);
         if (possibleEndpoint) {
-          endpoint = possibleEndpoint;
+          [endpoint, fnIsPresent] = possibleEndpoint;
         }
       }
+      console.log(fnIsPresent);
+      let fnIsPresentInExisting = false;
       if (!endpoint) {
-        endpoint = findEndpointForRewrite(deploy.config.site, haveBackend, id, region);
+        [endpoint, fnIsPresentInExisting] = findEndpointForRewrite(
+          deploy.config.site,
+          haveBackend,
+          id,
+          region
+        );
       }
+      console.log(fnIsPresentInExisting);
       if (!endpoint) {
+        console.log("no endpoint");
+        if (fnIsPresent || fnIsPresentInExisting) {
+          console.log("no endpoint");
+          throw new FirebaseError(
+            `Unable to find a valid endpoint for function. Functions matching the rewrite
+  are present but in the wrong region.`
+          );
+        }
         // This could possibly succeed if there has been a function written
         // outside firebase tooling. But it will break in v2. We might need to
         // revisit this.
