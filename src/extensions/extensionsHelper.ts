@@ -709,7 +709,11 @@ export async function publishExtensionVersionFromRemoteRepo(args: {
   try {
     readFile(path.resolve(rootDirectory, EXTENSIONS_SPEC_FILE));
   } catch (err: any) {
-    throw new FirebaseError(`Failed to find ${clc.bold(EXTENSIONS_SPEC_FILE)} in directory ${clc.bold(extensionRoot)}. Please verify the root and try again.`);
+    throw new FirebaseError(
+      `Failed to find ${clc.bold(EXTENSIONS_SPEC_FILE)} in directory ${clc.bold(
+        extensionRoot
+      )}. Please verify the root and try again.`
+    );
   }
   const { extensionSpec, notes } = await validateExtensionSpec({
     publisherId: args.publisherId,
