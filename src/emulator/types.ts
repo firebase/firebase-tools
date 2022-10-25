@@ -159,6 +159,12 @@ export interface EmulatorDownloadOptions {
   skipCache?: boolean;
 }
 
+export interface EmulatorUpdateDetails {
+  version: string;
+  expectedSize: number;
+  expectedChecksum: string;
+}
+
 export interface EmulatorDownloadDetails {
   opts: EmulatorDownloadOptions;
 
