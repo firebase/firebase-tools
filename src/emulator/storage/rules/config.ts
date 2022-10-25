@@ -3,6 +3,9 @@ import { FirebaseError } from "../../../error";
 import { readFile } from "../../../fsutils";
 import { Options } from "../../../options";
 import { SourceFile } from "./types";
+import { Constants } from "../../constants";
+import { Emulators } from "../../types";
+import { EmulatorLogger } from "../../emulatorLogger";
 
 function getSourceFile(rules: string, options: Options): SourceFile {
   const path = options.config.path(rules);
@@ -19,6 +22,17 @@ export function getStorageRulesConfig(
   projectId: string,
   options: Options
 ): SourceFile | RulesConfig[] {
+  if (Constants.isDemoProject(projectId)) {
+    const storageLogger = EmulatorLogger.forEmulator(Emulators.STORAGE);
+    storageLogger.logLabeled(
+      "BULLET",
+      "storage",
+      `Detected demo project ID "${projectId}", using a default (open) rules configuration.`
+    );
+    // FIXME log some kind of default rules thingy
+    const path = __dirname + "/../../../../templates/emulators/default_storage.rules";
+    return { name: path, content: readFile(path) };
+  }
   const storageConfig = options.config.data.storage;
   if (!storageConfig) {
     throw new FirebaseError(

@@ -31,6 +31,17 @@ describe("Storage Rules Config", () => {
     expect(result.content).to.contain("allow read, write: if true");
   });
 
+  it("should use default config for project IDs using demo- prefix", () => {
+    const config = getOptions({
+      data: {},
+      path: resolvePath,
+    });
+    const result = getStorageRulesConfig("demo-projectid", config) as SourceFile;
+
+    expect(result.name).to.contain("templates/emulators/default_storage.rules");
+    expect(result.content).to.contain("allow read, write;");
+  });
+
   it("should parse rules file for multiple targets", () => {
     const mainRulesContent = Buffer.from(StorageRulesFiles.readWriteIfTrue.content);
     const otherRulesContent = Buffer.from(StorageRulesFiles.readWriteIfAuth.content);
