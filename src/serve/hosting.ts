@@ -1,8 +1,8 @@
 const morgan = require("morgan");
-import { IncomingMessage, ServerResponse } from "http";
-import { server as superstatic } from "superstatic";
+const { server: superstatic } = require("superstatic"); // eslint-disable-line @typescript-eslint/no-var-requires, @typescript-eslint/no-unsafe-assignment
 import * as clc from "colorette";
 import { isIPv4 } from "net";
+import { NextFunction, Request, Response } from "express";
 
 import { detectProjectRoot } from "../detectProjectRoot";
 import { FirebaseError } from "../error";
@@ -52,13 +52,13 @@ function startServer(options: any, config: any, port: number, init: TemplateServ
   const server = superstatic({
     debug: false,
     port: port,
-    hostname: options.host,
+    host: options.host,
     config: config,
     compression: true,
-    cwd: detectProjectRoot(options) || undefined,
+    cwd: detectProjectRoot(options),
     stack: "strict",
     before: {
-      files: (req: IncomingMessage, res: ServerResponse, next: (err?: unknown) => void) => {
+      files: (req: Request, res: Response, next: NextFunction) => {
         // We do these in a single method to ensure order of operations
         morganMiddleware(req, res, () => null);
         firebaseMiddleware(req, res, next);
