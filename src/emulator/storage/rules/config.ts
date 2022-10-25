@@ -31,7 +31,6 @@ export function getStorageRulesConfig(
         "storage",
         `Detected demo project ID "${projectId}", using a default (open) rules configuration.`
       );
-      // FIXME log some kind of default rules thingy
       const path = __dirname + "/../../../../templates/emulators/default_storage.rules";
       return { name: path, content: readFile(path) };
     }
