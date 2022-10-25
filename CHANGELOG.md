@@ -1,1 +1,2 @@
-Release RTDB Emulator v4.11.0: Wire protocol update for `startAfter`, `endBefore`.
+- Releases RTDB Emulator v4.11.0: Wire protocol update for `startAfter`, `endBefore`.
+- Changes `superstatic` dependency to `v8`, addressing Hosting emulator issues in the Hosting emulator.
