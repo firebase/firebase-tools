@@ -14,7 +14,7 @@ import { logger } from "../../logger";
 
 /**
  * extractPattern contains the logic for extracting exactly one glob/regexp
- * from a Hosting rewrite/redirect/header specification
+ * from a Hosting rewrite/redirect/header specification.
  */
 function extractPattern(type: string, source: HostingSource): api.HasPattern {
   let glob: string | undefined;
@@ -42,7 +42,10 @@ function extractPattern(type: string, source: HostingSource): api.HasPattern {
 }
 
 /**
- * Finds an endpoint suitable for deploy at a site given an id and optional region
+ * Finds an endpoint suitable for deploy at a site given an id and optional region.
+ *
+ *  @returns a pair of matching endpoint, if found, and a boolean indicating whether
+ *  the function exists in some region.
  */
 export function findEndpointForRewrite(
   site: string,
@@ -146,26 +149,20 @@ export async function convertConfig(
       let endpoint: backend.Endpoint | undefined = undefined;
       let fnIsPresent = false;
       for (const backend of wantBackends) {
-        const possibleEndpoint = findEndpointForRewrite(deploy.config.site, backend, id, region);
-        if (possibleEndpoint) {
-          [endpoint, fnIsPresent] = possibleEndpoint;
-        }
+        [endpoint, fnIsPresent] = findEndpointForRewrite(deploy.config.site, backend, id, region);
       }
-      console.log(fnIsPresent);
-      let fnIsPresentInExisting = false;
       if (!endpoint) {
-        [endpoint, fnIsPresentInExisting] = findEndpointForRewrite(
+        const [existingEndpoint, fnIsPresentInExisting] = findEndpointForRewrite(
           deploy.config.site,
           haveBackend,
           id,
           region
         );
-      }
-      console.log(fnIsPresentInExisting);
-      if (!endpoint) {
-        console.log("no endpoint");
-        if (fnIsPresent || fnIsPresentInExisting) {
-          console.log("no endpoint");
+        [endpoint, fnIsPresent] = [existingEndpoint, fnIsPresent || fnIsPresentInExisting];
+
+        if (fnIsPresent) {
+          // If the function is a firebase-managed function, we consider it an error for
+          // a rewrite not to point to a valid endpoint.
           throw new FirebaseError(
             `Unable to find a valid endpoint for function. Functions matching the rewrite
   are present but in the wrong region.`
