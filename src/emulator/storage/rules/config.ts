@@ -22,19 +22,19 @@ export function getStorageRulesConfig(
   projectId: string,
   options: Options
 ): SourceFile | RulesConfig[] {
-  if (Constants.isDemoProject(projectId)) {
-    const storageLogger = EmulatorLogger.forEmulator(Emulators.STORAGE);
-    storageLogger.logLabeled(
-      "BULLET",
-      "storage",
-      `Detected demo project ID "${projectId}", using a default (open) rules configuration.`
-    );
-    // FIXME log some kind of default rules thingy
-    const path = __dirname + "/../../../../templates/emulators/default_storage.rules";
-    return { name: path, content: readFile(path) };
-  }
   const storageConfig = options.config.data.storage;
   if (!storageConfig) {
+    if (Constants.isDemoProject(projectId)) {
+      const storageLogger = EmulatorLogger.forEmulator(Emulators.STORAGE);
+      storageLogger.logLabeled(
+        "BULLET",
+        "storage",
+        `Detected demo project ID "${projectId}", using a default (open) rules configuration.`
+      );
+      // FIXME log some kind of default rules thingy
+      const path = __dirname + "/../../../../templates/emulators/default_storage.rules";
+      return { name: path, content: readFile(path) };
+    }
     throw new FirebaseError(
       "Cannot start the Storage emulator without rules file specified in firebase.json: run 'firebase init' and set up your Storage configuration"
     );
