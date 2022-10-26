@@ -7,7 +7,7 @@ import { RTDBRemoveRemote } from "../../database/removeRemote";
 describe("RemoveRemote", () => {
   const instance = "fake-db";
   const host = "https://firebaseio.com";
-  const remote = new RTDBRemoveRemote(instance, host);
+  const remote = new RTDBRemoveRemote(instance, host, /* disableTriggers= */ false);
   const serverUrl = utils.getDatabaseUrl(host, instance, "");
 
   afterEach(() => {
@@ -50,5 +50,18 @@ describe("RemoveRemote", () => {
           "Data requested exceeds the maximum size that can be accessed with a single request.",
       });
     return expect(remote.deleteSubPath("/a/b", ["1", "2", "3"])).to.eventually.eql(false);
+  });
+
+  it("should send disableTriggers param", () => {
+    const remoteWithDisableTriggers = new RTDBRemoveRemote(
+      instance,
+      host,
+      /* disableTriggers= */ true
+    );
+    nock(serverUrl)
+      .patch("/a/b.json")
+      .query({ print: "silent", writeSizeLimit: "tiny", disableTriggers: "true" })
+      .reply(200, {});
+    return expect(remoteWithDisableTriggers.deletePath("/a/b")).to.eventually.eql(true);
   });
 });

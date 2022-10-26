@@ -24,7 +24,7 @@ export class RTDBRemoveRemote implements RemoveRemote {
   private apiClient: Client;
   private disableTriggers: boolean;
 
-  constructor(instance: string, host: string, disableTriggers: boolean = false) {
+  constructor(instance: string, host: string, disableTriggers: boolean) {
     this.instance = instance;
     this.host = host;
     this.disableTriggers = disableTriggers;
