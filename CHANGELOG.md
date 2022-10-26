@@ -1,2 +1,4 @@
-Release RTDB Emulator v4.11.0: Wire protocol update for `startAfter`, `endBefore`.
-Add `--disable-triggers` flag to RTDB write commands.
+- Releases RTDB Emulator v4.11.0: Wire protocol update for `startAfter`, `endBefore`.
+- Changes `superstatic` dependency to `v8`, addressing Hosting emulator issues on Windows.
+- Fixes internal library that was not being correctly published.
+- Adds `--disable-triggers` flag to RTDB write commands.
