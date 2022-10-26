@@ -66,6 +66,9 @@ export function resolveString(
   return output;
 }
 
+/**
+ *
+ */
 export function resolveList(
   from: build.FieldList,
   paramValues: Record<string, ParamValue>
@@ -96,7 +99,7 @@ export function resolveBoolean(
   return resolveExpression("boolean", from, paramValues) as boolean;
 }
 
-type ParamInput<T> = TextInput<T> | SelectInput<T> | ResourceInput;
+type ParamInput<T> = TextInput<T> | SelectInput<T> | ListSelectInput | ResourceInput;
 
 type ParamBase<T extends string | number | boolean | string[]> = {
   // name of the param. Will be exposed as an environment variable with this name
@@ -137,6 +140,12 @@ export function isSelectInput<T>(input: ParamInput<T>): input is SelectInput<T> 
  */
 export function isResourceInput<T>(input: ParamInput<T>): input is ResourceInput {
   return {}.hasOwnProperty.call(input, "resource");
+}
+/**
+ * Determines whether an Input field value can be coerced to ListSelectInput.
+ */
+export function isListSelectInput<T>(input: ParamInput<T>): input is ListSelectInput {
+  return {}.hasOwnProperty.call(input, "listSelect");
 }
 
 export interface StringParam extends ParamBase<string> {
@@ -188,6 +197,12 @@ type ResourceType = "storage.googleapis.com/Bucket" | string;
 interface ResourceInput {
   resource: {
     type: ResourceType;
+  };
+}
+
+interface ListSelectInput {
+  listSelect: {
+    options: Array<SelectOptions<string>>;
   };
 }
 
@@ -472,13 +487,60 @@ async function promptParam(
     const provided = await promptBooleanParam(param, resolvedDefault as boolean | undefined);
     return new ParamValue(provided.toString(), false, { boolean: true });
   } else if (param.type === "list") {
-    throw new FirebaseError(`Unimplemented`);
+    const provided = await promptList(param, resolvedDefault as string[] | undefined);
+    return new ParamValue(JSON.stringify(provided), false, { list: true });
   } else if (param.type === "secret") {
     throw new FirebaseError(
       `Somehow ended up trying to interactively prompt for secret parameter ${param.name}, which should never happen.`
     );
   }
   assertExhaustive(param);
+}
+
+async function promptList(param: ListParam, resolvedDefault?: string[]): Promise<string[]> {
+  if (!param.input) {
+    const defaultToText: TextInput<string> = { text: {} };
+    param.input = defaultToText;
+  }
+  let prompt: string;
+  const stringToList = (res: string): string[] | retryInput => {
+    const converted = JSON.parse(res) || [];
+    if (!Array.isArray(converted)) {
+      return { message: `"${res}" is not an array` };
+    }
+    for (const entry of converted) {
+      if (typeof entry !== "string") {
+        return { message: `Parsed array contains a non-string element ${entry}` };
+      }
+    }
+    return converted as string[];
+  };
+
+  if (isSelectInput(param.input)) {
+    throw new FirebaseError("List params cannot have non-list selector inputs");
+  } else if (isListSelectInput(param.input)) {
+    prompt = `Select a value for ${param.label || param.name}:`;
+    if (param.description) {
+      prompt += ` \n(${param.description})`;
+    }
+    prompt += "\nSelect an option with the arrow keys, and use Enter to confirm your choice. ";
+    return promptSelectMultiple<string>(
+      prompt,
+      param.input,
+      resolvedDefault,
+      (res: string[]) => res
+    );
+  } else if (isTextInput(param.input)) {
+    prompt = `Enter a list of strings for ${param.label || param.name}:`;
+    if (param.description) {
+      prompt += ` \n(${param.description})`;
+    }
+    return promptText<string[]>(prompt, param.input, resolvedDefault, stringToList);
+  } else if (isResourceInput(param.input)) {
+    throw new FirebaseError("Boolean params cannot have Cloud Resource selector inputs");
+  } else {
+    assertExhaustive(param.input);
+  }
 }
 
 async function promptBooleanParam(
@@ -499,6 +561,8 @@ async function promptBooleanParam(
     }
     prompt += "\nSelect an option with the arrow keys, and use Enter to confirm your choice. ";
     return promptSelect<boolean>(prompt, param.input, resolvedDefault, isTruthyInput);
+  } else if (isListSelectInput(param.input)) {
+    throw new FirebaseError("Non-list params cannot have list selector inputs");
   } else if (isTextInput(param.input)) {
     prompt = `Enter a boolean value for ${param.label || param.name}:`;
     if (param.description) {
@@ -529,6 +593,8 @@ async function promptStringParam(
       prompt += ` \n(${param.description})`;
     }
     return promptResourceString(prompt, param.input, projectId, resolvedDefault);
+  } else if (isListSelectInput(param.input)) {
+    throw new FirebaseError("Non-list params cannot have list selector inputs");
   } else if (isSelectInput(param.input)) {
     prompt = `Select a value for ${param.label || param.name}:`;
     if (param.description) {
@@ -569,8 +635,9 @@ async function promptIntParam(param: IntParam, resolvedDefault?: number): Promis
       }
       return +res;
     });
-  }
-  if (isTextInput(param.input)) {
+  } else if (isListSelectInput(param.input)) {
+    throw new FirebaseError("Non-list params cannot have list selector inputs");
+  } else if (isTextInput(param.input)) {
     prompt = `Enter an integer value for ${param.label || param.name}:`;
     if (param.description) {
       prompt += ` \n(${param.description})`;
@@ -680,6 +747,33 @@ async function promptSelect<T extends RawParamValue>(
   if (shouldRetry(converted)) {
     logger.error(converted.message);
     return promptSelect<T>(prompt, input, resolvedDefault, converter);
+  }
+  return converted;
+}
+
+async function promptSelectMultiple<T extends string>(
+  prompt: string,
+  input: ListSelectInput,
+  resolvedDefault: T[] | undefined,
+  converter: (res: string[]) => T[] | retryInput
+): Promise<T[]> {
+  const response = await promptOnce({
+    name: "input",
+    type: "checkbox",
+    default: resolvedDefault,
+    message: prompt,
+    choices: input.listSelect.options.map((option: SelectOptions<string>): ListItem => {
+      return {
+        checked: false,
+        name: option.label,
+        value: option.value.toString(),
+      };
+    }),
+  });
+  const converted = converter(response);
+  if (shouldRetry(converted)) {
+    logger.error(converted.message);
+    return promptSelectMultiple<T>(prompt, input, resolvedDefault, converter);
   }
   return converted;
 }
