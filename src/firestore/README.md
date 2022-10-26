@@ -31,7 +31,7 @@ An index configuration file defines one object containing an <code>indexes</code
 ```
 ## Fetching your current configuration from the console
 
-Run `firebase firestore:indexes` to get a JSON export of your current firestore indexes from the currently selected project. You can copy them into your 
+Run `firebase firestore:indexes` to get a JSON list of all deployed indexes from the currently selected project. You can copy them into your 
 firestore.indexes.json file to test locally.
 
 ## Deploy an index configuration
