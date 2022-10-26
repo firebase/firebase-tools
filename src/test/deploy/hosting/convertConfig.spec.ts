@@ -224,7 +224,7 @@ describe("convertConfig", () => {
               project: PROJECT_ID,
               entryPoint: FUNCTION_ID,
               runtime: "nodejs16",
-              region: "us-central1",
+              region: REGION,
               platform: "gcfv1",
               httpsTrigger: {},
             }),

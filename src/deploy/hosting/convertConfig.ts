@@ -41,27 +41,29 @@ function extractPattern(type: string, source: HostingSource): api.HasPattern {
   );
 }
 
+interface EndpointSearchResult {
+  matchingEndpoint: backend.Endpoint | undefined;
+  endpointExistsSomewhere: boolean;
+}
+
 /**
  * Finds an endpoint suitable for deploy at a site given an id and optional region.
- *
- *  @returns a pair of matching endpoint, if found, and a boolean indicating whether
- *  the function exists in some region.
  */
 export function findEndpointForRewrite(
   site: string,
   targetBackend: backend.Backend,
   id: string,
   region: string | undefined
-): [backend.Endpoint | undefined, boolean] {
+): EndpointSearchResult {
   const endpoints = backend.allEndpoints(targetBackend).filter((e) => e.id === id);
   if (endpoints.length === 0) {
-    return [undefined, false];
+    return { matchingEndpoint: undefined, endpointExistsSomewhere: false };
   }
   if (endpoints.length === 1) {
     if (region && region !== endpoints[0].region) {
-      return [undefined, true];
+      return { matchingEndpoint: undefined, endpointExistsSomewhere: true };
     }
-    return [endpoints[0], true];
+    return { matchingEndpoint: endpoints[0], endpointExistsSomewhere: true };
   }
   if (!region) {
     const us = endpoints.find((e) => e.region === "us-central1");
@@ -75,9 +77,12 @@ export function findEndpointForRewrite(
       `Function \`${id}\` found in multiple regions, defaulting to \`us-central1\`. ` +
         `To rewrite to a different region, specify a \`region\` for the rewrite in \`firebase.json\`.`
     );
-    return [us, true];
+    return { matchingEndpoint: us, endpointExistsSomewhere: true };
   }
-  return [endpoints.find((e) => e.region === region), true];
+  return {
+    matchingEndpoint: endpoints.find((e) => e.region === region),
+    endpointExistsSomewhere: true,
+  };
 }
 
 /**
@@ -147,22 +152,37 @@ export async function convertConfig(
       const id = rewrite.function.functionId;
       const region = rewrite.function.region;
       let endpoint: backend.Endpoint | undefined = undefined;
-      let fnIsPresent = false;
+      let functionIsInDeployingBackends = false;
       for (const backend of wantBackends) {
-        [endpoint, fnIsPresent] = findEndpointForRewrite(deploy.config.site, backend, id, region);
+        const deployingEndpointSearch = findEndpointForRewrite(
+          deploy.config.site,
+          backend,
+          id,
+          region
+        );
+        functionIsInDeployingBackends =
+          functionIsInDeployingBackends || deployingEndpointSearch.endpointExistsSomewhere;
+        if (deployingEndpointSearch.matchingEndpoint) {
+          endpoint = deployingEndpointSearch.matchingEndpoint;
+          break;
+        }
       }
+      let functionIsInExistingBackends = false;
       if (!endpoint) {
-        const [existingEndpoint, fnIsPresentInExisting] = findEndpointForRewrite(
+        const existingEndpointSearch = findEndpointForRewrite(
           deploy.config.site,
           haveBackend,
           id,
           region
         );
-        [endpoint, fnIsPresent] = [existingEndpoint, fnIsPresent || fnIsPresentInExisting];
-
-        if (fnIsPresent) {
-          // If the function is a firebase-managed function, we consider it an error for
-          // a rewrite not to point to a valid endpoint.
+        functionIsInExistingBackends = existingEndpointSearch.endpointExistsSomewhere;
+        endpoint = existingEndpointSearch.matchingEndpoint;
+      }
+      if (!endpoint) {
+        // If we find a function matching the function ID we are looking for in either
+        // existing or currently-deploying backends, we consider it a firebase function.
+        // In this case, we throw an error if the rewrite doesn't point to a valid region.
+        if (functionIsInDeployingBackends || functionIsInExistingBackends) {
           throw new FirebaseError(
             `Unable to find a valid endpoint for function. Functions matching the rewrite
   are present but in the wrong region.`
