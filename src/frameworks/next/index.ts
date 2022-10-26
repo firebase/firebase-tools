@@ -1,6 +1,6 @@
 import { execSync } from "child_process";
-import { readFile, mkdir, copyFile, stat } from "fs/promises";
-import { dirname, extname, join } from "path";
+import { readFile, mkdir, copyFile } from "fs/promises";
+import { dirname, join } from "path";
 import type { Header, Rewrite, Redirect } from "next/dist/lib/load-custom-routes";
 import type { NextConfig } from "next";
 import { copy, mkdirp, pathExists } from "fs-extra";
@@ -76,7 +76,7 @@ export async function build(dir: string): Promise<BuildResult> {
   // TODO use semver rather than parseInt
   if (parseInt(reactVersion, 10) > 18) {
     // This needs to be set for Next build to succeed with React 18
-    process.env.__NEXT_REACT_ROOT = 'true';
+    process.env.__NEXT_REACT_ROOT = "true";
   }
 
   await nextBuild(dir, null, false, false, true).catch((e) => {
@@ -102,11 +102,9 @@ export async function build(dir: string): Promise<BuildResult> {
   const exportDetailJson = exportDetailBuffer && JSON.parse(exportDetailBuffer.toString());
   if (exportDetailJson?.success) {
     const appPathRoutesManifestPath = join(dir, distDir, "app-path-routes-manifest.json");
-    const appPathRoutesManifestJSON = fileExistsSync(appPathRoutesManifestPath) ?
-      await readFile(
-        appPathRoutesManifestPath
-      ).then((it) => JSON.parse(it.toString())) :
-      {};
+    const appPathRoutesManifestJSON = fileExistsSync(appPathRoutesManifestPath)
+      ? await readFile(appPathRoutesManifestPath).then((it) => JSON.parse(it.toString()))
+      : {};
     const prerenderManifestJSON = await readFile(
       join(dir, distDir, "prerender-manifest.json")
     ).then((it) => JSON.parse(it.toString()));
@@ -199,7 +197,7 @@ export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: strin
     await copy(join(sourceDir, distDir, "static"), join(destDir, "_next", "static"));
 
     // Copy over the default html files
-    for (const file of ['index.html', '404.html', '500.html']) {
+    for (const file of ["index.html", "404.html", "500.html"]) {
       const pagesPath = join(sourceDir, distDir, "server", "pages", file);
       if (await pathExists(pagesPath)) {
         await copyFile(pagesPath, join(destDir, file));
@@ -209,17 +207,17 @@ export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: strin
       if (await pathExists(appPath)) {
         await copyFile(appPath, join(destDir, file));
       }
-    };
+    }
 
     const prerenderManifestBuffer = await readFile(
       join(sourceDir, distDir, "prerender-manifest.json")
     );
     const prerenderManifest = JSON.parse(prerenderManifestBuffer.toString());
     for (const path in prerenderManifest.routes) {
-      const route = prerenderManifest.routes[path];
-      if (route) {
+      if (prerenderManifest.routes[path]) {
         // Skip ISR in the deploy to hosting
-        if (route.initialRevalidateSeconds) continue;
+        const { initialRevalidateSeconds } = prerenderManifest.routes[path];
+        if (initialRevalidateSeconds) continue;
 
         // / => index.json => index.html => index.html
         // /foo => foo.json => foo.html
