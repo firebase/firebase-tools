@@ -74,7 +74,7 @@ export async function build(dir: string): Promise<BuildResult> {
 
   const reactVersion = getReactVersion(dir);
   // TODO use semver rather than parseInt
-  if (parseInt(reactVersion, 10) > 18) {
+  if (parseInt(reactVersion, 10) >= 18) {
     // This needs to be set for Next build to succeed with React 18
     process.env.__NEXT_REACT_ROOT = "true";
   }
