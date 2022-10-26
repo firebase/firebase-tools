@@ -27,7 +27,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
 
   if (process.env.STORAGE_EMULATOR_DEBUG) {
     firebaseStorageAPI.use((req, res, next) => {
-      console.log("--------------INCOMING REQUEST--------------");
+      console.log("--------------INCOMING FIREBASE REQUEST--------------");
       console.log(`${req.method.toUpperCase()} ${req.path}`);
       console.log("-- query:");
       console.log(JSON.stringify(req.query, undefined, 2));
@@ -121,28 +121,43 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
 
     // Object data request
     if (req.query.alt === "media") {
-      const isGZipped = metadata.contentEncoding === "gzip";
-      if (isGZipped) {
-        data = gunzipSync(data);
+      let didGunzip = false;
+      if (metadata.contentEncoding === "gzip") {
+        const acceptEncoding = req.header("accept-encoding") || "";
+        const shouldGunzip = !acceptEncoding.includes("gzip");
+        if (shouldGunzip) {
+          data = gunzipSync(data);
+          didGunzip = true;
+        }
       }
       res.setHeader("Accept-Ranges", "bytes");
       res.setHeader("Content-Type", metadata.contentType || "application/octet-stream");
       res.setHeader("Content-Disposition", metadata.contentDisposition || "inline");
-      setObjectHeaders(res, metadata, { "Content-Encoding": isGZipped ? "identity" : undefined });
-
-      const byteRange = req.range(data.byteLength, { combine: true });
-
-      if (Array.isArray(byteRange) && byteRange.type === "bytes" && byteRange.length > 0) {
-        const range = byteRange[0];
-        res.setHeader(
-          "Content-Range",
-          `${byteRange.type} ${range.start}-${range.end}/${data.byteLength}`
-        );
-        // Byte range requests are inclusive for start and end
-        res.status(206).end(data.slice(range.start, range.end + 1));
-      } else {
-        res.end(data);
+      setObjectHeaders(res, metadata);
+      if (didGunzip) {
+        // Don't populate Content-Encoding if decompressed. See
+        // https://cloud.google.com/storage/docs/transcoding#decompressive_transcoding.
+        res.removeHeader("Content-Encoding");
       }
+
+      // Content Range headers should be respected only if data was not decompressed, see
+      // https://cloud.google.com/storage/docs/transcoding#range.
+      const shouldRespectContentRange = !didGunzip;
+      if (shouldRespectContentRange) {
+        const byteRange = req.range(data.byteLength, { combine: true });
+
+        if (Array.isArray(byteRange) && byteRange.type === "bytes" && byteRange.length > 0) {
+          const range = byteRange[0];
+          res.setHeader(
+            "Content-Range",
+            `${byteRange.type} ${range.start}-${range.end}/${data.byteLength}`
+          );
+          // Byte range requests are inclusive for start and end
+          res.status(206).end(data.slice(range.start, range.end + 1));
+          return;
+        }
+      }
+      res.end(data);
       return;
     }
 
@@ -531,27 +546,16 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
   return firebaseStorageAPI;
 }
 
-function setObjectHeaders(
-  res: Response,
-  metadata: StoredFileMetadata,
-  headerOverride: {
-    "Content-Encoding": string | undefined;
-  } = { "Content-Encoding": undefined }
-): void {
+function setObjectHeaders(res: Response, metadata: StoredFileMetadata): void {
   if (metadata.contentDisposition) {
     res.setHeader("Content-Disposition", metadata.contentDisposition);
   }
-
-  if (headerOverride["Content-Encoding"]) {
-    res.setHeader("Content-Encoding", headerOverride["Content-Encoding"]);
-  } else if (metadata.contentEncoding) {
+  if (metadata.contentEncoding) {
     res.setHeader("Content-Encoding", metadata.contentEncoding);
   }
-
   if (metadata.cacheControl) {
     res.setHeader("Cache-Control", metadata.cacheControl);
   }
-
   if (metadata.contentLanguage) {
     res.setHeader("Content-Language", metadata.contentLanguage);
   }

@@ -13,6 +13,7 @@ import {
   TEST_SETUP_TIMEOUT,
   getTmpDir,
 } from "../utils";
+import { gunzipSync } from "zlib";
 
 // Test case that should only run when targeting the emulator.
 // Example use: emulatorOnly.it("Local only test case", () => {...});
@@ -107,14 +108,6 @@ describe("GCS Javascript SDK conformance tests", () => {
 
         fs.unlinkSync(content1);
         fs.unlinkSync(content2);
-      });
-
-      it("should handle gzip'd uploads", async () => {
-        // This appears to pass, but the file gets corrupted cause it's gzipped?
-        // expect(true).to.be.false;
-        await testBucket.upload(smallFilePath, {
-          gzip: true,
-        });
       });
 
       it("should upload with provided metadata", async () => {
@@ -392,6 +385,18 @@ describe("GCS Javascript SDK conformance tests", () => {
   });
 
   describe(".file()", () => {
+    describe("#save()", () => {
+      it("should handle gzipped uploads", async () => {
+        const contents = "hello world";
+
+        const file = testBucket.file("gzippedFile");
+        await file.save(contents, { gzip: true, contentType: "text/plain" });
+
+        expect(file.metadata.contentType).to.be.eql("text/plain");
+        expect(file.metadata.contentEncoding).to.be.eql("gzip");
+      });
+    });
+
     describe("#exists()", () => {
       it("should return false for a file that does not exist", async () => {
         // Ensure that the file exists on the bucket before deleting it
@@ -487,6 +492,29 @@ describe("GCS Javascript SDK conformance tests", () => {
 
         expect(err).to.have.property("code", 404);
         expect(err).not.have.nested.property("errors[0]");
+      });
+
+      it("should decompress gzipped file", async () => {
+        const contents = Buffer.from("hello world");
+
+        const file = testBucket.file("gzippedFile");
+        await file.save(contents, { gzip: true });
+
+        const [downloadedContents] = await file.download();
+        expect(downloadedContents).to.be.eql(contents);
+      });
+
+      it("should serve gzipped file if decompress option specified", async () => {
+        const contents = Buffer.from("hello world");
+
+        const file = testBucket.file("gzippedFile");
+        await file.save(contents, { gzip: true });
+
+        const [downloadedContents] = await file.download({decompress: false});
+        expect(downloadedContents).to.not.be.eql(contents);
+
+        const ungzippedContents = gunzipSync(downloadedContents);
+        expect(ungzippedContents).to.be.eql(contents);
       });
     });
 

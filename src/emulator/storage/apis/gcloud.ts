@@ -28,7 +28,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
   // Debug statements
   if (process.env.STORAGE_EMULATOR_DEBUG) {
     gcloudStorageAPI.use((req, res, next) => {
-      console.log("--------------INCOMING REQUEST--------------");
+      console.log("--------------INCOMING GCS REQUEST--------------");
       console.log(`${req.method.toUpperCase()} ${req.path}`);
       console.log("-- query:");
       console.log(JSON.stringify(req.query, undefined, 2));
@@ -430,15 +430,26 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
 }
 
 function sendFileBytes(md: StoredFileMetadata, data: Buffer, req: Request, res: Response): void {
-  const isGZipped = md.contentEncoding === "gzip";
-  if (isGZipped) {
-    data = gunzipSync(data);
+  let didGunzip = false;
+  if (md.contentEncoding === "gzip") {
+    const acceptEncoding = req.header("accept-encoding") || "";
+    const shouldGunzip = !acceptEncoding.includes("gzip");
+    if (shouldGunzip) {
+      data = gunzipSync(data);
+      didGunzip = true;
+    }
   }
-
   res.setHeader("Accept-Ranges", "bytes");
   res.setHeader("Content-Type", md.contentType || "application/octet-stream");
   res.setHeader("Content-Disposition", md.contentDisposition || "attachment");
-  res.setHeader("Content-Encoding", isGZipped ? "identity" : md.contentEncoding || "");
+  if (didGunzip) {
+    // Set to mirror server behavior and supress "content-length" header.
+    res.setHeader("Transfer-Encoding", "chunked");
+  } else {
+    // Don't populate Content-Encoding if decompressed, see
+    // https://cloud.google.com/storage/docs/transcoding#decompressive_transcoding.
+    res.setHeader("Content-Encoding", md.contentEncoding || "");
+  }
   res.setHeader("ETag", md.etag);
   res.setHeader("Cache-Control", md.cacheControl || "");
   res.setHeader("x-goog-generation", `${md.generation}`);
@@ -446,19 +457,23 @@ function sendFileBytes(md: StoredFileMetadata, data: Buffer, req: Request, res: 
   res.setHeader("x-goog-storage-class", md.storageClass);
   res.setHeader("x-goog-hash", `crc32c=${crc32cToString(md.crc32c)},md5=${md.md5Hash}`);
 
-  const byteRange = req.range(data.byteLength, { combine: true });
-
-  if (Array.isArray(byteRange) && byteRange.type === "bytes" && byteRange.length > 0) {
-    const range = byteRange[0];
-    res.setHeader(
-      "Content-Range",
-      `${byteRange.type} ${range.start}-${range.end}/${data.byteLength}`
-    );
-    // Byte range requests are inclusive for start and end
-    res.status(206).end(data.slice(range.start, range.end + 1));
-  } else {
-    res.end(data);
+  // Content Range headers should be respected only if data was not decompressed, see
+  // https://cloud.google.com/storage/docs/transcoding#range.
+  const shouldRespectContentRange = !didGunzip;
+  if (shouldRespectContentRange) {
+    const byteRange = req.range(data.byteLength, { combine: true });
+    if (Array.isArray(byteRange) && byteRange.type === "bytes" && byteRange.length > 0) {
+      const range = byteRange[0];
+      res.setHeader(
+        "Content-Range",
+        `${byteRange.type} ${range.start}-${range.end}/${data.byteLength}`
+      );
+      // Byte range requests are inclusive for start and end
+      res.status(206).end(data.slice(range.start, range.end + 1));
+      return;
+    }
   }
+  res.end(data);
 }
 
 /** Sends 404 matching API */
