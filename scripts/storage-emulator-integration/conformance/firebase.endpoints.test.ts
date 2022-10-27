@@ -3,7 +3,7 @@ import { expect } from "chai";
 import * as admin from "firebase-admin";
 import * as fs from "fs";
 import * as supertest from "supertest";
-import { gunzip, gunzipSync } from "zlib";
+import { gunzipSync } from "zlib";
 import { TEST_ENV } from "./env";
 import { EmulatorEndToEndTest } from "../../integration-helpers/framework";
 import {
@@ -344,7 +344,6 @@ describe("Firebase Storage endpoint conformance tests", () => {
           })
           .expect(200)
           .then((res) => {
-            console.log(res);
             return new URL(res.header["x-goog-upload-url"]);
           });
 
@@ -511,7 +510,7 @@ describe("Firebase Storage endpoint conformance tests", () => {
       });
     });
 
-    it.only("should serve gzipped file if Accept-Encoding header allows", async () => {
+    it("should serve gzipped file if Accept-Encoding header allows", async () => {
       const contents = Buffer.from("hello world");
       const fileName = "gzippedFile";
       const file = testBucket.file(fileName);
@@ -538,39 +537,6 @@ describe("Firebase Storage endpoint conformance tests", () => {
                 expect(responseBody).to.not.be.eql(contents);
                 const decompressed = gunzipSync(responseBody);
                 expect(decompressed).to.be.eql(contents);
-              })
-              .on("close", resolve)
-              .on("error", reject);
-          }
-        );
-      });
-    });
-
-    it("should serve gzipped file if accept-encoding header contains gzip", async () => {
-      const contents = Buffer.from("hello world");
-
-      const file = testBucket.file("gzippedFile");
-      await file.save(contents, { gzip: true });
-
-      // Use requestClient since supertest will decompress the response body by default.
-      await new Promise((resolve, reject) => {
-        TEST_ENV.requestClient.get(
-          `${firebaseHost}/b/${storageBucket}/o/gzippedFile?alt=media`,
-          { headers: { "Accept-Encoding": "gzip" } },
-          (response) => {
-            console.log(response.headers);
-            // According to https://cloud.google.com/storage/docs/transcoding#decompressive_transcoding
-            // the server should set this header to "gzip" but the prod GCS server currently does not.
-            // This assertion is commented out to avoid breaking conformance tests.
-            // expect(response.headers["content-encoding"]).to.be.eql("gzip");
-
-            const chunks: Buffer[] = [];
-            response
-              .on("data", (chunk) => chunks.push(chunk))
-              .on("end", () => {
-                const data = Buffer.concat(chunks);
-                expect(data).to.not.eql(contents);
-                expect(gunzipSync(data)).to.be.eql(contents);
               })
               .on("close", resolve)
               .on("error", reject);
