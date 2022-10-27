@@ -41,6 +41,7 @@ class MockRuntimeInstance implements FunctionsRuntimeInstance {
  */
 class WorkerStateCounter {
   counts: { [state in RuntimeWorkerState]: number } = {
+    CREATED: 0,
     IDLE: 0,
     BUSY: 0,
     FINISHING: 0,
@@ -49,6 +50,9 @@ class WorkerStateCounter {
 
   constructor(worker: RuntimeWorker) {
     this.increment(worker.state);
+    worker.stateEvents.on(RuntimeWorkerState.CREATED, () => {
+      this.increment(RuntimeWorkerState.CREATED);
+    });
     worker.stateEvents.on(RuntimeWorkerState.IDLE, () => {
       this.increment(RuntimeWorkerState.IDLE);
     });
@@ -68,7 +72,13 @@ class WorkerStateCounter {
   }
 
   get total() {
-    return this.counts.IDLE + this.counts.BUSY + this.counts.FINISHING + this.counts.FINISHED;
+    return (
+      this.counts.CREATED +
+      this.counts.IDLE +
+      this.counts.BUSY +
+      this.counts.FINISHING +
+      this.counts.FINISHED
+    );
   }
 }
 
@@ -82,15 +92,17 @@ describe("FunctionsRuntimeWorker", () => {
       const worker = new RuntimeWorker(workerPool.getKey("trigger"), new MockRuntimeInstance());
       const counter = new WorkerStateCounter(worker);
 
+      worker.readyForWork();
       await worker.request(
         { method: "GET", path: "/" },
         httpMocks.createResponse({ eventEmitter: EventEmitter })
       );
       scope.done();
 
+      expect(counter.counts.CREATED).to.eql(1);
       expect(counter.counts.BUSY).to.eql(1);
       expect(counter.counts.IDLE).to.eql(2);
-      expect(counter.total).to.eql(3);
+      expect(counter.total).to.eql(4);
     });
 
     it("goes from idle --> busy --> finished when there's an error", async () => {
@@ -99,16 +111,18 @@ describe("FunctionsRuntimeWorker", () => {
       const worker = new RuntimeWorker(workerPool.getKey("trigger"), new MockRuntimeInstance());
       const counter = new WorkerStateCounter(worker);
 
+      worker.readyForWork();
       await worker.request(
         { method: "GET", path: "/" },
         httpMocks.createResponse({ eventEmitter: EventEmitter })
       );
       scope.done();
 
+      expect(counter.counts.CREATED).to.eql(1);
       expect(counter.counts.IDLE).to.eql(1);
       expect(counter.counts.BUSY).to.eql(1);
       expect(counter.counts.FINISHED).to.eql(1);
-      expect(counter.total).to.eql(3);
+      expect(counter.total).to.eql(4);
     });
 
     it("goes from busy --> finishing --> finished when marked", async () => {
@@ -117,6 +131,7 @@ describe("FunctionsRuntimeWorker", () => {
       const worker = new RuntimeWorker(workerPool.getKey("trigger"), new MockRuntimeInstance());
       const counter = new WorkerStateCounter(worker);
 
+      worker.readyForWork();
       const resp = httpMocks.createResponse({ eventEmitter: EventEmitter });
       resp.on("end", () => {
         worker.state = RuntimeWorkerState.FINISHING;
@@ -124,11 +139,12 @@ describe("FunctionsRuntimeWorker", () => {
       await worker.request({ method: "GET", path: "/" }, resp);
       scope.done();
 
+      expect(counter.counts.CREATED).to.eql(1);
       expect(counter.counts.IDLE).to.eql(1);
       expect(counter.counts.BUSY).to.eql(1);
       expect(counter.counts.FINISHING).to.eql(1);
       expect(counter.counts.FINISHED).to.eql(1);
-      expect(counter.total).to.eql(4);
+      expect(counter.total).to.eql(5);
     });
   });
 
@@ -144,6 +160,7 @@ describe("FunctionsRuntimeWorker", () => {
 
       // Add a worker and make sure it's there
       const worker = pool.addWorker(trigger, new MockRuntimeInstance());
+      worker.readyForWork();
       const triggerWorkers = pool.getTriggerWorkers(trigger);
       expect(triggerWorkers.length).length.to.eq(1);
       expect(pool.getIdleWorker(trigger)).to.eql(worker);
@@ -170,6 +187,7 @@ describe("FunctionsRuntimeWorker", () => {
       // Add a worker to the pool that's destined to fail.
       const scope = nock("http://localhost").get("/").replyWithError("boom");
       const worker = pool.addWorker(trigger, new MockRuntimeInstance());
+      worker.readyForWork();
       expect(pool.getIdleWorker(trigger)).to.eql(worker);
 
       // Send request to the worker. Request should fail, killing the worker.
@@ -188,9 +206,11 @@ describe("FunctionsRuntimeWorker", () => {
       const trigger = "trigger1";
 
       const busyWorker = pool.addWorker(trigger, new MockRuntimeInstance());
+      busyWorker.readyForWork();
       const busyWorkerCounter = new WorkerStateCounter(busyWorker);
 
       const idleWorker = pool.addWorker(trigger, new MockRuntimeInstance());
+      idleWorker.readyForWork();
       const idleWorkerCounter = new WorkerStateCounter(idleWorker);
 
       // Add a worker to the pool that's destined to fail.
@@ -217,9 +237,11 @@ describe("FunctionsRuntimeWorker", () => {
       const trigger = "trigger1";
 
       const busyWorker = pool.addWorker(trigger, new MockRuntimeInstance());
+      busyWorker.readyForWork();
       const busyWorkerCounter = new WorkerStateCounter(busyWorker);
 
       const idleWorker = pool.addWorker(trigger, new MockRuntimeInstance());
+      idleWorker.readyForWork();
       const idleWorkerCounter = new WorkerStateCounter(idleWorker);
 
       // Add a worker to the pool that's destined to fail.
@@ -248,6 +270,7 @@ describe("FunctionsRuntimeWorker", () => {
 
       const pool = new RuntimeWorkerPool(FunctionsExecutionMode.SEQUENTIAL);
       const worker = pool.addWorker(trigger1, new MockRuntimeInstance());
+      worker.readyForWork();
 
       const resp = httpMocks.createResponse({ eventEmitter: EventEmitter });
       resp.on("end", () => {

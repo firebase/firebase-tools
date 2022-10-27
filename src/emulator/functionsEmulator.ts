@@ -183,9 +183,6 @@ export class FunctionsEmulator implements EmulatorInstance {
 
   private blockingFunctionsConfig: BlockingFunctionsConfig = {};
 
-  // A queue to handle https requests that are parallel
-  private httpsTriggerQueue: Promise<void>;
-
   constructor(private args: FunctionsEmulatorArgs) {
     // TODO: Would prefer not to have static state but here we are!
     EmulatorLogger.verbosity = this.args.quiet ? Verbosity.QUIET : Verbosity.DEBUG;
@@ -207,7 +204,6 @@ export class FunctionsEmulator implements EmulatorInstance {
       this.workerPools[backend.codebase] = pool;
     }
     this.workQueue = new WorkQueue(mode);
-    this.httpsTriggerQueue = Promise.resolve();
   }
 
   private async getCredentialsEnvironment(): Promise<Record<string, string>> {
@@ -1382,14 +1378,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
   }
 
-  private handleHttpsTrigger(req: express.Request, res: express.Response) {
-    this.httpsTriggerQueue = this.httpsTriggerQueue.then(() =>
-      this.handleHttpsTriggerLocked(req, res)
-    );
-    return this.httpsTriggerQueue;
-  }
-
-  private async handleHttpsTriggerLocked(req: express.Request, res: express.Response) {
+  private async handleHttpsTrigger(req: express.Request, res: express.Response) {
     const method = req.method;
     let triggerId: string = req.params.trigger_name;
     if (req.params.region) {
