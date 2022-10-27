@@ -3,3 +3,4 @@
 - Changes `superstatic` dependency to `v8`, addressing Hosting emulator issues on Windows.
 - Fixes internal library that was not being correctly published.
 - Adds `--disable-triggers` flag to RTDB write commands.
+- Fixes gzipped file handling in Storage Emulator.
