@@ -52,6 +52,6 @@ jobs:
       - name: Test
         run: |
           node lib/bin/firebase.js experiments:enable webframeworks
-          node --loader ts-node/esm ./scripts/frameworks-tests/test-${{ matrix.framework }}.ts
+          node --loader ts-node ./scripts/frameworks-tests/test-${{ matrix.framework }}.ts
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
