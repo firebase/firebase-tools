@@ -24,12 +24,12 @@ jobs:
         node: [ "16", "18" ]
         # dropping "nuxt", "nuxt3" for now
         framework: [ "next", "angular", "custom", "vite" ]
-        version: [ "latest" ]
+        framework_version: [ "latest" ]
         include:
           - framework: next
             version: 12
       fail-fast: false
-    name: Test ${{ matrix.framework }}@${{ matrix.version }} on Node ${{ matrix.node }} (${{ matrix.os }})
+    name: Test ${{ matrix.framework }}@${{ matrix.framework_version }} on Node ${{ matrix.node }} (${{ matrix.os }})
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -58,5 +58,5 @@ jobs:
           node lib/bin/firebase.js experiments:enable webframeworks
           node_modules/.bin/ts-node ./scripts/frameworks-tests/test-${{ matrix.framework }}.ts
         env:
-          FRAMEWORK_VERSION: ${{ matrix.version }}
+          FRAMEWORK_VERSION: ${{ matrix.framework_version }}
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
