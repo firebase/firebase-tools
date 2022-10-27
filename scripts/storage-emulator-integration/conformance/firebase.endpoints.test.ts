@@ -533,7 +533,7 @@ describe("Firebase Storage endpoint conformance tests", () => {
               .on("data", (chunk) => {
                 responseBody = Buffer.concat([responseBody, chunk]);
               })
-              .on("end", async () => {
+              .on("end", () => {
                 expect(responseBody).to.not.be.eql(contents);
                 const decompressed = gunzipSync(responseBody);
                 expect(decompressed).to.be.eql(contents);

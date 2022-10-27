@@ -510,7 +510,7 @@ describe("GCS Javascript SDK conformance tests", () => {
         const file = testBucket.file("gzippedFile");
         await file.save(contents, { gzip: true });
 
-        const [downloadedContents] = await file.download({decompress: false});
+        const [downloadedContents] = await file.download({ decompress: false });
         expect(downloadedContents).to.not.be.eql(contents);
 
         const ungzippedContents = gunzipSync(downloadedContents);
