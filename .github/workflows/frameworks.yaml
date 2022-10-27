@@ -25,9 +25,6 @@ jobs:
         # dropping "nuxt", "nuxt3" for now
         framework: [ "next", "angular", "custom", "vite" ]
         framework_version: [ "latest" ]
-        include:
-          - framework: next
-            version: 12
       fail-fast: false
     name: Test ${{ matrix.framework }}@${{ matrix.framework_version }} on Node ${{ matrix.node }} (${{ matrix.os }})
     steps:
