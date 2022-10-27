@@ -1,5 +1,6 @@
 {
   "name": "functions",
+  "type": "module",
   "scripts": {
     "build": "tsc",
     "build:watch": "tsc --watch",
@@ -12,13 +13,13 @@
   "engines": {
     "node": "16"
   },
-  "main": "lib/index.js",
+  "main": "src/index.ts",
   "dependencies": {
-    "firebase-admin": "^10.2.0",
-    "firebase-functions": "^3.21.0"
+    "firebase-admin": "^11.2.0",
+    "firebase-functions": "^4.0.0"
   },
   "devDependencies": {
-    "typescript": "^4.6.4"
+    "typescript": "^4.8.4"
   },
   "private": true
 }
