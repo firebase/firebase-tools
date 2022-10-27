@@ -81,10 +81,12 @@ export const ALL_EXPERIMENTS = experiments({
     shortDescription: "Native support for popular web frameworks",
     fullDescription:
       "Adds support for popular web frameworks such as Next.js " +
-      "Nuxt, Netlify, Angular, and Vite-compatible frameworks. Firebase is " +
+      "Angular, React, Svelte, and Vite-compatible frameworks. Firebase is " +
       "committed to support these platforms long-term, but a manual migration " +
       "may be required when the non-experimental support for these frameworks " +
       "is released",
+    docsUri: "https://firebase.google.com/docs/hosting/frameworks-overview",
+    public: true,
   },
   pintags: {
     shortDescription: "Adds the pinTag option to Run and Functions rewrites",
@@ -161,6 +163,24 @@ export function setEnabled(name: ExperimentName, to: boolean | null): void {
     delete localPreferences()[name];
   } else {
     localPreferences()[name] = to;
+  }
+}
+
+/**
+ * Enables multiple experiments given a comma-delimited environment variable:
+ * `FIREBASE_CLI_EXPERIMENTS`.
+ *
+ * Example:
+ * FIREBASE_CLI_PREVIEWS=experiment1,experiment2,turtle
+ *
+ * Would silently enable `experiment1` and `experiment2`, but would not enable `turtle`.
+ */
+export function enableExperimentsFromCliEnvVariable(): void {
+  const experiments = process.env.FIREBASE_CLI_EXPERIMENTS || "";
+  for (const experiment of experiments.split(",")) {
+    if (isValidExperiment(experiment)) {
+      setEnabled(experiment, true);
+    }
   }
 }
 

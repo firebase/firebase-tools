@@ -2,7 +2,6 @@ import { ALL_EMULATORS, Emulators } from "../../emulator/types";
 import { EmulatorRegistry } from "../../emulator/registry";
 import { expect } from "chai";
 import { FakeEmulator } from "./fakeEmulator";
-import { findAvailablePort } from "../../emulator/portUtils";
 import * as express from "express";
 import * as os from "os";
 
@@ -21,8 +20,7 @@ describe("EmulatorRegistry", () => {
 
   it("should correctly return information about a running emulator", async () => {
     const name = Emulators.FUNCTIONS;
-    const port = await findAvailablePort("localhost", 5000);
-    const emu = new FakeEmulator(name, "localhost", port);
+    const emu = await FakeEmulator.create(name);
 
     expect(EmulatorRegistry.isRunning(name)).to.be.false;
 
@@ -31,13 +29,12 @@ describe("EmulatorRegistry", () => {
     expect(EmulatorRegistry.isRunning(name)).to.be.true;
     expect(EmulatorRegistry.listRunning()).to.eql([name]);
     expect(EmulatorRegistry.get(name)).to.eql(emu);
-    expect(EmulatorRegistry.getInfo(name)!.port).to.eql(port);
+    expect(EmulatorRegistry.getInfo(name)!.port).to.eql(emu.getInfo().port);
   });
 
   it("once stopped, an emulator is no longer running", async () => {
     const name = Emulators.FUNCTIONS;
-    const port = await findAvailablePort("localhost", 5000);
-    const emu = new FakeEmulator(name, "localhost", port);
+    const emu = await FakeEmulator.create(name);
 
     expect(EmulatorRegistry.isRunning(name)).to.be.false;
     await EmulatorRegistry.start(emu);
@@ -74,20 +71,20 @@ describe("EmulatorRegistry", () => {
     });
 
     it("should craft URL from host and port in registry", async () => {
-      const port = await findAvailablePort("localhost", 5000);
-      await EmulatorRegistry.start(new FakeEmulator(name, "localhost", port));
+      const emu = await FakeEmulator.create(name);
+      await EmulatorRegistry.start(emu);
 
-      expect(EmulatorRegistry.url(name).host).to.eql(`localhost:${port}`);
+      expect(EmulatorRegistry.url(name).host).to.eql(`${emu.getInfo().host}:${emu.getInfo().port}`);
     });
 
     it("should quote IPv6 addresses", async function (this) {
       if (!ipv6Supported) {
         return this.skip();
       }
-      const port = await findAvailablePort("::1", 5000);
-      await EmulatorRegistry.start(new FakeEmulator(name, "::1", port));
+      const emu = await FakeEmulator.create(name, "::1");
+      await EmulatorRegistry.start(emu);
 
-      expect(EmulatorRegistry.url(name).host).to.eql(`[::1]:${port}`);
+      expect(EmulatorRegistry.url(name).host).to.eql(`[::1]:${emu.getInfo().port}`);
     });
 
     it("should use 127.0.0.1 instead of 0.0.0.0", async function (this) {
@@ -95,10 +92,10 @@ describe("EmulatorRegistry", () => {
         return this.skip();
       }
 
-      const port = await findAvailablePort("0.0.0.0", 5000);
-      await EmulatorRegistry.start(new FakeEmulator(name, "0.0.0.0", port));
+      const emu = await FakeEmulator.create(name, "0.0.0.0");
+      await EmulatorRegistry.start(emu);
 
-      expect(EmulatorRegistry.url(name).host).to.eql(`127.0.0.1:${port}`);
+      expect(EmulatorRegistry.url(name).host).to.eql(`127.0.0.1:${emu.getInfo().port}`);
     });
 
     it("should use ::1 instead of ::", async function (this) {
@@ -106,30 +103,33 @@ describe("EmulatorRegistry", () => {
         return this.skip();
       }
 
-      const port = await findAvailablePort("::", 5000);
-      await EmulatorRegistry.start(new FakeEmulator(name, "::", port));
+      const emu = await FakeEmulator.create(name, "::");
+      await EmulatorRegistry.start(emu);
 
-      expect(EmulatorRegistry.url(name).host).to.eql(`[::1]:${port}`);
+      expect(EmulatorRegistry.url(name).host).to.eql(`[::1]:${emu.getInfo().port}`);
     });
 
     it("should use protocol from request if available", async () => {
-      const port = await findAvailablePort("localhost", 5000);
-      await EmulatorRegistry.start(new FakeEmulator(name, "localhost", port));
+      const emu = await FakeEmulator.create(name);
+      await EmulatorRegistry.start(emu);
 
       const req = { protocol: "https", headers: {} } as express.Request;
       expect(EmulatorRegistry.url(name, req).protocol).to.eql(`https:`);
-      expect(EmulatorRegistry.url(name, req).host).to.eql(`localhost:${port}`);
+      expect(EmulatorRegistry.url(name, req).host).to.eql(
+        `${emu.getInfo().host}:${emu.getInfo().port}`
+      );
     });
 
     it("should use host from request if available", async () => {
-      const port = await findAvailablePort("localhost", 5000);
-      await EmulatorRegistry.start(new FakeEmulator(name, "localhost", port));
+      const emu = await FakeEmulator.create(name);
+      await EmulatorRegistry.start(emu);
 
+      const hostFromHeader = "mydomain.example.test:9999";
       const req = {
         protocol: "http",
-        headers: { host: "mydomain.example.test:9999" },
+        headers: { host: hostFromHeader },
       } as express.Request;
-      expect(EmulatorRegistry.url(name, req).host).to.eql(`${req.headers.host}`);
+      expect(EmulatorRegistry.url(name, req).host).to.eql(hostFromHeader);
     });
   });
 });
