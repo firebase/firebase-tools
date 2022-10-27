@@ -248,7 +248,7 @@ export async function prepareFrameworks(
   context: any,
   options: any,
   emulators: EmulatorInfo[] = []
-) {
+): Promise<string[]> {
   // `firebase-frameworks` requires Node >= 16. We must check for this to avoid horrible errors.
   const nodeVersion = process.version;
   if (!semver.satisfies(nodeVersion, ">=16.0.0")) {
@@ -257,6 +257,7 @@ export async function prepareFrameworks(
     );
   }
 
+  const deployedFrameworks: string[] = [];
   const project = needProjectId(context);
   const { projectRoot } = options;
   const account = getProjectDefaultAccount(projectRoot);
@@ -282,10 +283,15 @@ export async function prepareFrameworks(
   }
   const configs = hostingConfig(options);
   let firebaseDefaults: FirebaseDefaults | undefined = undefined;
-  if (configs.length === 0) return;
+  if (configs.length === 0) {
+    return deployedFrameworks;
+  }
   for (const config of configs) {
     const { source, site, public: publicDir } = config;
-    if (!source) continue;
+    if (!source) {
+      deployedFrameworks.push("classic");
+      continue;
+    }
     config.rewrites ||= [];
     config.redirects ||= [];
     config.headers ||= [];
@@ -293,8 +299,9 @@ export async function prepareFrameworks(
     const dist = join(projectRoot, ".firebase", site);
     const hostingDist = join(dist, "hosting");
     const functionsDist = join(dist, "functions");
-    if (publicDir)
+    if (publicDir) {
       throw new Error(`hosting.public and hosting.source cannot both be set in firebase.json`);
+    }
     const getProjectPath = (...args: string[]) => join(projectRoot, source, ...args);
     const functionName = `ssr${site.toLowerCase().replace(/-/g, "")}`;
     const usesFirebaseAdminSdk = !!findDependency("firebase-admin", { cwd: getProjectPath() });
@@ -385,8 +392,9 @@ export async function prepareFrameworks(
       // Attach the handle to options, it will be used when spinning up superstatic
       options.frameworksDevModeHandle = devModeHandle;
       // null is the dev-mode entry for firebase-framework-tools
-      if (mayWantBackend && firebaseDefaults)
+      if (mayWantBackend && firebaseDefaults) {
         codegenFunctionsDirectory = codegenDevModeFunctionsDirectory;
+      }
     } else {
       const {
         wantsBackend = false,
@@ -403,6 +411,7 @@ export async function prepareFrameworks(
       config.public = relative(projectRoot, hostingDist);
       if (wantsBackend) codegenFunctionsDirectory = codegenProdModeFunctionsDirectory;
     }
+    deployedFrameworks.push(`${framework}${codegenFunctionsDirectory ? "_ssr" : ""}`);
     if (codegenFunctionsDirectory) {
       if (firebaseDefaults) firebaseDefaults._authTokenSyncURL = "/__session";
 
@@ -546,6 +555,7 @@ exports.ssr = onRequest((req, res) => server.then(it => it.handle(req, res)));
       });
     }
   }
+  return deployedFrameworks;
 }
 
 function codegenDevModeFunctionsDirectory() {
