@@ -18,3 +18,5 @@ scripts/*.json
 
 lib/
 dev/
+
+scripts/frameworks-tests/*-project
