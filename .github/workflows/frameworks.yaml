@@ -4,8 +4,8 @@ on:
   push:
     branches:
       - main
-    paths-ignore:
-      - "**/*.md"
+    paths:
+      - "src/frameworks/**.ts"
   pull_request:
     branches:
       - "**"
