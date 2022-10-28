@@ -4,8 +4,10 @@ import { join } from 'path';
 import { existsSync, readFileSync } from 'fs';
 import { execSync } from 'child_process';
 
+
 const site = 'nextjs-demo-73e34';
 const cwd = join('scripts', 'frameworks-tests', 'custom-project');
+const bin = join(process.cwd(), 'lib', 'bin', 'firebase.js');
 
 const run = async () => {
     execSync('node lib/bin/firebase.js emulators:exec "exit 0"', { cwd });

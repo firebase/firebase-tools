@@ -1,18 +1,26 @@
 import { exit } from 'process';
-import { readdir, access } from 'fs/promises';
-import { join, relative } from 'path';
+import { readdir, writeFile } from 'fs/promises';
+import { basename, join } from 'path';
 import { existsSync, readFileSync } from 'fs';
 import { execSync } from 'child_process';
+import * as rimraf from 'rimraf';
+import { pathExists } from 'fs-extra';
 
 const site = 'nextjs-demo-73e34';
 const cwd = join('scripts', 'frameworks-tests', 'vite-project');
-const bin = relative(cwd, process.cwd())
+const bin = join(process.cwd(), 'lib', 'bin', 'firebase.js');
 
 const run = async () => {
-    execSync('node lib/bin/firebase.js emulators:exec "exit 0"', { cwd });
-    if (await access(join(cwd, '.firebase')).then(() => false, () => true)) throw '.firebase does not exist';
-    if (await access(join(cwd, '.firebase', site)).then(() => false, () => true)) throw `.firebase/${site} does not exist`;
-    if (await access(join(cwd, '.firebase', site, 'hosting')).then(() => false, () => true)) throw `.firebase/${site}/hosting does not exist`;
+    // TODO flex init hosting
+    rimraf.sync(cwd);
+    execSync(`npm create vite@latest ${basename(cwd)} --yes -- --template vanilla`, { cwd: join(cwd, '..')});
+    execSync("npm i", { cwd });
+    await writeFile(join(cwd, '.firebaserc'), '{"projects": {"default": "nextjs-demo-73e34"}}');
+    await writeFile(join(cwd, 'firebase.json'), '{"hosting": {"source": "."}}');
+    execSync(`node ${bin} emulators:exec "exit 0"`, { cwd });
+    if (!await pathExists(join(cwd, '.firebase'))) throw '.firebase does not exist';
+    if (!await pathExists(join(cwd, '.firebase', site))) throw `.firebase/${site} does not exist`;
+    if (!await pathExists(join(cwd, '.firebase', site, 'hosting'))) throw `.firebase/${site}/hosting does not exist`;
     if (!(await readdir(join(cwd, '.firebase', site, 'hosting'))).length) throw `no files in .firebase/${site}/hosting`;
 }
 
