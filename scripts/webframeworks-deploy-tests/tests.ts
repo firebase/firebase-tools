@@ -2,6 +2,8 @@ import { expect } from "chai";
 
 import * as cli from "./cli";
 import { requireAuth } from "../../src/requireAuth";
+import { readdir } from "fs/promises";
+import { join } from "path";
 
 const FIREBASE_PROJECT = process.env.GCLOUD_PROJECT || "";
 const FIREBASE_DEBUG = process.env.FIREBASE_DEBUG || "";
@@ -47,5 +49,7 @@ describe("webframeworks deploy", function (this) {
     expect(result.stdout, "deploy result").to.match(/file upload complete/);
     expect(result.stdout, "deploy result").to.match(/found 16 files/);
     expect(result.stdout, "deploy result").to.match(/Deploy complete!/);
+
+    expect(await readdir(join(__dirname, '.firebase', FIREBASE_PROJECT, 'hosting'))).to.eql([]);
   });
 });
