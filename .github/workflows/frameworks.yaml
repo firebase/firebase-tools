@@ -32,22 +32,8 @@ jobs:
         uses: actions/setup-node@v2-beta
         with:
           node-version: ${{ matrix.node }}
-      - name: node_modules cache
-        id: node_modules_cache
-        uses: actions/cache@v2
-        with:
-          path: ./node_modules
-          key: ${{ runner.os }}-${{ matrix.node }}-${{ hashFiles('package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-${{ matrix.node }}-
       - name: Install deps
-        if: steps.node_modules_cache.outputs.cache-hit != 'true'
         run: npm ci
-      - name: Firebase emulator cache
-        uses: actions/cache@v2
-        with:
-          path: ~/.cache/firebase/emulators
-          key: firebase_emulators
       - name: Tests
         run: |
           node lib/bin/firebase.js experiments:enable webframeworks
