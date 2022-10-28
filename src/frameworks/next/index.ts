@@ -171,7 +171,7 @@ export async function init(setup: any) {
     choices: ["JavaScript", "TypeScript"],
   });
   execSync(
-    `npx --yes create-next-app@latest -e hello-world ${setup.hosting.source} ${
+    `npx --yes create-next-app@latest -e hello-world ${setup.hosting.source} --use-npm ${
       language === "TypeScript" ? "--ts" : ""
     }`,
     { stdio: "inherit" }
