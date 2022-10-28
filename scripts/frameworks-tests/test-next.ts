@@ -18,7 +18,7 @@ const run = async () => {
     await writeFile(join(cwd, 'firebase.json'), '{"hosting": {"source": "."}}');
     // Next is picking up the prettier settings from firebase-tools, sigh...
     await writeFile(join(cwd, "next.config.js"), "module.exports = { eslint: { ignoreDuringBuilds: true } };");
-    execSync(`node ${bin} emulators:exec "exit 0"`, { cwd });
+    execSync(`node ${bin} emulators:exec "exit 0" --project "${process.env.FBTOOLS_TARGET_PROJECT}"`, { cwd, stdio: "inherit", });
     if (!await pathExists(join(cwd, '.firebase'))) throw '.firebase does not exist';
     if (!await pathExists(join(cwd, '.firebase', site))) throw `.firebase/${site} does not exist`;
     if (!await pathExists(join(cwd, '.firebase', site, 'hosting'))) throw `.firebase/${site}/hosting does not exist`;

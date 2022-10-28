@@ -17,7 +17,7 @@ const run = async () => {
     execSync(`${cli} new ${basename(cwd)} --defaults --skip-git`, { cwd: join(cwd, '..')});
     await writeFile(join(cwd, '.firebaserc'), '{}');
     await writeFile(join(cwd, 'firebase.json'), '{"hosting": {"source": "."}}');
-    execSync(`node ${bin} emulators:exec "exit 0"`, { cwd });
+    execSync(`node ${bin} emulators:exec "exit 0" --project "${process.env.FBTOOLS_TARGET_PROJECT}"`, { cwd, stdio: "inherit", });
     if (!await pathExists(join(cwd, '.firebase'))) throw '.firebase does not exist';
     if (!await pathExists(join(cwd, '.firebase', site))) throw `.firebase/${site} does not exist`;
     if (!await pathExists(join(cwd, '.firebase', site, 'hosting'))) throw `.firebase/${site}/hosting does not exist`;
