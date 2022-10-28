@@ -123,6 +123,6 @@ module.exports = {
   ignorePatterns: [
     "src/dynamicImport.js",
     "scripts/webframeworks-deploy-tests/hosting/**",
-    "scripts/frameworks-tests/vite-project/**",
+    "scripts/frameworks-tests/*-project/**",
   ],
 };
