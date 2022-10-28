@@ -1,3 +1,5 @@
-- Fixes issue where errors were not properly propagating when listing backends. (#5071)
-- Fixes issue where message from `-m` on deploy was not being properly applied. (#5107)
-- Fixes error `EADDRNOTAVAIL` when running emulators in Docker.
+- Fixes an issue where an error during product provisioning check would block `firebase deploy --only extensions` (#5074).
+- Releases RTDB Emulator v4.11.0: Wire protocol update for `startAfter`, `endBefore`.
+- Changes `superstatic` dependency to `v8`, addressing Hosting emulator issues on Windows.
+- Fixes internal library that was not being correctly published.
+- Adds `--disable-triggers` flag to RTDB write commands.
