@@ -122,6 +122,25 @@ describe("function triggers", () => {
     await test.stopEmulators();
   });
 
+  describe("https triggers", () => {
+    it("should handle parallel requests", async function (this) {
+      this.timeout(EMULATOR_TEST_TIMEOUT);
+
+      const [resp1, resp2] = await Promise.all([
+        test.triggerHttpsFunction(),
+        test.triggerHttpsFunction(),
+      ]);
+
+      expect(resp1.status).to.eq(200);
+      expect(resp2.status).to.eq(200);
+      await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS));
+    });
+
+    it("should have triggered the cloud functions", () => {
+      expect(test.httpsV2TriggerCount).to.eq(2);
+    });
+  });
+
   describe("database and firestore emulator triggers", () => {
     it("should write to the database emulator", async function (this) {
       this.timeout(EMULATOR_TEST_TIMEOUT);

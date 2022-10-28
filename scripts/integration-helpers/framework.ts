@@ -45,6 +45,7 @@ const AUTH_BLOCKING_CREATE_V2_LOG =
   "========== AUTH BLOCKING CREATE V2 FUNCTION METADATA ==========";
 const AUTH_BLOCKING_SIGN_IN_V2_LOG =
   "========== AUTH BLOCKING SIGN IN V2 FUNCTION METADATA ==========";
+const HTTPS_V2_FUNCTION_LOG = "========== HTTPS V2 FUNCTION ==========";
 
 interface ConnectionInfo {
   host: string;
@@ -143,6 +144,7 @@ export class TriggerEndToEndTest extends EmulatorEndToEndTest {
   authBlockingCreateV2TriggerCount = 0;
   authBlockingSignInV2TriggerCount = 0;
   rtdbV2TriggerCount = 0;
+  httpsV2TriggerCount = 0;
 
   rtdbFromFirestore = false;
   firestoreFromRtdb = false;
@@ -179,6 +181,7 @@ export class TriggerEndToEndTest extends EmulatorEndToEndTest {
     this.authBlockingCreateV2TriggerCount = 0;
     this.authBlockingSignInV2TriggerCount = 0;
     this.rtdbV2TriggerCount = 0;
+    this.httpsV2TriggerCount = 0;
   }
 
   /*
@@ -274,6 +277,9 @@ export class TriggerEndToEndTest extends EmulatorEndToEndTest {
       if (data.includes(RTDB_V2_FUNCTION_LOG)) {
         this.rtdbV2TriggerCount++;
       }
+      if (data.includes(HTTPS_V2_FUNCTION_LOG)) {
+        this.httpsV2TriggerCount++;
+      }
     });
 
     return startEmulators;
@@ -334,6 +340,10 @@ export class TriggerEndToEndTest extends EmulatorEndToEndTest {
       body: JSON.stringify(body),
       headers: { "Content-Type": "application/json" },
     });
+  }
+
+  triggerHttpsFunction(): Promise<Response> {
+    return this.invokeHttpFunction("triggerHttpsFunction");
   }
 
   createUserFromAuth(): Promise<Response> {
