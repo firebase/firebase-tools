@@ -2,8 +2,6 @@ import { expect } from "chai";
 
 import * as cli from "./cli";
 import { requireAuth } from "../../src/requireAuth";
-import { readdir } from "fs/promises";
-import { join } from "path";
 
 const FIREBASE_PROJECT = process.env.GCLOUD_PROJECT || "";
 const FIREBASE_DEBUG = process.env.FIREBASE_DEBUG || "";
