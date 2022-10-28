@@ -335,9 +335,9 @@ export class RuntimeWorkerPool {
   }
 
   /**
-   * Adds a worker to the pool
-   *
-   * Must call worker.readyForWork() or worker.waitForSocketReady() to set the worker to ready status
+   * Adds a worker to the pool.
+   * Caller must set the worker status to ready by calling
+   * `worker.readyForWork()` or `worker.waitForSocketReady()`.
    */
   addWorker(
     triggerId: string | undefined,
