@@ -15,6 +15,7 @@ const run = async () => {
     rimraf.sync(cwd);
     execSync(`npm create vite@latest ${basename(cwd)} --yes -- --template vanilla`, { cwd: join(cwd, '..')});
     execSync("npm i", { cwd });
+    await writeFile(join(cwd, '.firebaserc'), '{}');
     await writeFile(join(cwd, 'firebase.json'), '{"hosting": {"source": "."}}');
     execSync(`node ${bin} emulators:exec "exit 0"`, { cwd });
     if (!await pathExists(join(cwd, '.firebase'))) throw '.firebase does not exist';

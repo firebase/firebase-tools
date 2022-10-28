@@ -15,6 +15,7 @@ const run = async () => {
     // TODO flex init hosting
     rimraf.sync(cwd);
     execSync(`${cli} new ${basename(cwd)} --defaults --skip-git`, { cwd: join(cwd, '..')});
+    await writeFile(join(cwd, '.firebaserc'), '{}');
     await writeFile(join(cwd, 'firebase.json'), '{"hosting": {"source": "."}}');
     execSync(`node ${bin} emulators:exec "exit 0"`, { cwd });
     if (!await pathExists(join(cwd, '.firebase'))) throw '.firebase does not exist';
