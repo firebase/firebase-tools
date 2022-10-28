@@ -14,7 +14,6 @@ const run = async () => {
     // TODO flex init hosting
     rimraf.sync(cwd);
     execSync(`npx --yes create-next-app@latest -e hello-world ${basename(cwd)} --use-npm --ts`, { cwd: join(cwd, '..')});
-    await writeFile(join(cwd, '.firebaserc'), '{"projects": {"default": "nextjs-demo-73e34"}}');
     await writeFile(join(cwd, 'firebase.json'), '{"hosting": {"source": "."}}');
     // Next is picking up the prettier settings from firebase-tools, sigh...
     await writeFile(join(cwd, "next.config.js"), "module.exports = { eslint: { ignoreDuringBuilds: true } };");
