@@ -11,9 +11,6 @@ on:
     paths:
       - "src/frameworks/**.ts"
       - ".github/workflows/frameworks.yaml"
-  release:
-    types:
-      - published
   schedule:
     - cron: 0 0 * * 1-5
 
