@@ -5,8 +5,7 @@ import { existsSync, readFileSync } from 'fs';
 import { execSync } from 'child_process';
 import { pathExists } from 'fs-extra';
 
-
-const site = 'nextjs-demo-73e34';
+const site = process.env.FBTOOLS_TARGET_PROJECT!;
 const cwd = join('scripts', 'frameworks-tests', 'custom-project');
 const bin = join(process.cwd(), 'lib', 'bin', 'firebase.js');
 

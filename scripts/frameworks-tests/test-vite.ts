@@ -6,7 +6,7 @@ import { execSync } from 'child_process';
 import * as rimraf from 'rimraf';
 import { pathExists } from 'fs-extra';
 
-const site = 'nextjs-demo-73e34';
+const site = process.env.FBTOOLS_TARGET_PROJECT!;
 const cwd = join('scripts', 'frameworks-tests', 'vite-project');
 const bin = join(process.cwd(), 'lib', 'bin', 'firebase.js');
 
