@@ -157,6 +157,7 @@
   "devDependencies": {
     "@angular-devkit/architect": "^0.1402.2",
     "@angular-devkit/core": "^14.2.2",
+    "@angular/cli": "^14.2.7",
     "@google/events": "^5.1.1",
     "@manifoldco/swagger-to-ts": "^2.0.0",
     "@types/archiver": "^5.1.0",
