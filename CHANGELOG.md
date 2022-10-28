@@ -1,3 +1,5 @@
 - Releases RTDB Emulator v4.11.0: Wire protocol update for `startAfter`, `endBefore`.
 - Changes `superstatic` dependency to `v8`, addressing Hosting emulator issues on Windows.
 - Fixes internal library that was not being correctly published.
+- Add support for Next.js 13 in firebase deploy.
+- Next.js routes with revalidate are now handled by the a backing Cloud Function.

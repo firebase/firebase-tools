@@ -49,11 +49,11 @@ export const name = "Next.js";
 export const support = SupportLevel.Experimental;
 export const type = FrameworkType.MetaFramework;
 
-function getNextVersion(cwd: string): string|undefined {
+function getNextVersion(cwd: string): string | undefined {
   return findDependency("next", { cwd, depth: 0, omitDev: false })?.version;
 }
 
-function getReactVersion(cwd: string): string|undefined {
+function getReactVersion(cwd: string): string | undefined {
   return findDependency("react-dom", { cwd, omitDev: false })?.version;
 }
 
