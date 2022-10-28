@@ -5,7 +5,8 @@ import { FirebaseError } from "../error";
 import {
   HostingMultiple,
   HostingSingle,
-  HostingResolved,
+  HostingBase,
+  Deployable,
   HostingRewrites,
   FunctionsRewrite,
   LegacyFunctionsRewrite,
@@ -19,6 +20,14 @@ import { HostingOptions } from "./options";
 import * as path from "node:path";
 import * as experiments from "../experiments";
 import { logger } from "../logger";
+
+// After validating a HostingMultiple and resolving targets, we will instead
+// have a HostingResolved.
+export type HostingResolved = HostingBase & {
+  site: string;
+  target?: string;
+  webFramework?: string;
+} & Deployable;
 
 // assertMatches allows us to throw when an --only flag doesn't match a target
 // but an --except flag doesn't. Is this desirable behavior?

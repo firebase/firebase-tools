@@ -544,7 +544,7 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
         await testBucket.upload(emptyFilePath, { destination: TEST_FILE_NAME });
         await signInToFirebaseAuth(page);
 
-        const metadata = await page.evaluate(async (filename) => {
+        const metadata = await page.evaluate((filename) => {
           return firebase
             .storage()
             .ref(filename)
@@ -574,7 +574,7 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
         });
         await signInToFirebaseAuth(page);
 
-        const updatedMetadata = await page.evaluate(async (filename) => {
+        const updatedMetadata = await page.evaluate((filename) => {
           return firebase.storage().ref(filename).updateMetadata({
             cacheControl: null,
             contentDisposition: null,
