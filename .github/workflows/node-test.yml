@@ -84,7 +84,7 @@ jobs:
           - npm run test:client-integration
           - npm run test:emulator
           - npm run test:extensions-emulator
-          - npm run test:frameworks
+          # - npm run test:frameworks # moved this to a seperate workflow & matrix test
           - npm run test:hosting
           # - npm run test:hosting-rewrites # Long-running test that might conflict across test runs. Run this manually.
           - npm run test:import-export

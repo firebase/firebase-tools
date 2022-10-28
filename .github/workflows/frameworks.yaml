@@ -7,8 +7,10 @@ on:
   pull_request:
     branches:
       - "**"
+    # TODO tune these tests, once they are fast and relaible we should consider enabling generally
     paths:
       - "src/frameworks/**.ts"
+      - ".github/workflows/frameworks.yml"
   release:
     types:
       - published
