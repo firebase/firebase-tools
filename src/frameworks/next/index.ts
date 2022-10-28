@@ -6,6 +6,7 @@ import type { NextConfig } from "next";
 import { copy, mkdirp, pathExists } from "fs-extra";
 import { pathToFileURL, parse } from "url";
 import { existsSync } from "fs";
+
 import {
   BuildResult,
   createServerResponseProxy,
@@ -48,11 +49,11 @@ export const name = "Next.js";
 export const support = SupportLevel.Experimental;
 export const type = FrameworkType.MetaFramework;
 
-function getNextVersion(cwd: string) {
+function getNextVersion(cwd: string): string|undefined {
   return findDependency("next", { cwd, depth: 0, omitDev: false })?.version;
 }
 
-function getReactVersion(cwd: string) {
+function getReactVersion(cwd: string): string|undefined {
   return findDependency("react-dom", { cwd, omitDev: false })?.version;
 }
 
@@ -73,8 +74,7 @@ export async function build(dir: string): Promise<BuildResult> {
   const { default: nextBuild } = relativeRequire(dir, "next/dist/build");
 
   const reactVersion = getReactVersion(dir);
-  // TODO use semver rather than parseInt
-  if (parseInt(reactVersion, 10) >= 18) {
+  if (reactVersion && gte(reactVersion, "18.0.0")) {
     // This needs to be set for Next build to succeed with React 18
     process.env.__NEXT_REACT_ROOT = "true";
   }
@@ -118,7 +118,8 @@ export async function build(dir: string): Promise<BuildResult> {
     const dynamicRoutes = Object.keys(prerenderManifestJSON.dynamicRoutes);
     const unrenderedPages = [
       ...Object.keys(pagesManifestJSON),
-      // TODO handle fully rendered app
+      // TODO flush out fully rendered detection with a app directory (Next 13)
+      // we shouldn't go too crazy here yet, as this is currently an expiriment
       ...Object.values<string>(appPathRoutesManifestJSON),
     ].filter(
       (it) =>

@@ -50,6 +50,6 @@ describe("webframeworks deploy", function (this) {
     expect(result.stdout, "deploy result").to.match(/found 16 files/);
     expect(result.stdout, "deploy result").to.match(/Deploy complete!/);
 
-    expect(await readdir(join(__dirname, '.firebase', FIREBASE_PROJECT, 'hosting'))).to.eql([]);
+    expect(await readdir(join(__dirname, ".firebase", FIREBASE_PROJECT, "hosting"))).to.eql([]);
   });
 });
