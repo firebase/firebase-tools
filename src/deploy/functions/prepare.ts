@@ -31,7 +31,9 @@ import { AUTH_BLOCKING_EVENTS } from "../../functions/events/v1";
 import { generateServiceIdentity } from "../../gcp/serviceusage";
 import { applyBackendHashToBackends } from "./cache/applyHash";
 import { allEndpoints, Backend } from "./backend";
+import { assertExhaustive } from "../../functional";
 
+export const EVENTARC_SOURCE_ENV = "EVENTARC_CLOUD_EVENT_SOURCE";
 function hasUserConfig(config: Record<string, unknown>): boolean {
   // "firebase" key is always going to exist in runtime config.
   // If any other key exists, we can assume that user is using runtime config.
@@ -138,7 +140,19 @@ export async function prepare(
     }
 
     for (const endpoint of backend.allEndpoints(wantBackend)) {
-      endpoint.environmentVariables = wantBackend.environmentVariables;
+      endpoint.environmentVariables = wantBackend.environmentVariables || {};
+      let resource: string;
+      if (endpoint.platform === "gcfv1") {
+        resource = `projects/${endpoint.project}/locations/${endpoint.region}/functions/${endpoint.id}`;
+      } else if (endpoint.platform === "gcfv2") {
+        // N.B. If GCF starts allowing v1's allowable characters in IDs they're
+        // going to need to have a transform to create a service ID (which has a
+        // more restrictive cahracter set). We'll need to reimplement that here.
+        resource = `projects/${endpoint.project}/locations/${endpoint.region}/services/${endpoint.id}`;
+      } else {
+        assertExhaustive(endpoint.platform);
+      }
+      endpoint.environmentVariables[EVENTARC_SOURCE_ENV] = resource;
       endpoint.codebase = codebase;
     }
     wantBackends[codebase] = wantBackend;
