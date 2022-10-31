@@ -1,4 +1,5 @@
 import { expect } from "chai";
+import { join } from "path";
 
 import { ExtensionsEmulator } from "../../emulator/extensionsEmulator";
 import { EmulatableBackend } from "../../emulator/functionsEmulator";
@@ -101,8 +102,9 @@ describe("Extensions Emulator", () => {
           },
           secretEnv: [],
           extensionInstanceId: "ext-test",
-          functionsDir:
-            "src/test/emulators/extensions/firebase/storage-resize-images@0.1.18/functions",
+          functionsDir: join(
+            "src/test/emulators/extensions/firebase/storage-resize-images@0.1.18/functions"
+          ),
           nodeMajorVersion: 10,
           predefinedTriggers: [
             {
