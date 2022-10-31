@@ -174,7 +174,13 @@ export class ExtensionsEmulator implements EmulatorInstance {
       encoding: "utf8",
     });
     if (npmInstall.error) {
-      throw npmInstall.error;
+      throw new FirebaseError("Failed to run npm install on extensions", {
+        original: npmInstall.error,
+      });
+    }
+    if (npmInstall.stderr) {
+      this.logger.logLabeled("ERROR", "Extensions", npmInstall.stderr);
+      throw new FirebaseError("Failed to run npm install on extensions, see logs for more details");
     }
     this.logger.logLabeled("DEBUG", "Extensions", `Finished "npm install" for ${sourceCodePath}`);
 
@@ -185,12 +191,19 @@ export class ExtensionsEmulator implements EmulatorInstance {
     );
     const npmRunGCPBuild = spawn.sync(
       "npm",
-      ["--prefix", `/${sourceCodePath}/functions/`, "run", "gcp-build"],
+      ["--prefix", `/${sourceCodePath}/functions/`, "run", "gcp-build", "--if-present"],
       { encoding: "utf8" }
     );
     if (npmRunGCPBuild.error) {
-      // TODO: Make sure this does not error out if "gcp-build" is not defined, but does error if it fails otherwise.
-      throw npmRunGCPBuild.error;
+      throw new FirebaseError("Failed to run npm run gcp-build on extensions", {
+        original: npmRunGCPBuild.error,
+      });
+    }
+    if (npmRunGCPBuild.stderr) {
+      this.logger.logLabeled("ERROR", "Extensions", npmRunGCPBuild.stderr);
+      throw new FirebaseError(
+        "Failed to run npm run gcp-build on extensions, see logs for more details"
+      );
     }
 
     this.logger.logLabeled(
