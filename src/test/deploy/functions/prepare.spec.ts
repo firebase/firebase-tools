@@ -122,6 +122,23 @@ describe("prepare", () => {
       prepare.inferDetailsFromExisting(backend.of(want), backend.of(have), /* usedDotEnv= */ false);
       expect(want.availableMemoryMb).to.equal(512);
     });
+
+    it("downgrades concurrency if necessary", () => {
+      const have: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        httpsTrigger: {},
+        concurrency: 80,
+        cpu: 1,
+      };
+      const want: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        httpsTrigger: {},
+        cpu: 0.5,
+      };
+
+      prepare.inferDetailsFromExisting(backend.of(want), backend.of(have), /* useDotEnv= */ false);
+      expect(want.concurrency).to.equal(1);
+    });
   });
 
   describe("inferBlockingDetails", () => {

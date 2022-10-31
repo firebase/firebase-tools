@@ -321,15 +321,26 @@ export function inferDetailsFromExisting(
       wantE.availableMemoryMb = haveE.availableMemoryMb;
     }
 
-    // N.B. This code doesn't handle automatic downgrading of concurrency if
-    // the customer sets CPU <1. We'll instead error that you can't have both.
-    // We may want to handle this case, though it might also be surprising to
-    // customers if they _don't_ get an error and we silently drop concurrency.
-    if (typeof wantE.concurrency === "undefined" && haveE.concurrency) {
-      wantE.concurrency = haveE.concurrency;
-    }
     if (typeof wantE.cpu === "undefined" && haveE.cpu) {
       wantE.cpu = haveE.cpu;
+    }
+
+    // N.B. concurrency has different defaults based on CPU. If the customer
+    // only specifies CPU and they change that specification to < 1, we should
+    // turn off concurrency. We'll not do the opposite and turn on concurrency
+    // if there are >1 CPU because this could expose race conditions. They
+    // either need to start on concurrency where they've always needed to
+    // handle race conditions, or they should explicitly enable.
+    if (typeof wantE.concurrency === "undefined") {
+      const explicitlySmallCPU = typeof wantE.cpu === "number" && wantE.cpu < 1;
+      // !availableMemoryMB means we'll default to 256
+      const implicitlySmallCPU =
+        wantE.cpu === "gcf_gen1" && (wantE.availableMemoryMb || 256) < 2048;
+      if (explicitlySmallCPU || implicitlySmallCPU) {
+        wantE.concurrency = 1;
+      } else if (haveE.concurrency) {
+        wantE.concurrency = haveE.concurrency;
+      }
     }
 
     wantE.securityLevel = haveE.securityLevel ? haveE.securityLevel : "SECURE_ALWAYS";
