@@ -327,10 +327,7 @@ export function inferDetailsFromExisting(
 
     // N.B. concurrency has different defaults based on CPU. If the customer
     // only specifies CPU and they change that specification to < 1, we should
-    // turn off concurrency. We'll not do the opposite and turn on concurrency
-    // if there are >1 CPU because this could expose race conditions. They
-    // either need to start on concurrency where they've always needed to
-    // handle race conditions, or they should explicitly enable.
+    // turn off concurrency.
     // We'll hanndle this in setCpuAndConcurrency
 
     wantE.securityLevel = haveE.securityLevel ? haveE.securityLevel : "SECURE_ALWAYS";
