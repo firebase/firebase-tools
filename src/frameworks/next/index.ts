@@ -89,6 +89,16 @@ export async function build(dir: string): Promise<BuildResult> {
   const exportDetailBuffer = exportDetailExists ? await readFile(exportDetailPath) : undefined;
   const exportDetailJson = exportDetailBuffer && JSON.parse(exportDetailBuffer.toString());
   if (exportDetailJson?.success) {
+    const middlewareManifestBuffer = await readFile(
+      join(dir, distDir, "server", "middleware-manifest.json")
+    );
+    const middlewareManifest = JSON.parse(middlewareManifestBuffer.toString());
+    const middlewareMatchers = Object.values(middlewareManifest["middleware"]);
+
+    const appPathRoutesManifestPath = join(dir, distDir, "app-path-routes-manifest.json");
+    const appPathRoutesManifestJSON = fileExistsSync(appPathRoutesManifestPath)
+      ? await readFile(appPathRoutesManifestPath).then((it) => JSON.parse(it.toString()))
+      : {};
     const prerenderManifestJSON = await readFile(
       join(dir, distDir, "prerender-manifest.json")
     ).then((it) => JSON.parse(it.toString()));
@@ -109,7 +119,7 @@ export async function build(dir: string): Promise<BuildResult> {
         )
     );
     // TODO log these as a reason why Cloud Functions are needed
-    if (!anyDynamicRouteFallbacks && unrenderedPages.length === 0) {
+    if (middlewareMatchers.length === 0 && !anyDynamicRouteFallbacks && unrenderedPages.length === 0) {
       wantsBackend = false;
     }
   }
@@ -162,56 +172,79 @@ export async function init(setup: any) {
  */
 export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: string) {
   const { distDir } = await getConfig(sourceDir);
-  const exportDetailPath = join(sourceDir, distDir, "export-detail.json");
-  const exportDetailExists = await pathExists(exportDetailPath);
-  const exportDetailBuffer = exportDetailExists ? await readFile(exportDetailPath) : undefined;
-  const exportDetailJson = exportDetailBuffer && JSON.parse(exportDetailBuffer.toString());
-  if (exportDetailJson?.success) {
-    copy(exportDetailJson.outDirectory, destDir);
-  } else {
-    const publicPath = join(sourceDir, "public");
-    await mkdir(join(destDir, "_next", "static"), { recursive: true });
-    if (await pathExists(publicPath)) {
-      await copy(publicPath, destDir);
+
+  const publicPath = join(sourceDir, "public");
+  await mkdir(join(destDir, "_next", "static"), { recursive: true });
+  if (await pathExists(publicPath)) {
+    await copy(publicPath, destDir);
+  }
+  await copy(join(sourceDir, distDir, "static"), join(destDir, "_next", "static"));
+
+  // Copy over the default html files
+  for (const file of ["index.html", "404.html", "500.html"]) {
+    const pagesPath = join(sourceDir, distDir, "server", "pages", file);
+    if (await pathExists(pagesPath)) {
+      await copyFile(pagesPath, join(destDir, file));
+      continue;
     }
-    await copy(join(sourceDir, distDir, "static"), join(destDir, "_next", "static"));
+    const appPath = join(sourceDir, distDir, "server", "app", file);
+    if (await pathExists(appPath)) {
+      await copyFile(appPath, join(destDir, file));
+    }
+  }
 
-    const serverPagesDir = join(sourceDir, distDir, "server", "pages");
-    await copy(serverPagesDir, destDir, {
-      filter: async (filename) => {
-        const status = await stat(filename);
-        if (status.isDirectory()) return true;
-        return extname(filename) === ".html";
-      },
-    });
+  const middlewareManifestBuffer = await readFile(
+    join(sourceDir, distDir, "server", "middleware-manifest.json")
+  );
+  const middlewareManifest = JSON.parse(middlewareManifestBuffer.toString());
+  const middlewareMatchers = Object.values(middlewareManifest["middleware"]).map((it: any) => it.matchers).flat();
 
-    const prerenderManifestBuffer = await readFile(
-      join(sourceDir, distDir, "prerender-manifest.json")
-    );
-    const prerenderManifest = JSON.parse(prerenderManifestBuffer.toString());
-    // TODO drop from hosting if revalidate
-    for (const route in prerenderManifest.routes) {
-      if (prerenderManifest.routes[route]) {
-        // / => index.json => index.html => index.html
-        // /foo => foo.json => foo.html
-        const parts = route
-          .split("/")
-          .slice(1)
-          .filter((it) => !!it);
-        const partsOrIndex = parts.length > 0 ? parts : ["index"];
-        const dataPath = `${join(...partsOrIndex)}.json`;
-        const htmlPath = `${join(...partsOrIndex)}.html`;
-        await mkdir(join(destDir, dirname(htmlPath)), { recursive: true });
-        await copyFile(
-          join(sourceDir, distDir, "server", "pages", htmlPath),
-          join(destDir, htmlPath)
-        );
-        const dataRoute = prerenderManifest.routes[route].dataRoute;
-        await mkdir(join(destDir, dirname(dataRoute)), { recursive: true });
-        await copyFile(
-          join(sourceDir, distDir, "server", "pages", dataPath),
-          join(destDir, dataRoute)
-        );
+  const prerenderManifestBuffer = await readFile(
+    join(sourceDir, distDir, "prerender-manifest.json")
+  );
+  const prerenderManifest = JSON.parse(prerenderManifestBuffer.toString());
+  for (const path in prerenderManifest.routes) {
+    if (prerenderManifest.routes[path]) {
+      // Skip ISR in the deploy to hosting
+      const { initialRevalidateSeconds } = prerenderManifest.routes[path];
+      if (initialRevalidateSeconds) {
+        continue;
+      }
+
+      const matchingMiddleware = middlewareMatchers.find((matcher: any) => new RegExp(matcher.regexp).test(path));
+      if (matchingMiddleware) {
+        continue;
+      }
+
+      // / => index.json => index.html => index.html
+      // /foo => foo.json => foo.html
+      const parts = path
+        .split("/")
+        .slice(1)
+        .filter((it) => !!it);
+      const partsOrIndex = parts.length > 0 ? parts : ["index"];
+      const dataPath = `${join(...partsOrIndex)}.json`;
+      const htmlPath = `${join(...partsOrIndex)}.html`;
+      await mkdir(join(destDir, dirname(htmlPath)), { recursive: true });
+      const pagesHtmlPath = join(sourceDir, distDir, "server", "pages", htmlPath);
+      if (await pathExists(pagesHtmlPath)) {
+        await copyFile(pagesHtmlPath, join(destDir, htmlPath));
+      } else {
+        const appHtmlPath = join(sourceDir, distDir, "server", "app", htmlPath);
+        if (await pathExists(appHtmlPath)) {
+          await copyFile(appHtmlPath, join(destDir, htmlPath));
+        }
+      }
+      const dataRoute = prerenderManifest.routes[path].dataRoute;
+      await mkdir(join(destDir, dirname(dataRoute)), { recursive: true });
+      const pagesDataPath = join(sourceDir, distDir, "server", "pages", dataPath);
+      if (await pathExists(pagesDataPath)) {
+        await copyFile(pagesDataPath, join(destDir, dataRoute));
+      } else {
+        const appDataPath = join(sourceDir, distDir, "server", "app", dataPath);
+        if (await pathExists(appDataPath)) {
+          await copyFile(appDataPath, join(destDir, dataRoute));
+        }
       }
     }
   }
