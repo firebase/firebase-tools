@@ -3,3 +3,5 @@
 - Changes `superstatic` dependency to `v8`, addressing Hosting emulator issues on Windows.
 - Fixes internal library that was not being correctly published.
 - Adds `--disable-triggers` flag to RTDB write commands.
+- Default enables experiment to skip deploying unmodified functions (#5192)
+- Default enables experiment to allow parameterized functions codebases (#5192)
