@@ -2,13 +2,13 @@ import { expect } from "chai";
 
 import { SourceTokenScraper } from "../../../../deploy/functions/release/sourceTokenScraper";
 
-describe("SourcTokenScraper", () => {
+describe("SourceTokenScraper", () => {
   it("immediately provides the first result", async () => {
     const scraper = new SourceTokenScraper();
     await expect(scraper.tokenPromise()).to.eventually.be.undefined;
   });
 
-  it("provides results after the firt operation completes", async () => {
+  it("provides results after the first operation completes", async () => {
     const scraper = new SourceTokenScraper();
     // First result comes right away;
     await expect(scraper.tokenPromise()).to.eventually.be.undefined;
@@ -40,5 +40,36 @@ describe("SourcTokenScraper", () => {
       },
     });
     await expect(scraper.tokenPromise()).to.eventually.equal("magic token");
+  });
+
+  it.only("refreshes token after timer expires", async () => {
+    const scraper = new SourceTokenScraper(100); // tokens expire every 100 ms
+    // First result comes right away;
+    await expect(scraper.tokenPromise()).to.eventually.be.undefined;
+
+    const op = {
+      metadata: {
+        sourceToken: "magic token",
+        target: "projects/p/locations/l/functions/f",
+      },
+    };
+    scraper.poller(op);
+
+    await expect(scraper.tokenPromise()).to.eventually.be.equal("magic token");
+    const timeout = (): Promise<void> => {
+      return new Promise<void>((resolve) => setTimeout(resolve, 200));
+    };
+    await timeout();
+    scraper.poller(op); // sets token promise to undefined
+    await expect(scraper.tokenPromise()).to.eventually.be.undefined;
+
+    // new token polled
+    scraper.poller({
+      metadata: {
+        sourceToken: "magic token 2",
+        target: "projects/p/locations/l/functions/f",
+      },
+    });
+    await expect(scraper.tokenPromise()).to.eventually.be.equal("magic token 2");
   });
 });
