@@ -213,7 +213,7 @@ export async function prepare(
   for (const [codebase, { wantBackend, haveBackend }] of Object.entries(payload.functions)) {
     inferDetailsFromExisting(wantBackend, haveBackend, codebaseUsesEnvs.includes(codebase));
     await ensureTriggerRegions(wantBackend);
-    resolveCpu(wantBackend);
+    resolveCpuAndConcurrency(wantBackend);
     validate.endpointsAreValid(wantBackend);
     inferBlockingDetails(wantBackend);
   }
@@ -331,17 +331,7 @@ export function inferDetailsFromExisting(
     // if there are >1 CPU because this could expose race conditions. They
     // either need to start on concurrency where they've always needed to
     // handle race conditions, or they should explicitly enable.
-    if (typeof wantE.concurrency === "undefined") {
-      const explicitlySmallCPU = typeof wantE.cpu === "number" && wantE.cpu < 1;
-      // !availableMemoryMB means we'll default to 256
-      const implicitlySmallCPU =
-        wantE.cpu === "gcf_gen1" && (wantE.availableMemoryMb || 256) < 2048;
-      if (explicitlySmallCPU || implicitlySmallCPU) {
-        wantE.concurrency = 1;
-      } else if (haveE.concurrency) {
-        wantE.concurrency = haveE.concurrency;
-      }
-    }
+    // We'll hanndle this in setCpuAndConcurrency
 
     wantE.securityLevel = haveE.securityLevel ? haveE.securityLevel : "SECURE_ALWAYS";
 
@@ -419,7 +409,7 @@ export function inferBlockingDetails(want: backend.Backend): void {
  * provided and sets concurrency based on the CPU level if not provided.
  * After this function, CPU will be a real number and not "gcf_gen1".
  */
-export function resolveCpu(want: backend.Backend): void {
+export function resolveCpuAndConcurrency(want: backend.Backend): void {
   for (const e of backend.allEndpoints(want)) {
     if (e.platform === "gcfv1") {
       continue;
@@ -428,6 +418,10 @@ export function resolveCpu(want: backend.Backend): void {
       e.cpu = backend.memoryToGen1Cpu(e.availableMemoryMb || backend.DEFAULT_MEMORY);
     } else if (!e.cpu) {
       e.cpu = backend.memoryToGen2Cpu(e.availableMemoryMb || backend.DEFAULT_MEMORY);
+    }
+
+    if (!e.concurrency) {
+      e.concurrency = e.cpu >= 1 ? backend.DEFAULT_CONCURRENCY : 1;
     }
   }
 }
