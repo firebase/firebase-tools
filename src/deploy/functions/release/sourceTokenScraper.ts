@@ -13,7 +13,7 @@ export class SourceTokenScraper {
   private resolve!: (token?: string) => void;
   private promise: Promise<string | undefined>;
 
-  constructor(validDurationMs = 1800000) {
+  constructor(validDurationMs = 1500000) {
     this.tokenValidDurationMs = validDurationMs;
     this.promise = new Promise((resolve) => (this.resolve = resolve));
   }
