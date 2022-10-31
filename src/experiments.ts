@@ -66,9 +66,11 @@ export const ALL_EXPERIMENTS = experiments({
   },
   functionsparams: {
     shortDescription: "Adds support for paramaterizing functions deployments",
+    default: true,
   },
   skipdeployingnoopfunctions: {
     shortDescription: "Detect that there have been no changes to a function and skip deployment",
+    default: true,
   },
 
   // Emulator experiments
