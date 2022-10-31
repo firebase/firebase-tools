@@ -218,7 +218,12 @@ export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: strin
       if (prerenderManifest.routes[path]) {
         // Skip ISR in the deploy to hosting
         const { initialRevalidateSeconds } = prerenderManifest.routes[path];
-        if (initialRevalidateSeconds) continue;
+        if (initialRevalidateSeconds) {
+          continue;
+        }
+
+        // TODO(jamesdaniels) explore oppertunity to simplify this now that we
+        //                    are defaulting cleanURLs to true for frameworks
 
         // / => index.json => index.html => index.html
         // /foo => foo.json => foo.html

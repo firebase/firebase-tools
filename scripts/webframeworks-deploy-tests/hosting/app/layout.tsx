@@ -6,4 +6,3 @@ export default function RootLayout({ children }: any) {
       </html>
     )
 }
-  
