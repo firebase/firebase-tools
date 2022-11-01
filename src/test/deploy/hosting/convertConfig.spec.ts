@@ -453,7 +453,7 @@ describe("convertConfig", () => {
             version: "14",
           }
         )
-      ).to.be.rejectedWith(FirebaseError);
+      ).to.eventually.be.rejectedWith(FirebaseError);
     });
 
     it("should throw when rewrite points to function being deleted", async () => {
@@ -494,7 +494,7 @@ describe("convertConfig", () => {
             version: "14",
           }
         )
-      ).to.be.rejectedWith(FirebaseError);
+      ).to.eventually.be.rejectedWith(FirebaseError);
     });
   });
 
