@@ -4,11 +4,16 @@ import * as utils from "../../utils";
 import { convertConfig } from "./convertConfig";
 import { Context } from "./context";
 import { FirebaseError } from "../../error";
+import { Payload as FunctionsPayload } from "../functions/args";
 
 /**
  *  Release finalized a Hosting release.
  */
-export async function release(context: Context, options: { message?: string }): Promise<void> {
+export async function release(
+  context: Context,
+  options: { message?: string },
+  functionsPayload: FunctionsPayload
+): Promise<void> {
   if (!context.hosting || !context.hosting.deploys) {
     return;
   }
@@ -26,7 +31,7 @@ export async function release(context: Context, options: { message?: string }): 
 
       const update: Partial<api.Version> = {
         status: "FINALIZED",
-        config: await convertConfig(context, deploy),
+        config: await convertConfig(context, functionsPayload, deploy),
       };
 
       const versionId = utils.last(deploy.version.split("/"));
