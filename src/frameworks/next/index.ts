@@ -11,6 +11,7 @@ import {
   BuildResult,
   createServerResponseProxy,
   findDependency,
+  Framework,
   FrameworkType,
   NODE_VERSION,
   relativeRequire,
@@ -22,6 +23,7 @@ import { IncomingMessage, ServerResponse } from "http";
 import { logger } from "../../logger";
 import { FirebaseError } from "../../error";
 import { fileExistsSync } from "../../fsutils";
+import { DEFAULT_HOST, DEFAULT_PORTS } from "../../emulator/constants";
 
 // Next.js's exposed interface is incomplete here
 // TODO see if there's a better way to grab this
@@ -300,11 +302,18 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
 /**
  * Create a dev server.
  */
-export async function getDevModeHandle(dir: string) {
+export async function getDevModeHandle(
+  dir: Parameters<NonNullable<Framework['getDevModeHandle']>>[0],
+  hostingEmulatorInfo: Parameters<NonNullable<Framework['getDevModeHandle']>>[1]
+) {
   const { default: next } = relativeRequire(dir, "next");
   const nextApp = next({
     dev: true,
     dir,
+
+    // TODO: remove fallbacks after serve passes emulator info to prepareFrameworks
+    hostname: hostingEmulatorInfo?.host ?? DEFAULT_HOST, 
+    port: hostingEmulatorInfo?.port ?? DEFAULT_PORTS.hosting
   });
   const handler = nextApp.getRequestHandler();
   await nextApp.prepare();
