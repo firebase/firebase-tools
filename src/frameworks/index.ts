@@ -54,7 +54,7 @@ export interface Framework {
     dir: string,
 
     // TODO: remove `| undefined` after serve passes emulator info to prepareFrameworks
-    hostingEmulatorInfo: EmulatorInfo | undefined 
+    hostingEmulatorInfo: EmulatorInfo | undefined
   ) => Promise<(req: IncomingMessage, res: ServerResponse, next: () => void) => void>;
   ɵcodegenPublicDirectory: (dir: string, dest: string) => Promise<void>;
   ɵcodegenFunctionsDirectory?: (
@@ -389,7 +389,9 @@ export async function prepareFrameworks(
     const hostingEmulatorInfo = emulators.find((e) => e.name === Emulators.HOSTING);
 
     const devModeHandle =
-      isDevMode && getDevModeHandle && (await getDevModeHandle(getProjectPath(), hostingEmulatorInfo));
+      isDevMode &&
+      getDevModeHandle &&
+      (await getDevModeHandle(getProjectPath(), hostingEmulatorInfo));
     let codegenFunctionsDirectory: Framework["ɵcodegenFunctionsDirectory"];
     if (devModeHandle) {
       config.public = relative(projectRoot, publicDirectory);

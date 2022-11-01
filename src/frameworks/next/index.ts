@@ -303,8 +303,8 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
  * Create a dev server.
  */
 export async function getDevModeHandle(
-  dir: Parameters<NonNullable<Framework['getDevModeHandle']>>[0],
-  hostingEmulatorInfo: Parameters<NonNullable<Framework['getDevModeHandle']>>[1]
+  dir: Parameters<NonNullable<Framework["getDevModeHandle"]>>[0],
+  hostingEmulatorInfo: Parameters<NonNullable<Framework["getDevModeHandle"]>>[1]
 ) {
   const { default: next } = relativeRequire(dir, "next");
   const nextApp = next({
@@ -312,8 +312,8 @@ export async function getDevModeHandle(
     dir,
 
     // TODO: remove fallbacks after serve passes emulator info to prepareFrameworks
-    hostname: hostingEmulatorInfo?.host ?? DEFAULT_HOST, 
-    port: hostingEmulatorInfo?.port ?? DEFAULT_PORTS.hosting
+    hostname: hostingEmulatorInfo?.host ?? DEFAULT_HOST,
+    port: hostingEmulatorInfo?.port ?? DEFAULT_PORTS.hosting,
   });
   const handler = nextApp.getRequestHandler();
   await nextApp.prepare();
