@@ -1369,7 +1369,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
       // In firebase-functions we manually copy 'sub' to 'uid'
       // https://github.com/firebase/firebase-admin-node/blob/0b2082f1576f651e75069e38ce87e639c25289af/src/auth/token-verifier.ts#L249
-      const claims = decoded.payload;
+      const claims = decoded.payload as jwt.JwtPayload;
       claims.uid = claims.sub;
 
       return claims;
