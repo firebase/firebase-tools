@@ -67,7 +67,9 @@ export function resolveString(
 }
 
 /**
- *
+ * Resolves a FieldList in a Build to an an actual string[] value.
+ * FieldLists can be a list of string | Expression<string>, or a single
+ * Expression<string[]>.
  */
 export function resolveList(
   from: build.FieldList,
@@ -162,6 +164,8 @@ export interface BooleanParam extends ParamBase<boolean> {
 
 export interface ListParam extends ParamBase<string[]> {
   type: "list";
+
+  delimiter?: string;
 }
 
 export interface TextInput<T> { // eslint-disable-line
@@ -242,6 +246,8 @@ export class ParamValue {
   legalNumber: boolean;
   // Whether this param value can be sensibly interpreted as a list
   legalList: boolean;
+  // What delimiter to use between fields when reading/writing to .env format
+  delimiter: string;
 
   constructor(
     private readonly rawValue: string,
@@ -252,10 +258,17 @@ export class ParamValue {
     this.legalBoolean = types.boolean || false;
     this.legalNumber = types.number || false;
     this.legalList = types.list || false;
+    this.delimiter = ",";
   }
 
-  static fromList(ls: string[], delimiter = ","): string {
-    return ls.join(delimiter);
+  static fromList(ls: string[], delimiter = ","): ParamValue {
+    const pv = new ParamValue(ls.join(delimiter), false, { list: true });
+    pv.setDelimiter(delimiter);
+    return pv;
+  }
+
+  setDelimiter(delimiter: string) {
+    this.delimiter = delimiter;
   }
 
   toString(): string {
@@ -270,8 +283,8 @@ export class ParamValue {
     return ["true", "y", "yes", "1"].includes(this.rawValue);
   }
 
-  asList(delimiter = ","): string[] {
-    return this.rawValue.split(delimiter);
+  asList(): string[] {
+    return this.rawValue.split(this.delimiter);
   }
 
   asNumber(): number {
@@ -306,6 +319,8 @@ function resolveDefaultCEL(
       return resolveString(expr, currentEnv);
     case "int":
       return resolveInt(expr, currentEnv);
+    case "list":
+      return resolveList(expr, currentEnv);
     default:
       throw new FirebaseError(
         "Build specified parameter with default " + expr + " of unsupported type"
@@ -485,7 +500,7 @@ async function promptParam(
     return new ParamValue(provided.toString(), false, { boolean: true });
   } else if (param.type === "list") {
     const provided = await promptList(param, resolvedDefault as string[] | undefined);
-    return new ParamValue(JSON.stringify(provided), false, { list: true });
+    return ParamValue.fromList(provided, param.delimiter);
   } else if (param.type === "secret") {
     throw new FirebaseError(
       `Somehow ended up trying to interactively prompt for secret parameter ${param.name}, which should never happen.`

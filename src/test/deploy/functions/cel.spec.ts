@@ -22,12 +22,7 @@ function boolV(value: boolean): ParamValue {
   });
 }
 function listV(value: string[]): ParamValue {
-  return new ParamValue(ParamValue.fromList(value), false, {
-    string: false,
-    number: false,
-    boolean: false,
-    list: true,
-  });
+  return ParamValue.fromList(value);
 }
 
 describe("CEL evaluation", () => {
