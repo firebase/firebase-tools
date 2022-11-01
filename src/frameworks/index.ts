@@ -386,10 +386,10 @@ export async function prepareFrameworks(
     // TODO allow for override
     const isDevMode = context._name === "serve" || context._name === "emulators:start";
 
-    const hostingEmulatorData = emulators.find((e) => e.name === Emulators.HOSTING);
+    const hostingEmulatorInfo = emulators.find((e) => e.name === Emulators.HOSTING);
 
     const devModeHandle =
-      isDevMode && getDevModeHandle && (await getDevModeHandle(getProjectPath(), hostingEmulatorData));
+      isDevMode && getDevModeHandle && (await getDevModeHandle(getProjectPath(), hostingEmulatorInfo));
     let codegenFunctionsDirectory: Framework["ɵcodegenFunctionsDirectory"];
     if (devModeHandle) {
       config.public = relative(projectRoot, publicDirectory);
