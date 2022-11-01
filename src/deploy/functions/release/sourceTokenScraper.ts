@@ -1,5 +1,10 @@
 import { logger } from "../../../logger";
-import { Timer } from "./timer";
+
+enum TokenState {
+  "NONE",
+  "VALID",
+  "INVALID",
+}
 
 /**
  * GCF v1 deploys support reusing a build between function deploys.
@@ -8,40 +13,54 @@ import { Timer } from "./timer";
  */
 export class SourceTokenScraper {
   private tokenValidDurationMs; // in ms
-  private tokenRefreshRequired = true;
-  private tokenRefreshTimer: Timer | undefined;
   private resolve!: (token?: string) => void;
   private promise: Promise<string | undefined>;
+  private expiration: bigint | undefined;
+  private tokenState: TokenState;
 
   constructor(validDurationMs = 1500000) {
     this.tokenValidDurationMs = validDurationMs;
     this.promise = new Promise((resolve) => (this.resolve = resolve));
+    this.tokenState = TokenState.NONE;
   }
 
-  // Token Promise will return undefined for the first caller
-  // (because we presume it's this function's source token we'll scrape)
-  // and then returns the promise generated from the first function's onCall
-  tokenPromise(): Promise<string | undefined> {
-    if (this.tokenRefreshRequired) {
-      this.tokenRefreshRequired = false;
-      this.tokenRefreshTimer = new Timer(this.tokenValidDurationMs);
-      return Promise.resolve(undefined);
+  async getToken(): Promise<string | undefined> {
+    if (this.tokenState === TokenState.NONE) {
+      this.tokenState = TokenState.INVALID;
+      return undefined;
+    } else if (this.tokenState === TokenState.INVALID) {
+      return this.promise; // wait until we get a source token
+    } else if (this.tokenState === TokenState.VALID) {
+      if (this.checkTokenExpired()) {
+        this.tokenState = TokenState.INVALID;
+        this.promise = new Promise((resolve) => (this.resolve = resolve));
+        return undefined;
+      }
+      return this.promise;
     }
-    return this.promise;
+  }
+
+  checkTokenExpired(): boolean {
+    if (this.expiration === undefined) {
+      throw new Error();
+    }
+    return process.hrtime.bigint() >= this.expiration;
+  }
+
+  calculateTokenExpiry(): bigint {
+    const now = process.hrtime.bigint();
+    return now + BigInt(this.tokenValidDurationMs) * BigInt(1e6);
   }
 
   get poller() {
     return (op: any) => {
-      if (this.tokenRefreshTimer?.expired()) {
-        this.tokenRefreshRequired = true;
-        this.resolve();
-        return;
-      }
       if (op.metadata?.sourceToken || op.done) {
         const [, , , /* projects*/ /* project*/ /* regions*/ region] =
           op.metadata?.target?.split("/") || [];
         logger.debug(`Got source token ${op.metadata?.sourceToken} for region ${region as string}`);
         this.resolve(op.metadata?.sourceToken);
+        this.tokenState = TokenState.VALID;
+        this.expiration = this.calculateTokenExpiry(); // calculate expiration
       }
     };
   }
