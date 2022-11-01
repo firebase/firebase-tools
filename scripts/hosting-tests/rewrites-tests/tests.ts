@@ -353,6 +353,53 @@ describe("deploy function-targeted rewrites And functions", () => {
     ).to.eventually.be.rejectedWith(FirebaseError, "Unable to find a valid endpoint for function");
   }).timeout(1000 * 1e3);
 
+  it("should fail to deploy rewrites to a function being deleted in a region", async () => {
+    const firebaseJson = {
+      hosting: {
+        public: "hosting",
+        rewrites: [
+          {
+            source: "/helloWorld",
+            function: functionName,
+            region: "asia-northeast1",
+          },
+        ],
+      },
+    };
+
+    const firebaseJsonFilePath = join(tempDirInfo.tempDir.name, ".", "firebase.json");
+    writeFileSync(firebaseJsonFilePath, JSON.stringify(firebaseJson));
+    ensureDirSync(tempDirInfo.hostingDirPath);
+    writeBasicHostingFile(tempDirInfo.hostingDirPath);
+
+    writeHelloWorldFunctionWithRegions(
+      functionName,
+      join(tempDirInfo.tempDir.name, ".", "functions"),
+      ["asia-northeast1"]
+    );
+
+    await client.deploy({
+      project: process.env.FBTOOLS_TARGET_PROJECT,
+      cwd: tempDirInfo.tempDir.name,
+      only: "functions",
+      force: true,
+    });
+
+    writeHelloWorldFunctionWithRegions(
+      functionName,
+      join(tempDirInfo.tempDir.name, ".", "functions"),
+      ["europe-west1"]
+    );
+    await expect(
+      client.deploy({
+        project: process.env.FBTOOLS_TARGET_PROJECT,
+        cwd: tempDirInfo.tempDir.name,
+        only: "functions,hosting",
+        force: true,
+      })
+    ).to.eventually.be.rejectedWith(FirebaseError, "Unable to find a valid endpoint for function");
+  }).timeout(1000 * 1e3);
+
   it("should deploy when a rewrite points to a non-existent function", async () => {
     const firebaseJson = {
       hosting: {
