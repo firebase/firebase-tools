@@ -8,3 +8,4 @@
 - Default enables experiment to skip deploying unmodified functions (#5192)
 - Default enables experiment to allow parameterized functions codebases (#5192)
 - Fixes parallel requests in the functions emulator (#5149).
+- Unspecified functions concurrency will shift between the defaults of 1 or 80 when CPU is changed to support/not support concurrency (#5196)
