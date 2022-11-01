@@ -86,7 +86,7 @@ describe("FunctionsRuntimeWorker", () => {
   const workerPool = new RuntimeWorkerPool();
 
   describe("RuntimeWorker", () => {
-    it("goes from idle --> busy --> idle in normal operation", async () => {
+    it("goes from created --> idle --> busy --> idle in normal operation", async () => {
       const scope = nock("http://localhost").get("/").reply(200);
 
       const worker = new RuntimeWorker(workerPool.getKey("trigger"), new MockRuntimeInstance());
@@ -105,7 +105,7 @@ describe("FunctionsRuntimeWorker", () => {
       expect(counter.total).to.eql(4);
     });
 
-    it("goes from idle --> busy --> finished when there's an error", async () => {
+    it("goes from created --> idle --> busy --> finished when there's an error", async () => {
       const scope = nock("http://localhost").get("/").replyWithError("boom");
 
       const worker = new RuntimeWorker(workerPool.getKey("trigger"), new MockRuntimeInstance());
@@ -125,7 +125,7 @@ describe("FunctionsRuntimeWorker", () => {
       expect(counter.total).to.eql(4);
     });
 
-    it("goes from busy --> finishing --> finished when marked", async () => {
+    it("goes from created --> busy --> finishing --> finished when marked", async () => {
       const scope = nock("http://localhost").get("/").replyWithError("boom");
 
       const worker = new RuntimeWorker(workerPool.getKey("trigger"), new MockRuntimeInstance());

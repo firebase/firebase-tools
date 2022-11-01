@@ -124,20 +124,15 @@ describe("function triggers", () => {
 
   describe("https triggers", () => {
     it("should handle parallel requests", async function (this) {
-      this.timeout(EMULATOR_TEST_TIMEOUT);
+      this.timeout(TEST_SETUP_TIMEOUT);
 
       const [resp1, resp2] = await Promise.all([
-        test.triggerHttpsFunction(),
-        test.triggerHttpsFunction(),
+        test.invokeHttpFunction("httpsv2reaction"),
+        test.invokeHttpFunction("httpsv2reaction"),
       ]);
 
       expect(resp1.status).to.eq(200);
       expect(resp2.status).to.eq(200);
-      await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS));
-    });
-
-    it("should have triggered the cloud functions", () => {
-      expect(test.httpsV2TriggerCount).to.eq(2);
     });
   });
 

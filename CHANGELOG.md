@@ -7,3 +7,4 @@
 - Adds `--disable-triggers` flag to RTDB write commands.
 - Default enables experiment to skip deploying unmodified functions (#5192)
 - Default enables experiment to allow parameterized functions codebases (#5192)
+- Fixes parallel requests in the functions emulator (#5149).

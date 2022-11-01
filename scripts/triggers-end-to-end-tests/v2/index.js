@@ -23,7 +23,6 @@ const AUTH_BLOCKING_CREATE_V2_LOG =
 const AUTH_BLOCKING_SIGN_IN_V2_LOG =
   "========== AUTH BLOCKING SIGN IN V2 FUNCTION METADATA ==========";
 const RTDB_LOG = "========== RTDB V2 FUNCTION ==========";
-const HTTPS_FUNCTION_LOG = "========== HTTPS V2 FUNCTION ==========";
 
 const PUBSUB_TOPIC = "test-topic";
 const START_DOCUMENT_NAME = "test/start";
@@ -31,8 +30,7 @@ const START_DOCUMENT_NAME = "test/start";
 admin.initializeApp();
 
 exports.httpsv2reaction = functionsV2.https.onRequest((req, res) => {
-  console.log(HTTPS_FUNCTION_LOG);
-  res.send();
+  res.send("httpsv2reaction");
 });
 
 exports.pubsubv2reaction = functionsV2.pubsub.onMessagePublished(PUBSUB_TOPIC, (cloudevent) => {

@@ -8,20 +8,8 @@ const {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
 } = require("firebase/auth");
-const fs = require("fs");
-const path = require("path");
-const fetch = require("node-fetch");
-
-// load the config from the parent dir
-const filename = path.join(__dirname, "/../firebase.json");
-const data = fs.readFileSync(filename, "utf8");
-const config = JSON.parse(data);
 
 const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "";
-
-const FUNCTIONS_PORT = config.emulators.functions?.port || "9002";
-
-const FUNCTIONS_REGION = "us-central1";
 
 /*
  * We install onWrite triggers for START_DOCUMENT_NAME in both the firestore and
@@ -54,18 +42,6 @@ const app = initializeApp(
 );
 const auth = getAuth(app);
 connectAuthEmulator(auth, `http://${process.env.FIREBASE_AUTH_EMULATOR_HOST}`);
-
-function invokeHttpsFunction(name) {
-  const url = `http://localhost:${[FUNCTIONS_PORT, FIREBASE_PROJECT, FUNCTIONS_REGION, name].join(
-    "/"
-  )}`;
-  return fetch(url);
-}
-
-exports.triggerHttpsFunction = functions.https.onRequest(async (req, res) => {
-  await invokeHttpsFunction("httpsv2reaction");
-  res.json({ triggered: true });
-});
 
 exports.deleteFromFirestore = functions.https.onRequest(async (req, res) => {
   await admin.firestore().doc(START_DOCUMENT_NAME).delete();
