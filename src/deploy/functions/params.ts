@@ -254,10 +254,11 @@ export class ParamValue {
     this.legalList = types.list || false;
   }
 
+  static fromList(ls: string[], delimiter = ","): string {
+    return ls.join(delimiter);
+  }
+
   toString(): string {
-    if (this.legalList) {
-      return encodeURI(JSON.stringify(this.rawValue));
-    }
     return this.rawValue;
   }
 
@@ -269,12 +270,8 @@ export class ParamValue {
     return ["true", "y", "yes", "1"].includes(this.rawValue);
   }
 
-  asList(): string[] {
-    const parsed = JSON.parse(decodeURI(this.rawValue));
-    if (!Array.isArray(parsed)) {
-      // uh-oh
-    }
-    return parsed;
+  asList(delimiter = ","): string[] {
+    return this.rawValue.split(delimiter);
   }
 
   asNumber(): number {
