@@ -1,11 +1,12 @@
 import { execSync } from "child_process";
-import { readFile, mkdir, copyFile, stat } from "fs/promises";
-import { dirname, extname, join } from "path";
+import { readFile, mkdir, copyFile } from "fs/promises";
+import { dirname, join } from "path";
 import type { Header, Rewrite, Redirect } from "next/dist/lib/load-custom-routes";
 import type { NextConfig } from "next";
 import { copy, mkdirp, pathExists } from "fs-extra";
 import { pathToFileURL, parse } from "url";
 import { existsSync } from "fs";
+
 import {
   BuildResult,
   createServerResponseProxy,
@@ -20,6 +21,7 @@ import { gte } from "semver";
 import { IncomingMessage, ServerResponse } from "http";
 import { logger } from "../../logger";
 import { FirebaseError } from "../../error";
+import { fileExistsSync } from "../../fsutils";
 
 // Next.js's exposed interface is incomplete here
 // TODO see if there's a better way to grab this
@@ -47,8 +49,12 @@ export const name = "Next.js";
 export const support = SupportLevel.Experimental;
 export const type = FrameworkType.MetaFramework;
 
-function getNextVersion(cwd: string) {
+function getNextVersion(cwd: string): string | undefined {
   return findDependency("next", { cwd, depth: 0, omitDev: false })?.version;
+}
+
+function getReactVersion(cwd: string): string | undefined {
+  return findDependency("react-dom", { cwd, omitDev: false })?.version;
 }
 
 /**
@@ -66,6 +72,12 @@ export async function discover(dir: string) {
  */
 export async function build(dir: string): Promise<BuildResult> {
   const { default: nextBuild } = relativeRequire(dir, "next/dist/build");
+
+  const reactVersion = getReactVersion(dir);
+  if (reactVersion && gte(reactVersion, "18.0.0")) {
+    // This needs to be set for Next build to succeed with React 18
+    process.env.__NEXT_REACT_ROOT = "true";
+  }
 
   await nextBuild(dir, null, false, false, true).catch((e) => {
     // Err on the side of displaying this error, since this is likely a bug in
@@ -89,6 +101,10 @@ export async function build(dir: string): Promise<BuildResult> {
   const exportDetailBuffer = exportDetailExists ? await readFile(exportDetailPath) : undefined;
   const exportDetailJson = exportDetailBuffer && JSON.parse(exportDetailBuffer.toString());
   if (exportDetailJson?.success) {
+    const appPathRoutesManifestPath = join(dir, distDir, "app-path-routes-manifest.json");
+    const appPathRoutesManifestJSON = fileExistsSync(appPathRoutesManifestPath)
+      ? await readFile(appPathRoutesManifestPath).then((it) => JSON.parse(it.toString()))
+      : {};
     const prerenderManifestJSON = await readFile(
       join(dir, distDir, "prerender-manifest.json")
     ).then((it) => JSON.parse(it.toString()));
@@ -100,10 +116,15 @@ export async function build(dir: string): Promise<BuildResult> {
     ).then((it) => JSON.parse(it.toString()));
     const prerenderedRoutes = Object.keys(prerenderManifestJSON.routes);
     const dynamicRoutes = Object.keys(prerenderManifestJSON.dynamicRoutes);
-    const unrenderedPages = Object.keys(pagesManifestJSON).filter(
+    const unrenderedPages = [
+      ...Object.keys(pagesManifestJSON),
+      // TODO flush out fully rendered detection with a app directory (Next 13)
+      // we shouldn't go too crazy here yet, as this is currently an expiriment
+      ...Object.values<string>(appPathRoutesManifestJSON),
+    ].filter(
       (it) =>
         !(
-          ["/_app", "/_error", "/_document", "/404"].includes(it) ||
+          ["/_app", "/", "/_error", "/_document", "/404"].includes(it) ||
           prerenderedRoutes.includes(it) ||
           dynamicRoutes.includes(it)
         )
@@ -150,7 +171,7 @@ export async function init(setup: any) {
     choices: ["JavaScript", "TypeScript"],
   });
   execSync(
-    `npx --yes create-next-app@latest -e hello-world ${setup.hosting.source} ${
+    `npx --yes create-next-app@latest -e hello-world ${setup.hosting.source} --use-npm ${
       language === "TypeScript" ? "--ts" : ""
     }`,
     { stdio: "inherit" }
@@ -176,25 +197,37 @@ export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: strin
     }
     await copy(join(sourceDir, distDir, "static"), join(destDir, "_next", "static"));
 
-    const serverPagesDir = join(sourceDir, distDir, "server", "pages");
-    await copy(serverPagesDir, destDir, {
-      filter: async (filename) => {
-        const status = await stat(filename);
-        if (status.isDirectory()) return true;
-        return extname(filename) === ".html";
-      },
-    });
+    // Copy over the default html files
+    for (const file of ["index.html", "404.html", "500.html"]) {
+      const pagesPath = join(sourceDir, distDir, "server", "pages", file);
+      if (await pathExists(pagesPath)) {
+        await copyFile(pagesPath, join(destDir, file));
+        continue;
+      }
+      const appPath = join(sourceDir, distDir, "server", "app", file);
+      if (await pathExists(appPath)) {
+        await copyFile(appPath, join(destDir, file));
+      }
+    }
 
     const prerenderManifestBuffer = await readFile(
       join(sourceDir, distDir, "prerender-manifest.json")
     );
     const prerenderManifest = JSON.parse(prerenderManifestBuffer.toString());
-    // TODO drop from hosting if revalidate
-    for (const route in prerenderManifest.routes) {
-      if (prerenderManifest.routes[route]) {
+    for (const path in prerenderManifest.routes) {
+      if (prerenderManifest.routes[path]) {
+        // Skip ISR in the deploy to hosting
+        const { initialRevalidateSeconds } = prerenderManifest.routes[path];
+        if (initialRevalidateSeconds) {
+          continue;
+        }
+
+        // TODO(jamesdaniels) explore oppertunity to simplify this now that we
+        //                    are defaulting cleanURLs to true for frameworks
+
         // / => index.json => index.html => index.html
         // /foo => foo.json => foo.html
-        const parts = route
+        const parts = path
           .split("/")
           .slice(1)
           .filter((it) => !!it);
@@ -202,16 +235,26 @@ export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: strin
         const dataPath = `${join(...partsOrIndex)}.json`;
         const htmlPath = `${join(...partsOrIndex)}.html`;
         await mkdir(join(destDir, dirname(htmlPath)), { recursive: true });
-        await copyFile(
-          join(sourceDir, distDir, "server", "pages", htmlPath),
-          join(destDir, htmlPath)
-        );
-        const dataRoute = prerenderManifest.routes[route].dataRoute;
+        const pagesHtmlPath = join(sourceDir, distDir, "server", "pages", htmlPath);
+        if (await pathExists(pagesHtmlPath)) {
+          await copyFile(pagesHtmlPath, join(destDir, htmlPath));
+        } else {
+          const appHtmlPath = join(sourceDir, distDir, "server", "app", htmlPath);
+          if (await pathExists(appHtmlPath)) {
+            await copyFile(appHtmlPath, join(destDir, htmlPath));
+          }
+        }
+        const dataRoute = prerenderManifest.routes[path].dataRoute;
         await mkdir(join(destDir, dirname(dataRoute)), { recursive: true });
-        await copyFile(
-          join(sourceDir, distDir, "server", "pages", dataPath),
-          join(destDir, dataRoute)
-        );
+        const pagesDataPath = join(sourceDir, distDir, "server", "pages", dataPath);
+        if (await pathExists(pagesDataPath)) {
+          await copyFile(pagesDataPath, join(destDir, dataRoute));
+        } else {
+          const appDataPath = join(sourceDir, distDir, "server", "app", dataPath);
+          if (await pathExists(appDataPath)) {
+            await copyFile(appDataPath, join(destDir, dataRoute));
+          }
+        }
       }
     }
   }
