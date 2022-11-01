@@ -422,6 +422,82 @@ describe("convertConfig", () => {
     });
   }
 
+  describe("rewrites errors", () => {
+    it("should throw when rewrite points to function in the wrong region", async () => {
+      await expect(
+        convertConfig(
+          { projectId: "1" },
+          {
+            functions: {
+              default: {
+                wantBackend: backend.of({
+                  id: FUNCTION_ID,
+                  project: PROJECT_ID,
+                  entryPoint: FUNCTION_ID,
+                  runtime: "nodejs16",
+                  region: "europe-west1",
+                  platform: "gcfv1",
+                  httpsTrigger: {},
+                }),
+                haveBackend: backend.empty(),
+              },
+            },
+          },
+          {
+            config: {
+              site: "foo",
+              rewrites: [
+                { glob: "/foo", function: { functionId: FUNCTION_ID, region: "asia-northeast1" } },
+              ],
+            },
+            version: "14",
+          }
+        )
+      ).to.be.rejectedWith(FirebaseError);
+    });
+
+    it("should throw when rewrite points to function being deleted", async () => {
+      await expect(
+        convertConfig(
+          { projectId: "1" },
+          {
+            functions: {
+              default: {
+                wantBackend: backend.of({
+                  id: FUNCTION_ID,
+                  project: PROJECT_ID,
+                  entryPoint: FUNCTION_ID,
+                  runtime: "nodejs16",
+                  region: "europe-west1",
+                  platform: "gcfv1",
+                  httpsTrigger: {},
+                }),
+                haveBackend: backend.of({
+                  id: FUNCTION_ID,
+                  project: PROJECT_ID,
+                  entryPoint: FUNCTION_ID,
+                  runtime: "nodejs16",
+                  region: "asia-northeast1",
+                  platform: "gcfv1",
+                  httpsTrigger: {},
+                }),
+              },
+            },
+          },
+          {
+            config: {
+              site: "foo",
+              rewrites: [
+                { glob: "/foo", function: { functionId: FUNCTION_ID, region: "asia-northeast1" } },
+              ],
+            },
+            version: "14",
+          }
+        )
+      ).to.be.rejectedWith(FirebaseError);
+    });
+  });
+
   describe("with permissions issues", () => {
     let existingBackendStub: sinon.SinonStub;
 
