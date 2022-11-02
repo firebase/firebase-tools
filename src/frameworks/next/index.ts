@@ -11,7 +11,6 @@ import {
   BuildResult,
   createServerResponseProxy,
   findDependency,
-  Framework,
   FrameworkType,
   NODE_VERSION,
   relativeRequire,
