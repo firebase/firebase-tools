@@ -12,6 +12,9 @@ import { Serializable } from "child_process";
 type LogListener = (el: EmulatorLog) => any;
 
 export enum RuntimeWorkerState {
+  // Worker has been created but is not ready to accept work
+  CREATED = "CREATED",
+
   // Worker is ready to accept new work
   IDLE = "IDLE",
 
@@ -34,7 +37,7 @@ export class RuntimeWorker {
   stateEvents: EventEmitter = new EventEmitter();
 
   private logListeners: Array<LogListener> = [];
-  private _state: RuntimeWorkerState = RuntimeWorkerState.IDLE;
+  private _state: RuntimeWorkerState = RuntimeWorkerState.CREATED;
 
   constructor(key: string, runtime: FunctionsRuntimeInstance) {
     this.id = uuid.v4();
@@ -84,6 +87,10 @@ export class RuntimeWorker {
       });
     }
     return lines[lines.length - 1];
+  }
+
+  readyForWork(): void {
+    this.state = RuntimeWorkerState.IDLE;
   }
 
   sendDebugMsg(debug: FunctionsRuntimeBundle["debug"]): Promise<void> {
@@ -178,7 +185,11 @@ export class RuntimeWorker {
             path: "/__/health",
             socketPath: this.runtime.socketPath,
           },
-          () => resolve()
+          () => {
+            // Set the worker state to IDLE for new work
+            this.readyForWork();
+            resolve();
+          }
         )
         .end();
       req.on("error", (error) => {
@@ -323,6 +334,11 @@ export class RuntimeWorkerPool {
     return;
   }
 
+  /**
+   * Adds a worker to the pool.
+   * Caller must set the worker status to ready by calling
+   * `worker.readyForWork()` or `worker.waitForSocketReady()`.
+   */
   addWorker(
     triggerId: string | undefined,
     runtime: FunctionsRuntimeInstance,
