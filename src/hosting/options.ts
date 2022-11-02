@@ -1,6 +1,7 @@
-import { FirebaseConfig, HostingResolved } from "../firebaseConfig";
+import { FirebaseConfig } from "../firebaseConfig";
 import { Implements } from "../metaprogramming";
 import { Options } from "../options";
+import { HostingResolved } from "./config";
 
 /**
  * The set of fields that the Hosting codebase needs from Options.
