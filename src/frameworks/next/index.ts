@@ -303,6 +303,7 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
 /**
  * Create a dev server.
  */
+// TODO: reuse getDevModeHandle types from Frameworks interface
 export async function getDevModeHandle(dir: string, hostingEmulatorInfo: EmulatorInfo) {
   const { default: next } = relativeRequire(dir, "next");
   const nextApp = next({
