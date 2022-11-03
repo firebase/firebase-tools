@@ -3,6 +3,9 @@ import { FirebaseError } from "../../../error";
 import { readFile } from "../../../fsutils";
 import { Options } from "../../../options";
 import { SourceFile } from "./types";
+import { Constants } from "../../constants";
+import { Emulators } from "../../types";
+import { EmulatorLogger } from "../../emulatorLogger";
 
 function getSourceFile(rules: string, options: Options): SourceFile {
   const path = options.config.path(rules);
@@ -21,6 +24,16 @@ export function getStorageRulesConfig(
 ): SourceFile | RulesConfig[] {
   const storageConfig = options.config.data.storage;
   if (!storageConfig) {
+    if (Constants.isDemoProject(projectId)) {
+      const storageLogger = EmulatorLogger.forEmulator(Emulators.STORAGE);
+      storageLogger.logLabeled(
+        "BULLET",
+        "storage",
+        `Detected demo project ID "${projectId}", using a default (open) rules configuration.`
+      );
+      const path = __dirname + "/../../../../templates/emulators/default_storage.rules";
+      return { name: path, content: readFile(path) };
+    }
     throw new FirebaseError(
       "Cannot start the Storage emulator without rules file specified in firebase.json: run 'firebase init' and set up your Storage configuration"
     );
