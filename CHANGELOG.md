@@ -1,1 +1,1 @@
-Release RTDB Emulator v4.11.0: Wire protocol update for `startAfter`, `endBefore`.
+- Add support for object list using certain Admin SDKs (#5208)

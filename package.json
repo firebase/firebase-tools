@@ -1,6 +1,6 @@
 {
   "name": "firebase-tools",
-  "version": "11.15.0",
+  "version": "11.16.0",
   "description": "Command-Line Interface for Firebase",
   "main": "./lib/index.js",
   "bin": {
@@ -8,7 +8,7 @@
   },
   "scripts": {
     "build": "tsc && npm run copyfiles",
-    "build:publish": "tsc --build tsconfig.publish.json",
+    "build:publish": "tsc --build tsconfig.publish.json && npm run copyfiles",
     "build:watch": "npm run build && tsc --watch",
     "clean": "rimraf lib dev",
     "copyfiles": "node -e \"const fs = require('fs'); fs.mkdirSync('./lib', {recursive:true}); fs.copyFileSync('./src/dynamicImport.js', './lib/dynamicImport.js')\"",
@@ -141,7 +141,7 @@
     "stream-chain": "^2.2.4",
     "stream-json": "^1.7.3",
     "strip-ansi": "^6.0.1",
-    "superstatic": "^9.0.0",
+    "superstatic": "^8.0.0",
     "tar": "^6.1.11",
     "tcp-port-used": "^1.0.2",
     "tmp": "^0.2.1",

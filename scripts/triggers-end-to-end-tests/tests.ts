@@ -122,6 +122,20 @@ describe("function triggers", () => {
     await test.stopEmulators();
   });
 
+  describe("https triggers", () => {
+    it("should handle parallel requests", async function (this) {
+      this.timeout(TEST_SETUP_TIMEOUT);
+
+      const [resp1, resp2] = await Promise.all([
+        test.invokeHttpFunction("httpsv2reaction"),
+        test.invokeHttpFunction("httpsv2reaction"),
+      ]);
+
+      expect(resp1.status).to.eq(200);
+      expect(resp2.status).to.eq(200);
+    });
+  });
+
   describe("database and firestore emulator triggers", () => {
     it("should write to the database emulator", async function (this) {
       this.timeout(EMULATOR_TEST_TIMEOUT);
@@ -131,7 +145,7 @@ describe("function triggers", () => {
     });
 
     it("should write to the firestore emulator", async function (this) {
-      this.timeout(EMULATOR_TEST_TIMEOUT);
+      this.timeout(EMULATOR_TEST_TIMEOUT * 2);
 
       const response = await test.writeToFirestore();
       expect(response.status).to.equal(200);
@@ -143,7 +157,7 @@ describe("function triggers", () => {
        * fixture state handlers to complete before we check
        * that state in the next test.
        */
-      await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS));
+      await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS * 2));
     });
 
     it("should have have triggered cloud functions", () => {
