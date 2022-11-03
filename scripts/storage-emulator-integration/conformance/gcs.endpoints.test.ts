@@ -297,7 +297,7 @@ describe("GCS endpoint conformance tests", () => {
   describe("List protocols", () => {
     describe("list objects", () => {
       // This test is for the '/storage/v1/b/:bucketId/o' url pattern, which is used specifically by the GO Admin SDK
-      it.only("should list objects in the provided bucket", async () => {
+      it("should list objects in the provided bucket", async () => {
         await supertest(storageHost)
           .post(`/upload/storage/v1/b/${storageBucket}/o?name=${TEST_FILE_NAME}`)
           .set(authHeader)
