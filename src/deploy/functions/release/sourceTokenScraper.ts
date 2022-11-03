@@ -39,7 +39,11 @@ export class SourceTokenScraper {
 
   isTokenExpired(): boolean {
     if (this.expiry === undefined) {
-      throw new FirebaseError("failed to check expiry: no token exists");
+      throw new FirebaseError(
+        "Your deployment is checking the expiration of a source token that has not yet been polled. " +
+          "Hitting this case should never happen and should be considered a bug. " +
+          "Please file an issue at https://github.com/firebase/firebase-tools/issues"
+      );
     }
     return Date.now() >= this.expiry;
   }

@@ -210,7 +210,6 @@ export class Fabricator {
     if (apiFunction.httpsTrigger) {
       apiFunction.httpsTrigger.securityLevel = "SECURE_ALWAYS";
     }
-    // apiFunction.sourceToken = await scraper.tokenPromise();
     const resultFunction = await this.functionExecutor
       .run(async () => {
         // try to get the source token right before deploying
