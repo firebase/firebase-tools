@@ -46,16 +46,10 @@ export class SourceTokenScraper {
 
   get poller() {
     return (op: any) => {
-      console.log(`${op.response.name}: polling`)
       if (op.metadata?.sourceToken || op.done) {
         const [, , , /* projects*/ /* project*/ /* regions*/ region] =
           op.metadata?.target?.split("/") || [];
         logger.debug(`Got source token ${op.metadata?.sourceToken} for region ${region as string}`);
-        console.log(
-          `${op.response.name}: Got source token ${op.metadata?.sourceToken} for region ${
-            region as string
-          }`
-        );
         this.resolve(op.metadata?.sourceToken);
         this.fetchState = "VALID";
         this.expiry = Date.now() + this.tokenValidDurationMs;
