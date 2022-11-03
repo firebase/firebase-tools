@@ -306,7 +306,10 @@ describe("firebase deploy", function (this) {
       if (e.platform === "gcfv2") {
         expect(e).to.include({
           cpu: 2,
-          concurrency: 42,
+          // EXCEPTION: concurrency
+          // Firebase will aggressively set concurrency to 80 when the CPU setting allows for it
+          // AND when the concurrency is NOT set on the source code.
+          concurrency: 80,
         });
       }
       // BUGBUG: As implemented, Cloud Tasks update doesn't preserve existing setting. Instead, it overwrites the
