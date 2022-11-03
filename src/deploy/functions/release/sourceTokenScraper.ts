@@ -1,10 +1,7 @@
+import { FirebaseError } from "../../../error";
 import { logger } from "../../../logger";
 
-enum TokenState {
-  "NONE",
-  "VALID",
-  "INVALID",
-}
+type TokenFetchState = "NONE" | "FETCHING" | "VALID";
 
 /**
  * GCF v1 deploys support reusing a build between function deploys.
@@ -12,27 +9,27 @@ enum TokenState {
  * and then will always return a promise that is resolved by the poller function.
  */
 export class SourceTokenScraper {
-  private tokenValidDurationMs; // in ms
+  private tokenValidDurationMs;
   private resolve!: (token?: string) => void;
   private promise: Promise<string | undefined>;
-  private expiration: bigint | undefined;
-  private tokenState: TokenState;
+  private expiry: number | undefined;
+  private fetchState: TokenFetchState;
 
   constructor(validDurationMs = 1500000) {
     this.tokenValidDurationMs = validDurationMs;
     this.promise = new Promise((resolve) => (this.resolve = resolve));
-    this.tokenState = TokenState.NONE;
+    this.fetchState = "NONE";
   }
 
   async getToken(): Promise<string | undefined> {
-    if (this.tokenState === TokenState.NONE) {
-      this.tokenState = TokenState.INVALID;
+    if (this.fetchState === "NONE") {
+      this.fetchState = "FETCHING";
       return undefined;
-    } else if (this.tokenState === TokenState.INVALID) {
+    } else if (this.fetchState === "FETCHING") {
       return this.promise; // wait until we get a source token
-    } else if (this.tokenState === TokenState.VALID) {
-      if (this.checkTokenExpired()) {
-        this.tokenState = TokenState.INVALID;
+    } else if (this.fetchState === "VALID") {
+      if (this.isTokenExpired()) {
+        this.fetchState = "FETCHING";
         this.promise = new Promise((resolve) => (this.resolve = resolve));
         return undefined;
       }
@@ -40,27 +37,28 @@ export class SourceTokenScraper {
     }
   }
 
-  checkTokenExpired(): boolean {
-    if (this.expiration === undefined) {
-      throw new Error();
+  isTokenExpired(): boolean {
+    if (this.expiry === undefined) {
+      throw new FirebaseError("failed to check expiry: no token exists");
     }
-    return process.hrtime.bigint() >= this.expiration;
-  }
-
-  calculateTokenExpiry(): bigint {
-    const now = process.hrtime.bigint();
-    return now + BigInt(this.tokenValidDurationMs) * BigInt(1e6);
+    return Date.now() >= this.expiry;
   }
 
   get poller() {
     return (op: any) => {
+      console.log(`${op.response.name}: polling`)
       if (op.metadata?.sourceToken || op.done) {
         const [, , , /* projects*/ /* project*/ /* regions*/ region] =
           op.metadata?.target?.split("/") || [];
         logger.debug(`Got source token ${op.metadata?.sourceToken} for region ${region as string}`);
+        console.log(
+          `${op.response.name}: Got source token ${op.metadata?.sourceToken} for region ${
+            region as string
+          }`
+        );
         this.resolve(op.metadata?.sourceToken);
-        this.tokenState = TokenState.VALID;
-        this.expiration = this.calculateTokenExpiry(); // calculate expiration
+        this.fetchState = "VALID";
+        this.expiry = Date.now() + this.tokenValidDurationMs;
       }
     };
   }

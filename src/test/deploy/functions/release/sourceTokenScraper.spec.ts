@@ -3,11 +3,7 @@ import { expect } from "chai";
 import { SourceTokenScraper } from "../../../../deploy/functions/release/sourceTokenScraper";
 
 describe("SourceTokenScraper", () => {
-  const timeout = (duration: number): Promise<void> => {
-    return new Promise<void>((resolve) => setTimeout(resolve, duration));
-  };
-
-  it.only("immediately provides the first result", async () => {
+  it("immediately provides the first result", async () => {
     const scraper = new SourceTokenScraper();
     await expect(scraper.getToken()).to.eventually.be.undefined;
   });
@@ -32,7 +28,7 @@ describe("SourceTokenScraper", () => {
     await expect(getResult).to.eventually.be.undefined;
   });
 
-  it.only("provides tokens from an operation", async () => {
+  it("provides tokens from an operation", async () => {
     const scraper = new SourceTokenScraper();
     // First result comes right away
     await expect(scraper.getToken()).to.eventually.be.undefined;
@@ -46,7 +42,7 @@ describe("SourceTokenScraper", () => {
     await expect(scraper.getToken()).to.eventually.equal("magic token");
   });
 
-  it.only("refreshes token after timer expires", async () => {
+  it("refreshes token after timer expires", async () => {
     const scraper = new SourceTokenScraper(10);
     await expect(scraper.getToken()).to.eventually.be.undefined;
     scraper.poller({
@@ -56,6 +52,9 @@ describe("SourceTokenScraper", () => {
       },
     });
     await expect(scraper.getToken()).to.eventually.equal("magic token");
+    const timeout = (duration: number): Promise<void> => {
+      return new Promise<void>((resolve) => setTimeout(resolve, duration));
+    };
     await timeout(50);
     await expect(scraper.getToken()).to.eventually.be.undefined;
     scraper.poller({
@@ -67,7 +66,7 @@ describe("SourceTokenScraper", () => {
     await expect(scraper.getToken()).to.eventually.equal("magic token #2");
   });
 
-  it.only("concurrent requests for source token", async () => {
+  it("concurrent requests for source token", async () => {
     const scraper = new SourceTokenScraper();
 
     const promises = [];
