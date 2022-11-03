@@ -135,7 +135,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     return res.json(new CloudStorageObjectMetadata(updatedMetadata));
   });
 
-  gcloudStorageAPI.get("/b/:bucketId/o", async (req, res) => {
+  gcloudStorageAPI.get(["/b/:bucketId/o", "/storage/v1/b/:bucketId/o"], async (req, res) => {
     let listResponse: ListObjectsResponse;
     // TODO validate that all query params are single strings and are not repeated.
     try {
