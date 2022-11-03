@@ -54,7 +54,7 @@ export interface RequiredApi {
 // `Expression<boolean> ? Expression<T> : Expression<T>` is an Expression<T>
 export type Expression<T extends string | number | boolean | string[]> = string; // eslint-disable-line
 export type Field<T extends string | number | boolean> = T | Expression<T> | null;
-export type FieldList = Expression<string[]> | (string | Expression<string>)[] | null;
+export type ListField = Expression<string[]> | (string | Expression<string>)[] | null;
 
 // A service account must either:
 // 1. Be a project-relative email that ends with "@" (e.g. database-users@)
@@ -235,7 +235,7 @@ export type Endpoint = Triggered & {
 
   // defaults to ["us-central1"], overridable in firebase-tools with
   //  process.env.FIREBASE_FUNCTIONS_DEFAULT_REGION
-  region?: FieldList;
+  region?: ListField;
 
   // The Cloud project associated with this endpoint.
   project: string;

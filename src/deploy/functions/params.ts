@@ -72,7 +72,7 @@ export function resolveString(
  * Expression<string[]>.
  */
 export function resolveList(
-  from: build.FieldList,
+  from: build.ListField,
   paramValues: Record<string, ParamValue>
 ): string[] {
   if (!from) {
@@ -701,7 +701,7 @@ async function promptResourceString(
 
 type retryInput = { message: string };
 function shouldRetry(obj: any): obj is retryInput {
-  return (obj as retryInput).message !== undefined;
+  return typeof obj === "object" && (obj as retryInput).message !== undefined;
 }
 
 async function promptText<T extends RawParamValue>(

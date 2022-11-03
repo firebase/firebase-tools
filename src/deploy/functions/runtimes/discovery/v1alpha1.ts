@@ -63,7 +63,7 @@ export type WireEndpoint = build.Triggered &
     // We now use "serviceAccount" but maintain backwards compatability in the
     // wire format for the time being.
     serviceAccountEmail?: string | null;
-    region?: build.FieldList;
+    region?: build.ListField;
     entryPoint: string;
     platform?: build.FunctionsPlatform;
     secretEnvironmentVariables?: Array<ManifestSecretEnv> | null;
