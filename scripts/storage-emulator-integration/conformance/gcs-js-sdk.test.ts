@@ -386,13 +386,21 @@ describe("GCS Javascript SDK conformance tests", () => {
 
   describe(".file()", () => {
     describe("#save()", () => {
+      it("should handle custom metadata", async () => {
+        const contents = "hello world";
+
+        const file = testBucket.file("gzippedFile");
+        await file.save(contents, { contentType: "text/plain" });
+
+        expect(file.metadata.contentType).to.be.eql("text/plain");
+      });
+
       it("should handle gzipped uploads", async () => {
         const contents = "hello world";
 
         const file = testBucket.file("gzippedFile");
-        await file.save(contents, { gzip: true, contentType: "text/plain" });
+        await file.save(contents, { gzip: true });
 
-        expect(file.metadata.contentType).to.be.eql("text/plain");
         expect(file.metadata.contentEncoding).to.be.eql("gzip");
       });
     });
