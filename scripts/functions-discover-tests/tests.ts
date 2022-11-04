@@ -57,6 +57,16 @@ describe("Function discovery test", function (this) {
         },
       ],
     },
+    {
+      name: "yarn-workspaces",
+      projectDir: "yarn-workspaces",
+      expects: [
+        {
+          codebase: "default",
+          endpoints: ["hellov1", "hellov2"],
+        },
+      ],
+    },
   ];
 
   for (const tc of testCases) {
