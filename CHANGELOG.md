@@ -1,1 +1,2 @@
 - Add support for object list using certain Admin SDKs (#5208)
+- Add support for deploying Next.js applications that utilize middleware
