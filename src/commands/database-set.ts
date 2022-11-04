@@ -23,6 +23,7 @@ export const command = new Command("database:set <path> [infile]")
     "--instance <instance>",
     "use the database <instance>.firebaseio.com (if omitted, use default database instance)"
   )
+  .option("--disable-triggers", "suppress any Cloud functions triggered by this operation")
   .before(requirePermissions, ["firebasedatabase.instances.update"])
   .before(requireDatabaseInstance)
   .before(populateInstanceDetails)
@@ -34,6 +35,9 @@ export const command = new Command("database:set <path> [infile]")
     const origin = realtimeOriginOrEmulatorOrCustomUrl(options.instanceDetails.databaseUrl);
     const dbPath = utils.getDatabaseUrl(origin, options.instance, path);
     const dbJsonURL = new URL(utils.getDatabaseUrl(origin, options.instance, path + ".json"));
+    if (options.disableTriggers) {
+      dbJsonURL.searchParams.set("disableTriggers", "true");
+    }
 
     const confirm = await promptOnce(
       {
@@ -61,6 +65,7 @@ export const command = new Command("database:set <path> [infile]")
         method: "PUT",
         path: dbJsonURL.pathname,
         body: inStream,
+        queryParams: dbJsonURL.searchParams,
       });
     } catch (err: any) {
       logger.debug(err);

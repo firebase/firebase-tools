@@ -1,11 +1,12 @@
 import { execSync } from "child_process";
-import { readFile, mkdir, copyFile, stat } from "fs/promises";
-import { dirname, extname, join } from "path";
+import { readFile, mkdir, copyFile } from "fs/promises";
+import { dirname, join } from "path";
 import type { Header, Rewrite, Redirect } from "next/dist/lib/load-custom-routes";
 import type { NextConfig } from "next";
 import { copy, mkdirp, pathExists } from "fs-extra";
 import { pathToFileURL, parse } from "url";
 import { existsSync } from "fs";
+
 import {
   BuildResult,
   createServerResponseProxy,
@@ -48,8 +49,12 @@ export const name = "Next.js";
 export const support = SupportLevel.Experimental;
 export const type = FrameworkType.MetaFramework;
 
-function getNextVersion(cwd: string) {
+function getNextVersion(cwd: string): string | undefined {
   return findDependency("next", { cwd, depth: 0, omitDev: false })?.version;
+}
+
+function getReactVersion(cwd: string): string | undefined {
+  return findDependency("react-dom", { cwd, omitDev: false })?.version;
 }
 
 /**
@@ -67,6 +72,12 @@ export async function discover(dir: string) {
  */
 export async function build(dir: string): Promise<BuildResult> {
   const { default: nextBuild } = relativeRequire(dir, "next/dist/build");
+
+  const reactVersion = getReactVersion(dir);
+  if (reactVersion && gte(reactVersion, "18.0.0")) {
+    // This needs to be set for Next build to succeed with React 18
+    process.env.__NEXT_REACT_ROOT = "true";
+  }
 
   await nextBuild(dir, null, false, false, true).catch((e) => {
     // Err on the side of displaying this error, since this is likely a bug in
@@ -111,10 +122,15 @@ export async function build(dir: string): Promise<BuildResult> {
     ).then((it) => JSON.parse(it.toString()));
     const prerenderedRoutes = Object.keys(prerenderManifestJSON.routes);
     const dynamicRoutes = Object.keys(prerenderManifestJSON.dynamicRoutes);
-    const unrenderedPages = Object.keys(pagesManifestJSON).filter(
+    const unrenderedPages = [
+      ...Object.keys(pagesManifestJSON),
+      // TODO flush out fully rendered detection with a app directory (Next 13)
+      // we shouldn't go too crazy here yet, as this is currently an expiriment
+      ...Object.values<string>(appPathRoutesManifestJSON),
+    ].filter(
       (it) =>
         !(
-          ["/_app", "/_error", "/_document", "/404"].includes(it) ||
+          ["/_app", "/", "/_error", "/_document", "/404"].includes(it) ||
           prerenderedRoutes.includes(it) ||
           dynamicRoutes.includes(it)
         )
@@ -161,7 +177,7 @@ export async function init(setup: any) {
     choices: ["JavaScript", "TypeScript"],
   });
   execSync(
-    `npx --yes create-next-app@latest -e hello-world ${setup.hosting.source} ${
+    `npx --yes create-next-app@latest -e hello-world ${setup.hosting.source} --use-npm ${
       language === "TypeScript" ? "--ts" : ""
     }`,
     { stdio: "inherit" }
@@ -216,6 +232,9 @@ export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: strin
       if (matchingMiddleware) {
         continue;
       }
+
+      // TODO(jamesdaniels) explore oppertunity to simplify this now that we
+      //                    are defaulting cleanURLs to true for frameworks
 
       // / => index.json => index.html => index.html
       // /foo => foo.json => foo.html

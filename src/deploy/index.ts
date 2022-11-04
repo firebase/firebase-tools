@@ -61,11 +61,10 @@ export const deploy = async function (
 
   if (targetNames.includes("hosting")) {
     const config = options.config.get("hosting");
-    let deployedFrameworks: string[] = [];
     if (Array.isArray(config) ? config.some((it) => it.source) : config.source) {
       experiments.assertEnabled("webframeworks", "deploy a web framework to hosting");
       const usedToTargetFunctions = targetNames.includes("functions");
-      deployedFrameworks = await prepareFrameworks(targetNames, context, options);
+      await prepareFrameworks(targetNames, context, options);
       const nowTargetsFunctions = targetNames.includes("functions");
       if (nowTargetsFunctions && !usedToTargetFunctions) {
         if (context.hostingChannel && !experiments.isEnabled("pintags")) {
@@ -75,11 +74,7 @@ export const deploy = async function (
         }
         await requirePermissions(TARGET_PERMISSIONS["functions"]);
       }
-    } else {
-      const count = Array.isArray(config) ? config.length : 1;
-      deployedFrameworks = Array<string>(count).fill("classic");
     }
-    await Promise.all(deployedFrameworks.map((framework) => track("hosting_deploy", framework)));
   }
 
   for (const targetName of targetNames) {

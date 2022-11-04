@@ -29,7 +29,7 @@ describe("release", () => {
 
   describe("with no Hosting deploys", () => {
     it("should bail", async () => {
-      await release({ projectId: "foo" }, {});
+      await release({ projectId: "foo" }, {}, {});
 
       expect(updateVersionStub).to.have.been.not.called;
       expect(createReleaseStub).to.have.been.not.called;
@@ -53,7 +53,7 @@ describe("release", () => {
       updateVersionStub.resolves({});
       createReleaseStub.resolves({});
 
-      await release(CONTEXT, {});
+      await release(CONTEXT, {}, {});
 
       expect(updateVersionStub).to.have.been.calledOnceWithExactly(
         SITE,
@@ -67,7 +67,7 @@ describe("release", () => {
       updateVersionStub.resolves({});
       createReleaseStub.resolves({});
 
-      await release(CONTEXT, { message: "hello world" });
+      await release(CONTEXT, { message: "hello world" }, {});
 
       expect(updateVersionStub).to.have.been.calledOnceWithExactly(
         SITE,
@@ -100,7 +100,7 @@ describe("release", () => {
       updateVersionStub.resolves({});
       createReleaseStub.resolves({});
 
-      await release(CONTEXT, {});
+      await release(CONTEXT, {}, {});
 
       expect(updateVersionStub).to.have.been.calledTwice;
       expect(updateVersionStub).to.have.been.calledWithExactly(
@@ -143,7 +143,7 @@ describe("release", () => {
       updateVersionStub.resolves({});
       createReleaseStub.resolves({});
 
-      await release(CONTEXT, {});
+      await release(CONTEXT, {}, {});
 
       expect(updateVersionStub).to.have.been.calledOnceWithExactly(
         SITE,

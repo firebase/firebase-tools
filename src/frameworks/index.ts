@@ -248,7 +248,7 @@ export async function prepareFrameworks(
   context: any,
   options: any,
   emulators: EmulatorInfo[] = []
-): Promise<string[]> {
+): Promise<void> {
   // `firebase-frameworks` requires Node >= 16. We must check for this to avoid horrible errors.
   const nodeVersion = process.version;
   if (!semver.satisfies(nodeVersion, ">=16.0.0")) {
@@ -257,7 +257,6 @@ export async function prepareFrameworks(
     );
   }
 
-  const deployedFrameworks: string[] = [];
   const project = needProjectId(context);
   const { projectRoot } = options;
   const account = getProjectDefaultAccount(projectRoot);
@@ -284,12 +283,11 @@ export async function prepareFrameworks(
   const configs = hostingConfig(options);
   let firebaseDefaults: FirebaseDefaults | undefined = undefined;
   if (configs.length === 0) {
-    return deployedFrameworks;
+    return;
   }
   for (const config of configs) {
     const { source, site, public: publicDir } = config;
     if (!source) {
-      deployedFrameworks.push("classic");
       continue;
     }
     config.rewrites ||= [];
@@ -411,7 +409,7 @@ export async function prepareFrameworks(
       config.public = relative(projectRoot, hostingDist);
       if (wantsBackend) codegenFunctionsDirectory = codegenProdModeFunctionsDirectory;
     }
-    deployedFrameworks.push(`${framework}${codegenFunctionsDirectory ? "_ssr" : ""}`);
+    config.webFramework = `${framework}${codegenFunctionsDirectory ? "_ssr" : ""}`;
     if (codegenFunctionsDirectory) {
       if (firebaseDefaults) firebaseDefaults._authTokenSyncURL = "/__session";
 
@@ -555,7 +553,6 @@ exports.ssr = onRequest((req, res) => server.then(it => it.handle(req, res)));
       });
     }
   }
-  return deployedFrameworks;
 }
 
 function codegenDevModeFunctionsDirectory() {
