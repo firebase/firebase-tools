@@ -1,11 +1,16 @@
 import { execSync } from "child_process";
-import { readFile, mkdir, copyFile } from "fs/promises";
+import { mkdir, copyFile } from "fs/promises";
 import { dirname, join } from "path";
 import type { Header, Rewrite, Redirect } from "next/dist/lib/load-custom-routes";
 import type { NextConfig } from "next";
-import { copy, mkdirp, pathExists } from "fs-extra";
+import type { PrerenderManifest } from "next/dist/build";
+import type { MiddlewareManifest } from "next/dist/build/webpack/plugins/middleware-plugin";
+import type { PagesManifest } from "next/dist/build/webpack/plugins/pages-manifest-plugin";
+import { copy, mkdirp, pathExists, readJSON } from "fs-extra";
 import { pathToFileURL, parse } from "url";
 import { existsSync } from "fs";
+import { gte } from "semver";
+import { IncomingMessage, ServerResponse } from "http";
 
 import {
   BuildResult,
@@ -17,8 +22,6 @@ import {
   SupportLevel,
 } from "..";
 import { promptOnce } from "../../prompt";
-import { gte } from "semver";
-import { IncomingMessage, ServerResponse } from "http";
 import { logger } from "../../logger";
 import { FirebaseError } from "../../error";
 import { fileExistsSync } from "../../fsutils";
@@ -29,7 +32,7 @@ interface Manifest {
   distDir?: string;
   basePath?: string;
   headers?: (Header & { regex: string })[];
-  redirects?: (Redirect & { regex: string })[];
+  redirects?: (Redirect & { regex: string, internal?: boolean })[];
   rewrites?:
     | (Rewrite & { regex: string })[]
     | {
@@ -86,63 +89,69 @@ export async function build(dir: string): Promise<BuildResult> {
     throw e;
   });
 
-  try {
-    // Using spawn here, rather than their programatic API because I can't silence it
-    // Failures with Next export are expected, we're just trying to do it if we can
-    execSync(`${CLI_COMMAND} export`, { cwd: dir, stdio: "ignore" });
-  } catch (e) {
-    // continue, failure is expected
+  const reasonsForBackend = [];
+  const { distDir } = await getConfig(dir);
+
+  const middlewareManifest: MiddlewareManifest = await readJSON(
+    join(dir, distDir, "server", "middleware-manifest.json")
+  );
+  const usingMiddleware = Object.keys(middlewareManifest.middleware).length > 0;
+  if (usingMiddleware) {
+    reasonsForBackend.push('Using Next middleware');
   }
 
-  let wantsBackend = true;
-  const { distDir } = await getConfig(dir);
-  const exportDetailPath = join(dir, distDir, "export-detail.json");
-  const exportDetailExists = await pathExists(exportDetailPath);
-  const exportDetailBuffer = exportDetailExists ? await readFile(exportDetailPath) : undefined;
-  const exportDetailJson = exportDetailBuffer && JSON.parse(exportDetailBuffer.toString());
-  if (exportDetailJson?.success) {
-    const middlewareManifestBuffer = await readFile(
-      join(dir, distDir, "server", "middleware-manifest.json")
-    );
-    const middlewareManifest = JSON.parse(middlewareManifestBuffer.toString());
-    const middlewareMatchers = Object.values(middlewareManifest["middleware"]);
+  const appPathRoutesManifestPath = join(dir, distDir, "app-path-routes-manifest.json");
+  const appPathRoutesManifestJSON = fileExistsSync(appPathRoutesManifestPath)
+    ? await readJSON(appPathRoutesManifestPath)
+    : {};
+  const usingAppDirectory = Object.keys(appPathRoutesManifestJSON).length > 0;
+  if (usingAppDirectory) {
+    // Let's not get smart here, if they are using the app directory we should
+    // opt for spinning up a Cloud Function. The app directory is unstable.
+    reasonsForBackend.push('Using Next app directory');
+  }
 
-    const appPathRoutesManifestPath = join(dir, distDir, "app-path-routes-manifest.json");
-    const appPathRoutesManifestJSON = fileExistsSync(appPathRoutesManifestPath)
-      ? await readFile(appPathRoutesManifestPath).then((it) => JSON.parse(it.toString()))
-      : {};
-    const prerenderManifestJSON = await readFile(
-      join(dir, distDir, "prerender-manifest.json")
-    ).then((it) => JSON.parse(it.toString()));
-    const anyDynamicRouteFallbacks = !!Object.values(
-      prerenderManifestJSON.dynamicRoutes || {}
-    ).find((it: any) => it.fallback !== false);
-    const pagesManifestJSON = await readFile(
-      join(dir, distDir, "server", "pages-manifest.json")
-    ).then((it) => JSON.parse(it.toString()));
-    const prerenderedRoutes = Object.keys(prerenderManifestJSON.routes);
-    const dynamicRoutes = Object.keys(prerenderManifestJSON.dynamicRoutes);
-    const unrenderedPages = [
-      ...Object.keys(pagesManifestJSON),
-      // TODO flush out fully rendered detection with a app directory (Next 13)
-      // we shouldn't go too crazy here yet, as this is currently an expiriment
-      ...Object.values<string>(appPathRoutesManifestJSON),
-    ].filter(
-      (it) =>
-        !(
-          ["/_app", "/", "/_error", "/_document", "/404"].includes(it) ||
-          prerenderedRoutes.includes(it) ||
-          dynamicRoutes.includes(it)
-        )
-    );
-    // TODO log these as a reason why Cloud Functions are needed
-    if (middlewareMatchers.length === 0 && !anyDynamicRouteFallbacks && unrenderedPages.length === 0) {
-      wantsBackend = false;
+  const prerenderManifestJSON: PrerenderManifest = await readJSON(
+    join(dir, distDir, "prerender-manifest.json")
+  );
+  const dynamicRoutesWithFallback = Object.entries(
+    prerenderManifestJSON.dynamicRoutes || {}
+  ).filter(([,it]) => it.fallback !== false);
+  if (dynamicRoutesWithFallback.length > 0) {
+    for (const [key] of dynamicRoutesWithFallback) {
+      reasonsForBackend.push(`${key} is a fallback route`);
     }
   }
 
-  const manifestBuffer = await readFile(join(dir, distDir, "routes-manifest.json"));
-  const manifest: Manifest = JSON.parse(manifestBuffer.toString());
+  const pagesManifestJSON: PagesManifest = await readJSON(
+    join(dir, distDir, "server", "pages-manifest.json")
+  );
+  const prerenderedRoutes = Object.keys(prerenderManifestJSON.routes);
+  const dynamicRoutes = Object.keys(prerenderManifestJSON.dynamicRoutes);
+  const unrenderedPages = Object.keys(pagesManifestJSON).filter(
+    (it) =>
+      !(
+        ["/_app", "/", "/_error", "/_document", "/404"].includes(it) ||
+        prerenderedRoutes.includes(it) ||
+        dynamicRoutes.includes(it)
+      )
+  );
+  if (unrenderedPages.length > 0) {
+    for (const key of unrenderedPages) {
+      reasonsForBackend.push(`${key} is not static`);
+    }
+  }
+
+  const { isNextImageImported } = await readJSON(join(dir, distDir, "export-marker.json"));
+  if (isNextImageImported) {
+    const imagesManifest = await readJSON(join(dir, distDir, "images-manifest.json"));
+    const usingImageOptimization = imagesManifest.images.unoptimized === false;
+    if (usingImageOptimization) {
+      reasonsForBackend.push(`Using Next Image Optimization`);
+    }
+  }
+
+  const manifest: Manifest = await readJSON(join(dir, distDir, "routes-manifest.json"));
   const {
     headers: nextJsHeaders = [],
     redirects: nextJsRedirects = [],
@@ -150,7 +159,7 @@ export async function build(dir: string): Promise<BuildResult> {
   } = manifest;
   const headers = nextJsHeaders.map(({ source, headers }) => ({ source, headers }));
   const redirects = nextJsRedirects
-    .filter(({ internal }: any) => !internal)
+    .filter(it => !it.internal)
     .map(({ source, destination, statusCode: type }) => ({ source, destination, type }));
   const nextJsRewritesToUse = Array.isArray(nextJsRewrites)
     ? nextJsRewrites
@@ -162,11 +171,13 @@ export async function build(dir: string): Promise<BuildResult> {
       return { source, destination };
     })
     .filter((it) => it);
-
+  
+  // TODO log out the reasonsForBackend
+  const wantsBackend = reasonsForBackend.length > 0;
   return { wantsBackend, headers, redirects, rewrites };
 }
 
-/**
+/**q
  * Utility method used during project initialization.
  */
 export async function init(setup: any) {
@@ -210,62 +221,46 @@ export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: strin
     }
   }
 
-  const middlewareManifestBuffer = await readFile(
+  const middlewareManifest: MiddlewareManifest = await readJSON(
     join(sourceDir, distDir, "server", "middleware-manifest.json")
   );
-  const middlewareManifest = JSON.parse(middlewareManifestBuffer.toString());
-  const middlewareMatchers = Object.values(middlewareManifest["middleware"]).map((it: any) => it.matchers).flat();
+  const middlewareMatchers = Object.values(middlewareManifest["middleware"])
+    .map(it => it.matchers)
+    .flat();
 
-  const prerenderManifestBuffer = await readFile(
+  const prerenderManifest: PrerenderManifest = await readJSON(
     join(sourceDir, distDir, "prerender-manifest.json")
   );
-  const prerenderManifest = JSON.parse(prerenderManifestBuffer.toString());
-  for (const path in prerenderManifest.routes) {
-    if (prerenderManifest.routes[path]) {
-      // Skip ISR in the deploy to hosting
-      const { initialRevalidateSeconds } = prerenderManifest.routes[path];
-      if (initialRevalidateSeconds) {
-        continue;
-      }
+  for (const [path, route] of Object.entries(prerenderManifest.routes)) {
+    // Skip ISR in the deploy to hosting
+    if (route.initialRevalidateSeconds) {
+      continue;
+    }
 
-      const matchingMiddleware = middlewareMatchers.find((matcher: any) => new RegExp(matcher.regexp).test(path));
-      if (matchingMiddleware) {
-        continue;
-      }
+    // Skip pages affected by middleware in hosting
+    const matchingMiddleware = middlewareMatchers.find(matcher =>
+      new RegExp(matcher.regexp).test(path)
+    );
+    if (matchingMiddleware) {
+      continue;
+    }
 
-      // TODO(jamesdaniels) explore oppertunity to simplify this now that we
-      //                    are defaulting cleanURLs to true for frameworks
+    const isReactServerComponent = route.dataRoute.endsWith('.rsc');
+    const contentDist = join(sourceDir, distDir, "server", isReactServerComponent ? "app" : "pages");
 
-      // / => index.json => index.html => index.html
-      // /foo => foo.json => foo.html
-      const parts = path
-        .split("/")
-        .slice(1)
-        .filter((it) => !!it);
-      const partsOrIndex = parts.length > 0 ? parts : ["index"];
+    const parts = path
+      .split("/")
+      .filter((it) => !!it);
+    const partsOrIndex = parts.length > 0 ? parts : ["index"];
+
+    const htmlPath = `${join(...partsOrIndex)}.html`;
+    await mkdir(join(destDir, dirname(htmlPath)), { recursive: true });
+    await copyFile(join(contentDist, htmlPath), join(destDir, htmlPath));
+
+    if (!isReactServerComponent) {
       const dataPath = `${join(...partsOrIndex)}.json`;
-      const htmlPath = `${join(...partsOrIndex)}.html`;
-      await mkdir(join(destDir, dirname(htmlPath)), { recursive: true });
-      const pagesHtmlPath = join(sourceDir, distDir, "server", "pages", htmlPath);
-      if (await pathExists(pagesHtmlPath)) {
-        await copyFile(pagesHtmlPath, join(destDir, htmlPath));
-      } else {
-        const appHtmlPath = join(sourceDir, distDir, "server", "app", htmlPath);
-        if (await pathExists(appHtmlPath)) {
-          await copyFile(appHtmlPath, join(destDir, htmlPath));
-        }
-      }
-      const dataRoute = prerenderManifest.routes[path].dataRoute;
-      await mkdir(join(destDir, dirname(dataRoute)), { recursive: true });
-      const pagesDataPath = join(sourceDir, distDir, "server", "pages", dataPath);
-      if (await pathExists(pagesDataPath)) {
-        await copyFile(pagesDataPath, join(destDir, dataRoute));
-      } else {
-        const appDataPath = join(sourceDir, distDir, "server", "app", dataPath);
-        if (await pathExists(appDataPath)) {
-          await copyFile(appDataPath, join(destDir, dataRoute));
-        }
-      }
+      await mkdir(join(destDir, dirname(route.dataRoute)), { recursive: true });
+      await copyFile(join(contentDist, dataPath), join(destDir, route.dataRoute));
     }
   }
 }
@@ -275,8 +270,7 @@ export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: strin
  */
 export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: string) {
   const { distDir } = await getConfig(sourceDir);
-  const packageJsonBuffer = await readFile(join(sourceDir, "package.json"));
-  const packageJson = JSON.parse(packageJsonBuffer.toString());
+  const packageJson = await readJSON(join(sourceDir, "package.json"));
   if (existsSync(join(sourceDir, "next.config.js"))) {
     let esbuild;
     try {
