@@ -154,7 +154,11 @@ export async function build(dir: string): Promise<BuildResult> {
   const rewrites = nextJsRewritesToUse
     .map(({ source, destination, has }) => {
       // Can we change i18n into Firebase settings?
-      if (has) return undefined;
+      if (
+        has ||
+        destination.includes("http") // filter out rewrites to third parties
+      )
+        return undefined;
 
       try {
         new RE2(source);
