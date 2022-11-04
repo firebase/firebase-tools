@@ -10,7 +10,7 @@ import { RequireAtLeastOne } from "./metaprogramming";
 // should be sourced from - https://github.com/firebase/firebase-tools/blob/master/src/deploy/functions/runtimes/index.ts#L15
 type CloudFunctionRuntimes = "nodejs10" | "nodejs12" | "nodejs14" | "nodejs16";
 
-type Deployable = {
+export type Deployable = {
   predeploy?: string | string[];
   postdeploy?: string | string[];
 };
@@ -67,7 +67,7 @@ export type HostingHeaders = HostingSource & {
   }[];
 };
 
-type HostingBase = {
+export type HostingBase = {
   public?: string;
   source?: string;
   ignore?: string[];
@@ -100,13 +100,6 @@ export type HostingMultiple = (HostingBase &
     target: string;
   }> &
   Deployable)[];
-
-// After validating a HostingMultiple and resolving targets, we will instead
-// have a HostingResolved.
-export type HostingResolved = HostingBase & {
-  site: string;
-  target?: string;
-} & Deployable;
 
 type StorageSingle = {
   rules: string;

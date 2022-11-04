@@ -293,4 +293,30 @@ describe("GCS endpoint conformance tests", () => {
       });
     });
   });
+
+  describe("List protocols", () => {
+    describe("list objects", () => {
+      // This test is for the '/storage/v1/b/:bucketId/o' url pattern, which is used specifically by the GO Admin SDK
+      it("should list objects in the provided bucket", async () => {
+        await supertest(storageHost)
+          .post(`/upload/storage/v1/b/${storageBucket}/o?name=${TEST_FILE_NAME}`)
+          .set(authHeader)
+          .send(Buffer.from("hello world"))
+          .expect(200);
+
+        await supertest(storageHost)
+          .post(`/upload/storage/v1/b/${storageBucket}/o?name=${TEST_FILE_NAME}2`)
+          .set(authHeader)
+          .send(Buffer.from("hello world"))
+          .expect(200);
+
+        const data = await supertest(storageHost)
+          .get(`/storage/v1/b/${storageBucket}/o`)
+          .set(authHeader)
+          .expect(200)
+          .then((res) => res.body);
+        expect(data.items.length).to.equal(2);
+      });
+    });
+  });
 });
