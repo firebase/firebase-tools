@@ -1,1 +1,2 @@
 - Fixes gzipped file handling in Storage Emulator.
+- Add support for object list using certain Admin SDKs (#5208)
