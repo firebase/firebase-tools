@@ -31,7 +31,19 @@ export interface Channel {
   cryptoKeyName?: string;
 }
 
-interface Operation {}
+interface OperationMetadata {
+  createTime: string;
+  target: string;
+  verb: string;
+  requestedCancellation: boolean;
+  apiVersion: string;
+}
+
+interface Operation {
+  name: string;
+  metadata: OperationMetadata;
+  done: boolean;
+}
 
 const client = new Client({
   urlPrefix: eventarcOrigin,
@@ -55,11 +67,15 @@ export async function getChannel(name: string): Promise<Channel | undefined> {
  */
 export async function createChannel(channel: Channel): Promise<Operation> {
   const body: Partial<Channel> = cloneDeep(channel);
-  delete body.name;
   const pathParts = channel.name.split("/");
-  const res = await client.post<Partial<Channel>, Channel>(pathParts.slice(0, -1).join("/"), body, {
-    queryParams: { channelId: last(pathParts)! },
-  });
+
+  const res = await client.post<Partial<Channel>, Operation>(
+    pathParts.slice(0, -1).join("/"),
+    body,
+    {
+      queryParams: { channelId: last(pathParts)! },
+    }
+  );
   return res.body;
 }
 
