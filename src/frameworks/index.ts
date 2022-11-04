@@ -52,9 +52,7 @@ export interface Framework {
   init?: (setup: any) => Promise<void>;
   getDevModeHandle?: (
     dir: string,
-
-    // TODO: remove `| undefined` after serve passes emulator info to prepareFrameworks
-    hostingEmulatorInfo: EmulatorInfo | undefined
+    hostingEmulatorInfo?: EmulatorInfo
   ) => Promise<(req: IncomingMessage, res: ServerResponse, next: () => void) => void>;
   ɵcodegenPublicDirectory: (dir: string, dest: string) => Promise<void>;
   ɵcodegenFunctionsDirectory?: (

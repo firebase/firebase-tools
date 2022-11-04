@@ -5,8 +5,6 @@ import { trackEmulator } from "../track";
 import { getProjectId } from "../projectUtils";
 import { Constants } from "../emulator/constants";
 import * as config from "../hosting/config";
-import type { EmulatorInfo } from "../emulator/types";
-import { Emulators } from "../emulator/types";
 
 const { FunctionsServer } = require("./functions");
 
@@ -26,17 +24,7 @@ export async function serve(options: any): Promise<void> {
   options.port = parseInt(options.port, 10);
   if (targetNames.includes("hosting") && config.extract(options).some((it: any) => it.source)) {
     experiments.assertEnabled("webframeworks", "emulate a web framework");
-
-    // TODO: get real emulator info
-    const hardcodedEmulatorInfo: EmulatorInfo[] = [
-      {
-        name: Emulators.HOSTING,
-        host: options.host,
-        port: options.port,
-      },
-    ];
-
-    await prepareFrameworks(targetNames, options, options, hardcodedEmulatorInfo);
+    await prepareFrameworks(targetNames, options, options);
   }
   const isDemoProject = Constants.isDemoProject(getProjectId(options) || "");
   targetNames.forEach((targetName) => {
