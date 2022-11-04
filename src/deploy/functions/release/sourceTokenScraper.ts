@@ -1,4 +1,5 @@
 import { FirebaseError } from "../../../error";
+import { assertExhaustive } from "../../../functional";
 import { logger } from "../../../logger";
 
 type TokenFetchState = "NONE" | "FETCHING" | "VALID";
@@ -34,6 +35,8 @@ export class SourceTokenScraper {
         return undefined;
       }
       return this.promise;
+    } else {
+      assertExhaustive(this.fetchState);
     }
   }
 
