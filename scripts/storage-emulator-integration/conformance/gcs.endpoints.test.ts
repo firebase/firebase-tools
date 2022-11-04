@@ -365,7 +365,7 @@ describe("GCS endpoint conformance tests", () => {
       });
     });
   });
-  
+
   describe("List protocols", () => {
     describe("list objects", () => {
       // This test is for the '/storage/v1/b/:bucketId/o' url pattern, which is used specifically by the GO Admin SDK

@@ -481,7 +481,7 @@ describe("Firebase Storage endpoint conformance tests", () => {
       const fileName = "gzippedFile";
       const file = testBucket.file(fileName);
       await file.save(contents, {
-        //gzip: true,
+        // gzip: true,
         contentType: "text/plain",
       });
 
@@ -515,7 +515,7 @@ describe("Firebase Storage endpoint conformance tests", () => {
       const fileName = "gzippedFile";
       const file = testBucket.file(fileName);
       await file.save(contents, {
-        //gzip: true,
+        // gzip: true,
         contentType: "text/plain",
       });
 
