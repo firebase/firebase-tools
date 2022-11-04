@@ -7,13 +7,14 @@ import { Context, HostingDeploy } from "../../../deploy/hosting/context";
 import { HostingSingle } from "../../../firebaseConfig";
 import * as api from "../../../hosting/api";
 import { FirebaseError } from "../../../error";
+import { Payload } from "../../../deploy/functions/args";
 
 const FUNCTION_ID = "function";
 const PROJECT_ID = "project";
 const REGION = "region";
 
 function endpoint(opts?: Partial<backend.Endpoint>): backend.Endpoint {
-  // Createa type that allows us to not have a trigger
+  // Create a type that allows us to not have a trigger
   const ret: Omit<backend.Endpoint, "httpsTrigger"> & { httpsTrigger?: backend.HttpsTrigger } = {
     id: FUNCTION_ID,
     project: PROJECT_ID,
@@ -43,6 +44,7 @@ describe("convertConfig", () => {
     name: string;
     input: HostingSingle;
     want: api.ServingConfig;
+    functionsPayload?: Payload;
     existingBackend?: backend.Backend;
   }> = [
     // Rewrites.
@@ -59,14 +61,52 @@ describe("convertConfig", () => {
     {
       name: "checks for function region if unspecified",
       input: { rewrites: [{ glob: "/foo", function: { functionId: FUNCTION_ID } }] },
-      want: { rewrites: [{ glob: "/foo", function: FUNCTION_ID, functionRegion: "us-central1" }] },
-      existingBackend: backend.of(endpoint({ region: "us-central1" })),
+      want: {
+        rewrites: [
+          {
+            glob: "/foo",
+            function: FUNCTION_ID,
+            functionRegion: "us-central2",
+          },
+        ],
+      },
+      functionsPayload: {
+        functions: {
+          default: {
+            wantBackend: backend.of({
+              id: FUNCTION_ID,
+              project: PROJECT_ID,
+              entryPoint: FUNCTION_ID,
+              runtime: "nodejs16",
+              region: "us-central2",
+              platform: "gcfv1",
+              httpsTrigger: {},
+            }),
+            haveBackend: backend.empty(),
+          },
+        },
+      },
     },
     {
       name: "discovers the function region of a callable function",
       input: { rewrites: [{ glob: "/foo", function: { functionId: FUNCTION_ID } }] },
-      want: { rewrites: [{ glob: "/foo", function: FUNCTION_ID, functionRegion: "us-central1" }] },
-      existingBackend: backend.of(endpoint({ callableTrigger: {}, region: "us-central1" })),
+      want: { rewrites: [{ glob: "/foo", function: FUNCTION_ID, functionRegion: "us-central2" }] },
+      functionsPayload: {
+        functions: {
+          default: {
+            wantBackend: backend.of({
+              id: FUNCTION_ID,
+              project: PROJECT_ID,
+              entryPoint: FUNCTION_ID,
+              runtime: "nodejs16",
+              region: "us-central2",
+              platform: "gcfv1",
+              httpsTrigger: {},
+            }),
+            haveBackend: backend.empty(),
+          },
+        },
+      },
     },
     {
       name: "returns rewrites for glob CF3",
@@ -74,13 +114,65 @@ describe("convertConfig", () => {
         rewrites: [{ glob: "/foo", function: { functionId: FUNCTION_ID, region: "europe-west2" } }],
       },
       want: { rewrites: [{ glob: "/foo", function: FUNCTION_ID, functionRegion: "europe-west2" }] },
-      existingBackend: backend.of(endpoint({ region: "europe-west2" }), endpoint()),
+      functionsPayload: {
+        functions: {
+          default: {
+            wantBackend: backend.of(
+              {
+                id: FUNCTION_ID,
+                project: PROJECT_ID,
+                entryPoint: FUNCTION_ID,
+                runtime: "nodejs16",
+                region: "europe-west2",
+                platform: "gcfv1",
+                httpsTrigger: {},
+              },
+              {
+                id: FUNCTION_ID,
+                project: PROJECT_ID,
+                entryPoint: FUNCTION_ID,
+                runtime: "nodejs16",
+                region: "us-central1",
+                platform: "gcfv2",
+                httpsTrigger: {},
+              }
+            ),
+            haveBackend: backend.empty(),
+          },
+        },
+      },
     },
     {
       name: "defaults to a us-central1 rewrite if one is avaiable, v1 edition",
       input: { rewrites: [{ glob: "/foo", function: { functionId: FUNCTION_ID } }] },
       want: { rewrites: [{ glob: "/foo", function: FUNCTION_ID, functionRegion: "us-central1" }] },
-      existingBackend: backend.of(endpoint(), endpoint({ region: "us-central1" })),
+      functionsPayload: {
+        functions: {
+          default: {
+            wantBackend: backend.of(
+              {
+                id: FUNCTION_ID,
+                project: PROJECT_ID,
+                entryPoint: FUNCTION_ID,
+                runtime: "nodejs16",
+                region: "europe-west2",
+                platform: "gcfv1",
+                httpsTrigger: {},
+              },
+              {
+                id: FUNCTION_ID,
+                project: PROJECT_ID,
+                entryPoint: FUNCTION_ID,
+                runtime: "nodejs16",
+                region: "us-central1",
+                platform: "gcfv1",
+                httpsTrigger: {},
+              }
+            ),
+            haveBackend: backend.empty(),
+          },
+        },
+      },
     },
     {
       name: "defaults to a us-central1 rewrite if one is avaiable, v2 edition",
@@ -88,10 +180,33 @@ describe("convertConfig", () => {
       want: {
         rewrites: [{ glob: "/foo", run: { region: "us-central1", serviceId: FUNCTION_ID } }],
       },
-      existingBackend: backend.of(
-        endpoint({ platform: "gcfv2" }),
-        endpoint({ platform: "gcfv2", region: "us-central1" })
-      ),
+      functionsPayload: {
+        functions: {
+          default: {
+            wantBackend: backend.of(
+              {
+                id: FUNCTION_ID,
+                project: PROJECT_ID,
+                entryPoint: FUNCTION_ID,
+                runtime: "nodejs16",
+                region: "europe-west2",
+                platform: "gcfv2",
+                httpsTrigger: {},
+              },
+              {
+                id: FUNCTION_ID,
+                project: PROJECT_ID,
+                entryPoint: FUNCTION_ID,
+                runtime: "nodejs16",
+                region: "us-central1",
+                platform: "gcfv2",
+                httpsTrigger: {},
+              }
+            ),
+            haveBackend: backend.empty(),
+          },
+        },
+      },
     },
     {
       name: "returns rewrites for regex CF3",
@@ -101,13 +216,43 @@ describe("convertConfig", () => {
       want: {
         rewrites: [{ regex: "/foo$", function: FUNCTION_ID, functionRegion: REGION }],
       },
-      existingBackend: backend.of(endpoint()),
+      functionsPayload: {
+        functions: {
+          default: {
+            wantBackend: backend.of({
+              id: FUNCTION_ID,
+              project: PROJECT_ID,
+              entryPoint: FUNCTION_ID,
+              runtime: "nodejs16",
+              region: REGION,
+              platform: "gcfv1",
+              httpsTrigger: {},
+            }),
+            haveBackend: backend.empty(),
+          },
+        },
+      },
     },
     {
       name: "rewrites referencing CF3v2 functions being deployed are changed to Cloud Run (during release)",
       input: { rewrites: [{ regex: "/foo$", function: { functionId: FUNCTION_ID } }] },
       want: { rewrites: [{ regex: "/foo$", run: { serviceId: FUNCTION_ID, region: REGION } }] },
-      existingBackend: backend.of(endpoint({ platform: "gcfv2" })),
+      functionsPayload: {
+        functions: {
+          default: {
+            wantBackend: backend.of({
+              id: FUNCTION_ID,
+              project: PROJECT_ID,
+              entryPoint: FUNCTION_ID,
+              runtime: "nodejs16",
+              region: REGION,
+              platform: "gcfv2",
+              httpsTrigger: {},
+            }),
+            haveBackend: backend.empty(),
+          },
+        },
+      },
     },
     {
       name: "rewrites referencing existing CF3v2 functions are changed to Cloud Run (during prepare)",
@@ -257,7 +402,7 @@ describe("convertConfig", () => {
     },
   ];
 
-  for (const { name, input, existingBackend, want } of tests) {
+  for (const { name, input, existingBackend, want, functionsPayload } of tests) {
     it(name, async () => {
       const context: Context = {
         projectId: PROJECT_ID,
@@ -272,10 +417,86 @@ describe("convertConfig", () => {
         config: { site: "site", ...input },
         version: "version",
       };
-      const config = await convertConfig(context, deploy);
+      const config = await convertConfig(context, functionsPayload || {}, deploy);
       expect(config).to.deep.equal(want);
     });
   }
+
+  describe("rewrites errors", () => {
+    it("should throw when rewrite points to function in the wrong region", async () => {
+      await expect(
+        convertConfig(
+          { projectId: "1" },
+          {
+            functions: {
+              default: {
+                wantBackend: backend.of({
+                  id: FUNCTION_ID,
+                  project: PROJECT_ID,
+                  entryPoint: FUNCTION_ID,
+                  runtime: "nodejs16",
+                  region: "europe-west1",
+                  platform: "gcfv1",
+                  httpsTrigger: {},
+                }),
+                haveBackend: backend.empty(),
+              },
+            },
+          },
+          {
+            config: {
+              site: "foo",
+              rewrites: [
+                { glob: "/foo", function: { functionId: FUNCTION_ID, region: "asia-northeast1" } },
+              ],
+            },
+            version: "14",
+          }
+        )
+      ).to.eventually.be.rejectedWith(FirebaseError);
+    });
+
+    it("should throw when rewrite points to function being deleted", async () => {
+      await expect(
+        convertConfig(
+          { projectId: "1" },
+          {
+            functions: {
+              default: {
+                wantBackend: backend.of({
+                  id: FUNCTION_ID,
+                  project: PROJECT_ID,
+                  entryPoint: FUNCTION_ID,
+                  runtime: "nodejs16",
+                  region: "europe-west1",
+                  platform: "gcfv1",
+                  httpsTrigger: {},
+                }),
+                haveBackend: backend.of({
+                  id: FUNCTION_ID,
+                  project: PROJECT_ID,
+                  entryPoint: FUNCTION_ID,
+                  runtime: "nodejs16",
+                  region: "asia-northeast1",
+                  platform: "gcfv1",
+                  httpsTrigger: {},
+                }),
+              },
+            },
+          },
+          {
+            config: {
+              site: "foo",
+              rewrites: [
+                { glob: "/foo", function: { functionId: FUNCTION_ID, region: "asia-northeast1" } },
+              ],
+            },
+            version: "14",
+          }
+        )
+      ).to.eventually.be.rejectedWith(FirebaseError);
+    });
+  });
 
   describe("with permissions issues", () => {
     let existingBackendStub: sinon.SinonStub;
@@ -298,6 +519,7 @@ describe("convertConfig", () => {
       await expect(
         convertConfig(
           { projectId: "1" },
+          {},
           {
             config: {
               site: "foo",

@@ -213,7 +213,7 @@ export async function prepare(
   for (const [codebase, { wantBackend, haveBackend }] of Object.entries(payload.functions)) {
     inferDetailsFromExisting(wantBackend, haveBackend, codebaseUsesEnvs.includes(codebase));
     await ensureTriggerRegions(wantBackend);
-    resolveCpu(wantBackend);
+    resolveCpuAndConcurrency(wantBackend);
     validate.endpointsAreValid(wantBackend);
     inferBlockingDetails(wantBackend);
   }
@@ -321,16 +321,14 @@ export function inferDetailsFromExisting(
       wantE.availableMemoryMb = haveE.availableMemoryMb;
     }
 
-    // N.B. This code doesn't handle automatic downgrading of concurrency if
-    // the customer sets CPU <1. We'll instead error that you can't have both.
-    // We may want to handle this case, though it might also be surprising to
-    // customers if they _don't_ get an error and we silently drop concurrency.
-    if (typeof wantE.concurrency === "undefined" && haveE.concurrency) {
-      wantE.concurrency = haveE.concurrency;
-    }
     if (typeof wantE.cpu === "undefined" && haveE.cpu) {
       wantE.cpu = haveE.cpu;
     }
+
+    // N.B. concurrency has different defaults based on CPU. If the customer
+    // only specifies CPU and they change that specification to < 1, we should
+    // turn off concurrency.
+    // We'll hanndle this in setCpuAndConcurrency
 
     wantE.securityLevel = haveE.securityLevel ? haveE.securityLevel : "SECURE_ALWAYS";
 
@@ -408,7 +406,7 @@ export function inferBlockingDetails(want: backend.Backend): void {
  * provided and sets concurrency based on the CPU level if not provided.
  * After this function, CPU will be a real number and not "gcf_gen1".
  */
-export function resolveCpu(want: backend.Backend): void {
+export function resolveCpuAndConcurrency(want: backend.Backend): void {
   for (const e of backend.allEndpoints(want)) {
     if (e.platform === "gcfv1") {
       continue;
@@ -417,6 +415,10 @@ export function resolveCpu(want: backend.Backend): void {
       e.cpu = backend.memoryToGen1Cpu(e.availableMemoryMb || backend.DEFAULT_MEMORY);
     } else if (!e.cpu) {
       e.cpu = backend.memoryToGen2Cpu(e.availableMemoryMb || backend.DEFAULT_MEMORY);
+    }
+
+    if (!e.concurrency) {
+      e.concurrency = e.cpu >= 1 ? backend.DEFAULT_CONCURRENCY : 1;
     }
   }
 }
