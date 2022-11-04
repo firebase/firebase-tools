@@ -25,7 +25,6 @@ import { promptOnce } from "../../prompt";
 import { logger } from "../../logger";
 import { FirebaseError } from "../../error";
 import { fileExistsSync } from "../../fsutils";
-import { DEFAULT_HOST, DEFAULT_PORTS } from "../../emulator/constants";
 import type { EmulatorInfo } from "../../emulator/types";
 
 // Next.js's exposed interface is incomplete here
