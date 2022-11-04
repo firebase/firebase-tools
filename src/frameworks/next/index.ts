@@ -20,6 +20,7 @@ import { gte } from "semver";
 import { IncomingMessage, ServerResponse } from "http";
 import { logger } from "../../logger";
 import { FirebaseError } from "../../error";
+import { fileExistsSync } from "../../fsutils";
 
 // Next.js's exposed interface is incomplete here
 // TODO see if there's a better way to grab this
