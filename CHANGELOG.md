@@ -1,0 +1,1 @@
+Updated the pubsub emulator to v0.7.1.
