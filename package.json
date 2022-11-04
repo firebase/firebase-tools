@@ -32,6 +32,7 @@
     "test:extensions-emulator": "bash ./scripts/extensions-emulator-tests/run.sh",
     "test:frameworks": "bash ./scripts/frameworks-tests/run.sh",
     "test:functions-deploy": "bash ./scripts/functions-deploy-tests/run.sh",
+    "test:functions-discover": "bash ./scripts/functions-discover-tests/run.sh",
     "test:hosting": "bash ./scripts/hosting-tests/run.sh",
     "test:hosting-rewrites": "bash ./scripts/hosting-tests/rewrites-tests/run.sh",
     "test:import-export": "bash ./scripts/emulator-import-export-tests/run.sh",

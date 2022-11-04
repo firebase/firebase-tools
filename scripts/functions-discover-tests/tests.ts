@@ -2,10 +2,9 @@ import * as path from "path";
 
 import { expect } from "chai";
 import { CLIProcess } from "../integration-helpers/cli";
-import { requireAuth } from "../../src/requireAuth";
 
 const FIXTURES = path.join(__dirname, "fixtures");
-const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "";
+const FIREBASE_PROJECT = "demo-project";
 
 interface Testcase {
   name: string;
@@ -19,12 +18,8 @@ interface Testcase {
 describe("Function discovery test", function (this) {
   this.timeout(1000_000);
 
-  before(async () => {
+  before(() => {
     expect(FIREBASE_PROJECT).to.exist.and.not.be.empty;
-    if (process.env.CI) {
-      // In CI, get auth credentials from environment variable.
-      await requireAuth({});
-    }
   });
 
   const testCases: Testcase[] = [
