@@ -32,7 +32,7 @@ interface Manifest {
   distDir?: string;
   basePath?: string;
   headers?: (Header & { regex: string })[];
-  redirects?: (Redirect & { regex: string, internal?: boolean })[];
+  redirects?: (Redirect & { regex: string; internal?: boolean })[];
   rewrites?:
     | (Rewrite & { regex: string })[]
     | {
@@ -42,15 +42,11 @@ interface Manifest {
       };
 }
 
-const CLI_COMMAND = join(
-  "node_modules",
-  ".bin",
-  process.platform === "win32" ? "next.cmd" : "next"
-);
-
 export const name = "Next.js";
 export const support = SupportLevel.Experimental;
 export const type = FrameworkType.MetaFramework;
+
+const DEFAULT_NUMBER_OF_REASONS_TO_LIST = 5;
 
 function getNextVersion(cwd: string): string | undefined {
   return findDependency("next", { cwd, depth: 0, omitDev: false })?.version;
@@ -97,7 +93,16 @@ export async function build(dir: string): Promise<BuildResult> {
   );
   const usingMiddleware = Object.keys(middlewareManifest.middleware).length > 0;
   if (usingMiddleware) {
-    reasonsForBackend.push('Using Next middleware');
+    reasonsForBackend.push("use of Next middleware");
+  }
+
+  const { isNextImageImported } = await readJSON(join(dir, distDir, "export-marker.json"));
+  if (isNextImageImported) {
+    const imagesManifest = await readJSON(join(dir, distDir, "images-manifest.json"));
+    const usingImageOptimization = imagesManifest.images.unoptimized === false;
+    if (usingImageOptimization) {
+      reasonsForBackend.push(`use of Next Image Optimization`);
+    }
   }
 
   const appPathRoutesManifestPath = join(dir, distDir, "app-path-routes-manifest.json");
@@ -108,26 +113,36 @@ export async function build(dir: string): Promise<BuildResult> {
   if (usingAppDirectory) {
     // Let's not get smart here, if they are using the app directory we should
     // opt for spinning up a Cloud Function. The app directory is unstable.
-    reasonsForBackend.push('Using Next app directory');
+    reasonsForBackend.push("use of Next app directory");
   }
 
-  const prerenderManifestJSON: PrerenderManifest = await readJSON(
+  const prerenderManifest: PrerenderManifest = await readJSON(
     join(dir, distDir, "prerender-manifest.json")
   );
-  const dynamicRoutesWithFallback = Object.entries(
-    prerenderManifestJSON.dynamicRoutes || {}
-  ).filter(([,it]) => it.fallback !== false);
+
+  const dynamicRoutesWithFallback = Object.entries(prerenderManifest.dynamicRoutes || {}).filter(
+    ([, it]) => it.fallback !== false
+  );
   if (dynamicRoutesWithFallback.length > 0) {
     for (const [key] of dynamicRoutesWithFallback) {
-      reasonsForBackend.push(`${key} is a fallback route`);
+      reasonsForBackend.push(`use of fallback ${key}`);
+    }
+  }
+
+  const routesWithRevalidate = Object.entries(prerenderManifest.routes).filter(
+    ([, it]) => it.initialRevalidateSeconds
+  );
+  if (routesWithRevalidate.length > 0) {
+    for (const [key] of routesWithRevalidate) {
+      reasonsForBackend.push(`use of revalidate ${key}`);
     }
   }
 
   const pagesManifestJSON: PagesManifest = await readJSON(
     join(dir, distDir, "server", "pages-manifest.json")
   );
-  const prerenderedRoutes = Object.keys(prerenderManifestJSON.routes);
-  const dynamicRoutes = Object.keys(prerenderManifestJSON.dynamicRoutes);
+  const prerenderedRoutes = Object.keys(prerenderManifest.routes);
+  const dynamicRoutes = Object.keys(prerenderManifest.dynamicRoutes);
   const unrenderedPages = Object.keys(pagesManifestJSON).filter(
     (it) =>
       !(
@@ -138,16 +153,7 @@ export async function build(dir: string): Promise<BuildResult> {
   );
   if (unrenderedPages.length > 0) {
     for (const key of unrenderedPages) {
-      reasonsForBackend.push(`${key} is not static`);
-    }
-  }
-
-  const { isNextImageImported } = await readJSON(join(dir, distDir, "export-marker.json"));
-  if (isNextImageImported) {
-    const imagesManifest = await readJSON(join(dir, distDir, "images-manifest.json"));
-    const usingImageOptimization = imagesManifest.images.unoptimized === false;
-    if (usingImageOptimization) {
-      reasonsForBackend.push(`Using Next Image Optimization`);
+      reasonsForBackend.push(`non-static route ${key}`);
     }
   }
 
@@ -159,7 +165,7 @@ export async function build(dir: string): Promise<BuildResult> {
   } = manifest;
   const headers = nextJsHeaders.map(({ source, headers }) => ({ source, headers }));
   const redirects = nextJsRedirects
-    .filter(it => !it.internal)
+    .filter((it) => !it.internal)
     .map(({ source, destination, statusCode: type }) => ({ source, destination, type }));
   const nextJsRewritesToUse = Array.isArray(nextJsRewrites)
     ? nextJsRewrites
@@ -171,13 +177,29 @@ export async function build(dir: string): Promise<BuildResult> {
       return { source, destination };
     })
     .filter((it) => it);
-  
-  // TODO log out the reasonsForBackend
+
   const wantsBackend = reasonsForBackend.length > 0;
+
+  if (wantsBackend) {
+    const numberOfReasonsToList = process.env.DEBUG ? Infinity : DEFAULT_NUMBER_OF_REASONS_TO_LIST;
+    console.log("Building a Cloud Function to run this application. This is needed due to:");
+    for (const reason of reasonsForBackend.slice(0, numberOfReasonsToList)) {
+      console.log(` • ${reason}`);
+    }
+    if (reasonsForBackend.length > numberOfReasonsToList) {
+      console.log(
+        ` • and ${
+          reasonsForBackend.length - numberOfReasonsToList
+        } other reasons, use --debug to see more`
+      );
+    }
+    console.log("");
+  }
+
   return { wantsBackend, headers, redirects, rewrites };
 }
 
-/**q
+/** q
  * Utility method used during project initialization.
  */
 export async function init(setup: any) {
@@ -225,7 +247,7 @@ export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: strin
     join(sourceDir, distDir, "server", "middleware-manifest.json")
   );
   const middlewareMatchers = Object.values(middlewareManifest["middleware"])
-    .map(it => it.matchers)
+    .map((it) => it.matchers)
     .flat();
 
   const prerenderManifest: PrerenderManifest = await readJSON(
@@ -238,19 +260,22 @@ export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: strin
     }
 
     // Skip pages affected by middleware in hosting
-    const matchingMiddleware = middlewareMatchers.find(matcher =>
+    const matchingMiddleware = middlewareMatchers.find((matcher) =>
       new RegExp(matcher.regexp).test(path)
     );
     if (matchingMiddleware) {
       continue;
     }
 
-    const isReactServerComponent = route.dataRoute.endsWith('.rsc');
-    const contentDist = join(sourceDir, distDir, "server", isReactServerComponent ? "app" : "pages");
+    const isReactServerComponent = route.dataRoute.endsWith(".rsc");
+    const contentDist = join(
+      sourceDir,
+      distDir,
+      "server",
+      isReactServerComponent ? "app" : "pages"
+    );
 
-    const parts = path
-      .split("/")
-      .filter((it) => !!it);
+    const parts = path.split("/").filter((it) => !!it);
     const partsOrIndex = parts.length > 0 ? parts : ["index"];
 
     const htmlPath = `${join(...partsOrIndex)}.html`;
