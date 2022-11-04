@@ -6,6 +6,7 @@ import type { NextConfig } from "next";
 import { copy, mkdirp, pathExists } from "fs-extra";
 import { pathToFileURL, parse } from "url";
 import { existsSync } from "fs";
+import RE2 from "re2";
 
 import {
   BuildResult,
@@ -149,11 +150,21 @@ export async function build(dir: string): Promise<BuildResult> {
   const nextJsRewritesToUse = Array.isArray(nextJsRewrites)
     ? nextJsRewrites
     : nextJsRewrites.beforeFiles || [];
+
   const rewrites = nextJsRewritesToUse
     .map(({ source, destination, has }) => {
       // Can we change i18n into Firebase settings?
       if (has) return undefined;
-      return { source, destination };
+
+      try {
+        new RE2(source);
+        new RE2(destination);
+
+        return { source, destination };
+      } catch (error) {
+        // regex not supported by RE2 cannot be transformed into firebase.json rewrites
+        return undefined;
+      }
     })
     .filter((it) => it);
 
