@@ -341,6 +341,7 @@ export async function getDevModeHandle(dir: string, hostingEmulatorInfo?: Emulat
   });
   const handler = nextApp.getRequestHandler();
   await nextApp.prepare();
+  // TODO can we check for middleware and error if we don't have hostingEmulatorInfo
   return (req: IncomingMessage, res: ServerResponse, next: () => void) => {
     const parsedUrl = parse(req.url!, true);
     const proxy = createServerResponseProxy(req, res, next);
