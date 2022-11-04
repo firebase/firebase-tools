@@ -1,1 +1,2 @@
 - Add support for object list using certain Admin SDKs (#5208)
+- Fix bug where emulated event triggered function broke in debug mode (#5211)
