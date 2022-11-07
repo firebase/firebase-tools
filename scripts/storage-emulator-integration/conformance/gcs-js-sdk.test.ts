@@ -3,7 +3,6 @@ import { expect } from "chai";
 import * as admin from "firebase-admin";
 import * as fs from "fs";
 import { EmulatorEndToEndTest } from "../../integration-helpers/framework";
-import * as supertest from "supertest";
 import { TEST_ENV } from "./env";
 import {
   createRandomFile,
@@ -28,7 +27,6 @@ describe("GCS Javascript SDK conformance tests", () => {
   const storageBucket = TEST_ENV.appConfig.storageBucket;
   const otherStorageBucket = TEST_ENV.secondTestBucket;
   const storageHost = TEST_ENV.storageHost;
-  const firebaseHost = TEST_ENV.firebaseHost;
   const googleapisHost = TEST_ENV.googleapisHost;
 
   let test: EmulatorEndToEndTest;
