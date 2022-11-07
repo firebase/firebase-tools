@@ -43,5 +43,5 @@ export const v2tq = v2.tasks.onTaskDispatched(v2TqOpts, () => {});
 export const v2secret = v2.pubsub.onMessagePublished({ topic: "foo", secrets: ["TOP"] }, () => {});
 export const v2scheduled = v2.scheduler.onSchedule(v2ScheduleOpts, () => {});
 export const v2testlab = v2.testLab.onTestMatrixCompleted(() => {});
-export const v2rc = v2.remoteConfig.onConfigUpdated(() => {});
-export const v2perf = v2.alerts.performance.onThresholdAlertPublished(() => {});
+// export const v2rc = v2.remoteConfig.onConfigUpdated(() => {});
+// export const v2perf = v2.alerts.performance.onThresholdAlertPublished(() => {});
