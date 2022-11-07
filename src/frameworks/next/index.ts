@@ -6,7 +6,6 @@ import type { NextConfig } from "next";
 import { copy, mkdirp, pathExists } from "fs-extra";
 import { pathToFileURL, parse } from "url";
 import { existsSync } from "fs";
-import RE2 from "re2";
 
 import {
   BuildResult,
@@ -23,6 +22,7 @@ import { IncomingMessage, ServerResponse } from "http";
 import { logger } from "../../logger";
 import { FirebaseError } from "../../error";
 import { fileExistsSync } from "../../fsutils";
+import { isThirdPartyUrl, supportsFrameworkRegex } from "../utils";
 
 // Next.js's exposed interface is incomplete here
 // TODO see if there's a better way to grab this
@@ -143,34 +143,52 @@ export async function build(dir: string): Promise<BuildResult> {
     redirects: nextJsRedirects = [],
     rewrites: nextJsRewrites = [],
   } = manifest;
-  const headers = nextJsHeaders.map(({ source, headers }) => ({ source, headers }));
+
+  const headers = nextJsHeaders
+    .filter(({ source }) => {
+      if (supportsFrameworkRegex(source)) {
+        return true;
+      } else {
+        wantsBackend = true;
+        return false;
+      }
+    })
+    .map(({ source, headers }) => ({ source, headers }));
+
   const redirects = nextJsRedirects
-    .filter(({ internal }: any) => !internal)
+    .filter(({ internal, source, destination }: any) => {
+      if (internal) return false;
+
+      if (supportsFrameworkRegex(source) && supportsFrameworkRegex(destination)) {
+        return true;
+      } else {
+        wantsBackend = true;
+        return false;
+      }
+    })
     .map(({ source, destination, statusCode: type }) => ({ source, destination, type }));
+
   const nextJsRewritesToUse = Array.isArray(nextJsRewrites)
     ? nextJsRewrites
     : nextJsRewrites.beforeFiles || [];
 
   const rewrites = nextJsRewritesToUse
-    .map(({ source, destination, has }) => {
+    .filter(({ source, destination, has }) => {
       // Can we change i18n into Firebase settings?
+      if (has) return false;
+
       if (
-        has ||
-        destination.includes("http") // filter out rewrites to third parties
-      )
-        return undefined;
-
-      try {
-        new RE2(source);
-        new RE2(destination);
-
-        return { source, destination };
-      } catch (error) {
-        // regex not supported by RE2 cannot be transformed into firebase.json rewrites
-        return undefined;
+        supportsFrameworkRegex(source) &&
+        supportsFrameworkRegex(destination) &&
+        isThirdPartyUrl(destination) === false
+      ) {
+        return true;
+      } else {
+        wantsBackend = true;
+        return false;
       }
     })
-    .filter((it) => it);
+    .map(({ source, destination }) => ({ source, destination }));
 
   return { wantsBackend, headers, redirects, rewrites };
 }
