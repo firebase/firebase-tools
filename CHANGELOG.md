@@ -1,3 +1,4 @@
+- Fixes gzipped file handling in Storage Emulator.
 - Add support for object list using certain Admin SDKs (#5208)
 - Fixes source token expiration issue by acquiring new source token upon expiration.
 - Fix bug where disabling background triggers did nothing. (#5221)
