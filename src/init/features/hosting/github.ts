@@ -418,13 +418,20 @@ async function promptForRepo(
           key = body.key;
           keyId = body.key_id;
         } catch (e: any) {
-          if (e.status === 403) {
+          if (e.status === 403 || e.status === 404) {
             logger.info();
             logger.info();
-            logWarning(
-              "The provided authorization cannot be used with this repository. If this repository is in an organization, did you remember to grant access?",
-              "error"
-            );
+            if (e.status === 403) {
+              logWarning(
+                "The provided authorization cannot be used with this repository. If this repository is in an organization, did you remember to grant access?",
+                "error"
+              );
+            } if (e.status === 404) {
+              logWarning(
+                `Provided repository "${repo}" was not found. If this repository is in an organization, did you remember to grant access?`,
+                "error"
+              );
+            }
             logger.info();
             logLabeledBullet(
               "Action required",
