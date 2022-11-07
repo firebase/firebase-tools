@@ -132,27 +132,15 @@ describe("GCS Javascript SDK conformance tests", () => {
           metadata: {},
         });
 
-        const cloudFile = testBucket.file(testFileName);
+        const file = testBucket.file(testFileName);
         const incomingMetadata = {
           metadata: {
             firebaseStorageDownloadTokens: "myFirstToken,mySecondToken",
           },
         };
-        await cloudFile.setMetadata(incomingMetadata);
+        await file.setMetadata(incomingMetadata);
 
-        // Check that the tokens are saved in Firebase metadata
-        await supertest(firebaseHost)
-          .get(`/v0/b/${testBucket.name}/o/${encodeURIComponent(testFileName)}`)
-          .expect(200)
-          .then((res) => {
-            const firebaseMd = res.body;
-            expect(firebaseMd.downloadTokens).to.equal(
-              incomingMetadata.metadata.firebaseStorageDownloadTokens
-            );
-          });
-
-        // Check that the tokens are saved in Cloud metadata
-        const [storedMetadata] = await cloudFile.getMetadata();
+        const [storedMetadata] = await file.getMetadata();
         expect(storedMetadata.metadata.firebaseStorageDownloadTokens).to.deep.equal(
           incomingMetadata.metadata.firebaseStorageDownloadTokens
         );
@@ -385,31 +373,21 @@ describe("GCS Javascript SDK conformance tests", () => {
   });
 
   describe(".file()", () => {
-    describe.only("#save()", () => {
-      it("should handle gzip (upload)", async () => {
-        await testBucket.upload(smallFilePath, {
-          destination: "gzippedFile",
-          gzip: true,
-        });
-        const file = testBucket.file("gzippedFile");
-
-        expect(file.metadata.contentType).to.be.eql("text/plain");
-      });
-
-      it("should handle custom metadata", async () => {
-        const contents = "hello world";
+    describe("#save()", () => {
+      it("should save", async () => {
+        const contents = Buffer.from("hello world");
 
         const file = testBucket.file("gzippedFile");
         await file.save(contents, { contentType: "text/plain" });
 
         expect(file.metadata.contentType).to.be.eql("text/plain");
+        const [downloadedContents] = await file.download();
+        expect(downloadedContents).to.be.eql(contents);
       });
 
       it("should handle gzipped uploads", async () => {
-        const contents = "hello world";
-
         const file = testBucket.file("gzippedFile");
-        await file.save(contents, { gzip: true });
+        await file.save("hello world", { gzip: true });
 
         expect(file.metadata.contentEncoding).to.be.eql("gzip");
       });
