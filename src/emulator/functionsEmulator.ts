@@ -292,20 +292,18 @@ export class FunctionsEmulator implements EmulatorInstance {
       const { host, port } = this.getInfo();
       triggers.forEach((triggerId) => {
         this.workQueue.submit(() => {
-          return new Promise((resolve, reject) => {
-            const trigReq = http.request(
-              {
-                host: connectableHostname(host),
-                port,
-                method: req.method,
-                path: `/functions/projects/${projectId}/triggers/${triggerId}`,
-                headers: req.headers,
-              },
-              resolve
-            );
+          return new Promise<void>((resolve, reject) => {
+            const trigReq = http.request({
+              host: connectableHostname(host),
+              port,
+              method: req.method,
+              path: `/functions/projects/${projectId}/triggers/${triggerId}`,
+              headers: req.headers,
+            });
             trigReq.on("error", reject);
             trigReq.write(rawBody);
             trigReq.end();
+            resolve();
           });
         });
       });
