@@ -27,7 +27,7 @@ function genRandomId(n = 10): string {
 }
 
 interface Opts {
-  v1Opts: functions.RuntimeOptions;
+  v1Opts: functions.DeploymentOptions;
   v2Opts: functionsv2.GlobalOptions;
 
   v1TqOpts: functions.tasks.TaskQueueOptions;
@@ -143,6 +143,7 @@ describe("firebase deploy", function (this) {
         memory: "128MB",
         maxInstances: 42,
         timeoutSeconds: 42,
+        preserveExternalChanges: true
       },
       v2Opts: {
         memory: "128MiB",
@@ -150,6 +151,7 @@ describe("firebase deploy", function (this) {
         timeoutSeconds: 42,
         cpu: 2,
         concurrency: 42,
+        preserveExternalChanges: true
       },
       v1TqOpts: {
         retryConfig: {
@@ -262,8 +264,8 @@ describe("firebase deploy", function (this) {
 
   it("skips duplicate deploys functions with runtime options", async () => {
     const opts: Opts = {
-      v1Opts: {},
-      v2Opts: {},
+      v1Opts: { preserveExternalChanges: true },
+      v2Opts: { preserveExternalChanges: true },
       v1TqOpts: {},
       v2TqOpts: {},
       v1IdpOpts: {},
@@ -281,8 +283,8 @@ describe("firebase deploy", function (this) {
 
   it("leaves existing options when unspecified", async () => {
     const opts: Opts = {
-      v1Opts: {},
-      v2Opts: {},
+      v1Opts: { preserveExternalChanges: true },
+      v2Opts: { preserveExternalChanges: true },
       v1TqOpts: {},
       v2TqOpts: {},
       v1IdpOpts: {},
@@ -355,41 +357,41 @@ describe("firebase deploy", function (this) {
   it.skip("restores default values if options are explicitly cleared out", async () => {
     const opts: Opts = {
       v1Opts: {
-        memory: undefined,
-        maxInstances: undefined,
-        timeoutSeconds: undefined,
+        memory: functions.RESET_VALUE,
+        maxInstances: functions.RESET_VALUE,
+        timeoutSeconds: functions.RESET_VALUE,
       },
       v2Opts: {
-        memory: undefined,
-        maxInstances: undefined,
-        timeoutSeconds: undefined,
+        memory: functions.RESET_VALUE,
+        maxInstances: functions.RESET_VALUE,
+        timeoutSeconds: functions.RESET_VALUE,
         cpu: undefined,
-        concurrency: undefined,
+        concurrency: functions.RESET_VALUE,
       },
       v1TqOpts: {
         retryConfig: {
-          maxAttempts: undefined,
-          maxRetrySeconds: undefined,
-          maxBackoffSeconds: undefined,
-          maxDoublings: undefined,
-          minBackoffSeconds: undefined,
+          maxAttempts: functions.RESET_VALUE,
+          maxRetrySeconds: functions.RESET_VALUE,
+          maxBackoffSeconds: functions.RESET_VALUE,
+          maxDoublings: functions.RESET_VALUE,
+          minBackoffSeconds: functions.RESET_VALUE,
         },
         rateLimits: {
-          maxDispatchesPerSecond: undefined,
-          maxConcurrentDispatches: undefined,
+          maxDispatchesPerSecond: functions.RESET_VALUE,
+          maxConcurrentDispatches: functions.RESET_VALUE,
         },
       },
       v2TqOpts: {
         retryConfig: {
-          maxAttempts: undefined,
-          maxRetrySeconds: undefined,
-          maxBackoffSeconds: undefined,
-          maxDoublings: undefined,
-          minBackoffSeconds: undefined,
+          maxAttempts: functions.RESET_VALUE,
+          maxRetrySeconds: functions.RESET_VALUE,
+          maxBackoffSeconds: functions.RESET_VALUE,
+          maxDoublings: functions.RESET_VALUE,
+          minBackoffSeconds: functions.RESET_VALUE,
         },
         rateLimits: {
-          maxDispatchesPerSecond: undefined,
-          maxConcurrentDispatches: undefined,
+          maxDispatchesPerSecond: functions.RESET_VALUE,
+          maxConcurrentDispatches: functions.RESET_VALUE,
         },
       },
       v1IdpOpts: {
@@ -397,19 +399,19 @@ describe("firebase deploy", function (this) {
       },
       v2IdpOpts: {},
       v1ScheduleOpts: {
-        retryCount: undefined,
-        maxDoublings: undefined,
-        maxBackoffDuration: undefined,
-        maxRetryDuration: undefined,
-        minBackoffDuration: undefined,
+        retryCount: functions.RESET_VALUE,
+        maxDoublings: functions.RESET_VALUE,
+        maxBackoffDuration: functions.RESET_VALUE,
+        maxRetryDuration: functions.RESET_VALUE,
+        minBackoffDuration: functions.RESET_VALUE,
       },
       v2ScheduleOpts: {
         schedule: "every 30 minutes",
-        retryCount: undefined,
-        maxDoublings: undefined,
-        maxBackoffSeconds: undefined,
-        maxRetrySeconds: undefined,
-        minBackoffSeconds: undefined,
+        retryCount: functions.RESET_VALUE,
+        maxDoublings: functions.RESET_VALUE,
+        maxBackoffSeconds: functions.RESET_VALUE,
+        maxRetrySeconds: functions.RESET_VALUE,
+        minBackoffSeconds: functions.RESET_VALUE,
       },
     };
 
