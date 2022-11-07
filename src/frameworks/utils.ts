@@ -15,8 +15,8 @@ export function supportsFrameworkRegex(regex: string): boolean {
 }
 
 /**
- * Wheter the given URL is an external URL.
+ * Whether the given string is a URL.
  */
-export function isThirdPartyUrl(url: string): boolean {
-  return url.includes("http");
+export function isUrl(url: string): boolean {
+  return url.startsWith("http");
 }
