@@ -20,7 +20,6 @@ import * as v1events from "../../../../functions/events/v1";
 import * as servicesNS from "../../../../deploy/functions/services";
 import * as identityPlatformNS from "../../../../gcp/identityPlatform";
 import { AuthBlockingService } from "../../../../deploy/functions/services/auth";
-import { cloneDeep } from "../../../../utils";
 
 describe("Fabricator", () => {
   // Stub all GCP APIs to make sure this test is hermetic
@@ -489,48 +488,96 @@ describe("Fabricator", () => {
       );
     });
 
-    // it("handles already exising eventarc channels", async () => {
-    //   eventarc.createChannel.callsFake(({ name }) => {
-    //     expect(name).to.equal(`projects/${ep.project}/locations/${ep.}`)
-    //     const err = new Error("Already exists");
-    //     (err as any).status = 409;
-    //     return Promise.reject(err);
-    //   });
-    //   gcfv2.createFunction.resolves({ name: "op", done: false });
-    //   poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
+    it.only("handles already existing eventarc channels", async () => {
+      eventarc.createChannel.callsFake(({ name }) => {
+        expect(name).to.equal("channel");
+        const err = new Error("Already exists");
+        (err as any).status = 409;
+        return Promise.reject(err);
+      });
+      gcfv2.createFunction.resolves({ name: "op", done: false });
+      poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
 
-    //   const ep = endpoint(
-    //     {
-    //       eventTrigger: {
-    //         eventType: v2events.PUBSUB_PUBLISH_EVENT,
-    //         eventFilters: { topic: "topic" },
-    //         retry: false,
-    //       },
-    //     },
-    //     {
-    //       platform: "gcfv2",
-    //     }
-    //   );
+      const ep = endpoint(
+        {
+          eventTrigger: {
+            eventType: "custom.test.event",
+            channel: "channel",
+            retry: false,
+          },
+        },
+        {
+          platform: "gcfv2",
+        }
+      );
 
-    //   await fab.createV2Function(ep);
-    //   expect(eventarc.createChannel).to.have.been.called;
-    //   expect(gcfv2.createFunction).to.have.been.called;
-    // });
+      await fab.createV2Function(ep);
+      expect(eventarc.createChannel).to.have.been.called;
+      expect(gcfv2.createFunction).to.have.been.called;
+    });
 
-    // it("creates channels if necessary", async () => {
-    //   eventarc.getChannel.resolves(undefined);
-    //   eventarc.createChannel.resolves();
-    //   await fab.upsertChannel(ep);
-    //   expect(eventarc.getChannel).to.have.been.calledOnce;
-    //   expect(eventarc.createChannel).to.have.been.calledOnceWith({ name });
-    // });
+    it.only("creates channels if necessary", async () => {
+      const channelName = "channel";
+      eventarc.createChannel.callsFake(({ name }) => {
+        expect(name).to.equal(channelName);
+        return Promise.resolve({
+          name: "op-resource-name",
+          metadata: {
+            createTime: "",
+            target: "",
+            verb: "",
+            requestedCancellation: false,
+            apiVersion: "",
+          },
+          done: false,
+        });
+      });
+      gcfv2.createFunction.resolves({ name: "op", done: false });
+      poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
 
-    // it("wraps errors", async () => {
-    //   await expect(fab.upsertChannel(ep)).to.eventually.be.rejectedWith(
-    //     reporter.DeploymentError,
-    //     "upsert eventarc channel"
-    //   );
-    // });
+      const ep = endpoint(
+        {
+          eventTrigger: {
+            eventType: "custom.test.event",
+            channel: channelName,
+            retry: false,
+          },
+        },
+        {
+          platform: "gcfv2",
+        }
+      );
+
+      await fab.createV2Function(ep);
+      expect(eventarc.createChannel).to.have.been.calledOnceWith({ name: channelName });
+      expect(poller.pollOperation).to.have.been.called;
+    });
+
+    it.only("wraps errors thrown while creating channels", async () => {
+      eventarc.createChannel.callsFake(() => {
+        const err = new Error("🤷‍♂️");
+        (err as any).status = 400;
+        return Promise.reject(err);
+      });
+
+      const ep = endpoint(
+        {
+          eventTrigger: {
+            eventType: "custom.test.event",
+            channel: "channel",
+            retry: false,
+          },
+        },
+        {
+          platform: "gcfv2",
+        }
+      );
+
+      await expect(fab.createV2Function(ep)).to.eventually.be.rejectedWith(
+        reporter.DeploymentError,
+        "upsert eventarc channel"
+      );
+    });
 
     it("throws on create function failure", async () => {
       gcfv2.createFunction.rejects(new Error("Server failure"));
@@ -1230,22 +1277,6 @@ describe("Fabricator", () => {
       });
       await fab.setTrigger(ep);
     });
-
-    // it("upserts channels for event triggers with channels", async () => {
-    //   const ep = endpoint({
-    //     eventTrigger: {
-    //       eventType: "custom-event",
-    //       channel: "channel",
-    //       retry: false,
-    //     },
-    //   });
-
-    //   const upsertChannel = sinon.stub(fab, "upsertChannel");
-    //   upsertChannel.resolves();
-
-    //   await fab.setTrigger(ep);
-    //   expect(upsertChannel).to.have.been.called;
-    // });
 
     it("sets schedule triggers", async () => {
       const ep = endpoint({
