@@ -3,6 +3,7 @@ import { expect } from "chai";
 import * as admin from "firebase-admin";
 import * as fs from "fs";
 import * as supertest from "supertest";
+import { gunzipSync } from "zlib";
 import { TEST_ENV } from "./env";
 import { EmulatorEndToEndTest } from "../../integration-helpers/framework";
 import {
@@ -343,7 +344,6 @@ describe("Firebase Storage endpoint conformance tests", () => {
           })
           .expect(200)
           .then((res) => {
-            console.log(res);
             return new URL(res.header["x-goog-upload-url"]);
           });
 
@@ -471,6 +471,77 @@ describe("Firebase Storage endpoint conformance tests", () => {
             "X-Goog-Upload-Command": "cancel",
           })
           .expect(404);
+      });
+    });
+  });
+
+  describe("gzip", () => {
+    it("should serve gunzipped file by default", async () => {
+      const contents = Buffer.from("hello world");
+      const fileName = "gzippedFile";
+      const file = testBucket.file(fileName);
+      await file.save(contents, {
+        gzip: true,
+        contentType: "text/plain",
+      });
+
+      // Use requestClient since supertest will decompress the response body by default.
+      await new Promise((resolve, reject) => {
+        TEST_ENV.requestClient.get(
+          `${firebaseHost}/v0/b/${storageBucket}/o/${fileName}?alt=media`,
+          { headers: { ...authHeader } },
+          (res) => {
+            expect(res.headers["content-encoding"]).to.be.undefined;
+            expect(res.headers["content-length"]).to.be.undefined;
+            expect(res.headers["content-type"]).to.be.eql("text/plain");
+
+            let responseBody = Buffer.alloc(0);
+            res
+              .on("data", (chunk) => {
+                responseBody = Buffer.concat([responseBody, chunk]);
+              })
+              .on("end", () => {
+                expect(responseBody).to.be.eql(contents);
+              })
+              .on("close", resolve)
+              .on("error", reject);
+          }
+        );
+      });
+    });
+
+    it("should serve gzipped file if Accept-Encoding header allows", async () => {
+      const contents = Buffer.from("hello world");
+      const fileName = "gzippedFile";
+      const file = testBucket.file(fileName);
+      await file.save(contents, {
+        gzip: true,
+        contentType: "text/plain",
+      });
+
+      // Use requestClient since supertest will decompress the response body by default.
+      await new Promise((resolve, reject) => {
+        TEST_ENV.requestClient.get(
+          `${firebaseHost}/v0/b/${storageBucket}/o/${fileName}?alt=media`,
+          { headers: { ...authHeader, "Accept-Encoding": "gzip" } },
+          (res) => {
+            expect(res.headers["content-encoding"]).to.be.eql("gzip");
+            expect(res.headers["content-type"]).to.be.eql("text/plain");
+
+            let responseBody = Buffer.alloc(0);
+            res
+              .on("data", (chunk) => {
+                responseBody = Buffer.concat([responseBody, chunk]);
+              })
+              .on("end", () => {
+                expect(responseBody).to.not.be.eql(contents);
+                const decompressed = gunzipSync(responseBody);
+                expect(decompressed).to.be.eql(contents);
+              })
+              .on("close", resolve)
+              .on("error", reject);
+          }
+        );
       });
     });
   });
