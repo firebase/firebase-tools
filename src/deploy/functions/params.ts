@@ -499,7 +499,7 @@ async function promptParam(
     const provided = await promptBooleanParam(param, resolvedDefault as boolean | undefined);
     return new ParamValue(provided.toString(), false, { boolean: true });
   } else if (param.type === "list") {
-    const provided = await promptList(param, resolvedDefault as string[] | undefined);
+    const provided = await promptList(param, projectId, resolvedDefault as string[] | undefined);
     return ParamValue.fromList(provided, param.delimiter);
   } else if (param.type === "secret") {
     throw new FirebaseError(
@@ -509,24 +509,16 @@ async function promptParam(
   assertExhaustive(param);
 }
 
-async function promptList(param: ListParam, resolvedDefault?: string[]): Promise<string[]> {
+async function promptList(
+  param: ListParam,
+  projectId: string,
+  resolvedDefault?: string[]
+): Promise<string[]> {
   if (!param.input) {
     const defaultToText: TextInput<string> = { text: {} };
     param.input = defaultToText;
   }
   let prompt: string;
-  const stringToList = (res: string): string[] | retryInput => {
-    const converted = JSON.parse(res) || [];
-    if (!Array.isArray(converted)) {
-      return { message: `"${res}" is not an array` };
-    }
-    for (const entry of converted) {
-      if (typeof entry !== "string") {
-        return { message: `Parsed array contains a non-string element ${entry}` };
-      }
-    }
-    return converted as string[];
-  };
 
   if (isSelectInput(param.input)) {
     throw new FirebaseError("List params cannot have non-list selector inputs");
@@ -547,9 +539,15 @@ async function promptList(param: ListParam, resolvedDefault?: string[]): Promise
     if (param.description) {
       prompt += ` \n(${param.description})`;
     }
-    return promptText<string[]>(prompt, param.input, resolvedDefault, stringToList);
+    return promptText<string[]>(prompt, param.input, resolvedDefault, (res: string): string[] => {
+      return res.split(param.delimiter || ",");
+    });
   } else if (isResourceInput(param.input)) {
-    throw new FirebaseError("Boolean params cannot have Cloud Resource selector inputs");
+    prompt = `Select values for ${param.label || param.name}:`;
+    if (param.description) {
+      prompt += ` \n(${param.description})`;
+    }
+    return promptResourceStrings(prompt, param.input, projectId);
   } else {
     assertExhaustive(param.input);
   }
@@ -696,6 +694,34 @@ async function promptResourceString(
         `Warning: unknown resource type ${input.resource.type}; defaulting to raw text input...`
       );
       return promptText<string>(prompt, { text: {} }, resolvedDefault, (res: string) => res);
+  }
+}
+
+async function promptResourceStrings(
+  prompt: string,
+  input: ResourceInput,
+  projectId: string
+): Promise<string[]> {
+  const notFound = new FirebaseError(`No instances of ${input.resource.type} found.`);
+  switch (input.resource.type) {
+    case "storage.googleapis.com/Bucket":
+      const buckets = await listBuckets(projectId);
+      if (buckets.length === 0) {
+        throw notFound;
+      }
+      const forgedInput: ListSelectInput = {
+        listSelect: {
+          options: buckets.map((bucketName: string): SelectOptions<string> => {
+            return { label: bucketName, value: bucketName };
+          }),
+        },
+      };
+      return promptSelectMultiple<string>(prompt, forgedInput, undefined, (res: string[]) => res);
+    default:
+      logger.warn(
+        `Warning: unknown resource type ${input.resource.type}; defaulting to raw text input...`
+      );
+      return promptText<string[]>(prompt, { text: {} }, undefined, (res: string) => res.split(","));
   }
 }
 
