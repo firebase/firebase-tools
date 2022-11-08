@@ -143,7 +143,7 @@ describe("firebase deploy", function (this) {
         memory: "128MB",
         maxInstances: 42,
         timeoutSeconds: 42,
-        preserveExternalChanges: true
+        preserveExternalChanges: true,
       },
       v2Opts: {
         memory: "128MiB",
@@ -151,7 +151,7 @@ describe("firebase deploy", function (this) {
         timeoutSeconds: 42,
         cpu: 2,
         concurrency: 42,
-        preserveExternalChanges: true
+        preserveExternalChanges: true,
       },
       v1TqOpts: {
         retryConfig: {
