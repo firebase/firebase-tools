@@ -125,7 +125,7 @@ function assertBuildEndpoint(ep: WireEndpoint, id: string): void {
     region: "array",
     platform: (platform) => build.AllFunctionsPlatforms.includes(platform),
     entryPoint: "string",
-    omit: "Field<boolean>",
+    omit: "Field<boolean>?",
     availableMemoryMb: (mem) => mem === null || isCEL(mem) || build.isValidMemoryOption(mem),
     maxInstances: "Field<number>?",
     minInstances: "Field<number>?",
