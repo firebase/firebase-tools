@@ -8,7 +8,7 @@ const HOST = "https://firebaseio.com";
 describe("DatabaseRemove", () => {
   it("should remove tiny tree", async () => {
     const fakeDb = new FakeRemoveRemote({ c: 1 });
-    const removeOps = new DatabaseRemove("test-tiny-tree", "/", HOST);
+    const removeOps = new DatabaseRemove("test-tiny-tree", "/", HOST, /* disableTriggers= */ false);
     removeOps.remote = fakeDb;
     await removeOps.execute();
     expect(fakeDb.data).to.eql(null);
@@ -29,7 +29,7 @@ describe("DatabaseRemove", () => {
     const fakeList = new FakeListRemote(data);
     const fakeDb = new FakeRemoveRemote(data);
 
-    const removeOps = new DatabaseRemove("test-sub-path", "/a", HOST);
+    const removeOps = new DatabaseRemove("test-sub-path", "/a", HOST, /* disableTriggers= */ false);
     removeOps.remote = fakeDb;
     removeOps.listRemote = fakeList;
     await removeOps.execute();
@@ -57,7 +57,12 @@ describe("DatabaseRemove", () => {
         const data = buildData(3, 5);
         const fakeDb = new FakeRemoveRemote(data, threshold);
         const fakeLister = new FakeListRemote(data);
-        const removeOps = new DatabaseRemove("test-nested-tree", "/", HOST);
+        const removeOps = new DatabaseRemove(
+          "test-nested-tree",
+          "/",
+          HOST,
+          /* disableTriggers= */ false
+        );
         removeOps.remote = fakeDb;
         removeOps.listRemote = fakeLister;
         await removeOps.execute();
@@ -68,7 +73,12 @@ describe("DatabaseRemove", () => {
         const data = buildData(1232, 1);
         const fakeDb = new FakeRemoveRemote(data, threshold);
         const fakeList = new FakeListRemote(data);
-        const removeOps = new DatabaseRemove("test-remover", "/", HOST);
+        const removeOps = new DatabaseRemove(
+          "test-remover",
+          "/",
+          HOST,
+          /* disableTriggers= */ false
+        );
         removeOps.remote = fakeDb;
         removeOps.listRemote = fakeList;
         await removeOps.execute();

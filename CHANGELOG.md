@@ -1,3 +1,6 @@
-- Fixes issue where errors were not properly propagating when listing backends. (#5071)
-- Fixes issue where message from `-m` on deploy was not being properly applied. (#5107)
-- Fixes error `EADDRNOTAVAIL` when running emulators in Docker.
+- Updated the pubsub emulator to v0.7.1.
+- Updated some emulator download logic to pause after unzipping to avoid a file not found issue.
+- Fixes gzipped file handling in Storage Emulator.
+- Add support for object list using certain Admin SDKs (#5208)
+- Fixes source token expiration issue by acquiring new source token upon expiration.
+- Fix bug where emulated event triggered function broke in debug mode (#5211)
