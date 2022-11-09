@@ -210,9 +210,10 @@ export class Fabricator {
     if (apiFunction.httpsTrigger) {
       apiFunction.httpsTrigger.securityLevel = "SECURE_ALWAYS";
     }
-    apiFunction.sourceToken = await scraper.tokenPromise();
     const resultFunction = await this.functionExecutor
       .run(async () => {
+        // try to get the source token right before deploying
+        apiFunction.sourceToken = await scraper.getToken();
         const op: { name: string } = await gcf.createFunction(apiFunction);
         return poller.pollOperation<gcf.CloudFunction>({
           ...gcfV1PollerOptions,
@@ -374,9 +375,10 @@ export class Fabricator {
       throw new Error("Precondition failed");
     }
     const apiFunction = gcf.functionFromEndpoint(endpoint, sourceUrl);
-    apiFunction.sourceToken = await scraper.tokenPromise();
+
     const resultFunction = await this.functionExecutor
       .run(async () => {
+        apiFunction.sourceToken = await scraper.getToken();
         const op: { name: string } = await gcf.updateFunction(apiFunction);
         return await poller.pollOperation<gcf.CloudFunction>({
           ...gcfV1PollerOptions,
