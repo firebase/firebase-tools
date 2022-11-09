@@ -312,7 +312,7 @@ describe("GCS endpoint conformance tests", () => {
 
         expect(res.text).to.include("Bad content type.");
       });
-      
+
       it("should upload content type properly from x-upload headers", async () => {
         const returnedMetadata = await supertest(storageHost)
           .post(`/upload/storage/v1/b/${storageBucket}/o?uploadType=multipart`)
@@ -326,7 +326,6 @@ describe("GCS endpoint conformance tests", () => {
           .send(MULTIPART_REQUEST_BODY)
           .expect(200)
           .then((res) => res.body);
-
 
         expect(returnedMetadata.contentType).to.equal("image/png");
       });
