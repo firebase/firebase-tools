@@ -1,1 +1,2 @@
-Updated the pubsub emulator to v0.7.1.
+- Updated the pubsub emulator to v0.7.1.
+- Updated some emulator download logic to pause after unzipping to avoid a file not found issue.
