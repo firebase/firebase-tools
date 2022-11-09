@@ -1,6 +1,5 @@
 import { Client } from "../apiv2";
 import { eventarcOrigin } from "../api";
-import { cloneDeep } from "../utils";
 import { last } from "lodash";
 import { fieldMasks } from "./proto";
 
@@ -66,16 +65,12 @@ export async function getChannel(name: string): Promise<Channel | undefined> {
  * Creates a channel.
  */
 export async function createChannel(channel: Channel): Promise<Operation> {
-  const body: Partial<Channel> = cloneDeep(channel);
+  // const body: Partial<Channel> = cloneDeep(channel);
   const pathParts = channel.name.split("/");
 
-  const res = await client.post<Partial<Channel>, Operation>(
-    pathParts.slice(0, -1).join("/"),
-    body,
-    {
-      queryParams: { channelId: last(pathParts)! },
-    }
-  );
+  const res = await client.post<Channel, Operation>(pathParts.slice(0, -1).join("/"), channel, {
+    queryParams: { channelId: last(pathParts)! },
+  });
   return res.body;
 }
 

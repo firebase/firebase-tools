@@ -488,7 +488,7 @@ describe("Fabricator", () => {
       );
     });
 
-    it.only("handles already existing eventarc channels", async () => {
+    it("handles already existing eventarc channels", async () => {
       eventarc.createChannel.callsFake(({ name }) => {
         expect(name).to.equal("channel");
         const err = new Error("Already exists");
@@ -516,7 +516,7 @@ describe("Fabricator", () => {
       expect(gcfv2.createFunction).to.have.been.called;
     });
 
-    it.only("creates channels if necessary", async () => {
+    it("creates channels if necessary", async () => {
       const channelName = "channel";
       eventarc.createChannel.callsFake(({ name }) => {
         expect(name).to.equal(channelName);
@@ -553,7 +553,7 @@ describe("Fabricator", () => {
       expect(poller.pollOperation).to.have.been.called;
     });
 
-    it.only("wraps errors thrown while creating channels", async () => {
+    it("wraps errors thrown while creating channels", async () => {
       eventarc.createChannel.callsFake(() => {
         const err = new Error("🤷‍♂️");
         (err as any).status = 400;

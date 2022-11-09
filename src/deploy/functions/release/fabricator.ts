@@ -322,6 +322,7 @@ export class Fabricator {
               operationResourceName: op.name,
             });
           } catch (err: any) {
+            // if error status is 409, the channel already exists and we can deploy safely
             if (err.status === 409) {
               return;
             }
