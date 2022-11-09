@@ -110,7 +110,7 @@ describe("files", () => {
         const uploadId = _uploadService.startResumableUpload({
           bucketId: "bucket",
           objectId: "dir%2Fobject",
-          metadataRaw: "{}",
+          metadataRaw: {},
         }).id;
         _uploadService.continueResumableUpload(uploadId, Buffer.from("hello world"));
         const upload = _uploadService.finalizeResumableUpload(uploadId);
