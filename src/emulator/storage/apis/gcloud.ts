@@ -261,10 +261,11 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
         res.sendStatus(400);
         return;
       }
+      const contentType = req.header("x-upload-content-type");
       const upload = uploadService.startResumableUpload({
         bucketId: req.params.bucketId,
         objectId: name,
-        metadataRaw: JSON.stringify(req.body),
+        metadataRaw: { contentType, ...req.body },
         authorization: req.header("authorization"),
       });
 
@@ -292,6 +293,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     // Multipart upload protocol.
     if (uploadType === "multipart") {
       const contentTypeHeader = req.header("content-type") || req.header("x-upload-content-type");
+      const contentType = req.header("x-upload-content-type");
       if (!contentTypeHeader) {
         return res.sendStatus(400);
       }
@@ -323,7 +325,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
       const upload = uploadService.multipartUpload({
         bucketId: req.params.bucketId,
         objectId: name,
-        metadataRaw: metadataRaw,
+        metadataRaw: { contentType, ...JSON.parse(metadataRaw) },
         dataRaw: dataRaw,
         authorization: req.header("authorization"),
       });

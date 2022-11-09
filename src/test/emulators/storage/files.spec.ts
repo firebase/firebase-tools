@@ -83,7 +83,7 @@ describe("files", () => {
         bucketId,
         objectId: encodeURIComponent(objectId),
         dataRaw: Buffer.from(opts?.data ?? "hello world"),
-        metadataRaw: JSON.stringify(opts?.metadata ?? {}),
+        metadataRaw: opts?.metadata ?? {},
       });
       await storageLayer.uploadObject(upload);
     }
@@ -99,7 +99,7 @@ describe("files", () => {
         const upload = _uploadService.startResumableUpload({
           bucketId: "bucket",
           objectId: "dir%2Fobject",
-          metadataRaw: "{}",
+          metadataRaw: {},
         });
 
         expect(storageLayer.uploadObject(upload)).to.be.rejectedWith("Unexpected upload status");
