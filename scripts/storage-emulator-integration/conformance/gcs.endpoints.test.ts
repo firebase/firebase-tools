@@ -321,13 +321,13 @@ describe("GCS endpoint conformance tests", () => {
             "content-type": "multipart/related; boundary=b1d5b2e3-1845-4338-9400-6ac07ce53c1e",
           })
           .set({
-            "x-upload-content-type": "image/png",
+            "x-upload-content-type": "text/plain",
           })
           .send(MULTIPART_REQUEST_BODY)
           .expect(200)
           .then((res) => res.body);
 
-        expect(returnedMetadata.contentType).to.equal("image/png");
+        expect(returnedMetadata.contentType).to.equal("text/plain");
       });
     });
   });

@@ -44,7 +44,7 @@ export type MediaUploadRequest = {
 export type MultipartUploadRequest = {
   bucketId: string;
   objectId: string;
-  metadataRaw: object;
+  metadata: object;
   dataRaw: Buffer;
   authorization?: string;
 };
@@ -53,7 +53,7 @@ export type MultipartUploadRequest = {
 export type StartResumableUploadRequest = {
   bucketId: string;
   objectId: string;
-  metadataRaw: object;
+  metadata: object;
   authorization?: string;
 };
 
@@ -117,7 +117,7 @@ export class UploadService {
       objectId: request.objectId,
       uploadType: UploadType.MULTIPART,
       dataRaw: request.dataRaw,
-      metadata: request.metadataRaw,
+      metadata: request.metadata,
       authorization: request.authorization,
     });
     this._persistence.deleteFile(upload.path, /* failSilently = */ true);
@@ -155,7 +155,7 @@ export class UploadService {
       type: UploadType.RESUMABLE,
       path: this.getStagingFileName(id, request.bucketId, request.objectId),
       status: UploadStatus.ACTIVE,
-      metadata: request.metadataRaw,
+      metadata: request.metadata,
       size: 0,
       authorization: request.authorization,
     };

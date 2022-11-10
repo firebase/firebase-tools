@@ -265,7 +265,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
       const upload = uploadService.startResumableUpload({
         bucketId: req.params.bucketId,
         objectId: name,
-        metadataRaw: { contentType, ...req.body },
+        metadata: { contentType, ...req.body },
         authorization: req.header("authorization"),
       });
 
@@ -321,11 +321,13 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
         res.sendStatus(400);
         return;
       }
-
+      console.log("test")
+      console.log({contentType});
+      console.log({...JSON.parse(metadataRaw)})
       const upload = uploadService.multipartUpload({
         bucketId: req.params.bucketId,
         objectId: name,
-        metadataRaw: { contentType, ...JSON.parse(metadataRaw) },
+        metadata: { contentType, ...JSON.parse(metadataRaw) },
         dataRaw: dataRaw,
         authorization: req.header("authorization"),
       });
