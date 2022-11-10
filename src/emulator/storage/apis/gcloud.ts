@@ -321,9 +321,6 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
         res.sendStatus(400);
         return;
       }
-      console.log("test")
-      console.log({contentType});
-      console.log({...JSON.parse(metadataRaw)})
       const upload = uploadService.multipartUpload({
         bucketId: req.params.bucketId,
         objectId: name,
