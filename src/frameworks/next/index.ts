@@ -26,6 +26,7 @@ import { logger } from "../../logger";
 import { FirebaseError } from "../../error";
 import { fileExistsSync } from "../../fsutils";
 import type { EmulatorInfo } from "../../emulator/types";
+import { usesAppDirRouter, usesNextImage } from "./utils";
 
 // Next.js's exposed interface is incomplete here
 // TODO see if there's a better way to grab this
@@ -322,6 +323,13 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
     await mkdir(join(destDir, "public"));
     await copy(join(sourceDir, "public"), join(destDir, "public"));
   }
+  // Add the `sharp` library if `/app` folder exists (i.e. Next.js 13+)
+  // or usesNextImage in `export-marker.json` is set to true.
+  // As of (10/2021) the new Next.js 13 route is in beta, and usesNextImage is always being set to false
+  // if the image component is used in pages coming from the new `/app` routes.
+  if (usesAppDirRouter(sourceDir) || (await usesNextImage(sourceDir, distDir)))
+    packageJson.dependencies["sharp"] = "latest";
+
   await mkdirp(join(destDir, distDir));
   await copy(join(sourceDir, distDir), join(destDir, distDir));
   return { packageJson, frameworksEntry: "next.js" };
