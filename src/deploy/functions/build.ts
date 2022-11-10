@@ -55,16 +55,11 @@ export interface RequiredApi {
 export type Expression<T extends string | number | boolean> = string; // eslint-disable-line
 export type Field<T extends string | number | boolean> = T | Expression<T> | null;
 
-// A service account must either:
-// 1. Be a project-relative email that ends with "@" (e.g. database-users@)
-// 2. Be a well-known shorthand (e..g "public" and "private")
-type ServiceAccount = string;
-
 // Trigger definition for arbitrary HTTPS endpoints
 export interface HttpsTrigger {
   // Which service account should be able to trigger this function. No value means "make public
   // on create and don't do anything on update." For more, see go/cf3-http-access-control
-  invoker?: Array<ServiceAccount | Expression<ServiceAccount>> | null;
+  invoker?: Array<string | Expression<string>> | null;
 }
 
 // Trigger definitions for RPCs servers using the HTTP protocol defined at
@@ -102,7 +97,7 @@ export interface EventTrigger {
   // requires the EventArc P4SA to be granted the "ActAs" permission to this service account and
   // will cause the "invoker" role to be granted to this service account on the endpoint
   // (Function or Route)
-  serviceAccount?: ServiceAccount | null;
+  serviceAccount?: Field<string>;
 
   // The name of the channel where the function receives events.
   // Must be provided to receive CF3v2 custom events.
@@ -127,7 +122,7 @@ export interface TaskQueueTrigger {
   retryConfig?: TaskQueueRetryConfig | null;
 
   // empty array means private
-  invoker?: Array<ServiceAccount | Expression<ServiceAccount>> | null;
+  invoker?: Array<string | Expression<string>> | null;
 }
 
 export interface ScheduleRetryConfig {
@@ -233,7 +228,10 @@ export type Endpoint = Triggered & {
   // The services account that this function should run as.
   // defaults to the GAE service account when a function is first created as a GCF gen 1 function.
   // Defaults to the compute service account when a function is first created as a GCF gen 2 function.
-  serviceAccount?: ServiceAccount | null;
+  // A service account must either:
+  // 1. Be a project-relative email that ends with "@" (e.g. database-users@)
+  // 2. Be a well-known shorthand (e..g "public" and "private")
+  serviceAccount?: Field<string>;
 
   // defaults to ["us-central1"], overridable in firebase-tools with
   //  process.env.FIREBASE_FUNCTIONS_DEFAULT_REGION
@@ -447,6 +445,7 @@ export function toBackend(
         "secretEnvironmentVariables",
         "serviceAccount"
       );
+      r.resolveStrings(bkEndpoint, bdEndpoint, "serviceAccount");
 
       proto.convertIfPresent(bkEndpoint, bdEndpoint, "ingressSettings", (from) => {
         if (from !== null && !backend.AllIngressSettings.includes(from)) {
