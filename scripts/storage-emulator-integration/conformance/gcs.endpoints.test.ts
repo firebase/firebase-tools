@@ -251,6 +251,26 @@ describe("GCS endpoint conformance tests", () => {
         expect(returnedMetadata.contentType).to.equal(customMetadata.contentType);
         expect(returnedMetadata.contentDisposition).to.equal(customMetadata.contentDisposition);
       });
+
+      it("should upload content type properly from x-upload-content-type headers", async () => {
+        const uploadURL = await supertest(storageHost)
+          .post(
+            `/upload/storage/v1/b/${storageBucket}/o?name=${TEST_FILE_NAME}&uploadType=resumable`
+          )
+          .set(authHeader)
+          .set({
+            "x-upload-content-type": "image/png",
+          })
+          .expect(200)
+          .then((res) => new URL(res.header["location"]));
+
+        const returnedMetadata = await supertest(storageHost)
+          .put(uploadURL.pathname + uploadURL.search)
+          .expect(200)
+          .then((res) => res.body);
+
+        expect(returnedMetadata.contentType).to.equal("image/png");
+      });
     });
 
     describe("multipart upload", () => {
@@ -291,6 +311,23 @@ describe("GCS endpoint conformance tests", () => {
           .expect(400);
 
         expect(res.text).to.include("Bad content type.");
+      });
+
+      it("should upload content type properly from x-upload headers", async () => {
+        const returnedMetadata = await supertest(storageHost)
+          .post(`/upload/storage/v1/b/${storageBucket}/o?uploadType=multipart`)
+          .set(authHeader)
+          .set({
+            "content-type": "multipart/related; boundary=b1d5b2e3-1845-4338-9400-6ac07ce53c1e",
+          })
+          .set({
+            "x-upload-content-type": "text/plain",
+          })
+          .send(MULTIPART_REQUEST_BODY)
+          .expect(200)
+          .then((res) => res.body);
+
+        expect(returnedMetadata.contentType).to.equal("text/plain");
       });
     });
   });
