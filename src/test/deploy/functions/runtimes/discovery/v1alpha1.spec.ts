@@ -611,6 +611,28 @@ describe("buildFromV1Alpha", () => {
       expect(parsed).to.deep.equal(expected);
     });
 
+    it("accepts serviceAccountEmail as an alias for serviceAccount", () => {
+      const yaml: v1alpha1.WireManifest = {
+        specVersion: "v1alpha1",
+        endpoints: {
+          id: {
+            ...MIN_WIRE_ENDPOINT,
+            serviceAccountEmail: "{{ params.SERVICE_ACCOUNT }}",
+            httpsTrigger: {},
+          },
+        },
+      };
+      const parsed = v1alpha1.buildFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME);
+      const expected: build.Build = build.of({
+        id: {
+          ...DEFAULTED_ENDPOINT,
+          serviceAccount: "{{ params.SERVICE_ACCOUNT }}",
+          httpsTrigger: {},
+        },
+      });
+      expect(parsed).to.deep.equal(expected);
+    });
+
     it("copies schedules", () => {
       const scheduleTrigger: build.ScheduleTrigger = {
         schedule: "every 5 minutes",
