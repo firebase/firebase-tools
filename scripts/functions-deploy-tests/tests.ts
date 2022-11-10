@@ -262,7 +262,7 @@ describe("firebase deploy", function (this) {
     }
   });
 
-  it("skips duplicate deploys functions with runtime options", async () => {
+  it("skips duplicate deploys functions with runtime options when preserveExternalChanges is set", async () => {
     const opts: Opts = {
       v1Opts: { preserveExternalChanges: true },
       v2Opts: { preserveExternalChanges: true },
@@ -281,7 +281,7 @@ describe("firebase deploy", function (this) {
     expect(result2.stdout, "deploy result").to.match(/Skipped \(No changes detected\)/);
   });
 
-  it("leaves existing options when unspecified", async () => {
+  it("leaves existing options when unspecified and preserveExternalChanges is set", async () => {
     const opts: Opts = {
       v1Opts: { preserveExternalChanges: true },
       v2Opts: { preserveExternalChanges: true },
@@ -354,65 +354,16 @@ describe("firebase deploy", function (this) {
 
   // BUGBUG: Setting options to null SHOULD restore their values to default, but this isn't correctly implemented in
   // the CLI.
-  it.skip("restores default values if options are explicitly cleared out", async () => {
+  it.skip("restores default values when unspecified and preserveExternalChanges is not set", async () => {
     const opts: Opts = {
-      v1Opts: {
-        memory: functions.RESET_VALUE,
-        maxInstances: functions.RESET_VALUE,
-        timeoutSeconds: functions.RESET_VALUE,
-      },
-      v2Opts: {
-        memory: functions.RESET_VALUE,
-        maxInstances: functions.RESET_VALUE,
-        timeoutSeconds: functions.RESET_VALUE,
-        cpu: undefined,
-        concurrency: functions.RESET_VALUE,
-      },
-      v1TqOpts: {
-        retryConfig: {
-          maxAttempts: functions.RESET_VALUE,
-          maxRetrySeconds: functions.RESET_VALUE,
-          maxBackoffSeconds: functions.RESET_VALUE,
-          maxDoublings: functions.RESET_VALUE,
-          minBackoffSeconds: functions.RESET_VALUE,
-        },
-        rateLimits: {
-          maxDispatchesPerSecond: functions.RESET_VALUE,
-          maxConcurrentDispatches: functions.RESET_VALUE,
-        },
-      },
-      v2TqOpts: {
-        retryConfig: {
-          maxAttempts: functions.RESET_VALUE,
-          maxRetrySeconds: functions.RESET_VALUE,
-          maxBackoffSeconds: functions.RESET_VALUE,
-          maxDoublings: functions.RESET_VALUE,
-          minBackoffSeconds: functions.RESET_VALUE,
-        },
-        rateLimits: {
-          maxDispatchesPerSecond: functions.RESET_VALUE,
-          maxConcurrentDispatches: functions.RESET_VALUE,
-        },
-      },
-      v1IdpOpts: {
-        blockingOptions: {},
-      },
+      v1Opts: {},
+      v2Opts: {},
+      v1TqOpts: {},
+      v2TqOpts: {},
+      v1IdpOpts: { blockingOptions: {} },
       v2IdpOpts: {},
-      v1ScheduleOpts: {
-        retryCount: functions.RESET_VALUE,
-        maxDoublings: functions.RESET_VALUE,
-        maxBackoffDuration: functions.RESET_VALUE,
-        maxRetryDuration: functions.RESET_VALUE,
-        minBackoffDuration: functions.RESET_VALUE,
-      },
-      v2ScheduleOpts: {
-        schedule: "every 30 minutes",
-        retryCount: functions.RESET_VALUE,
-        maxDoublings: functions.RESET_VALUE,
-        maxBackoffSeconds: functions.RESET_VALUE,
-        maxRetrySeconds: functions.RESET_VALUE,
-        minBackoffSeconds: functions.RESET_VALUE,
-      },
+      v1ScheduleOpts: {},
+      v2ScheduleOpts: { schedule: "every 30 minutes" },
     };
 
     const result = await setOptsAndDeploy(opts);

@@ -93,6 +93,7 @@
     ]
   },
   "dependencies": {
+    "@firebase/logger": "^0.3.4",
     "@google-cloud/pubsub": "^3.0.1",
     "abort-controller": "^3.0.0",
     "ajv": "^6.12.6",
@@ -214,7 +215,6 @@
     "eslint-config-prettier": "^8.3.0",
     "eslint-plugin-jsdoc": "^39.2.9",
     "eslint-plugin-prettier": "^4.0.0",
-    "firebase": "^7.24.0",
     "firebase-admin": "^10.0.0",
     "firebase-functions": "^4.0.2",
     "google-discovery-to-swagger": "^2.1.0",
