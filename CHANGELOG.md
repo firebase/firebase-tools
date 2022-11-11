@@ -1,3 +1,4 @@
+- Respect .npmrc in backends spun up for web frameworks (#5235)
 - Add sharp NPM module to Cloud Functions when using Next.js Image Optimization (#5238)
 - Adds user-defined env vars into the functions emulator (#5330).
 - Support Next.js Middleware (#5320)
