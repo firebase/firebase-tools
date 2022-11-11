@@ -23,23 +23,15 @@ export interface RemoteConfigEventPayload {
 
 export class RemoteConfigCloudFunctions {
   private logger = EmulatorLogger.forEmulator(Emulators.REMOTE_CONFIG);
-  private functionsEmulatorInfo?: EmulatorInfo;
-  private multicastOrigin = "";
   private multicastPath = "";
   private enabled = false;
   private client?: Client;
 
   constructor(private projectId: string) {
-    const functionsEmulator = EmulatorRegistry.get(Emulators.FUNCTIONS);
-
-    if (functionsEmulator) {
+    if (EmulatorRegistry.isRunning(Emulators.FUNCTIONS)) {
       this.enabled = true;
-      this.functionsEmulatorInfo = functionsEmulator.getInfo();
-      this.multicastOrigin = `http://${EmulatorRegistry.getInfoHostString(
-        this.functionsEmulatorInfo
-      )}`;
       this.multicastPath = `/functions/projects/${projectId}/trigger_multicast`;
-      this.client = new Client({ urlPrefix: this.multicastOrigin, auth: false });
+      this.client = EmulatorRegistry.client(Emulators.FUNCTIONS);
     }
   }
 
