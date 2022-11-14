@@ -14,12 +14,14 @@ import {
 } from "..";
 import { promptOnce } from "../../prompt";
 import { proxyRequestHandler } from "../../hosting/proxy";
+import { isUsingCustomBuildScript } from "../utils";
 
 export const name = "Angular";
 export const support = SupportLevel.Experimental;
 export const type = FrameworkType.Framework;
 
 const CLI_COMMAND = join("node_modules", ".bin", process.platform === "win32" ? "ng.cmd" : "ng");
+const NG_BUILD_COMMAND = "ng build";
 
 export async function discover(dir: string): Promise<Discovery | undefined> {
   if (!(await pathExists(join(dir, "package.json")))) return;
@@ -56,6 +58,12 @@ export async function build(dir: string): Promise<BuildResult> {
     const { success, error } = await run.output.toPromise();
     if (!success) throw new Error(error);
   };
+
+  if (await isUsingCustomBuildScript(dir, NG_BUILD_COMMAND)) {
+    console.log(
+      `\nWarning: You have a custom build script in your package.json. In order to use a custom build script, you have to use a custom integration. See the docs for details: https://firebase.google.com/docs/hosting/express\n`
+    );
+  }
 
   if (!browserTarget) throw new Error("No build target...");
 

@@ -22,6 +22,7 @@ import { IncomingMessage, ServerResponse } from "http";
 import { logger } from "../../logger";
 import { FirebaseError } from "../../error";
 import { fileExistsSync } from "../../fsutils";
+import { isUsingCustomBuildScript } from "../utils";
 
 // Next.js's exposed interface is incomplete here
 // TODO see if there's a better way to grab this
@@ -44,6 +45,8 @@ const CLI_COMMAND = join(
   ".bin",
   process.platform === "win32" ? "next.cmd" : "next"
 );
+
+const NEXT_BUILD_COMMAND = "next build";
 
 export const name = "Next.js";
 export const support = SupportLevel.Experimental;
@@ -72,6 +75,12 @@ export async function discover(dir: string) {
  */
 export async function build(dir: string): Promise<BuildResult> {
   const { default: nextBuild } = relativeRequire(dir, "next/dist/build");
+
+  if (await isUsingCustomBuildScript(dir, NEXT_BUILD_COMMAND)) {
+    console.log(
+      `\nWarning: You have a custom build script in your package.json. In order to use a custom build script, you have to use a custom integration. See the docs for details: https://firebase.google.com/docs/hosting/express\n`
+    );
+  }
 
   const reactVersion = getReactVersion(dir);
   if (reactVersion && gte(reactVersion, "18.0.0")) {
