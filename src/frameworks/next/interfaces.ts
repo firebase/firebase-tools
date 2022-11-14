@@ -4,3 +4,10 @@ export interface ExportMarker {
   exportTrailingSlash: boolean;
   isNextImageImported: boolean;
 }
+
+export interface ImageManifest {
+  version: number;
+  images: {
+    unoptimized: boolean;
+  };
+}
