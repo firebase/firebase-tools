@@ -22,5 +22,5 @@ export function pathHasRegex(path: string): boolean {
  * Remove double backslashes from a string
  */
 export function cleanEscapedChars(path: string): string {
-  return path.replaceAll("\\", "");
+  return path.replace(/\\/g, "");
 }
