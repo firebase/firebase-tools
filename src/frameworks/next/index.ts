@@ -1,8 +1,8 @@
 import { execSync } from "child_process";
 import { readFile, mkdir, copyFile } from "fs/promises";
 import { dirname, join } from "path";
-import type { Header, Rewrite, Redirect } from "next/dist/lib/load-custom-routes";
 import type { NextConfig } from "next";
+import type { Header, Rewrite, Redirect } from "next/dist/lib/load-custom-routes";
 import { copy, mkdirp, pathExists } from "fs-extra";
 import { pathToFileURL, parse } from "url";
 import { existsSync } from "fs";
@@ -22,7 +22,8 @@ import { IncomingMessage, ServerResponse } from "http";
 import { logger } from "../../logger";
 import { FirebaseError } from "../../error";
 import { fileExistsSync } from "../../fsutils";
-import { isUrl, supportsFrameworkRegex } from "../utils";
+import { isUrl } from "../utils";
+import { cleanEscapedChars, pathHasRegex } from "./utils";
 
 // Next.js's exposed interface is incomplete here
 // TODO see if there's a better way to grab this
@@ -137,7 +138,7 @@ export async function build(dir: string): Promise<BuildResult> {
   }
 
   const manifestBuffer = await readFile(join(dir, distDir, "routes-manifest.json"));
-  const manifest: Manifest = JSON.parse(manifestBuffer.toString());
+  const manifest = JSON.parse(manifestBuffer.toString()) as Manifest;
   const {
     headers: nextJsHeaders = [],
     redirects: nextJsRedirects = [],
@@ -146,27 +147,36 @@ export async function build(dir: string): Promise<BuildResult> {
 
   const headers = nextJsHeaders
     .filter(({ source }) => {
-      if (supportsFrameworkRegex(source)) {
-        return true;
-      } else {
+      if (pathHasRegex(source)) {
         wantsBackend = true;
         return false;
+      } else {
+        return true;
       }
     })
-    .map(({ source, headers }) => ({ source, headers }));
+    .map(({ source, headers }) => ({
+      // clean up unnecessary escaping
+      source: cleanEscapedChars(source),
+      headers,
+    }));
 
   const redirects = nextJsRedirects
-    .filter(({ internal, source, destination }: any) => {
+    .filter(({ internal, source }: any) => {
       if (internal) return false;
 
-      if (supportsFrameworkRegex(source) && supportsFrameworkRegex(destination)) {
-        return true;
-      } else {
+      if (pathHasRegex(source)) {
         wantsBackend = true;
         return false;
+      } else {
+        return true;
       }
     })
-    .map(({ source, destination, statusCode: type }) => ({ source, destination, type }));
+    .map(({ source, destination, statusCode: type }) => ({
+      // clean up unnecessary escaping
+      source: cleanEscapedChars(source),
+      destination,
+      type,
+    }));
 
   const nextJsRewritesToUse = Array.isArray(nextJsRewrites)
     ? nextJsRewrites
@@ -177,18 +187,18 @@ export async function build(dir: string): Promise<BuildResult> {
       // Can we change i18n into Firebase settings?
       if (has) return false;
 
-      if (
-        supportsFrameworkRegex(source) &&
-        supportsFrameworkRegex(destination) &&
-        isUrl(destination) === false
-      ) {
-        return true;
-      } else {
+      if (pathHasRegex(source) || isUrl(destination)) {
         wantsBackend = true;
         return false;
+      } else {
+        return true;
       }
     })
-    .map(({ source, destination }) => ({ source, destination }));
+    .map(({ source, destination }) => ({
+      // clean up unnecessary escaping
+      source: cleanEscapedChars(source),
+      destination,
+    }));
 
   return { wantsBackend, headers, redirects, rewrites };
 }

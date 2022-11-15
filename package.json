@@ -134,7 +134,6 @@
     "portfinder": "^1.0.32",
     "progress": "^2.0.3",
     "proxy-agent": "^5.0.0",
-    "re2": "^1.17.7",
     "request": "^2.87.0",
     "retry": "^0.13.1",
     "rimraf": "^3.0.0",
