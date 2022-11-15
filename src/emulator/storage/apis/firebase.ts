@@ -232,7 +232,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         const upload = uploadService.startResumableUpload({
           bucketId,
           objectId,
-          metadataRaw: JSON.stringify(req.body),
+          metadata: req.body,
           // Store auth header for use in the finalize request
           authorization: req.header("authorization"),
         });
@@ -355,7 +355,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       const upload = uploadService.multipartUpload({
         bucketId,
         objectId,
-        metadataRaw,
+        metadata: JSON.parse(metadataRaw),
         dataRaw: dataRaw,
         authorization: req.header("authorization"),
       });
