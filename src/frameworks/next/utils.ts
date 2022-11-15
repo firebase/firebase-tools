@@ -1,3 +1,6 @@
+import type { Header, Redirect, Rewrite } from "next/dist/lib/load-custom-routes";
+import { isUrl } from "../utils";
+
 /**
  * Whether the given path has a regex or not.
  * According to the Next.js documentation:
@@ -23,4 +26,37 @@ export function pathHasRegex(path: string): boolean {
  */
 export function cleanEscapedChars(path: string): string {
   return path.replace(/\\/g, "");
+}
+
+/**
+ * Whether a Next.js rewrite is supported by Firebase.
+ */
+export function isRewriteSupportedByFirebase(rewrite: Rewrite): boolean {
+  if (rewrite.has || pathHasRegex(rewrite.source) || isUrl(rewrite.destination)) {
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * Whether a Next.js redirect is supported by Firebase.
+ */
+export function isRedirectSupportedByFirebase(redirect: Redirect): boolean {
+  if (pathHasRegex(redirect.source) || "internal" in redirect) {
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * Whether a Next.js header is supported by Firebase.
+ */
+export function isHeaderSupportedByFirebase(header: Header): boolean {
+  if (pathHasRegex(header.source)) {
+    return false;
+  }
+
+  return true;
 }

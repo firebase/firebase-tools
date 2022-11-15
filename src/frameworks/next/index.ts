@@ -22,8 +22,12 @@ import { IncomingMessage, ServerResponse } from "http";
 import { logger } from "../../logger";
 import { FirebaseError } from "../../error";
 import { fileExistsSync } from "../../fsutils";
-import { isUrl } from "../utils";
-import { cleanEscapedChars, pathHasRegex } from "./utils";
+import {
+  cleanEscapedChars,
+  isHeaderSupportedByFirebase,
+  isRedirectSupportedByFirebase,
+  isRewriteSupportedByFirebase,
+} from "./utils";
 
 // Next.js's exposed interface is incomplete here
 // TODO see if there's a better way to grab this
@@ -31,7 +35,10 @@ interface Manifest {
   distDir?: string;
   basePath?: string;
   headers?: (Header & { regex: string })[];
-  redirects?: (Redirect & { regex: string })[];
+  redirects?: (Redirect & {
+    internal: boolean;
+    regex: string;
+  })[];
   rewrites?:
     | (Rewrite & { regex: string })[]
     | {
@@ -146,12 +153,12 @@ export async function build(dir: string): Promise<BuildResult> {
   } = manifest;
 
   const headers = nextJsHeaders
-    .filter(({ source }) => {
-      if (pathHasRegex(source)) {
+    .filter((header) => {
+      if (isHeaderSupportedByFirebase(header)) {
+        return true;
+      } else {
         wantsBackend = true;
         return false;
-      } else {
-        return true;
       }
     })
     .map(({ source, headers }) => ({
@@ -161,14 +168,14 @@ export async function build(dir: string): Promise<BuildResult> {
     }));
 
   const redirects = nextJsRedirects
-    .filter(({ internal, source }: any) => {
-      if (internal) return false;
+    .filter((redirect) => {
+      if (redirect.internal) return false;
 
-      if (pathHasRegex(source)) {
+      if (isRedirectSupportedByFirebase(redirect)) {
+        return true;
+      } else {
         wantsBackend = true;
         return false;
-      } else {
-        return true;
       }
     })
     .map(({ source, destination, statusCode: type }) => ({
@@ -183,15 +190,15 @@ export async function build(dir: string): Promise<BuildResult> {
     : nextJsRewrites.beforeFiles || [];
 
   const rewrites = nextJsRewritesToUse
-    .filter(({ source, destination, has }) => {
+    .filter((rewrite) => {
       // Can we change i18n into Firebase settings?
-      if (has) return false;
+      if (rewrite.has) return false;
 
-      if (pathHasRegex(source) || isUrl(destination)) {
+      if (isRewriteSupportedByFirebase(rewrite)) {
+        return true;
+      } else {
         wantsBackend = true;
         return false;
-      } else {
-        return true;
       }
     })
     .map(({ source, destination }) => ({
