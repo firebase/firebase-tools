@@ -67,7 +67,7 @@ export class ExtensionsEmulator implements EmulatorInstance {
         "Extensions Emulator is running but Functions emulator is not. This should never happen."
       );
     }
-    return functionsEmulator.getInfo();
+    return { ...functionsEmulator.getInfo(), name: this.getName() };
   }
 
   public getName(): Emulators {
