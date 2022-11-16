@@ -15,5 +15,13 @@ describe("Frameworks utils", () => {
     it("should ignore URL within path", () => {
       expect(isUrl("path/?url=https://firebase.google.com")).to.be.false;
     });
+
+    it("should ignore path starting with http but without protocol", () => {
+      expect(isUrl("httpendpoint/foo/bar")).to.be.false;
+    });
+
+    it("should ignore path starting with https but without protocol", () => {
+      expect(isUrl("httpsendpoint/foo/bar")).to.be.false;
+    });
   });
 });

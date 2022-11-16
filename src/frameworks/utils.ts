@@ -1,6 +1,6 @@
 /**
- * Whether the given string is a URL.
+ * Whether the given string starts with http:// or https://
  */
 export function isUrl(url: string): boolean {
-  return url.startsWith("http");
+  return /^https?:\/\//.test(url);
 }
