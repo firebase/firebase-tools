@@ -106,7 +106,7 @@ export interface EventTrigger {
 
   // The name of the channel where the function receives events.
   // Must be provided to receive CF3v2 custom events.
-  channel?: string;
+  channel?: string | Expression<string>;
 }
 
 export interface TaskQueueRateLimits {
@@ -425,7 +425,7 @@ export function toBackend(
       regions = [api.functionsDefaultRegion];
     }
     for (const region of regions) {
-      const trigger = discoverTrigger(bdEndpoint, region, r);
+      const trigger = discoverTrigger(bdEndpoint, region, bdEndpoint.project, r);
 
       if (typeof bdEndpoint.platform === "undefined") {
         throw new FirebaseError("platform can't be undefined");
@@ -498,7 +498,12 @@ export function toBackend(
   return bkend;
 }
 
-function discoverTrigger(endpoint: Endpoint, region: string, r: Resolver): backend.Triggered {
+function discoverTrigger(
+  endpoint: Endpoint,
+  region: string,
+  projectId: string,
+  r: Resolver
+): backend.Triggered {
   if (isHttpsTriggered(endpoint)) {
     const httpsTrigger: backend.HttpsTrigger = {};
     if (endpoint.httpsTrigger.invoker === null) {
@@ -524,6 +529,10 @@ function discoverTrigger(endpoint: Endpoint, region: string, r: Resolver): backe
         endpoint.eventTrigger.eventFilterPathPatterns,
         r.resolveString
       );
+    }
+    if (endpoint.eventTrigger.channel) {
+      const c = r.resolveString(endpoint.eventTrigger.channel);
+      eventTrigger.channel = interpolateEventArcChannel(c, projectId);
     }
     r.resolveStrings(eventTrigger, endpoint.eventTrigger, "serviceAccount", "region", "channel");
     return { eventTrigger };
@@ -585,4 +594,33 @@ function discoverTrigger(endpoint: Endpoint, region: string, r: Resolver): backe
     return { taskQueueTrigger };
   }
   assertExhaustive(endpoint);
+}
+
+function interpolateEventArcChannel(channel: string, projectId: string): string {
+  if (!channel.includes("/")) {
+    const location = api.functionsDefaultRegion;
+    const channelId = channel;
+    return "projects/" + projectId + "/locations/" + location + "/channels/" + channelId;
+  }
+
+  const CHANNEL_NAME_REGEX = new RegExp(
+    "(projects\\/" +
+      "(?<project>(?:\\d+)|(?:[A-Za-z]+[A-Za-z\\d-]*[A-Za-z\\d]?))\\/)?" +
+      "locations\\/" +
+      "(?<location>[A-Za-z\\d\\-_]+)\\/" +
+      "channels\\/" +
+      "(?<channel>[A-Za-z\\d\\-_]+)"
+  );
+  const match = CHANNEL_NAME_REGEX.exec(channel);
+  if (!match?.groups) {
+    throw new FirebaseError("Invalid channel name format: " + channel);
+  }
+  const matchedProjectId = match.groups.project;
+  const location = match.groups.location;
+  const channelId = match.groups.channel;
+  if (matchedProjectId) {
+    return "projects/" + matchedProjectId + "/locations/" + location + "/channels/" + channelId;
+  } else {
+    return "projects/" + projectId + "/locations/" + location + "/channels/" + channelId;
+  }
 }
