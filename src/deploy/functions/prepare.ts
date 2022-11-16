@@ -128,11 +128,12 @@ export async function prepare(
     let hasEnvsFromParams = false;
     wantBackend.environmentVariables = envs;
     for (const envName of Object.keys(resolvedEnvs)) {
-      const envValue = resolvedEnvs[envName]?.toString();
+      const isList = resolvedEnvs[envName]?.legalList
+      const envValue = resolvedEnvs[envName]?.toSDK();
       if (
         envValue &&
         !resolvedEnvs[envName].internal &&
-        !Object.prototype.hasOwnProperty.call(wantBackend.environmentVariables, envName)
+        (!Object.prototype.hasOwnProperty.call(wantBackend.environmentVariables, envName) || isList)
       ) {
         wantBackend.environmentVariables[envName] = envValue;
         hasEnvsFromParams = true;

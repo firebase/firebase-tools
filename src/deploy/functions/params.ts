@@ -101,7 +101,7 @@ export function resolveBoolean(
   return resolveExpression("boolean", from, paramValues) as boolean;
 }
 
-type ParamInput<T> = TextInput<T> | SelectInput<T> | ListSelectInput | ResourceInput;
+type ParamInput<T> = TextInput<T> | SelectInput<T> | MultiSelectInput | ResourceInput;
 
 type ParamBase<T extends string | number | boolean | string[]> = {
   // name of the param. Will be exposed as an environment variable with this name
@@ -146,8 +146,8 @@ export function isResourceInput<T>(input: ParamInput<T>): input is ResourceInput
 /**
  * Determines whether an Input field value can be coerced to ListSelectInput.
  */
-export function isListSelectInput<T>(input: ParamInput<T>): input is ListSelectInput {
-  return {}.hasOwnProperty.call(input, "listSelect");
+export function isMultiSelectInput<T>(input: ParamInput<T>): input is MultiSelectInput {
+  return {}.hasOwnProperty.call(input, "multiSelect");
 }
 
 export interface StringParam extends ParamBase<string> {
@@ -204,8 +204,8 @@ interface ResourceInput {
   };
 }
 
-interface ListSelectInput {
-  listSelect: {
+interface MultiSelectInput {
+  multiSelect: {
     options: Array<SelectOptions<string>>;
   };
 }
@@ -271,8 +271,14 @@ export class ParamValue {
     this.delimiter = delimiter;
   }
 
+  // Returns this param's representation as it should be in .env files
   toString(): string {
     return this.rawValue;
+  }
+
+  // Returns this param's representatiom as it should be in process.env during runtime
+  toSDK(): string {
+    return this.legalList ? JSON.stringify(this.asList()) : this.toString()
   }
 
   asString(): string {
@@ -522,7 +528,7 @@ async function promptList(
 
   if (isSelectInput(param.input)) {
     throw new FirebaseError("List params cannot have non-list selector inputs");
-  } else if (isListSelectInput(param.input)) {
+  } else if (isMultiSelectInput(param.input)) {
     prompt = `Select a value for ${param.label || param.name}:`;
     if (param.description) {
       prompt += ` \n(${param.description})`;
@@ -535,7 +541,7 @@ async function promptList(
       (res: string[]) => res
     );
   } else if (isTextInput(param.input)) {
-    prompt = `Enter a list of strings for ${param.label || param.name}:`;
+    prompt = `Enter a list of strings (delimiter: ${param.delimiter ? param.delimiter : ','}) for ${param.label || param.name}:`;
     if (param.description) {
       prompt += ` \n(${param.description})`;
     }
@@ -571,7 +577,7 @@ async function promptBooleanParam(
     }
     prompt += "\nSelect an option with the arrow keys, and use Enter to confirm your choice. ";
     return promptSelect<boolean>(prompt, param.input, resolvedDefault, isTruthyInput);
-  } else if (isListSelectInput(param.input)) {
+  } else if (isMultiSelectInput(param.input)) {
     throw new FirebaseError("Non-list params cannot have list selector inputs");
   } else if (isTextInput(param.input)) {
     prompt = `Enter a boolean value for ${param.label || param.name}:`;
@@ -603,7 +609,7 @@ async function promptStringParam(
       prompt += ` \n(${param.description})`;
     }
     return promptResourceString(prompt, param.input, projectId, resolvedDefault);
-  } else if (isListSelectInput(param.input)) {
+  } else if (isMultiSelectInput(param.input)) {
     throw new FirebaseError("Non-list params cannot have list selector inputs");
   } else if (isSelectInput(param.input)) {
     prompt = `Select a value for ${param.label || param.name}:`;
@@ -645,7 +651,7 @@ async function promptIntParam(param: IntParam, resolvedDefault?: number): Promis
       }
       return +res;
     });
-  } else if (isListSelectInput(param.input)) {
+  } else if (isMultiSelectInput(param.input)) {
     throw new FirebaseError("Non-list params cannot have list selector inputs");
   } else if (isTextInput(param.input)) {
     prompt = `Enter an integer value for ${param.label || param.name}:`;
@@ -709,8 +715,8 @@ async function promptResourceStrings(
       if (buckets.length === 0) {
         throw notFound;
       }
-      const forgedInput: ListSelectInput = {
-        listSelect: {
+      const forgedInput: MultiSelectInput = {
+        multiSelect: {
           options: buckets.map((bucketName: string): SelectOptions<string> => {
             return { label: bucketName, value: bucketName };
           }),
@@ -791,7 +797,7 @@ async function promptSelect<T extends RawParamValue>(
 
 async function promptSelectMultiple<T extends string>(
   prompt: string,
-  input: ListSelectInput,
+  input: MultiSelectInput,
   resolvedDefault: T[] | undefined,
   converter: (res: string[]) => T[] | retryInput
 ): Promise<T[]> {
@@ -800,7 +806,7 @@ async function promptSelectMultiple<T extends string>(
     type: "checkbox",
     default: resolvedDefault,
     message: prompt,
-    choices: input.listSelect.options.map((option: SelectOptions<string>): ListItem => {
+    choices: input.multiSelect.options.map((option: SelectOptions<string>): ListItem => {
       return {
         checked: false,
         name: option.label,
