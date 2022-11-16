@@ -15,7 +15,7 @@ export function pathHasRegex(path: string): boolean {
   // finds parentheses that are not preceded by double backslashes
   const regex = /(?<!\\)\(/;
 
-  if (regex.exec(path)) {
+  if (regex.test(path)) {
     return true;
   }
 
