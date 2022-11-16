@@ -523,10 +523,9 @@ ${firebaseDefaults ? `__FIREBASE_DEFAULTS__=${JSON.stringify(firebaseDefaults)}\
       // TODO move to templates
       await writeFile(
         join(functionsDist, "server.js"),
-        `const { onRequest } = require('firebase-functions/v2/https');
-const server = import('firebase-frameworks');
-exports.ssr = onRequest((req, res) => server.then(it => it.handle(req, res)));
-`
+        `import { onRequest } from 'firebase-functions/v2/https';
+         const server = import('firebase-frameworks');
+         export const ssr = onRequest((req, res) => server.then(it => it.handle(req, res)));`
       );
     } else {
       // No function, treat as an SPA

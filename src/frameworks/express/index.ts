@@ -48,13 +48,15 @@ async function getBootstrapScript(
   const allowRecursion = !entry;
   if (!entry) {
     const {
-      packageJson: { name },
+      packageJson: { name, main },
     } = await getConfig(root);
     try {
-      entry = require(root);
+      entry = require(join(root, main));
       bootstrapScript = `const bootstrap = Promise.resolve(require('${name}'))`;
     } catch (e) {
-      entry = await dynamicImport(root).catch(() => undefined);
+      entry = await dynamicImport(join(root, main)).catch((err: Error) =>
+        console.log("Unable to find main entry point", err)
+      );
       bootstrapScript = `const bootstrap = import('${name}')`;
     }
   }
@@ -63,7 +65,7 @@ async function getBootstrapScript(
   if (typeof handle === "function") {
     return (
       bootstrapScript +
-      ";\nexports.handle = async (req, res) => (await bootstrap).handle(req, res);"
+      ";\nexport const handle = async (req, res) => (await bootstrap).handle(req, res);"
     );
   }
   if (typeof app === "function") {
@@ -72,7 +74,7 @@ async function getBootstrapScript(
       if (typeof express.render === "function") {
         return (
           bootstrapScript +
-          ";\nexports.handle = async (req, res) => (await bootstrap).app(req, res);"
+          ";\nexport const handle = async (req, res) => (await bootstrap).app(req, res);"
         );
       }
     } catch (e) {
