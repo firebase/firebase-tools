@@ -1395,6 +1395,11 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
 
     const record = this.getTriggerRecordByKey(triggerId);
+    // If trigger is disabled, exit early
+    if (!record.enabled) {
+      res.status(204).send("Background triggers are currently disabled.");
+      return;
+    }
     const trigger = record.def;
     logger.debug(`Accepted request ${method} ${req.url} --> ${triggerId}`);
 
