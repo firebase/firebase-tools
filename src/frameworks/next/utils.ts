@@ -12,10 +12,11 @@ import { isUrl } from "../utils";
  * See: https://nextjs.org/docs/api-reference/next.config.js/redirects#regex-path-matching
  */
 export function pathHasRegex(path: string): boolean {
-  for (let i = 0; i < path.length; i++) {
-    if (path[i] === "(" && path[i - 1] !== "\\") {
-      return true;
-    }
+  // finds parentheses that are not preceded by double backslashes
+  const regex = /(?<!\\)\(/;
+
+  if (regex.exec(path)) {
+    return true;
   }
 
   return false;
