@@ -278,7 +278,7 @@ export class ParamValue {
 
   // Returns this param's representatiom as it should be in process.env during runtime
   toSDK(): string {
-    return this.legalList ? JSON.stringify(this.asList()) : this.toString()
+    return this.legalList ? JSON.stringify(this.asList()) : this.toString();
   }
 
   asString(): string {
@@ -541,7 +541,9 @@ async function promptList(
       (res: string[]) => res
     );
   } else if (isTextInput(param.input)) {
-    prompt = `Enter a list of strings (delimiter: ${param.delimiter ? param.delimiter : ','}) for ${param.label || param.name}:`;
+    prompt = `Enter a list of strings (delimiter: ${param.delimiter ? param.delimiter : ","}) for ${
+      param.label || param.name
+    }:`;
     if (param.description) {
       prompt += ` \n(${param.description})`;
     }

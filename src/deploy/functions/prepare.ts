@@ -128,7 +128,7 @@ export async function prepare(
     let hasEnvsFromParams = false;
     wantBackend.environmentVariables = envs;
     for (const envName of Object.keys(resolvedEnvs)) {
-      const isList = resolvedEnvs[envName]?.legalList
+      const isList = resolvedEnvs[envName]?.legalList;
       const envValue = resolvedEnvs[envName]?.toSDK();
       if (
         envValue &&
