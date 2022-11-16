@@ -189,11 +189,9 @@ export async function build(dir: string): Promise<BuildResult> {
     ? nextJsRewrites
     : nextJsRewrites.beforeFiles || [];
 
+  // Can we change i18n into Firebase settings?
   const rewrites = nextJsRewritesToUse
     .filter((rewrite) => {
-      // Can we change i18n into Firebase settings?
-      if (rewrite.has) return false;
-
       if (isRewriteSupportedByFirebase(rewrite)) {
         return true;
       } else {
