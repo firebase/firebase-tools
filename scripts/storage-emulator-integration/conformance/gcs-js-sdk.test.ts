@@ -123,6 +123,13 @@ describe("GCS Javascript SDK conformance tests", () => {
         expect(fileMetadata).to.deep.include(metadata);
       });
 
+      it("should upload with proper content type", async () => {
+        const jpgFile = createRandomFile("small_file.jpg", SMALL_FILE_SIZE, tmpDir);
+        const [, fileMetadata] = await testBucket.upload(jpgFile);
+
+        expect(fileMetadata.contentType).to.equal("image/jpeg");
+      });
+
       it("should handle firebaseStorageDownloadTokens", async () => {
         const testFileName = "public/file";
         await testBucket.upload(smallFilePath, {
