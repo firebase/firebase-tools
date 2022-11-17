@@ -1,0 +1,1 @@
+- Fix bug where disabling background triggers did nothing. (#5221)
