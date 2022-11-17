@@ -1708,7 +1708,8 @@ async function signInWithPassword(
 ): Promise<Schemas["GoogleCloudIdentitytoolkitV1SignInWithPasswordResponse"]> {
   assert(!state.disableAuth, "PROJECT_DISABLED");
   assert(state.allowPasswordSignup, "PASSWORD_LOGIN_DISABLED");
-  assert(reqBody.email, "MISSING_EMAIL");
+  assert("email" in reqBody, "MISSING_EMAIL");
+  assert(reqBody.email && isValidEmailAddress(reqBody.email), "INVALID_EMAIL");
   assert(reqBody.password, "MISSING_PASSWORD");
   if (reqBody.captchaResponse || reqBody.captchaChallenge) {
     throw new NotImplementedError("captcha unimplemented");
