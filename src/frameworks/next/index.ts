@@ -185,9 +185,18 @@ export async function build(dir: string): Promise<BuildResult> {
       type,
     }));
 
-  const nextJsRewritesToUse = Array.isArray(nextJsRewrites)
+  const isNextjsRewritesArray = Array.isArray(nextJsRewrites);
+  const nextJsRewritesToUse = isNextjsRewritesArray
     ? nextJsRewrites
     : nextJsRewrites.beforeFiles || [];
+
+  // rewrites.afterFiles / rewrites.fallback are not supported by firebase.json
+  if (
+    !isNextjsRewritesArray &&
+    (nextJsRewrites.afterFiles?.length || nextJsRewrites.fallback?.length)
+  ) {
+    wantsBackend = true;
+  }
 
   // Can we change i18n into Firebase settings?
   const rewrites = nextJsRewritesToUse
