@@ -82,7 +82,18 @@ describeAuthEmulator("accounts:signInWithPassword", ({ authApi, getClock }) => {
       });
   });
 
-  it("should error if email or password is missing", async () => {
+  it("should error if password is missing", async () => {
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword")
+      .query({ key: "fake-api-key" })
+      .send({ email: "nosuchuser@example.com" /* no password */ })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error.message).equals("MISSING_PASSWORD");
+      });
+  });
+
+  it("should error if email is missing", async () => {
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword")
       .query({ key: "fake-api-key" })
@@ -91,13 +102,24 @@ describeAuthEmulator("accounts:signInWithPassword", ({ authApi, getClock }) => {
         expectStatusCode(400, res);
         expect(res.body.error.message).equals("MISSING_EMAIL");
       });
+  });
+
+  it("should error if email is invalid", async () => {
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword")
       .query({ key: "fake-api-key" })
-      .send({ email: "nosuchuser@example.com" /* no password */ })
+      .send({ email: "", password: "notasecret" })
       .then((res) => {
         expectStatusCode(400, res);
-        expect(res.body.error.message).equals("MISSING_PASSWORD");
+        expect(res.body.error.message).equals("INVALID_EMAIL");
+      });
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword")
+      .query({ key: "fake-api-key" })
+      .send({ email: "example.com", password: "notasecret" })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error.message).equals("INVALID_EMAIL");
       });
   });
 
