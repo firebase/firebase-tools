@@ -1,4 +1,5 @@
 import type { Header, Redirect, Rewrite } from "next/dist/lib/load-custom-routes";
+import type { Manifest, RoutesManifestRewrite } from ".";
 import { isUrl } from "../utils";
 
 /**
@@ -54,4 +55,13 @@ export function isHeaderSupportedByFirebase(header: Header): boolean {
   }
 
   return true;
+}
+
+/**
+ * Firebase Rewrites that can be supported by firebase.json.
+ */
+export function getNextjsRewritesToUse(
+  nextJsRewrites: Manifest["rewrites"]
+): RoutesManifestRewrite[] {
+  return Array.isArray(nextJsRewrites) ? nextJsRewrites : nextJsRewrites?.beforeFiles || [];
 }

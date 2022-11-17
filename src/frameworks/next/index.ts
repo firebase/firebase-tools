@@ -24,14 +24,16 @@ import { FirebaseError } from "../../error";
 import { fileExistsSync } from "../../fsutils";
 import {
   cleanEscapedChars,
+  getNextjsRewritesToUse,
   isHeaderSupportedByFirebase,
   isRedirectSupportedByFirebase,
   isRewriteSupportedByFirebase,
 } from "./utils";
 
+export type RoutesManifestRewrite = Rewrite & { regex: string };
 // Next.js's exposed interface is incomplete here
 // TODO see if there's a better way to grab this
-interface Manifest {
+export interface Manifest {
   distDir?: string;
   basePath?: string;
   headers?: (Header & { regex: string })[];
@@ -40,11 +42,11 @@ interface Manifest {
     regex: string;
   })[];
   rewrites?:
-    | (Rewrite & { regex: string })[]
+    | RoutesManifestRewrite[]
     | {
-        beforeFiles?: (Rewrite & { regex: string })[];
-        afterFiles?: (Rewrite & { regex: string })[];
-        fallback?: (Rewrite & { regex: string })[];
+        beforeFiles?: RoutesManifestRewrite[];
+        afterFiles?: RoutesManifestRewrite[];
+        fallback?: RoutesManifestRewrite[];
       };
 }
 
@@ -185,18 +187,15 @@ export async function build(dir: string): Promise<BuildResult> {
       type,
     }));
 
-  const isNextjsRewritesArray = Array.isArray(nextJsRewrites);
-  const nextJsRewritesToUse = isNextjsRewritesArray
-    ? nextJsRewrites
-    : nextJsRewrites.beforeFiles || [];
-
   // rewrites.afterFiles / rewrites.fallback are not supported by firebase.json
   if (
-    !isNextjsRewritesArray &&
+    !Array.isArray(nextJsRewrites) &&
     (nextJsRewrites.afterFiles?.length || nextJsRewrites.fallback?.length)
   ) {
     wantsBackend = true;
   }
+
+  const nextJsRewritesToUse = getNextjsRewritesToUse(nextJsRewrites);
 
   // Can we change i18n into Firebase settings?
   const rewrites = nextJsRewritesToUse
@@ -267,10 +266,37 @@ export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: strin
       }
     }
 
-    const prerenderManifestBuffer = await readFile(
-      join(sourceDir, distDir, "prerender-manifest.json")
-    );
+    const [prerenderManifestBuffer, routesManifestBuffer] = await Promise.all([
+      readFile(
+        join(
+          sourceDir,
+          distDir,
+          "prerender-manifest.json" // TODO: get this from next/constants
+        )
+      ),
+      readFile(
+        join(
+          sourceDir,
+          distDir,
+          "routes-manifest.json" // TODO: get this from next/constants
+        )
+      ),
+    ]);
+
     const prerenderManifest = JSON.parse(prerenderManifestBuffer.toString());
+    const routesManifest = JSON.parse(routesManifestBuffer.toString()) as Manifest;
+
+    const rewritesToUse = getNextjsRewritesToUse(routesManifest.rewrites);
+    const rewritesNotSupportedByFirebase = rewritesToUse?.filter(
+      (rewrite) => isRewriteSupportedByFirebase(rewrite) === false
+    );
+    const redirectsNotSupportedByFirebase = routesManifest.redirects?.filter(
+      (redirect) => isRedirectSupportedByFirebase(redirect) === false
+    );
+    const headersNotSupportedByFirebase = routesManifest.headers?.filter(
+      (header) => isHeaderSupportedByFirebase(header) === false
+    );
+
     for (const path in prerenderManifest.routes) {
       if (prerenderManifest.routes[path]) {
         // Skip ISR in the deploy to hosting
@@ -279,6 +305,35 @@ export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: strin
           continue;
         }
 
+        if (rewritesNotSupportedByFirebase) {
+          const routeMatchUnsuportedRewrite = rewritesNotSupportedByFirebase.some(
+            // TODO: double check if `path` is appropriate for this in all cases
+            //       or if we can get pathname from elsewhere
+            (rewrite) => new RegExp(rewrite.regex).test(path)
+          );
+
+          if (routeMatchUnsuportedRewrite) continue;
+        }
+
+        if (redirectsNotSupportedByFirebase) {
+          const routeMatchUnsupportedRedirect = redirectsNotSupportedByFirebase.some(
+            // TODO: double check if `path` is appropriate for this in all cases
+            //       or if we can get pathname from elsewhere
+            (redirect) => new RegExp(redirect.regex).test(path)
+          );
+
+          if (routeMatchUnsupportedRedirect) continue;
+        }
+
+        if (headersNotSupportedByFirebase) {
+          const routeMatchUnsupportedHeader = headersNotSupportedByFirebase.some(
+            // TODO: double check if `path` is appropriate for this in all cases
+            //       or if we can get pathname from elsewhere
+            (header) => new RegExp(header.regex).test(path)
+          );
+
+          if (routeMatchUnsupportedHeader) continue;
+        }
         // TODO(jamesdaniels) explore oppertunity to simplify this now that we
         //                    are defaulting cleanURLs to true for frameworks
 
