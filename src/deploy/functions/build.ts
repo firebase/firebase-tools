@@ -220,6 +220,9 @@ export const AllIngressSettings: IngressSetting[] = [
 ];
 
 export type Endpoint = Triggered & {
+  // Defaults to false. If true, the function will be ignored during the deploy process.
+  omit?: Field<boolean>;
+
   // Defaults to "gcfv2". "Run" will be an additional option defined later
   platform?: "gcfv1" | "gcfv2";
 
@@ -413,6 +416,9 @@ export function toBackend(
   const bkEndpoints: Array<backend.Endpoint> = [];
   for (const endpointId of Object.keys(build.endpoints)) {
     const bdEndpoint = build.endpoints[endpointId];
+    if (r.resolveBoolean(bdEndpoint.omit || false)) {
+      continue;
+    }
 
     let regions = bdEndpoint.region;
     if (typeof regions === "undefined") {
