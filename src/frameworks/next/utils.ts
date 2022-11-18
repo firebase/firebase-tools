@@ -28,7 +28,7 @@ export function cleanEscapedChars(path: string): string {
  * Whether a Next.js rewrite is supported by Firebase.
  */
 export function isRewriteSupportedByFirebase(rewrite: Rewrite): boolean {
-  if (rewrite.has || pathHasRegex(rewrite.source) || isUrl(rewrite.destination)) {
+  if ("has" in rewrite || pathHasRegex(rewrite.source) || isUrl(rewrite.destination)) {
     return false;
   }
 
