@@ -69,6 +69,9 @@ export function load(client: any): any {
   client.emulators.exec = loadCommand("emulators-exec");
   client.emulators.export = loadCommand("emulators-export");
   client.emulators.start = loadCommand("emulators-start");
+  if (experiments.isEnabled("killEmulators")) {
+    client.emulators.kill = loadCommand("emulators-kill");
+  }
   client.experimental = {};
   client.experimental.functions = {};
   client.experimental.functions.shell = loadCommand("experimental-functions-shell");

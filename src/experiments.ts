@@ -73,6 +73,9 @@ export const ALL_EXPERIMENTS = experiments({
   emulatoruisnapshot: {
     shortDescription: "Load pre-release versions of the emulator UI",
   },
+  killEmulators: {
+    shortDescription: "Kills all running emulators; optionally with the --only tag",
+  },
 
   // Hosting experiments
   webframeworks: {

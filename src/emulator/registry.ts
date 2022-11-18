@@ -32,7 +32,7 @@ export class EmulatorRegistry {
     }
   }
 
-  static async stop(name: Emulators): Promise<void> {
+  static async stop(name: Emulators, forced?: boolean): Promise<void> {
     EmulatorLogger.forEmulator(name).logLabeled(
       "BULLET",
       name,
@@ -43,11 +43,11 @@ export class EmulatorRegistry {
       return;
     }
 
-    await instance.stop();
+    await instance.stop(forced);
     this.clear(instance.getName());
   }
 
-  static async stopAll(): Promise<void> {
+  static async stopAll(forceShutdown?: boolean): Promise<void> {
     const stopPriority: Record<Emulators, number> = {
       // Turn off the UI first, user should not interact
       // once shutdown starts
@@ -86,7 +86,7 @@ export class EmulatorRegistry {
 
     for (const name of emulatorsToStop) {
       try {
-        await this.stop(name);
+        await this.stop(name, forceShutdown);
       } catch (e: any) {
         EmulatorLogger.forEmulator(name).logLabeled(
           "WARN",
