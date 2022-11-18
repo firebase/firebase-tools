@@ -3,13 +3,13 @@ import { readFile } from "fs/promises";
 import { basename, join } from "path";
 import { gte } from "semver";
 import { BuildResult, findDependency, FrameworkType, relativeRequire, SupportLevel } from "..";
-import { isUsingCustomBuildScript } from "../utils";
+import { warnIfCustomBuildScript } from "../utils";
 
 export const name = "Nuxt";
 export const support = SupportLevel.Experimental;
 export const type = FrameworkType.Toolchain;
 
-const NUXT_BUILD_COMMAND = "nuxt build";
+const NUXT_DEFAULT_BUILD_SCRIPTS = ["nuxt build"];
 
 export async function discover(dir: string) {
   if (!(await pathExists(join(dir, "package.json")))) return;
@@ -27,11 +27,7 @@ export async function build(root: string): Promise<BuildResult> {
   const { buildNuxt } = await relativeRequire(root, "@nuxt/kit");
   const nuxtApp = await getNuxtApp(root);
 
-  if (await isUsingCustomBuildScript(root, NUXT_BUILD_COMMAND)) {
-    console.log(
-      `\nWarning: You have a custom build script in your package.json. In order to use a custom build script, you have to use a custom integration. See the docs for details: https://firebase.google.com/docs/hosting/express\n`
-    );
-  }
+  await warnIfCustomBuildScript(root, NUXT_DEFAULT_BUILD_SCRIPTS);
 
   await buildNuxt(nuxtApp);
   return { wantsBackend: true };

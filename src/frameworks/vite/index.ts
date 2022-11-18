@@ -5,7 +5,7 @@ import { join } from "path";
 import { findDependency, FrameworkType, relativeRequire, SupportLevel } from "..";
 import { proxyRequestHandler } from "../../hosting/proxy";
 import { promptOnce } from "../../prompt";
-import { isUsingCustomBuildScript } from "../utils";
+import { warnIfCustomBuildScript } from "../utils";
 
 export const name = "Vite";
 export const support = SupportLevel.Experimental;
@@ -17,7 +17,7 @@ const CLI_COMMAND = join(
   process.platform === "win32" ? "vite.cmd" : "vite"
 );
 
-const VITE_BUILD_COMMAND = "vite build";
+const VITE_DEFAULT_BUILD_SCRIPTS = ["vite build", "tsc && vite build"];
 
 export const initViteTemplate = (template: string) => async (setup: any) =>
   await init(setup, template);
@@ -65,11 +65,7 @@ export async function discover(dir: string, plugin?: string, npmDependency?: str
 export async function build(root: string) {
   const { build } = relativeRequire(root, "vite");
 
-  if (await isUsingCustomBuildScript(root, VITE_BUILD_COMMAND)) {
-    console.log(
-      `\nWarning: You have a custom build script in your package.json. In order to use a custom build script, you have to use a custom integration. See the docs for details: https://firebase.google.com/docs/hosting/express\n`
-    );
-  }
+  await warnIfCustomBuildScript(root, VITE_DEFAULT_BUILD_SCRIPTS);
 
   await build({ root });
 }
