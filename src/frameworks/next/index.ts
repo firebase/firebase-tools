@@ -306,30 +306,24 @@ export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: strin
         }
 
         if (rewritesNotSupportedByFirebase) {
-          const routeMatchUnsuportedRewrite = rewritesNotSupportedByFirebase.some(
-            // TODO: double check if `path` is appropriate for this in all cases
-            //       or if we can get pathname from elsewhere
-            (rewrite) => new RegExp(rewrite.regex).test(path)
+          const routeMatchUnsuportedRewrite = rewritesNotSupportedByFirebase.some((rewrite) =>
+            new RegExp(rewrite.regex).test(path)
           );
 
           if (routeMatchUnsuportedRewrite) continue;
         }
 
         if (redirectsNotSupportedByFirebase) {
-          const routeMatchUnsupportedRedirect = redirectsNotSupportedByFirebase.some(
-            // TODO: double check if `path` is appropriate for this in all cases
-            //       or if we can get pathname from elsewhere
-            (redirect) => new RegExp(redirect.regex).test(path)
+          const routeMatchUnsupportedRedirect = redirectsNotSupportedByFirebase.some((redirect) =>
+            new RegExp(redirect.regex).test(path)
           );
 
           if (routeMatchUnsupportedRedirect) continue;
         }
 
         if (headersNotSupportedByFirebase) {
-          const routeMatchUnsupportedHeader = headersNotSupportedByFirebase.some(
-            // TODO: double check if `path` is appropriate for this in all cases
-            //       or if we can get pathname from elsewhere
-            (header) => new RegExp(header.regex).test(path)
+          const routeMatchUnsupportedHeader = headersNotSupportedByFirebase.some((header) =>
+            new RegExp(header.regex).test(path)
           );
 
           if (routeMatchUnsupportedHeader) continue;
