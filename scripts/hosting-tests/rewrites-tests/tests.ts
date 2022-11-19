@@ -12,9 +12,17 @@ import { command as sitesDelete } from "../../../src/commands/hosting-sites-dele
 import fetch, { Request } from "node-fetch";
 import { FirebaseError } from "../../../src/error";
 import { QueueExecutor } from "../../../src/deploy/functions/release/executor";
+import { GoogleAuth } from "google-auth-library";
+import { Headers } from "google-auth-library/build/src/auth/oauth2client";
 
 tmp.setGracefulCleanup();
 
+const projectName = (() => {
+  if (process.env.FBTOOLS_TARGET_PROJECT) {
+    return process.env.FBTOOLS_TARGET_PROJECT;
+  }
+  throw new Error("FBTOOLS_TARGET_PROJECT environment variable was not set properly.");
+})();
 const siteNamePrefixLabel = "rwtestsite";
 const testConcurrency = 6;
 
@@ -25,14 +33,15 @@ const testConcurrency = 6;
 // Typescript doesn't like calling functions on `firebase`.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const client: any = firebase;
+const auth = new GoogleAuth();
 
 function writeFirebaseRc(firebasercFilePath: string, siteName: string): void {
   const config = {
     projects: {
-      default: process.env.FBTOOLS_TARGET_PROJECT,
+      default: projectName,
     },
     targets: {
-      [process.env.FBTOOLS_TARGET_PROJECT as string]: {
+      [projectName]: {
         hosting: {
           [siteName]: [siteName],
         },
@@ -44,7 +53,7 @@ function writeFirebaseRc(firebasercFilePath: string, siteName: string): void {
 
 async function createSite(siteName: string): Promise<void> {
   await sitesCreate.runner()([siteName], {
-    projectId: process.env.FBTOOLS_TARGET_PROJECT,
+    projectId: projectName,
     force: true,
   });
 }
@@ -52,7 +61,7 @@ async function createSite(siteName: string): Promise<void> {
 async function deleteSite(siteName: string, cwd: string): Promise<void> {
   try {
     await sitesDelete.runner()([siteName], {
-      projectId: process.env.FBTOOLS_TARGET_PROJECT,
+      projectId: projectName,
       force: true,
       cwd: cwd,
     });
@@ -64,7 +73,7 @@ async function deleteSite(siteName: string, cwd: string): Promise<void> {
 async function deleteDeployedFunctions(functionName: string): Promise<void> {
   try {
     await functionsDelete.runner()([functionName], {
-      projectId: process.env.FBTOOLS_TARGET_PROJECT,
+      projectId: projectName,
       force: true,
     });
   } catch (e) {
@@ -90,7 +99,7 @@ function writeHelloWorldFunctionWithRegions(
   const functionFileContents = `
 const functions = require("firebase-functions");
 
-exports.${functionName} = functions${region}.https.onRequest((request, response) => {
+exports.${functionName} = functions.runWith({ invoker: "private" })${region}.https.onRequest((request, response) => {
   functions.logger.info("Hello logs!", { structuredData: true });
   const envVarFunctionsRegion = process.env.FUNCTION_REGION;
   response.send("Hello from Firebase ${
@@ -146,7 +155,7 @@ const siteNamePrefix = `${siteNamePrefixLabel}-${process.env.CI_RUN_ID || "xx"}-
 
 async function deleteOldSites(): Promise<void> {
   const sites = await sitesList.runner()({
-    projectId: process.env.FBTOOLS_TARGET_PROJECT as string,
+    projectId: projectName,
   });
 
   const validDateCutoff = new Date("2021-06-01");
@@ -157,14 +166,14 @@ async function deleteOldSites(): Promise<void> {
     const siteName = site.name.substring(site.name.lastIndexOf(siteNamePrefixLabel));
     const siteNameParts = siteName.split("-");
     if (siteNameParts.length !== 5) {
-      throw new FirebaseError(
+      throw new Error(
         `Found a site that begins with '${siteNamePrefixLabel}' but the name looks malformed: ${site.name}`
       );
     }
     const siteTimestamp = parseInt(siteNameParts[3]);
     if (siteTimestamp < validDateCutoff.getSeconds() || siteTimestamp > Date.now()) {
       // Date doesn't make sense and we don't know what's going on.
-      throw new FirebaseError(
+      throw new Error(
         `Parsed a date for an existing site that looks unexpected: ${siteTimestamp.toString()}`
       );
     }
@@ -185,6 +194,14 @@ async function deleteOldSites(): Promise<void> {
   }
 }
 
+async function createAuthHeadersForFunction(
+  region: string,
+  functionName: string
+): Promise<Headers> {
+  const url = `https://${region}-${projectName}.cloudfunctions.net/${functionName}`;
+  const reqclient = await auth.getIdTokenClient(url);
+  return await reqclient.getRequestHeaders(url);
+}
 class TestCase {
   private static testNumbering = 1;
   private testNumber = TestCase.testNumbering++;
@@ -276,7 +293,7 @@ testCases.push(
       writeHelloWorldFunctionWithRegions(functionName, tempDirInfo.functionsDirPath);
 
       await client.deploy({
-        project: process.env.FBTOOLS_TARGET_PROJECT,
+        project: projectName,
         cwd: tempDirInfo.tempDir.name,
         only: "hosting,functions",
         force: true,
@@ -285,8 +302,15 @@ testCases.push(
       const staticResponse = await fetch(`https://${siteName}.web.app/index.html`);
       expect(await staticResponse.text()).to.contain("Rabbit");
 
+      const url = `https://us-central1-akongara-testing.cloudfunctions.net/${functionName}`;
+      const reqclient = await auth.getIdTokenClient(url);
+      const res = await reqclient.request({ url });
+      expect(res.data).to.contain("Hello from Firebase");
+
       const functionsRequest = new Request(`https://${siteName}.web.app/helloWorld`);
-      const functionsResponse = await fetch(functionsRequest);
+      const functionsResponse = await fetch(functionsRequest, {
+        headers: await createAuthHeadersForFunction("us-central1", functionName),
+      });
       expect(await functionsResponse.text()).to.contain("Hello from Firebase");
     }
   )
@@ -324,7 +348,7 @@ testCases.push(
       writeHelloWorldFunctionWithRegions(functionName, tempDirInfo.functionsDirPath);
 
       await client.deploy({
-        project: process.env.FBTOOLS_TARGET_PROJECT,
+        project: projectName,
         cwd: tempDirInfo.tempDir.name,
         only: "hosting,functions",
         force: true,
@@ -334,7 +358,9 @@ testCases.push(
       expect(await staticResponse.text()).to.contain("Rabbit");
 
       const functionsRequest = new Request(`https://${siteName}.web.app/helloWorld`);
-      const functionsResponse = await fetch(functionsRequest);
+      const functionsResponse = await fetch(functionsRequest, {
+        headers: await createAuthHeadersForFunction("us-central1", functionName),
+      });
       expect(await functionsResponse.text()).to.contain("Hello from Firebase");
     }
   )
@@ -373,7 +399,7 @@ testCases.push(
       ]);
 
       await client.deploy({
-        project: process.env.FBTOOLS_TARGET_PROJECT,
+        project: projectName,
         cwd: tempDirInfo.tempDir.name,
         only: "hosting,functions",
         force: true,
@@ -383,7 +409,9 @@ testCases.push(
       expect(await staticResponse.text()).to.contain("Rabbit");
 
       const functionsRequest = new Request(`https://${siteName}.web.app/helloWorld`);
-      const functionsResponse = await fetch(functionsRequest);
+      const functionsResponse = await fetch(functionsRequest, {
+        headers: await createAuthHeadersForFunction("europe-west1", functionName),
+      });
       expect(await functionsResponse.text()).to.contain("Hello from Firebase");
     }
   )
@@ -423,7 +451,7 @@ testCases.push(
       ]);
 
       await client.deploy({
-        project: process.env.FBTOOLS_TARGET_PROJECT,
+        project: projectName,
         cwd: tempDirInfo.tempDir.name,
         only: "hosting,functions",
         force: true,
@@ -433,7 +461,9 @@ testCases.push(
       expect(await staticResponse.text()).to.contain("Rabbit");
 
       const functionsRequest = new Request(`https://${siteName}.web.app/helloWorld`);
-      const functionsResponse = await fetch(functionsRequest);
+      const functionsResponse = await fetch(functionsRequest, {
+        headers: await createAuthHeadersForFunction("asia-northeast1", functionName),
+      });
       expect(await functionsResponse.text()).to.contain("Hello from Firebase");
     }
   )
@@ -474,7 +504,7 @@ testCases.push(
 
       await expect(
         client.deploy({
-          project: process.env.FBTOOLS_TARGET_PROJECT,
+          project: projectName,
           cwd: tempDirInfo.tempDir.name,
           only: "hosting,functions",
           force: true,
@@ -516,7 +546,7 @@ testCases.push(
       );
 
       await client.deploy({
-        project: process.env.FBTOOLS_TARGET_PROJECT,
+        project: projectName,
         cwd: tempDirInfo.tempDir.name,
         only: "functions",
         force: true,
@@ -529,7 +559,7 @@ testCases.push(
       );
       await expect(
         client.deploy({
-          project: process.env.FBTOOLS_TARGET_PROJECT,
+          project: projectName,
           cwd: tempDirInfo.tempDir.name,
           only: "functions,hosting",
           force: true,
@@ -565,7 +595,7 @@ testCases.push(
       writeBasicHostingFile(tempDirInfo.hostingDirPath);
 
       await client.deploy({
-        project: process.env.FBTOOLS_TARGET_PROJECT,
+        project: projectName,
         cwd: tempDirInfo.tempDir.name,
         only: "hosting,functions",
         force: true,
@@ -612,7 +642,7 @@ testCases.push(
       ]);
 
       await client.deploy({
-        project: process.env.FBTOOLS_TARGET_PROJECT,
+        project: projectName,
         cwd: tempDirInfo.tempDir.name,
         only: "hosting,functions",
         force: true,
@@ -622,7 +652,9 @@ testCases.push(
       expect(await staticResponse.text()).to.contain("Rabbit");
 
       const functionsRequest = new Request(`https://${siteName}.web.app/helloWorld`);
-      const functionsResponse = await fetch(functionsRequest);
+      const functionsResponse = await fetch(functionsRequest, {
+        headers: await createAuthHeadersForFunction("asia-northeast1", functionName),
+      });
       expect(await functionsResponse.text()).to.contain("Hello from Firebase");
     }
   )
@@ -662,7 +694,7 @@ testCases.push(
       ]);
 
       await client.deploy({
-        project: process.env.FBTOOLS_TARGET_PROJECT,
+        project: projectName,
         cwd: tempDirInfo.tempDir.name,
         only: "hosting,functions",
         force: true,
@@ -672,7 +704,9 @@ testCases.push(
       expect(await staticResponse.text()).to.contain("Rabbit");
 
       const functionsRequest = new Request(`https://${siteName}.web.app/helloWorld`);
-      const functionsResponse = await fetch(functionsRequest);
+      const functionsResponse = await fetch(functionsRequest, {
+        headers: await createAuthHeadersForFunction("us-central1", functionName),
+      });
       expect(await functionsResponse.text()).to.contain("Hello from Firebase");
     }
   )
@@ -714,7 +748,7 @@ testCases.push(
 
       await expect(
         client.deploy({
-          project: process.env.FBTOOLS_TARGET_PROJECT,
+          project: projectName,
           cwd: tempDirInfo.tempDir.name,
           only: "hosting,functions",
         })
@@ -761,7 +795,7 @@ testCases.push(
 
       await expect(
         client.deploy({
-          project: process.env.FBTOOLS_TARGET_PROJECT,
+          project: projectName,
           cwd: tempDirInfo.tempDir.name,
           only: "hosting,functions",
           force: true,
@@ -804,7 +838,7 @@ testCases.push(
       ]);
 
       await client.deploy({
-        project: process.env.FBTOOLS_TARGET_PROJECT,
+        project: projectName,
         cwd: tempDirInfo.tempDir.name,
         only: "hosting,functions",
         force: true,
@@ -814,8 +848,9 @@ testCases.push(
       expect(await staticResponse.text()).to.contain("Rabbit");
 
       const functionsRequest = new Request(`https://${siteName}.web.app/helloWorld`);
-
-      const functionsResponse = await fetch(functionsRequest);
+      const functionsResponse = await fetch(functionsRequest, {
+        headers: await createAuthHeadersForFunction("europe-west1", functionName),
+      });
       const responseText = await functionsResponse.text();
       expect(responseText).to.contain("Hello from Firebase");
       expect(responseText).to.contain("europe-west1");
@@ -825,7 +860,7 @@ testCases.push(
       ]);
 
       await client.deploy({
-        project: process.env.FBTOOLS_TARGET_PROJECT,
+        project: projectName,
         cwd: tempDirInfo.tempDir.name,
         only: "hosting,functions",
         force: true,
@@ -833,7 +868,9 @@ testCases.push(
 
       const staticResponse2 = await fetch(`https://${siteName}.web.app/index.html`);
       expect(await staticResponse2.text()).to.contain("Rabbit");
-      const functionsResponse2 = await fetch(functionsRequest);
+      const functionsResponse2 = await fetch(functionsRequest, {
+        headers: await createAuthHeadersForFunction("asia-northeast1", functionName),
+      });
       const responseText2 = await functionsResponse2.text();
 
       expect(responseText2).to.contain("Hello from Firebase");
@@ -880,7 +917,7 @@ testCases.push(
 
       {
         await client.deploy({
-          project: process.env.FBTOOLS_TARGET_PROJECT,
+          project: projectName,
           cwd: tempDirInfo.tempDir.name,
           only: "hosting,functions",
         });
@@ -888,7 +925,9 @@ testCases.push(
         const staticResponse = await fetch(`https://${siteName}.web.app/index.html`);
         expect(await staticResponse.text()).to.contain("Rabbit");
 
-        const functionsResponse = await fetch(functionsRequest);
+        const functionsResponse = await fetch(functionsRequest, {
+          headers: await createAuthHeadersForFunction("europe-west1", functionName),
+        });
 
         const responseText = await functionsResponse.text();
         expect(responseText).to.contain("Hello from Firebase");
@@ -922,7 +961,7 @@ testCases.push(
 
       {
         await client.deploy({
-          project: process.env.FBTOOLS_TARGET_PROJECT,
+          project: projectName,
           cwd: tempDirInfo.tempDir.name,
           only: "hosting,functions",
           force: true,
@@ -930,7 +969,9 @@ testCases.push(
 
         const staticResponse = await fetch(`https://${siteName}.web.app/index.html`);
         expect(await staticResponse.text()).to.contain("Rabbit");
-        const functionsResponse = await fetch(functionsRequest);
+        const functionsResponse = await fetch(functionsRequest, {
+          headers: await createAuthHeadersForFunction("asia-northeast1", functionName),
+        });
         const responseText = await functionsResponse.text();
 
         expect(responseText).to.contain("Hello from Firebase");
@@ -978,7 +1019,7 @@ testCases.push(
 
       {
         await client.deploy({
-          project: process.env.FBTOOLS_TARGET_PROJECT,
+          project: projectName,
           cwd: tempDirInfo.tempDir.name,
           only: "hosting,functions",
           force: true,
@@ -987,14 +1028,16 @@ testCases.push(
         const staticResponse = await fetch(`https://${siteName}.web.app/index.html`);
         expect(await staticResponse.text()).to.contain("Rabbit");
 
-        const functionsResponse = await fetch(functionsRequest);
+        const functionsResponse = await fetch(functionsRequest, {
+          headers: await createAuthHeadersForFunction("europe-west1", functionName),
+        });
 
         const responseText = await functionsResponse.text();
         expect(responseText).to.contain("Hello from Firebase");
         expect(responseText).to.contain("europe-west1");
       }
 
-      // Change function region in both firebase.json.
+      // Change function region in firebase.json.
       firebaseJson = {
         hosting: {
           public: "hosting",
@@ -1018,7 +1061,7 @@ testCases.push(
       {
         await expect(
           client.deploy({
-            project: process.env.FBTOOLS_TARGET_PROJECT,
+            project: projectName,
             cwd: tempDirInfo.tempDir.name,
             only: "hosting",
             force: true,
@@ -1050,7 +1093,7 @@ testCases.push(
       ]);
 
       await client.deploy({
-        project: process.env.FBTOOLS_TARGET_PROJECT,
+        project: projectName,
         cwd: tempDirInfo.tempDir.name,
         only: "functions",
         force: true,
@@ -1081,7 +1124,7 @@ testCases.push(
 
       await expect(
         client.deploy({
-          project: process.env.FBTOOLS_TARGET_PROJECT,
+          project: projectName,
           cwd: tempDirInfo.tempDir.name,
           only: "hosting",
           force: true,
@@ -1110,7 +1153,7 @@ testCases.push(
       writeHelloWorldFunctionWithRegions(functionName, tempDirInfo.functionsDirPath);
 
       await client.deploy({
-        project: process.env.FBTOOLS_TARGET_PROJECT,
+        project: projectName,
         cwd: tempDirInfo.tempDir.name,
         only: "functions",
         force: true,
@@ -1141,15 +1184,16 @@ testCases.push(
       writeFileSync(firebaseJsonFilePath, JSON.stringify(firebaseJson));
       emptyDirSync(tempDirInfo.functionsDirPath);
       await client.deploy({
-        project: process.env.FBTOOLS_TARGET_PROJECT,
+        project: projectName,
         cwd: tempDirInfo.tempDir.name,
         only: "hosting", // Including functions here will prompt for deletion.
         // Forcing the prompt will delete the function.
       });
 
       const functionsRequest = new Request(`https://${siteName}.web.app/helloWorld`);
-
-      const functionsResponse = await fetch(functionsRequest);
+      const functionsResponse = await fetch(functionsRequest, {
+        headers: await createAuthHeadersForFunction("us-central1", functionName),
+      });
       expect(await functionsResponse.text()).to.contain("Hello from Firebase");
     }
   )
@@ -1175,7 +1219,7 @@ testCases.push(
       ]);
 
       await client.deploy({
-        project: process.env.FBTOOLS_TARGET_PROJECT,
+        project: projectName,
         cwd: tempDirInfo.tempDir.name,
         only: "functions",
         force: true,
@@ -1207,7 +1251,7 @@ testCases.push(
 
       await expect(
         client.deploy({
-          project: process.env.FBTOOLS_TARGET_PROJECT,
+          project: projectName,
           cwd: tempDirInfo.tempDir.name,
           only: "hosting", // Including functions here will prompt for deletion.
           // Forcing the prompt will delete the function.
@@ -1238,7 +1282,7 @@ testCases.push(
       ]);
 
       await client.deploy({
-        project: process.env.FBTOOLS_TARGET_PROJECT,
+        project: projectName,
         cwd: tempDirInfo.tempDir.name,
         only: "functions",
         force: true,
@@ -1267,7 +1311,7 @@ testCases.push(
       writeFileSync(firebaseJsonFilePath, JSON.stringify(firebaseJson));
       ensureDirSync(tempDirInfo.hostingDirPath);
       await client.deploy({
-        project: process.env.FBTOOLS_TARGET_PROJECT,
+        project: projectName,
         cwd: tempDirInfo.tempDir.name,
         only: "hosting", // Including functions here will prompt for deletion.
         // Forcing the prompt will delete the function.
@@ -1275,8 +1319,9 @@ testCases.push(
 
       {
         const functionsRequest = new Request(`https://${siteName}.web.app/helloWorld`);
-
-        const functionsResponse = await fetch(functionsRequest);
+        const functionsResponse = await fetch(functionsRequest, {
+          headers: await createAuthHeadersForFunction("asia-northeast1", functionName),
+        });
         expect(await functionsResponse.text()).to.contain("Hello from Firebase");
       }
     }
