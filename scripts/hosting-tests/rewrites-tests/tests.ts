@@ -302,11 +302,6 @@ testCases.push(
       const staticResponse = await fetch(`https://${siteName}.web.app/index.html`);
       expect(await staticResponse.text()).to.contain("Rabbit");
 
-      const url = `https://us-central1-akongara-testing.cloudfunctions.net/${functionName}`;
-      const reqclient = await auth.getIdTokenClient(url);
-      const res = await reqclient.request({ url });
-      expect(res.data).to.contain("Hello from Firebase");
-
       const functionsRequest = new Request(`https://${siteName}.web.app/helloWorld`);
       const functionsResponse = await fetch(functionsRequest, {
         headers: await createAuthHeadersForFunction("us-central1", functionName),
