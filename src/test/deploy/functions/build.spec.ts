@@ -44,6 +44,35 @@ describe("toBackend", () => {
     }
   });
 
+  it("doesn't populate if omit is set on the build", () => {
+    const desiredBuild: build.Build = build.of({
+      func: {
+        omit: true,
+        platform: "gcfv1",
+        region: ["us-central1"],
+        project: "project",
+        runtime: "nodejs16",
+        entryPoint: "func",
+        maxInstances: 42,
+        minInstances: 1,
+        serviceAccount: "service-account-1@",
+        vpc: {
+          connector: "projects/project/locations/region/connectors/connector",
+          egressSettings: "PRIVATE_RANGES_ONLY",
+        },
+        ingressSettings: "ALLOW_ALL",
+        labels: {
+          test: "testing",
+        },
+        httpsTrigger: {
+          invoker: ["public"],
+        },
+      },
+    });
+    const backend = build.toBackend(desiredBuild, {});
+    expect(Object.keys(backend.endpoints).length).to.equal(0);
+  });
+
   it("populates multiple specified invokers correctly", () => {
     const desiredBuild: build.Build = build.of({
       func: {

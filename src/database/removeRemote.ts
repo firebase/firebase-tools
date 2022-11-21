@@ -22,10 +22,12 @@ export class RTDBRemoveRemote implements RemoveRemote {
   private instance: string;
   private host: string;
   private apiClient: Client;
+  private disableTriggers: boolean;
 
-  constructor(instance: string, host: string) {
+  constructor(instance: string, host: string, disableTriggers: boolean) {
     this.instance = instance;
     this.host = host;
+    this.disableTriggers = disableTriggers;
 
     const url = new URL(utils.getDatabaseUrl(this.host, this.instance, "/"));
     this.apiClient = new Client({ urlPrefix: url.origin, auth: true });
@@ -46,7 +48,11 @@ export class RTDBRemoveRemote implements RemoveRemote {
   private async patch(path: string, body: any, note: string): Promise<boolean> {
     const t0 = Date.now();
     const url = new URL(utils.getDatabaseUrl(this.host, this.instance, path + ".json"));
-    const queryParams = { print: "silent", writeSizeLimit: "tiny" };
+    const queryParams = {
+      print: "silent",
+      writeSizeLimit: "tiny",
+      disableTriggers: this.disableTriggers.toString(),
+    };
     const res = await this.apiClient.request({
       method: "PATCH",
       path: url.pathname,
