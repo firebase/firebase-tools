@@ -1,23 +1,37 @@
 import { expect } from "chai";
 
-import { cleanEscapedChars, pathHasRegex } from "../../../frameworks/next/utils";
+import { pathHasRegex, cleanEscapedChars } from "../../../frameworks/next/utils";
+import {
+  pathsAsGlobs,
+  pathsWithEscapedChars,
+  pathsWithRegex,
+  pathsWithRegexAndEscapedChars,
+} from "./helpers";
 
 describe("Next.js utils", () => {
-  const pathWithRegex = "/post/:slug(\\d{1,})";
-  const pathWithEscapedChars = "/post\\(someStringBetweenParentheses\\)/:slug";
-  const pathWithRegexAndEscapedChars = "/post/\\(escapedparentheses\\)/:slug(\\d{1,})";
-
   describe("pathHasRegex", () => {
     it("should identify regex", () => {
-      expect(pathHasRegex(pathWithRegex)).to.be.true;
+      for (const path of pathsWithRegex) {
+        expect(pathHasRegex(path)).to.be.true;
+      }
     });
 
-    it("should not identify escaped parentheses", () => {
-      expect(pathHasRegex(pathWithEscapedChars)).to.be.false;
+    it("should not identify escaped parentheses as regex", () => {
+      for (const path of pathsWithEscapedChars) {
+        expect(pathHasRegex(path)).to.be.false;
+      }
     });
 
-    it("should identify regex along with escaped parentheses", () => {
-      expect(pathHasRegex(pathWithRegexAndEscapedChars)).to.be.true;
+    it("should identify regex along with escaped chars", () => {
+      for (const path of pathsWithRegexAndEscapedChars) {
+        expect(pathHasRegex(path)).to.be.true;
+      }
+    });
+
+    it("should not identify globs as regex", () => {
+      for (const path of pathsAsGlobs) {
+        expect(pathHasRegex(path)).to.be.false;
+      }
     });
   });
 
