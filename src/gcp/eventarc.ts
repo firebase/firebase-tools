@@ -6,10 +6,10 @@ import { fieldMasks } from "./proto";
 export const API_VERSION = "v1";
 
 export interface Channel {
-  /** User provided name. Must be projects/p/locations/l/channels/c */
+  /** User-provided name. Must be projects/p/locations/l/channels/c after resolution. */
   name: string;
 
-  /** Server assigned uinique identifier. Format is a UUID4 */
+  /** Server-assigned uinique identifier. Format is a UUID4 */
   uid?: string;
 
   createTime?: string;
@@ -24,7 +24,7 @@ export interface Channel {
 
   state?: "PENDING" | "ACTIVE" | "INACTIVE";
 
-  /** When the channel is PENDING, this token must be sent to the provider */
+  /** When the channel is `PENDING`, this token must be sent to the provider */
   activationToken?: string;
 
   cryptoKeyName?: string;
@@ -88,7 +88,7 @@ export async function updateChannel(channel: Channel): Promise<Channel> {
 }
 
 /**
- * Deletes a chanel.
+ * Deletes a channel.
  */
 export async function deleteChannel(name: string): Promise<void> {
   await client.delete(name);
