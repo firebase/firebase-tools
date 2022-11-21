@@ -1608,9 +1608,11 @@ async function signInWithIdp(
     oauthExpiresIn: coercePrimitiveToString(response.oauthExpireIn),
   };
   if (response.isNewUser) {
+    const timestamp = new Date();
     let updates: Partial<UserInfo> = {
       ...accountUpdates.fields,
-      lastLoginAt: Date.now().toString(),
+      createdAt: timestamp.getTime().toString(),
+      lastLoginAt: timestamp.getTime().toString(),
       providerUserInfo: [providerUserInfo],
       tenantId: state instanceof TenantProjectState ? state.tenantId : undefined,
     };
