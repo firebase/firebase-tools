@@ -27,7 +27,7 @@ function genRandomId(n = 10): string {
 }
 
 interface Opts {
-  v1Opts: functions.DeploymentOptions;
+  v1Opts: functions.RuntimeOptions;
   v2Opts: functionsv2.GlobalOptions;
 
   v1TqOpts: functions.tasks.TaskQueueOptions;
