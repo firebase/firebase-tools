@@ -1,6 +1,2 @@
-- Updated the pubsub emulator to v0.7.1.
-- Updated some emulator download logic to pause after unzipping to avoid a file not found issue.
-- Fixes gzipped file handling in Storage Emulator.
-- Add support for object list using certain Admin SDKs (#5208)
-- Fixes source token expiration issue by acquiring new source token upon expiration.
-- Fix bug where emulated event triggered function broke in debug mode (#5211)
+- Fix bug where disabling background triggers did nothing. (#5221)
+- Fix bug in auth emulator where empty string should throw invalid email instead of missing email. (#3898)
