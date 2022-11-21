@@ -1,5 +1,5 @@
 import type { Header, Redirect, Rewrite } from "next/dist/lib/load-custom-routes";
-import type { Manifest, RoutesManifestRewrite } from ".";
+import type { Manifest, RoutesManifestRewrite } from "./interfaces";
 import { isUrl } from "../utils";
 
 /**

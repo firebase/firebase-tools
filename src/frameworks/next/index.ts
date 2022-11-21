@@ -2,7 +2,6 @@ import { execSync } from "child_process";
 import { readFile, mkdir, copyFile } from "fs/promises";
 import { dirname, join } from "path";
 import type { NextConfig } from "next";
-import type { Header, Rewrite, Redirect } from "next/dist/lib/load-custom-routes";
 import { copy, mkdirp, pathExists } from "fs-extra";
 import { pathToFileURL, parse } from "url";
 import { existsSync } from "fs";
@@ -29,26 +28,7 @@ import {
   isRedirectSupportedByFirebase,
   isRewriteSupportedByFirebase,
 } from "./utils";
-
-export type RoutesManifestRewrite = Rewrite & { regex: string };
-// Next.js's exposed interface is incomplete here
-// TODO see if there's a better way to grab this
-export interface Manifest {
-  distDir?: string;
-  basePath?: string;
-  headers?: (Header & { regex: string })[];
-  redirects?: (Redirect & {
-    internal: boolean;
-    regex: string;
-  })[];
-  rewrites?:
-    | RoutesManifestRewrite[]
-    | {
-        beforeFiles?: RoutesManifestRewrite[];
-        afterFiles?: RoutesManifestRewrite[];
-        fallback?: RoutesManifestRewrite[];
-      };
-}
+import type { Manifest } from "./interfaces";
 
 const CLI_COMMAND = join(
   "node_modules",
