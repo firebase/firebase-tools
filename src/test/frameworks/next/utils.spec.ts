@@ -6,6 +6,7 @@ import {
   isRewriteSupportedByFirebase,
   isRedirectSupportedByFirebase,
   isHeaderSupportedByFirebase,
+  getNextjsRewritesToUse,
 } from "../../../frameworks/next/utils";
 import {
   pathsAsGlobs,
@@ -15,6 +16,7 @@ import {
   supportedHeaders,
   supportedRedirects,
   supportedRewritesArray,
+  supportedRewritesObject,
   unsupportedHeaders,
   unsupportedRedirects,
   unsupportedRewritesArray,
@@ -97,4 +99,24 @@ describe("Next.js utils", () => {
     });
   });
 
+  describe("getNextjsRewritesToUse", () => {
+    it("should use only beforeFiles", () => {
+      if (!supportedRewritesObject?.beforeFiles?.length) {
+        throw new Error("beforeFiles must have rewrites");
+      }
+
+      const rewritesToUse = getNextjsRewritesToUse(supportedRewritesObject);
+
+      for (const [i, rewrite] of supportedRewritesObject.beforeFiles.entries()) {
+        expect(rewrite.source).to.equal(rewritesToUse[i].source);
+        expect(rewrite.destination).to.equal(rewritesToUse[i].destination);
+      }
+    });
+
+    it("should return all rewrites if in array format", () => {
+      const rewritesToUse = getNextjsRewritesToUse(supportedRewritesArray);
+
+      expect(rewritesToUse).to.have.length(supportedRewritesArray.length);
+    });
+  });
 });
