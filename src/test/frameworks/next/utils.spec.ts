@@ -1,11 +1,17 @@
 import { expect } from "chai";
 
-import { pathHasRegex, cleanEscapedChars } from "../../../frameworks/next/utils";
+import {
+  pathHasRegex,
+  cleanEscapedChars,
+  isRewriteSupportedByFirebase,
+} from "../../../frameworks/next/utils";
 import {
   pathsAsGlobs,
   pathsWithEscapedChars,
   pathsWithRegex,
   pathsWithRegexAndEscapedChars,
+  supportedRewritesArray,
+  unsupportedRewritesArray,
 } from "./helpers";
 
 describe("Next.js utils", () => {
@@ -37,7 +43,23 @@ describe("Next.js utils", () => {
 
   describe("cleanEscapedChars", () => {
     it("should clean escaped chars", () => {
-      expect(cleanEscapedChars(pathWithRegexAndEscapedChars).includes("\\")).to.be.false;
+      for (const path of pathsWithRegexAndEscapedChars) {
+        expect(cleanEscapedChars(path).includes("\\")).to.be.false;
+      }
+    });
+  });
+
+  describe("isRewriteSupportedByFirebase", () => {
+    it("should allow supported rewrites", () => {
+      for (const rewrite of supportedRewritesArray) {
+        expect(isRewriteSupportedByFirebase(rewrite)).to.be.true;
+      }
+    });
+
+    it("should disallow unsupported rewrites", () => {
+      for (const rewrite of unsupportedRewritesArray) {
+        expect(isRewriteSupportedByFirebase(rewrite)).to.be.false;
+      }
     });
   });
 });
