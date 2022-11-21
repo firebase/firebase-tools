@@ -50,7 +50,7 @@ export function isRedirectSupportedByFirebase(redirect: Redirect): boolean {
  * Whether a Next.js header is supported by Firebase.
  */
 export function isHeaderSupportedByFirebase(header: Header): boolean {
-  if (pathHasRegex(header.source)) {
+  if ("has" in header || pathHasRegex(header.source)) {
     return false;
   }
 
