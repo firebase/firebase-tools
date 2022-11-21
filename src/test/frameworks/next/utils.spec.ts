@@ -4,13 +4,16 @@ import {
   pathHasRegex,
   cleanEscapedChars,
   isRewriteSupportedByFirebase,
+  isRedirectSupportedByFirebase,
 } from "../../../frameworks/next/utils";
 import {
   pathsAsGlobs,
   pathsWithEscapedChars,
   pathsWithRegex,
   pathsWithRegexAndEscapedChars,
+  supportedRedirects,
   supportedRewritesArray,
+  unsupportedRedirects,
   unsupportedRewritesArray,
 } from "./helpers";
 
@@ -62,4 +65,19 @@ describe("Next.js utils", () => {
       }
     });
   });
+
+  describe("isRedirectSupportedByFirebase", () => {
+    it("should allow supported redirects", () => {
+      for (const redirect of supportedRedirects) {
+        expect(isRedirectSupportedByFirebase(redirect)).to.be.true;
+      }
+    });
+
+    it("should disallow unsupported redirects", () => {
+      for (const redirect of unsupportedRedirects) {
+        expect(isRedirectSupportedByFirebase(redirect)).to.be.false;
+      }
+    });
+  });
+
 });
