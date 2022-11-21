@@ -21,7 +21,7 @@ describe("firestore", () => {
 
     // By default, mock Firestore enabled in Native mode
     checkApiStub.returns(true);
-    checkDbTypeStub.returns("CLOUD_FIRESTORE");
+    checkDbTypeStub.returns("FIRESTORE_NATIVE");
   });
 
   afterEach(() => {
