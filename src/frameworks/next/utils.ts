@@ -39,7 +39,7 @@ export function isRewriteSupportedByFirebase(rewrite: Rewrite): boolean {
  * Whether a Next.js redirect is supported by Firebase.
  */
 export function isRedirectSupportedByFirebase(redirect: Redirect): boolean {
-  if (pathHasRegex(redirect.source) || "internal" in redirect) {
+  if ("has" in redirect || pathHasRegex(redirect.source) || "internal" in redirect) {
     return false;
   }
 
