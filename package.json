@@ -93,7 +93,6 @@
     ]
   },
   "dependencies": {
-    "@firebase/logger": "^0.3.4",
     "@google-cloud/pubsub": "^3.0.1",
     "abort-controller": "^3.0.0",
     "ajv": "^6.12.6",

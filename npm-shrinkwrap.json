@@ -9,7 +9,6 @@
       "version": "11.16.1",
       "license": "MIT",
       "dependencies": {
-        "@firebase/logger": "^0.3.4",
         "@google-cloud/pubsub": "^3.0.1",
         "abort-controller": "^3.0.0",
         "ajv": "^6.12.6",
@@ -1237,6 +1236,7 @@
       "version": "0.3.4",
       "resolved": "https://registry.npmjs.org/@firebase/logger/-/logger-0.3.4.tgz",
       "integrity": "sha512-hlFglGRgZEwoyClZcGLx/Wd+zoLfGmbDkFx56mQt/jJ0XMbfPqwId1kiPl0zgdWZX+D8iH+gT6GuLPFsJWgiGw==",
+      "dev": true,
       "dependencies": {
         "tslib": "^2.1.0"
       }
@@ -1244,7 +1244,8 @@
     "node_modules/@firebase/logger/node_modules/tslib": {
       "version": "2.4.1",
       "resolved": "https://registry.npmjs.org/tslib/-/tslib-2.4.1.tgz",
-      "integrity": "sha512-tGyy4dAjRIEwI7BzsB0lynWgOpfqjUdq91XXAlIWD2OwKBH7oCl/GZG/HT4BOHrTlPMOASlMQ7veyTqpmRcrNA=="
+      "integrity": "sha512-tGyy4dAjRIEwI7BzsB0lynWgOpfqjUdq91XXAlIWD2OwKBH7oCl/GZG/HT4BOHrTlPMOASlMQ7veyTqpmRcrNA==",
+      "dev": true
     },
     "node_modules/@firebase/messaging": {
       "version": "0.7.1",
@@ -15893,6 +15894,7 @@
       "version": "0.3.4",
       "resolved": "https://registry.npmjs.org/@firebase/logger/-/logger-0.3.4.tgz",
       "integrity": "sha512-hlFglGRgZEwoyClZcGLx/Wd+zoLfGmbDkFx56mQt/jJ0XMbfPqwId1kiPl0zgdWZX+D8iH+gT6GuLPFsJWgiGw==",
+      "dev": true,
       "requires": {
         "tslib": "^2.1.0"
       },
@@ -15900,7 +15902,8 @@
         "tslib": {
           "version": "2.4.1",
           "resolved": "https://registry.npmjs.org/tslib/-/tslib-2.4.1.tgz",
-          "integrity": "sha512-tGyy4dAjRIEwI7BzsB0lynWgOpfqjUdq91XXAlIWD2OwKBH7oCl/GZG/HT4BOHrTlPMOASlMQ7veyTqpmRcrNA=="
+          "integrity": "sha512-tGyy4dAjRIEwI7BzsB0lynWgOpfqjUdq91XXAlIWD2OwKBH7oCl/GZG/HT4BOHrTlPMOASlMQ7veyTqpmRcrNA==",
+          "dev": true
         }
       }
     },
