@@ -53,7 +53,11 @@ export default {
             },
           },
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["accounts"],
       },
       parameters: [
@@ -87,7 +91,11 @@ export default {
         requestBody: {
           $ref: "#/components/requestBodies/GoogleCloudIdentitytoolkitV1DeleteAccountRequest",
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["accounts"],
       },
       parameters: [
@@ -127,7 +135,11 @@ export default {
             },
           },
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["accounts"],
       },
       parameters: [
@@ -162,7 +174,11 @@ export default {
         requestBody: {
           $ref: "#/components/requestBodies/GoogleCloudIdentitytoolkitV1GetAccountInfoRequest",
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["accounts"],
       },
       parameters: [
@@ -203,7 +219,11 @@ export default {
             },
           },
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["accounts"],
       },
       parameters: [
@@ -238,7 +258,11 @@ export default {
         requestBody: {
           $ref: "#/components/requestBodies/GoogleCloudIdentitytoolkitV1GetOobCodeRequest",
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["accounts"],
       },
       parameters: [
@@ -279,7 +303,11 @@ export default {
             },
           },
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["accounts"],
       },
       parameters: [
@@ -320,7 +348,11 @@ export default {
             },
           },
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["accounts"],
       },
       parameters: [
@@ -361,7 +393,11 @@ export default {
             },
           },
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["accounts"],
       },
       parameters: [
@@ -402,7 +438,11 @@ export default {
             },
           },
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["accounts"],
       },
       parameters: [
@@ -443,7 +483,11 @@ export default {
             },
           },
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["accounts"],
       },
       parameters: [
@@ -484,7 +528,11 @@ export default {
             },
           },
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["accounts"],
       },
       parameters: [
@@ -525,7 +573,11 @@ export default {
             },
           },
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["accounts"],
       },
       parameters: [
@@ -558,7 +610,11 @@ export default {
         requestBody: {
           $ref: "#/components/requestBodies/GoogleCloudIdentitytoolkitV1SignUpRequest",
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["accounts"],
       },
       parameters: [
@@ -593,7 +649,11 @@ export default {
         requestBody: {
           $ref: "#/components/requestBodies/GoogleCloudIdentitytoolkitV1SetAccountInfoRequest",
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["accounts"],
       },
       parameters: [
@@ -634,7 +694,11 @@ export default {
             },
           },
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["accounts"],
       },
       parameters: [
@@ -677,7 +741,11 @@ export default {
         requestBody: {
           $ref: "#/components/requestBodies/GoogleCloudIdentitytoolkitV1SignUpRequest",
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["projects"],
       },
       parameters: [
@@ -721,7 +789,11 @@ export default {
         requestBody: {
           $ref: "#/components/requestBodies/GoogleCloudIdentitytoolkitV1CreateSessionCookieRequest",
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["projects"],
       },
       parameters: [
@@ -768,7 +840,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -817,7 +890,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -866,7 +940,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -933,7 +1008,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -978,7 +1054,11 @@ export default {
         requestBody: {
           $ref: "#/components/requestBodies/GoogleCloudIdentitytoolkitV1DeleteAccountRequest",
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["projects"],
       },
       parameters: [
@@ -1023,7 +1103,11 @@ export default {
         requestBody: {
           $ref: "#/components/requestBodies/GoogleCloudIdentitytoolkitV1GetAccountInfoRequest",
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["projects"],
       },
       parameters: [
@@ -1070,7 +1154,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -1116,7 +1201,11 @@ export default {
         requestBody: {
           $ref: "#/components/requestBodies/GoogleCloudIdentitytoolkitV1GetOobCodeRequest",
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["projects"],
       },
       parameters: [
@@ -1161,7 +1250,11 @@ export default {
         requestBody: {
           $ref: "#/components/requestBodies/GoogleCloudIdentitytoolkitV1SetAccountInfoRequest",
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["projects"],
       },
       parameters: [
@@ -1212,7 +1305,11 @@ export default {
         requestBody: {
           $ref: "#/components/requestBodies/GoogleCloudIdentitytoolkitV1SignUpRequest",
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["projects"],
       },
       parameters: [
@@ -1263,7 +1360,11 @@ export default {
         requestBody: {
           $ref: "#/components/requestBodies/GoogleCloudIdentitytoolkitV1CreateSessionCookieRequest",
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["projects"],
       },
       parameters: [
@@ -1318,7 +1419,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -1375,7 +1477,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -1443,7 +1546,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -1496,7 +1600,11 @@ export default {
         requestBody: {
           $ref: "#/components/requestBodies/GoogleCloudIdentitytoolkitV1DeleteAccountRequest",
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["projects"],
       },
       parameters: [
@@ -1549,7 +1657,11 @@ export default {
         requestBody: {
           $ref: "#/components/requestBodies/GoogleCloudIdentitytoolkitV1GetAccountInfoRequest",
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["projects"],
       },
       parameters: [
@@ -1603,7 +1715,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -1656,7 +1769,11 @@ export default {
         requestBody: {
           $ref: "#/components/requestBodies/GoogleCloudIdentitytoolkitV1GetOobCodeRequest",
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["projects"],
       },
       parameters: [
@@ -1709,7 +1826,11 @@ export default {
         requestBody: {
           $ref: "#/components/requestBodies/GoogleCloudIdentitytoolkitV1SetAccountInfoRequest",
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["projects"],
       },
       parameters: [
@@ -1798,7 +1919,11 @@ export default {
             schema: { type: "string" },
           },
         ],
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["v1"],
       },
       parameters: [
@@ -1829,7 +1954,11 @@ export default {
             },
           },
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["v1"],
       },
       parameters: [
@@ -1862,7 +1991,7 @@ export default {
           },
         },
         tags: ["v1"],
-        security: [{ apiKey: [] }],
+        security: [{ apiKeyQuery: [] }, { apiKeyHeader: [] }],
       },
       parameters: [
         { $ref: "#/components/parameters/access_token" },
@@ -1901,7 +2030,11 @@ export default {
             },
           },
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["accounts"],
       },
       parameters: [
@@ -1942,7 +2075,11 @@ export default {
             },
           },
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["accounts"],
       },
       parameters: [
@@ -1982,7 +2119,11 @@ export default {
             },
           },
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["accounts"],
       },
       parameters: [
@@ -2022,7 +2163,11 @@ export default {
             },
           },
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["accounts"],
       },
       parameters: [
@@ -2062,7 +2207,11 @@ export default {
             },
           },
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["accounts"],
       },
       parameters: [
@@ -2110,7 +2259,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["defaultSupportedIdps"],
       },
@@ -2143,7 +2293,11 @@ export default {
         parameters: [
           { name: "targetProjectId", in: "path", required: true, schema: { type: "string" } },
         ],
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["projects"],
       },
       patch: {
@@ -2179,7 +2333,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -2228,7 +2383,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -2266,7 +2422,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -2305,7 +2462,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -2337,7 +2495,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -2379,7 +2538,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -2424,7 +2584,11 @@ export default {
             },
           },
         },
-        security: [{ Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] }, { apiKey: [] }],
+        security: [
+          { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
+        ],
         tags: ["projects"],
       },
       parameters: [
@@ -2470,7 +2634,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -2507,7 +2672,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -2540,7 +2706,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -2566,7 +2733,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -2602,7 +2770,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -2649,7 +2818,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -2686,7 +2856,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -2719,7 +2890,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -2745,7 +2917,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -2781,7 +2954,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -2818,7 +2992,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -2857,7 +3032,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -2890,7 +3066,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -2914,7 +3091,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -2946,7 +3124,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -2987,7 +3166,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -3028,7 +3208,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -3073,7 +3254,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -3123,7 +3305,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -3162,7 +3345,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -3203,7 +3387,8 @@ export default {
           security: [
             { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
             { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-            { apiKey: [] },
+            { apiKeyQuery: [] },
+            { apiKeyHeader: [] },
           ],
           tags: ["projects"],
         },
@@ -3236,7 +3421,8 @@ export default {
           security: [
             { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
             { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-            { apiKey: [] },
+            { apiKeyQuery: [] },
+            { apiKeyHeader: [] },
           ],
           tags: ["projects"],
         },
@@ -3279,7 +3465,8 @@ export default {
           security: [
             { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
             { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-            { apiKey: [] },
+            { apiKeyQuery: [] },
+            { apiKeyHeader: [] },
           ],
           tags: ["projects"],
         },
@@ -3327,7 +3514,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -3365,7 +3553,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -3399,7 +3588,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -3426,7 +3616,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -3463,7 +3654,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -3511,7 +3703,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -3549,7 +3742,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -3583,7 +3777,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -3610,7 +3805,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -3647,7 +3843,8 @@ export default {
         security: [
           { Oauth2: ["https://www.googleapis.com/auth/cloud-platform"] },
           { Oauth2: ["https://www.googleapis.com/auth/firebase"] },
-          { apiKey: [] },
+          { apiKeyQuery: [] },
+          { apiKeyHeader: [] },
         ],
         tags: ["projects"],
       },
@@ -3683,7 +3880,7 @@ export default {
           },
         },
         tags: ["secureToken"],
-        security: [{ apiKey: [] }],
+        security: [{ apiKeyQuery: [] }, { apiKeyHeader: [] }],
       },
       parameters: [
         { $ref: "#/components/parameters/access_token" },
@@ -7646,10 +7843,17 @@ export default {
           },
         },
       },
-      apiKey: {
+      apiKeyQuery: {
         type: "apiKey",
         name: "key",
         in: "query",
+        description:
+          "API key. Your API key identifies your project and provides you with API access, quota, and reports. Required unless you provide an OAuth 2.0 token.",
+      },
+      apiKeyHeader: {
+        type: "apiKey",
+        name: "x-goog-api-key",
+        in: "header",
         description:
           "API key. Your API key identifies your project and provides you with API access, quota, and reports. Required unless you provide an OAuth 2.0 token.",
       },
