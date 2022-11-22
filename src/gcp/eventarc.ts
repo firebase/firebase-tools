@@ -6,7 +6,6 @@ import { fieldMasks } from "./proto";
 export const API_VERSION = "v1";
 
 export interface Channel {
-  /** User-provided name. Must be projects/p/locations/l/channels/c after resolution. */
   name: string;
 
   /** Server-assigned uinique identifier. Format is a UUID4 */
