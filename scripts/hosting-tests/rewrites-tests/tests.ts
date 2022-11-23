@@ -193,6 +193,7 @@ async function deleteOldSites(): Promise<void> {
     writeFileSync(firebaseJsonFilePath, JSON.stringify(firebaseJson));
     console.log("deleting");
     await deleteSite(siteName, tempDirInfo.tempDir.name);
+    console.log("deleted");
   }
   console.log("deleteOldSites done");
 }
@@ -1330,7 +1331,7 @@ describe("deploy function-targeted rewrites and functions", () => {
   const beforePromise = (async () => {
     console.log("attempting to delete old sites");
     await deleteOldSites();
-    console.log("attempting to delete old sites");
+    console.log("deleted old sites");
   })();
 
   // All test cases run concurrently. Isolation is handled by creating separate hosting
