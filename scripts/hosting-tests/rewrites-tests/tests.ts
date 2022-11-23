@@ -155,7 +155,7 @@ async function deleteOldSites(): Promise<void> {
   const sites = await sitesList.runner()({
     projectId: projectName,
   });
-  console.log("got sites");
+  console.log(`got sites ${sites.length}`);
 
   const validDateCutoff = new Date("2021-06-01");
   for (const site of sites) {
@@ -166,6 +166,7 @@ async function deleteOldSites(): Promise<void> {
     const siteName = site.name.substring(site.name.lastIndexOf(siteNamePrefixLabel));
     const siteNameParts = siteName.split("-");
     if (siteNameParts.length !== 5) {
+      console.log(`errored ${siteNameParts.length}`);
       throw new Error(
         `Found a site that begins with '${siteNamePrefixLabel}' but the name looks malformed: ${site.name}`
       );
@@ -173,6 +174,7 @@ async function deleteOldSites(): Promise<void> {
     const siteTimestamp = parseInt(siteNameParts[3]);
     if (siteTimestamp < validDateCutoff.getSeconds() || siteTimestamp > Date.now()) {
       // Date doesn't make sense and we don't know what's going on.
+      console.log(`errored ${siteTimestamp.toString()}`);
       throw new Error(
         `Parsed a date for an existing site that looks unexpected: ${siteTimestamp.toString()}`
       );
