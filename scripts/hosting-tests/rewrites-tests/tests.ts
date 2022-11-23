@@ -26,7 +26,7 @@ const projectName = (() => {
 const siteNamePrefixLabel = "rwtestsite";
 const runId = process.env.CI_RUN_ID || "xx";
 const runAttempt = process.env.CI_RUN_ATTEMPT || "yy";
-const testInstance = process.env.INSTANCE || "zz";
+const testInstance = process.env.TEST_INSTANCE || "zz";
 const testConcurrency = 6;
 
 // Run this test manually by:

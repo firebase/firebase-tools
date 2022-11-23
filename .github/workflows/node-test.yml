@@ -74,7 +74,7 @@ jobs:
       FBTOOLS_CLIENT_INTEGRATION_SITE: ${{ secrets.FBTOOLS_CLIENT_INTEGRATION_SITE }}
       CI_RUN_ID: ${{ github.run_id }}
       CI_RUN_ATTEMPT: ${{ github.run_attempt }}
-      DEBUG: true
+      TEST_INSTANCE: nix
 
     strategy:
       fail-fast: false
@@ -130,7 +130,7 @@ jobs:
       FBTOOLS_CLIENT_INTEGRATION_SITE: ${{ secrets.FBTOOLS_CLIENT_INTEGRATION_SITE }}
       CI_RUN_ID: ${{ github.run_id }}
       CI_RUN_ATTEMPT: ${{ github.run_attempt }}
-      DEBUG: true
+      TEST_INSTANCE: win
 
     strategy:
       fail-fast: false
