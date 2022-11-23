@@ -155,10 +155,12 @@ async function deleteOldSites(): Promise<void> {
   const sites = await sitesList.runner()({
     projectId: projectName,
   });
+  console.log("got sites");
 
   const validDateCutoff = new Date("2021-06-01");
   for (const site of sites) {
     if (!site.name.includes(siteNamePrefixLabel)) {
+      console.log("skipping because not ours");
       continue;
     }
     const siteName = site.name.substring(site.name.lastIndexOf(siteNamePrefixLabel));
@@ -177,6 +179,7 @@ async function deleteOldSites(): Promise<void> {
     }
     if (siteTimestamp > Date.now() - 3600) {
       // Don't delete sites less than an hour old.
+      console.log("skipping because new");
       continue;
     }
     const tempDirInfo = new TempDirectoryInfo();
@@ -188,8 +191,10 @@ async function deleteOldSites(): Promise<void> {
     };
     const firebaseJsonFilePath = join(tempDirInfo.tempDir.name, ".", "firebase.json");
     writeFileSync(firebaseJsonFilePath, JSON.stringify(firebaseJson));
+    console.log("deleting");
     await deleteSite(siteName, tempDirInfo.tempDir.name);
   }
+  console.log("deleteOldSites done");
 }
 
 async function createAuthHeadersForFunction(
@@ -1323,7 +1328,9 @@ testCases.push(
 
 describe("deploy function-targeted rewrites and functions", () => {
   const beforePromise = (async () => {
+    console.log("attempting to delete old sites");
     await deleteOldSites();
+    console.log("attempting to delete old sites");
   })();
 
   // All test cases run concurrently. Isolation is handled by creating separate hosting
