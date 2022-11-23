@@ -1330,8 +1330,11 @@ describe("deploy function-targeted rewrites and functions", () => {
   // sites and deploying to separate functions codebases.
   const executor = new QueueExecutor({ concurrency: testConcurrency });
   const testQueue = testCases.map(async (testCase) => {
+    console.log("queueing up a test");
     return executor.run(async () => {
+      console.log("queued up a test");
       await beforePromise;
+      console.log("before is done");
       return testCase.getDonePromise();
     });
   });
@@ -1339,10 +1342,12 @@ describe("deploy function-targeted rewrites and functions", () => {
   testCases.forEach((testCase) => {
     it(testCase.description, async () => {
       try {
+        console.log("waiting for queue to finish");
         await Promise.allSettled(testQueue);
       } catch (e) {
         // We want to wait for all tests to be finished, but don't care if any fail.
       }
+      console.log("checking our test case");
       await testCase.getDonePromise();
     }).timeout(900 * 1e3);
   });
