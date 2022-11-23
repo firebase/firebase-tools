@@ -24,6 +24,9 @@ const projectName = (() => {
   throw new Error("FBTOOLS_TARGET_PROJECT environment variable was not set properly.");
 })();
 const siteNamePrefixLabel = "rwtestsite";
+const runId = process.env.CI_RUN_ID || "xx";
+const runAttempt = process.env.CI_RUN_ATTEMPT || "yy";
+const testInstance = process.env.INSTANCE || "zz";
 const testConcurrency = 6;
 
 // Run this test manually by:
@@ -102,9 +105,8 @@ const functions = require("firebase-functions");
 exports.${functionName} = functions.runWith({ invoker: "private" })${region}.https.onRequest((request, response) => {
   functions.logger.info("Hello logs!", { structuredData: true });
   const envVarFunctionsRegion = process.env.FUNCTION_REGION;
-  response.send("Hello from Firebase ${
-    functionRegions ? "from " + functionRegions.toString() : ""
-  }");
+  response.send("Hello from Firebase ${functionRegions ? "from " + functionRegions.toString() : ""
+    }");
 });`;
   writeFileSync(join(functionsDirectory, ".", "index.js"), functionFileContents);
 
@@ -145,13 +147,8 @@ class TempDirectoryInfo {
   functionsDirPath = join(this.tempDir.name, ".", "functions");
 }
 
-const functionNamePrefix = `helloworld_${process.env.CI_RUN_ID || "xx"}_${
-  process.env.CI_RUN_ATTEMPT || "yy"
-}_${Date.now()}`;
-
-const siteNamePrefix = `${siteNamePrefixLabel}-${process.env.CI_RUN_ID || "xx"}-${
-  process.env.CI_RUN_ATTEMPT || "yy"
-}-${Date.now()}`;
+const functionNamePrefix = `helloworld_${runId}_${runAttempt}_${testInstance}_${Date.now()}`;
+const siteNamePrefix = `${siteNamePrefixLabel}-${runId}-${runAttempt}-${testInstance}-${Date.now()}`;
 
 async function deleteOldSites(): Promise<void> {
   const sites = await sitesList.runner()({
@@ -1324,16 +1321,16 @@ testCases.push(
 );
 
 describe("deploy function-targeted rewrites and functions", () => {
-  before("clean up failed test runs", async function (this: Mocha.Context) {
-    this.timeout(1000 * 1e3);
+  const beforePromise = (async () => {
     await deleteOldSites();
-  });
+  })();
 
   // All test cases run concurrently. Isolation is handled by creating separate hosting
   // sites and deploying to separate functions codebases.
   const executor = new QueueExecutor({ concurrency: testConcurrency });
-  const testQueue = testCases.map((testCase) => {
-    return executor.run(() => {
+  const testQueue = testCases.map(async (testCase) => {
+    return executor.run(async () => {
+      await beforePromise;
       return testCase.getDonePromise();
     });
   });
@@ -1349,9 +1346,10 @@ describe("deploy function-targeted rewrites and functions", () => {
     }).timeout(900 * 1e3);
   });
 
-  // For serial execution, comment the block above and uncomment the block below:
+  // // For serial execution, comment the block above and uncomment the block below:
   // testCases.forEach((testCase) => {
   //   it(testCase.description, async () => {
+  //     await beforePromise;
   //     await testCase.getDonePromise();
   //   }).timeout(900 * 1e3);
   // });
