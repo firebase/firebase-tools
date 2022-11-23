@@ -105,8 +105,9 @@ const functions = require("firebase-functions");
 exports.${functionName} = functions.runWith({ invoker: "private" })${region}.https.onRequest((request, response) => {
   functions.logger.info("Hello logs!", { structuredData: true });
   const envVarFunctionsRegion = process.env.FUNCTION_REGION;
-  response.send("Hello from Firebase ${functionRegions ? "from " + functionRegions.toString() : ""
-    }");
+  response.send("Hello from Firebase ${
+    functionRegions ? "from " + functionRegions.toString() : ""
+  }");
 });`;
   writeFileSync(join(functionsDirectory, ".", "index.js"), functionFileContents);
 
