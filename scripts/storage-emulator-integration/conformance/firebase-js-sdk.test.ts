@@ -14,10 +14,13 @@ import {
   SMALL_FILE_SIZE,
   TEST_SETUP_TIMEOUT,
   getTmpDir,
-  writeToFile,
 } from "../utils";
 
 const TEST_FILE_NAME = "testing/storage_ref/testFile";
+
+// Test case that should only run when targeting the emulator.
+// Example use: emulatorOnly.it("Local only test case", () => {...});
+const emulatorOnly = { it: TEST_ENV.useProductionServers ? it.skip : it };
 
 describe("Firebase Storage JavaScript SDK conformance tests", () => {
   const storageBucket = TEST_ENV.appConfig.storageBucket;
@@ -27,11 +30,6 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
   const tmpDir = getTmpDir();
   const smallFilePath: string = createRandomFile("small_file", SMALL_FILE_SIZE, tmpDir);
   const emptyFilePath: string = createRandomFile("empty_file", 0, tmpDir);
-  const imageFilePath = writeToFile(
-    "image_base64",
-    Buffer.from(IMAGE_FILE_BASE64, "base64"),
-    tmpDir
-  );
 
   let test: EmulatorEndToEndTest;
   let testBucket: Bucket;
@@ -451,7 +449,8 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
       });
 
       it("serves the right content", async () => {
-        await testBucket.upload(imageFilePath, { destination: TEST_FILE_NAME });
+        const contents = Buffer.from("hello world");
+        await testBucket.file(TEST_FILE_NAME).save(contents);
         await signInToFirebaseAuth(page);
 
         const downloadUrl = await page.evaluate((filename) => {
@@ -460,11 +459,13 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
 
         await new Promise((resolve, reject) => {
           TEST_ENV.requestClient.get(downloadUrl, (response) => {
-            const data: any = [];
+            let data = Buffer.alloc(0);
             response
-              .on("data", (chunk) => data.push(chunk))
+              .on("data", (chunk) => {
+                data = Buffer.concat([data, chunk]);
+              })
               .on("end", () => {
-                expect(Buffer.concat(data)).to.deep.equal(Buffer.from(IMAGE_FILE_BASE64, "base64"));
+                expect(data).to.deep.equal(contents);
               })
               .on("close", resolve)
               .on("error", reject);
@@ -472,7 +473,7 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
         });
       });
 
-      it("serves content successfully when spammed with calls", async () => {
+      emulatorOnly.it("serves content successfully when spammed with calls", async () => {
         const NUMBER_OF_FILES = 10;
         const allFileNames: string[] = [];
         for (let i = 0; i < NUMBER_OF_FILES; i++) {
@@ -544,7 +545,7 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
         await testBucket.upload(emptyFilePath, { destination: TEST_FILE_NAME });
         await signInToFirebaseAuth(page);
 
-        const metadata = await page.evaluate(async (filename) => {
+        const metadata = await page.evaluate((filename) => {
           return firebase
             .storage()
             .ref(filename)
@@ -574,7 +575,7 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
         });
         await signInToFirebaseAuth(page);
 
-        const updatedMetadata = await page.evaluate(async (filename) => {
+        const updatedMetadata = await page.evaluate((filename) => {
           return firebase.storage().ref(filename).updateMetadata({
             cacheControl: null,
             contentDisposition: null,

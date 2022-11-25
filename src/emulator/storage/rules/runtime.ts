@@ -285,7 +285,7 @@ export class StorageRulesRuntime {
       runtimeActionRequest
     )) as RuntimeActionLoadRulesetResponse;
 
-    if (response.errors.length || response.warnings.length) {
+    if (response.errors.length) {
       return {
         issues: StorageRulesIssues.fromResponse(response),
       };
