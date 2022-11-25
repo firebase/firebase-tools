@@ -209,7 +209,7 @@ export async function want(args: {
  */
 export async function resolveVersion(ref: refs.Ref): Promise<string> {
   const extensionRef = refs.toExtensionRef(ref);
-  const versions = await extensionsApi.listExtensionVersions(extensionRef);
+  const versions = await extensionsApi.listExtensionVersions(extensionRef, undefined, true);
   if (versions.length === 0) {
     throw new FirebaseError(`No versions found for ${extensionRef}`);
   }

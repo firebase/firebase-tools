@@ -292,20 +292,18 @@ export class FunctionsEmulator implements EmulatorInstance {
       const { host, port } = this.getInfo();
       triggers.forEach((triggerId) => {
         this.workQueue.submit(() => {
-          return new Promise((resolve, reject) => {
-            const trigReq = http.request(
-              {
-                host: connectableHostname(host),
-                port,
-                method: req.method,
-                path: `/functions/projects/${projectId}/triggers/${triggerId}`,
-                headers: req.headers,
-              },
-              resolve
-            );
+          return new Promise<void>((resolve, reject) => {
+            const trigReq = http.request({
+              host: connectableHostname(host),
+              port,
+              method: req.method,
+              path: `/functions/projects/${projectId}/triggers/${triggerId}`,
+              headers: req.headers,
+            });
             trigReq.on("error", reject);
             trigReq.write(rawBody);
             trigReq.end();
+            resolve();
           });
         });
       });
@@ -1397,6 +1395,11 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
 
     const record = this.getTriggerRecordByKey(triggerId);
+    // If trigger is disabled, exit early
+    if (!record.enabled) {
+      res.status(204).send("Background triggers are currently disabled.");
+      return;
+    }
     const trigger = record.def;
     logger.debug(`Accepted request ${method} ${req.url} --> ${triggerId}`);
 
