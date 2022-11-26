@@ -1367,7 +1367,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
       // In firebase-functions we manually copy 'sub' to 'uid'
       // https://github.com/firebase/firebase-admin-node/blob/0b2082f1576f651e75069e38ce87e639c25289af/src/auth/token-verifier.ts#L249
-      const claims = decoded.payload;
+      const claims: any = decoded.payload;
       claims.uid = claims.sub;
 
       return claims;
@@ -1409,7 +1409,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     const isCallable = trigger.labels && trigger.labels["deployment-callable"] === "true";
     const authHeader = req.header("Authorization");
     if (authHeader && isCallable && trigger.platform !== "gcfv2") {
-      const token = this.tokenFromAuthHeader(authHeader);
+      const token: any = this.tokenFromAuthHeader(authHeader);
       if (token) {
         const contextAuth = {
           uid: token.uid,
