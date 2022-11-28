@@ -1,14 +1,16 @@
-import type { RoutesManifestRedirects } from "../../../../frameworks/next/interfaces";
+import type { Manifest } from "../../../../frameworks/next/interfaces";
 import { supportedPaths, unsupportedPaths } from "./paths";
 
-export const supportedRedirects: RoutesManifestRedirects = supportedPaths.map((path) => ({
-  source: path,
-  destination: `${path}/redirect`,
-  regex: "",
-  statusCode: 301,
-}));
+export const supportedRedirects: NonNullable<Manifest["redirects"]> = supportedPaths.map(
+  (path) => ({
+    source: path,
+    destination: `${path}/redirect`,
+    regex: "",
+    statusCode: 301,
+  })
+);
 
-export const unsupportedRedirects: RoutesManifestRedirects = [
+export const unsupportedRedirects: NonNullable<Manifest["redirects"]> = [
   ...unsupportedPaths.map((path) => ({
     source: path,
     destination: `/${path}/redirect`,

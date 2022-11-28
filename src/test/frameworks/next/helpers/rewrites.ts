@@ -1,16 +1,16 @@
 import type {
-  RoutesManifestRewriteArray,
+  RoutesManifestRewrite,
   RoutesManifestRewriteObject,
 } from "../../../../frameworks/next/interfaces";
 import { supportedPaths, unsupportedPaths } from "./paths";
 
-export const supportedRewritesArray: RoutesManifestRewriteArray = supportedPaths.map((path) => ({
+export const supportedRewritesArray: RoutesManifestRewrite[] = supportedPaths.map((path) => ({
   source: path,
   destination: `${path}/rewrite`,
   regex: "",
 }));
 
-export const unsupportedRewritesArray: RoutesManifestRewriteArray = [
+export const unsupportedRewritesArray: RoutesManifestRewrite[] = [
   ...unsupportedPaths.map((path) => ({
     source: path,
     destination: `/${path}/rewrite`,

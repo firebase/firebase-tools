@@ -1,7 +1,7 @@
-import type { RoutesManifestHeaders } from "../../../../frameworks/next/interfaces";
+import type { RoutesManifestHeader } from "../../../../frameworks/next/interfaces";
 import { supportedPaths, unsupportedPaths } from "./paths";
 
-export const supportedHeaders: RoutesManifestHeaders = [
+export const supportedHeaders: RoutesManifestHeader[] = [
   ...supportedPaths.map((path) => ({
     source: path,
     regex: "",
@@ -178,7 +178,7 @@ export const supportedHeaders: RoutesManifestHeaders = [
   },
 ];
 
-export const unsupportedHeaders: RoutesManifestHeaders = [
+export const unsupportedHeaders: RoutesManifestHeader[] = [
   ...unsupportedPaths.map((path) => ({
     source: path,
     regex: "",

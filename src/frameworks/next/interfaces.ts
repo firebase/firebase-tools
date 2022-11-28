@@ -1,21 +1,18 @@
 import type { Header, Rewrite, Redirect } from "next/dist/lib/load-custom-routes";
 
-export type RoutesManifestRedirect = Redirect & {
+export interface RoutesManifestRewrite extends Rewrite {
   regex: string;
-  internal?: boolean;
-};
-export type RoutesManifestRedirects = RoutesManifestRedirect[];
+}
 
-export type RoutesManifestRewrite = Rewrite & { regex: string };
-export type RoutesManifestRewriteArray = RoutesManifestRewrite[];
-export type RoutesManifestRewriteObject = {
+export interface RoutesManifestRewriteObject {
   beforeFiles?: RoutesManifestRewrite[];
   afterFiles?: RoutesManifestRewrite[];
   fallback?: RoutesManifestRewrite[];
-};
+}
 
-export type RoutesManifestHeader = Header & { regex: string };
-export type RoutesManifestHeaders = RoutesManifestHeader[];
+export interface RoutesManifestHeader extends Header {
+  regex: string;
+}
 
 // Next.js's exposed interface is incomplete here
 // TODO see if there's a better way to grab this
@@ -23,7 +20,12 @@ export type RoutesManifestHeaders = RoutesManifestHeader[];
 export interface Manifest {
   distDir?: string;
   basePath?: string;
-  headers?: RoutesManifestHeaders;
-  redirects?: RoutesManifestRedirects;
-  rewrites?: RoutesManifestRewriteArray | RoutesManifestRewriteObject;
+  headers?: RoutesManifestHeader[];
+  redirects?: Array<
+    Redirect & {
+      regex: string;
+      internal?: boolean;
+    }
+  >;
+  rewrites?: RoutesManifestRewrite[] | RoutesManifestRewriteObject;
 }
