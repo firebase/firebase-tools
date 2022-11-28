@@ -40,7 +40,11 @@ interface Manifest {
 }
 
 const CLI_COMMAND = join(
-  "node_modules",
+  require.resolve("next"), // ./dist/server/next.js (ref: https://github.com/vercel/next.js/blob/canary/packages/next/package.json)
+  "..", // server/
+  "..", // dist/
+  "..", // next/
+  "..", // node_modules/
   ".bin",
   process.platform === "win32" ? "next.cmd" : "next"
 );
