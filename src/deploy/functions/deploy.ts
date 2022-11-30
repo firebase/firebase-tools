@@ -112,7 +112,7 @@ export async function deploy(
   await checkHttpIam(context, options, payload);
   const uploads: Promise<void>[] = [];
   for (const [codebase, { wantBackend, haveBackend }] of Object.entries(payload.functions)) {
-    if (shouldUploadBeSkipped(wantBackend, haveBackend)) {
+    if (shouldUploadBeSkipped(context, wantBackend, haveBackend)) {
       continue;
     }
     uploads.push(uploadCodebase(context, codebase, wantBackend));
@@ -124,9 +124,15 @@ export async function deploy(
  * @return True IFF wantBackend + haveBackend are the same
  */
 export function shouldUploadBeSkipped(
+  context: args.Context,
   wantBackend: backend.Backend,
   haveBackend: backend.Backend
 ): boolean {
+  // If function targets are specified by --only flag, assume that function will be deployed
+  // and go ahead and upload the source.
+  if (context.filters && context.filters.length > 0) {
+    return false;
+  }
   const wantEndpoints = backend.allEndpoints(wantBackend);
   const haveEndpoints = backend.allEndpoints(haveBackend);
 
