@@ -17,7 +17,7 @@ const CLI_COMMAND = join(
   process.platform === "win32" ? "vite.cmd" : "vite"
 );
 
-const VITE_DEFAULT_BUILD_SCRIPTS = ["vite build", "tsc && vite build"];
+export const VITE_DEFAULT_BUILD_SCRIPTS = ["vite build", "tsc && vite build"];
 
 export const initViteTemplate = (template: string) => async (setup: any) =>
   await init(setup, template);
