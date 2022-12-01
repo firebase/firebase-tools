@@ -1,13 +1,20 @@
 // import { Bucket } from "@google-cloud/storage";
-// import { expect } from "chai";
+import { expect } from "chai";
 // import * as firebase from "firebase";
-// import * as admin from "firebase-admin";
-// import * as fs from "fs";
+import * as admin from "firebase-admin";
+import * as fs from "fs";
 // import * as puppeteer from "puppeteer";
 import { TEST_ENV } from "./env";
 // import { IMAGE_FILE_BASE64 } from "../../../src/test/emulators/fixtures";
 import { TriggerEndToEndTest } from "../../integration-helpers/framework";
-import { TEST_SETUP_TIMEOUT } from "../utils";
+import {
+  // createRandomFile,
+  EMULATORS_SHUTDOWN_DELAY_MS,
+  // resetStorageEmulator,
+  // SMALL_FILE_SIZE,
+  TEST_SETUP_TIMEOUT,
+  // getTmpDir,
+} from "../utils";
 
 // Test case that should only run when targeting the emulator.
 // Example use: emulatorOnly.it("Local only test case", () => {...});
@@ -131,18 +138,25 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
   //     });
   //   });
 
-  //   after(async function (this) {
-  //     this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
-  //     admin.app().delete();
-  //     fs.rmSync(tmpDir, { recursive: true, force: true });
-  //     await page.close();
-  //     await browser.close();
+  after(async function (this) {
+    this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
+    // admin.app().delete();
+    // fs.rmSync(tmpDir, { recursive: true, force: true });
+    // await page.close();
+    // await browser.close();
 
-  //     TEST_ENV.removeEnvVars();
-  //     if (!TEST_ENV.useProductionServers) {
-  //       await test.stopEmulators();
-  //     }
-  //   });
+    TEST_ENV.removeEnvVars();
+    if (!TEST_ENV.useProductionServers) {
+      await test.stopEmulators();
+    }
+  });
+  describe(".ref()", () => {
+    describe("#putString()", () => {
+      it("should upload a string", () => {
+        expect(true);
+      });
+    });
+  });
 
   //   describe(".ref()", () => {
   //     describe("#putString()", () => {
