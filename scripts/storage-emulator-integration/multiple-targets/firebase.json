@@ -11,7 +11,7 @@
     ],
     "emulators": {
       "storage": {
-        "port": 9399
+        "port": 9199
       }
     }
   }

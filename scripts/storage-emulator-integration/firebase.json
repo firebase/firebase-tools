@@ -5,13 +5,13 @@
     },
     "emulators": {
       "hub": {
-        "port": 4002
+        "port": 4000
       },
       "auth": {
-        "port": 9299
+        "port": 9099
       },
       "storage": {
-        "port": 9399
+        "port": 9199
       }
     }
 }
