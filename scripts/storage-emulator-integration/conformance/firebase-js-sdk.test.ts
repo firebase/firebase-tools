@@ -1,9 +1,9 @@
 // import { Bucket } from "@google-cloud/storage";
 import { expect } from "chai";
 // import * as firebase from "firebase";
-import * as admin from "firebase-admin";
+// import * as admin from "firebase-admin";
 // import * as fs from "fs";
-import * as puppeteer from "puppeteer";
+// import * as puppeteer from "puppeteer";
 import { TEST_ENV } from "./env";
 // import { IMAGE_FILE_BASE64 } from "../../../src/test/emulators/fixtures";
 import { TriggerEndToEndTest } from "../../integration-helpers/framework";
@@ -32,8 +32,8 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
   let test: TriggerEndToEndTest;
   // let testBucket: Bucket;
   // let authHeader: { Authorization: string };
-  let browser: puppeteer.Browser;
-  let page: puppeteer.Page;
+  // let browser: puppeteer.Browser;
+  // let page: puppeteer.Page;
 
   // async function uploadText(
   //   page: puppeteer.Page,
