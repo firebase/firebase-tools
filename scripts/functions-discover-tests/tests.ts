@@ -64,10 +64,15 @@ describe("Function discovery test", function (this) {
       const cli = new CLIProcess("default", path.join(FIXTURES, tc.projectDir));
 
       let output: any;
-      await cli.start("functions:discover", FIREBASE_PROJECT, ["--json"], (data: any) => {
-        output = JSON.parse(data);
-        return true;
-      });
+      await cli.start(
+        "internaltesting:functions:discover",
+        FIREBASE_PROJECT,
+        ["--json"],
+        (data: any) => {
+          output = JSON.parse(data);
+          return true;
+        }
+      );
       expect(output.status).to.equal("success");
       for (const e of tc.expects) {
         const endpoints = output.result?.[e.codebase]?.endpoints;
