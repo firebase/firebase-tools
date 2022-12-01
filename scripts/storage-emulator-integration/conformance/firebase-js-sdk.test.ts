@@ -1,9 +1,9 @@
-// import { Bucket } from "@google-cloud/storage";
+import { Bucket } from "@google-cloud/storage";
 import { expect } from "chai";
 // import * as firebase from "firebase";
-// import * as admin from "firebase-admin";
+import * as admin from "firebase-admin";
 // import * as fs from "fs";
-// import * as puppeteer from "puppeteer";
+import * as puppeteer from "puppeteer";
 import { TEST_ENV } from "./env";
 // import { IMAGE_FILE_BASE64 } from "../../../src/test/emulators/fixtures";
 import { TriggerEndToEndTest } from "../../integration-helpers/framework";
@@ -32,8 +32,8 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
   let test: TriggerEndToEndTest;
   // let testBucket: Bucket;
   // let authHeader: { Authorization: string };
-  // let browser: puppeteer.Browser;
-  // let page: puppeteer.Page;
+  let browser: puppeteer.Browser;
+  let page: puppeteer.Page;
 
   // async function uploadText(
   //   page: puppeteer.Page,
@@ -86,30 +86,30 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
       await test.startEmulators(["--only", "auth,storage"]);
     }
 
-    // // Init GCS admin SDK.
-    // const credential = TEST_ENV.prodServiceAccountKeyJson
-    //   ? admin.credential.cert(TEST_ENV.prodServiceAccountKeyJson)
-    //   : admin.credential.applicationDefault();
-    // admin.initializeApp({ credential });
+    // Init GCS admin SDK.
+    const credential = TEST_ENV.prodServiceAccountKeyJson
+      ? admin.credential.cert(TEST_ENV.prodServiceAccountKeyJson)
+      : admin.credential.applicationDefault();
+    admin.initializeApp({ credential });
     // testBucket = admin.storage().bucket(storageBucket);
     // authHeader = { Authorization: `Bearer ${await TEST_ENV.adminAccessTokenGetter}` };
 
-    // // Init fake browser page.
-    // browser = await puppeteer.launch({
-    //   headless: !TEST_ENV.showBrowser,
-    //   devtools: true,
-    // });
-    // page = await browser.newPage();
-    // await page.goto("https://example.com", { waitUntil: "networkidle2" });
-    // await page.addScriptTag({
-    //   url: "https://www.gstatic.com/firebasejs/9.9.1/firebase-app-compat.js",
-    // });
-    // await page.addScriptTag({
-    //   url: "https://www.gstatic.com/firebasejs/9.9.1/firebase-auth-compat.js",
-    // });
-    // await page.addScriptTag({
-    //   url: "https://www.gstatic.com/firebasejs/9.9.1/firebase-storage-compat.js",
-    // });
+    // Init fake browser page.
+    browser = await puppeteer.launch({
+      headless: !TEST_ENV.showBrowser,
+      devtools: true,
+    });
+    page = await browser.newPage();
+    await page.goto("https://example.com", { waitUntil: "networkidle2" });
+    await page.addScriptTag({
+      url: "https://www.gstatic.com/firebasejs/9.9.1/firebase-app-compat.js",
+    });
+    await page.addScriptTag({
+      url: "https://www.gstatic.com/firebasejs/9.9.1/firebase-auth-compat.js",
+    });
+    await page.addScriptTag({
+      url: "https://www.gstatic.com/firebasejs/9.9.1/firebase-storage-compat.js",
+    });
 
     // // Init Firebase app in browser context and maybe set emulator host overrides.
     // await page.evaluate(
@@ -140,10 +140,10 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
 
   after(async function (this) {
     this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
-    // admin.app().delete();
+    admin.app().delete();
     // fs.rmSync(tmpDir, { recursive: true, force: true });
-    // await page.close();
-    // await browser.close();
+    await page.close();
+    await browser.close();
 
     TEST_ENV.removeEnvVars();
     if (!TEST_ENV.useProductionServers) {
