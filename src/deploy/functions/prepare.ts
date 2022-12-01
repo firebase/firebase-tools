@@ -31,7 +31,9 @@ import { AUTH_BLOCKING_EVENTS } from "../../functions/events/v1";
 import { generateServiceIdentity } from "../../gcp/serviceusage";
 import { applyBackendHashToBackends } from "./cache/applyHash";
 import { allEndpoints, Backend } from "./backend";
+import { assertExhaustive } from "../../functional";
 
+export const EVENTARC_SOURCE_ENV = "EVENTARC_CLOUD_EVENT_SOURCE";
 function hasUserConfig(config: Record<string, unknown>): boolean {
   // "firebase" key is always going to exist in runtime config.
   // If any other key exists, we can assume that user is using runtime config.
@@ -138,7 +140,19 @@ export async function prepare(
     }
 
     for (const endpoint of backend.allEndpoints(wantBackend)) {
-      endpoint.environmentVariables = wantBackend.environmentVariables;
+      endpoint.environmentVariables = wantBackend.environmentVariables || {};
+      let resource: string;
+      if (endpoint.platform === "gcfv1") {
+        resource = `projects/${endpoint.project}/locations/${endpoint.region}/functions/${endpoint.id}`;
+      } else if (endpoint.platform === "gcfv2") {
+        // N.B. If GCF starts allowing v1's allowable characters in IDs they're
+        // going to need to have a transform to create a service ID (which has a
+        // more restrictive cahracter set). We'll need to reimplement that here.
+        resource = `projects/${endpoint.project}/locations/${endpoint.region}/services/${endpoint.id}`;
+      } else {
+        assertExhaustive(endpoint.platform);
+      }
+      endpoint.environmentVariables[EVENTARC_SOURCE_ENV] = resource;
       endpoint.codebase = codebase;
     }
     wantBackends[codebase] = wantBackend;
@@ -199,7 +213,7 @@ export async function prepare(
   for (const [codebase, { wantBackend, haveBackend }] of Object.entries(payload.functions)) {
     inferDetailsFromExisting(wantBackend, haveBackend, codebaseUsesEnvs.includes(codebase));
     await ensureTriggerRegions(wantBackend);
-    resolveCpu(wantBackend);
+    resolveCpuAndConcurrency(wantBackend);
     validate.endpointsAreValid(wantBackend);
     inferBlockingDetails(wantBackend);
   }
@@ -307,16 +321,14 @@ export function inferDetailsFromExisting(
       wantE.availableMemoryMb = haveE.availableMemoryMb;
     }
 
-    // N.B. This code doesn't handle automatic downgrading of concurrency if
-    // the customer sets CPU <1. We'll instead error that you can't have both.
-    // We may want to handle this case, though it might also be surprising to
-    // customers if they _don't_ get an error and we silently drop concurrency.
-    if (typeof wantE.concurrency === "undefined" && haveE.concurrency) {
-      wantE.concurrency = haveE.concurrency;
-    }
     if (typeof wantE.cpu === "undefined" && haveE.cpu) {
       wantE.cpu = haveE.cpu;
     }
+
+    // N.B. concurrency has different defaults based on CPU. If the customer
+    // only specifies CPU and they change that specification to < 1, we should
+    // turn off concurrency.
+    // We'll hanndle this in setCpuAndConcurrency
 
     wantE.securityLevel = haveE.securityLevel ? haveE.securityLevel : "SECURE_ALWAYS";
 
@@ -394,7 +406,7 @@ export function inferBlockingDetails(want: backend.Backend): void {
  * provided and sets concurrency based on the CPU level if not provided.
  * After this function, CPU will be a real number and not "gcf_gen1".
  */
-export function resolveCpu(want: backend.Backend): void {
+export function resolveCpuAndConcurrency(want: backend.Backend): void {
   for (const e of backend.allEndpoints(want)) {
     if (e.platform === "gcfv1") {
       continue;
@@ -403,6 +415,10 @@ export function resolveCpu(want: backend.Backend): void {
       e.cpu = backend.memoryToGen1Cpu(e.availableMemoryMb || backend.DEFAULT_MEMORY);
     } else if (!e.cpu) {
       e.cpu = backend.memoryToGen2Cpu(e.availableMemoryMb || backend.DEFAULT_MEMORY);
+    }
+
+    if (!e.concurrency) {
+      e.concurrency = e.cpu >= 1 ? backend.DEFAULT_CONCURRENCY : 1;
     }
   }
 }

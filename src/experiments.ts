@@ -66,9 +66,7 @@ export const ALL_EXPERIMENTS = experiments({
   },
   functionsparams: {
     shortDescription: "Adds support for paramaterizing functions deployments",
-  },
-  skipdeployingnoopfunctions: {
-    shortDescription: "Detect that there have been no changes to a function and skip deployment",
+    default: true,
   },
 
   // Emulator experiments
@@ -81,10 +79,12 @@ export const ALL_EXPERIMENTS = experiments({
     shortDescription: "Native support for popular web frameworks",
     fullDescription:
       "Adds support for popular web frameworks such as Next.js " +
-      "Nuxt, Netlify, Angular, and Vite-compatible frameworks. Firebase is " +
+      "Angular, React, Svelte, and Vite-compatible frameworks. Firebase is " +
       "committed to support these platforms long-term, but a manual migration " +
       "may be required when the non-experimental support for these frameworks " +
       "is released",
+    docsUri: "https://firebase.google.com/docs/hosting/frameworks-overview",
+    public: true,
   },
   pintags: {
     shortDescription: "Adds the pinTag option to Run and Functions rewrites",

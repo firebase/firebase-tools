@@ -25,6 +25,13 @@ const V2_EVENTS = [
   ...events.v2.DATABASE_EVENTS,
 ];
 
+/**
+ * Label for eventarc event sources.
+ * TODO: Consider DRYing from functions/prepare.ts
+ * A nice place would be to put it in functionsv2.ts once we get rid of functions.ts
+ */
+export const EVENTARC_SOURCE_ENV = "EVENTARC_CLOUD_EVENT_SOURCE";
+
 export type SignatureType = "http" | "event" | "cloudevent";
 
 export interface ParsedTriggerDefinition {
@@ -171,6 +178,19 @@ export function emulatedFunctionsFromEndpoints(
     };
     def.availableMemoryMb = endpoint.availableMemoryMb || 256;
     def.labels = endpoint.labels || {};
+    if (endpoint.platform === "gcfv1") {
+      def.labels[EVENTARC_SOURCE_ENV] =
+        "cloudfunctions-emulated.googleapis.com" +
+        `/projects/${endpoint.project || "project"}/locations/${endpoint.region}/functions/${
+          endpoint.id
+        }`;
+    } else if (endpoint.platform === "gcfv2") {
+      def.labels[EVENTARC_SOURCE_ENV] =
+        "run-emulated.googleapis.com" +
+        `/projects/${endpoint.project || "project"}/locations/${endpoint.region}/services/${
+          endpoint.id
+        }`;
+    }
     def.timeoutSeconds = endpoint.timeoutSeconds || 60;
     def.secretEnvironmentVariables = endpoint.secretEnvironmentVariables || [];
     def.platform = endpoint.platform;
