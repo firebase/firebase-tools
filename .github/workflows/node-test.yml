@@ -90,7 +90,7 @@ jobs:
           - npm run test:import-export
           - npm run test:storage-deploy
           # Temporarily disable broken storage emulator integration test.
-          # - npm run test:storage-emulator-integration
+          - npm run test:storage-emulator-integration
           - npm run test:triggers-end-to-end
           - npm run test:triggers-end-to-end:inspect
     steps:
