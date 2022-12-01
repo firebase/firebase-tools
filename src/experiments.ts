@@ -97,10 +97,16 @@ export const ALL_EXPERIMENTS = experiments({
       "if any service exceeds 500 tags, but it is theoretically possible that a project " +
       "exceeds the region-wide limit of tags and an old site version fails",
   },
-
   // Access experiments
   crossservicerules: {
     shortDescription: "Allow Firebase Rules to reference resources in other services",
+  },
+  internaltesting: {
+    shortDescription: "Exposes Firebase CLI commands intended for internal uses.",
+    fullDescription:
+      "Exposes Firebase CLI commands intended for internal uses. " +
+      "Internal commands are not meant for public consumption and may break or disappear" +
+      "without notice.",
   },
 });
 
