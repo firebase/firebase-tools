@@ -1,84 +1,75 @@
-import { Bucket } from "@google-cloud/storage";
-import { expect } from "chai";
-import * as firebase from "firebase";
-import * as admin from "firebase-admin";
-import * as fs from "fs";
-import * as puppeteer from "puppeteer";
+// import { Bucket } from "@google-cloud/storage";
+// import { expect } from "chai";
+// import * as firebase from "firebase";
+// import * as admin from "firebase-admin";
+// import * as fs from "fs";
+// import * as puppeteer from "puppeteer";
 import { TEST_ENV } from "./env";
-import { IMAGE_FILE_BASE64 } from "../../../src/test/emulators/fixtures";
+// import { IMAGE_FILE_BASE64 } from "../../../src/test/emulators/fixtures";
 import { TriggerEndToEndTest } from "../../integration-helpers/framework";
-import {
-  createRandomFile,
-  EMULATORS_SHUTDOWN_DELAY_MS,
-  resetStorageEmulator,
-  SMALL_FILE_SIZE,
-  TEST_SETUP_TIMEOUT,
-  getTmpDir,
-} from "../utils";
-
-const TEST_FILE_NAME = "testing/storage_ref/testFile";
+import { TEST_SETUP_TIMEOUT } from "../utils";
 
 // Test case that should only run when targeting the emulator.
 // Example use: emulatorOnly.it("Local only test case", () => {...});
-const emulatorOnly = { it: TEST_ENV.useProductionServers ? it.skip : it };
+// const emulatorOnly = { it: TEST_ENV.useProductionServers ? it.skip : it };
 
 describe("Firebase Storage JavaScript SDK conformance tests", () => {
-  const storageBucket = TEST_ENV.appConfig.storageBucket;
-  const expectedFirebaseHost = TEST_ENV.firebaseHost;
+  // const storageBucket = TEST_ENV.appConfig.storageBucket;
+  // const expectedFirebaseHost = TEST_ENV.firebaseHost;
 
   // Temp directory to store generated files.
-  const tmpDir = getTmpDir();
-  const smallFilePath: string = createRandomFile("small_file", SMALL_FILE_SIZE, tmpDir);
-  const emptyFilePath: string = createRandomFile("empty_file", 0, tmpDir);
+  // const tmpDir = getTmpDir();
+  // const smallFilePath: string = createRandomFile("small_file", SMALL_FILE_SIZE, tmpDir);
+  // const emptyFilePath: string = createRandomFile("empty_file", 0, tmpDir);
 
   let test: TriggerEndToEndTest;
-  let testBucket: Bucket;
-  let authHeader: { Authorization: string };
-  let browser: puppeteer.Browser;
-  let page: puppeteer.Page;
+  // let testBucket: Bucket;
+  // let authHeader: { Authorization: string };
+  // let browser: puppeteer.Browser;
+  // let page: puppeteer.Page;
 
-  async function uploadText(
-    page: puppeteer.Page,
-    filename: string,
-    text: string,
-    format?: string,
-    metadata?: firebase.storage.UploadMetadata
-  ): Promise<string> {
-    return page.evaluate(
-      async (filename, text, format, metadata) => {
-        try {
-          const task = await firebase
-            .storage()
-            .ref(filename)
-            .putString(text, format, JSON.parse(metadata));
-          return task.state;
-        } catch (err) {
-          if (err instanceof Error) {
-            throw err.message;
-          }
-          throw err;
-        }
-      },
-      filename,
-      text,
-      format ?? "raw",
-      JSON.stringify(metadata ?? {})
-    )!;
-  }
+  // async function uploadText(
+  //   page: puppeteer.Page,
+  //   filename: string,
+  //   text: string,
+  //   format?: string,
+  //   metadata?: firebase.storage.UploadMetadata
+  // ): Promise<string> {
+  //   return page.evaluate(
+  //     async (filename, text, format, metadata) => {
+  //       try {
+  //         const task = await firebase
+  //           .storage()
+  //           .ref(filename)
+  //           .putString(text, format, JSON.parse(metadata));
+  //         return task.state;
+  //       } catch (err) {
+  //         if (err instanceof Error) {
+  //           throw err.message;
+  //         }
+  //         throw err;
+  //       }
+  //     },
+  //     filename,
+  //     text,
+  //     format ?? "raw",
+  //     JSON.stringify(metadata ?? {})
+  //   )!;
+  // }
 
-  async function signInToFirebaseAuth(page: puppeteer.Page): Promise<void> {
-    await page.evaluate(async () => {
-      await firebase.auth().signInAnonymously();
-    });
-  }
+  // async function signInToFirebaseAuth(page: puppeteer.Page): Promise<void> {
+  //   await page.evaluate(async () => {
+  //     await firebase.auth().signInAnonymously();
+  //   });
+  // }
 
-  async function resetState(): Promise<void> {
-    if (TEST_ENV.useProductionServers) {
-      await testBucket.deleteFiles();
-    } else {
-      await resetStorageEmulator(TEST_ENV.storageEmulatorHost);
-    }
-  }
+  // async function resetState(): Promise<void> {
+  //   if (TEST_ENV.useProductionServers) {
+  //     await testBucket.deleteFiles();
+  //   } else {
+  //     await resetStorageEmulator(TEST_ENV.storageEmulatorHost);
+  //   }
+  // }
 
   before(async function (this) {
     this.timeout(TEST_SETUP_TIMEOUT);
