@@ -1,8 +1,8 @@
 // import { Bucket } from "@google-cloud/storage";
 import { expect } from "chai";
 // import * as firebase from "firebase";
-import * as admin from "firebase-admin";
-import * as fs from "fs";
+// import * as admin from "firebase-admin";
+// import * as fs from "fs";
 // import * as puppeteer from "puppeteer";
 import { TEST_ENV } from "./env";
 // import { IMAGE_FILE_BASE64 } from "../../../src/test/emulators/fixtures";
