@@ -156,8 +156,13 @@ export function relativeRequire(
 export function relativeRequire(dir: string, mod: "next"): typeof import("next");
 export function relativeRequire(dir: string, mod: "vite"): typeof import("vite");
 export function relativeRequire(dir: string, mod: "jsonc-parser"): typeof import("jsonc-parser");
+
 // TODO the types for @nuxt/kit are causing a lot of troubles, need to do something other than any
+// Nuxt 2
+export function relativeRequire(dir: string, mod: "@nuxt/cli"): Promise<any>;
+// Nuxt 3
 export function relativeRequire(dir: string, mod: "@nuxt/kit"): Promise<any>;
+
 /**
  *
  */
@@ -382,7 +387,8 @@ export async function prepareFrameworks(
     } = WebFrameworks[framework];
     console.log(`Detected a ${name} codebase. ${SupportLevelWarnings[support] || ""}\n`);
     // TODO allow for override
-    const isDevMode = context._name === "serve" || context._name === "emulators:start";
+    // const isDevMode = context._name === "serve" || context._name === "emulators:start";
+    const isDevMode = false;
 
     const hostingEmulatorInfo = emulators.find((e) => e.name === Emulators.HOSTING);
 
