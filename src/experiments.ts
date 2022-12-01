@@ -102,11 +102,11 @@ export const ALL_EXPERIMENTS = experiments({
     shortDescription: "Allow Firebase Rules to reference resources in other services",
   },
   internaltesting: {
-    shortDescription: "Exposes Firebase CLI commands intended for internal uses.",
+    shortDescription: "Exposes Firebase CLI commands intended for internal testing purposes.",
     fullDescription:
-      "Exposes Firebase CLI commands intended for internal uses. " +
-      "Internal commands are not meant for public consumption and may break or disappear" +
-      "without notice.",
+      "Exposes Firebase CLI commands intended for internal testing purposes. " +
+      "These commands are not meant for public consumption and may break or disappear " +
+      "without a notice.",
   },
 });
 
