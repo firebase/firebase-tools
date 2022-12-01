@@ -1608,9 +1608,11 @@ async function signInWithIdp(
     oauthExpiresIn: coercePrimitiveToString(response.oauthExpireIn),
   };
   if (response.isNewUser) {
+    const timestamp = new Date();
     let updates: Partial<UserInfo> = {
       ...accountUpdates.fields,
-      lastLoginAt: Date.now().toString(),
+      createdAt: timestamp.getTime().toString(),
+      lastLoginAt: timestamp.getTime().toString(),
       providerUserInfo: [providerUserInfo],
       tenantId: state instanceof TenantProjectState ? state.tenantId : undefined,
     };
@@ -1708,7 +1710,8 @@ async function signInWithPassword(
 ): Promise<Schemas["GoogleCloudIdentitytoolkitV1SignInWithPasswordResponse"]> {
   assert(!state.disableAuth, "PROJECT_DISABLED");
   assert(state.allowPasswordSignup, "PASSWORD_LOGIN_DISABLED");
-  assert(reqBody.email, "MISSING_EMAIL");
+  assert(reqBody.email !== undefined, "MISSING_EMAIL");
+  assert(isValidEmailAddress(reqBody.email), "INVALID_EMAIL");
   assert(reqBody.password, "MISSING_PASSWORD");
   if (reqBody.captchaResponse || reqBody.captchaChallenge) {
     throw new NotImplementedError("captcha unimplemented");

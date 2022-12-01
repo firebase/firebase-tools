@@ -1,0 +1,6 @@
+- Fix bug where disabling background triggers did nothing. (#5221)
+- Fix bug in auth emulator where empty string should throw invalid email instead of missing email. (#3898)
+- Fix bug in auth emulator in which createdAt was not set for signInWithIdp new users. (#5203)
+- Default to --no-localhost when calling login from Google Cloud Workstations
+- Support the x-goog-api-key header in auth emulator. (#5249)
+- Fix bug where function deployments using --only filter sometimes failed deployments. (#5280)
