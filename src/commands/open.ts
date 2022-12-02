@@ -22,7 +22,7 @@ const LINKS: Link[] = [
   { name: "Analytics", arg: "analytics", consolePath: "/analytics" },
   { name: "Authentication: Providers", arg: "auth", consolePath: "/authentication/providers" },
   { name: "Authentication: Users", arg: "auth:users", consolePath: "/authentication/users" },
-  { name: "Crash Reporting", arg: "crash", consolePath: "/monitoring" },
+  { name: "Crash Reporting", arg: "crash", consolePath: "/crashlytics" },
   { name: "Database: Data", arg: "database", consolePath: "/database/data" },
   { name: "Database: Rules", arg: "database:rules", consolePath: "/database/rules" },
   { name: "Docs", arg: "docs", url: "https://firebase.google.com/docs" },
