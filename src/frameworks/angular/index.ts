@@ -19,7 +19,11 @@ export const name = "Angular";
 export const support = SupportLevel.Experimental;
 export const type = FrameworkType.Framework;
 
-const CLI_COMMAND = join("node_modules", ".bin", process.platform === "win32" ? "ng.cmd" : "ng");
+const CLI_COMMAND = join(
+  execSync("npm root").toString().trim(),
+  ".bin",
+  process.platform === "win32" ? "ng.cmd" : "ng"
+);
 
 export async function discover(dir: string): Promise<Discovery | undefined> {
   if (!(await pathExists(join(dir, "package.json")))) return;

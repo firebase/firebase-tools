@@ -11,7 +11,7 @@ export const support = SupportLevel.Experimental;
 export const type = FrameworkType.Toolchain;
 
 const CLI_COMMAND = join(
-  "node_modules",
+  execSync("npm root").toString().trim(),
   ".bin",
   process.platform === "win32" ? "vite.cmd" : "vite"
 );
