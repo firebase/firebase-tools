@@ -102,9 +102,9 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
     page = await browser.newPage();
     await page.goto("https://example.com", { waitUntil: "networkidle2" });
     //
-    // await page.addScriptTag({
-    //   url: "https://www.gstatic.com/firebasejs/9.9.1/firebase-app-compat.js",
-    // });
+    await page.addScriptTag({
+      url: "https://www.gstatic.com/firebasejs/9.9.1/firebase-app-compat.js",
+    });
     // await page.addScriptTag({
     //   url: "https://www.gstatic.com/firebasejs/9.9.1/firebase-auth-compat.js",
     // });
