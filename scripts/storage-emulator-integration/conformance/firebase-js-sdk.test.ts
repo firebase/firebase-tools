@@ -1,6 +1,6 @@
 // import { Bucket } from "@google-cloud/storage";
 import { expect } from "chai";
-import * as firebase from "firebase";
+// import * as firebase from "firebase";
 import * as admin from "firebase-admin";
 import * as fs from "fs";
 import * as puppeteer from "puppeteer";
