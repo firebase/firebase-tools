@@ -3,7 +3,6 @@ import * as sinon from "sinon";
 import * as fs from "fs";
 
 import { warnIfCustomBuildScript } from "../../frameworks/utils";
-import { VITE_DEFAULT_BUILD_SCRIPTS } from "../../frameworks/vite";
 
 describe("Frameworks utils", () => {
   describe("warnIfCustomBuildScript", () => {
@@ -44,20 +43,6 @@ describe("Frameworks utils", () => {
       sandbox.stub(fs.promises, "readFile").resolves(JSON.stringify(packageJson));
 
       await warnIfCustomBuildScript("fakedir/", allowedBuildScripts);
-
-      expect(consoleLogSpy).to.be.calledOnceWith(
-        `WARNING: Your package.json contains a custom build script "${buildScript}" that will be ignored. Only the default build scripts "${allowedBuildScripts.join(
-          " OR "
-        )}" are supported. Please, refer to the docs in order to use a custom build script: https://firebase.google.com/docs/hosting/express\n`
-      );
-    });
-
-    it("should print warning when a custom build script is found in Vite project.", async () => {
-      const allowedBuildScripts = VITE_DEFAULT_BUILD_SCRIPTS;
-      const buildScript = "echo 'Custom build script' && vite build";
-      const viteProjectPath = "./scripts/frameworks-tests/vite-project-custom-build";
-
-      await warnIfCustomBuildScript(viteProjectPath, allowedBuildScripts);
 
       expect(consoleLogSpy).to.be.calledOnceWith(
         `WARNING: Your package.json contains a custom build script "${buildScript}" that will be ignored. Only the default build scripts "${allowedBuildScripts.join(
