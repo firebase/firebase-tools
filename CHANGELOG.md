@@ -5,3 +5,5 @@
 - Support the x-goog-api-key header in auth emulator. (#5249)
 - Fix bug in deploying web frameworks when a predeploy hook was configured in firebase.json (#5199)
 - Fix bug where function deployments using --only filter sometimes failed deployments. (#5280)
+- Handle Next.js rewrites/redirects/headers incompatible with `firebase.json` in Cloud Functions (#5212)
+- Filter out Next.js prerendered routes that matches rewrites/redirects/headers rules from SSG content directory (#5212)
