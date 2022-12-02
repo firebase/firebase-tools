@@ -32,7 +32,7 @@ export class EmulatorRegistry {
     }
   }
 
-  static async stop(name: Emulators, forced?: boolean): Promise<void> {
+  static async stop(name: Emulators, forceShutdown?: boolean): Promise<void> {
     EmulatorLogger.forEmulator(name).logLabeled(
       "BULLET",
       name,
@@ -43,7 +43,7 @@ export class EmulatorRegistry {
       return;
     }
 
-    await instance.stop(forced);
+    await instance.stop(forceShutdown);
     this.clear(instance.getName());
   }
 
