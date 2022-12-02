@@ -28,7 +28,12 @@ export async function discover(dir: string) {
 }
 
 export async function build(root: string) {
-  const { nuxt, nuxtApp } = await getNuxtApp(root);
+  const nuxt = await getNuxtApp(root);
+
+  const nuxtApp = await nuxt.loadNuxt({
+    for: "build",
+    rootDir: root,
+  });
 
   // const deployPath = (...args: string[]) => join(config.dist, ...args);
 
@@ -42,31 +47,30 @@ export async function build(root: string) {
   } = await nuxt.build(nuxtApp);
 
   // console.log("----> build(): nuxt:", nuxt);
-  console.log("----> build(): target:", target);
-  console.log("----> build(): basePath:", basePath);
-  console.log("----> build(): assetsPath:", assetsPath);
-  console.log("----> build(): buildDir:", buildDir);
-  console.log("----> build(): staticDir:", staticDir);
+  // console.log("----> build(): target:", target);
+  // console.log("----> build(): basePath:", basePath);
+  // console.log("----> build(): assetsPath:", assetsPath);
+  // console.log("----> build(): buildDir:", buildDir);
+  // console.log("----> build(): staticDir:", staticDir);
 
-  let usingCloudFunctions = false;
   if (target === "static") {
     const nuxtApp = await nuxt.loadNuxt({
       for: "start",
       rootDir: root,
     });
 
-    // TODO: DON'T THINK THIS IS NEEDED
-    // await nuxtApp.server.listen(0);
-
     const builder = await nuxt.getBuilder(nuxtApp);
     const generator = new nuxt.Generator(nuxtApp, builder);
     await generator.generate({ build: false, init: true });
-
-    // TODO: DON'T THINK THIS IS NEEDED
-    // await nuxtApp.server.close();
-
-    usingCloudFunctions = !generator.isFullStatic;
   } else {
+    nuxt.build(nuxtApp);
+    // const builder = await nuxt.getBuilder(nuxtApp);
+    // const generator = new nuxt.Generator(nuxtApp, builder);
+    // await generator.generate({ build: true, init: true });
+
+    // console.log("---> builder", builder);
+    // console.log("---> generator", generator);
+
     // await copy(join(buildDir, "dist", "client"), deployPath("hosting", assetsPath));
     // await copy(getProjectPath(staticDir), deployPath("hosting"));
     return { wantsBackend: true };
@@ -86,15 +90,10 @@ async function getNuxtApp(cwd: string) {
     // @ts-ignore
     nuxt = await relativeRequire(cwd, "nuxt/dist/nuxt.js");
   } catch (e) {
-    return { nuxt: null, nuxtApp: null };
+    return null;
   }
 
-  const nuxtApp = await nuxt.loadNuxt({
-    for: "build",
-    rootDir: cwd,
-  });
-
-  return { nuxt, nuxtApp };
+  return nuxt;
 }
 
 export async function ɵcodegenPublicDirectory(root: string, dest: string) {
@@ -106,6 +105,7 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
   console.log("----> ɵcodegenFunctionsDirectory() called");
   const packageJsonBuffer = await readFile(join(sourceDir, "package.json"));
   const packageJson = JSON.parse(packageJsonBuffer.toString());
+  return { packageJson };
 
   // if (isNuxt3(sourceDir)) {
   //   const outputPackageJsonBuffer = await readFile(
