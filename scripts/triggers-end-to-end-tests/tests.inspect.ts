@@ -1,6 +1,7 @@
 import { expect } from "chai";
 import * as fs from "fs";
 import * as path from "path";
+import { exec } from "child_process";
 
 import { FrameworkOptions, TriggerEndToEndTest } from "../integration-helpers/framework";
 
@@ -29,12 +30,20 @@ describe("function triggers with inspect flag", () => {
 
     const config = readConfig();
     test = new TriggerEndToEndTest(FIREBASE_PROJECT, __dirname, config);
-    await test.startEmulators(["--only", "functions,auth,storage", "--inspect-functions"]);
+    await test.startEmulators(["--only", "functions,auth,storage,pubsub", "--inspect-functions"]);
   });
 
   after(async function (this) {
     this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
-    await test.stopEmulators();
+    await test.stopEmulators(); // FIXME can we add other emulators and
+    exec("ps aux | grep emulator", (err, stdout) => {
+      if (err) {
+        // TODO: fail
+      }
+      if (stdout) {
+        // TODO: fail
+      }
+    });
   });
 
   describe("http functions", () => {
