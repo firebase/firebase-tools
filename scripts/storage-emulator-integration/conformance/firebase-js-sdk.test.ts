@@ -114,20 +114,20 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
     //
 
     // Init Firebase app in browser context and maybe set emulator host overrides.
-    await page.evaluate(
-      (appConfig, useProductionServers, authEmulatorHost, storageEmulatorHost) => {
-        firebase.initializeApp(appConfig);
-        if (!useProductionServers) {
-          firebase.auth().useEmulator(authEmulatorHost);
-          const [storageHost, storagePort] = storageEmulatorHost.split(":") as string[];
-          (firebase.storage() as any).useEmulator(storageHost, storagePort);
-        }
-      },
-      TEST_ENV.appConfig,
-      TEST_ENV.useProductionServers,
-      TEST_ENV.authEmulatorHost,
-      TEST_ENV.storageEmulatorHost.replace(/^(https?:|)\/\//, "")
-    );
+    // await page.evaluate(
+    //   (appConfig, useProductionServers, authEmulatorHost, storageEmulatorHost) => {
+    //     firebase.initializeApp(appConfig);
+    //     if (!useProductionServers) {
+    //       firebase.auth().useEmulator(authEmulatorHost);
+    //       const [storageHost, storagePort] = storageEmulatorHost.split(":") as string[];
+    //       (firebase.storage() as any).useEmulator(storageHost, storagePort);
+    //     }
+    //   },
+    //   TEST_ENV.appConfig,
+    //   TEST_ENV.useProductionServers,
+    //   TEST_ENV.authEmulatorHost,
+    //   TEST_ENV.storageEmulatorHost.replace(/^(https?:|)\/\//, "")
+    // );
   });
 
   //   beforeEach(async () => {
