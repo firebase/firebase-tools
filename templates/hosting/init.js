@@ -7,7 +7,7 @@ if (firebaseConfig) {
   if (firebaseEmulators) {
     console.log("Automatically connecting Firebase SDKs to running emulators:");
     Object.keys(firebaseEmulators).forEach(function (key) {
-      console.log('\t' + key + ': http://' + firebaseEmulators[key].host + ':' + firebaseEmulators[key].port);
+      console.log('\t' + key + ': http://' + firebaseEmulators[key].hostAndPort);
     });
 
     if (firebaseEmulators.database && typeof firebase.database === 'function') {
@@ -23,7 +23,8 @@ if (firebaseConfig) {
     }
 
     if (firebaseEmulators.auth && typeof firebase.auth === 'function') {
-      firebase.auth().useEmulator('http://' + firebaseEmulators.auth.host + ':' + firebaseEmulators.auth.port);
+      // TODO: Consider using location.protocol + '//' instead (may help HTTPS).
+      firebase.auth().useEmulator('http://' + firebaseEmulators.auth.hostAndPort);
     }
 
     if (firebaseEmulators.storage && typeof firebase.storage === 'function') {

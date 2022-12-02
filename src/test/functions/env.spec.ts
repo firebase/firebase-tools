@@ -307,43 +307,97 @@ FOO=foo
         {},
         { projectId: "project", projectAlias: "alias", functionsSource: tmpdir }
       );
-      expect(() => fs.statSync(path.join(tmpdir, ".env.alias"))).throw;
+      env.writeUserEnvs(
+        {},
+        { projectId: "project", projectAlias: "alias", functionsSource: tmpdir, isEmulator: true }
+      );
+      expect(() => fs.statSync(path.join(tmpdir, ".env.alias"))).to.throw;
+      expect(() => fs.statSync(path.join(tmpdir, ".env.project"))).to.throw;
+      expect(() => fs.statSync(path.join(tmpdir, ".env.local"))).to.throw;
     });
 
-    it("touches .env.projectAlias if there are no .env files and project alias is available", () => {
+    it("touches .env.projectId if it doesn't already exist", () => {
+      env.writeUserEnvs({ FOO: "bar" }, { projectId: "project", functionsSource: tmpdir });
+      expect(() => fs.statSync(path.join(tmpdir, ".env.alias"))).to.throw;
+      expect(!!fs.statSync(path.join(tmpdir, ".env.project"))).to.be.true;
+      expect(() => fs.statSync(path.join(tmpdir, ".env.local"))).to.throw;
+    });
+
+    it("touches .env.local if it doesn't already exist in emulator mode", () => {
       env.writeUserEnvs(
         { FOO: "bar" },
-        { projectId: "project", projectAlias: "alias", functionsSource: tmpdir }
+        { projectId: "project", functionsSource: tmpdir, isEmulator: true }
       );
-      expect(!!fs.statSync(path.join(tmpdir, ".env.alias"))).to.be.true;
+      expect(() => fs.statSync(path.join(tmpdir, ".env.alias"))).to.throw;
+      expect(() => fs.statSync(path.join(tmpdir, ".env.project"))).to.throw;
+      expect(!!fs.statSync(path.join(tmpdir, ".env.local"))).to.be.true;
     });
 
-    it("touches .env.projectId if there are no .env files and project alias is not available", () => {
-      env.writeUserEnvs({ FOO: "bar" }, { projectId: "project", functionsSource: tmpdir });
-      expect(!!fs.statSync(path.join(tmpdir, ".env.project"))).to.be.true;
-    });
-
-    it("throws if asked to write a key that already exists in the most specific .env", () => {
+    it("throws if asked to write a key that already exists in .env.projectId", () => {
       createEnvFiles(tmpdir, {
-        [".env.alias"]: "FOO=foo",
+        [".env.project"]: "FOO=foo",
+      });
+      expect(() =>
+        env.writeUserEnvs({ FOO: "bar" }, { projectId: "project", functionsSource: tmpdir })
+      ).to.throw(FirebaseError);
+    });
+
+    it("is fine writing a key that already exists in .env.projectId but not .env.local, in emulator mode", () => {
+      createEnvFiles(tmpdir, {
+        [".env.project"]: "FOO=foo",
+      });
+      env.writeUserEnvs(
+        { FOO: "bar" },
+        { projectId: "project", functionsSource: tmpdir, isEmulator: true }
+      );
+      expect(
+        env.loadUserEnvs({
+          projectId: "project",
+          projectAlias: "alias",
+          functionsSource: tmpdir,
+          isEmulator: true,
+        })["FOO"]
+      ).to.equal("bar");
+    });
+
+    it("throws if asked to write a key that already exists in any .env", () => {
+      createEnvFiles(tmpdir, {
+        [".env"]: "FOO=bar",
       });
       expect(() =>
         env.writeUserEnvs(
-          { FOO: "bar" },
+          { FOO: "baz" },
           { projectId: "project", projectAlias: "alias", functionsSource: tmpdir }
         )
       ).to.throw(FirebaseError);
     });
 
-    it("throws if asked to write a key that already exists in any .env", () => {
+    it("is fine writing a key that already exists in any .env but not .env.local, in emulator mode", () => {
       createEnvFiles(tmpdir, {
-        [".env.alias"]: "BAR=foo",
-        ".env": "FOO=foo",
+        [".env"]: "FOO=bar",
+      });
+      env.writeUserEnvs(
+        { FOO: "baz" },
+        { projectId: "project", projectAlias: "alias", functionsSource: tmpdir, isEmulator: true }
+      );
+      expect(
+        env.loadUserEnvs({
+          projectId: "project",
+          projectAlias: "alias",
+          functionsSource: tmpdir,
+          isEmulator: true,
+        })["FOO"]
+      ).to.equal("baz");
+    });
+
+    it("throws if asked to write a key that already exists in .env.local, in emulator mode", () => {
+      createEnvFiles(tmpdir, {
+        [".env.local"]: "ASDF=foo",
       });
       expect(() =>
         env.writeUserEnvs(
-          { FOO: "bar" },
-          { projectId: "project", projectAlias: "alias", functionsSource: tmpdir }
+          { ASDF: "bar" },
+          { projectId: "project", functionsSource: tmpdir, isEmulator: true }
         )
       ).to.throw(FirebaseError);
     });
@@ -369,7 +423,7 @@ FOO=foo
       ).to.throw(env.KeyValidationError);
     });
 
-    it("writes the specified key to a .env that it created", () => {
+    it("writes the specified key to a .env.projectId that it created", () => {
       env.writeUserEnvs(
         { FOO: "bar" },
         { projectId: "project", projectAlias: "alias", functionsSource: tmpdir }
@@ -381,9 +435,9 @@ FOO=foo
       ).to.equal("bar");
     });
 
-    it("writes the specified key to a .env that already existed", () => {
+    it("writes the specified key to a .env.projectId that already existed", () => {
       createEnvFiles(tmpdir, {
-        [".env.alias"]: "",
+        [".env.project"]: "",
       });
       env.writeUserEnvs(
         { FOO: "bar" },
@@ -433,16 +487,13 @@ FOO=foo
       try {
         env.writeUserEnvs(
           { FOO: "bar", lowercase: "bar" },
-          { projectId: "project", projectAlias: "alias", functionsSource: tmpdir }
+          { projectId: "project", functionsSource: tmpdir }
         );
       } catch (err: any) {
         // no-op
       }
-      expect(
-        env.loadUserEnvs({ projectId: "project", projectAlias: "alias", functionsSource: tmpdir })[
-          "FOO"
-        ]
-      ).to.be.undefined;
+      expect(env.loadUserEnvs({ projectId: "project", functionsSource: tmpdir })["FOO"]).to.be
+        .undefined;
     });
   });
 

@@ -6,9 +6,15 @@ on:
 
 env:
   CI: true
+  NO_COLOR: true
 
 permissions:
   contents: read
+
+concurrency:
+  # node-test-[pull_request|push]-[branch], typically. Will cancel previous runs that match!
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
 
 jobs:
   lint:
@@ -61,7 +67,6 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      FIREBASE_CLI_PREVIEWS: none
       FIREBASE_EMULATORS_PATH: ${{ github.workspace }}/emulator-cache
       COMMIT_SHA: ${{ github.sha }}
       CI_JOB_ID: ${{ github.action }}
@@ -76,15 +81,18 @@ jobs:
         node-version:
           - "16"
         script:
-          - npm run test:hosting
-          # - npm run test:hosting-rewrites # Long-running test that might conflict across test runs. Run this manually.
           - npm run test:client-integration
           - npm run test:emulator
-          - npm run test:import-export
           - npm run test:extensions-emulator
-          - npm run test:triggers-end-to-end
+          - npm run test:frameworks
+          - npm run test:hosting
+          # - npm run test:hosting-rewrites # Long-running test that might conflict across test runs. Run this manually.
+          - npm run test:import-export
           - npm run test:storage-deploy
-          - npm run test:storage-emulator-integration
+          # Temporarily disable broken storage emulator integration test.
+          # - npm run test:storage-emulator-integration
+          - npm run test:triggers-end-to-end
+          - npm run test:triggers-end-to-end:inspect
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
@@ -115,7 +123,6 @@ jobs:
     runs-on: windows-latest
 
     env:
-      FIREBASE_CLI_PREVIEWS: none
       FIREBASE_EMULATORS_PATH: ${{ github.workspace }}/emulator-cache
       COMMIT_SHA: ${{ github.sha }}
       CI_JOB_ID: ${{ github.action }}
@@ -137,6 +144,7 @@ jobs:
           # - npm run test:import-export # Fails becuase port 4000 is taken after first run - hub not shhutting down?
           # - npm run test:extensions-emulator # Fails due to cannot find module sharp (not waiting for npm install?)
           - npm run test:triggers-end-to-end
+          - npm run test:triggers-end-to-end:inspect
           - npm run test:storage-deploy
           # - npm run test:storage-emulator-integration
     steps:

@@ -58,15 +58,16 @@ function printEmulatorOverview(options: any): void {
     if (info) {
       reservedPorts.push(info.port);
     }
+    controller.filterEmulatorTargets(options).forEach((emulator: Emulators) => {
+      reservedPorts.push(...(EmulatorRegistry.getInfo(emulator)?.reservedPorts || []));
+    });
   }
   const reservedPortsString = reservedPorts.length > 0 ? reservedPorts.join(", ") : "None";
 
-  const uiInfo = EmulatorRegistry.getInfo(Emulators.UI);
-  const hubInfo = EmulatorRegistry.getInfo(Emulators.HUB);
-  const uiUrl = uiInfo ? `http://${EmulatorRegistry.getInfoHostString(uiInfo)}` : "unknown";
+  const uiRunning = EmulatorRegistry.isRunning(Emulators.UI);
   const head = ["Emulator", "Host:Port"];
 
-  if (uiInfo) {
+  if (uiRunning) {
     head.push(`View in ${Constants.description(Emulators.UI)}`);
   }
 
@@ -74,8 +75,10 @@ function printEmulatorOverview(options: any): void {
   let successMsg = `${clc.green("✔")}  ${clc.bold(
     "All emulators ready! It is now safe to connect your app."
   )}`;
-  if (uiInfo) {
-    successMsg += `\n${clc.cyan("i")}  View Emulator UI at ${stylizeLink(uiUrl)}`;
+  if (uiRunning) {
+    successMsg += `\n${clc.cyan("i")}  View Emulator UI at ${stylizeLink(
+      EmulatorRegistry.url(Emulators.UI).toString()
+    )}`;
   }
   successMessageTable.push([successMsg]);
 
@@ -92,22 +95,27 @@ function printEmulatorOverview(options: any): void {
       .map((emulator) => {
         const emulatorName = Constants.description(emulator).replace(/ emulator/i, "");
         const isSupportedByUi = EMULATORS_SUPPORTED_BY_UI.includes(emulator);
-        // The Extensions emulator runs as part of the Functions emulator, so display the Functions emulators info instead.
-        const info = EmulatorRegistry.getInfo(emulator);
-        if (!info) {
-          return [emulatorName, "Failed to initialize (see above)", "", ""];
+        const listen = commandUtils.getListenOverview(emulator);
+        if (!listen) {
+          const row = [emulatorName, "Failed to initialize (see above)"];
+          if (uiRunning) {
+            row.push("");
+          }
+          return row;
+        }
+        let uiLink = "n/a";
+        if (isSupportedByUi && uiRunning) {
+          const url = EmulatorRegistry.url(Emulators.UI);
+          url.pathname = `/${emulator}`;
+          uiLink = stylizeLink(url.toString());
         }
 
-        return [
-          emulatorName,
-          EmulatorRegistry.getInfoHostString(info),
-          isSupportedByUi && uiInfo ? stylizeLink(`${uiUrl}/${emulator}`) : clc.blackBright("n/a"),
-        ];
+        return [emulatorName, listen, uiLink];
       })
       .map((col) => col.slice(0, head.length))
       .filter((v) => v)
   );
-  let extensionsTable: string = "";
+  let extensionsTable = "";
   if (EmulatorRegistry.isRunning(Emulators.EXTENSIONS)) {
     const extensionsEmulatorInstance = EmulatorRegistry.get(
       Emulators.EXTENSIONS
@@ -118,8 +126,8 @@ function printEmulatorOverview(options: any): void {
 
 ${emulatorsTable}
 ${
-  hubInfo
-    ? clc.blackBright("  Emulator Hub running at ") + EmulatorRegistry.getInfoHostString(hubInfo)
+  EmulatorRegistry.isRunning(Emulators.HUB)
+    ? clc.blackBright("  Emulator Hub running at ") + EmulatorRegistry.url(Emulators.HUB).host
     : clc.blackBright("  Emulator Hub not running.")
 }
 ${clc.blackBright("  Other reserved ports:")} ${reservedPortsString}

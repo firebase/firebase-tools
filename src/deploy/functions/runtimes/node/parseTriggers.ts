@@ -141,7 +141,7 @@ export function useStrategy(): Promise<boolean> {
 }
 
 /**
- *
+ * Parse trigger annotations in sourceDir to generate backed.Build.
  */
 export async function discoverBuild(
   projectId: string,
@@ -163,7 +163,7 @@ export async function discoverBuild(
 }
 
 /**
- *
+ * Parse trigger annotations in sourceDir to generate backed.Backend.
  */
 export async function discoverBackend(
   projectId: string,
@@ -180,9 +180,9 @@ export async function discoverBackend(
   return want;
 }
 
-/* @internal */
 /**
- *
+ * Merge duplicate entries of requireAPIs in backend.Build.
+ * @internal
  */
 export function mergeRequiredAPIs(backend: backend.Backend) {
   const apiToReasons: Record<string, Set<string>> = {};
@@ -203,7 +203,7 @@ export function mergeRequiredAPIs(backend: backend.Backend) {
 }
 
 /**
- *
+ * Transform trigger annotation into endpoints in backend.Build.
  */
 export function addResourcesToBuild(
   projectId: string,
@@ -262,7 +262,7 @@ export function addResourcesToBuild(
       proto.convertIfPresent(
         triggered.taskQueueTrigger.retryConfig,
         annotation.taskQueueTrigger.retryConfig,
-        "maxRetryDurationSeconds",
+        "maxRetrySeconds",
         "maxRetryDuration",
         toSeconds
       );
@@ -389,12 +389,20 @@ export function addResourcesToBuild(
     "timeout",
     proto.secondsFromDuration
   );
-
+  if (annotation.secrets) {
+    endpoint.secretEnvironmentVariables = annotation.secrets.map<backend.SecretEnvVar>((secret) => {
+      return {
+        secret,
+        projectId,
+        key: secret,
+      };
+    });
+  }
   want.endpoints[endpointId] = endpoint;
 }
 
 /**
- *
+ * Transform trigger annotation into endpoints in backend.Backend.
  */
 export function addResourcesToBackend(
   projectId: string,

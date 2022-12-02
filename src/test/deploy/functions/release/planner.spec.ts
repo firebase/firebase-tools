@@ -130,9 +130,13 @@ describe("planner", () => {
       const deleted = func("deleted", "region");
       deleted.labels = deploymentTool.labels();
       const pantheon = func("pantheon", "region");
+      const skipWant = func("skip", "region");
+      skipWant.hash = "skip";
+      const skipHave = func("skip", "region");
+      skipHave.hash = "skip";
 
-      const want = { created, updated };
-      const have = { updated, deleted, pantheon };
+      const want = { created, updated, skip: skipWant };
+      const have = { updated, deleted, pantheon, skip: skipHave };
 
       // note: pantheon is not updated in any way
       expect(planner.calculateChangesets(want, have, (e) => e.region)).to.deep.equal({
@@ -144,6 +148,102 @@ describe("planner", () => {
             },
           ],
           endpointsToDelete: [deleted],
+          endpointsToSkip: [skipWant],
+        },
+      });
+    });
+
+    it("adds endpoints with matching hashes to skip list", () => {
+      // Note: the two functions share the same id
+      const updatedWant = func("updated", "region");
+      const updatedHave = func("updated", "region");
+      // But their hash are the same (aka a no-op function)
+      updatedWant.hash = "to_skip";
+      updatedHave.hash = "to_skip";
+
+      const want = { updated: updatedWant };
+      const have = { updated: updatedHave };
+
+      expect(planner.calculateChangesets(want, have, (e) => e.region)).to.deep.equal({
+        region: {
+          endpointsToCreate: [],
+          endpointsToUpdate: [],
+          endpointsToDelete: [],
+          endpointsToSkip: [updatedWant],
+        },
+      });
+    });
+
+    it("adds endpoints to update list if they dont have hashes", () => {
+      // Note: the two functions share the same id
+      const updatedWant = func("updated", "region");
+      const updatedHave = func("updated", "region");
+      // Their hashes are not set
+
+      const want = { updated: updatedWant };
+      const have = { updated: updatedHave };
+
+      expect(planner.calculateChangesets(want, have, (e) => e.region)).to.deep.equal({
+        region: {
+          endpointsToCreate: [],
+          endpointsToUpdate: [
+            {
+              endpoint: updatedWant,
+            },
+          ],
+          endpointsToDelete: [],
+          endpointsToSkip: [],
+        },
+      });
+    });
+
+    it("adds endpoints to update list if they have different hashes", () => {
+      // Note: the two functions share the same id
+      const updatedWant = func("updated", "region");
+      const updatedHave = func("updated", "region");
+      // But their hashes are the same (aka a no-op function)
+      updatedWant.hash = "local";
+      updatedHave.hash = "server";
+
+      const want = { updated: updatedWant };
+      const have = { updated: updatedHave };
+
+      expect(planner.calculateChangesets(want, have, (e) => e.region)).to.deep.equal({
+        region: {
+          endpointsToCreate: [],
+          endpointsToUpdate: [
+            {
+              endpoint: updatedWant,
+            },
+          ],
+          endpointsToDelete: [],
+          endpointsToSkip: [],
+        },
+      });
+    });
+
+    it("does not add endpoints to skip list if not targeted for deploy", () => {
+      // Note: the two functions share the same id
+      const updatedWant = func("updated", "region");
+      const updatedHave = func("updated", "region");
+      // But their hash are the same (aka a no-op function)
+      updatedWant.hash = "to_skip";
+      updatedHave.hash = "to_skip";
+      updatedWant.targetedByOnly = true;
+
+      const want = { updated: updatedWant };
+      const have = { updated: updatedHave };
+
+      expect(planner.calculateChangesets(want, have, (e) => e.region)).to.deep.equal({
+        region: {
+          endpointsToCreate: [],
+          endpointsToUpdate: [
+            {
+              endpoint: updatedWant,
+            },
+          ],
+          endpointsToDelete: [],
+          endpointsToSkip: [],
         },
       });
     });
@@ -168,6 +268,7 @@ describe("planner", () => {
             },
           ],
           endpointsToDelete: [deleted, pantheon],
+          endpointsToSkip: [],
         },
       });
     });
@@ -204,11 +305,13 @@ describe("planner", () => {
             },
           ],
           endpointsToDelete: [],
+          endpointsToSkip: [],
         },
         "default-region2-default": {
           endpointsToCreate: [region2mem1Created],
           endpointsToUpdate: [],
           endpointsToDelete: [],
+          endpointsToSkip: [],
         },
         "default-region2-512": {
           endpointsToCreate: [],
@@ -218,6 +321,7 @@ describe("planner", () => {
             },
           ],
           endpointsToDelete: [region2mem2Deleted],
+          endpointsToSkip: [],
         },
       });
     });
@@ -253,6 +357,7 @@ describe("planner", () => {
             },
           ],
           endpointsToDelete: [group1Deleted],
+          endpointsToSkip: [],
         },
       });
     });

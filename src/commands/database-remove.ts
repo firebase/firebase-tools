@@ -17,6 +17,7 @@ export const command = new Command("database:remove <path>")
     "--instance <instance>",
     "use the database <instance>.firebaseio.com (if omitted, use default database instance)"
   )
+  .option("--disable-triggers", "suppress any Cloud functions triggered by this operation")
   .before(requirePermissions, ["firebasedatabase.instances.update"])
   .before(requireDatabaseInstance)
   .before(populateInstanceDetails)
@@ -40,7 +41,7 @@ export const command = new Command("database:remove <path>")
       return utils.reject("Command aborted.", { exit: 1 });
     }
 
-    const removeOps = new DatabaseRemove(options.instance, path, origin);
+    const removeOps = new DatabaseRemove(options.instance, path, origin, !!options.disableTriggers);
     await removeOps.execute();
     utils.logSuccess("Data removed successfully");
   });

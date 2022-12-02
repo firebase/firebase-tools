@@ -67,14 +67,14 @@ hello there!
     it("fails to parse with invalid Content-Type value", () => {
       const invalidContentTypeHeader = "blah";
       expect(() => parseObjectUploadMultipartRequest(invalidContentTypeHeader, BODY)).to.throw(
-        "Invalid Content-Type"
+        "Bad content type."
       );
     });
 
     it("fails to parse with invalid boundary value", () => {
       const invalidContentTypeHeader = "multipart/related; boundary=";
       expect(() => parseObjectUploadMultipartRequest(invalidContentTypeHeader, BODY)).to.throw(
-        "Invalid Content-Type"
+        "Bad content type."
       );
     });
 

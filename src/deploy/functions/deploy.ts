@@ -11,6 +11,7 @@ import * as gcs from "../../gcp/storage";
 import * as gcf from "../../gcp/cloudfunctions";
 import * as gcfv2 from "../../gcp/cloudfunctionsv2";
 import * as backend from "./backend";
+import { findEndpoint } from "./backend";
 
 setGracefulCleanup();
 
@@ -110,8 +111,41 @@ export async function deploy(
 
   await checkHttpIam(context, options, payload);
   const uploads: Promise<void>[] = [];
-  for (const [codebase, { wantBackend }] of Object.entries(payload.functions)) {
+  for (const [codebase, { wantBackend, haveBackend }] of Object.entries(payload.functions)) {
+    if (shouldUploadBeSkipped(context, wantBackend, haveBackend)) {
+      continue;
+    }
     uploads.push(uploadCodebase(context, codebase, wantBackend));
   }
   await Promise.all(uploads);
+}
+
+/**
+ * @return True IFF wantBackend + haveBackend are the same
+ */
+export function shouldUploadBeSkipped(
+  context: args.Context,
+  wantBackend: backend.Backend,
+  haveBackend: backend.Backend
+): boolean {
+  // If function targets are specified by --only flag, assume that function will be deployed
+  // and go ahead and upload the source.
+  if (context.filters && context.filters.length > 0) {
+    return false;
+  }
+  const wantEndpoints = backend.allEndpoints(wantBackend);
+  const haveEndpoints = backend.allEndpoints(haveBackend);
+
+  // Mismatching length immediately tells us they are different, and we should not skip.
+  if (wantEndpoints.length !== haveEndpoints.length) {
+    return false;
+  }
+
+  return wantEndpoints.every((wantEndpoint) => {
+    const haveEndpoint = findEndpoint(haveBackend, (endpoint) => endpoint.id === wantEndpoint.id);
+    if (!haveEndpoint) {
+      return false;
+    }
+    return haveEndpoint.hash && wantEndpoint.hash && haveEndpoint.hash === wantEndpoint.hash;
+  });
 }

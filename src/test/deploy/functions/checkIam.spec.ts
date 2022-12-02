@@ -431,4 +431,178 @@ describe("checkIam", () => {
     expect(getIamStub).to.not.have.been.called;
     expect(setIamStub).to.not.have.been.called;
   });
+
+  it("should add the default bindings for a new v2 remote config function without v2 deployed functions", async () => {
+    const newIamPolicy = {
+      etag: "etag",
+      version: 3,
+      bindings: [
+        BINDING,
+        {
+          role: checkIam.SERVICE_ACCOUNT_TOKEN_CREATOR_ROLE,
+          members: [
+            `serviceAccount:service-${projectNumber}@gcp-sa-pubsub.iam.gserviceaccount.com`,
+          ],
+        },
+        {
+          role: checkIam.RUN_INVOKER_ROLE,
+          members: [`serviceAccount:${projectNumber}-compute@developer.gserviceaccount.com`],
+        },
+        {
+          role: checkIam.EVENTARC_EVENT_RECEIVER_ROLE,
+          members: [`serviceAccount:${projectNumber}-compute@developer.gserviceaccount.com`],
+        },
+      ],
+    };
+    getIamStub.resolves({
+      etag: "etag",
+      version: 3,
+      bindings: [BINDING],
+    });
+    setIamStub.resolves(newIamPolicy);
+    const wantFn: backend.Endpoint = {
+      id: "wantFn",
+      entryPoint: "wantFn",
+      platform: "gcfv2",
+      eventTrigger: {
+        eventType: "google.firebase.remoteconfig.remoteConfig.v1.updated",
+        eventFilters: {},
+        retry: false,
+      },
+      ...SPEC,
+    };
+
+    await checkIam.ensureServiceAgentRoles(
+      projectId,
+      projectNumber,
+      backend.of(wantFn),
+      backend.empty()
+    );
+
+    expect(getIamStub).to.have.been.calledOnce;
+    expect(setIamStub).to.have.been.calledOnce;
+    expect(setIamStub).to.have.been.calledWith(projectNumber, newIamPolicy, "bindings");
+  });
+
+  it("should not add bindings for a new v2 remote config function with v2 deployed functions", async () => {
+    const wantFn: backend.Endpoint = {
+      id: "wantFn",
+      entryPoint: "wantFn",
+      platform: "gcfv2",
+      eventTrigger: {
+        eventType: "google.firebase.remoteconfig.remoteConfig.v1.updated",
+        eventFilters: {},
+        retry: false,
+      },
+      ...SPEC,
+    };
+    const haveFn: backend.Endpoint = {
+      id: "haveFn",
+      entryPoint: "haveFn",
+      platform: "gcfv2",
+      eventTrigger: {
+        eventType: "google.cloud.storage.object.v1.finalized",
+        eventFilters: { bucket: "my-bucket" },
+        retry: false,
+      },
+      ...SPEC,
+    };
+
+    await checkIam.ensureServiceAgentRoles(
+      projectId,
+      projectNumber,
+      backend.of(wantFn),
+      backend.of(haveFn)
+    );
+
+    expect(getIamStub).to.not.have.been.called;
+    expect(setIamStub).to.not.have.been.called;
+  });
+
+  it("should add the default bindings for a new v2 test lab function without v2 deployed functions", async () => {
+    const newIamPolicy = {
+      etag: "etag",
+      version: 3,
+      bindings: [
+        BINDING,
+        {
+          role: checkIam.SERVICE_ACCOUNT_TOKEN_CREATOR_ROLE,
+          members: [
+            `serviceAccount:service-${projectNumber}@gcp-sa-pubsub.iam.gserviceaccount.com`,
+          ],
+        },
+        {
+          role: checkIam.RUN_INVOKER_ROLE,
+          members: [`serviceAccount:${projectNumber}-compute@developer.gserviceaccount.com`],
+        },
+        {
+          role: checkIam.EVENTARC_EVENT_RECEIVER_ROLE,
+          members: [`serviceAccount:${projectNumber}-compute@developer.gserviceaccount.com`],
+        },
+      ],
+    };
+    getIamStub.resolves({
+      etag: "etag",
+      version: 3,
+      bindings: [BINDING],
+    });
+    setIamStub.resolves(newIamPolicy);
+    const wantFn: backend.Endpoint = {
+      id: "wantFn",
+      entryPoint: "wantFn",
+      platform: "gcfv2",
+      eventTrigger: {
+        eventType: "google.firebase.testlab.testMatrix.v1.completed",
+        eventFilters: {},
+        retry: false,
+      },
+      ...SPEC,
+    };
+
+    await checkIam.ensureServiceAgentRoles(
+      projectId,
+      projectNumber,
+      backend.of(wantFn),
+      backend.empty()
+    );
+
+    expect(getIamStub).to.have.been.calledOnce;
+    expect(setIamStub).to.have.been.calledOnce;
+    expect(setIamStub).to.have.been.calledWith(projectNumber, newIamPolicy, "bindings");
+  });
+
+  it("should not add bindings for a new v2 test lab function with v2 deployed functions", async () => {
+    const wantFn: backend.Endpoint = {
+      id: "wantFn",
+      entryPoint: "wantFn",
+      platform: "gcfv2",
+      eventTrigger: {
+        eventType: "google.firebase.testlab.testMatrix.v1.completed",
+        eventFilters: {},
+        retry: false,
+      },
+      ...SPEC,
+    };
+    const haveFn: backend.Endpoint = {
+      id: "haveFn",
+      entryPoint: "haveFn",
+      platform: "gcfv2",
+      eventTrigger: {
+        eventType: "google.cloud.storage.object.v1.finalized",
+        eventFilters: { bucket: "my-bucket" },
+        retry: false,
+      },
+      ...SPEC,
+    };
+
+    await checkIam.ensureServiceAgentRoles(
+      projectId,
+      projectNumber,
+      backend.of(wantFn),
+      backend.of(haveFn)
+    );
+
+    expect(getIamStub).to.not.have.been.called;
+    expect(setIamStub).to.not.have.been.called;
+  });
 });

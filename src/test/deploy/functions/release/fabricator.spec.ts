@@ -63,6 +63,7 @@ describe("Fabricator", () => {
     run.setInvokerCreate.rejects(new Error("unexpected run.setInvokerCreate"));
     run.setInvokerUpdate.rejects(new Error("unexpected run.setInvokerUpdate"));
     run.replaceService.rejects(new Error("unexpected run.replaceService"));
+    run.updateService.rejects(new Error("Unexpected run.updateService"));
     poller.pollOperation.rejects(new Error("unexpected poller.pollOperation"));
     pubsub.createTopic.rejects(new Error("unexpected pubsub.createTopic"));
     pubsub.deleteTopic.rejects(new Error("unexpected pubsub.deleteTopic"));
@@ -103,6 +104,7 @@ describe("Fabricator", () => {
       },
     },
     appEngineLocation: "us-central1",
+    projectNumber: "1234567",
   };
   let fab: fabricator.Fabricator;
   beforeEach(() => {
@@ -659,7 +661,10 @@ describe("Fabricator", () => {
       gcfv2.createFunction.resolves({ name: "op", done: false });
       poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
       run.setInvokerCreate.resolves();
-      const ep = endpoint({ scheduleTrigger: {} }, { platform: "gcfv2" });
+      const ep = endpoint(
+        { eventTrigger: { eventType: "event", eventFilters: {}, retry: false } },
+        { platform: "gcfv2" }
+      );
 
       await fab.createV2Function(ep);
       expect(run.setInvokerCreate).to.not.have.been.called;
@@ -762,7 +767,10 @@ describe("Fabricator", () => {
       gcfv2.updateFunction.resolves({ name: "op", done: false });
       poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
       run.setInvokerUpdate.resolves();
-      const ep = endpoint({ scheduleTrigger: {} }, { platform: "gcfv2" });
+      const ep = endpoint(
+        { eventTrigger: { eventType: "event", eventFilters: {}, retry: false } },
+        { platform: "gcfv2" }
+      );
 
       await fab.updateV2Function(ep);
       expect(run.setInvokerUpdate).to.not.have.been.called;
@@ -806,13 +814,7 @@ describe("Fabricator", () => {
 
   describe("setRunTraits", () => {
     let service: runNS.Service;
-    let serviceIsResolved: sinon.SinonStub;
-
     beforeEach(() => {
-      serviceIsResolved = sinon
-        .stub(fabricator, "serviceIsResolved")
-        .throws(new Error("Unexpected serviceIsResolved call"));
-
       service = {
         apiVersion: "serving.knative.dev/v1",
         kind: "Service",
@@ -853,22 +855,9 @@ describe("Fabricator", () => {
       };
     });
 
-    afterEach(() => {
-      serviceIsResolved.restore();
-    });
-
     it("replaces the service to set concurrency", async () => {
       run.getService.resolves(service);
-      run.replaceService.callsFake((name: string, svc: runNS.Service) => {
-        expect(svc.spec.template.spec.containerConcurrency).equals(80);
-        expect(svc.spec.template.spec.containers[0].resources.limits.cpu).equals("1");
-        // Run throws if this field is set
-        expect(svc.spec.template.metadata.name).is.undefined;
-        return Promise.resolve(service);
-      });
-
-      serviceIsResolved.onFirstCall().returns(false).onSecondCall().returns(true);
-
+      run.updateService.resolves(service);
       await fab.setRunTraits(
         service.metadata.name,
         endpoint(
@@ -879,22 +868,13 @@ describe("Fabricator", () => {
           }
         )
       );
-      expect(run.replaceService).to.have.been.called;
-      expect(serviceIsResolved).to.have.been.calledTwice;
+      expect(run.updateService).to.have.been.called;
     });
 
     it("replaces the service to set CPU", async () => {
       service.spec.template.spec.containers[0].resources.limits.cpu = (1 / 6).toString();
       run.getService.resolves(service);
-      run.replaceService.callsFake((name: string, svc: runNS.Service) => {
-        expect(svc.spec.template.spec.containerConcurrency).equals(1);
-        expect(svc.spec.template.spec.containers[0].resources.limits.cpu).equals("1");
-        // Run throws if this field is set
-        expect(svc.spec.template.metadata.name).is.undefined;
-        return Promise.resolve(service);
-      });
-      serviceIsResolved.onFirstCall().returns(false).onSecondCall().returns(true);
-
+      run.updateService.resolves(service);
       await fab.setRunTraits(
         service.metadata.name,
         endpoint(
@@ -905,8 +885,7 @@ describe("Fabricator", () => {
           }
         )
       );
-      expect(run.replaceService).to.have.been.called;
-      expect(serviceIsResolved).to.have.been.calledTwice;
+      expect(run.updateService).to.have.been.called;
     });
 
     it("doesn't setRunTraits when already at the correct value", async () => {
@@ -926,8 +905,7 @@ describe("Fabricator", () => {
           }
         )
       );
-      expect(run.replaceService).to.not.have.been.called;
-      expect(serviceIsResolved).to.not.have.been.called;
+      expect(run.updateService).to.not.have.been.called;
     });
 
     it("wraps errors", async () => {
@@ -947,104 +925,6 @@ describe("Fabricator", () => {
     });
   });
 
-  describe("serviceIsResolved", () => {
-    let service: runNS.Service;
-    beforeEach(() => {
-      service = {
-        apiVersion: "serving.knative.dev/v1",
-        kind: "Service",
-        metadata: {
-          name: "service",
-          namespace: "project",
-          generation: 2,
-        },
-        spec: {
-          template: {
-            metadata: {
-              name: "service",
-              namespace: "project",
-            },
-            spec: {
-              containerConcurrency: 1,
-              containers: [
-                {
-                  image: "image",
-                  ports: [
-                    {
-                      name: "main",
-                      containerPort: 8080,
-                    },
-                  ],
-                  env: {},
-                  resources: {
-                    limits: {
-                      memory: "256M",
-                      cpu: "0.1667",
-                    },
-                  },
-                },
-              ],
-            },
-          },
-          traffic: [],
-        },
-        status: {
-          observedGeneration: 2,
-          conditions: [
-            {
-              status: "True",
-              type: "Ready",
-              reason: "Testing",
-              lastTransitionTime: "",
-              message: "",
-              severity: "Info",
-            },
-          ],
-          latestCreatedRevisionName: "",
-          latestRevisionName: "",
-          traffic: [],
-          url: "",
-          address: {
-            url: "",
-          },
-        },
-      };
-    });
-
-    it("returns false if the observed generation isn't the metageneration", () => {
-      service.status!.observedGeneration = 1;
-      service.metadata.generation = 2;
-      expect(fabricator.serviceIsResolved(service)).to.be.false;
-    });
-
-    it("returns false if the status is not ready", () => {
-      service.status!.observedGeneration = 2;
-      service.metadata.generation = 2;
-      service.status!.conditions[0].status = "Unknown";
-      service.status!.conditions[0].type = "Ready";
-
-      expect(fabricator.serviceIsResolved(service)).to.be.false;
-    });
-
-    it("throws if we have an failed status", () => {
-      service.status!.observedGeneration = 2;
-      service.metadata.generation = 2;
-      service.status!.conditions[0].status = "False";
-      service.status!.conditions[0].type = "Ready";
-
-      expect(() => fabricator.serviceIsResolved(service)).to.throw;
-    });
-
-    it("returns true if resolved", () => {
-      service.status!.observedGeneration = 2;
-      service.metadata.generation = 2;
-      service.status!.conditions[0].status = "True";
-      service.status!.conditions[0].type = "Ready";
-
-      expect(fabricator.serviceIsResolved(service)).to.be.true;
-    });
-  });
-
   describe("upsertScheduleV1", () => {
     const ep = endpoint({
       scheduleTrigger: {
@@ -1061,6 +941,31 @@ describe("Fabricator", () => {
     it("wraps errors", async () => {
       scheduler.createOrReplaceJob.rejects(new Error("Fail"));
       await expect(fab.upsertScheduleV1(ep)).to.eventually.be.rejectedWith(
+        reporter.DeploymentError,
+        "upsert schedule"
+      );
+    });
+  });
+
+  describe("upsertScheduleV2", () => {
+    const ep = {
+      ...endpoint({
+        scheduleTrigger: {
+          schedule: "every 5 minutes",
+        },
+      }),
+      platform: "gcfv2",
+    } as backend.Endpoint & backend.ScheduleTriggered;
+
+    it("upserts schedules", async () => {
+      scheduler.createOrReplaceJob.resolves();
+      await fab.upsertScheduleV2(ep);
+      expect(scheduler.createOrReplaceJob).to.have.been.called;
+    });
+
+    it("wraps errors", async () => {
+      scheduler.createOrReplaceJob.rejects(new Error("Fail"));
+      await expect(fab.upsertScheduleV2(ep)).to.eventually.be.rejectedWith(
         reporter.DeploymentError,
         "upsert schedule"
       );
@@ -1094,6 +999,31 @@ describe("Fabricator", () => {
       await expect(fab.deleteScheduleV1(ep)).to.eventually.be.rejectedWith(
         reporter.DeploymentError,
         "delete topic"
+      );
+    });
+  });
+
+  describe("deleteScheduleV2", () => {
+    const ep = {
+      ...endpoint({
+        scheduleTrigger: {
+          schedule: "every 5 minutes",
+        },
+      }),
+      platform: "gcfv2",
+    } as backend.Endpoint & backend.ScheduleTriggered;
+
+    it("deletes schedules and topics", async () => {
+      scheduler.deleteJob.resolves();
+      await fab.deleteScheduleV2(ep);
+      expect(scheduler.deleteJob).to.have.been.called;
+    });
+
+    it("wraps errors", async () => {
+      scheduler.deleteJob.rejects(new Error("Fail"));
+      await expect(fab.deleteScheduleV2(ep)).to.eventually.be.rejectedWith(
+        reporter.DeploymentError,
+        "delete schedule"
       );
     });
   });
@@ -1493,6 +1423,7 @@ describe("Fabricator", () => {
         endpointsToCreate: [ep1, ep2],
         endpointsToUpdate: [{ endpoint: ep3 }],
         endpointsToDelete: [],
+        endpointsToSkip: [],
       };
 
       let sourceTokenScraper: scraper.SourceTokenScraper | undefined;
@@ -1525,11 +1456,47 @@ describe("Fabricator", () => {
         endpointsToCreate: [ep],
         endpointsToUpdate: [],
         endpointsToDelete: [],
+        endpointsToSkip: [],
       };
 
       const results = await fab.applyChangeset(changes);
       expect(results[0].error).to.be.instanceOf(reporter.DeploymentError);
       expect(results[0].error?.message).to.match(/create function/);
+    });
+  });
+
+  describe("getLogSuccessMessage", () => {
+    it("should return appropriate messaging for create case", () => {
+      const ep = endpoint({ httpsTrigger: {} }, { id: "potato" });
+
+      const message = fab.getLogSuccessMessage("create", ep);
+
+      expect(message).to.contain(`functions[potato(us-central1)]`);
+      expect(message).to.contain(`Successful create operation`);
+    });
+
+    it("should return appropriate messaging for skip case", () => {
+      const ep = endpoint({ httpsTrigger: {} }, { id: "tomato" });
+      ep.hash = "hashyhash";
+
+      const message = fab.getLogSuccessMessage("skip", ep);
+
+      expect(message).to.contain(`functions[tomato(us-central1)]`);
+      expect(message).to.contain(`Skipped (No changes detected)`);
+    });
+  });
+
+  describe("getSkippedDeployingNopOpMessage", () => {
+    it("should return appropriate messaging", () => {
+      const ep1 = endpoint({ httpsTrigger: {} }, { id: "function1" });
+      const ep2 = endpoint({ httpsTrigger: {} }, { id: "function2" });
+
+      const message = fab.getSkippedDeployingNopOpMessage([ep1, ep2]);
+
+      expect(message).to.contain(`functions:`);
+      expect(message).to.contain(`You can re-deploy skipped functions with:`);
+      expect(message).to.contain(`firebase deploy --only functions:function1,function2`);
+      expect(message).to.contain(`FUNCTIONS_DEPLOY_UNCHANGED=true firebase deploy`);
     });
   });
 
@@ -1541,6 +1508,7 @@ describe("Fabricator", () => {
       endpointsToCreate: [createEP],
       endpointsToUpdate: [],
       endpointsToDelete: [deleteEP],
+      endpointsToSkip: [],
     };
 
     const results = await fab.applyChangeset(changes);
@@ -1553,11 +1521,13 @@ describe("Fabricator", () => {
     const createEP = endpoint({ httpsTrigger: {} }, { id: "A" });
     const updateEP = endpoint({ httpsTrigger: {} }, { id: "B" });
     const deleteEP = endpoint({ httpsTrigger: {} }, { id: "C" });
+    const skipEP = endpoint({ httpsTrigger: {} }, { id: "D" });
     const update: planner.EndpointUpdate = { endpoint: updateEP };
     const changes: planner.Changeset = {
       endpointsToCreate: [createEP],
       endpointsToUpdate: [update],
       endpointsToDelete: [deleteEP],
+      endpointsToSkip: [skipEP],
     };
 
     const createEndpoint = sinon.stub(fab, "createEndpoint");
@@ -1588,11 +1558,13 @@ describe("Fabricator", () => {
           endpointsToCreate: [ep1],
           endpointsToUpdate: [],
           endpointsToDelete: [],
+          endpointsToSkip: [],
         },
         "us-west1": {
           endpointsToCreate: [],
           endpointsToUpdate: [],
           endpointsToDelete: [ep2],
+          endpointsToSkip: [],
         },
       };
 

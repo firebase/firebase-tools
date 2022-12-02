@@ -21,6 +21,7 @@ const EMULATOR_LOAD_RULESET_DELAY_MS = 2000;
 describe("Storage Rules Manager", function () {
   const rulesRuntime = new StorageRulesRuntime();
   const opts = { method: RulesetOperationMethod.GET, file: {}, path: "/b/bucket_0/o/" };
+  const projectId = "demo-project-id";
   let rulesManager: StorageRulesManager;
 
   // eslint-disable-next-line @typescript-eslint/no-invalid-this
@@ -44,12 +45,14 @@ describe("Storage Rules Manager", function () {
     await rulesManager.start();
 
     const bucket0Ruleset = rulesManager.getRuleset("bucket_0");
-    expect(await isPermitted({ ...opts, path: "/b/bucket_0/o/", ruleset: bucket0Ruleset! })).to.be
-      .true;
+    expect(
+      await isPermitted({ ...opts, path: "/b/bucket_0/o/", ruleset: bucket0Ruleset!, projectId })
+    ).to.be.true;
 
     const bucket1Ruleset = rulesManager.getRuleset("bucket_1");
-    expect(await isPermitted({ ...opts, path: "/b/bucket_1/o/", ruleset: bucket1Ruleset! })).to.be
-      .false;
+    expect(
+      await isPermitted({ ...opts, path: "/b/bucket_1/o/", ruleset: bucket1Ruleset!, projectId })
+    ).to.be.false;
   });
 
   it("should load single ruleset on start", async () => {
@@ -57,7 +60,7 @@ describe("Storage Rules Manager", function () {
     await rulesManager.start();
 
     const ruleset = rulesManager.getRuleset("bucket");
-    expect(await isPermitted({ ...opts, ruleset: ruleset! })).to.be.true;
+    expect(await isPermitted({ ...opts, ruleset: ruleset!, projectId })).to.be.true;
   });
 
   it("should reload ruleset on changes to source file", async () => {
@@ -70,14 +73,16 @@ describe("Storage Rules Manager", function () {
     rulesManager = createStorageRulesManager(sourceFile, rulesRuntime);
     await rulesManager.start();
 
-    expect(await isPermitted({ ...opts, ruleset: rulesManager.getRuleset("bucket")! })).to.be.true;
+    expect(await isPermitted({ ...opts, ruleset: rulesManager.getRuleset("bucket")!, projectId }))
+      .to.be.true;
 
     // Write new rules to file
     deleteFile(testDir, fileName);
     appendBytes(testDir, fileName, Buffer.from(StorageRulesFiles.readWriteIfAuth.content));
 
     await new Promise((resolve) => setTimeout(resolve, EMULATOR_LOAD_RULESET_DELAY_MS));
-    expect(await isPermitted({ ...opts, ruleset: rulesManager.getRuleset("bucket")! })).to.be.false;
+    expect(await isPermitted({ ...opts, ruleset: rulesManager.getRuleset("bucket")!, projectId }))
+      .to.be.false;
   });
 });
 

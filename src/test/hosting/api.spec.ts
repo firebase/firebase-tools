@@ -266,6 +266,125 @@ describe("hosting", () => {
     });
   });
 
+  describe("createVersion", () => {
+    afterEach(nock.cleanAll);
+
+    it("should make the API requests to create a version", async () => {
+      const VERSION = { status: "CREATED" } as const;
+      const FULL_NAME = `projects/-/sites/${SITE}/versions/my-new-version`;
+      nock(hostingApiOrigin)
+        .post(`/v1beta1/projects/-/sites/${SITE}/versions`, VERSION)
+        .reply(200, { name: FULL_NAME });
+
+      const res = await hostingApi.createVersion(SITE, VERSION);
+
+      expect(res).to.deep.equal(FULL_NAME);
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should throw an error if the server returns an error", async () => {
+      const VERSION = { status: "CREATED" } as const;
+      nock(hostingApiOrigin)
+        .post(`/v1beta1/projects/-/sites/${SITE}/versions`, VERSION)
+        .reply(500, { error: "server boo-boo" });
+
+      await expect(hostingApi.createVersion(SITE, VERSION)).to.eventually.be.rejectedWith(
+        FirebaseError,
+        /server boo-boo/
+      );
+
+      expect(nock.isDone()).to.be.true;
+    });
+  });
+
+  describe("updateVersion", () => {
+    afterEach(nock.cleanAll);
+
+    it("should make the API requests to update a version", async () => {
+      const VERSION = { status: "FINALIZED" } as const;
+      nock(hostingApiOrigin)
+        .patch(`/v1beta1/projects/-/sites/${SITE}/versions/my-version`, VERSION)
+        .query({ updateMask: "status" })
+        .reply(200, VERSION);
+
+      const res = await hostingApi.updateVersion(SITE, "my-version", VERSION);
+
+      expect(res).to.deep.equal(VERSION);
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should throw an error if the server returns an error", async () => {
+      const VERSION = { status: "FINALIZED" } as const;
+      nock(hostingApiOrigin)
+        .patch(`/v1beta1/projects/-/sites/${SITE}/versions/my-version`, VERSION)
+        .query({ updateMask: "status" })
+        .reply(500, { error: "server boo-boo" });
+
+      await expect(
+        hostingApi.updateVersion(SITE, "my-version", VERSION)
+      ).to.eventually.be.rejectedWith(FirebaseError, /server boo-boo/);
+
+      expect(nock.isDone()).to.be.true;
+    });
+  });
+
+  describe("listVersions", () => {
+    afterEach(nock.cleanAll);
+
+    const VERSION_1: hostingApi.Version = {
+      name: `projects/-/sites/${SITE}/versions/v1`,
+      status: "FINALIZED",
+      config: {},
+      createTime: "now",
+      createUser: {
+        email: "inlined@google.com",
+      },
+      fileCount: 0,
+      versionBytes: 0,
+    };
+    const VERSION_2 = {
+      ...VERSION_1,
+      name: `projects/-/sites/${SITE}/versions/v2`,
+    };
+
+    it("returns a single page of versions", async () => {
+      nock(hostingApiOrigin)
+        .get(`/v1beta1/projects/-/sites/${SITE}/versions`)
+        .reply(200, { versions: [VERSION_1] });
+      nock(hostingApiOrigin);
+
+      const versions = await hostingApi.listVersions(SITE);
+      expect(versions).deep.equals([VERSION_1]);
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("paginates through many versions", async () => {
+      nock(hostingApiOrigin)
+        .get(`/v1beta1/projects/-/sites/${SITE}/versions`)
+        .reply(200, { versions: [VERSION_1], nextPageToken: "page2" });
+      nock(hostingApiOrigin)
+        .get(`/v1beta1/projects/-/sites/${SITE}/versions?pageToken=page2`)
+        .reply(200, { versions: [VERSION_2] });
+
+      const versions = await hostingApi.listVersions(SITE);
+      expect(versions).deep.equals([VERSION_1, VERSION_2]);
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("handles errors", async () => {
+      nock(hostingApiOrigin)
+        .get(`/v1beta1/projects/-/sites/${SITE}/versions`)
+        .reply(500, { error: "server boo-boo" });
+
+      await expect(hostingApi.listVersions(SITE)).to.eventually.be.rejectedWith(
+        FirebaseError,
+        /server boo-boo/
+      );
+
+      expect(nock.isDone()).to.be.true;
+    });
+  });
+
   describe("cloneVersion", () => {
     afterEach(nock.cleanAll);
 
@@ -316,7 +435,8 @@ describe("hosting", () => {
     it("should make the API request to create a release", async () => {
       const CHANNEL_ID = "my-channel";
       const RELEASE = { name: "my-new-release" };
-      const VERSION_NAME = "versions/me";
+      const VERSION = "version";
+      const VERSION_NAME = `sites/${SITE}/versions/${VERSION}`;
       nock(hostingApiOrigin)
         .post(`/v1beta1/projects/-/sites/${SITE}/channels/${CHANNEL_ID}/releases`)
         .query({ versionName: VERSION_NAME })
@@ -328,9 +448,31 @@ describe("hosting", () => {
       expect(nock.isDone()).to.be.true;
     });
 
+    it("should include a message, if provided", async () => {
+      const CHANNEL_ID = "my-channel";
+      const RELEASE = { name: "my-new-release" };
+      const VERSION = "version";
+      const VERSION_NAME = `sites/${SITE}/versions/${VERSION}`;
+      const MESSAGE = "yo dawg";
+      nock(hostingApiOrigin)
+        .post(`/v1beta1/projects/-/sites/${SITE}/channels/${CHANNEL_ID}/releases`, {
+          message: MESSAGE,
+        })
+        .query({ versionName: VERSION_NAME })
+        .reply(201, RELEASE);
+
+      const res = await hostingApi.createRelease(SITE, CHANNEL_ID, VERSION_NAME, {
+        message: MESSAGE,
+      });
+
+      expect(res).to.deep.equal(RELEASE);
+      expect(nock.isDone()).to.be.true;
+    });
+
     it("should throw an error if the server returns an error", async () => {
       const CHANNEL_ID = "my-channel";
-      const VERSION_NAME = "versions/me";
+      const VERSION = "VERSION";
+      const VERSION_NAME = `sites/${SITE}/versions/${VERSION}`;
       nock(hostingApiOrigin)
         .post(`/v1beta1/projects/-/sites/${SITE}/channels/${CHANNEL_ID}/releases`)
         .query({ versionName: VERSION_NAME })

@@ -22,10 +22,16 @@ const AUTH_BLOCKING_CREATE_V2_LOG =
   "========== AUTH BLOCKING CREATE V2 FUNCTION METADATA ==========";
 const AUTH_BLOCKING_SIGN_IN_V2_LOG =
   "========== AUTH BLOCKING SIGN IN V2 FUNCTION METADATA ==========";
+const RTDB_LOG = "========== RTDB V2 FUNCTION ==========";
 
 const PUBSUB_TOPIC = "test-topic";
+const START_DOCUMENT_NAME = "test/start";
 
 admin.initializeApp();
+
+exports.httpsv2reaction = functionsV2.https.onRequest((req, res) => {
+  res.send("httpsv2reaction");
+});
 
 exports.pubsubv2reaction = functionsV2.pubsub.onMessagePublished(PUBSUB_TOPIC, (cloudevent) => {
   console.log(PUBSUB_FUNCTION_LOG);
@@ -106,5 +112,27 @@ exports.authblockingcreatereaction = functionsV2.identity.beforeUserCreated((eve
 
 exports.authblockingsigninreaction = functionsV2.identity.beforeUserSignedIn((event) => {
   console.log(AUTH_BLOCKING_SIGN_IN_V2_LOG);
+  return;
+});
+
+exports.onreqv2a = functionsV2.https.onRequest((req, res) => {
+  res.send("onreqv2a");
+});
+
+exports.onreqv2b = functionsV2.https.onRequest((req, res) => {
+  res.send("onreqv2b");
+});
+
+exports.onreqv2timeout = functionsV2.https.onRequest({ timeoutSeconds: 1 }, async (req, res) => {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      res.send("onreqv2timeout");
+      resolve();
+    }, 3_000);
+  });
+});
+
+exports.rtdbv2reaction = functionsV2.database.onValueWritten(START_DOCUMENT_NAME, (event) => {
+  console.log(RTDB_LOG);
   return;
 });

@@ -25,25 +25,42 @@ export function normalize(config?: FunctionsConfig): NormalizedConfig {
   return [config];
 }
 
+/**
+ * Check that the codebase name is less than 64 characters and only contains allowed characters.
+ */
+export function validateCodebase(codebase: string): void {
+  if (codebase.length === 0 || codebase.length > 63 || !/^[a-z0-9_-]+$/.test(codebase)) {
+    throw new FirebaseError(
+      "Invalid codebase name. Codebase must be less than 64 characters and " +
+        "can contain only lowercase letters, numeric characters, underscores, and dashes."
+    );
+  }
+}
+
 function validateSingle(config: FunctionConfig): ValidatedSingle {
   if (!config.source) {
-    throw new FirebaseError("functions.source must be specified");
+    throw new FirebaseError("codebase source must be specified");
   }
   if (!config.codebase) {
     config.codebase = DEFAULT_CODEBASE;
   }
-  if (config.codebase.length > 63 || !/^[a-z0-9_-]+$/.test(config.codebase)) {
-    throw new FirebaseError(
-      "Invalid codebase name. Codebase must be less than 63 characters and " +
-        "can contain only lowercase letters, numeric characters, underscores, and dashes."
-    );
-  }
+  validateCodebase(config.codebase);
 
   return { ...config, source: config.source, codebase: config.codebase };
 }
 
-function assertUnique(config: ValidatedConfig, property: keyof ValidatedSingle) {
+/**
+ * Check that the property is unique in the given config.
+ */
+export function assertUnique(
+  config: ValidatedConfig,
+  property: keyof ValidatedSingle,
+  propval?: string
+): void {
   const values = new Set();
+  if (propval) {
+    values.add(propval);
+  }
   for (const single of config) {
     const value = single[property];
     if (values.has(value)) {

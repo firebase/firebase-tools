@@ -13,12 +13,14 @@ export type Upload = {
   // status !== FINISHED.
   path: string;
   status: UploadStatus;
-  metadata: IncomingMetadata;
+  metadata?: IncomingMetadata;
   size: number;
   authorization?: string;
+  prevResponseCode?: number;
 };
 
 export enum UploadType {
+  MEDIA,
   MULTIPART,
   RESUMABLE,
 }
@@ -30,11 +32,19 @@ export enum UploadStatus {
   FINISHED,
 }
 
+/** Request object for {@link UploadService#mediaUpload}. */
+export type MediaUploadRequest = {
+  bucketId: string;
+  objectId: string;
+  dataRaw: Buffer;
+  authorization?: string;
+};
+
 /** Request object for {@link UploadService#multipartUpload}. */
 export type MultipartUploadRequest = {
   bucketId: string;
   objectId: string;
-  metadataRaw: string;
+  metadata: object;
   dataRaw: Buffer;
   authorization?: string;
 };
@@ -43,12 +53,24 @@ export type MultipartUploadRequest = {
 export type StartResumableUploadRequest = {
   bucketId: string;
   objectId: string;
-  metadataRaw: string;
+  metadata: object;
+  authorization?: string;
+};
+
+type OneShotUploadRequest = {
+  bucketId: string;
+  objectId: string;
+  uploadType: UploadType;
+  dataRaw: Buffer;
+  metadata?: any;
   authorization?: string;
 };
 
 /** Error that signals a resumable upload that's expected to be active is not. */
 export class UploadNotActiveError extends Error {}
+
+/** Error that signals a resumable upload that shouldn't be finalized is. */
+export class UploadPreviouslyFinalizedError extends Error {}
 
 /** Error that signals a resumable upload is not cancellable.  */
 export class NotCancellableError extends Error {}
@@ -71,28 +93,49 @@ export class UploadService {
     this._uploads = new Map();
   }
 
-  /**
-   * Handles a multipart file upload which is expected to have the entirety of
-   * the file's contents in a single request.
-   */
-  public multipartUpload(request: MultipartUploadRequest): Upload {
-    const upload = this.startMultipartUpload(request, request.dataRaw.byteLength);
+  /** Handles a media (data-only) file upload. */
+  public mediaUpload(request: MediaUploadRequest): Upload {
+    const upload = this.startOneShotUpload({
+      bucketId: request.bucketId,
+      objectId: request.objectId,
+      uploadType: UploadType.MEDIA,
+      dataRaw: request.dataRaw,
+      authorization: request.authorization,
+    });
     this._persistence.deleteFile(upload.path, /* failSilently = */ true);
     this._persistence.appendBytes(upload.path, request.dataRaw);
     return upload;
   }
 
-  private startMultipartUpload(request: MultipartUploadRequest, sizeInBytes: number): Upload {
-    const id = uuidV4();
-    const upload: Upload = {
-      id: uuidV4(),
+  /**
+   * Handles a multipart file upload which is expected to have the entirety of
+   * the file's contents in a single request.
+   */
+  public multipartUpload(request: MultipartUploadRequest): Upload {
+    const upload = this.startOneShotUpload({
       bucketId: request.bucketId,
       objectId: request.objectId,
-      type: UploadType.MULTIPART,
+      uploadType: UploadType.MULTIPART,
+      dataRaw: request.dataRaw,
+      metadata: request.metadata,
+      authorization: request.authorization,
+    });
+    this._persistence.deleteFile(upload.path, /* failSilently = */ true);
+    this._persistence.appendBytes(upload.path, request.dataRaw);
+    return upload;
+  }
+
+  private startOneShotUpload(request: OneShotUploadRequest): Upload {
+    const id = uuidV4();
+    const upload: Upload = {
+      id,
+      bucketId: request.bucketId,
+      objectId: request.objectId,
+      type: request.uploadType,
       path: this.getStagingFileName(id, request.bucketId, request.objectId),
       status: UploadStatus.FINISHED,
-      metadata: JSON.parse(request.metadataRaw),
-      size: sizeInBytes,
+      metadata: request.metadata,
+      size: request.dataRaw.byteLength,
       authorization: request.authorization,
     };
     this._uploads.set(upload.id, upload);
@@ -112,7 +155,7 @@ export class UploadService {
       type: UploadType.RESUMABLE,
       path: this.getStagingFileName(id, request.bucketId, request.objectId),
       status: UploadStatus.ACTIVE,
-      metadata: JSON.parse(request.metadataRaw),
+      metadata: request.metadata,
       size: 0,
       authorization: request.authorization,
     };
@@ -168,15 +211,37 @@ export class UploadService {
   /**
    * Marks a ResumableUpload as finalized.
    * @throws {NotFoundError} if the resumable upload does not exist.
-   * @throws {NotActiveUploadError} if the resumable upload is not ACTIVE.
+   * @throws {UploadNotActiveError} if the resumable upload is not ACTIVE.
+   * @throws {UploadPreviouslyFinalizedError} if the resumable upload has already been finalized.
    */
   public finalizeResumableUpload(uploadId: string): Upload {
     const upload = this.getResumableUpload(uploadId);
+    if (upload.status === UploadStatus.FINISHED) {
+      throw new UploadPreviouslyFinalizedError();
+    }
     if (upload.status === UploadStatus.CANCELLED) {
       throw new UploadNotActiveError();
     }
     upload.status = UploadStatus.FINISHED;
     return upload;
+  }
+
+  /**
+   * Sets previous response code.
+   */
+  public setResponseCode(uploadId: string, code: number): void {
+    const upload = this._uploads.get(uploadId);
+    if (upload) {
+      upload.prevResponseCode = code;
+    }
+  }
+
+  /**
+   * Gets previous response code.
+   * In the case the uploadId doesn't exist (after importing) return 200
+   */
+  public getPreviousResponseCode(uploadId: string): number {
+    return this._uploads.get(uploadId)?.prevResponseCode || 200;
   }
 
   private getStagingFileName(uploadId: string, bucketId: string, objectId: string): string {

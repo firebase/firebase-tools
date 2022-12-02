@@ -1,17 +1,15 @@
-import { EmulatorServer } from "../emulator/emulatorServer";
 import { logger } from "../logger";
 import { prepareFrameworks } from "../frameworks";
-import { previews } from "../previews";
+import * as experiments from "../experiments";
 import { trackEmulator } from "../track";
 import { getProjectId } from "../projectUtils";
 import { Constants } from "../emulator/constants";
+import * as config from "../hosting/config";
 
 const { FunctionsServer } = require("./functions");
 
 const TARGETS: {
-  [key: string]:
-    | EmulatorServer
-    | { start: (o: any) => void; stop: (o: any) => void; connect: () => void };
+  [key: string]: { start: (o: any) => void; stop: (o: any) => void; connect: () => void };
 } = {
   hosting: require("./hosting"),
   functions: new FunctionsServer(),
@@ -24,11 +22,8 @@ const TARGETS: {
 export async function serve(options: any): Promise<void> {
   const targetNames: string[] = options.targets || [];
   options.port = parseInt(options.port, 10);
-  if (
-    previews.frameworkawareness &&
-    targetNames.includes("hosting") &&
-    [].concat(options.config.get("hosting")).some((it: any) => it.source)
-  ) {
+  if (targetNames.includes("hosting") && config.extract(options).some((it: any) => it.source)) {
+    experiments.assertEnabled("webframeworks", "emulate a web framework");
     await prepareFrameworks(targetNames, options, options);
   }
   const isDemoProject = Constants.isDemoProject(getProjectId(options) || "");

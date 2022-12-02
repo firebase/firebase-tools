@@ -4,6 +4,7 @@ import { Client } from "../apiv2";
 import * as operationPoller from "../operation-poller";
 import { DEFAULT_DURATION } from "../hosting/expireUtils";
 import { getAuthDomains, updateAuthDomains } from "../gcp/auth";
+import * as proto from "../gcp/proto";
 
 const ONE_WEEK_MS = 604800000; // 7 * 24 * 60 * 60 * 1000
 
@@ -13,7 +14,7 @@ interface ActingUser {
 
   // A profile image URL for the user. May not be present if the user has
   // changed their email address or deleted their account.
-  imageUrl: string;
+  imageUrl?: string;
 }
 
 enum ReleaseType {
@@ -30,14 +31,14 @@ enum ReleaseType {
   SITE_DISABLE = "SITE_DISABLE",
 }
 
-interface Release {
+export interface Release {
   // The unique identifier for the release, in the format:
   // <code>sites/<var>site-name</var>/releases/<var>releaseID</var></code>
   readonly name: string;
 
   // The configuration and content that was released.
   // TODO: create a Version type interface.
-  readonly version: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+  readonly version: Version;
 
   // Explains the reason for the release.
   // Specify a value for this field only when creating a `SITE_DISABLE`
@@ -87,30 +88,60 @@ export interface Channel {
   labels: { [key: string]: string };
 }
 
-enum VersionStatus {
-  // The default status; should not be intentionally used.
-  VERSION_STATUS_UNSPECIFIED = "VERSION_STATUS_UNSPECIFIED",
+export type VersionStatus =
   // The version has been created, and content is currently being added to the
   // version.
-  CREATED = "CREATED",
+  | "CREATED"
   // All content has been added to the version, and the version can no longer be
   // changed.
-  FINALIZED = "FINALIZED",
+  | "FINALIZED"
   // The version has been deleted.
-  DELETED = "DELETED",
+  | "DELETED"
   // The version was not updated to `FINALIZED` within 12&nbsp;hours and was
   // automatically deleted.
-  ABANDONED = "ABANDONED",
+  | "ABANDONED"
   // The version is outside the site-configured limit for the number of
   // retained versions, so the version's content is scheduled for deletion.
-  EXPIRED = "EXPIRED",
+  | "EXPIRED"
   // The version is being cloned from another version. All content is still
   // being copied over.
-  CLONING = "CLONING",
+  | "CLONING";
+
+export type HasPattern = { glob: string } | { regex: string };
+
+export type Header = HasPattern & {
+  regex?: string;
+  headers: Record<string, string>;
+};
+
+export type Redirect = HasPattern & {
+  statusCode?: number;
+  location: string;
+};
+
+export interface RunRewrite {
+  serviceId: string;
+  region: string;
+  tag?: string;
 }
 
-// TODO: define ServingConfig.
-enum ServingConfig {}
+export type RewriteBehavior =
+  | { path: string }
+  | { function: string; functionRegion?: string }
+  | { dynamicLinks: true }
+  | { run: RunRewrite };
+
+export type Rewrite = HasPattern & RewriteBehavior;
+
+export interface ServingConfig {
+  headers?: Header[];
+  redirects?: Redirect[];
+  rewrites?: Rewrite[];
+  cleanUrls?: boolean;
+  trailingSlashBehavior?: "ADD" | "REMOVE";
+  appAssociation?: "AUTO" | "NONE";
+  i18n?: { root: string };
+}
 
 export interface Version {
   // The unique identifier for a version, in the format:
@@ -121,10 +152,10 @@ export interface Version {
   status: VersionStatus;
 
   // The configuration for the behavior of the site.
-  config: ServingConfig;
+  config?: ServingConfig;
 
   // The labels used for extra metadata and/or filtering.
-  labels: Map<string, string>;
+  labels?: Record<string, string>;
 
   // The time at which the version was created.
   readonly createTime: string;
@@ -133,16 +164,16 @@ export interface Version {
   readonly createUser: ActingUser;
 
   // The time at which the version was `FINALIZED`.
-  readonly finalizeTime: string;
+  readonly finalizeTime?: string;
 
   // Identifies the user who `FINALIZED` the version.
-  readonly finalizeUser: ActingUser;
+  readonly finalizeUser?: ActingUser;
 
   // The time at which the version was `DELETED`.
-  readonly deleteTime: string;
+  readonly deleteTime?: string;
 
   // Identifies the user who `DELETED` the version.
-  readonly deleteUser: ActingUser;
+  readonly deleteUser?: ActingUser;
 
   // The total number of files associated with the version.
   readonly fileCount: number;
@@ -150,6 +181,17 @@ export interface Version {
   // The total stored bytesize of the version.
   readonly versionBytes: number;
 }
+
+export type VERSION_OUTPUT_FIELDS =
+  | "name"
+  | "createTime"
+  | "createUser"
+  | "finalizeTime"
+  | "finalizeUser"
+  | "deleteTime"
+  | "deleteUser"
+  | "fileCount"
+  | "versionBytes";
 
 interface CloneVersionRequest {
   // The name of the version to be cloned, in the format:
@@ -297,7 +339,7 @@ export async function updateChannelTtl(
   const res = await apiClient.patch<{ ttl: string }, Channel>(
     `/projects/${project}/sites/${site}/channels/${channelId}`,
     { ttl: `${ttlMillis / 1000}s` },
-    { queryParams: { updateMask: ["ttl"].join(",") } }
+    { queryParams: { updateMask: "ttl" } }
   );
   return res.body;
 }
@@ -314,6 +356,71 @@ export async function deleteChannel(
   channelId: string
 ): Promise<void> {
   await apiClient.delete(`/projects/${project}/sites/${site}/channels/${channelId}`);
+}
+
+/**
+ * Creates a version
+ */
+export async function createVersion(
+  siteId: string,
+  version: Omit<Version, VERSION_OUTPUT_FIELDS>
+): Promise<string> {
+  const res = await apiClient.post<typeof version, { name: string }>(
+    `projects/-/sites/${siteId}/versions`,
+    version
+  );
+  return res.body.name;
+}
+
+/**
+ * Updates a version.
+ */
+export async function updateVersion(
+  site: string,
+  versionId: string,
+  version: Partial<Version>
+): Promise<Version> {
+  const res = await apiClient.patch<Partial<Version>, Version>(
+    `projects/-/sites/${site}/versions/${versionId}`,
+    version,
+    {
+      queryParams: {
+        // N.B. It's not clear why we need "config". If the Hosting server acted
+        // like a normal OP service, we could update config.foo and config.bar
+        // in a PATCH command even if config was the empty object already. But
+        // not setting config in createVersion and then setting config subfields
+        // in updateVersion is failing with
+        // "HTTP Error: 40 Unknown path in `updateMask`: `config.rewrites`"
+        updateMask: proto.fieldMasks(version, "labels", "config").join(","),
+      },
+    }
+  );
+  return res.body;
+}
+
+interface ListVersionsResponse {
+  versions: Version[];
+  nextPageToken?: string;
+}
+
+/**
+ * Get a list of all versions for a site, automatically handling pagination.
+ */
+export async function listVersions(site: string): Promise<Version[]> {
+  let pageToken: string | undefined = undefined;
+  const versions: Version[] = [];
+  do {
+    const queryParams: Record<string, string> = {};
+    if (pageToken) {
+      queryParams.pageToken = pageToken;
+    }
+    const res = await apiClient.get<ListVersionsResponse>(`projects/-/sites/${site}/versions`, {
+      queryParams,
+    });
+    versions.push(...res.body.versions);
+    pageToken = res.body.nextPageToken;
+  } while (pageToken);
+  return versions;
 }
 
 /**
@@ -344,6 +451,8 @@ export async function cloneVersion(
   return pollRes;
 }
 
+type PartialRelease = Partial<Pick<Release, "message" | "type">>;
+
 /**
  * Create a release on a channel.
  * @param site the site for the version.
@@ -353,13 +462,14 @@ export async function cloneVersion(
 export async function createRelease(
   site: string,
   channel: string,
-  version: string
+  version: string,
+  partialRelease?: PartialRelease
 ): Promise<Release> {
-  const res = await apiClient.request<unknown, Release>({
-    method: "POST",
-    path: `/projects/-/sites/${site}/channels/${channel}/releases`,
-    queryParams: { versionName: version },
-  });
+  const res = await apiClient.post<PartialRelease, Release>(
+    `/projects/-/sites/${site}/channels/${channel}/releases`,
+    partialRelease,
+    { queryParams: { versionName: version } }
+  );
   return res.body;
 }
 

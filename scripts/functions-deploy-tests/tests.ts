@@ -10,13 +10,12 @@ import * as proto from "../../src/gcp/proto";
 import * as tasks from "../../src/gcp/cloudtasks";
 import * as scheduler from "../../src/gcp/cloudscheduler";
 import { Endpoint } from "../../src/deploy/functions/backend";
-import { getGlobalDefaultAccount } from "../../src/auth";
-import { setRefreshToken } from "../../src/apiv2";
+import { requireAuth } from "../../src/requireAuth";
 
 const FIREBASE_PROJECT = process.env.GCLOUD_PROJECT || "";
 const FIREBASE_DEBUG = process.env.FIREBASE_DEBUG || "";
 const FUNCTIONS_DIR = path.join(__dirname, "functions");
-const FNS_COUNT = 16;
+const FNS_COUNT = 20;
 
 function genRandomId(n = 10): string {
   const charset = "abcdefghijklmnopqrstuvwxyz";
@@ -38,6 +37,7 @@ interface Opts {
   v2IdpOpts: functionsv2.identity.BlockingOptions;
 
   v1ScheduleOpts: functions.ScheduleRetryConfig;
+  v2ScheduleOpts: functionsv2.scheduler.ScheduleOptions;
 }
 
 async function setOpts(opts: Opts) {
@@ -117,10 +117,7 @@ describe("firebase deploy", function (this) {
   before(async () => {
     expect(FIREBASE_PROJECT).to.not.be.empty;
 
-    const account = getGlobalDefaultAccount();
-    if (account?.tokens.refresh_token) {
-      setRefreshToken(account.tokens.refresh_token);
-    }
+    await requireAuth({});
     // write up index.js to import trigger definition using unique group identifier.
     // All exported functions will have name {hash}-{trigger} e.g. 'abcdefg-v1storage'.
     await fs.writeFile(
@@ -146,6 +143,7 @@ describe("firebase deploy", function (this) {
         memory: "128MB",
         maxInstances: 42,
         timeoutSeconds: 42,
+        preserveExternalChanges: true,
       },
       v2Opts: {
         memory: "128MiB",
@@ -153,6 +151,7 @@ describe("firebase deploy", function (this) {
         timeoutSeconds: 42,
         cpu: 2,
         concurrency: 42,
+        preserveExternalChanges: true,
       },
       v1TqOpts: {
         retryConfig: {
@@ -198,6 +197,14 @@ describe("firebase deploy", function (this) {
         maxRetryDuration: "42s",
         maxDoublings: 42,
         maxBackoffDuration: "42s",
+      },
+      v2ScheduleOpts: {
+        schedule: "every 30 minutes",
+        retryCount: 3,
+        minBackoffSeconds: 42,
+        maxRetrySeconds: 42,
+        maxDoublings: 42,
+        maxBackoffSeconds: 42,
       },
     };
 
@@ -255,15 +262,35 @@ describe("firebase deploy", function (this) {
     }
   });
 
-  it("leaves existing options when unspecified", async () => {
+  it("skips duplicate deploys functions with runtime options when preserveExternalChanges is set", async () => {
     const opts: Opts = {
-      v1Opts: {},
-      v2Opts: {},
+      v1Opts: { preserveExternalChanges: true },
+      v2Opts: { preserveExternalChanges: true },
       v1TqOpts: {},
       v2TqOpts: {},
       v1IdpOpts: {},
       v2IdpOpts: {},
       v1ScheduleOpts: {},
+      v2ScheduleOpts: { schedule: "every 30 minutes" },
+    };
+
+    const result = await setOptsAndDeploy(opts);
+    expect(result.stdout, "deploy result").to.match(/Deploy complete!/);
+
+    const result2 = await setOptsAndDeploy(opts);
+    expect(result2.stdout, "deploy result").to.match(/Skipped \(No changes detected\)/);
+  });
+
+  it("leaves existing options when unspecified and preserveExternalChanges is set", async () => {
+    const opts: Opts = {
+      v1Opts: { preserveExternalChanges: true },
+      v2Opts: { preserveExternalChanges: true },
+      v1TqOpts: {},
+      v2TqOpts: {},
+      v1IdpOpts: {},
+      v2IdpOpts: {},
+      v1ScheduleOpts: {},
+      v2ScheduleOpts: { schedule: "every 30 minutes" },
     };
 
     const result = await setOptsAndDeploy(opts);
@@ -281,7 +308,10 @@ describe("firebase deploy", function (this) {
       if (e.platform === "gcfv2") {
         expect(e).to.include({
           cpu: 2,
-          concurrency: 42,
+          // EXCEPTION: concurrency
+          // Firebase will aggressively set concurrency to 80 when the CPU setting allows for it
+          // AND when the concurrency is NOT set on the source code.
+          concurrency: 80,
         });
       }
       // BUGBUG: As implemented, Cloud Tasks update doesn't preserve existing setting. Instead, it overwrites the
@@ -324,57 +354,16 @@ describe("firebase deploy", function (this) {
 
   // BUGBUG: Setting options to null SHOULD restore their values to default, but this isn't correctly implemented in
   // the CLI.
-  it.skip("restores default values if options are explicitly cleared out", async () => {
+  it.skip("restores default values when unspecified and preserveExternalChanges is not set", async () => {
     const opts: Opts = {
-      v1Opts: {
-        memory: undefined,
-        maxInstances: undefined,
-        timeoutSeconds: undefined,
-      },
-      v2Opts: {
-        memory: undefined,
-        maxInstances: undefined,
-        timeoutSeconds: undefined,
-        cpu: undefined,
-        concurrency: undefined,
-      },
-      v1TqOpts: {
-        retryConfig: {
-          maxAttempts: undefined,
-          maxRetrySeconds: undefined,
-          maxBackoffSeconds: undefined,
-          maxDoublings: undefined,
-          minBackoffSeconds: undefined,
-        },
-        rateLimits: {
-          maxDispatchesPerSecond: undefined,
-          maxConcurrentDispatches: undefined,
-        },
-      },
-      v2TqOpts: {
-        retryConfig: {
-          maxAttempts: undefined,
-          maxRetrySeconds: undefined,
-          maxBackoffSeconds: undefined,
-          maxDoublings: undefined,
-          minBackoffSeconds: undefined,
-        },
-        rateLimits: {
-          maxDispatchesPerSecond: undefined,
-          maxConcurrentDispatches: undefined,
-        },
-      },
-      v1IdpOpts: {
-        blockingOptions: {},
-      },
+      v1Opts: {},
+      v2Opts: {},
+      v1TqOpts: {},
+      v2TqOpts: {},
+      v1IdpOpts: { blockingOptions: {} },
       v2IdpOpts: {},
-      v1ScheduleOpts: {
-        retryCount: undefined,
-        maxDoublings: undefined,
-        maxBackoffDuration: undefined,
-        maxRetryDuration: undefined,
-        minBackoffDuration: undefined,
-      },
+      v1ScheduleOpts: {},
+      v2ScheduleOpts: { schedule: "every 30 minutes" },
     };
 
     const result = await setOptsAndDeploy(opts);

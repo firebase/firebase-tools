@@ -9,32 +9,39 @@ import { EmulatorInfo, EmulatorInstance, Emulators, Severity } from "../emulator
 import { EmulatorRegistry } from "./registry";
 import { Constants } from "./constants";
 import { Issue } from "./types";
-import { Client } from "../apiv2";
 
 export interface FirestoreEmulatorArgs {
   port?: number;
   host?: string;
-  projectId?: string;
+  websocket_port?: number;
+  project_id?: string;
   rules?: string;
   functions_emulator?: string;
   auto_download?: boolean;
   seed_from_export?: string;
+  single_project_mode?: boolean;
+  single_project_mode_error?: boolean;
+}
+
+export interface FirestoreEmulatorInfo extends EmulatorInfo {
+  // Used for the Emulator UI to connect to the WebSocket server.
+  // The casing of the fields below is sensitive and important.
+  // https://github.com/firebase/firebase-tools-ui/blob/2de1e80cce28454da3afeeb373fbbb45a67cb5ef/src/store/config/types.ts#L26-L27
+  webSocketHost?: string;
+  webSocketPort?: number;
 }
 
 export class FirestoreEmulator implements EmulatorInstance {
-  static FIRESTORE_EMULATOR_ENV_ALT = "FIREBASE_FIRESTORE_EMULATOR_ADDRESS";
-
   rulesWatcher?: chokidar.FSWatcher;
 
   constructor(private args: FirestoreEmulatorArgs) {}
 
   async start(): Promise<void> {
-    const functionsInfo = EmulatorRegistry.getInfo(Emulators.FUNCTIONS);
-    if (functionsInfo) {
-      this.args.functions_emulator = EmulatorRegistry.getInfoHostString(functionsInfo);
+    if (EmulatorRegistry.isRunning(Emulators.FUNCTIONS)) {
+      this.args.functions_emulator = EmulatorRegistry.url(Emulators.FUNCTIONS).host;
     }
 
-    if (this.args.rules && this.args.projectId) {
+    if (this.args.rules && this.args.project_id) {
       const rulesPath = this.args.rules;
       this.rulesWatcher = chokidar.watch(rulesPath, { persistent: true, ignoreInitial: true });
       this.rulesWatcher.on("change", async () => {
@@ -74,15 +81,19 @@ export class FirestoreEmulator implements EmulatorInstance {
     return downloadableEmulators.stop(Emulators.FIRESTORE);
   }
 
-  getInfo(): EmulatorInfo {
+  getInfo(): FirestoreEmulatorInfo {
     const host = this.args.host || Constants.getDefaultHost();
     const port = this.args.port || Constants.getDefaultPort(Emulators.FIRESTORE);
+    const reservedPorts = this.args.websocket_port ? [this.args.websocket_port] : [];
 
     return {
       name: this.getName(),
       host,
       port,
       pid: downloadableEmulators.getPID(Emulators.FIRESTORE),
+      reservedPorts: reservedPorts,
+      webSocketHost: this.args.websocket_port ? host : undefined,
+      webSocketPort: this.args.websocket_port ? this.args.websocket_port : undefined,
     };
   }
 
@@ -91,9 +102,8 @@ export class FirestoreEmulator implements EmulatorInstance {
   }
 
   private async updateRules(content: string): Promise<Issue[]> {
-    const projectId = this.args.projectId;
+    const projectId = this.args.project_id;
 
-    const info = this.getInfo();
     const body = {
       // Invalid rulesets will still result in a 200 response but with more information
       ignore_errors: true,
@@ -107,11 +117,7 @@ export class FirestoreEmulator implements EmulatorInstance {
       },
     };
 
-    const client = new Client({
-      urlPrefix: `http://${EmulatorRegistry.getInfoHostString(info)}`,
-      auth: false,
-    });
-    const res = await client.put<any, { issues?: Issue[] }>(
+    const res = await EmulatorRegistry.client(Emulators.FIRESTORE).put<any, { issues?: Issue[] }>(
       `/emulator/v1/projects/${projectId}:securityRules`,
       body
     );

@@ -7,7 +7,6 @@ describe("api", () => {
   afterEach(() => {
     delete process.env.FIREBASE_DATABASE_EMULATOR_HOST;
     delete process.env.FIREBASE_REALTIME_URL;
-    delete process.env.FIREBASE_CLI_PREVIEWS;
     // This is dirty, but utils keeps stateful overrides and we need to clear it
     utils.envOverrides.length = 0;
   });

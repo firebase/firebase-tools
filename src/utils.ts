@@ -341,19 +341,19 @@ export function getFunctionsEventProvider(eventType: string): string {
     return _.capitalize(provider);
   }
   // New event types:
-  if (eventType.match(/google.pubsub/)) {
+  if (/google.pubsub/.exec(eventType)) {
     return "PubSub";
-  } else if (eventType.match(/google.storage/)) {
+  } else if (/google.storage/.exec(eventType)) {
     return "Storage";
-  } else if (eventType.match(/google.analytics/)) {
+  } else if (/google.analytics/.exec(eventType)) {
     return "Analytics";
-  } else if (eventType.match(/google.firebase.database/)) {
+  } else if (/google.firebase.database/.exec(eventType)) {
     return "Database";
-  } else if (eventType.match(/google.firebase.auth/)) {
+  } else if (/google.firebase.auth/.exec(eventType)) {
     return "Auth";
-  } else if (eventType.match(/google.firebase.crashlytics/)) {
+  } else if (/google.firebase.crashlytics/.exec(eventType)) {
     return "Crashlytics";
-  } else if (eventType.match(/google.firestore/)) {
+  } else if (/google.firestore/.exec(eventType)) {
     return "Firestore";
   }
   return _.capitalize(eventType.split(".")[1]);
@@ -416,7 +416,7 @@ export async function promiseWhile<T>(
  * Return a promise that rejects after timeoutMs but otherwise behave the same.
  * @param timeoutMs the time in milliseconds before forced rejection
  * @param promise the original promise
- * @returns a promise wrapping the original promise with rejection on timeout
+ * @return a promise wrapping the original promise with rejection on timeout
  */
 export function withTimeout<T>(timeoutMs: number, promise: Promise<T>): Promise<T> {
   return new Promise<T>((resolve, reject) => {
@@ -577,7 +577,7 @@ export function datetimeString(d: Date): string {
  * Indicates whether the end-user is running the CLI from a cloud-based environment.
  */
 export function isCloudEnvironment() {
-  return !!process.env.CODESPACES;
+  return !!process.env.CODESPACES || !!process.env.GOOGLE_CLOUD_WORKSTATIONS;
 }
 
 /**
@@ -700,9 +700,11 @@ export function cloneDeep<T>(obj: T): T {
  * Returns the last element in the array, or undefined if no array is passed or
  * the array is empty.
  */
-export function last<T>(arr?: Array<T>): T | undefined {
+export function last<T>(arr?: T[]): T {
+  // The type system should never allow this, so return something that violates
+  // the type system when passing in something that violates the type system.
   if (!Array.isArray(arr)) {
-    return;
+    return undefined as unknown as T;
   }
   return arr[arr.length - 1];
 }
@@ -740,4 +742,25 @@ export function randomInt(min: number, max: number): number {
   min = Math.floor(min);
   max = Math.ceil(max) + 1;
   return Math.floor(Math.random() * (max - min) + min);
+}
+
+/**
+ * Return a connectable hostname, replacing wildcard 0.0.0.0 or :: with loopback
+ * addresses 127.0.0.1 / ::1 correspondingly. See below for why this is needed:
+ * https://github.com/firebase/firebase-tools-ui/issues/286
+ *
+ * This assumes that the consumer (i.e. client SDK, etc.) is located on the same
+ * device as the Emulator hub (i.e. CLI), which may not be true on multi-device
+ * setups, etc. In that case, the customer can work around this by specifying a
+ * non-wildcard IP address (like the IP address on LAN, if accessing via LAN).
+ */
+export function connectableHostname(hostname: string): string {
+  if (hostname === "0.0.0.0") {
+    hostname = "127.0.0.1";
+  } else if (hostname === "::" /* unquoted IPv6 wildcard */) {
+    hostname = "::1";
+  } else if (hostname === "[::]" /* quoted IPv6 wildcard */) {
+    hostname = "[::1]";
+  }
+  return hostname;
 }

@@ -1,6 +1,6 @@
 import * as v1 from "firebase-functions";
 import * as v2 from "firebase-functions/v2";
-import { v1Opts, v2Opts, v1ScheduleOpts, v1TqOpts, v2TqOpts } from "./options.js";
+import { v1Opts, v2Opts, v1ScheduleOpts, v2ScheduleOpts, v1TqOpts, v2TqOpts } from "./options.js";
 
 // v1 functions
 const withOptions = v1.runWith(v1Opts);
@@ -41,3 +41,7 @@ export const v2tq = v2.tasks.onTaskDispatched(v2TqOpts, () => {});
 // TODO: Need a way to create default firebase custom channel as part of integration test.
 // export const v2custom = v2.eventarc.onCustomEventPublished("custom.event", () => {});
 export const v2secret = v2.pubsub.onMessagePublished({ topic: "foo", secrets: ["TOP"] }, () => {});
+export const v2scheduled = v2.scheduler.onSchedule(v2ScheduleOpts, () => {});
+export const v2testlab = v2.testLab.onTestMatrixCompleted(() => {});
+export const v2rc = v2.remoteConfig.onConfigUpdated(() => {});
+export const v2perf = v2.alerts.performance.onThresholdAlertPublished(() => {});

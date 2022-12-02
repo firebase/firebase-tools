@@ -7,7 +7,7 @@ import { logBullet, logSuccess, consoleUrl, addSubdomain } from "../utils";
 import { FirebaseError } from "../error";
 import { track } from "../track";
 import { lifecycleHooks } from "./lifecycleHooks";
-import { previews } from "../previews";
+import * as experiments from "../experiments";
 import * as HostingTarget from "./hosting";
 import * as DatabaseTarget from "./database";
 import * as FirestoreTarget from "./firestore";
@@ -16,6 +16,9 @@ import * as StorageTarget from "./storage";
 import * as RemoteConfigTarget from "./remoteconfig";
 import * as ExtensionsTarget from "./extensions";
 import { prepareFrameworks } from "../frameworks";
+import { HostingDeploy } from "./hosting/context";
+import { requirePermissions } from "../requirePermissions";
+import { TARGET_PERMISSIONS } from "../commands/deploy";
 
 const TARGETS = {
   hosting: HostingTarget,
@@ -56,10 +59,21 @@ export const deploy = async function (
   const postdeploys: Chain = [];
   const startTime = Date.now();
 
-  if (previews.frameworkawareness && targetNames.includes("hosting")) {
+  if (targetNames.includes("hosting")) {
     const config = options.config.get("hosting");
     if (Array.isArray(config) ? config.some((it) => it.source) : config.source) {
+      experiments.assertEnabled("webframeworks", "deploy a web framework to hosting");
+      const usedToTargetFunctions = targetNames.includes("functions");
       await prepareFrameworks(targetNames, context, options);
+      const nowTargetsFunctions = targetNames.includes("functions");
+      if (nowTargetsFunctions && !usedToTargetFunctions) {
+        if (context.hostingChannel && !experiments.isEnabled("pintags")) {
+          throw new FirebaseError(
+            "Web frameworks with dynamic content do not yet support deploying to preview channels"
+          );
+        }
+        await requirePermissions(TARGET_PERMISSIONS["functions"]);
+      }
     }
   }
 
@@ -103,8 +117,8 @@ export const deploy = async function (
   const deployedHosting = includes(targetNames, "hosting");
   logger.info(bold("Project Console:"), consoleUrl(options.project, "/overview"));
   if (deployedHosting) {
-    each(context.hosting.deploys, (deploy) => {
-      logger.info(bold("Hosting URL:"), addSubdomain(hostingOrigin, deploy.site));
+    each(context.hosting.deploys as HostingDeploy[], (deploy) => {
+      logger.info(bold("Hosting URL:"), addSubdomain(hostingOrigin, deploy.config.site));
     });
     const versionNames = context.hosting.deploys.map((deploy: any) => deploy.version);
     return { hosting: versionNames.length === 1 ? versionNames[0] : versionNames };

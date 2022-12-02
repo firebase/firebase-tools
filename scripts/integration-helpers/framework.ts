@@ -23,6 +23,7 @@ const STORAGE_BUCKET_FUNCTION_V2_FINALIZED_LOG =
   "========== STORAGE BUCKET V2 FUNCTION FINALIZED ==========";
 const STORAGE_BUCKET_FUNCTION_V2_METADATA_LOG =
   "========== STORAGE BUCKET V2 FUNCTION METADATA ==========";
+const RTDB_V2_FUNCTION_LOG = "========== RTDB V2 FUNCTION ==========";
 /* Functions V1 */
 const RTDB_FUNCTION_LOG = "========== RTDB FUNCTION ==========";
 const FIRESTORE_FUNCTION_LOG = "========== FIRESTORE FUNCTION ==========";
@@ -52,6 +53,7 @@ interface ConnectionInfo {
 
 export interface FrameworkOptions {
   emulators?: {
+    hub: ConnectionInfo;
     database: ConnectionInfo;
     firestore: ConnectionInfo;
     functions: ConnectionInfo;
@@ -61,7 +63,8 @@ export interface FrameworkOptions {
   };
 }
 
-export class TriggerEndToEndTest {
+export class EmulatorEndToEndTest {
+  emulatorHubPort = 0;
   rtdbEmulatorHost = "localhost";
   rtdbEmulatorPort = 0;
   firestoreEmulatorHost = "localhost";
@@ -76,6 +79,44 @@ export class TriggerEndToEndTest {
   storageEmulatorPort = 0;
   allEmulatorsStarted = false;
 
+  cliProcess?: CLIProcess;
+
+  constructor(
+    public project: string,
+    protected readonly workdir: string,
+    config: FrameworkOptions
+  ) {
+    if (!config.emulators) {
+      return;
+    }
+    this.emulatorHubPort = config.emulators.hub?.port;
+    this.rtdbEmulatorPort = config.emulators.database?.port;
+    this.firestoreEmulatorPort = config.emulators.firestore?.port;
+    this.functionsEmulatorPort = config.emulators.functions?.port;
+    this.pubsubEmulatorPort = config.emulators.pubsub?.port;
+    this.authEmulatorPort = config.emulators.auth?.port;
+    this.storageEmulatorPort = config.emulators.storage?.port;
+  }
+
+  startEmulators(additionalArgs: string[] = []): Promise<void> {
+    const cli = new CLIProcess("default", this.workdir);
+    const started = cli.start("emulators:start", this.project, additionalArgs, (data: unknown) => {
+      if (typeof data !== "string" && !Buffer.isBuffer(data)) {
+        throw new Error(`data is not a string or buffer (${typeof data})`);
+      }
+      return data.includes(ALL_EMULATORS_STARTED_LOG);
+    });
+
+    this.cliProcess = cli;
+    return started;
+  }
+
+  stopEmulators(): Promise<void> {
+    return this.cliProcess ? this.cliProcess.stop() : Promise.resolve();
+  }
+}
+
+export class TriggerEndToEndTest extends EmulatorEndToEndTest {
   /* Functions V1 */
   rtdbTriggerCount = 0;
   firestoreTriggerCount = 0;
@@ -104,23 +145,12 @@ export class TriggerEndToEndTest {
   storageBucketV2MetadataTriggerCount = 0;
   authBlockingCreateV2TriggerCount = 0;
   authBlockingSignInV2TriggerCount = 0;
+  rtdbV2TriggerCount = 0;
 
   rtdbFromFirestore = false;
   firestoreFromRtdb = false;
   rtdbFromRtdb = false;
   firestoreFromFirestore = false;
-  cliProcess?: CLIProcess;
-
-  constructor(public project: string, private readonly workdir: string, config: FrameworkOptions) {
-    if (config.emulators) {
-      this.rtdbEmulatorPort = config.emulators.database?.port;
-      this.firestoreEmulatorPort = config.emulators.firestore?.port;
-      this.functionsEmulatorPort = config.emulators.functions?.port;
-      this.pubsubEmulatorPort = config.emulators.pubsub?.port;
-      this.authEmulatorPort = config.emulators.auth?.port;
-      this.storageEmulatorPort = config.emulators.storage?.port;
-    }
-  }
 
   resetCounts(): void {
     /* Functions V1 */
@@ -151,6 +181,7 @@ export class TriggerEndToEndTest {
     this.storageBucketV2MetadataTriggerCount = 0;
     this.authBlockingCreateV2TriggerCount = 0;
     this.authBlockingSignInV2TriggerCount = 0;
+    this.rtdbV2TriggerCount = 0;
   }
 
   /*
@@ -166,16 +197,11 @@ export class TriggerEndToEndTest {
     );
   }
 
-  startEmulators(additionalArgs: string[] = []): Promise<void> {
-    const cli = new CLIProcess("default", this.workdir);
-    const started = cli.start("emulators:start", this.project, additionalArgs, (data: unknown) => {
-      if (typeof data !== "string" && !Buffer.isBuffer(data)) {
-        throw new Error(`data is not a string or buffer (${typeof data})`);
-      }
-      return data.includes(ALL_EMULATORS_STARTED_LOG);
-    });
+  async startEmulators(additionalArgs: string[] = []): Promise<void> {
+    // This must be called first to set this.cliProcess.
+    const startEmulators = super.startEmulators(additionalArgs);
 
-    cli.process?.stdout?.on("data", (data) => {
+    this.cliProcess?.process?.stdout?.on("data", (data) => {
       /* Functions V1 */
       if (data.includes(RTDB_FUNCTION_LOG)) {
         this.rtdbTriggerCount++;
@@ -248,10 +274,12 @@ export class TriggerEndToEndTest {
       if (data.includes(AUTH_BLOCKING_SIGN_IN_V2_LOG)) {
         this.authBlockingSignInV2TriggerCount++;
       }
+      if (data.includes(RTDB_V2_FUNCTION_LOG)) {
+        this.rtdbV2TriggerCount++;
+      }
     });
 
-    this.cliProcess = cli;
-    return started;
+    return startEmulators;
   }
 
   startExtEmulators(additionalArgs: string[]): Promise<void> {
@@ -270,10 +298,6 @@ export class TriggerEndToEndTest {
 
     this.cliProcess = cli;
     return started;
-  }
-
-  stopEmulators(): Promise<void> {
-    return this.cliProcess ? this.cliProcess.stop() : Promise.resolve();
   }
 
   applyTargets(emulatorType: Emulators, target: string, resource: string): Promise<void> {
@@ -387,5 +411,15 @@ export class TriggerEndToEndTest {
         callback();
       }
     }, interval);
+  }
+
+  disableBackgroundTriggers(): Promise<Response> {
+    const url = `http://localhost:${this.emulatorHubPort}/functions/disableBackgroundTriggers`;
+    return fetch(url, { method: "PUT" });
+  }
+
+  enableBackgroundTriggers(): Promise<Response> {
+    const url = `http://localhost:${this.emulatorHubPort}/functions/enableBackgroundTriggers`;
+    return fetch(url, { method: "PUT" });
   }
 }

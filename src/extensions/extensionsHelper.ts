@@ -34,7 +34,7 @@ import { getLocalExtensionSpec } from "./localHelper";
 import { promptOnce } from "../prompt";
 import { logger } from "../logger";
 import { envOverride } from "../utils";
-import { getLocalChangelog } from "./changelog";
+import { getLocalChangelog } from "./change-log";
 import { getProjectNumber } from "../getProjectNumber";
 import { Constants } from "../emulator/constants";
 import { resolveVersion } from "../deploy/extensions/planner";
@@ -532,7 +532,8 @@ export async function publishExtensionVersionFromLocalSource(args: {
         `${args.publisherId}/${args.extensionId}`
       )}'. Please make sure this version is greater than the current version (${clc.bold(
         extension.latestVersion
-      )}) inside of extension.yaml.\n`
+      )}) inside of extension.yaml.\n`,
+      { exit: 104 }
     );
   } else if (
     extension &&

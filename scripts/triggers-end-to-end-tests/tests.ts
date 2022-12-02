@@ -122,6 +122,20 @@ describe("function triggers", () => {
     await test.stopEmulators();
   });
 
+  describe("https triggers", () => {
+    it("should handle parallel requests", async function (this) {
+      this.timeout(TEST_SETUP_TIMEOUT);
+
+      const [resp1, resp2] = await Promise.all([
+        test.invokeHttpFunction("httpsv2reaction"),
+        test.invokeHttpFunction("httpsv2reaction"),
+      ]);
+
+      expect(resp1.status).to.eq(200);
+      expect(resp2.status).to.eq(200);
+    });
+  });
+
   describe("database and firestore emulator triggers", () => {
     it("should write to the database emulator", async function (this) {
       this.timeout(EMULATOR_TEST_TIMEOUT);
@@ -131,7 +145,7 @@ describe("function triggers", () => {
     });
 
     it("should write to the firestore emulator", async function (this) {
-      this.timeout(EMULATOR_TEST_TIMEOUT);
+      this.timeout(EMULATOR_TEST_TIMEOUT * 2);
 
       const response = await test.writeToFirestore();
       expect(response.status).to.equal(200);
@@ -143,11 +157,12 @@ describe("function triggers", () => {
        * fixture state handlers to complete before we check
        * that state in the next test.
        */
-      await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS));
+      await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS * 2));
     });
 
     it("should have have triggered cloud functions", () => {
       expect(test.rtdbTriggerCount).to.equal(1);
+      expect(test.rtdbV2TriggerCount).to.eq(1);
       expect(test.firestoreTriggerCount).to.equal(1);
       /*
        * Check for the presence of all expected documents in the firestore
@@ -406,6 +421,74 @@ describe("function triggers", () => {
       expect(response.status).to.equal(200);
       const body = await response.json();
       expect(body).to.deep.equal({ result: "foobar" });
+    });
+  });
+
+  it("should enforce timeout", async function (this) {
+    this.timeout(TEST_SETUP_TIMEOUT);
+    const v2response = await test.invokeHttpFunction("onreqv2timeout");
+    expect(v2response.status).to.equal(500);
+  });
+
+  describe("disable/enableBackgroundTriggers", () => {
+    before(() => {
+      test.resetCounts();
+    });
+
+    it("should disable all background triggers", async function (this) {
+      this.timeout(TEST_SETUP_TIMEOUT);
+
+      const response = await test.disableBackgroundTriggers();
+      expect(response.status).to.equal(200);
+
+      await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS));
+
+      await Promise.all([
+        test.writeToRtdb(),
+        test.writeToFirestore(),
+        test.writeToPubsub(),
+        test.writeToAuth(),
+        test.writeToDefaultStorage(),
+      ]);
+
+      await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS * 2));
+
+      expect(test.rtdbTriggerCount).to.equal(0);
+      expect(test.rtdbV2TriggerCount).to.eq(0);
+      expect(test.firestoreTriggerCount).to.equal(0);
+      expect(test.pubsubTriggerCount).to.equal(0);
+      expect(test.pubsubV2TriggerCount).to.equal(0);
+      expect(test.authTriggerCount).to.equal(0);
+      expect(test.storageFinalizedTriggerCount).to.equal(0);
+      expect(test.storageV2FinalizedTriggerCount).to.equal(0);
+    });
+
+    it("should re-enable all background triggers", async function (this) {
+      this.timeout(TEST_SETUP_TIMEOUT);
+
+      const response = await test.enableBackgroundTriggers();
+      expect(response.status).to.equal(200);
+
+      await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS));
+
+      await Promise.all([
+        test.writeToRtdb(),
+        test.writeToFirestore(),
+        test.writeToPubsub(),
+        test.writeToAuth(),
+        test.writeToDefaultStorage(),
+      ]);
+
+      await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS * 3));
+
+      expect(test.rtdbTriggerCount).to.equal(1);
+      expect(test.rtdbV2TriggerCount).to.eq(1);
+      expect(test.firestoreTriggerCount).to.equal(1);
+      expect(test.pubsubTriggerCount).to.equal(1);
+      expect(test.pubsubV2TriggerCount).to.equal(1);
+      expect(test.authTriggerCount).to.equal(1);
+      expect(test.storageFinalizedTriggerCount).to.equal(1);
+      expect(test.storageV2FinalizedTriggerCount).to.equal(1);
     });
   });
 });

@@ -43,6 +43,27 @@ describe("files", () => {
     expect(deserialized).to.deep.equal(metadata);
   });
 
+  it("converts non-string custom metadata to string", () => {
+    const cf = new StorageCloudFunctions("demo-project");
+    const customMetadata = {
+      foo: true as unknown as string,
+    };
+    const metadata = new StoredFileMetadata(
+      {
+        customMetadata,
+        name: "name",
+        bucket: "bucket",
+        contentType: "mime/type",
+        downloadTokens: ["token123"],
+      },
+      cf,
+      Buffer.from("Hello, World!")
+    );
+    const json = StoredFileMetadata.toJSON(metadata);
+    const deserialized = StoredFileMetadata.fromJSON(json, cf);
+    expect(deserialized.customMetadata).to.deep.equal({ foo: "true" });
+  });
+
   describe("StorageLayer", () => {
     let _persistence: Persistence;
     let _uploadService: UploadService;
@@ -62,7 +83,7 @@ describe("files", () => {
         bucketId,
         objectId: encodeURIComponent(objectId),
         dataRaw: Buffer.from(opts?.data ?? "hello world"),
-        metadataRaw: JSON.stringify(opts?.metadata ?? {}),
+        metadata: opts?.metadata ?? {},
       });
       await storageLayer.uploadObject(upload);
     }
@@ -78,7 +99,7 @@ describe("files", () => {
         const upload = _uploadService.startResumableUpload({
           bucketId: "bucket",
           objectId: "dir%2Fobject",
-          metadataRaw: "{}",
+          metadata: {},
         });
 
         expect(storageLayer.uploadObject(upload)).to.be.rejectedWith("Unexpected upload status");
@@ -89,7 +110,7 @@ describe("files", () => {
         const uploadId = _uploadService.startResumableUpload({
           bucketId: "bucket",
           objectId: "dir%2Fobject",
-          metadataRaw: "{}",
+          metadata: {},
         }).id;
         _uploadService.continueResumableUpload(uploadId, Buffer.from("hello world"));
         const upload = _uploadService.finalizeResumableUpload(uploadId);

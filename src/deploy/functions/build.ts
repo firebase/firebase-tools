@@ -2,11 +2,11 @@ import * as backend from "./backend";
 import * as proto from "../../gcp/proto";
 import * as api from "../../.../../api";
 import * as params from "./params";
-import { previews } from "../../previews";
+import * as experiments from "../../experiments";
 import { FirebaseError } from "../../error";
 import { assertExhaustive, mapObject, nullsafeVisitor } from "../../functional";
-import { UserEnvsOpts } from "../../functions/env";
-import { logger } from "../../logger";
+import { UserEnvsOpts, writeUserEnvs } from "../../functions/env";
+import { FirebaseConfig } from "./args";
 
 /* The union of a customer-controlled deployment and potentially deploy-time defined parameters */
 export interface Build {
@@ -15,9 +15,8 @@ export interface Build {
   params: params.Param[];
 }
 
-/* A utility function that returns an empty Build. */
 /**
- *
+ *  A utility function that returns an empty Build.
  */
 export function empty(): Build {
   return {
@@ -27,9 +26,8 @@ export function empty(): Build {
   };
 }
 
-/* A utility function that creates a Build containing a map of IDs to Endpoints. */
 /**
- *
+ * A utility function that creates a Build containing a map of IDs to Endpoints
  */
 export function of(endpoints: Record<string, Endpoint>): Build {
   const build = empty();
@@ -37,7 +35,7 @@ export function of(endpoints: Record<string, Endpoint>): Build {
   return build;
 }
 
-interface RequiredApi {
+export interface RequiredApi {
   // The API that should be enabled. For Google APIs, this should be a googleapis.com subdomain
   // (e.g. vision.googleapis.com)
   api: string;
@@ -118,7 +116,7 @@ export interface TaskQueueRateLimits {
 
 export interface TaskQueueRetryConfig {
   maxAttempts?: Field<number>;
-  maxRetryDurationSeconds?: Field<number>;
+  maxRetrySeconds?: Field<number>;
   minBackoffSeconds?: Field<number>;
   maxBackoffSeconds?: Field<number>;
   maxDoublings?: Field<number>;
@@ -142,17 +140,53 @@ export interface ScheduleRetryConfig {
 
 export interface ScheduleTrigger {
   schedule: string | Expression<string>;
-  timeZone: Field<string>;
+  timeZone?: Field<string>;
   retryConfig?: ScheduleRetryConfig | null;
 }
 
+export type HttpsTriggered = { httpsTrigger: HttpsTrigger };
+export type CallableTriggered = { callableTrigger: CallableTrigger };
+export type BlockingTriggered = { blockingTrigger: BlockingTrigger };
+export type EventTriggered = { eventTrigger: EventTrigger };
+export type ScheduleTriggered = { scheduleTrigger: ScheduleTrigger };
+export type TaskQueueTriggered = { taskQueueTrigger: TaskQueueTrigger };
 export type Triggered =
-  | { httpsTrigger: HttpsTrigger }
-  | { callableTrigger: CallableTrigger }
-  | { blockingTrigger: BlockingTrigger }
-  | { eventTrigger: EventTrigger }
-  | { scheduleTrigger: ScheduleTrigger }
-  | { taskQueueTrigger: TaskQueueTrigger };
+  | HttpsTriggered
+  | CallableTriggered
+  | BlockingTriggered
+  | EventTriggered
+  | ScheduleTriggered
+  | TaskQueueTriggered;
+
+/** Whether something has an HttpsTrigger */
+export function isHttpsTriggered(triggered: Triggered): triggered is HttpsTriggered {
+  return {}.hasOwnProperty.call(triggered, "httpsTrigger");
+}
+
+/** Whether something has a CallableTrigger */
+export function isCallableTriggered(triggered: Triggered): triggered is CallableTriggered {
+  return {}.hasOwnProperty.call(triggered, "callableTrigger");
+}
+
+/** Whether something has an EventTrigger */
+export function isEventTriggered(triggered: Triggered): triggered is EventTriggered {
+  return {}.hasOwnProperty.call(triggered, "eventTrigger");
+}
+
+/** Whether something has a ScheduleTrigger */
+export function isScheduleTriggered(triggered: Triggered): triggered is ScheduleTriggered {
+  return {}.hasOwnProperty.call(triggered, "scheduleTrigger");
+}
+
+/** Whether something has a TaskQueueTrigger */
+export function isTaskQueueTriggered(triggered: Triggered): triggered is TaskQueueTriggered {
+  return {}.hasOwnProperty.call(triggered, "taskQueueTrigger");
+}
+
+/** Whether something has a BlockingTrigger */
+export function isBlockingTriggered(triggered: Triggered): triggered is BlockingTriggered {
+  return {}.hasOwnProperty.call(triggered, "blockingTrigger");
+}
 
 export interface VpcSettings {
   connector: string | Expression<string>;
@@ -165,7 +199,30 @@ export interface SecretEnvVar {
   projectId: string; // The project containing the Secret
 }
 
+export type MemoryOption = 128 | 256 | 512 | 1024 | 2048 | 4096 | 8192 | 16384 | 32768;
+const allMemoryOptions: MemoryOption[] = [128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768];
+/**
+ * Is a given number a valid MemoryOption?
+ */
+export function isValidMemoryOption(mem: unknown): mem is MemoryOption {
+  return allMemoryOptions.includes(mem as MemoryOption);
+}
+
+export type FunctionsPlatform = backend.FunctionsPlatform;
+export const AllFunctionsPlatforms: FunctionsPlatform[] = ["gcfv1", "gcfv2"];
+export type VpcEgressSetting = backend.VpcEgressSettings;
+export const AllVpcEgressSettings: VpcEgressSetting[] = ["PRIVATE_RANGES_ONLY", "ALL_TRAFFIC"];
+export type IngressSetting = backend.IngressSettings;
+export const AllIngressSettings: IngressSetting[] = [
+  "ALLOW_ALL",
+  "ALLOW_INTERNAL_ONLY",
+  "ALLOW_INTERNAL_AND_GCLB",
+];
+
 export type Endpoint = Triggered & {
+  // Defaults to false. If true, the function will be ignored during the deploy process.
+  omit?: Field<boolean>;
+
   // Defaults to "gcfv2". "Run" will be an additional option defined later
   platform?: "gcfv1" | "gcfv2";
 
@@ -215,20 +272,78 @@ export type Endpoint = Triggered & {
 };
 
 /**
- *  Resolves user-defined parameters inside a Build, and returns a Backend ready for upload to the API
+ * Resolves user-defined parameters inside a Build, and generates a Backend.
+ * Returns both the Backend and the literal resolved values of any params, since
+ * the latter also have to be uploaded so user code can see them in process.env
  */
 export async function resolveBackend(
   build: Build,
+  firebaseConfig: FirebaseConfig,
   userEnvOpt: UserEnvsOpts,
-  userEnvs: Record<string, string>
-): Promise<backend.Backend> {
-  const projectId = userEnvOpt.projectId;
-  let paramValues: Record<string, Field<string | number | boolean>> = {};
-  if (previews.functionsparams) {
-    paramValues = await params.resolveParams(build.params, projectId, userEnvs);
+  userEnvs: Record<string, string>,
+  nonInteractive?: boolean
+): Promise<{ backend: backend.Backend; envs: Record<string, params.ParamValue> }> {
+  let paramValues: Record<string, params.ParamValue> = {};
+  if (experiments.isEnabled("functionsparams")) {
+    paramValues = await params.resolveParams(
+      build.params,
+      firebaseConfig,
+      envWithTypes(build.params, userEnvs),
+      nonInteractive
+    );
+
+    const toWrite: Record<string, string> = {};
+    for (const paramName of Object.keys(paramValues)) {
+      const paramValue = paramValues[paramName];
+      if (Object.prototype.hasOwnProperty.call(userEnvs, paramName) || paramValue.internal) {
+        continue;
+      }
+      toWrite[paramName] = paramValue.toString();
+    }
+    writeUserEnvs(toWrite, userEnvOpt);
   }
 
-  return toBackend(build, paramValues);
+  return { backend: toBackend(build, paramValues), envs: paramValues };
+}
+
+function envWithTypes(
+  definedParams: params.Param[],
+  rawEnvs: Record<string, string>
+): Record<string, params.ParamValue> {
+  const out: Record<string, params.ParamValue> = {};
+  for (const envName of Object.keys(rawEnvs)) {
+    const value = rawEnvs[envName];
+    let providedType = {
+      string: true,
+      boolean: true,
+      number: true,
+    };
+    for (const param of definedParams) {
+      if (param.name === envName) {
+        if (param.type === "string") {
+          providedType = {
+            string: true,
+            boolean: false,
+            number: false,
+          };
+        } else if (param.type === "int") {
+          providedType = {
+            string: false,
+            boolean: false,
+            number: true,
+          };
+        } else if (param.type === "boolean") {
+          providedType = {
+            string: false,
+            boolean: true,
+            number: false,
+          };
+        }
+      }
+    }
+    out[envName] = new params.ParamValue(value, false, providedType);
+  }
+  return out;
 }
 
 // Utility class to make it more fluent to use proto.convertIfPresent
@@ -237,7 +352,7 @@ export async function resolveBackend(
 // The class also recognizes that if the input is not null the output cannot be
 // null.
 class Resolver {
-  constructor(private readonly paramValues: Record<string, Field<string | number | boolean>>) {}
+  constructor(private readonly paramValues: Record<string, params.ParamValue>) {}
 
   // NB: The (Extract<T, null> | number) says "If T can be null, the return value"
   // can be null. If we know input is not null, the return type is known to not
@@ -293,15 +408,17 @@ class Resolver {
 }
 
 /** Converts a build specification into a Backend representation, with all Params resolved and interpolated */
-// TODO(vsfan): handle Expression<T> types
 export function toBackend(
   build: Build,
-  paramValues: Record<string, Field<string | number | boolean>>
+  paramValues: Record<string, params.ParamValue>
 ): backend.Backend {
   const r = new Resolver(paramValues);
   const bkEndpoints: Array<backend.Endpoint> = [];
   for (const endpointId of Object.keys(build.endpoints)) {
     const bdEndpoint = build.endpoints[endpointId];
+    if (r.resolveBoolean(bdEndpoint.omit || false)) {
+      continue;
+    }
 
     let regions = bdEndpoint.region;
     if (typeof regions === "undefined") {
@@ -312,12 +429,6 @@ export function toBackend(
 
       if (typeof bdEndpoint.platform === "undefined") {
         throw new FirebaseError("platform can't be undefined");
-      }
-      if (
-        bdEndpoint.availableMemoryMb != null &&
-        !backend.isValidMemoryOption(bdEndpoint.availableMemoryMb)
-      ) {
-        throw new FirebaseError("available memory must be a supported value, if present");
       }
       const bkEndpoint: backend.Endpoint = {
         id: endpointId,
@@ -346,9 +457,13 @@ export function toBackend(
       proto.convertIfPresent(bkEndpoint, bdEndpoint, "availableMemoryMb", (from) => {
         const mem = r.resolveInt(from);
         if (mem !== null && !backend.isValidMemoryOption(mem)) {
-          logger.debug("Warning; setting memory to unexpected value", mem);
+          throw new FirebaseError(
+            `Function memory (${mem}) must resolve to a supported value, if present: ${JSON.stringify(
+              allMemoryOptions
+            )}`
+          );
         }
-        return mem as backend.MemoryOptions | null;
+        return (mem as backend.MemoryOptions) || null;
       });
 
       r.resolveInts(
@@ -384,7 +499,7 @@ export function toBackend(
 }
 
 function discoverTrigger(endpoint: Endpoint, region: string, r: Resolver): backend.Triggered {
-  if ("httpsTrigger" in endpoint) {
+  if (isHttpsTriggered(endpoint)) {
     const httpsTrigger: backend.HttpsTrigger = {};
     if (endpoint.httpsTrigger.invoker === null) {
       httpsTrigger.invoker = null;
@@ -392,11 +507,11 @@ function discoverTrigger(endpoint: Endpoint, region: string, r: Resolver): backe
       httpsTrigger.invoker = endpoint.httpsTrigger.invoker.map(r.resolveString);
     }
     return { httpsTrigger };
-  } else if ("callableTrigger" in endpoint) {
+  } else if (isCallableTriggered(endpoint)) {
     return { callableTrigger: {} };
-  } else if ("blockingTrigger" in endpoint) {
+  } else if (isBlockingTriggered(endpoint)) {
     return { blockingTrigger: endpoint.blockingTrigger };
-  } else if ("eventTrigger" in endpoint) {
+  } else if (isEventTriggered(endpoint)) {
     const eventTrigger: backend.EventTrigger = {
       eventType: endpoint.eventTrigger.eventType,
       retry: r.resolveBoolean(endpoint.eventTrigger.retry) || false,
@@ -412,11 +527,13 @@ function discoverTrigger(endpoint: Endpoint, region: string, r: Resolver): backe
     }
     r.resolveStrings(eventTrigger, endpoint.eventTrigger, "serviceAccount", "region", "channel");
     return { eventTrigger };
-  } else if ("scheduleTrigger" in endpoint) {
+  } else if (isScheduleTriggered(endpoint)) {
     const bkSchedule: backend.ScheduleTrigger = {
       schedule: r.resolveString(endpoint.scheduleTrigger.schedule),
-      timeZone: r.resolveString(endpoint.scheduleTrigger.timeZone),
     };
+    if (endpoint.scheduleTrigger.timeZone !== undefined) {
+      bkSchedule.timeZone = r.resolveString(endpoint.scheduleTrigger.timeZone);
+    }
     if (endpoint.scheduleTrigger.retryConfig) {
       const bkRetry: backend.ScheduleRetryConfig = {};
       r.resolveInts(
