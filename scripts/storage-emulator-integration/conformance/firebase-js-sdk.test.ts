@@ -6,7 +6,7 @@ import * as fs from "fs";
 import * as puppeteer from "puppeteer";
 import { TEST_ENV } from "./env";
 import { IMAGE_FILE_BASE64 } from "../../../src/test/emulators/fixtures";
-import { TriggerEndToEndTest } from "../../integration-helpers/framework";
+import { EmulatorEndToEndTest } from "../../integration-helpers/framework";
 import {
   createRandomFile,
   EMULATORS_SHUTDOWN_DELAY_MS,
@@ -31,7 +31,7 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
   const smallFilePath: string = createRandomFile("small_file", SMALL_FILE_SIZE, tmpDir);
   const emptyFilePath: string = createRandomFile("empty_file", 0, tmpDir);
 
-  let test: TriggerEndToEndTest;
+  let test: EmulatorEndToEndTest;
   let testBucket: Bucket;
   let authHeader: { Authorization: string };
   let browser: puppeteer.Browser;
@@ -84,7 +84,7 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
     this.timeout(TEST_SETUP_TIMEOUT);
     TEST_ENV.applyEnvVars();
     if (!TEST_ENV.useProductionServers) {
-      test = new TriggerEndToEndTest(TEST_ENV.fakeProjectId, __dirname, TEST_ENV.emulatorConfig);
+      test = new EmulatorEndToEndTest(TEST_ENV.fakeProjectId, __dirname, TEST_ENV.emulatorConfig);
       await test.startEmulators(["--only", "auth,storage"]);
     }
 
@@ -103,7 +103,6 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
     });
     page = await browser.newPage();
     await page.goto("https://example.com", { waitUntil: "networkidle2" });
-
     await page.addScriptTag({
       url: "https://www.gstatic.com/firebasejs/9.9.1/firebase-app-compat.js",
     });
@@ -152,13 +151,6 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
     if (!TEST_ENV.useProductionServers) {
       await test.stopEmulators();
     }
-  });
-  describe(".ref()", () => {
-    describe("#putString()", () => {
-      it("should upload a string", () => {
-        expect(true);
-      });
-    });
   });
 
   describe(".ref()", () => {
