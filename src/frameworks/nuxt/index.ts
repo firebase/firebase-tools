@@ -9,7 +9,7 @@ export const name = "Nuxt";
 export const support = SupportLevel.Experimental;
 export const type = FrameworkType.Toolchain;
 
-const NUXT_DEFAULT_BUILD_SCRIPTS = ["nuxt build"];
+const DEFAULT_BUILD_SCRIPT = ["nuxt build"];
 
 export async function discover(dir: string) {
   if (!(await pathExists(join(dir, "package.json")))) return;
@@ -27,7 +27,7 @@ export async function build(root: string): Promise<BuildResult> {
   const { buildNuxt } = await relativeRequire(root, "@nuxt/kit");
   const nuxtApp = await getNuxtApp(root);
 
-  await warnIfCustomBuildScript(root, NUXT_DEFAULT_BUILD_SCRIPTS);
+  await warnIfCustomBuildScript(root, DEFAULT_BUILD_SCRIPT);
 
   await buildNuxt(nuxtApp);
   return { wantsBackend: true };

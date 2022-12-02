@@ -17,7 +17,7 @@ const CLI_COMMAND = join(
   process.platform === "win32" ? "vite.cmd" : "vite"
 );
 
-export const VITE_DEFAULT_BUILD_SCRIPTS = ["vite build", "tsc && vite build"];
+export const DEFAULT_BUILD_SCRIPT = ["vite build", "tsc && vite build"];
 
 export const initViteTemplate = (template: string) => async (setup: any) =>
   await init(setup, template);
@@ -65,7 +65,7 @@ export async function discover(dir: string, plugin?: string, npmDependency?: str
 export async function build(root: string) {
   const { build } = relativeRequire(root, "vite");
 
-  await warnIfCustomBuildScript(root, VITE_DEFAULT_BUILD_SCRIPTS);
+  await warnIfCustomBuildScript(root, DEFAULT_BUILD_SCRIPT);
 
   await build({ root });
 }

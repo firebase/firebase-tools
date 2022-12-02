@@ -21,7 +21,7 @@ export const support = SupportLevel.Experimental;
 export const type = FrameworkType.Framework;
 
 const CLI_COMMAND = join("node_modules", ".bin", process.platform === "win32" ? "ng.cmd" : "ng");
-const ANGULAR_ALLOWED_BUILD_SCRIPTS = ["ng build"];
+const DEFAULT_BUILD_SCRIPT = ["ng build"];
 
 export async function discover(dir: string): Promise<Discovery | undefined> {
   if (!(await pathExists(join(dir, "package.json")))) return;
@@ -59,7 +59,7 @@ export async function build(dir: string): Promise<BuildResult> {
     if (!success) throw new Error(error);
   };
 
-  await warnIfCustomBuildScript(dir, ANGULAR_ALLOWED_BUILD_SCRIPTS);
+  await warnIfCustomBuildScript(dir, DEFAULT_BUILD_SCRIPT);
 
   if (!browserTarget) throw new Error("No build target...");
 

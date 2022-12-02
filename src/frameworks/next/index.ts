@@ -46,7 +46,7 @@ const CLI_COMMAND = join(
   process.platform === "win32" ? "next.cmd" : "next"
 );
 
-const NEXT_ALLOWED_BUILD_SCRIPTS = ["next build"];
+const DEFAULT_BUILD_SCRIPT = ["next build"];
 
 export const name = "Next.js";
 export const support = SupportLevel.Experimental;
@@ -76,7 +76,7 @@ export async function discover(dir: string) {
 export async function build(dir: string): Promise<BuildResult> {
   const { default: nextBuild } = relativeRequire(dir, "next/dist/build");
 
-  await warnIfCustomBuildScript(dir, NEXT_ALLOWED_BUILD_SCRIPTS);
+  await warnIfCustomBuildScript(dir, DEFAULT_BUILD_SCRIPT);
 
   const reactVersion = getReactVersion(dir);
   if (reactVersion && gte(reactVersion, "18.0.0")) {
