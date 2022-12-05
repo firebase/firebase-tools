@@ -258,13 +258,13 @@ export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: strin
 
     const rewritesToUse = getNextjsRewritesToUse(routesManifest.rewrites);
     const rewritesNotSupportedByFirebase = rewritesToUse?.filter(
-      (rewrite) => isRewriteSupportedByFirebase(rewrite) === false
+      (rewrite) => !isRewriteSupportedByFirebase(rewrite)
     );
     const redirectsNotSupportedByFirebase = routesManifest.redirects?.filter(
-      (redirect) => isRedirectSupportedByFirebase(redirect) === false
+      (redirect) => !isRedirectSupportedByFirebase(redirect)
     );
     const headersNotSupportedByFirebase = routesManifest.headers?.filter(
-      (header) => isHeaderSupportedByFirebase(header) === false
+      (header) => !isHeaderSupportedByFirebase(header)
     );
 
     for (const path in prerenderManifest.routes) {
