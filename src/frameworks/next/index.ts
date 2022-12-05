@@ -134,32 +134,24 @@ export async function build(dir: string): Promise<BuildResult> {
     rewrites: nextJsRewrites = [],
   } = manifest;
 
+  const hasUnsupportedHeader = nextJsHeaders.some((header) => !isHeaderSupportedByFirebase(header));
+  if (hasUnsupportedHeader) wantsBackend = true;
+
   const headers = nextJsHeaders
-    .filter((header) => {
-      if (isHeaderSupportedByFirebase(header)) {
-        return true;
-      } else {
-        wantsBackend = true;
-        return false;
-      }
-    })
+    .filter((header) => isHeaderSupportedByFirebase(header))
     .map(({ source, headers }) => ({
       // clean up unnecessary escaping
       source: cleanEscapedChars(source),
       headers,
     }));
 
-  const redirects = nextJsRedirects
-    .filter((redirect) => {
-      if (redirect.internal) return false;
+  const hasUnsupportedRedirect = nextJsRedirects.some(
+    (redirect) => !isRedirectSupportedByFirebase(redirect)
+  );
+  if (hasUnsupportedRedirect) wantsBackend = true;
 
-      if (isRedirectSupportedByFirebase(redirect)) {
-        return true;
-      } else {
-        wantsBackend = true;
-        return false;
-      }
-    })
+  const redirects = nextJsRedirects
+    .filter((redirect) => isRedirectSupportedByFirebase(redirect))
     .map(({ source, destination, statusCode: type }) => ({
       // clean up unnecessary escaping
       source: cleanEscapedChars(source),
@@ -167,26 +159,24 @@ export async function build(dir: string): Promise<BuildResult> {
       type,
     }));
 
+  const nextJsRewritesToUse = getNextjsRewritesToUse(nextJsRewrites);
+
   // rewrites.afterFiles / rewrites.fallback are not supported by firebase.json
   if (
     !Array.isArray(nextJsRewrites) &&
     (nextJsRewrites.afterFiles?.length || nextJsRewrites.fallback?.length)
   ) {
     wantsBackend = true;
+  } else {
+    const hasUnsupportedRewrite = nextJsRewritesToUse.some(
+      (rewrite) => !isRewriteSupportedByFirebase(rewrite)
+    );
+    if (hasUnsupportedRewrite) wantsBackend = true;
   }
-
-  const nextJsRewritesToUse = getNextjsRewritesToUse(nextJsRewrites);
 
   // Can we change i18n into Firebase settings?
   const rewrites = nextJsRewritesToUse
-    .filter((rewrite) => {
-      if (isRewriteSupportedByFirebase(rewrite)) {
-        return true;
-      } else {
-        wantsBackend = true;
-        return false;
-      }
-    })
+    .filter((rewrite) => isRewriteSupportedByFirebase(rewrite))
     .map(({ source, destination }) => ({
       // clean up unnecessary escaping
       source: cleanEscapedChars(source),
