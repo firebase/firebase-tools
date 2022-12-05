@@ -90,6 +90,7 @@ async function getNuxtApp(cwd: string) {
 }
 
 export async function ɵcodegenPublicDirectory(root: string, dest: string) {
+  // TODO this folder may be `src/dist` for static build (nuxt generate) or `src/.nuxt/dist/client` for server build (nuxt build)
   const distPath = join(root, "dist");
   await copy(distPath, dest);
 }
