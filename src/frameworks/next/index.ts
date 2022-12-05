@@ -256,14 +256,16 @@ export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: strin
     const prerenderManifest = JSON.parse(prerenderManifestBuffer.toString());
     const routesManifest = JSON.parse(routesManifestBuffer.toString()) as Manifest;
 
-    const rewritesToUse = getNextjsRewritesToUse(routesManifest.rewrites);
-    const rewritesNotSupportedByFirebase = rewritesToUse?.filter(
+    const { redirects = [], rewrites = [], headers = [] } = routesManifest;
+
+    const rewritesToUse = getNextjsRewritesToUse(rewrites);
+    const rewritesNotSupportedByFirebase = rewritesToUse.filter(
       (rewrite) => !isRewriteSupportedByFirebase(rewrite)
     );
-    const redirectsNotSupportedByFirebase = routesManifest.redirects?.filter(
+    const redirectsNotSupportedByFirebase = redirects.filter(
       (redirect) => !isRedirectSupportedByFirebase(redirect)
     );
-    const headersNotSupportedByFirebase = routesManifest.headers?.filter(
+    const headersNotSupportedByFirebase = headers.filter(
       (header) => !isHeaderSupportedByFirebase(header)
     );
 
@@ -275,29 +277,21 @@ export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: strin
           continue;
         }
 
-        if (rewritesNotSupportedByFirebase) {
-          const routeMatchUnsuportedRewrite = rewritesNotSupportedByFirebase.some((rewrite) =>
-            new RegExp(rewrite.regex).test(path)
-          );
+        const routeMatchUnsupportedRewrite = rewritesNotSupportedByFirebase.some((rewrite) =>
+          new RegExp(rewrite.regex).test(path)
+        );
+        if (routeMatchUnsupportedRewrite) continue;
 
-          if (routeMatchUnsuportedRewrite) continue;
-        }
+        const routeMatchUnsupportedRedirect = redirectsNotSupportedByFirebase.some((redirect) =>
+          new RegExp(redirect.regex).test(path)
+        );
+        if (routeMatchUnsupportedRedirect) continue;
 
-        if (redirectsNotSupportedByFirebase) {
-          const routeMatchUnsupportedRedirect = redirectsNotSupportedByFirebase.some((redirect) =>
-            new RegExp(redirect.regex).test(path)
-          );
+        const routeMatchUnsupportedHeader = headersNotSupportedByFirebase.some((header) =>
+          new RegExp(header.regex).test(path)
+        );
+        if (routeMatchUnsupportedHeader) continue;
 
-          if (routeMatchUnsupportedRedirect) continue;
-        }
-
-        if (headersNotSupportedByFirebase) {
-          const routeMatchUnsupportedHeader = headersNotSupportedByFirebase.some((header) =>
-            new RegExp(header.regex).test(path)
-          );
-
-          if (routeMatchUnsupportedHeader) continue;
-        }
         // TODO(jamesdaniels) explore oppertunity to simplify this now that we
         //                    are defaulting cleanURLs to true for frameworks
 
