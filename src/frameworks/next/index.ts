@@ -260,11 +260,22 @@ export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: strin
     const rewritesNotSupportedByFirebase = rewritesToUse.filter(
       (rewrite) => !isRewriteSupportedByFirebase(rewrite)
     );
+    const rewritesRegexesNotSupportedByFirebase = rewritesNotSupportedByFirebase.map(
+      (rewrite) => new RegExp(rewrite.regex)
+    );
+
     const redirectsNotSupportedByFirebase = redirects.filter(
       (redirect) => !isRedirectSupportedByFirebase(redirect)
     );
+    const redirectsRegexesNotSupportedByFirebase = redirectsNotSupportedByFirebase.map(
+      (redirect) => new RegExp(redirect.regex)
+    );
+
     const headersNotSupportedByFirebase = headers.filter(
       (header) => !isHeaderSupportedByFirebase(header)
+    );
+    const headersRegexesNotSupportedByFirebase = headersNotSupportedByFirebase.map(
+      (header) => new RegExp(header.regex)
     );
 
     for (const path in prerenderManifest.routes) {
@@ -275,18 +286,18 @@ export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: strin
           continue;
         }
 
-        const routeMatchUnsupportedRewrite = rewritesNotSupportedByFirebase.some((rewrite) =>
-          new RegExp(rewrite.regex).test(path)
+        const routeMatchUnsupportedRewrite = rewritesRegexesNotSupportedByFirebase.some(
+          (rewriteRegex) => rewriteRegex.test(path)
         );
         if (routeMatchUnsupportedRewrite) continue;
 
-        const routeMatchUnsupportedRedirect = redirectsNotSupportedByFirebase.some((redirect) =>
-          new RegExp(redirect.regex).test(path)
+        const routeMatchUnsupportedRedirect = redirectsRegexesNotSupportedByFirebase.some(
+          (redirectRegex) => redirectRegex.test(path)
         );
         if (routeMatchUnsupportedRedirect) continue;
 
-        const routeMatchUnsupportedHeader = headersNotSupportedByFirebase.some((header) =>
-          new RegExp(header.regex).test(path)
+        const routeMatchUnsupportedHeader = headersRegexesNotSupportedByFirebase.some(
+          (headerRegex) => headerRegex.test(path)
         );
         if (routeMatchUnsupportedHeader) continue;
 
