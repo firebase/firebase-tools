@@ -63,5 +63,13 @@ export function isHeaderSupportedByFirebase(header: Header): boolean {
 export function getNextjsRewritesToUse(
   nextJsRewrites: Manifest["rewrites"]
 ): RoutesManifestRewrite[] {
-  return Array.isArray(nextJsRewrites) ? nextJsRewrites : nextJsRewrites?.beforeFiles || [];
+  if (Array.isArray(nextJsRewrites)) {
+    return nextJsRewrites;
+  }
+
+  if (nextJsRewrites?.beforeFiles) {
+    return nextJsRewrites.beforeFiles;
+  }
+
+  return [];
 }
