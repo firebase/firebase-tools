@@ -29,6 +29,10 @@ const START_DOCUMENT_NAME = "test/start";
 
 admin.initializeApp();
 
+exports.httpsv2reaction = functionsV2.https.onRequest((req, res) => {
+  res.send("httpsv2reaction");
+});
+
 exports.pubsubv2reaction = functionsV2.pubsub.onMessagePublished(PUBSUB_TOPIC, (cloudevent) => {
   console.log(PUBSUB_FUNCTION_LOG);
   console.log("Message", JSON.stringify(cloudevent.data.message.json));
