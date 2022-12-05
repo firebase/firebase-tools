@@ -134,8 +134,8 @@ export async function build(dir: string): Promise<BuildResult> {
     rewrites: nextJsRewrites = [],
   } = manifest;
 
-  const hasUnsupportedHeader = nextJsHeaders.some((header) => !isHeaderSupportedByFirebase(header));
-  if (hasUnsupportedHeader) wantsBackend = true;
+  const isEveryHeaderSupported = nextJsHeaders.every(isHeaderSupportedByFirebase);
+  if (!isEveryHeaderSupported) wantsBackend = true;
 
   const headers = nextJsHeaders.filter(isHeaderSupportedByFirebase).map(({ source, headers }) => ({
     // clean up unnecessary escaping
@@ -143,10 +143,8 @@ export async function build(dir: string): Promise<BuildResult> {
     headers,
   }));
 
-  const hasUnsupportedRedirect = nextJsRedirects.some(
-    (redirect) => !isRedirectSupportedByFirebase(redirect)
-  );
-  if (hasUnsupportedRedirect) wantsBackend = true;
+  const isEveryRedirectSupported = nextJsRedirects.every(isRedirectSupportedByFirebase);
+  if (!isEveryRedirectSupported) wantsBackend = true;
 
   const redirects = nextJsRedirects
     .filter(isRedirectSupportedByFirebase)
@@ -166,10 +164,8 @@ export async function build(dir: string): Promise<BuildResult> {
   ) {
     wantsBackend = true;
   } else {
-    const hasUnsupportedRewrite = nextJsRewritesToUse.some(
-      (rewrite) => !isRewriteSupportedByFirebase(rewrite)
-    );
-    if (hasUnsupportedRewrite) wantsBackend = true;
+    const isEveryRewriteSupported = nextJsRewritesToUse.every(isRewriteSupportedByFirebase);
+    if (!isEveryRewriteSupported) wantsBackend = true;
   }
 
   // Can we change i18n into Firebase settings?
