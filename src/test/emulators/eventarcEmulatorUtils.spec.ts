@@ -2,7 +2,7 @@ import { expect } from "chai";
 
 import { cloudEventFromProtoToJson } from "../../emulator/eventarcEmulatorUtils";
 
-describe.only("eventarcEmulatorUtils", () => {
+describe("eventarcEmulatorUtils", () => {
   describe("cloudEventFromProtoToJson", () => {
     it("converts cloud event from proto format", () => {
       expect(
