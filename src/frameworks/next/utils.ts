@@ -28,33 +28,21 @@ export function cleanEscapedChars(path: string): string {
  * Whether a Next.js rewrite is supported by Firebase.
  */
 export function isRewriteSupportedByFirebase(rewrite: Rewrite): boolean {
-  if ("has" in rewrite || pathHasRegex(rewrite.source) || isUrl(rewrite.destination)) {
-    return false;
-  }
-
-  return true;
+  return !("has" in rewrite || pathHasRegex(rewrite.source) || isUrl(rewrite.destination));
 }
 
 /**
  * Whether a Next.js redirect is supported by Firebase.
  */
 export function isRedirectSupportedByFirebase(redirect: Redirect): boolean {
-  if ("has" in redirect || pathHasRegex(redirect.source) || "internal" in redirect) {
-    return false;
-  }
-
-  return true;
+  return !("has" in redirect || pathHasRegex(redirect.source) || "internal" in redirect);
 }
 
 /**
  * Whether a Next.js header is supported by Firebase.
  */
 export function isHeaderSupportedByFirebase(header: Header): boolean {
-  if ("has" in header || pathHasRegex(header.source)) {
-    return false;
-  }
-
-  return true;
+  return !("has" in header || pathHasRegex(header.source));
 }
 
 /**
