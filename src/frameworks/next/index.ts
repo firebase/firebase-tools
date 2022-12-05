@@ -137,13 +137,11 @@ export async function build(dir: string): Promise<BuildResult> {
   const hasUnsupportedHeader = nextJsHeaders.some((header) => !isHeaderSupportedByFirebase(header));
   if (hasUnsupportedHeader) wantsBackend = true;
 
-  const headers = nextJsHeaders
-    .filter((header) => isHeaderSupportedByFirebase(header))
-    .map(({ source, headers }) => ({
-      // clean up unnecessary escaping
-      source: cleanEscapedChars(source),
-      headers,
-    }));
+  const headers = nextJsHeaders.filter(isHeaderSupportedByFirebase).map(({ source, headers }) => ({
+    // clean up unnecessary escaping
+    source: cleanEscapedChars(source),
+    headers,
+  }));
 
   const hasUnsupportedRedirect = nextJsRedirects.some(
     (redirect) => !isRedirectSupportedByFirebase(redirect)
@@ -151,7 +149,7 @@ export async function build(dir: string): Promise<BuildResult> {
   if (hasUnsupportedRedirect) wantsBackend = true;
 
   const redirects = nextJsRedirects
-    .filter((redirect) => isRedirectSupportedByFirebase(redirect))
+    .filter(isRedirectSupportedByFirebase)
     .map(({ source, destination, statusCode: type }) => ({
       // clean up unnecessary escaping
       source: cleanEscapedChars(source),
@@ -176,7 +174,7 @@ export async function build(dir: string): Promise<BuildResult> {
 
   // Can we change i18n into Firebase settings?
   const rewrites = nextJsRewritesToUse
-    .filter((rewrite) => isRewriteSupportedByFirebase(rewrite))
+    .filter(isRewriteSupportedByFirebase)
     .map(({ source, destination }) => ({
       // clean up unnecessary escaping
       source: cleanEscapedChars(source),
