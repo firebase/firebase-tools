@@ -29,6 +29,7 @@ import {
   isRewriteSupportedByFirebase,
 } from "./utils";
 import type { Manifest } from "./interfaces";
+import { readJSON } from "../utils";
 
 const CLI_COMMAND = join(
   "node_modules",
@@ -230,15 +231,15 @@ export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: strin
       }
     }
 
-    const [prerenderManifestBuffer, routesManifestBuffer] = await Promise.all([
-      readFile(
+    const [prerenderManifest, routesManifest] = await Promise.all([
+      readJSON<any>(
         join(
           sourceDir,
           distDir,
           "prerender-manifest.json" // TODO: get this from next/constants
         )
       ),
-      readFile(
+      readJSON<Manifest>(
         join(
           sourceDir,
           distDir,
@@ -246,9 +247,6 @@ export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: strin
         )
       ),
     ]);
-
-    const prerenderManifest = JSON.parse(prerenderManifestBuffer.toString());
-    const routesManifest = JSON.parse(routesManifestBuffer.toString()) as Manifest;
 
     const { redirects = [], rewrites = [], headers = [] } = routesManifest;
 
