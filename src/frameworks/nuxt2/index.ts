@@ -63,16 +63,9 @@ export async function build(root: string) {
     const generator = new nuxt.Generator(nuxtApp, builder);
     await generator.generate({ build: false, init: true });
   } else {
-    nuxt.build(nuxtApp);
-    // const builder = await nuxt.getBuilder(nuxtApp);
-    // const generator = new nuxt.Generator(nuxtApp, builder);
-    // await generator.generate({ build: true, init: true });
+    // TODO: Maybe copy the server directory here instead of `ɵcodegenFunctionsDirectory`
+    // TODO: `buildDir` can be leveraged instead of hardcoding `.nuxt`
 
-    // console.log("---> builder", builder);
-    // console.log("---> generator", generator);
-
-    // await copy(join(buildDir, "dist", "client"), deployPath("hosting", assetsPath));
-    // await copy(getProjectPath(staticDir), deployPath("hosting"));
     return { wantsBackend: true };
   }
 
@@ -102,23 +95,14 @@ export async function ɵcodegenPublicDirectory(root: string, dest: string) {
 }
 
 export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: string) {
-  console.log("----> ɵcodegenFunctionsDirectory() called");
+  // console.log("----> ɵcodegenFunctionsDirectory() called. [sourceDir:", sourceDir, "]");
+  // console.log("   -> sourceDir:", sourceDir);
+  // console.log("   -> destDir:", destDir);
+
   const packageJsonBuffer = await readFile(join(sourceDir, "package.json"));
   const packageJson = JSON.parse(packageJsonBuffer.toString());
-  return { packageJson };
 
-  // if (isNuxt3(sourceDir)) {
-  //   const outputPackageJsonBuffer = await readFile(
-  //     join(sourceDir, ".output", "server", "package.json")
-  //   );
-  //   const outputPackageJson = JSON.parse(outputPackageJsonBuffer.toString());
-  //   await copy(join(sourceDir, ".output", "server"), destDir);
-  //   return { packageJson: { ...packageJson, ...outputPackageJson }, frameworksEntry: "nuxt3" };
-  // } else {
-  //   const {
-  //     options: { buildDir },
-  //   } = await getNuxt3App(sourceDir);
-  //   await copy(buildDir, join(destDir, basename(buildDir)));
-  //   return { packageJson };
-  // }
+  await copy(join(sourceDir, ".nuxt", "dist", "server"), destDir);
+
+  return { packageJson: { ...packageJson }, frameworksEntry: "nuxt2" };
 }
