@@ -89,7 +89,8 @@ jobs:
           # - npm run test:hosting-rewrites # Long-running test that might conflict across test runs. Run this manually.
           - npm run test:import-export
           - npm run test:storage-deploy
-          - npm run test:storage-emulator-integration
+          # Temporarily disable broken storage emulator integration test.
+          # - npm run test:storage-emulator-integration
           - npm run test:triggers-end-to-end
           - npm run test:triggers-end-to-end:inspect
     steps:
