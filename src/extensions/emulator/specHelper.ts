@@ -2,7 +2,12 @@ import * as yaml from "js-yaml";
 import * as path from "path";
 import * as fs from "fs-extra";
 
-import { ExtensionSpec, Resource } from "../types";
+import {
+  ExtensionSpec,
+  Resource,
+  FUNCTIONS_RESOURCE_TYPE,
+  FUNCTIONS_V2_RESOURCE_TYPE,
+} from "../types";
 import { FirebaseError } from "../../error";
 import { substituteParams } from "../extensionsHelper";
 import { parseRuntimeVersion } from "../../emulator/functionsEmulatorUtils";
@@ -11,6 +16,7 @@ const SPEC_FILE = "extension.yaml";
 const POSTINSTALL_FILE = "POSTINSTALL.md";
 const validFunctionTypes = [
   "firebaseextensions.v1beta.function",
+  "firebaseextensions.v1beta.v2function",
   "firebaseextensions.v1beta.scheduledFunction",
 ];
 
@@ -95,8 +101,8 @@ export function getFunctionProperties(resources: Resource[]) {
 export function getNodeVersion(resources: Resource[]): number {
   const invalidRuntimes: string[] = [];
   const versions = resources.map((r: Resource) => {
-    if (r.properties?.runtime) {
-      const runtimeName = r.properties?.runtime as string;
+    if (getResourceRuntime(r)) {
+      const runtimeName = getResourceRuntime(r) as string;
       const runtime = parseRuntimeVersion(runtimeName);
       if (!runtime) {
         invalidRuntimes.push(runtimeName);
@@ -115,4 +121,15 @@ export function getNodeVersion(resources: Resource[]): number {
     );
   }
   return Math.max(...versions);
+}
+
+export function getResourceRuntime(resource: Resource): string | undefined {
+  switch (resource.type) {
+    case FUNCTIONS_RESOURCE_TYPE:
+      return resource.properties?.runtime;
+    case FUNCTIONS_V2_RESOURCE_TYPE:
+      return resource.properties?.buildConfig?.runtime;
+    default:
+      return undefined;
+  }
 }
