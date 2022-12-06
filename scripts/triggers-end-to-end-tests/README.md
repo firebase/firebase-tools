@@ -16,8 +16,7 @@ cd firebase-tools/scripts/triggers-end-to-end-tests && npm install
 
 Run the test:
 
-```
-$ npx mocha scripts/**/*.spec.*
+```$ cd firebase-tools/scripts/triggers-end-to-end-tests && npm test
 ```
 
 This end-to-end test uses the mocha testing framework.
