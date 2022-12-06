@@ -4,3 +4,4 @@
 - Default to --no-localhost when calling login from Google Cloud Workstations
 - Support the x-goog-api-key header in auth emulator. (#5249)
 - Fix bug where function deployments using --only filter sometimes failed deployments. (#5280)
+- Fix bug where `ext:install` would sometimes fail if no version was specified. (#5305)
