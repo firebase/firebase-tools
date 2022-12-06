@@ -1,7 +1,6 @@
 import { expect } from "chai";
 import * as fs from "fs";
 import * as path from "path";
-import { exec } from "child_process";
 
 import { FrameworkOptions, TriggerEndToEndTest } from "../integration-helpers/framework";
 
@@ -35,15 +34,7 @@ describe("function triggers with inspect flag", () => {
 
   after(async function (this) {
     this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
-    await test.stopEmulators(); // FIXME can we add other emulators and
-    exec("ps aux | grep emulator", (err, stdout) => {
-      if (err) {
-        // TODO: fail
-      }
-      if (stdout) {
-        // TODO: fail
-      }
-    });
+    await test.stopEmulators();
   });
 
   describe("http functions", () => {
