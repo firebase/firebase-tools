@@ -38,7 +38,7 @@ import * as winston from "winston";
 let args = process.argv.slice(2);
 let cmd: Command;
 
-function findAvailableLogFile() {
+function findAvailableLogFile(): string {
   const candidates = ["firebase-debug.log"];
   for (let i = 1; i < 10; i++) {
     candidates.push(`firebase-debug.${i}.log`);
