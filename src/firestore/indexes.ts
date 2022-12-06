@@ -304,9 +304,8 @@ export class FirestoreIndexes {
     });
 
     if (spec.fieldOverrides) {
-      const collectionsWithTtl = new Set<string>();
       spec.fieldOverrides.forEach((field: any) => {
-        this.validateField(field, collectionsWithTtl);
+        this.validateField(field);
       });
     }
   }
@@ -339,7 +338,7 @@ export class FirestoreIndexes {
    * Validate that an arbitrary object is safe to use as an {@link Spec.FieldOverride}.
    * @param field
    */
-  validateField(field: any, collectionsWithTtl: Set<string>): void {
+  validateField(field: any): void {
     validator.assertHas(field, "collectionGroup");
     validator.assertHas(field, "fieldPath");
     validator.assertHas(field, "indexes");
@@ -347,7 +346,6 @@ export class FirestoreIndexes {
     /** Only one TTL per Collection */
     if (field.ttl) {
       validator.assertType("ttl", field.ttl, "boolean");
-      validator.assertTtl(field.collectionGroup, collectionsWithTtl);
     }
 
     field.indexes.forEach((index: any) => {
@@ -410,7 +408,7 @@ export class FirestoreIndexes {
   }
 
   /**
-   * Delete an existing index on the specified project.
+   * Delete an existing field overrides on the specified project.
    */
   deleteField(field: API.Field): Promise<any> {
     const url = field.name;

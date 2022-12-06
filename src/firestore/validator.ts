@@ -41,18 +41,6 @@ export function assertEnum(obj: any, prop: string, valid: any[]): void {
 }
 
 /**
- * Throw an error if the collection group has another field marked with TTL.
- */
-export function assertTtl(collectionGroup: string, collectionsWithTtl: Set<string>): void {
-  if (collectionsWithTtl.has(collectionGroup)) {
-    throw new FirebaseError(
-      `The collection group ${collectionGroup} can only have at most 1 field(s) marked with TTL`
-    );
-  }
-  collectionsWithTtl.add(collectionGroup);
-}
-
-/**
  * Throw an error if the value of the property 'prop' differs against type
  * guard.
  */
