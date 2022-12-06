@@ -833,18 +833,18 @@ export async function diagnoseAndFixProject(options: any): Promise<void> {
  * 1. Infer firebase publisher if not provided
  * 2. Infer "latest" as the version if not provided
  */
-export async function canonicalizeRefInput(extensionName: string): Promise<string> {
-  let inferredName = extensionName;
+export async function canonicalizeRefInput(refInput: string): Promise<string> {
+  let inferredRef = refInput;
   // Infer 'firebase' if publisher ID not provided.
-  if (extensionName.split("/").length < 2) {
-    inferredName = `firebase/${inferredName}`;
+  if (refInput.split("/").length < 2) {
+    inferredRef = `firebase/${inferredRef}`;
   }
   // Infer 'latest' if no version provided.
-  if (extensionName.split("@").length < 2) {
-    inferredName = `${inferredName}@latest`;
+  if (refInput.split("@").length < 2) {
+    inferredRef = `${inferredRef}@latest`;
   }
   // Get the correct version for a given extension reference from the Registry API.
-  const ref = refs.parse(inferredName);
+  const ref = refs.parse(inferredRef);
   ref.version = await resolveVersion(ref);
   return refs.toExtensionVersionRef(ref);
 }
