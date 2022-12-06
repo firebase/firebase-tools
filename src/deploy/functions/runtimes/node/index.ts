@@ -1,4 +1,4 @@
-import { ChildProcess } from "child_process";
+import { ChildProcess, ProcessEnvOptions } from "child_process";
 import { promisify } from "util";
 import * as fs from "fs";
 import * as path from "path";
@@ -109,7 +109,7 @@ export class Delegate {
     args.push(...(extraArgs || []));
 
     const childProcess = spawn(command, args, {
-      env: { ...env, PORT: port },
+      env: { ...env, PORT: port } as unknown as ProcessEnvOptions["env"],
       cwd: this.sourceDir,
       stdio: [/* stdin=*/ "pipe", /* stdout=*/ "pipe", /* stderr=*/ "pipe", "ipc"],
     });

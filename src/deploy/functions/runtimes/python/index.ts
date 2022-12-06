@@ -11,7 +11,7 @@ import { logger } from "../../../../logger";
 import * as discovery from "../discovery";
 import { FirebaseError } from "../../../../error";
 import { Build } from "../../build";
-import { ChildProcess } from "child_process";
+import { ChildProcess, ProcessEnvOptions } from "child_process";
 
 export const LATEST_VERSION: runtimes.Runtime = "python310";
 
@@ -110,7 +110,7 @@ class Delegate implements runtimes.RuntimeDelegate {
   serve(port: string, env: Record<string, string | undefined>): ChildProcess {
     const args = ["functions-framework"];
     return runWithVirtualEnv(args, this.sourceDir, true, {
-      env: { ...env, DEBUG: "true", HOST: `unix://${port}` },
+      env: { ...env, DEBUG: "true", HOST: `unix://${port}` } as unknown as ProcessEnvOptions["env"],
     });
   }
 
@@ -127,7 +127,7 @@ class Delegate implements runtimes.RuntimeDelegate {
       )} in ${this.sourceDir}`
     );
     const childProcess = runWithVirtualEnv(args, this.sourceDir, true, {
-      env: envWithAdminPort,
+      env: envWithAdminPort as unknown as ProcessEnvOptions["env"],
     });
     return Promise.resolve(async () => {
       // Tell the process to exit.
