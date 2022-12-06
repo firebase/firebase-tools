@@ -47,11 +47,11 @@ export async function build(root: string) {
   } = await nuxt.build(nuxtApp);
 
   // console.log("----> build(): nuxt:", nuxt);
-  // console.log("----> build(): target:", target);
-  // console.log("----> build(): basePath:", basePath);
-  // console.log("----> build(): assetsPath:", assetsPath);
-  // console.log("----> build(): buildDir:", buildDir);
-  // console.log("----> build(): staticDir:", staticDir);
+  console.log("----> build(): target:", target);
+  console.log("----> build(): basePath:", basePath);
+  console.log("----> build(): assetsPath:", assetsPath);
+  console.log("----> build(): buildDir:", buildDir);
+  console.log("----> build(): staticDir:", staticDir);
 
   if (target === "static") {
     const nuxtApp = await nuxt.loadNuxt({
@@ -65,7 +65,6 @@ export async function build(root: string) {
   } else {
     // TODO: Maybe copy the server directory here instead of `ɵcodegenFunctionsDirectory`
     // TODO: `buildDir` can be leveraged instead of hardcoding `.nuxt`
-
     return { wantsBackend: true };
   }
 
@@ -89,17 +88,29 @@ async function getNuxtApp(cwd: string) {
   return nuxt;
 }
 
+/**
+ * Copy the static files to the destination directory whether it's a static build or server build.
+ * @param root
+ * @param dest
+ */
 export async function ɵcodegenPublicDirectory(root: string, dest: string) {
+  const nuxt = await getNuxtApp(root);
+  const nuxtConfig = nuxt.loadNuxtConfig();
+
+  console.log("---> ɵcodegenPublicDirectory(): nuxtConfig:", nuxtConfig);
+
   // TODO this folder may be `src/dist` for static build (nuxt generate) or `src/.nuxt/dist/client` for server build (nuxt build)
-  const distPath = join(root, "dist");
-  await copy(distPath, dest);
+  if (nuxtConfig.target === "static") {
+    const distPath = join(root, "dist");
+    await copy(distPath, dest);
+  } else {
+    // TODO: this seems to be missing the `index.html` file that's generated in the `dist` folder
+    const distPath = join(root, ".nuxt", "dist", "client");
+    await copy(distPath, join(dest, "_nuxt"));
+  }
 }
 
 export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: string) {
-  // console.log("----> ɵcodegenFunctionsDirectory() called. [sourceDir:", sourceDir, "]");
-  // console.log("   -> sourceDir:", sourceDir);
-  // console.log("   -> destDir:", destDir);
-
   const packageJsonBuffer = await readFile(join(sourceDir, "package.json"));
   const packageJson = JSON.parse(packageJsonBuffer.toString());
 
