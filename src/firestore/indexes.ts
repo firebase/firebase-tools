@@ -343,8 +343,7 @@ export class FirestoreIndexes {
     validator.assertHas(field, "fieldPath");
     validator.assertHas(field, "indexes");
 
-    /** Only one TTL per Collection */
-    if (field.ttl) {
+    if (typeof field.ttl !== "undefined") {
       validator.assertType("ttl", field.ttl, "boolean");
     }
 
