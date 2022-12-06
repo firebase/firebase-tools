@@ -2,14 +2,10 @@ import * as yaml from "js-yaml";
 import * as path from "path";
 import * as fs from "fs-extra";
 
-import {
-  ExtensionSpec,
-  Resource,
-  FUNCTIONS_RESOURCE_TYPE,
-  FUNCTIONS_V2_RESOURCE_TYPE,
-} from "../types";
+import { ExtensionSpec, Resource } from "../types";
 import { FirebaseError } from "../../error";
 import { substituteParams } from "../extensionsHelper";
+import { getResourceRuntime } from "../utils";
 import { parseRuntimeVersion } from "../../emulator/functionsEmulatorUtils";
 
 const SPEC_FILE = "extension.yaml";
@@ -121,15 +117,4 @@ export function getNodeVersion(resources: Resource[]): number {
     );
   }
   return Math.max(...versions);
-}
-
-export function getResourceRuntime(resource: Resource): string | undefined {
-  switch (resource.type) {
-    case FUNCTIONS_RESOURCE_TYPE:
-      return resource.properties?.runtime;
-    case FUNCTIONS_V2_RESOURCE_TYPE:
-      return resource.properties?.buildConfig?.runtime;
-    default:
-      return undefined;
-  }
 }

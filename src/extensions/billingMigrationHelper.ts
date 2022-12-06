@@ -3,10 +3,11 @@ const { marked } = require("marked");
 import TerminalRenderer = require("marked-terminal");
 
 import { FirebaseError } from "../error";
-import { ExtensionSpec, FUNCTIONS_RESOURCE_TYPE, FUNCTIONS_V2_RESOURCE_TYPE } from "./types";
+import { ExtensionSpec } from "./types";
 import { logPrefix } from "./extensionsHelper";
 import { promptOnce } from "../prompt";
 import * as utils from "../utils";
+import { getResourceRuntime } from "./utils";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),
@@ -41,16 +42,7 @@ function hasRuntime(spec: ExtensionSpec, runtime: string): boolean {
   const specVersion = spec.specVersion || defaultSpecVersion;
   const defaultRuntime = defaultRuntimes[specVersion];
   const resources = spec.resources || [];
-  return resources.some((r) => {
-    switch (r.type) {
-      case FUNCTIONS_RESOURCE_TYPE:
-        return runtime === (r.properties?.runtime || defaultRuntime);
-      case FUNCTIONS_V2_RESOURCE_TYPE:
-        return runtime === (r.properties?.buildConfig?.runtime || defaultRuntime);
-      default:
-        return false;
-    }
-  });
+  return resources.some((r) => runtime === (getResourceRuntime(r) || defaultRuntime));
 }
 
 /**
