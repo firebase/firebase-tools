@@ -30,6 +30,12 @@ export enum State {
   NEEDS_REPAIR = "NEEDS_REPAIR",
 }
 
+export enum StateTtl {
+  CREATING = "CREATING",
+  ACTIVE = "ACTIVE",
+  NEEDS_REPAIR = "NEEDS_REPAIR",
+}
+
 /**
  * An Index as it is represented in the Firestore v1beta2 indexes API.
  */
@@ -50,6 +56,13 @@ export interface IndexField {
 }
 
 /**
+ * TTL policy configuration for a field
+ */
+export interface TtlConfig {
+  state: StateTtl;
+}
+
+/**
  * Represents a single field in the database.
  *
  * If a field has an empty indexConfig, that means all
@@ -58,6 +71,7 @@ export interface IndexField {
 export interface Field {
   name: string;
   indexConfig: IndexConfig;
+  ttlConfig?: TtlConfig;
 }
 
 /**
