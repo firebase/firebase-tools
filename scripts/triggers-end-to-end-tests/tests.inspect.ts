@@ -29,7 +29,7 @@ describe("function triggers with inspect flag", () => {
 
     const config = readConfig();
     test = new TriggerEndToEndTest(FIREBASE_PROJECT, __dirname, config);
-    await test.startEmulators(["--only", "functions,auth,storage,pubsub", "--inspect-functions"]);
+    await test.startEmulators(["--only", "functions,auth,storage", "--inspect-functions"]);
   });
 
   after(async function (this) {
