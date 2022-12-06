@@ -7,3 +7,4 @@
 - Fix bug in deploying web frameworks when a predeploy hook was configured in firebase.json (#5199)
 - Fix bug where function deployments using --only filter sometimes failed deployments. (#5280)
 - Add a workaround for the pubsub emulator to resolve a shutdown issue. (#5294)
+- Fix bug where `ext:install` would sometimes fail if no version was specified. (#5305)
