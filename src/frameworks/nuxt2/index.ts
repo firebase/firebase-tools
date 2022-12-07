@@ -115,6 +115,7 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
   const packageJson = JSON.parse(packageJsonBuffer.toString());
 
   await copy(join(sourceDir, ".nuxt", "dist", "server"), destDir);
+  await copy(join(sourceDir, ".nuxt"), join(destDir, ".nuxt"));
 
-  return { packageJson: { ...packageJson }, frameworksEntry: "nuxt2" };
+  return { packageJson: { ...packageJson }, frameworksEntry: "nuxt" };
 }
