@@ -419,7 +419,7 @@ export function resolveCpuAndConcurrency(want: backend.Backend): void {
 }
 
 /**
- * Exported for testing purposes only.
+ * Exported for use by an internal command (internaltesting:functions:discover) only.
  *
  * @internal
  */
