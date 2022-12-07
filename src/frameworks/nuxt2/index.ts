@@ -105,8 +105,8 @@ export async function ɵcodegenPublicDirectory(root: string, dest: string) {
     await copy(distPath, dest);
   } else {
     // TODO: this seems to be missing the `index.html` file that's generated in the `dist` folder
-    const distPath = join(root, ".nuxt", "dist", "client");
-    await copy(distPath, join(dest, "_nuxt"));
+    // const distPath = join(root, ".nuxt", "dist", "client");
+    // await copy(distPath, join(dest, "_nuxt"));
   }
 }
 
@@ -114,7 +114,7 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
   const packageJsonBuffer = await readFile(join(sourceDir, "package.json"));
   const packageJson = JSON.parse(packageJsonBuffer.toString());
 
-  await copy(join(sourceDir, ".nuxt", "dist", "server"), destDir);
+  // await copy(join(sourceDir, ".nuxt", "dist", "server"), destDir);
   await copy(join(sourceDir, ".nuxt"), join(destDir, ".nuxt"));
 
   return { packageJson: { ...packageJson }, frameworksEntry: "nuxt" };
