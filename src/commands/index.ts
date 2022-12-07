@@ -64,6 +64,7 @@ export function load(client: any): any {
   client.database.settings.get = loadCommand("database-settings-get");
   client.database.settings.set = loadCommand("database-settings-set");
   client.database.update = loadCommand("database-update");
+  client.database.log = loadCommand("database-log");
   client.deploy = loadCommand("deploy");
   client.emulators = {};
   client.emulators.exec = loadCommand("emulators-exec");
@@ -118,6 +119,7 @@ export function load(client: any): any {
   client.functions.log = loadCommand("functions-log");
   client.functions.shell = loadCommand("functions-shell");
   client.functions.list = loadCommand("functions-list");
+  client.firestore.log = loadCommand("firestore-log");
   if (experiments.isEnabled("deletegcfartifacts")) {
     client.functions.deletegcfartifacts = loadCommand("functions-deletegcfartifacts");
   }
