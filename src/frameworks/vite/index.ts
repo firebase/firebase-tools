@@ -65,7 +65,7 @@ export async function discover(dir: string, plugin?: string, npmDependency?: str
 export async function build(root: string) {
   const { build } = relativeRequire(root, "vite");
 
-  await warnIfCustomBuildScript(root, DEFAULT_BUILD_SCRIPT);
+  await warnIfCustomBuildScript(root, name, DEFAULT_BUILD_SCRIPT);
 
   await build({ root });
 }

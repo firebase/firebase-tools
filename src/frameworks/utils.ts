@@ -7,6 +7,7 @@ import { join } from "path";
  */
 export async function warnIfCustomBuildScript(
   dir: string,
+  framework: string,
   defaultBuildScripts: string[]
 ): Promise<void> {
   const packageJsonBuffer = await readFile(join(dir, "package.json"));
@@ -15,9 +16,7 @@ export async function warnIfCustomBuildScript(
 
   if (buildScript && !defaultBuildScripts.includes(buildScript)) {
     console.warn(
-      `WARNING: Your package.json contains a custom build script "${buildScript}" that will be ignored. Only the default build scripts "${defaultBuildScripts.join(
-        " OR "
-      )}" are supported. Please, refer to the docs in order to use a custom build script: https://firebase.google.com/docs/hosting/express\n`
+      `\nWARNING: Your package.json contains a custom build that is being ignored. Only the ${framework} default build script (e.g, "${defaultBuildScripts[0]}") is respected. If you have a more advanced build process you should build a custom integration https://firebase.google.com/docs/hosting/express\n`
     );
   }
 }

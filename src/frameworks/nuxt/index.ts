@@ -27,7 +27,7 @@ export async function build(root: string): Promise<BuildResult> {
   const { buildNuxt } = await relativeRequire(root, "@nuxt/kit");
   const nuxtApp = await getNuxtApp(root);
 
-  await warnIfCustomBuildScript(root, DEFAULT_BUILD_SCRIPT);
+  await warnIfCustomBuildScript(root, name, DEFAULT_BUILD_SCRIPT);
 
   await buildNuxt(nuxtApp);
   return { wantsBackend: true };

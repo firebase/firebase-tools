@@ -59,7 +59,7 @@ export async function build(dir: string): Promise<BuildResult> {
     if (!success) throw new Error(error);
   };
 
-  await warnIfCustomBuildScript(dir, DEFAULT_BUILD_SCRIPT);
+  await warnIfCustomBuildScript(dir, name, DEFAULT_BUILD_SCRIPT);
 
   if (!browserTarget) throw new Error("No build target...");
 

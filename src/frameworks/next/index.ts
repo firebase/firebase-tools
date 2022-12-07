@@ -76,7 +76,7 @@ export async function discover(dir: string) {
 export async function build(dir: string): Promise<BuildResult> {
   const { default: nextBuild } = relativeRequire(dir, "next/dist/build");
 
-  await warnIfCustomBuildScript(dir, DEFAULT_BUILD_SCRIPT);
+  await warnIfCustomBuildScript(dir, name, DEFAULT_BUILD_SCRIPT);
 
   const reactVersion = getReactVersion(dir);
   if (reactVersion && gte(reactVersion, "18.0.0")) {
