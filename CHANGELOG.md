@@ -1,3 +1,3 @@
 - Add support for object list using certain Admin SDKs (#5208)
 - Fixes source token expiration issue by acquiring new source token upon expiration.
-- Frameworks: Add warning when the package.json contains anything other than the framework's default build script. Suggest to use custom project initialization.
+- Warn if a web framework's package.json contains anything other than the framework default build command.
