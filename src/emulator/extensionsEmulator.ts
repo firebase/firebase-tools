@@ -234,7 +234,7 @@ export class ExtensionsEmulator implements EmulatorInstance {
     const emulatableBackend: EmulatableBackend = {
       functionsDir,
       env: nonSecretEnv,
-      codebase: "",
+      codebase: instance.instanceId, // Give each extension its own codebase name so that they don't share workerPools.
       secretEnv: secretEnvVariables,
       predefinedTriggers: extensionTriggers,
       nodeMajorVersion: nodeMajorVersion,
