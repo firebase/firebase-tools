@@ -35,23 +35,21 @@ export async function build(root: string) {
     rootDir: root,
   });
 
-  // const deployPath = (...args: string[]) => join(config.dist, ...args);
-
   const {
     options: {
       target,
-      app: { basePath, assetsPath },
-      buildDir,
-      dir: { static: staticDir },
+      // app: { basePath, assetsPath },
+      // buildDir,
+      // dir: { static: staticDir },
     },
   } = await nuxt.build(nuxtApp);
 
   // console.log("----> build(): nuxt:", nuxt);
-  console.log("----> build(): target:", target);
-  console.log("----> build(): basePath:", basePath);
-  console.log("----> build(): assetsPath:", assetsPath);
-  console.log("----> build(): buildDir:", buildDir);
-  console.log("----> build(): staticDir:", staticDir);
+  // console.log("----> build(): target:", target);
+  // console.log("----> build(): basePath:", basePath);
+  // console.log("----> build(): assetsPath:", assetsPath);
+  // console.log("----> build(): buildDir:", buildDir);
+  // console.log("----> build(): staticDir:", staticDir);
 
   if (target === "static") {
     const nuxtApp = await nuxt.loadNuxt({
@@ -97,16 +95,9 @@ export async function ɵcodegenPublicDirectory(root: string, dest: string) {
   const nuxt = await getNuxtApp(root);
   const nuxtConfig = nuxt.loadNuxtConfig();
 
-  console.log("---> ɵcodegenPublicDirectory(): nuxtConfig:", nuxtConfig);
-
-  // TODO this folder may be `src/dist` for static build (nuxt generate) or `src/.nuxt/dist/client` for server build (nuxt build)
   if (nuxtConfig.target === "static") {
     const distPath = join(root, "dist");
     await copy(distPath, dest);
-  } else {
-    // TODO: this seems to be missing the `index.html` file that's generated in the `dist` folder
-    // const distPath = join(root, ".nuxt", "dist", "client");
-    // await copy(distPath, join(dest, "_nuxt"));
   }
 }
 
@@ -114,7 +105,12 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
   const packageJsonBuffer = await readFile(join(sourceDir, "package.json"));
   const packageJson = JSON.parse(packageJsonBuffer.toString());
 
-  // await copy(join(sourceDir, ".nuxt", "dist", "server"), destDir);
+  /*
+		When starting the Nuxt 2 server, we need to copy the `.nuxt` to the destination directory (`functions`)
+		with the same folder name (.firebase/<project-name>/functions/.nuxt).
+		This is because `loadNuxt` (called from `firebase-frameworks`) will only look
+		for the `.nuxt` directory in the destination directory.
+	*/
   await copy(join(sourceDir, ".nuxt"), join(destDir, ".nuxt"));
 
   return { packageJson: { ...packageJson }, frameworksEntry: "nuxt" };
