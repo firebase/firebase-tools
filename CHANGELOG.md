@@ -1,5 +1,3 @@
-- Add support for object list using certain Admin SDKs (#5208)
-- Fixes source token expiration issue by acquiring new source token upon expiration.
-- Warn if a web framework's package.json contains anything other than the framework default build command.
 - Add support for Firestore TTL (#5267)
 - Fix bug where secrets were not loaded when emulating functions with `--inpsect-functions`. (#4605)
+- Warn if a web framework's package.json contains anything other than the framework default build command.
