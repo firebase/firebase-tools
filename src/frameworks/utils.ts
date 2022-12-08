@@ -11,7 +11,7 @@ export function isUrl(url: string): boolean {
 /**
  * add type to readJSON
  */
-export function readJSON<JsonType>(
+export function readJSON<JsonType = any>(
   file: string,
   options?: ReadOptions | BufferEncoding | string
 ): Promise<JsonType> {

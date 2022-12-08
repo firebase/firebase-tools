@@ -232,7 +232,7 @@ export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: strin
     }
 
     const [prerenderManifest, routesManifest] = await Promise.all([
-      readJSON<any>(
+      readJSON(
         join(
           sourceDir,
           distDir,
