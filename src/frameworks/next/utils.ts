@@ -18,10 +18,21 @@ export function pathHasRegex(path: string): boolean {
 }
 
 /**
- * Remove double backslashes from a string
+ * Remove escaping from characters used for Regex patch matching that Next.js
+ * requires. As Firebase Hosting does not require escaping for those charachters,
+ * we remove them.
+ *
+ * According to the Next.js documentation:
+ * ```md
+ * The following characters (, ), {, }, :, *, +, ? are used for regex path
+ * matching, so when used in the source as non-special values they must be
+ * escaped by adding \\ before them.
+ * ```
+ *
+ * See: https://nextjs.org/docs/api-reference/next.config.js/rewrites#regex-path-matching
  */
 export function cleanEscapedChars(path: string): string {
-  return path.replace(/\\/g, "");
+  return path.replace(/\\([(){}:+?*])/g, (a, b: string) => b);
 }
 
 /**
