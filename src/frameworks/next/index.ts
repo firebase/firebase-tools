@@ -127,8 +127,8 @@ export async function build(dir: string): Promise<BuildResult> {
     }
   }
 
-  const manifestBuffer = await readFile(join(dir, distDir, "routes-manifest.json"));
-  const manifest = JSON.parse(manifestBuffer.toString()) as Manifest;
+  const manifest = await readJSON<Manifest>(join(dir, distDir, "routes-manifest.json"));
+
   const {
     headers: nextJsHeaders = [],
     redirects: nextJsRedirects = [],
