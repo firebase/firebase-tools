@@ -2,7 +2,7 @@ import { expect } from "chai";
 
 import {
   pathHasRegex,
-  // cleanEscapedChars, // FIXME: function should be fixed for the tests to work
+  cleanEscapedChars,
   isRewriteSupportedByFirebase,
   isRedirectSupportedByFirebase,
   isHeaderSupportedByFirebase,
@@ -49,14 +49,36 @@ describe("Next.js utils", () => {
     });
   });
 
-  // FIXME: function should be fixed for the tests to work
-  // describe("cleanEscapedChars", () => {
-  //   it("should clean escaped chars", () => {
-  //     for (const path of pathsWithRegexAndEscapedChars) {
-  //       expect(cleanEscapedChars(path).includes("\\")).to.be.false;
-  //     }
-  //   });
-  // });
+  describe("cleanEscapedChars", () => {
+    it("should clean escaped chars", () => {
+      // path containing all escaped chars
+      const testPath = "/\\(\\)\\{\\}\\:\\+\\?\\*/:slug";
+
+      expect(testPath.includes("\\(")).to.be.true;
+      expect(cleanEscapedChars(testPath).includes("\\(")).to.be.false;
+
+      expect(testPath.includes("\\)")).to.be.true;
+      expect(cleanEscapedChars(testPath).includes("\\)")).to.be.false;
+
+      expect(testPath.includes("\\{")).to.be.true;
+      expect(cleanEscapedChars(testPath).includes("\\{")).to.be.false;
+
+      expect(testPath.includes("\\}")).to.be.true;
+      expect(cleanEscapedChars(testPath).includes("\\}")).to.be.false;
+
+      expect(testPath.includes("\\:")).to.be.true;
+      expect(cleanEscapedChars(testPath).includes("\\:")).to.be.false;
+
+      expect(testPath.includes("\\+")).to.be.true;
+      expect(cleanEscapedChars(testPath).includes("\\+")).to.be.false;
+
+      expect(testPath.includes("\\?")).to.be.true;
+      expect(cleanEscapedChars(testPath).includes("\\?")).to.be.false;
+
+      expect(testPath.includes("\\*")).to.be.true;
+      expect(cleanEscapedChars(testPath).includes("\\*")).to.be.false;
+    });
+  });
 
   describe("isRewriteSupportedByFirebase", () => {
     it("should allow supported rewrites", () => {
