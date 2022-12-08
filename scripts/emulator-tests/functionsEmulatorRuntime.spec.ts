@@ -8,7 +8,7 @@ import { ChildProcess } from "child_process";
 
 import * as express from "express";
 import { Change } from "firebase-functions";
-import { DocumentSnapshot } from "firebase-functions/lib/providers/firestore";
+import { DocumentSnapshot } from "firebase-functions/v1/firestore";
 
 import { FunctionRuntimeBundles, TIMEOUT_LONG, MODULE_ROOT } from "./fixtures";
 import {
