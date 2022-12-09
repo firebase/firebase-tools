@@ -2,3 +2,4 @@
 - Fix bug where secrets were not loaded when emulating functions with `--inpsect-functions`. (#4605)
 - Handle Next.js rewrites/redirects/headers incompatible with `firebase.json` in Cloud Functions (#5212)
 - Filter out Next.js prerendered routes that matches rewrites/redirects/headers rules from SSG content directory (#5212)
+- Warn if a web framework's package.json contains anything other than the framework default build command.
