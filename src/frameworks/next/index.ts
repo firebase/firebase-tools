@@ -239,7 +239,7 @@ export async function build(dir: string): Promise<BuildResult> {
   return { wantsBackend, headers, redirects, rewrites };
 }
 
-/** q
+/**
  * Utility method used during project initialization.
  */
 export async function init(setup: any) {
