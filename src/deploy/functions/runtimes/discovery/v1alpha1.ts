@@ -44,6 +44,7 @@ export type WireEndpoint = build.Triggered &
   Partial<build.TaskQueueTriggered> &
   Partial<build.BlockingTriggered> &
   Partial<{ scheduleTrigger: WireScheduleTrigger }> & {
+    omit?: build.Field<boolean>;
     labels?: Record<string, string> | null;
     environmentVariables?: Record<string, string> | null;
     availableMemoryMb?: build.MemoryOption | build.Expression<number> | null;
@@ -124,6 +125,7 @@ function assertBuildEndpoint(ep: WireEndpoint, id: string): void {
     region: "array",
     platform: (platform) => build.AllFunctionsPlatforms.includes(platform),
     entryPoint: "string",
+    omit: "Field<boolean>?",
     availableMemoryMb: (mem) => mem === null || isCEL(mem) || build.isValidMemoryOption(mem),
     maxInstances: "Field<number>?",
     minInstances: "Field<number>?",
@@ -395,6 +397,7 @@ function parseEndpointForBuild(
   copyIfPresent(
     parsed,
     ep,
+    "omit",
     "availableMemoryMb",
     "cpu",
     "maxInstances",

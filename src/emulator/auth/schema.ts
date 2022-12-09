@@ -879,7 +879,7 @@ export interface components {
        */
       createdAt?: string;
       /**
-       * JSON formatted custom attributes to be stored in the Identity Platform ID token. Specifying this field requires a Google OAuth 2.0 credential with proper permissions (https://cloud.google.com/identity-platform/docs/access-control).
+       * JSON formatted custom attributes to be stored in the Identity Platform ID token. Specifying this field requires a Google OAuth 2.0 credential with proper [permissions] (https://cloud.google.com/identity-platform/docs/access-control).
        */
       customAttributes?: string;
       delegatedProjectNumber?: string;
@@ -912,7 +912,7 @@ export interface components {
        */
       email?: string;
       /**
-       * Whether the user's email has been verified. Specifying this field requires a Google OAuth 2.0 credential with proper permissions (https://cloud.google.com/identity-platform/docs/access-control).
+       * Whether the user's email has been verified. Specifying this field requires a Google OAuth 2.0 credential with proper [permissions] (https://cloud.google.com/identity-platform/docs/access-control).
        */
       emailVerified?: boolean;
       /**
@@ -926,7 +926,7 @@ export interface components {
       lastLoginAt?: string;
       linkProviderUserInfo?: components["schemas"]["GoogleCloudIdentitytoolkitV1ProviderUserInfo"];
       /**
-       * The ID of the user. Specifying this field requires a Google OAuth 2.0 credential with proper permissions (https://cloud.google.com/identity-platform/docs/access-control). For requests from end-users, an ID token should be passed instead.
+       * The ID of the user. Specifying this field requires a Google OAuth 2.0 credential with proper [permissions] (https://cloud.google.com/identity-platform/docs/access-control). For requests from end-users, an ID token should be passed instead.
        */
       localId?: string;
       mfa?: components["schemas"]["GoogleCloudIdentitytoolkitV1MfaInfo"];
@@ -955,7 +955,7 @@ export interface components {
        */
       returnSecureToken?: boolean;
       /**
-       * The project ID for the project that the account belongs to. Specifying this field requires Google OAuth 2.0 credential with proper permissions (https://cloud.google.com/identity-platform/docs/access-control). Requests from end users should pass an Identity Platform ID token instead.
+       * The project ID for the project that the account belongs to. Specifying this field requires Google OAuth 2.0 credential with proper [permissions] (https://cloud.google.com/identity-platform/docs/access-control). Requests from end users should pass an Identity Platform ID token instead.
        */
       targetProjectId?: string;
       /**
@@ -1674,9 +1674,6 @@ export interface components {
        * The CPU memory cost parameter to be used by the STANDARD_SCRYPT hashing function. This parameter, along with block_size and cpu_mem_cost help tune the resources needed to hash a password, and should be tuned as processor speeds and memory technologies advance.
        */
       cpuMemCost?: number;
-      /**
-       * If true, the service will do the following list of checks before an account is uploaded: * Duplicate emails * Duplicate federated IDs * Federated ID provider validation If the duplication exists within the list of accounts to be uploaded, it will prevent the entire list from being uploaded. If the email or federated ID is a duplicate of a user already within the project/tenant, the account will not be uploaded, but the rest of the accounts will be unaffected. If false, these checks will be skipped.
-       */
       delegatedProjectNumber?: string;
       /**
        * The desired key length for the STANDARD_SCRYPT hashing function. Must be at least 1.
@@ -1706,6 +1703,9 @@ export interface components {
        * One or more bytes to be inserted between the salt and plain text password. For stronger security, this should be a single non-printable character.
        */
       saltSeparator?: string;
+      /**
+       * If true, the service will do the following list of checks before an account is uploaded: * Duplicate emails * Duplicate federated IDs * Federated ID provider validation If the duplication exists within the list of accounts to be uploaded, it will prevent the entire list from being uploaded. If the email or federated ID is a duplicate of a user already within the project/tenant, the account will not be uploaded, but the rest of the accounts will be unaffected. If false, these checks will be skipped.
+       */
       sanityCheck?: boolean;
       /**
        * The signer key used to hash the password. Required for the following hashing functions: * SCRYPT, * HMAC_MD5, * HMAC_SHA1, * HMAC_SHA256, * HMAC_SHA512
@@ -1716,7 +1716,7 @@ export interface components {
        */
       tenantId?: string;
       /**
-       * A list of accounts to upload.
+       * A list of accounts to upload. `local_id` is required for each user; everything else is optional.
        */
       users?: components["schemas"]["GoogleCloudIdentitytoolkitV1UserInfo"][];
     };
@@ -1870,6 +1870,24 @@ export interface components {
       suggestedTimeout?: string;
     };
     /**
+     * Defines a policy of allowing every region by default and adding disallowed regions to a disallow list.
+     */
+    GoogleCloudIdentitytoolkitAdminV2AllowByDefault: {
+      /**
+       * Two letter unicode region codes to disallow as defined by https://cldr.unicode.org/ The full list of these region codes is here: https://github.com/unicode-cldr/cldr-localenames-full/blob/master/main/en/territories.json
+       */
+      disallowedRegions?: string[];
+    };
+    /**
+     * Defines a policy of only allowing regions by explicitly adding them to an allowlist.
+     */
+    GoogleCloudIdentitytoolkitAdminV2AllowlistOnly: {
+      /**
+       * Two letter unicode region codes to allow as defined by https://cldr.unicode.org/ The full list of these region codes is here: https://github.com/unicode-cldr/cldr-localenames-full/blob/master/main/en/territories.json
+       */
+      allowedRegions?: string[];
+    };
+    /**
      * Configuration options related to authenticating an anonymous user.
      */
     GoogleCloudIdentitytoolkitAdminV2Anonymous: {
@@ -1915,6 +1933,25 @@ export interface components {
       permissions?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2Permissions"];
     };
     /**
+     * Options related to how clients making requests on behalf of a tenant should be configured.
+     */
+    GoogleCloudIdentitytoolkitAdminV2ClientPermissionConfig: {
+      permissions?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2ClientPermissions"];
+    };
+    /**
+     * Configuration related to restricting a user's ability to affect their account.
+     */
+    GoogleCloudIdentitytoolkitAdminV2ClientPermissions: {
+      /**
+       * When true, end users cannot delete their account on the associated project through any of our API methods
+       */
+      disabledUserDeletion?: boolean;
+      /**
+       * When true, end users cannot sign up for a new account on the associated project through any of our API methods
+       */
+      disabledUserSignup?: boolean;
+    };
+    /**
      * Additional config for Apple for code flow.
      */
     GoogleCloudIdentitytoolkitAdminV2CodeFlowConfig: {
@@ -1939,8 +1976,13 @@ export interface components {
        * List of domains authorized for OAuth redirects
        */
       authorizedDomains?: string[];
+      /**
+       * Whether anonymous users will be auto-deleted after a period of 30 days.
+       */
+      autodeleteAnonymousUsers?: boolean;
       blockingFunctions?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2BlockingFunctionsConfig"];
       client?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2ClientConfig"];
+      emailPrivacyConfig?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2EmailPrivacyConfig"];
       mfa?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2MultiFactorAuthConfig"];
       monitoring?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2MonitoringConfig"];
       multiTenant?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2MultiTenantConfig"];
@@ -1951,6 +1993,7 @@ export interface components {
       notification?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2NotificationConfig"];
       quota?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2QuotaConfig"];
       signIn?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2SignInConfig"];
+      smsRegionConfig?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2SmsRegionConfig"];
       /**
        * Output only. The subtype of this config.
        */
@@ -2033,6 +2076,15 @@ export interface components {
        * Whether a password is required for email auth or not. If true, both an email and password must be provided to sign in. If false, a user may sign in via either email/password or email link.
        */
       passwordRequired?: boolean;
+    };
+    /**
+     * Configuration for settings related to email privacy and public visibility. Settings in this config protect against email enumeration, but may make some trade-offs in user-friendliness.
+     */
+    GoogleCloudIdentitytoolkitAdminV2EmailPrivacyConfig: {
+      /**
+       * Migrates the project to a state of improved email privacy. For example certain error codes are more generic to avoid giving away information on whether the account exists. In addition, this disables certain features that as a side-effect allow user enumeration. Enabling this toggle disables the fetchSignInMethodsForEmail functionality and changing the user's email to an unverified email. It is recommended to remove dependence on this functionality and enable this toggle to improve user privacy.
+       */
+      enableImprovedEmailPrivacy?: boolean;
     };
     /**
      * Email template. The subject and body fields can contain the following placeholders which will be replaced with the appropriate values: %LINK% - The link to use to redeem the send OOB code. %EMAIL% - The email where the email is being sent. %NEW_EMAIL% - The new email being set for the account (when applicable). %APP_NAME% - The GCP project's display name. %DISPLAY_NAME% - The user's display name.
@@ -2181,6 +2233,14 @@ export interface components {
        */
       emailSendingConfig?: boolean;
     };
+    /**
+     * Request for InitializeIdentityPlatform.
+     */
+    GoogleCloudIdentitytoolkitAdminV2InitializeIdentityPlatformRequest: { [key: string]: any };
+    /**
+     * Response for InitializeIdentityPlatform. Empty for now.
+     */
+    GoogleCloudIdentitytoolkitAdminV2InitializeIdentityPlatformResponse: { [key: string]: any };
     /**
      * Response for DefaultSupportedIdpConfigs
      */
@@ -2421,6 +2481,13 @@ export interface components {
       phoneNumber?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2PhoneNumber"];
     };
     /**
+     * Configures the regions where users are allowed to send verification SMS for the project or tenant. This is based on the calling code of the destination phone number.
+     */
+    GoogleCloudIdentitytoolkitAdminV2SmsRegionConfig: {
+      allowByDefault?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2AllowByDefault"];
+      allowlistOnly?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2AllowlistOnly"];
+    };
+    /**
      * The template to use when sending an SMS.
      */
     GoogleCloudIdentitytoolkitAdminV2SmsTemplate: {
@@ -2514,6 +2581,11 @@ export interface components {
        */
       allowPasswordSignup?: boolean;
       /**
+       * Whether anonymous users will be auto-deleted after a period of 30 days.
+       */
+      autodeleteAnonymousUsers?: boolean;
+      client?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2ClientPermissionConfig"];
+      /**
        * Whether authentication is disabled for the tenant. If true, the users under the disabled tenant are not allowed to sign-in. Admins of the disabled tenant are not able to manage its users.
        */
       disableAuth?: boolean;
@@ -2521,6 +2593,7 @@ export interface components {
        * Display name of the tenant.
        */
       displayName?: string;
+      emailPrivacyConfig?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2EmailPrivacyConfig"];
       /**
        * Whether to enable anonymous user authentication.
        */
@@ -2532,10 +2605,12 @@ export interface components {
       hashConfig?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2HashConfig"];
       inheritance?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2Inheritance"];
       mfaConfig?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2MultiFactorAuthConfig"];
+      monitoring?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2MonitoringConfig"];
       /**
        * Output only. Resource name of a tenant. For example: "projects/{project-id}/tenants/{tenant-id}"
        */
       name?: string;
+      smsRegionConfig?: components["schemas"]["GoogleCloudIdentitytoolkitAdminV2SmsRegionConfig"];
       /**
        * A map of pairs that can be used for MFA. The phone number should be in E.164 format (https://www.itu.int/rec/T-REC-E.164/) and a maximum of 10 pairs can be added (error will be thrown once exceeded).
        */
@@ -2802,7 +2877,7 @@ export interface components {
     GoogleIamV1Binding: {
       condition?: components["schemas"]["GoogleTypeExpr"];
       /**
-       * Specifies the principals requesting access for a Google Cloud resource. `members` can have the following values: * `allUsers`: A special identifier that represents anyone who is on the internet; with or without a Google account. * `allAuthenticatedUsers`: A special identifier that represents anyone who is authenticated with a Google account or a service account. * `user:{emailid}`: An email address that represents a specific Google account. For example, `alice@example.com` . * `serviceAccount:{emailid}`: An email address that represents a service account. For example, `my-other-app@appspot.gserviceaccount.com`. * `group:{emailid}`: An email address that represents a Google group. For example, `admins@example.com`. * `deleted:user:{emailid}?uid={uniqueid}`: An email address (plus unique identifier) representing a user that has been recently deleted. For example, `alice@example.com?uid=123456789012345678901`. If the user is recovered, this value reverts to `user:{emailid}` and the recovered user retains the role in the binding. * `deleted:serviceAccount:{emailid}?uid={uniqueid}`: An email address (plus unique identifier) representing a service account that has been recently deleted. For example, `my-other-app@appspot.gserviceaccount.com?uid=123456789012345678901`. If the service account is undeleted, this value reverts to `serviceAccount:{emailid}` and the undeleted service account retains the role in the binding. * `deleted:group:{emailid}?uid={uniqueid}`: An email address (plus unique identifier) representing a Google group that has been recently deleted. For example, `admins@example.com?uid=123456789012345678901`. If the group is recovered, this value reverts to `group:{emailid}` and the recovered group retains the role in the binding. * `domain:{domain}`: The G Suite domain (primary) that represents all the users of that domain. For example, `google.com` or `example.com`.
+       * Specifies the principals requesting access for a Google Cloud resource. `members` can have the following values: * `allUsers`: A special identifier that represents anyone who is on the internet; with or without a Google account. * `allAuthenticatedUsers`: A special identifier that represents anyone who is authenticated with a Google account or a service account. Does not include identities that come from external identity providers (IdPs) through identity federation. * `user:{emailid}`: An email address that represents a specific Google account. For example, `alice@example.com` . * `serviceAccount:{emailid}`: An email address that represents a Google service account. For example, `my-other-app@appspot.gserviceaccount.com`. * `serviceAccount:{projectid}.svc.id.goog[{namespace}/{kubernetes-sa}]`: An identifier for a [Kubernetes service account](https://cloud.google.com/kubernetes-engine/docs/how-to/kubernetes-service-accounts). For example, `my-project.svc.id.goog[my-namespace/my-kubernetes-sa]`. * `group:{emailid}`: An email address that represents a Google group. For example, `admins@example.com`. * `deleted:user:{emailid}?uid={uniqueid}`: An email address (plus unique identifier) representing a user that has been recently deleted. For example, `alice@example.com?uid=123456789012345678901`. If the user is recovered, this value reverts to `user:{emailid}` and the recovered user retains the role in the binding. * `deleted:serviceAccount:{emailid}?uid={uniqueid}`: An email address (plus unique identifier) representing a service account that has been recently deleted. For example, `my-other-app@appspot.gserviceaccount.com?uid=123456789012345678901`. If the service account is undeleted, this value reverts to `serviceAccount:{emailid}` and the undeleted service account retains the role in the binding. * `deleted:group:{emailid}?uid={uniqueid}`: An email address (plus unique identifier) representing a Google group that has been recently deleted. For example, `admins@example.com?uid=123456789012345678901`. If the group is recovered, this value reverts to `group:{emailid}` and the recovered group retains the role in the binding. * `domain:{domain}`: The G Suite domain (primary) that represents all the users of that domain. For example, `google.com` or `example.com`.
        */
       members?: string[];
       /**

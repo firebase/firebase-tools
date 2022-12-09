@@ -70,6 +70,32 @@ describe("utils", () => {
     });
   });
 
+  describe("isCloudEnvironment", () => {
+    let originalEnv: NodeJS.ProcessEnv;
+
+    beforeEach(() => {
+      originalEnv = { ...process.env };
+    });
+
+    afterEach(() => {
+      process.env = originalEnv;
+    });
+
+    it("should return false by default", () => {
+      expect(utils.isCloudEnvironment()).to.be.false;
+    });
+
+    it("should return true when in codespaces", () => {
+      process.env.CODESPACES = "true";
+      expect(utils.isCloudEnvironment()).to.be.true;
+    });
+
+    it("should return true when in Cloud Workstations", () => {
+      process.env.GOOGLE_CLOUD_WORKSTATIONS = "true";
+      expect(utils.isCloudEnvironment()).to.be.true;
+    });
+  });
+
   describe("getDatabaseUrl", () => {
     it("should create a url for prod", () => {
       expect(utils.getDatabaseUrl("https://firebaseio.com", "fir-proj", "/")).to.equal(

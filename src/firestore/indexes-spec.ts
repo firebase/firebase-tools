@@ -21,6 +21,7 @@ export interface Index {
 export interface FieldOverride {
   collectionGroup: string;
   fieldPath: string;
+  ttl?: boolean;
   indexes: FieldIndex[];
 }
 

@@ -1,12 +1,11 @@
 import { execSync } from "child_process";
 import { mkdir, copyFile } from "fs/promises";
 import { dirname, join } from "path";
-import type { Header, Rewrite, Redirect } from "next/dist/lib/load-custom-routes";
 import type { NextConfig } from "next";
 import type { PrerenderManifest } from "next/dist/build";
 import type { MiddlewareManifest } from "next/dist/build/webpack/plugins/middleware-plugin";
 import type { PagesManifest } from "next/dist/build/webpack/plugins/pages-manifest-plugin";
-import { copy, mkdirp, pathExists, readJSON } from "fs-extra";
+import { copy, mkdirp, pathExists } from "fs-extra";
 import { pathToFileURL, parse } from "url";
 import { existsSync } from "fs";
 import { gte } from "semver";
@@ -25,23 +24,25 @@ import { promptOnce } from "../../prompt";
 import { logger } from "../../logger";
 import { FirebaseError } from "../../error";
 import { fileExistsSync } from "../../fsutils";
+import {
+  cleanEscapedChars,
+  getNextjsRewritesToUse,
+  isHeaderSupportedByFirebase,
+  isRedirectSupportedByFirebase,
+  isRewriteSupportedByFirebase,
+} from "./utils";
+import type { Manifest } from "./interfaces";
+import { readJSON } from "../utils";
+import { warnIfCustomBuildScript } from "../utils";
 import type { EmulatorInfo } from "../../emulator/types";
 
-// Next.js's exposed interface is incomplete here
-// TODO see if there's a better way to grab this
-interface Manifest {
-  distDir?: string;
-  basePath?: string;
-  headers?: (Header & { regex: string })[];
-  redirects?: (Redirect & { regex: string; internal?: boolean })[];
-  rewrites?:
-    | (Rewrite & { regex: string })[]
-    | {
-        beforeFiles?: (Rewrite & { regex: string })[];
-        afterFiles?: (Rewrite & { regex: string })[];
-        fallback?: (Rewrite & { regex: string })[];
-      };
-}
+const CLI_COMMAND = join(
+  "node_modules",
+  ".bin",
+  process.platform === "win32" ? "next.cmd" : "next"
+);
+
+const DEFAULT_BUILD_SCRIPT = ["next build"];
 
 export const name = "Next.js";
 export const support = SupportLevel.Experimental;
@@ -72,6 +73,8 @@ export async function discover(dir: string) {
  */
 export async function build(dir: string): Promise<BuildResult> {
   const { default: nextBuild } = relativeRequire(dir, "next/dist/build");
+
+  await warnIfCustomBuildScript(dir, name, DEFAULT_BUILD_SCRIPT);
 
   const reactVersion = getReactVersion(dir);
   if (reactVersion && gte(reactVersion, "18.0.0")) {
@@ -117,7 +120,7 @@ export async function build(dir: string): Promise<BuildResult> {
     reasonsForBackend.push("use of Next app directory");
   }
 
-  const prerenderManifest: PrerenderManifest = await readJSON(
+  const prerenderManifest = await readJSON<PrerenderManifest>(
     join(dir, distDir, "prerender-manifest.json")
   );
 
@@ -139,7 +142,7 @@ export async function build(dir: string): Promise<BuildResult> {
     }
   }
 
-  const pagesManifestJSON: PagesManifest = await readJSON(
+  const pagesManifestJSON = await readJSON<PagesManifest>(
     join(dir, distDir, "server", "pages-manifest.json")
   );
   const prerenderedRoutes = Object.keys(prerenderManifest.routes);
@@ -158,26 +161,62 @@ export async function build(dir: string): Promise<BuildResult> {
     }
   }
 
-  const manifest: Manifest = await readJSON(join(dir, distDir, "routes-manifest.json"));
+  const manifest = await readJSON<Manifest>(join(dir, distDir, "routes-manifest.json"));
+
   const {
     headers: nextJsHeaders = [],
     redirects: nextJsRedirects = [],
     rewrites: nextJsRewrites = [],
   } = manifest;
-  const headers = nextJsHeaders.map(({ source, headers }) => ({ source, headers }));
+
+  const isEveryHeaderSupported = nextJsHeaders.every(isHeaderSupportedByFirebase);
+  if (!isEveryHeaderSupported) {
+    reasonsForBackend.push(`use of advanced headers`);
+  }
+
+  const headers = nextJsHeaders.filter(isHeaderSupportedByFirebase).map(({ source, headers }) => ({
+    // clean up unnecessary escaping
+    source: cleanEscapedChars(source),
+    headers,
+  }));
+
+  const isEveryRedirectSupported = nextJsRedirects.every(isRedirectSupportedByFirebase);
+  if (!isEveryRedirectSupported) {
+    reasonsForBackend.push(`use of advanced redirects`);
+  }
+
   const redirects = nextJsRedirects
-    .filter((it) => !it.internal)
-    .map(({ source, destination, statusCode: type }) => ({ source, destination, type }));
-  const nextJsRewritesToUse = Array.isArray(nextJsRewrites)
-    ? nextJsRewrites
-    : nextJsRewrites.beforeFiles || [];
+    .filter(isRedirectSupportedByFirebase)
+    .map(({ source, destination, statusCode: type }) => ({
+      // clean up unnecessary escaping
+      source: cleanEscapedChars(source),
+      destination,
+      type,
+    }));
+
+  const nextJsRewritesToUse = getNextjsRewritesToUse(nextJsRewrites);
+
+  // rewrites.afterFiles / rewrites.fallback are not supported by firebase.json
+  if (
+    !Array.isArray(nextJsRewrites) &&
+    (nextJsRewrites.afterFiles?.length || nextJsRewrites.fallback?.length)
+  ) {
+    reasonsForBackend.push(`use of advanced rewrites`);
+  } else {
+    const isEveryRewriteSupported = nextJsRewritesToUse.every(isRewriteSupportedByFirebase);
+    if (!isEveryRewriteSupported) {
+      reasonsForBackend.push(`use of advanced rewrites`);
+    }
+  }
+
+  // Can we change i18n into Firebase settings?
   const rewrites = nextJsRewritesToUse
-    .map(({ source, destination, has }) => {
-      // Can we change i18n into Firebase settings?
-      if (has) return undefined;
-      return { source, destination };
-    })
-    .filter((it) => it);
+    .filter(isRewriteSupportedByFirebase)
+    .map(({ source, destination }) => ({
+      // clean up unnecessary escaping
+      source: cleanEscapedChars(source),
+      destination,
+    }));
 
   const wantsBackend = reasonsForBackend.length > 0;
 
@@ -251,9 +290,48 @@ export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: strin
     .map((it) => it.matchers)
     .flat();
 
-  const prerenderManifest: PrerenderManifest = await readJSON(
-    join(sourceDir, distDir, "prerender-manifest.json")
+  const [prerenderManifest, routesManifest] = await Promise.all([
+    readJSON<PrerenderManifest>(
+      join(
+        sourceDir,
+        distDir,
+        "prerender-manifest.json" // TODO: get this from next/constants
+      )
+    ),
+    readJSON<Manifest>(
+      join(
+        sourceDir,
+        distDir,
+        "routes-manifest.json" // TODO: get this from next/constants
+      )
+    ),
+  ]);
+
+  const { redirects = [], rewrites = [], headers = [] } = routesManifest;
+
+  const rewritesToUse = getNextjsRewritesToUse(rewrites);
+  const rewritesNotSupportedByFirebase = rewritesToUse.filter(
+    (rewrite) => !isRewriteSupportedByFirebase(rewrite)
   );
+  const rewritesRegexesNotSupportedByFirebase = rewritesNotSupportedByFirebase.map(
+    (rewrite) => new RegExp(rewrite.regex)
+  );
+
+  const redirectsNotSupportedByFirebase = redirects.filter(
+    (redirect) => !isRedirectSupportedByFirebase(redirect)
+  );
+  const redirectsRegexesNotSupportedByFirebase = redirectsNotSupportedByFirebase.map(
+    (redirect) => new RegExp(redirect.regex)
+  );
+
+  const headersNotSupportedByFirebase = headers.filter(
+    (header) => !isHeaderSupportedByFirebase(header)
+  );
+  const headersRegexesNotSupportedByFirebase = headersNotSupportedByFirebase.map(
+    (header) => new RegExp(header.regex)
+  );
+
+
   for (const [path, route] of Object.entries(prerenderManifest.routes)) {
     // Skip ISR in the deploy to hosting
     if (route.initialRevalidateSeconds) {
@@ -261,12 +339,27 @@ export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: strin
     }
 
     // Skip pages affected by middleware in hosting
-    const matchingMiddleware = middlewareMatchers.find((matcher) =>
+    const matchingMiddleware = middlewareMatchers.some((matcher) =>
       new RegExp(matcher.regexp).test(path)
     );
     if (matchingMiddleware) {
       continue;
     }
+
+    const routeMatchUnsupportedRewrite = rewritesRegexesNotSupportedByFirebase.some(
+      (rewriteRegex) => rewriteRegex.test(path)
+    );
+    if (routeMatchUnsupportedRewrite) continue;
+
+    const routeMatchUnsupportedRedirect = redirectsRegexesNotSupportedByFirebase.some(
+      (redirectRegex) => redirectRegex.test(path)
+    );
+    if (routeMatchUnsupportedRedirect) continue;
+
+    const routeMatchUnsupportedHeader = headersRegexesNotSupportedByFirebase.some(
+      (headerRegex) => headerRegex.test(path)
+    );
+    if (routeMatchUnsupportedHeader) continue;
 
     const isReactServerComponent = route.dataRoute.endsWith(".rsc");
     const contentDist = join(

@@ -1,4 +1,8 @@
+import { FirebaseError } from "../../../error";
+import { assertExhaustive } from "../../../functional";
 import { logger } from "../../../logger";
+
+type TokenFetchState = "NONE" | "FETCHING" | "VALID";
 
 /**
  * GCF v1 deploys support reusing a build between function deploys.
@@ -6,23 +10,46 @@ import { logger } from "../../../logger";
  * and then will always return a promise that is resolved by the poller function.
  */
 export class SourceTokenScraper {
-  private firstCall = true;
-  private resolve!: (token: string) => void;
+  private tokenValidDurationMs;
+  private resolve!: (token?: string) => void;
   private promise: Promise<string | undefined>;
+  private expiry: number | undefined;
+  private fetchState: TokenFetchState;
 
-  constructor() {
+  constructor(validDurationMs = 1500000) {
+    this.tokenValidDurationMs = validDurationMs;
     this.promise = new Promise((resolve) => (this.resolve = resolve));
+    this.fetchState = "NONE";
   }
 
-  // Token Promise will return undefined for the first caller
-  // (because we presume it's this function's source token we'll scrape)
-  // and then returns the promise generated from the first function's onCall
-  tokenPromise(): Promise<string | undefined> {
-    if (this.firstCall) {
-      this.firstCall = false;
-      return Promise.resolve(undefined);
+  async getToken(): Promise<string | undefined> {
+    if (this.fetchState === "NONE") {
+      this.fetchState = "FETCHING";
+      return undefined;
+    } else if (this.fetchState === "FETCHING") {
+      return this.promise; // wait until we get a source token
+    } else if (this.fetchState === "VALID") {
+      if (this.isTokenExpired()) {
+        this.fetchState = "FETCHING";
+        this.promise = new Promise((resolve) => (this.resolve = resolve));
+        return undefined;
+      }
+      return this.promise;
+    } else {
+      assertExhaustive(this.fetchState);
     }
-    return this.promise;
+  }
+
+  isTokenExpired(): boolean {
+    if (this.expiry === undefined) {
+      throw new FirebaseError(
+        "Your deployment is checking the expiration of a source token that has not yet been polled. " +
+          "Hitting this case should never happen and should be considered a bug. " +
+          "Please file an issue at https://github.com/firebase/firebase-tools/issues " +
+          "and try deploying your functions again."
+      );
+    }
+    return Date.now() >= this.expiry;
   }
 
   get poller() {
@@ -32,6 +59,8 @@ export class SourceTokenScraper {
           op.metadata?.target?.split("/") || [];
         logger.debug(`Got source token ${op.metadata?.sourceToken} for region ${region as string}`);
         this.resolve(op.metadata?.sourceToken);
+        this.fetchState = "VALID";
+        this.expiry = Date.now() + this.tokenValidDurationMs;
       }
     };
   }
