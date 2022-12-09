@@ -143,7 +143,7 @@ export class WorkQueue {
   private async runNext() {
     const next = this.queue.shift();
     if (next) {
-      this.running.push(next.name || "anonymous");
+      this.running.push(next.type || "anonymous");
       this.logState();
 
       try {
@@ -151,7 +151,7 @@ export class WorkQueue {
       } catch (e: any) {
         this.logger.log("DEBUG", e);
       } finally {
-        const index = this.running.indexOf(next.name || "anonymous");
+        const index = this.running.indexOf(next.type || "anonymous");
         if (index !== -1) {
           this.running.splice(index, 1);
         }
