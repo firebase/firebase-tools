@@ -1,3 +1,5 @@
-- Fix bug where disabling background triggers did nothing. (#5221)
-- Fix bug in auth emulator where empty string should throw invalid email instead of missing email. (#3898)
-- Fix bug in auth emulator in which createdAt was not set for signInWithIdp new users. (#5203)
+- Add support for Firestore TTL (#5267)
+- Fix bug where secrets were not loaded when emulating functions with `--inpsect-functions`. (#4605)
+- Handle Next.js rewrites/redirects/headers incompatible with `firebase.json` in Cloud Functions (#5212)
+- Filter out Next.js prerendered routes that matches rewrites/redirects/headers rules from SSG content directory (#5212)
+- Warn if a web framework's package.json contains anything other than the framework default build command.

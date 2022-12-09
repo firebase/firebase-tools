@@ -252,11 +252,18 @@ function patchSecurity(openapi3: any, apiKeyDescription: string): void {
     securitySchemes = openapi3.components.securitySchemes = {};
   }
 
-  // Add the missing apiKey method here.
-  securitySchemes.apiKey = {
+  // Add the missing apiKeyQuery and apiKeyHeader schemes here.
+  // https://cloud.google.com/docs/authentication/api-keys#using-with-rest
+  securitySchemes.apiKeyQuery = {
     type: "apiKey",
     name: "key",
     in: "query",
+    description: apiKeyDescription,
+  };
+  securitySchemes.apiKeyHeader = {
+    type: "apiKey",
+    name: "x-goog-api-key",
+    in: "header",
     description: apiKeyDescription,
   };
 
@@ -271,9 +278,9 @@ function patchSecurity(openapi3: any, apiKeyDescription: string): void {
       delete alt.Oauth2c;
     });
 
-    // Forcibly add API Key as an alternative auth method. Note that some
-    // operations may not support it, but those can be handled within impl.
-    operation.security.push({ apiKey: [] });
+    // Add alternative auth schemes (query OR header) for API key. Note that
+    // some operations may not support it, but those can be handled within impl.
+    operation.security.push({ apiKeyQuery: [] }, { apiKeyHeader: [] });
   });
 }
 
