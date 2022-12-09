@@ -3,9 +3,9 @@ import { expect } from "chai";
 import {
   pathHasRegex,
   cleanEscapedChars,
-  isRewriteSupportedByFirebase,
-  isRedirectSupportedByFirebase,
-  isHeaderSupportedByFirebase,
+  isRewriteSupportedByHosting,
+  isRedirectSupportedByHosting,
+  isHeaderSupportedByHosting,
   getNextjsRewritesToUse,
 } from "../../../frameworks/next/utils";
 import {
@@ -83,13 +83,13 @@ describe("Next.js utils", () => {
   describe("isRewriteSupportedByFirebase", () => {
     it("should allow supported rewrites", () => {
       for (const rewrite of supportedRewritesArray) {
-        expect(isRewriteSupportedByFirebase(rewrite)).to.be.true;
+        expect(isRewriteSupportedByHosting(rewrite)).to.be.true;
       }
     });
 
     it("should disallow unsupported rewrites", () => {
       for (const rewrite of unsupportedRewritesArray) {
-        expect(isRewriteSupportedByFirebase(rewrite)).to.be.false;
+        expect(isRewriteSupportedByHosting(rewrite)).to.be.false;
       }
     });
   });
@@ -97,13 +97,13 @@ describe("Next.js utils", () => {
   describe("isRedirectSupportedByFirebase", () => {
     it("should allow supported redirects", () => {
       for (const redirect of supportedRedirects) {
-        expect(isRedirectSupportedByFirebase(redirect)).to.be.true;
+        expect(isRedirectSupportedByHosting(redirect)).to.be.true;
       }
     });
 
     it("should disallow unsupported redirects", () => {
       for (const redirect of unsupportedRedirects) {
-        expect(isRedirectSupportedByFirebase(redirect)).to.be.false;
+        expect(isRedirectSupportedByHosting(redirect)).to.be.false;
       }
     });
   });
@@ -111,13 +111,13 @@ describe("Next.js utils", () => {
   describe("isHeaderSupportedByFirebase", () => {
     it("should allow supported headers", () => {
       for (const header of supportedHeaders) {
-        expect(isHeaderSupportedByFirebase(header)).to.be.true;
+        expect(isHeaderSupportedByHosting(header)).to.be.true;
       }
     });
 
     it("should disallow unsupported headers", () => {
       for (const header of unsupportedHeaders) {
-        expect(isHeaderSupportedByFirebase(header)).to.be.false;
+        expect(isHeaderSupportedByHosting(header)).to.be.false;
       }
     });
   });
