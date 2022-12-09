@@ -50,7 +50,7 @@ export function cleanEscapedChars(path: string): string {
  *
  * - Rewrites to external URLs
  */
-export function isRewriteSupportedByFirebase(rewrite: Rewrite): boolean {
+export function isRewriteSupportedByHosting(rewrite: Rewrite): boolean {
   return !("has" in rewrite || pathHasRegex(rewrite.source) || isUrl(rewrite.destination));
 }
 
@@ -69,7 +69,7 @@ export function isRewriteSupportedByFirebase(rewrite: Rewrite): boolean {
  *
  * - Next.js internal redirects
  */
-export function isRedirectSupportedByFirebase(redirect: Redirect): boolean {
+export function isRedirectSupportedByHosting(redirect: Redirect): boolean {
   return !("has" in redirect || pathHasRegex(redirect.source) || "internal" in redirect);
 }
 
@@ -86,7 +86,7 @@ export function isRedirectSupportedByFirebase(redirect: Redirect): boolean {
  * - Custom header using regex for path matching.
  *     - https://nextjs.org/docs/api-reference/next.config.js/headers#regex-path-matching
  */
-export function isHeaderSupportedByFirebase(header: Header): boolean {
+export function isHeaderSupportedByHosting(header: Header): boolean {
   return !("has" in header || pathHasRegex(header.source));
 }
 
