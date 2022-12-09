@@ -1,2 +1,3 @@
 - Add support for Firestore TTL (#5267)
 - Fix bug where secrets were not loaded when emulating functions with `--inpsect-functions`. (#4605)
+- Warn if a web framework's package.json contains anything other than the framework default build command.

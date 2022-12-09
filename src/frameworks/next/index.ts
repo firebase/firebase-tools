@@ -22,6 +22,7 @@ import { IncomingMessage, ServerResponse } from "http";
 import { logger } from "../../logger";
 import { FirebaseError } from "../../error";
 import { fileExistsSync } from "../../fsutils";
+import { warnIfCustomBuildScript } from "../utils";
 
 // Next.js's exposed interface is incomplete here
 // TODO see if there's a better way to grab this
@@ -44,6 +45,8 @@ const CLI_COMMAND = join(
   ".bin",
   process.platform === "win32" ? "next.cmd" : "next"
 );
+
+const DEFAULT_BUILD_SCRIPT = ["next build"];
 
 export const name = "Next.js";
 export const support = SupportLevel.Experimental;
@@ -72,6 +75,8 @@ export async function discover(dir: string) {
  */
 export async function build(dir: string): Promise<BuildResult> {
   const { default: nextBuild } = relativeRequire(dir, "next/dist/build");
+
+  await warnIfCustomBuildScript(dir, name, DEFAULT_BUILD_SCRIPT);
 
   const reactVersion = getReactVersion(dir);
   if (reactVersion && gte(reactVersion, "18.0.0")) {
