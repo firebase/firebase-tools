@@ -165,7 +165,7 @@ export async function build(dir: string): Promise<BuildResult> {
 
   const isEveryHeaderSupported = nextJsHeaders.every(isHeaderSupportedByHosting);
   if (!isEveryHeaderSupported) {
-    reasonsForBackend.push(`advanced headers`);
+    reasonsForBackend.push("advanced headers");
   }
 
   const headers = nextJsHeaders.filter(isHeaderSupportedByHosting).map(({ source, headers }) => ({
@@ -176,7 +176,7 @@ export async function build(dir: string): Promise<BuildResult> {
 
   const isEveryRedirectSupported = nextJsRedirects.every(isRedirectSupportedByHosting);
   if (!isEveryRedirectSupported) {
-    reasonsForBackend.push(`advanced redirects`);
+    reasonsForBackend.push("advanced redirects");
   }
 
   const redirects = nextJsRedirects
@@ -195,12 +195,12 @@ export async function build(dir: string): Promise<BuildResult> {
     !Array.isArray(nextJsRewrites) &&
     (nextJsRewrites.afterFiles?.length || nextJsRewrites.fallback?.length)
   ) {
-    reasonsForBackend.push(`advanced rewrites`);
-  } else {
-    const isEveryRewriteSupported = nextJsRewritesToUse.every(isRewriteSupportedByHosting);
-    if (!isEveryRewriteSupported) {
-      reasonsForBackend.push(`advanced rewrites`);
-    }
+    reasonsForBackend.push("advanced rewrites");
+  }
+
+  const isEveryRewriteSupported = nextJsRewritesToUse.every(isRewriteSupportedByHosting);
+  if (!isEveryRewriteSupported) {
+    reasonsForBackend.push("advanced rewrites");
   }
 
   // Can we change i18n into Firebase settings?
