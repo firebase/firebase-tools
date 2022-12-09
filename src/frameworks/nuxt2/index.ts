@@ -1,8 +1,6 @@
-/* eslint-disable */
-//
 import { copy, pathExists } from "fs-extra";
 import { readFile } from "fs/promises";
-import { basename, join } from "path";
+import { join } from "path";
 import { lt } from "semver";
 import { findDependency, FrameworkType, relativeRequire, SupportLevel } from "..";
 
@@ -36,12 +34,7 @@ export async function build(root: string) {
   });
 
   const {
-    options: {
-      target,
-      // app: { basePath, assetsPath },
-      // buildDir,
-      // dir: { static: staticDir },
-    },
+    options: { target },
   } = await nuxt.build(nuxtApp);
 
   if (target === "static") {
@@ -54,8 +47,6 @@ export async function build(root: string) {
     const generator = new nuxt.Generator(nuxtApp, builder);
     await generator.generate({ build: false, init: true });
   } else {
-    // TODO: Maybe copy the server directory here instead of `ɵcodegenFunctionsDirectory`
-    // TODO: `buildDir` can be leveraged instead of hardcoding `.nuxt`
     return { wantsBackend: true };
   }
 

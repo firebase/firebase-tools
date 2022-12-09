@@ -1,10 +1,8 @@
-/* eslint-disable */
-//
 import { copy, pathExists } from "fs-extra";
 import { readFile } from "fs/promises";
-import { basename, join } from "path";
+import { join } from "path";
 import { gte } from "semver";
-import { BuildResult, findDependency, FrameworkType, relativeRequire, SupportLevel } from "..";
+import { findDependency, FrameworkType, relativeRequire, SupportLevel } from "..";
 
 export const name = "Nuxt 3";
 export const support = SupportLevel.Experimental;
@@ -50,8 +48,6 @@ async function getNuxt3App(cwd: string) {
 export async function ɵcodegenPublicDirectory(root: string, dest: string) {
   const distPath = join(root, ".output", "public");
   await copy(distPath, dest);
-  // const app = await getNuxt3App(root);
-  // app.options.generate.dir;
 }
 
 export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: string) {
@@ -64,10 +60,4 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
   const outputPackageJson = JSON.parse(outputPackageJsonBuffer.toString());
   await copy(join(sourceDir, ".output", "server"), destDir);
   return { packageJson: { ...packageJson, ...outputPackageJson }, frameworksEntry: "nuxt3" };
-
-  // const {
-  //   options: { buildDir },
-  // } = await getNuxt3App(sourceDir);
-  // await copy(buildDir, join(destDir, basename(buildDir)));
-  // return { packageJson };
 }
