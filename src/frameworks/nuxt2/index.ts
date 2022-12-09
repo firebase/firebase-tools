@@ -3,8 +3,8 @@
 import { copy, pathExists } from "fs-extra";
 import { readFile } from "fs/promises";
 import { basename, join } from "path";
-import { gte, lt } from "semver";
-import { BuildResult, findDependency, FrameworkType, relativeRequire, SupportLevel } from "..";
+import { lt } from "semver";
+import { findDependency, FrameworkType, relativeRequire, SupportLevel } from "..";
 
 export const name = "Nuxt 2";
 export const support = SupportLevel.Experimental;
@@ -43,13 +43,6 @@ export async function build(root: string) {
       // dir: { static: staticDir },
     },
   } = await nuxt.build(nuxtApp);
-
-  // console.log("----> build(): nuxt:", nuxt);
-  // console.log("----> build(): target:", target);
-  // console.log("----> build(): basePath:", basePath);
-  // console.log("----> build(): assetsPath:", assetsPath);
-  // console.log("----> build(): buildDir:", buildDir);
-  // console.log("----> build(): staticDir:", staticDir);
 
   if (target === "static") {
     const nuxtApp = await nuxt.loadNuxt({
@@ -106,12 +99,28 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
   const packageJson = JSON.parse(packageJsonBuffer.toString());
 
   /*
+		Get the nuxt config into an object so we can check the `target` and `ssr` properties.
+	*/
+  const nuxt = await getNuxtApp(sourceDir);
+  const nuxtConfig = await nuxt.loadNuxtConfig();
+
+  /*
 		When starting the Nuxt 2 server, we need to copy the `.nuxt` to the destination directory (`functions`)
 		with the same folder name (.firebase/<project-name>/functions/.nuxt).
 		This is because `loadNuxt` (called from `firebase-frameworks`) will only look
 		for the `.nuxt` directory in the destination directory.
 	*/
   await copy(join(sourceDir, ".nuxt"), join(destDir, ".nuxt"));
+
+  /*
+		When using `SSR: false`, we need to copy the `nuxt.config.js` to the destination directory (`functions`)
+		This is because `loadNuxt` (called from `firebase-frameworks`) will look
+		for the `nuxt.config.js` file in the destination directory.
+		*/
+  if (nuxtConfig.ssr === false) {
+    const nuxtConfigFile = nuxtConfig._nuxtConfigFile.split("/").pop();
+    await copy(join(sourceDir, nuxtConfigFile), join(destDir, nuxtConfigFile));
+  }
 
   return { packageJson: { ...packageJson }, frameworksEntry: "nuxt" };
 }
