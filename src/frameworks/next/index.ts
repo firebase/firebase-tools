@@ -92,7 +92,7 @@ export async function build(dir: string): Promise<BuildResult> {
   const reasonsForBackend = [];
   const { distDir } = await getConfig(dir);
 
-  const middlewareManifest: MiddlewareManifest = await readJSON(
+  const middlewareManifest = await readJSON<MiddlewareManifest>(
     join(dir, distDir, "server", "middleware-manifest.json")
   );
   const usingMiddleware = Object.keys(middlewareManifest.middleware).length > 0;
@@ -283,7 +283,7 @@ export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: strin
     }
   }
 
-  const middlewareManifest: MiddlewareManifest = await readJSON(
+  const middlewareManifest = await readJSON<MiddlewareManifest>(
     join(sourceDir, distDir, "server", "middleware-manifest.json")
   );
   const middlewareMatchers = Object.values(middlewareManifest["middleware"])
