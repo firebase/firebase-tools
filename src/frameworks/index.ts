@@ -26,6 +26,7 @@ import { HostingRewrites } from "../firebaseConfig";
 import * as experiments from "../experiments";
 import { ensureTargeted } from "../functions/ensureTargeted";
 import { implicitInit } from "../hosting/implicitInit";
+import { runWithVirtualEnv } from "../deploy/functions/runtimes/python";
 
 // Use "true &&"" to keep typescript from compiling this file and rewriting
 // the import statement into a require
@@ -43,6 +44,17 @@ export interface BuildResult {
   wantsBackend?: boolean;
 }
 
+interface NodeJSFramework {
+  bootstrapScript?: string;
+  packageJson: any;
+  frameworksEntry?: string;
+}
+
+interface PythonFramework {
+  imports: [string, string];
+  requirementsTxt: string;
+}
+
 export interface Framework {
   discover: (dir: string) => Promise<Discovery | undefined>;
   type: FrameworkType;
@@ -58,11 +70,7 @@ export interface Framework {
   ɵcodegenFunctionsDirectory?: (
     dir: string,
     dest: string
-  ) => Promise<{
-    bootstrapScript?: string;
-    packageJson: any;
-    frameworksEntry?: string;
-  }>;
+  ) => Promise<Partial<NodeJSFramework & PythonFramework>>;
 }
 
 // TODO pull from @firebase/util when published
@@ -198,7 +206,8 @@ export async function discover(dir: string, warn = true) {
       }
     }
     if (frameworksDiscovered.length > 1) {
-      if (warn) console.error("Multiple conflicting frameworks discovered.");
+      const frameworkNames = frameworksDiscovered.map(it => it.framework);
+      if (warn) console.error(`Multiple conflicting frameworks discovered ${frameworkNames.join(', ')}`);
       return;
     }
     if (frameworksDiscovered.length === 1) return frameworksDiscovered[0];
@@ -467,6 +476,8 @@ export async function prepareFrameworks(
       }
 
       const {
+        requirementsTxt,
+        imports,
         packageJson,
         bootstrapScript,
         frameworksEntry = framework,
@@ -494,50 +505,91 @@ export async function prepareFrameworks(
         )
       );
 
-      packageJson.main = "server.js";
-      delete packageJson.devDependencies;
-      packageJson.dependencies ||= {};
-      packageJson.dependencies["firebase-frameworks"] ||= FIREBASE_FRAMEWORKS_VERSION;
-      packageJson.dependencies["firebase-functions"] ||= FIREBASE_FUNCTIONS_VERSION;
-      packageJson.dependencies["firebase-admin"] ||= FIREBASE_ADMIN_VERSION;
-      packageJson.engines ||= {};
-      packageJson.engines.node ||= NODE_VERSION;
+      if (packageJson) {
 
-      await writeFile(join(functionsDist, "package.json"), JSON.stringify(packageJson, null, 2));
+        
+        packageJson.main = "server.js";
+        delete packageJson.devDependencies;
+        packageJson.dependencies ||= {};
+        packageJson.dependencies["firebase-frameworks"] ||= FIREBASE_FRAMEWORKS_VERSION;
+        packageJson.dependencies["firebase-functions"] ||= FIREBASE_FUNCTIONS_VERSION;
+        packageJson.dependencies["firebase-admin"] ||= FIREBASE_ADMIN_VERSION;
+        packageJson.engines ||= {};
+        packageJson.engines.node ||= NODE_VERSION;
 
-      // TODO do we add the append the local .env?
-      await writeFile(
-        join(functionsDist, ".env"),
-        `__FIREBASE_FRAMEWORKS_ENTRY__=${frameworksEntry}
-${firebaseDefaults ? `__FIREBASE_DEFAULTS__=${JSON.stringify(firebaseDefaults)}\n` : ""}`
-      );
+        await writeFile(join(functionsDist, "package.json"), JSON.stringify(packageJson, null, 2));
+        
+        // TODO do we add the append the local .env?
+        await writeFile(
+          join(functionsDist, ".env"),
+          `__FIREBASE_FRAMEWORKS_ENTRY__=${frameworksEntry}
+  ${firebaseDefaults ? `__FIREBASE_DEFAULTS__=${JSON.stringify(firebaseDefaults)}\n` : ""}`
+        );
 
-      await copyFile(
-        getProjectPath("package-lock.json"),
-        join(functionsDist, "package-lock.json")
-      ).catch(() => {
-        // continue
-      });
+        await copyFile(
+          getProjectPath("package-lock.json"),
+          join(functionsDist, "package-lock.json")
+        ).catch(() => {
+          // continue
+        });
 
-      if (await pathExists(getProjectPath(".npmrc"))) {
-        await copyFile(getProjectPath(".npmrc"), join(functionsDist, ".npmrc"));
+        if (await pathExists(getProjectPath(".npmrc"))) {
+          await copyFile(getProjectPath(".npmrc"), join(functionsDist, ".npmrc"));
+        }
+
+        execSync(`${NPM_COMMAND} i --omit dev --no-audit`, {
+          cwd: functionsDist,
+          stdio: "inherit",
+        });
+
+        if (bootstrapScript) await writeFile(join(functionsDist, "bootstrap.js"), bootstrapScript);
+
+        // TODO move to templates
+        await writeFile(
+          join(functionsDist, "server.js"),
+          `const { onRequest } = require('firebase-functions/v2/https');
+  const server = import('firebase-frameworks');
+  exports.ssr = onRequest((req, res) => server.then(it => it.handle(req, res)));
+  `
+        );
       }
 
-      execSync(`${NPM_COMMAND} i --omit dev --no-audit`, {
-        cwd: functionsDist,
-        stdio: "inherit",
-      });
+      if (requirementsTxt) {
+        await writeFile(join(functionsDist, "requirements.txt"), requirementsTxt + "\ngit+https://github.com/firebase/firebase-functions-python.git@main#egg=firebase-functions");
+        await writeFile(join(functionsDist, "main.py"), `from firebase_functions import https
+from io import BytesIO
+from ${imports![0]} import ${imports![1]} as discoveredApp
 
-      if (bootstrapScript) await writeFile(join(functionsDist, "bootstrap.js"), bootstrapScript);
+def handle(app, environ):
+    status = None
+    headers = None
+    body = BytesIO()
+    
+    def start_response(rstatus, rheaders):
+        nonlocal status, headers
+        status, headers = rstatus, rheaders
+        
+    app_iter = app(environ, start_response)
+    try:
+        for data in app_iter:
+            assert status is not None and headers is not None, \\
+                "start_response() was not called"
+            body.write(data)
+    finally:
+        if hasattr(app_iter, 'close'):
+            app_iter.close()
+    return status, headers, body.getvalue()
 
-      // TODO move to templates
-      await writeFile(
-        join(functionsDist, "server.js"),
-        `const { onRequest } = require('firebase-functions/v2/https');
-const server = import('firebase-frameworks');
-exports.ssr = onRequest((req, res) => server.then(it => it.handle(req, res)));
-`
-      );
+@https.on_request()
+def ssr(req: https.Request) -> https.Response:   
+    status, headers, body = handle(discoveredApp, req.environ)
+    return https.Response(body, status, headers)
+`);
+        await runWithVirtualEnv(
+          ["pip", "install", "-r", "requirements.txt"],
+          functionsDist
+        ).promise;
+      }
     } else {
       // No function, treat as an SPA
       // TODO(jamesdaniels) be smarter about this, leave it to the framework?
