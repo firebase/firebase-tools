@@ -1,5 +1,24 @@
-import { readFile } from "fs/promises";
+import { readJSON as originalReadJSON } from "fs-extra";
+import type { ReadOptions } from "fs-extra";
 import { join } from "path";
+import { readFile } from "fs/promises";
+
+/**
+ * Whether the given string starts with http:// or https://
+ */
+export function isUrl(url: string): boolean {
+  return /^https?:\/\//.test(url);
+}
+
+/**
+ * add type to readJSON
+ */
+export function readJSON<JsonType = any>(
+  file: string,
+  options?: ReadOptions | BufferEncoding | string
+): Promise<JsonType> {
+  return originalReadJSON(file, options) as Promise<JsonType>;
+}
 
 /**
  * Prints a warning if the build script in package.json
