@@ -11,7 +11,7 @@
     "build:publish": "tsc --build tsconfig.publish.json",
     "build:watch": "npm run build && tsc --watch",
     "clean": "rimraf lib dev",
-    "copyfiles": "node -e \"const fs = require('fs'); fs.mkdirSync('./lib', {recursive:true}); fs.copyFileSync('./src/dynamicImport.js', './lib/dynamicImport.js')\"",
+    "copyfiles": "node -e \"const fs = require('fs'); fs.mkdirSync('./lib', {recursive:true}); fs.copyFileSync('./src/dynamicImport.js', './lib/dynamicImport.js'); fs.copyFileSync('./src/frameworks/flask/discover.py', './lib/frameworks/flask/discover.py'); fs.copyFileSync('./src/frameworks/wsgi/discover.py', './lib/frameworks/wsgi/discover.py')\"",
     "format": "npm run format:ts && npm run format:other",
     "format:other": "npm run lint:other -- --write",
     "format:ts": "npm run lint:ts -- --fix --quiet",
