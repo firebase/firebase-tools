@@ -3,7 +3,7 @@ import { ChildProcess } from "child_process";
 import * as backend from "../backend";
 import * as build from "../build";
 import * as node from "./node";
-import * as python from "./python";
+import * as dart from "./dart";
 import * as validate from "../validate";
 import { FirebaseError } from "../../../error";
 
@@ -12,7 +12,7 @@ const RUNTIMES: string[] = ["nodejs10", "nodejs12", "nodejs14", "nodejs16"];
 // Experimental runtimes are part of the Runtime type, but are in a
 // different list to help guard against some day accidentally iterating over
 // and printing a hidden runtime to the user.
-const EXPERIMENTAL_RUNTIMES = ["python310"];
+const EXPERIMENTAL_RUNTIMES = ["dart"];
 export type Runtime = typeof RUNTIMES[number] | typeof EXPERIMENTAL_RUNTIMES[number];
 
 /** Runtimes that can be found in existing backends but not used for new functions. */
@@ -119,7 +119,7 @@ export interface DelegateContext {
 type Factory = (context: DelegateContext) => Promise<RuntimeDelegate | undefined>;
 // Note: golang has been removed from delegates because it does not work and it
 // is not worth having an experiment for yet.
-const factories: Factory[] = [node.tryCreateDelegate, python.tryCreateDelegate];
+const factories: Factory[] = [node.tryCreateDelegate, dart.tryCreateDelegate];
 
 /**
  *

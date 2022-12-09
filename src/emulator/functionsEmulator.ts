@@ -7,6 +7,7 @@ import * as jwt from "jsonwebtoken";
 import * as cors from "cors";
 import { URL } from "url";
 import { EventEmitter } from "events";
+import { getPortPromise } from "portfinder";
 
 import { Account } from "../auth";
 import { logger } from "../logger";
@@ -342,7 +343,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       const req = http.request(
         {
           path: `/`,
-          socketPath: worker.runtime.socketPath,
+          port: worker.runtime.socketPath,
           headers: headers,
         },
         resolve
@@ -1200,7 +1201,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     const runtimeEnv = this.getRuntimeEnvs(backend, trigger);
     const secretEnvs = await this.resolveSecretEnvs(backend, trigger);
-    const socketPath = getTemporarySocketPath();
+    const socketPath = (await getPortPromise()).toString();
 
     const runtimeDelegateContext: runtimes.DelegateContext = {
       projectId: this.args.projectId,

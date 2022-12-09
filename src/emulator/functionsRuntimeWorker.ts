@@ -121,7 +121,8 @@ export class RuntimeWorker {
           method: req.method,
           path: req.path,
           headers: req.headers,
-          socketPath: this.runtime.socketPath,
+          port: this.runtime.socketPath,
+          // socketPath: this.runtime.socketPath,
         },
         (_resp) => {
           resp.writeHead(_resp.statusCode || 200, _resp.headers);
@@ -183,7 +184,8 @@ export class RuntimeWorker {
           {
             method: "GET",
             path: "/__/health",
-            socketPath: this.runtime.socketPath,
+            port: this.runtime.socketPath,
+            // socketPath: this.runtime.socketPath,
           },
           () => {
             // Set the worker state to IDLE for new work
