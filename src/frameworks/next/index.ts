@@ -2,6 +2,15 @@ import { execSync } from "child_process";
 import { mkdir, copyFile } from "fs/promises";
 import { dirname, join } from "path";
 import type { NextConfig } from "next";
+import {
+  APP_PATH_ROUTES_MANIFEST,
+  EXPORT_MARKER,
+  IMAGES_MANIFEST,
+  MIDDLEWARE_MANIFEST,
+  PAGES_MANIFEST,
+  PRERENDER_MANIFEST,
+  ROUTES_MANIFEST,
+} from "next/constants";
 import type { PrerenderManifest } from "next/dist/build";
 import type { MiddlewareManifest } from "next/dist/build/webpack/plugins/middleware-plugin";
 import type { PagesManifest } from "next/dist/build/webpack/plugins/pages-manifest-plugin";
@@ -87,23 +96,23 @@ export async function build(dir: string): Promise<BuildResult> {
   const { distDir } = await getConfig(dir);
 
   const middlewareManifest = await readJSON<MiddlewareManifest>(
-    join(dir, distDir, "server", "middleware-manifest.json")
+    join(dir, distDir, "server", MIDDLEWARE_MANIFEST)
   );
   const usingMiddleware = Object.keys(middlewareManifest.middleware).length > 0;
   if (usingMiddleware) {
     reasonsForBackend.push("middleware");
   }
 
-  const { isNextImageImported } = await readJSON(join(dir, distDir, "export-marker.json"));
+  const { isNextImageImported } = await readJSON(join(dir, distDir, EXPORT_MARKER));
   if (isNextImageImported) {
-    const imagesManifest = await readJSON(join(dir, distDir, "images-manifest.json"));
+    const imagesManifest = await readJSON(join(dir, distDir, IMAGES_MANIFEST));
     const usingImageOptimization = imagesManifest.images.unoptimized === false;
     if (usingImageOptimization) {
       reasonsForBackend.push(`Image Optimization`);
     }
   }
 
-  const appPathRoutesManifestPath = join(dir, distDir, "app-path-routes-manifest.json");
+  const appPathRoutesManifestPath = join(dir, distDir, APP_PATH_ROUTES_MANIFEST);
   const appPathRoutesManifestJSON = fileExistsSync(appPathRoutesManifestPath)
     ? await readJSON(appPathRoutesManifestPath)
     : {};
@@ -115,7 +124,7 @@ export async function build(dir: string): Promise<BuildResult> {
   }
 
   const prerenderManifest = await readJSON<PrerenderManifest>(
-    join(dir, distDir, "prerender-manifest.json")
+    join(dir, distDir, PRERENDER_MANIFEST)
   );
 
   const dynamicRoutesWithFallback = Object.entries(prerenderManifest.dynamicRoutes || {}).filter(
@@ -137,7 +146,7 @@ export async function build(dir: string): Promise<BuildResult> {
   }
 
   const pagesManifestJSON = await readJSON<PagesManifest>(
-    join(dir, distDir, "server", "pages-manifest.json")
+    join(dir, distDir, "server", PAGES_MANIFEST)
   );
   const prerenderedRoutes = Object.keys(prerenderManifest.routes);
   const dynamicRoutes = Object.keys(prerenderManifest.dynamicRoutes);
@@ -155,7 +164,7 @@ export async function build(dir: string): Promise<BuildResult> {
     }
   }
 
-  const manifest = await readJSON<Manifest>(join(dir, distDir, "routes-manifest.json"));
+  const manifest = await readJSON<Manifest>(join(dir, distDir, ROUTES_MANIFEST));
 
   const {
     headers: nextJsHeaders = [],
@@ -277,11 +286,10 @@ export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: strin
     }
   }
 
-  // TODO: get the filenames from next/constants
   const [middlewareManifest, prerenderManifest, routesManifest] = await Promise.all([
-    readJSON<MiddlewareManifest>(join(sourceDir, distDir, "server", "middleware-manifest.json")),
-    readJSON<PrerenderManifest>(join(sourceDir, distDir, "prerender-manifest.json")),
-    readJSON<Manifest>(join(sourceDir, distDir, "routes-manifest.json")),
+    readJSON<MiddlewareManifest>(join(sourceDir, distDir, "server", MIDDLEWARE_MANIFEST)),
+    readJSON<PrerenderManifest>(join(sourceDir, distDir, PRERENDER_MANIFEST)),
+    readJSON<Manifest>(join(sourceDir, distDir, ROUTES_MANIFEST)),
   ]);
 
   const middlewareMatcherRegexes = Object.values(middlewareManifest.middleware)
