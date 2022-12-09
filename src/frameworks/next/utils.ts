@@ -9,7 +9,8 @@ import type { ExportMarker, ImageManifest } from "./interfaces";
  * @return true if app directory is used in the Next.js project
  */
 export function usesAppDirRouter(sourceDir: string): boolean {
-  return existsSync(join(sourceDir, "app")) ? true : false;
+  const appPathRoutesManifestPath = join(sourceDir, "app-path-routes-manifest.json");
+  return existsSync(appPathRoutesManifestPath);
 }
 /**
  * Check if the project is using the next/image component based on the export-marker.json file.
