@@ -16,6 +16,7 @@ const ENGINE_RUNTIMES: Record<number, runtimes.Runtime | runtimes.DeprecatedRunt
   12: "nodejs12",
   14: "nodejs14",
   16: "nodejs16",
+  18: "nodejs18",
 };
 
 const ENGINE_RUNTIMES_NAMES = Object.values(ENGINE_RUNTIMES);
