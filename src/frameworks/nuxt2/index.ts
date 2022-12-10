@@ -26,7 +26,7 @@ export async function discover(dir: string) {
 }
 
 export async function build(root: string) {
-  const nuxt = await getNuxtApp(root);
+  const nuxt = await getNuxtAppForBuild(root);
 
   const nuxtApp = await nuxt.loadNuxt({
     for: "build",
@@ -58,7 +58,7 @@ export async function build(root: string) {
  * @param cwd
  * @return Nuxt app object
  */
-async function getNuxtApp(cwd: string) {
+async function getNuxtAppForBuild(cwd: string) {
   let nuxt: any = null;
   try {
     // @ts-ignore
@@ -76,12 +76,25 @@ async function getNuxtApp(cwd: string) {
  * @param dest
  */
 export async function ɵcodegenPublicDirectory(root: string, dest: string) {
-  const nuxt = await getNuxtApp(root);
-  const nuxtConfig = nuxt.loadNuxtConfig();
+  const nuxt = await getNuxtAppForBuild(root);
+  const nuxtConfig = await nuxt.loadNuxtConfig();
 
+  /*
+		If `target` is set to `static`, copy the generated files to the destination directory (i.e. `/hosting`).
+	*/
   if (nuxtConfig.target === "static") {
-    const distPath = join(root, "dist");
-    await copy(distPath, dest);
+    await copy(
+      nuxtConfig?.generate.dir ? join(root, nuxtConfig?.generate.dir) : join(root, "dist"),
+      dest
+    );
+  }
+
+  /*
+		Copy static assets if they exist.
+	*/
+  const staticPath = join(root, "static");
+  if (await pathExists(staticPath)) {
+    await copy(staticPath, dest);
   }
 }
 
@@ -92,7 +105,7 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
   /*
 		Get the nuxt config into an object so we can check the `target` and `ssr` properties.
 	*/
-  const nuxt = await getNuxtApp(sourceDir);
+  const nuxt = await getNuxtAppForBuild(sourceDir);
   const nuxtConfig = await nuxt.loadNuxtConfig();
 
   /*
@@ -110,7 +123,7 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
 		*/
   if (nuxtConfig.ssr === false) {
     const nuxtConfigFile = nuxtConfig._nuxtConfigFile.split("/").pop();
-    await copy(join(sourceDir, nuxtConfigFile), join(destDir, nuxtConfigFile));
+    await copy(nuxtConfig._nuxtConfigFile, join(destDir, nuxtConfigFile));
   }
 
   return { packageJson: { ...packageJson }, frameworksEntry: "nuxt" };
