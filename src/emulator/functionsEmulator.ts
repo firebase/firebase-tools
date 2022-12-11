@@ -272,7 +272,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       const work: Work = () => {
         return this.handleHttpsTrigger(req, res);
       };
-      work.type = req.path;
+      work.type = `${req.path}-${new Date().toISOString()}`;
       this.workQueue.submit(work);
     };
 
@@ -308,7 +308,7 @@ export class FunctionsEmulator implements EmulatorInstance {
             resolve();
           });
         };
-        work.type = triggerId;
+        work.type = `${triggerId}-${new Date().toISOString()}`;
         this.workQueue.submit(work);
       });
       res.json({ status: "multicast_acknowledged" });
