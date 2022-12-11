@@ -435,7 +435,7 @@ describe("function triggers", () => {
       test.resetCounts();
     });
 
-    it("should disable all background triggers", async function (this) {
+    it("should disable background triggers", async function (this) {
       this.timeout(TEST_SETUP_TIMEOUT);
 
       const response = await test.disableBackgroundTriggers();
@@ -443,24 +443,11 @@ describe("function triggers", () => {
 
       await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS));
 
-      await Promise.all([
-        test.writeToRtdb(),
-        test.writeToFirestore(),
-        test.writeToPubsub(),
-        test.writeToAuth(),
-        test.writeToDefaultStorage(),
-      ]);
+      await Promise.all([test.writeToAuth()]);
 
       await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS * 2));
 
-      expect(test.rtdbTriggerCount).to.equal(0);
-      expect(test.rtdbV2TriggerCount).to.eq(0);
-      expect(test.firestoreTriggerCount).to.equal(0);
-      expect(test.pubsubTriggerCount).to.equal(0);
-      expect(test.pubsubV2TriggerCount).to.equal(0);
       expect(test.authTriggerCount).to.equal(0);
-      expect(test.storageFinalizedTriggerCount).to.equal(0);
-      expect(test.storageV2FinalizedTriggerCount).to.equal(0);
     });
 
     it("should re-enable background triggers", async function (this) {
