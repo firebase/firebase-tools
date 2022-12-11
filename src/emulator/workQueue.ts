@@ -130,7 +130,7 @@ export class WorkQueue {
     return {
       queuedWork: this.queue.map((work) => work.type),
       queueLength: this.queue.length,
-      runnigWork: this.running,
+      runningWork: this.running,
       workRunningCount: this.running.length,
     };
   }
