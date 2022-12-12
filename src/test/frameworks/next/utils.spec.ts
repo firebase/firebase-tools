@@ -1,4 +1,7 @@
 import { expect } from "chai";
+import * as fs from "fs";
+import * as fsExtra from "fs-extra";
+import * as sinon from "sinon";
 
 import {
   pathHasRegex,
@@ -7,6 +10,9 @@ import {
   isRedirectSupportedByFirebase,
   isHeaderSupportedByFirebase,
   getNextjsRewritesToUse,
+  usesAppDirRouter,
+  usesNextImage,
+  hasUnoptimizedImage,
 } from "../../../frameworks/next/utils";
 import {
   pathsAsGlobs,
@@ -140,6 +146,80 @@ describe("Next.js utils", () => {
       const rewritesToUse = getNextjsRewritesToUse(supportedRewritesArray);
 
       expect(rewritesToUse).to.have.length(supportedRewritesArray.length);
+    });
+  });
+
+  describe("usesAppDirRouter", () => {
+    let sandbox: sinon.SinonSandbox;
+
+    beforeEach(() => {
+      sandbox = sinon.createSandbox();
+    });
+
+    afterEach(() => {
+      sandbox.restore();
+    });
+
+    it("should return false when app dir doesn't exist", () => {
+      sandbox.stub(fs, "existsSync").returns(false);
+      expect(usesAppDirRouter("")).to.be.false;
+    });
+
+    it("should return true when app dir does exist", () => {
+      sandbox.stub(fs, "existsSync").returns(true);
+      expect(usesAppDirRouter("")).to.be.true;
+    });
+  });
+
+  describe("usesNextImage", () => {
+    let sandbox: sinon.SinonSandbox;
+
+    beforeEach(() => {
+      sandbox = sinon.createSandbox();
+    });
+
+    afterEach(() => {
+      sandbox.restore();
+    });
+
+    it("should return true when export marker has isNextImageImported", async () => {
+      sandbox.stub(fsExtra, "readJSON").resolves({
+        isNextImageImported: true,
+      });
+      expect(await usesNextImage("", "")).to.be.true;
+    });
+
+    it("should return false when export marker has !isNextImageImported", async () => {
+      sandbox.stub(fsExtra, "readJSON").resolves({
+        isNextImageImported: false,
+      });
+      expect(await usesNextImage("", "")).to.be.false;
+    });
+  });
+
+  describe("hasUnoptimizedImage", () => {
+    let sandbox: sinon.SinonSandbox;
+
+    beforeEach(() => {
+      sandbox = sinon.createSandbox();
+    });
+
+    afterEach(() => {
+      sandbox.restore();
+    });
+
+    it("should return true when images manfiest indicates unoptimized", async () => {
+      sandbox.stub(fsExtra, "readJSON").resolves({
+        images: { unoptimized: true },
+      });
+      expect(await hasUnoptimizedImage("", "")).to.be.true;
+    });
+
+    it("should return true when images manfiest indicates !unoptimized", async () => {
+      sandbox.stub(fsExtra, "readJSON").resolves({
+        images: { unoptimized: false },
+      });
+      expect(await hasUnoptimizedImage("", "")).to.be.false;
     });
   });
 });
