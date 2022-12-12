@@ -42,7 +42,7 @@ import {
   isRewriteSupportedByHosting,
   isUsingMiddleware,
 } from "./utils";
-import type { Manifest } from "./interfaces";
+import type { ExportMarker, ImageManifest, Manifest } from "./interfaces";
 import { readJSON } from "../utils";
 import { warnIfCustomBuildScript } from "../utils";
 import type { EmulatorInfo } from "../../emulator/types";
@@ -107,9 +107,9 @@ export async function build(dir: string): Promise<BuildResult> {
     reasonsForBackend.push("middleware");
   }
 
-  const { isNextImageImported } = await readJSON(join(dir, distDir, EXPORT_MARKER));
+  const { isNextImageImported } = await readJSON<ExportMarker>(join(dir, distDir, EXPORT_MARKER));
   if (isNextImageImported) {
-    const imagesManifest = await readJSON(join(dir, distDir, IMAGES_MANIFEST));
+    const imagesManifest = await readJSON<ImageManifest>(join(dir, distDir, IMAGES_MANIFEST));
     const usingImageOptimization = imagesManifest.images.unoptimized === false;
     if (usingImageOptimization) {
       reasonsForBackend.push(`Image Optimization`);
