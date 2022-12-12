@@ -48,12 +48,6 @@ import { warnIfCustomBuildScript } from "../utils";
 import type { EmulatorInfo } from "../../emulator/types";
 import { usesAppDirRouter, usesNextImage, hasUnoptimizedImage } from "./utils";
 
-const CLI_COMMAND = join(
-  "node_modules",
-  ".bin",
-  process.platform === "win32" ? "next.cmd" : "next"
-);
-
 const DEFAULT_BUILD_SCRIPT = ["next build"];
 
 export const name = "Next.js";
