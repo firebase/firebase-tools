@@ -443,10 +443,24 @@ describe("function triggers", () => {
 
       await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS));
 
-      await Promise.all([test.writeToAuth()]);
+      await Promise.all([
+        // TODO(danielylee): Trying to respond to all triggers at once often results in Functions
+        // Emulator hanging indefinitely. Only triggering 1 trigger for now. Re-enable other triggers
+        // once the root cause is identified.
+        // test.writeToRtdb(),
+        // test.writeToFirestore(),
+        // test.writeToPubsub(),
+        // test.writeToDefaultStorage(),
+        test.writeToAuth(),
+      ]);
 
       await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS * 2));
 
+      // expect(test.rtdbTriggerCount).to.equal(0);
+      // expect(test.rtdbV2TriggerCount).to.eq(0);
+      // expect(test.firestoreTriggerCount).to.equal(0);
+      // expect(test.pubsubTriggerCount).to.equal(0);
+      // expect(test.pubsubV2TriggerCount).to.equal(0);
       expect(test.authTriggerCount).to.equal(0);
     });
 
@@ -458,9 +472,26 @@ describe("function triggers", () => {
 
       await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS));
 
-      await Promise.all([test.writeToAuth()]);
+      await Promise.all([
+        // TODO(danielylee): Trying to respond to all triggers at once often results in Functions
+        // Emulator hanging indefinitely. Only triggering 1 trigger for now. Re-enable other triggers
+        // once the root cause is identified.
+        // test.writeToRtdb(),
+        // test.writeToFirestore(),
+        // test.writeToPubsub(),
+        // test.writeToDefaultStorage(),
+        test.writeToAuth(),
+      ]);
 
       await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS * 3));
+      // TODO(danielylee): Trying to respond to all triggers at once often results in Functions
+      // Emulator hanging indefinitely. Only triggering 1 trigger for now. Re-enable other triggers
+      // once the root cause is identified.
+      // expect(test.rtdbTriggerCount).to.equal(1);
+      // expect(test.rtdbV2TriggerCount).to.eq(1);
+      // expect(test.firestoreTriggerCount).to.equal(1);
+      // expect(test.pubsubTriggerCount).to.equal(1);
+      // expect(test.pubsubV2TriggerCount).to.equal(1);
       expect(test.authTriggerCount).to.equal(1);
     });
   });
