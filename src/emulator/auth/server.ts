@@ -166,14 +166,25 @@ export async function createApp(
   );
 
   const apiKeyAuthenticator: PromiseAuthenticator = (ctx, info) => {
-    if (info.in !== "query") {
-      throw new Error('apiKey must be defined as in: "query" in API spec.');
-    }
     if (!info.name) {
-      throw new Error("apiKey param name is undefined in API spec.");
+      throw new Error("apiKey param/header name is undefined in API spec.");
     }
-    const key = (ctx.req as express.Request).query[info.name];
-    if (typeof key === "string" && key.length > 0) {
+
+    let key: string | undefined;
+    const req = ctx.req as express.Request;
+    switch (info.in) {
+      case "header":
+        key = req.get(info.name);
+        break;
+      case "query": {
+        const q = req.query[info.name];
+        key = typeof q === "string" ? q : undefined;
+        break;
+      }
+      default:
+        throw new Error('apiKey must be defined as in: "query" or "header" in API spec.');
+    }
+    if (key) {
       return { type: "success", user: getProjectIdByApiKey(key) };
     } else {
       return undefined;
@@ -218,7 +229,8 @@ export async function createApp(
   const apis = await exegesisExpress.middleware(specForRouter(), {
     controllers: { auth: toExegesisController(authOperations, getProjectStateById) },
     authenticators: {
-      apiKey: apiKeyAuthenticator,
+      apiKeyQuery: apiKeyAuthenticator,
+      apiKeyHeader: apiKeyAuthenticator,
       Oauth2: oauth2Authenticator,
     },
     autoHandleHttpErrors(err) {
@@ -305,7 +317,7 @@ export async function createApp(
               if (ctx.res.statusCode === 401) {
                 // Normalize unauthenticated responses to match production.
                 const requirements = (ctx.api.operationObject as OperationObject).security;
-                if (requirements?.some((req) => req.apiKey)) {
+                if (requirements?.some((req) => req.apiKeyQuery || req.apiKeyHeader)) {
                   throw new PermissionDeniedError("The request is missing a valid API key.");
                 } else {
                   throw new UnauthenticatedError(

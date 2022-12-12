@@ -1,5 +1,6 @@
 import { expect } from "chai";
 
+import * as args from "../../../deploy/functions/args";
 import * as backend from "../../../deploy/functions/backend";
 import * as deploy from "../../../deploy/functions/deploy";
 
@@ -17,6 +18,11 @@ describe("deploy", () => {
     ...ENDPOINT_BASE,
     httpsTrigger: {},
   };
+
+  const CONTEXT: args.Context = {
+    projectId: "project",
+  };
+
   describe("shouldUploadBeSkipped", () => {
     let endpoint1InWantBackend: backend.Endpoint;
     let endpoint2InWantBackend: backend.Endpoint;
@@ -63,7 +69,7 @@ describe("deploy", () => {
       endpoint2InHaveBackend.hash = endpoint2InWantBackend.hash;
 
       // Execute
-      const result = deploy.shouldUploadBeSkipped(wantBackend, haveBackend);
+      const result = deploy.shouldUploadBeSkipped(CONTEXT, wantBackend, haveBackend);
 
       // Expect
       expect(result).to.be.true;
@@ -76,7 +82,7 @@ describe("deploy", () => {
       endpoint2InHaveBackend.hash = "No_match";
 
       // Execute
-      const result = deploy.shouldUploadBeSkipped(wantBackend, haveBackend);
+      const result = deploy.shouldUploadBeSkipped(CONTEXT, wantBackend, haveBackend);
 
       // Expect
       expect(result).to.be.false;
@@ -92,7 +98,7 @@ describe("deploy", () => {
       haveBackend = backend.of(endpoint1InHaveBackend);
 
       // Execute
-      const result = deploy.shouldUploadBeSkipped(wantBackend, haveBackend);
+      const result = deploy.shouldUploadBeSkipped(CONTEXT, wantBackend, haveBackend);
 
       // Expect
       expect(result).to.be.false;
@@ -108,7 +114,24 @@ describe("deploy", () => {
       haveBackend = backend.of(endpoint1InHaveBackend, endpoint2InHaveBackend);
 
       // Execute
-      const result = deploy.shouldUploadBeSkipped(wantBackend, haveBackend);
+      const result = deploy.shouldUploadBeSkipped(CONTEXT, wantBackend, haveBackend);
+
+      // Expect
+      expect(result).to.be.false;
+    });
+
+    it("should not skip if endpoint filter is specified", () => {
+      endpoint1InWantBackend.hash = "1";
+      endpoint2InWantBackend.hash = "2";
+      endpoint1InHaveBackend.hash = endpoint1InWantBackend.hash;
+      endpoint2InHaveBackend.hash = endpoint2InWantBackend.hash;
+
+      // Execute
+      const result = deploy.shouldUploadBeSkipped(
+        { ...CONTEXT, filters: [{ idChunks: ["foobar"] }] },
+        wantBackend,
+        haveBackend
+      );
 
       // Expect
       expect(result).to.be.false;

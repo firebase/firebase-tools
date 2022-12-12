@@ -1,16 +1,10 @@
 import { execSync } from "child_process";
-import { mkdir, copyFile } from "fs/promises";
+import { readFile, mkdir, copyFile } from "fs/promises";
 import { dirname, join } from "path";
-import type { Header, Rewrite, Redirect } from "next/dist/lib/load-custom-routes";
 import type { NextConfig } from "next";
-import type { PrerenderManifest } from "next/dist/build";
-import type { MiddlewareManifest } from "next/dist/build/webpack/plugins/middleware-plugin";
-import type { PagesManifest } from "next/dist/build/webpack/plugins/pages-manifest-plugin";
-import { copy, mkdirp, pathExists, readJSON } from "fs-extra";
+import { copy, mkdirp, pathExists } from "fs-extra";
 import { pathToFileURL, parse } from "url";
 import { existsSync } from "fs";
-import { gte } from "semver";
-import { IncomingMessage, ServerResponse } from "http";
 
 import {
   BuildResult,
@@ -22,33 +16,34 @@ import {
   SupportLevel,
 } from "..";
 import { promptOnce } from "../../prompt";
+import { gte } from "semver";
+import { IncomingMessage, ServerResponse } from "http";
 import { logger } from "../../logger";
 import { FirebaseError } from "../../error";
 import { fileExistsSync } from "../../fsutils";
-import type { EmulatorInfo } from "../../emulator/types";
+import {
+  cleanEscapedChars,
+  getNextjsRewritesToUse,
+  isHeaderSupportedByFirebase,
+  isRedirectSupportedByFirebase,
+  isRewriteSupportedByFirebase,
+} from "./utils";
+import type { Manifest } from "./interfaces";
+import { readJSON } from "../utils";
+import { warnIfCustomBuildScript } from "../utils";
 import { usesAppDirRouter, usesNextImage, hasUnoptimizedImage } from "./utils";
 
-// Next.js's exposed interface is incomplete here
-// TODO see if there's a better way to grab this
-interface Manifest {
-  distDir?: string;
-  basePath?: string;
-  headers?: (Header & { regex: string })[];
-  redirects?: (Redirect & { regex: string; internal?: boolean })[];
-  rewrites?:
-    | (Rewrite & { regex: string })[]
-    | {
-        beforeFiles?: (Rewrite & { regex: string })[];
-        afterFiles?: (Rewrite & { regex: string })[];
-        fallback?: (Rewrite & { regex: string })[];
-      };
-}
+const CLI_COMMAND = join(
+  "node_modules",
+  ".bin",
+  process.platform === "win32" ? "next.cmd" : "next"
+);
+
+const DEFAULT_BUILD_SCRIPT = ["next build"];
 
 export const name = "Next.js";
 export const support = SupportLevel.Experimental;
 export const type = FrameworkType.MetaFramework;
-
-const DEFAULT_NUMBER_OF_REASONS_TO_LIST = 5;
 
 function getNextVersion(cwd: string): string | undefined {
   return findDependency("next", { cwd, depth: 0, omitDev: false })?.version;
@@ -74,6 +69,8 @@ export async function discover(dir: string) {
 export async function build(dir: string): Promise<BuildResult> {
   const { default: nextBuild } = relativeRequire(dir, "next/dist/build");
 
+  await warnIfCustomBuildScript(dir, name, DEFAULT_BUILD_SCRIPT);
+
   const reactVersion = getReactVersion(dir);
   if (reactVersion && gte(reactVersion, "18.0.0")) {
     // This needs to be set for Next build to succeed with React 18
@@ -87,121 +84,110 @@ export async function build(dir: string): Promise<BuildResult> {
     throw e;
   });
 
-  const reasonsForBackend = [];
+  try {
+    // Using spawn here, rather than their programatic API because I can't silence it
+    // Failures with Next export are expected, we're just trying to do it if we can
+    execSync(`${CLI_COMMAND} export`, { cwd: dir, stdio: "ignore" });
+  } catch (e) {
+    // continue, failure is expected
+  }
+
+  let wantsBackend = true;
   const { distDir } = await getConfig(dir);
-
-  const middlewareManifest: MiddlewareManifest = await readJSON(
-    join(dir, distDir, "server", "middleware-manifest.json")
-  );
-  const usingMiddleware = Object.keys(middlewareManifest.middleware).length > 0;
-  if (usingMiddleware) {
-    reasonsForBackend.push("use of Next middleware");
-  }
-
-  const { isNextImageImported } = await readJSON(join(dir, distDir, "export-marker.json"));
-  if (isNextImageImported) {
-    const imagesManifest = await readJSON(join(dir, distDir, "images-manifest.json"));
-    const usingImageOptimization = imagesManifest.images.unoptimized === false;
-    if (usingImageOptimization) {
-      reasonsForBackend.push(`use of Next Image Optimization`);
+  const exportDetailPath = join(dir, distDir, "export-detail.json");
+  const exportDetailExists = await pathExists(exportDetailPath);
+  const exportDetailBuffer = exportDetailExists ? await readFile(exportDetailPath) : undefined;
+  const exportDetailJson = exportDetailBuffer && JSON.parse(exportDetailBuffer.toString());
+  if (exportDetailJson?.success) {
+    const appPathRoutesManifestPath = join(dir, distDir, "app-path-routes-manifest.json");
+    const appPathRoutesManifestJSON = fileExistsSync(appPathRoutesManifestPath)
+      ? await readFile(appPathRoutesManifestPath).then((it) => JSON.parse(it.toString()))
+      : {};
+    const prerenderManifestJSON = await readFile(
+      join(dir, distDir, "prerender-manifest.json")
+    ).then((it) => JSON.parse(it.toString()));
+    const anyDynamicRouteFallbacks = !!Object.values(
+      prerenderManifestJSON.dynamicRoutes || {}
+    ).find((it: any) => it.fallback !== false);
+    const pagesManifestJSON = await readFile(
+      join(dir, distDir, "server", "pages-manifest.json")
+    ).then((it) => JSON.parse(it.toString()));
+    const prerenderedRoutes = Object.keys(prerenderManifestJSON.routes);
+    const dynamicRoutes = Object.keys(prerenderManifestJSON.dynamicRoutes);
+    const unrenderedPages = [
+      ...Object.keys(pagesManifestJSON),
+      // TODO flush out fully rendered detection with a app directory (Next 13)
+      // we shouldn't go too crazy here yet, as this is currently an expiriment
+      ...Object.values<string>(appPathRoutesManifestJSON),
+    ].filter(
+      (it) =>
+        !(
+          ["/_app", "/", "/_error", "/_document", "/404"].includes(it) ||
+          prerenderedRoutes.includes(it) ||
+          dynamicRoutes.includes(it)
+        )
+    );
+    // TODO log these as a reason why Cloud Functions are needed
+    if (!anyDynamicRouteFallbacks && unrenderedPages.length === 0) {
+      wantsBackend = false;
     }
   }
 
-  const appPathRoutesManifestPath = join(dir, distDir, "app-path-routes-manifest.json");
-  const appPathRoutesManifestJSON = fileExistsSync(appPathRoutesManifestPath)
-    ? await readJSON(appPathRoutesManifestPath)
-    : {};
-  const usingAppDirectory = Object.keys(appPathRoutesManifestJSON).length > 0;
-  if (usingAppDirectory) {
-    // Let's not get smart here, if they are using the app directory we should
-    // opt for spinning up a Cloud Function. The app directory is unstable.
-    reasonsForBackend.push("use of Next app directory");
-  }
+  const manifest = await readJSON<Manifest>(join(dir, distDir, "routes-manifest.json"));
 
-  const prerenderManifest: PrerenderManifest = await readJSON(
-    join(dir, distDir, "prerender-manifest.json")
-  );
-
-  const dynamicRoutesWithFallback = Object.entries(prerenderManifest.dynamicRoutes || {}).filter(
-    ([, it]) => it.fallback !== false
-  );
-  if (dynamicRoutesWithFallback.length > 0) {
-    for (const [key] of dynamicRoutesWithFallback) {
-      reasonsForBackend.push(`use of fallback ${key}`);
-    }
-  }
-
-  const routesWithRevalidate = Object.entries(prerenderManifest.routes).filter(
-    ([, it]) => it.initialRevalidateSeconds
-  );
-  if (routesWithRevalidate.length > 0) {
-    for (const [key] of routesWithRevalidate) {
-      reasonsForBackend.push(`use of revalidate ${key}`);
-    }
-  }
-
-  const pagesManifestJSON: PagesManifest = await readJSON(
-    join(dir, distDir, "server", "pages-manifest.json")
-  );
-  const prerenderedRoutes = Object.keys(prerenderManifest.routes);
-  const dynamicRoutes = Object.keys(prerenderManifest.dynamicRoutes);
-  const unrenderedPages = Object.keys(pagesManifestJSON).filter(
-    (it) =>
-      !(
-        ["/_app", "/", "/_error", "/_document", "/404"].includes(it) ||
-        prerenderedRoutes.includes(it) ||
-        dynamicRoutes.includes(it)
-      )
-  );
-  if (unrenderedPages.length > 0) {
-    for (const key of unrenderedPages) {
-      reasonsForBackend.push(`non-static route ${key}`);
-    }
-  }
-
-  const manifest: Manifest = await readJSON(join(dir, distDir, "routes-manifest.json"));
   const {
     headers: nextJsHeaders = [],
     redirects: nextJsRedirects = [],
     rewrites: nextJsRewrites = [],
   } = manifest;
-  const headers = nextJsHeaders.map(({ source, headers }) => ({ source, headers }));
+
+  const isEveryHeaderSupported = nextJsHeaders.every(isHeaderSupportedByFirebase);
+  if (!isEveryHeaderSupported) wantsBackend = true;
+
+  const headers = nextJsHeaders.filter(isHeaderSupportedByFirebase).map(({ source, headers }) => ({
+    // clean up unnecessary escaping
+    source: cleanEscapedChars(source),
+    headers,
+  }));
+
+  const isEveryRedirectSupported = nextJsRedirects.every(isRedirectSupportedByFirebase);
+  if (!isEveryRedirectSupported) wantsBackend = true;
+
   const redirects = nextJsRedirects
-    .filter((it) => !it.internal)
-    .map(({ source, destination, statusCode: type }) => ({ source, destination, type }));
-  const nextJsRewritesToUse = Array.isArray(nextJsRewrites)
-    ? nextJsRewrites
-    : nextJsRewrites.beforeFiles || [];
-  const rewrites = nextJsRewritesToUse
-    .map(({ source, destination, has }) => {
-      // Can we change i18n into Firebase settings?
-      if (has) return undefined;
-      return { source, destination };
-    })
-    .filter((it) => it);
+    .filter(isRedirectSupportedByFirebase)
+    .map(({ source, destination, statusCode: type }) => ({
+      // clean up unnecessary escaping
+      source: cleanEscapedChars(source),
+      destination,
+      type,
+    }));
 
-  const wantsBackend = reasonsForBackend.length > 0;
+  const nextJsRewritesToUse = getNextjsRewritesToUse(nextJsRewrites);
 
-  if (wantsBackend) {
-    const numberOfReasonsToList = process.env.DEBUG ? Infinity : DEFAULT_NUMBER_OF_REASONS_TO_LIST;
-    console.log("Building a Cloud Function to run this application. This is needed due to:");
-    for (const reason of reasonsForBackend.slice(0, numberOfReasonsToList)) {
-      console.log(` • ${reason}`);
-    }
-    if (reasonsForBackend.length > numberOfReasonsToList) {
-      console.log(
-        ` • and ${
-          reasonsForBackend.length - numberOfReasonsToList
-        } other reasons, use --debug to see more`
-      );
-    }
-    console.log("");
+  // rewrites.afterFiles / rewrites.fallback are not supported by firebase.json
+  if (
+    !Array.isArray(nextJsRewrites) &&
+    (nextJsRewrites.afterFiles?.length || nextJsRewrites.fallback?.length)
+  ) {
+    wantsBackend = true;
+  } else {
+    const isEveryRewriteSupported = nextJsRewritesToUse.every(isRewriteSupportedByFirebase);
+    if (!isEveryRewriteSupported) wantsBackend = true;
   }
+
+  // Can we change i18n into Firebase settings?
+  const rewrites = nextJsRewritesToUse
+    .filter(isRewriteSupportedByFirebase)
+    .map(({ source, destination }) => ({
+      // clean up unnecessary escaping
+      source: cleanEscapedChars(source),
+      destination,
+    }));
 
   return { wantsBackend, headers, redirects, rewrites };
 }
 
-/** q
+/**
  * Utility method used during project initialization.
  */
 export async function init(setup: any) {
@@ -224,70 +210,131 @@ export async function init(setup: any) {
  */
 export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: string) {
   const { distDir } = await getConfig(sourceDir);
-
-  const publicPath = join(sourceDir, "public");
-  await mkdir(join(destDir, "_next", "static"), { recursive: true });
-  if (await pathExists(publicPath)) {
-    await copy(publicPath, destDir);
-  }
-  await copy(join(sourceDir, distDir, "static"), join(destDir, "_next", "static"));
-
-  // Copy over the default html files
-  for (const file of ["index.html", "404.html", "500.html"]) {
-    const pagesPath = join(sourceDir, distDir, "server", "pages", file);
-    if (await pathExists(pagesPath)) {
-      await copyFile(pagesPath, join(destDir, file));
-      continue;
+  const exportDetailPath = join(sourceDir, distDir, "export-detail.json");
+  const exportDetailExists = await pathExists(exportDetailPath);
+  const exportDetailBuffer = exportDetailExists ? await readFile(exportDetailPath) : undefined;
+  const exportDetailJson = exportDetailBuffer && JSON.parse(exportDetailBuffer.toString());
+  if (exportDetailJson?.success) {
+    copy(exportDetailJson.outDirectory, destDir);
+  } else {
+    const publicPath = join(sourceDir, "public");
+    await mkdir(join(destDir, "_next", "static"), { recursive: true });
+    if (await pathExists(publicPath)) {
+      await copy(publicPath, destDir);
     }
-    const appPath = join(sourceDir, distDir, "server", "app", file);
-    if (await pathExists(appPath)) {
-      await copyFile(appPath, join(destDir, file));
-    }
-  }
+    await copy(join(sourceDir, distDir, "static"), join(destDir, "_next", "static"));
 
-  const middlewareManifest: MiddlewareManifest = await readJSON(
-    join(sourceDir, distDir, "server", "middleware-manifest.json")
-  );
-  const middlewareMatchers = Object.values(middlewareManifest["middleware"])
-    .map((it) => it.matchers)
-    .flat();
-
-  const prerenderManifest: PrerenderManifest = await readJSON(
-    join(sourceDir, distDir, "prerender-manifest.json")
-  );
-  for (const [path, route] of Object.entries(prerenderManifest.routes)) {
-    // Skip ISR in the deploy to hosting
-    if (route.initialRevalidateSeconds) {
-      continue;
+    // Copy over the default html files
+    for (const file of ["index.html", "404.html", "500.html"]) {
+      const pagesPath = join(sourceDir, distDir, "server", "pages", file);
+      if (await pathExists(pagesPath)) {
+        await copyFile(pagesPath, join(destDir, file));
+        continue;
+      }
+      const appPath = join(sourceDir, distDir, "server", "app", file);
+      if (await pathExists(appPath)) {
+        await copyFile(appPath, join(destDir, file));
+      }
     }
 
-    // Skip pages affected by middleware in hosting
-    const matchingMiddleware = middlewareMatchers.find((matcher) =>
-      new RegExp(matcher.regexp).test(path)
+    const [prerenderManifest, routesManifest] = await Promise.all([
+      readJSON(
+        join(
+          sourceDir,
+          distDir,
+          "prerender-manifest.json" // TODO: get this from next/constants
+        )
+      ),
+      readJSON<Manifest>(
+        join(
+          sourceDir,
+          distDir,
+          "routes-manifest.json" // TODO: get this from next/constants
+        )
+      ),
+    ]);
+
+    const { redirects = [], rewrites = [], headers = [] } = routesManifest;
+
+    const rewritesToUse = getNextjsRewritesToUse(rewrites);
+    const rewritesNotSupportedByFirebase = rewritesToUse.filter(
+      (rewrite) => !isRewriteSupportedByFirebase(rewrite)
     );
-    if (matchingMiddleware) {
-      continue;
-    }
-
-    const isReactServerComponent = route.dataRoute.endsWith(".rsc");
-    const contentDist = join(
-      sourceDir,
-      distDir,
-      "server",
-      isReactServerComponent ? "app" : "pages"
+    const rewritesRegexesNotSupportedByFirebase = rewritesNotSupportedByFirebase.map(
+      (rewrite) => new RegExp(rewrite.regex)
     );
 
-    const parts = path.split("/").filter((it) => !!it);
-    const partsOrIndex = parts.length > 0 ? parts : ["index"];
+    const redirectsNotSupportedByFirebase = redirects.filter(
+      (redirect) => !isRedirectSupportedByFirebase(redirect)
+    );
+    const redirectsRegexesNotSupportedByFirebase = redirectsNotSupportedByFirebase.map(
+      (redirect) => new RegExp(redirect.regex)
+    );
 
-    const htmlPath = `${join(...partsOrIndex)}.html`;
-    await mkdir(join(destDir, dirname(htmlPath)), { recursive: true });
-    await copyFile(join(contentDist, htmlPath), join(destDir, htmlPath));
+    const headersNotSupportedByFirebase = headers.filter(
+      (header) => !isHeaderSupportedByFirebase(header)
+    );
+    const headersRegexesNotSupportedByFirebase = headersNotSupportedByFirebase.map(
+      (header) => new RegExp(header.regex)
+    );
 
-    if (!isReactServerComponent) {
-      const dataPath = `${join(...partsOrIndex)}.json`;
-      await mkdir(join(destDir, dirname(route.dataRoute)), { recursive: true });
-      await copyFile(join(contentDist, dataPath), join(destDir, route.dataRoute));
+    for (const path in prerenderManifest.routes) {
+      if (prerenderManifest.routes[path]) {
+        // Skip ISR in the deploy to hosting
+        const { initialRevalidateSeconds } = prerenderManifest.routes[path];
+        if (initialRevalidateSeconds) {
+          continue;
+        }
+
+        const routeMatchUnsupportedRewrite = rewritesRegexesNotSupportedByFirebase.some(
+          (rewriteRegex) => rewriteRegex.test(path)
+        );
+        if (routeMatchUnsupportedRewrite) continue;
+
+        const routeMatchUnsupportedRedirect = redirectsRegexesNotSupportedByFirebase.some(
+          (redirectRegex) => redirectRegex.test(path)
+        );
+        if (routeMatchUnsupportedRedirect) continue;
+
+        const routeMatchUnsupportedHeader = headersRegexesNotSupportedByFirebase.some(
+          (headerRegex) => headerRegex.test(path)
+        );
+        if (routeMatchUnsupportedHeader) continue;
+
+        // TODO(jamesdaniels) explore oppertunity to simplify this now that we
+        //                    are defaulting cleanURLs to true for frameworks
+
+        // / => index.json => index.html => index.html
+        // /foo => foo.json => foo.html
+        const parts = path
+          .split("/")
+          .slice(1)
+          .filter((it) => !!it);
+        const partsOrIndex = parts.length > 0 ? parts : ["index"];
+        const dataPath = `${join(...partsOrIndex)}.json`;
+        const htmlPath = `${join(...partsOrIndex)}.html`;
+        await mkdir(join(destDir, dirname(htmlPath)), { recursive: true });
+        const pagesHtmlPath = join(sourceDir, distDir, "server", "pages", htmlPath);
+        if (await pathExists(pagesHtmlPath)) {
+          await copyFile(pagesHtmlPath, join(destDir, htmlPath));
+        } else {
+          const appHtmlPath = join(sourceDir, distDir, "server", "app", htmlPath);
+          if (await pathExists(appHtmlPath)) {
+            await copyFile(appHtmlPath, join(destDir, htmlPath));
+          }
+        }
+        const dataRoute = prerenderManifest.routes[path].dataRoute;
+        await mkdir(join(destDir, dirname(dataRoute)), { recursive: true });
+        const pagesDataPath = join(sourceDir, distDir, "server", "pages", dataPath);
+        if (await pathExists(pagesDataPath)) {
+          await copyFile(pagesDataPath, join(destDir, dataRoute));
+        } else {
+          const appDataPath = join(sourceDir, distDir, "server", "app", dataPath);
+          if (await pathExists(appDataPath)) {
+            await copyFile(appDataPath, join(destDir, dataRoute));
+          }
+        }
+      }
     }
   }
 }
@@ -297,7 +344,8 @@ export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: strin
  */
 export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: string) {
   const { distDir } = await getConfig(sourceDir);
-  const packageJson = await readJSON(join(sourceDir, "package.json"));
+  const packageJsonBuffer = await readFile(join(sourceDir, "package.json"));
+  const packageJson = JSON.parse(packageJsonBuffer.toString());
   if (existsSync(join(sourceDir, "next.config.js"))) {
     let esbuild;
     try {
@@ -343,17 +391,14 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
 /**
  * Create a dev server.
  */
-export async function getDevModeHandle(dir: string, hostingEmulatorInfo?: EmulatorInfo) {
+export async function getDevModeHandle(dir: string) {
   const { default: next } = relativeRequire(dir, "next");
   const nextApp = next({
     dev: true,
     dir,
-    hostname: hostingEmulatorInfo?.host,
-    port: hostingEmulatorInfo?.port,
   });
   const handler = nextApp.getRequestHandler();
   await nextApp.prepare();
-  // TODO can we check for middleware and error if we don't have hostingEmulatorInfo
   return (req: IncomingMessage, res: ServerResponse, next: () => void) => {
     const parsedUrl = parse(req.url!, true);
     const proxy = createServerResponseProxy(req, res, next);

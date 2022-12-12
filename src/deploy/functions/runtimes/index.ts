@@ -5,7 +5,7 @@ import * as validate from "../validate";
 import { FirebaseError } from "../../../error";
 
 /** Supported runtimes for new Cloud Functions. */
-const RUNTIMES: string[] = ["nodejs10", "nodejs12", "nodejs14", "nodejs16"];
+const RUNTIMES: string[] = ["nodejs10", "nodejs12", "nodejs14", "nodejs16", "nodejs18"];
 // Experimental runtimes are part of the Runtime type, but are in a
 // different list to help guard against some day accidentally iterating over
 // and printing a hidden runtime to the user.
@@ -33,6 +33,7 @@ const MESSAGE_FRIENDLY_RUNTIMES: Record<Runtime | DeprecatedRuntime, string> = {
   nodejs12: "Node.js 12",
   nodejs14: "Node.js 14",
   nodejs16: "Node.js 16",
+  nodejs18: "Node.js 18",
   go113: "Go 1.13",
 };
 
