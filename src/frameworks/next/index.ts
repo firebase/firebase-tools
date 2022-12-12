@@ -49,6 +49,7 @@ import type { EmulatorInfo } from "../../emulator/types";
 import { usesAppDirRouter, usesNextImage, hasUnoptimizedImage } from "./utils";
 
 const DEFAULT_BUILD_SCRIPT = ["next build"];
+const PUBLIC_DIR = "public";
 
 export const name = "Next.js";
 export const support = SupportLevel.Experimental;
@@ -70,8 +71,8 @@ function getReactVersion(cwd: string): string | undefined {
 export async function discover(dir: string) {
   if (!(await pathExists(join(dir, "package.json")))) return;
   if (!(await pathExists("next.config.js")) && !getNextVersion(dir)) return;
-  // TODO don't hardcode public dir
-  return { mayWantBackend: true, publicDirectory: join(dir, "public") };
+
+  return { mayWantBackend: true, publicDirectory: join(dir, PUBLIC_DIR) };
 }
 
 /**
