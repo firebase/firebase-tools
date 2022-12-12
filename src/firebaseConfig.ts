@@ -8,7 +8,7 @@
 import { RequireAtLeastOne } from "./metaprogramming";
 
 // should be sourced from - https://github.com/firebase/firebase-tools/blob/master/src/deploy/functions/runtimes/index.ts#L15
-type CloudFunctionRuntimes = "nodejs10" | "nodejs12" | "nodejs14" | "nodejs16";
+type CloudFunctionRuntimes = "nodejs10" | "nodejs12" | "nodejs14" | "nodejs16" | "nodejs18";
 
 export type Deployable = {
   predeploy?: string | string[];
