@@ -1,6 +1,7 @@
 import type { Header, Redirect, Rewrite } from "next/dist/lib/load-custom-routes";
 import type { Manifest, RoutesManifestRewrite } from "./interfaces";
 import { isUrl } from "../utils";
+import type { MiddlewareManifest } from "next/dist/build/webpack/plugins/middleware-plugin";
 
 /**
  * Whether the given path has a regex or not.
@@ -111,4 +112,11 @@ export function getNextjsRewritesToUse(
   }
 
   return [];
+}
+
+/**
+ * Whether Next.js middleware is being used
+ */
+export function isUsingMiddleware(middleware: MiddlewareManifest["middleware"]): boolean {
+  return Object.keys(middleware).length > 0;
 }

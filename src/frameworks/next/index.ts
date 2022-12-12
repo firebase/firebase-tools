@@ -39,6 +39,7 @@ import {
   isHeaderSupportedByHosting,
   isRedirectSupportedByHosting,
   isRewriteSupportedByHosting,
+  isUsingMiddleware,
 } from "./utils";
 import type { Manifest } from "./interfaces";
 import { readJSON } from "../utils";
@@ -98,7 +99,7 @@ export async function build(dir: string): Promise<BuildResult> {
   const middlewareManifest = await readJSON<MiddlewareManifest>(
     join(dir, distDir, "server", MIDDLEWARE_MANIFEST)
   );
-  const usingMiddleware = Object.keys(middlewareManifest.middleware).length > 0;
+  const usingMiddleware = isUsingMiddleware(middlewareManifest.middleware);
   if (usingMiddleware) {
     reasonsForBackend.push("middleware");
   }
