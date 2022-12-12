@@ -1,9 +1,8 @@
 import { existsSync } from "fs";
 import { join } from "path";
-import { readJSON } from "fs-extra";
 import type { Header, Redirect, Rewrite } from "next/dist/lib/load-custom-routes";
 import type { Manifest, RoutesManifestRewrite } from "./interfaces";
-import { isUrl } from "../utils";
+import { isUrl, readJSON } from "../utils";
 import type { ExportMarker, ImageManifest } from "./interfaces";
 
 /**
@@ -132,9 +131,7 @@ export function usesAppDirRouter(sourceDir: string): boolean {
  * @return true if the Next.js project uses the next/image component
  */
 export async function usesNextImage(sourceDir: string, distDir: string): Promise<boolean> {
-  const exportMarker: ExportMarker = (await readJSON(
-    join(sourceDir, distDir, "export-marker.json")
-  )) as ExportMarker;
+  const exportMarker = await readJSON<ExportMarker>(join(sourceDir, distDir, "export-marker.json"));
   return exportMarker.isNextImageImported;
 }
 
@@ -148,9 +145,8 @@ export async function usesNextImage(sourceDir: string, distDir: string): Promise
  * @return true if image optimization is disabled
  */
 export async function hasUnoptimizedImage(sourceDir: string, distDir: string): Promise<boolean> {
-  const imageManifest: ImageManifest = (await readJSON(
+  const imageManifest = await readJSON<ImageManifest>(
     join(sourceDir, distDir, "images-manifest.json")
-  )) as ImageManifest;
-
+  );
   return imageManifest.images.unoptimized;
 }
