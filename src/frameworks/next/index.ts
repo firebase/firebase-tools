@@ -19,6 +19,7 @@ import { pathToFileURL, parse } from "url";
 import { existsSync } from "fs";
 import { gte } from "semver";
 import { IncomingMessage, ServerResponse } from "http";
+import * as clc from "colorette";
 
 import {
   BuildResult,
@@ -390,6 +391,22 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
  * Create a dev server.
  */
 export async function getDevModeHandle(dir: string, hostingEmulatorInfo?: EmulatorInfo) {
+  // throw error when using Next.js middleware with firebase serve
+  if (!hostingEmulatorInfo) {
+    const [middlewareJs, middlewareTs] = await Promise.all([
+      pathExists(join(dir, "middleware.js")),
+      pathExists(join(dir, "middleware.ts")),
+    ]);
+
+    if (middlewareJs || middlewareTs) {
+      throw new FirebaseError(
+        `${clc.bold("firebase serve")} does not support Next.js Middleware. Please use ${clc.bold(
+          "firebase emulators:start"
+        )} instead.`
+      );
+    }
+  }
+
   const { default: next } = relativeRequire(dir, "next");
   const nextApp = next({
     dev: true,
@@ -399,7 +416,7 @@ export async function getDevModeHandle(dir: string, hostingEmulatorInfo?: Emulat
   });
   const handler = nextApp.getRequestHandler();
   await nextApp.prepare();
-  // TODO can we check for middleware and error if we don't have hostingEmulatorInfo
+
   return (req: IncomingMessage, res: ServerResponse, next: () => void) => {
     const parsedUrl = parse(req.url!, true);
     const proxy = createServerResponseProxy(req, res, next);
