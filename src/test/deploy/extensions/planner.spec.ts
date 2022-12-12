@@ -3,9 +3,9 @@ import * as sinon from "sinon";
 
 import * as planner from "../../../deploy/extensions/planner";
 import * as extensionsApi from "../../../extensions/extensionsApi";
-import { ExtensionInstance, ExtensionVersion } from "../../../extensions/types";
+import { ExtensionInstance } from "../../../extensions/types";
 
-function extensionVersion(version: string): ExtensionVersion {
+function extensionVersion(version?: string): any {
   return {
     name: `publishers/test/extensions/test/versions/${version}`,
     ref: `test/test@${version}`,
@@ -26,13 +26,12 @@ describe("Extensions Deployment Planner", () => {
     let listExtensionVersionsStub: sinon.SinonStub;
 
     before(() => {
-      listExtensionVersionsStub = sinon
-        .stub(extensionsApi, "listExtensionVersions")
-        .resolves([
-          extensionVersion("0.1.0"),
-          extensionVersion("0.1.1"),
-          extensionVersion("0.2.0"),
-        ]);
+      listExtensionVersionsStub = sinon.stub(extensionsApi, "listExtensionVersions").resolves([
+        extensionVersion("0.1.0"),
+        extensionVersion("0.1.1"),
+        extensionVersion("0.2.0"),
+        extensionVersion(), // Explicitly test that this doesn't break on bad data
+      ]);
     });
 
     after(() => {

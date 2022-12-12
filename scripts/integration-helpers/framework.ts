@@ -53,6 +53,7 @@ interface ConnectionInfo {
 
 export interface FrameworkOptions {
   emulators?: {
+    hub: ConnectionInfo;
     database: ConnectionInfo;
     firestore: ConnectionInfo;
     functions: ConnectionInfo;
@@ -63,6 +64,7 @@ export interface FrameworkOptions {
 }
 
 export class EmulatorEndToEndTest {
+  emulatorHubPort = 0;
   rtdbEmulatorHost = "localhost";
   rtdbEmulatorPort = 0;
   firestoreEmulatorHost = "localhost";
@@ -87,6 +89,7 @@ export class EmulatorEndToEndTest {
     if (!config.emulators) {
       return;
     }
+    this.emulatorHubPort = config.emulators.hub?.port;
     this.rtdbEmulatorPort = config.emulators.database?.port;
     this.firestoreEmulatorPort = config.emulators.firestore?.port;
     this.functionsEmulatorPort = config.emulators.functions?.port;
@@ -408,5 +411,15 @@ export class TriggerEndToEndTest extends EmulatorEndToEndTest {
         callback();
       }
     }, interval);
+  }
+
+  disableBackgroundTriggers(): Promise<Response> {
+    const url = `http://localhost:${this.emulatorHubPort}/functions/disableBackgroundTriggers`;
+    return fetch(url, { method: "PUT" });
+  }
+
+  enableBackgroundTriggers(): Promise<Response> {
+    const url = `http://localhost:${this.emulatorHubPort}/functions/enableBackgroundTriggers`;
+    return fetch(url, { method: "PUT" });
   }
 }

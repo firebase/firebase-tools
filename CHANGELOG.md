@@ -1,0 +1,1 @@
+- Add sharp NPM module to Cloud Functions when using Next.js Image Optimization

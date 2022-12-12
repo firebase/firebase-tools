@@ -134,5 +134,94 @@ describe("triggerHelper", () => {
 
       expect(result).to.eql(expected);
     });
+
+    it("should handle v2 custom event triggers", () => {
+      const testResource: Resource = {
+        name: "test-resource",
+        entryPoint: "functionName",
+        type: "firebaseextensions.v1beta.v2function",
+        properties: {
+          eventTrigger: {
+            eventType: "test.custom.event",
+            channel: "projects/foo/locations/bar/channels/baz",
+          },
+        },
+      };
+      const expected = {
+        platform: "gcfv2",
+        entryPoint: "test-resource",
+        name: "test-resource",
+        eventTrigger: {
+          service: "",
+          channel: "projects/foo/locations/bar/channels/baz",
+          eventType: "test.custom.event",
+        },
+      };
+
+      const result = triggerHelper.functionResourceToEmulatedTriggerDefintion(testResource);
+
+      expect(result).to.eql(expected);
+    });
+
+    it("should handle fully packed v2 triggers", () => {
+      const testResource: Resource = {
+        name: "test-resource",
+        entryPoint: "functionName",
+        type: "firebaseextensions.v1beta.v2function",
+        properties: {
+          buildConfig: {
+            runtime: "node16",
+          },
+          location: "us-cental1",
+          serviceConfig: {
+            availableMemory: "100MB",
+            minInstanceCount: 1,
+            maxInstanceCount: 10,
+            timeoutSeconds: 66,
+          },
+          eventTrigger: {
+            eventType: "test.custom.event",
+            channel: "projects/foo/locations/bar/channels/baz",
+            pubsubTopic: "pubsub.topic",
+            eventFilters: [
+              {
+                attribute: "basic",
+                value: "attr",
+              },
+              {
+                attribute: "mattern",
+                value: "patch",
+                operator: "match-path-pattern",
+              },
+            ],
+            retryPolicy: "RETRY",
+            triggerRegion: "us-cental1",
+          },
+        },
+      };
+      const expected = {
+        platform: "gcfv2",
+        entryPoint: "test-resource",
+        name: "test-resource",
+        availableMemoryMb: 100,
+        timeoutSeconds: 66,
+        eventTrigger: {
+          service: "",
+          channel: "projects/foo/locations/bar/channels/baz",
+          eventType: "test.custom.event",
+          eventFilters: {
+            basic: "attr",
+          },
+          eventFilterPathPatterns: {
+            mattern: "patch",
+          },
+        },
+        regions: ["us-cental1"],
+      };
+
+      const result = triggerHelper.functionResourceToEmulatedTriggerDefintion(testResource);
+
+      expect(result).to.eql(expected);
+    });
   });
 });
