@@ -1,1 +1,3 @@
 - Add sharp NPM module to Cloud Functions when using Next.js Image Optimization
+- Support Next.js Middleware (#5195) (#5320)
+- Log the reason for a Cloud Function if needed in Next.js (#5195)
