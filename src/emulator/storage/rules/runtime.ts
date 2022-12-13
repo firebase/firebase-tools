@@ -31,6 +31,7 @@ import {
   handleEmulatorProcessError,
 } from "../../downloadableEmulators";
 import { EmulatorRegistry } from "../../registry";
+import * as _ from "lodash";
 
 const lock = new AsyncLock();
 const synchonizationKey = "key";
@@ -446,12 +447,38 @@ async function fetchFirestoreDocument(
   const client = EmulatorRegistry.client(Emulators.FIRESTORE, { apiVersion: "v1", auth: true });
   try {
     const doc = await client.get(pathname);
-    const { name, fields } = doc.body as { name: string; fields: string };
+    const { name, fields } = doc.body as { name: string; fields: unknown };
+    updateNullValueEntries(fields);  // Update the object to play nice with Rules
     const result = { name, fields };
     return { result, status: DataLoadStatus.OK, warnings: [], errors: [] };
   } catch (e) {
     // Don't care what the error is, just return not_found
     return { status: DataLoadStatus.NOT_FOUND, warnings: [], errors: [] };
+  }
+}
+
+/**
+ * Deeply replaces objects matching {nullValue: null} with {nullValue: 0}.
+ * This corresponds to how Rules emulator handles the null_value type (as an
+ * enum with 0 as the only option).
+ *
+ * @param obj Any object to update
+ */
+function updateNullValueEntries(obj: any): void {
+  if (Array.isArray(obj)) {
+    for (const e of obj) {
+      updateNullValueEntries(e);
+    }
+  }
+
+  if (typeof obj === "object") {
+    if (_.isEqual(obj, {nullValue: null})) {
+      obj.nullValue = 0;
+    } else {
+      for (const v of Object.values(obj)) {
+        updateNullValueEntries(v);
+      }
+    }
   }
 }
 
