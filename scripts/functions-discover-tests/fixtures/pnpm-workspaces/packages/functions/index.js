@@ -9,5 +9,3 @@ exports.hellov1 = functions.https.onRequest((request, response) => {
 exports.hellov2 = onRequest((request, response) => {
   response.send(msg);
 });
-
-console.log(msg);
