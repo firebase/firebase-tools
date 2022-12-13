@@ -160,7 +160,7 @@ export async function hasUnoptimizedImage(sourceDir: string, distDir: string): P
 /**
  * Whether Next.js middleware is being used
  *
- * @param dir in development must be the project root path, otherwise `/.next/server`
+ * @param dir in development must be the project root path, otherwise `/.next`
  * @param isDevMode whether the project is running on dev or production
  */
 export async function isUsingMiddleware(dir: string, isDevMode: boolean): Promise<boolean> {
@@ -173,7 +173,7 @@ export async function isUsingMiddleware(dir: string, isDevMode: boolean): Promis
     return middlewareJs || middlewareTs;
   } else {
     const middlewareManifest: MiddlewareManifest = await readJSON<MiddlewareManifest>(
-      join(dir, MIDDLEWARE_MANIFEST)
+      join(dir, "server", MIDDLEWARE_MANIFEST)
     );
 
     return Object.keys(middlewareManifest.middleware).length > 0;
@@ -199,3 +199,5 @@ export async function isUsingImageOptimization(dir: string): Promise<boolean> {
 
   return false;
 }
+
+export async function isUsingAppDirectory() {}
