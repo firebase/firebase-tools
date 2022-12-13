@@ -1,0 +1,12 @@
+{
+  "name": "simple",
+  "version": "0.0.1",
+  "dependencies": {
+    "firebase-functions": "4.0.0",
+    "firebase-admin": "^11.2.0",
+    "a": "latest"
+  },
+  "engines": {
+    "node": "16"
+  }
+}
