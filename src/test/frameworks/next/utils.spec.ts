@@ -1,7 +1,6 @@
 import { expect } from "chai";
 import * as fs from "fs";
 import * as fsExtra from "fs-extra";
-import type { MiddlewareManifest } from "next/dist/build/webpack/plugins/middleware-plugin";
 import * as sinon from "sinon";
 
 import {
@@ -22,6 +21,8 @@ import {
   exportMarkerWithoutImage,
   imagesManifest,
   imagesManifestUnoptimized,
+  middlewareManifestWhenNotUsed,
+  middlewareManifestWhenUsed,
   pathsAsGlobs,
   pathsWithEscapedChars,
   pathsWithRegex,
@@ -234,35 +235,6 @@ describe("Next.js utils", () => {
     let sandbox: sinon.SinonSandbox;
     beforeEach(() => (sandbox = sinon.createSandbox()));
     afterEach(() => sandbox.restore());
-
-    const middlewareManifestWhenUsed: MiddlewareManifest = {
-      sortedMiddleware: ["/"],
-      middleware: {
-        "/": {
-          env: [],
-          files: ["server/edge-runtime-webpack.js", "server/middleware.js"],
-          name: "middleware",
-          page: "/",
-          matchers: [
-            {
-              regexp:
-                "^(?:\\/(_next\\/data\\/[^/]{1,}))?(?:\\/([^/.]{1,}))\\/about(?:\\/((?:[^\\/#\\?]+?)(?:\\/(?:[^\\/#\\?]+?))*))?(.json)?[\\/#\\?]?$",
-            },
-          ],
-          wasm: [],
-          assets: [],
-        },
-      },
-      functions: {},
-      version: 2,
-    };
-
-    const middlewareManifestWhenNotUsed: MiddlewareManifest = {
-      sortedMiddleware: [],
-      middleware: {},
-      functions: {},
-      version: 2,
-    };
 
     it("should return true if using middleware in development", async () => {
       sandbox.stub(fsExtra, "pathExists").resolves(true);
