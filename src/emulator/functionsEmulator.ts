@@ -461,8 +461,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       await runtimeDelegate.validate();
       logger.debug(`Building ${runtimeDelegate.name} source`);
       await runtimeDelegate.build();
-      logger.debug(`Analyzing ${runtimeDelegate.name} backend spec`);
-      // Don't include user envs when parsing triggers, but we need some of the options for handling params
+
       const firebaseConfig = this.getFirebaseConfig();
       const environment = {
         ...this.getSystemEnvs(),
@@ -475,12 +474,13 @@ export class FunctionsEmulator implements EmulatorInstance {
         projectId: this.args.projectId,
         projectAlias: this.args.projectAlias,
       };
+      const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
       const discoveredBuild = await runtimeDelegate.discoverBuild(runtimeConfig, environment);
       const resolution = await resolveBackend(
         discoveredBuild,
         JSON.parse(firebaseConfig),
         userEnvOpt,
-        environment
+        userEnvs
       );
       const discoveredBackend = resolution.backend;
       const endpoints = backend.allEndpoints(discoveredBackend);
