@@ -31,17 +31,16 @@ import {
   isHeaderSupportedByHosting,
   isRedirectSupportedByHosting,
   isRewriteSupportedByHosting,
+  isUsingImageOptimization,
   isUsingMiddleware,
 } from "./utils";
-import type { ExportMarker, ImageManifest, Manifest } from "./interfaces";
+import type { Manifest } from "./interfaces";
 import { readJSON } from "../utils";
 import { warnIfCustomBuildScript } from "../utils";
 import type { EmulatorInfo } from "../../emulator/types";
 import { usesAppDirRouter, usesNextImage, hasUnoptimizedImage } from "./utils";
 import {
   APP_PATH_ROUTES_MANIFEST,
-  EXPORT_MARKER,
-  IMAGES_MANIFEST,
   MIDDLEWARE_MANIFEST,
   PAGES_MANIFEST,
   PRERENDER_MANIFEST,
@@ -103,13 +102,8 @@ export async function build(dir: string): Promise<BuildResult> {
     reasonsForBackend.push("middleware");
   }
 
-  const { isNextImageImported } = await readJSON<ExportMarker>(join(dir, distDir, EXPORT_MARKER));
-  if (isNextImageImported) {
-    const imagesManifest = await readJSON<ImageManifest>(join(dir, distDir, IMAGES_MANIFEST));
-    const usingImageOptimization = imagesManifest.images.unoptimized === false;
-    if (usingImageOptimization) {
-      reasonsForBackend.push(`Image Optimization`);
-    }
+  if (await isUsingImageOptimization(join(dir, distDir))) {
+    reasonsForBackend.push(`Image Optimization`);
   }
 
   const appPathRoutesManifestPath = join(dir, distDir, APP_PATH_ROUTES_MANIFEST);

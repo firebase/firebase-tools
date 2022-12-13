@@ -179,3 +179,23 @@ export async function isUsingMiddleware(dir: string, isDevMode: boolean): Promis
     return Object.keys(middlewareManifest.middleware).length > 0;
   }
 }
+
+/**
+ * Whether image optimization is being used
+ *
+ * @param dir path to `.next` - where the manifests are located
+ */
+export async function isUsingImageOptimization(dir: string): Promise<boolean> {
+  const { isNextImageImported } = await readJSON<ExportMarker>(join(dir, EXPORT_MARKER));
+
+  if (isNextImageImported) {
+    const imagesManifest = await readJSON<ImageManifest>(join(dir, IMAGES_MANIFEST));
+    const usingImageOptimization = imagesManifest.images.unoptimized === false;
+
+    if (usingImageOptimization) {
+      return true;
+    }
+  }
+
+  return false;
+}
