@@ -1,1 +1,2 @@
 - Add sharp NPM module to Cloud Functions when using Next.js Image Optimization
+- Adds user-defined env vars into the functions emulator (#5330).
