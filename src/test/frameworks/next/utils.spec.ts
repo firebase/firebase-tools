@@ -3,6 +3,7 @@ import * as fs from "fs";
 import * as fsExtra from "fs-extra";
 import type { MiddlewareManifest } from "next/dist/build/webpack/plugins/middleware-plugin";
 import * as sinon from "sinon";
+import type { ExportMarker, ImagesManifest } from "../../../frameworks/next/interfaces";
 
 import {
   pathHasRegex,
@@ -15,6 +16,7 @@ import {
   usesNextImage,
   hasUnoptimizedImage,
   isUsingMiddleware,
+  isUsingImageOptimization,
 } from "../../../frameworks/next/utils";
 import {
   pathsAsGlobs,
@@ -277,6 +279,82 @@ describe("Next.js utils", () => {
     it("should return false if not using middleware in production", async () => {
       sandbox.stub(fsExtra, "readJSON").resolves(middlewareManifestWhenNotUsed);
       expect(await isUsingMiddleware("", false)).to.be.false;
+    });
+  });
+
+  describe("isUsingImageOptimization", () => {
+    let sandbox: sinon.SinonSandbox;
+    beforeEach(() => (sandbox = sinon.createSandbox()));
+    afterEach(() => sandbox.restore());
+
+    const exportMarkerWithoutImage: ExportMarker = {
+      version: 1,
+      hasExportPathMap: false,
+      exportTrailingSlash: false,
+      isNextImageImported: false,
+    };
+
+    const exportMarkerWithImage: ExportMarker = {
+      version: 1,
+      hasExportPathMap: false,
+      exportTrailingSlash: false,
+      isNextImageImported: true,
+    };
+
+    const imagesManifest: ImagesManifest = {
+      version: 1,
+      images: {
+        deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
+        imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+        path: "/_next/image",
+        loader: "default",
+        loaderFile: "",
+        domains: [],
+        disableStaticImages: false,
+        minimumCacheTTL: 60,
+        formats: ["image/avif", "image/webp"],
+        dangerouslyAllowSVG: false,
+        contentSecurityPolicy: "script-src 'none'; frame-src 'none'; sandbox;",
+        remotePatterns: [
+          {
+            protocol: "https",
+            hostname: "^(?:^(?:assets\\.vercel\\.com)$)$",
+            port: "",
+            pathname: "^(?:\\/image\\/upload(?:\\/(?!\\.)(?:(?:(?!(?:^|\\/)\\.).)*?)|$))$",
+          },
+        ],
+        unoptimized: false,
+        sizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840, 16, 32, 48, 64, 96, 128, 256, 384],
+      },
+    };
+
+    const imagesManifestUnoptimized: ImagesManifest = {
+      ...imagesManifest,
+      images: {
+        ...imagesManifest.images,
+        unoptimized: true,
+      },
+    };
+
+    it("should return true if images optimization is used", async () => {
+      const stub = sandbox.stub(fsExtra, "readJSON");
+      stub.onCall(0).resolves(exportMarkerWithImage); // reads EXPORT_MARKER
+      stub.onCall(1).resolves(imagesManifest); // reads IMAGES_MANIFEST
+
+      expect(await isUsingImageOptimization("")).to.be.true;
+    });
+
+    it("should return false if isNextImageImported is false", async () => {
+      sandbox.stub(fsExtra, "readJSON").resolves(exportMarkerWithoutImage); // reads EXPORT_MARKER
+      expect(await isUsingImageOptimization("")).to.be.false;
+    });
+
+    it("should return false if `unoptimized` option is used", async () => {
+      const stub = sandbox.stub(fsExtra, "readJSON");
+      stub.onCall(0).resolves(exportMarkerWithImage); // reads EXPORT_MARKER
+      stub.onCall(1).resolves(imagesManifestUnoptimized); // reads IMAGES_MANIFEST
+
+      expect(await isUsingImageOptimization("")).to.be.false;
     });
   });
 });
