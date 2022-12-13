@@ -2,15 +2,6 @@ import { execSync } from "child_process";
 import { mkdir, copyFile } from "fs/promises";
 import { dirname, join } from "path";
 import type { NextConfig } from "next";
-import {
-  APP_PATH_ROUTES_MANIFEST,
-  EXPORT_MARKER,
-  IMAGES_MANIFEST,
-  MIDDLEWARE_MANIFEST,
-  PAGES_MANIFEST,
-  PRERENDER_MANIFEST,
-  ROUTES_MANIFEST,
-} from "next/constants";
 import type { PrerenderManifest } from "next/dist/build";
 import type { MiddlewareManifest } from "next/dist/build/webpack/plugins/middleware-plugin";
 import type { PagesManifest } from "next/dist/build/webpack/plugins/pages-manifest-plugin";
@@ -47,6 +38,15 @@ import { readJSON } from "../utils";
 import { warnIfCustomBuildScript } from "../utils";
 import type { EmulatorInfo } from "../../emulator/types";
 import { usesAppDirRouter, usesNextImage, hasUnoptimizedImage } from "./utils";
+import {
+  APP_PATH_ROUTES_MANIFEST,
+  EXPORT_MARKER,
+  IMAGES_MANIFEST,
+  MIDDLEWARE_MANIFEST,
+  PAGES_MANIFEST,
+  PRERENDER_MANIFEST,
+  ROUTES_MANIFEST,
+} from "./constants";
 
 const DEFAULT_BUILD_SCRIPT = ["next build"];
 const PUBLIC_DIR = "public";
