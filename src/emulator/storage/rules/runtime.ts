@@ -448,7 +448,7 @@ async function fetchFirestoreDocument(
   try {
     const doc = await client.get(pathname);
     const { name, fields } = doc.body as { name: string; fields: unknown };
-    updateNullValueEntries(fields);  // Update the object to play nice with Rules
+    updateNullValueEntries(fields); // Update the object to play nice with Rules
     const result = { name, fields };
     return { result, status: DataLoadStatus.OK, warnings: [], errors: [] };
   } catch (e) {
@@ -472,7 +472,7 @@ function updateNullValueEntries(obj: any): void {
   }
 
   if (typeof obj === "object") {
-    if (_.isEqual(obj, {nullValue: null})) {
+    if (_.isEqual(obj, { nullValue: null })) {
       obj.nullValue = 0;
     } else {
       for (const v of Object.values(obj)) {
