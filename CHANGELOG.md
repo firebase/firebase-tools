@@ -1,2 +1,3 @@
 - Add support for object list using certain Admin SDKs (#5208)
 - Add support for deploying Next.js applications that utilize middleware
+- Add basic support for deploying Nuxt 2+3 applications (#5321)
