@@ -1,2 +1,1 @@
-- Add support for Firestore TTL (#5267)
-- Fix bug where secrets were not loaded when emulating functions with `--inpsect-functions`. (#4605)
+- Add sharp NPM module to Cloud Functions when using Next.js Image Optimization
