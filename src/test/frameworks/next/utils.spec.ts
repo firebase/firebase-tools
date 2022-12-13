@@ -266,22 +266,24 @@ describe("Next.js utils", () => {
     afterEach(() => sandbox.restore());
 
     it("should return true if images optimization is used", async () => {
-      const stub = sandbox.stub(fsExtra, "readJSON");
-      stub.onCall(0).resolves(exportMarkerWithImage); // reads EXPORT_MARKER
-      stub.onCall(1).resolves(imagesManifest); // reads IMAGES_MANIFEST
+      const stub = sandbox.stub(frameworksUtils, "readJSON");
+      stub.withArgs(EXPORT_MARKER).resolves(exportMarkerWithImage);
+      stub.withArgs(IMAGES_MANIFEST).resolves(imagesManifest);
 
       expect(await isUsingImageOptimization("")).to.be.true;
     });
 
     it("should return false if isNextImageImported is false", async () => {
-      sandbox.stub(fsExtra, "readJSON").resolves(exportMarkerWithoutImage); // reads EXPORT_MARKER
+      const stub = sandbox.stub(frameworksUtils, "readJSON");
+      stub.withArgs(EXPORT_MARKER).resolves(exportMarkerWithoutImage);
+
       expect(await isUsingImageOptimization("")).to.be.false;
     });
 
     it("should return false if `unoptimized` option is used", async () => {
       const stub = sandbox.stub(frameworksUtils, "readJSON");
-      stub.withArgs(EXPORT_MARKER).resolves(exportMarkerWithImage); // reads EXPORT_MARKER
-      stub.withArgs(IMAGES_MANIFEST).resolves(imagesManifestUnoptimized); // reads EXPORT_MARKER
+      stub.withArgs(EXPORT_MARKER).resolves(exportMarkerWithImage);
+      stub.withArgs(IMAGES_MANIFEST).resolves(imagesManifestUnoptimized);
 
       expect(await isUsingImageOptimization("")).to.be.false;
     });
