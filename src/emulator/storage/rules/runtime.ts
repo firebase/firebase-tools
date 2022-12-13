@@ -464,16 +464,16 @@ async function fetchFirestoreDocument(
  *
  * @param obj Any object to update
  */
-function updateNullValueEntries(obj: any): void {
+function updateNullValueEntries(obj: unknown): void {
   if (Array.isArray(obj)) {
     for (const e of obj) {
       updateNullValueEntries(e);
     }
   }
 
-  if (typeof obj === "object") {
+  if (typeof obj === "object" && obj !== null) {
     if (_.isEqual(obj, { nullValue: null })) {
-      obj.nullValue = 0;
+      (obj as { nullValue: number }).nullValue = 0;
     } else {
       for (const v of Object.values(obj)) {
         updateNullValueEntries(v);
