@@ -67,6 +67,16 @@ describe("Function discovery test", function (this) {
         },
       ],
     },
+    {
+      name: "pnpm-workspaces",
+      projectDir: "pnpm-workspaces",
+      expects: [
+        {
+          codebase: "default",
+          endpoints: ["hellov1", "hellov2"],
+        },
+      ],
+    },
   ];
 
   for (const tc of testCases) {

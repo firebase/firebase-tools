@@ -1,1 +1,2 @@
+- Adds integration test for cf3 discovery in pnpm workspace configuration.
 - Add sharp NPM module to Cloud Functions when using Next.js Image Optimization

@@ -6,10 +6,13 @@ IFS=$'\n\t'
 ./scripts/npm-link.sh
 
 # Unlock internal commands for discovering functions in a project.
-firebase experiments:enable internaltesting
+firebase experiments:enable internaltesting 
 
 # Install yarn
 npm i -g yarn
+
+# Install pnpm
+npm i -g pnpm
 
 for dir in ./scripts/functions-discover-tests/fixtures/*; do
   (cd $dir && ./install.sh)
