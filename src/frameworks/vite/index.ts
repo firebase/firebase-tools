@@ -5,6 +5,7 @@ import { join } from "path";
 import { findDependency, FrameworkType, relativeRequire, SupportLevel } from "..";
 import { proxyRequestHandler } from "../../hosting/proxy";
 import { promptOnce } from "../../prompt";
+import { warnIfCustomBuildScript } from "../utils";
 
 export const name = "Vite";
 export const support = SupportLevel.Experimental;
@@ -15,6 +16,8 @@ const CLI_COMMAND = join(
   ".bin",
   process.platform === "win32" ? "vite.cmd" : "vite"
 );
+
+export const DEFAULT_BUILD_SCRIPT = ["vite build", "tsc && vite build"];
 
 export const initViteTemplate = (template: string) => async (setup: any) =>
   await init(setup, template);
@@ -61,6 +64,9 @@ export async function discover(dir: string, plugin?: string, npmDependency?: str
 
 export async function build(root: string) {
   const { build } = relativeRequire(root, "vite");
+
+  await warnIfCustomBuildScript(root, name, DEFAULT_BUILD_SCRIPT);
+
   await build({ root });
 }
 
