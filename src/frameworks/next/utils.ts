@@ -160,7 +160,7 @@ export async function hasUnoptimizedImage(sourceDir: string, distDir: string): P
 /**
  * Whether Next.js middleware is being used
  *
- * @param dir in development must be the project root path, otherwise `/.next`
+ * @param dir in development must be the project root path, otherwise `distDir`
  * @param isDevMode whether the project is running on dev or production
  */
 export async function isUsingMiddleware(dir: string, isDevMode: boolean): Promise<boolean> {

@@ -98,7 +98,7 @@ export async function build(dir: string): Promise<BuildResult> {
   const reasonsForBackend = [];
   const { distDir } = await getConfig(dir);
 
-  if (await isUsingMiddleware(dir, false)) {
+  if (await isUsingMiddleware(join(dir, distDir), false)) {
     reasonsForBackend.push("middleware");
   }
 
