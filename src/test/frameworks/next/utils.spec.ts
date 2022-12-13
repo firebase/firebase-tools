@@ -3,7 +3,11 @@ import * as fs from "fs";
 import * as fsExtra from "fs-extra";
 import * as sinon from "sinon";
 
-import { EXPORT_MARKER, IMAGES_MANIFEST } from "../../../frameworks/next/constants";
+import {
+  EXPORT_MARKER,
+  IMAGES_MANIFEST,
+  APP_PATH_ROUTES_MANIFEST,
+} from "../../../frameworks/next/constants";
 import {
   pathHasRegex,
   cleanEscapedChars,
@@ -16,8 +20,10 @@ import {
   hasUnoptimizedImage,
   isUsingMiddleware,
   isUsingImageOptimization,
+  isUsingAppDirectory,
 } from "../../../frameworks/next/utils";
 import * as frameworksUtils from "../../../frameworks/utils";
+import * as fsUtils from "../../../fsutils";
 
 import {
   exportMarkerWithImage,
@@ -286,6 +292,24 @@ describe("Next.js utils", () => {
       stub.withArgs(IMAGES_MANIFEST).resolves(imagesManifestUnoptimized);
 
       expect(await isUsingImageOptimization("")).to.be.false;
+    });
+  });
+
+  describe("isUsingAppDirectory", () => {
+    let sandbox: sinon.SinonSandbox;
+    beforeEach(() => (sandbox = sinon.createSandbox()));
+    afterEach(() => sandbox.restore());
+
+    it(`should return true if ${APP_PATH_ROUTES_MANIFEST} exists`, () => {
+      sandbox.stub(fsUtils, "fileExistsSync").returns(true);
+
+      expect(isUsingAppDirectory("")).to.be.true;
+    });
+
+    it(`should return false if ${APP_PATH_ROUTES_MANIFEST} did not exist`, () => {
+      sandbox.stub(fsUtils, "fileExistsSync").returns(false);
+
+      expect(isUsingAppDirectory("")).to.be.false;
     });
   });
 });
