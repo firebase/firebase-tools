@@ -1,1 +1,2 @@
 - Add sharp NPM module to Cloud Functions when using Next.js Image Optimization
+- Fix bug where functions:shell command didn't connect to emulators running on other processes. (#5269)
