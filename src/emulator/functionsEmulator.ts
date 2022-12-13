@@ -41,7 +41,7 @@ import { EmulatorLogger, Verbosity } from "./emulatorLogger";
 import { RuntimeWorker, RuntimeWorkerPool } from "./functionsRuntimeWorker";
 import { PubsubEmulator } from "./pubsubEmulator";
 import { FirebaseError } from "../error";
-import { WorkQueue } from "./workQueue";
+import { WorkQueue, Work } from "./workQueue";
 import { allSettled, connectableHostname, createDestroyer, debounce } from "../utils";
 import { getCredentialPathAsync } from "../defaultCredentials";
 import {
@@ -269,9 +269,11 @@ export class FunctionsEmulator implements EmulatorInstance {
     const listBackendsRoute = `/backends`;
 
     const httpsHandler: express.RequestHandler = (req, res) => {
-      this.workQueue.submit(() => {
+      const work: Work = () => {
         return this.handleHttpsTrigger(req, res);
-      });
+      };
+      work.type = `${req.path}-${new Date().toISOString()}`;
+      this.workQueue.submit(work);
     };
 
     const multicastHandler: express.RequestHandler = (req: express.Request, res) => {
@@ -291,7 +293,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
       const { host, port } = this.getInfo();
       triggers.forEach((triggerId) => {
-        this.workQueue.submit(() => {
+        const work: Work = () => {
           return new Promise<void>((resolve, reject) => {
             const trigReq = http.request({
               host: connectableHostname(host),
@@ -305,7 +307,9 @@ export class FunctionsEmulator implements EmulatorInstance {
             trigReq.end();
             resolve();
           });
-        });
+        };
+        work.type = `${triggerId}-${new Date().toISOString()}`;
+        this.workQueue.submit(work);
       });
       res.json({ status: "multicast_acknowledged" });
     };
