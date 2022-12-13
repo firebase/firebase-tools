@@ -1,10 +1,12 @@
 import { existsSync } from "fs";
+import { pathExists } from "fs-extra";
 import { join } from "path";
 import type { Header, Redirect, Rewrite } from "next/dist/lib/load-custom-routes";
-import type { Manifest, RoutesManifestRewrite } from "./interfaces";
-import { isUrl, readJSON } from "../utils";
-import type { ExportMarker, ImageManifest } from "./interfaces";
 import type { MiddlewareManifest } from "next/dist/build/webpack/plugins/middleware-plugin";
+
+import { isUrl, readJSON } from "../utils";
+import type { Manifest, RoutesManifestRewrite, ExportMarker, ImageManifest } from "./interfaces";
+import { MIDDLEWARE_MANIFEST } from "./constants";
 
 /**
  * Whether the given path has a regex or not.
@@ -154,7 +156,23 @@ export async function hasUnoptimizedImage(sourceDir: string, distDir: string): P
 
 /**
  * Whether Next.js middleware is being used
+ *
+ * @param dir in development must be the project root path, otherwise `/.next/server`
+ * @param isDevMode whether the project is running on dev or production
  */
-export function isUsingMiddleware(middleware: MiddlewareManifest["middleware"]): boolean {
-  return Object.keys(middleware).length > 0;
+export async function isUsingMiddleware(dir: string, isDevMode: boolean): Promise<boolean> {
+  if (isDevMode) {
+    const [middlewareJs, middlewareTs] = await Promise.all([
+      pathExists(join(dir, "middleware.js")),
+      pathExists(join(dir, "middleware.ts")),
+    ]);
+
+    return middlewareJs || middlewareTs;
+  } else {
+    const middlewareManifest: MiddlewareManifest = await readJSON<MiddlewareManifest>(
+      join(dir, MIDDLEWARE_MANIFEST)
+    );
+
+    return Object.keys(middlewareManifest.middleware).length > 0;
+  }
 }

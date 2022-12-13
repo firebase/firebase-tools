@@ -99,11 +99,7 @@ export async function build(dir: string): Promise<BuildResult> {
   const reasonsForBackend = [];
   const { distDir } = await getConfig(dir);
 
-  const middlewareManifest = await readJSON<MiddlewareManifest>(
-    join(dir, distDir, "server", MIDDLEWARE_MANIFEST)
-  );
-  const usingMiddleware = isUsingMiddleware(middlewareManifest.middleware);
-  if (usingMiddleware) {
+  if (await isUsingMiddleware(dir, false)) {
     reasonsForBackend.push("middleware");
   }
 
@@ -407,12 +403,7 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
 export async function getDevModeHandle(dir: string, hostingEmulatorInfo?: EmulatorInfo) {
   // throw error when using Next.js middleware with firebase serve
   if (!hostingEmulatorInfo) {
-    const [middlewareJs, middlewareTs] = await Promise.all([
-      pathExists(join(dir, "middleware.js")),
-      pathExists(join(dir, "middleware.ts")),
-    ]);
-
-    if (middlewareJs || middlewareTs) {
+    if (await isUsingMiddleware(dir, true)) {
       throw new FirebaseError(
         `${clc.bold("firebase serve")} does not support Next.js Middleware. Please use ${clc.bold(
           "firebase emulators:start"
