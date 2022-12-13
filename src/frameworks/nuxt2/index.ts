@@ -4,9 +4,9 @@ import { join } from "path";
 import { lt } from "semver";
 import { findDependency, FrameworkType, relativeRequire, SupportLevel } from "..";
 
-export const name = "Nuxt 2";
+export const name = "Nuxt";
 export const support = SupportLevel.Experimental;
-export const type = FrameworkType.Toolchain;
+export const type = FrameworkType.MetaFramework;
 
 export async function discover(dir: string) {
   if (!(await pathExists(join(dir, "package.json")))) return;
@@ -19,8 +19,7 @@ export async function discover(dir: string) {
   const anyConfigFileExists = configFilesExist.some((it) => it);
 
   if (!anyConfigFileExists && !nuxtDependency) return;
-  if (!version) throw new Error("Unable to find the nuxt dep.");
-  if (lt(version, "3.0.0")) return { mayWantBackend: true };
+  if (lt(version, "3.0.0-0")) return { mayWantBackend: true };
 
   return;
 }
@@ -121,7 +120,7 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
 		This is because `loadNuxt` (called from `firebase-frameworks`) will look
 		for the `nuxt.config.js` file in the destination directory.
 		*/
-  if (nuxtConfig.ssr === false) {
+  if (!nuxtConfig.ssr) {
     const nuxtConfigFile = nuxtConfig._nuxtConfigFile.split("/").pop();
     await copy(nuxtConfig._nuxtConfigFile, join(destDir, nuxtConfigFile));
   }
