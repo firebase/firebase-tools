@@ -3,7 +3,6 @@ import * as fs from "fs";
 import * as fsExtra from "fs-extra";
 import type { MiddlewareManifest } from "next/dist/build/webpack/plugins/middleware-plugin";
 import * as sinon from "sinon";
-import type { ExportMarker, ImagesManifest } from "../../../frameworks/next/interfaces";
 
 import {
   pathHasRegex,
@@ -19,6 +18,10 @@ import {
   isUsingImageOptimization,
 } from "../../../frameworks/next/utils";
 import {
+  exportMarkerWithImage,
+  exportMarkerWithoutImage,
+  imagesManifest,
+  imagesManifestUnoptimized,
   pathsAsGlobs,
   pathsWithEscapedChars,
   pathsWithRegex,
@@ -286,55 +289,6 @@ describe("Next.js utils", () => {
     let sandbox: sinon.SinonSandbox;
     beforeEach(() => (sandbox = sinon.createSandbox()));
     afterEach(() => sandbox.restore());
-
-    const exportMarkerWithoutImage: ExportMarker = {
-      version: 1,
-      hasExportPathMap: false,
-      exportTrailingSlash: false,
-      isNextImageImported: false,
-    };
-
-    const exportMarkerWithImage: ExportMarker = {
-      version: 1,
-      hasExportPathMap: false,
-      exportTrailingSlash: false,
-      isNextImageImported: true,
-    };
-
-    const imagesManifest: ImagesManifest = {
-      version: 1,
-      images: {
-        deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
-        imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
-        path: "/_next/image",
-        loader: "default",
-        loaderFile: "",
-        domains: [],
-        disableStaticImages: false,
-        minimumCacheTTL: 60,
-        formats: ["image/avif", "image/webp"],
-        dangerouslyAllowSVG: false,
-        contentSecurityPolicy: "script-src 'none'; frame-src 'none'; sandbox;",
-        remotePatterns: [
-          {
-            protocol: "https",
-            hostname: "^(?:^(?:assets\\.vercel\\.com)$)$",
-            port: "",
-            pathname: "^(?:\\/image\\/upload(?:\\/(?!\\.)(?:(?:(?!(?:^|\\/)\\.).)*?)|$))$",
-          },
-        ],
-        unoptimized: false,
-        sizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840, 16, 32, 48, 64, 96, 128, 256, 384],
-      },
-    };
-
-    const imagesManifestUnoptimized: ImagesManifest = {
-      ...imagesManifest,
-      images: {
-        ...imagesManifest.images,
-        unoptimized: true,
-      },
-    };
 
     it("should return true if images optimization is used", async () => {
       const stub = sandbox.stub(fsExtra, "readJSON");
