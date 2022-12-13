@@ -25,7 +25,7 @@ export async function discover(dir: string) {
 }
 
 export async function build(root: string) {
-  const nuxt = await getNuxtAppForBuild(root);
+  const nuxt = await getNuxtApp(root);
 
   const nuxtApp = await nuxt.loadNuxt({
     for: "build",
@@ -57,16 +57,8 @@ export async function build(root: string) {
  * @param cwd
  * @return Nuxt app object
  */
-async function getNuxtAppForBuild(cwd: string) {
-  let nuxt: any = null;
-  try {
-    // @ts-ignore
-    nuxt = await relativeRequire(cwd, "nuxt/dist/nuxt.js");
-  } catch (e) {
-    return null;
-  }
-
-  return nuxt;
+async function getNuxtApp(cwd: string) {
+  return await relativeRequire(cwd, "nuxt/dist/nuxt.js");
 }
 
 /**
@@ -75,7 +67,7 @@ async function getNuxtAppForBuild(cwd: string) {
  * @param dest
  */
 export async function ɵcodegenPublicDirectory(root: string, dest: string) {
-  const nuxt = await getNuxtAppForBuild(root);
+  const nuxt = await getNuxtApp(root);
   const nuxtConfig = await nuxt.loadNuxtConfig();
 
   /*
@@ -104,7 +96,7 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
   /*
 		Get the nuxt config into an object so we can check the `target` and `ssr` properties.
 	*/
-  const nuxt = await getNuxtAppForBuild(sourceDir);
+  const nuxt = await getNuxtApp(sourceDir);
   const nuxtConfig = await nuxt.loadNuxtConfig();
 
   /*
