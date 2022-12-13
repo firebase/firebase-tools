@@ -4,17 +4,34 @@ import * as fsExtra from "fs-extra";
 import * as sinon from "sinon";
 
 import {
+  EXPORT_MARKER,
+  IMAGES_MANIFEST,
+  APP_PATH_ROUTES_MANIFEST,
+} from "../../../frameworks/next/constants";
+import {
   pathHasRegex,
   cleanEscapedChars,
-  isRewriteSupportedByFirebase,
-  isRedirectSupportedByFirebase,
-  isHeaderSupportedByFirebase,
+  isRewriteSupportedByHosting,
+  isRedirectSupportedByHosting,
+  isHeaderSupportedByHosting,
   getNextjsRewritesToUse,
   usesAppDirRouter,
   usesNextImage,
   hasUnoptimizedImage,
+  isUsingMiddleware,
+  isUsingImageOptimization,
+  isUsingAppDirectory,
 } from "../../../frameworks/next/utils";
+import * as frameworksUtils from "../../../frameworks/utils";
+import * as fsUtils from "../../../fsutils";
+
 import {
+  exportMarkerWithImage,
+  exportMarkerWithoutImage,
+  imagesManifest,
+  imagesManifestUnoptimized,
+  middlewareManifestWhenNotUsed,
+  middlewareManifestWhenUsed,
   pathsAsGlobs,
   pathsWithEscapedChars,
   pathsWithRegex,
@@ -89,13 +106,13 @@ describe("Next.js utils", () => {
   describe("isRewriteSupportedByFirebase", () => {
     it("should allow supported rewrites", () => {
       for (const rewrite of supportedRewritesArray) {
-        expect(isRewriteSupportedByFirebase(rewrite)).to.be.true;
+        expect(isRewriteSupportedByHosting(rewrite)).to.be.true;
       }
     });
 
     it("should disallow unsupported rewrites", () => {
       for (const rewrite of unsupportedRewritesArray) {
-        expect(isRewriteSupportedByFirebase(rewrite)).to.be.false;
+        expect(isRewriteSupportedByHosting(rewrite)).to.be.false;
       }
     });
   });
@@ -103,13 +120,13 @@ describe("Next.js utils", () => {
   describe("isRedirectSupportedByFirebase", () => {
     it("should allow supported redirects", () => {
       for (const redirect of supportedRedirects) {
-        expect(isRedirectSupportedByFirebase(redirect)).to.be.true;
+        expect(isRedirectSupportedByHosting(redirect)).to.be.true;
       }
     });
 
     it("should disallow unsupported redirects", () => {
       for (const redirect of unsupportedRedirects) {
-        expect(isRedirectSupportedByFirebase(redirect)).to.be.false;
+        expect(isRedirectSupportedByHosting(redirect)).to.be.false;
       }
     });
   });
@@ -117,13 +134,13 @@ describe("Next.js utils", () => {
   describe("isHeaderSupportedByFirebase", () => {
     it("should allow supported headers", () => {
       for (const header of supportedHeaders) {
-        expect(isHeaderSupportedByFirebase(header)).to.be.true;
+        expect(isHeaderSupportedByHosting(header)).to.be.true;
       }
     });
 
     it("should disallow unsupported headers", () => {
       for (const header of unsupportedHeaders) {
-        expect(isHeaderSupportedByFirebase(header)).to.be.false;
+        expect(isHeaderSupportedByHosting(header)).to.be.false;
       }
     });
   });
@@ -220,6 +237,79 @@ describe("Next.js utils", () => {
         images: { unoptimized: false },
       });
       expect(await hasUnoptimizedImage("", "")).to.be.false;
+    });
+  });
+
+  describe("isUsingMiddleware", () => {
+    let sandbox: sinon.SinonSandbox;
+    beforeEach(() => (sandbox = sinon.createSandbox()));
+    afterEach(() => sandbox.restore());
+
+    it("should return true if using middleware in development", async () => {
+      sandbox.stub(fsExtra, "pathExists").resolves(true);
+      expect(await isUsingMiddleware("", true)).to.be.true;
+    });
+
+    it("should return false if not using middleware in development", async () => {
+      sandbox.stub(fsExtra, "pathExists").resolves(false);
+      expect(await isUsingMiddleware("", true)).to.be.false;
+    });
+
+    it("should return true if using middleware in production", async () => {
+      sandbox.stub(fsExtra, "readJSON").resolves(middlewareManifestWhenUsed);
+      expect(await isUsingMiddleware("", false)).to.be.true;
+    });
+
+    it("should return false if not using middleware in production", async () => {
+      sandbox.stub(fsExtra, "readJSON").resolves(middlewareManifestWhenNotUsed);
+      expect(await isUsingMiddleware("", false)).to.be.false;
+    });
+  });
+
+  describe("isUsingImageOptimization", () => {
+    let sandbox: sinon.SinonSandbox;
+    beforeEach(() => (sandbox = sinon.createSandbox()));
+    afterEach(() => sandbox.restore());
+
+    it("should return true if images optimization is used", async () => {
+      const stub = sandbox.stub(frameworksUtils, "readJSON");
+      stub.withArgs(EXPORT_MARKER).resolves(exportMarkerWithImage);
+      stub.withArgs(IMAGES_MANIFEST).resolves(imagesManifest);
+
+      expect(await isUsingImageOptimization("")).to.be.true;
+    });
+
+    it("should return false if isNextImageImported is false", async () => {
+      const stub = sandbox.stub(frameworksUtils, "readJSON");
+      stub.withArgs(EXPORT_MARKER).resolves(exportMarkerWithoutImage);
+
+      expect(await isUsingImageOptimization("")).to.be.false;
+    });
+
+    it("should return false if `unoptimized` option is used", async () => {
+      const stub = sandbox.stub(frameworksUtils, "readJSON");
+      stub.withArgs(EXPORT_MARKER).resolves(exportMarkerWithImage);
+      stub.withArgs(IMAGES_MANIFEST).resolves(imagesManifestUnoptimized);
+
+      expect(await isUsingImageOptimization("")).to.be.false;
+    });
+  });
+
+  describe("isUsingAppDirectory", () => {
+    let sandbox: sinon.SinonSandbox;
+    beforeEach(() => (sandbox = sinon.createSandbox()));
+    afterEach(() => sandbox.restore());
+
+    it(`should return true if ${APP_PATH_ROUTES_MANIFEST} exists`, () => {
+      sandbox.stub(fsUtils, "fileExistsSync").returns(true);
+
+      expect(isUsingAppDirectory("")).to.be.true;
+    });
+
+    it(`should return false if ${APP_PATH_ROUTES_MANIFEST} did not exist`, () => {
+      sandbox.stub(fsUtils, "fileExistsSync").returns(false);
+
+      expect(isUsingAppDirectory("")).to.be.false;
     });
   });
 });
