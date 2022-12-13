@@ -4,7 +4,10 @@ import { FirebaseError } from "../error";
 import { EmulatorLogger } from "./emulatorLogger";
 import { Emulators, FunctionsExecutionMode } from "./types";
 
-type Work = () => Promise<any>;
+export type Work = {
+  type?: string;
+  (): Promise<any>;
+};
 
 /**
  * Queue for doing async work that can either run all work concurrently
@@ -23,7 +26,7 @@ export class WorkQueue {
   private logger = EmulatorLogger.forEmulator(Emulators.FUNCTIONS);
 
   private queue: Array<Work> = [];
-  private workRunningCount: number = 0;
+  private running: Array<string> = [];
   private notifyQueue: () => void = () => {
     // Noop by default, will be set by .start() when queue is empty.
   };
@@ -74,11 +77,11 @@ export class WorkQueue {
       }
 
       // If we have too many jobs out, wait until something finishes.
-      if (this.workRunningCount >= this.maxParallelWork) {
+      if (this.running.length >= this.maxParallelWork) {
         this.logger.logLabeled(
           "DEBUG",
           "work-queue",
-          `waiting for work to finish (running=${this.workRunningCount})`
+          `waiting for work to finish (running=${this.running})`
         );
         await new Promise<void>((res) => {
           this.notifyWorkFinish = res;
@@ -99,7 +102,7 @@ export class WorkQueue {
     this.stopped = true;
   }
 
-  async flush(timeoutMs: number = 60000) {
+  async flush(timeoutMs = 60000) {
     if (!this.isWorking()) {
       return;
     }
@@ -125,8 +128,10 @@ export class WorkQueue {
 
   getState() {
     return {
+      queuedWork: this.queue.map((work) => work.type),
       queueLength: this.queue.length,
-      workRunningCount: this.workRunningCount,
+      runningWork: this.running,
+      workRunningCount: this.running.length,
     };
   }
 
@@ -138,7 +143,7 @@ export class WorkQueue {
   private async runNext() {
     const next = this.queue.shift();
     if (next) {
-      this.workRunningCount++;
+      this.running.push(next.type || "anonymous");
       this.logState();
 
       try {
@@ -146,7 +151,10 @@ export class WorkQueue {
       } catch (e: any) {
         this.logger.log("DEBUG", e);
       } finally {
-        this.workRunningCount--;
+        const index = this.running.indexOf(next.type || "anonymous");
+        if (index !== -1) {
+          this.running.splice(index, 1);
+        }
         this.notifyWorkFinish();
         this.logState();
       }

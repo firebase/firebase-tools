@@ -1,5 +1,10 @@
 import { promptOnce } from "../prompt";
-import { ParamOption } from "./types";
+import {
+  ParamOption,
+  Resource,
+  FUNCTIONS_RESOURCE_TYPE,
+  FUNCTIONS_V2_RESOURCE_TYPE,
+} from "./types";
 import { RegistryEntry } from "./resolveSource";
 
 // Modified version of the once function from prompt, to return as a joined string.
@@ -66,4 +71,20 @@ export function formatTimestamp(timestamp: string): string {
   }
   const withoutMs = timestamp.split(".")[0];
   return withoutMs.replace("T", " ");
+}
+
+/**
+ * Returns the runtime for the resource. The resource may be v1 or v2 function,
+ * etc, and this utility will do its best to identify the runtime specified for
+ * this resource.
+ */
+export function getResourceRuntime(resource: Resource): string | undefined {
+  switch (resource.type) {
+    case FUNCTIONS_RESOURCE_TYPE:
+      return resource.properties?.runtime;
+    case FUNCTIONS_V2_RESOURCE_TYPE:
+      return resource.properties?.buildConfig?.runtime;
+    default:
+      return undefined;
+  }
 }
