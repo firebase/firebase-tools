@@ -5,7 +5,7 @@ import type { Header, Redirect, Rewrite } from "next/dist/lib/load-custom-routes
 import type { MiddlewareManifest } from "next/dist/build/webpack/plugins/middleware-plugin";
 
 import { isUrl, readJSON } from "../utils";
-import type { Manifest, RoutesManifestRewrite, ExportMarker, ImageManifest } from "./interfaces";
+import type { Manifest, RoutesManifestRewrite, ExportMarker, ImagesManifest } from "./interfaces";
 import {
   APP_PATH_ROUTES_MANIFEST,
   EXPORT_MARKER,
@@ -153,8 +153,8 @@ export async function usesNextImage(sourceDir: string, distDir: string): Promise
  * @return true if image optimization is disabled
  */
 export async function hasUnoptimizedImage(sourceDir: string, distDir: string): Promise<boolean> {
-  const imageManifest = await readJSON<ImageManifest>(join(sourceDir, distDir, IMAGES_MANIFEST));
-  return imageManifest.images.unoptimized;
+  const imagesManifest = await readJSON<ImagesManifest>(join(sourceDir, distDir, IMAGES_MANIFEST));
+  return imagesManifest.images.unoptimized;
 }
 
 /**
@@ -189,7 +189,7 @@ export async function isUsingImageOptimization(dir: string): Promise<boolean> {
   const { isNextImageImported } = await readJSON<ExportMarker>(join(dir, EXPORT_MARKER));
 
   if (isNextImageImported) {
-    const imagesManifest = await readJSON<ImageManifest>(join(dir, IMAGES_MANIFEST));
+    const imagesManifest = await readJSON<ImagesManifest>(join(dir, IMAGES_MANIFEST));
     const usingImageOptimization = imagesManifest.images.unoptimized === false;
 
     if (usingImageOptimization) {

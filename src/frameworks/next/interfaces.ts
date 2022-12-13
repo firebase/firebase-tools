@@ -1,4 +1,5 @@
 import type { Header, Rewrite, Redirect } from "next/dist/lib/load-custom-routes";
+import type { ImageConfigComplete } from "next/dist/shared/lib/image-config";
 
 export interface RoutesManifestRewrite extends Rewrite {
   regex: string;
@@ -37,9 +38,9 @@ export interface ExportMarker {
   isNextImageImported: boolean;
 }
 
-export interface ImageManifest {
+export interface ImagesManifest {
   version: number;
-  images: {
-    unoptimized: boolean;
+  images: ImageConfigComplete & {
+    sizes: number[];
   };
 }
