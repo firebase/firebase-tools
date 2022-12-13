@@ -4,7 +4,7 @@ import { join } from "path";
 import { gte } from "semver";
 import { findDependency, FrameworkType, relativeRequire, SupportLevel } from "..";
 
-export const name = "Nuxt 3";
+export const name = "Nuxt";
 export const support = SupportLevel.Experimental;
 export const type = FrameworkType.Toolchain;
 
@@ -19,8 +19,7 @@ export async function discover(dir: string) {
 
   const anyConfigFileExists = configFilesExist.some((it) => it);
   if (!anyConfigFileExists && !nuxtDependency) return;
-  if (!version) throw new Error("Unable to find the nuxt dep.");
-  if (gte(version, "3.0.0")) return { mayWantBackend: true };
+  if (gte(version, "3.0.0-0")) return { mayWantBackend: true };
 
   return;
 }
