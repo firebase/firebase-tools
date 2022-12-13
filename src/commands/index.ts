@@ -145,6 +145,8 @@ export function load(client: any): any {
   client.init = loadCommand("init");
   if (experiments.isEnabled("internaltesting")) {
     client.internaltesting = {};
+    client.internaltesting.functions = {};
+    client.internaltesting.functions.discover = loadCommand("internaltesting-functions-discover");
   }
   client.login = loadCommand("login");
   client.login.add = loadCommand("login-add");
