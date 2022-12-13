@@ -200,4 +200,6 @@ export async function isUsingImageOptimization(dir: string): Promise<boolean> {
   return false;
 }
 
-export async function isUsingAppDirectory() {}
+export async function isUsingAppDirectory() {
+  // WIP
+}
