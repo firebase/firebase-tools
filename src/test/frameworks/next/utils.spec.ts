@@ -1,6 +1,7 @@
 import { expect } from "chai";
 import * as fs from "fs";
 import * as fsExtra from "fs-extra";
+import type { MiddlewareManifest } from "next/dist/build/webpack/plugins/middleware-plugin";
 import * as sinon from "sinon";
 
 import {
@@ -13,6 +14,7 @@ import {
   usesAppDirRouter,
   usesNextImage,
   hasUnoptimizedImage,
+  isUsingMiddleware,
 } from "../../../frameworks/next/utils";
 import {
   pathsAsGlobs,
@@ -220,6 +222,61 @@ describe("Next.js utils", () => {
         images: { unoptimized: false },
       });
       expect(await hasUnoptimizedImage("", "")).to.be.false;
+    });
+  });
+
+  describe("isUsingMiddleware", () => {
+    let sandbox: sinon.SinonSandbox;
+    beforeEach(() => (sandbox = sinon.createSandbox()));
+    afterEach(() => sandbox.restore());
+
+    const middlewareManifestWhenUsed: MiddlewareManifest = {
+      sortedMiddleware: ["/"],
+      middleware: {
+        "/": {
+          env: [],
+          files: ["server/edge-runtime-webpack.js", "server/middleware.js"],
+          name: "middleware",
+          page: "/",
+          matchers: [
+            {
+              regexp:
+                "^(?:\\/(_next\\/data\\/[^/]{1,}))?(?:\\/([^/.]{1,}))\\/about(?:\\/((?:[^\\/#\\?]+?)(?:\\/(?:[^\\/#\\?]+?))*))?(.json)?[\\/#\\?]?$",
+            },
+          ],
+          wasm: [],
+          assets: [],
+        },
+      },
+      functions: {},
+      version: 2,
+    };
+
+    const middlewareManifestWhenNotUsed: MiddlewareManifest = {
+      sortedMiddleware: [],
+      middleware: {},
+      functions: {},
+      version: 2,
+    };
+
+    it("should return true if using middleware in development", async () => {
+      sandbox.stub(fsExtra, "pathExists").resolves(true);
+      expect(await isUsingMiddleware("", true)).to.be.true;
+    });
+
+    it("should return false if not using middleware in development", async () => {
+      sandbox.stub(fsExtra, "pathExists").resolves(false);
+      expect(await isUsingMiddleware("", true)).to.be.false;
+    });
+
+    it("should return true if using middleware in production", async () => {
+      sandbox.stub(fsExtra, "readJSON").resolves(middlewareManifestWhenUsed);
+      expect(await isUsingMiddleware("", false)).to.be.true;
+    });
+
+    it("should return false if not using middleware in production", async () => {
+      sandbox.stub(fsExtra, "readJSON").resolves(middlewareManifestWhenNotUsed);
+      expect(await isUsingMiddleware("", false)).to.be.false;
     });
   });
 });
