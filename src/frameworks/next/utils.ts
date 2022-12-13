@@ -6,7 +6,12 @@ import type { MiddlewareManifest } from "next/dist/build/webpack/plugins/middlew
 
 import { isUrl, readJSON } from "../utils";
 import type { Manifest, RoutesManifestRewrite, ExportMarker, ImageManifest } from "./interfaces";
-import { MIDDLEWARE_MANIFEST } from "./constants";
+import {
+  APP_PATH_ROUTES_MANIFEST,
+  EXPORT_MARKER,
+  IMAGES_MANIFEST,
+  MIDDLEWARE_MANIFEST,
+} from "./constants";
 
 /**
  * Whether the given path has a regex or not.
@@ -125,7 +130,7 @@ export function getNextjsRewritesToUse(
  * @return true if app directory is used in the Next.js project
  */
 export function usesAppDirRouter(sourceDir: string): boolean {
-  const appPathRoutesManifestPath = join(sourceDir, "app-path-routes-manifest.json");
+  const appPathRoutesManifestPath = join(sourceDir, APP_PATH_ROUTES_MANIFEST);
   return existsSync(appPathRoutesManifestPath);
 }
 /**
@@ -134,7 +139,7 @@ export function usesAppDirRouter(sourceDir: string): boolean {
  * @return true if the Next.js project uses the next/image component
  */
 export async function usesNextImage(sourceDir: string, distDir: string): Promise<boolean> {
-  const exportMarker = await readJSON<ExportMarker>(join(sourceDir, distDir, "export-marker.json"));
+  const exportMarker = await readJSON<ExportMarker>(join(sourceDir, distDir, EXPORT_MARKER));
   return exportMarker.isNextImageImported;
 }
 
@@ -148,9 +153,7 @@ export async function usesNextImage(sourceDir: string, distDir: string): Promise
  * @return true if image optimization is disabled
  */
 export async function hasUnoptimizedImage(sourceDir: string, distDir: string): Promise<boolean> {
-  const imageManifest = await readJSON<ImageManifest>(
-    join(sourceDir, distDir, "images-manifest.json")
-  );
+  const imageManifest = await readJSON<ImageManifest>(join(sourceDir, distDir, IMAGES_MANIFEST));
   return imageManifest.images.unoptimized;
 }
 
