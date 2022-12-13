@@ -12,6 +12,7 @@ import {
   IMAGES_MANIFEST,
   MIDDLEWARE_MANIFEST,
 } from "./constants";
+import { fileExistsSync } from "../../fsutils";
 
 /**
  * Whether the given path has a regex or not.
@@ -183,7 +184,7 @@ export async function isUsingMiddleware(dir: string, isDevMode: boolean): Promis
 /**
  * Whether image optimization is being used
  *
- * @param dir path to `.next` - where the manifests are located
+ * @param dir path to `distDir` - where the manifests are located
  */
 export async function isUsingImageOptimization(dir: string): Promise<boolean> {
   const { isNextImageImported } = await readJSON<ExportMarker>(join(dir, EXPORT_MARKER));
@@ -200,6 +201,13 @@ export async function isUsingImageOptimization(dir: string): Promise<boolean> {
   return false;
 }
 
-export async function isUsingAppDirectory() {
-  // WIP
+/**
+ * Whether Next.js app directory is being used
+ *
+ * @param dir path to `distDir` - where the manifests are located
+ */
+export function isUsingAppDirectory(dir: string): boolean {
+  const appPathRoutesManifestPath = join(dir, APP_PATH_ROUTES_MANIFEST);
+
+  return fileExistsSync(appPathRoutesManifestPath);
 }

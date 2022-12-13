@@ -24,13 +24,13 @@ import {
 import { promptOnce } from "../../prompt";
 import { logger } from "../../logger";
 import { FirebaseError } from "../../error";
-import { fileExistsSync } from "../../fsutils";
 import {
   cleanEscapedChars,
   getNextjsRewritesToUse,
   isHeaderSupportedByHosting,
   isRedirectSupportedByHosting,
   isRewriteSupportedByHosting,
+  isUsingAppDirectory,
   isUsingImageOptimization,
   isUsingMiddleware,
 } from "./utils";
@@ -40,7 +40,6 @@ import { warnIfCustomBuildScript } from "../utils";
 import type { EmulatorInfo } from "../../emulator/types";
 import { usesAppDirRouter, usesNextImage, hasUnoptimizedImage } from "./utils";
 import {
-  APP_PATH_ROUTES_MANIFEST,
   MIDDLEWARE_MANIFEST,
   PAGES_MANIFEST,
   PRERENDER_MANIFEST,
@@ -106,12 +105,7 @@ export async function build(dir: string): Promise<BuildResult> {
     reasonsForBackend.push(`Image Optimization`);
   }
 
-  const appPathRoutesManifestPath = join(dir, distDir, APP_PATH_ROUTES_MANIFEST);
-  const appPathRoutesManifestJSON = fileExistsSync(appPathRoutesManifestPath)
-    ? await readJSON(appPathRoutesManifestPath)
-    : {};
-  const usingAppDirectory = Object.keys(appPathRoutesManifestJSON).length > 0;
-  if (usingAppDirectory) {
+  if (isUsingAppDirectory(join(dir, distDir))) {
     // Let's not get smart here, if they are using the app directory we should
     // opt for spinning up a Cloud Function. The app directory is unstable.
     reasonsForBackend.push("app directory (unstable)");
