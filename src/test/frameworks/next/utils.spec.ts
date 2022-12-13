@@ -3,6 +3,7 @@ import * as fs from "fs";
 import * as fsExtra from "fs-extra";
 import * as sinon from "sinon";
 
+import { EXPORT_MARKER, IMAGES_MANIFEST } from "../../../frameworks/next/constants";
 import {
   pathHasRegex,
   cleanEscapedChars,
@@ -16,6 +17,8 @@ import {
   isUsingMiddleware,
   isUsingImageOptimization,
 } from "../../../frameworks/next/utils";
+import * as frameworksUtils from "../../../frameworks/utils";
+
 import {
   exportMarkerWithImage,
   exportMarkerWithoutImage,
@@ -276,9 +279,9 @@ describe("Next.js utils", () => {
     });
 
     it("should return false if `unoptimized` option is used", async () => {
-      const stub = sandbox.stub(fsExtra, "readJSON");
-      stub.onCall(0).resolves(exportMarkerWithImage); // reads EXPORT_MARKER
-      stub.onCall(1).resolves(imagesManifestUnoptimized); // reads IMAGES_MANIFEST
+      const stub = sandbox.stub(frameworksUtils, "readJSON");
+      stub.withArgs(EXPORT_MARKER).resolves(exportMarkerWithImage); // reads EXPORT_MARKER
+      stub.withArgs(IMAGES_MANIFEST).resolves(imagesManifestUnoptimized); // reads EXPORT_MARKER
 
       expect(await isUsingImageOptimization("")).to.be.false;
     });
