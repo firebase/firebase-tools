@@ -1,6 +1,9 @@
+import { existsSync } from "fs";
+import { join } from "path";
 import type { Header, Redirect, Rewrite } from "next/dist/lib/load-custom-routes";
 import type { Manifest, RoutesManifestRewrite } from "./interfaces";
-import { isUrl } from "../utils";
+import { isUrl, readJSON } from "../utils";
+import type { ExportMarker, ImageManifest } from "./interfaces";
 
 /**
  * Whether the given path has a regex or not.
@@ -111,4 +114,39 @@ export function getNextjsRewritesToUse(
   }
 
   return [];
+}
+
+/**
+ * Check if `/app` directory is used in the Next.js project.
+ * @param sourceDir location of the source directory
+ * @return true if app directory is used in the Next.js project
+ */
+export function usesAppDirRouter(sourceDir: string): boolean {
+  const appPathRoutesManifestPath = join(sourceDir, "app-path-routes-manifest.json");
+  return existsSync(appPathRoutesManifestPath);
+}
+/**
+ * Check if the project is using the next/image component based on the export-marker.json file.
+ * @param sourceDir location of the source directory
+ * @return true if the Next.js project uses the next/image component
+ */
+export async function usesNextImage(sourceDir: string, distDir: string): Promise<boolean> {
+  const exportMarker = await readJSON<ExportMarker>(join(sourceDir, distDir, "export-marker.json"));
+  return exportMarker.isNextImageImported;
+}
+
+/**
+ * Check if Next.js is forced to serve the source image as-is instead of being oprimized
+ * by setting `unoptimized: true` in next.config.js.
+ * https://nextjs.org/docs/api-reference/next/image#unoptimized
+ *
+ * @param sourceDir location of the source directory
+ * @param distDir location of the dist directory
+ * @return true if image optimization is disabled
+ */
+export async function hasUnoptimizedImage(sourceDir: string, distDir: string): Promise<boolean> {
+  const imageManifest = await readJSON<ImageManifest>(
+    join(sourceDir, distDir, "images-manifest.json")
+  );
+  return imageManifest.images.unoptimized;
 }
