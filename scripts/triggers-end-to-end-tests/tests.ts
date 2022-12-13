@@ -51,11 +51,7 @@ describe("function triggers", () => {
 
     const config = readConfig();
     test = new TriggerEndToEndTest(FIREBASE_PROJECT, __dirname, config);
-    await test.startEmulators([
-      "--only",
-      "functions,database,firestore,pubsub,storage,auth",
-      "--debug",
-    ]);
+    await test.startEmulators(["--only", "functions,database,firestore,pubsub,storage,auth"]);
 
     firestore = new Firestore({
       port: test.firestoreEmulatorPort,
