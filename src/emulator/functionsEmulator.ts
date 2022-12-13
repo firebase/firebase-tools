@@ -462,6 +462,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       logger.debug(`Building ${runtimeDelegate.name} source`);
       await runtimeDelegate.build();
 
+      // Don't include user envs when parsing triggers. Do include user envs when resolving parameter values
       const firebaseConfig = this.getFirebaseConfig();
       const environment = {
         ...this.getSystemEnvs(),
