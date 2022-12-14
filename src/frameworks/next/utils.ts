@@ -5,7 +5,13 @@ import type { Header, Redirect, Rewrite } from "next/dist/lib/load-custom-routes
 import type { MiddlewareManifest } from "next/dist/build/webpack/plugins/middleware-plugin";
 
 import { isUrl, readJSON } from "../utils";
-import type { Manifest, RoutesManifestRewrite, ExportMarker, ImagesManifest } from "./interfaces";
+import type {
+  Manifest,
+  RoutesManifestRewrite,
+  ExportMarker,
+  ImagesManifest,
+  Dependency,
+} from "./interfaces";
 import {
   APP_PATH_ROUTES_MANIFEST,
   EXPORT_MARKER,
@@ -210,4 +216,17 @@ export function isUsingAppDirectory(dir: string): boolean {
   const appPathRoutesManifestPath = join(dir, APP_PATH_ROUTES_MANIFEST);
 
   return fileExistsSync(appPathRoutesManifestPath);
+}
+
+/**
+ * Given input from `npm ls` flatten the dependency tree and return all module names
+ *
+ * @param ls JSON returned from `npm ls`
+ */
+export function allDependencyNames(ls: Dependency | null): string[] {
+  if (!ls?.dependencies) return [];
+  return Object.keys(ls.dependencies).reduce(
+    (acc, it) => [...acc, it, ...allDependencyNames(ls.dependencies[it])],
+    [] as string[]
+  );
 }

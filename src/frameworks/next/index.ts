@@ -32,6 +32,7 @@ import {
   isUsingAppDirectory,
   isUsingImageOptimization,
   isUsingMiddleware,
+  allDependencyNames,
 } from "./utils";
 import type { Manifest } from "./interfaces";
 import { readJSON } from "../utils";
@@ -336,19 +337,6 @@ export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: strin
   }
 }
 
-interface Dependency {
-  dependencies: {
-    [key: string]: Dependency;
-  };
-}
-
-function extractDeps(ls: Dependency | null): string[] {
-  return Object.keys(ls?.dependencies || {}).reduce(
-    (acc, it) => [...acc, it, ...extractDeps(ls!.dependencies[it])],
-    [] as string[]
-  );
-}
-
 /**
  * Create a directory for SSR content.
  */
@@ -360,15 +348,19 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
     // on m1 macs, older Node versions, and eitherway we should avoid taking on any deps in firebase-tools
     // Alternatively I tried using @swc/spack and the webpack bundled into Next.js but was
     // encountering difficulties with both of those
-    const externalArg = extractDeps(
+    const esbuildArgs = allDependencyNames(
       JSON.parse(execSync(`npm ls --omit=dev --all --json`, { cwd: sourceDir }).toString())
     )
       .map((it) => `--external:${it}`)
+      .concat(
+        "--bundle",
+        "--platform=node",
+        `--target=node${NODE_VERSION}`,
+        `--outdir=${destDir}`,
+        "--log-level=error"
+      )
       .join(" ");
-    execSync(
-      `npx --yes esbuild next.config.js --bundle --platform=node --target=node${NODE_VERSION} ${externalArg} --outdir=${destDir} --log-level=error`,
-      { cwd: sourceDir }
-    );
+    execSync(`npx --yes esbuild next.config.js ${esbuildArgs}  `, { cwd: sourceDir });
   }
   if (await pathExists(join(sourceDir, "public"))) {
     await mkdir(join(destDir, "public"));

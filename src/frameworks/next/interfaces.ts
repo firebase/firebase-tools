@@ -44,3 +44,9 @@ export interface ImagesManifest {
     sizes: number[];
   };
 }
+
+export interface Dependency {
+  dependencies: {
+    [key: string]: Dependency;
+  };
+}
