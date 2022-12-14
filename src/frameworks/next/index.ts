@@ -34,7 +34,7 @@ import {
   isUsingMiddleware,
   allDependencyNames,
 } from "./utils";
-import type { Manifest } from "./interfaces";
+import type { Manifest, NpmLsReturn } from "./interfaces";
 import { readJSON } from "../utils";
 import { warnIfCustomBuildScript } from "../utils";
 import type { EmulatorInfo } from "../../emulator/types";
@@ -344,13 +344,16 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
   const { distDir } = await getConfig(sourceDir);
   const packageJson = await readJSON(join(sourceDir, "package.json"));
   if (existsSync(join(sourceDir, "next.config.js"))) {
-    // Bundle their next.config.js with esbuild via NPX, pinned version was having troubles
-    // on m1 macs, older Node versions, and eitherway we should avoid taking on any deps in firebase-tools
+    // Bundle their next.config.js with esbuild via NPX, pinned version was having troubles on m1
+    // macs and older Node versions; either way, we should avoid taking on any deps in firebase-tools
     // Alternatively I tried using @swc/spack and the webpack bundled into Next.js but was
     // encountering difficulties with both of those
-    const esbuildArgs = allDependencyNames(
-      JSON.parse(execSync(`npm ls --omit=dev --all --json`, { cwd: sourceDir }).toString())
-    )
+    const dependencyTree: NpmLsReturn = JSON.parse(
+      execSync(`npm ls --omit=dev --all --json`, { cwd: sourceDir }).toString()
+    );
+    // Mark all production deps as externals, so they aren't bundled
+    // DevDeps won't be included in the Cloud Function, so they should be bundled
+    const esbuildArgs = allDependencyNames(dependencyTree)
       .map((it) => `--external:${it}`)
       .concat(
         "--bundle",
@@ -360,7 +363,7 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
         "--log-level=error"
       )
       .join(" ");
-    execSync(`npx --yes esbuild next.config.js ${esbuildArgs}  `, { cwd: sourceDir });
+    execSync(`npx --yes esbuild next.config.js ${esbuildArgs}`, { cwd: sourceDir });
   }
   if (await pathExists(join(sourceDir, "public"))) {
     await mkdir(join(destDir, "public"));

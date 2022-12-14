@@ -45,8 +45,18 @@ export interface ImagesManifest {
   };
 }
 
-export interface Dependency {
+export interface NpmLsDepdendency {
+  version?: string;
+  resolved?: string;
+  dependencies?: {
+    [key: string]: NpmLsDepdendency;
+  };
+}
+
+export interface NpmLsReturn {
+  version: string;
+  name: string;
   dependencies: {
-    [key: string]: Dependency;
+    [key: string]: NpmLsDepdendency;
   };
 }

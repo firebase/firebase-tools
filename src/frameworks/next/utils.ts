@@ -10,7 +10,7 @@ import type {
   RoutesManifestRewrite,
   ExportMarker,
   ImagesManifest,
-  Dependency,
+  NpmLsDepdendency,
 } from "./interfaces";
 import {
   APP_PATH_ROUTES_MANIFEST,
@@ -221,12 +221,14 @@ export function isUsingAppDirectory(dir: string): boolean {
 /**
  * Given input from `npm ls` flatten the dependency tree and return all module names
  *
- * @param ls JSON returned from `npm ls`
+ * @param dependencies returned from `npm ls`
  */
-export function allDependencyNames(ls: Dependency | null): string[] {
-  if (!ls?.dependencies) return [];
-  return Object.keys(ls.dependencies).reduce(
-    (acc, it) => [...acc, it, ...allDependencyNames(ls.dependencies[it])],
+export function allDependencyNames(mod: NpmLsDepdendency): string[] {
+  if (!mod.dependencies) return [];
+  const dependencyNames = Object.keys(mod.dependencies).reduce(
+    (acc, it) => [...acc, it, ...allDependencyNames(mod.dependencies![it])],
     [] as string[]
   );
+  // deduplicate the names
+  return [...new Set(dependencyNames)];
 }
