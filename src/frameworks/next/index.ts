@@ -336,9 +336,15 @@ export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: strin
   }
 }
 
-function extractDeps(ls: any): string[] {
-  return Object.keys(ls?.dependencies || []).reduce(
-    (acc, it) => [...acc, it, ...extractDeps(ls.dependencies[it])],
+interface Dependency {
+  dependencies: {
+    [key: string]: Dependency;
+  };
+}
+
+function extractDeps(ls: Dependency | null): string[] {
+  return Object.keys(ls?.dependencies || {}).reduce(
+    (acc, it) => [...acc, it, ...extractDeps(ls!.dependencies[it])],
     [] as string[]
   );
 }
@@ -350,12 +356,13 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
   const { distDir } = await getConfig(sourceDir);
   const packageJson = await readJSON(join(sourceDir, "package.json"));
   if (existsSync(join(sourceDir, "next.config.js"))) {
-    const deps = extractDeps(
+    const externalArg = extractDeps(
       JSON.parse(execSync(`npm ls --omit=dev --all --json`, { cwd: sourceDir }).toString())
-    );
-    const externals = deps.map((it) => `--external:${it}`).join(" ");
+    )
+      .map((it) => `--external:${it}`)
+      .join(" ");
     execSync(
-      `npx --yes esbuild next.config.js --bundle --platform=node --target=node${NODE_VERSION} ${externals} --outdir=${destDir} --log-level=error`,
+      `npx --yes esbuild next.config.js --bundle --platform=node --target=node${NODE_VERSION} ${externalArg} --outdir=${destDir} --log-level=error`,
       { cwd: sourceDir }
     );
   }
