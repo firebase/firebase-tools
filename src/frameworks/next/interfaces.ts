@@ -1,5 +1,6 @@
 import type { Header, Rewrite, Redirect } from "next/dist/lib/load-custom-routes";
 import type { ImageConfigComplete } from "next/dist/shared/lib/image-config";
+import type { I18NConfig } from "next/dist/server/config-shared";
 
 export interface RoutesManifestRewrite extends Rewrite {
   regex: string;
@@ -29,6 +30,7 @@ export interface Manifest {
     }
   >;
   rewrites?: RoutesManifestRewrite[] | RoutesManifestRewriteObject;
+  i18n?: I18NConfig;
 }
 
 export interface ExportMarker {

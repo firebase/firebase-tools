@@ -41,6 +41,7 @@ export interface BuildResult {
   redirects?: any[];
   headers?: any[];
   wantsBackend?: boolean;
+  i18n?: any;
 }
 
 export interface Framework {
@@ -405,10 +406,19 @@ export async function prepareFrameworks(
         rewrites = [],
         redirects = [],
         headers = [],
+        i18n,
       } = (await build(getProjectPath())) || {};
       config.rewrites.push(...rewrites);
       config.redirects.push(...redirects);
       config.headers.push(...headers);
+
+      // WIP: Hosting i18n rewrite pointing to root
+      if (i18n) {
+        config.i18n = {
+          root: "/",
+        };
+      }
+
       if (await pathExists(hostingDist)) await rm(hostingDist, { recursive: true });
       await mkdirp(hostingDist);
       await ɵcodegenPublicDirectory(getProjectPath(), hostingDist);

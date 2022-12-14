@@ -158,6 +158,7 @@ export async function build(dir: string): Promise<BuildResult> {
     headers: nextJsHeaders = [],
     redirects: nextJsRedirects = [],
     rewrites: nextJsRewrites = [],
+    i18n: nextjsI18n,
   } = manifest;
 
   const isEveryHeaderSupported = nextJsHeaders.every(isHeaderSupportedByHosting);
@@ -227,7 +228,7 @@ export async function build(dir: string): Promise<BuildResult> {
     console.log("");
   }
 
-  return { wantsBackend, headers, redirects, rewrites };
+  return { wantsBackend, headers, redirects, rewrites, i18n: nextjsI18n };
 }
 
 /**
