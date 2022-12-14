@@ -3,6 +3,8 @@ import { copy, pathExists } from "fs-extra";
 import { mkdir } from "fs/promises";
 import { join } from "path";
 import { BuildResult, Discovery, FrameworkType, SupportLevel } from "..";
+import * as yaml from "js-yaml";
+import { readFile } from "fs/promises";
 
 export const name = "Flutter";
 export const type = FrameworkType.Framework;
@@ -11,14 +13,11 @@ export const support = SupportLevel.Experimental;
 export async function discover(dir: string): Promise<Discovery | undefined> {
   if (!(await pathExists(join(dir, "pubspec.yaml")))) return;
   if (!(await pathExists(join(dir, "web")))) return;
-  try {
-    const deps = JSON.parse(execSync("flutter pub deps --json").toString());
-    const flutter = deps.sdks?.some((it: any) => it.name === "Flutter");
-    if (!flutter) return;
-    return { mayWantBackend: false, publicDirectory: join(dir, "web") };
-  } catch (e) {
-    // continue
-  }
+  const pubSpecBuffer = await readFile(join(dir, "pubspec.yaml"));
+  const pubSpec = yaml.load(pubSpecBuffer.toString());
+  const usingFlutter = pubSpec.dependencies?.flutter;
+  if (!usingFlutter) return;
+  return { mayWantBackend: false, publicDirectory: join(dir, "web") };
 }
 
 export function build(dir: string): Promise<BuildResult> {
