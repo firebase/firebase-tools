@@ -21,6 +21,8 @@ import {
   isUsingMiddleware,
   isUsingImageOptimization,
   isUsingAppDirectory,
+  cleanCustomRouteI18n,
+  I18N_CUSTOM_ROUTE_PREFIX,
 } from "../../../frameworks/next/utils";
 import * as frameworksUtils from "../../../frameworks/utils";
 import * as fsUtils from "../../../fsutils";
@@ -44,6 +46,7 @@ import {
   unsupportedRedirects,
   unsupportedRewritesArray,
 } from "./helpers";
+import { pathsWithCustomRoutesInternalPrefix } from "./helpers/i18n";
 
 describe("Next.js utils", () => {
   describe("pathHasRegex", () => {
@@ -310,6 +313,20 @@ describe("Next.js utils", () => {
       sandbox.stub(fsUtils, "fileExistsSync").returns(false);
 
       expect(isUsingAppDirectory("")).to.be.false;
+    });
+  });
+
+  describe("cleanCustomRouteI18n", () => {
+    it("should remove Next.js i18n prefix", () => {
+      for (const path of pathsWithCustomRoutesInternalPrefix) {
+        const cleanPath = cleanCustomRouteI18n(path);
+
+        expect(path.includes(I18N_CUSTOM_ROUTE_PREFIX)).to.be.true;
+        expect(cleanPath.includes(I18N_CUSTOM_ROUTE_PREFIX)).to.be.false;
+
+        // should not keep double slashes
+        expect(cleanPath.startsWith("//")).to.be.false;
+      }
     });
   });
 });

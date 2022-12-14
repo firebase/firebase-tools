@@ -14,6 +14,8 @@ import {
 } from "./constants";
 import { fileExistsSync } from "../../fsutils";
 
+export const I18N_CUSTOM_ROUTE_PREFIX = ":nextInternalLocale";
+
 /**
  * Whether the given path has a regex or not.
  * According to the Next.js documentation:
@@ -45,6 +47,19 @@ export function pathHasRegex(path: string): boolean {
  */
 export function cleanEscapedChars(path: string): string {
   return path.replace(/\\([(){}:+?*])/g, (a, b: string) => b);
+}
+
+/**
+ * Remove Next.js internal i18n prefix from headers, redirects and rewrites.
+ */
+export function cleanCustomRouteI18n(path: string): string {
+  return (
+    path
+      // remove custom i18n prefix
+      .replace(I18N_CUSTOM_ROUTE_PREFIX, "")
+      // remove double slashes from the beginning if any
+      .replace(/^\/\//, "/")
+  );
 }
 
 /**

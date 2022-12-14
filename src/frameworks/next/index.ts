@@ -25,6 +25,7 @@ import { promptOnce } from "../../prompt";
 import { logger } from "../../logger";
 import { FirebaseError } from "../../error";
 import {
+  cleanCustomRouteI18n,
   cleanEscapedChars,
   getNextjsRewritesToUse,
   isHeaderSupportedByHosting,
@@ -166,11 +167,17 @@ export async function build(dir: string): Promise<BuildResult> {
     reasonsForBackend.push("advanced headers");
   }
 
-  const headers = nextJsHeaders.filter(isHeaderSupportedByHosting).map(({ source, headers }) => ({
-    // clean up unnecessary escaping
-    source: cleanEscapedChars(source),
-    headers,
-  }));
+  const headers = nextJsHeaders.filter(isHeaderSupportedByHosting).map(({ source, headers }) => {
+    if (nextjsI18n) {
+      source = cleanCustomRouteI18n(source);
+    }
+
+    return {
+      // clean up unnecessary escaping
+      source: cleanEscapedChars(source),
+      headers,
+    };
+  });
 
   const isEveryRedirectSupported = nextJsRedirects.every(isRedirectSupportedByHosting);
   if (!isEveryRedirectSupported) {
@@ -179,12 +186,18 @@ export async function build(dir: string): Promise<BuildResult> {
 
   const redirects = nextJsRedirects
     .filter(isRedirectSupportedByHosting)
-    .map(({ source, destination, statusCode: type }) => ({
-      // clean up unnecessary escaping
-      source: cleanEscapedChars(source),
-      destination,
-      type,
-    }));
+    .map(({ source, destination, statusCode: type }) => {
+      if (nextjsI18n) {
+        source = cleanCustomRouteI18n(source);
+      }
+
+      return {
+        // clean up unnecessary escaping
+        source: cleanEscapedChars(source),
+        destination,
+        type,
+      };
+    });
 
   const nextJsRewritesToUse = getNextjsRewritesToUse(nextJsRewrites);
 
@@ -204,11 +217,17 @@ export async function build(dir: string): Promise<BuildResult> {
   // Can we change i18n into Firebase settings?
   const rewrites = nextJsRewritesToUse
     .filter(isRewriteSupportedByHosting)
-    .map(({ source, destination }) => ({
-      // clean up unnecessary escaping
-      source: cleanEscapedChars(source),
-      destination,
-    }));
+    .map(({ source, destination }) => {
+      if (nextjsI18n) {
+        source = cleanCustomRouteI18n(source);
+      }
+
+      return {
+        // clean up unnecessary escaping
+        source: cleanEscapedChars(source),
+        destination,
+      };
+    });
 
   const wantsBackend = reasonsForBackend.length > 0;
 
