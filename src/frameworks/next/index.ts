@@ -162,6 +162,10 @@ export async function build(dir: string): Promise<BuildResult> {
     i18n: nextjsI18n,
   } = manifest;
 
+  if (nextjsI18n?.domains) {
+    throw new FirebaseError("Next.js domain routing i18n is not supported");
+  }
+
   const isEveryHeaderSupported = nextJsHeaders.every(isHeaderSupportedByHosting);
   if (!isEveryHeaderSupported) {
     reasonsForBackend.push("advanced headers");
