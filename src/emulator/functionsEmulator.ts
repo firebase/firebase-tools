@@ -41,7 +41,7 @@ import { EmulatorLogger, Verbosity } from "./emulatorLogger";
 import { RuntimeWorker, RuntimeWorkerPool } from "./functionsRuntimeWorker";
 import { PubsubEmulator } from "./pubsubEmulator";
 import { FirebaseError } from "../error";
-import { WorkQueue } from "./workQueue";
+import { WorkQueue, Work } from "./workQueue";
 import { allSettled, connectableHostname, createDestroyer, debounce } from "../utils";
 import { getCredentialPathAsync } from "../defaultCredentials";
 import {
@@ -269,9 +269,11 @@ export class FunctionsEmulator implements EmulatorInstance {
     const listBackendsRoute = `/backends`;
 
     const httpsHandler: express.RequestHandler = (req, res) => {
-      this.workQueue.submit(() => {
+      const work: Work = () => {
         return this.handleHttpsTrigger(req, res);
-      });
+      };
+      work.type = `${req.path}-${new Date().toISOString()}`;
+      this.workQueue.submit(work);
     };
 
     const multicastHandler: express.RequestHandler = (req: express.Request, res) => {
@@ -291,7 +293,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
       const { host, port } = this.getInfo();
       triggers.forEach((triggerId) => {
-        this.workQueue.submit(() => {
+        const work: Work = () => {
           return new Promise<void>((resolve, reject) => {
             const trigReq = http.request({
               host: connectableHostname(host),
@@ -305,7 +307,9 @@ export class FunctionsEmulator implements EmulatorInstance {
             trigReq.end();
             resolve();
           });
-        });
+        };
+        work.type = `${triggerId}-${new Date().toISOString()}`;
+        this.workQueue.submit(work);
       });
       res.json({ status: "multicast_acknowledged" });
     };
@@ -457,8 +461,8 @@ export class FunctionsEmulator implements EmulatorInstance {
       await runtimeDelegate.validate();
       logger.debug(`Building ${runtimeDelegate.name} source`);
       await runtimeDelegate.build();
-      logger.debug(`Analyzing ${runtimeDelegate.name} backend spec`);
-      // Don't include user envs when parsing triggers, but we need some of the options for handling params
+
+      // Don't include user envs when parsing triggers. Do include user envs when resolving parameter values
       const firebaseConfig = this.getFirebaseConfig();
       const environment = {
         ...this.getSystemEnvs(),
@@ -471,12 +475,13 @@ export class FunctionsEmulator implements EmulatorInstance {
         projectId: this.args.projectId,
         projectAlias: this.args.projectAlias,
       };
+      const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
       const discoveredBuild = await runtimeDelegate.discoverBuild(runtimeConfig, environment);
       const resolution = await resolveBackend(
         discoveredBuild,
         JSON.parse(firebaseConfig),
         userEnvOpt,
-        environment
+        userEnvs
       );
       const discoveredBackend = resolution.backend;
       const endpoints = backend.allEndpoints(discoveredBackend);
@@ -653,10 +658,22 @@ export class FunctionsEmulator implements EmulatorInstance {
         this.logger.logLabeled("SUCCESS", `functions[${definition.id}]`, msg);
       }
     }
-
-    // In debug mode, we eagerly start a runtime process to allow debuggers to attach
+    // In debug mode, we eagerly start the runtime processes to allow debuggers to attach
     // before invoking a function.
     if (this.args.debugPort) {
+      // Since we're about to start a runtime to be shared by all the functions in this codebase,
+      // we need to make sure it has all the secrets used by any function in the codebase.
+      emulatableBackend.secretEnv = Object.values(
+        toSetup.reduce(
+          (acc: Record<string, backend.SecretEnvVar>, curr: EmulatedTriggerDefinition) => {
+            for (const secret of curr.secretEnvironmentVariables || []) {
+              acc[secret.key] = secret;
+            }
+            return acc;
+          },
+          {}
+        )
+      );
       await this.startRuntime(emulatableBackend);
     }
   }
@@ -1206,42 +1223,42 @@ export class FunctionsEmulator implements EmulatorInstance {
         );
       }
     }
-
-    if (trigger) {
-      const secrets: backend.SecretEnvVar[] = trigger.secretEnvironmentVariables || [];
-      const accesses = secrets
-        .filter((s) => !secretEnvs[s.key])
-        .map(async (s) => {
-          this.logger.logLabeled("INFO", "functions", `Trying to access secret ${s.secret}@latest`);
-          const value = await accessSecretVersion(
-            this.getProjectId(),
-            s.secret,
-            s.version ?? "latest"
-          );
-          return [s.key, value];
-        });
-      const accessResults = await allSettled(accesses);
-
-      const errs: string[] = [];
-      for (const result of accessResults) {
-        if (result.status === "rejected") {
-          errs.push(result.reason as string);
-        } else {
-          const [k, v] = result.value;
-          secretEnvs[k] = v;
-        }
-      }
-
-      if (errs.length > 0) {
-        this.logger.logLabeled(
-          "ERROR",
-          "functions",
-          "Unable to access secret environment variables from Google Cloud Secret Manager. " +
-            "Make sure the credential used for the Functions Emulator have access " +
-            `or provide override values in ${secretPath}:\n\t` +
-            errs.join("\n\t")
+    // Note - if trigger is undefined, we are loading in 'sequential' mode.
+    // In that case, we need to load all secrets for that codebase.
+    const secrets: backend.SecretEnvVar[] =
+      trigger?.secretEnvironmentVariables || backend.secretEnv;
+    const accesses = secrets
+      .filter((s) => !secretEnvs[s.key])
+      .map(async (s) => {
+        this.logger.logLabeled("INFO", "functions", `Trying to access secret ${s.secret}@latest`);
+        const value = await accessSecretVersion(
+          this.getProjectId(),
+          s.secret,
+          s.version ?? "latest"
         );
+        return [s.key, value];
+      });
+    const accessResults = await allSettled(accesses);
+
+    const errs: string[] = [];
+    for (const result of accessResults) {
+      if (result.status === "rejected") {
+        errs.push(result.reason as string);
+      } else {
+        const [k, v] = result.value;
+        secretEnvs[k] = v;
       }
+    }
+
+    if (errs.length > 0) {
+      this.logger.logLabeled(
+        "ERROR",
+        "functions",
+        "Unable to access secret environment variables from Google Cloud Secret Manager. " +
+          "Make sure the credential used for the Functions Emulator have access " +
+          `or provide override values in ${secretPath}:\n\t` +
+          errs.join("\n\t")
+      );
     }
 
     return secretEnvs;
@@ -1280,7 +1297,6 @@ export class FunctionsEmulator implements EmulatorInstance {
           "See https://yarnpkg.com/getting-started/migration#step-by-step for more information."
       );
     }
-
     const runtimeEnv = this.getRuntimeEnvs(backend, trigger);
     const secretEnvs = await this.resolveSecretEnvs(backend, trigger);
     const socketPath = getTemporarySocketPath();
@@ -1307,6 +1323,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       instanceId: backend.extensionInstanceId,
       ref: backend.extensionVersion?.ref,
     };
+
     const pool = this.workerPools[backend.codebase];
     const worker = pool.addWorker(trigger?.id, runtime, extensionLogInfo);
     await worker.waitForSocketReady();

@@ -343,7 +343,7 @@ export async function resolveParams(
 
 function populateDefaultParams(config: FirebaseConfig): Record<string, ParamValue> {
   const defaultParams: Record<string, ParamValue> = {};
-  if (config.databaseURL !== "") {
+  if (config.databaseURL && config.databaseURL !== "") {
     defaultParams["DATABASE_URL"] = new ParamValue(config.databaseURL, true, {
       string: true,
       boolean: false,
@@ -360,7 +360,7 @@ function populateDefaultParams(config: FirebaseConfig): Record<string, ParamValu
     boolean: false,
     number: false,
   });
-  if (config.storageBucket !== "") {
+  if (config.storageBucket && config.storageBucket !== "") {
     defaultParams["STORAGE_BUCKET"] = new ParamValue(config.storageBucket, true, {
       string: true,
       boolean: false,
