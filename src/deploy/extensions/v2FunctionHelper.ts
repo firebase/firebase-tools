@@ -13,9 +13,7 @@ const SERVICE_AGENT_ROLE = "roles/eventarc.eventReceiver";
  */
 export async function checkSpecForV2Functions(i: planner.InstanceSpec): Promise<boolean> {
   const extensionSpec = await planner.getExtensionSpec(i);
-  return (
-    extensionSpec.resources.some((r) => r.type === "firebaseextensions.v1beta.v2function")
-  );
+  return extensionSpec.resources.some((r) => r.type === "firebaseextensions.v1beta.v2function");
 }
 
 /**
