@@ -1,5 +1,5 @@
 import { execSync } from "child_process";
-import { mkdir, copyFile } from "fs/promises";
+import { mkdir, copyFile, readFile, writeFile } from "fs/promises";
 import { dirname, join } from "path";
 import type { NextConfig } from "next";
 import type { PrerenderManifest } from "next/dist/build";
@@ -22,7 +22,6 @@ import {
   SupportLevel,
 } from "..";
 import { promptOnce } from "../../prompt";
-import { logger } from "../../logger";
 import { FirebaseError } from "../../error";
 import {
   cleanEscapedChars,
@@ -344,25 +343,8 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
   const { distDir } = await getConfig(sourceDir);
   const packageJson = await readJSON(join(sourceDir, "package.json"));
   if (existsSync(join(sourceDir, "next.config.js"))) {
-    let esbuild;
-    try {
-      esbuild = await import("esbuild");
-    } catch (e: unknown) {
-      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-      logger.debug(`Failed to load 'esbuild': ${e}`);
-      throw new FirebaseError(
-        `Unable to find 'esbuild'. Install it into your local dev dependencies with 'npm i --save-dev esbuild''`
-      );
-    }
-    await esbuild.build({
-      bundle: true,
-      external: Object.keys(packageJson.dependencies),
-      absWorkingDir: sourceDir,
-      entryPoints: ["next.config.js"],
-      outfile: join(destDir, "next.config.js"),
-      target: `node${NODE_VERSION}`,
-      platform: "node",
-    });
+    const externals = Object.keys(packageJson.dependencies).map(it => `--external:${it}`).join(' ');
+    execSync(`npx --yes esbuild next.config.js --bundle --platform=node --target=node${NODE_VERSION} ${externals} --outdir=${destDir} --log-level=error`, { cwd: sourceDir });
   }
   if (await pathExists(join(sourceDir, "public"))) {
     await mkdir(join(destDir, "public"));
