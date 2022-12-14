@@ -357,9 +357,9 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
   const packageJson = await readJSON(join(sourceDir, "package.json"));
   if (existsSync(join(sourceDir, "next.config.js"))) {
     // Bundle their next.config.js with esbuild via NPX, pinned version was having troubles
-    // on m1 macs and we should avoid taking on any deps in firebase-tools
+    // on m1 macs, older Node versions, and eitherway we should avoid taking on any deps in firebase-tools
     // Alternatively I tried using @swc/spack and the webpack bundled into Next.js but was
-    // encountering difficulties with both of those alternatives
+    // encountering difficulties with both of those
     const externalArg = extractDeps(
       JSON.parse(execSync(`npm ls --omit=dev --all --json`, { cwd: sourceDir }).toString())
     )
