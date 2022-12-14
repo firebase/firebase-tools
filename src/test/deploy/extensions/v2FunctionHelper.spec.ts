@@ -51,7 +51,8 @@ describe("ensureNecessaryV2ApisAndRoles", () => {
       bindings: [GOOD_BINDING],
     });
 
-    expect(await v2FunctionHelper.ensureNecessaryV2ApisAndRoles({projectId: "project_id"})).to.not.throw;
+    expect(await v2FunctionHelper.ensureNecessaryV2ApisAndRoles({ projectId: "project_id" })).to.not
+      .throw;
 
     expect(getIamStub).to.have.been.calledWith("project_id");
     expect(setIamStub).to.not.have.been.called;
@@ -65,7 +66,8 @@ describe("ensureNecessaryV2ApisAndRoles", () => {
     });
     setIamStub.resolves();
 
-    expect(await v2FunctionHelper.ensureNecessaryV2ApisAndRoles({projectId: "project_id"})).to.not.throw;
+    expect(await v2FunctionHelper.ensureNecessaryV2ApisAndRoles({ projectId: "project_id" })).to.not
+      .throw;
 
     expect(getIamStub).to.have.been.calledWith("project_id");
     expect(setIamStub).to.have.been.calledWith(
