@@ -1,5 +1,5 @@
 import { execSync } from "child_process";
-import { mkdir, copyFile, readFile, writeFile } from "fs/promises";
+import { mkdir, copyFile } from "fs/promises";
 import { dirname, join } from "path";
 import type { NextConfig } from "next";
 import type { PrerenderManifest } from "next/dist/build";
@@ -336,6 +336,13 @@ export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: strin
   }
 }
 
+function extractDeps(ls: any): string[] {
+  return Object.keys(ls?.dependencies || []).reduce(
+    (acc, it) => [...acc, it, ...extractDeps(ls.dependencies[it])],
+    [] as string[]
+  );
+}
+
 /**
  * Create a directory for SSR content.
  */
@@ -343,8 +350,14 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
   const { distDir } = await getConfig(sourceDir);
   const packageJson = await readJSON(join(sourceDir, "package.json"));
   if (existsSync(join(sourceDir, "next.config.js"))) {
-    const externals = Object.keys(packageJson.dependencies).map(it => `--external:${it}`).join(' ');
-    execSync(`npx --yes esbuild next.config.js --bundle --platform=node --target=node${NODE_VERSION} ${externals} --outdir=${destDir} --log-level=error`, { cwd: sourceDir });
+    const deps = extractDeps(
+      JSON.parse(execSync(`npm ls --omit=dev --all --json`, { cwd: sourceDir }).toString())
+    );
+    const externals = deps.map((it) => `--external:${it}`).join(" ");
+    execSync(
+      `npx --yes esbuild next.config.js --bundle --platform=node --target=node${NODE_VERSION} ${externals} --outdir=${destDir} --log-level=error`,
+      { cwd: sourceDir }
+    );
   }
   if (await pathExists(join(sourceDir, "public"))) {
     await mkdir(join(destDir, "public"));
