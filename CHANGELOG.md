@@ -3,3 +3,4 @@
 - Support Next.js Middleware (#5320)
 - Log the reason for a Cloud Function if needed in Next.js (#5320)
 - Fixed service enablement when installing extensions with v2 functions (#5338)
+- Fixed bug with Cross-Service Rules integration for Firestore documents containing nulls (#5342)
