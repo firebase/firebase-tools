@@ -116,7 +116,7 @@ export interface FunctionsEmulatorArgs {
   quiet?: boolean;
   disabledRuntimeFeatures?: FunctionsRuntimeFeatures;
   debugPort?: number;
-  remoteEmulators?: { [key: string]: EmulatorInfo };
+  remoteEmulators?: Record<string, EmulatorInfo>;
   adminSdkConfig?: AdminSdkConfig;
   projectAlias?: string;
 }
@@ -1160,7 +1160,11 @@ export class FunctionsEmulator implements EmulatorInstance {
       enableCors: true,
     });
 
-    setEnvVarsForEmulators(envs);
+    let emulatorInfos = EmulatorRegistry.listRunningWithInfo();
+    if (this.args.remoteEmulators) {
+      emulatorInfos = emulatorInfos.concat(Object.values(this.args.remoteEmulators));
+    }
+    setEnvVarsForEmulators(envs, emulatorInfos);
 
     if (this.args.debugPort) {
       // Start runtime in debug mode to allow triggers to share single runtime process.
