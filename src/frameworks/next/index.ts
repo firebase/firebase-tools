@@ -1,4 +1,4 @@
-import { execSync } from "child_process";
+import { execSync, spawnSync } from "child_process";
 import { mkdir, copyFile } from "fs/promises";
 import { dirname, join } from "path";
 import type { NextConfig } from "next";
@@ -349,7 +349,9 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
     // Alternatively I tried using @swc/spack and the webpack bundled into Next.js but was
     // encountering difficulties with both of those
     const dependencyTree: NpmLsReturn = JSON.parse(
-      execSync(`npm ls --omit=dev --all --json`, { cwd: sourceDir }).toString()
+      spawnSync("npm", ["ls", "--omit=dev", "--all", "--json"], {
+        cwd: sourceDir,
+      }).stdout.toString()
     );
     // Mark all production deps as externals, so they aren't bundled
     // DevDeps won't be included in the Cloud Function, so they should be bundled
