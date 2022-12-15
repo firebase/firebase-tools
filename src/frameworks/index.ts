@@ -51,7 +51,8 @@ export interface Framework {
   support: SupportLevel;
   init?: (setup: any) => Promise<void>;
   getDevModeHandle?: (
-    dir: string
+    dir: string,
+    hostingEmulatorInfo?: EmulatorInfo
   ) => Promise<(req: IncomingMessage, res: ServerResponse, next: () => void) => void>;
   ɵcodegenPublicDirectory: (dir: string, dest: string) => Promise<void>;
   ɵcodegenFunctionsDirectory?: (
@@ -382,8 +383,13 @@ export async function prepareFrameworks(
     console.log(`Detected a ${name} codebase. ${SupportLevelWarnings[support] || ""}\n`);
     // TODO allow for override
     const isDevMode = context._name === "serve" || context._name === "emulators:start";
+
+    const hostingEmulatorInfo = emulators.find((e) => e.name === Emulators.HOSTING);
+
     const devModeHandle =
-      isDevMode && getDevModeHandle && (await getDevModeHandle(getProjectPath()));
+      isDevMode &&
+      getDevModeHandle &&
+      (await getDevModeHandle(getProjectPath(), hostingEmulatorInfo));
     let codegenFunctionsDirectory: Framework["ɵcodegenFunctionsDirectory"];
     if (devModeHandle) {
       config.public = relative(projectRoot, publicDirectory);
