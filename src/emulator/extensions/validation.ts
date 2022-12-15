@@ -80,6 +80,8 @@ export function checkForUnemulatedTriggerTypes(
             return !shouldStart(options, Emulators.AUTH);
           case Constants.SERVICE_STORAGE:
             return !shouldStart(options, Emulators.STORAGE);
+          case Constants.SERVICE_EVENTARC:
+            return !shouldStart(options, Emulators.EVENTARC);
           default:
             return true;
         }
