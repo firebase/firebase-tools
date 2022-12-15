@@ -363,8 +363,10 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
         `--target=node${NODE_VERSION}`,
         `--outdir=${destDir}`,
         "--log-level=error"
-      )
-    const bundle = spawnSync("npx", ["--yes", "esbuild", "next.config.js", ...esbuildArgs], { cwd: sourceDir });
+      );
+    const bundle = spawnSync("npx", ["--yes", "esbuild", "next.config.js", ...esbuildArgs], {
+      cwd: sourceDir,
+    });
     if (bundle.status) {
       console.error(bundle.stderr.toString());
       throw new FirebaseError("Unable to bundle next.config.js for use in Cloud Functions");
