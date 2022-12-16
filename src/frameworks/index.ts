@@ -519,6 +519,10 @@ ${firebaseDefaults ? `__FIREBASE_DEFAULTS__=${JSON.stringify(firebaseDefaults)}\
         // continue
       });
 
+      if (await pathExists(getProjectPath(".npmrc"))) {
+        await copyFile(getProjectPath(".npmrc"), join(functionsDist, ".npmrc"));
+      }
+
       execSync(`${NPM_COMMAND} i --omit dev --no-audit`, {
         cwd: functionsDist,
         stdio: "inherit",
