@@ -4,3 +4,4 @@ export * from "./redirects";
 export * from "./rewrites";
 export * from "./images";
 export * from "./middleware";
+export * from "./npm";
