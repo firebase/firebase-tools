@@ -16,7 +16,7 @@ interface NpmShowResult {
 }
 
 const MIN_SDK_VERSION = "2.0.0";
-const NPM_COMMAND_TIMEOUT_MILLIES = 3000;
+const NPM_COMMAND_TIMEOUT_MILLIES = 10000;
 
 export const FUNCTIONS_SDK_VERSION_TOO_OLD_WARNING =
   clc.bold(clc.yellow("functions: ")) +
