@@ -812,8 +812,8 @@ export async function startAll(
     }
   }
 
-  if (shouldStart(options, Emulators.REMOTE_CONFIG)) {
-    const rcAddr = await legacyGetFirstAddr(Emulators.REMOTE_CONFIG);
+  if (listenForEmulator.remoteconfig) {
+    const rcAddr = legacyGetFirstAddr(Emulators.REMOTE_CONFIG);
     const rcConfig = options.config.data.remoteconfig;
 
     if (!rcConfig?.template) {
