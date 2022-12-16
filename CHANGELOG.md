@@ -6,3 +6,4 @@
 - Log the reason for a Cloud Function if needed in Next.js (#5320)
 - Fixed service enablement when installing extensions with v2 functions (#5338)
 - Fix bug where functions:shell command didn't connect to emulators running on other processes. (#5269)
+- Fixed bug with Cross-Service Rules integration for Firestore documents containing nulls (#5342)
