@@ -80,6 +80,10 @@ export const ALL_EXPERIMENTS = experiments({
   emulatorapphosting: {
     shortDescription: "App Hosting emulator",
     public: false,
+  rcemulator: {
+    shortDescription: "Enable the Remote Config Emulator",
+    public: true,
+    default: false,
   },
 
   // Hosting experiments
