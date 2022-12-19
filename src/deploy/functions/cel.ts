@@ -140,7 +140,7 @@ function resolveList(
   params: Record<string, ParamValue>
 ): string[] {
   if (!list.startsWith("[") || !list.endsWith("]")) {
-    throw new ExprParseError("");
+    throw new ExprParseError("Invalid list: must start with '[' and end with ']'");
   } else if (list === "[]") {
     return [];
   }
