@@ -580,7 +580,7 @@ async function promptBooleanParam(
     prompt += "\nSelect an option with the arrow keys, and use Enter to confirm your choice. ";
     return promptSelect<boolean>(prompt, param.input, resolvedDefault, isTruthyInput);
   } else if (isMultiSelectInput(param.input)) {
-    throw new FirebaseError("Non-list params cannot have list selector inputs");
+    throw new FirebaseError("Non-list params cannot have multi selector inputs");
   } else if (isTextInput(param.input)) {
     prompt = `Enter a boolean value for ${param.label || param.name}:`;
     if (param.description) {
