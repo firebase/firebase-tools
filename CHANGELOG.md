@@ -1,3 +1,4 @@
+- Support for string list typed parameters in functions deployment (#5137)
 - Respect .npmrc in backends spun up for web frameworks (#5235)
 - Remove esbuild dependency, instead bundle Next.js configuration on deploy with NPX (#5336)
 - Add sharp NPM module to Cloud Functions when using Next.js Image Optimization (#5238)
