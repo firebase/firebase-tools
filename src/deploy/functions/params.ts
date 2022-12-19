@@ -144,7 +144,7 @@ export function isResourceInput<T>(input: ParamInput<T>): input is ResourceInput
   return {}.hasOwnProperty.call(input, "resource");
 }
 /**
- * Determines whether an Input field value can be coerced to ListSelectInput.
+ * Determines whether an Input field value can be coerced to MultiSelectInput.
  */
 export function isMultiSelectInput<T>(input: ParamInput<T>): input is MultiSelectInput {
   return {}.hasOwnProperty.call(input, "multiSelect");
