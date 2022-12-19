@@ -1,6 +1,9 @@
-- Fix bug where disabling background triggers did nothing. (#5221)
-- Fix bug in auth emulator where empty string should throw invalid email instead of missing email. (#3898)
-- Fix bug in auth emulator in which createdAt was not set for signInWithIdp new users. (#5203)
-- Default to --no-localhost when calling login from Google Cloud Workstations
-- Support the x-goog-api-key header in auth emulator. (#5249)
-- Fix bug where function deployments using --only filter sometimes failed deployments. (#5280)
+- Respect .npmrc in backends spun up for web frameworks (#5235)
+- Remove esbuild dependency, instead bundle Next.js configuration on deploy with NPX (#5336)
+- Add sharp NPM module to Cloud Functions when using Next.js Image Optimization (#5238)
+- Adds user-defined env vars into the functions emulator (#5330).
+- Support Next.js Middleware (#5320)
+- Log the reason for a Cloud Function if needed in Next.js (#5320)
+- Fixed service enablement when installing extensions with v2 functions (#5338)
+- Fix bug where functions:shell command didn't connect to emulators running on other processes. (#5269)
+- Fixed bug with Cross-Service Rules integration for Firestore documents containing nulls (#5342)

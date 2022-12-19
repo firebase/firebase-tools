@@ -65,9 +65,9 @@ export class Delegate {
   // Using a caching interface because we (may/will) eventually depend on the SDK version
   // to decide whether to use the JS export method of discovery or the HTTP container contract
   // method of discovery.
-  _sdkVersion = "";
+  _sdkVersion: string | undefined = undefined;
   get sdkVersion() {
-    if (!this._sdkVersion) {
+    if (this._sdkVersion === undefined) {
       this._sdkVersion = versioning.getFunctionsSDKVersion(this.sourceDir) || "";
     }
     return this._sdkVersion;
