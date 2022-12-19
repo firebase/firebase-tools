@@ -609,6 +609,48 @@ describe("buildFromV1Alpha", () => {
       expect(parsed).to.deep.equal(expected);
     });
 
+    it("allows both CEL and lists containing CEL in FieldList typed keys", () => {
+      const yamlCEL: v1alpha1.WireManifest = {
+        specVersion: "v1alpha1",
+        endpoints: {
+          id: {
+            ...MIN_WIRE_ENDPOINT,
+            httpsTrigger: {},
+            region: "{{ params.REGION }}",
+          },
+        },
+      };
+      const parsedCEL = v1alpha1.buildFromV1Alpha1(yamlCEL, PROJECT, REGION, RUNTIME);
+      const expectedCEL: build.Build = build.of({
+        id: {
+          ...DEFAULTED_ENDPOINT,
+          region: "{{ params.REGION }}",
+          httpsTrigger: {},
+        },
+      });
+      expect(parsedCEL).to.deep.equal(expectedCEL);
+
+      const yamlList: v1alpha1.WireManifest = {
+        specVersion: "v1alpha1",
+        endpoints: {
+          id: {
+            ...MIN_WIRE_ENDPOINT,
+            httpsTrigger: {},
+            region: ["{{ params.FOO }}", "BAR", "params.BAZ"],
+          },
+        },
+      };
+      const parsedList = v1alpha1.buildFromV1Alpha1(yamlList, PROJECT, REGION, RUNTIME);
+      const expectedList: build.Build = build.of({
+        id: {
+          ...DEFAULTED_ENDPOINT,
+          region: ["{{ params.FOO }}", "BAR", "params.BAZ"],
+          httpsTrigger: {},
+        },
+      });
+      expect(parsedList).to.deep.equal(expectedList);
+    });
+
     it("copies schedules", () => {
       const scheduleTrigger: build.ScheduleTrigger = {
         schedule: "every 5 minutes",
