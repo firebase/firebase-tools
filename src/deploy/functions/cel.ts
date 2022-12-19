@@ -475,7 +475,9 @@ function resolveLiteral(wantType: L, value: string): Literal {
     }
     for (const shouldBeString of parsed) {
       if (typeof shouldBeString !== "string") {
-        throw new ExprParseError(`Evaluated CEL list ${JSON.stringify(parsed)} contained non-string values`);
+        throw new ExprParseError(
+          `Evaluated CEL list ${JSON.stringify(parsed)} contained non-string values`
+        );
       }
     }
     return parsed as string[];
