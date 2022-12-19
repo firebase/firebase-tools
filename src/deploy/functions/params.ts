@@ -654,7 +654,7 @@ async function promptIntParam(param: IntParam, resolvedDefault?: number): Promis
       return +res;
     });
   } else if (isMultiSelectInput(param.input)) {
-    throw new FirebaseError("Non-list params cannot have list selector inputs");
+    throw new FirebaseError("Non-list params cannot have multi selector inputs");
   } else if (isTextInput(param.input)) {
     prompt = `Enter an integer value for ${param.label || param.name}:`;
     if (param.description) {
