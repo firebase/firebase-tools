@@ -158,7 +158,7 @@ function resolveList(
       if (!paramMatch) {
         throw new ExprParseError(`Malformed list component ${trimmed}`);
       } else if (!(paramMatch[1] in params)) {
-        throw new ExprParseError("");
+        throw new ExprParseError(`List expansion referenced nonexistent param ${paramMatch[1]}`);
       }
       rv.push(resolveParamListOrLiteral("string", trimmed, params) as string);
     }
@@ -471,11 +471,11 @@ function resolveLiteral(wantType: L, value: string): Literal {
     // by the preprocessLists() invocation at the beginning of CEL resolution
     const parsed = JSON.parse(value);
     if (!Array.isArray(parsed)) {
-      throw new ExprParseError("");
+      throw new ExprParseError(`CEL tried to read non-list ${JSON.stringify(parsed)} as a list`);
     }
     for (const shouldBeString of parsed) {
       if (typeof shouldBeString !== "string") {
-        throw new ExprParseError("");
+        throw new ExprParseError(`Evaluated CEL list ${JSON.stringify(parsed)} contained non-string values`);
       }
     }
     return parsed as string[];
