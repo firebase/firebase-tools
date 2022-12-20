@@ -3,6 +3,9 @@ import * as admin from "firebase-admin";
 import { Firestore } from "@google-cloud/firestore";
 import * as fs from "fs";
 import * as path from "path";
+import { PubSub } from "@google-cloud/pubsub";
+
+const pubsub = new PubSub();
 
 import { FrameworkOptions, TriggerEndToEndTest } from "../integration-helpers/framework";
 
@@ -171,6 +174,104 @@ describe("function triggers", () => {
       expect(test.success()).to.equal(true);
     });
   });
+
+  describe("reproCase", () => {
+    const subscription = pubsub.subscription("myTopic");
+    before(() => {
+      const newLocal = "myTopic";
+      return pubsub
+        .topic("myTopic")
+        .create()
+        .then(() => pubsub.topic("myTopic").subscription(newLocal).create());
+    });
+    afterEach(() => {
+      return subscription.seek(new Date());
+    });
+    after(() => {
+      return subscription.close().then(() =>
+        pubsub
+          .topic("myTopic")
+          .subscription("myTopic")
+          .delete()
+          .then(() => pubsub.topic("myTopic").delete())
+      );
+    });
+    it("should publish a message", async () => {
+      const messagePayload = Buffer.from(
+        JSON.stringify({
+          eventName: "event1",
+        })
+      );
+      await pubsub.topic("myTopic").publish(messagePayload);
+      await awaitMessages({ subscription, numberOfMessages: 1 }).then((messages) => {
+        const [message] = messages;
+        expect(message.eventName).to.equal("event1");
+      });
+    });
+    it("should publish another message", async () => {
+      const messagePayload = Buffer.from(
+        JSON.stringify({
+          eventName: "event2",
+        })
+      );
+      await pubsub.topic("myTopic").publish(messagePayload);
+      await awaitMessages({ subscription, numberOfMessages: 1 }).then((messages) => {
+        const [message] = messages;
+        expect(message.eventName).to.equal("event2");
+      });
+    });
+  });
+
+  function awaitMessages({ subscription, numberOfMessages = 1 }) {
+    let timeout;
+    const messages = [];
+    return new Promise((resolve, reject) => {
+      // Listen for new messages until timeout is hit
+      const messageHandler = (message) => {
+        message.ack();
+        messages.push(message);
+        if (messages.length >= numberOfMessages) {
+          setTimeout(() => {
+            subscription.removeListener("message", messageHandler);
+            subscription.removeListener("error", errorHandler);
+            subscription.removeListener("close", closeHandler);
+            if (messages.length > numberOfMessages) {
+              reject(
+                new Error(
+                  `Error. Received ${messages.length} messages instead of ${numberOfMessages}`
+                )
+              );
+            } else {
+              resolve(messages);
+            }
+          }, 2000);
+        }
+      };
+      const errorHandler = (error) => {
+        subscription.removeListener("message", messageHandler);
+        subscription.removeListener("error", errorHandler);
+        subscription.removeListener("close", closeHandler);
+        clearTimeout(timeout);
+        reject(error);
+      };
+      const closeHandler = (error) => {
+        subscription.removeListener("message", messageHandler);
+        subscription.removeListener("error", errorHandler);
+        subscription.removeListener("close", closeHandler);
+        clearTimeout(timeout);
+        reject(error);
+      };
+      subscription.on("message", messageHandler);
+      subscription.on("error", errorHandler);
+      subscription.on("close", closeHandler);
+      timeout = setTimeout(() => {
+        subscription.removeListener("message", messageHandler);
+        subscription.removeListener("error", errorHandler);
+        subscription.removeListener("close", closeHandler);
+        reject(new Error(`timed out waiting for messages from ${subscription.name}`));
+      }, 20000);
+    });
+  }
 
   describe("pubsub emulator triggered functions", () => {
     it("should write to the pubsub emulator", async function (this) {
