@@ -55,3 +55,10 @@ export function parseFieldName(name: string): FieldName {
     fieldPath: m[3],
   };
 }
+
+/**
+ * Performs XOR operator between two boolean values
+ */
+export function booleanXOR(a: boolean, b: boolean): boolean {
+  return !!(Number(a) - Number(b));
+}

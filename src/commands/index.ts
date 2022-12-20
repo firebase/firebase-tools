@@ -143,6 +143,11 @@ export function load(client: any): any {
   client.hosting.sites.get = loadCommand("hosting-sites-get");
   client.hosting.sites.list = loadCommand("hosting-sites-list");
   client.init = loadCommand("init");
+  if (experiments.isEnabled("internaltesting")) {
+    client.internaltesting = {};
+    client.internaltesting.functions = {};
+    client.internaltesting.functions.discover = loadCommand("internaltesting-functions-discover");
+  }
   client.login = loadCommand("login");
   client.login.add = loadCommand("login-add");
   client.login.ci = loadCommand("login-ci");

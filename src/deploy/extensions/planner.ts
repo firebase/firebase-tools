@@ -215,6 +215,7 @@ export async function resolveVersion(ref: refs.Ref): Promise<string> {
   }
   if (!ref.version || ref.version === "latest") {
     return versions
+      .filter((ev) => ev.spec.version !== undefined)
       .map((ev) => ev.spec.version)
       .sort(semver.compare)
       .pop()!;
