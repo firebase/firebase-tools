@@ -8,10 +8,10 @@ introduced in the following PRs:
 
 # Running Instructions
 
-Install dependencies:
+From the firebase-tools folder, install dependencies:
 
 ```
-cd firebase-tools/scripts/triggers-end-to-end-tests && npm install
+$ (cd scripts/triggers-end-to-end-tests && npm install)
 ```
 
 Run the test:
