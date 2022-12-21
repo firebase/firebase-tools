@@ -3,7 +3,7 @@ import * as prepareFunctionsUpload from "../../../deploy/functions/prepareFuncti
 
 describe("prepareFunctionsUpload", () => {
   describe("convertToSortedKeyValueArray", () => {
-    it("should deep sorts resulting array when an input config object is not sorted", () => {
+    it("should deep sort the resulting array when an input config object is not sorted", () => {
       const config = {
         b: "b",
         a: {
