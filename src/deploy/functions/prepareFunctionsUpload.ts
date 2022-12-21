@@ -91,8 +91,10 @@ async function packageSource(
     }
     if (typeof runtimeConfig !== "undefined") {
       // In order for hash to be consistent, configuration object tree must be sorted by key, only possible with arrays.
-      const runtimeConfigString = JSON.stringify(convertToSortedKeyValueArray(runtimeConfig));
-      hashes.push(runtimeConfigString);
+      const runtimeConfigHashString = JSON.stringify(convertToSortedKeyValueArray(runtimeConfig));
+      hashes.push(runtimeConfigHashString);
+
+      const runtimeConfigString = JSON.stringify(runtimeConfig, null, 2);
       archive.append(runtimeConfigString, {
         name: CONFIG_DEST_FILE,
         mode: 420 /* 0o644 */,
@@ -129,8 +131,8 @@ export async function prepareFunctionsUpload(
   return packageSource(sourceDir, config, runtimeConfig);
 }
 
-function convertToSortedKeyValueArray(config: any): SortedConfig {
-  if (typeof config !== "object") return config;
+export function convertToSortedKeyValueArray(config: any): SortedConfig {
+  if (typeof config !== "object" || config === null) return config;
 
   return Object.keys(config)
     .sort()
