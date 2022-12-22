@@ -8,7 +8,6 @@ import { PubSub, Subscription, Message } from "@google-cloud/pubsub";
 const pubsub = new PubSub();
 
 import { FrameworkOptions, TriggerEndToEndTest } from "../integration-helpers/framework";
-import { Hash } from "crypto";
 
 const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "";
 const ADMIN_CREDENTIAL = {
