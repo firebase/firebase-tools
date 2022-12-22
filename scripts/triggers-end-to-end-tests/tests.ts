@@ -59,13 +59,13 @@ describe("function triggers", () => {
     firestore = new Firestore({
       port: test.firestoreEmulatorPort,
       projectId: FIREBASE_PROJECT,
-      servicePath: "localhost",
+      servicePath: "127.0.0.1",
       ssl: false,
     });
 
     admin.initializeApp({
       projectId: FIREBASE_PROJECT,
-      databaseURL: `http://localhost:${test.rtdbEmulatorPort}?ns=${FIREBASE_PROJECT}`,
+      databaseURL: `http://127.0.0.1:${test.rtdbEmulatorPort}?ns=${FIREBASE_PROJECT}`,
       credential: ADMIN_CREDENTIAL,
     });
 
