@@ -456,6 +456,17 @@ function addEmulatorOperations(openapi3: any): void {
         },
         type: "object",
       },
+      notification: {
+        properties: {
+          sendEmail: {
+            properties: { 
+              callbackUri: { type: "string" },
+            },
+            type: "object",
+          },
+        },
+        type: "object",
+      },
     },
   };
   openapi3.paths["/emulator/v1/projects/{targetProjectId}/oobCodes"] = {

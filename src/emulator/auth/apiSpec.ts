@@ -7614,6 +7614,12 @@ export default {
         description: "Emulator-specific configuration.",
         properties: {
           signIn: { properties: { allowDuplicateEmails: { type: "boolean" } }, type: "object" },
+          notification: {
+            properties: {
+              sendEmail: { properties: { callbackUri: { type: "string" } }, type: "object" },
+            },
+            type: "object",
+          },
         },
       },
       EmulatorV1ProjectsOobCodes: {

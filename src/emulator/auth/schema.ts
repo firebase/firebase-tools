@@ -3021,7 +3021,10 @@ export interface components {
     /**
      * Emulator-specific configuration.
      */
-    EmulatorV1ProjectsConfig: { signIn?: { allowDuplicateEmails?: boolean } };
+    EmulatorV1ProjectsConfig: {
+      signIn?: { allowDuplicateEmails?: boolean };
+      notification?: { sendEmail?: { callbackUri?: string } };
+    };
     /**
      * Details of all pending confirmation codes.
      */
