@@ -74,7 +74,7 @@ export class PubsubEmulator implements EmulatorInstance {
       await downloadableEmulators.stop(Emulators.PUBSUB);
     } catch (e: unknown) {
       this.logger.logLabeled("DEBUG", "pubsub", JSON.stringify(e));
-      if (process.platform === "win32") {
+      if (process.platform !== "win32") {
         exec(PUBSUB_KILL_COMMAND, (err, stdout) => {
           if (err) {
             this.logger.logLabeled("DEBUG", "pubsub", JSON.stringify(err));
