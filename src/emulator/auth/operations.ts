@@ -1231,11 +1231,11 @@ function createOobRecord(
   }
 ): OobRecord {
   const oobRecord = state.createOob(email, params.requestType, (oobCode) => {
+    if (state.customAuthActionUri) url = new URL(state.customAuthActionUri);
     url.pathname = "/emulator/action";
     url.searchParams.set("mode", params.mode);
     url.searchParams.set("lang", "en");
     url.searchParams.set("oobCode", oobCode);
-    // TODO: Support custom handler links.
 
     // This doesn't matter for now, since any API key works for defaultProject.
     // TODO: What if reqBody.targetProjectId is set?
