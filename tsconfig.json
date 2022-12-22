@@ -9,6 +9,7 @@
     "allowSyntheticDefaultImports": true,
     "target": "es2017",
     "sourceMap": true,
+    "experimentalDecorators": true,
     "typeRoots": [
       "node_modules/@types",
       "src/types"

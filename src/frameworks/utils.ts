@@ -2,6 +2,55 @@ import { readJSON as originalReadJSON } from "fs-extra";
 import type { ReadOptions } from "fs-extra";
 import { join } from "path";
 import { readFile } from "fs/promises";
+import { isEqual } from "lodash";
+import { Discovery, Framework, FrameworkType, SupportLevel, WebFrameworks } from ".";
+
+export interface FrameworkStatic {
+  bootstrap?: (setup: any) => Promise<void>;
+  discover: (dir: string) => Promise<Discovery | undefined>;
+  initialize: (...args: any[]) => Promise<Framework>;
+}
+
+export interface FrameworkMetadata {
+  name: string;
+  key: string;
+  support: SupportLevel;
+  type: FrameworkType;
+}
+
+export function webFramework(config: FrameworkMetadata) {
+  return function (constructor: Function & FrameworkStatic) {
+    WebFrameworks.push({ ...config, constructor });
+  };
+}
+
+const keys: Array<[klass: any, deps: any[], weakMapKey: {}]> = [];
+const memo = new WeakMap();
+
+export function memoize(...depKeys: string[]) {
+  return (target: Object, propertyKey: string, descriptor: TypedPropertyDescriptor<any>) => {
+    const memozied = (original: any) =>
+      function (this: any, ...args: any[]) {
+        const deps = [propertyKey, ...depKeys.map((key) => this[key]), ...args];
+        const scope = typeof target === "object" && depKeys.length ? this.constructor : this;
+        let key = keys.find(
+          ([cachedScope, cachedDeps]) => cachedScope === scope && isEqual(cachedDeps, deps)
+        )?.[2];
+        if (!key) {
+          key = {}; // weakmap uses objects as keys
+          keys.push([scope, deps, key]);
+        }
+        const cacheHit = memo.get(key);
+        if (cacheHit) return cacheHit;
+        const cacheMiss = original.apply(this, ...args);
+        memo.set(key, cacheMiss);
+        return cacheMiss;
+      };
+    if ("value" in descriptor) descriptor.value = memozied(descriptor.value);
+    if ("get" in descriptor) descriptor.get = memozied(descriptor.get);
+    return descriptor;
+  };
+}
 
 /**
  * Whether the given string starts with http:// or https://

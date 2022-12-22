@@ -26,6 +26,8 @@ import { HostingRewrites } from "../firebaseConfig";
 import * as experiments from "../experiments";
 import { ensureTargeted } from "../functions/ensureTargeted";
 import { implicitInit } from "../hosting/implicitInit";
+import { BuildTarget } from "./next";
+import { FrameworkMetadata, FrameworkStatic, readJSON } from "./utils";
 
 // Use "true &&"" to keep typescript from compiling this file and rewriting
 // the import statement into a require
@@ -44,25 +46,9 @@ export interface BuildResult {
 }
 
 export interface Framework {
-  discover: (dir: string) => Promise<Discovery | undefined>;
-  type: FrameworkType;
-  name: string;
-  build: (dir: string) => Promise<BuildResult | void>;
-  support: SupportLevel;
-  init?: (setup: any) => Promise<void>;
-  getDevModeHandle?: (
-    dir: string,
-    hostingEmulatorInfo?: EmulatorInfo
-  ) => Promise<(req: IncomingMessage, res: ServerResponse, next: () => void) => void>;
-  ɵcodegenPublicDirectory: (dir: string, dest: string) => Promise<void>;
-  ɵcodegenFunctionsDirectory?: (
-    dir: string,
-    dest: string
-  ) => Promise<{
-    bootstrapScript?: string;
-    packageJson: any;
-    frameworksEntry?: string;
-  }>;
+  build: () => Promise<void>;
+  generateFilesystemAPI: (...args: any[]) => Promise<void>;
+  wantsBackend: () => Promise<boolean>;
 }
 
 // TODO pull from @firebase/util when published
@@ -116,14 +102,13 @@ const DEFAULT_FIND_DEP_OPTIONS: FindDepOptions = {
 
 const NPM_COMMAND = process.platform === "win32" ? "npm.cmd" : "npm";
 
-export const WebFrameworks: Record<string, Framework> = Object.fromEntries(
-  readdirSync(__dirname)
-    .filter((path) => statSync(join(__dirname, path)).isDirectory())
-    .map((path) => [path, require(join(__dirname, path))])
-    .filter(
-      ([, obj]) => obj.name && obj.discover && obj.build && obj.type !== undefined && obj.support
-    )
-);
+export const WebFrameworks: Array<FrameworkMetadata & { constructor: FrameworkStatic }> = [];
+
+// Require all the directories that way we trip the @WebFramework
+// decorator which will add to the lookup table
+readdirSync(__dirname)
+  .filter((path) => statSync(join(__dirname, path)).isDirectory())
+  .map((path) => [path, require(join(__dirname, path))]);
 
 export function relativeRequire(
   dir: string,
@@ -184,18 +169,17 @@ export function relativeRequire(dir: string, mod: string) {
  *
  */
 export async function discover(dir: string, warn = true) {
-  const allFrameworkTypes = [
-    ...new Set(Object.values(WebFrameworks).map(({ type }) => type)),
-  ].sort();
+  const allFrameworkTypes = [...new Set(WebFrameworks.map(({ type }) => type))].sort();
   for (const discoveryType of allFrameworkTypes) {
     const frameworksDiscovered = [];
-    for (const framework in WebFrameworks) {
-      if (WebFrameworks[framework]) {
-        const { discover, type } = WebFrameworks[framework];
-        if (type !== discoveryType) continue;
-        const result = await discover(dir);
-        if (result) frameworksDiscovered.push({ framework, ...result });
-      }
+    for (const framework of WebFrameworks) {
+      const {
+        constructor: { discover },
+        type,
+      } = framework;
+      if (type !== discoveryType) continue;
+      const result = await discover(dir);
+      if (result) frameworksDiscovered.push({ framework, ...result });
     }
     if (frameworksDiscovered.length > 1) {
       if (warn) console.error("Multiple conflicting frameworks discovered.");
@@ -287,24 +271,21 @@ export async function prepareFrameworks(
     return;
   }
   for (const config of configs) {
-    const { source, site, public: publicDir } = config;
-    if (!source) {
+    const { source: sourcePath, site, public: publicPath } = config;
+    if (!sourcePath) {
       continue;
     }
-    config.rewrites ||= [];
-    config.redirects ||= [];
-    config.headers ||= [];
+    if (publicPath) {
+      throw new Error(`hosting.public and hosting.source cannot both be set in firebase.json`);
+    }
     config.cleanUrls ??= true;
     const dist = join(projectRoot, ".firebase", site);
     const hostingDist = join(dist, "hosting");
     const functionsDist = join(dist, "functions");
-    if (publicDir) {
-      throw new Error(`hosting.public and hosting.source cannot both be set in firebase.json`);
-    }
-    const getProjectPath = (...args: string[]) => join(projectRoot, source, ...args);
+    const sourceDir = join(projectRoot, sourcePath);
     const functionName = `ssr${site.toLowerCase().replace(/-/g, "")}`;
-    const usesFirebaseAdminSdk = !!findDependency("firebase-admin", { cwd: getProjectPath() });
-    const usesFirebaseJsSdk = !!findDependency("@firebase/app", { cwd: getProjectPath() });
+    const usesFirebaseAdminSdk = !!findDependency("firebase-admin", { cwd: sourceDir });
+    const usesFirebaseJsSdk = !!findDependency("@firebase/app", { cwd: sourceDir });
     if (usesFirebaseAdminSdk) {
       process.env.GOOGLE_CLOUD_PROJECT = project;
       if (account && !process.env.GOOGLE_APPLICATION_CREDENTIALS) {
@@ -369,54 +350,55 @@ export async function prepareFrameworks(
       }
     }
     if (firebaseDefaults) process.env.__FIREBASE_DEFAULTS__ = JSON.stringify(firebaseDefaults);
-    const results = await discover(getProjectPath());
+    const results = await discover(sourceDir);
     if (!results) throw new Error("Epic fail.");
-    const { framework, mayWantBackend, publicDirectory } = results;
     const {
-      build,
-      ɵcodegenPublicDirectory,
-      ɵcodegenFunctionsDirectory: codegenProdModeFunctionsDirectory,
-      getDevModeHandle,
-      name,
-      support,
-    } = WebFrameworks[framework];
+      framework: {
+        constructor: { initialize },
+        name,
+        support,
+        key,
+      },
+    } = results;
     console.log(`Detected a ${name} codebase. ${SupportLevelWarnings[support] || ""}\n`);
-    // TODO allow for override
-    const isDevMode = context._name === "serve" || context._name === "emulators:start";
 
-    const hostingEmulatorInfo = emulators.find((e) => e.name === Emulators.HOSTING);
+    const framework = await initialize(sourceDir, options);
 
-    const devModeHandle =
-      isDevMode &&
-      getDevModeHandle &&
-      (await getDevModeHandle(getProjectPath(), hostingEmulatorInfo));
-    let codegenFunctionsDirectory: Framework["ɵcodegenFunctionsDirectory"];
-    if (devModeHandle) {
-      config.public = relative(projectRoot, publicDirectory);
-      // Attach the handle to options, it will be used when spinning up superstatic
-      options.frameworksDevModeHandle = devModeHandle;
-      // null is the dev-mode entry for firebase-framework-tools
-      if (mayWantBackend && firebaseDefaults) {
-        codegenFunctionsDirectory = codegenDevModeFunctionsDirectory;
+    await framework.build();
+
+    if (await pathExists(hostingDist)) await rm(hostingDist, { recursive: true });
+    await mkdirp(hostingDist);
+    config.public = relative(projectRoot, hostingDist);
+
+    const wantsBackend = await framework.wantsBackend();
+
+    config.webFramework = `${key}${wantsBackend ? "_ssr" : ""}`;
+
+    if (wantsBackend) {
+      // if exists, delete everything but the node_modules directory and package-lock.json
+      // this should speed up repeated NPM installs
+      if (await pathExists(functionsDist)) {
+        const functionsDistStat = await stat(functionsDist);
+        if (functionsDistStat?.isDirectory()) {
+          const files = await readdir(functionsDist);
+          for (const file of files) {
+            if (file !== "node_modules" && file !== "package-lock.json")
+              await rm(join(functionsDist, file), { recursive: true });
+          }
+        } else {
+          await rm(functionsDist);
+        }
+      } else {
+        await mkdirp(functionsDist);
       }
-    } else {
-      const {
-        wantsBackend = false,
-        rewrites = [],
-        redirects = [],
-        headers = [],
-      } = (await build(getProjectPath())) || {};
-      config.rewrites.push(...rewrites);
-      config.redirects.push(...redirects);
-      config.headers.push(...headers);
-      if (await pathExists(hostingDist)) await rm(hostingDist, { recursive: true });
-      await mkdirp(hostingDist);
-      await ɵcodegenPublicDirectory(getProjectPath(), hostingDist);
-      config.public = relative(projectRoot, hostingDist);
-      if (wantsBackend) codegenFunctionsDirectory = codegenProdModeFunctionsDirectory;
     }
-    config.webFramework = `${framework}${codegenFunctionsDirectory ? "_ssr" : ""}`;
-    if (codegenFunctionsDirectory) {
+
+    await framework.generateFilesystemAPI(BuildTarget.FirebaseHosting, {
+      hosting: { destinationDir: hostingDist },
+      functions: { destinationDir: functionsDist },
+    });
+
+    if (wantsBackend) {
       if (firebaseDefaults) firebaseDefaults._authTokenSyncURL = "/__session";
 
       const rewrite: HostingRewrites = {
@@ -428,6 +410,7 @@ export async function prepareFrameworks(
       if (experiments.isEnabled("pintags")) {
         rewrite.function.pinTag = true;
       }
+      config.rewrites ||= [];
       config.rewrites.push(rewrite);
 
       const codebase = `firebase-frameworks-${site}`;
@@ -449,51 +432,25 @@ export async function prepareFrameworks(
         options.only = ensureTargeted(options.only, codebase);
       }
 
-      // if exists, delete everything but the node_modules directory and package-lock.json
-      // this should speed up repeated NPM installs
-      if (await pathExists(functionsDist)) {
-        const functionsDistStat = await stat(functionsDist);
-        if (functionsDistStat?.isDirectory()) {
-          const files = await readdir(functionsDist);
-          for (const file of files) {
-            if (file !== "node_modules" && file !== "package-lock.json")
-              await rm(join(functionsDist, file), { recursive: true });
-          }
-        } else {
-          await rm(functionsDist);
-        }
-      } else {
-        await mkdirp(functionsDist);
-      }
-
-      const {
-        packageJson,
-        bootstrapScript,
-        frameworksEntry = framework,
-      } = await codegenFunctionsDirectory(getProjectPath(), functionsDist);
-
       await writeFile(
         join(functionsDist, "functions.yaml"),
-        JSON.stringify(
-          {
-            endpoints: {
-              [functionName]: {
-                platform: "gcfv2",
-                // TODO allow this to be configurable
-                region: [DEFAULT_REGION],
-                labels: {},
-                httpsTrigger: {},
-                entryPoint: "ssr",
-              },
+        JSON.stringify({
+          endpoints: {
+            [functionName]: {
+              platform: "gcfv2",
+              // TODO allow this to be configurable
+              region: [DEFAULT_REGION],
+              labels: {},
+              httpsTrigger: {},
+              entryPoint: "ssr",
             },
-            specVersion: "v1alpha1",
-            requiredAPIs: [],
           },
-          null,
-          2
-        )
+          specVersion: "v1alpha1",
+          requiredAPIs: [],
+        })
       );
 
+      const packageJson = await readJSON(join(functionsDist, "package.json"));
       packageJson.main = "server.js";
       delete packageJson.devDependencies;
       packageJson.dependencies ||= {};
@@ -508,19 +465,12 @@ export async function prepareFrameworks(
       // TODO do we add the append the local .env?
       await writeFile(
         join(functionsDist, ".env"),
-        `__FIREBASE_FRAMEWORKS_ENTRY__=${frameworksEntry}
+        `__FIREBASE_FRAMEWORKS_ENTRY__=next.js
 ${firebaseDefaults ? `__FIREBASE_DEFAULTS__=${JSON.stringify(firebaseDefaults)}\n` : ""}`
       );
 
-      await copyFile(
-        getProjectPath("package-lock.json"),
-        join(functionsDist, "package-lock.json")
-      ).catch(() => {
-        // continue
-      });
-
-      if (await pathExists(getProjectPath(".npmrc"))) {
-        await copyFile(getProjectPath(".npmrc"), join(functionsDist, ".npmrc"));
+      if (await pathExists(join(sourceDir, ".npmrc"))) {
+        await copyFile(join(sourceDir, ".npmrc"), join(functionsDist, ".npmrc"));
       }
 
       execSync(`${NPM_COMMAND} i --omit dev --no-audit`, {
@@ -528,7 +478,7 @@ ${firebaseDefaults ? `__FIREBASE_DEFAULTS__=${JSON.stringify(firebaseDefaults)}\
         stdio: "inherit",
       });
 
-      if (bootstrapScript) await writeFile(join(functionsDist, "bootstrap.js"), bootstrapScript);
+      // if (bootstrapScript) await writeFile(join(functionsDist, "bootstrap.js"), bootstrapScript);
 
       // TODO move to templates
       await writeFile(
@@ -538,13 +488,6 @@ const server = import('firebase-frameworks');
 exports.ssr = onRequest((req, res) => server.then(it => it.handle(req, res)));
 `
       );
-    } else {
-      // No function, treat as an SPA
-      // TODO(jamesdaniels) be smarter about this, leave it to the framework?
-      config.rewrites.push({
-        source: "**",
-        destination: "/index.html",
-      });
     }
 
     if (firebaseDefaults) {
@@ -552,6 +495,7 @@ exports.ssr = onRequest((req, res) => server.then(it => it.handle(req, res)));
       const expires = new Date(new Date().getTime() + 60_000_000_000);
       const sameSite = "Strict";
       const path = `/`;
+      config.headers ||= [];
       config.headers.push({
         source: "**/*.js",
         headers: [
@@ -563,11 +507,6 @@ exports.ssr = onRequest((req, res) => server.then(it => it.handle(req, res)));
       });
     }
   }
-}
-
-function codegenDevModeFunctionsDirectory() {
-  const packageJson = {};
-  return Promise.resolve({ packageJson, frameworksEntry: "_devMode" });
 }
 
 /**

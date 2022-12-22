@@ -31,7 +31,7 @@ export async function doSetup(setup: any, config: any): Promise<void> {
 
   if (experiments.isEnabled("webframeworks")) {
     if (discoveredFramework) {
-      const name = WebFrameworks[discoveredFramework.framework].name;
+      const name = discoveredFramework.framework.name;
       await promptOnce(
         {
           name: "useDiscoveredFramework",
@@ -73,7 +73,7 @@ export async function doSetup(setup: any, config: any): Promise<void> {
     discoveredFramework = await discover(setup.hosting.source);
 
     if (discoveredFramework) {
-      const name = WebFrameworks[discoveredFramework.framework].name;
+      const name = discoveredFramework.framework.name;
       await promptOnce(
         {
           name: "useDiscoveredFramework",
@@ -88,31 +88,28 @@ export async function doSetup(setup: any, config: any): Promise<void> {
     if (setup.hosting.useDiscoveredFramework && discoveredFramework) {
       setup.hosting.webFramework = discoveredFramework.framework;
     } else {
-      const choices: { name: string; value: string }[] = [];
-      for (const value in WebFrameworks) {
-        if (WebFrameworks[value]) {
-          const { name, init } = WebFrameworks[value];
-          if (init) choices.push({ name, value });
-        }
+      const choices: { name: string; value: any }[] = [];
+      for (const value of WebFrameworks) {
+        const {
+          name,
+          constructor: { bootstrap },
+        } = value;
+        if (bootstrap) choices.push({ name, value });
       }
-
-      const defaultChoice = choices.find(
-        ({ value }) => value === discoveredFramework?.framework
-      )?.value;
 
       await promptOnce(
         {
           name: "whichFramework",
           type: "list",
           message: "Please choose the framework:",
-          default: defaultChoice,
+          default: discoveredFramework,
           choices,
         },
         setup.hosting
       );
 
       if (discoveredFramework) rimraf(setup.hosting.source);
-      await WebFrameworks[setup.hosting.whichFramework].init!(setup);
+      await setup.hosting.whichFramework.bootstrap!(setup);
     }
 
     setup.config.hosting = {

@@ -6,6 +6,7 @@ import type {
   PAGES_MANIFEST as PAGES_MANIFEST_TYPE,
   PRERENDER_MANIFEST as PRERENDER_MANIFEST_TYPE,
   ROUTES_MANIFEST as ROUTES_MANIFEST_TYPE,
+  BUILD_ID_FILE as BUILD_ID_FILE_TYPE,
 } from "next/constants";
 
 export const APP_PATH_ROUTES_MANIFEST: typeof APP_PATH_ROUTES_MANIFEST_TYPE =
@@ -16,3 +17,4 @@ export const MIDDLEWARE_MANIFEST: typeof MIDDLEWARE_MANIFEST_TYPE = "middleware-
 export const PAGES_MANIFEST: typeof PAGES_MANIFEST_TYPE = "pages-manifest.json";
 export const PRERENDER_MANIFEST: typeof PRERENDER_MANIFEST_TYPE = "prerender-manifest.json";
 export const ROUTES_MANIFEST: typeof ROUTES_MANIFEST_TYPE = "routes-manifest.json";
+export const BUILD_ID: typeof BUILD_ID_FILE_TYPE = "BUILD_ID";
