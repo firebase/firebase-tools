@@ -167,14 +167,26 @@ export class ExtensionsEmulator implements EmulatorInstance {
     return true;
   }
 
+  private getFunctionsDir(extensionDir: string): string {
+    // TODO: This should find package.json, then use that as functionsDir.
+    return path.join(extensionDir, "functions");
+  }
+
   private installAndBuildSourceCode(sourceCodePath: string): void {
+    const functionsDir = this.getFunctionsDir(sourceCodePath);
     // TODO: Add logging during this so it is clear what is happening.
     this.logger.logLabeled("DEBUG", "Extensions", `Running "npm install" for ${sourceCodePath}`);
-    const npmInstall = spawn.sync("npm", ["--prefix", `/${sourceCodePath}/functions/`, "install"], {
+    const npmInstall = spawn.sync("npm", ["--prefix", functionsDir, "install"], {
       encoding: "utf8",
     });
     if (npmInstall.error) {
-      throw npmInstall.error;
+      throw new FirebaseError("Failed to run npm install on extensions", {
+        original: npmInstall.error,
+      });
+    }
+    if (npmInstall.stderr) {
+      this.logger.logLabeled("ERROR", "Extensions", npmInstall.stderr);
+      throw new FirebaseError("Failed to run npm install on extensions, see logs for more details");
     }
     this.logger.logLabeled("DEBUG", "Extensions", `Finished "npm install" for ${sourceCodePath}`);
 
@@ -185,12 +197,21 @@ export class ExtensionsEmulator implements EmulatorInstance {
     );
     const npmRunGCPBuild = spawn.sync(
       "npm",
-      ["--prefix", `/${sourceCodePath}/functions/`, "run", "gcp-build"],
-      { encoding: "utf8" }
+      ["--prefix", functionsDir, "run", "gcp-build", "--if-present"],
+      {
+        encoding: "utf8",
+      }
     );
     if (npmRunGCPBuild.error) {
-      // TODO: Make sure this does not error out if "gcp-build" is not defined, but does error if it fails otherwise.
-      throw npmRunGCPBuild.error;
+      throw new FirebaseError("Failed to run npm run gcp-build on extensions", {
+        original: npmRunGCPBuild.error,
+      });
+    }
+    if (npmRunGCPBuild.stderr) {
+      this.logger.logLabeled("ERROR", "Extensions", npmRunGCPBuild.stderr);
+      throw new FirebaseError(
+        "Failed to run npm run gcp-build on extensions, see logs for more details"
+      );
     }
 
     this.logger.logLabeled(
@@ -225,8 +246,7 @@ export class ExtensionsEmulator implements EmulatorInstance {
     instance: planner.DeploymentInstanceSpec
   ): Promise<EmulatableBackend> {
     const extensionDir = await this.ensureSourceCode(instance);
-    // TODO: This should find package.json, then use that as functionsDir.
-    const functionsDir = path.join(extensionDir, "functions");
+    const functionsDir = this.getFunctionsDir(extensionDir);
     // TODO(b/213335255): For local extensions, this should include extensionSpec instead of extensionVersion
     const env = Object.assign(this.autoPopulatedParams(instance), instance.params);
     const { extensionTriggers, nodeMajorVersion, nonSecretEnv, secretEnvVariables } =

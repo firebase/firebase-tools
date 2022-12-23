@@ -1,4 +1,5 @@
 import { expect } from "chai";
+import { join } from "path";
 import { BackendInfo, EmulatableBackend } from "../../emulator/functionsEmulator";
 import * as functionsEmulatorShared from "../../emulator/functionsEmulatorShared";
 import {
@@ -113,7 +114,7 @@ describe("FunctionsEmulatorShared", () => {
           extensionInstanceId: "my-extension-instance",
           codebase: "",
         },
-        expected: "project/dir/extensions/my-extension-instance.secret.local",
+        expected: join("project/dir/extensions/my-extension-instance.secret.local"),
       },
       {
         desc: "should return the correct location for a CF3 backend",
@@ -123,7 +124,7 @@ describe("FunctionsEmulatorShared", () => {
           secretEnv: [],
           codebase: "",
         },
-        expected: "test/cf3/.secret.local",
+        expected: join("test/cf3/.secret.local"),
       },
     ];
 
