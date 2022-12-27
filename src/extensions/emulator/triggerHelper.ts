@@ -3,14 +3,14 @@ import { EmulatorLogger } from "../../emulator/emulatorLogger";
 import {
   EventSchedule,
   getServiceFromEventType,
-  ParsedTriggerDefinition
+  ParsedTriggerDefinition,
 } from "../../emulator/functionsEmulatorShared";
 import { Emulators } from "../../emulator/types";
 import { FirebaseError } from "../../error";
 import {
   FUNCTIONS_RESOURCE_TYPE,
   FUNCTIONS_V2_RESOURCE_TYPE,
-  Resource
+  Resource,
 } from "../../extensions/types";
 import * as proto from "../../gcp/proto";
 
