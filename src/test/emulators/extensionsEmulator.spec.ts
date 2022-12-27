@@ -1,14 +1,15 @@
 import { expect } from "chai";
+import { join } from "node:path";
 
+import * as planner from "../../deploy/extensions/planner";
 import { ExtensionsEmulator } from "../../emulator/extensionsEmulator";
 import { EmulatableBackend } from "../../emulator/functionsEmulator";
 import {
   Extension,
   ExtensionVersion,
   RegistryLaunchStage,
-  Visibility,
+  Visibility
 } from "../../extensions/types";
-import * as planner from "../../deploy/extensions/planner";
 
 const TEST_EXTENSION: Extension = {
   name: "publishers/firebase/extensions/storage-resize-images",
@@ -101,8 +102,10 @@ describe("Extensions Emulator", () => {
           },
           secretEnv: [],
           extensionInstanceId: "ext-test",
-          functionsDir:
-            "src/test/emulators/extensions/firebase/storage-resize-images@0.1.18/functions",
+          // use join to convert path to platform dependent path
+          // so test also runs on win machines
+          // eslint-disable-next-line prettier/prettier
+          functionsDir: join("src/test/emulators/extensions/firebase/storage-resize-images@0.1.18/functions"),
           nodeMajorVersion: 10,
           predefinedTriggers: [
             {
@@ -134,7 +137,6 @@ describe("Extensions Emulator", () => {
         });
 
         const result = await e.toEmulatableBackend(testCase.input);
-
         expect(result).to.deep.equal(testCase.expected);
       });
     }
