@@ -5,7 +5,6 @@ import * as os from "os";
 import * as path from "path";
 import Table = require("cli-table");
 
-import { resolve } from "path";
 import * as planner from "../deploy/extensions/planner";
 import { enableApiURI } from "../ensureApiEnabled";
 import { FirebaseError } from "../error";
@@ -171,7 +170,7 @@ export class ExtensionsEmulator implements EmulatorInstance {
   installAndBuildSourceCode(sourceCodePath: string): void {
     // TODO: Add logging during this so it is clear what is happening.
     this.logger.logLabeled("DEBUG", "Extensions", `Running "npm install" for ${sourceCodePath}`);
-    const functionsDirectory = resolve(sourceCodePath, "functions");
+    const functionsDirectory = path.resolve(sourceCodePath, "functions");
     const npmInstall = spawn.sync("npm", ["install"], {
       encoding: "utf8",
       cwd: functionsDirectory,
