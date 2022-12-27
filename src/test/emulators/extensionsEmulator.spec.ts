@@ -1,4 +1,5 @@
 import { expect } from "chai";
+import { existsSync } from "node:fs";
 import { join } from "node:path";
 
 import * as planner from "../../deploy/extensions/planner";
@@ -64,68 +65,68 @@ describe("Extensions Emulator", () => {
       input: planner.DeploymentInstanceSpec;
       expected: EmulatableBackend;
     }[] = [
-      {
-        desc: "should transform a instance spec to a backend",
-        input: {
-          instanceId: "ext-test",
-          ref: {
-            publisherId: "firebase",
-            extensionId: "storage-resize-images",
-            version: "0.1.18",
-          },
-          params: {
-            LOCATION: "us-west1",
-            ALLOWED_EVENT_TYPES:
-              "google.firebase.image-resize-started,google.firebase.image-resize-completed",
-            EVENTARC_CHANNEL: "projects/test-project/locations/us-central1/channels/firebase",
-          },
-          allowedEventTypes: [
-            "google.firebase.image-resize-started",
-            "google.firebase.image-resize-completed",
-          ],
-          eventarcChannel: "projects/test-project/locations/us-central1/channels/firebase",
-          extension: TEST_EXTENSION,
-          extensionVersion: TEST_EXTENSION_VERSION,
-        },
-        expected: {
-          env: {
-            LOCATION: "us-west1",
-            DATABASE_INSTANCE: "test-project",
-            DATABASE_URL: "https://test-project.firebaseio.com",
-            EXT_INSTANCE_ID: "ext-test",
-            PROJECT_ID: "test-project",
-            STORAGE_BUCKET: "test-project.appspot.com",
-            ALLOWED_EVENT_TYPES:
-              "google.firebase.image-resize-started,google.firebase.image-resize-completed",
-            EVENTARC_CHANNEL: "projects/test-project/locations/us-central1/channels/firebase",
-            EVENTARC_CLOUD_EVENT_SOURCE: "projects/test-project/instances/ext-test",
-          },
-          secretEnv: [],
-          extensionInstanceId: "ext-test",
-          // use join to convert path to platform dependent path
-          // so test also runs on win machines
-          // eslint-disable-next-line prettier/prettier
-          functionsDir: join("src/test/emulators/extensions/firebase/storage-resize-images@0.1.18/functions"),
-          nodeMajorVersion: 10,
-          predefinedTriggers: [
-            {
-              entryPoint: "generateResizedImage",
-              eventTrigger: {
-                eventType: "google.storage.object.finalize",
-                resource: "projects/_/buckets/${param:IMG_BUCKET}",
-                service: "storage.googleapis.com",
-              },
-              name: "ext-ext-test-generateResizedImage",
-              platform: "gcfv1",
-              regions: ["us-west1"],
+        {
+          desc: "should transform a instance spec to a backend",
+          input: {
+            instanceId: "ext-test",
+            ref: {
+              publisherId: "firebase",
+              extensionId: "storage-resize-images",
+              version: "0.1.18",
             },
-          ],
-          extension: TEST_EXTENSION,
-          extensionVersion: TEST_EXTENSION_VERSION,
-          codebase: "ext-test",
+            params: {
+              LOCATION: "us-west1",
+              ALLOWED_EVENT_TYPES:
+                "google.firebase.image-resize-started,google.firebase.image-resize-completed",
+              EVENTARC_CHANNEL: "projects/test-project/locations/us-central1/channels/firebase",
+            },
+            allowedEventTypes: [
+              "google.firebase.image-resize-started",
+              "google.firebase.image-resize-completed",
+            ],
+            eventarcChannel: "projects/test-project/locations/us-central1/channels/firebase",
+            extension: TEST_EXTENSION,
+            extensionVersion: TEST_EXTENSION_VERSION,
+          },
+          expected: {
+            env: {
+              LOCATION: "us-west1",
+              DATABASE_INSTANCE: "test-project",
+              DATABASE_URL: "https://test-project.firebaseio.com",
+              EXT_INSTANCE_ID: "ext-test",
+              PROJECT_ID: "test-project",
+              STORAGE_BUCKET: "test-project.appspot.com",
+              ALLOWED_EVENT_TYPES:
+                "google.firebase.image-resize-started,google.firebase.image-resize-completed",
+              EVENTARC_CHANNEL: "projects/test-project/locations/us-central1/channels/firebase",
+              EVENTARC_CLOUD_EVENT_SOURCE: "projects/test-project/instances/ext-test",
+            },
+            secretEnv: [],
+            extensionInstanceId: "ext-test",
+            // use join to convert path to platform dependent path
+            // so test also runs on win machines
+            // eslint-disable-next-line prettier/prettier
+            functionsDir: join("src/test/emulators/extensions/firebase/storage-resize-images@0.1.18/functions"),
+            nodeMajorVersion: 10,
+            predefinedTriggers: [
+              {
+                entryPoint: "generateResizedImage",
+                eventTrigger: {
+                  eventType: "google.storage.object.finalize",
+                  resource: "projects/_/buckets/${param:IMG_BUCKET}",
+                  service: "storage.googleapis.com",
+                },
+                name: "ext-ext-test-generateResizedImage",
+                platform: "gcfv1",
+                regions: ["us-west1"],
+              },
+            ],
+            extension: TEST_EXTENSION,
+            extensionVersion: TEST_EXTENSION_VERSION,
+            codebase: "ext-test",
+          },
         },
-      },
-    ];
+      ];
     for (const testCase of testCases) {
       it(testCase.desc, async () => {
         const e = new ExtensionsEmulator({
@@ -140,5 +141,31 @@ describe("Extensions Emulator", () => {
         expect(result).to.deep.equal(testCase.expected);
       });
     }
+  });
+
+  describe("installAndBuildSourceCode", () => {
+    const extensionPath = "src/test/emulators/extensions/firebase/storage-resize-images@0.1.18";
+    it("installs dependecies", () => {
+      // creating a subclass of ext emulator
+      // to be able to test private method
+      class DependencyInstallingExtensionsEmulator extends ExtensionsEmulator {
+        constructor(extensionPath: string) {
+          super({
+            projectId: "test-project",
+            projectNumber: "1234567",
+            projectDir: ".",
+            extensions: {},
+            aliases: [],
+          });
+
+          this.installAndBuildSourceCode(extensionPath);
+        }
+      }
+      new DependencyInstallingExtensionsEmulator(extensionPath);
+      const nodeModulesFolderExists = existsSync(
+        `${extensionPath}/functions/node_modules/firebase-tools`
+      );
+      expect(nodeModulesFolderExists).to.be.true;
+    }).timeout(60_000);
   });
 });
