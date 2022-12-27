@@ -1,17 +1,18 @@
-import {
-  ParsedTriggerDefinition,
-  getServiceFromEventType,
-} from "../../emulator/functionsEmulatorShared";
+import * as backend from "../../deploy/functions/backend";
 import { EmulatorLogger } from "../../emulator/emulatorLogger";
-import { Emulators } from "../../emulator/types";
 import {
-  Resource,
+  EventSchedule,
+  getServiceFromEventType,
+  ParsedTriggerDefinition
+} from "../../emulator/functionsEmulatorShared";
+import { Emulators } from "../../emulator/types";
+import { FirebaseError } from "../../error";
+import {
   FUNCTIONS_RESOURCE_TYPE,
   FUNCTIONS_V2_RESOURCE_TYPE,
+  Resource
 } from "../../extensions/types";
-import * as backend from "../../deploy/functions/backend";
 import * as proto from "../../gcp/proto";
-import { FirebaseError } from "../../error";
 
 /**
  * Convert a Resource into a ParsedTriggerDefinition
@@ -38,6 +39,15 @@ export function functionResourceToEmulatedTriggerDefintion(
         eventType: properties.eventTrigger.eventType,
         resource: properties.eventTrigger.resource,
         service: getServiceFromEventType(properties.eventTrigger.eventType),
+      };
+    } else if (properties.scheduleTrigger) {
+      const schedule: EventSchedule = {
+        schedule: properties.scheduleTrigger.schedule,
+      };
+      etd.schedule = schedule;
+      etd.eventTrigger = {
+        eventType: "google.pubsub.topic.publish",
+        resource: "",
       };
     } else {
       EmulatorLogger.forEmulator(Emulators.FUNCTIONS).log(
