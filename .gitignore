@@ -1,3 +1,7 @@
+src/test/emulators/extensions/firebase/storage-resize-images@0.1.18/functions/node_modules/*
+src/test/emulators/extensions/firebase/storage-resize-images@0.1.18/functions/package.json
+src/test/emulators/extensions/firebase/storage-resize-images@0.1.18/functions/package-lock.json
+
 /.vscode
 node_modules
 /coverage
