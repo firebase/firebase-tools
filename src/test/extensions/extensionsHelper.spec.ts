@@ -32,6 +32,7 @@ const EXT_SPEC_1: ExtensionSpec = {
   ],
   sourceUrl: "www.google.com/cool-things-here",
   params: [],
+  systemParams: [],
 };
 const EXT_SPEC_2: ExtensionSpec = {
   name: "cool-things",
@@ -44,6 +45,7 @@ const EXT_SPEC_2: ExtensionSpec = {
   ],
   sourceUrl: "www.google.com/cool-things-here",
   params: [],
+  systemParams: [],
 };
 const TEST_EXT_VERSION_1: ExtensionVersion = {
   name: "publishers/test-pub/extensions/ext-one/versions/0.0.1-rc.0",
@@ -512,6 +514,7 @@ describe("extensionsHelper", () => {
         specVersion: "v1beta",
         resources: [],
         params: [],
+        systemParams: [],
         sourceUrl: "https://test-source.fake",
         license: "apache-2.0",
       };
@@ -527,6 +530,7 @@ describe("extensionsHelper", () => {
         specVersion: "v1beta",
         resources: [],
         params: [],
+        systemParams: [],
         sourceUrl: "https://test-source.fake",
       };
 
@@ -541,6 +545,7 @@ describe("extensionsHelper", () => {
         specVersion: "v1beta",
         resources: [],
         params: [],
+        systemParams: [],
         sourceUrl: "https://test-source.fake",
         license: "invalid-license",
       };
@@ -807,6 +812,7 @@ describe("extensionsHelper", () => {
         sourceUrl: testUrl,
         resources: [],
         params: [],
+        systemParams: [],
       },
     };
     const testArchivedFiles: ArchiveResult = {

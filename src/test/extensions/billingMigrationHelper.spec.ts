@@ -27,6 +27,7 @@ const NO_RUNTIME_SPEC: ExtensionSpec = {
   billingRequired: true,
   sourceUrl: "test.com",
   params: [],
+  systemParams: [],
 };
 
 const NODE8_SPEC: ExtensionSpec = {
@@ -49,6 +50,7 @@ const NODE8_SPEC: ExtensionSpec = {
   billingRequired: true,
   sourceUrl: "test.com",
   params: [],
+  systemParams: [],
 };
 
 const NODE10_SPEC: ExtensionSpec = {
@@ -71,6 +73,7 @@ const NODE10_SPEC: ExtensionSpec = {
   billingRequired: true,
   sourceUrl: "test.com",
   params: [],
+  systemParams: [],
 };
 
 describe("billingMigrationHelper", () => {
