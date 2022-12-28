@@ -52,8 +52,8 @@ export function flatten<T extends unknown[] | object>(objOrArr: T): unknown {
   }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 type RecursiveElems<T extends unknown[]> = {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   [Key in keyof T]: T[Key] extends unknown[] ? T[Key] | RecursiveElems<T[Key]> : T[Key];
 }[number];
 
