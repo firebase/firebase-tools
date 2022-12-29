@@ -116,7 +116,7 @@ export interface FunctionsEmulatorArgs {
   quiet?: boolean;
   disabledRuntimeFeatures?: FunctionsRuntimeFeatures;
   debugPort?: number;
-  remoteEmulators?: { [key: string]: EmulatorInfo };
+  remoteEmulators?: Record<string, EmulatorInfo>;
   adminSdkConfig?: AdminSdkConfig;
   projectAlias?: string;
 }
@@ -461,8 +461,8 @@ export class FunctionsEmulator implements EmulatorInstance {
       await runtimeDelegate.validate();
       logger.debug(`Building ${runtimeDelegate.name} source`);
       await runtimeDelegate.build();
-      logger.debug(`Analyzing ${runtimeDelegate.name} backend spec`);
-      // Don't include user envs when parsing triggers, but we need some of the options for handling params
+
+      // Don't include user envs when parsing triggers. Do include user envs when resolving parameter values
       const firebaseConfig = this.getFirebaseConfig();
       const environment = {
         ...this.getSystemEnvs(),
@@ -475,12 +475,13 @@ export class FunctionsEmulator implements EmulatorInstance {
         projectId: this.args.projectId,
         projectAlias: this.args.projectAlias,
       };
+      const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
       const discoveredBuild = await runtimeDelegate.discoverBuild(runtimeConfig, environment);
       const resolution = await resolveBackend(
         discoveredBuild,
         JSON.parse(firebaseConfig),
         userEnvOpt,
-        environment
+        userEnvs
       );
       const discoveredBackend = resolution.backend;
       const endpoints = backend.allEndpoints(discoveredBackend);
@@ -1159,7 +1160,11 @@ export class FunctionsEmulator implements EmulatorInstance {
       enableCors: true,
     });
 
-    setEnvVarsForEmulators(envs);
+    let emulatorInfos = EmulatorRegistry.listRunningWithInfo();
+    if (this.args.remoteEmulators) {
+      emulatorInfos = emulatorInfos.concat(Object.values(this.args.remoteEmulators));
+    }
+    setEnvVarsForEmulators(envs, emulatorInfos);
 
     if (this.args.debugPort) {
       // Start runtime in debug mode to allow triggers to share single runtime process.

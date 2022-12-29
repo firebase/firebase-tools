@@ -1,2 +1,1 @@
-- Add sharp NPM module to Cloud Functions when using Next.js Image Optimization
 - Fix bug where functions:delete command did not recognize '-' as delimiter. (#5290)

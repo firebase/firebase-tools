@@ -1,9 +1,24 @@
 import { existsSync } from "fs";
+import { pathExists } from "fs-extra";
 import { join } from "path";
 import type { Header, Redirect, Rewrite } from "next/dist/lib/load-custom-routes";
-import type { Manifest, RoutesManifestRewrite } from "./interfaces";
+import type { MiddlewareManifest } from "next/dist/build/webpack/plugins/middleware-plugin";
+
 import { isUrl, readJSON } from "../utils";
-import type { ExportMarker, ImageManifest } from "./interfaces";
+import type {
+  Manifest,
+  RoutesManifestRewrite,
+  ExportMarker,
+  ImagesManifest,
+  NpmLsDepdendency,
+} from "./interfaces";
+import {
+  APP_PATH_ROUTES_MANIFEST,
+  EXPORT_MARKER,
+  IMAGES_MANIFEST,
+  MIDDLEWARE_MANIFEST,
+} from "./constants";
+import { fileExistsSync } from "../../fsutils";
 
 /**
  * Whether the given path has a regex or not.
@@ -53,7 +68,7 @@ export function cleanEscapedChars(path: string): string {
  *
  * - Rewrites to external URLs
  */
-export function isRewriteSupportedByFirebase(rewrite: Rewrite): boolean {
+export function isRewriteSupportedByHosting(rewrite: Rewrite): boolean {
   return !("has" in rewrite || pathHasRegex(rewrite.source) || isUrl(rewrite.destination));
 }
 
@@ -72,7 +87,7 @@ export function isRewriteSupportedByFirebase(rewrite: Rewrite): boolean {
  *
  * - Next.js internal redirects
  */
-export function isRedirectSupportedByFirebase(redirect: Redirect): boolean {
+export function isRedirectSupportedByHosting(redirect: Redirect): boolean {
   return !("has" in redirect || pathHasRegex(redirect.source) || "internal" in redirect);
 }
 
@@ -89,7 +104,7 @@ export function isRedirectSupportedByFirebase(redirect: Redirect): boolean {
  * - Custom header using regex for path matching.
  *     - https://nextjs.org/docs/api-reference/next.config.js/headers#regex-path-matching
  */
-export function isHeaderSupportedByFirebase(header: Header): boolean {
+export function isHeaderSupportedByHosting(header: Header): boolean {
   return !("has" in header || pathHasRegex(header.source));
 }
 
@@ -122,7 +137,7 @@ export function getNextjsRewritesToUse(
  * @return true if app directory is used in the Next.js project
  */
 export function usesAppDirRouter(sourceDir: string): boolean {
-  const appPathRoutesManifestPath = join(sourceDir, "app-path-routes-manifest.json");
+  const appPathRoutesManifestPath = join(sourceDir, APP_PATH_ROUTES_MANIFEST);
   return existsSync(appPathRoutesManifestPath);
 }
 /**
@@ -131,7 +146,7 @@ export function usesAppDirRouter(sourceDir: string): boolean {
  * @return true if the Next.js project uses the next/image component
  */
 export async function usesNextImage(sourceDir: string, distDir: string): Promise<boolean> {
-  const exportMarker = await readJSON<ExportMarker>(join(sourceDir, distDir, "export-marker.json"));
+  const exportMarker = await readJSON<ExportMarker>(join(sourceDir, distDir, EXPORT_MARKER));
   return exportMarker.isNextImageImported;
 }
 
@@ -145,8 +160,75 @@ export async function usesNextImage(sourceDir: string, distDir: string): Promise
  * @return true if image optimization is disabled
  */
 export async function hasUnoptimizedImage(sourceDir: string, distDir: string): Promise<boolean> {
-  const imageManifest = await readJSON<ImageManifest>(
-    join(sourceDir, distDir, "images-manifest.json")
+  const imagesManifest = await readJSON<ImagesManifest>(join(sourceDir, distDir, IMAGES_MANIFEST));
+  return imagesManifest.images.unoptimized;
+}
+
+/**
+ * Whether Next.js middleware is being used
+ *
+ * @param dir in development must be the project root path, otherwise `distDir`
+ * @param isDevMode whether the project is running on dev or production
+ */
+export async function isUsingMiddleware(dir: string, isDevMode: boolean): Promise<boolean> {
+  if (isDevMode) {
+    const [middlewareJs, middlewareTs] = await Promise.all([
+      pathExists(join(dir, "middleware.js")),
+      pathExists(join(dir, "middleware.ts")),
+    ]);
+
+    return middlewareJs || middlewareTs;
+  } else {
+    const middlewareManifest: MiddlewareManifest = await readJSON<MiddlewareManifest>(
+      join(dir, "server", MIDDLEWARE_MANIFEST)
+    );
+
+    return Object.keys(middlewareManifest.middleware).length > 0;
+  }
+}
+
+/**
+ * Whether image optimization is being used
+ *
+ * @param dir path to `distDir` - where the manifests are located
+ */
+export async function isUsingImageOptimization(dir: string): Promise<boolean> {
+  const { isNextImageImported } = await readJSON<ExportMarker>(join(dir, EXPORT_MARKER));
+
+  if (isNextImageImported) {
+    const imagesManifest = await readJSON<ImagesManifest>(join(dir, IMAGES_MANIFEST));
+    const usingImageOptimization = imagesManifest.images.unoptimized === false;
+
+    if (usingImageOptimization) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Whether Next.js app directory is being used
+ *
+ * @param dir path to `distDir` - where the manifests are located
+ */
+export function isUsingAppDirectory(dir: string): boolean {
+  const appPathRoutesManifestPath = join(dir, APP_PATH_ROUTES_MANIFEST);
+
+  return fileExistsSync(appPathRoutesManifestPath);
+}
+
+/**
+ * Given input from `npm ls` flatten the dependency tree and return all module names
+ *
+ * @param dependencies returned from `npm ls`
+ */
+export function allDependencyNames(mod: NpmLsDepdendency): string[] {
+  if (!mod.dependencies) return [];
+  const dependencyNames = Object.keys(mod.dependencies).reduce(
+    (acc, it) => [...acc, it, ...allDependencyNames(mod.dependencies![it])],
+    [] as string[]
   );
-  return imageManifest.images.unoptimized;
+  // deduplicate the names
+  return [...new Set(dependencyNames)];
 }
