@@ -75,14 +75,19 @@ export class PubsubEmulator implements EmulatorInstance {
     } catch (e: unknown) {
       this.logger.logLabeled("DEBUG", "pubsub", JSON.stringify(e));
       if (process.platform !== "win32") {
-        exec(PUBSUB_KILL_COMMAND, (err, stdout) => {
-          if (err) {
-            this.logger.logLabeled("DEBUG", "pubsub", JSON.stringify(err));
-          }
-          if (stdout) {
-            this.logger.logLabeled("DEBUG", "pubsub", JSON.stringify(stdout));
-          }
+        // The exec is wrapped in a promise so we can block on it's completion via `await`.
+        const execPromise = new Promise((resolve) => {
+          exec(PUBSUB_KILL_COMMAND, (err, stdout) => {
+            if (err) {
+              this.logger.logLabeled("DEBUG", "pubsub", JSON.stringify(err));
+            }
+            if (stdout) {
+              this.logger.logLabeled("DEBUG", "pubsub", JSON.stringify(stdout));
+            }
+            resolve(null);
+          });
         });
+        await execPromise;
       }
     }
   }
