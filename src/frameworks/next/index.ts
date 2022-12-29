@@ -348,11 +348,17 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
     // macs and older Node versions; either way, we should avoid taking on any deps in firebase-tools
     // Alternatively I tried using @swc/spack and the webpack bundled into Next.js but was
     // encountering difficulties with both of those
-    const dependencyTree: NpmLsReturn = JSON.parse(
+    /*const dependencyTree: NpmLsReturn = JSON.parse(
       spawnSync("npm", ["ls", "--omit=dev", "--all", "--json"], {
         cwd: sourceDir,
       }).stdout.toString()
-    );
+    );*/ //  does not work with large application. will not resevie the correct buffer 
+
+
+  const dependencyTree = await readJSON(join(sourceDir, "package-lock.json"));
+
+
+
     // Mark all production deps as externals, so they aren't bundled
     // DevDeps won't be included in the Cloud Function, so they should be bundled
     const esbuildArgs = allDependencyNames(dependencyTree)
