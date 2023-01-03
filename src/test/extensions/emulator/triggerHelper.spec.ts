@@ -135,6 +135,35 @@ describe("triggerHelper", () => {
       expect(result).to.eql(expected);
     });
 
+    it("should handle scheduled triggers", () => {
+      const testResource: Resource = {
+        name: "test-resource",
+        entryPoint: "functionName",
+        type: "firebaseextensions.v1beta.function",
+        properties: {
+          scheduleTrigger: {
+            schedule: "every 5 minutes",
+          },
+        },
+      };
+      const expected = {
+        platform: "gcfv1",
+        entryPoint: "test-resource",
+        name: "test-resource",
+        eventTrigger: {
+          eventType: "google.pubsub.topic.publish",
+          resource: "",
+        },
+        schedule: {
+          schedule: "every 5 minutes",
+        },
+      };
+
+      const result = triggerHelper.functionResourceToEmulatedTriggerDefintion(testResource);
+
+      expect(result).to.eql(expected);
+    });
+
     it("should handle v2 custom event triggers", () => {
       const testResource: Resource = {
         name: "test-resource",
