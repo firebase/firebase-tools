@@ -1,2 +1,3 @@
 - Fixes an issue where dependencies for emulated Extensions would not be installed on Windows - thanks @stfsy! (#5372)
 - Adds emulator support for Extensions with schedule triggers - thanks @stsfy! (#5374)
+- Fix bug where CLI was unable to deploy Firebase Functions in some monorepo setups (#5391)
