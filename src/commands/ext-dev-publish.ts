@@ -5,8 +5,8 @@ import TerminalRenderer = require("marked-terminal");
 
 import { Command } from "../command";
 import {
-  publishExtensionVersionFromLocalSource,
   logPrefix,
+  publishExtensionVersionFromLocalSource,
   publishExtensionVersionFromRemoteRepo,
 } from "../extensions/extensionsHelper";
 import * as refs from "../extensions/refs";
@@ -28,7 +28,7 @@ export const command = new Command("ext:dev:publish <extensionRef>")
   .option(`-s, --stage <stage>`, `release stage (supports "alpha", "beta", "rc", and "stable")`)
   .option(
     `--repo <repo>`,
-    `Public Git repo URI (only required for first version, cannot be changed)`
+    `Public Git repo URI (only required for first version from repo, cannot be changed)`
   )
   .option(`--ref <ref>`, `commit hash, branch, or tag to build from the repo (defaults to HEAD)`)
   .option(

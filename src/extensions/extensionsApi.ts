@@ -604,16 +604,16 @@ export async function undeprecateExtensionVersion(extensionRef: string): Promise
  * @param extensionVersionRef user-friendly identifier for the ExtensionVersion (publisher-id/extension-id@1.0.0)
  * @param extensionRoot directory location of extension.yaml in the archived package, defaults to "/".
  */
-export async function publishExtensionVersion(
+export async function publishExtensionVersion(args: {
   extensionVersionRef: string,
   packageUri?: string,
   extensionRoot?: string,
   repoUri?: string,
   sourceRef?: string
-): Promise<ExtensionVersion> {
-  const ref = refs.parse(extensionVersionRef);
+}): Promise<ExtensionVersion> {
+  const ref = refs.parse(args.extensionVersionRef);
   if (!ref.version) {
-    throw new FirebaseError(`ExtensionVersion ref "${extensionVersionRef}" must supply a version.`);
+    throw new FirebaseError(`ExtensionVersion ref "${args.extensionVersionRef}" must supply a version.`);
   }
 
   // TODO(b/185176470): Publishing an extension with a previously deleted name will return 409.
@@ -629,10 +629,10 @@ export async function publishExtensionVersion(
     ExtensionVersion
   >(`/${refs.toExtensionName(ref)}/versions:publish`, {
     versionId: ref.version,
-    packageUri: packageUri ?? "",
-    extensionRoot: extensionRoot ?? "/",
-    repoUri: repoUri ?? "",
-    sourceRef: sourceRef ?? "",
+    packageUri: args.packageUri ?? "",
+    extensionRoot: args.extensionRoot ?? "/",
+    repoUri: args.repoUri ?? "",
+    sourceRef: args.sourceRef ?? "",
   });
   const pollRes = await operationPoller.pollOperation<ExtensionVersion>({
     apiOrigin: extensionsOrigin,

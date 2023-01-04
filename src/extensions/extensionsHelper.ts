@@ -599,23 +599,20 @@ export async function publishExtensionVersionFromRemoteRepo(args: {
   }
   let repoUri = args.repoUri || extension?.repoUri;
   if (!repoUri) {
-    repoUri = await promptForValidRepoURI();
-  }
-  if (extension?.repoUri) {
-    if (repoUri !== extension.repoUri) {
-      throw new FirebaseError(
-        `Repo URI '${clc.bold(args.repoUri)}' does not match repo URI '${clc.bold(
-          extension.repoUri!
-        )}' already associated with Extension ${clc.bold(
-          extensionRef
-        )}. Repo URI cannot be changed.`
-      );
+    if (!args.nonInteractive) {
+      repoUri = await promptForValidRepoURI();
     } else {
-      logger.info(
-        `Extension ${clc.bold(extensionRef)} is published from ${clc.bold(extension?.repoUri)}.`
-      );
+      throw new FirebaseError("Repo URI is required but not currently set.");
     }
-  } else {
+  }
+  if (extension?.repoUri && extension.repoUri !== repoUri) {
+    throw new FirebaseError(
+      `Repo URI '${clc.bold(args.repoUri)}' does not match repo URI '${clc.bold(
+        extension.repoUri!
+      )}' already associated with Extension ${clc.bold(extensionRef)}. Repo URI cannot be changed.`
+    );
+  }
+  if (!extension?.repoUri) {
     logger.info(
       `\n${clc.red("Warning:")} You are about to associate repo URI ${clc.bold(
         repoUri
@@ -632,30 +629,35 @@ export async function publishExtensionVersionFromRemoteRepo(args: {
     if (!confirmed) {
       return;
     }
+  } else {
+    logger.info(
+      `Extension ${clc.bold(extensionRef)} is published from ${clc.bold(extension?.repoUri)}.`
+    );
   }
 
-  // Prompt for Extension root and default to last root used.
   let extensionRoot = args.extensionRoot;
   let defaultRoot = "/";
   if (!extensionRoot) {
-    if (!args.nonInteractive) {
-      if (extension) {
-        try {
-          const extensionVersionRef = `${extensionRef}@${extension.latestVersion}`;
-          const extensionVersion = await getExtensionVersion(extensionVersionRef);
-          defaultRoot = extensionVersion.extensionRoot ?? defaultRoot;
-        } catch (err: any) {
-          // Not a critical error so continue with default root.
+    // Try to get the cached root only if the root hasn't already been passed in.
+    if (extension) {
+      try {
+        const extensionVersionRef = `${extensionRef}@${extension.latestVersion}`;
+        const extensionVersion = await getExtensionVersion(extensionVersionRef);
+        if (extensionVersion.extensionRoot) {
+          defaultRoot = extensionVersion.extensionRoot;
         }
+      } catch (err: any) {
+        // Not a critical error so continue with default root.
       }
+    }
+    extensionRoot = defaultRoot;
+    if (!args.nonInteractive) {
       extensionRoot = await promptOnce({
         type: "input",
         message:
           "Enter this Extension's root directory in the repo (defaults to previous root if set):",
         default: defaultRoot,
       });
-    } else {
-      extensionRoot = defaultRoot;
     }
   }
 
@@ -691,6 +693,7 @@ export async function publishExtensionVersionFromRemoteRepo(args: {
   }
 
   // Fetch and validate Extension from remote repo.
+  logger.info("Downloading and validating source code...");
   const archiveUri = `${repoUri}/archive/${sourceRef}.zip`;
   const tempDirectory = tmp.dirSync({ unsafeCleanup: true });
   try {
@@ -740,13 +743,13 @@ export async function publishExtensionVersionFromRemoteRepo(args: {
   let res;
   try {
     publishSpinner.start();
-    res = await publishExtensionVersion(
+    res = await publishExtensionVersion({
       extensionVersionRef,
-      "",
+      packageUri: "",
       extensionRoot,
       repoUri,
-      args.sourceRef
-    );
+      sourceRef: args.sourceRef,
+    });
     publishSpinner.succeed(` Successfully published ${clc.bold(extensionRef)}`);
   } catch (err: any) {
     publishSpinner.fail();
@@ -827,7 +830,7 @@ export async function publishExtensionVersionFromLocalSource(args: {
   let res;
   try {
     publishSpinner.start();
-    res = await publishExtensionVersion(extensionVersionRef, packageUri);
+    res = await publishExtensionVersion({ extensionVersionRef, packageUri });
     publishSpinner.succeed(` Successfully published ${clc.bold(extensionVersionRef)}`);
   } catch (err: any) {
     publishSpinner.fail();
