@@ -21,7 +21,7 @@ import { EmulatorRegistry } from "./registry";
 import { downloadEmulator } from "../emulator/download";
 import * as experiments from "../experiments";
 
-const EMULATOR_INSTANCE_KILL_TIMEOUT = 4000; /* ms */
+const EMULATOR_INSTANCE_KILL_TIMEOUT = 12000; /* ms */
 
 const CACHE_DIR =
   process.env.FIREBASE_EMULATORS_PATH || path.join(os.homedir(), ".cache", "firebase", "emulators");
@@ -453,10 +453,13 @@ export function getPID(emulator: DownloadableEmulators): number {
 /**
  * @param targetName
  */
-export async function stop(targetName: DownloadableEmulators): Promise<void> {
+export async function stop(
+  targetName: DownloadableEmulators,
+  forceShutdown?: boolean
+): Promise<void> {
   const emulator = get(targetName);
+  const logger = EmulatorLogger.forEmulator(emulator.name);
   return new Promise((resolve, reject) => {
-    const logger = EmulatorLogger.forEmulator(emulator.name);
     if (emulator.instance) {
       const killTimeout = setTimeout(() => {
         const pid = emulator.instance ? emulator.instance.pid : -1;
@@ -470,7 +473,12 @@ export async function stop(targetName: DownloadableEmulators): Promise<void> {
         clearTimeout(killTimeout);
         resolve();
       });
-      emulator.instance.kill("SIGINT");
+      logger.log("DEBUG", "sending kill signal, timeout is :" + EMULATOR_INSTANCE_KILL_TIMEOUT);
+      if (forceShutdown) {
+        emulator.instance.kill("SIGKILL");
+      } else {
+        emulator.instance.kill("SIGINT");
+      }
     } else {
       resolve();
     }

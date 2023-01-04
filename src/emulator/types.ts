@@ -116,7 +116,7 @@ export interface EmulatorInstance {
    *
    * Note: you should almost always call EmulatorRegistry.stop() instead of this method.
    */
-  stop(): Promise<void>;
+  stop(forceShutdown?: boolean): Promise<void>;
 
   /**
    * Get the information about the running instance needed by the registry;

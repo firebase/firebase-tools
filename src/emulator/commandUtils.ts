@@ -188,7 +188,6 @@ export function parseInspectionPort(options: any): number {
  * When used as: `--import ./data --export-on-exit` or `--import ./data --export-on-exit ./data`
  * we do allow an non-existing --import [dir] and we just export-on-exit. This because else one would always need to
  * export data the first time they start developing on a clean project.
- * @param options
  */
 export function setExportOnExitOptions(options: any) {
   if (options.exportOnExit || typeof options.exportOnExit === "string") {
