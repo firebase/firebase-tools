@@ -3174,7 +3174,7 @@ function generateBlockingFunctionJwt(
       photo_url: user.photoUrl,
       disabled: user.disabled,
       phone_number: user.phoneNumber,
-      custom_claims: user.customAttributes,
+      custom_claims: JSON.parse(user.customAttributes || "{}") as Record<string, unknown>,
     },
     sub: user.localId,
     sign_in_method: options.signInMethod,
@@ -3473,7 +3473,7 @@ export interface BlockingFunctionsJwtPayload {
       last_sign_in_time?: string;
       creation_time?: string;
     };
-    custom_claims?: string;
+    custom_claims?: Record<string, unknown>;
     tenant_id?: string; // should match top level tenant_id
   };
   tenant_id?: string; // `tenantId` if present
