@@ -389,7 +389,7 @@ export async function promptForValidRepoURI(): Promise<string> {
   while (!repoIsValid) {
     extensionRoot = await promptOnce({
       type: "input",
-      message: "Enter the repo URI where this Extension's source code is located:",
+      message: "Enter the GitHub repo URI where this Extension's source code is located:",
     });
     if (!repoRegex.test(extensionRoot)) {
       logger.info("Repo URI follows this format: https://github.com/<user>/<repo>");
