@@ -931,9 +931,10 @@ export function displayReleaseNotes(
   const releaseNotesMessage = releaseNotes
     ? `${clc.bold("Release notes:")}\n${marked(releaseNotes)}`
     : "";
-  const metadataMessage = `${clc.bold("Extension:")} ${extensionRef}\n` +
-  `${clc.bold("Version:")} ${clc.bold(clc.green(versionId))}\n` +
-  `${clc.bold("Source:")} ${source}\n`
+  const metadataMessage =
+    `${clc.bold("Extension:")} ${extensionRef}\n` +
+    `${clc.bold("Version:")} ${clc.bold(clc.green(versionId))}\n` +
+    `${clc.bold("Source:")} ${source}\n`;
   const message =
     `\nYou are about to publish a new version to Firebase's registry of Extensions.\n\n` +
     metadataMessage +
