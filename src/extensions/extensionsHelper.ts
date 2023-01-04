@@ -392,7 +392,7 @@ export async function promptForValidRepoURI(): Promise<string> {
       message: "Enter the GitHub repo URI where this Extension's source code is located:",
     });
     if (!repoRegex.test(extensionRoot)) {
-      logger.info("Repo URI follows this format: https://github.com/<user>/<repo>");
+      logger.info("Repo URI must follow this format: https://github.com/<user>/<repo>");
     } else {
       repoIsValid = true;
     }
@@ -595,7 +595,7 @@ export async function publishExtensionVersionFromRemoteRepo(args: {
 
   // Prompt for repo URI and validate that it hasn't changed if previously set.
   if (args.repoUri && !repoRegex.test(args.repoUri)) {
-    throw new FirebaseError("Repo URI follows this format: https://github.com/<user>/<repo>");
+    throw new FirebaseError("Repo URI must follow this format: https://github.com/<user>/<repo>");
   }
   let repoUri = args.repoUri || extension?.repoUri;
   if (!repoUri) {
