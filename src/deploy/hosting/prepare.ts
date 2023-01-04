@@ -6,6 +6,7 @@ import { Context } from "./context";
 import { Options } from "../../options";
 import { HostingOptions } from "../../hosting/options";
 import { zipIn } from "../../functional";
+import { track } from "../../track";
 
 /**
  *  Prepare creates versions for each Hosting site to be deployed.
@@ -25,12 +26,24 @@ export async function prepare(context: Context, options: HostingOptions & Option
     return Promise.resolve();
   }
 
-  const version: Omit<api.Version, api.VERSION_OUTPUT_FIELDS> = {
-    status: "CREATED",
-    labels: deploymentTool.labels(),
-  };
   const versions = await Promise.all(
-    configs.map((config) => api.createVersion(config.site, version))
+    configs.map(async (config) => {
+      const labels: Record<string, string> = {
+        ...deploymentTool.labels(),
+      };
+      if (config.webFramework) {
+        labels["firebase-web-framework"] = config.webFramework;
+      }
+      const version: Omit<api.Version, api.VERSION_OUTPUT_FIELDS> = {
+        status: "CREATED",
+        labels,
+      };
+      const [, versionName] = await Promise.all([
+        track("hosting_deploy", config.webFramework || "classic"),
+        api.createVersion(config.site, version),
+      ]);
+      return versionName;
+    })
   );
   context.hosting = {
     deploys: [],

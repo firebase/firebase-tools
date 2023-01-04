@@ -330,7 +330,8 @@ async function runScript(script: string, extraEnv: Record<string, string>): Prom
 
   const env: NodeJS.ProcessEnv = { ...process.env, ...extraEnv };
 
-  setEnvVarsForEmulators(env);
+  const emulatorInfos = EmulatorRegistry.listRunningWithInfo();
+  setEnvVarsForEmulators(env, emulatorInfos);
 
   const proc = childProcess.spawn(script, {
     stdio: ["inherit", "inherit", "inherit"] as childProcess.StdioOptions,

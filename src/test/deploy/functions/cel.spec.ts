@@ -3,16 +3,163 @@ import { resolveExpression, ExprParseError } from "../../../deploy/functions/cel
 import { ParamValue } from "../../../deploy/functions/params";
 
 function stringV(value: string): ParamValue {
-  return new ParamValue(value, false, { string: true, number: false, boolean: false });
+  return new ParamValue(value, false, { string: true, number: false, boolean: false, list: false });
 }
 function numberV(value: number): ParamValue {
-  return new ParamValue(value.toString(), false, { string: false, number: true, boolean: false });
+  return new ParamValue(value.toString(), false, {
+    string: false,
+    number: true,
+    boolean: false,
+    list: false,
+  });
 }
 function boolV(value: boolean): ParamValue {
-  return new ParamValue(value.toString(), false, { string: false, number: false, boolean: true });
+  return new ParamValue(value.toString(), false, {
+    string: false,
+    number: false,
+    boolean: true,
+    list: false,
+  });
+}
+function listV(value: string[]): ParamValue {
+  return ParamValue.fromList(value);
 }
 
 describe("CEL evaluation", () => {
+  describe("String list resolution", () => {
+    it("can pull lists directly out of paramvalues", () => {
+      expect(
+        resolveExpression("string[]", "{{ params.FOO }}", {
+          FOO: listV(["1"]),
+        })
+      ).to.deep.equal(["1"]);
+    });
+
+    it("can handle literals in a list", () => {
+      expect(
+        resolveExpression("string[]", '{{ params.FOO == params.FOO ? ["asdf"] : [] }}', {
+          FOO: numberV(1),
+        })
+      ).to.deep.equal(["asdf"]);
+    });
+
+    it("can handle CEL expressions in a list", () => {
+      expect(
+        resolveExpression("string[]", "{{ params.FOO == params.FOO ? [{{ params.BAR }}] : [] }}", {
+          FOO: numberV(1),
+          BAR: stringV("asdf"),
+        })
+      ).to.deep.equal(["asdf"]);
+    });
+
+    it("can handle direct references to string params in a list", () => {
+      expect(
+        resolveExpression("string[]", "{{ params.FOO == params.FOO ? [params.BAR] : [] }}", {
+          FOO: numberV(1),
+          BAR: stringV("asdf"),
+        })
+      ).to.deep.equal(["asdf"]);
+    });
+
+    it("can handle a list with multiple elements", () => {
+      expect(
+        resolveExpression(
+          "string[]",
+          '{{ params.FOO == params.FOO ? [ "foo", params.BAR, {{ params.BAR }} ] : [] }}',
+          {
+            FOO: numberV(1),
+            BAR: stringV("asdf"),
+          }
+        )
+      ).to.deep.equal(["foo", "asdf", "asdf"]);
+    });
+
+    it("isn't picky about whitespace around the commas", () => {
+      expect(
+        resolveExpression(
+          "string[]",
+          '{{ params.FOO == params.FOO ? ["foo  ",params.BAR   ,{{ params.BAR }}] : [] }}',
+          {
+            FOO: numberV(1),
+            BAR: stringV("asdf"),
+          }
+        )
+      ).to.deep.equal(["foo  ", "asdf", "asdf"]);
+    });
+
+    it("can do == comparisons between lists", () => {
+      expect(
+        resolveExpression("boolean", "{{ params.FOO == params.FOO }}", {
+          FOO: listV(["a", "2", "false"]),
+        })
+      ).to.be.true;
+      expect(
+        resolveExpression("boolean", '{{ params.FOO == ["a", "2", "false"] }}', {
+          FOO: listV(["a", "2", "false"]),
+        })
+      ).to.be.true;
+      expect(
+        resolveExpression("boolean", "{{ params.FOO != params.FOO }}", {
+          FOO: listV(["a", "2", "false"]),
+        })
+      ).to.be.false;
+      expect(
+        resolveExpression("boolean", '{{ params.FOO != ["a", "2", "false"] }}', {
+          FOO: listV(["a", "2", "false"]),
+        })
+      ).to.be.false;
+      expect(
+        resolveExpression("boolean", "{{ params.FOO == params.BAR }}", {
+          FOO: listV(["a", "2", "false"]),
+          BAR: listV(["b", "-2", "true"]),
+        })
+      ).to.be.false;
+      expect(
+        resolveExpression("boolean", '{{ params.FOO == ["a", "2", "false"] }}', {
+          FOO: listV(["b", "-2", "true"]),
+        })
+      ).to.be.false;
+      expect(
+        resolveExpression("boolean", "{{ params.FOO != params.BAR }}", {
+          FOO: listV(["a", "2", "false"]),
+          BAR: listV(["b", "-2", "true"]),
+        })
+      ).to.be.true;
+      expect(
+        resolveExpression("boolean", '{{ params.FOO != ["a", "2", "false"] }}', {
+          FOO: listV(["b", "-2", "true"]),
+        })
+      ).to.be.true;
+    });
+
+    it("throws if asked to do </> type comparisons between lists", () => {
+      expect(() =>
+        resolveExpression("boolean", "{{ params.FOO > params.BAR }}", {
+          FOO: listV(["a", "2", "false"]),
+          BAR: listV(["b", "-2", "true"]),
+        })
+      ).to.throw(ExprParseError);
+      expect(() =>
+        resolveExpression("boolean", "{{ params.FOO >= params.BAR }}", {
+          FOO: listV(["a", "2", "false"]),
+          BAR: listV(["b", "-2", "true"]),
+        })
+      ).to.throw(ExprParseError);
+      expect(() =>
+        resolveExpression("boolean", "{{ params.FOO < params.BAR }}", {
+          FOO: listV(["a", "2", "false"]),
+          BAR: listV(["b", "-2", "true"]),
+        })
+      ).to.throw(ExprParseError);
+      expect(() =>
+        resolveExpression("boolean", "{{ params.FOO <= params.BAR }}", {
+          FOO: listV(["a", "2", "false"]),
+          BAR: listV(["b", "-2", "true"]),
+        })
+      ).to.throw(ExprParseError);
+    });
+  });
+
   describe("Identity expressions", () => {
     it("raises when the referenced parameter does not exist", () => {
       expect(() => {

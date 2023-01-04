@@ -23,6 +23,7 @@ export const command = new Command("database:update <path> [infile]")
     "--instance <instance>",
     "use the database <instance>.firebaseio.com (if omitted, use default database instance)"
   )
+  .option("--disable-triggers", "suppress any Cloud functions triggered by this operation")
   .before(requirePermissions, ["firebasedatabase.instances.update"])
   .before(requireDatabaseInstance)
   .before(populateInstanceDetails)
@@ -51,6 +52,9 @@ export const command = new Command("database:update <path> [infile]")
       (infile && fs.createReadStream(infile)) ||
       process.stdin;
     const jsonUrl = new URL(utils.getDatabaseUrl(origin, options.instance, path + ".json"));
+    if (options.disableTriggers) {
+      jsonUrl.searchParams.set("disableTriggers", "true");
+    }
 
     if (!infile && !options.data) {
       utils.explainStdin();
@@ -62,6 +66,7 @@ export const command = new Command("database:update <path> [infile]")
         method: "PATCH",
         path: jsonUrl.pathname,
         body: inStream,
+        queryParams: jsonUrl.searchParams,
       });
     } catch (err: any) {
       throw new FirebaseError("Unexpected error while setting data");

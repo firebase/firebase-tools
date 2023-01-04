@@ -52,8 +52,8 @@ export interface Context {
 }
 
 export interface FirebaseConfig {
-  locationId: string;
+  locationId?: string;
   projectId: string;
-  storageBucket: string;
-  databaseURL: string;
+  storageBucket?: string;
+  databaseURL?: string;
 }

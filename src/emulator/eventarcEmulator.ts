@@ -8,6 +8,7 @@ import { EventTrigger } from "./functionsEmulatorShared";
 import { CloudEvent } from "./events/types";
 import { EmulatorRegistry } from "./registry";
 import { FirebaseError } from "../error";
+import { cloudEventFromProtoToJson } from "./eventarcEmulatorUtils";
 
 interface CustomEventTrigger {
   projectId: string;
@@ -123,7 +124,7 @@ export class EventarcEmulator implements EmulatorInstance {
             .request<CloudEvent<any>, NodeJS.ReadableStream>({
               method: "POST",
               path: `/functions/projects/${trigger.projectId}/triggers/${trigger.triggerName}`,
-              body: JSON.stringify(event),
+              body: JSON.stringify(cloudEventFromProtoToJson(event)),
               responseType: "stream",
               resolveOnHTTPError: true,
             })

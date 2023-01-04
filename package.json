@@ -1,6 +1,6 @@
 {
   "name": "firebase-tools",
-  "version": "11.15.0",
+  "version": "11.19.0",
   "description": "Command-Line Interface for Firebase",
   "main": "./lib/index.js",
   "bin": {
@@ -8,7 +8,7 @@
   },
   "scripts": {
     "build": "tsc && npm run copyfiles",
-    "build:publish": "tsc --build tsconfig.publish.json",
+    "build:publish": "tsc --build tsconfig.publish.json && npm run copyfiles",
     "build:watch": "npm run build && tsc --watch",
     "clean": "rimraf lib dev",
     "copyfiles": "node -e \"const fs = require('fs'); fs.mkdirSync('./lib', {recursive:true}); fs.copyFileSync('./src/dynamicImport.js', './lib/dynamicImport.js')\"",
@@ -32,6 +32,7 @@
     "test:extensions-emulator": "bash ./scripts/extensions-emulator-tests/run.sh",
     "test:frameworks": "bash ./scripts/frameworks-tests/run.sh",
     "test:functions-deploy": "bash ./scripts/functions-deploy-tests/run.sh",
+    "test:functions-discover": "bash ./scripts/functions-discover-tests/run.sh",
     "test:hosting": "bash ./scripts/hosting-tests/run.sh",
     "test:hosting-rewrites": "bash ./scripts/hosting-tests/rewrites-tests/run.sh",
     "test:import-export": "bash ./scripts/emulator-import-export-tests/run.sh",
@@ -141,7 +142,7 @@
     "stream-chain": "^2.2.4",
     "stream-json": "^1.7.3",
     "strip-ansi": "^6.0.1",
-    "superstatic": "^9.0.0",
+    "superstatic": "^8.0.0",
     "tar": "^6.1.11",
     "tcp-port-used": "^1.0.2",
     "tmp": "^0.2.1",
@@ -171,6 +172,7 @@
     "@types/cross-spawn": "^6.0.1",
     "@types/express": "^4.17.0",
     "@types/express-serve-static-core": "^4.17.8",
+    "@types/firebase": "^3.2.1",
     "@types/fs-extra": "^9.0.13",
     "@types/glob": "^7.1.1",
     "@types/inquirer": "^8.1.3",
@@ -215,19 +217,19 @@
     "eslint-plugin-jsdoc": "^39.2.9",
     "eslint-plugin-prettier": "^4.0.0",
     "firebase": "^7.24.0",
-    "firebase-admin": "^9.4.2",
-    "firebase-functions": "^3.23.0",
+    "firebase-admin": "^10.0.0",
+    "firebase-functions": "^4.1.0",
     "google-discovery-to-swagger": "^2.1.0",
     "googleapis": "^105.0.0",
     "mocha": "^9.1.3",
-    "next": "^12.3.0",
+    "next": "^13.0.2",
     "nock": "^13.0.5",
     "node-mocks-http": "^1.11.0",
     "nyc": "^15.1.0",
     "openapi-merge": "^1.0.23",
     "prettier": "^2.5.1",
     "proxy": "^1.0.2",
-    "puppeteer": "^9.0.0",
+    "puppeteer": "^19.0.0",
     "sinon": "^9.2.3",
     "sinon-chai": "^3.6.0",
     "source-map-support": "^0.5.9",
@@ -237,8 +239,5 @@
     "typescript": "^4.5.4",
     "typescript-json-schema": "^0.50.1",
     "vite": "^3.1.0"
-  },
-  "optionalDependencies": {
-    "esbuild": "^0.15.7"
   }
 }

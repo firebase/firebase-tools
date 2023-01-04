@@ -1,1 +1,3 @@
-Release RTDB Emulator v4.11.0: Wire protocol update for `startAfter`, `endBefore`.
+- Fixes an issue where dependencies for emulated Extensions would not be installed on Windows - thanks @stfsy! (#5372)
+- Adds emulator support for Extensions with schedule triggers - thanks @stsfy! (#5374)
+- Fix bug where functions:delete command did not recognize '-' as delimiter. (#5290)

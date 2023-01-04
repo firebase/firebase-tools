@@ -1,4 +1,4 @@
-import { HostingResolved } from "../../firebaseConfig";
+import { HostingResolved } from "../../hosting/config";
 import { Context as FunctionsContext } from "../functions/args";
 
 export interface HostingDeploy {

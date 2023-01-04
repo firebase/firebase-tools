@@ -1608,9 +1608,11 @@ async function signInWithIdp(
     oauthExpiresIn: coercePrimitiveToString(response.oauthExpireIn),
   };
   if (response.isNewUser) {
+    const timestamp = new Date();
     let updates: Partial<UserInfo> = {
       ...accountUpdates.fields,
-      lastLoginAt: Date.now().toString(),
+      createdAt: timestamp.getTime().toString(),
+      lastLoginAt: timestamp.getTime().toString(),
       providerUserInfo: [providerUserInfo],
       tenantId: state instanceof TenantProjectState ? state.tenantId : undefined,
     };
@@ -1708,7 +1710,8 @@ async function signInWithPassword(
 ): Promise<Schemas["GoogleCloudIdentitytoolkitV1SignInWithPasswordResponse"]> {
   assert(!state.disableAuth, "PROJECT_DISABLED");
   assert(state.allowPasswordSignup, "PASSWORD_LOGIN_DISABLED");
-  assert(reqBody.email, "MISSING_EMAIL");
+  assert(reqBody.email !== undefined, "MISSING_EMAIL");
+  assert(isValidEmailAddress(reqBody.email), "INVALID_EMAIL");
   assert(reqBody.password, "MISSING_PASSWORD");
   if (reqBody.captchaResponse || reqBody.captchaChallenge) {
     throw new NotImplementedError("captcha unimplemented");
@@ -3171,7 +3174,7 @@ function generateBlockingFunctionJwt(
       photo_url: user.photoUrl,
       disabled: user.disabled,
       phone_number: user.phoneNumber,
-      custom_claims: user.customAttributes,
+      custom_claims: JSON.parse(user.customAttributes || "{}") as Record<string, unknown>,
     },
     sub: user.localId,
     sign_in_method: options.signInMethod,
@@ -3470,7 +3473,7 @@ export interface BlockingFunctionsJwtPayload {
       last_sign_in_time?: string;
       creation_time?: string;
     };
-    custom_claims?: string;
+    custom_claims?: Record<string, unknown>;
     tenant_id?: string; // should match top level tenant_id
   };
   tenant_id?: string; // `tenantId` if present

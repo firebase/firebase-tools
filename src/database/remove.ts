@@ -29,10 +29,11 @@ export default class DatabaseRemove {
    * @param instance RTBD instance ID.
    * @param path path to delete.
    * @param host db host.
+   * @param disableTriggers if true, suppresses any Cloud functions that would be triggered by this operation.
    */
-  constructor(instance: string, path: string, host: string) {
+  constructor(instance: string, path: string, host: string, disableTriggers: boolean) {
     this.path = path;
-    this.remote = new RTDBRemoveRemote(instance, host);
+    this.remote = new RTDBRemoveRemote(instance, host, disableTriggers);
     this.deleteJobStack = new Stack({
       name: "delete stack",
       concurrency: 1,
