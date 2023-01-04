@@ -95,7 +95,7 @@ export const resourceTypeToNiceName: Record<string, string> = {
   "firebaseextensions.v1beta.function": "Cloud Function",
 };
 export type ReleaseStage = "alpha" | "beta" | "rc" | "stable";
-const repoRegex = new RegExp("^https://github.com/[^/]+/[^/]+/?$");
+const repoRegex = new RegExp("^https://github.com/[^/]+/[^/]+$");
 const stageOptions = ["alpha", "beta", "rc", "stable"];
 
 /**
@@ -389,10 +389,10 @@ export async function promptForValidRepoURI(): Promise<string> {
   while (!repoIsValid) {
     extensionRoot = await promptOnce({
       type: "input",
-      message: "Please enter the repo URI where this Extension's source code is located:",
+      message: "Enter the repo URI where this Extension's source code is located:",
     });
     if (!repoRegex.test(extensionRoot)) {
-      logger.info("Repo URI must follow this format: https://github.com/<user>/<repo>");
+      logger.info("Repo URI follows this format: https://github.com/<user>/<repo>");
     } else {
       repoIsValid = true;
     }
@@ -595,7 +595,7 @@ export async function publishExtensionVersionFromRemoteRepo(args: {
 
   // Prompt for repo URI and validate that it hasn't changed if previously set.
   if (args.repoUri && !repoRegex.test(args.repoUri)) {
-    throw new FirebaseError("Repo URI must follow this format: https://github.com/<user>/<repo>");
+    throw new FirebaseError("Repo URI follows this format: https://github.com/<user>/<repo>");
   }
   let repoUri = args.repoUri || extension?.repoUri;
   if (!repoUri) {
@@ -691,7 +691,7 @@ export async function publishExtensionVersionFromRemoteRepo(args: {
   }
 
   // Fetch and validate Extension from remote repo.
-  const archiveUri = path.join(repoUri, `archive/${sourceRef}.zip`);
+  const archiveUri = `${repoUri}/archive/${sourceRef}.zip`;
   const tempDirectory = tmp.dirSync({ unsafeCleanup: true });
   try {
     const response = await fetch(archiveUri);
@@ -929,14 +929,16 @@ export function displayReleaseNotes(
 ): void {
   const source = sourceUri || "local source";
   const releaseNotesMessage = releaseNotes
-    ? `Release notes for this version:\n${marked(releaseNotes)}\n`
+    ? `${clc.bold("Release notes:")}\n${marked(releaseNotes)}`
     : "";
+  const metadataMessage = `${clc.bold("Extension:")} ${extensionRef}\n` +
+  `${clc.bold("Version:")} ${clc.bold(clc.green(versionId))}\n` +
+  `${clc.bold("Source:")} ${source}\n`
   const message =
-    `\nYou are about to publish version ${clc.green(clc.bold(versionId))} of Extension ${clc.bold(
-      `${extensionRef}`
-    )} from ${clc.bold(source)} to Firebase's registry of Extensions. ` +
+    `\nYou are about to publish a new version to Firebase's registry of Extensions.\n\n` +
+    metadataMessage +
     releaseNotesMessage +
-    `Once an Extension version is published, it cannot be changed. If you wish to make changes after publishing, you will need to publish a new version.\n`;
+    `\nOnce an Extension version is published, it cannot be changed. If you wish to make changes after publishing, you will need to publish a new version.\n`;
   logger.info(message);
 }
 
