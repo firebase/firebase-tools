@@ -38,9 +38,9 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
     expectedChecksum: "4f41d24a3c0f3b55ea22804a424cc0ee",
   },
   storage: {
-    version: "1.1.2",
-    expectedSize: 47028740,
-    expectedChecksum: "983b4415b1e72b109864f1b8e7ea7546",
+    version: "2.0.0",
+    expectedSize: 52893083,
+    expectedChecksum: "d498b9e34f718a76b6296428003442a6",
   },
   ui: experiments.isEnabled("emulatoruisnapshot")
     ? { version: "SNAPSHOT", expectedSize: -1, expectedChecksum: "" }

@@ -345,6 +345,38 @@ describe("Storage Rules Runtime", function () {
       ).to.be.false;
     });
   });
+
+  describe("features", () => {
+    describe("ternary", () => {
+      it("should support ternary operators", async () => {
+        const rulesContent = `
+        rules_version = '2';
+        service firebase.storage {
+          match /b/{bucket}/o {
+            match /{file} {
+              allow read: if request.path[3] == "test" ? true : false;
+            }
+          }
+        }`;
+
+        expect(
+          await testIfPermitted(runtime, rulesContent, {
+            method: RulesetOperationMethod.GET,
+            path: "/b/BUCKET_NAME/o/test",
+            file: {},
+          })
+        ).to.be.true;
+
+        expect(
+          await testIfPermitted(runtime, rulesContent, {
+            method: RulesetOperationMethod.GET,
+            path: "/b/BUCKET_NAME/o/someRandomFile",
+            file: {},
+          })
+        ).to.be.false;
+      });
+    });
+  });
 });
 
 async function testIfPermitted(
