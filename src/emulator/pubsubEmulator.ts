@@ -11,7 +11,7 @@ import { FirebaseError } from "../error";
 import { EmulatorRegistry } from "./registry";
 import { SignatureType } from "./functionsEmulatorShared";
 import { CloudEvent } from "./events/types";
-import { exec } from "child_process";
+import { execSync } from "child_process";
 
 // Finds processes with "pubsub-emulator" in the description and runs `kill` if any exist
 // Since the pubsub emulator doesn't export any data, force-killing will not affect export-on-exit
@@ -75,19 +75,8 @@ export class PubsubEmulator implements EmulatorInstance {
     } catch (e: unknown) {
       this.logger.logLabeled("DEBUG", "pubsub", JSON.stringify(e));
       if (process.platform !== "win32") {
-        // The exec is wrapped in a promise so we can block on it's completion via `await`.
-        const execPromise = new Promise((resolve) => {
-          exec(PUBSUB_KILL_COMMAND, (err, stdout) => {
-            if (err) {
-              this.logger.logLabeled("DEBUG", "pubsub", JSON.stringify(err));
-            }
-            if (stdout) {
-              this.logger.logLabeled("DEBUG", "pubsub", JSON.stringify(stdout));
-            }
-            resolve(null);
-          });
-        });
-        await execPromise;
+        const buffer = execSync(PUBSUB_KILL_COMMAND);
+        this.logger.logLabeled("DEBUG", "pubsub", "Pubsub kill output: " + JSON.stringify(buffer));
       }
     }
   }
