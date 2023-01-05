@@ -1,6 +1,9 @@
+import { ChildProcess } from "child_process";
+
 import * as backend from "../backend";
 import * as build from "../build";
 import * as node from "./node";
+import * as python from "./python";
 import * as validate from "../validate";
 import { FirebaseError } from "../../../error";
 
@@ -9,7 +12,7 @@ const RUNTIMES: string[] = ["nodejs10", "nodejs12", "nodejs14", "nodejs16", "nod
 // Experimental runtimes are part of the Runtime type, but are in a
 // different list to help guard against some day accidentally iterating over
 // and printing a hidden runtime to the user.
-const EXPERIMENTAL_RUNTIMES = ["go113"];
+const EXPERIMENTAL_RUNTIMES = ["python310"];
 export type Runtime = typeof RUNTIMES[number] | typeof EXPERIMENTAL_RUNTIMES[number];
 
 /** Runtimes that can be found in existing backends but not used for new functions. */
@@ -35,6 +38,7 @@ const MESSAGE_FRIENDLY_RUNTIMES: Record<Runtime | DeprecatedRuntime, string> = {
   nodejs16: "Node.js 16",
   nodejs18: "Node.js 18",
   go113: "Go 1.13",
+  python310: "Python 3.10",
 };
 
 /**
@@ -87,6 +91,11 @@ export interface RuntimeDelegate {
   watch(): Promise<() => Promise<void>>;
 
   /**
+   * Spawns process to serve customer's code.
+   */
+  serve(port: string, envs: Record<string, string | undefined>, extraArgs?: string[]): ChildProcess;
+
+  /**
    * Inspect the customer's source for the backend spec it describes.
    */
   // TODO: Once discoverSpec supports/is all an HTTP contract, we should find a way
@@ -111,7 +120,7 @@ export interface DelegateContext {
 type Factory = (context: DelegateContext) => Promise<RuntimeDelegate | undefined>;
 // Note: golang has been removed from delegates because it does not work and it
 // is not worth having an experiment for yet.
-const factories: Factory[] = [node.tryCreateDelegate];
+const factories: Factory[] = [node.tryCreateDelegate, python.tryCreateDelegate];
 
 /**
  *
