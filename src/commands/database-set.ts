@@ -14,6 +14,7 @@ import { URL } from "url";
 import { logger } from "../logger";
 import { requireDatabaseInstance } from "../requireDatabaseInstance";
 import * as utils from "../utils";
+import { DatabaseChunkUploader } from "../databaseChunkUploader";
 
 export const command = new Command("database:set <path> [infile]")
   .description("store JSON data at the specified path via STDIN, arg, or file")
@@ -34,9 +35,9 @@ export const command = new Command("database:set <path> [infile]")
     }
     const origin = realtimeOriginOrEmulatorOrCustomUrl(options.instanceDetails.databaseUrl);
     const dbPath = utils.getDatabaseUrl(origin, options.instance, path);
-    const dbJsonURL = new URL(utils.getDatabaseUrl(origin, options.instance, path + ".json"));
+    const dbUrl = new URL(dbPath);
     if (options.disableTriggers) {
-      dbJsonURL.searchParams.set("disableTriggers", "true");
+      dbUrl.searchParams.set("disableTriggers", "true");
     }
 
     const confirm = await promptOnce(
@@ -52,21 +53,17 @@ export const command = new Command("database:set <path> [infile]")
       throw new FirebaseError("Command aborted.");
     }
 
-    const inStream =
-      utils.stringToStream(options.data) || (infile ? fs.createReadStream(infile) : process.stdin);
+    const inputString =
+      options.data ||
+      (await utils.streamToString(infile ? fs.createReadStream(infile) : process.stdin));
 
     if (!infile && !options.data) {
       utils.explainStdin();
     }
 
-    const c = new Client({ urlPrefix: dbJsonURL.origin, auth: true });
+    const uploader = new DatabaseChunkUploader(dbUrl, inputString);
     try {
-      await c.request({
-        method: "PUT",
-        path: dbJsonURL.pathname,
-        body: inStream,
-        queryParams: dbJsonURL.searchParams,
-      });
+      await uploader.upload(/* overwrite= */ true);
     } catch (err: any) {
       logger.debug(err);
       throw new FirebaseError(`Unexpected error while setting data: ${err}`, { exit: 2 });

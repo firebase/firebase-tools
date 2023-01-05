@@ -14,6 +14,7 @@ import { requirePermissions } from "../requirePermissions";
 import { logger } from "../logger";
 import { requireDatabaseInstance } from "../requireDatabaseInstance";
 import * as utils from "../utils";
+import { DatabaseChunkUploader } from "../databaseChunkUploader";
 
 export const command = new Command("database:update <path> [infile]")
   .description("update some of the keys for the defined path in your Firebase")
@@ -33,13 +34,18 @@ export const command = new Command("database:update <path> [infile]")
       throw new FirebaseError("Path must begin with /");
     }
     const origin = realtimeOriginOrEmulatorOrCustomUrl(options.instanceDetails.databaseUrl);
-    const url = utils.getDatabaseUrl(origin, options.instance, path);
+    const dbPath = utils.getDatabaseUrl(origin, options.instance, path);
+    const dbUrl = new URL(dbPath);
+    if (options.disableTriggers) {
+      dbUrl.searchParams.set("disableTriggers", "true");
+    }
+
     const confirmed = await promptOnce(
       {
         type: "confirm",
         name: "force",
         default: false,
-        message: `You are about to modify data at ${clc.cyan(url)}. Are you sure?`,
+        message: `You are about to modify data at ${clc.cyan(dbPath)}. Are you sure?`,
       },
       options
     );
@@ -47,27 +53,17 @@ export const command = new Command("database:update <path> [infile]")
       throw new FirebaseError("Command aborted.");
     }
 
-    const inStream =
-      utils.stringToStream(options.data) ||
-      (infile && fs.createReadStream(infile)) ||
-      process.stdin;
-    const jsonUrl = new URL(utils.getDatabaseUrl(origin, options.instance, path + ".json"));
-    if (options.disableTriggers) {
-      jsonUrl.searchParams.set("disableTriggers", "true");
-    }
+    const inputString =
+      options.data ||
+      (await utils.streamToString(infile ? fs.createReadStream(infile) : process.stdin));
 
     if (!infile && !options.data) {
       utils.explainStdin();
     }
 
-    const c = new Client({ urlPrefix: jsonUrl.origin, auth: true });
+    const uploader = new DatabaseChunkUploader(dbUrl, inputString);
     try {
-      await c.request({
-        method: "PATCH",
-        path: jsonUrl.pathname,
-        body: inStream,
-        queryParams: jsonUrl.searchParams,
-      });
+      await uploader.upload(/* overwrite= */ false);
     } catch (err: any) {
       throw new FirebaseError("Unexpected error while setting data");
     }
