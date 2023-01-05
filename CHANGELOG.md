@@ -1,2 +1,3 @@
 - Fixes an issue where dependencies for emulated Extensions would not be installed on Windows - thanks @stfsy! (#5372)
 - Adds emulator support for Extensions with schedule triggers - thanks @stsfy! (#5374)
+- Fixes an issue in the Functions emulator where secret values were undefined after hot reload with the `--inspect-functions` flag (#5384)
