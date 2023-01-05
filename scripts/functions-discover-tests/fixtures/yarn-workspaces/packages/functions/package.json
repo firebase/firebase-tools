@@ -4,9 +4,10 @@
   "dependencies": {
     "firebase-functions": "4.0.0",
     "firebase-admin": "^11.2.0",
-    "a": "latest"
+    "@firebase/a-test-pkg": "0.0.1"
   },
   "engines": {
     "node": "16"
-  }
+  },
+  "private": true
 }
