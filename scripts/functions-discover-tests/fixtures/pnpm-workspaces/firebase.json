@@ -1,0 +1,8 @@
+{
+  "functions": [
+    {
+      "source": "packages/functions",
+      "codebase": "default"
+    }
+  ]
+}
