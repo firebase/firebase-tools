@@ -664,7 +664,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       // Since we're about to start a runtime to be shared by all the functions in this codebase,
       // we need to make sure it has all the secrets used by any function in the codebase.
       emulatableBackend.secretEnv = Object.values(
-        toSetup.reduce(
+        triggerDefinitions.reduce(
           (acc: Record<string, backend.SecretEnvVar>, curr: EmulatedTriggerDefinition) => {
             for (const secret of curr.secretEnvironmentVariables || []) {
               acc[secret.key] = secret;
