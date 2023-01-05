@@ -2,7 +2,6 @@ import { URL } from "url";
 import * as clc from "colorette";
 import * as fs from "fs";
 
-import { Client } from "../apiv2";
 import { Command } from "../command";
 import { Emulators } from "../emulator/types";
 import { FirebaseError } from "../error";
@@ -14,7 +13,7 @@ import { requirePermissions } from "../requirePermissions";
 import { logger } from "../logger";
 import { requireDatabaseInstance } from "../requireDatabaseInstance";
 import * as utils from "../utils";
-import { DatabaseChunkUploader } from "../databaseChunkUploader";
+import DatabaseImporter from "../database/import";
 
 export const command = new Command("database:update <path> [infile]")
   .description("update some of the keys for the defined path in your Firebase")
@@ -61,9 +60,9 @@ export const command = new Command("database:update <path> [infile]")
       utils.explainStdin();
     }
 
-    const uploader = new DatabaseChunkUploader(dbUrl, inputString);
+    const importer = new DatabaseImporter(dbUrl, inputString);
     try {
-      await uploader.upload(/* overwrite= */ false);
+      await importer.execute(/* overwrite= */ false);
     } catch (err: any) {
       throw new FirebaseError("Unexpected error while setting data");
     }

@@ -1,11 +1,10 @@
 import { URL } from "url";
-import { Client } from "./apiv2";
-import * as utils from "./utils";
+import { Client } from "../apiv2";
 
 const MAX_CHUNK_SIZE = 1024 * 1024;
 
 type Data = {
-  json: any;
+  json: { [key: string]: any } | string | number | boolean;
   pathname: string;
 };
 
@@ -14,19 +13,28 @@ type ChunkedData = {
   size: number;
 };
 
-export class DatabaseChunkUploader {
+/**
+ * Imports JSON data to a given RTDB instance.
+ *
+ * The data is parsed and chunked into subtrees of ~1 MB, to be subsequently written in parallel.
+ */
+export default class DatabaseImporter {
+  chunks: Data[];
   private client: Client;
-  private chunks: Data[];
 
-  constructor(private dbUrl: URL, file: string) {
-    this.client = new Client({ urlPrefix: dbUrl.origin, auth: true });
-
+  constructor(private dbUrl: URL, file: string, private chunkSize = MAX_CHUNK_SIZE) {
     const data = { json: JSON.parse(file), pathname: dbUrl.pathname };
     const chunkedData = this.chunkData(data);
     this.chunks = chunkedData.chunks || [data];
+    this.client = new Client({ urlPrefix: dbUrl.origin, auth: true });
   }
 
-  public async upload(overwrite: boolean): Promise<any> {
+  /**
+   * Writes the chunked data to RTDB.
+   *
+   * @param overwrite Whether to overwrite the existing data at the given location.
+   */
+  async execute(overwrite: boolean): Promise<any> {
     return Promise.all(
       this.chunks.map((chunk: Data) =>
         this.client.request({
@@ -40,16 +48,20 @@ export class DatabaseChunkUploader {
   }
 
   private chunkData({ json, pathname }: Data): ChunkedData {
-    if (isObject(json)) {
+    if (typeof json === "string" || typeof json === "number" || typeof json === "boolean") {
+      // Leaf node, cannot be chunked
+      return { chunks: null, size: JSON.stringify(json).length };
+    } else {
       // Children node
       let size = 2; // {}
-      let chunks = [];
+
+      const chunks = [];
       let hasChunkedChild = false;
 
-      for (const key in json) {
+      for (const key of Object.keys(json)) {
         size += key.length + 3; // "[key]":
 
-        const child = { json: json[key], pathname: pathname + "/" + key };
+        const child = { json: json[key], pathname: [pathname, key].join("/").replace("//", "/") };
         const childChunks = this.chunkData(child);
         size += childChunks.size;
         if (childChunks.chunks) {
@@ -60,18 +72,11 @@ export class DatabaseChunkUploader {
         }
       }
 
-      if (hasChunkedChild || size >= MAX_CHUNK_SIZE) {
+      if (hasChunkedChild || size >= this.chunkSize) {
         return { chunks, size };
       } else {
         return { chunks: null, size };
       }
-    } else {
-      // Leaf node, cannot be chunked
-      return { chunks: null, size: JSON.stringify(json).length };
     }
   }
-}
-
-function isObject(blob: any): boolean {
-  return blob !== null && typeof blob === "object";
 }
