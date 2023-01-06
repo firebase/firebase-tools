@@ -15,11 +15,11 @@
 
 import os
 from functions_framework import create_app
-from functions_framework._http.gunicorn import GunicornApplication
+from functions_framework._http.flask import FlaskApplication
 
 def create_server(host, port):
     app = create_app()
-    GunicornApplication(app, host, port, False).run()
+    FlaskApplication(app, host, port, False).run()
 
 
 def main():
