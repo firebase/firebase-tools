@@ -95,7 +95,7 @@ export const resourceTypeToNiceName: Record<string, string> = {
   "firebaseextensions.v1beta.function": "Cloud Function",
 };
 export type ReleaseStage = "alpha" | "beta" | "rc" | "stable";
-const repoRegex = new RegExp("^https://github\.com/[^/]+/[^/]+$");
+const repoRegex = new RegExp(`^https:\/\/github\.com\/[^\/]+\/[^\/]+$`);
 const stageOptions = ["alpha", "beta", "rc", "stable"];
 
 /**
