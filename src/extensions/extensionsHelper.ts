@@ -754,13 +754,7 @@ export async function publishExtensionVersionFromRemoteRepo(args: {
   } catch (err: any) {
     publishSpinner.fail();
     if (err.status === 404) {
-      throw new FirebaseError(
-        marked(
-          `Couldn't find publisher ID '${clc.bold(
-            args.publisherId
-          )}'. Please ensure that you have registered this ID. To register as a publisher, you can check out the [Firebase documentation](https://firebase.google.com/docs/extensions/alpha/share#register_as_an_extensions_publisher) for step-by-step instructions.`
-        )
-      );
+      throw getMissingPublisherError(args.publisherId);
     }
     throw err;
   }
@@ -835,18 +829,22 @@ export async function publishExtensionVersionFromLocalSource(args: {
   } catch (err: any) {
     publishSpinner.fail();
     if (err.status === 404) {
-      throw new FirebaseError(
-        marked(
-          `Couldn't find publisher ID '${clc.bold(
-            args.publisherId
-          )}'. Please ensure that you have registered this ID. To register as a publisher, you can check out the [Firebase documentation](https://firebase.google.com/docs/extensions/alpha/share#register_as_an_extensions_publisher) for step-by-step instructions.`
-        )
-      );
+      return getMissingPublisherError(args.publisherId);
     }
     throw err;
   }
   await deleteUploadedSource(objectPath);
   return res;
+}
+
+function getMissingPublisherError(publisherId: string): FirebaseError {
+  return new FirebaseError(
+    marked(
+      `Couldn't find publisher ID '${clc.bold(
+        publisherId
+      )}'. Please ensure that you have registered this ID. To register as a publisher, you can check out the [Firebase documentation](https://firebase.google.com/docs/extensions/alpha/share#register_as_an_extensions_publisher) for step-by-step instructions.`
+    )
+  );
 }
 
 /**
