@@ -9,7 +9,7 @@
     "@firebase/database-compat": "0.1.2",
     "@google-cloud/pubsub": "^3.0.1",
     "firebase": "^9.9.0",
-    "firebase-admin": "^11.0.0",
+    "firebase-admin": "^11.4.1",
     "firebase-functions": "^3.24.1"
   },
   "devDependencies": {
