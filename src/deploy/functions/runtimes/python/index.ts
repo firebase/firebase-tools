@@ -15,7 +15,7 @@ import { ChildProcess, ProcessEnvOptions } from "child_process";
 
 export const LATEST_VERSION: runtimes.Runtime = "python310";
 
-export const PYVENV = ".venv";
+export const PYVENV = "venv";
 
 type ChildProcessWithCompletionPromise = cp.ChildProcess & { promise: Promise<string> };
 
@@ -113,8 +113,14 @@ class Delegate implements runtimes.RuntimeDelegate {
       "python3.10",
       path.join(__dirname, "..", "..", "..", "..", "emulator", "emulatorRuntime.py"),
     ];
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     return runWithVirtualEnv(args, this.sourceDir, true, {
-      env: { ...env, DEBUG: "true", HOST: `unix://${port}` } as unknown as ProcessEnvOptions["env"],
+      env: {
+        ...env,
+        DEBUG: "true",
+        HOST: "unix",
+        PORT: port,
+      } as unknown as ProcessEnvOptions["env"],
     });
   }
 
@@ -124,7 +130,7 @@ class Delegate implements runtimes.RuntimeDelegate {
       ...envs,
       ADMIN_PORT: port.toString(),
     };
-    const args = ["python3.10", path.join(modulesDir, "serving.py")];
+    const args = ["python3.10", path.join(modulesDir, "private", "serving.py")];
     logger.debug(
       `Running admin server with args: ${JSON.stringify(args)} and env: ${JSON.stringify(
         envWithAdminPort
