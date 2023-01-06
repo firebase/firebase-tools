@@ -200,6 +200,85 @@ describe("IndexSpecMatching", () => {
     expect(idx.fieldMatchesSpec(apiField, specField)).to.eql(true);
   });
 
+  it("should identify a positive field spec match with ttl specified as false", () => {
+    const apiField = {
+      name: "/projects/myproject/databases/(default)/collectionGroups/collection/fields/abc123",
+      indexConfig: {
+        indexes: [
+          {
+            queryScope: "COLLECTION",
+            fields: [{ fieldPath: "abc123", order: "ASCENDING" }],
+          },
+          {
+            queryScope: "COLLECTION",
+            fields: [{ fieldPath: "abc123", arrayConfig: "CONTAINS" }],
+          },
+        ],
+      },
+    } as API.Field;
+
+    const specField = {
+      collectionGroup: "collection",
+      fieldPath: "abc123",
+      ttl: false,
+      indexes: [
+        { order: "ASCENDING", queryScope: "COLLECTION" },
+        { arrayConfig: "CONTAINS", queryScope: "COLLECTION" },
+      ],
+    } as Spec.FieldOverride;
+
+    expect(idx.fieldMatchesSpec(apiField, specField)).to.eql(true);
+  });
+
+  it("should identify a positive ttl field spec match", () => {
+    const apiField = {
+      name: "/projects/myproject/databases/(default)/collectionGroups/collection/fields/fieldTtl",
+      indexConfig: {
+        indexes: [
+          {
+            queryScope: "COLLECTION",
+            fields: [{ fieldPath: "fieldTtl", order: "ASCENDING" }],
+          },
+        ],
+      },
+      ttlConfig: {
+        state: "ACTIVE",
+      },
+    } as API.Field;
+
+    const specField = {
+      collectionGroup: "collection",
+      fieldPath: "fieldTtl",
+      ttl: true,
+      indexes: [{ order: "ASCENDING", queryScope: "COLLECTION" }],
+    } as Spec.FieldOverride;
+
+    expect(idx.fieldMatchesSpec(apiField, specField)).to.eql(true);
+  });
+
+  it("should identify a negative ttl field spec match", () => {
+    const apiField = {
+      name: "/projects/myproject/databases/(default)/collectionGroups/collection/fields/fieldTtl",
+      indexConfig: {
+        indexes: [
+          {
+            queryScope: "COLLECTION",
+            fields: [{ fieldPath: "fieldTtl", order: "ASCENDING" }],
+          },
+        ],
+      },
+    } as API.Field;
+
+    const specField = {
+      collectionGroup: "collection",
+      fieldPath: "fieldTtl",
+      ttl: true,
+      indexes: [{ order: "ASCENDING", queryScope: "COLLECTION" }],
+    } as Spec.FieldOverride;
+
+    expect(idx.fieldMatchesSpec(apiField, specField)).to.eql(false);
+  });
+
   it("should match a field spec with all indexes excluded", () => {
     const apiField = {
       name: "/projects/myproject/databases/(default)/collectionGroups/collection/fields/abc123",
@@ -209,6 +288,25 @@ describe("IndexSpecMatching", () => {
     const specField = {
       collectionGroup: "collection",
       fieldPath: "abc123",
+      indexes: [],
+    } as Spec.FieldOverride;
+
+    expect(idx.fieldMatchesSpec(apiField, specField)).to.eql(true);
+  });
+
+  it("should match a field spec with only ttl", () => {
+    const apiField = {
+      name: "/projects/myproject/databases/(default)/collectionGroups/collection/fields/ttlField",
+      ttlConfig: {
+        state: "ACTIVE",
+      },
+      indexConfig: {},
+    } as API.Field;
+
+    const specField = {
+      collectionGroup: "collection",
+      fieldPath: "ttlField",
+      ttl: true,
       indexes: [],
     } as Spec.FieldOverride;
 
@@ -242,6 +340,27 @@ describe("IndexSpecMatching", () => {
     } as Spec.FieldOverride;
 
     // The second spec contains "DESCENDING" where the first contains "ASCENDING"
+    expect(idx.fieldMatchesSpec(apiField, specField)).to.eql(false);
+  });
+
+  it("should identify a negative field spec match with ttl as false", () => {
+    const apiField = {
+      name: "/projects/myproject/databases/(default)/collectionGroups/collection/fields/fieldTtl",
+      ttlConfig: {
+        state: "ACTIVE",
+      },
+      indexConfig: {},
+    } as API.Field;
+
+    const specField = {
+      collectionGroup: "collection",
+      fieldPath: "fieldTtl",
+      ttl: false,
+      indexes: [],
+    } as Spec.FieldOverride;
+
+    // The second spec contains "false" for ttl  where the first contains "true"
+    // for ttl
     expect(idx.fieldMatchesSpec(apiField, specField)).to.eql(false);
   });
 });
@@ -357,6 +476,35 @@ describe("IndexSorting", () => {
       ],
     };
 
+    expect([b, a, d, c].sort(sort.compareFieldOverride)).to.eql([a, b, c, d]);
+  });
+
+  it("should sort ttl true to be last in an array of Spec field overrides", () => {
+    // Sorts first because of collectionGroup
+    const a: Spec.FieldOverride = {
+      collectionGroup: "collectionA",
+      fieldPath: "fieldA",
+      ttl: false,
+      indexes: [],
+    };
+    const b: Spec.FieldOverride = {
+      collectionGroup: "collectionA",
+      fieldPath: "fieldB",
+      ttl: true,
+      indexes: [],
+    };
+    const c: Spec.FieldOverride = {
+      collectionGroup: "collectionB",
+      fieldPath: "fieldA",
+      ttl: false,
+      indexes: [],
+    };
+    const d: Spec.FieldOverride = {
+      collectionGroup: "collectionB",
+      fieldPath: "fieldB",
+      ttl: true,
+      indexes: [],
+    };
     expect([b, a, d, c].sort(sort.compareFieldOverride)).to.eql([a, b, c, d]);
   });
 

@@ -1,7 +1,7 @@
+import { MemoryOptions } from "../deploy/functions/backend";
+import { Runtime } from "../deploy/functions/runtimes";
 import * as proto from "../gcp/proto";
 import { SpecParamType } from "./extensionsHelper";
-import { Runtime } from "../deploy/functions/runtimes";
-import { MemoryOptions } from "../deploy/functions/backend";
 
 export enum RegistryLaunchStage {
   EXPERIMENTAL = "EXPERIMENTAL",
@@ -139,6 +139,7 @@ export interface FunctionResourceProperties {
     availableMemoryMb?: MemoryOptions;
     runtime?: Runtime;
     httpsTrigger?: Record<string, never>;
+    scheduleTrigger?: Record<string, string>;
     taskQueueTrigger?: {
       rateLimits?: {
         maxConcurrentDispatchs?: number;
@@ -160,9 +161,41 @@ export interface FunctionResourceProperties {
   };
 }
 
+export const FUNCTIONS_V2_RESOURCE_TYPE = "firebaseextensions.v1beta.v2function";
+export interface FunctionV2ResourceProperties {
+  type: typeof FUNCTIONS_V2_RESOURCE_TYPE;
+  properties?: {
+    location?: string;
+    sourceDirectory?: string;
+    buildConfig?: {
+      runtime?: Runtime;
+    };
+    serviceConfig?: {
+      availableMemory?: string;
+      timeoutSeconds?: number;
+      minInstanceCount?: number;
+      maxInstanceCount?: number;
+    };
+    eventTrigger?: {
+      eventType: string;
+      triggerRegion?: string;
+      channel?: string;
+      pubsubTopic?: string;
+      retryPolicy?: string;
+      eventFilters?: FunctionV2EventFilter[];
+    };
+  };
+}
+
+export interface FunctionV2EventFilter {
+  attribute: string;
+  value: string;
+  operator?: string;
+}
+
 // Union of all valid property types so we can have a strongly typed "property"
 // field depending on the actual value of "type"
-type ResourceProperties = FunctionResourceProperties;
+type ResourceProperties = FunctionResourceProperties | FunctionV2ResourceProperties;
 
 export type Resource = ResourceProperties & {
   name: string;

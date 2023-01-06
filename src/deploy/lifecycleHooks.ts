@@ -48,7 +48,7 @@ function getChildEnvironment(target: string, overallOptions: any, config: any) {
   let resourceDir;
   switch (target) {
     case "hosting":
-      resourceDir = overallOptions.config.path(config.public);
+      resourceDir = overallOptions.config.path(config.public ?? config.source);
       break;
     case "functions":
       resourceDir = overallOptions.config.path(config.source);

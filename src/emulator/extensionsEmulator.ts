@@ -1,24 +1,24 @@
+import * as clc from "colorette";
+import * as spawn from "cross-spawn";
 import * as fs from "fs-extra";
 import * as os from "os";
 import * as path from "path";
-import * as clc from "colorette";
 import Table = require("cli-table");
-import * as spawn from "cross-spawn";
 
 import * as planner from "../deploy/extensions/planner";
-import { Options } from "../options";
-import { FirebaseError } from "../error";
-import { toExtensionVersionRef } from "../extensions/refs";
-import { downloadExtensionVersion } from "./download";
-import { EmulatableBackend } from "./functionsEmulator";
-import { getExtensionFunctionInfo } from "../extensions/emulator/optionsHelper";
-import { EmulatorLogger } from "./emulatorLogger";
-import { EmulatorInfo, EmulatorInstance, Emulators } from "./types";
-import { checkForUnemulatedTriggerTypes, getUnemulatedAPIs } from "./extensions/validation";
 import { enableApiURI } from "../ensureApiEnabled";
+import { FirebaseError } from "../error";
+import { getExtensionFunctionInfo } from "../extensions/emulator/optionsHelper";
+import { toExtensionVersionRef } from "../extensions/refs";
+import { Options } from "../options";
 import { shortenUrl } from "../shortenUrl";
 import { Constants } from "./constants";
+import { downloadExtensionVersion } from "./download";
+import { EmulatorLogger } from "./emulatorLogger";
+import { checkForUnemulatedTriggerTypes, getUnemulatedAPIs } from "./extensions/validation";
+import { EmulatableBackend } from "./functionsEmulator";
 import { EmulatorRegistry } from "./registry";
+import { EmulatorInfo, EmulatorInstance, Emulators } from "./types";
 
 export interface ExtensionEmulatorArgs {
   projectId: string;
@@ -167,11 +167,13 @@ export class ExtensionsEmulator implements EmulatorInstance {
     return true;
   }
 
-  private installAndBuildSourceCode(sourceCodePath: string): void {
+  installAndBuildSourceCode(sourceCodePath: string): void {
     // TODO: Add logging during this so it is clear what is happening.
     this.logger.logLabeled("DEBUG", "Extensions", `Running "npm install" for ${sourceCodePath}`);
-    const npmInstall = spawn.sync("npm", ["--prefix", `/${sourceCodePath}/functions/`, "install"], {
+    const functionsDirectory = path.resolve(sourceCodePath, "functions");
+    const npmInstall = spawn.sync("npm", ["install"], {
       encoding: "utf8",
+      cwd: functionsDirectory,
     });
     if (npmInstall.error) {
       throw npmInstall.error;
@@ -183,11 +185,10 @@ export class ExtensionsEmulator implements EmulatorInstance {
       "Extensions",
       `Running "npm run gcp-build" for ${sourceCodePath}`
     );
-    const npmRunGCPBuild = spawn.sync(
-      "npm",
-      ["--prefix", `/${sourceCodePath}/functions/`, "run", "gcp-build"],
-      { encoding: "utf8" }
-    );
+    const npmRunGCPBuild = spawn.sync("npm", ["run", "gcp-build"], {
+      encoding: "utf8",
+      cwd: functionsDirectory,
+    });
     if (npmRunGCPBuild.error) {
       // TODO: Make sure this does not error out if "gcp-build" is not defined, but does error if it fails otherwise.
       throw npmRunGCPBuild.error;
@@ -234,7 +235,7 @@ export class ExtensionsEmulator implements EmulatorInstance {
     const emulatableBackend: EmulatableBackend = {
       functionsDir,
       env: nonSecretEnv,
-      codebase: "",
+      codebase: instance.instanceId, // Give each extension its own codebase name so that they don't share workerPools.
       secretEnv: secretEnvVariables,
       predefinedTriggers: extensionTriggers,
       nodeMajorVersion: nodeMajorVersion,
