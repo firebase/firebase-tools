@@ -58,12 +58,9 @@ export const command = new Command("ext:dev:publish <extensionRef>")
         )}'. Please use the format '${clc.bold("<publisherId>/<extensionId>")}'.`
       );
     }
-    if ((options.repo || options.root) && !options.ref) {
-      throw new FirebaseError("`ref` must be set if `repo` or `root` are set.");
-    }
     let res;
     // TODO: Default to this path instead of local source in a major version.
-    if (options.ref) {
+    if (options.repo || options.root || options.ref) {
       res = await publishExtensionVersionFromRemoteRepo({
         publisherId,
         extensionId,
