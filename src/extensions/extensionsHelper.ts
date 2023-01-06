@@ -829,7 +829,7 @@ export async function publishExtensionVersionFromLocalSource(args: {
   } catch (err: any) {
     publishSpinner.fail();
     if (err.status === 404) {
-      return getMissingPublisherError(args.publisherId);
+      throw getMissingPublisherError(args.publisherId);
     }
     throw err;
   }
