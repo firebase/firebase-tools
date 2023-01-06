@@ -5,3 +5,5 @@
 - Fixes a bug where functions:delete command did not recognize '-' as delimiter. (#5290)
 - Reintroduces an updated Hosting emulator with i18n (#4879) and Windows path (#5133) fixes.
 - Fixes an issue where already deployed functions with the same remote configuration do not get skipped (#5354)
+- Fix bug where CLI was unable to deploy Firebase Functions in some monorepo setups (#5391)
+- Upgrade Storage Rules Runtime to v1.1.3 to support ternary operators (#5370)
