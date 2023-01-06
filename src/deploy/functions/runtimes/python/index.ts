@@ -15,7 +15,7 @@ import { ChildProcess, ProcessEnvOptions } from "child_process";
 
 export const LATEST_VERSION: runtimes.Runtime = "python310";
 
-export const PYVENV = ".env";
+export const PYVENV = ".venv";
 
 type ChildProcessWithCompletionPromise = cp.ChildProcess & { promise: Promise<string> };
 
@@ -108,7 +108,11 @@ class Delegate implements runtimes.RuntimeDelegate {
   }
 
   serve(port: string, env: Record<string, string | undefined>): ChildProcess {
-    const args = ["functions-framework"];
+    path.join(__dirname);
+    const args = [
+      "python3.10",
+      path.join(__dirname, "..", "..", "..", "..", "emulator", "emulatorRuntime.py"),
+    ];
     return runWithVirtualEnv(args, this.sourceDir, true, {
       env: { ...env, DEBUG: "true", HOST: `unix://${port}` } as unknown as ProcessEnvOptions["env"],
     });
