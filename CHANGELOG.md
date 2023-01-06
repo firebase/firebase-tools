@@ -1,0 +1,1 @@
+- Fix bug where CLI was unable to deploy Firebase Functions in some monorepo setups (#5391)
