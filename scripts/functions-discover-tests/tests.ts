@@ -67,6 +67,16 @@ describe("Function discovery test", function (this) {
         },
       ],
     },
+    {
+      name: "bundled",
+      projectDir: "bundled",
+      expects: [
+        {
+          codebase: "default",
+          endpoints: ["hello"],
+        },
+      ],
+    },
   ];
 
   for (const tc of testCases) {
