@@ -65,17 +65,17 @@ export interface FrameworkOptions {
 
 export class EmulatorEndToEndTest {
   emulatorHubPort = 0;
-  rtdbEmulatorHost = "localhost";
+  rtdbEmulatorHost = "127.0.0.1";
   rtdbEmulatorPort = 0;
-  firestoreEmulatorHost = "localhost";
+  firestoreEmulatorHost = "127.0.0.1";
   firestoreEmulatorPort = 0;
-  functionsEmulatorHost = "localhost";
+  functionsEmulatorHost = "127.0.0.1";
   functionsEmulatorPort = 0;
-  pubsubEmulatorHost = "localhost";
+  pubsubEmulatorHost = "127.0.0.1";
   pubsubEmulatorPort = 0;
-  authEmulatorHost = "localhost";
+  authEmulatorHost = "127.0.0.1";
   authEmulatorPort = 0;
-  storageEmulatorHost = "localhost";
+  storageEmulatorHost = "127.0.0.1";
   storageEmulatorPort = 0;
   allEmulatorsStarted = false;
 
@@ -318,7 +318,7 @@ export class TriggerEndToEndTest extends EmulatorEndToEndTest {
   }
 
   invokeHttpFunction(name: string, zone = FIREBASE_PROJECT_ZONE): Promise<Response> {
-    const url = `http://localhost:${[this.functionsEmulatorPort, this.project, zone, name].join(
+    const url = `http://127.0.0.1:${[this.functionsEmulatorPort, this.project, zone, name].join(
       "/"
     )}`;
     return fetch(url);
@@ -329,7 +329,7 @@ export class TriggerEndToEndTest extends EmulatorEndToEndTest {
     body: Record<string, unknown>,
     zone = FIREBASE_PROJECT_ZONE
   ): Promise<Response> {
-    const url = `http://localhost:${this.functionsEmulatorPort}/${[this.project, zone, name].join(
+    const url = `http://127.0.0.1:${this.functionsEmulatorPort}/${[this.project, zone, name].join(
       "/"
     )}`;
     return fetch(url, {
@@ -414,12 +414,12 @@ export class TriggerEndToEndTest extends EmulatorEndToEndTest {
   }
 
   disableBackgroundTriggers(): Promise<Response> {
-    const url = `http://localhost:${this.emulatorHubPort}/functions/disableBackgroundTriggers`;
+    const url = `http://127.0.0.1:${this.emulatorHubPort}/functions/disableBackgroundTriggers`;
     return fetch(url, { method: "PUT" });
   }
 
   enableBackgroundTriggers(): Promise<Response> {
-    const url = `http://localhost:${this.emulatorHubPort}/functions/enableBackgroundTriggers`;
+    const url = `http://127.0.0.1:${this.emulatorHubPort}/functions/enableBackgroundTriggers`;
     return fetch(url, { method: "PUT" });
   }
 }
