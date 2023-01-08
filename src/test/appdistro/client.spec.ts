@@ -102,10 +102,6 @@ describe("distribution", () => {
       ).to.be.eventually.eq(fakeOperation);
       expect(nock.isDone()).to.be.true;
     });
-
-    it("should return release if upload succeeds", async() => {
-    nock(appDistributionOrigin).post()
-    }
   });
 
   describe("updateReleaseNotes", () => {
