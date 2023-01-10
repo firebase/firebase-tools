@@ -1,3 +1,4 @@
+import * as nock from "nock";
 import { expect } from "chai";
 
 import DatabaseImporter from "../../database/import";
@@ -21,5 +22,18 @@ describe("DatabaseImporter", () => {
     expect(importer.chunks).to.deep.include({ json: true, pathname: "/foo/b/c" });
     expect(importer.chunks).to.deep.include({ json: "bar", pathname: "/foo/b/d/e" });
     expect(importer.chunks).to.deep.include({ json: { g: 0, h: 1 }, pathname: "/foo/b/d/f" });
+  });
+
+  it("sends multiple chunked requests", async () => {
+    nock("https://test-db.firebaseio.com").put("/foo/a.json", "100").reply(200);
+    nock("https://test-db.firebaseio.com").put("/foo/b/c.json", "true").reply(200);
+    nock("https://test-db.firebaseio.com").put("/foo/b/d/e.json", '"bar"').reply(200);
+    nock("https://test-db.firebaseio.com")
+      .put("/foo/b/d/f.json", JSON.stringify({ g: 0, h: 1 }))
+      .reply(200);
+    const importer = new DatabaseImporter(dbUrl, JSON.stringify(DATA), /* chunkSize= */ 20);
+    const responses = await importer.execute();
+    expect(responses).to.have.length(4);
+    expect(nock.isDone()).to.be.true;
   });
 });

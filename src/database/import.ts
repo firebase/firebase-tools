@@ -30,15 +30,13 @@ export default class DatabaseImporter {
   }
 
   /**
-   * Writes the chunked data to RTDB.
-   *
-   * @param overwrite Whether to overwrite the existing data at the given location.
+   * Writes the chunked data to RTDB. Any existing data at the specified location will be overwritten.
    */
-  async execute(overwrite: boolean): Promise<any> {
+  async execute(): Promise<any> {
     return Promise.all(
       this.chunks.map((chunk: Data) =>
         this.client.request({
-          method: overwrite ? "PUT" : "PATCH",
+          method: "PUT",
           path: chunk.pathname + ".json",
           body: JSON.stringify(chunk.json),
           queryParams: this.dbUrl.searchParams,

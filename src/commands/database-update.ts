@@ -2,6 +2,7 @@ import { URL } from "url";
 import * as clc from "colorette";
 import * as fs from "fs";
 
+import { Client } from "../apiv2";
 import { Command } from "../command";
 import { Emulators } from "../emulator/types";
 import { FirebaseError } from "../error";
@@ -13,7 +14,6 @@ import { requirePermissions } from "../requirePermissions";
 import { logger } from "../logger";
 import { requireDatabaseInstance } from "../requireDatabaseInstance";
 import * as utils from "../utils";
-import DatabaseImporter from "../database/import";
 
 export const command = new Command("database:update <path> [infile]")
   .description("update some of the keys for the defined path in your Firebase")
@@ -33,18 +33,13 @@ export const command = new Command("database:update <path> [infile]")
       throw new FirebaseError("Path must begin with /");
     }
     const origin = realtimeOriginOrEmulatorOrCustomUrl(options.instanceDetails.databaseUrl);
-    const dbPath = utils.getDatabaseUrl(origin, options.instance, path);
-    const dbUrl = new URL(dbPath);
-    if (options.disableTriggers) {
-      dbUrl.searchParams.set("disableTriggers", "true");
-    }
-
+    const url = utils.getDatabaseUrl(origin, options.instance, path);
     const confirmed = await promptOnce(
       {
         type: "confirm",
         name: "force",
         default: false,
-        message: `You are about to modify data at ${clc.cyan(dbPath)}. Are you sure?`,
+        message: `You are about to modify data at ${clc.cyan(url)}. Are you sure?`,
       },
       options
     );
@@ -52,17 +47,27 @@ export const command = new Command("database:update <path> [infile]")
       throw new FirebaseError("Command aborted.");
     }
 
-    const inputString =
-      options.data ||
-      (await utils.streamToString(infile ? fs.createReadStream(infile) : process.stdin));
+    const inStream =
+      utils.stringToStream(options.data) ||
+      (infile && fs.createReadStream(infile)) ||
+      process.stdin;
+    const jsonUrl = new URL(utils.getDatabaseUrl(origin, options.instance, path + ".json"));
+    if (options.disableTriggers) {
+      jsonUrl.searchParams.set("disableTriggers", "true");
+    }
 
     if (!infile && !options.data) {
       utils.explainStdin();
     }
 
-    const importer = new DatabaseImporter(dbUrl, inputString);
+    const c = new Client({ urlPrefix: jsonUrl.origin, auth: true });
     try {
-      await importer.execute(/* overwrite= */ false);
+      await c.request({
+        method: "PATCH",
+        path: jsonUrl.pathname,
+        body: inStream,
+        queryParams: jsonUrl.searchParams,
+      });
     } catch (err: any) {
       throw new FirebaseError("Unexpected error while setting data");
     }

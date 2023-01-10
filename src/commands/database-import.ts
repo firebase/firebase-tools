@@ -1,29 +1,32 @@
 import * as clc from "colorette";
 import * as fs from "fs";
-
-import { Client } from "../apiv2";
-import { Command } from "../command";
-import { Emulators } from "../emulator/types";
-import { FirebaseError } from "../error";
-import { populateInstanceDetails } from "../management/database";
-import { printNoticeIfEmulated } from "../emulator/commandUtils";
-import { promptOnce } from "../prompt";
-import { realtimeOriginOrEmulatorOrCustomUrl } from "../database/api";
-import { requirePermissions } from "../requirePermissions";
-import { URL } from "url";
-import { logger } from "../logger";
-import { requireDatabaseInstance } from "../requireDatabaseInstance";
 import * as utils from "../utils";
 
-export const command = new Command("database:set <path> [infile]")
-  .description("store JSON data at the specified path via STDIN, arg, or file")
+import { Command } from "../command";
+import DatabaseImporter from "../database/import";
+import { Emulators } from "../emulator/types";
+import { FirebaseError } from "../error";
+import { logger } from "../logger";
+import { printNoticeIfEmulated } from "../emulator/commandUtils";
+import { promptOnce } from "../prompt";
+import { populateInstanceDetails } from "../management/database";
+import { realtimeOriginOrEmulatorOrCustomUrl } from "../database/api";
+import { requireDatabaseInstance } from "../requireDatabaseInstance";
+import { requirePermissions } from "../requirePermissions";
+
+export const command = new Command("database:import <path> [infile]")
+  .description("non-atomically store JSON data at the specified path via STDIN, arg, or file")
   .option("-d, --data <data>", "specify escaped JSON directly")
   .option("-f, --force", "pass this option to bypass confirmation prompt")
   .option(
     "--instance <instance>",
     "use the database <instance>.firebaseio.com (if omitted, use default database instance)"
   )
-  .option("--disable-triggers", "suppress any Cloud functions triggered by this operation")
+  .option(
+    "--disable-triggers",
+    "suppress any Cloud functions triggered by this operation, default to true",
+    true
+  )
   .before(requirePermissions, ["firebasedatabase.instances.update"])
   .before(requireDatabaseInstance)
   .before(populateInstanceDetails)
@@ -34,9 +37,9 @@ export const command = new Command("database:set <path> [infile]")
     }
     const origin = realtimeOriginOrEmulatorOrCustomUrl(options.instanceDetails.databaseUrl);
     const dbPath = utils.getDatabaseUrl(origin, options.instance, path);
-    const dbJsonURL = new URL(utils.getDatabaseUrl(origin, options.instance, path + ".json"));
+    const dbUrl = new URL(dbPath);
     if (options.disableTriggers) {
-      dbJsonURL.searchParams.set("disableTriggers", "true");
+      dbUrl.searchParams.set("disableTriggers", "true");
     }
 
     const confirm = await promptOnce(
@@ -52,21 +55,26 @@ export const command = new Command("database:set <path> [infile]")
       throw new FirebaseError("Command aborted.");
     }
 
-    const inStream =
-      utils.stringToStream(options.data) || (infile ? fs.createReadStream(infile) : process.stdin);
+    const inputString =
+      options.data ||
+      (await utils.streamToString(infile ? fs.createReadStream(infile) : process.stdin));
 
     if (!infile && !options.data) {
       utils.explainStdin();
     }
 
-    const c = new Client({ urlPrefix: dbJsonURL.origin, auth: true });
+    let importer;
     try {
-      await c.request({
-        method: "PUT",
-        path: dbJsonURL.pathname,
-        body: inStream,
-        queryParams: dbJsonURL.searchParams,
+      importer = new DatabaseImporter(dbUrl, inputString);
+    } catch (err: any) {
+      throw new FirebaseError("Invalid data; couldn't parse JSON object, array, or value.", {
+        original: err,
+        exit: 2,
       });
+    }
+
+    try {
+      await importer.execute();
     } catch (err: any) {
       logger.debug(err);
       throw new FirebaseError(`Unexpected error while setting data: ${err}`, { exit: 2 });
