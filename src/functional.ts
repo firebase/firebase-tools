@@ -113,16 +113,16 @@ export function partition<T>(arr: T[], predicate: (elem: T) => boolean): [T[], T
 
 /**
  * Utility to partition a Record into two based on predicate's truthiness for each element.
- * Returns a Array containing two Array<T>. The first array contains all elements that returned true,
+ * Returns a Array containing two Record<string, T>. The first array contains all elements that returned true,
  * the second contains all elements that returned false.
  */
 export function partitionRecord<T>(
   rec: Record<string, T>,
-  predicate: (elem: string) => boolean
+  predicate: (key: string, val: T) => boolean
 ): [Record<string, T>, Record<string, T>] {
   return Object.entries(rec).reduce<[Record<string, T>, Record<string, T>]>(
     (acc, [key, val]) => {
-      acc[predicate(key) ? 0 : 1][key] = val;
+      acc[predicate(key, val) ? 0 : 1][key] = val;
       return acc;
     },
     [{}, {}]
