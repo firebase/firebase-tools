@@ -443,7 +443,6 @@ export function toBackend(
         "environmentVariables",
         "labels",
         "secretEnvironmentVariables",
-        "serviceAccount"
       );
       r.resolveStrings(bkEndpoint, bdEndpoint, "serviceAccount");
 
