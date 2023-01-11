@@ -88,6 +88,22 @@ export interface Channel {
   labels: { [key: string]: string };
 }
 
+export interface Domain {
+  site: `projects/${string}/sites/${string}`;
+  domainName: string;
+  updateTime: string;
+  provisioning?: {
+    certStatus: string;
+    dnsStatus: string;
+    expectedIps: string[];
+  };
+  status: string;
+  domainRedirect?: {
+    domainName: string;
+    type: string;
+  };
+}
+
 export type VersionStatus =
   // The version has been created, and content is currently being added to the
   // version.
@@ -661,4 +677,26 @@ export async function cleanAuthState(
     siteDomainMap.set(site, updatedDomains);
   }
   return siteDomainMap;
+}
+
+/**
+ * Retrieves all site domains
+ *
+ * @param project project ID
+ * @param site site id
+ * @return list of domains or null if not found
+ */
+export async function getSiteDomains(project: string, site: string): Promise<Domain[] | null> {
+  try {
+    const res = await apiClient.get<{ domains: Domain[] }>(
+      `/projects/${project}/sites/${site}/domains`
+    );
+
+    return res.body.domains;
+  } catch (e: unknown) {
+    if (e instanceof FirebaseError && e.status === 404) {
+      return null;
+    }
+    throw e;
+  }
 }
