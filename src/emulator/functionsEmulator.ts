@@ -116,7 +116,7 @@ export interface FunctionsEmulatorArgs {
   quiet?: boolean;
   disabledRuntimeFeatures?: FunctionsRuntimeFeatures;
   debugPort?: number;
-  remoteEmulators?: { [key: string]: EmulatorInfo };
+  remoteEmulators?: Record<string, EmulatorInfo>;
   adminSdkConfig?: AdminSdkConfig;
   projectAlias?: string;
 }
@@ -664,7 +664,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       // Since we're about to start a runtime to be shared by all the functions in this codebase,
       // we need to make sure it has all the secrets used by any function in the codebase.
       emulatableBackend.secretEnv = Object.values(
-        toSetup.reduce(
+        triggerDefinitions.reduce(
           (acc: Record<string, backend.SecretEnvVar>, curr: EmulatedTriggerDefinition) => {
             for (const secret of curr.secretEnvironmentVariables || []) {
               acc[secret.key] = secret;
@@ -1160,7 +1160,11 @@ export class FunctionsEmulator implements EmulatorInstance {
       enableCors: true,
     });
 
-    setEnvVarsForEmulators(envs);
+    let emulatorInfos = EmulatorRegistry.listRunningWithInfo();
+    if (this.args.remoteEmulators) {
+      emulatorInfos = emulatorInfos.concat(Object.values(this.args.remoteEmulators));
+    }
+    setEnvVarsForEmulators(envs, emulatorInfos);
 
     if (this.args.debugPort) {
       // Start runtime in debug mode to allow triggers to share single runtime process.

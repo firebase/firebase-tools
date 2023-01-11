@@ -38,16 +38,16 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
     expectedChecksum: "4f41d24a3c0f3b55ea22804a424cc0ee",
   },
   storage: {
-    version: "1.1.1",
-    expectedSize: 46448285,
-    expectedChecksum: "691982db4019d49d345a97151bdea7e2",
+    version: "1.1.3",
+    expectedSize: 52892936,
+    expectedChecksum: "2ca11ec1193003bea89f806cc085fa25",
   },
   ui: experiments.isEnabled("emulatoruisnapshot")
     ? { version: "SNAPSHOT", expectedSize: -1, expectedChecksum: "" }
     : {
-        version: "1.11.1",
-        expectedSize: 3061713,
-        expectedChecksum: "a4944414518be206280b495f526f18bf",
+        version: "1.11.2",
+        expectedSize: 3062873,
+        expectedChecksum: "fe7f668437d0e3c3b92677aaaade78bf",
       },
   pubsub: {
     version: "0.7.1",

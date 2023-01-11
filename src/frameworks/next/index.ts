@@ -1,4 +1,4 @@
-import { execSync } from "child_process";
+import { execSync, spawnSync } from "child_process";
 import { mkdir, copyFile } from "fs/promises";
 import { dirname, join } from "path";
 import type { NextConfig } from "next";
@@ -22,7 +22,6 @@ import {
   SupportLevel,
 } from "..";
 import { promptOnce } from "../../prompt";
-import { logger } from "../../logger";
 import { FirebaseError } from "../../error";
 import {
   cleanCustomRouteI18n,
@@ -34,8 +33,9 @@ import {
   isUsingAppDirectory,
   isUsingImageOptimization,
   isUsingMiddleware,
+  allDependencyNames,
 } from "./utils";
-import type { Manifest } from "./interfaces";
+import type { Manifest, NpmLsReturn } from "./interfaces";
 import { readJSON } from "../utils";
 import { warnIfCustomBuildScript } from "../utils";
 import type { EmulatorInfo } from "../../emulator/types";
@@ -368,25 +368,33 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
   const { distDir } = await getConfig(sourceDir);
   const packageJson = await readJSON(join(sourceDir, "package.json"));
   if (existsSync(join(sourceDir, "next.config.js"))) {
-    let esbuild;
-    try {
-      esbuild = await import("esbuild");
-    } catch (e: unknown) {
-      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-      logger.debug(`Failed to load 'esbuild': ${e}`);
-      throw new FirebaseError(
-        `Unable to find 'esbuild'. Install it into your local dev dependencies with 'npm i --save-dev esbuild''`
+    // Bundle their next.config.js with esbuild via NPX, pinned version was having troubles on m1
+    // macs and older Node versions; either way, we should avoid taking on any deps in firebase-tools
+    // Alternatively I tried using @swc/spack and the webpack bundled into Next.js but was
+    // encountering difficulties with both of those
+    const dependencyTree: NpmLsReturn = JSON.parse(
+      spawnSync("npm", ["ls", "--omit=dev", "--all", "--json"], {
+        cwd: sourceDir,
+      }).stdout.toString()
+    );
+    // Mark all production deps as externals, so they aren't bundled
+    // DevDeps won't be included in the Cloud Function, so they should be bundled
+    const esbuildArgs = allDependencyNames(dependencyTree)
+      .map((it) => `--external:${it}`)
+      .concat(
+        "--bundle",
+        "--platform=node",
+        `--target=node${NODE_VERSION}`,
+        `--outdir=${destDir}`,
+        "--log-level=error"
       );
-    }
-    await esbuild.build({
-      bundle: true,
-      external: Object.keys(packageJson.dependencies),
-      absWorkingDir: sourceDir,
-      entryPoints: ["next.config.js"],
-      outfile: join(destDir, "next.config.js"),
-      target: `node${NODE_VERSION}`,
-      platform: "node",
+    const bundle = spawnSync("npx", ["--yes", "esbuild", "next.config.js", ...esbuildArgs], {
+      cwd: sourceDir,
     });
+    if (bundle.status) {
+      console.error(bundle.stderr.toString());
+      throw new FirebaseError("Unable to bundle next.config.js for use in Cloud Functions");
+    }
   }
   if (await pathExists(join(sourceDir, "public"))) {
     await mkdir(join(destDir, "public"));

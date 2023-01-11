@@ -1,4 +1,3 @@
-- Add sharp NPM module to Cloud Functions when using Next.js Image Optimization (#5238)
-- Adds user-defined env vars into the functions emulator (#5330).
-- Support Next.js Middleware (#5320)
-- Log the reason for a Cloud Function if needed in Next.js (#5320)
+- Fix bug where CLI was unable to deploy Firebase Functions in some monorepo setups (#5391)
+- Upgrade Storage Rules Runtime to v1.1.3 to support ternary operators (#5370)
+- Fixes an issue where already deployed functions with the same remote configuration do not get skipped (#5354)
