@@ -686,7 +686,7 @@ export async function cleanAuthState(
  * @param site site id
  * @return list of domains or null if not found
  */
-export async function getSiteDomains(project: string, site: string): Promise<Domain[] | null> {
+export async function getSiteDomains(project: string, site: string): Promise<Domain[]> {
   try {
     const res = await apiClient.get<{ domains: Domain[] }>(
       `/projects/${project}/sites/${site}/domains`
@@ -695,7 +695,9 @@ export async function getSiteDomains(project: string, site: string): Promise<Dom
     return res.body.domains;
   } catch (e: unknown) {
     if (e instanceof FirebaseError && e.status === 404) {
-      return null;
+      throw new FirebaseError(`could not find site "${site}" for project "${project}"`, {
+        original: e,
+      });
     }
     throw e;
   }
