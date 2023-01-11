@@ -15,7 +15,7 @@ import { requireDatabaseInstance } from "../requireDatabaseInstance";
 import { requirePermissions } from "../requirePermissions";
 
 export const command = new Command("database:import <path> [infile]")
-  .description("non-atomically store JSON data at the specified path via STDIN, arg, or file")
+  .description("non-atomically import JSON data to the specified path via STDIN, arg, or file")
   .option("-d, --data <data>", "specify escaped JSON directly")
   .option("-f, --force", "pass this option to bypass confirmation prompt")
   .option(
@@ -47,7 +47,7 @@ export const command = new Command("database:import <path> [infile]")
         type: "confirm",
         name: "force",
         default: false,
-        message: "You are about to overwrite all data at " + clc.cyan(dbPath) + ". Are you sure?",
+        message: "You are about to import data to " + clc.cyan(dbPath) + ". Are you sure?",
       },
       options
     );
@@ -63,21 +63,15 @@ export const command = new Command("database:import <path> [infile]")
       utils.explainStdin();
     }
 
-    let importer;
-    try {
-      importer = new DatabaseImporter(dbUrl, inputString);
-    } catch (err: any) {
-      throw new FirebaseError("Invalid data; couldn't parse JSON object, array, or value.", {
-        original: err,
-        exit: 2,
-      });
-    }
-
+    const importer = new DatabaseImporter(dbUrl, inputString);
     try {
       await importer.execute();
     } catch (err: any) {
+      if (err instanceof FirebaseError) {
+        throw err;
+      }
       logger.debug(err);
-      throw new FirebaseError(`Unexpected error while setting data: ${err}`, { exit: 2 });
+      throw new FirebaseError(`Unexpected error while importing data: ${err}`, { exit: 2 });
     }
 
     utils.logSuccess("Data persisted successfully");
