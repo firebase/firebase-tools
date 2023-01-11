@@ -15,8 +15,7 @@ import { requireDatabaseInstance } from "../requireDatabaseInstance";
 import { requirePermissions } from "../requirePermissions";
 
 export const command = new Command("database:import <path> [infile]")
-  .description("non-atomically import JSON data to the specified path via STDIN, arg, or file")
-  .option("-d, --data <data>", "specify escaped JSON directly")
+  .description("non-atomically import JSON file to the specified path")
   .option("-f, --force", "pass this option to bypass confirmation prompt")
   .option(
     "--instance <instance>",
@@ -35,6 +34,11 @@ export const command = new Command("database:import <path> [infile]")
     if (!path.startsWith("/")) {
       throw new FirebaseError("Path must begin with /");
     }
+
+    if (!infile) {
+      throw new FirebaseError("No file supplied");
+    }
+
     const origin = realtimeOriginOrEmulatorOrCustomUrl(options.instanceDetails.databaseUrl);
     const dbPath = utils.getDatabaseUrl(origin, options.instance, path);
     const dbUrl = new URL(dbPath);
@@ -55,14 +59,7 @@ export const command = new Command("database:import <path> [infile]")
       throw new FirebaseError("Command aborted.");
     }
 
-    const inputString =
-      options.data ||
-      (await utils.streamToString(infile ? fs.createReadStream(infile) : process.stdin));
-
-    if (!infile && !options.data) {
-      utils.explainStdin();
-    }
-
+    const inputString = await utils.streamToString(fs.createReadStream(infile));
     const importer = new DatabaseImporter(dbUrl, inputString);
     try {
       await importer.execute();
