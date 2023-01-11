@@ -611,26 +611,46 @@ describe("buildFromV1Alpha", () => {
       expect(parsed).to.deep.equal(expected);
     });
 
-    it("accepts serviceAccountEmail as an alias for serviceAccount", () => {
-      const yaml: v1alpha1.WireManifest = {
+    it("allows both CEL and lists containing CEL in FieldList typed keys", () => {
+      const yamlCEL: v1alpha1.WireManifest = {
         specVersion: "v1alpha1",
         endpoints: {
           id: {
             ...MIN_WIRE_ENDPOINT,
-            serviceAccountEmail: "{{ params.SERVICE_ACCOUNT }}",
             httpsTrigger: {},
+            region: "{{ params.REGION }}",
           },
         },
       };
-      const parsed = v1alpha1.buildFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME);
-      const expected: build.Build = build.of({
+      const parsedCEL = v1alpha1.buildFromV1Alpha1(yamlCEL, PROJECT, REGION, RUNTIME);
+      const expectedCEL: build.Build = build.of({
         id: {
           ...DEFAULTED_ENDPOINT,
-          serviceAccount: "{{ params.SERVICE_ACCOUNT }}",
+          region: "{{ params.REGION }}",
           httpsTrigger: {},
         },
       });
-      expect(parsed).to.deep.equal(expected);
+      expect(parsedCEL).to.deep.equal(expectedCEL);
+
+      const yamlList: v1alpha1.WireManifest = {
+        specVersion: "v1alpha1",
+        endpoints: {
+          id: {
+            ...MIN_WIRE_ENDPOINT,
+            httpsTrigger: {},
+            region: ["{{ params.FOO }}", "BAR", "params.BAZ"],
+          },
+        },
+      };
+      const parsedList = v1alpha1.buildFromV1Alpha1(yamlList, PROJECT, REGION, RUNTIME);
+      const expectedList: build.Build = build.of({
+        id: {
+          ...DEFAULTED_ENDPOINT,
+          region: ["{{ params.FOO }}", "BAR", "params.BAZ"],
+          httpsTrigger: {},
+        },
+      });
+      expect(parsedList).to.deep.equal(expectedList);
     });
 
     it("copies schedules", () => {

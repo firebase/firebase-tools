@@ -140,7 +140,10 @@ export class FirestoreIndexes {
       }
     }
 
-    for (const field of fieldOverridesToDeploy) {
+    // Disabling TTL must be executed first in case another field is enabled for
+    // the same collection in the same deployment.
+    const sortedFieldOverridesToDeploy = fieldOverridesToDeploy.sort(sort.compareFieldOverride);
+    for (const field of sortedFieldOverridesToDeploy) {
       const exists = existingFieldOverrides.some((x) => this.fieldMatchesSpec(x, field));
       if (exists) {
         logger.debug(`Skipping existing field override: ${JSON.stringify(field)}`);
@@ -195,7 +198,7 @@ export class FirestoreIndexes {
    */
   async listFieldOverrides(project: string): Promise<API.Field[]> {
     const parent = `projects/${project}/databases/(default)/collectionGroups/-`;
-    const url = `/${parent}/fields?filter=indexConfig.usesAncestorConfig=false`;
+    const url = `/${parent}/fields?filter=indexConfig.usesAncestorConfig=false OR ttlConfig:*`;
 
     const res = await this.apiClient.get<{ fields?: API.Field[] }>(url);
     const fields = res.body.fields;
@@ -236,6 +239,7 @@ export class FirestoreIndexes {
       return {
         collectionGroup: parsedName.collectionGroupId,
         fieldPath: parsedName.fieldPath,
+        ttl: !!field.ttlConfig,
 
         indexes: fieldIndexes.map((index) => {
           const firstField = index.fields[0];
@@ -339,6 +343,10 @@ export class FirestoreIndexes {
     validator.assertHas(field, "fieldPath");
     validator.assertHas(field, "indexes");
 
+    if (typeof field.ttl !== "undefined") {
+      validator.assertType("ttl", field.ttl, "boolean");
+    }
+
     field.indexes.forEach((index: any) => {
       validator.assertHasOneOf(index, ["arrayConfig", "order"]);
 
@@ -379,23 +387,33 @@ export class FirestoreIndexes {
       };
     });
 
-    const data = {
+    let data = {
       indexConfig: {
         indexes,
       },
     };
 
-    await this.apiClient.patch(url, data);
+    if (spec.ttl) {
+      data = Object.assign(data, {
+        ttlConfig: {},
+      });
+    }
+
+    if (typeof spec.ttl !== "undefined") {
+      await this.apiClient.patch(url, data);
+    } else {
+      await this.apiClient.patch(url, data, { queryParams: { updateMask: "indexConfig" } });
+    }
   }
 
   /**
-   * Delete an existing index on the specified project.
+   * Delete an existing field overrides on the specified project.
    */
   deleteField(field: API.Field): Promise<any> {
     const url = field.name;
     const data = {};
 
-    return this.apiClient.patch(`/${url}`, data, { queryParams: { updateMask: "indexConfig" } });
+    return this.apiClient.patch(`/${url}`, data);
   }
 
   /**
@@ -469,6 +487,16 @@ export class FirestoreIndexes {
 
     if (parsedName.fieldPath !== spec.fieldPath) {
       return false;
+    }
+
+    if (typeof spec.ttl !== "undefined" && util.booleanXOR(!!field.ttlConfig, spec.ttl)) {
+      return false;
+    } else if (!!field.ttlConfig && typeof spec.ttl === "undefined") {
+      utils.logLabeledBullet(
+        "firestore",
+        `there are TTL field overrides for collection ${spec.collectionGroup} defined in your project that are not present in your ` +
+          "firestore indexes file. The TTL policy won't be deleted since is not specified as false."
+      );
     }
 
     const fieldIndexes = field.indexConfig.indexes || [];
@@ -618,6 +646,10 @@ export class FirestoreIndexes {
       });
     } else {
       result += " (no indexes)";
+    }
+    const fieldTtl = field.ttlConfig;
+    if (fieldTtl) {
+      result += ` TTL(${fieldTtl.state})`;
     }
 
     return result;

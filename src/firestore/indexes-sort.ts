@@ -92,11 +92,19 @@ export function compareApiField(a: API.Field, b: API.Field): number {
  * Comparisons:
  *   1) The collection group.
  *   2) The field path.
+ *   3) The ttl.
  *   3) The list of indexes.
  */
 export function compareFieldOverride(a: Spec.FieldOverride, b: Spec.FieldOverride): number {
   if (a.collectionGroup !== b.collectionGroup) {
     return a.collectionGroup.localeCompare(b.collectionGroup);
+  }
+
+  // The ttl override can be undefined, we only guarantee that true values will
+  // come last since those overrides should be executed after disabling TTL per collection.
+  const compareTtl = Number(!!a.ttl) - Number(!!b.ttl);
+  if (compareTtl) {
+    return compareTtl;
   }
 
   if (a.fieldPath !== b.fieldPath) {

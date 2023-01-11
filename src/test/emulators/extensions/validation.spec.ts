@@ -144,6 +144,7 @@ describe("ExtensionsEmulator validation", () => {
       const shouldStartStub = sandbox.stub(controller, "shouldStart");
       shouldStartStub.withArgs(sinon.match.any, Emulators.STORAGE).returns(true);
       shouldStartStub.withArgs(sinon.match.any, Emulators.DATABASE).returns(true);
+      shouldStartStub.withArgs(sinon.match.any, Emulators.EVENTARC).returns(true);
       shouldStartStub.withArgs(sinon.match.any, Emulators.FIRESTORE).returns(false);
       shouldStartStub.withArgs(sinon.match.any, Emulators.AUTH).returns(false);
     });
@@ -218,6 +219,12 @@ describe("ExtensionsEmulator validation", () => {
             eventTrigger: {
               resource: "test/{*}",
               eventType: "providers/google.firebase.database/eventTypes/ref.write",
+            },
+          }),
+          getTestParsedTriggerDefinition({
+            eventTrigger: {
+              eventType: "test.custom.event",
+              channel: "projects/foo/locations/us-central1/channels/firebase",
             },
           }),
         ],

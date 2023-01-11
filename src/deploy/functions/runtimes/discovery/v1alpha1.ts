@@ -64,7 +64,7 @@ export type WireEndpoint = build.Triggered &
     // We now use "serviceAccount" but maintain backwards compatability in the
     // wire format for the time being.
     serviceAccountEmail?: build.Field<string>;
-    region?: string[];
+    region?: build.ListField;
     entryPoint: string;
     platform?: build.FunctionsPlatform;
     secretEnvironmentVariables?: Array<ManifestSecretEnv> | null;
@@ -122,7 +122,7 @@ function parseRequiredAPIs(manifest: WireManifest): build.RequiredApi[] {
 function assertBuildEndpoint(ep: WireEndpoint, id: string): void {
   const prefix = `endpoints[${id}]`;
   assertKeyTypes(prefix, ep, {
-    region: "array",
+    region: "List",
     platform: (platform) => build.AllFunctionsPlatforms.includes(platform),
     entryPoint: "string",
     omit: "Field<boolean>?",

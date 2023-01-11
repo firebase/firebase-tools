@@ -1,6 +1,3 @@
-- Updated the pubsub emulator to v0.7.1.
-- Updated some emulator download logic to pause after unzipping to avoid a file not found issue.
-- Fixes gzipped file handling in Storage Emulator.
-- Add support for object list using certain Admin SDKs (#5208)
-- Fixes source token expiration issue by acquiring new source token upon expiration.
-- Fix bug where emulated event triggered function broke in debug mode (#5211)
+- Fix bug where CLI was unable to deploy Firebase Functions in some monorepo setups (#5391)
+- Upgrade Storage Rules Runtime to v1.1.3 to support ternary operators (#5370)
+- Fixes an issue where already deployed functions with the same remote configuration do not get skipped (#5354)

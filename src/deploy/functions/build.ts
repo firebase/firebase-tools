@@ -52,8 +52,9 @@ export interface RequiredApi {
 // expressions.
 // `Expression<Foo> == Expression<Foo>` is an Expression<boolean>
 // `Expression<boolean> ? Expression<T> : Expression<T>` is an Expression<T>
-export type Expression<T extends string | number | boolean> = string; // eslint-disable-line
+export type Expression<T extends string | number | boolean | string[]> = string; // eslint-disable-line
 export type Field<T extends string | number | boolean> = T | Expression<T> | null;
+export type ListField = Expression<string[]> | (string | Expression<string>)[] | null;
 
 // Trigger definition for arbitrary HTTPS endpoints
 export interface HttpsTrigger {
@@ -235,7 +236,7 @@ export type Endpoint = Triggered & {
 
   // defaults to ["us-central1"], overridable in firebase-tools with
   //  process.env.FIREBASE_FUNCTIONS_DEFAULT_REGION
-  region?: string[];
+  region?: ListField;
 
   // The Cloud project associated with this endpoint.
   project: string;
@@ -315,6 +316,7 @@ function envWithTypes(
       string: true,
       boolean: true,
       number: true,
+      list: true,
     };
     for (const param of definedParams) {
       if (param.name === envName) {
@@ -323,18 +325,28 @@ function envWithTypes(
             string: true,
             boolean: false,
             number: false,
+            list: false,
           };
         } else if (param.type === "int") {
           providedType = {
             string: false,
             boolean: false,
             number: true,
+            list: false,
           };
         } else if (param.type === "boolean") {
           providedType = {
             string: false,
             boolean: true,
             number: false,
+            list: false,
+          };
+        } else if (param.type === "list") {
+          providedType = {
+            string: false,
+            boolean: false,
+            number: false,
+            list: true,
           };
         }
       }
@@ -418,9 +430,11 @@ export function toBackend(
       continue;
     }
 
-    let regions = bdEndpoint.region;
-    if (typeof regions === "undefined") {
+    let regions: string[] = [];
+    if (!bdEndpoint.region) {
       regions = [api.functionsDefaultRegion];
+    } else {
+      regions = params.resolveList(bdEndpoint.region, paramValues);
     }
     for (const region of regions) {
       const trigger = discoverTrigger(bdEndpoint, region, r);
@@ -442,7 +456,7 @@ export function toBackend(
         bdEndpoint,
         "environmentVariables",
         "labels",
-        "secretEnvironmentVariables",
+        "secretEnvironmentVariables"
       );
       r.resolveStrings(bkEndpoint, bdEndpoint, "serviceAccount");
 
