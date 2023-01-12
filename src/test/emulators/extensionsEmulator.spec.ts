@@ -109,7 +109,7 @@ describe("Extensions Emulator", () => {
           // so test also runs on win machines
           // eslint-disable-next-line prettier/prettier
             functionsDir: join("src/test/emulators/extensions/firebase/storage-resize-images@0.1.18/functions"),
-          nodeMajorVersion: 10,
+          runtime: "nodejs10",
           predefinedTriggers: [
             {
               entryPoint: "generateResizedImage",

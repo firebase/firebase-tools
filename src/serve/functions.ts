@@ -30,11 +30,10 @@ export class FunctionsServer {
     const backends: EmulatableBackend[] = [];
     for (const cfg of config) {
       const functionsDir = path.join(options.config.projectDir, cfg.source);
-      const nodeMajorVersion = parseRuntimeVersion(cfg.runtime);
       backends.push({
         functionsDir,
         codebase: cfg.codebase,
-        nodeMajorVersion,
+        runtime: cfg.runtime,
         env: {},
         secretEnv: [],
       });
