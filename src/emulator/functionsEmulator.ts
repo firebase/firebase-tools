@@ -5,6 +5,7 @@ import * as clc from "colorette";
 import * as http from "http";
 import * as jwt from "jsonwebtoken";
 import * as cors from "cors";
+import * as semver from "semver";
 import { URL } from "url";
 import { EventEmitter } from "events";
 
@@ -85,8 +86,8 @@ export interface EmulatableBackend {
   secretEnv: backend.SecretEnvVar[];
   codebase: string;
   predefinedTriggers?: ParsedTriggerDefinition[];
-  nodeMajorVersion?: number;
-  nodeBinary?: string;
+  runtime?: string;
+  bin?: string;
   extensionInstanceId?: string;
   extension?: Extension; // Only present for published extensions
   extensionVersion?: ExtensionVersion; // Only present for published extensions
@@ -360,9 +361,6 @@ export class FunctionsEmulator implements EmulatorInstance {
   }
 
   async start(): Promise<void> {
-    for (const backend of this.args.emulatableBackends) {
-      backend.nodeBinary = this.getNodeBinary(backend);
-    }
     const credentialEnv = await this.getCredentialsEnvironment();
     for (const e of this.args.emulatableBackends) {
       e.env = { ...credentialEnv, ...e.env };
@@ -452,15 +450,17 @@ export class FunctionsEmulator implements EmulatorInstance {
         projectId: this.args.projectId,
         projectDir: this.args.projectDir,
         sourceDir: emulatableBackend.functionsDir,
+        runtime: emulatableBackend.runtime,
       };
-      if (emulatableBackend.nodeMajorVersion) {
-        runtimeDelegateContext.runtime = `nodejs${emulatableBackend.nodeMajorVersion}`;
-      }
       const runtimeDelegate = await runtimes.getRuntimeDelegate(runtimeDelegateContext);
       logger.debug(`Validating ${runtimeDelegate.name} source`);
       await runtimeDelegate.validate();
       logger.debug(`Building ${runtimeDelegate.name} source`);
       await runtimeDelegate.build();
+
+      // Retrieve information from runtime delegate
+      emulatableBackend.runtime = runtimeDelegate.runtime;
+      emulatableBackend.bin = runtimeDelegate.bin;
 
       // Don't include user envs when parsing triggers. Do include user envs when resolving parameter values
       const firebaseConfig = this.getFirebaseConfig();
@@ -499,12 +499,6 @@ export class FunctionsEmulator implements EmulatorInstance {
    * TODO(b/216167890): Gracefully handle removal of deleted function definitions
    */
   async loadTriggers(emulatableBackend: EmulatableBackend, force = false): Promise<void> {
-    if (!emulatableBackend.nodeBinary) {
-      throw new FirebaseError(
-        `No node binary for ${emulatableBackend.functionsDir}. This should never happen.`
-      );
-    }
-
     let triggerDefinitions: EmulatedTriggerDefinition[] = [];
     try {
       triggerDefinitions = await this.discoverTriggers(emulatableBackend);
@@ -522,6 +516,13 @@ export class FunctionsEmulator implements EmulatorInstance {
         `Failed to load function definition from source: ${e}`
       );
       return;
+    }
+
+    // If discoverTrigger went as planned, all emulatable backend should now have a bin associated with it.
+    if (!emulatableBackend.bin) {
+      throw new FirebaseError(
+        `No binary associated with ${emulatableBackend.functionsDir}. This should never happen.`
+      );
     }
     // Before loading any triggers we need to make sure there are no 'stale' workers
     // in the pool that would cause us to run old code.
@@ -1029,72 +1030,6 @@ export class FunctionsEmulator implements EmulatorInstance {
     triggers.forEach((def) => this.addTriggerRecord(def, { backend, ignored: false }));
   }
 
-  getNodeBinary(backend: EmulatableBackend): string {
-    const pkg = require(path.join(backend.functionsDir, "package.json"));
-    // If the developer hasn't specified a Node to use, inform them that it's an option and use default
-    if ((!pkg.engines || !pkg.engines.node) && !backend.nodeMajorVersion) {
-      this.logger.log(
-        "WARN",
-        `Your functions directory ${backend.functionsDir} does not specify a Node version.\n   ` +
-          "- Learn more at https://firebase.google.com/docs/functions/manage-functions#set_runtime_options"
-      );
-      return process.execPath;
-    }
-
-    const hostMajorVersion = process.versions.node.split(".")[0];
-    const requestedMajorVersion: string = backend.nodeMajorVersion
-      ? `${backend.nodeMajorVersion}`
-      : pkg.engines.node;
-    let localMajorVersion = "0";
-    const localNodePath = path.join(backend.functionsDir, "node_modules/.bin/node");
-
-    // Next check if we have a Node install in the node_modules folder
-    try {
-      const localNodeOutput = spawn.sync(localNodePath, ["--version"]).stdout.toString();
-      localMajorVersion = localNodeOutput.slice(1).split(".")[0];
-    } catch (err: any) {
-      // Will happen if we haven't asked about local version yet
-    }
-
-    // If the requested version is already locally available, let's use that
-    if (requestedMajorVersion === localMajorVersion) {
-      this.logger.logLabeled(
-        "SUCCESS",
-        "functions",
-        `Using node@${requestedMajorVersion} from local cache.`
-      );
-      return localNodePath;
-    }
-
-    // If the requested version is the same as the host, let's use that
-    if (requestedMajorVersion === hostMajorVersion) {
-      this.logger.logLabeled(
-        "SUCCESS",
-        "functions",
-        `Using node@${requestedMajorVersion} from host.`
-      );
-    } else {
-      // Otherwise we'll warn and use the version that is currently running this process.
-      if (process.env.FIREPIT_VERSION) {
-        this.logger.log(
-          "WARN",
-          `You've requested "node" version "${requestedMajorVersion}", but the standalone Firebase CLI comes with bundled Node "${hostMajorVersion}".`
-        );
-        this.logger.log(
-          "INFO",
-          `To use a different Node.js version, consider removing the standalone Firebase CLI and switching to "firebase-tools" on npm.`
-        );
-      } else {
-        this.logger.log(
-          "WARN",
-          `Your requested "node" version "${requestedMajorVersion}" doesn't match your global version "${hostMajorVersion}". Using node@${hostMajorVersion} from host.`
-        );
-      }
-    }
-
-    return process.execPath;
-  }
-
   getRuntimeConfig(backend: EmulatableBackend): Record<string, string> {
     const configPath = `${backend.functionsDir}/.runtimeconfig.json`;
     try {
@@ -1276,10 +1211,12 @@ export class FunctionsEmulator implements EmulatorInstance {
     const args = [path.join(__dirname, "functionsEmulatorRuntime")];
 
     if (this.args.debugPort) {
-      if (process.env.FIREPIT_VERSION && process.execPath === backend.nodeBinary) {
+      if (process.env.FIREPIT_VERSION) {
         this.logger.log(
           "WARN",
-          `To enable function inspection, please run "${process.execPath} is:npm i node@${backend.nodeMajorVersion} --save-dev" in your functions directory`
+          `To enable function inspection, please run "npm i node@${semver.coerce(
+            backend.runtime || "18.0.0"
+          )} --save-dev" in your functions directory`
         );
       } else {
         const { host } = this.getInfo();
@@ -1305,10 +1242,10 @@ export class FunctionsEmulator implements EmulatorInstance {
     const secretEnvs = await this.resolveSecretEnvs(backend, trigger);
     const socketPath = getTemporarySocketPath();
 
-    const childProcess = spawn(backend.nodeBinary!, args, {
+    const childProcess = spawn(backend.bin!, args, {
       cwd: backend.functionsDir,
       env: {
-        node: backend.nodeBinary,
+        node: backend.bin,
         ...process.env,
         ...runtimeEnv,
         ...secretEnvs,

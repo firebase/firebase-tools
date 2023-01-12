@@ -15,6 +15,9 @@ import { needProjectId } from "../../projectUtils";
 import { Emulators } from "../../emulator/types";
 import { SecretEnvVar } from "../../deploy/functions/backend";
 
+/**
+ *
+ */
 export async function buildOptions(options: any): Promise<any> {
   const extDevDir = localHelper.findExtensionYaml(process.cwd());
   options.extDevDir = extDevDir;
@@ -37,16 +40,19 @@ export async function buildOptions(options: any): Promise<any> {
     triggerHelper.functionResourceToEmulatedTriggerDefintion(r)
   );
   options.extDevTriggers = functionEmuTriggerDefs;
-  options.extDevNodeVersion = specHelper.getNodeVersion(functionResources);
+  options.extDevRuntime = specHelper.getRuntime(functionResources);
   return options;
 }
 
 // TODO: Better name? Also, should this be in extensionsEmulator instead?
+/**
+ *
+ */
 export async function getExtensionFunctionInfo(
   instance: planner.InstanceSpec,
   paramValues: Record<string, string>
 ): Promise<{
-  nodeMajorVersion: number;
+  runtime: string;
   extensionTriggers: ParsedTriggerDefinition[];
   nonSecretEnv: Record<string, string>;
   secretEnvVariables: SecretEnvVar[];
@@ -59,12 +65,12 @@ export async function getExtensionFunctionInfo(
       trigger.name = `ext-${instance.instanceId}-${trigger.name}`;
       return trigger;
     });
-  const nodeMajorVersion = specHelper.getNodeVersion(functionResources);
+  const runtime = specHelper.getRuntime(functionResources);
   const nonSecretEnv = getNonSecretEnv(spec.params, paramValues);
   const secretEnvVariables = getSecretEnvVars(spec.params, paramValues);
   return {
     extensionTriggers,
-    nodeMajorVersion,
+    runtime,
     nonSecretEnv,
     secretEnvVariables,
   };
@@ -117,6 +123,9 @@ export function getSecretEnvVars(
 }
 
 // Exported for testing
+/**
+ *
+ */
 export function getParams(options: any, extensionSpec: ExtensionSpec) {
   const projectId = needProjectId(options);
   const userParams = paramHelper.readEnvFile(options.testParams);

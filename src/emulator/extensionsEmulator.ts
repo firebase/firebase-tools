@@ -230,15 +230,15 @@ export class ExtensionsEmulator implements EmulatorInstance {
     const functionsDir = path.join(extensionDir, "functions");
     // TODO(b/213335255): For local extensions, this should include extensionSpec instead of extensionVersion
     const env = Object.assign(this.autoPopulatedParams(instance), instance.params);
-    const { extensionTriggers, nodeMajorVersion, nonSecretEnv, secretEnvVariables } =
+    const { extensionTriggers, runtime, nonSecretEnv, secretEnvVariables } =
       await getExtensionFunctionInfo(instance, env);
     const emulatableBackend: EmulatableBackend = {
       functionsDir,
+      runtime,
       env: nonSecretEnv,
       codebase: instance.instanceId, // Give each extension its own codebase name so that they don't share workerPools.
       secretEnv: secretEnvVariables,
       predefinedTriggers: extensionTriggers,
-      nodeMajorVersion: nodeMajorVersion,
       extensionInstanceId: instance.instanceId,
     };
     if (instance.ref) {
