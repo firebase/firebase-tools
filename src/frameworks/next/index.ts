@@ -36,7 +36,7 @@ import {
   allDependencyNames,
 } from "./utils";
 import type { Manifest, NpmLsReturn } from "./interfaces";
-import { readJSON } from "../utils";
+import { getAllSiteDomains, readJSON } from "../utils";
 import { warnIfCustomBuildScript } from "../utils";
 import type { EmulatorInfo } from "../../emulator/types";
 import { usesAppDirRouter, usesNextImage, hasUnoptimizedImage } from "./utils";
@@ -77,7 +77,10 @@ export async function discover(dir: string) {
 /**
  * Build a next.js application.
  */
-export async function build(dir: string): Promise<BuildResult> {
+export async function build(
+  dir: string,
+  context: { projectId: string; siteId: string }
+): Promise<BuildResult> {
   const { default: nextBuild } = relativeRequire(dir, "next/dist/build");
 
   await warnIfCustomBuildScript(dir, name, DEFAULT_BUILD_SCRIPT);
@@ -163,7 +166,19 @@ export async function build(dir: string): Promise<BuildResult> {
   } = manifest;
 
   if (nextjsI18n?.domains) {
-    throw new FirebaseError("Next.js domain routing i18n is not supported");
+    const allSiteDomains = await getAllSiteDomains(context.projectId, context.siteId);
+
+    for (const i18nDomain of nextjsI18n.domains) {
+      const i18nDomainIsAHostingDomain = allSiteDomains.some(
+        (siteDomain) => siteDomain === i18nDomain.domain
+      );
+
+      if (!i18nDomainIsAHostingDomain) {
+        throw new FirebaseError(
+          `i18n domain "${i18nDomain.domain}" is not registered in Firebase Hosting for this project.`
+        );
+      }
+    }
   }
 
   const isEveryHeaderSupported = nextJsHeaders.every(isHeaderSupportedByHosting);

@@ -48,7 +48,10 @@ export interface Framework {
   discover: (dir: string) => Promise<Discovery | undefined>;
   type: FrameworkType;
   name: string;
-  build: (dir: string) => Promise<BuildResult | void>;
+  build: (
+    dir: string,
+    context: { siteId: string; projectId: string }
+  ) => Promise<BuildResult | void>;
   support: SupportLevel;
   init?: (setup: any) => Promise<void>;
   getDevModeHandle?: (
@@ -407,12 +410,15 @@ export async function prepareFrameworks(
         redirects = [],
         headers = [],
         i18n,
-      } = (await build(getProjectPath())) || {};
+      } = (await build(getProjectPath(), {
+        projectId: context.projectId,
+        siteId: context.site,
+      })) || {};
+
       config.rewrites.push(...rewrites);
       config.redirects.push(...redirects);
       config.headers.push(...headers);
 
-      // WIP: Hosting i18n rewrite pointing to root
       if (i18n) {
         config.i18n = {
           root: "/",
