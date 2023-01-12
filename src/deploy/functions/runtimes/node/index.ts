@@ -155,14 +155,14 @@ export class Delegate {
     return Promise.resolve(() => Promise.resolve());
   }
 
-  serve(
-    port: number,
+  serveAdmin(
+    port: string,
     config: backend.RuntimeConfigValues,
     envs: backend.EnvironmentVariables
   ): Promise<() => Promise<void>> {
     const env: NodeJS.ProcessEnv = {
       ...envs,
-      PORT: port.toString(),
+      PORT: port,
       FUNCTIONS_CONTROL_API: "true",
       HOME: process.env.HOME,
       PATH: process.env.PATH,
@@ -224,7 +224,7 @@ export class Delegate {
     if (!discovered) {
       const getPort = promisify(portfinder.getPort) as () => Promise<number>;
       const port = await getPort();
-      const kill = await this.serve(port, config, env);
+      const kill = await this.serveAdmin(port.toString(), config, env);
       try {
         discovered = await discovery.detectFromPort(port, this.projectId, this.runtime);
       } finally {

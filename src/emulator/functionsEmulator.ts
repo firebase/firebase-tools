@@ -337,7 +337,12 @@ export class FunctionsEmulator implements EmulatorInstance {
     const record = this.getTriggerRecordByKey(this.getTriggerKey(trigger));
     const pool = this.workerPools[record.backend.codebase];
     if (!pool.readyForWork(trigger.id)) {
-      await this.startRuntime(record.backend, trigger);
+      try {
+        await this.startRuntime(record.backend, trigger);
+      } catch (e: any) {
+        this.logger.logLabeled("ERROR", `Failed to start runtime for ${trigger.id}: ${e}`);
+        return;
+      }
     }
     const worker = pool.getIdleWorker(trigger.id)!;
     const reqBody = JSON.stringify(body);
@@ -518,12 +523,6 @@ export class FunctionsEmulator implements EmulatorInstance {
       return;
     }
 
-    // If discoverTrigger went as planned, all emulatable backend should now have a bin associated with it.
-    if (!emulatableBackend.bin) {
-      throw new FirebaseError(
-        `No binary associated with ${emulatableBackend.functionsDir}. This should never happen.`
-      );
-    }
     // Before loading any triggers we need to make sure there are no 'stale' workers
     // in the pool that would cause us to run old code.
     this.workerPools[emulatableBackend.codebase].refresh();
@@ -675,7 +674,14 @@ export class FunctionsEmulator implements EmulatorInstance {
           {}
         )
       );
-      await this.startRuntime(emulatableBackend);
+      try {
+        await this.startRuntime(emulatableBackend);
+      } catch (e: any) {
+        this.logger.logLabeled(
+          "ERROR",
+          `Failed to start functions in ${emulatableBackend.functionsDir}: ${e}`
+        );
+      }
     }
   }
 
@@ -1203,13 +1209,8 @@ export class FunctionsEmulator implements EmulatorInstance {
     return secretEnvs;
   }
 
-  async startRuntime(
-    backend: EmulatableBackend,
-    trigger?: EmulatedTriggerDefinition
-  ): Promise<RuntimeWorker> {
-    const emitter = new EventEmitter();
+  async startNode(backend: EmulatableBackend, envs: Record<string, string>): Promise<ChildProcess> {
     const args = [path.join(__dirname, "functionsEmulatorRuntime")];
-
     if (this.args.debugPort) {
       if (process.env.FIREPIT_VERSION) {
         this.logger.log(
@@ -1238,22 +1239,41 @@ export class FunctionsEmulator implements EmulatorInstance {
           "See https://yarnpkg.com/getting-started/migration#step-by-step for more information."
       );
     }
+
+    const bin = backend.bin;
+    if (!bin) {
+      throw new Error(
+        `No binary associated with ${backend.functionsDir}. ` +
+          "Make sure function runtime is configured correctly in firebase.json."
+      );
+    }
+
+    const socketPath = getTemporarySocketPath();
+    return Promise.resolve(
+      spawn(bin, args, {
+        cwd: backend.functionsDir,
+        env: {
+          node: backend.bin,
+          ...process.env,
+          ...envs,
+          PORT: socketPath,
+        },
+        stdio: ["pipe", "pipe", "pipe", "ipc"],
+      })
+    );
+  }
+
+  async startRuntime(
+    backend: EmulatableBackend,
+    trigger?: EmulatedTriggerDefinition
+  ): Promise<RuntimeWorker> {
+    const emitter = new EventEmitter();
+
     const runtimeEnv = this.getRuntimeEnvs(backend, trigger);
     const secretEnvs = await this.resolveSecretEnvs(backend, trigger);
     const socketPath = getTemporarySocketPath();
 
-    const childProcess = spawn(backend.bin!, args, {
-      cwd: backend.functionsDir,
-      env: {
-        node: backend.bin,
-        ...process.env,
-        ...runtimeEnv,
-        ...secretEnvs,
-        PORT: socketPath,
-      },
-      stdio: ["pipe", "pipe", "pipe", "ipc"],
-    });
-
+    const childProcess = await this.startNode(backend, { ...runtimeEnv, ...secretEnvs });
     const runtime: FunctionsRuntimeInstance = {
       process: childProcess,
       events: emitter,
@@ -1419,7 +1439,16 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     const pool = this.workerPools[record.backend.codebase];
     if (!pool.readyForWork(trigger.id)) {
-      await this.startRuntime(record.backend, trigger);
+      try {
+        await this.startRuntime(record.backend, trigger);
+      } catch (e: any) {
+        this.logger.logLabeled("ERROR", `Failed to handle request for function ${trigger.id}`);
+        this.logger.logLabeled(
+          "ERROR",
+          `Failed to start functions in ${record.backend.functionsDir}: ${e}`
+        );
+        return;
+      }
     }
     const debugBundle = this.args.debugPort
       ? {
