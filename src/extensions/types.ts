@@ -1,7 +1,7 @@
+import { MemoryOptions } from "../deploy/functions/backend";
+import { Runtime } from "../deploy/functions/runtimes";
 import * as proto from "../gcp/proto";
 import { SpecParamType } from "./extensionsHelper";
-import { Runtime } from "../deploy/functions/runtimes";
-import { MemoryOptions } from "../deploy/functions/backend";
 
 export enum RegistryLaunchStage {
   EXPERIMENTAL = "EXPERIMENTAL",
@@ -139,6 +139,7 @@ export interface FunctionResourceProperties {
     availableMemoryMb?: MemoryOptions;
     runtime?: Runtime;
     httpsTrigger?: Record<string, never>;
+    scheduleTrigger?: Record<string, string>;
     taskQueueTrigger?: {
       rateLimits?: {
         maxConcurrentDispatchs?: number;
