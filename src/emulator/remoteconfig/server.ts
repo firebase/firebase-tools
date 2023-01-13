@@ -13,17 +13,12 @@ export function createApp(
   const app = express();
   app.use(cors("*" as any));
 
-  // Test SDK endpoint
-  app.get("/", (req, res) => {
-    res.send("Oh yes, it's me, remote config 🥸");
-  });
-
   app.put("/revert", (req, res) => {
     emulator.loadTemplate();
     res.json(emulator.template);
   });
 
-  // Please note you should set the Remote Config minimal fetch interval to 0 so it refreshes every time
+  // Please note you should set the Remote Config minimal fetch interval to 0, so it refreshes every time
   // Otherwise caching will cause you headaches
   app.post("/v1/projects/:projectId/namespaces/firebase:fetch", (req, res) => {
     res.header("etag", `etag-${req.params["projectId"]}-firebase-fetch--${new Date().getTime()}`);
