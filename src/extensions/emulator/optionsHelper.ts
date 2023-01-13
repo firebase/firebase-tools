@@ -15,6 +15,9 @@ import { needProjectId } from "../../projectUtils";
 import { Emulators } from "../../emulator/types";
 import { SecretEnvVar } from "../../deploy/functions/backend";
 
+/**
+ * Build firebase options based on the extension configuration.
+ */
 export async function buildOptions(options: any): Promise<any> {
   const extDevDir = localHelper.findExtensionYaml(process.cwd());
   options.extDevDir = extDevDir;
@@ -41,9 +44,8 @@ export async function buildOptions(options: any): Promise<any> {
   return options;
 }
 
-// TODO: Better name? Also, should this be in extensionsEmulator instead?
 /**
- *
+ * TODO: Better name? Also, should this be in extensionsEmulator instead?
  */
 export async function getExtensionFunctionInfo(
   instance: planner.InstanceSpec,
@@ -119,7 +121,9 @@ export function getSecretEnvVars(
   return secretEnvVar;
 }
 
-// Exported for testing
+/**
+ * Exported for testing
+ */
 export function getParams(options: any, extensionSpec: ExtensionSpec) {
   const projectId = needProjectId(options);
   const userParams = paramHelper.readEnvFile(options.testParams);
