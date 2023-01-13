@@ -1,5 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
+import fetch from "node-fetch";
 import { promisify } from "util";
 
 import * as portfinder from "portfinder";
@@ -78,7 +79,7 @@ class Delegate implements runtimes.RuntimeDelegate {
         child.on("exit", resolve);
         child.on("error", reject);
       });
-      this._modulesDir = out;
+      this._modulesDir = out.trim();
     }
     return this._modulesDir;
   }
