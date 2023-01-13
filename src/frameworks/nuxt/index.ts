@@ -9,20 +9,29 @@ export const name = "Nuxt";
 export const support = SupportLevel.Experimental;
 export const type = FrameworkType.Toolchain;
 
+import { NuxtDependency } from "./interfaces";
+import { nuxtConfigFilesExist } from "./utils";
+
 const DEFAULT_BUILD_SCRIPT = ["nuxt build"];
 
-export async function discover(dir: string) {
+/**
+ *
+ * @param dir current directory
+ * @return undefined if project is not Nuxt 2, {mayWantBackend: true } otherwise
+ */
+export async function discover(dir: string): Promise<{ mayWantBackend: true } | undefined> {
   if (!(await pathExists(join(dir, "package.json")))) return;
-  const nuxtDependency = findDependency("nuxt", { cwd: dir, depth: 0, omitDev: false });
-  const version = nuxtDependency?.version;
-  const configFilesExist = await Promise.all([
-    pathExists(join(dir, "nuxt.config.js")),
-    pathExists(join(dir, "nuxt.config.ts")),
-  ]);
+  const nuxtDependency = findDependency("nuxt", {
+    cwd: dir,
+    depth: 0,
+    omitDev: false,
+  }) as NuxtDependency;
 
-  const anyConfigFileExists = configFilesExist.some((it) => it);
+  const version = nuxtDependency?.version;
+  const anyConfigFileExists = await nuxtConfigFilesExist(dir);
+
   if (!anyConfigFileExists && !nuxtDependency) return;
-  if (gte(version, "3.0.0-0")) return { mayWantBackend: true };
+  if (version && gte(version, "3.0.0-0")) return { mayWantBackend: true };
 
   return;
 }
