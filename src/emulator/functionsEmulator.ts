@@ -60,6 +60,8 @@ import { AUTH_BLOCKING_EVENTS, BEFORE_CREATE_EVENT } from "../functions/events/v
 import { BlockingFunctionsConfig } from "../gcp/identityPlatform";
 import { resolveBackend } from "../deploy/functions/build";
 import { setEnvVarsForEmulators } from "./env";
+import * as portfinder from "portfinder";
+import { runWithVirtualEnv } from "../functions/python";
 
 const EVENT_INVOKE = "functions:invoke"; // event name for UA
 const EVENT_INVOKE_GA4 = "functions_invoke"; // event name GA4 (alphanumertic)
@@ -1268,6 +1270,41 @@ export class FunctionsEmulator implements EmulatorInstance {
       cwd: backend.functionsDir,
       socketPath,
     });
+  }
+
+  async startPython(
+    backend: EmulatableBackend,
+    envs: Record<string, string>
+  ): Promise<ChildProcess> {
+    const args = [path.join(__dirname, "functionsEmulatorRuntime")];
+
+    if (this.args.debugPort) {
+      this.logger.log(
+        "WARN",
+        "--inspect-functions do not support Python functions. Running normally."
+      );
+    }
+
+    const bin = backend.bin;
+    if (!bin) {
+      throw new Error(
+        `No binary associated with ${backend.functionsDir}. ` +
+          "Make sure function runtime is configured correctly in firebase.json."
+      );
+    }
+
+    // Unfortunately, there isn't platform-neutral support for Unix Domain Socket or Nameed Pipe in the python
+    // ecosystem. Use regular IP+PORT combination instead.
+    const port = await portfinder.getPortPromise({
+      port: 8081,
+    });
+    return Promise.resolve(
+      runWithVirtualEnv([bin, ...args], backend.functionsDir, {
+        ...process.env,
+        ...envs,
+        PORT: port.toString(),
+      })
+    );
   }
 
   async startRuntime(

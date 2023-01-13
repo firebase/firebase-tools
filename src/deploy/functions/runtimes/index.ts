@@ -1,6 +1,7 @@
 import * as backend from "../backend";
 import * as build from "../build";
 import * as node from "./node";
+import * as python from "./python";
 import * as validate from "../validate";
 import { FirebaseError } from "../../../error";
 
@@ -34,6 +35,8 @@ const MESSAGE_FRIENDLY_RUNTIMES: Record<Runtime | DeprecatedRuntime, string> = {
   nodejs14: "Node.js 14",
   nodejs16: "Node.js 16",
   nodejs18: "Node.js 18",
+  python310: "Python 3.10",
+  python311: "Python 3.11 (Preview)",
 };
 
 /**
@@ -113,7 +116,7 @@ export interface DelegateContext {
 }
 
 type Factory = (context: DelegateContext) => Promise<RuntimeDelegate | undefined>;
-const factories: Factory[] = [node.tryCreateDelegate];
+const factories: Factory[] = [node.tryCreateDelegate, python.tryCreateDelegate];
 
 /**
  *
