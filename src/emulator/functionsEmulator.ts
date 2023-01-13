@@ -124,15 +124,43 @@ export interface FunctionsEmulatorArgs {
   projectAlias?: string;
 }
 
-// FunctionsRuntimeInstance is the handler for a running function invocation
+/**
+ * IPC connection info of a Function Runtime.
+ */
+export class IPCConn {
+  constructor(readonly socketPath: string) {}
+
+  httpReqOpts(): http.RequestOptions {
+    return {
+      path: `/`,
+      socketPath: this.socketPath,
+    };
+  }
+}
+
+/**
+ * TCP/IP connection info of a Function Runtime.
+ */
+export class TCPConn {
+  constructor(readonly host: string, readonly port: number) {}
+
+  httpReqOpts(): http.RequestOptions {
+    return {
+      path: `/`,
+      host: this.host,
+      port: this.port,
+    };
+  }
+}
+
 export interface FunctionsRuntimeInstance {
   process: ChildProcess;
   // An emitter which sends our EmulatorLog events from the runtime.
   events: EventEmitter;
   // A cwd of the process
   cwd: string;
-  // Path to socket file used for HTTP-over-IPC comms.
-  socketPath: string;
+  // Communication info for the runtime
+  conn: IPCConn | TCPConn;
 }
 
 export interface InvokeRuntimeOpts {
@@ -355,8 +383,8 @@ export class FunctionsEmulator implements EmulatorInstance {
     return new Promise((resolve, reject) => {
       const req = http.request(
         {
+          ...worker.runtime.conn.httpReqOpts(),
           path: `/`,
-          socketPath: worker.runtime.socketPath,
           headers: headers,
         },
         resolve
@@ -1268,14 +1296,14 @@ export class FunctionsEmulator implements EmulatorInstance {
       process: childProcess,
       events: new EventEmitter(),
       cwd: backend.functionsDir,
-      socketPath,
+      conn: new IPCConn(socketPath),
     });
   }
 
   async startPython(
     backend: EmulatableBackend,
     envs: Record<string, string>
-  ): Promise<ChildProcess> {
+  ): Promise<FunctionsRuntimeInstance> {
     const args = [path.join(__dirname, "functionsEmulatorRuntime")];
 
     if (this.args.debugPort) {
@@ -1293,18 +1321,23 @@ export class FunctionsEmulator implements EmulatorInstance {
       );
     }
 
-    // Unfortunately, there isn't platform-neutral support for Unix Domain Socket or Nameed Pipe in the python
-    // ecosystem. Use regular IP+PORT combination instead.
+    // Unfortunately, there isn't platform-neutral support for Unix Domain Socket or Named Pipe in the python
+    // ecosystem. Use TCP/IP stack instead.
     const port = await portfinder.getPortPromise({
       port: 8081,
     });
-    return Promise.resolve(
-      runWithVirtualEnv([bin, ...args], backend.functionsDir, {
-        ...process.env,
-        ...envs,
-        PORT: port.toString(),
-      })
-    );
+    const childProcess = runWithVirtualEnv([bin, ...args], backend.functionsDir, {
+      ...process.env,
+      ...envs,
+      PORT: port.toString(),
+    });
+
+    return Promise.resolve({
+      process: childProcess,
+      events: new EventEmitter(),
+      cwd: backend.functionsDir,
+      conn: new TCPConn("localhost", port),
+    });
   }
 
   async startRuntime(
@@ -1314,7 +1347,12 @@ export class FunctionsEmulator implements EmulatorInstance {
     const runtimeEnv = this.getRuntimeEnvs(backend, trigger);
     const secretEnvs = await this.resolveSecretEnvs(backend, trigger);
 
-    const runtime = await this.startNode(backend, { ...runtimeEnv, ...secretEnvs });
+    let runtime;
+    if (backend.runtime!.startsWith("python")) {
+      runtime = await this.startPython(backend, { ...runtimeEnv, ...secretEnvs });
+    } else {
+      runtime = await this.startNode(backend, { ...runtimeEnv, ...secretEnvs });
+    }
     const extensionLogInfo = {
       instanceId: backend.extensionInstanceId,
       ref: backend.extensionVersion?.ref,
