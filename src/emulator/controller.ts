@@ -1,7 +1,6 @@
 import * as clc from "colorette";
 import * as fs from "fs";
 import * as path from "path";
-import * as semver from "semver";
 
 import { logger } from "../logger";
 import { track, trackEmulator } from "../track";
