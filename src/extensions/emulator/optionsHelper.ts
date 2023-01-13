@@ -123,9 +123,6 @@ export function getSecretEnvVars(
 }
 
 // Exported for testing
-/**
- *
- */
 export function getParams(options: any, extensionSpec: ExtensionSpec) {
   const projectId = needProjectId(options);
   const userParams = paramHelper.readEnvFile(options.testParams);
