@@ -463,7 +463,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       logger.debug(`Building ${runtimeDelegate.name} source`);
       await runtimeDelegate.build();
 
-      // Retrieve information from runtime delegate
+      // Retrieve information from the runtime delegate.
       emulatableBackend.runtime = runtimeDelegate.runtime;
       emulatableBackend.bin = runtimeDelegate.bin;
 
@@ -522,7 +522,6 @@ export class FunctionsEmulator implements EmulatorInstance {
       );
       return;
     }
-
     // Before loading any triggers we need to make sure there are no 'stale' workers
     // in the pool that would cause us to run old code.
     this.workerPools[emulatableBackend.codebase].refresh();

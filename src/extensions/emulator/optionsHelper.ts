@@ -15,9 +15,6 @@ import { needProjectId } from "../../projectUtils";
 import { Emulators } from "../../emulator/types";
 import { SecretEnvVar } from "../../deploy/functions/backend";
 
-/**
- *
- */
 export async function buildOptions(options: any): Promise<any> {
   const extDevDir = localHelper.findExtensionYaml(process.cwd());
   options.extDevDir = extDevDir;

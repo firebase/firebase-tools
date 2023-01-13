@@ -66,7 +66,6 @@ export class Delegate {
   // to decide whether to use the JS export method of discovery or the HTTP container contract
   // method of discovery.
   _sdkVersion: string | undefined = undefined;
-
   get sdkVersion(): string {
     if (this._sdkVersion === undefined) {
       this._sdkVersion = versioning.getFunctionsSDKVersion(this.sourceDir) || "";
