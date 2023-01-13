@@ -1,6 +1,6 @@
 import * as uuid from "uuid";
 import { EmulatorLogger } from "../emulatorLogger";
-import { EmulatorInfo, Emulators } from "../types";
+import { Emulators } from "../types";
 import { Client } from "../../apiv2";
 import { EmulatorRegistry } from "../registry";
 import { toSerializedDate } from "../storage/metadata";
