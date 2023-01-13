@@ -187,6 +187,7 @@ export class UploadService {
    * @throws {NotFoundError} if the resumable upload does not exist.
    */
   public getResumableUpload(uploadId: string): Upload {
+    console.log(this._uploads);
     const upload = this._uploads.get(uploadId);
     if (!upload || upload.type !== UploadType.RESUMABLE) {
       throw new NotFoundError();

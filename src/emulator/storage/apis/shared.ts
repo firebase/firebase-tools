@@ -2,6 +2,7 @@ import { gunzipSync } from "zlib";
 import { StoredFileMetadata } from "../metadata";
 import { Request, Response } from "express";
 import { crc32cToString } from "../crc";
+import { UploadStatus } from "../upload";
 
 /** Populates an object media GET Express response. */
 export function sendFileBytes(
@@ -54,4 +55,17 @@ export function sendFileBytes(
     }
   }
   res.end(data);
+}
+
+export function uploadStatusEnumToStr(status: UploadStatus) {
+  switch (status) {
+    case UploadStatus.ACTIVE:
+      return "active";
+    case UploadStatus.CANCELLED:
+      return "cancelled";
+    case UploadStatus.FINISHED:
+      return "final";
+    default:
+      return "unknown";
+  }
 }

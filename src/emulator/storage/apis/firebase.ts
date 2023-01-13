@@ -4,7 +4,7 @@ import * as uuid from "uuid";
 import { IncomingMetadata, OutgoingFirebaseMetadata, StoredFileMetadata } from "../metadata";
 import { Request, Response, Router } from "express";
 import { StorageEmulator } from "../index";
-import { sendFileBytes } from "./shared";
+import { uploadStatusEnumToStr, sendFileBytes } from "./shared";
 import { EmulatorRegistry } from "../../registry";
 import { parseObjectUploadMultipartRequest } from "../multipart";
 import { NotFoundError, ForbiddenError } from "../errors";
@@ -267,6 +267,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
           throw err;
         }
         res.header("X-Goog-Upload-Size-Received", upload.size.toString());
+        res.header("x-goog-upload-status", uploadStatusEnumToStr(upload.status));
         return res.sendStatus(200);
       }
 
