@@ -4,7 +4,6 @@ import {
   FunctionsEmulator,
   FunctionsEmulatorArgs,
 } from "../emulator/functionsEmulator";
-import { parseRuntimeVersion } from "../emulator/functionsEmulatorUtils";
 import { needProjectId } from "../projectUtils";
 import { getProjectDefaultAccount } from "../auth";
 import { Options } from "../options";
