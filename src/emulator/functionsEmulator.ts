@@ -1209,7 +1209,10 @@ export class FunctionsEmulator implements EmulatorInstance {
     return secretEnvs;
   }
 
-  async startNode(backend: EmulatableBackend, envs: Record<string, string>): Promise<ChildProcess> {
+  async startNode(
+    backend: EmulatableBackend,
+    envs: Record<string, string>
+  ): Promise<FunctionsRuntimeInstance> {
     const args = [path.join(__dirname, "functionsEmulatorRuntime")];
     if (this.args.debugPort) {
       if (process.env.FIREPIT_VERSION) {
@@ -1249,37 +1252,33 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
 
     const socketPath = getTemporarySocketPath();
-    return Promise.resolve(
-      spawn(bin, args, {
-        cwd: backend.functionsDir,
-        env: {
-          node: backend.bin,
-          ...process.env,
-          ...envs,
-          PORT: socketPath,
-        },
-        stdio: ["pipe", "pipe", "pipe", "ipc"],
-      })
-    );
+    const childProcess = spawn(bin, args, {
+      cwd: backend.functionsDir,
+      env: {
+        node: backend.bin,
+        ...process.env,
+        ...envs,
+        PORT: socketPath,
+      },
+      stdio: ["pipe", "pipe", "pipe", "ipc"],
+    });
+
+    return Promise.resolve({
+      process: childProcess,
+      events: new EventEmitter(),
+      cwd: backend.functionsDir,
+      socketPath,
+    });
   }
 
   async startRuntime(
     backend: EmulatableBackend,
     trigger?: EmulatedTriggerDefinition
   ): Promise<RuntimeWorker> {
-    const emitter = new EventEmitter();
-
     const runtimeEnv = this.getRuntimeEnvs(backend, trigger);
     const secretEnvs = await this.resolveSecretEnvs(backend, trigger);
-    const socketPath = getTemporarySocketPath();
 
-    const childProcess = await this.startNode(backend, { ...runtimeEnv, ...secretEnvs });
-    const runtime: FunctionsRuntimeInstance = {
-      process: childProcess,
-      events: emitter,
-      cwd: backend.functionsDir,
-      socketPath,
-    };
+    const runtime = await this.startNode(backend, { ...runtimeEnv, ...secretEnvs });
     const extensionLogInfo = {
       instanceId: backend.extensionInstanceId,
       ref: backend.extensionVersion?.ref,
