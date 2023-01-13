@@ -1304,7 +1304,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     backend: EmulatableBackend,
     envs: Record<string, string>
   ): Promise<FunctionsRuntimeInstance> {
-    const args = [path.join(__dirname, "functionsEmulatorRuntime")];
+    const args = [path.join(__dirname, "functionsEmulatorRuntime.py")];
 
     if (this.args.debugPort) {
       this.logger.log(
@@ -1329,6 +1329,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     const childProcess = runWithVirtualEnv([bin, ...args], backend.functionsDir, {
       ...process.env,
       ...envs,
+      HOST: "localhost",
       PORT: port.toString(),
     });
 
