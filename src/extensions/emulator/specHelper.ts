@@ -79,9 +79,6 @@ export function readFileFromDirectory(
   });
 }
 
-/**
- *
- */
 export function getFunctionResourcesWithParamSubstitution(
   extensionSpec: ExtensionSpec,
   params: { [key: string]: string }
@@ -92,9 +89,6 @@ export function getFunctionResourcesWithParamSubstitution(
   return substituteParams<Resource[]>(rawResources, params);
 }
 
-/**
- *
- */
 export function getFunctionProperties(resources: Resource[]) {
   return resources.map((r) => r.properties);
 }
