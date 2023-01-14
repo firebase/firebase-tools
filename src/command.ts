@@ -14,10 +14,10 @@ import { getFirebaseProject } from "./management/projects";
 import { requireAuth } from "./requireAuth";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type ActionFunction = (...args: any[]) => any;
+type ActionFunction<ActionReturnType> = (...args: any[]) => ActionReturnType;
 
 interface BeforeFunction {
-  fn: ActionFunction;
+  fn: ActionFunction<void | Promise<void>>;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   args: any[];
 }
@@ -31,14 +31,12 @@ interface CLIClient {
  * Command is a wrapper around commander to simplify our use of promise-based
  * actions and pre-action hooks.
  */
-export class Command {
+export class Command<ActionReturnType> {
   private name = "";
   private descriptionText = "";
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private options: any[][] = [];
-  private actionFn: ActionFunction = (): void => {
-    // noop by default, unless overwritten by `.action(fn)`.
-  };
+  private actionFn: ActionFunction<ActionReturnType> | undefined;
   private befores: BeforeFunction[] = [];
   private helpText = "";
   private client?: CLIClient;
@@ -56,7 +54,7 @@ export class Command {
    * @param t a human readable description.
    * @return the command, for chaining.
    */
-  description(t: string): Command {
+  description(t: string): Command<ActionReturnType> {
     this.descriptionText = t;
     return this;
   }
@@ -71,7 +69,7 @@ export class Command {
    * @return the command, for chaining.
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  option(...args: any[]): Command {
+  option(...args: any[]): Command<ActionReturnType> {
     this.options.push(args);
     return this;
   }
@@ -82,7 +80,7 @@ export class Command {
    * @param message overrides the description for --force for this command
    * @returns the command, for chaining
    */
-  withForce(message?: string): Command {
+  withForce(message?: string): Command<ActionReturnType> {
     this.options.push(["-f, --force", message || "automatically accept all interactive prompts"]);
     return this;
   }
@@ -94,7 +92,7 @@ export class Command {
    * @return the command, for chaining.
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  before(fn: ActionFunction, ...args: any[]): Command {
+  before(fn: ActionFunction<void | Promise<void>>, ...args: any[]): Command<ActionReturnType> {
     this.befores.push({ fn: fn, args: args });
     return this;
   }
@@ -109,7 +107,7 @@ export class Command {
    * @param t the human-readable help text.
    * @return the command, for chaining.
    */
-  help(t: string): Command {
+  help(t: string): Command<ActionReturnType> {
     this.helpText = t;
     return this;
   }
@@ -119,7 +117,7 @@ export class Command {
    * @param fn the function to be run.
    * @return the command, for chaining.
    */
-  action(fn: ActionFunction): Command {
+  action(fn: ActionFunction<ActionReturnType>): Command<ActionReturnType> {
     this.actionFn = fn;
     return this;
   }
@@ -359,7 +357,7 @@ export class Command {
    * @return an async function that executes the command.
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  runner(): (...a: any[]) => Promise<void> {
+  runner(): (...a: any[]) => Promise<ActionReturnType> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return async (...args: any[]) => {
       // Make sure the last argument is an object for options, add {} if none
@@ -379,6 +377,9 @@ export class Command {
 
       for (const before of this.befores) {
         await before.fn(options, ...before.args);
+      }
+      if (this.actionFn === undefined) {
+        throw new FirebaseError(`No action function was set for command ${this.name}`);
       }
       return this.actionFn(...args);
     };

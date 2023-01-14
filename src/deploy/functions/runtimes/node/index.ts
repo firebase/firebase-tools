@@ -19,6 +19,7 @@ import * as versioning from "./versioning";
 import * as parseTriggers from "./parseTriggers";
 
 const MIN_FUNCTIONS_SDK_VERSION = "3.20.0";
+const NUM_RETRIES = 3;
 
 /**
  *
@@ -92,7 +93,7 @@ export class Delegate {
     return Promise.resolve(() => Promise.resolve());
   }
 
-  serve(
+  async serve(
     port: number,
     config: backend.RuntimeConfigValues,
     envs: backend.EnvironmentVariables
@@ -121,6 +122,13 @@ export class Delegate {
     childProcess.stdout?.on("data", (chunk) => {
       logger.debug(chunk.toString());
     });
+
+    // Assuming here that startup errors manifest in less than 5 seconds.
+    await new Promise((resolve, reject) => {
+      childProcess.once("error", reject);
+      setTimeout(resolve, 5_000);
+    });
+
     return Promise.resolve(async () => {
       const p = new Promise<void>((resolve, reject) => {
         childProcess.once("exit", resolve);
@@ -137,7 +145,18 @@ export class Delegate {
     });
   }
 
-  // eslint-disable-next-line require-await
+  async findRandomOpenPort(): Promise<number> {
+    return new Promise<number>((resolve, reject) => {
+      const basePort = Math.floor(Math.random() * 40000 + 10000);
+      portfinder.getPort({ port: basePort }, (err, port) => {
+        if (err) {
+          reject(err);
+        }
+        resolve(port);
+      });
+    });
+  }
+
   async discoverBuild(
     config: backend.RuntimeConfigValues,
     env: backend.EnvironmentVariables
@@ -159,9 +178,17 @@ export class Delegate {
 
     let discovered = await discovery.detectFromYaml(this.sourceDir, this.projectId, this.runtime);
     if (!discovered) {
-      const getPort = promisify(portfinder.getPort) as () => Promise<number>;
-      const port = await getPort();
-      const kill = await this.serve(port, config, env);
+      const port = await this.findRandomOpenPort();
+      const kill = await (async () => {
+        for (let i = 0; i < NUM_RETRIES; i++) {
+          try {
+            return await this.serve(port, config, env);
+          } catch (e) {
+            logger.debug(`Failed to bring up server with error: ${e}`);
+          }
+        }
+        throw new FirebaseError(`Failed to bring up server after ${NUM_RETRIES} attempts.`);
+      })();
       try {
         discovered = await discovery.detectFromPort(port, this.projectId, this.runtime);
       } finally {

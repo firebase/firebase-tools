@@ -74,6 +74,7 @@ jobs:
       FBTOOLS_CLIENT_INTEGRATION_SITE: ${{ secrets.FBTOOLS_CLIENT_INTEGRATION_SITE }}
       CI_RUN_ID: ${{ github.run_id }}
       CI_RUN_ATTEMPT: ${{ github.run_attempt }}
+      TEST_INSTANCE: nix
 
     strategy:
       fail-fast: false
@@ -87,7 +88,7 @@ jobs:
           - npm run test:frameworks
           - npm run test:functions-discover
           - npm run test:hosting
-          # - npm run test:hosting-rewrites # Long-running test that might conflict across test runs. Run this manually.
+          - npm run test:hosting-rewrites
           - npm run test:import-export
           - npm run test:storage-deploy
           - npm run test:storage-emulator-integration
@@ -130,6 +131,7 @@ jobs:
       FBTOOLS_CLIENT_INTEGRATION_SITE: ${{ secrets.FBTOOLS_CLIENT_INTEGRATION_SITE }}
       CI_RUN_ID: ${{ github.run_id }}
       CI_RUN_ATTEMPT: ${{ github.run_attempt }}
+      TEST_INSTANCE: win
 
     strategy:
       fail-fast: false
@@ -138,7 +140,7 @@ jobs:
           - "16"
         script:
           - npm run test:hosting
-          # - npm run test:hosting-rewrites # Long-running test that might conflict across test runs. Run this manually.
+          - npm run test:hosting-rewrites
           - npm run test:client-integration
           - npm run test:emulator
           # - npm run test:import-export # Fails becuase port 4000 is taken after first run - hub not shhutting down?

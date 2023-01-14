@@ -9,13 +9,13 @@ import { logger } from "../logger";
 
 const TABLE_HEAD = ["Site ID", "Default URL", "App ID (if set)"];
 
-export const command = new Command("hosting:sites:list")
+export const command = new Command<Promise<Site[]>>("hosting:sites:list")
   .description("list Firebase Hosting sites")
   .before(requirePermissions, ["firebasehosting.sites.get"])
   .action(
     async (
       options: any // eslint-disable-line @typescript-eslint/no-explicit-any
-    ): Promise<{ sites: Site[] }> => {
+    ): Promise<Site[]> => {
       const projectId = needProjectId(options);
       const sites = await listSites(projectId);
       const table = new Table({ head: TABLE_HEAD, style: { head: ["green"] } });
@@ -29,6 +29,6 @@ export const command = new Command("hosting:sites:list")
       logger.info();
       logger.info(table.toString());
 
-      return { sites };
+      return sites;
     }
   );
