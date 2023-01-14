@@ -15,6 +15,7 @@ import { track, trackEmulator } from "../track";
 import { Constants } from "./constants";
 import { EmulatorInfo, EmulatorInstance, Emulators, FunctionsExecutionMode } from "./types";
 import * as chokidar from "chokidar";
+import * as portfinder from "portfinder";
 
 import * as spawn from "cross-spawn";
 import { ChildProcess } from "child_process";
@@ -60,7 +61,6 @@ import { AUTH_BLOCKING_EVENTS, BEFORE_CREATE_EVENT } from "../functions/events/v
 import { BlockingFunctionsConfig } from "../gcp/identityPlatform";
 import { resolveBackend } from "../deploy/functions/build";
 import { setEnvVarsForEmulators } from "./env";
-import * as portfinder from "portfinder";
 import { runWithVirtualEnv } from "../functions/python";
 
 const EVENT_INVOKE = "functions:invoke"; // event name for UA
@@ -1333,12 +1333,12 @@ export class FunctionsEmulator implements EmulatorInstance {
       PORT: port.toString(),
     });
 
-    return Promise.resolve({
+    return {
       process: childProcess,
       events: new EventEmitter(),
       cwd: backend.functionsDir,
       conn: new TCPConn("localhost", port),
-    });
+    };
   }
 
   async startRuntime(
