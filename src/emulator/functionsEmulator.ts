@@ -132,7 +132,6 @@ export class IPCConn {
 
   httpReqOpts(): http.RequestOptions {
     return {
-      path: `/`,
       socketPath: this.socketPath,
     };
   }
@@ -146,7 +145,6 @@ export class TCPConn {
 
   httpReqOpts(): http.RequestOptions {
     return {
-      path: `/`,
       host: this.host,
       port: this.port,
     };
@@ -1307,10 +1305,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     const args = [path.join(__dirname, "functionsEmulatorRuntime.py")];
 
     if (this.args.debugPort) {
-      this.logger.log(
-        "WARN",
-        "--inspect-functions do not support Python functions. Running normally."
-      );
+      this.logger.log("WARN", "--inspect-functions not supported for Python functions. Ignored.");
     }
 
     const bin = backend.bin;
@@ -1321,8 +1316,8 @@ export class FunctionsEmulator implements EmulatorInstance {
       );
     }
 
-    // Unfortunately, there isn't platform-neutral support for Unix Domain Socket or Named Pipe in the python
-    // ecosystem. Use TCP/IP stack instead.
+    // No support generic socket interface for Unix Domain Socket/Named Pipe in the python.
+    // Use TCP/IP stack instead.
     const port = await portfinder.getPortPromise({
       port: 8081,
     });

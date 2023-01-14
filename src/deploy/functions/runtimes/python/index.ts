@@ -125,10 +125,7 @@ class Delegate implements runtimes.RuntimeDelegate {
     );
     const childProcess = runWithVirtualEnv(args, this.sourceDir, envWithAdminPort);
     return Promise.resolve(async () => {
-      // Tell the process to exit.
       await fetch(`http://127.0.0.1:${port}/__/quitquitquit`);
-      // Give the process a chance to quit gracefully,
-      // otherwise kill it.
       const quitTimeout = setTimeout(() => {
         if (!childProcess.killed) {
           childProcess.kill("SIGKILL");
