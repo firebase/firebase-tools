@@ -138,6 +138,8 @@ describe("Extensions Emulator", () => {
         });
 
         const result = await e.toEmulatableBackend(testCase.input);
+        // ignore result.bin, as it is platform dependent
+        delete result.bin;
         expect(result).to.deep.equal(testCase.expected);
       });
     }
