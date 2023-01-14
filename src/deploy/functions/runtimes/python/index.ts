@@ -64,7 +64,7 @@ class Delegate implements runtimes.RuntimeDelegate {
         [
           this.bin,
           "-c",
-          "'import firebase_functions; import os; print(os.path.dirname(firebase_functions.__file__))'",
+          '"import firebase_functions; import os; print(os.path.dirname(firebase_functions.__file__))"',
         ],
         this.sourceDir,
         {}
@@ -73,7 +73,7 @@ class Delegate implements runtimes.RuntimeDelegate {
       child.stdout?.on("data", (chunk: Buffer) => {
         const chunkString = chunk.toString();
         out = out + chunkString;
-        logger.debug(chunkString);
+        logger.debug(`stdout: ${chunkString}`);
       });
       await new Promise((resolve, reject) => {
         child.on("exit", resolve);
@@ -85,6 +85,10 @@ class Delegate implements runtimes.RuntimeDelegate {
   }
 
   getPythonBinary(): string {
+    if (process.platform === "win32") {
+      // There is no easy way to get specific version of python executable in Windows.
+      return "python.exe";
+    }
     if (this.runtime === "python310") {
       return "python3.10";
     } else if (this.runtime === "python311") {
@@ -113,7 +117,7 @@ class Delegate implements runtimes.RuntimeDelegate {
       ...envs,
       ADMIN_PORT: port.toString(),
     };
-    const args = ["python3.10", path.join(modulesDir, "private", "serving.py")];
+    const args = [this.bin, path.join(modulesDir, "private", "serving.py")];
     logger.debug(
       `Running admin server with args: ${JSON.stringify(args)} and env: ${JSON.stringify(
         envWithAdminPort
@@ -122,7 +126,7 @@ class Delegate implements runtimes.RuntimeDelegate {
     const childProcess = runWithVirtualEnv(args, this.sourceDir, envWithAdminPort);
     return Promise.resolve(async () => {
       // Tell the process to exit.
-      await fetch(`http://localhost:${port}/__/quitquitquit`);
+      await fetch(`http://127.0.0.1:${port}/__/quitquitquit`);
       // Give the process a chance to quit gracefully,
       // otherwise kill it.
       const quitTimeout = setTimeout(() => {

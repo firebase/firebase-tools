@@ -20,7 +20,6 @@ export function runWithVirtualEnv(
   const command = process.platform === "win32" ? venvActivate : "source";
   const args = [process.platform === "win32" ? "" : venvActivate, "&&", ...commandAndArgs];
   logger.debug(`Running command with virtualenv: command=${command}, args=${JSON.stringify(args)}`);
-  logger.debug(JSON.stringify(envs));
 
   return spawn(command, args, {
     shell: true,
