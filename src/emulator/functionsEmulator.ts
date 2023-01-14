@@ -1329,7 +1329,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     const childProcess = runWithVirtualEnv([bin, ...args], backend.functionsDir, {
       ...process.env,
       ...envs,
-      HOST: "localhost",
+      HOST: "127.0.0.1",
       PORT: port.toString(),
     });
 
@@ -1337,7 +1337,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       process: childProcess,
       events: new EventEmitter(),
       cwd: backend.functionsDir,
-      conn: new TCPConn("localhost", port),
+      conn: new TCPConn("127.0.0.1", port),
     };
   }
 
