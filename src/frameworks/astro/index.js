@@ -12,6 +12,7 @@ exports.support = "experimental";
 exports.type = 4;
 const CLI_COMMAND = (0, path_1.join)("node_modules", ".bin", process.platform === "win32" ? "astro.cmd" : "astro");
 const SERVER_DIR = 'dist/server'
+const PUBLIC_DIR = 'dist/client'
 
 
 async function init(setup, baseTemplate = "vanilla") {
@@ -27,7 +28,7 @@ async function discover(dir) {
         return;
     if (!(await (0, fs_extra_1.pathExists)((0, path_1.join)(dir, "astro.config.mjs"))))
         return;
-    return { mayWantBackend: true, publicDirectory: (0, path_1.join)(dir, "public") };
+    return { mayWantBackend: true, publicDirectory: (0, path_1.join)(dir, PUBLIC_DIR) };
 }
 exports.discover = discover;
 
@@ -42,7 +43,7 @@ exports.build = build;
 async function ɵcodegenPublicDirectory(root, dest) {
     const config = await dynamicImport((0, path_1.join)(root, "astro.config.mjs"))
     if (config.default.output === 'server')
-        await (0, fs_extra_1.copy)(`${root}/dist/client`, dest);
+        await (0, fs_extra_1.copy)(`${root}/${PUBLIC_DIR}`, dest);
     else
         await (0, fs_extra_1.copy)(`${root}/dist`, dest);
 }
