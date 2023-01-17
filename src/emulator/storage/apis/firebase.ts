@@ -4,7 +4,7 @@ import * as uuid from "uuid";
 import { IncomingMetadata, OutgoingFirebaseMetadata, StoredFileMetadata } from "../metadata";
 import { Request, Response, Router } from "express";
 import { StorageEmulator } from "../index";
-import { uploadStatusEnumToStr, sendFileBytes } from "./shared";
+import { sendFileBytes } from "./shared";
 import { EmulatorRegistry } from "../../registry";
 import { parseObjectUploadMultipartRequest } from "../multipart";
 import { NotFoundError, ForbiddenError } from "../errors";
@@ -13,6 +13,7 @@ import {
   Upload,
   UploadNotActiveError,
   UploadPreviouslyFinalizedError,
+  uploadStatusEnumToStr,
 } from "../upload";
 import { reqBodyToBuffer } from "../../shared/request";
 import { ListObjectsResponse } from "../files";
