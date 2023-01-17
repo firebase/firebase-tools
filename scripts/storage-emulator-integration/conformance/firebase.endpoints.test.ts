@@ -562,7 +562,6 @@ describe("Firebase Storage endpoint conformance tests", () => {
         .then((res) => new URL(res.header["x-goog-upload-url"]));
       const queryUploadStatus = await supertest(firebaseHost)
         .put(uploadURL.pathname + uploadURL.search)
-        // No Authorization required in finalize
         .set({
           "X-Goog-Upload-Protocol": "resumable",
           "X-Goog-Upload-Command": "query",
@@ -590,7 +589,6 @@ describe("Firebase Storage endpoint conformance tests", () => {
         .expect(200);
       const queryUploadStatus = await supertest(firebaseHost)
         .put(uploadURL.pathname + uploadURL.search)
-        // No Authorization required in finalize
         .set({
           "X-Goog-Upload-Protocol": "resumable",
           "X-Goog-Upload-Command": "query",
@@ -612,7 +610,6 @@ describe("Firebase Storage endpoint conformance tests", () => {
 
       await supertest(firebaseHost)
         .put(uploadURL.pathname + uploadURL.search)
-        // No Authorization required in upload
         .set({
           "X-Goog-Upload-Protocol": "resumable",
           "X-Goog-Upload-Command": "upload",
@@ -621,7 +618,6 @@ describe("Firebase Storage endpoint conformance tests", () => {
         .expect(200);
       await supertest(firebaseHost)
         .put(uploadURL.pathname + uploadURL.search)
-        // No Authorization required in finalize
         .set({
           "X-Goog-Upload-Protocol": "resumable",
           "X-Goog-Upload-Command": "finalize",
@@ -630,7 +626,6 @@ describe("Firebase Storage endpoint conformance tests", () => {
         .then((res) => res.header[uploadStatusHeader]);
       const queryUploadStatus = await supertest(firebaseHost)
         .put(uploadURL.pathname + uploadURL.search)
-        // No Authorization required in finalize
         .set({
           "X-Goog-Upload-Protocol": "resumable",
           "X-Goog-Upload-Command": "query",
