@@ -27,9 +27,9 @@ export enum UploadType {
 
 /** The status of an upload. Multipart uploads can only ever be FINISHED. */
 export enum UploadStatus {
-  ACTIVE,
-  CANCELLED,
-  FINISHED,
+  ACTIVE = "active",
+  CANCELLED = "cancelled",
+  FINISHED = "final",
 }
 
 /** Request object for {@link UploadService#mediaUpload}. */
@@ -246,21 +246,5 @@ export class UploadService {
 
   private getStagingFileName(uploadId: string, bucketId: string, objectId: string): string {
     return encodeURIComponent(`${uploadId}_b_${bucketId}_o_${objectId}`);
-  }
-}
-
-/**
- *  Converts an UploadStatus enum to a string.
- */
-export function uploadStatusEnumToStr(status: UploadStatus) {
-  switch (status) {
-    case UploadStatus.ACTIVE:
-      return "active";
-    case UploadStatus.CANCELLED:
-      return "cancelled";
-    case UploadStatus.FINISHED:
-      return "final";
-    default:
-      return "unknown";
   }
 }

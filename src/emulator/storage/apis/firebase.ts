@@ -13,7 +13,6 @@ import {
   Upload,
   UploadNotActiveError,
   UploadPreviouslyFinalizedError,
-  uploadStatusEnumToStr,
 } from "../upload";
 import { reqBodyToBuffer } from "../../shared/request";
 import { ListObjectsResponse } from "../files";
@@ -268,7 +267,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
           throw err;
         }
         res.header("X-Goog-Upload-Size-Received", upload.size.toString());
-        res.header("x-goog-upload-status", uploadStatusEnumToStr(upload.status));
+        res.header("x-goog-upload-status", upload.status);
         return res.sendStatus(200);
       }
 
