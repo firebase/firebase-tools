@@ -165,17 +165,6 @@ describe("Firebase Storage endpoint conformance tests", () => {
           .expect(200)
           .then((res) => new URL(res.header["x-goog-upload-url"]));
 
-        let queryUploadStatus = await supertest(firebaseHost)
-          .put(uploadURL.pathname + uploadURL.search)
-          // No Authorization required in finalize
-          .set({
-            "X-Goog-Upload-Protocol": "resumable",
-            "X-Goog-Upload-Command": "query",
-          })
-          .expect(200)
-          .then((res) => res.header[uploadStatusHeader]);
-        expect(queryUploadStatus).to.equal("active");
-
         await supertest(firebaseHost)
           .put(uploadURL.pathname + uploadURL.search)
           // No Authorization required in upload
@@ -197,17 +186,6 @@ describe("Firebase Storage endpoint conformance tests", () => {
 
         expect(uploadStatus).to.equal("final");
 
-        queryUploadStatus = await supertest(firebaseHost)
-          .put(uploadURL.pathname + uploadURL.search)
-          // No Authorization required in finalize
-          .set({
-            "X-Goog-Upload-Protocol": "resumable",
-            "X-Goog-Upload-Command": "query",
-          })
-          .expect(200)
-          .then((res) => res.header[uploadStatusHeader]);
-
-        expect(queryUploadStatus).to.equal("final");
         await supertest(firebaseHost)
           .get(`/v0/b/${storageBucket}/o/${ENCODED_TEST_FILE_NAME}`)
           .set(authHeader)
@@ -263,16 +241,6 @@ describe("Firebase Storage endpoint conformance tests", () => {
           .expect(403)
           .then((res) => res.header[uploadStatusHeader]);
         expect(uploadStatus).to.equal("final");
-        const queryUploadStatus = await supertest(firebaseHost)
-          .put(uploadURL.pathname + uploadURL.search)
-          // No Authorization required in finalize
-          .set({
-            "X-Goog-Upload-Protocol": "resumable",
-            "X-Goog-Upload-Command": "query",
-          })
-          .expect(200)
-          .then((res) => res.header[uploadStatusHeader]);
-        expect(queryUploadStatus).to.equal("final");
       });
 
       it("should return 403 when resumable upload is unauthenticated and finalize is called again", async () => {
@@ -424,17 +392,6 @@ describe("Firebase Storage endpoint conformance tests", () => {
             "X-Goog-Upload-Command": "cancel",
           })
           .expect(200);
-
-        const queryUploadStatus = await supertest(firebaseHost)
-          .put(uploadURL.pathname + uploadURL.search)
-          // No Authorization required in finalize
-          .set({
-            "X-Goog-Upload-Protocol": "resumable",
-            "X-Goog-Upload-Command": "query",
-          })
-          .expect(200)
-          .then((res) => res.header[uploadStatusHeader]);
-        expect(queryUploadStatus).to.equal("cancelled");
 
         await supertest(firebaseHost)
           .get(`/v0/b/${storageBucket}/o/${ENCODED_TEST_FILE_NAME}`)
@@ -589,6 +546,98 @@ describe("Firebase Storage endpoint conformance tests", () => {
           }
         );
       });
+    });
+  });
+
+  describe("upload status", () => {
+    it("should update the status to active after an upload is started", async () => {
+      const uploadURL = await supertest(firebaseHost)
+        .post(`/v0/b/${storageBucket}/o?name=${TEST_FILE_NAME}`)
+        .set(authHeader)
+        .set({
+          "X-Goog-Upload-Protocol": "resumable",
+          "X-Goog-Upload-Command": "start",
+        })
+        .expect(200)
+        .then((res) => new URL(res.header["x-goog-upload-url"]));
+      const queryUploadStatus = await supertest(firebaseHost)
+        .put(uploadURL.pathname + uploadURL.search)
+        // No Authorization required in finalize
+        .set({
+          "X-Goog-Upload-Protocol": "resumable",
+          "X-Goog-Upload-Command": "query",
+        })
+        .expect(200)
+        .then((res) => res.header[uploadStatusHeader]);
+      expect(queryUploadStatus).to.equal("active");
+    });
+    it("should update the status to cancelled after an upload is cancelled", async () => {
+      const uploadURL = await supertest(firebaseHost)
+        .post(`/v0/b/${storageBucket}/o/${ENCODED_TEST_FILE_NAME}`)
+        .set(authHeader)
+        .set({
+          "X-Goog-Upload-Protocol": "resumable",
+          "X-Goog-Upload-Command": "start",
+        })
+        .expect(200)
+        .then((res) => new URL(res.header["x-goog-upload-url"]));
+      await supertest(firebaseHost)
+        .put(uploadURL.pathname + uploadURL.search)
+        .set({
+          "X-Goog-Upload-Protocol": "resumable",
+          "X-Goog-Upload-Command": "cancel",
+        })
+        .expect(200);
+      const queryUploadStatus = await supertest(firebaseHost)
+        .put(uploadURL.pathname + uploadURL.search)
+        // No Authorization required in finalize
+        .set({
+          "X-Goog-Upload-Protocol": "resumable",
+          "X-Goog-Upload-Command": "query",
+        })
+        .expect(200)
+        .then((res) => res.header[uploadStatusHeader]);
+      expect(queryUploadStatus).to.equal("cancelled");
+    });
+    it("should update the status to final after an upload is finalized", async () => {
+      const uploadURL = await supertest(firebaseHost)
+        .post(`/v0/b/${storageBucket}/o?name=${TEST_FILE_NAME}`)
+        .set(authHeader)
+        .set({
+          "X-Goog-Upload-Protocol": "resumable",
+          "X-Goog-Upload-Command": "start",
+        })
+        .expect(200)
+        .then((res) => new URL(res.header["x-goog-upload-url"]));
+
+      await supertest(firebaseHost)
+        .put(uploadURL.pathname + uploadURL.search)
+        // No Authorization required in upload
+        .set({
+          "X-Goog-Upload-Protocol": "resumable",
+          "X-Goog-Upload-Command": "upload",
+          "X-Goog-Upload-Offset": 0,
+        })
+        .expect(200);
+      await supertest(firebaseHost)
+        .put(uploadURL.pathname + uploadURL.search)
+        // No Authorization required in finalize
+        .set({
+          "X-Goog-Upload-Protocol": "resumable",
+          "X-Goog-Upload-Command": "finalize",
+        })
+        .expect(200)
+        .then((res) => res.header[uploadStatusHeader]);
+      const queryUploadStatus = await supertest(firebaseHost)
+        .put(uploadURL.pathname + uploadURL.search)
+        // No Authorization required in finalize
+        .set({
+          "X-Goog-Upload-Protocol": "resumable",
+          "X-Goog-Upload-Command": "query",
+        })
+        .expect(200)
+        .then((res) => res.header[uploadStatusHeader]);
+      expect(queryUploadStatus).to.equal("final");
     });
   });
 
