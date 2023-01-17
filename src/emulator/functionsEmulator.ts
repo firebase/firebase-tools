@@ -1302,18 +1302,10 @@ export class FunctionsEmulator implements EmulatorInstance {
     backend: EmulatableBackend,
     envs: Record<string, string>
   ): Promise<FunctionsRuntimeInstance> {
-    const args = [path.join(__dirname, "functionsEmulatorRuntime.py")];
+    const args = ["functions-framework"];
 
     if (this.args.debugPort) {
       this.logger.log("WARN", "--inspect-functions not supported for Python functions. Ignored.");
-    }
-
-    const bin = backend.bin;
-    if (!bin) {
-      throw new Error(
-        `No binary associated with ${backend.functionsDir}. ` +
-          "Make sure function runtime is configured correctly in firebase.json."
-      );
     }
 
     // No support generic socket interface for Unix Domain Socket/Named Pipe in the python.
@@ -1321,7 +1313,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     const port = await portfinder.getPortPromise({
       port: 8081,
     });
-    const childProcess = runWithVirtualEnv([bin, ...args], backend.functionsDir, {
+    const childProcess = runWithVirtualEnv(args, backend.functionsDir, {
       ...process.env,
       ...envs,
       HOST: "127.0.0.1",
