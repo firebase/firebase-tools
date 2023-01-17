@@ -18,11 +18,11 @@ export const type = FrameworkType.MetaFramework;
  */
 export async function discover(dir: string): Promise<{ mayWantBackend: true } | undefined> {
   if (!(await pathExists(join(dir, "package.json")))) return;
-  const nuxtDependency = findDependency("nuxt", {
+  const nuxtDependency = <NuxtDependency>findDependency("nuxt", {
     cwd: dir,
     depth: 0,
     omitDev: false,
-  }) as NuxtDependency;
+  });
 
   const version = nuxtDependency?.version;
   const anyConfigFileExists = await nuxtConfigFilesExist(dir);
