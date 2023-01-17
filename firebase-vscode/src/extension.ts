@@ -2,6 +2,8 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
 
+import { getGlobalDefaultAccount } from '../../src/auth';
+
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
@@ -16,7 +18,10 @@ export function activate(context: vscode.ExtensionContext) {
 	let disposable = vscode.commands.registerCommand('firebase-vscode.helloWorld', () => {
 		// The code you place here will be executed every time your command is executed
 		// Display a message box to the user
-		vscode.window.showInformationMessage('Hello World from firebase-vscode!');
+		const account = getGlobalDefaultAccount();
+
+		vscode.window.showInformationMessage(`${JSON.stringify(account)}`);
+		vscode.window.showInformationMessage(`User ${account?.user.email || 'none'}`);
 	});
 
 	context.subscriptions.push(disposable);
