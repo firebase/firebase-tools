@@ -8,6 +8,7 @@ import { EventEmitter } from "events";
 import { EmulatorLogger, ExtensionLogInfo } from "./emulatorLogger";
 import { FirebaseError } from "../error";
 import { Serializable } from "child_process";
+import { IncomingMessage } from "http";
 
 type LogListener = (el: EmulatorLog) => any;
 
@@ -118,12 +119,12 @@ export class RuntimeWorker {
     return new Promise((resolve) => {
       const proxy = http.request(
         {
+          ...this.runtime.conn.httpReqOpts(),
           method: req.method,
           path: req.path,
           headers: req.headers,
-          socketPath: this.runtime.socketPath,
         },
-        (_resp) => {
+        (_resp: IncomingMessage) => {
           resp.writeHead(_resp.statusCode || 200, _resp.headers);
           const piped = _resp.pipe(resp);
           piped.on("finish", () => {
@@ -178,20 +179,19 @@ export class RuntimeWorker {
 
   isSocketReady(): Promise<void> {
     return new Promise((resolve, reject) => {
-      const req = http
-        .request(
-          {
-            method: "GET",
-            path: "/__/health",
-            socketPath: this.runtime.socketPath,
-          },
-          () => {
-            // Set the worker state to IDLE for new work
-            this.readyForWork();
-            resolve();
-          }
-        )
-        .end();
+      const req = http.request(
+        {
+          ...this.runtime.conn.httpReqOpts(),
+          method: "GET",
+          path: "/__/health",
+        },
+        () => {
+          // Set the worker state to IDLE for new work
+          this.readyForWork();
+          resolve();
+        }
+      );
+      req.end();
       req.on("error", (error) => {
         reject(error);
       });

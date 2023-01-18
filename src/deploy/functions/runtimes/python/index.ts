@@ -1,66 +1,43 @@
-import fetch from "node-fetch";
-import * as path from "path";
 import * as fs from "fs";
+import * as path from "path";
+import fetch from "node-fetch";
+import { promisify } from "util";
+
 import * as portfinder from "portfinder";
-import * as spawn from "cross-spawn";
-import * as cp from "child_process";
 
 import * as runtimes from "..";
 import * as backend from "../../backend";
-import { logger } from "../../../../logger";
 import * as discovery from "../discovery";
+import { logger } from "../../../../logger";
+import { runWithVirtualEnv } from "../../../../functions/python";
 import { FirebaseError } from "../../../../error";
 import { Build } from "../../build";
 
-export const LATEST_VERSION: runtimes.Runtime = "python310";
-
-export const PYVENV = "venv";
-
-type ChildProcessWithCompletionPromise = cp.ChildProcess & { promise: Promise<string> };
+const LATEST_VERSION: runtimes.Runtime = "python310";
 
 /**
- * Runs a shell command with the Python virtual env pre-activated.
+ * This function is used to create a runtime delegate for the Python runtime.
+ * @param context runtimes.DelegateContext
+ * @return Delegate Python runtime delegate
  */
-export function runWithVirtualEnv(
-  commandAndArgs: string[],
-  functionsDir: string,
-  withVirtualEnv = true,
-  opts?: cp.SpawnOptions
-): ChildProcessWithCompletionPromise {
-  const activateScriptPath =
-    process.platform === "win32" ? ["Scripts", "activate.bat"] : ["bin", "activate"];
-  const venvActivate = path.join(functionsDir, PYVENV, ...activateScriptPath);
-  const command = withVirtualEnv
-    ? process.platform === "win32"
-      ? venvActivate
-      : "source"
-    : commandAndArgs[0];
-  const args = withVirtualEnv
-    ? [process.platform === "win32" ? "" : venvActivate, "&&", ...commandAndArgs]
-    : [...commandAndArgs.splice(1)];
+export async function tryCreateDelegate(
+  context: runtimes.DelegateContext
+): Promise<Delegate | undefined> {
+  // TODO this can be done better by passing Options to tryCreateDelegate and
+  // reading the "functions.source" and ""functions.runtime" values from there
+  // to determine the runtime. For the sake of keeping changes to python only
+  // this has not been done for now.
+  const requirementsTextPath = path.join(context.sourceDir, "requirements.txt");
 
-  const child = spawn(command, args, {
-    shell: true,
-    cwd: functionsDir,
-    stdio: [/* stdin= */ "ignore", /* stdout= */ "pipe", /* stderr= */ "inherit"],
-    ...opts,
-    env: {
-      ...(opts?.env ?? {}),
-      ...process.env,
-    },
-  }) as ChildProcessWithCompletionPromise;
-  let out = "";
-  child.stdout?.on("data", (chunk: Buffer) => {
-    const chunkString = chunk.toString();
-    out = out + chunkString;
-    logger.debug(chunkString);
-  });
-  const promise = new Promise<string>((resolve, reject) => {
-    child.on("exit", () => resolve(out));
-    child.on("error", reject);
-  });
-  child.promise = promise;
-  return child;
+  if (!(await promisify(fs.exists)(requirementsTextPath))) {
+    logger.debug("Customer code is not Python code.");
+    return;
+  }
+  const runtime = context.runtime ? context.runtime : LATEST_VERSION;
+  if (!runtimes.isValidRuntime(runtime)) {
+    throw new FirebaseError(`Runtime ${runtime} is not a valid Python runtime`);
+  }
+  return Promise.resolve(new Delegate(context.projectId, context.sourceDir, runtime));
 }
 
 class Delegate implements runtimes.RuntimeDelegate {
@@ -71,29 +48,57 @@ class Delegate implements runtimes.RuntimeDelegate {
     public readonly runtime: runtimes.Runtime
   ) {}
 
-  private modulesDir_ = "";
+  private _bin = "";
+  private _modulesDir = "";
+
+  get bin(): string {
+    if (this._bin === "") {
+      this._bin = this.getPythonBinary();
+    }
+    return this._bin;
+  }
 
   async modulesDir(): Promise<string> {
-    if (!this.modulesDir_) {
-      const out = await runWithVirtualEnv(
+    if (!this._modulesDir) {
+      const child = runWithVirtualEnv(
         [
-          "python3.10",
+          this.bin,
           "-c",
-          "'import firebase_functions; import os; print(os.path.dirname(firebase_functions.__file__))'",
+          '"import firebase_functions; import os; print(os.path.dirname(firebase_functions.__file__))"',
         ],
         this.sourceDir,
-        true,
-        {
-          stdio: [/* stdin= */ "ignore", /* stdout= */ "pipe", /* stderr= */ "inherit"],
-        }
-      ).promise;
-      this.modulesDir_ = out.trimEnd();
+        {}
+      );
+      let out = "";
+      child.stdout?.on("data", (chunk: Buffer) => {
+        const chunkString = chunk.toString();
+        out = out + chunkString;
+        logger.debug(`stdout: ${chunkString}`);
+      });
+      await new Promise((resolve, reject) => {
+        child.on("exit", resolve);
+        child.on("error", reject);
+      });
+      this._modulesDir = out.trim();
     }
+    return this._modulesDir;
+  }
 
-    return this.modulesDir_;
+  getPythonBinary(): string {
+    if (process.platform === "win32") {
+      // There is no easy way to get specific version of python executable in Windows.
+      return "python.exe";
+    }
+    if (this.runtime === "python310") {
+      return "python3.10";
+    } else if (this.runtime === "python311") {
+      return "python3.11";
+    }
+    return "python";
   }
 
   validate(): Promise<void> {
+    // TODO: make sure firebase-functions is included as a dep
     return Promise.resolve();
   }
 
@@ -112,29 +117,20 @@ class Delegate implements runtimes.RuntimeDelegate {
       ...envs,
       ADMIN_PORT: port.toString(),
     };
-    const args = ["python3.10", path.join(modulesDir, "private", "serving.py")];
+    const args = [this.bin, path.join(modulesDir, "private", "serving.py")];
     logger.debug(
       `Running admin server with args: ${JSON.stringify(args)} and env: ${JSON.stringify(
         envWithAdminPort
       )} in ${this.sourceDir}`
     );
-    const childProcess = runWithVirtualEnv(args, this.sourceDir, true, {
-      // Linting disabled since internal types expect NODE_ENV
-      // which does not apply to Python runtimes.
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
-      env: envWithAdminPort as any,
-    });
+    const childProcess = runWithVirtualEnv(args, this.sourceDir, envWithAdminPort);
     return Promise.resolve(async () => {
-      // Tell the process to exit.
-      await fetch(`http://localhost:${port}/__/quitquitquit`);
-      // Give the process a chance to quit gracefully,
-      // otherwise kill it.
+      await fetch(`http://127.0.0.1:${port}/__/quitquitquit`);
       const quitTimeout = setTimeout(() => {
         if (!childProcess.killed) {
           childProcess.kill("SIGKILL");
         }
       }, 10_000);
-      await childProcess.promise; // Resolves on process exit.
       clearTimeout(quitTimeout);
     });
   }
@@ -157,28 +153,4 @@ class Delegate implements runtimes.RuntimeDelegate {
     }
     return discovered;
   }
-}
-
-/**
- * This function is used to create a runtime delegate for the Python runtime.
- * @param context runtimes.DelegateContext
- * @return Delegate Python runtime delegate
- */
-export async function tryCreateDelegate(
-  context: runtimes.DelegateContext
-): Promise<Delegate | undefined> {
-  // TODO this can be done better by passing Options to tryCreateDelegate and
-  // reading the "functions.source" and ""functions.runtime" values from there
-  // to determine the runtime. For the sake of keeping changes to python only
-  // this has not been done for now.
-  const requirementsTextPath = path.join(context.sourceDir, "requirements.txt");
-  if (!fs.existsSync(requirementsTextPath)) {
-    logger.debug("Customer code is not Python code.");
-    return;
-  }
-  const runtime: string = context.runtime ? context.runtime : LATEST_VERSION;
-  if (!runtimes.isValidRuntime(runtime)) {
-    throw new FirebaseError(`Runtime ${runtime as string} is not a valid Python runtime`);
-  }
-  return Promise.resolve(new Delegate(context.projectId, context.sourceDir, runtime));
 }
