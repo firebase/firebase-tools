@@ -13,7 +13,7 @@ import { runWithVirtualEnv } from "../../../../functions/python";
 import { FirebaseError } from "../../../../error";
 import { Build } from "../../build";
 
-const LATEST_VERSION: runtimes.Runtime = "python310";
+export const LATEST_VERSION: runtimes.Runtime = "python310";
 
 /**
  * This function is used to create a runtime delegate for the Python runtime.
@@ -34,6 +34,7 @@ export async function tryCreateDelegate(
     return;
   }
   const runtime = context.runtime ? context.runtime : LATEST_VERSION;
+
   if (!runtimes.isValidRuntime(runtime)) {
     throw new FirebaseError(`Runtime ${runtime} is not a valid Python runtime`);
   }
