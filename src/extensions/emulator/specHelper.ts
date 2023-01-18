@@ -116,7 +116,7 @@ export function getRuntime(resources: Resource[]): string {
     if (!runtime) {
       return DEFAULT_RUNTIME;
     }
-    if (!/$(nodejs)?([0-9]+)/.test(runtime)) {
+    if (!/^(nodejs)?([0-9]+)/.test(runtime)) {
       invalidRuntimes.push(runtime);
       return DEFAULT_RUNTIME;
     }
