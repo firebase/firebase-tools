@@ -16,17 +16,14 @@ import { Build } from "../../build";
 const LATEST_VERSION: runtimes.Runtime = "python310";
 
 /**
- * This function is used to create a runtime delegate for the Python runtime.
+ * Create a runtime delegate for the Python runtime, if applicable.
+ *
  * @param context runtimes.DelegateContext
  * @return Delegate Python runtime delegate
  */
 export async function tryCreateDelegate(
   context: runtimes.DelegateContext
 ): Promise<Delegate | undefined> {
-  // TODO this can be done better by passing Options to tryCreateDelegate and
-  // reading the "functions.source" and ""functions.runtime" values from there
-  // to determine the runtime. For the sake of keeping changes to python only
-  // this has not been done for now.
   const requirementsTextPath = path.join(context.sourceDir, "requirements.txt");
 
   if (!(await promisify(fs.exists)(requirementsTextPath))) {
@@ -102,14 +99,11 @@ class Delegate implements runtimes.RuntimeDelegate {
     return Promise.resolve();
   }
 
-  // Watch isn't supported for Python.
   watch(): Promise<() => Promise<void>> {
     return Promise.resolve(() => Promise.resolve());
   }
 
-  async build(): Promise<void> {
-    // No-op.
-  }
+  async build(): Promise<void> {}
 
   async serveAdmin(port: number, envs: backend.EnvironmentVariables): Promise<() => Promise<void>> {
     const modulesDir = await this.modulesDir();
