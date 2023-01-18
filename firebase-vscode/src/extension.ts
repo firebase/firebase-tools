@@ -2,7 +2,7 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
 
-import { getGlobalDefaultAccount } from '../../src/auth';
+import { getGlobalDefaultAccount } from './auth';
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -20,7 +20,7 @@ export function activate(context: vscode.ExtensionContext) {
 		// Display a message box to the user
 		const account = getGlobalDefaultAccount();
 
-		vscode.window.showInformationMessage(`${JSON.stringify(account)}`);
+		console.log(`${JSON.stringify(account)}`);
 		vscode.window.showInformationMessage(`User ${account?.user.email || 'none'}`);
 	});
 
