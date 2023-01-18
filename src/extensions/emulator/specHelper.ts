@@ -79,6 +79,9 @@ export function readFileFromDirectory(
   });
 }
 
+/**
+ * Substitue parameters of function resources in the extensions spec.
+ */
 export function getFunctionResourcesWithParamSubstitution(
   extensionSpec: ExtensionSpec,
   params: { [key: string]: string }
@@ -89,14 +92,18 @@ export function getFunctionResourcesWithParamSubstitution(
   return substituteParams<Resource[]>(rawResources, params);
 }
 
+/**
+ * Get properties associated with the function resource.
+ */
 export function getFunctionProperties(resources: Resource[]) {
   return resources.map((r) => r.properties);
 }
 
-const DEFAULT_RUNTIME = "nodejs14";
+export const DEFAULT_RUNTIME = "nodejs14";
 
 /**
- * Get runtime associated with the resources. If conflicting, arbitrarily pick one.
+ * Get runtime associated with the resources. If multiple runtimes exists, choose the latest runtime.
+ * e.g. prefer nodejs14 over nodejs12.
  */
 export function getRuntime(resources: Resource[]): string {
   if (resources.length === 0) {
@@ -109,7 +116,7 @@ export function getRuntime(resources: Resource[]): string {
     if (!runtime) {
       return DEFAULT_RUNTIME;
     }
-    if (!/(nodejs)?([0-9]+)/.test(runtime)) {
+    if (!/$(nodejs)?([0-9]+)/.test(runtime)) {
       invalidRuntimes.push(runtime);
       return DEFAULT_RUNTIME;
     }
@@ -122,5 +129,8 @@ export function getRuntime(resources: Resource[]): string {
       )}. \n Only Node runtimes are supported.`
     );
   }
-  return runtimes[0];
+  // Assumes that all runtimes target the nodejs.
+  // Rely on lexicographically order of nodejs runtime to pick the latest version.
+  // e.g. nodejs12 < nodejs14 < nodejs18 < nodejs20 ...
+  return runtimes.sort()[runtimes.length - 1];
 }
