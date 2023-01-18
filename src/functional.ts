@@ -97,17 +97,35 @@ export function assertExhaustive(val: never): never {
 }
 
 /**
- * Utility to partition an array into two based on callbackFn's truthiness for each element.
+ * Utility to partition an array into two based on predicate's truthiness for each element.
  * Returns a Array containing two Array<T>. The first array contains all elements that returned true,
  * the second contains all elements that returned false.
  */
-export function partition<T>(arr: T[], callbackFn: (elem: T) => boolean): [T[], T[]] {
+export function partition<T>(arr: T[], predicate: (elem: T) => boolean): [T[], T[]] {
   return arr.reduce<[T[], T[]]>(
     (acc, elem) => {
-      acc[callbackFn(elem) ? 0 : 1].push(elem);
+      acc[predicate(elem) ? 0 : 1].push(elem);
       return acc;
     },
     [[], []]
+  );
+}
+
+/**
+ * Utility to partition a Record into two based on predicate's truthiness for each element.
+ * Returns a Array containing two Record<string, T>. The first array contains all elements that returned true,
+ * the second contains all elements that returned false.
+ */
+export function partitionRecord<T>(
+  rec: Record<string, T>,
+  predicate: (key: string, val: T) => boolean
+): [Record<string, T>, Record<string, T>] {
+  return Object.entries(rec).reduce<[Record<string, T>, Record<string, T>]>(
+    (acc, [key, val]) => {
+      acc[predicate(key, val) ? 0 : 1][key] = val;
+      return acc;
+    },
+    [{}, {}]
   );
 }
 
