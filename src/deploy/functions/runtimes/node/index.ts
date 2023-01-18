@@ -103,35 +103,34 @@ export class Delegate {
       }
     }
 
-    // If the requested version is the same as the host, let's use that
     if (semver.major(requestedVersion) === semver.major(hostVersion)) {
       logLabeledSuccess("functions", `Using node@${semver.major(hostVersion)} from host.`);
-    } else {
-      // Otherwise we'll warn and use the version that is currently running this process.
-      if (process.env.FIREPIT_VERSION) {
-        logLabeledWarning(
-          "functions",
-          `You've requested "node" version "${semver.major(
-            requestedVersion
-          )}", but the standalone Firebase CLI comes with bundled Node "${semver.major(
-            hostVersion
-          )}".`
-        );
-        logLabeledSuccess(
-          "functions",
-          `To use a different Node.js version, consider removing the standalone Firebase CLI and switching to "firebase-tools" on npm.`
-        );
-      } else {
-        logLabeledWarning(
-          "functions",
-          `Your requested "node" version "${semver.major(
-            requestedVersion
-          )}" doesn't match your global version "${semver.major(
-            hostVersion
-          )}". Using node@${semver.major(hostVersion)} from host.`
-        );
-      }
+      return process.execPath;
     }
+
+    if (!process.env.FIREPIT_VERSION) {
+      logLabeledWarning(
+        "functions",
+        `Your requested "node" version "${semver.major(
+          requestedVersion
+        )}" doesn't match your global version "${semver.major(
+          hostVersion
+        )}". Using node@${semver.major(hostVersion)} from host.`
+      );
+      return process.execPath;
+    }
+
+    // Otherwise we'll warn and use the version that is currently running this process.
+    logLabeledWarning(
+      "functions",
+      `You've requested "node" version "${semver.major(
+        requestedVersion
+      )}", but the standalone Firebase CLI comes with bundled Node "${semver.major(hostVersion)}".`
+    );
+    logLabeledSuccess(
+      "functions",
+      `To use a different Node.js version, consider removing the standalone Firebase CLI and switching to "firebase-tools" on npm.`
+    );
     return process.execPath;
   }
 
