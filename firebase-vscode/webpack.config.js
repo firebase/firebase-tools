@@ -9,11 +9,19 @@ const NodePolyfillPlugin = require("node-polyfill-webpack-plugin");
 const pkgParent = require("../package.json");
 
 const deps = Object.keys(pkgParent.dependencies);
+const externals = [
+  // don't need outside CLI
+  'ora', 'colorette', 'inquirer',
+  // breaks stuff - local paths to bridge.js and other files
+  'proxy-agent',
+  // breaks stuff because of `self`
+  // 'form-data', /* 'abort-controller', */ 'node-fetch'
+];
 
 
 /**@type {import('webpack').Configuration}*/
 const config = {
-  target: 'webworker', // vscode extensions run in webworker context for VS Code web 📖 -> https://webpack.js.org/configuration/target/#target
+  target: 'node', // vscode extensions run in webworker context for VS Code web 📖 -> https://webpack.js.org/configuration/target/#target
 
   entry: './src/extension.ts', // the entry point of this extension, 📖 -> https://webpack.js.org/configuration/entry-context/
   output: {
@@ -29,7 +37,7 @@ const config = {
   // },
   externals: [
     function ({ context, request }, callback) {
-      if (deps.some((dep) => request === dep || request.startsWith(`${dep}/`))) {
+      if (externals.some((dep) => request === dep || request.startsWith(`${dep}/`))) {
         return callback(null, 'commonjs ' + request);
       }
       if (request === 'vscode') {
@@ -40,7 +48,8 @@ const config = {
   ],
   resolve: {
     // support reading TypeScript and JavaScript files, 📖 -> https://github.com/TypeStrong/ts-loader
-    mainFields: ['browser', 'module', 'main'], // look for `browser` entry point in imported node modules
+    // mainFields: ['browser', 'module', 'main'], // look for `browser` entry point in imported node modules
+    mainFields: ['main', 'module'],
     extensions: ['.ts', '.js'],
     alias: {
       // provides alternate implementation for node module and source files
@@ -49,20 +58,27 @@ const config = {
       // Webpack 5 no longer polyfills Node.js core modules automatically.
       // see https://webpack.js.org/configuration/resolve/#resolvefallback
       // for the list of Node.js core module polyfills.
-      "fs": false,
-      "http": false,
-      "open": false,
-      "path": false,
-      "url": false,
-      "util": false,
-      "assert": false,
-      "stream": false,
-      "crypto": false
+      // "fs": false,
+      // "http": false,
+      // "path": false,
+      // "url": false,
+      // "util": false,
+      // "assert": false,
+      // "stream": false,
+      // "crypto": false,
+      // "events": false,
+      // "querystring": false,
+      // "child_process": false,
+      // "worker_threads": false,
+      // "net": false
     }
   },
-  plugins: [new NodePolyfillPlugin({
-    includeAliases: ['process']
-  })],
+  // plugins: [new NodePolyfillPlugin({
+  //   includeAliases: ['process', 'os', 'https', 'zlib', 'constants']
+  // })],
+  optimization: {
+    usedExports: true
+  },
   module: {
     rules: [
       {
