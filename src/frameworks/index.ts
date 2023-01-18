@@ -1,11 +1,11 @@
-import { join, relative, extname } from "path";
+import { join, relative, extname, basename } from "path";
 import { exit } from "process";
 import { execSync, spawnSync } from "child_process";
 import { readdirSync, statSync } from "fs";
 import { pathToFileURL } from "url";
 import { IncomingMessage, ServerResponse } from "http";
 import { copyFile, readdir, rm, writeFile } from "fs/promises";
-import { mkdirp, pathExists, stat } from "fs-extra";
+import { mkdirp, pathExists, stat, access } from "fs-extra";
 import * as clc from "colorette";
 import * as process from "node:process";
 import * as semver from "semver";
@@ -503,6 +503,27 @@ export async function prepareFrameworks(
       packageJson.engines ||= {};
       packageJson.engines.node ||= NODE_VERSION;
 
+      for (const [name, version] of Object.entries(
+        packageJson.dependencies as Record<string, string>
+      )) {
+        if (version.startsWith("file:")) {
+          const path = version.split(":")[1];
+          if (await access(path).catch(() => true)) continue;
+          const stats = await stat(path);
+          if (stats.isDirectory()) {
+            const result = spawnSync("npm", ["pack", relative(functionsDist, path)], {
+              cwd: functionsDist,
+            });
+            if (!result.stdout) continue;
+            const filename = result.stdout.toString().trim();
+            packageJson.dependencies[name] = `file:${filename}`;
+          } else {
+            const filename = basename(path);
+            await copyFile(path, join(functionsDist, filename));
+            packageJson.dependencies[name] = `file:${filename}`;
+          }
+        }
+      }
       await writeFile(join(functionsDist, "package.json"), JSON.stringify(packageJson, null, 2));
 
       // TODO do we add the append the local .env?
