@@ -45,6 +45,7 @@ const TEST_EXTENSION_VERSION: ExtensionVersion = {
       },
     ],
     params: [],
+    systemParams: [],
     version: "0.1.18",
     sourceUrl: "https://fake.test",
   },
@@ -80,6 +81,7 @@ describe("Extensions Emulator", () => {
               "google.firebase.image-resize-started,google.firebase.image-resize-completed",
             EVENTARC_CHANNEL: "projects/test-project/locations/us-central1/channels/firebase",
           },
+          systemParams: {},
           allowedEventTypes: [
             "google.firebase.image-resize-started",
             "google.firebase.image-resize-completed",
