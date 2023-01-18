@@ -51,7 +51,8 @@ export interface Framework {
   support: SupportLevel;
   init?: (setup: any) => Promise<void>;
   getDevModeHandle?: (
-    dir: string
+    dir: string,
+    hostingEmulatorInfo?: EmulatorInfo
   ) => Promise<(req: IncomingMessage, res: ServerResponse, next: () => void) => void>;
   ɵcodegenPublicDirectory: (dir: string, dest: string) => Promise<void>;
   ɵcodegenFunctionsDirectory?: (
@@ -222,6 +223,8 @@ function scanDependencyTree(searchingFor: string, dependencies = {}): any {
  */
 export function findDependency(name: string, options: Partial<FindDepOptions> = {}) {
   const { cwd, depth, omitDev } = { ...DEFAULT_FIND_DEP_OPTIONS, ...options };
+  const env: any = Object.assign({}, process.env);
+  delete env.NODE_ENV;
   const result = spawnSync(
     NPM_COMMAND,
     [
@@ -231,7 +234,7 @@ export function findDependency(name: string, options: Partial<FindDepOptions> = 
       ...(omitDev ? ["--omit", "dev"] : []),
       ...(depth === undefined ? [] : ["--depth", depth.toString(10)]),
     ],
-    { cwd }
+    { cwd, env }
   );
   if (!result.stdout) return;
   const json = JSON.parse(result.stdout.toString());
@@ -246,7 +249,7 @@ export async function prepareFrameworks(
   context: any,
   options: any,
   emulators: EmulatorInfo[] = []
-) {
+): Promise<void> {
   // `firebase-frameworks` requires Node >= 16. We must check for this to avoid horrible errors.
   const nodeVersion = process.version;
   if (!semver.satisfies(nodeVersion, ">=16.0.0")) {
@@ -280,10 +283,14 @@ export async function prepareFrameworks(
   }
   const configs = hostingConfig(options);
   let firebaseDefaults: FirebaseDefaults | undefined = undefined;
-  if (configs.length === 0) return;
+  if (configs.length === 0) {
+    return;
+  }
   for (const config of configs) {
     const { source, site, public: publicDir } = config;
-    if (!source) continue;
+    if (!source) {
+      continue;
+    }
     config.rewrites ||= [];
     config.redirects ||= [];
     config.headers ||= [];
@@ -291,8 +298,9 @@ export async function prepareFrameworks(
     const dist = join(projectRoot, ".firebase", site);
     const hostingDist = join(dist, "hosting");
     const functionsDist = join(dist, "functions");
-    if (publicDir)
+    if (publicDir) {
       throw new Error(`hosting.public and hosting.source cannot both be set in firebase.json`);
+    }
     const getProjectPath = (...args: string[]) => join(projectRoot, source, ...args);
     const functionName = `ssr${site.toLowerCase().replace(/-/g, "")}`;
     const usesFirebaseAdminSdk = !!findDependency("firebase-admin", { cwd: getProjectPath() });
@@ -375,16 +383,22 @@ export async function prepareFrameworks(
     console.log(`Detected a ${name} codebase. ${SupportLevelWarnings[support] || ""}\n`);
     // TODO allow for override
     const isDevMode = context._name === "serve" || context._name === "emulators:start";
+
+    const hostingEmulatorInfo = emulators.find((e) => e.name === Emulators.HOSTING);
+
     const devModeHandle =
-      isDevMode && getDevModeHandle && (await getDevModeHandle(getProjectPath()));
+      isDevMode &&
+      getDevModeHandle &&
+      (await getDevModeHandle(getProjectPath(), hostingEmulatorInfo));
     let codegenFunctionsDirectory: Framework["ɵcodegenFunctionsDirectory"];
     if (devModeHandle) {
       config.public = relative(projectRoot, publicDirectory);
       // Attach the handle to options, it will be used when spinning up superstatic
       options.frameworksDevModeHandle = devModeHandle;
       // null is the dev-mode entry for firebase-framework-tools
-      if (mayWantBackend && firebaseDefaults)
+      if (mayWantBackend && firebaseDefaults) {
         codegenFunctionsDirectory = codegenDevModeFunctionsDirectory;
+      }
     } else {
       const {
         wantsBackend = false,
@@ -401,6 +415,7 @@ export async function prepareFrameworks(
       config.public = relative(projectRoot, hostingDist);
       if (wantsBackend) codegenFunctionsDirectory = codegenProdModeFunctionsDirectory;
     }
+    config.webFramework = `${framework}${codegenFunctionsDirectory ? "_ssr" : ""}`;
     if (codegenFunctionsDirectory) {
       if (firebaseDefaults) firebaseDefaults._authTokenSyncURL = "/__session";
 
@@ -503,6 +518,10 @@ ${firebaseDefaults ? `__FIREBASE_DEFAULTS__=${JSON.stringify(firebaseDefaults)}\
       ).catch(() => {
         // continue
       });
+
+      if (await pathExists(getProjectPath(".npmrc"))) {
+        await copyFile(getProjectPath(".npmrc"), join(functionsDist, ".npmrc"));
+      }
 
       execSync(`${NPM_COMMAND} i --omit dev --no-audit`, {
         cwd: functionsDist,

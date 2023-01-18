@@ -65,9 +65,9 @@ export class Delegate {
   // Using a caching interface because we (may/will) eventually depend on the SDK version
   // to decide whether to use the JS export method of discovery or the HTTP container contract
   // method of discovery.
-  _sdkVersion = "";
+  _sdkVersion: string | undefined = undefined;
   get sdkVersion() {
-    if (!this._sdkVersion) {
+    if (this._sdkVersion === undefined) {
       this._sdkVersion = versioning.getFunctionsSDKVersion(this.sourceDir) || "";
     }
     return this._sdkVersion;
@@ -108,7 +108,12 @@ export class Delegate {
     if (Object.keys(config || {}).length) {
       env.CLOUD_RUNTIME_CONFIG = JSON.stringify(config);
     }
-    const childProcess = spawn("./node_modules/.bin/firebase-functions", [this.sourceDir], {
+    // At this point, we've already confirmed that we found supported firebase functions sdk.
+    const sdkPath = require.resolve("firebase-functions", { paths: [this.sourceDir] });
+    // Find location of the closest node_modules/ directory where we found the sdk.
+    const binPath = sdkPath.substring(0, sdkPath.lastIndexOf("node_modules") + 12);
+    // And execute the binary included in the sdk.
+    const childProcess = spawn(path.join(binPath, ".bin", "firebase-functions"), [this.sourceDir], {
       env,
       cwd: this.sourceDir,
       stdio: [/* stdin=*/ "ignore", /* stdout=*/ "pipe", /* stderr=*/ "inherit"],

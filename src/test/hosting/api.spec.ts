@@ -448,6 +448,27 @@ describe("hosting", () => {
       expect(nock.isDone()).to.be.true;
     });
 
+    it("should include a message, if provided", async () => {
+      const CHANNEL_ID = "my-channel";
+      const RELEASE = { name: "my-new-release" };
+      const VERSION = "version";
+      const VERSION_NAME = `sites/${SITE}/versions/${VERSION}`;
+      const MESSAGE = "yo dawg";
+      nock(hostingApiOrigin)
+        .post(`/v1beta1/projects/-/sites/${SITE}/channels/${CHANNEL_ID}/releases`, {
+          message: MESSAGE,
+        })
+        .query({ versionName: VERSION_NAME })
+        .reply(201, RELEASE);
+
+      const res = await hostingApi.createRelease(SITE, CHANNEL_ID, VERSION_NAME, {
+        message: MESSAGE,
+      });
+
+      expect(res).to.deep.equal(RELEASE);
+      expect(nock.isDone()).to.be.true;
+    });
+
     it("should throw an error if the server returns an error", async () => {
       const CHANNEL_ID = "my-channel";
       const VERSION = "VERSION";

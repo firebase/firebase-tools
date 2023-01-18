@@ -1,4 +1,3 @@
-- Enable single project mode for the database emulator (#5068).
-- Ravamp emulator networking to assign ports early and explictly listen on IP addresses (#5083).
-- Emulator UI and hub now listen on both IPv4 and IPv6 address by default (if possible) (#5088).
-- Fix Firestore emulator excessive logs about discovery endpoint not found (#5088).
+- Fix bug where CLI was unable to deploy Firebase Functions in some monorepo setups (#5391)
+- Upgrade Storage Rules Runtime to v1.1.3 to support ternary operators (#5370)
+- Fixes an issue where already deployed functions with the same remote configuration do not get skipped (#5354)

@@ -423,6 +423,7 @@ async function list(projectId: string, region: string): Promise<ListFunctionsRes
     logger.debug(`[functions] ${err?.message}`);
     throw new FirebaseError(`Failed to list functions for ${projectId}`, {
       original: err,
+      status: err instanceof FirebaseError ? err.status : undefined,
     });
   }
 }

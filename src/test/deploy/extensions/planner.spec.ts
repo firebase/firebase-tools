@@ -3,9 +3,9 @@ import * as sinon from "sinon";
 
 import * as planner from "../../../deploy/extensions/planner";
 import * as extensionsApi from "../../../extensions/extensionsApi";
-import { ExtensionInstance, ExtensionVersion } from "../../../extensions/types";
+import { ExtensionInstance } from "../../../extensions/types";
 
-function extensionVersion(version: string): ExtensionVersion {
+function extensionVersion(version?: string): any {
   return {
     name: `publishers/test/extensions/test/versions/${version}`,
     ref: `test/test@${version}`,
@@ -18,6 +18,7 @@ function extensionVersion(version: string): ExtensionVersion {
       resources: [],
       sourceUrl: "https://google.com",
       params: [],
+      systemParam: [],
     },
   };
 }
@@ -26,13 +27,12 @@ describe("Extensions Deployment Planner", () => {
     let listExtensionVersionsStub: sinon.SinonStub;
 
     before(() => {
-      listExtensionVersionsStub = sinon
-        .stub(extensionsApi, "listExtensionVersions")
-        .resolves([
-          extensionVersion("0.1.0"),
-          extensionVersion("0.1.1"),
-          extensionVersion("0.2.0"),
-        ]);
+      listExtensionVersionsStub = sinon.stub(extensionsApi, "listExtensionVersions").resolves([
+        extensionVersion("0.1.0"),
+        extensionVersion("0.1.1"),
+        extensionVersion("0.2.0"),
+        extensionVersion(), // Explicitly test that this doesn't break on bad data
+      ]);
     });
 
     after(() => {
@@ -106,6 +106,7 @@ describe("Extensions Deployment Planner", () => {
       name: "",
       sourceUrl: "",
       params: [],
+      systemParams: [],
     };
 
     const INSTANCE_WITH_EVENTS: ExtensionInstance = {
@@ -117,6 +118,7 @@ describe("Extensions Deployment Planner", () => {
       etag: "123456",
       config: {
         params: {},
+        systemParams: {},
         extensionRef: "firebase/image-resizer",
         extensionVersion: "0.1.0",
         name: "projects/my-test-proj/instances/image-resizer/configurations/95355951-397f-4821-a5c2-9c9788b2cc63",
@@ -136,6 +138,7 @@ describe("Extensions Deployment Planner", () => {
     const INSTANCE_SPEC_WITH_EVENTS: planner.DeploymentInstanceSpec = {
       instanceId: "image-resizer",
       params: {},
+      systemParams: {},
       allowedEventTypes: ["google.firebase.custom-event-occurred"],
       eventarcChannel: "projects/my-test-proj/locations/us-central1/channels/firebase",
       etag: "123456",

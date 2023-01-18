@@ -10,8 +10,8 @@ type TernaryExpression = CelExpression;
 type LiteralTernaryExpression = CelExpression;
 type DualTernaryExpression = CelExpression;
 
-type Literal = string | number | boolean;
-type L = "string" | "number" | "boolean";
+type Literal = string | number | boolean | string[];
+type L = "string" | "number" | "boolean" | "string[]";
 
 const paramRegexp = /params\.(\S+)/;
 const CMP = /((?:!=)|(?:==)|(?:>=)|(?:<=)|>|<)/.source; // !=, ==, >=, <=, >, <
@@ -27,6 +27,15 @@ const ternaryRegexp = new RegExp(
   /{{ params\.(\S+) CMP (.+) \? (.+) : (.+) }/.source.replace("CMP", CMP)
 );
 const literalTernaryRegexp = /{{ params\.(\S+) \? (.+) : (.+) }/;
+
+/**
+ * An array equality test for use on resolved list literal ParamValues only;
+ * skips a lot of the null/undefined/object-y/nested-list checks that something
+ * like Underscore's isEqual() would make because args have to be string[].
+ */
+function listEquals(a: string[], b: string[]): boolean {
+  return a.every((item) => b.includes(item)) && b.every((item) => a.includes(item));
+}
 
 /**
  * Determines if something is a string that looks vaguely like a CEL expression.
@@ -75,6 +84,10 @@ export function resolveExpression(
   expr: CelExpression,
   params: Record<string, ParamValue>
 ): Literal {
+  // N.B: List literals [] can contain CEL inside them, so we need to process them
+  // first and resolve them. This isn't (and can't be) recursive, but the fact that
+  // we only support string[] types mostly saves us here.
+  expr = preprocessLists(wantType, expr, params);
   // N.B: Since some of these regexps are supersets of others--anything that is
   // params\.(\S+) is also (.+)--the order in which they are tested matters
   if (isIdentityExpression(expr)) {
@@ -94,11 +107,72 @@ export function resolveExpression(
   }
 }
 
+/**
+ * Replaces all lists in a CEL expression string, which can contain string-type CEL
+ * subexpressions or references to params, with their literal resolved values.
+ * Not recursive.
+ */
+function preprocessLists(
+  wantType: L,
+  expr: CelExpression,
+  params: Record<string, ParamValue>
+): CelExpression {
+  let rv = expr;
+  const listMatcher = /\[[^\[\]]*\]/g;
+  let match: RegExpMatchArray | null;
+  while ((match = listMatcher.exec(expr)) != null) {
+    const list = match[0];
+    const resolved = resolveList("string", list, params);
+    rv = rv.replace(list, JSON.stringify(resolved));
+  }
+  return rv;
+}
+
+/**
+ * A List in Functions CEL is a []-bracketed string with comma-seperated values that can be:
+ * - A double quoted string literal
+ * - A reference to a param value (params.FOO) which must resolve with type string
+ * - A sub-CEL expression {{ params.BAR == 0 ? "a" : "b" }} which must resolve with type string
+ */
+function resolveList(
+  wantType: "string",
+  list: string,
+  params: Record<string, ParamValue>
+): string[] {
+  if (!list.startsWith("[") || !list.endsWith("]")) {
+    throw new ExprParseError("Invalid list: must start with '[' and end with ']'");
+  } else if (list === "[]") {
+    return [];
+  }
+  const rv: string[] = [];
+  const entries = list.slice(1, -1).split(",");
+
+  for (const entry of entries) {
+    const trimmed = entry.trim();
+    if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
+      rv.push(trimmed.slice(1, -1));
+    } else if (trimmed.startsWith("{{") && trimmed.endsWith("}}")) {
+      rv.push(resolveExpression("string", trimmed, params) as string);
+    } else {
+      const paramMatch = paramRegexp.exec(trimmed);
+      if (!paramMatch) {
+        throw new ExprParseError(`Malformed list component ${trimmed}`);
+      } else if (!(paramMatch[1] in params)) {
+        throw new ExprParseError(`List expansion referenced nonexistent param ${paramMatch[1]}`);
+      }
+      rv.push(resolveParamListOrLiteral("string", trimmed, params) as string);
+    }
+  }
+
+  return rv;
+}
+
 function assertType(wantType: L, paramName: string, paramValue: ParamValue) {
   if (
     (wantType === "string" && !paramValue.legalString) ||
     (wantType === "number" && !paramValue.legalNumber) ||
-    (wantType === "boolean" && !paramValue.legalBoolean)
+    (wantType === "boolean" && !paramValue.legalBoolean) ||
+    (wantType === "string[]" && !paramValue.legalList)
   ) {
     throw new ExprParseError(`Illegal type coercion of param ${paramName} to type ${wantType}`);
   }
@@ -111,6 +185,8 @@ function readParamValue(wantType: L, paramName: string, paramValue: ParamValue):
     return paramValue.asNumber();
   } else if (wantType === "boolean") {
     return paramValue.asBoolean();
+  } else if (wantType === "string[]") {
+    return paramValue.asList();
   } else {
     assertExhaustive(wantType);
   }
@@ -154,9 +230,9 @@ function resolveComparison(
   const test = function (a: Literal, b: Literal): boolean {
     switch (cmp) {
       case "!=":
-        return a !== b;
+        return Array.isArray(a) ? !listEquals(a, b as string[]) : a !== b;
       case "==":
-        return a === b;
+        return Array.isArray(a) ? listEquals(a, b as string[]) : a === b;
       case ">=":
         return a >= b;
       case "<=":
@@ -187,6 +263,14 @@ function resolveComparison(
   } else if (lhsVal.legalBoolean) {
     rhs = resolveLiteral("boolean", match[3]);
     return test(lhsVal.asBoolean(), rhs);
+  } else if (lhsVal.legalList) {
+    if (!["==", "!="].includes(cmp)) {
+      throw new ExprParseError(
+        `Unsupported comparison operation ${cmp} on list operands in expression ${expr}`
+      );
+    }
+    rhs = resolveLiteral("string[]", match[3]);
+    return test(lhsVal.asList(), rhs);
   } else {
     throw new ExprParseError(
       `Could not infer type of param ${lhsName} used in comparison operation`
@@ -210,9 +294,9 @@ function resolveDualComparison(
   const test = function (a: Literal, b: Literal): boolean {
     switch (cmp) {
       case "!=":
-        return a !== b;
+        return Array.isArray(a) ? !listEquals(a, b as string[]) : a !== b;
       case "==":
-        return a === b;
+        return Array.isArray(a) ? listEquals(a, b as string[]) : a === b;
       case ">=":
         return a >= b;
       case "<=":
@@ -263,6 +347,18 @@ function resolveDualComparison(
       );
     }
     return test(lhsVal.asBoolean(), rhsVal.asBoolean());
+  } else if (lhsVal.legalList) {
+    if (!rhsVal.legalList) {
+      throw new ExprParseError(
+        `CEL comparison expression ${expr} has type mismatch between the operands`
+      );
+    }
+    if (!["==", "!="].includes(cmp)) {
+      throw new ExprParseError(
+        `Unsupported comparison operation ${cmp} on list operands in expression ${expr}`
+      );
+    }
+    return test(lhsVal.asList(), rhsVal.asList());
   } else {
     throw new ExprParseError(
       `could not infer type of param ${lhsName} used in comparison operation`
@@ -286,9 +382,9 @@ function resolveTernary(
   const comparisonExpr = `{{ params.${match[1]} ${match[2]} ${match[3]} }}`;
   const isTrue = resolveComparison(comparisonExpr, params);
   if (isTrue) {
-    return resolveParamOrLiteral(wantType, match[4], params);
+    return resolveParamListOrLiteral(wantType, match[4], params);
   } else {
-    return resolveParamOrLiteral(wantType, match[5], params);
+    return resolveParamListOrLiteral(wantType, match[5], params);
   }
 }
 
@@ -304,13 +400,12 @@ function resolveDualTernary(
   if (!match) {
     throw new ExprParseError("Malformed CEL ternary expression '" + expr + "'");
   }
-
   const comparisonExpr = `{{ params.${match[1]} ${match[2]} params.${match[3]} }}`;
   const isTrue = resolveDualComparison(comparisonExpr, params);
   if (isTrue) {
-    return resolveParamOrLiteral(wantType, match[4], params);
+    return resolveParamListOrLiteral(wantType, match[4], params);
   } else {
-    return resolveParamOrLiteral(wantType, match[5], params);
+    return resolveParamListOrLiteral(wantType, match[5], params);
   }
 }
 
@@ -342,13 +437,13 @@ function resolveLiteralTernary(
   }
 
   if (paramValue.asBoolean()) {
-    return resolveParamOrLiteral(wantType, match[2], params);
+    return resolveParamListOrLiteral(wantType, match[2], params);
   } else {
-    return resolveParamOrLiteral(wantType, match[3], params);
+    return resolveParamListOrLiteral(wantType, match[3], params);
   }
 }
 
-function resolveParamOrLiteral(
+function resolveParamListOrLiteral(
   wantType: L,
   field: string,
   params: Record<string, ParamValue>
@@ -371,7 +466,22 @@ function resolveLiteral(wantType: L, value: string): Literal {
     );
   }
 
-  if (wantType === "number") {
+  if (wantType === "string[]") {
+    // N.B: value being a literal list that can just be JSON.parsed should be guaranteed
+    // by the preprocessLists() invocation at the beginning of CEL resolution
+    const parsed = JSON.parse(value);
+    if (!Array.isArray(parsed)) {
+      throw new ExprParseError(`CEL tried to read non-list ${JSON.stringify(parsed)} as a list`);
+    }
+    for (const shouldBeString of parsed) {
+      if (typeof shouldBeString !== "string") {
+        throw new ExprParseError(
+          `Evaluated CEL list ${JSON.stringify(parsed)} contained non-string values`
+        );
+      }
+    }
+    return parsed as string[];
+  } else if (wantType === "number") {
     if (isNaN(+value)) {
       throw new ExprParseError("CEL literal " + value + " does not seem to be a number");
     }

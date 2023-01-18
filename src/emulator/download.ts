@@ -37,6 +37,10 @@ export async function downloadEmulator(name: DownloadableEmulators): Promise<voi
     await unzip(emulator.downloadPath, emulator.unzipDir);
   }
 
+  // Set a delay while the unzip stream completes before running chmod
+  // See https://github.com/ZJONSSON/node-unzipper/issues/165
+  await new Promise((f) => setTimeout(f, 2000));
+
   const executablePath = emulator.binaryPath || emulator.downloadPath;
   fs.chmodSync(executablePath, 0o755);
 
@@ -79,7 +83,7 @@ function unzip(zipPath: string, unzipDir: string): Promise<void> {
     fs.createReadStream(zipPath)
       .pipe(unzipper.Extract({ path: unzipDir })) // eslint-disable-line new-cap
       .on("error", reject)
-      .on("finish", resolve);
+      .on("close", resolve);
   });
 }
 

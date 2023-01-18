@@ -23,6 +23,7 @@ const testExtensionVersion: ExtensionVersion = {
     version: "0.1.0",
     resources: [],
     params: [],
+    systemParams: [],
     sourceUrl: "github.com/test/meout",
   },
 };
@@ -50,6 +51,7 @@ const testInstanceSpec = (
       version: "0.1.0",
     },
     params: {},
+    systemParams: {},
     extensionVersion: testExtensionVersion,
     extension: testExtension(publisherId, launchStage),
   };

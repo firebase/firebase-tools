@@ -233,9 +233,18 @@ describe("extensions", () => {
           name: "sources/blah",
           packageUri: "https://test.fake/pacakge.zip",
           hash: "abc123",
-          spec: { name: "", version: "0.1.0", sourceUrl: "", roles: [], resources: [], params: [] },
+          spec: {
+            name: "",
+            version: "0.1.0",
+            sourceUrl: "",
+            roles: [],
+            resources: [],
+            params: [],
+            systemParams: [],
+          },
         },
         params: {},
+        systemParams: {},
       });
       expect(nock.isDone()).to.be.true;
     });
@@ -294,6 +303,7 @@ describe("extensions", () => {
               roles: [],
               resources: [],
               params: [],
+              systemParams: [],
             },
           },
           params: {},
@@ -409,6 +419,7 @@ describe("extensions", () => {
         version: "0.1.0",
         resources: [],
         params: [],
+        systemParams: [],
         sourceUrl: "www.google.com/pack.zip",
       },
     };
@@ -416,7 +427,7 @@ describe("extensions", () => {
       nock.cleanAll();
     });
 
-    it("should include config.param in updateMask is params are changed", async () => {
+    it("should include config.params in updateMask is params are changed", async () => {
       nock(api.extensionsOrigin)
         .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
         .query({
@@ -440,7 +451,7 @@ describe("extensions", () => {
       expect(nock.isDone()).to.be.true;
     });
 
-    it("should not include config.param in updateMask is params aren't changed", async () => {
+    it("should not include config.params or config.system_params in updateMask is params aren't changed", async () => {
       nock(api.extensionsOrigin)
         .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
         .query({
@@ -456,6 +467,30 @@ describe("extensions", () => {
         extensionSource: testSource,
         canEmitEvents: false,
       });
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should include config.system_params in updateMask if system_params are changed", async () => {
+      nock(api.extensionsOrigin)
+        .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
+        .query({
+          updateMask:
+            "config.source.name,config.system_params,config.allowed_event_types,config.eventarc_channel",
+          validateOnly: "false",
+        })
+        .reply(200, { name: "operations/abc123" });
+      nock(api.extensionsOrigin).get(`/${VERSION}/operations/abc123`).reply(200, { done: true });
+
+      await extensionsApi.updateInstance({
+        projectId: PROJECT_ID,
+        instanceId: INSTANCE_ID,
+        extensionSource: testSource,
+        systemParams: {
+          MY_PARAM: "value",
+        },
+        canEmitEvents: false,
+      });
+
       expect(nock.isDone()).to.be.true;
     });
 
