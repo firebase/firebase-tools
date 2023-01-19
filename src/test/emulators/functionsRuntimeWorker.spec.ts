@@ -1,7 +1,7 @@
 import * as httpMocks from "node-mocks-http";
 import * as nock from "nock";
 import { expect } from "chai";
-import { FunctionsRuntimeInstance } from "../../emulator/functionsEmulator";
+import { FunctionsRuntimeInstance, IPCConn } from "../../emulator/functionsEmulator";
 import { EventEmitter } from "events";
 import {
   RuntimeWorker,
@@ -21,7 +21,7 @@ class MockRuntimeInstance implements FunctionsRuntimeInstance {
   events: EventEmitter = new EventEmitter();
   exit: Promise<number>;
   cwd = "/home/users/dir";
-  socketPath = "/path/to/socket/foo.sock";
+  conn = new IPCConn("/path/to/socket/foo.sock");
 
   constructor() {
     this.exit = new Promise((resolve) => {
