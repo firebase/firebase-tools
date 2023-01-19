@@ -129,6 +129,11 @@ export const command = new Command("appdistribution:distribute <release-binary-f
             `uploaded release ${release.displayVersion} (${release.buildVersion}) successfully!`
           );
       }
+      utils.logSuccess(`View this release in the Firebase console: ${release.firebaseConsoleUri}`);
+      utils.logSuccess(`Share this release with testers who have access: ${release.testingUri}`);
+      utils.logSuccess(
+        `Download the release binary (link expires in 1 hour): ${release.binaryDownloadUri}`
+      );
       releaseName = uploadResponse.release.name;
     } catch (err: any) {
       if (err.status === 404) {
