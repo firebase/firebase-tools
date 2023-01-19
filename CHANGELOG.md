@@ -1,0 +1,1 @@
+- Refactor Functions Emulator. (#5422)
