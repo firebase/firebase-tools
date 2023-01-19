@@ -63,6 +63,11 @@ export interface RuntimeDelegate {
   runtime: Runtime;
 
   /**
+   * Path to the bin used to run the source code.
+   */
+  bin: string;
+
+  /**
    * Validate makes sure the customers' code is actually viable.
    * This includes checks like making sure a package.json file is
    * well formed.
