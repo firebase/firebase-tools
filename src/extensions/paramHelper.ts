@@ -265,3 +265,8 @@ export function readEnvFile(envPath: string): Record<string, string> {
   }
   return result.envs;
 }
+
+export function isSystemParam(paramName: string): boolean {
+  const regex = /^firebaseextensions\.[a-zA-Z0-9\.]*\//;
+  return regex.test(paramName);
+}

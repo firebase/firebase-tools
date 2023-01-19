@@ -29,6 +29,7 @@ const SPEC: ExtensionSpec = {
   billingRequired: true,
   sourceUrl: "test.com",
   params: [],
+  systemParams: [],
 };
 
 const TASK_FUNCTION_RESOURCE: Resource = {

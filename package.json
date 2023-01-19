@@ -1,6 +1,6 @@
 {
   "name": "firebase-tools",
-  "version": "11.20.0",
+  "version": "11.21.0",
   "description": "Command-Line Interface for Firebase",
   "main": "./lib/index.js",
   "bin": {
@@ -149,7 +149,7 @@
     "triple-beam": "^1.3.0",
     "universal-analytics": "^0.5.3",
     "unzipper": "^0.10.10",
-    "update-notifier": "^5.1.0",
+    "update-notifier-cjs": "^5.1.6",
     "uuid": "^8.3.2",
     "winston": "^3.0.0",
     "winston-transport": "^4.4.0",

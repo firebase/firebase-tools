@@ -11,7 +11,7 @@ if (!semver.satisfies(nodeVersion, pkg.engines.node)) {
   process.exit(1);
 }
 
-import * as updateNotifierPkg from "update-notifier";
+import * as updateNotifierPkg from "update-notifier-cjs";
 import * as clc from "colorette";
 import * as TerminalRenderer from "marked-terminal";
 const updateNotifier = updateNotifierPkg({ pkg });
