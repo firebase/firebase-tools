@@ -2,7 +2,6 @@ import { readJSON as originalReadJSON } from "fs-extra";
 import type { ReadOptions } from "fs-extra";
 import { join } from "path";
 import { readFile } from "fs/promises";
-import { getSite, getSiteDomains } from "../hosting/api";
 
 /**
  * Whether the given string starts with http:// or https://
@@ -39,29 +38,4 @@ export async function warnIfCustomBuildScript(
       `\nWARNING: Your package.json contains a custom build that is being ignored. Only the ${framework} default build script (e.g, "${defaultBuildScripts[0]}") is respected. If you have a more advanced build process you should build a custom integration https://firebase.google.com/docs/hosting/express\n`
     );
   }
-}
-
-/**
- * Join the default domain and the custom domains of a Hosting site
- *
- * @param projectId the project id
- * @param siteId the site id
- * @return array of domains
- */
-export async function getAllSiteDomains(projectId: string, siteId: string): Promise<string[]> {
-  const [hostingDomains, defaultDomain] = await Promise.all([
-    getSiteDomains(projectId, siteId),
-    getSite(projectId, siteId),
-  ]);
-
-  const defaultDomainWithoutHttp = defaultDomain.defaultUrl.replace(/^https?:\/\//, "");
-
-  const allSiteDomains = new Set([
-    ...hostingDomains.map(({ domainName }) => domainName),
-    defaultDomainWithoutHttp,
-    `${projectId}.web.app`,
-    `${projectId}.firebaseapp.com`,
-  ]);
-
-  return Array.from(allSiteDomains);
 }

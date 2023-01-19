@@ -36,7 +36,7 @@ import {
   allDependencyNames,
 } from "./utils";
 import type { Manifest, NpmLsReturn } from "./interfaces";
-import { getAllSiteDomains, readJSON } from "../utils";
+import { readJSON } from "../utils";
 import { warnIfCustomBuildScript } from "../utils";
 import type { EmulatorInfo } from "../../emulator/types";
 import { usesAppDirRouter, usesNextImage, hasUnoptimizedImage } from "./utils";
@@ -46,6 +46,7 @@ import {
   PRERENDER_MANIFEST,
   ROUTES_MANIFEST,
 } from "./constants";
+import { getAllSiteDomains } from "../../hosting/api";
 
 const DEFAULT_BUILD_SCRIPT = ["next build"];
 const PUBLIC_DIR = "public";

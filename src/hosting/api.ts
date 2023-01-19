@@ -702,3 +702,28 @@ export async function getSiteDomains(project: string, site: string): Promise<Dom
     throw e;
   }
 }
+
+/**
+ * Join the default domain and the custom domains of a Hosting site
+ *
+ * @param projectId the project id
+ * @param siteId the site id
+ * @return array of domains
+ */
+export async function getAllSiteDomains(projectId: string, siteId: string): Promise<string[]> {
+  const [hostingDomains, defaultDomain] = await Promise.all([
+    getSiteDomains(projectId, siteId),
+    getSite(projectId, siteId),
+  ]);
+
+  const defaultDomainWithoutHttp = defaultDomain.defaultUrl.replace(/^https?:\/\//, "");
+
+  const allSiteDomains = new Set([
+    ...hostingDomains.map(({ domainName }) => domainName),
+    defaultDomainWithoutHttp,
+    `${projectId}.web.app`,
+    `${projectId}.firebaseapp.com`,
+  ]);
+
+  return Array.from(allSiteDomains);
+}
