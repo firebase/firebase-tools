@@ -103,7 +103,9 @@ class Delegate implements runtimes.RuntimeDelegate {
     return Promise.resolve(() => Promise.resolve());
   }
 
-  async build(): Promise<void> {}
+  async build(): Promise<void> {
+    return Promise.resolve();
+  }
 
   async serveAdmin(port: number, envs: backend.EnvironmentVariables): Promise<() => Promise<void>> {
     const modulesDir = await this.modulesDir();
