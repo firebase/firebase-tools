@@ -507,14 +507,14 @@ export async function prepareFrameworks(
         packageJson.dependencies as Record<string, string>
       )) {
         if (version.startsWith("file:")) {
-          const path = version.split(":")[1];
-          if (await access(path).catch(() => true)) continue;
+          const path = version.replace(/^file:/, "");
+          if (!(await pathExists(path))) continue;
           const stats = await stat(path);
           if (stats.isDirectory()) {
             const result = spawnSync("npm", ["pack", relative(functionsDist, path)], {
               cwd: functionsDist,
             });
-            if (!result.stdout) continue;
+            if (!result.stdout) throw new Error(`Error running \`npm pack\` at ${path}`);
             const filename = result.stdout.toString().trim();
             packageJson.dependencies[name] = `file:${filename}`;
           } else {
