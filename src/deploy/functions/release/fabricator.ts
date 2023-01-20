@@ -316,6 +316,9 @@ export class Fabricator {
       await this.executor
         .run(async () => {
           try {
+            if (await eventarc.getChannel(channel) !== undefined) {
+              return;
+            }
             const op: { name: string } = await eventarc.createChannel({ name: channel });
             return await poller.pollOperation<eventarc.Channel>({
               ...eventarcPollerOptions,

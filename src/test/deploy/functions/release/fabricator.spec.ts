@@ -61,6 +61,7 @@ describe("Fabricator", () => {
     gcfv2.createFunction.rejects(new Error("unexpected gcfv2.createFunction"));
     gcfv2.updateFunction.rejects(new Error("unexpected gcfv2.updateFunction"));
     gcfv2.deleteFunction.rejects(new Error("unexpected gcfv2.deleteFunction"));
+    eventarc.getChannel.rejects(new Error("unexpected eventarc.getChannel"));
     eventarc.createChannel.rejects(new Error("unexpected eventarc.createChannel"));
     eventarc.deleteChannel.rejects(new Error("unexpected eventarc.deleteChannel"));
     eventarc.getChannel.rejects(new Error("unexpected eventarc.getChannel"));
@@ -489,6 +490,31 @@ describe("Fabricator", () => {
     });
 
     it("handles already existing eventarc channels", async () => {
+      eventarc.getChannel.resolves({name: "channel"})
+      gcfv2.createFunction.resolves({ name: "op", done: false });
+      poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
+
+      const ep = endpoint(
+        {
+          eventTrigger: {
+            eventType: "custom.test.event",
+            channel: "channel",
+            retry: false,
+          },
+        },
+        {
+          platform: "gcfv2",
+        }
+      );
+
+      await fab.createV2Function(ep);
+      expect(eventarc.getChannel).to.have.been.called;
+      expect(eventarc.createChannel).to.not.have.been.called;
+      expect(gcfv2.createFunction).to.have.been.called;
+    });
+
+    it("handles already existing eventarc channels", async () => {
+      eventarc.getChannel.resolves(undefined);
       eventarc.createChannel.callsFake(({ name }) => {
         expect(name).to.equal("channel");
         const err = new Error("Already exists");
@@ -518,6 +544,7 @@ describe("Fabricator", () => {
 
     it("creates channels if necessary", async () => {
       const channelName = "channel";
+      eventarc.getChannel.resolves(undefined);
       eventarc.createChannel.callsFake(({ name }) => {
         expect(name).to.equal(channelName);
         return Promise.resolve({
@@ -554,6 +581,7 @@ describe("Fabricator", () => {
     });
 
     it("wraps errors thrown while creating channels", async () => {
+      eventarc.getChannel.resolves(undefined);
       eventarc.createChannel.callsFake(() => {
         const err = new Error("🤷‍♂️");
         (err as any).status = 400;
