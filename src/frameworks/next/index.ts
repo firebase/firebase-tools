@@ -95,7 +95,7 @@ export async function build(dir: string): Promise<BuildResult> {
   });
 
   const reasonsForBackend = [];
-  const { distDir } = await getConfig(dir);
+  const { distDir, trailingSlash = false } = await getConfig(dir);
 
   if (await isUsingMiddleware(join(dir, distDir), false)) {
     reasonsForBackend.push("middleware");
@@ -227,7 +227,7 @@ export async function build(dir: string): Promise<BuildResult> {
     console.log("");
   }
 
-  return { wantsBackend, headers, redirects, rewrites };
+  return { wantsBackend, headers, redirects, rewrites, trailingSlash };
 }
 
 /**
