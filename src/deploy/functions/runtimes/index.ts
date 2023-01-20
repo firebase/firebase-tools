@@ -9,7 +9,7 @@ const RUNTIMES: string[] = ["nodejs10", "nodejs12", "nodejs14", "nodejs16", "nod
 // Experimental runtimes are part of the Runtime type, but are in a
 // different list to help guard against some day accidentally iterating over
 // and printing a hidden runtime to the user.
-const EXPERIMENTAL_RUNTIMES = ["go113"];
+const EXPERIMENTAL_RUNTIMES: string[] = [];
 export type Runtime = typeof RUNTIMES[number] | typeof EXPERIMENTAL_RUNTIMES[number];
 
 /** Runtimes that can be found in existing backends but not used for new functions. */
@@ -34,7 +34,6 @@ const MESSAGE_FRIENDLY_RUNTIMES: Record<Runtime | DeprecatedRuntime, string> = {
   nodejs14: "Node.js 14",
   nodejs16: "Node.js 16",
   nodejs18: "Node.js 18",
-  go113: "Go 1.13",
 };
 
 /**
@@ -62,6 +61,11 @@ export interface RuntimeDelegate {
    * the GCF API.
    */
   runtime: Runtime;
+
+  /**
+   * Path to the bin used to run the source code.
+   */
+  bin: string;
 
   /**
    * Validate makes sure the customers' code is actually viable.
@@ -109,8 +113,6 @@ export interface DelegateContext {
 }
 
 type Factory = (context: DelegateContext) => Promise<RuntimeDelegate | undefined>;
-// Note: golang has been removed from delegates because it does not work and it
-// is not worth having an experiment for yet.
 const factories: Factory[] = [node.tryCreateDelegate];
 
 /**
