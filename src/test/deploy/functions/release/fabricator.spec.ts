@@ -490,7 +490,7 @@ describe("Fabricator", () => {
     });
 
     it("handles already existing eventarc channels", async () => {
-      eventarc.getChannel.resolves({name: "channel"})
+      eventarc.getChannel.resolves({ name: "channel" });
       gcfv2.createFunction.resolves({ name: "op", done: false });
       poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
 
@@ -513,7 +513,7 @@ describe("Fabricator", () => {
       expect(gcfv2.createFunction).to.have.been.called;
     });
 
-    it("handles already existing eventarc channels", async () => {
+    it("handles already existing eventarc channels (createChannel return 409)", async () => {
       eventarc.getChannel.resolves(undefined);
       eventarc.createChannel.callsFake(({ name }) => {
         expect(name).to.equal("channel");
