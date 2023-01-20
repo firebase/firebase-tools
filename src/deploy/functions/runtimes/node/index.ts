@@ -9,7 +9,7 @@ import fetch from "node-fetch";
 import { FirebaseError } from "../../../../error";
 import { getRuntimeChoice } from "./parseRuntimeAndValidateSDK";
 import { logger } from "../../../../logger";
-import { logLabeledWarning } from "../../../../utils";
+import { logLabeledSuccess, logLabeledWarning } from "../../../../utils";
 import * as backend from "../../backend";
 import * as build from "../../build";
 import * as discovery from "../discovery";
@@ -66,11 +66,72 @@ export class Delegate {
   // to decide whether to use the JS export method of discovery or the HTTP container contract
   // method of discovery.
   _sdkVersion: string | undefined = undefined;
-  get sdkVersion() {
+  get sdkVersion(): string {
     if (this._sdkVersion === undefined) {
       this._sdkVersion = versioning.getFunctionsSDKVersion(this.sourceDir) || "";
     }
     return this._sdkVersion;
+  }
+
+  _bin = "";
+  get bin(): string {
+    if (this._bin === "") {
+      this._bin = this.getNodeBinary();
+    }
+    return this._bin;
+  }
+
+  getNodeBinary(): string {
+    const requestedVersion = semver.coerce(this.runtime);
+    if (!requestedVersion) {
+      throw new FirebaseError(
+        `Could not determine version of the requested runtime: ${this.runtime}`
+      );
+    }
+    const hostVersion = process.versions.node;
+
+    const localNodePath = path.join(this.sourceDir, "node_modules/node");
+    const localNodeVersion = versioning.findModuleVersion("node", localNodePath);
+
+    if (localNodeVersion) {
+      if (semver.major(requestedVersion) === semver.major(localNodeVersion)) {
+        logLabeledSuccess(
+          "functions",
+          `Using node@${semver.major(localNodeVersion)} from local cache.`
+        );
+        return localNodePath;
+      }
+    }
+
+    if (semver.major(requestedVersion) === semver.major(hostVersion)) {
+      logLabeledSuccess("functions", `Using node@${semver.major(hostVersion)} from host.`);
+      return process.execPath;
+    }
+
+    if (!process.env.FIREPIT_VERSION) {
+      logLabeledWarning(
+        "functions",
+        `Your requested "node" version "${semver.major(
+          requestedVersion
+        )}" doesn't match your global version "${semver.major(
+          hostVersion
+        )}". Using node@${semver.major(hostVersion)} from host.`
+      );
+      return process.execPath;
+    }
+
+    // Otherwise we'll warn and use the version that is currently running this process.
+    logLabeledWarning(
+      "functions",
+      `You've requested "node" version "${semver.major(
+        requestedVersion
+      )}", but the standalone Firebase CLI comes with bundled Node "${semver.major(hostVersion)}".`
+    );
+    logLabeledSuccess(
+      "functions",
+      `To use a different Node.js version, consider removing the standalone Firebase CLI and switching to "firebase-tools" on npm.`
+    );
+    return process.execPath;
   }
 
   validate(): Promise<void> {
@@ -92,14 +153,14 @@ export class Delegate {
     return Promise.resolve(() => Promise.resolve());
   }
 
-  serve(
-    port: number,
+  serveAdmin(
+    port: string,
     config: backend.RuntimeConfigValues,
     envs: backend.EnvironmentVariables
   ): Promise<() => Promise<void>> {
     const env: NodeJS.ProcessEnv = {
       ...envs,
-      PORT: port.toString(),
+      PORT: port,
       FUNCTIONS_CONTROL_API: "true",
       HOME: process.env.HOME,
       PATH: process.env.PATH,
@@ -161,7 +222,7 @@ export class Delegate {
     if (!discovered) {
       const getPort = promisify(portfinder.getPort) as () => Promise<number>;
       const port = await getPort();
-      const kill = await this.serve(port, config, env);
+      const kill = await this.serveAdmin(port.toString(), config, env);
       try {
         discovered = await discovery.detectFromPort(port, this.projectId, this.runtime);
       } finally {
