@@ -1,1 +1,2 @@
 - Refactor Functions Emulator. (#5422)
+- Fix race condition when discovering functions. (#5444)
