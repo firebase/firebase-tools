@@ -44,7 +44,7 @@ import { RuntimeWorker, RuntimeWorkerPool } from "./functionsRuntimeWorker";
 import { PubsubEmulator } from "./pubsubEmulator";
 import { FirebaseError } from "../error";
 import { WorkQueue, Work } from "./workQueue";
-import { allSettled, connectableHostname, createDestroyer, debounce } from "../utils";
+import { allSettled, connectableHostname, createDestroyer, debounce, randomInt } from "../utils";
 import { getCredentialPathAsync } from "../defaultCredentials";
 import {
   AdminSdkConfig,
@@ -1311,7 +1311,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     // No support generic socket interface for Unix Domain Socket/Named Pipe in the python.
     // Use TCP/IP stack instead.
     const port = await portfinder.getPortPromise({
-      port: 8081,
+      port: 8081 + randomInt(0, 1000), // Add a small jitter to avoid race condition.
     });
     const childProcess = runWithVirtualEnv(args, backend.functionsDir, {
       ...process.env,
