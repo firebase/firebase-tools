@@ -297,8 +297,7 @@ describe("FunctionsEmulator-Runtime", function () {
         expect(runtime.sysMsg["non-default-admin-app-used"]?.length).to.gte(1);
       });
 
-      // TODO(taeold): Fix and restore this test.
-      it.skip("should route all sub-fields accordingly", async () => {
+      it("should route all sub-fields accordingly", async () => {
         runtime = await startRuntime("functionId", "event", () => {
           require("firebase-admin").initializeApp();
           return {
@@ -306,7 +305,7 @@ describe("FunctionsEmulator-Runtime", function () {
               .firestore.document("test/test")
               .onCreate(() => {
                 console.log(
-                  JSON.stringify(require("firebase-admin").firestore.FieldValue.increment(4))
+                  JSON.stringify(require("firebase-admin/firestore").FieldValue.increment(4))
                 );
                 return Promise.resolve();
               }),
