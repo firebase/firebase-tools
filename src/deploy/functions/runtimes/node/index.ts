@@ -9,7 +9,7 @@ import fetch from "node-fetch";
 import { FirebaseError } from "../../../../error";
 import { getRuntimeChoice } from "./parseRuntimeAndValidateSDK";
 import { logger } from "../../../../logger";
-import { logLabeledSuccess, logLabeledWarning } from "../../../../utils";
+import { logLabeledSuccess, logLabeledWarning, randomInt } from "../../../../utils";
 import * as backend from "../../backend";
 import * as build from "../../build";
 import * as discovery from "../discovery";
@@ -220,8 +220,8 @@ export class Delegate {
 
     let discovered = await discovery.detectFromYaml(this.sourceDir, this.projectId, this.runtime);
     if (!discovered) {
-      const getPort = promisify(portfinder.getPort) as () => Promise<number>;
-      const port = await getPort();
+      const basePort = 8000 + randomInt(0, 1000); // Add a jitter to reduce likelihood of race condition
+      const port = await portfinder.getPortPromise({ port: basePort });
       const kill = await this.serveAdmin(port.toString(), config, env);
       try {
         discovered = await discovery.detectFromPort(port, this.projectId, this.runtime);
