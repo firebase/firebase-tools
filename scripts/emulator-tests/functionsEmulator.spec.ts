@@ -37,9 +37,9 @@ const TEST_BACKEND = {
   env: {},
   secretEnv: [],
   codebase: "default",
-  nodeBinary: process.execPath,
-  // NOTE: Use the following nodeBinary path if you want to run test cases directly from your IDE.
-  // nodeBinary: path.join(MODULE_ROOT, "node_modules/.bin/ts-node"),
+  bin: process.execPath,
+  // NOTE: Use the following node bin path if you want to run test cases directly from your IDE.
+  // bin: path.join(MODULE_ROOT, "node_modules/.bin/ts-node"),
 };
 
 async function useFunction(
