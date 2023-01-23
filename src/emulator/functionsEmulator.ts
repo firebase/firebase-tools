@@ -688,26 +688,30 @@ export class FunctionsEmulator implements EmulatorInstance {
     // In debug mode, we eagerly start the runtime processes to allow debuggers to attach
     // before invoking a function.
     if (this.args.debugPort) {
-      // Since we're about to start a runtime to be shared by all the functions in this codebase,
-      // we need to make sure it has all the secrets used by any function in the codebase.
-      emulatableBackend.secretEnv = Object.values(
-        triggerDefinitions.reduce(
-          (acc: Record<string, backend.SecretEnvVar>, curr: EmulatedTriggerDefinition) => {
-            for (const secret of curr.secretEnvironmentVariables || []) {
-              acc[secret.key] = secret;
-            }
-            return acc;
-          },
-          {}
-        )
-      );
-      try {
-        await this.startRuntime(emulatableBackend);
-      } catch (e: any) {
-        this.logger.logLabeled(
-          "ERROR",
-          `Failed to start functions in ${emulatableBackend.functionsDir}: ${e}`
+      if (!emulatableBackend.bin?.startsWith("node")) {
+        this.logger.log("WARN", "--inspect-functions only supported for Node.js runtimes.");
+      } else {
+        // Since we're about to start a runtime to be shared by all the functions in this codebase,
+        // we need to make sure it has all the secrets used by any function in the codebase.
+        emulatableBackend.secretEnv = Object.values(
+          triggerDefinitions.reduce(
+            (acc: Record<string, backend.SecretEnvVar>, curr: EmulatedTriggerDefinition) => {
+              for (const secret of curr.secretEnvironmentVariables || []) {
+                acc[secret.key] = secret;
+              }
+              return acc;
+            },
+            {}
+          )
         );
+        try {
+          await this.startRuntime(emulatableBackend);
+        } catch (e: any) {
+          this.logger.logLabeled(
+            "ERROR",
+            `Failed to start functions in ${emulatableBackend.functionsDir}: ${e}`
+          );
+        }
       }
     }
   }
