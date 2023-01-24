@@ -411,7 +411,7 @@ export async function prepareFrameworks(
       config.rewrites.push(...rewrites);
       config.redirects.push(...redirects);
       config.headers.push(...headers);
-      config.trailingSlash = trailingSlash;
+      config.trailingSlash ??= trailingSlash;
       if (await pathExists(hostingDist)) await rm(hostingDist, { recursive: true });
       await mkdirp(hostingDist);
       await ɵcodegenPublicDirectory(getProjectPath(), hostingDist);
