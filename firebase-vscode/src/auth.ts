@@ -30,6 +30,8 @@ import {
   googleOrigin,
 } from "../../src/api";
 
+import * as vscode from 'vscode';
+
 // The wire protocol for an access token returned by Google.
 // When we actually refresh from the server we should always have
 // these optional fields, but when a user passes --token we may
@@ -269,6 +271,24 @@ function open(url: string): void {
   opn(url).catch((err) => {
     logger.debug("Unable to open URL: " + err.stack);
   });
+		// 	const panel = vscode.window.createWebviewPanel(
+		// 		'firebaseVscodePanel', // Identifies the type of the webview. Used internally
+		// 		'F I R E B A S E', // Title of the panel displayed to the user
+		// 		vscode.ViewColumn.Beside, // Editor column to show the new webview panel in.
+		// 		{} // Webview options. More on these later.
+		// 	);
+		// 	panel.webview.html =
+    //   `<!DOCTYPE html>
+    // <html lang="en">
+    // <head>
+    //     <meta charset="UTF-8">
+    //     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    //     <title>Cat Coding</title>
+    // </head>
+    // <body>
+    //     <iframe width="100%" height="100%" src='${url}'> </iframe>
+    // </body>
+    // </html>`;
 }
 
 // Always create a new error so that the stack is useful
@@ -500,7 +520,7 @@ async function loginRemotely(): Promise<UserCredentials> {
 async function loginWithLocalhostGoogle(port: number, userHint?: string): Promise<UserCredentials> {
   const callbackUrl = getCallbackUrl(port);
   const authUrl = getLoginUrl(callbackUrl, userHint);
-  const successTemplate = "../templates/loginSuccess.html";
+  const successTemplate = "../../templates/loginSuccess.html";
   const tokens = await loginWithLocalhost(
     port,
     callbackUrl,
@@ -522,7 +542,7 @@ async function loginWithLocalhostGoogle(port: number, userHint?: string): Promis
 async function loginWithLocalhostGitHub(port: number): Promise<string> {
   const callbackUrl = getCallbackUrl(port);
   const authUrl = getGithubLoginUrl(callbackUrl);
-  const successTemplate = "../templates/loginSuccessGithub.html";
+  const successTemplate = "../../templates/loginSuccessGithub.html";
   const tokens = await loginWithLocalhost(
     port,
     callbackUrl,
@@ -548,7 +568,7 @@ async function loginWithLocalhost<ResultType>(
       const queryCode = query.code;
 
       if (queryState !== _nonce || typeof queryCode !== "string") {
-        await respondWithFile(req, res, 400, "../templates/loginFailure.html");
+        await respondWithFile(req, res, 400, "../../templates/loginFailure.html");
         reject(new FirebaseError("Unexpected error while logging in"));
         server.close();
         return;
@@ -559,7 +579,7 @@ async function loginWithLocalhost<ResultType>(
         await respondWithFile(req, res, 200, successTemplate);
         resolve(tokens);
       } catch (err: any) {
-        await respondWithFile(req, res, 400, "../templates/loginFailure.html");
+        await respondWithFile(req, res, 400, "../../templates/loginFailure.html");
         reject(err);
       }
       server.close();
