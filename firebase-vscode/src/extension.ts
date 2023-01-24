@@ -73,7 +73,12 @@ class ThingProvider implements vscode.TreeDataProvider<Thing> {
 	private things = [];
 	private _onDidChangeTreeData: vscode.EventEmitter<Thing | undefined | null | void> = new vscode.EventEmitter<Thing | undefined | null | void>();
   readonly onDidChangeTreeData: vscode.Event<Thing | undefined | null | void> = this._onDidChangeTreeData.event;
-	constructor() { }
+	constructor() {
+		const account = getGlobalDefaultAccount();
+		if (account) {
+			this.things.push(new Thing(account.user.email, vscode.TreeItemCollapsibleState.None));
+		}
+	}
 
 	getTreeItem(element: Thing): vscode.TreeItem {
 		return element;
