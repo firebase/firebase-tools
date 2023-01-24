@@ -221,6 +221,7 @@ export interface Param {
   validationErrorMessage?: string;
   immutable?: boolean;
   example?: string;
+  advanced?: boolean;
 }
 
 export enum ParamType {
