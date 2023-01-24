@@ -433,6 +433,7 @@ export class FunctionsEmulator implements EmulatorInstance {
           /.+?[\\\/]node_modules[\\\/].+?/, // Ignore node_modules
           /(^|[\/\\])\../, // Ignore files which begin the a period
           /.+\.log/, // Ignore files which have a .log extension
+          /.+?[\\\/]venv[\\\/].+?/, // Ignore site-packages in venv
         ],
         persistent: true,
       });
@@ -1320,6 +1321,10 @@ export class FunctionsEmulator implements EmulatorInstance {
     const childProcess = runWithVirtualEnv(args, backend.functionsDir, {
       ...process.env,
       ...envs,
+      // Required to flush stdout/stderr immediately to the piped channels.
+      PYTHONUNBUFFERED: "1",
+      // Required to prevent flask development server to reload on code changes.
+      DEBUG: "False",
       HOST: "127.0.0.1",
       PORT: port.toString(),
     });
