@@ -1,8 +1,6 @@
 import { Bucket } from "@google-cloud/storage";
 import { expect } from "chai";
 import firebasePkg from "firebase/compat/app";
-// import "firebase/compat/storage";
-// import "firebase/compat/auth";
 import { applicationDefault, cert, deleteApp, getApp, initializeApp } from "firebase-admin/app";
 import { getStorage } from "firebase-admin/storage";
 import * as fs from "fs";
@@ -536,7 +534,8 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
           "contentEncoding",
           "contentType",
         ]);
-        // expect(metadata.type).to.be.eql("file");
+        // Unsure why `type` still exists in practice but not the typing.
+        expect(metadata["type"]).to.be.eql("file");
         expect(metadata.bucket).to.be.eql(storageBucket);
         expect(metadata.generation).to.be.a("string");
         // Firebase Storage automatically updates metadata with a download token on data or
