@@ -14885,7 +14885,6 @@ class Client {
                     }
                     this.logRequest(options);
                     try {
-                        console.log(fetchURL, fetchOptions);
                         res = await node_fetch__WEBPACK_IMPORTED_MODULE_5___default()(fetchURL, fetchOptions);
                     }
                     catch (thrown) {
@@ -15011,6 +15010,11 @@ function bodyToString(body) {
         }
     }
 }
+// TODO: this FormData obj is created in the auth.ts copy in the
+// extension subdir, which has its own duplicate deps, including FormData,
+// which means it doesn't think this FormData is an instance of that FormData.
+// Need to figure out how to manage issues with duplicate deps used by
+// duplicate source code in extension folders.
 function isStream(o) {
     return o instanceof stream__WEBPACK_IMPORTED_MODULE_1__.Readable || o instanceof form_data__WEBPACK_IMPORTED_MODULE_11__ || o._overheadLength;
 }
@@ -85476,6 +85480,10 @@ class ThingProvider {
         this.things = [];
         this._onDidChangeTreeData = new vscode__WEBPACK_IMPORTED_MODULE_0__.EventEmitter();
         this.onDidChangeTreeData = this._onDidChangeTreeData.event;
+        const account = (0,_auth__WEBPACK_IMPORTED_MODULE_1__.getGlobalDefaultAccount)();
+        if (account) {
+            this.things.push(new Thing(account.user.email, vscode__WEBPACK_IMPORTED_MODULE_0__.TreeItemCollapsibleState.None));
+        }
     }
     getTreeItem(element) {
         return element;

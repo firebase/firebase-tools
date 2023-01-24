@@ -516,6 +516,11 @@ function bodyToString(body: unknown): string {
   }
 }
 
+// TODO: this FormData obj is created in the auth.ts copy in the
+// extension subdir, which has its own duplicate deps, including FormData,
+// which means it doesn't think this FormData is an instance of that FormData.
+// Need to figure out how to manage issues with duplicate deps used by
+// duplicate source code in extension folders.
 function isStream(o: unknown): o is NodeJS.ReadableStream {
   return o instanceof Readable || o instanceof FormData || (o as any)._overheadLength;
 }
