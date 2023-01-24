@@ -48,10 +48,6 @@ import {
 
 const DEFAULT_BUILD_SCRIPT = ["next build"];
 const PUBLIC_DIR = "public";
-const DEFAULT_CONFIG: NextConfig = {
-  // trailingSlash defaults to false in Next.js: https://nextjs.org/docs/api-reference/next.config.js/trailing-slash
-  trailingSlash: false,
-};
 
 export const name = "Next.js";
 export const support = SupportLevel.Experimental;
@@ -99,7 +95,11 @@ export async function build(dir: string): Promise<BuildResult> {
   });
 
   const reasonsForBackend = [];
-  const { distDir, trailingSlash } = await getConfig(dir);
+  const {
+    distDir,
+    // trailingSlash defaults to false in Next.js: https://nextjs.org/docs/api-reference/next.config.js/trailing-slash
+    trailingSlash = false,
+  } = await getConfig(dir);
 
   if (await isUsingMiddleware(join(dir, distDir), false)) {
     reasonsForBackend.push("middleware");
@@ -439,7 +439,7 @@ async function getConfig(dir: string): Promise<NextConfig & { distDir: string }>
     if (gte(version, "12.0.0")) {
       const { default: loadConfig } = relativeRequire(dir, "next/dist/server/config");
       const { PHASE_PRODUCTION_BUILD } = relativeRequire(dir, "next/constants");
-      config = await loadConfig(PHASE_PRODUCTION_BUILD, dir, DEFAULT_CONFIG);
+      config = await loadConfig(PHASE_PRODUCTION_BUILD, dir, null);
     } else {
       try {
         config = await import(pathToFileURL(join(dir, "next.config.js")).toString());
