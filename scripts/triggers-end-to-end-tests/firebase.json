@@ -18,6 +18,10 @@
     {
       "codebase": "v2",
       "source": "v2"
+    },
+    {
+      "codebase": "python",
+      "source": "python"
     }
 
   ],

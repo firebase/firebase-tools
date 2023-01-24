@@ -45,6 +45,8 @@ const AUTH_BLOCKING_CREATE_V2_LOG =
   "========== AUTH BLOCKING CREATE V2 FUNCTION METADATA ==========";
 const AUTH_BLOCKING_SIGN_IN_V2_LOG =
   "========== AUTH BLOCKING SIGN IN V2 FUNCTION METADATA ==========";
+/* Python */
+const PY_RTDB_FUNCTION_LOG = "========== PYTHON RTDB FUNCTION ==========";
 
 interface ConnectionInfo {
   host: string;
@@ -146,6 +148,9 @@ export class TriggerEndToEndTest extends EmulatorEndToEndTest {
   authBlockingCreateV2TriggerCount = 0;
   authBlockingSignInV2TriggerCount = 0;
   rtdbV2TriggerCount = 0;
+
+  /* Python Functions */
+  pyRTDBTriggerCount = 0;
 
   rtdbFromFirestore = false;
   firestoreFromRtdb = false;
@@ -276,6 +281,11 @@ export class TriggerEndToEndTest extends EmulatorEndToEndTest {
       }
       if (data.includes(RTDB_V2_FUNCTION_LOG)) {
         this.rtdbV2TriggerCount++;
+      }
+
+      /* Python */
+      if (data.includes(PY_RTDB_FUNCTION_LOG)) {
+        this.pyRTDBTriggerCount++;
       }
     });
 
