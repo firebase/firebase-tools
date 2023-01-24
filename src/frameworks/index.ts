@@ -5,7 +5,7 @@ import { readdirSync, statSync } from "fs";
 import { pathToFileURL } from "url";
 import { IncomingMessage, ServerResponse } from "http";
 import { copyFile, readdir, rm, writeFile } from "fs/promises";
-import { mkdirp, pathExists, stat, access } from "fs-extra";
+import { mkdirp, pathExists, stat } from "fs-extra";
 import * as clc from "colorette";
 import * as process from "node:process";
 import * as semver from "semver";
