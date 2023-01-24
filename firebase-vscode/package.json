@@ -10,14 +10,46 @@
     "Other"
   ],
   "activationEvents": [
+    "*",
     "onCommand:firebase-vscode.helloWorld"
   ],
   "main": "./out/extension.js",
   "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "firebase-vscode",
+          "title": "F i r e b a s e",
+          "icon": "resources/dark/dependency.svg"
+        }
+      ]
+    },
+    "views": {
+      "firebase-vscode": [{
+          "id": "thingsTree",
+          "name": "Things Tree"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "thingsTree",
+        "when": "",
+        "contents": "No user logged in.\n[LOG IN](command:firebase-vscode.login)"
+      }
+    ],
     "commands": [
       {
         "command": "firebase-vscode.helloWorld",
         "title": "ABCD"
+      },
+      {
+        "command": "firebase-vscode.start",
+        "title": "Start Firebase VSCode"
+      },
+      {
+        "command": "firebase-vscode.login",
+        "title": "Log in to Firebase"
       }
     ]
   },
