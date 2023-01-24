@@ -517,5 +517,5 @@ function bodyToString(body: unknown): string {
 }
 
 function isStream(o: unknown): o is NodeJS.ReadableStream {
-  return o instanceof Readable || o instanceof FormData;
+  return o instanceof Readable || o instanceof FormData || (o as any)._overheadLength;
 }
