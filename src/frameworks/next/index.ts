@@ -172,7 +172,7 @@ export async function build(dir: string): Promise<BuildResult> {
   }));
 
   const isEveryRedirectSupported = nextJsRedirects
-    .filter(it => !it.internal)
+    .filter((it) => !it.internal)
     .every(isRedirectSupportedByHosting);
   if (!isEveryRedirectSupported) {
     reasonsForBackend.push("advanced redirects");
