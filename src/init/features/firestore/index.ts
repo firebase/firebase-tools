@@ -1,6 +1,5 @@
 import { logger } from "../../../logger";
 import * as apiEnabled from "../../../ensureApiEnabled";
-import { ensureLocationSet } from "../../../ensureCloudResourceLocation";
 import { requirePermissions } from "../../../requirePermissions";
 import { checkDatabaseType } from "../../../firestore/checkDatabaseType";
 import * as rules from "./rules";
@@ -43,7 +42,6 @@ async function checkProjectSetup(setup: any, config: any, options: any) {
     );
   }
 
-  ensureLocationSet(setup.projectLocation, "Cloud Firestore");
   await requirePermissions({ ...options, project: setup.projectId });
 }
 
