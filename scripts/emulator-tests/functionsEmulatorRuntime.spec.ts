@@ -305,7 +305,7 @@ describe("FunctionsEmulator-Runtime", function () {
               .firestore.document("test/test")
               .onCreate(() => {
                 console.log(
-                  JSON.stringify(require("firebase-admin").firestore.FieldValue.increment(4))
+                  JSON.stringify(require("firebase-admin/firestore").FieldValue.increment(4))
                 );
                 return Promise.resolve();
               }),
