@@ -95,6 +95,7 @@
         "@types/glob": "^7.1.1",
         "@types/inquirer": "^8.1.3",
         "@types/js-yaml": "^3.12.2",
+        "@types/jsonstream": "^0.8.30",
         "@types/jsonwebtoken": "^8.3.8",
         "@types/libsodium-wrappers": "^0.7.9",
         "@types/lodash": "^4.14.149",
@@ -2629,6 +2630,15 @@
       "resolved": "https://registry.npmjs.org/@types/json-schema/-/json-schema-7.0.9.tgz",
       "integrity": "sha512-qcUXuemtEu+E5wZSJHNxUXeCZhAfXKQ41D+duX+VYPde7xyEVZci+/oXKJL13tnRs9lR2pr4fod59GT6/X1/yQ==",
       "dev": true
+    },
+    "node_modules/@types/jsonstream": {
+      "version": "0.8.30",
+      "resolved": "https://registry.npmjs.org/@types/jsonstream/-/jsonstream-0.8.30.tgz",
+      "integrity": "sha512-KqHs2eAapKL7ZKUiKI/giUYPVgkoDXkVGFehk3goo+3Q8qwxVVRC3iwg+hK/THORbcri4RRxTtlm3JoSY1KZLQ==",
+      "dev": true,
+      "dependencies": {
+        "@types/node": "*"
+      }
     },
     "node_modules/@types/jsonwebtoken": {
       "version": "8.3.8",
@@ -17137,6 +17147,15 @@
       "resolved": "https://registry.npmjs.org/@types/json-schema/-/json-schema-7.0.9.tgz",
       "integrity": "sha512-qcUXuemtEu+E5wZSJHNxUXeCZhAfXKQ41D+duX+VYPde7xyEVZci+/oXKJL13tnRs9lR2pr4fod59GT6/X1/yQ==",
       "dev": true
+    },
+    "@types/jsonstream": {
+      "version": "0.8.30",
+      "resolved": "https://registry.npmjs.org/@types/jsonstream/-/jsonstream-0.8.30.tgz",
+      "integrity": "sha512-KqHs2eAapKL7ZKUiKI/giUYPVgkoDXkVGFehk3goo+3Q8qwxVVRC3iwg+hK/THORbcri4RRxTtlm3JoSY1KZLQ==",
+      "dev": true,
+      "requires": {
+        "@types/node": "*"
+      }
     },
     "@types/jsonwebtoken": {
       "version": "8.3.8",

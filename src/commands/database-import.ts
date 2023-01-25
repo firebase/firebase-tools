@@ -26,6 +26,10 @@ export const command = new Command("database:import <path> [infile]")
     "suppress any Cloud functions triggered by this operation, default to true",
     true
   )
+  .option(
+    "--only <dataPath>",
+    "import only data at this path in the JSON file (if omitted, use root)"
+  )
   .before(requirePermissions, ["firebasedatabase.instances.update"])
   .before(requireDatabaseInstance)
   .before(populateInstanceDetails)
@@ -33,6 +37,10 @@ export const command = new Command("database:import <path> [infile]")
   .action(async (path: string, infile, options) => {
     if (!path.startsWith("/")) {
       throw new FirebaseError("Path must begin with /");
+    }
+
+    if (options.only && !options.only.startsWith("/")) {
+      throw new FirebaseError("Data path must begin with /");
     }
 
     if (!infile) {
@@ -60,9 +68,12 @@ export const command = new Command("database:import <path> [infile]")
     }
 
     const inStream = fs.createReadStream(infile);
-    const importer = new DatabaseImporter(dbUrl, inStream);
+    const dataPath = options.only || "/";
+    const importer = new DatabaseImporter(dbUrl, inStream, dataPath);
+
+    let responses;
     try {
-      await importer.execute();
+      responses = await importer.execute();
     } catch (err: any) {
       if (err instanceof FirebaseError) {
         throw err;
@@ -71,7 +82,12 @@ export const command = new Command("database:import <path> [infile]")
       throw new FirebaseError(`Unexpected error while importing data: ${err}`, { exit: 2 });
     }
 
-    utils.logSuccess("Data persisted successfully");
+    if (responses.length) {
+      utils.logSuccess("Data persisted successfully");
+    } else {
+      utils.logWarning("No data was persisted. Check the data path supplied.");
+    }
+
     logger.info();
     logger.info(
       clc.bold("View data at:"),
