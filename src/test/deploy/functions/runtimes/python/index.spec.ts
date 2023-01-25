@@ -4,7 +4,6 @@ import * as sinon from "sinon";
 import * as python from "../../../../../deploy/functions/runtimes/python";
 
 const PROJECT_ID = "test-project";
-const PROJECT_DIR = "/some/path";
 const SOURCE_DIR = "/some/path/fns";
 
 describe("PythonDelegate", () => {
