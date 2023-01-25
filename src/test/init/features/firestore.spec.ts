@@ -46,15 +46,6 @@ describe("firestore", () => {
       expect(_.get(setup, "config.firestore")).to.deep.equal({});
     });
 
-    it("should error when cloud resource location is not set", async () => {
-      const setup = { config: {}, projectId: "my-project-123" };
-
-      await expect(firestore.doSetup(setup, {}, {})).to.eventually.be.rejectedWith(
-        FirebaseError,
-        "Cloud resource location is not set"
-      );
-    });
-
     it("should error when the firestore API is not enabled", async () => {
       checkApiStub.returns(false);
 
