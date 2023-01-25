@@ -512,6 +512,10 @@ export interface components {
     GoogleCloudIdentitytoolkitV1GetRecaptchaParamResponse: {
       kind?: string;
       /**
+       * The producer project number used to generate PIA tokens
+       */
+      producerProjectNumber?: string;
+      /**
        * The reCAPTCHA v2 site key used to invoke the reCAPTCHA service. Always present.
        */
       recaptchaSiteKey?: string;
