@@ -11,6 +11,14 @@ import { FirebaseError } from "../error";
 import { EmulatorRegistry } from "./registry";
 import { SignatureType } from "./functionsEmulatorShared";
 import { CloudEvent } from "./events/types";
+import { execSync } from "child_process";
+
+// Finds processes with "pubsub-emulator" in the description and runs `kill` if any exist
+// Since the pubsub emulator doesn't export any data, force-killing will not affect export-on-exit
+// Note the `[p]` is a workaround to avoid selecting the currently running `ps` process.
+const PUBSUB_KILL_COMMAND =
+  "pubsub_pids=$(ps aux | grep '[p]ubsub-emulator' | awk '{print $2}');" +
+  " if [ ! -z '$pubsub_pids' ]; then kill -9 $pubsub_pids; fi;";
 
 export interface PubsubEmulatorArgs {
   projectId: string;
@@ -62,7 +70,15 @@ export class PubsubEmulator implements EmulatorInstance {
   }
 
   async stop(): Promise<void> {
-    await downloadableEmulators.stop(Emulators.PUBSUB);
+    try {
+      await downloadableEmulators.stop(Emulators.PUBSUB);
+    } catch (e: unknown) {
+      this.logger.logLabeled("DEBUG", "pubsub", JSON.stringify(e));
+      if (process.platform !== "win32") {
+        const buffer = execSync(PUBSUB_KILL_COMMAND);
+        this.logger.logLabeled("DEBUG", "pubsub", "Pubsub kill output: " + JSON.stringify(buffer));
+      }
+    }
   }
 
   getInfo(): EmulatorInfo {

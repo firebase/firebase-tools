@@ -43,12 +43,14 @@ const TEST_INSTANCE: ExtensionInstance = {
             type: ParamType.SECRET,
           },
         ],
+        systemParams: [],
       },
     },
     params: {
       SECRET1: "projects/test-project/secrets/secret1/versions/1",
       SECRET2: "projects/test-project/secrets/secret2/versions/1",
     },
+    systemParams: {},
   },
 };
 

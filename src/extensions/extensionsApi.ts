@@ -73,13 +73,15 @@ export async function createInstance(args: {
   instanceId: string;
   extensionSource?: ExtensionSource;
   extensionVersionRef?: string;
-  params: { [key: string]: string };
+  params: Record<string, string>;
+  systemParams?: Record<string, string>;
   allowedEventTypes?: string[];
   eventarcChannel?: string;
   validateOnly?: boolean;
 }): Promise<ExtensionInstance> {
   const config: any = {
     params: args.params,
+    systemParams: args.systemParams ?? {},
     allowedEventTypes: args.allowedEventTypes,
     eventarcChannel: args.eventarcChannel,
   };
@@ -188,7 +190,8 @@ export async function listInstances(projectId: string): Promise<ExtensionInstanc
 export async function configureInstance(args: {
   projectId: string;
   instanceId: string;
-  params: { [option: string]: string };
+  params: Record<string, string>;
+  systemParams?: Record<string, string>;
   canEmitEvents: boolean;
   allowedEventTypes?: string[];
   eventarcChannel?: string;
@@ -215,6 +218,10 @@ export async function configureInstance(args: {
     reqBody.data.config.eventarcChannel = args.eventarcChannel;
   }
   reqBody.updateMask += ",config.allowed_event_types,config.eventarc_channel";
+  if (args.systemParams) {
+    reqBody.data.config.systemParams = args.systemParams;
+    reqBody.updateMask += ",config.system_params";
+  }
   return patchInstance(reqBody);
 }
 
@@ -233,7 +240,8 @@ export async function updateInstance(args: {
   projectId: string;
   instanceId: string;
   extensionSource: ExtensionSource;
-  params?: { [option: string]: string };
+  params?: Record<string, string>;
+  systemParams?: Record<string, string>;
   canEmitEvents: boolean;
   allowedEventTypes?: string[];
   eventarcChannel?: string;
@@ -248,6 +256,10 @@ export async function updateInstance(args: {
   if (args.params) {
     body.config.params = args.params;
     updateMask += ",config.params";
+  }
+  if (args.systemParams) {
+    body.config.systemParams = args.systemParams;
+    updateMask += ",config.system_params";
   }
   if (args.canEmitEvents) {
     if (args.allowedEventTypes === undefined || args.eventarcChannel === undefined) {
@@ -283,7 +295,8 @@ export async function updateInstanceFromRegistry(args: {
   projectId: string;
   instanceId: string;
   extRef: string;
-  params?: { [option: string]: string };
+  params?: Record<string, string>;
+  systemParams?: Record<string, string>;
   canEmitEvents: boolean;
   allowedEventTypes?: string[];
   eventarcChannel?: string;
@@ -300,6 +313,10 @@ export async function updateInstanceFromRegistry(args: {
   if (args.params) {
     body.config.params = args.params;
     updateMask += ",config.params";
+  }
+  if (args.systemParams) {
+    body.config.systemParams = args.systemParams;
+    updateMask += ",config.system_params";
   }
   if (args.canEmitEvents) {
     if (args.allowedEventTypes === undefined || args.eventarcChannel === undefined) {

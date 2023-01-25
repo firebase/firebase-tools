@@ -72,6 +72,7 @@ const SPEC = {
   resources: [],
   sourceUrl: "test.com",
   params: TEST_PARAMS,
+  systemParams: [],
 };
 
 describe("paramHelper", () => {
@@ -305,12 +306,14 @@ describe("paramHelper", () => {
               roles: [],
               resources: [],
               params: [...TEST_PARAMS],
+              systemParams: [],
               sourceUrl: "",
             },
           },
           name: "test",
           createTime: "now",
           params,
+          systemParams: {},
         },
         name: "test",
         createTime: "now",

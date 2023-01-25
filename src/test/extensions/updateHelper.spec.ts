@@ -33,6 +33,7 @@ const SPEC: ExtensionSpec = {
   billingRequired: true,
   sourceUrl: "test.com",
   params: [],
+  systemParams: [],
 };
 
 const SOURCE = {

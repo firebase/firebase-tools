@@ -5,12 +5,13 @@ import * as fs from "fs-extra";
 import { ExtensionSpec, Resource } from "../types";
 import { FirebaseError } from "../../error";
 import { substituteParams } from "../extensionsHelper";
-import { parseRuntimeVersion } from "../../emulator/functionsEmulatorUtils";
+import { getResourceRuntime } from "../utils";
 
 const SPEC_FILE = "extension.yaml";
 const POSTINSTALL_FILE = "POSTINSTALL.md";
 const validFunctionTypes = [
   "firebaseextensions.v1beta.function",
+  "firebaseextensions.v1beta.v2function",
   "firebaseextensions.v1beta.scheduledFunction",
 ];
 
@@ -78,6 +79,9 @@ export function readFileFromDirectory(
   });
 }
 
+/**
+ * Substitue parameters of function resources in the extensions spec.
+ */
 export function getFunctionResourcesWithParamSubstitution(
   extensionSpec: ExtensionSpec,
   params: { [key: string]: string }
@@ -88,25 +92,36 @@ export function getFunctionResourcesWithParamSubstitution(
   return substituteParams<Resource[]>(rawResources, params);
 }
 
+/**
+ * Get properties associated with the function resource.
+ */
 export function getFunctionProperties(resources: Resource[]) {
   return resources.map((r) => r.properties);
 }
 
-export function getNodeVersion(resources: Resource[]): number {
-  const invalidRuntimes: string[] = [];
-  const versions = resources.map((r: Resource) => {
-    if (r.properties?.runtime) {
-      const runtimeName = r.properties?.runtime as string;
-      const runtime = parseRuntimeVersion(runtimeName);
-      if (!runtime) {
-        invalidRuntimes.push(runtimeName);
-      } else {
-        return runtime;
-      }
-    }
-    return 14;
-  });
+export const DEFAULT_RUNTIME = "nodejs14";
 
+/**
+ * Get runtime associated with the resources. If multiple runtimes exists, choose the latest runtime.
+ * e.g. prefer nodejs14 over nodejs12.
+ */
+export function getRuntime(resources: Resource[]): string {
+  if (resources.length === 0) {
+    return DEFAULT_RUNTIME;
+  }
+
+  const invalidRuntimes: string[] = [];
+  const runtimes = resources.map((r: Resource) => {
+    const runtime = getResourceRuntime(r);
+    if (!runtime) {
+      return DEFAULT_RUNTIME;
+    }
+    if (!/^(nodejs)?([0-9]+)/.test(runtime)) {
+      invalidRuntimes.push(runtime);
+      return DEFAULT_RUNTIME;
+    }
+    return runtime;
+  });
   if (invalidRuntimes.length) {
     throw new FirebaseError(
       `The following runtimes are not supported by the Emulator Suite: ${invalidRuntimes.join(
@@ -114,5 +129,8 @@ export function getNodeVersion(resources: Resource[]): number {
       )}. \n Only Node runtimes are supported.`
     );
   }
-  return Math.max(...versions);
+  // Assumes that all runtimes target the nodejs.
+  // Rely on lexicographically order of nodejs runtime to pick the latest version.
+  // e.g. nodejs12 < nodejs14 < nodejs18 < nodejs20 ...
+  return runtimes.sort()[runtimes.length - 1];
 }

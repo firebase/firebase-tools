@@ -6,6 +6,7 @@ import * as reporter from "../../../../deploy/functions/release/reporter";
 import * as executor from "../../../../deploy/functions/release/executor";
 import * as gcfNSV2 from "../../../../gcp/cloudfunctionsv2";
 import * as gcfNS from "../../../../gcp/cloudfunctions";
+import * as eventarcNS from "../../../../gcp/eventarc";
 import * as pollerNS from "../../../../operation-poller";
 import * as pubsubNS from "../../../../gcp/pubsub";
 import * as schedulerNS from "../../../../gcp/cloudscheduler";
@@ -24,6 +25,7 @@ describe("Fabricator", () => {
   // Stub all GCP APIs to make sure this test is hermetic
   let gcf: sinon.SinonStubbedInstance<typeof gcfNS>;
   let gcfv2: sinon.SinonStubbedInstance<typeof gcfNSV2>;
+  let eventarc: sinon.SinonStubbedInstance<typeof eventarcNS>;
   let poller: sinon.SinonStubbedInstance<typeof pollerNS>;
   let pubsub: sinon.SinonStubbedInstance<typeof pubsubNS>;
   let scheduler: sinon.SinonStubbedInstance<typeof schedulerNS>;
@@ -35,6 +37,7 @@ describe("Fabricator", () => {
   beforeEach(() => {
     gcf = sinon.stub(gcfNS);
     gcfv2 = sinon.stub(gcfNSV2);
+    eventarc = sinon.stub(eventarcNS);
     poller = sinon.stub(pollerNS);
     pubsub = sinon.stub(pubsubNS);
     scheduler = sinon.stub(schedulerNS);
@@ -58,6 +61,10 @@ describe("Fabricator", () => {
     gcfv2.createFunction.rejects(new Error("unexpected gcfv2.createFunction"));
     gcfv2.updateFunction.rejects(new Error("unexpected gcfv2.updateFunction"));
     gcfv2.deleteFunction.rejects(new Error("unexpected gcfv2.deleteFunction"));
+    eventarc.createChannel.rejects(new Error("unexpected eventarc.createChannel"));
+    eventarc.deleteChannel.rejects(new Error("unexpected eventarc.deleteChannel"));
+    eventarc.getChannel.rejects(new Error("unexpected eventarc.getChannel"));
+    eventarc.updateChannel.rejects(new Error("unexpected eventarc.updateChannel"));
     run.getIamPolicy.rejects(new Error("unexpected run.getIamPolicy"));
     run.setIamPolicy.rejects(new Error("unexpected run.setIamPolicy"));
     run.setInvokerCreate.rejects(new Error("unexpected run.setInvokerCreate"));
@@ -478,6 +485,97 @@ describe("Fabricator", () => {
       await expect(fab.createV2Function(ep)).to.be.rejectedWith(
         reporter.DeploymentError,
         "create topic"
+      );
+    });
+
+    it("handles already existing eventarc channels", async () => {
+      eventarc.createChannel.callsFake(({ name }) => {
+        expect(name).to.equal("channel");
+        const err = new Error("Already exists");
+        (err as any).status = 409;
+        return Promise.reject(err);
+      });
+      gcfv2.createFunction.resolves({ name: "op", done: false });
+      poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
+
+      const ep = endpoint(
+        {
+          eventTrigger: {
+            eventType: "custom.test.event",
+            channel: "channel",
+            retry: false,
+          },
+        },
+        {
+          platform: "gcfv2",
+        }
+      );
+
+      await fab.createV2Function(ep);
+      expect(eventarc.createChannel).to.have.been.called;
+      expect(gcfv2.createFunction).to.have.been.called;
+    });
+
+    it("creates channels if necessary", async () => {
+      const channelName = "channel";
+      eventarc.createChannel.callsFake(({ name }) => {
+        expect(name).to.equal(channelName);
+        return Promise.resolve({
+          name: "op-resource-name",
+          metadata: {
+            createTime: "",
+            target: "",
+            verb: "",
+            requestedCancellation: false,
+            apiVersion: "",
+          },
+          done: false,
+        });
+      });
+      gcfv2.createFunction.resolves({ name: "op", done: false });
+      poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
+
+      const ep = endpoint(
+        {
+          eventTrigger: {
+            eventType: "custom.test.event",
+            channel: channelName,
+            retry: false,
+          },
+        },
+        {
+          platform: "gcfv2",
+        }
+      );
+
+      await fab.createV2Function(ep);
+      expect(eventarc.createChannel).to.have.been.calledOnceWith({ name: channelName });
+      expect(poller.pollOperation).to.have.been.called;
+    });
+
+    it("wraps errors thrown while creating channels", async () => {
+      eventarc.createChannel.callsFake(() => {
+        const err = new Error("🤷‍♂️");
+        (err as any).status = 400;
+        return Promise.reject(err);
+      });
+
+      const ep = endpoint(
+        {
+          eventTrigger: {
+            eventType: "custom.test.event",
+            channel: "channel",
+            retry: false,
+          },
+        },
+        {
+          platform: "gcfv2",
+        }
+      );
+
+      await expect(fab.createV2Function(ep)).to.eventually.be.rejectedWith(
+        reporter.DeploymentError,
+        "upsert eventarc channel"
       );
     });
 
@@ -1168,7 +1266,7 @@ describe("Fabricator", () => {
       await fab.setTrigger(endpoint({ httpsTrigger: {} }));
     });
 
-    it("does nothing for event triggers", async () => {
+    it("does nothing for event triggers without channels", async () => {
       // all APIs throw by default
       const ep = endpoint({
         eventTrigger: {

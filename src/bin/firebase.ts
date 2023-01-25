@@ -11,7 +11,7 @@ if (!semver.satisfies(nodeVersion, pkg.engines.node)) {
   process.exit(1);
 }
 
-import * as updateNotifierPkg from "update-notifier";
+import * as updateNotifierPkg from "update-notifier-cjs";
 import * as clc from "colorette";
 import * as TerminalRenderer from "marked-terminal";
 const updateNotifier = updateNotifierPkg({ pkg });
@@ -38,7 +38,7 @@ import * as winston from "winston";
 let args = process.argv.slice(2);
 let cmd: Command;
 
-function findAvailableLogFile() {
+function findAvailableLogFile(): string {
   const candidates = ["firebase-debug.log"];
   for (let i = 1; i < 10; i++) {
     candidates.push(`firebase-debug.${i}.log`);

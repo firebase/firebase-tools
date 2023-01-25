@@ -21,6 +21,8 @@ interface PackagedSourceInfo {
   hash: string;
 }
 
+type SortedConfig = string | { key: string; value: SortedConfig }[];
+
 // TODO(inlined): move to a file that's not about uploading source code
 export async function getFunctionsConfig(projectId: string): Promise<Record<string, unknown>> {
   try {
@@ -88,8 +90,11 @@ async function packageSource(
       });
     }
     if (typeof runtimeConfig !== "undefined") {
+      // In order for hash to be consistent, configuration object tree must be sorted by key, only possible with arrays.
+      const runtimeConfigHashString = JSON.stringify(convertToSortedKeyValueArray(runtimeConfig));
+      hashes.push(runtimeConfigHashString);
+
       const runtimeConfigString = JSON.stringify(runtimeConfig, null, 2);
-      hashes.push(runtimeConfigString);
       archive.append(runtimeConfigString, {
         name: CONFIG_DEST_FILE,
         mode: 420 /* 0o644 */,
@@ -124,4 +129,14 @@ export async function prepareFunctionsUpload(
   runtimeConfig?: backend.RuntimeConfigValues
 ): Promise<PackagedSourceInfo | undefined> {
   return packageSource(sourceDir, config, runtimeConfig);
+}
+
+export function convertToSortedKeyValueArray(config: any): SortedConfig {
+  if (typeof config !== "object" || config === null) return config;
+
+  return Object.keys(config)
+    .sort()
+    .map((key) => {
+      return { key, value: convertToSortedKeyValueArray(config[key]) };
+    });
 }

@@ -5,6 +5,7 @@ import * as clc from "colorette";
 import * as http from "http";
 import * as jwt from "jsonwebtoken";
 import * as cors from "cors";
+import * as semver from "semver";
 import { URL } from "url";
 import { EventEmitter } from "events";
 
@@ -41,7 +42,7 @@ import { EmulatorLogger, Verbosity } from "./emulatorLogger";
 import { RuntimeWorker, RuntimeWorkerPool } from "./functionsRuntimeWorker";
 import { PubsubEmulator } from "./pubsubEmulator";
 import { FirebaseError } from "../error";
-import { WorkQueue } from "./workQueue";
+import { WorkQueue, Work } from "./workQueue";
 import { allSettled, connectableHostname, createDestroyer, debounce } from "../utils";
 import { getCredentialPathAsync } from "../defaultCredentials";
 import {
@@ -85,8 +86,8 @@ export interface EmulatableBackend {
   secretEnv: backend.SecretEnvVar[];
   codebase: string;
   predefinedTriggers?: ParsedTriggerDefinition[];
-  nodeMajorVersion?: number;
-  nodeBinary?: string;
+  runtime?: string;
+  bin?: string;
   extensionInstanceId?: string;
   extension?: Extension; // Only present for published extensions
   extensionVersion?: ExtensionVersion; // Only present for published extensions
@@ -116,7 +117,7 @@ export interface FunctionsEmulatorArgs {
   quiet?: boolean;
   disabledRuntimeFeatures?: FunctionsRuntimeFeatures;
   debugPort?: number;
-  remoteEmulators?: { [key: string]: EmulatorInfo };
+  remoteEmulators?: Record<string, EmulatorInfo>;
   adminSdkConfig?: AdminSdkConfig;
   projectAlias?: string;
 }
@@ -269,9 +270,11 @@ export class FunctionsEmulator implements EmulatorInstance {
     const listBackendsRoute = `/backends`;
 
     const httpsHandler: express.RequestHandler = (req, res) => {
-      this.workQueue.submit(() => {
+      const work: Work = () => {
         return this.handleHttpsTrigger(req, res);
-      });
+      };
+      work.type = `${req.path}-${new Date().toISOString()}`;
+      this.workQueue.submit(work);
     };
 
     const multicastHandler: express.RequestHandler = (req: express.Request, res) => {
@@ -291,7 +294,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
       const { host, port } = this.getInfo();
       triggers.forEach((triggerId) => {
-        this.workQueue.submit(() => {
+        const work: Work = () => {
           return new Promise<void>((resolve, reject) => {
             const trigReq = http.request({
               host: connectableHostname(host),
@@ -305,7 +308,9 @@ export class FunctionsEmulator implements EmulatorInstance {
             trigReq.end();
             resolve();
           });
-        });
+        };
+        work.type = `${triggerId}-${new Date().toISOString()}`;
+        this.workQueue.submit(work);
       });
       res.json({ status: "multicast_acknowledged" });
     };
@@ -332,7 +337,12 @@ export class FunctionsEmulator implements EmulatorInstance {
     const record = this.getTriggerRecordByKey(this.getTriggerKey(trigger));
     const pool = this.workerPools[record.backend.codebase];
     if (!pool.readyForWork(trigger.id)) {
-      await this.startRuntime(record.backend, trigger);
+      try {
+        await this.startRuntime(record.backend, trigger);
+      } catch (e: any) {
+        this.logger.logLabeled("ERROR", `Failed to start runtime for ${trigger.id}: ${e}`);
+        return;
+      }
     }
     const worker = pool.getIdleWorker(trigger.id)!;
     const reqBody = JSON.stringify(body);
@@ -356,9 +366,6 @@ export class FunctionsEmulator implements EmulatorInstance {
   }
 
   async start(): Promise<void> {
-    for (const backend of this.args.emulatableBackends) {
-      backend.nodeBinary = this.getNodeBinary(backend);
-    }
     const credentialEnv = await this.getCredentialsEnvironment();
     for (const e of this.args.emulatableBackends) {
       e.env = { ...credentialEnv, ...e.env };
@@ -448,17 +455,19 @@ export class FunctionsEmulator implements EmulatorInstance {
         projectId: this.args.projectId,
         projectDir: this.args.projectDir,
         sourceDir: emulatableBackend.functionsDir,
+        runtime: emulatableBackend.runtime,
       };
-      if (emulatableBackend.nodeMajorVersion) {
-        runtimeDelegateContext.runtime = `nodejs${emulatableBackend.nodeMajorVersion}`;
-      }
       const runtimeDelegate = await runtimes.getRuntimeDelegate(runtimeDelegateContext);
       logger.debug(`Validating ${runtimeDelegate.name} source`);
       await runtimeDelegate.validate();
       logger.debug(`Building ${runtimeDelegate.name} source`);
       await runtimeDelegate.build();
-      logger.debug(`Analyzing ${runtimeDelegate.name} backend spec`);
-      // Don't include user envs when parsing triggers, but we need some of the options for handling params
+
+      // Retrieve information from the runtime delegate.
+      emulatableBackend.runtime = runtimeDelegate.runtime;
+      emulatableBackend.bin = runtimeDelegate.bin;
+
+      // Don't include user envs when parsing triggers. Do include user envs when resolving parameter values
       const firebaseConfig = this.getFirebaseConfig();
       const environment = {
         ...this.getSystemEnvs(),
@@ -471,12 +480,13 @@ export class FunctionsEmulator implements EmulatorInstance {
         projectId: this.args.projectId,
         projectAlias: this.args.projectAlias,
       };
+      const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
       const discoveredBuild = await runtimeDelegate.discoverBuild(runtimeConfig, environment);
       const resolution = await resolveBackend(
         discoveredBuild,
         JSON.parse(firebaseConfig),
         userEnvOpt,
-        environment
+        userEnvs
       );
       const discoveredBackend = resolution.backend;
       const endpoints = backend.allEndpoints(discoveredBackend);
@@ -494,12 +504,6 @@ export class FunctionsEmulator implements EmulatorInstance {
    * TODO(b/216167890): Gracefully handle removal of deleted function definitions
    */
   async loadTriggers(emulatableBackend: EmulatableBackend, force = false): Promise<void> {
-    if (!emulatableBackend.nodeBinary) {
-      throw new FirebaseError(
-        `No node binary for ${emulatableBackend.functionsDir}. This should never happen.`
-      );
-    }
-
     let triggerDefinitions: EmulatedTriggerDefinition[] = [];
     try {
       triggerDefinitions = await this.discoverTriggers(emulatableBackend);
@@ -589,6 +593,7 @@ export class FunctionsEmulator implements EmulatorInstance {
           case Constants.SERVICE_REALTIME_DATABASE:
             added = await this.addRealtimeDatabaseTrigger(
               this.args.projectId,
+              definition.id,
               key,
               definition.eventTrigger,
               signature,
@@ -652,11 +657,30 @@ export class FunctionsEmulator implements EmulatorInstance {
         this.logger.logLabeled("SUCCESS", `functions[${definition.id}]`, msg);
       }
     }
-
-    // In debug mode, we eagerly start a runtime process to allow debuggers to attach
+    // In debug mode, we eagerly start the runtime processes to allow debuggers to attach
     // before invoking a function.
     if (this.args.debugPort) {
-      await this.startRuntime(emulatableBackend);
+      // Since we're about to start a runtime to be shared by all the functions in this codebase,
+      // we need to make sure it has all the secrets used by any function in the codebase.
+      emulatableBackend.secretEnv = Object.values(
+        triggerDefinitions.reduce(
+          (acc: Record<string, backend.SecretEnvVar>, curr: EmulatedTriggerDefinition) => {
+            for (const secret of curr.secretEnvironmentVariables || []) {
+              acc[secret.key] = secret;
+            }
+            return acc;
+          },
+          {}
+        )
+      );
+      try {
+        await this.startRuntime(emulatableBackend);
+      } catch (e: any) {
+        this.logger.logLabeled(
+          "ERROR",
+          `Failed to start functions in ${emulatableBackend.functionsDir}: ${e}`
+        );
+      }
     }
   }
 
@@ -745,6 +769,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
   private getV2DatabaseApiAttributes(
     projectId: string,
+    id: string,
     key: string,
     eventTrigger: EventTrigger,
     region: string
@@ -758,6 +783,15 @@ export class FunctionsEmulator implements EmulatorInstance {
     const ref = eventTrigger.eventFilterPathPatterns?.ref;
     if (!ref) {
       throw new FirebaseError("A database reference must be supplied.");
+    }
+
+    // TODO(colerogers): yank/change if RTDB emulator ever supports multiple regions
+    if (region !== "us-central1") {
+      this.logger.logLabeled(
+        "WARN",
+        `functions[${id}]`,
+        `function region is defined outside the database region, will not trigger.`
+      );
     }
 
     // The 'namespacePattern' determines that we are using the v2 interface
@@ -777,6 +811,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
   async addRealtimeDatabaseTrigger(
     projectId: string,
+    id: string,
     key: string,
     eventTrigger: EventTrigger,
     signature: SignatureType,
@@ -788,7 +823,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     const { bundle, apiPath, instance } =
       signature === "cloudevent"
-        ? this.getV2DatabaseApiAttributes(projectId, key, eventTrigger, region)
+        ? this.getV2DatabaseApiAttributes(projectId, id, key, eventTrigger, region)
         : this.getV1DatabaseApiAttributes(projectId, key, eventTrigger);
 
     logger.debug(`addRealtimeDatabaseTrigger[${instance}]`, JSON.stringify(bundle));
@@ -1000,72 +1035,6 @@ export class FunctionsEmulator implements EmulatorInstance {
     triggers.forEach((def) => this.addTriggerRecord(def, { backend, ignored: false }));
   }
 
-  getNodeBinary(backend: EmulatableBackend): string {
-    const pkg = require(path.join(backend.functionsDir, "package.json"));
-    // If the developer hasn't specified a Node to use, inform them that it's an option and use default
-    if ((!pkg.engines || !pkg.engines.node) && !backend.nodeMajorVersion) {
-      this.logger.log(
-        "WARN",
-        `Your functions directory ${backend.functionsDir} does not specify a Node version.\n   ` +
-          "- Learn more at https://firebase.google.com/docs/functions/manage-functions#set_runtime_options"
-      );
-      return process.execPath;
-    }
-
-    const hostMajorVersion = process.versions.node.split(".")[0];
-    const requestedMajorVersion: string = backend.nodeMajorVersion
-      ? `${backend.nodeMajorVersion}`
-      : pkg.engines.node;
-    let localMajorVersion = "0";
-    const localNodePath = path.join(backend.functionsDir, "node_modules/.bin/node");
-
-    // Next check if we have a Node install in the node_modules folder
-    try {
-      const localNodeOutput = spawn.sync(localNodePath, ["--version"]).stdout.toString();
-      localMajorVersion = localNodeOutput.slice(1).split(".")[0];
-    } catch (err: any) {
-      // Will happen if we haven't asked about local version yet
-    }
-
-    // If the requested version is already locally available, let's use that
-    if (requestedMajorVersion === localMajorVersion) {
-      this.logger.logLabeled(
-        "SUCCESS",
-        "functions",
-        `Using node@${requestedMajorVersion} from local cache.`
-      );
-      return localNodePath;
-    }
-
-    // If the requested version is the same as the host, let's use that
-    if (requestedMajorVersion === hostMajorVersion) {
-      this.logger.logLabeled(
-        "SUCCESS",
-        "functions",
-        `Using node@${requestedMajorVersion} from host.`
-      );
-    } else {
-      // Otherwise we'll warn and use the version that is currently running this process.
-      if (process.env.FIREPIT_VERSION) {
-        this.logger.log(
-          "WARN",
-          `You've requested "node" version "${requestedMajorVersion}", but the standalone Firebase CLI comes with bundled Node "${hostMajorVersion}".`
-        );
-        this.logger.log(
-          "INFO",
-          `To use a different Node.js version, consider removing the standalone Firebase CLI and switching to "firebase-tools" on npm.`
-        );
-      } else {
-        this.logger.log(
-          "WARN",
-          `Your requested "node" version "${requestedMajorVersion}" doesn't match your global version "${hostMajorVersion}". Using node@${hostMajorVersion} from host.`
-        );
-      }
-    }
-
-    return process.execPath;
-  }
-
   getRuntimeConfig(backend: EmulatableBackend): Record<string, string> {
     const configPath = `${backend.functionsDir}/.runtimeconfig.json`;
     try {
@@ -1131,7 +1100,11 @@ export class FunctionsEmulator implements EmulatorInstance {
       enableCors: true,
     });
 
-    setEnvVarsForEmulators(envs);
+    let emulatorInfos = EmulatorRegistry.listRunningWithInfo();
+    if (this.args.remoteEmulators) {
+      emulatorInfos = emulatorInfos.concat(Object.values(this.args.remoteEmulators));
+    }
+    setEnvVarsForEmulators(envs, emulatorInfos);
 
     if (this.args.debugPort) {
       // Start runtime in debug mode to allow triggers to share single runtime process.
@@ -1194,59 +1167,59 @@ export class FunctionsEmulator implements EmulatorInstance {
         );
       }
     }
-
-    if (trigger) {
-      const secrets: backend.SecretEnvVar[] = trigger.secretEnvironmentVariables || [];
-      const accesses = secrets
-        .filter((s) => !secretEnvs[s.key])
-        .map(async (s) => {
-          this.logger.logLabeled("INFO", "functions", `Trying to access secret ${s.secret}@latest`);
-          const value = await accessSecretVersion(
-            this.getProjectId(),
-            s.secret,
-            s.version ?? "latest"
-          );
-          return [s.key, value];
-        });
-      const accessResults = await allSettled(accesses);
-
-      const errs: string[] = [];
-      for (const result of accessResults) {
-        if (result.status === "rejected") {
-          errs.push(result.reason as string);
-        } else {
-          const [k, v] = result.value;
-          secretEnvs[k] = v;
-        }
-      }
-
-      if (errs.length > 0) {
-        this.logger.logLabeled(
-          "ERROR",
-          "functions",
-          "Unable to access secret environment variables from Google Cloud Secret Manager. " +
-            "Make sure the credential used for the Functions Emulator have access " +
-            `or provide override values in ${secretPath}:\n\t` +
-            errs.join("\n\t")
+    // Note - if trigger is undefined, we are loading in 'sequential' mode.
+    // In that case, we need to load all secrets for that codebase.
+    const secrets: backend.SecretEnvVar[] =
+      trigger?.secretEnvironmentVariables || backend.secretEnv;
+    const accesses = secrets
+      .filter((s) => !secretEnvs[s.key])
+      .map(async (s) => {
+        this.logger.logLabeled("INFO", "functions", `Trying to access secret ${s.secret}@latest`);
+        const value = await accessSecretVersion(
+          this.getProjectId(),
+          s.secret,
+          s.version ?? "latest"
         );
+        return [s.key, value];
+      });
+    const accessResults = await allSettled(accesses);
+
+    const errs: string[] = [];
+    for (const result of accessResults) {
+      if (result.status === "rejected") {
+        errs.push(result.reason as string);
+      } else {
+        const [k, v] = result.value;
+        secretEnvs[k] = v;
       }
+    }
+
+    if (errs.length > 0) {
+      this.logger.logLabeled(
+        "ERROR",
+        "functions",
+        "Unable to access secret environment variables from Google Cloud Secret Manager. " +
+          "Make sure the credential used for the Functions Emulator have access " +
+          `or provide override values in ${secretPath}:\n\t` +
+          errs.join("\n\t")
+      );
     }
 
     return secretEnvs;
   }
 
-  async startRuntime(
+  async startNode(
     backend: EmulatableBackend,
-    trigger?: EmulatedTriggerDefinition
-  ): Promise<RuntimeWorker> {
-    const emitter = new EventEmitter();
+    envs: Record<string, string>
+  ): Promise<FunctionsRuntimeInstance> {
     const args = [path.join(__dirname, "functionsEmulatorRuntime")];
-
     if (this.args.debugPort) {
-      if (process.env.FIREPIT_VERSION && process.execPath === backend.nodeBinary) {
+      if (process.env.FIREPIT_VERSION) {
         this.logger.log(
           "WARN",
-          `To enable function inspection, please run "${process.execPath} is:npm i node@${backend.nodeMajorVersion} --save-dev" in your functions directory`
+          `To enable function inspection, please run "npm i node@${semver.coerce(
+            backend.runtime || "18.0.0"
+          )} --save-dev" in your functions directory`
         );
       } else {
         const { host } = this.getInfo();
@@ -1269,32 +1242,47 @@ export class FunctionsEmulator implements EmulatorInstance {
       );
     }
 
-    const runtimeEnv = this.getRuntimeEnvs(backend, trigger);
-    const secretEnvs = await this.resolveSecretEnvs(backend, trigger);
-    const socketPath = getTemporarySocketPath();
+    const bin = backend.bin;
+    if (!bin) {
+      throw new Error(
+        `No binary associated with ${backend.functionsDir}. ` +
+          "Make sure function runtime is configured correctly in firebase.json."
+      );
+    }
 
-    const childProcess = spawn(backend.nodeBinary!, args, {
+    const socketPath = getTemporarySocketPath();
+    const childProcess = spawn(bin, args, {
       cwd: backend.functionsDir,
       env: {
-        node: backend.nodeBinary,
+        node: backend.bin,
         ...process.env,
-        ...runtimeEnv,
-        ...secretEnvs,
+        ...envs,
         PORT: socketPath,
       },
       stdio: ["pipe", "pipe", "pipe", "ipc"],
     });
 
-    const runtime: FunctionsRuntimeInstance = {
+    return Promise.resolve({
       process: childProcess,
-      events: emitter,
+      events: new EventEmitter(),
       cwd: backend.functionsDir,
       socketPath,
-    };
+    });
+  }
+
+  async startRuntime(
+    backend: EmulatableBackend,
+    trigger?: EmulatedTriggerDefinition
+  ): Promise<RuntimeWorker> {
+    const runtimeEnv = this.getRuntimeEnvs(backend, trigger);
+    const secretEnvs = await this.resolveSecretEnvs(backend, trigger);
+
+    const runtime = await this.startNode(backend, { ...runtimeEnv, ...secretEnvs });
     const extensionLogInfo = {
       instanceId: backend.extensionInstanceId,
       ref: backend.extensionVersion?.ref,
     };
+
     const pool = this.workerPools[backend.codebase];
     const worker = pool.addWorker(trigger?.id, runtime, extensionLogInfo);
     await worker.waitForSocketReady();
@@ -1449,7 +1437,16 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     const pool = this.workerPools[record.backend.codebase];
     if (!pool.readyForWork(trigger.id)) {
-      await this.startRuntime(record.backend, trigger);
+      try {
+        await this.startRuntime(record.backend, trigger);
+      } catch (e: any) {
+        this.logger.logLabeled("ERROR", `Failed to handle request for function ${trigger.id}`);
+        this.logger.logLabeled(
+          "ERROR",
+          `Failed to start functions in ${record.backend.functionsDir}: ${e}`
+        );
+        return;
+      }
     }
     const debugBundle = this.args.debugPort
       ? {

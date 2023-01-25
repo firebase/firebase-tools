@@ -415,7 +415,7 @@ function toExpressionValue(obj: any): ExpressionValue {
 
   if (obj == null) {
     return {
-      null_value: 0,
+      null_value: null,
     };
   }
 
@@ -484,7 +484,7 @@ function createRequestExpressionValue(opts: RulesetVerificationOpts): Expression
     },
     time: toExpressionValue(new Date()),
     resource: toExpressionValue(opts.file.after ? opts.file.after : null),
-    auth: opts.token ? createAuthExpressionValue(opts) : { null_value: 0 },
+    auth: opts.token ? createAuthExpressionValue(opts) : { null_value: null },
   };
 
   return {
