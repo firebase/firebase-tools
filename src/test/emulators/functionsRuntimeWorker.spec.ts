@@ -8,6 +8,7 @@ import {
   RuntimeWorkerPool,
   RuntimeWorkerState,
 } from "../../emulator/functionsRuntimeWorker";
+import { EmulatedTriggerDefinition } from "../../emulator/functionsEmulatorShared";
 import { EmulatorLog, FunctionsExecutionMode } from "../../emulator/types";
 import { ChildProcess } from "child_process";
 
@@ -82,14 +83,22 @@ class WorkerStateCounter {
   }
 }
 
-describe("FunctionsRuntimeWorker", () => {
-  const workerPool = new RuntimeWorkerPool();
+function mockTrigger(id: string): EmulatedTriggerDefinition {
+  return {
+    id,
+    name: id,
+    entryPoint: id,
+    region: "us-central1",
+    platform: "gcfv2",
+  };
+}
 
+describe("FunctionsRuntimeWorker", () => {
   describe("RuntimeWorker", () => {
     it("goes from created --> idle --> busy --> idle in normal operation", async () => {
       const scope = nock("http://localhost").get("/").reply(200);
 
-      const worker = new RuntimeWorker(workerPool.getKey("trigger"), new MockRuntimeInstance());
+      const worker = new RuntimeWorker("trigger", new MockRuntimeInstance(), {});
       const counter = new WorkerStateCounter(worker);
 
       worker.readyForWork();
@@ -108,7 +117,7 @@ describe("FunctionsRuntimeWorker", () => {
     it("goes from created --> idle --> busy --> finished when there's an error", async () => {
       const scope = nock("http://localhost").get("/").replyWithError("boom");
 
-      const worker = new RuntimeWorker(workerPool.getKey("trigger"), new MockRuntimeInstance());
+      const worker = new RuntimeWorker("trigger", new MockRuntimeInstance(), {});
       const counter = new WorkerStateCounter(worker);
 
       worker.readyForWork();
@@ -128,7 +137,7 @@ describe("FunctionsRuntimeWorker", () => {
     it("goes from created --> busy --> finishing --> finished when marked", async () => {
       const scope = nock("http://localhost").get("/").replyWithError("boom");
 
-      const worker = new RuntimeWorker(workerPool.getKey("trigger"), new MockRuntimeInstance());
+      const worker = new RuntimeWorker("trigger", new MockRuntimeInstance(), {});
       const counter = new WorkerStateCounter(worker);
 
       worker.readyForWork();
@@ -153,42 +162,42 @@ describe("FunctionsRuntimeWorker", () => {
       const scope = nock("http://localhost").get("/").reply(200);
 
       const pool = new RuntimeWorkerPool();
-      const trigger = "region-trigger1";
+      const triggerId = "region-trigger1";
 
       // No idle workers to begin
-      expect(pool.getIdleWorker(trigger)).to.be.undefined;
+      expect(pool.getIdleWorker(triggerId)).to.be.undefined;
 
       // Add a worker and make sure it's there
-      const worker = pool.addWorker(trigger, new MockRuntimeInstance());
+      const worker = pool.addWorker(mockTrigger(triggerId), new MockRuntimeInstance(), {});
       worker.readyForWork();
-      const triggerWorkers = pool.getTriggerWorkers(trigger);
+      const triggerWorkers = pool.getTriggerWorkers(triggerId);
       expect(triggerWorkers.length).length.to.eq(1);
-      expect(pool.getIdleWorker(trigger)).to.eql(worker);
+      expect(pool.getIdleWorker(triggerId)).to.eql(worker);
 
       const resp = httpMocks.createResponse({ eventEmitter: EventEmitter });
       resp.on("end", () => {
         // Finished sending response. About to go back to IDLE state.
-        expect(pool.getIdleWorker(trigger)).to.be.undefined;
+        expect(pool.getIdleWorker(triggerId)).to.be.undefined;
       });
       await worker.request({ method: "GET", path: "/" }, resp);
       scope.done();
 
       // Completed handling request. Worker should be IDLE again.
-      expect(pool.getIdleWorker(trigger)).to.eql(worker);
+      expect(pool.getIdleWorker(triggerId)).to.eql(worker);
     });
 
     it("does not consider failed workers idle", async () => {
       const pool = new RuntimeWorkerPool();
-      const trigger = "trigger1";
+      const triggerId = "trigger1";
 
       // No idle workers to begin
-      expect(pool.getIdleWorker(trigger)).to.be.undefined;
+      expect(pool.getIdleWorker(triggerId)).to.be.undefined;
 
       // Add a worker to the pool that's destined to fail.
       const scope = nock("http://localhost").get("/").replyWithError("boom");
-      const worker = pool.addWorker(trigger, new MockRuntimeInstance());
+      const worker = pool.addWorker(mockTrigger(triggerId), new MockRuntimeInstance(), {});
       worker.readyForWork();
-      expect(pool.getIdleWorker(trigger)).to.eql(worker);
+      expect(pool.getIdleWorker(triggerId)).to.eql(worker);
 
       // Send request to the worker. Request should fail, killing the worker.
       await worker.request(
@@ -198,18 +207,18 @@ describe("FunctionsRuntimeWorker", () => {
       scope.done();
 
       // Confirm there are no idle workers.
-      expect(pool.getIdleWorker(trigger)).to.be.undefined;
+      expect(pool.getIdleWorker(triggerId)).to.be.undefined;
     });
 
     it("exit() kills idle and busy workers", async () => {
       const pool = new RuntimeWorkerPool();
-      const trigger = "trigger1";
+      const triggerId = "trigger1";
 
-      const busyWorker = pool.addWorker(trigger, new MockRuntimeInstance());
+      const busyWorker = pool.addWorker(mockTrigger(triggerId), new MockRuntimeInstance(), {});
       busyWorker.readyForWork();
       const busyWorkerCounter = new WorkerStateCounter(busyWorker);
 
-      const idleWorker = pool.addWorker(trigger, new MockRuntimeInstance());
+      const idleWorker = pool.addWorker(mockTrigger(triggerId), new MockRuntimeInstance(), {});
       idleWorker.readyForWork();
       const idleWorkerCounter = new WorkerStateCounter(idleWorker);
 
@@ -234,13 +243,13 @@ describe("FunctionsRuntimeWorker", () => {
 
     it("refresh() kills idle workers and marks busy ones as finishing", async () => {
       const pool = new RuntimeWorkerPool();
-      const trigger = "trigger1";
+      const triggerId = "trigger1";
 
-      const busyWorker = pool.addWorker(trigger, new MockRuntimeInstance());
+      const busyWorker = pool.addWorker(mockTrigger(triggerId), new MockRuntimeInstance(), {});
       busyWorker.readyForWork();
       const busyWorkerCounter = new WorkerStateCounter(busyWorker);
 
-      const idleWorker = pool.addWorker(trigger, new MockRuntimeInstance());
+      const idleWorker = pool.addWorker(mockTrigger(triggerId), new MockRuntimeInstance(), {});
       idleWorker.readyForWork();
       const idleWorkerCounter = new WorkerStateCounter(idleWorker);
 
@@ -265,23 +274,23 @@ describe("FunctionsRuntimeWorker", () => {
     it("gives assigns all triggers to the same worker in sequential mode", async () => {
       const scope = nock("http://localhost").get("/").reply(200);
 
-      const trigger1 = "region-abc";
-      const trigger2 = "region-def";
+      const triggerId1 = "region-abc";
+      const triggerId2 = "region-def";
 
       const pool = new RuntimeWorkerPool(FunctionsExecutionMode.SEQUENTIAL);
-      const worker = pool.addWorker(trigger1, new MockRuntimeInstance());
+      const worker = pool.addWorker(mockTrigger(triggerId1), new MockRuntimeInstance(), {});
       worker.readyForWork();
 
       const resp = httpMocks.createResponse({ eventEmitter: EventEmitter });
       resp.on("end", () => {
-        expect(pool.readyForWork(trigger1)).to.be.false;
-        expect(pool.readyForWork(trigger2)).to.be.false;
+        expect(pool.readyForWork(triggerId1)).to.be.false;
+        expect(pool.readyForWork(triggerId2)).to.be.false;
       });
       await worker.request({ method: "GET", path: "/" }, resp);
       scope.done();
 
-      expect(pool.readyForWork(trigger1)).to.be.true;
-      expect(pool.readyForWork(trigger2)).to.be.true;
+      expect(pool.readyForWork(triggerId1)).to.be.true;
+      expect(pool.readyForWork(triggerId2)).to.be.true;
     });
   });
 });
