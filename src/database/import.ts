@@ -1,8 +1,11 @@
 import * as clc from "colorette";
+import * as stream from "stream";
 import pLimit from "p-limit";
 import { URL } from "url";
 import { Client } from "../apiv2";
 import { FirebaseError } from "../error";
+
+const JSONStream = require("JSONStream");
 
 const MAX_CHUNK_SIZE = 1024 * 1024;
 const CONCURRENCY_LIMIT = 5;
@@ -23,23 +26,14 @@ type ChunkedData = {
  * The data is parsed and chunked into subtrees of ~1 MB, to be subsequently written in parallel.
  */
 export default class DatabaseImporter {
-  chunks: Data[];
   private client: Client;
   private limit = pLimit(CONCURRENCY_LIMIT);
 
-  constructor(private dbUrl: URL, file: string, private chunkSize = MAX_CHUNK_SIZE) {
-    let data;
-    try {
-      data = { json: JSON.parse(file), pathname: dbUrl.pathname };
-    } catch (err: any) {
-      throw new FirebaseError("Invalid data; couldn't parse JSON object, array, or value.", {
-        original: err,
-        exit: 2,
-      });
-    }
-
-    const chunkedData = this.chunkData(data);
-    this.chunks = chunkedData.chunks || [data];
+  constructor(
+    private dbUrl: URL,
+    private inStream: NodeJS.ReadableStream,
+    private chunkSize = MAX_CHUNK_SIZE
+  ) {
     this.client = new Client({ urlPrefix: dbUrl.origin, auth: true });
   }
 
@@ -48,7 +42,7 @@ export default class DatabaseImporter {
    */
   async execute(): Promise<any> {
     await this.checkLocationIsEmpty();
-    return Promise.all(this.chunks.map(this.writeChunk.bind(this)));
+    return this.readAndWriteChunks(this.inStream);
   }
 
   private async checkLocationIsEmpty(): Promise<void> {
@@ -66,6 +60,48 @@ export default class DatabaseImporter {
         { exit: 2 }
       );
     }
+  }
+
+  private readAndWriteChunks(inStream: NodeJS.ReadableStream): Promise<any> {
+    const { dbUrl } = this;
+    const chunkData = this.chunkData.bind(this);
+    const writeChunk = this.writeChunk.bind(this);
+    const getJoinedPath = this.getJoinedPath.bind(this);
+
+    const readChunks = new stream.Transform({ objectMode: true });
+    readChunks._transform = function (chunk: { key: string; value: any }, _, done) {
+      const data = { json: chunk.value, pathname: getJoinedPath(dbUrl.pathname, chunk.key) };
+      const chunkedData = chunkData(data);
+      const chunks = chunkedData.chunks || [data];
+      chunks.forEach((chunk: Data) => this.push(chunk));
+      done();
+    };
+
+    const writeChunks = new stream.Transform({ objectMode: true });
+    writeChunks._transform = async function (chunk: Data, _, done) {
+      const res = await writeChunk(chunk);
+      this.push(res);
+      done();
+    };
+
+    return new Promise((resolve, reject) => {
+      const results: any[] = [];
+      inStream
+        .pipe(JSONStream.parse("$*"))
+        .on("error", (err: any) =>
+          reject(
+            new FirebaseError("Invalid data; couldn't parse JSON object, array, or value.", {
+              original: err,
+              exit: 2,
+            })
+          )
+        )
+        .pipe(readChunks)
+        .pipe(writeChunks)
+        .on("data", (res: any) => results.push(res))
+        .on("error", reject)
+        .once("end", () => resolve(results));
+    });
   }
 
   private writeChunk(chunk: Data): Promise<any> {
@@ -91,9 +127,9 @@ export default class DatabaseImporter {
       let hasChunkedChild = false;
 
       for (const key of Object.keys(json)) {
-        size += key.length + 3; // "[key]":
+        size += key.length + 3; // "":
 
-        const child = { json: json[key], pathname: [pathname, key].join("/").replace("//", "/") };
+        const child = { json: json[key], pathname: this.getJoinedPath(pathname, key) };
         const childChunks = this.chunkData(child);
         size += childChunks.size;
         if (childChunks.chunks) {
@@ -110,5 +146,9 @@ export default class DatabaseImporter {
         return { chunks: null, size };
       }
     }
+  }
+
+  private getJoinedPath(root: string, key: string): string {
+    return [root, key].join("/").replace("//", "/");
   }
 }

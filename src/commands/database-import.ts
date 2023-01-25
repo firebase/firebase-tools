@@ -59,8 +59,8 @@ export const command = new Command("database:import <path> [infile]")
       throw new FirebaseError("Command aborted.");
     }
 
-    const inputString = await utils.streamToString(fs.createReadStream(infile));
-    const importer = new DatabaseImporter(dbUrl, inputString);
+    const inStream = fs.createReadStream(infile);
+    const importer = new DatabaseImporter(dbUrl, inStream);
     try {
       await importer.execute();
     } catch (err: any) {
