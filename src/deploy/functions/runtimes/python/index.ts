@@ -37,7 +37,7 @@ export async function tryCreateDelegate(
   return Promise.resolve(new Delegate(context.projectId, context.sourceDir, runtime));
 }
 
-class Delegate implements runtimes.RuntimeDelegate {
+export class Delegate implements runtimes.RuntimeDelegate {
   public readonly name = "python";
   constructor(
     private readonly projectId: string,
