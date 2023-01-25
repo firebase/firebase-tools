@@ -200,7 +200,7 @@ describe("function triggers", () => {
     });
   });
 
-  describe.only("auth emulator triggered functions", () => {
+  describe("auth emulator triggered functions", () => {
     it("should write to the auth emulator", async function (this) {
       this.timeout(EMULATOR_TEST_TIMEOUT);
       const response = await test.writeToAuth();
