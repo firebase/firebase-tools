@@ -4733,6 +4733,10 @@ export default {
         description: "Response message for GetRecaptchaParam.",
         properties: {
           kind: { type: "string" },
+          producerProjectNumber: {
+            description: "The producer project number used to generate PIA tokens",
+            type: "string",
+          },
           recaptchaSiteKey: {
             description:
               "The reCAPTCHA v2 site key used to invoke the reCAPTCHA service. Always present.",

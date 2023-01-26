@@ -96,12 +96,12 @@ describe("detectFromPort", () => {
   });
 
   it("passes as smoke test", async () => {
-    nock("http://localhost:8080").get("/__/functions.yaml").times(5).replyWithError({
+    nock("http://127.0.0.1:8080").get("/__/functions.yaml").times(5).replyWithError({
       message: "Still booting",
       code: "ECONNREFUSED",
     });
 
-    nock("http://localhost:8080").get("/__/functions.yaml").reply(200, YAML_TEXT);
+    nock("http://127.0.0.1:8080").get("/__/functions.yaml").reply(200, YAML_TEXT);
 
     const parsed = await discovery.detectFromPort(8080, "project", "nodejs16");
     expect(parsed).to.deep.equal(BUILD);

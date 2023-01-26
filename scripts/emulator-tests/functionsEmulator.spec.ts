@@ -38,6 +38,7 @@ const TEST_BACKEND = {
   secretEnv: [],
   codebase: "default",
   bin: process.execPath,
+  runtime: "nodejs14",
   // NOTE: Use the following node bin path if you want to run test cases directly from your IDE.
   // bin: path.join(MODULE_ROOT, "node_modules/.bin/ts-node"),
 };
