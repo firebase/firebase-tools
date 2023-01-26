@@ -189,20 +189,29 @@ export class PubsubEmulator implements EmulatorInstance {
     topic: string,
     message: Message
   ): CloudEvent<MessagePublishedData> {
+    // Pubsub events from Pubsub Emulator include a date with nanoseconds.
+    // Prod Pubsub doesn't publish timestamp at that level of precision. Timestamp with nanosecond precision also
+    // are difficult to parse in languages other than Node.js (e.g. python).
+    const truncatedPublishTime = new Date(message.publishTime.getMilliseconds()).toISOString();
     const data: MessagePublishedData = {
       message: {
         messageId: message.id,
-        publishTime: message.publishTime,
+        publishTime: truncatedPublishTime,
         attributes: message.attributes,
         orderingKey: message.orderingKey,
         data: message.data.toString("base64"),
-      },
+
+        // NOTE: We include camel_cased attributes since they also available and depended on by other runtimes
+        // like python.
+        message_id: message.id,
+        publish_time: truncatedPublishTime,
+      } as MessagePublishedData["message"],
       subscription: this.subscriptionForTopic.get(topic)!.name,
     };
     return {
-      specversion: "1",
+      specversion: "1.0",
       id: uuid.v4(),
-      time: message.publishTime.toISOString(),
+      time: truncatedPublishTime,
       type: "google.cloud.pubsub.topic.v1.messagePublished",
       source: `//pubsub.googleapis.com/projects/${this.args.projectId}/topics/${topic}`,
       data,
