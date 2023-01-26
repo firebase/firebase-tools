@@ -7,7 +7,7 @@ import { FirebaseError } from "../../error";
 
 const dbUrl = new URL("https://test-db.firebaseio.com/foo");
 
-describe.only("DatabaseImporter", () => {
+describe("DatabaseImporter", () => {
   const DATA = { a: 100, b: [true, "bar", { f: { g: 0, h: 1 }, i: "baz" }] };
   let DATA_STREAM: NodeJS.ReadableStream;
 

@@ -35,6 +35,7 @@
         "google-auth-library": "^7.11.0",
         "inquirer": "^8.2.0",
         "js-yaml": "^3.13.1",
+        "JSONStream": "^1.3.5",
         "jsonwebtoken": "^8.5.1",
         "leven": "^3.1.0",
         "libsodium-wrappers": "^0.7.10",
@@ -95,7 +96,6 @@
         "@types/glob": "^7.1.1",
         "@types/inquirer": "^8.1.3",
         "@types/js-yaml": "^3.12.2",
-        "@types/jsonstream": "^0.8.30",
         "@types/jsonwebtoken": "^8.3.8",
         "@types/libsodium-wrappers": "^0.7.9",
         "@types/lodash": "^4.14.149",
@@ -2630,15 +2630,6 @@
       "resolved": "https://registry.npmjs.org/@types/json-schema/-/json-schema-7.0.9.tgz",
       "integrity": "sha512-qcUXuemtEu+E5wZSJHNxUXeCZhAfXKQ41D+duX+VYPde7xyEVZci+/oXKJL13tnRs9lR2pr4fod59GT6/X1/yQ==",
       "dev": true
-    },
-    "node_modules/@types/jsonstream": {
-      "version": "0.8.30",
-      "resolved": "https://registry.npmjs.org/@types/jsonstream/-/jsonstream-0.8.30.tgz",
-      "integrity": "sha512-KqHs2eAapKL7ZKUiKI/giUYPVgkoDXkVGFehk3goo+3Q8qwxVVRC3iwg+hK/THORbcri4RRxTtlm3JoSY1KZLQ==",
-      "dev": true,
-      "dependencies": {
-        "@types/node": "*"
-      }
     },
     "node_modules/@types/jsonwebtoken": {
       "version": "8.3.8",
@@ -8946,6 +8937,14 @@
         "node": "*"
       }
     },
+    "node_modules/jsonparse": {
+      "version": "1.3.1",
+      "resolved": "https://registry.npmjs.org/jsonparse/-/jsonparse-1.3.1.tgz",
+      "integrity": "sha512-POQXvpdL69+CluYsillJ7SUhKvytYjW9vG/GKpnf+xP8UWgYEM/RaMzHHofbALDiKbbP1W8UEYmgGl39WkPZsg==",
+      "engines": [
+        "node >= 0.2.0"
+      ]
+    },
     "node_modules/jsonpath": {
       "version": "1.1.1",
       "resolved": "https://registry.npmjs.org/jsonpath/-/jsonpath-1.1.1.tgz",
@@ -8983,6 +8982,21 @@
       "dev": true,
       "engines": {
         "node": ">=0.10.0"
+      }
+    },
+    "node_modules/JSONStream": {
+      "version": "1.3.5",
+      "resolved": "https://registry.npmjs.org/JSONStream/-/JSONStream-1.3.5.tgz",
+      "integrity": "sha512-E+iruNOY8VV9s4JEbe1aNEm6MiszPRr/UfcHMz0TQh1BXSxHK+ASV1R6W4HpjBhSeS+54PIsAMCBmwD06LLsqQ==",
+      "dependencies": {
+        "jsonparse": "^1.2.0",
+        "through": ">=2.2.7 <3"
+      },
+      "bin": {
+        "JSONStream": "bin.js"
+      },
+      "engines": {
+        "node": "*"
       }
     },
     "node_modules/jsonwebtoken": {
@@ -17148,15 +17162,6 @@
       "integrity": "sha512-qcUXuemtEu+E5wZSJHNxUXeCZhAfXKQ41D+duX+VYPde7xyEVZci+/oXKJL13tnRs9lR2pr4fod59GT6/X1/yQ==",
       "dev": true
     },
-    "@types/jsonstream": {
-      "version": "0.8.30",
-      "resolved": "https://registry.npmjs.org/@types/jsonstream/-/jsonstream-0.8.30.tgz",
-      "integrity": "sha512-KqHs2eAapKL7ZKUiKI/giUYPVgkoDXkVGFehk3goo+3Q8qwxVVRC3iwg+hK/THORbcri4RRxTtlm3JoSY1KZLQ==",
-      "dev": true,
-      "requires": {
-        "@types/node": "*"
-      }
-    },
     "@types/jsonwebtoken": {
       "version": "8.3.8",
       "resolved": "https://registry.npmjs.org/@types/jsonwebtoken/-/jsonwebtoken-8.3.8.tgz",
@@ -22079,6 +22084,11 @@
       "integrity": "sha1-LHS27kHZPKUbe1qu6PUDYx0lKnM=",
       "dev": true
     },
+    "jsonparse": {
+      "version": "1.3.1",
+      "resolved": "https://registry.npmjs.org/jsonparse/-/jsonparse-1.3.1.tgz",
+      "integrity": "sha512-POQXvpdL69+CluYsillJ7SUhKvytYjW9vG/GKpnf+xP8UWgYEM/RaMzHHofbALDiKbbP1W8UEYmgGl39WkPZsg=="
+    },
     "jsonpath": {
       "version": "1.1.1",
       "resolved": "https://registry.npmjs.org/jsonpath/-/jsonpath-1.1.1.tgz",
@@ -22109,6 +22119,15 @@
       "resolved": "https://registry.npmjs.org/jsonpointer/-/jsonpointer-4.1.0.tgz",
       "integrity": "sha512-CXcRvMyTlnR53xMcKnuMzfCA5i/nfblTnnr74CZb6C4vG39eu6w51t7nKmU5MfLfbTgGItliNyjO/ciNPDqClg==",
       "dev": true
+    },
+    "JSONStream": {
+      "version": "1.3.5",
+      "resolved": "https://registry.npmjs.org/JSONStream/-/JSONStream-1.3.5.tgz",
+      "integrity": "sha512-E+iruNOY8VV9s4JEbe1aNEm6MiszPRr/UfcHMz0TQh1BXSxHK+ASV1R6W4HpjBhSeS+54PIsAMCBmwD06LLsqQ==",
+      "requires": {
+        "jsonparse": "^1.2.0",
+        "through": ">=2.2.7 <3"
+      }
     },
     "jsonwebtoken": {
       "version": "8.5.1",
