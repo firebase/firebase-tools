@@ -1,2 +1,3 @@
-- Refactor Functions Emulator. (#5422)
-- Fix race condition when discovering functions. (#5444)
+- Refactors Functions Emulator. (#5422)
+- Fixes race condition when discovering functions. (#5444)
+- Fixes issue where `init firestore` was unecessarilly checking for default resource location. (#5230 and #5452)
