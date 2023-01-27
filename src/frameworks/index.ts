@@ -41,6 +41,7 @@ export interface BuildResult {
   redirects?: any[];
   headers?: any[];
   wantsBackend?: boolean;
+  trailingSlash?: boolean;
   i18n?: any;
 }
 
@@ -409,6 +410,7 @@ export async function prepareFrameworks(
         rewrites = [],
         redirects = [],
         headers = [],
+        trailingSlash,
         i18n,
       } = (await build(getProjectPath(), {
         projectId: context.projectId,
@@ -418,6 +420,7 @@ export async function prepareFrameworks(
       config.rewrites.push(...rewrites);
       config.redirects.push(...redirects);
       config.headers.push(...headers);
+      config.trailingSlash ??= trailingSlash;
 
       if (i18n) {
         config.i18n = {

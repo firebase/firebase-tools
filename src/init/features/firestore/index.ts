@@ -1,6 +1,5 @@
 import { logger } from "../../../logger";
 import * as apiEnabled from "../../../ensureApiEnabled";
-import { ensureLocationSet } from "../../../ensureCloudResourceLocation";
 import { requirePermissions } from "../../../requirePermissions";
 import { checkDatabaseType } from "../../../firestore/checkDatabaseType";
 import * as rules from "./rules";
@@ -36,14 +35,13 @@ async function checkProjectSetup(setup: any, config: any, options: any) {
 
   if (!dbType) {
     throw firestoreUnusedError;
-  } else if (dbType !== "CLOUD_FIRESTORE") {
+  } else if (dbType !== "FIRESTORE_NATIVE") {
     throw new FirebaseError(
       `It looks like this project is using Cloud Datastore or Cloud Firestore in Datastore mode. The Firebase CLI can only manage projects using Cloud Firestore in Native mode. For more information, visit https://cloud.google.com/datastore/docs/firestore-or-datastore`,
       { exit: 1 }
     );
   }
 
-  ensureLocationSet(setup.projectLocation, "Cloud Firestore");
   await requirePermissions({ ...options, project: setup.projectId });
 }
 
