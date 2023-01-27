@@ -2,7 +2,7 @@ import { copy, pathExists, rename } from "fs-extra";
 import { mkdir, readFile } from "fs/promises";
 import { join } from "path";
 import { BuildResult, FrameworkType, SupportLevel } from "..";
-import { runWithVirtualEnv } from "../../deploy/functions/runtimes/python";
+import { runWithVirtualEnv } from "../../functions/python";
 
 export const name = "Flask";
 export const support = SupportLevel.Experimental;
@@ -15,9 +15,19 @@ export async function discover(dir: string) {
   if (!(await pathExists(join(dir, "main.py")))) return;
   try {
     // TODO do this better
-    const discovery = await runWithVirtualEnv(
-        [CLI, join(__dirname, 'discover.py')], dir
-    ).promise;
+    const discovery = await new Promise<string>((resolve) => {
+      const child = runWithVirtualEnv(
+        [CLI, join(__dirname, 'discover.py')],
+        dir,
+        {},
+      );
+      let out = "";
+      child.stdout?.on("data", (chunk: Buffer) => {
+        const chunkString = chunk.toString();
+        out = out + chunkString;
+      });
+      child.on("exit", () => resolve(out));
+    });
     if (!discovery.trim()) return;
     return { mayWantBackend: true };
   } catch(e) {
@@ -37,9 +47,19 @@ export async function ɵcodegenFunctionsDirectory(root: string, dest: string) {
   await copy(root, join(dest, 'src'), { recursive: true });
   await rename(join(dest, 'src', 'venv'), join(dest, 'venv'));
   const requirementsTxt = await readFile(join(root, "requirements.txt"));
-  const discovery = await runWithVirtualEnv(
-    [CLI, join(__dirname, 'discover.py')], root
-  ).promise;
+  const discovery = await new Promise<string>((resolve) => {
+    const child = runWithVirtualEnv(
+      [CLI, join(__dirname, 'discover.py')],
+      root,
+      {},
+    );
+    let out = "";
+    child.stdout?.on("data", (chunk: Buffer) => {
+      const chunkString = chunk.toString();
+      out = out + chunkString;
+    });
+    child.on("exit", () => resolve(out));
+  });
   const imports = ['src.main', discovery.split("\n")[0]];
   return { imports, requirementsTxt };
 }

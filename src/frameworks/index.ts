@@ -26,7 +26,7 @@ import { HostingRewrites } from "../firebaseConfig";
 import * as experiments from "../experiments";
 import { ensureTargeted } from "../functions/ensureTargeted";
 import { implicitInit } from "../hosting/implicitInit";
-import { runWithVirtualEnv } from "../deploy/functions/runtimes/python";
+import { runWithVirtualEnv } from "../functions/python";
 
 // Use "true &&"" to keep typescript from compiling this file and rewriting
 // the import statement into a require
@@ -585,10 +585,15 @@ def ssr(req: https.Request) -> https.Response:
     status, headers, body = handle(discoveredApp, req.environ)
     return https.Response(body, status, headers)
 `);
-        await runWithVirtualEnv(
-          ["pip", "install", "-r", "requirements.txt"],
-          functionsDist
-        ).promise;
+        await new Promise<void>((resolve) => {
+          const child = runWithVirtualEnv(
+            ["pip", "install", "-r", "requirements.txt"],
+            functionsDist,
+            {},
+            { stdio: ["inherit", "inherit", "inherit"] }
+          );
+          child.on("exit", () => resolve());
+        });
       }
     } else {
       // No function, treat as an SPA
