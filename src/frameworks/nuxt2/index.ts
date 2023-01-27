@@ -102,9 +102,9 @@ export async function ɵcodegenPublicDirectory(root: string, dest: string) {
   const nuxt = await getNuxtApp(root);
   const nuxtConfig = await nuxt.loadNuxtConfig();
   const { ssr, target } = nuxtConfig;
-  /*
-		If `target` is set to `static`, copy the generated files to the destination directory (i.e. `/hosting`).
-	*/
+
+  // If `target` is set to `static`, copy the generated files
+  // to the destination directory (i.e. `/hosting`).
   if (!(ssr === true && target === "server")) {
     const source =
       nuxtConfig?.generate?.dir !== undefined
@@ -114,9 +114,7 @@ export async function ɵcodegenPublicDirectory(root: string, dest: string) {
     await copy(source, dest);
   }
 
-  /*
-		Copy static assets if they exist.
-	*/
+  // Copy static assets if they exist.
   const staticPath = join(root, "static");
   if (await pathExists(staticPath)) {
     await copy(staticPath, dest);
@@ -127,25 +125,19 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
   const packageJsonBuffer = await readFile(join(sourceDir, "package.json"));
   const packageJson = JSON.parse(packageJsonBuffer.toString());
 
-  /*
-		Get the nuxt config into an object so we can check the `target` and `ssr` properties.
-	*/
+  // Get the nuxt config into an object so we can check the `target` and `ssr` properties.
   const nuxt = await getNuxtApp(sourceDir);
   const nuxtConfig = await nuxt.loadNuxtConfig();
 
-  /*
-		When starting the Nuxt 2 server, we need to copy the `.nuxt` to the destination directory (`functions`)
-		with the same folder name (.firebase/<project-name>/functions/.nuxt).
-		This is because `loadNuxt` (called from `firebase-frameworks`) will only look
-		for the `.nuxt` directory in the destination directory.
-	*/
+  // When starting the Nuxt 2 server, we need to copy the `.nuxt` to the destination directory (`functions`)
+  // with the same folder name (.firebase/<project-name>/functions/.nuxt).
+  // This is because `loadNuxt` (called from `firebase-frameworks`) will only look
+  // for the `.nuxt` directory in the destination directory.
   await copy(join(sourceDir, ".nuxt"), join(destDir, ".nuxt"));
 
-  /*
-		When using `SSR: false`, we need to copy the `nuxt.config.js` to the destination directory (`functions`)
-		This is because `loadNuxt` (called from `firebase-frameworks`) will look
-		for the `nuxt.config.js` file in the destination directory.
-		*/
+  // When using `SSR: false`, we need to copy the `nuxt.config.js` to the destination directory (`functions`)
+  // This is because `loadNuxt` (called from `firebase-frameworks`) will look
+  // for the `nuxt.config.js` file in the destination directory.
   if (!nuxtConfig.ssr) {
     const nuxtConfigFile = nuxtConfig._nuxtConfigFile.split("/").pop();
     await copy(nuxtConfig._nuxtConfigFile, join(destDir, nuxtConfigFile));
