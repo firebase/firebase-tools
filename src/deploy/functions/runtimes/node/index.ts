@@ -17,6 +17,7 @@ import * as runtimes from "..";
 import * as validate from "./validate";
 import * as versioning from "./versioning";
 import * as parseTriggers from "./parseTriggers";
+import { fileExistsSync } from "../../../../fsutils";
 
 const MIN_FUNCTIONS_SDK_VERSION = "3.20.0";
 
@@ -169,33 +170,54 @@ export class Delegate {
     if (Object.keys(config || {}).length) {
       env.CLOUD_RUNTIME_CONFIG = JSON.stringify(config);
     }
-    // At this point, we've already confirmed that we found supported firebase functions sdk.
-    const sdkPath = require.resolve("firebase-functions", { paths: [this.sourceDir] });
-    // Find location of the closest node_modules/ directory where we found the sdk.
-    const binPath = sdkPath.substring(0, sdkPath.lastIndexOf("node_modules") + 12);
-    // And execute the binary included in the sdk.
-    const childProcess = spawn(path.join(binPath, ".bin", "firebase-functions"), [this.sourceDir], {
-      env,
-      cwd: this.sourceDir,
-      stdio: [/* stdin=*/ "ignore", /* stdout=*/ "pipe", /* stderr=*/ "inherit"],
-    });
-    childProcess.stdout?.on("data", (chunk) => {
-      logger.debug(chunk.toString());
-    });
-    return Promise.resolve(async () => {
-      const p = new Promise<void>((resolve, reject) => {
-        childProcess.once("exit", resolve);
-        childProcess.once("error", reject);
-      });
+    // Location of the binary included in the Functions differs between package manager.
+    // We'll try few routes in follow order of preference:
+    //
+    //   1. $SOURCE_DIR/node_modules/.bin/firebase-functions
+    //   2. node_modules closest to the resolved path ${require.resolve("firebase-functions")}
+    //
+    // (1) works for most package managers (npm, yarn[no-hoist],pnpm).
+    // (2) handles cases where developer prefers monorepo setup or bundled function code.
+    const nodeModulesPaths = [
+      path.join(this.sourceDir, "node_modules"),
+      (() => {
+        const sdkPath = require.resolve("firebase-functions", { paths: [this.sourceDir] });
+        // Find location of the closest node_modules/ directory where we found the sdk.
+        return sdkPath.substring(0, sdkPath.lastIndexOf("node_modules") + 12);
+      })(),
+    ];
+    for (const nodeModulePath of nodeModulesPaths) {
+      const binPath = path.join(nodeModulePath, ".bin", "firebase-functions");
+      if (fileExistsSync(binPath)) {
+        logger.debug(`Found firebase-functions binary at '${binPath}'`);
+        const childProcess = spawn(binPath, [this.sourceDir], {
+          env,
+          cwd: this.sourceDir,
+          stdio: [/* stdin=*/ "ignore", /* stdout=*/ "pipe", /* stderr=*/ "inherit"],
+        });
+        childProcess.stdout?.on("data", (chunk) => {
+          logger.debug(chunk.toString());
+        });
+        return Promise.resolve(async () => {
+          const p = new Promise<void>((resolve, reject) => {
+            childProcess.once("exit", resolve);
+            childProcess.once("error", reject);
+          });
 
-      await fetch(`http://localhost:${port}/__/quitquitquit`);
-      setTimeout(() => {
-        if (!childProcess.killed) {
-          childProcess.kill("SIGKILL");
-        }
-      }, 10_000);
-      return p;
-    });
+          await fetch(`http://localhost:${port}/__/quitquitquit`);
+          setTimeout(() => {
+            if (!childProcess.killed) {
+              childProcess.kill("SIGKILL");
+            }
+          }, 10_000);
+          return p;
+        });
+      }
+    }
+    throw new FirebaseError(
+      "Failed to find location of Firebase Functions SDK. " +
+        "Please file a bug on Github (https://github.com/firebase/firebase-tools/)."
+    );
   }
 
   // eslint-disable-next-line require-await
