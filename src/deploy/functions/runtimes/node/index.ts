@@ -183,8 +183,8 @@ export class Delegate {
     const sourceNodeModulesPath = path.join(this.sourceDir, "node_modules");
     const sdkPath = require.resolve("firebase-functions", { paths: [this.sourceDir] });
     const sdkNodeModulesPath = sdkPath.substring(0, sdkPath.lastIndexOf("node_modules") + 12);
-    for (const nodeModulePath of [sourceNodeModulesPath, sdkNodeModulesPath]) {
-      const binPath = path.join(nodeModulePath, ".bin", "firebase-functions");
+    for (const nodeModulesPath of [sourceNodeModulesPath, sdkNodeModulesPath]) {
+      const binPath = path.join(nodeModulesPath, ".bin", "firebase-functions");
       if (fileExistsSync(binPath)) {
         logger.debug(`Found firebase-functions binary at '${binPath}'`);
         const childProcess = spawn(binPath, [this.sourceDir], {
