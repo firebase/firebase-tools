@@ -170,8 +170,10 @@ export class Delegate {
     if (Object.keys(config || {}).length) {
       env.CLOUD_RUNTIME_CONFIG = JSON.stringify(config);
     }
-    // Location of the binary included in the Functions differs between package manager.
-    // We'll try few routes in follow order of preference:
+    // Location of the binary included in the Firebase Functions SDK
+    // differs depending on the developer's setup and choice of package manager.
+    //
+    // We'll try few routes in the following order:
     //
     //   1. $SOURCE_DIR/node_modules/.bin/firebase-functions
     //   2. node_modules closest to the resolved path ${require.resolve("firebase-functions")}
