@@ -180,15 +180,10 @@ export class Delegate {
     //
     // (1) works for most package managers (npm, yarn[no-hoist],pnpm).
     // (2) handles cases where developer prefers monorepo setup or bundled function code.
-    const nodeModulesPaths = [
-      path.join(this.sourceDir, "node_modules"),
-      (() => {
-        const sdkPath = require.resolve("firebase-functions", { paths: [this.sourceDir] });
-        // Find location of the closest node_modules/ directory where we found the sdk.
-        return sdkPath.substring(0, sdkPath.lastIndexOf("node_modules") + 12);
-      })(),
-    ];
-    for (const nodeModulePath of nodeModulesPaths) {
+    const sourceNodeModulesPath = path.join(this.sourceDir, "node_modules");
+    const sdkPath = require.resolve("firebase-functions", { paths: [this.sourceDir] });
+    const sdkNodeModulesPath = sdkPath.substring(0, sdkPath.lastIndexOf("node_modules") + 12);
+    for (const nodeModulePath of [sourceNodeModulesPath, sdkNodeModulesPath]) {
       const binPath = path.join(nodeModulePath, ".bin", "firebase-functions");
       if (fileExistsSync(binPath)) {
         logger.debug(`Found firebase-functions binary at '${binPath}'`);
