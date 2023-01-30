@@ -1,4 +1,4 @@
-import type { RoutesManifestHeader } from "../../../../frameworks/next/interfaces";
+import type { RoutesManifestHeader } from "../../../../frameworks/nodejs/react/next/interfaces";
 import { supportedPaths, unsupportedPaths } from "./paths";
 
 export const supportedHeaders: RoutesManifestHeader[] = [

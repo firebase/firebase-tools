@@ -7,7 +7,7 @@ import {
   EXPORT_MARKER,
   IMAGES_MANIFEST,
   APP_PATH_ROUTES_MANIFEST,
-} from "../../../frameworks/next/constants";
+} from "../../../frameworks/nodejs/react/next/constants";
 import {
   pathHasRegex,
   cleanEscapedChars,
@@ -22,7 +22,7 @@ import {
   isUsingImageOptimization,
   isUsingAppDirectory,
   allDependencyNames,
-} from "../../../frameworks/next/utils";
+} from "../../../frameworks/nodejs/react/next/utils";
 import * as frameworksUtils from "../../../frameworks/utils";
 import * as fsUtils from "../../../fsutils";
 

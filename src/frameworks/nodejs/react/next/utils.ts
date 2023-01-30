@@ -4,7 +4,7 @@ import { join } from "path";
 import type { Header, Redirect, Rewrite } from "next/dist/lib/load-custom-routes";
 import type { MiddlewareManifest } from "next/dist/build/webpack/plugins/middleware-plugin";
 
-import { isUrl, readJSON } from "../utils";
+import { isUrl, readJSON } from "../../../utils";
 import type {
   Manifest,
   RoutesManifestRewrite,
@@ -18,7 +18,7 @@ import {
   IMAGES_MANIFEST,
   MIDDLEWARE_MANIFEST,
 } from "./constants";
-import { fileExistsSync } from "../../fsutils";
+import { fileExistsSync } from "../../../../fsutils";
 
 /**
  * Whether the given path has a regex or not.

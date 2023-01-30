@@ -31,7 +31,7 @@ export async function doSetup(setup: any, config: any): Promise<void> {
 
   if (experiments.isEnabled("webframeworks")) {
     if (discoveredFramework) {
-      const name = discoveredFramework.framework.name;
+      const name = discoveredFramework.name;
       await promptOnce(
         {
           name: "useDiscoveredFramework",
@@ -73,7 +73,7 @@ export async function doSetup(setup: any, config: any): Promise<void> {
     discoveredFramework = await discover(setup.hosting.source);
 
     if (discoveredFramework) {
-      const name = discoveredFramework.framework.name;
+      const name = discoveredFramework.name;
       await promptOnce(
         {
           name: "useDiscoveredFramework",
@@ -86,7 +86,7 @@ export async function doSetup(setup: any, config: any): Promise<void> {
     }
 
     if (setup.hosting.useDiscoveredFramework && discoveredFramework) {
-      setup.hosting.webFramework = discoveredFramework.framework;
+      setup.hosting.webFramework = discoveredFramework;
     } else {
       const choices: { name: string; value: any }[] = [];
       for (const value of WebFrameworks) {

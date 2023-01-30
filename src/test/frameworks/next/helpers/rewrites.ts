@@ -1,7 +1,7 @@
 import type {
   RoutesManifestRewrite,
   RoutesManifestRewriteObject,
-} from "../../../../frameworks/next/interfaces";
+} from "../../../../frameworks/nodejs/react/next/interfaces";
 import { supportedPaths, unsupportedPaths } from "./paths";
 
 export const supportedRewritesArray: RoutesManifestRewrite[] = supportedPaths.map((path) => ({

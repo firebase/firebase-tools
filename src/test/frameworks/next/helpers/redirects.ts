@@ -1,4 +1,4 @@
-import type { Manifest } from "../../../../frameworks/next/interfaces";
+import type { Manifest } from "../../../../frameworks/nodejs/react/next/interfaces";
 import { supportedPaths, unsupportedPaths } from "./paths";
 
 export const supportedRedirects: NonNullable<Manifest["redirects"]> = supportedPaths.map(

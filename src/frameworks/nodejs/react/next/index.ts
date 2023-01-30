@@ -15,13 +15,12 @@ import * as clc from "colorette";
 import {
   createServerResponseProxy,
   findDependency,
-  FrameworkType,
   NODE_VERSION,
   relativeRequire,
   SupportLevel,
-} from "..";
-import { promptOnce } from "../../prompt";
-import { FirebaseError } from "../../error";
+} from "../../..";
+import { promptOnce } from "../../../../prompt";
+import { FirebaseError } from "../../../../error";
 import {
   cleanEscapedChars,
   getNextjsRewritesToUse,
@@ -34,8 +33,15 @@ import {
   allDependencyNames,
 } from "./utils";
 import type { Manifest, NpmLsReturn } from "./interfaces";
-import { readJSON, warnIfCustomBuildScript, memoize, webFramework } from "../utils";
-import type { EmulatorInfo } from "../../emulator/types";
+import {
+  readJSON,
+  warnIfCustomBuildScript,
+  memoize,
+  webFramework, 
+  BuildTarget,
+  FirebaseHostingOptions
+} from "../../../utils";
+import type { EmulatorInfo } from "../../../../emulator/types";
 import { usesAppDirRouter, usesNextImage, hasUnoptimizedImage } from "./utils";
 import {
   MIDDLEWARE_MANIFEST,
@@ -44,6 +50,7 @@ import {
   ROUTES_MANIFEST,
   BUILD_ID,
 } from "./constants";
+import { React } from "..";
 
 const DEFAULT_BUILD_SCRIPT = ["next build"];
 const PUBLIC_DIR = "public";
@@ -54,20 +61,15 @@ const DEFAULT_CONFIG = { distDir: ".next" };
 
 type Config = Awaited<ReturnType<typeof NextJS["getConfig"]>>;
 
-export const enum BuildTarget {
-  FirebaseHosting = "Firebase Hosting",
-}
-
-interface FirebaseHostingOptions {
-  functions: { destinationDir: string };
-  hosting: { destinationDir: string };
-}
-
 @webFramework({
   name: NAME,
-  key: "next",
+  analyticsKey: "next",
   support: SupportLevel.Experimental,
-  type: FrameworkType.MetaFramework,
+  optionalFiles: ["next.config.js"],
+  dependencies: ["next"],
+  docsUrl: "https://firebase.google.com/docs/hosting/nextjs",
+  parent: React,
+  defaultBuildScripts: ["next build"],
 })
 class NextJS {
   @memoize() public static async discover(dir: string) {

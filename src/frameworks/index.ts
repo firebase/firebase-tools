@@ -9,6 +9,7 @@ import { mkdirp, pathExists, stat } from "fs-extra";
 import * as clc from "colorette";
 import * as process from "node:process";
 import * as semver from "semver";
+import * as glob from "glob";
 
 import { needProjectId } from "../projectUtils";
 import { hostingConfig } from "../hosting/config";
@@ -26,8 +27,7 @@ import { HostingRewrites } from "../firebaseConfig";
 import * as experiments from "../experiments";
 import { ensureTargeted } from "../functions/ensureTargeted";
 import { implicitInit } from "../hosting/implicitInit";
-import { BuildTarget } from "./next";
-import { FrameworkMetadata, FrameworkStatic, readJSON } from "./utils";
+import { BuildTarget, FrameworkMetadata, FrameworkStatic, readJSON } from "./utils";
 
 // Use "true &&"" to keep typescript from compiling this file and rewriting
 // the import statement into a require
@@ -104,11 +104,13 @@ const NPM_COMMAND = process.platform === "win32" ? "npm.cmd" : "npm";
 
 export const WebFrameworks: Array<FrameworkMetadata & { constructor: FrameworkStatic }> = [];
 
-// Require all the directories that way we trip the @WebFramework
+// Require all the directories that way we trip the @webFramework
 // decorator which will add to the lookup table
-readdirSync(__dirname)
-  .filter((path) => statSync(join(__dirname, path)).isDirectory())
-  .map((path) => [path, require(join(__dirname, path))]);
+glob(join(__dirname, "**/index.js"), (err, matches) => {
+  matches
+    .filter(it => it !== __filename)
+    .forEach(it => require(it));
+});
 
 export function relativeRequire(
   dir: string,
@@ -165,30 +167,71 @@ export function relativeRequire(dir: string, mod: string) {
   }
 }
 
+type DiscoveryResult = FrameworkMetadata & { constructor: FrameworkStatic };
+type FrameworkConstructor = Function & FrameworkStatic;
+
 /**
  *
  */
-export async function discover(dir: string, warn = true) {
-  const allFrameworkTypes = [...new Set(WebFrameworks.map(({ type }) => type))].sort();
-  for (const discoveryType of allFrameworkTypes) {
-    const frameworksDiscovered = [];
-    for (const framework of WebFrameworks) {
-      const {
-        constructor: { discover },
-        type,
-      } = framework;
-      if (type !== discoveryType) continue;
-      const result = await discover(dir);
-      if (result) frameworksDiscovered.push({ framework, ...result });
-    }
-    if (frameworksDiscovered.length > 1) {
-      if (warn) console.error("Multiple conflicting frameworks discovered.");
-      return;
-    }
-    if (frameworksDiscovered.length === 1) return frameworksDiscovered[0];
+export async function discover(dir: string, warn?: boolean): Promise<undefined|DiscoveryResult>;
+export async function discover(dir: string, warn: false, depth: number, parent: FrameworkConstructor): Promise<[number,DiscoveryResult][]>;
+export async function discover(dir: string, warn = true, depth = 1, parent: FrameworkConstructor|undefined=undefined): Promise<undefined|DiscoveryResult|[number,DiscoveryResult][]> {
+  const frameworksDiscovered = (await Promise.all(WebFrameworks
+    .filter(it => it.parent === parent)
+    .map(async framework => {
+      if (framework.requiredFiles) {
+        const requiredFilesExist = await Promise.all(framework.requiredFiles.map(path =>
+          new Promise(resolve => 
+            glob(join(dir, path), (err, matches) => resolve(matches.length > 0))
+          )
+        ));
+        if (requiredFilesExist.some(it => !it)) return undefined;
+      }
+      if (framework.dependencies) {
+        // TODO parellelize 
+        for (const dependency of framework.dependencies) {
+          if (typeof dependency === "string") {
+            if (!findDependency(dependency, { cwd: dir, depth: 0, omitDev: false })) return undefined;
+          } else {
+            const { depth = 0, omitDev = false } = dependency;
+            const version = findDependency(dependency.name, { cwd: dir, depth, omitDev })?.version;
+            if (!version) return undefined;
+            if (dependency.version && !semver.satisfies(version, dependency.version)) return undefined;
+          }
+        }
+      }
+      if (framework.vitePlugins) {
+        const { resolveConfig } = relativeRequire(dir, "vite");
+        const viteConfig = await resolveConfig({ root: dir }, "build", "production");
+        for (const plugin of framework.vitePlugins) {
+          if (!viteConfig.plugins.find(it => it.name === plugin)) return undefined;
+        }
+      }
+      const childDiscovery = await discover(dir, false, depth + 1, framework.constructor);
+      return [[depth, framework] as [number, DiscoveryResult], ...childDiscovery];
+    }))).flat().filter(it => it).map(it => it!);
+  if (parent) return frameworksDiscovered;
+  const maxDepth = Math.max(...frameworksDiscovered.map(([depth]) => depth));
+  const frameworksAtMaxDepth = frameworksDiscovered
+    .map(([depth, framework]) => depth === maxDepth ? framework : undefined)
+    .filter(it => it)
+    .map(it => it!);
+  const frameworkOverrides = frameworksAtMaxDepth
+    .map(it => it.override)
+    .filter(it => it)
+    .map(it => it!)
+    .flat();
+  const detectedFrameworks = frameworksAtMaxDepth
+    .filter(it => !frameworkOverrides.includes(it.constructor));
+  if (detectedFrameworks.length > 1) {
+    if (warn) console.error("Multiple conflicting frameworks discovered.");
+    return;
   }
-  if (warn) console.warn("Could not determine the web framework in use.");
-  return;
+  if (detectedFrameworks.length === 0) {
+    if (warn) console.warn("Could not determine the web framework in use.");
+    return;
+  }
+  return detectedFrameworks[0];
 }
 
 function scanDependencyTree(searchingFor: string, dependencies = {}): any {
@@ -206,7 +249,7 @@ function scanDependencyTree(searchingFor: string, dependencies = {}): any {
  *
  */
 export function findDependency(name: string, options: Partial<FindDepOptions> = {}) {
-  const { cwd, depth, omitDev } = { ...DEFAULT_FIND_DEP_OPTIONS, ...options };
+  const { cwd, depth = Infinity, omitDev = false } = { ...DEFAULT_FIND_DEP_OPTIONS, ...options };
   const env: any = Object.assign({}, process.env);
   delete env.NODE_ENV;
   const result = spawnSync(
@@ -216,7 +259,7 @@ export function findDependency(name: string, options: Partial<FindDepOptions> = 
       name,
       "--json",
       ...(omitDev ? ["--omit", "dev"] : []),
-      ...(depth === undefined ? [] : ["--depth", depth.toString(10)]),
+      ...(depth === Infinity ? [] : ["--depth", depth.toString(10)]),
     ],
     { cwd, env }
   );
@@ -353,12 +396,10 @@ export async function prepareFrameworks(
     const results = await discover(sourceDir);
     if (!results) throw new Error("Epic fail.");
     const {
-      framework: {
-        constructor: { initialize },
-        name,
-        support,
-        key,
-      },
+      constructor: { initialize },
+      name,
+      support,
+      analyticsKey,
     } = results;
     console.log(`Detected a ${name} codebase. ${SupportLevelWarnings[support] || ""}\n`);
 
@@ -372,7 +413,7 @@ export async function prepareFrameworks(
 
     const wantsBackend = await framework.wantsBackend();
 
-    config.webFramework = `${key}${wantsBackend ? "_ssr" : ""}`;
+    config.webFramework = `${analyticsKey}${wantsBackend ? "_ssr" : ""}`;
 
     if (wantsBackend) {
       // if exists, delete everything but the node_modules directory and package-lock.json
