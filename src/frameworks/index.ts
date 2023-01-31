@@ -41,6 +41,7 @@ export interface BuildResult {
   redirects?: any[];
   headers?: any[];
   wantsBackend?: boolean;
+  trailingSlash?: boolean;
 }
 
 export interface Framework {
@@ -410,10 +411,12 @@ export async function prepareFrameworks(
         rewrites = [],
         redirects = [],
         headers = [],
+        trailingSlash,
       } = (await build(getProjectPath())) || {};
       config.rewrites.push(...rewrites);
       config.redirects.push(...redirects);
       config.headers.push(...headers);
+      config.trailingSlash ??= trailingSlash;
       if (await pathExists(hostingDist)) await rm(hostingDist, { recursive: true });
       await mkdirp(hostingDist);
       await ɵcodegenPublicDirectory(getProjectPath(), hostingDist);
