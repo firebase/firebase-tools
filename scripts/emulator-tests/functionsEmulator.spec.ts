@@ -10,7 +10,7 @@ import * as winston from "winston";
 import * as logform from "logform";
 
 import { EmulatedTriggerDefinition } from "../../src/emulator/functionsEmulatorShared";
-import { FunctionsEmulator } from "../../src/emulator/functionsEmulator";
+import { EmulatableBackend, FunctionsEmulator } from "../../src/emulator/functionsEmulator";
 import { EmulatorInfo, Emulators } from "../../src/emulator/types";
 import { FakeEmulator } from "../../src/test/emulators/fakeEmulator";
 import { TIMEOUT_LONG, TIMEOUT_MED, MODULE_ROOT } from "./fixtures";
@@ -31,9 +31,14 @@ if ((process.env.DEBUG || "").toLowerCase().includes("spec")) {
   );
 }
 
-const FUNCTIONS_DIR = `./scripts/emulator-tests/functions`;
+const FUNCTIONS_DIR = path.resolve(
+  // MODULE_ROOT points to firebase-tools/dev since that's where this test file is compiled to.
+  // Function source directory is located on firebase-tools/ hence the "..". See run.sh
+  path.join(MODULE_ROOT, "..", "scripts/emulator-tests/functions")
+  // path.join(MODULE_ROOT, "scripts/emulator-tests/functions")
+);
 
-const TEST_BACKEND = {
+const TEST_BACKEND: EmulatableBackend = {
   functionsDir: FUNCTIONS_DIR,
   env: {},
   secretEnv: [],
@@ -56,6 +61,26 @@ async function setupEnvFiles(envs: Record<string, string>) {
   };
 }
 
+async function writeSource(
+  triggerSource: () => void,
+  params?: Record<string, () => void>
+): Promise<() => Promise<void>> {
+  let sourceCode = `module.exports = (${triggerSource.toString()})();\n`;
+  const sourcePath = path.join(FUNCTIONS_DIR, "index.js");
+  if (params) {
+    for (const [paramName, valFn] of Object.entries(params)) {
+      sourceCode = `const ${paramName} = (${valFn.toString()})();\n${sourceCode}`;
+      // Since parameter cannot be references before it's defined, employ this hack to
+      // replace all "string-escaped" param references to real instances.
+      sourceCode = sourceCode.replaceAll(`"__$${paramName}__"`, paramName);
+    }
+  }
+  await fsp.writeFile(sourcePath, sourceCode);
+  return async () => {
+    await fsp.rm(sourcePath);
+  };
+}
+
 async function useFunction(
   emu: FunctionsEmulator,
   triggerName: string,
@@ -63,9 +88,7 @@ async function useFunction(
   regions: string[] = ["us-central1"],
   triggerOverrides?: Partial<EmulatedTriggerDefinition>
 ): Promise<void> {
-  const sourceCode = `module.exports = (${triggerSource.toString()})();\n`;
-  await fsp.writeFile(`${FUNCTIONS_DIR}/index.js`, sourceCode);
-
+  await writeSource(triggerSource);
   const triggers: EmulatedTriggerDefinition[] = [];
   for (const region of regions) {
     triggers.push({
@@ -737,8 +760,15 @@ describe("FunctionsEmulator", function () {
     });
 
     describe("user-defined environment variables", () => {
+      let cleanup: (() => Promise<void>) | undefined;
+
+      afterEach(async () => {
+        await cleanup?.();
+        cleanup = undefined;
+      });
+
       it("should load environment variables in .env file", async () => {
-        const cleanup = await setupEnvFiles({
+        cleanup = await setupEnvFiles({
           ".env": "FOO=foo\nBAR=bar",
         });
 
@@ -766,11 +796,10 @@ describe("FunctionsEmulator", function () {
           .then((res) => {
             expect(res.body).to.deep.equal({ FOO: "foo", BAR: "bar" });
           });
-        await cleanup();
       });
 
       it("should prefer environment variables in .env.{projectId} file", async () => {
-        const cleanup = await setupEnvFiles({
+        cleanup = await setupEnvFiles({
           ".env": "FOO=foo",
           [`.env.${TEST_PROJECT_ID}`]: "FOO=goo",
         });
@@ -798,11 +827,10 @@ describe("FunctionsEmulator", function () {
           .then((res) => {
             expect(res.body).to.deep.equal({ FOO: "goo" });
           });
-        await cleanup();
       });
 
       it("should prefer environment variables in .env.local file", async () => {
-        const cleanup = await setupEnvFiles({
+        cleanup = await setupEnvFiles({
           ".env": "FOO=foo",
           [`.env.${TEST_PROJECT_ID}`]: "FOO=goo",
           ".env.local": "FOO=hoo",
@@ -831,7 +859,6 @@ describe("FunctionsEmulator", function () {
           .then((res) => {
             expect(res.body).to.deep.equal({ FOO: "hoo" });
           });
-        await cleanup();
       });
     });
 
@@ -923,6 +950,91 @@ describe("FunctionsEmulator", function () {
             expect(res.body.secret).to.equal("secretManager");
           });
       });
+    });
+  });
+
+  describe("Discover", () => {
+    let cleanupSource: (() => Promise<void>) | undefined;
+    let cleanupEnvs: (() => Promise<void>) | undefined;
+
+    afterEach(async () => {
+      await cleanupSource?.();
+      await cleanupEnvs?.();
+    });
+
+    it("resolves function with parameter value defined in .env correctly", async () => {
+      cleanupSource = await writeSource(
+        () => {
+          return {
+            functionId: require("firebase-functions")
+              .runWith({ timeoutSeconds: "__$timeout__" })
+              .https.onRequest((req: express.Request, res: express.Response) => {
+                res.json({ path: req.path });
+              }),
+          };
+        },
+        {
+          timeout: () => require("firebase-functions/params").defineInt("TIMEOUT"),
+        }
+      );
+      cleanupEnvs = await setupEnvFiles({
+        ".env": "TIMEOUT=24",
+      });
+
+      const triggerDefinitions = await emu.discoverTriggers(TEST_BACKEND);
+      expect(triggerDefinitions).to.have.length(1);
+      expect(triggerDefinitions[0].timeoutSeconds).to.equal(24);
+    });
+
+    it("resolves function with parameter value defined in .env.projectId correctly", async () => {
+      cleanupSource = await writeSource(
+        () => {
+          return {
+            functionId: require("firebase-functions")
+              .runWith({ timeoutSeconds: "__$timeout__" })
+              .https.onRequest((req: express.Request, res: express.Response) => {
+                res.json({ path: req.path });
+              }),
+          };
+        },
+        {
+          timeout: () => require("firebase-functions/params").defineInt("TIMEOUT"),
+        }
+      );
+      cleanupEnvs = await setupEnvFiles({
+        ".env": "TIMEOUT=24",
+        [`.env.${TEST_PROJECT_ID}`]: "TIMEOUT=25",
+      });
+
+      const triggerDefinitions = await emu.discoverTriggers(TEST_BACKEND);
+      expect(triggerDefinitions).to.have.length(1);
+      expect(triggerDefinitions[0].timeoutSeconds).to.equal(25);
+    });
+
+    it("resolves function with parameter value defined in .env.local correctly", async () => {
+      cleanupSource = await writeSource(
+        () => {
+          return {
+            functionId: require("firebase-functions")
+              .runWith({ timeoutSeconds: "__$timeout__" })
+              .https.onRequest((req: express.Request, res: express.Response) => {
+                res.json({ path: req.path });
+              }),
+          };
+        },
+        {
+          timeout: () => require("firebase-functions/params").defineInt("TIMEOUT"),
+        }
+      );
+      cleanupEnvs = await setupEnvFiles({
+        ".env": "TIMEOUT=24",
+        [`.env.${TEST_PROJECT_ID}`]: "TIMEOUT=25",
+        ".env.local": "TIMEOUT=26",
+      });
+
+      const triggerDefinitions = await emu.discoverTriggers(TEST_BACKEND);
+      expect(triggerDefinitions).to.have.length(1);
+      expect(triggerDefinitions[0].timeoutSeconds).to.equal(26);
     });
   });
 });
