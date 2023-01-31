@@ -3,3 +3,4 @@
 - Fixes issue where `init firestore` was unecessarilly checking for default resource location. (#5230 and #5452)
 - Pass `trailingSlash` from Next.js config to `firebase.json` (#5445)
 - Don't use Next.js internal redirects for the backend test (#5445)
+- Fix issue where pnpm support broke for function emulation and deployment. (#5467)
