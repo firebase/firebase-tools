@@ -1,9 +1,1 @@
-- Refactors Functions Emulator. (#5422)
-- Fixes race condition when discovering functions. (#5444)
-- Added support for Nuxt 2 and Nuxt 3. (#5321)
-- Fixes issue where `init firestore` was unecessarilly checking for default resource location. (#5230 and #5452)
-- Pass `trailingSlash` from Next.js config to `firebase.json` (#5445)
-- Don't use Next.js internal redirects for the backend test (#5445)
-- Fix issue where pnpm support broke for function emulation and deployment. (#5467)
 - Fix storage download name issue #5478
-- Fix bug where .env.local files were not picked up during function emulation. (#5477)
