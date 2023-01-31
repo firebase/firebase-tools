@@ -1,9 +1,10 @@
 ---
-name: ⚠️ Bug report
+name: "⚠️ Bug report"
 about: Create a report to help us improve
-title: ""
-labels: bug
-assignees: ""
+title: ''
+labels: 'type: bug'
+assignees: ''
+
 ---
 
 <!-- DO NOT DELETE
