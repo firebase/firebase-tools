@@ -95,7 +95,7 @@ export async function build(dir: string): Promise<BuildResult> {
   });
 
   const reasonsForBackend = [];
-  const { distDir } = await getConfig(dir);
+  const { distDir, trailingSlash } = await getConfig(dir);
 
   if (await isUsingMiddleware(join(dir, distDir), false)) {
     reasonsForBackend.push("middleware");
@@ -171,7 +171,9 @@ export async function build(dir: string): Promise<BuildResult> {
     headers,
   }));
 
-  const isEveryRedirectSupported = nextJsRedirects.every(isRedirectSupportedByHosting);
+  const isEveryRedirectSupported = nextJsRedirects
+    .filter((it) => !it.internal)
+    .every(isRedirectSupportedByHosting);
   if (!isEveryRedirectSupported) {
     reasonsForBackend.push("advanced redirects");
   }
@@ -227,7 +229,7 @@ export async function build(dir: string): Promise<BuildResult> {
     console.log("");
   }
 
-  return { wantsBackend, headers, redirects, rewrites };
+  return { wantsBackend, headers, redirects, rewrites, trailingSlash };
 }
 
 /**
@@ -442,5 +444,10 @@ async function getConfig(dir: string): Promise<NextConfig & { distDir: string }>
       }
     }
   }
-  return { distDir: ".next", ...config };
+  return {
+    distDir: ".next",
+    // trailingSlash defaults to false in Next.js: https://nextjs.org/docs/api-reference/next.config.js/trailing-slash
+    trailingSlash: false,
+    ...config,
+  };
 }

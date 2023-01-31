@@ -212,7 +212,7 @@ async function installToManifest(options: InstallExtensionOptions): Promise<void
 
   const paramBindingOptions = await paramHelper.getParams({
     projectId,
-    paramSpecs: spec.params,
+    paramSpecs: spec.params.concat(spec.systemParams ?? []),
     nonInteractive,
     paramsEnvPath,
     instanceId,
