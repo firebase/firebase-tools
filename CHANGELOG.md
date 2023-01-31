@@ -1,1 +1,2 @@
 - Fix storage download name issue #5478
+- Refactor the way timeouts are enforced by the Functions Emulator (#5464)
