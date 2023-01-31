@@ -1108,12 +1108,6 @@ export class FunctionsEmulator implements EmulatorInstance {
     envs.K_REVISION = "1";
     envs.PORT = "80";
 
-    // TODO(danielylee): Later, we want timeout to be enforce by the data plane. For now, we rely on the runtime to
-    // enforce timeout.
-    if (trigger?.timeoutSeconds) {
-      envs.FUNCTIONS_EMULATOR_TIMEOUT_SECONDS = trigger.timeoutSeconds.toString();
-    }
-
     if (trigger) {
       const target = trigger.entryPoint;
       envs.FUNCTION_TARGET = target;
@@ -1357,7 +1351,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     };
 
     const pool = this.workerPools[backend.codebase];
-    const worker = pool.addWorker(trigger?.id, runtime, extensionLogInfo);
+    const worker = pool.addWorker(trigger, runtime, extensionLogInfo);
     await worker.waitForSocketReady();
     return worker;
   }

@@ -1,0 +1,1 @@
+- Refactor the way timeouts are enforced by the Functions Emulator (#5464)
