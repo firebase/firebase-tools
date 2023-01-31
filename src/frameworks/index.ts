@@ -157,8 +157,13 @@ export function relativeRequire(
 export function relativeRequire(dir: string, mod: "next"): typeof import("next");
 export function relativeRequire(dir: string, mod: "vite"): typeof import("vite");
 export function relativeRequire(dir: string, mod: "jsonc-parser"): typeof import("jsonc-parser");
+
 // TODO the types for @nuxt/kit are causing a lot of troubles, need to do something other than any
+// Nuxt 2
+export function relativeRequire(dir: string, mod: "nuxt/dist/nuxt.js"): Promise<any>;
+// Nuxt 3
 export function relativeRequire(dir: string, mod: "@nuxt/kit"): Promise<any>;
+
 /**
  *
  */
