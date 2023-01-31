@@ -269,7 +269,14 @@ export async function build(
     console.log("");
   }
 
-  return { wantsBackend, headers, redirects, rewrites, trailingSlash, i18n: nextjsI18n };
+  return {
+    wantsBackend,
+    headers,
+    redirects,
+    rewrites,
+    trailingSlash,
+    ...(!nextjsI18n?.domains ? { i18n: nextjsI18n } : {}),
+  };
 }
 
 /**
