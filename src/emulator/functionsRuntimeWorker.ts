@@ -29,6 +29,14 @@ export enum RuntimeWorkerState {
   FINISHED = "FINISHED",
 }
 
+/**
+ * Given no trigger key, worker is given this special key.
+ *
+ * This is useful when running the Functions Emulator in debug mode
+ * where single process shared amongst all triggers.
+ */
+const FREE_WORKER_KEY = "~free~";
+
 export class RuntimeWorker {
   readonly id: string;
   readonly triggerKey: string;
@@ -46,7 +54,7 @@ export class RuntimeWorker {
     readonly timeoutSeconds?: number
   ) {
     this.id = uuid.v4();
-    this.triggerKey = triggerId || "~free~";
+    this.triggerKey = triggerId || FREE_WORKER_KEY;
     this.runtime = runtime;
 
     const childProc = this.runtime.process;
@@ -118,14 +126,14 @@ export class RuntimeWorker {
   }
 
   request(req: http.RequestOptions, resp: http.ServerResponse, body?: unknown): Promise<void> {
-    if (this.triggerKey !== "~free~") {
+    if (this.triggerKey !== FREE_WORKER_KEY) {
       this.logInfo(`Beginning execution of "${this.triggerKey}"`);
     }
     const startHrTime = process.hrtime();
 
     this.state = RuntimeWorkerState.BUSY;
     const onFinish = (): void => {
-      if (this.triggerKey !== "~free~") {
+      if (this.triggerKey !== FREE_WORKER_KEY) {
         const elapsedHrTime = process.hrtime(startHrTime);
         this.logInfo(
           `Finished "${this.triggerKey}" in ${
