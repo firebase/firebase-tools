@@ -684,7 +684,7 @@ export async function cleanAuthState(
  *
  * @param project project ID
  * @param site site id
- * @return list of domains or null if not found
+ * @return array of domains
  */
 export async function getSiteDomains(project: string, site: string): Promise<Domain[]> {
   try {
