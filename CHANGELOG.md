@@ -5,3 +5,4 @@
 - Pass `trailingSlash` from Next.js config to `firebase.json` (#5445)
 - Don't use Next.js internal redirects for the backend test (#5445)
 - Fix issue where pnpm support broke for function emulation and deployment. (#5467)
+- Fix bug where .env.local files were not picked up during function emulation. (#5477)
