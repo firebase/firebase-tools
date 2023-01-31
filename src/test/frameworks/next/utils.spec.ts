@@ -376,4 +376,8 @@ describe("Next.js utils", () => {
       ]);
     });
   });
+
+  describe("validateI18nDomainRouting", () => {
+    // TODO:
+  });
 });

@@ -34,6 +34,7 @@ import {
   isUsingImageOptimization,
   isUsingMiddleware,
   allDependencyNames,
+  validateI18nDomainRouting,
 } from "./utils";
 import type { Manifest, NpmLsReturn } from "./interfaces";
 import { readJSON } from "../utils";
@@ -46,7 +47,6 @@ import {
   PRERENDER_MANIFEST,
   ROUTES_MANIFEST,
 } from "./constants";
-import { getAllSiteDomains } from "../../hosting/api";
 
 const DEFAULT_BUILD_SCRIPT = ["next build"];
 const PUBLIC_DIR = "public";
@@ -167,19 +167,7 @@ export async function build(
   } = manifest;
 
   if (nextjsI18n?.domains) {
-    const allSiteDomains = await getAllSiteDomains(context.projectId, context.siteId);
-
-    for (const i18nDomain of nextjsI18n.domains) {
-      const i18nDomainIsAHostingDomain = allSiteDomains.some(
-        (siteDomain) => siteDomain === i18nDomain.domain
-      );
-
-      if (!i18nDomainIsAHostingDomain) {
-        throw new FirebaseError(
-          `i18n domain "${i18nDomain.domain}" is not registered in Firebase Hosting for this project.`
-        );
-      }
-    }
+    await validateI18nDomainRouting(nextjsI18n.domains, context.projectId, context.siteId);
   }
 
   const isEveryHeaderSupported = nextJsHeaders.every(isHeaderSupportedByHosting);

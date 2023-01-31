@@ -1,6 +1,7 @@
 import { existsSync } from "fs";
 import { pathExists } from "fs-extra";
 import { join } from "path";
+import type { DomainLocale } from "next/dist/server/config";
 import type { Header, Redirect, Rewrite } from "next/dist/lib/load-custom-routes";
 import type { MiddlewareManifest } from "next/dist/build/webpack/plugins/middleware-plugin";
 
@@ -19,6 +20,8 @@ import {
   MIDDLEWARE_MANIFEST,
 } from "./constants";
 import { fileExistsSync } from "../../fsutils";
+import { getAllSiteDomains } from "../../hosting/api";
+import { FirebaseError } from "../../error";
 
 export const I18N_CUSTOM_ROUTE_PREFIX = ":nextInternalLocale";
 
@@ -246,4 +249,29 @@ export function allDependencyNames(mod: NpmLsDepdendency): string[] {
   );
   // deduplicate the names
   return [...new Set(dependencyNames)];
+}
+
+/**
+ * Check if i18n domains are registered in Firebase Hosting
+ *
+ * @throws {FirebaseError} if the domain is not registered in Firebase Hosting
+ */
+export async function validateI18nDomainRouting(
+  i18nDomains: DomainLocale[],
+  projectId: string,
+  siteId: string
+): Promise<void> {
+  const allSiteDomains = await getAllSiteDomains(projectId, siteId);
+
+  for (const i18nDomain of i18nDomains) {
+    const i18nDomainIsAHostingDomain = allSiteDomains.some(
+      (siteDomain) => siteDomain === i18nDomain.domain
+    );
+
+    if (!i18nDomainIsAHostingDomain) {
+      throw new FirebaseError(
+        `i18n domain "${i18nDomain.domain}" is not registered in Firebase Hosting for this project.`
+      );
+    }
+  }
 }
