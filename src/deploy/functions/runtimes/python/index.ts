@@ -129,6 +129,14 @@ export class Delegate implements runtimes.RuntimeDelegate {
       )} in ${this.sourceDir}`
     );
     const childProcess = runWithVirtualEnv(args, this.sourceDir, envWithAdminPort);
+    childProcess.stdout?.on("data", (chunk: Buffer) => {
+      const chunkString = chunk.toString();
+      logger.debug(`stdout: ${chunkString}`);
+    });
+    childProcess.stderr?.on("data", (chunk: Buffer) => {
+      const chunkString = chunk.toString();
+      logger.debug(`stderr: ${chunkString}`);
+    });
     return Promise.resolve(async () => {
       await fetch(`http://127.0.0.1:${port}/__/quitquitquit`);
       const quitTimeout = setTimeout(() => {
