@@ -692,7 +692,7 @@ export async function getSiteDomains(project: string, site: string): Promise<Dom
       `/projects/${project}/sites/${site}/domains`
     );
 
-    return res.body.domains;
+    return res.body.domains ?? [];
   } catch (e: unknown) {
     if (e instanceof FirebaseError && e.status === 404) {
       throw new FirebaseError(`could not find site "${site}" for project "${project}"`, {
