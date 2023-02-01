@@ -1,3 +1,4 @@
 - Fix storage download name issue #5478
 - Refactor the way timeouts are enforced by the Functions Emulator (#5464)
 - Fix bug where cloudevent emitted by various emulators didn't conform to spec (#5466)
+- Web frameworks deploys can once again bundle local NPM dependencies (#5440)
