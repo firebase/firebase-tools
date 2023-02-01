@@ -291,8 +291,17 @@ export async function init(setup: any) {
 /**
  * Create a directory for SSG content.
  */
-export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: string) {
-  const { distDir } = await getConfig(sourceDir);
+export async function ɵcodegenPublicDirectory(
+  sourceDir: string,
+  destDir: string,
+  context: { siteId: string; projectId: string }
+) {
+  const { distDir, i18n } = await getConfig(sourceDir);
+
+  if (i18n?.domains) {
+    const allSiteDomains = await getAllSiteDomains(context.projectId, context.siteId);
+    validateI18nDomainRouting(i18n.domains, allSiteDomains);
+  }
 
   const publicPath = join(sourceDir, "public");
   await mkdir(join(destDir, "_next", "static"), { recursive: true });

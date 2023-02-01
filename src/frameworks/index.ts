@@ -59,7 +59,11 @@ export interface Framework {
     dir: string,
     hostingEmulatorInfo?: EmulatorInfo
   ) => Promise<(req: IncomingMessage, res: ServerResponse, next: () => void) => void>;
-  ɵcodegenPublicDirectory: (dir: string, dest: string) => Promise<void>;
+  ɵcodegenPublicDirectory: (
+    dir: string,
+    dest: string,
+    context: { siteId: string; projectId: string }
+  ) => Promise<void>;
   ɵcodegenFunctionsDirectory?: (
     dir: string,
     dest: string
@@ -430,7 +434,12 @@ export async function prepareFrameworks(
 
       if (await pathExists(hostingDist)) await rm(hostingDist, { recursive: true });
       await mkdirp(hostingDist);
-      await ɵcodegenPublicDirectory(getProjectPath(), hostingDist);
+
+      await ɵcodegenPublicDirectory(getProjectPath(), hostingDist, {
+        projectId: context.projectId,
+        siteId: context.site,
+      });
+
       config.public = relative(projectRoot, hostingDist);
       if (wantsBackend) codegenFunctionsDirectory = codegenProdModeFunctionsDirectory;
     }
