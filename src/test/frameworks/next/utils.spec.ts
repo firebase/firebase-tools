@@ -24,6 +24,7 @@ import {
   cleanCustomRouteI18n,
   I18N_CUSTOM_ROUTE_PREFIX,
   allDependencyNames,
+  validateI18nDomainRouting,
 } from "../../../frameworks/next/utils";
 import * as frameworksUtils from "../../../frameworks/utils";
 import * as fsUtils from "../../../fsutils";
@@ -48,7 +49,8 @@ import {
   unsupportedRewritesArray,
   npmLsReturn,
 } from "./helpers";
-import { pathsWithCustomRoutesInternalPrefix } from "./helpers/i18n";
+import { domains, i18nDomains, pathsWithCustomRoutesInternalPrefix } from "./helpers/i18n";
+import { FirebaseError } from "../../../error";
 
 describe("Next.js utils", () => {
   describe("pathHasRegex", () => {
@@ -323,6 +325,8 @@ describe("Next.js utils", () => {
       for (const path of pathsWithCustomRoutesInternalPrefix) {
         const cleanPath = cleanCustomRouteI18n(path);
 
+        console.log({ path, cleanPath });
+
         expect(path.includes(I18N_CUSTOM_ROUTE_PREFIX)).to.be.true;
         expect(cleanPath.includes(I18N_CUSTOM_ROUTE_PREFIX)).to.be.false;
 
@@ -378,6 +382,22 @@ describe("Next.js utils", () => {
   });
 
   describe("validateI18nDomainRouting", () => {
-    // TODO:
+    it("should throw indicating which i18n domain is not a Firebase Hosting site domain", () => {
+      const domainToError = "notinhosting.firebaseapp.com";
+
+      expect(() =>
+        validateI18nDomainRouting(
+          [...i18nDomains, { defaultLocale: "locale", domain: domainToError }],
+          domains
+        )
+      ).to.throw(
+        FirebaseError,
+        `i18n domain "${domainToError}" is not registered in Firebase Hosting for this project.`
+      );
+    });
+
+    it("should not throw if i18n domain is a Hosting site domain", () => {
+      expect(validateI18nDomainRouting(i18nDomains, domains)).to.not.throw;
+    });
   });
 });

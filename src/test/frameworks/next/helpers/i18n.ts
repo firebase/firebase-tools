@@ -1,3 +1,4 @@
+import type { DomainLocale } from "next/dist/server/config";
 import { I18N_CUSTOM_ROUTE_PREFIX } from "../../../../frameworks/next/utils";
 
 export const pathsWithCustomRoutesInternalPrefix = [
@@ -19,3 +20,32 @@ export const pathsWithCustomRoutesInternalPrefix = [
   `${I18N_CUSTOM_ROUTE_PREFIX}(en\\-US|fr|nl\\-NL|nl\\-BE)/docs/:slug`,
   `${I18N_CUSTOM_ROUTE_PREFIX}/bar/barbar`,
 ];
+
+export const i18nDomains: DomainLocale[] = [
+  {
+    defaultLocale: "en-US",
+    domain: "en-us.firebaseapp.com",
+  },
+  {
+    defaultLocale: "pt-BR",
+    domain: "pt-br.firebaseapp.com",
+  },
+  {
+    defaultLocale: "es-ES",
+    domain: "es-es.firebaseapp.com",
+  },
+  {
+    defaultLocale: "fr-FR",
+    domain: "fr-fr.firebaseapp.com",
+  },
+  {
+    defaultLocale: "it-IT",
+    domain: "it-it.firebaseapp.com",
+  },
+  {
+    defaultLocale: "de-DE",
+    domain: "de-de.firebaseapp.com",
+  },
+];
+
+export const domains = i18nDomains.map(({ domain }) => domain);
