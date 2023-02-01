@@ -20,7 +20,6 @@ import {
   MIDDLEWARE_MANIFEST,
 } from "./constants";
 import { fileExistsSync } from "../../fsutils";
-import { getAllSiteDomains } from "../../hosting/api";
 import { FirebaseError } from "../../error";
 
 export const I18N_CUSTOM_ROUTE_PREFIX = ":nextInternalLocale";
@@ -256,15 +255,12 @@ export function allDependencyNames(mod: NpmLsDepdendency): string[] {
  *
  * @throws {FirebaseError} if the domain is not registered in Firebase Hosting
  */
-export async function validateI18nDomainRouting(
+export function validateI18nDomainRouting(
   i18nDomains: DomainLocale[],
-  projectId: string,
-  siteId: string
-): Promise<void> {
-  const allSiteDomains = await getAllSiteDomains(projectId, siteId);
-
+  siteDomains: string[]
+): void {
   for (const i18nDomain of i18nDomains) {
-    const i18nDomainIsAHostingDomain = allSiteDomains.some(
+    const i18nDomainIsAHostingDomain = siteDomains.some(
       (siteDomain) => siteDomain === i18nDomain.domain
     );
 

@@ -47,6 +47,7 @@ import {
   PRERENDER_MANIFEST,
   ROUTES_MANIFEST,
 } from "./constants";
+import { getAllSiteDomains } from "../../hosting/api";
 
 const DEFAULT_BUILD_SCRIPT = ["next build"];
 const PUBLIC_DIR = "public";
@@ -167,7 +168,9 @@ export async function build(
   } = manifest;
 
   if (nextjsI18n?.domains) {
-    await validateI18nDomainRouting(nextjsI18n.domains, context.projectId, context.siteId);
+    const allSiteDomains = await getAllSiteDomains(context.projectId, context.siteId);
+
+    validateI18nDomainRouting(nextjsI18n.domains, allSiteDomains);
   }
 
   const isEveryHeaderSupported = nextJsHeaders.every(isHeaderSupportedByHosting);
