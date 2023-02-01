@@ -1,2 +1,3 @@
 - Refactor the way timeouts are enforced by the Functions Emulator (#5464)
 - Fix bug where cloudevent emitted by various emulators didn't conform to spec (#5466)
+- Upgrade the emulator suite UI to 1.11.3 to capture some bug fixes (#1234)
