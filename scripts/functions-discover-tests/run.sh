@@ -11,6 +11,9 @@ firebase experiments:enable internaltesting
 # Install yarn
 npm i -g yarn
 
+# Install pnpm
+npm install -g pnpm --force # it's okay to reinstall pnpm
+
 for dir in ./scripts/functions-discover-tests/fixtures/*; do
   (cd $dir && ./install.sh)
 done

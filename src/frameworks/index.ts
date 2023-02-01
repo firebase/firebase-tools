@@ -41,6 +41,7 @@ export interface BuildResult {
   redirects?: any[];
   headers?: any[];
   wantsBackend?: boolean;
+  trailingSlash?: boolean;
 }
 
 export interface Framework {
@@ -156,8 +157,13 @@ export function relativeRequire(
 export function relativeRequire(dir: string, mod: "next"): typeof import("next");
 export function relativeRequire(dir: string, mod: "vite"): typeof import("vite");
 export function relativeRequire(dir: string, mod: "jsonc-parser"): typeof import("jsonc-parser");
+
 // TODO the types for @nuxt/kit are causing a lot of troubles, need to do something other than any
+// Nuxt 2
+export function relativeRequire(dir: string, mod: "nuxt/dist/nuxt.js"): Promise<any>;
+// Nuxt 3
 export function relativeRequire(dir: string, mod: "@nuxt/kit"): Promise<any>;
+
 /**
  *
  */
@@ -405,10 +411,12 @@ export async function prepareFrameworks(
         rewrites = [],
         redirects = [],
         headers = [],
+        trailingSlash,
       } = (await build(getProjectPath())) || {};
       config.rewrites.push(...rewrites);
       config.redirects.push(...redirects);
       config.headers.push(...headers);
+      config.trailingSlash ??= trailingSlash;
       if (await pathExists(hostingDist)) await rm(hostingDist, { recursive: true });
       await mkdirp(hostingDist);
       await ɵcodegenPublicDirectory(getProjectPath(), hostingDist);
