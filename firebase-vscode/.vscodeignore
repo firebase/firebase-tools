@@ -8,4 +8,5 @@ vsc-extension-quickstart.md
 **/.eslintrc.json
 **/*.map
 **/*.ts
+*.vsix
 webpack.config.js

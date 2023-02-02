@@ -4,14 +4,13 @@
 
 const path = require('path');
 const webpack = require('webpack');
-const NodePolyfillPlugin = require("node-polyfill-webpack-plugin");
 
 const pkgParent = require("../package.json");
 
 const deps = Object.keys(pkgParent.dependencies);
 const externals = [
   // don't need outside CLI
-  'ora', 'colorette', 'inquirer',
+  // 'ora', 'colorette', 'inquirer',
   // breaks stuff - local paths to bridge.js and other files
   'proxy-agent',
   // breaks stuff because of `self`
@@ -58,24 +57,8 @@ const config = {
       // Webpack 5 no longer polyfills Node.js core modules automatically.
       // see https://webpack.js.org/configuration/resolve/#resolvefallback
       // for the list of Node.js core module polyfills.
-      // "fs": false,
-      // "http": false,
-      // "path": false,
-      // "url": false,
-      // "util": false,
-      // "assert": false,
-      // "stream": false,
-      // "crypto": false,
-      // "events": false,
-      // "querystring": false,
-      // "child_process": false,
-      // "worker_threads": false,
-      // "net": false
     }
   },
-  // plugins: [new NodePolyfillPlugin({
-  //   includeAliases: ['process', 'os', 'https', 'zlib', 'constants']
-  // })],
   optimization: {
     usedExports: true
   },
@@ -93,4 +76,5 @@ const config = {
     ]
   }
 };
+
 module.exports = config;
