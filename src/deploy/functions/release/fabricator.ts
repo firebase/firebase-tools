@@ -316,6 +316,10 @@ export class Fabricator {
       await this.executor
         .run(async () => {
           try {
+            // eventarc.createChannel doesn't always return 409 when channel already exists.
+            // Ex. when channel exists and has active triggers the API will return 400 (bad
+            // request) with message saying something about active triggers. So instead of
+            // relying on 409 response we explicitly check for channel existense.
             if ((await eventarc.getChannel(channel)) !== undefined) {
               return;
             }
