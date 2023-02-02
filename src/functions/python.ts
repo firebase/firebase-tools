@@ -12,6 +12,7 @@ export function runWithVirtualEnv(
   commandAndArgs: string[],
   cwd: string,
   envs: Record<string, string>,
+  spawnOpts: cp.SpawnOptions = {},
   venvDir = DEFAULT_VENV_DIR
 ): cp.ChildProcess {
   const activateScriptPath =
@@ -25,6 +26,7 @@ export function runWithVirtualEnv(
     shell: true,
     cwd,
     stdio: [/* stdin= */ "pipe", /* stdout= */ "pipe", /* stderr= */ "pipe", "pipe"],
+    ...spawnOpts,
     // Linting disabled since internal types expect NODE_ENV which does not apply to Python runtimes.
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
     env: envs as any,

@@ -1,6 +1,5 @@
-- Refactors Functions Emulator. (#5422)
-- Fixes race condition when discovering functions. (#5444)
-- Fixes issue where `init firestore` was unecessarilly checking for default resource location. (#5230 and #5452)
-- Pass `trailingSlash` from Next.js config to `firebase.json` (#5445)
-- Don't use Next.js internal redirects for the backend test (#5445)
-- Fix issue where pnpm support broke for function emulation and deployment. (#5467)
+- Fix storage download name issue #5478
+- Refactor the way timeouts are enforced by the Functions Emulator (#5464)
+- Fix bug where cloudevent emitted by various emulators didn't conform to spec (#5466)
+- Upgrade the emulator suite UI to 1.11.3 to capture some bug fixes (#5479)
+- Web frameworks deploys can once again bundle local NPM dependencies (#5440)

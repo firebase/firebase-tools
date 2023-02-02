@@ -1,4 +1,4 @@
-import { join, relative, extname } from "path";
+import { join, relative, extname, basename } from "path";
 import { exit } from "process";
 import { execSync, spawnSync } from "child_process";
 import { readdirSync, statSync } from "fs";
@@ -165,8 +165,13 @@ export function relativeRequire(
 export function relativeRequire(dir: string, mod: "next"): typeof import("next");
 export function relativeRequire(dir: string, mod: "vite"): typeof import("vite");
 export function relativeRequire(dir: string, mod: "jsonc-parser"): typeof import("jsonc-parser");
+
 // TODO the types for @nuxt/kit are causing a lot of troubles, need to do something other than any
+// Nuxt 2
+export function relativeRequire(dir: string, mod: "nuxt/dist/nuxt.js"): Promise<any>;
+// Nuxt 3
 export function relativeRequire(dir: string, mod: "@nuxt/kit"): Promise<any>;
+
 /**
  *
  */
@@ -531,6 +536,27 @@ export async function prepareFrameworks(
       packageJson.engines ||= {};
       packageJson.engines.node ||= NODE_VERSION;
 
+      for (const [name, version] of Object.entries(
+        packageJson.dependencies as Record<string, string>
+      )) {
+        if (version.startsWith("file:")) {
+          const path = version.replace(/^file:/, "");
+          if (!(await pathExists(path))) continue;
+          const stats = await stat(path);
+          if (stats.isDirectory()) {
+            const result = spawnSync("npm", ["pack", relative(functionsDist, path)], {
+              cwd: functionsDist,
+            });
+            if (!result.stdout) throw new Error(`Error running \`npm pack\` at ${path}`);
+            const filename = result.stdout.toString().trim();
+            packageJson.dependencies[name] = `file:${filename}`;
+          } else {
+            const filename = basename(path);
+            await copyFile(path, join(functionsDist, filename));
+            packageJson.dependencies[name] = `file:${filename}`;
+          }
+        }
+      }
       await writeFile(join(functionsDist, "package.json"), JSON.stringify(packageJson, null, 2));
 
       // TODO do we add the append the local .env?

@@ -13,7 +13,7 @@ import { runWithVirtualEnv } from "../../../../functions/python";
 import { FirebaseError } from "../../../../error";
 import { Build } from "../../build";
 
-const LATEST_VERSION: runtimes.Runtime = "python310";
+export const LATEST_VERSION: runtimes.Runtime = "python310";
 
 /**
  * Create a runtime delegate for the Python runtime, if applicable.
@@ -35,6 +35,24 @@ export async function tryCreateDelegate(
     throw new FirebaseError(`Runtime ${runtime} is not a valid Python runtime`);
   }
   return Promise.resolve(new Delegate(context.projectId, context.sourceDir, runtime));
+}
+
+/**
+ * Get corresponding python binary name for a given runtime.
+ *
+ * By default, returns "python"
+ */
+export function getPythonBinary(runtime: runtimes.Runtime): string {
+  if (process.platform === "win32") {
+    // There is no easy way to get specific version of python executable in Windows.
+    return "python.exe";
+  }
+  if (runtime === "python310") {
+    return "python3.10";
+  } else if (runtime === "python311") {
+    return "python3.11";
+  }
+  return "python";
 }
 
 export class Delegate implements runtimes.RuntimeDelegate {
@@ -82,16 +100,7 @@ export class Delegate implements runtimes.RuntimeDelegate {
   }
 
   getPythonBinary(): string {
-    if (process.platform === "win32") {
-      // There is no easy way to get specific version of python executable in Windows.
-      return "python.exe";
-    }
-    if (this.runtime === "python310") {
-      return "python3.10";
-    } else if (this.runtime === "python311") {
-      return "python3.11";
-    }
-    return "python";
+    return getPythonBinary(this.runtime);
   }
 
   validate(): Promise<void> {
@@ -120,6 +129,14 @@ export class Delegate implements runtimes.RuntimeDelegate {
       )} in ${this.sourceDir}`
     );
     const childProcess = runWithVirtualEnv(args, this.sourceDir, envWithAdminPort);
+    childProcess.stdout?.on("data", (chunk: Buffer) => {
+      const chunkString = chunk.toString();
+      logger.debug(`stdout: ${chunkString}`);
+    });
+    childProcess.stderr?.on("data", (chunk: Buffer) => {
+      const chunkString = chunk.toString();
+      logger.debug(`stderr: ${chunkString}`);
+    });
     return Promise.resolve(async () => {
       await fetch(`http://127.0.0.1:${port}/__/quitquitquit`);
       const quitTimeout = setTimeout(() => {

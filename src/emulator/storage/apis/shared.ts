@@ -21,7 +21,13 @@ export function sendFileBytes(
   }
   res.setHeader("Accept-Ranges", "bytes");
   res.setHeader("Content-Type", md.contentType || "application/octet-stream");
-  res.setHeader("Content-Disposition", md.contentDisposition || "attachment");
+
+  // remove the folder name from the downloaded file name
+  const fileName = md.name.split("/").pop();
+  res.setHeader(
+    "Content-Disposition",
+    `${md.contentDisposition || "attachment"}; filename=${fileName}`
+  );
   if (didGunzip) {
     // Set to mirror server behavior and supress express's "content-length" header.
     res.setHeader("Transfer-Encoding", "chunked");
