@@ -61,13 +61,7 @@ export function cleanEscapedChars(path: string): string {
  * Remove Next.js internal i18n prefix from headers, redirects and rewrites.
  */
 export function cleanCustomRouteI18n(path: string): string {
-  return (
-    path
-      // remove custom i18n prefix
-      .replace(I18N_CUSTOM_ROUTE_PREFIX, "")
-      // remove double slashes from the beginning if any
-      .replace(/^\/\//, "/")
-  );
+  return path.replace(new RegExp(String.raw`^${I18N_CUSTOM_ROUTE_PREFIX}(\(([^)]+)\))?`), "");
 }
 
 /**
