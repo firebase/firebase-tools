@@ -325,8 +325,6 @@ describe("Next.js utils", () => {
       for (const path of pathsWithCustomRoutesInternalPrefix) {
         const cleanPath = cleanCustomRouteI18n(path);
 
-        console.log({ path, cleanPath });
-
         expect(path.includes(I18N_CUSTOM_ROUTE_PREFIX)).to.be.true;
         expect(cleanPath.includes(I18N_CUSTOM_ROUTE_PREFIX)).to.be.false;
 
