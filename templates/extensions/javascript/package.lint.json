@@ -8,7 +8,9 @@
   },
   "devDependencies": {
     "eslint": "^8.15.1",
-    "eslint-plugin-promise": "^6.0.0"
+    "eslint-plugin-promise": "^6.0.0",
+    "eslint-config-google": "^0.14.0",
+    "eslint-plugin-import": "^2.25.4"
   },
   "scripts": {
     "lint": "./node_modules/.bin/eslint --max-warnings=0 .."

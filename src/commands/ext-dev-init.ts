@@ -68,7 +68,7 @@ export const command = new Command("ext:dev:init")
         }
       }
 
-      await npmDependencies.askInstallDependencies({}, config);
+      await npmDependencies.askInstallDependencies({ source: "functions" }, config);
 
       const welcome = fs.readFileSync(path.join(TEMPLATE_ROOT, lang, "WELCOME.md"), "utf8");
       return logger.info("\n" + marked(welcome));
