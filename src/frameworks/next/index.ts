@@ -251,13 +251,15 @@ export async function build(dir: string): Promise<BuildResult> {
     console.log("");
   }
 
+  const i18n = nextjsI18n && !nextjsI18n.domains ? nextjsI18n : undefined;
+
   return {
     wantsBackend,
     headers,
     redirects,
     rewrites,
     trailingSlash,
-    ...(!nextjsI18n?.domains ? { i18n: nextjsI18n } : {}),
+    i18n,
   };
 }
 
