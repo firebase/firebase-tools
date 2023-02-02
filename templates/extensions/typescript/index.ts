@@ -12,7 +12,7 @@
 
 import * as functions from 'firebase-functions';
 
-exports.greetTheWorld = functions.handler.https.onRequest((req, res) => {
+exports.greetTheWorld = functions.https.onRequest((req: functions.Request, res: functions.Response) => {
   // Here we reference a user-provided parameter (its value is provided by the user during installation)
   const consumerProvidedGreeting = process.env.GREETING;
 
