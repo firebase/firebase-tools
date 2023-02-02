@@ -79,10 +79,7 @@ export async function discover(dir: string) {
 /**
  * Build a next.js application.
  */
-export async function build(
-  dir: string,
-  context: { projectId: string; siteId: string }
-): Promise<BuildResult> {
+export async function build(dir: string): Promise<BuildResult> {
   const { default: nextBuild } = relativeRequire(dir, "next/dist/build");
 
   await warnIfCustomBuildScript(dir, name, DEFAULT_BUILD_SCRIPT);
@@ -166,12 +163,6 @@ export async function build(
     rewrites: nextJsRewrites = [],
     i18n: nextjsI18n,
   } = manifest;
-
-  if (nextjsI18n?.domains) {
-    const allSiteDomains = await getAllSiteDomains(context.projectId, context.siteId);
-
-    validateI18nDomainRouting(nextjsI18n.domains, allSiteDomains);
-  }
 
   const isEveryHeaderSupported = nextJsHeaders.every(isHeaderSupportedByHosting);
   if (!isEveryHeaderSupported) {

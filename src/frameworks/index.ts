@@ -49,10 +49,7 @@ export interface Framework {
   discover: (dir: string) => Promise<Discovery | undefined>;
   type: FrameworkType;
   name: string;
-  build: (
-    dir: string,
-    context: { siteId: string; projectId: string }
-  ) => Promise<BuildResult | void>;
+  build: (dir: string) => Promise<BuildResult | void>;
   support: SupportLevel;
   init?: (setup: any) => Promise<void>;
   getDevModeHandle?: (
@@ -421,10 +418,7 @@ export async function prepareFrameworks(
         headers = [],
         trailingSlash,
         i18n,
-      } = (await build(getProjectPath(), {
-        projectId: context.projectId,
-        siteId: context.site,
-      })) || {};
+      } = (await build(getProjectPath())) || {};
 
       config.rewrites.push(...rewrites);
       config.redirects.push(...redirects);
