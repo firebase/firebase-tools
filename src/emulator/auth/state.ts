@@ -202,7 +202,7 @@ export abstract class ProjectState {
    *
    * @param enrollments the MFA Enrollments to validate. each enrollment must have a valid and unique phone number, a non-null enrollment ID,
    * and the enrollment ID must be unique across all other enrollments in the array.
-   * @returns the validated MFA Enrollments passed to this method
+   * @return the validated MFA Enrollments passed to this method
    * @throws BadRequestError if the phone number is absent or invalid
    * @throws BadRequestError if the MFA Enrollment ID is absent
    * @throws BadRequestError if the MFA Enrollment ID is duplicated in the provided array
@@ -940,7 +940,7 @@ function getProviderEmailsForUser(user: UserInfo): Set<string> {
  * @param updateMask a comma separated list of fully qualified names of fields
  * @param dest the destination to apply updates to
  * @param update the updates to apply
- * @returns the updated destination object
+ * @return the updated destination object
  */
 function applyMask<T>(updateMask: string, dest: T, update: DeepPartial<T>): T {
   const paths = updateMask.split(",");

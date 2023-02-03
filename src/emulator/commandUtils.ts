@@ -448,7 +448,7 @@ const JAVA_HINT = "Please make sure Java is installed and on your system PATH.";
 /**
  * Return whether Java major verion is supported. Throws if Java not available.
  *
- * @returns Java major version (for Java >= 9) or -1 otherwise
+ * @return Java major version (for Java >= 9) or -1 otherwise
  */
 export async function checkJavaMajorVersion(): Promise<number> {
   return new Promise<string>((resolve, reject) => {

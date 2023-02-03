@@ -13,7 +13,7 @@ const apiClient = new Client({
  * Generate the service account for the service. Note: not every service uses the endpoint.
  * @param projectNumber gcp project number
  * @param service the service api (ex~ pubsub.googleapis.com)
- * @returns
+ * @return
  */
 export async function generateServiceIdentity(
   projectNumber: string,

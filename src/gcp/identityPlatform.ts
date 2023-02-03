@@ -153,7 +153,7 @@ export interface Config {
 /**
  * Helper function to get the blocking function config from identity platform.
  * @param project GCP project ID or number
- * @returns the blocking functions config
+ * @return the blocking functions config
  */
 export async function getBlockingFunctionsConfig(
   project: string
@@ -168,7 +168,7 @@ export async function getBlockingFunctionsConfig(
 /**
  * Gets the identity platform configuration.
  * @param project GCP project ID or number
- * @returns the identity platform config
+ * @return the identity platform config
  */
 export async function getConfig(project: string): Promise<Config> {
   const response = await adminApiClient.get<Config>(`projects/${project}/config`);
@@ -179,7 +179,7 @@ export async function getConfig(project: string): Promise<Config> {
  * Helper function to set the blocking function config to identity platform.
  * @param project GCP project ID or number
  * @param blockingConfig the blocking functions configuration to update
- * @returns the blocking functions config
+ * @return the blocking functions config
  */
 export async function setBlockingFunctionsConfig(
   project: string,
@@ -198,7 +198,7 @@ export async function setBlockingFunctionsConfig(
  * @param project GCP project ID or number
  * @param config the configuration to update
  * @param updateMask optional update mask for the API
- * @returns the updated config
+ * @return the updated config
  */
 export async function updateConfig(
   project: string,

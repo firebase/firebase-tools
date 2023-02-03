@@ -9,7 +9,7 @@ export interface VersionPredicate {
  * Converts the string version predicate into a parsed object.
  *
  * @param versionPredicate a combined comparator and semver (e.g. ">=1.0.1")
- * @returns the parsed version predicate
+ * @return the parsed version predicate
  */
 export function parseVersionPredicate(versionPredicate: string): VersionPredicate {
   const versionPredicateRegex = "^(?<comparator>>=|<=|>|<)?(?<targetSemVer>.*)";

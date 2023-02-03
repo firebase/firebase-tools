@@ -14,7 +14,7 @@ function getSourceFile(rules: string, options: Options): SourceFile {
 
 /**
  * Parses rules file for each target specified in the storage config under {@link options}.
- * @returns The rules file path if the storage config does not specify a target and an array
+ * @return The rules file path if the storage config does not specify a target and an array
  *     of project resources and their corresponding rules files otherwise.
  * @throws {FirebaseError} if storage config is missing or rules file is missing or invalid.
  */

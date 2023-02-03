@@ -45,7 +45,7 @@ export const DUAL_REGION_MAPPING: Record<string, string> = {
  * This is helpful for determining if a specific region maps to a Google Cloud Storage location.
  * @param region the specific geographical region name (ex~ us-west1, europe-central2, ...)
  * @param location the multi-region or dual-region location name (ex~ us, asia, nam4, ...)
- * @returns true if the region is in the location, otherwise false
+ * @return true if the region is in the location, otherwise false
  */
 export function regionInLocation(region: string, location: string): boolean {
   // check whether the region matched the location,

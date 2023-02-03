@@ -10,7 +10,7 @@ const { FirebaseError } = require("./error");
  * Retrieves the projectId from a command's options context.
  *
  * @param options The options context for a command.
- * @returns The projectId
+ * @return The projectId
  */
 export function getProjectId({
   projectId,
@@ -25,7 +25,7 @@ export function getProjectId({
 /**
  * Tries to determine the correct projectId given current
  * command context. Errors out if unable to determine.
- * @returns The projectId
+ * @return The projectId
  */
 export function needProjectId({
   projectId,

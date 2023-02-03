@@ -105,7 +105,7 @@ export interface AnalyticsParams {
  *                  length <= 40, alpha-numeric characters and underscores only
  *                  (*no spaces*), and must start with an alphabetic character)
  * @param params custom and standard parameters attached to the event
- * @returns a Promise fulfilled when the event reaches the server or fails
+ * @return a Promise fulfilled when the event reaches the server or fails
  *          (never rejects unless `emulatorSession().validateOnly` is set)
  *
  * Note: On performance or latency critical paths, the returned Promise may be

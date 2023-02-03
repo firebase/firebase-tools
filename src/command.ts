@@ -80,7 +80,7 @@ export class Command {
    * Sets up --force flag for the command.
    *
    * @param message overrides the description for --force for this command
-   * @returns the command, for chaining
+   * @return the command, for chaining
    */
   withForce(message?: string): Command {
     this.options.push(["-f, --force", message || "automatically accept all interactive prompts"]);

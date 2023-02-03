@@ -29,7 +29,7 @@ const CRC32C_TABLE = makeCRCTable(0x82f63b78);
  *  - https://en.wikipedia.org/wiki/Cyclic_redundancy_check#Computation
  *  - https://stackoverflow.com/a/18639999/324977
  *
- * @returns CRC32C as an unsigned 32-bit integer
+ * @return CRC32C as an unsigned 32-bit integer
  */
 export function crc32c(bytes: Buffer): number {
   let crc = 0 ^ -1;

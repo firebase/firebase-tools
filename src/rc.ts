@@ -74,7 +74,7 @@ export class RC {
    * If the given string is a project alias, resolve it to the
    * project id.
    * @param alias The alias to resolve.
-   * @returns The resolved project id or the input string if none found.
+   * @return The resolved project id or the input string if none found.
    */
   resolveAlias(alias: string): string {
     return this.data.projects[alias] || alias;
@@ -160,7 +160,7 @@ export class RC {
 
   /**
    * Clears a specific target.
-   * @returns true if the target existed, false if not
+   * @return true if the target existed, false if not
    */
   clearTarget(project: string, type: string, name: string): boolean {
     if (!this.target(project, type, name).length) {
@@ -173,7 +173,7 @@ export class RC {
 
   /**
    * Finds a target name for the specified type and resource.
-   * @returns The name of the target (if found) or null (if not).
+   * @return The name of the target (if found) or null (if not).
    */
   findTarget(project: string, type: string, resource: string): string | null {
     const targets = this.targets(project, type);

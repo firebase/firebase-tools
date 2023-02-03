@@ -263,7 +263,7 @@ export async function listBuckets(projectId: string): Promise<Array<string>> {
 /**
  * Find the service account for the Cloud Storage Resource
  * @param {string} projectId the project identifier
- * @returns:
+ * @return:
  * {
  *  "email_address": string,
  *  "kind": "storage#serviceAccount",

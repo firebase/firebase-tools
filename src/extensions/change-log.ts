@@ -26,7 +26,7 @@ const VERSION_LINE_REGEX =
  * @param extensionRef
  * @param fromVersion the version you are updating from
  * @param toVersion the version you are upodating to
- * @returns a Record of version number to releaseNotes for that version
+ * @return a Record of version number to releaseNotes for that version
  */
 export async function getReleaseNotesForUpdate(args: {
   extensionRef: string;
@@ -99,7 +99,7 @@ export function breakingChangesInUpdate(versionsInUpdate: string[]): string[] {
  * getLocalChangelog checks directory for a CHANGELOG.md, and parses it into a map of
  * version to release notes for that version.
  * @param directory The directory to check for
- * @returns
+ * @return
  */
 export function getLocalChangelog(directory: string): Record<string, string> {
   const rawChangelog = readFile(path.resolve(directory, EXTENSIONS_CHANGELOG));
