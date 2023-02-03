@@ -185,6 +185,7 @@ describe("function triggers", () => {
     it("should have have triggered cloud functions", () => {
       expect(test.pubsubTriggerCount).to.equal(1);
       expect(test.pubsubV2TriggerCount).to.equal(1);
+      expect(test.pyPubsubTriggerCount).to.equal(1);
     });
 
     it("should write to the scheduled pubsub emulator", async function (this) {
@@ -251,17 +252,23 @@ describe("function triggers", () => {
       // default bucket
       expect(test.storageFinalizedTriggerCount).to.equal(1);
       expect(test.storageV2FinalizedTriggerCount).to.equal(1);
+      expect(test.pyStorageFinalizedTriggerCount).to.equal(1);
       expect(test.storageMetadataTriggerCount).to.equal(0);
       expect(test.storageV2MetadataTriggerCount).to.equal(0);
+      expect(test.pyStorageMetadataTriggerCount).to.equal(0);
       expect(test.storageDeletedTriggerCount).to.equal(0);
       expect(test.storageV2DeletedTriggerCount).to.equal(0);
+      expect(test.pyStorageDeletedTriggerCount).to.equal(0);
       // specific bucket
       expect(test.storageBucketFinalizedTriggerCount).to.equal(0);
       expect(test.storageBucketV2FinalizedTriggerCount).to.equal(0);
+      expect(test.pyStorageBucketFinalizedTriggerCount).to.equal(0);
       expect(test.storageBucketMetadataTriggerCount).to.equal(0);
       expect(test.storageBucketV2MetadataTriggerCount).to.equal(0);
+      expect(test.pyStorageBucketMetadataTriggerCount).to.equal(0);
       expect(test.storageBucketDeletedTriggerCount).to.equal(0);
       expect(test.storageBucketV2DeletedTriggerCount).to.equal(0);
+      expect(test.pyStorageBucketDeletedTriggerCount).to.equal(0);
       test.resetCounts();
     });
 
@@ -278,17 +285,23 @@ describe("function triggers", () => {
       // default bucket
       expect(test.storageFinalizedTriggerCount).to.equal(0);
       expect(test.storageV2FinalizedTriggerCount).to.equal(0);
+      expect(test.pyStorageFinalizedTriggerCount).to.equal(0);
       expect(test.storageMetadataTriggerCount).to.equal(0);
       expect(test.storageV2MetadataTriggerCount).to.equal(0);
+      expect(test.pyStorageMetadataTriggerCount).to.equal(0);
       expect(test.storageDeletedTriggerCount).to.equal(0);
       expect(test.storageV2DeletedTriggerCount).to.equal(0);
+      expect(test.pyStorageDeletedTriggerCount).to.equal(0);
       // specific bucket
       expect(test.storageBucketFinalizedTriggerCount).to.equal(1);
       expect(test.storageBucketV2FinalizedTriggerCount).to.equal(1);
+      expect(test.pyStorageBucketFinalizedTriggerCount).to.equal(1);
       expect(test.storageBucketMetadataTriggerCount).to.equal(0);
       expect(test.storageBucketV2MetadataTriggerCount).to.equal(0);
+      expect(test.pyStorageBucketMetadataTriggerCount).to.equal(0);
       expect(test.storageBucketDeletedTriggerCount).to.equal(0);
       expect(test.storageBucketV2DeletedTriggerCount).to.equal(0);
+      expect(test.pyStorageBucketDeletedTriggerCount).to.equal(0);
       test.resetCounts();
     });
 
@@ -306,17 +319,23 @@ describe("function triggers", () => {
       // default bucket
       expect(test.storageFinalizedTriggerCount).to.equal(1);
       expect(test.storageV2FinalizedTriggerCount).to.equal(1);
+      expect(test.pyStorageFinalizedTriggerCount).to.equal(1);
       expect(test.storageMetadataTriggerCount).to.equal(1);
       expect(test.storageV2MetadataTriggerCount).to.equal(1);
+      expect(test.pyStorageMetadataTriggerCount).to.equal(1);
       expect(test.storageDeletedTriggerCount).to.equal(0);
       expect(test.storageV2DeletedTriggerCount).to.equal(0);
+      expect(test.pyStorageDeletedTriggerCount).to.equal(0);
       // specific bucket
       expect(test.storageBucketFinalizedTriggerCount).to.equal(0);
       expect(test.storageBucketV2FinalizedTriggerCount).to.equal(0);
+      expect(test.pyStorageBucketFinalizedTriggerCount).to.equal(0);
       expect(test.storageBucketMetadataTriggerCount).to.equal(0);
       expect(test.storageBucketV2MetadataTriggerCount).to.equal(0);
+      expect(test.pyStorageBucketMetadataTriggerCount).to.equal(0);
       expect(test.storageBucketDeletedTriggerCount).to.equal(0);
       expect(test.storageBucketV2DeletedTriggerCount).to.equal(0);
+      expect(test.pyStorageBucketDeletedTriggerCount).to.equal(0);
       test.resetCounts();
     });
 
@@ -334,17 +353,23 @@ describe("function triggers", () => {
       // default bucket
       expect(test.storageFinalizedTriggerCount).to.equal(0);
       expect(test.storageV2FinalizedTriggerCount).to.equal(0);
+      expect(test.pyStorageFinalizedTriggerCount).to.equal(0);
       expect(test.storageMetadataTriggerCount).to.equal(0);
       expect(test.storageV2MetadataTriggerCount).to.equal(0);
+      expect(test.pyStorageMetadataTriggerCount).to.equal(0);
       expect(test.storageDeletedTriggerCount).to.equal(0);
       expect(test.storageV2DeletedTriggerCount).to.equal(0);
+      expect(test.pyStorageDeletedTriggerCount).to.equal(0);
       // specific bucket
       expect(test.storageBucketFinalizedTriggerCount).to.equal(1);
       expect(test.storageBucketV2FinalizedTriggerCount).to.equal(1);
+      expect(test.pyStorageBucketFinalizedTriggerCount).to.equal(1);
       expect(test.storageBucketMetadataTriggerCount).to.equal(1);
       expect(test.storageBucketV2MetadataTriggerCount).to.equal(1);
+      expect(test.pyStorageBucketMetadataTriggerCount).to.equal(1);
       expect(test.storageBucketDeletedTriggerCount).to.equal(0);
       expect(test.storageBucketV2DeletedTriggerCount).to.equal(0);
+      expect(test.pyStorageBucketDeletedTriggerCount).to.equal(0);
       test.resetCounts();
     });
 
@@ -362,17 +387,23 @@ describe("function triggers", () => {
       // default bucket
       expect(test.storageFinalizedTriggerCount).to.equal(1);
       expect(test.storageV2FinalizedTriggerCount).to.equal(1);
+      expect(test.pyStorageFinalizedTriggerCount).to.equal(1);
       expect(test.storageMetadataTriggerCount).to.equal(0);
       expect(test.storageV2MetadataTriggerCount).to.equal(0);
+      expect(test.pyStorageMetadataTriggerCount).to.equal(0);
       expect(test.storageDeletedTriggerCount).to.equal(1);
       expect(test.storageV2DeletedTriggerCount).to.equal(1);
+      expect(test.pyStorageDeletedTriggerCount).to.equal(1);
       // specific bucket
       expect(test.storageBucketFinalizedTriggerCount).to.equal(0);
       expect(test.storageBucketV2FinalizedTriggerCount).to.equal(0);
+      expect(test.pyStorageBucketFinalizedTriggerCount).to.equal(0);
       expect(test.storageBucketMetadataTriggerCount).to.equal(0);
       expect(test.storageBucketV2MetadataTriggerCount).to.equal(0);
+      expect(test.pyStorageBucketMetadataTriggerCount).to.equal(0);
       expect(test.storageBucketDeletedTriggerCount).to.equal(0);
       expect(test.storageBucketV2DeletedTriggerCount).to.equal(0);
+      expect(test.pyStorageBucketDeletedTriggerCount).to.equal(0);
       test.resetCounts();
     });
 
@@ -390,17 +421,23 @@ describe("function triggers", () => {
       // default bucket
       expect(test.storageFinalizedTriggerCount).to.equal(0);
       expect(test.storageV2FinalizedTriggerCount).to.equal(0);
+      expect(test.pyStorageFinalizedTriggerCount).to.equal(0);
       expect(test.storageMetadataTriggerCount).to.equal(0);
       expect(test.storageV2MetadataTriggerCount).to.equal(0);
+      expect(test.pyStorageMetadataTriggerCount).to.equal(0);
       expect(test.storageDeletedTriggerCount).to.equal(0);
       expect(test.storageV2DeletedTriggerCount).to.equal(0);
+      expect(test.pyStorageDeletedTriggerCount).to.equal(0);
       // specific bucket
       expect(test.storageBucketFinalizedTriggerCount).to.equal(1);
       expect(test.storageBucketV2FinalizedTriggerCount).to.equal(1);
+      expect(test.pyStorageBucketFinalizedTriggerCount).to.equal(1);
       expect(test.storageBucketMetadataTriggerCount).to.equal(0);
       expect(test.storageBucketV2MetadataTriggerCount).to.equal(0);
+      expect(test.pyStorageBucketMetadataTriggerCount).to.equal(0);
       expect(test.storageBucketDeletedTriggerCount).to.equal(1);
       expect(test.storageBucketV2DeletedTriggerCount).to.equal(1);
+      expect(test.pyStorageBucketDeletedTriggerCount).to.equal(1);
       test.resetCounts();
     });
   });
@@ -427,10 +464,10 @@ describe("function triggers", () => {
     it("should make a call to python callable function", async function (this) {
       this.timeout(EMULATOR_TEST_TIMEOUT);
 
-      const response = await test.invokeCallableFunction("py-on-call", { data: "foobar" });
+      const response = await test.invokeCallableFunction("pyoncall", { data: "foobar" });
       expect(response.status).to.equal(200);
       const body = await response.json();
-      expect(body).to.deep.equal({ result: "foobar" });
+      expect(body).to.deep.equal({ result: "foobar", status: 200 });
     });
   });
 
