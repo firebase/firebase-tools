@@ -3048,9 +3048,9 @@
       }
     },
     "node_modules/@types/marked": {
-      "version": "4.0.3",
-      "resolved": "https://registry.npmjs.org/@types/marked/-/marked-4.0.3.tgz",
-      "integrity": "sha512-HnMWQkLJEf/PnxZIfbm0yGJRRZYYMhb++O9M36UCTA9z53uPvVoSlAwJr3XOpDEryb7Hwl1qAx/MV6YIW1RXxg==",
+      "version": "4.0.8",
+      "resolved": "https://registry.npmjs.org/@types/marked/-/marked-4.0.8.tgz",
+      "integrity": "sha512-HVNzMT5QlWCOdeuBsgXP8EZzKUf0+AXzN+sLmjvaB3ZlLqO+e4u0uXrdw9ub69wBKFs+c6/pA4r9sy6cCDvImw==",
       "dev": true
     },
     "node_modules/@types/marked-terminal": {
@@ -10572,9 +10572,9 @@
       "integrity": "sha512-8+9WqebbFzpX9OR+Wa6O29asIogeRMzcGtAINdpMHHyAg10f05aSFVBbcEqGf/PXw1EjAZ+q2/bEBg3DvurK3Q=="
     },
     "node_modules/marked": {
-      "version": "4.0.14",
-      "resolved": "https://registry.npmjs.org/marked/-/marked-4.0.14.tgz",
-      "integrity": "sha512-HL5sSPE/LP6U9qKgngIIPTthuxC0jrfxpYMZ3LdGDD3vTnLs59m2Z7r6+LNDR3ToqEQdkKd6YaaEfJhodJmijQ==",
+      "version": "4.2.12",
+      "resolved": "https://registry.npmjs.org/marked/-/marked-4.2.12.tgz",
+      "integrity": "sha512-yr8hSKa3Fv4D3jdZmtMMPghgVt6TWbk86WQaWhDloQjRSQhMMYCAro7jP7VDJrjjdV8pxVxMssXS8B8Y5DZ5aw==",
       "bin": {
         "marked": "bin/marked.js"
       },
@@ -18109,9 +18109,9 @@
       }
     },
     "@types/marked": {
-      "version": "4.0.3",
-      "resolved": "https://registry.npmjs.org/@types/marked/-/marked-4.0.3.tgz",
-      "integrity": "sha512-HnMWQkLJEf/PnxZIfbm0yGJRRZYYMhb++O9M36UCTA9z53uPvVoSlAwJr3XOpDEryb7Hwl1qAx/MV6YIW1RXxg==",
+      "version": "4.0.8",
+      "resolved": "https://registry.npmjs.org/@types/marked/-/marked-4.0.8.tgz",
+      "integrity": "sha512-HVNzMT5QlWCOdeuBsgXP8EZzKUf0+AXzN+sLmjvaB3ZlLqO+e4u0uXrdw9ub69wBKFs+c6/pA4r9sy6cCDvImw==",
       "dev": true
     },
     "@types/marked-terminal": {
@@ -23866,9 +23866,9 @@
       "requires": {}
     },
     "marked": {
-      "version": "4.0.14",
-      "resolved": "https://registry.npmjs.org/marked/-/marked-4.0.14.tgz",
-      "integrity": "sha512-HL5sSPE/LP6U9qKgngIIPTthuxC0jrfxpYMZ3LdGDD3vTnLs59m2Z7r6+LNDR3ToqEQdkKd6YaaEfJhodJmijQ=="
+      "version": "4.2.12",
+      "resolved": "https://registry.npmjs.org/marked/-/marked-4.2.12.tgz",
+      "integrity": "sha512-yr8hSKa3Fv4D3jdZmtMMPghgVt6TWbk86WQaWhDloQjRSQhMMYCAro7jP7VDJrjjdV8pxVxMssXS8B8Y5DZ5aw=="
     },
     "marked-terminal": {
       "version": "5.1.1",
