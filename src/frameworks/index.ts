@@ -1,31 +1,31 @@
-import { join, relative, extname } from "path";
-import { exit } from "process";
 import { execSync, spawnSync } from "child_process";
-import { readdirSync, statSync } from "fs";
-import { pathToFileURL } from "url";
-import { IncomingMessage, ServerResponse } from "http";
-import { copyFile, readdir, rm, writeFile } from "fs/promises";
-import { mkdirp, pathExists, stat } from "fs-extra";
 import * as clc from "colorette";
+import { readdirSync, statSync } from "fs";
+import { mkdirp, pathExists, stat } from "fs-extra";
+import { copyFile, readdir, rm, writeFile } from "fs/promises";
+import { IncomingMessage, ServerResponse } from "http";
 import * as process from "node:process";
+import { extname, join, relative } from "path";
+import { exit } from "process";
 import * as semver from "semver";
+import { pathToFileURL } from "url";
 
-import { needProjectId } from "../projectUtils";
-import { hostingConfig } from "../hosting/config";
-import { listSites } from "../hosting/api";
-import { getAppConfig, AppPlatform } from "../management/apps";
-import { promptOnce } from "../prompt";
-import { EmulatorInfo, Emulators, EMULATORS_SUPPORTED_BY_USE_EMULATOR } from "../emulator/types";
-import { getCredentialPathAsync } from "../defaultCredentials";
 import { getProjectDefaultAccount } from "../auth";
-import { formatHost } from "../emulator/functionsEmulatorShared";
+import { getCredentialPathAsync } from "../defaultCredentials";
 import { Constants } from "../emulator/constants";
+import { formatHost } from "../emulator/functionsEmulatorShared";
+import { EmulatorInfo, Emulators, EMULATORS_SUPPORTED_BY_USE_EMULATOR } from "../emulator/types";
 import { FirebaseError } from "../error";
-import { requireHostingSite } from "../requireHostingSite";
-import { HostingRewrites } from "../firebaseConfig";
 import * as experiments from "../experiments";
+import { HostingRewrites } from "../firebaseConfig";
 import { ensureTargeted } from "../functions/ensureTargeted";
+import { listSites } from "../hosting/api";
+import { hostingConfig } from "../hosting/config";
 import { implicitInit } from "../hosting/implicitInit";
+import { AppPlatform, getAppConfig } from "../management/apps";
+import { needProjectId } from "../projectUtils";
+import { promptOnce } from "../prompt";
+import { requireHostingSite } from "../requireHostingSite";
 
 // Use "true &&"" to keep typescript from compiling this file and rewriting
 // the import statement into a require
@@ -172,8 +172,7 @@ export function relativeRequire(dir: string, mod: string) {
   } catch (e) {
     const path = relative(process.cwd(), dir);
     console.error(
-      `Could not load dependency ${mod} in ${
-        path.startsWith("..") ? path : `./${path}`
+      `Could not load dependency ${mod} in ${path.startsWith("..") ? path : `./${path}`
       }, have you run \`npm install\`?`
     );
     throw e;
@@ -565,8 +564,8 @@ exports.ssr = onRequest((req, res) => server.then(it => it.handle(req, res)));
   }
 }
 
-function codegenDevModeFunctionsDirectory() {
-  const packageJson = {};
+function codegenDevModeFunctionsDirectory(projectPath: string) {
+  const packageJson = require(`${projectPath}/package.json`)
   return Promise.resolve({ packageJson, frameworksEntry: "_devMode" });
 }
 
