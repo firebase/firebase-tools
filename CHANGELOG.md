@@ -4,3 +4,4 @@
 - Upgrade the emulator suite UI to 1.11.3 to capture some bug fixes (#5479)
 - Web frameworks deploys can once again bundle local NPM dependencies (#5440)
 - Catches error when attempting to deploy without a project (#5415).
+- Fixes a number of issues and outdated dependencies in templates for `init --only functions` and `ext:dev:init`
