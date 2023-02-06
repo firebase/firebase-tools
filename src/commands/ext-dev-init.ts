@@ -33,12 +33,21 @@ function readCommonTemplates() {
 export const command = new Command("ext:dev:init")
   .description("initialize files for writing an extension in the current directory")
   .before(checkMinRequiredVersion, "extDevMinVersion")
+  .withForce()
+  .option(
+    "--language <language>",
+    "In which language do you want to write the Cloud Functions for your extension?"
+  )
+  .option("--eslint", "Do you want to enable esLint?")
+  .option("-install-deps", "Do you want to install dependencies now?")
   .action(async (options: any) => {
     const cwd = options.cwd || process.cwd();
     const config = new Config({}, { projectDir: cwd, cwd: cwd });
-
+    options.npm = options.installDeps;
     try {
-      const lang = await promptOnce({
+      const lang =
+        options.language ??
+        await promptOnce({
         type: "list",
         name: "language",
         message: "In which language do you want to write the Cloud Functions for your extension?",
@@ -56,11 +65,11 @@ export const command = new Command("ext:dev:init")
       });
       switch (lang) {
         case "javascript": {
-          await javascriptSelected(config);
+          await javascriptSelected(config, options);
           break;
         }
         case "typescript": {
-          await typescriptSelected(config);
+          await typescriptSelected(config, options);
           break;
         }
         default: {
@@ -68,7 +77,7 @@ export const command = new Command("ext:dev:init")
         }
       }
 
-      await npmDependencies.askInstallDependencies({}, config);
+      await npmDependencies.askInstallDependencies(options, config);
 
       const welcome = fs.readFileSync(path.join(TEMPLATE_ROOT, lang, "WELCOME.md"), "utf8");
       return logger.info("\n" + marked(welcome));
@@ -89,7 +98,7 @@ export const command = new Command("ext:dev:init")
  * Sets up Typescript boilerplate code for new extension
  * @param {Config} config configuration options
  */
-async function typescriptSelected(config: Config): Promise<void> {
+async function typescriptSelected(config: Config, options: any): Promise<void> {
   const packageLintingTemplate = fs.readFileSync(
     path.join(TEMPLATE_ROOT, "typescript", "package.lint.json"),
     "utf8"
@@ -116,36 +125,36 @@ async function typescriptSelected(config: Config): Promise<void> {
     "utf8"
   );
 
-  const lint = await promptOnce({
+  const lint = options.eslint == "true" ?? await promptOnce({
     name: "lint",
     type: "confirm",
     message: "Do you want to use ESLint to catch probable bugs and enforce style?",
     default: true,
   });
   const templates = readCommonTemplates();
-  await config.askWriteProjectFile("extension.yaml", templates.extSpecTemplate);
-  await config.askWriteProjectFile("PREINSTALL.md", templates.preinstallTemplate);
-  await config.askWriteProjectFile("POSTINSTALL.md", templates.postinstallTemplate);
-  await config.askWriteProjectFile("CHANGELOG.md", templates.changelogTemplate);
-  await config.askWriteProjectFile("functions/src/index.ts", indexTemplate);
+  await config.askWriteProjectFile("extension.yaml", templates.extSpecTemplate, options.force);
+  await config.askWriteProjectFile("PREINSTALL.md", templates.preinstallTemplate, options.force);
+  await config.askWriteProjectFile("POSTINSTALL.md", templates.postinstallTemplate, options.force);
+  await config.askWriteProjectFile("CHANGELOG.md", templates.changelogTemplate, options.force);
+  await config.askWriteProjectFile("functions/src/index.ts", indexTemplate, options.force);
   if (lint) {
-    await config.askWriteProjectFile("functions/package.json", packageLintingTemplate);
-    await config.askWriteProjectFile("functions/.eslintrc.js", eslintTemplate);
+    await config.askWriteProjectFile("functions/package.json", packageLintingTemplate, options.force);
+    await config.askWriteProjectFile("functions/.eslintrc.js", eslintTemplate, options.force);
   } else {
-    await config.askWriteProjectFile("functions/package.json", packageNoLintingTemplate);
+    await config.askWriteProjectFile("functions/package.json", packageNoLintingTemplate, options.force);
   }
-  await config.askWriteProjectFile("functions/tsconfig.json", tsconfigTemplate);
+  await config.askWriteProjectFile("functions/tsconfig.json", tsconfigTemplate, options.force);
   if (lint) {
-    await config.askWriteProjectFile("functions/tsconfig.dev.json", tsconfigDevTemplate);
+    await config.askWriteProjectFile("functions/tsconfig.dev.json", tsconfigDevTemplate, options.force);
   }
-  await config.askWriteProjectFile("functions/.gitignore", gitignoreTemplate);
+  await config.askWriteProjectFile("functions/.gitignore", gitignoreTemplate, options.force);
 }
 
 /**
  * Sets up Javascript boilerplate code for new extension
  * @param {Config} config configuration options
  */
-async function javascriptSelected(config: Config): Promise<void> {
+async function javascriptSelected(config: Config, options: any): Promise<void> {
   const indexTemplate = fs.readFileSync(path.join(TEMPLATE_ROOT, "javascript", "index.js"), "utf8");
   const packageLintingTemplate = fs.readFileSync(
     path.join(TEMPLATE_ROOT, "javascript", "package.lint.json"),
@@ -163,8 +172,8 @@ async function javascriptSelected(config: Config): Promise<void> {
     path.join(FUNCTIONS_ROOT, "javascript", "_eslintrc"),
     "utf8"
   );
-
-  const lint = await promptOnce({
+  
+  const lint = options.eslint ?? await promptOnce({
     name: "lint",
     type: "confirm",
     message: "Do you want to use ESLint to catch probable bugs and enforce style?",
@@ -172,16 +181,16 @@ async function javascriptSelected(config: Config): Promise<void> {
   });
 
   const templates = readCommonTemplates();
-  await config.askWriteProjectFile("extension.yaml", templates.extSpecTemplate);
-  await config.askWriteProjectFile("PREINSTALL.md", templates.preinstallTemplate);
-  await config.askWriteProjectFile("POSTINSTALL.md", templates.postinstallTemplate);
-  await config.askWriteProjectFile("CHANGELOG.md", templates.changelogTemplate);
-  await config.askWriteProjectFile("functions/index.js", indexTemplate);
+  await config.askWriteProjectFile("extension.yaml", templates.extSpecTemplate, options.force);
+  await config.askWriteProjectFile("PREINSTALL.md", templates.preinstallTemplate, options.force);
+  await config.askWriteProjectFile("POSTINSTALL.md", templates.postinstallTemplate, options.force);
+  await config.askWriteProjectFile("CHANGELOG.md", templates.changelogTemplate, options.force);
+  await config.askWriteProjectFile("functions/index.js", indexTemplate, options.force);
   if (lint) {
-    await config.askWriteProjectFile("functions/package.json", packageLintingTemplate);
-    await config.askWriteProjectFile("functions/.eslintrc.js", eslintTemplate);
+    await config.askWriteProjectFile("functions/package.json", packageLintingTemplate, options.force);
+    await config.askWriteProjectFile("functions/.eslintrc.js", eslintTemplate, options.force);
   } else {
-    await config.askWriteProjectFile("functions/package.json", packageNoLintingTemplate);
+    await config.askWriteProjectFile("functions/package.json", packageNoLintingTemplate, options.force);
   }
-  await config.askWriteProjectFile("functions/.gitignore", gitignoreTemplate);
+  await config.askWriteProjectFile("functions/.gitignore", gitignoreTemplate, options.force);
 }

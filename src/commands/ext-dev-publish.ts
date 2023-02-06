@@ -45,7 +45,7 @@ export const command = new Command("ext:dev:publish <extensionRef>")
         )}'. Please use the format '${clc.bold("<publisherId>/<extensionId>")}'.`
       );
     }
-    const extensionYamlDirectory = findExtensionYaml(process.cwd());
+    const extensionYamlDirectory = findExtensionYaml(options.cwd || process.cwd());
     const res = await publishExtensionVersionFromLocalSource({
       publisherId,
       extensionId,
