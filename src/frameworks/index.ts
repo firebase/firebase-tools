@@ -163,6 +163,9 @@ export function relativeRequire(dir: string, mod: "jsonc-parser"): typeof import
 export function relativeRequire(dir: string, mod: "nuxt/dist/nuxt.js"): Promise<any>;
 // Nuxt 3
 export function relativeRequire(dir: string, mod: "@nuxt/kit"): Promise<any>;
+export function relativeRequire(dir: string, mod: "h3"): Promise<any>;
+export function relativeRequire(dir: string, mod: "defu"): Promise<any>;
+export function relativeRequire(dir: string, mod: "c12"): Promise<any>;
 
 /**
  *
