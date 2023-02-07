@@ -32,6 +32,12 @@ export const discover = async (dir: string) => {
 
   resolvedConfig = (await dynamicImport(resolvedConfigPath)).default;
 
+  if (resolvedConfig.output === "server" && resolvedConfig.adapter?.name !== "@astrojs/node") {
+    throw new Error(
+      '@astrojs/node adapter with `mode: "middleware"` is required when specifying `output: "server"`\nhttps://docs.astro.build/en/guides/integrations-guide/node/#middleware'
+    );
+  }
+
   return {
     mayWantBackend: resolvedConfig.output === "server",
     publicDirectory: resolvedConfig.publicDir ?? "public",
