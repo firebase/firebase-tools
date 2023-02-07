@@ -560,11 +560,12 @@ ${firebaseDefaults ? `__FIREBASE_DEFAULTS__=${JSON.stringify(firebaseDefaults)}\
       if (bootstrapScript) await writeFile(join(functionsDist, "bootstrap.js"), bootstrapScript);
 
       // TODO move to templates
+      // TODO better ESM support
       await writeFile(
         join(functionsDist, "server.js"),
-        `const { onRequest } = require('firebase-functions/v2/https');
+        `import { onRequest } from 'firebase-functions/v2/https';
 const server = import('firebase-frameworks');
-exports.ssr = onRequest((req, res) => server.then(it => it.handle(req, res)));
+export const ssr = onRequest((req, res) => server.then(it => it.handle(req, res)));
 `
       );
     } else {
