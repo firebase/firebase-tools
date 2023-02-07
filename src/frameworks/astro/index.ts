@@ -1,7 +1,7 @@
 import { execSync } from "child_process";
 import { copy, readFile, existsSync } from "fs-extra";
 import { join } from "path";
-import { FrameworkType, SupportLevel } from "..";
+import { BuildResult, Discovery, FrameworkType, SupportLevel } from "..";
 import type { AstroConfig } from "astro";
 // TODO figure out why relativeRequire was not working
 const { dynamicImport } = require(true && "../../dynamicImport");
@@ -11,7 +11,7 @@ export const support = SupportLevel.Experimental;
 export const type = FrameworkType.MetaFramework;
 
 let resolvedConfig: AstroConfig;
-export const discover = async (dir: string) => {
+export async function discover(dir: string): Promise<Discovery | undefined> {
   if (!existsSync(join(dir, "package.json"))) return;
   const possibleConfigPaths = [
     "astro.config.mjs",
@@ -40,12 +40,13 @@ export const discover = async (dir: string) => {
 
   return {
     mayWantBackend: resolvedConfig.output === "server",
-    publicDirectory: resolvedConfig.publicDir ?? "public",
+    publicDirectory: resolvedConfig.publicDir.toString() ?? "public",
   };
-};
+}
+
 // export const init = initViteTemplate("svelte");
 
-export async function build(root: string) {
+export async function build(root: string): Promise<BuildResult> {
   execSync("npm run build", { cwd: root, stdio: "inherit" });
 
   return { wantsBackend: resolvedConfig.output === "server" };
