@@ -366,6 +366,11 @@ export type Endpoint = TargetIds &
 
     // Marked as true if a user specifically called this function or codebase with the --only flag.
     targetedByOnly?: boolean;
+
+    // Output only. For v2 functions, this is the run service ID.
+    // This may eventually be different than id because GCF is going to start
+    // doing name translations
+    runServiceId?: string;
   };
 
 export interface RequiredAPI {
