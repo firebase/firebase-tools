@@ -5,3 +5,5 @@
 - Web frameworks deploys can once again bundle local NPM dependencies (#5440)
 - Catches error when attempting to deploy without a project (#5415)
 - Fixes a number of issues and outdated dependencies in templates for `init --only functions` and `ext:dev:init`
+- Fix some edge cases where Emulator UI cannot reach the emulators (#912)
+- Fix various accessibility and usability issues in Emulator UI.
