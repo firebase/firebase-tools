@@ -10,16 +10,26 @@
     "Other"
   ],
   "activationEvents": [
-    "*",
-    "onCommand:firebase-vscode.helloWorld"
+    "onView:firebase.sidebarView",
+    "onStartupFinished"
   ],
-  "main": "./out/extension.js",
+  "main": "./dist/extension.js",
   "contributes": {
+    "configuration": {
+      "title": "Firebase VS Code Extension",
+      "properties": {
+        "firebase-vscode-extension.firebaseRcFolder": {
+          "type": "string",
+          "default": "",
+          "description": "Firebase RC folder"
+        }
+      }
+    },
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "firebase-vscode",
-          "title": "F i r e b a s e",
+          "id": "firebase",
+          "title": "Firebase",
           "icon": "$(mono-firebase)"
         }
       ]
@@ -34,20 +44,14 @@
       }
     },
     "views": {
-      "firebase-vscode": [
+      "firebase": [
         {
-          "id": "thingsTree",
-          "name": "Things Tree"
+          "type": "webview",
+          "id": "firebase.sidebarView",
+          "name": "Firebase"
         }
       ]
     },
-    "viewsWelcome": [
-      {
-        "view": "thingsTree",
-        "when": "",
-        "contents": "No user logged in.\n[LOG IN](command:firebase-vscode.login)"
-      }
-    ],
     "commands": [
       {
         "command": "firebase-vscode.helloWorld",
@@ -68,25 +72,44 @@
     "webpack": "webpack --config webpack.dev.js",
     "watch": "webpack --config webpack.dev.js --watch",
     "build": "webpack --config webpack.prod.js --devtool hidden-source-map",
+    "build:extension": "webpack --config webpack.dev.js --config-name extension",
+    "build:sidebar": "webpack --config webpack.dev.js --config-name sidebar",
     "pretest": "npm run build && npm run lint",
     "lint": "eslint src --ext ts",
-    "test": "node ./out/test/runTest.js"
+    "test": "node ./dist/test/runTest.js"
   },
   "dependencies": {
-    "proxy-agent": "^5.0.0"
+    "@vscode/webview-ui-toolkit": "^1.2.1",
+    "@zxing/text-encoding": "^0.9.0",
+    "classnames": "^2.3.2",
+    "proxy-agent": "^5.0.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
   },
   "devDependencies": {
+    "@teamsupercell/typings-for-css-modules-loader": "^2.5.1",
     "@types/glob": "^8.0.0",
     "@types/mocha": "^10.0.1",
     "@types/node": "16.x",
+    "@types/react": "^18.0.9",
+    "@types/react-dom": "^18.0.4",
     "@types/vscode": "^1.69.0",
     "@typescript-eslint/eslint-plugin": "^5.45.0",
     "@typescript-eslint/parser": "^5.45.0",
+    "@vscode/codicons": "0.0.30",
     "@vscode/test-electron": "^2.2.0",
+    "copy-webpack-plugin": "^11.0.0",
+    "css-loader": "^6.7.1",
     "eslint": "^8.28.0",
+    "eslint-plugin-react": "^7.32.2",
+    "fork-ts-checker-webpack-plugin": "^7.3.0",
     "glob": "^8.0.3",
+    "mini-css-extract-plugin": "^2.6.0",
     "mocha": "^10.1.0",
-    "node-polyfill-webpack-plugin": "^2.0.1",
+    "postcss-loader": "^7.0.0",
+    "sass": "^1.52.0",
+    "sass-loader": "^13.0.0",
+    "string-replace-loader": "^3.1.0",
     "ts-loader": "^9.4.2",
     "typescript": "^4.9.3",
     "webpack": "^5.75.0",
