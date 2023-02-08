@@ -1,11 +1,8 @@
 import { Command } from "../command";
 import { FirebaseError } from "../error";
-import {
-  addFirebaseToCloudProjectAndLog,
-  FirebaseProjectMetadata,
-  promptAvailableProjectId,
-} from "../management/projects";
+import { addFirebaseToCloudProjectAndLog, promptAvailableProjectId } from "../management/projects";
 import { requireAuth } from "../requireAuth";
+import { FirebaseProjectMetadata } from "../types/project";
 
 export const command = new Command("projects:addfirebase [projectId]")
   .description("add Firebase resources to a Google Cloud Platform project")

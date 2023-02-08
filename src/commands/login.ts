@@ -1,4 +1,4 @@
-import * as _ from "lodash";
+import get from "lodash/get";
 import * as clc from "colorette";
 
 import { Command } from "../command";
@@ -10,6 +10,7 @@ import { promptOnce } from "../prompt";
 
 import * as auth from "../auth";
 import { isCloudEnvironment } from "../utils";
+import { User, Tokens } from "../types/auth";
 
 export const command = new Command("login")
   .description("log the CLI into Firebase")
@@ -25,8 +26,8 @@ export const command = new Command("login")
       );
     }
 
-    const user = options.user as auth.User | undefined;
-    const tokens = options.tokens as auth.Tokens | undefined;
+    const user = options.user as User | undefined;
+    const tokens = options.tokens as Tokens | undefined;
 
     if (user && tokens && !options.reauth) {
       logger.info("Already logged in as", clc.bold(user.email));
@@ -56,7 +57,7 @@ export const command = new Command("login")
     // the authorization callback couldn't redirect to localhost.
     const useLocalhost = isCloudEnvironment() ? false : options.localhost;
 
-    const result = await auth.loginGoogle(useLocalhost, _.get(user, "email"));
+    const result = await auth.loginGoogle(useLocalhost, get(user, "email"));
     configstore.set("user", result.user);
     configstore.set("tokens", result.tokens);
     // store login scopes in case mandatory scopes grow over time

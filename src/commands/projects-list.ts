@@ -3,9 +3,10 @@ import * as ora from "ora";
 import Table = require("cli-table");
 
 import { Command } from "../command";
-import { FirebaseProjectMetadata, listFirebaseProjects } from "../management/projects";
+import { listFirebaseProjects } from "../management/projects";
 import { requireAuth } from "../requireAuth";
 import { logger } from "../logger";
+import { FirebaseProjectMetadata } from "../types/project";
 
 const NOT_SPECIFIED = clc.yellow("[Not specified]");
 

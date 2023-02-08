@@ -522,5 +522,5 @@ function bodyToString(body: unknown): string {
 // Need to figure out how to manage issues with duplicate deps used by
 // duplicate source code in extension folders.
 function isStream(o: unknown): o is NodeJS.ReadableStream {
-  return o instanceof Readable || o instanceof FormData || (o as any)._overheadLength;
+  return o instanceof Readable || o instanceof FormData;
 }

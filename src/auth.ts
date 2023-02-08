@@ -30,57 +30,15 @@ import {
   githubOrigin,
   googleOrigin,
 } from "./api";
-
-// The wire protocol for an access token returned by Google.
-// When we actually refresh from the server we should always have
-// these optional fields, but when a user passes --token we may
-// only have access_token.
-export interface Tokens {
-  id_token?: string;
-  access_token: string;
-  refresh_token?: string;
-  scopes?: string[];
-}
-
-export interface User {
-  email: string;
-
-  iss?: string;
-  azp?: string;
-  aud?: string;
-  sub?: number;
-  hd?: string;
-  email_verified?: boolean;
-  at_hash?: string;
-  iat?: number;
-  exp?: number;
-}
-
-export interface Account {
-  user: User;
-  tokens: Tokens;
-}
-
-interface TokensWithExpiration extends Tokens {
-  expires_at?: number;
-}
-
-interface TokensWithTTL extends Tokens {
-  expires_in?: number;
-}
-
-interface UserCredentials {
-  user: string | User;
-  tokens: TokensWithExpiration;
-  scopes: string[];
-}
-
-// https://docs.github.com/en/developers/apps/authorizing-oauth-apps
-interface GitHubAuthResponse {
-  access_token: string;
-  scope: string;
-  token_type: string;
-}
+import {
+  Account,
+  GitHubAuthResponse,
+  Tokens,
+  TokensWithExpiration,
+  TokensWithTTL,
+  User,
+  UserCredentials,
+} from "./types/auth";
 
 portfinder.setBasePort(9005);
 
@@ -204,7 +162,7 @@ export function selectAccount(account?: string, projectRoot?: string): Account |
  * @param useLocalhost should the flow be interactive or code-based?
  * @param email an optional hint to use for the google account picker
  */
-export async function loginAdditionalAccount(useLocalhost: boolean, email?: string) {
+export async function loginAdditionalAccount(useLocalhost: boolean, email?: string): Promise<Account> {
   // Log the user in using the passed email as a hint
   const result = await loginGoogle(useLocalhost, email);
 
@@ -220,7 +178,7 @@ export async function loginAdditionalAccount(useLocalhost: boolean, email?: stri
 
   const allAccounts = getAllAccounts();
 
-  const newAccount = {
+  const newAccount: Account = {
     user: result.user,
     tokens: result.tokens,
   };
@@ -276,10 +234,10 @@ function open(url: string): void {
 function invalidCredentialError(): FirebaseError {
   return new FirebaseError(
     "Authentication Error: Your credentials are no longer valid. Please run " +
-      clc.bold("firebase login --reauth") +
-      "\n\n" +
-      "For CI servers and headless environments, generate a new token with " +
-      clc.bold("firebase login:ci"),
+    clc.bold("firebase login --reauth") +
+    "\n\n" +
+    "For CI servers and headless environments, generate a new token with " +
+    clc.bold("firebase login:ci"),
     { exit: 1 }
   );
 }
@@ -732,10 +690,10 @@ async function refreshTokens(
     if (err?.context?.body?.error === "invalid_scope") {
       throw new FirebaseError(
         "This command requires new authorization scopes not granted to your current session. Please run " +
-          clc.bold("firebase login --reauth") +
-          "\n\n" +
-          "For CI servers and headless environments, generate a new token with " +
-          clc.bold("firebase login:ci"),
+        clc.bold("firebase login --reauth") +
+        "\n\n" +
+        "For CI servers and headless environments, generate a new token with " +
+        clc.bold("firebase login:ci"),
         { exit: 1 }
       );
     }
