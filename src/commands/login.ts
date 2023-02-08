@@ -1,4 +1,4 @@
-import * as _ from "lodash";
+import get from "lodash/get";
 import * as clc from "colorette";
 
 import { Command } from "../command";
@@ -57,7 +57,7 @@ export const command = new Command("login")
     // the authorization callback couldn't redirect to localhost.
     const useLocalhost = isCloudEnvironment() ? false : options.localhost;
 
-    const result = await auth.loginGoogle(useLocalhost, _.get(user, "email"));
+    const result = await auth.loginGoogle(useLocalhost, get(user, "email"));
     configstore.set("user", result.user);
     configstore.set("tokens", result.tokens);
     // store login scopes in case mandatory scopes grow over time

@@ -162,7 +162,7 @@ export function selectAccount(account?: string, projectRoot?: string): Account |
  * @param useLocalhost should the flow be interactive or code-based?
  * @param email an optional hint to use for the google account picker
  */
-export async function loginAdditionalAccount(useLocalhost: boolean, email?: string) {
+export async function loginAdditionalAccount(useLocalhost: boolean, email?: string): Promise<Account> {
   // Log the user in using the passed email as a hint
   const result = await loginGoogle(useLocalhost, email);
 
@@ -178,7 +178,7 @@ export async function loginAdditionalAccount(useLocalhost: boolean, email?: stri
 
   const allAccounts = getAllAccounts();
 
-  const newAccount = {
+  const newAccount: Account = {
     user: result.user,
     tokens: result.tokens,
   };
@@ -234,10 +234,10 @@ function open(url: string): void {
 function invalidCredentialError(): FirebaseError {
   return new FirebaseError(
     "Authentication Error: Your credentials are no longer valid. Please run " +
-      clc.bold("firebase login --reauth") +
-      "\n\n" +
-      "For CI servers and headless environments, generate a new token with " +
-      clc.bold("firebase login:ci"),
+    clc.bold("firebase login --reauth") +
+    "\n\n" +
+    "For CI servers and headless environments, generate a new token with " +
+    clc.bold("firebase login:ci"),
     { exit: 1 }
   );
 }
@@ -690,10 +690,10 @@ async function refreshTokens(
     if (err?.context?.body?.error === "invalid_scope") {
       throw new FirebaseError(
         "This command requires new authorization scopes not granted to your current session. Please run " +
-          clc.bold("firebase login --reauth") +
-          "\n\n" +
-          "For CI servers and headless environments, generate a new token with " +
-          clc.bold("firebase login:ci"),
+        clc.bold("firebase login --reauth") +
+        "\n\n" +
+        "For CI servers and headless environments, generate a new token with " +
+        clc.bold("firebase login:ci"),
         { exit: 1 }
       );
     }
