@@ -38,6 +38,23 @@ export interface ExportMarker {
   isNextImageImported: boolean;
 }
 
+// See: https://github.com/vercel/next.js/blob/b188fab3360855c28fd9407bd07c4ee9f5de16a6/packages/next/build/webpack/plugins/middleware-plugin.ts#L15-L29
+export interface MiddlewareManifestV1 {
+  version: 1;
+  sortedMiddleware: string[];
+  clientInfo: [location: string, isSSR: boolean][];
+  middleware: {
+    [page: string]: {
+      env: string[];
+      files: string[];
+      name: string;
+      page: string;
+      regexp: string;
+      wasm?: any[]; // WasmBinding isn't exported from next
+    };
+  };
+}
+
 export interface ImagesManifest {
   version: number;
   images: ImageConfigComplete & {

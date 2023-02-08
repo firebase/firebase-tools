@@ -34,7 +34,7 @@ import {
   isUsingMiddleware,
   allDependencyNames,
 } from "./utils";
-import type { Manifest, NpmLsReturn } from "./interfaces";
+import type { Manifest, MiddlewareManifestV1, NpmLsReturn } from "./interfaces";
 import { readJSON } from "../utils";
 import { warnIfCustomBuildScript } from "../utils";
 import type { EmulatorInfo } from "../../emulator/types";
@@ -277,13 +277,19 @@ export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: strin
   }
 
   const [middlewareManifest, prerenderManifest, routesManifest] = await Promise.all([
-    readJSON<MiddlewareManifest>(join(sourceDir, distDir, "server", MIDDLEWARE_MANIFEST)),
+    readJSON<MiddlewareManifest | MiddlewareManifestV1>(
+      join(sourceDir, distDir, "server", MIDDLEWARE_MANIFEST)
+    ),
     readJSON<PrerenderManifest>(join(sourceDir, distDir, PRERENDER_MANIFEST)),
     readJSON<Manifest>(join(sourceDir, distDir, ROUTES_MANIFEST)),
   ]);
 
   const middlewareMatcherRegexes = Object.values(middlewareManifest.middleware)
-    .map((it) => it.matchers)
+    .map(
+      (
+        page: MiddlewareManifest["middleware"]["page"] | MiddlewareManifestV1["middleware"]["page"]
+      ) => ("regexp" in page ? { regexp: page.regexp } : page.matchers)
+    )
     .flat()
     .map((it) => new RegExp(it.regexp));
 
