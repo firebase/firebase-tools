@@ -624,7 +624,7 @@ export function functionFromEndpoint(
       ...gcfFunction.labels,
       [BLOCKING_LABEL]:
         BLOCKING_EVENT_TO_LABEL_KEY[
-          endpoint.blockingTrigger.eventType as typeof AUTH_BLOCKING_EVENTS[number]
+          endpoint.blockingTrigger.eventType as (typeof AUTH_BLOCKING_EVENTS)[number]
         ],
     };
   } else {
