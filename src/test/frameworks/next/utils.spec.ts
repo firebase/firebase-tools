@@ -9,7 +9,6 @@ import {
   APP_PATH_ROUTES_MANIFEST,
 } from "../../../frameworks/next/constants";
 import {
-  pathHasRegex,
   cleanEscapedChars,
   isRewriteSupportedByHosting,
   isRedirectSupportedByHosting,
@@ -24,7 +23,6 @@ import {
   cleanCustomRouteI18n,
   I18N_CUSTOM_ROUTE_PREFIX,
   allDependencyNames,
-  validateI18nDomainRouting,
 } from "../../../frameworks/next/utils";
 import * as frameworksUtils from "../../../frameworks/utils";
 import * as fsUtils from "../../../fsutils";
@@ -49,36 +47,9 @@ import {
   unsupportedRewritesArray,
   npmLsReturn,
 } from "./helpers";
-import { domains, i18nDomains, pathsWithCustomRoutesInternalPrefix } from "./helpers/i18n";
-import { FirebaseError } from "../../../error";
+import { pathsWithCustomRoutesInternalPrefix } from "./helpers/i18n";
 
 describe("Next.js utils", () => {
-  describe("pathHasRegex", () => {
-    it("should identify regex", () => {
-      for (const path of pathsWithRegex) {
-        expect(pathHasRegex(path)).to.be.true;
-      }
-    });
-
-    it("should not identify escaped parentheses as regex", () => {
-      for (const path of pathsWithEscapedChars) {
-        expect(pathHasRegex(path)).to.be.false;
-      }
-    });
-
-    it("should identify regex along with escaped chars", () => {
-      for (const path of pathsWithRegexAndEscapedChars) {
-        expect(pathHasRegex(path)).to.be.true;
-      }
-    });
-
-    it("should not identify globs as regex", () => {
-      for (const path of pathsAsGlobs) {
-        expect(pathHasRegex(path)).to.be.false;
-      }
-    });
-  });
-
   describe("cleanEscapedChars", () => {
     it("should clean escaped chars", () => {
       // path containing all escaped chars
@@ -376,26 +347,6 @@ describe("Next.js utils", () => {
         "js-tokens",
         "scheduler",
       ]);
-    });
-  });
-
-  describe("validateI18nDomainRouting", () => {
-    it("should throw indicating which i18n domain is not a Firebase Hosting site domain", () => {
-      const domainToError = "notinhosting.firebaseapp.com";
-
-      expect(() =>
-        validateI18nDomainRouting(
-          [...i18nDomains, { defaultLocale: "locale", domain: domainToError }],
-          domains
-        )
-      ).to.throw(
-        FirebaseError,
-        `i18n domain "${domainToError}" is not registered in Firebase Hosting for this project.`
-      );
-    });
-
-    it("should not throw if i18n domain is a Hosting site domain", () => {
-      expect(validateI18nDomainRouting(i18nDomains, domains)).to.not.throw;
     });
   });
 });

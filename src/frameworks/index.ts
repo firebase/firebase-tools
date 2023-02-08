@@ -59,7 +59,7 @@ export interface Framework {
   ɵcodegenPublicDirectory: (
     dir: string,
     dest: string,
-    context: { siteId: string; projectId: string }
+    context: { site: string; project: string }
   ) => Promise<void>;
   ɵcodegenFunctionsDirectory?: (
     dir: string,
@@ -424,19 +424,14 @@ export async function prepareFrameworks(
       config.redirects.push(...redirects);
       config.headers.push(...headers);
       config.trailingSlash ??= trailingSlash;
-
-      if (i18n) {
-        config.i18n = {
-          root: "/",
-        };
-      }
+      config.i18n ??= i18n;
 
       if (await pathExists(hostingDist)) await rm(hostingDist, { recursive: true });
       await mkdirp(hostingDist);
 
       await ɵcodegenPublicDirectory(getProjectPath(), hostingDist, {
-        projectId: context.projectId,
-        siteId: context.site,
+        project,
+        site,
       });
 
       config.public = relative(projectRoot, hostingDist);

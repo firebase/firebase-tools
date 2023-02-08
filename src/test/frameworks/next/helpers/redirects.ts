@@ -1,7 +1,7 @@
-import type { Manifest } from "../../../../frameworks/next/interfaces";
+import type { RoutesManifest, RoutesManifestRedirect } from "../../../../frameworks/next/interfaces";
 import { supportedPaths, unsupportedPaths } from "./paths";
 
-export const supportedRedirects: NonNullable<Manifest["redirects"]> = supportedPaths.map(
+export const supportedRedirects: RoutesManifestRedirect[] = supportedPaths.map(
   (path) => ({
     source: path,
     destination: `${path}/redirect`,
@@ -10,7 +10,7 @@ export const supportedRedirects: NonNullable<Manifest["redirects"]> = supportedP
   })
 );
 
-export const unsupportedRedirects: NonNullable<Manifest["redirects"]> = [
+export const unsupportedRedirects: RoutesManifestRedirect[] = [
   ...unsupportedPaths.map((path) => ({
     source: path,
     destination: `/${path}/redirect`,
@@ -27,7 +27,7 @@ export const unsupportedRedirects: NonNullable<Manifest["redirects"]> = [
       },
     ],
     destination: "/another?myHeader=:myHeader",
-    permanent: false,
+    statusCode: 307,
     regex: "",
   },
   {
@@ -39,7 +39,7 @@ export const unsupportedRedirects: NonNullable<Manifest["redirects"]> = [
       },
     ],
     destination: "/another?value=:myquery",
-    permanent: false,
+    statusCode: 307,
     regex: "",
   },
   {
@@ -52,7 +52,7 @@ export const unsupportedRedirects: NonNullable<Manifest["redirects"]> = [
       },
     ],
     destination: "/another?authorized=1",
-    permanent: false,
+    statusCode: 307,
     regex: "",
   },
   {
@@ -64,7 +64,7 @@ export const unsupportedRedirects: NonNullable<Manifest["redirects"]> = [
       },
     ],
     destination: "/another?host=1",
-    permanent: false,
+    statusCode: 307,
     regex: "",
   },
   {
@@ -76,7 +76,7 @@ export const unsupportedRedirects: NonNullable<Manifest["redirects"]> = [
       },
     ],
     destination: "/somewhere",
-    permanent: false,
+    statusCode: 307,
     regex: "",
   },
   {
@@ -88,7 +88,7 @@ export const unsupportedRedirects: NonNullable<Manifest["redirects"]> = [
       },
     ],
     destination: "https://:subdomain.example.com/some-path/end?a=b",
-    permanent: false,
+    statusCode: 307,
     regex: "",
   },
   {
@@ -101,7 +101,7 @@ export const unsupportedRedirects: NonNullable<Manifest["redirects"]> = [
       },
     ],
     destination: "/somewhere?value=:hello",
-    permanent: false,
+    statusCode: 307,
     regex: "",
   },
 ];

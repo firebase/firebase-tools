@@ -3,6 +3,7 @@ import { mkdir, copyFile } from "fs/promises";
 import { dirname, join } from "path";
 import type { NextConfig } from "next";
 import type { PrerenderManifest } from "next/dist/build";
+import type { DomainLocale } from "next/dist/server/config";
 import type { MiddlewareManifest } from "next/dist/build/webpack/plugins/middleware-plugin";
 import type { PagesManifest } from "next/dist/build/webpack/plugins/pages-manifest-plugin";
 import { copy, mkdirp, pathExists } from "fs-extra";
@@ -24,7 +25,6 @@ import {
 import { promptOnce } from "../../prompt";
 import { FirebaseError } from "../../error";
 import {
-  cleanCustomRouteI18n,
   cleanEscapedChars,
   getNextjsRewritesToUse,
   isHeaderSupportedByHosting,
@@ -34,9 +34,9 @@ import {
   isUsingImageOptimization,
   isUsingMiddleware,
   allDependencyNames,
-  validateI18nDomainRouting,
+  cleanI18n,
 } from "./utils";
-import type { Manifest, NpmLsReturn } from "./interfaces";
+import type { RoutesManifest, NpmLsReturn } from "./interfaces";
 import { readJSON } from "../utils";
 import { warnIfCustomBuildScript } from "../utils";
 import type { EmulatorInfo } from "../../emulator/types";
@@ -51,6 +51,7 @@ import { getAllSiteDomains } from "../../hosting/api";
 
 const DEFAULT_BUILD_SCRIPT = ["next build"];
 const PUBLIC_DIR = "public";
+const I18N_ROOT = "/";
 
 export const name = "Next.js";
 export const support = SupportLevel.Experimental;
@@ -98,7 +99,7 @@ export async function build(dir: string): Promise<BuildResult> {
   });
 
   const reasonsForBackend = [];
-  const { distDir, trailingSlash } = await getConfig(dir);
+  const { distDir, trailingSlash, basePath } = await getConfig(dir);
 
   if (await isUsingMiddleware(join(dir, distDir), false)) {
     reasonsForBackend.push("middleware");
@@ -155,7 +156,7 @@ export async function build(dir: string): Promise<BuildResult> {
     }
   }
 
-  const manifest = await readJSON<Manifest>(join(dir, distDir, ROUTES_MANIFEST));
+  const manifest = await readJSON<RoutesManifest>(join(dir, distDir, ROUTES_MANIFEST));
 
   const {
     headers: nextJsHeaders = [],
@@ -164,24 +165,22 @@ export async function build(dir: string): Promise<BuildResult> {
     i18n: nextjsI18n,
   } = manifest;
 
-  const isEveryHeaderSupported = nextJsHeaders.every(isHeaderSupportedByHosting);
+  const isEveryHeaderSupported = nextJsHeaders.map(cleanI18n).every(isHeaderSupportedByHosting);
   if (!isEveryHeaderSupported) {
     reasonsForBackend.push("advanced headers");
   }
 
-  const headers = nextJsHeaders.filter(isHeaderSupportedByHosting).map(({ source, headers }) => {
-    if (nextjsI18n) {
-      source = cleanCustomRouteI18n(source);
-    }
-
-    return {
+  const headers = nextJsHeaders
+    .map(cleanI18n)
+    .filter(isHeaderSupportedByHosting)
+    .map(({ source, headers, regex }) => ({
       // clean up unnecessary escaping
       source: cleanEscapedChars(source),
       headers,
-    };
-  });
+    }));
 
   const isEveryRedirectSupported = nextJsRedirects
+    .map(cleanI18n)
     .filter((it) => !it.internal)
     .every(isRedirectSupportedByHosting);
   if (!isEveryRedirectSupported) {
@@ -189,19 +188,14 @@ export async function build(dir: string): Promise<BuildResult> {
   }
 
   const redirects = nextJsRedirects
+    .map(cleanI18n)
     .filter(isRedirectSupportedByHosting)
-    .map(({ source, destination, statusCode: type }) => {
-      if (nextjsI18n) {
-        source = cleanCustomRouteI18n(source);
-      }
-
-      return {
-        // clean up unnecessary escaping
-        source: cleanEscapedChars(source),
-        destination,
-        type,
-      };
-    });
+    .map(({ source, destination, statusCode: type }) => ({
+      // clean up unnecessary escaping
+      source: cleanEscapedChars(source),
+      destination,
+      type,
+    }));
 
   const nextJsRewritesToUse = getNextjsRewritesToUse(nextJsRewrites);
 
@@ -218,20 +212,13 @@ export async function build(dir: string): Promise<BuildResult> {
     reasonsForBackend.push("advanced rewrites");
   }
 
-  // Can we change i18n into Firebase settings?
   const rewrites = nextJsRewritesToUse
     .filter(isRewriteSupportedByHosting)
-    .map(({ source, destination }) => {
-      if (nextjsI18n) {
-        source = cleanCustomRouteI18n(source);
-      }
-
-      return {
-        // clean up unnecessary escaping
-        source: cleanEscapedChars(source),
-        destination,
-      };
-    });
+    .map(({ source, destination }) => ({
+      // clean up unnecessary escaping
+      source: cleanEscapedChars(source),
+      destination,
+    }));
 
   const wantsBackend = reasonsForBackend.length > 0;
 
@@ -251,7 +238,11 @@ export async function build(dir: string): Promise<BuildResult> {
     console.log("");
   }
 
-  const i18n = nextjsI18n && !nextjsI18n.domains ? nextjsI18n : undefined;
+  const i18n = nextjsI18n
+    ? {
+        root: join(basePath, I18N_ROOT),
+      }
+    : undefined;
 
   return {
     wantsBackend,
@@ -287,39 +278,40 @@ export async function init(setup: any) {
 export async function ɵcodegenPublicDirectory(
   sourceDir: string,
   destDir: string,
-  context: { siteId: string; projectId: string }
+  context: { site: string; project: string }
 ) {
-  const { distDir, i18n } = await getConfig(sourceDir);
+  const { distDir, i18n, basePath } = await getConfig(sourceDir);
 
+  let matchingI18nDomain: DomainLocale | undefined = undefined;
   if (i18n?.domains) {
-    const allSiteDomains = await getAllSiteDomains(context.projectId, context.siteId);
-    validateI18nDomainRouting(i18n.domains, allSiteDomains);
+    const siteDomains = await getAllSiteDomains(context.project, context.site);
+    matchingI18nDomain = i18n.domains.find(({ domain }) => siteDomains.includes(domain));
   }
 
   const publicPath = join(sourceDir, "public");
-  await mkdir(join(destDir, "_next", "static"), { recursive: true });
+  await mkdir(join(destDir, basePath, "_next", "static"), { recursive: true });
   if (await pathExists(publicPath)) {
-    await copy(publicPath, destDir);
+    await copy(publicPath, join(destDir, basePath));
   }
-  await copy(join(sourceDir, distDir, "static"), join(destDir, "_next", "static"));
+  await copy(join(sourceDir, distDir, "static"), join(destDir, basePath, "_next", "static"));
 
   // Copy over the default html files
   for (const file of ["index.html", "404.html", "500.html"]) {
     const pagesPath = join(sourceDir, distDir, "server", "pages", file);
     if (await pathExists(pagesPath)) {
-      await copyFile(pagesPath, join(destDir, file));
+      await copyFile(pagesPath, join(destDir, basePath, file));
       continue;
     }
     const appPath = join(sourceDir, distDir, "server", "app", file);
     if (await pathExists(appPath)) {
-      await copyFile(appPath, join(destDir, file));
+      await copyFile(appPath, join(destDir, basePath, file));
     }
   }
 
   const [middlewareManifest, prerenderManifest, routesManifest] = await Promise.all([
     readJSON<MiddlewareManifest>(join(sourceDir, distDir, "server", MIDDLEWARE_MANIFEST)),
     readJSON<PrerenderManifest>(join(sourceDir, distDir, PRERENDER_MANIFEST)),
-    readJSON<Manifest>(join(sourceDir, distDir, ROUTES_MANIFEST)),
+    readJSON<RoutesManifest>(join(sourceDir, distDir, ROUTES_MANIFEST)),
   ]);
 
   const middlewareMatcherRegexes = Object.values(middlewareManifest.middleware)
@@ -364,17 +356,45 @@ export async function ɵcodegenPublicDirectory(
       isReactServerComponent ? "app" : "pages"
     );
 
-    const parts = path.split("/").filter((it) => !!it);
-    const partsOrIndex = parts.length > 0 ? parts : ["index"];
+    const sourceParts = path.split("/").filter((it) => !!it);
+    const sourcePartsOrIndex = sourceParts.length > 0 ? sourceParts : ["index"];
+    const locale = i18n?.locales.includes(sourceParts[0]) ? sourceParts[0] : undefined;
+    const destParts = sourceParts.slice(locale ? 1 : 0);
+    const destPartsOrIndex = destParts.length > 0 ? destParts : ["index"];
+    const defaultLocale = !locale || (matchingI18nDomain || i18n)?.defaultLocale === locale;
 
-    const htmlPath = `${join(...partsOrIndex)}.html`;
-    await mkdir(join(destDir, dirname(htmlPath)), { recursive: true });
-    await copyFile(join(contentDist, htmlPath), join(destDir, htmlPath));
+    if (
+      matchingI18nDomain &&
+      locale &&
+      !(matchingI18nDomain.defaultLocale === locale || matchingI18nDomain.locales?.includes(locale))
+    ) {
+      // This content doesn't belong on this domain
+      continue;
+    }
+
+    const sourceHtmlPath = `${join(...sourcePartsOrIndex)}.html`;
+
+    const destHtmlPath = `${join(
+      defaultLocale ? "" : join(I18N_ROOT, locale),
+      ...destPartsOrIndex
+    )}.html`;
+
+    await mkdir(join(destDir, basePath, dirname(destHtmlPath)), { recursive: true });
+    await copyFile(join(contentDist, sourceHtmlPath), join(destDir, basePath, destHtmlPath));
+
+    // If it's the default locale we should also copy it to the locale root, that way
+    // Firebase i18n priority order is still respected https://firebase.google.com/docs/hosting/i18n-rewrites#priority-order
+    // and we're not just falling back to this content
+    if (locale && defaultLocale) {
+      const destHtmlPath = `${join(I18N_ROOT, locale, ...destPartsOrIndex)}.html`;
+      await mkdir(join(destDir, basePath, dirname(destHtmlPath)), { recursive: true });
+      await copyFile(join(contentDist, sourceHtmlPath), join(destDir, basePath, destHtmlPath));
+    }
 
     if (!isReactServerComponent) {
-      const dataPath = `${join(...partsOrIndex)}.json`;
-      await mkdir(join(destDir, dirname(route.dataRoute)), { recursive: true });
-      await copyFile(join(contentDist, dataPath), join(destDir, route.dataRoute));
+      const dataPath = `${join(...sourcePartsOrIndex)}.json`;
+      await mkdir(join(destDir, basePath, dirname(route.dataRoute)), { recursive: true });
+      await copyFile(join(contentDist, dataPath), join(destDir, basePath, route.dataRoute));
     }
   }
 }
@@ -467,7 +487,10 @@ export async function getDevModeHandle(dir: string, hostingEmulatorInfo?: Emulat
   };
 }
 
-async function getConfig(dir: string): Promise<NextConfig & { distDir: string }> {
+async function getConfig(dir: string): Promise<
+  Partial<NextConfig> &
+  { distDir: string, trailingSlash: boolean, basePath: string }
+> {
   let config: NextConfig = {};
   if (existsSync(join(dir, "next.config.js"))) {
     const version = getNextVersion(dir);
@@ -488,6 +511,7 @@ async function getConfig(dir: string): Promise<NextConfig & { distDir: string }>
     distDir: ".next",
     // trailingSlash defaults to false in Next.js: https://nextjs.org/docs/api-reference/next.config.js/trailing-slash
     trailingSlash: false,
+    basePath: "/",
     ...config,
   };
 }
