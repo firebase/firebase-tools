@@ -5,3 +5,4 @@
 - Web frameworks deploys can once again bundle local NPM dependencies (#5440)
 - Catches error when attempting to deploy without a project (#5415)
 - Fixes a number of issues and outdated dependencies in templates for `init --only functions` and `ext:dev:init`
+- Support private network access (CORS-RFC1918) in Firestore Emulator (#4227)
