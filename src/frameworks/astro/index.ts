@@ -54,11 +54,9 @@ export async function build(root: string): Promise<BuildResult> {
 
 export async function ɵcodegenPublicDirectory(root: string, dest: string) {
   const outDir = resolvedConfig.outDir?.toString() ?? "dist";
-
   // output: "server" in astro.config builds "client" and "server" folders, otherwise assets are in top-level outDir
   const assetPath = join(root, outDir, resolvedConfig.output === "server" ? "client" : "");
 
-  console.log("copying files...");
   await copy(assetPath, dest);
 }
 
