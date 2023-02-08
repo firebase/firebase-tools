@@ -11,16 +11,18 @@
 		"module": "ES2015",
 		"moduleResolution": "node",
 		"target": "ES2020",
-		"outDir": "out",
+		"outDir": "dist",
 		"lib": [
 			"ES2020"
 		],
+		"jsx": "react",
 		"sourceMap": true,
-		"rootDirs": ["src", "../src"],
+		"rootDirs": ["src", "../src", "common"],
 		"strict": false   /* enable all strict type-checking options */
 		/* Additional Checks */
 		// "noImplicitReturns": true, /* Report error when not all code paths in function return a value. */
 		// "noFallthroughCasesInSwitch": true, /* Report errors for fallthrough cases in switch statement. */
 		// "noUnusedParameters": true,  /* Report errors on unused parameters. */
-	}
+	},
+	"include": ["src/**/*", "common/**/*"],
 }
