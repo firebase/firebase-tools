@@ -238,7 +238,7 @@ export async function build(dir: string): Promise<BuildResult> {
 export async function init(setup: any, config: any) {
   const language = await promptOnce({
     type: "list",
-    default: "JavaScript",
+    default: "TypeScript",
     message: "What language would you like to use?",
     choices: ["JavaScript", "TypeScript"],
   });
