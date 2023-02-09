@@ -1,4 +1,5 @@
-import { execSync, spawn, spawnSync } from "child_process";
+import { execSync } from "child_process";
+import { spawn, sync as spawnSync } from "cross-spawn";
 import { mkdir, copyFile } from "fs/promises";
 import { dirname, join } from "path";
 import type { NextConfig } from "next";
