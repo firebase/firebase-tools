@@ -246,7 +246,7 @@ export async function init(setup: any, config: any) {
     `npx --yes create-next-app@latest -e hello-world ${setup.hosting.source} --use-npm ${
       language === "TypeScript" ? "--ts" : "--js"
     }`,
-    { stdio: "inherit", cwd: config.projectDir, }
+    { stdio: "inherit", cwd: config.projectDir }
   );
 }
 

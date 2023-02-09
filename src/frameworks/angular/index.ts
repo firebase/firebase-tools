@@ -32,10 +32,13 @@ export async function discover(dir: string): Promise<Discovery | undefined> {
 }
 
 export async function init(setup: any, config: any) {
-  execSync(`npx --yes -p @angular/cli@latest ng new ${setup.projectId} --directory ${setup.hosting.source} --skip-git`, {
-    stdio: "inherit",
-    cwd: config.projectDir,
-  });
+  execSync(
+    `npx --yes -p @angular/cli@latest ng new ${setup.projectId} --directory ${setup.hosting.source} --skip-git`,
+    {
+      stdio: "inherit",
+      cwd: config.projectDir,
+    }
+  );
   const useAngularUniversal = await promptOnce({
     name: "useAngularUniversal",
     type: "confirm",
