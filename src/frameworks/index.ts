@@ -389,7 +389,7 @@ export async function prepareFrameworks(
     } = WebFrameworks[framework];
     console.log(`Detected a ${name} codebase. ${SupportLevelWarnings[support] || ""}\n`);
     // TODO allow for override
-    const isDevMode = false; // context._name === "serve" || context._name === "emulators:start";
+    const isDevMode = context._name === "serve" || context._name === "emulators:start";
 
     const hostingEmulatorInfo = emulators.find((e) => e.name === Emulators.HOSTING);
 
