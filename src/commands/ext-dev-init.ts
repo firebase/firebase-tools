@@ -144,7 +144,7 @@ async function typescriptSelected(config: Config): Promise<void> {
   await config.askWriteProjectFile("POSTINSTALL.md", templates.postinstallTemplate);
   await config.askWriteProjectFile("CHANGELOG.md", templates.changelogTemplate);
   await config.askWriteProjectFile("functions/.mocharc.json", mocharcTemplate);
-  await config.askWriteProjectFile("functions/src/index.ts", indexTemplate);  
+  await config.askWriteProjectFile("functions/src/index.ts", indexTemplate);
   await config.askWriteProjectFile(
     "functions/integration-tests/integration-test.spec.ts",
     integrationTestTemplate
