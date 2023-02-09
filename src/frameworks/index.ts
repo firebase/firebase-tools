@@ -579,7 +579,6 @@ ${firebaseDefaults ? `__FIREBASE_DEFAULTS__=${JSON.stringify(firebaseDefaults)}\
         join(functionsDist, "server.js"),
         `const { onRequest } = require('firebase-functions/v2/https');
 const server = import('firebase-frameworks');
-console.log(process.env);
 exports.ssr = onRequest((req, res) => server.then(it => it.handle(req, res)));
 `
       );
