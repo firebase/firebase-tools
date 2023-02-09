@@ -628,13 +628,12 @@ async function initializeFirebaseAdminStubs(): Promise<void> {
     .finalize();
 
   // Stub the admin module in the require cache
-  require.cache[adminResolution.resolution] = Object.assign(
-    require.cache[adminResolution.resolution],
-    {
-      exports: proxiedAdminModule,
-      path: path.dirname(adminResolution.resolution),
-    }
-  );
+  const v = require.cache[adminResolution.resolution];
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- this is not precedent.
+  require.cache[adminResolution.resolution] = Object.assign(v!, {
+    exports: proxiedAdminModule,
+    path: path.dirname(adminResolution.resolution),
+  });
 
   logDebug("firebase-admin has been stubbed.", {
     adminResolution,
@@ -741,13 +740,12 @@ async function initializeFunctionsConfigHelper(): Promise<void> {
     .finalize();
 
   // Stub the functions module in the require cache
-  require.cache[functionsResolution.resolution] = Object.assign(
-    require.cache[functionsResolution.resolution],
-    {
-      exports: proxiedFunctionsModule,
-      path: path.dirname(functionsResolution.resolution),
-    }
-  );
+  const v = require.cache[functionsResolution.resolution];
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- this is not precedent.
+  require.cache[functionsResolution.resolution] = Object.assign(v!, {
+    exports: proxiedFunctionsModule,
+    path: path.dirname(functionsResolution.resolution),
+  });
 
   logDebug("firebase-functions has been stubbed.", {
     functionsResolution,

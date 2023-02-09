@@ -1,7 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
-const { marked } = require("marked");
+import { marked } from "marked";
 import TerminalRenderer = require("marked-terminal");
 
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
@@ -68,7 +67,7 @@ export const command = new Command("ext:dev:init")
         }
       }
 
-      await npmDependencies.askInstallDependencies({}, config);
+      await npmDependencies.askInstallDependencies({ source: "functions" }, config);
 
       const welcome = fs.readFileSync(path.join(TEMPLATE_ROOT, lang, "WELCOME.md"), "utf8");
       return logger.info("\n" + marked(welcome));

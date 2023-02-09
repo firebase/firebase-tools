@@ -9,8 +9,7 @@ import { logger } from "../logger";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
-const { marked } = require("marked");
+import { marked } from "marked";
 import TerminalRenderer = require("marked-terminal");
 
 const FUNCTION_TYPE_REGEX = /\..+\.function/;
