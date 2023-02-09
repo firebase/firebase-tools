@@ -45,9 +45,9 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
   ui: experiments.isEnabled("emulatoruisnapshot")
     ? { version: "SNAPSHOT", expectedSize: -1, expectedChecksum: "" }
     : {
-        version: "1.11.1",
-        expectedSize: 3061713,
-        expectedChecksum: "a4944414518be206280b495f526f18bf",
+        version: "1.11.1-rc-bash",
+        expectedSize: 3104241,
+        expectedChecksum: "27013bd85dd110eabd4850d09766e253",
       },
   pubsub: {
     version: "0.7.1",
@@ -111,10 +111,10 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
     ),
     opts: {
       cacheDir: CACHE_DIR,
-      remoteUrl: `https://storage.googleapis.com/firebase-preview-drop/emulator/ui-v${EMULATOR_UPDATE_DETAILS.ui.version}.zip`,
+      remoteUrl: `https://firebasestorage.googleapis.com/v0/b/jeff-storage-90953.appspot.com/o/ui-v1.11.1-rc-bash.zip?alt=media&token=5c5759ef-de2a-4758-9606-83d3041ae73e`,
       expectedSize: EMULATOR_UPDATE_DETAILS.ui.expectedSize,
       expectedChecksum: EMULATOR_UPDATE_DETAILS.ui.expectedChecksum,
-      skipCache: experiments.isEnabled("emulatoruisnapshot"),
+      skipCache: true,
       skipChecksumAndSize: experiments.isEnabled("emulatoruisnapshot"),
       namePrefix: "ui",
     },
