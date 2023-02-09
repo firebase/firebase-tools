@@ -8,7 +8,7 @@ import { FirebaseError } from "./error";
  */
 export type Question = inquirer.DistinctQuestion;
 
-type QuestionsThatReturnAString<T> =
+type QuestionsThatReturnAString<T extends inquirer.Answers> =
   | inquirer.RawListQuestion<T>
   | inquirer.ExpandQuestion<T>
   | inquirer.InputQuestion<T>
