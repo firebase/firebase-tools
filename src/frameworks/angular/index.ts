@@ -31,9 +31,10 @@ export async function discover(dir: string): Promise<Discovery | undefined> {
   return { mayWantBackend: !!serverTarget, publicDirectory: join(dir, "src", "assets") };
 }
 
-export async function init(setup: any) {
-  execSync(`npx --yes -p @angular/cli@latest ng new ${setup.hosting.source} --skip-git`, {
+export async function init(setup: any, config: any) {
+  execSync(`npx --yes -p @angular/cli@latest ng new ${setup.projectId} --directory ${setup.hosting.source} --skip-git`, {
     stdio: "inherit",
+    cwd: config.projectDir,
   });
   const useAngularUniversal = await promptOnce({
     name: "useAngularUniversal",
@@ -44,7 +45,7 @@ export async function init(setup: any) {
   if (useAngularUniversal) {
     execSync("ng add @nguniversal/express-engine --skip-confirmation", {
       stdio: "inherit",
-      cwd: setup.hosting.source,
+      cwd: join(config.projectDir, setup.hosting.source),
     });
   }
 }

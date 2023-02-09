@@ -113,7 +113,7 @@ export async function doSetup(setup: any, config: any): Promise<void> {
       );
 
       if (discoveredFramework) rimraf(setup.hosting.source);
-      await WebFrameworks[setup.hosting.whichFramework].init!(setup);
+      await WebFrameworks[setup.hosting.whichFramework].init!(setup, config);
     }
 
     setup.config.hosting = {
