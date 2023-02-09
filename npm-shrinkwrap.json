@@ -1,12 +1,12 @@
 {
   "name": "firebase-tools",
-  "version": "11.16.0",
+  "version": "11.16.0-rc-emulator",
   "lockfileVersion": 2,
   "requires": true,
   "packages": {
     "": {
       "name": "firebase-tools",
-      "version": "11.16.0",
+      "version": "11.16.0-rc-emulator",
       "license": "MIT",
       "dependencies": {
         "@google-cloud/pubsub": "^3.0.1",
