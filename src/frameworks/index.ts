@@ -50,7 +50,7 @@ export interface Framework {
   name: string;
   build: (dir: string) => Promise<BuildResult | void>;
   support: SupportLevel;
-  init?: (setup: any) => Promise<void>;
+  init?: (setup: any, config: any) => Promise<void>;
   getDevModeHandle?: (
     dir: string,
     hostingEmulatorInfo?: EmulatorInfo
