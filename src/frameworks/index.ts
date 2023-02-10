@@ -117,6 +117,8 @@ const DEFAULT_FIND_DEP_OPTIONS: FindDepOptions = {
 
 const NPM_COMMAND = process.platform === "win32" ? "npm.cmd" : "npm";
 
+const ALLOWED_SSR_REGIONS = ["us-west1", "us-central1", "us-east1", "europe-west1", "asia-east1"];
+
 export const WebFrameworks: Record<string, Framework> = Object.fromEntries(
   readdirSync(__dirname)
     .filter((path) => statSync(join(__dirname, path)).isDirectory())
@@ -293,7 +295,7 @@ export async function prepareFrameworks(
     return;
   }
   for (const config of configs) {
-    const { source, site, public: publicDir } = config;
+    const { source, site, public: publicDir, frameworksBackend } = config;
     if (!source) {
       continue;
     }
@@ -306,6 +308,12 @@ export async function prepareFrameworks(
     const functionsDist = join(dist, "functions");
     if (publicDir) {
       throw new Error(`hosting.public and hosting.source cannot both be set in firebase.json`);
+    }
+    const ssrRegion = (frameworksBackend?.region as string) ?? DEFAULT_REGION;
+    if (!ALLOWED_SSR_REGIONS.includes(ssrRegion)) {
+      const notValidRegionError = `Hosting config for site ${site} places server-side content in region ${ssrRegion} which is not known. Valid regions are us-west1, us-central1, us-east1, europe-west1, asia-east1`;
+      console.error(notValidRegionError);
+      throw new Error(notValidRegionError);
     }
     const getProjectPath = (...args: string[]) => join(projectRoot, source, ...args);
     const functionName = `ssr${site.toLowerCase().replace(/-/g, "")}`;
@@ -487,8 +495,7 @@ export async function prepareFrameworks(
             endpoints: {
               [functionName]: {
                 platform: "gcfv2",
-                // TODO allow this to be configurable
-                region: [DEFAULT_REGION],
+                region: [ssrRegion],
                 labels: {},
                 httpsTrigger: {},
                 entryPoint: "ssr",
@@ -560,11 +567,12 @@ ${firebaseDefaults ? `__FIREBASE_DEFAULTS__=${JSON.stringify(firebaseDefaults)}\
       if (bootstrapScript) await writeFile(join(functionsDist, "bootstrap.js"), bootstrapScript);
 
       // TODO move to templates
+      const regionArg = ssrRegion !== DEFAULT_REGION ? `{region: "${ssrRegion}"}, ` : "";
       await writeFile(
         join(functionsDist, "server.js"),
         `const { onRequest } = require('firebase-functions/v2/https');
 const server = import('firebase-frameworks');
-exports.ssr = onRequest((req, res) => server.then(it => it.handle(req, res)));
+exports.ssr = onRequest(${regionArg}(req, res) => server.then(it => it.handle(req, res)));
 `
       );
     } else {

@@ -6,6 +6,7 @@
 //
 
 import { RequireAtLeastOne } from "./metaprogramming";
+import type { HttpsOptions } from "firebase-functions/v2/https";
 
 // should be sourced from - https://github.com/firebase/firebase-tools/blob/master/src/deploy/functions/runtimes/index.ts#L15
 type CloudFunctionRuntimes = "nodejs10" | "nodejs12" | "nodejs14" | "nodejs16" | "nodejs18";
@@ -80,6 +81,7 @@ export type HostingBase = {
   i18n?: {
     root: string;
   };
+  frameworksBackend?: HttpsOptions;
 };
 
 export type HostingSingle = HostingBase & {
