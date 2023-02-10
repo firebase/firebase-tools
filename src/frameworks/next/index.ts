@@ -1,5 +1,5 @@
-import { execSync, spawnSync } from "child_process";
-import { mkdir, copyFile } from "fs/promises";
+import { execSync } from "child_process";
+import { mkdir, copyFile, writeFile } from "fs/promises";
 import { dirname, join } from "path";
 import type { NextConfig } from "next";
 import type { PrerenderManifest } from "next/dist/build";
@@ -343,41 +343,33 @@ export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: strin
  * Create a directory for SSR content.
  */
 export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: string) {
-  const { distDir } = await getConfig(sourceDir);
-  const packageJson = await readJSON(join(sourceDir, "package.json"));
-  if (existsSync(join(sourceDir, "next.config.js"))) {
-    // Bundle their next.config.js with esbuild via NPX, pinned version was having troubles on m1
-    // macs and older Node versions; either way, we should avoid taking on any deps in firebase-tools
-    // Alternatively I tried using @swc/spack and the webpack bundled into Next.js but was
-    // encountering difficulties with both of those
-    const dependencyTree: NpmLsReturn = JSON.parse(
-      spawnSync("npm", ["ls", "--omit=dev", "--all", "--json"], {
-        cwd: sourceDir,
-      }).stdout.toString()
-    );
-    // Mark all production deps as externals, so they aren't bundled
-    // DevDeps won't be included in the Cloud Function, so they should be bundled
-    const esbuildArgs = allDependencyNames(dependencyTree)
-      .map((it) => `--external:${it}`)
-      .concat(
-        "--bundle",
-        "--platform=node",
-        `--target=node${NODE_VERSION}`,
-        `--outdir=${destDir}`,
-        "--log-level=error"
-      );
-    const bundle = spawnSync("npx", ["--yes", "esbuild", "next.config.js", ...esbuildArgs], {
-      cwd: sourceDir,
-    });
-    if (bundle.status) {
-      console.error(bundle.stderr.toString());
-      throw new FirebaseError("Unable to bundle next.config.js for use in Cloud Functions");
+  const rawConfig = await getConfig(sourceDir, true);
+  const nextConfigJsParts = ["module.exports = {"];
+  for (const key in rawConfig) {
+    let value = rawConfig[key];
+    if (typeof value === "function") {
+      value = value();
+      if (value && "then" in value) {
+        value = await value;
+        value = `() => Promise.resolve(${JSON.stringify(value)})`;
+      } else {
+        value = `() => (${JSON.stringify(value)})`;
+      }
+    } else {
+      value = JSON.stringify(value);
     }
+    nextConfigJsParts.push(`\n  ${key}: ${value},`);
   }
+  nextConfigJsParts.push("\n};\n");
+  writeFile(join(destDir, "next.config.js"), nextConfigJsParts.join(""));
+
   if (await pathExists(join(sourceDir, "public"))) {
     await mkdir(join(destDir, "public"));
     await copy(join(sourceDir, "public"), join(destDir, "public"));
   }
+
+  const packageJson = await readJSON(join(sourceDir, "package.json"));
+  const { distDir } = await getConfig(sourceDir);
 
   // Add the `sharp` library if `/app` folder exists (i.e. Next.js 13+)
   // or usesNextImage in `export-marker.json` is set to true.
@@ -427,7 +419,7 @@ export async function getDevModeHandle(dir: string, hostingEmulatorInfo?: Emulat
   };
 }
 
-async function getConfig(dir: string): Promise<NextConfig & { distDir: string }> {
+async function getConfig(dir: string, rawConfig=false): Promise<NextConfig & { distDir: string }> {
   let config: NextConfig = {};
   if (existsSync(join(dir, "next.config.js"))) {
     const version = getNextVersion(dir);
@@ -435,7 +427,8 @@ async function getConfig(dir: string): Promise<NextConfig & { distDir: string }>
     if (gte(version, "12.0.0")) {
       const { default: loadConfig } = relativeRequire(dir, "next/dist/server/config");
       const { PHASE_PRODUCTION_BUILD } = relativeRequire(dir, "next/constants");
-      config = await loadConfig(PHASE_PRODUCTION_BUILD, dir, null);
+      config = await loadConfig(PHASE_PRODUCTION_BUILD, dir, null, rawConfig);
+      if (rawConfig && "default" in config) config = config.default;
     } else {
       try {
         config = await import(pathToFileURL(join(dir, "next.config.js")).toString());
