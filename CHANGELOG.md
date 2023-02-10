@@ -8,3 +8,4 @@
 - Support private network access (CORS-RFC1918) in Firestore Emulator (#4227)
 - Fix some edge cases where Emulator UI cannot reach the emulators (#912)
 - Fix various accessibility and usability issues in Emulator UI.
+- Fix various issues with "init hosting" and web frameworks (#5500)
