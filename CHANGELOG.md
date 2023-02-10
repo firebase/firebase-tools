@@ -9,3 +9,4 @@
 - Fix some edge cases where Emulator UI cannot reach the emulators (#912)
 - Fix various accessibility and usability issues in Emulator UI.
 - Support .env when deploying a web framework (#5501)
+- Fix various issues with "init hosting" and web frameworks (#5500)

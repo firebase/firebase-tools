@@ -8,6 +8,7 @@ import { prompt, promptOnce } from "../../../prompt";
 import { logger } from "../../../logger";
 import { discover, WebFrameworks } from "../../../frameworks";
 import * as experiments from "../../../experiments";
+import { join } from "path";
 
 const INDEX_TEMPLATE = fs.readFileSync(
   __dirname + "/../../../../templates/init/hosting/index.html",
@@ -70,7 +71,7 @@ export async function doSetup(setup: any, config: any): Promise<void> {
     );
 
     if (setup.hosting.source !== ".") delete setup.hosting.useDiscoveredFramework;
-    discoveredFramework = await discover(setup.hosting.source);
+    discoveredFramework = await discover(join(config.projectDir, setup.hosting.source));
 
     if (discoveredFramework) {
       const name = WebFrameworks[discoveredFramework.framework].name;
@@ -112,7 +113,7 @@ export async function doSetup(setup: any, config: any): Promise<void> {
       );
 
       if (discoveredFramework) rimraf(setup.hosting.source);
-      await WebFrameworks[setup.hosting.whichFramework].init!(setup);
+      await WebFrameworks[setup.hosting.whichFramework].init!(setup, config);
     }
 
     setup.config.hosting = {
