@@ -4,11 +4,12 @@ import { execSync, spawnSync } from "child_process";
 import { readdirSync, statSync } from "fs";
 import { pathToFileURL } from "url";
 import { IncomingMessage, ServerResponse } from "http";
-import { copyFile, readdir, rm, writeFile } from "fs/promises";
+import { copyFile, readdir, readFile, rm, writeFile } from "fs/promises";
 import { mkdirp, pathExists, stat } from "fs-extra";
 import * as clc from "colorette";
 import * as process from "node:process";
 import * as semver from "semver";
+import * as glob from "glob";
 
 import { needProjectId } from "../projectUtils";
 import { hostingConfig } from "../hosting/config";
@@ -534,13 +535,6 @@ export async function prepareFrameworks(
       }
       await writeFile(join(functionsDist, "package.json"), JSON.stringify(packageJson, null, 2));
 
-      // TODO do we add the append the local .env?
-      await writeFile(
-        join(functionsDist, ".env"),
-        `__FIREBASE_FRAMEWORKS_ENTRY__=${frameworksEntry}
-${firebaseDefaults ? `__FIREBASE_DEFAULTS__=${JSON.stringify(firebaseDefaults)}\n` : ""}`
-      );
-
       await copyFile(
         getProjectPath("package-lock.json"),
         join(functionsDist, "package-lock.json")
@@ -551,6 +545,27 @@ ${firebaseDefaults ? `__FIREBASE_DEFAULTS__=${JSON.stringify(firebaseDefaults)}\
       if (await pathExists(getProjectPath(".npmrc"))) {
         await copyFile(getProjectPath(".npmrc"), join(functionsDist, ".npmrc"));
       }
+
+      let existingDotEnvContents = "";
+      if (await pathExists(getProjectPath(".env"))) {
+        existingDotEnvContents = (await readFile(getProjectPath(".env"))).toString();
+      }
+
+      await writeFile(
+        join(functionsDist, ".env"),
+        `${existingDotEnvContents}
+__FIREBASE_FRAMEWORKS_ENTRY__=${frameworksEntry}
+${firebaseDefaults ? `__FIREBASE_DEFAULTS__=${JSON.stringify(firebaseDefaults)}\n` : ""}`
+      );
+
+      const envs = await new Promise<string[]>((resolve, reject) =>
+        glob(getProjectPath(".env.*"), (err, matches) => {
+          if (err) reject(err);
+          resolve(matches);
+        })
+      );
+
+      await Promise.all(envs.map((path) => copyFile(path, join(functionsDist, basename(path)))));
 
       execSync(`${NPM_COMMAND} i --omit dev --no-audit`, {
         cwd: functionsDist,
