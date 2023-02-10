@@ -1,4 +1,4 @@
-s directory now contains the source files for a simple extension called **greet-the-world**. You can try it out right away in the Firebase Emulator suite: first, compile your code by running:
+This directory now contains the source files for a simple extension called **greet-the-world**. You can try it out right away in the Firebase Emulator suite: first, compile your code by running:
 
 `npm run build --prefix=functions`
 
