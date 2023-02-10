@@ -693,7 +693,7 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
   }
   const serviceName = gcfFunction.serviceConfig.service;
   if (!serviceName) {
-    logger.warn(
+    logger.debug(
       "Got a v2 function without a service name." +
         "Maybe we've migrated to using the v2 API everywhere and missed this code"
     );
