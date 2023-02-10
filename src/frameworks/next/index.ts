@@ -234,18 +234,18 @@ export async function build(dir: string): Promise<BuildResult> {
 /**
  * Utility method used during project initialization.
  */
-export async function init(setup: any) {
+export async function init(setup: any, config: any) {
   const language = await promptOnce({
     type: "list",
-    default: "JavaScript",
+    default: "TypeScript",
     message: "What language would you like to use?",
     choices: ["JavaScript", "TypeScript"],
   });
   execSync(
     `npx --yes create-next-app@latest -e hello-world ${setup.hosting.source} --use-npm ${
-      language === "TypeScript" ? "--ts" : ""
+      language === "TypeScript" ? "--ts" : "--js"
     }`,
-    { stdio: "inherit" }
+    { stdio: "inherit", cwd: config.projectDir }
   );
 }
 
