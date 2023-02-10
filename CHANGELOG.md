@@ -9,3 +9,4 @@
 - Fix some edge cases where Emulator UI cannot reach the emulators (#912)
 - Fix various accessibility and usability issues in Emulator UI.
 - Fix various issues with "init hosting" and web frameworks (#5500)
+- Fix regex page matcher for Next.js middlewares version 1 (#5496)
