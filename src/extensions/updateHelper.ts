@@ -1,7 +1,6 @@
 import * as clc from "colorette";
 import * as semver from "semver";
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
-const { marked } = require("marked");
+import { marked } from "marked";
 
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
