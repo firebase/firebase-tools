@@ -9,14 +9,13 @@ import { Options } from "../options";
 
 function runCommand(command: string, childOptions: childProcess.SpawnOptions) {
   const escapedCommand = command.replace(/\"/g, '\\"');
+  // TODO: There has to be a better way to detect a VSCode Extension environment.
+  const nodeExecutable = process.execPath.includes(" ") ? "node" : process.execPath;
+  const crossEnvExecutable = process.execPath.includes(" ")
+    ? ""
+    : path.resolve(require.resolve("cross-env"), "..", "bin", "cross-env-shell.js");
   const translatedCommand =
-    '"' +
-    process.execPath +
-    '" "' +
-    path.resolve(require.resolve("cross-env"), "..", "bin", "cross-env-shell.js") +
-    '" "' +
-    escapedCommand +
-    '"';
+    '"' + nodeExecutable + '" "' + crossEnvExecutable + '" "' + escapedCommand + '"';
 
   return new Promise<void>((resolve, reject) => {
     logger.info("Running command: " + command);

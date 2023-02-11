@@ -14,6 +14,7 @@ import { FirebaseProjectMetadata } from "../../types/project";
 import { logger } from "../../logger";
 import { prompt, promptOnce } from "../../prompt";
 import * as utils from "../../utils";
+import { FirebaseProjectMetadata } from "../../types/project";
 
 const OPTION_NO_PROJECT = "Don't set up a default project";
 const OPTION_USE_PROJECT = "Use an existing project";

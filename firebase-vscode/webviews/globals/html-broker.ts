@@ -7,9 +7,7 @@ import {
 export class HtmlBroker extends Broker {
   constructor(readonly vscode: any) {
     super();
-    window.addEventListener("message", (event) => {
-      this.executeListeners(event.data);
-    });
+    window.addEventListener("message", event => this.executeListeners(event.data));
   }
 
   sendMessage(message: string, data: any[]): void {

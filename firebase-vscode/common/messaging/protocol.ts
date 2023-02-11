@@ -4,8 +4,8 @@
  */
 
 import { FirebaseProjectMetadata } from "../../src/types/project";
-import { FirebaseJSON } from "../firebasejson";
-import { FirebaseRC } from "../firebaserc";
+import { FirebaseConfig } from  '../../src/firebaseConfig';
+import { FirebaseRC } from "../../src/firebaserc";
 import { User } from "../../src/types/auth";
 
 // Messages sent from Webview to extension
@@ -53,7 +53,7 @@ export interface ExtensionToWebview {
   notifyProjects(email: string, projects: FirebaseProjectMetadata[]): void;
 
   /** Called when a new project is selected */
-  notifyProjectChanged(project: FirebaseProjectMetadata): void;
+  notifyProjectChanged(projectId: string): void;
 
   /**
    * This can potentially call multiple webviews to notify of user selection.
@@ -70,5 +70,5 @@ export interface ExtensionToWebview {
 
   notifyWorkspaceFolders(folders: Array<String>): void;
 
-  notifyFirebaseJson(firebaseJson: FirebaseJSON, firebaseRC: FirebaseRC): void;
+  notifyFirebaseJson(firebaseJson: FirebaseConfig, firebaseRC: FirebaseRC): void;
 }

@@ -5,7 +5,7 @@ import * as ProxyAgent from "proxy-agent";
 import * as retry from "retry";
 import AbortController from "abort-controller";
 import fetch, { HeadersInit, Response, RequestInit, Headers } from "node-fetch";
-import util from "util";
+import * as util from "util";
 
 import * as auth from "./auth";
 import { FirebaseError } from "./error";

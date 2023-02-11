@@ -10,6 +10,7 @@ import {
 import { Account } from "../../types/auth";
 import { promptOnce } from "../../prompt";
 import { FirebaseError } from "../../error";
+import { Account } from "../../types/auth";
 
 async function promptForAccount() {
   logger.info();

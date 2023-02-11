@@ -218,7 +218,7 @@ export class Fabricator {
     if (apiFunction.httpsTrigger) {
       apiFunction.httpsTrigger.securityLevel = "SECURE_ALWAYS";
     }
-    const resultFunction = await this.functionExecutor
+    const resultFunction: gcf.CloudFunction = await this.functionExecutor
       .run(async () => {
         // try to get the source token right before deploying
         apiFunction.sourceToken = await scraper.getToken();
@@ -404,7 +404,7 @@ export class Fabricator {
     }
     const apiFunction = gcf.functionFromEndpoint(endpoint, sourceUrl);
 
-    const resultFunction = await this.functionExecutor
+    const resultFunction: gcf.CloudFunction = await this.functionExecutor
       .run(async () => {
         apiFunction.sourceToken = await scraper.getToken();
         const op: { name: string } = await gcf.updateFunction(apiFunction);
@@ -452,7 +452,7 @@ export class Fabricator {
       delete apiFunction.eventTrigger.pubsubTopic;
     }
 
-    const resultFunction = await this.functionExecutor
+    const resultFunction: gcfV2.CloudFunction = await this.functionExecutor
       .run(async () => {
         const op: { name: string } = await gcfV2.updateFunction(apiFunction);
         return await poller.pollOperation<gcfV2.CloudFunction>({

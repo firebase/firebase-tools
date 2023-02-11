@@ -13,14 +13,14 @@ import { Body, Label } from "./components/ui/Text";
 import { broker } from "./globals/html-broker";
 import styles from "./sidebar.entry.scss";
 import { User } from "../../src/types/auth";
-import { FirebaseJSON } from "./firebasejson";
-import { FirebaseRC } from "./firebaserc";
+import { FirebaseRC } from "../../src/firebaserc";
 import { PanelSection } from "./components/ui/PanelSection";
 import { AccountSection } from "./components/AccountSection";
 import { initProjectSelection } from "./components/ProjectSection";
+import { FirebaseConfig } from "../../src/firebaseConfig";
 
 export function SidebarApp() {
-  let [firebaseInfo, setFirebaseInfo] = useState<ProjectInfoType | null>(null);
+  let [projectId, setProjectId] = useState<string | null>(null);
   let [hostingState, setHostingState] = useState<
     null | "deploying" | "deployed"
   >(null);
@@ -29,15 +29,16 @@ export function SidebarApp() {
   let [isHostingOnboarded, setHostingOnboarded] = useState<boolean>(false);
 
   useEffect(() => {
+    console.log('loading SidebarApp component');
     broker.send("getUsers");
     broker.send("getFirebaseJson");
     broker.send("getSelectedProject");
 
     broker.on(
       "notifyFirebaseJson",
-      (firebaseJson: FirebaseJSON, firebaseRC: FirebaseRC) => {
-        console.log("got firebase hosting", firebaseJson.hosting);
-        if (firebaseJson.hosting) {
+      (firebaseJson: FirebaseConfig, firebaseRC: FirebaseRC) => {
+        console.log("got firebase hosting", firebaseJson?.hosting);
+        if (firebaseJson?.hosting) {
           console.log("Detected hosting setup");
           setHostingOnboarded(true);
           broker.send(
@@ -50,21 +51,15 @@ export function SidebarApp() {
 
         if (firebaseRC.projects?.default) {
           console.log("Detected project setup from existing firebaserc");
-          // TODO(prakhar): Just use project id everywhere instead of ProjectInfo.
-          setFirebaseInfo({
-            projectId: firebaseRC.projects.default,
-            // Dummy values for now.
-            projectNumber: "123",
-            displayName: "asda",
-            name: "",
-          });
+          setProjectId(firebaseRC.projects.default);
         } else {
-          setFirebaseInfo(null);
+          setProjectId(null);
         }
       }
     );
 
     broker.on("notifyUsers", (users: User[]) => {
+      console.log('notifyUsers()');
       setAllUserEmails(users.map((user) => user.email));
     });
 
@@ -73,9 +68,9 @@ export function SidebarApp() {
       broker.send("projectPicker", projects);
     });
 
-    broker.on("notifyProjectChanged", (project: ProjectInfoType) => {
-      console.log("Project selected", project);
-      setFirebaseInfo(project);
+    broker.on("notifyProjectChanged", (projectId: string) => {
+      console.log("Project selected", projectId);
+      setProjectId(projectId);
     });
 
     broker.on("notifyUserChanged", (email) => {
@@ -92,13 +87,15 @@ export function SidebarApp() {
       console.log(`notifyHostingDeploy: ${success}`);
       setHostingState("deployed");
     });
+
+    // return () => broker.delete();
   }, []);
 
   const setupHosting = () => {
-    if (firebaseInfo && userEmail) {
+    if (projectId && userEmail) {
       broker.send(
         "selectAndInitHostingFolder",
-        firebaseInfo?.projectId,
+        projectId,
         userEmail!, // Safe to assume user email is already there
         true
       );
@@ -111,10 +108,10 @@ export function SidebarApp() {
       <AccountSection
         userEmail={userEmail}
         allUserEmails={allUsers}
-        project={firebaseInfo}
+        projectId={projectId}
       />
 
-      {isHostingOnboarded && !!firebaseInfo && (
+      {isHostingOnboarded && !!projectId && (
         <>
           <VSCodeDivider style={{ width: "100vw" }} />
           <Spacer size="medium" />
@@ -140,7 +137,7 @@ export function SidebarApp() {
                         slot="start"
                         icon="globe"
                       ></Icon>
-                      {firebaseInfo.projectId}.web.app
+                      {projectId}.web.app
                     </Label>
                   </div>
                 </>
@@ -170,9 +167,9 @@ export function SidebarApp() {
                       icon="globe"
                     ></Icon>
                     <VSCodeLink
-                      href={`https://${firebaseInfo.projectId}.web.app`}
+                      href={`https://${projectId}.web.app`}
                     >
-                      {firebaseInfo.projectId}.web.app
+                      {projectId}.web.app
                     </VSCodeLink>
                   </Label>
                 </>
@@ -185,10 +182,11 @@ export function SidebarApp() {
       <MoreFromFirebase
         isStart={!isHostingOnboarded}
         onHostingInit={() => {
-          if (firebaseInfo && userEmail) {
+          if (projectId && userEmail) {
             setupHosting();
           } else {
             initProjectSelection(userEmail);
+            /** The second thing doesn't actually happen I think it needs to await the first thing being done */
             setupHosting();
           }
         }}
