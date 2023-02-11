@@ -1,9 +1,8 @@
-import { ExtensionContext, Webview } from "vscode";
+import { Webview } from "vscode";
 
 import {
   Broker,
   BrokerImpl,
-  createBroker,
 } from "../common/messaging/broker";
 import {
   ExtensionToWebview,
@@ -31,5 +30,9 @@ export class ExtensionBroker extends Broker {
     webview.onDidReceiveMessage((data: any) => {
       this.executeListeners(data);
     }, null);
+  }
+
+  delete(): void {
+    this.webviews = [];
   }
 }

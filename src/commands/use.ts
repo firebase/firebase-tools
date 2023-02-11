@@ -2,7 +2,6 @@ import * as clc from "colorette";
 
 import { Command } from "../command";
 import {
-  FirebaseProjectMetadata,
   getFirebaseProject,
   listFirebaseProjects,
 } from "../management/projects";
@@ -12,6 +11,7 @@ import { prompt } from "../prompt";
 import { requireAuth } from "../requireAuth";
 import { validateProjectId } from "../command";
 import * as utils from "../utils";
+import { FirebaseProjectMetadata } from "../types/project";
 
 function listAliases(options: Options) {
   if (options.rc.hasProjects) {

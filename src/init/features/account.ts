@@ -5,11 +5,11 @@ import {
   loginAdditionalAccount,
   setActiveAccount,
   findAccountByEmail,
-  Account,
   setProjectAccount,
 } from "../../auth";
 import { promptOnce } from "../../prompt";
 import { FirebaseError } from "../../error";
+import { Account } from "../../types/auth";
 
 async function promptForAccount() {
   logger.info();

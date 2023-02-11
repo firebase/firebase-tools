@@ -53,6 +53,7 @@ export interface BrokerImpl<
     message: Extract<E, string>,
     listener: IncomingMessages[E]
   ): void;
+  delete(): void;
 }
 
 export function createBroker<
@@ -76,5 +77,6 @@ export function createBroker<
     ): void {
       broker.addListener(message, listener);
     },
+    delete(): void {}
   };
 }

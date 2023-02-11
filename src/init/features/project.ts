@@ -5,7 +5,6 @@ import { FirebaseError } from "../../error";
 import {
   addFirebaseToCloudProjectAndLog,
   createFirebaseProjectAndLog,
-  FirebaseProjectMetadata,
   getFirebaseProject,
   getOrPromptProject,
   PROJECTS_CREATE_QUESTIONS,
@@ -14,6 +13,7 @@ import {
 import { logger } from "../../logger";
 import { prompt, promptOnce } from "../../prompt";
 import * as utils from "../../utils";
+import { FirebaseProjectMetadata } from "../../types/project";
 
 const OPTION_NO_PROJECT = "Don't set up a default project";
 const OPTION_USE_PROJECT = "Use an existing project";

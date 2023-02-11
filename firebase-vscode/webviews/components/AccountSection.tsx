@@ -11,11 +11,11 @@ import styles from './AccountSection.scss';
 
 export function AccountSection({
   userEmail,
-  project,
+  projectId,
   allUserEmails,
 }: {
   userEmail: string | null;
-  project: ProjectInfoType | null | undefined;
+  projectId: string | null | undefined;
   allUserEmails: string[];
 }) {
   const [userDropdownVisible, toggleUserDropdown] = useState(false);
@@ -29,10 +29,10 @@ export function AccountSection({
             icon="symbol-method"
           />
           <div className={styles.accountRowProject}>
-            {!project ? (
+            {!projectId ? (
               <ConnectProject userEmail={userEmail} />
             ) : (
-              <ProjectInfo projectId={project.projectId} />
+              <ProjectInfo projectId={projectId} />
             )}
           </div>
         </Label>

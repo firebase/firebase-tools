@@ -23,13 +23,3 @@ export interface DefaultProjectResources {
   storageBucket?: string;
   locationId?: string;
 }
-
-export enum ProjectParentResourceType {
-  ORGANIZATION = "organization",
-  FOLDER = "folder",
-}
-
-export interface ProjectParentResource {
-  id: string;
-  type: ProjectParentResourceType;
-}

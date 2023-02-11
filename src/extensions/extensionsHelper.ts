@@ -4,10 +4,14 @@ import * as semver from "semver";
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const { marked } = require("marked");
 
-const TerminalRenderer = require("marked-terminal");
-marked.setOptions({
-  renderer: new TerminalRenderer(),
-});
+import * as TerminalRenderer from "marked-terminal";
+try {
+  marked.setOptions({
+    renderer: new TerminalRenderer(),
+  });
+} catch (e) {
+  // ignored
+}
 
 import { storageOrigin } from "../api";
 import { archiveDirectory } from "../archiveDirectory";

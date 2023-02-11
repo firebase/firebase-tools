@@ -3,7 +3,7 @@ import * as clc from "colorette";
 
 import { loadCJSON } from "../../loadCJSON";
 import { RulesDeploy, RulesetServiceType } from "../../rulesDeploy";
-import utils = require("../../utils");
+import * as utils from "../../utils";
 import { Options } from "../../options";
 
 /**

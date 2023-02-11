@@ -6,14 +6,15 @@ import * as utils from "../utils";
 import * as auth from "../auth";
 import { promptOnce } from "../prompt";
 import { Account } from "../types/auth";
+import { CommandOptions } from "../types/extension";
 
 export const command = new Command("logout [email]")
   .description("log the CLI out of Firebase")
-  .action(async (email: string | undefined, options: any) => {
+  .action(async (email: string | undefined, options: CommandOptions) => {
     return logout(email, options);
   });
 
-export async function logout(email: string | undefined, options: any): Promise<boolean> {
+export async function logout(email: string | undefined, options: CommandOptions): Promise<boolean> {
   const globalToken = utils.getInheritedOption(options, "token");
   utils.assertIsStringOrUndefined(globalToken);
 
@@ -41,7 +42,7 @@ export async function logout(email: string | undefined, options: any): Promise<b
     if (additionalAccounts.length === 1) {
       newDefaultAccount = additionalAccounts[0];
     } else {
-      if (!options.isExtension) {
+      if (!options.extensionOptions) {
         const choices = additionalAccounts.map((a) => {
           return {
             name: a.user.email,

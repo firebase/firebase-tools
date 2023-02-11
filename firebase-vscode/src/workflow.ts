@@ -1,18 +1,20 @@
 import * as path from "path";
+import * as fs from 'fs';
 import * as vscode from "vscode";
 import { ExtensionContext, workspace } from "vscode";
 import { FirebaseProjectMetadata } from "../../src/types/project";
 import {
-  parseFirebaseJSONFile,
-  parseFirebaseRCFile,
   writeFirebaseRCFile,
 } from "./utils";
 import { ExtensionBrokerImpl } from "./extension-broker";
-import { getUsers, listProjects, login, logoutUser } from "./cli";
+import { deployToHosting, getUsers, listProjects, login, logoutUser, initHosting } from "./cli";
 import { User } from "../../src/types/auth";
+import { FirebaseRC } from "../../src/firebaserc";
+import { FirebaseConfig } from "../../src/firebaseConfig";
 
-export const firebaseRcFolderSetting =
-  "firebase-vscode-extension.firebaseRcFolder";
+let firebaseRC: FirebaseRC | null = null;
+let firebaseJSON: FirebaseConfig | null = null;
+export let rootPath = '';
 
 function processCurrentUser(
   currentUserEmail: string,
@@ -39,13 +41,31 @@ function getRootFolders() {
   return Array.from(new Set(folders));
 }
 
+function getJsonFile<T>(filename: string): T | null {
+  const rootFolders = getRootFolders();
+  for (const folder of rootFolders) {
+    const rcPath = path.join(folder, filename);
+    if (fs.existsSync(rcPath)) {
+      const fileText = fs.readFileSync(rcPath, 'utf-8');
+      try {
+        const result = JSON.parse(fileText);
+        rootPath = folder;
+        return result;
+      } catch(e) {
+        console.log(`Error parsing JSON in ${rcPath}`);
+        return null;
+      }
+    }
+  }
+  return null;
+}
+
 export function setupWorkflow(
   context: ExtensionContext,
   broker: ExtensionBrokerImpl
 ) {
   let users: User[] = [];
   let currentUserEmail = "";
-  let selectedProject: FirebaseProjectMetadata | null = null;
   // Stores a mapping from user email to list of projects for that user
   let projectsUserMapping = new Map<string, FirebaseProjectMetadata[]>();
 
@@ -69,8 +89,8 @@ export function setupWorkflow(
   broker.on("getSelectedProject", async () => {
     // For now, just read the cached value.
     // TODO: Extend this to reading from firebaserc
-    if (selectedProject) {
-      broker.send("notifyProjectChanged", selectedProject);
+    if (firebaseRC?.projects?.default) {
+      broker.send("notifyProjectChanged", firebaseRC?.projects?.default);
     }
   });
 
@@ -83,9 +103,8 @@ export function setupWorkflow(
           "Invalid project selected. Please select a project to proceed"
         );
       } else {
-        selectedProject = project;
         await updateFirebaseRC("default", project.projectId);
-        broker.send("notifyProjectChanged", project);
+        broker.send("notifyProjectChanged", projectId);
       }
     });
   });
@@ -124,65 +143,40 @@ export function setupWorkflow(
     }
   });
 
-  // broker.on(
-  //   "selectAndInitHostingFolder",
-  //   async (projectId: string, email: string, singleAppSupport: boolean) => {
-  //     const options: vscode.OpenDialogOptions = {
-  //       canSelectMany: false,
-  //       openLabel: `Select distribution/public folder for ${projectId}`,
-  //       canSelectFiles: false,
-  //       canSelectFolders: true,
-  //     };
-  //     const fileUri = await vscode.window.showOpenDialog(options);
-  //     if (fileUri && fileUri[0] && fileUri[0].fsPath) {
-  //       const publicFolderFull = fileUri[0].fsPath;
-  //       const publicFolderParent = path.dirname(publicFolderFull);
-  //       const rootFolders = getRootFolders();
-  //       const commonFolder = rootFolders.find((f) =>
-  //         publicFolderParent.startsWith(f)
-  //       );
-  //       const firebaseRCfolder = commonFolder
-  //         ? commonFolder
-  //         : publicFolderParent;
-  //       const publicFolder = publicFolderFull.substring(
-  //         firebaseRCfolder.length + 1
-  //       );
+  broker.on(
+    "selectAndInitHostingFolder",
+    async (projectId: string, email: string, singleAppSupport: boolean) => {
+      const options: vscode.OpenDialogOptions = {
+        canSelectMany: false,
+        openLabel: `Select distribution/public folder for ${projectId}`,
+        canSelectFiles: false,
+        canSelectFolders: true,
+      };
+      const fileUri = await vscode.window.showOpenDialog(options);
+      if (fileUri && fileUri[0] && fileUri[0].fsPath) {
+        const publicFolderFull = fileUri[0].fsPath;
+        const publicFolder = publicFolderFull.substring(
+          rootPath.length + 1
+        );
+        await initHosting({ spa: singleAppSupport, publicFolder });
+        broker.send("notifyHostingFolderReady", projectId, rootPath);
+      }
+    }
+  );
 
-  //       // TODO: Store firebaseRCfolder in configuration.
-  //       // getConfiguration('myExt.setting').get('doIt') === true.
-  //       await workspace
-  //         .getConfiguration()
-  //         .update(
-  //           firebaseRcFolderSetting,
-  //           firebaseRCfolder,
-  //           /* target = false means workspace setting*/ false
-  //         );
-
-  //       const {} = await cli.initHostingAsync(
-  //         { cwd: firebaseRCfolder, projectId, email },
-  //         { singleAppSupport, publicFolder }
-  //       );
-
-  //       broker.send("notifyHostingFolderReady", projectId, firebaseRCfolder);
-  //     }
-  //   }
-  // );
-
-  // broker.on("hostingDeploy", async () => {
-  //   // TODO: use configuraiton saved directory with .firebaserc
-  //   const rootFolders = getRootFolders();
-  //   const { success, consoleUrl, hostingUrl } = await cli.deployHostingAsync(
-  //     rootFolders[0]
-  //   );
-  //   broker.send("notifyHostingDeploy", success, consoleUrl, hostingUrl);
-  // });
+  broker.on("hostingDeploy", async () => {
+    // TODO: use configuraiton saved directory with .firebaserc
+    const rootFolders = getRootFolders();
+    const { success, consoleUrl, hostingUrl} = await deployToHosting(firebaseJSON, firebaseRC);
+    broker.send("notifyHostingDeploy", success, consoleUrl, hostingUrl);
+  });
 
   broker.on("getWorkspaceFolders", () => {
     broker.send("notifyWorkspaceFolders", getRootFolders());
   });
 
   broker.on("getFirebaseJson", async () => {
-    parseAndSendFirebaseJson(broker);
+    readAndSendFirebaseConfigs(broker);
   });
 
   context.subscriptions.push(
@@ -194,41 +188,30 @@ export function setupWorkflow(
  * Parse firebase.json and .firebaserc from the configured location, if they
  * exist, and then send it to webviews through the given broker
  */
-async function parseAndSendFirebaseJson(broker: ExtensionBrokerImpl) {
-  const firebaseRcFolder = workspace
-    .getConfiguration()
-    .get<string>(firebaseRcFolderSetting);
-  if (firebaseRcFolder) {
-    broker.send(
-      "notifyFirebaseJson",
-      await parseFirebaseJSONFile(path.join(firebaseRcFolder, "firebase.json")),
-      await parseFirebaseRCFile(path.join(firebaseRcFolder, ".firebaserc"))
-    );
-  } else {
-    broker.send("notifyFirebaseJson", {}, {});
-  }
+async function readAndSendFirebaseConfigs(broker: ExtensionBrokerImpl) {
+  firebaseRC = getJsonFile<FirebaseRC>('.firebaserc');
+  firebaseJSON = getJsonFile<FirebaseConfig>('firebase.json');
+  broker.send(
+    "notifyFirebaseJson",
+    firebaseJSON,
+    firebaseRC
+  );
 }
 
 /**
- * Parse firebase.json and .firebaserc from the configured location, if they
- * exist, and then send it to webviews through the given broker
+ * Write new default project to .firebaserc
  */
 async function updateFirebaseRC(alias: string, projectId: string) {
-  const firebaseRcFolder = workspace
-    .getConfiguration()
-    .get<string>(firebaseRcFolderSetting);
-  if (firebaseRcFolder) {
-    let firebaseRcPath = path.join(firebaseRcFolder, ".firebaserc");
-    let rc = await parseFirebaseRCFile(firebaseRcPath);
-    rc = {
-      ...rc,
+  if (rootPath) {
+    firebaseRC = {
+      ...firebaseRC,
       projects: {
-        default: rc.projects?.default || "", // ensure default no matter what
-        ...(rc.projects || {}),
+        default: firebaseRC.projects?.default || "", // ensure default no matter what
+        ...(firebaseRC.projects || {}),
         [alias]: projectId,
       },
     };
-    writeFirebaseRCFile(firebaseRcPath, rc);
+    writeFirebaseRCFile(rootPath, firebaseRC);
   }
 }
 
@@ -243,16 +226,6 @@ function setupFirebaseJsonAndRcFileSystemWatcher(
   // Create a new watcher
   let watcher = newWatcher();
 
-  // Teardown and create a new watcher if the configuration changes
-  workspace.onDidChangeConfiguration((e) => {
-    if (!e.affectsConfiguration(firebaseRcFolderSetting)) {
-      return;
-    }
-
-    watcher && watcher.dispose();
-    watcher = newWatcher();
-  });
-
   // Return a disposable that tears down a watcher if it's active
   return {
     dispose() {
@@ -262,18 +235,15 @@ function setupFirebaseJsonAndRcFileSystemWatcher(
 
   // HelperFunction to create a new watcher
   function newWatcher() {
-    const firebaseRcFolder = workspace
-      .getConfiguration()
-      .get<string>(firebaseRcFolderSetting);
-    if (!firebaseRcFolder) {
+    if (!rootPath) {
       return null;
     }
 
     let watcher = workspace.createFileSystemWatcher(
-      path.join(firebaseRcFolder, "{firebase.json,.firebaserc}")
+      path.join(rootPath, "{firebase.json,.firebaserc}")
     );
     watcher.onDidChange(async () => {
-      parseAndSendFirebaseJson(broker);
+      readAndSendFirebaseConfigs(broker);
     });
     return watcher;
   }

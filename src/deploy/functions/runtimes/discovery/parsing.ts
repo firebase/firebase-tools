@@ -49,7 +49,7 @@ export function requireKeys<T extends object>(prefix: string, yaml: T, ...keys: 
   }
   for (const key of keys) {
     if (!yaml[key]) {
-      throw new FirebaseError(`Expected key ${prefix + key}`);
+      throw new FirebaseError(`Expected key ${prefix + (key as string)}`);
     }
   }
 }

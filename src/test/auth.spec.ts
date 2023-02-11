@@ -3,6 +3,7 @@ import * as sinon from "sinon";
 
 import * as auth from "../auth";
 import { configstore } from "../configstore";
+import { Account } from "../types/auth";
 
 describe("auth", () => {
   const sandbox: sinon.SinonSandbox = sinon.createSandbox();
@@ -39,7 +40,7 @@ describe("auth", () => {
   });
 
   describe("single account", () => {
-    const defaultAccount: auth.Account = {
+    const defaultAccount: Account = {
       user: {
         email: "test@test.com",
       },
@@ -71,7 +72,7 @@ describe("auth", () => {
   });
 
   describe("multi account", () => {
-    const defaultAccount: auth.Account = {
+    const defaultAccount: Account = {
       user: {
         email: "test@test.com",
       },
@@ -80,7 +81,7 @@ describe("auth", () => {
       },
     };
 
-    const additionalUser1: auth.Account = {
+    const additionalUser1: Account = {
       user: {
         email: "test1@test.com",
       },
@@ -89,7 +90,7 @@ describe("auth", () => {
       },
     };
 
-    const additionalUser2: auth.Account = {
+    const additionalUser2: Account = {
       user: {
         email: "test2@test.com",
       },
@@ -98,7 +99,7 @@ describe("auth", () => {
       },
     };
 
-    const additionalAccounts: auth.Account[] = [additionalUser1, additionalUser2];
+    const additionalAccounts: Account[] = [additionalUser1, additionalUser2];
 
     const activeAccounts = {
       "/path/project1": "test1@test.com",

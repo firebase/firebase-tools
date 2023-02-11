@@ -1,13 +1,13 @@
 //@ts-check
 
-'use strict';
+"use strict";
 
-const path = require('path');
-const webpack = require('webpack');
+const path = require("path");
+const webpack = require("webpack");
 const fs = require("fs");
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 const CopyPlugin = require("copy-webpack-plugin");
-const ForkTsCheckerWebpackPlugin = require('fork-ts-checker-webpack-plugin');
+const ForkTsCheckerWebpackPlugin = require("fork-ts-checker-webpack-plugin");
 
 const pkgParent = require("../package.json");
 
@@ -15,45 +15,47 @@ const deps = Object.keys(pkgParent.dependencies);
 const externals = [
   // don't need outside CLI
   // 'ora', 'colorette', 'inquirer',
+  // hardcoded path in lifecycleHooks.ts
+  "cross-env",
   // breaks stuff - local paths to bridge.js and other files
-  'proxy-agent',
+  "proxy-agent",
   // breaks stuff because of `self`
   // 'form-data', /* 'abort-controller', */ 'node-fetch'
 ];
 
 /**@type {import('webpack').Configuration}*/
 const extensionConfig = {
-  name: 'extension',
-  target: 'node', // vscode extensions run in webworker context for VS Code web 📖 -> https://webpack.js.org/configuration/target/#target
+  name: "extension",
+  target: "node", // vscode extensions run in webworker context for VS Code web 📖 -> https://webpack.js.org/configuration/target/#target
 
-  entry: './src/extension.ts', // the entry point of this extension, 📖 -> https://webpack.js.org/configuration/entry-context/
+  entry: "./src/extension.ts", // the entry point of this extension, 📖 -> https://webpack.js.org/configuration/entry-context/
   output: {
     // the bundle is stored in the 'dist' folder (check package.json), 📖 -> https://webpack.js.org/configuration/output/
-    path: path.resolve(__dirname, 'dist'),
-    filename: 'extension.js',
-    libraryTarget: 'commonjs2',
-    devtoolModuleFilenameTemplate: '../[resource-path]'
+    path: path.resolve(__dirname, "dist"),
+    filename: "extension.js",
+    libraryTarget: "commonjs2",
+    devtoolModuleFilenameTemplate: "../[resource-path]",
   },
-  devtool: 'source-map',
+  devtool: "source-map",
   // externals: {
   //   vscode: 'commonjs vscode' // the vscode-module is created on-the-fly and must be excluded. Add other modules that cannot be webpack'ed, 📖 -> https://webpack.js.org/configuration/externals/
   // },
   externals: [
     function ({ context, request }, callback) {
       if (externals.some((dep) => request === dep || request?.startsWith(`${dep}/`))) {
-        return callback(undefined, 'commonjs ' + request);
+        return callback(undefined, "commonjs " + request);
       }
-      if (request === 'vscode') {
-        return callback(undefined, 'commonjs vscode');
+      if (request === "vscode") {
+        return callback(undefined, "commonjs vscode");
       }
       callback();
-    }
+    },
   ],
   resolve: {
     // support reading TypeScript and JavaScript files, 📖 -> https://github.com/TypeStrong/ts-loader
     // mainFields: ['browser', 'module', 'main'], // look for `browser` entry point in imported node modules
-    mainFields: ['main', 'module'],
-    extensions: ['.ts', '.js'],
+    mainFields: ["main", "module"],
+    extensions: [".ts", ".js"],
     alias: {
       // provides alternate implementation for node module and source files
     },
@@ -61,10 +63,10 @@ const extensionConfig = {
       // Webpack 5 no longer polyfills Node.js core modules automatically.
       // see https://webpack.js.org/configuration/resolve/#resolvefallback
       // for the list of Node.js core module polyfills.
-    }
+    },
   },
   optimization: {
-    usedExports: true
+    usedExports: true,
   },
   module: {
     rules: [
@@ -73,30 +75,41 @@ const extensionConfig = {
         exclude: [/node_modules/],
         use: [
           {
-            loader: 'ts-loader'
-          }
-        ]
+            loader: "ts-loader",
+          },
+        ],
       },
       {
         test: /\.ts$/,
-        loader: 'string-replace-loader',
+        loader: "string-replace-loader",
         options: {
-          search: '../template',
-          replace: './template',
-        }
-      }
-    ]
+          multiple: [
+            {
+              search: /(\.|\.\.)[\.\/]+templates/g,
+              replace: "./templates",
+            },
+            {
+              search: /(\.|\.\.)[\.\/]+schema/g,
+              replace: "./schema",
+            },
+          ],
+        },
+      },
+    ],
   },
   plugins: [
     new CopyPlugin({
-      patterns: [{
-        from: '../templates/*.html',
-        to: './templates'
-      }]
+      patterns: [
+        {
+          from: "../templates",
+          to: "./templates",
+        },
+        {
+          from: "../schema",
+          to: "./schema",
+        },
+      ],
     }),
-    new webpack.DefinePlugin({
-      "../templates": JSON.stringify("./templates")
-    })
   ],
   infrastructureLogging: {
     level: "log", // enables logging required for problem matchers
@@ -162,12 +175,11 @@ const makeWebConfig = (entryName) => {
         filename: `web-${entryName}.css`,
       }),
       new ForkTsCheckerWebpackPlugin(),
-      new WaitForCssTypescriptPlugin()
+      new WaitForCssTypescriptPlugin(),
     ],
     devtool: "nosources-source-map",
   };
 };
-
 
 // Using the workaround for the typings-for-css-modules-loader race condition
 // issue. It doesn't seem like you have to put any actual code into the hook,
@@ -178,8 +190,8 @@ class WaitForCssTypescriptPlugin {
   apply(compiler) {
     const hooks = ForkTsCheckerWebpackPlugin.getCompilerHooks(compiler);
 
-    hooks.start.tap('WaitForCssTypescriptPlugin', (change) => {
-      console.log('WaitForCssTypescriptPlugin running');
+    hooks.start.tap("WaitForCssTypescriptPlugin", (change) => {
+      console.log("Ran WaitForCssTypescriptPlugin");
       return change;
     });
   }

@@ -1,9 +1,9 @@
 import { Command } from "../command";
 import { FirebaseError } from "../error";
-import { createFirebaseProjectAndLog, PROJECTS_CREATE_QUESTIONS } from "../management/projects";
+import { createFirebaseProjectAndLog, ProjectParentResourceType, PROJECTS_CREATE_QUESTIONS } from "../management/projects";
 import { prompt } from "../prompt";
 import { requireAuth } from "../requireAuth";
-import { FirebaseProjectMetadata, ProjectParentResourceType } from "../types/project";
+import { FirebaseProjectMetadata } from "../types/project";
 
 export const command = new Command("projects:create [projectId]")
   .description(

@@ -28,22 +28,22 @@ export interface Account {
   tokens: Tokens;
 }
 
-interface TokensWithExpiration extends Tokens {
+export interface TokensWithExpiration extends Tokens {
   expires_at?: number;
 }
 
-interface TokensWithTTL extends Tokens {
+export interface TokensWithTTL extends Tokens {
   expires_in?: number;
 }
 
-interface UserCredentials {
+export interface UserCredentials {
   user: string | User;
   tokens: TokensWithExpiration;
   scopes: string[];
 }
 
 // https://docs.github.com/en/developers/apps/authorizing-oauth-apps
-interface GitHubAuthResponse {
+export interface GitHubAuthResponse {
   access_token: string;
   scope: string;
   token_type: string;
