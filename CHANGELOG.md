@@ -5,8 +5,10 @@
 - Web frameworks deploys can once again bundle local NPM dependencies (#5440)
 - Catches error when attempting to deploy without a project (#5415)
 - Fixes a number of issues and outdated dependencies in templates for `init --only functions` and `ext:dev:init`
+- Adds integration tests and useful scripts to the extension directory created by `ext:dev:init`.
 - Support private network access (CORS-RFC1918) in Firestore Emulator (#4227)
 - Fix some edge cases where Emulator UI cannot reach the emulators (#912)
 - Fix various accessibility and usability issues in Emulator UI.
+- Support .env when deploying a web framework (#5501)
 - Fix various issues with "init hosting" and web frameworks (#5500)
 - Fix regex page matcher for Next.js middlewares version 1 (#5496)
