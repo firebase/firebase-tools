@@ -1,6 +1,7 @@
 import { join, relative, extname, basename } from "path";
 import { exit } from "process";
-import { execSync, spawnSync } from "child_process";
+import { execSync } from "child_process";
+import { sync as spawnSync } from "cross-spawn";
 import { readdirSync, statSync } from "fs";
 import { pathToFileURL } from "url";
 import { IncomingMessage, ServerResponse } from "http";

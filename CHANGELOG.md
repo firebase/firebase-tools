@@ -11,3 +11,4 @@
 - Fix various accessibility and usability issues in Emulator UI.
 - Support .env when deploying a web framework (#5501)
 - Fix various issues with "init hosting" and web frameworks (#5500)
+- Fix Next.js deployments on Windows (#5499)
