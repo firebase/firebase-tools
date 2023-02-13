@@ -213,7 +213,7 @@ export async function convertConfig(
       const apiRewrite: api.Rewrite = {
         ...target,
         run: {
-          serviceId: endpoint.id,
+          serviceId: endpoint.runServiceId ?? endpoint.id,
           region: endpoint.region,
         },
       };
