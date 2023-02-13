@@ -7,6 +7,7 @@
 
 import { RequireAtLeastOne } from "./metaprogramming";
 import type { HttpsOptions } from "firebase-functions/v2/https";
+import { IngressSetting, MemoryOption, VpcEgressSetting } from "firebase-functions/v2/options";
 
 // should be sourced from - https://github.com/firebase/firebase-tools/blob/master/src/deploy/functions/runtimes/index.ts#L15
 type CloudFunctionRuntimes = "nodejs10" | "nodejs12" | "nodejs14" | "nodejs16" | "nodejs18";
@@ -68,6 +69,22 @@ export type HostingHeaders = HostingSource & {
   }[];
 };
 
+// Allow only serializable options
+interface HttpsOptionsSerializable extends Omit<HttpsOptions, "labels"> {
+  omit: boolean;
+  cors?: string | boolean;
+  memory?: MemoryOption;
+  timeoutSeconds?: number;
+  minInstances?: number;
+  maxInstances?: number;
+  concurrency?: number;
+  vpcConnector?: string;
+  vpcConnectorEgressSettings?: VpcEgressSetting;
+  serviceAccount?: string;
+  ingressSettings?: IngressSetting;
+  secrets?: string[];
+}
+
 export type HostingBase = {
   public?: string;
   source?: string;
@@ -81,7 +98,7 @@ export type HostingBase = {
   i18n?: {
     root: string;
   };
-  frameworksBackend?: HttpsOptions;
+  frameworksBackend?: HttpsOptionsSerializable;
 };
 
 export type HostingSingle = HostingBase & {

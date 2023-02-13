@@ -2,121 +2,23 @@
     "$schema": "http://json-schema.org/draft-07/schema#",
     "additionalProperties": false,
     "definitions": {
-        "CompareExpression<T>": {
-            "additionalProperties": false,
-            "description": "A CEL expression that evaluates to boolean true or false based on a comparison\nbetween the value of another expression and a literal of that same type.",
-            "properties": {
-                "cmp": {
-                    "enum": [
-                        "!=",
-                        "<",
-                        "<=",
-                        "==",
-                        ">",
-                        ">="
-                    ],
-                    "type": "string"
-                },
-                "lhs": {
-                    "$ref": "#/definitions/Expression<T>"
-                },
-                "rhs": {
-                    "anyOf": [
-                        {
-                            "$ref": "#/definitions/T_1"
-                        },
-                        {
-                            "$ref": "#/definitions/Expression<T>"
-                        }
-                    ]
-                }
-            },
-            "required": [
-                "cmp",
-                "lhs",
-                "rhs"
-            ],
-            "type": "object"
-        },
-        "Expression<T>": {
-            "oneOf": [
-                {
-                    "$ref": "#/definitions/TernaryExpression<T>"
-                },
-                {
-                    "$ref": "#/definitions/Param<T>"
-                }
-            ]
-        },
-        "Expression<T>_1": {
-            "oneOf": [
-                {
-                    "$ref": "#/definitions/TernaryExpression<T>"
-                },
-                {
-                    "$ref": "#/definitions/Param<T>"
-                }
-            ]
-        },
-        "Expression<boolean>": {
-            "oneOf": [
-                {
-                    "$ref": "#/definitions/CompareExpression<T>"
-                }
-            ]
-        },
-        "Expression<number>": {
-            "additionalProperties": false,
-            "type": "object"
-        },
         "ExtensionsConfig": {
             "additionalProperties": false,
             "type": "object"
         },
-        "HttpsOptions": {
+        "HttpsOptionsSerializable": {
             "additionalProperties": false,
-            "description": "Options that can be set on an onRequest HTTPS function.",
             "properties": {
                 "concurrency": {
-                    "anyOf": [
-                        {
-                            "$ref": "#/definitions/ResetValue"
-                        },
-                        {
-                            "$ref": "#/definitions/Expression<number>"
-                        },
-                        {
-                            "type": "number"
-                        }
-                    ],
-                    "description": "Number of requests a function can serve at once."
+                    "description": "Number of requests a function can serve at once.",
+                    "type": "number"
                 },
                 "cors": {
-                    "anyOf": [
-                        {
-                            "$ref": "#/definitions/RegExp"
-                        },
-                        {
-                            "items": {
-                                "anyOf": [
-                                    {
-                                        "$ref": "#/definitions/RegExp"
-                                    },
-                                    {
-                                        "type": "string"
-                                    }
-                                ]
-                            },
-                            "type": "array"
-                        },
-                        {
-                            "type": [
-                                "string",
-                                "boolean"
-                            ]
-                        }
-                    ],
-                    "description": "If true, allows CORS on requests to this function.\nIf this is a `string` or `RegExp`, allows requests from domains that match the provided value.\nIf this is an `Array`, allows requests from domains matching at least one entry of the array.\nDefaults to true for {@link https.CallableFunction} and false otherwise."
+                    "description": "If true, allows CORS on requests to this function.\nIf this is a `string` or `RegExp`, allows requests from domains that match the provided value.\nIf this is an `Array`, allows requests from domains matching at least one entry of the array.\nDefaults to true for {@link https.CallableFunction} and false otherwise.",
+                    "type": [
+                        "string",
+                        "boolean"
+                    ]
                 },
                 "cpu": {
                     "anyOf": [
@@ -137,20 +39,13 @@
                     "type": "boolean"
                 },
                 "ingressSettings": {
-                    "anyOf": [
-                        {
-                            "$ref": "#/definitions/ResetValue"
-                        },
-                        {
-                            "enum": [
-                                "ALLOW_ALL",
-                                "ALLOW_INTERNAL_AND_GCLB",
-                                "ALLOW_INTERNAL_ONLY"
-                            ],
-                            "type": "string"
-                        }
+                    "description": "Ingress settings which control where this function can be called from.",
+                    "enum": [
+                        "ALLOW_ALL",
+                        "ALLOW_INTERNAL_AND_GCLB",
+                        "ALLOW_INTERNAL_ONLY"
                     ],
-                    "description": "Ingress settings which control where this function can be called from."
+                    "type": "string"
                 },
                 "invoker": {
                     "anyOf": [
@@ -166,73 +61,32 @@
                     ],
                     "description": "Invoker to set access control on https functions."
                 },
-                "labels": {
-                    "$ref": "#/definitions/Record<string,string>",
-                    "description": "User labels to set on the function."
-                },
                 "maxInstances": {
-                    "anyOf": [
-                        {
-                            "$ref": "#/definitions/ResetValue"
-                        },
-                        {
-                            "$ref": "#/definitions/Expression<number>"
-                        },
-                        {
-                            "type": "number"
-                        }
-                    ],
-                    "description": "Max number of instances to be running in parallel."
+                    "description": "Max number of instances to be running in parallel.",
+                    "type": "number"
                 },
                 "memory": {
-                    "anyOf": [
-                        {
-                            "$ref": "#/definitions/ResetValue"
-                        },
-                        {
-                            "$ref": "#/definitions/Expression<number>"
-                        },
-                        {
-                            "enum": [
-                                "128MiB",
-                                "16GiB",
-                                "1GiB",
-                                "256MiB",
-                                "2GiB",
-                                "32GiB",
-                                "4GiB",
-                                "512MiB",
-                                "8GiB"
-                            ],
-                            "type": "string"
-                        }
+                    "description": "Amount of memory to allocate to a function.",
+                    "enum": [
+                        "128MiB",
+                        "16GiB",
+                        "1GiB",
+                        "256MiB",
+                        "2GiB",
+                        "32GiB",
+                        "4GiB",
+                        "512MiB",
+                        "8GiB"
                     ],
-                    "description": "Amount of memory to allocate to a function."
+                    "type": "string"
                 },
                 "minInstances": {
-                    "anyOf": [
-                        {
-                            "$ref": "#/definitions/ResetValue"
-                        },
-                        {
-                            "$ref": "#/definitions/Expression<number>"
-                        },
-                        {
-                            "type": "number"
-                        }
-                    ],
-                    "description": "Min number of actual instances to be running at a given time."
+                    "description": "Min number of actual instances to be running at a given time.",
+                    "type": "number"
                 },
                 "omit": {
-                    "anyOf": [
-                        {
-                            "$ref": "#/definitions/Expression<boolean>"
-                        },
-                        {
-                            "type": "boolean"
-                        }
-                    ],
-                    "description": "If true, do not deploy or emulate this function."
+                    "description": "If true, do not deploy or emulate this function.",
+                    "type": "boolean"
                 },
                 "preserveExternalChanges": {
                     "description": "Controls whether function configuration modified outside of function source is preserved. Defaults to false.",
@@ -254,450 +108,34 @@
                 },
                 "secrets": {
                     "items": {
-                        "anyOf": [
-                            {
-                                "$ref": "#/definitions/SecretParam"
-                            },
-                            {
-                                "type": "string"
-                            }
-                        ]
+                        "type": "string"
                     },
                     "type": "array"
                 },
                 "serviceAccount": {
-                    "anyOf": [
-                        {
-                            "$ref": "#/definitions/ResetValue"
-                        },
-                        {
-                            "type": "string"
-                        }
-                    ],
-                    "description": "Specific service account for the function to run as."
+                    "description": "Specific service account for the function to run as.",
+                    "type": "string"
                 },
                 "timeoutSeconds": {
-                    "anyOf": [
-                        {
-                            "$ref": "#/definitions/ResetValue"
-                        },
-                        {
-                            "$ref": "#/definitions/Expression<number>"
-                        },
-                        {
-                            "type": "number"
-                        }
-                    ],
-                    "description": "Timeout for the function in sections, possible values are 0 to 540.\nHTTPS functions can specify a higher timeout."
-                },
-                "vpcConnector": {
-                    "anyOf": [
-                        {
-                            "$ref": "#/definitions/ResetValue"
-                        },
-                        {
-                            "type": "string"
-                        }
-                    ],
-                    "description": "Connect cloud function to specified VPC connector."
-                },
-                "vpcConnectorEgressSettings": {
-                    "anyOf": [
-                        {
-                            "$ref": "#/definitions/ResetValue"
-                        },
-                        {
-                            "enum": [
-                                "ALL_TRAFFIC",
-                                "PRIVATE_RANGES_ONLY"
-                            ],
-                            "type": "string"
-                        }
-                    ],
-                    "description": "Egress settings for VPC connector."
-                }
-            },
-            "type": "object"
-        },
-        "Param<T>": {
-            "additionalProperties": false,
-            "description": "Represents a parametrized value that will be read from .env files if present,\nor prompted for by the CLI if missing. Instantiate these with the defineX\nmethods exported by the firebase-functions/params namespace.",
-            "properties": {
-                "name": {
-                    "type": "string"
-                },
-                "options": {
-                    "$ref": "#/definitions/ParamOptions<T>"
-                }
-            },
-            "required": [
-                "name",
-                "options"
-            ],
-            "type": "object"
-        },
-        "ParamOptions<T>": {
-            "additionalProperties": false,
-            "description": "Configuration options which can be used to customize the prompting behavior of a Param.",
-            "properties": {
-                "default": {
-                    "anyOf": [
-                        {
-                            "$ref": "#/definitions/T"
-                        },
-                        {
-                            "$ref": "#/definitions/Expression<T>_1"
-                        }
-                    ],
-                    "description": "An optional default value to be used while prompting for input. Can be a literal or another parametrized expression."
-                },
-                "description": {
-                    "description": "An optional long-form description of the Param to be displayed while prompting.",
-                    "type": "string"
-                },
-                "input": {
-                    "anyOf": [
-                        {
-                            "additionalProperties": false,
-                            "properties": {
-                                "resource": {
-                                    "$ref": "#/definitions/ResourceInput"
-                                }
-                            },
-                            "required": [
-                                "resource"
-                            ],
-                            "type": "object"
-                        },
-                        {
-                            "additionalProperties": false,
-                            "properties": {
-                                "text": {
-                                    "$ref": "#/definitions/TextInput<T>"
-                                }
-                            },
-                            "required": [
-                                "text"
-                            ],
-                            "type": "object"
-                        },
-                        {
-                            "additionalProperties": false,
-                            "properties": {
-                                "select": {
-                                    "$ref": "#/definitions/SelectInput<T>"
-                                }
-                            },
-                            "required": [
-                                "select"
-                            ],
-                            "type": "object"
-                        }
-                    ],
-                    "description": "The way in which the Firebase CLI will prompt for the value of this Param. Defaults to a TextInput."
-                },
-                "label": {
-                    "description": "An optional human-readable string to be used as a replacement for the Param's name when prompting.",
-                    "type": "string"
-                }
-            },
-            "type": "object"
-        },
-        "Record<string,string>": {
-            "additionalProperties": false,
-            "type": "object"
-        },
-        "RegExp": {
-            "additionalProperties": false,
-            "properties": {
-                "dotAll": {
-                    "type": "boolean"
-                },
-                "flags": {
-                    "type": "string"
-                },
-                "global": {
-                    "type": "boolean"
-                },
-                "ignoreCase": {
-                    "type": "boolean"
-                },
-                "lastIndex": {
+                    "description": "Timeout for the function in sections, possible values are 0 to 540.\nHTTPS functions can specify a higher timeout.",
                     "type": "number"
                 },
-                "multiline": {
-                    "type": "boolean"
-                },
-                "source": {
+                "vpcConnector": {
+                    "description": "Connect cloud function to specified VPC connector.",
                     "type": "string"
                 },
-                "sticky": {
-                    "type": "boolean"
-                },
-                "unicode": {
-                    "type": "boolean"
-                }
-            },
-            "required": [
-                "dotAll",
-                "flags",
-                "global",
-                "ignoreCase",
-                "lastIndex",
-                "multiline",
-                "source",
-                "sticky",
-                "unicode"
-            ],
-            "type": "object"
-        },
-        "ResetValue": {
-            "additionalProperties": false,
-            "description": "Special configuration type to reset configuration to platform default.",
-            "type": "object"
-        },
-        "ResourceInput": {
-            "additionalProperties": false,
-            "description": "Specifies that a Param's value should be determined by having the user\nselect from a list containing all the project's resources of a certain\ntype. Currently, only type:\"storage.googleapis.com/Bucket\" is supported.",
-            "properties": {
-                "resource": {
-                    "additionalProperties": false,
-                    "properties": {
-                        "type": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "type"
+                "vpcConnectorEgressSettings": {
+                    "description": "Egress settings for VPC connector.",
+                    "enum": [
+                        "ALL_TRAFFIC",
+                        "PRIVATE_RANGES_ONLY"
                     ],
-                    "type": "object"
-                }
-            },
-            "required": [
-                "resource"
-            ],
-            "type": "object"
-        },
-        "SecretParam": {
-            "additionalProperties": false,
-            "description": "A parametrized string whose value is stored in Cloud Secret Manager\ninstead of the local filesystem. Supply instances of SecretParams to\nthe secrets array while defining a Function to make their values accessible\nduring execution of that Function.",
-            "properties": {
-                "name": {
                     "type": "string"
                 }
             },
             "required": [
-                "name"
+                "omit"
             ],
-            "type": "object"
-        },
-        "SelectInput<T>": {
-            "additionalProperties": false,
-            "description": "Specifies that a Param's value should be determined by having the user select\nfrom a list of pre-canned options interactively at deploy-time.",
-            "properties": {
-                "options": {
-                    "items": {
-                        "$ref": "#/definitions/SelectOptions<T>"
-                    },
-                    "type": "array"
-                }
-            },
-            "required": [
-                "options"
-            ],
-            "type": "object"
-        },
-        "SelectOptions<T>": {
-            "additionalProperties": false,
-            "description": "One of the options provided to a SelectInput, containing a value and\noptionally a human-readable label to display in the selection interface.",
-            "properties": {
-                "label": {
-                    "type": "string"
-                },
-                "value": {
-                    "$ref": "#/definitions/T"
-                }
-            },
-            "required": [
-                "value"
-            ],
-            "type": "object"
-        },
-        "T": {
-            "additionalProperties": false,
-            "properties": {
-                "toLocaleString": {
-                    "anyOf": [
-                        {
-                            "additionalProperties": false,
-                            "type": "object"
-                        },
-                        {
-                            "additionalProperties": false,
-                            "type": "object"
-                        },
-                        {
-                            "additionalProperties": false,
-                            "type": "object"
-                        }
-                    ]
-                },
-                "toString": {
-                    "anyOf": [
-                        {
-                            "additionalProperties": false,
-                            "type": "object"
-                        },
-                        {
-                            "additionalProperties": false,
-                            "type": "object"
-                        },
-                        {
-                            "additionalProperties": false,
-                            "type": "object"
-                        },
-                        {
-                            "additionalProperties": false,
-                            "type": "object"
-                        }
-                    ]
-                },
-                "valueOf": {
-                    "anyOf": [
-                        {
-                            "additionalProperties": false,
-                            "type": "object"
-                        },
-                        {
-                            "additionalProperties": false,
-                            "type": "object"
-                        },
-                        {
-                            "additionalProperties": false,
-                            "type": "object"
-                        },
-                        {
-                            "additionalProperties": false,
-                            "type": "object"
-                        }
-                    ]
-                }
-            },
-            "required": [
-                "toLocaleString",
-                "toString",
-                "valueOf"
-            ],
-            "type": "object"
-        },
-        "T_1": {
-            "additionalProperties": false,
-            "properties": {
-                "toLocaleString": {
-                    "anyOf": [
-                        {
-                            "additionalProperties": false,
-                            "type": "object"
-                        },
-                        {
-                            "additionalProperties": false,
-                            "type": "object"
-                        },
-                        {
-                            "additionalProperties": false,
-                            "type": "object"
-                        }
-                    ]
-                },
-                "toString": {
-                    "anyOf": [
-                        {
-                            "additionalProperties": false,
-                            "type": "object"
-                        },
-                        {
-                            "additionalProperties": false,
-                            "type": "object"
-                        },
-                        {
-                            "additionalProperties": false,
-                            "type": "object"
-                        },
-                        {
-                            "additionalProperties": false,
-                            "type": "object"
-                        }
-                    ]
-                },
-                "valueOf": {
-                    "anyOf": [
-                        {
-                            "additionalProperties": false,
-                            "type": "object"
-                        },
-                        {
-                            "additionalProperties": false,
-                            "type": "object"
-                        },
-                        {
-                            "additionalProperties": false,
-                            "type": "object"
-                        },
-                        {
-                            "additionalProperties": false,
-                            "type": "object"
-                        }
-                    ]
-                }
-            },
-            "required": [
-                "toLocaleString",
-                "toString",
-                "valueOf"
-            ],
-            "type": "object"
-        },
-        "TernaryExpression<T>": {
-            "additionalProperties": false,
-            "description": "A CEL expression corresponding to a ternary operator, e.g {{ cond ? ifTrue : ifFalse }}",
-            "properties": {
-                "ifFalse": {
-                },
-                "ifTrue": {
-                },
-                "test": {
-                }
-            },
-            "required": [
-                "ifFalse",
-                "ifTrue",
-                "test"
-            ],
-            "type": "object"
-        },
-        "TextInput<T>": {
-            "additionalProperties": false,
-            "description": "Specifies that a Param's value should be determined by prompting the user\nto type it in interactively at deploy-time. Input that does not match the\nprovided validationRegex, if present, will be retried.",
-            "properties": {
-                "example": {
-                    "type": "string"
-                },
-                "validationErrorMessage": {
-                    "description": "A custom error message to display when retrying the prompt based on input\nfailing to conform to the validationRegex,",
-                    "type": "string"
-                },
-                "validationRegex": {
-                    "anyOf": [
-                        {
-                            "$ref": "#/definitions/RegExp"
-                        },
-                        {
-                            "type": "string"
-                        }
-                    ],
-                    "description": "A regular expression (or an escaped string to compile into a regular\nexpression) which the prompted text must satisfy; the prompt will retry\nuntil input matching the regex is provided."
-                }
-            },
             "type": "object"
         }
     },
@@ -1168,8 +606,7 @@
                             "type": "boolean"
                         },
                         "frameworksBackend": {
-                            "$ref": "#/definitions/HttpsOptions",
-                            "description": "Options that can be set on an onRequest HTTPS function."
+                            "$ref": "#/definitions/HttpsOptionsSerializable"
                         },
                         "headers": {
                             "items": {
@@ -1763,8 +1200,7 @@
                                         "type": "boolean"
                                     },
                                     "frameworksBackend": {
-                                        "$ref": "#/definitions/HttpsOptions",
-                                        "description": "Options that can be set on an onRequest HTTPS function."
+                                        "$ref": "#/definitions/HttpsOptionsSerializable"
                                     },
                                     "headers": {
                                         "items": {
@@ -2358,8 +1794,7 @@
                                         "type": "boolean"
                                     },
                                     "frameworksBackend": {
-                                        "$ref": "#/definitions/HttpsOptions",
-                                        "description": "Options that can be set on an onRequest HTTPS function."
+                                        "$ref": "#/definitions/HttpsOptionsSerializable"
                                     },
                                     "headers": {
                                         "items": {
