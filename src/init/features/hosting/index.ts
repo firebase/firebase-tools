@@ -6,7 +6,7 @@ import { Client } from "../../../apiv2";
 import { initGitHub } from "./github";
 import { prompt, promptOnce } from "../../../prompt";
 import { logger } from "../../../logger";
-import { discover, WebFrameworks } from "../../../frameworks";
+import { ALLOWED_SSR_REGIONS, DEFAULT_REGION, discover, WebFrameworks } from "../../../frameworks";
 import * as experiments from "../../../experiments";
 import { join } from "path";
 
@@ -116,20 +116,13 @@ export async function doSetup(setup: any, config: any): Promise<void> {
       await WebFrameworks[setup.hosting.whichFramework].init!(setup, config);
     }
 
-    const regionChoices = [
-      { name: "us-central1 (Iowa)", value: "us-central1" },
-      { name: "us-west1 (Oregon)", value: "us-west1" },
-      { name: "us-east1 (South Carolina)", value: "us-east1" },
-      { name: "europe-west1 (Belgium)", value: "europe-west1" },
-      { name: "asia-east1 (Taiwan)", value: "asia-east1" },
-    ];
-
     await promptOnce(
       {
         name: "region",
         type: "list",
         message: "In which region would you like to host server-side content, if applicable?",
-        choices: regionChoices,
+        default: DEFAULT_REGION,
+        choices: ALLOWED_SSR_REGIONS,
       },
       setup.hosting
     );
