@@ -57,7 +57,7 @@
         "stream-chain": "^2.2.4",
         "stream-json": "^1.7.3",
         "strip-ansi": "^6.0.1",
-        "superstatic": "^9.0.2",
+        "superstatic": "^9.0.3",
         "tar": "^6.1.11",
         "tcp-port-used": "^1.0.2",
         "tmp": "^0.2.1",
@@ -14155,12 +14155,12 @@
       }
     },
     "node_modules/superstatic": {
-      "version": "9.0.2",
-      "resolved": "https://registry.npmjs.org/superstatic/-/superstatic-9.0.2.tgz",
-      "integrity": "sha512-eKX9qubOaJbtdxn4gWhVVMXuno8cn0WPKOYgLAmLwYiHafrASXAIXHzL3Jx7w06yXiaM5e1DA2Ezeb08iV28+A==",
+      "version": "9.0.3",
+      "resolved": "https://registry.npmjs.org/superstatic/-/superstatic-9.0.3.tgz",
+      "integrity": "sha512-e/tmW0bsnQ/33ivK6y3CapJT0Ovy4pk/ohNPGhIAGU2oasoNLRQ1cv6enua09NU9w6Y0H/fBu07cjzuiWvLXxw==",
       "dependencies": {
         "basic-auth-connect": "^1.0.0",
-        "commander": "^9.4.0",
+        "commander": "^10.0.0",
         "compression": "^1.7.0",
         "connect": "^3.7.0",
         "destroy": "^1.0.4",
@@ -14170,7 +14170,7 @@
         "join-path": "^1.1.1",
         "lodash": "^4.17.19",
         "mime-types": "^2.1.35",
-        "minimatch": "^5.1.0",
+        "minimatch": "^6.1.6",
         "morgan": "^1.8.2",
         "on-finished": "^2.2.0",
         "on-headers": "^1.0.0",
@@ -14197,11 +14197,11 @@
       }
     },
     "node_modules/superstatic/node_modules/commander": {
-      "version": "9.4.0",
-      "resolved": "https://registry.npmjs.org/commander/-/commander-9.4.0.tgz",
-      "integrity": "sha512-sRPT+umqkz90UA8M1yqYfnHlZA7fF6nSphDtxeywPZ49ysjxDQybzk13CL+mXekDRG92skbcqCLVovuCusNmFw==",
+      "version": "10.0.0",
+      "resolved": "https://registry.npmjs.org/commander/-/commander-10.0.0.tgz",
+      "integrity": "sha512-zS5PnTI22FIRM6ylNW8G4Ap0IEOyk62fhLSD0+uHRT9McRCLGpkVNvao4bjimpK/GShynyQkFFxHhwMcETmduA==",
       "engines": {
-        "node": "^12.20.0 || >=14"
+        "node": ">=14"
       }
     },
     "node_modules/superstatic/node_modules/isarray": {
@@ -14210,14 +14210,17 @@
       "integrity": "sha1-ihis/Kmo9Bd+Cav8YDiTmwXR7t8="
     },
     "node_modules/superstatic/node_modules/minimatch": {
-      "version": "5.1.2",
-      "resolved": "https://registry.npmjs.org/minimatch/-/minimatch-5.1.2.tgz",
-      "integrity": "sha512-bNH9mmM9qsJ2X4r2Nat1B//1dJVcn3+iBLa3IgqJ7EbGaDNepL9QSHOxN4ng33s52VMMhhIfgCYDk3C4ZmlDAg==",
+      "version": "6.2.0",
+      "resolved": "https://registry.npmjs.org/minimatch/-/minimatch-6.2.0.tgz",
+      "integrity": "sha512-sauLxniAmvnhhRjFwPNnJKaPFYyddAgbYdeUpHULtCT/GhzdCx/MDNy+Y40lBxTQUrMzDE8e0S43Z5uqfO0REg==",
       "dependencies": {
         "brace-expansion": "^2.0.1"
       },
       "engines": {
         "node": ">=10"
+      },
+      "funding": {
+        "url": "https://github.com/sponsors/isaacs"
       }
     },
     "node_modules/superstatic/node_modules/path-to-regexp": {
@@ -26678,12 +26681,12 @@
       }
     },
     "superstatic": {
-      "version": "9.0.2",
-      "resolved": "https://registry.npmjs.org/superstatic/-/superstatic-9.0.2.tgz",
-      "integrity": "sha512-eKX9qubOaJbtdxn4gWhVVMXuno8cn0WPKOYgLAmLwYiHafrASXAIXHzL3Jx7w06yXiaM5e1DA2Ezeb08iV28+A==",
+      "version": "9.0.3",
+      "resolved": "https://registry.npmjs.org/superstatic/-/superstatic-9.0.3.tgz",
+      "integrity": "sha512-e/tmW0bsnQ/33ivK6y3CapJT0Ovy4pk/ohNPGhIAGU2oasoNLRQ1cv6enua09NU9w6Y0H/fBu07cjzuiWvLXxw==",
       "requires": {
         "basic-auth-connect": "^1.0.0",
-        "commander": "^9.4.0",
+        "commander": "^10.0.0",
         "compression": "^1.7.0",
         "connect": "^3.7.0",
         "destroy": "^1.0.4",
@@ -26693,7 +26696,7 @@
         "join-path": "^1.1.1",
         "lodash": "^4.17.19",
         "mime-types": "^2.1.35",
-        "minimatch": "^5.1.0",
+        "minimatch": "^6.1.6",
         "morgan": "^1.8.2",
         "on-finished": "^2.2.0",
         "on-headers": "^1.0.0",
@@ -26712,9 +26715,9 @@
           }
         },
         "commander": {
-          "version": "9.4.0",
-          "resolved": "https://registry.npmjs.org/commander/-/commander-9.4.0.tgz",
-          "integrity": "sha512-sRPT+umqkz90UA8M1yqYfnHlZA7fF6nSphDtxeywPZ49ysjxDQybzk13CL+mXekDRG92skbcqCLVovuCusNmFw=="
+          "version": "10.0.0",
+          "resolved": "https://registry.npmjs.org/commander/-/commander-10.0.0.tgz",
+          "integrity": "sha512-zS5PnTI22FIRM6ylNW8G4Ap0IEOyk62fhLSD0+uHRT9McRCLGpkVNvao4bjimpK/GShynyQkFFxHhwMcETmduA=="
         },
         "isarray": {
           "version": "0.0.1",
@@ -26722,9 +26725,9 @@
           "integrity": "sha1-ihis/Kmo9Bd+Cav8YDiTmwXR7t8="
         },
         "minimatch": {
-          "version": "5.1.2",
-          "resolved": "https://registry.npmjs.org/minimatch/-/minimatch-5.1.2.tgz",
-          "integrity": "sha512-bNH9mmM9qsJ2X4r2Nat1B//1dJVcn3+iBLa3IgqJ7EbGaDNepL9QSHOxN4ng33s52VMMhhIfgCYDk3C4ZmlDAg==",
+          "version": "6.2.0",
+          "resolved": "https://registry.npmjs.org/minimatch/-/minimatch-6.2.0.tgz",
+          "integrity": "sha512-sauLxniAmvnhhRjFwPNnJKaPFYyddAgbYdeUpHULtCT/GhzdCx/MDNy+Y40lBxTQUrMzDE8e0S43Z5uqfO0REg==",
           "requires": {
             "brace-expansion": "^2.0.1"
           }
