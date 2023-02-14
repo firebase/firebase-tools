@@ -319,9 +319,9 @@ export async function prepareFrameworks(
     }
     const ssrRegion = (frameworksBackend?.region as string) ?? DEFAULT_REGION;
     if (!allowedRegionsValues.includes(ssrRegion)) {
-      const notValidRegionError = `Hosting config for site ${site} places server-side content in region ${ssrRegion} which is not known. Valid regions are ${ALLOWED_SSR_REGIONS.map(
-        (r) => r.value
-      ).join(", ")}`;
+      const notValidRegionError = `Hosting config for site ${site} places server-side content in region ${ssrRegion} which is not known. Valid regions are ${allowedRegionsValues.join(
+        ", "
+      )}`;
       console.error(notValidRegionError);
       throw new Error(notValidRegionError);
     }
