@@ -2,12 +2,12 @@ import * as fs from "fs";
 import * as path from "path";
 
 import * as clc from "colorette";
-import * as semver from "semver";
 import * as spawn from "cross-spawn";
+import * as semver from "semver";
 
-import * as utils from "../../../../utils";
 import { logger } from "../../../../logger";
 import { track } from "../../../../track";
+import * as utils from "../../../../utils";
 
 interface NpmShowResult {
   "dist-tags": {
@@ -16,6 +16,7 @@ interface NpmShowResult {
 }
 
 const MIN_SDK_VERSION = "2.0.0";
+const NPM_COMMAND_TIMEOUT_MILLIES = 10000;
 
 export const FUNCTIONS_SDK_VERSION_TOO_OLD_WARNING =
   clc.bold(clc.yellow("functions: ")) +
@@ -88,6 +89,7 @@ export function getFunctionsSDKVersion(sourceDir: string): string | undefined {
 export function getLatestSDKVersion(): string | undefined {
   const child = spawn.sync("npm", ["show", "firebase-functions", "--json=true"], {
     encoding: "utf8",
+    timeout: NPM_COMMAND_TIMEOUT_MILLIES,
   });
   if (child.error) {
     logger.debug(

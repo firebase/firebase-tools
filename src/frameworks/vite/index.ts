@@ -1,4 +1,5 @@
-import { execSync, spawn } from "child_process";
+import { execSync } from "child_process";
+import { spawn } from "cross-spawn";
 import { existsSync } from "fs";
 import { copy, pathExists } from "fs-extra";
 import { join } from "path";
@@ -19,10 +20,10 @@ const CLI_COMMAND = join(
 
 export const DEFAULT_BUILD_SCRIPT = ["vite build", "tsc && vite build"];
 
-export const initViteTemplate = (template: string) => async (setup: any) =>
-  await init(setup, template);
+export const initViteTemplate = (template: string) => async (setup: any, config: any) =>
+  await init(setup, config, template);
 
-export async function init(setup: any, baseTemplate: string = "vanilla") {
+export async function init(setup: any, config: any, baseTemplate: string = "vanilla") {
   const template = await promptOnce({
     type: "list",
     default: "JavaScript",
@@ -34,8 +35,9 @@ export async function init(setup: any, baseTemplate: string = "vanilla") {
   });
   execSync(`npm create vite@latest ${setup.hosting.source} --yes -- --template ${template}`, {
     stdio: "inherit",
+    cwd: config.projectDir,
   });
-  execSync(`npm install`, { stdio: "inherit", cwd: setup.hosting.source });
+  execSync(`npm install`, { stdio: "inherit", cwd: join(config.projectDir, setup.hosting.source) });
 }
 
 export const viteDiscoverWithNpmDependency = (dep: string) => async (dir: string) =>
