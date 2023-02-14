@@ -323,7 +323,7 @@ export async function prepareFrameworks(
       throw new FirebaseError(`Hosting config for site ${site} places server-side content in region ${ssrRegion} which is not known. Valid regions are ${validRegions}`);
     }
     const getProjectPath = (...args: string[]) => join(projectRoot, source, ...args);
-    const functionName = `ssr${site.toLowerCase().replace(/-/g, "")}`;
+    const functionId = `ssr${site.toLowerCase().replace(/-/g, "")}`;
     const usesFirebaseAdminSdk = !!findDependency("firebase-admin", { cwd: getProjectPath() });
     const usesFirebaseJsSdk = !!findDependency("@firebase/app", { cwd: getProjectPath() });
     if (usesFirebaseAdminSdk) {
@@ -445,7 +445,7 @@ export async function prepareFrameworks(
       const rewrite: HostingRewrites = {
         source: "**",
         function: {
-          functionId: functionName,
+          functionId,
         },
       };
       if (experiments.isEnabled("pintags")) {
@@ -574,7 +574,7 @@ ${firebaseDefaults ? `__FIREBASE_DEFAULTS__=${JSON.stringify(firebaseDefaults)}\
         join(functionsDist, "server.js"),
         `const { onRequest } = require('firebase-functions/v2/https');
 const server = import('firebase-frameworks');
-exports.${functionName} = onRequest(${JSON.stringify(
+exports.${functionId} = onRequest(${JSON.stringify(
           frameworksBackend || {}
         )}, (req, res) => server.then(it => it.handle(req, res)));
 `
