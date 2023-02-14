@@ -178,11 +178,12 @@ export class Delegate {
     //   1. $SOURCE_DIR/node_modules/.bin/firebase-functions
     //   2. $PROJECT_DIR/node_modules/.bin/firebase-functions
     //   3. node_modules closest to the resolved path ${require.resolve("firebase-functions")}
-    //   4. (2) but ignore .pnpm directory (see https://github.com/firebase/firebase-tools/issues/5517)
+    //   4. (2) but ignore .pnpm directory
     //
     // (1) works for most package managers (npm, yarn[no-hoist]).
-    // (2) works for monorepo setup with pnpm.
-    // (2) handles cases where developer prefers monorepo setup or bundled function code.
+    // (2) works for some monorepo setup.
+    // (3) handles cases where developer prefers monorepo setup or bundled function code.
+    // (4) handles issue with some .pnpm setup (see https://github.com/firebase/firebase-tools/issues/5517)
     const sourceNodeModulesPath = path.join(this.sourceDir, "node_modules");
     const projectNodeModulesPath = path.join(this.projectDir, "node_modules");
     const sdkPath = require.resolve("firebase-functions", { paths: [this.sourceDir] });
