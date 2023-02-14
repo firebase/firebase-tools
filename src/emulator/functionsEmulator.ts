@@ -690,7 +690,6 @@ export class FunctionsEmulator implements EmulatorInstance {
     // In debug mode, we eagerly start the runtime processes to allow debuggers to attach
     // before invoking a function.
     if (this.args.debugPort) {
-      console.log(emulatableBackend.bin);
       if (!emulatableBackend.runtime?.startsWith("node")) {
         this.logger.log("WARN", "--inspect-functions only supported for Node.js runtimes.");
       } else {
