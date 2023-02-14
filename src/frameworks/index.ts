@@ -498,7 +498,7 @@ export async function prepareFrameworks(
       } = await codegenFunctionsDirectory(getProjectPath(), functionsDist);
 
       // Set the framework entry in the env variables to handle generation of the functions.yaml
-      process.env.__FIREBASE_FRAMEWORKS_ENTRY__ = frameworksEntry
+      process.env.__FIREBASE_FRAMEWORKS_ENTRY__ = frameworksEntry;
 
       packageJson.main = "server.js";
       delete packageJson.devDependencies;
