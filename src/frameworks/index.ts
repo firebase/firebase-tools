@@ -317,13 +317,10 @@ export async function prepareFrameworks(
     if (publicDir) {
       throw new Error(`hosting.public and hosting.source cannot both be set in firebase.json`);
     }
-    const ssrRegion = (frameworksBackend?.region as string) ?? DEFAULT_REGION;
+    const ssrRegion = frameworksBackend?.region ?? DEFAULT_REGION;
     if (!allowedRegionsValues.includes(ssrRegion)) {
-      const notValidRegionError = `Hosting config for site ${site} places server-side content in region ${ssrRegion} which is not known. Valid regions are ${allowedRegionsValues.join(
-        ", "
-      )}`;
-      console.error(notValidRegionError);
-      throw new Error(notValidRegionError);
+      const validRegions = allowedRegionsValues.join(", ");
+      throw new FirebaseError(`Hosting config for site ${site} places server-side content in region ${ssrRegion} which is not known. Valid regions are ${validRegions}`);
     }
     const getProjectPath = (...args: string[]) => join(projectRoot, source, ...args);
     const functionName = `ssr${site.toLowerCase().replace(/-/g, "")}`;
@@ -498,26 +495,8 @@ export async function prepareFrameworks(
         frameworksEntry = framework,
       } = await codegenFunctionsDirectory(getProjectPath(), functionsDist);
 
-      await writeFile(
-        join(functionsDist, "functions.yaml"),
-        JSON.stringify(
-          {
-            endpoints: {
-              [functionName]: {
-                platform: "gcfv2",
-                region: [ssrRegion],
-                labels: {},
-                httpsTrigger: {},
-                entryPoint: "ssr",
-              },
-            },
-            specVersion: "v1alpha1",
-            requiredAPIs: [],
-          },
-          null,
-          2
-        )
-      );
+      // Set the framework entry in the env variables to handle generation of the functions.yaml
+      process.env.__FIREBASE_FRAMEWORKS_ENTRY__=frameworksEntry
 
       packageJson.main = "server.js";
       delete packageJson.devDependencies;
@@ -595,7 +574,7 @@ ${firebaseDefaults ? `__FIREBASE_DEFAULTS__=${JSON.stringify(firebaseDefaults)}\
         join(functionsDist, "server.js"),
         `const { onRequest } = require('firebase-functions/v2/https');
 const server = import('firebase-frameworks');
-exports.ssr = onRequest(${JSON.stringify(
+exports.${functionName} = onRequest(${JSON.stringify(
           frameworksBackend || {}
         )}, (req, res) => server.then(it => it.handle(req, res)));
 `

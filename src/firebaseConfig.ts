@@ -69,9 +69,11 @@ export type HostingHeaders = HostingSource & {
   }[];
 };
 
-// Allow only serializable options
-interface HttpsOptionsSerializable extends Omit<HttpsOptions, "labels"> {
-  omit: boolean;
+// Allow only serializable options, since this is in firebase.json
+// TODO(jamesdaniels) look into allowing serialized CEL expressions, regexp, reset expressions
+//                    and if we can build this interface automatically via Typescript silliness
+interface FrameworksBackendOptions extends HttpsOptions {
+  omit?: boolean;
   cors?: string | boolean;
   memory?: MemoryOption;
   timeoutSeconds?: number;
@@ -83,6 +85,10 @@ interface HttpsOptionsSerializable extends Omit<HttpsOptions, "labels"> {
   serviceAccount?: string;
   ingressSettings?: IngressSetting;
   secrets?: string[];
+  // Only allow a single region to be specified
+  region?: string;
+  // Invoker can only be public
+  invoker?: "public";
 }
 
 export type HostingBase = {
@@ -98,7 +104,7 @@ export type HostingBase = {
   i18n?: {
     root: string;
   };
-  frameworksBackend?: HttpsOptionsSerializable;
+  frameworksBackend?: FrameworksBackendOptions;
 };
 
 export type HostingSingle = HostingBase & {

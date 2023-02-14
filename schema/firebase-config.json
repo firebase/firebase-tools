@@ -6,7 +6,7 @@
             "additionalProperties": false,
             "type": "object"
         },
-        "HttpsOptionsSerializable": {
+        "FrameworksBackendOptions": {
             "additionalProperties": false,
             "properties": {
                 "concurrency": {
@@ -48,18 +48,15 @@
                     "type": "string"
                 },
                 "invoker": {
-                    "anyOf": [
-                        {
-                            "items": {
-                                "type": "string"
-                            },
-                            "type": "array"
-                        },
-                        {
-                            "type": "string"
-                        }
+                    "description": "Invoker to set access control on https functions.",
+                    "enum": [
+                        "public"
                     ],
-                    "description": "Invoker to set access control on https functions."
+                    "type": "string"
+                },
+                "labels": {
+                    "$ref": "#/definitions/Record<string,string>",
+                    "description": "User labels to set on the function."
                 },
                 "maxInstances": {
                     "description": "Max number of instances to be running in parallel.",
@@ -93,18 +90,8 @@
                     "type": "boolean"
                 },
                 "region": {
-                    "anyOf": [
-                        {
-                            "items": {
-                                "type": "string"
-                            },
-                            "type": "array"
-                        },
-                        {
-                            "type": "string"
-                        }
-                    ],
-                    "description": "HTTP functions can override global options and can specify multiple regions to deploy to."
+                    "description": "HTTP functions can override global options and can specify multiple regions to deploy to.",
+                    "type": "string"
                 },
                 "secrets": {
                     "items": {
@@ -133,9 +120,10 @@
                     "type": "string"
                 }
             },
-            "required": [
-                "omit"
-            ],
+            "type": "object"
+        },
+        "Record<string,string>": {
+            "additionalProperties": false,
             "type": "object"
         }
     },
@@ -606,7 +594,7 @@
                             "type": "boolean"
                         },
                         "frameworksBackend": {
-                            "$ref": "#/definitions/HttpsOptionsSerializable"
+                            "$ref": "#/definitions/FrameworksBackendOptions"
                         },
                         "headers": {
                             "items": {
@@ -1200,7 +1188,7 @@
                                         "type": "boolean"
                                     },
                                     "frameworksBackend": {
-                                        "$ref": "#/definitions/HttpsOptionsSerializable"
+                                        "$ref": "#/definitions/FrameworksBackendOptions"
                                     },
                                     "headers": {
                                         "items": {
@@ -1794,7 +1782,7 @@
                                         "type": "boolean"
                                     },
                                     "frameworksBackend": {
-                                        "$ref": "#/definitions/HttpsOptionsSerializable"
+                                        "$ref": "#/definitions/FrameworksBackendOptions"
                                     },
                                     "headers": {
                                         "items": {
