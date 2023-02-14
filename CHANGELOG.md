@@ -1,0 +1,1 @@
+- Allow configuration of the Cloud Function generated for full-stack web frameworks (#5504)
