@@ -15,6 +15,7 @@ import { track, trackEmulator } from "../track";
 import { Constants } from "./constants";
 import { EmulatorInfo, EmulatorInstance, Emulators, FunctionsExecutionMode } from "./types";
 import * as chokidar from "chokidar";
+import * as portfinder from "portfinder";
 
 import * as spawn from "cross-spawn";
 import { ChildProcess } from "child_process";
@@ -43,7 +44,7 @@ import { RuntimeWorker, RuntimeWorkerPool } from "./functionsRuntimeWorker";
 import { PubsubEmulator } from "./pubsubEmulator";
 import { FirebaseError } from "../error";
 import { WorkQueue, Work } from "./workQueue";
-import { allSettled, connectableHostname, createDestroyer, debounce } from "../utils";
+import { allSettled, connectableHostname, createDestroyer, debounce, randomInt } from "../utils";
 import { getCredentialPathAsync } from "../defaultCredentials";
 import {
   AdminSdkConfig,
@@ -60,6 +61,7 @@ import { AUTH_BLOCKING_EVENTS, BEFORE_CREATE_EVENT } from "../functions/events/v
 import { BlockingFunctionsConfig } from "../gcp/identityPlatform";
 import { resolveBackend } from "../deploy/functions/build";
 import { setEnvVarsForEmulators } from "./env";
+import { runWithVirtualEnv } from "../functions/python";
 
 const EVENT_INVOKE = "functions:invoke"; // event name for UA
 const EVENT_INVOKE_GA4 = "functions_invoke"; // event name GA4 (alphanumertic)
@@ -122,15 +124,41 @@ export interface FunctionsEmulatorArgs {
   projectAlias?: string;
 }
 
-// FunctionsRuntimeInstance is the handler for a running function invocation
+/**
+ * IPC connection info of a Function Runtime.
+ */
+export class IPCConn {
+  constructor(readonly socketPath: string) {}
+
+  httpReqOpts(): http.RequestOptions {
+    return {
+      socketPath: this.socketPath,
+    };
+  }
+}
+
+/**
+ * TCP/IP connection info of a Function Runtime.
+ */
+export class TCPConn {
+  constructor(readonly host: string, readonly port: number) {}
+
+  httpReqOpts(): http.RequestOptions {
+    return {
+      host: this.host,
+      port: this.port,
+    };
+  }
+}
+
 export interface FunctionsRuntimeInstance {
   process: ChildProcess;
   // An emitter which sends our EmulatorLog events from the runtime.
   events: EventEmitter;
   // A cwd of the process
   cwd: string;
-  // Path to socket file used for HTTP-over-IPC comms.
-  socketPath: string;
+  // Communication info for the runtime
+  conn: IPCConn | TCPConn;
 }
 
 export interface InvokeRuntimeOpts {
@@ -353,8 +381,8 @@ export class FunctionsEmulator implements EmulatorInstance {
     return new Promise((resolve, reject) => {
       const req = http.request(
         {
+          ...worker.runtime.conn.httpReqOpts(),
           path: `/`,
-          socketPath: worker.runtime.socketPath,
           headers: headers,
         },
         resolve
@@ -405,6 +433,7 @@ export class FunctionsEmulator implements EmulatorInstance {
           /.+?[\\\/]node_modules[\\\/].+?/, // Ignore node_modules
           /(^|[\/\\])\../, // Ignore files which begin the a period
           /.+\.log/, // Ignore files which have a .log extension
+          /.+?[\\\/]venv[\\\/].+?/, // Ignore site-packages in venv
         ],
         persistent: true,
       });
@@ -479,6 +508,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         functionsSource: emulatableBackend.functionsDir,
         projectId: this.args.projectId,
         projectAlias: this.args.projectAlias,
+        isEmulator: true,
       };
       const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
       const discoveredBuild = await runtimeDelegate.discoverBuild(runtimeConfig, environment);
@@ -660,26 +690,30 @@ export class FunctionsEmulator implements EmulatorInstance {
     // In debug mode, we eagerly start the runtime processes to allow debuggers to attach
     // before invoking a function.
     if (this.args.debugPort) {
-      // Since we're about to start a runtime to be shared by all the functions in this codebase,
-      // we need to make sure it has all the secrets used by any function in the codebase.
-      emulatableBackend.secretEnv = Object.values(
-        triggerDefinitions.reduce(
-          (acc: Record<string, backend.SecretEnvVar>, curr: EmulatedTriggerDefinition) => {
-            for (const secret of curr.secretEnvironmentVariables || []) {
-              acc[secret.key] = secret;
-            }
-            return acc;
-          },
-          {}
-        )
-      );
-      try {
-        await this.startRuntime(emulatableBackend);
-      } catch (e: any) {
-        this.logger.logLabeled(
-          "ERROR",
-          `Failed to start functions in ${emulatableBackend.functionsDir}: ${e}`
+      if (!emulatableBackend.bin?.startsWith("node")) {
+        this.logger.log("WARN", "--inspect-functions only supported for Node.js runtimes.");
+      } else {
+        // Since we're about to start a runtime to be shared by all the functions in this codebase,
+        // we need to make sure it has all the secrets used by any function in the codebase.
+        emulatableBackend.secretEnv = Object.values(
+          triggerDefinitions.reduce(
+            (acc: Record<string, backend.SecretEnvVar>, curr: EmulatedTriggerDefinition) => {
+              for (const secret of curr.secretEnvironmentVariables || []) {
+                acc[secret.key] = secret;
+              }
+              return acc;
+            },
+            {}
+          )
         );
+        try {
+          await this.startRuntime(emulatableBackend);
+        } catch (e: any) {
+          this.logger.logLabeled(
+            "ERROR",
+            `Failed to start functions in ${emulatableBackend.functionsDir}: ${e}`
+          );
+        }
       }
     }
   }
@@ -1074,12 +1108,6 @@ export class FunctionsEmulator implements EmulatorInstance {
     envs.K_REVISION = "1";
     envs.PORT = "80";
 
-    // TODO(danielylee): Later, we want timeout to be enforce by the data plane. For now, we rely on the runtime to
-    // enforce timeout.
-    if (trigger?.timeoutSeconds) {
-      envs.FUNCTIONS_EMULATOR_TIMEOUT_SECONDS = trigger.timeoutSeconds.toString();
-    }
-
     if (trigger) {
       const target = trigger.entryPoint;
       envs.FUNCTION_TARGET = target;
@@ -1266,8 +1294,42 @@ export class FunctionsEmulator implements EmulatorInstance {
       process: childProcess,
       events: new EventEmitter(),
       cwd: backend.functionsDir,
-      socketPath,
+      conn: new IPCConn(socketPath),
     });
+  }
+
+  async startPython(
+    backend: EmulatableBackend,
+    envs: Record<string, string>
+  ): Promise<FunctionsRuntimeInstance> {
+    const args = ["functions-framework"];
+
+    if (this.args.debugPort) {
+      this.logger.log("WARN", "--inspect-functions not supported for Python functions. Ignored.");
+    }
+
+    // No support generic socket interface for Unix Domain Socket/Named Pipe in the python.
+    // Use TCP/IP stack instead.
+    const port = await portfinder.getPortPromise({
+      port: 8081 + randomInt(0, 1000), // Add a small jitter to avoid race condition.
+    });
+    const childProcess = runWithVirtualEnv(args, backend.functionsDir, {
+      ...process.env,
+      ...envs,
+      // Required to flush stdout/stderr immediately to the piped channels.
+      PYTHONUNBUFFERED: "1",
+      // Required to prevent flask development server to reload on code changes.
+      DEBUG: "False",
+      HOST: "127.0.0.1",
+      PORT: port.toString(),
+    });
+
+    return {
+      process: childProcess,
+      events: new EventEmitter(),
+      cwd: backend.functionsDir,
+      conn: new TCPConn("127.0.0.1", port),
+    };
   }
 
   async startRuntime(
@@ -1277,14 +1339,19 @@ export class FunctionsEmulator implements EmulatorInstance {
     const runtimeEnv = this.getRuntimeEnvs(backend, trigger);
     const secretEnvs = await this.resolveSecretEnvs(backend, trigger);
 
-    const runtime = await this.startNode(backend, { ...runtimeEnv, ...secretEnvs });
+    let runtime;
+    if (backend.runtime!.startsWith("python")) {
+      runtime = await this.startPython(backend, { ...runtimeEnv, ...secretEnvs });
+    } else {
+      runtime = await this.startNode(backend, { ...runtimeEnv, ...secretEnvs });
+    }
     const extensionLogInfo = {
       instanceId: backend.extensionInstanceId,
       ref: backend.extensionVersion?.ref,
     };
 
     const pool = this.workerPools[backend.codebase];
-    const worker = pool.addWorker(trigger?.id, runtime, extensionLogInfo);
+    const worker = pool.addWorker(trigger, runtime, extensionLogInfo);
     await worker.waitForSocketReady();
     return worker;
   }

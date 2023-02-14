@@ -1,15 +1,16 @@
-import { execSync, spawnSync } from "child_process";
+import { execSync } from "child_process";
 import * as clc from "colorette";
+import { sync as spawnSync } from "cross-spawn";
 import { readdirSync, statSync } from "fs";
 import { mkdirp, pathExists, stat } from "fs-extra";
-import { copyFile, readdir, rm, writeFile } from "fs/promises";
+import { copyFile, readdir, readFile, rm, writeFile } from "fs/promises";
+import * as glob from "glob";
 import { IncomingMessage, ServerResponse } from "http";
 import * as process from "node:process";
-import { extname, join, relative } from "path";
+import { basename, extname, join, relative } from "path";
 import { exit } from "process";
 import * as semver from "semver";
 import { pathToFileURL } from "url";
-
 import { getProjectDefaultAccount } from "../auth";
 import { getCredentialPathAsync } from "../defaultCredentials";
 import { Constants } from "../emulator/constants";
@@ -41,6 +42,7 @@ export interface BuildResult {
   redirects?: any[];
   headers?: any[];
   wantsBackend?: boolean;
+  trailingSlash?: boolean;
 }
 
 export interface Framework {
@@ -49,7 +51,7 @@ export interface Framework {
   name: string;
   build: (dir: string) => Promise<BuildResult | void>;
   support: SupportLevel;
-  init?: (setup: any) => Promise<void>;
+  init?: (setup: any, config: any) => Promise<void>;
   getDevModeHandle?: (
     dir: string,
     hostingEmulatorInfo?: EmulatorInfo
@@ -156,8 +158,13 @@ export function relativeRequire(
 export function relativeRequire(dir: string, mod: "next"): typeof import("next");
 export function relativeRequire(dir: string, mod: "vite"): typeof import("vite");
 export function relativeRequire(dir: string, mod: "jsonc-parser"): typeof import("jsonc-parser");
+
 // TODO the types for @nuxt/kit are causing a lot of troubles, need to do something other than any
+// Nuxt 2
+export function relativeRequire(dir: string, mod: "nuxt/dist/nuxt.js"): Promise<any>;
+// Nuxt 3
 export function relativeRequire(dir: string, mod: "@nuxt/kit"): Promise<any>;
+
 /**
  *
  */
@@ -404,10 +411,12 @@ export async function prepareFrameworks(
         rewrites = [],
         redirects = [],
         headers = [],
+        trailingSlash,
       } = (await build(getProjectPath())) || {};
       config.rewrites.push(...rewrites);
       config.redirects.push(...redirects);
       config.headers.push(...headers);
+      config.trailingSlash ??= trailingSlash;
       if (await pathExists(hostingDist)) await rm(hostingDist, { recursive: true });
       await mkdirp(hostingDist);
       await ɵcodegenPublicDirectory(getProjectPath(), hostingDist);
@@ -502,14 +511,28 @@ export async function prepareFrameworks(
       packageJson.engines ||= {};
       packageJson.engines.node ||= NODE_VERSION;
 
+      for (const [name, version] of Object.entries(
+        packageJson.dependencies as Record<string, string>
+      )) {
+        if (version.startsWith("file:")) {
+          const path = version.replace(/^file:/, "");
+          if (!(await pathExists(path))) continue;
+          const stats = await stat(path);
+          if (stats.isDirectory()) {
+            const result = spawnSync("npm", ["pack", relative(functionsDist, path)], {
+              cwd: functionsDist,
+            });
+            if (!result.stdout) throw new Error(`Error running \`npm pack\` at ${path}`);
+            const filename = result.stdout.toString().trim();
+            packageJson.dependencies[name] = `file:${filename}`;
+          } else {
+            const filename = basename(path);
+            await copyFile(path, join(functionsDist, filename));
+            packageJson.dependencies[name] = `file:${filename}`;
+          }
+        }
+      }
       await writeFile(join(functionsDist, "package.json"), JSON.stringify(packageJson, null, 2));
-
-      // TODO do we add the append the local .env?
-      await writeFile(
-        join(functionsDist, ".env"),
-        `__FIREBASE_FRAMEWORKS_ENTRY__=${frameworksEntry}
-${firebaseDefaults ? `__FIREBASE_DEFAULTS__=${JSON.stringify(firebaseDefaults)}\n` : ""}`
-      );
 
       await copyFile(
         getProjectPath("package-lock.json"),
@@ -521,6 +544,27 @@ ${firebaseDefaults ? `__FIREBASE_DEFAULTS__=${JSON.stringify(firebaseDefaults)}\
       if (await pathExists(getProjectPath(".npmrc"))) {
         await copyFile(getProjectPath(".npmrc"), join(functionsDist, ".npmrc"));
       }
+
+      let existingDotEnvContents = "";
+      if (await pathExists(getProjectPath(".env"))) {
+        existingDotEnvContents = (await readFile(getProjectPath(".env"))).toString();
+      }
+
+      await writeFile(
+        join(functionsDist, ".env"),
+        `${existingDotEnvContents}
+__FIREBASE_FRAMEWORKS_ENTRY__=${frameworksEntry}
+${firebaseDefaults ? `__FIREBASE_DEFAULTS__=${JSON.stringify(firebaseDefaults)}\n` : ""}`
+      );
+
+      const envs = await new Promise<string[]>((resolve, reject) =>
+        glob(getProjectPath(".env.*"), (err, matches) => {
+          if (err) reject(err);
+          resolve(matches);
+        })
+      );
+
+      await Promise.all(envs.map((path) => copyFile(path, join(functionsDist, basename(path)))));
 
       execSync(`${NPM_COMMAND} i --omit dev --no-audit`, {
         cwd: functionsDist,

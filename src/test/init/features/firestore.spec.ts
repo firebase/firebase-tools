@@ -21,7 +21,7 @@ describe("firestore", () => {
 
     // By default, mock Firestore enabled in Native mode
     checkApiStub.returns(true);
-    checkDbTypeStub.returns("CLOUD_FIRESTORE");
+    checkDbTypeStub.returns("FIRESTORE_NATIVE");
   });
 
   afterEach(() => {
@@ -44,15 +44,6 @@ describe("firestore", () => {
       expect(initRulesStub).to.have.been.calledOnce;
       expect(initIndexesStub).to.have.been.calledOnce;
       expect(_.get(setup, "config.firestore")).to.deep.equal({});
-    });
-
-    it("should error when cloud resource location is not set", async () => {
-      const setup = { config: {}, projectId: "my-project-123" };
-
-      await expect(firestore.doSetup(setup, {}, {})).to.eventually.be.rejectedWith(
-        FirebaseError,
-        "Cloud resource location is not set"
-      );
     });
 
     it("should error when the firestore API is not enabled", async () => {

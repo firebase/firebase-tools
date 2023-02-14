@@ -382,6 +382,23 @@ describe("cloudfunctionsv2", () => {
       });
     });
 
+    it("should copy run service IDs", () => {
+      const fn: cloudfunctionsv2.CloudFunction = {
+        ...HAVE_CLOUD_FUNCTION_V2,
+        serviceConfig: {
+          ...HAVE_CLOUD_FUNCTION_V2.serviceConfig,
+          service: "projects/p/locations/l/services/service-id",
+        },
+      };
+      expect(cloudfunctionsv2.endpointFromFunction(fn)).to.deep.equal({
+        ...ENDPOINT,
+        httpsTrigger: {},
+        platform: "gcfv2",
+        uri: RUN_URI,
+        runServiceId: "service-id",
+      });
+    });
+
     it("should translate event triggers", () => {
       let want: backend.Endpoint = {
         ...ENDPOINT,
