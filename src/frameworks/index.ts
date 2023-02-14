@@ -320,7 +320,9 @@ export async function prepareFrameworks(
     const ssrRegion = frameworksBackend?.region ?? DEFAULT_REGION;
     if (!allowedRegionsValues.includes(ssrRegion)) {
       const validRegions = allowedRegionsValues.join(", ");
-      throw new FirebaseError(`Hosting config for site ${site} places server-side content in region ${ssrRegion} which is not known. Valid regions are ${validRegions}`);
+      throw new FirebaseError(
+        `Hosting config for site ${site} places server-side content in region ${ssrRegion} which is not known. Valid regions are ${validRegions}`
+      );
     }
     const getProjectPath = (...args: string[]) => join(projectRoot, source, ...args);
     const functionId = `ssr${site.toLowerCase().replace(/-/g, "")}`;
@@ -496,7 +498,7 @@ export async function prepareFrameworks(
       } = await codegenFunctionsDirectory(getProjectPath(), functionsDist);
 
       // Set the framework entry in the env variables to handle generation of the functions.yaml
-      process.env.__FIREBASE_FRAMEWORKS_ENTRY__=frameworksEntry
+      process.env.__FIREBASE_FRAMEWORKS_ENTRY__ = frameworksEntry
 
       packageJson.main = "server.js";
       delete packageJson.devDependencies;

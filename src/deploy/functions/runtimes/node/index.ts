@@ -167,7 +167,7 @@ export class Delegate {
       PATH: process.env.PATH,
       NODE_ENV: process.env.NODE_ENV,
       // Web Frameworks fails without this environment variable
-      __FIREBASE_FRAMEWORKS_ENTRY__: process.env.__FIREBASE_FRAMEWORKS_ENTRY__
+      __FIREBASE_FRAMEWORKS_ENTRY__: process.env.__FIREBASE_FRAMEWORKS_ENTRY__,
     };
     if (Object.keys(config || {}).length) {
       env.CLOUD_RUNTIME_CONFIG = JSON.stringify(config);
