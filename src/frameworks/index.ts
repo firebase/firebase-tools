@@ -319,7 +319,9 @@ export async function prepareFrameworks(
     }
     const ssrRegion = (frameworksBackend?.region as string) ?? DEFAULT_REGION;
     if (!allowedRegionsValues.includes(ssrRegion)) {
-      const notValidRegionError = `Hosting config for site ${site} places server-side content in region ${ssrRegion} which is not known. Valid regions are us-west1, us-central1, us-east1, europe-west1, asia-east1`;
+      const notValidRegionError = `Hosting config for site ${site} places server-side content in region ${ssrRegion} which is not known. Valid regions are ${ALLOWED_SSR_REGIONS.map(
+        (r) => r.value
+      ).join(", ")}`;
       console.error(notValidRegionError);
       throw new Error(notValidRegionError);
     }
@@ -589,12 +591,13 @@ ${firebaseDefaults ? `__FIREBASE_DEFAULTS__=${JSON.stringify(firebaseDefaults)}\
       if (bootstrapScript) await writeFile(join(functionsDist, "bootstrap.js"), bootstrapScript);
 
       // TODO move to templates
-      const firstArg = frameworksBackend ? `${JSON.stringify(frameworksBackend)}, ` : "";
       await writeFile(
         join(functionsDist, "server.js"),
         `const { onRequest } = require('firebase-functions/v2/https');
 const server = import('firebase-frameworks');
-exports.ssr = onRequest(${firstArg}(req, res) => server.then(it => it.handle(req, res)));
+exports.ssr = onRequest(${JSON.stringify(
+          frameworksBackend || {}
+        )}, (req, res) => server.then(it => it.handle(req, res)));
 `
       );
     } else {
