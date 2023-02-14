@@ -1,2 +1,0 @@
-- Fix bug where CLI couldn't discover functions for monorepo setups. (#5518)
-- Fix bug where --inspect-functions flag always fails. #5516
