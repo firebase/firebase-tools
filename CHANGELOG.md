@@ -1,0 +1,1 @@
+- Fix bug where CLI couldn't discover functions for monorepo setups. (#5518)
