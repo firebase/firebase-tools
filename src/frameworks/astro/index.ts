@@ -40,7 +40,7 @@ export async function discover(dir: string): Promise<Discovery | undefined> {
 
   return {
     mayWantBackend: resolvedConfig.output === "server",
-    publicDirectory: resolvedConfig.publicDir.toString() ?? "public",
+    publicDirectory: resolvedConfig.publicDir?.toString() ?? "public",
   };
 }
 
