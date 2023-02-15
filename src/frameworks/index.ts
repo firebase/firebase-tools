@@ -1,32 +1,33 @@
+import { join, relative, extname, basename } from "path";
+import { exit } from "process";
 import { execSync } from "child_process";
-import * as clc from "colorette";
 import { sync as spawnSync } from "cross-spawn";
 import { readdirSync, statSync } from "fs";
-import { mkdirp, pathExists, stat } from "fs-extra";
-import { copyFile, readdir, readFile, rm, writeFile } from "fs/promises";
-import * as glob from "glob";
-import { IncomingMessage, ServerResponse } from "http";
-import * as process from "node:process";
-import { basename, extname, join, relative } from "path";
-import { exit } from "process";
-import * as semver from "semver";
 import { pathToFileURL } from "url";
-import { getProjectDefaultAccount } from "../auth";
-import { getCredentialPathAsync } from "../defaultCredentials";
-import { Constants } from "../emulator/constants";
-import { formatHost } from "../emulator/functionsEmulatorShared";
-import { EmulatorInfo, Emulators, EMULATORS_SUPPORTED_BY_USE_EMULATOR } from "../emulator/types";
-import { FirebaseError } from "../error";
-import * as experiments from "../experiments";
-import { HostingRewrites } from "../firebaseConfig";
-import { ensureTargeted } from "../functions/ensureTargeted";
-import { listSites } from "../hosting/api";
-import { hostingConfig } from "../hosting/config";
-import { implicitInit } from "../hosting/implicitInit";
-import { AppPlatform, getAppConfig } from "../management/apps";
+import { IncomingMessage, ServerResponse } from "http";
+import { copyFile, readdir, readFile, rm, writeFile } from "fs/promises";
+import { mkdirp, pathExists, stat } from "fs-extra";
+import * as clc from "colorette";
+import * as process from "node:process";
+import * as semver from "semver";
+import * as glob from "glob";
+
 import { needProjectId } from "../projectUtils";
+import { hostingConfig } from "../hosting/config";
+import { listSites } from "../hosting/api";
+import { getAppConfig, AppPlatform } from "../management/apps";
 import { promptOnce } from "../prompt";
+import { EmulatorInfo, Emulators, EMULATORS_SUPPORTED_BY_USE_EMULATOR } from "../emulator/types";
+import { getCredentialPathAsync } from "../defaultCredentials";
+import { getProjectDefaultAccount } from "../auth";
+import { formatHost } from "../emulator/functionsEmulatorShared";
+import { Constants } from "../emulator/constants";
+import { FirebaseError } from "../error";
 import { requireHostingSite } from "../requireHostingSite";
+import { HostingRewrites } from "../firebaseConfig";
+import * as experiments from "../experiments";
+import { ensureTargeted } from "../functions/ensureTargeted";
+import { implicitInit } from "../hosting/implicitInit";
 
 // Use "true &&"" to keep typescript from compiling this file and rewriting
 // the import statement into a require
@@ -186,7 +187,8 @@ export function relativeRequire(dir: string, mod: string) {
   } catch (e) {
     const path = relative(process.cwd(), dir);
     console.error(
-      `Could not load dependency ${mod} in ${path.startsWith("..") ? path : `./${path}`
+      `Could not load dependency ${mod} in ${
+        path.startsWith("..") ? path : `./${path}`
       }, have you run \`npm install\`?`
     );
     throw e;
@@ -606,7 +608,7 @@ exports.${functionId} = onRequest(${JSON.stringify(
   }
 }
 
-function codegenDevModeFunctionsDirectory(projectPath: string) {
+function codegenDevModeFunctionsDirectory(projectPath) {
   const packageJson = require(`${projectPath}/package.json`)
   return Promise.resolve({ packageJson, frameworksEntry: "_devMode" });
 }
