@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { copy, pathExists } from "fs-extra";
 import { readFile } from "fs/promises";
 import { join } from "path";
@@ -11,6 +12,11 @@ export const type = FrameworkType.Toolchain;
 
 import { NuxtDependency } from "./interfaces";
 import { nuxtConfigFilesExist } from "./utils";
+import { EmulatorInfo } from "../../emulator/types";
+import { IncomingMessage, ServerResponse } from "http";
+import { pathToFileURL, parse } from "url";
+
+import { createServerResponseProxy } from "..";
 
 const DEFAULT_BUILD_SCRIPT = ["nuxt build"];
 
@@ -74,4 +80,42 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
   const outputPackageJson = JSON.parse(outputPackageJsonBuffer.toString());
   await copy(join(sourceDir, ".output", "server"), destDir);
   return { packageJson: { ...packageJson, ...outputPackageJson }, frameworksEntry: "nuxt3" };
+}
+
+export async function getDevModeHandle(dir: string, hostingEmulatorInfo?: EmulatorInfo) {
+  console.log("In getDevModeHandle...");
+
+  const { loadNuxt } = await relativeRequire(dir, "@nuxt/kit");
+  // const nuxtApp = await getNuxt3App(dir);
+  // const { port } = hostingEmulatorInfo ?? { port: 3000 };
+
+  // console.log("nuuxt ->", nuuxt.loadNuxt);
+
+  const nuuxt = await loadNuxt({
+    dir,
+    dev: true,
+    overrides: {
+      nitro: { preset: "node" },
+    },
+  });
+
+  console.log("nuuxt ->", nuuxt);
+
+  nuuxt.server.listen(hostingEmulatorInfo?.port);
+  const handler = nuuxt.server.app.handler();
+
+  return (req: IncomingMessage, res: ServerResponse, next: () => void) => {
+    const parsedUrl = parse(req.url!, true);
+    const proxy = createServerResponseProxy(req, res, next);
+    handler(req, proxy, parsedUrl);
+  };
+
+  // return {
+  //   start: async () => {
+  //     await startNuxt(nuxtApp, { port });
+  //   },
+  //   stop: async () => {
+  //     await nuxtApp.close();
+  //   },
+  // };
 }
