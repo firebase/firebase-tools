@@ -1,4 +1,5 @@
-import { execSync, spawn } from "child_process";
+import { execSync } from "child_process";
+import { spawn } from "cross-spawn";
 import { existsSync } from "fs";
 import { copy, pathExists } from "fs-extra";
 import { join } from "path";

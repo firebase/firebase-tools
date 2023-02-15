@@ -353,9 +353,15 @@ describe("Next.js utils", () => {
         "sass",
         "styled-jsx",
         "client-only",
+        "react",
+        "react-dom",
         "loose-envify",
         "js-tokens",
+        "react",
         "scheduler",
+        "loose-envify",
+        "react",
+        "loose-envify",
       ]);
     });
   });

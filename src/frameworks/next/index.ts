@@ -1,4 +1,5 @@
-import { execSync, spawnSync } from "child_process";
+import { execSync } from "child_process";
+import { spawn, sync as spawnSync } from "cross-spawn";
 import { mkdir, copyFile } from "fs/promises";
 import { dirname, join } from "path";
 import type { NextConfig } from "next";
@@ -10,6 +11,10 @@ import { existsSync } from "fs";
 import { gte } from "semver";
 import { IncomingMessage, ServerResponse } from "http";
 import * as clc from "colorette";
+import { chain } from "stream-chain";
+import { parser } from "stream-json";
+import { pick } from "stream-json/filters/Pick";
+import { streamObject } from "stream-json/streamers/StreamObject";
 
 import {
   BuildResult,
@@ -33,7 +38,7 @@ import {
   isUsingMiddleware,
   allDependencyNames,
 } from "./utils";
-import type { Manifest, MiddlewareManifest, NpmLsReturn } from "./interfaces";
+import type { Manifest, MiddlewareManifest, NpmLsDepdendency } from "./interfaces";
 import { readJSON } from "../utils";
 import { warnIfCustomBuildScript } from "../utils";
 import type { EmulatorInfo } from "../../emulator/types";
@@ -346,33 +351,52 @@ export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: strin
 export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: string) {
   const { distDir } = await getConfig(sourceDir);
   const packageJson = await readJSON(join(sourceDir, "package.json"));
+  // Bundle their next.config.js with esbuild via NPX, pinned version was having troubles on m1
+  // macs and older Node versions; either way, we should avoid taking on any deps in firebase-tools
+  // Alternatively I tried using @swc/spack and the webpack bundled into Next.js but was
+  // encountering difficulties with both of those
   if (existsSync(join(sourceDir, "next.config.js"))) {
-    // Bundle their next.config.js with esbuild via NPX, pinned version was having troubles on m1
-    // macs and older Node versions; either way, we should avoid taking on any deps in firebase-tools
-    // Alternatively I tried using @swc/spack and the webpack bundled into Next.js but was
-    // encountering difficulties with both of those
-    const dependencyTree: NpmLsReturn = JSON.parse(
-      spawnSync("npm", ["ls", "--omit=dev", "--all", "--json"], {
+    try {
+      const productionDeps = await new Promise<string[]>((resolve) => {
+        const dependencies: string[] = [];
+        const pipeline = chain([
+          spawn("npm", ["ls", "--omit=dev", "--all", "--json"], { cwd: sourceDir }).stdout,
+          parser({ packValues: false, packKeys: true, streamValues: false }),
+          pick({ filter: "dependencies" }),
+          streamObject(),
+          ({ key, value }: { key: string; value: NpmLsDepdendency }) => [
+            key,
+            ...allDependencyNames(value),
+          ],
+        ]);
+        pipeline.on("data", (it: string) => dependencies.push(it));
+        pipeline.on("end", () => {
+          resolve([...new Set(dependencies)]);
+        });
+      });
+      // Mark all production deps as externals, so they aren't bundled
+      // DevDeps won't be included in the Cloud Function, so they should be bundled
+      const esbuildArgs = productionDeps
+        .map((it) => `--external:${it}`)
+        .concat(
+          "--bundle",
+          "--platform=node",
+          `--target=node${NODE_VERSION}`,
+          `--outdir=${destDir}`,
+          "--log-level=error"
+        );
+      const bundle = spawnSync("npx", ["--yes", "esbuild", "next.config.js", ...esbuildArgs], {
         cwd: sourceDir,
-      }).stdout.toString()
-    );
-    // Mark all production deps as externals, so they aren't bundled
-    // DevDeps won't be included in the Cloud Function, so they should be bundled
-    const esbuildArgs = allDependencyNames(dependencyTree)
-      .map((it) => `--external:${it}`)
-      .concat(
-        "--bundle",
-        "--platform=node",
-        `--target=node${NODE_VERSION}`,
-        `--outdir=${destDir}`,
-        "--log-level=error"
+      });
+      if (bundle.status) {
+        throw new FirebaseError(bundle.stderr.toString());
+      }
+    } catch (e: any) {
+      console.warn(
+        "Unable to bundle next.config.js for use in Cloud Functions, proceeding with deploy but problems may be enountered."
       );
-    const bundle = spawnSync("npx", ["--yes", "esbuild", "next.config.js", ...esbuildArgs], {
-      cwd: sourceDir,
-    });
-    if (bundle.status) {
-      console.error(bundle.stderr.toString());
-      throw new FirebaseError("Unable to bundle next.config.js for use in Cloud Functions");
+      console.error(e.message);
+      copy(join(sourceDir, "next.config.js"), join(destDir, "next.config.js"));
     }
   }
   if (await pathExists(join(sourceDir, "public"))) {
