@@ -49,8 +49,9 @@ export const vitePluginDiscover = (plugin: string) => async (dir: string) =>
 export async function discover(dir: string, plugin?: string, npmDependency?: string) {
   if (!existsSync(join(dir, "package.json"))) return;
   // If we're not searching for a vite plugin, depth has to be zero
+  // TODO why omitDev: true?
   const additionalDep =
-    npmDependency && findDependency(npmDependency, { cwd: dir, depth: 0, omitDev: true });
+    npmDependency && findDependency(npmDependency, { cwd: dir, depth: 0, omitDev: false });
   const depth = plugin ? undefined : 0;
   const configFilesExist = await Promise.all([
     pathExists(join(dir, "vite.config.js")),

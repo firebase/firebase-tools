@@ -574,9 +574,9 @@ ${firebaseDefaults ? `__FIREBASE_DEFAULTS__=${JSON.stringify(firebaseDefaults)}\
       // TODO move to templates
       await writeFile(
         join(functionsDist, "server.js"),
-        `const { onRequest } = require('firebase-functions/v2/https');
+        `import { onRequest } from 'firebase-functions/v2/https';
 const server = import('firebase-frameworks');
-exports.${functionId} = onRequest(${JSON.stringify(
+export const ${functionId} = onRequest(${JSON.stringify(
           frameworksBackend || {}
         )}, (req, res) => server.then(it => it.handle(req, res)));
 `
