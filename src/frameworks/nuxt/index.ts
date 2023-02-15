@@ -5,6 +5,7 @@ import { join } from "path";
 import { gte } from "semver";
 import { findDependency, FrameworkType, relativeRequire, SupportLevel } from "..";
 import { warnIfCustomBuildScript } from "../utils";
+import type * as NuxtKit from "@nuxt/kit";
 
 export const name = "Nuxt";
 export const support = SupportLevel.Experimental;
@@ -85,7 +86,7 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
 export async function getDevModeHandle(dir: string, hostingEmulatorInfo?: EmulatorInfo) {
   console.log("In getDevModeHandle...");
 
-  const { loadNuxt } = await relativeRequire(dir, "@nuxt/kit");
+  const { loadNuxt }: typeof NuxtKit = await relativeRequire(dir, "@nuxt/kit");
   // const nuxtApp = await getNuxt3App(dir);
   // const { port } = hostingEmulatorInfo ?? { port: 3000 };
 
