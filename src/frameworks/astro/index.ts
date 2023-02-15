@@ -66,5 +66,16 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
 
   await copy(join(sourceDir, resolvedConfig.outDir?.toString() ?? "dist", "server"), join(destDir));
 
-  return { packageJson: { ...packageJson }, frameworksEntry: "astro" };
+  return {
+    packageJson: { ...packageJson },
+    frameworksEntry: "astro",
+    bootstrapScript: getBootstrapScript(),
+  };
+}
+
+export function getBootstrapScript() {
+  // `astro build` will generate an express middleware at dist/server/entry.mjs
+  const bootstrapScript = `const entry = import('./entry.mjs');\nexport const handle = async (req, res) => (await entry).handler(req, res)`;
+
+  return bootstrapScript;
 }
