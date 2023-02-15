@@ -74,7 +74,7 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
 }
 
 export function getBootstrapScript() {
-  // `astro build` will generate an express middleware at dist/server/entry.mjs
+  // `astro build` will generate an express middleware at entry.mjs, need to convert the export to `handle` to work with express integration
   const bootstrapScript = `const entry = import('./entry.mjs');\nexport const handle = async (req, res) => (await entry).handler(req, res)`;
 
   return bootstrapScript;
