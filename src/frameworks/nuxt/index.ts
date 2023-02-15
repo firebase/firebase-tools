@@ -93,7 +93,7 @@ export async function getDevModeHandle(dir: string, hostingEmulatorInfo?: Emulat
   // console.log("nuuxt ->", nuuxt.loadNuxt);
 
   const nuuxt = await loadNuxt({
-    dir,
+    cwd: dir,
     dev: true,
     overrides: {
       nitro: { preset: "node" },
