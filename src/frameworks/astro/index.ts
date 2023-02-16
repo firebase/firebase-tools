@@ -3,7 +3,6 @@ import { copy, readFile, existsSync } from "fs-extra";
 import { join } from "path";
 import { BuildResult, Discovery, FrameworkType, SupportLevel } from "..";
 import type { AstroConfig } from "astro";
-// TODO figure out why relativeRequire was not working
 const { dynamicImport } = require(true && "../../dynamicImport");
 
 export const name = "Astro";
@@ -13,12 +12,13 @@ export const type = FrameworkType.MetaFramework;
 let resolvedConfig: AstroConfig;
 export async function discover(dir: string): Promise<Discovery | undefined> {
   if (!existsSync(join(dir, "package.json"))) return;
+  // TODO extract to getConfig()?
   const possibleConfigPaths = [
-    "astro.config.mjs",
     "astro.config.js",
     "astro.config.ts",
-    "astro.config.mts",
+    "astro.config.mjs",
     "astro.config.cjs",
+    "astro.config.mts",
     "astro.config.cts",
   ].map((file) => join(dir, file));
 
@@ -74,7 +74,8 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
 }
 
 export function getBootstrapScript() {
-  // `astro build` will generate an express middleware at entry.mjs, need to convert the export to `handle` to work with express integration
+  // `astro build` with node adapter in middleware mode will generate a middleware at entry.mjs
+  // need to convert the export to `handle` to work with express integration
   const bootstrapScript = `const entry = import('./entry.mjs');\nexport const handle = async (req, res) => (await entry).handler(req, res)`;
 
   return bootstrapScript;
