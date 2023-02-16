@@ -24,8 +24,12 @@ const CLI_COMMAND = join("node_modules", ".bin", "nuxt");
  * @param dir current directory
  * @return undefined if project is not Nuxt 2, {mayWantBackend: true } otherwise
  */
-export async function discover(dir: string): Promise<{ mayWantBackend: true } | undefined> {
-  if (!(await pathExists(join(dir, "package.json")))) return;
+export async function discover(
+  dir: string
+): Promise<{ mayWantBackend?: true; publicDirectory: string }> {
+  // TODO: fix returns, get publicDirectory from nuxt config
+
+  if (!(await pathExists(join(dir, "package.json")))) return { publicDirectory: "public" };
   const nuxtDependency = findDependency("nuxt", {
     cwd: dir,
     depth: 0,
@@ -35,10 +39,11 @@ export async function discover(dir: string): Promise<{ mayWantBackend: true } | 
   const version = nuxtDependency?.version;
   const anyConfigFileExists = await nuxtConfigFilesExist(dir);
 
-  if (!anyConfigFileExists && !nuxtDependency) return;
-  if (version && gte(version, "3.0.0-0")) return { mayWantBackend: true };
+  if (!anyConfigFileExists && !nuxtDependency) return { publicDirectory: "public" };
+  if (version && gte(version, "3.0.0-0"))
+    return { mayWantBackend: true, publicDirectory: "public" };
 
-  return;
+  return { publicDirectory: "public" };
 }
 
 export async function build(root: string) {
@@ -100,4 +105,8 @@ export async function getDevModeHandle(dir: string, hostingEmulatorInfo?: Emulat
   });
 
   return proxyRequestHandler(await host, "Nuxt Development Server", { forceCascade: true });
+}
+
+async function getConfig(dir: string): Promise<any> {
+  // TODO: get Nuxt config here
 }
