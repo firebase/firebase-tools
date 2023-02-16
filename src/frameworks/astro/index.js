@@ -96,8 +96,7 @@ async function ɵcodegenFunctionsDirectory(root, dest) {
     if (!bootstrapScript)
         return;
     await (0, promises_1.mkdir)(dest, { recursive: true });
-    const packageJsonBuffer = await (0, promises_1.readFile)((0, path_1.join)(root, "package.json"));
-    const packageJson = JSON.parse(packageJsonBuffer.toString());
+    const packageJson = require(`${root}/package.json`)
     delete packageJson.scripts
     await (0, fs_extra_1.copy)(`${root}/${SERVER_DIR}`, dest);
     return { bootstrapScript, packageJson };
