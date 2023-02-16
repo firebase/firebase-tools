@@ -3,6 +3,7 @@ import { copy, pathExists } from "fs-extra";
 import { readFile } from "fs/promises";
 import { join } from "path";
 import { gte } from "semver";
+import { spawn } from "cross-spawn";
 import { findDependency, FrameworkType, relativeRequire, SupportLevel } from "..";
 import { warnIfCustomBuildScript } from "../utils";
 
@@ -13,12 +14,10 @@ export const type = FrameworkType.Toolchain;
 import { NuxtDependency } from "./interfaces";
 import { nuxtConfigFilesExist } from "./utils";
 import { EmulatorInfo } from "../../emulator/types";
-import { IncomingMessage, ServerResponse } from "http";
-import { pathToFileURL, parse } from "url";
-
-import { createServerResponseProxy } from "..";
+import { proxyRequestHandler } from "../../hosting/proxy";
 
 const DEFAULT_BUILD_SCRIPT = ["nuxt build"];
+const CLI_COMMAND = join("node_modules", ".bin", "nuxt");
 
 /**
  *
@@ -83,39 +82,22 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
 }
 
 export async function getDevModeHandle(dir: string, hostingEmulatorInfo?: EmulatorInfo) {
-  console.log("In getDevModeHandle...");
+  const host = new Promise<string>((resolve) => {
+    // Can't use scheduleTarget since that—like prerender—is failing on an ESM bug
+    // will just grep for the hostname
+    const serve = spawn(CLI_COMMAND, ["dev"], { cwd: dir });
 
-  const { loadNuxt } = await relativeRequire(dir, "@nuxt/kit");
-  // const nuxtApp = await getNuxt3App(dir);
-  // const { port } = hostingEmulatorInfo ?? { port: 3000 };
+    serve.stdout.on("data", (data: any) => {
+      process.stdout.write(data);
+      const match = data.toString().match(/(http:\/\/.+:\d+)/);
 
-  // console.log("nuuxt ->", nuuxt.loadNuxt);
+      if (match) resolve(match[1]);
+    });
 
-  const nuuxt = await loadNuxt({
-    cwd: dir,
-    dev: true,
-    overrides: {
-      nitro: { preset: "node" },
-    },
+    serve.stderr.on("data", (data: any) => {
+      process.stderr.write(data);
+    });
   });
 
-  console.log("nuuxt ->", nuuxt);
-
-  nuuxt.server.listen(hostingEmulatorInfo?.port);
-  const handler = nuuxt.server.app.handler();
-
-  return (req: IncomingMessage, res: ServerResponse, next: () => void) => {
-    const parsedUrl = parse(req.url!, true);
-    const proxy = createServerResponseProxy(req, res, next);
-    handler(req, proxy, parsedUrl);
-  };
-
-  // return {
-  //   start: async () => {
-  //     await startNuxt(nuxtApp, { port });
-  //   },
-  //   stop: async () => {
-  //     await nuxtApp.close();
-  //   },
-  // };
+  return proxyRequestHandler(await host, "Nuxt Development Server", { forceCascade: true });
 }
