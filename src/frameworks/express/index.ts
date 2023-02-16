@@ -29,8 +29,7 @@ export async function discover(dir: string) {
 
 export async function build(cwd: string): Promise<BuildResult> {
   execSync(`npm run build`, { stdio: "inherit", cwd });
-  const bootstrap = await getBootstrapScript(cwd);
-  const wantsBackend = !!bootstrap;
+  const wantsBackend = !!(await getBootstrapScript(cwd));
   return { wantsBackend };
 }
 
