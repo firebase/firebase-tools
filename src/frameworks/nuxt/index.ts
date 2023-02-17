@@ -3,7 +3,7 @@ import { copy, pathExists } from "fs-extra";
 import { readFile } from "fs/promises";
 import { join } from "path";
 import { gte } from "semver";
-import type { NuxtConfig } from "@nuxt/schema";
+import type { NuxtOptions } from "@nuxt/schema";
 import { spawn } from "cross-spawn";
 import { findDependency, FrameworkType, relativeRequire, SupportLevel } from "..";
 import { warnIfCustomBuildScript } from "../utils";
@@ -16,7 +16,6 @@ import { NuxtDependency } from "./interfaces";
 import { nuxtConfigFilesExist } from "./utils";
 import { EmulatorInfo } from "../../emulator/types";
 import { proxyRequestHandler } from "../../hosting/proxy";
-import { pathToFileURL } from "url";
 
 const DEFAULT_BUILD_SCRIPT = ["nuxt build"];
 const CLI_COMMAND = join("node_modules", ".bin", "nuxt");
@@ -29,8 +28,9 @@ const CLI_COMMAND = join("node_modules", ".bin", "nuxt");
 export async function discover(
   dir: string
 ): Promise<{ mayWantBackend?: true; publicDirectory: string }> {
-  const nuxtConfig = await getConfig(dir);
-  const publicDirectory = join(dir, nuxtConfig.dir.public);
+  const {
+    dir: { public: publicDirectory },
+  } = await getConfig(dir);
 
   if (!(await pathExists(join(dir, "package.json")))) return { publicDirectory };
 
@@ -110,26 +110,9 @@ export async function getDevModeHandle(dir: string, hostingEmulatorInfo?: Emulat
   return proxyRequestHandler(await host, "Nuxt Development Server", { forceCascade: true });
 }
 
-async function getConfig(dir: string): Promise<NuxtConfig & { dir: { public: string } }> {
-  let config: any = {};
+async function getConfig(dir: string): Promise<NuxtOptions> {
+  const { loadNuxtConfig } = await relativeRequire(dir, "@nuxt/kit");
+  const config: NuxtOptions = await loadNuxtConfig(dir);
 
-  if (await nuxtConfigFilesExist(dir)) {
-    try {
-      config = await import(pathToFileURL(join(dir, "nuxt.config.js")).toString());
-    } catch (error) {
-      // FIXME: this is not working
-      config = await import(pathToFileURL(join(dir, "nuxt.config.ts")).toString()).catch((error) =>
-        console.error(error)
-      );
-    }
-  }
-
-  return {
-    ...config,
-
-    dir: {
-      public: "public",
-      ...config?.dir,
-    },
-  };
+  return config;
 }
