@@ -594,6 +594,8 @@ export async function startAll(
     }
 
     const config = options.config;
+    // emulator does not support multiple databases config yet
+    // todo b/269787702
     const rulesLocalPath =
       config.src.firestore && "rules" in config.src.firestore && config.src.firestore?.rules;
     let rulesFileFound = false;
