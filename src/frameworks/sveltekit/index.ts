@@ -1,4 +1,4 @@
-import { copy, readFile } from "fs-extra";
+import { copy, existsSync, readFile } from "fs-extra";
 import { join } from "path";
 import type { Config } from "@sveltejs/kit";
 import { FrameworkType, relativeRequire, SupportLevel } from "..";
@@ -21,10 +21,14 @@ export async function build(root: string) {
 export async function ɵcodegenPublicDirectory(root: string, dest: string) {
   const config = await getConfig(root);
   const outDir = config.kit?.outDir || ".svelte-kit";
-  const prerenderedPath = join(root, outDir, "output", "prerendered", "pages");
-  const assetsPath = join(root, outDir, "output", "client");
 
-  await Promise.all([copy(prerenderedPath, dest), copy(assetsPath, dest)]);
+  const assetsPath = join(root, outDir, "output", "client");
+  await copy(assetsPath, dest);
+
+  const prerenderedPath = join(root, outDir, "output", "prerendered", "pages");
+  if (existsSync(prerenderedPath)) {
+    await copy(prerenderedPath, dest);
+  }
 }
 
 export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: string) {
