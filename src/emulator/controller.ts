@@ -594,7 +594,7 @@ export async function startAll(
     }
 
     const config = options.config;
-    const rulesLocalPath = config.src.firestore?.rules;
+    const rulesLocalPath = config.src.firestore && 'rules' in config.src.firestore && config.src.firestore?.rules;
     let rulesFileFound = false;
     if (rulesLocalPath) {
       const rules: string = config.path(rulesLocalPath);

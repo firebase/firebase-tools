@@ -15,7 +15,8 @@ export default async function (context: any, options: Options): Promise<void> {
     return;
   }
 
-  const rulesFile = options.config.src.firestore?.rules;
+  // todo victorvim 
+  const rulesFile = options.config.src.firestore && 'rules' in options.config.src.firestore && options.config.src.firestore?.rules;
   if (!rulesFile) {
     throw new FirebaseError(
       `Invalid firestore config: ${JSON.stringify(options.config.src.firestore)}`
