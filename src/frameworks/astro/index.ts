@@ -1,13 +1,20 @@
-import { execSync } from "child_process";
+import { execSync, spawn } from "child_process";
 import { copy, readFile, existsSync } from "fs-extra";
 import { join } from "path";
 import { BuildResult, Discovery, FrameworkType, SupportLevel } from "..";
 import type { AstroConfig } from "astro";
+import { proxyRequestHandler } from "../../hosting/proxy";
 const { dynamicImport } = require(true && "../../dynamicImport");
 
 export const name = "Astro";
 export const support = SupportLevel.Experimental;
 export const type = FrameworkType.MetaFramework;
+
+const CLI_COMMAND = join(
+  "node_modules",
+  ".bin",
+  process.platform === "win32" ? "astro.cmd" : "astro"
+);
 
 let resolvedConfig: AstroConfig;
 export async function discover(dir: string): Promise<Discovery | undefined> {
@@ -71,6 +78,23 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
     frameworksEntry: "astro",
     bootstrapScript: getBootstrapScript(),
   };
+}
+
+export async function getDevModeHandle(dir: string) {
+  const host = new Promise<string>((resolve) => {
+    // Can't use scheduleTarget since that—like prerender—is failing on an ESM bug
+    // will just grep for the hostname
+    const serve = spawn(CLI_COMMAND, ["dev"], { cwd: dir });
+    serve.stdout.on("data", (data: any) => {
+      process.stdout.write(data);
+      const match = data.toString().match(/(http:\/\/.+:\d+)/);
+      if (match) resolve(match[1]);
+    });
+    serve.stderr.on("data", (data: any) => {
+      process.stderr.write(data);
+    });
+  });
+  return proxyRequestHandler(await host, "Astro Development Server", { forceCascade: true });
 }
 
 export function getBootstrapScript() {
