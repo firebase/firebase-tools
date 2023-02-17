@@ -431,8 +431,8 @@
                     "additionalProperties": false,
                     "properties": {
                         "indexes": {
-                             "type": "string"
-                         },
+                            "type": "string"
+                        },
                         "postdeploy": {
                             "anyOf": [
                                 {
@@ -460,11 +460,11 @@
                             ]
                         },
                         "rules": {
-                             "type": "string"
-                         }
+                            "type": "string"
+                        }
                     },
                     "type": "object"
-                 },
+                },
                 {
                     "items": {
                         "anyOf": [
@@ -565,7 +565,7 @@
                         ]
                     },
                     "type": "array"
-                 }
+                }
             ]
         },
         "functions": {
