@@ -29,9 +29,19 @@ export async function release(
       }
       utils.logLabeledBullet(`hosting[${deploy.config.site}]`, "finalizing version...");
 
+      let convertedConfig;
+      try {
+        convertedConfig = await convertConfig(context, functionsPayload, deploy);
+      } catch (e: any) {
+        throw new FirebaseError(
+          "Failed to process hosting config. Ensure that your hosting config in firebase.json is valid.",
+          { original: e }
+        );
+      }
+
       const update: Partial<api.Version> = {
         status: "FINALIZED",
-        config: await convertConfig(context, functionsPayload, deploy),
+        config: convertedConfig,
       };
 
       const versionId = utils.last(deploy.version.split("/"));
