@@ -41,7 +41,7 @@ export async function release(
 
       const update: Partial<api.Version> = {
         status: "FINALIZED",
-        config: convertedConfig,
+        config: await convertConfig(context, functionsPayload, deploy),
       };
 
       const versionId = utils.last(deploy.version.split("/"));
