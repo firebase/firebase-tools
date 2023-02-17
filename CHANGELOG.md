@@ -1,1 +1,2 @@
 - Allow configuration of the Cloud Function generated for full-stack web frameworks (#5504)
+- Fixes bug where passing `--port` flag in `functions:shell` does not set which port to emulate functions (#5521)
