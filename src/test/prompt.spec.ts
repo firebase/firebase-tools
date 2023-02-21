@@ -9,6 +9,7 @@ describe("prompt", () => {
   let inquirerStub: sinon.SinonStub;
   const PROMPT_RESPONSES = {
     lint: true,
+    "lint/dint/mint": true,
     project: "the-best-project-ever",
   };
 
@@ -60,7 +61,7 @@ describe("prompt", () => {
     });
   });
 
-  describe("promptOnce", () => {
+  describe.only("promptOnce", () => {
     it("should provide a name if one is not provided", async () => {
       await prompt.promptOnce({ message: "foo" });
 
