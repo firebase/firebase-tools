@@ -1,0 +1,7 @@
+18:46:17.668 [NamespaceSystem-akka.actor.default-dispatcher-5] INFO akka.event.slf4j.Slf4jLogger - Slf4jLogger started
+18:46:17.874 [main] INFO com.firebase.server.forge.App$ - Listening at 127.0.0.1:9000
+18:46:28.467 [NamespaceSystem-akka.actor.default-dispatcher-5] INFO com.firebase.core.namespace.NamespaceActor - fake-server successfully activated FBKV (SurveyIdle(0)) wait: 144ms, init: 0ms
+18:46:30.796 [Thread-0] INFO com.firebase.server.forge.App$ - Attempting graceful shutdown.
+18:46:30.808 [NamespaceSystem-akka.actor.default-dispatcher-6] INFO com.firebase.core.namespace.Terminator$Terminator - 1 actors left to terminate: fake-server
+18:46:30.818 [NamespaceSystem-akka.actor.default-dispatcher-5] INFO com.firebase.core.namespace.NamespaceActor - stopped namespace actor for fake-server
+18:46:30.828 [Thread-0] INFO com.firebase.server.forge.App$ - Graceful shutdown complete.

@@ -28,9 +28,9 @@ const CACHE_DIR =
 
 const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDetails } = {
   database: {
-    version: "4.11.0",
-    expectedSize: 34318940,
-    expectedChecksum: "311609538bd65666eb724ef47c2e6466",
+    version: "4.12.0",
+    expectedSize: 34361264,
+    expectedChecksum: "ed004bc2fee7645b9b4d0166dfd8c50c",
   },
   firestore: {
     version: "1.16.0",
