@@ -1,0 +1,1 @@
+git+https://github.com/firebase/firebase-functions-python.git@main#egg=firebase-functions

@@ -52,11 +52,13 @@ describe("ext:export helpers", () => {
         const testSpec = {
           instanceId: "my-instance",
           params: t.in,
+          systemParams: {},
         };
 
         expect(parameterizeProject(TEST_PROJECT_ID, TEST_PROJECT_NUMBER, testSpec)).to.deep.equal({
           instanceId: testSpec.instanceId,
           params: t.expected,
+          systemParams: {},
         });
       });
     }
@@ -80,6 +82,7 @@ describe("ext:export helpers", () => {
         const testSpec: DeploymentInstanceSpec = {
           instanceId: "my-instance",
           params: t.params,
+          systemParams: {},
           extensionVersion: {
             name: "test",
             ref: "test/test@0.1.0",
@@ -102,6 +105,7 @@ describe("ext:export helpers", () => {
                   label: "blah",
                 },
               ],
+              systemParams: [],
             },
           },
         };

@@ -1,8 +1,7 @@
 import * as clc from "colorette";
 import * as ora from "ora";
 import * as semver from "semver";
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
-const { marked } = require("marked");
+import { marked } from "marked";
 
 const TerminalRenderer = require("marked-terminal");
 marked.setOptions({
@@ -84,9 +83,6 @@ export const AUTOPOULATED_PARAM_PLACEHOLDERS = {
   EXT_INSTANCE_ID: "extension-id",
   DATABASE_INSTANCE: "project-id-default-rtdb",
   DATABASE_URL: "https://project-id-default-rtdb.firebaseio.com",
-};
-export const resourceTypeToNiceName: Record<string, string> = {
-  "firebaseextensions.v1beta.function": "Cloud Function",
 };
 export type ReleaseStage = "stable" | "alpha" | "beta" | "rc";
 
@@ -833,14 +829,18 @@ export async function diagnoseAndFixProject(options: any): Promise<void> {
  * 1. Infer firebase publisher if not provided
  * 2. Infer "latest" as the version if not provided
  */
-export async function canonicalizeRefInput(extensionName: string): Promise<string> {
-  // Infer firebase if publisher ID not provided.
-  if (extensionName.split("/").length < 2) {
-    const [extensionID, version] = extensionName.split("@");
-    extensionName = `firebase/${extensionID}@${version || "latest"}`;
+export async function canonicalizeRefInput(refInput: string): Promise<string> {
+  let inferredRef = refInput;
+  // Infer 'firebase' if publisher ID not provided.
+  if (refInput.split("/").length < 2) {
+    inferredRef = `firebase/${inferredRef}`;
+  }
+  // Infer 'latest' if no version provided.
+  if (refInput.split("@").length < 2) {
+    inferredRef = `${inferredRef}@latest`;
   }
   // Get the correct version for a given extension reference from the Registry API.
-  const ref = refs.parse(extensionName);
+  const ref = refs.parse(inferredRef);
   ref.version = await resolveVersion(ref);
   return refs.toExtensionVersionRef(ref);
 }

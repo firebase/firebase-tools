@@ -1,5 +1,4 @@
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
-const { marked } = require("marked");
+import { marked } from "marked";
 import TerminalRenderer = require("marked-terminal");
 
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
@@ -78,7 +77,7 @@ export const command = new Command("ext:configure <extensionInstanceId>")
     });
 
     const [immutableParams, tbdParams] = partition(
-      spec.params,
+      spec.params.concat(spec.systemParams ?? []),
       (param) => param.immutable ?? false
     );
     infoImmutableParams(immutableParams, oldParamValues);

@@ -3,6 +3,7 @@ name: CI Tests
 on:
   - pull_request
   - push
+  - merge_group
 
 env:
   CI: true
@@ -19,7 +20,7 @@ concurrency:
 jobs:
   lint:
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+    if: contains(fromJSON('["pull_request", "merge_group"]'), github.event_name)
     strategy:
       matrix:
         node-version:
@@ -63,7 +64,7 @@ jobs:
 
   integration:
     needs: unit
-    if: github.event_name == 'push'
+    if: contains(fromJSON('["push", "merge_group"]'), github.event_name)
     runs-on: ubuntu-latest
 
     env:
@@ -85,12 +86,12 @@ jobs:
           - npm run test:emulator
           - npm run test:extensions-emulator
           - npm run test:frameworks
+          - npm run test:functions-discover
           - npm run test:hosting
           # - npm run test:hosting-rewrites # Long-running test that might conflict across test runs. Run this manually.
           - npm run test:import-export
           - npm run test:storage-deploy
-          # Temporarily disable broken storage emulator integration test.
-          # - npm run test:storage-emulator-integration
+          - npm run test:storage-emulator-integration
           - npm run test:triggers-end-to-end
           - npm run test:triggers-end-to-end:inspect
     steps:
@@ -119,7 +120,7 @@ jobs:
 
   integration-windows:
     needs: unit
-    if: github.event_name == 'push'
+    if: contains(fromJSON('["push", "merge_group"]'), github.event_name)
     runs-on: windows-latest
 
     env:
@@ -143,6 +144,7 @@ jobs:
           - npm run test:emulator
           # - npm run test:import-export # Fails becuase port 4000 is taken after first run - hub not shhutting down?
           # - npm run test:extensions-emulator # Fails due to cannot find module sharp (not waiting for npm install?)
+          - npm run test:functions-discover
           - npm run test:triggers-end-to-end
           - npm run test:triggers-end-to-end:inspect
           - npm run test:storage-deploy

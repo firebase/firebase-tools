@@ -46,6 +46,9 @@ export interface Release {
   displayVersion: string;
   buildVersion: string;
   createTime: Date;
+  firebaseConsoleUri: string;
+  testingUri: string;
+  binaryDownloadUri: string;
 }
 
 export interface ReleaseNotes {

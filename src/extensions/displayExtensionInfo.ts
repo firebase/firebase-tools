@@ -1,13 +1,12 @@
 import * as clc from "colorette";
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
-const { marked } = require("marked");
+import { marked } from "marked";
 import TerminalRenderer = require("marked-terminal");
 
 import * as utils from "../utils";
 import { logPrefix } from "./extensionsHelper";
 import { logger } from "../logger";
 import { FirebaseError } from "../error";
-import { Api, ExtensionSpec, Role, Resource } from "./types";
+import { Api, ExtensionSpec, Role, Resource, FUNCTIONS_RESOURCE_TYPE } from "./types";
 import * as iam from "../gcp/iam";
 import { SECRET_ROLE, usesSecrets } from "./secretsUtils";
 
@@ -113,7 +112,10 @@ function displayApis(apis: Api[]): string {
 }
 
 function usesTasks(spec: ExtensionSpec): boolean {
-  return spec.resources.some((r: Resource) => r.properties?.taskQueueTrigger !== undefined);
+  return spec.resources.some(
+    (r: Resource) =>
+      r.type === FUNCTIONS_RESOURCE_TYPE && r.properties?.taskQueueTrigger !== undefined
+  );
 }
 
 function impliedRoles(spec: ExtensionSpec): Role[] {

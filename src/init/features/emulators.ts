@@ -95,7 +95,7 @@ export async function doSetup(setup: any, config: any) {
         name: "download",
         type: "confirm",
         message: "Would you like to download the emulators now?",
-        default: false,
+        default: true,
       },
     ]);
   }
