@@ -73,5 +73,12 @@ describe("prompt", () => {
       expect(r).to.equal(true);
       expect(inquirerStub).calledOnce;
     });
+
+    it("should handle names with .'s", async () => {
+      const r = await prompt.promptOnce({ name: "lint.dint.mint" });
+
+      expect(r).to.equal(true);
+      expect(inquirerStub).calledOnce;
+    });
   });
 });
