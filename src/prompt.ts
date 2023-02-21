@@ -91,7 +91,9 @@ export async function promptOnce<A extends inquirer.Answers>(
  * @return The value as returned by `inquirer` for that quesiton.
  */
 export async function promptOnce<A>(question: Question, options: Options = {}): Promise<A> {
-  question.name = question.name || "question";
+  // Need to replace any .'s in the question name - otherwise, Inquirer puts the answer
+  // in a nested object like so: `"a.b.c" => {a: {b: {c: "my-answer"}}}`
+  question.name = question.name?.replace(/\./g, "/") || "question";
   await prompt(options, [question]);
   return options[question.name];
 }
