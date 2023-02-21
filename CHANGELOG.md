@@ -1,1 +1,2 @@
 - Allow configuration of the Cloud Function generated for full-stack web frameworks (#5504)
+- Improve error message during deploy when given invalid hosting rewrite rule (#5533)
