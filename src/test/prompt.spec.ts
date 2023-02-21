@@ -61,7 +61,7 @@ describe("prompt", () => {
     });
   });
 
-  describe.only("promptOnce", () => {
+  describe("promptOnce", () => {
     it("should provide a name if one is not provided", async () => {
       await prompt.promptOnce({ message: "foo" });
 
