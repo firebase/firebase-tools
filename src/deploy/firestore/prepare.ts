@@ -12,7 +12,11 @@ import { Options } from "../../options";
  * @param options The CLI options object.
  */
 async function prepareRules(context: any, options: Options): Promise<void> {
-  const rulesFile = options.config.src.firestore?.rules;
+  // todo victorvim
+  const rulesFile =
+    options.config.src.firestore &&
+    "rules" in options.config.src.firestore &&
+    options.config.src.firestore?.rules;
 
   if (context.firestoreRules && rulesFile) {
     const rulesDeploy = new RulesDeploy(options, RulesetServiceType.CLOUD_FIRESTORE);
@@ -27,7 +31,13 @@ async function prepareRules(context: any, options: Options): Promise<void> {
  * @param options The CLI options object.
  */
 function prepareIndexes(context: any, options: Options): void {
-  if (!context.firestoreIndexes || !options.config.src.firestore?.indexes) {
+  // todo victorvim
+  if (
+    !context.firestoreIndexes ||
+    !options.config.src.firestore ||
+    !("indexes" in options.config.src.firestore) ||
+    !options.config.src.firestore?.indexes
+  ) {
     return;
   }
 

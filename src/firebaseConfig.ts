@@ -29,6 +29,20 @@ type DatabaseMultiple = ({
 }> &
   Deployable)[];
 
+type FirestoreSingle = {
+  rules?: string;
+  indexes?: string;
+} & Deployable;
+
+type FirestoreMultiple = ({
+  rules?: string;
+  indexes?: string;
+} & RequireAtLeastOne<{
+  instance: string;
+  target: string;
+}> &
+  Deployable)[];
+
 export type HostingSource = { glob: string } | { source: string } | { regex: string };
 
 type HostingRedirects = HostingSource & {
@@ -140,10 +154,7 @@ type StorageMultiple = ({
 // Full Configs
 export type DatabaseConfig = DatabaseSingle | DatabaseMultiple;
 
-export type FirestoreConfig = {
-  rules?: string;
-  indexes?: string;
-} & Deployable;
+export type FirestoreConfig = FirestoreSingle | FirestoreMultiple;
 
 export type FunctionConfig = {
   source?: string;
