@@ -1,7 +1,6 @@
 import * as clc from "colorette";
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const { marked } = require("marked");
-import * as TerminalRenderer from "marked-terminal";
 
 import * as utils from "../utils";
 import { logPrefix } from "./extensionsHelper";
@@ -11,9 +10,14 @@ import { Api, ExtensionSpec, Role, Resource, FUNCTIONS_RESOURCE_TYPE } from "./t
 import * as iam from "../gcp/iam";
 import { SECRET_ROLE, usesSecrets } from "./secretsUtils";
 
-marked.setOptions({
-  renderer: new TerminalRenderer(),
-});
+import * as TerminalRenderer from "marked-terminal";
+try {
+  marked.setOptions({
+    renderer: new TerminalRenderer(),
+  });
+} catch (e) {
+  // ignored
+}
 
 const TASKS_ROLE = "cloudtasks.enqueuer";
 const TASKS_API = "cloudtasks.googleapis.com";

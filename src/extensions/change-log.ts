@@ -12,9 +12,13 @@ import { logger } from "../logger";
 import * as refs from "./refs";
 import { logLabeledWarning } from "../utils";
 
-marked.setOptions({
-  renderer: new TerminalRenderer(),
-});
+try {
+  marked.setOptions({
+    renderer: new TerminalRenderer(),
+  });
+} catch (e) {
+  // ignored
+}
 
 const EXTENSIONS_CHANGELOG = "CHANGELOG.md";
 // Simplifed version of https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string
