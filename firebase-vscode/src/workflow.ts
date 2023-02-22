@@ -167,7 +167,7 @@ export function setupWorkflow(
   broker.on("hostingDeploy", async () => {
     // TODO: use configuraiton saved directory with .firebaserc
     const rootFolders = getRootFolders();
-    const { success, consoleUrl, hostingUrl} = await deployToHosting(firebaseJSON, firebaseRC);
+    const { success, consoleUrl, hostingUrl} = await deployToHosting(firebaseJSON, firebaseRC, rootPath);
     broker.send("notifyHostingDeploy", success, consoleUrl, hostingUrl);
   });
 
@@ -211,7 +211,7 @@ async function updateFirebaseRC(alias: string, projectId: string) {
         [alias]: projectId,
       },
     };
-    writeFirebaseRCFile(rootPath, firebaseRC);
+    writeFirebaseRCFile(`${rootPath}/.firebaserc`, firebaseRC);
   }
 }
 

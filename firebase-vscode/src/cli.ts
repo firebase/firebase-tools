@@ -10,6 +10,7 @@ import { rootPath } from './workflow';
 import { getDefaultHostingSite } from '../../src/getDefaultHostingSite';
 import { HostingSingle } from './firebaseConfig';
 import { initAction } from '../../src/commands/init';
+import { Command } from '../../src/command';
 
 /**
  * Wrap the CLI's requireAuth() which is normally run before every command
@@ -60,24 +61,28 @@ export async function initHosting(options: { spa: boolean, publicFolder: string 
 
 export async function deployToHosting(
   firebaseJSON: FirebaseConfig,
-  firebaseRC: FirebaseRC
+  firebaseRC: FirebaseRC,
+  rootPath: string
 ) {
   await requireAuthWrapper();
+
   // TODO: throw if it doesn't find firebaseJSON or the hosting field
   const projects = await listFirebaseProjects();
   const currentProject = projects.find(project => project.projectId === firebaseRC.projects?.default);
   try {
+    const options = {...firebaseJSON.hosting, rc: firebaseRC, cwd: rootPath};
+    const command = new Command('deploy');
+    await command.prepare(options);
     // TODO: handle multiple hosting configs
     if (!(firebaseJSON.hosting as HostingSingle).site) {
-      (firebaseJSON.hosting as HostingSingle).site = await getDefaultHostingSite(firebaseJSON.hosting);
+      (firebaseJSON.hosting as HostingSingle).site = await getDefaultHostingSite(options);
     }
-    const config = new Config(firebaseJSON, { projectDir: rootPath, cwd: rootPath });
+    const config = new Config(firebaseJSON, options);
+    console.log(options);
     await deploy(['hosting'], {
       config: config,
       project: currentProject,
-      projectId: firebaseRC.projects?.default,
-      cwd: rootPath,
-      rc: firebaseRC
+      cwd: rootPath
     });
   } catch (e) {
     console.error(e);
