@@ -107,7 +107,7 @@ describe("IndexNameParsing", () => {
       "/projects/myproject/databases/(default)/collectionGroups/collection/indexes/abc123/";
     expect(util.parseIndexName(name)).to.eql({
       projectId: "myproject",
-      databaseId: "(default)"
+      databaseId: "(default)",
       collectionGroupId: "collection",
       indexId: "abc123",
     });
@@ -118,7 +118,7 @@ describe("IndexNameParsing", () => {
       "/projects/myproject/databases/(default)/collectionGroups/collection/fields/abc123/";
     expect(util.parseFieldName(name)).to.eql({
       projectId: "myproject",
-      databaseId: "(default)"
+      databaseId: "(default)",
       collectionGroupId: "collection",
       fieldPath: "abc123",
     });
