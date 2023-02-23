@@ -54,7 +54,7 @@ export function parseFieldName(name: string): FieldName {
 
   return {
     projectId: m[1],
-    databaseId: m[2]
+    databaseId: m[2],
     collectionGroupId: m[3],
     fieldPath: m[4],
   };
