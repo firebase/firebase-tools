@@ -1,5 +1,0 @@
-- Allow configuration of the Cloud Function generated for full-stack web frameworks (#5504)
-- Fixes bug where passing `--port` flag in `functions:shell` does not set which port to emulate functions (#5521)
-- Improve error message during deploy when given invalid hosting rewrite rule (#5533)
-- Generate ESM-compatible SSR function for web frameworks (#5540)
-- Fix bug emulators:exec script didn't populate FIREBASE_CONFIG environment variable (#5544)
