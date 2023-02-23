@@ -91,8 +91,6 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
 
 export async function getDevModeHandle(dir: string) {
   const host = new Promise<string>((resolve) => {
-    // Can't use scheduleTarget since that—like prerender—is failing on an ESM bug
-    // will just grep for the hostname
     const serve = spawn(CLI_COMMAND, ["dev"], { cwd: dir });
 
     serve.stdout.on("data", (data: any) => {
