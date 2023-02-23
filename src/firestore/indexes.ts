@@ -26,7 +26,8 @@ export class FirestoreIndexes {
   async deploy(
     options: { project: string; nonInteractive: boolean; force: boolean },
     indexes: any[],
-    fieldOverrides: any[]
+    fieldOverrides: any[],
+    databaseId: string = "(default)"
   ): Promise<void> {
     const spec = this.upgradeOldSpec({
       indexes,
@@ -39,8 +40,11 @@ export class FirestoreIndexes {
     const indexesToDeploy: Spec.Index[] = spec.indexes;
     const fieldOverridesToDeploy: Spec.FieldOverride[] = spec.fieldOverrides;
 
-    const existingIndexes: API.Index[] = await this.listIndexes(options.project);
-    const existingFieldOverrides: API.Field[] = await this.listFieldOverrides(options.project);
+    const existingIndexes: API.Index[] = await this.listIndexes(options.project, databaseId);
+    const existingFieldOverrides: API.Field[] = await this.listFieldOverrides(
+      options.project,
+      databaseId
+    );
 
     const indexesToDelete = existingIndexes.filter((index) => {
       return !indexesToDeploy.some((spec) => this.indexMatchesSpec(index, spec));
@@ -100,7 +104,7 @@ export class FirestoreIndexes {
         logger.debug(`Skipping existing index: ${JSON.stringify(index)}`);
       } else {
         logger.debug(`Creating new index: ${JSON.stringify(index)}`);
-        await this.createIndex(options.project, index);
+        await this.createIndex(options.project, index, databaseId);
       }
     }
 
@@ -149,7 +153,7 @@ export class FirestoreIndexes {
         logger.debug(`Skipping existing field override: ${JSON.stringify(field)}`);
       } else {
         logger.debug(`Updating field override: ${JSON.stringify(field)}`);
-        await this.patchField(options.project, field);
+        await this.patchField(options.project, field, databaseId);
       }
     }
 
@@ -168,8 +172,8 @@ export class FirestoreIndexes {
    * List all indexes that exist on a given project.
    * @param project the Firebase project id.
    */
-  async listIndexes(project: string): Promise<API.Index[]> {
-    const url = `/projects/${project}/databases/(default)/collectionGroups/-/indexes`;
+  async listIndexes(project: string, databaseId: string = "(default"): Promise<API.Index[]> {
+    const url = `/projects/${project}/databases/${databaseId}/collectionGroups/-/indexes`;
     const res = await this.apiClient.get<{ indexes?: API.Index[] }>(url);
     const indexes = res.body.indexes;
     if (!indexes) {
@@ -196,8 +200,11 @@ export class FirestoreIndexes {
    * List all field configuration overrides defined on the given project.
    * @param project the Firebase project.
    */
-  async listFieldOverrides(project: string): Promise<API.Field[]> {
-    const parent = `projects/${project}/databases/(default)/collectionGroups/-`;
+  async listFieldOverrides(
+    project: string,
+    databaseId: string = "(default)"
+  ): Promise<API.Field[]> {
+    const parent = `projects/${project}/databases/${databaseId}/collectionGroups/-`;
     const url = `/${parent}/fields?filter=indexConfig.usesAncestorConfig=false OR ttlConfig:*`;
 
     const res = await this.apiClient.get<{ fields?: API.Field[] }>(url);
@@ -371,8 +378,12 @@ export class FirestoreIndexes {
    * @param project the Firebase project.
    * @param spec the new field override specification.
    */
-  async patchField(project: string, spec: Spec.FieldOverride): Promise<any> {
-    const url = `/projects/${project}/databases/(default)/collectionGroups/${spec.collectionGroup}/fields/${spec.fieldPath}`;
+  async patchField(
+    project: string,
+    spec: Spec.FieldOverride,
+    databaseId: string = "(default)"
+  ): Promise<any> {
+    const url = `/projects/${project}/databases/${databaseId}/collectionGroups/${spec.collectionGroup}/fields/${spec.fieldPath}`;
 
     const indexes = spec.indexes.map((index) => {
       return {
@@ -419,8 +430,8 @@ export class FirestoreIndexes {
   /**
    * Create a new index on the specified project.
    */
-  createIndex(project: string, index: Spec.Index): Promise<any> {
-    const url = `/projects/${project}/databases/(default)/collectionGroups/${index.collectionGroup}/indexes`;
+  createIndex(project: string, index: Spec.Index, databaseId: string = "(default)"): Promise<any> {
+    const url = `/projects/${project}/databases/${databaseId}/collectionGroups/${index.collectionGroup}/indexes`;
     return this.apiClient.post(url, {
       fields: index.fields,
       queryScope: index.queryScope,
