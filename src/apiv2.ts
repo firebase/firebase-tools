@@ -317,6 +317,11 @@ export class Client {
       if (queryString) {
         fetchURL += `?${queryString}`;
       }
+
+      // workaround for non-standard Nuxt URLs
+      if (queryString.includes("vue&")) {
+        fetchURL = fetchURL.replace(/\=$/, "").replace(/\=&/, "&");
+      }
     }
 
     const fetchOptions: RequestInit = {
