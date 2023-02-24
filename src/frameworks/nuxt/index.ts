@@ -72,10 +72,18 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
     join(sourceDir, ".output", "server", "package.json")
   );
 
-  // FIXME: load lodash conditionally
-  packageJson.dependencies["lodash"] = "latest";
-
   const outputPackageJson = JSON.parse(outputPackageJsonBuffer.toString());
+
+  // FIXME: load lodash conditionally
+  // packageJson.dependencies["lodash"] = "latest";
+  outputPackageJson.dependencies = outputPackageJson.bundledDependencies.reduce(
+    (a: any, v: any) => ({
+      ...a,
+      [v]: "latest",
+    }),
+    {}
+  );
+
   await copy(join(sourceDir, ".output", "server"), destDir);
   return { packageJson: { ...packageJson, ...outputPackageJson }, frameworksEntry: "nuxt3" };
 }
