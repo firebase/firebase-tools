@@ -84,6 +84,11 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
     {}
   );
 
+  outputPackageJson.dependencies = {
+    ...outputPackageJson.dependencies,
+    ...packageJson.dependencies,
+  };
+
   await copy(join(sourceDir, ".output", "server"), destDir);
   return { packageJson: { ...packageJson, ...outputPackageJson }, frameworksEntry: "nuxt3" };
 }
