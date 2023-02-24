@@ -12,21 +12,30 @@ import * as fsConfig from "../../firestore/fsConfig";
  * @param context The deploy context.
  * @param options The CLI options object.
  */
-async function prepareRules(context: any, options: Options, rulesDeploy: RulesDeploy, databaseId: string, rulesFile: string): Promise<void> {
-    rulesDeploy.addFile(rulesFile);
-    context.firestore.rules.push({
-      databaseId,
-      rulesFile,
-    });
-  }
+async function prepareRules(
+  context: any,
+  rulesDeploy: RulesDeploy,
+  databaseId: string,
+  rulesFile: string
+): Promise<void> {
+  rulesDeploy.addFile(rulesFile);
+  context.firestore.rules.push({
+    databaseId,
+    rulesFile,
+  });
 }
+
 /**
  * Prepares Firestore Indexes deploys.
  * @param context The deploy context.
  * @param options The CLI options object.
  */
-function prepareIndexes(context: any, options: Options, databaseId: string, indexesFileName: string): void {
-
+function prepareIndexes(
+  context: any,
+  options: Options,
+  databaseId: string,
+  indexesFileName: string
+): void {
   const indexesPath = options.config.path(indexesFileName);
   const parsedSrc = loadCJSON(indexesPath);
 
@@ -60,23 +69,26 @@ export default async function (context: any, options: any): Promise<void> {
     context.firestoreRules = true;
   }
 
-  const firestoreConfigs : fsConfig.ParsedFirestoreConfig[] = fsConfig.getFirestoreConfig(context.projectId, options);
+  const firestoreConfigs: fsConfig.ParsedFirestoreConfig[] = fsConfig.getFirestoreConfig(
+    context.projectId,
+    options
+  );
   if (!firestoreConfigs || firestoreConfigs.length === 0) {
     return;
   }
 
   context.firestore = context.firestore || {};
-  context.firestore.indexes = []
-  context.firestore.rules = []
-  const rulesDeploy : RulesDeploy = new RulesDeploy(options, RulesetServiceType.CLOUD_FIRESTORE);
+  context.firestore.indexes = [];
+  context.firestore.rules = [];
+  const rulesDeploy: RulesDeploy = new RulesDeploy(options, RulesetServiceType.CLOUD_FIRESTORE);
   _.set(context, "firestore.rulesDeploy", rulesDeploy);
 
   firestoreConfigs.forEach((firestoreConfig: fsConfig.ParsedFirestoreConfig) => {
     if (firestoreConfig.indexes) {
-      prepareIndexes(context, options, firestoreConfig.databaseId, firestoreConfig.indexes)
+      prepareIndexes(context, options, firestoreConfig.databaseId, firestoreConfig.indexes);
     }
     if (firestoreConfig.rules) {
-      prepareRules(context, options, rulesDeploy, firestoreConfig.databaseId, firestoreConfig.rules)
+      prepareRules(context, rulesDeploy, firestoreConfig.databaseId, firestoreConfig.rules);
     }
   });
 
