@@ -1,4 +1,3 @@
-/* eslint-disable */
 import { copy, pathExists } from "fs-extra";
 import { readFile } from "fs/promises";
 import { join } from "path";
@@ -14,7 +13,6 @@ export const type = FrameworkType.Toolchain;
 
 import { NuxtDependency } from "./interfaces";
 import { nuxtConfigFilesExist } from "./utils";
-import { EmulatorInfo } from "../../emulator/types";
 import { proxyRequestHandler } from "../../hosting/proxy";
 
 const DEFAULT_BUILD_SCRIPT = ["nuxt build"];
