@@ -71,6 +71,9 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
   const outputPackageJsonBuffer = await readFile(
     join(sourceDir, ".output", "server", "package.json")
   );
+
+  packageJson.dependencies["lodash"] = "latest";
+
   const outputPackageJson = JSON.parse(outputPackageJsonBuffer.toString());
   await copy(join(sourceDir, ".output", "server"), destDir);
   return { packageJson: { ...packageJson, ...outputPackageJson }, frameworksEntry: "nuxt3" };
