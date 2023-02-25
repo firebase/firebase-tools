@@ -5,6 +5,7 @@ import { Command } from "../command";
 import { Emulators } from "../emulator/types";
 import { printNoticeIfEmulated } from "../emulator/commandUtils";
 import { FirestoreDelete } from "../firestore/delete";
+import { FirestoreProvisioning } from "../firestore/provisioning";
 import { promptOnce } from "../prompt";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
@@ -15,7 +16,7 @@ function getConfirmationMessage(deleteOp: FirestoreDelete, options: any) {
       "You are about to delete " +
       clc.bold(clc.yellow(clc.underline("THE ENTIRE DATABASE"))) +
       " for " +
-      clc.cyan(options.project) +
+      clc.cyan(deleteOp.getRoot()) +
       ". Are you sure?"
     );
   }
@@ -28,7 +29,7 @@ function getConfirmationMessage(deleteOp: FirestoreDelete, options: any) {
         clc.cyan(deleteOp.path) +
         " and all of its subcollections " +
         " for " +
-        clc.cyan(options.project) +
+        clc.cyan(deleteOp.getRoot()) +
         ". Are you sure?"
       );
     }
@@ -38,7 +39,7 @@ function getConfirmationMessage(deleteOp: FirestoreDelete, options: any) {
       "You are about to delete the document at " +
       clc.cyan(deleteOp.path) +
       " for " +
-      clc.cyan(options.project) +
+      clc.cyan(deleteOp.getRoot()) +
       ". Are you sure?"
     );
   }
@@ -50,7 +51,7 @@ function getConfirmationMessage(deleteOp: FirestoreDelete, options: any) {
       clc.cyan(deleteOp.path) +
       " and all of their subcollections " +
       " for " +
-      clc.cyan(options.project) +
+      clc.cyan(deleteOp.getRoot()) +
       ". Are you sure?"
     );
   }
@@ -60,7 +61,7 @@ function getConfirmationMessage(deleteOp: FirestoreDelete, options: any) {
     "You are about to delete all documents in the collection at " +
     clc.cyan(deleteOp.path) +
     " for " +
-    clc.cyan(options.project) +
+    clc.cyan(deleteOp.getRoot()) +
     ". Are you sure?"
   );
 }
@@ -84,6 +85,10 @@ export const command = new Command("firestore:delete [path]")
       "including all collections and documents. Any other flags or arguments will be ignored."
   )
   .option("-f, --force", "No confirmation. Otherwise, a confirmation prompt will appear.")
+  .option(
+    "--database <databaseId>",
+    "Database ID for database to delete from. Mandatory if more than 1 database present."
+  )
   .before(printNoticeIfEmulated, Emulators.FIRESTORE)
   .before(requirePermissions, ["datastore.entities.list", "datastore.entities.delete"])
   .action(async (path: string | undefined, options: any) => {
@@ -92,10 +97,23 @@ export const command = new Command("firestore:delete [path]")
       return utils.reject("Must specify a path.", { exit: 1 });
     }
 
+    if (!options.database) {
+      const provisioningApi = new FirestoreProvisioning(options.project);
+      const databases: string[] = await provisioningApi.listDatabaseNames();
+      if (!databases || databases.length !== 1) {
+        return utils.reject("Must specify database when more than 1 present in project.", {
+          exit: 1,
+        });
+      } else {
+        options.database = databases[0];
+      }
+    }
+
     const deleteOp = new FirestoreDelete(options.project, path, {
       recursive: options.recursive,
       shallow: options.shallow,
       allCollections: options.allCollections,
+      databaseId: options.database,
     });
 
     const confirm = await promptOnce(
