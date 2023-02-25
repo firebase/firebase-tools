@@ -1,7 +1,6 @@
 import * as _ from "lodash";
 import * as clc from "colorette";
 
-import { FirebaseError } from "../../error";
 import { FirestoreIndexes } from "../../firestore/indexes";
 import { logger } from "../../logger";
 import utils = require("../../utils");
@@ -24,30 +23,38 @@ async function deployRules(context: any): Promise<void> {
  * @param context The deploy context.
  * @param options The CLI options object.
  */
-async function deployIndexes(context: any, options: any): Promise<void> {
+async function deployIndexes(context: any, options: any): Promise<any> {
   if (!context.firestoreIndexes) {
     return;
   }
+  const indexesContext = _.get(context, "firestore.indexes");
 
-  const indexesFileName = _.get(context, "firestore.indexes.name");
-  const indexesSrc = _.get(context, "firestore.indexes.content");
-  if (!indexesSrc) {
-    logger.debug("No Firestore indexes present.");
-    return;
-  }
+  utils.logBullet(clc.bold(clc.cyan("firestore: ")) + "deploying indexes...");
+  const firestoreIndexes = new FirestoreIndexes();
+  return Promise.all(
+    indexesContext.map((indexContext: any) => {
+      const databaseId = indexContext.databaseId;
+      const indexesFileName = indexContext.indexesFileName;
+      const indexesSrc = indexContext.indexesSrc;
+      if (!indexesSrc) {
+        logger.debug(`No Firestore indexes present for ${databaseId} database.`);
+        return Promise.resolve();
+      }
+      const indexes = indexesSrc.indexes;
+      if (!indexes) {
+        logger.error(`${databaseId} database index file must contain "indexes" property.`);
+        return Promise.resolve();
+      }
+      const fieldOverrides = indexesSrc.fieldOverrides || [];
 
-  const indexes = indexesSrc.indexes;
-  if (!indexes) {
-    throw new FirebaseError(`Index file must contain an "indexes" property.`);
-  }
-
-  const fieldOverrides = indexesSrc.fieldOverrides || [];
-
-  await new FirestoreIndexes().deploy(options, indexes, fieldOverrides);
-  utils.logSuccess(
-    `${clc.bold(clc.green("firestore:"))} deployed indexes in ${clc.bold(
-      indexesFileName
-    )} successfully`
+      return firestoreIndexes.deploy(options, indexes, fieldOverrides, databaseId).then(() => {
+        utils.logSuccess(
+          `${clc.bold(clc.green("firestore:"))} deployed indexes in ${clc.bold(
+            indexesFileName
+          )} successfully for ${databaseId} database`
+        );
+      });
+    })
   );
 }
 
@@ -56,6 +63,6 @@ async function deployIndexes(context: any, options: any): Promise<void> {
  * @param context The deploy context.
  * @param options The CLI options object.
  */
-export default async function (context: any, options: any): Promise<void> {
-  await Promise.all([deployRules(context), deployIndexes(context, options)]);
+export default async function (context: any, options: any): Promise<any> {
+  return Promise.all([deployRules(context), deployIndexes(context, options)]);
 }

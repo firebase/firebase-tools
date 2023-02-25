@@ -430,6 +430,9 @@
                 {
                     "additionalProperties": false,
                     "properties": {
+                        "database": {
+                            "type": "string"
+                        },
                         "indexes": {
                             "type": "string"
                         },
@@ -471,57 +474,10 @@
                             {
                                 "additionalProperties": false,
                                 "properties": {
+                                    "database": {
+                                        "type": "string"
+                                    },
                                     "indexes": {
-                                        "type": "string"
-                                    },
-                                    "instance": {
-                                        "type": "string"
-                                    },
-                                    "postdeploy": {
-                                        "anyOf": [
-                                            {
-                                                "items": {
-                                                    "type": "string"
-                                                },
-                                                "type": "array"
-                                            },
-                                            {
-                                                "type": "string"
-                                            }
-                                        ]
-                                    },
-                                    "predeploy": {
-                                        "anyOf": [
-                                            {
-                                                "items": {
-                                                    "type": "string"
-                                                },
-                                                "type": "array"
-                                            },
-                                            {
-                                                "type": "string"
-                                            }
-                                        ]
-                                    },
-                                    "rules": {
-                                        "type": "string"
-                                    },
-                                    "target": {
-                                        "type": "string"
-                                    }
-                                },
-                                "required": [
-                                    "instance"
-                                ],
-                                "type": "object"
-                            },
-                            {
-                                "additionalProperties": false,
-                                "properties": {
-                                    "indexes": {
-                                        "type": "string"
-                                    },
-                                    "instance": {
                                         "type": "string"
                                     },
                                     "postdeploy": {
@@ -559,6 +515,53 @@
                                 },
                                 "required": [
                                     "target"
+                                ],
+                                "type": "object"
+                            },
+                            {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "database": {
+                                        "type": "string"
+                                    },
+                                    "indexes": {
+                                        "type": "string"
+                                    },
+                                    "postdeploy": {
+                                        "anyOf": [
+                                            {
+                                                "items": {
+                                                    "type": "string"
+                                                },
+                                                "type": "array"
+                                            },
+                                            {
+                                                "type": "string"
+                                            }
+                                        ]
+                                    },
+                                    "predeploy": {
+                                        "anyOf": [
+                                            {
+                                                "items": {
+                                                    "type": "string"
+                                                },
+                                                "type": "array"
+                                            },
+                                            {
+                                                "type": "string"
+                                            }
+                                        ]
+                                    },
+                                    "rules": {
+                                        "type": "string"
+                                    },
+                                    "target": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "database"
                                 ],
                                 "type": "object"
                             }

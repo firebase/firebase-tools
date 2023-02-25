@@ -5,55 +5,49 @@ import { loadCJSON } from "../../loadCJSON";
 import { RulesDeploy, RulesetServiceType } from "../../rulesDeploy";
 import utils = require("../../utils");
 import { Options } from "../../options";
+import * as fsConfig from "../../firestore/fsConfig";
 
 /**
  * Prepares Firestore Rules deploys.
  * @param context The deploy context.
  * @param options The CLI options object.
  */
-async function prepareRules(context: any, options: Options): Promise<void> {
-  // todo victorvim
-  const rulesFile =
-    options.config.src.firestore &&
-    "rules" in options.config.src.firestore &&
-    options.config.src.firestore?.rules;
-
-  if (context.firestoreRules && rulesFile) {
-    const rulesDeploy = new RulesDeploy(options, RulesetServiceType.CLOUD_FIRESTORE);
-    _.set(context, "firestore.rulesDeploy", rulesDeploy);
-    rulesDeploy.addFile(rulesFile);
-    await rulesDeploy.compile();
-  }
+function prepareRules(
+  context: any,
+  rulesDeploy: RulesDeploy,
+  databaseId: string,
+  rulesFile: string
+): void {
+  rulesDeploy.addFile(rulesFile);
+  context.firestore.rules.push({
+    databaseId,
+    rulesFile,
+  });
 }
+
 /**
  * Prepares Firestore Indexes deploys.
  * @param context The deploy context.
  * @param options The CLI options object.
  */
-function prepareIndexes(context: any, options: Options): void {
-  // todo victorvim
-  if (
-    !context.firestoreIndexes ||
-    !options.config.src.firestore ||
-    !("indexes" in options.config.src.firestore) ||
-    !options.config.src.firestore?.indexes
-  ) {
-    return;
-  }
-
-  const indexesFileName = options.config.src.firestore.indexes;
+function prepareIndexes(
+  context: any,
+  options: Options,
+  databaseId: string,
+  indexesFileName: string
+): void {
   const indexesPath = options.config.path(indexesFileName);
-  const parsedSrc = loadCJSON(indexesPath);
+  const indexesSrc = loadCJSON(indexesPath);
 
   utils.logBullet(
     `${clc.bold(clc.cyan("firestore:"))} reading indexes from ${clc.bold(indexesFileName)}...`
   );
 
-  context.firestore = context.firestore || {};
-  context.firestore.indexes = {
-    name: indexesFileName,
-    content: parsedSrc,
-  };
+  context.firestore.indexes.push({
+    databaseId,
+    indexesFileName,
+    indexesSrc,
+  });
 }
 
 /**
@@ -75,6 +69,30 @@ export default async function (context: any, options: any): Promise<void> {
     context.firestoreRules = true;
   }
 
-  prepareIndexes(context, options);
-  await prepareRules(context, options);
+  const firestoreConfigs: fsConfig.ParsedFirestoreConfig[] = fsConfig.getFirestoreConfig(
+    context.projectId,
+    options
+  );
+  if (!firestoreConfigs || firestoreConfigs.length === 0) {
+    return;
+  }
+
+  context.firestore = context.firestore || {};
+  context.firestore.indexes = [];
+  context.firestore.rules = [];
+  const rulesDeploy: RulesDeploy = new RulesDeploy(options, RulesetServiceType.CLOUD_FIRESTORE);
+  _.set(context, "firestore.rulesDeploy", rulesDeploy);
+
+  firestoreConfigs.forEach((firestoreConfig: fsConfig.ParsedFirestoreConfig) => {
+    if (firestoreConfig.indexes) {
+      prepareIndexes(context, options, firestoreConfig.database, firestoreConfig.indexes);
+    }
+    if (firestoreConfig.rules) {
+      prepareRules(context, rulesDeploy, firestoreConfig.database, firestoreConfig.rules);
+    }
+  });
+
+  if (context.firestore.rules.length > 0) {
+    await rulesDeploy.compile();
+  }
 }
