@@ -3,7 +3,7 @@ import { logger } from "../logger";
 import { Options } from "../options";
 
 export interface ParsedFirestoreConfig {
-  databaseId: string;
+  database: string;
   rules?: string;
   indexes?: string;
 }
@@ -35,8 +35,8 @@ export function getFirestoreConfig(projectId: string, options: Options): ParsedF
   if (!Array.isArray(fsConfig)) {
     if (fsConfig) {
       // databaseId is (default) if none provided
-      const databaseId = fsConfig.databaseId || `(default)`;
-      return [{ rules: fsConfig.rules, indexes: fsConfig.indexes, databaseId }];
+      const databaseId = fsConfig.database || `(default)`;
+      return [{ rules: fsConfig.rules, indexes: fsConfig.indexes, database: databaseId }];
     } else {
       logger.debug("Possibly invalid database config: ", JSON.stringify(fsConfig));
       return [];
@@ -45,19 +45,19 @@ export function getFirestoreConfig(projectId: string, options: Options): ParsedF
 
   const results: ParsedFirestoreConfig[] = [];
   for (const c of fsConfig) {
-    const { databaseId, target } = c;
+    const { database, target } = c;
     if (target) {
       if (allDatabases || onlyDatabases.has(target)) {
         // Make sure the target exists (this will throw otherwise)
         rc.requireTarget(projectId, "firestore", target);
         // Get a list of firestore instances the target maps to
         const databases = rc.target(projectId, "firestore", target);
-        for (const databaseId of databases) {
-          results.push({ databaseId, rules: c.rules, indexes: c.indexes });
+        for (const database of databases) {
+          results.push({ database, rules: c.rules, indexes: c.indexes });
         }
         onlyDatabases.delete(target);
       }
-    } else if (databaseId) {
+    } else if (database) {
       if (allDatabases) {
         results.push(c as ParsedFirestoreConfig);
       }

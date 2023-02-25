@@ -172,7 +172,7 @@ export class FirestoreIndexes {
    * List all indexes that exist on a given project.
    * @param project the Firebase project id.
    */
-  async listIndexes(project: string, databaseId: string = "(default"): Promise<API.Index[]> {
+  async listIndexes(project: string, databaseId: string = "(default)"): Promise<API.Index[]> {
     const url = `/projects/${project}/databases/${databaseId}/collectionGroups/-/indexes`;
     const res = await this.apiClient.get<{ indexes?: API.Index[] }>(url);
     const indexes = res.body.indexes;

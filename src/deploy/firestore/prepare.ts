@@ -37,7 +37,7 @@ function prepareIndexes(
   indexesFileName: string
 ): void {
   const indexesPath = options.config.path(indexesFileName);
-  const parsedSrc = loadCJSON(indexesPath);
+  const indexesSrc = loadCJSON(indexesPath);
 
   utils.logBullet(
     `${clc.bold(clc.cyan("firestore:"))} reading indexes from ${clc.bold(indexesFileName)}...`
@@ -46,7 +46,7 @@ function prepareIndexes(
   context.firestore.indexes.push({
     databaseId,
     indexesFileName,
-    parsedSrc,
+    indexesSrc,
   });
 }
 
@@ -85,10 +85,10 @@ export default async function (context: any, options: any): Promise<void> {
 
   firestoreConfigs.forEach((firestoreConfig: fsConfig.ParsedFirestoreConfig) => {
     if (firestoreConfig.indexes) {
-      prepareIndexes(context, options, firestoreConfig.databaseId, firestoreConfig.indexes);
+      prepareIndexes(context, options, firestoreConfig.database, firestoreConfig.indexes);
     }
     if (firestoreConfig.rules) {
-      prepareRules(context, rulesDeploy, firestoreConfig.databaseId, firestoreConfig.rules);
+      prepareRules(context, rulesDeploy, firestoreConfig.database, firestoreConfig.rules);
     }
   });
 

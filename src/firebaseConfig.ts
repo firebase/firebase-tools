@@ -30,7 +30,7 @@ type DatabaseMultiple = ({
   Deployable)[];
 
 type FirestoreSingle = {
-  databaseId?: string;
+  database?: string;
   rules?: string;
   indexes?: string;
 } & Deployable;
@@ -39,7 +39,7 @@ type FirestoreMultiple = ({
   rules?: string;
   indexes?: string;
 } & RequireAtLeastOne<{
-  databaseId: string;
+  database: string;
   target: string;
 }> &
   Deployable)[];
