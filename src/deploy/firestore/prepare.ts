@@ -12,12 +12,12 @@ import * as fsConfig from "../../firestore/fsConfig";
  * @param context The deploy context.
  * @param options The CLI options object.
  */
-async function prepareRules(
+function prepareRules(
   context: any,
   rulesDeploy: RulesDeploy,
   databaseId: string,
   rulesFile: string
-): Promise<void> {
+): void {
   rulesDeploy.addFile(rulesFile);
   context.firestore.rules.push({
     databaseId,
