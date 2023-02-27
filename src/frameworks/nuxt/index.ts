@@ -71,22 +71,17 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
   const outputPackageJsonBuffer = await readFile(
     join(sourceDir, ".output", "server", "package.json")
   );
-
   const outputPackageJson = JSON.parse(outputPackageJsonBuffer.toString());
-
-  // FIXME: load lodash conditionally
-  // packageJson.dependencies["lodash"] = "latest";
-  outputPackageJson.dependencies = outputPackageJson.bundledDependencies.reduce(
-    (a: any, v: any) => ({
-      ...a,
-      [v]: "latest",
-    }),
+  // TODO: is using "latest" version the best option?
+  const bundledDependencies = outputPackageJson.bundledDependencies.reduce(
+    (deps: Record<string, string>, value: string) => ({ ...deps, [value]: "latest" }),
     {}
   );
 
   outputPackageJson.dependencies = {
     ...outputPackageJson.dependencies,
     ...packageJson.dependencies,
+    ...bundledDependencies,
   };
 
   await copy(join(sourceDir, ".output", "server"), destDir);
