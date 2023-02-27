@@ -60,7 +60,8 @@ export interface Framework {
   ɵcodegenPublicDirectory: (dir: string, dest: string) => Promise<void>;
   ɵcodegenFunctionsDirectory?: (
     dir: string,
-    dest: string
+    dest: string,
+    isDevMode?: boolean
   ) => Promise<{
     bootstrapScript?: string;
     packageJson: any;
@@ -395,32 +396,18 @@ export async function prepareFrameworks(
     const results = await discover(getProjectPath());
     if (!results) throw new Error("Epic fail.");
     const { framework, mayWantBackend, publicDirectory } = results;
-    const {
-      build,
-      ɵcodegenPublicDirectory,
-      ɵcodegenFunctionsDirectory: codegenProdModeFunctionsDirectory,
-      getDevModeHandle,
-      name,
-      support,
-    } = WebFrameworks[framework];
+    const { build, ɵcodegenPublicDirectory, ɵcodegenFunctionsDirectory, name, support } =
+      WebFrameworks[framework];
     console.log(`Detected a ${name} codebase. ${SupportLevelWarnings[support] || ""}\n`);
     // TODO allow for override
     const isDevMode = context._name === "serve" || context._name === "emulators:start";
 
-    const hostingEmulatorInfo = emulators.find((e) => e.name === Emulators.HOSTING);
-
-    const devModeHandle =
-      isDevMode &&
-      getDevModeHandle &&
-      (await getDevModeHandle(getProjectPath(), hostingEmulatorInfo));
     let codegenFunctionsDirectory: Framework["ɵcodegenFunctionsDirectory"];
-    if (devModeHandle) {
+    if (isDevMode && mayWantBackend) {
       config.public = relative(projectRoot, publicDirectory);
-      // Attach the handle to options, it will be used when spinning up superstatic
-      options.frameworksDevModeHandle = devModeHandle;
       // null is the dev-mode entry for firebase-framework-tools
-      if (mayWantBackend && firebaseDefaults) {
-        codegenFunctionsDirectory = codegenDevModeFunctionsDirectory;
+      if (firebaseDefaults) {
+        codegenFunctionsDirectory = ɵcodegenFunctionsDirectory;
       }
     } else {
       const {
@@ -438,7 +425,7 @@ export async function prepareFrameworks(
       await mkdirp(hostingDist);
       await ɵcodegenPublicDirectory(getProjectPath(), hostingDist);
       config.public = relative(projectRoot, hostingDist);
-      if (wantsBackend) codegenFunctionsDirectory = codegenProdModeFunctionsDirectory;
+      if (wantsBackend) codegenFunctionsDirectory = ɵcodegenFunctionsDirectory;
     }
     config.webFramework = `${framework}${codegenFunctionsDirectory ? "_ssr" : ""}`;
     if (codegenFunctionsDirectory) {
@@ -495,7 +482,7 @@ export async function prepareFrameworks(
         packageJson,
         bootstrapScript,
         frameworksEntry = framework,
-      } = await codegenFunctionsDirectory(getProjectPath(), functionsDist);
+      } = await codegenFunctionsDirectory(getProjectPath(), functionsDist, isDevMode);
 
       // Set the framework entry in the env variables to handle generation of the functions.yaml
       process.env.__FIREBASE_FRAMEWORKS_ENTRY__ = frameworksEntry;
@@ -506,27 +493,35 @@ export async function prepareFrameworks(
       packageJson.dependencies["firebase-frameworks"] ||= FIREBASE_FRAMEWORKS_VERSION;
       packageJson.dependencies["firebase-functions"] ||= FIREBASE_FUNCTIONS_VERSION;
       packageJson.dependencies["firebase-admin"] ||= FIREBASE_ADMIN_VERSION;
+      // Force the function to use the dependencies of the hosting codebase
+      packageJson.dependencies["next"] = `file:${projectRoot}/${source}/node_modules/next`;
+      packageJson.dependencies["react"] = `file:${projectRoot}/${source}/node_modules/react`;
+      packageJson.dependencies[
+        "react-dom"
+      ] = `file:${projectRoot}/${source}/node_modules/react-dom`;
       packageJson.engines ||= {};
       packageJson.engines.node ||= NODE_VERSION;
 
       for (const [name, version] of Object.entries(
         packageJson.dependencies as Record<string, string>
       )) {
-        if (version.startsWith("file:")) {
-          const path = version.replace(/^file:/, "");
-          if (!(await pathExists(path))) continue;
-          const stats = await stat(path);
-          if (stats.isDirectory()) {
-            const result = spawnSync("npm", ["pack", relative(functionsDist, path)], {
-              cwd: functionsDist,
-            });
-            if (!result.stdout) throw new Error(`Error running \`npm pack\` at ${path}`);
-            const filename = result.stdout.toString().trim();
-            packageJson.dependencies[name] = `file:${filename}`;
-          } else {
-            const filename = basename(path);
-            await copyFile(path, join(functionsDist, filename));
-            packageJson.dependencies[name] = `file:${filename}`;
+        if (!isDevMode) {
+          if (version.startsWith("file:")) {
+            const path = version.replace(/^file:/, "");
+            if (!(await pathExists(path))) continue;
+            const stats = await stat(path);
+            if (stats.isDirectory()) {
+              const result = spawnSync("npm", ["pack", relative(functionsDist, path)], {
+                cwd: functionsDist,
+              });
+              if (!result.stdout) throw new Error(`Error running \`npm pack\` at ${path}`);
+              const filename = result.stdout.toString().trim();
+              packageJson.dependencies[name] = `file:${filename}`;
+            } else {
+              const filename = basename(path);
+              await copyFile(path, join(functionsDist, filename));
+              packageJson.dependencies[name] = `file:${filename}`;
+            }
           }
         }
       }
@@ -552,7 +547,8 @@ export async function prepareFrameworks(
         join(functionsDist, ".env"),
         `${existingDotEnvContents}
 __FIREBASE_FRAMEWORKS_ENTRY__=${frameworksEntry}
-${firebaseDefaults ? `__FIREBASE_DEFAULTS__=${JSON.stringify(firebaseDefaults)}\n` : ""}`
+${firebaseDefaults ? `__FIREBASE_DEFAULTS__=${JSON.stringify(firebaseDefaults)}\n` : ""}
+${isDevMode ? `FRAMEWORKS_DEV_MODE=true` : ""}\n`
       );
 
       const envs = await new Promise<string[]>((resolve, reject) =>
@@ -619,11 +615,6 @@ ${firebaseDefaults ? `__FIREBASE_DEFAULTS__=${JSON.stringify(firebaseDefaults)}\
       });
     }
   }
-}
-
-function codegenDevModeFunctionsDirectory() {
-  const packageJson = {};
-  return Promise.resolve({ packageJson, frameworksEntry: "_devMode" });
 }
 
 /**

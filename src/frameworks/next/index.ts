@@ -347,7 +347,11 @@ export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: strin
 /**
  * Create a directory for SSR content.
  */
-export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: string) {
+export async function ɵcodegenFunctionsDirectory(
+  sourceDir: string,
+  destDir: string,
+  isDevMode: boolean
+) {
   const { distDir } = await getConfig(sourceDir);
   const packageJson = await readJSON(join(sourceDir, "package.json"));
   // Bundle their next.config.js with esbuild via NPX, pinned version was having troubles on m1
@@ -403,19 +407,21 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
     await copy(join(sourceDir, "public"), join(destDir, "public"));
   }
 
-  // Add the `sharp` library if `/app` folder exists (i.e. Next.js 13+)
-  // or usesNextImage in `export-marker.json` is set to true.
-  // As of (10/2021) the new Next.js 13 route is in beta, and usesNextImage is always being set to false
-  // if the image component is used in pages coming from the new `/app` routes.
-  if (
-    !(await hasUnoptimizedImage(sourceDir, distDir)) &&
-    (usesAppDirRouter(sourceDir) || (await usesNextImage(sourceDir, distDir)))
-  ) {
-    packageJson.dependencies["sharp"] = "latest";
-  }
+  if (!isDevMode) {
+    // Add the `sharp` library if `/app` folder exists (i.e. Next.js 13+)
+    // or usesNextImage in `export-marker.json` is set to true.
+    // As of (10/2021) the new Next.js 13 route is in beta, and usesNextImage is always being set to false
+    // if the image component is used in pages coming from the new `/app` routes.
+    if (
+      !(await hasUnoptimizedImage(sourceDir, distDir)) &&
+      (usesAppDirRouter(sourceDir) || (await usesNextImage(sourceDir, distDir)))
+    ) {
+      packageJson.dependencies["sharp"] = "latest";
+    }
 
-  await mkdirp(join(destDir, distDir));
-  await copy(join(sourceDir, distDir), join(destDir, distDir));
+    await mkdirp(join(destDir, distDir));
+    await copy(join(sourceDir, distDir), join(destDir, distDir));
+  }
   return { packageJson, frameworksEntry: "next.js" };
 }
 
