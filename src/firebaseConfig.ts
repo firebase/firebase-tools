@@ -101,6 +101,7 @@ export type HostingBase = {
   redirects?: HostingRedirects[];
   rewrites?: HostingRewrites[];
   headers?: HostingHeaders[];
+  patch?: boolean;
   i18n?: {
     root: string;
   };

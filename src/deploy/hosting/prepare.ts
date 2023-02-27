@@ -34,15 +34,29 @@ export async function prepare(context: Context, options: HostingOptions & Option
       if (config.webFramework) {
         labels["firebase-web-framework"] = config.webFramework;
       }
-      const version: Omit<api.Version, api.VERSION_OUTPUT_FIELDS> = {
-        status: "CREATED",
-        labels,
-      };
-      const [, versionName] = await Promise.all([
-        track("hosting_deploy", config.webFramework || "classic"),
-        api.createVersion(config.site, version),
-      ]);
-      return versionName;
+
+      if (config.patch) {
+        const currentVersion = await api.getChannel(context.projectId, config.site, "live");
+        if (!currentVersion?.release?.version.name) {
+          throw new FirebaseError("There's no release to patch.");
+        }
+        const newVersion = await api.cloneVersion(
+          config.site,
+          currentVersion?.release?.version.name
+        );
+
+        return newVersion.name;
+      } else {
+        const version: Omit<api.Version, api.VERSION_OUTPUT_FIELDS> = {
+          status: "CREATED",
+          labels,
+        };
+        const [, versionName] = await Promise.all([
+          track("hosting_deploy", config.webFramework || "classic"),
+          api.createVersion(config.site, version),
+        ]);
+        return versionName;
+      }
     })
   );
   context.hosting = {
