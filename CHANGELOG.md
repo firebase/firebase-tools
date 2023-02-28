@@ -1,2 +1,1 @@
-- Allow configuration of the Cloud Function generated for full-stack web frameworks (#5504)
-- Improve error message during deploy when given invalid hosting rewrite rule (#5533)
+- Fixes an issue where `ext:dev:init` would fail due to a missing CHANGELOG.md file (#5530).
