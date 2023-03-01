@@ -1,0 +1,7 @@
+{
+  "rules": {
+    ".read": true,
+    ".write": true,
+    "database": {".indexOn": ["height", "weight", ".value"]}
+  }
+}

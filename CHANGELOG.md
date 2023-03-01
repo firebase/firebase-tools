@@ -1,2 +1,1 @@
-- Add support for Firestore TTL (#5267)
-- Fix bug where secrets were not loaded when emulating functions with `--inpsect-functions`. (#4605)
+- Fixes an issue where `ext:dev:init` would fail due to a missing CHANGELOG.md file (#5530).

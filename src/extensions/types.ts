@@ -1,7 +1,7 @@
+import { MemoryOptions } from "../deploy/functions/backend";
+import { Runtime } from "../deploy/functions/runtimes";
 import * as proto from "../gcp/proto";
 import { SpecParamType } from "./extensionsHelper";
-import { Runtime } from "../deploy/functions/runtimes";
-import { MemoryOptions } from "../deploy/functions/backend";
 
 export enum RegistryLaunchStage {
   EXPERIMENTAL = "EXPERIMENTAL",
@@ -63,9 +63,8 @@ export interface ExtensionConfig {
   name: string;
   createTime: string;
   source: ExtensionSource;
-  params: {
-    [key: string]: any;
-  };
+  params: Record<string, string>;
+  systemParams: Record<string, string>;
   populatedPostinstallContent?: string;
   extensionRef?: string;
   extensionVersion?: string;
@@ -100,6 +99,7 @@ export interface ExtensionSpec {
   releaseNotesUrl?: string;
   sourceUrl?: string;
   params: Param[];
+  systemParams: Param[];
   preinstallContent?: string;
   postinstallContent?: string;
   readmeContent?: string;
@@ -139,6 +139,7 @@ export interface FunctionResourceProperties {
     availableMemoryMb?: MemoryOptions;
     runtime?: Runtime;
     httpsTrigger?: Record<string, never>;
+    scheduleTrigger?: Record<string, string>;
     taskQueueTrigger?: {
       rateLimits?: {
         maxConcurrentDispatchs?: number;
@@ -220,6 +221,7 @@ export interface Param {
   validationErrorMessage?: string;
   immutable?: boolean;
   example?: string;
+  advanced?: boolean;
 }
 
 export enum ParamType {

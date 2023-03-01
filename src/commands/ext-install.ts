@@ -1,6 +1,5 @@
 import * as clc from "colorette";
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
-const { marked } = require("marked");
+import { marked } from "marked";
 import TerminalRenderer = require("marked-terminal");
 
 import { displayExtInfo } from "../extensions/displayExtensionInfo";
@@ -212,7 +211,7 @@ async function installToManifest(options: InstallExtensionOptions): Promise<void
 
   const paramBindingOptions = await paramHelper.getParams({
     projectId,
-    paramSpecs: spec.params,
+    paramSpecs: spec.params.concat(spec.systemParams ?? []),
     nonInteractive,
     paramsEnvPath,
     instanceId,

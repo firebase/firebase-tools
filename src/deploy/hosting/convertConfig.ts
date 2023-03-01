@@ -213,7 +213,7 @@ export async function convertConfig(
       const apiRewrite: api.Rewrite = {
         ...target,
         run: {
-          serviceId: endpoint.id,
+          serviceId: endpoint.runServiceId ?? endpoint.id,
           region: endpoint.region,
         },
       };
@@ -247,7 +247,14 @@ export async function convertConfig(
 
     // This line makes sure this function breaks if there is ever added a new
     // kind of rewrite and we haven't yet handled it.
-    assertExhaustive(rewrite);
+    try {
+      assertExhaustive(rewrite);
+    } catch (e: any) {
+      throw new FirebaseError(
+        "Invalid hosting rewrite config in firebase.json. " +
+          "A rewrite config must specify 'destination', 'function', 'dynamicLinks', or 'run'"
+      );
+    }
   });
 
   if (config.rewrites) {

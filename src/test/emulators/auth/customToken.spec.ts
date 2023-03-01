@@ -15,7 +15,7 @@ describeAuthEmulator("sign-in with custom token", ({ authApi }) => {
   it("should create new account from custom token (unsigned)", async () => {
     const uid = "someuid";
     const claims = { abc: "def", ultimate: { answer: 42 } };
-    const token = signJwt({ uid, claims }, "", {
+    const token = signJwt({ uid, claims }, "fake-secret", {
       algorithm: "none",
       expiresIn: 3600,
 
@@ -149,7 +149,7 @@ describeAuthEmulator("sign-in with custom token", ({ authApi }) => {
   });
 
   it("should error if custom token addresses the wrong audience", async () => {
-    const token = signJwt({ uid: "foo" }, "", {
+    const token = signJwt({ uid: "foo" }, "fake-secret", {
       algorithm: "none",
       expiresIn: 3600,
 
@@ -173,7 +173,7 @@ describeAuthEmulator("sign-in with custom token", ({ authApi }) => {
       {
         /* no uid */
       },
-      "",
+      "fake-secret",
       {
         algorithm: "none",
         expiresIn: 3600,
@@ -252,7 +252,7 @@ describeAuthEmulator("sign-in with custom token", ({ authApi }) => {
     const tenant = await registerTenant(authApi(), PROJECT_ID, { disableAuth: false });
     const uid = "someuid";
     const claims = { abc: "def", ultimate: { answer: 42 } };
-    const token = signJwt({ uid, claims, tenant_id: "not-matching-tenant-id" }, "", {
+    const token = signJwt({ uid, claims, tenant_id: "not-matching-tenant-id" }, "fake-secret", {
       algorithm: "none",
       expiresIn: 3600,
 
@@ -275,7 +275,7 @@ describeAuthEmulator("sign-in with custom token", ({ authApi }) => {
     const tenant = await registerTenant(authApi(), PROJECT_ID, { disableAuth: false });
     const uid = "someuid";
     const claims = { abc: "def", ultimate: { answer: 42 } };
-    const token = signJwt({ uid, claims, tenant_id: tenant.tenantId }, "", {
+    const token = signJwt({ uid, claims, tenant_id: tenant.tenantId }, "fake-secret", {
       algorithm: "none",
       expiresIn: 3600,
 
