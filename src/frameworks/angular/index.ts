@@ -1,6 +1,7 @@
 import type { Target } from "@angular-devkit/architect";
 import { join } from "path";
-import { execSync, spawn } from "child_process";
+import { execSync } from "child_process";
+import { spawn } from "cross-spawn";
 import { copy, pathExists } from "fs-extra";
 import { mkdir } from "fs/promises";
 

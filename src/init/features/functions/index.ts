@@ -188,6 +188,9 @@ async function languageSetup(setup: any, config: Config): Promise<any> {
     case "typescript":
       cbconfig.ignore = ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log"];
       break;
+    case "python":
+      cbconfig.ignore = ["venv", ".git", "firebase-debug.log", "firebase-debug.*.log"];
+      break;
   }
   return require("./" + language).setup(setup, config);
 }
