@@ -28,7 +28,7 @@ export const command = new Command("database:import <path> [infile]")
   )
   .option(
     "--only <dataPath>",
-    "import only data at this path in the JSON file (if omitted, use root)"
+    "import only data at this path in the JSON file (if omitted, import entire file)"
   )
   .before(requirePermissions, ["firebasedatabase.instances.update"])
   .before(requireDatabaseInstance)
