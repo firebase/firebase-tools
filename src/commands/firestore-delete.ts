@@ -87,7 +87,7 @@ export const command = new Command("firestore:delete [path]")
   .option("-f, --force", "No confirmation. Otherwise, a confirmation prompt will appear.")
   .option(
     "--database <databaseId>",
-    "Database ID for database to delete from. Mandatory if more than 1 database is present."
+    'Database ID for database to delete from. "(default)" if none is provided.'
   )
   .before(printNoticeIfEmulated, Emulators.FIRESTORE)
   .before(requirePermissions, ["datastore.entities.list", "datastore.entities.delete"])
