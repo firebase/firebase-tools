@@ -5,7 +5,6 @@ import { Command } from "../command";
 import { Emulators } from "../emulator/types";
 import { printNoticeIfEmulated } from "../emulator/commandUtils";
 import { FirestoreDelete } from "../firestore/delete";
-import { FirestoreProvisioning } from "../firestore/provisioning";
 import { promptOnce } from "../prompt";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
@@ -99,15 +98,7 @@ export const command = new Command("firestore:delete [path]")
     }
 
     if (!options.database) {
-      const provisioningApi = new FirestoreProvisioning(options.project);
-      const databases: string[] = await provisioningApi.listDatabaseNames();
-      if (!databases || databases.length !== 1) {
-        return utils.reject("Must specify database when more than 1 is present in project.", {
-          exit: 1,
-        });
-      } else {
-        options.database = databases[0];
-      }
+      options.database = "(default)";
     }
 
     const deleteOp = new FirestoreDelete(options.project, path, {

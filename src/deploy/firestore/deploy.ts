@@ -1,4 +1,3 @@
-import * as _ from "lodash";
 import * as clc from "colorette";
 
 import { FirestoreIndexes } from "../../firestore/indexes";
@@ -32,27 +31,29 @@ async function deployIndexes(context: any, options: any): Promise<void> {
 
   utils.logBullet(clc.bold(clc.cyan("firestore: ")) + "deploying indexes...");
   const firestoreIndexes = new FirestoreIndexes();
-  indexesContext.map(async (indexContext: IndexContext) => {
-    const { databaseId, indexesFileName, indexesSrc } = indexContext;
-    if (!indexesSrc) {
-      logger.debug(`No Firestore indexes present for ${databaseId} database.`);
-      return Promise.resolve();
-    }
-    const indexes = indexesSrc.indexes;
-    if (!indexes) {
-      logger.error(`${databaseId} database index file must contain "indexes" property.`);
-      return;
-    }
-    const fieldOverrides = indexesSrc.fieldOverrides || [];
+  await Promise.all(
+    indexesContext.map(async (indexContext: IndexContext): Promise<void> => {
+      const { databaseId, indexesFileName, indexesSrc } = indexContext;
+      if (!indexesSrc) {
+        logger.debug(`No Firestore indexes present for ${databaseId} database.`);
+        return;
+      }
+      const indexes = indexesSrc.indexes;
+      if (!indexes) {
+        logger.error(`${databaseId} database index file must contain "indexes" property.`);
+        return;
+      }
+      const fieldOverrides = indexesSrc.fieldOverrides || [];
 
-    await firestoreIndexes.deploy(options, indexes, fieldOverrides, databaseId).then(() => {
-      utils.logSuccess(
-        `${clc.bold(clc.green("firestore:"))} deployed indexes in ${clc.bold(
-          indexesFileName
-        )} successfully for ${databaseId} database`
-      );
-    });
-  });
+      await firestoreIndexes.deploy(options, indexes, fieldOverrides, databaseId).then(() => {
+        utils.logSuccess(
+          `${clc.bold(clc.green("firestore:"))} deployed indexes in ${clc.bold(
+            indexesFileName
+          )} successfully for ${databaseId} database`
+        );
+      });
+    })
+  );
 }
 
 /**
