@@ -15,7 +15,7 @@ export interface RulesContext {
 export interface IndexContext {
   databaseId: string;
   indexesFileName: string;
-  indexesSrc: any;
+  indexesRawSpec: any; // could be the old v1beta1 indexes spec or the new v1/v1 format
 }
 
 /**
@@ -48,7 +48,7 @@ function prepareIndexes(
   indexesFileName: string
 ): void {
   const indexesPath = options.config.path(indexesFileName);
-  const indexesSrc = loadCJSON(indexesPath);
+  const indexesRawSpec = loadCJSON(indexesPath);
 
   utils.logBullet(
     `${clc.bold(clc.cyan("firestore:"))} reading indexes from ${clc.bold(indexesFileName)}...`
@@ -57,7 +57,7 @@ function prepareIndexes(
   context.firestore.indexes.push({
     databaseId,
     indexesFileName,
-    indexesSrc,
+    indexesRawSpec,
   } as IndexContext);
 }
 

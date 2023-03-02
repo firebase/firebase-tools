@@ -33,17 +33,17 @@ async function deployIndexes(context: any, options: any): Promise<void> {
   const firestoreIndexes = new FirestoreIndexes();
   await Promise.all(
     indexesContext.map(async (indexContext: IndexContext): Promise<void> => {
-      const { databaseId, indexesFileName, indexesSrc } = indexContext;
-      if (!indexesSrc) {
+      const { databaseId, indexesFileName, indexesRawSpec } = indexContext;
+      if (!indexesRawSpec) {
         logger.debug(`No Firestore indexes present for ${databaseId} database.`);
         return;
       }
-      const indexes = indexesSrc.indexes;
+      const indexes = indexesRawSpec.indexes;
       if (!indexes) {
         logger.error(`${databaseId} database index file must contain "indexes" property.`);
         return;
       }
-      const fieldOverrides = indexesSrc.fieldOverrides || [];
+      const fieldOverrides = indexesRawSpec.fieldOverrides || [];
 
       await firestoreIndexes.deploy(options, indexes, fieldOverrides, databaseId).then(() => {
         utils.logSuccess(

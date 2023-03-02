@@ -16,7 +16,7 @@ export default async function (context: any, options: Options): Promise<void> {
 
   const rulesContext: RulesContext[] = context?.firestore?.rules;
   await Promise.all(
-    rulesContext.map(async (ruleContext: any): Promise<void> => {
+    rulesContext.map(async (ruleContext: RulesContext): Promise<void> => {
       const databaseId = ruleContext.databaseId;
       const rulesFile = ruleContext.rulesFile;
       if (!rulesFile) {
