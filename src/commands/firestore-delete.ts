@@ -9,8 +9,9 @@ import { FirestoreProvisioning } from "../firestore/provisioning";
 import { promptOnce } from "../prompt";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
+import { FirestoreOptions } from "../firestore/options";
 
-function getConfirmationMessage(deleteOp: FirestoreDelete, options: any) {
+function getConfirmationMessage(deleteOp: FirestoreDelete, options: FirestoreOptions) {
   if (options.allCollections) {
     return (
       "You are about to delete " +
@@ -87,11 +88,11 @@ export const command = new Command("firestore:delete [path]")
   .option("-f, --force", "No confirmation. Otherwise, a confirmation prompt will appear.")
   .option(
     "--database <databaseId>",
-    "Database ID for database to delete from. Mandatory if more than 1 database present."
+    "Database ID for database to delete from. Mandatory if more than 1 database is present."
   )
   .before(printNoticeIfEmulated, Emulators.FIRESTORE)
   .before(requirePermissions, ["datastore.entities.list", "datastore.entities.delete"])
-  .action(async (path: string | undefined, options: any) => {
+  .action(async (path: string | undefined, options: FirestoreOptions) => {
     // Guarantee path
     if (!path && !options.allCollections) {
       return utils.reject("Must specify a path.", { exit: 1 });

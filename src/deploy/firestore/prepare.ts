@@ -7,6 +7,17 @@ import utils = require("../../utils");
 import { Options } from "../../options";
 import * as fsConfig from "../../firestore/fsConfig";
 
+export interface RulesContext {
+  databaseId: string;
+  rulesFile: string;
+}
+
+export interface IndexContext {
+  databaseId: string;
+  indexesFileName: string;
+  indexesSrc: any;
+}
+
 /**
  * Prepares Firestore Rules deploys.
  * @param context The deploy context.
@@ -22,7 +33,7 @@ function prepareRules(
   context.firestore.rules.push({
     databaseId,
     rulesFile,
-  });
+  } as RulesContext);
 }
 
 /**
@@ -47,7 +58,7 @@ function prepareIndexes(
     databaseId,
     indexesFileName,
     indexesSrc,
-  });
+  } as IndexContext);
 }
 
 /**

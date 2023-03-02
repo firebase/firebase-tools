@@ -87,7 +87,6 @@ export class FirestoreDelete {
 
     this.allDescendants = this.recursive;
 
-    // databaseId guaranteed non null
     this.root = `projects/${project}/databases/${this.databaseId}/documents`;
 
     const segments = this.path.split("/");

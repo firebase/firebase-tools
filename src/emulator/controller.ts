@@ -1,6 +1,7 @@
 import * as clc from "colorette";
 import * as fs from "fs";
 import * as path from "path";
+import * as fsConfig from "../firestore/fsConfig";
 
 import { logger } from "../logger";
 import { track, trackEmulator } from "../track";
@@ -594,11 +595,29 @@ export async function startAll(
     }
 
     const config = options.config;
-    // emulator does not support multiple databases config yet
-    // todo b/269787702
-    const rulesLocalPath =
-      config.src.firestore && "rules" in config.src.firestore && config.src.firestore?.rules;
-    let rulesFileFound = false;
+    // emulator does not support multiple databases yet
+    // TODO(b/269787702)
+    let rulesLocalPath;
+    let rulesFileFound;
+    const firestoreConfigs: fsConfig.ParsedFirestoreConfig[] = fsConfig.getFirestoreConfig(
+      projectId,
+      options
+    );
+    if (!firestoreConfigs) {
+      firestoreLogger.logLabeled(
+        "WARN",
+        "firestore",
+        `Cloud Firestore config does not exist in firebase.json.`
+      );
+    } else if (firestoreConfigs.length !== 1) {
+      firestoreLogger.logLabeled(
+        "WARN",
+        "firestore",
+        `Cloud Firestore Emulator does not support multiple databases yet.`
+      );
+    } else if (firestoreConfigs[0].rules) {
+      rulesLocalPath = firestoreConfigs[0].rules;
+    }
     if (rulesLocalPath) {
       const rules: string = config.path(rulesLocalPath);
       rulesFileFound = fs.existsSync(rules);
