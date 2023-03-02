@@ -1,3 +1,3 @@
 - Fixes an issue where `ext:dev:init` would fail due to a missing CHANGELOG.md file (#5530).
-- Adds support for multiple databases in Firestore commands `delete`, `indexes` with optional --database argument(#5548).
+- Adds support for optional `--database` argument in Firestore commands (#5548).
 - Adds multiple firestore database targets support in firebase.json (#5548).
