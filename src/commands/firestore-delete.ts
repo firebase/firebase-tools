@@ -102,7 +102,7 @@ export const command = new Command("firestore:delete [path]")
       const provisioningApi = new FirestoreProvisioning(options.project);
       const databases: string[] = await provisioningApi.listDatabaseNames();
       if (!databases || databases.length !== 1) {
-        return utils.reject("Must specify database when more than 1 present in project.", {
+        return utils.reject("Must specify database when more than 1 is present in project.", {
           exit: 1,
         });
       } else {
