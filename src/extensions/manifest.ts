@@ -201,7 +201,7 @@ async function writeEnvFiles(
 ): Promise<void> {
   for (const spec of specs) {
     const content = Object.entries(spec.params)
-      .filter((r) => r[1].baseValue !== "") // Don't write empty values
+      .filter((r) => r[1].baseValue !== "" && r[1].baseValue !== undefined) // Don't write empty values
       .sort((a, b) => {
         return a[0].localeCompare(b[0]);
       })

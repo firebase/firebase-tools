@@ -547,7 +547,7 @@ export function functionFromEndpoint(
       ...gcfFunction.labels,
       [BLOCKING_LABEL]:
         BLOCKING_EVENT_TO_LABEL_KEY[
-          endpoint.blockingTrigger.eventType as typeof AUTH_BLOCKING_EVENTS[number]
+          endpoint.blockingTrigger.eventType as (typeof AUTH_BLOCKING_EVENTS)[number]
         ],
     };
   }
@@ -690,6 +690,15 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
   endpoint.codebase = gcfFunction.labels?.[CODEBASE_LABEL] || projectConfig.DEFAULT_CODEBASE;
   if (gcfFunction.labels?.[HASH_LABEL]) {
     endpoint.hash = gcfFunction.labels[HASH_LABEL];
+  }
+  const serviceName = gcfFunction.serviceConfig.service;
+  if (!serviceName) {
+    logger.debug(
+      "Got a v2 function without a service name." +
+        "Maybe we've migrated to using the v2 API everywhere and missed this code"
+    );
+  } else {
+    endpoint.runServiceId = utils.last(serviceName.split("/"));
   }
   return endpoint;
 }

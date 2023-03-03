@@ -1,6 +1,5 @@
 import * as clc from "colorette";
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
-const { marked } = require("marked");
+import { marked } from "marked";
 import TerminalRenderer = require("marked-terminal");
 
 import { displayExtInfo } from "../extensions/displayExtensionInfo";

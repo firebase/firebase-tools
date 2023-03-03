@@ -52,11 +52,6 @@ export function flatten<T extends unknown[] | object>(objOrArr: T): unknown {
   }
 }
 
-type RecursiveElems<T extends unknown[]> = {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  [Key in keyof T]: T[Key] extends unknown[] ? T[Key] | RecursiveElems<T[Key]> : T[Key];
-}[number];
-
 /**
  * Used with reduce to flatten in place.
  * Due to the quirks of TypeScript, callers must pass [] as the
@@ -93,7 +88,7 @@ export const zipIn =
 /** Used with type guards to guarantee that all cases have been covered. */
 export function assertExhaustive(val: never): never {
   // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-  throw new Error(`Never has a value (${val}). This should be impossible`);
+  throw new Error(`Never has a value (${val}).`);
 }
 
 /**
