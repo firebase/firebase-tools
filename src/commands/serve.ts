@@ -3,6 +3,7 @@ import * as clc from "colorette";
 import { Command } from "../command";
 import { logger } from "../logger";
 import * as utils from "../utils";
+import * as commandUtils from "../emulator/commandUtils";
 import { requirePermissions } from "../requirePermissions";
 import { requireConfig } from "../requireConfig";
 import { serve } from "../serve/index";
@@ -34,6 +35,7 @@ export const command = new Command("serve")
     "--except <targets>",
     "serve all except specified targets (valid targets are: " + VALID_TARGETS.join(", ") + ")"
   )
+  .option(commandUtils.FLAG_FRAMEWORKS_BUILD, commandUtils.DESC_FRAMEWORKS_BUILD)
   .before((options) => {
     if (
       options.only &&

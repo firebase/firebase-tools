@@ -68,6 +68,8 @@ export interface Framework {
   }>;
 }
 
+type FrameworksBuild = "prod" | "dev";
+
 // TODO pull from @firebase/util when published
 interface FirebaseDefaults {
   config?: Object;
@@ -404,16 +406,23 @@ export async function prepareFrameworks(
       support,
     } = WebFrameworks[framework];
     console.log(`Detected a ${name} codebase. ${SupportLevelWarnings[support] || ""}\n`);
-    // TODO allow for override
-    const isDevMode = context._name === "serve" || context._name === "emulators:start";
-
     const hostingEmulatorInfo = emulators.find((e) => e.name === Emulators.HOSTING);
+
+    const frameworksBuild = getFrameworksBuildMode(options);
+
+    // TODO allow for override
+    const isDevMode =
+      (context._name === "serve" ||
+        context._name === "emulators:start" ||
+        context._name === "emulators:exec") &&
+      frameworksBuild === "dev";
+
+    let codegenFunctionsDirectory: Framework["ɵcodegenFunctionsDirectory"];
 
     const devModeHandle =
       isDevMode &&
       getDevModeHandle &&
       (await getDevModeHandle(getProjectPath(), hostingEmulatorInfo));
-    let codegenFunctionsDirectory: Framework["ɵcodegenFunctionsDirectory"];
     if (devModeHandle) {
       config.public = relative(projectRoot, publicDirectory);
       // Attach the handle to options, it will be used when spinning up superstatic
@@ -624,6 +633,22 @@ ${firebaseDefaults ? `__FIREBASE_DEFAULTS__=${JSON.stringify(firebaseDefaults)}\
 function codegenDevModeFunctionsDirectory() {
   const packageJson = {};
   return Promise.resolve({ packageJson, frameworksEntry: "_devMode" });
+}
+
+function getFrameworksBuildMode(options: any): FrameworksBuild {
+  let frameworksBuild: FrameworksBuild = options.frameworksBuild;
+  if (frameworksBuild) {
+    // TODO validate frameworksBuild with other possible values (for Angular)
+    if (frameworksBuild !== "dev" && frameworksBuild !== "prod") {
+      throw new FirebaseError(`Invalid value for frameworksBuild: ${frameworksBuild}`);
+    }
+  } else if (process.env.NODE_ENV === "production") {
+    frameworksBuild = "prod";
+  } else {
+    frameworksBuild = "dev";
+  }
+
+  return frameworksBuild;
 }
 
 /**
