@@ -4,7 +4,7 @@ export const NuxtAdapter: PlatformAdapter = {
   parentId: "npm",
   id: "nuxt",
   create: {},
-  discovery: {
+  discover: {
     required_package_dependency: {
       packageManager: PackageManager.NPM,
       dependency: "nuxt",

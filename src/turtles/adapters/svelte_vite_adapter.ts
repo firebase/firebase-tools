@@ -5,7 +5,7 @@ export const SvelteViteAdapter: PlatformAdapter = {
   parentId: "vite",
   id: "svelte_vite",
   create: {},
-  discovery: {
+  discover: {
     required_package_dependency: {
       packageManager: PackageManager.NPM,
       dependency: "vite-plugin-svelte",

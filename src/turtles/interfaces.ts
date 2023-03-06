@@ -21,7 +21,7 @@ export interface PlatformAdapter {
   };
 
   // Properties used to infer if a framework is being used.
-  discovery: {
+  discover: {
     required_files?: string[];
     required_package_dependency?: PackageManagerDependency;
 

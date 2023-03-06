@@ -11,7 +11,7 @@ export const ExpressAdapter: PlatformAdapter = {
     output_directory: "public",
   },
 
-  discovery: {
+  discover: {
     required_package_dependency: {
       packageManager: PackageManager.NPM,
       dependency: "express",

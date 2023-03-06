@@ -12,7 +12,7 @@ export const NextJsAdapter: PlatformAdapter = {
     run_command: "NODE_ENV=production npm start",
   },
 
-  discovery: {
+  discover: {
     required_package_dependency: {
       packageManager: PackageManager.NPM,
       dependency: "next",

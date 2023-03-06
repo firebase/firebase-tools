@@ -5,7 +5,7 @@ export const ViteAdapter: PlatformAdapter = {
   create: {},
   parentId: "npm",
   id: "vite",
-  discovery: {
+  discover: {
     required_package_dependency: {
       packageManager: PackageManager.NPM,
       dependency: "vite",

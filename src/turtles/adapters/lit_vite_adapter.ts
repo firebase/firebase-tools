@@ -4,7 +4,7 @@ export const LitViteAdapter: PlatformAdapter = {
   parentId: "vite",
   id: "lit_vite",
   create: {},
-  discovery: {
+  discover: {
     required_package_dependency: {
       packageManager: PackageManager.NPM,
       dependency: "lit",

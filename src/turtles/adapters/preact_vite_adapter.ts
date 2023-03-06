@@ -4,7 +4,7 @@ export const PreactViteAdapter: PlatformAdapter = {
   parentId: "vite",
   id: "preact_vite",
   create: {},
-  discovery: {
+  discover: {
     required_package_dependency: {
       packageManager: PackageManager.NPM,
       dependency: "preact",

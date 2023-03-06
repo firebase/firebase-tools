@@ -4,7 +4,7 @@ export const ReactJsAdapter: PlatformAdapter = {
   parentId: "npm",
   id: "reactjs",
   create: {},
-  discovery: {
+  discover: {
     required_package_dependency: {
       packageManager: PackageManager.NPM,
       dependency: "react",

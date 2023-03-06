@@ -7,7 +7,7 @@ export const AngularAdapter: PlatformAdapter = {
 
   create: {},
 
-  discovery: {
+  discover: {
     required_package_dependency: {
       packageManager: PackageManager.NPM,
       dependency: "@angular/core",
