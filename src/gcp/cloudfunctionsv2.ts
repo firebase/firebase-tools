@@ -263,6 +263,7 @@ function functionsOpLogReject(funcName: string, type: string, err: any): void {
   throw new FirebaseError(`Failed to ${type} function ${funcName}`, {
     original: err,
     context: { function: funcName },
+    status: err?.context?.response?.statusCode
   });
 }
 
