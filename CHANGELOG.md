@@ -1,1 +1,3 @@
 - Fixes an issue where `ext:dev:init` would fail due to a missing CHANGELOG.md file (#5530).
+- Release Cloud Firestore emulator v1.16.1:
+  - Supports read_time in ListCollectionIds
