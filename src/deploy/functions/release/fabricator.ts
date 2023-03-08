@@ -39,6 +39,7 @@ const gcfV2PollerOptions: Omit<poller.OperationPollerOptions, "operationResource
   apiOrigin: functionsV2Origin,
   apiVersion: gcfV2.API_VERSION,
   masterTimeout: 25 * 60 * 1_000, // 25 minutes is the maximum build time for a function
+  backoff: 1000,
   maxBackoff: 10_000,
 };
 
@@ -298,6 +299,7 @@ export class Fabricator {
             }
             throw new FirebaseError("Unexpected error creating Pub/Sub topic", {
               original: err as Error,
+              status: err.status,
             });
           }
         })
@@ -336,25 +338,48 @@ export class Fabricator {
             }
             throw new FirebaseError("Unexpected error creating Eventarc channel", {
               original: err as Error,
+              status: err.status,
             });
           }
         })
         .catch(rethrowAs(endpoint, "upsert eventarc channel"));
     }
 
-    const resultFunction = await this.functionExecutor
-      .run(async () => {
-        const op: { name: string } = await gcfV2.createFunction(apiFunction);
-        return await poller.pollOperation<gcfV2.CloudFunction>({
-          ...gcfV2PollerOptions,
-          pollerName: `create-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
-          operationResourceName: op.name,
-        });
-      })
-      .catch(rethrowAs<gcfV2.CloudFunction>(endpoint, "create"));
+    let resultFunction: gcfV2.CloudFunction | void;
+    let retry = true;
 
-    endpoint.uri = resultFunction.serviceConfig.uri;
-    const serviceName = resultFunction.serviceConfig.service!;
+    while (retry) {
+      resultFunction = await this.functionExecutor
+        .run(
+          async () => {
+            const op: { name: string } = await gcfV2.createFunction(apiFunction);
+            return await poller.pollOperation<gcfV2.CloudFunction>({
+              ...gcfV2PollerOptions,
+              pollerName: `create-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
+              operationResourceName: op.name,
+            });
+          },
+          undefined,
+          8
+        )
+        .then((resultFunction) => {
+          retry = false;
+          return resultFunction;
+        })
+        .catch(async (error) => {
+          console.log(`***** ${endpoint.id} found error: ${error}`);
+          if (error?.status === 8) {
+            console.log(`***** ${endpoint.id} code 8 error, starting delete`);
+            // delete broken half-deployed function
+            await this.deleteV2Function(endpoint);
+          } else {
+            rethrowAs<gcfV2.CloudFunction>(endpoint, "create");
+          }
+        });
+    }
+
+    endpoint.uri = resultFunction!.serviceConfig.uri;
+    const serviceName = resultFunction!.serviceConfig.service!;
     if (backend.isHttpsTriggered(endpoint)) {
       const invoker = endpoint.httpsTrigger.invoker || ["public"];
       if (!invoker.includes("private")) {

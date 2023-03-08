@@ -48,6 +48,7 @@ export interface ThrottlerStats {
 
 interface TaskData<T, R> {
   task: T;
+  errorNoRetry?: number;
   retryCount: number;
   wait?: { resolve: (value: R) => void; reject: (err: TaskError) => void };
   timeoutMillis?: number;
@@ -139,9 +140,9 @@ export abstract class Throttler<T, R> {
    * Add the task to the throttler and return a promise of handler's result.
    * If the task failed, both the promised returned by throttle and wait will reject.
    */
-  run(task: T, timeoutMillis?: number): Promise<R> {
+  run(task: T, timeoutMillis?: number, errorNoRetry?: number): Promise<R> {
     return new Promise((resolve, reject) => {
-      this.addHelper(task, timeoutMillis, { resolve, reject });
+      this.addHelper(task, timeoutMillis, { resolve, reject }, errorNoRetry);
     });
   }
 
@@ -169,7 +170,7 @@ export abstract class Throttler<T, R> {
       throw new Error(`taskData.get(${cursorIndex}) does not exist`);
     }
     const promises = [this.executeTask(cursorIndex)];
-    if (taskData.timeoutMillis) {
+    if (taskData.timeoutMillis && taskData.timeoutMillis !== 8) {
       promises.push(this.initializeTimeout(cursorIndex));
     }
 
@@ -215,7 +216,8 @@ export abstract class Throttler<T, R> {
   private addHelper(
     task: T,
     timeoutMillis?: number,
-    wait?: { resolve: (result: R) => void; reject: (err: Error) => void }
+    wait?: { resolve: (result: R) => void; reject: (err: Error) => void },
+    errorNoRetry?: number
   ): void {
     if (this.closed) {
       throw new Error("Cannot add a task to a closed throttler.");
@@ -227,6 +229,7 @@ export abstract class Throttler<T, R> {
       task,
       wait,
       timeoutMillis,
+      errorNoRetry,
       retryCount: 0,
       isTimedOut: false,
     });
@@ -271,9 +274,22 @@ export abstract class Throttler<T, R> {
     const t0 = Date.now();
     let result;
     try {
+      // if (this.retries !== Number.MAX_SAFE_INTEGER) {
+      //   console.log(`TRY   *** retries: ${this.retries} retryCount: ${taskData.retryCount}`);
+      // }
       result = await this.handler(taskData.task);
     } catch (err: any) {
+      if (taskData.errorNoRetry && err?.status === taskData.errorNoRetry) {
+        console.log("***** inside throttler: hit status error code 8");
+        throw err;
+      }
+      // if (this.retries !== Number.MAX_SAFE_INTEGER) {
+      //   console.log(
+      //     `ERROR: ${err} *** retries: ${this.retries} retryCount: ${taskData.retryCount}`
+      //   );
+      // }
       if (taskData.retryCount === this.retries) {
+        console.log(`RAN OUT OF RETRIES: ${this.retries}, ${taskData.task}`);
         throw new RetriesExhaustedError(this.taskName(cursorIndex), this.retries, err);
       }
       await backoff(taskData.retryCount + 1, this.backoff, this.maxBackoff);

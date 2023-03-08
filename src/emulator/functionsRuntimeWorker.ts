@@ -155,10 +155,14 @@ export class RuntimeWorker {
         method: req.method,
         path: req.path,
         headers: req.headers,
+        keepAlive: false,
       };
       if (this.timeoutSeconds) {
         reqOpts.timeout = this.timeoutSeconds * 1000;
       }
+
+      // console.log('********* REQOPTS: ', reqOpts);
+
       const proxy = http.request(reqOpts, (_resp: http.IncomingMessage) => {
         resp.writeHead(_resp.statusCode || 200, _resp.headers);
         const piped = _resp.pipe(resp);

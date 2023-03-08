@@ -5,7 +5,7 @@ import { ThrottlerOptions } from "../../../throttler/throttler";
  * An Executor runs lambdas (which may be async).
  */
 export interface Executor {
-  run<T>(func: () => Promise<T>): Promise<T>;
+  run<T>(func: () => Promise<T>, timeoutMillis?: number, errorNoRetry?: number): Promise<T>;
 }
 
 interface Operation {
@@ -30,7 +30,11 @@ async function handler(op: Operation): Promise<void> {
       err.context?.response?.statusCode ||
       err.original?.code ||
       err.original?.context?.response?.statusCode;
-    if (code === 429 || code === 409 || code === 503) {
+    console.log(
+      `***** ERROR CODES: ${err.status} ${err.code} ${err.context?.response?.statusCode} ${err.original?.code} ${err.original?.context?.response?.statusCode}`
+    );
+    console.log(`********** INSIDE HANDLER ERROR: ${err.original}, CODE: ${code}`);
+    if (code === 429 || code === 409 || code === 503 || code === 8) {
       throw err;
     }
     op.error = err;
@@ -49,9 +53,9 @@ export class QueueExecutor implements Executor {
     this.queue = new Queue({ ...options, handler });
   }
 
-  async run<T>(func: () => Promise<T>): Promise<T> {
+  async run<T>(func: () => Promise<T>, timeoutMillis?: number, errorNoRetry?: number): Promise<T> {
     const op: Operation = { func };
-    await this.queue.run(op);
+    await this.queue.run(op, timeoutMillis, errorNoRetry);
     if (op.error) {
       throw op.error;
     }

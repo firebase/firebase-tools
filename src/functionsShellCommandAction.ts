@@ -20,6 +20,7 @@ import { Constants } from "./emulator/constants";
 const serveFunctions = new FunctionsServer();
 
 export const actionFunction = async (options: Options) => {
+  console.log("*************** HELLOOOOOOOOOOOOOOO");
   if (typeof options.port === "string") {
     options.port = parseInt(options.port, 10);
   }
