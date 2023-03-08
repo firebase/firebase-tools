@@ -31,6 +31,11 @@ export interface PlatformAdapter {
   };
 }
 
+export interface PlatformAdapterNode {
+  adapter: PlatformAdapter;
+  children: PlatformAdapterNode[];
+}
+
 export interface PlatformAdapterResult {
   // Discovered Platform Adapter
   adapter: PlatformAdapter;
@@ -54,4 +59,28 @@ export interface PackageManagerDependency {
   packageManager: PackageManager;
   dependency: string;
   semver?: string;
+}
+
+export interface PackageManagerStrategy {
+  run(target: PackageManagerDependency, directory: string): boolean;
+}
+
+export interface PlatformMetadata {
+  region?: string;
+  stack_directory?: string;
+  stack_asset_directory?: string;
+
+  // Adapter Metadata
+  adapter?: PlatformAdapter;
+  adapter_id?: string;
+  install_command?: string;
+  build_command?: string;
+  develop_command?: string;
+  run_command?: string;
+  output_directory?: string; // where we should expect a framework to dump output
+
+  base_docker_image?: string; // suggested, but needs more discussion. Likely not M1
+  is_backend_required?: boolean; // extracted from PlatformAdapter, but overrideable
+
+  dev_mode?: boolean;
 }
