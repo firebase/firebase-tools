@@ -1,8 +1,6 @@
 import { createRequire } from "node:module";
-import { pathExists, rm, mkdir, writeFile, readFile } from "fs-extra";
-import { join, resolve, dirname, normalize } from "path";
-import * as crypto from "crypto";
-import type { NuxtProjectManifest } from "./interfaces";
+import { pathExists, rm, mkdir } from "fs-extra";
+import { join, dirname, normalize } from "path";
 
 /**
  *
@@ -19,74 +17,8 @@ export async function nuxtConfigFilesExist(dir: string): Promise<boolean> {
 }
 
 /**
- *
- */
-export async function rmRecursive(paths: string[]) {
-  await Promise.all(
-    paths
-      .filter((p) => typeof p === "string")
-      .map(async (path) => {
-        console.debug("Removing recursive path", path);
-        await rm(path, { recursive: true, force: true }).catch(() => {});
-      })
-  );
-}
-
-/**
- *
- */
-export async function cleanupNuxtDirs(rootDir: string) {
-  console.info("Cleaning up generated nuxt files and caches...");
-
-  await rmRecursive(
-    [".nuxt", ".output", "dist", "node_modules/.vite", "node_modules/.cache"].map((dir) =>
-      resolve(rootDir, dir)
-    )
-  );
-}
-
-/**
- *
- */
-export function resolveNuxtManifest(nuxt: any): NuxtProjectManifest {
-  const manifest: NuxtProjectManifest = {
-    _hash: null,
-    project: {
-      rootDir: nuxt.options.rootDir,
-    },
-    versions: {
-      nuxt: nuxt._version,
-    },
-  };
-  const hash = crypto.createHash("sha1");
-  manifest._hash = hash.update(JSON.stringify(manifest)).digest("hex");
-  return manifest;
-}
-
-/**
- *
- */
-export async function writeNuxtManifest(nuxt: any): Promise<NuxtProjectManifest> {
-  const manifest = resolveNuxtManifest(nuxt);
-  const manifestPath = resolve(nuxt.options.buildDir, "nuxt.json");
-  await mkdir(dirname(manifestPath), { recursive: true });
-  await writeFile(manifestPath, JSON.stringify(manifest, null, 2), "utf-8");
-  return manifest;
-}
-
-/**
- *
- */
-export async function loadNuxtManifest(buildDir: string): Promise<NuxtProjectManifest | null> {
-  const manifestPath = resolve(buildDir, "nuxt.json");
-  const manifest: NuxtProjectManifest | null = await readFile(manifestPath, "utf-8")
-    .then((data) => JSON.parse(data) as NuxtProjectManifest)
-    .catch(() => null);
-  return manifest;
-}
-
-/**
- *
+ * clear directory and create it again
+ * @param path directory path
  */
 export async function clearDir(path: string) {
   await rm(path, { recursive: true, force: true });
@@ -94,7 +26,7 @@ export async function clearDir(path: string) {
 }
 
 /**
- *
+ * get paths for modules
  */
 export function getModulePaths(paths?: string | string[]): string[] {
   return ([] as Array<string | undefined>)

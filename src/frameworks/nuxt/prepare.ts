@@ -3,12 +3,21 @@ import { isAbsolute, join, relative, resolve } from 'path'
 import { relativeRequire } from "..";
 import { getModulePaths, getNearestPackage } from './utils'
 
+/**
+ * 
+ * @param nuxt 
+ * writing types for nuxt app
+ * Based on: https://github.com/nuxt/nuxt/blob/main/packages/nuxi/src/utils/prepare.ts
+ * 
+ */
+
 export const writeTypes = async (nuxt: any) => {
   const modulePaths = getModulePaths(nuxt.options.modulesDir)
   const { defu } = await relativeRequire(nuxt.options.rootDir, "defu");
 
   const tsConfig: any = defu(nuxt.options.typescript?.tsConfig, {
     compilerOptions: {
+      forceConsistentCasingInFileNames: true,
       jsx: 'preserve',
       target: 'ESNext',
       module: 'ESNext',
@@ -99,10 +108,6 @@ export const writeTypes = async (nuxt: any) => {
     const declarationPath = resolve(nuxt.options.buildDir, 'nuxt.d.ts')
     await writeFile(declarationPath, GeneratedBy + '\n' + declaration)
   }
-
-  // This is needed for Nuxt 2 which clears the build directory again before building
-  // https://github.com/nuxt/nuxt/blob/2.x/packages/builder/src/builder.js#L144
-  nuxt.hook('builder:prepared', writeFile)
 
   await nuxtWriteFile()
 }

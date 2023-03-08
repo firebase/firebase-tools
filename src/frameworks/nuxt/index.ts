@@ -4,21 +4,14 @@ import { join } from "path";
 import { gte } from "semver";
 import { findDependency, FrameworkType, relativeRequire, SupportLevel } from "..";
 import { warnIfCustomBuildScript } from "../utils";
-import { NuxtDependency } from "./interfaces";
-import {
-  nuxtConfigFilesExist,
-  cleanupNuxtDirs,
-  loadNuxtManifest,
-  writeNuxtManifest,
-  overrideEnv,
-  clearDir,
-} from "./utils";
-import { writeTypes } from "./prepare";
-import type { EmulatorInfo } from "../../emulator/types";
 
 export const name = "Nuxt";
 export const support = SupportLevel.Experimental;
 export const type = FrameworkType.Toolchain;
+
+import { NuxtDependency } from "./interfaces";
+import { nuxtConfigFilesExist, overrideEnv, clearDir } from "./utils";
+import { writeTypes } from "./prepare";
 
 const DEFAULT_BUILD_SCRIPT = ["nuxt build", "nuxi build"];
 
@@ -47,35 +40,24 @@ export async function discover(
 }
 
 /**
- *
+ * @param root directory of nuxt app
+ * @returns options if backend is wanted
  */
 export async function build(root: string) {
   overrideEnv("production");
-  const { buildNuxt, loadNuxt, useNitro } = await relativeRequire(root, "@nuxt/kit");
+  const { loadNuxt, buildNuxt, useNitro } = await relativeRequire(root, "@nuxt/kit");
 
   await warnIfCustomBuildScript(root, name, DEFAULT_BUILD_SCRIPT);
-
-  /**
-   * currently genrate is only supported by using nuxi generate or nuxi build --prerender
-   * moreover, it is currently still experimental
-   */
-  const prerender = false;
 
   const nuxt = await loadNuxt({
     rootDir: root,
     overrides: {
-      nitro: { preset: "node" },
-      _generate: prerender,
+      nitro: { preset: "node" }
     },
     dotenv: {
       cwd: root,
       fileName: null,
-    },
-    defaults: {
-      experimental: {
-        payloadExtraction: prerender ? true : undefined,
-      },
-    },
+    }
   });
 
   // Use ? for backward compatibility for Nuxt <= RC.10
@@ -91,69 +73,45 @@ export async function build(root: string) {
   });
 
   await buildNuxt(nuxt);
+
   return { wantsBackend: true };
 }
 
+
 /**
- *
+ * Copy the static files to the destination directory.
+ * @param root
+ * @param dest
  */
 export async function ɵcodegenPublicDirectory(root: string, dest: string) {
+  //public directory of nuxt app, currently not configurable
   const distPath = join(root, ".output", "public");
   await copy(distPath, dest);
 }
 
 /**
- *
+ * Copy the server files to the destination directory.
+ * @param sourceDir
+ * @param destDir
+ * @returns package.json and frameworksEntry
+ * 
  */
 export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: string) {
   // clean up old files: otherwise could lead to problems
   await clearDir(destDir);
+  // server directory of nuxt app, currently not configurable
+  const serverDir = join(sourceDir, ".output", "server");
+
   const packageJsonBuffer = await readFile(join(sourceDir, "package.json"));
   const packageJson = JSON.parse(packageJsonBuffer.toString());
   const outputPackageJsonBuffer = await readFile(
-    join(sourceDir, ".output", "server", "package.json")
+    join(serverDir, "package.json")
   );
   const outputPackageJson = JSON.parse(outputPackageJsonBuffer.toString());
-  // TODO: this is a hack, firebase ignores bundledDependencies and only uses dependencies -> so dependencies will be removed unintentionally
-  outputPackageJson.dependencies = outputPackageJson.bundledDependencies;
-  await copy(join(sourceDir, ".output", "server"), destDir);
+  // build system of nuxt adds dependencies as bundledDependencies to package.json so we have to add them to dependencies
+  outputPackageJson.dependencies = outputPackageJson?.bundledDependencies || {};
+  if (outputPackageJson?.bundledDependencies)  delete outputPackageJson.bundledDependencies;
+
+  await copy(join(serverDir), destDir);
   return { packageJson: { ...packageJson, ...outputPackageJson }, frameworksEntry: "nuxt3" };
-}
-
-/**
- *
- * @param dir
- * @param hostingEmulatorInfo
- * @return node handler for superstatic
- *
- * TODO: currently nuxt dev server does not reload if config files changes (e.g. nuxt.config.ts)
- */
-export async function getDevModeHandle(dir: string, hostingEmulatorInfo?: EmulatorInfo) {
-  const { setupDotenv } = await relativeRequire(dir, "c12");
-  overrideEnv("development");
-  await setupDotenv({ cwd: dir, fileName: null });
-  const { loadNuxt, buildNuxt } = await relativeRequire(dir, "@nuxt/kit");
-  const { toNodeListener } = await relativeRequire(dir, "h3");
-
-  const currentNuxt = await loadNuxt({ rootDir: dir, dev: true, ready: false });
-
-  const previousManifest = await loadNuxtManifest(currentNuxt.options.buildDir);
-  const newManifest = await writeNuxtManifest(currentNuxt);
-  if (previousManifest && newManifest && previousManifest._hash !== newManifest._hash) {
-    await cleanupNuxtDirs(currentNuxt.options.rootDir);
-  }
-
-  await currentNuxt.ready();
-  // Todo: check if this hook is needed for some nuxt3 modules and if so, how to implement it with firebase/superstatic
-  // await currentNuxt.hooks.callHook('listen', null, { url: 'http://localhost:5000/' });
-
-  currentNuxt.options.devServer.url = `http://${hostingEmulatorInfo?.host}:${hostingEmulatorInfo?.port}/`;
-  currentNuxt.options.devServer.port = hostingEmulatorInfo?.port ?? 5000;
-  currentNuxt.options.devServer.host = hostingEmulatorInfo?.host ?? "::";
-  currentNuxt.options.devServer.https = false;
-
-  await Promise.all([writeTypes(currentNuxt).catch(console.error), buildNuxt(currentNuxt)]);
-  const handler = toNodeListener(currentNuxt.server.app);
-
-  return handler;
 }
