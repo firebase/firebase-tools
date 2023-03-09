@@ -43,7 +43,7 @@ export async function warnIfCustomBuildScript(
 }
 
 export function simpleProxy(host: string) {
-  return (req: IncomingMessage, res: ServerResponse) => {
+  return (req: IncomingMessage, res: ServerResponse, next: () => void) => {
     const { method, headers, url: path } = req;
     if (!method || !path) {
       return res.end();
@@ -62,10 +62,15 @@ export function simpleProxy(host: string) {
       },
     };
     const proxy = request(opts, (proxyResponse) => {
-      if (!proxyResponse.statusCode) {
+      const { statusCode } = proxyResponse;
+      if (!statusCode) {
         return res.end();
       }
-      res.writeHead(proxyResponse.statusCode, proxyResponse.headers);
+      if (statusCode === 404) {
+        next();
+        return;
+      }
+      res.writeHead(statusCode, proxyResponse.headers);
       proxyResponse.pipe(res);
     });
     req.pipe(proxy);
