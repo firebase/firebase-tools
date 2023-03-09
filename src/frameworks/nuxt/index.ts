@@ -5,7 +5,7 @@ import { gte } from "semver";
 import type { NuxtOptions } from "@nuxt/schema";
 import { spawn } from "cross-spawn";
 import { findDependency, FrameworkType, relativeRequire, SupportLevel } from "..";
-import { warnIfCustomBuildScript } from "../utils";
+import { simpleProxy, warnIfCustomBuildScript } from "../utils";
 
 export const name = "Nuxt";
 export const support = SupportLevel.Experimental;
@@ -13,7 +13,6 @@ export const type = FrameworkType.Toolchain;
 
 import { NuxtDependency } from "./interfaces";
 import { nuxtConfigFilesExist } from "./utils";
-import { proxyRequestHandler } from "../../hosting/proxy";
 
 const DEFAULT_BUILD_SCRIPT = ["nuxt build"];
 const CLI_COMMAND = join("node_modules", ".bin", "nuxt");
@@ -103,7 +102,7 @@ export async function getDevModeHandle(dir: string) {
     });
   });
 
-  return proxyRequestHandler(await host, "Nuxt Development Server", { forceCascade: true });
+  return simpleProxy(await host);
 }
 
 async function getConfig(dir: string): Promise<NuxtOptions> {
