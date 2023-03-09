@@ -1,4 +1,3 @@
-import * as _ from "lodash";
 import * as clc from "colorette";
 
 import { loadCJSON } from "../../loadCJSON";
@@ -21,7 +20,9 @@ export interface IndexContext {
 /**
  * Prepares Firestore Rules deploys.
  * @param context The deploy context.
- * @param options The CLI options object.
+ * @param rulesDeploy The object encapsulating logic for deploying rules.
+ * @param databaseId The id of the database rulesFile corresponds to.
+ * @param rulesFile File name for the Firestore rules to be deployed.
  */
 function prepareRules(
   context: any,
@@ -40,6 +41,8 @@ function prepareRules(
  * Prepares Firestore Indexes deploys.
  * @param context The deploy context.
  * @param options The CLI options object.
+ * @param databaseId The id of the database indexesFileName corresponds to.
+ * @param indexesFileName File name for the index configs to be parsed from.
  */
 function prepareIndexes(
   context: any,
@@ -92,16 +95,16 @@ export default async function (context: any, options: any): Promise<void> {
   context.firestore.indexes = [];
   context.firestore.rules = [];
   const rulesDeploy: RulesDeploy = new RulesDeploy(options, RulesetServiceType.CLOUD_FIRESTORE);
-  _.set(context, "firestore.rulesDeploy", rulesDeploy);
+  context.firestore.rulesDeploy = rulesDeploy;
 
-  firestoreConfigs.forEach((firestoreConfig: fsConfig.ParsedFirestoreConfig) => {
+  for (const firestoreConfig of firestoreConfigs) {
     if (firestoreConfig.indexes) {
       prepareIndexes(context, options, firestoreConfig.database, firestoreConfig.indexes);
     }
     if (firestoreConfig.rules) {
       prepareRules(context, rulesDeploy, firestoreConfig.database, firestoreConfig.rules);
     }
-  });
+  }
 
   if (context.firestore.rules.length > 0) {
     await rulesDeploy.compile();

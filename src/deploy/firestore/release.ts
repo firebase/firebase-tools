@@ -27,7 +27,7 @@ export default async function (context: any, options: Options): Promise<void> {
         );
         return;
       }
-      await rulesDeploy.release(rulesFile, RulesetServiceType.CLOUD_FIRESTORE, databaseId);
+      return rulesDeploy.release(rulesFile, RulesetServiceType.CLOUD_FIRESTORE, databaseId);
     })
   );
 }

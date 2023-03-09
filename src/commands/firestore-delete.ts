@@ -10,7 +10,7 @@ import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
 import { FirestoreOptions } from "../firestore/options";
 
-function getConfirmationMessage(deleteOp: FirestoreDelete, options: FirestoreOptions) {
+function confirmationMessage(deleteOp: FirestoreDelete, options: FirestoreOptions) {
   if (options.allCollections) {
     return (
       "You are about to delete " +
@@ -113,7 +113,7 @@ export const command = new Command("firestore:delete [path]")
         type: "confirm",
         name: "force",
         default: false,
-        message: getConfirmationMessage(deleteOp, options),
+        message: confirmationMessage(deleteOp, options),
       },
       options
     );
