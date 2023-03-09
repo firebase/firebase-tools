@@ -2,6 +2,8 @@ import { readJSON as originalReadJSON } from "fs-extra";
 import type { ReadOptions } from "fs-extra";
 import { join } from "path";
 import { readFile } from "fs/promises";
+import { IncomingMessage, request, ServerResponse } from "http";
+import { parse } from "url";
 
 /**
  * Whether the given string starts with http:// or https://
@@ -38,4 +40,27 @@ export async function warnIfCustomBuildScript(
       `\nWARNING: Your package.json contains a custom build that is being ignored. Only the ${framework} default build script (e.g, "${defaultBuildScripts[0]}") is respected. If you have a more advanced build process you should build a custom integration https://firebase.google.com/docs/hosting/express\n`
     );
   }
+}
+
+export function simpleProxy(host: string) {
+  return (req: IncomingMessage, res: ServerResponse) => {
+    const { method, headers, url } = req;
+    const { path } = parse(url!, true);
+    const { hostname, port } = new URL(host);
+    const opts = {
+      host: hostname,
+      port,
+      path,
+      method,
+      headers: {
+        ...headers,
+        "X-Forwarded-Host": headers.host || "",
+      },
+    };
+    const proxy = request(opts, proxyResponse => {
+      res.writeHead(proxyResponse.statusCode!, proxyResponse.headers);
+      proxyResponse.pipe(res);
+    });
+    req.pipe(proxy);
+  };
 }
