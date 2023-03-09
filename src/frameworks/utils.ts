@@ -44,21 +44,28 @@ export async function warnIfCustomBuildScript(
 
 export function simpleProxy(host: string) {
   return (req: IncomingMessage, res: ServerResponse) => {
-    const { method, headers, url } = req;
-    const { path } = parse(url!, true);
-    const { hostname, port } = new URL(host);
+    const { method, headers, url: path } = req;
+    if (!method || !path) {
+      return res.end();
+    }
+    const { hostname, port, protocol } = new URL(host);
     const opts = {
-      host: hostname,
+      protocol,
+      hostname,
       port,
       path,
       method,
       headers: {
         ...headers,
-        "X-Forwarded-Host": headers.host || "",
+        host,
+        "X-Forwarded-Host": headers.host,
       },
     };
-    const proxy = request(opts, proxyResponse => {
-      res.writeHead(proxyResponse.statusCode!, proxyResponse.headers);
+    const proxy = request(opts, (proxyResponse) => {
+      if (!proxyResponse.statusCode) {
+        return res.end();
+      }
+      res.writeHead(proxyResponse.statusCode, proxyResponse.headers);
       proxyResponse.pipe(res);
     });
     req.pipe(proxy);
