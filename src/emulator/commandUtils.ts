@@ -59,9 +59,12 @@ export const FLAG_TEST_PARAMS = "--test-params <params.env file>";
 export const DESC_TEST_PARAMS =
   "A .env file containing test param values for your emulated extension.";
 
+export const FRAMEWORKS_BUILD_OPTIONS = ["prod", "dev"];
 export const FLAG_FRAMEWORKS_BUILD = "--frameworks-build [environment]";
 export const DESC_FRAMEWORKS_BUILD =
-  "Specify an environment build to preview locally. Valid options are: prod or dev.";
+  "Specify an environment build to preview locally. Valid options are:" +
+  FRAMEWORKS_BUILD_OPTIONS.join(", ") +
+  ".";
 
 const DEFAULT_CONFIG = new Config(
   {

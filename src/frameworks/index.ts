@@ -28,6 +28,7 @@ import { HostingRewrites } from "../firebaseConfig";
 import * as experiments from "../experiments";
 import { ensureTargeted } from "../functions/ensureTargeted";
 import { implicitInit } from "../hosting/implicitInit";
+import { FRAMEWORKS_BUILD_OPTIONS } from "../emulator/commandUtils";
 
 // Use "true &&"" to keep typescript from compiling this file and rewriting
 // the import statement into a require
@@ -407,17 +408,11 @@ export async function prepareFrameworks(
     } = WebFrameworks[framework];
     console.log(`Detected a ${name} codebase. ${SupportLevelWarnings[support] || ""}\n`);
     const hostingEmulatorInfo = emulators.find((e) => e.name === Emulators.HOSTING);
-
     const frameworksBuild = getFrameworksBuildMode(options);
+    let codegenFunctionsDirectory: Framework["ɵcodegenFunctionsDirectory"];
 
     // TODO allow for override
-    const isDevMode =
-      (context._name === "serve" ||
-        context._name === "emulators:start" ||
-        context._name === "emulators:exec") &&
-      frameworksBuild === "dev";
-
-    let codegenFunctionsDirectory: Framework["ɵcodegenFunctionsDirectory"];
+    const isDevMode = context._name !== "deploy" && frameworksBuild === "dev";
 
     const devModeHandle =
       isDevMode &&
@@ -639,7 +634,7 @@ function getFrameworksBuildMode(options: any): FrameworksBuild {
   let frameworksBuild: FrameworksBuild = options.frameworksBuild;
   if (frameworksBuild) {
     // TODO validate frameworksBuild with other possible values (for Angular)
-    if (frameworksBuild !== "dev" && frameworksBuild !== "prod") {
+    if (!FRAMEWORKS_BUILD_OPTIONS.includes(frameworksBuild)) {
       throw new FirebaseError(`Invalid value for frameworksBuild: ${frameworksBuild}`);
     }
   } else if (process.env.NODE_ENV === "production") {
