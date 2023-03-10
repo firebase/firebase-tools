@@ -23,4 +23,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          build-command: npm install --production=true && npx clean-publish --without-publish --before-script ./scripts/clean-shrinkwrap.sh # ⬅ Set a different build script here
+          build-command: npm install && npx clean-publish --without-publish --before-script ./scripts/clean-shrinkwrap.sh
