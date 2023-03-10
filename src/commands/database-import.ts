@@ -7,16 +7,27 @@ import DatabaseImporter from "../database/import";
 import { Emulators } from "../emulator/types";
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
+import { needProjectId } from "../projectUtils";
+import { Options } from "../options";
 import { printNoticeIfEmulated } from "../emulator/commandUtils";
 import { promptOnce } from "../prompt";
-import { populateInstanceDetails } from "../management/database";
+import { DatabaseInstance, populateInstanceDetails } from "../management/database";
 import { realtimeOriginOrEmulatorOrCustomUrl } from "../database/api";
 import { requireDatabaseInstance } from "../requireDatabaseInstance";
 import { requirePermissions } from "../requirePermissions";
 
+interface DatabaseImportOptions extends Options {
+  instance: string;
+  instanceDetails: DatabaseInstance;
+  disableTriggers?: boolean;
+  filter?: string;
+}
+
 export const command = new Command("database:import <path> [infile]")
-  .description("non-atomically import JSON file to the specified path")
-  .option("-f, --force", "pass this option to bypass confirmation prompt")
+  .description(
+    "non-atomically import the contents of a JSON file to the specified path in Realtime Database"
+  )
+  .withForce()
   .option(
     "--instance <instance>",
     "use the database <instance>.firebaseio.com (if omitted, use default database instance)"
@@ -27,26 +38,23 @@ export const command = new Command("database:import <path> [infile]")
     true
   )
   .option(
-    "--only <dataPath>",
+    "--filter <dataPath>",
     "import only data at this path in the JSON file (if omitted, import entire file)"
   )
   .before(requirePermissions, ["firebasedatabase.instances.update"])
   .before(requireDatabaseInstance)
   .before(populateInstanceDetails)
   .before(printNoticeIfEmulated, Emulators.DATABASE)
-  .action(async (path: string, infile, options) => {
+  .action(async (path: string, infile: string | undefined, options: DatabaseImportOptions) => {
     if (!path.startsWith("/")) {
       throw new FirebaseError("Path must begin with /");
-    }
-
-    if (options.only && !options.only.startsWith("/")) {
-      throw new FirebaseError("Data path must begin with /");
     }
 
     if (!infile) {
       throw new FirebaseError("No file supplied");
     }
 
+    const projectId = needProjectId(options);
     const origin = realtimeOriginOrEmulatorOrCustomUrl(options.instanceDetails.databaseUrl);
     const dbPath = utils.getDatabaseUrl(origin, options.instance, path);
     const dbUrl = new URL(dbPath);
@@ -68,7 +76,7 @@ export const command = new Command("database:import <path> [infile]")
     }
 
     const inStream = fs.createReadStream(infile);
-    const dataPath = options.only || "/";
+    const dataPath = options.filter || "";
     const importer = new DatabaseImporter(dbUrl, inStream, dataPath);
 
     let responses;
@@ -91,6 +99,6 @@ export const command = new Command("database:import <path> [infile]")
     logger.info();
     logger.info(
       clc.bold("View data at:"),
-      utils.getDatabaseViewDataUrl(origin, options.project, options.instance, path)
+      utils.getDatabaseViewDataUrl(origin, projectId, options.instance, path)
     );
   });

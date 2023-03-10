@@ -1,12 +1,14 @@
+import * as Chain from "stream-chain";
 import * as clc from "colorette";
+import * as Filter from "stream-json/filters/Filter";
 import * as stream from "stream";
+import * as StreamObject from "stream-json/streamers/StreamObject";
+
 import pLimit from "p-limit";
 
 import { URL } from "url";
-import { Client } from "../apiv2";
+import { Client, ClientResponse } from "../apiv2";
 import { FirebaseError } from "../error";
-
-const JSONStream = require("JSONStream");
 
 const MAX_CHUNK_SIZE = 1024 * 1024;
 const CONCURRENCY_LIMIT = 5;
@@ -27,17 +29,15 @@ type ChunkedData = {
  * The data is parsed and chunked into subtrees of ~1 MB, to be subsequently written in parallel.
  */
 export default class DatabaseImporter {
-  private jsonPath: string;
   private client: Client;
   private limit = pLimit(CONCURRENCY_LIMIT);
 
   constructor(
     private dbUrl: URL,
-    private inStream: NodeJS.ReadableStream,
-    dataPath: string,
+    private inStream: stream.Readable,
+    private dataPath: string,
     private chunkSize = MAX_CHUNK_SIZE
   ) {
-    this.jsonPath = this.computeJsonPath(dataPath);
     this.client = new Client({ urlPrefix: dbUrl.origin, auth: true });
   }
 
@@ -46,7 +46,7 @@ export default class DatabaseImporter {
    */
   async execute(): Promise<any> {
     await this.checkLocationIsEmpty();
-    return this.readAndWriteChunks(this.inStream);
+    return this.readAndWriteChunks();
   }
 
   private async checkLocationIsEmpty(): Promise<void> {
@@ -66,7 +66,7 @@ export default class DatabaseImporter {
     }
   }
 
-  private readAndWriteChunks(inStream: NodeJS.ReadableStream): Promise<any> {
+  private readAndWriteChunks(): Promise<any> {
     const { dbUrl } = this;
     const chunkData = this.chunkData.bind(this);
     const writeChunk = this.writeChunk.bind(this);
@@ -90,14 +90,24 @@ export default class DatabaseImporter {
 
     return new Promise((resolve, reject) => {
       const responses: any[] = [];
-      inStream
-        .pipe(JSONStream.parse(this.jsonPath))
+      const pipeline = new Chain([
+        this.inStream,
+        Filter.withParser({
+          filter: this.computeFilterString(this.dataPath) || (() => true),
+          pathSeparator: "/",
+        }),
+        StreamObject.streamObject(),
+      ]);
+      pipeline
         .on("error", (err: any) =>
           reject(
-            new FirebaseError("Invalid data; couldn't parse JSON object, array, or value.", {
-              original: err,
-              exit: 2,
-            })
+            new FirebaseError(
+              `Invalid data; couldn't parse JSON object, array, or value. ${err.message}`,
+              {
+                original: err,
+                exit: 2,
+              }
+            )
           )
         )
         .pipe(readChunks)
@@ -108,7 +118,7 @@ export default class DatabaseImporter {
     });
   }
 
-  private writeChunk(chunk: Data): Promise<any> {
+  private writeChunk(chunk: Data): Promise<ClientResponse<any>> {
     return this.limit(() =>
       this.client.request({
         method: "PUT",
@@ -152,12 +162,8 @@ export default class DatabaseImporter {
     }
   }
 
-  private computeJsonPath(dataPath: string): string {
-    if (dataPath === "/") {
-      return "$*";
-    } else {
-      return `${dataPath.split("/").slice(1).join(".")}.$*`;
-    }
+  private computeFilterString(dataPath: string): string {
+    return dataPath.split("/").filter(Boolean).join("/");
   }
 
   private joinPath(root: string, key: string): string {
