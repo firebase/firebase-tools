@@ -62,7 +62,7 @@ export async function release(
   const functionExecutor: executor.QueueExecutor = new executor.QueueExecutor({
     retries: 30,
     backoff: 20000,
-    concurrency: 40,
+    concurrency: 10,
     maxBackoff: 40000,
   });
 
