@@ -1,6 +1,5 @@
-# file: completion.fish
+###-begin-firebase-completion-###
 
-# Placeholder to be replaced by database variables
 # DECLARATIONS
 
 function firebase_tools_completion
@@ -10,14 +9,14 @@ function firebase_tools_completion
 
   # No command has been entered yet
   if [ -z "$command" ]
-      for i in (seq (count $COMMANDS))
-          echo $COMMANDS[$i]\t$COMMAND_DESCRIPTIONS[$i]
+      for i in (seq (count $COMMANDS_INDEX))
+          echo $COMMANDS_INDEX[$i]\t$COMMAND_DESCRIPTIONS[$i]
       end
 
   # A command has been entered, user is entering options but it is not entering a parameter of an option
-  else if string match -qv -- "-*" "$cur"; or not contains -- "$command:$cur" $PARAMETERS
-      for option in (string split ' ' -- $OPTIONS[(contains -i -- "$command" $COMMANDS)])
-          echo $option\t$OPTION_DESCRIPTIONS[(contains -i -- "$command:$option" $HANDLES_INDEX)]
+  else if string match -qv -- "-*" "$cur"; or not contains -- "$command:$cur" $OPTION_PARAMETERS
+      for option in (string split ' ' -- $OPTIONS[(contains -i -- "$command" $COMMANDS_INDEX)])
+          echo $option\t$OPTION_DESCRIPTIONS[(contains -i -- "$command:$option" $OPTIONS_INDEX)]
       end
 
   # An option is pending a file parameter
@@ -33,3 +32,4 @@ function firebase_tools_completion
 end
 
 complete -c firebase -a '(firebase_tools_completion)' -f
+###-end-firebase-completion-###

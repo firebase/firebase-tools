@@ -37,6 +37,7 @@ export function load(client: any): any {
   client.auth = {};
   client.auth.export = loadCommand("auth-export");
   client.auth.upload = loadCommand("auth-import");
+  client.completion = loadCommand("completion");
   client.crashlytics = {};
   client.crashlytics.symbols = {};
   client.crashlytics.symbols.upload = loadCommand("crashlytics-symbols-upload");

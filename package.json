@@ -16,7 +16,7 @@
     "format:other": "npm run lint:other -- --write",
     "format:ts": "npm run lint:ts -- --fix --quiet",
     "generate:auth-api": "ts-node scripts/gen-auth-api-spec.ts",
-    "generate:completion-files": "ts-node scripts/extract-command-signatures.ts",
+    "generate:completion-files": "ts-node scripts/generate-completion-files.ts",
     "generate:json-schema": "typescript-json-schema --strictNullChecks --required --noExtraProps src/firebaseConfig.ts FirebaseConfig > schema/firebase-config.json",
     "lint": "npm run lint:ts && npm run lint:other",
     "lint:changed-files": "ts-node ./scripts/lint-changed-files.ts",

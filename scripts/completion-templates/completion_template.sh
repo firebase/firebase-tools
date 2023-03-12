@@ -1,6 +1,5 @@
-# file: completion.sh
+###-begin-firebase-completion-###
 
-# Placeholder to be replaced by database variables
 # DECLARATIONS
 
 _FirebaseToolsTabCompletion()
@@ -41,3 +40,4 @@ _FirebaseToolsTabCompletion()
 }
 
 complete -F _FirebaseToolsTabCompletion firebase
+###-end-firebase-completion-###
