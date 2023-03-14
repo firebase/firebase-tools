@@ -17,8 +17,6 @@ export async function ensureFirestoreTriggerRegion(
   if (!endpoint.eventTrigger.region) {
     endpoint.eventTrigger.region = dbRegion;
   }
-  console.log(endpoint.eventTrigger.region);
-  console.log(dbRegion);
   if (endpoint.eventTrigger.region !== dbRegion) {
     throw new FirebaseError(
       "A firestore trigger location must match the firestore database region."
