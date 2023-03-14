@@ -1,0 +1,1 @@
+- Adds 2nd gen firestore triggers to firebase deploy (#5592).
