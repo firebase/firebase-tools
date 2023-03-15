@@ -480,14 +480,7 @@ export function functionFromEndpoint(
     "concurrency"
   );
   proto.convertIfPresent(gcfFunction.serviceConfig, endpoint, "availableCpu", "cpu", (cpu) => {
-    if (cpu === "gcf_gen1") {
-      return String(backend.memoryToGen1Cpu(mem));
-    } else if (typeof cpu === "number") {
-      return String(cpu);
-    } else {
-      // If the user explicitly specified "null", set a default CPU number here
-      return String(backend.memoryToGen2Cpu(mem));
-    }
+    return String(cpu);
   });
 
   if (endpoint.vpc) {
