@@ -433,13 +433,6 @@ describe("Fabricator", () => {
   });
 
   describe("createV2Function", () => {
-    let setRunTraits: sinon.SinonStub;
-
-    beforeEach(() => {
-      setRunTraits = sinon.stub(fab, "setRunTraits");
-      setRunTraits.resolves();
-    });
-
     it("handles topics that already exist", async () => {
       pubsub.createTopic.callsFake(() => {
         const err = new Error("Already exists");
@@ -740,13 +733,6 @@ describe("Fabricator", () => {
   });
 
   describe("updateV2Function", () => {
-    let setRunTraits: sinon.SinonStub;
-
-    beforeEach(() => {
-      setRunTraits = sinon.stub(fab, "setRunTraits");
-      setRunTraits.rejects(new Error("Unexpected setRunTraits call"));
-    });
-
     it("throws on update function failure", async () => {
       gcfv2.updateFunction.rejects(new Error("Server failure"));
 
@@ -856,141 +842,6 @@ describe("Fabricator", () => {
       poller.pollOperation.rejects(new Error("5xx"));
 
       await expect(fab.deleteV2Function(ep)).to.be.rejectedWith(reporter.DeploymentError, "delete");
-    });
-  });
-
-  describe("setRunTraits", () => {
-    let service: runNS.Service;
-    beforeEach(() => {
-      service = {
-        apiVersion: "serving.knative.dev/v1",
-        kind: "Service",
-        metadata: {
-          name: "service",
-          namespace: "project",
-        },
-        spec: {
-          template: {
-            metadata: {
-              name: "service",
-              namespace: "project",
-            },
-            spec: {
-              containerConcurrency: 1,
-              containers: [
-                {
-                  image: "image",
-                  ports: [
-                    {
-                      name: "main",
-                      containerPort: 8080,
-                    },
-                  ],
-                  env: {},
-                  resources: {
-                    limits: {
-                      memory: "256M",
-                      cpu: "0.1667",
-                    },
-                  },
-                },
-              ],
-            },
-          },
-          traffic: [],
-        },
-      };
-    });
-
-    it("replaces the service to set concurrency", async () => {
-      run.getService.resolves(service);
-      run.updateService.resolves(service);
-      await fab.setRunTraits(
-        service.metadata.name,
-        endpoint(
-          { httpsTrigger: {} },
-          {
-            cpu: 1,
-            concurrency: 80,
-          }
-        )
-      );
-      expect(run.updateService).to.have.been.called;
-    });
-
-    it("replaces the service to set CPU", async () => {
-      service.spec.template.spec.containers[0].resources.limits.cpu = (1 / 6).toString();
-      run.getService.resolves(service);
-      run.updateService.resolves(service);
-      await fab.setRunTraits(
-        service.metadata.name,
-        endpoint(
-          { httpsTrigger: {} },
-          {
-            cpu: 1,
-            concurrency: 1,
-          }
-        )
-      );
-      expect(run.updateService).to.have.been.called;
-    });
-
-    it("doesn't setRunTraits when already at the correct value", async () => {
-      service.spec.template.spec.containerConcurrency = 80;
-      service.spec.template.spec.containers[0].resources.limits.cpu = "1";
-      run.getService.resolves(service);
-
-      await fab.setRunTraits(
-        "service",
-        endpoint(
-          {
-            httpsTrigger: {},
-          },
-          {
-            cpu: 1,
-            concurrency: 80,
-          }
-        )
-      );
-      expect(run.updateService).to.not.have.been.called;
-    });
-
-    it("wraps errors", async () => {
-      run.getService.rejects(new Error("Oh noes!"));
-
-      await expect(fab.setRunTraits("service", endpoint())).to.eventually.be.rejectedWith(
-        reporter.DeploymentError,
-        "set concurrency"
-      );
-
-      run.getService.resolves(service);
-      run.replaceService.rejects(new Error("read only"));
-      await expect(fab.setRunTraits("service", endpoint())).to.eventually.be.rejectedWith(
-        reporter.DeploymentError,
-        "set concurrency"
-      );
-    });
-  });
-
-  describe("upsertScheduleV1", () => {
-    const ep = endpoint({
-      scheduleTrigger: {
-        schedule: "every 5 minutes",
-      },
-    }) as backend.Endpoint & backend.ScheduleTriggered;
-
-    it("upserts schedules", async () => {
-      scheduler.createOrReplaceJob.resolves();
-      await fab.upsertScheduleV1(ep);
-      expect(scheduler.createOrReplaceJob).to.have.been.called;
-    });
-
-    it("wraps errors", async () => {
-      scheduler.createOrReplaceJob.rejects(new Error("Fail"));
-      await expect(fab.upsertScheduleV1(ep)).to.eventually.be.rejectedWith(
-        reporter.DeploymentError,
-        "upsert schedule"
-      );
     });
   });
 

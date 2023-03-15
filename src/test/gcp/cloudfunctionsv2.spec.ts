@@ -366,12 +366,6 @@ describe("cloudfunctionsv2", () => {
       expect(
         cloudfunctionsv2.functionFromEndpoint(endpoint, CLOUD_FUNCTION_V2_SOURCE)
       ).to.deep.equal(gcfFunction);
-
-      endpoint.cpu = "gcf_gen1";
-      gcfFunction.serviceConfig.availableCpu = "0.1666";
-      expect(
-        cloudfunctionsv2.functionFromEndpoint(endpoint, CLOUD_FUNCTION_V2_SOURCE)
-      ).to.deep.equal(gcfFunction);
     });
 
     it("should export codebase as label", () => {
