@@ -631,64 +631,6 @@ describe("Fabricator", () => {
       );
     });
 
-    it("sets run traits by default for large functions", async () => {
-      gcfv2.createFunction.resolves({ name: "op", done: false });
-      poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
-      run.setInvokerCreate.resolves();
-      const ep = endpoint(
-        { httpsTrigger: {} },
-        { platform: "gcfv2", availableMemoryMb: 256, cpu: 1 }
-      );
-
-      await fab.createV2Function(ep);
-      expect(setRunTraits).to.have.been.calledWith("service", ep);
-    });
-
-    it("sets run traits for functions with concurrency", async () => {
-      gcfv2.createFunction.resolves({ name: "op", done: false });
-      poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
-      run.setInvokerCreate.resolves();
-      const ep = endpoint(
-        { httpsTrigger: {} },
-        { platform: "gcfv2", availableMemoryMb: 2048, cpu: 1, concurrency: 80 }
-      );
-
-      await fab.createV2Function(ep);
-      expect(setRunTraits).to.have.been.calledWith("service", ep);
-    });
-
-    it("does not set concurrency by default for small functions", async () => {
-      gcfv2.createFunction.resolves({ name: "op", done: false });
-      poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
-      run.setInvokerCreate.resolves();
-      const ep = endpoint(
-        { httpsTrigger: {} },
-        {
-          platform: "gcfv2",
-          availableMemoryMb: 256,
-          cpu: backend.memoryToGen1Cpu(256),
-          concurrency: 1,
-        }
-      );
-
-      await fab.createV2Function(ep);
-      expect(run.setInvokerCreate).to.have.been.calledWith(ep.project, "service", ["public"]);
-      expect(setRunTraits).to.not.have.been.called;
-    });
-
-    it("sets explicit concurrency", async () => {
-      gcfv2.createFunction.resolves({ name: "op", done: false });
-      poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
-      run.setInvokerCreate.resolves();
-      const ep = endpoint(
-        { httpsTrigger: {} },
-        { platform: "gcfv2", availableMemoryMb: 2048, cpu: 1, concurrency: 2 }
-      );
-
-      await fab.createV2Function(ep);
-      expect(setRunTraits).to.have.been.calledWith("service", ep);
-    });
-
     describe("httpsTrigger", () => {
       it("sets invoker to public by default", async () => {
         gcfv2.createFunction.resolves({ name: "op", done: false });
@@ -900,27 +842,6 @@ describe("Fabricator", () => {
 
       await fab.updateV2Function(ep);
       expect(run.setInvokerUpdate).to.not.have.been.called;
-    });
-
-    it("Reapplies customer VM preferences after GCF overwrite", async () => {
-      setRunTraits.resolves();
-      gcfv2.updateFunction.resolves({ name: "op", done: false });
-      poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
-      run.setInvokerUpdate.resolves();
-      const ep = endpoint(
-        { httpsTrigger: {} },
-        {
-          platform: "gcfv2",
-          availableMemoryMb: 256,
-          cpu: 1,
-        }
-      );
-
-      await fab.updateV2Function(ep);
-      expect(setRunTraits).to.have.been.calledWithMatch("service", {
-        cpu: 1,
-        concurrency: backend.DEFAULT_CONCURRENCY,
-      });
     });
   });
 

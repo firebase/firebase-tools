@@ -115,10 +115,12 @@ export interface ServiceConfig {
 
   timeoutSeconds?: number | null;
   availableMemory?: string | null;
+  availableCpu?: string | null;
   environmentVariables?: Record<string, string> | null;
   secretEnvironmentVariables?: SecretEnvVar[] | null;
   maxInstanceCount?: number | null;
   minInstanceCount?: number | null;
+  maxInstanceRequestConcurrency?: number | null;
   vpcConnector?: string | null;
   vpcConnectorEgressSettings?: VpcConnectorEgressSettings | null;
   ingressSettings?: IngressSettings | null;
@@ -467,10 +469,26 @@ export function functionFromEndpoint(
   );
   // Memory must be set because the default value of GCF gen 2 is Megabytes and
   // we use mebibytes
-  const mem: number = endpoint.availableMemoryMb || backend.DEFAULT_MEMORY;
+  const mem = endpoint.availableMemoryMb || backend.DEFAULT_MEMORY;
   gcfFunction.serviceConfig.availableMemory = mem > 1024 ? `${mem / 1024}Gi` : `${mem}Mi`;
   proto.renameIfPresent(gcfFunction.serviceConfig, endpoint, "minInstanceCount", "minInstances");
   proto.renameIfPresent(gcfFunction.serviceConfig, endpoint, "maxInstanceCount", "maxInstances");
+  proto.renameIfPresent(
+    gcfFunction.serviceConfig,
+    endpoint,
+    "maxInstanceRequestConcurrency",
+    "concurrency"
+  );
+  proto.convertIfPresent(gcfFunction.serviceConfig, endpoint, "availableCpu", "cpu", (cpu) => {
+    if (cpu === "gcf_gen1") {
+      return String(backend.memoryToGen1Cpu(mem));
+    } else if (typeof cpu === "number") {
+      return String(cpu);
+    } else {
+      // If the user explicitly specified "null", set a default CPU number here
+      return String(backend.memoryToGen2Cpu(mem));
+    }
+  });
 
   if (endpoint.vpc) {
     proto.renameIfPresent(gcfFunction.serviceConfig, endpoint.vpc, "vpcConnector", "connector");

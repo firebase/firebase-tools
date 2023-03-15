@@ -347,6 +347,33 @@ describe("cloudfunctionsv2", () => {
       ).to.deep.equal(complexGcfFunction);
     });
 
+    it("should correctly convert CPU and concurrency values", () => {
+      const endpoint: backend.Endpoint = {
+        ...ENDPOINT,
+        platform: "gcfv2",
+        httpsTrigger: {},
+        concurrency: 40,
+        cpu: 2,
+      };
+      const gcfFunction: Omit<cloudfunctionsv2.CloudFunction, cloudfunctionsv2.OutputOnlyFields> = {
+        ...CLOUD_FUNCTION_V2,
+        serviceConfig: {
+          ...CLOUD_FUNCTION_V2.serviceConfig,
+          maxInstanceRequestConcurrency: 40,
+          availableCpu: "2",
+        },
+      };
+      expect(
+        cloudfunctionsv2.functionFromEndpoint(endpoint, CLOUD_FUNCTION_V2_SOURCE)
+      ).to.deep.equal(gcfFunction);
+
+      endpoint.cpu = "gcf_gen1";
+      gcfFunction.serviceConfig.availableCpu = "0.1666";
+      expect(
+        cloudfunctionsv2.functionFromEndpoint(endpoint, CLOUD_FUNCTION_V2_SOURCE)
+      ).to.deep.equal(gcfFunction);
+    });
+
     it("should export codebase as label", () => {
       expect(
         cloudfunctionsv2.functionFromEndpoint(
