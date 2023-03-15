@@ -11,7 +11,7 @@ import { track } from "../track";
 import * as env from "../functions/env";
 import { cloneDeep } from "../utils";
 
-const NONINTERACTIVE_WARNING =
+const NONINTERACTIVE_ERROR_MESSAGE =
   "As of firebase-tools@11, `ext:install`, `ext:update` and `ext:configure` are interactive only commands. " +
   "To deploy an extension noninteractively, use an extensions manifest and `firebase deploy --only extensions`.  " +
   "See https://firebase.google.com/docs/extensions/manifest for more details";
@@ -100,7 +100,7 @@ export async function getParams(args: {
 }): Promise<Record<string, ParamBindingOptions>> {
   let params: Record<string, ParamBindingOptions>;
   if (args.nonInteractive) {
-    throw new FirebaseError(NONINTERACTIVE_WARNING);
+    throw new FirebaseError(NONINTERACTIVE_ERROR_MESSAGE);
   } else {
     const firebaseProjectParams = await getFirebaseProjectParams(args.projectId);
     params = await askUserForParam.ask({
@@ -127,7 +127,7 @@ export async function getParamsForUpdate(args: {
 }): Promise<Record<string, ParamBindingOptions>> {
   let params: Record<string, ParamBindingOptions>;
   if (args.nonInteractive) {
-    throw new FirebaseError(NONINTERACTIVE_WARNING);
+    throw new FirebaseError(NONINTERACTIVE_ERROR_MESSAGE);
   } else {
     params = await promptForNewParams({
       spec: args.spec,
