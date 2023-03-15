@@ -1,2 +1,3 @@
-- Fixes an issue where `ext:dev:init` would fail due to a missing CHANGELOG.md file (#5530).
+- Fix function deploy retry after quota exceeded bug and increase backoff. (#5601)
+- Fix bug where EVENTARC_CLOUD_EVENT_SOURCE environment variable was correctly set for some functions. (#5597)
 - Adds `database:import` command for non-atomic imports (#5396).

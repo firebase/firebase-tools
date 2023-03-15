@@ -298,6 +298,7 @@ export class Fabricator {
             }
             throw new FirebaseError("Unexpected error creating Pub/Sub topic", {
               original: err as Error,
+              status: err.status,
             });
           }
         })
@@ -336,6 +337,7 @@ export class Fabricator {
             }
             throw new FirebaseError("Unexpected error creating Eventarc channel", {
               original: err as Error,
+              status: err.status,
             });
           }
         })
