@@ -10,7 +10,7 @@ import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
 
 import { marked } from "marked";
-import TerminalRenderer = require("marked-terminal");
+import * as TerminalRenderer from "marked-terminal";
 
 const FUNCTION_TYPE_REGEX = /\..+\.function/;
 
