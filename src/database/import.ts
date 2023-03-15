@@ -13,8 +13,10 @@ import { FirebaseError } from "../error";
 const MAX_CHUNK_SIZE = 1024 * 1024;
 const CONCURRENCY_LIMIT = 5;
 
+type JsonType = { [key: string]: JsonType } | string | number | boolean;
+
 type Data = {
-  json: { [key: string]: any } | string | number | boolean;
+  json: JsonType;
   pathname: string;
 };
 
@@ -44,7 +46,7 @@ export default class DatabaseImporter {
   /**
    * Writes the chunked data to RTDB. Any existing data at the specified location will be overwritten.
    */
-  async execute(): Promise<any> {
+  async execute(): Promise<ClientResponse<JsonType>[]> {
     await this.checkLocationIsEmpty();
     return this.readAndWriteChunks();
   }
@@ -66,18 +68,20 @@ export default class DatabaseImporter {
     }
   }
 
-  private readAndWriteChunks(): Promise<any> {
+  private readAndWriteChunks(): Promise<ClientResponse<JsonType>[]> {
     const { dbUrl } = this;
     const chunkData = this.chunkData.bind(this);
     const writeChunk = this.writeChunk.bind(this);
     const getJoinedPath = this.joinPath.bind(this);
 
     const readChunks = new stream.Transform({ objectMode: true });
-    readChunks._transform = function (chunk: { key: string; value: any }, _, done) {
+    readChunks._transform = function (chunk: { key: string; value: JsonType }, _, done) {
       const data = { json: chunk.value, pathname: getJoinedPath(dbUrl.pathname, chunk.key) };
       const chunkedData = chunkData(data);
       const chunks = chunkedData.chunks || [data];
-      chunks.forEach((chunk: Data) => this.push(chunk));
+      for (const chunk of chunks) {
+        this.push(chunk);
+      }
       done();
     };
 
@@ -89,7 +93,7 @@ export default class DatabaseImporter {
     };
 
     return new Promise((resolve, reject) => {
-      const responses: any[] = [];
+      const responses: ClientResponse<JsonType>[] = [];
       const pipeline = new Chain([
         this.inStream,
         Filter.withParser({
@@ -99,7 +103,7 @@ export default class DatabaseImporter {
         StreamObject.streamObject(),
       ]);
       pipeline
-        .on("error", (err: any) =>
+        .on("error", (err: Error) =>
           reject(
             new FirebaseError(
               `Invalid data; couldn't parse JSON object, array, or value. ${err.message}`,
@@ -112,13 +116,13 @@ export default class DatabaseImporter {
         )
         .pipe(readChunks)
         .pipe(writeChunks)
-        .on("data", (res: any) => responses.push(res))
+        .on("data", (res: ClientResponse<JsonType>) => responses.push(res))
         .on("error", reject)
         .once("end", () => resolve(responses));
     });
   }
 
-  private writeChunk(chunk: Data): Promise<ClientResponse<any>> {
+  private writeChunk(chunk: Data): Promise<ClientResponse<JsonType>> {
     return this.limit(() =>
       this.client.request({
         method: "PUT",
@@ -140,10 +144,10 @@ export default class DatabaseImporter {
       const chunks = [];
       let hasChunkedChild = false;
 
-      for (const key of Object.keys(json)) {
+      for (const [key, val] of Object.entries(json)) {
         size += key.length + 3; // "":
 
-        const child = { json: json[key], pathname: this.joinPath(pathname, key) };
+        const child = { json: val, pathname: this.joinPath(pathname, key) };
         const childChunks = this.chunkData(child);
         size += childChunks.size;
         if (childChunks.chunks) {
