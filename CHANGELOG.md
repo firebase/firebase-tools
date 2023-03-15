@@ -1,2 +1,2 @@
-- Release Cloud Firestore emulator v1.16.1:
-  - Supports read_time in ListCollectionIds
+- Releases Cloud Firestore emulator v1.16.1, which adds support for read_time in ListCollectionIds.
+- Fixes bug where EVENTARC_CLOUD_EVENT_SOURCE environment variable was incorrectly set for some functions. (#5597)
