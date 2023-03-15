@@ -165,6 +165,7 @@ function functionsOpLogReject(funcName: string, type: string, err: any): void {
   }
   throw new FirebaseError(`Failed to ${type} function ${funcName}`, {
     original: err,
+    status: err?.context?.response?.statusCode,
     context: { function: funcName },
   });
 }
@@ -244,6 +245,7 @@ export async function setIamPolicy(options: IamOptions): Promise<void> {
   } catch (err: any) {
     throw new FirebaseError(`Failed to set the IAM Policy on the function ${options.name}`, {
       original: err,
+      status: err?.context?.response?.statusCode,
     });
   }
 }
