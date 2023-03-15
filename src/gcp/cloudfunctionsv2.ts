@@ -473,6 +473,8 @@ export function functionFromEndpoint(
   gcfFunction.serviceConfig.availableMemory = mem > 1024 ? `${mem / 1024}Gi` : `${mem}Mi`;
   proto.renameIfPresent(gcfFunction.serviceConfig, endpoint, "minInstanceCount", "minInstances");
   proto.renameIfPresent(gcfFunction.serviceConfig, endpoint, "maxInstanceCount", "maxInstances");
+  // N.B. only convert CPU and concurrency fields for 2nd gen functions, once we
+  // eventually use the v2 API to configure both 1st and 2nd gen functions)
   proto.renameIfPresent(
     gcfFunction.serviceConfig,
     endpoint,
