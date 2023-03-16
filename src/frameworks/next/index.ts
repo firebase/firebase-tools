@@ -37,6 +37,7 @@ import {
   isUsingImageOptimization,
   isUsingMiddleware,
   allDependencyNames,
+  getMiddlewareMatcherRegexes,
 } from "./utils";
 import type { Manifest, MiddlewareManifest, NpmLsDepdendency } from "./interfaces";
 import { readJSON } from "../utils";
@@ -286,12 +287,7 @@ export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: strin
     readJSON<Manifest>(join(sourceDir, distDir, ROUTES_MANIFEST)),
   ]);
 
-  const middlewareMatcherRegexes = Object.values(middlewareManifest.middleware)
-    .map((page: MiddlewareManifest["middleware"]["page"]) =>
-      "regexp" in page ? { regexp: page.regexp } : page.matchers
-    )
-    .flat()
-    .map((it) => new RegExp(it.regexp));
+  const middlewareMatcherRegexes = getMiddlewareMatcherRegexes(middlewareManifest);
 
   const { redirects = [], rewrites = [], headers = [] } = routesManifest;
 

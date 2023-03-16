@@ -1,6 +1,6 @@
 import type { Header, Rewrite, Redirect } from "next/dist/lib/load-custom-routes";
 import type { ImageConfigComplete } from "next/dist/shared/lib/image-config";
-import type { MiddlewareManifest as MiddlewareManifestV2 } from "next/dist/build/webpack/plugins/middleware-plugin";
+import type { MiddlewareManifest as MiddlewareManifestV2FromNext } from "next/dist/build/webpack/plugins/middleware-plugin";
 export interface RoutesManifestRewrite extends Rewrite {
   regex: string;
 }
@@ -38,7 +38,9 @@ export interface ExportMarker {
   isNextImageImported: boolean;
 }
 
-export type MiddlewareManifest = MiddlewareManifestV1 | MiddlewareManifestV2;
+export type MiddlewareManifest = MiddlewareManifestV1 | MiddlewareManifestV2FromNext;
+
+export type MiddlewareManifestV2 = MiddlewareManifestV2FromNext;
 
 // See: https://github.com/vercel/next.js/blob/b188fab3360855c28fd9407bd07c4ee9f5de16a6/packages/next/build/webpack/plugins/middleware-plugin.ts#L15-L29
 export interface MiddlewareManifestV1 {
