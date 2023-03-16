@@ -1,2 +1,7 @@
-- Allow configuration of the Cloud Function generated for full-stack web frameworks (#5504)
+- Adds support for optional `--database` argument in Firestore commands (#5548).
+- Adds multiple firestore database targets support in firebase.json (#5548).
+- Remove call to Cloud Run API and set CPU & concurrency in GCF API instead. (#5605)
+- Fix function deploy retry after quota exceeded bug and increase backoff. (#5601)
+- Fix bug where EVENTARC_CLOUD_EVENT_SOURCE environment variable was correctly set for some functions. (#5597)
+- Adds 2nd gen firestore triggers to firebase deploy (#5592).
 - Fix regex page matcher for Next.js middlewares version 1 (#5496)

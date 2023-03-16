@@ -30,7 +30,7 @@ function readCommonTemplates() {
     extSpecTemplate: fs.readFileSync(path.join(TEMPLATE_ROOT, "extension.yaml"), "utf8"),
     preinstallTemplate: fs.readFileSync(path.join(TEMPLATE_ROOT, "PREINSTALL.md"), "utf8"),
     postinstallTemplate: fs.readFileSync(path.join(TEMPLATE_ROOT, "POSTINSTALL.md"), "utf8"),
-    changelogTemplate: fs.readFileSync(path.join(TEMPLATE_ROOT, "CHANGELOG.md"), "utf8"),
+    changelogTemplate: fs.readFileSync(path.join(TEMPLATE_ROOT, "CL-template.md"), "utf8"),
   };
 }
 
