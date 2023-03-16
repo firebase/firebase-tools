@@ -10,7 +10,7 @@ import { URL } from "url";
 import { Client, ClientResponse } from "../apiv2";
 import { FirebaseError } from "../error";
 
-const MAX_CHUNK_SIZE = 1024 * 1024;
+const MAX_CHUNK_SIZE = 1024 * 1024 * 10;
 const CONCURRENCY_LIMIT = 5;
 
 type JsonType = { [key: string]: JsonType } | string | number | boolean;
@@ -28,7 +28,7 @@ type ChunkedData = {
 /**
  * Imports JSON data to a given RTDB instance.
  *
- * The data is parsed and chunked into subtrees of ~1 MB, to be subsequently written in parallel.
+ * The data is parsed and chunked into subtrees of ~10 MB, to be subsequently written in parallel.
  */
 export default class DatabaseImporter {
   private client: Client;
