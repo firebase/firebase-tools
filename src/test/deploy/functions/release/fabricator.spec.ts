@@ -845,6 +845,28 @@ describe("Fabricator", () => {
     });
   });
 
+  describe("upsertScheduleV1", () => {
+    const ep = endpoint({
+      scheduleTrigger: {
+        schedule: "every 5 minutes",
+      },
+    }) as backend.Endpoint & backend.ScheduleTriggered;
+
+    it("upserts schedules", async () => {
+      scheduler.createOrReplaceJob.resolves();
+      await fab.upsertScheduleV1(ep);
+      expect(scheduler.createOrReplaceJob).to.have.been.called;
+    });
+
+    it("wraps errors", async () => {
+      scheduler.createOrReplaceJob.rejects(new Error("Fail"));
+      await expect(fab.upsertScheduleV1(ep)).to.eventually.be.rejectedWith(
+        reporter.DeploymentError,
+        "upsert schedule"
+      );
+    });
+  });
+
   describe("upsertScheduleV2", () => {
     const ep = {
       ...endpoint({
