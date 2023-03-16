@@ -433,13 +433,6 @@ describe("Fabricator", () => {
   });
 
   describe("createV2Function", () => {
-    let setRunTraits: sinon.SinonStub;
-
-    beforeEach(() => {
-      setRunTraits = sinon.stub(fab, "setRunTraits");
-      setRunTraits.resolves();
-    });
-
     it("handles topics that already exist", async () => {
       pubsub.createTopic.callsFake(() => {
         const err = new Error("Already exists");
@@ -631,64 +624,6 @@ describe("Fabricator", () => {
       );
     });
 
-    it("sets run traits by default for large functions", async () => {
-      gcfv2.createFunction.resolves({ name: "op", done: false });
-      poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
-      run.setInvokerCreate.resolves();
-      const ep = endpoint(
-        { httpsTrigger: {} },
-        { platform: "gcfv2", availableMemoryMb: 256, cpu: 1 }
-      );
-
-      await fab.createV2Function(ep);
-      expect(setRunTraits).to.have.been.calledWith("service", ep);
-    });
-
-    it("sets run traits for functions with concurrency", async () => {
-      gcfv2.createFunction.resolves({ name: "op", done: false });
-      poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
-      run.setInvokerCreate.resolves();
-      const ep = endpoint(
-        { httpsTrigger: {} },
-        { platform: "gcfv2", availableMemoryMb: 2048, cpu: 1, concurrency: 80 }
-      );
-
-      await fab.createV2Function(ep);
-      expect(setRunTraits).to.have.been.calledWith("service", ep);
-    });
-
-    it("does not set concurrency by default for small functions", async () => {
-      gcfv2.createFunction.resolves({ name: "op", done: false });
-      poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
-      run.setInvokerCreate.resolves();
-      const ep = endpoint(
-        { httpsTrigger: {} },
-        {
-          platform: "gcfv2",
-          availableMemoryMb: 256,
-          cpu: backend.memoryToGen1Cpu(256),
-          concurrency: 1,
-        }
-      );
-
-      await fab.createV2Function(ep);
-      expect(run.setInvokerCreate).to.have.been.calledWith(ep.project, "service", ["public"]);
-      expect(setRunTraits).to.not.have.been.called;
-    });
-
-    it("sets explicit concurrency", async () => {
-      gcfv2.createFunction.resolves({ name: "op", done: false });
-      poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
-      run.setInvokerCreate.resolves();
-      const ep = endpoint(
-        { httpsTrigger: {} },
-        { platform: "gcfv2", availableMemoryMb: 2048, cpu: 1, concurrency: 2 }
-      );
-
-      await fab.createV2Function(ep);
-      expect(setRunTraits).to.have.been.calledWith("service", ep);
-    });
-
     describe("httpsTrigger", () => {
       it("sets invoker to public by default", async () => {
         gcfv2.createFunction.resolves({ name: "op", done: false });
@@ -798,13 +733,6 @@ describe("Fabricator", () => {
   });
 
   describe("updateV2Function", () => {
-    let setRunTraits: sinon.SinonStub;
-
-    beforeEach(() => {
-      setRunTraits = sinon.stub(fab, "setRunTraits");
-      setRunTraits.rejects(new Error("Unexpected setRunTraits call"));
-    });
-
     it("throws on update function failure", async () => {
       gcfv2.updateFunction.rejects(new Error("Server failure"));
 
@@ -901,27 +829,6 @@ describe("Fabricator", () => {
       await fab.updateV2Function(ep);
       expect(run.setInvokerUpdate).to.not.have.been.called;
     });
-
-    it("Reapplies customer VM preferences after GCF overwrite", async () => {
-      setRunTraits.resolves();
-      gcfv2.updateFunction.resolves({ name: "op", done: false });
-      poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
-      run.setInvokerUpdate.resolves();
-      const ep = endpoint(
-        { httpsTrigger: {} },
-        {
-          platform: "gcfv2",
-          availableMemoryMb: 256,
-          cpu: 1,
-        }
-      );
-
-      await fab.updateV2Function(ep);
-      expect(setRunTraits).to.have.been.calledWithMatch("service", {
-        cpu: 1,
-        concurrency: backend.DEFAULT_CONCURRENCY,
-      });
-    });
   });
 
   describe("deleteV2Function", () => {
@@ -935,119 +842,6 @@ describe("Fabricator", () => {
       poller.pollOperation.rejects(new Error("5xx"));
 
       await expect(fab.deleteV2Function(ep)).to.be.rejectedWith(reporter.DeploymentError, "delete");
-    });
-  });
-
-  describe("setRunTraits", () => {
-    let service: runNS.Service;
-    beforeEach(() => {
-      service = {
-        apiVersion: "serving.knative.dev/v1",
-        kind: "Service",
-        metadata: {
-          name: "service",
-          namespace: "project",
-        },
-        spec: {
-          template: {
-            metadata: {
-              name: "service",
-              namespace: "project",
-            },
-            spec: {
-              containerConcurrency: 1,
-              containers: [
-                {
-                  image: "image",
-                  ports: [
-                    {
-                      name: "main",
-                      containerPort: 8080,
-                    },
-                  ],
-                  env: {},
-                  resources: {
-                    limits: {
-                      memory: "256M",
-                      cpu: "0.1667",
-                    },
-                  },
-                },
-              ],
-            },
-          },
-          traffic: [],
-        },
-      };
-    });
-
-    it("replaces the service to set concurrency", async () => {
-      run.getService.resolves(service);
-      run.updateService.resolves(service);
-      await fab.setRunTraits(
-        service.metadata.name,
-        endpoint(
-          { httpsTrigger: {} },
-          {
-            cpu: 1,
-            concurrency: 80,
-          }
-        )
-      );
-      expect(run.updateService).to.have.been.called;
-    });
-
-    it("replaces the service to set CPU", async () => {
-      service.spec.template.spec.containers[0].resources.limits.cpu = (1 / 6).toString();
-      run.getService.resolves(service);
-      run.updateService.resolves(service);
-      await fab.setRunTraits(
-        service.metadata.name,
-        endpoint(
-          { httpsTrigger: {} },
-          {
-            cpu: 1,
-            concurrency: 1,
-          }
-        )
-      );
-      expect(run.updateService).to.have.been.called;
-    });
-
-    it("doesn't setRunTraits when already at the correct value", async () => {
-      service.spec.template.spec.containerConcurrency = 80;
-      service.spec.template.spec.containers[0].resources.limits.cpu = "1";
-      run.getService.resolves(service);
-
-      await fab.setRunTraits(
-        "service",
-        endpoint(
-          {
-            httpsTrigger: {},
-          },
-          {
-            cpu: 1,
-            concurrency: 80,
-          }
-        )
-      );
-      expect(run.updateService).to.not.have.been.called;
-    });
-
-    it("wraps errors", async () => {
-      run.getService.rejects(new Error("Oh noes!"));
-
-      await expect(fab.setRunTraits("service", endpoint())).to.eventually.be.rejectedWith(
-        reporter.DeploymentError,
-        "set concurrency"
-      );
-
-      run.getService.resolves(service);
-      run.replaceService.rejects(new Error("read only"));
-      await expect(fab.setRunTraits("service", endpoint())).to.eventually.be.rejectedWith(
-        reporter.DeploymentError,
-        "set concurrency"
-      );
     });
   });
 
