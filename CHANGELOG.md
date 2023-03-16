@@ -1,6 +1,3 @@
-- Fix storage download name issue #5478
-- Refactor the way timeouts are enforced by the Functions Emulator (#5464)
-- Fix bug where cloudevent emitted by various emulators didn't conform to spec (#5466)
-- Upgrade the emulator suite UI to 1.11.3 to capture some bug fixes (#5479)
-- Web frameworks deploys can once again bundle local NPM dependencies (#5440)
-- Fixes a number of issues and outdated dependencies in templates for `init --only functions` and `ext:dev:init`
+- Remove call to Cloud Run API and set CPU & concurrency in GCF API instead. (#5605)
+- Fix function deploy retry after quota exceeded bug and increase backoff. (#5601)
+- Fix bug where EVENTARC_CLOUD_EVENT_SOURCE environment variable was correctly set for some functions. (#5597)

@@ -1,14 +1,16 @@
 import { join, relative, extname, basename } from "path";
 import { exit } from "process";
-import { execSync, spawnSync } from "child_process";
+import { execSync } from "child_process";
+import { sync as spawnSync } from "cross-spawn";
 import { readdirSync, statSync } from "fs";
 import { pathToFileURL } from "url";
 import { IncomingMessage, ServerResponse } from "http";
-import { copyFile, readdir, rm, writeFile } from "fs/promises";
+import { copyFile, readdir, readFile, rm, writeFile } from "fs/promises";
 import { mkdirp, pathExists, stat } from "fs-extra";
 import * as clc from "colorette";
 import * as process from "node:process";
 import * as semver from "semver";
+import * as glob from "glob";
 
 import { needProjectId } from "../projectUtils";
 import { hostingConfig } from "../hosting/config";
@@ -50,7 +52,7 @@ export interface Framework {
   name: string;
   build: (dir: string) => Promise<BuildResult | void>;
   support: SupportLevel;
-  init?: (setup: any) => Promise<void>;
+  init?: (setup: any, config: any) => Promise<void>;
   getDevModeHandle?: (
     dir: string,
     hostingEmulatorInfo?: EmulatorInfo
@@ -107,8 +109,15 @@ const SupportLevelWarnings = {
 export const FIREBASE_FRAMEWORKS_VERSION = "^0.6.0";
 export const FIREBASE_FUNCTIONS_VERSION = "^3.23.0";
 export const FIREBASE_ADMIN_VERSION = "^11.0.1";
-export const DEFAULT_REGION = "us-central1";
 export const NODE_VERSION = parseInt(process.versions.node, 10).toString();
+export const DEFAULT_REGION = "us-central1";
+export const ALLOWED_SSR_REGIONS = [
+  { name: "us-central1 (Iowa)", value: "us-central1" },
+  { name: "us-west1 (Oregon)", value: "us-west1" },
+  { name: "us-east1 (South Carolina)", value: "us-east1" },
+  { name: "europe-west1 (Belgium)", value: "europe-west1" },
+  { name: "asia-east1 (Taiwan)", value: "asia-east1" },
+];
 
 const DEFAULT_FIND_DEP_OPTIONS: FindDepOptions = {
   cwd: process.cwd(),
@@ -292,8 +301,9 @@ export async function prepareFrameworks(
   if (configs.length === 0) {
     return;
   }
+  const allowedRegionsValues = ALLOWED_SSR_REGIONS.map((r) => r.value);
   for (const config of configs) {
-    const { source, site, public: publicDir } = config;
+    const { source, site, public: publicDir, frameworksBackend } = config;
     if (!source) {
       continue;
     }
@@ -307,8 +317,15 @@ export async function prepareFrameworks(
     if (publicDir) {
       throw new Error(`hosting.public and hosting.source cannot both be set in firebase.json`);
     }
+    const ssrRegion = frameworksBackend?.region ?? DEFAULT_REGION;
+    if (!allowedRegionsValues.includes(ssrRegion)) {
+      const validRegions = allowedRegionsValues.join(", ");
+      throw new FirebaseError(
+        `Hosting config for site ${site} places server-side content in region ${ssrRegion} which is not known. Valid regions are ${validRegions}`
+      );
+    }
     const getProjectPath = (...args: string[]) => join(projectRoot, source, ...args);
-    const functionName = `ssr${site.toLowerCase().replace(/-/g, "")}`;
+    const functionId = `ssr${site.toLowerCase().replace(/-/g, "")}`;
     const usesFirebaseAdminSdk = !!findDependency("firebase-admin", { cwd: getProjectPath() });
     const usesFirebaseJsSdk = !!findDependency("@firebase/app", { cwd: getProjectPath() });
     if (usesFirebaseAdminSdk) {
@@ -430,7 +447,7 @@ export async function prepareFrameworks(
       const rewrite: HostingRewrites = {
         source: "**",
         function: {
-          functionId: functionName,
+          functionId,
         },
       };
       if (experiments.isEnabled("pintags")) {
@@ -480,27 +497,8 @@ export async function prepareFrameworks(
         frameworksEntry = framework,
       } = await codegenFunctionsDirectory(getProjectPath(), functionsDist);
 
-      await writeFile(
-        join(functionsDist, "functions.yaml"),
-        JSON.stringify(
-          {
-            endpoints: {
-              [functionName]: {
-                platform: "gcfv2",
-                // TODO allow this to be configurable
-                region: [DEFAULT_REGION],
-                labels: {},
-                httpsTrigger: {},
-                entryPoint: "ssr",
-              },
-            },
-            specVersion: "v1alpha1",
-            requiredAPIs: [],
-          },
-          null,
-          2
-        )
-      );
+      // Set the framework entry in the env variables to handle generation of the functions.yaml
+      process.env.__FIREBASE_FRAMEWORKS_ENTRY__ = frameworksEntry;
 
       packageJson.main = "server.js";
       delete packageJson.devDependencies;
@@ -534,13 +532,6 @@ export async function prepareFrameworks(
       }
       await writeFile(join(functionsDist, "package.json"), JSON.stringify(packageJson, null, 2));
 
-      // TODO do we add the append the local .env?
-      await writeFile(
-        join(functionsDist, ".env"),
-        `__FIREBASE_FRAMEWORKS_ENTRY__=${frameworksEntry}
-${firebaseDefaults ? `__FIREBASE_DEFAULTS__=${JSON.stringify(firebaseDefaults)}\n` : ""}`
-      );
-
       await copyFile(
         getProjectPath("package-lock.json"),
         join(functionsDist, "package-lock.json")
@@ -552,6 +543,27 @@ ${firebaseDefaults ? `__FIREBASE_DEFAULTS__=${JSON.stringify(firebaseDefaults)}\
         await copyFile(getProjectPath(".npmrc"), join(functionsDist, ".npmrc"));
       }
 
+      let existingDotEnvContents = "";
+      if (await pathExists(getProjectPath(".env"))) {
+        existingDotEnvContents = (await readFile(getProjectPath(".env"))).toString();
+      }
+
+      await writeFile(
+        join(functionsDist, ".env"),
+        `${existingDotEnvContents}
+__FIREBASE_FRAMEWORKS_ENTRY__=${frameworksEntry}
+${firebaseDefaults ? `__FIREBASE_DEFAULTS__=${JSON.stringify(firebaseDefaults)}\n` : ""}`
+      );
+
+      const envs = await new Promise<string[]>((resolve, reject) =>
+        glob(getProjectPath(".env.*"), (err, matches) => {
+          if (err) reject(err);
+          resolve(matches);
+        })
+      );
+
+      await Promise.all(envs.map((path) => copyFile(path, join(functionsDist, basename(path)))));
+
       execSync(`${NPM_COMMAND} i --omit dev --no-audit`, {
         cwd: functionsDist,
         stdio: "inherit",
@@ -560,14 +572,28 @@ ${firebaseDefaults ? `__FIREBASE_DEFAULTS__=${JSON.stringify(firebaseDefaults)}\
       if (bootstrapScript) await writeFile(join(functionsDist, "bootstrap.js"), bootstrapScript);
 
       // TODO move to templates
-      // TODO better ESM support
-      await writeFile(
-        join(functionsDist, "server.js"),
-        `import { onRequest } from 'firebase-functions/v2/https';
-const server = import('firebase-frameworks');
-export const ssr = onRequest((req, res) => server.then(it => it.handle(req, res)));
-`
-      );
+
+      if (packageJson.type === "module") {
+        await writeFile(
+          join(functionsDist, "server.js"),
+          `import { onRequest } from 'firebase-functions/v2/https';
+  const server = import('firebase-frameworks');
+  export const ${functionId} = onRequest(${JSON.stringify(
+            frameworksBackend || {}
+          )}, (req, res) => server.then(it => it.handle(req, res)));
+  `
+        );
+      } else {
+        await writeFile(
+          join(functionsDist, "server.js"),
+          `const { onRequest } = require('firebase-functions/v2/https');
+  const server = import('firebase-frameworks');
+  exports.${functionId} = onRequest(${JSON.stringify(
+            frameworksBackend || {}
+          )}, (req, res) => server.then(it => it.handle(req, res)));
+  `
+        );
+      }
     } else {
       // No function, treat as an SPA
       // TODO(jamesdaniels) be smarter about this, leave it to the framework?

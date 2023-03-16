@@ -3,6 +3,9 @@ module.exports = {
     es6: true,
     node: true,
   },
+  parserOptions: {
+    "ecmaVersion": 2018,
+  },
   extends: [
     "eslint:recommended",
     "google",
@@ -14,7 +17,7 @@ module.exports = {
   },
   overrides: [
     {
-      files: ["*.spec.*"],
+      files: ["**/*.spec.*"],
       env: {
         mocha: true,
       },

@@ -1,6 +1,6 @@
 {
   "name": "firebase-tools",
-  "version": "11.22.0",
+  "version": "11.24.1",
   "description": "Command-Line Interface for Firebase",
   "main": "./lib/index.js",
   "bin": {
@@ -142,7 +142,7 @@
     "stream-chain": "^2.2.4",
     "stream-json": "^1.7.3",
     "strip-ansi": "^6.0.1",
-    "superstatic": "^9.0.2",
+    "superstatic": "^9.0.3",
     "tar": "^6.1.11",
     "tcp-port-used": "^1.0.2",
     "tmp": "^0.2.1",

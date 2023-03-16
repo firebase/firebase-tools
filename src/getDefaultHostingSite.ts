@@ -1,5 +1,6 @@
 import { logger } from "./logger";
 import { getFirebaseProject } from "./management/projects";
+import { needProjectId } from "./projectUtils";
 
 /**
  * Tries to determine the default hosting site for a project, else falls back to projectId.
@@ -7,7 +8,8 @@ import { getFirebaseProject } from "./management/projects";
  * @return The hosting site ID
  */
 export async function getDefaultHostingSite(options: any): Promise<string> {
-  const project = await getFirebaseProject(options.project);
+  const projectId = needProjectId(options);
+  const project = await getFirebaseProject(projectId);
   const site = project.resources?.hostingSite;
   if (!site) {
     logger.debug(
