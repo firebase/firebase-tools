@@ -10,8 +10,9 @@ import { Options } from "../options";
 export const command = new Command("logout [email]")
   .description("log the CLI out of Firebase")
   .action(logoutAction);
+
 /**
- *
+ * Logout command action
  * @param email Email of account to log out.
  * @param options Command options.
  */
