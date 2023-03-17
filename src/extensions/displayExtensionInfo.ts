@@ -1,6 +1,6 @@
 import * as clc from "colorette";
 import { marked } from "marked";
-import TerminalRenderer = require("marked-terminal");
+import * as TerminalRenderer from "marked-terminal";
 
 import * as utils from "../utils";
 import { logPrefix } from "./extensionsHelper";
