@@ -1,3 +1,8 @@
+- Adds support for optional `--database` argument in Firestore commands (#5548).
+- Adds multiple firestore database targets support in firebase.json (#5548).
+- Remove call to Cloud Run API and set CPU & concurrency in GCF API instead. (#5605)
+- Fix function deploy retry after quota exceeded bug and increase backoff. (#5601)
+- Fix bug where EVENTARC_CLOUD_EVENT_SOURCE environment variable was correctly set for some functions. (#5597)
+- Adds 2nd gen firestore triggers to firebase deploy (#5592).
+- Adds `database:import` command for non-atomic imports (#5396).
 - Releases Cloud Firestore emulator v1.16.1, which adds support for read_time in ListCollectionIds.
-- Fixes bug where EVENTARC_CLOUD_EVENT_SOURCE environment variable was incorrectly set for some functions. (#5597)
-- Fixes bug where functions deploy did not retry after quota exceeded and increases backoff. (#5601)

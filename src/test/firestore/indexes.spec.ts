@@ -4,7 +4,6 @@ import { FirebaseError } from "../../error";
 import * as API from "../../firestore/indexes-api";
 import * as Spec from "../../firestore/indexes-spec";
 import * as sort from "../../firestore/indexes-sort";
-import * as util from "../../firestore/util";
 
 const idx = new FirestoreIndexes();
 
@@ -100,29 +99,6 @@ describe("IndexValidation", () => {
     }).to.throw(FirebaseError, /Must contain exactly one of "order,arrayConfig"/);
   });
 });
-
-describe("IndexNameParsing", () => {
-  it("should parse an index name correctly", () => {
-    const name =
-      "/projects/myproject/databases/(default)/collectionGroups/collection/indexes/abc123/";
-    expect(util.parseIndexName(name)).to.eql({
-      projectId: "myproject",
-      collectionGroupId: "collection",
-      indexId: "abc123",
-    });
-  });
-
-  it("should parse a field name correctly", () => {
-    const name =
-      "/projects/myproject/databases/(default)/collectionGroups/collection/fields/abc123/";
-    expect(util.parseFieldName(name)).to.eql({
-      projectId: "myproject",
-      collectionGroupId: "collection",
-      fieldPath: "abc123",
-    });
-  });
-});
-
 describe("IndexSpecMatching", () => {
   it("should identify a positive index spec match", () => {
     const apiIndex: API.Index = {
