@@ -12,7 +12,7 @@ import {
   checkInstanceNameAvailable,
   getDatabaseInstanceDetails,
 } from "../../management/database";
-import ora = require("ora");
+import * as ora from "ora";
 import { ensure } from "../../ensureApiEnabled";
 import { getDefaultDatabaseInstance } from "../../getDefaultDatabaseInstance";
 import { FirebaseError } from "../../error";

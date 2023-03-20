@@ -1,4 +1,4 @@
-import Table = require("cli-table");
+const Table = require("cli-table");
 
 import { Command } from "../command";
 import { logger } from "../logger";
