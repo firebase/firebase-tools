@@ -48,7 +48,7 @@ export async function buildOptions(options: any): Promise<any> {
  * TODO: Better name? Also, should this be in extensionsEmulator instead?
  */
 export async function getExtensionFunctionInfo(
-  instance: planner.InstanceSpec,
+  instance: planner.DeploymentInstanceSpec,
   paramValues: Record<string, string>
 ): Promise<{
   runtime: string;
@@ -59,12 +59,13 @@ export async function getExtensionFunctionInfo(
   const spec = await planner.getExtensionSpec(instance);
   const functionResources = specHelper.getFunctionResourcesWithParamSubstitution(spec, paramValues);
   const extensionTriggers: ParsedTriggerDefinition[] = functionResources
-    .map((r) => triggerHelper.functionResourceToEmulatedTriggerDefintion(r))
+    .map((r) => triggerHelper.functionResourceToEmulatedTriggerDefintion(r, instance.systemParams))
     .map((trigger) => {
       trigger.name = `ext-${instance.instanceId}-${trigger.name}`;
       return trigger;
     });
   const runtime = specHelper.getRuntime(functionResources);
+
   const nonSecretEnv = getNonSecretEnv(spec.params, paramValues);
   const secretEnvVariables = getSecretEnvVars(spec.params, paramValues);
   return {

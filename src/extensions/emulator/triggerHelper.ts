@@ -18,7 +18,8 @@ import * as proto from "../../gcp/proto";
  * Convert a Resource into a ParsedTriggerDefinition
  */
 export function functionResourceToEmulatedTriggerDefintion(
-  resource: Resource
+  resource: Resource,
+  systemParams: Record<string, string> = {}
 ): ParsedTriggerDefinition {
   const resourceType = resource.type;
   if (resource.type === FUNCTIONS_RESOURCE_TYPE) {
@@ -27,6 +28,36 @@ export function functionResourceToEmulatedTriggerDefintion(
       entryPoint: resource.name,
       platform: "gcfv1",
     };
+    // These get used today in the emultor.
+    proto.convertIfPresent(etd, systemParams, "regions", "firebaseextensions.v1beta.functions/location", (str: string) => [str]);
+    proto.convertIfPresent(
+      etd,
+      systemParams,
+      "timeoutSeconds",
+      "firebaseextensions.v1beta.functions/timeoutSeconds",
+      (d) => +d
+    );
+    proto.convertIfPresent(
+      etd,
+      systemParams,
+      "availableMemoryMb",
+      "firebaseextensions.v1beta.functions/memory",
+      (d) => +d as backend.MemoryOptions
+    );
+    // These don't, but we inject them anyway for consistency and forward compatability
+    proto.convertIfPresent(
+      etd,
+      systemParams,
+      "labels",
+      "firebaseextensions.v1beta.functions/labels",
+      (str: string): Record<string, string> => {
+        const ret: Record<string, string> = {};
+        for (const [key, value] of str.split(",").map((label) => label.split(":"))) {
+          ret[key] = value;
+        }
+        return ret;
+      }
+    );
     const properties = resource.properties || {};
     proto.convertIfPresent(etd, properties, "timeoutSeconds", "timeout", proto.secondsFromDuration);
     proto.convertIfPresent(etd, properties, "regions", "location", (str: string) => [str]);

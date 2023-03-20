@@ -1,4 +1,5 @@
 import { expect } from "chai";
+import { ParsedTriggerDefinition } from "../../../emulator/functionsEmulatorShared";
 import * as triggerHelper from "../../../extensions/emulator/triggerHelper";
 import { Resource } from "../../../extensions/types";
 
@@ -249,6 +250,37 @@ describe("triggerHelper", () => {
       };
 
       const result = triggerHelper.functionResourceToEmulatedTriggerDefintion(testResource);
+
+      expect(result).to.eql(expected);
+    });
+
+    it("should correctly inject system params", () => {
+      const testResource: Resource = {
+        name: "test-resource",
+        entryPoint: "functionName",
+        type: "firebaseextensions.v1beta.function",
+        properties: {
+          httpsTrigger: {},
+        },
+      };
+      const systemParams = {
+        "firebaseextensions.v1beta.functions/location": "us-west1",
+        "firebaseextensions.v1beta.functions/memory": "1024",
+        "firebaseextensions.v1beta.functions/timeoutSeconds": "70",
+        "firebaseextensions.v1beta.functions/labels": "key:val,otherkey:otherval",
+      };
+      const expected: ParsedTriggerDefinition = {
+        platform: "gcfv1",
+        entryPoint: "test-resource",
+        name: "test-resource",
+        availableMemoryMb: 1024,
+        timeoutSeconds: 70,
+        labels: { key: "val", otherkey: "otherval" },
+        regions: ["us-west1"],
+        httpsTrigger: {},
+      };
+
+      const result = triggerHelper.functionResourceToEmulatedTriggerDefintion(testResource, systemParams);
 
       expect(result).to.eql(expected);
     });
