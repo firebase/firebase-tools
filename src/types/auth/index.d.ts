@@ -1,12 +1,3 @@
-// import {
-//   Account,
-//   User,
-//   Tokens,
-//   TokensWithExpiration,
-//   TokensWithTTL,
-//   GitHubAuthResponse,
-//   UserCredentials,
-// } from "./types/auth";
 // The wire protocol for an access token returned by Google.
 // When we actually refresh from the server we should always have
 // these optional fields, but when a user passes --token we may

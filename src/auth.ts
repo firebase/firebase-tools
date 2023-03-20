@@ -39,6 +39,7 @@ import {
   GitHubAuthResponse,
   UserCredentials,
 } from "./types/auth";
+
 portfinder.setBasePort(9005);
 
 /**
