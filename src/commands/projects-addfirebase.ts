@@ -1,9 +1,6 @@
 import { Command } from "../command";
 import { FirebaseError } from "../error";
-import {
-  addFirebaseToCloudProjectAndLog,
-  promptAvailableProjectId,
-} from "../management/projects";
+import { addFirebaseToCloudProjectAndLog, promptAvailableProjectId } from "../management/projects";
 import { FirebaseProjectMetadata } from "../types/project";
 import { requireAuth } from "../requireAuth";
 
