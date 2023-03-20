@@ -12,4 +12,6 @@ export interface FirestoreOptions extends Options {
   allCollections?: boolean;
   shallow?: boolean;
   recursive?: boolean;
+  location?: string;
+  type?: string;
 }

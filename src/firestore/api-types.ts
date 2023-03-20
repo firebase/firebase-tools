@@ -81,3 +81,30 @@ export interface IndexConfig {
   ancestorField?: string;
   indexes?: Index[];
 }
+
+export interface Location {
+  name: string;
+  labels: any;
+  metadata: any;
+  locationId: string;
+  displayName: string;
+}
+
+export interface DatabaseReq {
+  locationId: string;
+  type: string;
+}
+
+export interface DatabaseResp {
+  name: string;
+  uid: string;
+  createTime: string;
+  updateTime: string;
+  locationId: string;
+  type: string;
+  concurrencyMode: string;
+  appEngineIntegrationMode: string;
+  keyPrefix: string;
+  deleteProtectionState: string;
+  etag: string;
+}
