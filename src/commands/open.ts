@@ -35,6 +35,11 @@ const LINKS: Link[] = [
     arg: "firestore:databases:list",
     consolePath: "/firestore/databases/list",
   },
+  {
+    name: "Firestore: Locations",
+    arg: "firestore:locations",
+    consolePath: "/firestore/locations",
+  },
   { name: "Firestore: Usage", arg: "firestore:usage", consolePath: "/firestore/usage" },
   { name: "Functions", arg: "functions", consolePath: "/functions/list" },
   { name: "Functions Log", arg: "functions:log" } /* Special Case */,

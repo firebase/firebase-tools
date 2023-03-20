@@ -763,7 +763,8 @@ export class FirestoreApi {
    * Get a colored, pretty-printed representation of an index.
    */
   private prettyDatabaseString(database: types.DatabaseResp): string {
-    let result = database.name;
+    return database.name;
+    // let result = database.name;
 
     // if (database.state && includeState) {
     //   const stateMsg = `[${database.state}] `;
@@ -793,14 +794,15 @@ export class FirestoreApi {
     //   result += `(${field.fieldPath},${orderOrArrayConfig}) `;
     // });
 
-    return result;
+    // return result;
   }
 
   /**
    * Get a colored, pretty-printed representation of an location.
    */
   private prettyLocationString(location: types.Location): string {
-    let result = location.locationId;
+    return location.locationId;
+    // let result = location.locationId;
 
     // if (database.state && includeState) {
     //   const stateMsg = `[${database.state}] `;
@@ -830,7 +832,7 @@ export class FirestoreApi {
     //   result += `(${field.fieldPath},${orderOrArrayConfig}) `;
     // });
 
-    return result;
+    // return result;
   }
 
   /**
