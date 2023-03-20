@@ -2,10 +2,10 @@ import * as clc from "colorette";
 
 import { Command } from "../command";
 import {
-  FirebaseProjectMetadata,
   getFirebaseProject,
   listFirebaseProjects,
 } from "../management/projects";
+import { FirebaseProjectMetadata } from "../types/project";
 import { logger } from "../logger";
 import { Options } from "../options";
 import { prompt } from "../prompt";

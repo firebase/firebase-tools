@@ -2,9 +2,9 @@ import { Command } from "../command";
 import { FirebaseError } from "../error";
 import {
   addFirebaseToCloudProjectAndLog,
-  FirebaseProjectMetadata,
   promptAvailableProjectId,
 } from "../management/projects";
+import { FirebaseProjectMetadata } from "../types/project";
 import { requireAuth } from "../requireAuth";
 
 export const command = new Command("projects:addfirebase [projectId]")
