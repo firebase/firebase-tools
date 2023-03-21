@@ -7,7 +7,7 @@ import * as StreamObject from "stream-json/streamers/StreamObject";
 import { URL } from "url";
 import { Client, ClientResponse } from "../apiv2";
 import { FirebaseError } from "../error";
-import * as pLimit from 'p-limit';
+import * as pLimit from "p-limit";
 
 const MAX_CHUNK_SIZE = 1024 * 1024 * 10;
 const CONCURRENCY_LIMIT = 5;
