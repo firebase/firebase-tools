@@ -280,7 +280,10 @@ describe("triggerHelper", () => {
         httpsTrigger: {},
       };
 
-      const result = triggerHelper.functionResourceToEmulatedTriggerDefintion(testResource, systemParams);
+      const result = triggerHelper.functionResourceToEmulatedTriggerDefintion(
+        testResource,
+        systemParams
+      );
 
       expect(result).to.eql(expected);
     });

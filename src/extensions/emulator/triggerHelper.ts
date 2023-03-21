@@ -29,7 +29,13 @@ export function functionResourceToEmulatedTriggerDefintion(
       platform: "gcfv1",
     };
     // These get used today in the emultor.
-    proto.convertIfPresent(etd, systemParams, "regions", "firebaseextensions.v1beta.functions/location", (str: string) => [str]);
+    proto.convertIfPresent(
+      etd,
+      systemParams,
+      "regions",
+      "firebaseextensions.v1beta.functions/location",
+      (str: string) => [str]
+    );
     proto.convertIfPresent(
       etd,
       systemParams,
