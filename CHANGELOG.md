@@ -1,3 +1,8 @@
+- Adds support for optional `--database` argument in Firestore commands (#5548).
+- Adds multiple firestore database targets support in firebase.json (#5548).
 - Removes call to Cloud Run API and set CPU & concurrency in GCF API instead. (#5605)
 - Fixes function deploy retry after quota exceeded bug and increase backoff. (#5601)
 - Fixes bug where EVENTARC_CLOUD_EVENT_SOURCE environment variable was correctly set for some functions. (#5597)
+- Adds 2nd gen firestore triggers to firebase deploy (#5592).
+- Adds Extension emulator support for system params.
+- Adds `database:import` command for non-atomic imports (#5396).

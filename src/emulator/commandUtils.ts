@@ -17,7 +17,7 @@ import { promptOnce } from "../prompt";
 import * as fsutils from "../fsutils";
 import Signals = NodeJS.Signals;
 import SignalsListener = NodeJS.SignalsListener;
-import Table = require("cli-table");
+const Table = require("cli-table");
 import { emulatorSession } from "../track";
 import { setEnvVarsForEmulators } from "./env";
 
