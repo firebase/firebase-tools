@@ -4,3 +4,4 @@
 - Fix function deploy retry after quota exceeded bug and increase backoff. (#5601)
 - Fix bug where EVENTARC_CLOUD_EVENT_SOURCE environment variable was correctly set for some functions. (#5597)
 - Adds 2nd gen firestore triggers to firebase deploy (#5592).
+- Adds Extension emulator support for system params.

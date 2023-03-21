@@ -264,10 +264,10 @@ describe("triggerHelper", () => {
         },
       };
       const systemParams = {
-        "firebaseextensions.v1beta.functions/location": "us-west1",
-        "firebaseextensions.v1beta.functions/memory": "1024",
-        "firebaseextensions.v1beta.functions/timeoutSeconds": "70",
-        "firebaseextensions.v1beta.functions/labels": "key:val,otherkey:otherval",
+        "firebaseextensions.v1beta.function/location": "us-west1",
+        "firebaseextensions.v1beta.function/memory": "1024",
+        "firebaseextensions.v1beta.function/timeoutSeconds": "70",
+        "firebaseextensions.v1beta.function/labels": "key:val,otherkey:otherval",
       };
       const expected: ParsedTriggerDefinition = {
         platform: "gcfv1",

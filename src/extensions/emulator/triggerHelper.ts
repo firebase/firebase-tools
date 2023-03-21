@@ -14,6 +14,15 @@ import {
 } from "../../extensions/types";
 import * as proto from "../../gcp/proto";
 
+const SUPPORTED_SYSTEM_PARAMS = {
+  "firebaseextensions.v1beta.function": {
+    regions: "firebaseextensions.v1beta.function/location",
+    timeoutSeconds: "firebaseextensions.v1beta.function/timeoutSeconds",
+    availableMemoryMb: "firebaseextensions.v1beta.function/memory",
+    labels: "firebaseextensions.v1beta.function/labels",
+  },
+};
+
 /**
  * Convert a Resource into a ParsedTriggerDefinition
  */
@@ -33,21 +42,21 @@ export function functionResourceToEmulatedTriggerDefintion(
       etd,
       systemParams,
       "regions",
-      "firebaseextensions.v1beta.functions/location",
+      SUPPORTED_SYSTEM_PARAMS[FUNCTIONS_RESOURCE_TYPE].regions,
       (str: string) => [str]
     );
     proto.convertIfPresent(
       etd,
       systemParams,
       "timeoutSeconds",
-      "firebaseextensions.v1beta.functions/timeoutSeconds",
+      SUPPORTED_SYSTEM_PARAMS[FUNCTIONS_RESOURCE_TYPE].timeoutSeconds,
       (d) => +d
     );
     proto.convertIfPresent(
       etd,
       systemParams,
       "availableMemoryMb",
-      "firebaseextensions.v1beta.functions/memory",
+      SUPPORTED_SYSTEM_PARAMS[FUNCTIONS_RESOURCE_TYPE].availableMemoryMb,
       (d) => +d as backend.MemoryOptions
     );
     // These don't, but we inject them anyway for consistency and forward compatability
@@ -55,7 +64,7 @@ export function functionResourceToEmulatedTriggerDefintion(
       etd,
       systemParams,
       "labels",
-      "firebaseextensions.v1beta.functions/labels",
+      SUPPORTED_SYSTEM_PARAMS[FUNCTIONS_RESOURCE_TYPE].labels,
       (str: string): Record<string, string> => {
         const ret: Record<string, string> = {};
         for (const [key, value] of str.split(",").map((label) => label.split(":"))) {
