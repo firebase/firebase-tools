@@ -5,12 +5,12 @@ import { FirebaseError } from "../../error";
 import {
   addFirebaseToCloudProjectAndLog,
   createFirebaseProjectAndLog,
-  FirebaseProjectMetadata,
   getFirebaseProject,
   getOrPromptProject,
   PROJECTS_CREATE_QUESTIONS,
   promptAvailableProjectId,
 } from "../../management/projects";
+import { FirebaseProjectMetadata } from "../../types/project";
 import { logger } from "../../logger";
 import { prompt, promptOnce } from "../../prompt";
 import * as utils from "../../utils";

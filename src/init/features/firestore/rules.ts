@@ -1,5 +1,5 @@
 import * as clc from "colorette";
-import fs = require("fs");
+import * as fs from "fs";
 
 import gcp = require("../../../gcp");
 import fsutils = require("../../../fsutils");

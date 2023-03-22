@@ -572,15 +572,28 @@ ${firebaseDefaults ? `__FIREBASE_DEFAULTS__=${JSON.stringify(firebaseDefaults)}\
       if (bootstrapScript) await writeFile(join(functionsDist, "bootstrap.js"), bootstrapScript);
 
       // TODO move to templates
-      await writeFile(
-        join(functionsDist, "server.js"),
-        `import { onRequest } from 'firebase-functions/v2/https';
-const server = import('firebase-frameworks');
-export const ${functionId} = onRequest(${JSON.stringify(
-          frameworksBackend || {}
-        )}, (req, res) => server.then(it => it.handle(req, res)));
-`
-      );
+
+      if (packageJson.type === "module") {
+        await writeFile(
+          join(functionsDist, "server.js"),
+          `import { onRequest } from 'firebase-functions/v2/https';
+  const server = import('firebase-frameworks');
+  export const ${functionId} = onRequest(${JSON.stringify(
+            frameworksBackend || {}
+          )}, (req, res) => server.then(it => it.handle(req, res)));
+  `
+        );
+      } else {
+        await writeFile(
+          join(functionsDist, "server.js"),
+          `const { onRequest } = require('firebase-functions/v2/https');
+  const server = import('firebase-frameworks');
+  exports.${functionId} = onRequest(${JSON.stringify(
+            frameworksBackend || {}
+          )}, (req, res) => server.then(it => it.handle(req, res)));
+  `
+        );
+      }
     } else {
       // No function, treat as an SPA
       // TODO(jamesdaniels) be smarter about this, leave it to the framework?

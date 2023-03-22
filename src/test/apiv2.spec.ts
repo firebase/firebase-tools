@@ -2,7 +2,7 @@ import { createServer, Server } from "http";
 import { expect } from "chai";
 import * as nock from "nock";
 import AbortController from "abort-controller";
-import proxySetup = require("proxy");
+const proxySetup = require("proxy");
 
 import { Client } from "../apiv2";
 import { FirebaseError } from "../error";
