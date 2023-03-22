@@ -3,7 +3,8 @@ import * as ora from "ora";
 const Table = require("cli-table");
 
 import { Command } from "../command";
-import { FirebaseProjectMetadata, listFirebaseProjects } from "../management/projects";
+import { listFirebaseProjects } from "../management/projects";
+import { FirebaseProjectMetadata } from "../types/project";
 import { requireAuth } from "../requireAuth";
 import { logger } from "../logger";
 

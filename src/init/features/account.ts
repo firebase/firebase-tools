@@ -5,9 +5,9 @@ import {
   loginAdditionalAccount,
   setActiveAccount,
   findAccountByEmail,
-  Account,
   setProjectAccount,
 } from "../../auth";
+import { Account } from "../../types/auth";
 import { promptOnce } from "../../prompt";
 import { FirebaseError } from "../../error";
 
