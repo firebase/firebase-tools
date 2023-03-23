@@ -1,4 +1,4 @@
-import { getAllAccounts, getGlobalDefaultAccount, loginAdditionalAccount, setGlobalDefaultAccount } from '../../src/auth';
+import { getAllAccounts, getGlobalDefaultAccount, loginGoogle, setGlobalDefaultAccount } from '../../src/auth';
 import { logout } from '../../src/commands/logout';
 import { listFirebaseProjects } from '../../src/management/projects';
 import { requireAuth } from '../../src/requireAuth';
@@ -11,6 +11,7 @@ import { getDefaultHostingSite } from '../../src/getDefaultHostingSite';
 import { HostingSingle } from './firebaseConfig';
 import { initAction } from '../../src/commands/init';
 import { Command } from '../../src/command';
+import { Account } from '../../src/types/auth';
 
 /**
  * Wrap the CLI's requireAuth() which is normally run before every command
@@ -32,7 +33,7 @@ async function requireAuthWrapper() {
   }
   // If account is still null, `requireAuth()` will use google-auth-library
   // to look for the service account hopefully.
-  await requireAuth(account);
+  await requireAuth(account || {});
 }
 
 export function getUsers() {
@@ -44,7 +45,10 @@ export async function logoutUser(email: string): Promise<boolean> {
 }
 
 export async function login() {
-  return loginAdditionalAccount(true);
+  await requireAuthWrapper();
+  const userCredentials = await loginGoogle(true);
+  setGlobalDefaultAccount(userCredentials as Account);
+  return userCredentials;
 }
 
 export async function listProjects() {

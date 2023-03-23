@@ -1,8 +1,2 @@
-export interface FirebaseRCProjects {
-  default: string;
-  [index: string]: string;
-}
-
-export interface FirebaseRC {
-  projects?: FirebaseRCProjects;
-}
+import { RCData } from '../../src/rc';
+export interface FirebaseRC extends Partial<RCData> {}

@@ -10,13 +10,9 @@ import { Api, ExtensionSpec, Role, Resource, FUNCTIONS_RESOURCE_TYPE } from "./t
 import * as iam from "../gcp/iam";
 import { SECRET_ROLE, usesSecrets } from "./secretsUtils";
 
-try {
-  marked.setOptions({
-    renderer: new TerminalRenderer(),
-  });
-} catch (e) {
-  // ignored
-}
+marked.setOptions({
+  renderer: new TerminalRenderer(),
+});
 
 const TASKS_ROLE = "cloudtasks.enqueuer";
 const TASKS_API = "cloudtasks.googleapis.com";

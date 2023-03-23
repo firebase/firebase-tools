@@ -9,20 +9,6 @@ const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 const CopyPlugin = require("copy-webpack-plugin");
 const ForkTsCheckerWebpackPlugin = require("fork-ts-checker-webpack-plugin");
 
-const pkgParent = require("../package.json");
-
-const deps = Object.keys(pkgParent.dependencies);
-const externals = [
-  // don't need outside CLI
-  // 'ora', 'colorette', 'inquirer',
-  // hardcoded path in lifecycleHooks.ts
-  "cross-env",
-  // breaks stuff - local paths to bridge.js and other files
-  "proxy-agent",
-  // breaks stuff because of `self`
-  // 'form-data', /* 'abort-controller', */ 'node-fetch'
-];
-
 /**@type {import('webpack').Configuration}*/
 const extensionConfig = {
   name: "extension",
@@ -37,20 +23,9 @@ const extensionConfig = {
     devtoolModuleFilenameTemplate: "../[resource-path]",
   },
   devtool: "source-map",
-  // externals: {
-  //   vscode: 'commonjs vscode' // the vscode-module is created on-the-fly and must be excluded. Add other modules that cannot be webpack'ed, 📖 -> https://webpack.js.org/configuration/externals/
-  // },
-  externals: [
-    function ({ context, request }, callback) {
-      if (externals.some((dep) => request === dep || request?.startsWith(`${dep}/`))) {
-        return callback(undefined, "commonjs " + request);
-      }
-      if (request === "vscode") {
-        return callback(undefined, "commonjs vscode");
-      }
-      callback();
-    },
-  ],
+  externals: {
+    vscode: 'commonjs vscode' // the vscode-module is created on-the-fly and must be excluded. Add other modules that cannot be webpack'ed, 📖 -> https://webpack.js.org/configuration/externals/
+  },
   resolve: {
     // support reading TypeScript and JavaScript files, 📖 -> https://github.com/TypeStrong/ts-loader
     // mainFields: ['browser', 'module', 'main'], // look for `browser` entry point in imported node modules
@@ -58,15 +33,20 @@ const extensionConfig = {
     extensions: [".ts", ".js"],
     alias: {
       // provides alternate implementation for node module and source files
+      "proxy-agent": path.resolve(__dirname, 'src/stubs/empty-class.js'),
+      "marked-terminal": path.resolve(__dirname, 'src/stubs/empty-class.js'),
+      "ora": path.resolve(__dirname, 'src/stubs/empty-class.js'),
+      "commander": path.resolve(__dirname, 'src/stubs/empty-class.js'),
+      // This is used for Github deploy to hosting - will need to restore
+      // or find another solution if we add that feature.
+      "libsodium-wrappers": path.resolve(__dirname, 'src/stubs/empty-class.js'),
+      "marked": path.resolve(__dirname, 'src/stubs/marked.js')
     },
     fallback: {
       // Webpack 5 no longer polyfills Node.js core modules automatically.
       // see https://webpack.js.org/configuration/resolve/#resolvefallback
       // for the list of Node.js core module polyfills.
     },
-  },
-  optimization: {
-    usedExports: true,
   },
   module: {
     rules: [
@@ -92,6 +72,10 @@ const extensionConfig = {
               search: /(\.|\.\.)[\.\/]+schema/g,
               replace: "./schema",
             },
+            {
+              search: /Configstore\(pkg\.name\)/g,
+              replace: "Configstore('firebase-tools')",
+            },
           ],
         },
       },
@@ -107,9 +91,9 @@ const extensionConfig = {
         {
           from: "../schema",
           to: "./schema",
-        },
+        }
       ],
-    }),
+    })
   ],
   infrastructureLogging: {
     level: "log", // enables logging required for problem matchers
