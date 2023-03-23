@@ -1,1 +1,2 @@
 - Fixes an issue where `ext:dev:init` would fail due to a missing CHANGELOG.md file (#5530).
+- Add `--frameworks-build` flag to `firebase serve`, `firebase emulator:start` and `firebase emulators:exec`. Valid options `dev` or `prod`. Example: `firebase emulators:start --frameworks-build prod` or `NODE_ENV=production firebase emulators:start` (#5572)
