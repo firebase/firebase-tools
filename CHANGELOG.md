@@ -1,1 +1,2 @@
 - Releases Cloud Firestore emulator v1.16.1, which adds support for read_time in ListCollectionIds.
+- Supports parametrized configuration of ServiceAccount in Functions and Function triggers.
