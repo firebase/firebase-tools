@@ -634,6 +634,7 @@ function getFrameworksBuildMode(options: any): FrameworksBuild {
   let frameworksBuild: FrameworksBuild = options.frameworksBuild;
   if (frameworksBuild) {
     // TODO validate frameworksBuild with other possible values (for Angular)
+    // TODO validate framworksBuild for other languages, e.g. Python
     if (!FRAMEWORKS_BUILD_OPTIONS.includes(frameworksBuild)) {
       throw new FirebaseError(`Invalid value for frameworksBuild: ${frameworksBuild}`);
     }
