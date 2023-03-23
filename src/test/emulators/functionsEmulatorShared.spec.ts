@@ -158,6 +158,7 @@ describe("FunctionsEmulatorShared", () => {
       resources: [],
       sourceUrl: "test.com",
       params: [],
+      systemParams: [],
       postinstallContent: "Should subsitute ${param:KEY}",
     };
     const testSubbedSpec: ExtensionSpec = {
@@ -166,6 +167,7 @@ describe("FunctionsEmulatorShared", () => {
       resources: [],
       sourceUrl: "test.com",
       params: [],
+      systemParams: [],
       postinstallContent: "Should subsitute value",
     };
     const testExtension: Extension = {

@@ -44,8 +44,8 @@ export function createApp(
       exposedHeaders: [
         "content-type",
         "x-firebase-storage-version",
+        "X-Goog-Upload-Size-Received",
         "x-goog-upload-url",
-        "x-goog-upload-status",
         "x-goog-upload-command",
         "x-gupload-uploadid",
         "x-goog-upload-header-content-length",

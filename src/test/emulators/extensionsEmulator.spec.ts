@@ -45,6 +45,7 @@ const TEST_EXTENSION_VERSION: ExtensionVersion = {
       },
     ],
     params: [],
+    systemParams: [],
     version: "0.1.18",
     sourceUrl: "https://fake.test",
   },
@@ -80,6 +81,7 @@ describe("Extensions Emulator", () => {
               "google.firebase.image-resize-started,google.firebase.image-resize-completed",
             EVENTARC_CHANNEL: "projects/test-project/locations/us-central1/channels/firebase",
           },
+          systemParams: {},
           allowedEventTypes: [
             "google.firebase.image-resize-started",
             "google.firebase.image-resize-completed",
@@ -107,7 +109,7 @@ describe("Extensions Emulator", () => {
           // so test also runs on win machines
           // eslint-disable-next-line prettier/prettier
             functionsDir: join("src/test/emulators/extensions/firebase/storage-resize-images@0.1.18/functions"),
-          nodeMajorVersion: 10,
+          runtime: "nodejs10",
           predefinedTriggers: [
             {
               entryPoint: "generateResizedImage",
@@ -138,6 +140,8 @@ describe("Extensions Emulator", () => {
         });
 
         const result = await e.toEmulatableBackend(testCase.input);
+        // ignore result.bin, as it is platform dependent
+        delete result.bin;
         expect(result).to.deep.equal(testCase.expected);
       });
     }

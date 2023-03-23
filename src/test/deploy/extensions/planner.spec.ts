@@ -18,6 +18,7 @@ function extensionVersion(version?: string): any {
       resources: [],
       sourceUrl: "https://google.com",
       params: [],
+      systemParam: [],
     },
   };
 }
@@ -105,6 +106,7 @@ describe("Extensions Deployment Planner", () => {
       name: "",
       sourceUrl: "",
       params: [],
+      systemParams: [],
     };
 
     const INSTANCE_WITH_EVENTS: ExtensionInstance = {
@@ -116,6 +118,7 @@ describe("Extensions Deployment Planner", () => {
       etag: "123456",
       config: {
         params: {},
+        systemParams: {},
         extensionRef: "firebase/image-resizer",
         extensionVersion: "0.1.0",
         name: "projects/my-test-proj/instances/image-resizer/configurations/95355951-397f-4821-a5c2-9c9788b2cc63",
@@ -135,6 +138,7 @@ describe("Extensions Deployment Planner", () => {
     const INSTANCE_SPEC_WITH_EVENTS: planner.DeploymentInstanceSpec = {
       instanceId: "image-resizer",
       params: {},
+      systemParams: {},
       allowedEventTypes: ["google.firebase.custom-event-occurred"],
       eventarcChannel: "projects/my-test-proj/locations/us-central1/channels/firebase",
       etag: "123456",

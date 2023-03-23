@@ -7,7 +7,8 @@ import * as os from "os";
 import * as api from "../api";
 import { configstore } from "../configstore";
 import * as defaultCredentials from "../defaultCredentials";
-import { Account, getGlobalDefaultAccount } from "../auth";
+import { getGlobalDefaultAccount } from "../auth";
+import { Account } from "../types/auth";
 
 describe("defaultCredentials", () => {
   const sandbox: sinon.SinonSandbox = sinon.createSandbox();

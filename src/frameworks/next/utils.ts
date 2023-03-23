@@ -229,6 +229,5 @@ export function allDependencyNames(mod: NpmLsDepdendency): string[] {
     (acc, it) => [...acc, it, ...allDependencyNames(mod.dependencies![it])],
     [] as string[]
   );
-  // deduplicate the names
-  return [...new Set(dependencyNames)];
+  return dependencyNames;
 }

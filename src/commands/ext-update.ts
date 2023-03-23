@@ -1,7 +1,6 @@
 import * as clc from "colorette";
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
-const { marked } = require("marked");
-import TerminalRenderer = require("marked-terminal");
+import { marked } from "marked";
+import * as TerminalRenderer from "marked-terminal";
 
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
