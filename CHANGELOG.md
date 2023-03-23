@@ -1,0 +1,1 @@
+- Releases Cloud Firestore emulator v1.16.1, which adds support for read_time in ListCollectionIds.
