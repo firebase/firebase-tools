@@ -1,3 +1,4 @@
 - Remove call to Cloud Run API and set CPU & concurrency in GCF API instead. (#5605)
 - Fix function deploy retry after quota exceeded bug and increase backoff. (#5601)
 - Fix bug where EVENTARC_CLOUD_EVENT_SOURCE environment variable was correctly set for some functions. (#5597)
+- Fix bug where Vite JS-SDK auto init was not working for webframeworks.
