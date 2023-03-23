@@ -66,7 +66,6 @@ export class Command {
    *
    * @example
    *   command.option("-d, --debug", "turn on debugging", false)
-   *
    * @param args the commander-style option definition.
    * @return the command, for chaining.
    */
@@ -80,7 +79,7 @@ export class Command {
    * Sets up --force flag for the command.
    *
    * @param message overrides the description for --force for this command
-   * @returns the command, for chaining
+   * @return the command, for chaining
    */
   withForce(message?: string): Command {
     this.options.push(["-f, --force", message || "automatically accept all interactive prompts"]);
@@ -218,11 +217,15 @@ export class Command {
             );
           }
           process.exitCode = 0;
-          var timeout = setTimeout(function (cmd: any) {
-            track(cmd, "terminated_with_open_handlers");
-            process.exit(0);
-          }, 2000, this.name);
-          timeout.unref(); 
+          const timeout = setTimeout(
+            (cmd: any) => {
+              track(cmd, "terminated_with_open_handlers");
+              process.exit(0);
+            },
+            2000,
+            this.name
+          );
+          timeout.unref();
         })
         .catch(async (err) => {
           if (getInheritedOption(options, "json")) {
