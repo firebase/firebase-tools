@@ -217,7 +217,12 @@ export class Command {
               ])
             );
           }
-          process.exit();
+          process.exitCode = 0;
+          var timeout = setTimeout(function (cmd: any) {
+            track(cmd, "terminated_with_open_handlers");
+            process.exit(0);
+          }, 2000, this.name);
+          timeout.unref(); 
         })
         .catch(async (err) => {
           if (getInheritedOption(options, "json")) {
