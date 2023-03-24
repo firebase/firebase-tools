@@ -226,7 +226,6 @@
     "next": "^13.0.2",
     "nock": "^13.0.5",
     "node-mocks-http": "^1.11.0",
-    "nuxt": "^3.2.0",
     "nyc": "^15.1.0",
     "openapi-merge": "^1.0.23",
     "openapi-typescript": "^4.5.0",

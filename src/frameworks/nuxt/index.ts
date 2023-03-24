@@ -2,7 +2,6 @@ import { copy, pathExists } from "fs-extra";
 import { readFile } from "fs/promises";
 import { join } from "path";
 import { gte } from "semver";
-import type { NuxtOptions } from "@nuxt/schema";
 import { spawn } from "cross-spawn";
 import { findDependency, FrameworkType, relativeRequire, SupportLevel } from "..";
 import { simpleProxy, warnIfCustomBuildScript } from "../utils";
@@ -11,8 +10,9 @@ export const name = "Nuxt";
 export const support = SupportLevel.Experimental;
 export const type = FrameworkType.Toolchain;
 
-import { NuxtDependency } from "./interfaces";
 import { nuxtConfigFilesExist } from "./utils";
+import { NuxtDependency } from "./interfaces";
+import type { NuxtOptions } from "./interfaces/@nuxt/schema";
 
 const DEFAULT_BUILD_SCRIPT = ["nuxt build"];
 const CLI_COMMAND = join("node_modules", ".bin", "nuxt");
