@@ -12,7 +12,7 @@ export const type = FrameworkType.Toolchain;
 
 import { nuxtConfigFilesExist } from "./utils";
 import { NuxtDependency } from "./interfaces";
-import type { NuxtOptions } from "./interfaces/@nuxt/schema";
+import type { NuxtOptions } from "@nuxt/schema";
 
 const DEFAULT_BUILD_SCRIPT = ["nuxt build"];
 const CLI_COMMAND = join("node_modules", ".bin", "nuxt");
