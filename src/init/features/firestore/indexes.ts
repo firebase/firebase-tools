@@ -2,8 +2,8 @@ import * as clc from "colorette";
 import * as fs from "fs";
 
 import { FirebaseError } from "../../../error";
-import iv2 = require("../../../firestore/indexes");
-import fsutils = require("../../../fsutils");
+import * as iv2 from "../../../firestore/indexes";
+import * as fsutils from "../../../fsutils";
 import { prompt, promptOnce } from "../../../prompt";
 import { logger } from "../../../logger";
 
