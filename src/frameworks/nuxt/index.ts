@@ -104,7 +104,7 @@ export async function getDevModeHandle(dir: string) {
   return simpleProxy(await host);
 }
 
-async function getConfig(dir: string): Promise<NuxtOptions> {
+export async function getConfig(dir: string): Promise<NuxtOptions> {
   const { loadNuxtConfig } = await relativeRequire(dir, "@nuxt/kit");
   const config: NuxtOptions = await loadNuxtConfig(dir);
 

@@ -6,9 +6,12 @@ import * as frameworksFunctions from "../../../frameworks";
 
 import { discover as discoverNuxt2 } from "../../../frameworks/nuxt2";
 import { discover as discoverNuxt3 } from "../../../frameworks/nuxt";
+import type { NuxtOptions } from "../../../frameworks/nuxt/interfaces";
+import { nuxtOptions } from "./helpers";
 
 describe("Nuxt 2 utils", () => {
   describe("nuxtAppDiscovery", () => {
+    const discoverNuxtDir = ".";
     let sandbox: sinon.SinonSandbox;
 
     beforeEach(() => {
@@ -27,7 +30,9 @@ describe("Nuxt 2 utils", () => {
         overridden: false,
       });
 
-      expect(await discoverNuxt2(".")).to.deep.equal({ mayWantBackend: true });
+      expect(await discoverNuxt2(discoverNuxtDir)).to.deep.equal({
+        mayWantBackend: true,
+      });
     });
 
     it("should find a Nuxt 3 app", async () => {
@@ -37,8 +42,19 @@ describe("Nuxt 2 utils", () => {
         resolved: "https://registry.npmjs.org/nuxt/-/nuxt-3.0.0.tgz",
         overridden: false,
       });
+      sandbox
+        .stub(frameworksFunctions, "relativeRequire")
+        .withArgs(discoverNuxtDir, "@nuxt/kit")
+        .resolves({
+          loadNuxtConfig: async function (): Promise<NuxtOptions> {
+            return Promise.resolve(nuxtOptions);
+          },
+        });
 
-      expect(await discoverNuxt3(".")).to.deep.equal({ mayWantBackend: true });
+      expect(await discoverNuxt3(discoverNuxtDir)).to.deep.equal({
+        mayWantBackend: true,
+        publicDirectory: "public",
+      });
     });
   });
 });
