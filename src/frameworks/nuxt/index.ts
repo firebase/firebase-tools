@@ -11,8 +11,7 @@ export const support = SupportLevel.Experimental;
 export const type = FrameworkType.Toolchain;
 
 import { nuxtConfigFilesExist } from "./utils";
-import { NuxtDependency } from "./interfaces";
-import type { NuxtOptions } from "@nuxt/schema";
+import type { NuxtDependency, NuxtOptions } from "./interfaces";
 
 const DEFAULT_BUILD_SCRIPT = ["nuxt build"];
 const CLI_COMMAND = join("node_modules", ".bin", "nuxt");
@@ -20,7 +19,7 @@ const CLI_COMMAND = join("node_modules", ".bin", "nuxt");
 /**
  *
  * @param dir current directory
- * @return undefined if project is not Nuxt 2, {mayWantBackend: true } otherwise
+ * @return undefined if project is not Nuxt 2, { mayWantBackend: true } otherwise
  */
 export async function discover(
   dir: string

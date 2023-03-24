@@ -160,7 +160,6 @@
     "@angular-devkit/architect": "^0.1402.2",
     "@angular-devkit/core": "^14.2.2",
     "@google/events": "^5.1.1",
-    "@nuxt/schema": "^3.3.2",
     "@types/archiver": "^5.1.0",
     "@types/async-lock": "^1.1.5",
     "@types/body-parser": "^1.17.0",
