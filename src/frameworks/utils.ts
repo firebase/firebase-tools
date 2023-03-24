@@ -3,7 +3,6 @@ import type { ReadOptions } from "fs-extra";
 import { join } from "path";
 import { readFile } from "fs/promises";
 import { IncomingMessage, request, ServerResponse } from "http";
-import { parse } from "url";
 
 /**
  * Whether the given string starts with http:// or https://
