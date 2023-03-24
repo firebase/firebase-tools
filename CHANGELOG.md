@@ -1,1 +1,2 @@
 - Releases Cloud Firestore emulator v1.16.1, which adds support for read_time in ListCollectionIds.
+- Fixes auth:export with csv format for users with custom claims
