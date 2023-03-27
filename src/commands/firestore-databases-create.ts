@@ -15,10 +15,10 @@ export const command = new Command("firestore:databases:create")
     "Pretty print. When not specified the databases are printed in the " +
       "JSON specification format."
   )
-  .option("--database <databaseId>", "Name of database to be created. (required).")
+  .option("--database <databaseId>", "Name of database to be created. (required)")
   .option(
     "--location <locationId>",
-    "Region to create database, for example 'nam5'. Run 'firebase firestore:locations --pretty' to get a list of eligible locations. (mandatory)"
+    "Region to create database, for example 'nam5'. Run 'firebase firestore:locations --pretty' to get a list of eligible locations. (required)"
   )
   .option(
     "--type <type>",
