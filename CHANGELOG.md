@@ -5,7 +5,7 @@
 - Fix bug where EVENTARC_CLOUD_EVENT_SOURCE environment variable was correctly set for some functions. (#5597)
 - Adds 2nd gen firestore triggers to firebase deploy (#5592).
 - Adds `database:import` command for non-atomic imports (#5396).
-- Adds support for the Firestore Provising API commands: (#5616)
+- Adds support for the Firestore Provisioning API commands: (#5616)
 - firestore:databases:list
 - firestore:databases:create
 - firestore:databases:get
