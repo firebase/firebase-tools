@@ -9,7 +9,7 @@ import { warnEmulatorNotSupported } from "../emulator/commandUtils";
 import { FirestoreOptions } from "../firestore/options";
 
 export const command = new Command("firestore:databases:create")
-  .description("Create a database in your Cloud Firestore project.")
+  .description("Create a database in your Firebase project.")
   .option(
     "--pretty",
     "Pretty print. When not specified the databases are printed in the " +
