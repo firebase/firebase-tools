@@ -6,8 +6,8 @@
 - Adds 2nd gen firestore triggers to firebase deploy (#5592).
 - Adds `database:import` command for non-atomic imports (#5396).
 - Adds support for the Firestore Provising API commands: (#5616)
-- firestore:databases:list 
-- firestore:databases:create 
+- firestore:databases:list
+- firestore:databases:create
 - firestore:databases:get
 - firestore:databases:delete
 - firestore:locations
