@@ -12,10 +12,10 @@ export const command = new Command("firestore:databases:create")
   .description("Create a database in your Cloud Firestore project.")
   .option(
     "--pretty",
-    "Pretty print. When not specified the indexes are printed in the " +
+    "Pretty print. When not specified the databases are printed in the " +
       "JSON specification format."
   )
-  .option("--database <databaseId>", "Name of database to be created. (mandatory).")
+  .option("--database <databaseId>", "Name of database to be created. (required).")
   .option(
     "--location <locationId>",
     "Region to create database, for example 'nam5'. Run 'firebase firestore:locations --pretty' to get a list of eligible locations. (mandatory)"

@@ -12,7 +12,7 @@ export const command = new Command("firestore:databases:get")
   .description("Get database in your Cloud Firestore project.")
   .option(
     "--pretty",
-    "Pretty print. When not specified the indexes are printed in the " +
+    "Pretty print. When not specified the database is printed in the " +
       "JSON specification format."
   )
   .option(

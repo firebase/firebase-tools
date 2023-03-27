@@ -15,7 +15,7 @@ export const command = new Command("firestore:locations")
     "Pretty print {Display name}: {locationId}. When not specified the locations are printed in the " +
       "JSON specification format."
   )
-  .before(requirePermissions, ["datastore.databases.list"])
+  .before(requirePermissions, ["datastore.locations.list"])
   .before(warnEmulatorNotSupported, Emulators.FIRESTORE)
   .action(async (options: FirestoreOptions) => {
     const api = new fsi.FirestoreApi();

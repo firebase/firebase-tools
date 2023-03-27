@@ -14,12 +14,12 @@ export const command = new Command("firestore:databases:delete")
   .description("Delete a database in your Cloud Firestore project.")
   .option(
     "--pretty",
-    "Pretty print. When not specified the indexes are printed in the " +
+    "Pretty print. When not specified the databases are printed in the " +
       "JSON specification format."
   )
   .option(
     "--database <databaseId>",
-    "Database ID of the firestore database to be deleted. (mandatory)."
+    "Database ID of the firestore database to be deleted. (required)."
   )
   .before(requirePermissions, ["datastore.databases.delete"])
   .before(warnEmulatorNotSupported, Emulators.FIRESTORE)
