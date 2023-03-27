@@ -9,7 +9,7 @@ import * as semver from "semver";
 import { URL } from "url";
 import { EventEmitter } from "events";
 
-import { Account } from "../auth";
+import { Account } from "../types/auth";
 import { logger } from "../logger";
 import { track, trackEmulator } from "../track";
 import { Constants } from "./constants";

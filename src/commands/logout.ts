@@ -3,9 +3,17 @@ import { logger } from "../logger";
 import * as clc from "colorette";
 
 import * as utils from "../utils";
-import * as auth from "../auth";
 import { promptOnce } from "../prompt";
 import { Options } from "../options";
+import { Account } from "../types/auth";
+import {
+  getAllAccounts,
+  getGlobalDefaultAccount,
+  getAdditionalAccounts,
+  setRefreshToken,
+  logout,
+  setGlobalDefaultAccount,
+} from "../auth";
 
 export const command = new Command("logout [email]")
   .description("log the CLI out of Firebase")
@@ -20,14 +28,14 @@ export async function logoutAction(email: string | undefined, options: Options):
   const globalToken = utils.getInheritedOption(options, "token");
   utils.assertIsStringOrUndefined(globalToken);
 
-  const allAccounts = auth.getAllAccounts();
+  const allAccounts = getAllAccounts();
   if (allAccounts.length === 0 && !globalToken) {
     logger.info("No need to logout, not logged in");
     return;
   }
 
-  const defaultAccount = auth.getGlobalDefaultAccount();
-  const additionalAccounts = auth.getAdditionalAccounts();
+  const defaultAccount = getGlobalDefaultAccount();
+  const additionalAccounts = getAdditionalAccounts();
 
   const accountsToLogOut = email ? allAccounts.filter((a) => a.user.email === email) : allAccounts;
 
@@ -39,7 +47,7 @@ export async function logoutAction(email: string | undefined, options: Options):
   // If they are logging out of their primary account, choose one to
   // replace it.
   const logoutDefault = email === defaultAccount?.user.email;
-  let newDefaultAccount: auth.Account | undefined = undefined;
+  let newDefaultAccount: Account | undefined = undefined;
   if (logoutDefault && additionalAccounts.length > 0) {
     if (additionalAccounts.length === 1) {
       newDefaultAccount = additionalAccounts[0];
@@ -64,9 +72,9 @@ export async function logoutAction(email: string | undefined, options: Options):
     const token = account.tokens.refresh_token;
 
     if (token) {
-      auth.setRefreshToken(token);
+      setRefreshToken(token);
       try {
-        await auth.logout(token);
+        await logout(token);
       } catch (e: any) {
         utils.logWarning(
           `Invalid refresh token for ${account.user.email}, did not need to deauthorize`
@@ -78,9 +86,9 @@ export async function logoutAction(email: string | undefined, options: Options):
   }
 
   if (globalToken) {
-    auth.setRefreshToken(globalToken);
+    setRefreshToken(globalToken);
     try {
-      await auth.logout(globalToken);
+      await logout(globalToken);
     } catch (e: any) {
       utils.logWarning("Invalid refresh token, did not need to deauthorize");
     }
@@ -90,6 +98,6 @@ export async function logoutAction(email: string | undefined, options: Options):
 
   if (newDefaultAccount) {
     utils.logSuccess(`Setting default account to "${newDefaultAccount.user.email}"`);
-    auth.setGlobalDefaultAccount(newDefaultAccount);
+    setGlobalDefaultAccount(newDefaultAccount);
   }
 }
