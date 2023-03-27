@@ -12,7 +12,7 @@ export const command = new Command("firestore:locations")
   .description("List possible locations for your Cloud Firestore project.")
   .option(
     "--pretty",
-    "Pretty print. When not specified the indexes are printed in the " +
+    "Pretty print {Display name}: {locationId}. When not specified the locations are printed in the " +
       "JSON specification format."
   )
   .before(requirePermissions, ["datastore.databases.list"])
@@ -23,7 +23,7 @@ export const command = new Command("firestore:locations")
     const locations: types.Location[] = await api.locations(options.project);
 
     if (options.pretty) {
-      logger.info(clc.bold(clc.white("Firestore Databases")));
+      logger.info(clc.bold(clc.white("Firestore Locations")));
       api.prettyPrintLocations(locations);
     } else {
       logger.info(JSON.stringify(locations, undefined, 2));

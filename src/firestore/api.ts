@@ -300,7 +300,8 @@ export class FirestoreApi {
   }
 
   /**
-   * Print an array of indexes to the console.
+   * Print an array of indexes to the console. Group multi regions together
+   *  Example: United States: nam5
    * @param locations the array of indexes.
    */
   prettyPrintLocations(locations: types.Location[]): void {
@@ -760,79 +761,17 @@ export class FirestoreApi {
   }
 
   /**
-   * Get a colored, pretty-printed representation of an index.
+   * Get a colored, pretty-printed representation of a database
    */
   private prettyDatabaseString(database: types.DatabaseResp): string {
-    return database.name;
-    // let result = database.name;
-
-    // if (database.state && includeState) {
-    //   const stateMsg = `[${database.state}] `;
-
-    //   if (database.state === types.State.READY) {
-    //     result += clc.green(stateMsg);
-    //   } else if (database.state === types.State.CREATING) {
-    //     result += clc.yellow(stateMsg);
-    //   } else {
-    //     result += clc.red(stateMsg);
-    //   }
-    // }
-
-    // const nameInfo = util.parseIndexName(database.name);
-
-    // result += clc.cyan(`(${nameInfo.collectionGroupId})`);
-    // result += " -- ";
-
-    // database.fields.forEach((field) => {
-    //   if (field.fieldPath === "__name__") {
-    //     return;
-    //   }
-
-    //   // Normal field indexes have an "order" while array indexes have an "arrayConfig",
-    //   // we want to display whichever one is present.
-    //   const orderOrArrayConfig = field.order ? field.order : field.arrayConfig;
-    //   result += `(${field.fieldPath},${orderOrArrayConfig}) `;
-    // });
-
-    // return result;
+    return clc.yellow(database.name);
   }
 
   /**
    * Get a colored, pretty-printed representation of an location.
    */
   private prettyLocationString(location: types.Location): string {
-    return location.locationId;
-    // let result = location.locationId;
-
-    // if (database.state && includeState) {
-    //   const stateMsg = `[${database.state}] `;
-
-    //   if (database.state === types.State.READY) {
-    //     result += clc.green(stateMsg);
-    //   } else if (database.state === types.State.CREATING) {
-    //     result += clc.yellow(stateMsg);
-    //   } else {
-    //     result += clc.red(stateMsg);
-    //   }
-    // }
-
-    // const nameInfo = util.parseIndexName(database.name);
-
-    // result += clc.cyan(`(${nameInfo.collectionGroupId})`);
-    // result += " -- ";
-
-    // database.fields.forEach((field) => {
-    //   if (field.fieldPath === "__name__") {
-    //     return;
-    //   }
-
-    //   // Normal field indexes have an "order" while array indexes have an "arrayConfig",
-    //   // we want to display whichever one is present.
-    //   const orderOrArrayConfig = field.order ? field.order : field.arrayConfig;
-    //   result += `(${field.fieldPath},${orderOrArrayConfig}) `;
-    // });
-
-    // return result;
+    return clc.cyan(location.displayName) + ": " + clc.yellow(location.locationId);
   }
 
   /**

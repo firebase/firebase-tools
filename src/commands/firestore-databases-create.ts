@@ -18,7 +18,7 @@ export const command = new Command("firestore:databases:create")
   .option("--database <databaseId>", "Name of database to be created. (mandatory).")
   .option(
     "--location <locationId>",
-    "Region to create database, for example 'nam5'. Run 'firebase firestore:databases:locations' to get a list of eligible locations. (mandatory)"
+    "Region to create database, for example 'nam5'. Run 'firebase firestore:locations --pretty' to get a list of eligible locations. (mandatory)"
   )
   .option(
     "--type <type>",

@@ -2,11 +2,13 @@ import { Command } from "../command";
 import * as clc from "colorette";
 import * as fsi from "../firestore/api";
 import * as types from "../firestore/api-types";
+import { promptOnce } from "../prompt";
 import { logger } from "../logger";
 import { requirePermissions } from "../requirePermissions";
 import { Emulators } from "../emulator/types";
 import { warnEmulatorNotSupported } from "../emulator/commandUtils";
 import { FirestoreOptions } from "../firestore/options";
+import { FirebaseError } from "../error";
 
 export const command = new Command("firestore:databases:delete")
   .description("Delete a database in your Cloud Firestore project.")
@@ -26,10 +28,22 @@ export const command = new Command("firestore:databases:delete")
 
     if (!options.database) {
       logger.error(
-        "Database name must be provided. See firebase firestore:databases:delete --help for more info."
+        "Database id must be provided. See firebase firestore:databases:delete --help for more info."
       );
       return;
     }
+    if (!options.force) {
+      const confirmMessage = `You are about to delete projects/${options.project}/databases/${options.database}. Do you wish to continue?`;
+      const consent = await promptOnce({
+        type: "confirm",
+        message: confirmMessage,
+        default: false,
+      });
+      if (!consent) {
+        throw new FirebaseError("Delete database canceled.");
+      }
+    }
+
     const database: types.DatabaseResp = await api.deleteDatabase(
       options.project,
       options.database

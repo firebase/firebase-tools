@@ -12,7 +12,7 @@ export const command = new Command("firestore:databases:list")
   .description("List databases in your Cloud Firestore project.")
   .option(
     "--pretty",
-    "Pretty print. When not specified the indexes are printed in the " +
+    "Pretty print database names only. When not specified the databases are printed in the " +
       "JSON specification format."
   )
   .before(requirePermissions, ["datastore.databases.list"])
