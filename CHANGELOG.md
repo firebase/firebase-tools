@@ -1,0 +1,1 @@
+- Fix cases where console output was not being flushed before process termination (#5625)
