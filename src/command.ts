@@ -218,11 +218,11 @@ export class Command {
           }
           process.exitCode = 0;
           const timeout = setTimeout(
-            (cmd: any) => {
-              track(cmd, "terminated_with_open_handlers");
+            async (cmd: string) => {
+              await track(cmd, "terminated_with_open_handlers");
               process.exit(0);
             },
-            2000,
+            5000,
             this.name
           );
           timeout.unref();
