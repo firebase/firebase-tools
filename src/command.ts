@@ -12,7 +12,7 @@ import { track, trackEmulator } from "./track";
 import { selectAccount, setActiveAccount } from "./auth";
 import { getFirebaseProject } from "./management/projects";
 import { requireAuth } from "./requireAuth";
-import { setTimeout } from 'timers'
+import { setTimeout } from 'timers';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ActionFunction = (...args: any[]) => any;
