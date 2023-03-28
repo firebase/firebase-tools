@@ -3,8 +3,7 @@ import * as ora from "ora";
 import * as semver from "semver";
 import { marked } from "marked";
 
-import * as TerminalRenderer from "marked-terminal";
-
+const TerminalRenderer = require("marked-terminal");
 marked.setOptions({
   renderer: new TerminalRenderer(),
 });

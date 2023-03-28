@@ -1,6 +1,6 @@
-import { pathToFileURL } from "url";
+const { pathToFileURL } = require("url");
 
-export function dynamicImport(mod) {
+exports.dynamicImport = function(mod) {
     if (mod.startsWith("file://")) return import(mod);
     if (mod.startsWith("/")) return import(pathToFileURL(mod).toString());
     try {
