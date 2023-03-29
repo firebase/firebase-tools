@@ -1,6 +1,10 @@
 .vscode/**
 .vscode-test/**
 src/**
+webviews/**
+common/**
+extension/**
+public/**
 .gitignore
 .yarnrc
 vsc-extension-quickstart.md
@@ -9,4 +13,6 @@ vsc-extension-quickstart.md
 **/*.map
 **/*.ts
 *.vsix
-webpack.config.js
+webpack.*.js
+../
+*.zip

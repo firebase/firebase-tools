@@ -1,7 +1,5 @@
-import { TextEncoder } from "@zxing/text-encoding";
 import * as fs from "fs";
 import { FirebaseRC } from "../../src/firebaserc";
-import { Deferred } from "./deferred";
 
 /** Read JSON file as T */
 // export async function readJsonFile<T>(filename: string): Promise<T> {
@@ -33,10 +31,8 @@ export async function writeFirebaseRCFile(
   filename: string,
   content: FirebaseRC
 ) {
-  const res = new Deferred<void>();
-  fs.writeFile(
+  fs.writeFileSync(
     filename,
-    new TextEncoder().encode(JSON.stringify(content, null, 2)),
-    () => res.resolve()
+    JSON.stringify(content, null, 2)
   );
 }

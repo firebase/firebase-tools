@@ -29,7 +29,7 @@ export function setupSidebar(
 }
 
 class MonospaceSidebarViewProvider implements WebviewViewProvider {
-  public static readonly viewType = "firebase.sidebarView";
+  public static readonly viewType = "firebase2.sidebarView";
   private _view?: WebviewView;
 
   constructor(

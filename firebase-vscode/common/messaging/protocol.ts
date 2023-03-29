@@ -3,10 +3,10 @@
  * between two environments (VScode and Webview)
  */
 
-import { FirebaseProjectMetadata } from "../../src/types/project";
-import { FirebaseConfig } from  '../../src/firebaseConfig';
-import { FirebaseRC } from "../../src/firebaserc";
-import { User } from "../../src/types/auth";
+import { FirebaseProjectMetadata } from "../../../src/types/project";
+import { FirebaseConfig } from  '../../../src/firebaseConfig';
+import { FirebaseRC } from "../firebaserc";
+import { User } from "../../../src/types/auth";
 
 // Messages sent from Webview to extension
 export interface WebviewToExtension {

@@ -131,6 +131,7 @@ export const WebFrameworks: Record<string, Framework> = Object.fromEntries(
   readdirSync(__dirname)
     .filter((path) => statSync(join(__dirname, path)).isDirectory())
     .map((path) => {
+      console.log(__dirname);
       try {
         return [path, require(join(__dirname, path))];
       } catch (e) {

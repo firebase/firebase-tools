@@ -1,16 +1,17 @@
-import { getAllAccounts, getGlobalDefaultAccount, loginAdditionalAccount, setGlobalDefaultAccount } from '../../src/auth';
-import { logout } from '../../src/commands/logout';
+import { getAllAccounts, getGlobalDefaultAccount, loginGoogle, setGlobalDefaultAccount } from '../../src/auth';
+import { logoutAction } from '../../src/commands/logout';
 import { listFirebaseProjects } from '../../src/management/projects';
 import { requireAuth } from '../../src/requireAuth';
 import { deploy } from '../../src/deploy';
 import { FirebaseConfig } from  '../../src/firebaseConfig';
 import { FirebaseRC } from "../../src/firebaserc";
-import { Config } from '../../src/config';
-import { rootPath } from './workflow';
 import { getDefaultHostingSite } from '../../src/getDefaultHostingSite';
 import { HostingSingle } from './firebaseConfig';
 import { initAction } from '../../src/commands/init';
-import { Command } from '../../src/command';
+import { Account } from '../../src/types/auth';
+import { Options } from '../../src/options';
+import { currentOptions, getCommandOptions } from './options';
+import { setInquirerOptions } from './stubs/inquirer-stub';
 
 /**
  * Wrap the CLI's requireAuth() which is normally run before every command
@@ -32,19 +33,22 @@ async function requireAuthWrapper() {
   }
   // If account is still null, `requireAuth()` will use google-auth-library
   // to look for the service account hopefully.
-  await requireAuth(account);
+  await requireAuth(account || {});
 }
 
 export function getUsers() {
   return getAllAccounts();
 }
 
-export async function logoutUser(email: string): Promise<boolean> {
-  return logout(email, {});
+export async function logoutUser(email: string): Promise<void> {
+  await logoutAction(email, {} as Options);
 }
 
 export async function login() {
-  return loginAdditionalAccount(true);
+  await requireAuthWrapper();
+  const userCredentials = await loginGoogle(true);
+  setGlobalDefaultAccount(userCredentials as Account);
+  return userCredentials;
 }
 
 export async function listProjects() {
@@ -52,38 +56,30 @@ export async function listProjects() {
   return listFirebaseProjects();
 }
 
-export async function initHosting(options: { spa: boolean, publicFolder: string }) {
+export async function initHosting(options: { spa: boolean, public: string }) {
   await requireAuthWrapper();
-  await initAction('hosting', {
-    cwd: rootPath, extensionOptions: options
-  });
+  const commandOptions = await getCommandOptions(undefined, {...currentOptions, ...options});
+  setInquirerOptions(commandOptions);
+  await initAction('hosting', commandOptions);
 }
 
 export async function deployToHosting(
   firebaseJSON: FirebaseConfig,
-  firebaseRC: FirebaseRC,
-  rootPath: string
+  firebaseRC: FirebaseRC
 ) {
   await requireAuthWrapper();
 
   // TODO: throw if it doesn't find firebaseJSON or the hosting field
-  const projects = await listFirebaseProjects();
-  const currentProject = projects.find(project => project.projectId === firebaseRC.projects?.default);
+  // const projects = await listFirebaseProjects();
+  // const currentProject = projects.find(project => project.projectId === firebaseRC.projects?.default);
   try {
-    const options = {...firebaseJSON.hosting, rc: firebaseRC, cwd: rootPath};
-    const command = new Command('deploy');
-    await command.prepare(options);
+    const options = {...currentOptions};
     // TODO: handle multiple hosting configs
     if (!(firebaseJSON.hosting as HostingSingle).site) {
       (firebaseJSON.hosting as HostingSingle).site = await getDefaultHostingSite(options);
     }
-    const config = new Config(firebaseJSON, options);
-    console.log(options);
-    await deploy(['hosting'], {
-      config: config,
-      project: currentProject,
-      cwd: rootPath
-    });
+    const commandOptions = await getCommandOptions(firebaseJSON, options);
+    await deploy(['hosting'], commandOptions);
   } catch (e) {
     console.error(e);
     return { success: false, hostingUrl: '', consoleUrl: '' };

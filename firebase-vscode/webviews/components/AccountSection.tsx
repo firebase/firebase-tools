@@ -6,7 +6,6 @@ import { Icon } from "./ui/Icon";
 import { IconButton } from "./ui/IconButton";
 import { PopupMenu, MenuItem } from "./ui/popup-menu/PopupMenu";
 import { Label } from "./ui/Text";
-import { FirebaseProjectMetadata as ProjectInfoType } from "../../../src/types/project";
 import styles from './AccountSection.scss';
 
 export function AccountSection({
