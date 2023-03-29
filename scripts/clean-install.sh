@@ -14,7 +14,7 @@ npx clean-publish --without-publish --before-script ./scripts/clean-shrinkwrap.s
 echo "Ran clean-publish --without-publish."
 echo "Packaging cleaned firebase-tools..."
 cd ./clean
-PACKED=$(npm pack --pack-destination ../ | tail -n 1)
+PACKED=$(npm pack --pack-destination ./ | tail -n 1)
 echo "Packaged firebase-tools to $PACKED."
 echo "Installing clean-packaged firebase-tools..."
 npm install -g $PACKED
