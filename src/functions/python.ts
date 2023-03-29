@@ -18,7 +18,7 @@ export function runWithVirtualEnv(
   const activateScriptPath =
     process.platform === "win32" ? ["Scripts", "activate.bat"] : ["bin", "activate"];
   const venvActivate = path.join(cwd, venvDir, ...activateScriptPath);
-  const command = process.platform === "win32" ? venvActivate : "source";
+  const command = process.platform === "win32" ? venvActivate : ".";
   const args = [process.platform === "win32" ? "" : venvActivate, "&&", ...commandAndArgs];
   logger.debug(`Running command with virtualenv: command=${command}, args=${JSON.stringify(args)}`);
 
