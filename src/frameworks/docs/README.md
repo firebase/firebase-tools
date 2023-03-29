@@ -3,8 +3,7 @@
 This directory contains the source of the Web frameworks documentation on
 https://firebase.google.com/docs/.
 
-We welcome your corrections and improvements! If you're interested in
-contributing, see [`CONTRIBUTING.md`](../CONTRIBUTING.md) for general
+We welcome your contributions! See [`CONTRIBUTING.md`](../CONTRIBUTING.md) for general
 guidelines.
 
 This file has some information on how our documentation is organized and some
@@ -19,7 +18,8 @@ There are two kinds of source file for our docs:
   the URL at which they're eventually published.
 
   Standalone pages must have filenames that don't begin with an
-  underscore (`_`).
+  underscore (`_`). For example, `angular.md` in this folder is
+  a standalone file.
 
 - **Page fragments** are included in other pages. We use page fragments either
   to include common text in multiple pages or to help organize large pages.
@@ -28,7 +28,8 @@ There are two kinds of source file for our docs:
   eventually published.
 
   Page fragments almost always have filenames that begin with an underscore
-  (`_`).
+  (`_`). For example, `_before-you-begin.md` is a file of standard steps that
+  should be included in all frameworks integration guides in this folder. 
 
 ## Non-standard Markdown
 
@@ -59,44 +60,17 @@ These are non-standard metadata declarations used by our internal publishing
 system. There's nothing you can really do with this, but it has to be on every
 standalone page.
 
-## Non-standard Jinja
+### Getting started writing
 
-### includecode
+Unless the needs of your framework are radically different, you should
+follow the outline and example presented in `angular.md`, which to date is
+the most completely fleshed-out integration. Details for your framework are
+likely to be different, but the overall outline should probably be similar.
 
-Code snippets are included from standalone Dart files, which helps facilitate
-automated testing. The following custom Jinja tag includes a code snippet into
-a file:
+Firebase follows the [Google developer documentation style guide](https://developers.google.com/style),
+which you should read before writing substantial contributions.
 
-```
-{% includecode github_path="organization/repository/path/to/file" region_tag="tag_name" %}
-```
 
-For example, the file [`firestore.dart`][firestore-snippets] in the
-[`firebase/snippets-flutter`][snippets-repo] repository contains a passage like
-this:
-
-```dart
-void addData_addADocument() {
-    // [START add_data_add_a_document]
-    db.collection("cities").doc("new-city-id").set({"name": "Chicago"});
-    // [END add_data_add_a_document]
-}
-```
-
-To include the line between the `START` and `END` tags in a page, do the
-following:
-
-```
-{% includecode
-   github_path="firebase/snippets-flutter/packages/firebase_snippets_app/lib/snippets/firestore.dart"
-   region_tag="add_data_add_a_document"
-   adjust_indentation="auto" %}
-```
-
-To update a snippet, submit a PR to the [`snippets-flutter` repo][snippets-repo].
-
-[firestore-snippets]: https://github.com/firebase/snippets-flutter/blob/main/packages/firebase_snippets_app/lib/snippets/firestore.dart
-[snippets-repo]: https://github.com/firebase/snippets-flutter/
 Footer
 © 2023 GitHub, Inc.
 Footer navigation
