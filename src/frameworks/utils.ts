@@ -3,7 +3,6 @@ import type { ReadOptions } from "fs-extra";
 import { join } from "path";
 import { readFile } from "fs/promises";
 import { IncomingMessage, request, ServerResponse } from "http";
-import { parse } from "url";
 
 /**
  * Whether the given string starts with http:// or https://
@@ -42,37 +41,68 @@ export async function warnIfCustomBuildScript(
   }
 }
 
-export function simpleProxy(host: string) {
-  return (req: IncomingMessage, res: ServerResponse, next: () => void) => {
+type RequestHandler = (req: IncomingMessage, res: ServerResponse) => Promise<void>;
+
+interface ProxyOptions {
+  serve404: boolean;
+}
+
+function proxyResponse(original: ServerResponse, next: () => void, options: ProxyOptions) {
+  return (response: IncomingMessage | ServerResponse) => {
+    const { statusCode, statusMessage } = response;
+    if (!statusCode) {
+      original.end();
+      return;
+    }
+    if (statusCode === 404 && !options.serve404) {
+      return next();
+    }
+    const headers = "getHeaders" in response ? response.getHeaders() : response.headers;
+    original.writeHead(statusCode, statusMessage, headers);
+    response.pipe(original);
+  };
+}
+
+export function simpleProxy(
+  hostOrRequestHandler: string | RequestHandler,
+  options: ProxyOptions = { serve404: true }
+) {
+  return async (req: IncomingMessage, res: ServerResponse, next: () => void) => {
     const { method, headers, url: path } = req;
     if (!method || !path) {
       return res.end();
     }
-    const { hostname, port, protocol } = new URL(host);
-    const opts = {
-      protocol,
-      hostname,
-      port,
-      path,
-      method,
-      headers: {
-        ...headers,
-        host,
-        "X-Forwarded-Host": headers.host,
-      },
-    };
-    const proxy = request(opts, (proxyResponse) => {
-      const { statusCode } = proxyResponse;
-      if (!statusCode) {
-        return res.end();
-      }
-      if (statusCode === 404) {
-        next();
-        return;
-      }
-      res.writeHead(statusCode, proxyResponse.headers);
-      proxyResponse.pipe(res);
-    });
-    req.pipe(proxy);
+    // If the path is a the auth token sync URL pass through to Cloud Functions
+    const firebaseDefaultsJSON = process.env.__FIREBASE_DEFAULTS__;
+    const authTokenSyncURL: string | undefined =
+      firebaseDefaultsJSON && JSON.parse(firebaseDefaultsJSON)._authTokenSyncURL;
+    if (path === authTokenSyncURL) {
+      return next();
+    }
+    if (typeof hostOrRequestHandler === "string") {
+      const host = hostOrRequestHandler;
+      const { hostname, port, protocol } = new URL(host);
+      const opts = {
+        protocol,
+        hostname,
+        port,
+        path,
+        method,
+        headers: {
+          ...headers,
+          host,
+          "X-Forwarded-Host": headers.host,
+        },
+      };
+      const a = proxyResponse(res, next, options);
+      const proxy = request(opts, a);
+      req.pipe(proxy);
+    } else if (options.serve404) {
+      hostOrRequestHandler(req, res);
+    } else {
+      const proxiedRes = new ServerResponse(req);
+      await hostOrRequestHandler(req, proxiedRes);
+      proxyResponse(res, next, options)(proxiedRes);
+    }
   };
 }
