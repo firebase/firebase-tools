@@ -23,14 +23,15 @@ const DEFAULT_IGNORES = ["firebase.json", "**/.*", "**/node_modules/**"];
 /**
  *
  */
-export async function doSetup(setup: any, config: any): Promise<void> {
+export async function doSetup(setup: any, config: any, options: any): Promise<void> {
   setup.hosting = {};
 
   let discoveredFramework = experiments.isEnabled("webframeworks")
     ? await discover(config.projectDir, false)
     : undefined;
 
-  if (experiments.isEnabled("webframeworks")) {
+  // TODO: Set up a way to pass in options from extension later.
+  if (!options.extensionOptions && experiments.isEnabled("webframeworks")) {
     if (discoveredFramework) {
       const name = WebFrameworks[discoveredFramework.framework].name;
       await promptOnce(
@@ -59,7 +60,7 @@ export async function doSetup(setup: any, config: any): Promise<void> {
     }
   }
 
-  if (setup.hosting.useWebFrameworks) {
+  if (!options.extensionOptions && setup.hosting.useWebFrameworks) {
     await promptOnce(
       {
         name: "source",
@@ -146,20 +147,25 @@ export async function doSetup(setup: any, config: any): Promise<void> {
     logger.info("have a build process for your assets, use your build's output directory.");
     logger.info();
 
-    await prompt(setup.hosting, [
-      {
-        name: "public",
-        type: "input",
-        default: "public",
-        message: "What do you want to use as your public directory?",
-      },
-      {
-        name: "spa",
-        type: "confirm",
-        default: false,
-        message: "Configure as a single-page app (rewrite all urls to /index.html)?",
-      },
-    ]);
+    if (options.extensionOptions != null) {
+      setup.hosting.public = options.extensionOptions.publicFolder;
+      setup.hosting.spa = options.extensionOptions.spa;
+    } else {
+      await prompt(setup.hosting, [
+        {
+          name: "public",
+          type: "input",
+          default: "public",
+          message: "What do you want to use as your public directory?",
+        },
+        {
+          name: "spa",
+          type: "confirm",
+          default: false,
+          message: "Configure as a single-page app (rewrite all urls to /index.html)?",
+        },
+      ]);
+    }
 
     setup.config.hosting = {
       public: setup.hosting.public,
@@ -167,29 +173,38 @@ export async function doSetup(setup: any, config: any): Promise<void> {
     };
   }
 
-  await promptOnce(
-    {
-      name: "github",
-      type: "confirm",
-      default: false,
-      message: "Set up automatic builds and deploys with GitHub?",
-    },
-    setup.hosting
-  );
+  // TODO: set up github option for extensions later.
+  if (!options.extensionOptions) {
+    await promptOnce(
+      {
+        name: "github",
+        type: "confirm",
+        default: false,
+        message: "Set up automatic builds and deploys with GitHub?",
+      },
+      setup.hosting
+    );
+  }
 
   if (!setup.hosting.useWebFrameworks) {
     if (setup.hosting.spa) {
       setup.config.hosting.rewrites = [{ source: "**", destination: "/index.html" }];
     } else {
+      if (!options.extensionOptions) { }
       // SPA doesn't need a 404 page since everything is index.html
-      await config.askWriteProjectFile(`${setup.hosting.public}/404.html`, MISSING_TEMPLATE);
+      await config.askWriteProjectFile(
+        `${setup.hosting.public}/404.html`,
+        MISSING_TEMPLATE,
+        /* force - skip prompt if extension */ options.extensionOptions != null
+      );
     }
 
     const c = new Client({ urlPrefix: "https://www.gstatic.com", auth: false });
     const response = await c.get<{ current: { version: string } }>("/firebasejs/releases.json");
     await config.askWriteProjectFile(
       `${setup.hosting.public}/index.html`,
-      INDEX_TEMPLATE.replace(/{{VERSION}}/g, response.body.current.version)
+      INDEX_TEMPLATE.replace(/{{VERSION}}/g, response.body.current.version),
+      /* force - skip prompt if extension */ options.extensionOptions != null
     );
   }
 

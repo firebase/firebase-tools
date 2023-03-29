@@ -1,0 +1,3 @@
+*.vsix
+dist/
+*.scss.d.ts

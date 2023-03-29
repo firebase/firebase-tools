@@ -3,10 +3,14 @@ import * as ora from "ora";
 import * as semver from "semver";
 import { marked } from "marked";
 
-const TerminalRenderer = require("marked-terminal");
-marked.setOptions({
-  renderer: new TerminalRenderer(),
-});
+import * as TerminalRenderer from "marked-terminal";
+try {
+  marked.setOptions({
+    renderer: new TerminalRenderer(),
+  });
+} catch (e) {
+  // ignored
+}
 
 import { storageOrigin } from "../api";
 import { archiveDirectory } from "../archiveDirectory";
