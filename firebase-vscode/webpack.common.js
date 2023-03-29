@@ -35,8 +35,9 @@ const extensionConfig = {
       // provides alternate implementation for node module and source files
       "proxy-agent": path.resolve(__dirname, 'src/stubs/empty-class.js'),
       "marked-terminal": path.resolve(__dirname, 'src/stubs/empty-class.js'),
-      "ora": path.resolve(__dirname, 'src/stubs/empty-class.js'),
+      // "ora": path.resolve(__dirname, 'src/stubs/empty-function.js'),
       "commander": path.resolve(__dirname, 'src/stubs/empty-class.js'),
+      "inquirer": path.resolve(__dirname, 'src/stubs/inquirer-stub.js'),
       // This is used for Github deploy to hosting - will need to restore
       // or find another solution if we add that feature.
       "libsodium-wrappers": path.resolve(__dirname, 'src/stubs/empty-class.js'),
@@ -76,6 +77,11 @@ const extensionConfig = {
               search: /Configstore\(pkg\.name\)/g,
               replace: "Configstore('firebase-tools')",
             },
+            // TODO: replace with something more robust
+            {
+              search: "childProcess.spawn(translatedCommand",
+              replace: "childProcess.spawn(escapedCommand"
+            }
           ],
         },
       },

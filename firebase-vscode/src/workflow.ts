@@ -11,10 +11,11 @@ import { deployToHosting, getUsers, listProjects, login, logoutUser, initHosting
 import { User } from "../../src/types/auth";
 import { FirebaseRC } from "../../src/firebaserc";
 import { FirebaseConfig } from "../../src/firebaseConfig";
+import { currentOptions, updateOptions } from "./options";
 
 let firebaseRC: FirebaseRC | null = null;
 let firebaseJSON: FirebaseConfig | null = null;
-export let rootPath = '';
+let extensionContext: ExtensionContext = null;
 
 function processCurrentUser(
   currentUserEmail: string,
@@ -49,7 +50,7 @@ function getJsonFile<T>(filename: string): T | null {
       const fileText = fs.readFileSync(rcPath, 'utf-8');
       try {
         const result = JSON.parse(fileText);
-        rootPath = folder;
+        currentOptions.cwd = folder;
         return result;
       } catch(e) {
         console.log(`Error parsing JSON in ${rcPath}`);
@@ -64,6 +65,7 @@ export function setupWorkflow(
   context: ExtensionContext,
   broker: ExtensionBrokerImpl
 ) {
+  extensionContext = context;
   let users: User[] = [];
   let currentUserEmail = "";
   // Stores a mapping from user email to list of projects for that user
@@ -79,10 +81,12 @@ export function setupWorkflow(
   });
 
   broker.on("logout", async (email: string) => {
-    const res = await logoutUser(email);
-    if (res) {
+    try {
+      await logoutUser(email);
       users = [];
       broker.send("notifyUsers", users);
+    } catch(e) {
+      // ignored
     }
   });
 
@@ -156,10 +160,10 @@ export function setupWorkflow(
       if (fileUri && fileUri[0] && fileUri[0].fsPath) {
         const publicFolderFull = fileUri[0].fsPath;
         const publicFolder = publicFolderFull.substring(
-          rootPath.length + 1
+          currentOptions.cwd.length + 1
         );
-        await initHosting({ spa: singleAppSupport, publicFolder });
-        broker.send("notifyHostingFolderReady", projectId, rootPath);
+        await initHosting({ spa: singleAppSupport, public: publicFolder });
+        broker.send("notifyHostingFolderReady", projectId, currentOptions.cwd);
       }
     }
   );
@@ -167,7 +171,7 @@ export function setupWorkflow(
   broker.on("hostingDeploy", async () => {
     // TODO: use configuraiton saved directory with .firebaserc
     const rootFolders = getRootFolders();
-    const { success, consoleUrl, hostingUrl} = await deployToHosting(firebaseJSON, firebaseRC, rootPath);
+    const { success, consoleUrl, hostingUrl} = await deployToHosting(firebaseJSON, firebaseRC);
     broker.send("notifyHostingDeploy", success, consoleUrl, hostingUrl);
   });
 
@@ -191,6 +195,8 @@ export function setupWorkflow(
 async function readAndSendFirebaseConfigs(broker: ExtensionBrokerImpl) {
   firebaseRC = getJsonFile<FirebaseRC>('.firebaserc');
   firebaseJSON = getJsonFile<FirebaseConfig>('firebase.json');
+  
+  updateOptions(extensionContext, firebaseJSON, firebaseRC);
   broker.send(
     "notifyFirebaseJson",
     firebaseJSON,
@@ -202,7 +208,7 @@ async function readAndSendFirebaseConfigs(broker: ExtensionBrokerImpl) {
  * Write new default project to .firebaserc
  */
 async function updateFirebaseRC(alias: string, projectId: string) {
-  if (rootPath) {
+  if (currentOptions.cwd) {
     firebaseRC = {
       ...firebaseRC,
       projects: {
@@ -211,7 +217,8 @@ async function updateFirebaseRC(alias: string, projectId: string) {
         [alias]: projectId,
       },
     };
-    writeFirebaseRCFile(`${rootPath}/.firebaserc`, firebaseRC);
+    writeFirebaseRCFile(`${currentOptions.cwd}/.firebaserc`, firebaseRC);
+    updateOptions(extensionContext, firebaseJSON, firebaseRC);
   }
 }
 
@@ -235,12 +242,12 @@ function setupFirebaseJsonAndRcFileSystemWatcher(
 
   // HelperFunction to create a new watcher
   function newWatcher() {
-    if (!rootPath) {
+    if (!currentOptions.cwd) {
       return null;
     }
 
     let watcher = workspace.createFileSystemWatcher(
-      path.join(rootPath, "{firebase.json,.firebaserc}")
+      path.join(currentOptions.cwd, "{firebase.json,.firebaserc}")
     );
     watcher.onDidChange(async () => {
       readAndSendFirebaseConfigs(broker);
