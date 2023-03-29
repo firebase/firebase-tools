@@ -5,7 +5,7 @@ import * as ProxyAgent from "proxy-agent";
 import * as retry from "retry";
 import AbortController from "abort-controller";
 import fetch, { HeadersInit, Response, RequestInit, Headers } from "node-fetch";
-import * as util from "util";
+import util from "util";
 
 import * as auth from "./auth";
 import { FirebaseError } from "./error";
@@ -516,11 +516,6 @@ function bodyToString(body: unknown): string {
   }
 }
 
-// TODO: this FormData obj is created in the auth.ts copy in the
-// extension subdir, which has its own duplicate deps, including FormData,
-// which means it doesn't think this FormData is an instance of that FormData.
-// Need to figure out how to manage issues with duplicate deps used by
-// duplicate source code in extension folders.
 function isStream(o: unknown): o is NodeJS.ReadableStream {
   return o instanceof Readable || o instanceof FormData;
 }
