@@ -1,1 +1,1 @@
-- Releases Cloud Firestore emulator v1.16.1, which adds support for read_time in ListCollectionIds.
+- The hosting emulator integration with web frameworks now has improved support for HMR and dev-tools. (#5582)

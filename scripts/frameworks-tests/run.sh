@@ -10,7 +10,7 @@ echo "Running with Application Creds: ${GOOGLE_APPLICATION_CREDENTIALS}"
 echo "Target project: ${FBTOOLS_TARGET_PROJECT}"
 
 echo "Installing firebase-tools..."
-./scripts/npm-link.sh
+./scripts/clean-install.sh
 echo "Installed firebase-tools: $(which firebase)"
 
 echo "Enabling experiment..."

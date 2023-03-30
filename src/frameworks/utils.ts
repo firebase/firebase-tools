@@ -2,7 +2,8 @@ import { readJSON as originalReadJSON } from "fs-extra";
 import type { ReadOptions } from "fs-extra";
 import { join } from "path";
 import { readFile } from "fs/promises";
-import { IncomingMessage, request, ServerResponse } from "http";
+import { IncomingMessage, request as httpRequest, ServerResponse, Agent } from "http";
+import { logger } from "../logger";
 
 /**
  * Whether the given string starts with http:// or https://
@@ -41,37 +42,52 @@ export async function warnIfCustomBuildScript(
   }
 }
 
-export function simpleProxy(host: string) {
-  return (req: IncomingMessage, res: ServerResponse, next: () => void) => {
-    const { method, headers, url: path } = req;
+type RequestHandler = (req: IncomingMessage, res: ServerResponse) => Promise<void>;
+
+export function simpleProxy(hostOrRequestHandler: string | RequestHandler) {
+  const agent = new Agent({ keepAlive: true });
+  return async (originalReq: IncomingMessage, originalRes: ServerResponse, next: () => void) => {
+    const { method, headers, url: path } = originalReq;
     if (!method || !path) {
-      return res.end();
+      return originalRes.end();
     }
-    const { hostname, port, protocol } = new URL(host);
-    const opts = {
-      protocol,
-      hostname,
-      port,
-      path,
-      method,
-      headers: {
-        ...headers,
-        host,
-        "X-Forwarded-Host": headers.host,
-      },
-    };
-    const proxy = request(opts, (proxyResponse) => {
-      const { statusCode } = proxyResponse;
-      if (!statusCode) {
-        return res.end();
-      }
-      if (statusCode === 404) {
-        next();
-        return;
-      }
-      res.writeHead(statusCode, proxyResponse.headers);
-      proxyResponse.pipe(res);
-    });
-    req.pipe(proxy);
+    // If the path is a the auth token sync URL pass through to Cloud Functions
+    const firebaseDefaultsJSON = process.env.__FIREBASE_DEFAULTS__;
+    const authTokenSyncURL: string | undefined =
+      firebaseDefaultsJSON && JSON.parse(firebaseDefaultsJSON)._authTokenSyncURL;
+    if (path === authTokenSyncURL) {
+      return next();
+    }
+    if (typeof hostOrRequestHandler === "string") {
+      const host = hostOrRequestHandler;
+      const { hostname, port, protocol, username, password } = new URL(host);
+      const auth = username || password ? `${username}:${password}` : undefined;
+      const opts = {
+        agent,
+        auth,
+        protocol,
+        hostname,
+        port,
+        path,
+        method,
+        headers: {
+          ...headers,
+          host,
+          "X-Forwarded-Host": headers.host,
+        },
+      };
+      const req = httpRequest(opts, (response) => {
+        const { statusCode, statusMessage, headers } = response;
+        originalRes.writeHead(statusCode!, statusMessage, headers);
+        response.pipe(originalRes);
+      });
+      originalReq.pipe(req);
+      req.on("error", (err) => {
+        logger.debug("Error encountered while proxying request:", method, path, err);
+        originalRes.end();
+      });
+    } else {
+      await hostOrRequestHandler(originalReq, originalRes);
+    }
   };
 }
