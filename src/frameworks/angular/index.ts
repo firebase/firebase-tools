@@ -10,6 +10,7 @@ import {
   Discovery,
   findDependency,
   FrameworkType,
+  getNodeModuleBin,
   relativeRequire,
   SupportLevel,
 } from "..";
@@ -20,7 +21,6 @@ export const name = "Angular";
 export const support = SupportLevel.Experimental;
 export const type = FrameworkType.Framework;
 
-const CLI_COMMAND = join("node_modules", ".bin", process.platform === "win32" ? "ng.cmd" : "ng");
 const DEFAULT_BUILD_SCRIPT = ["ng build"];
 
 export async function discover(dir: string): Promise<Discovery | undefined> {
@@ -70,7 +70,8 @@ export async function build(dir: string): Promise<BuildResult> {
   if (prerenderTarget) {
     // TODO there is a bug here. Spawn for now.
     // await scheduleTarget(prerenderTarget);
-    execSync(`${CLI_COMMAND} run ${targetStringFromTarget(prerenderTarget)}`, {
+    const cli = getNodeModuleBin("ng", dir);
+    execSync(`${cli} run ${targetStringFromTarget(prerenderTarget)}`, {
       cwd: dir,
       stdio: "inherit",
     });
@@ -91,8 +92,9 @@ export async function getDevModeHandle(dir: string) {
   const host = new Promise<string>((resolve) => {
     // Can't use scheduleTarget since that—like prerender—is failing on an ESM bug
     // will just grep for the hostname
+    const cli = getNodeModuleBin("ng", dir);
     const serve = spawn(
-      CLI_COMMAND,
+      cli,
       ["run", targetStringFromTarget(serveTarget), "--host", "localhost"],
       { cwd: dir }
     );
