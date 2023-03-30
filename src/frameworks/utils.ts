@@ -2,7 +2,8 @@ import { readJSON as originalReadJSON } from "fs-extra";
 import type { ReadOptions } from "fs-extra";
 import { join } from "path";
 import { readFile } from "fs/promises";
-import { IncomingMessage, request as httpRequest, ServerResponse } from "http";
+import { IncomingMessage, request as httpRequest, ServerResponse, Agent } from "http";
+import { logger } from "../logger";
 
 /**
  * Whether the given string starts with http:// or https://
@@ -44,6 +45,7 @@ export async function warnIfCustomBuildScript(
 type RequestHandler = (req: IncomingMessage, res: ServerResponse) => Promise<void>;
 
 export function simpleProxy(hostOrRequestHandler: string | RequestHandler) {
+  const agent = new Agent({ keepAlive: true });
   return async (originalReq: IncomingMessage, originalRes: ServerResponse, next: () => void) => {
     const { method, headers, url: path } = originalReq;
     if (!method || !path) {
@@ -58,8 +60,11 @@ export function simpleProxy(hostOrRequestHandler: string | RequestHandler) {
     }
     if (typeof hostOrRequestHandler === "string") {
       const host = hostOrRequestHandler;
-      const { hostname, port, protocol } = new URL(host);
+      const { hostname, port, protocol, username, password } = new URL(host);
+      const auth = username || password ? `${username}:${password}` : undefined;
       const opts = {
+        agent,
+        auth,
         protocol,
         hostname,
         port,
@@ -71,16 +76,16 @@ export function simpleProxy(hostOrRequestHandler: string | RequestHandler) {
           "X-Forwarded-Host": headers.host,
         },
       };
-      const req = httpRequest(opts, (response: IncomingMessage) => {
+      const req = httpRequest(opts, (response) => {
         const { statusCode, statusMessage, headers } = response;
-        if (statusCode) {
-          originalRes.writeHead(statusCode, statusMessage, headers);
-          response.pipe(originalRes);
-        } else {
-          originalRes.end();
-        }
+        originalRes.writeHead(statusCode!, statusMessage, headers);
+        response.pipe(originalRes);
       });
       originalReq.pipe(req);
+      req.on("error", (err) => {
+        logger.debug("Error encountered while proxying request:", method, path, err);
+        originalRes.end();
+      });
     } else {
       await hostOrRequestHandler(originalReq, originalRes);
     }
