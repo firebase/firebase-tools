@@ -166,7 +166,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
       try {
         await adminStorageLayer.deleteObject({
           bucketId: req.params.bucketId,
-          decodedObjectId: req.params.objectId
+          decodedObjectId: req.params.objectId,
         });
       } catch (err) {
         if (err instanceof NotFoundError) {
@@ -178,7 +178,8 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
         throw err;
       }
       return res.sendStatus(204);
-    });
+    }
+  );
 
   gcloudStorageAPI.put("/upload/storage/v1/b/:bucketId/o", async (req, res) => {
     if (!req.query.upload_id) {
@@ -303,7 +304,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
       let dataRaw: Buffer;
       try {
         ({ metadataRaw, dataRaw } = parseObjectUploadMultipartRequest(
-          contentTypeHeader!,
+          contentTypeHeader,
           await reqBodyToBuffer(req)
         ));
       } catch (err) {
