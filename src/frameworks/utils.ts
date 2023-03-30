@@ -2,7 +2,7 @@ import { readJSON as originalReadJSON } from "fs-extra";
 import type { ReadOptions } from "fs-extra";
 import { join } from "path";
 import { readFile } from "fs/promises";
-import { IncomingMessage, request, ServerResponse } from "http";
+import { IncomingMessage, request as httpRequest, ServerResponse } from "http";
 
 /**
  * Whether the given string starts with http:// or https://
@@ -43,34 +43,11 @@ export async function warnIfCustomBuildScript(
 
 type RequestHandler = (req: IncomingMessage, res: ServerResponse) => Promise<void>;
 
-interface ProxyOptions {
-  serve404: boolean;
-}
-
-function proxyResponse(original: ServerResponse, next: () => void, options: ProxyOptions) {
-  return (response: IncomingMessage | ServerResponse) => {
-    const { statusCode, statusMessage } = response;
-    if (!statusCode) {
-      original.end();
-      return;
-    }
-    if (statusCode === 404 && !options.serve404) {
-      return next();
-    }
-    const headers = "getHeaders" in response ? response.getHeaders() : response.headers;
-    original.writeHead(statusCode, statusMessage, headers);
-    response.pipe(original);
-  };
-}
-
-export function simpleProxy(
-  hostOrRequestHandler: string | RequestHandler,
-  options: ProxyOptions = { serve404: true }
-) {
-  return async (req: IncomingMessage, res: ServerResponse, next: () => void) => {
-    const { method, headers, url: path } = req;
+export function simpleProxy(hostOrRequestHandler: string | RequestHandler) {
+  return async (originalReq: IncomingMessage, originalRes: ServerResponse, next: () => void) => {
+    const { method, headers, url: path } = originalReq;
     if (!method || !path) {
-      return res.end();
+      return originalRes.end();
     }
     // If the path is a the auth token sync URL pass through to Cloud Functions
     const firebaseDefaultsJSON = process.env.__FIREBASE_DEFAULTS__;
@@ -94,15 +71,18 @@ export function simpleProxy(
           "X-Forwarded-Host": headers.host,
         },
       };
-      const a = proxyResponse(res, next, options);
-      const proxy = request(opts, a);
-      req.pipe(proxy);
-    } else if (options.serve404) {
-      hostOrRequestHandler(req, res);
+      const req = httpRequest(opts, (response: IncomingMessage) => {
+        const { statusCode, statusMessage, headers } = response;
+        if (statusCode) {
+          originalRes.writeHead(statusCode, statusMessage, headers);
+          response.pipe(originalRes);
+        } else {
+          originalRes.end();
+        }
+      });
+      originalReq.pipe(req);
     } else {
-      const proxiedRes = new ServerResponse(req);
-      await hostOrRequestHandler(req, proxiedRes);
-      proxyResponse(res, next, options)(proxiedRes);
+      await hostOrRequestHandler(originalReq, originalRes);
     }
   };
 }
