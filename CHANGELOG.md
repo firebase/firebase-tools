@@ -1,0 +1,1 @@
+- The hosting emulator integration with web frameworks now has improved support for HMR and dev-tools. (#5582)
