@@ -1,5 +1,5 @@
-Project: /docs/hosting/_project.yaml
-Book: /docs/_book.yaml
+Project: /docs/hosting/\_project.yaml
+Book: /docs/\_book.yaml
 page_type: guide
 
 {% include "_shared/apis/console/_local_variables.html" %}
@@ -11,24 +11,26 @@ page_type: guide
 # Integrate Next.js
 
 Using the {{firebase_cli}}, you can deploy your Next.js Web apps to Firebase and
-serve them with {{firebase_hosting}}.  The {{cli}} respects your Next.js settings and
+serve them with {{firebase_hosting}}. The {{cli}} respects your Next.js settings and
 translates them to Firebase settings with zero or minimal extra configuration on
 your part. If your app includes dynamic server-side logic, the {{cli}} deploys that
 logic to {{cloud_functions_full}}.ß
 
-<<_includes/_preview-disclaimer.md>>
+<<\_includes/\_preview-disclaimer.md>>
 
-<<_includes/_before-you-begin.md>>
-* Optional: Billing enabled on your Firebase project
+<<\_includes/\_before-you-begin.md>>
+
+- Optional: Billing enabled on your Firebase project
   (required if you plan to use SSR)
-* Optional: use the experimental ReactFire library to benefit from its
+- Optional: use the experimental ReactFire library to benefit from its
   Firebase-friendly features
 
-<<_includes/_initialize-firebase.md>>
+<<\_includes/\_initialize-firebase.md>>
+
 1.  Choose your hosting source directory. If this an existing Next.js app,
-   the {{cli}} process completes, and you can proceed to the next section.
-1. Choose "Dynamic web hosting with web framework"
-1. Choose Next.js.
+    the {{cli}} process completes, and you can proceed to the next section.
+1.  Choose "Dynamic web hosting with web framework"
+1.  Choose Next.js.
 
 ## Serve static content
 
@@ -61,7 +63,7 @@ this for you automatically.
 
 ### Optional: integrate with the Firebase Admin SDK
 
-Admin SDK bundles will fail if included in your browser build;  refer to them
+Admin SDK bundles will fail if included in your browser build; refer to them
 only inside [getStaticProps](https://nextjs.org/docs/basic-features/data-fetching/get-static-props)
 and [getStaticPaths](https://nextjs.org/docs/basic-features/data-fetching/get-static-paths).
 
@@ -98,14 +100,13 @@ The web framework-aware Firebase deployment tooling will automatically keep
 client and server state in sync using cookies. There are some methods provided
 for accessing the authentication context in SSR:
 
-* The Express `res.locals` object will optionally contain an authenticated
+- The Express `res.locals` object will optionally contain an authenticated
   Firebase App instance (`firebaseApp`) and the currently signed-in user
-  (`currentUser`).  This can be accessed in `getServerSideProps`.
-* The authenticated Firebase App name is provided on the route query
+  (`currentUser`). This can be accessed in `getServerSideProps`.
+- The authenticated Firebase App name is provided on the route query
   (`__firebaseAppName`). This allows for manual integration while in context:
 
 ```typescript
-  // get the authenticated Firebase App
-  const firebaseApp = getApp(useRouter().query.__firebaseAppName);
+// get the authenticated Firebase App
+const firebaseApp = getApp(useRouter().query.__firebaseAppName);
 ```
-

@@ -1,5 +1,5 @@
-Project: /docs/hosting/_project.yaml
-Book: /docs/_book.yaml
+Project: /docs/hosting/\_project.yaml
+Book: /docs/\_book.yaml
 page_type: guide
 
 {% include "_shared/apis/console/_local_variables.html" %}
@@ -14,17 +14,18 @@ With some additional configuration, you can build on the basic
 framework-aware {{cli}} functionality
 to extend integration support to frameworks other than Angular and Next.js.
 
-<<_includes/_preview-disclaimer.md>>
+<<\_includes/\_preview-disclaimer.md>>
 
-<<_includes/_before-you-begin.md>>
-* Optional: Billing enabled on your Firebase project
+<<\_includes/\_before-you-begin.md>>
+
+- Optional: Billing enabled on your Firebase project
   (required if you plan to use SSR)
 
-<<_includes/_initialize-firebase.md>>
+<<\_includes/\_initialize-firebase.md>>
+
 1. Choose your hosting source directory; this could be an existing web app.
 1. Choose "Dynamic web hosting with web framework."
 1. Choose Express.js / custom
-
 
 ### Initialize an existing project
 
@@ -34,7 +35,7 @@ than a `public` option. For example:
 ```json
 {
   "hosting": {
-    "source": "./path-to-your-express-directory",
+    "source": "./path-to-your-express-directory"
   }
 }
 ```
@@ -119,7 +120,6 @@ deployment command:
 firebase deploy
 ```
 
-
 ## Serve Dynamic Content
 
 To serve your Express app on {{cloud_functions_full}}, ensure that your Express app (or
@@ -182,5 +182,3 @@ The web framework-aware Firebase deploy tooling will automatically keep client
 and server state in sync using cookies. To access the authentication context,
 the Express `res.locals` object optionally contains an authenticated Firebase
 App instance (`firebaseApp`) and the currently signed in User (`currentUser`).
-
-

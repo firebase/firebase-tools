@@ -29,14 +29,14 @@ There are two kinds of source file for our docs:
 
   Page fragments almost always have filenames that begin with an underscore
   (`_`). For example, `_before-you-begin.md` is a file of standard steps that
-  should be included in all frameworks integration guides in this folder. 
+  should be included in all frameworks integration guides in this folder.
 
 ## Non-standard Markdown
 
 ### File includes
 
 > Probably not useful to you as a contributor, but documented FYI.
-We use double angle brackets to include content from another file:
+> We use double angle brackets to include content from another file:
 
 ```
 <<path/to/file>>
@@ -49,7 +49,7 @@ related content that's not on GitHub.
 ### Page metadata
 
 > Probably not useful to you as a contributor, but documented FYI.
-Every standalone page begins with the following header:
+> Every standalone page begins with the following header:
 
 ```
 Project: /docs/_project.yaml
@@ -69,7 +69,6 @@ likely to be different, but the overall outline should probably be similar.
 
 Firebase follows the [Google developer documentation style guide](https://developers.google.com/style),
 which you should read before writing substantial contributions.
-
 
 Footer
 © 2023 GitHub, Inc.

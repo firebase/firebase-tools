@@ -1,5 +1,5 @@
-Project: /docs/hosting/_project.yaml
-Book: /docs/_book.yaml
+Project: /docs/hosting/\_project.yaml
+Book: /docs/\_book.yaml
 page_type: guide
 
 {% include "_shared/apis/console/_local_variables.html" %}
@@ -13,12 +13,14 @@ page_type: guide
 With the Firebase framework-aware {{cli}}, you can deploy your Angular application
 to Firebase and serve dynamic content to your users.
 
-<<_includes/_preview-disclaimer.md>>
+<<\_includes/\_preview-disclaimer.md>>
 
-<<_includes/_before-you-begin.md>>
-* Optional: AngularFire
+<<\_includes/\_before-you-begin.md>>
 
-<<_includes/_initialize-firebase.md>>
+- Optional: AngularFire
+
+<<\_includes/\_initialize-firebase.md>>
+
 1. Choose your hosting source directory; this could be an existing Angular app.
 1. Choose "Dynamic web hosting with web framework."
 1. Choose Angular.
@@ -67,11 +69,7 @@ routes by locating the prerender step in `angular.json` and adding more routes:
   "prerender": {
     "builder": "@nguniversal/builders:prerender",
     "options": {
-      "routes": [
-        "/",
-        "ANOTHER_ROUTE",
-        "AND_ANOTHER"
-      ]
+      "routes": ["/", "ANOTHER_ROUTE", "AND_ANOTHER"]
     },
     "configurations": {
       /* ... */
@@ -170,4 +168,3 @@ and server state in sync using cookies. The Express `res.locals` object will
 optionally contain an authenticated Firebase App instance (`firebaseApp`) and
 the currently signed in user (`currentUser`). This can be injected into your
 module via the REQUEST token (exported from @nguniversal/express-engine/tokens).
-
