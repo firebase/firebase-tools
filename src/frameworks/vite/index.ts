@@ -68,7 +68,7 @@ export async function build(root: string) {
 
   await warnIfCustomBuildScript(root, name, DEFAULT_BUILD_SCRIPT);
 
-  await build({ root });
+  await build({ root, mode: "production" });
 }
 
 export async function ɵcodegenPublicDirectory(root: string, dest: string) {
