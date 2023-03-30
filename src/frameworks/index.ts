@@ -235,7 +235,7 @@ function scanDependencyTree(searchingFor: string, dependencies = {}): any {
 }
 
 function getNpmRoot(cwd: string): string | undefined {
-  return spawnSync('npm', ['root'], { cwd }).stdout?.toString().trim();
+  return spawnSync("npm", ["root"], { cwd }).stdout?.toString().trim();
 }
 
 export function getNodeModuleBin(name: string, cwd: string) {
@@ -244,7 +244,7 @@ export function getNodeModuleBin(name: string, cwd: string) {
   if (!npmRoot) {
     throw cantFindExecutable;
   }
-  const path = join(npmRoot, '.bin', name);
+  const path = join(npmRoot, ".bin", name);
   if (!fileExistsSync(path)) {
     throw cantFindExecutable;
   }
@@ -415,7 +415,10 @@ export async function prepareFrameworks(
       process.env.__FIREBASE_DEFAULTS__ = JSON.stringify(firebaseDefaults);
     }
     const results = await discover(getProjectPath());
-    if (!results) throw new FirebaseError("Unable to detect the web framework in use, check firebase-debug.log for more info.");
+    if (!results)
+      throw new FirebaseError(
+        "Unable to detect the web framework in use, check firebase-debug.log for more info."
+      );
     const { framework, mayWantBackend, publicDirectory } = results;
     const {
       build,

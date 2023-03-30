@@ -93,11 +93,9 @@ export async function getDevModeHandle(dir: string) {
     // Can't use scheduleTarget since that—like prerender—is failing on an ESM bug
     // will just grep for the hostname
     const cli = getNodeModuleBin("ng", dir);
-    const serve = spawn(
-      cli,
-      ["run", targetStringFromTarget(serveTarget), "--host", "localhost"],
-      { cwd: dir }
-    );
+    const serve = spawn(cli, ["run", targetStringFromTarget(serveTarget), "--host", "localhost"], {
+      cwd: dir,
+    });
     serve.stdout.on("data", (data: any) => {
       process.stdout.write(data);
       const match = data.toString().match(/(http:\/\/localhost:\d+)/);
