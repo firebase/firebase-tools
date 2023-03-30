@@ -239,7 +239,7 @@ function getNpmRoot(cwd: string): string | undefined {
 }
 
 export function getNodeModuleBin(name: string, cwd: string) {
-  const cantFindExecutable = new FirebaseError(`Cloud not find the ${name} executable.`);
+  const cantFindExecutable = new FirebaseError(`Could not find the ${name} executable.`);
   const npmRoot = getNpmRoot(cwd);
   if (!npmRoot) {
     throw cantFindExecutable;
