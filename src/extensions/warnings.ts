@@ -122,17 +122,6 @@ export async function displayWarningsForDeploy(instancesToCreate: InstanceSpec[]
   return experimental.length > 0 || eapExtensions.length > 0;
 }
 
-/**
- * paramsFlagDeprecationWarning displays a warning about the future depreaction of the --params flag.
- */
-export function paramsFlagDeprecationWarning() {
-  logger.warn(
-    "The --params flag is deprecated and will be removed in firebase-tools@11. " +
-      "Instead, use an extensions manifest and `firebase deploy --only extensions` to deploy extensions noninteractively. " +
-      "See https://firebase.google.com/docs/extensions/manifest for more details"
-  );
-}
-
 export function outOfBandChangesWarning(instanceIds: string[]) {
   logger.warn(
     "The following instances may have been changed in the Firebase console or by another machine since the last deploy from this machine.\n\t" +

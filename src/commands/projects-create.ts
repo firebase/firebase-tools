@@ -2,10 +2,10 @@ import { Command } from "../command";
 import { FirebaseError } from "../error";
 import {
   createFirebaseProjectAndLog,
-  FirebaseProjectMetadata,
   ProjectParentResourceType,
   PROJECTS_CREATE_QUESTIONS,
 } from "../management/projects";
+import { FirebaseProjectMetadata } from "../types/project";
 import { prompt } from "../prompt";
 import { requireAuth } from "../requireAuth";
 

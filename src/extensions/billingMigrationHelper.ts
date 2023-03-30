@@ -1,5 +1,5 @@
 import { marked } from "marked";
-import TerminalRenderer = require("marked-terminal");
+import * as TerminalRenderer from "marked-terminal";
 
 import { FirebaseError } from "../error";
 import { ExtensionSpec } from "./types";

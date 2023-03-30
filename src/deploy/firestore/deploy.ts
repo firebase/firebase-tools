@@ -1,18 +1,17 @@
-import * as _ from "lodash";
 import * as clc from "colorette";
 
-import { FirebaseError } from "../../error";
 import { FirestoreIndexes } from "../../firestore/indexes";
 import { logger } from "../../logger";
-import utils = require("../../utils");
+import * as utils from "../../utils";
 import { RulesDeploy, RulesetServiceType } from "../../rulesDeploy";
+import { IndexContext } from "./prepare";
 
 /**
  * Deploys Firestore Rules.
  * @param context The deploy context.
  */
 async function deployRules(context: any): Promise<void> {
-  const rulesDeploy: RulesDeploy = _.get(context, "firestore.rulesDeploy");
+  const rulesDeploy: RulesDeploy = context?.firestore?.rulesDeploy;
   if (!context.firestoreRules || !rulesDeploy) {
     return;
   }
@@ -28,26 +27,32 @@ async function deployIndexes(context: any, options: any): Promise<void> {
   if (!context.firestoreIndexes) {
     return;
   }
+  const indexesContext: IndexContext[] = context?.firestore?.indexes;
 
-  const indexesFileName = _.get(context, "firestore.indexes.name");
-  const indexesSrc = _.get(context, "firestore.indexes.content");
-  if (!indexesSrc) {
-    logger.debug("No Firestore indexes present.");
-    return;
-  }
+  utils.logBullet(clc.bold(clc.cyan("firestore: ")) + "deploying indexes...");
+  const firestoreIndexes = new FirestoreIndexes();
+  await Promise.all(
+    indexesContext.map(async (indexContext: IndexContext): Promise<void> => {
+      const { databaseId, indexesFileName, indexesRawSpec } = indexContext;
+      if (!indexesRawSpec) {
+        logger.debug(`No Firestore indexes present for ${databaseId} database.`);
+        return;
+      }
+      const indexes = indexesRawSpec.indexes;
+      if (!indexes) {
+        logger.error(`${databaseId} database index file must contain "indexes" property.`);
+        return;
+      }
+      const fieldOverrides = indexesRawSpec.fieldOverrides || [];
 
-  const indexes = indexesSrc.indexes;
-  if (!indexes) {
-    throw new FirebaseError(`Index file must contain an "indexes" property.`);
-  }
-
-  const fieldOverrides = indexesSrc.fieldOverrides || [];
-
-  await new FirestoreIndexes().deploy(options, indexes, fieldOverrides);
-  utils.logSuccess(
-    `${clc.bold(clc.green("firestore:"))} deployed indexes in ${clc.bold(
-      indexesFileName
-    )} successfully`
+      await firestoreIndexes.deploy(options, indexes, fieldOverrides, databaseId).then(() => {
+        utils.logSuccess(
+          `${clc.bold(clc.green("firestore:"))} deployed indexes in ${clc.bold(
+            indexesFileName
+          )} successfully for ${databaseId} database`
+        );
+      });
+    })
   );
 }
 
