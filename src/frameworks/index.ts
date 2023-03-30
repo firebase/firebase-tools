@@ -28,6 +28,7 @@ import { HostingRewrites } from "../firebaseConfig";
 import * as experiments from "../experiments";
 import { ensureTargeted } from "../functions/ensureTargeted";
 import { implicitInit } from "../hosting/implicitInit";
+import { fileExistsSync } from "../fsutils";
 
 // Use "true &&"" to keep typescript from compiling this file and rewriting
 // the import statement into a require
@@ -233,11 +234,30 @@ function scanDependencyTree(searchingFor: string, dependencies = {}): any {
   return;
 }
 
+function getNpmRoot(cwd: string): string | undefined {
+  return spawnSync('npm', ['root'], { cwd }).stdout?.toString().trim();
+}
+
+export function getNodeModuleBin(name: string, cwd: string) {
+  const cantFindExecutable = new FirebaseError(`Cloud not find the ${name} executable.`);
+  const npmRoot = getNpmRoot(cwd);
+  if (!npmRoot) {
+    throw cantFindExecutable;
+  }
+  const path = join(npmRoot, '.bin', name);
+  if (!fileExistsSync(path)) {
+    throw cantFindExecutable;
+  }
+  return `${path}${process.platform === "win32" ? ".cmd" : ""}`;
+}
+
 /**
  *
  */
 export function findDependency(name: string, options: Partial<FindDepOptions> = {}) {
-  const { cwd, depth, omitDev } = { ...DEFAULT_FIND_DEP_OPTIONS, ...options };
+  const { cwd: dir, depth, omitDev } = { ...DEFAULT_FIND_DEP_OPTIONS, ...options };
+  const cwd = getNpmRoot(dir);
+  if (!cwd) return;
   const env: any = Object.assign({}, process.env);
   delete env.NODE_ENV;
   const result = spawnSync(
@@ -395,7 +415,7 @@ export async function prepareFrameworks(
       process.env.__FIREBASE_DEFAULTS__ = JSON.stringify(firebaseDefaults);
     }
     const results = await discover(getProjectPath());
-    if (!results) throw new Error("Epic fail.");
+    if (!results) throw new FirebaseError("Unable to detect the web framework in use, check firebase-debug.log for more info.");
     const { framework, mayWantBackend, publicDirectory } = results;
     const {
       build,

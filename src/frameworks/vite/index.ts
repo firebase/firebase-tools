@@ -1,21 +1,16 @@
 import { execSync } from "child_process";
-import { spawn } from "cross-spawn";
+import { spawn, sync as spawnSync } from "cross-spawn";
 import { existsSync } from "fs";
 import { copy, pathExists } from "fs-extra";
 import { join } from "path";
-import { findDependency, FrameworkType, relativeRequire, SupportLevel } from "..";
+import { findDependency, FrameworkType, getNodeModuleBin, relativeRequire, SupportLevel } from "..";
+import { logger } from "../../logger";
 import { promptOnce } from "../../prompt";
 import { simpleProxy, warnIfCustomBuildScript } from "../utils";
 
 export const name = "Vite";
 export const support = SupportLevel.Experimental;
 export const type = FrameworkType.Toolchain;
-
-const CLI_COMMAND = join(
-  "node_modules",
-  ".bin",
-  process.platform === "win32" ? "vite.cmd" : "vite"
-);
 
 export const DEFAULT_BUILD_SCRIPT = ["vite build", "tsc && vite build"];
 
@@ -58,7 +53,9 @@ export async function discover(dir: string, plugin?: string, npmDependency?: str
   const anyConfigFileExists = configFilesExist.some((it) => it);
   if (!anyConfigFileExists && !findDependency("vite", { cwd: dir, depth, omitDev: false })) return;
   if (npmDependency && !additionalDep) return;
-  const { appType, publicDir: publicDirectory, plugins } = await getConfig(dir);
+  const config = await getConfig(dir);
+  if (!config) return;
+  const { appType, publicDir: publicDirectory, plugins } = config;
   if (plugin && !plugins.find(({ name }) => name === plugin)) return;
   return { mayWantBackend: appType !== "spa", publicDirectory };
 }
@@ -73,7 +70,7 @@ export async function build(root: string) {
 
 export async function ɵcodegenPublicDirectory(root: string, dest: string) {
   const viteConfig = await getConfig(root);
-  const viteDistPath = join(root, viteConfig.build.outDir);
+  const viteDistPath = join(root, viteConfig!.build.outDir);
   await copy(viteDistPath, dest);
 }
 
@@ -81,7 +78,8 @@ export async function getDevModeHandle(dir: string) {
   const host = new Promise<string>((resolve) => {
     // Can't use scheduleTarget since that—like prerender—is failing on an ESM bug
     // will just grep for the hostname
-    const serve = spawn(CLI_COMMAND, [], { cwd: dir });
+    const cli = getNodeModuleBin("vite", dir);
+    const serve = spawn(cli, [], { cwd: dir });
     serve.stdout.on("data", (data: any) => {
       process.stdout.write(data);
       const match = data.toString().match(/(http:\/\/.+:\d+)/);
@@ -96,5 +94,8 @@ export async function getDevModeHandle(dir: string) {
 
 async function getConfig(root: string) {
   const { resolveConfig } = relativeRequire(root, "vite");
-  return await resolveConfig({ root }, "build", "production");
+  return await resolveConfig({ root }, "build", "production").catch((e) => {
+    logger.debug(`Failed reading vite config in ${root}:`, e);
+    return undefined;
+  });
 }
