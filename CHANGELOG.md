@@ -4,6 +4,5 @@
 - firestore:databases:get
 - firestore:databases:delete
 - firestore:locations
-- Releases Cloud Firestore emulator v1.16.1, which adds support for read_time in ListCollectionIds.
 - The hosting emulator integration with web frameworks now has improved support for HMR and dev-tools. (#5582)
 - Fixes an issue where `init hosting:github` would hang if it could not access a repository's public key. (#5317)
