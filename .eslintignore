@@ -4,4 +4,3 @@ lib
 node_modules
 standalone
 templates
-/src/frameworks/docs/**

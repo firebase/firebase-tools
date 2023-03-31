@@ -124,5 +124,6 @@ module.exports = {
     "src/dynamicImport.js",
     "scripts/webframeworks-deploy-tests/hosting/**",
     "scripts/frameworks-tests/vite-project/**",
+    "/src/frameworks/docs/**",
   ],
 };
