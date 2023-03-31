@@ -90,9 +90,20 @@ export interface Location {
   displayName: string;
 }
 
+export enum DatabaseType {
+  DATASTORE_MODE = "DATASTORE_MODE",
+  FIRESTORE_NATIVE = "FIRESTORE_NATIVE",
+}
+
+export enum DatabaseDeleteProtectionState {
+  ENABLED = "DELETE_PROTECTION_ENABLED",
+  DISABLED = "DELETE_PROTECTION_DISABLED",
+}
+
 export interface DatabaseReq {
-  locationId: string;
-  type: string;
+  locationId?: string;
+  type?: DatabaseType;
+  deleteProtectionState?: DatabaseDeleteProtectionState;
 }
 
 export interface DatabaseResp {
@@ -101,10 +112,10 @@ export interface DatabaseResp {
   createTime: string;
   updateTime: string;
   locationId: string;
-  type: string;
+  type: DatabaseType;
   concurrencyMode: string;
   appEngineIntegrationMode: string;
   keyPrefix: string;
-  deleteProtectionState: string;
+  deleteProtectionState: DatabaseDeleteProtectionState;
   etag: string;
 }

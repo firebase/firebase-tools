@@ -28,7 +28,7 @@ export const command = new Command("firestore:databases:delete")
 
     if (!options.database) {
       logger.error(
-        "Database id must be provided. See firebase firestore:databases:delete --help for more info."
+        "Missing required flag --database. See firebase firestore:databases:delete --help for more info."
       );
       return;
     }

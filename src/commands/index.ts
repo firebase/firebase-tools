@@ -113,6 +113,7 @@ export function load(client: any): any {
   client.firestore.databases.list = loadCommand("firestore-databases-list");
   client.firestore.databases.get = loadCommand("firestore-databases-get");
   client.firestore.databases.create = loadCommand("firestore-databases-create");
+  client.firestore.databases.update = loadCommand("firestore-databases-update");
   client.firestore.databases.delete = loadCommand("firestore-databases-delete");
   client.functions = {};
   client.functions.config = {};

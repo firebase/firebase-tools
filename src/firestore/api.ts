@@ -10,6 +10,7 @@ import * as sort from "./api-sort";
 import * as util from "./util";
 import { promptOnce } from "../prompt";
 import { firestoreOrigin } from "../api";
+import { FirebaseError } from "../error";
 import { Client } from "../apiv2";
 
 export class FirestoreApi {
@@ -300,9 +301,9 @@ export class FirestoreApi {
   }
 
   /**
-   * Print an array of indexes to the console. Group multi regions together
+   * Print an array of locations to the console. Group multi regions together
    *  Example: United States: nam5
-   * @param locations the array of indexes.
+   * @param locations the array of locations.
    */
   prettyPrintLocations(locations: types.Location[]): void {
     if (locations.length === 0) {
@@ -645,7 +646,7 @@ export class FirestoreApi {
   }
 
   /**
-   * List all databases that exist on a given project.
+   * List all locations that exist on a given project.
    * @param project the Firebase project id.
    */
   async locations(project: string): Promise<types.Location[]> {
@@ -662,14 +663,14 @@ export class FirestoreApi {
   /**
    * Get info on a Firestore database.
    * @param project the Firebase project id.
-   * @param databaseId the name of the Firestore Database
+   * @param databaseId the id of the Firestore Database
    */
   async getDatabase(project: string, databaseId: string): Promise<types.DatabaseResp> {
     const url = `/projects/${project}/databases/${databaseId}`;
     const res = await this.apiClient.get<types.DatabaseResp>(url);
     const database = res.body;
     if (!database) {
-      return Promise.reject();
+      throw new FirebaseError("Not found");
     }
 
     return database;
@@ -681,17 +682,20 @@ export class FirestoreApi {
    * @param databaseId the name of the Firestore Database
    * @param locationId the id of the region the database will be created in
    * @param type FIRESTORE_NATIVE or DATASTORE_MODE
+   * @param deleteProtectionState DELETE_PROTECTION_ENABLED or DELETE_PROTECTION_DISABLED
    */
   async createDatabase(
     project: string,
     databaseId: string,
     locationId: string,
-    type: string
+    type: types.DatabaseType,
+    deleteProtectionState: types.DatabaseDeleteProtectionState
   ): Promise<types.DatabaseResp> {
     const url = `/projects/${project}/databases`;
     const payload: types.DatabaseReq = {
       type,
       locationId,
+      deleteProtectionState,
     };
     const options = { queryParams: { databaseId: databaseId } };
     const res = await this.apiClient.post<types.DatabaseReq, { response?: types.DatabaseResp }>(
@@ -701,10 +705,40 @@ export class FirestoreApi {
     );
     const database = res.body.response;
     if (!database) {
-      return Promise.reject();
+      throw new FirebaseError("Not found");
     }
 
-    return database as types.DatabaseResp;
+    return database;
+  }
+
+  /**
+   * Update a named Firestore Database
+   * @param project the Firebase project id.
+   * @param databaseId the name of the Firestore Database
+   * @param type FIRESTORE_NATIVE or DATASTORE_MODE
+   * @param deleteProtectionState DELETE_PROTECTION_ENABLED or DELETE_PROTECTION_DISABLED
+   */
+  async updateDatabase(
+    project: string,
+    databaseId: string,
+    type?: types.DatabaseType,
+    deleteProtectionState?: types.DatabaseDeleteProtectionState
+  ): Promise<types.DatabaseResp> {
+    const url = `/projects/${project}/databases/${databaseId}`;
+    const payload: types.DatabaseReq = {
+      type,
+      deleteProtectionState,
+    };
+    const res = await this.apiClient.patch<types.DatabaseReq, { response?: types.DatabaseResp }>(
+      url,
+      payload
+    );
+    const database = res.body.response;
+    if (!database) {
+      throw new FirebaseError("Not found");
+    }
+
+    return database;
   }
 
   /**
@@ -717,7 +751,7 @@ export class FirestoreApi {
     const res = await this.apiClient.delete<{ response?: types.DatabaseResp }>(url);
     const database = res.body.response;
     if (!database) {
-      return Promise.reject();
+      throw new FirebaseError("Not found");
     }
 
     return database as types.DatabaseResp;
@@ -768,7 +802,7 @@ export class FirestoreApi {
   }
 
   /**
-   * Get a colored, pretty-printed representation of an location.
+   * Get a colored, pretty-printed representation of a location.
    */
   private prettyLocationString(location: types.Location): string {
     return clc.cyan(location.displayName) + ": " + clc.yellow(location.locationId);
