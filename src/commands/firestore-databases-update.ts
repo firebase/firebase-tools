@@ -43,7 +43,7 @@ export const command = new Command("firestore:databases:update")
       );
       return;
     }
-    if (options.type && options.type != "DATASTORE_MODE" && options.type != "FIRESTORE_NATIVE") {
+    if (options.type && options.type !== "DATASTORE_MODE" && options.type !== "FIRESTORE_NATIVE") {
       logger.error(
         "Invalid value for flag --type. See firebase firestore:databases:update --help for more info."
       );
@@ -52,8 +52,8 @@ export const command = new Command("firestore:databases:update")
     const type: types.DatabaseType = options.type || types.DatabaseType.FIRESTORE_NATIVE;
     if (
       options.deleteProtectionState &&
-      options.deleteProtectionState != "DELETE_PROTECTION_ENABLED" &&
-      options.deleteProtectionState != "DELETE_PROTECTION_DISABLED"
+      options.deleteProtectionState !== "DELETE_PROTECTION_ENABLED" &&
+      options.deleteProtectionState !== "DELETE_PROTECTION_DISABLED"
     ) {
       logger.error(
         "Invalid value for flag --deleteProtectionState. See firebase firestore:databases:update --help for more info."
