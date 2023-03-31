@@ -23,7 +23,7 @@ const CLI_COMMAND = join("node_modules", ".bin", "nuxt");
  */
 export async function discover(
   dir: string
-): Promise<{ mayWantBackend?: true; publicDirectory: string } | undefined> {
+): Promise<{ mayWantBackend: true; publicDirectory: string } | undefined> {
   if (!(await pathExists(join(dir, "package.json")))) return;
 
   const nuxtDependency = findDependency("nuxt", {
