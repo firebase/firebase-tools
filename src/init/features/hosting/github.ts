@@ -418,7 +418,7 @@ async function promptForRepo(
           key = body.key;
           keyId = body.key_id;
         } catch (e: any) {
-          if (e.status === 403) {
+          if ([403, 404].includes(e.status)) {
             logger.info();
             logger.info();
             logWarning(
