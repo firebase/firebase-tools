@@ -19,16 +19,12 @@ const CLI_COMMAND = join("node_modules", ".bin", "nuxt");
 /**
  *
  * @param dir current directory
- * @return undefined if project is not Nuxt 2, { mayWantBackend: true } otherwise
+ * @return undefined if project is not Nuxt 2, { mayWantBackend: true, publicDirectory: string } otherwise
  */
 export async function discover(
   dir: string
-): Promise<{ mayWantBackend?: true; publicDirectory: string }> {
-  const {
-    dir: { public: publicDirectory },
-  } = await getConfig(dir);
-
-  if (!(await pathExists(join(dir, "package.json")))) return { publicDirectory };
+): Promise<{ mayWantBackend?: true; publicDirectory: string } | undefined> {
+  if (!(await pathExists(join(dir, "package.json")))) return;
 
   const nuxtDependency = findDependency("nuxt", {
     cwd: dir,
@@ -39,10 +35,13 @@ export async function discover(
   const version = nuxtDependency?.version;
   const anyConfigFileExists = await nuxtConfigFilesExist(dir);
 
-  if (!anyConfigFileExists && !nuxtDependency) return { publicDirectory };
-  if (version && gte(version, "3.0.0-0")) return { publicDirectory, mayWantBackend: true };
+  if (!anyConfigFileExists && !nuxtDependency) return;
 
-  return { publicDirectory };
+  const {
+    dir: { public: publicDirectory },
+  } = await getConfig(dir);
+
+  if (version && gte(version, "3.0.0-0")) return { publicDirectory, mayWantBackend: true };
 }
 
 export async function build(root: string) {
