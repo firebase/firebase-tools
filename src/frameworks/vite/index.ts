@@ -4,9 +4,8 @@ import { existsSync } from "fs";
 import { copy, pathExists } from "fs-extra";
 import { join } from "path";
 import { findDependency, FrameworkType, relativeRequire, SupportLevel } from "..";
-import { proxyRequestHandler } from "../../hosting/proxy";
 import { promptOnce } from "../../prompt";
-import { warnIfCustomBuildScript } from "../utils";
+import { simpleProxy, warnIfCustomBuildScript } from "../utils";
 
 export const name = "Vite";
 export const support = SupportLevel.Experimental;
@@ -92,7 +91,7 @@ export async function getDevModeHandle(dir: string) {
       process.stderr.write(data);
     });
   });
-  return proxyRequestHandler(await host, "Vite Development Server", { forceCascade: true });
+  return simpleProxy(await host);
 }
 
 async function getConfig(root: string) {
