@@ -1,5 +1,5 @@
-Project: /docs/hosting/\_project.yaml
-Book: /docs/\_book.yaml
+Project: /docs/hosting/_project.yaml
+Book: /docs/_book.yaml
 page_type: guide
 
 {% include "_shared/apis/console/_local_variables.html" %}
@@ -13,13 +13,13 @@ page_type: guide
 With the Firebase framework-aware {{cli}}, you can deploy your Angular application
 to Firebase and serve dynamic content to your users.
 
-<<\_includes/\_preview-disclaimer.md>>
+<<_includes/_preview-disclaimer.md>>
 
-<<\_includes/\_before-you-begin.md>>
+<<_includes/_before-you-begin.md>>
 
 - Optional: AngularFire
 
-<<\_includes/\_initialize-firebase.md>>
+<<_includes/_initialize-firebase.md>>
 
 1. Choose your hosting source directory; this could be an existing Angular app.
 1. Choose "Dynamic web hosting with web framework."

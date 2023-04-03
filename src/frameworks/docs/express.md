@@ -1,5 +1,5 @@
-Project: /docs/hosting/\_project.yaml
-Book: /docs/\_book.yaml
+Project: /docs/hosting/_project.yaml
+Book: /docs/_book.yaml
 page_type: guide
 
 {% include "_shared/apis/console/_local_variables.html" %}
@@ -14,14 +14,14 @@ With some additional configuration, you can build on the basic
 framework-aware {{cli}} functionality
 to extend integration support to frameworks other than Angular and Next.js.
 
-<<\_includes/\_preview-disclaimer.md>>
+<<_includes/_preview-disclaimer.md>>
 
-<<\_includes/\_before-you-begin.md>>
+<<_includes/_before-you-begin.md>>
 
 - Optional: Billing enabled on your Firebase project
   (required if you plan to use SSR)
 
-<<\_includes/\_initialize-firebase.md>>
+<<_includes/_initialize-firebase.md>>
 
 1. Choose your hosting source directory; this could be an existing web app.
 1. Choose "Dynamic web hosting with web framework."
