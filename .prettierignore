@@ -3,3 +3,4 @@
 /lib/**/*
 /CONTRIBUTING.md
 /scripts/frameworks-tests/vite-project/**
+/src/frameworks/docs/**

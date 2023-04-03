@@ -1,5 +1,5 @@
-Project: /docs/hosting/\_project.yaml
-Book: /docs/\_book.yaml
+Project: /docs/hosting/_project.yaml
+Book: /docs/_book.yaml
 page_type: guide
 
 {% include "_shared/apis/console/_local_variables.html" %}
@@ -16,16 +16,16 @@ translates them to Firebase settings with zero or minimal extra configuration on
 your part. If your app includes dynamic server-side logic, the {{cli}} deploys that
 logic to {{cloud_functions_full}}.ß
 
-<<\_includes/\_preview-disclaimer.md>>
+<<_includes/_preview-disclaimer.md>>
 
-<<\_includes/\_before-you-begin.md>>
+<<_includes/_before-you-begin.md>>
 
 - Optional: Billing enabled on your Firebase project
   (required if you plan to use SSR)
 - Optional: use the experimental ReactFire library to benefit from its
   Firebase-friendly features
 
-<<\_includes/\_initialize-firebase.md>>
+<<_includes/_initialize-firebase.md>>
 
 1.  Choose your hosting source directory. If this an existing Next.js app,
     the {{cli}} process completes, and you can proceed to the next section.
