@@ -51,7 +51,7 @@ export const command = new Command("firestore:databases:create")
       );
       return;
     }
-    const type: types.DatabaseType = options.type || types.DatabaseType.FIRESTORE_NATIVE;
+    const type: types.DatabaseType = options.type ?? types.DatabaseType.FIRESTORE_NATIVE;
     if (
       options.deleteProtectionState &&
       options.deleteProtectionState !== "DELETE_PROTECTION_ENABLED" &&
@@ -63,7 +63,7 @@ export const command = new Command("firestore:databases:create")
       return;
     }
     const deleteProtectionState: types.DatabaseDeleteProtectionState =
-      options.deleteProtectionState || types.DatabaseDeleteProtectionState.DISABLED;
+      options.deleteProtectionState ?? types.DatabaseDeleteProtectionState.DISABLED;
 
     const database: types.DatabaseResp = await api.createDatabase(
       options.project,

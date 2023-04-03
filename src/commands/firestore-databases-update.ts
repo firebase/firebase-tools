@@ -20,7 +20,7 @@ export const command = new Command("firestore:databases:update")
   .option("--database <databaseId>", "Name of database to be updated. (required)")
   .option(
     "--type <type>",
-    "Type of database to update, for example 'DATASTORE_MODE' or 'FIRESTORE_NATIVE'."
+    "Type to update the database to, for example 'DATASTORE_MODE' or 'FIRESTORE_NATIVE'."
   )
   .option(
     "--deleteProtectionState <deleteProtectionState>",
@@ -49,7 +49,7 @@ export const command = new Command("firestore:databases:update")
       );
       return;
     }
-    const type: types.DatabaseType = options.type || types.DatabaseType.FIRESTORE_NATIVE;
+    const type: types.DatabaseType = options.type ?? types.DatabaseType.FIRESTORE_NATIVE;
     if (
       options.deleteProtectionState &&
       options.deleteProtectionState !== "DELETE_PROTECTION_ENABLED" &&
@@ -61,7 +61,7 @@ export const command = new Command("firestore:databases:update")
       return;
     }
     const deleteProtectionState: types.DatabaseDeleteProtectionState =
-      options.deleteProtectionState || types.DatabaseDeleteProtectionState.DISABLED;
+      options.deleteProtectionState ?? types.DatabaseDeleteProtectionState.DISABLED;
 
     const database: types.DatabaseResp = await api.updateDatabase(
       options.project,

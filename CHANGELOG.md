@@ -1,7 +1,8 @@
-- Adds support for the Firestore Provisioning API commands: (#5616)
+- Adds new commands for provisioning and managing Firestore databases: (#5616)
 - firestore:databases:list
 - firestore:databases:create
 - firestore:databases:get
+- firestore:databases:update
 - firestore:databases:delete
 - firestore:locations
 - Releases Cloud Firestore emulator v1.16.1, which adds support for read_time in ListCollectionIds.
