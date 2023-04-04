@@ -147,7 +147,7 @@ export class WorkQueue {
       this.logState();
 
       try {
-        await next();
+        await Promise.race([next(), new Promise((res, rej) => setTimeout(() => rej(new Error("workQueue job timed out")), 3000)) ]);
       } catch (e: any) {
         this.logger.log("DEBUG", e);
       } finally {
