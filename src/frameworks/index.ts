@@ -465,7 +465,7 @@ export async function prepareFrameworks(
         if (functionsDistStat?.isDirectory()) {
           const files = await readdir(functionsDist);
           for (const file of files) {
-            if (file !== "node_modules" && file !== "package-lock.json")
+            if (file !== "venv" && file !== "node_modules" && file !== "package-lock.json")
               await rm(join(functionsDist, file), { recursive: true });
           }
         } else {
@@ -556,7 +556,7 @@ export async function prepareFrameworks(
 
       if (requirementsTxt) {
         await writeFile(join(functionsDist, "requirements.txt"), requirementsTxt + "\ngit+https://github.com/firebase/firebase-functions-python.git@main#egg=firebase-functions");
-        await writeFile(join(functionsDist, "main.py"), `from firebase_functions import https
+        await writeFile(join(functionsDist, "main.py"), `from firebase_functions import https_fn
 from io import BytesIO
 from ${imports![0]} import ${imports![1]} as discoveredApp
 
@@ -580,17 +580,17 @@ def handle(app, environ):
             app_iter.close()
     return status, headers, body.getvalue()
 
-@https.on_request()
-def ssr(req: https.Request) -> https.Response:   
+@https_fn.on_request()
+def ssr(req: https_fn.Request) -> https_fn.Response:
     status, headers, body = handle(discoveredApp, req.environ)
-    return https.Response(body, status, headers)
+    return https_fn.Response(body, status, headers)
 `);
         await new Promise<void>((resolve) => {
           const child = runWithVirtualEnv(
             ["pip", "install", "-r", "requirements.txt"],
             functionsDist,
             {},
-            { stdio: ["inherit", "inherit", "inherit"] }
+            { stdio: ["inherit", "ignore", "inherit"] }
           );
           child.on("exit", () => resolve());
         });

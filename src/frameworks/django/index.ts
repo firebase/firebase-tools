@@ -1,5 +1,5 @@
 import { copy, pathExists } from "fs-extra";
-import { mkdir, readFile } from "fs/promises";
+import { mkdir, readFile, rmdir } from "fs/promises";
 import { join } from "path";
 import { BuildResult, FrameworkType, SupportLevel } from "..";
 import { runWithVirtualEnv } from "../../functions/python";

@@ -1,5 +1,5 @@
 import { copy, pathExists, rename } from "fs-extra";
-import { mkdir, readFile } from "fs/promises";
+import { mkdir, readFile, rmdir } from "fs/promises";
 import { join } from "path";
 import { BuildResult, FrameworkType, SupportLevel } from "..";
 import { runWithVirtualEnv } from "../../functions/python";
@@ -45,7 +45,7 @@ export async function ɵcodegenPublicDirectory(root: string, dest: string) {
 export async function ɵcodegenFunctionsDirectory(root: string, dest: string) {
   await mkdir(join(dest, 'src'), { recursive: true });
   await copy(root, join(dest, 'src'), { recursive: true });
-  await rename(join(dest, 'src', 'venv'), join(dest, 'venv'));
+  await rmdir(join(dest, "src", "venv")).catch(() => { });
   const requirementsTxt = await readFile(join(root, "requirements.txt"));
   const discovery = await new Promise<string>((resolve) => {
     const child = runWithVirtualEnv(
