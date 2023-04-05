@@ -1,7 +1,8 @@
-import { copy, existsSync, pathExists, readFile } from "fs-extra";
+import { copy, pathExists, readFile } from "fs-extra";
 import { join } from "path";
 import { FrameworkType, relativeRequire, SupportLevel } from "..";
 import { viteDiscoverWithNpmDependency } from "../vite";
+import { SvelteKitConfig } from "./interfaces";
 
 const { dynamicImport } = require(true && "../../dynamicImport");
 
@@ -22,14 +23,12 @@ export async function build(root: string) {
 }
 
 export async function ɵcodegenPublicDirectory(root: string, dest: string) {
-  const {
-    kit: { outDir },
-  } = await getConfig(root);
-  const assetsPath = join(root, outDir, "output", "client");
-  await copy(assetsPath, dest);
+  const config = await getConfig(root);
+  const output = join(root, config.kit.outDir, "output");
+  await copy(join(output, "client"), dest);
 
-  const prerenderedPath = join(root, outDir, "output", "prerendered", "pages");
-  if (existsSync(prerenderedPath)) {
+  const prerenderedPath = join(output, "prerendered", "pages");
+  if (await pathExists(prerenderedPath)) {
     await copy(prerenderedPath, dest);
   }
 }
@@ -41,20 +40,9 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
   packageJson.dependencies["@sveltejs/kit"] ??= packageJson.devDependencies["@sveltejs/kit"];
 
   const config = await getConfig(sourceDir);
-  const outDir = config.kit.outDir;
-
-  await copy(join(sourceDir, outDir, "output", "server"), join(destDir));
+  await copy(join(sourceDir, config.kit.outDir, "output", "server"), destDir);
 
   return { packageJson, frameworksEntry: "sveltekit" };
-}
-
-interface SvelteKitConfig {
-  kit: {
-    outDir: string;
-    files: {
-      assets: string;
-    };
-  };
 }
 
 async function getConfig(root: string): Promise<SvelteKitConfig> {
@@ -63,7 +51,5 @@ async function getConfig(root: string): Promise<SvelteKitConfig> {
   const config = configExists ? (await dynamicImport(configPath)).default : {};
   config.kit ||= {};
   config.kit.outDir ||= ".svelte-kit";
-  config.kit.files ||= {};
-  config.kit.files.assets ||= "static";
   return config;
 }
