@@ -59,7 +59,9 @@ export async function discover(dir: string, plugin?: string, npmDependency?: str
   const anyConfigFileExists = configFilesExist.some((it) => it);
   if (!anyConfigFileExists && !findDependency("vite", { cwd: dir, depth, omitDev: false })) return;
   if (npmDependency && !additionalDep) return;
-  const { appType, publicDir: publicDirectory, plugins } = await getConfig(dir);
+  const config = await getConfig(dir);
+  if (!config) return;
+  const { appType, publicDir: publicDirectory, plugins } = config;
   if (plugin && !plugins.find(({ name }) => name === plugin)) return;
   return { mayWantBackend: appType !== "spa", publicDirectory };
 }
@@ -74,7 +76,7 @@ export async function build(root: string) {
 
 export async function ɵcodegenPublicDirectory(root: string, dest: string) {
   const viteConfig = await getConfig(root);
-  const viteDistPath = join(root, viteConfig.build.outDir);
+  const viteDistPath = join(root, viteConfig!.build.outDir);
   await copy(viteDistPath, dest);
 }
 
@@ -97,5 +99,10 @@ export async function getDevModeHandle(dir: string) {
 
 async function getConfig(root: string) {
   const { resolveConfig } = relativeRequire(root, "vite");
-  return await resolveConfig({ root }, "build", "production");
+  // SvelteKit uses process.cwd() unfortunately, we should be defensive here
+  const cwd = process.cwd();
+  process.chdir(root);
+  const config = await resolveConfig({ root }, "build", "production");
+  process.chdir(cwd);
+  return config;
 }

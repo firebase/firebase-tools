@@ -1,28 +1,28 @@
-import { copy, existsSync, readFile } from "fs-extra";
+import { copy, existsSync, pathExists, readFile } from "fs-extra";
 import { join } from "path";
-import type { Config } from "@sveltejs/kit";
 import { FrameworkType, relativeRequire, SupportLevel } from "..";
 import { viteDiscoverWithNpmDependency } from "../vite";
-// TODO figure out why relativeRequire was not working
+
 const { dynamicImport } = require(true && "../../dynamicImport");
 
 export const name = "SvelteKit";
 export const support = SupportLevel.Experimental;
 export const type = FrameworkType.MetaFramework;
 export const discover = viteDiscoverWithNpmDependency("@sveltejs/kit");
-export { getDevModeHandle } from "../vite";
+//export { getDevModeHandle } from "../vite";
 
 export async function build(root: string) {
   const { build } = relativeRequire(root, "vite");
+  // SvelteKit uses process.cwd() unfortunately, chdir
+  const cwd = process.cwd();
+  process.chdir(root);
   await build({ root });
-  // TODO can we be smarter about this?
+  process.chdir(cwd);
   return { wantsBackend: true };
 }
 
 export async function ɵcodegenPublicDirectory(root: string, dest: string) {
-  const config = await getConfig(root);
-  const outDir = config.kit?.outDir || ".svelte-kit";
-
+  const { kit: { outDir } } = await getConfig(root);
   const assetsPath = join(root, outDir, "output", "client");
   await copy(assetsPath, dest);
 
@@ -35,20 +35,33 @@ export async function ɵcodegenPublicDirectory(root: string, dest: string) {
 export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: string) {
   const packageJsonBuffer = await readFile(join(sourceDir, "package.json"));
   const packageJson = JSON.parse(packageJsonBuffer.toString());
+  packageJson.dependencies ||= {};
+  packageJson.dependencies["@sveltejs/kit"] ??= packageJson.devDependencies["@sveltejs/kit"];
 
   const config = await getConfig(sourceDir);
-  const outDir = config.kit?.outDir || ".svelte-kit";
+  const outDir = config.kit.outDir;
 
   await copy(join(sourceDir, outDir, "output", "server"), join(destDir));
 
-  return { packageJson: { ...packageJson }, frameworksEntry: "sveltekit" };
+  return { packageJson, frameworksEntry: "sveltekit" };
 }
 
-async function getConfig(root: string) {
-  try {
-    return (await dynamicImport(join(root, "svelte.config.js"))) as Config;
-  } catch (e) {
-    console.log("svelte.config.js not found");
-    return {};
-  }
+interface SvelteKitConfig {
+  kit: {
+    outDir: string;
+    files: {
+      assets: string;
+    };
+  };
+}
+
+async function getConfig(root: string): Promise<SvelteKitConfig> {
+  const configPath = join(root, "svelte.config.js");
+  const configExists = await pathExists(configPath);
+  const config = configExists ? (await dynamicImport(configPath)).default : {};
+  config.kit ||= {};
+  config.kit.outDir ||= ".svelte-kit";
+  config.kit.files ||= {};
+  config.kit.files.assets ||= "static";
+  return config;
 }
