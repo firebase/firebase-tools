@@ -40,6 +40,7 @@ export async function build(cwd: string): Promise<BuildResult> {
 }
 
 export async function ɵcodegenPublicDirectory(root: string, dest: string) {
+  // TODO copy over the asset dir
 }
 
 export async function ɵcodegenFunctionsDirectory(root: string, dest: string) {
