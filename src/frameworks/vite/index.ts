@@ -58,9 +58,7 @@ export async function discover(dir: string, plugin?: string, npmDependency?: str
   const anyConfigFileExists = configFilesExist.some((it) => it);
   if (!anyConfigFileExists && !findDependency("vite", { cwd: dir, depth, omitDev: false })) return;
   if (npmDependency && !additionalDep) return;
-  const config = await getConfig(dir);
-  if (!config) return;
-  const { appType, publicDir: publicDirectory, plugins } = config;
+  const { appType, publicDir: publicDirectory, plugins } = await getConfig(dir);
   if (plugin && !plugins.find(({ name }) => name === plugin)) return;
   return { mayWantBackend: appType !== "spa", publicDirectory };
 }

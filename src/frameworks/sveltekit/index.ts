@@ -22,7 +22,9 @@ export async function build(root: string) {
 }
 
 export async function ɵcodegenPublicDirectory(root: string, dest: string) {
-  const { kit: { outDir } } = await getConfig(root);
+  const {
+    kit: { outDir },
+  } = await getConfig(root);
   const assetsPath = join(root, outDir, "output", "client");
   await copy(assetsPath, dest);
 
