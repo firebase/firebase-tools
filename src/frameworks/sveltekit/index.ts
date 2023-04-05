@@ -9,7 +9,7 @@ export const name = "SvelteKit";
 export const support = SupportLevel.Experimental;
 export const type = FrameworkType.MetaFramework;
 export const discover = viteDiscoverWithNpmDependency("@sveltejs/kit");
-//export { getDevModeHandle } from "../vite";
+export { getDevModeHandle } from "../vite";
 
 export async function build(root: string) {
   const { build } = relativeRequire(root, "vite");
