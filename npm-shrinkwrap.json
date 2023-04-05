@@ -9,6 +9,7 @@
       "version": "11.25.2",
       "license": "MIT",
       "dependencies": {
+        "@angular/core": "^15.2.2",
         "@google-cloud/pubsub": "^3.0.1",
         "abort-controller": "^3.0.0",
         "ajv": "^6.12.6",
@@ -285,6 +286,26 @@
       "engines": {
         "node": ">= 8"
       }
+    },
+    "node_modules/@angular/core": {
+      "version": "15.2.2",
+      "resolved": "https://registry.npmjs.org/@angular/core/-/core-15.2.2.tgz",
+      "integrity": "sha512-Rn9LKeeryV0hVrOxlOPnQJdgUxbKdB8NByhptzB6XSzZ0ODx0ZN+iYVRLqu0Fu95zh5oSeYYU+2yT6+FIIX65w==",
+      "dependencies": {
+        "tslib": "^2.3.0"
+      },
+      "engines": {
+        "node": "^14.20.0 || ^16.13.0 || >=18.10.0"
+      },
+      "peerDependencies": {
+        "rxjs": "^6.5.3 || ^7.4.0",
+        "zone.js": "~0.11.4 || ~0.12.0 || ~0.13.0"
+      }
+    },
+    "node_modules/@angular/core/node_modules/tslib": {
+      "version": "2.5.0",
+      "resolved": "https://registry.npmjs.org/tslib/-/tslib-2.5.0.tgz",
+      "integrity": "sha512-336iVw3rtn2BUK7ORdIAHTyxHGRIHVReokCR3XjbckJMK7ms8FysBfhLR8IXnAgy7T0PTPNBWKiH514FOW/WSg=="
     },
     "node_modules/@apidevtools/json-schema-ref-parser": {
       "version": "9.0.7",
@@ -15866,6 +15887,21 @@
       "engines": {
         "node": ">= 10"
       }
+    },
+    "node_modules/zone.js": {
+      "version": "0.13.0",
+      "resolved": "https://registry.npmjs.org/zone.js/-/zone.js-0.13.0.tgz",
+      "integrity": "sha512-7m3hNNyswsdoDobCkYNAy5WiUulkMd3+fWaGT9ij6iq3Zr/IwJo4RMCYPSDjT+r7tnPErmY9sZpKhWQ8S5k6XQ==",
+      "peer": true,
+      "dependencies": {
+        "tslib": "^2.3.0"
+      }
+    },
+    "node_modules/zone.js/node_modules/tslib": {
+      "version": "2.5.0",
+      "resolved": "https://registry.npmjs.org/tslib/-/tslib-2.5.0.tgz",
+      "integrity": "sha512-336iVw3rtn2BUK7ORdIAHTyxHGRIHVReokCR3XjbckJMK7ms8FysBfhLR8IXnAgy7T0PTPNBWKiH514FOW/WSg==",
+      "peer": true
     }
   },
   "dependencies": {
@@ -15957,6 +15993,21 @@
           "resolved": "https://registry.npmjs.org/source-map/-/source-map-0.7.4.tgz",
           "integrity": "sha512-l3BikUxvPOcn5E74dZiq5BGsTb5yEwhaTSzccU6t4sDOH8NWJCstKO5QT2CvtFoK6F0saL7p9xHAqHOlCPJygA==",
           "dev": true
+        }
+      }
+    },
+    "@angular/core": {
+      "version": "15.2.2",
+      "resolved": "https://registry.npmjs.org/@angular/core/-/core-15.2.2.tgz",
+      "integrity": "sha512-Rn9LKeeryV0hVrOxlOPnQJdgUxbKdB8NByhptzB6XSzZ0ODx0ZN+iYVRLqu0Fu95zh5oSeYYU+2yT6+FIIX65w==",
+      "requires": {
+        "tslib": "^2.3.0"
+      },
+      "dependencies": {
+        "tslib": {
+          "version": "2.5.0",
+          "resolved": "https://registry.npmjs.org/tslib/-/tslib-2.5.0.tgz",
+          "integrity": "sha512-336iVw3rtn2BUK7ORdIAHTyxHGRIHVReokCR3XjbckJMK7ms8FysBfhLR8IXnAgy7T0PTPNBWKiH514FOW/WSg=="
         }
       }
     },
@@ -27962,6 +28013,23 @@
         "archiver-utils": "^2.1.0",
         "compress-commons": "^4.1.0",
         "readable-stream": "^3.6.0"
+      }
+    },
+    "zone.js": {
+      "version": "0.13.0",
+      "resolved": "https://registry.npmjs.org/zone.js/-/zone.js-0.13.0.tgz",
+      "integrity": "sha512-7m3hNNyswsdoDobCkYNAy5WiUulkMd3+fWaGT9ij6iq3Zr/IwJo4RMCYPSDjT+r7tnPErmY9sZpKhWQ8S5k6XQ==",
+      "peer": true,
+      "requires": {
+        "tslib": "^2.3.0"
+      },
+      "dependencies": {
+        "tslib": {
+          "version": "2.5.0",
+          "resolved": "https://registry.npmjs.org/tslib/-/tslib-2.5.0.tgz",
+          "integrity": "sha512-336iVw3rtn2BUK7ORdIAHTyxHGRIHVReokCR3XjbckJMK7ms8FysBfhLR8IXnAgy7T0PTPNBWKiH514FOW/WSg==",
+          "peer": true
+        }
       }
     }
   }

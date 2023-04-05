@@ -94,6 +94,7 @@
     ]
   },
   "dependencies": {
+    "@angular/core": "^15.2.2",
     "@google-cloud/pubsub": "^3.0.1",
     "abort-controller": "^3.0.0",
     "ajv": "^6.12.6",
