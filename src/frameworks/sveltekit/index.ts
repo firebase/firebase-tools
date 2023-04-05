@@ -1,8 +1,9 @@
 import { copy, pathExists, readFile } from "fs-extra";
 import { join } from "path";
-import { FrameworkType, relativeRequire, SupportLevel } from "..";
-import { viteDiscoverWithNpmDependency } from "../vite";
+import { FrameworkType, SupportLevel } from "..";
+import { viteDiscoverWithNpmDependency, build as viteBuild } from "../vite";
 import { SvelteKitConfig } from "./interfaces";
+import { fileExistsSync } from "../../fsutils";
 
 const { dynamicImport } = require(true && "../../dynamicImport");
 
@@ -13,13 +14,10 @@ export const discover = viteDiscoverWithNpmDependency("@sveltejs/kit");
 export { getDevModeHandle } from "../vite";
 
 export async function build(root: string) {
-  const { build } = relativeRequire(root, "vite");
-  // SvelteKit uses process.cwd() unfortunately, chdir
-  const cwd = process.cwd();
-  process.chdir(root);
-  await build({ root });
-  process.chdir(cwd);
-  return { wantsBackend: true };
+  const config = await getConfig(root);
+  const wantsBackend = config.kit.adapter?.name !== "@sveltejs/adapter-static";
+  await viteBuild(root);
+  return { wantsBackend };
 }
 
 export async function ɵcodegenPublicDirectory(root: string, dest: string) {
@@ -46,9 +44,10 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
 }
 
 async function getConfig(root: string): Promise<SvelteKitConfig> {
-  const configPath = join(root, "svelte.config.js");
-  const configExists = await pathExists(configPath);
-  const config = configExists ? (await dynamicImport(configPath)).default : {};
+  const configPath = ["svelte.config.js", "svelte.config.mjs"]
+    .map((filename) => join(root, filename))
+    .find(fileExistsSync);
+  const config = configPath ? (await dynamicImport(configPath)).default : {};
   config.kit ||= {};
   config.kit.outDir ||= ".svelte-kit";
   return config;

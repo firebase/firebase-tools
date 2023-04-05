@@ -67,8 +67,11 @@ export async function build(root: string) {
   const { build } = relativeRequire(root, "vite");
 
   await warnIfCustomBuildScript(root, name, DEFAULT_BUILD_SCRIPT);
-
+  // SvelteKit uses process.cwd() unfortunately, chdir
+  const cwd = process.cwd();
+  process.chdir(root);
   await build({ root });
+  process.chdir(cwd);
 }
 
 export async function ɵcodegenPublicDirectory(root: string, dest: string) {
