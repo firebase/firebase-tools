@@ -75,7 +75,7 @@ export async function build(root: string) {
 
 export async function ɵcodegenPublicDirectory(root: string, dest: string) {
   const viteConfig = await getConfig(root);
-  const viteDistPath = join(root, viteConfig!.build.outDir);
+  const viteDistPath = join(root, viteConfig.build.outDir);
   await copy(viteDistPath, dest);
 }
 
