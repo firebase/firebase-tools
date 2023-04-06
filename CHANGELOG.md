@@ -1,0 +1,1 @@
+- Fix bug where functions shell failed to invoke event triggered functions in debug mode. (#5609)
