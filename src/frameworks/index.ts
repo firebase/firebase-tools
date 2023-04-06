@@ -234,21 +234,17 @@ function scanDependencyTree(searchingFor: string, dependencies = {}): any {
   return;
 }
 
-function getNpmRoot(cwd: string): string | undefined {
-  return spawnSync("npm", ["root"], { cwd }).stdout?.toString().trim();
-}
-
 export function getNodeModuleBin(name: string, cwd: string) {
   const cantFindExecutable = new FirebaseError(`Could not find the ${name} executable.`);
-  const npmRoot = getNpmRoot(cwd);
-  if (!npmRoot) {
+  const npmBin = spawnSync("npm", ["bin"], { cwd }).stdout?.toString().trim();
+  if (!npmBin) {
     throw cantFindExecutable;
   }
-  const path = join(npmRoot, ".bin", name);
+  const path = `${join(npmBin, name)}${process.platform === "win32" ? ".cmd" : ""}`;
   if (!fileExistsSync(path)) {
     throw cantFindExecutable;
   }
-  return `${path}${process.platform === "win32" ? ".cmd" : ""}`;
+  return path;
 }
 
 /**
@@ -256,7 +252,7 @@ export function getNodeModuleBin(name: string, cwd: string) {
  */
 export function findDependency(name: string, options: Partial<FindDepOptions> = {}) {
   const { cwd: dir, depth, omitDev } = { ...DEFAULT_FIND_DEP_OPTIONS, ...options };
-  const cwd = getNpmRoot(dir);
+  const cwd = spawnSync("npm", ["root"], { cwd: dir }).stdout?.toString().trim();;
   if (!cwd) return;
   const env: any = Object.assign({}, process.env);
   delete env.NODE_ENV;
