@@ -1,1 +1,1 @@
-- The hosting emulator integration with web frameworks now has improved support for HMR and dev-tools. (#5582)
+- Fix bug where functions shell failed to invoke event triggered functions in debug mode. (#5609)
