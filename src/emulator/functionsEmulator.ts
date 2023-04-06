@@ -624,7 +624,8 @@ export class FunctionsEmulator implements EmulatorInstance {
             added = await this.addFirestoreTrigger(
               this.args.projectId,
               key,
-              definition.eventTrigger
+              definition.eventTrigger,
+              signature,
             );
             break;
           case Constants.SERVICE_REALTIME_DATABASE:
@@ -879,26 +880,71 @@ export class FunctionsEmulator implements EmulatorInstance {
     return true;
   }
 
-  async addFirestoreTrigger(
+  private getV1FirestoreAttributes(
     projectId: string,
     key: string,
-    eventTrigger: EventTrigger
-  ): Promise<boolean> {
-    if (!EmulatorRegistry.isRunning(Emulators.FIRESTORE)) {
-      return Promise.resolve(false);
-    }
-
+    eventTrigger: EventTrigger,
+  ) {
     const bundle = JSON.stringify({
       eventTrigger: {
         ...eventTrigger,
         service: "firestore.googleapis.com",
       },
     });
+    const path = `/emulator/v1/projects/${projectId}/triggers/${key}`;
+    return { bundle, path };
+  }
+
+  private getV2FirestoreAttributes(
+    projectId: string,
+    key: string,
+    eventTrigger: EventTrigger,
+  ) {
+    const database = eventTrigger.eventFilters?.database;
+    if (!database) {
+      throw new FirebaseError("A database must be supplied.");
+    }
+    const namespace = eventTrigger.eventFilters?.namespace;
+    if (!namespace) {
+      throw new FirebaseError("A namespace must be supplied.");
+    }
+    const document = eventTrigger.eventFilters?.document || eventTrigger.eventFilterPathPatterns?.document;
+    if (!document) {
+      throw new FirebaseError("A document must be supplied.");
+    }
+
+    const bundle = JSON.stringify({
+      eventTrigger: {
+        eventType: eventTrigger.eventType,
+        database,
+        namespace,
+        document,
+      },
+    });
+    const path = `/emulator/v1/projects/${projectId}/databases/${database}/triggers/${key}`;
+    return { bundle, path };
+  }
+
+  async addFirestoreTrigger(
+    projectId: string,
+    key: string,
+    eventTrigger: EventTrigger,
+    signature: SignatureType,
+  ): Promise<boolean> {
+    if (!EmulatorRegistry.isRunning(Emulators.FIRESTORE)) {
+      return Promise.resolve(false);
+    }
+
+    const { bundle, path } =
+      signature === "cloudevent"
+        ? this.getV2FirestoreAttributes(projectId, key, eventTrigger)
+        : this.getV1FirestoreAttributes(projectId, key, eventTrigger);
+
     logger.debug(`addFirestoreTrigger`, JSON.stringify(bundle));
 
     const client = EmulatorRegistry.client(Emulators.FIRESTORE);
     try {
-      await client.put(`/emulator/v1/projects/${projectId}/triggers/${key}`, bundle);
+      await client.put(path, bundle);
     } catch (err: any) {
       this.logger.log("WARN", "Error adding firestore function: " + err);
       throw err;
