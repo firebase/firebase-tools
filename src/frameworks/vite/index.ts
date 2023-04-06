@@ -43,7 +43,7 @@ export async function discover(dir: string, plugin?: string, npmDependency?: str
   if (!existsSync(join(dir, "package.json"))) return;
   // If we're not searching for a vite plugin, depth has to be zero
   const additionalDep =
-    npmDependency && findDependency(npmDependency, { cwd: dir, depth: 0, omitDev: true });
+    npmDependency && findDependency(npmDependency, { cwd: dir, depth: 0, omitDev: false });
   const depth = plugin ? undefined : 0;
   const configFilesExist = await Promise.all([
     pathExists(join(dir, "vite.config.js")),
@@ -62,7 +62,11 @@ export async function build(root: string) {
 
   await warnIfCustomBuildScript(root, name, DEFAULT_BUILD_SCRIPT);
 
+  // SvelteKit uses process.cwd() unfortunately, chdir
+  const cwd = process.cwd();
+  process.chdir(root);
   await build({ root, mode: "production" });
+  process.chdir(cwd);
 }
 
 export async function ɵcodegenPublicDirectory(root: string, dest: string) {
@@ -91,5 +95,10 @@ export async function getDevModeHandle(dir: string) {
 
 async function getConfig(root: string) {
   const { resolveConfig } = relativeRequire(root, "vite");
-  return await resolveConfig({ root }, "build", "production");
+  // SvelteKit uses process.cwd() unfortunately, we should be defensive here
+  const cwd = process.cwd();
+  process.chdir(root);
+  const config = await resolveConfig({ root }, "build", "production");
+  process.chdir(cwd);
+  return config;
 }
