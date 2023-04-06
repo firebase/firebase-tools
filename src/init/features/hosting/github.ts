@@ -30,7 +30,7 @@ let YML_FULL_PATH_MERGE: string;
 const YML_PULL_REQUEST_FILENAME = "firebase-hosting-pull-request.yml";
 const YML_MERGE_FILENAME = "firebase-hosting-merge.yml";
 
-const CHECKOUT_GITHUB_ACTION_NAME = "actions/checkout@v2";
+const CHECKOUT_GITHUB_ACTION_NAME = "actions/checkout@v3";
 const HOSTING_GITHUB_ACTION_NAME = "FirebaseExtended/action-hosting-deploy@v0";
 
 const githubApiClient = new Client({ urlPrefix: githubApiOrigin, auth: false });
@@ -418,7 +418,7 @@ async function promptForRepo(
           key = body.key;
           keyId = body.key_id;
         } catch (e: any) {
-          if (e.status === 403) {
+          if ([403, 404].includes(e.status)) {
             logger.info();
             logger.info();
             logWarning(

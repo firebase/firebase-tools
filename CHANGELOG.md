@@ -1,1 +1,1 @@
-- Fix bug where EVENTARC_CLOUD_EVENT_SOURCE environment variable was correctly set for some functions. (#5597)
+- Fix bug where functions shell failed to invoke event triggered functions in debug mode. (#5609)

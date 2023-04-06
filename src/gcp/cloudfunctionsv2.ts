@@ -115,10 +115,12 @@ export interface ServiceConfig {
 
   timeoutSeconds?: number | null;
   availableMemory?: string | null;
+  availableCpu?: string | null;
   environmentVariables?: Record<string, string> | null;
   secretEnvironmentVariables?: SecretEnvVar[] | null;
   maxInstanceCount?: number | null;
   minInstanceCount?: number | null;
+  maxInstanceRequestConcurrency?: number | null;
   vpcConnector?: string | null;
   vpcConnectorEgressSettings?: VpcConnectorEgressSettings | null;
   ingressSettings?: IngressSettings | null;
@@ -262,6 +264,7 @@ function functionsOpLogReject(funcName: string, type: string, err: any): void {
   }
   throw new FirebaseError(`Failed to ${type} function ${funcName}`, {
     original: err,
+    status: err?.context?.response?.statusCode,
     context: { function: funcName },
   });
 }
@@ -466,10 +469,21 @@ export function functionFromEndpoint(
   );
   // Memory must be set because the default value of GCF gen 2 is Megabytes and
   // we use mebibytes
-  const mem: number = endpoint.availableMemoryMb || backend.DEFAULT_MEMORY;
+  const mem = endpoint.availableMemoryMb || backend.DEFAULT_MEMORY;
   gcfFunction.serviceConfig.availableMemory = mem > 1024 ? `${mem / 1024}Gi` : `${mem}Mi`;
   proto.renameIfPresent(gcfFunction.serviceConfig, endpoint, "minInstanceCount", "minInstances");
   proto.renameIfPresent(gcfFunction.serviceConfig, endpoint, "maxInstanceCount", "maxInstances");
+  // N.B. only convert CPU and concurrency fields for 2nd gen functions, once we
+  // eventually use the v2 API to configure both 1st and 2nd gen functions)
+  proto.renameIfPresent(
+    gcfFunction.serviceConfig,
+    endpoint,
+    "maxInstanceRequestConcurrency",
+    "concurrency"
+  );
+  proto.convertIfPresent(gcfFunction.serviceConfig, endpoint, "availableCpu", "cpu", (cpu) => {
+    return String(cpu);
+  });
 
   if (endpoint.vpc) {
     proto.renameIfPresent(gcfFunction.serviceConfig, endpoint.vpc, "vpcConnector", "connector");
