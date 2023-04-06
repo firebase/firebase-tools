@@ -38,6 +38,7 @@ export class FirestoreDelete {
   private recursive: boolean;
   private shallow: boolean;
   private allCollections: boolean;
+  private databaseId: string;
 
   private readBatchSize: number;
   private maxPendingDeletes: number;
@@ -61,13 +62,19 @@ export class FirestoreDelete {
   constructor(
     project: string,
     path: string | undefined,
-    options: { recursive?: boolean; shallow?: boolean; allCollections?: boolean }
+    options: {
+      recursive?: boolean;
+      shallow?: boolean;
+      allCollections?: boolean;
+      databaseId: string;
+    }
   ) {
     this.project = project;
     this.path = path || "";
     this.recursive = Boolean(options.recursive);
     this.shallow = Boolean(options.shallow);
     this.allCollections = Boolean(options.allCollections);
+    this.databaseId = options.databaseId;
 
     // Tunable deletion parameters
     this.readBatchSize = 7500;
@@ -79,7 +86,8 @@ export class FirestoreDelete {
     this.path = this.path.replace(/(^\/+|\/+$)/g, "");
 
     this.allDescendants = this.recursive;
-    this.root = "projects/" + project + "/databases/(default)/documents";
+
+    this.root = `projects/${project}/databases/${this.databaseId}/documents`;
 
     const segments = this.path.split("/");
     this.isDocumentPath = segments.length % 2 === 0;
@@ -514,6 +522,7 @@ export class FirestoreDelete {
           const collectionId = collectionIds[i];
           const deleteOp = new FirestoreDelete(this.project, collectionId, {
             recursive: true,
+            databaseId: this.databaseId,
           });
 
           promises.push(deleteOp.execute());
@@ -553,5 +562,9 @@ export class FirestoreDelete {
     return verifyRecurseSafe.then(() => {
       return this.deletePath();
     });
+  }
+
+  public getRoot(): string {
+    return this.root;
   }
 }

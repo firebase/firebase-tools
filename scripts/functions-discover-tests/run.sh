@@ -3,7 +3,7 @@ set -euxo pipefail # bash strict mode
 IFS=$'\n\t'
 
 # Globally link the CLI for the testing framework
-./scripts/npm-link.sh
+./scripts/clean-install.sh
 
 # Unlock internal commands for discovering functions in a project.
 firebase experiments:enable internaltesting

@@ -1,11 +1,11 @@
 import * as clc from "colorette";
-import fs = require("fs");
+import * as fs from "fs";
 
-import gcp = require("../../../gcp");
-import fsutils = require("../../../fsutils");
+import * as gcp from "../../../gcp";
+import * as fsutils from "../../../fsutils";
 import { prompt, promptOnce } from "../../../prompt";
 import { logger } from "../../../logger";
-import utils = require("../../../utils");
+import * as utils from "../../../utils";
 
 const DEFAULT_RULES_FILE = "firestore.rules";
 

@@ -14,8 +14,7 @@ import {
   SupportLevel,
 } from "..";
 import { promptOnce } from "../../prompt";
-import { proxyRequestHandler } from "../../hosting/proxy";
-import { warnIfCustomBuildScript } from "../utils";
+import { simpleProxy, warnIfCustomBuildScript } from "../utils";
 
 export const name = "Angular";
 export const support = SupportLevel.Experimental;
@@ -106,7 +105,7 @@ export async function getDevModeHandle(dir: string) {
       process.stderr.write(data);
     });
   });
-  return proxyRequestHandler(await host, "Angular Live Development Server", { forceCascade: true });
+  return simpleProxy(await host);
 }
 
 export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: string) {
