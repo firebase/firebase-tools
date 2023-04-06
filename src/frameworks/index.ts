@@ -106,7 +106,7 @@ const SupportLevelWarnings = {
   ),
 };
 
-export const FIREBASE_FRAMEWORKS_VERSION = "^0.6.0";
+export const FIREBASE_FRAMEWORKS_VERSION = "^0.7.0";
 export const FIREBASE_FUNCTIONS_VERSION = "^3.23.0";
 export const FIREBASE_ADMIN_VERSION = "^11.0.1";
 export const NODE_VERSION = parseInt(process.versions.node, 10).toString();
