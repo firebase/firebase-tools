@@ -9,6 +9,7 @@ import * as utils from "./utils";
 import * as scopes from "./scopes";
 import { Tokens, User } from "./types/auth";
 import { setRefreshToken, setActiveAccount } from "./auth";
+import { setupMonospace } from "./monospace";
 
 const AUTH_ERROR_MESSAGE = `Command requires authentication, please run ${clc.bold(
   "firebase login"
@@ -36,8 +37,13 @@ function getAuthClient(config: GoogleAuthOptions): GoogleAuth {
  */
 async function autoAuth(options: any, authScopes: string[]): Promise<void> {
   const client = getAuthClient({ scopes: authScopes, projectId: options.project });
-  const token = await client.getAccessToken();
-  token !== null ? apiv2.setAccessToken(token) : false;
+
+  if (process.env.MONOSPACE_DAEMON_PORT) {
+    await setupMonospace(client, options.project);
+  } else {
+    const token = await client.getAccessToken();
+    token !== null ? apiv2.setAccessToken(token) : false;
+  }
 }
 
 /**
