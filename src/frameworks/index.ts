@@ -125,8 +125,6 @@ const DEFAULT_FIND_DEP_OPTIONS: FindDepOptions = {
   omitDev: true,
 };
 
-const NPM_COMMAND = process.platform === "win32" ? "npm.cmd" : "npm";
-
 export const WebFrameworks: Record<string, Framework> = Object.fromEntries(
   readdirSync(__dirname)
     .filter((path) => statSync(join(__dirname, path)).isDirectory())
@@ -236,11 +234,11 @@ function scanDependencyTree(searchingFor: string, dependencies = {}): any {
 
 export function getNodeModuleBin(name: string, cwd: string) {
   const cantFindExecutable = new FirebaseError(`Could not find the ${name} executable.`);
-  const npmBin = spawnSync(NPM_COMMAND, ["bin"], { cwd }).stdout?.toString().trim();
+  const npmBin = spawnSync("npm", ["bin"], { cwd }).stdout?.toString().trim();
   if (!npmBin) {
     throw cantFindExecutable;
   }
-  const path = `${join(npmBin, name)}${process.platform === "win32" ? ".cmd" : ""}`;
+  const path = join(npmBin, name);
   if (!fileExistsSync(path)) {
     throw cantFindExecutable;
   }
@@ -252,12 +250,12 @@ export function getNodeModuleBin(name: string, cwd: string) {
  */
 export function findDependency(name: string, options: Partial<FindDepOptions> = {}) {
   const { cwd: dir, depth, omitDev } = { ...DEFAULT_FIND_DEP_OPTIONS, ...options };
-  const cwd = spawnSync(NPM_COMMAND, ["root"], { cwd: dir }).stdout?.toString().trim();
+  const cwd = spawnSync("npm", ["root"], { cwd: dir }).stdout?.toString().trim();
   if (!cwd) return;
   const env: any = Object.assign({}, process.env);
   delete env.NODE_ENV;
   const result = spawnSync(
-    NPM_COMMAND,
+    "npm",
     [
       "list",
       name,
@@ -541,7 +539,7 @@ export async function prepareFrameworks(
           if (!(await pathExists(path))) continue;
           const stats = await stat(path);
           if (stats.isDirectory()) {
-            const result = spawnSync(NPM_COMMAND, ["pack", relative(functionsDist, path)], {
+            const result = spawnSync("npm", ["pack", relative(functionsDist, path)], {
               cwd: functionsDist,
             });
             if (!result.stdout) throw new Error(`Error running \`npm pack\` at ${path}`);
@@ -588,7 +586,7 @@ ${firebaseDefaults ? `__FIREBASE_DEFAULTS__=${JSON.stringify(firebaseDefaults)}\
 
       await Promise.all(envs.map((path) => copyFile(path, join(functionsDist, basename(path)))));
 
-      execSync(`${NPM_COMMAND} i --omit dev --no-audit`, {
+      execSync(`npm i --omit dev --no-audit`, {
         cwd: functionsDist,
         stdio: "inherit",
       });

@@ -18,7 +18,7 @@ describe("Frameworks utils", () => {
             "..",
             "node_modules",
             ".bin",
-            `tsc${process.platform === "win32" ? ".cmd" : ""}`
+            "tsc",
           )
         )
       );
