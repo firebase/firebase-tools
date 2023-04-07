@@ -2,3 +2,4 @@
 - Fixed bug with the web frameworks proxy that could see unexpected 404 errors while emulating. (#5525)
 - Added experimental support for SvelteKit codebases. (#5525)
 - Fix bug where eagerly initializing UA failed function deployment that imported firebase-tools as a library. (#5666)
+- Added ability to publish extension versions directly from GitHub. (#5160)
