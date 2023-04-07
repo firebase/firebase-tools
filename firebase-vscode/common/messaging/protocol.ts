@@ -7,16 +7,19 @@ import { FirebaseProjectMetadata } from "../../../src/types/project";
 import { FirebaseConfig } from  '../../../src/firebaseConfig';
 import { FirebaseRC } from "../firebaserc";
 import { User } from "../../../src/types/auth";
+import { ServiceAccountUser } from "../types";
 
 // Messages sent from Webview to extension
 export interface WebviewToExtension {
+  getEnv(): void;
+
   /* --- working with CLI: user management --- */
   getUsers(): void;
   addUser(): void;
   logout(email: string): void;
 
   /** Notify extension that current user has been changed. */
-  requestChangeUser(email: string): void;
+  requestChangeUser(user: User | ServiceAccountUser): void;
 
   /** Asks what projects are available for this user. */
   getProjects(email: string): void;
@@ -43,11 +46,12 @@ export interface WebviewToExtension {
   /** Fetches the entire firebase rc config file. If the file doesn't exist, then it will return a default value. */
   getFirebaseJson(): void;
 
-  showMessage(msg: string): void;
+  showMessage(msg: string, options?: {}): void;
 }
 
 // Messages sent from Extension to Webview
 export interface ExtensionToWebview {
+  notifyEnv(env: { isMonospace: boolean }): void;
   /** Called as a result of getUsers/addUser/logout calls */
   notifyUsers(users: User[]): void;
   notifyProjects(email: string, projects: FirebaseProjectMetadata[]): void;

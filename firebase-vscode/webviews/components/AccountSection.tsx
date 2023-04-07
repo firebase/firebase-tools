@@ -1,59 +1,40 @@
-import { VSCodeLink, VSCodeDivider } from "@vscode/webview-ui-toolkit/react";
+import { VSCodeLink, VSCodeDivider, VSCodeProgressRing } from "@vscode/webview-ui-toolkit/react";
 import React, { useState } from "react";
 import { broker } from "../globals/html-broker";
-import { ConnectProject, ProjectInfo, initProjectSelection } from "./ProjectSection";
 import { Icon } from "./ui/Icon";
 import { IconButton } from "./ui/IconButton";
 import { PopupMenu, MenuItem } from "./ui/popup-menu/PopupMenu";
 import { Label } from "./ui/Text";
-import styles from './AccountSection.scss';
+import styles from "./AccountSection.scss";
+import { ServiceAccountUser } from "../../common/types";
+import { User } from "../../../src/types/auth";
 
 export function AccountSection({
   userEmail,
-  projectId,
-  allUserEmails,
+  allUsers,
 }: {
   userEmail: string | null;
-  projectId: string | null | undefined;
-  allUserEmails: string[];
+  allUsers: Array<User | ServiceAccountUser> | null;
 }) {
   const [userDropdownVisible, toggleUserDropdown] = useState(false);
   return (
-    <>
-      <div className={styles.accountRow}>
-        <Label className={styles.accountRowLabel}>
-          <Icon
-            className={styles.accountRowIcon}
-            slot="start"
-            icon="symbol-method"
-          />
-          <div className={styles.accountRowProject}>
-            {!projectId ? (
-              <ConnectProject userEmail={userEmail} />
-            ) : (
-              <ProjectInfo projectId={projectId} />
-            )}
-          </div>
-        </Label>
-        <IconButton
-          tooltip="Switch projects"
-          icon="arrow-swap"
-          onClick={() => initProjectSelection(userEmail)}
-        />
-      </div>
       <div className={styles.accountRow}>
         <Label className={styles.accountRowLabel}>
           <Icon className={styles.accountRowIcon} slot="start" icon="account" />
-          {!allUserEmails.length && (
-            <VSCodeLink onClick={() => broker.send("addUser")}>
-              Sign in with Google
-            </VSCodeLink>
+          {!allUsers && (
+            <>
+              {"checking login "}
+            </>
           )}
-          {!!allUserEmails.length && (
-            <>{!userEmail ? "Loading user..." : userEmail}</>
+          {allUsers && !allUsers.length && (
+            <VSCodeLink onClick={() => broker.send("addUser")}>Sign in with Google</VSCodeLink>
           )}
+          {allUsers && userEmail}
         </Label>
-        {!!allUserEmails.length && (
+        {!allUsers && (<Label>
+          <VSCodeProgressRing />
+        </Label>)}
+        {allUsers && !!allUsers.length && (
           <>
             <IconButton
               tooltip="Account options"
@@ -63,25 +44,24 @@ export function AccountSection({
             {userDropdownVisible ? (
               <UserSelectionMenu
                 userEmail={userEmail}
-                allUserEmails={allUserEmails}
+                allUsers={allUsers}
                 onClose={() => toggleUserDropdown(false)}
               />
             ) : null}
           </>
         )}
       </div>
-    </>
   );
 }
 
 // TODO(roman): Convert to a better menu
 function UserSelectionMenu({
   userEmail,
-  allUserEmails,
+  allUsers,
   onClose,
 }: {
   userEmail: string;
-  allUserEmails: string[];
+  allUsers: Array<User | ServiceAccountUser>;
   onClose: Function;
 }) {
   return (
@@ -96,26 +76,31 @@ function UserSelectionMenu({
           Sign in another user...
         </MenuItem>
         <VSCodeDivider />
-        {allUserEmails.map((email, i) => (
+        {allUsers.map((user) => (
           <MenuItem
             onClick={() => {
-              broker.send("requestChangeUser", email);
+              broker.send("requestChangeUser", user);
               onClose();
             }}
-            key={i}
+            key={user.email}
           >
-            {email}
+            {user.email}
           </MenuItem>
         ))}
         <VSCodeDivider />
-        <MenuItem
-          onClick={() => {
-            broker.send("logout", userEmail);
-            onClose();
-          }}
-        >
-          Sign Out
-        </MenuItem>
+        {
+          // You can't log out of a service account
+          userEmail !== "service_account" && (
+            <MenuItem
+              onClick={() => {
+                broker.send("logout", userEmail);
+                onClose();
+              }}
+            >
+              Sign Out {userEmail}
+            </MenuItem>
+          )
+        }
       </PopupMenu>
     </>
   );

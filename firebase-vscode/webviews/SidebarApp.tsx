@@ -16,51 +16,51 @@ import { User } from "../../src/types/auth";
 import { FirebaseRC } from "../../src/firebaserc";
 import { PanelSection } from "./components/ui/PanelSection";
 import { AccountSection } from "./components/AccountSection";
-import { initProjectSelection } from "./components/ProjectSection";
+import { ProjectSection, initProjectSelection } from "./components/ProjectSection";
 import { FirebaseConfig } from "../../src/firebaseConfig";
+import { ServiceAccountUser } from "../common/types";
 
 export function SidebarApp() {
-  let [projectId, setProjectId] = useState<string | null>(null);
-  let [hostingState, setHostingState] = useState<
-    null | "deploying" | "deployed"
-  >(null);
-  let [userEmail, setUserEmail] = useState<string | null>(null);
-  let [allUsers, setAllUserEmails] = useState<string[]>([]);
-  let [isHostingOnboarded, setHostingOnboarded] = useState<boolean>(false);
+  const [projectId, setProjectId] = useState<string | null>(null);
+  const [hostingState, setHostingState] = useState<null | "deploying" | "deployed">(null);
+  const [env, setEnv] = useState<{ isMonospace: boolean }>();
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [allUsers, setAllUsers] = useState<Array<ServiceAccountUser | User> | null>(null);
+  const [isHostingOnboarded, setHostingOnboarded] = useState<boolean>(false);
 
   useEffect(() => {
-    console.log('loading SidebarApp component');
+    console.log("loading SidebarApp component");
+    broker.send("getEnv");
     broker.send("getUsers");
     broker.send("getFirebaseJson");
     broker.send("getSelectedProject");
 
-    broker.on(
-      "notifyFirebaseJson",
-      (firebaseJson: FirebaseConfig, firebaseRC: FirebaseRC) => {
-        console.log("got firebase hosting", firebaseJson?.hosting);
-        if (firebaseJson?.hosting) {
-          console.log("Detected hosting setup");
-          setHostingOnboarded(true);
-          broker.send(
-            "showMessage",
-            "Auto-detected hosting setup in this folder"
-          );
-        } else {
-          setHostingOnboarded(false);
-        }
+    broker.on("notifyEnv", (env) => {
+      console.log("notifyEnv()");
+      setEnv(env);
+    });
 
-        if (firebaseRC.projects?.default) {
-          console.log("Detected project setup from existing firebaserc");
-          setProjectId(firebaseRC.projects.default);
-        } else {
-          setProjectId(null);
-        }
+    broker.on("notifyFirebaseJson", (firebaseJson: FirebaseConfig, firebaseRC: FirebaseRC) => {
+      console.log("got firebase hosting", firebaseJson?.hosting);
+      if (firebaseJson?.hosting) {
+        console.log("Detected hosting setup");
+        setHostingOnboarded(true);
+        broker.send("showMessage", "Auto-detected hosting setup in this folder");
+      } else {
+        setHostingOnboarded(false);
       }
-    );
+
+      if (firebaseRC.projects?.default) {
+        console.log("Detected project setup from existing firebaserc");
+        setProjectId(firebaseRC.projects.default);
+      } else {
+        setProjectId(null);
+      }
+    });
 
     broker.on("notifyUsers", (users: User[]) => {
-      console.log('notifyUsers()');
-      setAllUserEmails(users.map((user) => user.email));
+      console.log("notifyUsers()");
+      setAllUsers(users);
     });
 
     broker.on("notifyProjects", (email: string, projects: ProjectInfoType[]) => {
@@ -92,25 +92,28 @@ export function SidebarApp() {
   }, []);
 
   const setupHosting = () => {
-    if (projectId && userEmail) {
-      broker.send(
-        "selectAndInitHostingFolder",
-        projectId,
-        userEmail!, // Safe to assume user email is already there
-        true
-      );
-    }
+    broker.send(
+      "selectAndInitHostingFolder",
+      projectId,
+      userEmail!, // Safe to assume user email is already there
+      true
+    );
   };
+
+  const accountSection = env && !env.isMonospace && (
+    <AccountSection userEmail={userEmail} allUsers={allUsers} />
+  );
+
+  // Just render the account section loading view if it doesn't know user state
+  if (allUsers === null) {
+    return accountSection;
+  }
 
   return (
     <>
       <Spacer size="medium" />
-      <AccountSection
-        userEmail={userEmail}
-        allUserEmails={allUsers}
-        projectId={projectId}
-      />
-
+      {accountSection}
+      <ProjectSection userEmail={userEmail} projectId={projectId} />
       {isHostingOnboarded && !!projectId && (
         <>
           <VSCodeDivider style={{ width: "100vw" }} />
@@ -132,11 +135,7 @@ export function SidebarApp() {
                   <div>
                     <Label level={3} className={styles.hostingRowLabel}>
                       <Spacer size="xsmall" />
-                      <Icon
-                        className={styles.hostingRowIcon}
-                        slot="start"
-                        icon="globe"
-                      ></Icon>
+                      <Icon className={styles.hostingRowIcon} slot="start" icon="globe"></Icon>
                       {projectId}.web.app
                     </Label>
                   </div>
@@ -147,10 +146,7 @@ export function SidebarApp() {
                   <Spacer size="medium" />
                   <div className={styles.integrationStatus}>
                     <VSCodeProgressRing
-                      className={cn(
-                        styles.integrationStatusIcon,
-                        styles.integrationStatusLoading
-                      )}
+                      className={cn(styles.integrationStatusIcon, styles.integrationStatusLoading)}
                     />
                     <Label level={3}> Deploying...</Label>
                   </div>
@@ -161,14 +157,8 @@ export function SidebarApp() {
                   <Spacer size="medium" />
                   <Label level={3} className={styles.hostingRowLabel}>
                     <Spacer size="xsmall" />
-                    <Icon
-                      className={styles.hostingRowIcon}
-                      slot="start"
-                      icon="globe"
-                    ></Icon>
-                    <VSCodeLink
-                      href={`https://${projectId}.web.app`}
-                    >
+                    <Icon className={styles.hostingRowIcon} slot="start" icon="globe"></Icon>
+                    <VSCodeLink href={`https://${projectId}.web.app`}>
                       {projectId}.web.app
                     </VSCodeLink>
                   </Label>
@@ -182,13 +172,21 @@ export function SidebarApp() {
       <MoreFromFirebase
         isStart={!isHostingOnboarded}
         onHostingInit={() => {
-          if (projectId && userEmail) {
-            setupHosting();
-          } else {
-            initProjectSelection(userEmail);
-            /** The second thing doesn't actually happen I think it needs to await the first thing being done */
-            setupHosting();
+          if (!userEmail) {
+            broker.send("showMessage", "Not logged in", {
+              modal: true,
+              detail: `Log in by clicking "Sign in with Google" in the sidebar.`,
+            });
+            return;
           }
+          if (!projectId) {
+            broker.send("showMessage", "No project selected", {
+              modal: true,
+              detail: `Select a project in the sidebar.`,
+            });
+            return;
+          }
+          setupHosting();
         }}
       />
     </>
@@ -209,13 +207,9 @@ function MoreFromFirebase({
           <>
             <Body>Choose a path below to get started</Body>
             <Spacer size="medium" />
-            <VSCodeButton onClick={() => onHostingInit()}>
-              Host your web app
-            </VSCodeButton>
+            <VSCodeButton onClick={() => onHostingInit()}>Host your web app</VSCodeButton>
             <Spacer size="medium" />
-            <Body>
-              Free web hosting with a world-class CDN for peak performance
-            </Body>
+            <Body>Free web hosting with a world-class CDN for peak performance</Body>
             <Spacer size="large" />
           </>
         )}
@@ -241,4 +235,3 @@ function MoreFromFirebase({
     </>
   );
 }
-

@@ -63,10 +63,15 @@ export function updateOptions(
         ...firebaseJSON.hosting
       };
     }
+  } else {
+    currentOptions.configPath = '';
   }
   if (firebaseRC) {
     currentOptions.rc = new RC(`${currentOptions.cwd}/.firebaserc`, firebaseRC);
     currentOptions.project = firebaseRC.projects?.default;
+  } else {
+    currentOptions.rc = null;
+    currentOptions.project = '';
   }
   context.globalState.setKeysForSync(['currentOptions']);
   context.globalState.update('currentOptions', currentOptions);

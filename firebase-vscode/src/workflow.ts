@@ -7,18 +7,19 @@ import {
   writeFirebaseRCFile,
 } from "./utils";
 import { ExtensionBrokerImpl } from "./extension-broker";
-import { deployToHosting, getUsers, listProjects, login, logoutUser, initHosting } from "./cli";
+import { deployToHosting, getAccounts, listProjects, login, logoutUser, initHosting } from "./cli";
 import { User } from "../../src/types/auth";
 import { FirebaseRC } from "../../src/firebaserc";
 import { FirebaseConfig } from "../../src/firebaseConfig";
 import { currentOptions, updateOptions } from "./options";
+import { ServiceAccountUser } from "./types";
 
 let firebaseRC: FirebaseRC | null = null;
 let firebaseJSON: FirebaseConfig | null = null;
 let extensionContext: ExtensionContext = null;
 
 function processCurrentUser(
-  currentUserEmail: string,
+  currentUserEmail: string | null,
   users: User[],
   broker: ExtensionBrokerImpl
 ) {
@@ -71,9 +72,13 @@ export function setupWorkflow(
   // Stores a mapping from user email to list of projects for that user
   let projectsUserMapping = new Map<string, FirebaseProjectMetadata[]>();
 
+  broker.on("getEnv", async () => {
+    broker.send("notifyEnv", { isMonospace: Boolean(process.env.MONOSPACE_ENV) });
+  });
+
   broker.on("getUsers", async () => {
     if (users.length === 0) {
-      const accounts = await getUsers();
+      const accounts = await getAccounts();
       users = accounts.map(account => account.user);
     }
     broker.send("notifyUsers", users);
@@ -83,8 +88,10 @@ export function setupWorkflow(
   broker.on("logout", async (email: string) => {
     try {
       await logoutUser(email);
-      users = [];
+      const accounts = await getAccounts();
+      users = accounts.map(account => account.user);
       broker.send("notifyUsers", users);
+      currentUserEmail = processCurrentUser(null, users, broker);
     } catch(e) {
       // ignored
     }
@@ -99,10 +106,17 @@ export function setupWorkflow(
   });
 
   broker.on("projectPicker", async (projects: FirebaseProjectMetadata[]) => {
+    // Put in a separate flow for monospace.
+    // process.env.MONOSPACE_ENV should be directly accessible here
     const items = projects.map(({ projectId }) => projectId);
     vscode.window.showQuickPick(items).then(async (projectId) => {
       const project = projects.find((p) => p.projectId === projectId);
       if (!project) {
+        if (firebaseRC?.projects?.default) {
+          // Don't show an error message if a project was previously selected,
+          // just do nothing.
+          return;
+        }
         vscode.window.showErrorMessage(
           "Invalid project selected. Please select a project to proceed"
         );
@@ -113,8 +127,8 @@ export function setupWorkflow(
     });
   });
 
-  broker.on("showMessage", async (msg) => {
-    vscode.window.showInformationMessage(msg);
+  broker.on("showMessage", async (msg, options) => {
+    vscode.window.showInformationMessage(msg, options);
   });
 
   broker.on("addUser", async () => {
@@ -122,27 +136,33 @@ export function setupWorkflow(
     users.push(user as User);
     if (users) {
       broker.send("notifyUsers", users);
-      currentUserEmail = processCurrentUser(currentUserEmail, users, broker);
+      currentUserEmail = processCurrentUser((user as User).email, users, broker);
     }
   });
 
-  broker.on("requestChangeUser", (email: string) => {
-    if (users.some((user) => user.email === email)) {
-      currentUserEmail = email;
+  broker.on("requestChangeUser", (requestedUser: User | ServiceAccountUser) => {
+    if (users.some((user) => user.email === requestedUser.email)) {
+      currentUserEmail = requestedUser.email;
       broker.send("notifyUserChanged", currentUserEmail);
     }
   });
 
   broker.on("getProjects", async (email) => {
+    // Put in a separate flow for monospace.
+    // process.env.MONOSPACE_ENV should be directly accessible here
     if (projectsUserMapping.has(email)) {
       console.log(`using cached projects list for ${email}`);
       const projects = projectsUserMapping.get(email)!;
+      // Not sure why we are doing this, it just has the webview do a console.log
+      // and then sends a message right back to the extension to do a projectPicker
       broker.send("notifyProjects", email, projects);
     } else {
       console.log(`fetching projects list for ${email}`);
       vscode.window.showQuickPick(["Loading...."]);
       const projects = (await listProjects()) as FirebaseProjectMetadata[];
       projectsUserMapping.set(email, projects);
+      // Not sure why we are doing this, it just has the webview do a console.log
+      // and then sends a message right back to the extension to do a projectPicker
       broker.send("notifyProjects", email, projects);
     }
   });
@@ -162,7 +182,11 @@ export function setupWorkflow(
         const publicFolder = publicFolderFull.substring(
           currentOptions.cwd.length + 1
         );
-        await initHosting({ spa: singleAppSupport, public: publicFolder });
+        await initHosting({
+          spa: singleAppSupport,
+          public: publicFolder
+        });
+        readAndSendFirebaseConfigs(broker);
         broker.send("notifyHostingFolderReady", projectId, currentOptions.cwd);
       }
     }

@@ -1,13 +1,50 @@
 import { VSCodeLink } from "@vscode/webview-ui-toolkit/react";
 import { broker } from "../globals/html-broker";
+import { IconButton } from "./ui/IconButton";
+import { Icon } from "./ui/Icon";
+import { Label } from "./ui/Text";
 import React from "react";
+import styles from "./AccountSection.scss";
+import { ServiceAccountUser } from "../../common/types";
+import { User } from "../../../src/types/auth";
+
+export function ProjectSection({
+  userEmail,
+  projectId,
+}: {
+  userEmail: string | null;
+  projectId: string | null | undefined;
+}) {
+  return (
+    <div className={styles.accountRow}>
+      <Label className={styles.accountRowLabel}>
+        <Icon className={styles.accountRowIcon} slot="start" icon="symbol-method" />
+        <div className={styles.accountRowProject}>
+          {!projectId ? (
+            <ConnectProject userEmail={userEmail} />
+          ) : (
+            <ProjectInfo projectId={projectId} />
+          )}
+        </div>
+      </Label>
+      <IconButton
+        tooltip="Switch projects"
+        icon="arrow-swap"
+        onClick={() => initProjectSelection(userEmail)}
+      />
+    </div>
+    );
+}
 
 export function initProjectSelection(userEmail: string | null) {
   if (userEmail) {
     broker.send("getProjects", userEmail);
   } else {
-    // Trigger login flow
-    broker.send("addUser");
+    broker.send("showMessage", "Not logged in", {
+      modal: true,
+      detail: `Log in to allow project selection. Click "Sign in with Google" in the sidebar.`,
+    });
+    return;
   }
 }
 

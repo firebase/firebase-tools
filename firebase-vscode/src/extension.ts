@@ -2,7 +2,6 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
 
-import { getGlobalDefaultAccount, loginAdditionalAccount} from '../../src/auth';
 import { ExtensionBroker } from './extension-broker';
 import { createBroker } from '../common/messaging/broker';
 import { ExtensionToWebview, WebviewToExtension } from '../common/messaging/protocol';
