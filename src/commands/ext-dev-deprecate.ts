@@ -6,10 +6,16 @@ import * as utils from "../utils";
 import { Command } from "../command";
 import { promptOnce } from "../prompt";
 import { ensureExtensionsApiEnabled, logPrefix } from "../extensions/extensionsHelper";
-import { deprecateExtensionVersion, listExtensionVersions } from "../extensions/extensionsApi";
-import { parseVersionPredicate } from "../extensions/versionHelper";
+import { deprecateExtensionVersion, getExtension, listExtensionVersions } from "../extensions/extensionsApi";
+import { parseVersionPredicate, VersionPredicate } from '../extensions/versionHelper';
 import { requireAuth } from "../requireAuth";
 import { FirebaseError } from "../error";
+import { Options } from '../options';
+
+interface ExtDevDeprecateOptions extends Options {
+  delete: boolean,
+  message: string,
+}
 
 /**
  * Deprecate all extension versions that match the version predicate.
@@ -17,14 +23,24 @@ import { FirebaseError } from "../error";
 export const command = new Command("ext:dev:deprecate <extensionRef> <versionPredicate>")
   .description("deprecate extension versions that match the version predicate")
   .option("-m, --message <deprecationMessage>", "deprecation message")
+  .option("-d, --delete", "delete the entire extension instead of deprecating it")
   .option(
     "-f, --force",
     "override deprecation message for existing deprecated extension versions that match"
   )
   .before(requireAuth)
   .before(ensureExtensionsApiEnabled)
-  .action(async (extensionRef: string, versionPredicate: string, options: any) => {
-    const { publisherId, extensionId, version } = refs.parse(extensionRef);
+  .action(async (extensionRef: string, versionPredicate: string, options: ExtDevDeprecateOptions) => {
+    const ref = refs.parse(extensionRef);
+    if (options.delete) {
+      return deleteExtension(ref, options);
+    } else {
+      return deprecate(ref, versionPredicate, options);
+    }
+  });
+
+  async function deprecate(extensionRef: refs.Ref, versionPredicate: string, options: ExtDevDeprecateOptions) {
+    const { publisherId, extensionId, version } = extensionRef
     if (version) {
       throw new FirebaseError(
         `The input extension reference must be of the format ${clc.bold(
@@ -35,13 +51,15 @@ export const command = new Command("ext:dev:deprecate <extensionRef> <versionPre
     if (!publisherId || !extensionId) {
       throw new FirebaseError(
         `Error parsing publisher ID and extension ID from extension reference '${clc.bold(
-          extensionRef
+          refs.toExtensionRef(extensionRef)
         )}'. Please use the format '${clc.bold("<publisherId>/<extensionId>")}'.`
       );
     }
+
+    // Error out if --delete and version predicate isn't *
     const { comparator, targetSemVer } = parseVersionPredicate(versionPredicate);
     const filter = `id${comparator}"${targetSemVer}"`;
-    const extensionVersions = await listExtensionVersions(extensionRef, filter);
+    const extensionVersions = await listExtensionVersions(refs.toExtensionRef(extensionRef), filter);
     const filteredExtensionVersions = extensionVersions
       .sort((ev1, ev2) => {
         return -semver.compare(ev1.spec.version, ev2.spec.version);
@@ -73,8 +91,37 @@ export const command = new Command("ext:dev:deprecate <extensionRef> <versionPre
     }
     await utils.allSettled(
       filteredExtensionVersions.map(async (extensionVersion) => {
-        await deprecateExtensionVersion(extensionVersion.ref, options.deprecationMessage);
+        await deprecateExtensionVersion(extensionVersion.ref, options.message);
       })
     );
     utils.logLabeledSuccess(logPrefix, "successfully deprecated extension version(s).");
-  });
+  }
+
+
+async function deleteExtension(extensionRef: refs.Ref, versionPredicate: string, options: ExtDevDeprecateOptions) {
+  const extRef = refs.toExtensionRef(extensionRef)
+  utils.logLabeledWarning(
+    logPrefix,
+    "If you delete this extension, developers won't be able to install it. " +
+      "For developers who currently have this extension installed, " +
+      "it will continue to run and will appear as unpublished when " +
+      "listed in the Firebase console or Firebase CLI."
+  );
+  utils.logLabeledWarning(
+    "This is a permanent action",
+    `Once deleted, you may never use the extension name '${clc.bold(extRef)}' again.`
+  );
+  await getExtension(refs.toExtensionRef(extensionRef));
+  const message = `You are about to delete ALL versions of ${clc.green(
+    extRef
+  )}.\nDo you wish to continue? `;
+  if (!options.force && await promptOnce({
+    type: "confirm",
+    message,
+    default: false, // Force users to explicitly type 'yes'
+  })) {
+    throw new FirebaseError("deletion cancelled.");
+  }
+  await deleteExtension(extensionRef, options);
+  utils.logLabeledSuccess(logPrefix, `successfully deleted ${extRef}}`);
+};

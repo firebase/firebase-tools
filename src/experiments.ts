@@ -30,16 +30,6 @@ export const ALL_EXPERIMENTS = experiments({
   rtdbmanagement: {
     shortDescription: "Use new endpoint to administer realtime database instances",
   },
-
-  // Extensions experiments
-  ext: {
-    shortDescription: `Enables the ${bold("ext:sources:create")} command`,
-  },
-  extdev: {
-    shortDescription: `Enables the ${bold("ext:dev")} family of commands`,
-    docsUri: "https://firebase.google.com/docs/extensions/alpha/overview-build-extensions",
-  },
-
   // Cloud Functions for Firebase experiments
   pythonfunctions: {
     shortDescription: "Python support for Cloud Functions for Firebase",

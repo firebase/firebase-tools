@@ -18,13 +18,13 @@ marked.setOptions({
 /**
  * Command for publishing an extension version.
  */
-export const command = new Command("ext:dev:publish <extensionRef>")
-  .description(`publish a new version of an extension`)
+export const command = new Command("ext:dev:upload <extensionRef>")
+  .description(`upload a new version of an extension`)
   .option(`-s, --stage <stage>`, `release stage (supports "rc", "alpha", "beta", and "stable")`)
   .withForce()
   .help(
-    "if you have not previously published a version of this extension, this will " +
-      "create the extension. If you have previously published a version of this extension, this version must " +
+    "if you have not previously uploaded a version of this extension, this will " +
+      "create the extension. If you have previously uploaded a version of this extension, this version must " +
       "be greater than previous versions."
   )
   .before(requireAuth)
