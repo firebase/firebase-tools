@@ -4,10 +4,10 @@ import * as semver from "semver";
 import * as refs from "../extensions/refs";
 import * as utils from "../utils";
 import { Command } from "../command";
-import { promptOnce } from "../prompt";
+import { confirm } from "../prompt";
 import { ensureExtensionsApiEnabled, logPrefix } from "../extensions/extensionsHelper";
-import { deprecateExtensionVersion, getExtension, listExtensionVersions } from "../extensions/extensionsApi";
-import { parseVersionPredicate, VersionPredicate } from '../extensions/versionHelper';
+import { deleteExtension, deprecateExtensionVersion, getExtension, listExtensionVersions } from "../extensions/extensionsApi";
+import { parseVersionPredicate } from '../extensions/versionHelper';
 import { requireAuth } from "../requireAuth";
 import { FirebaseError } from "../error";
 import { Options } from '../options';
@@ -33,7 +33,7 @@ export const command = new Command("ext:dev:deprecate <extensionRef> <versionPre
   .action(async (extensionRef: string, versionPredicate: string, options: ExtDevDeprecateOptions) => {
     const ref = refs.parse(extensionRef);
     if (options.delete) {
-      return deleteExtension(ref, options);
+      return deleteExt(ref, versionPredicate, options);
     } else {
       return deprecate(ref, versionPredicate, options);
     }
@@ -74,17 +74,13 @@ export const command = new Command("ext:dev:deprecate <extensionRef> <versionPre
         return true;
       });
     if (filteredExtensionVersions.length > 0) {
-      if (!options.force) {
-        const confirmMessage =
-          "You are about to deprecate these extension version(s). Do you wish to continue?";
-        const consent = await promptOnce({
-          type: "confirm",
-          message: confirmMessage,
-          default: false,
-        });
-        if (!consent) {
-          throw new FirebaseError("Deprecation canceled.");
-        }
+      const consent = await confirm({
+        default: false,
+        force: options.force,
+        nonInteractive: options.nonInteractive,
+      });
+      if (!consent) {
+        throw new FirebaseError("Deprecation canceled.");
       }
     } else {
       throw new FirebaseError("No extension versions matched the version predicate.");
@@ -98,7 +94,10 @@ export const command = new Command("ext:dev:deprecate <extensionRef> <versionPre
   }
 
 
-async function deleteExtension(extensionRef: refs.Ref, versionPredicate: string, options: ExtDevDeprecateOptions) {
+async function deleteExt(extensionRef: refs.Ref, versionPredicate: string, options: ExtDevDeprecateOptions) {
+  if (versionPredicate) {
+    throw new FirebaseError("")
+  }
   const extRef = refs.toExtensionRef(extensionRef)
   utils.logLabeledWarning(
     logPrefix,
@@ -108,20 +107,21 @@ async function deleteExtension(extensionRef: refs.Ref, versionPredicate: string,
       "listed in the Firebase console or Firebase CLI."
   );
   utils.logLabeledWarning(
-    "This is a permanent action",
+    logPrefix,
+    "This is a permanent action" +
     `Once deleted, you may never use the extension name '${clc.bold(extRef)}' again.`
   );
   await getExtension(refs.toExtensionRef(extensionRef));
-  const message = `You are about to delete ALL versions of ${clc.green(
+  utils.logLabeledWarning(logPrefix, `You are about to delete ALL versions of ${clc.green(
     extRef
-  )}.\nDo you wish to continue? `;
-  if (!options.force && await promptOnce({
-    type: "confirm",
-    message,
-    default: false, // Force users to explicitly type 'yes'
+  )}`);
+  if (!await confirm({
+    default: false,
+    force: options.force,
+    nonInteractive: options.nonInteractive,
   })) {
     throw new FirebaseError("deletion cancelled.");
   }
-  await deleteExtension(extensionRef, options);
+  await deleteExtension(extRef);
   utils.logLabeledSuccess(logPrefix, `successfully deleted ${extRef}}`);
 };
