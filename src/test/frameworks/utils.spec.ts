@@ -10,17 +10,7 @@ describe("Frameworks utils", () => {
   describe("getNodeModuleBin", () => {
     it("should return expected tsc path", () => {
       expect(getNodeModuleBin("tsc", __dirname)).to.equal(
-        resolve(
-          join(
-            __dirname,
-            "..",
-            "..",
-            "..",
-            "node_modules",
-            ".bin",
-            "tsc",
-          )
-        )
+        resolve(join(__dirname, "..", "..", "..", "node_modules", ".bin", "tsc"))
       );
     });
     it("should throw when npm root not found", () => {
