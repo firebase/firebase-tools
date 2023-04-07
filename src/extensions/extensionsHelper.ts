@@ -6,8 +6,7 @@ import * as fs from "fs-extra";
 import * as unzipper from "unzipper";
 import fetch from "node-fetch";
 import * as path from "path";
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
-const { marked } = require("marked");
+import { marked } from "marked";
 
 const TerminalRenderer = require("marked-terminal");
 marked.setOptions({

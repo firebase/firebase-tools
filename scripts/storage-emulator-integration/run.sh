@@ -2,7 +2,7 @@
 set -e # Immediately exit on failure
 
 # Globally link the CLI for the testing framework
-./scripts/npm-link.sh
+./scripts/clean-install.sh
 
 # Set application default credentials.
 source scripts/set-default-credentials.sh
@@ -19,4 +19,3 @@ mocha scripts/storage-emulator-integration/internal/tests.ts
 mocha scripts/storage-emulator-integration/multiple-targets/tests.ts
 
 mocha scripts/storage-emulator-integration/conformance/*.test.ts
-

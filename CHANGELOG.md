@@ -1,1 +1,4 @@
-- Fix bug where CLI was unable to deploy Firebase Functions in some monorepo setups (#5391)
+- Fix bug where functions shell failed to invoke event triggered functions in debug mode. (#5609)
+- Fixed bug with the web frameworks proxy that could see unexpected 404 errors while emulating. (#5525)
+- Added experimental support for SvelteKit codebases. (#5525)
+- Fix bug where eagerly initializing UA failed function deployment that imported firebase-tools as a library. (#5666)

@@ -3,7 +3,7 @@ import * as spawn from "cross-spawn";
 import * as fs from "fs-extra";
 import * as os from "os";
 import * as path from "path";
-import Table = require("cli-table");
+const Table = require("cli-table");
 
 import * as planner from "../deploy/extensions/planner";
 import { enableApiURI } from "../ensureApiEnabled";
@@ -230,15 +230,16 @@ export class ExtensionsEmulator implements EmulatorInstance {
     const functionsDir = path.join(extensionDir, "functions");
     // TODO(b/213335255): For local extensions, this should include extensionSpec instead of extensionVersion
     const env = Object.assign(this.autoPopulatedParams(instance), instance.params);
-    const { extensionTriggers, nodeMajorVersion, nonSecretEnv, secretEnvVariables } =
+    const { extensionTriggers, runtime, nonSecretEnv, secretEnvVariables } =
       await getExtensionFunctionInfo(instance, env);
     const emulatableBackend: EmulatableBackend = {
       functionsDir,
+      runtime,
+      bin: process.execPath,
       env: nonSecretEnv,
       codebase: instance.instanceId, // Give each extension its own codebase name so that they don't share workerPools.
       secretEnv: secretEnvVariables,
       predefinedTriggers: extensionTriggers,
-      nodeMajorVersion: nodeMajorVersion,
       extensionInstanceId: instance.instanceId,
     };
     if (instance.ref) {

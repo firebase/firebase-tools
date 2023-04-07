@@ -65,9 +65,8 @@ export interface ExtensionConfig {
   name: string;
   createTime: string;
   source: ExtensionSource;
-  params: {
-    [key: string]: any;
-  };
+  params: Record<string, string>;
+  systemParams: Record<string, string>;
   populatedPostinstallContent?: string;
   extensionRef?: string;
   extensionVersion?: string;
@@ -102,6 +101,7 @@ export interface ExtensionSpec {
   releaseNotesUrl?: string;
   sourceUrl?: string;
   params: Param[];
+  systemParams: Param[];
   preinstallContent?: string;
   postinstallContent?: string;
   readmeContent?: string;
@@ -223,6 +223,7 @@ export interface Param {
   validationErrorMessage?: string;
   immutable?: boolean;
   example?: string;
+  advanced?: boolean;
 }
 
 export enum ParamType {

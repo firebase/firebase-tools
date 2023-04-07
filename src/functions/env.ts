@@ -45,7 +45,7 @@ const RESERVED_KEYS = [
 const LINE_RE = new RegExp(
   "^" +                      // begin line
   "\\s*" +                   //   leading whitespaces
-  "(\\w+)" +                 //   key
+  "([\\w./]+)" +                 //   key
   "\\s*=[\\f\\t\\v]*" +              //   separator (=)
   "(" +                      //   begin optional value
   "\\s*'(?:\\\\'|[^'])*'|" + //     single quoted or

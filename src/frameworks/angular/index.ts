@@ -1,6 +1,7 @@
 import type { Target } from "@angular-devkit/architect";
 import { join } from "path";
-import { execSync, spawn } from "child_process";
+import { execSync } from "child_process";
+import { spawn } from "cross-spawn";
 import { copy, pathExists } from "fs-extra";
 import { mkdir } from "fs/promises";
 
@@ -13,8 +14,7 @@ import {
   SupportLevel,
 } from "..";
 import { promptOnce } from "../../prompt";
-import { proxyRequestHandler } from "../../hosting/proxy";
-import { warnIfCustomBuildScript } from "../utils";
+import { simpleProxy, warnIfCustomBuildScript } from "../utils";
 
 export const name = "Angular";
 export const support = SupportLevel.Experimental;
@@ -31,10 +31,14 @@ export async function discover(dir: string): Promise<Discovery | undefined> {
   return { mayWantBackend: !!serverTarget, publicDirectory: join(dir, "src", "assets") };
 }
 
-export async function init(setup: any) {
-  execSync(`npx --yes -p @angular/cli@latest ng new ${setup.hosting.source} --skip-git`, {
-    stdio: "inherit",
-  });
+export async function init(setup: any, config: any) {
+  execSync(
+    `npx --yes -p @angular/cli@latest ng new ${setup.projectId} --directory ${setup.hosting.source} --skip-git`,
+    {
+      stdio: "inherit",
+      cwd: config.projectDir,
+    }
+  );
   const useAngularUniversal = await promptOnce({
     name: "useAngularUniversal",
     type: "confirm",
@@ -44,7 +48,7 @@ export async function init(setup: any) {
   if (useAngularUniversal) {
     execSync("ng add @nguniversal/express-engine --skip-confirmation", {
       stdio: "inherit",
-      cwd: setup.hosting.source,
+      cwd: join(config.projectDir, setup.hosting.source),
     });
   }
 }
@@ -101,7 +105,7 @@ export async function getDevModeHandle(dir: string) {
       process.stderr.write(data);
     });
   });
-  return proxyRequestHandler(await host, "Angular Live Development Server", { forceCascade: true });
+  return simpleProxy(await host);
 }
 
 export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: string) {
