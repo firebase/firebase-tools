@@ -1,3 +1,6 @@
-- The hosting emulator integration with web frameworks now has improved support for HMR and dev-tools. (#5582)
-- Fixes an issue where `init hosting:github` would hang if it could not access a repository's public key. (#5317)
-- Release Firestore Emulator v1.16.2 which captures an HTTP1 header fix and requests monitor fix.
+- Fix bug where functions shell failed to invoke event triggered functions in debug mode. (#5609)
+- Fixed bug with the web frameworks proxy that could see unexpected 404 errors while emulating. (#5525)
+- Added experimental support for SvelteKit codebases. (#5525)
+- Allow usage of Angular and Vite within an NPM workspace. (#5640)
+- Force Vite to build the production bundle when deploying to Hosting. (#5640)
+- Fix bug where eagerly initializing UA failed function deployment that imported firebase-tools as a library. (#5666)
