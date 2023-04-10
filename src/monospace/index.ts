@@ -109,7 +109,7 @@ async function getInitFirebaseResponse(rid: string): Promise<GetInitFirebaseResp
     `http://localhost:${MONOSPACE_DAEMON_PORT}/get-init-firebase-response?rid=${rid}`
   );
 
-  const getInitFirebaseJson = await getInitFirebaseRes.json();
+  const getInitFirebaseJson: GetInitFirebaseResponse = await getInitFirebaseRes.json();
 
   return getInitFirebaseJson;
 }
