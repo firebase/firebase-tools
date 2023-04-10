@@ -14,7 +14,7 @@ import { nuxtConfigFilesExist } from "./utils";
 import type { NuxtDependency, NuxtOptions } from "./interfaces";
 
 const DEFAULT_BUILD_SCRIPT = ["nuxt build"];
-const CLI_COMMAND = join("node_modules", ".bin", "nuxt");
+export const CLI_COMMAND = join("node_modules", ".bin", "nuxt");
 
 /**
  *

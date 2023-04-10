@@ -1,11 +1,14 @@
 import { expect } from "chai";
-// import * as fs from "fs";
-import * as fsExtra from "fs-extra";
 import * as sinon from "sinon";
-import * as frameworksFunctions from "../../../frameworks";
+import { EventEmitter } from "events";
+import type { ChildProcess } from "child_process";
+import { Readable, Writable } from "stream";
+import * as fsExtra from "fs-extra";
+import * as crossSpawn from "cross-spawn";
 
+import * as frameworksFunctions from "../../../frameworks";
 import { discover as discoverNuxt2 } from "../../../frameworks/nuxt2";
-import { discover as discoverNuxt3 } from "../../../frameworks/nuxt";
+import { discover as discoverNuxt3, getDevModeHandle, CLI_COMMAND } from "../../../frameworks/nuxt";
 import type { NuxtOptions } from "../../../frameworks/nuxt/interfaces";
 import { nuxtOptions } from "./helpers";
 
@@ -55,6 +58,48 @@ describe("Nuxt 2 utils", () => {
         mayWantBackend: true,
         publicDirectory: "public",
       });
+    });
+  });
+
+  describe("getDevModeHandle", () => {
+    let sandbox: sinon.SinonSandbox;
+
+    beforeEach(() => {
+      sandbox = sinon.createSandbox();
+    });
+
+    afterEach(() => {
+      sandbox.restore();
+    });
+
+    it("should resolve with initial Nuxt 3 dev server output", async () => {
+      const process = new EventEmitter() as ChildProcess;
+      process.stdin = new Writable();
+      process.stdout = new EventEmitter() as Readable;
+      process.stderr = new EventEmitter() as Readable;
+
+      sandbox
+        .stub(crossSpawn, "spawn")
+        .withArgs(CLI_COMMAND, ["dev"], { cwd: "." })
+        .returns(process);
+
+      const devModeHandle = getDevModeHandle(".");
+
+      process.stdout.emit(
+        "data",
+        `Nuxi 3.0.0
+
+       WARN  Changing NODE_ENV from production to development, to avoid unintended behavior.
+
+      Nuxt 3.0.0 with Nitro 1.0.0
+
+        > Local:    http://localhost:3000/
+        > Network:  http://0.0.0.0:3000/
+        > Network:  http://[some:ipv6::::::]:3000/
+        > Network:  http://[some:other:ipv6:::::]:3000/`
+      );
+
+      await expect(devModeHandle).eventually.be.fulfilled;
     });
   });
 });
