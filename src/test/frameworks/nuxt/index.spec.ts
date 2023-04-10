@@ -10,7 +10,6 @@ import * as frameworksFunctions from "../../../frameworks";
 import { discover as discoverNuxt2 } from "../../../frameworks/nuxt2";
 import { discover as discoverNuxt3, getDevModeHandle, CLI_COMMAND } from "../../../frameworks/nuxt";
 import type { NuxtOptions } from "../../../frameworks/nuxt/interfaces";
-import { nuxtOptions } from "./helpers";
 
 describe("Nuxt 2 utils", () => {
   describe("nuxtAppDiscovery", () => {
@@ -50,7 +49,11 @@ describe("Nuxt 2 utils", () => {
         .withArgs(discoverNuxtDir, "@nuxt/kit")
         .resolves({
           loadNuxtConfig: async function (): Promise<NuxtOptions> {
-            return Promise.resolve(nuxtOptions);
+            return Promise.resolve({
+              dir: {
+                public: "public",
+              },
+            });
           },
         });
 
