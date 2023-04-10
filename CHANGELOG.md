@@ -4,3 +4,4 @@
 - Allow usage of Angular and Vite within an NPM workspace. (#5640)
 - Force Vite to build the production bundle when deploying to Hosting. (#5640)
 - Fix bug where eagerly initializing UA failed function deployment that imported firebase-tools as a library. (#5666)
+- Added ability to publish extension versions directly from GitHub. (#5160)
