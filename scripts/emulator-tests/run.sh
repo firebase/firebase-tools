@@ -5,6 +5,7 @@ set -ex
 rm -rf dev
 # Run a special build for these tests and the source code.
 tsc --build scripts/emulator-tests/tsconfig.dev.json
+cp src/dynamicImport.js dev/dynamicImport.js
 # Setup a cleanup process to run before exit.
 function cleanup() {
   # Remove the built artifacts.
