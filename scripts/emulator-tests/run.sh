@@ -5,7 +5,6 @@ set -ex
 rm -rf dev
 # Run a special build for these tests and the source code.
 tsc --build scripts/emulator-tests/tsconfig.dev.json
-cp src/dynamicImport.js dev/dynamicImport.js
 # Setup a cleanup process to run before exit.
 function cleanup() {
   # Remove the built artifacts.
@@ -14,6 +13,7 @@ function cleanup() {
 trap cleanup EXIT
 # Need to copy `package.json` to the directory so it can be referenced in code.
 cp package.json dev/package.json
+cp src/dynamicImport.js dev/src/dynamicImport.js
 
 # Install deps required to run test triggers.
 (cd scripts/emulator-tests/functions && npm ci)
