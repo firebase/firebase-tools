@@ -24,6 +24,7 @@ export interface Extension {
   createTime: string;
   latestVersion?: string;
   latestVersionCreateTime?: string;
+  repoUri?: string;
 }
 
 export interface ExtensionVersion {
@@ -36,6 +37,7 @@ export interface ExtensionVersion {
   releaseNotes?: string;
   createTime?: string;
   deprecationMessage?: string;
+  extensionRoot?: string;
 }
 
 export interface PublisherProfile {
