@@ -26,7 +26,7 @@
     "prepare": "npm run clean && npm run build:publish",
     "test": "npm run lint:quiet && npm run test:compile && npm run mocha",
     "test:client-integration": "bash ./scripts/client-integration-tests/run.sh",
-    "test:compile": "tsc --project tsconfig.compile.json",
+    "test:compile": "tsc --project tsconfig.compile.json && npm run copyfiles",
     "test:emulator": "bash ./scripts/emulator-tests/run.sh",
     "test:extensions-deploy": "bash ./scripts/extensions-deploy-tests/run.sh",
     "test:extensions-emulator": "bash ./scripts/extensions-emulator-tests/run.sh",
