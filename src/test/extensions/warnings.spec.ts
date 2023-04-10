@@ -72,38 +72,18 @@ describe("displayWarningPrompts", () => {
     logLabeledStub.restore();
   });
 
-  it("should not warn if from trusted publisher and not experimental", async () => {
+  it("should not warn if from trusted publisher", async () => {
     const publisherId = "firebase";
 
-    await warnings.displayWarningPrompts(
-      publisherId,
-      RegistryLaunchStage.BETA,
-      testExtensionVersion
-    );
+    await warnings.displayWarningPrompts(publisherId, testExtensionVersion);
 
     expect(logLabeledStub).to.not.have.been.called;
-  });
-
-  it("should warn if experimental", async () => {
-    const publisherId = "firebase";
-
-    await warnings.displayWarningPrompts(
-      publisherId,
-      RegistryLaunchStage.EXPERIMENTAL,
-      testExtensionVersion
-    );
-
-    expect(logLabeledStub).to.have.been.calledWithMatch("extensions", "experimental");
   });
 
   it("should warn if the publisher is not on the approved publisher list", async () => {
     const publisherId = "pubby-mcpublisher";
 
-    await warnings.displayWarningPrompts(
-      publisherId,
-      RegistryLaunchStage.BETA,
-      testExtensionVersion
-    );
+    await warnings.displayWarningPrompts(publisherId, testExtensionVersion);
 
     expect(logLabeledStub).to.have.been.calledWithMatch("extensions", "Early Access Program");
   });
