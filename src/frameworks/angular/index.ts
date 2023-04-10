@@ -4,18 +4,19 @@ import { execSync } from "child_process";
 import { spawn } from "cross-spawn";
 import { copy, pathExists } from "fs-extra";
 import { mkdir } from "fs/promises";
+import { sync as spawnSync } from "cross-spawn";
 
 import {
   BuildResult,
   Discovery,
   findDependency,
   FrameworkType,
-  getNodeModuleBin,
   relativeRequire,
   SupportLevel,
 } from "..";
 import { promptOnce } from "../../prompt";
-import { simpleProxy, warnIfCustomBuildScript } from "../utils";
+import { getNodeEnv, simpleProxy, warnIfCustomBuildScript } from "../utils";
+import { FirebaseError } from "../../error";
 
 export const name = "Angular";
 export const support = SupportLevel.Experimental;
@@ -53,9 +54,9 @@ export async function init(setup: any, config: any) {
   }
 }
 
-export async function build(dir: string): Promise<BuildResult> {
-  const { targetStringFromTarget } = relativeRequire(dir, "@angular-devkit/architect");
-  const { architect, browserTarget, prerenderTarget, serverTarget } = await getContext(dir);
+export async function build(cwd: string): Promise<BuildResult> {
+  const { targetStringFromTarget } = relativeRequire(cwd, "@angular-devkit/architect");
+  const { architect, browserTarget, prerenderTarget, serverTarget } = await getContext(cwd);
 
   const scheduleTarget = async (target: Target) => {
     const run = await architect.scheduleTarget(target, undefined);
@@ -63,18 +64,23 @@ export async function build(dir: string): Promise<BuildResult> {
     if (!success) throw new Error(error);
   };
 
-  await warnIfCustomBuildScript(dir, name, DEFAULT_BUILD_SCRIPT);
+  await warnIfCustomBuildScript(cwd, name, DEFAULT_BUILD_SCRIPT);
 
   if (!browserTarget) throw new Error("No build target...");
 
   if (prerenderTarget) {
     // TODO there is a bug here. Spawn for now.
     // await scheduleTarget(prerenderTarget);
-    const cli = getNodeModuleBin("ng", dir);
-    execSync(`${cli} run ${targetStringFromTarget(prerenderTarget)}`, {
-      cwd: dir,
+    const env = await getNodeEnv(cwd);
+    const target = targetStringFromTarget(prerenderTarget);
+    const prerender = spawnSync("ng", ["run", target], {
+      cwd,
       stdio: "inherit",
+      env,
     });
+    if (prerender.error) {
+      throw new FirebaseError("Unable to build your prerender target.");
+    }
   } else {
     await scheduleTarget(browserTarget);
     if (serverTarget) await scheduleTarget(serverTarget);
@@ -85,16 +91,18 @@ export async function build(dir: string): Promise<BuildResult> {
   return { wantsBackend };
 }
 
-export async function getDevModeHandle(dir: string) {
-  const { targetStringFromTarget } = relativeRequire(dir, "@angular-devkit/architect");
-  const { serveTarget } = await getContext(dir);
+export async function getDevModeHandle(cwd: string) {
+  const { targetStringFromTarget } = relativeRequire(cwd, "@angular-devkit/architect");
+  const { serveTarget } = await getContext(cwd);
   if (!serveTarget) return;
+  const env = await getNodeEnv(cwd);
+  const target = targetStringFromTarget(serveTarget);
   const host = new Promise<string>((resolve) => {
     // Can't use scheduleTarget since that—like prerender—is failing on an ESM bug
     // will just grep for the hostname
-    const cli = getNodeModuleBin("ng", dir);
-    const serve = spawn(cli, ["run", targetStringFromTarget(serveTarget), "--host", "localhost"], {
-      cwd: dir,
+    const serve = spawn("ng", ["run", target, "--host", "localhost"], {
+      cwd,
+      env,
     });
     serve.stdout.on("data", (data: any) => {
       process.stdout.write(data);

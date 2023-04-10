@@ -4,6 +4,7 @@ import { join } from "path";
 import { readFile } from "fs/promises";
 import { IncomingMessage, request as httpRequest, ServerResponse, Agent } from "http";
 import { logger } from "../logger";
+import { dynamicImport } from "../utils";
 
 /**
  * Whether the given string starts with http:// or https://
@@ -90,4 +91,9 @@ export function simpleProxy(hostOrRequestHandler: string | RequestHandler) {
       await hostOrRequestHandler(originalReq, originalRes);
     }
   };
+}
+
+export async function getNodeEnv(cwd: string): Promise<NodeJS.ProcessEnv> {
+  const { npmRunPathEnv } = await dynamicImport<typeof import("npm-run-path")>("npm-run-path");
+  return { ...process.env, ...npmRunPathEnv({ cwd }) };
 }

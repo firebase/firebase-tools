@@ -6,6 +6,7 @@ import * as path from "path";
 import * as admin from "firebase-admin";
 import * as bodyParser from "body-parser";
 import { pathToFileURL, URL } from "url";
+import { dynamicImport } from "../utils";
 import * as _ from "lodash";
 
 import { EmulatorLog } from "./types";
@@ -30,15 +31,6 @@ let FUNCTION_SIGNATURE: string;
 let FUNCTION_DEBUG_MODE: string;
 
 let developerPkgJSON: PackageJSON | undefined;
-
-/**
- * Dynamically load import function to prevent TypeScript from
- * transpiling into a require.
- *
- * See https://github.com/microsoft/TypeScript/issues/43329.
- */
-// eslint-disable-next-line @typescript-eslint/no-implied-eval
-const dynamicImport = new Function("modulePath", "return import(modulePath)");
 
 function noOp(): false {
   return false;

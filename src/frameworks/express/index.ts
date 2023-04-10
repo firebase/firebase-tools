@@ -3,10 +3,7 @@ import { copy, pathExists } from "fs-extra";
 import { mkdir, readFile } from "fs/promises";
 import { join } from "path";
 import { BuildResult, FrameworkType, SupportLevel } from "..";
-
-// Use "true &&"" to keep typescript from compiling this file and rewriting
-// the import statement into a require
-const { dynamicImport } = require(true && "../../dynamicImport");
+import { dynamicImport } from "../../utils";
 
 export const name = "Express.js";
 export const support = SupportLevel.Experimental;

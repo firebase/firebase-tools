@@ -3,9 +3,9 @@ import { spawn } from "cross-spawn";
 import { existsSync } from "fs";
 import { copy, pathExists } from "fs-extra";
 import { join } from "path";
-import { findDependency, FrameworkType, getNodeModuleBin, relativeRequire, SupportLevel } from "..";
+import { findDependency, FrameworkType, relativeRequire, SupportLevel } from "..";
 import { promptOnce } from "../../prompt";
-import { simpleProxy, warnIfCustomBuildScript } from "../utils";
+import { getNodeEnv, simpleProxy, warnIfCustomBuildScript } from "../utils";
 
 export const name = "Vite";
 export const support = SupportLevel.Experimental;
@@ -75,12 +75,15 @@ export async function ɵcodegenPublicDirectory(root: string, dest: string) {
   await copy(viteDistPath, dest);
 }
 
-export async function getDevModeHandle(dir: string) {
+export async function getDevModeHandle(cwd: string) {
+  const env = await getNodeEnv(cwd);
   const host = new Promise<string>((resolve) => {
     // Can't use scheduleTarget since that—like prerender—is failing on an ESM bug
     // will just grep for the hostname
-    const cli = getNodeModuleBin("vite", dir);
-    const serve = spawn(cli, [], { cwd: dir });
+    const serve = spawn("vite", [], {
+      cwd,
+      env,
+    });
     serve.stdout.on("data", (data: any) => {
       process.stdout.write(data);
       const match = data.toString().match(/(http:\/\/.+:\d+)/);

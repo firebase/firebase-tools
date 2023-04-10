@@ -130,6 +130,7 @@
     "minimatch": "^3.0.4",
     "morgan": "^1.10.0",
     "node-fetch": "^2.6.7",
+    "npm-run-path": "^5.1.0",
     "open": "^6.3.0",
     "ora": "^5.4.1",
     "p-limit": "^3.0.1",

@@ -28,11 +28,7 @@ import { HostingRewrites } from "../firebaseConfig";
 import * as experiments from "../experiments";
 import { ensureTargeted } from "../functions/ensureTargeted";
 import { implicitInit } from "../hosting/implicitInit";
-import { fileExistsSync } from "../fsutils";
-
-// Use "true &&"" to keep typescript from compiling this file and rewriting
-// the import statement into a require
-const { dynamicImport } = require(true && "../dynamicImport");
+import { dynamicImport } from "../utils";
 
 export interface Discovery {
   mayWantBackend: boolean;
@@ -119,6 +115,8 @@ export const ALLOWED_SSR_REGIONS = [
   { name: "europe-west1 (Belgium)", value: "europe-west1" },
   { name: "asia-east1 (Taiwan)", value: "asia-east1" },
 ];
+
+const NPM_COMMAND_TIMEOUT_MILLIES = 1_000;
 
 const DEFAULT_FIND_DEP_OPTIONS: FindDepOptions = {
   cwd: process.cwd(),
@@ -232,25 +230,14 @@ function scanDependencyTree(searchingFor: string, dependencies = {}): any {
   return;
 }
 
-export function getNodeModuleBin(name: string, cwd: string) {
-  const cantFindExecutable = new FirebaseError(`Could not find the ${name} executable.`);
-  const npmBin = spawnSync("npm", ["bin"], { cwd }).stdout?.toString().trim();
-  if (!npmBin) {
-    throw cantFindExecutable;
-  }
-  const path = join(npmBin, name);
-  if (!fileExistsSync(path)) {
-    throw cantFindExecutable;
-  }
-  return path;
-}
-
 /**
  *
  */
 export function findDependency(name: string, options: Partial<FindDepOptions> = {}) {
   const { cwd: dir, depth, omitDev } = { ...DEFAULT_FIND_DEP_OPTIONS, ...options };
-  const cwd = spawnSync("npm", ["root"], { cwd: dir }).stdout?.toString().trim();
+  const cwd = spawnSync("npm", ["root"], { cwd: dir, timeout: NPM_COMMAND_TIMEOUT_MILLIES })
+    .stdout?.toString()
+    .trim();
   if (!cwd) return;
   const env: any = Object.assign({}, process.env);
   delete env.NODE_ENV;
@@ -263,10 +250,12 @@ export function findDependency(name: string, options: Partial<FindDepOptions> = 
       ...(omitDev ? ["--omit", "dev"] : []),
       ...(depth === undefined ? [] : ["--depth", depth.toString(10)]),
     ],
-    { cwd, env }
+    { cwd, env, timeout: NPM_COMMAND_TIMEOUT_MILLIES }
   );
   if (!result.stdout) return;
-  const json = JSON.parse(result.stdout.toString());
+  const output = result.stdout?.toString();
+  if (!output) return;
+  const json = JSON.parse(output);
   return scanDependencyTree(name, json.dependencies);
 }
 

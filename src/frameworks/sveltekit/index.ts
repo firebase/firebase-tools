@@ -4,8 +4,7 @@ import { FrameworkType, SupportLevel } from "..";
 import { viteDiscoverWithNpmDependency, build as viteBuild } from "../vite";
 import { SvelteKitConfig } from "./interfaces";
 import { fileExistsSync } from "../../fsutils";
-
-const { dynamicImport } = require(true && "../../dynamicImport");
+import { dynamicImport } from "../../utils";
 
 export const name = "SvelteKit";
 export const support = SupportLevel.Experimental;

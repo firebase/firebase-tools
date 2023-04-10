@@ -32,6 +32,20 @@ export function consoleUrl(project: string, path: string): string {
   return `${api.consoleOrigin}/project/${project}${path}`;
 }
 
+// Use "true &&"" to keep typescript from compiling this file and rewriting
+// the import statement into a require
+const dynamicImportModule: {
+  dynamicImport: <T = any>(module: string) => Promise<T>;
+} = require(true && "./dynamicImport");
+
+/**
+ * Dynamically load import function to prevent TypeScript from
+ * transpiling into a require.
+ *
+ * See https://github.com/microsoft/TypeScript/issues/43329.
+ */
+export const { dynamicImport } = dynamicImportModule;
+
 /**
  * Trace up the ancestry of objects that have a `parent` key, finding the
  * first instance of the provided key.

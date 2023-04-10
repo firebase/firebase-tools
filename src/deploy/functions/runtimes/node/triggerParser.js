@@ -4,18 +4,10 @@
 
 var url = require("url");
 var extractTriggers = require("./extractTriggers");
+var { dynamicImport } = require("../../../../utils");
 var EXIT = function () {
   process.exit(0);
 };
-
-/**
- * Dynamically load import function to prevent TypeScript from
- * transpiling into a require.
- *
- * See https://github.com/microsoft/TypeScript/issues/43329.
- */
-// eslint-disable-next-line @typescript-eslint/no-implied-eval
-const dynamicImport = new Function("modulePath", "return import(modulePath)");
 
 async function loadModule(packageDir) {
   try {
