@@ -20,7 +20,7 @@ export async function setupMonospace(client: GoogleAuth, project?: string): Prom
 
   const initFirebaseResponse = await initFirebase(project);
 
-  if (!initFirebaseResponse.success) {
+  if (initFirebaseResponse.success === false) {
     // TODO: handle errors case by case if we ever have anything different than NOT_INITIALIZED?
     throw new Error(String(initFirebaseResponse.error));
   }
@@ -50,7 +50,7 @@ async function pollAuthorizedProject(rid: string): Promise<string> {
 
   // Success case: If the user successfully completes the steps in the popup,
   // you'll see a response below
-  if (getInitFirebaseRes.success) {
+  if (getInitFirebaseRes.success === true) {
     return getInitFirebaseRes.authorized_project;
   }
 
