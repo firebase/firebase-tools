@@ -9,8 +9,9 @@ import { BuildResult, FrameworkType, SupportLevel } from "..";
 const { dynamicImport } = require(true && "../../dynamicImport");
 
 export const name = "Express.js";
-export const support = SupportLevel.Experimental;
+export const support = SupportLevel.Preview;
 export const type = FrameworkType.Custom;
+export const docsUrl = "https://firebase.google.com/docs/hosting/frameworks/express";
 
 async function getConfig(root: string) {
   const packageJsonBuffer = await readFile(join(root, "package.json"));

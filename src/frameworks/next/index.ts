@@ -54,8 +54,9 @@ const DEFAULT_BUILD_SCRIPT = ["next build"];
 const PUBLIC_DIR = "public";
 
 export const name = "Next.js";
-export const support = SupportLevel.Experimental;
+export const support = SupportLevel.Preview;
 export const type = FrameworkType.MetaFramework;
+export const docsUrl = "https://firebase.google.com/docs/hosting/frameworks/nextjs";
 
 const DEFAULT_NUMBER_OF_REASONS_TO_LIST = 5;
 

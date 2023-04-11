@@ -18,8 +18,9 @@ import { promptOnce } from "../../prompt";
 import { simpleProxy, warnIfCustomBuildScript } from "../utils";
 
 export const name = "Angular";
-export const support = SupportLevel.Experimental;
+export const support = SupportLevel.Preview;
 export const type = FrameworkType.Framework;
+export const docsUrl = "https://firebase.google.com/docs/hosting/frameworks/angular";
 
 const DEFAULT_BUILD_SCRIPT = ["ng build"];
 
