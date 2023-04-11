@@ -3,19 +3,13 @@ import { spawn } from "cross-spawn";
 import { existsSync } from "fs";
 import { copy, pathExists } from "fs-extra";
 import { join } from "path";
-import { findDependency, FrameworkType, relativeRequire, SupportLevel } from "..";
+import { findDependency, FrameworkType, getNodeModuleBin, relativeRequire, SupportLevel } from "..";
 import { promptOnce } from "../../prompt";
 import { simpleProxy, warnIfCustomBuildScript } from "../utils";
 
 export const name = "Vite";
 export const support = SupportLevel.Experimental;
 export const type = FrameworkType.Toolchain;
-
-const CLI_COMMAND = join(
-  "node_modules",
-  ".bin",
-  process.platform === "win32" ? "vite.cmd" : "vite"
-);
 
 export const DEFAULT_BUILD_SCRIPT = ["vite build", "tsc && vite build"];
 
@@ -67,10 +61,11 @@ export async function build(root: string) {
   const { build } = relativeRequire(root, "vite");
 
   await warnIfCustomBuildScript(root, name, DEFAULT_BUILD_SCRIPT);
+
   // SvelteKit uses process.cwd() unfortunately, chdir
   const cwd = process.cwd();
   process.chdir(root);
-  await build({ root });
+  await build({ root, mode: "production" });
   process.chdir(cwd);
 }
 
@@ -84,7 +79,8 @@ export async function getDevModeHandle(dir: string) {
   const host = new Promise<string>((resolve) => {
     // Can't use scheduleTarget since that—like prerender—is failing on an ESM bug
     // will just grep for the hostname
-    const serve = spawn(CLI_COMMAND, [], { cwd: dir });
+    const cli = getNodeModuleBin("vite", dir);
+    const serve = spawn(cli, [], { cwd: dir });
     serve.stdout.on("data", (data: any) => {
       process.stdout.write(data);
       const match = data.toString().match(/(http:\/\/.+:\d+)/);
