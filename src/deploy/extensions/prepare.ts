@@ -87,24 +87,6 @@ export async function prepare(context: Context, options: Options, payload: Paylo
     }
   }
 
-  if (await displayWarningsForDeploy(payload.instancesToCreate)) {
-    if (!options.force && options.nonInteractive) {
-      throw new FirebaseError(
-        "Pass the --force flag to acknowledge these terms in non-interactive mode"
-      );
-    } else if (
-      !options.force &&
-      !options.nonInteractive &&
-      !(await prompt.promptOnce({
-        type: "confirm",
-        message: `Do you wish to continue deploying these extensions?`,
-        default: true,
-      }))
-    ) {
-      throw new FirebaseError("Deployment cancelled");
-    }
-  }
-
   const permissionsNeeded: string[] = [];
 
   if (payload.instancesToCreate.length) {

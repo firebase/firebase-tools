@@ -1,6 +1,6 @@
 import * as clc from "colorette";
 import { marked } from "marked";
-import TerminalRenderer = require("marked-terminal");
+import * as TerminalRenderer from "marked-terminal";
 
 import { displayExtInfo } from "../extensions/displayExtensionInfo";
 import * as askUserForEventsConfig from "../extensions/askUserForEventsConfig";
@@ -165,13 +165,8 @@ async function infoExtensionVersion(args: {
   extensionVersion: ExtensionVersion;
 }): Promise<void> {
   const ref = refs.parse(args.extensionName);
-  const extension = await extensionsApi.getExtension(refs.toExtensionRef(ref));
   await displayExtInfo(args.extensionName, ref.publisherId, args.extensionVersion.spec, true);
-  await displayWarningPrompts(
-    ref.publisherId,
-    extension.registryLaunchStage,
-    args.extensionVersion
-  );
+  await displayWarningPrompts(ref.publisherId, args.extensionVersion);
 }
 
 interface InstallExtensionOptions {
