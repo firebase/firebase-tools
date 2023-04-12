@@ -18,6 +18,7 @@ import {
   CODEBASE_LABEL,
   HASH_LABEL,
 } from "../functions/constants";
+import { RequireKeys } from "../metaprogramming";
 
 export const API_VERSION = "v2";
 
@@ -30,17 +31,6 @@ const client = new Client({
 export type VpcConnectorEgressSettings = "PRIVATE_RANGES_ONLY" | "ALL_TRAFFIC";
 export type IngressSettings = "ALLOW_ALL" | "ALLOW_INTERNAL_ONLY" | "ALLOW_INTERNAL_AND_GCLB";
 export type FunctionState = "ACTIVE" | "FAILED" | "DEPLOYING" | "DELETING" | "UNKONWN";
-
-// The GCFv2 funtion type has many inner types which themselves have output-only fields:
-// eventTrigger.trigger
-// buildConfig.config
-// buildConfig.workerPool
-// serviceConfig.service
-// serviceConfig.uri
-//
-// Because Omit<> doesn't work with nested property addresses, we're making those fields optional.
-// An alternative would be to name the types OutputCloudFunction/CloudFunction or CloudFunction/InputCloudFunction.
-export type OutputOnlyFields = "state" | "updateTime";
 
 // Values allowed for the operator field in EventFilter
 export type EventFilterOperator = "match-path-pattern";
@@ -153,16 +143,25 @@ export interface EventTrigger {
   channel?: string;
 }
 
-export interface CloudFunction {
+interface CloudFunctionBase {
   name: string;
   description?: string;
   buildConfig: BuildConfig;
-  serviceConfig: ServiceConfig;
+  serviceConfig?: ServiceConfig;
   eventTrigger?: EventTrigger;
-  state: FunctionState;
-  updateTime: Date;
   labels?: Record<string, string> | null;
 }
+
+export type OutputCloudFunction = CloudFunctionBase & {
+  state: FunctionState;
+  updateTime: Date;
+  serviceConfig?: RequireKeys<ServiceConfig, "service" | "uri">;
+};
+
+export type InputCloudFunction = CloudFunctionBase & {
+  // serviceConfig is required.
+  serviceConfig: ServiceConfig;
+};
 
 export interface OperationMetadata {
   createTime: string;
@@ -181,13 +180,13 @@ export interface Operation {
   metadata?: OperationMetadata;
   done: boolean;
   error?: { code: number; message: string; details: unknown };
-  response?: CloudFunction;
+  response?: OutputCloudFunction;
 }
 
 // Private API interface for ListFunctionsResponse. listFunctions returns
 // a CloudFunction[]
 interface ListFunctionsResponse {
-  functions: CloudFunction[];
+  functions: OutputCloudFunction[];
   unreachable: string[];
 }
 
@@ -292,9 +291,7 @@ export async function generateUploadUrl(
 /**
  * Creates a new Cloud Function.
  */
-export async function createFunction(
-  cloudFunction: Omit<CloudFunction, OutputOnlyFields>
-): Promise<Operation> {
+export async function createFunction(cloudFunction: InputCloudFunction): Promise<Operation> {
   // the API is a POST to the collection that owns the function name.
   const components = cloudFunction.name.split("/");
   const functionId = components.splice(-1, 1)[0];
@@ -318,9 +315,9 @@ export async function getFunction(
   projectId: string,
   location: string,
   functionId: string
-): Promise<CloudFunction> {
+): Promise<OutputCloudFunction> {
   const name = `projects/${projectId}/locations/${location}/functions/${functionId}`;
-  const res = await client.get<CloudFunction>(name);
+  const res = await client.get<OutputCloudFunction>(name);
   return res.body;
 }
 
@@ -328,7 +325,10 @@ export async function getFunction(
  *  List all functions in a region.
  *  Customers should generally use backend.existingBackend.
  */
-export async function listFunctions(projectId: string, region: string): Promise<CloudFunction[]> {
+export async function listFunctions(
+  projectId: string,
+  region: string
+): Promise<OutputCloudFunction[]> {
   const res = await listFunctionsInternal(projectId, region);
   if (res.unreachable.includes(region)) {
     throw new FirebaseError(`Cloud Functions region ${region} is unavailable`);
@@ -349,7 +349,7 @@ async function listFunctionsInternal(
   region: string
 ): Promise<ListFunctionsResponse> {
   type Response = ListFunctionsResponse & { nextPageToken?: string };
-  const functions: CloudFunction[] = [];
+  const functions: OutputCloudFunction[] = [];
   const unreacahble = new Set<string>();
   let pageToken = "";
   while (true) {
@@ -379,9 +379,7 @@ async function listFunctionsInternal(
  * Updates a Cloud Function.
  * Customers can force a field to be deleted by setting that field to `undefined`
  */
-export async function updateFunction(
-  cloudFunction: Omit<CloudFunction, OutputOnlyFields>
-): Promise<Operation> {
+export async function updateFunction(cloudFunction: InputCloudFunction): Promise<Operation> {
   // Keys in labels and environmentVariables and secretEnvironmentVariables are user defined, so we don't recurse
   // for field masks.
   const fieldMasks = proto.fieldMasks(
@@ -424,7 +422,7 @@ export async function deleteFunction(cloudFunction: string): Promise<Operation> 
 export function functionFromEndpoint(
   endpoint: backend.Endpoint,
   source: StorageSource
-): Omit<CloudFunction, OutputOnlyFields> {
+): InputCloudFunction {
   if (endpoint.platform !== "gcfv2") {
     throw new FirebaseError(
       "Trying to create a v2 CloudFunction with v1 API. This should never happen"
@@ -438,7 +436,7 @@ export function functionFromEndpoint(
     );
   }
 
-  const gcfFunction: Omit<CloudFunction, OutputOnlyFields> = {
+  const gcfFunction: InputCloudFunction = {
     name: backend.functionName(endpoint),
     buildConfig: {
       runtime: endpoint.runtime,
@@ -586,7 +584,7 @@ export function functionFromEndpoint(
 /**
  * Generate a versionless Endpoint object from a v2 Cloud Function API object.
  */
-export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoint {
+export function endpointFromFunction(gcfFunction: OutputCloudFunction): backend.Endpoint {
   const [, project, , region, , id] = gcfFunction.name.split("/");
   let trigger: backend.Triggered;
   if (gcfFunction.labels?.["deployment-scheduled"] === "true") {
@@ -656,63 +654,65 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
     ...trigger,
     entryPoint: gcfFunction.buildConfig.entryPoint,
     runtime: gcfFunction.buildConfig.runtime,
-    uri: gcfFunction.serviceConfig.uri,
   };
-  proto.copyIfPresent(
-    endpoint,
-    gcfFunction.serviceConfig,
-    "ingressSettings",
-    "environmentVariables",
-    "secretEnvironmentVariables",
-    "timeoutSeconds"
-  );
-  proto.renameIfPresent(
-    endpoint,
-    gcfFunction.serviceConfig,
-    "serviceAccount",
-    "serviceAccountEmail"
-  );
-  proto.convertIfPresent(
-    endpoint,
-    gcfFunction.serviceConfig,
-    "availableMemoryMb",
-    "availableMemory",
-    (prod) => {
-      if (prod === null) {
-        logger.debug("Prod should always return a valid memory amount");
-        return prod as never;
-      }
-      const mem = mebibytes(prod);
-      if (!backend.isValidMemoryOption(mem)) {
-        logger.warn("Converting a function to an endpoint with an invalid memory option", mem);
-      }
-      return mem as backend.MemoryOptions;
-    }
-  );
-  proto.renameIfPresent(endpoint, gcfFunction.serviceConfig, "minInstances", "minInstanceCount");
-  proto.renameIfPresent(endpoint, gcfFunction.serviceConfig, "maxInstances", "maxInstanceCount");
-  proto.copyIfPresent(endpoint, gcfFunction, "labels");
-  if (gcfFunction.serviceConfig.vpcConnector) {
-    endpoint.vpc = { connector: gcfFunction.serviceConfig.vpcConnector };
-    proto.renameIfPresent(
-      endpoint.vpc,
+  if (gcfFunction.serviceConfig) {
+    proto.copyIfPresent(
+      endpoint,
       gcfFunction.serviceConfig,
-      "egressSettings",
-      "vpcConnectorEgressSettings"
+      "ingressSettings",
+      "environmentVariables",
+      "secretEnvironmentVariables",
+      "timeoutSeconds",
+      "uri"
     );
+    proto.renameIfPresent(
+      endpoint,
+      gcfFunction.serviceConfig,
+      "serviceAccount",
+      "serviceAccountEmail"
+    );
+    proto.convertIfPresent(
+      endpoint,
+      gcfFunction.serviceConfig,
+      "availableMemoryMb",
+      "availableMemory",
+      (prod) => {
+        if (prod === null) {
+          logger.debug("Prod should always return a valid memory amount");
+          return prod as never;
+        }
+        const mem = mebibytes(prod);
+        if (!backend.isValidMemoryOption(mem)) {
+          logger.warn("Converting a function to an endpoint with an invalid memory option", mem);
+        }
+        return mem as backend.MemoryOptions;
+      }
+    );
+    proto.renameIfPresent(endpoint, gcfFunction.serviceConfig, "minInstances", "minInstanceCount");
+    proto.renameIfPresent(endpoint, gcfFunction.serviceConfig, "maxInstances", "maxInstanceCount");
+    proto.copyIfPresent(endpoint, gcfFunction, "labels");
+    if (gcfFunction.serviceConfig.vpcConnector) {
+      endpoint.vpc = { connector: gcfFunction.serviceConfig.vpcConnector };
+      proto.renameIfPresent(
+        endpoint.vpc,
+        gcfFunction.serviceConfig,
+        "egressSettings",
+        "vpcConnectorEgressSettings"
+      );
+    }
+    const serviceName = gcfFunction.serviceConfig.service;
+    if (!serviceName) {
+      logger.debug(
+        "Got a v2 function without a service name." +
+          "Maybe we've migrated to using the v2 API everywhere and missed this code"
+      );
+    } else {
+      endpoint.runServiceId = utils.last(serviceName.split("/"));
+    }
   }
   endpoint.codebase = gcfFunction.labels?.[CODEBASE_LABEL] || projectConfig.DEFAULT_CODEBASE;
   if (gcfFunction.labels?.[HASH_LABEL]) {
     endpoint.hash = gcfFunction.labels[HASH_LABEL];
-  }
-  const serviceName = gcfFunction.serviceConfig.service;
-  if (!serviceName) {
-    logger.debug(
-      "Got a v2 function without a service name." +
-        "Maybe we've migrated to using the v2 API everywhere and missed this code"
-    );
-  } else {
-    endpoint.runServiceId = utils.last(serviceName.split("/"));
   }
   return endpoint;
 }

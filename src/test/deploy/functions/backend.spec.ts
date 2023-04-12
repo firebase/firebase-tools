@@ -37,7 +37,7 @@ describe("Backend", () => {
     generation: 42,
   };
 
-  const CLOUD_FUNCTION_V2: Omit<gcfV2.CloudFunction, gcfV2.OutputOnlyFields> = {
+  const CLOUD_FUNCTION_V2: gcfV2.InputCloudFunction = {
     name: "projects/project/locations/region/functions/id",
     buildConfig: {
       entryPoint: "function",
@@ -92,9 +92,10 @@ describe("Backend", () => {
   };
 
   const RUN_URI = "https://id-nonce-region-project.run.app";
-  const HAVE_CLOUD_FUNCTION_V2: gcfV2.CloudFunction = {
+  const HAVE_CLOUD_FUNCTION_V2: gcfV2.OutputCloudFunction = {
     ...CLOUD_FUNCTION_V2,
     serviceConfig: {
+      service: "service",
       uri: RUN_URI,
     },
     state: "ACTIVE",
@@ -301,7 +302,7 @@ describe("Backend", () => {
 
       it("should read v2 functions when enabled", async () => {
         getService
-          .withArgs(HAVE_CLOUD_FUNCTION_V2.serviceConfig.service!)
+          .withArgs(HAVE_CLOUD_FUNCTION_V2.serviceConfig?.service)
           .resolves(CLOUD_RUN_SERVICE);
         listAllFunctions.onFirstCall().resolves({
           functions: [],
@@ -320,7 +321,7 @@ describe("Backend", () => {
             concurrency: 80,
             cpu: 1,
             httpsTrigger: {},
-            uri: HAVE_CLOUD_FUNCTION_V2.serviceConfig.uri,
+            uri: HAVE_CLOUD_FUNCTION_V2.serviceConfig?.uri,
           })
         );
         expect(getService).to.have.been.called;
