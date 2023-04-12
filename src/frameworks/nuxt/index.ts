@@ -3,8 +3,9 @@ import { readFile } from "fs/promises";
 import { join } from "path";
 import { lt } from "semver";
 import { spawn } from "cross-spawn";
-import { findDependency, FrameworkType, getNodeModuleBin, relativeRequire, SupportLevel } from "..";
+import { FrameworkType, getNodeModuleBin, relativeRequire, SupportLevel } from "..";
 import { simpleProxy, warnIfCustomBuildScript } from "../utils";
+import { getNuxtVersion } from "./utils";
 
 export const name = "Nuxt";
 export const support = SupportLevel.Experimental;
@@ -14,14 +15,6 @@ import { nuxtConfigFilesExist } from "./utils";
 import type { NuxtOptions } from "./interfaces";
 
 const DEFAULT_BUILD_SCRIPT = ["nuxt build"];
-
-function getNuxtVersion(cwd: string) {
-  return findDependency("nuxt", {
-    cwd,
-    depth: 0,
-    omitDev: false,
-  })?.version;
-}
 
 /**
  *
@@ -37,7 +30,7 @@ export async function discover(
 
   const nuxtVersion = getNuxtVersion(dir);
   if (!anyConfigFileExists && !nuxtVersion) return;
-  if (lt(nuxtVersion, "3.0.0-0")) return;
+  if (nuxtVersion && lt(nuxtVersion, "3.0.0-0")) return;
 
   const {
     dir: { public: publicDirectory },
