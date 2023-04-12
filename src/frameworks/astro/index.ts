@@ -1,77 +1,65 @@
-import { execSync, spawn } from "child_process";
+import { sync as spawnSync, spawn } from "cross-spawn";
 import { copy, readFile, existsSync } from "fs-extra";
 import { join } from "path";
-import { BuildResult, Discovery, FrameworkType, SupportLevel } from "..";
-import type { AstroConfig } from "astro";
-import { proxyRequestHandler } from "../../hosting/proxy";
+import { BuildResult, Discovery, FrameworkType, SupportLevel, findDependency, getNodeModuleBin } from "..";
+import { AstroConfig } from "./interfaces";
+import { logError } from "../../logError";
+import { FirebaseError } from "../../error";
+import { simpleProxy, warnIfCustomBuildScript } from "../utils";
+
 const { dynamicImport } = require(true && "../../dynamicImport");
 
 export const name = "Astro";
 export const support = SupportLevel.Experimental;
 export const type = FrameworkType.MetaFramework;
 
-const CLI_COMMAND = join(
-  "node_modules",
-  ".bin",
-  process.platform === "win32" ? "astro.cmd" : "astro"
-);
+function getAstroVersion(cwd: string): string | undefined {
+  return findDependency("astro", { cwd, depth: 0, omitDev: false })?.version;
+}
 
-let resolvedConfig: AstroConfig;
 export async function discover(dir: string): Promise<Discovery | undefined> {
   if (!existsSync(join(dir, "package.json"))) return;
-  // TODO extract to getConfig()?
-  const possibleConfigPaths = [
-    "astro.config.js",
-    "astro.config.ts",
-    "astro.config.mjs",
-    "astro.config.cjs",
-    "astro.config.mts",
-    "astro.config.cts",
-  ].map((file) => join(dir, file));
+  if (!getAstroVersion(dir)) return;
 
-  let resolvedConfigPath;
-  for (const path of possibleConfigPaths) {
-    if (existsSync(path)) {
-      resolvedConfigPath = path;
-    }
-  }
-  if (!resolvedConfigPath) return;
-
-  resolvedConfig = (await dynamicImport(resolvedConfigPath)).default;
-
-  if (resolvedConfig.output === "server" && resolvedConfig.adapter?.name !== "@astrojs/node") {
-    throw new Error(
-      '@astrojs/node adapter with `mode: "middleware"` is required when specifying `output: "server"`\nhttps://docs.astro.build/en/guides/integrations-guide/node/#middleware'
-    );
-  }
+  const config = await getConfig(dir);
+  if (!config) return;
 
   return {
-    mayWantBackend: resolvedConfig.output === "server",
-    publicDirectory: resolvedConfig.publicDir?.toString() ?? "public",
+    mayWantBackend: config.output === "server",
+    publicDirectory: config.publicDir,
   };
 }
 
-// export const init = initViteTemplate("svelte");
+const DEFAULT_BUILD_SCRIPT = ["astro build"];
 
-export async function build(root: string): Promise<BuildResult> {
-  execSync("npm run build", { cwd: root, stdio: "inherit" });
-
-  return { wantsBackend: resolvedConfig.output === "server" };
+export async function build(cwd: string): Promise<BuildResult> {
+  const cli = getNodeModuleBin("astro", cwd);
+  await warnIfCustomBuildScript(cwd, name, DEFAULT_BUILD_SCRIPT);
+  const build = spawnSync(cli, ["build"], { cwd, stdio: "inherit" });
+  if (build.error) throw new FirebaseError("Unable to build your Astro app");
+  const config = await getConfig(cwd);
+  if (!config) throw new FirebaseError('Could not locate astro config');
+  if (config.output === "server" && config.adapter?.name !== "@astrojs/node") {
+    logError("Something somethin @astrojs/node");
+  }
+  return { wantsBackend: config.output === "server" && config.adapter?.name === "@astrojs/node" };
 }
 
 export async function ɵcodegenPublicDirectory(root: string, dest: string) {
-  const outDir = resolvedConfig.outDir?.toString() ?? "dist";
+  const config = await getConfig(root);
+  if (!config) throw new FirebaseError('Could not locate astro config');
   // output: "server" in astro.config builds "client" and "server" folders, otherwise assets are in top-level outDir
-  const assetPath = join(root, outDir, resolvedConfig.output === "server" ? "client" : "");
-
+  const assetPath = join(root, config.outDir, config.output === "server" ? "client" : "");
   await copy(assetPath, dest);
 }
 
 export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: string) {
+  const config = await getConfig(sourceDir);
+  if (!config) throw new FirebaseError('Could not locate astro config');
   const packageJsonBuffer = await readFile(join(sourceDir, "package.json"));
   const packageJson = JSON.parse(packageJsonBuffer.toString());
 
-  await copy(join(sourceDir, resolvedConfig.outDir?.toString() ?? "dist", "server"), join(destDir));
+  await copy(join(sourceDir, config.outDir, "server"), join(destDir));
 
   return {
     packageJson: { ...packageJson },
@@ -80,11 +68,10 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
   };
 }
 
-export async function getDevModeHandle(dir: string) {
+export async function getDevModeHandle(cwd: string) {
   const host = new Promise<string>((resolve) => {
-    // Can't use scheduleTarget since that—like prerender—is failing on an ESM bug
-    // will just grep for the hostname
-    const serve = spawn(CLI_COMMAND, ["dev"], { cwd: dir });
+    const cli = getNodeModuleBin("astro", cwd);
+    const serve = spawn(cli, ["dev"], { cwd });
     serve.stdout.on("data", (data: any) => {
       process.stdout.write(data);
       const match = data.toString().match(/(http:\/\/.+:\d+)/);
@@ -94,13 +81,28 @@ export async function getDevModeHandle(dir: string) {
       process.stderr.write(data);
     });
   });
-  return proxyRequestHandler(await host, "Astro Development Server", { forceCascade: true });
+  return simpleProxy(await host);
 }
 
 export function getBootstrapScript() {
   // `astro build` with node adapter in middleware mode will generate a middleware at entry.mjs
   // need to convert the export to `handle` to work with express integration
-  const bootstrapScript = `const entry = import('./entry.mjs');\nexport const handle = async (req, res) => (await entry).handler(req, res)`;
+  return `const entry = import('./entry.mjs');\nexport const handle = async (req, res) => (await entry).handler(req, res)`;
+}
 
-  return bootstrapScript;
+async function getConfig(root: string): Promise<void|AstroConfig> {
+  const configPath = [
+    "astro.config.js",
+    "astro.config.ts",
+    "astro.config.mjs",
+    "astro.config.cjs",
+    "astro.config.mts",
+    "astro.config.cts",
+  ].map((file) => join(root, file)).find(existsSync);
+  if (!configPath) return;
+  const { default: config } = await dynamicImport(configPath);
+  config.output ??= "static";
+  config.outDir ??= "dist";
+  config.publicDir ??= "public";
+  return config;
 }
