@@ -12,8 +12,13 @@ const pkg = require("../package.json");
 export const EMULATOR_GA4_MEASUREMENT_ID =
   process.env.FIREBASE_EMULATOR_GA4_MEASUREMENT_ID || "G-KYP2JMPFC0";
 
+/**
+ * UA is enabled only if:
+ *   1) Entrypoint to the code is Firebase CLI (not require("firebase-tools")).
+ *   2) User opted-in.
+ */
 export function usageEnabled(): boolean {
-  return !!configstore.get("usage");
+  return !!process.env.IS_FIREBASE_CLI && !!configstore.get("usage");
 }
 
 // The Tracking ID for the Universal Analytics property for all of the CLI
@@ -23,25 +28,32 @@ export function usageEnabled(): boolean {
 // https://support.google.com/analytics/answer/11583528
 const FIREBASE_ANALYTICS_UA = process.env.FIREBASE_ANALYTICS_UA || "UA-29174744-3";
 
-// Identifier for the client (UUID) in the CLI UA.
-let anonId = configstore.get("analytics-uuid");
-if (!anonId) {
-  anonId = uuidV4();
-  configstore.set("analytics-uuid", anonId);
+let visitor: ua.Visitor;
+
+function ensureUAVisitor(): void {
+  if (!visitor) {
+    // Identifier for the client (UUID) in the CLI UA.
+    let anonId = configstore.get("analytics-uuid") as string;
+    if (!anonId) {
+      anonId = uuidV4();
+      configstore.set("analytics-uuid", anonId);
+    }
+
+    visitor = ua(FIREBASE_ANALYTICS_UA, anonId, {
+      strictCidFormat: false,
+      https: true,
+    });
+
+    visitor.set("cd1", process.platform); // Platform
+    visitor.set("cd2", process.version); // NodeVersion
+    visitor.set("cd3", process.env.FIREPIT_VERSION || "none"); // FirepitVersion
+  }
 }
 
-const visitor = ua(FIREBASE_ANALYTICS_UA, anonId, {
-  strictCidFormat: false,
-  https: true,
-});
-
-visitor.set("cd1", process.platform); // Platform
-visitor.set("cd2", process.version); // NodeVersion
-visitor.set("cd3", process.env.FIREPIT_VERSION || "none"); // FirepitVersion
-
-export function track(action: string, label: string, duration: number = 0): Promise<void> {
+export function track(action: string, label: string, duration = 0): Promise<void> {
+  ensureUAVisitor();
   return new Promise((resolve) => {
-    if (configstore.get("tokens") && usageEnabled()) {
+    if (usageEnabled() && configstore.get("tokens")) {
       visitor.event("Firebase CLI " + pkg.version, action, label, duration).send(() => {
         // we could handle errors here, but we won't
         resolve();
@@ -105,7 +117,7 @@ export interface AnalyticsParams {
  *                  length <= 40, alpha-numeric characters and underscores only
  *                  (*no spaces*), and must start with an alphabetic character)
  * @param params custom and standard parameters attached to the event
- * @returns a Promise fulfilled when the event reaches the server or fails
+ * @return a Promise fulfilled when the event reaches the server or fails
  *          (never rejects unless `emulatorSession().validateOnly` is set)
  *
  * Note: On performance or latency critical paths, the returned Promise may be

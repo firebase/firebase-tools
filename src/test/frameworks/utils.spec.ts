@@ -1,11 +1,30 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 import * as fs from "fs";
+import { resolve, join } from "path";
 
-import { warnIfCustomBuildScript } from "../../frameworks/utils";
-import { isUrl } from "../../frameworks/utils";
+import { warnIfCustomBuildScript, isUrl } from "../../frameworks/utils";
+import { getNodeModuleBin } from "../../frameworks";
 
 describe("Frameworks utils", () => {
+  describe("getNodeModuleBin", () => {
+    it("should return expected tsc path", () => {
+      expect(getNodeModuleBin("tsc", __dirname)).to.equal(
+        resolve(join(__dirname, "..", "..", "..", "node_modules", ".bin", "tsc"))
+      );
+    }).timeout(5000);
+    it("should throw when npm root not found", () => {
+      expect(() => {
+        getNodeModuleBin("tsc", "/");
+      }).to.throw("Could not find the tsc executable.");
+    }).timeout(5000);
+    it("should throw when executable not found", () => {
+      expect(() => {
+        getNodeModuleBin("xxxxx", __dirname);
+      }).to.throw("Could not find the xxxxx executable.");
+    }).timeout(5000);
+  });
+
   describe("isUrl", () => {
     it("should identify http URL", () => {
       expect(isUrl("http://firebase.google.com")).to.be.true;
