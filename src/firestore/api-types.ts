@@ -95,6 +95,11 @@ export enum DatabaseType {
   FIRESTORE_NATIVE = "FIRESTORE_NATIVE",
 }
 
+export enum DatabaseDeleteProtectionStateOption {
+  ENABLED = "ENABLED",
+  DISABLED = "DISABLED",
+}
+
 export enum DatabaseDeleteProtectionState {
   ENABLED = "DELETE_PROTECTION_ENABLED",
   DISABLED = "DELETE_PROTECTION_DISABLED",

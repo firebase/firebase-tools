@@ -10,11 +10,7 @@ import { FirestoreOptions } from "../firestore/options";
 
 export const command = new Command("firestore:databases:list")
   .description("List databases in your Cloud Firestore project.")
-  .option(
-    "--pretty",
-    "Pretty print database names only. When not specified the databases are printed in the " +
-      "JSON specification format."
-  )
+  .option("--json", "Prints raw json response of the create API call if specified")
   .before(requirePermissions, ["datastore.databases.list"])
   .before(warnEmulatorNotSupported, Emulators.FIRESTORE)
   .action(async (options: FirestoreOptions) => {
@@ -22,11 +18,10 @@ export const command = new Command("firestore:databases:list")
 
     const databases: types.DatabaseResp[] = await api.listDatabases(options.project);
 
-    if (options.pretty) {
-      logger.info(clc.bold(clc.white("Firestore Databases")));
-      api.prettyPrintDatabases(databases);
-    } else {
+    if (options.json) {
       logger.info(JSON.stringify(databases, undefined, 2));
+    } else {
+      api.prettyPrintDatabases(databases);
     }
 
     return databases;

@@ -15,5 +15,5 @@ export interface FirestoreOptions extends Options {
   recursive?: boolean;
   location?: string;
   type?: types.DatabaseType;
-  deleteProtectionState?: types.DatabaseDeleteProtectionState;
+  deleteProtection?: types.DatabaseDeleteProtectionStateOption;
 }

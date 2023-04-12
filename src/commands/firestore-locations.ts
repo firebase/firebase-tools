@@ -1,5 +1,4 @@
 import { Command } from "../command";
-import * as clc from "colorette";
 import * as fsi from "../firestore/api";
 import * as types from "../firestore/api-types";
 import { logger } from "../logger";
@@ -10,11 +9,7 @@ import { FirestoreOptions } from "../firestore/options";
 
 export const command = new Command("firestore:locations")
   .description("List possible locations for your Cloud Firestore project.")
-  .option(
-    "--pretty",
-    "Pretty print {Display name}: {locationId}. When not specified the locations are printed in the " +
-      "JSON specification format."
-  )
+  .option("--json", "Prints raw json response of the locations API call if specified")
   .before(requirePermissions, ["datastore.locations.list"])
   .before(warnEmulatorNotSupported, Emulators.FIRESTORE)
   .action(async (options: FirestoreOptions) => {
@@ -22,11 +17,10 @@ export const command = new Command("firestore:locations")
 
     const locations: types.Location[] = await api.locations(options.project);
 
-    if (options.pretty) {
-      logger.info(clc.bold(clc.white("Firestore Locations")));
-      api.prettyPrintLocations(locations);
-    } else {
+    if (options.json) {
       logger.info(JSON.stringify(locations, undefined, 2));
+    } else {
+      api.prettyPrintLocations(locations);
     }
 
     return locations;

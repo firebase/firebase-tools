@@ -5,5 +5,4 @@
 - firestore:databases:update
 - firestore:databases:delete
 - firestore:locations
-- The hosting emulator integration with web frameworks now has improved support for HMR and dev-tools. (#5582)
-- Fixes an issue where `init hosting:github` would hang if it could not access a repository's public key. (#5317)
+- Default emulators:start to use fast dev-mode for Nuxt3 applications (#5551)

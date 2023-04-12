@@ -33,9 +33,9 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
     expectedChecksum: "311609538bd65666eb724ef47c2e6466",
   },
   firestore: {
-    version: "1.16.1",
-    expectedSize: 64213741,
-    expectedChecksum: "befa5f6cbe258e787bf0bbb4eb9da2c8",
+    version: "1.16.2",
+    expectedSize: 64601019,
+    expectedChecksum: "83f379a5b3d367503a860497fea3a936",
   },
   storage: {
     version: "1.1.3",
@@ -45,9 +45,9 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
   ui: experiments.isEnabled("emulatoruisnapshot")
     ? { version: "SNAPSHOT", expectedSize: -1, expectedChecksum: "" }
     : {
-        version: "1.11.4",
-        expectedSize: 3062916,
-        expectedChecksum: "1773926323b07fdb9602d882a7682882",
+        version: "1.11.5",
+        expectedSize: 3063444,
+        expectedChecksum: "4045fef65cf71fb9d83b01fb8b160141",
       },
   pubsub: {
     version: "0.7.1",

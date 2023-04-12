@@ -285,36 +285,47 @@ export class FirestoreApi {
   }
 
   /**
-   * Print an array of databases to the console.
+   * Print an array of databases to the console as an ASCII table.
    * @param databases the array of Firestore databases.
    */
   prettyPrintDatabases(databases: types.DatabaseResp[]): void {
     if (databases.length === 0) {
-      logger.info("None");
+      logger.info("No databases found.");
       return;
     }
-
     const sortedDatabases: types.DatabaseResp[] = databases.sort(sort.compareApiDatabase);
-    sortedDatabases.forEach((database) => {
-      logger.info(this.prettyDatabaseString(database));
+    const Table = require("cli-table");
+    var table = new Table({
+      head: ["Database Name"],
+      colWidths: [Math.max(...sortedDatabases.map((database) => database.name.length + 5), 20)],
     });
+
+    table.push(...sortedDatabases.map((database) => [this.prettyDatabaseString(database)]));
+    logger.info(table.toString());
   }
 
   /**
-   * Print an array of locations to the console. Group multi regions together
+   * Print an array of locations to the console in an ASCII table. Group multi regions together
    *  Example: United States: nam5
    * @param locations the array of locations.
    */
   prettyPrintLocations(locations: types.Location[]): void {
     if (locations.length === 0) {
-      logger.info("None");
+      logger.info("No Locations Available");
       return;
     }
-
-    const sortedLocations = locations.sort(sort.compareLocation);
-    sortedLocations.forEach((location) => {
-      logger.info(this.prettyLocationString(location));
+    const Table = require("cli-table");
+    var table = new Table({
+      head: ["Display Name", "LocationId"],
+      colWidths: [20, 30],
     });
+
+    table.push(
+      ...locations
+        .sort(sort.compareLocation)
+        .map((location) => [location.displayName, location.locationId])
+    );
+    logger.info(table.toString());
   }
 
   /**
@@ -797,15 +808,8 @@ export class FirestoreApi {
   /**
    * Get a colored, pretty-printed representation of a database
    */
-  private prettyDatabaseString(database: types.DatabaseResp): string {
+  prettyDatabaseString(database: types.DatabaseResp): string {
     return clc.yellow(database.name);
-  }
-
-  /**
-   * Get a colored, pretty-printed representation of a location.
-   */
-  private prettyLocationString(location: types.Location): string {
-    return clc.cyan(location.displayName) + ": " + clc.yellow(location.locationId);
   }
 
   /**

@@ -8,77 +8,57 @@ import { Emulators } from "../emulator/types";
 import { warnEmulatorNotSupported } from "../emulator/commandUtils";
 import { FirestoreOptions } from "../firestore/options";
 
-export const command = new Command("firestore:databases:create")
+export const command = new Command("firestore:databases:create <database>")
   .description("Create a database in your Firebase project.")
-  .option(
-    "--pretty",
-    "Pretty print. When not specified the databases are printed in the " +
-      "JSON specification format."
-  )
-  .option("--database <databaseId>", "Name of database to be created. (required)")
+  .option("--json", "Prints raw json response of the create API call if specified")
   .option(
     "--location <locationId>",
-    "Region to create database, for example 'nam5'. Run 'firebase firestore:locations --pretty' to get a list of eligible locations. (required)"
+    "Region to create database, for example 'nam5'. Run 'firebase firestore:locations' to get a list of eligible locations. (required)"
   )
   .option(
-    "--type <type>",
-    "Type of database to create, for example 'DATASTORE_MODE' or 'FIRESTORE_NATIVE'. Default is 'FIRESTORE_NATIVE'"
-  )
-  .option(
-    "--deleteProtectionState <deleteProtectionState>",
-    "Whether or not to prevent deletion of database, for example 'DELETE_PROTECTION_ENABLED' or 'DELETE_PROTECTION_DISABLED'. Default is 'DELETE_PROTECTION_DISABLED'"
+    "--delete-protection <deleteProtectionState>",
+    "Whether or not to prevent deletion of database, for example 'ENABLED' or 'DISABLED'. Default is 'DISABLED'"
   )
   .before(requirePermissions, ["datastore.databases.create"])
   .before(warnEmulatorNotSupported, Emulators.FIRESTORE)
-  .action(async (options: FirestoreOptions) => {
+  .action(async (database: string, options: FirestoreOptions) => {
     const api = new fsi.FirestoreApi();
-
-    if (!options.database) {
-      logger.error(
-        "Missing required flag --database. See firebase firestore:databases:create --help for more info."
-      );
-      return;
-    }
     if (!options.location) {
       logger.error(
         "Missing required flag --location. See firebase firestore:databases:create --help for more info."
       );
       return;
     }
-    if (options.type && options.type !== "DATASTORE_MODE" && options.type !== "FIRESTORE_NATIVE") {
-      logger.error(
-        "Invalid value for flag --type. See firebase firestore:databases:create --help for more info."
-      );
-      return;
-    }
-    const type: types.DatabaseType = options.type ?? types.DatabaseType.FIRESTORE_NATIVE;
+    // Type is always Firestore Native since Firebase does not support Datastore Mode
+    const type: types.DatabaseType = types.DatabaseType.FIRESTORE_NATIVE;
     if (
-      options.deleteProtectionState &&
-      options.deleteProtectionState !== "DELETE_PROTECTION_ENABLED" &&
-      options.deleteProtectionState !== "DELETE_PROTECTION_DISABLED"
+      options.deleteProtection &&
+      options.deleteProtection !== types.DatabaseDeleteProtectionStateOption.ENABLED &&
+      options.deleteProtection !== types.DatabaseDeleteProtectionStateOption.DISABLED
     ) {
       logger.error(
-        "Invalid value for flag --deleteProtectionState. See firebase firestore:databases:create --help for more info."
+        "Invalid value for flag --delete-protection. See firebase firestore:databases:create --help for more info."
       );
       return;
     }
     const deleteProtectionState: types.DatabaseDeleteProtectionState =
-      options.deleteProtectionState ?? types.DatabaseDeleteProtectionState.DISABLED;
+      options.deleteProtection === types.DatabaseDeleteProtectionStateOption.ENABLED
+        ? types.DatabaseDeleteProtectionState.ENABLED
+        : types.DatabaseDeleteProtectionState.DISABLED;
 
-    const database: types.DatabaseResp = await api.createDatabase(
+    const databaseResp: types.DatabaseResp = await api.createDatabase(
       options.project,
-      options.database,
+      database,
       options.location,
       type,
       deleteProtectionState
     );
 
-    logger.info(clc.bold(clc.white("Firestore Database Created:")));
-    if (options.pretty) {
-      api.prettyPrintDatabases([database]);
+    if (options.json) {
+      logger.info(JSON.stringify(databaseResp, undefined, 2));
     } else {
-      logger.info(JSON.stringify(database, undefined, 2));
+      logger.info(clc.bold(`Successfully created ${api.prettyDatabaseString(databaseResp)}`));
     }
 
-    return database;
+    return databaseResp;
   });

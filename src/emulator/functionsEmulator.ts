@@ -212,6 +212,8 @@ export class FunctionsEmulator implements EmulatorInstance {
 
   private blockingFunctionsConfig: BlockingFunctionsConfig = {};
 
+  debugMode = false;
+
   constructor(private args: FunctionsEmulatorArgs) {
     // TODO: Would prefer not to have static state but here we are!
     EmulatorLogger.verbosity = this.args.quiet ? Verbosity.QUIET : Verbosity.DEBUG;
@@ -220,13 +222,12 @@ export class FunctionsEmulator implements EmulatorInstance {
     if (this.args.debugPort) {
       this.args.disabledRuntimeFeatures = this.args.disabledRuntimeFeatures || {};
       this.args.disabledRuntimeFeatures.timeout = true;
+      this.debugMode = true;
     }
 
     this.adminSdkConfig = { ...this.args.adminSdkConfig, projectId: this.args.projectId };
 
-    const mode = this.args.debugPort
-      ? FunctionsExecutionMode.SEQUENTIAL
-      : FunctionsExecutionMode.AUTO;
+    const mode = this.debugMode ? FunctionsExecutionMode.SEQUENTIAL : FunctionsExecutionMode.AUTO;
     this.workerPools = {};
     for (const backend of this.args.emulatableBackends) {
       const pool = new RuntimeWorkerPool(mode);
@@ -373,6 +374,12 @@ export class FunctionsEmulator implements EmulatorInstance {
       }
     }
     const worker = pool.getIdleWorker(trigger.id)!;
+    if (this.debugMode) {
+      await worker.sendDebugMsg({
+        functionTarget: trigger.entryPoint,
+        functionSignature: getSignatureType(trigger),
+      });
+    }
     const reqBody = JSON.stringify(body);
     const headers = {
       "Content-Type": "application/json",
@@ -689,7 +696,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
     // In debug mode, we eagerly start the runtime processes to allow debuggers to attach
     // before invoking a function.
-    if (this.args.debugPort) {
+    if (this.debugMode) {
       if (!emulatableBackend.runtime?.startsWith("node")) {
         this.logger.log("WARN", "--inspect-functions only supported for Node.js runtimes.");
       } else {
@@ -1134,7 +1141,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
     setEnvVarsForEmulators(envs, emulatorInfos);
 
-    if (this.args.debugPort) {
+    if (this.debugMode) {
       // Start runtime in debug mode to allow triggers to share single runtime process.
       envs["FUNCTION_DEBUG_MODE"] = "true";
     }
@@ -1241,7 +1248,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     envs: Record<string, string>
   ): Promise<FunctionsRuntimeInstance> {
     const args = [path.join(__dirname, "functionsEmulatorRuntime")];
-    if (this.args.debugPort) {
+    if (this.debugMode) {
       if (process.env.FIREPIT_VERSION) {
         this.logger.log(
           "WARN",
@@ -1304,7 +1311,7 @@ export class FunctionsEmulator implements EmulatorInstance {
   ): Promise<FunctionsRuntimeInstance> {
     const args = ["functions-framework"];
 
-    if (this.args.debugPort) {
+    if (this.debugMode) {
       this.logger.log("WARN", "--inspect-functions not supported for Python functions. Ignored.");
     }
 
@@ -1515,12 +1522,13 @@ export class FunctionsEmulator implements EmulatorInstance {
         return;
       }
     }
-    const debugBundle = this.args.debugPort
-      ? {
-          functionTarget: trigger.entryPoint,
-          functionSignature: getSignatureType(trigger),
-        }
-      : undefined;
+    let debugBundle;
+    if (this.debugMode) {
+      debugBundle = {
+        functionTarget: trigger.entryPoint,
+        functionSignature: getSignatureType(trigger),
+      };
+    }
     await pool.submitRequest(
       trigger.id,
       {

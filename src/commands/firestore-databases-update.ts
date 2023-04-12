@@ -8,74 +8,54 @@ import { Emulators } from "../emulator/types";
 import { warnEmulatorNotSupported } from "../emulator/commandUtils";
 import { FirestoreOptions } from "../firestore/options";
 
-export const command = new Command("firestore:databases:update")
+export const command = new Command("firestore:databases:update <database>")
   .description(
     "Update a database in your Firebase project. Must specify at least one property to update."
   )
+  .option("--json", "Prints raw json response of the create API call if specified")
   .option(
-    "--pretty",
-    "Pretty print. When not specified the databases are printed in the " +
-      "JSON specification format."
-  )
-  .option("--database <databaseId>", "Name of database to be updated. (required)")
-  .option(
-    "--type <type>",
-    "Type to update the database to, for example 'DATASTORE_MODE' or 'FIRESTORE_NATIVE'."
-  )
-  .option(
-    "--deleteProtectionState <deleteProtectionState>",
-    "Whether or not to prevent deletion of database, for example 'DELETE_PROTECTION_ENABLED' or 'DELETE_PROTECTION_DISABLED'."
+    "--delete-protection <deleteProtectionState>",
+    "Whether or not to prevent deletion of database, for example 'ENABLED' or 'DISABLED'. Default is 'DISABLED'"
   )
   .before(requirePermissions, ["datastore.databases.update"])
   .before(warnEmulatorNotSupported, Emulators.FIRESTORE)
-  .action(async (options: FirestoreOptions) => {
+  .action(async (database: string, options: FirestoreOptions) => {
     const api = new fsi.FirestoreApi();
 
-    if (!options.database) {
-      logger.error(
-        "Missing required flag --database. See firebase firestore:databases:update --help for more info."
-      );
-      return;
-    }
-    if (!options.type && !options.deleteProtectionState) {
+    if (!options.type && !options.deleteProtection) {
       logger.error(
         "Missing properties to update. See firebase firestore:databases:update --help for more info."
       );
       return;
     }
-    if (options.type && options.type !== "DATASTORE_MODE" && options.type !== "FIRESTORE_NATIVE") {
-      logger.error(
-        "Invalid value for flag --type. See firebase firestore:databases:update --help for more info."
-      );
-      return;
-    }
-    const type: types.DatabaseType = options.type ?? types.DatabaseType.FIRESTORE_NATIVE;
+    const type: types.DatabaseType = types.DatabaseType.FIRESTORE_NATIVE;
     if (
-      options.deleteProtectionState &&
-      options.deleteProtectionState !== "DELETE_PROTECTION_ENABLED" &&
-      options.deleteProtectionState !== "DELETE_PROTECTION_DISABLED"
+      options.deleteProtection &&
+      options.deleteProtection !== types.DatabaseDeleteProtectionStateOption.ENABLED &&
+      options.deleteProtection !== types.DatabaseDeleteProtectionStateOption.DISABLED
     ) {
       logger.error(
-        "Invalid value for flag --deleteProtectionState. See firebase firestore:databases:update --help for more info."
+        "Invalid value for flag --delete-protection. See firebase firestore:databases:update --help for more info."
       );
       return;
     }
     const deleteProtectionState: types.DatabaseDeleteProtectionState =
-      options.deleteProtectionState ?? types.DatabaseDeleteProtectionState.DISABLED;
+      options.deleteProtection === types.DatabaseDeleteProtectionStateOption.ENABLED
+        ? types.DatabaseDeleteProtectionState.ENABLED
+        : types.DatabaseDeleteProtectionState.DISABLED;
 
-    const database: types.DatabaseResp = await api.updateDatabase(
+    const databaseResp: types.DatabaseResp = await api.updateDatabase(
       options.project,
-      options.database,
+      database,
       type,
       deleteProtectionState
     );
 
-    logger.info(clc.bold(clc.white("Firestore Database Updated:")));
-    if (options.pretty) {
-      api.prettyPrintDatabases([database]);
+    if (options.json) {
+      logger.info(JSON.stringify(databaseResp, undefined, 2));
     } else {
-      logger.info(JSON.stringify(database, undefined, 2));
+      logger.info(clc.bold(`Successfully updated ${api.prettyDatabaseString(databaseResp)}`));
     }
 
-    return database;
+    return databaseResp;
   });

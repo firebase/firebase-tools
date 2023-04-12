@@ -10,30 +10,19 @@ import { warnEmulatorNotSupported } from "../emulator/commandUtils";
 import { FirestoreOptions } from "../firestore/options";
 import { FirebaseError } from "../error";
 
-export const command = new Command("firestore:databases:delete")
-  .description("Delete a database in your Cloud Firestore project.")
-  .option(
-    "--pretty",
-    "Pretty print. When not specified the databases are printed in the " +
-      "JSON specification format."
+export const command = new Command("firestore:databases:delete <database>")
+  .description(
+    "Delete a database in your Cloud Firestore project. Database delete protection state must be disabled. To do so, use the update command: firebase firestore:databases:update <database> --delete-protection DISABLED"
   )
-  .option(
-    "--database <databaseId>",
-    "Database ID of the firestore database to be deleted. (required)."
-  )
+  .option("--json", "Prints raw json response of the create API call if specified")
+  .option("--force", "Attempt to delete database without prompting for confirmation.")
   .before(requirePermissions, ["datastore.databases.delete"])
   .before(warnEmulatorNotSupported, Emulators.FIRESTORE)
-  .action(async (options: FirestoreOptions) => {
+  .action(async (database: string, options: FirestoreOptions) => {
     const api = new fsi.FirestoreApi();
 
-    if (!options.database) {
-      logger.error(
-        "Missing required flag --database. See firebase firestore:databases:delete --help for more info."
-      );
-      return;
-    }
     if (!options.force) {
-      const confirmMessage = `You are about to delete projects/${options.project}/databases/${options.database}. Do you wish to continue?`;
+      const confirmMessage = `You are about to delete projects/${options.project}/databases/${database}. Do you wish to continue?`;
       const consent = await promptOnce({
         type: "confirm",
         message: confirmMessage,
@@ -44,17 +33,13 @@ export const command = new Command("firestore:databases:delete")
       }
     }
 
-    const database: types.DatabaseResp = await api.deleteDatabase(
-      options.project,
-      options.database
-    );
+    const databaseResp: types.DatabaseResp = await api.deleteDatabase(options.project, database);
 
-    logger.info(clc.bold(clc.white("Firestore Database Deleted:")));
-    if (options.pretty) {
-      api.prettyPrintDatabases([database]);
+    if (options.json) {
+      logger.info(JSON.stringify(databaseResp, undefined, 2));
     } else {
-      logger.info(JSON.stringify(database, undefined, 2));
+      logger.info(clc.bold(`Successfully deleted ${api.prettyDatabaseString(databaseResp)}`));
     }
 
-    return database;
+    return databaseResp;
   });
