@@ -1,5 +1,4 @@
 import { Command } from "../command";
-import * as clc from "colorette";
 import * as fsi from "../firestore/api";
 import * as types from "../firestore/api-types";
 import { logger } from "../logger";
