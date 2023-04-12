@@ -534,15 +534,6 @@ async function loadExistingBackend(ctx: Context): Promise<void> {
     gcfV2Results = await gcfV2.listAllFunctions(ctx.projectId);
     for (const apiFunction of gcfV2Results.functions) {
       const endpoint = gcfV2.endpointFromFunction(apiFunction);
-      if (apiFunction.serviceConfig) {
-        proto.renameIfPresent(
-          endpoint,
-          apiFunction.serviceConfig,
-          "concurrency",
-          "maxInstanceRequestConcurrency"
-        );
-        proto.renameIfPresent(endpoint, apiFunction.serviceConfig, "cpu", "availableCpu");
-      }
       ctx.existingBackend.endpoints[endpoint.region] =
         ctx.existingBackend.endpoints[endpoint.region] || {};
       ctx.existingBackend.endpoints[endpoint.region][endpoint.id] = endpoint;

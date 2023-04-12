@@ -688,8 +688,21 @@ export function endpointFromFunction(gcfFunction: OutputCloudFunction): backend.
         return mem as backend.MemoryOptions;
       }
     );
+    proto.convertIfPresent(endpoint, gcfFunction.serviceConfig, "cpu", "availableCpu", (cpu) => {
+      let cpuVal: number | null = Number(cpu);
+      if (Number.isNaN(cpuVal)) {
+        cpuVal = null;
+      }
+      return cpuVal;
+    });
     proto.renameIfPresent(endpoint, gcfFunction.serviceConfig, "minInstances", "minInstanceCount");
     proto.renameIfPresent(endpoint, gcfFunction.serviceConfig, "maxInstances", "maxInstanceCount");
+    proto.renameIfPresent(
+      endpoint,
+      gcfFunction.serviceConfig,
+      "concurrency",
+      "maxInstanceRequestConcurrency"
+    );
     proto.copyIfPresent(endpoint, gcfFunction, "labels");
     if (gcfFunction.serviceConfig.vpcConnector) {
       endpoint.vpc = { connector: gcfFunction.serviceConfig.vpcConnector };

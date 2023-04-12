@@ -23,6 +23,7 @@ describe("cloudfunctionsv2", () => {
     entryPoint: "function",
     runtime: "nodejs16",
     codebase: projectConfig.DEFAULT_CODEBASE,
+    runServiceId: "service",
   };
 
   const CLOUD_FUNCTION_V2_SOURCE: cloudfunctionsv2.StorageSource = {
@@ -694,16 +695,18 @@ describe("cloudfunctionsv2", () => {
     });
 
     it("should convert function without serviceConfig", () => {
+      const expectedEndpoint = {
+        ...ENDPOINT,
+        platform: "gcfv2",
+        httpsTrigger: {},
+      };
+      delete expectedEndpoint.runServiceId;
       expect(
         cloudfunctionsv2.endpointFromFunction({
           ...HAVE_CLOUD_FUNCTION_V2,
           serviceConfig: undefined,
         })
-      ).to.deep.equal({
-        ...ENDPOINT,
-        platform: "gcfv2",
-        httpsTrigger: {},
-      });
+      ).to.deep.equal(expectedEndpoint);
     });
   });
 
