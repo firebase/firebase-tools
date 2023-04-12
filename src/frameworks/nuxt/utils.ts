@@ -1,5 +1,14 @@
 import { pathExists } from "fs-extra";
 import { join } from "path";
+import { findDependency } from "..";
+
+export function getNuxtVersion(cwd: string): string | undefined {
+  return findDependency("nuxt", {
+    cwd,
+    depth: 0,
+    omitDev: false,
+  })?.version;
+}
 
 /**
  *
