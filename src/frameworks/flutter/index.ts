@@ -1,10 +1,11 @@
-import { execSync } from "child_process";
+import { sync as execSync, spawn } from "cross-spawn";
 import { copy, pathExists } from "fs-extra";
 import { mkdir } from "fs/promises";
 import { join } from "path";
 import { BuildResult, Discovery, FrameworkType, SupportLevel } from "..";
 import * as yaml from "js-yaml";
 import { readFile } from "fs/promises";
+import { FirebaseError } from "../../error";
 
 export const name = "Flutter";
 export const type = FrameworkType.Framework;
@@ -20,11 +21,20 @@ export async function discover(dir: string): Promise<Discovery | undefined> {
   return { mayWantBackend: false, publicDirectory: join(dir, "web") };
 }
 
-export function build(dir: string): Promise<BuildResult> {
-  execSync(`flutter build web --release`, {
-    cwd: dir,
+function checkForFlutterCLI() {
+  const flutter = execSync(`flutter --version`, { stdio: 'ignore' });
+  if (flutter.status) throw new FirebaseError("Flutter CLI not found.");
+}
+
+export function build(cwd: string): Promise<BuildResult> {
+  checkForFlutterCLI();
+  const flutter = execSync(`flutter --version`, { cwd, stdio: 'ignore' });
+  if (flutter.status) throw new FirebaseError("Flutter CLI not found.");
+  const build = execSync(`flutter build web --release`, {
+    cwd: cwd,
     stdio: "inherit",
   });
+  if (build.status) throw new FirebaseError("Unable to build your Flutter app");
   return Promise.resolve({ wantsBackend: false });
 }
 
