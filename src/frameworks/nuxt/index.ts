@@ -10,16 +10,19 @@ export const support = SupportLevel.Experimental;
 export const type = FrameworkType.Toolchain;
 
 import { NuxtDependency } from "./interfaces";
-import { nuxtConfigFilesExist } from "./utils";
+import { nuxtConfigFilesExist, overrideEnv, clearDir } from "./utils";
+import { writeTypes } from "./prepare";
 
-const DEFAULT_BUILD_SCRIPT = ["nuxt build"];
+const DEFAULT_BUILD_SCRIPT = ["nuxt build", "nuxi build"];
 
 /**
  *
  * @param dir current directory
  * @return undefined if project is not Nuxt 2, {mayWantBackend: true } otherwise
  */
-export async function discover(dir: string): Promise<{ mayWantBackend: true } | undefined> {
+export async function discover(
+  dir: string
+): Promise<{ mayWantBackend: true; publicDirectory: string } | undefined> {
   if (!(await pathExists(join(dir, "package.json")))) return;
   const nuxtDependency = findDependency("nuxt", {
     cwd: dir,
@@ -31,47 +34,84 @@ export async function discover(dir: string): Promise<{ mayWantBackend: true } | 
   const anyConfigFileExists = await nuxtConfigFilesExist(dir);
 
   if (!anyConfigFileExists && !nuxtDependency) return;
-  if (version && gte(version, "3.0.0-0")) return { mayWantBackend: true };
+  if (version && gte(version, "3.0.0-0")) return { mayWantBackend: true, publicDirectory: "" };
 
   return;
 }
 
+/**
+ * @param root directory of nuxt app
+ * @returns options if backend is wanted
+ */
 export async function build(root: string) {
-  const { buildNuxt } = await relativeRequire(root, "@nuxt/kit");
-  const nuxtApp = await getNuxt3App(root);
+  overrideEnv("production");
+  const { loadNuxt, buildNuxt, useNitro } = await relativeRequire(root, "@nuxt/kit");
 
   await warnIfCustomBuildScript(root, name, DEFAULT_BUILD_SCRIPT);
 
-  await buildNuxt(nuxtApp);
+  const nuxt = await loadNuxt({
+    rootDir: root,
+    overrides: {
+      nitro: { preset: "node" }
+    },
+    dotenv: {
+      cwd: root,
+      fileName: null,
+    }
+  });
+
+  // Use ? for backward compatibility for Nuxt <= RC.10
+  const nitro = useNitro?.();
+
+  await clearDir(nuxt.options.buildDir);
+
+  await writeTypes(nuxt);
+
+  nuxt.hook("build:error", (err: any) => {
+    console.error("Nuxt Build Error:", err);
+    process.exit(1);
+  });
+
+  await buildNuxt(nuxt);
+
   return { wantsBackend: true };
 }
 
-// Nuxt 3
-async function getNuxt3App(cwd: string) {
-  const { loadNuxt } = await relativeRequire(cwd, "@nuxt/kit");
-  return await loadNuxt({
-    cwd,
-    overrides: {
-      nitro: { preset: "node" },
-      // TODO figure out why generate true is leading to errors
-      // _generate: true,
-    },
-  });
-}
 
+/**
+ * Copy the static files to the destination directory.
+ * @param root
+ * @param dest
+ */
 export async function ɵcodegenPublicDirectory(root: string, dest: string) {
+  //public directory of nuxt app, currently not configurable
   const distPath = join(root, ".output", "public");
   await copy(distPath, dest);
 }
 
+/**
+ * Copy the server files to the destination directory.
+ * @param sourceDir
+ * @param destDir
+ * @returns package.json and frameworksEntry
+ * 
+ */
 export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: string) {
+  // clean up old files: otherwise could lead to problems
+  await clearDir(destDir);
+  // server directory of nuxt app, currently not configurable
+  const serverDir = join(sourceDir, ".output", "server");
+
   const packageJsonBuffer = await readFile(join(sourceDir, "package.json"));
   const packageJson = JSON.parse(packageJsonBuffer.toString());
-
   const outputPackageJsonBuffer = await readFile(
-    join(sourceDir, ".output", "server", "package.json")
+    join(serverDir, "package.json")
   );
   const outputPackageJson = JSON.parse(outputPackageJsonBuffer.toString());
-  await copy(join(sourceDir, ".output", "server"), destDir);
+  // build system of nuxt adds dependencies as bundledDependencies to package.json so we have to add them to dependencies
+  outputPackageJson.dependencies = outputPackageJson?.bundledDependencies || {};
+  if (outputPackageJson?.bundledDependencies)  delete outputPackageJson.bundledDependencies;
+
+  await copy(join(serverDir), destDir);
   return { packageJson: { ...packageJson, ...outputPackageJson }, frameworksEntry: "nuxt3" };
 }
