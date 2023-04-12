@@ -14,7 +14,7 @@ export const type = FrameworkType.Toolchain;
 import { nuxtConfigFilesExist } from "./utils";
 import type { NuxtOptions } from "./interfaces";
 
-const DEFAULT_BUILD_SCRIPT = ["nuxt build"];
+const DEFAULT_BUILD_SCRIPT = ["nuxt build", "nuxi build"];
 
 /**
  *
