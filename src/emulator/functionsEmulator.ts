@@ -625,7 +625,7 @@ export class FunctionsEmulator implements EmulatorInstance {
               this.args.projectId,
               key,
               definition.eventTrigger,
-              signature,
+              signature
             );
             break;
           case Constants.SERVICE_REALTIME_DATABASE:
@@ -880,11 +880,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     return true;
   }
 
-  private getV1FirestoreAttributes(
-    projectId: string,
-    key: string,
-    eventTrigger: EventTrigger,
-  ) {
+  private getV1FirestoreAttributes(projectId: string, key: string, eventTrigger: EventTrigger) {
     const bundle = JSON.stringify({
       eventTrigger: {
         ...eventTrigger,
@@ -895,11 +891,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     return { bundle, path };
   }
 
-  private getV2FirestoreAttributes(
-    projectId: string,
-    key: string,
-    eventTrigger: EventTrigger,
-  ) {
+  private getV2FirestoreAttributes(projectId: string, key: string, eventTrigger: EventTrigger) {
     const database = eventTrigger.eventFilters?.database;
     if (!database) {
       throw new FirebaseError("A database must be supplied.");
@@ -908,7 +900,8 @@ export class FunctionsEmulator implements EmulatorInstance {
     if (!namespace) {
       throw new FirebaseError("A namespace must be supplied.");
     }
-    const document = eventTrigger.eventFilters?.document || eventTrigger.eventFilterPathPatterns?.document;
+    const document =
+      eventTrigger.eventFilters?.document || eventTrigger.eventFilterPathPatterns?.document;
     if (!document) {
       throw new FirebaseError("A document must be supplied.");
     }
@@ -929,7 +922,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     projectId: string,
     key: string,
     eventTrigger: EventTrigger,
-    signature: SignatureType,
+    signature: SignatureType
   ): Promise<boolean> {
     if (!EmulatorRegistry.isRunning(Emulators.FIRESTORE)) {
       return Promise.resolve(false);
