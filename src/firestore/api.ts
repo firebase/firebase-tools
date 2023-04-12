@@ -295,7 +295,7 @@ export class FirestoreApi {
     }
     const sortedDatabases: types.DatabaseResp[] = databases.sort(sort.compareApiDatabase);
     const Table = require("cli-table");
-    var table = new Table({
+    const table = new Table({
       head: ["Database Name"],
       colWidths: [Math.max(...sortedDatabases.map((database) => database.name.length + 5), 20)],
     });
@@ -315,7 +315,7 @@ export class FirestoreApi {
       return;
     }
     const Table = require("cli-table");
-    var table = new Table({
+    const table = new Table({
       head: ["Display Name", "LocationId"],
       colWidths: [20, 30],
     });
