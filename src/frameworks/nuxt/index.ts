@@ -1,39 +1,42 @@
 import { copy, pathExists } from "fs-extra";
 import { readFile } from "fs/promises";
 import { join } from "path";
-import { gte } from "semver";
-import { findDependency, FrameworkType, relativeRequire, SupportLevel } from "..";
-import { warnIfCustomBuildScript } from "../utils";
+import { lt } from "semver";
+import { spawn } from "cross-spawn";
+import { FrameworkType, getNodeModuleBin, relativeRequire, SupportLevel } from "..";
+import { simpleProxy, warnIfCustomBuildScript } from "../utils";
+import { getNuxtVersion } from "./utils";
 
 export const name = "Nuxt";
 export const support = SupportLevel.Experimental;
 export const type = FrameworkType.Toolchain;
 
-import { NuxtDependency } from "./interfaces";
 import { nuxtConfigFilesExist } from "./utils";
+import type { NuxtOptions } from "./interfaces";
 
-const DEFAULT_BUILD_SCRIPT = ["nuxt build"];
+const DEFAULT_BUILD_SCRIPT = ["nuxt build", "nuxi build"];
 
 /**
  *
  * @param dir current directory
- * @return undefined if project is not Nuxt 2, {mayWantBackend: true } otherwise
+ * @return undefined if project is not Nuxt 2, { mayWantBackend: true, publicDirectory: string } otherwise
  */
-export async function discover(dir: string): Promise<{ mayWantBackend: true } | undefined> {
+export async function discover(
+  dir: string
+): Promise<{ mayWantBackend: true; publicDirectory: string } | undefined> {
   if (!(await pathExists(join(dir, "package.json")))) return;
-  const nuxtDependency = findDependency("nuxt", {
-    cwd: dir,
-    depth: 0,
-    omitDev: false,
-  }) as NuxtDependency;
 
-  const version = nuxtDependency?.version;
   const anyConfigFileExists = await nuxtConfigFilesExist(dir);
 
-  if (!anyConfigFileExists && !nuxtDependency) return;
-  if (version && gte(version, "3.0.0-0")) return { mayWantBackend: true };
+  const nuxtVersion = getNuxtVersion(dir);
+  if (!anyConfigFileExists && !nuxtVersion) return;
+  if (nuxtVersion && lt(nuxtVersion, "3.0.0-0")) return;
 
-  return;
+  const {
+    dir: { public: publicDirectory },
+  } = await getConfig(dir);
+
+  return { publicDirectory, mayWantBackend: true };
 }
 
 export async function build(root: string) {
@@ -74,4 +77,29 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
   const outputPackageJson = JSON.parse(outputPackageJsonBuffer.toString());
   await copy(join(sourceDir, ".output", "server"), destDir);
   return { packageJson: { ...packageJson, ...outputPackageJson }, frameworksEntry: "nuxt3" };
+}
+
+export async function getDevModeHandle(cwd: string) {
+  const host = new Promise<string>((resolve) => {
+    const cli = getNodeModuleBin("nuxt", cwd);
+    const serve = spawn(cli, ["dev"], { cwd: cwd });
+
+    serve.stdout.on("data", (data: any) => {
+      process.stdout.write(data);
+      const match = data.toString().match(/(http:\/\/.+:\d+)/);
+
+      if (match) resolve(match[1]);
+    });
+
+    serve.stderr.on("data", (data: any) => {
+      process.stderr.write(data);
+    });
+  });
+
+  return simpleProxy(await host);
+}
+
+export async function getConfig(dir: string): Promise<NuxtOptions> {
+  const { loadNuxtConfig } = await relativeRequire(dir, "@nuxt/kit");
+  return await loadNuxtConfig(dir);
 }
