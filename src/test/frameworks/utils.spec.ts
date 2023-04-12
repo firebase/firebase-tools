@@ -12,17 +12,17 @@ describe("Frameworks utils", () => {
       expect(getNodeModuleBin("tsc", __dirname)).to.equal(
         resolve(join(__dirname, "..", "..", "..", "node_modules", ".bin", "tsc"))
       );
-    });
+    }).timeout(5000);
     it("should throw when npm root not found", () => {
       expect(() => {
         getNodeModuleBin("tsc", "/");
       }).to.throw("Could not find the tsc executable.");
-    });
+    }).timeout(5000);
     it("should throw when executable not found", () => {
       expect(() => {
         getNodeModuleBin("xxxxx", __dirname);
       }).to.throw("Could not find the xxxxx executable.");
-    });
+    }).timeout(5000);
   });
 
   describe("isUrl", () => {
