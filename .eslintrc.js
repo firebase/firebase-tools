@@ -124,5 +124,8 @@ module.exports = {
     "src/dynamicImport.js",
     "scripts/webframeworks-deploy-tests/hosting/**",
     "scripts/frameworks-tests/vite-project/**",
+    "/src/frameworks/docs/**",
+    // This file is taking a very long time to lint, 2-4m
+    "src/emulator/auth/schema.ts",
   ],
 };
