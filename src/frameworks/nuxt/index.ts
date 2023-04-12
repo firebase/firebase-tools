@@ -1,7 +1,7 @@
 import { copy, pathExists } from "fs-extra";
 import { readFile } from "fs/promises";
 import { join } from "path";
-import { gte } from "semver";
+import { lt } from "semver";
 import { spawn } from "cross-spawn";
 import { findDependency, FrameworkType, getNodeModuleBin, relativeRequire, SupportLevel } from "..";
 import { simpleProxy, warnIfCustomBuildScript } from "../utils";
@@ -11,9 +11,17 @@ export const support = SupportLevel.Experimental;
 export const type = FrameworkType.Toolchain;
 
 import { nuxtConfigFilesExist } from "./utils";
-import type { NuxtDependency, NuxtOptions } from "./interfaces";
+import type { NuxtOptions } from "./interfaces";
 
 const DEFAULT_BUILD_SCRIPT = ["nuxt build"];
+
+function getNuxtVersion(cwd: string) {
+  return findDependency("nuxt", {
+    cwd,
+    depth: 0,
+    omitDev: false,
+  })?.version;
+}
 
 /**
  *
@@ -25,22 +33,17 @@ export async function discover(
 ): Promise<{ mayWantBackend: true; publicDirectory: string } | undefined> {
   if (!(await pathExists(join(dir, "package.json")))) return;
 
-  const nuxtDependency = findDependency("nuxt", {
-    cwd: dir,
-    depth: 0,
-    omitDev: false,
-  }) as NuxtDependency;
-
-  const version = nuxtDependency?.version;
   const anyConfigFileExists = await nuxtConfigFilesExist(dir);
 
-  if (!anyConfigFileExists && !nuxtDependency) return;
+  const nuxtVersion = getNuxtVersion(dir);
+  if (!anyConfigFileExists && !nuxtVersion) return;
+  if (lt(nuxtVersion, "3.0.0-0")) return;
 
   const {
     dir: { public: publicDirectory },
   } = await getConfig(dir);
 
-  if (version && gte(version, "3.0.0-0")) return { publicDirectory, mayWantBackend: true };
+  return { publicDirectory, mayWantBackend: true };
 }
 
 export async function build(root: string) {

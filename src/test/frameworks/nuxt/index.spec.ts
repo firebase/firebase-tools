@@ -81,10 +81,7 @@ describe("Nuxt 2 utils", () => {
       process.stdout = new EventEmitter() as Readable;
       process.stderr = new EventEmitter() as Readable;
 
-      sandbox
-        .stub(crossSpawn, "spawn")
-        .withArgs("nuxt", ["dev"], { cwd: "." })
-        .returns(process);
+      sandbox.stub(crossSpawn, "spawn").withArgs("nuxt", ["dev"], { cwd: "." }).returns(process);
 
       const devModeHandle = getDevModeHandle(".");
 
