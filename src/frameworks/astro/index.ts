@@ -1,7 +1,14 @@
 import { sync as spawnSync, spawn } from "cross-spawn";
 import { copy, readFile, existsSync } from "fs-extra";
 import { join } from "path";
-import { BuildResult, Discovery, FrameworkType, SupportLevel, findDependency, getNodeModuleBin } from "..";
+import {
+  BuildResult,
+  Discovery,
+  FrameworkType,
+  SupportLevel,
+  findDependency,
+  getNodeModuleBin,
+} from "..";
 import { AstroConfig } from "./interfaces";
 import { logError } from "../../logError";
 import { FirebaseError } from "../../error";
@@ -38,7 +45,7 @@ export async function build(cwd: string): Promise<BuildResult> {
   const build = spawnSync(cli, ["build"], { cwd, stdio: "inherit" });
   if (build.error) throw new FirebaseError("Unable to build your Astro app");
   const config = await getConfig(cwd);
-  if (!config) throw new FirebaseError('Could not locate astro config');
+  if (!config) throw new FirebaseError("Could not locate astro config");
   if (config.output === "server" && config.adapter?.name !== "@astrojs/node") {
     logError("Something somethin @astrojs/node");
   }
@@ -47,7 +54,7 @@ export async function build(cwd: string): Promise<BuildResult> {
 
 export async function ɵcodegenPublicDirectory(root: string, dest: string) {
   const config = await getConfig(root);
-  if (!config) throw new FirebaseError('Could not locate astro config');
+  if (!config) throw new FirebaseError("Could not locate astro config");
   // output: "server" in astro.config builds "client" and "server" folders, otherwise assets are in top-level outDir
   const assetPath = join(root, config.outDir, config.output === "server" ? "client" : "");
   await copy(assetPath, dest);
@@ -55,7 +62,7 @@ export async function ɵcodegenPublicDirectory(root: string, dest: string) {
 
 export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: string) {
   const config = await getConfig(sourceDir);
-  if (!config) throw new FirebaseError('Could not locate astro config');
+  if (!config) throw new FirebaseError("Could not locate astro config");
   const packageJsonBuffer = await readFile(join(sourceDir, "package.json"));
   const packageJson = JSON.parse(packageJsonBuffer.toString());
 
@@ -90,7 +97,7 @@ export function getBootstrapScript() {
   return `const entry = import('./entry.mjs');\nexport const handle = async (req, res) => (await entry).handler(req, res)`;
 }
 
-async function getConfig(root: string): Promise<void|AstroConfig> {
+async function getConfig(root: string): Promise<void | AstroConfig> {
   const configPath = [
     "astro.config.js",
     "astro.config.ts",
@@ -98,7 +105,9 @@ async function getConfig(root: string): Promise<void|AstroConfig> {
     "astro.config.cjs",
     "astro.config.mts",
     "astro.config.cts",
-  ].map((file) => join(root, file)).find(existsSync);
+  ]
+    .map((file) => join(root, file))
+    .find(existsSync);
   if (!configPath) return;
   const { default: config } = await dynamicImport(configPath);
   config.output ??= "static";
