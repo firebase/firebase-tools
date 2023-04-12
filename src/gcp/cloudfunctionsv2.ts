@@ -404,7 +404,7 @@ export async function updateFunction(
     // https://cloud.google.com/functions/docs/release-notes
     GOOGLE_NODE_RUN_SCRIPTS: "",
   };
-  fieldMasks.push("buildEnvironmentVariables");
+  fieldMasks.push("buildConfig.buildEnvironmentVariables");
   try {
     const queryParams = {
       updateMask: fieldMasks.join(","),
