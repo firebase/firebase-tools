@@ -27,10 +27,8 @@ function getAstroVersion(cwd: string): string | undefined {
 export async function discover(dir: string): Promise<Discovery | undefined> {
   if (!existsSync(join(dir, "package.json"))) return;
   if (!getAstroVersion(dir)) return;
-
   const config = await getConfig(dir);
   if (!config) return;
-
   return {
     mayWantBackend: config.output === "server",
     publicDirectory: config.publicDir,
@@ -43,30 +41,27 @@ export async function build(cwd: string): Promise<BuildResult> {
   const cli = getNodeModuleBin("astro", cwd);
   await warnIfCustomBuildScript(cwd, name, DEFAULT_BUILD_SCRIPT);
   const build = spawnSync(cli, ["build"], { cwd, stdio: "inherit" });
-  if (build.error) throw new FirebaseError("Unable to build your Astro app");
-  const config = await getConfig(cwd);
-  if (!config) throw new FirebaseError("Could not locate astro config");
-  if (config.output === "server" && config.adapter?.name !== "@astrojs/node") {
+  if (build.status) throw new FirebaseError("Unable to build your Astro app");
+  const { output, adapter } = (await getConfig(cwd))!;
+  if (output === "server" && adapter?.name !== "@astrojs/node") {
     logError("Something somethin @astrojs/node");
   }
-  return { wantsBackend: config.output === "server" && config.adapter?.name === "@astrojs/node" };
+  return { wantsBackend: output === "server" && adapter?.name === "@astrojs/node" };
 }
 
 export async function ɵcodegenPublicDirectory(root: string, dest: string) {
-  const config = await getConfig(root);
-  if (!config) throw new FirebaseError("Could not locate astro config");
+  const { outDir, output } = (await getConfig(root))!;
   // output: "server" in astro.config builds "client" and "server" folders, otherwise assets are in top-level outDir
-  const assetPath = join(root, config.outDir, config.output === "server" ? "client" : "");
+  const assetPath = join(root, outDir, output === "server" ? "client" : "");
   await copy(assetPath, dest);
 }
 
 export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: string) {
-  const config = await getConfig(sourceDir);
-  if (!config) throw new FirebaseError("Could not locate astro config");
+  const { outDir } = (await getConfig(sourceDir))!;
   const packageJsonBuffer = await readFile(join(sourceDir, "package.json"));
   const packageJson = JSON.parse(packageJsonBuffer.toString());
 
-  await copy(join(sourceDir, config.outDir, "server"), join(destDir));
+  await copy(join(sourceDir, outDir, "server"), join(destDir));
 
   return {
     packageJson: { ...packageJson },
@@ -109,9 +104,14 @@ async function getConfig(root: string): Promise<void | AstroConfig> {
     .map((file) => join(root, file))
     .find(existsSync);
   if (!configPath) return;
-  const { default: config } = await dynamicImport(configPath);
-  config.output ??= "static";
-  config.outDir ??= "dist";
-  config.publicDir ??= "public";
-  return config;
+  try {
+    const { default: config } = await dynamicImport(configPath);
+    config.output ||= "static";
+    config.outDir ||= "dist";
+    config.publicDir ||= "public";
+    return config;
+  } catch (e) {
+    logError(e);
+    return;
+  }
 }
