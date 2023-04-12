@@ -122,11 +122,12 @@ export async function prepare(
     let hasEnvsFromParams = false;
     wantBackend.environmentVariables = envs;
     for (const envName of Object.keys(resolvedEnvs)) {
-      const envValue = resolvedEnvs[envName]?.toString();
+      const isList = resolvedEnvs[envName]?.legalList;
+      const envValue = resolvedEnvs[envName]?.toSDK();
       if (
         envValue &&
         !resolvedEnvs[envName].internal &&
-        !Object.prototype.hasOwnProperty.call(wantBackend.environmentVariables, envName)
+        (!Object.prototype.hasOwnProperty.call(wantBackend.environmentVariables, envName) || isList)
       ) {
         wantBackend.environmentVariables[envName] = envValue;
         hasEnvsFromParams = true;
@@ -134,7 +135,7 @@ export async function prepare(
     }
 
     for (const endpoint of backend.allEndpoints(wantBackend)) {
-      endpoint.environmentVariables = wantBackend.environmentVariables || {};
+      endpoint.environmentVariables = { ...wantBackend.environmentVariables } || {};
       let resource: string;
       if (endpoint.platform === "gcfv1") {
         resource = `projects/${endpoint.project}/locations/${endpoint.region}/functions/${endpoint.id}`;

@@ -230,7 +230,7 @@ export class Fabricator {
           onPoll: scraper.poller,
         });
       })
-      .catch(rethrowAs(endpoint, "create"));
+      .catch(rethrowAs<gcf.CloudFunction>(endpoint, "create"));
 
     endpoint.uri = resultFunction?.httpsTrigger?.url;
     if (backend.isHttpsTriggered(endpoint)) {
@@ -298,6 +298,7 @@ export class Fabricator {
             }
             throw new FirebaseError("Unexpected error creating Pub/Sub topic", {
               original: err as Error,
+              status: err.status,
             });
           }
         })
@@ -316,6 +317,13 @@ export class Fabricator {
       await this.executor
         .run(async () => {
           try {
+            // eventarc.createChannel doesn't always return 409 when channel already exists.
+            // Ex. when channel exists and has active triggers the API will return 400 (bad
+            // request) with message saying something about active triggers. So instead of
+            // relying on 409 response we explicitly check for channel existense.
+            if ((await eventarc.getChannel(channel)) !== undefined) {
+              return;
+            }
             const op: { name: string } = await eventarc.createChannel({ name: channel });
             return await poller.pollOperation<eventarc.Channel>({
               ...eventarcPollerOptions,
@@ -329,6 +337,7 @@ export class Fabricator {
             }
             throw new FirebaseError("Unexpected error creating Eventarc channel", {
               original: err as Error,
+              status: err.status,
             });
           }
         })
@@ -344,7 +353,7 @@ export class Fabricator {
           operationResourceName: op.name,
         });
       })
-      .catch(rethrowAs(endpoint, "create"));
+      .catch(rethrowAs<gcfV2.CloudFunction>(endpoint, "create"));
 
     endpoint.uri = resultFunction.serviceConfig.uri;
     const serviceName = resultFunction.serviceConfig.service!;
@@ -385,26 +394,6 @@ export class Fabricator {
         .run(() => run.setInvokerCreate(endpoint.project, serviceName, invoker))
         .catch(rethrowAs(endpoint, "set invoker"));
     }
-
-    const mem = endpoint.availableMemoryMb || backend.DEFAULT_MEMORY;
-
-    // "CustomCPU" here means "not the CPU that GCF gives us". GCF automatically
-    // sets the CPU for a Run service based on the RAM settings. The value GCF
-    // uses is memoryToGen1Cpu.
-    const hasCustomCPU = endpoint.cpu !== backend.memoryToGen1Cpu(mem);
-    // I don't love editing an input in this function, but the code gets ugly
-    // otherwise. It's nice to not resolve concurrency in the prepare stage
-    // because it helps us know whether we should call setRunTraits on update.
-    if (!endpoint.concurrency) {
-      endpoint.concurrency =
-        (endpoint.cpu as number) >= backend.MIN_CPU_FOR_CONCURRENCY
-          ? backend.DEFAULT_CONCURRENCY
-          : 1;
-    }
-    const hasConcurrency = endpoint.concurrency !== 1;
-    if (hasCustomCPU || hasConcurrency) {
-      await this.setRunTraits(serviceName, endpoint);
-    }
   }
 
   async updateV1Function(endpoint: backend.Endpoint, scraper: SourceTokenScraper): Promise<void> {
@@ -426,7 +415,7 @@ export class Fabricator {
           onPoll: scraper.poller,
         });
       })
-      .catch(rethrowAs(endpoint, "update"));
+      .catch(rethrowAs<gcf.CloudFunction>(endpoint, "update"));
 
     endpoint.uri = resultFunction?.httpsTrigger?.url;
     let invoker: string[] | undefined;
@@ -472,7 +461,7 @@ export class Fabricator {
           operationResourceName: op.name,
         });
       })
-      .catch(rethrowAs(endpoint, "update"));
+      .catch(rethrowAs<gcfV2.CloudFunction>(endpoint, "update"));
 
     endpoint.uri = resultFunction.serviceConfig.uri;
     const serviceName = resultFunction.serviceConfig.service!;
@@ -494,26 +483,6 @@ export class Fabricator {
       await this.executor
         .run(() => run.setInvokerUpdate(endpoint.project, serviceName, invoker!))
         .catch(rethrowAs(endpoint, "set invoker"));
-    }
-
-    // Ideally we'd avoid a read of the Cloud Run service. We need to read if we
-    // believe a setting (CPU or concurrency) has changed because the user
-    // changed their mind or if GCF has stamped over the user's choice (we're
-    // using custom VM shapes).
-    const hasCustomCPU =
-      endpoint.cpu !==
-      backend.memoryToGen1Cpu(endpoint.availableMemoryMb || backend.DEFAULT_MEMORY);
-    const explicitConcurrency = endpoint.concurrency !== undefined;
-    if (hasCustomCPU || explicitConcurrency) {
-      // GCF may have stamped over the CPU to be <1 which would reset concurrency.
-      // We may have to reapply defaults.
-      if (endpoint.concurrency === undefined) {
-        endpoint.concurrency =
-          (endpoint.cpu as number) < backend.MIN_CPU_FOR_CONCURRENCY
-            ? 1
-            : backend.DEFAULT_CONCURRENCY;
-      }
-      await this.setRunTraits(serviceName, endpoint);
     }
   }
 

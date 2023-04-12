@@ -1,4 +1,5 @@
 import { execSync } from "child_process";
+import { spawn, sync as spawnSync } from "cross-spawn";
 import { mkdir, copyFile } from "fs/promises";
 import { dirname, join } from "path";
 import type { NextConfig } from "next";
@@ -11,10 +12,13 @@ import { existsSync } from "fs";
 import { gte } from "semver";
 import { IncomingMessage, ServerResponse } from "http";
 import * as clc from "colorette";
+import { chain } from "stream-chain";
+import { parser } from "stream-json";
+import { pick } from "stream-json/filters/Pick";
+import { streamObject } from "stream-json/streamers/StreamObject";
 
 import {
   BuildResult,
-  createServerResponseProxy,
   findDependency,
   FrameworkType,
   NODE_VERSION,
@@ -22,7 +26,6 @@ import {
   SupportLevel,
 } from "..";
 import { promptOnce } from "../../prompt";
-import { logger } from "../../logger";
 import { FirebaseError } from "../../error";
 import {
   cleanEscapedChars,
@@ -33,9 +36,10 @@ import {
   isUsingAppDirectory,
   isUsingImageOptimization,
   isUsingMiddleware,
+  allDependencyNames,
 } from "./utils";
-import type { Manifest } from "./interfaces";
-import { readJSON } from "../utils";
+import type { Manifest, NpmLsDepdendency } from "./interfaces";
+import { readJSON, simpleProxy } from "../utils";
 import { warnIfCustomBuildScript } from "../utils";
 import type { EmulatorInfo } from "../../emulator/types";
 import { usesAppDirRouter, usesNextImage, hasUnoptimizedImage } from "./utils";
@@ -95,7 +99,7 @@ export async function build(dir: string): Promise<BuildResult> {
   });
 
   const reasonsForBackend = [];
-  const { distDir } = await getConfig(dir);
+  const { distDir, trailingSlash } = await getConfig(dir);
 
   if (await isUsingMiddleware(join(dir, distDir), false)) {
     reasonsForBackend.push("middleware");
@@ -171,7 +175,9 @@ export async function build(dir: string): Promise<BuildResult> {
     headers,
   }));
 
-  const isEveryRedirectSupported = nextJsRedirects.every(isRedirectSupportedByHosting);
+  const isEveryRedirectSupported = nextJsRedirects
+    .filter((it) => !it.internal)
+    .every(isRedirectSupportedByHosting);
   if (!isEveryRedirectSupported) {
     reasonsForBackend.push("advanced redirects");
   }
@@ -227,24 +233,24 @@ export async function build(dir: string): Promise<BuildResult> {
     console.log("");
   }
 
-  return { wantsBackend, headers, redirects, rewrites };
+  return { wantsBackend, headers, redirects, rewrites, trailingSlash };
 }
 
 /**
  * Utility method used during project initialization.
  */
-export async function init(setup: any) {
+export async function init(setup: any, config: any) {
   const language = await promptOnce({
     type: "list",
-    default: "JavaScript",
+    default: "TypeScript",
     message: "What language would you like to use?",
     choices: ["JavaScript", "TypeScript"],
   });
   execSync(
     `npx --yes create-next-app@latest -e hello-world ${setup.hosting.source} --use-npm ${
-      language === "TypeScript" ? "--ts" : ""
+      language === "TypeScript" ? "--ts" : "--js"
     }`,
-    { stdio: "inherit" }
+    { stdio: "inherit", cwd: config.projectDir }
   );
 }
 
@@ -343,26 +349,53 @@ export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: strin
 export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: string) {
   const { distDir } = await getConfig(sourceDir);
   const packageJson = await readJSON(join(sourceDir, "package.json"));
+  // Bundle their next.config.js with esbuild via NPX, pinned version was having troubles on m1
+  // macs and older Node versions; either way, we should avoid taking on any deps in firebase-tools
+  // Alternatively I tried using @swc/spack and the webpack bundled into Next.js but was
+  // encountering difficulties with both of those
   if (existsSync(join(sourceDir, "next.config.js"))) {
-    let esbuild;
     try {
-      esbuild = await import("esbuild");
-    } catch (e: unknown) {
-      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-      logger.debug(`Failed to load 'esbuild': ${e}`);
-      throw new FirebaseError(
-        `Unable to find 'esbuild'. Install it into your local dev dependencies with 'npm i --save-dev esbuild''`
+      const productionDeps = await new Promise<string[]>((resolve) => {
+        const dependencies: string[] = [];
+        const pipeline = chain([
+          spawn("npm", ["ls", "--omit=dev", "--all", "--json"], { cwd: sourceDir }).stdout,
+          parser({ packValues: false, packKeys: true, streamValues: false }),
+          pick({ filter: "dependencies" }),
+          streamObject(),
+          ({ key, value }: { key: string; value: NpmLsDepdendency }) => [
+            key,
+            ...allDependencyNames(value),
+          ],
+        ]);
+        pipeline.on("data", (it: string) => dependencies.push(it));
+        pipeline.on("end", () => {
+          resolve([...new Set(dependencies)]);
+        });
+      });
+      // Mark all production deps as externals, so they aren't bundled
+      // DevDeps won't be included in the Cloud Function, so they should be bundled
+      const esbuildArgs = productionDeps
+        .map((it) => `--external:${it}`)
+        .concat(
+          "--bundle",
+          "--platform=node",
+          `--target=node${NODE_VERSION}`,
+          `--outdir=${destDir}`,
+          "--log-level=error"
+        );
+      const bundle = spawnSync("npx", ["--yes", "esbuild", "next.config.js", ...esbuildArgs], {
+        cwd: sourceDir,
+      });
+      if (bundle.status) {
+        throw new FirebaseError(bundle.stderr.toString());
+      }
+    } catch (e: any) {
+      console.warn(
+        "Unable to bundle next.config.js for use in Cloud Functions, proceeding with deploy but problems may be enountered."
       );
+      console.error(e.message);
+      copy(join(sourceDir, "next.config.js"), join(destDir, "next.config.js"));
     }
-    await esbuild.build({
-      bundle: true,
-      external: Object.keys(packageJson.dependencies),
-      absWorkingDir: sourceDir,
-      entryPoints: ["next.config.js"],
-      outfile: join(destDir, "next.config.js"),
-      target: `node${NODE_VERSION}`,
-      platform: "node",
-    });
   }
   if (await pathExists(join(sourceDir, "public"))) {
     await mkdir(join(destDir, "public"));
@@ -410,11 +443,10 @@ export async function getDevModeHandle(dir: string, hostingEmulatorInfo?: Emulat
   const handler = nextApp.getRequestHandler();
   await nextApp.prepare();
 
-  return (req: IncomingMessage, res: ServerResponse, next: () => void) => {
+  return simpleProxy(async (req: IncomingMessage, res: ServerResponse) => {
     const parsedUrl = parse(req.url!, true);
-    const proxy = createServerResponseProxy(req, res, next);
-    handler(req, proxy, parsedUrl);
-  };
+    await handler(req, res, parsedUrl);
+  });
 }
 
 async function getConfig(dir: string): Promise<NextConfig & { distDir: string }> {
@@ -434,5 +466,10 @@ async function getConfig(dir: string): Promise<NextConfig & { distDir: string }>
       }
     }
   }
-  return { distDir: ".next", ...config };
+  return {
+    distDir: ".next",
+    // trailingSlash defaults to false in Next.js: https://nextjs.org/docs/api-reference/next.config.js/trailing-slash
+    trailingSlash: false,
+    ...config,
+  };
 }

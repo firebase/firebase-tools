@@ -1,7 +1,6 @@
 import * as clc from "colorette";
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
-const { marked } = require("marked");
-import TerminalRenderer = require("marked-terminal");
+import { marked } from "marked";
+import * as TerminalRenderer from "marked-terminal";
 
 import { displayExtInfo } from "../extensions/displayExtensionInfo";
 import * as askUserForEventsConfig from "../extensions/askUserForEventsConfig";
@@ -166,13 +165,8 @@ async function infoExtensionVersion(args: {
   extensionVersion: ExtensionVersion;
 }): Promise<void> {
   const ref = refs.parse(args.extensionName);
-  const extension = await extensionsApi.getExtension(refs.toExtensionRef(ref));
   await displayExtInfo(args.extensionName, ref.publisherId, args.extensionVersion.spec, true);
-  await displayWarningPrompts(
-    ref.publisherId,
-    extension.registryLaunchStage,
-    args.extensionVersion
-  );
+  await displayWarningPrompts(ref.publisherId, args.extensionVersion);
 }
 
 interface InstallExtensionOptions {
@@ -212,7 +206,7 @@ async function installToManifest(options: InstallExtensionOptions): Promise<void
 
   const paramBindingOptions = await paramHelper.getParams({
     projectId,
-    paramSpecs: spec.params,
+    paramSpecs: spec.params.concat(spec.systemParams ?? []),
     nonInteractive,
     paramsEnvPath,
     instanceId,

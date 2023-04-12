@@ -1,14 +1,12 @@
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
-const { marked } = require("marked");
+import { marked } from "marked";
 import * as clc from "colorette";
 
-import { ExtensionVersion, RegistryLaunchStage } from "./types";
+import { ExtensionVersion } from "./types";
 import { printSourceDownloadLink } from "./displayExtensionInfo";
 import { logPrefix } from "./extensionsHelper";
 import { getTrustedPublishers } from "./resolveSource";
 import { humanReadable } from "../deploy/extensions/deploymentSummary";
 import { InstanceSpec, getExtension } from "../deploy/extensions/planner";
-import { partition } from "../functional";
 import * as utils from "../utils";
 import { logger } from "../logger";
 
@@ -31,23 +29,11 @@ function displayEAPWarning({
   printSourceDownloadLink(sourceDownloadUri);
 }
 
-function displayExperimentalWarning() {
-  utils.logLabeledBullet(
-    logPrefix,
-    marked(
-      `${clc.yellow(clc.bold("Important"))}: This extension is ${clc.bold(
-        "experimental"
-      )} and may not be production-ready. Its functionality might change in backward-incompatible ways before its official release, or it may be discontinued.`
-    )
-  );
-}
-
 /**
  * Show warning if extension is experimental or developed by 3P.
  */
 export async function displayWarningPrompts(
   publisherId: string,
-  launchStage: RegistryLaunchStage,
   extensionVersion: ExtensionVersion
 ): Promise<void> {
   const trustedPublishers = await getTrustedPublishers();
@@ -57,8 +43,6 @@ export async function displayWarningPrompts(
       sourceDownloadUri: extensionVersion.sourceDownloadUri,
       githubLink: extensionVersion.spec.sourceUrl,
     });
-  } else if (launchStage === RegistryLaunchStage.EXPERIMENTAL) {
-    displayExperimentalWarning();
   } else {
     // Otherwise, this is an official extension and requires no warning prompts.
     return;
@@ -86,27 +70,9 @@ export async function displayWarningsForDeploy(instancesToCreate: InstanceSpec[]
     await getExtension(i);
   }
 
-  const [eapExtensions, nonEapExtensions] = partition(
-    publishedExtensionInstances,
+  const eapExtensions = publishedExtensionInstances.filter(
     (i) => !trustedPublishers.includes(i.ref?.publisherId ?? "")
   );
-  // Only mark non-eap extensions as experimental.
-  const experimental = nonEapExtensions.filter(
-    (i) => i.extension!.registryLaunchStage === RegistryLaunchStage.EXPERIMENTAL
-  );
-
-  if (experimental.length) {
-    const humanReadableList = experimental.map((i) => `\t${humanReadable(i)}`).join("\n");
-    utils.logLabeledBullet(
-      logPrefix,
-      marked(
-        `The following are instances of ${clc.bold(
-          "experimental"
-        )} extensions.They may not be production-ready. Their functionality may change in backward-incompatible ways before their official release, or they may be discontinued.\n${humanReadableList}\n`,
-        { gfm: false }
-      )
-    );
-  }
 
   if (eapExtensions.length) {
     const humanReadableList = eapExtensions.map(toListEntry).join("\n");
@@ -120,18 +86,7 @@ export async function displayWarningsForDeploy(instancesToCreate: InstanceSpec[]
       )
     );
   }
-  return experimental.length > 0 || eapExtensions.length > 0;
-}
-
-/**
- * paramsFlagDeprecationWarning displays a warning about the future depreaction of the --params flag.
- */
-export function paramsFlagDeprecationWarning() {
-  logger.warn(
-    "The --params flag is deprecated and will be removed in firebase-tools@11. " +
-      "Instead, use an extensions manifest and `firebase deploy --only extensions` to deploy extensions noninteractively. " +
-      "See https://firebase.google.com/docs/extensions/manifest for more details"
-  );
+  return eapExtensions.length > 0;
 }
 
 export function outOfBandChangesWarning(instanceIds: string[]) {

@@ -20,6 +20,7 @@ function testExtensionVersion(version: string, releaseNotes?: string): Extension
       version,
       resources: [],
       params: [],
+      systemParams: [],
       sourceUrl: "https://google.com",
     },
   };

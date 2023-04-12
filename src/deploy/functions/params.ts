@@ -67,6 +67,26 @@ export function resolveString(
 }
 
 /**
+ * Resolves a FieldList in a Build to an an actual string[] value.
+ * FieldLists can be a list of string | Expression<string>, or a single
+ * Expression<string[]>.
+ */
+export function resolveList(
+  from: build.ListField,
+  paramValues: Record<string, ParamValue>
+): string[] {
+  if (!from) {
+    return [];
+  } else if (Array.isArray(from)) {
+    return from.map((entry) => resolveString(entry, paramValues));
+  } else if (typeof from === "string") {
+    return resolveExpression("string[]", from, paramValues) as string[];
+  } else {
+    assertExhaustive(from);
+  }
+}
+
+/**
  * Resolves a boolean field in a Build to an an actual boolean value.
  * Fields can be literal or an expression written in a subset of the CEL specification.
  * We support the identity CEL {{ params.FOO }} and ternary operators {{ params.FOO == 24 ? params.BAR : true }}
@@ -81,9 +101,9 @@ export function resolveBoolean(
   return resolveExpression("boolean", from, paramValues) as boolean;
 }
 
-type ParamInput<T> = TextInput<T> | SelectInput<T> | ResourceInput;
+type ParamInput<T> = TextInput<T> | SelectInput<T> | MultiSelectInput | ResourceInput;
 
-type ParamBase<T extends string | number | boolean> = {
+type ParamBase<T extends string | number | boolean | string[]> = {
   // name of the param. Will be exposed as an environment variable with this name
   name: string;
 
@@ -123,6 +143,12 @@ export function isSelectInput<T>(input: ParamInput<T>): input is SelectInput<T> 
 export function isResourceInput<T>(input: ParamInput<T>): input is ResourceInput {
   return {}.hasOwnProperty.call(input, "resource");
 }
+/**
+ * Determines whether an Input field value can be coerced to MultiSelectInput.
+ */
+export function isMultiSelectInput<T>(input: ParamInput<T>): input is MultiSelectInput {
+  return {}.hasOwnProperty.call(input, "multiSelect");
+}
 
 export interface StringParam extends ParamBase<string> {
   type: "string";
@@ -134,6 +160,12 @@ export interface IntParam extends ParamBase<number> {
 
 export interface BooleanParam extends ParamBase<boolean> {
   type: "boolean";
+}
+
+export interface ListParam extends ParamBase<string[]> {
+  type: "list";
+
+  delimiter?: string;
 }
 
 export interface TextInput<T> { // eslint-disable-line
@@ -172,6 +204,12 @@ interface ResourceInput {
   };
 }
 
+interface MultiSelectInput {
+  multiSelect: {
+    options: Array<SelectOptions<string>>;
+  };
+}
+
 interface SecretParam {
   type: "secret";
 
@@ -187,8 +225,8 @@ interface SecretParam {
   description?: string;
 }
 
-export type Param = StringParam | IntParam | BooleanParam | SecretParam;
-type RawParamValue = string | number | boolean;
+export type Param = StringParam | IntParam | BooleanParam | ListParam | SecretParam;
+type RawParamValue = string | number | boolean | string[];
 
 /**
  * A type which contains the resolved value of a param, and metadata ensuring
@@ -206,19 +244,41 @@ export class ParamValue {
   legalBoolean: boolean;
   // Whether this param value can be sensibly interpreted as a number
   legalNumber: boolean;
+  // Whether this param value can be sensibly interpreted as a list
+  legalList: boolean;
+  // What delimiter to use between fields when reading/writing to .env format
+  delimiter: string;
 
   constructor(
     private readonly rawValue: string,
     readonly internal: boolean,
-    types: { string?: boolean; boolean?: boolean; number?: boolean }
+    types: { string?: boolean; boolean?: boolean; number?: boolean; list?: boolean }
   ) {
     this.legalString = types.string || false;
     this.legalBoolean = types.boolean || false;
     this.legalNumber = types.number || false;
+    this.legalList = types.list || false;
+    this.delimiter = ",";
   }
 
+  static fromList(ls: string[], delimiter = ","): ParamValue {
+    const pv = new ParamValue(ls.join(delimiter), false, { list: true });
+    pv.setDelimiter(delimiter);
+    return pv;
+  }
+
+  setDelimiter(delimiter: string) {
+    this.delimiter = delimiter;
+  }
+
+  // Returns this param's representation as it should be in .env files
   toString(): string {
     return this.rawValue;
+  }
+
+  // Returns this param's representatiom as it should be in process.env during runtime
+  toSDK(): string {
+    return this.legalList ? JSON.stringify(this.asList()) : this.toString();
   }
 
   asString(): string {
@@ -227,6 +287,10 @@ export class ParamValue {
 
   asBoolean(): boolean {
     return ["true", "y", "yes", "1"].includes(this.rawValue);
+  }
+
+  asList(): string[] {
+    return this.rawValue.split(this.delimiter);
   }
 
   asNumber(): number {
@@ -261,6 +325,8 @@ function resolveDefaultCEL(
       return resolveString(expr, currentEnv);
     case "int":
       return resolveInt(expr, currentEnv);
+    case "list":
+      return resolveList(expr, currentEnv);
     default:
       throw new FirebaseError(
         "Build specified parameter with default " + expr + " of unsupported type"
@@ -278,6 +344,8 @@ function canSatisfyParam(param: Param, value: RawParamValue): boolean {
     return typeof value === "number" && Number.isInteger(value);
   } else if (param.type === "boolean") {
     return typeof value === "boolean";
+  } else if (param.type === "list") {
+    return Array.isArray(value);
   } else if (param.type === "secret") {
     return false;
   }
@@ -436,12 +504,61 @@ async function promptParam(
   } else if (param.type === "boolean") {
     const provided = await promptBooleanParam(param, resolvedDefault as boolean | undefined);
     return new ParamValue(provided.toString(), false, { boolean: true });
+  } else if (param.type === "list") {
+    const provided = await promptList(param, projectId, resolvedDefault as string[] | undefined);
+    return ParamValue.fromList(provided, param.delimiter);
   } else if (param.type === "secret") {
     throw new FirebaseError(
       `Somehow ended up trying to interactively prompt for secret parameter ${param.name}, which should never happen.`
     );
   }
   assertExhaustive(param);
+}
+
+async function promptList(
+  param: ListParam,
+  projectId: string,
+  resolvedDefault?: string[]
+): Promise<string[]> {
+  if (!param.input) {
+    const defaultToText: TextInput<string> = { text: {} };
+    param.input = defaultToText;
+  }
+  let prompt: string;
+
+  if (isSelectInput(param.input)) {
+    throw new FirebaseError("List params cannot have non-list selector inputs");
+  } else if (isMultiSelectInput(param.input)) {
+    prompt = `Select a value for ${param.label || param.name}:`;
+    if (param.description) {
+      prompt += ` \n(${param.description})`;
+    }
+    prompt += "\nSelect an option with the arrow keys, and use Enter to confirm your choice. ";
+    return promptSelectMultiple<string>(
+      prompt,
+      param.input,
+      resolvedDefault,
+      (res: string[]) => res
+    );
+  } else if (isTextInput(param.input)) {
+    prompt = `Enter a list of strings (delimiter: ${param.delimiter ? param.delimiter : ","}) for ${
+      param.label || param.name
+    }:`;
+    if (param.description) {
+      prompt += ` \n(${param.description})`;
+    }
+    return promptText<string[]>(prompt, param.input, resolvedDefault, (res: string): string[] => {
+      return res.split(param.delimiter || ",");
+    });
+  } else if (isResourceInput(param.input)) {
+    prompt = `Select values for ${param.label || param.name}:`;
+    if (param.description) {
+      prompt += ` \n(${param.description})`;
+    }
+    return promptResourceStrings(prompt, param.input, projectId);
+  } else {
+    assertExhaustive(param.input);
+  }
 }
 
 async function promptBooleanParam(
@@ -462,6 +579,8 @@ async function promptBooleanParam(
     }
     prompt += "\nSelect an option with the arrow keys, and use Enter to confirm your choice. ";
     return promptSelect<boolean>(prompt, param.input, resolvedDefault, isTruthyInput);
+  } else if (isMultiSelectInput(param.input)) {
+    throw new FirebaseError("Non-list params cannot have multi selector inputs");
   } else if (isTextInput(param.input)) {
     prompt = `Enter a boolean value for ${param.label || param.name}:`;
     if (param.description) {
@@ -492,6 +611,8 @@ async function promptStringParam(
       prompt += ` \n(${param.description})`;
     }
     return promptResourceString(prompt, param.input, projectId, resolvedDefault);
+  } else if (isMultiSelectInput(param.input)) {
+    throw new FirebaseError("Non-list params cannot have multi selector inputs");
   } else if (isSelectInput(param.input)) {
     prompt = `Select a value for ${param.label || param.name}:`;
     if (param.description) {
@@ -532,8 +653,9 @@ async function promptIntParam(param: IntParam, resolvedDefault?: number): Promis
       }
       return +res;
     });
-  }
-  if (isTextInput(param.input)) {
+  } else if (isMultiSelectInput(param.input)) {
+    throw new FirebaseError("Non-list params cannot have multi selector inputs");
+  } else if (isTextInput(param.input)) {
     prompt = `Enter an integer value for ${param.label || param.name}:`;
     if (param.description) {
       prompt += ` \n(${param.description})`;
@@ -583,7 +705,39 @@ async function promptResourceString(
   }
 }
 
+async function promptResourceStrings(
+  prompt: string,
+  input: ResourceInput,
+  projectId: string
+): Promise<string[]> {
+  const notFound = new FirebaseError(`No instances of ${input.resource.type} found.`);
+  switch (input.resource.type) {
+    case "storage.googleapis.com/Bucket":
+      const buckets = await listBuckets(projectId);
+      if (buckets.length === 0) {
+        throw notFound;
+      }
+      const forgedInput: MultiSelectInput = {
+        multiSelect: {
+          options: buckets.map((bucketName: string): SelectOptions<string> => {
+            return { label: bucketName, value: bucketName };
+          }),
+        },
+      };
+      return promptSelectMultiple<string>(prompt, forgedInput, undefined, (res: string[]) => res);
+    default:
+      logger.warn(
+        `Warning: unknown resource type ${input.resource.type}; defaulting to raw text input...`
+      );
+      return promptText<string[]>(prompt, { text: {} }, undefined, (res: string) => res.split(","));
+  }
+}
+
 type retryInput = { message: string };
+function shouldRetry(obj: any): obj is retryInput {
+  return typeof obj === "object" && (obj as retryInput).message !== undefined;
+}
+
 async function promptText<T extends RawParamValue>(
   prompt: string,
   input: TextInput<T>,
@@ -609,7 +763,7 @@ async function promptText<T extends RawParamValue>(
   // is wrong--it will return the type of the default if selected. Remove this
   // hack once we fix the prompt.ts metaprogramming.
   const converted = converter(res.toString());
-  if (typeof converted === "object") {
+  if (shouldRetry(converted)) {
     logger.error(converted.message);
     return promptText<T>(prompt, input, resolvedDefault, converter);
   }
@@ -636,9 +790,36 @@ async function promptSelect<T extends RawParamValue>(
     }),
   });
   const converted = converter(response);
-  if (typeof converted === "object") {
+  if (shouldRetry(converted)) {
     logger.error(converted.message);
     return promptSelect<T>(prompt, input, resolvedDefault, converter);
+  }
+  return converted;
+}
+
+async function promptSelectMultiple<T extends string>(
+  prompt: string,
+  input: MultiSelectInput,
+  resolvedDefault: T[] | undefined,
+  converter: (res: string[]) => T[] | retryInput
+): Promise<T[]> {
+  const response = await promptOnce({
+    name: "input",
+    type: "checkbox",
+    default: resolvedDefault,
+    message: prompt,
+    choices: input.multiSelect.options.map((option: SelectOptions<string>): ListItem => {
+      return {
+        checked: false,
+        name: option.label,
+        value: option.value.toString(),
+      };
+    }),
+  });
+  const converted = converter(response);
+  if (shouldRetry(converted)) {
+    logger.error(converted.message);
+    return promptSelectMultiple<T>(prompt, input, resolvedDefault, converter);
   }
   return converted;
 }

@@ -21,6 +21,7 @@ import {
   isUsingMiddleware,
   isUsingImageOptimization,
   isUsingAppDirectory,
+  allDependencyNames,
 } from "../../../frameworks/next/utils";
 import * as frameworksUtils from "../../../frameworks/utils";
 import * as fsUtils from "../../../fsutils";
@@ -43,6 +44,7 @@ import {
   unsupportedHeaders,
   unsupportedRedirects,
   unsupportedRewritesArray,
+  npmLsReturn,
 } from "./helpers";
 
 describe("Next.js utils", () => {
@@ -310,6 +312,57 @@ describe("Next.js utils", () => {
       sandbox.stub(fsUtils, "fileExistsSync").returns(false);
 
       expect(isUsingAppDirectory("")).to.be.false;
+    });
+  });
+
+  describe("allDependencyNames", () => {
+    it("should return empty on stopping conditions", () => {
+      expect(allDependencyNames({})).to.eql([]);
+      expect(allDependencyNames({ version: "foo" })).to.eql([]);
+    });
+
+    it("should return expected dependency names", () => {
+      expect(allDependencyNames(npmLsReturn)).to.eql([
+        "@next/font",
+        "next",
+        "@next/env",
+        "@next/swc-android-arm-eabi",
+        "@next/swc-android-arm64",
+        "@next/swc-darwin-arm64",
+        "@next/swc-darwin-x64",
+        "@next/swc-freebsd-x64",
+        "@next/swc-linux-arm-gnueabihf",
+        "@next/swc-linux-arm64-gnu",
+        "@next/swc-linux-arm64-musl",
+        "@next/swc-linux-x64-gnu",
+        "@next/swc-linux-x64-musl",
+        "@next/swc-win32-arm64-msvc",
+        "@next/swc-win32-ia32-msvc",
+        "@next/swc-win32-x64-msvc",
+        "@swc/helpers",
+        "tslib",
+        "caniuse-lite",
+        "fibers",
+        "node-sass",
+        "postcss",
+        "nanoid",
+        "picocolors",
+        "source-map-js",
+        "react-dom",
+        "react",
+        "sass",
+        "styled-jsx",
+        "client-only",
+        "react",
+        "react-dom",
+        "loose-envify",
+        "js-tokens",
+        "react",
+        "scheduler",
+        "loose-envify",
+        "react",
+        "loose-envify",
+      ]);
     });
   });
 });

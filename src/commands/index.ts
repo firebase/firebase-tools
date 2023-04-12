@@ -45,6 +45,7 @@ export function load(client: any): any {
   client.crashlytics.mappingfile.upload = loadCommand("crashlytics-mappingfile-upload");
   client.database = {};
   client.database.get = loadCommand("database-get");
+  client.database.import = loadCommand("database-import");
   client.database.instances = {};
   client.database.instances.create = loadCommand("database-instances-create");
   client.database.instances.list = loadCommand("database-instances-list");
