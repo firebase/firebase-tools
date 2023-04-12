@@ -1,0 +1,1 @@
+- Default emulators:start to use fast dev-mode for Nuxt3 applications (#5551)
