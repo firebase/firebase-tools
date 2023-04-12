@@ -3,7 +3,7 @@ import { readFile } from "fs/promises";
 import { join } from "path";
 import { gte } from "semver";
 import { spawn } from "cross-spawn";
-import { findDependency, FrameworkType, relativeRequire, SupportLevel } from "..";
+import { findDependency, FrameworkType, getNodeModuleBin, relativeRequire, SupportLevel } from "..";
 import { simpleProxy, warnIfCustomBuildScript } from "../utils";
 
 export const name = "Nuxt";
@@ -14,7 +14,6 @@ import { nuxtConfigFilesExist } from "./utils";
 import type { NuxtDependency, NuxtOptions } from "./interfaces";
 
 const DEFAULT_BUILD_SCRIPT = ["nuxt build"];
-export const CLI_COMMAND = join("node_modules", ".bin", "nuxt");
 
 /**
  *
@@ -84,9 +83,10 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
   return { packageJson: { ...packageJson, ...outputPackageJson }, frameworksEntry: "nuxt3" };
 }
 
-export async function getDevModeHandle(dir: string) {
+export async function getDevModeHandle(cwd: string) {
   const host = new Promise<string>((resolve) => {
-    const serve = spawn(CLI_COMMAND, ["dev"], { cwd: dir });
+    const cli = getNodeModuleBin("nuxt", cwd);
+    const serve = spawn(cli, ["dev"], { cwd: cwd });
 
     serve.stdout.on("data", (data: any) => {
       process.stdout.write(data);
@@ -105,7 +105,5 @@ export async function getDevModeHandle(dir: string) {
 
 export async function getConfig(dir: string): Promise<NuxtOptions> {
   const { loadNuxtConfig } = await relativeRequire(dir, "@nuxt/kit");
-  const config: NuxtOptions = await loadNuxtConfig(dir);
-
-  return config;
+  return await loadNuxtConfig(dir);
 }

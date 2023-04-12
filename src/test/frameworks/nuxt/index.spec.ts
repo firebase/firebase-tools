@@ -8,7 +8,7 @@ import * as crossSpawn from "cross-spawn";
 
 import * as frameworksFunctions from "../../../frameworks";
 import { discover as discoverNuxt2 } from "../../../frameworks/nuxt2";
-import { discover as discoverNuxt3, getDevModeHandle, CLI_COMMAND } from "../../../frameworks/nuxt";
+import { discover as discoverNuxt3, getDevModeHandle } from "../../../frameworks/nuxt";
 import type { NuxtOptions } from "../../../frameworks/nuxt/interfaces";
 
 describe("Nuxt 2 utils", () => {
@@ -83,7 +83,7 @@ describe("Nuxt 2 utils", () => {
 
       sandbox
         .stub(crossSpawn, "spawn")
-        .withArgs(CLI_COMMAND, ["dev"], { cwd: "." })
+        .withArgs("nuxt", ["dev"], { cwd: "." })
         .returns(process);
 
       const devModeHandle = getDevModeHandle(".");
