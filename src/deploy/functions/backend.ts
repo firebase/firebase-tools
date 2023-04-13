@@ -1,11 +1,10 @@
 import * as gcf from "../../gcp/cloudfunctions";
 import * as gcfV2 from "../../gcp/cloudfunctionsv2";
-import * as run from "../../gcp/run";
 import * as utils from "../../utils";
 import * as runtimes from "./runtimes";
 import { FirebaseError } from "../../error";
 import { Context } from "./args";
-import { flattenArray, zip } from "../../functional";
+import { flattenArray } from "../../functional";
 
 /** Retry settings for a ScheduleSpec. */
 export interface ScheduleRetryConfig {
@@ -532,20 +531,8 @@ async function loadExistingBackend(ctx: Context): Promise<void> {
   let gcfV2Results;
   try {
     gcfV2Results = await gcfV2.listAllFunctions(ctx.projectId);
-    const runResults = await Promise.all(
-      gcfV2Results.functions.map((fn) => run.getService(fn.serviceConfig.service!))
-    );
-    for (const [apiFunction, runService] of zip(gcfV2Results.functions, runResults)) {
-      // I don't know why but code complete knows apiFunction is a gcfv2.CloudFunction
-      // and the compiler thinks it's type {}.
-      const endpoint = gcfV2.endpointFromFunction(apiFunction as any);
-      endpoint.concurrency = runService.spec.template.spec.containerConcurrency || 1;
-      // N.B. We don't generally do anything with multiple containers, but we
-      // might have to figure out WTF to do here if we're updating multiple containers
-      // and our only reference point is the image. Hopefully by then we'll be
-      // on the next gen infrastructure and have state we can refer back to.
-      endpoint.cpu = +runService.spec.template.spec.containers[0].resources.limits.cpu;
-
+    for (const apiFunction of gcfV2Results.functions) {
+      const endpoint = gcfV2.endpointFromFunction(apiFunction);
       ctx.existingBackend.endpoints[endpoint.region] =
         ctx.existingBackend.endpoints[endpoint.region] || {};
       ctx.existingBackend.endpoints[endpoint.region][endpoint.id] = endpoint;
