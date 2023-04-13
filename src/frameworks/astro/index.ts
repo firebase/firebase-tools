@@ -1,5 +1,5 @@
 import { sync as spawnSync, spawn } from "cross-spawn";
-import { copy, readFile, existsSync } from "fs-extra";
+import { copy, existsSync } from "fs-extra";
 import { dirname, join, relative } from "path";
 import {
   BuildResult,
@@ -11,7 +11,7 @@ import {
 } from "..";
 import { AstroConfig } from "./interfaces";
 import { FirebaseError } from "../../error";
-import { simpleProxy, warnIfCustomBuildScript } from "../utils";
+import { readJSON, simpleProxy, warnIfCustomBuildScript } from "../utils";
 
 const { dynamicImport } = require(true && "../../dynamicImport");
 
@@ -58,14 +58,10 @@ export async function ɵcodegenPublicDirectory(root: string, dest: string) {
 
 export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: string) {
   const { outDir } = await getConfig(sourceDir);
-  const packageJsonBuffer = await readFile(join(sourceDir, "package.json"));
-  const packageJson = JSON.parse(packageJsonBuffer.toString());
-
+  const packageJson = await readJSON(join(sourceDir, "package.json"));
   await copy(join(sourceDir, outDir, "server"), join(destDir));
-
   return {
-    packageJson: { ...packageJson },
-    frameworksEntry: "astro",
+    packageJson,
     bootstrapScript: getBootstrapScript(),
   };
 }
