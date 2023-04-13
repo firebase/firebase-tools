@@ -1,4 +1,4 @@
-import { sync as execSync, spawn } from "cross-spawn";
+import { sync as execSync } from "cross-spawn";
 import { copy, pathExists } from "fs-extra";
 import { mkdir } from "fs/promises";
 import { join } from "path";
@@ -22,14 +22,12 @@ export async function discover(dir: string): Promise<Discovery | undefined> {
 }
 
 function checkForFlutterCLI() {
-  const flutter = execSync(`flutter --version`, { stdio: 'ignore' });
+  const flutter = execSync(`flutter --version`, { stdio: "ignore" });
   if (flutter.status) throw new FirebaseError("Flutter CLI not found.");
 }
 
 export function build(cwd: string): Promise<BuildResult> {
   checkForFlutterCLI();
-  const flutter = execSync(`flutter --version`, { cwd, stdio: 'ignore' });
-  if (flutter.status) throw new FirebaseError("Flutter CLI not found.");
   const build = execSync(`flutter build web --release`, {
     cwd: cwd,
     stdio: "inherit",

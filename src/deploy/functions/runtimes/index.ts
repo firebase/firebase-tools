@@ -11,11 +11,11 @@ const RUNTIMES: string[] = ["nodejs10", "nodejs12", "nodejs14", "nodejs16", "nod
 // different list to help guard against some day accidentally iterating over
 // and printing a hidden runtime to the user.
 const EXPERIMENTAL_RUNTIMES: string[] = ["python310", "python311"];
-export type Runtime = (typeof RUNTIMES)[number] | (typeof EXPERIMENTAL_RUNTIMES)[number];
+export type Runtime = typeof RUNTIMES[number] | typeof EXPERIMENTAL_RUNTIMES[number];
 
 /** Runtimes that can be found in existing backends but not used for new functions. */
 const DEPRECATED_RUNTIMES = ["nodejs6", "nodejs8"];
-export type DeprecatedRuntime = (typeof DEPRECATED_RUNTIMES)[number];
+export type DeprecatedRuntime = typeof DEPRECATED_RUNTIMES[number];
 
 /** Type deduction helper for a runtime string */
 export function isDeprecatedRuntime(runtime: string): runtime is DeprecatedRuntime {
