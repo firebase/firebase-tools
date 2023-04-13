@@ -2,10 +2,9 @@ import { copy, pathExists } from "fs-extra";
 import { readFile } from "fs/promises";
 import { join } from "path";
 import { lt } from "semver";
-import { findDependency, FrameworkType, relativeRequire, SupportLevel } from "..";
+import { FrameworkType, relativeRequire, SupportLevel } from "..";
 
-import { NuxtDependency } from "../nuxt/interfaces";
-import { nuxtConfigFilesExist } from "../nuxt/utils";
+import { nuxtConfigFilesExist, getNuxtVersion } from "../nuxt/utils";
 
 export const name = "Nuxt";
 export const support = SupportLevel.Experimental;
@@ -18,19 +17,12 @@ export const type = FrameworkType.MetaFramework;
  */
 export async function discover(dir: string): Promise<{ mayWantBackend: true } | undefined> {
   if (!(await pathExists(join(dir, "package.json")))) return;
-  const nuxtDependency = <NuxtDependency>findDependency("nuxt", {
-    cwd: dir,
-    depth: 0,
-    omitDev: false,
-  });
 
-  const version = nuxtDependency?.version;
+  const nuxtVersion = getNuxtVersion(dir);
   const anyConfigFileExists = await nuxtConfigFilesExist(dir);
 
-  if (!anyConfigFileExists && !nuxtDependency) return;
-  if (version && lt(version, "3.0.0-0")) return { mayWantBackend: true };
-
-  return;
+  if (!anyConfigFileExists && !nuxtVersion) return;
+  if (nuxtVersion && lt(nuxtVersion, "3.0.0-0")) return { mayWantBackend: true };
 }
 
 /**
