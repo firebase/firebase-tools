@@ -2,9 +2,10 @@ import { sync as execSync } from "cross-spawn";
 import { copy, pathExists } from "fs-extra";
 import { mkdir } from "fs/promises";
 import { join } from "path";
-import { BuildResult, Discovery, FrameworkType, SupportLevel } from "..";
 import * as yaml from "js-yaml";
 import { readFile } from "fs/promises";
+
+import { BuildResult, Discovery, FrameworkType, SupportLevel } from "..";
 import { FirebaseError } from "../../error";
 
 export const name = "Flutter";
