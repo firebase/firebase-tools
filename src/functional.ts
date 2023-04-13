@@ -146,3 +146,19 @@ export const nullsafeVisitor =
     }
     return func(first, ...rest);
   };
+
+/**
+ * Gets the first instance of a given key or null if not truthy.
+ */
+export function firstOf<T extends object, K extends keyof T>(
+  ts: T[],
+  k: K
+): NonNullable<T[K]> | null {
+  for (const test of ts) {
+    const val = test[k];
+    if (val) {
+      return val;
+    }
+  }
+  return null;
+}

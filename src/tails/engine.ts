@@ -3,6 +3,7 @@ import { readFile, exists } from "fs";
 import { join } from "path";
 
 import { NodejsRuntime } from "./node";
+import { PythonRuntime } from "./python";
 
 export interface Codebase {
   runtimeName: string;
@@ -57,7 +58,7 @@ export function vars(frameworks: Framework[]): Record<string, string> {
   return vars;
 }
 // This should be hard-coded. The engine statically supports a runtime or not.
-const allRuntimes: Runtime[] = [new NodejsRuntime()];
+const allRuntimes: Runtime[] = [new NodejsRuntime(), new PythonRuntime()];
 
 /**
  * Detects
@@ -116,6 +117,21 @@ export class RealFileSystem implements FileSystem {
   }
 }
 
+/**
+ * Automatically convert ENOENT errors into null
+ */
+export async function readOrNull(fs: FileSystem, path: string): Promise<string | null> {
+  try {
+    return fs.read(path);
+  } catch (err: unknown) {
+    // Is this really what TypeScript intends me to do to avoid linter errors?
+    if (err && typeof err === "object" && "code" in err && err.code === "ENOENT") {
+      return null;
+    }
+    throw err;
+  }
+}
+
 export class MockFileSystem implements FileSystem {
   constructor(private readonly mock: Record<string, string>) {}
   exists(path: string): Promise<boolean> {
@@ -138,7 +154,6 @@ export class FrameworkMatcher {
 
   constructor(
     private readonly runtime: string,
-    // TODO: consider a caching fs wrapper
     private readonly fs: FileSystem,
     frameworks: Framework[],
     private dependencies: Record<string, string>

@@ -1,5 +1,6 @@
 import { assertExhaustive } from "../functional";
 import * as engine from "./engine";
+import { firstOf } from "../functional";
 
 // TODO: make this a JIT dynamic load from the filesystem
 
@@ -42,13 +43,7 @@ export class NodejsCodebase implements engine.Codebase {
   }
 
   installCommand(): string | null {
-    let npmCommand: string | null = null;
-    for (const framework of this.frameworks) {
-      if (framework.installCommand) {
-        npmCommand = framework.installCommand;
-        break;
-      }
-    }
+    let npmCommand = firstOf(this.frameworks, "installCommand");
     if (npmCommand) {
       if (this.pkgMgr === "yarn") {
         npmCommand = npmCommand.replace(/npm i(nstall)?/, "yarn install");
@@ -75,11 +70,9 @@ export class NodejsCodebase implements engine.Codebase {
       } else if (this.lang === "ts-global") {
         scripts.push("tsc");
       }
-      for (const framework of this.frameworks) {
-        if (framework.buildCommand) {
-          scripts.push(framework.buildCommand);
-          break;
-        }
+      const fromFramework = firstOf(this.frameworks, "buildCommand");
+      if (fromFramework) {
+        scripts.push(fromFramework);
       }
     }
 
@@ -96,23 +89,15 @@ export class NodejsCodebase implements engine.Codebase {
   }
 
   devCommand(): string | null {
-    let devCommand: string | null = null;
-    if (this.scripts.includes("dev")) {
-      devCommand = "npm run dev";
-    }
+    let devCommand = this.scripts.includes("dev") ? "npm run dev" : null;
     if (!devCommand && this.scripts.includes("start")) {
       devCommand = "npm run start";
     }
     if (!devCommand) {
-      for (const framework of this.frameworks) {
-        if (framework.devCommand) {
-          devCommand = framework.devCommand;
-          break;
-        }
-      }
+      devCommand = firstOf(this.frameworks, "devCommand");
     }
     if (devCommand && this.pkgMgr === "yarn") {
-      return devCommand.replace("npm", "yarn");
+      devCommand = devCommand.replace("npm", "yarn");
     }
 
     return engine.interpolate(devCommand, engine.vars(this.frameworks));
@@ -204,36 +189,21 @@ export class NodejsRuntime {
    * Detects a node codebase and returns the Codebase with the detected framework(s).
    */
   async detectCodebase(fs: engine.FileSystem): Promise<engine.Codebase | null> {
-    let pkgJsonRaw: string | null = null;
-    let hasYarn = false;
-    let hasTsconfig = false;
-    await Promise.all([
-      (async () => {
-        try {
-          pkgJsonRaw = await fs.read("package.json");
-        } catch (err: any) {
-          if (err.code === "ENOENT") {
-            pkgJsonRaw = null;
-          }
-        }
-      })(),
-      (async () => {
-        hasYarn = await fs.exists("yarn.lock");
-      })(),
-      (async () => {
-        hasTsconfig = await fs.exists("tsconfig.json");
-      })(),
+    const [pkgJsonRaw, hasYarn, hasTsConfig] = await Promise.all([
+      engine.readOrNull(fs, "package.json"),
+      fs.exists("yarn.lock"),
+      fs.exists("tsconfig.json"),
     ]);
     if (!pkgJsonRaw) {
       return null;
     }
     // TODO: Find out why pkgJsonRaw is never. TypeScript isn't seeing the assignment
     // as real.
-    const pkgJson = JSON.parse((pkgJsonRaw as Buffer).toString("utf-8")) as PackageJson;
+    const pkgJson = JSON.parse(pkgJsonRaw) as PackageJson;
     const pkgMgr: PackageManager = hasYarn ? "yarn" : "npm";
     // TODO: consider reading lockfile over pkg.json
     const dependencies = { ...pkgJson.dependencies, ...pkgJson.devDependencies };
-    const lang: Language = hasTsconfig
+    const lang: Language = hasTsConfig
       ? dependencies["typescript"]
         ? "ts-local"
         : "ts-global"
