@@ -1,6 +1,6 @@
 import { sync as spawnSync, spawn } from "cross-spawn";
 import { copy, readFile, existsSync } from "fs-extra";
-import { join } from "path";
+import { dirname, join, relative } from "path";
 import {
   BuildResult,
   Discovery,
@@ -10,7 +10,6 @@ import {
   getNodeModuleBin,
 } from "..";
 import { AstroConfig } from "./interfaces";
-import { logError } from "../../logError";
 import { FirebaseError } from "../../error";
 import { simpleProxy, warnIfCustomBuildScript } from "../utils";
 
@@ -27,11 +26,10 @@ function getAstroVersion(cwd: string): string | undefined {
 export async function discover(dir: string): Promise<Discovery | undefined> {
   if (!existsSync(join(dir, "package.json"))) return;
   if (!getAstroVersion(dir)) return;
-  const config = await getConfig(dir);
-  if (!config) return;
+  const { output, publicDir: publicDirectory } = await getConfig(dir);
   return {
-    mayWantBackend: config.output === "server",
-    publicDirectory: config.publicDir,
+    mayWantBackend: output === "server",
+    publicDirectory,
   };
 }
 
@@ -40,24 +38,24 @@ const DEFAULT_BUILD_SCRIPT = ["astro build"];
 export async function build(cwd: string): Promise<BuildResult> {
   const cli = getNodeModuleBin("astro", cwd);
   await warnIfCustomBuildScript(cwd, name, DEFAULT_BUILD_SCRIPT);
+  const { output, adapter } = await getConfig(cwd);
+  if (output === "server" && adapter?.name !== "@astrojs/node") {
+    throw new FirebaseError("Deploying an Astro application with SSR on Firebase Hosting requires the @astrojs/node adapter.");
+  }
   const build = spawnSync(cli, ["build"], { cwd, stdio: "inherit" });
   if (build.status) throw new FirebaseError("Unable to build your Astro app");
-  const { output, adapter } = (await getConfig(cwd))!;
-  if (output === "server" && adapter?.name !== "@astrojs/node") {
-    logError("Something somethin @astrojs/node");
-  }
-  return { wantsBackend: output === "server" && adapter?.name === "@astrojs/node" };
+  return { wantsBackend: output === "server" };
 }
 
 export async function ɵcodegenPublicDirectory(root: string, dest: string) {
-  const { outDir, output } = (await getConfig(root))!;
+  const { outDir, output } = await getConfig(root);
   // output: "server" in astro.config builds "client" and "server" folders, otherwise assets are in top-level outDir
   const assetPath = join(root, outDir, output === "server" ? "client" : "");
   await copy(assetPath, dest);
 }
 
 export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: string) {
-  const { outDir } = (await getConfig(sourceDir))!;
+  const { outDir } = await getConfig(sourceDir);
   const packageJsonBuffer = await readFile(join(sourceDir, "package.json"));
   const packageJson = JSON.parse(packageJsonBuffer.toString());
 
@@ -92,26 +90,14 @@ export function getBootstrapScript() {
   return `const entry = import('./entry.mjs');\nexport const handle = async (req, res) => (await entry).handler(req, res)`;
 }
 
-async function getConfig(root: string): Promise<void | AstroConfig> {
-  const configPath = [
-    "astro.config.js",
-    "astro.config.ts",
-    "astro.config.mjs",
-    "astro.config.cjs",
-    "astro.config.mts",
-    "astro.config.cts",
-  ]
-    .map((file) => join(root, file))
-    .find(existsSync);
-  if (!configPath) return;
-  try {
-    const { default: config } = await dynamicImport(configPath);
-    config.output ||= "static";
-    config.outDir ||= "dist";
-    config.publicDir ||= "public";
-    return config;
-  } catch (e) {
-    logError(e);
-    return;
-  }
+async function getConfig(root: string): Promise<AstroConfig> {
+  const astroDirectory = dirname(require.resolve("astro/package.json", { paths: [root] }));
+  const { openConfig } = await dynamicImport(join(astroDirectory, "dist", "core", "config", "config.js"));
+  const { astroConfig } = await openConfig({ cmd: "build", root });
+  return {
+    outDir: relative(root, astroConfig.outDir.pathname),
+    publicDir: relative(root, astroConfig.publicDir.pathname),
+    output: astroConfig.output,
+    adapter: astroConfig.adapter,
+  };
 }
