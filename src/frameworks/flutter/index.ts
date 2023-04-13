@@ -22,7 +22,7 @@ export async function discover(dir: string): Promise<Discovery | undefined> {
 }
 
 function getFlutterVersion() {
-  const process = execSync(`flutter --version`, { stdio: "ignore" });
+  const process = execSync("flutter --version", { stdio: "ignore" });
   if (process.status) throw new FirebaseError("Flutter CLI not found.");
   const version = process.stdout?.toString().match(/Flutter (\S+)/)?.[1];
   if (!version) throw new FirebaseError("Unable to determine Flutter version.");
@@ -31,7 +31,7 @@ function getFlutterVersion() {
 
 export function build(cwd: string): Promise<BuildResult> {
   getFlutterVersion();
-  const build = execSync(`flutter build web`, { cwd, stdio: "inherit" });
+  const build = execSync("flutter build web", { cwd, stdio: "inherit" });
   if (build.status) throw new FirebaseError("Unable to build your Flutter app");
   return Promise.resolve({ wantsBackend: false });
 }
