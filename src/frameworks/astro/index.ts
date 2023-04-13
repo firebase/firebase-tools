@@ -40,7 +40,9 @@ export async function build(cwd: string): Promise<BuildResult> {
   await warnIfCustomBuildScript(cwd, name, DEFAULT_BUILD_SCRIPT);
   const { output, adapter } = await getConfig(cwd);
   if (output === "server" && adapter?.name !== "@astrojs/node") {
-    throw new FirebaseError("Deploying an Astro application with SSR on Firebase Hosting requires the @astrojs/node adapter.");
+    throw new FirebaseError(
+      "Deploying an Astro application with SSR on Firebase Hosting requires the @astrojs/node adapter."
+    );
   }
   const build = spawnSync(cli, ["build"], { cwd, stdio: "inherit" });
   if (build.status) throw new FirebaseError("Unable to build your Astro app");
@@ -92,7 +94,9 @@ export function getBootstrapScript() {
 
 async function getConfig(root: string): Promise<AstroConfig> {
   const astroDirectory = dirname(require.resolve("astro/package.json", { paths: [root] }));
-  const { openConfig } = await dynamicImport(join(astroDirectory, "dist", "core", "config", "config.js"));
+  const { openConfig } = await dynamicImport(
+    join(astroDirectory, "dist", "core", "config", "config.js")
+  );
   const { astroConfig } = await openConfig({ cmd: "build", root });
   return {
     outDir: relative(root, astroConfig.outDir.pathname),
