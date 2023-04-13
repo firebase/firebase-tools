@@ -296,6 +296,13 @@ export async function createFunction(cloudFunction: InputCloudFunction): Promise
   const components = cloudFunction.name.split("/");
   const functionId = components.splice(-1, 1)[0];
 
+  cloudFunction.buildConfig.environmentVariables = {
+    ...cloudFunction.buildConfig.environmentVariables,
+    // Disable GCF from automatically running npm run build script
+    // https://cloud.google.com/functions/docs/release-notes
+    GOOGLE_NODE_RUN_SCRIPTS: "",
+  };
+
   try {
     const res = await client.post<typeof cloudFunction, Operation>(
       components.join("/"),
@@ -388,6 +395,14 @@ export async function updateFunction(cloudFunction: InputCloudFunction): Promise
     "serviceConfig.environmentVariables",
     "serviceConfig.secretEnvironmentVariables"
   );
+
+  cloudFunction.buildConfig.environmentVariables = {
+    ...cloudFunction.buildConfig.environmentVariables,
+    // Disable GCF from automatically running npm run build script
+    // https://cloud.google.com/functions/docs/release-notes
+    GOOGLE_NODE_RUN_SCRIPTS: "",
+  };
+  fieldMasks.push("buildConfig.buildEnvironmentVariables");
   try {
     const queryParams = {
       updateMask: fieldMasks.join(","),
