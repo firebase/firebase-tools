@@ -1,2 +1,3 @@
 - Default emulators:start to use fast dev-mode for Nuxt3 applications (#5551)
 - Disable GCF breaking change to automatically run npm build scripts as part of function deploy (#5687)
+- Add experimental support for deploying Astro applications to Hosting (#5527)
