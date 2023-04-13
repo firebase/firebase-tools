@@ -1,6 +1,6 @@
 import { copy, pathExists, rename } from "fs-extra";
 import { mkdir, readFile, rmdir } from "fs/promises";
-import { join } from "path";
+import { join, relative } from "path";
 import { BuildResult, FrameworkType, SupportLevel } from "..";
 import { runWithVirtualEnv } from "../../functions/python";
 
@@ -13,26 +13,8 @@ const CLI = 'python3.10';
 export async function discover(dir: string) {
   if (!(await pathExists(join(dir, "requirements.txt")))) return;
   if (!(await pathExists(join(dir, "main.py")))) return;
-  try {
-    // TODO do this better
-    const discovery = await new Promise<string>((resolve) => {
-      const child = runWithVirtualEnv(
-        [CLI, join(__dirname, 'discover.py')],
-        dir,
-        {},
-      );
-      let out = "";
-      child.stdout?.on("data", (chunk: Buffer) => {
-        const chunkString = chunk.toString();
-        out = out + chunkString;
-      });
-      child.on("exit", () => resolve(out));
-    });
-    if (!discovery.trim()) return;
-    return { mayWantBackend: true };
-  } catch(e) {
-    // continue
-  }
+  const discovery = await getDiscoveryResults(dir);
+  return { mayWantBackend: true, publicDirectory: discovery.staticFolder };
 }
 
 export async function build(cwd: string): Promise<BuildResult> {
@@ -40,7 +22,8 @@ export async function build(cwd: string): Promise<BuildResult> {
 }
 
 export async function ɵcodegenPublicDirectory(root: string, dest: string) {
-  // TODO copy over the asset dir
+  const { staticFolder } = await getDiscoveryResults(root);
+  copy(join(root, staticFolder), dest);
 }
 
 export async function ɵcodegenFunctionsDirectory(root: string, dest: string) {
@@ -48,10 +31,16 @@ export async function ɵcodegenFunctionsDirectory(root: string, dest: string) {
   await copy(root, join(dest, 'src'), { recursive: true });
   await rmdir(join(dest, "src", "venv")).catch(() => { });
   const requirementsTxt = await readFile(join(root, "requirements.txt"));
+  const { appName } = await getDiscoveryResults(root);
+  const imports = ['src.main', appName];
+  return { imports, requirementsTxt };
+}
+
+async function getDiscoveryResults(cwd: string) {
   const discovery = await new Promise<string>((resolve) => {
     const child = runWithVirtualEnv(
       [CLI, join(__dirname, 'discover.py')],
-      root,
+      cwd,
       {},
     );
     let out = "";
@@ -61,6 +50,10 @@ export async function ɵcodegenFunctionsDirectory(root: string, dest: string) {
     });
     child.on("exit", () => resolve(out));
   });
-  const imports = ['src.main', discovery.split("\n")[0]];
-  return { imports, requirementsTxt };
+  const [appName, staticFolder, staticUrlPath] = discovery.trim().split("\n");
+  return {
+    appName,
+    staticFolder: relative(cwd, staticFolder),
+    staticUrlPath,
+  };
 }
