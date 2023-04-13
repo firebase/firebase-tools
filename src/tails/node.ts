@@ -144,7 +144,7 @@ export class NodejsRuntime {
           ["astro.config.mjs", "astro.config.cjs", "astro.config.js", "astro.config.ts"],
         ],
         dependencies: [{ name: "astrojs" }],
-        canEmbed: ["core:svelte", "core:react"],
+        canEmbed: ["core:svelte", "core:react", "core:svelte-vite", "core:react-vite"],
         buildCommand: "astro build",
         devCommand: "astro preview",
       },
