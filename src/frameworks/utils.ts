@@ -59,8 +59,8 @@ export function simpleProxy(hostOrRequestHandler: string | RequestHandler) {
       return next();
     }
     if (typeof hostOrRequestHandler === "string") {
-      const host = hostOrRequestHandler;
-      const { hostname, port, protocol, username, password } = new URL(host);
+      const { hostname, port, protocol, username, password } = new URL(hostOrRequestHandler);
+      const host = `${hostname}:${port}`;
       const auth = username || password ? `${username}:${password}` : undefined;
       const opts = {
         agent,

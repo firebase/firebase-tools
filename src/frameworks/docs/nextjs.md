@@ -14,7 +14,7 @@ Using the {{firebase_cli}}, you can deploy your Next.js Web apps to Firebase and
 serve them with {{firebase_hosting}}. The {{cli}} respects your Next.js settings and
 translates them to Firebase settings with zero or minimal extra configuration on
 your part. If your app includes dynamic server-side logic, the {{cli}} deploys that
-logic to {{cloud_functions_full}}.ß
+logic to {{cloud_functions_full}}.
 
 <<_includes/_preview-disclaimer.md>>
 

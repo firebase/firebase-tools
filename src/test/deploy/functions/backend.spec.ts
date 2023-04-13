@@ -6,7 +6,6 @@ import * as args from "../../../deploy/functions/args";
 import * as backend from "../../../deploy/functions/backend";
 import * as gcf from "../../../gcp/cloudfunctions";
 import * as gcfV2 from "../../../gcp/cloudfunctionsv2";
-import * as run from "../../../gcp/run";
 import * as utils from "../../../utils";
 import * as projectConfig from "../../../functions/projectConfig";
 
@@ -37,7 +36,7 @@ describe("Backend", () => {
     generation: 42,
   };
 
-  const CLOUD_FUNCTION_V2: Omit<gcfV2.CloudFunction, gcfV2.OutputOnlyFields> = {
+  const CLOUD_FUNCTION_V2: gcfV2.InputCloudFunction = {
     name: "projects/project/locations/region/functions/id",
     buildConfig: {
       entryPoint: "function",
@@ -49,53 +48,18 @@ describe("Backend", () => {
     },
     serviceConfig: {
       service: "projects/project/locations/region/services/service",
+      availableCpu: "1",
+      maxInstanceRequestConcurrency: 80,
     },
   };
-
-  const CLOUD_RUN_SERVICE: run.Service = {
-    apiVersion: "serving.knative.dev/v1",
-    kind: "Service",
-    metadata: {
-      name: "service",
-      namespace: "projectnumber",
-    },
-    spec: {
-      template: {
-        spec: {
-          containerConcurrency: 80,
-          containers: [
-            {
-              image: "image",
-              ports: [
-                {
-                  name: "main",
-                  containerPort: 8080,
-                },
-              ],
-              env: {},
-              resources: {
-                limits: {
-                  memory: "256MiB",
-                  cpu: "1",
-                },
-              },
-            },
-          ],
-        },
-        metadata: {
-          name: "service",
-          namespace: "project",
-        },
-      },
-      traffic: [],
-    },
-  };
-
   const RUN_URI = "https://id-nonce-region-project.run.app";
-  const HAVE_CLOUD_FUNCTION_V2: gcfV2.CloudFunction = {
+  const HAVE_CLOUD_FUNCTION_V2: gcfV2.OutputCloudFunction = {
     ...CLOUD_FUNCTION_V2,
     serviceConfig: {
+      service: "service",
       uri: RUN_URI,
+      availableCpu: "1",
+      maxInstanceRequestConcurrency: 80,
     },
     state: "ACTIVE",
     updateTime: new Date(),
@@ -161,20 +125,17 @@ describe("Backend", () => {
     let listAllFunctions: sinon.SinonStub;
     let listAllFunctionsV2: sinon.SinonStub;
     let logLabeledWarning: sinon.SinonSpy;
-    let getService: sinon.SinonStub;
 
     beforeEach(() => {
       listAllFunctions = sinon.stub(gcf, "listAllFunctions").rejects("Unexpected call");
       listAllFunctionsV2 = sinon.stub(gcfV2, "listAllFunctions").rejects("Unexpected v2 call");
       logLabeledWarning = sinon.spy(utils, "logLabeledWarning");
-      getService = sinon.stub(run, "getService").rejects("Unexpected call to getService");
     });
 
     afterEach(() => {
       listAllFunctions.restore();
       listAllFunctionsV2.restore();
       logLabeledWarning.restore();
-      getService.restore();
     });
 
     function newContext(): args.Context {
@@ -300,9 +261,6 @@ describe("Backend", () => {
       });
 
       it("should read v2 functions when enabled", async () => {
-        getService
-          .withArgs(HAVE_CLOUD_FUNCTION_V2.serviceConfig.service!)
-          .resolves(CLOUD_RUN_SERVICE);
         listAllFunctions.onFirstCall().resolves({
           functions: [],
           unreachable: [],
@@ -320,10 +278,10 @@ describe("Backend", () => {
             concurrency: 80,
             cpu: 1,
             httpsTrigger: {},
-            uri: HAVE_CLOUD_FUNCTION_V2.serviceConfig.uri,
+            runServiceId: HAVE_CLOUD_FUNCTION_V2.serviceConfig?.service,
+            uri: HAVE_CLOUD_FUNCTION_V2.serviceConfig?.uri,
           })
         );
-        expect(getService).to.have.been.called;
       });
 
       it("should deduce features of scheduled functions", async () => {

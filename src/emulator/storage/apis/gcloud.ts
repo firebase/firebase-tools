@@ -160,23 +160,26 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     });
   });
 
-  gcloudStorageAPI.delete("/b/:bucketId/o/:objectId", async (req, res) => {
-    try {
-      await adminStorageLayer.deleteObject({
-        bucketId: req.params.bucketId,
-        decodedObjectId: req.params.objectId,
-      });
-    } catch (err) {
-      if (err instanceof NotFoundError) {
-        return sendObjectNotFound(req, res);
+  gcloudStorageAPI.delete(
+    ["/b/:bucketId/o/:objectId", "/storage/v1/b/:bucketId/o/:objectId"],
+    async (req, res) => {
+      try {
+        await adminStorageLayer.deleteObject({
+          bucketId: req.params.bucketId,
+          decodedObjectId: req.params.objectId,
+        });
+      } catch (err) {
+        if (err instanceof NotFoundError) {
+          return sendObjectNotFound(req, res);
+        }
+        if (err instanceof ForbiddenError) {
+          return res.sendStatus(403);
+        }
+        throw err;
       }
-      if (err instanceof ForbiddenError) {
-        return res.sendStatus(403);
-      }
-      throw err;
+      return res.sendStatus(204);
     }
-    return res.sendStatus(204);
-  });
+  );
 
   gcloudStorageAPI.put("/upload/storage/v1/b/:bucketId/o", async (req, res) => {
     if (!req.query.upload_id) {
@@ -301,7 +304,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
       let dataRaw: Buffer;
       try {
         ({ metadataRaw, dataRaw } = parseObjectUploadMultipartRequest(
-          contentTypeHeader!,
+          contentTypeHeader,
           await reqBodyToBuffer(req)
         ));
       } catch (err) {
