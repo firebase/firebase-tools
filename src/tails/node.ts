@@ -1,3 +1,4 @@
+import { assertExhaustive } from "../functional";
 import * as engine from "./engine";
 
 // TODO: make this a JIT dynamic load from the filesystem
@@ -41,17 +42,25 @@ export class NodejsCodebase implements engine.Codebase {
   }
 
   installCommand(): string | null {
-    let npmCommand = "npm install";
+    let npmCommand: string | null = null;
     for (const framework of this.frameworks) {
       if (framework.installCommand) {
         npmCommand = framework.installCommand;
         break;
       }
     }
-    if (this.pkgMgr === "yarn") {
-      return npmCommand.replace(/npm i(nstall)?/, "yarn install");
+    if (npmCommand) {
+      if (this.pkgMgr === "yarn") {
+        npmCommand = npmCommand.replace(/npm i(nstall)?/, "yarn install");
+      }
+      return engine.interpolate(npmCommand, engine.vars(this.frameworks));
     }
-    return engine.interpolate(npmCommand, engine.vars(this.frameworks));
+    if (this.pkgMgr === "npm") {
+      return "npm ci";
+    } else if (this.pkgMgr === "yarn") {
+      return "yarn install --frozen-lockfile";
+    }
+    assertExhaustive(this.pkgMgr);
   }
 
   buildCommand(): string | null {
