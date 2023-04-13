@@ -29,9 +29,9 @@ export const FIRESTORE_EVENTS = [
 
 export type Event =
   | typeof PUBSUB_PUBLISH_EVENT
-  | typeof STORAGE_EVENTS[number]
+  | (typeof STORAGE_EVENTS)[number]
   | typeof FIREBASE_ALERTS_PUBLISH_EVENT
-  | typeof DATABASE_EVENTS[number]
+  | (typeof DATABASE_EVENTS)[number]
   | typeof REMOTE_CONFIG_EVENT
   | typeof TEST_LAB_EVENT
-  | typeof FIRESTORE_EVENTS[number];
+  | (typeof FIRESTORE_EVENTS)[number];
