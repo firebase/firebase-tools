@@ -1,78 +1,5 @@
 import * as engine from "./engine";
 
-// Note: Dependencies are wonky here. For example, multiple vite plugins use
-// vite transparently. Next.js also uses React transitively. Should we "inherit"
-// things from vite in that case or just reimplement the few extra fields?
-// Maybe it's the builder that needs to know this deep inheritance?
-const allNodeFrameworks: engine.Framework[] = [
-  {
-    name: "core:express",
-    parent: "nodejs",
-    dependencies: [{ name: "express" }],
-  },
-  {
-    name: "core:nextjs",
-    parent: "nodejs",
-    requiredFiles: [["next.config.js", "next.config.ts"]],
-    dependencies: [{ name: "next" }],
-  },
-  {
-    name: "core:angular",
-    parent: "nodejs",
-    dependencies: [{ name: "@angular/core" }, { name: "@angular/cli" }],
-    buildCommand: "ng build",
-    devCommand: "ng run",
-  },
-  {
-    name: "core:astro",
-    parent: "nodejs",
-    requiredFiles: [["astro.config.mjs", "astro.config.cjs", "astro.config.js", "astro.config.ts"]],
-    dependencies: [{ name: "astrojs" }],
-    canEmbed: ["core:svelte", "core:react"],
-    buildCommand: "astro build",
-    devCommand: "astro preview",
-  },
-  {
-    name: "core:react",
-    parent: "nodejs",
-    dependencies: [{ name: "react" }, { name: "react-dom" }],
-  },
-  {
-    name: "core:react-vite",
-    parent: "core:vite",
-    dependencies: [{ name: "react" }, { name: "react-dom" }],
-    vars: { vitePlugin: "react-jsx" },
-  },
-  {
-    name: "core:svelte",
-    parent: "nodejs",
-    // optionalFiles: svelte.config.js
-    dependencies: [{ name: "svelte" }],
-  },
-  {
-    name: "core:svelte-vite",
-    parent: "core:vite",
-    dependencies: [{ name: "svelte" }],
-    canEmbed: ["core:svelte"],
-    vars: { vitePlugin: "vite-plugin-svelte" },
-  },
-
-  // Note: Sveltekit is built on Vite but does not extend the vite note because
-  // the dependency is transitive
-  {
-    name: "core:sveltekit",
-    parent: "core:svelte",
-    dependencies: [{ name: "@sveltejs/kit" }],
-  },
-  {
-    name: "core:vite",
-    parent: "nodejs",
-    dependencies: [{ name: "vite" }],
-    buildCommand: "vite build",
-    devCommand: "vite preview",
-  },
-];
-
 // TODO: make this a JIT dynamic load from the filesystem
 
 type PackageManager = "npm" | "yarn";
@@ -83,7 +10,7 @@ interface PackageJson {
   scripts?: Record<string, unknown>;
 }
 
-export class Node implements engine.Strategy {
+export class NodejsCodebase implements engine.Codebase {
   readonly runtimeName = "nodejs";
   readonly frameworkName: string;
   constructor(
@@ -183,47 +110,135 @@ export class Node implements engine.Strategy {
   }
 }
 
-/**
- * Detects a node codebase and returns the Strategy for the codebase with the
- * detected framework(s).
- */
-export async function detect(fs: engine.FileSystem): Promise<engine.Strategy | null> {
-  let pkgJsonRaw: string | null = null;
-  let hasYarn = false;
-  let hasTsconfig = false;
-  await Promise.all([
-    (async () => {
-      try {
-        pkgJsonRaw = await fs.read("package.json");
-      } catch (err: any) {
-        if (err.code === "ENOENT") {
-          pkgJsonRaw = null;
-        }
-      }
-    })(),
-    (async () => {
-      hasYarn = await fs.exists("yarn.lock");
-    })(),
-    (async () => {
-      hasTsconfig = await fs.exists("tsconfig.json");
-    })(),
-  ]);
-  if (!pkgJsonRaw) {
-    return null;
-  }
-  // TODO: Find out why pkgJsonRaw is never. TypeScript isn't seeing the assignment
-  // as real.
-  const pkgJson = JSON.parse((pkgJsonRaw as Buffer).toString("utf-8")) as PackageJson;
-  const pkgMgr: PackageManager = hasYarn ? "yarn" : "npm";
-  // TODO: consider reading lockfile over pkg.json
-  const dependencies = { ...pkgJson.dependencies, ...pkgJson.devDependencies };
-  const lang: Language = hasTsconfig
-    ? dependencies["typescript"]
-      ? "ts-local"
-      : "ts-global"
-    : "js";
+export class NodejsRuntime {
+  // Note: Dependencies are wonky here. For example, multiple vite plugins use
+  // vite transparently. Next.js also uses React transitively. Should we "inherit"
+  // things from vite in that case or just reimplement the few extra fields?
+  // Maybe it's the builder that needs to know this deep inheritance?
+  private frameworks: engine.Framework[] | null = null;
+  loadFrameworks(): Promise<void> {
+    // TODO: Load these dyanmically from a data file(s)
+    this.frameworks = [
+      {
+        name: "core:express",
+        parent: "nodejs",
+        dependencies: [{ name: "express" }],
+      },
+      {
+        name: "core:nextjs",
+        parent: "nodejs",
+        requiredFiles: [["next.config.js", "next.config.ts"]],
+        dependencies: [{ name: "next" }],
+      },
+      {
+        name: "core:angular",
+        parent: "nodejs",
+        dependencies: [{ name: "@angular/core" }, { name: "@angular/cli" }],
+        buildCommand: "ng build",
+        devCommand: "ng run",
+      },
+      {
+        name: "core:astro",
+        parent: "nodejs",
+        requiredFiles: [
+          ["astro.config.mjs", "astro.config.cjs", "astro.config.js", "astro.config.ts"],
+        ],
+        dependencies: [{ name: "astrojs" }],
+        canEmbed: ["core:svelte", "core:react"],
+        buildCommand: "astro build",
+        devCommand: "astro preview",
+      },
+      {
+        name: "core:react",
+        parent: "nodejs",
+        dependencies: [{ name: "react" }, { name: "react-dom" }],
+      },
+      {
+        name: "core:react-vite",
+        parent: "core:vite",
+        dependencies: [{ name: "react" }, { name: "react-dom" }],
+        vars: { vitePlugin: "react-jsx" },
+      },
+      {
+        name: "core:svelte",
+        parent: "nodejs",
+        // optionalFiles: svelte.config.js
+        dependencies: [{ name: "svelte" }],
+      },
+      {
+        name: "core:svelte-vite",
+        parent: "core:vite",
+        dependencies: [{ name: "svelte" }],
+        canEmbed: ["core:svelte"],
+        vars: { vitePlugin: "vite-plugin-svelte" },
+      },
 
-  // TODO: Frameworks should be dynamically loaded from JSON/YAML files.
-  const matcher = new engine.FrameworkMatcher("nodejs", fs, allNodeFrameworks, dependencies);
-  return new Node(pkgMgr, lang, Object.keys(pkgJson.scripts || {}), await matcher.match());
+      // Note: Sveltekit is built on Vite but does not extend the vite note because
+      // the dependency is transitive
+      {
+        name: "core:sveltekit",
+        parent: "core:svelte",
+        dependencies: [{ name: "@sveltejs/kit" }],
+      },
+      {
+        name: "core:vite",
+        parent: "nodejs",
+        dependencies: [{ name: "vite" }],
+        buildCommand: "vite build",
+        devCommand: "vite preview",
+      },
+    ];
+    return Promise.resolve();
+  }
+
+  /**
+   * Detects a node codebase and returns the Codebase with the detected framework(s).
+   */
+  async detectCodebase(fs: engine.FileSystem): Promise<engine.Codebase | null> {
+    let pkgJsonRaw: string | null = null;
+    let hasYarn = false;
+    let hasTsconfig = false;
+    await Promise.all([
+      (async () => {
+        try {
+          pkgJsonRaw = await fs.read("package.json");
+        } catch (err: any) {
+          if (err.code === "ENOENT") {
+            pkgJsonRaw = null;
+          }
+        }
+      })(),
+      (async () => {
+        hasYarn = await fs.exists("yarn.lock");
+      })(),
+      (async () => {
+        hasTsconfig = await fs.exists("tsconfig.json");
+      })(),
+    ]);
+    if (!pkgJsonRaw) {
+      return null;
+    }
+    // TODO: Find out why pkgJsonRaw is never. TypeScript isn't seeing the assignment
+    // as real.
+    const pkgJson = JSON.parse((pkgJsonRaw as Buffer).toString("utf-8")) as PackageJson;
+    const pkgMgr: PackageManager = hasYarn ? "yarn" : "npm";
+    // TODO: consider reading lockfile over pkg.json
+    const dependencies = { ...pkgJson.dependencies, ...pkgJson.devDependencies };
+    const lang: Language = hasTsconfig
+      ? dependencies["typescript"]
+        ? "ts-local"
+        : "ts-global"
+      : "js";
+
+    if (!this.frameworks) {
+      await this.loadFrameworks();
+    }
+    const matcher = new engine.FrameworkMatcher("nodejs", fs, this.frameworks!, dependencies);
+    return new NodejsCodebase(
+      pkgMgr,
+      lang,
+      Object.keys(pkgJson.scripts || {}),
+      await matcher.match()
+    );
+  }
 }

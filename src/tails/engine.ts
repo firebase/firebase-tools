@@ -2,9 +2,9 @@ import { promisify } from "util";
 import { readFile, exists } from "fs";
 import { join } from "path";
 
-import * as node from "./node";
+import { NodejsRuntime } from "./node";
 
-export interface Strategy {
+export interface Codebase {
   runtimeName: string;
   frameworkName: string;
 
@@ -14,7 +14,9 @@ export interface Strategy {
   devCommand(): string | null;
 }
 
-export type Detector = (fs: FileSystem) => Promise<Strategy | null>;
+export interface Runtime {
+  detectCodebase(fs: FileSystem): Promise<Codebase | null>;
+}
 
 export interface Framework {
   name: string;
@@ -55,14 +57,14 @@ export function vars(frameworks: Framework[]): Record<string, string> {
   return vars;
 }
 // This should be hard-coded. The engine statically supports a runtime or not.
-const allDetectors: Detector[] = [node.detect];
+const allRuntimes: Runtime[] = [new NodejsRuntime()];
 
 /**
  * Detects
  */
-export async function detect(fs: FileSystem): Promise<Strategy | null> {
-  const matches = await Promise.all(allDetectors.map((fn) => fn(fs)));
-  let match: Strategy | null = null;
+export async function detect(fs: FileSystem): Promise<Codebase | null> {
+  const matches = await Promise.all(allRuntimes.map((runtime) => runtime.detectCodebase(fs)));
+  let match: Codebase | null = null;
   for (const res of matches) {
     if (!res) {
       continue;
