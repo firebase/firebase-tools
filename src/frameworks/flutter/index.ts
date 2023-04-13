@@ -21,17 +21,17 @@ export async function discover(dir: string): Promise<Discovery | undefined> {
   return { mayWantBackend: false, publicDirectory: join(dir, "web") };
 }
 
-function checkForFlutterCLI() {
-  const flutter = execSync(`flutter --version`, { stdio: "ignore" });
-  if (flutter.status) throw new FirebaseError("Flutter CLI not found.");
+function getFlutterVersion() {
+  const process = execSync(`flutter --version`, { stdio: "ignore" });
+  if (process.status) throw new FirebaseError("Flutter CLI not found.");
+  const version = process.stdout?.toString().match(/Flutter (\S+)/)?.[1];
+  if (!version) throw new FirebaseError("Unable to determine Flutter version.");
+  return version;
 }
 
 export function build(cwd: string): Promise<BuildResult> {
-  checkForFlutterCLI();
-  const build = execSync(`flutter build web --release`, {
-    cwd: cwd,
-    stdio: "inherit",
-  });
+  getFlutterVersion();
+  const build = execSync(`flutter build web`, { cwd, stdio: "inherit" });
   if (build.status) throw new FirebaseError("Unable to build your Flutter app");
   return Promise.resolve({ wantsBackend: false });
 }
