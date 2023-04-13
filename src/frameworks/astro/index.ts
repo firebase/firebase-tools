@@ -1,6 +1,6 @@
 import { sync as spawnSync, spawn } from "cross-spawn";
 import { copy, existsSync } from "fs-extra";
-import { dirname, join, relative } from "path";
+import { join } from "path";
 import {
   BuildResult,
   Discovery,
@@ -9,11 +9,9 @@ import {
   findDependency,
   getNodeModuleBin,
 } from "..";
-import { AstroConfig } from "./interfaces";
 import { FirebaseError } from "../../error";
 import { readJSON, simpleProxy, warnIfCustomBuildScript } from "../utils";
-
-const { dynamicImport } = require(true && "../../dynamicImport");
+import { getBootstrapScript, getConfig } from "./utils";
 
 export const name = "Astro";
 export const support = SupportLevel.Experimental;
@@ -80,24 +78,4 @@ export async function getDevModeHandle(cwd: string) {
     });
   });
   return simpleProxy(await host);
-}
-
-export function getBootstrapScript() {
-  // `astro build` with node adapter in middleware mode will generate a middleware at entry.mjs
-  // need to convert the export to `handle` to work with express integration
-  return `const entry = import('./entry.mjs');\nexport const handle = async (req, res) => (await entry).handler(req, res)`;
-}
-
-async function getConfig(root: string): Promise<AstroConfig> {
-  const astroDirectory = dirname(require.resolve("astro/package.json", { paths: [root] }));
-  const { openConfig } = await dynamicImport(
-    join(astroDirectory, "dist", "core", "config", "config.js")
-  );
-  const { astroConfig } = await openConfig({ cmd: "build", root });
-  return {
-    outDir: relative(root, astroConfig.outDir.pathname),
-    publicDir: relative(root, astroConfig.publicDir.pathname),
-    output: astroConfig.output,
-    adapter: astroConfig.adapter,
-  };
 }
