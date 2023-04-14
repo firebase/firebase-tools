@@ -28,7 +28,6 @@ import { HostingRewrites } from "../firebaseConfig";
 import * as experiments from "../experiments";
 import { ensureTargeted } from "../functions/ensureTargeted";
 import { implicitInit } from "../hosting/implicitInit";
-import { FRAMEWORKS_BUILD_OPTIONS } from "../emulator/commandUtils";
 
 // Use "true &&"" to keep typescript from compiling this file and rewriting
 // the import statement into a require
@@ -69,8 +68,6 @@ export interface Framework {
   }>;
 }
 
-type FrameworksBuild = "prod" | "dev";
-
 // TODO pull from @firebase/util when published
 interface FirebaseDefaults {
   config?: Object;
@@ -83,6 +80,8 @@ interface FindDepOptions {
   depth?: number;
   omitDev: boolean;
 }
+
+type FrameworksBuildTarget = "production" | "development";
 
 // These serve as the order of operations for discovery
 // E.g, a framework utilizing Vite should be given priority
@@ -128,6 +127,8 @@ const DEFAULT_FIND_DEP_OPTIONS: FindDepOptions = {
 };
 
 const NPM_COMMAND = process.platform === "win32" ? "npm.cmd" : "npm";
+
+const FRAMEWORKS_BUILD_OPTIONS = ["production", "development"];
 
 export const WebFrameworks: Record<string, Framework> = Object.fromEntries(
   readdirSync(__dirname)
@@ -408,11 +409,11 @@ export async function prepareFrameworks(
     } = WebFrameworks[framework];
     console.log(`Detected a ${name} codebase. ${SupportLevelWarnings[support] || ""}\n`);
     const hostingEmulatorInfo = emulators.find((e) => e.name === Emulators.HOSTING);
-    const frameworksBuild = getFrameworksBuildMode(options);
+    const frameworksBuildTarget = getFrameworksBuildTarget();
     let codegenFunctionsDirectory: Framework["ɵcodegenFunctionsDirectory"];
 
     // TODO allow for override
-    const isDevMode = context._name !== "deploy" && frameworksBuild === "dev";
+    const isDevMode = context._name !== "deploy" && frameworksBuildTarget === "development";
 
     const devModeHandle =
       isDevMode &&
@@ -630,21 +631,26 @@ function codegenDevModeFunctionsDirectory() {
   return Promise.resolve({ packageJson, frameworksEntry: "_devMode" });
 }
 
-function getFrameworksBuildMode(options: any): FrameworksBuild {
-  let frameworksBuild: FrameworksBuild = options.frameworksBuild;
+function getFrameworksBuildTarget() {
+  const frameworksBuild = process.env.FIREBASE_FRAMEWORKS_BUILD_TARGET as FrameworksBuildTarget;
+
   if (frameworksBuild) {
     // TODO validate frameworksBuild with other possible values (for Angular)
-    // TODO validate framworksBuild for other languages, e.g. Python
+    // TODO validate frameworksBuild for other languages, e.g. Python
     if (!FRAMEWORKS_BUILD_OPTIONS.includes(frameworksBuild)) {
-      throw new FirebaseError(`Invalid value for frameworksBuild: ${frameworksBuild}`);
+      throw new FirebaseError(
+        `Invalid value for FIREBASE_FRAMEWORKS_BUILD_TARGET environment variable: ${frameworksBuild}. Valid values are: ${FRAMEWORKS_BUILD_OPTIONS.join(
+          ", "
+        )}`
+      );
     }
-  } else if (process.env.NODE_ENV === "production") {
-    frameworksBuild = "prod";
-  } else {
-    frameworksBuild = "dev";
-  }
 
-  return frameworksBuild;
+    return frameworksBuild;
+  } else if (process.env.NODE_ENV) {
+    return process.env.NODE_ENV;
+  } else {
+    return "development";
+  }
 }
 
 /**
