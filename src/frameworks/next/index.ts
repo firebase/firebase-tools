@@ -190,8 +190,12 @@ export async function build(dir: string): Promise<BuildResult> {
       const routePath = join(dir, distDir, "server", "app", ...partsOrIndex);
       const metadataPath = `${routePath}.meta`;
       if (dirExistsSync(routePath) && fileExistsSync(metadataPath)) {
-        const meta = await readJSON(metadataPath);
-        if (meta.headers) headers.push({ source, headers: meta.headers });
+        const meta = await readJSON<{ headers?: Record<string, string> }>(metadataPath);
+        if (meta.headers)
+          headers.push({
+            source,
+            headers: Object.entries(meta.headers).map(([key, value]) => ({ key, value })),
+          });
       }
     })
   );
