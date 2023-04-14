@@ -1,12 +1,12 @@
 import { execSync } from "child_process";
 import { spawn, sync as spawnSync } from "cross-spawn";
-import { mkdir, copyFile } from "fs/promises";
-import { dirname, join } from "path";
+import { mkdir, copyFile, stat } from "fs/promises";
+import { basename, dirname, join } from "path";
 import type { NextConfig } from "next";
 import type { PrerenderManifest } from "next/dist/build";
 import type { MiddlewareManifest } from "next/dist/build/webpack/plugins/middleware-plugin";
 import type { PagesManifest } from "next/dist/build/webpack/plugins/pages-manifest-plugin";
-import { copy, mkdirp, pathExists } from "fs-extra";
+import { copy, mkdirp, pathExists, pathExistsSync } from "fs-extra";
 import { pathToFileURL, parse } from "url";
 import { existsSync } from "fs";
 import { gte } from "semver";
@@ -16,6 +16,7 @@ import { chain } from "stream-chain";
 import { parser } from "stream-json";
 import { pick } from "stream-json/filters/Pick";
 import { streamObject } from "stream-json/streamers/StreamObject";
+import { fileExistsSync, dirExistsSync } from "../../fsutils";
 
 import {
   BuildResult,
@@ -48,6 +49,7 @@ import {
   PAGES_MANIFEST,
   PRERENDER_MANIFEST,
   ROUTES_MANIFEST,
+  APP_PATH_ROUTES_MANIFEST,
 } from "./constants";
 
 const DEFAULT_BUILD_SCRIPT = ["next build"];
@@ -176,6 +178,27 @@ export async function build(dir: string): Promise<BuildResult> {
     headers,
   }));
 
+  const appPathRoutesManifest = await readJSON<Record<string, string>>(
+    join(dir, distDir, APP_PATH_ROUTES_MANIFEST)
+  ).catch(() => ({}));
+  await Promise.all(
+    Object.entries(appPathRoutesManifest).map(async ([key, source]) => {
+      if (basename(key) !== "route") return;
+      const parts = source.split("/").filter((it) => !!it);
+      const partsOrIndex = parts.length > 0 ? parts : ["index"];
+      const routePath = join(dir, distDir, "server", "app", ...partsOrIndex);
+      const metadataPath = `${routePath}.meta`;
+      if (
+        (await pathExists(routePath)) &&
+        (await stat(routePath)).isDirectory() &&
+        (await pathExists(metadataPath))
+      ) {
+        const meta = await readJSON(metadataPath);
+        if (meta.headers) headers.push({ source, headers: meta.headers });
+      }
+    })
+  );
+
   const isEveryRedirectSupported = nextJsRedirects
     .filter((it) => !it.internal)
     .every(isRedirectSupportedByHosting);
@@ -281,11 +304,17 @@ export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: strin
     }
   }
 
-  const [middlewareManifest, prerenderManifest, routesManifest] = await Promise.all([
-    readJSON<MiddlewareManifest>(join(sourceDir, distDir, "server", MIDDLEWARE_MANIFEST)),
-    readJSON<PrerenderManifest>(join(sourceDir, distDir, PRERENDER_MANIFEST)),
-    readJSON<Manifest>(join(sourceDir, distDir, ROUTES_MANIFEST)),
-  ]);
+  const [middlewareManifest, prerenderManifest, routesManifest, appPathRoutesManifest] =
+    await Promise.all([
+      readJSON<MiddlewareManifest>(join(sourceDir, distDir, "server", MIDDLEWARE_MANIFEST)),
+      readJSON<PrerenderManifest>(join(sourceDir, distDir, PRERENDER_MANIFEST)),
+      readJSON<Manifest>(join(sourceDir, distDir, ROUTES_MANIFEST)),
+      readJSON<Record<string, string>>(join(sourceDir, distDir, APP_PATH_ROUTES_MANIFEST)).catch(
+        () => ({})
+      ),
+    ]);
+
+  const appPathRoutesEntries = Object.entries(appPathRoutesManifest);
 
   const middlewareMatcherRegexes = Object.values(middlewareManifest.middleware)
     .map((it) => it.matchers)
@@ -313,35 +342,48 @@ export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: strin
     ...headersRegexesNotSupportedByHosting,
   ];
 
-  for (const [path, route] of Object.entries(prerenderManifest.routes)) {
-    if (
-      route.initialRevalidateSeconds ||
-      pathsUsingsFeaturesNotSupportedByHosting.some((it) => path.match(it))
-    ) {
-      continue;
-    }
+  await Promise.all(
+    Object.entries(prerenderManifest.routes).map(async ([path, route]) => {
+      if (
+        route.initialRevalidateSeconds ||
+        pathsUsingsFeaturesNotSupportedByHosting.some((it) => path.match(it))
+      ) {
+        return;
+      }
 
-    const isReactServerComponent = route.dataRoute.endsWith(".rsc");
-    const contentDist = join(
-      sourceDir,
-      distDir,
-      "server",
-      isReactServerComponent ? "app" : "pages"
-    );
+      const appPathRoute =
+        route.srcRoute && appPathRoutesEntries.find((it) => it[1] === route.srcRoute)?.[0];
+      const contentDist = join(sourceDir, distDir, "server", appPathRoute ? "app" : "pages");
 
-    const parts = path.split("/").filter((it) => !!it);
-    const partsOrIndex = parts.length > 0 ? parts : ["index"];
+      const parts = path.split("/").filter((it) => !!it);
+      const partsOrIndex = parts.length > 0 ? parts : ["index"];
 
-    const htmlPath = `${join(...partsOrIndex)}.html`;
-    await mkdir(join(destDir, dirname(htmlPath)), { recursive: true });
-    await copyFile(join(contentDist, htmlPath), join(destDir, htmlPath));
+      let sourcePath = join(contentDist, ...partsOrIndex);
+      let destPath = join(destDir, ...partsOrIndex);
+      if (!fileExistsSync(sourcePath) && fileExistsSync(`${sourcePath}.html`)) {
+        sourcePath += ".html";
+        destPath += ".html";
+      } else if (appPathRoute && basename(appPathRoute) === "route" && dirExistsSync(sourcePath)) {
+        sourcePath += ".body";
+      }
 
-    if (!isReactServerComponent) {
-      const dataPath = `${join(...partsOrIndex)}.json`;
-      await mkdir(join(destDir, dirname(route.dataRoute)), { recursive: true });
-      await copyFile(join(contentDist, dataPath), join(destDir, route.dataRoute));
-    }
-  }
+      if (!pathExistsSync(sourcePath)) {
+        console.error(`Cannot find ${path} in your compiled NextJS application.`);
+        return;
+      }
+
+      await mkdir(dirname(destPath), { recursive: true });
+
+      await copyFile(sourcePath, destPath);
+
+      if (route.dataRoute && !appPathRoute) {
+        const dataSourcePath = `${join(...partsOrIndex)}.json`;
+        const dataDestPath = join(destDir, route.dataRoute);
+        await mkdir(dirname(dataDestPath), { recursive: true });
+        await copyFile(join(contentDist, dataSourcePath), dataDestPath);
+      }
+    })
+  );
 }
 
 /**

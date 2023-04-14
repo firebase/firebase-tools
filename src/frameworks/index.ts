@@ -101,12 +101,18 @@ export const enum SupportLevel {
 
 const SupportLevelWarnings = {
   [SupportLevel.Experimental]: (framework: string) => `
-   Thank you for trying our ${clc.italic("experimental")} support for ${framework} on Firebase Hosting.
+   Thank you for trying our ${clc.italic(
+     "experimental"
+   )} support for ${framework} on Firebase Hosting.
    ${clc.yellow(`While this integration is maintained by Googlers it is not a supported Firebase product.
    Issues filed on GitHub will be addressed on a best-effort basis by maintainers and other community members.`)}`,
   [SupportLevel.Preview]: (framework: string) => `
-   Thank you for trying our ${clc.italic("early preview")} of ${framework} support on Firebase Hosting.
-   ${clc.yellow("During the preview, support is best-effort and breaking changes can be expected. Proceed with caution.")}`,
+   Thank you for trying our ${clc.italic(
+     "early preview"
+   )} of ${framework} support on Firebase Hosting.
+   ${clc.yellow(
+     "During the preview, support is best-effort and breaking changes can be expected. Proceed with caution."
+   )}`,
 };
 
 export const FIREBASE_FRAMEWORKS_VERSION = "^0.7.0";
@@ -423,13 +429,17 @@ export async function prepareFrameworks(
       getDevModeHandle,
       name,
       support,
-      docsUrl="https://firebase.google.com/docs/hosting/frameworks/frameworks-overview",
+      docsUrl = "https://firebase.google.com/docs/hosting/frameworks/frameworks-overview",
     } = WebFrameworks[framework];
     const callToAction = `${SupportLevelWarnings[support](name)}
 
    ${clc.bold("Documentation:")} ${docsUrl}
-   ${clc.bold("File a bug:")} https://github.com/firebase/firebase-tools/issues/new?assignees=&labels=type%3A+bug,integration%3A+web%20frameworks&template=bug_report.md&title=
-   ${clc.bold("Submit a feature request:")} https://github.com/firebase/firebase-tools/issues/new?assignees=&labels=type%3A+bug,integration%3A+web%20frameworks&template=feature_request.md&title=
+   ${clc.bold(
+     "File a bug:"
+   )} https://github.com/firebase/firebase-tools/issues/new?assignees=&labels=type%3A+bug,integration%3A+web%20frameworks&template=bug_report.md&title=
+   ${clc.bold(
+     "Submit a feature request:"
+   )} https://github.com/firebase/firebase-tools/issues/new?assignees=&labels=type%3A+bug,integration%3A+web%20frameworks&template=feature_request.md&title=
 
    We'd love to learn from you. Express your interest in helping us shape the future of Firebase Hosting: https://goo.gle/41enW5X
 `;
