@@ -1,7 +1,7 @@
 import { execSync } from "child_process";
 import { spawn, sync as spawnSync } from "cross-spawn";
-import { mkdir, copyFile, stat } from "fs/promises";
-import { basename, dirname, join } from "path";
+import { mkdir, copyFile } from "fs/promises";
+import { basename, dirname, extname, join } from "path";
 import type { NextConfig } from "next";
 import type { PrerenderManifest } from "next/dist/build";
 import type { MiddlewareManifest } from "next/dist/build/webpack/plugins/middleware-plugin";
@@ -101,21 +101,21 @@ export async function build(dir: string): Promise<BuildResult> {
     throw e;
   });
 
-  const reasonsForBackend = [];
+  const reasonsForBackend = new Set();
   const { distDir, trailingSlash } = await getConfig(dir);
 
   if (await isUsingMiddleware(join(dir, distDir), false)) {
-    reasonsForBackend.push("middleware");
+    reasonsForBackend.add("middleware");
   }
 
   if (await isUsingImageOptimization(join(dir, distDir))) {
-    reasonsForBackend.push(`Image Optimization`);
+    reasonsForBackend.add(`Image Optimization`);
   }
 
   if (isUsingAppDirectory(join(dir, distDir))) {
     // Let's not get smart here, if they are using the app directory we should
     // opt for spinning up a Cloud Function. The app directory is unstable.
-    reasonsForBackend.push("app directory (unstable)");
+    reasonsForBackend.add("app directory (unstable)");
   }
 
   const prerenderManifest = await readJSON<PrerenderManifest>(
@@ -127,7 +127,7 @@ export async function build(dir: string): Promise<BuildResult> {
   );
   if (dynamicRoutesWithFallback.length > 0) {
     for (const [key] of dynamicRoutesWithFallback) {
-      reasonsForBackend.push(`use of fallback ${key}`);
+      reasonsForBackend.add(`use of fallback ${key}`);
     }
   }
 
@@ -135,8 +135,8 @@ export async function build(dir: string): Promise<BuildResult> {
     ([, it]) => it.initialRevalidateSeconds
   );
   if (routesWithRevalidate.length > 0) {
-    for (const [key] of routesWithRevalidate) {
-      reasonsForBackend.push(`use of revalidate ${key}`);
+    for (const [, { srcRoute }] of routesWithRevalidate) {
+      reasonsForBackend.add(`use of revalidate ${srcRoute}`);
     }
   }
 
@@ -145,18 +145,19 @@ export async function build(dir: string): Promise<BuildResult> {
   );
   const prerenderedRoutes = Object.keys(prerenderManifest.routes);
   const dynamicRoutes = Object.keys(prerenderManifest.dynamicRoutes);
-  const unrenderedPages = Object.keys(pagesManifestJSON).filter(
-    (it) =>
-      !(
-        ["/_app", "/", "/_error", "/_document", "/404"].includes(it) ||
-        prerenderedRoutes.includes(it) ||
-        dynamicRoutes.includes(it)
-      )
-  );
-  if (unrenderedPages.length > 0) {
-    for (const key of unrenderedPages) {
-      reasonsForBackend.push(`non-static route ${key}`);
-    }
+  const unrenderedPages = Object.entries(pagesManifestJSON)
+    .filter(
+      ([it, src]) =>
+        !(
+          extname(src) !== ".js" ||
+          ["/_app", "/_error", "/_document"].includes(it) ||
+          prerenderedRoutes.includes(it) ||
+          dynamicRoutes.includes(it)
+        )
+    )
+    .map(([it]) => it);
+  for (const key of unrenderedPages) {
+    reasonsForBackend.add(`non-static route ${key}`);
   }
 
   const manifest = await readJSON<Manifest>(join(dir, distDir, ROUTES_MANIFEST));
@@ -169,7 +170,7 @@ export async function build(dir: string): Promise<BuildResult> {
 
   const isEveryHeaderSupported = nextJsHeaders.every(isHeaderSupportedByHosting);
   if (!isEveryHeaderSupported) {
-    reasonsForBackend.push("advanced headers");
+    reasonsForBackend.add("advanced headers");
   }
 
   const headers = nextJsHeaders.filter(isHeaderSupportedByHosting).map(({ source, headers }) => ({
@@ -188,11 +189,7 @@ export async function build(dir: string): Promise<BuildResult> {
       const partsOrIndex = parts.length > 0 ? parts : ["index"];
       const routePath = join(dir, distDir, "server", "app", ...partsOrIndex);
       const metadataPath = `${routePath}.meta`;
-      if (
-        (await pathExists(routePath)) &&
-        (await stat(routePath)).isDirectory() &&
-        (await pathExists(metadataPath))
-      ) {
+      if (dirExistsSync(routePath) && fileExistsSync(metadataPath)) {
         const meta = await readJSON(metadataPath);
         if (meta.headers) headers.push({ source, headers: meta.headers });
       }
@@ -203,7 +200,7 @@ export async function build(dir: string): Promise<BuildResult> {
     .filter((it) => !it.internal)
     .every(isRedirectSupportedByHosting);
   if (!isEveryRedirectSupported) {
-    reasonsForBackend.push("advanced redirects");
+    reasonsForBackend.add("advanced redirects");
   }
 
   const redirects = nextJsRedirects
@@ -222,12 +219,12 @@ export async function build(dir: string): Promise<BuildResult> {
     !Array.isArray(nextJsRewrites) &&
     (nextJsRewrites.afterFiles?.length || nextJsRewrites.fallback?.length)
   ) {
-    reasonsForBackend.push("advanced rewrites");
+    reasonsForBackend.add("advanced rewrites");
   }
 
   const isEveryRewriteSupported = nextJsRewritesToUse.every(isRewriteSupportedByHosting);
   if (!isEveryRewriteSupported) {
-    reasonsForBackend.push("advanced rewrites");
+    reasonsForBackend.add("advanced rewrites");
   }
 
   // Can we change i18n into Firebase settings?
@@ -239,18 +236,18 @@ export async function build(dir: string): Promise<BuildResult> {
       destination,
     }));
 
-  const wantsBackend = reasonsForBackend.length > 0;
+  const wantsBackend = reasonsForBackend.size > 0;
 
   if (wantsBackend) {
     const numberOfReasonsToList = process.env.DEBUG ? Infinity : DEFAULT_NUMBER_OF_REASONS_TO_LIST;
     console.log("Building a Cloud Function to run this application. This is needed due to:");
-    for (const reason of reasonsForBackend.slice(0, numberOfReasonsToList)) {
+    for (const reason of Array.from(reasonsForBackend).slice(0, numberOfReasonsToList)) {
       console.log(` • ${reason}`);
     }
-    if (reasonsForBackend.length > numberOfReasonsToList) {
+    if (reasonsForBackend.size > numberOfReasonsToList) {
       console.log(
         ` • and ${
-          reasonsForBackend.length - numberOfReasonsToList
+          reasonsForBackend.size - numberOfReasonsToList
         } other reasons, use --debug to see more`
       );
     }
@@ -352,7 +349,7 @@ export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: strin
       }
 
       const appPathRoute =
-        route.srcRoute && appPathRoutesEntries.find((it) => it[1] === route.srcRoute)?.[0];
+        route.srcRoute && appPathRoutesEntries.find(([, it]) => it === route.srcRoute)?.[0];
       const contentDist = join(sourceDir, distDir, "server", appPathRoute ? "app" : "pages");
 
       const parts = path.split("/").filter((it) => !!it);
