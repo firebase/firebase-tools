@@ -34,7 +34,6 @@ import {
   isHeaderSupportedByHosting,
   isRedirectSupportedByHosting,
   isRewriteSupportedByHosting,
-  isUsingAppDirectory,
   isUsingImageOptimization,
   isUsingMiddleware,
   allDependencyNames,
@@ -110,12 +109,6 @@ export async function build(dir: string): Promise<BuildResult> {
 
   if (await isUsingImageOptimization(join(dir, distDir))) {
     reasonsForBackend.add(`Image Optimization`);
-  }
-
-  if (isUsingAppDirectory(join(dir, distDir))) {
-    // Let's not get smart here, if they are using the app directory we should
-    // opt for spinning up a Cloud Function. The app directory is unstable.
-    reasonsForBackend.add("app directory (unstable)");
   }
 
   const prerenderManifest = await readJSON<PrerenderManifest>(

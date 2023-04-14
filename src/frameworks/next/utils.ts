@@ -19,6 +19,7 @@ import {
   MIDDLEWARE_MANIFEST,
 } from "./constants";
 import { fileExistsSync } from "../../fsutils";
+import { readFile } from "fs/promises";
 
 /**
  * Whether the given path has a regex or not.
@@ -193,15 +194,17 @@ export async function isUsingMiddleware(dir: string, isDevMode: boolean): Promis
  * @param dir path to `distDir` - where the manifests are located
  */
 export async function isUsingImageOptimization(dir: string): Promise<boolean> {
-  const { isNextImageImported } = await readJSON<ExportMarker>(join(dir, EXPORT_MARKER));
+  let { isNextImageImported } = await readJSON<ExportMarker>(join(dir, EXPORT_MARKER));
+  // App directory doesn't use the export marker, look it up manually
+  if (!isNextImageImported && isUsingAppDirectory(dir)) {
+    isNextImageImported = (await readFile(join(dir, "server", "client-reference-manifest.js")))
+      .toString()
+      .includes("node_modules/next/dist/client/image.js");
+  }
 
   if (isNextImageImported) {
     const imagesManifest = await readJSON<ImagesManifest>(join(dir, IMAGES_MANIFEST));
-    const usingImageOptimization = imagesManifest.images.unoptimized === false;
-
-    if (usingImageOptimization) {
-      return true;
-    }
+    return !imagesManifest.images.unoptimized;
   }
 
   return false;
