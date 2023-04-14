@@ -49,6 +49,7 @@ import {
   PRERENDER_MANIFEST,
   ROUTES_MANIFEST,
   APP_PATH_ROUTES_MANIFEST,
+  APP_PATHS_MANIFEST,
 } from "./constants";
 
 const DEFAULT_BUILD_SCRIPT = ["next build"];
@@ -153,6 +154,24 @@ export async function build(dir: string): Promise<BuildResult> {
     reasonsForBackend.add(`non-static route ${key}`);
   }
 
+  const [appPathsManifest, appPathRoutesManifest]: [
+    Record<string, string>,
+    Record<string, string>
+  ] = await Promise.all([
+    readJSON(join(dir, distDir, "server", APP_PATHS_MANIFEST)).catch(() => ({})),
+    readJSON(join(dir, distDir, APP_PATH_ROUTES_MANIFEST)).catch(() => ({})),
+  ]);
+  const unrenderedServerComponents = Object.entries(appPathsManifest)
+    .filter(([it, src]) => {
+      if (extname(src) !== ".js") return;
+      const path = appPathRoutesManifest[it];
+      return !(prerenderedRoutes.includes(path) || dynamicRoutes.includes(path));
+    })
+    .map(([it]) => it);
+  for (const key of unrenderedServerComponents) {
+    reasonsForBackend.add(`non-static component ${key}`);
+  }
+
   const manifest = await readJSON<Manifest>(join(dir, distDir, ROUTES_MANIFEST));
 
   const {
@@ -172,9 +191,6 @@ export async function build(dir: string): Promise<BuildResult> {
     headers,
   }));
 
-  const appPathRoutesManifest = await readJSON<Record<string, string>>(
-    join(dir, distDir, APP_PATH_ROUTES_MANIFEST)
-  ).catch(() => ({}));
   await Promise.all(
     Object.entries(appPathRoutesManifest).map(async ([key, source]) => {
       if (basename(key) !== "route") return;
