@@ -314,15 +314,21 @@ export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: strin
     }
   }
 
-  const [middlewareManifest, prerenderManifest, routesManifest, appPathRoutesManifest] =
-    await Promise.all([
-      readJSON<MiddlewareManifest>(join(sourceDir, distDir, "server", MIDDLEWARE_MANIFEST)),
-      readJSON<PrerenderManifest>(join(sourceDir, distDir, PRERENDER_MANIFEST)),
-      readJSON<Manifest>(join(sourceDir, distDir, ROUTES_MANIFEST)),
-      readJSON<Record<string, string>>(join(sourceDir, distDir, APP_PATH_ROUTES_MANIFEST)).catch(
-        () => ({})
-      ),
-    ]);
+  const [
+    middlewareManifest,
+    prerenderManifest,
+    routesManifest,
+    pagesManifest,
+    appPathRoutesManifest,
+  ] = await Promise.all([
+    readJSON<MiddlewareManifest>(join(sourceDir, distDir, "server", MIDDLEWARE_MANIFEST)),
+    readJSON<PrerenderManifest>(join(sourceDir, distDir, PRERENDER_MANIFEST)),
+    readJSON<Manifest>(join(sourceDir, distDir, ROUTES_MANIFEST)),
+    readJSON<PagesManifest>(join(sourceDir, distDir, "server", PAGES_MANIFEST)),
+    readJSON<Record<string, string>>(join(sourceDir, distDir, APP_PATH_ROUTES_MANIFEST)).catch(
+      () => ({})
+    ),
+  ]);
 
   const appPathRoutesEntries = Object.entries(appPathRoutesManifest);
 
@@ -352,8 +358,20 @@ export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: strin
     ...headersRegexesNotSupportedByHosting,
   ];
 
+  const pagesManifestLikePrerender = Object.fromEntries(
+    Object.entries(pagesManifest)
+      .filter(([, srcRoute]) => srcRoute.endsWith(".html"))
+      .map(([path]) => {
+        return [
+          path,
+          { srcRoute: undefined, initialRevalidateSeconds: false, dataRoute: undefined },
+        ];
+      })
+  );
+  const routesToCopy = { ...prerenderManifest.routes, ...pagesManifestLikePrerender };
+
   await Promise.all(
-    Object.entries(prerenderManifest.routes).map(async ([path, route]) => {
+    Object.entries(routesToCopy).map(async ([path, route]) => {
       if (
         route.initialRevalidateSeconds ||
         pathsUsingsFeaturesNotSupportedByHosting.some((it) => path.match(it))
