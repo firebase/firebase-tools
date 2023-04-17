@@ -1,11 +1,11 @@
 import { expect } from "chai";
-import { FirestoreIndexes } from "../../firestore/indexes";
+import { FirestoreApi } from "../../firestore/api";
 import { FirebaseError } from "../../error";
-import * as API from "../../firestore/indexes-api";
-import * as Spec from "../../firestore/indexes-spec";
-import * as sort from "../../firestore/indexes-sort";
+import * as API from "../../firestore/api-types";
+import * as Spec from "../../firestore/api-spec";
+import * as sort from "../../firestore/api-sort";
 
-const idx = new FirestoreIndexes();
+const idx = new FirestoreApi();
 
 const VALID_SPEC = {
   indexes: [

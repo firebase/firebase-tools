@@ -1,1 +1,11 @@
 - Fix cases where console output was not being flushed before process termination (#5625)
+- Adds new commands for provisioning and managing Firestore databases: (#5616)
+  - firestore:databases:list
+  - firestore:databases:create
+  - firestore:databases:get
+  - firestore:databases:update
+  - firestore:databases:delete
+  - firestore:locations
+- Adds `extensions` as an option in `firebase init`.
+- Relaxed repo URI validation in ext:dev:publish (#5698).
+- Added Secret Manager API enablement during ext:install for extensions that use secrets (#5702).
