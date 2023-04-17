@@ -24,7 +24,6 @@ import {
   isLocalPath,
   canonicalizeRefInput,
 } from "../extensions/extensionsHelper";
-import { confirm } from "../prompt";
 import { getRandomString } from "../extensions/utils";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
