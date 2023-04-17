@@ -10,7 +10,6 @@ import { FirestoreOptions } from "../firestore/options";
 
 export const command = new Command("firestore:databases:create <database>")
   .description("Create a database in your Firebase project.")
-  .option("--json", "Prints raw json response of the create API call if specified")
   .option(
     "--location <locationId>",
     "Region to create database, for example 'nam5'. Run 'firebase firestore:locations' to get a list of eligible locations. (required)"
@@ -58,6 +57,11 @@ export const command = new Command("firestore:databases:create <database>")
       logger.info(JSON.stringify(databaseResp, undefined, 2));
     } else {
       logger.info(clc.bold(`Successfully created ${api.prettyDatabaseString(databaseResp)}`));
+      logger.info(
+        "Please be sure to configure Firebase rules in your Firebase config file for\n" +
+          "the new database. By default, created databases will have closed rules that\n" +
+          "block any incoming third-party traffic."
+      );
     }
 
     return databaseResp;

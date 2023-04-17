@@ -9,7 +9,6 @@ import { FirestoreOptions } from "../firestore/options";
 
 export const command = new Command("firestore:databases:get [database]")
   .description("Get database in your Cloud Firestore project.")
-  .option("--json", "Prints raw json response of the create API call if specified")
   .before(requirePermissions, ["datastore.databases.get"])
   .before(warnEmulatorNotSupported, Emulators.FIRESTORE)
   .action(async (database: string, options: FirestoreOptions) => {

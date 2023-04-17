@@ -14,7 +14,6 @@ export const command = new Command("firestore:databases:delete <database>")
   .description(
     "Delete a database in your Cloud Firestore project. Database delete protection state must be disabled. To do so, use the update command: firebase firestore:databases:update <database> --delete-protection DISABLED"
   )
-  .option("--json", "Prints raw json response of the create API call if specified")
   .option("--force", "Attempt to delete database without prompting for confirmation.")
   .before(requirePermissions, ["datastore.databases.delete"])
   .before(warnEmulatorNotSupported, Emulators.FIRESTORE)

@@ -9,7 +9,6 @@ import { FirestoreOptions } from "../firestore/options";
 
 export const command = new Command("firestore:locations")
   .description("List possible locations for your Cloud Firestore project.")
-  .option("--json", "Prints raw json response of the locations API call if specified")
   .before(requirePermissions, ["datastore.locations.list"])
   .before(warnEmulatorNotSupported, Emulators.FIRESTORE)
   .action(async (options: FirestoreOptions) => {
