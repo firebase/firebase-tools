@@ -1,8 +1,9 @@
 - Adds new commands for provisioning and managing Firestore databases: (#5616)
-- firestore:databases:list
-- firestore:databases:create
-- firestore:databases:get
-- firestore:databases:update
-- firestore:databases:delete
-- firestore:locations
+  - firestore:databases:list
+  - firestore:databases:create
+  - firestore:databases:get
+  - firestore:databases:update
+  - firestore:databases:delete
+  - firestore:locations
 - Relaxed repo URI validation in ext:dev:publish (#5698).
+- Added Secret Manager API enablement during ext:install for extensions that use secrets (#5699).
