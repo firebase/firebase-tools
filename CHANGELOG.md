@@ -7,4 +7,4 @@
   - firestore:locations
 - Adds `extensions` as an option in `firebase init`.
 - Relaxed repo URI validation in ext:dev:publish (#5698).
-- Added Secret Manager API enablement during ext:install for extensions that use secrets (#5699).
+- Added Secret Manager API enablement during ext:install for extensions that use secrets (#5702).
