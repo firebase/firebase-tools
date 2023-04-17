@@ -11,6 +11,7 @@ import {
 import * as refs from "../extensions/refs";
 import { findExtensionYaml } from "../extensions/localHelper";
 import { consoleInstallLink } from "../extensions/publishHelpers";
+import { ExtensionVersion } from "../extensions/types";
 import { requireAuth } from "../requireAuth";
 import { FirebaseError } from "../error";
 import * as utils from "../utils";
@@ -41,48 +42,50 @@ export const command = new Command("ext:dev:upload <extensionRef>")
       "be greater than previous versions."
   )
   .before(requireAuth)
-  .action(async (extensionRef: string, options: any) => {
-    const { publisherId, extensionId, version } = refs.parse(extensionRef);
-    if (version) {
-      throw new FirebaseError(
-        `The input extension reference must be of the format ${clc.bold(
-          "<publisherId>/<extensionId>"
-        )}. Version should not be supplied and will be inferred directly from extension.yaml. Please increment the version in extension.yaml if you would like to bump/specify a version.`
-      );
-    }
-    if (!publisherId || !extensionId) {
-      throw new FirebaseError(
-        `Error parsing publisher ID and extension ID from extension reference '${clc.bold(
-          extensionRef
-        )}'. Please use the format '${clc.bold("<publisherId>/<extensionId>")}'.`
-      );
-    }
-    let res;
-    // TODO: Default to this path instead of local source in a major version.
-    if (options.repo || options.root || options.ref) {
-      res = await publishExtensionVersionFromRemoteRepo({
-        publisherId,
-        extensionId,
-        repoUri: options.repo,
-        sourceRef: options.ref,
-        extensionRoot: options.root,
-        nonInteractive: options.nonInteractive,
-        force: options.force,
-        stage: options.stage,
-      });
-    } else {
-      const extensionYamlDirectory = findExtensionYaml(process.cwd());
-      res = await publishExtensionVersionFromLocalSource({
-        publisherId,
-        extensionId,
-        rootDirectory: extensionYamlDirectory,
-        nonInteractive: options.nonInteractive,
-        force: options.force,
-        stage: options.stage ?? "stable",
-      });
-    }
-    if (res) {
-      utils.logLabeledBullet(logPrefix, marked(`[Install Link](${consoleInstallLink(res.ref)})`));
-    }
-    return res;
-  });
+  .action(uploadExtensionAction);
+
+export async function uploadExtensionAction(extensionRef: string, options: any): Promise<ExtensionVersion | undefined> {
+  const { publisherId, extensionId, version } = refs.parse(extensionRef);
+  if (version) {
+    throw new FirebaseError(
+      `The input extension reference must be of the format ${clc.bold(
+        "<publisherId>/<extensionId>"
+      )}. Version should not be supplied and will be inferred directly from extension.yaml. Please increment the version in extension.yaml if you would like to bump/specify a version.`
+    );
+  }
+  if (!publisherId || !extensionId) {
+    throw new FirebaseError(
+      `Error parsing publisher ID and extension ID from extension reference '${clc.bold(
+        extensionRef
+      )}'. Please use the format '${clc.bold("<publisherId>/<extensionId>")}'.`
+    );
+  }
+  let res;
+  // TODO: Default to this path instead of local source in a major version.
+  if (options.repo || options.root || options.ref) {
+    res = await publishExtensionVersionFromRemoteRepo({
+      publisherId,
+      extensionId,
+      repoUri: options.repo,
+      sourceRef: options.ref,
+      extensionRoot: options.root,
+      nonInteractive: options.nonInteractive,
+      force: options.force,
+      stage: options.stage,
+    });
+  } else {
+    const extensionYamlDirectory = findExtensionYaml(process.cwd());
+    res = await publishExtensionVersionFromLocalSource({
+      publisherId,
+      extensionId,
+      rootDirectory: extensionYamlDirectory,
+      nonInteractive: options.nonInteractive,
+      force: options.force,
+      stage: options.stage ?? "stable",
+    });
+  }
+  if (res) {
+    utils.logLabeledBullet(logPrefix, marked(`[Install Link](${consoleInstallLink(res.ref)})`));
+  }
+  return res;
+}

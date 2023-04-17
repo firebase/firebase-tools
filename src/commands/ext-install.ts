@@ -41,7 +41,7 @@ marked.setOptions({
  */
 export const command = new Command("ext:install [extensionName]")
   .description(
-    "add a published extension to firebase.json if [publisherId/extensionId] is provided;" +
+    "add an uploaded extension to firebase.json if [publisherId/extensionId] is provided;" +
       "or, add a local extension if [localPath] is provided"
   )
   .option("--local", "deprecated")

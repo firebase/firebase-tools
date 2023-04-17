@@ -25,10 +25,10 @@ interface ExtDevDeprecateOptions extends Options {
 /**
  * Deprecate all extension versions that match the version predicate.
  */
-export const command = new Command("ext:dev:deprecate <extensionRef> <versionPredicate>")
+export const command = new Command("ext:dev:deprecate <extensionRef> [versionPredicate]")
   .description("deprecate extension versions that match the version predicate")
   .option("-m, --message <deprecationMessage>", "deprecation message")
-  .option("-d, --delete", "delete the entire extension instead of deprecating it")
+  .option("-d, --delete", "delete the extension instead of deprecating it")
   .option(
     "-f, --force",
     "override deprecation message for existing deprecated extension versions that match"
@@ -67,9 +67,12 @@ async function deprecate(
     );
   }
 
-  // Error out if --delete and version predicate isn't *
-  const { comparator, targetSemVer } = parseVersionPredicate(versionPredicate);
-  const filter = `id${comparator}"${targetSemVer}"`;
+  // Error out if --delete and version predicate is provided
+  let filter = "";
+  if (versionPredicate) {
+    const { comparator, targetSemVer } = parseVersionPredicate(versionPredicate);
+    filter = `id${comparator}"${targetSemVer}"`;
+  }
   const extensionVersions = await listExtensionVersions(refs.toExtensionRef(extensionRef), filter);
   const filteredExtensionVersions = extensionVersions
     .sort((ev1, ev2) => {
@@ -81,6 +84,7 @@ async function deprecate(
       }
       const message =
         extensionVersion.state === "DEPRECATED" ? ", will overwrite deprecation message" : "";
+      // TODO: Clean up usage of extensionVersion.state
       utils.logLabeledBullet(extensionVersion.ref, extensionVersion.state + message);
       return true;
     });
@@ -118,12 +122,12 @@ async function deleteExt(
     "If you delete this extension, developers won't be able to install it. " +
       "For developers who currently have this extension installed, " +
       "it will continue to run and will appear as unpublished when " +
-      "listed in the Firebase console or Firebase CLI."
+      "listed in the Firebase console or Firebase CLI. " +
+      "In most cases, you should deprecate your extension instead of deleting it."
   );
   utils.logLabeledWarning(
     logPrefix,
-    "This is a permanent action" +
-      `Once deleted, you may never use the extension name '${clc.bold(extRef)}' again.`
+    `This is a permanent action. Once deleted, you may never use the extension name '${clc.bold(extRef)}' again.`
   );
   await getExtension(refs.toExtensionRef(extensionRef));
   utils.logLabeledWarning(
