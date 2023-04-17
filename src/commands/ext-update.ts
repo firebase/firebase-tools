@@ -115,9 +115,9 @@ export const command = new Command("ext:update <extensionInstanceId> [updateSour
       return;
     }
 
-		if (secretsUtils.usesSecrets(newExtensionVersion.spec)) {
-			await secretsUtils.ensureSecretManagerApiEnabled(options);
-		}
+    if (secretsUtils.usesSecrets(newExtensionVersion.spec)) {
+      await secretsUtils.ensureSecretManagerApiEnabled(options);
+    }
 
     const oldParamValues = manifest.readInstanceParam({
       instanceId,
