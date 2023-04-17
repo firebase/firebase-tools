@@ -1,1 +1,2 @@
 - Adds `extensions` as an option in `firebase init`.
+- Relaxed repo URI validation in ext:dev:publish (#5698).
