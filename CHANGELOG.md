@@ -1,0 +1,1 @@
+- Relaxed repo URI validation in ext:dev:publish (#5698).
