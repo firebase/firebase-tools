@@ -64,10 +64,6 @@ export const ALL_EXPERIMENTS = experiments({
       "of how that image was created.",
     public: true,
   },
-  functionsparams: {
-    shortDescription: "Adds support for paramaterizing functions deployments",
-    default: true,
-  },
 
   // Emulator experiments
   emulatoruisnapshot: {
@@ -79,8 +75,7 @@ export const ALL_EXPERIMENTS = experiments({
     shortDescription: "Native support for popular web frameworks",
     fullDescription:
       "Adds support for popular web frameworks such as Next.js " +
-      "Angular, React, Svelte, and Vite-compatible frameworks. Firebase is " +
-      "committed to support these platforms long-term, but a manual migration " +
+      "Angular, React, Svelte, and Vite-compatible frameworks. A manual migration " +
       "may be required when the non-experimental support for these frameworks " +
       "is released",
     docsUri: "https://firebase.google.com/docs/hosting/frameworks-overview",

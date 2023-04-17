@@ -205,6 +205,12 @@ export async function createFunction(
   // the API is a POST to the collection that owns the function name.
   const apiPath = cloudFunction.name.substring(0, cloudFunction.name.lastIndexOf("/"));
   const endpoint = `/${apiPath}`;
+  cloudFunction.buildEnvironmentVariables = {
+    ...cloudFunction.buildEnvironmentVariables,
+    // Disable GCF from automatically running npm run build script
+    // https://cloud.google.com/functions/docs/release-notes
+    GOOGLE_NODE_RUN_SCRIPTS: "",
+  };
 
   try {
     const res = await client.post<Omit<CloudFunction, OutputOnlyFields>, CloudFunction>(
@@ -352,14 +358,22 @@ export async function updateFunction(
   cloudFunction: Omit<CloudFunction, OutputOnlyFields>
 ): Promise<Operation> {
   const endpoint = `/${cloudFunction.name}`;
-  // Keys in labels and environmentVariables and secretEnvironmentVariables are user defined, so we don't recurse
-  // for field masks.
+  // Keys in labels and environmentVariables and secretEnvironmentVariables are user defined,
+  // so we don't recurse for field masks.
   const fieldMasks = proto.fieldMasks(
     cloudFunction,
     /* doNotRecurseIn...=*/ "labels",
     "environmentVariables",
     "secretEnvironmentVariables"
   );
+
+  cloudFunction.buildEnvironmentVariables = {
+    ...cloudFunction.buildEnvironmentVariables,
+    // Disable GCF from automatically running npm run build script
+    // https://cloud.google.com/functions/docs/release-notes
+    GOOGLE_NODE_RUN_SCRIPTS: "",
+  };
+  fieldMasks.push("buildEnvironmentVariables");
 
   // Failure policy is always an explicit policy and is only signified by the presence or absence of
   // a protobuf.Empty value, so we have to manually add it in the missing case.
