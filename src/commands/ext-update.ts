@@ -16,6 +16,7 @@ import {
 } from "../extensions/extensionsHelper";
 import * as paramHelper from "../extensions/paramHelper";
 import { inferUpdateSource } from "../extensions/updateHelper";
+import * as secretsUtils from "../extensions/secretsUtils";
 import * as refs from "../extensions/refs";
 import { getProjectId } from "../projectUtils";
 import { confirm } from "../prompt";
@@ -113,6 +114,10 @@ export const command = new Command("ext:update <extensionInstanceId> [updateSour
       utils.logLabeledBullet(logPrefix, "Update aborted.");
       return;
     }
+
+		if (secretsUtils.usesSecrets(newExtensionVersion.spec)) {
+			await secretsUtils.ensureSecretManagerApiEnabled(options);
+		}
 
     const oldParamValues = manifest.readInstanceParam({
       instanceId,
