@@ -606,7 +606,9 @@ export async function publishExtensionVersionFromRemoteRepo(args: {
   }
   if (extension?.repoUri) {
     logger.info(
-      `Extension ${clc.bold(extensionRef)} is published from ${clc.bold(extension?.repoUri)}. Use --repo to change this repo.`
+      `Extension ${clc.bold(extensionRef)} is published from ${clc.bold(
+        extension?.repoUri
+      )}. Use --repo to change this repo.`
     );
   }
 
