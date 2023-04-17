@@ -1,1 +1,8 @@
+- Adds new commands for provisioning and managing Firestore databases: (#5616)
+- firestore:databases:list
+- firestore:databases:create
+- firestore:databases:get
+- firestore:databases:update
+- firestore:databases:delete
+- firestore:locations
 - Relaxed repo URI validation in ext:dev:publish (#5698).

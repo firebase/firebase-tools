@@ -1,6 +1,6 @@
 import { Command } from "../command";
 import * as clc from "colorette";
-import * as fsi from "../firestore/indexes";
+import * as fsi from "../firestore/api";
 import { logger } from "../logger";
 import { requirePermissions } from "../requirePermissions";
 import { Emulators } from "../emulator/types";
@@ -21,7 +21,7 @@ export const command = new Command("firestore:indexes")
   .before(requirePermissions, ["datastore.indexes.list"])
   .before(warnEmulatorNotSupported, Emulators.FIRESTORE)
   .action(async (options: FirestoreOptions) => {
-    const indexApi = new fsi.FirestoreIndexes();
+    const indexApi = new fsi.FirestoreApi();
 
     const databaseId = options.database ?? "(default)";
     const indexes = await indexApi.listIndexes(options.project, databaseId);
