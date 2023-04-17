@@ -1,0 +1,1 @@
+- Adds `extensions` as an option in `firebase init`.
