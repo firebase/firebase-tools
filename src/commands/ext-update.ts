@@ -11,7 +11,6 @@ import {
   logPrefix,
   getSourceOrigin,
   SourceOrigin,
-  confirm,
   diagnoseAndFixProject,
   isLocalPath,
 } from "../extensions/extensionsHelper";
@@ -19,6 +18,7 @@ import * as paramHelper from "../extensions/paramHelper";
 import { inferUpdateSource } from "../extensions/updateHelper";
 import * as refs from "../extensions/refs";
 import { getProjectId } from "../projectUtils";
+import { confirm } from "../prompt";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
 import * as experiments from "../experiments";

@@ -14,7 +14,6 @@ import * as refs from "../extensions/refs";
 import { displayWarningPrompts } from "../extensions/warnings";
 import * as paramHelper from "../extensions/paramHelper";
 import {
-  confirm,
   createSourceFromLocation,
   ensureExtensionsApiEnabled,
   logPrefix,
@@ -25,6 +24,7 @@ import {
   isLocalPath,
   canonicalizeRefInput,
 } from "../extensions/extensionsHelper";
+import { confirm } from "../prompt";
 import { getRandomString } from "../extensions/utils";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
