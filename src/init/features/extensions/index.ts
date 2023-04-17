@@ -1,13 +1,8 @@
-import * as clc from "colorette";
-
-import { logger } from "../../../logger";
-import { promptOnce } from "../../../prompt";
 import { requirePermissions } from "../../../requirePermissions";
 import { Options } from "../../../options";
 import { ensure } from "../../../ensureApiEnabled";
 import { Config } from "../../../config";
 import * as manifest from "../../../extensions/manifest";
-import { option } from "commander";
 
 /**
  * Set up a new firebase project for extensions.
@@ -16,10 +11,7 @@ export async function doSetup(setup: any, config: Config, options: Options): Pro
   const projectId = setup?.rcfile?.projects?.default;
   if (projectId) {
     await requirePermissions({ ...options, project: projectId });
-    await Promise.all([
-      ensure(projectId, "firebaseextensions.googleapis.com", "unused", true),
-    ]);
+    await Promise.all([ensure(projectId, "firebaseextensions.googleapis.com", "unused", true)]);
   }
   return manifest.writeEmptyManifest(config, options);
 }
-

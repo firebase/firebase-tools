@@ -105,7 +105,7 @@ export async function confirm(args: {
   nonInteractive?: boolean;
   force?: boolean;
   default?: boolean;
-  message?: string
+  message?: string;
 }): Promise<boolean> {
   if (!args.nonInteractive && !args.force) {
     const message = args.message ?? `Do you wish to continue?`;
