@@ -604,33 +604,9 @@ export async function publishExtensionVersionFromRemoteRepo(args: {
       throw new FirebaseError("Repo URI is required but not currently set.");
     }
   }
-  if (extension?.repoUri && extension.repoUri !== repoUri) {
-    throw new FirebaseError(
-      `Repo URI '${clc.bold(args.repoUri)}' does not match repo URI '${clc.bold(
-        extension.repoUri!
-      )}' already associated with Extension ${clc.bold(extensionRef)}. Repo URI cannot be changed.`
-    );
-  }
-  if (!extension?.repoUri) {
+  if (extension?.repoUri) {
     logger.info(
-      `\n${clc.red("Warning:")} You are about to associate repo URI ${clc.bold(
-        repoUri
-      )} with Extension ${clc.bold(
-        extensionRef
-      )}. This cannot be changed. All future verifiable versions must be published from this repo. ` +
-        `You can continue publishing unverifiable versions from local source.`
-    );
-    const confirmed = await confirm({
-      nonInteractive: args.nonInteractive,
-      force: args.force,
-      default: false,
-    });
-    if (!confirmed) {
-      return;
-    }
-  } else {
-    logger.info(
-      `Extension ${clc.bold(extensionRef)} is published from ${clc.bold(extension?.repoUri)}.`
+      `Extension ${clc.bold(extensionRef)} is published from ${clc.bold(extension?.repoUri)}. Use --repo to change this repo.`
     );
   }
 
