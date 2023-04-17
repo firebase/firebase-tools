@@ -93,11 +93,11 @@ export const command = new Command("ext:update <extensionInstanceId> [updateSour
     );
 
     if (
-      !await confirm({
+      !(await confirm({
         nonInteractive: options.nonInteractive,
         force: options.force,
         default: false,
-      })
+      }))
     ) {
       utils.logLabeledBullet(logPrefix, "Update aborted.");
       return;
