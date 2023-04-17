@@ -12,6 +12,8 @@ import { track, trackEmulator } from "./track";
 import { selectAccount, setActiveAccount } from "./auth";
 import { getFirebaseProject } from "./management/projects";
 import { requireAuth } from "./requireAuth";
+// N.B: not having this import causes tsc to import the number-typed setTimeout() from web right now.
+import { setTimeout } from "timers";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ActionFunction = (...args: any[]) => any;
@@ -66,7 +68,6 @@ export class Command {
    *
    * @example
    *   command.option("-d, --debug", "turn on debugging", false)
-   *
    * @param args the commander-style option definition.
    * @return the command, for chaining.
    */
@@ -80,7 +81,7 @@ export class Command {
    * Sets up --force flag for the command.
    *
    * @param message overrides the description for --force for this command
-   * @returns the command, for chaining
+   * @return the command, for chaining
    */
   withForce(message?: string): Command {
     this.options.push(["-f, --force", message || "automatically accept all interactive prompts"]);
@@ -217,7 +218,16 @@ export class Command {
               ])
             );
           }
-          process.exit();
+          process.exitCode = 0;
+          const timeout = setTimeout(
+            async (cmd: string) => {
+              await track(cmd, "terminated_with_open_handlers");
+              process.exit(0);
+            },
+            5000,
+            this.name
+          );
+          timeout.unref();
         })
         .catch(async (err) => {
           if (getInheritedOption(options, "json")) {

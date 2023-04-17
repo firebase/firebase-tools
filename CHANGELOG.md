@@ -1,3 +1,4 @@
+- Fix cases where console output was not being flushed before process termination (#5625)
 - Adds new commands for provisioning and managing Firestore databases: (#5616)
   - firestore:databases:list
   - firestore:databases:create
