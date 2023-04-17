@@ -11,6 +11,7 @@ import { getProjectId, needProjectId } from "../projectUtils";
 import * as extensionsApi from "../extensions/extensionsApi";
 import { ExtensionVersion, ExtensionSource } from "../extensions/types";
 import * as refs from "../extensions/refs";
+import * as secretsUtils from "../extensions/secretsUtils";
 import { displayWarningPrompts } from "../extensions/warnings";
 import * as paramHelper from "../extensions/paramHelper";
 import {
@@ -195,6 +196,10 @@ async function installToManifest(options: InstallExtensionOptions): Promise<void
     throw new FirebaseError(
       `Could not find the extension.yaml for ${extensionName}. Please make sure this is a valid extension and try again.`
     );
+  }
+
+  if (secretsUtils.usesSecrets(spec)) {
+    await secretsUtils.ensureSecretManagerApiEnabled(options);
   }
 
   const config = manifest.loadConfig(options);
