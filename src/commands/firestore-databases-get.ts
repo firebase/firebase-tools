@@ -7,20 +7,22 @@ import { Emulators } from "../emulator/types";
 import { warnEmulatorNotSupported } from "../emulator/commandUtils";
 import { FirestoreOptions } from "../firestore/options";
 
-export const command = new Command("firestore:databases:get")
+export const command = new Command("firestore:databases:get [database]")
   .description("Get database in your Cloud Firestore project.")
-  .option(
-    "--database <databaseId>",
-    "Database ID of the firestore database from which to list configuration. (default) if none provided."
-  )
+  .option("--json", "Prints raw json response of the create API call if specified")
   .before(requirePermissions, ["datastore.databases.get"])
   .before(warnEmulatorNotSupported, Emulators.FIRESTORE)
-  .action(async (options: FirestoreOptions) => {
+  .action(async (database: string, options: FirestoreOptions) => {
     const api = new fsi.FirestoreApi();
 
-    const databaseId = options.database || "(default)";
-    const database: types.DatabaseResp = await api.getDatabase(options.project, databaseId);
+    const databaseId = database || "(default)";
+    const databaseResp: types.DatabaseResp = await api.getDatabase(options.project, databaseId);
 
-    logger.info(JSON.stringify(database, undefined, 2));
-    return database;
+    if (options.json) {
+      logger.info(JSON.stringify(databaseResp, undefined, 2));
+    } else {
+      api.prettyPrintDatabase(databaseResp);
+    }
+
+    return databaseResp;
   });

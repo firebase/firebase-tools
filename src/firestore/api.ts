@@ -305,6 +305,28 @@ export class FirestoreApi {
   }
 
   /**
+   * Print important fields of a database to the console as an ASCII table.
+   * @param database the Firestore database.
+   */
+  prettyPrintDatabase(database: types.DatabaseResp): void {
+    const Table = require("cli-table");
+    const table = new Table({
+      head: ["Field", "Value"],
+      colWidths: [25, Math.max(50, 5 + database.name.length)],
+    });
+
+    table.push(
+      ["Name", clc.yellow(database.name)],
+      ["Create Time", clc.yellow(database.createTime)],
+      ["Last Update Time", clc.yellow(database.updateTime)],
+      ["Type", clc.yellow(database.type)],
+      ["Location", clc.yellow(database.locationId)],
+      ["Delete Protection State", clc.yellow(database.deleteProtectionState)]
+    );
+    logger.info(table.toString());
+  }
+
+  /**
    * Print an array of locations to the console in an ASCII table. Group multi regions together
    *  Example: United States: nam5
    * @param locations the array of locations.
