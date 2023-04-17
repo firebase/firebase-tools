@@ -1,4 +1,9 @@
-- Fix bug where functions shell failed to invoke event triggered functions in debug mode. (#5609)
-- Fixed bug with the web frameworks proxy that could see unexpected 404 errors while emulating. (#5525)
-- Added experimental support for SvelteKit codebases. (#5525)
-- Fix bug where eagerly initializing UA failed function deployment that imported firebase-tools as a library. (#5666)
+- Adds new commands for provisioning and managing Firestore databases: (#5616)
+  - firestore:databases:list
+  - firestore:databases:create
+  - firestore:databases:get
+  - firestore:databases:update
+  - firestore:databases:delete
+  - firestore:locations
+- Adds `extensions` as an option in `firebase init`.
+- Relaxed repo URI validation in ext:dev:publish (#5698).

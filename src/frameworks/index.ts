@@ -28,6 +28,7 @@ import { HostingRewrites } from "../firebaseConfig";
 import * as experiments from "../experiments";
 import { ensureTargeted } from "../functions/ensureTargeted";
 import { implicitInit } from "../hosting/implicitInit";
+import { fileExistsSync } from "../fsutils";
 
 // Use "true &&"" to keep typescript from compiling this file and rewriting
 // the import statement into a require
@@ -123,8 +124,6 @@ const DEFAULT_FIND_DEP_OPTIONS: FindDepOptions = {
   cwd: process.cwd(),
   omitDev: true,
 };
-
-const NPM_COMMAND = process.platform === "win32" ? "npm.cmd" : "npm";
 
 export const WebFrameworks: Record<string, Framework> = Object.fromEntries(
   readdirSync(__dirname)
@@ -233,15 +232,30 @@ function scanDependencyTree(searchingFor: string, dependencies = {}): any {
   return;
 }
 
+export function getNodeModuleBin(name: string, cwd: string) {
+  const cantFindExecutable = new FirebaseError(`Could not find the ${name} executable.`);
+  const npmBin = spawnSync("npm", ["bin"], { cwd }).stdout?.toString().trim();
+  if (!npmBin) {
+    throw cantFindExecutable;
+  }
+  const path = join(npmBin, name);
+  if (!fileExistsSync(path)) {
+    throw cantFindExecutable;
+  }
+  return path;
+}
+
 /**
  *
  */
 export function findDependency(name: string, options: Partial<FindDepOptions> = {}) {
-  const { cwd, depth, omitDev } = { ...DEFAULT_FIND_DEP_OPTIONS, ...options };
+  const { cwd: dir, depth, omitDev } = { ...DEFAULT_FIND_DEP_OPTIONS, ...options };
+  const cwd = spawnSync("npm", ["root"], { cwd: dir }).stdout?.toString().trim();
+  if (!cwd) return;
   const env: any = Object.assign({}, process.env);
   delete env.NODE_ENV;
   const result = spawnSync(
-    NPM_COMMAND,
+    "npm",
     [
       "list",
       name,
@@ -395,7 +409,10 @@ export async function prepareFrameworks(
       process.env.__FIREBASE_DEFAULTS__ = JSON.stringify(firebaseDefaults);
     }
     const results = await discover(getProjectPath());
-    if (!results) throw new Error("Epic fail.");
+    if (!results)
+      throw new FirebaseError(
+        "Unable to detect the web framework in use, check firebase-debug.log for more info."
+      );
     const { framework, mayWantBackend, publicDirectory } = results;
     const {
       build,
@@ -569,7 +586,7 @@ ${firebaseDefaults ? `__FIREBASE_DEFAULTS__=${JSON.stringify(firebaseDefaults)}\
 
       await Promise.all(envs.map((path) => copyFile(path, join(functionsDist, basename(path)))));
 
-      execSync(`${NPM_COMMAND} i --omit dev --no-audit`, {
+      execSync(`npm i --omit dev --no-audit`, {
         cwd: functionsDist,
         stdio: "inherit",
       });

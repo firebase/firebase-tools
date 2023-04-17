@@ -24,6 +24,7 @@ import {
   isLocalPath,
   canonicalizeRefInput,
 } from "../extensions/extensionsHelper";
+import { confirm } from "../prompt";
 import { getRandomString } from "../extensions/utils";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
@@ -161,13 +162,8 @@ async function infoExtensionVersion(args: {
   extensionVersion: ExtensionVersion;
 }): Promise<void> {
   const ref = refs.parse(args.extensionName);
-  const extension = await extensionsApi.getExtension(refs.toExtensionRef(ref));
   await displayExtInfo(args.extensionName, ref.publisherId, args.extensionVersion.spec, true);
-  await displayWarningPrompts(
-    ref.publisherId,
-    extension.registryLaunchStage,
-    args.extensionVersion
-  );
+  await displayWarningPrompts(ref.publisherId, args.extensionVersion);
 }
 
 interface InstallExtensionOptions {
