@@ -5,3 +5,4 @@
 - firestore:databases:update
 - firestore:databases:delete
 - firestore:locations
+- Relaxed repo URI validation in ext:dev:publish (#5698).
