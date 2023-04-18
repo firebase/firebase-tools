@@ -458,8 +458,7 @@ async function handleSecret(secretParam: SecretParam, projectId: string) {
         secretParam.name
       }. Enter a value for ${secretParam.label || secretParam.name}:`,
     });
-    const secretLabel: Record<string, string> = secretLabels();
-    await secretManager.createSecret(projectId, secretParam.name, secretLabel);
+    await secretManager.createSecret(projectId, secretParam.name, secretLabels());
     await secretManager.addVersion(projectId, secretParam.name, secretValue);
     return secretValue;
   } else if (!metadata.secretVersion) {
