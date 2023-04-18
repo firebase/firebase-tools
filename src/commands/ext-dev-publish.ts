@@ -33,6 +33,9 @@ export const command = new Command("ext:dev:publish <extensionRef>")
   )
   .before(requireAuth)
   .action(async (extensionRef: string, options: any) => {
-    logLabeledWarning("Extensions", "ext:dev:publish has been deprecated and will be removed in the future. Please use ext:dev:upload instead.")
+    logLabeledWarning(
+      "Extensions",
+      "ext:dev:publish has been deprecated and will be removed in the future. Please use ext:dev:upload instead."
+    );
     return uploadExtensionAction(extensionRef, options);
   });

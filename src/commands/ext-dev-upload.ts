@@ -44,7 +44,10 @@ export const command = new Command("ext:dev:upload <extensionRef>")
   .before(requireAuth)
   .action(uploadExtensionAction);
 
-export async function uploadExtensionAction(extensionRef: string, options: any): Promise<ExtensionVersion | undefined> {
+export async function uploadExtensionAction(
+  extensionRef: string,
+  options: any
+): Promise<ExtensionVersion | undefined> {
   const { publisherId, extensionId, version } = refs.parse(extensionRef);
   if (version) {
     throw new FirebaseError(

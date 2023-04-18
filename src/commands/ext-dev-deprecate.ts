@@ -127,7 +127,9 @@ async function deleteExt(
   );
   utils.logLabeledWarning(
     logPrefix,
-    `This is a permanent action. Once deleted, you may never use the extension name '${clc.bold(extRef)}' again.`
+    `This is a permanent action. Once deleted, you may never use the extension name '${clc.bold(
+      extRef
+    )}' again.`
   );
   await getExtension(refs.toExtensionRef(extensionRef));
   utils.logLabeledWarning(
