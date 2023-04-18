@@ -8,3 +8,4 @@
 - Adds `extensions` as an option in `firebase init`.
 - Relaxed repo URI validation in ext:dev:publish (#5698).
 - Enable Secret Manager API during ext:install/update for extensions that use secrets (#5702).
+- Fix an issue where Secret Manager secrets were tagged incorrectly (#5704).
