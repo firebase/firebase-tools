@@ -8,3 +8,5 @@
 - Adds `extensions` as an option in `firebase init`.
 - Relaxed repo URI validation in ext:dev:publish (#5698).
 - Enable Secret Manager API during ext:install/update for extensions that use secrets (#5702).
+- Adds support for Eventarc Firestore triggers(2nd gen).
+- Propagates page token from ListDocumentsResponse to GetOrListDocumentsResponse in Firestore emulator.
