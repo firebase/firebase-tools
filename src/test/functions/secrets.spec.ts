@@ -125,7 +125,7 @@ describe("functions/secret", () => {
     });
 
     it("does not prompt user to have Firebase manage the secret if already managed by Firebase", async () => {
-      getStub.resolves({ ...secret, labels: secrets.labels()});
+      getStub.resolves({ ...secret, labels: secrets.labels() });
       patchStub.resolves(secret);
 
       await expect(
