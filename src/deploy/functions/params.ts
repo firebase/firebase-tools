@@ -7,7 +7,7 @@ import * as secretManager from "../../gcp/secretManager";
 import { listBuckets } from "../../gcp/storage";
 import { isCelExpression, resolveExpression } from "./cel";
 import { FirebaseConfig } from "./args";
-import { FIREBASE_MANAGED_SECRET_LABEL } from "../../functions/secrets";
+import { labels as secretLabels } from "../../functions/secrets";
 
 // A convinience type containing options for Prompt's select
 interface ListItem {
@@ -458,7 +458,7 @@ async function handleSecret(secretParam: SecretParam, projectId: string) {
         secretParam.name
       }. Enter a value for ${secretParam.label || secretParam.name}:`,
     });
-    const secretLabel: Record<string, string> = { [FIREBASE_MANAGED_SECRET_LABEL]: "yes" };
+    const secretLabel: Record<string, string> = secretLabels();
     await secretManager.createSecret(projectId, secretParam.name, secretLabel);
     await secretManager.addVersion(projectId, secretParam.name, secretValue);
     return secretValue;
