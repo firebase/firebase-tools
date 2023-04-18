@@ -1,0 +1,1 @@
+- Fix an issue where Secret Manager secrets were tagged incorrectly (#5704).
