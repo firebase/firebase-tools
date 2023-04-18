@@ -23,7 +23,7 @@ import { logger } from "../logger";
 import { functionsOrigin } from "../api";
 import { assertExhaustive } from "../functional";
 
-export const FIREBASE_MANAGED_SECRET_LABEL = "firebase-managed";
+const FIREBASE_MANAGED = "firebase-managed";
 
 type ProjectInfo = {
   projectId: string;
@@ -34,7 +34,7 @@ type ProjectInfo = {
  * Returns true if secret is managed by Firebase.
  */
 export function isFirebaseManaged(secret: Secret): boolean {
-  return Object.keys(secret.labels || []).includes(FIREBASE_MANAGED_SECRET_LABEL);
+  return Object.keys(secret.labels || []).includes(FIREBASE_MANAGED);
 }
 
 /**
@@ -42,7 +42,7 @@ export function isFirebaseManaged(secret: Secret): boolean {
  * @internal
  */
 export function labels(): Record<string, string> {
-  return { [FIREBASE_MANAGED_SECRET_LABEL]: "true" };
+  return { [FIREBASE_MANAGED]: "true" };
 }
 
 function toUpperSnakeCase(key: string): string {
@@ -173,7 +173,7 @@ export async function pruneSecrets(
   const prunedSecrets: Set<string> = new Set();
 
   // Collect all Firebase managed secret versions
-  const haveSecrets = await listSecrets(projectId, `labels.${FIREBASE_MANAGED_SECRET_LABEL}=true`);
+  const haveSecrets = await listSecrets(projectId, `labels.${FIREBASE_MANAGED}=true`);
   for (const secret of haveSecrets) {
     const versions = await listSecretVersions(projectId, secret.name, `NOT state: DESTROYED`);
     for (const version of versions) {
