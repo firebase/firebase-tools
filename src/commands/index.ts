@@ -93,6 +93,7 @@ export function load(client: any): any {
   client.ext.dev.deprecate = loadCommand("ext-dev-deprecate");
   client.ext.dev.undeprecate = loadCommand("ext-dev-undeprecate");
   client.ext.dev.upload = loadCommand("ext-dev-upload");
+  client.ext.dev.publish = loadCommand("ext-dev-publish");
   client.ext.dev.usage = loadCommand("ext-dev-usage");
   client.firestore = {};
   client.firestore.delete = loadCommand("firestore-delete");

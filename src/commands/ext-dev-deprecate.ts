@@ -67,7 +67,6 @@ async function deprecate(
     );
   }
 
-  // Error out if --delete and version predicate is provided
   let filter = "";
   if (versionPredicate) {
     const { comparator, targetSemVer } = parseVersionPredicate(versionPredicate);
@@ -84,7 +83,7 @@ async function deprecate(
       }
       const message =
         extensionVersion.state === "DEPRECATED" ? ", will overwrite deprecation message" : "";
-      // TODO: Clean up usage of extensionVersion.state
+      // TODO: This should not print out PUBLISHED since that means something else now.
       utils.logLabeledBullet(extensionVersion.ref, extensionVersion.state + message);
       return true;
     });
@@ -114,7 +113,7 @@ async function deleteExt(
   options: ExtDevDeprecateOptions
 ) {
   if (versionPredicate) {
-    throw new FirebaseError("");
+    throw new FirebaseError("Deleting specific extension versions is not supported.");
   }
   const extRef = refs.toExtensionRef(extensionRef);
   utils.logLabeledWarning(
