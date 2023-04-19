@@ -1,0 +1,107 @@
+# Learn detailed information about the fields of an extension.yaml file in the docs:
+# https://firebase.google.com/docs/extensions/alpha/ref-extension-yaml
+
+name: greet-the-world  # Identifier for your extension
+version: 0.0.1  # Follow semver versioning
+specVersion: v1beta  # Version of the Firebase Extensions specification
+
+# Friendly display name for your extension (~3-5 words)
+displayName: Greet the world
+
+# Brief description of the task your extension performs (~1 sentence)
+description: >-
+  Sends the world a greeting.
+
+license: Apache-2.0  # https://spdx.org/licenses/
+
+# Public URL for the source code of your extension
+sourceUrl: https://github.com/firebase/firebase-tools/tree/master/templates/extensions
+
+# Specify whether a paid-tier billing plan is required to use your extension.
+# Learn more in the docs: https://firebase.google.com/docs/extensions/alpha/ref-extension-yaml#billing-required-field
+billingRequired: false
+
+# In an `apis` field, list any Google APIs (like Cloud Translation, BigQuery, etc.)
+# required for your extension to operate.
+# Learn more in the docs: https://firebase.google.com/docs/extensions/alpha/ref-extension-yaml#apis-field
+
+# In a `roles` field, list any IAM access roles required for your extension to operate.
+# Learn more in the docs: https://firebase.google.com/docs/extensions/alpha/ref-extension-yaml#roles-field
+
+# In the `resources` field, list each of your extension's functions, including the trigger for each function.
+# Learn more in the docs: https://firebase.google.com/docs/extensions/alpha/ref-extension-yaml#resources-field
+resources:
+  - name: greetTheWorld
+    type: firebaseextensions.v1beta.function
+    description: >-
+      HTTP request-triggered function that responds with a specified greeting message
+    properties:
+      # LOCATION is a user-configured parameter value specified by the user during installation.
+      location: ${LOCATION}
+      # httpsTrigger is used for an HTTP triggered function.
+      httpsTrigger: {}
+      runtime: "nodejs16"
+
+# In the `params` field, set up your extension's user-configured parameters.
+# Learn more in the docs: https://firebase.google.com/docs/extensions/alpha/ref-extension-yaml#params-field
+params:
+  - param: GREETING
+    label: Greeting for the world
+    description: >-
+      What do you want to say to the world?
+      For example, Hello world? or What's up, world?
+    type: string
+    default: Hello
+    required: true
+    immutable: false
+
+  - param: LOCATION
+    label: Cloud Functions location
+    description: >-
+      Where do you want to deploy the functions created for this extension?
+      For help selecting a location, refer to the [location selection
+      guide](https://firebase.google.com/docs/functions/locations).
+    type: select
+    options:
+      - label: Iowa (us-central1)
+        value: us-central1
+      - label: South Carolina (us-east1)
+        value: us-east1
+      - label: Northern Virginia (us-east4)
+        value: us-east4
+      - label: Los Angeles (us-west2)
+        value: us-west2
+      - label: Salt Lake City (us-west3)
+        value: us-west3
+      - label: Las Vegas (us-west4)
+        value: us-west4
+      - label: Warsaw (europe-central2)
+        value: europe-central2
+      - label: Belgium (europe-west1)
+        value: europe-west1
+      - label: London (europe-west2)
+        value: europe-west2
+      - label: Frankfurt (europe-west3)
+        value: europe-west3
+      - label: Zurich (europe-west6)
+        value: europe-west6
+      - label: Hong Kong (asia-east2)
+        value: asia-east2
+      - label: Tokyo (asia-northeast1)
+        value: asia-northeast1
+      - label: Osaka (asia-northeast2)
+        value: asia-northeast2
+      - label: Seoul (asia-northeast3)
+        value: asia-northeast3
+      - label: Mumbai (asia-south1)
+        value: asia-south1
+      - label: Jakarta (asia-southeast2)
+        value: asia-southeast2
+      - label: Montreal (northamerica-northeast1)
+        value: northamerica-northeast1
+      - label: Sao Paulo (southamerica-east1)
+        value: southamerica-east1
+      - label: Sydney (australia-southeast1)
+        value: australia-southeast1
+    required: true
+    immutable: true

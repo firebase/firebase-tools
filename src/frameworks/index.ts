@@ -129,7 +129,12 @@ export const WebFrameworks: Record<string, Framework> = Object.fromEntries(
   readdirSync(__dirname)
     .filter((path) => statSync(join(__dirname, path)).isDirectory())
     .map((path) => {
-      console.log(__dirname);
+      // If not called by the CLI, (e.g., by the VS Code Extension)
+      // __dirname won't refer to this folder and these files won't be available.
+      // Instead it may find sibling folders that aren't modules, and this
+      // require will throw.
+      // Long term fix may be to bundle this instead of reading files at runtime
+      // but for now, this prevents crashing.
       try {
         return [path, require(join(__dirname, path))];
       } catch (e) {
@@ -194,7 +199,8 @@ export function relativeRequire(dir: string, mod: string) {
   } catch (e) {
     const path = relative(process.cwd(), dir);
     console.error(
-      `Could not load dependency ${mod} in ${path.startsWith("..") ? path : `./${path}`
+      `Could not load dependency ${mod} in ${
+        path.startsWith("..") ? path : `./${path}`
       }, have you run \`npm install\`?`
     );
     throw e;

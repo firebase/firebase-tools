@@ -1,0 +1,352 @@
+/*!*******************************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ./node_modules/@teamsupercell/typings-for-css-modules-loader/src/index.js??ruleSet[1].rules[1].use[1]!./node_modules/css-loader/dist/cjs.js??ruleSet[1].rules[1].use[2]!./node_modules/postcss-loader/dist/cjs.js!./node_modules/sass-loader/dist/cjs.js!./webviews/components/ui/Icon.scss ***!
+  \*******************************************************************************************************************************************************************************************************************************************************************************************************/
+.monicon-eLqDH {
+  font-family: "Monicons";
+  font-weight: normal;
+  font-style: normal;
+  font-size: 16px;
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  line-height: 1;
+  text-transform: none;
+  letter-spacing: normal;
+  word-wrap: normal;
+  white-space: nowrap;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "liga";
+  speak: none;
+  text-decoration: inherit;
+}
+/*!*********************************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ./node_modules/@teamsupercell/typings-for-css-modules-loader/src/index.js??ruleSet[1].rules[1].use[1]!./node_modules/css-loader/dist/cjs.js??ruleSet[1].rules[1].use[2]!./node_modules/postcss-loader/dist/cjs.js!./node_modules/sass-loader/dist/cjs.js!./webviews/components/ui/Spacer.scss ***!
+  \*********************************************************************************************************************************************************************************************************************************************************************************************************/
+.spacerxsmall-z4AHJ {
+  height: var(--space-xsmall);
+}
+
+.spacersmall-QzU7B {
+  height: var(--space-small);
+}
+
+.spacermedium-p57QX {
+  height: var(--space-medium);
+}
+
+.spacerlarge-U6jwY {
+  height: var(--space-large);
+}
+
+.spacerxlarge-RUNMh {
+  height: var(--space-xlarge);
+}
+
+.spacerxxlarge-gAKDW {
+  height: var(--space-xxlarge);
+}
+/*!*******************************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ./node_modules/@teamsupercell/typings-for-css-modules-loader/src/index.js??ruleSet[1].rules[1].use[1]!./node_modules/css-loader/dist/cjs.js??ruleSet[1].rules[1].use[2]!./node_modules/postcss-loader/dist/cjs.js!./node_modules/sass-loader/dist/cjs.js!./webviews/components/ui/Text.scss ***!
+  \*******************************************************************************************************************************************************************************************************************************************************************************************************/
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.text-ecZN9 {
+  margin: 0;
+  padding: 0;
+  font-weight: normal;
+  user-select: none;
+}
+
+p,
+ol,
+ul {
+  margin: 0;
+  padding: 0;
+  line-height: var(--vscode-line-height);
+}
+
+h1 {
+  font-size: 26px;
+  line-height: var(--vscode-line-height);
+  font-weight: 600;
+  margin: 0;
+}
+
+h2 {
+  font-size: 16px;
+  line-height: var(--vscode-line-height);
+  font-weight: 500;
+}
+
+h3 {
+  font-size: 13px;
+  line-height: var(--vscode-line-height);
+  font-weight: 800;
+}
+
+h4 {
+  font-size: 11px;
+  line-height: var(--vscode-line-height);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+h5 {
+  font-size: 11px;
+  line-height: var(--vscode-line-height);
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+h6 {
+  font-size: 11px;
+  line-height: var(--vscode-line-height);
+  font-weight: 800;
+}
+
+.b1-WJPY6 {
+  font-size: inherit;
+  line-height: var(--vscode-line-height);
+}
+
+.b2-McXPx {
+  font-size: 12px;
+  line-height: var(--vscode-line-height);
+}
+
+.l1-c5c0c {
+  font-size: 14px;
+  line-height: var(--vscode-line-height);
+  font-weight: 500;
+}
+
+.l2-tRmpR {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.l3-PmfMa {
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.l4-Y4rEb {
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.color-secondary-ZuPCw {
+  color: var(--vscode-descriptionForeground);
+}
+/*!**************************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ./node_modules/@teamsupercell/typings-for-css-modules-loader/src/index.js??ruleSet[1].rules[1].use[1]!./node_modules/css-loader/dist/cjs.js??ruleSet[1].rules[1].use[2]!./node_modules/postcss-loader/dist/cjs.js!./node_modules/sass-loader/dist/cjs.js!./webviews/sidebar.entry.scss ***!
+  \**************************************************************************************************************************************************************************************************************************************************************************************************/
+:root {
+  --space-xsmall: 2px;
+  --space-small: 4px;
+  --space-medium: 8px;
+  --space-large: 12px;
+  --space-xlarge: 16px;
+  --space-xxlarge: 24px;
+}
+
+:root {
+  --container-padding: 20px;
+  --vscode-line-height: 140%;
+}
+
+body {
+  margin: 0;
+  padding: 0 var(--container-padding);
+  color: var(--vscode-foreground);
+  font-size: var(--vscode-font-size);
+  line-height: var(--vscode-line-height);
+  font-weight: var(--vscode-font-weight);
+  font-family: var(--vscode-font-family);
+  background-color: var(--vscode-editor-background);
+}
+
+ol,
+ul {
+  padding-left: var(--container-padding);
+}
+
+*:focus {
+  outline-color: var(--vscode-focusBorder) !important;
+}
+
+a {
+  color: var(--vscode-textLink-foreground);
+}
+
+a:hover,
+a:active {
+  color: var(--vscode-textLink-activeForeground);
+}
+
+code {
+  font-size: var(--vscode-editor-font-size);
+  font-family: var(--vscode-editor-font-family);
+}
+
+body {
+  background-color: transparent;
+  cursor: default;
+}
+
+#root {
+  display: flex;
+  flex-direction: column;
+}
+
+a:not(:hover):not(:focus) {
+  text-decoration: none;
+}
+
+.fullWidth-ZP5jw {
+  width: 100%;
+}
+
+.integrationStatus-PoupU {
+  padding-left: 28px;
+  position: relative;
+}
+.integrationStatus-label-ZYQQ5 {
+  line-height: 16px;
+}
+.integrationStatus-icon-lPQoX {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+.integrationStatus-loading-yGlm9 {
+  width: 16px;
+  height: 16px;
+}
+
+.hosting-row-IY0Mk {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  position: relative;
+}
+.hosting-row-label-kgFyK {
+  display: flex;
+  align-items: center;
+}
+.hosting-row-icon-vLwsl {
+  margin-right: 8px;
+}
+.hosting-row-project-zAJRg {
+  display: flex;
+  flex-direction: column;
+}
+.hosting-row-test-cPZ22 {
+  display: flex;
+}
+/*!***************************************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ./node_modules/@teamsupercell/typings-for-css-modules-loader/src/index.js??ruleSet[1].rules[1].use[1]!./node_modules/css-loader/dist/cjs.js??ruleSet[1].rules[1].use[2]!./node_modules/postcss-loader/dist/cjs.js!./node_modules/sass-loader/dist/cjs.js!./webviews/components/ui/PanelSection.scss ***!
+  \***************************************************************************************************************************************************************************************************************************************************************************************************************/
+.panelExpando-Vn35y {
+  appearance: none;
+  background-color: transparent;
+  display: flex;
+  align-items: center;
+  line-height: 16px;
+  padding: 0;
+  border: 0;
+  cursor: pointer;
+  gap: 4px;
+  color: var(--vscode-descriptionForeground);
+}
+.panelExpando-Vn35y .panelExpandoIcon-YCQKL {
+  transition: transform 0.1s ease;
+}
+.panelExpando-Vn35y:not(.isExpanded-LQog9) .panelExpandoIcon-YCQKL {
+  transform: rotate(-90deg);
+}
+/*!***********************************************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ./node_modules/@teamsupercell/typings-for-css-modules-loader/src/index.js??ruleSet[1].rules[1].use[1]!./node_modules/css-loader/dist/cjs.js??ruleSet[1].rules[1].use[2]!./node_modules/postcss-loader/dist/cjs.js!./node_modules/sass-loader/dist/cjs.js!./webviews/components/ui/popup-menu/PopupMenu.scss ***!
+  \***********************************************************************************************************************************************************************************************************************************************************************************************************************/
+.menu-sBLNZ {
+  position: absolute;
+  right: 0;
+  background-color: var(--vscode-sideBar-background);
+  padding: 4px 0;
+  margin: 0;
+  border-radius: 3px;
+  box-shadow: 0 0 0 1px var(--divider-background, black), 0 4px 12px var(--vscode-widget-shadow);
+  color: var(--vscode-foreground);
+  z-index: 2;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.scrim-WmoTF {
+  position: fixed;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  cursor: default;
+  z-index: 1;
+}
+
+.item-QHQPf {
+  width: 100%;
+  text-align: left;
+  background-color: transparent;
+  appearance: none;
+  border: 0;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--color-ink);
+  padding: 4px 16px;
+  display: flex;
+  align-items: center;
+}
+.item-QHQPf .material-icons {
+  margin-right: 12px;
+  color: var(--color-ink-2);
+}
+.item-QHQPf[disabled] {
+  cursor: not-allowed;
+  color: var(--color-ink-disabled);
+}
+.item-QHQPf:not([disabled]):hover {
+  background-color: var(--vscode-list-hoverBackground);
+}
+.item-QHQPf:not([disabled]):active {
+  background-color: var(--vscode-list-activeSelectionBackground);
+}
+/*!**************************************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ./node_modules/@teamsupercell/typings-for-css-modules-loader/src/index.js??ruleSet[1].rules[1].use[1]!./node_modules/css-loader/dist/cjs.js??ruleSet[1].rules[1].use[2]!./node_modules/postcss-loader/dist/cjs.js!./node_modules/sass-loader/dist/cjs.js!./webviews/components/AccountSection.scss ***!
+  \**************************************************************************************************************************************************************************************************************************************************************************************************************/
+.account-row-k6zzC {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  position: relative;
+}
+.account-row-label-TPXwZ {
+  display: flex;
+  align-items: center;
+}
+.account-row-icon-JffX1 {
+  margin-right: 8px;
+}
+.account-row-project-Wu3NM {
+  display: flex;
+  flex-direction: column;
+}
+
+/*# sourceMappingURL=web-sidebar.css.map*/
