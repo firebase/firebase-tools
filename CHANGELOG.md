@@ -1,12 +1,3 @@
-- Adds new commands for provisioning and managing Firestore databases: (#5616)
-  - firestore:databases:list
-  - firestore:databases:create
-  - firestore:databases:get
-  - firestore:databases:update
-  - firestore:databases:delete
-  - firestore:locations
-- Adds `extensions` as an option in `firebase init`.
-- Relaxed repo URI validation in ext:dev:publish (#5698).
-- Enable Secret Manager API during ext:install/update for extensions that use secrets (#5702).
-- Adds support for Eventarc Firestore triggers(2nd gen).
-- Propagates page token from ListDocumentsResponse to GetOrListDocumentsResponse in Firestore emulator.
+- Releases Firestore Emulator 1.17.1
+  - Propagates page token from ListDocumentsResponse to GetOrListDocumentsResponse in Firestore emulator.
+- Fixes an issue where Secret Manager secrets were tagged incorrectly (#5704).
