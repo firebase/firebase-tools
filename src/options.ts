@@ -3,7 +3,7 @@ import { RC } from "./rc";
 
 // Options come from command-line options and stored config values
 // TODO: actually define all of this stuff in command.ts and import it from there.
-export interface Options {
+export interface BaseOptions {
   cwd: string;
   configPath: string;
   only: string;
@@ -25,7 +25,9 @@ export interface Options {
   debug: boolean;
 
   rc: RC;
+}
 
+export interface Options extends BaseOptions {
   // TODO(samstern): Remove this once options is better typed
   [key: string]: unknown;
 }
