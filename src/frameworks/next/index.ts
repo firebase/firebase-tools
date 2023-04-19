@@ -414,6 +414,8 @@ export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: strin
   );
 }
 
+const BUNDLE_NEXT_CONFIG_TIMEOUT = 10_000;
+
 /**
  * Create a directory for SSR content.
  */
@@ -426,7 +428,10 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
   // encountering difficulties with both of those
   if (existsSync(join(sourceDir, "next.config.js"))) {
     try {
-      const productionDeps = await new Promise<string[]>((resolve) => {
+      const productionDeps = await new Promise<string[]>((resolve, reject) => {
+        setTimeout(() => {
+          reject("Timed out trying to bundle.");
+        }, BUNDLE_NEXT_CONFIG_TIMEOUT);
         const dependencies: string[] = [];
         const pipeline = chain([
           spawn("npm", ["ls", "--omit=dev", "--all", "--json"], { cwd: sourceDir }).stdout,
@@ -464,7 +469,7 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
       console.warn(
         "Unable to bundle next.config.js for use in Cloud Functions, proceeding with deploy but problems may be enountered."
       );
-      console.error(e.message);
+      console.error(e.message || e);
       copy(join(sourceDir, "next.config.js"), join(destDir, "next.config.js"));
     }
   }
