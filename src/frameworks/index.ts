@@ -643,7 +643,7 @@ ${firebaseDefaults ? `__FIREBASE_DEFAULTS__=${JSON.stringify(firebaseDefaults)}\
   }
 }
 
-function codegenDevModeFunctionsDirectory() {
-  const packageJson = {};
+function codegenDevModeFunctionsDirectory(projectPath) {
+  const packageJson = require(`${projectPath}/package.json`)
   return Promise.resolve({ packageJson, frameworksEntry: "_devMode" });
 }
