@@ -24,12 +24,11 @@ import {
   isLocalPath,
   canonicalizeRefInput,
 } from "../extensions/extensionsHelper";
-import { confirm } from "../prompt";
 import { getRandomString } from "../extensions/utils";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
 import { track } from "../track";
-import * as experiments from "../experiments";
+import { confirm } from "../prompt";
 import { Options } from "../options";
 import * as manifest from "../extensions/manifest";
 
@@ -42,11 +41,8 @@ marked.setOptions({
  */
 export const command = new Command("ext:install [extensionName]")
   .description(
-    "install an official extension if [extensionName] or [extensionName@version] is provided; " +
-      (experiments.isEnabled("extdev")
-        ? "install a local extension if [localPathOrUrl] or [url#root] is provided; install a published extension (not authored by Firebase) if [publisherId/extensionId] is provided "
-        : "") +
-      "or run with `-i` to see all available extensions."
+    "add an uploaded extension to firebase.json if [publisherId/extensionId] is provided;" +
+      "or, add a local extension if [localPath] is provided"
   )
   .option("--local", "deprecated")
   .withForce()
