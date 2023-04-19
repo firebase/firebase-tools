@@ -128,9 +128,17 @@ const DEFAULT_FIND_DEP_OPTIONS: FindDepOptions = {
 export const WebFrameworks: Record<string, Framework> = Object.fromEntries(
   readdirSync(__dirname)
     .filter((path) => statSync(join(__dirname, path)).isDirectory())
-    .map((path) => [path, require(join(__dirname, path))])
+    .map((path) => {
+      console.log(__dirname);
+      try {
+        return [path, require(join(__dirname, path))];
+      } catch (e) {
+        return [];
+      }
+    })
     .filter(
-      ([, obj]) => obj.name && obj.discover && obj.build && obj.type !== undefined && obj.support
+      ([, obj]) =>
+        obj && obj.name && obj.discover && obj.build && obj.type !== undefined && obj.support
     )
 );
 
@@ -186,8 +194,7 @@ export function relativeRequire(dir: string, mod: string) {
   } catch (e) {
     const path = relative(process.cwd(), dir);
     console.error(
-      `Could not load dependency ${mod} in ${
-        path.startsWith("..") ? path : `./${path}`
+      `Could not load dependency ${mod} in ${path.startsWith("..") ? path : `./${path}`
       }, have you run \`npm install\`?`
     );
     throw e;
