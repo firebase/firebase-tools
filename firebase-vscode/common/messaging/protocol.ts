@@ -21,11 +21,8 @@ export interface WebviewToExtension {
   /** Notify extension that current user has been changed. */
   requestChangeUser(user: User | ServiceAccountUser): void;
 
-  /** Asks what projects are available for this user. */
-  getProjects(email: string): void;
-
-  /** Show a project picker. */
-  projectPicker(projects: FirebaseProjectMetadata[]): void;
+  /** Select a project */
+  selectProject(email: string): void;
 
   /** Runs `firebase init hosting` command. */
   selectAndInitHostingFolder(
@@ -54,7 +51,6 @@ export interface ExtensionToWebview {
   notifyEnv(env: { isMonospace: boolean }): void;
   /** Called as a result of getUsers/addUser/logout calls */
   notifyUsers(users: User[]): void;
-  notifyProjects(email: string, projects: FirebaseProjectMetadata[]): void;
 
   /** Called when a new project is selected */
   notifyProjectChanged(projectId: string): void;

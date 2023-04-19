@@ -5,8 +5,6 @@ import { Icon } from "./ui/Icon";
 import { Label } from "./ui/Text";
 import React from "react";
 import styles from "./AccountSection.scss";
-import { ServiceAccountUser } from "../../common/types";
-import { User } from "../../../src/types/auth";
 
 export function ProjectSection({
   userEmail,
@@ -38,7 +36,7 @@ export function ProjectSection({
 
 export function initProjectSelection(userEmail: string | null) {
   if (userEmail) {
-    broker.send("getProjects", userEmail);
+    broker.send("selectProject", userEmail);
   } else {
     broker.send("showMessage", "Not logged in", {
       modal: true,

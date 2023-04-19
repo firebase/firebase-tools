@@ -31,8 +31,5 @@ export async function writeFirebaseRCFile(
   filename: string,
   content: FirebaseRC
 ) {
-  fs.writeFileSync(
-    filename,
-    JSON.stringify(content, null, 2)
-  );
+  fs.writeFileSync(filename, JSON.stringify(content, null, 2));
 }

@@ -1,4 +1,3 @@
-class Noop {
-}
+class Noop {}
 
 module.exports = Noop;

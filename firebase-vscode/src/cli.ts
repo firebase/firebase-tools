@@ -1,19 +1,24 @@
-import { getAllAccounts, getGlobalDefaultAccount, loginGoogle, setGlobalDefaultAccount } from '../../src/auth';
-import { logoutAction } from '../../src/commands/logout';
-import { listFirebaseProjects } from '../../src/management/projects';
-import { requireAuth } from '../../src/requireAuth';
-import { deploy } from '../../src/deploy';
-import { FirebaseConfig } from  '../../src/firebaseConfig';
+import {
+  getAllAccounts,
+  getGlobalDefaultAccount,
+  loginGoogle,
+  setGlobalDefaultAccount,
+} from "../../src/auth";
+import { logoutAction } from "../../src/commands/logout";
+import { listFirebaseProjects } from "../../src/management/projects";
+import { requireAuth } from "../../src/requireAuth";
+import { deploy } from "../../src/deploy";
+import { FirebaseConfig } from "../../src/firebaseConfig";
 import { FirebaseRC } from "../../src/firebaserc";
-import { getDefaultHostingSite } from '../../src/getDefaultHostingSite';
-import { HostingSingle } from './firebaseConfig';
-import { initAction } from '../../src/commands/init';
-import { Account } from '../../src/types/auth';
-import { Options } from '../../src/options';
-import { currentOptions, getCommandOptions } from './options';
-import { setInquirerOptions } from './stubs/inquirer-stub';
-import * as vscode from 'vscode';
-import { ServiceAccount } from '../common/types';
+import { getDefaultHostingSite } from "../../src/getDefaultHostingSite";
+import { HostingSingle } from "./firebaseConfig";
+import { initAction } from "../../src/commands/init";
+import { Account, User } from "../../src/types/auth";
+import { Options } from "../../src/options";
+import { currentOptions, getCommandOptions } from "./options";
+import { setInquirerOptions } from "./stubs/inquirer-stub";
+import * as vscode from "vscode";
+import { ServiceAccount } from "../common/types";
 
 /**
  * Wrap the CLI's requireAuth() which is normally run before every command
@@ -36,11 +41,11 @@ async function requireAuthWrapper(showError: boolean = true) {
   // to look for the service account hopefully.
   try {
     await requireAuth(account || {});
-  } catch(e) {
+  } catch (e) {
     if (showError) {
-      vscode.window.showErrorMessage('Not logged in', {
+      vscode.window.showErrorMessage("Not logged in", {
         modal: true,
-        detail: `Log in by clicking "Sign in with Google" in the sidebar.`
+        detail: `Log in by clicking "Sign in with Google" in the sidebar.`,
       });
     }
     return false;
@@ -56,7 +61,9 @@ export async function getAccounts(): Promise<Array<Account | ServiceAccount>> {
   // Get other accounts (assuming service account for now, could also be glogin)
   const otherAuthExists = await requireAuthWrapper(false);
   if (otherAuthExists) {
-    accounts.push({ user: { email: 'service_account', type: 'service_account' } });
+    accounts.push({
+      user: { email: "service_account", type: "service_account" },
+    });
   }
   return accounts;
 }
@@ -65,10 +72,13 @@ export async function logoutUser(email: string): Promise<void> {
   await logoutAction(email, {} as Options);
 }
 
+/**
+ * Login with standard Firebase login
+ */
 export async function login() {
   const userCredentials = await loginGoogle(true);
   setGlobalDefaultAccount(userCredentials as Account);
-  return userCredentials;
+  return userCredentials as { user: User };
 }
 
 export async function listProjects() {
@@ -76,11 +86,14 @@ export async function listProjects() {
   return listFirebaseProjects();
 }
 
-export async function initHosting(options: { spa: boolean, public: string }) {
+export async function initHosting(options: { spa: boolean; public: string }) {
   await requireAuthWrapper();
-  const commandOptions = await getCommandOptions(undefined, {...currentOptions, ...options});
+  const commandOptions = await getCommandOptions(undefined, {
+    ...currentOptions,
+    ...options,
+  });
   setInquirerOptions(commandOptions);
-  await initAction('hosting', commandOptions);
+  await initAction("hosting", commandOptions);
 }
 
 export async function deployToHosting(
@@ -88,23 +101,24 @@ export async function deployToHosting(
   firebaseRC: FirebaseRC
 ) {
   if (!(await requireAuthWrapper())) {
-    return { success: false, hostingUrl: '', consoleUrl: '' };
+    return { success: false, hostingUrl: "", consoleUrl: "" };
   }
-  
+
   // TODO: throw if it doesn't find firebaseJSON or the hosting field
   // const projects = await listFirebaseProjects();
   // const currentProject = projects.find(project => project.projectId === firebaseRC.projects?.default);
   try {
-    const options = {...currentOptions};
+    const options = { ...currentOptions };
     // TODO: handle multiple hosting configs
     if (!(firebaseJSON.hosting as HostingSingle).site) {
-      (firebaseJSON.hosting as HostingSingle).site = await getDefaultHostingSite(options);
+      (firebaseJSON.hosting as HostingSingle).site =
+        await getDefaultHostingSite(options);
     }
     const commandOptions = await getCommandOptions(firebaseJSON, options);
-    await deploy(['hosting'], commandOptions);
+    await deploy(["hosting"], commandOptions);
   } catch (e) {
     console.error(e);
-    return { success: false, hostingUrl: '', consoleUrl: '' };
+    return { success: false, hostingUrl: "", consoleUrl: "" };
   }
-  return { success: true, hostingUrl: '', consoleUrl: '' };
+  return { success: true, hostingUrl: "", consoleUrl: "" };
 }

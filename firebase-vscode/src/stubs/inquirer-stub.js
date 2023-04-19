@@ -12,7 +12,9 @@ inquirer.prompt = async (prompts) => {
     if (options.hasOwnProperty(prompt.name)) {
       answers[prompt.name] = options[prompt.name];
     } else {
-      console.log(`Didn't find "${prompt.name}" in options (message: "${prompt.message}"), defaulting to value "${prompt.default}"`)
+      console.log(
+        `Didn't find "${prompt.name}" in options (message: "${prompt.message}"), defaulting to value "${prompt.default}"`
+      );
       answers[prompt.name] = prompt.default;
     }
   }

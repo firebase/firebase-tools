@@ -1,13 +1,18 @@
 import * as path from "path";
-import * as fs from 'fs';
+import * as fs from "fs";
 import * as vscode from "vscode";
 import { ExtensionContext, workspace } from "vscode";
 import { FirebaseProjectMetadata } from "../../src/types/project";
-import {
-  writeFirebaseRCFile,
-} from "./utils";
+import { writeFirebaseRCFile } from "./utils";
 import { ExtensionBrokerImpl } from "./extension-broker";
-import { deployToHosting, getAccounts, listProjects, login, logoutUser, initHosting } from "./cli";
+import {
+  deployToHosting,
+  getAccounts,
+  listProjects,
+  login,
+  logoutUser,
+  initHosting,
+} from "./cli";
 import { User } from "../../src/types/auth";
 import { FirebaseRC } from "../../src/firebaserc";
 import { FirebaseConfig } from "../../src/firebaseConfig";
@@ -17,14 +22,59 @@ import { ServiceAccountUser } from "./types";
 let firebaseRC: FirebaseRC | null = null;
 let firebaseJSON: FirebaseConfig | null = null;
 let extensionContext: ExtensionContext = null;
+let users: Array<ServiceAccountUser | User> = [];
+let currentUserEmail = "";
+// Stores a mapping from user email to list of projects for that user
+let projectsUserMapping = new Map<string, FirebaseProjectMetadata[]>();
 
-function processCurrentUser(
-  currentUserEmail: string | null,
+async function fetchUsers() {
+  const accounts = await getAccounts();
+  users = accounts.map((account) => account.user);
+}
+
+/**
+ * Get the user to select a project.
+ */
+async function promptUserForProject(broker: ExtensionBrokerImpl, projects: FirebaseProjectMetadata[]) {
+  // Put in a separate flow for monospace.
+  // process.env.MONOSPACE_ENV should be directly accessible here
+  const items = projects.map(({ projectId }) => projectId);
+
+  return new Promise<null | string>((resolve, reject) => {
+    vscode.window.showQuickPick(items).then(async (projectId) => {
+      const project = projects.find((p) => p.projectId === projectId);
+      if (!project) {
+        if (firebaseRC?.projects?.default) {
+          // Don't show an error message if a project was previously selected,
+          // just do nothing.
+          resolve(null);
+        }
+        reject("Invalid project selected. Please select a project to proceed");
+      } else {
+        resolve(project.projectId);
+      }
+    });
+  });
+}
+
+function updateCurrentUser(
   users: User[],
-  broker: ExtensionBrokerImpl
+  broker: ExtensionBrokerImpl,
+  newUserEmail?: string
 ) {
-  if (!currentUserEmail && users.length > 0) {
-    currentUserEmail = users[0].email;
+  if (newUserEmail) {
+    if (newUserEmail === currentUserEmail) {
+      return currentUserEmail;
+    } else {
+      currentUserEmail = newUserEmail;
+    }
+  }
+  if (!newUserEmail) {
+    if (users.length > 0) {
+      currentUserEmail = users[0].email;
+    } else {
+      currentUserEmail = null;
+    }
   }
   broker.send("notifyUserChanged", currentUserEmail);
   return currentUserEmail;
@@ -46,18 +96,31 @@ function getRootFolders() {
 function getJsonFile<T>(filename: string): T | null {
   const rootFolders = getRootFolders();
   for (const folder of rootFolders) {
-    const rcPath = path.join(folder, filename);
-    if (fs.existsSync(rcPath)) {
-      const fileText = fs.readFileSync(rcPath, 'utf-8');
+    const jsonFilePath = path.join(folder, filename);
+    if (fs.existsSync(jsonFilePath)) {
+      const fileText = fs.readFileSync(jsonFilePath, "utf-8");
       try {
         const result = JSON.parse(fileText);
         currentOptions.cwd = folder;
         return result;
-      } catch(e) {
-        console.log(`Error parsing JSON in ${rcPath}`);
+      } catch (e) {
+        console.log(`Error parsing JSON in ${jsonFilePath}`);
         return null;
       }
     }
+  }
+  // Usually there's only one root folder unless someone is using a
+  // multi-root VS Code workspace.
+  // https://code.visualstudio.com/docs/editor/multi-root-workspaces
+  // We were trying to play it safe up above by assigning the cwd
+  // based on where a .firebaserc or firebase.json was found but if
+  // the user hasn't run firebase init there won't be one, and without
+  // a cwd we won't know where to put it.
+  //
+  // TODO: prompt where we're going to save a new firebase config
+  // file before we do it so the user can change it
+  if (!currentOptions.cwd) {
+    currentOptions.cwd = rootFolders[0];
   }
   return null;
 }
@@ -67,32 +130,34 @@ export function setupWorkflow(
   broker: ExtensionBrokerImpl
 ) {
   extensionContext = context;
-  let users: User[] = [];
-  let currentUserEmail = "";
-  // Stores a mapping from user email to list of projects for that user
-  let projectsUserMapping = new Map<string, FirebaseProjectMetadata[]>();
+
+  // Read config files and store in memory.
+  readFirebaseConfigs();
+  // Check current users state
+  fetchUsers();
 
   broker.on("getEnv", async () => {
-    broker.send("notifyEnv", { isMonospace: Boolean(process.env.MONOSPACE_ENV) });
+    broker.send("notifyEnv", {
+      isMonospace: Boolean(process.env.MONOSPACE_ENV),
+    });
   });
 
   broker.on("getUsers", async () => {
     if (users.length === 0) {
-      const accounts = await getAccounts();
-      users = accounts.map(account => account.user);
+      await fetchUsers();
     }
     broker.send("notifyUsers", users);
-    currentUserEmail = processCurrentUser(currentUserEmail, users, broker);
+    currentUserEmail = updateCurrentUser(users, broker);
   });
 
   broker.on("logout", async (email: string) => {
     try {
       await logoutUser(email);
       const accounts = await getAccounts();
-      users = accounts.map(account => account.user);
+      users = accounts.map((account) => account.user);
       broker.send("notifyUsers", users);
-      currentUserEmail = processCurrentUser(null, users, broker);
-    } catch(e) {
+      currentUserEmail = updateCurrentUser(users, broker);
+    } catch (e) {
       // ignored
     }
   });
@@ -105,38 +170,20 @@ export function setupWorkflow(
     }
   });
 
-  broker.on("projectPicker", async (projects: FirebaseProjectMetadata[]) => {
-    // Put in a separate flow for monospace.
-    // process.env.MONOSPACE_ENV should be directly accessible here
-    const items = projects.map(({ projectId }) => projectId);
-    vscode.window.showQuickPick(items).then(async (projectId) => {
-      const project = projects.find((p) => p.projectId === projectId);
-      if (!project) {
-        if (firebaseRC?.projects?.default) {
-          // Don't show an error message if a project was previously selected,
-          // just do nothing.
-          return;
-        }
-        vscode.window.showErrorMessage(
-          "Invalid project selected. Please select a project to proceed"
-        );
-      } else {
-        await updateFirebaseRC("default", project.projectId);
-        broker.send("notifyProjectChanged", projectId);
-      }
-    });
-  });
-
   broker.on("showMessage", async (msg, options) => {
     vscode.window.showInformationMessage(msg, options);
   });
 
   broker.on("addUser", async () => {
     const { user } = await login();
-    users.push(user as User);
+    users.push(user);
     if (users) {
       broker.send("notifyUsers", users);
-      currentUserEmail = processCurrentUser((user as User).email, users, broker);
+      currentUserEmail = updateCurrentUser(
+        users,
+        broker,
+        user.email
+      );
     }
   });
 
@@ -147,24 +194,48 @@ export function setupWorkflow(
     }
   });
 
-  broker.on("getProjects", async (email) => {
-    // Put in a separate flow for monospace.
-    // process.env.MONOSPACE_ENV should be directly accessible here
-    if (projectsUserMapping.has(email)) {
-      console.log(`using cached projects list for ${email}`);
-      const projects = projectsUserMapping.get(email)!;
-      // Not sure why we are doing this, it just has the webview do a console.log
-      // and then sends a message right back to the extension to do a projectPicker
-      broker.send("notifyProjects", email, projects);
-    } else {
-      console.log(`fetching projects list for ${email}`);
-      vscode.window.showQuickPick(["Loading...."]);
+  broker.on("selectProject", async (email) => {
+    let projectId;
+    if (process.env.MONOSPACE_ENV) {
+      /**
+       * Monospace case: use Monospace flow
+       */
+      const monospaceExtension = vscode.extensions.getExtension('google.monospace');
+      process.env.MONOSPACE_DAEMON_PORT = monospaceExtension.exports.getMonospaceDaemonPort();
+      // call appropriate CLI function?
+      projectId = 'monospace-placeholder-projectid';
+    } else if (email === 'service_account') {
+      /**
+       * Non-Monospace service account case: get the service account's only
+       * linked project.
+       */
       const projects = (await listProjects()) as FirebaseProjectMetadata[];
       projectsUserMapping.set(email, projects);
-      // Not sure why we are doing this, it just has the webview do a console.log
-      // and then sends a message right back to the extension to do a projectPicker
-      broker.send("notifyProjects", email, projects);
+      // Service accounts should only have one project.
+      projectId = projects[0].projectId;
+    } else {
+      /**
+       * Default Firebase login case, let user choose from projects that
+       * Firebase login has access to.
+       */
+      let projects = [];
+      if (projectsUserMapping.has(email)) {
+        console.log(`using cached projects list for ${email}`);
+        projects = projectsUserMapping.get(email)!;
+      } else {
+        console.log(`fetching projects list for ${email}`);
+        vscode.window.showQuickPick(["Loading...."]);
+        projects = (await listProjects()) as FirebaseProjectMetadata[];
+        projectsUserMapping.set(email, projects);
+      }
+      try {
+        projectId = await promptUserForProject(broker, projects);
+      } catch (e) {
+        vscode.window.showErrorMessage(e.message);
+      }
     }
+    await updateFirebaseRC("default", projectId);
+    broker.send("notifyProjectChanged", projectId);
   });
 
   broker.on(
@@ -184,7 +255,7 @@ export function setupWorkflow(
         );
         await initHosting({
           spa: singleAppSupport,
-          public: publicFolder
+          public: publicFolder,
         });
         readAndSendFirebaseConfigs(broker);
         broker.send("notifyHostingFolderReady", projectId, currentOptions.cwd);
@@ -193,9 +264,10 @@ export function setupWorkflow(
   );
 
   broker.on("hostingDeploy", async () => {
-    // TODO: use configuraiton saved directory with .firebaserc
-    const rootFolders = getRootFolders();
-    const { success, consoleUrl, hostingUrl} = await deployToHosting(firebaseJSON, firebaseRC);
+    const { success, consoleUrl, hostingUrl } = await deployToHosting(
+      firebaseJSON,
+      firebaseRC
+    );
     broker.send("notifyHostingDeploy", success, consoleUrl, hostingUrl);
   });
 
@@ -208,24 +280,27 @@ export function setupWorkflow(
   });
 
   context.subscriptions.push(
-    setupFirebaseJsonAndRcFileSystemWatcher(context, broker)
+    setupFirebaseJsonAndRcFileSystemWatcher(broker)
   );
 }
 
 /**
  * Parse firebase.json and .firebaserc from the configured location, if they
- * exist, and then send it to webviews through the given broker
+ * exist, and write to memory.
+ */
+function readFirebaseConfigs() {
+  firebaseRC = getJsonFile<FirebaseRC>(".firebaserc");
+  firebaseJSON = getJsonFile<FirebaseConfig>("firebase.json");
+
+  updateOptions(extensionContext, firebaseJSON, firebaseRC);
+}
+
+/**
+ *  Read Firebase configs and then send it to webviews through the given broker
  */
 async function readAndSendFirebaseConfigs(broker: ExtensionBrokerImpl) {
-  firebaseRC = getJsonFile<FirebaseRC>('.firebaserc');
-  firebaseJSON = getJsonFile<FirebaseConfig>('firebase.json');
-  
-  updateOptions(extensionContext, firebaseJSON, firebaseRC);
-  broker.send(
-    "notifyFirebaseJson",
-    firebaseJSON,
-    firebaseRC
-  );
+  readFirebaseConfigs();
+  broker.send("notifyFirebaseJson", firebaseJSON, firebaseRC);
 }
 
 /**
@@ -236,8 +311,8 @@ async function updateFirebaseRC(alias: string, projectId: string) {
     firebaseRC = {
       ...firebaseRC,
       projects: {
-        default: firebaseRC.projects?.default || "", // ensure default no matter what
-        ...(firebaseRC.projects || {}),
+        default: firebaseRC?.projects?.default || "", // ensure default no matter what
+        ...(firebaseRC?.projects || {}),
         [alias]: projectId,
       },
     };
@@ -251,7 +326,6 @@ async function updateFirebaseRC(alias: string, projectId: string) {
  * configuration for where in the workspace the .firebaserc and firebase.json are.
  */
 function setupFirebaseJsonAndRcFileSystemWatcher(
-  context: ExtensionContext,
   broker: ExtensionBrokerImpl
 ): vscode.Disposable {
   // Create a new watcher

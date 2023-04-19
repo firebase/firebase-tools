@@ -1,9 +1,6 @@
 import { Webview } from "vscode";
 
-import {
-  Broker,
-  BrokerImpl,
-} from "../common/messaging/broker";
+import { Broker, BrokerImpl } from "../common/messaging/broker";
 import {
   ExtensionToWebview,
   WebviewToExtension,
