@@ -1,5 +1,5 @@
-- Default emulators:start to use fast dev-mode for Nuxt3 applications (#5551)
-- Fix broken Functions CLI experience for projects with incomplete GCF 2nd Gen functions (#5684)
-- Disable GCF breaking change to automatically run npm build scripts as part of function deploy (#5687)
-- Add experimental support for deploying Astro applications to Hosting (#5527)
+- Releases Firestore Emulator 1.17.1
+  - Propagates page token from ListDocumentsResponse to GetOrListDocumentsResponse in Firestore emulator.
+- Fixes an issue where Secret Manager secrets were tagged incorrectly (#5704).
+- Fix bug where Custom Event channels weren't automatically crated on function deploys (#5700)
 - Lift GCF 2nd gen naming restrictions (#5690)
