@@ -50,6 +50,7 @@ describe("Nuxt 2 utils", () => {
         .resolves({
           loadNuxtConfig: async function (): Promise<NuxtOptions> {
             return Promise.resolve({
+              ssr: true,
               dir: {
                 public: "public",
               },

@@ -3,6 +3,7 @@ import { copy, pathExists } from "fs-extra";
 import { mkdir, readFile } from "fs/promises";
 import { join } from "path";
 import { BuildResult, FrameworkType, SupportLevel } from "..";
+import { FirebaseError } from "../../error";
 
 // Use "true &&"" to keep typescript from compiling this file and rewriting
 // the import statement into a require
@@ -22,9 +23,9 @@ async function getConfig(root: string) {
 
 export async function discover(dir: string) {
   if (!(await pathExists(join(dir, "package.json")))) return;
-  const { serveDir } = await getConfig(dir);
-  if (!serveDir) return;
-  return { mayWantBackend: true };
+  const { serveDir: publicDirectory } = await getConfig(dir);
+  if (!publicDirectory) return;
+  return { mayWantBackend: true, publicDirectory };
 }
 
 export async function build(cwd: string): Promise<BuildResult> {
@@ -93,8 +94,7 @@ async function getBootstrapScript(
 }
 
 export async function ɵcodegenFunctionsDirectory(root: string, dest: string) {
-  const bootstrapScript = await getBootstrapScript(root);
-  if (!bootstrapScript) return;
+  const bootstrapScript = (await getBootstrapScript(root))!;
   await mkdir(dest, { recursive: true });
 
   const { packageJson } = await getConfig(root);

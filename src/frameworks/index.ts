@@ -2,7 +2,6 @@ import { join, relative, extname, basename } from "path";
 import { exit } from "process";
 import { execSync } from "child_process";
 import { sync as spawnSync } from "cross-spawn";
-import { readdirSync, statSync } from "fs";
 import { pathToFileURL } from "url";
 import { IncomingMessage, ServerResponse } from "http";
 import { copyFile, readdir, readFile, rm, writeFile } from "fs/promises";
@@ -29,6 +28,9 @@ import * as experiments from "../experiments";
 import { ensureTargeted } from "../functions/ensureTargeted";
 import { implicitInit } from "../hosting/implicitInit";
 import { fileExistsSync } from "../fsutils";
+import { WebFrameworks } from "./frameworks";
+
+export { WebFrameworks };
 
 // Use "true &&"" to keep typescript from compiling this file and rewriting
 // the import statement into a require
@@ -107,7 +109,7 @@ const SupportLevelWarnings = {
   ),
 };
 
-export const FIREBASE_FRAMEWORKS_VERSION = "^0.7.0";
+export const FIREBASE_FRAMEWORKS_VERSION = "0.6.1-canary.35a57cb";
 export const FIREBASE_FUNCTIONS_VERSION = "^3.23.0";
 export const FIREBASE_ADMIN_VERSION = "^11.0.1";
 export const NODE_VERSION = parseInt(process.versions.node, 10).toString();
@@ -124,28 +126,6 @@ const DEFAULT_FIND_DEP_OPTIONS: FindDepOptions = {
   cwd: process.cwd(),
   omitDev: true,
 };
-
-export const WebFrameworks: Record<string, Framework> = Object.fromEntries(
-  readdirSync(__dirname)
-    .filter((path) => statSync(join(__dirname, path)).isDirectory())
-    .map((path) => {
-      // If not called by the CLI, (e.g., by the VS Code Extension)
-      // __dirname won't refer to this folder and these files won't be available.
-      // Instead it may find sibling folders that aren't modules, and this
-      // require will throw.
-      // Long term fix may be to bundle this instead of reading files at runtime
-      // but for now, this prevents crashing.
-      try {
-        return [path, require(join(__dirname, path))];
-      } catch (e) {
-        return [];
-      }
-    })
-    .filter(
-      ([, obj]) =>
-        obj && obj.name && obj.discover && obj.build && obj.type !== undefined && obj.support
-    )
-);
 
 export function relativeRequire(
   dir: string,
@@ -629,13 +609,6 @@ ${firebaseDefaults ? `__FIREBASE_DEFAULTS__=${JSON.stringify(firebaseDefaults)}\
   `
         );
       }
-    } else {
-      // No function, treat as an SPA
-      // TODO(jamesdaniels) be smarter about this, leave it to the framework?
-      config.rewrites.push({
-        source: "**",
-        destination: "/index.html",
-      });
     }
 
     if (firebaseDefaults) {
