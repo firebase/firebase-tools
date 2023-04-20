@@ -1,6 +1,6 @@
 import * as clc from "colorette";
 
-import { FirestoreIndexes } from "../../firestore/indexes";
+import { FirestoreApi } from "../../firestore/api";
 import { logger } from "../../logger";
 import * as utils from "../../utils";
 import { RulesDeploy, RulesetServiceType } from "../../rulesDeploy";
@@ -30,7 +30,7 @@ async function deployIndexes(context: any, options: any): Promise<void> {
   const indexesContext: IndexContext[] = context?.firestore?.indexes;
 
   utils.logBullet(clc.bold(clc.cyan("firestore: ")) + "deploying indexes...");
-  const firestoreIndexes = new FirestoreIndexes();
+  const firestoreIndexes = new FirestoreApi();
   await Promise.all(
     indexesContext.map(async (indexContext: IndexContext): Promise<void> => {
       const { databaseId, indexesFileName, indexesRawSpec } = indexContext;

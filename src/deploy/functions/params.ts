@@ -7,6 +7,7 @@ import * as secretManager from "../../gcp/secretManager";
 import { listBuckets } from "../../gcp/storage";
 import { isCelExpression, resolveExpression } from "./cel";
 import { FirebaseConfig } from "./args";
+import { labels as secretLabels } from "../../functions/secrets";
 
 // A convinience type containing options for Prompt's select
 interface ListItem {
@@ -457,8 +458,7 @@ async function handleSecret(secretParam: SecretParam, projectId: string) {
         secretParam.name
       }. Enter a value for ${secretParam.label || secretParam.name}:`,
     });
-    const secretLabel: Record<string, string> = { "firebase-hosting-managed": "yes" };
-    await secretManager.createSecret(projectId, secretParam.name, secretLabel);
+    await secretManager.createSecret(projectId, secretParam.name, secretLabels());
     await secretManager.addVersion(projectId, secretParam.name, secretValue);
     return secretValue;
   } else if (!metadata.secretVersion) {

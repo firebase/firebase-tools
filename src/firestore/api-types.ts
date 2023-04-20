@@ -81,3 +81,46 @@ export interface IndexConfig {
   ancestorField?: string;
   indexes?: Index[];
 }
+
+export interface Location {
+  name: string;
+  labels: any;
+  metadata: any;
+  locationId: string;
+  displayName: string;
+}
+
+export enum DatabaseType {
+  DATASTORE_MODE = "DATASTORE_MODE",
+  FIRESTORE_NATIVE = "FIRESTORE_NATIVE",
+}
+
+export enum DatabaseDeleteProtectionStateOption {
+  ENABLED = "ENABLED",
+  DISABLED = "DISABLED",
+}
+
+export enum DatabaseDeleteProtectionState {
+  ENABLED = "DELETE_PROTECTION_ENABLED",
+  DISABLED = "DELETE_PROTECTION_DISABLED",
+}
+
+export interface DatabaseReq {
+  locationId?: string;
+  type?: DatabaseType;
+  deleteProtectionState?: DatabaseDeleteProtectionState;
+}
+
+export interface DatabaseResp {
+  name: string;
+  uid: string;
+  createTime: string;
+  updateTime: string;
+  locationId: string;
+  type: DatabaseType;
+  concurrencyMode: string;
+  appEngineIntegrationMode: string;
+  keyPrefix: string;
+  deleteProtectionState: DatabaseDeleteProtectionState;
+  etag: string;
+}
