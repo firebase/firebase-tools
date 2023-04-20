@@ -1,3 +1,4 @@
 - Releases Firestore Emulator 1.17.1
   - Propagates page token from ListDocumentsResponse to GetOrListDocumentsResponse in Firestore emulator.
 - Fixes an issue where Secret Manager secrets were tagged incorrectly (#5704).
+- Fix bug where Custom Event channels weren't automatically crated on function deploys (#5700)
