@@ -465,7 +465,7 @@ export async function startAll(
       }
     }
     // This may add additional sources for Functions emulator and must be done before it.
-    await prepareFrameworks(options, options, emulators);
+    await prepareFrameworks(targets, options, options, emulators);
   }
 
   const projectDir = (options.extDevDir || options.config.projectDir) as string;

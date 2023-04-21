@@ -36,6 +36,9 @@ import { generateServiceIdentity } from "../../gcp/serviceusage";
 import { applyBackendHashToBackends } from "./cache/applyHash";
 import { allEndpoints, Backend } from "./backend";
 import { assertExhaustive } from "../../functional";
+import { hostingConfig } from "../../hosting/config";
+import { getExistingRunRewrites } from "../hosting/convertConfig";
+import { ensureTargeted } from "../../functions/ensureTargeted";
 
 export const EVENTARC_SOURCE_ENV = "EVENTARC_CLOUD_EVENT_SOURCE";
 function hasUserConfig(config: Record<string, unknown>): boolean {
@@ -96,6 +99,44 @@ export async function prepare(
     runtimeConfig,
     context.filters
   );
+
+  const configs = hostingConfig(options);
+  for (const config of configs) {
+    for (const rewrite of config.rewrites || []) {
+      let serviceIdToPin: string | undefined;
+      if (
+        "function" in rewrite &&
+        typeof rewrite.function === "object" &&
+        rewrite.function.pinTag
+      ) {
+        serviceIdToPin = rewrite.function.functionId;
+      } else if ("run" in rewrite && rewrite.run.pinTag) {
+        serviceIdToPin = rewrite.run.serviceId;
+      }
+      if (serviceIdToPin) {
+        console.log(serviceIdToPin, context.hostingChannel);
+        // if (!targetNames.includes("functions")) targetNames.unshift("functions");
+        const codespace = Object.keys(wantBuilds).find(codespace => {
+          return Object.keys(wantBuilds[codespace].endpoints).includes(serviceIdToPin!);
+        });
+        if (!codespace) throw new FirebaseError(`Can't find codespace exporting ${serviceIdToPin}`);
+        const { region: regions, platform } = wantBuilds[codespace].endpoints[serviceIdToPin];
+        if (platform !== "gcfv2") throw new FirebaseError("pintag reqs gen2 yo!");
+        if (!regions) throw new Error("huh...");
+        if (context.hostingChannel) {
+          const existingRewrites = await getExistingRunRewrites(context.projectId, config.site);
+          const matchingRewrite = existingRewrites.find((it) => it.serviceId === serviceIdToPin && regions.includes(it.region));
+          if (matchingRewrite && !matchingRewrite.tag) {
+            throw new FirebaseError("ya need to enable pintags on prod yo!");
+          }
+        }
+        if (options.only) {
+          options.only = ensureTargeted(options.only, codespace, serviceIdToPin);
+          context.filters = getEndpointFilters(options); // Parse --only filters for functions.
+        }
+      }
+    }
+  }
 
   // == Phase 2. Resolve build to backend.
   const codebaseUsesEnvs: string[] = [];

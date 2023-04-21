@@ -28,6 +28,7 @@ import { HostingRewrites } from "../firebaseConfig";
 import * as experiments from "../experiments";
 import { implicitInit } from "../hosting/implicitInit";
 import { fileExistsSync } from "../fsutils";
+import { ensureTargeted } from "../functions/ensureTargeted";
 
 // Use "true &&"" to keep typescript from compiling this file and rewriting
 // the import statement into a require
@@ -273,6 +274,7 @@ export function findDependency(name: string, options: Partial<FindDepOptions> = 
  *
  */
 export async function prepareFrameworks(
+  targetNames: string[],
   context: any,
   options: any,
   emulators: EmulatorInfo[] = []
@@ -486,6 +488,11 @@ export async function prepareFrameworks(
           codebase,
         },
       ]);
+
+      if (!targetNames.includes("functions")) {
+        targetNames.unshift("functions");
+        options.only = ensureTargeted(options.only, codebase);
+      }
 
       // if exists, delete everything but the node_modules directory and package-lock.json
       // this should speed up repeated NPM installs

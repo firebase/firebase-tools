@@ -19,6 +19,7 @@ import { prepareFrameworks } from "../frameworks";
 import { HostingDeploy } from "./hosting/context";
 import { ensureTargeted } from "../functions/ensureTargeted";
 import { getExistingRunRewrites } from "./hosting/convertConfig";
+import { hostingConfig } from "../hosting/config";
 
 const TARGETS = {
   hosting: HostingTarget,
@@ -60,39 +61,27 @@ export const deploy = async function (
   const startTime = Date.now();
 
   if (targetNames.includes("hosting")) {
-    const configs: any[] = [].concat(options.config.get("hosting"));
+    const configs = hostingConfig(options);
     if (configs.some((it) => it.source)) {
       experiments.assertEnabled("webframeworks", "deploy a web framework to hosting");
-      await prepareFrameworks(context, options);
+      await prepareFrameworks(targetNames, context, options);
     }
 
-    const targetNamesIncludedFunctions = targetNames.includes("functions");
-    if (context.hostingChannel) {
-      for (const config of configs) {
-        for (const rewrite of config.rewrites || []) {
-          let serviceIdToPin: string | undefined;
-          if (
-            "function" in rewrite &&
-            typeof rewrite.function === "object" &&
-            rewrite.function.pinTag
-          ) {
-            serviceIdToPin = rewrite.function.functionId;
-          } else if ("run" in rewrite && rewrite.run.pinTag) {
-            serviceIdToPin = rewrite.run.serviceId;
-          }
-          if (serviceIdToPin) {
-            const existingRewrites = await getExistingRunRewrites(context.projectId, config.site);
-            if (existingRewrites.some((it) => it.serviceId === serviceIdToPin && !it.tag)) {
-              throw new FirebaseError("ya need to enable pintags on prod yo!");
-            }
-            if (!targetNames.includes("functions")) targetNames.unshift("functions");
-            if (!targetNamesIncludedFunctions)
-              options.only = ensureTargeted(options.only, serviceIdToPin);
-          }
+    for (const config of configs) {
+      for (const rewrite of config.rewrites || []) {
+        if (
+          "function" in rewrite &&
+          typeof rewrite.function === "object" &&
+          rewrite.function.pinTag ||
+          "run" in rewrite && rewrite.run.pinTag
+        ) {
+          if (!targetNames.includes("functions")) targetNames.unshift("functions");
         }
       }
     }
   }
+
+  console.log(targetNames, options.only);
 
   for (const targetName of targetNames) {
     const target = TARGETS[targetName];
