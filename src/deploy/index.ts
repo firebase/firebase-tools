@@ -81,16 +81,8 @@ export const deploy = async function (
             serviceIdToPin = rewrite.run.serviceId;
           }
           if (serviceIdToPin) {
-            const liveRewrites = await getExistingRunRewrites(
-              context.projectId,
-              config.site,
-              "live"
-            );
-            if (
-              liveRewrites.some(
-                (liveRewrite) => liveRewrite.serviceId === serviceIdToPin && !liveRewrite.tag
-              )
-            ) {
+            const existingRewrites = await getExistingRunRewrites(context.projectId, config.site);
+            if (existingRewrites.some((it) => it.serviceId === serviceIdToPin && !it.tag)) {
               throw new FirebaseError("ya need to enable pintags on prod yo!");
             }
             if (!targetNames.includes("functions")) targetNames.unshift("functions");

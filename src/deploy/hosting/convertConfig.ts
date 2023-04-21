@@ -89,18 +89,21 @@ export function findEndpointForRewrite(
   };
 }
 
-const existingRunRewritesMemo = new Map<string, api.RunRewrite[]>();
-export async function getExistingRunRewrites(
+const existingRunRewritesMemo = new Map<string, Promise<api.RunRewrite[]>>();
+export function getExistingRunRewrites(
   projectId: string,
   site: string,
   channelName: string = "live"
 ) {
-  await requirePermissions(TARGET_PERMISSIONS["functions"]);
   const key = [projectId, site, channelName].join("/");
   if (existingRunRewritesMemo.has(key)) return existingRunRewritesMemo.get(key)!;
-  const channel = await api.getChannel(projectId, site, channelName);
-  const runRewrites: api.RunRewrite[] =
-    channel?.release?.version.config?.rewrites?.map((r: any) => r.run).filter((it) => it) || [];
+  const runRewrites = (async function (): Promise<api.RunRewrite[]> {
+    await requirePermissions(TARGET_PERMISSIONS["functions"]);
+    const channel = await api.getChannel(projectId, site, channelName);
+    return (
+      channel?.release?.version.config?.rewrites?.map((r: any) => r.run).filter((it) => it) || []
+    );
+  })();
   existingRunRewritesMemo.set(key, runRewrites);
   return runRewrites;
 }
