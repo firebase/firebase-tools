@@ -132,7 +132,7 @@ const DEFAULT_FIND_DEP_OPTIONS: FindDepOptions = {
 
 const NPM_COMMAND = process.platform === "win32" ? "npm.cmd" : "npm";
 
-function getDefaultBuildTagets() {
+function getDefaultBuildTargets() {
   return Promise.resolve(["production", "development"]);
 }
 
@@ -249,7 +249,8 @@ function scanDependencyTree(searchingFor: string, dependencies = {}): any {
 
 /**
  *
- */ export function findDependency(name: string, options: Partial<FindDepOptions> = {}) {
+ */
+export function findDependency(name: string, options: Partial<FindDepOptions> = {}) {
   const { cwd, depth, omitDev } = { ...DEFAULT_FIND_DEP_OPTIONS, ...options };
   const env: any = Object.assign({}, process.env);
   delete env.NODE_ENV;
@@ -271,7 +272,8 @@ function scanDependencyTree(searchingFor: string, dependencies = {}): any {
 
 /**
  *
- */ export async function prepareFrameworks(
+ */
+export async function prepareFrameworks(
   targetNames: string[],
   context: any,
   options: any,
@@ -414,7 +416,7 @@ function scanDependencyTree(searchingFor: string, dependencies = {}): any {
       getDevModeHandle,
       name,
       support,
-      getValidBuildTargets = getDefaultBuildTagets,
+      getValidBuildTargets = getDefaultBuildTargets,
       shouldUseDevModeHandle = defaultShouldUseDevModeHandle,
     } = WebFrameworks[framework];
     console.log(`Detected a ${name} codebase. ${SupportLevelWarnings[support] || ""}\n`);
@@ -665,7 +667,7 @@ function getFrameworksBuildTarget(purpose: BUILD_TARGET_PURPOSE, validOptions: s
         return "production";
       default:
         throw new FirebaseError(
-          `We cannot infer your build target from a non-standard NODE_ENV. Please set the FIREBASE_FRAMEWORKS_BUILD_TARGET environment varaible. Valid values are: ${validOptions.join(
+          `We cannot infer your build target from a non-standard NODE_ENV. Please set the FIREBASE_FRAMEWORKS_BUILD_TARGET environment variable. Valid values are: ${validOptions.join(
             ", "
           )}`
         );
