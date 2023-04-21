@@ -10,7 +10,9 @@
       "license": "MIT",
       "dependencies": {
         "@google-cloud/pubsub": "^3.0.1",
+        "@types/adm-zip": "^0.5.0",
         "abort-controller": "^3.0.0",
+        "adm-zip": "^0.5.10",
         "ajv": "^6.12.6",
         "archiver": "^5.0.0",
         "async-lock": "1.3.2",
@@ -3399,6 +3401,14 @@
       "integrity": "sha512-eZxlbI8GZscaGS7kkc/trHTT5xgrjH3/1n2JDwusC9iahPKWMRvRjJSAN5mCXviuTGQ/lHnhvv8Q1YTpnfz9gA==",
       "dev": true
     },
+    "node_modules/@types/adm-zip": {
+      "version": "0.5.0",
+      "resolved": "https://registry.npmjs.org/@types/adm-zip/-/adm-zip-0.5.0.tgz",
+      "integrity": "sha512-FCJBJq9ODsQZUNURo5ILAQueuA8WJhRvuihS3ke2iI25mJlfV2LK8jG2Qj2z2AWg8U0FtWWqBHVRetceLskSaw==",
+      "dependencies": {
+        "@types/node": "*"
+      }
+    },
     "node_modules/@types/archiver": {
       "version": "5.1.0",
       "resolved": "https://registry.npmjs.org/@types/archiver/-/archiver-5.1.0.tgz",
@@ -4566,6 +4576,14 @@
       "integrity": "sha512-k+iyHEuPgSw6SbuDpGQM+06HQUa04DZ3o+F6CSzXMvvI5KMvnaEqXe+YVe555R9nn6GPt404fos4wcgpw12SDA==",
       "engines": {
         "node": ">=0.4.0"
+      }
+    },
+    "node_modules/adm-zip": {
+      "version": "0.5.10",
+      "resolved": "https://registry.npmjs.org/adm-zip/-/adm-zip-0.5.10.tgz",
+      "integrity": "sha512-x0HvcHqVJNTPk/Bw8JbLWlWoo6Wwnsug0fnYYro1HBrjxZ3G7/AZk7Ahv8JwDe1uIcz8eBqvu86FuF1POiG7vQ==",
+      "engines": {
+        "node": ">=6.0"
       }
     },
     "node_modules/agent-base": {
@@ -21728,6 +21746,14 @@
       "integrity": "sha512-eZxlbI8GZscaGS7kkc/trHTT5xgrjH3/1n2JDwusC9iahPKWMRvRjJSAN5mCXviuTGQ/lHnhvv8Q1YTpnfz9gA==",
       "dev": true
     },
+    "@types/adm-zip": {
+      "version": "0.5.0",
+      "resolved": "https://registry.npmjs.org/@types/adm-zip/-/adm-zip-0.5.0.tgz",
+      "integrity": "sha512-FCJBJq9ODsQZUNURo5ILAQueuA8WJhRvuihS3ke2iI25mJlfV2LK8jG2Qj2z2AWg8U0FtWWqBHVRetceLskSaw==",
+      "requires": {
+        "@types/node": "*"
+      }
+    },
     "@types/archiver": {
       "version": "5.1.0",
       "resolved": "https://registry.npmjs.org/@types/archiver/-/archiver-5.1.0.tgz",
@@ -22752,6 +22778,11 @@
       "version": "8.2.0",
       "resolved": "https://registry.npmjs.org/acorn-walk/-/acorn-walk-8.2.0.tgz",
       "integrity": "sha512-k+iyHEuPgSw6SbuDpGQM+06HQUa04DZ3o+F6CSzXMvvI5KMvnaEqXe+YVe555R9nn6GPt404fos4wcgpw12SDA=="
+    },
+    "adm-zip": {
+      "version": "0.5.10",
+      "resolved": "https://registry.npmjs.org/adm-zip/-/adm-zip-0.5.10.tgz",
+      "integrity": "sha512-x0HvcHqVJNTPk/Bw8JbLWlWoo6Wwnsug0fnYYro1HBrjxZ3G7/AZk7Ahv8JwDe1uIcz8eBqvu86FuF1POiG7vQ=="
     },
     "agent-base": {
       "version": "6.0.2",
