@@ -2,9 +2,11 @@ import { copy, pathExists } from "fs-extra";
 import { readFile } from "fs/promises";
 import { basename, join, relative } from "path";
 import { gte } from "semver";
-import { FrameworkType, relativeRequire, SupportLevel } from "..";
 
+import { FrameworkType, getNodeModuleBin, relativeRequire, SupportLevel } from "..";
 import { getNuxtVersion } from "../nuxt/utils";
+import { simpleProxy } from "../utils";
+import { spawn } from "cross-spawn";
 
 export const name = "Nuxt";
 export const support = SupportLevel.Experimental;
@@ -85,4 +87,25 @@ export async function ɵcodegenFunctionsDirectory(rootDir: string, destDir: stri
   await copy(configFilePath, join(destDir, basename(configFilePath)));
 
   return { packageJson: { ...packageJson }, frameworksEntry: "nuxt" };
+}
+
+
+export async function getDevModeHandle(cwd: string) {
+  const host = new Promise<string>((resolve) => {
+    const cli = getNodeModuleBin("nuxt", cwd);
+    const serve = spawn(cli, ["dev"], { cwd: cwd });
+
+    serve.stdout.on("data", (data: any) => {
+      process.stdout.write(data);
+      const match = data.toString().match(/(http:\/\/.+:\d+)/);
+
+      if (match) resolve(match[1]);
+    });
+
+    serve.stderr.on("data", (data: any) => {
+      process.stderr.write(data);
+    });
+  });
+
+  return simpleProxy(await host);
 }
