@@ -12,7 +12,7 @@ export const name = "Nuxt";
 export const support = SupportLevel.Experimental;
 export const type = FrameworkType.MetaFramework;
 
-async function getAndLoadNuxt(options: { rootDir: string, for: string }) {
+async function getAndLoadNuxt(options: { rootDir: string; for: string }) {
   const nuxt = await relativeRequire(options.rootDir, "nuxt/dist/nuxt.js");
   const app = await nuxt.loadNuxt(options);
   await app.ready();
@@ -27,7 +27,7 @@ async function getAndLoadNuxt(options: { rootDir: string, for: string }) {
 export async function discover(rootDir: string) {
   if (!(await pathExists(join(rootDir, "package.json")))) return;
   const nuxtVersion = getNuxtVersion(rootDir);
-  if (!nuxtVersion || nuxtVersion && gte(nuxtVersion, "3.0.0-0")) return;
+  if (!nuxtVersion || (nuxtVersion && gte(nuxtVersion, "3.0.0-0"))) return;
   const { app } = await getAndLoadNuxt({ rootDir, for: "build" });
   return { mayWantBackend: true, publicDirectory: app.options.dir.static };
 }
@@ -39,12 +39,14 @@ export async function discover(rootDir: string) {
  */
 export async function build(rootDir: string) {
   const { app, nuxt } = await getAndLoadNuxt({ rootDir, for: "build" });
-  const { options: { ssr, target } } = app;
+  const {
+    options: { ssr, target },
+  } = app;
 
   // Nuxt seems to use proces.cwd() somewhere
   const cwd = process.cwd();
   process.chdir(rootDir);
-  
+
   await nuxt.build(app);
   const { app: generateApp } = await getAndLoadNuxt({ rootDir, for: "start" });
   const builder = await nuxt.getBuilder(generateApp);
@@ -65,7 +67,9 @@ export async function build(rootDir: string) {
  * @param dest
  */
 export async function ɵcodegenPublicDirectory(rootDir: string, dest: string) {
-  const { app: { options } } = await getAndLoadNuxt({ rootDir, for: "build" });
+  const {
+    app: { options },
+  } = await getAndLoadNuxt({ rootDir, for: "build" });
   await copy(options.generate.dir, dest);
 }
 
@@ -74,7 +78,9 @@ export async function ɵcodegenFunctionsDirectory(rootDir: string, destDir: stri
   const packageJson = JSON.parse(packageJsonBuffer.toString());
 
   // Get the nuxt config into an object so we can check the `target` and `ssr` properties.
-  const { app: { options } } = await getAndLoadNuxt({ rootDir, for: "build" });
+  const {
+    app: { options },
+  } = await getAndLoadNuxt({ rootDir, for: "build" });
   const { buildDir, _nuxtConfigFile: configFilePath } = options;
 
   // When starting the Nuxt 2 server, we need to copy the `.nuxt` to the destination directory (`functions`)
@@ -88,7 +94,6 @@ export async function ɵcodegenFunctionsDirectory(rootDir: string, destDir: stri
 
   return { packageJson: { ...packageJson }, frameworksEntry: "nuxt" };
 }
-
 
 export async function getDevModeHandle(cwd: string) {
   const host = new Promise<string>((resolve) => {

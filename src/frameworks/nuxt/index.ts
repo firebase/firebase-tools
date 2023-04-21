@@ -14,7 +14,6 @@ export const type = FrameworkType.Toolchain;
 import { nuxtConfigFilesExist } from "./utils";
 import type { NuxtOptions } from "./interfaces";
 import { FirebaseError } from "../../error";
-import { fileExistsSync } from "../../fsutils";
 
 const DEFAULT_BUILD_SCRIPT = ["nuxt build", "nuxi build"];
 
@@ -45,7 +44,11 @@ export async function build(cwd: string) {
   const cli = getNodeModuleBin("nuxt", cwd);
   const { ssr: wantsBackend } = await getConfig(cwd);
   const command = wantsBackend ? ["build"] : ["generate"];
-  const build = spawnSync(cli, command, { cwd, stdio: "inherit", env: { ...process.env, NITRO_PRESET: "node" } });
+  const build = spawnSync(cli, command, {
+    cwd,
+    stdio: "inherit",
+    env: { ...process.env, NITRO_PRESET: "node" },
+  });
   if (build.status) throw new FirebaseError("Was unable to build your Nuxt application.");
   const rewrites = wantsBackend ? [] : [{ source: "**", destination: "/200.html" }];
   return { wantsBackend, rewrites };
@@ -67,7 +70,8 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
   if (result.status) throw new FirebaseError("Unable to pack nitro export");
   const packResult = JSON.parse(result.stdout.toString().trim());
   const { name, filename } = packResult[0];
-  if (name !== "nitro-output") throw new FirebaseError("Expected nitro pack to produce nitro-output");
+  if (name !== "nitro-output")
+    throw new FirebaseError("Expected nitro pack to produce nitro-output");
 
   packageJson.dependencies ||= {};
   packageJson.dependencies[name] = `file:${filename}`;

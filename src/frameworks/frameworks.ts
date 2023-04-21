@@ -14,5 +14,16 @@ import * as vite from "./vite";
 import { Framework } from ".";
 
 export const WebFrameworks: Record<string, Framework> = {
-    angular, astro, express, lit, next, nuxt, nuxt2, preact, svelte, svelekit, react, vite,
-}
+  angular,
+  astro,
+  express,
+  lit,
+  next,
+  nuxt,
+  nuxt2,
+  preact,
+  svelte,
+  svelekit,
+  react,
+  vite,
+};
