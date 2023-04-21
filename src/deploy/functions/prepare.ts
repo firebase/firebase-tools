@@ -114,9 +114,8 @@ export async function prepare(
         serviceIdToPin = rewrite.run.serviceId;
       }
       if (serviceIdToPin) {
-        console.log(serviceIdToPin, context.hostingChannel);
-        // if (!targetNames.includes("functions")) targetNames.unshift("functions");
-        const codespace = Object.keys(wantBuilds).find(codespace => {
+        // TODO cleanup error messages
+        const codespace = Object.keys(wantBuilds).find((codespace) => {
           return Object.keys(wantBuilds[codespace].endpoints).includes(serviceIdToPin!);
         });
         if (!codespace) throw new FirebaseError(`Can't find codespace exporting ${serviceIdToPin}`);
@@ -125,8 +124,10 @@ export async function prepare(
         if (!regions) throw new Error("huh...");
         if (context.hostingChannel) {
           const existingRewrites = await getExistingRunRewrites(context.projectId, config.site);
-          const matchingRewrite = existingRewrites.find((it) => it.serviceId === serviceIdToPin && regions.includes(it.region));
-          if (matchingRewrite && !matchingRewrite.tag) {
+          const matchingRewrites = existingRewrites.filter(
+            (it) => it.serviceId === serviceIdToPin && regions.includes(it.region)
+          );
+          if (!matchingRewrites.every((it) => !!it.tag)) {
             throw new FirebaseError("ya need to enable pintags on prod yo!");
           }
         }

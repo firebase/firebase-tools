@@ -17,8 +17,6 @@ import * as RemoteConfigTarget from "./remoteconfig";
 import * as ExtensionsTarget from "./extensions";
 import { prepareFrameworks } from "../frameworks";
 import { HostingDeploy } from "./hosting/context";
-import { ensureTargeted } from "../functions/ensureTargeted";
-import { getExistingRunRewrites } from "./hosting/convertConfig";
 import { hostingConfig } from "../hosting/config";
 
 const TARGETS = {
@@ -70,18 +68,16 @@ export const deploy = async function (
     for (const config of configs) {
       for (const rewrite of config.rewrites || []) {
         if (
-          "function" in rewrite &&
-          typeof rewrite.function === "object" &&
-          rewrite.function.pinTag ||
-          "run" in rewrite && rewrite.run.pinTag
+          ("function" in rewrite &&
+            typeof rewrite.function === "object" &&
+            rewrite.function.pinTag) ||
+          ("run" in rewrite && rewrite.run.pinTag)
         ) {
           if (!targetNames.includes("functions")) targetNames.unshift("functions");
         }
       }
     }
   }
-
-  console.log(targetNames, options.only);
 
   for (const targetName of targetNames) {
     const target = TARGETS[targetName];
