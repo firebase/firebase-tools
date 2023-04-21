@@ -49,6 +49,8 @@ const eventarcPollerOptions: Omit<poller.OperationPollerOptions, "operationResou
   maxBackoff: 10_000,
 };
 
+const CLOUD_RUN_RESOURCE_EXHAUSTED_CODE = 8;
+
 export interface FabricatorArgs {
   executor: Executor;
   functionExecutor: Executor;
@@ -344,16 +346,31 @@ export class Fabricator {
         .catch(rethrowAs(endpoint, "upsert eventarc channel"));
     }
 
-    const resultFunction = await this.functionExecutor
-      .run(async () => {
-        const op: { name: string } = await gcfV2.createFunction(apiFunction);
-        return await poller.pollOperation<gcfV2.OutputCloudFunction>({
-          ...gcfV2PollerOptions,
-          pollerName: `create-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
-          operationResourceName: op.name,
+    let resultFunction: gcfV2.OutputCloudFunction | null = null;
+    while (!resultFunction) {
+      resultFunction = await this.functionExecutor
+        .run(async () => {
+          const op: { name: string } = await gcfV2.createFunction(apiFunction);
+          return await poller.pollOperation<gcfV2.OutputCloudFunction>({
+            ...gcfV2PollerOptions,
+            pollerName: `create-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
+            operationResourceName: op.name,
+          });
+        })
+        .catch(async (err: any) => {
+          // If the createFunction call returns RPC error code RESOURCE_EXHAUSTED (8),
+          // we have exhausted the underlying Cloud Run API quota. To retry, we need to
+          // first delete the GCF function resource, then call createFunction again.
+          if (err.code === CLOUD_RUN_RESOURCE_EXHAUSTED_CODE) {
+            // we have to delete the broken function before we can re-create it
+            await this.deleteV2Function(endpoint);
+            return null;
+          } else {
+            logger.error((err as Error).message);
+            throw new reporter.DeploymentError(endpoint, "create", err);
+          }
         });
-      })
-      .catch(rethrowAs<gcfV2.OutputCloudFunction>(endpoint, "create"));
+    }
 
     endpoint.uri = resultFunction.serviceConfig?.uri;
     const serviceName = resultFunction.serviceConfig?.service;
@@ -461,14 +478,17 @@ export class Fabricator {
     }
 
     const resultFunction = await this.functionExecutor
-      .run(async () => {
-        const op: { name: string } = await gcfV2.updateFunction(apiFunction);
-        return await poller.pollOperation<gcfV2.OutputCloudFunction>({
-          ...gcfV2PollerOptions,
-          pollerName: `update-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
-          operationResourceName: op.name,
-        });
-      })
+      .run(
+        async () => {
+          const op: { name: string } = await gcfV2.updateFunction(apiFunction);
+          return await poller.pollOperation<gcfV2.OutputCloudFunction>({
+            ...gcfV2PollerOptions,
+            pollerName: `update-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
+            operationResourceName: op.name,
+          });
+        },
+        { retryCodes: [CLOUD_RUN_RESOURCE_EXHAUSTED_CODE] }
+      )
       .catch(rethrowAs<gcfV2.OutputCloudFunction>(endpoint, "update"));
 
     endpoint.uri = resultFunction.serviceConfig?.uri;
@@ -520,15 +540,18 @@ export class Fabricator {
   async deleteV2Function(endpoint: backend.Endpoint): Promise<void> {
     const fnName = backend.functionName(endpoint);
     await this.functionExecutor
-      .run(async () => {
-        const op: { name: string } = await gcfV2.deleteFunction(fnName);
-        const pollerOptions = {
-          ...gcfV2PollerOptions,
-          pollerName: `delete-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
-          operationResourceName: op.name,
-        };
-        await poller.pollOperation<void>(pollerOptions);
-      })
+      .run(
+        async () => {
+          const op: { name: string } = await gcfV2.deleteFunction(fnName);
+          const pollerOptions = {
+            ...gcfV2PollerOptions,
+            pollerName: `delete-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
+            operationResourceName: op.name,
+          };
+          await poller.pollOperation<void>(pollerOptions);
+        },
+        { retryCodes: [CLOUD_RUN_RESOURCE_EXHAUSTED_CODE] }
+      )
       .catch(rethrowAs(endpoint, "delete"));
   }
 
