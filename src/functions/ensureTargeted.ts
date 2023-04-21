@@ -8,7 +8,7 @@
  * @param codebase function codebase
  * @return new only string
  */
-export function ensureTargeted(only: string, codebase: string, id?: string): string {
+export function ensureTargeted(only="", codebase: string, id?: string): string {
   const parts = only.split(",");
   if (parts.includes("functions")) {
     return only;

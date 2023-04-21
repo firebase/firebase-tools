@@ -19,6 +19,8 @@ import { prepareFrameworks } from "../frameworks";
 import { HostingDeploy } from "./hosting/context";
 import { requirePermissions } from "../requirePermissions";
 import { TARGET_PERMISSIONS } from "../commands/deploy";
+import { ensureTargeted } from "../functions/ensureTargeted";
+import { getExistingRunRewrites } from "./hosting/convertConfig";
 
 const TARGETS = {
   hosting: HostingTarget,
@@ -60,19 +62,32 @@ export const deploy = async function (
   const startTime = Date.now();
 
   if (targetNames.includes("hosting")) {
-    const config = options.config.get("hosting");
-    if (Array.isArray(config) ? config.some((it) => it.source) : config.source) {
+    const configs: any[] = [].concat(options.config.get("hosting"));
+    if (configs.some((it) => it.source)) {
       experiments.assertEnabled("webframeworks", "deploy a web framework to hosting");
-      const usedToTargetFunctions = targetNames.includes("functions");
-      await prepareFrameworks(targetNames, context, options);
-      const nowTargetsFunctions = targetNames.includes("functions");
-      if (nowTargetsFunctions && !usedToTargetFunctions) {
-        if (context.hostingChannel && !experiments.isEnabled("pintags")) {
-          throw new FirebaseError(
-            "Web frameworks with dynamic content do not yet support deploying to preview channels"
-          );
+      await prepareFrameworks(context, options);
+    }
+
+    const targetNamesIncludedFunctions = targetNames.includes("functions");
+    if (context.hostingChannel) {
+      for (const config of configs) {
+        for (const rewrite of config.rewrites || []) {
+          let serviceIdToPin: string|undefined;
+          if ("function" in rewrite && typeof rewrite.function === "object" && rewrite.function.pinTag) {
+            serviceIdToPin = rewrite.function.functionId;
+          } else if ("run" in rewrite && rewrite.run.pinTag) {
+            serviceIdToPin = rewrite.run.serviceId;
+          }
+          if (serviceIdToPin) {
+            await requirePermissions(TARGET_PERMISSIONS["functions"]);
+            const liveRewrites = await getExistingRunRewrites(context.projectId, config.site, "live");
+            if (liveRewrites.some(liveRewrite => liveRewrite.serviceId === serviceIdToPin && !liveRewrite.tag)) {
+              throw new FirebaseError("ya need to enable pintags on prod yo!");
+            }
+            if (!targetNames.includes("functions")) targetNames.unshift("functions");
+            if (!targetNamesIncludedFunctions) options.only = ensureTargeted(options.only, serviceIdToPin);
+          }
         }
-        await requirePermissions(TARGET_PERMISSIONS["functions"]);
       }
     }
   }

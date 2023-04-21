@@ -274,7 +274,6 @@ export function findDependency(name: string, options: Partial<FindDepOptions> = 
  *
  */
 export async function prepareFrameworks(
-  targetNames: string[],
   context: any,
   options: any,
   emulators: EmulatorInfo[] = []
@@ -488,11 +487,6 @@ export async function prepareFrameworks(
           codebase,
         },
       ]);
-
-      if (!targetNames.includes("functions")) {
-        targetNames.unshift("functions");
-        options.only = ensureTargeted(options.only || "", codebase, functionId);
-      }
 
       // if exists, delete everything but the node_modules directory and package-lock.json
       // this should speed up repeated NPM installs
