@@ -17,8 +17,6 @@ import * as RemoteConfigTarget from "./remoteconfig";
 import * as ExtensionsTarget from "./extensions";
 import { prepareFrameworks } from "../frameworks";
 import { HostingDeploy } from "./hosting/context";
-import { requirePermissions } from "../requirePermissions";
-import { TARGET_PERMISSIONS } from "../commands/deploy";
 import { ensureTargeted } from "../functions/ensureTargeted";
 import { getExistingRunRewrites } from "./hosting/convertConfig";
 
@@ -72,20 +70,32 @@ export const deploy = async function (
     if (context.hostingChannel) {
       for (const config of configs) {
         for (const rewrite of config.rewrites || []) {
-          let serviceIdToPin: string|undefined;
-          if ("function" in rewrite && typeof rewrite.function === "object" && rewrite.function.pinTag) {
+          let serviceIdToPin: string | undefined;
+          if (
+            "function" in rewrite &&
+            typeof rewrite.function === "object" &&
+            rewrite.function.pinTag
+          ) {
             serviceIdToPin = rewrite.function.functionId;
           } else if ("run" in rewrite && rewrite.run.pinTag) {
             serviceIdToPin = rewrite.run.serviceId;
           }
           if (serviceIdToPin) {
-            await requirePermissions(TARGET_PERMISSIONS["functions"]);
-            const liveRewrites = await getExistingRunRewrites(context.projectId, config.site, "live");
-            if (liveRewrites.some(liveRewrite => liveRewrite.serviceId === serviceIdToPin && !liveRewrite.tag)) {
+            const liveRewrites = await getExistingRunRewrites(
+              context.projectId,
+              config.site,
+              "live"
+            );
+            if (
+              liveRewrites.some(
+                (liveRewrite) => liveRewrite.serviceId === serviceIdToPin && !liveRewrite.tag
+              )
+            ) {
               throw new FirebaseError("ya need to enable pintags on prod yo!");
             }
             if (!targetNames.includes("functions")) targetNames.unshift("functions");
-            if (!targetNamesIncludedFunctions) options.only = ensureTargeted(options.only, serviceIdToPin);
+            if (!targetNamesIncludedFunctions)
+              options.only = ensureTargeted(options.only, serviceIdToPin);
           }
         }
       }

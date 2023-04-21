@@ -11,6 +11,8 @@ import * as runTags from "../../hosting/runTags";
 import { assertExhaustive } from "../../functional";
 import * as experiments from "../../experiments";
 import { logger } from "../../logger";
+import { requirePermissions } from "../../requirePermissions";
+import { TARGET_PERMISSIONS } from "../../commands/deploy";
 
 /**
  * extractPattern contains the logic for extracting exactly one glob/regexp
@@ -87,16 +89,21 @@ export function findEndpointForRewrite(
   };
 }
 
-const existingRunRewritesMemo = new Map<string, api.RunRewrite[]>()
-export async function getExistingRunRewrites(projectId: string, site: string, channelName: string="live") {
+const existingRunRewritesMemo = new Map<string, api.RunRewrite[]>();
+export async function getExistingRunRewrites(
+  projectId: string,
+  site: string,
+  channelName: string = "live"
+) {
+  await requirePermissions(TARGET_PERMISSIONS["functions"]);
   const key = [projectId, site, channelName].join("/");
   if (existingRunRewritesMemo.has(key)) return existingRunRewritesMemo.get(key)!;
   const channel = await api.getChannel(projectId, site, channelName);
-  const runRewrites: api.RunRewrite[] = channel?.release?.version.config?.rewrites?.map((r: any)=> r.run).filter(it => it) || [];
+  const runRewrites: api.RunRewrite[] =
+    channel?.release?.version.config?.rewrites?.map((r: any) => r.run).filter((it) => it) || [];
   existingRunRewritesMemo.set(key, runRewrites);
   return runRewrites;
 }
-
 
 /**
  * convertConfig takes a hosting config object from firebase.json and transforms it into
