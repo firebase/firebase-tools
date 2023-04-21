@@ -87,6 +87,17 @@ export function findEndpointForRewrite(
   };
 }
 
+const existingRunRewritesMemo = new Map<string, api.RunRewrite[]>()
+export async function getExistingRunRewrites(projectId: string, site: string, channelName: string="live") {
+  const key = [projectId, site, channelName].join("/");
+  if (existingRunRewritesMemo.has(key)) return existingRunRewritesMemo.get(key)!;
+  const channel = await api.getChannel(projectId, site, channelName);
+  const runRewrites: api.RunRewrite[] = channel?.release?.version.config?.rewrites?.map((r: any)=> r.run).filter(it => it) || [];
+  existingRunRewritesMemo.set(key, runRewrites);
+  return runRewrites;
+}
+
+
 /**
  * convertConfig takes a hosting config object from firebase.json and transforms it into
  * the valid format for sending to the Firebase Hosting REST API.

@@ -42,6 +42,8 @@ export interface Context {
   // Filled in the "prepare" and "deploy" phase.
   sources?: Record<string, Source>; // codebase -> source
 
+  hostingChannel?: string;
+
   // Caching fields for backend.existingBackend()
   existingBackend?: backend.Backend;
   loadedExistingBackend?: boolean;

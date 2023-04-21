@@ -491,9 +491,7 @@ export async function prepareFrameworks(
 
       if (!targetNames.includes("functions")) {
         targetNames.unshift("functions");
-      }
-      if (options.only) {
-        options.only = ensureTargeted(options.only, codebase);
+        options.only = ensureTargeted(options.only || "", codebase, functionId);
       }
 
       // if exists, delete everything but the node_modules directory and package-lock.json
