@@ -612,7 +612,7 @@ describe("Fabricator", () => {
       await expect(fab.createV2Function(ep)).to.be.rejectedWith(reporter.DeploymentError, "create");
     });
 
-    it.only("deletes broken function and retries on cloud run quota exhaustion", async () => {
+    it("deletes broken function and retries on cloud run quota exhaustion", async () => {
       gcfv2.createFunction.onFirstCall().rejects({ message: "Cloud Run quota exhausted", code: 8 });
       gcfv2.createFunction.resolves({ name: "op", done: false });
 

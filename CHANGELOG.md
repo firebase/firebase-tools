@@ -1,3 +1,4 @@
+- Delete and re-create v2 function on Cloud Run API quota exhaustion (#5719).
 - Adds new commands for provisioning and managing Firestore databases: (#5616)
   - firestore:databases:list
   - firestore:databases:create
