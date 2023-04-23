@@ -39,15 +39,23 @@ function matchingConfigs(
   const matches: HostingMultiple = [];
   const [hasSite, hasTarget] = partition(configs, (c) => "site" in c);
   for (const target of targets) {
-    const siteMatch = hasSite.find((c) => c.site === target);
-    const targetMatch = hasTarget.find((c) => c.target === target);
+    let patch = false;
+    let parsedTarget = target;
+    if (target.endsWith(".patch")) {
+      parsedTarget = target.slice(0, target.lastIndexOf(".patch"));
+      patch = true;
+    }
+    const siteMatch = hasSite.find((c) => c.site === parsedTarget);
+    const targetMatch = hasTarget.find((c) => c.target === parsedTarget);
     if (siteMatch) {
+      siteMatch.patch = patch;
       matches.push(siteMatch);
     } else if (targetMatch) {
+      targetMatch.patch = patch;
       matches.push(targetMatch);
     } else if (assertMatches) {
       throw new FirebaseError(
-        `Hosting site or target ${bold(target)} not detected in firebase.json`
+        `Hosting site or target ${bold(parsedTarget)} not detected in firebase.json`
       );
     }
   }
