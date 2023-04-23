@@ -11,6 +11,7 @@ import { getProjectId, needProjectId } from "../projectUtils";
 import * as extensionsApi from "../extensions/extensionsApi";
 import { ExtensionVersion, ExtensionSource } from "../extensions/types";
 import * as refs from "../extensions/refs";
+import * as secretsUtils from "../extensions/secretsUtils";
 import { displayWarningPrompts } from "../extensions/warnings";
 import * as paramHelper from "../extensions/paramHelper";
 import {
@@ -193,6 +194,10 @@ async function installToManifest(options: InstallExtensionOptions): Promise<void
     );
   }
 
+  if (secretsUtils.usesSecrets(spec)) {
+    await secretsUtils.ensureSecretManagerApiEnabled(options);
+  }
+
   const config = manifest.loadConfig(options);
 
   let instanceId = spec.name;
@@ -202,7 +207,7 @@ async function installToManifest(options: InstallExtensionOptions): Promise<void
 
   const paramBindingOptions = await paramHelper.getParams({
     projectId,
-    paramSpecs: spec.params.concat(spec.systemParams ?? []),
+    paramSpecs: (spec.params ?? []).concat(spec.systemParams ?? []),
     nonInteractive,
     paramsEnvPath,
     instanceId,

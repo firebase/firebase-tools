@@ -1,9 +1,6 @@
-- Adds new commands for provisioning and managing Firestore databases: (#5616)
-  - firestore:databases:list
-  - firestore:databases:create
-  - firestore:databases:get
-  - firestore:databases:update
-  - firestore:databases:delete
-  - firestore:locations
-- Adds `extensions` as an option in `firebase init`.
-- Relaxed repo URI validation in ext:dev:publish (#5698).
+- Releases Firestore Emulator 1.17.1
+  - Propagates page token from ListDocumentsResponse to GetOrListDocumentsResponse in Firestore emulator.
+- Fixes an issue where Secret Manager secrets were tagged incorrectly (#5704).
+- Fix bug where Custom Event channels weren't automatically crated on function deploys (#5700)
+- Lift GCF 2nd gen naming restrictions (#5690)
+- Fixes a bug where `ext:install` and `ext:configure` would error on extensions with no params.
