@@ -34,7 +34,7 @@ export default class DatabaseImporter {
     private dbUrl: URL,
     private inStream: stream.Readable,
     private dataPath: string,
-    private chunkSize: number,
+    private chunkBytes: number,
     concurrency: number
   ) {
     this.client = new Client({ urlPrefix: dbUrl.origin, auth: true });
@@ -156,7 +156,7 @@ export default class DatabaseImporter {
         }
       }
 
-      if (hasChunkedChild || size >= this.chunkSize) {
+      if (hasChunkedChild || size >= this.chunkBytes) {
         return { chunks, size };
       } else {
         return { chunks: null, size };
