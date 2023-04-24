@@ -4,3 +4,4 @@
 - Fix bug where Custom Event channels weren't automatically crated on function deploys (#5700)
 - Lift GCF 2nd gen naming restrictions (#5690)
 - Fixes a bug where `ext:install` and `ext:configure` would error on extensions with no params.
+- Fixes an issue where emulators are unable to start due to corrupt unzipped emulator files.
