@@ -1,3 +1,5 @@
 - Added more helpful error messages for the Firebase Hosting GitHub Action (#5749)
 - Upgrade Firestore emulator to 1.17.4
 - Web Frameworks will no longer try to deploy unsupported versions of NodeJS to Cloud Functions (#5733)
+- Fix bugs with UI emulator and PubSub emulator not starting correctly (#5714)
+  - Should resolve #5614 #5677 firebase/firebase-tools-ui#939 firebase/firebase-tools-ui#940 firebase/firebase-tools-ui#942 3de641523 (add changelog record)
