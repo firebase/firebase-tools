@@ -2,7 +2,7 @@ import * as crypto from "crypto";
 import * as fs from "fs-extra";
 import * as path from "path";
 import * as tmp from "tmp";
-import * as admZip from "adm-zip";
+import * as AdmZip from "adm-zip";
 
 import { EmulatorLogger } from "./emulatorLogger";
 import { EmulatorDownloadDetails, DownloadableEmulators } from "./types";
@@ -81,7 +81,7 @@ export async function downloadExtensionVersion(
 function unzip(zipPath: string, unzipDir: string): Promise<void> {
   return new Promise((resolve, reject) => {
     try {
-      const zip = new admZip(zipPath);
+      const zip = new AdmZip(zipPath);
       zip.extractAllTo(unzipDir);
       resolve();
     } catch (err) {
