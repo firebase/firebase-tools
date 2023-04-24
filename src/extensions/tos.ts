@@ -83,7 +83,7 @@ export async function acceptLatestPublisherTOS(
     ) {
       return acceptPublisherTOS(projectId, currentAcceptance.latestTosVersion);
     }
-    throw new FirebaseError("Command terminated becuase publisher TOS was not accepted");
+    throw new FirebaseError("You must accept the terms of service to continue.");
   }
 }
 
@@ -115,6 +115,6 @@ export async function acceptLatestAppDeveloperTOS(
     ) {
       return acceptAppDeveloperTOS(projectId, instanceId, currentAcceptance.latestTosVersion);
     }
-    throw new FirebaseError("Command terminated becuase app developer TOS was not accepted");
+    throw new FirebaseError("You must accept the terms of service to continue.");
   }
 }
