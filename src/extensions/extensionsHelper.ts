@@ -575,10 +575,10 @@ async function validateExtensionSpec(args: {
 export async function publishExtensionVersionFromRemoteRepo(args: {
   publisherId: string;
   extensionId: string;
-  repoUri: string;
-  sourceRef: string;
-  extensionRoot: string;
-  stage: ReleaseStage;
+  repoUri?: string;
+  sourceRef?: string;
+  extensionRoot?: string;
+  stage?: ReleaseStage;
   nonInteractive: boolean;
   force: boolean;
 }): Promise<ExtensionVersion | undefined> {
@@ -700,7 +700,7 @@ export async function publishExtensionVersionFromRemoteRepo(args: {
     extensionId: args.extensionId,
     rootDirectory: rootDirectory,
     latestVersion: extension?.latestVersion,
-    stage: stage,
+    stage: stage!,
   });
 
   const sourceUri = path.join(repoUri, "tree", sourceRef, extensionRoot);

@@ -6,7 +6,7 @@ import { registerPublisherProfile } from "../extensions/extensionsApi";
 import { needProjectId } from "../projectUtils";
 import { promptOnce } from "../prompt";
 import { ensureExtensionsApiEnabled, logPrefix } from "../extensions/extensionsHelper";
-import { promptForPublisherTOS } from "../extensions/askUserForConsent";
+import { acceptLatestPublisherTOS } from "../extensions/tos";
 import { requirePermissions } from "../requirePermissions";
 import { FirebaseError } from "../error";
 import * as utils from "../utils";
@@ -20,8 +20,8 @@ export const command = new Command("ext:dev:register")
   .before(requirePermissions, ["firebaseextensions.sources.create"])
   .before(ensureExtensionsApiEnabled)
   .action(async (options: any) => {
-    await promptForPublisherTOS();
     const projectId = needProjectId(options);
+    await acceptLatestPublisherTOS(options, projectId);
     const msg =
       "What would you like to register as your publisher ID? " +
       "This value identifies you in Firebase's registry of extensions as the author of your extensions. " +
