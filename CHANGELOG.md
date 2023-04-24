@@ -1,1 +1,2 @@
 - Fix an issue where Secret Manager secrets were tagged incorrectly (#5704).
+- Fixed an issue with Vite and Angular integrations using a obsolete NPM command (#5710)
