@@ -72,7 +72,9 @@ export async function acceptLatestPublisherTOS(
   } else {
     // Display link to TOS, prompt for acceptance
     const tosLink = extensionsTosUrl("publisher");
-    logger.info(`To continue, you must accept the [Extensions publisher terms of service](${tosLink})`);
+    logger.info(
+      `To continue, you must accept the [Extensions publisher terms of service](${tosLink})`
+    );
     if (
       await confirm({
         ...options,
@@ -102,7 +104,9 @@ export async function acceptLatestAppDeveloperTOS(
   } else {
     // Display link to TOS, prompt for acceptance
     const tosLink = extensionsTosUrl("appdev");
-    logger.info(`To continue, you must accept the [Extensions app developer terms of service](${tosLink})`);
+    logger.info(
+      `To continue, you must accept the [Extensions app developer terms of service](${tosLink})`
+    );
     if (
       await confirm({
         ...options,

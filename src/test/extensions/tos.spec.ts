@@ -77,14 +77,15 @@ describe("tos", () => {
   describe("acceptLatestAppDeveloperTOS", () => {
     it("should prompt to accept the latest app dev TOS if it has not been accepted", async () => {
       const t = testTOS("appdevtos", "1.0.0");
-      nock(api.extensionsTOSOrigin)
-        .get(`/v1/projects/${testProjectId}/appdevtos`)
-        .reply(200, t);
+      nock(api.extensionsTOSOrigin).get(`/v1/projects/${testProjectId}/appdevtos`).reply(200, t);
 
-      const appDevTos = await tos.acceptLatestAppDeveloperTOS({
-        nonInteractive: true,
-        force: true,
-      }, testProjectId);
+      const appDevTos = await tos.acceptLatestAppDeveloperTOS(
+        {
+          nonInteractive: true,
+          force: true,
+        },
+        testProjectId
+      );
 
       expect(appDevTos).to.deep.equal(t);
       expect(nock.isDone()).to.be.true;
@@ -93,17 +94,18 @@ describe("tos", () => {
 
   it("should return the latest app dev TOS if it has already been accepted", async () => {
     const t = testTOS("appdevtos", "1.1.0");
-    nock(api.extensionsTOSOrigin)
-      .get(`/v1/projects/${testProjectId}/appdevtos`)
-      .reply(200, t);
+    nock(api.extensionsTOSOrigin).get(`/v1/projects/${testProjectId}/appdevtos`).reply(200, t);
     nock(api.extensionsTOSOrigin)
       .post(`/v1/projects/${testProjectId}/appdevtos:accept`)
       .reply(200, t);
 
-    const appDevTos = await tos.acceptLatestAppDeveloperTOS({
-      nonInteractive: true,
-      force: true,
-    }, testProjectId);
+    const appDevTos = await tos.acceptLatestAppDeveloperTOS(
+      {
+        nonInteractive: true,
+        force: true,
+      },
+      testProjectId
+    );
 
     expect(appDevTos).to.deep.equal(t);
     expect(nock.isDone()).to.be.true;
@@ -112,14 +114,15 @@ describe("tos", () => {
   describe("acceptLatestPublisherTOS", () => {
     it("should prompt to accept the latest publisher TOS if it has not been accepted", async () => {
       const t = testTOS("publishertos", "1.0.0");
-      nock(api.extensionsTOSOrigin)
-        .get(`/v1/projects/${testProjectId}/publishertos`)
-        .reply(200, t);
+      nock(api.extensionsTOSOrigin).get(`/v1/projects/${testProjectId}/publishertos`).reply(200, t);
 
-      const publisherTos = await tos.acceptLatestPublisherTOS({
-        nonInteractive: true,
-        force: true,
-      }, testProjectId);
+      const publisherTos = await tos.acceptLatestPublisherTOS(
+        {
+          nonInteractive: true,
+          force: true,
+        },
+        testProjectId
+      );
 
       expect(publisherTos).to.deep.equal(t);
       expect(nock.isDone()).to.be.true;
@@ -128,17 +131,18 @@ describe("tos", () => {
 
   it("should return the latest publisher TOS is it has already been accepted", async () => {
     const t = testTOS("publishertos", "1.1.0");
-    nock(api.extensionsTOSOrigin)
-      .get(`/v1/projects/${testProjectId}/publishertos`)
-      .reply(200, t);
+    nock(api.extensionsTOSOrigin).get(`/v1/projects/${testProjectId}/publishertos`).reply(200, t);
     nock(api.extensionsTOSOrigin)
       .post(`/v1/projects/${testProjectId}/publishertos:accept`)
       .reply(200, t);
 
-    const publisherTos = await tos.acceptLatestPublisherTOS({
-      nonInteractive: true,
-      force: true,
-    }, testProjectId);
+    const publisherTos = await tos.acceptLatestPublisherTOS(
+      {
+        nonInteractive: true,
+        force: true,
+      },
+      testProjectId
+    );
 
     expect(publisherTos).to.deep.equal(t);
     expect(nock.isDone()).to.be.true;
