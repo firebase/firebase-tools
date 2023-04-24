@@ -1,3 +1,4 @@
+- Fixes a typo in the dependency names.
 - Releases Firestore Emulator 1.17.1
   - Propagates page token from ListDocumentsResponse to GetOrListDocumentsResponse in Firestore emulator.
 - Fixes an issue where Secret Manager secrets were tagged incorrectly (#5704).
