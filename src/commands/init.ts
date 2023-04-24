@@ -65,6 +65,11 @@ const choices = [
     name: "Remote Config: Configure a template file for Remote Config",
     checked: false,
   },
+  {
+    value: "extensions",
+    name: "Extensions: Set up an empty Extensions manifest",
+    checked: false,
+  },
 ];
 const featureNames = choices.map((choice) => choice.value);
 
