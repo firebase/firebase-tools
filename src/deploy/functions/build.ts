@@ -2,7 +2,6 @@ import * as backend from "./backend";
 import * as proto from "../../gcp/proto";
 import * as api from "../../.../../api";
 import * as params from "./params";
-import * as experiments from "../../experiments";
 import { FirebaseError } from "../../error";
 import { assertExhaustive, mapObject, nullsafeVisitor } from "../../functional";
 import { UserEnvsOpts, writeUserEnvs } from "../../functions/env";
@@ -285,24 +284,22 @@ export async function resolveBackend(
   nonInteractive?: boolean
 ): Promise<{ backend: backend.Backend; envs: Record<string, params.ParamValue> }> {
   let paramValues: Record<string, params.ParamValue> = {};
-  if (experiments.isEnabled("functionsparams")) {
-    paramValues = await params.resolveParams(
-      build.params,
-      firebaseConfig,
-      envWithTypes(build.params, userEnvs),
-      nonInteractive
-    );
+  paramValues = await params.resolveParams(
+    build.params,
+    firebaseConfig,
+    envWithTypes(build.params, userEnvs),
+    nonInteractive
+  );
 
-    const toWrite: Record<string, string> = {};
-    for (const paramName of Object.keys(paramValues)) {
-      const paramValue = paramValues[paramName];
-      if (Object.prototype.hasOwnProperty.call(userEnvs, paramName) || paramValue.internal) {
-        continue;
-      }
-      toWrite[paramName] = paramValue.toString();
+  const toWrite: Record<string, string> = {};
+  for (const paramName of Object.keys(paramValues)) {
+    const paramValue = paramValues[paramName];
+    if (Object.prototype.hasOwnProperty.call(userEnvs, paramName) || paramValue.internal) {
+      continue;
     }
-    writeUserEnvs(toWrite, userEnvOpt);
+    toWrite[paramName] = paramValue.toString();
   }
+  writeUserEnvs(toWrite, userEnvOpt);
 
   return { backend: toBackend(build, paramValues), envs: paramValues };
 }

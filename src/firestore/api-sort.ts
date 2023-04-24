@@ -1,5 +1,5 @@
-import * as API from "./indexes-api";
-import * as Spec from "./indexes-spec";
+import * as API from "./api-types";
+import * as Spec from "./api-spec";
 import * as util from "./util";
 
 const QUERY_SCOPE_SEQUENCE = [
@@ -57,6 +57,28 @@ export function compareApiIndex(a: API.Index, b: API.Index): number {
   }
 
   return compareArrays(a.fields, b.fields, compareIndexField);
+}
+
+/**
+ * Compare two Database api entries for sorting.
+ *
+ * Comparisons:
+ *   1) The databaseId (name)
+ */
+export function compareApiDatabase(a: API.DatabaseResp, b: API.DatabaseResp): number {
+  // Name should always be unique and present
+  return a.name > b.name ? 1 : -1;
+}
+
+/**
+ * Compare two Location api entries for sorting.
+ *
+ * Comparisons:
+ *   1) The locationId.
+ */
+export function compareLocation(a: API.Location, b: API.Location): number {
+  // LocationId should always be unique and present
+  return a.locationId > b.locationId ? 1 : -1;
 }
 
 /**

@@ -2,12 +2,12 @@ import * as clc from "colorette";
 import * as fs from "fs";
 
 import { FirebaseError } from "../../../error";
-import * as iv2 from "../../../firestore/indexes";
+import * as api from "../../../firestore/api";
 import * as fsutils from "../../../fsutils";
 import { prompt, promptOnce } from "../../../prompt";
 import { logger } from "../../../logger";
 
-const indexes = new iv2.FirestoreIndexes();
+const indexes = new api.FirestoreApi();
 
 const INDEXES_TEMPLATE = fs.readFileSync(
   __dirname + "/../../../../templates/init/firestore/firestore.indexes.json",

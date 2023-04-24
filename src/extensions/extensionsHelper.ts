@@ -36,7 +36,7 @@ import {
 import { Extension, ExtensionSource, ExtensionSpec, ExtensionVersion, Param } from "./types";
 import * as refs from "./refs";
 import { EXTENSIONS_SPEC_FILE, readFile, getLocalExtensionSpec } from "./localHelper";
-import { promptOnce } from "../prompt";
+import { confirm, promptOnce } from "../prompt";
 import { logger } from "../logger";
 import { envOverride } from "../utils";
 import { getLocalChangelog } from "./change-log";
@@ -604,33 +604,11 @@ export async function publishExtensionVersionFromRemoteRepo(args: {
       throw new FirebaseError("Repo URI is required but not currently set.");
     }
   }
-  if (extension?.repoUri && extension.repoUri !== repoUri) {
-    throw new FirebaseError(
-      `Repo URI '${clc.bold(args.repoUri)}' does not match repo URI '${clc.bold(
-        extension.repoUri!
-      )}' already associated with Extension ${clc.bold(extensionRef)}. Repo URI cannot be changed.`
-    );
-  }
-  if (!extension?.repoUri) {
+  if (extension?.repoUri) {
     logger.info(
-      `\n${clc.red("Warning:")} You are about to associate repo URI ${clc.bold(
-        repoUri
-      )} with Extension ${clc.bold(
-        extensionRef
-      )}. This cannot be changed. All future verifiable versions must be published from this repo. ` +
-        `You can continue publishing unverifiable versions from local source.`
-    );
-    const confirmed = await confirm({
-      nonInteractive: args.nonInteractive,
-      force: args.force,
-      default: false,
-    });
-    if (!confirmed) {
-      return;
-    }
-  } else {
-    logger.info(
-      `Extension ${clc.bold(extensionRef)} is published from ${clc.bold(extension?.repoUri)}.`
+      `Extension ${clc.bold(extensionRef)} is published from ${clc.bold(
+        extension?.repoUri
+      )}. Use --repo to change this repo.`
     );
   }
 
@@ -1057,28 +1035,6 @@ export function getSourceOrigin(sourceOrVersion: string): SourceOrigin {
       sourceOrVersion
     )}'. Check to make sure the source is correct, and then please try again.`
   );
-}
-
-/**
- * Confirm if the user wants to continue
- */
-export async function confirm(args: {
-  nonInteractive?: boolean;
-  force?: boolean;
-  default?: boolean;
-}): Promise<boolean> {
-  if (!args.nonInteractive && !args.force) {
-    const message = `Do you wish to continue?`;
-    return await promptOnce({
-      type: "confirm",
-      message,
-      default: args.default,
-    });
-  } else if (args.nonInteractive && !args.force) {
-    throw new FirebaseError("Pass the --force flag to use this command in non-interactive mode");
-  } else {
-    return true;
-  }
 }
 
 export async function diagnoseAndFixProject(options: any): Promise<void> {
