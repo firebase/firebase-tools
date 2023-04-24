@@ -46,7 +46,9 @@ describe("unzip", () => {
     // await fs.promises.rmdir(ZIP_TEMPORARY_PATH, { recursive: true });
   });
 
-  it("should unzip a ui emulator zip file", async () => {
+  it("should unzip a ui emulator zip file", async function () {
+    // eslint-disable-next-line @typescript-eslint/no-invalid-this
+    this.timeout(2000);
     await unzip(uiZipPath, path.join(ZIP_TEMPORARY_PATH, "ui"));
 
     const files = await fs.promises.readdir(ZIP_TEMPORARY_PATH);
@@ -60,7 +62,9 @@ describe("unzip", () => {
     expect(serverFiles).to.include("server.js");
   });
 
-  it("should unzip a pubsub emulator zip file", async () => {
+  it("should unzip a pubsub emulator zip file", async function () {
+    // eslint-disable-next-line @typescript-eslint/no-invalid-this
+    this.timeout(2000);
     await unzip(pubsubZipPath, path.join(ZIP_TEMPORARY_PATH, "pubsub"));
 
     const files = await fs.promises.readdir(ZIP_TEMPORARY_PATH);
