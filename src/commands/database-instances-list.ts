@@ -1,12 +1,12 @@
 import { Command } from "../command";
-import Table = require("cli-table");
+const Table = require("cli-table");
 import * as clc from "colorette";
 import * as ora from "ora";
 
 import { logger } from "../logger";
 import { requirePermissions } from "../requirePermissions";
 import { needProjectNumber } from "../projectUtils";
-import firedata = require("../gcp/firedata");
+import * as firedata from "../gcp/firedata";
 import { Emulators } from "../emulator/types";
 import { warnEmulatorNotSupported } from "../emulator/commandUtils";
 import * as experiments from "../experiments";

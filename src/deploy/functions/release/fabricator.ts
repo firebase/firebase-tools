@@ -6,7 +6,7 @@ import { SourceTokenScraper } from "./sourceTokenScraper";
 import { Timer } from "./timer";
 import { assertExhaustive } from "../../../functional";
 import { getHumanFriendlyRuntimeName } from "../runtimes";
-import { functionsOrigin, functionsV2Origin } from "../../../api";
+import { eventarcOrigin, functionsOrigin, functionsV2Origin } from "../../../api";
 import { logger } from "../../../logger";
 import * as args from "../args";
 import * as backend from "../backend";
@@ -14,6 +14,7 @@ import * as cloudtasks from "../../../gcp/cloudtasks";
 import * as deploymentTool from "../../../deploymentTool";
 import * as gcf from "../../../gcp/cloudfunctions";
 import * as gcfV2 from "../../../gcp/cloudfunctionsv2";
+import * as eventarc from "../../../gcp/eventarc";
 import * as helper from "../functionsDeployHelper";
 import * as planner from "./planner";
 import * as poller from "../../../operation-poller";
@@ -37,6 +38,13 @@ const gcfV1PollerOptions: Omit<poller.OperationPollerOptions, "operationResource
 const gcfV2PollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
   apiOrigin: functionsV2Origin,
   apiVersion: gcfV2.API_VERSION,
+  masterTimeout: 25 * 60 * 1_000, // 25 minutes is the maximum build time for a function
+  maxBackoff: 10_000,
+};
+
+const eventarcPollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
+  apiOrigin: eventarcOrigin,
+  apiVersion: "v1",
   masterTimeout: 25 * 60 * 1_000, // 25 minutes is the maximum build time for a function
   maxBackoff: 10_000,
 };
@@ -222,7 +230,7 @@ export class Fabricator {
           onPoll: scraper.poller,
         });
       })
-      .catch(rethrowAs(endpoint, "create"));
+      .catch(rethrowAs<gcf.CloudFunction>(endpoint, "create"));
 
     endpoint.uri = resultFunction?.httpsTrigger?.url;
     if (backend.isHttpsTriggered(endpoint)) {
@@ -290,25 +298,73 @@ export class Fabricator {
             }
             throw new FirebaseError("Unexpected error creating Pub/Sub topic", {
               original: err as Error,
+              status: err.status,
             });
           }
         })
         .catch(rethrowAs(endpoint, "create topic"));
     }
 
+    // Like Pub/Sub, GCF requires a channel to exist before allowing the function
+    // to be created. Like Pub/Sub we currently only support setting the name
+    // of a channel, so we can do this once during createFunction alone. But if
+    // Eventarc adds new features that we indulge in (e.g. 2P event providers)
+    // things will get much more complicated. We'll have to make sure we keep
+    // up to date on updates, and we will also have to worry about channels leftover
+    // after deletion possibly incurring bills due to events still being sent.
+    const channel = apiFunction.eventTrigger?.channel;
+    if (channel) {
+      await this.executor
+        .run(async () => {
+          try {
+            // eventarc.createChannel doesn't always return 409 when channel already exists.
+            // Ex. when channel exists and has active triggers the API will return 400 (bad
+            // request) with message saying something about active triggers. So instead of
+            // relying on 409 response we explicitly check for channel existense.
+            if ((await eventarc.getChannel(channel)) !== undefined) {
+              return;
+            }
+            const op: { name: string } = await eventarc.createChannel({ name: channel });
+            return await poller.pollOperation<eventarc.Channel>({
+              ...eventarcPollerOptions,
+              pollerName: `create-${channel}-${endpoint.region}-${endpoint.id}`,
+              operationResourceName: op.name,
+            });
+          } catch (err: any) {
+            // if error status is 409, the channel already exists and we can deploy safely
+            if (err.status === 409) {
+              return;
+            }
+            throw new FirebaseError("Unexpected error creating Eventarc channel", {
+              original: err as Error,
+              status: err.status,
+            });
+          }
+        })
+        .catch(rethrowAs(endpoint, "upsert eventarc channel"));
+    }
+
     const resultFunction = await this.functionExecutor
       .run(async () => {
         const op: { name: string } = await gcfV2.createFunction(apiFunction);
-        return await poller.pollOperation<gcfV2.CloudFunction>({
+        return await poller.pollOperation<gcfV2.OutputCloudFunction>({
           ...gcfV2PollerOptions,
           pollerName: `create-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
           operationResourceName: op.name,
         });
       })
-      .catch(rethrowAs(endpoint, "create"));
+      .catch(rethrowAs<gcfV2.OutputCloudFunction>(endpoint, "create"));
 
-    endpoint.uri = resultFunction.serviceConfig.uri;
-    const serviceName = resultFunction.serviceConfig.service!;
+    endpoint.uri = resultFunction.serviceConfig?.uri;
+    const serviceName = resultFunction.serviceConfig?.service;
+    if (!serviceName) {
+      logger.debug("Result function unexpectedly didn't have a service name.");
+      utils.logLabeledWarning(
+        "functions",
+        "Updated function is not associated with a service. This deployment is in an unexpected state - please re-deploy your functions."
+      );
+      return;
+    }
     if (backend.isHttpsTriggered(endpoint)) {
       const invoker = endpoint.httpsTrigger.invoker || ["public"];
       if (!invoker.includes("private")) {
@@ -346,26 +402,6 @@ export class Fabricator {
         .run(() => run.setInvokerCreate(endpoint.project, serviceName, invoker))
         .catch(rethrowAs(endpoint, "set invoker"));
     }
-
-    const mem = endpoint.availableMemoryMb || backend.DEFAULT_MEMORY;
-
-    // "CustomCPU" here means "not the CPU that GCF gives us". GCF automatically
-    // sets the CPU for a Run service based on the RAM settings. The value GCF
-    // uses is memoryToGen1Cpu.
-    const hasCustomCPU = endpoint.cpu !== backend.memoryToGen1Cpu(mem);
-    // I don't love editing an input in this function, but the code gets ugly
-    // otherwise. It's nice to not resolve concurrency in the prepare stage
-    // because it helps us know whether we should call setRunTraits on update.
-    if (!endpoint.concurrency) {
-      endpoint.concurrency =
-        (endpoint.cpu as number) >= backend.MIN_CPU_FOR_CONCURRENCY
-          ? backend.DEFAULT_CONCURRENCY
-          : 1;
-    }
-    const hasConcurrency = endpoint.concurrency !== 1;
-    if (hasCustomCPU || hasConcurrency) {
-      await this.setRunTraits(serviceName, endpoint);
-    }
   }
 
   async updateV1Function(endpoint: backend.Endpoint, scraper: SourceTokenScraper): Promise<void> {
@@ -387,7 +423,7 @@ export class Fabricator {
           onPoll: scraper.poller,
         });
       })
-      .catch(rethrowAs(endpoint, "update"));
+      .catch(rethrowAs<gcf.CloudFunction>(endpoint, "update"));
 
     endpoint.uri = resultFunction?.httpsTrigger?.url;
     let invoker: string[] | undefined;
@@ -427,16 +463,24 @@ export class Fabricator {
     const resultFunction = await this.functionExecutor
       .run(async () => {
         const op: { name: string } = await gcfV2.updateFunction(apiFunction);
-        return await poller.pollOperation<gcfV2.CloudFunction>({
+        return await poller.pollOperation<gcfV2.OutputCloudFunction>({
           ...gcfV2PollerOptions,
           pollerName: `update-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
           operationResourceName: op.name,
         });
       })
-      .catch(rethrowAs(endpoint, "update"));
+      .catch(rethrowAs<gcfV2.OutputCloudFunction>(endpoint, "update"));
 
-    endpoint.uri = resultFunction.serviceConfig.uri;
-    const serviceName = resultFunction.serviceConfig.service!;
+    endpoint.uri = resultFunction.serviceConfig?.uri;
+    const serviceName = resultFunction.serviceConfig?.service;
+    if (!serviceName) {
+      logger.debug("Result function unexpectedly didn't have a service name.");
+      utils.logLabeledWarning(
+        "functions",
+        "Updated function is not associated with a service. This deployment is in an unexpected state - please re-deploy your functions."
+      );
+      return;
+    }
     let invoker: string[] | undefined;
     if (backend.isHttpsTriggered(endpoint)) {
       invoker = endpoint.httpsTrigger.invoker === null ? ["public"] : endpoint.httpsTrigger.invoker;
@@ -455,26 +499,6 @@ export class Fabricator {
       await this.executor
         .run(() => run.setInvokerUpdate(endpoint.project, serviceName, invoker!))
         .catch(rethrowAs(endpoint, "set invoker"));
-    }
-
-    // Ideally we'd avoid a read of the Cloud Run service. We need to read if we
-    // believe a setting (CPU or concurrency) has changed because the user
-    // changed their mind or if GCF has stamped over the user's choice (we're
-    // using custom VM shapes).
-    const hasCustomCPU =
-      endpoint.cpu !==
-      backend.memoryToGen1Cpu(endpoint.availableMemoryMb || backend.DEFAULT_MEMORY);
-    const explicitConcurrency = endpoint.concurrency !== undefined;
-    if (hasCustomCPU || explicitConcurrency) {
-      // GCF may have stamped over the CPU to be <1 which would reset concurrency.
-      // We may have to reapply defaults.
-      if (endpoint.concurrency === undefined) {
-        endpoint.concurrency =
-          (endpoint.cpu as number) < backend.MIN_CPU_FOR_CONCURRENCY
-            ? 1
-            : backend.DEFAULT_CONCURRENCY;
-      }
-      await this.setRunTraits(serviceName, endpoint);
     }
   }
 
@@ -571,6 +595,10 @@ export class Fabricator {
     } else if (backend.isBlockingTriggered(endpoint)) {
       await this.unregisterBlockingTrigger(endpoint);
     }
+    // N.B. Like Pub/Sub topics, we don't delete Eventarc channels because we
+    // don't know if there are any subscriers or not. If we start supporting 2P
+    // channels, we might need to revist this or else the events will still get
+    // published and the customer will still get charged.
   }
 
   async upsertScheduleV1(endpoint: backend.Endpoint & backend.ScheduleTriggered): Promise<void> {

@@ -17,7 +17,7 @@ import { promptOnce } from "../prompt";
 import * as fsutils from "../fsutils";
 import Signals = NodeJS.Signals;
 import SignalsListener = NodeJS.SignalsListener;
-import Table = require("cli-table");
+const Table = require("cli-table");
 import { emulatorSession } from "../track";
 import { setEnvVarsForEmulators } from "./env";
 
@@ -329,8 +329,21 @@ async function runScript(script: string, extraEnv: Record<string, string>): Prom
   utils.logBullet(`Running script: ${clc.bold(script)}`);
 
   const env: NodeJS.ProcessEnv = { ...process.env, ...extraEnv };
+  // Hyrum's Law strikes here:
+  //   Scripts that imported older versions of Firebase Functions SDK accidentally made
+  //   the FIREBASE_CONFIG environment variable always available to the script.
+  //   Many users ended up depending on this behavior, so we conditionally inject the env var
+  //   if the FIREBASE_CONFIG env var isn't explicitly set in the parent process.
+  if (env.GCLOUD_PROJECT && !env.FIREBASE_CONFIG) {
+    env.FIREBASE_CONFIG = JSON.stringify({
+      projectId: env.GCLOUD_PROJECT,
+      storageBucket: `${env.GCLOUD_PROJECT}.appspot.com`,
+      databaseURL: `https://${env.GCLOUD_PROJECT}.firebaseio.com`,
+    });
+  }
 
-  setEnvVarsForEmulators(env);
+  const emulatorInfos = EmulatorRegistry.listRunningWithInfo();
+  setEnvVarsForEmulators(env, emulatorInfos);
 
   const proc = childProcess.spawn(script, {
     stdio: ["inherit", "inherit", "inherit"] as childProcess.StdioOptions,
@@ -447,7 +460,7 @@ const JAVA_HINT = "Please make sure Java is installed and on your system PATH.";
 /**
  * Return whether Java major verion is supported. Throws if Java not available.
  *
- * @returns Java major version (for Java >= 9) or -1 otherwise
+ * @return Java major version (for Java >= 9) or -1 otherwise
  */
 export async function checkJavaMajorVersion(): Promise<number> {
   return new Promise<string>((resolve, reject) => {
@@ -509,7 +522,7 @@ export async function checkJavaMajorVersion(): Promise<number> {
     });
   }).then((output) => {
     let versionInt = -1;
-    const match = output.match(JAVA_VERSION_REGEX);
+    const match = JAVA_VERSION_REGEX.exec(output);
     if (match) {
       const version = match[1];
       versionInt = parseInt(version, 10);

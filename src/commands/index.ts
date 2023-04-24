@@ -45,6 +45,7 @@ export function load(client: any): any {
   client.crashlytics.mappingfile.upload = loadCommand("crashlytics-mappingfile-upload");
   client.database = {};
   client.database.get = loadCommand("database-get");
+  client.database.import = loadCommand("database-import");
   client.database.instances = {};
   client.database.instances.create = loadCommand("database-instances-create");
   client.database.instances.list = loadCommand("database-instances-list");
@@ -107,6 +108,13 @@ export function load(client: any): any {
   client.firestore = {};
   client.firestore.delete = loadCommand("firestore-delete");
   client.firestore.indexes = loadCommand("firestore-indexes-list");
+  client.firestore.locations = loadCommand("firestore-locations");
+  client.firestore.databases = {};
+  client.firestore.databases.list = loadCommand("firestore-databases-list");
+  client.firestore.databases.get = loadCommand("firestore-databases-get");
+  client.firestore.databases.create = loadCommand("firestore-databases-create");
+  client.firestore.databases.update = loadCommand("firestore-databases-update");
+  client.firestore.databases.delete = loadCommand("firestore-databases-delete");
   client.functions = {};
   client.functions.config = {};
   client.functions.config.clone = loadCommand("functions-config-clone");
@@ -143,6 +151,11 @@ export function load(client: any): any {
   client.hosting.sites.get = loadCommand("hosting-sites-get");
   client.hosting.sites.list = loadCommand("hosting-sites-list");
   client.init = loadCommand("init");
+  if (experiments.isEnabled("internaltesting")) {
+    client.internaltesting = {};
+    client.internaltesting.functions = {};
+    client.internaltesting.functions.discover = loadCommand("internaltesting-functions-discover");
+  }
   client.login = loadCommand("login");
   client.login.add = loadCommand("login-add");
   client.login.ci = loadCommand("login-ci");
