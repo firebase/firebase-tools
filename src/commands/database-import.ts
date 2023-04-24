@@ -21,7 +21,12 @@ interface DatabaseImportOptions extends Options {
   instanceDetails: DatabaseInstance;
   disableTriggers?: boolean;
   filter?: string;
+  chunkSize?: string;
+  concurrency?: string;
 }
+
+const MAX_CHUNK_SIZE = 1024 * 1024 * 10;
+const CONCURRENCY_LIMIT = 5;
 
 export const command = new Command("database:import <path> [infile]")
   .description(
@@ -41,6 +46,8 @@ export const command = new Command("database:import <path> [infile]")
     "--filter <dataPath>",
     "import only data at this path in the JSON file (if omitted, import entire file)"
   )
+  .option("--chunk-size <bytes>", "max chunk size in bytes, default to 10 MB")
+  .option("--concurrency <concurrency>", "concurrency limit, default to 5")
   .before(requirePermissions, ["firebasedatabase.instances.update"])
   .before(requireDatabaseInstance)
   .before(populateInstanceDetails)
@@ -77,7 +84,9 @@ export const command = new Command("database:import <path> [infile]")
 
     const inStream = fs.createReadStream(infile);
     const dataPath = options.filter || "";
-    const importer = new DatabaseImporter(dbUrl, inStream, dataPath);
+    const chunkSize = options.chunkSize ? parseInt(options.chunkSize, 10) : MAX_CHUNK_SIZE;
+    const concurrency = options.concurrency ? parseInt(options.concurrency, 10) : CONCURRENCY_LIMIT;
+    const importer = new DatabaseImporter(dbUrl, inStream, dataPath, chunkSize, concurrency);
 
     let responses;
     try {
