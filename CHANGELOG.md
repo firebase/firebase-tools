@@ -1,2 +1,7 @@
-- Fix an issue where Secret Manager secrets were tagged incorrectly (#5704).
+- Releases Firestore Emulator 1.17.1
+  - Propagates page token from ListDocumentsResponse to GetOrListDocumentsResponse in Firestore emulator.
+- Fixes an issue where Secret Manager secrets were tagged incorrectly (#5704).
+- Fix bug where Custom Event channels weren't automatically crated on function deploys (#5700)
+- Lift GCF 2nd gen naming restrictions (#5690)
+- Fixes a bug where `ext:install` and `ext:configure` would error on extensions with no params.
 - Fixed an issue with Vite and Angular integrations using a obsolete NPM command (#5710)

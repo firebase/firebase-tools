@@ -365,9 +365,9 @@ async function patchInstance(args: {
   return pollRes;
 }
 
-function populateResourceProperties(spec: ExtensionSpec): void {
+function populateSpec(spec: ExtensionSpec): void {
   if (spec) {
-    spec.resources.forEach((r) => {
+    for (const r of spec.resources) {
       try {
         if (r.propertiesYaml) {
           r.properties = yaml.safeLoad(r.propertiesYaml);
@@ -375,7 +375,10 @@ function populateResourceProperties(spec: ExtensionSpec): void {
       } catch (err: any) {
         logger.debug(`[ext] failed to parse resource properties yaml: ${err}`);
       }
-    });
+    }
+    // We need to populate empty repeated fields with empty arrays, since proto wire format removes them.
+    spec.params = spec.params ?? [];
+    spec.systemParams = spec.systemParams ?? [];
   }
 }
 
@@ -405,7 +408,7 @@ export async function createSource(
     masterTimeout: 600000,
   });
   if (pollRes.spec) {
-    populateResourceProperties(pollRes.spec);
+    populateSpec(pollRes.spec);
   }
   return pollRes;
 }
@@ -418,7 +421,7 @@ export async function createSource(
 export async function getSource(sourceName: string): Promise<ExtensionSource> {
   const res = await apiClient.get<ExtensionSource>(`/${sourceName}`);
   if (res.body.spec) {
-    populateResourceProperties(res.body.spec);
+    populateSpec(res.body.spec);
   }
   return res.body;
 }
@@ -434,7 +437,7 @@ export async function getExtensionVersion(extensionVersionRef: string): Promise<
   try {
     const res = await apiClient.get<ExtensionVersion>(`/${refs.toExtensionVersionName(ref)}`);
     if (res.body.spec) {
-      populateResourceProperties(res.body.spec);
+      populateSpec(res.body.spec);
     }
     return res.body;
   } catch (err: any) {
