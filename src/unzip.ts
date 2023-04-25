@@ -48,10 +48,10 @@ const extractEntriesFromBuffer = async (data: Buffer, outputDir: string): Promis
 
     const outputFilePath = path.join(outputDir, entry.fileName);
 
-    if (entry.fileName.endsWith("/")) {
+    if (entry.fileName.endsWith(path.sep)) {
       await fs.promises.mkdir(outputFilePath, { recursive: true });
     } else {
-      const parentDir = outputFilePath.substring(0, outputFilePath.lastIndexOf("/"));
+      const parentDir = outputFilePath.substring(0, outputFilePath.lastIndexOf(path.sep));
       await fs.promises.mkdir(parentDir, { recursive: true });
 
       const compressionMethod = entryHeader.readUInt16LE(8);

@@ -132,7 +132,7 @@ async function downloadFile(url: string, targetPath: string): Promise<string> {
       }: ${await res.response.text()}`,
       {
         cause: new Error(
-          `Object DownloadDetails from src/emulator/downloadableEmulators.ts contains invalid URL: ${url}`
+          `Object DownloadDetails from src${path.sep}emulator${path.sep}downloadableEmulators.ts contains invalid URL: ${url}`
         ),
       }
     );
