@@ -122,7 +122,7 @@ export const ALLOWED_SSR_REGIONS = [
   { name: "asia-east1 (Taiwan)", value: "asia-east1" },
 ];
 
-function conjoinOptions(opts: any[], conjunction: string, seperator: string=","): string {
+function conjoinOptions(opts: any[], conjunction: string, seperator: string = ","): string {
   if (opts.length === 1) return opts[0].toString();
   const lastElement = opts.slice(-1)[0];
   return `${opts.slice(0, -1).join(`${seperator} `)}, ${conjunction} ${lastElement}`;
@@ -550,10 +550,15 @@ export async function prepareFrameworks(
       packageJson.dependencies["firebase-functions"] ||= FIREBASE_FUNCTIONS_VERSION;
       packageJson.dependencies["firebase-admin"] ||= FIREBASE_ADMIN_VERSION;
       packageJson.engines ||= {};
-      const validEngines = VALID_ENGINES.node.filter(it => it <= NODE_VERSION);
+      const validEngines = VALID_ENGINES.node.filter((it) => it <= NODE_VERSION);
       const engine = validEngines[validEngines.length - 1] || VALID_ENGINES.node[0];
       if (engine !== NODE_VERSION) {
-        logWarning(`This integration expects Node version ${conjoinOptions(VALID_ENGINES.node, "or")}. You're running version ${NODE_VERSION}, problems may be encountered.`);
+        logWarning(
+          `This integration expects Node version ${conjoinOptions(
+            VALID_ENGINES.node,
+            "or"
+          )}. You're running version ${NODE_VERSION}, problems may be encountered.`
+        );
       }
       packageJson.engines.node ||= engine.toString();
       delete packageJson.scripts;
