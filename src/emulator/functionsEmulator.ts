@@ -908,14 +908,14 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
 
     const bundle = JSON.stringify({
-        eventType: eventTrigger.eventType,
-        database,
-        namespace,
-        // document: doc,
-        document: {
-          value: doc,
-          matchType: "PATH_PATTERN",
-        },
+      eventType: eventTrigger.eventType,
+      database,
+      namespace,
+      // document: doc,
+      document: {
+        value: doc,
+        matchType: "PATH_PATTERN",
+      },
     });
     const path = `/emulator/v1/projects/${projectId}/eventarcTrigger?eventarcTriggerId=${key}`;
     return { bundle, path };
