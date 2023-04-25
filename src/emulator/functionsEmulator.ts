@@ -892,6 +892,7 @@ export class FunctionsEmulator implements EmulatorInstance {
   }
 
   private getV2FirestoreAttributes(projectId: string, key: string, eventTrigger: EventTrigger) {
+    logger.debug("Found a v2 firestore trigger.");
     const database = eventTrigger.eventFilters?.database;
     if (!database) {
       throw new FirebaseError("A database must be supplied.");
@@ -900,21 +901,23 @@ export class FunctionsEmulator implements EmulatorInstance {
     if (!namespace) {
       throw new FirebaseError("A namespace must be supplied.");
     }
-    const document =
+    const doc =
       eventTrigger.eventFilters?.document || eventTrigger.eventFilterPathPatterns?.document;
-    if (!document) {
+    if (!doc) {
       throw new FirebaseError("A document must be supplied.");
     }
 
     const bundle = JSON.stringify({
-      eventTrigger: {
         eventType: eventTrigger.eventType,
         database,
         namespace,
-        document,
-      },
+        // document: doc,
+        document: {
+          value: doc,
+          matchType: "PATH_PATTERN",
+        },
     });
-    const path = `/emulator/v1/projects/${projectId}/databases/${database}/triggers/${key}`;
+    const path = `/emulator/v1/projects/${projectId}/eventarcTrigger?eventarcTriggerId=${key}`;
     return { bundle, path };
   }
 
@@ -937,7 +940,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     const client = EmulatorRegistry.client(Emulators.FIRESTORE);
     try {
-      await client.put(path, bundle);
+      signature === "cloudevent" ? await client.post(path, bundle) : await client.put(path, bundle);
     } catch (err: any) {
       this.logger.log("WARN", "Error adding firestore function: " + err);
       throw err;
