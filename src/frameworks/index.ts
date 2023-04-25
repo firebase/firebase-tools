@@ -1,14 +1,16 @@
-import { join, relative, extname } from "path";
+import { join, relative, extname, basename } from "path";
 import { exit } from "process";
-import { execSync, spawnSync } from "child_process";
+import { execSync } from "child_process";
+import { sync as spawnSync } from "cross-spawn";
 import { readdirSync, statSync } from "fs";
 import { pathToFileURL } from "url";
 import { IncomingMessage, ServerResponse } from "http";
-import { copyFile, readdir, rm, writeFile } from "fs/promises";
+import { copyFile, readdir, readFile, rm, writeFile } from "fs/promises";
 import { mkdirp, pathExists, stat } from "fs-extra";
 import * as clc from "colorette";
 import * as process from "node:process";
 import * as semver from "semver";
+import * as glob from "glob";
 
 import { needProjectId } from "../projectUtils";
 import { hostingConfig } from "../hosting/config";
@@ -27,6 +29,7 @@ import * as experiments from "../experiments";
 import { ensureTargeted } from "../functions/ensureTargeted";
 import { implicitInit } from "../hosting/implicitInit";
 import { runWithVirtualEnv } from "../functions/python";
+import { fileExistsSync } from "../fsutils";
 
 // Use "true &&"" to keep typescript from compiling this file and rewriting
 // the import statement into a require
@@ -42,6 +45,7 @@ export interface BuildResult {
   redirects?: any[];
   headers?: any[];
   wantsBackend?: boolean;
+  trailingSlash?: boolean;
 }
 
 interface NodeJSFramework {
@@ -61,7 +65,7 @@ export interface Framework {
   name: string;
   build: (dir: string) => Promise<BuildResult | void>;
   support: SupportLevel;
-  init?: (setup: any) => Promise<void>;
+  init?: (setup: any, config: any) => Promise<void>;
   getDevModeHandle?: (
     dir: string,
     hostingEmulatorInfo?: EmulatorInfo
@@ -111,25 +115,43 @@ const SupportLevelWarnings = {
   ),
 };
 
-export const FIREBASE_FRAMEWORKS_VERSION = "^0.6.0";
+export const FIREBASE_FRAMEWORKS_VERSION = "^0.7.0";
 export const FIREBASE_FUNCTIONS_VERSION = "^3.23.0";
 export const FIREBASE_ADMIN_VERSION = "^11.0.1";
-export const DEFAULT_REGION = "us-central1";
 export const NODE_VERSION = parseInt(process.versions.node, 10).toString();
+export const DEFAULT_REGION = "us-central1";
+export const ALLOWED_SSR_REGIONS = [
+  { name: "us-central1 (Iowa)", value: "us-central1" },
+  { name: "us-west1 (Oregon)", value: "us-west1" },
+  { name: "us-east1 (South Carolina)", value: "us-east1" },
+  { name: "europe-west1 (Belgium)", value: "europe-west1" },
+  { name: "asia-east1 (Taiwan)", value: "asia-east1" },
+];
 
 const DEFAULT_FIND_DEP_OPTIONS: FindDepOptions = {
   cwd: process.cwd(),
   omitDev: true,
 };
 
-const NPM_COMMAND = process.platform === "win32" ? "npm.cmd" : "npm";
-
 export const WebFrameworks: Record<string, Framework> = Object.fromEntries(
   readdirSync(__dirname)
     .filter((path) => statSync(join(__dirname, path)).isDirectory())
-    .map((path) => [path, require(join(__dirname, path))])
+    .map((path) => {
+      // If not called by the CLI, (e.g., by the VS Code Extension)
+      // __dirname won't refer to this folder and these files won't be available.
+      // Instead it may find sibling folders that aren't modules, and this
+      // require will throw.
+      // Long term fix may be to bundle this instead of reading files at runtime
+      // but for now, this prevents crashing.
+      try {
+        return [path, require(join(__dirname, path))];
+      } catch (e) {
+        return [];
+      }
+    })
     .filter(
-      ([, obj]) => obj.name && obj.discover && obj.build && obj.type !== undefined && obj.support
+      ([, obj]) =>
+        obj && obj.name && obj.discover && obj.build && obj.type !== undefined && obj.support
     )
 );
 
@@ -164,8 +186,13 @@ export function relativeRequire(
 export function relativeRequire(dir: string, mod: "next"): typeof import("next");
 export function relativeRequire(dir: string, mod: "vite"): typeof import("vite");
 export function relativeRequire(dir: string, mod: "jsonc-parser"): typeof import("jsonc-parser");
+
 // TODO the types for @nuxt/kit are causing a lot of troubles, need to do something other than any
+// Nuxt 2
+export function relativeRequire(dir: string, mod: "nuxt/dist/nuxt.js"): Promise<any>;
+// Nuxt 3
 export function relativeRequire(dir: string, mod: "@nuxt/kit"): Promise<any>;
+
 /**
  *
  */
@@ -227,15 +254,30 @@ function scanDependencyTree(searchingFor: string, dependencies = {}): any {
   return;
 }
 
+export function getNodeModuleBin(name: string, cwd: string) {
+  const cantFindExecutable = new FirebaseError(`Could not find the ${name} executable.`);
+  const npmRoot = spawnSync("npm", ["root"], { cwd }).stdout?.toString().trim();
+  if (!npmRoot) {
+    throw cantFindExecutable;
+  }
+  const path = join(npmRoot, ".bin", name);
+  if (!fileExistsSync(path)) {
+    throw cantFindExecutable;
+  }
+  return path;
+}
+
 /**
  *
  */
 export function findDependency(name: string, options: Partial<FindDepOptions> = {}) {
-  const { cwd, depth, omitDev } = { ...DEFAULT_FIND_DEP_OPTIONS, ...options };
+  const { cwd: dir, depth, omitDev } = { ...DEFAULT_FIND_DEP_OPTIONS, ...options };
+  const cwd = spawnSync("npm", ["root"], { cwd: dir }).stdout?.toString().trim();
+  if (!cwd) return;
   const env: any = Object.assign({}, process.env);
   delete env.NODE_ENV;
   const result = spawnSync(
-    NPM_COMMAND,
+    "npm",
     [
       "list",
       name,
@@ -295,8 +337,9 @@ export async function prepareFrameworks(
   if (configs.length === 0) {
     return;
   }
+  const allowedRegionsValues = ALLOWED_SSR_REGIONS.map((r) => r.value);
   for (const config of configs) {
-    const { source, site, public: publicDir } = config;
+    const { source, site, public: publicDir, frameworksBackend } = config;
     if (!source) {
       continue;
     }
@@ -310,8 +353,15 @@ export async function prepareFrameworks(
     if (publicDir) {
       throw new Error(`hosting.public and hosting.source cannot both be set in firebase.json`);
     }
+    const ssrRegion = frameworksBackend?.region ?? DEFAULT_REGION;
+    if (!allowedRegionsValues.includes(ssrRegion)) {
+      const validRegions = allowedRegionsValues.join(", ");
+      throw new FirebaseError(
+        `Hosting config for site ${site} places server-side content in region ${ssrRegion} which is not known. Valid regions are ${validRegions}`
+      );
+    }
     const getProjectPath = (...args: string[]) => join(projectRoot, source, ...args);
-    const functionName = `ssr${site.toLowerCase().replace(/-/g, "")}`;
+    const functionId = `ssr${site.toLowerCase().replace(/-/g, "")}`;
     const usesFirebaseAdminSdk = !!findDependency("firebase-admin", { cwd: getProjectPath() });
     const usesFirebaseJsSdk = !!findDependency("@firebase/app", { cwd: getProjectPath() });
     if (usesFirebaseAdminSdk) {
@@ -377,9 +427,14 @@ export async function prepareFrameworks(
         }
       }
     }
-    if (firebaseDefaults) process.env.__FIREBASE_DEFAULTS__ = JSON.stringify(firebaseDefaults);
+    if (firebaseDefaults) {
+      process.env.__FIREBASE_DEFAULTS__ = JSON.stringify(firebaseDefaults);
+    }
     const results = await discover(getProjectPath());
-    if (!results) throw new Error("Epic fail.");
+    if (!results)
+      throw new FirebaseError(
+        "Unable to detect the web framework in use, check firebase-debug.log for more info."
+      );
     const { framework, mayWantBackend, publicDirectory } = results;
     const {
       build,
@@ -414,10 +469,12 @@ export async function prepareFrameworks(
         rewrites = [],
         redirects = [],
         headers = [],
+        trailingSlash,
       } = (await build(getProjectPath())) || {};
       config.rewrites.push(...rewrites);
       config.redirects.push(...redirects);
       config.headers.push(...headers);
+      config.trailingSlash ??= trailingSlash;
       if (await pathExists(hostingDist)) await rm(hostingDist, { recursive: true });
       await mkdirp(hostingDist);
       await ɵcodegenPublicDirectory(getProjectPath(), hostingDist);
@@ -426,12 +483,15 @@ export async function prepareFrameworks(
     }
     config.webFramework = `${framework}${codegenFunctionsDirectory ? "_ssr" : ""}`;
     if (codegenFunctionsDirectory) {
-      if (firebaseDefaults) firebaseDefaults._authTokenSyncURL = "/__session";
+      if (firebaseDefaults) {
+        firebaseDefaults._authTokenSyncURL = "/__session";
+        process.env.__FIREBASE_DEFAULTS__ = JSON.stringify(firebaseDefaults);
+      }
 
       const rewrite: HostingRewrites = {
         source: "**",
         function: {
-          functionId: functionName,
+          functionId,
         },
       };
       if (experiments.isEnabled("pintags")) {
@@ -483,48 +543,54 @@ export async function prepareFrameworks(
         frameworksEntry = framework,
       } = await codegenFunctionsDirectory(getProjectPath(), functionsDist);
 
+      // Set the framework entry in the env variables to handle generation of the functions.yaml
+      process.env.__FIREBASE_FRAMEWORKS_ENTRY__ = frameworksEntry;
+
+      let existingDotEnvContents = "";
+      if (await pathExists(getProjectPath(".env"))) {
+        existingDotEnvContents = (await readFile(getProjectPath(".env"))).toString();
+      }
+
       await writeFile(
-        join(functionsDist, "functions.yaml"),
-        JSON.stringify(
-          {
-            endpoints: {
-              [functionName]: {
-                platform: "gcfv2",
-                // TODO allow this to be configurable
-                region: [DEFAULT_REGION],
-                labels: {},
-                httpsTrigger: {},
-                entryPoint: "ssr",
-              },
-            },
-            specVersion: "v1alpha1",
-            requiredAPIs: [],
-          },
-          null,
-          2
-        )
+        join(functionsDist, ".env"),
+        `${existingDotEnvContents}
+__FIREBASE_FRAMEWORKS_ENTRY__=${frameworksEntry}
+${firebaseDefaults ? `__FIREBASE_DEFAULTS__=${JSON.stringify(firebaseDefaults)}\n` : ""}`
       );
+
+      const envs = await new Promise<string[]>((resolve, reject) =>
+        glob(getProjectPath(".env.*"), (err, matches) => {
+          if (err) reject(err);
+          resolve(matches);
+        })
+      );
+
+      await Promise.all(envs.map((path) => copyFile(path, join(functionsDist, basename(path)))));
 
       if (packageJson) {
 
-        
-        packageJson.main = "server.js";
-        delete packageJson.devDependencies;
-        packageJson.dependencies ||= {};
-        packageJson.dependencies["firebase-frameworks"] ||= FIREBASE_FRAMEWORKS_VERSION;
-        packageJson.dependencies["firebase-functions"] ||= FIREBASE_FUNCTIONS_VERSION;
-        packageJson.dependencies["firebase-admin"] ||= FIREBASE_ADMIN_VERSION;
-        packageJson.engines ||= {};
-        packageJson.engines.node ||= NODE_VERSION;
-
+        for (const [name, version] of Object.entries(
+          packageJson.dependencies as Record<string, string>
+        )) {
+          if (version.startsWith("file:")) {
+            const path = version.replace(/^file:/, "");
+            if (!(await pathExists(path))) continue;
+            const stats = await stat(path);
+            if (stats.isDirectory()) {
+              const result = spawnSync("npm", ["pack", relative(functionsDist, path)], {
+                cwd: functionsDist,
+              });
+              if (!result.stdout) throw new Error(`Error running \`npm pack\` at ${path}`);
+              const filename = result.stdout.toString().trim();
+              packageJson.dependencies[name] = `file:${filename}`;
+            } else {
+              const filename = basename(path);
+              await copyFile(path, join(functionsDist, filename));
+              packageJson.dependencies[name] = `file:${filename}`;
+            }
+          }
+        }
         await writeFile(join(functionsDist, "package.json"), JSON.stringify(packageJson, null, 2));
-        
-        // TODO do we add the append the local .env?
-        await writeFile(
-          join(functionsDist, ".env"),
-          `__FIREBASE_FRAMEWORKS_ENTRY__=${frameworksEntry}
-  ${firebaseDefaults ? `__FIREBASE_DEFAULTS__=${JSON.stringify(firebaseDefaults)}\n` : ""}`
-        );
 
         await copyFile(
           getProjectPath("package-lock.json"),
@@ -537,11 +603,6 @@ export async function prepareFrameworks(
           await copyFile(getProjectPath(".npmrc"), join(functionsDist, ".npmrc"));
         }
 
-        execSync(`${NPM_COMMAND} i --omit dev --no-audit`, {
-          cwd: functionsDist,
-          stdio: "inherit",
-        });
-
         if (bootstrapScript) await writeFile(join(functionsDist, "bootstrap.js"), bootstrapScript);
 
         // TODO move to templates
@@ -552,14 +613,41 @@ export async function prepareFrameworks(
   exports.ssr = onRequest((req, res) => server.then(it => it.handle(req, res)));
   `
         );
-      }
+      
+        execSync(`npm i --omit dev --no-audit`, {
+          cwd: functionsDist,
+          stdio: "inherit",
+        });
 
-      if (requirementsTxt) {
+        // TODO move to templates
+        if (packageJson.type === "module") {
+          await writeFile(
+            join(functionsDist, "server.js"),
+            `import { onRequest } from 'firebase-functions/v2/https';
+  const server = import('firebase-frameworks');
+  export const ${functionId} = onRequest(${JSON.stringify(
+              frameworksBackend || {}
+            )}, (req, res) => server.then(it => it.handle(req, res)));
+  `
+          );
+        } else {
+          await writeFile(
+            join(functionsDist, "server.js"),
+            `const { onRequest } = require('firebase-functions/v2/https');
+  const server = import('firebase-frameworks');
+  exports.${functionId} = onRequest(${JSON.stringify(
+              frameworksBackend || {}
+            )}, (req, res) => server.then(it => it.handle(req, res)));
+  `
+          );
+        }
+      
+      } else if (requirementsTxt) {
+
         await writeFile(join(functionsDist, "requirements.txt"), requirementsTxt + "\ngit+https://github.com/firebase/firebase-functions-python.git@main#egg=firebase-functions");
         await writeFile(join(functionsDist, "main.py"), `from firebase_functions import https_fn
 from io import BytesIO
 from ${imports![0]} import ${imports![1]} as discoveredApp
-
 def handle(app, environ):
     status = None
     headers = None
@@ -594,7 +682,6 @@ def ssr(req: https_fn.Request) -> https_fn.Response:
           );
           child.on("exit", () => resolve());
         });
-      }
     } else {
       // No function, treat as an SPA
       // TODO(jamesdaniels) be smarter about this, leave it to the framework?
@@ -625,54 +712,4 @@ def ssr(req: https_fn.Request) -> https_fn.Response:
 function codegenDevModeFunctionsDirectory() {
   const packageJson = {};
   return Promise.resolve({ packageJson, frameworksEntry: "_devMode" });
-}
-
-/**
- *
- */
-export function createServerResponseProxy(
-  req: IncomingMessage,
-  res: ServerResponse,
-  next: () => void
-) {
-  const proxiedRes = new ServerResponse(req);
-  const buffer: [string, any[]][] = [];
-  proxiedRes.write = new Proxy(proxiedRes.write.bind(proxiedRes), {
-    apply: (target: any, thisArg, args) => {
-      target.call(thisArg, ...args);
-      buffer.push(["write", args]);
-    },
-  });
-  proxiedRes.setHeader = new Proxy(proxiedRes.setHeader.bind(proxiedRes), {
-    apply: (target: any, thisArg, args) => {
-      target.call(thisArg, ...args);
-      buffer.push(["setHeader", args]);
-    },
-  });
-  proxiedRes.removeHeader = new Proxy(proxiedRes.removeHeader.bind(proxiedRes), {
-    apply: (target: any, thisArg, args) => {
-      target.call(thisArg, ...args);
-      buffer.push(["removeHeader", args]);
-    },
-  });
-  proxiedRes.writeHead = new Proxy(proxiedRes.writeHead.bind(proxiedRes), {
-    apply: (target: any, thisArg, args) => {
-      target.call(thisArg, ...args);
-      buffer.push(["writeHead", args]);
-    },
-  });
-  proxiedRes.end = new Proxy(proxiedRes.end.bind(proxiedRes), {
-    apply: (target: any, thisArg, args) => {
-      target.call(thisArg, ...args);
-      if (proxiedRes.statusCode === 404) {
-        next();
-      } else {
-        for (const [fn, args] of buffer) {
-          (res as any)[fn](...args);
-        }
-        res.end(...args);
-      }
-    },
-  });
-  return proxiedRes;
 }

@@ -1,6 +1,7 @@
 import type { Target } from "@angular-devkit/architect";
 import { join } from "path";
-import { execSync, spawn } from "child_process";
+import { execSync } from "child_process";
+import { spawn } from "cross-spawn";
 import { copy, pathExists } from "fs-extra";
 import { mkdir } from "fs/promises";
 
@@ -9,18 +10,17 @@ import {
   Discovery,
   findDependency,
   FrameworkType,
+  getNodeModuleBin,
   relativeRequire,
   SupportLevel,
 } from "..";
 import { promptOnce } from "../../prompt";
-import { proxyRequestHandler } from "../../hosting/proxy";
-import { warnIfCustomBuildScript } from "../utils";
+import { simpleProxy, warnIfCustomBuildScript } from "../utils";
 
 export const name = "Angular";
 export const support = SupportLevel.Experimental;
 export const type = FrameworkType.Framework;
 
-const CLI_COMMAND = join("node_modules", ".bin", process.platform === "win32" ? "ng.cmd" : "ng");
 const DEFAULT_BUILD_SCRIPT = ["ng build"];
 
 export async function discover(dir: string): Promise<Discovery | undefined> {
@@ -31,10 +31,14 @@ export async function discover(dir: string): Promise<Discovery | undefined> {
   return { mayWantBackend: !!serverTarget, publicDirectory: join(dir, "src", "assets") };
 }
 
-export async function init(setup: any) {
-  execSync(`npx --yes -p @angular/cli@latest ng new ${setup.hosting.source} --skip-git`, {
-    stdio: "inherit",
-  });
+export async function init(setup: any, config: any) {
+  execSync(
+    `npx --yes -p @angular/cli@latest ng new ${setup.projectId} --directory ${setup.hosting.source} --skip-git`,
+    {
+      stdio: "inherit",
+      cwd: config.projectDir,
+    }
+  );
   const useAngularUniversal = await promptOnce({
     name: "useAngularUniversal",
     type: "confirm",
@@ -44,7 +48,7 @@ export async function init(setup: any) {
   if (useAngularUniversal) {
     execSync("ng add @nguniversal/express-engine --skip-confirmation", {
       stdio: "inherit",
-      cwd: setup.hosting.source,
+      cwd: join(config.projectDir, setup.hosting.source),
     });
   }
 }
@@ -66,7 +70,8 @@ export async function build(dir: string): Promise<BuildResult> {
   if (prerenderTarget) {
     // TODO there is a bug here. Spawn for now.
     // await scheduleTarget(prerenderTarget);
-    execSync(`${CLI_COMMAND} run ${targetStringFromTarget(prerenderTarget)}`, {
+    const cli = getNodeModuleBin("ng", dir);
+    execSync(`${cli} run ${targetStringFromTarget(prerenderTarget)}`, {
       cwd: dir,
       stdio: "inherit",
     });
@@ -87,11 +92,10 @@ export async function getDevModeHandle(dir: string) {
   const host = new Promise<string>((resolve) => {
     // Can't use scheduleTarget since that—like prerender—is failing on an ESM bug
     // will just grep for the hostname
-    const serve = spawn(
-      CLI_COMMAND,
-      ["run", targetStringFromTarget(serveTarget), "--host", "localhost"],
-      { cwd: dir }
-    );
+    const cli = getNodeModuleBin("ng", dir);
+    const serve = spawn(cli, ["run", targetStringFromTarget(serveTarget), "--host", "localhost"], {
+      cwd: dir,
+    });
     serve.stdout.on("data", (data: any) => {
       process.stdout.write(data);
       const match = data.toString().match(/(http:\/\/localhost:\d+)/);
@@ -101,7 +105,7 @@ export async function getDevModeHandle(dir: string) {
       process.stderr.write(data);
     });
   });
-  return proxyRequestHandler(await host, "Angular Live Development Server", { forceCascade: true });
+  return simpleProxy(await host);
 }
 
 export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: string) {

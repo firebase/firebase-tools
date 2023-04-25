@@ -19,8 +19,7 @@ import { requireConfig } from "../requireConfig";
 import { DEFAULT_DURATION, calculateChannelExpireTTL } from "../hosting/expireUtils";
 import { logLabeledSuccess, datetimeString, logLabeledWarning, consoleUrl } from "../utils";
 import { hostingConfig } from "../hosting/config";
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
-const { marked } = require("marked");
+import { marked } from "marked";
 import { requireHostingSite } from "../requireHostingSite";
 import { HostingOptions } from "../hosting/options";
 import { Options } from "../options";

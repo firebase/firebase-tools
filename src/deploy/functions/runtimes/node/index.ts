@@ -17,6 +17,7 @@ import * as runtimes from "..";
 import * as validate from "./validate";
 import * as versioning from "./versioning";
 import * as parseTriggers from "./parseTriggers";
+import { fileExistsSync } from "../../../../fsutils";
 
 const MIN_FUNCTIONS_SDK_VERSION = "3.20.0";
 
@@ -165,37 +166,68 @@ export class Delegate {
       HOME: process.env.HOME,
       PATH: process.env.PATH,
       NODE_ENV: process.env.NODE_ENV,
+      // Web Frameworks fails without this environment variable
+      __FIREBASE_FRAMEWORKS_ENTRY__: process.env.__FIREBASE_FRAMEWORKS_ENTRY__,
     };
     if (Object.keys(config || {}).length) {
       env.CLOUD_RUNTIME_CONFIG = JSON.stringify(config);
     }
-    // At this point, we've already confirmed that we found supported firebase functions sdk.
+    // Location of the binary included in the Firebase Functions SDK
+    // differs depending on the developer's setup and choice of package manager.
+    //
+    // We'll try few routes in the following order:
+    //
+    //   1. $SOURCE_DIR/node_modules/.bin/firebase-functions
+    //   2. $PROJECT_DIR/node_modules/.bin/firebase-functions
+    //   3. node_modules closest to the resolved path ${require.resolve("firebase-functions")}
+    //   4. (2) but ignore .pnpm directory
+    //
+    // (1) works for most package managers (npm, yarn[no-hoist]).
+    // (2) works for some monorepo setup.
+    // (3) handles cases where developer prefers monorepo setup or bundled function code.
+    // (4) handles issue with some .pnpm setup (see https://github.com/firebase/firebase-tools/issues/5517)
+    const sourceNodeModulesPath = path.join(this.sourceDir, "node_modules");
+    const projectNodeModulesPath = path.join(this.projectDir, "node_modules");
     const sdkPath = require.resolve("firebase-functions", { paths: [this.sourceDir] });
-    // Find location of the closest node_modules/ directory where we found the sdk.
-    const binPath = sdkPath.substring(0, sdkPath.lastIndexOf("node_modules") + 12);
-    // And execute the binary included in the sdk.
-    const childProcess = spawn(path.join(binPath, ".bin", "firebase-functions"), [this.sourceDir], {
-      env,
-      cwd: this.sourceDir,
-      stdio: [/* stdin=*/ "ignore", /* stdout=*/ "pipe", /* stderr=*/ "inherit"],
-    });
-    childProcess.stdout?.on("data", (chunk) => {
-      logger.debug(chunk.toString());
-    });
-    return Promise.resolve(async () => {
-      const p = new Promise<void>((resolve, reject) => {
-        childProcess.once("exit", resolve);
-        childProcess.once("error", reject);
-      });
+    const sdkNodeModulesPath = sdkPath.substring(0, sdkPath.lastIndexOf("node_modules") + 12);
+    const ignorePnpmModulesPath = sdkNodeModulesPath.replace(/\/\.pnpm\/.*/, "");
+    for (const nodeModulesPath of [
+      sourceNodeModulesPath,
+      projectNodeModulesPath,
+      sdkNodeModulesPath,
+      ignorePnpmModulesPath,
+    ]) {
+      const binPath = path.join(nodeModulesPath, ".bin", "firebase-functions");
+      if (fileExistsSync(binPath)) {
+        logger.debug(`Found firebase-functions binary at '${binPath}'`);
+        const childProcess = spawn(binPath, [this.sourceDir], {
+          env,
+          cwd: this.sourceDir,
+          stdio: [/* stdin=*/ "ignore", /* stdout=*/ "pipe", /* stderr=*/ "inherit"],
+        });
+        childProcess.stdout?.on("data", (chunk) => {
+          logger.debug(chunk.toString());
+        });
+        return Promise.resolve(async () => {
+          const p = new Promise<void>((resolve, reject) => {
+            childProcess.once("exit", resolve);
+            childProcess.once("error", reject);
+          });
 
-      await fetch(`http://localhost:${port}/__/quitquitquit`);
-      setTimeout(() => {
-        if (!childProcess.killed) {
-          childProcess.kill("SIGKILL");
-        }
-      }, 10_000);
-      return p;
-    });
+          await fetch(`http://localhost:${port}/__/quitquitquit`);
+          setTimeout(() => {
+            if (!childProcess.killed) {
+              childProcess.kill("SIGKILL");
+            }
+          }, 10_000);
+          return p;
+        });
+      }
+    }
+    throw new FirebaseError(
+      "Failed to find location of Firebase Functions SDK. " +
+        "Please file a bug on Github (https://github.com/firebase/firebase-tools/)."
+    );
   }
 
   // eslint-disable-next-line require-await

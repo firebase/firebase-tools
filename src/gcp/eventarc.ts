@@ -53,7 +53,7 @@ const client = new Client({
  * Gets a Channel.
  */
 export async function getChannel(name: string): Promise<Channel | undefined> {
-  const res = await client.get<Channel>(name);
+  const res = await client.get<Channel>(name, { resolveOnHTTPError: true });
   if (res.status === 404) {
     return undefined;
   }

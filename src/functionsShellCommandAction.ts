@@ -49,6 +49,10 @@ export const actionFunction = async (options: Options) => {
   // If the port was not set by the --port flag or determined from 'firebase.json', just scan
   // up from 5000
   let port = 5000;
+  if (typeof options.port === "number") {
+    port = options.port;
+  }
+
   const functionsInfo = remoteEmulators[Emulators.FUNCTIONS];
   if (functionsInfo) {
     utils.logLabeledWarning(
