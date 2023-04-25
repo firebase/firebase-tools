@@ -8,7 +8,7 @@ import { HostingOptions } from "../../hosting/options";
 import { assertExhaustive, zipIn } from "../../functional";
 import { track } from "../../track";
 import * as utils from "../../utils";
-import { HostingRewrites, HostingSource, RunRewrite } from "../../firebaseConfig";
+import { HostingSource } from "../../firebaseConfig";
 import * as backend from "../functions/backend";
 
 /**
