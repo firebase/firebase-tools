@@ -682,14 +682,15 @@ def ssr(req: https_fn.Request) -> https_fn.Response:
           );
           child.on("exit", () => resolve());
         });
+      }
     } else {
-      // No function, treat as an SPA
-      // TODO(jamesdaniels) be smarter about this, leave it to the framework?
-      config.rewrites.push({
-        source: "**",
-        destination: "/index.html",
-      });
-    }
+        // No function, treat as an SPA
+        // TODO(jamesdaniels) be smarter about this, leave it to the framework?
+        config.rewrites.push({
+          source: "**",
+          destination: "/index.html",
+        });
+      }
 
     if (firebaseDefaults) {
       const encodedDefaults = Buffer.from(JSON.stringify(firebaseDefaults)).toString("base64url");
