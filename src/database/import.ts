@@ -30,6 +30,7 @@ type ChunkedData = {
 export default class DatabaseImporter {
   private client: Client;
   private limit: pLimit.Limit;
+  nonFatalRetryTimeout = 1000; // To be overriden in tests
 
   constructor(
     private dbUrl: URL,
@@ -140,7 +141,7 @@ export default class DatabaseImporter {
           err.original.code === "ETIMEDOUT";
         if (isTimeoutErr) {
           // RTDB connection timeouts are transient and can be retried
-          await new Promise((res) => setTimeout(res, 1000));
+          await new Promise((res) => setTimeout(res, this.nonFatalRetryTimeout));
           return await doRequest();
         }
         throw err;
