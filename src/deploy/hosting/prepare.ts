@@ -75,7 +75,11 @@ function rewriteTarget(source: HostingSource): string {
 }
 
 /**
- *
+ * Returns a list of rewrite targets that would break in prod if deployed.
+ * People use tag pinning so that they can deploy to preview channels without
+ * modifying production. This assumption is violated if the live channel isn't
+ * actually pinned. This method returns "unsafe" pins, where we're deploying to
+ * a non-live channel with a rewrite that is pinned but haven't yet pinned live.
  */
 export async function unsafePins(
   context: Context,
