@@ -6,6 +6,7 @@ import * as StreamObject from "stream-json/streamers/StreamObject";
 
 import { URL } from "url";
 import { Client, ClientResponse } from "../apiv2";
+import { FetchError } from "node-fetch";
 import { FirebaseError } from "../error";
 import * as pLimit from "p-limit";
 
@@ -121,14 +122,30 @@ export default class DatabaseImporter {
   }
 
   private writeChunk(chunk: Data): Promise<ClientResponse<JsonType>> {
-    return this.limit(() =>
-      this.client.request({
+    const doRequest = (): Promise<ClientResponse<JsonType>> => {
+      return this.client.request({
         method: "PUT",
         path: chunk.pathname + ".json",
         body: JSON.stringify(chunk.json),
         queryParams: this.dbUrl.searchParams,
-      })
-    );
+      });
+    };
+    return this.limit(async () => {
+      try {
+        return await doRequest();
+      } catch (err: any) {
+        const isTimeoutErr =
+          err instanceof FirebaseError &&
+          err.original instanceof FetchError &&
+          err.original.code === "ETIMEDOUT";
+        if (isTimeoutErr) {
+          // RTDB connection timeouts are transient and can be retried
+          await new Promise((res) => setTimeout(res, 1000));
+          return await doRequest();
+        }
+        throw err;
+      }
+    });
   }
 
   private chunkData({ json, pathname }: Data): ChunkedData {
