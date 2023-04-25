@@ -22,10 +22,13 @@ type ChunkedData = {
   size: number;
 };
 
+type Batch = { [pathname: string]: JsonType };
+
 /**
  * Imports JSON data to a given RTDB instance.
  *
- * The data is parsed and chunked into subtrees of ~10 MB, to be subsequently written in parallel.
+ * The data is parsed and chunked into subtrees of the specified payload size, to be subsequently
+ * written in parallel.
  */
 export default class DatabaseImporter {
   private client: Client;
@@ -36,7 +39,7 @@ export default class DatabaseImporter {
     private dbUrl: URL,
     private inStream: stream.Readable,
     private dataPath: string,
-    private chunkBytes: number,
+    private payloadSize: number,
     concurrency: number
   ) {
     this.client = new Client({ urlPrefix: dbUrl.origin, auth: true });
@@ -68,10 +71,19 @@ export default class DatabaseImporter {
     }
   }
 
+  /**
+   * The top-level objects are parsed and chunked, with each chunk capped at payloadSize. Then,
+   * chunks are batched, with each batch also capped at payloadSize. Finally, the batched chunks
+   * are written in parallel.
+   *
+   * In the case where the data contains very large objects, chunking ensures that the request is
+   * not too large. On the other hand, in the case where the data contains many small objects,
+   * batching ensures that there are not too many requests.
+   */
   private readAndWriteChunks(): Promise<ClientResponse<JsonType>[]> {
-    const { dbUrl } = this;
+    const { dbUrl, payloadSize } = this;
     const chunkData = this.chunkData.bind(this);
-    const writeChunk = this.writeChunk.bind(this);
+    const doWriteBatch = this.doWriteBatch.bind(this);
     const getJoinedPath = this.joinPath.bind(this);
 
     const readChunks = new stream.Transform({ objectMode: true });
@@ -85,9 +97,9 @@ export default class DatabaseImporter {
       done();
     };
 
-    const writeChunks = new stream.Transform({ objectMode: true });
-    writeChunks._transform = async function (chunk: Data, _, done) {
-      const res = await writeChunk(chunk);
+    const writeBatch = new stream.Transform({ objectMode: true });
+    writeBatch._transform = async function (batch: Batch, _, done) {
+      const res = await doWriteBatch(batch);
       this.push(res);
       done();
     };
@@ -115,19 +127,20 @@ export default class DatabaseImporter {
           )
         )
         .pipe(readChunks)
-        .pipe(writeChunks)
+        .pipe(new BatchChunks(payloadSize))
+        .pipe(writeBatch)
         .on("data", (res: ClientResponse<JsonType>) => responses.push(res))
         .on("error", reject)
         .once("end", () => resolve(responses));
     });
   }
 
-  private writeChunk(chunk: Data): Promise<ClientResponse<JsonType>> {
+  private doWriteBatch(batch: Batch): Promise<ClientResponse<JsonType>> {
     const doRequest = (): Promise<ClientResponse<JsonType>> => {
       return this.client.request({
-        method: "PUT",
-        path: chunk.pathname + ".json",
-        body: JSON.stringify(chunk.json),
+        method: "PATCH",
+        path: "/.json",
+        body: JSON.stringify(batch),
         queryParams: this.dbUrl.searchParams,
       });
     };
@@ -174,7 +187,7 @@ export default class DatabaseImporter {
         }
       }
 
-      if (hasChunkedChild || size >= this.chunkBytes) {
+      if (hasChunkedChild || size >= this.payloadSize) {
         return { chunks, size };
       } else {
         return { chunks: null, size };
@@ -188,5 +201,37 @@ export default class DatabaseImporter {
 
   private joinPath(root: string, key: string): string {
     return [root, key].join("/").replace("//", "/");
+  }
+}
+
+/**
+ * Batches chunked JSON data up to the specified byte size limit. The emitted batch is an object
+ * containing chunks keyed by pathname.
+ */
+class BatchChunks extends stream.Transform {
+  private batch: Batch = {};
+  private size = 0;
+
+  constructor(private maxSize: number, opts?: stream.TransformOptions) {
+    super({ ...opts, objectMode: true });
+  }
+
+  _transform(chunk: Data, _: BufferEncoding, callback: stream.TransformCallback) {
+    const chunkSize = JSON.stringify(chunk.json).length;
+    if (this.size + chunkSize > this.maxSize) {
+      this.push(this.batch);
+      this.batch = {};
+      this.size = 0;
+    }
+    this.batch[chunk.pathname] = chunk.json;
+    this.size += chunkSize;
+    callback(null);
+  }
+
+  _flush(callback: stream.TransformCallback) {
+    if (this.size > 0) {
+      this.push(this.batch);
+    }
+    callback(null);
   }
 }
