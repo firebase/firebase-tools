@@ -1,4 +1,4 @@
-import { copy, pathExists, rename } from "fs-extra";
+import { copy, pathExists } from "fs-extra";
 import { mkdir, readFile, rmdir } from "fs/promises";
 import { join, relative } from "path";
 import { BuildResult, FrameworkType, SupportLevel } from "..";
@@ -8,7 +8,7 @@ export const name = "Flask";
 export const support = SupportLevel.Experimental;
 export const type = FrameworkType.Framework;
 
-const CLI = 'python3.10';
+const CLI = "python3.10";
 
 export async function discover(dir: string) {
   if (!(await pathExists(join(dir, "requirements.txt")))) return;
@@ -17,8 +17,8 @@ export async function discover(dir: string) {
   return { mayWantBackend: true, publicDirectory: discovery.staticFolder };
 }
 
-export async function build(cwd: string): Promise<BuildResult> {
-  return { wantsBackend: true };
+export function build(): Promise<BuildResult> {
+  return Promise.resolve({ wantsBackend: true });
 }
 
 export async function ɵcodegenPublicDirectory(root: string, dest: string) {
@@ -27,22 +27,18 @@ export async function ɵcodegenPublicDirectory(root: string, dest: string) {
 }
 
 export async function ɵcodegenFunctionsDirectory(root: string, dest: string) {
-  await mkdir(join(dest, 'src'), { recursive: true });
-  await copy(root, join(dest, 'src'), { recursive: true });
-  await rmdir(join(dest, "src", "venv")).catch(() => { });
+  await mkdir(join(dest, "src"), { recursive: true });
+  await copy(root, join(dest, "src"), { recursive: true });
+  await rmdir(join(dest, "src", "venv")).catch(() => undefined);
   const requirementsTxt = await readFile(join(root, "requirements.txt"));
   const { appName } = await getDiscoveryResults(root);
-  const imports = ['src.main', appName];
+  const imports = ["src.main", appName];
   return { imports, requirementsTxt };
 }
 
 async function getDiscoveryResults(cwd: string) {
   const discovery = await new Promise<string>((resolve) => {
-    const child = runWithVirtualEnv(
-      [CLI, join(__dirname, 'discover.py')],
-      cwd,
-      {},
-    );
+    const child = runWithVirtualEnv([CLI, join(__dirname, "discover.py")], cwd, {});
     let out = "";
     child.stdout?.on("data", (chunk: Buffer) => {
       const chunkString = chunk.toString();

@@ -1,5 +1,5 @@
 import { copy, pathExists } from "fs-extra";
-import { mkdir, readFile, rmdir } from "fs/promises";
+import { mkdir, readFile } from "fs/promises";
 import { join } from "path";
 import { BuildResult, FrameworkType, SupportLevel } from "..";
 import { runWithVirtualEnv } from "../../functions/python";
@@ -8,7 +8,7 @@ export const name = "Django";
 export const support = SupportLevel.Experimental;
 export const type = FrameworkType.Framework;
 
-const CLI = 'python3.10';
+const CLI = "python3.10";
 
 export async function discover(dir: string) {
   if (!(await pathExists(join(dir, "requirements.txt")))) return;
@@ -18,9 +18,9 @@ export async function discover(dir: string) {
     // TODO do this better
     const isDjango = await new Promise<string>((resolve) => {
       const child = runWithVirtualEnv(
-        [CLI, "manage.py", "shell", "--no-startup", "-c", "\"import django;print(True)\""],
+        [CLI, "manage.py", "shell", "--no-startup", "-c", '"import django;print(True)"'],
         dir,
-        {},
+        {}
       );
       let out = "";
       child.stdout?.on("data", (chunk: Buffer) => {
@@ -33,16 +33,17 @@ export async function discover(dir: string) {
     console.log({ isDjango });
     if (isDjango !== "True\n") return;
     return { mayWantBackend: true };
-  } catch(e) {
+  } catch (e) {
     // continue
   }
 }
 
-export async function build(cwd: string): Promise<BuildResult> {
-  return { wantsBackend: true };
+export function build(): Promise<BuildResult> {
+  return Promise.resolve({ wantsBackend: true });
 }
 
-export async function ɵcodegenPublicDirectory(root: string, dest: string) {
+export function ɵcodegenPublicDirectory() {
+  return Promise.resolve();
   // TODO copy over the STATIC_DIRS
 }
 
@@ -50,9 +51,16 @@ export async function ɵcodegenFunctionsDirectory(root: string, dest: string) {
   await mkdir(dest, { recursive: true });
   const wsgiApplication = await new Promise<string>((resolve) => {
     const child = runWithVirtualEnv(
-      [CLI, "manage.py", "shell", "--no-startup", "-c", "\"import django;print(django.conf.settings.WSGI_APPLICATION);\""],
+      [
+        CLI,
+        "manage.py",
+        "shell",
+        "--no-startup",
+        "-c",
+        '"import django;print(django.conf.settings.WSGI_APPLICATION);"',
+      ],
       root,
-      {},
+      {}
     );
     let out = "";
     child.stdout?.on("data", (chunk: Buffer) => {

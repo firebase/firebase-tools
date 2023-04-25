@@ -1066,33 +1066,4 @@ describe("FunctionsEmulator", function () {
       .get("/fake-project-id/us-central1/timeoutFn")
       .expect(500);
   });
-
-  it("should enforce timeout", async () => {
-    await useFunction(
-      emu,
-      "timeoutFn",
-      () => {
-        return {
-          timeoutFn: require("firebase-functions")
-            .runWith({ timeoutSeconds: 1 })
-            .https.onRequest((req: express.Request, res: express.Response): Promise<void> => {
-              return new Promise((resolve) => {
-                setTimeout(() => {
-                  res.sendStatus(200);
-                  resolve();
-                }, 5_000);
-              });
-            }),
-        };
-      },
-      ["us-central1"],
-      {
-        timeoutSeconds: 1,
-      }
-    );
-
-    await supertest(emu.createHubServer())
-      .get("/fake-project-id/us-central1/timeoutFn")
-      .expect(500);
-  });
 });

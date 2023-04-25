@@ -233,8 +233,9 @@ export async function discover(dir: string, warn = true) {
       }
     }
     if (frameworksDiscovered.length > 1) {
-      const frameworkNames = frameworksDiscovered.map(it => it.framework);
-      if (warn) console.error(`Multiple conflicting frameworks discovered ${frameworkNames.join(', ')}`);
+      const frameworkNames = frameworksDiscovered.map((it) => it.framework);
+      if (warn)
+        console.error(`Multiple conflicting frameworks discovered ${frameworkNames.join(", ")}`);
       return;
     }
     if (frameworksDiscovered.length === 1) return frameworksDiscovered[0];
@@ -568,6 +569,14 @@ ${firebaseDefaults ? `__FIREBASE_DEFAULTS__=${JSON.stringify(firebaseDefaults)}\
       await Promise.all(envs.map((path) => copyFile(path, join(functionsDist, basename(path)))));
 
       if (packageJson) {
+        packageJson.main = "server.js";
+        delete packageJson.devDependencies;
+        packageJson.dependencies ||= {};
+        packageJson.dependencies["firebase-frameworks"] ||= FIREBASE_FRAMEWORKS_VERSION;
+        packageJson.dependencies["firebase-functions"] ||= FIREBASE_FUNCTIONS_VERSION;
+        packageJson.dependencies["firebase-admin"] ||= FIREBASE_ADMIN_VERSION;
+        packageJson.engines ||= {};
+        packageJson.engines.node ||= NODE_VERSION;
 
         for (const [name, version] of Object.entries(
           packageJson.dependencies as Record<string, string>
@@ -613,7 +622,7 @@ ${firebaseDefaults ? `__FIREBASE_DEFAULTS__=${JSON.stringify(firebaseDefaults)}\
   exports.ssr = onRequest((req, res) => server.then(it => it.handle(req, res)));
   `
         );
-      
+
         execSync(`npm i --omit dev --no-audit`, {
           cwd: functionsDist,
           stdio: "inherit",
@@ -641,11 +650,15 @@ ${firebaseDefaults ? `__FIREBASE_DEFAULTS__=${JSON.stringify(firebaseDefaults)}\
   `
           );
         }
-      
       } else if (requirementsTxt) {
-
-        await writeFile(join(functionsDist, "requirements.txt"), requirementsTxt + "\ngit+https://github.com/firebase/firebase-functions-python.git@main#egg=firebase-functions");
-        await writeFile(join(functionsDist, "main.py"), `from firebase_functions import https_fn
+        await writeFile(
+          join(functionsDist, "requirements.txt"),
+          requirementsTxt +
+            "\ngit+https://github.com/firebase/firebase-functions-python.git@main#egg=firebase-functions"
+        );
+        await writeFile(
+          join(functionsDist, "main.py"),
+          `from firebase_functions import https_fn
 from io import BytesIO
 from ${imports![0]} import ${imports![1]} as discoveredApp
 def handle(app, environ):
@@ -672,7 +685,8 @@ def handle(app, environ):
 def ssr(req: https_fn.Request) -> https_fn.Response:
     status, headers, body = handle(discoveredApp, req.environ)
     return https_fn.Response(body, status, headers)
-`);
+`
+        );
         await new Promise<void>((resolve) => {
           const child = runWithVirtualEnv(
             ["pip", "install", "-r", "requirements.txt"],
@@ -684,13 +698,13 @@ def ssr(req: https_fn.Request) -> https_fn.Response:
         });
       }
     } else {
-        // No function, treat as an SPA
-        // TODO(jamesdaniels) be smarter about this, leave it to the framework?
-        config.rewrites.push({
-          source: "**",
-          destination: "/index.html",
-        });
-      }
+      // No function, treat as an SPA
+      // TODO(jamesdaniels) be smarter about this, leave it to the framework?
+      config.rewrites.push({
+        source: "**",
+        destination: "/index.html",
+      });
+    }
 
     if (firebaseDefaults) {
       const encodedDefaults = Buffer.from(JSON.stringify(firebaseDefaults)).toString("base64url");
