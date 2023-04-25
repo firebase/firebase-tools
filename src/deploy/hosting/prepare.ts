@@ -108,7 +108,6 @@ export async function unsafePins(
   }
 
   if (!Object.keys(targetTaggedRewrites).length) {
-    console.error("No targets with tags");
     return [];
   }
 
