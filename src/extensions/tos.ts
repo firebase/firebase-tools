@@ -9,8 +9,13 @@ const extensionsTosUrl = (tos: string) => `https://firebase.google.com/terms/ext
 
 export interface TOS {
   name: string;
+<<<<<<< HEAD
   lastAcceptedVersion?: string;
   lastAcceptedTime?: string;
+=======
+  lastAcceptedVersion: string;
+  lastAcceptedTime: string;
+>>>>>>> public/next
   latestTosVersion: string;
 }
 export type PublisherTOS = TOS;
