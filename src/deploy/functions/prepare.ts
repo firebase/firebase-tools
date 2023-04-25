@@ -37,8 +37,7 @@ import { applyBackendHashToBackends } from "./cache/applyHash";
 import { allEndpoints, Backend } from "./backend";
 import { assertExhaustive } from "../../functional";
 import { hostingConfig } from "../../hosting/config";
-import { getExistingRunRewrites } from "../hosting/convertConfig";
-import { ensureTargeted } from "../../functions/ensureTargeted";
+import { getExistingRewrites } from "../hosting/convertConfig";
 
 export const EVENTARC_SOURCE_ENV = "EVENTARC_CLOUD_EVENT_SOURCE";
 function hasUserConfig(config: Record<string, unknown>): boolean {
@@ -103,39 +102,29 @@ export async function prepare(
   const configs = hostingConfig(options);
   for (const config of configs) {
     for (const rewrite of config.rewrites || []) {
-      let serviceIdToPin: string | undefined;
+      let serviceId: string | undefined;
       if (
         "function" in rewrite &&
         typeof rewrite.function === "object" &&
         rewrite.function.pinTag
       ) {
-        serviceIdToPin = rewrite.function.functionId;
-      } else if ("run" in rewrite && rewrite.run.pinTag) {
-        serviceIdToPin = rewrite.run.serviceId;
+        const backends = await backend.existingBackend(context);
+        const region = ("region" in rewrite && rewrite.region) || "us-central1";
+        serviceId = backends.endpoints[region][rewrite.function.functionId]?.runServiceId;
       }
-      if (serviceIdToPin) {
-        // TODO cleanup error messages
-        const codespace = Object.keys(wantBuilds).find((codespace) => {
-          return Object.keys(wantBuilds[codespace].endpoints).includes(serviceIdToPin!);
-        });
-        if (!codespace) throw new FirebaseError(`Can't find codespace exporting ${serviceIdToPin}`);
-        const { region: regions, platform } = wantBuilds[codespace].endpoints[serviceIdToPin];
-        if (platform !== "gcfv2") throw new FirebaseError("pintag reqs gen2 yo!");
-        if (!regions) throw new Error("huh...");
-        if (context.hostingChannel) {
-          const existingRewrites = await getExistingRunRewrites(context.projectId, config.site);
-          const matchingRewrites = existingRewrites.filter(
-            (it) => it.serviceId === serviceIdToPin && regions.includes(it.region)
-          );
-          if (!matchingRewrites.every((it) => !!it.tag)) {
-            throw new FirebaseError("ya need to enable pintags on prod yo!");
-          }
-        }
-        if (options.only) {
-          options.only = ensureTargeted(options.only, codespace, serviceIdToPin);
-          context.filters = getEndpointFilters(options); // Parse --only filters for functions.
-        }
+      if ("run" in rewrite && (rewrite.run.pinTag || rewrite.run.tag)) {
+        serviceId = rewrite.run.serviceId;
       }
+      if (!serviceId) continue;
+      const existingRewrites = await getExistingRewrites(context.projectId, config.site);
+      const matchingRewrite = existingRewrites.find(
+        (it) =>
+          ("glob" in it && "source" in rewrite && it.glob === rewrite.source) ||
+          ("regex" in it && "regex" in rewrite && it.regex === rewrite.regex)
+      );
+      if (!(matchingRewrite && "run" in matchingRewrite)) continue;
+      if (matchingRewrite.run.tag || matchingRewrite.run.serviceId !== serviceId) continue;
+      throw new FirebaseError("ya need to enable pintags on prod yo!");
     }
   }
 

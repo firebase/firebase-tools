@@ -59,23 +59,9 @@ export const deploy = async function (
   const startTime = Date.now();
 
   if (targetNames.includes("hosting")) {
-    const configs = hostingConfig(options);
-    if (configs.some((it) => it.source)) {
+    if (hostingConfig(options).some((it) => it.source)) {
       experiments.assertEnabled("webframeworks", "deploy a web framework to hosting");
       await prepareFrameworks(targetNames, context, options);
-    }
-
-    for (const config of configs) {
-      for (const rewrite of config.rewrites || []) {
-        if (
-          ("function" in rewrite &&
-            typeof rewrite.function === "object" &&
-            rewrite.function.pinTag) ||
-          ("run" in rewrite && rewrite.run.pinTag)
-        ) {
-          if (!targetNames.includes("functions")) targetNames.unshift("functions");
-        }
-      }
     }
   }
 

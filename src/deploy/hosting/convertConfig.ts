@@ -89,22 +89,16 @@ export function findEndpointForRewrite(
   };
 }
 
-const existingRunRewritesMemo = new Map<string, Promise<api.RunRewrite[]>>();
-export function getExistingRunRewrites(
-  projectId: string,
-  site: string,
-  channelName: string = "live"
-) {
+const existingRewritesMemo = new Map<string, Promise<api.Rewrite[]>>();
+export function getExistingRewrites(projectId: string, site: string, channelName: string = "live") {
   const key = [projectId, site, channelName].join("/");
-  if (existingRunRewritesMemo.has(key)) return existingRunRewritesMemo.get(key)!;
-  const runRewrites = (async function (): Promise<api.RunRewrite[]> {
+  if (existingRewritesMemo.has(key)) return existingRewritesMemo.get(key)!;
+  const runRewrites = (async function (): Promise<api.Rewrite[]> {
     await requirePermissions(TARGET_PERMISSIONS["functions"]);
     const channel = await api.getChannel(projectId, site, channelName);
-    return (
-      channel?.release?.version.config?.rewrites?.map((r: any) => r.run).filter((it) => it) || []
-    );
+    return channel?.release?.version.config?.rewrites || [];
   })();
-  existingRunRewritesMemo.set(key, runRewrites);
+  existingRewritesMemo.set(key, runRewrites);
   return runRewrites;
 }
 
@@ -253,15 +247,19 @@ export async function convertConfig(
     }
 
     if ("run" in rewrite) {
-      const apiRewrite: api.Rewrite = {
+      const apiRewrite = {
         ...target,
         run: {
           region: "us-central1",
           ...rewrite.run,
         },
       };
-      if (apiRewrite.run.tag) {
+      if (apiRewrite.run.tag || rewrite.run.pinTag) {
         experiments.assertEnabled("pintags", "pin to a run service revision");
+      }
+      if (rewrite.run.pinTag) {
+        delete apiRewrite.run.pinTag;
+        apiRewrite.run.tag ||= runTags.TODO_TAG_NAME;
       }
       return apiRewrite;
     }

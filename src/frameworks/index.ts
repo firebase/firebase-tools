@@ -491,6 +491,8 @@ export async function prepareFrameworks(
 
       if (!targetNames.includes("functions")) {
         targetNames.unshift("functions");
+      }
+      if (options.only) {
         options.only = ensureTargeted(options.only, codebase);
       }
 
