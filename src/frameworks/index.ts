@@ -233,7 +233,8 @@ function scanDependencyTree(searchingFor: string, dependencies = {}): any {
 }
 
 export function getNodeModuleBin(name: string, cwd: string) {
-  const cantFindExecutable = (p:string) => new FirebaseError(`Could not find the ${name} executable at ${p}`);
+  const cantFindExecutable = (p: string) =>
+    new FirebaseError(`Could not find the ${name} executable at ${p}`);
   const npmBin = spawnSync("npm", ["bin"], { cwd }).stdout?.toString().trim();
   if (!npmBin) {
     throw cantFindExecutable("");
