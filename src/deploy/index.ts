@@ -67,11 +67,6 @@ export const deploy = async function (
       await prepareFrameworks(targetNames, context, options);
       const nowTargetsFunctions = targetNames.includes("functions");
       if (nowTargetsFunctions && !usedToTargetFunctions) {
-        if (context.hostingChannel && !experiments.isEnabled("pintags")) {
-          throw new FirebaseError(
-            "Web frameworks with dynamic content do not yet support deploying to preview channels"
-          );
-        }
         await requirePermissions(TARGET_PERMISSIONS["functions"]);
       }
     }
