@@ -9,9 +9,6 @@ import { Client, ClientResponse } from "../apiv2";
 import { FirebaseError } from "../error";
 import * as pLimit from "p-limit";
 
-const MAX_CHUNK_SIZE = 1024 * 1024 * 10;
-const CONCURRENCY_LIMIT = 5;
-
 type JsonType = { [key: string]: JsonType } | string | number | boolean;
 
 type Data = {
@@ -31,15 +28,17 @@ type ChunkedData = {
  */
 export default class DatabaseImporter {
   private client: Client;
-  private limit = pLimit(CONCURRENCY_LIMIT);
+  private limit: pLimit.Limit;
 
   constructor(
     private dbUrl: URL,
     private inStream: stream.Readable,
     private dataPath: string,
-    private chunkSize = MAX_CHUNK_SIZE
+    private chunkBytes: number,
+    concurrency: number
   ) {
     this.client = new Client({ urlPrefix: dbUrl.origin, auth: true });
+    this.limit = pLimit(concurrency);
   }
 
   /**
@@ -157,7 +156,7 @@ export default class DatabaseImporter {
         }
       }
 
-      if (hasChunkedChild || size >= this.chunkSize) {
+      if (hasChunkedChild || size >= this.chunkBytes) {
         return { chunks, size };
       } else {
         return { chunks: null, size };
