@@ -9,8 +9,8 @@ const extensionsTosUrl = (tos: string) => `https://firebase.google.com/terms/ext
 
 export interface TOS {
   name: string;
-  lastAcceptedVersion: string;
-  lastAcceptedTime: string;
+  lastAcceptedVersion?: string;
+  lastAcceptedTime?: string;
   latestTosVersion: string;
 }
 export type PublisherTOS = TOS;
@@ -64,9 +64,9 @@ export async function acceptLatestPublisherTOS(
 ): Promise<PublisherTOS> {
   logger.debug(`Checking if latest publisher TOS has been accepted by ${projectId}...`);
   const currentAcceptance = await getPublisherTOSStatus(projectId);
-  if (currentAcceptance.lastAcceptedVersion === currentAcceptance.latestTosVersion) {
+  if (!!currentAcceptance.lastAcceptedVersion ) {
     logger.debug(
-      `Latest version of publisher TOS is ${currentAcceptance.lastAcceptedVersion}, already accepted.`
+      `Already accepted version ${currentAcceptance.lastAcceptedVersion} of Extensions publisher TOS.`
     );
     return currentAcceptance;
   } else {
