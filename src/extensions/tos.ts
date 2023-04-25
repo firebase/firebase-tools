@@ -64,7 +64,7 @@ export async function acceptLatestPublisherTOS(
 ): Promise<PublisherTOS> {
   logger.debug(`Checking if latest publisher TOS has been accepted by ${projectId}...`);
   const currentAcceptance = await getPublisherTOSStatus(projectId);
-  if (!!currentAcceptance.lastAcceptedVersion ) {
+  if (currentAcceptance.lastAcceptedVersion) {
     logger.debug(
       `Already accepted version ${currentAcceptance.lastAcceptedVersion} of Extensions publisher TOS.`
     );
