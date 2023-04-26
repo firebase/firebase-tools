@@ -26,15 +26,13 @@ marked.setOptions({
 export const command = new Command("ext:dev:upload <extensionRef>")
   .description(`upload a new version of an extension`)
   .option(`-s, --stage <stage>`, `release stage (supports "alpha", "beta", "rc", and "stable")`)
-  .option(
-    `--repo <repo>`,
-    `Public Git repo URI (only required for first version from repo, cannot be changed)`
-  )
+  .option(`--repo <repo>`, `Public GitHub repo URI that contains the extension source`)
   .option(`--ref <ref>`, `commit hash, branch, or tag to build from the repo (defaults to HEAD)`)
   .option(
     `--root <root>`,
-    `root directory that contains this Extension (defaults to previous version's root or root of repo if none set)`
+    `root directory that contains this extension (defaults to last uploaded root or repo root if none set)`
   )
+  .option(`--local`, `upload from local source instead`)
   .withForce()
   .help(
     "if you have not previously uploaded a version of this extension, this will " +
@@ -64,19 +62,7 @@ export async function uploadExtensionAction(
     );
   }
   let res;
-  // TODO: Default to this path instead of local source in a major version.
-  if (options.repo || options.root || options.ref) {
-    res = await publishExtensionVersionFromRemoteRepo({
-      publisherId,
-      extensionId,
-      repoUri: options.repo,
-      sourceRef: options.ref,
-      extensionRoot: options.root,
-      nonInteractive: options.nonInteractive,
-      force: options.force,
-      stage: options.stage,
-    });
-  } else {
+  if (options.local) {
     const extensionYamlDirectory = findExtensionYaml(process.cwd());
     res = await publishExtensionVersionFromLocalSource({
       publisherId,
@@ -84,9 +70,19 @@ export async function uploadExtensionAction(
       rootDirectory: extensionYamlDirectory,
       nonInteractive: options.nonInteractive,
       force: options.force,
-      stage: options.stage ?? "stable",
+      stage: options.stage,
     });
   }
+  res = await publishExtensionVersionFromRemoteRepo({
+    publisherId,
+    extensionId,
+    repoUri: options.repo,
+    sourceRef: options.ref,
+    extensionRoot: options.root,
+    nonInteractive: options.nonInteractive,
+    force: options.force,
+    stage: options.stage,
+  });
   if (res) {
     utils.logLabeledBullet(logPrefix, marked(`[Install Link](${consoleInstallLink(res.ref)})`));
   }
