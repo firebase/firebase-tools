@@ -19,6 +19,7 @@ import { prepareFrameworks } from "../frameworks";
 import { HostingDeploy } from "./hosting/context";
 import { requirePermissions } from "../requirePermissions";
 import { TARGET_PERMISSIONS } from "../commands/deploy";
+import { addTaggedFunctionsToOnlyString } from "./hosting/prepare";
 
 const TARGETS = {
   hosting: HostingTarget,
@@ -74,6 +75,16 @@ export const deploy = async function (
         }
         await requirePermissions(TARGET_PERMISSIONS["functions"]);
       }
+    }
+  }
+
+  if (
+    targetNames.includes("hosting") &&
+    !targetNames.includes("functions") &&
+    experiments.isEnabled("pintags")
+  ) {
+    if (await addTaggedFunctionsToOnlyString(context, options)) {
+      targetNames.unshift("functions");
     }
   }
 
