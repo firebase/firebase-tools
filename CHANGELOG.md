@@ -1,1 +1,1 @@
-- Fixes an issue where downloading Firestore emulator fails due to incorrect expectedSize and expectedChecksum (#5734).
+- Fixes an issue where downloading Firestore emulator fails due to incorrect expectedSize and expectedChecksum. (#5734)
