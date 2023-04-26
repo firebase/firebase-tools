@@ -5,8 +5,8 @@ import * as TerminalRenderer from "marked-terminal";
 import { Command } from "../command";
 import {
   logPrefix,
-  publishExtensionVersionFromLocalSource,
-  publishExtensionVersionFromRemoteRepo,
+  uploadExtensionVersionFromLocalSource,
+  uploadExtensionVersionFromGitHubSource,
 } from "../extensions/extensionsHelper";
 import * as refs from "../extensions/refs";
 import { findExtensionYaml } from "../extensions/localHelper";
@@ -64,7 +64,7 @@ export async function uploadExtensionAction(
   let res;
   if (options.local) {
     const extensionYamlDirectory = findExtensionYaml(process.cwd());
-    res = await publishExtensionVersionFromLocalSource({
+    res = await uploadExtensionVersionFromLocalSource({
       publisherId,
       extensionId,
       rootDirectory: extensionYamlDirectory,
@@ -72,17 +72,18 @@ export async function uploadExtensionAction(
       force: options.force,
       stage: options.stage,
     });
+  } else {
+    res = await uploadExtensionVersionFromGitHubSource({
+      publisherId,
+      extensionId,
+      repoUri: options.repo,
+      sourceRef: options.ref,
+      extensionRoot: options.root,
+      nonInteractive: options.nonInteractive,
+      force: options.force,
+      stage: options.stage,
+    });
   }
-  res = await publishExtensionVersionFromRemoteRepo({
-    publisherId,
-    extensionId,
-    repoUri: options.repo,
-    sourceRef: options.ref,
-    extensionRoot: options.root,
-    nonInteractive: options.nonInteractive,
-    force: options.force,
-    stage: options.stage,
-  });
   if (res) {
     utils.logLabeledBullet(logPrefix, marked(`[Install Link](${consoleInstallLink(res.ref)})`));
   }

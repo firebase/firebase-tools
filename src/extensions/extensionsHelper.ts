@@ -562,7 +562,7 @@ async function validateExtensionSpec(args: {
 }
 
 /**
- * Publishes an Extension version from a remote repo.
+ * Uploads an extension version from a GitHub repo.
  *
  * @param publisherId the ID of the Publisher this Extension will be published under
  * @param extensionId the ID of the Extension to be published
@@ -573,7 +573,7 @@ async function validateExtensionSpec(args: {
  * @param nonInteractive whether to display prompts
  * @param force whether to force confirmations
  */
-export async function publishExtensionVersionFromRemoteRepo(args: {
+export async function uploadExtensionVersionFromGitHubRepo(args: {
   publisherId: string;
   extensionId: string;
   repoUri: string;
@@ -670,8 +670,9 @@ export async function publishExtensionVersionFromRemoteRepo(args: {
     }
   }
 
-  // Fetch and validate Extension from remote repo.
-  logger.info(`Validating source code at ${clc.bold(repoUri + "/tree/" + sourceRef)}...`);
+  // Fetch and validate extension from remote repo.
+  const sourceUri = path.join(repoUri, "tree", sourceRef, extensionRoot);
+  logger.info(`Validating source code at ${clc.bold(sourceUri)}...`);
   const archiveUri = `${repoUri}/archive/${sourceRef}.zip`;
   const tempDirectory = tmp.dirSync({ unsafeCleanup: true });
   try {
@@ -704,7 +705,6 @@ export async function publishExtensionVersionFromRemoteRepo(args: {
     stage: stage,
   });
 
-  const sourceUri = path.join(repoUri, "tree", sourceRef, extensionRoot);
   displayReleaseNotes(extensionRef, extensionSpec.version, notes, sourceUri);
   const confirmed = await confirm({
     nonInteractive: args.nonInteractive,
