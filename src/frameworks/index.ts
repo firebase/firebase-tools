@@ -24,12 +24,10 @@ import { formatHost } from "../emulator/functionsEmulatorShared";
 import { Constants } from "../emulator/constants";
 import { FirebaseError } from "../error";
 import { requireHostingSite } from "../requireHostingSite";
-import { HostingRewrites } from "../firebaseConfig";
 import * as experiments from "../experiments";
 import { implicitInit } from "../hosting/implicitInit";
 import { fileExistsSync } from "../fsutils";
 import { ensureTargeted } from "../functions/ensureTargeted";
-import { setEnabled } from "../experiments";
 
 // Use "true &&"" to keep typescript from compiling this file and rewriting
 // the import statement into a require
@@ -480,7 +478,7 @@ export async function prepareFrameworks(
         process.env.__FIREBASE_DEFAULTS__ = JSON.stringify(firebaseDefaults);
       }
 
-      setEnabled("pintags", true);
+      experiments.setEnabled("pintags", true);
       config.rewrites.push({
         source: "**",
         function: {
