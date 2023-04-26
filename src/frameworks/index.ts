@@ -29,6 +29,7 @@ import * as experiments from "../experiments";
 import { implicitInit } from "../hosting/implicitInit";
 import { fileExistsSync } from "../fsutils";
 import { ensureTargeted } from "../functions/ensureTargeted";
+import { setEnabled } from "../experiments";
 
 // Use "true &&"" to keep typescript from compiling this file and rewriting
 // the import statement into a require
@@ -479,16 +480,15 @@ export async function prepareFrameworks(
         process.env.__FIREBASE_DEFAULTS__ = JSON.stringify(firebaseDefaults);
       }
 
-      const rewrite: HostingRewrites = {
+      setEnabled("pintags", true);
+      config.rewrites.push({
         source: "**",
         function: {
           functionId,
+          region: ssrRegion,
+          pinTag: true,
         },
-      };
-      if (experiments.isEnabled("pintags")) {
-        rewrite.function.pinTag = true;
-      }
-      config.rewrites.push(rewrite);
+      });
 
       const codebase = `firebase-frameworks-${site}`;
       const existingFunctionsConfig = options.config.get("functions")

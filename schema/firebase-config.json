@@ -1004,6 +1004,9 @@
                                                     },
                                                     "serviceId": {
                                                         "type": "string"
+                                                    },
+                                                    "tag": {
+                                                        "type": "string"
                                                     }
                                                 },
                                                 "required": [
@@ -1113,6 +1116,9 @@
                                                         "type": "string"
                                                     },
                                                     "serviceId": {
+                                                        "type": "string"
+                                                    },
+                                                    "tag": {
                                                         "type": "string"
                                                     }
                                                 },
@@ -1229,6 +1235,9 @@
                                                         "type": "string"
                                                     },
                                                     "serviceId": {
+                                                        "type": "string"
+                                                    },
+                                                    "tag": {
                                                         "type": "string"
                                                     }
                                                 },
@@ -1598,6 +1607,9 @@
                                                                 },
                                                                 "serviceId": {
                                                                     "type": "string"
+                                                                },
+                                                                "tag": {
+                                                                    "type": "string"
                                                                 }
                                                             },
                                                             "required": [
@@ -1707,6 +1719,9 @@
                                                                     "type": "string"
                                                                 },
                                                                 "serviceId": {
+                                                                    "type": "string"
+                                                                },
+                                                                "tag": {
                                                                     "type": "string"
                                                                 }
                                                             },
@@ -1823,6 +1838,9 @@
                                                                     "type": "string"
                                                                 },
                                                                 "serviceId": {
+                                                                    "type": "string"
+                                                                },
+                                                                "tag": {
                                                                     "type": "string"
                                                                 }
                                                             },
@@ -2192,6 +2210,9 @@
                                                                 },
                                                                 "serviceId": {
                                                                     "type": "string"
+                                                                },
+                                                                "tag": {
+                                                                    "type": "string"
                                                                 }
                                                             },
                                                             "required": [
@@ -2301,6 +2322,9 @@
                                                                     "type": "string"
                                                                 },
                                                                 "serviceId": {
+                                                                    "type": "string"
+                                                                },
+                                                                "tag": {
                                                                     "type": "string"
                                                                 }
                                                             },
@@ -2417,6 +2441,9 @@
                                                                     "type": "string"
                                                                 },
                                                                 "serviceId": {
+                                                                    "type": "string"
+                                                                },
+                                                                "tag": {
                                                                     "type": "string"
                                                                 }
                                                             },
