@@ -36,8 +36,6 @@ import { generateServiceIdentity } from "../../gcp/serviceusage";
 import { applyBackendHashToBackends } from "./cache/applyHash";
 import { allEndpoints, Backend } from "./backend";
 import { assertExhaustive } from "../../functional";
-import { hostingConfig } from "../../hosting/config";
-import { getExistingRewrites } from "../hosting/convertConfig";
 
 export const EVENTARC_SOURCE_ENV = "EVENTARC_CLOUD_EVENT_SOURCE";
 function hasUserConfig(config: Record<string, unknown>): boolean {
@@ -98,35 +96,6 @@ export async function prepare(
     runtimeConfig,
     context.filters
   );
-
-  const configs = hostingConfig(options);
-  for (const config of configs) {
-    for (const rewrite of config.rewrites || []) {
-      let serviceId: string | undefined;
-      if (
-        "function" in rewrite &&
-        typeof rewrite.function === "object" &&
-        rewrite.function.pinTag
-      ) {
-        const backends = await backend.existingBackend(context);
-        const region = ("region" in rewrite && rewrite.region) || "us-central1";
-        serviceId = backends.endpoints[region][rewrite.function.functionId]?.runServiceId;
-      }
-      if ("run" in rewrite && (rewrite.run.pinTag || rewrite.run.tag)) {
-        serviceId = rewrite.run.serviceId;
-      }
-      if (!serviceId) continue;
-      const existingRewrites = await getExistingRewrites(context.projectId, config.site);
-      const matchingRewrite = existingRewrites.find(
-        (it) =>
-          ("glob" in it && "source" in rewrite && it.glob === rewrite.source) ||
-          ("regex" in it && "regex" in rewrite && it.regex === rewrite.regex)
-      );
-      if (!(matchingRewrite && "run" in matchingRewrite)) continue;
-      if (matchingRewrite.run.tag || matchingRewrite.run.serviceId !== serviceId) continue;
-      throw new FirebaseError("ya need to enable pintags on prod yo!");
-    }
-  }
 
   // == Phase 2. Resolve build to backend.
   const codebaseUsesEnvs: string[] = [];

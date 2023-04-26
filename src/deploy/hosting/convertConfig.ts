@@ -11,8 +11,6 @@ import * as runTags from "../../hosting/runTags";
 import { assertExhaustive } from "../../functional";
 import * as experiments from "../../experiments";
 import { logger } from "../../logger";
-import { requirePermissions } from "../../requirePermissions";
-import { TARGET_PERMISSIONS } from "../../commands/deploy";
 
 /**
  * extractPattern contains the logic for extracting exactly one glob/regexp
@@ -87,19 +85,6 @@ export function findEndpointForRewrite(
     matchingEndpoint: endpoints.find((e) => e.region === region),
     foundMatchingId: true,
   };
-}
-
-const existingRewritesMemo = new Map<string, Promise<api.Rewrite[]>>();
-export function getExistingRewrites(projectId: string, site: string, channelName: string = "live") {
-  const key = [projectId, site, channelName].join("/");
-  if (existingRewritesMemo.has(key)) return existingRewritesMemo.get(key)!;
-  const runRewrites = (async function (): Promise<api.Rewrite[]> {
-    await requirePermissions(TARGET_PERMISSIONS["functions"]);
-    const channel = await api.getChannel(projectId, site, channelName);
-    return channel?.release?.version.config?.rewrites || [];
-  })();
-  existingRewritesMemo.set(key, runRewrites);
-  return runRewrites;
 }
 
 /**
