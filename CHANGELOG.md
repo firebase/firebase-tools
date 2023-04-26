@@ -1,0 +1,1 @@
+- Fixes a bug preventing local extension instances from being updated to uploaded versions.
