@@ -1,0 +1,1 @@
+- Web Frameworks will no longer try to deploy unsupported versions of NodeJS to Cloud Functions (#5733)
