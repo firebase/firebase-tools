@@ -26,12 +26,13 @@ import { ensure } from "../ensureApiEnabled";
 import { deleteObject, uploadObject } from "../gcp/storage";
 import { getProjectId } from "../projectUtils";
 import {
+  createExtensionVersionFromGitHubSource,
+  createExtensionVersionFromLocalSource,
   createSource,
   getExtension,
   getExtensionVersion,
   getInstance,
   listExtensionVersions,
-  publishExtensionVersion,
 } from "./extensionsApi";
 import { Extension, ExtensionSource, ExtensionSpec, ExtensionVersion, Param } from "./types";
 import * as refs from "./refs";
@@ -606,7 +607,7 @@ export async function publishExtensionVersionFromRemoteRepo(args: {
   }
   if (extension?.repoUri) {
     logger.info(
-      `Extension ${clc.bold(extensionRef)} is published from ${clc.bold(
+      `Extension ${clc.bold(extensionRef)} is uploaded from ${clc.bold(
         extension?.repoUri
       )}. Use --repo to change this repo.`
     );
@@ -670,7 +671,7 @@ export async function publishExtensionVersionFromRemoteRepo(args: {
   }
 
   // Fetch and validate Extension from remote repo.
-  logger.info(`Validating source code at ${clc.bold(repoUri + '/tree/' + sourceRef)}...`);
+  logger.info(`Validating source code at ${clc.bold(repoUri + "/tree/" + sourceRef)}...`);
   const archiveUri = `${repoUri}/archive/${sourceRef}.zip`;
   const tempDirectory = tmp.dirSync({ unsafeCleanup: true });
   try {
@@ -680,7 +681,7 @@ export async function publishExtensionVersionFromRemoteRepo(args: {
     }
   } catch (err: any) {
     throw new FirebaseError(
-      `Failed to fetch extension archive ${archiveUri}. Please check the repo URI and source ref. ${err}`
+      `Failed to fetch extension archive from ${archiveUri}. Please check the repo URI and source ref. ${err}`
     );
   }
   const archiveName = fs.readdirSync(tempDirectory.name)[0];
@@ -720,9 +721,8 @@ export async function publishExtensionVersionFromRemoteRepo(args: {
   let res;
   try {
     uploadSpinner.start();
-    res = await publishExtensionVersion({
+    res = await createExtensionVersionFromGitHubSource({
       extensionVersionRef,
-      packageUri: "",
       extensionRoot,
       repoUri,
       sourceRef: args.sourceRef,
@@ -739,7 +739,7 @@ export async function publishExtensionVersionFromRemoteRepo(args: {
 }
 
 /**
- * Publishes an Extension version from local source.
+ * Uploads an extension version from local source.
  *
  * @param publisherId the ID of the Publisher this Extension will be published under
  * @param extensionId the ID of the Extension to be published
@@ -748,7 +748,7 @@ export async function publishExtensionVersionFromRemoteRepo(args: {
  * @param nonInteractive whether to display prompts
  * @param force whether to force confirmations
  */
-export async function publishExtensionVersionFromLocalSource(args: {
+export async function uploadExtensionVersionFromLocalSource(args: {
   publisherId: string;
   extensionId: string;
   rootDirectory: string;
@@ -793,16 +793,16 @@ export async function publishExtensionVersionFromLocalSource(args: {
     packageUri = storageOrigin + objectPath + "?alt=media";
   } catch (err: any) {
     uploadSpinner.fail();
-    throw new FirebaseError(`Failed to archive and upload extension source, ${err}`, {
+    throw new FirebaseError(`Failed to archive and upload extension source code, ${err}`, {
       original: err,
     });
   }
-  const publishSpinner = ora(`Publishing ${clc.bold(extensionVersionRef)}`);
+  const publishSpinner = ora(`Uploading ${clc.bold(extensionVersionRef)}`);
   let res;
   try {
     publishSpinner.start();
-    res = await publishExtensionVersion({ extensionVersionRef, packageUri });
-    publishSpinner.succeed(` Successfully published ${clc.bold(extensionVersionRef)}`);
+    res = await createExtensionVersionFromLocalSource({ extensionVersionRef, packageUri });
+    publishSpinner.succeed(` Successfully uploaded ${clc.bold(extensionVersionRef)}`);
   } catch (err: any) {
     publishSpinner.fail();
     if (err.status === 404) {

@@ -3,7 +3,7 @@ import * as clc from "colorette";
 import { marked } from "marked";
 
 import { Client } from "../apiv2";
-import { extensionsOrigin } from "../api";
+import { extensionsOrigin, extensionsPublisherOrigin } from "../api";
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import * as operationPoller from "../operation-poller";
@@ -19,7 +19,11 @@ import {
 const VERSION = "v1beta";
 const PAGE_SIZE_MAX = 100;
 
-const apiClient = new Client({ urlPrefix: extensionsOrigin, apiVersion: VERSION });
+const extensionsApiClient = new Client({ urlPrefix: extensionsOrigin, apiVersion: VERSION });
+const extensionsPublisherApiClient = new Client({
+  urlPrefix: extensionsOrigin,
+  apiVersion: VERSION,
+});
 
 /**
  * Create a new extension instance, given a extension source path or extension reference, a set of params, and a service account.
@@ -34,7 +38,10 @@ async function createInstanceHelper(
   config: any,
   validateOnly = false
 ): Promise<ExtensionInstance> {
-  const createRes = await apiClient.post<{ name: string; config: unknown }, ExtensionInstance>(
+  const createRes = await extensionsApiClient.post<
+    { name: string; config: unknown },
+    ExtensionInstance
+  >(
     `/projects/${projectId}/instances/`,
     {
       name: `projects/${projectId}/instances/${instanceId}`,
@@ -114,7 +121,7 @@ export async function createInstance(args: {
  * @param instanceId the id of the instance to delete
  */
 export async function deleteInstance(projectId: string, instanceId: string): Promise<any> {
-  const deleteRes = await apiClient.delete<{ name: string }>(
+  const deleteRes = await extensionsApiClient.delete<{ name: string }>(
     `/projects/${projectId}/instances/${instanceId}`
   );
   const pollRes = await operationPoller.pollOperation({
@@ -133,7 +140,7 @@ export async function deleteInstance(projectId: string, instanceId: string): Pro
  */
 export async function getInstance(projectId: string, instanceId: string): Promise<any> {
   try {
-    const res = await apiClient.get(`/projects/${projectId}/instances/${instanceId}`);
+    const res = await extensionsApiClient.get(`/projects/${projectId}/instances/${instanceId}`);
     return res.body;
   } catch (err: any) {
     if (err.status === 404) {
@@ -156,15 +163,15 @@ export async function getInstance(projectId: string, instanceId: string): Promis
 export async function listInstances(projectId: string): Promise<ExtensionInstance[]> {
   const instances: ExtensionInstance[] = [];
   const getNextPage = async (pageToken = ""): Promise<void> => {
-    const res = await apiClient.get<{ instances: ExtensionInstance[]; nextPageToken?: string }>(
-      `/projects/${projectId}/instances`,
-      {
-        queryParams: {
-          pageSize: PAGE_SIZE_MAX,
-          pageToken,
-        },
-      }
-    );
+    const res = await extensionsApiClient.get<{
+      instances: ExtensionInstance[];
+      nextPageToken?: string;
+    }>(`/projects/${projectId}/instances`, {
+      queryParams: {
+        pageSize: PAGE_SIZE_MAX,
+        pageToken,
+      },
+    });
     if (Array.isArray(res.body.instances)) {
       instances.push(...res.body.instances);
     }
@@ -343,7 +350,7 @@ async function patchInstance(args: {
   validateOnly: boolean;
   data: any;
 }): Promise<any> {
-  const updateRes = await apiClient.patch<unknown, { name: string }>(
+  const updateRes = await extensionsApiClient.patch<unknown, { name: string }>(
     `/projects/${args.projectId}/instances/${args.instanceId}`,
     args.data,
     {
@@ -394,7 +401,7 @@ export async function createSource(
   packageUri: string,
   extensionRoot: string
 ): Promise<ExtensionSource> {
-  const createRes = await apiClient.post<
+  const createRes = await extensionsApiClient.post<
     { packageUri: string; extensionRoot: string },
     ExtensionSource
   >(`/projects/${projectId}/sources/`, {
@@ -419,7 +426,7 @@ export async function createSource(
  * @param sourceName the fully qualified path of the extension source (/projects/<projectId>/sources/<sourceId>)
  */
 export async function getSource(sourceName: string): Promise<ExtensionSource> {
-  const res = await apiClient.get<ExtensionSource>(`/${sourceName}`);
+  const res = await extensionsApiClient.get<ExtensionSource>(`/${sourceName}`);
   if (res.body.spec) {
     populateSpec(res.body.spec);
   }
@@ -435,7 +442,9 @@ export async function getExtensionVersion(extensionVersionRef: string): Promise<
     throw new FirebaseError(`ExtensionVersion ref "${extensionVersionRef}" must supply a version.`);
   }
   try {
-    const res = await apiClient.get<ExtensionVersion>(`/${refs.toExtensionVersionName(ref)}`);
+    const res = await extensionsApiClient.get<ExtensionVersion>(
+      `/${refs.toExtensionVersionName(ref)}`
+    );
     if (res.body.spec) {
       populateSpec(res.body.spec);
     }
@@ -458,7 +467,7 @@ export async function getExtensionVersion(extensionVersionRef: string): Promise<
 export async function listExtensions(publisherId: string): Promise<Extension[]> {
   const extensions: Extension[] = [];
   const getNextPage = async (pageToken = "") => {
-    const res = await apiClient.get<{ extensions: Extension[]; nextPageToken: string }>(
+    const res = await extensionsApiClient.get<{ extensions: Extension[]; nextPageToken: string }>(
       `/publishers/${publisherId}/extensions`,
       {
         queryParams: {
@@ -489,7 +498,7 @@ export async function listExtensionVersions(
   const { publisherId, extensionId } = refs.parse(ref);
   const extensionVersions: ExtensionVersion[] = [];
   const getNextPage = async (pageToken = "") => {
-    const res = await apiClient.get<{
+    const res = await extensionsApiClient.get<{
       extensionVersions: ExtensionVersion[];
       nextPageToken: string;
     }>(`/publishers/${publisherId}/extensions/${extensionId}/versions`, {
@@ -519,7 +528,7 @@ export async function getPublisherProfile(
   projectId: string,
   publisherId?: string
 ): Promise<PublisherProfile> {
-  const res = await apiClient.get(`/projects/${projectId}/publisherProfile`, {
+  const res = await extensionsApiClient.get(`/projects/${projectId}/publisherProfile`, {
     queryParams:
       publisherId === undefined
         ? undefined
@@ -538,7 +547,7 @@ export async function registerPublisherProfile(
   projectId: string,
   publisherId: string
 ): Promise<PublisherProfile> {
-  const res = await apiClient.post<{ publisherId: string }, PublisherProfile>(
+  const res = await extensionsApiClient.post<{ publisherId: string }, PublisherProfile>(
     `/projects/${projectId}/publisherProfile:register`,
     {
       publisherId,
@@ -557,7 +566,7 @@ export async function deprecateExtensionVersion(
 ): Promise<ExtensionVersion> {
   const ref = refs.parse(extensionRef);
   try {
-    const res = await apiClient.post<{ deprecationMessage: string }, ExtensionVersion>(
+    const res = await extensionsApiClient.post<{ deprecationMessage: string }, ExtensionVersion>(
       `/${refs.toExtensionVersionName(ref)}:deprecate`,
       {
         deprecationMessage,
@@ -592,7 +601,7 @@ export async function deprecateExtensionVersion(
 export async function undeprecateExtensionVersion(extensionRef: string): Promise<ExtensionVersion> {
   const ref = refs.parse(extensionRef);
   try {
-    const res = await apiClient.post<void, ExtensionVersion>(
+    const res = await extensionsApiClient.post<void, ExtensionVersion>(
       `/${refs.toExtensionVersionName(ref)}:undeprecate`
     );
     return res.body;
@@ -619,77 +628,93 @@ export async function undeprecateExtensionVersion(extensionRef: string): Promise
 }
 
 /**
- * @param packageUri public URI of a zip or tarball of the extension source code
- * @param extensionVersionRef user-friendly identifier for the ExtensionVersion (publisher-id/extension-id@1.0.0)
- * @param extensionRoot directory location of extension.yaml in the archived package, defaults to "/".
+ * @param extensionVersionRef user-friendly identifier for the extension version (publisher-id/extension-id@1.0.0)
+ * @param packageUri public URI of the extension archive (zip or tarball)
+ * @param extensionRoot root directory that contains this extension, defaults to "/".
  */
-export async function publishExtensionVersion(args: {
+export async function createExtensionVersionFromLocalSource(args: {
   extensionVersionRef: string;
-  packageUri?: string;
+  packageUri: string;
   extensionRoot?: string;
-  repoUri?: string;
-  sourceRef?: string;
 }): Promise<ExtensionVersion> {
   const ref = refs.parse(args.extensionVersionRef);
   if (!ref.version) {
     throw new FirebaseError(
-      `ExtensionVersion ref "${args.extensionVersionRef}" must supply a version.`
+      `Extension version ref "${args.extensionVersionRef}" must supply a version.`
     );
   }
-
   // TODO(b/185176470): Publishing an extension with a previously deleted name will return 409.
   // Need to surface a better error, potentially by calling getExtension.
-  const publishRes = await apiClient.post<
+  const uploadRes = await extensionsPublisherApiClient.post<
     {
       versionId: string;
-      packageUri: string;
       extensionRoot: string;
-      repoUri: string;
-      sourceRef: string;
+      remoteArchiveSource: {
+        packageUri: string;
+      };
     },
     ExtensionVersion
-  >(`/${refs.toExtensionName(ref)}/versions:publish`, {
+  >(`/${refs.toExtensionName(ref)}/versions:createFromSource`, {
     versionId: ref.version,
-    packageUri: args.packageUri ?? "",
     extensionRoot: args.extensionRoot ?? "/",
-    repoUri: args.repoUri ?? "",
-    sourceRef: args.sourceRef ?? "",
+    remoteArchiveSource: {
+      packageUri: args.packageUri,
+    },
   });
   const pollRes = await operationPoller.pollOperation<ExtensionVersion>({
-    apiOrigin: extensionsOrigin,
+    apiOrigin: extensionsPublisherOrigin,
     apiVersion: VERSION,
-    operationResourceName: publishRes.body.name,
+    operationResourceName: uploadRes.body.name,
     masterTimeout: 600000,
   });
   return pollRes;
 }
 
 /**
- * @deprecated This endpoint is replaced with deleteExtension.
- * @param extensionRef user-friendly identifier for the Extension (publisher-id/extension-id)
+ * @param extensionVersionRef user-friendly identifier for the extension version (publisher-id/extension-id@1.0.0)
+ * @param repoUri public GitHub repo URI that contains the extension source
+ * @param sourceRef commit hash, branch, or tag to build from the repo
+ * @param extensionRoot root directory that contains this extension, defaults to "/".
  */
-export async function unpublishExtension(extensionRef: string): Promise<void> {
-  const ref = refs.parse(extensionRef);
-  if (ref.version) {
-    throw new FirebaseError(`Extension reference "${extensionRef}" must not contain a version.`);
+export async function createExtensionVersionFromGitHubSource(args: {
+  extensionVersionRef: string;
+  repoUri: string;
+  sourceRef: string;
+  extensionRoot?: string;
+}): Promise<ExtensionVersion> {
+  const ref = refs.parse(args.extensionVersionRef);
+  if (!ref.version) {
+    throw new FirebaseError(
+      `Extension version ref "${args.extensionVersionRef}" must supply a version.`
+    );
   }
-  try {
-    await apiClient.post<void, void>(`/${refs.toExtensionName(ref)}:unpublish`);
-  } catch (err: any) {
-    if (err.status === 403) {
-      throw new FirebaseError(
-        `You are not the owner of extension '${clc.bold(
-          extensionRef
-        )}' and don’t have the correct permissions to unpublish this extension.`,
-        { status: err.status }
-      );
-    } else if (err instanceof FirebaseError) {
-      throw err;
-    }
-    throw new FirebaseError(`Error occurred unpublishing extension '${extensionRef}': ${err}`, {
-      status: err.status,
-    });
-  }
+  // TODO(b/185176470): Publishing an extension with a previously deleted name will return 409.
+  // Need to surface a better error, potentially by calling getExtension.
+  const uploadRes = await extensionsPublisherApiClient.post<
+    {
+      versionId: string;
+      extensionRoot: string;
+      githubRepositorySource: {
+        uri: string;
+        sourceRef: string;
+      };
+    },
+    ExtensionVersion
+  >(`/${refs.toExtensionName(ref)}/versions:createFromSource`, {
+    versionId: ref.version,
+    extensionRoot: args.extensionRoot ?? "/",
+    githubRepositorySource: {
+      uri: args.repoUri,
+      sourceRef: args.sourceRef,
+    },
+  });
+  const pollRes = await operationPoller.pollOperation<ExtensionVersion>({
+    apiOrigin: extensionsPublisherOrigin,
+    apiVersion: VERSION,
+    operationResourceName: uploadRes.body.name,
+    masterTimeout: 600000,
+  });
+  return pollRes;
 }
 
 /**
@@ -703,7 +728,7 @@ export async function deleteExtension(extensionRef: string): Promise<void> {
     throw new FirebaseError(`Extension reference "${extensionRef}" must not contain a version.`);
   }
   try {
-    await apiClient.delete(`/${refs.toExtensionName(ref)}`);
+    await extensionsApiClient.delete(`/${refs.toExtensionName(ref)}`);
   } catch (err: any) {
     if (err.status === 403) {
       throw new FirebaseError(
@@ -730,7 +755,7 @@ export async function deleteExtension(extensionRef: string): Promise<void> {
 export async function getExtension(extensionRef: string): Promise<Extension> {
   const ref = refs.parse(extensionRef);
   try {
-    const res = await apiClient.get<Extension>(`/${refs.toExtensionName(ref)}`);
+    const res = await extensionsApiClient.get<Extension>(`/${refs.toExtensionName(ref)}`);
     return res.body;
   } catch (err: any) {
     if (err.status === 404) {
