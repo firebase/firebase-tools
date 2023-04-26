@@ -122,10 +122,10 @@ export const ALLOWED_SSR_REGIONS = [
   { name: "asia-east1 (Taiwan)", value: "asia-east1" },
 ];
 
-function conjoinOptions(opts: any[], conjunction: string, seperator: string = ","): string {
+function conjoinOptions(opts: any[], conjunction: string, separator: string = ","): string {
   if (opts.length === 1) return opts[0].toString();
   const lastElement = opts.slice(-1)[0];
-  return `${opts.slice(0, -1).join(`${seperator} `)}, ${conjunction} ${lastElement}`;
+  return `${opts.slice(0, -1).join(`${separator} `)}, ${conjunction} ${lastElement}`;
 }
 
 const DEFAULT_FIND_DEP_OPTIONS: FindDepOptions = {
