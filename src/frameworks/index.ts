@@ -354,7 +354,7 @@ export async function prepareFrameworks(
     }
     const ssrRegion = frameworksBackend?.region ?? DEFAULT_REGION;
     if (!allowedRegionsValues.includes(ssrRegion)) {
-      const validRegions = conjoinOptions(allowedRegionsValues, "or");
+      const validRegions = conjoinOptions(allowedRegionsValues, "and");
       throw new FirebaseError(
         `Hosting config for site ${site} places server-side content in region ${ssrRegion} which is not known. Valid regions are ${validRegions}`
       );
