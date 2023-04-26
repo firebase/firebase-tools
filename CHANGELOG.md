@@ -1,2 +1,0 @@
-- Fixes a bug preventing local extension instances from being updated to uploaded versions.
-- Releases firestore emulator version 1.17.3
