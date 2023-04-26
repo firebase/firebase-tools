@@ -670,7 +670,7 @@ export async function publishExtensionVersionFromRemoteRepo(args: {
   }
 
   // Fetch and validate Extension from remote repo.
-  logger.info("Downloading and validating source code...");
+  logger.info(`Validating source code at ${clc.bold(repoUri + '/tree/' + sourceRef)}...`);
   const archiveUri = `${repoUri}/archive/${sourceRef}.zip`;
   const tempDirectory = tmp.dirSync({ unsafeCleanup: true });
   try {
@@ -680,7 +680,7 @@ export async function publishExtensionVersionFromRemoteRepo(args: {
     }
   } catch (err: any) {
     throw new FirebaseError(
-      `Failed to fetch Extension archive ${archiveUri}. Please check the repo URI and source ref. ${err}`
+      `Failed to fetch extension archive ${archiveUri}. Please check the repo URI and source ref. ${err}`
     );
   }
   const archiveName = fs.readdirSync(tempDirectory.name)[0];
@@ -714,12 +714,12 @@ export async function publishExtensionVersionFromRemoteRepo(args: {
     return;
   }
 
-  // Publish the Extension version.
+  // Upload the extension version.
   const extensionVersionRef = `${extensionRef}@${extensionSpec.version}`;
-  const publishSpinner = ora(`Publishing ${clc.bold(extensionVersionRef)}`);
+  const uploadSpinner = ora(`Uploading ${clc.bold(extensionVersionRef)}`);
   let res;
   try {
-    publishSpinner.start();
+    uploadSpinner.start();
     res = await publishExtensionVersion({
       extensionVersionRef,
       packageUri: "",
@@ -727,9 +727,9 @@ export async function publishExtensionVersionFromRemoteRepo(args: {
       repoUri,
       sourceRef: args.sourceRef,
     });
-    publishSpinner.succeed(` Successfully published ${clc.bold(extensionRef)}`);
+    uploadSpinner.succeed(` Successfully uploaded ${clc.bold(extensionRef)}`);
   } catch (err: any) {
-    publishSpinner.fail();
+    uploadSpinner.fail();
     if (err.status === 404) {
       throw getMissingPublisherError(args.publisherId);
     }
@@ -914,10 +914,10 @@ export function displayReleaseNotes(
     `${clc.bold("Version:")} ${clc.bold(clc.green(versionId))}\n` +
     `${clc.bold("Source:")} ${source}\n`;
   const message =
-    `\nYou are about to publish a new version to Firebase's registry of Extensions.\n\n` +
+    `\nYou are about to upload a new version to Firebase's registry of extensions.\n\n` +
     metadataMessage +
     releaseNotesMessage +
-    `\nOnce an Extension version is published, it cannot be changed. If you wish to make changes after publishing, you will need to publish a new version.\n`;
+    `\nOnce an Extension version is uploaded, it cannot be changed. If you wish to make changes after uploading, you will need to upload a new version.\n`;
   logger.info(message);
 }
 
