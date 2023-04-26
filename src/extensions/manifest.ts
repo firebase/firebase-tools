@@ -1,10 +1,12 @@
 import * as clc from "colorette";
 import * as path from "path";
+import * as fs from "fs-extra";
+
 import * as refs from "./refs";
 import { Config } from "../config";
 import { getExtensionSpec, ManifestInstanceSpec } from "../deploy/extensions/planner";
 import { logger } from "../logger";
-import { promptOnce } from "../prompt";
+import { confirm, promptOnce } from "../prompt";
 import { readEnvFile } from "./paramHelper";
 import { FirebaseError } from "../error";
 import * as utils from "../utils";
@@ -58,6 +60,31 @@ export async function writeToManifest(
   writeExtensionsToFirebaseJson(specs, config);
   await writeEnvFiles(specs, config, options.force);
   await writeLocalSecrets(specs, config, options.force);
+}
+
+export async function writeEmptyManifest(
+  config: Config,
+  options: { nonInteractive: boolean; force: boolean }
+): Promise<void> {
+  if (!fs.existsSync(config.path("extensions"))) {
+    fs.mkdirSync(config.path("extensions"));
+  }
+  if (config.has("extensions") && Object.keys(config.get("extensions")).length) {
+    const currentExtensions = Object.entries(config.get("extensions"))
+      .map((i) => `${i[0]}: ${i[1]}`)
+      .join("\n\t");
+    if (
+      !(await confirm({
+        message: `firebase.json already contains extensions:\n${currentExtensions}\nWould you like to overwrite them?`,
+        nonInteractive: options.nonInteractive,
+        force: options.force,
+        default: false,
+      }))
+    ) {
+      return;
+    }
+  }
+  config.set("extensions", {});
 }
 
 /**
@@ -173,7 +200,7 @@ export function getInstanceRef(instanceId: string, config: Config): refs.Ref {
   return refs.parse(source);
 }
 
-function writeExtensionsToFirebaseJson(specs: ManifestInstanceSpec[], config: Config): void {
+export function writeExtensionsToFirebaseJson(specs: ManifestInstanceSpec[], config: Config): void {
   const extensions = config.get("extensions", {});
   for (const s of specs) {
     let target;
