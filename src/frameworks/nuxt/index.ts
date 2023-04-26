@@ -1,6 +1,6 @@
 import { copy, pathExists } from "fs-extra";
 import { readFile } from "fs/promises";
-import { join, relative } from "path";
+import { join } from "path";
 import { lt } from "semver";
 import { spawn, sync as spawnSync } from "cross-spawn";
 import { FrameworkType, getNodeModuleBin, relativeRequire, SupportLevel } from "..";
@@ -59,7 +59,7 @@ export async function ɵcodegenPublicDirectory(root: string, dest: string) {
   await copy(distPath, dest);
 }
 
-export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: string) {
+export async function ɵcodegenFunctionsDirectory(sourceDir: string) {
   const serverDir = join(sourceDir, ".output", "server");
   const packageJsonBuffer = await readFile(join(sourceDir, "package.json"));
   const packageJson = JSON.parse(packageJsonBuffer.toString());
