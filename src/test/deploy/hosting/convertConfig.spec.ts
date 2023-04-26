@@ -9,6 +9,7 @@ import * as api from "../../../hosting/api";
 import { FirebaseError } from "../../../error";
 import { Payload } from "../../../deploy/functions/args";
 import * as runTags from "../../../hosting/runTags";
+import * as experiments from "../../../experiments";
 
 const FUNCTION_ID = "functionId";
 const SERVICE_ID = "function-id";
@@ -46,6 +47,16 @@ function endpoint(opts?: Partial<backend.Endpoint>): backend.Endpoint {
 
 describe("convertConfig", () => {
   let setRewriteTagsStub: sinon.SinonStub;
+
+  let wasPinTagsEnabled: boolean;
+  before(() => {
+    wasPinTagsEnabled = experiments.isEnabled("pintags");
+    experiments.setEnabled("pintags", true);
+  });
+
+  after(() => {
+    experiments.setEnabled("pintags", wasPinTagsEnabled);
+  });
 
   beforeEach(() => {
     setRewriteTagsStub = sinon.stub(runTags, "setRewriteTags");
