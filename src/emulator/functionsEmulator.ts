@@ -901,8 +901,16 @@ export class FunctionsEmulator implements EmulatorInstance {
     if (!namespace) {
       throw new FirebaseError("A namespace must be supplied.");
     }
-    const doc =
-      eventTrigger.eventFilters?.document || eventTrigger.eventFilterPathPatterns?.document;
+    let doc;
+    let match;
+    if (eventTrigger.eventFilters?.document) {
+      doc = eventTrigger.eventFilters?.document;
+      match = "EXACT";
+    }
+    if (eventTrigger.eventFilterPathPatterns?.document) {
+      doc = eventTrigger.eventFilterPathPatterns?.document;
+      match = "PATH_PATTERN";
+    }
     if (!doc) {
       throw new FirebaseError("A document must be supplied.");
     }
@@ -911,10 +919,9 @@ export class FunctionsEmulator implements EmulatorInstance {
       eventType: eventTrigger.eventType,
       database,
       namespace,
-      // document: doc,
       document: {
         value: doc,
-        matchType: "PATH_PATTERN",
+        matchType: match,
       },
     });
     const path = `/emulator/v1/projects/${projectId}/eventarcTrigger?eventarcTriggerId=${key}`;
