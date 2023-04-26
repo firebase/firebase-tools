@@ -64,17 +64,8 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
   const packageJsonBuffer = await readFile(join(sourceDir, "package.json"));
   const packageJson = JSON.parse(packageJsonBuffer.toString());
 
-  const result = spawnSync("npm", ["pack", relative(destDir, serverDir), "--json"], {
-    cwd: destDir,
-  });
-  if (result.status) throw new FirebaseError("Unable to pack nitro export");
-  const packResult = JSON.parse(result.stdout.toString().trim());
-  const { name, filename } = packResult[0];
-  if (name !== "nitro-output")
-    throw new FirebaseError("Expected nitro pack to produce nitro-output");
-
   packageJson.dependencies ||= {};
-  packageJson.dependencies[name] = `file:${filename}`;
+  packageJson.dependencies["nitro-output"] = `file:${serverDir}`;
 
   return { packageJson, frameworksEntry: "nitro" };
 }
