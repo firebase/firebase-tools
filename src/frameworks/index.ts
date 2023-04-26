@@ -122,10 +122,10 @@ export const ALLOWED_SSR_REGIONS = [
   { name: "asia-east1 (Taiwan)", value: "asia-east1" },
 ];
 
-function conjoinOptions(opts: any[], conjunction: string, separator: string = ","): string {
+function conjoinOptions(opts: any[], conjunction: string = "and", separator: string = ","): string {
   if (opts.length === 1) return opts[0].toString();
   const lastElement = opts.slice(-1)[0];
-  return `${opts.slice(0, -1).join(`${separator} `)}, ${conjunction} ${lastElement}`;
+  return `${opts.slice(0, -1).join(`${separator} `)}${separator} ${conjunction} ${lastElement}`;
 }
 
 const DEFAULT_FIND_DEP_OPTIONS: FindDepOptions = {
@@ -354,7 +354,7 @@ export async function prepareFrameworks(
     }
     const ssrRegion = frameworksBackend?.region ?? DEFAULT_REGION;
     if (!allowedRegionsValues.includes(ssrRegion)) {
-      const validRegions = conjoinOptions(allowedRegionsValues, "and");
+      const validRegions = conjoinOptions(allowedRegionsValues);
       throw new FirebaseError(
         `Hosting config for site ${site} places server-side content in region ${ssrRegion} which is not known. Valid regions are ${validRegions}`
       );
@@ -544,7 +544,6 @@ export async function prepareFrameworks(
       process.env.__FIREBASE_FRAMEWORKS_ENTRY__ = frameworksEntry;
 
       packageJson.main = "server.js";
-      delete packageJson.devDependencies;
       packageJson.dependencies ||= {};
       packageJson.dependencies["firebase-frameworks"] ||= FIREBASE_FRAMEWORKS_VERSION;
       packageJson.dependencies["firebase-functions"] ||= FIREBASE_FUNCTIONS_VERSION;
@@ -563,7 +562,17 @@ export async function prepareFrameworks(
       packageJson.engines.node ||= engine.toString();
       delete packageJson.scripts;
       delete packageJson.devDependencies;
-      delete packageJson.bundledDependencies;
+
+      const bundledDependencies: Record<string, string> = packageJson.bundledDependencies || {};
+      if (Object.keys(bundledDependencies).length) {
+        logWarning(
+          "Bundled dependencies aren't supported in Cloud Functions, converting to dependencies."
+        );
+        for (const [dep, version] of Object.entries(bundledDependencies)) {
+          packageJson.dependencies[dep] ||= version;
+        }
+        delete packageJson.bundledDependencies;
+      }
 
       for (const [name, version] of Object.entries(
         packageJson.dependencies as Record<string, string>
