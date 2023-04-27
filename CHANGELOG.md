@@ -1,0 +1,1 @@
+- Adds function emulator support for v2 firestore triggers (#5685).

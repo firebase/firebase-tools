@@ -140,22 +140,25 @@ exports.rtdbv2reaction = functionsV2.database.onValueWritten(START_DOCUMENT_NAME
   return;
 });
 
-exports.firestorev2reaction = functionsV2.firestore.onDocumentWritten(START_DOCUMENT_NAME, async (event) => {
-  console.log(FIRESTORE_LOG);
-  /*
-    * Write back a completion timestamp to the firestore emulator. The test
-    * driver program checks for this by querying the firestore emulator
-    * directly.
-    */
-  const ref = admin.firestore().doc(END_DOCUMENT_NAME + "_from_firestore");
-  await ref.set({ done: new Date().toISOString() });
+exports.firestorev2reaction = functionsV2.firestore.onDocumentWritten(
+  START_DOCUMENT_NAME,
+  async (event) => {
+    console.log(FIRESTORE_LOG);
+    /*
+     * Write back a completion timestamp to the firestore emulator. The test
+     * driver program checks for this by querying the firestore emulator
+     * directly.
+     */
+    const ref = admin.firestore().doc(END_DOCUMENT_NAME + "_from_firestore");
+    await ref.set({ done: new Date().toISOString() });
 
-  /*
-    * Write a completion marker to the firestore emulator. This exercise
-    * cross-emulator communication.
-    */
-  const dbref = admin.database().ref(END_DOCUMENT_NAME + "_from_firestore");
-  await dbref.set({ done: new Date().toISOString() });
+    /*
+     * Write a completion marker to the firestore emulator. This exercise
+     * cross-emulator communication.
+     */
+    const dbref = admin.database().ref(END_DOCUMENT_NAME + "_from_firestore");
+    await dbref.set({ done: new Date().toISOString() });
 
-  return true;
-});
+    return true;
+  }
+);
