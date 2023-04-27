@@ -4,6 +4,7 @@ import * as TerminalRenderer from "marked-terminal";
 
 import { Command } from "../command";
 import {
+  ReleaseStage,
   logPrefix,
   uploadExtensionVersionFromLocalSource,
   uploadExtensionVersionFromGitHubSource,
@@ -14,7 +15,11 @@ import { consoleInstallLink } from "../extensions/publishHelpers";
 import { ExtensionVersion } from "../extensions/types";
 import { requireAuth } from "../requireAuth";
 import { FirebaseError } from "../error";
+import { acceptLatestPublisherTOS } from "../extensions/tos";
 import * as utils from "../utils";
+import { Options } from "../options";
+import { getPublisherProfile } from "../extensions/extensionsApi";
+import { getPublisherProjectFromName } from "../extensions/extensionsHelper";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),
@@ -42,9 +47,15 @@ export const command = new Command("ext:dev:upload <extensionRef>")
   .before(requireAuth)
   .action(uploadExtensionAction);
 
+interface UploadExtensionOptions extends Options {
+  repo?: string;
+  ref?: string;
+  root?: string;
+  stage?: string;
+}
 export async function uploadExtensionAction(
   extensionRef: string,
-  options: any
+  options: UploadExtensionOptions
 ): Promise<ExtensionVersion | undefined> {
   const { publisherId, extensionId, version } = refs.parse(extensionRef);
   if (version) {
@@ -61,6 +72,12 @@ export async function uploadExtensionAction(
       )}'. Please use the format '${clc.bold("<publisherId>/<extensionId>")}'.`
     );
   }
+
+  // Get the project number and check the publisher TOS
+  const profile = await getPublisherProfile("-", publisherId);
+  const projectNumber = `${getPublisherProjectFromName(profile.name)}`;
+  await acceptLatestPublisherTOS(options, projectNumber);
+
   let res;
   if (options.local) {
     const extensionYamlDirectory = findExtensionYaml(process.cwd());
@@ -70,7 +87,7 @@ export async function uploadExtensionAction(
       rootDirectory: extensionYamlDirectory,
       nonInteractive: options.nonInteractive,
       force: options.force,
-      stage: options.stage,
+      stage: options.stage as ReleaseStage,
     });
   } else {
     res = await uploadExtensionVersionFromGitHubSource({
@@ -81,7 +98,7 @@ export async function uploadExtensionAction(
       extensionRoot: options.root,
       nonInteractive: options.nonInteractive,
       force: options.force,
-      stage: options.stage,
+      stage: options.stage as ReleaseStage,
     });
   }
   if (res) {

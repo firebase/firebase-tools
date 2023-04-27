@@ -9,8 +9,8 @@ const extensionsTosUrl = (tos: string) => `https://firebase.google.com/terms/ext
 
 export interface TOS {
   name: string;
-  lastAcceptedVersion: string;
-  lastAcceptedTime: string;
+  lastAcceptedVersion?: string;
+  lastAcceptedTime?: string;
   latestTosVersion: string;
 }
 export type PublisherTOS = TOS;
@@ -64,26 +64,26 @@ export async function acceptLatestPublisherTOS(
 ): Promise<PublisherTOS> {
   logger.debug(`Checking if latest publisher TOS has been accepted by ${projectId}...`);
   const currentAcceptance = await getPublisherTOSStatus(projectId);
-  if (currentAcceptance.lastAcceptedVersion === currentAcceptance.latestTosVersion) {
+  if (currentAcceptance.lastAcceptedVersion) {
     logger.debug(
-      `Latest version of publisher TOS is ${currentAcceptance.lastAcceptedVersion}, already accepted.`
+      `Already accepted version ${currentAcceptance.lastAcceptedVersion} of Extensions publisher TOS.`
     );
     return currentAcceptance;
   } else {
     // Display link to TOS, prompt for acceptance
     const tosLink = extensionsTosUrl("publisher");
     logger.info(
-      `To continue, you must accept the [Extensions publisher terms of service](${tosLink})`
+      `To continue, you must accept the Firebase Extensions Publisher Terms of Service: ${tosLink}`
     );
     if (
       await confirm({
         ...options,
-        message: "Do you accept the Extensions publisher terms of service?",
+        message: "Do you accept the Firebase Extensions Publisher Terms of Service?",
       })
     ) {
       return acceptPublisherTOS(projectId, currentAcceptance.latestTosVersion);
     }
-    throw new FirebaseError("Command terminated becuase publisher TOS was not accepted");
+    throw new FirebaseError("You must accept the terms of service to continue.");
   }
 }
 
@@ -105,16 +105,16 @@ export async function acceptLatestAppDeveloperTOS(
     // Display link to TOS, prompt for acceptance
     const tosLink = extensionsTosUrl("appdev");
     logger.info(
-      `To continue, you must accept the [Extensions app developer terms of service](${tosLink})`
+      `To continue, you must accept the Firebase Extensions App Developer Terms of Service: ${tosLink}`
     );
     if (
       await confirm({
         ...options,
-        message: "Do you accept the Extensions app developer terms of service?",
+        message: "Do you accept the Firebase Extensions App Developer Terms of Service?",
       })
     ) {
       return acceptAppDeveloperTOS(projectId, instanceId, currentAcceptance.latestTosVersion);
     }
-    throw new FirebaseError("Command terminated becuase app developer TOS was not accepted");
+    throw new FirebaseError("You must accept the terms of service to continue.");
   }
 }

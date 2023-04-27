@@ -576,10 +576,10 @@ async function validateExtensionSpec(args: {
 export async function uploadExtensionVersionFromGitHubSource(args: {
   publisherId: string;
   extensionId: string;
-  repoUri: string;
-  sourceRef: string;
-  extensionRoot: string;
-  stage: ReleaseStage;
+  repoUri?: string;
+  sourceRef?: string;
+  extensionRoot?: string;
+  stage?: ReleaseStage;
   nonInteractive: boolean;
   force: boolean;
 }): Promise<ExtensionVersion | undefined> {
@@ -702,7 +702,7 @@ export async function uploadExtensionVersionFromGitHubSource(args: {
     extensionId: args.extensionId,
     rootDirectory: rootDirectory,
     latestVersion: extension?.latestVersion,
-    stage: stage,
+    stage: stage!,
   });
 
   displayReleaseNotes(extensionRef, extensionSpec.version, notes, sourceUri);
@@ -725,7 +725,7 @@ export async function uploadExtensionVersionFromGitHubSource(args: {
       extensionVersionRef,
       extensionRoot,
       repoUri,
-      sourceRef: args.sourceRef,
+      sourceRef: sourceRef,
     });
     uploadSpinner.succeed(` Successfully uploaded ${clc.bold(extensionRef)}`);
   } catch (err: any) {

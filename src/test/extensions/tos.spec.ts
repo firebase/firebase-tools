@@ -78,6 +78,9 @@ describe("tos", () => {
     it("should prompt to accept the latest app dev TOS if it has not been accepted", async () => {
       const t = testTOS("appdevtos", "1.0.0");
       nock(api.extensionsTOSOrigin).get(`/v1/projects/${testProjectId}/appdevtos`).reply(200, t);
+      nock(api.extensionsTOSOrigin)
+        .post(`/v1/projects/${testProjectId}/appdevtos:accept`)
+        .reply(200, t);
 
       const appDevTos = await tos.acceptLatestAppDeveloperTOS(
         {
@@ -93,11 +96,8 @@ describe("tos", () => {
   });
 
   it("should return the latest app dev TOS if it has already been accepted", async () => {
-    const t = testTOS("appdevtos", "1.1.0");
+    const t = testTOS("appdevtos", "1.1.0", "1.1.0");
     nock(api.extensionsTOSOrigin).get(`/v1/projects/${testProjectId}/appdevtos`).reply(200, t);
-    nock(api.extensionsTOSOrigin)
-      .post(`/v1/projects/${testProjectId}/appdevtos:accept`)
-      .reply(200, t);
 
     const appDevTos = await tos.acceptLatestAppDeveloperTOS(
       {
@@ -115,6 +115,9 @@ describe("tos", () => {
     it("should prompt to accept the latest publisher TOS if it has not been accepted", async () => {
       const t = testTOS("publishertos", "1.0.0");
       nock(api.extensionsTOSOrigin).get(`/v1/projects/${testProjectId}/publishertos`).reply(200, t);
+      nock(api.extensionsTOSOrigin)
+        .post(`/v1/projects/${testProjectId}/publishertos:accept`)
+        .reply(200, t);
 
       const publisherTos = await tos.acceptLatestPublisherTOS(
         {
@@ -130,11 +133,8 @@ describe("tos", () => {
   });
 
   it("should return the latest publisher TOS is it has already been accepted", async () => {
-    const t = testTOS("publishertos", "1.1.0");
+    const t = testTOS("publishertos", "1.1.0", "1.1.0");
     nock(api.extensionsTOSOrigin).get(`/v1/projects/${testProjectId}/publishertos`).reply(200, t);
-    nock(api.extensionsTOSOrigin)
-      .post(`/v1/projects/${testProjectId}/publishertos:accept`)
-      .reply(200, t);
 
     const publisherTos = await tos.acceptLatestPublisherTOS(
       {
@@ -149,11 +149,14 @@ describe("tos", () => {
   });
 });
 
-function testTOS(tosName: string, latestVersion: string): tos.TOS {
-  return {
+function testTOS(tosName: string, latestVersion: string, lastAcceptedVersion?: string): tos.TOS {
+  const t: tos.TOS = {
     name: `projects/test-project/${tosName}`,
-    lastAcceptedVersion: "1.0.0",
     lastAcceptedTime: "11111",
     latestTosVersion: latestVersion,
   };
+  if (lastAcceptedVersion) {
+    t.lastAcceptedVersion = lastAcceptedVersion;
+  }
+  return t;
 }
