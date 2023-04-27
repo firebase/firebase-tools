@@ -26,6 +26,7 @@ import { FirebaseError } from "../error";
 import { requireHostingSite } from "../requireHostingSite";
 import { HostingRewrites } from "../firebaseConfig";
 import * as experiments from "../experiments";
+import { ensureTargeted } from "../functions/ensureTargeted";
 import { implicitInit } from "../hosting/implicitInit";
 import { fileExistsSync } from "../fsutils";
 
@@ -500,6 +501,11 @@ export async function prepareFrameworks(
           codebase,
         },
       ]);
+
+      if (!targetNames.includes("functions")) {
+        targetNames.unshift("functions");
+        ensureTargeted(options.only, codebase);
+      }
 
       // if exists, delete everything but the node_modules directory and package-lock.json
       // this should speed up repeated NPM installs
