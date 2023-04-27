@@ -21,7 +21,10 @@ const EXTENSIONS_API_VERSION = "v1beta";
 const PUBLISHER_API_VERSION = "v1beta";
 const PAGE_SIZE_MAX = 100;
 
-const extensionsApiClient = new Client({ urlPrefix: extensionsOrigin, apiVersion: EXTENSIONS_API_VERSION });
+const extensionsApiClient = new Client({
+  urlPrefix: extensionsOrigin,
+  apiVersion: EXTENSIONS_API_VERSION,
+});
 const extensionsPublisherApiClient = new Client({
   urlPrefix: extensionsPublisherOrigin,
   apiVersion: PUBLISHER_API_VERSION,
