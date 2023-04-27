@@ -47,7 +47,7 @@ export const command = new Command("ext:dev:upload <extensionRef>")
   .before(requireAuth)
   .action(uploadExtensionAction);
 
-interface UploadExtensionOptions extends Options {
+export interface UploadExtensionOptions extends Options {
   repo?: string;
   ref?: string;
   root?: string;

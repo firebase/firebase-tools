@@ -3,7 +3,7 @@ import * as TerminalRenderer from "marked-terminal";
 
 import { Command } from "../command";
 import { requireAuth } from "../requireAuth";
-import { uploadExtensionAction } from "./ext-dev-upload";
+import { uploadExtensionAction, UploadExtensionOptions } from "./ext-dev-upload";
 import { logLabeledWarning } from "../utils";
 
 marked.setOptions({
@@ -29,7 +29,7 @@ export const command = new Command("ext:dev:publish <extensionRef>")
       "be greater than previous versions."
   )
   .before(requireAuth)
-  .action(async (extensionRef: string, options: any) => {
+  .action(async (extensionRef: string, options: UploadExtensionOptions) => {
     logLabeledWarning(
       "Extensions",
       "ext:dev:publish has been deprecated and will be removed in the future. Please use ext:dev:upload instead."
