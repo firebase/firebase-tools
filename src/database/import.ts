@@ -163,7 +163,7 @@ export default class DatabaseImporter {
 
   // Since we cannot PATCH arrays and primitives, we convert them to objects.
   private sanitizeDataForPatch(batch: Data): Data {
-    if (typeof batch.json == "object") {
+    if (typeof batch.json === "object") {
       return { json: { ...batch.json }, pathname: batch.pathname };
     } else {
       const tokens = batch.pathname.split("/");
@@ -233,16 +233,16 @@ class BatchChunks extends stream.Transform {
       this.batch = { json: {}, pathname: "" };
       this.size = 0;
     }
-    if (this.size == 0) {
+    if (this.size === 0) {
       this.batch = chunk;
     } else {
       const newPathname = this._findLongestCommonPrefix(chunk.pathname, this.batch.pathname);
       const batchKey = this.batch.pathname.substring(newPathname.length + 1); // +1 to trim leading slash
       const chunkKey = chunk.pathname.substring(newPathname.length + 1);
 
-      if (batchKey == "") {
+      if (batchKey === "") {
         this.batch.json = Object.assign({}, this.batch.json, { [chunkKey]: chunk.json });
-      } else if (chunkKey == "") {
+      } else if (chunkKey === "") {
         this.batch.json = Object.assign({}, chunk.json, { [batchKey]: this.batch.json });
       } else {
         this.batch.json = { [batchKey]: this.batch.json, [chunkKey]: chunk.json };
@@ -258,7 +258,7 @@ class BatchChunks extends stream.Transform {
     const bTokens = b.split("/");
     let prefix = aTokens.slice(0, bTokens.length);
     for (let i = 0; i < prefix.length; i++) {
-      if (prefix[i] != bTokens[i]) {
+      if (prefix[i] !== bTokens[i]) {
         prefix = prefix.slice(0, i);
         break;
       }
@@ -268,7 +268,6 @@ class BatchChunks extends stream.Transform {
 
   _flush(callback: stream.TransformCallback) {
     if (this.size > 0) {
-      console.log(`flushed: ${JSON.stringify(this.batch.json)}, path: ${this.batch.pathname}`);
       this.push(this.batch);
     }
     callback(null);
