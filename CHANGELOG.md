@@ -1,1 +1,2 @@
 - Added more helpful error messages for the Firebase Hosting GitHub Action (#5749)
+- Upgrade Firestore emulator to 1.17.4
