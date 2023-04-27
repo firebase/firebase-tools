@@ -1,8 +1,9 @@
-import { bold } from "colorette";
+import { bold, italic } from "colorette";
 import * as leven from "leven";
 
 import { configstore } from "./configstore";
 import { FirebaseError } from "./error";
+import { isRunningInGithubAction } from "./init/features/hosting/github";
 
 export interface Experiment {
   shortDescription: string;
@@ -192,11 +193,34 @@ export function enableExperimentsFromCliEnvVariable(): void {
  */
 export function assertEnabled(name: ExperimentName, task: string): void {
   if (!isEnabled(name)) {
-    throw new FirebaseError(
-      `Cannot ${task} because the experiment ${bold(name)} is not enabled. To enable ${bold(
-        name
-      )} run ${bold(`firebase experiments:enable ${name}`)}`
-    );
+    if (isRunningInGithubAction()) {
+      if (process.env.FIREBASE_CLI_EXPERIMENTS) {
+        throw new FirebaseError(
+          `Cannot ${task} because the experiment ${bold(name)} is not enabled. To enable add ${bold(
+            name
+          )} to your ${bold("FIREBASE_CLI_EXPERIMENTS")} environment variable like so: ${italic(
+            `FIREBASE_CLI_EXPERIMENTS: ${process.env.FIREBASE_CLI_EXPERIMENTS},${name}`
+          )}`);
+      } else {
+        throw new FirebaseError(
+          `Cannot ${task} because the experiment ${bold(name)} is not enabled. To enable ${bold(
+            name
+          )} add a ${bold("FIREBASE_CLI_EXPERIMENTS")} environment variable to your action's yml, like so: ${italic(`
+
+  - uses: FirebaseExtended/action-hosting-deploy@v0
+    with:
+      ...
+    env:
+      FIREBASE_CLI_EXPERIMENTS: ${name}
+`)}`);
+      }
+    } else {
+      throw new FirebaseError(
+        `Cannot ${task} because the experiment ${bold(name)} is not enabled. To enable ${bold(
+          name
+        )} run ${bold(`firebase experiments:enable ${name}`)}`
+      );
+    }
   }
 }
 
