@@ -503,7 +503,6 @@ export async function prepareFrameworks(
       ]);
 
       if (!targetNames.includes("functions")) {
-        targetNames.unshift("functions");
         ensureTargeted(options.only, codebase);
       }
 
