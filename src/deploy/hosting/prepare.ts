@@ -100,7 +100,7 @@ export async function unsafePins(
     }
     if ("function" in rewrite && typeof rewrite.function === "object" && rewrite.function.pinTag) {
       const region = rewrite.function.region || "us-central1";
-      const endpoint = (await backend.existingBackend(context)).endpoints[region][
+      const endpoint = (await backend.existingBackend(context)).endpoints[region]?.[
         rewrite.function.functionId
       ];
       // This function is new. It can't be pinned elsewhere
