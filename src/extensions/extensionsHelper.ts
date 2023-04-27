@@ -725,7 +725,7 @@ export async function uploadExtensionVersionFromGitHubSource(args: {
       extensionVersionRef,
       extensionRoot,
       repoUri,
-      sourceRef: args.sourceRef,
+      sourceRef: sourceRef,
     });
     uploadSpinner.succeed(` Successfully uploaded ${clc.bold(extensionRef)}`);
   } catch (err: any) {
