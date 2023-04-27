@@ -16,13 +16,15 @@ import {
   ExtensionVersion,
   PublisherProfile,
 } from "./types";
-const VERSION = "v1beta";
+
+const EXTENSIONS_API_VERSION = "v1beta";
+const PUBLISHER_API_VERSION = "v1beta";
 const PAGE_SIZE_MAX = 100;
 
-const extensionsApiClient = new Client({ urlPrefix: extensionsOrigin, apiVersion: VERSION });
+const extensionsApiClient = new Client({ urlPrefix: extensionsOrigin, apiVersion: EXTENSIONS_API_VERSION });
 const extensionsPublisherApiClient = new Client({
   urlPrefix: extensionsPublisherOrigin,
-  apiVersion: VERSION,
+  apiVersion: PUBLISHER_API_VERSION,
 });
 
 /**
@@ -58,7 +60,7 @@ async function createInstanceHelper(
   }
   const pollRes = await operationPoller.pollOperation<ExtensionInstance>({
     apiOrigin: extensionsOrigin,
-    apiVersion: VERSION,
+    apiVersion: EXTENSIONS_API_VERSION,
     operationResourceName: createRes.body.name,
     masterTimeout: 600000,
   });
@@ -126,7 +128,7 @@ export async function deleteInstance(projectId: string, instanceId: string): Pro
   );
   const pollRes = await operationPoller.pollOperation({
     apiOrigin: extensionsOrigin,
-    apiVersion: VERSION,
+    apiVersion: EXTENSIONS_API_VERSION,
     operationResourceName: deleteRes.body.name,
     masterTimeout: 600000,
   });
@@ -365,7 +367,7 @@ async function patchInstance(args: {
   }
   const pollRes = await operationPoller.pollOperation({
     apiOrigin: extensionsOrigin,
-    apiVersion: VERSION,
+    apiVersion: EXTENSIONS_API_VERSION,
     operationResourceName: updateRes.body.name,
     masterTimeout: 600000,
   });
@@ -410,7 +412,7 @@ export async function createSource(
   });
   const pollRes = await operationPoller.pollOperation<ExtensionSource>({
     apiOrigin: extensionsOrigin,
-    apiVersion: VERSION,
+    apiVersion: EXTENSIONS_API_VERSION,
     operationResourceName: createRes.body.name,
     masterTimeout: 600000,
   });
@@ -663,7 +665,7 @@ export async function createExtensionVersionFromLocalSource(args: {
   });
   const pollRes = await operationPoller.pollOperation<ExtensionVersion>({
     apiOrigin: extensionsPublisherOrigin,
-    apiVersion: VERSION,
+    apiVersion: PUBLISHER_API_VERSION,
     operationResourceName: uploadRes.body.name,
     masterTimeout: 600000,
   });
@@ -710,7 +712,7 @@ export async function createExtensionVersionFromGitHubSource(args: {
   });
   const pollRes = await operationPoller.pollOperation<ExtensionVersion>({
     apiOrigin: extensionsPublisherOrigin,
-    apiVersion: VERSION,
+    apiVersion: PUBLISHER_API_VERSION,
     operationResourceName: uploadRes.body.name,
     masterTimeout: 600000,
   });
