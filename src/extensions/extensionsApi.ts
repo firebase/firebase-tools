@@ -21,7 +21,7 @@ const PAGE_SIZE_MAX = 100;
 
 const extensionsApiClient = new Client({ urlPrefix: extensionsOrigin, apiVersion: VERSION });
 const extensionsPublisherApiClient = new Client({
-  urlPrefix: extensionsOrigin,
+  urlPrefix: extensionsPublisherOrigin,
   apiVersion: VERSION,
 });
 

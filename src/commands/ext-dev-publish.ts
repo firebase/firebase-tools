@@ -35,7 +35,7 @@ export const command = new Command("ext:dev:publish <extensionRef>")
       "ext:dev:publish has been deprecated and will be removed in the future. Please use ext:dev:upload instead."
     );
     if (!options.repo && !options.ref && !options.root) {
-      options.local = true
+      options.local = true;
     }
     return uploadExtensionAction(extensionRef, options);
   });

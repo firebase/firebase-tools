@@ -573,7 +573,7 @@ async function validateExtensionSpec(args: {
  * @param nonInteractive whether to display prompts
  * @param force whether to force confirmations
  */
-export async function uploadExtensionVersionFromGitHubRepo(args: {
+export async function uploadExtensionVersionFromGitHubSource(args: {
   publisherId: string;
   extensionId: string;
   repoUri: string;
