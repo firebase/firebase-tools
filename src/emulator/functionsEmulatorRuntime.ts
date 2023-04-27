@@ -1034,7 +1034,7 @@ async function main(): Promise<void> {
             // to a byte array before passing the request to the function
             // when the payload is a protobuf
             reqBody.data = req.headers["content-type"]?.includes("application/protobuf")
-              ? Uint8Array.from(atob(req.body), (c) => c.charCodeAt(0))
+              ? Uint8Array.from(atob(req.body), (c) => c.charCodeAt(0)).buffer
               : req.body;
           } else {
             reqBody = JSON.parse(rawBody.toString());
