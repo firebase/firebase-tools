@@ -675,21 +675,94 @@ describe("extensions", () => {
   });
 });
 
-describe("publishExtensionVersion", () => {
+describe("createExtensionVersionFromGitHubSource", () => {
   afterEach(() => {
     nock.cleanAll();
   });
 
   it("should make a POST call to the correct endpoint, and then poll on the returned operation", async () => {
-    nock(api.extensionsOrigin)
-      .post(`/${VERSION}/publishers/test-pub/extensions/ext-one/versions:publish`)
+    nock(api.extensionsPublisherOrigin)
+      .post(`/${VERSION}/publishers/test-pub/extensions/ext-one/versions:createFromSource`)
       .reply(200, { name: "operations/abc123" });
-    nock(api.extensionsOrigin).get(`/${VERSION}/operations/abc123`).reply(200, {
+    nock(api.extensionsPublisherOrigin).get(`/${VERSION}/operations/abc123`).reply(200, {
       done: true,
       response: TEST_EXT_VERSION_3,
     });
 
-    const res = await extensionsApi.publishExtensionVersion({
+    const res = await extensionsApi.createExtensionVersionFromGitHubSource({
+      extensionVersionRef: TEST_EXT_VERSION_3.ref,
+      repoUri: "https://github.com/username/repo",
+      sourceRef: "HEAD",
+      extensionRoot: "/",
+    });
+    expect(res).to.deep.equal(TEST_EXT_VERSION_3);
+    expect(nock.isDone()).to.be.true;
+  });
+
+  it("should throw a FirebaseError if createExtensionVersionFromLocalSource returns an error response", async () => {
+    nock(api.extensionsPublisherOrigin)
+      .post(
+        `/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions:createFromSource`
+      )
+      .reply(500);
+
+    await expect(
+      extensionsApi.createExtensionVersionFromGitHubSource({
+        extensionVersionRef: `${PUBLISHER_ID}/${EXTENSION_ID}@${EXTENSION_VERSION}`,
+        repoUri: "https://github.com/username/repo",
+        sourceRef: "HEAD",
+        extensionRoot: "/",
+      })
+    ).to.be.rejectedWith(FirebaseError, "HTTP Error: 500, Unknown Error");
+    expect(nock.isDone()).to.be.true;
+  });
+
+  it("stop polling and throw if the operation call throws an unexpected error", async () => {
+    nock(api.extensionsPublisherOrigin)
+      .post(
+        `/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions:createFromSource`
+      )
+      .reply(200, { name: "operations/abc123" });
+    nock(api.extensionsPublisherOrigin).get(`/${VERSION}/operations/abc123`).reply(502, {});
+
+    await expect(
+      extensionsApi.createExtensionVersionFromGitHubSource({
+        extensionVersionRef: `${PUBLISHER_ID}/${EXTENSION_ID}@${EXTENSION_VERSION}`,
+        repoUri: "https://github.com/username/repo",
+        sourceRef: "HEAD",
+        extensionRoot: "/",
+      })
+    ).to.be.rejectedWith(FirebaseError, "HTTP Error: 502, Unknown Error");
+    expect(nock.isDone()).to.be.true;
+  });
+
+  it("should throw an error for an invalid ref", async () => {
+    await expect(
+      extensionsApi.createExtensionVersionFromGitHubSource({
+        extensionVersionRef: `${PUBLISHER_ID}/${EXTENSION_ID}`,
+        repoUri: "https://github.com/username/repo",
+        sourceRef: "HEAD",
+        extensionRoot: "/",
+      })
+    ).to.be.rejectedWith(FirebaseError, "Extension version ref");
+  });
+});
+
+describe("createExtensionVersionFromLocalSource", () => {
+  afterEach(() => {
+    nock.cleanAll();
+  });
+
+  it("should make a POST call to the correct endpoint, and then poll on the returned operation", async () => {
+    nock(api.extensionsPublisherOrigin)
+      .post(`/${VERSION}/publishers/test-pub/extensions/ext-one/versions:createFromSource`)
+      .reply(200, { name: "operations/abc123" });
+    nock(api.extensionsPublisherOrigin).get(`/${VERSION}/operations/abc123`).reply(200, {
+      done: true,
+      response: TEST_EXT_VERSION_3,
+    });
+
+    const res = await extensionsApi.createExtensionVersionFromLocalSource({
       extensionVersionRef: TEST_EXT_VERSION_3.ref,
       packageUri: "www.google.com/test-extension.zip",
     });
@@ -697,13 +770,15 @@ describe("publishExtensionVersion", () => {
     expect(nock.isDone()).to.be.true;
   });
 
-  it("should throw a FirebaseError if publishExtensionVersion returns an error response", async () => {
-    nock(api.extensionsOrigin)
-      .post(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions:publish`)
+  it("should throw a FirebaseError if createExtensionVersionFromLocalSource returns an error response", async () => {
+    nock(api.extensionsPublisherOrigin)
+      .post(
+        `/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions:createFromSource`
+      )
       .reply(500);
 
     await expect(
-      extensionsApi.publishExtensionVersion({
+      extensionsApi.createExtensionVersionFromLocalSource({
         extensionVersionRef: `${PUBLISHER_ID}/${EXTENSION_ID}@${EXTENSION_VERSION}`,
         packageUri: "www.google.com/test-extension.zip",
         extensionRoot: "/",
@@ -713,13 +788,15 @@ describe("publishExtensionVersion", () => {
   });
 
   it("stop polling and throw if the operation call throws an unexpected error", async () => {
-    nock(api.extensionsOrigin)
-      .post(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions:publish`)
+    nock(api.extensionsPublisherOrigin)
+      .post(
+        `/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions:createFromSource`
+      )
       .reply(200, { name: "operations/abc123" });
-    nock(api.extensionsOrigin).get(`/${VERSION}/operations/abc123`).reply(502, {});
+    nock(api.extensionsPublisherOrigin).get(`/${VERSION}/operations/abc123`).reply(502, {});
 
     await expect(
-      extensionsApi.publishExtensionVersion({
+      extensionsApi.createExtensionVersionFromLocalSource({
         extensionVersionRef: `${PUBLISHER_ID}/${EXTENSION_ID}@${EXTENSION_VERSION}`,
         packageUri: "www.google.com/test-extension.zip",
         extensionRoot: "/",
@@ -730,12 +807,12 @@ describe("publishExtensionVersion", () => {
 
   it("should throw an error for an invalid ref", async () => {
     await expect(
-      extensionsApi.publishExtensionVersion({
+      extensionsApi.createExtensionVersionFromLocalSource({
         extensionVersionRef: `${PUBLISHER_ID}/${EXTENSION_ID}`,
         packageUri: "www.google.com/test-extension.zip",
         extensionRoot: "/",
       })
-    ).to.be.rejectedWith(FirebaseError, "ExtensionVersion ref");
+    ).to.be.rejectedWith(FirebaseError, "Extension version ref");
   });
 });
 
@@ -767,38 +844,6 @@ describe("deleteExtension", () => {
   it("should throw an error for an invalid ref", async () => {
     await expect(
       extensionsApi.deleteExtension(`${PUBLISHER_ID}/${EXTENSION_ID}@0.1.0`)
-    ).to.be.rejectedWith(FirebaseError, "must not contain a version");
-  });
-});
-
-describe("unpublishExtension", () => {
-  afterEach(() => {
-    nock.cleanAll();
-  });
-
-  it("should make a POST call to the correct endpoint", async () => {
-    nock(api.extensionsOrigin)
-      .post(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}:unpublish`)
-      .reply(200);
-
-    await extensionsApi.unpublishExtension(`${PUBLISHER_ID}/${EXTENSION_ID}`);
-    expect(nock.isDone()).to.be.true;
-  });
-
-  it("should throw a FirebaseError if the endpoint returns an error response", async () => {
-    nock(api.extensionsOrigin)
-      .post(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}:unpublish`)
-      .reply(404);
-
-    await expect(
-      extensionsApi.unpublishExtension(`${PUBLISHER_ID}/${EXTENSION_ID}`)
-    ).to.be.rejectedWith(FirebaseError);
-    expect(nock.isDone()).to.be.true;
-  });
-
-  it("should throw an error for an invalid ref", async () => {
-    await expect(
-      extensionsApi.unpublishExtension(`${PUBLISHER_ID}/${EXTENSION_ID}@0.1.0`)
     ).to.be.rejectedWith(FirebaseError, "must not contain a version");
   });
 });
