@@ -1030,7 +1030,12 @@ async function main(): Promise<void> {
           let reqBody;
           if (EventUtils.isBinaryCloudEvent(req)) {
             reqBody = EventUtils.extractBinaryCloudEventContext(req);
-            reqBody.data = req.body;
+            // Eventarc decodes a base64 encoded string
+            // to a byte array before passing the request to the function
+            // when the payload is a protobuf
+            reqBody.data = req.headers["content-type"]?.includes("application/protobuf")
+              ? Uint8Array.from(atob(req.body), (c) => c.charCodeAt(0))
+              : req.body;
           } else {
             reqBody = JSON.parse(rawBody.toString());
           }
