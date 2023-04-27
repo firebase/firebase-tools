@@ -25,7 +25,7 @@ interface DatabaseImportOptions extends Options {
   concurrency?: string;
 }
 
-const MAX_CHUNK_SIZE_MB = 10;
+const MAX_CHUNK_SIZE_MB = 1;
 const MAX_PAYLOAD_SIZE_MB = 256;
 const CONCURRENCY_LIMIT = 5;
 

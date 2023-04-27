@@ -12,7 +12,7 @@ const payloadSize = 1024 * 1024 * 10;
 const concurrencyLimit = 5;
 
 describe("DatabaseImporter", () => {
-  const DATA = { a: 100, b: [true, "bar", { f: { g: 0, h: 1 }, i: "baz" }] };
+  const DATA = { a: 100, b: [true, "bar", { f: { g: 0, h: 1 }, i: "baz" }], c: { d: false } };
   let DATA_STREAM: stream.Readable;
 
   beforeEach(() => {
@@ -39,22 +39,25 @@ describe("DatabaseImporter", () => {
   it("batches data from different top-level objects", async () => {
     nock("https://test-db.firebaseio.com").get("/foo.json?shallow=true").reply(200);
     nock("https://test-db.firebaseio.com")
-      .patch("/.json", JSON.stringify({ "/foo/a": 100, "/foo/b/0": true, "/foo/b/1": "bar" }))
+      .patch("/foo.json", JSON.stringify({ a: 100, "b/0": true, "b/1": "bar" }))
       .reply(200);
     nock("https://test-db.firebaseio.com")
-      .patch("/.json", JSON.stringify({ "/foo/b/2/f": { g: 0, h: 1 }, "/foo/b/2/i": "baz" }))
+      .patch("/foo/b/2.json", JSON.stringify({ f: { g: 0, h: 1 }, i: "baz" }))
+      .reply(200);
+    nock("https://test-db.firebaseio.com")
+      .patch("/foo/c.json", JSON.stringify({ d: false }))
       .reply(200);
     const importer = new DatabaseImporter(
       dbUrl,
       DATA_STREAM,
       /* importPath= */ "/",
-      /* payloadSize= */ 20,
+      /* payloadSize= */ 40,
       concurrencyLimit
     );
 
     const responses = await importer.execute();
 
-    expect(responses).to.have.length(2);
+    expect(responses).to.have.length(3);
     expect(nock.isDone()).to.be.true;
   });
 
@@ -62,8 +65,12 @@ describe("DatabaseImporter", () => {
     nock("https://test-db.firebaseio.com").get("/foo.json?shallow=true").reply(200);
     nock("https://test-db.firebaseio.com")
       .patch(
-        "/.json",
-        JSON.stringify({ "/foo/a": 100, "/foo/b": [true, "bar", { f: { g: 0, h: 1 }, i: "baz" }] })
+        "/foo.json",
+        JSON.stringify({
+          a: 100,
+          b: [true, "bar", { f: { g: 0, h: 1 }, i: "baz" }],
+          c: { d: false },
+        })
       )
       .reply(200);
     const importer = new DatabaseImporter(
@@ -83,7 +90,48 @@ describe("DatabaseImporter", () => {
   it("imports from data path", async () => {
     nock("https://test-db.firebaseio.com").get("/foo.json?shallow=true").reply(200);
     nock("https://test-db.firebaseio.com")
-      .patch("/.json", JSON.stringify({ "/foo/b": [true, "bar", { f: { g: 0, h: 1 }, i: "baz" }] }))
+      .patch("/foo/c.json", JSON.stringify({ d: false }))
+      .reply(200);
+    const importer = new DatabaseImporter(
+      dbUrl,
+      DATA_STREAM,
+      /* importPath= */ "/c",
+      payloadSize,
+      concurrencyLimit
+    );
+
+    const responses = await importer.execute();
+
+    expect(responses).to.have.length(1);
+    expect(nock.isDone()).to.be.true;
+  });
+
+  it("writes primitive as object", async () => {
+    nock("https://test-db.firebaseio.com").get("/foo.json?shallow=true").reply(200);
+    nock("https://test-db.firebaseio.com")
+      .patch("/foo.json", JSON.stringify({ a: 100 }))
+      .reply(200);
+    const importer = new DatabaseImporter(
+      dbUrl,
+      DATA_STREAM,
+      /* importPath= */ "/a",
+      payloadSize,
+      concurrencyLimit
+    );
+
+    const responses = await importer.execute();
+
+    expect(responses).to.have.length(1);
+    expect(nock.isDone()).to.be.true;
+  });
+
+  it("writes array as object", async () => {
+    nock("https://test-db.firebaseio.com").get("/foo.json?shallow=true").reply(200);
+    nock("https://test-db.firebaseio.com")
+      .patch(
+        "/foo/b.json",
+        JSON.stringify({ "0": true, "1": "bar", "2": { f: { g: 0, h: 1 }, i: "baz" } })
+      )
       .reply(200);
     const importer = new DatabaseImporter(
       dbUrl,
@@ -122,15 +170,23 @@ describe("DatabaseImporter", () => {
     nock("https://test-db.firebaseio.com").get("/foo.json?shallow=true").reply(200);
     nock("https://test-db.firebaseio.com")
       .patch(
-        "/.json",
-        JSON.stringify({ "/foo/a": 100, "/foo/b": [true, "bar", { f: { g: 0, h: 1 }, i: "baz" }] })
+        "/foo.json",
+        JSON.stringify({
+          a: 100,
+          b: [true, "bar", { f: { g: 0, h: 1 }, i: "baz" }],
+          c: { d: false },
+        })
       )
       .once()
       .replyWithError(timeoutErr);
     nock("https://test-db.firebaseio.com")
       .patch(
-        "/.json",
-        JSON.stringify({ "/foo/a": 100, "/foo/b": [true, "bar", { f: { g: 0, h: 1 }, i: "baz" }] })
+        "/foo.json",
+        JSON.stringify({
+          a: 100,
+          b: [true, "bar", { f: { g: 0, h: 1 }, i: "baz" }],
+          c: { d: false },
+        })
       )
       .once()
       .reply(200);
