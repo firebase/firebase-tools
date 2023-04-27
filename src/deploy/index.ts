@@ -78,11 +78,7 @@ export const deploy = async function (
     }
   }
 
-  if (
-    targetNames.includes("hosting") &&
-    !targetNames.includes("functions") &&
-    experiments.isEnabled("pintags")
-  ) {
+  if (targetNames.includes("hosting") && experiments.isEnabled("pintags")) {
     if (await addTaggedFunctionsToOnlyString(context, options)) {
       targetNames.unshift("functions");
     }
