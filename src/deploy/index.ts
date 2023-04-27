@@ -60,7 +60,7 @@ export const deploy = async function (
   if (targetNames.includes("hosting")) {
     const config = options.config.get("hosting");
     if (Array.isArray(config) ? config.some((it) => it.source) : config.source) {
-      experiments.assertEnabled("webframeworks", "deploy a web framework to hosting");
+      experiments.assertEnabled("webframeworks", "deploy a web framework from source");
       await prepareFrameworks(targetNames, context, options);
     }
   }
