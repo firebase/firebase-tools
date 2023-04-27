@@ -30,6 +30,7 @@ import { ensureTargeted } from "../functions/ensureTargeted";
 import { implicitInit } from "../hosting/implicitInit";
 import { fileExistsSync } from "../fsutils";
 import { logWarning } from "../utils";
+import { conjoinOptions } from "./utils";
 
 // Use "true &&"" to keep typescript from compiling this file and rewriting
 // the import statement into a require
@@ -121,12 +122,6 @@ export const ALLOWED_SSR_REGIONS = [
   { name: "europe-west1 (Belgium)", value: "europe-west1" },
   { name: "asia-east1 (Taiwan)", value: "asia-east1" },
 ];
-
-function conjoinOptions(opts: any[], conjunction: string = "and", separator: string = ","): string {
-  if (opts.length === 1) return opts[0].toString();
-  const lastElement = opts.slice(-1)[0];
-  return `${opts.slice(0, -1).join(`${separator} `)}${separator} ${conjunction} ${lastElement}`;
-}
 
 const DEFAULT_FIND_DEP_OPTIONS: FindDepOptions = {
   cwd: process.cwd(),
