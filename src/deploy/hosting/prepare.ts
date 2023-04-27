@@ -30,10 +30,6 @@ export async function addTaggedFunctionsToOnlyString(
   context: Context,
   options: HostingOptions & Options
 ): Promise<boolean> {
-  if (!options.only) {
-    return false;
-  }
-
   // This must be called before modifying hosting config because we turn it from
   // a scalar to an array now
   handlePublicDirectoryFlag(options);

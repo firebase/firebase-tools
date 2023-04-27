@@ -502,13 +502,6 @@ export async function prepareFrameworks(
         },
       ]);
 
-      if (!targetNames.includes("functions")) {
-        targetNames.unshift("functions");
-      }
-      if (options.only) {
-        options.only = ensureTargeted(options.only, codebase);
-      }
-
       // if exists, delete everything but the node_modules directory and package-lock.json
       // this should speed up repeated NPM installs
       if (await pathExists(functionsDist)) {
