@@ -117,6 +117,6 @@ export function displayDeveloperTOSWarning(): void {
   const tosLink = extensionsTosUrl("appdev");
   utils.logLabeledBullet(
     logPrefix,
-    `By installing an extension instance onto a Firebase project, you accept the Firebase Extensions Developer Terms of Service: ${tosLink}`,
+    `By installing an extension instance onto a Firebase project, you accept the Firebase Extensions Developer Terms of Service: ${tosLink}`
   );
 }

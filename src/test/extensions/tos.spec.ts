@@ -122,8 +122,8 @@ describe("tos", () => {
         .post(`/v1/projects/${testProjectId}/appdevtos:accept`)
         .reply(200, t);
       nock(api.extensionsTOSOrigin)
-      .post(`/v1/projects/${testProjectId}/appdevtos:accept`)
-      .reply(200, t);
+        .post(`/v1/projects/${testProjectId}/appdevtos:accept`)
+        .reply(200, t);
 
       const appDevTos = await tos.acceptLatestAppDeveloperTOS(
         {

@@ -13,7 +13,9 @@ import * as utils from "../utils";
 
 const toListEntry = (i: InstanceSpec) => {
   const idAndRef = humanReadable(i);
-  const sourceCodeLink = `\n\t[Source Code](${i.extensionVersion?.buildSourceUri ?? i.extensionVersion?.sourceDownloadUri})`;
+  const sourceCodeLink = `\n\t[Source Code](${
+    i.extensionVersion?.buildSourceUri ?? i.extensionVersion?.sourceDownloadUri
+  })`;
   const githubLink = i.extensionVersion?.spec?.sourceUrl
     ? `\n\t[Publisher Contact](${i.extensionVersion?.spec.sourceUrl})`
     : "";
@@ -30,16 +32,16 @@ export async function displayWarningsForDeploy(instancesToCreate: InstanceSpec[]
   for (const i of uploadedExtensionInstances) {
     await getExtensionVersion(i);
   }
-  const unpublishedExtensions = uploadedExtensionInstances.filter((i) => i.extensionVersion?.listing?.state != "APPROVED");
+  const unpublishedExtensions = uploadedExtensionInstances.filter(
+    (i) => i.extensionVersion?.listing?.state !== "APPROVED"
+  );
 
   if (unpublishedExtensions.length) {
     const humanReadableList = unpublishedExtensions.map(toListEntry).join("\n");
     utils.logLabeledBullet(
       logPrefix,
       marked(
-        `The following extension versions have not been published to the Firebase Extensions Hub:\n${
-          humanReadableList
-        }\nUnpublished extensions may carry a higher risk of containing malicious or low quality code. It is provided “AS IS”, without any warranty, express or implied, from Google. Google disclaims all liability for any damages, direct or indirect, resulting from the use of the extension, and its functionality might change in backwards-incompatible ways.`,
+        `The following extension versions have not been published to the Firebase Extensions Hub:\n${humanReadableList}\nUnpublished extensions may carry a higher risk of containing malicious or low quality code. It is provided “AS IS”, without any warranty, express or implied, from Google. Google disclaims all liability for any damages, direct or indirect, resulting from the use of the extension, and its functionality might change in backwards-incompatible ways.`,
         { gfm: false }
       )
     );
