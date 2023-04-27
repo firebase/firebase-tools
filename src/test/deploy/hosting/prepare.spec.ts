@@ -9,7 +9,9 @@ import * as hostingApi from "../../../hosting/api";
 import * as tracking from "../../../track";
 import * as deploymentTool from "../../../deploymentTool";
 import * as config from "../../../hosting/config";
-import { prepare } from "../../../deploy/hosting";
+import { prepare, unsafePins } from "../../../deploy/hosting/prepare";
+import { cloneDeep } from "../../../utils";
+import * as backend from "../../../deploy/functions/backend";
 
 describe("hosting prepare", () => {
   let hostingStub: sinon.SinonStubbedInstance<typeof hostingApi>;
@@ -113,6 +115,122 @@ describe("hosting prepare", () => {
           version: "version",
         },
       ],
+    });
+  });
+
+  describe("unsafePins", () => {
+    const apiRewriteWithoutPin: hostingApi.Rewrite = {
+      glob: "**",
+      run: {
+        serviceId: "service",
+        region: "us-central1",
+      },
+    };
+    const apiRewriteWithPin = cloneDeep(apiRewriteWithoutPin);
+    apiRewriteWithPin.run.tag = "tag";
+    const configWithRunPin: config.HostingResolved = {
+      site: "site",
+      rewrites: [
+        {
+          glob: "**",
+          run: {
+            serviceId: "service",
+            pinTag: true,
+          },
+        },
+      ],
+    };
+    const configWithFuncPin: config.HostingResolved = {
+      site: "site",
+      rewrites: [
+        {
+          glob: "**",
+          function: {
+            functionId: "function",
+            pinTag: true,
+          },
+        },
+      ],
+    };
+
+    let backendStub: sinon.SinonStubbedInstance<typeof backend>;
+
+    beforeEach(() => {
+      backendStub = sinon.stub(backend);
+      backendStub.existingBackend.resolves({
+        endpoints: {
+          "us-central1": {
+            function: {
+              id: "function",
+              runServiceId: "service",
+            } as unknown as backend.Endpoint,
+          },
+        },
+        requiredAPIs: [],
+        environmentVariables: {},
+      });
+    });
+
+    function stubUnpinnedRewrite(): void {
+      stubRewrite(apiRewriteWithoutPin);
+    }
+
+    function stubPinnedRewrite(): void {
+      stubRewrite(apiRewriteWithPin);
+    }
+
+    function stubRewrite(rewrite: hostingApi.Rewrite): void {
+      hostingStub.getChannel.resolves({
+        release: {
+          version: {
+            config: {
+              rewrites: [rewrite],
+            },
+          },
+        },
+      } as unknown as hostingApi.Channel);
+    }
+
+    it("does not care about modifying live (implicit)", async () => {
+      stubUnpinnedRewrite();
+      await expect(unsafePins({ projectId: "project" }, configWithRunPin)).to.eventually.deep.equal(
+        []
+      );
+    });
+
+    it("does not care about modifying live (explicit)", async () => {
+      stubUnpinnedRewrite();
+      await expect(
+        unsafePins({ projectId: "project", hostingChannel: "live" }, configWithRunPin)
+      ).to.eventually.deep.equal([]);
+    });
+
+    it("does not care about already pinned rewrites (run)", async () => {
+      stubPinnedRewrite();
+      await expect(
+        unsafePins({ projectId: "project", hostingChannel: "test" }, configWithRunPin)
+      ).to.eventually.deep.equal([]);
+    });
+
+    it("does not care about already pinned rewrites (gcf)", async () => {
+      stubPinnedRewrite();
+      await expect(
+        unsafePins({ projectId: "project", hostingChannel: "test" }, configWithFuncPin)
+      ).to.eventually.deep.equal([]);
+    });
+
+    it("rejects about newly pinned rewrites (run)", async () => {
+      stubUnpinnedRewrite();
+      await expect(
+        unsafePins({ projectId: "project", hostingChannel: "test" }, configWithRunPin)
+      ).to.eventually.deep.equal(["**"]);
+    });
+
+    it("rejects about newly pinned rewrites (gcf)", async () => {
+      stubUnpinnedRewrite();
+      await expect(
+        unsafePins({ projectId: "project", hostingChannel: "test" }, configWithFuncPin)
+      ).to.eventually.deep.equal(["**"]);
     });
   });
 });
