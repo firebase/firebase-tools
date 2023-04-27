@@ -80,11 +80,12 @@ export const deploy = async function (
 
   if (
     targetNames.includes("hosting") &&
-    experiments.isEnabled("pintags") &&
     !targetNames.includes("functions") &&
-    (await addTaggedFunctionsToOnlyString(context, options))
+    experiments.isEnabled("pintags")
   ) {
-    targetNames.unshift("functions");
+    if (await addTaggedFunctionsToOnlyString(context, options)) {
+      targetNames.unshift("functions");
+    }
   }
 
   for (const targetName of targetNames) {
