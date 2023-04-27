@@ -26,7 +26,6 @@ import { FirebaseError } from "../error";
 import { requireHostingSite } from "../requireHostingSite";
 import { HostingRewrites } from "../firebaseConfig";
 import * as experiments from "../experiments";
-import { ensureTargeted } from "../functions/ensureTargeted";
 import { implicitInit } from "../hosting/implicitInit";
 import { fileExistsSync } from "../fsutils";
 
