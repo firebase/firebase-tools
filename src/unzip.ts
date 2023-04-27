@@ -46,8 +46,11 @@ const extractEntriesFromBuffer = async (data: Buffer, outputDir: string): Promis
       position + entry.headerSize + entry.compressedSize
     );
 
-    const outputFilePath = path.join(outputDir, entry.fileName);
+    entry.fileName = entry.fileName.replace(/\//g, path.sep);
 
+    const outputFilePath = path.normalize(path.join(outputDir, entry.fileName));
+
+    console.log(`Processing entry: \${entry.fileName}`);
     if (entry.fileName.endsWith(path.sep)) {
       await fs.promises.mkdir(outputFilePath, { recursive: true });
     } else {
@@ -57,6 +60,7 @@ const extractEntriesFromBuffer = async (data: Buffer, outputDir: string): Promis
       const compressionMethod = entryHeader.readUInt16LE(8);
       if (compressionMethod === 0) {
         // Store (no compression)
+        console.log(`Writing file: \${outputFilePath}`);
         await fs.promises.writeFile(outputFilePath, entry.compressedData);
       } else if (compressionMethod === 8) {
         // Deflate
