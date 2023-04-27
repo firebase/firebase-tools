@@ -30,7 +30,7 @@ export const command = new Command("ext:dev:upload <extensionRef>")
   .option(`--ref <ref>`, `commit hash, branch, or tag to build from the repo (defaults to HEAD)`)
   .option(
     `--root <root>`,
-    `root directory that contains this extension (defaults to last uploaded root or repo root if none set)`
+    `root directory that contains this extension (defaults to last uploaded root or "/" if none set)`
   )
   .option(`--local`, `upload from local source instead`)
   .withForce()
