@@ -18,7 +18,6 @@ import { dirExistsSync } from "../fsutils";
 import { resolveProjectPath } from "../projectPath";
 import { HostingOptions } from "./options";
 import * as path from "node:path";
-import * as experiments from "../experiments";
 import { logger } from "../logger";
 
 // After validating a HostingMultiple and resolving targets, we will instead

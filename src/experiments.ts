@@ -198,21 +198,24 @@ export function assertEnabled(name: ExperimentName, task: string): void {
         throw new FirebaseError(
           `Cannot ${task} because the experiment ${bold(name)} is not enabled. To enable add ${bold(
             name
-          )} to your ${bold("FIREBASE_CLI_EXPERIMENTS")} environment variable like so: ${italic(
-            `FIREBASE_CLI_EXPERIMENTS: ${process.env.FIREBASE_CLI_EXPERIMENTS},${name}`
-          )}`);
+          )} to your ${bold("FIREBASE_CLI_EXPERIMENTS")} environment variable like so: ${italic(`
+  FIREBASE_CLI_EXPERIMENTS: ${process.env.FIREBASE_CLI_EXPERIMENTS},${name}`)}`
+        );
       } else {
         throw new FirebaseError(
           `Cannot ${task} because the experiment ${bold(name)} is not enabled. To enable ${bold(
             name
-          )} add a ${bold("FIREBASE_CLI_EXPERIMENTS")} environment variable to your action's yml, like so: ${italic(`
+          )} add a ${bold(
+            "FIREBASE_CLI_EXPERIMENTS"
+          )} environment variable to your action's yml, like so: ${italic(`
 
   - uses: FirebaseExtended/action-hosting-deploy@v0
     with:
       ...
     env:
       FIREBASE_CLI_EXPERIMENTS: ${name}
-`)}`);
+`)}`
+        );
       }
     } else {
       throw new FirebaseError(
