@@ -73,12 +73,12 @@ export async function acceptLatestPublisherTOS(
     // Display link to TOS, prompt for acceptance
     const tosLink = extensionsTosUrl("publisher");
     logger.info(
-      `To continue, you must accept the Extensions publisher terms of service: ${tosLink}`
+      `To continue, you must accept the Firebase Extensions Publisher Terms of Service: ${tosLink}`
     );
     if (
       await confirm({
         ...options,
-        message: "Do you accept the Extensions publisher terms of service?",
+        message: "Do you accept the Firebase Extensions Publisher Terms of Service?",
       })
     ) {
       return acceptPublisherTOS(projectId, currentAcceptance.latestTosVersion);
@@ -105,12 +105,12 @@ export async function acceptLatestAppDeveloperTOS(
     // Display link to TOS, prompt for acceptance
     const tosLink = extensionsTosUrl("appdev");
     logger.info(
-      `To continue, you must accept the [Extensions app developer terms of service](${tosLink})`
+      `To continue, you must accept the Firebase Extensions App Developer Terms of Service: ${tosLink}`
     );
     if (
       await confirm({
         ...options,
-        message: "Do you accept the Extensions app developer terms of service?",
+        message: "Do you accept the Firebase Extensions App Developer Terms of Service?",
       })
     ) {
       return acceptAppDeveloperTOS(projectId, instanceId, currentAcceptance.latestTosVersion);

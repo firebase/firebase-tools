@@ -128,9 +128,22 @@ const DEFAULT_FIND_DEP_OPTIONS: FindDepOptions = {
 export const WebFrameworks: Record<string, Framework> = Object.fromEntries(
   readdirSync(__dirname)
     .filter((path) => statSync(join(__dirname, path)).isDirectory())
-    .map((path) => [path, require(join(__dirname, path))])
+    .map((path) => {
+      // If not called by the CLI, (e.g., by the VS Code Extension)
+      // __dirname won't refer to this folder and these files won't be available.
+      // Instead it may find sibling folders that aren't modules, and this
+      // require will throw.
+      // Long term fix may be to bundle this instead of reading files at runtime
+      // but for now, this prevents crashing.
+      try {
+        return [path, require(join(__dirname, path))];
+      } catch (e) {
+        return [];
+      }
+    })
     .filter(
-      ([, obj]) => obj.name && obj.discover && obj.build && obj.type !== undefined && obj.support
+      ([, obj]) =>
+        obj && obj.name && obj.discover && obj.build && obj.type !== undefined && obj.support
     )
 );
 
@@ -234,11 +247,11 @@ function scanDependencyTree(searchingFor: string, dependencies = {}): any {
 
 export function getNodeModuleBin(name: string, cwd: string) {
   const cantFindExecutable = new FirebaseError(`Could not find the ${name} executable.`);
-  const npmBin = spawnSync("npm", ["bin"], { cwd }).stdout?.toString().trim();
-  if (!npmBin) {
+  const npmRoot = spawnSync("npm", ["root"], { cwd }).stdout?.toString().trim();
+  if (!npmRoot) {
     throw cantFindExecutable;
   }
-  const path = join(npmBin, name);
+  const path = join(npmRoot, ".bin", name);
   if (!fileExistsSync(path)) {
     throw cantFindExecutable;
   }

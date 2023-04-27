@@ -21,7 +21,13 @@ interface DatabaseImportOptions extends Options {
   instanceDetails: DatabaseInstance;
   disableTriggers?: boolean;
   filter?: string;
+  chunkSize?: string;
+  concurrency?: string;
 }
+
+const MAX_CHUNK_SIZE_MB = 10;
+const MAX_PAYLOAD_SIZE_MB = 256;
+const CONCURRENCY_LIMIT = 5;
 
 export const command = new Command("database:import <path> [infile]")
   .description(
@@ -41,6 +47,8 @@ export const command = new Command("database:import <path> [infile]")
     "--filter <dataPath>",
     "import only data at this path in the JSON file (if omitted, import entire file)"
   )
+  .option("--chunk-size <mb>", "max chunk size in megabytes, default to 10 MB")
+  .option("--concurrency <val>", "concurrency limit, default to 5")
   .before(requirePermissions, ["firebasedatabase.instances.update"])
   .before(requireDatabaseInstance)
   .before(populateInstanceDetails)
@@ -52,6 +60,11 @@ export const command = new Command("database:import <path> [infile]")
 
     if (!infile) {
       throw new FirebaseError("No file supplied");
+    }
+
+    const chunkMegabytes = options.chunkSize ? parseInt(options.chunkSize, 10) : MAX_CHUNK_SIZE_MB;
+    if (chunkMegabytes > MAX_PAYLOAD_SIZE_MB) {
+      throw new FirebaseError("Max chunk size cannot exceed 256 MB");
     }
 
     const projectId = needProjectId(options);
@@ -77,7 +90,9 @@ export const command = new Command("database:import <path> [infile]")
 
     const inStream = fs.createReadStream(infile);
     const dataPath = options.filter || "";
-    const importer = new DatabaseImporter(dbUrl, inStream, dataPath);
+    const chunkBytes = chunkMegabytes * 1024 * 1024;
+    const concurrency = options.concurrency ? parseInt(options.concurrency, 10) : CONCURRENCY_LIMIT;
+    const importer = new DatabaseImporter(dbUrl, inStream, dataPath, chunkBytes, concurrency);
 
     let responses;
     try {
