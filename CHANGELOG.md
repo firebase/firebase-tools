@@ -1,0 +1,1 @@
+- Added more helpful error messages for the Firebase Hosting GitHub Action (#5749)
