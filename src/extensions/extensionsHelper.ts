@@ -717,7 +717,7 @@ export async function uploadExtensionVersionFromGitHubSource(args: {
 
   // Upload the extension version.
   const extensionVersionRef = `${extensionRef}@${extensionSpec.version}`;
-  const uploadSpinner = ora(`Uploading ${clc.bold(extensionVersionRef)}`);
+  const uploadSpinner = ora(` Uploading ${clc.bold(extensionVersionRef)}`);
   let res;
   try {
     uploadSpinner.start();
@@ -797,7 +797,7 @@ export async function uploadExtensionVersionFromLocalSource(args: {
       original: err,
     });
   }
-  const publishSpinner = ora(`Uploading ${clc.bold(extensionVersionRef)}`);
+  const publishSpinner = ora(` Uploading ${clc.bold(extensionVersionRef)}`);
   let res;
   try {
     publishSpinner.start();
