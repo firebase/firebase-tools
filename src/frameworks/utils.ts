@@ -100,10 +100,7 @@ export function conjoinOptions(
   if (!opts.length) return;
   if (opts.length === 1) return opts[0].toString();
   if (opts.length === 2) return `${opts[0].toString()} ${conjunction} ${opts[1].toString()}`;
-
-  const [lastButOneElement, lastElement] = [opts.slice(-2, -1)[0], opts.slice(-1)[0]];
-
-  return `${opts
-    .slice(0, -2)
-    .join(`${separator} `)}${separator} ${lastButOneElement} ${conjunction} ${lastElement}`;
+  const lastElement = opts.slice(-1)[0].toString();
+  const allButLast = opts.slice(0, -1).map((it) => it.toString());
+  return `${allButLast.join(`${separator} `)}${separator} ${conjunction} ${lastElement}`;
 }

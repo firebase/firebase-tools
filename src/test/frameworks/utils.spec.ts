@@ -116,7 +116,7 @@ describe("Frameworks utils", () => {
 
     it("should return options with default conjunction and default separator", () => {
       expect(conjoinOptions(options)).to.equal(
-        `${options[0]}${defaultSeparator} ${options[1]} ${defaultConjunction} ${options[2]}`
+        `${options[0]}${defaultSeparator} ${options[1]}${defaultSeparator} ${defaultConjunction} ${options[2]}`
       );
     });
 
@@ -124,7 +124,7 @@ describe("Frameworks utils", () => {
       const customSeparator = "/";
 
       expect(conjoinOptions(options, defaultConjunction, customSeparator)).to.equal(
-        `${options[0]}${customSeparator} ${options[1]} ${defaultConjunction} ${options[2]}`
+        `${options[0]}${customSeparator} ${options[1]}${customSeparator} ${defaultConjunction} ${options[2]}`
       );
     });
 
@@ -132,7 +132,7 @@ describe("Frameworks utils", () => {
       const customConjuntion = "or";
 
       expect(conjoinOptions(options, customConjuntion, defaultSeparator)).to.equal(
-        `${options[0]}${defaultSeparator} ${options[1]} ${customConjuntion} ${options[2]}`
+        `${options[0]}${defaultSeparator} ${options[1]}${defaultSeparator} ${customConjuntion} ${options[2]}`
       );
     });
   });
