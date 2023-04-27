@@ -848,6 +848,39 @@ describe("deleteExtension", () => {
   });
 });
 
+describe("getExtension", () => {
+  afterEach(() => {
+    nock.cleanAll();
+  });
+
+  it("should make a GET call to the correct endpoint", async () => {
+    nock(api.extensionsOrigin)
+      .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}`)
+      .reply(200);
+
+    await extensionsApi.getExtension(`${PUBLISHER_ID}/${EXTENSION_ID}`);
+    expect(nock.isDone()).to.be.true;
+  });
+
+  it("should throw a FirebaseError if the endpoint returns an error response", async () => {
+    nock(api.extensionsOrigin)
+      .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}`)
+      .reply(404);
+
+    await expect(extensionsApi.getExtension(`${PUBLISHER_ID}/${EXTENSION_ID}`)).to.be.rejectedWith(
+      FirebaseError
+    );
+    expect(nock.isDone()).to.be.true;
+  });
+
+  it("should throw an error for an invalid ref", async () => {
+    await expect(extensionsApi.getExtension(`${PUBLISHER_ID}`)).to.be.rejectedWith(
+      FirebaseError,
+      "Unable to parse"
+    );
+  });
+});
+
 describe("getExtensionVersion", () => {
   afterEach(() => {
     nock.cleanAll();
