@@ -25,6 +25,64 @@ type ChunkedData = {
 };
 
 /**
+ * Batches chunked JSON data up to the specified byte size limit. The emitted batch is an object
+ * containing chunks keyed by pathname.
+ */
+class BatchChunks extends stream.Transform {
+  private batch: SizedData = { json: {}, pathname: "", size: 0 };
+
+  constructor(private maxSize: number, opts?: stream.TransformOptions) {
+    super({ ...opts, objectMode: true });
+  }
+
+  _transform(chunk: SizedData, _: BufferEncoding, callback: stream.TransformCallback): void {
+    const totalChunkSize = chunk.size + chunk.pathname.length; // Overestimate
+    if (this.batch.size + totalChunkSize > this.maxSize) {
+      this.push(this.batch);
+      this.batch = { json: {}, pathname: "", size: 0 };
+    }
+    if (this.batch.size === 0) {
+      this.batch = chunk;
+    } else {
+      const newPathname = this._findLongestCommonPrefix(chunk.pathname, this.batch.pathname);
+      const batchKey = this.batch.pathname.substring(newPathname.length + 1); // +1 to trim leading slash
+      const chunkKey = chunk.pathname.substring(newPathname.length + 1);
+
+      if (batchKey === "") {
+        this.batch.json = Object.assign({}, this.batch.json, { [chunkKey]: chunk.json });
+      } else if (chunkKey === "") {
+        this.batch.json = Object.assign({}, chunk.json, { [batchKey]: this.batch.json });
+      } else {
+        this.batch.json = { [batchKey]: this.batch.json, [chunkKey]: chunk.json };
+      }
+      this.batch.pathname = newPathname;
+    }
+    this.batch.size += totalChunkSize;
+    callback(null);
+  }
+
+  _findLongestCommonPrefix(a: string, b: string): string {
+    const aTokens = a.split("/");
+    const bTokens = b.split("/");
+    let prefix = aTokens.slice(0, bTokens.length);
+    for (let i = 0; i < prefix.length; i++) {
+      if (prefix[i] !== bTokens[i]) {
+        prefix = prefix.slice(0, i);
+        break;
+      }
+    }
+    return prefix.join("/");
+  }
+
+  _flush(callback: stream.TransformCallback) {
+    if (this.batch.size > 0) {
+      this.push(this.batch);
+    }
+    callback(null);
+  }
+}
+
+/**
  * Imports JSON data to a given RTDB instance.
  *
  * The data is parsed and chunked into subtrees of the specified payload size, to be subsequently
@@ -99,7 +157,7 @@ export default class DatabaseImporter {
 
     // Since we cannot PATCH primitives and arrays, we explicitly convert them to objects.
     const sanitizePatchData = new stream.Transform({ objectMode: true });
-    sanitizePatchData._transform = async function ({ json, pathname, size }: SizedData, _, done) {
+    sanitizePatchData._transform = function ({ json, pathname, size }: SizedData, _, done) {
       let sanitized: SizedData;
       if (typeof json === "string" || typeof json === "number" || typeof json === "boolean") {
         const tokens = pathname.split("/");
@@ -219,63 +277,5 @@ export default class DatabaseImporter {
 
   private joinPath(root: string, key: string): string {
     return [root, key].join("/").replace("//", "/");
-  }
-}
-
-/**
- * Batches chunked JSON data up to the specified byte size limit. The emitted batch is an object
- * containing chunks keyed by pathname.
- */
-class BatchChunks extends stream.Transform {
-  private batch: SizedData = { json: {}, pathname: "", size: 0 };
-
-  constructor(private maxSize: number, opts?: stream.TransformOptions) {
-    super({ ...opts, objectMode: true });
-  }
-
-  _transform(chunk: SizedData, _: BufferEncoding, callback: stream.TransformCallback) {
-    const totalChunkSize = chunk.size + chunk.pathname.length; // Overestimate
-    if (this.batch.size + totalChunkSize > this.maxSize) {
-      this.push(this.batch);
-      this.batch = { json: {}, pathname: "", size: 0 };
-    }
-    if (this.batch.size === 0) {
-      this.batch = chunk;
-    } else {
-      const newPathname = this._findLongestCommonPrefix(chunk.pathname, this.batch.pathname);
-      const batchKey = this.batch.pathname.substring(newPathname.length + 1); // +1 to trim leading slash
-      const chunkKey = chunk.pathname.substring(newPathname.length + 1);
-
-      if (batchKey === "") {
-        this.batch.json = Object.assign({}, this.batch.json, { [chunkKey]: chunk.json });
-      } else if (chunkKey === "") {
-        this.batch.json = Object.assign({}, chunk.json, { [batchKey]: this.batch.json });
-      } else {
-        this.batch.json = { [batchKey]: this.batch.json, [chunkKey]: chunk.json };
-      }
-      this.batch.pathname = newPathname;
-    }
-    this.batch.size += totalChunkSize;
-    callback(null);
-  }
-
-  _findLongestCommonPrefix(a: string, b: string) {
-    const aTokens = a.split("/");
-    const bTokens = b.split("/");
-    let prefix = aTokens.slice(0, bTokens.length);
-    for (let i = 0; i < prefix.length; i++) {
-      if (prefix[i] !== bTokens[i]) {
-        prefix = prefix.slice(0, i);
-        break;
-      }
-    }
-    return prefix.join("/");
-  }
-
-  _flush(callback: stream.TransformCallback) {
-    if (this.batch.size > 0) {
-      this.push(this.batch);
-    }
-    callback(null);
   }
 }
