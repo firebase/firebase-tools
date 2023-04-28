@@ -1026,16 +1026,11 @@ async function main(): Promise<void> {
       switch (FUNCTION_SIGNATURE) {
         case "event":
         case "cloudevent":
-          const rawBody = (req as RequestWithRawBody).rawBody;
           let reqBody;
+          const rawBody = (req as RequestWithRawBody).rawBody;
           if (EventUtils.isBinaryCloudEvent(req)) {
             reqBody = EventUtils.extractBinaryCloudEventContext(req);
-            // Eventarc decodes a base64 encoded string
-            // to a byte array before passing the request to the function
-            // when the payload is a protobuf
-            reqBody.data = req.headers["content-type"]?.includes("application/protobuf")
-              ? Uint8Array.from(atob(req.body), (c) => c.charCodeAt(0)).buffer
-              : req.body;
+            reqBody.data = req.body;
           } else {
             reqBody = JSON.parse(rawBody.toString());
           }

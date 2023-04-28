@@ -1514,7 +1514,15 @@ export class FunctionsEmulator implements EmulatorInstance {
     const trigger = record.def;
     logger.debug(`Accepted request ${method} ${req.url} --> ${triggerId}`);
 
-    const reqBody = (req as RequestWithRawBody).rawBody;
+    let reqBody: Buffer | Uint8Array = (req as RequestWithRawBody).rawBody;
+    // When the payload is a protobuf, EventArc converts a base64 encoded string into a byte array before sending the
+    // request to the function. Let's mimic that behavior.
+    if (getSignatureType(trigger) === "cloudevent") {
+      if (req.headers["content-type"]?.includes("application/protobuf")) {
+        reqBody = Uint8Array.from(atob(reqBody.toString()), (c) => c.charCodeAt(0));
+        req.headers["content-length"] = reqBody.length.toString();
+      }
+    }
 
     // For callable functions we want to accept tokens without actually calling verifyIdToken
     const isCallable = trigger.labels && trigger.labels["deployment-callable"] === "true";
