@@ -17,6 +17,7 @@ import * as RemoteConfigTarget from "./remoteconfig";
 import * as ExtensionsTarget from "./extensions";
 import { prepareFrameworks } from "../frameworks";
 import { HostingDeploy } from "./hosting/context";
+import { addTaggedFunctionsToOnlyString } from "./hosting/prepare";
 
 const TARGETS = {
   hosting: HostingTarget,
@@ -62,6 +63,12 @@ export const deploy = async function (
     if (Array.isArray(config) ? config.some((it) => it.source) : config.source) {
       experiments.assertEnabled("webframeworks", "deploy a web framework from source");
       await prepareFrameworks(targetNames, context, options);
+    }
+  }
+
+  if (targetNames.includes("hosting") && experiments.isEnabled("pintags")) {
+    if (await addTaggedFunctionsToOnlyString(context, options)) {
+      targetNames.unshift("functions");
     }
   }
 
