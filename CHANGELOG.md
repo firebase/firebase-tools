@@ -1,4 +1,4 @@
 - Added more helpful error messages for the Firebase Hosting GitHub Action (#5749)
 - Upgrade Firestore emulator to 1.17.4
 - Web Frameworks will no longer try to deploy unsupported versions of NodeJS to Cloud Functions (#5733)
-- Fixes bug were emulators would not starting correctly due to corrupted ZIP files. (#5614, #5677)
+- Fixes bug where emulators would not start correctly due to corrupted ZIP files. (#5614, #5677)

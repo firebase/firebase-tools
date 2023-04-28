@@ -5,6 +5,7 @@ import { Readable, Transform, TransformCallback } from "stream";
 import { promisify } from "util";
 import { FirebaseError } from "./error";
 import { pipeline } from "stream";
+import { logger } from "./logger";
 
 const pipelineAsync = promisify(pipeline);
 
@@ -45,12 +46,15 @@ const extractEntriesFromBuffer = async (data: Buffer, outputDir: string): Promis
       position + entry.headerSize,
       position + entry.headerSize + entry.compressedSize
     );
+    logger.debug(
+      `[unzip] Entry: ${entry.fileName} (compressed_size=${entry.compressedSize} bytes, uncompressed_size=${entry.uncompressedSize} bytes)`
+    );
 
     entry.fileName = entry.fileName.replace(/\//g, path.sep);
 
     const outputFilePath = path.normalize(path.join(outputDir, entry.fileName));
 
-    console.log(`Processing entry: \${entry.fileName}`);
+    logger.debug(`[unzip] Processing entry: ${entry.fileName}`);
     if (entry.fileName.endsWith(path.sep)) {
       await fs.promises.mkdir(outputFilePath, { recursive: true });
     } else {
@@ -60,7 +64,7 @@ const extractEntriesFromBuffer = async (data: Buffer, outputDir: string): Promis
       const compressionMethod = entryHeader.readUInt16LE(8);
       if (compressionMethod === 0) {
         // Store (no compression)
-        console.log(`Writing file: \${outputFilePath}`);
+        logger.debug(`[unzip] Writing file: ${outputFilePath}`);
         await fs.promises.writeFile(outputFilePath, entry.compressedData);
       } else if (compressionMethod === 8) {
         // Deflate
