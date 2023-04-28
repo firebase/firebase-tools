@@ -98,11 +98,11 @@ export async function acceptLatestAppDeveloperTOS(
   displayDeveloperTOSWarning();
   const currentAcceptance = await getAppDeveloperTOSStatus(projectId);
   if (currentAcceptance.lastAcceptedVersion) {
-    logger.debug(`Developer Terms of Service aready accepted on project ${projectId}.`);
+    logger.debug(`User Terms of Service aready accepted on project ${projectId}.`);
   } else if (
     !(await confirm({
       ...options,
-      message: "Do you accept the Firebase Extensions Developer Terms of Service?",
+      message: "Do you accept the Firebase Extensions User Terms of Service?",
     }))
   ) {
     throw new FirebaseError("You must accept the terms of service to continue.");
@@ -114,9 +114,9 @@ export async function acceptLatestAppDeveloperTOS(
 }
 
 export function displayDeveloperTOSWarning(): void {
-  const tosLink = extensionsTosUrl("appdev");
+  const tosLink = extensionsTosUrl("user");
   utils.logLabeledBullet(
     logPrefix,
-    `By installing an extension instance onto a Firebase project, you accept the Firebase Extensions Developer Terms of Service: ${tosLink}`
+    `By installing an extension instance onto a Firebase project, you accept the Firebase Extensions User Terms of Service: ${tosLink}`
   );
 }
