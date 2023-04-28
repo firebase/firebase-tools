@@ -5,6 +5,7 @@ import { expect } from "chai";
 
 import DatabaseImporter from "../../database/import";
 import { FirebaseError } from "../../error";
+import { FetchError } from "node-fetch";
 
 const dbUrl = new URL("https://test-db.firebaseio.com/foo");
 const chunkSize = 1024 * 1024 * 10;
@@ -111,5 +112,34 @@ describe("DatabaseImporter", () => {
       FirebaseError,
       /Importing is only allowed for an empty location./
     );
+  });
+
+  it("retries non-fatal connection timeout error", async () => {
+    const timeoutErr = new FetchError("connect ETIMEDOUT", "system");
+    timeoutErr.code = "ETIMEDOUT";
+
+    nock("https://test-db.firebaseio.com").get("/foo.json?shallow=true").reply(200);
+    nock("https://test-db.firebaseio.com")
+      .put("/foo/a.json", "100")
+      .once()
+      .replyWithError(timeoutErr);
+    nock("https://test-db.firebaseio.com").put("/foo/a.json", "100").once().reply(200);
+    nock("https://test-db.firebaseio.com")
+      .put("/foo/b.json", JSON.stringify([true, "bar", { f: { g: 0, h: 1 }, i: "baz" }]))
+      .reply(200);
+
+    const importer = new DatabaseImporter(
+      dbUrl,
+      DATA_STREAM,
+      /* importPath= */ "/",
+      chunkSize,
+      concurrencyLimit
+    );
+    importer.nonFatalRetryTimeout = 0;
+
+    const responses = await importer.execute();
+
+    expect(responses).to.have.length(2);
+    expect(nock.isDone()).to.be.true;
   });
 });
