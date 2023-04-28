@@ -21,13 +21,13 @@ import { formatHost } from "../emulator/functionsEmulatorShared";
 import { Constants } from "../emulator/constants";
 import { FirebaseError } from "../error";
 import { requireHostingSite } from "../requireHostingSite";
-import { HostingRewrites } from "../firebaseConfig";
 import * as experiments from "../experiments";
 import { ensureTargeted } from "../functions/ensureTargeted";
 import { implicitInit } from "../hosting/implicitInit";
-import { findDependency } from "./utils";
-import { ALLOWED_SSR_REGIONS, DEFAULT_REGION, FIREBASE_ADMIN_VERSION, FIREBASE_FRAMEWORKS_VERSION, FIREBASE_FUNCTIONS_VERSION, NODE_VERSION, SupportLevelWarnings, WebFrameworks } from "./constants";
+import { findDependency, conjoinOptions } from "./utils";
+import { ALLOWED_SSR_REGIONS, DEFAULT_REGION, FIREBASE_ADMIN_VERSION, FIREBASE_FRAMEWORKS_VERSION, FIREBASE_FUNCTIONS_VERSION, NODE_VERSION, SupportLevelWarnings, VALID_ENGINES, WebFrameworks } from "./constants";
 import { FirebaseDefaults, Framework } from "./interfaces";
+import { logWarning } from "../utils";
 
 export { WebFrameworks };
 
@@ -57,7 +57,6 @@ export async function discover(dir: string, warn = true) {
   if (warn) console.warn("Could not determine the web framework in use.");
   return;
 }
-
 
 /**
  *
@@ -122,7 +121,7 @@ export async function prepareFrameworks(
     }
     const ssrRegion = frameworksBackend?.region ?? DEFAULT_REGION;
     if (!allowedRegionsValues.includes(ssrRegion)) {
-      const validRegions = allowedRegionsValues.join(", ");
+      const validRegions = conjoinOptions(allowedRegionsValues);
       throw new FirebaseError(
         `Hosting config for site ${site} places server-side content in region ${ssrRegion} which is not known. Valid regions are ${validRegions}`
       );
@@ -268,16 +267,21 @@ export async function prepareFrameworks(
         process.env.__FIREBASE_DEFAULTS__ = JSON.stringify(firebaseDefaults);
       }
 
-      const rewrite: HostingRewrites = {
+      if (context.hostingChannel) {
+        experiments.assertEnabled(
+          "pintags",
+          "deploy an app that requires a backend to a preview channel"
+        );
+      }
+
+      config.rewrites.push({
         source: "**",
         function: {
           functionId,
+          region: ssrRegion,
+          pinTag: experiments.isEnabled("pintags"),
         },
-      };
-      if (experiments.isEnabled("pintags")) {
-        rewrite.function.pinTag = true;
-      }
-      config.rewrites.push(rewrite);
+      });
 
       const codebase = `firebase-frameworks-${site}`;
       const existingFunctionsConfig = options.config.get("functions")
@@ -325,13 +329,35 @@ export async function prepareFrameworks(
       process.env.__FIREBASE_FRAMEWORKS_ENTRY__ = frameworksEntry;
 
       packageJson.main = "server.js";
-      delete packageJson.devDependencies;
       packageJson.dependencies ||= {};
       packageJson.dependencies["firebase-frameworks"] ||= FIREBASE_FRAMEWORKS_VERSION;
       packageJson.dependencies["firebase-functions"] ||= FIREBASE_FUNCTIONS_VERSION;
       packageJson.dependencies["firebase-admin"] ||= FIREBASE_ADMIN_VERSION;
       packageJson.engines ||= {};
-      packageJson.engines.node ||= NODE_VERSION;
+      const validEngines = VALID_ENGINES.node.filter((it) => it <= NODE_VERSION);
+      const engine = validEngines[validEngines.length - 1] || VALID_ENGINES.node[0];
+      if (engine !== NODE_VERSION) {
+        logWarning(
+          `This integration expects Node version ${conjoinOptions(
+            VALID_ENGINES.node,
+            "or"
+          )}. You're running version ${NODE_VERSION}, problems may be encountered.`
+        );
+      }
+      packageJson.engines.node ||= engine.toString();
+      delete packageJson.scripts;
+      delete packageJson.devDependencies;
+
+      const bundledDependencies: Record<string, string> = packageJson.bundledDependencies || {};
+      if (Object.keys(bundledDependencies).length) {
+        logWarning(
+          "Bundled dependencies aren't supported in Cloud Functions, converting to dependencies."
+        );
+        for (const [dep, version] of Object.entries(bundledDependencies)) {
+          packageJson.dependencies[dep] ||= version;
+        }
+        delete packageJson.bundledDependencies;
+      }
 
       for (const [name, version] of Object.entries(
         packageJson.dependencies as Record<string, string>

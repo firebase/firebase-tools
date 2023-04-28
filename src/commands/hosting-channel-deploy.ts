@@ -86,6 +86,12 @@ export const command = new Command("hosting:channel:deploy [channelId]")
           .split(",")
           .map((o: string) => `hosting:${o}`)
           .join(",");
+      } else {
+        // N.B. The hosting deploy code uses the only string to add all (and only)
+        // functions that are pinned to the only string. If we didn't set the
+        // only string here and only used the hosting deploy targets, we'd only
+        // be able to deploy *all* functions.
+        options.only = "hosting";
       }
 
       const sites: ChannelInfo[] = hostingConfig(options).map((config) => {

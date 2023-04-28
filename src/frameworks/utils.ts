@@ -226,3 +226,16 @@ export function relativeRequire(dir: string, mod: string) {
     throw e;
   }
 }
+
+export function conjoinOptions(
+  opts: any[],
+  conjunction: string = "and",
+  separator: string = ","
+): string | undefined {
+  if (!opts.length) return;
+  if (opts.length === 1) return opts[0].toString();
+  if (opts.length === 2) return `${opts[0].toString()} ${conjunction} ${opts[1].toString()}`;
+  const lastElement = opts.slice(-1)[0].toString();
+  const allButLast = opts.slice(0, -1).map((it) => it.toString());
+  return `${allButLast.join(`${separator} `)}${separator} ${conjunction} ${lastElement}`;
+}

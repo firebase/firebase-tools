@@ -18,7 +18,6 @@ import { dirExistsSync } from "../fsutils";
 import { resolveProjectPath } from "../projectPath";
 import { HostingOptions } from "./options";
 import * as path from "node:path";
-import * as experiments from "../experiments";
 import { logger } from "../logger";
 
 // After validating a HostingMultiple and resolving targets, we will instead
@@ -159,20 +158,17 @@ function validateOne(config: HostingMultiple[number], options: HostingOptions): 
   if (config.source && config.public) {
     throw new FirebaseError('Can only specify "source" or "public" in a Hosting config, not both');
   }
-  const root = experiments.isEnabled("webframeworks")
-    ? config.source || config.public
-    : config.public;
-  const orSource = experiments.isEnabled("webframeworks") ? ' or "source"' : "";
+  const root = config.source || config.public;
 
   if (!root && hasAnyStaticRewrites) {
     throw new FirebaseError(
-      `Must supply a "public"${orSource} directory when using "destination" rewrites.`
+      `Must supply a "public" or "source" directory when using "destination" rewrites.`
     );
   }
 
   if (!root && !hasAnyDynamicRewrites && !hasAnyRedirects) {
     throw new FirebaseError(
-      `Must supply a "public"${orSource} directory or at least one rewrite or redirect in each "hosting" config.`
+      `Must supply a "public" or "source" directory or at least one rewrite or redirect in each "hosting" config.`
     );
   }
 
@@ -199,7 +195,7 @@ function validateOne(config: HostingMultiple[number], options: HostingOptions): 
   if (config.i18n) {
     if (!root) {
       throw new FirebaseError(
-        `Must supply a "public"${orSource} directory when using "i18n" configuration.`
+        `Must supply a "public" or "source" directory when using "i18n" configuration.`
       );
     }
 

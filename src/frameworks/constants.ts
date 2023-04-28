@@ -24,7 +24,8 @@ export const SupportLevelWarnings = {
 export const FIREBASE_FRAMEWORKS_VERSION = "^0.7.0";
 export const FIREBASE_FUNCTIONS_VERSION = "^3.23.0";
 export const FIREBASE_ADMIN_VERSION = "^11.0.1";
-export const NODE_VERSION = parseInt(process.versions.node, 10).toString();
+export const NODE_VERSION = parseInt(process.versions.node, 10);
+export const VALID_ENGINES = { node: [16, 18] };
 export const DEFAULT_REGION = "us-central1";
 export const ALLOWED_SSR_REGIONS = [
   { name: "us-central1 (Iowa)", value: "us-central1" },
