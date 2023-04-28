@@ -168,12 +168,10 @@ async function languageSetup(setup: any, config: Config): Promise<any> {
       value: "typescript",
     },
   ];
-  if (isEnabled("pythonfunctions")) {
-    choices.push({
-      name: "Python",
-      value: "python",
-    });
-  }
+  choices.push({
+    name: "Python",
+    value: "python",
+  });
   const language = await promptOnce({
     type: "list",
     message: "What language would you like to use to write Cloud Functions?",
