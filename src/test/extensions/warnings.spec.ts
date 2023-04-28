@@ -10,7 +10,7 @@ import {
   Visibility,
 } from "../../extensions/types";
 import { DeploymentInstanceSpec } from "../../deploy/extensions/planner";
-import { logger } from "../../logger";
+import * as utils from "../../utils";
 
 const testExtensionVersion = (listingState: ListingState): ExtensionVersion => {
   return {
@@ -66,7 +66,7 @@ describe("displayWarningsForDeploy", () => {
   let loggerStub: sinon.SinonStub;
 
   beforeEach(() => {
-    loggerStub = sinon.stub(logger, "warn");
+    loggerStub = sinon.stub(utils, "logLabeledBullet");
   });
 
   afterEach(() => {
@@ -95,7 +95,8 @@ describe("displayWarningsForDeploy", () => {
 
     expect(warned).to.be.true;
     expect(loggerStub).to.have.been.calledWithMatch(
-      "have not been published to the Firebase Extensions Hub"
+      "extensions",
+      "have not been published to the Firebase Extensions Hub",
     );
   });
 });
