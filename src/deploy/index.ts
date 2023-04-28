@@ -1,3 +1,4 @@
+import * as clc from "colorette";
 import { logger } from "../logger";
 import { hostingOrigin } from "../api";
 import { bold, underline, white } from "colorette";
@@ -18,6 +19,9 @@ import * as ExtensionsTarget from "./extensions";
 import { prepareFrameworks } from "../frameworks";
 import { HostingDeploy } from "./hosting/context";
 import { addTaggedFunctionsToOnlyString } from "./hosting/prepare";
+import { isRunningInGithubAction } from "../init/features/hosting/github";
+import { TARGET_PERMISSIONS } from "../commands/deploy";
+import { requirePermissions } from "../requirePermissions";
 
 const TARGETS = {
   hosting: HostingTarget,
@@ -58,6 +62,7 @@ export const deploy = async function (
   const postdeploys: Chain = [];
   const startTime = Date.now();
 
+  const hadFunctions = targetNames.includes("functions");
   if (targetNames.includes("hosting")) {
     const config = options.config.get("hosting");
     if (Array.isArray(config) ? config.some((it) => it.source) : config.source) {
@@ -69,6 +74,24 @@ export const deploy = async function (
   if (targetNames.includes("hosting") && experiments.isEnabled("pintags")) {
     if (await addTaggedFunctionsToOnlyString(context, options)) {
       targetNames.unshift("functions");
+    }
+  }
+  const addedFunctions = !hadFunctions && targetNames.includes("functions");
+  if (addedFunctions) {
+    try {
+      await requirePermissions(options, TARGET_PERMISSIONS["functions"]);
+    } catch (e) {
+      if (isRunningInGithubAction()) {
+        throw new FirebaseError(
+          "It looks like you are deploying a Hosting site along with Cloud Functions " +
+            "using a GitHub action version that did not include Cloud Functions " +
+            "permissions. Please reinstall the GitHub action with" +
+            clc.bold("firebase init hosting:github"),
+          { original: e as Error }
+        );
+      } else {
+        throw e;
+      }
     }
   }
 

@@ -11,6 +11,7 @@ import * as utils from "../../utils";
 import { HostingSource } from "../../firebaseConfig";
 import * as backend from "../functions/backend";
 import { ensureTargeted } from "../../functions/ensureTargeted";
+import { logger } from "../../logger";
 
 function handlePublicDirectoryFlag(options: HostingOptions & Options): void {
   // Allow the public directory to be overridden by the --public flag
@@ -45,10 +46,25 @@ export async function addTaggedFunctionsToOnlyString(
         continue;
       }
 
-      const existing = await backend.existingBackend(context);
-      const endpoint =
-        existing.endpoints[r.function.region || "us-central1"][r.function.functionId];
-      options.only = ensureTargeted(options.only, endpoint.codebase || "default", endpoint.id);
+      let endpoint: backend.Endpoint | null = null;
+      try {
+        endpoint = (await backend.existingBackend(context)).endpoints[
+          r.function.region || "us-central1"
+        ]?.[r.function.functionId];
+        options.only = ensureTargeted(options.only, endpoint.codebase || "default", endpoint.id);
+      } catch (e) {
+        logger.debug(
+          "Failed to look up existing backend to resolve a functions rewrite " +
+            "with pin tags. This is likely a permissions issue that will be " +
+            "raised later",
+          e
+        );
+        // Passing the function ID as the codebase scopes the function ID without
+        // knowing the codebase. This technically works, though we shouldn't be
+        // overly focused on correctness because the deploy is probably going to
+        // fail when we ensure permissisons later.
+        options.only = ensureTargeted(options.only, r.function.functionId);
+      }
       addedFunctions = true;
     }
   }
