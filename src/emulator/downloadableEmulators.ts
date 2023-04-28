@@ -111,7 +111,7 @@ export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDe
     ),
     opts: {
       cacheDir: CACHE_DIR,
-      remoteUrl: `https://firebasestorage.googleapis.com/v0/b/jeff-storage-90953.appspot.com/o/ui-v1.11.1-rc-bash.zip?alt=media&token=5c5759ef-de2a-4758-9606-83d3041ae73e`,
+      remoteUrl: `https://firebasestorage.googleapis.com/v0/b/rc-strawberry.appspot.com/o/ui-v1.11.4-rc-eap.zip?alt=media&token=7722d738-76ed-460c-ad93-ed5f56f947c3`,
       expectedSize: EMULATOR_UPDATE_DETAILS.ui.expectedSize,
       expectedChecksum: EMULATOR_UPDATE_DETAILS.ui.expectedChecksum,
       skipCache: true,
