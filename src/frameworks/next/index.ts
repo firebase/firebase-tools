@@ -439,9 +439,6 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
             ...allDependencyNames(value),
           ],
         ]);
-        npmLs.on("close", () => {
-          pipeline.end();
-        });
         pipeline.on("data", (it: string) => dependencies.push(it));
         pipeline.on("end", () => {
           resolve([...new Set(dependencies)]);
