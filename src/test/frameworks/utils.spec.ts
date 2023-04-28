@@ -3,8 +3,7 @@ import * as sinon from "sinon";
 import * as fs from "fs";
 import { resolve, join } from "path";
 
-import { warnIfCustomBuildScript, isUrl } from "../../frameworks/utils";
-import { getNodeModuleBin } from "../../frameworks";
+import { warnIfCustomBuildScript, isUrl, getNodeModuleBin } from "../../frameworks/utils";
 
 describe("Frameworks utils", () => {
   describe("getNodeModuleBin", () => {

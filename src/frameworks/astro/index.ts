@@ -6,11 +6,10 @@ import {
   Discovery,
   FrameworkType,
   SupportLevel,
-  findDependency,
-  getNodeModuleBin,
-} from "..";
+} from "../interfaces";
 import { FirebaseError } from "../../error";
-import { readJSON, simpleProxy, warnIfCustomBuildScript } from "../utils";
+import { readJSON, simpleProxy, warnIfCustomBuildScript, findDependency,
+  getNodeModuleBin, } from "../utils";
 import { getBootstrapScript, getConfig } from "./utils";
 
 export const name = "Astro";

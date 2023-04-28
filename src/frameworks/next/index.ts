@@ -20,12 +20,9 @@ import { fileExistsSync, dirExistsSync } from "../../fsutils";
 
 import {
   BuildResult,
-  findDependency,
   FrameworkType,
-  NODE_VERSION,
-  relativeRequire,
   SupportLevel,
-} from "..";
+} from "../interfaces";
 import { promptOnce } from "../../prompt";
 import { FirebaseError } from "../../error";
 import {
@@ -38,9 +35,10 @@ import {
   isUsingMiddleware,
   allDependencyNames,
 } from "./utils";
+import { NODE_VERSION, NPM_COMMAND_TIMEOUT_MILLIES, } from "../constants";
 import type { Manifest, NpmLsDepdendency } from "./interfaces";
-import { readJSON, simpleProxy } from "../utils";
-import { warnIfCustomBuildScript } from "../utils";
+import { readJSON, simpleProxy, warnIfCustomBuildScript,
+  relativeRequire, findDependency, } from "../utils";
 import type { EmulatorInfo } from "../../emulator/types";
 import { usesAppDirRouter, usesNextImage, hasUnoptimizedImage } from "./utils";
 import {
@@ -429,12 +427,10 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
   if (existsSync(join(sourceDir, "next.config.js"))) {
     try {
       const productionDeps = await new Promise<string[]>((resolve, reject) => {
-        setTimeout(() => {
-          reject("Timed out trying to bundle.");
-        }, BUNDLE_NEXT_CONFIG_TIMEOUT);
         const dependencies: string[] = [];
+        const npmLs = spawn("npm", ["ls", "--omit=dev", "--all", "--json=true"], { cwd: sourceDir, timeout: NPM_COMMAND_TIMEOUT_MILLIES });
         const pipeline = chain([
-          spawn("npm", ["ls", "--omit=dev", "--all", "--json"], { cwd: sourceDir }).stdout,
+          npmLs.stdout,
           parser({ packValues: false, packKeys: true, streamValues: false }),
           pick({ filter: "dependencies" }),
           streamObject(),
@@ -443,6 +439,9 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
             ...allDependencyNames(value),
           ],
         ]);
+        npmLs.on("close", () => {
+          pipeline.end();
+        });
         pipeline.on("data", (it: string) => dependencies.push(it));
         pipeline.on("end", () => {
           resolve([...new Set(dependencies)]);
@@ -460,7 +459,7 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
           "--log-level=error"
         );
       const bundle = spawnSync("npx", ["--yes", "esbuild", "next.config.js", ...esbuildArgs], {
-        cwd: sourceDir,
+        cwd: sourceDir, timeout: BUNDLE_NEXT_CONFIG_TIMEOUT,
       });
       if (bundle.status) {
         throw new FirebaseError(bundle.stderr.toString());

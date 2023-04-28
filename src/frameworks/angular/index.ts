@@ -8,14 +8,13 @@ import { mkdir } from "fs/promises";
 import {
   BuildResult,
   Discovery,
-  findDependency,
   FrameworkType,
-  getNodeModuleBin,
-  relativeRequire,
   SupportLevel,
-} from "..";
+} from "../interfaces";
 import { promptOnce } from "../../prompt";
-import { simpleProxy, warnIfCustomBuildScript } from "../utils";
+import { simpleProxy, warnIfCustomBuildScript, getNodeModuleBin,
+  relativeRequire,
+  findDependency, } from "../utils";
 
 export const name = "Angular";
 export const support = SupportLevel.Preview;

@@ -2,7 +2,8 @@ import { copy, pathExists } from "fs-extra";
 import { readFile } from "fs/promises";
 import { join } from "path";
 import { lt } from "semver";
-import { FrameworkType, relativeRequire, SupportLevel } from "..";
+import { relativeRequire } from "../utils";
+import { FrameworkType, SupportLevel } from "../interfaces";
 
 import { nuxtConfigFilesExist, getNuxtVersion } from "../nuxt/utils";
 

@@ -1,9 +1,20 @@
 import { readJSON as originalReadJSON } from "fs-extra";
 import type { ReadOptions } from "fs-extra";
-import { join } from "path";
+import { extname, join, relative } from "path";
 import { readFile } from "fs/promises";
 import { IncomingMessage, request as httpRequest, ServerResponse, Agent } from "http";
 import { logger } from "../logger";
+import { spawnSync } from "child_process";
+import { FirebaseError } from "../error";
+import { fileExistsSync } from "../fsutils";
+import { pathToFileURL } from "url";
+import { NPM_COMMAND_TIMEOUT_MILLIES } from "./constants";
+
+// Use "true &&"" to keep typescript from compiling this file and rewriting
+// the import statement into a require
+const { dynamicImport } = require(true && "../dynamicImport");
+
+const NPM_ROOT_TIMEOUT_MILLIES = 2_000;
 
 /**
  * Whether the given string starts with http:// or https://
@@ -90,4 +101,128 @@ export function simpleProxy(hostOrRequestHandler: string | RequestHandler) {
       await hostOrRequestHandler(originalReq, originalRes);
     }
   };
+}
+
+function scanDependencyTree(searchingFor: string, dependencies = {}): any {
+  for (const [name, dependency] of Object.entries(
+    dependencies as Record<string, Record<string, any>>
+  )) {
+    if (name === searchingFor) return dependency;
+    const result = scanDependencyTree(searchingFor, dependency.dependencies);
+    if (result) return result;
+  }
+  return;
+}
+
+export function getNpmRoot(cwd: string) {
+  return spawnSync("npm", ["root"], { cwd, timeout: NPM_ROOT_TIMEOUT_MILLIES }).stdout?.toString().trim();
+}
+
+export function getNodeModuleBin(name: string, cwd: string) {
+  const cantFindExecutable = new FirebaseError(`Could not find the ${name} executable.`);
+  const npmRoot = getNpmRoot(cwd);
+  if (!npmRoot) {
+    throw cantFindExecutable;
+  }
+  const path = join(npmRoot, ".bin", name);
+  if (!fileExistsSync(path)) {
+    throw cantFindExecutable;
+  }
+  return path;
+}
+
+interface FindDepOptions {
+  cwd: string;
+  depth?: number;
+  omitDev: boolean;
+}
+
+const DEFAULT_FIND_DEP_OPTIONS: FindDepOptions = {
+  cwd: process.cwd(),
+  omitDev: true,
+};
+
+/**
+ *
+ */
+export function findDependency(name: string, options: Partial<FindDepOptions> = {}) {
+  const { cwd: dir, depth, omitDev } = { ...DEFAULT_FIND_DEP_OPTIONS, ...options };
+  const cwd = getNpmRoot(dir);
+  if (!cwd) return;
+  const env: any = Object.assign({}, process.env);
+  delete env.NODE_ENV;
+  const result = spawnSync(
+    "npm",
+    [
+      "list",
+      name,
+      "--json=true",
+      ...(omitDev ? ["--omit", "dev"] : []),
+      ...(depth === undefined ? [] : ["--depth", depth.toString(10)]),
+    ],
+    { cwd, env, timeout: NPM_COMMAND_TIMEOUT_MILLIES }
+  );
+  if (!result.stdout) return;
+  const json = JSON.parse(result.stdout.toString());
+  return scanDependencyTree(name, json.dependencies);
+}
+
+export function relativeRequire(
+  dir: string,
+  mod: "@angular-devkit/core"
+): typeof import("@angular-devkit/core");
+export function relativeRequire(
+  dir: string,
+  mod: "@angular-devkit/core/node"
+): typeof import("@angular-devkit/core/node");
+export function relativeRequire(
+  dir: string,
+  mod: "@angular-devkit/architect"
+): typeof import("@angular-devkit/architect");
+export function relativeRequire(
+  dir: string,
+  mod: "@angular-devkit/architect/node"
+): typeof import("@angular-devkit/architect/node");
+export function relativeRequire(
+  dir: string,
+  mod: "next/dist/build"
+): typeof import("next/dist/build");
+export function relativeRequire(
+  dir: string,
+  mod: "next/dist/server/config"
+): typeof import("next/dist/server/config");
+export function relativeRequire(
+  dir: string,
+  mod: "next/constants"
+): typeof import("next/constants");
+export function relativeRequire(dir: string, mod: "next"): typeof import("next");
+export function relativeRequire(dir: string, mod: "vite"): typeof import("vite");
+export function relativeRequire(dir: string, mod: "jsonc-parser"): typeof import("jsonc-parser");
+
+// TODO the types for @nuxt/kit are causing a lot of troubles, need to do something other than any
+// Nuxt 2
+export function relativeRequire(dir: string, mod: "nuxt/dist/nuxt.js"): Promise<any>;
+// Nuxt 3
+export function relativeRequire(dir: string, mod: "@nuxt/kit"): Promise<any>;
+
+/**
+ *
+ */
+export function relativeRequire(dir: string, mod: string) {
+  try {
+    const path = require.resolve(mod, { paths: [dir] });
+    if (extname(path) === ".mjs") {
+      return dynamicImport(pathToFileURL(path).toString());
+    } else {
+      return require(path);
+    }
+  } catch (e) {
+    const path = relative(process.cwd(), dir);
+    console.error(
+      `Could not load dependency ${mod} in ${
+        path.startsWith("..") ? path : `./${path}`
+      }, have you run \`npm install\`?`
+    );
+    throw e;
+  }
 }

@@ -2,7 +2,7 @@ import { execSync } from "child_process";
 import { copy, pathExists } from "fs-extra";
 import { mkdir, readFile } from "fs/promises";
 import { join } from "path";
-import { BuildResult, FrameworkType, SupportLevel } from "..";
+import { BuildResult, FrameworkType, SupportLevel } from "../interfaces";
 
 // Use "true &&"" to keep typescript from compiling this file and rewriting
 // the import statement into a require
