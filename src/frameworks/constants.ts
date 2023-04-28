@@ -27,7 +27,7 @@ export const FEATURE_REQUEST_URL =
   "https://github.com/firebase/firebase-tools/issues/new?template=feature_request.md";
 export const MAILING_LIST_URL = "https://goo.gle/41enW5X";
 
-export const FIREBASE_FRAMEWORKS_VERSION = "0.9.0-canary.45534ef";
+export const FIREBASE_FRAMEWORKS_VERSION = "^0.9.0";
 export const FIREBASE_FUNCTIONS_VERSION = "^4.3.0";
 export const FIREBASE_ADMIN_VERSION = "^11.0.1";
 export const NODE_VERSION = parseInt(process.versions.node, 10);
