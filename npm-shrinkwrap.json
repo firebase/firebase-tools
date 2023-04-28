@@ -259,7 +259,8 @@
         "uri-js": "^4.2.2"
       },
       "funding": {
-        "url": "https://github.com/sponsors/panva"
+        "type": "github",
+        "url": "https://github.com/sponsors/epoberezkin"
       }
     },
     "node_modules/@angular-devkit/core/node_modules/json-schema-traverse": {
@@ -11149,8 +11150,7 @@
       "integrity": "sha512-njj0VL2TsIxCtgzhO+9RRobBvws4oYyCM8TpvoUQwl/MbIM3NFJRR9+e6x0sS5xXaP1t6OCBkaBME98OV9zU5A==",
       "dev": true,
       "funding": {
-        "type": "opencollective",
-        "url": "https://opencollective.com/js-sdsl"
+        "url": "https://github.com/sponsors/panva"
       }
     },
     "node_modules/js-sdsl": {
