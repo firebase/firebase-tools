@@ -10,11 +10,9 @@ import { track } from "../../track";
 import * as utils from "../../utils";
 import { HostingSource } from "../../firebaseConfig";
 import * as backend from "../functions/backend";
+import { ensureTargeted } from "../../functions/ensureTargeted";
 
-/**
- *  Prepare creates versions for each Hosting site to be deployed.
- */
-export async function prepare(context: Context, options: HostingOptions & Options): Promise<void> {
+function handlePublicDirectoryFlag(options: HostingOptions & Options): void {
   // Allow the public directory to be overridden by the --public flag
   if (options.public) {
     if (Array.isArray(options.config.get("hosting"))) {
@@ -23,6 +21,45 @@ export async function prepare(context: Context, options: HostingOptions & Option
 
     options.config.set("hosting.public", options.public);
   }
+}
+
+/**
+ * If there is a rewrite to a tagged function, add it to the deploy target.
+ */
+export async function addTaggedFunctionsToOnlyString(
+  context: Context,
+  options: HostingOptions & Options
+): Promise<boolean> {
+  if (!options.only) {
+    return false;
+  }
+
+  // This must be called before modifying hosting config because we turn it from
+  // a scalar to an array now
+  handlePublicDirectoryFlag(options);
+
+  let addedFunctions = false;
+  for (const c of config.hostingConfig(options)) {
+    for (const r of c.rewrites || []) {
+      if (!("function" in r) || typeof r.function !== "object" || !r.function.pinTag) {
+        continue;
+      }
+
+      const existing = await backend.existingBackend(context);
+      const endpoint =
+        existing.endpoints[r.function.region || "us-central1"][r.function.functionId];
+      options.only = ensureTargeted(options.only, endpoint.codebase || "default", endpoint.id);
+      addedFunctions = true;
+    }
+  }
+  return addedFunctions;
+}
+
+/**
+ *  Prepare creates versions for each Hosting site to be deployed.
+ */
+export async function prepare(context: Context, options: HostingOptions & Options): Promise<void> {
+  handlePublicDirectoryFlag(options);
 
   const configs = config.hostingConfig(options);
   if (configs.length === 0) {
