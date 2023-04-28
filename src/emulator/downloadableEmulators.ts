@@ -45,9 +45,9 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
   ui: experiments.isEnabled("emulatoruisnapshot")
     ? { version: "SNAPSHOT", expectedSize: -1, expectedChecksum: "" }
     : {
-        version: "1.11.1-rc-bash",
-        expectedSize: 3104241,
-        expectedChecksum: "27013bd85dd110eabd4850d09766e253",
+        version: "1.11.4-rc-eap",
+        expectedSize: 3121358,
+        expectedChecksum: "b2563e6bdbb41946ca7b4af24f6fc34c",
       },
   pubsub: {
     version: "0.7.1",
