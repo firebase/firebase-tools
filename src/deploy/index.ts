@@ -17,8 +17,6 @@ import * as RemoteConfigTarget from "./remoteconfig";
 import * as ExtensionsTarget from "./extensions";
 import { prepareFrameworks } from "../frameworks";
 import { HostingDeploy } from "./hosting/context";
-import { requirePermissions } from "../requirePermissions";
-import { TARGET_PERMISSIONS } from "../commands/deploy";
 import { addTaggedFunctionsToOnlyString } from "./hosting/prepare";
 
 const TARGETS = {
