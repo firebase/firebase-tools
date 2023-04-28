@@ -13,8 +13,7 @@ import {
 } from "../hosting/api";
 import * as utils from "../utils";
 import { requireAuth } from "../requireAuth";
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
-const { marked } = require("marked");
+import { marked } from "marked";
 import { logger } from "../logger";
 
 export const command = new Command("hosting:clone <source> <targetChannel>")

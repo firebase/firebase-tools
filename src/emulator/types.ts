@@ -15,7 +15,7 @@ export enum Emulators {
   STORAGE = "storage",
   EXTENSIONS = "extensions",
   EVENTARC = "eventarc",
-  REMOTE_CONFIG = "remoteconfig",
+  REMOTE_CONFIG = "remote-config",
 }
 
 export type DownloadableEmulators =

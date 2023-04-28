@@ -8,7 +8,7 @@ import { ChildProcess } from "child_process";
 
 import * as express from "express";
 import { Change } from "firebase-functions";
-import { DocumentSnapshot } from "firebase-functions/lib/providers/firestore";
+import { DocumentSnapshot } from "firebase-functions/v1/firestore";
 
 import { FunctionRuntimeBundles, TIMEOUT_LONG, MODULE_ROOT } from "./fixtures";
 import {
@@ -305,7 +305,7 @@ describe("FunctionsEmulator-Runtime", function () {
               .firestore.document("test/test")
               .onCreate(() => {
                 console.log(
-                  JSON.stringify(require("firebase-admin").firestore.FieldValue.increment(4))
+                  JSON.stringify(require("firebase-admin/firestore").FieldValue.increment(4))
                 );
                 return Promise.resolve();
               }),
@@ -727,40 +727,6 @@ describe("FunctionsEmulator-Runtime", function () {
           // Carry on
         }
 
-        expect(runtime.sysMsg["runtime-error"]?.length).to.eq(1);
-      });
-    });
-
-    describe("Timeout", () => {
-      it("enforces configured timeout", async () => {
-        const timeoutEnvs = {
-          FUNCTIONS_EMULATOR_TIMEOUT_SECONDS: "1",
-          FUNCTIONS_EMULATOR_DISABLE_TIMEOUT: "false",
-        };
-        runtime = await startRuntime(
-          "functionId",
-          "http",
-          () => {
-            return {
-              functionId: require("firebase-functions").https.onRequest(
-                (req: any, resp: any): Promise<void> => {
-                  return new Promise((resolve) => {
-                    setTimeout(() => {
-                      resp.sendStatus(200);
-                      resolve();
-                    }, 5_000);
-                  });
-                }
-              ),
-            };
-          },
-          timeoutEnvs
-        );
-        try {
-          await sendReq(runtime);
-        } catch (e: any) {
-          // Carry on
-        }
         expect(runtime.sysMsg["runtime-error"]?.length).to.eq(1);
       });
     });

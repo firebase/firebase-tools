@@ -1,8 +1,10 @@
-import { bold } from "colorette";
+import { bold, italic } from "colorette";
 import * as leven from "leven";
+import { basename } from "path";
 
 import { configstore } from "./configstore";
 import { FirebaseError } from "./error";
+import { isRunningInGithubAction } from "./init/features/hosting/github";
 
 export interface Experiment {
   shortDescription: string;
@@ -64,10 +66,6 @@ export const ALL_EXPERIMENTS = experiments({
       "of how that image was created.",
     public: true,
   },
-  functionsparams: {
-    shortDescription: "Adds support for paramaterizing functions deployments",
-    default: true,
-  },
 
   // Emulator experiments
   emulatoruisnapshot: {
@@ -84,8 +82,7 @@ export const ALL_EXPERIMENTS = experiments({
     shortDescription: "Native support for popular web frameworks",
     fullDescription:
       "Adds support for popular web frameworks such as Next.js " +
-      "Angular, React, Svelte, and Vite-compatible frameworks. Firebase is " +
-      "committed to support these platforms long-term, but a manual migration " +
+      "Angular, React, Svelte, and Vite-compatible frameworks. A manual migration " +
       "may be required when the non-experimental support for these frameworks " +
       "is released",
     docsUri: "https://firebase.google.com/docs/hosting/frameworks-overview",
@@ -102,10 +99,16 @@ export const ALL_EXPERIMENTS = experiments({
       "if any service exceeds 500 tags, but it is theoretically possible that a project " +
       "exceeds the region-wide limit of tags and an old site version fails",
   },
-
   // Access experiments
   crossservicerules: {
     shortDescription: "Allow Firebase Rules to reference resources in other services",
+  },
+  internaltesting: {
+    shortDescription: "Exposes Firebase CLI commands intended for internal testing purposes.",
+    fullDescription:
+      "Exposes Firebase CLI commands intended for internal testing purposes. " +
+      "These commands are not meant for public consumption and may break or disappear " +
+      "without a notice.",
   },
 });
 
@@ -196,11 +199,28 @@ export function enableExperimentsFromCliEnvVariable(): void {
  */
 export function assertEnabled(name: ExperimentName, task: string): void {
   if (!isEnabled(name)) {
-    throw new FirebaseError(
-      `Cannot ${task} because the experiment ${bold(name)} is not enabled. To enable ${bold(
-        name
-      )} run ${bold(`firebase experiments:enable ${name}`)}`
-    );
+    const prefix = `Cannot ${task} because the experiment ${bold(name)} is not enabled.`;
+    if (isRunningInGithubAction()) {
+      const path = process.env.GITHUB_WORKFLOW_REF?.split("@")[0];
+      const filename = path ? `.github/workflows/${basename(path)}` : "your action's yml";
+      const newValue = [process.env.FIREBASE_CLI_EXPERIMENTS, name].filter((it) => !!it).join(",");
+      throw new FirebaseError(
+        `${prefix} To enable add a ${bold(
+          "FIREBASE_CLI_EXPERIMENTS"
+        )} environment variable to ${filename}, like so: ${italic(`
+
+- uses: FirebaseExtended/action-hosting-deploy@v0
+  with:
+    ...
+  env:
+    FIREBASE_CLI_EXPERIMENTS: ${newValue}
+`)}`
+      );
+    } else {
+      throw new FirebaseError(
+        `${prefix} To enable ${bold(name)} run ${bold(`firebase experiments:enable ${name}`)}`
+      );
+    }
   }
 }
 

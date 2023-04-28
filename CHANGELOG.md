@@ -1,6 +1,3 @@
-- Updated the pubsub emulator to v0.7.1.
-- Updated some emulator download logic to pause after unzipping to avoid a file not found issue.
-- Fixes gzipped file handling in Storage Emulator.
-- Add support for object list using certain Admin SDKs (#5208)
-- Fixes source token expiration issue by acquiring new source token upon expiration.
-- Fix bug where emulated event triggered function broke in debug mode (#5211)
+- Added more helpful error messages for the Firebase Hosting GitHub Action (#5749)
+- Upgrade Firestore emulator to 1.17.4
+- Web Frameworks will no longer try to deploy unsupported versions of NodeJS to Cloud Functions (#5733)

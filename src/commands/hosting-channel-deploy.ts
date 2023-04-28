@@ -19,8 +19,7 @@ import { requireConfig } from "../requireConfig";
 import { DEFAULT_DURATION, calculateChannelExpireTTL } from "../hosting/expireUtils";
 import { logLabeledSuccess, datetimeString, logLabeledWarning, consoleUrl } from "../utils";
 import { hostingConfig } from "../hosting/config";
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
-const { marked } = require("marked");
+import { marked } from "marked";
 import { requireHostingSite } from "../requireHostingSite";
 import { HostingOptions } from "../hosting/options";
 import { Options } from "../options";
@@ -87,6 +86,12 @@ export const command = new Command("hosting:channel:deploy [channelId]")
           .split(",")
           .map((o: string) => `hosting:${o}`)
           .join(",");
+      } else {
+        // N.B. The hosting deploy code uses the only string to add all (and only)
+        // functions that are pinned to the only string. If we didn't set the
+        // only string here and only used the hosting deploy targets, we'd only
+        // be able to deploy *all* functions.
+        options.only = "hosting";
       }
 
       const sites: ChannelInfo[] = hostingConfig(options).map((config) => {

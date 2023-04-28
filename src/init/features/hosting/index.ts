@@ -6,8 +6,9 @@ import { Client } from "../../../apiv2";
 import { initGitHub } from "./github";
 import { prompt, promptOnce } from "../../../prompt";
 import { logger } from "../../../logger";
-import { discover, WebFrameworks } from "../../../frameworks";
+import { ALLOWED_SSR_REGIONS, DEFAULT_REGION, discover, WebFrameworks } from "../../../frameworks";
 import * as experiments from "../../../experiments";
+import { join } from "path";
 
 const INDEX_TEMPLATE = fs.readFileSync(
   __dirname + "/../../../../templates/init/hosting/index.html",
@@ -70,7 +71,7 @@ export async function doSetup(setup: any, config: any): Promise<void> {
     );
 
     if (setup.hosting.source !== ".") delete setup.hosting.useDiscoveredFramework;
-    discoveredFramework = await discover(setup.hosting.source);
+    discoveredFramework = await discover(join(config.projectDir, setup.hosting.source));
 
     if (discoveredFramework) {
       const name = WebFrameworks[discoveredFramework.framework].name;
@@ -112,13 +113,27 @@ export async function doSetup(setup: any, config: any): Promise<void> {
       );
 
       if (discoveredFramework) rimraf(setup.hosting.source);
-      await WebFrameworks[setup.hosting.whichFramework].init!(setup);
+      await WebFrameworks[setup.hosting.whichFramework].init!(setup, config);
     }
+
+    await promptOnce(
+      {
+        name: "region",
+        type: "list",
+        message: "In which region would you like to host server-side content, if applicable?",
+        default: DEFAULT_REGION,
+        choices: ALLOWED_SSR_REGIONS,
+      },
+      setup.hosting
+    );
 
     setup.config.hosting = {
       source: setup.hosting.source,
       // TODO swap out for framework ignores
       ignore: DEFAULT_IGNORES,
+      frameworksBackend: {
+        region: setup.hosting.region,
+      },
     };
   } else {
     logger.info();

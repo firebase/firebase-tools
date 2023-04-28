@@ -15,6 +15,9 @@ import { needProjectId } from "../../projectUtils";
 import { Emulators } from "../../emulator/types";
 import { SecretEnvVar } from "../../deploy/functions/backend";
 
+/**
+ * Build firebase options based on the extension configuration.
+ */
 export async function buildOptions(options: any): Promise<any> {
   const extDevDir = localHelper.findExtensionYaml(process.cwd());
   options.extDevDir = extDevDir;
@@ -37,16 +40,18 @@ export async function buildOptions(options: any): Promise<any> {
     triggerHelper.functionResourceToEmulatedTriggerDefintion(r)
   );
   options.extDevTriggers = functionEmuTriggerDefs;
-  options.extDevNodeVersion = specHelper.getNodeVersion(functionResources);
+  options.extDevRuntime = specHelper.getRuntime(functionResources);
   return options;
 }
 
-// TODO: Better name? Also, should this be in extensionsEmulator instead?
+/**
+ * TODO: Better name? Also, should this be in extensionsEmulator instead?
+ */
 export async function getExtensionFunctionInfo(
-  instance: planner.InstanceSpec,
+  instance: planner.DeploymentInstanceSpec,
   paramValues: Record<string, string>
 ): Promise<{
-  nodeMajorVersion: number;
+  runtime: string;
   extensionTriggers: ParsedTriggerDefinition[];
   nonSecretEnv: Record<string, string>;
   secretEnvVariables: SecretEnvVar[];
@@ -54,17 +59,18 @@ export async function getExtensionFunctionInfo(
   const spec = await planner.getExtensionSpec(instance);
   const functionResources = specHelper.getFunctionResourcesWithParamSubstitution(spec, paramValues);
   const extensionTriggers: ParsedTriggerDefinition[] = functionResources
-    .map((r) => triggerHelper.functionResourceToEmulatedTriggerDefintion(r))
+    .map((r) => triggerHelper.functionResourceToEmulatedTriggerDefintion(r, instance.systemParams))
     .map((trigger) => {
       trigger.name = `ext-${instance.instanceId}-${trigger.name}`;
       return trigger;
     });
-  const nodeMajorVersion = specHelper.getNodeVersion(functionResources);
+  const runtime = specHelper.getRuntime(functionResources);
+
   const nonSecretEnv = getNonSecretEnv(spec.params, paramValues);
   const secretEnvVariables = getSecretEnvVars(spec.params, paramValues);
   return {
     extensionTriggers,
-    nodeMajorVersion,
+    runtime,
     nonSecretEnv,
     secretEnvVariables,
   };
@@ -116,7 +122,9 @@ export function getSecretEnvVars(
   return secretEnvVar;
 }
 
-// Exported for testing
+/**
+ * Exported for testing
+ */
 export function getParams(options: any, extensionSpec: ExtensionSpec) {
   const projectId = needProjectId(options);
   const userParams = paramHelper.readEnvFile(options.testParams);

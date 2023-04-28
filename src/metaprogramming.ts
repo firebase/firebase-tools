@@ -88,6 +88,22 @@ type DeepPickUnsafe<T, Keys extends string> = {
     : DeepPickUnsafe<T[Key], TailsOf<Keys, Key>>;
 };
 
+/**
+ * Make properties of an object required.
+ *
+ * type Foo = {
+ *     a?: string
+ *     b?: number
+ *     c?: object
+ * }
+ *
+ * type Bar = RequireKeys<Foo, "a" | "b">
+ * // Property "a" and "b" are now required.
+ */
+export type RequireKeys<T extends object, Keys extends keyof T> = T & {
+  [Key in Keys]: T[Key];
+};
+
 /** In the array LeafElems<[[["a"], "b"], ["c"]]> is "a" | "b" | "c" */
 export type LeafElems<T> = T extends Array<infer Elem>
   ? Elem extends unknown[]

@@ -9,7 +9,8 @@ import * as api from "../../../hosting/api";
 import { FirebaseError } from "../../../error";
 import { Payload } from "../../../deploy/functions/args";
 
-const FUNCTION_ID = "function";
+const FUNCTION_ID = "functionId";
+const SERVICE_ID = "function-id";
 const PROJECT_ID = "project";
 const REGION = "region";
 
@@ -35,6 +36,9 @@ function endpoint(opts?: Partial<backend.Endpoint>): backend.Endpoint {
     )
   ) {
     ret.httpsTrigger = {};
+  }
+  if (opts?.platform === "gcfv2") {
+    ret.runServiceId = opts?.id ?? SERVICE_ID;
   }
   return ret as backend.Endpoint;
 }
@@ -178,7 +182,7 @@ describe("convertConfig", () => {
       name: "defaults to a us-central1 rewrite if one is avaiable, v2 edition",
       input: { rewrites: [{ glob: "/foo", function: { functionId: FUNCTION_ID } }] },
       want: {
-        rewrites: [{ glob: "/foo", run: { region: "us-central1", serviceId: FUNCTION_ID } }],
+        rewrites: [{ glob: "/foo", run: { region: "us-central1", serviceId: SERVICE_ID } }],
       },
       functionsPayload: {
         functions: {
@@ -192,6 +196,7 @@ describe("convertConfig", () => {
                 region: "europe-west2",
                 platform: "gcfv2",
                 httpsTrigger: {},
+                runServiceId: SERVICE_ID,
               },
               {
                 id: FUNCTION_ID,
@@ -201,6 +206,7 @@ describe("convertConfig", () => {
                 region: "us-central1",
                 platform: "gcfv2",
                 httpsTrigger: {},
+                runServiceId: SERVICE_ID,
               }
             ),
             haveBackend: backend.empty(),
@@ -236,7 +242,7 @@ describe("convertConfig", () => {
     {
       name: "rewrites referencing CF3v2 functions being deployed are changed to Cloud Run (during release)",
       input: { rewrites: [{ regex: "/foo$", function: { functionId: FUNCTION_ID } }] },
-      want: { rewrites: [{ regex: "/foo$", run: { serviceId: FUNCTION_ID, region: REGION } }] },
+      want: { rewrites: [{ regex: "/foo$", run: { serviceId: SERVICE_ID, region: REGION } }] },
       functionsPayload: {
         functions: {
           default: {
@@ -248,6 +254,7 @@ describe("convertConfig", () => {
               region: REGION,
               platform: "gcfv2",
               httpsTrigger: {},
+              runServiceId: SERVICE_ID,
             }),
             haveBackend: backend.empty(),
           },
@@ -262,7 +269,7 @@ describe("convertConfig", () => {
         ],
       },
       want: {
-        rewrites: [{ regex: "/foo$", run: { serviceId: FUNCTION_ID, region: "us-central1" } }],
+        rewrites: [{ regex: "/foo$", run: { serviceId: SERVICE_ID, region: "us-central1" } }],
       },
       existingBackend: backend.of(endpoint({ platform: "gcfv2", region: "us-central1" })),
     },
@@ -275,7 +282,7 @@ describe("convertConfig", () => {
       },
       existingBackend: backend.of(endpoint({ platform: "gcfv2", region: "us-central1" })),
       want: {
-        rewrites: [{ regex: "/foo$", run: { serviceId: FUNCTION_ID, region: "us-central1" } }],
+        rewrites: [{ regex: "/foo$", run: { serviceId: SERVICE_ID, region: "us-central1" } }],
       },
     },
     {

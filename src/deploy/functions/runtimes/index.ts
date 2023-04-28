@@ -1,20 +1,21 @@
 import * as backend from "../backend";
 import * as build from "../build";
 import * as node from "./node";
+import * as python from "./python";
 import * as validate from "../validate";
 import { FirebaseError } from "../../../error";
 
 /** Supported runtimes for new Cloud Functions. */
-const RUNTIMES: string[] = ["nodejs10", "nodejs12", "nodejs14", "nodejs16"];
+const RUNTIMES: string[] = ["nodejs10", "nodejs12", "nodejs14", "nodejs16", "nodejs18"];
 // Experimental runtimes are part of the Runtime type, but are in a
 // different list to help guard against some day accidentally iterating over
 // and printing a hidden runtime to the user.
-const EXPERIMENTAL_RUNTIMES = ["go113"];
-export type Runtime = typeof RUNTIMES[number] | typeof EXPERIMENTAL_RUNTIMES[number];
+const EXPERIMENTAL_RUNTIMES: string[] = ["python310", "python311"];
+export type Runtime = (typeof RUNTIMES)[number] | (typeof EXPERIMENTAL_RUNTIMES)[number];
 
 /** Runtimes that can be found in existing backends but not used for new functions. */
 const DEPRECATED_RUNTIMES = ["nodejs6", "nodejs8"];
-export type DeprecatedRuntime = typeof DEPRECATED_RUNTIMES[number];
+export type DeprecatedRuntime = (typeof DEPRECATED_RUNTIMES)[number];
 
 /** Type deduction helper for a runtime string */
 export function isDeprecatedRuntime(runtime: string): runtime is DeprecatedRuntime {
@@ -33,7 +34,9 @@ const MESSAGE_FRIENDLY_RUNTIMES: Record<Runtime | DeprecatedRuntime, string> = {
   nodejs12: "Node.js 12",
   nodejs14: "Node.js 14",
   nodejs16: "Node.js 16",
-  go113: "Go 1.13",
+  nodejs18: "Node.js 18",
+  python310: "Python 3.10",
+  python311: "Python 3.11 (Preview)",
 };
 
 /**
@@ -61,6 +64,11 @@ export interface RuntimeDelegate {
    * the GCF API.
    */
   runtime: Runtime;
+
+  /**
+   * Path to the bin used to run the source code.
+   */
+  bin: string;
 
   /**
    * Validate makes sure the customers' code is actually viable.
@@ -108,9 +116,7 @@ export interface DelegateContext {
 }
 
 type Factory = (context: DelegateContext) => Promise<RuntimeDelegate | undefined>;
-// Note: golang has been removed from delegates because it does not work and it
-// is not worth having an experiment for yet.
-const factories: Factory[] = [node.tryCreateDelegate];
+const factories: Factory[] = [node.tryCreateDelegate, python.tryCreateDelegate];
 
 /**
  *

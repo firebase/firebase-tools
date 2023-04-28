@@ -2,7 +2,6 @@ import * as backend from "./backend";
 import * as proto from "../../gcp/proto";
 import * as api from "../../.../../api";
 import * as params from "./params";
-import * as experiments from "../../experiments";
 import { FirebaseError } from "../../error";
 import { assertExhaustive, mapObject, nullsafeVisitor } from "../../functional";
 import { UserEnvsOpts, writeUserEnvs } from "../../functions/env";
@@ -52,8 +51,9 @@ export interface RequiredApi {
 // expressions.
 // `Expression<Foo> == Expression<Foo>` is an Expression<boolean>
 // `Expression<boolean> ? Expression<T> : Expression<T>` is an Expression<T>
-export type Expression<T extends string | number | boolean> = string; // eslint-disable-line
+export type Expression<T extends string | number | boolean | string[]> = string; // eslint-disable-line
 export type Field<T extends string | number | boolean> = T | Expression<T> | null;
+export type ListField = Expression<string[]> | (string | Expression<string>)[] | null;
 
 // A service account must either:
 // 1. Be a project-relative email that ends with "@" (e.g. database-users@)
@@ -237,7 +237,7 @@ export type Endpoint = Triggered & {
 
   // defaults to ["us-central1"], overridable in firebase-tools with
   //  process.env.FIREBASE_FUNCTIONS_DEFAULT_REGION
-  region?: string[];
+  region?: ListField;
 
   // The Cloud project associated with this endpoint.
   project: string;
@@ -284,24 +284,22 @@ export async function resolveBackend(
   nonInteractive?: boolean
 ): Promise<{ backend: backend.Backend; envs: Record<string, params.ParamValue> }> {
   let paramValues: Record<string, params.ParamValue> = {};
-  if (experiments.isEnabled("functionsparams")) {
-    paramValues = await params.resolveParams(
-      build.params,
-      firebaseConfig,
-      envWithTypes(build.params, userEnvs),
-      nonInteractive
-    );
+  paramValues = await params.resolveParams(
+    build.params,
+    firebaseConfig,
+    envWithTypes(build.params, userEnvs),
+    nonInteractive
+  );
 
-    const toWrite: Record<string, string> = {};
-    for (const paramName of Object.keys(paramValues)) {
-      const paramValue = paramValues[paramName];
-      if (Object.prototype.hasOwnProperty.call(userEnvs, paramName) || paramValue.internal) {
-        continue;
-      }
-      toWrite[paramName] = paramValue.toString();
+  const toWrite: Record<string, string> = {};
+  for (const paramName of Object.keys(paramValues)) {
+    const paramValue = paramValues[paramName];
+    if (Object.prototype.hasOwnProperty.call(userEnvs, paramName) || paramValue.internal) {
+      continue;
     }
-    writeUserEnvs(toWrite, userEnvOpt);
+    toWrite[paramName] = paramValue.toString();
   }
+  writeUserEnvs(toWrite, userEnvOpt);
 
   return { backend: toBackend(build, paramValues), envs: paramValues };
 }
@@ -317,6 +315,7 @@ function envWithTypes(
       string: true,
       boolean: true,
       number: true,
+      list: true,
     };
     for (const param of definedParams) {
       if (param.name === envName) {
@@ -325,18 +324,28 @@ function envWithTypes(
             string: true,
             boolean: false,
             number: false,
+            list: false,
           };
         } else if (param.type === "int") {
           providedType = {
             string: false,
             boolean: false,
             number: true,
+            list: false,
           };
         } else if (param.type === "boolean") {
           providedType = {
             string: false,
             boolean: true,
             number: false,
+            list: false,
+          };
+        } else if (param.type === "list") {
+          providedType = {
+            string: false,
+            boolean: false,
+            number: false,
+            list: true,
           };
         }
       }
@@ -420,9 +429,11 @@ export function toBackend(
       continue;
     }
 
-    let regions = bdEndpoint.region;
-    if (typeof regions === "undefined") {
+    let regions: string[] = [];
+    if (!bdEndpoint.region) {
       regions = [api.functionsDefaultRegion];
+    } else {
+      regions = params.resolveList(bdEndpoint.region, paramValues);
     }
     for (const region of regions) {
       const trigger = discoverTrigger(bdEndpoint, region, r);
