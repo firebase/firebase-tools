@@ -5,16 +5,15 @@ import { spawn } from "cross-spawn";
 import { copy, pathExists } from "fs-extra";
 import { mkdir } from "fs/promises";
 
-import {
-  BuildResult,
-  Discovery,
-  FrameworkType,
-  SupportLevel,
-} from "../interfaces";
+import { BuildResult, Discovery, FrameworkType, SupportLevel } from "../interfaces";
 import { promptOnce } from "../../prompt";
-import { simpleProxy, warnIfCustomBuildScript, getNodeModuleBin,
+import {
+  simpleProxy,
+  warnIfCustomBuildScript,
+  getNodeModuleBin,
   relativeRequire,
-  findDependency, } from "../utils";
+  findDependency,
+} from "../utils";
 
 export const name = "Angular";
 export const support = SupportLevel.Preview;

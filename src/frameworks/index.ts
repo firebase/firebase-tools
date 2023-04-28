@@ -1,4 +1,4 @@
-import { join, relative, extname, basename } from "path";
+import { join, relative, basename } from "path";
 import { exit } from "process";
 import { execSync } from "child_process";
 import { sync as spawnSync } from "cross-spawn";
@@ -25,7 +25,17 @@ import * as experiments from "../experiments";
 import { ensureTargeted } from "../functions/ensureTargeted";
 import { implicitInit } from "../hosting/implicitInit";
 import { findDependency, conjoinOptions } from "./utils";
-import { ALLOWED_SSR_REGIONS, DEFAULT_REGION, FIREBASE_ADMIN_VERSION, FIREBASE_FRAMEWORKS_VERSION, FIREBASE_FUNCTIONS_VERSION, NODE_VERSION, SupportLevelWarnings, VALID_ENGINES, WebFrameworks } from "./constants";
+import {
+  ALLOWED_SSR_REGIONS,
+  DEFAULT_REGION,
+  FIREBASE_ADMIN_VERSION,
+  FIREBASE_FRAMEWORKS_VERSION,
+  FIREBASE_FUNCTIONS_VERSION,
+  NODE_VERSION,
+  SupportLevelWarnings,
+  VALID_ENGINES,
+  WebFrameworks,
+} from "./constants";
 import { FirebaseDefaults, Framework } from "./interfaces";
 import { logWarning } from "../utils";
 

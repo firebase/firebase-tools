@@ -1,15 +1,15 @@
 import { sync as spawnSync, spawn } from "cross-spawn";
 import { copy, existsSync } from "fs-extra";
 import { join } from "path";
-import {
-  BuildResult,
-  Discovery,
-  FrameworkType,
-  SupportLevel,
-} from "../interfaces";
+import { BuildResult, Discovery, FrameworkType, SupportLevel } from "../interfaces";
 import { FirebaseError } from "../../error";
-import { readJSON, simpleProxy, warnIfCustomBuildScript, findDependency,
-  getNodeModuleBin, } from "../utils";
+import {
+  readJSON,
+  simpleProxy,
+  warnIfCustomBuildScript,
+  findDependency,
+  getNodeModuleBin,
+} from "../utils";
 import { getBootstrapScript, getConfig } from "./utils";
 
 export const name = "Astro";

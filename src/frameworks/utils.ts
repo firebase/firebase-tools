@@ -115,7 +115,9 @@ function scanDependencyTree(searchingFor: string, dependencies = {}): any {
 }
 
 export function getNpmRoot(cwd: string) {
-  return spawnSync("npm", ["root"], { cwd, timeout: NPM_ROOT_TIMEOUT_MILLIES }).stdout?.toString().trim();
+  return spawnSync("npm", ["root"], { cwd, timeout: NPM_ROOT_TIMEOUT_MILLIES })
+    .stdout?.toString()
+    .trim();
 }
 
 export function getNodeModuleBin(name: string, cwd: string) {
