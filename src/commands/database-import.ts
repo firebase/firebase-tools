@@ -47,7 +47,7 @@ export const command = new Command("database:import <path> [infile]")
     "--filter <dataPath>",
     "import only data at this path in the JSON file (if omitted, import entire file)"
   )
-  .option("--chunk-size <mb>", "max chunk size in megabytes, default to 10 MB")
+  .option("--chunk-size <mb>", "max chunk size in megabytes, default to 1 MB")
   .option("--concurrency <val>", "concurrency limit, default to 5")
   .before(requirePermissions, ["firebasedatabase.instances.update"])
   .before(requireDatabaseInstance)

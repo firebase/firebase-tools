@@ -17,8 +17,10 @@ type Data = {
   pathname: string;
 };
 
+type SizedData = Data & { size: number };
+
 type ChunkedData = {
-  chunks: Data[] | null;
+  chunks: SizedData[] | null;
   size: number;
 };
 
@@ -81,23 +83,40 @@ export default class DatabaseImporter {
   private readAndWriteChunks(): Promise<ClientResponse<JsonType>[]> {
     const { dbUrl, payloadSize } = this;
     const chunkData = this.chunkData.bind(this);
-    const doWriteBatch = this.doWriteBatch.bind(this);
+    const doWriteData = this.doWriteData.bind(this);
     const getJoinedPath = this.joinPath.bind(this);
 
     const readChunks = new stream.Transform({ objectMode: true });
     readChunks._transform = function (chunk: { key: string; value: JsonType }, _, done) {
       const data = { json: chunk.value, pathname: getJoinedPath(dbUrl.pathname, chunk.key) };
       const chunkedData = chunkData(data);
-      const chunks = chunkedData.chunks || [data];
+      const chunks = chunkedData.chunks || [{ ...data, size: JSON.stringify(data.json).length }];
       for (const chunk of chunks) {
         this.push(chunk);
       }
       done();
     };
 
-    const writeBatch = new stream.Transform({ objectMode: true });
-    writeBatch._transform = async function (batch: Data, _, done) {
-      const res = await doWriteBatch(batch);
+    // Since we cannot PATCH primitives and arrays, we explicitly convert them to objects.
+    const sanitizePatchData = new stream.Transform({ objectMode: true });
+    sanitizePatchData._transform = async function ({ json, pathname, size }: SizedData, _, done) {
+      let sanitized: SizedData;
+      if (typeof json === "string" || typeof json === "number" || typeof json === "boolean") {
+        const tokens = pathname.split("/");
+        const lastToken = tokens.pop();
+        sanitized = { json: { [lastToken!]: json }, pathname: tokens.join("/"), size };
+      } else if (Array.isArray(json)) {
+        sanitized = { json: { ...json }, pathname, size };
+      } else {
+        sanitized = { json, pathname, size };
+      }
+      this.push(sanitized);
+      done();
+    };
+
+    const writeData = new stream.Transform({ objectMode: true });
+    writeData._transform = async function (data: SizedData, _, done) {
+      const res = await doWriteData(data);
       this.push(res);
       done();
     };
@@ -126,20 +145,20 @@ export default class DatabaseImporter {
         )
         .pipe(readChunks)
         .pipe(new BatchChunks(payloadSize))
-        .pipe(writeBatch)
+        .pipe(sanitizePatchData)
+        .pipe(writeData)
         .on("data", (res: ClientResponse<JsonType>) => responses.push(res))
         .on("error", reject)
         .once("end", () => resolve(responses));
     });
   }
 
-  private doWriteBatch(data: Data): Promise<ClientResponse<JsonType>> {
-    const sanitizedData = this.sanitizeDataForPatch(data);
+  private doWriteData(data: SizedData): Promise<ClientResponse<JsonType>> {
     const doRequest = (): Promise<ClientResponse<JsonType>> => {
       return this.client.request({
         method: "PATCH",
-        path: `${sanitizedData.pathname}.json`,
-        body: JSON.stringify(sanitizedData.json),
+        path: `${data.pathname}.json`,
+        body: data.json,
         queryParams: this.dbUrl.searchParams,
       });
     };
@@ -161,17 +180,6 @@ export default class DatabaseImporter {
     });
   }
 
-  // Since we cannot PATCH arrays and primitives, we convert them to objects.
-  private sanitizeDataForPatch(batch: Data): Data {
-    if (typeof batch.json === "object") {
-      return { json: { ...batch.json }, pathname: batch.pathname };
-    } else {
-      const tokens = batch.pathname.split("/");
-      const lastToken = tokens.pop();
-      return { json: { [lastToken!]: batch.json }, pathname: tokens.join("/") };
-    }
-  }
-
   private chunkData({ json, pathname }: Data): ChunkedData {
     if (typeof json === "string" || typeof json === "number" || typeof json === "boolean") {
       // Leaf node, cannot be chunked
@@ -180,7 +188,7 @@ export default class DatabaseImporter {
       // Children node
       let size = 2; // {}
 
-      const chunks = [];
+      const chunks: SizedData[] = [];
       let hasChunkedChild = false;
 
       for (const [key, val] of Object.entries(json)) {
@@ -193,7 +201,7 @@ export default class DatabaseImporter {
           hasChunkedChild = true;
           chunks.push(...childChunks.chunks);
         } else {
-          chunks.push(child);
+          chunks.push({ ...child, size: childChunks.size });
         }
       }
 
@@ -219,21 +227,19 @@ export default class DatabaseImporter {
  * containing chunks keyed by pathname.
  */
 class BatchChunks extends stream.Transform {
-  private batch: Data = { json: {}, pathname: "" };
-  private size = 0;
+  private batch: SizedData = { json: {}, pathname: "", size: 0 };
 
   constructor(private maxSize: number, opts?: stream.TransformOptions) {
     super({ ...opts, objectMode: true });
   }
 
-  _transform(chunk: Data, _: BufferEncoding, callback: stream.TransformCallback) {
-    const chunkSize = JSON.stringify(chunk.json).length + chunk.pathname.length;
-    if (this.size + chunkSize > this.maxSize) {
+  _transform(chunk: SizedData, _: BufferEncoding, callback: stream.TransformCallback) {
+    const totalChunkSize = chunk.size + chunk.pathname.length; // Overestimate
+    if (this.batch.size + totalChunkSize > this.maxSize) {
       this.push(this.batch);
-      this.batch = { json: {}, pathname: "" };
-      this.size = 0;
+      this.batch = { json: {}, pathname: "", size: 0 };
     }
-    if (this.size === 0) {
+    if (this.batch.size === 0) {
       this.batch = chunk;
     } else {
       const newPathname = this._findLongestCommonPrefix(chunk.pathname, this.batch.pathname);
@@ -249,7 +255,7 @@ class BatchChunks extends stream.Transform {
       }
       this.batch.pathname = newPathname;
     }
-    this.size += chunkSize;
+    this.batch.size += totalChunkSize;
     callback(null);
   }
 
@@ -267,7 +273,7 @@ class BatchChunks extends stream.Transform {
   }
 
   _flush(callback: stream.TransformCallback) {
-    if (this.size > 0) {
+    if (this.batch.size > 0) {
       this.push(this.batch);
     }
     callback(null);
