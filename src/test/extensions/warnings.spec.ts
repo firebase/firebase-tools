@@ -96,7 +96,7 @@ describe("displayWarningsForDeploy", () => {
     expect(warned).to.be.true;
     expect(loggerStub).to.have.been.calledWithMatch(
       "extensions",
-      "have not been published to the Firebase Extensions Hub",
+      "have not been published to the Firebase Extensions Hub"
     );
   });
 });
