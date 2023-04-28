@@ -259,8 +259,7 @@
         "uri-js": "^4.2.2"
       },
       "funding": {
-        "type": "github",
-        "url": "https://github.com/sponsors/epoberezkin"
+        "url": "https://github.com/sponsors/panva"
       }
     },
     "node_modules/@angular-devkit/core/node_modules/json-schema-traverse": {
