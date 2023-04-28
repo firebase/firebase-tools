@@ -4,7 +4,6 @@ import { execSync } from "child_process";
 import { sync as spawnSync } from "cross-spawn";
 import { copyFile, readdir, readFile, rm, writeFile } from "fs/promises";
 import { mkdirp, pathExists, stat } from "fs-extra";
-import * as clc from "colorette";
 import * as process from "node:process";
 import * as semver from "semver";
 import * as glob from "glob";
@@ -24,7 +23,7 @@ import { requireHostingSite } from "../requireHostingSite";
 import * as experiments from "../experiments";
 import { ensureTargeted } from "../functions/ensureTargeted";
 import { implicitInit } from "../hosting/implicitInit";
-import { findDependency, conjoinOptions } from "./utils";
+import { findDependency, conjoinOptions, frameworksCallToAction } from "./utils";
 import {
   ALLOWED_SSR_REGIONS,
   DEFAULT_REGION,
@@ -207,10 +206,11 @@ export async function prepareFrameworks(
       process.env.__FIREBASE_DEFAULTS__ = JSON.stringify(firebaseDefaults);
     }
     const results = await discover(getProjectPath());
-    if (!results)
+    if (!results) {
       throw new FirebaseError(
-        "Unable to detect the web framework in use, check firebase-debug.log for more info."
+        frameworksCallToAction("Unable to detect the web framework in use, check firebase-debug.log for more info.")
       );
+    }
     const { framework, mayWantBackend, publicDirectory } = results;
     const {
       build,
@@ -219,21 +219,9 @@ export async function prepareFrameworks(
       getDevModeHandle,
       name,
       support,
-      docsUrl = "https://firebase.google.com/docs/hosting/frameworks/frameworks-overview",
+      docsUrl,
     } = WebFrameworks[framework];
-    const callToAction = `${SupportLevelWarnings[support](name)}
-
-   ${clc.bold("Documentation:")} ${docsUrl}
-   ${clc.bold(
-     "File a bug:"
-   )} https://github.com/firebase/firebase-tools/issues/new?labels=type%3A+bug,integration%3A+web%20frameworks&template=bug_report.md
-   ${clc.bold(
-     "Submit a feature request:"
-   )} https://github.com/firebase/firebase-tools/issues/new?labels=type%3A+feature+request,integration%3A+web%20frameworks&template=feature_request.md
-
-   We'd love to learn from you. Express your interest in helping us shape the future of Firebase Hosting: https://goo.gle/41enW5X
-`;
-    console.log(callToAction);
+    console.log(`\n${frameworksCallToAction(SupportLevelWarnings[support](name), docsUrl, "   ")}\n`);
     // TODO allow for override
     const isDevMode = context._name === "serve" || context._name === "emulators:start";
 

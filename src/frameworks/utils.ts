@@ -3,12 +3,14 @@ import type { ReadOptions } from "fs-extra";
 import { extname, join, relative } from "path";
 import { readFile } from "fs/promises";
 import { IncomingMessage, request as httpRequest, ServerResponse, Agent } from "http";
-import { logger } from "../logger";
 import { spawnSync } from "child_process";
+import * as clc from "colorette";
+
+import { logger } from "../logger";
 import { FirebaseError } from "../error";
 import { fileExistsSync } from "../fsutils";
 import { pathToFileURL } from "url";
-import { NPM_COMMAND_TIMEOUT_MILLIES } from "./constants";
+import { DEFAULT_DOCS_URL, FEATURE_REQUEST_URL, FILE_BUG_URL, MAILING_LIST_URL, NPM_COMMAND_TIMEOUT_MILLIES, SupportLevelWarnings } from "./constants";
 
 // Use "true &&"" to keep typescript from compiling this file and rewriting
 // the import statement into a require
@@ -240,4 +242,14 @@ export function conjoinOptions(
   const lastElement = opts.slice(-1)[0].toString();
   const allButLast = opts.slice(0, -1).map((it) => it.toString());
   return `${allButLast.join(`${separator} `)}${separator} ${conjunction} ${lastElement}`;
+}
+
+export function frameworksCallToAction(message: string, docsUrl=DEFAULT_DOCS_URL, prefix="") {
+  return `${prefix}${message}
+
+${prefix}${clc.bold("Documentation:")} ${docsUrl}
+${prefix}${clc.bold("File a bug:")} ${FILE_BUG_URL}
+${prefix}${clc.bold("Submit a feature request:")} ${FEATURE_REQUEST_URL}
+
+${prefix}We'd love to learn from you. Express your interest in helping us shape the future of Firebase Hosting: ${MAILING_LIST_URL}`;
 }
