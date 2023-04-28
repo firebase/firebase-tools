@@ -319,7 +319,7 @@ describe("config", () => {
     });
   });
 
-  const PUBLIC_DIR_ERROR_PREFIX = /Must supply a "public" directory/;
+  const PUBLIC_DIR_ERROR_PREFIX = /Must supply a "public" or "source" directory/;
   describe("validate", () => {
     const tests: Array<{
       desc: string;
