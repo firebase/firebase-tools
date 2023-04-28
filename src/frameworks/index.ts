@@ -24,7 +24,6 @@ import { formatHost } from "../emulator/functionsEmulatorShared";
 import { Constants } from "../emulator/constants";
 import { FirebaseError } from "../error";
 import { requireHostingSite } from "../requireHostingSite";
-import { HostingRewrites } from "../firebaseConfig";
 import * as experiments from "../experiments";
 import { ensureTargeted } from "../functions/ensureTargeted";
 import { implicitInit } from "../hosting/implicitInit";
@@ -482,16 +481,21 @@ export async function prepareFrameworks(
         process.env.__FIREBASE_DEFAULTS__ = JSON.stringify(firebaseDefaults);
       }
 
-      const rewrite: HostingRewrites = {
+      if (context.hostingChannel) {
+        experiments.assertEnabled(
+          "pintags",
+          "deploy an app that requires a backend to a preview channel"
+        );
+      }
+
+      config.rewrites.push({
         source: "**",
         function: {
           functionId,
+          region: ssrRegion,
+          pinTag: experiments.isEnabled("pintags"),
         },
-      };
-      if (experiments.isEnabled("pintags")) {
-        rewrite.function.pinTag = true;
-      }
-      config.rewrites.push(rewrite);
+      });
 
       const codebase = `firebase-frameworks-${site}`;
       const existingFunctionsConfig = options.config.get("functions")
