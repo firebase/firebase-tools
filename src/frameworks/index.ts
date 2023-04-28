@@ -208,7 +208,9 @@ export async function prepareFrameworks(
     const results = await discover(getProjectPath());
     if (!results) {
       throw new FirebaseError(
-        frameworksCallToAction("Unable to detect the web framework in use, check firebase-debug.log for more info.")
+        frameworksCallToAction(
+          "Unable to detect the web framework in use, check firebase-debug.log for more info."
+        )
       );
     }
     const { framework, mayWantBackend, publicDirectory } = results;
@@ -221,7 +223,9 @@ export async function prepareFrameworks(
       support,
       docsUrl,
     } = WebFrameworks[framework];
-    console.log(`\n${frameworksCallToAction(SupportLevelWarnings[support](name), docsUrl, "   ")}\n`);
+    console.log(
+      `\n${frameworksCallToAction(SupportLevelWarnings[support](name), docsUrl, "   ")}\n`
+    );
     // TODO allow for override
     const isDevMode = context._name === "serve" || context._name === "emulators:start";
 

@@ -10,7 +10,13 @@ import { logger } from "../logger";
 import { FirebaseError } from "../error";
 import { fileExistsSync } from "../fsutils";
 import { pathToFileURL } from "url";
-import { DEFAULT_DOCS_URL, FEATURE_REQUEST_URL, FILE_BUG_URL, MAILING_LIST_URL, NPM_COMMAND_TIMEOUT_MILLIES, SupportLevelWarnings } from "./constants";
+import {
+  DEFAULT_DOCS_URL,
+  FEATURE_REQUEST_URL,
+  FILE_BUG_URL,
+  MAILING_LIST_URL,
+  NPM_COMMAND_TIMEOUT_MILLIES,
+} from "./constants";
 
 // Use "true &&"" to keep typescript from compiling this file and rewriting
 // the import statement into a require
@@ -244,7 +250,7 @@ export function conjoinOptions(
   return `${allButLast.join(`${separator} `)}${separator} ${conjunction} ${lastElement}`;
 }
 
-export function frameworksCallToAction(message: string, docsUrl=DEFAULT_DOCS_URL, prefix="") {
+export function frameworksCallToAction(message: string, docsUrl = DEFAULT_DOCS_URL, prefix = "") {
   return `${prefix}${message}
 
 ${prefix}${clc.bold("Documentation:")} ${docsUrl}
