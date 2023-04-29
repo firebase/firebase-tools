@@ -13,7 +13,6 @@ import {
   assertUnique,
 } from "../../../functions/projectConfig";
 import { FirebaseError } from "../../../error";
-import { isEnabled } from "../../../experiments";
 
 const MAX_ATTEMPTS = 5;
 
