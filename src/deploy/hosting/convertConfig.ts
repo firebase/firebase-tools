@@ -11,6 +11,7 @@ import * as runTags from "../../hosting/runTags";
 import { assertExhaustive } from "../../functional";
 import * as experiments from "../../experiments";
 import { logger } from "../../logger";
+import { track } from "../../track";
 
 /**
  * extractPattern contains the logic for extracting exactly one glob/regexp
@@ -132,6 +133,9 @@ export async function convertConfig(
     }
   }
 
+  let hasServerlessRewrite = false;
+  let pinsSomeTags = false;
+  let pinsAllTags = true;
   config.rewrites = deploy.config.rewrites?.map((rewrite) => {
     const target = extractPattern("rewrite", rewrite);
     if ("destination" in rewrite) {
@@ -142,6 +146,7 @@ export async function convertConfig(
     }
 
     if ("function" in rewrite) {
+      hasServerlessRewrite = true;
       if (typeof rewrite.function === "string") {
         throw new FirebaseError(
           "Expected firebase config to be normalized, but got legacy functions format"
@@ -219,7 +224,10 @@ export async function convertConfig(
       };
       if (rewrite.function.pinTag) {
         experiments.assertEnabled("pintags", "pin a function version");
+        pinsSomeTags = true;
         apiRewrite.run.tag = runTags.TODO_TAG_NAME;
+      } else {
+        pinsAllTags = false;
       }
       return apiRewrite;
     }
@@ -232,15 +240,20 @@ export async function convertConfig(
     }
 
     if ("run" in rewrite) {
+      hasServerlessRewrite = true;
       const apiRewrite: api.Rewrite = {
         ...target,
         run: {
-          region: "us-central1",
-          ...rewrite.run,
+          serviceId: rewrite.run.serviceId,
+          region: rewrite.run.region || "us-central1",
         },
       };
-      if (apiRewrite.run.tag) {
+      if (rewrite.run.pinTag) {
         experiments.assertEnabled("pintags", "pin to a run service revision");
+        pinsSomeTags = true;
+        apiRewrite.run.tag = runTags.TODO_TAG_NAME;
+      } else {
+        pinsAllTags = false;
       }
       return apiRewrite;
     }
@@ -260,6 +273,10 @@ export async function convertConfig(
   if (config.rewrites) {
     const versionId = last(deploy.version.split("/"));
     await runTags.setRewriteTags(config.rewrites, context.projectId, versionId);
+  }
+  if (hasServerlessRewrite) {
+    const label = pinsAllTags ? "pins_all" : pinsSomeTags ? "pins_some" : "pins_none";
+    void track("hosting_serverless_rewrite", label);
   }
 
   config.redirects = deploy.config.redirects?.map((redirect) => {
