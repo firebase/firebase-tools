@@ -45,6 +45,21 @@ const AUTH_BLOCKING_CREATE_V2_LOG =
   "========== AUTH BLOCKING CREATE V2 FUNCTION METADATA ==========";
 const AUTH_BLOCKING_SIGN_IN_V2_LOG =
   "========== AUTH BLOCKING SIGN IN V2 FUNCTION METADATA ==========";
+/* Python */
+const PY_RTDB_FUNCTION_LOG = "========== PYTHON RTDB FUNCTION ==========";
+const PY_PUBSUB_FUNCTION_LOG = "========== PYTHON PUBSUB FUNCTION ==========";
+const PY_STORAGE_FUNCTION_ARCHIVED_LOG = "========== PYTHON STORAGE FUNCTION ARCHIVED ==========";
+const PY_STORAGE_FUNCTION_DELETED_LOG = "========== PYTHON STORAGE FUNCTION DELETED ==========";
+const PY_STORAGE_FUNCTION_FINALIZED_LOG = "========== PYTHON STORAGE FUNCTION FINALIZED ==========";
+const PY_STORAGE_FUNCTION_METADATA_LOG = "========== PYTHON STORAGE FUNCTION METADATA ==========";
+const PY_STORAGE_BUCKET_FUNCTION_ARCHIVED_LOG =
+  "========== PYTHON STORAGE BUCKET FUNCTION ARCHIVED ==========";
+const PY_STORAGE_BUCKET_FUNCTION_DELETED_LOG =
+  "========== PYTHON STORAGE BUCKET FUNCTION DELETED ==========";
+const PY_STORAGE_BUCKET_FUNCTION_FINALIZED_LOG =
+  "========== PYTHON STORAGE BUCKET FUNCTION FINALIZED ==========";
+const PY_STORAGE_BUCKET_FUNCTION_METADATA_LOG =
+  "========== PYTHON STORAGE BUCKET FUNCTION METADATA ==========";
 
 interface ConnectionInfo {
   host: string;
@@ -147,6 +162,18 @@ export class TriggerEndToEndTest extends EmulatorEndToEndTest {
   authBlockingSignInV2TriggerCount = 0;
   rtdbV2TriggerCount = 0;
 
+  /* Python Functions */
+  pyRTDBTriggerCount = 0;
+  pyPubsubTriggerCount = 0;
+  pyStorageArchivedTriggerCount = 0;
+  pyStorageDeletedTriggerCount = 0;
+  pyStorageFinalizedTriggerCount = 0;
+  pyStorageMetadataTriggerCount = 0;
+  pyStorageBucketArchivedTriggerCount = 0;
+  pyStorageBucketDeletedTriggerCount = 0;
+  pyStorageBucketFinalizedTriggerCount = 0;
+  pyStorageBucketMetadataTriggerCount = 0;
+
   rtdbFromFirestore = false;
   firestoreFromRtdb = false;
   rtdbFromRtdb = false;
@@ -182,6 +209,29 @@ export class TriggerEndToEndTest extends EmulatorEndToEndTest {
     this.authBlockingCreateV2TriggerCount = 0;
     this.authBlockingSignInV2TriggerCount = 0;
     this.rtdbV2TriggerCount = 0;
+
+    /* Python */
+    this.pyPubsubTriggerCount = 0;
+    this.pyStorageArchivedTriggerCount = 0;
+    this.pyStorageDeletedTriggerCount = 0;
+    this.pyStorageMetadataTriggerCount = 0;
+    this.pyStorageFinalizedTriggerCount = 0;
+    this.pyStorageBucketArchivedTriggerCount = 0;
+    this.pyStorageBucketDeletedTriggerCount = 0;
+    this.pyStorageBucketMetadataTriggerCount = 0;
+    this.pyStorageBucketFinalizedTriggerCount = 0;
+    this.pyRTDBTriggerCount = 0;
+  }
+
+  /**
+   * Print trigger counts. Useful for debugging failed tests.
+   */
+  printCounts(): void {
+    for (const key of Object.keys(this)) {
+      if (key.includes("Count")) {
+        console.log(`${key}: ${(this as any)[key]}`);
+      }
+    }
   }
 
   /*
@@ -276,6 +326,38 @@ export class TriggerEndToEndTest extends EmulatorEndToEndTest {
       }
       if (data.includes(RTDB_V2_FUNCTION_LOG)) {
         this.rtdbV2TriggerCount++;
+      }
+
+      /* Python */
+      if (data.includes(PY_PUBSUB_FUNCTION_LOG)) {
+        this.pyPubsubTriggerCount++;
+      }
+      if (data.includes(PY_STORAGE_FUNCTION_ARCHIVED_LOG)) {
+        this.pyStorageArchivedTriggerCount++;
+      }
+      if (data.includes(PY_STORAGE_FUNCTION_DELETED_LOG)) {
+        this.pyStorageDeletedTriggerCount++;
+      }
+      if (data.includes(PY_STORAGE_FUNCTION_FINALIZED_LOG)) {
+        this.pyStorageFinalizedTriggerCount++;
+      }
+      if (data.includes(PY_STORAGE_FUNCTION_METADATA_LOG)) {
+        this.pyStorageMetadataTriggerCount++;
+      }
+      if (data.includes(PY_STORAGE_BUCKET_FUNCTION_ARCHIVED_LOG)) {
+        this.pyStorageBucketArchivedTriggerCount++;
+      }
+      if (data.includes(PY_STORAGE_BUCKET_FUNCTION_DELETED_LOG)) {
+        this.pyStorageBucketDeletedTriggerCount++;
+      }
+      if (data.includes(PY_STORAGE_BUCKET_FUNCTION_FINALIZED_LOG)) {
+        this.pyStorageBucketFinalizedTriggerCount++;
+      }
+      if (data.includes(PY_STORAGE_BUCKET_FUNCTION_METADATA_LOG)) {
+        this.pyStorageBucketMetadataTriggerCount++;
+      }
+      if (data.includes(PY_RTDB_FUNCTION_LOG)) {
+        this.pyRTDBTriggerCount++;
       }
     });
 

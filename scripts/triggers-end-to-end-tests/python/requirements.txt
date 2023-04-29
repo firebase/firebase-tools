@@ -1,0 +1,2 @@
+firebase-functions @ git+https://github.com/firebase/firebase-functions-python.git@main
+firebase-admin==6.0.1
