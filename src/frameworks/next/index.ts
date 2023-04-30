@@ -318,7 +318,7 @@ export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: strin
     readJSON<PrerenderManifest>(join(sourceDir, distDir, PRERENDER_MANIFEST)),
     readJSON<Manifest>(join(sourceDir, distDir, ROUTES_MANIFEST)),
     readJSON<PagesManifest>(join(sourceDir, distDir, "server", PAGES_MANIFEST)),
-    readJSON<Record<string, string>>(join(sourceDir, distDir, APP_PATH_ROUTES_MANIFEST)).catch(
+    readJSON<AppPathRoutesManifest>(join(sourceDir, distDir, APP_PATH_ROUTES_MANIFEST)).catch(
       () => ({})
     ),
   ]);
@@ -351,17 +351,18 @@ export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: strin
     ...headersRegexesNotSupportedByHosting,
   ];
 
-  const pagesManifestLikePrerender = Object.fromEntries(
+  const pagesManifestLikePrerender: PrerenderManifest["routes"] = Object.fromEntries(
     Object.entries(pagesManifest)
       .filter(([, srcRoute]) => srcRoute.endsWith(".html"))
       .map(([path]) => {
-        return [
-          path,
-          { srcRoute: undefined, initialRevalidateSeconds: false, dataRoute: undefined },
-        ];
+        return [path, { srcRoute: null, initialRevalidateSeconds: false, dataRoute: "" }];
       })
   );
-  const routesToCopy = { ...prerenderManifest.routes, ...pagesManifestLikePrerender };
+
+  const routesToCopy: PrerenderManifest["routes"] = {
+    ...prerenderManifest.routes,
+    ...pagesManifestLikePrerender,
+  };
 
   await Promise.all(
     Object.entries(routesToCopy).map(async ([path, route]) => {
@@ -389,7 +390,7 @@ export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: strin
       }
 
       if (!pathExistsSync(sourcePath)) {
-        console.error(`Cannot find ${path} in your compiled NextJS application.`);
+        console.error(`Cannot find ${path} in your compiled Next.js application.`);
         return;
       }
 
