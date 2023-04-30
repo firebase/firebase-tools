@@ -34,7 +34,7 @@ export const command = new Command("ext:dev:register")
       message: msg,
       default: projectId,
     });
-    let profile: PublisherProfile
+    let profile: PublisherProfile;
     try {
       profile = await registerPublisherProfile(projectId, publisherId);
     } catch (err: any) {
@@ -57,13 +57,14 @@ export const command = new Command("ext:dev:register")
         )}: ${err.message}`
       );
     }
-   utils.logLabeledSuccess(
+    utils.logLabeledSuccess(
       logPrefix,
       `Publisher ID '${clc.bold(publisherId)}' has been registered to project ${clc.bold(
         projectId
-      )}. View and edit your profile at ${
-        utils.consoleUrl(projectId, `/publisher/${publisherId}/dashboard`)
-      }`
+      )}. View and edit your profile at ${utils.consoleUrl(
+        projectId,
+        `/publisher/${publisherId}/dashboard`
+      )}`
     );
     return profile;
   });
