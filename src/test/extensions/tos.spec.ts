@@ -87,28 +87,56 @@ describe("tos", () => {
           nonInteractive: true,
           force: true,
         },
-        testProjectId
+        testProjectId,
+        ["my-instance"]
       );
 
-      expect(appDevTos).to.deep.equal(t);
+      expect(appDevTos).to.deep.equal([t]);
       expect(nock.isDone()).to.be.true;
     });
-  });
 
-  it("should return the latest app dev TOS if it has already been accepted", async () => {
-    const t = testTOS("appdevtos", "1.1.0", "1.1.0");
-    nock(api.extensionsTOSOrigin).get(`/v1/projects/${testProjectId}/appdevtos`).reply(200, t);
+    it("should not prompt for the latest app dev TOS if it has already been accepted", async () => {
+      const t = testTOS("appdevtos", "1.1.0", "1.1.0");
+      nock(api.extensionsTOSOrigin).get(`/v1/projects/${testProjectId}/appdevtos`).reply(200, t);
+      nock(api.extensionsTOSOrigin)
+        .post(`/v1/projects/${testProjectId}/appdevtos:accept`)
+        .reply(200, t);
 
-    const appDevTos = await tos.acceptLatestAppDeveloperTOS(
-      {
-        nonInteractive: true,
-        force: true,
-      },
-      testProjectId
-    );
+      const appDevTos = await tos.acceptLatestAppDeveloperTOS(
+        {
+          nonInteractive: true,
+          force: true,
+        },
+        testProjectId,
+        ["my-instance"]
+      );
 
-    expect(appDevTos).to.deep.equal(t);
-    expect(nock.isDone()).to.be.true;
+      expect(appDevTos).to.deep.equal([t]);
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should accept the TOS once per instance", async () => {
+      const t = testTOS("appdevtos", "1.1.0", "1.1.0");
+      nock(api.extensionsTOSOrigin).get(`/v1/projects/${testProjectId}/appdevtos`).reply(200, t);
+      nock(api.extensionsTOSOrigin)
+        .post(`/v1/projects/${testProjectId}/appdevtos:accept`)
+        .reply(200, t);
+      nock(api.extensionsTOSOrigin)
+        .post(`/v1/projects/${testProjectId}/appdevtos:accept`)
+        .reply(200, t);
+
+      const appDevTos = await tos.acceptLatestAppDeveloperTOS(
+        {
+          nonInteractive: true,
+          force: true,
+        },
+        testProjectId,
+        ["my-instance", "my-other-instance"]
+      );
+
+      expect(appDevTos).to.deep.equal([t, t]);
+      expect(nock.isDone()).to.be.true;
+    });
   });
 
   describe("acceptLatestPublisherTOS", () => {

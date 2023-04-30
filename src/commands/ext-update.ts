@@ -25,6 +25,7 @@ import { confirm } from "../prompt";
 import * as manifest from "../extensions/manifest";
 import { Options } from "../options";
 import * as askUserForEventsConfig from "../extensions/askUserForEventsConfig";
+import { displayDeveloperTOSWarning } from "../extensions/tos";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),
@@ -84,7 +85,6 @@ export const command = new Command("ext:update <extensionInstanceId> [updateSour
       );
       return;
     }
-
     utils.logLabeledBullet(
       logPrefix,
       `Updating ${clc.bold(instanceId)} from version ${clc.bold(
@@ -151,6 +151,6 @@ export const command = new Command("ext:update <extensionInstanceId> [updateSour
         force: true, // Skip asking for permission again
       }
     );
-    manifest.showPostDeprecationNotice();
+    displayDeveloperTOSWarning();
     return;
   });

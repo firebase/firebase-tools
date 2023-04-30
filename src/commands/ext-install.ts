@@ -12,7 +12,6 @@ import * as extensionsApi from "../extensions/extensionsApi";
 import { ExtensionVersion, ExtensionSource } from "../extensions/types";
 import * as refs from "../extensions/refs";
 import * as secretsUtils from "../extensions/secretsUtils";
-import { displayWarningPrompts } from "../extensions/warnings";
 import * as paramHelper from "../extensions/paramHelper";
 import {
   createSourceFromLocation,
@@ -32,6 +31,7 @@ import { track } from "../track";
 import { confirm } from "../prompt";
 import { Options } from "../options";
 import * as manifest from "../extensions/manifest";
+import { displayDeveloperTOSWarning } from "../extensions/tos";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),
@@ -163,7 +163,6 @@ async function infoExtensionVersion(args: {
 }): Promise<void> {
   const ref = refs.parse(args.extensionName);
   await displayExtInfo(args.extensionName, ref.publisherId, args.extensionVersion.spec, true);
-  await displayWarningPrompts(ref.publisherId, args.extensionVersion);
 }
 
 interface InstallExtensionOptions {
@@ -239,5 +238,5 @@ async function installToManifest(options: InstallExtensionOptions): Promise<void
     config,
     { nonInteractive, force: force ?? false }
   );
-  manifest.showPostDeprecationNotice();
+  displayDeveloperTOSWarning();
 }
