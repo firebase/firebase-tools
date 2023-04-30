@@ -30,6 +30,7 @@ import {
   isUsingImageOptimization,
   isUsingMiddleware,
   allDependencyNames,
+  getNonStaticRoutes,
 } from "./utils";
 import { NODE_VERSION, NPM_COMMAND_TIMEOUT_MILLIES } from "../constants";
 import type { Manifest, NpmLsDepdendency } from "./interfaces";
@@ -138,17 +139,9 @@ export async function build(dir: string): Promise<BuildResult> {
   );
   const prerenderedRoutes = Object.keys(prerenderManifest.routes);
   const dynamicRoutes = Object.keys(prerenderManifest.dynamicRoutes);
-  const unrenderedPages = Object.entries(pagesManifestJSON)
-    .filter(
-      ([it, src]) =>
-        !(
-          extname(src) !== ".js" ||
-          ["/_app", "/_error", "/_document"].includes(it) ||
-          prerenderedRoutes.includes(it) ||
-          dynamicRoutes.includes(it)
-        )
-    )
-    .map(([it]) => it);
+
+  const unrenderedPages = getNonStaticRoutes(pagesManifestJSON, prerenderedRoutes, dynamicRoutes);
+
   for (const key of unrenderedPages) {
     reasonsForBackend.add(`non-static route ${key}`);
   }

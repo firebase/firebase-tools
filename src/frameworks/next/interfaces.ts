@@ -60,3 +60,11 @@ export interface NpmLsReturn {
     [key: string]: NpmLsDepdendency;
   };
 }
+
+export interface AppPathsManifest {
+  [key: string]: string;
+}
+
+export interface AppPathRoutesManifest {
+  [key: string]: string;
+}

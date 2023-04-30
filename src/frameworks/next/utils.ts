@@ -1,8 +1,9 @@
 import { existsSync } from "fs";
 import { pathExists } from "fs-extra";
-import { join } from "path";
+import { extname, join } from "path";
 import type { Header, Redirect, Rewrite } from "next/dist/lib/load-custom-routes";
 import type { MiddlewareManifest } from "next/dist/build/webpack/plugins/middleware-plugin";
+import type { PagesManifest } from "next/dist/build/webpack/plugins/pages-manifest-plugin";
 
 import { isUrl, readJSON } from "../utils";
 import type {
@@ -233,4 +234,27 @@ export function allDependencyNames(mod: NpmLsDepdendency): string[] {
     [] as string[]
   );
   return dependencyNames;
+}
+
+/**
+ * Get non static routes based on pages-manifest, prerendered and dynamic routes
+ */
+export function getNonStaticRoutes(
+  pagesManifestJSON: PagesManifest,
+  prerenderedRoutes: string[],
+  dynamicRoutes: string[]
+): string[] {
+  const nonStaticRoutes = Object.entries(pagesManifestJSON)
+    .filter(
+      ([it, src]) =>
+        !(
+          extname(src) !== ".js" ||
+          ["/_app", "/_error", "/_document"].includes(it) ||
+          prerenderedRoutes.includes(it) ||
+          dynamicRoutes.includes(it)
+        )
+    )
+    .map(([it]) => it);
+
+  return nonStaticRoutes;
 }

@@ -22,6 +22,7 @@ import {
   isUsingImageOptimization,
   isUsingAppDirectory,
   allDependencyNames,
+  getNonStaticRoutes,
 } from "../../../frameworks/next/utils";
 import * as frameworksUtils from "../../../frameworks/utils";
 import * as fsUtils from "../../../fsutils";
@@ -45,6 +46,8 @@ import {
   unsupportedRedirects,
   unsupportedRewritesArray,
   npmLsReturn,
+  pagesManifest,
+  prerenderManifest,
 } from "./helpers";
 
 describe("Next.js utils", () => {
@@ -363,6 +366,18 @@ describe("Next.js utils", () => {
         "react",
         "loose-envify",
       ]);
+    });
+  });
+
+  describe("getNonStaticRoutes", () => {
+    it("should get non-static routes", () => {
+      expect(
+        getNonStaticRoutes(
+          pagesManifest,
+          Object.keys(prerenderManifest.routes),
+          Object.keys(prerenderManifest.dynamicRoutes)
+        )
+      ).to.deep.equal(["/dynamic/[dynamic-slug]"]);
     });
   });
 });
