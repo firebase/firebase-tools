@@ -23,6 +23,7 @@ import {
   isUsingAppDirectory,
   allDependencyNames,
   getNonStaticRoutes,
+  getNonStaticServerComponents,
 } from "../../../frameworks/next/utils";
 import * as frameworksUtils from "../../../frameworks/utils";
 import * as fsUtils from "../../../fsutils";
@@ -48,6 +49,8 @@ import {
   npmLsReturn,
   pagesManifest,
   prerenderManifest,
+  appPathsManifest,
+  appPathRoutesManifest,
 } from "./helpers";
 
 describe("Next.js utils", () => {
@@ -378,6 +381,19 @@ describe("Next.js utils", () => {
           Object.keys(prerenderManifest.dynamicRoutes)
         )
       ).to.deep.equal(["/dynamic/[dynamic-slug]"]);
+    });
+  });
+
+  describe("getNonStaticServerComponents", () => {
+    it("should get non-static server components", () => {
+      expect(
+        getNonStaticServerComponents(
+          appPathsManifest,
+          appPathRoutesManifest,
+          Object.keys(prerenderManifest.routes),
+          Object.keys(prerenderManifest.dynamicRoutes)
+        )
+      ).to.deep.equal(["/api/test/route"]);
     });
   });
 });

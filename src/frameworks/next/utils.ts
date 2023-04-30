@@ -12,6 +12,8 @@ import type {
   ExportMarker,
   ImagesManifest,
   NpmLsDepdendency,
+  AppPathsManifest,
+  AppPathRoutesManifest,
 } from "./interfaces";
 import {
   APP_PATH_ROUTES_MANIFEST,
@@ -257,4 +259,24 @@ export function getNonStaticRoutes(
     .map(([it]) => it);
 
   return nonStaticRoutes;
+}
+
+/**
+ * Get non static components from app directory
+ */
+export function getNonStaticServerComponents(
+  appPathsManifest: AppPathsManifest,
+  appPathRoutesManifest: AppPathRoutesManifest,
+  prerenderedRoutes: string[],
+  dynamicRoutes: string[]
+): string[] {
+  const nonStaticServerComponents = Object.entries(appPathsManifest)
+    .filter(([it, src]) => {
+      if (extname(src) !== ".js") return;
+      const path = appPathRoutesManifest[it];
+      return !(prerenderedRoutes.includes(path) || dynamicRoutes.includes(path));
+    })
+    .map(([it]) => it);
+
+  return nonStaticServerComponents;
 }

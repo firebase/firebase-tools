@@ -1,7 +1,7 @@
 import { execSync } from "child_process";
 import { spawn, sync as spawnSync } from "cross-spawn";
 import { mkdir, copyFile } from "fs/promises";
-import { basename, dirname, extname, join } from "path";
+import { basename, dirname, join } from "path";
 import type { NextConfig } from "next";
 import type { PrerenderManifest } from "next/dist/build";
 import type { MiddlewareManifest } from "next/dist/build/webpack/plugins/middleware-plugin";
@@ -31,9 +31,16 @@ import {
   isUsingMiddleware,
   allDependencyNames,
   getNonStaticRoutes,
+  getNonStaticServerComponents,
 } from "./utils";
 import { NODE_VERSION, NPM_COMMAND_TIMEOUT_MILLIES } from "../constants";
-import type { Manifest, NpmLsDepdendency } from "./interfaces";
+import type {
+  AppPathRoutesManifest,
+  AppPathsManifest,
+  HostingHeadersWithSource,
+  Manifest,
+  NpmLsDepdendency,
+} from "./interfaces";
 import {
   readJSON,
   simpleProxy,
@@ -146,24 +153,6 @@ export async function build(dir: string): Promise<BuildResult> {
     reasonsForBackend.add(`non-static route ${key}`);
   }
 
-  const [appPathsManifest, appPathRoutesManifest]: [
-    Record<string, string>,
-    Record<string, string>
-  ] = await Promise.all([
-    readJSON(join(dir, distDir, "server", APP_PATHS_MANIFEST)).catch(() => ({})),
-    readJSON(join(dir, distDir, APP_PATH_ROUTES_MANIFEST)).catch(() => ({})),
-  ]);
-  const unrenderedServerComponents = Object.entries(appPathsManifest)
-    .filter(([it, src]) => {
-      if (extname(src) !== ".js") return;
-      const path = appPathRoutesManifest[it];
-      return !(prerenderedRoutes.includes(path) || dynamicRoutes.includes(path));
-    })
-    .map(([it]) => it);
-  for (const key of unrenderedServerComponents) {
-    reasonsForBackend.add(`non-static component ${key}`);
-  }
-
   const manifest = await readJSON<Manifest>(join(dir, distDir, ROUTES_MANIFEST));
 
   const {
@@ -177,29 +166,55 @@ export async function build(dir: string): Promise<BuildResult> {
     reasonsForBackend.add("advanced headers");
   }
 
-  const headers = nextJsHeaders.filter(isHeaderSupportedByHosting).map(({ source, headers }) => ({
-    // clean up unnecessary escaping
-    source: cleanEscapedChars(source),
-    headers,
-  }));
+  const headers: HostingHeadersWithSource[] = nextJsHeaders
+    .filter(isHeaderSupportedByHosting)
+    .map(({ source, headers }) => ({
+      // clean up unnecessary escaping
+      source: cleanEscapedChars(source),
+      headers,
+    }));
 
-  await Promise.all(
-    Object.entries(appPathRoutesManifest).map(async ([key, source]) => {
-      if (basename(key) !== "route") return;
-      const parts = source.split("/").filter((it) => !!it);
-      const partsOrIndex = parts.length > 0 ? parts : ["index"];
-      const routePath = join(dir, distDir, "server", "app", ...partsOrIndex);
-      const metadataPath = `${routePath}.meta`;
-      if (dirExistsSync(routePath) && fileExistsSync(metadataPath)) {
-        const meta = await readJSON<{ headers?: Record<string, string> }>(metadataPath);
-        if (meta.headers)
-          headers.push({
-            source,
-            headers: Object.entries(meta.headers).map(([key, value]) => ({ key, value })),
-          });
+  const [appPathsManifest, appPathRoutesManifest] = await Promise.all([
+    readJSON<AppPathsManifest>(join(dir, distDir, "server", APP_PATHS_MANIFEST)).catch(
+      () => undefined
+    ),
+    readJSON<AppPathRoutesManifest>(join(dir, distDir, APP_PATH_ROUTES_MANIFEST)).catch(
+      () => undefined
+    ),
+  ]);
+
+  if (appPathRoutesManifest) {
+    await Promise.all(
+      Object.entries(appPathRoutesManifest).map(async ([key, source]) => {
+        if (basename(key) !== "route") return;
+        const parts = source.split("/").filter((it) => !!it);
+        const partsOrIndex = parts.length > 0 ? parts : ["index"];
+        const routePath = join(dir, distDir, "server", "app", ...partsOrIndex);
+        const metadataPath = `${routePath}.meta`;
+        if (dirExistsSync(routePath) && fileExistsSync(metadataPath)) {
+          const meta = await readJSON<{ headers?: Record<string, string> }>(metadataPath);
+          if (meta.headers)
+            headers.push({
+              source,
+              headers: Object.entries(meta.headers).map(([key, value]) => ({ key, value })),
+            });
+        }
+      })
+    );
+
+    if (appPathsManifest) {
+      const unrenderedServerComponents = getNonStaticServerComponents(
+        appPathsManifest,
+        appPathRoutesManifest,
+        prerenderedRoutes,
+        dynamicRoutes
+      );
+
+      for (const key of unrenderedServerComponents) {
+        reasonsForBackend.add(`non-static component ${key}`);
       }
-    })
-  );
+    }
+  }
 
   const isEveryRedirectSupported = nextJsRedirects
     .filter((it) => !it.internal)
