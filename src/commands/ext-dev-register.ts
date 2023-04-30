@@ -10,6 +10,7 @@ import { acceptLatestPublisherTOS } from "../extensions/tos";
 import { requirePermissions } from "../requirePermissions";
 import { FirebaseError } from "../error";
 import * as utils from "../utils";
+import { PublisherProfile } from "../extensions/types";
 
 /**
  * Register a publisher ID; run this before publishing any extensions.
@@ -33,8 +34,9 @@ export const command = new Command("ext:dev:register")
       message: msg,
       default: projectId,
     });
+    let profile: PublisherProfile
     try {
-      await registerPublisherProfile(projectId, publisherId);
+      profile = await registerPublisherProfile(projectId, publisherId);
     } catch (err: any) {
       if (err.status === 409) {
         const error =
@@ -55,10 +57,13 @@ export const command = new Command("ext:dev:register")
         )}: ${err.message}`
       );
     }
-    return utils.logLabeledSuccess(
+   utils.logLabeledSuccess(
       logPrefix,
       `Publisher ID '${clc.bold(publisherId)}' has been registered to project ${clc.bold(
         projectId
-      )}`
+      )}. View and edit your profile at ${
+        utils.consoleUrl(projectId, `/publisher/${publisherId}/dashboard`)
+      }`
     );
+    return profile;
   });
