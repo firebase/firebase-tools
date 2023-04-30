@@ -32,6 +32,7 @@ import {
   allDependencyNames,
   getNonStaticRoutes,
   getNonStaticServerComponents,
+  getHeadersFromMetaFiles,
 } from "./utils";
 import { NODE_VERSION, NPM_COMMAND_TIMEOUT_MILLIES } from "../constants";
 import type {
@@ -184,23 +185,8 @@ export async function build(dir: string): Promise<BuildResult> {
   ]);
 
   if (appPathRoutesManifest) {
-    await Promise.all(
-      Object.entries(appPathRoutesManifest).map(async ([key, source]) => {
-        if (basename(key) !== "route") return;
-        const parts = source.split("/").filter((it) => !!it);
-        const partsOrIndex = parts.length > 0 ? parts : ["index"];
-        const routePath = join(dir, distDir, "server", "app", ...partsOrIndex);
-        const metadataPath = `${routePath}.meta`;
-        if (dirExistsSync(routePath) && fileExistsSync(metadataPath)) {
-          const meta = await readJSON<{ headers?: Record<string, string> }>(metadataPath);
-          if (meta.headers)
-            headers.push({
-              source,
-              headers: Object.entries(meta.headers).map(([key, value]) => ({ key, value })),
-            });
-        }
-      })
-    );
+    const headersFromMetaFiles = await getHeadersFromMetaFiles(dir, distDir, appPathRoutesManifest);
+    headers.push(...headersFromMetaFiles);
 
     if (appPathsManifest) {
       const unrenderedServerComponents = getNonStaticServerComponents(

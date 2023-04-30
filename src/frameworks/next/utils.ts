@@ -1,6 +1,6 @@
 import { existsSync } from "fs";
 import { pathExists } from "fs-extra";
-import { extname, join } from "path";
+import { basename, extname, join } from "path";
 import type { Header, Redirect, Rewrite } from "next/dist/lib/load-custom-routes";
 import type { MiddlewareManifest } from "next/dist/build/webpack/plugins/middleware-plugin";
 import type { PagesManifest } from "next/dist/build/webpack/plugins/pages-manifest-plugin";
@@ -14,6 +14,7 @@ import type {
   NpmLsDepdendency,
   AppPathsManifest,
   AppPathRoutesManifest,
+  HostingHeadersWithSource,
 } from "./interfaces";
 import {
   APP_PATH_ROUTES_MANIFEST,
@@ -21,7 +22,7 @@ import {
   IMAGES_MANIFEST,
   MIDDLEWARE_MANIFEST,
 } from "./constants";
-import { fileExistsSync } from "../../fsutils";
+import { dirExistsSync, fileExistsSync } from "../../fsutils";
 import { readFile } from "fs/promises";
 
 /**
@@ -279,4 +280,37 @@ export function getNonStaticServerComponents(
     .map(([it]) => it);
 
   return nonStaticServerComponents;
+}
+
+/**
+ * Get headers from .meta files
+ */
+export async function getHeadersFromMetaFiles(
+  sourceDir: string,
+  distDir: string,
+  appPathRoutesManifest: AppPathRoutesManifest
+): Promise<HostingHeadersWithSource[]> {
+  const headers: HostingHeadersWithSource[] = [];
+
+  await Promise.all(
+    Object.entries(appPathRoutesManifest).map(async ([key, source]) => {
+      if (basename(key) !== "route") return;
+      const parts = source.split("/").filter((it) => !!it);
+      const partsOrIndex = parts.length > 0 ? parts : ["index"];
+
+      const routePath = join(sourceDir, distDir, "server", "app", ...partsOrIndex);
+      const metadataPath = `${routePath}.meta`;
+
+      if (dirExistsSync(routePath) && fileExistsSync(metadataPath)) {
+        const meta = await readJSON<{ headers?: Record<string, string> }>(metadataPath);
+        if (meta.headers)
+          headers.push({
+            source,
+            headers: Object.entries(meta.headers).map(([key, value]) => ({ key, value })),
+          });
+      }
+    })
+  );
+
+  return headers;
 }

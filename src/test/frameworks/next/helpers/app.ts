@@ -7,11 +7,13 @@ import type {
 
 export const appPathsManifest: AppPathsManifest = {
   "/api/test/route": "app/api/test/route.js",
+  "/api/static/route": "app/api/static/route.js",
   "/page": "app/page.js",
 };
 
 export const appPathRoutesManifest: AppPathRoutesManifest = {
   "/api/test/route": "/api/test",
+  "/api/static/route": "/api/static",
   "/page": "/",
 };
 
@@ -27,6 +29,11 @@ export const prerenderManifest: PrerenderManifest = {
   version: 3,
   routes: {
     "/": { initialRevalidateSeconds: false, srcRoute: "/", dataRoute: "/index.rsc" },
+    "/api/static": {
+      initialRevalidateSeconds: false,
+      srcRoute: "/api/static",
+      dataRoute: "null",
+    },
   },
   dynamicRoutes: {},
   notFoundRoutes: [],
@@ -36,3 +43,9 @@ export const prerenderManifest: PrerenderManifest = {
     previewModeEncryptionKey: "123",
   },
 };
+
+// content of a .meta file
+export const metaFileContents = {
+  status: 200,
+  headers: { "content-type": "application/json", "custom-header": "custom-value" },
+} as const;

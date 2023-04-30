@@ -24,6 +24,7 @@ import {
   allDependencyNames,
   getNonStaticRoutes,
   getNonStaticServerComponents,
+  getHeadersFromMetaFiles,
 } from "../../../frameworks/next/utils";
 import * as frameworksUtils from "../../../frameworks/utils";
 import * as fsUtils from "../../../fsutils";
@@ -51,6 +52,7 @@ import {
   prerenderManifest,
   appPathsManifest,
   appPathRoutesManifest,
+  metaFileContents,
 } from "./helpers";
 
 describe("Next.js utils", () => {
@@ -394,6 +396,39 @@ describe("Next.js utils", () => {
           Object.keys(prerenderManifest.dynamicRoutes)
         )
       ).to.deep.equal(["/api/test/route"]);
+    });
+  });
+
+  describe("getHeadersFromMetaFiles", () => {
+    let sandbox: sinon.SinonSandbox;
+    beforeEach(() => (sandbox = sinon.createSandbox()));
+    afterEach(() => sandbox.restore());
+
+    it("should get headers from meta files", async () => {
+      const distDir = ".next";
+      const readJsonStub = sandbox.stub(frameworksUtils, "readJSON");
+      const dirExistsSyncStub = sandbox.stub(fsUtils, "dirExistsSync");
+      const fileExistsSyncStub = sandbox.stub(fsUtils, "fileExistsSync");
+
+      dirExistsSyncStub.withArgs(`${distDir}/server/app/api/static`).returns(true);
+      fileExistsSyncStub.withArgs(`${distDir}/server/app/api/static.meta`).returns(true);
+      readJsonStub.withArgs(`${distDir}/server/app/api/static.meta`).resolves(metaFileContents);
+
+      expect(await getHeadersFromMetaFiles(".", distDir, appPathRoutesManifest)).to.deep.equal([
+        {
+          source: "/api/static",
+          headers: [
+            {
+              key: "content-type",
+              value: "application/json",
+            },
+            {
+              key: "custom-header",
+              value: "custom-value",
+            },
+          ],
+        },
+      ]);
     });
   });
 });
