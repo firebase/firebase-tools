@@ -1536,7 +1536,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         path,
         headers: req.headers,
       },
-      res,
+      res as http.ServerResponse,
       reqBody,
       debugBundle
     );

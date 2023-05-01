@@ -75,9 +75,8 @@ export const command = new Command("ext:configure <extensionInstanceId>")
       instanceId,
       projectDir: config.projectDir,
     });
-
     const [immutableParams, tbdParams] = partition(
-      spec.params.concat(spec.systemParams ?? []),
+      (spec.params ?? []).concat(spec.systemParams ?? []),
       (param) => param.immutable ?? false
     );
     infoImmutableParams(immutableParams, oldParamValues);

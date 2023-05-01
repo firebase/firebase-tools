@@ -6,11 +6,9 @@ import * as StreamObject from "stream-json/streamers/StreamObject";
 
 import { URL } from "url";
 import { Client, ClientResponse } from "../apiv2";
+import { FetchError } from "node-fetch";
 import { FirebaseError } from "../error";
 import * as pLimit from "p-limit";
-
-const MAX_CHUNK_SIZE = 1024 * 1024 * 10;
-const CONCURRENCY_LIMIT = 5;
 
 type JsonType = { [key: string]: JsonType } | string | number | boolean;
 
@@ -31,15 +29,18 @@ type ChunkedData = {
  */
 export default class DatabaseImporter {
   private client: Client;
-  private limit = pLimit(CONCURRENCY_LIMIT);
+  private limit: pLimit.Limit;
+  nonFatalRetryTimeout = 1000; // To be overriden in tests
 
   constructor(
     private dbUrl: URL,
     private inStream: stream.Readable,
     private dataPath: string,
-    private chunkSize = MAX_CHUNK_SIZE
+    private chunkBytes: number,
+    concurrency: number
   ) {
     this.client = new Client({ urlPrefix: dbUrl.origin, auth: true });
+    this.limit = pLimit(concurrency);
   }
 
   /**
@@ -122,14 +123,30 @@ export default class DatabaseImporter {
   }
 
   private writeChunk(chunk: Data): Promise<ClientResponse<JsonType>> {
-    return this.limit(() =>
-      this.client.request({
+    const doRequest = (): Promise<ClientResponse<JsonType>> => {
+      return this.client.request({
         method: "PUT",
         path: chunk.pathname + ".json",
         body: JSON.stringify(chunk.json),
         queryParams: this.dbUrl.searchParams,
-      })
-    );
+      });
+    };
+    return this.limit(async () => {
+      try {
+        return await doRequest();
+      } catch (err: any) {
+        const isTimeoutErr =
+          err instanceof FirebaseError &&
+          err.original instanceof FetchError &&
+          err.original.code === "ETIMEDOUT";
+        if (isTimeoutErr) {
+          // RTDB connection timeouts are transient and can be retried
+          await new Promise((res) => setTimeout(res, this.nonFatalRetryTimeout));
+          return await doRequest();
+        }
+        throw err;
+      }
+    });
   }
 
   private chunkData({ json, pathname }: Data): ChunkedData {
@@ -157,7 +174,7 @@ export default class DatabaseImporter {
         }
       }
 
-      if (hasChunkedChild || size >= this.chunkSize) {
+      if (hasChunkedChild || size >= this.chunkBytes) {
         return { chunks, size };
       } else {
         return { chunks: null, size };

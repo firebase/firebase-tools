@@ -571,7 +571,7 @@ async function createServiceAccountAndKey(
     await createServiceAccount(
       options.projectId,
       accountId,
-      `A service account with permission to deploy to Firebase Hosting for the GitHub repository ${repo}`,
+      `A service account with permission to deploy to Firebase Hosting and Cloud Functions for the GitHub repository ${repo}`,
       `GitHub Actions (${repo})`
     );
   } catch (e: any) {
@@ -595,6 +595,9 @@ async function createServiceAccountAndKey(
 
     // Required for projects that use Hosting rewrites to Cloud Run
     firebaseRoles.runViewer,
+
+    // Required for previewing backends (Web Frameworks and pinTags)
+    firebaseRoles.functionsDeveloper,
   ];
   await addServiceAccountToRoles(options.projectId, accountId, requiredRoles);
 
@@ -632,4 +635,8 @@ async function encryptServiceAccountJSON(serviceAccountJSON: string, key: string
 
   // Base64 the encrypted secret
   return Buffer.from(encryptedBytes).toString("base64");
+}
+
+export function isRunningInGithubAction() {
+  return process.env.GITHUB_ACTION_REPOSITORY === HOSTING_GITHUB_ACTION_NAME.split("@")[0];
 }

@@ -36,6 +36,9 @@ import { generateServiceIdentity } from "../../gcp/serviceusage";
 import { applyBackendHashToBackends } from "./cache/applyHash";
 import { allEndpoints, Backend } from "./backend";
 import { assertExhaustive } from "../../functional";
+import { isRunningInGithubAction } from "../../init/features/hosting/github";
+import { firebaseRoles } from "../../gcp/resourceManager";
+import { requirePermissions } from "../../requirePermissions";
 
 export const EVENTARC_SOURCE_ENV = "EVENTARC_CLOUD_EVENT_SOURCE";
 function hasUserConfig(config: Record<string, unknown>): boolean {
@@ -54,6 +57,15 @@ export async function prepare(
 ): Promise<void> {
   const projectId = needProjectId(options);
   const projectNumber = await needProjectNumber(options);
+
+  // Fail early if we're running in our Github Action and don't have permission
+  if (isRunningInGithubAction()) {
+    await requirePermissions(options, [firebaseRoles.functionsDeveloper]).catch(() => {
+      throw new FirebaseError(
+        "Please reinstall the Github Action with `firebase init hosting:github` to grant this project the required permissions to deploy Cloud Functions."
+      );
+    });
+  }
 
   context.config = normalizeAndValidate(options.config.src.functions);
   context.filters = getEndpointFilters(options); // Parse --only filters for functions.
