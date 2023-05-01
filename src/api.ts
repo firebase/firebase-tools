@@ -67,6 +67,7 @@ export const firebaseExtensionsRegistryOrigin = utils.envOverride(
   "FIREBASE_EXT_REGISTRY_ORIGIN",
   "https://extensions-registry.firebaseapp.com"
 );
+export const extensionsApiKey = utils.envOverride("FIREBASE_EXT_API_KEY", "");
 export const firedataOrigin = utils.envOverride(
   "FIREBASE_FIREDATA_URL",
   "https://mobilesdk-pa.googleapis.com"

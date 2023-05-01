@@ -3,7 +3,7 @@ import * as clc from "colorette";
 import { marked } from "marked";
 
 import { Client } from "../apiv2";
-import { extensionsOrigin, extensionsPublisherOrigin } from "../api";
+import { extensionsOrigin, extensionsPublisherOrigin, extensionsApiKey } from "../api";
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import * as operationPoller from "../operation-poller";
@@ -693,6 +693,10 @@ export async function createExtensionVersionFromGitHubSource(args: {
       `Extension version ref "${args.extensionVersionRef}" must supply a version.`
     );
   }
+  const queryParams: Record<string, string> = {};
+  if (extensionsApiKey !== "") {
+    queryParams["key"] = extensionsApiKey;
+  }
   // TODO(b/185176470): Publishing an extension with a previously deleted name will return 409.
   // Need to surface a better error, potentially by calling getExtension.
   const uploadRes = await extensionsPublisherApiClient.post<
@@ -705,14 +709,20 @@ export async function createExtensionVersionFromGitHubSource(args: {
       };
     },
     ExtensionVersion
-  >(`/${refs.toExtensionName(ref)}/versions:createFromSource`, {
-    versionId: ref.version,
-    extensionRoot: args.extensionRoot ?? "/",
-    githubRepositorySource: {
-      uri: args.repoUri,
-      sourceRef: args.sourceRef,
+  >(
+    `/${refs.toExtensionName(ref)}/versions:createFromSource`,
+    {
+      versionId: ref.version,
+      extensionRoot: args.extensionRoot ?? "/",
+      githubRepositorySource: {
+        uri: args.repoUri,
+        sourceRef: args.sourceRef,
+      },
     },
-  });
+    {
+      queryParams,
+    }
+  );
   const pollRes = await operationPoller.pollOperation<ExtensionVersion>({
     apiOrigin: extensionsPublisherOrigin,
     apiVersion: PUBLISHER_API_VERSION,
