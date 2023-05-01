@@ -25,11 +25,11 @@ type ChunkedData = {
 };
 
 /**
- * Batches chunked JSON data up to the specified byte size limit. The emitted batch is an object
- * containing chunks keyed by pathname.
+ * Batches chunked JSON data up to the specified byte size limit.
  */
 class BatchChunks extends stream.Transform {
-  private batch: SizedData = { json: {}, pathname: "", size: 0 };
+  private batch: SizedData[] = [];
+  private size = 0;
 
   constructor(private maxSize: number, opts?: stream.TransformOptions) {
     super({ ...opts, objectMode: true });
@@ -37,46 +37,75 @@ class BatchChunks extends stream.Transform {
 
   _transform(chunk: SizedData, _: BufferEncoding, callback: stream.TransformCallback): void {
     const totalChunkSize = chunk.size + chunk.pathname.length; // Overestimate
-    if (this.batch.size + totalChunkSize > this.maxSize) {
-      this.push(this.batch);
-      this.batch = { json: {}, pathname: "", size: 0 };
+    if (this.size + totalChunkSize > this.maxSize) {
+      this.push(this.transformBatchToPatchData(this.batch));
+      this.batch = [];
+      this.size = 0;
     }
-    if (this.batch.size === 0) {
-      this.batch = chunk;
-    } else {
-      const newPathname = this._findLongestCommonPrefix(chunk.pathname, this.batch.pathname);
-      const batchKey = this.batch.pathname.substring(newPathname.length + 1); // +1 to trim leading slash
-      const chunkKey = chunk.pathname.substring(newPathname.length + 1);
-
-      if (batchKey === "") {
-        this.batch.json = Object.assign({}, this.batch.json, { [chunkKey]: chunk.json });
-      } else if (chunkKey === "") {
-        this.batch.json = Object.assign({}, chunk.json, { [batchKey]: this.batch.json });
-      } else {
-        this.batch.json = { [batchKey]: this.batch.json, [chunkKey]: chunk.json };
-      }
-      this.batch.pathname = newPathname;
-    }
-    this.batch.size += totalChunkSize;
+    this.batch.push(chunk);
+    this.size += totalChunkSize;
     callback(null);
   }
 
-  _findLongestCommonPrefix(a: string, b: string): string {
-    const aTokens = a.split("/");
-    const bTokens = b.split("/");
-    let prefix = aTokens.slice(0, bTokens.length);
-    for (let i = 0; i < prefix.length; i++) {
-      if (prefix[i] !== bTokens[i]) {
-        prefix = prefix.slice(0, i);
-        break;
-      }
-    }
-    return prefix.join("/");
+  private transformBatchToPatchData(batch: SizedData[]): SizedData {
+    return this.sanitizePatchData(this.compactData(batch));
   }
 
-  _flush(callback: stream.TransformCallback) {
-    if (this.batch.size > 0) {
-      this.push(this.batch);
+  private compactData(batch: SizedData[]): SizedData {
+    if (batch.length === 1) {
+      return batch[0];
+    }
+    const pathname = this.findLongestCommonPrefixArray(batch.map((d) => d.pathname));
+    let json = {};
+    let size = 0;
+    for (const chunk of batch) {
+      const truncatedPath = chunk.pathname.substring(pathname.length + 1); // +1 to trim leading slash
+      json = Object.assign({}, json, { [truncatedPath]: chunk.json });
+      size += chunk.size;
+    }
+    return { json, pathname, size };
+  }
+
+  // Since we cannot PATCH primitives and arrays, we explicitly convert them to objects.
+  private sanitizePatchData({ json, pathname, size }: SizedData): SizedData {
+    if (typeof json === "string" || typeof json === "number" || typeof json === "boolean") {
+      const tokens = pathname.split("/");
+      const lastToken = tokens.pop();
+      return { json: { [lastToken!]: json }, pathname: tokens.join("/"), size };
+    }
+    if (Array.isArray(json)) {
+      return { json: { ...json }, pathname, size };
+    }
+    return { json, pathname, size };
+  }
+
+  private findLongestCommonPrefixArray(paths: string[]): string {
+    const findLongestCommonPrefixPair = (p: string, q: string): string => {
+      const pTokens = p.split("/");
+      const qTokens = q.split("/");
+      let prefix = pTokens.slice(0, qTokens.length);
+      for (let i = 0; i < prefix.length; i++) {
+        if (prefix[i] !== qTokens[i]) {
+          prefix = prefix.slice(0, i);
+          break;
+        }
+      }
+      return prefix.join("/");
+    };
+
+    if (paths.length === 0) {
+      return "";
+    }
+    let prefix = paths[0];
+    for (let i = 1; i < paths.length; i++) {
+      prefix = findLongestCommonPrefixPair(prefix, paths[i]);
+    }
+    return prefix;
+  }
+
+  _flush(callback: stream.TransformCallback): void {
+    if (this.size > 0) {
+      this.push(this.transformBatchToPatchData(this.batch));
     }
     callback(null);
   }
@@ -141,7 +170,7 @@ export default class DatabaseImporter {
   private readAndWriteChunks(): Promise<ClientResponse<JsonType>[]> {
     const { dbUrl, payloadSize } = this;
     const chunkData = this.chunkData.bind(this);
-    const doWriteData = this.doWriteData.bind(this);
+    const doWriteBatch = this.doWriteBatch.bind(this);
     const getJoinedPath = this.joinPath.bind(this);
 
     const readChunks = new stream.Transform({ objectMode: true });
@@ -155,26 +184,9 @@ export default class DatabaseImporter {
       done();
     };
 
-    // Since we cannot PATCH primitives and arrays, we explicitly convert them to objects.
-    const sanitizePatchData = new stream.Transform({ objectMode: true });
-    sanitizePatchData._transform = function ({ json, pathname, size }: SizedData, _, done) {
-      let sanitized: SizedData;
-      if (typeof json === "string" || typeof json === "number" || typeof json === "boolean") {
-        const tokens = pathname.split("/");
-        const lastToken = tokens.pop();
-        sanitized = { json: { [lastToken!]: json }, pathname: tokens.join("/"), size };
-      } else if (Array.isArray(json)) {
-        sanitized = { json: { ...json }, pathname, size };
-      } else {
-        sanitized = { json, pathname, size };
-      }
-      this.push(sanitized);
-      done();
-    };
-
-    const writeData = new stream.Transform({ objectMode: true });
-    writeData._transform = async function (data: SizedData, _, done) {
-      const res = await doWriteData(data);
+    const writeBatch = new stream.Transform({ objectMode: true });
+    writeBatch._transform = async function (batch: SizedData, _, done) {
+      const res = await doWriteBatch(batch);
       this.push(res);
       done();
     };
@@ -203,20 +215,19 @@ export default class DatabaseImporter {
         )
         .pipe(readChunks)
         .pipe(new BatchChunks(payloadSize))
-        .pipe(sanitizePatchData)
-        .pipe(writeData)
+        .pipe(writeBatch)
         .on("data", (res: ClientResponse<JsonType>) => responses.push(res))
         .on("error", reject)
         .once("end", () => resolve(responses));
     });
   }
 
-  private doWriteData(data: SizedData): Promise<ClientResponse<JsonType>> {
+  private doWriteBatch(batch: SizedData): Promise<ClientResponse<JsonType>> {
     const doRequest = (): Promise<ClientResponse<JsonType>> => {
       return this.client.request({
         method: "PATCH",
-        path: `${data.pathname}.json`,
-        body: data.json,
+        path: `${batch.pathname}.json`,
+        body: batch.json,
         queryParams: this.dbUrl.searchParams,
       });
     };
