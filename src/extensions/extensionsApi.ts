@@ -729,37 +729,6 @@ export async function createExtensionVersionFromGitHubSource(args: {
 }
 
 /**
- * Delete a published extension.
- * This will also mark the name as reserved to prevent future usages.
- * @param extensionRef user-friendly identifier for the Extension (publisher-id/extension-id)
- */
-export async function deleteExtension(extensionRef: string): Promise<void> {
-  const ref = refs.parse(extensionRef);
-  if (ref.version) {
-    throw new FirebaseError(`Extension reference "${extensionRef}" must not contain a version.`);
-  }
-  try {
-    await extensionsApiClient.delete(`/${refs.toExtensionName(ref)}`);
-  } catch (err: any) {
-    if (err.status === 403) {
-      throw new FirebaseError(
-        `You are not the owner of extension '${clc.bold(
-          extensionRef
-        )}' and don’t have the correct permissions to delete this extension.`,
-        { status: err.status }
-      );
-    } else if (err.status === 404) {
-      throw new FirebaseError(`Extension ${clc.bold(extensionRef)} was not found.`);
-    } else if (err instanceof FirebaseError) {
-      throw err;
-    }
-    throw new FirebaseError(`Error occurred delete extension '${extensionRef}': ${err}`, {
-      status: err.status,
-    });
-  }
-}
-
-/**
  * @param ref user-friendly identifier for the Extension (publisher-id/extension-id)
  * @return the extension
  */
