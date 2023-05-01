@@ -1,4 +1,4 @@
-import { sync as execSync } from "cross-spawn";
+import { sync as spawnSync } from "cross-spawn";
 import { copy, pathExists } from "fs-extra";
 import { join } from "path";
 import * as yaml from "js-yaml";
@@ -6,6 +6,7 @@ import { readFile } from "fs/promises";
 
 import { BuildResult, Discovery, FrameworkType, SupportLevel } from "..";
 import { FirebaseError } from "../../error";
+import { assertFlutterCliExists } from "./utils";
 
 export const name = "Flutter";
 export const type = FrameworkType.Framework;
@@ -21,14 +22,9 @@ export async function discover(dir: string): Promise<Discovery | undefined> {
   return { mayWantBackend: false, publicDirectory: join(dir, "web") };
 }
 
-function assertFlutterCliExists() {
-  const process = execSync("flutter", ["--version"], { stdio: "ignore" });
-  if (process.status) throw new FirebaseError("Flutter CLI not found.");
-}
-
 export function build(cwd: string): Promise<BuildResult> {
   assertFlutterCliExists();
-  const build = execSync("flutter", ["build", "web"], { cwd, stdio: "inherit" });
+  const build = spawnSync("flutter", ["build", "web"], { cwd, stdio: "inherit" });
   if (build.status) throw new FirebaseError("Unable to build your Flutter app");
   return Promise.resolve({ wantsBackend: false });
 }
