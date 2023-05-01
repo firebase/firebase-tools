@@ -4,6 +4,7 @@ import * as glob from "glob";
 import * as cli from "./cli";
 import { requireAuth } from "../../src/requireAuth";
 import { getBuildId } from "../../src/frameworks/next/utils";
+import { relative } from "path";
 
 const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "";
 const FIREBASE_DEBUG = process.env.FIREBASE_DEBUG || "";
@@ -17,13 +18,14 @@ function genRandomId(n = 10): string {
   return id;
 }
 
-function getFilesListFromDir(dir: string): Promise<string[]> {
-  return new Promise((resolve, reject) => {
+async function getFilesListFromDir(dir: string): Promise<string[]> {
+  const files = await new Promise<string[]>((resolve, reject) => {
     glob(`${dir}/**/*`, (err, matches) => {
       if (err) reject(err);
       resolve(matches);
     });
   });
+  return files.map((path) => relative(dir, path));
 }
 
 describe("webframeworks deploy build", function (this) {
@@ -73,41 +75,51 @@ describe("webframeworks deploy build", function (this) {
     const DOT_FIREBASE_FOLDER_PATH = `${__dirname}/.firebase/${FIREBASE_PROJECT}`;
 
     const EXPECTED_FILES = [
-      `${DOT_FIREBASE_FOLDER_PATH}/hosting/_next`,
-      `${DOT_FIREBASE_FOLDER_PATH}/hosting/_next/static`,
-      `${DOT_FIREBASE_FOLDER_PATH}/hosting/_next/static/chunks`,
-      `${DOT_FIREBASE_FOLDER_PATH}/hosting/_next/static/chunks/947-780e18ebaac1dafe.js`,
-      `${DOT_FIREBASE_FOLDER_PATH}/hosting/_next/static/chunks/app`,
-      `${DOT_FIREBASE_FOLDER_PATH}/hosting/_next/static/chunks/app-internals-deff92b1ed08e91d.js`,
-      `${DOT_FIREBASE_FOLDER_PATH}/hosting/_next/static/chunks/app/bar`,
-      `${DOT_FIREBASE_FOLDER_PATH}/hosting/_next/static/chunks/app/bar/page-e877dfa5c724d54e.js`,
-      `${DOT_FIREBASE_FOLDER_PATH}/hosting/_next/static/chunks/app/foo`,
-      `${DOT_FIREBASE_FOLDER_PATH}/hosting/_next/static/chunks/app/foo/page-c1c064f5d1af601f.js`,
-      `${DOT_FIREBASE_FOLDER_PATH}/hosting/_next/static/chunks/app/layout-ae3f6555ddf72969.js`,
-      `${DOT_FIREBASE_FOLDER_PATH}/hosting/_next/static/chunks/main-44afa90857524d49.js`,
-      `${DOT_FIREBASE_FOLDER_PATH}/hosting/_next/static/chunks/main-app-875afe88ab919d68.js`,
-      `${DOT_FIREBASE_FOLDER_PATH}/hosting/_next/static/chunks/pages`,
-      `${DOT_FIREBASE_FOLDER_PATH}/hosting/_next/static/chunks/pages/_app-c5083181dd8cc27d.js`,
-      `${DOT_FIREBASE_FOLDER_PATH}/hosting/_next/static/chunks/pages/_error-1fd6c3782812bbc4.js`,
-      `${DOT_FIREBASE_FOLDER_PATH}/hosting/_next/static/chunks/pages/about`,
-      `${DOT_FIREBASE_FOLDER_PATH}/hosting/_next/static/chunks/pages/about/me-146211fe20bdadd1.js`,
-      `${DOT_FIREBASE_FOLDER_PATH}/hosting/_next/static/chunks/pages/index-6e7c448ab6e40737.js`,
-      `${DOT_FIREBASE_FOLDER_PATH}/hosting/_next/static/chunks/polyfills-c67a75d1b6f99dc8.js`,
-      `${DOT_FIREBASE_FOLDER_PATH}/hosting/_next/static/chunks/webpack-0123d128abd2ae52.js`,
-      `${DOT_FIREBASE_FOLDER_PATH}/hosting/_next/static/css`,
-      `${DOT_FIREBASE_FOLDER_PATH}/hosting/_next/static/css/ab44ce7add5c3d11.css`,
-      `${DOT_FIREBASE_FOLDER_PATH}/hosting/_next/static/css/ae0e3e027412e072.css`,
-      `${DOT_FIREBASE_FOLDER_PATH}/hosting/_next/static/${buildId}`,
-      `${DOT_FIREBASE_FOLDER_PATH}/hosting/_next/static/${buildId}/_buildManifest.js`,
-      `${DOT_FIREBASE_FOLDER_PATH}/hosting/_next/static/${buildId}/_ssgManifest.js`,
-      `${DOT_FIREBASE_FOLDER_PATH}/hosting/404.html`,
-      `${DOT_FIREBASE_FOLDER_PATH}/hosting/500.html`,
-      `${DOT_FIREBASE_FOLDER_PATH}/hosting/foo.html`,
-      `${DOT_FIREBASE_FOLDER_PATH}/hosting/index.html`,
+      `_next`,
+      `_next/static`,
+      `_next/static/chunks`,
+      `_next/static/chunks/app`,
+      `_next/static/chunks/app/bar`,
+      `_next/static/chunks/app/foo`,
+      `_next/static/chunks/pages`,
+      `_next/static/chunks/pages/about`,
+      `_next/static/css`,
+      `_next/static/${buildId}`,
+      `_next/static/${buildId}/_buildManifest.js`,
+      `_next/static/${buildId}/_ssgManifest.js`,
+      `404.html`,
+      `500.html`,
+      `foo.html`,
+      `index.html`,
     ];
 
-    expect(await getFilesListFromDir(`${DOT_FIREBASE_FOLDER_PATH}/hosting`)).to.have.members(
-      EXPECTED_FILES
+    const EXPECTED_PATTERNS = [
+      `_next\/static\/chunks\/[0-9]+-[^\.]+\.js`,
+      `_next\/static\/chunks\/app-internals-[^\.]+\.js`,
+      `_next\/static\/chunks\/app\/bar\/page-[^\.]+\.js`,
+      `_next\/static\/chunks\/app\/foo\/page-[^\.]+\.js`,
+      `_next\/static\/chunks\/app\/layout-[^\.]+\.js`,
+      `_next\/static\/chunks\/main-[^\.]+\.js`,
+      `_next\/static\/chunks\/main-app-[^\.]+\.js`,
+      `_next\/static\/chunks\/pages\/_app-[^\.]+\.js`,
+      `_next\/static\/chunks\/pages\/_error-[^\.]+\.js`,
+      `_next\/static\/chunks\/pages\/about\/me-[^\.]+\.js`,
+      `_next\/static\/chunks\/pages\/index-[^\.]+\.js`,
+      `_next\/static\/chunks\/polyfills-[^\.]+\.js`,
+      `_next\/static\/chunks\/webpack-[^\.]+\.js`,
+      `_next\/static\/css\/[^\.]+\.css`,
+    ].map((it) => new RegExp(it));
+
+    const files = await getFilesListFromDir(`${DOT_FIREBASE_FOLDER_PATH}/hosting`);
+    const unmatchedFiles = files.filter(
+      (it) => EXPECTED_FILES.includes(it) || EXPECTED_PATTERNS.some((pattern) => it.match(pattern))
     );
+    const unmatchedExpectations = [
+      ...EXPECTED_FILES.filter((it) => !files.includes(it)),
+      ...EXPECTED_PATTERNS.filter((it) => !files.some((file) => file.match(it))),
+    ];
+
+    expect(unmatchedFiles).to.be.empty;
+    expect(unmatchedExpectations).to.be.empty;
   });
 });
