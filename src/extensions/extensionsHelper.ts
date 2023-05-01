@@ -413,6 +413,19 @@ export async function ensureExtensionsApiEnabled(options: any): Promise<void> {
   );
 }
 
+export async function ensureExtensionsPublisherApiEnabled(options: any): Promise<void> {
+  const projectId = getProjectId(options);
+  if (!projectId) {
+    return;
+  }
+  return await ensure(
+    projectId,
+    "firebaseextensionspublisher.googleapis.com",
+    "extensions",
+    options.markdown
+  );
+}
+
 /**
  * Zips and uploads a local extension to a bucket.
  * @param extPath a local path to archive and upload

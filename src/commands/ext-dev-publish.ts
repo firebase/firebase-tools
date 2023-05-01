@@ -5,6 +5,7 @@ import { Command } from "../command";
 import { requireAuth } from "../requireAuth";
 import { uploadExtensionAction, UploadExtensionOptions } from "./ext-dev-upload";
 import { logLabeledWarning } from "../utils";
+import { ensureExtensionsPublisherApiEnabled } from "../extensions/extensionsHelper";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),
@@ -29,6 +30,7 @@ export const command = new Command("ext:dev:publish <extensionRef>")
       "be greater than previous versions."
   )
   .before(requireAuth)
+  .before(ensureExtensionsPublisherApiEnabled)
   .action(async (extensionRef: string, options: UploadExtensionOptions) => {
     logLabeledWarning(
       "Extensions",

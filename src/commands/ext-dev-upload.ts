@@ -8,6 +8,7 @@ import {
   logPrefix,
   uploadExtensionVersionFromLocalSource,
   uploadExtensionVersionFromGitHubSource,
+  ensureExtensionsPublisherApiEnabled,
 } from "../extensions/extensionsHelper";
 import * as refs from "../extensions/refs";
 import { findExtensionYaml } from "../extensions/localHelper";
@@ -45,6 +46,7 @@ export const command = new Command("ext:dev:upload <extensionRef>")
       "be greater than previous versions."
   )
   .before(requireAuth)
+  .before(ensureExtensionsPublisherApiEnabled)
   .action(uploadExtensionAction);
 
 export interface UploadExtensionOptions extends Options {
