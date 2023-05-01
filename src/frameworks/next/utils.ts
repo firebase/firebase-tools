@@ -314,3 +314,13 @@ export async function getHeadersFromMetaFiles(
 
   return headers;
 }
+
+/**
+ * Get build id from .next/BUILD_ID file
+ * @throws if file doesn't exist
+ */
+export async function getBuildId(distDir: string): Promise<string> {
+  const buildId = await readFile(join(distDir, "BUILD_ID"));
+
+  return buildId.toString();
+}
