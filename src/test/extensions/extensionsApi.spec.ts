@@ -1102,7 +1102,7 @@ describe("getPublisherProfile", () => {
     registerTime: "2020-06-30T00:21:06.722782Z",
   };
   it("should make a GET call to the correct endpoint", async () => {
-    nock(api.extensionsOrigin)
+    nock(api.extensionsPublisherOrigin)
       .get(`/${VERSION}/projects/${PROJECT_ID}/publisherProfile`)
       .query(true)
       .reply(200, PUBLISHER_PROFILE);
@@ -1113,7 +1113,7 @@ describe("getPublisherProfile", () => {
   });
 
   it("should throw a FirebaseError if the endpoint returns an error response", async () => {
-    nock(api.extensionsOrigin)
+    nock(api.extensionsPublisherOrigin)
       .get(`/${VERSION}/projects/${PROJECT_ID}/publisherProfile`)
       .query(true)
       .reply(404);
@@ -1134,8 +1134,10 @@ describe("registerPublisherProfile", () => {
     registerTime: "2020-06-30T00:21:06.722782Z",
   };
   it("should make a POST call to the correct endpoint", async () => {
-    nock(api.extensionsOrigin)
-      .post(`/${VERSION}/projects/${PROJECT_ID}/publisherProfile:register`)
+    nock(api.extensionsPublisherOrigin)
+      .patch(
+        `/${VERSION}/projects/${PROJECT_ID}/publisherProfile?updateMask=publisher_id%2Cdisplay_name`
+      )
       .reply(200, PUBLISHER_PROFILE);
 
     const res = await extensionsApi.registerPublisherProfile(PROJECT_ID, PUBLISHER_ID);
@@ -1144,8 +1146,10 @@ describe("registerPublisherProfile", () => {
   });
 
   it("should throw a FirebaseError if the endpoint returns an error response", async () => {
-    nock(api.extensionsOrigin)
-      .post(`/${VERSION}/projects/${PROJECT_ID}/publisherProfile:register`)
+    nock(api.extensionsPublisherOrigin)
+      .patch(
+        `/${VERSION}/projects/${PROJECT_ID}/publisherProfile?updateMask=publisher_id%2Cdisplay_name`
+      )
       .reply(404);
     await expect(
       extensionsApi.registerPublisherProfile(PROJECT_ID, PUBLISHER_ID)
@@ -1161,7 +1165,7 @@ describe("deprecateExtensionVersion", () => {
 
   it("should make a POST call to the correct endpoint", async () => {
     const { publisherId, extensionId, version } = refs.parse(TEST_EXT_VERSION_4.ref);
-    nock(api.extensionsOrigin)
+    nock(api.extensionsPublisherOrigin)
       .persist()
       .post(
         `/${VERSION}/publishers/${publisherId}/extensions/${extensionId}/versions/${version}:deprecate`
@@ -1178,7 +1182,7 @@ describe("deprecateExtensionVersion", () => {
 
   it("should throw a FirebaseError if the endpoint returns an error response", async () => {
     const { publisherId, extensionId, version } = refs.parse(TEST_EXT_VERSION_4.ref);
-    nock(api.extensionsOrigin)
+    nock(api.extensionsPublisherOrigin)
       .persist()
       .post(
         `/${VERSION}/publishers/${publisherId}/extensions/${extensionId}/versions/${version}:deprecate`
@@ -1198,7 +1202,7 @@ describe("undeprecateExtensionVersion", () => {
 
   it("should make a POST call to the correct endpoint", async () => {
     const { publisherId, extensionId, version } = refs.parse(TEST_EXT_VERSION_3.ref);
-    nock(api.extensionsOrigin)
+    nock(api.extensionsPublisherOrigin)
       .persist()
       .post(
         `/${VERSION}/publishers/${publisherId}/extensions/${extensionId}/versions/${version}:undeprecate`
@@ -1212,7 +1216,7 @@ describe("undeprecateExtensionVersion", () => {
 
   it("should throw a FirebaseError if the endpoint returns an error response", async () => {
     const { publisherId, extensionId, version } = refs.parse(TEST_EXT_VERSION_3.ref);
-    nock(api.extensionsOrigin)
+    nock(api.extensionsPublisherOrigin)
       .persist()
       .post(
         `/${VERSION}/publishers/${publisherId}/extensions/${extensionId}/versions/${version}:undeprecate`
