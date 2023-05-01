@@ -15,18 +15,18 @@ function genRandomId(n = 10): string {
   return id;
 }
 
-describe("webframeworks deploy", function (this) {
+describe("webframeworks deploy build", function (this) {
   this.timeout(1000_000);
 
   const RUN_ID = genRandomId();
   console.log(`TEST RUN: ${RUN_ID}`);
 
   async function setOptsAndDeploy(): Promise<cli.Result> {
-    const args = [];
+    const args: string[] = [];
     if (FIREBASE_DEBUG) {
       args.push("--debug");
     }
-    return await cli.exec("deploy", FIREBASE_PROJECT, args, __dirname, false);
+    return await cli.exec("emulators:exec 'exit 0'", FIREBASE_PROJECT, args, __dirname, false);
   }
 
   before(async () => {
