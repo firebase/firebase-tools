@@ -25,16 +25,14 @@ describe("Flutter", () => {
     });
 
     it("should discover", async () => {
-      sandbox.stub(fsExtra, "pathExists" as any).returns(Promise.resolve(true));
+      sandbox.stub(fsExtra, "pathExists" as any).resolves(true);
       sandbox
         .stub(fsPromises, "readFile")
         .withArgs(join(cwd, "pubspec.yaml"))
-        .returns(
-          Promise.resolve(
-            Buffer.from(`dependencies:
+        .resolves(
+          Buffer.from(`dependencies:
   flutter:
     sdk: flutter`)
-          )
         );
       expect(await discover(cwd)).to.deep.equal({
         mayWantBackend: false,
@@ -43,21 +41,19 @@ describe("Flutter", () => {
     });
 
     it("should not discover, if missing files", async () => {
-      sandbox.stub(fsExtra, "pathExists" as any).returns(Promise.resolve(false));
+      sandbox.stub(fsExtra, "pathExists" as any).resolves(false);
       expect(await discover(cwd)).to.be.undefined;
     });
 
     it("should not discovery, not flutter", async () => {
-      sandbox.stub(fsExtra, "pathExists" as any).returns(Promise.resolve(true));
+      sandbox.stub(fsExtra, "pathExists" as any).resolves(true);
       sandbox
         .stub(fsPromises, "readFile")
         .withArgs(join(cwd, "pubspec.yaml"))
-        .returns(
-          Promise.resolve(
-            Buffer.from(`dependencies:
+        .resolves(
+          Buffer.from(`dependencies:
   foo:
     bar: 1`)
-          )
         );
       expect(await discover(cwd)).to.be.undefined;
     });
