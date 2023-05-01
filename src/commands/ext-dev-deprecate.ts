@@ -6,10 +6,7 @@ import * as utils from "../utils";
 import { Command } from "../command";
 import { confirm } from "../prompt";
 import { ensureExtensionsApiEnabled, logPrefix } from "../extensions/extensionsHelper";
-import {
-  deprecateExtensionVersion,
-  listExtensionVersions,
-} from "../extensions/extensionsApi";
+import { deprecateExtensionVersion, listExtensionVersions } from "../extensions/extensionsApi";
 import { parseVersionPredicate } from "../extensions/versionHelper";
 import { requireAuth } from "../requireAuth";
 import { FirebaseError } from "../error";
