@@ -10,6 +10,7 @@ import { join } from "path";
 
 import * as flutterUtils from "../../../frameworks/flutter/utils";
 import { discover, build, ɵcodegenPublicDirectory } from "../../../frameworks/flutter";
+import { FirebaseError } from "../../../error";
 
 describe("Flutter", () => {
   describe("discovery", () => {
@@ -112,8 +113,6 @@ describe("Flutter", () => {
         .returns(process as any);
 
       const result = build(cwd);
-
-      process.emit("close");
 
       expect(await result).to.deep.equal({
         wantsBackend: false,
