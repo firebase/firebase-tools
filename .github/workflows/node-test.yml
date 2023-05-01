@@ -63,7 +63,7 @@ jobs:
         if: matrix.node-version == '14'
 
   integration:
-    # needs: unit
+    needs: unit
     if: contains(fromJSON('["push", "merge_group"]'), github.event_name)
     runs-on: ubuntu-latest
 
