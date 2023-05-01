@@ -22,11 +22,12 @@ describe("webframeworks deploy build", function (this) {
   console.log(`TEST RUN: ${RUN_ID}`);
 
   async function setOptsAndDeploy(): Promise<cli.Result> {
-    const args: string[] = [];
+    const args = ["exit 0"];
     if (FIREBASE_DEBUG) {
       args.push("--debug");
     }
-    return await cli.exec("emulators:exec 'exit 0'", FIREBASE_PROJECT, args, __dirname, false);
+
+    return await cli.exec("emulators:exec", FIREBASE_PROJECT, args, __dirname, false);
   }
 
   before(async () => {

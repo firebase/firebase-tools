@@ -28,6 +28,8 @@ const client = {
   logger: require("./logger"),
   errorOut: require("./errorOut").errorOut,
   getCommand: (name: string) => {
+    console.log({ name });
+
     for (let i = 0; i < client.cli.commands.length; i++) {
       if (client.cli.commands[i]._name === name) {
         return client.cli.commands[i];
