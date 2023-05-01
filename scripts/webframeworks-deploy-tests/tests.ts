@@ -40,7 +40,7 @@ describe("webframeworks deploy build", function (this) {
     // This is not an empty block.
   });
 
-  it("deploys functions with runtime options", async () => {
+  it("logs reasons for backend", async () => {
     process.env.FIREBASE_CLI_EXPERIMENTS = "webframeworks";
 
     const result = await setOptsAndDeploy();
