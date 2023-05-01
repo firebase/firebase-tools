@@ -63,7 +63,7 @@ export const command = new Command("ext:dev:register")
         projectId
       )}. View and edit your profile at ${utils.consoleUrl(
         projectId,
-        `/publisher/${publisherId}/dashboard`
+        `/publisher`
       )}`
     );
     return profile;
