@@ -45,8 +45,12 @@ describe("webframeworks deploy build", function (this) {
 
     const result = await setOptsAndDeploy();
 
-    expect(result.stdout, "deploy result").to.match(/file upload complete/);
-    expect(result.stdout, "deploy result").to.match(/found 20 files/);
-    expect(result.stdout, "deploy result").to.match(/Deploy complete!/);
+    expect(result.stdout, "deploy result").to.match(
+      /Building a Cloud Function to run this application. This is needed due to:/
+    );
+    expect(result.stdout, "deploy result").to.match(/middleware/);
+    expect(result.stdout, "deploy result").to.match(/Image Optimization/);
+    expect(result.stdout, "deploy result").to.match(/use of revalidate \/bar/);
+    expect(result.stdout, "deploy result").to.match(/non-static route \/api\/hello/);
   });
 });
