@@ -18,7 +18,7 @@ import * as RemoteConfigTarget from "./remoteconfig";
 import * as ExtensionsTarget from "./extensions";
 import { prepareFrameworks } from "../frameworks";
 import { HostingDeploy } from "./hosting/context";
-import { addTaggedFunctionsToOnlyString } from "./hosting/prepare";
+import { addPinnedFunctionsToOnlyString, hasPinnedFunctions } from "./hosting/prepare";
 import { isRunningInGithubAction } from "../init/features/hosting/github";
 import { TARGET_PERMISSIONS } from "../commands/deploy";
 import { requirePermissions } from "../requirePermissions";
@@ -62,7 +62,6 @@ export const deploy = async function (
   const postdeploys: Chain = [];
   const startTime = Date.now();
 
-  const hadFunctions = targetNames.includes("functions");
   if (targetNames.includes("hosting")) {
     const config = options.config.get("hosting");
     if (Array.isArray(config) ? config.some((it) => it.source) : config.source) {
@@ -71,28 +70,27 @@ export const deploy = async function (
     }
   }
 
-  if (targetNames.includes("hosting") && experiments.isEnabled("pintags")) {
-    if (await addTaggedFunctionsToOnlyString(context, options)) {
+  if (targetNames.includes("hosting") && hasPinnedFunctions(options)) {
+    experiments.assertEnabled("pintags", "deploy a tagged function as a hosting rewrite");
+    if (!targetNames.includes("functions")) {
       targetNames.unshift("functions");
-    }
-  }
-  const addedFunctions = !hadFunctions && targetNames.includes("functions");
-  if (addedFunctions) {
-    try {
-      await requirePermissions(options, TARGET_PERMISSIONS["functions"]);
-    } catch (e) {
-      if (isRunningInGithubAction()) {
-        throw new FirebaseError(
-          "It looks like you are deploying a Hosting site along with Cloud Functions " +
-            "using a GitHub action version that did not include Cloud Functions " +
-            "permissions. Please reinstall the GitHub action with" +
-            clc.bold("firebase init hosting:github"),
-          { original: e as Error }
-        );
-      } else {
-        throw e;
+      try {
+        await requirePermissions(options, TARGET_PERMISSIONS["functions"]);
+      } catch (e) {
+        if (isRunningInGithubAction()) {
+          throw new FirebaseError(
+            "It looks like you are deploying a Hosting site along with Cloud Functions " +
+              "using a GitHub action version that did not include Cloud Functions " +
+              "permissions. Please reinstall the GitHub action with" +
+              clc.bold("firebase init hosting:github"),
+            { original: e as Error }
+          );
+        } else {
+          throw e;
+        }
       }
     }
+    await addPinnedFunctionsToOnlyString(context, options);
   }
 
   for (const targetName of targetNames) {

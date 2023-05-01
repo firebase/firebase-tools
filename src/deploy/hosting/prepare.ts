@@ -11,7 +11,6 @@ import * as utils from "../../utils";
 import { HostingSource } from "../../firebaseConfig";
 import * as backend from "../functions/backend";
 import { ensureTargeted } from "../../functions/ensureTargeted";
-import { logger } from "../../logger";
 
 function handlePublicDirectoryFlag(options: HostingOptions & Options): void {
   // Allow the public directory to be overridden by the --public flag
@@ -25,9 +24,27 @@ function handlePublicDirectoryFlag(options: HostingOptions & Options): void {
 }
 
 /**
- * If there is a rewrite to a tagged function, add it to the deploy target.
+ *
  */
-export async function addTaggedFunctionsToOnlyString(
+export function hasPinnedFunctions(options: HostingOptions & Options): boolean {
+  handlePublicDirectoryFlag(options);
+  for (const c of config.hostingConfig(options)) {
+    for (const r of c.rewrites || []) {
+      if ("function" in r && typeof r.function === "object" && r.function.pinTag) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+/**
+ * If there is a rewrite to a tagged function, add it to the deploy target.
+ * precondition: we have permissions to call functions APIs.
+ * TODO: we should add an optional codebase field to the rewrite so that we
+ * can skip loading other functions codebases on deploy
+ */
+export async function addPinnedFunctionsToOnlyString(
   context: Context,
   options: HostingOptions & Options
 ): Promise<boolean> {
@@ -46,23 +63,13 @@ export async function addTaggedFunctionsToOnlyString(
         continue;
       }
 
-      let endpoint: backend.Endpoint | null = null;
-      try {
-        endpoint = (await backend.existingBackend(context)).endpoints[
-          r.function.region || "us-central1"
-        ]?.[r.function.functionId];
+      const endpoint: backend.Endpoint | null = (await backend.existingBackend(context)).endpoints[
+        r.function.region || "us-central1"
+      ]?.[r.function.functionId];
+      if (endpoint) {
         options.only = ensureTargeted(options.only, endpoint.codebase || "default", endpoint.id);
-      } catch (e) {
-        logger.debug(
-          "Failed to look up existing backend to resolve a functions rewrite " +
-            "with pin tags. This is likely a permissions issue that will be " +
-            "raised later",
-          e
-        );
-        // Passing the function ID as the codebase scopes the function ID without
-        // knowing the codebase. This technically works, though we shouldn't be
-        // overly focused on correctness because the deploy is probably going to
-        // fail when we ensure permissisons later.
+      } else {
+        // This endpoint is just being added in this push. We don't know what codebase it is.
         options.only = ensureTargeted(options.only, r.function.functionId);
       }
       addedFunctions = true;
