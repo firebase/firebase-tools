@@ -24,7 +24,11 @@ function handlePublicDirectoryFlag(options: HostingOptions & Options): void {
 }
 
 /**
- *
+ * Return whether any hosting config tags any functions.
+ * This is used to know whether a deploy needs to add functions to the targets,
+ * ask for permissions explicitly (they may not have been asked for in the
+ * normal boilerplate), and the only string might need to be updated with
+ * addPinnedFunctionsToOnlyString.
  */
 export function hasPinnedFunctions(options: HostingOptions & Options): boolean {
   handlePublicDirectoryFlag(options);
