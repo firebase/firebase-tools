@@ -112,11 +112,12 @@ describe("webframeworks deploy build", function (this) {
 
     const files = await getFilesListFromDir(`${DOT_FIREBASE_FOLDER_PATH}/hosting`);
     const unmatchedFiles = files.filter(
-      (it) => EXPECTED_FILES.includes(it) || EXPECTED_PATTERNS.some((pattern) => it.match(pattern))
+      (it) =>
+        !(EXPECTED_FILES.includes(it) || EXPECTED_PATTERNS.some((pattern) => !!it.match(pattern)))
     );
     const unmatchedExpectations = [
       ...EXPECTED_FILES.filter((it) => !files.includes(it)),
-      ...EXPECTED_PATTERNS.filter((it) => !files.some((file) => file.match(it))),
+      ...EXPECTED_PATTERNS.filter((it) => !files.some((file) => !!file.match(it))),
     ];
 
     expect(unmatchedFiles).to.be.empty;
