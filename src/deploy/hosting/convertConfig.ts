@@ -190,7 +190,7 @@ export async function convertConfig(
       if (endpoint.platform === "gcfv1") {
         if (!backend.isHttpsTriggered(endpoint) && !backend.isCallableTriggered(endpoint)) {
           throw new FirebaseError(
-            `Function ${endpoint.id} is a 1st gen unction and therefore must be an https function type`
+            `Function ${endpoint.id} is a 1st gen function and therefore must be an https function type`
           );
         }
         if (rewrite.function.pinTag) {
