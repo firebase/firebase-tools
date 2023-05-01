@@ -98,6 +98,12 @@ export const functionsDefaultRegion = utils.envOverride(
   "FIREBASE_FUNCTIONS_DEFAULT_REGION",
   "us-central1"
 );
+
+export const cloudbuildOrigin = utils.envOverride(
+  "FIREBASE_CLOUDBUILD_URL",
+  "https://cloudbuild.googleapis.com"
+);
+
 export const cloudschedulerOrigin = utils.envOverride(
   "FIREBASE_CLOUDSCHEDULER_URL",
   "https://cloudscheduler.googleapis.com"
