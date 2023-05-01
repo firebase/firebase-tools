@@ -357,6 +357,7 @@ export class Fabricator {
 
     endpoint.uri = resultFunction.serviceConfig?.uri;
     const serviceName = resultFunction.serviceConfig?.service;
+    endpoint.runServiceId = utils.last(serviceName?.split("/"));
     if (!serviceName) {
       logger.debug("Result function unexpectedly didn't have a service name.");
       utils.logLabeledWarning(
@@ -473,6 +474,7 @@ export class Fabricator {
 
     endpoint.uri = resultFunction.serviceConfig?.uri;
     const serviceName = resultFunction.serviceConfig?.service;
+    endpoint.runServiceId = utils.last(serviceName?.split("/"));
     if (!serviceName) {
       logger.debug("Result function unexpectedly didn't have a service name.");
       utils.logLabeledWarning(
