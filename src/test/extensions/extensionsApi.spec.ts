@@ -816,38 +816,6 @@ describe("createExtensionVersionFromLocalSource", () => {
   });
 });
 
-describe("deleteExtension", () => {
-  afterEach(() => {
-    nock.cleanAll();
-  });
-
-  it("should make a DELETE call to the correct endpoint", async () => {
-    nock(api.extensionsOrigin)
-      .delete(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}`)
-      .reply(200);
-
-    await extensionsApi.deleteExtension(`${PUBLISHER_ID}/${EXTENSION_ID}`);
-    expect(nock.isDone()).to.be.true;
-  });
-
-  it("should throw a FirebaseError if the endpoint returns an error response", async () => {
-    nock(api.extensionsOrigin)
-      .delete(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}`)
-      .reply(404);
-
-    await expect(
-      extensionsApi.deleteExtension(`${PUBLISHER_ID}/${EXTENSION_ID}`)
-    ).to.be.rejectedWith(FirebaseError);
-    expect(nock.isDone()).to.be.true;
-  });
-
-  it("should throw an error for an invalid ref", async () => {
-    await expect(
-      extensionsApi.deleteExtension(`${PUBLISHER_ID}/${EXTENSION_ID}@0.1.0`)
-    ).to.be.rejectedWith(FirebaseError, "must not contain a version");
-  });
-});
-
 describe("getExtension", () => {
   afterEach(() => {
     nock.cleanAll();
