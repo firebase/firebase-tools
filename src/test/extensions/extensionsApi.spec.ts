@@ -1135,7 +1135,9 @@ describe("registerPublisherProfile", () => {
   };
   it("should make a POST call to the correct endpoint", async () => {
     nock(api.extensionsPublisherOrigin)
-      .patch(`/${VERSION}/projects/${PROJECT_ID}/publisherProfile?updateMask=publisher_id%2Cdisplay_name`)
+      .patch(
+        `/${VERSION}/projects/${PROJECT_ID}/publisherProfile?updateMask=publisher_id%2Cdisplay_name`
+      )
       .reply(200, PUBLISHER_PROFILE);
 
     const res = await extensionsApi.registerPublisherProfile(PROJECT_ID, PUBLISHER_ID);
@@ -1145,7 +1147,9 @@ describe("registerPublisherProfile", () => {
 
   it("should throw a FirebaseError if the endpoint returns an error response", async () => {
     nock(api.extensionsPublisherOrigin)
-      .patch(`/${VERSION}/projects/${PROJECT_ID}/publisherProfile?updateMask=publisher_id%2Cdisplay_name`)
+      .patch(
+        `/${VERSION}/projects/${PROJECT_ID}/publisherProfile?updateMask=publisher_id%2Cdisplay_name`
+      )
       .reply(404);
     await expect(
       extensionsApi.registerPublisherProfile(PROJECT_ID, PUBLISHER_ID)
