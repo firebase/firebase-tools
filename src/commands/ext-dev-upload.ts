@@ -103,6 +103,16 @@ export async function uploadExtensionAction(
   }
   if (res) {
     utils.logLabeledBullet(logPrefix, marked(`[Install Link](${consoleInstallLink(res.ref)})`));
+    const version = res.ref.split("@")[1];
+    utils.logLabeledBullet(
+      logPrefix,
+      marked(
+        `[View in Console](${utils.consoleUrl(
+          projectNumber,
+          `/publisher/extensions/${extensionId}/v/${version}`
+        )})`
+      )
+    );
   }
   return res;
 }
