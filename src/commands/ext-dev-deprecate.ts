@@ -7,9 +7,7 @@ import { Command } from "../command";
 import { confirm } from "../prompt";
 import { ensureExtensionsApiEnabled, logPrefix } from "../extensions/extensionsHelper";
 import {
-  deleteExtension,
   deprecateExtensionVersion,
-  getExtension,
   listExtensionVersions,
 } from "../extensions/extensionsApi";
 import { parseVersionPredicate } from "../extensions/versionHelper";
