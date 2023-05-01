@@ -61,10 +61,7 @@ export const command = new Command("ext:dev:register")
       logPrefix,
       `Publisher ID '${clc.bold(publisherId)}' has been registered to project ${clc.bold(
         projectId
-      )}. View and edit your profile at ${utils.consoleUrl(
-        projectId,
-        `/publisher`
-      )}`
+      )}. View and edit your profile at ${utils.consoleUrl(projectId, `/publisher`)}`
     );
     return profile;
   });
