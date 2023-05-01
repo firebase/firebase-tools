@@ -533,7 +533,7 @@ export async function getPublisherProfile(
   projectId: string,
   publisherId?: string
 ): Promise<PublisherProfile> {
-  const res = await extensionsApiClient.get(`/projects/${projectId}/publisherProfile`, {
+  const res = await extensionsPublisherApiClient.get(`/projects/${projectId}/publisherProfile`, {
     queryParams:
       publisherId === undefined
         ? undefined
@@ -552,10 +552,16 @@ export async function registerPublisherProfile(
   projectId: string,
   publisherId: string
 ): Promise<PublisherProfile> {
-  const res = await extensionsApiClient.post<{ publisherId: string }, PublisherProfile>(
-    `/projects/${projectId}/publisherProfile:register`,
+  const res = await extensionsPublisherApiClient.patch<Partial<PublisherProfile>, PublisherProfile>(
+    `/projects/${projectId}/publisherProfile`,
     {
       publisherId,
+      displayName: publisherId,
+    },
+    {
+      queryParams: {
+        updateMask: "publisher_id,display_name",
+      },
     }
   );
   return res.body;
@@ -571,12 +577,12 @@ export async function deprecateExtensionVersion(
 ): Promise<ExtensionVersion> {
   const ref = refs.parse(extensionRef);
   try {
-    const res = await extensionsApiClient.post<{ deprecationMessage: string }, ExtensionVersion>(
-      `/${refs.toExtensionVersionName(ref)}:deprecate`,
-      {
-        deprecationMessage,
-      }
-    );
+    const res = await extensionsPublisherApiClient.post<
+      { deprecationMessage: string },
+      ExtensionVersion
+    >(`/${refs.toExtensionVersionName(ref)}:deprecate`, {
+      deprecationMessage,
+    });
     return res.body;
   } catch (err: any) {
     if (err.status === 403) {
@@ -606,7 +612,7 @@ export async function deprecateExtensionVersion(
 export async function undeprecateExtensionVersion(extensionRef: string): Promise<ExtensionVersion> {
   const ref = refs.parse(extensionRef);
   try {
-    const res = await extensionsApiClient.post<void, ExtensionVersion>(
+    const res = await extensionsPublisherApiClient.post<void, ExtensionVersion>(
       `/${refs.toExtensionVersionName(ref)}:undeprecate`
     );
     return res.body;

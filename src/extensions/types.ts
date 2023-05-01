@@ -52,6 +52,9 @@ export interface PublisherProfile {
   name: string;
   publisherId: string;
   registerTime: string;
+  displayName: string;
+  websiteUri?: string;
+  iconUri?: string;
 }
 
 export interface ExtensionInstance {
