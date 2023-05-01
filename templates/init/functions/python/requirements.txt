@@ -1,1 +1,1 @@
-firebase_functions<1.0
+firebase_functions==0.*
