@@ -34,7 +34,7 @@ export async function linkRepository(projectId: string, location: string): Promi
 
   const resp = await fetchLinkableRepositories(projectId, location, connectionId);
   const choices = resp.repositories.map((repo: Repository) => ({
-    name: extractRepoSlugFromURI(repo.remoteUri),
+    name: extractRepoSlugFromURI(repo.remoteUri) || repo.remoteUri,
     value: repo.remoteUri,
   }));
   const remoteUri: string = await promptOnce({
@@ -52,12 +52,16 @@ export async function linkRepository(projectId: string, location: string): Promi
 //   return execSync(`git config remote.${remoteName}.url`).toString();
 // }
 
-function extractRepoSlugFromURI(remoteUri: string, separator = "/"): string {
-  return remoteUri.split("/").slice(3, 5).join(separator).split(".")[0];
+function extractRepoSlugFromURI(remoteUri: string): string | undefined {
+  const match = /github.com\/(.+).git/.exec(remoteUri);
+  if (!match) {
+    return undefined;
+  }
+  return match[1];
 }
 
-function generateRepositoryId(remoteUri: string): string {
-  return extractRepoSlugFromURI(remoteUri, "--");
+function generateRepositoryId(remoteUri: string): string | undefined {
+  return extractRepoSlugFromURI(remoteUri)?.replace("/", "--");
 }
 
 function generateConnectionId(): string {
@@ -71,7 +75,9 @@ async function getOrCreateRepository(
   remoteUri: string
 ): Promise<Repository> {
   const repositoryId = generateRepositoryId(remoteUri);
-  console.log("*** REPOID ***", repositoryId);
+  if (!repositoryId) {
+    throw new FirebaseError(`Failed to generate repositoryId for URI ${remoteUri}`);
+  }
   let repo: Repository;
   try {
     repo = await getRepository(projectId, location, connectionId, repositoryId);
