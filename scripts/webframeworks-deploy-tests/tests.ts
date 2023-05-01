@@ -47,6 +47,7 @@ describe("webframeworks deploy build", function (this) {
     expect(FIREBASE_PROJECT).to.not.be.empty;
 
     await requireAuth({});
+    process.env.FIREBASE_CLI_EXPERIMENTS = "webframeworks";
     result = await setOptsAndBuild();
   });
 
