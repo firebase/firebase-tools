@@ -10,7 +10,6 @@ import { join } from "path";
 
 import * as flutterUtils from "../../../frameworks/flutter/utils";
 import { discover, build, ɵcodegenPublicDirectory } from "../../../frameworks/flutter";
-import { FirebaseError } from "../../../error";
 
 describe("Flutter", () => {
   describe("discovery", () => {
