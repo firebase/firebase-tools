@@ -1,6 +1,5 @@
 import { sync as execSync } from "cross-spawn";
 import { copy, pathExists } from "fs-extra";
-import { mkdir } from "fs/promises";
 import { join } from "path";
 import * as yaml from "js-yaml";
 import { readFile } from "fs/promises";
@@ -22,22 +21,18 @@ export async function discover(dir: string): Promise<Discovery | undefined> {
   return { mayWantBackend: false, publicDirectory: join(dir, "web") };
 }
 
-function getFlutterVersion() {
-  const process = execSync("flutter --version", { stdio: "ignore" });
+function assertFlutterCliExists() {
+  const process = execSync("flutter", ["--version"], { stdio: "ignore" });
   if (process.status) throw new FirebaseError("Flutter CLI not found.");
-  const version = process.stdout?.toString().match(/Flutter (\S+)/)?.[1];
-  if (!version) throw new FirebaseError("Unable to determine Flutter version.");
-  return version;
 }
 
 export function build(cwd: string): Promise<BuildResult> {
-  getFlutterVersion();
-  const build = execSync("flutter build web", { cwd, stdio: "inherit" });
+  assertFlutterCliExists();
+  const build = execSync("flutter", ["build", "web"], { cwd, stdio: "inherit" });
   if (build.status) throw new FirebaseError("Unable to build your Flutter app");
   return Promise.resolve({ wantsBackend: false });
 }
 
 export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: string) {
-  await mkdir(destDir, { recursive: true });
   await copy(join(sourceDir, "build", "web"), destDir);
 }
