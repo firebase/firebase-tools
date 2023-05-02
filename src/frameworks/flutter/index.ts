@@ -4,7 +4,7 @@ import { join } from "path";
 import { load as loadYaml } from "js-yaml";
 import { readFile } from "fs/promises";
 
-import { BuildResult, Discovery, FrameworkType, SupportLevel } from "..";
+import { BuildResult, Discovery, FrameworkType, SupportLevel } from "../interfaces";
 import { FirebaseError } from "../../error";
 import { assertFlutterCliExists } from "./utils";
 
