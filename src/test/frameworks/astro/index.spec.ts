@@ -6,7 +6,6 @@ import { Readable, Writable } from "stream";
 import * as crossSpawn from "cross-spawn";
 import * as fsExtra from "fs-extra";
 
-import * as frameworksFunctions from "../../../frameworks";
 import * as astroUtils from "../../../frameworks/astro/utils";
 import * as frameworkUtils from "../../../frameworks/utils";
 import {
@@ -46,7 +45,7 @@ describe("Astro", () => {
           })
         );
       sandbox
-        .stub(frameworksFunctions, "findDependency")
+        .stub(frameworkUtils, "findDependency")
         .withArgs("astro", { cwd, depth: 0, omitDev: false })
         .returns({
           version: "2.2.2",
@@ -76,7 +75,7 @@ describe("Astro", () => {
           })
         );
       sandbox
-        .stub(frameworksFunctions, "findDependency")
+        .stub(frameworkUtils, "findDependency")
         .withArgs("astro", { cwd, depth: 0, omitDev: false })
         .returns({
           version: "2.2.2",
@@ -233,7 +232,7 @@ describe("Astro", () => {
         );
 
       const cli = Math.random().toString(36).split(".")[1];
-      sandbox.stub(frameworksFunctions, "getNodeModuleBin").withArgs("astro", cwd).returns(cli);
+      sandbox.stub(frameworkUtils, "getNodeModuleBin").withArgs("astro", cwd).returns(cli);
       sandbox.stub(crossSpawn, "spawn").withArgs(cli, ["build"], { cwd }).returns(process);
 
       const result = build(cwd);
@@ -269,7 +268,7 @@ describe("Astro", () => {
         );
 
       const cli = Math.random().toString(36).split(".")[1];
-      sandbox.stub(frameworksFunctions, "getNodeModuleBin").withArgs("astro", cwd).returns(cli);
+      sandbox.stub(frameworkUtils, "getNodeModuleBin").withArgs("astro", cwd).returns(cli);
       sandbox.stub(crossSpawn, "spawn").withArgs(cli, ["build"], { cwd }).returns(process);
 
       await expect(build(cwd)).to.eventually.rejectedWith(
@@ -299,7 +298,7 @@ describe("Astro", () => {
         );
 
       const cli = Math.random().toString(36).split(".")[1];
-      sandbox.stub(frameworksFunctions, "getNodeModuleBin").withArgs("astro", cwd).returns(cli);
+      sandbox.stub(frameworkUtils, "getNodeModuleBin").withArgs("astro", cwd).returns(cli);
       sandbox.stub(crossSpawn, "spawn").withArgs(cli, ["build"], { cwd }).returns(process);
 
       const result = build(cwd);
@@ -330,7 +329,7 @@ describe("Astro", () => {
       process.stderr = new EventEmitter() as Readable;
 
       const cli = Math.random().toString(36).split(".")[1];
-      sandbox.stub(frameworksFunctions, "getNodeModuleBin").withArgs("astro", ".").returns(cli);
+      sandbox.stub(frameworkUtils, "getNodeModuleBin").withArgs("astro", ".").returns(cli);
       sandbox.stub(crossSpawn, "spawn").withArgs(cli, ["dev"], { cwd: "." }).returns(process);
 
       const devModeHandle = getDevModeHandle(".");
