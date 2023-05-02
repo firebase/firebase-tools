@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import * as glob from "glob";
 import { relative } from "path";
-import { readFile } from "fs/promises";
+import { readFileSync } from "fs";
 
 import { getBuildId } from "../../src/frameworks/next/utils";
 
@@ -21,16 +21,16 @@ describe("webframeworks deploy build", function (this) {
   this.timeout(10_000);
 
   before(() => {
-    expect(FIREBASE_PROJECT).to.not.be.empty;
+    expect(FIREBASE_PROJECT, "FIREBASE_PROJECT").to.not.be.empty;
   });
 
   after(() => {
     // This is not an empty block.
   });
 
-  it("should log reasons for backend", async () => {
+  it("should log reasons for backend", () => {
     process.env.FIREBASE_CLI_EXPERIMENTS = "webframeworks";
-    const result = (await readFile("firebase-emulators.log")).toString();
+    const result = readFileSync("scripts/webframeworks-deploy-tests/firebase-emulators.log").toString();
 
     expect(result, "build result").to.match(
       /Building a Cloud Function to run this application. This is needed due to:/
