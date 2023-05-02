@@ -87,6 +87,8 @@ describe("webframeworks deploy build", function (this) {
       `_next/static/${buildId}`,
       `_next/static/${buildId}/_buildManifest.js`,
       `_next/static/${buildId}/_ssgManifest.js`,
+      `api`,
+      `api/static`,
       `404.html`,
       `500.html`,
       `foo.html`,
@@ -94,8 +96,7 @@ describe("webframeworks deploy build", function (this) {
     ];
 
     const EXPECTED_PATTERNS = [
-      `_next\/static\/chunks\/[0-9]+-[^\.]+\.js`,
-      `_next\/static\/chunks\/app-internals-[^\.]+\.js`,
+      `_next\/static\/chunks\/[^-]+-[^\.]+\.js`,
       `_next\/static\/chunks\/app\/bar\/page-[^\.]+\.js`,
       `_next\/static\/chunks\/app\/foo\/page-[^\.]+\.js`,
       `_next\/static\/chunks\/app\/layout-[^\.]+\.js`,
