@@ -36,6 +36,7 @@ import {
 } from "./constants";
 import { FirebaseDefaults, Framework } from "./interfaces";
 import { logWarning } from "../utils";
+import { ensureTargeted } from "../functions/ensureTargeted";
 
 export { WebFrameworks };
 
@@ -295,6 +296,19 @@ export async function prepareFrameworks(
           codebase,
         },
       ]);
+
+      // N.B. the pin-tags experiment already does this holistically later.
+      // This is just a fallback for previous behavior if the user manually
+      // disables the pintags experiment (e.g. there is a break and they would
+      // rather disable the experiment than roll back).
+      if (!experiments.isEnabled("pintags")) {
+        if (!targetNames.includes("functions")) {
+          targetNames.unshift("functions");
+        }
+        if (options.only) {
+          options.only = ensureTargeted(options.only, codebase);
+        }
+      }
 
       // if exists, delete everything but the node_modules directory and package-lock.json
       // this should speed up repeated NPM installs
