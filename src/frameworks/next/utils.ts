@@ -1,8 +1,9 @@
 import { existsSync } from "fs";
 import { pathExists } from "fs-extra";
-import { join } from "path";
+import { basename, extname, join } from "path";
 import type { Header, Redirect, Rewrite } from "next/dist/lib/load-custom-routes";
 import type { MiddlewareManifest } from "next/dist/build/webpack/plugins/middleware-plugin";
+import type { PagesManifest } from "next/dist/build/webpack/plugins/pages-manifest-plugin";
 
 import { isUrl, readJSON } from "../utils";
 import type {
@@ -11,6 +12,9 @@ import type {
   ExportMarker,
   ImagesManifest,
   NpmLsDepdendency,
+  AppPathsManifest,
+  AppPathRoutesManifest,
+  HostingHeadersWithSource,
 } from "./interfaces";
 import {
   APP_PATH_ROUTES_MANIFEST,
@@ -18,7 +22,8 @@ import {
   IMAGES_MANIFEST,
   MIDDLEWARE_MANIFEST,
 } from "./constants";
-import { fileExistsSync } from "../../fsutils";
+import { dirExistsSync, fileExistsSync } from "../../fsutils";
+import { readFile } from "fs/promises";
 
 /**
  * Whether the given path has a regex or not.
@@ -193,15 +198,17 @@ export async function isUsingMiddleware(dir: string, isDevMode: boolean): Promis
  * @param dir path to `distDir` - where the manifests are located
  */
 export async function isUsingImageOptimization(dir: string): Promise<boolean> {
-  const { isNextImageImported } = await readJSON<ExportMarker>(join(dir, EXPORT_MARKER));
+  let { isNextImageImported } = await readJSON<ExportMarker>(join(dir, EXPORT_MARKER));
+  // App directory doesn't use the export marker, look it up manually
+  if (!isNextImageImported && isUsingAppDirectory(dir)) {
+    isNextImageImported = (await readFile(join(dir, "server", "client-reference-manifest.js")))
+      .toString()
+      .includes("node_modules/next/dist/client/image.js");
+  }
 
   if (isNextImageImported) {
     const imagesManifest = await readJSON<ImagesManifest>(join(dir, IMAGES_MANIFEST));
-    const usingImageOptimization = imagesManifest.images.unoptimized === false;
-
-    if (usingImageOptimization) {
-      return true;
-    }
+    return !imagesManifest.images.unoptimized;
   }
 
   return false;
@@ -230,4 +237,90 @@ export function allDependencyNames(mod: NpmLsDepdendency): string[] {
     [] as string[]
   );
   return dependencyNames;
+}
+
+/**
+ * Get non static routes based on pages-manifest, prerendered and dynamic routes
+ */
+export function getNonStaticRoutes(
+  pagesManifestJSON: PagesManifest,
+  prerenderedRoutes: string[],
+  dynamicRoutes: string[]
+): string[] {
+  const nonStaticRoutes = Object.entries(pagesManifestJSON)
+    .filter(
+      ([it, src]) =>
+        !(
+          extname(src) !== ".js" ||
+          ["/_app", "/_error", "/_document"].includes(it) ||
+          prerenderedRoutes.includes(it) ||
+          dynamicRoutes.includes(it)
+        )
+    )
+    .map(([it]) => it);
+
+  return nonStaticRoutes;
+}
+
+/**
+ * Get non static components from app directory
+ */
+export function getNonStaticServerComponents(
+  appPathsManifest: AppPathsManifest,
+  appPathRoutesManifest: AppPathRoutesManifest,
+  prerenderedRoutes: string[],
+  dynamicRoutes: string[]
+): string[] {
+  const nonStaticServerComponents = Object.entries(appPathsManifest)
+    .filter(([it, src]) => {
+      if (extname(src) !== ".js") return;
+      const path = appPathRoutesManifest[it];
+      return !(prerenderedRoutes.includes(path) || dynamicRoutes.includes(path));
+    })
+    .map(([it]) => it);
+
+  return nonStaticServerComponents;
+}
+
+/**
+ * Get headers from .meta files
+ */
+export async function getHeadersFromMetaFiles(
+  sourceDir: string,
+  distDir: string,
+  appPathRoutesManifest: AppPathRoutesManifest
+): Promise<HostingHeadersWithSource[]> {
+  const headers: HostingHeadersWithSource[] = [];
+
+  await Promise.all(
+    Object.entries(appPathRoutesManifest).map(async ([key, source]) => {
+      if (basename(key) !== "route") return;
+      const parts = source.split("/").filter((it) => !!it);
+      const partsOrIndex = parts.length > 0 ? parts : ["index"];
+
+      const routePath = join(sourceDir, distDir, "server", "app", ...partsOrIndex);
+      const metadataPath = `${routePath}.meta`;
+
+      if (dirExistsSync(routePath) && fileExistsSync(metadataPath)) {
+        const meta = await readJSON<{ headers?: Record<string, string> }>(metadataPath);
+        if (meta.headers)
+          headers.push({
+            source,
+            headers: Object.entries(meta.headers).map(([key, value]) => ({ key, value })),
+          });
+      }
+    })
+  );
+
+  return headers;
+}
+
+/**
+ * Get build id from .next/BUILD_ID file
+ * @throws if file doesn't exist
+ */
+export async function getBuildId(distDir: string): Promise<string> {
+  const buildId = await readFile(join(distDir, "BUILD_ID"));
+
+  return buildId.toString();
 }

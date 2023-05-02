@@ -1,6 +1,6 @@
 import { pathExists } from "fs-extra";
 import { join } from "path";
-import { findDependency } from "..";
+import { findDependency } from "../utils";
 
 export function getNuxtVersion(cwd: string): string | undefined {
   return findDependency("nuxt", {
