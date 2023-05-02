@@ -94,6 +94,7 @@ jobs:
           - npm run test:storage-emulator-integration
           - npm run test:triggers-end-to-end
           - npm run test:triggers-end-to-end:inspect
+          - npm run test:webframeworks-deploy
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3

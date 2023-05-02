@@ -1,5 +1,7 @@
 import * as clc from "colorette";
 
+import type { FirebaseProjectMetadata } from "../../types/project";
+
 import { ensure } from "../../ensureApiEnabled";
 import { FirebaseError, isBillingError } from "../../error";
 import { logLabeledBullet, logLabeledSuccess } from "../../utils";
@@ -12,13 +14,20 @@ import * as backend from "./backend";
 const FAQ_URL = "https://firebase.google.com/support/faq#functions-runtime";
 const CLOUD_BUILD_API = "cloudbuild.googleapis.com";
 
+const metadataCallCache: Map<string, Promise<FirebaseProjectMetadata>> = new Map();
+
 /**
  *  By default:
  *    1. GCFv1 uses App Engine default service account.
  *    2. GCFv2 (Cloud Run) uses Compute Engine default service account.
  */
 export async function defaultServiceAccount(e: backend.Endpoint): Promise<string> {
-  const metadata = await getFirebaseProject(e.project);
+  let metadataCall = metadataCallCache.get(e.project);
+  if (!metadataCall) {
+    metadataCall = getFirebaseProject(e.project);
+    metadataCallCache.set(e.project, metadataCall);
+  }
+  const metadata = await metadataCall;
   if (e.platform === "gcfv1") {
     return `${metadata.projectId}@appspot.gserviceaccount.com`;
   } else if (e.platform === "gcfv2") {

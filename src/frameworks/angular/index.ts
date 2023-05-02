@@ -5,21 +5,20 @@ import { spawn } from "cross-spawn";
 import { copy, pathExists } from "fs-extra";
 import { mkdir } from "fs/promises";
 
+import { BuildResult, Discovery, FrameworkType, SupportLevel } from "../interfaces";
+import { promptOnce } from "../../prompt";
 import {
-  BuildResult,
-  Discovery,
-  findDependency,
-  FrameworkType,
+  simpleProxy,
+  warnIfCustomBuildScript,
   getNodeModuleBin,
   relativeRequire,
-  SupportLevel,
-} from "..";
-import { promptOnce } from "../../prompt";
-import { simpleProxy, warnIfCustomBuildScript } from "../utils";
+  findDependency,
+} from "../utils";
 
 export const name = "Angular";
-export const support = SupportLevel.Experimental;
+export const support = SupportLevel.Preview;
 export const type = FrameworkType.Framework;
+export const docsUrl = "https://firebase.google.com/docs/hosting/frameworks/angular";
 
 const DEFAULT_BUILD_SCRIPT = ["ng build"];
 
