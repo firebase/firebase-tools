@@ -6,7 +6,8 @@ import { Client } from "../../../apiv2";
 import { initGitHub } from "./github";
 import { prompt, promptOnce } from "../../../prompt";
 import { logger } from "../../../logger";
-import { ALLOWED_SSR_REGIONS, DEFAULT_REGION, discover, WebFrameworks } from "../../../frameworks";
+import { discover, WebFrameworks } from "../../../frameworks";
+import { ALLOWED_SSR_REGIONS, DEFAULT_REGION } from "../../../frameworks/constants";
 import * as experiments from "../../../experiments";
 import { join } from "path";
 
