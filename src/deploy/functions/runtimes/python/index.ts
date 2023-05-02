@@ -9,7 +9,7 @@ import * as runtimes from "..";
 import * as backend from "../../backend";
 import * as discovery from "../discovery";
 import { logger } from "../../../../logger";
-import { runWithVirtualEnv } from "../../../../functions/python";
+import { DEFAULT_VENV_DIR, runWithVirtualEnv, virtualEnvCmd } from "../../../../functions/python";
 import { FirebaseError } from "../../../../error";
 import { Build } from "../../build";
 import { logLabeledWarning } from "../../../../utils";
@@ -109,9 +109,12 @@ export class Delegate implements runtimes.RuntimeDelegate {
               `Did you forget to run '${this.bin} -m venv venv'?`
           );
         }
+        const { command, args } = virtualEnvCmd(this.sourceDir, DEFAULT_VENV_DIR);
         throw new FirebaseError(
           "Failed to find location of Firebase Functions SDK. " +
-            `Did you forget to run '${this.bin} -m pip install -r requirements.txt'?`
+            `Did you forget to run '${command} ${args.join(" ")} && ${
+              this.bin
+            } -m pip install -r requirements.txt'?`
         );
       }
     }
@@ -190,7 +193,7 @@ export class Delegate implements runtimes.RuntimeDelegate {
       } catch (e: any) {
         logLabeledWarning(
           "functions",
-          `Failed to detect functions from source: ${stderr.join("\n")}`
+          `Failed to detect functions from source ${e}.\nstderr:${stderr.join("\n")}`
         );
         throw e;
       } finally {
