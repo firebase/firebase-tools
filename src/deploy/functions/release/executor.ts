@@ -19,7 +19,7 @@ interface Operation {
   error?: any;
 }
 
-const defaultRetryCodes = [429, 409, 503];
+const DEFAULT_RETRY_CODES = [429, 409, 503];
 
 function parseErrorCode(err: any): number {
   return (
@@ -64,7 +64,7 @@ export class QueueExecutor implements Executor {
 
   async run<T>(func: () => Promise<T>, opts?: RunOptions): Promise<T> {
     // merge and de-duplicate default and provided retry codes
-    let retryCodes = [...defaultRetryCodes, ...(opts?.retryCodes || [])];
+    let retryCodes = [...DEFAULT_RETRY_CODES, ...(opts?.retryCodes || [])];
     retryCodes = [...new Set(retryCodes)];
 
     const op: Operation = {
