@@ -96,7 +96,7 @@ const extractEntriesFromBuffer = async (data: Buffer, outputDir: string): Promis
       await fs.promises.mkdir(parentDir, { recursive: true });
 
       const compressionMethod = entryHeader.readUInt16LE(8);
-      if (entry.compressedSize === 0 || compressionMethod === 0) {
+      if (compressionMethod === 0) {
         // Store (no compression)
         logger.debug(`[unzip] Writing file: ${outputFilePath}`);
         await fs.promises.writeFile(outputFilePath, entry.compressedData);
