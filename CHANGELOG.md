@@ -3,3 +3,4 @@
 - Web Frameworks will no longer try to deploy unsupported versions of NodeJS to Cloud Functions (#5733)
 - Adding experimental support for deploying Flutter Web applications to Firebase Hosting (#5332)
 - Adds function emulator support for v2 firestore triggers (#5685).
+- Updates firebase init function templates for TypeScript and Javascript to 2nd gen version (#5775)
