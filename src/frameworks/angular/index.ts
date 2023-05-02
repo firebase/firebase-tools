@@ -13,12 +13,7 @@ import {
   warnIfCustomBuildScript,
   findDependency,
 } from "../utils";
-import {
-  getBrowserConfig,
-  getBuildConfig,
-  getContext,
-  getServerConfig,
-} from "./utils";
+import { getBrowserConfig, getBuildConfig, getContext, getServerConfig } from "./utils";
 
 export const name = "Angular";
 export const support = SupportLevel.Preview;
