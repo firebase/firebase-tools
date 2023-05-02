@@ -97,3 +97,26 @@ export async function promptOnce<A>(question: Question, options: Options = {}): 
   await prompt(options, [question]);
   return options[question.name];
 }
+
+/**
+ * Confirm if the user wants to continue
+ */
+export async function confirm(args: {
+  nonInteractive?: boolean;
+  force?: boolean;
+  default?: boolean;
+  message?: string;
+}): Promise<boolean> {
+  if (!args.nonInteractive && !args.force) {
+    const message = args.message ?? `Do you wish to continue?`;
+    return await promptOnce({
+      type: "confirm",
+      message,
+      default: args.default,
+    });
+  } else if (args.nonInteractive && !args.force) {
+    throw new FirebaseError("Pass the --force flag to use this command in non-interactive mode");
+  } else {
+    return true;
+  }
+}

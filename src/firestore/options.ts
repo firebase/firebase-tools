@@ -1,4 +1,5 @@
 import { Options } from "../options";
+import * as types from "../firestore/api-types";
 
 /**
  * The set of fields that the Firestore commands need from Options.
@@ -12,4 +13,7 @@ export interface FirestoreOptions extends Options {
   allCollections?: boolean;
   shallow?: boolean;
   recursive?: boolean;
+  location?: string;
+  type?: types.DatabaseType;
+  deleteProtection?: types.DatabaseDeleteProtectionStateOption;
 }

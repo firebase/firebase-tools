@@ -1,7 +1,6 @@
-- Adds support for optional `--database` argument in Firestore commands (#5548).
-- Adds multiple firestore database targets support in firebase.json (#5548).
-- Remove call to Cloud Run API and set CPU & concurrency in GCF API instead. (#5605)
-- Fix function deploy retry after quota exceeded bug and increase backoff. (#5601)
-- Fix bug where EVENTARC_CLOUD_EVENT_SOURCE environment variable was correctly set for some functions. (#5597)
-- Adds 2nd gen firestore triggers to firebase deploy (#5592).
+- Added more helpful error messages for the Firebase Hosting GitHub Action (#5749)
+- Upgrade Firestore emulator to 1.17.4
+- Web Frameworks will no longer try to deploy unsupported versions of NodeJS to Cloud Functions (#5733)
+- Adding experimental support for deploying Flutter Web applications to Firebase Hosting (#5332)
+- Adds function emulator support for v2 firestore triggers (#5685).
 - Fix regex page matcher for Next.js middlewares version 1 (#5496)

@@ -55,8 +55,8 @@ const secretsInSpec = (spec: ExtensionSpec): Param[] => {
 };
 
 async function handleSecretsCreateInstance(i: DeploymentInstanceSpec, nonInteractive: boolean) {
-  const extensionVersion = await getExtensionVersion(i);
-  const secretParams = secretsInSpec(extensionVersion.spec);
+  const spec = await getExtensionSpec(i);
+  const secretParams = secretsInSpec(spec);
   for (const s of secretParams) {
     await handleSecretParamForCreate(s, i, nonInteractive);
   }

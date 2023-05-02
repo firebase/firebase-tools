@@ -18,7 +18,6 @@ import { streamObject } from "stream-json/streamers/StreamObject";
 
 import {
   BuildResult,
-  createServerResponseProxy,
   findDependency,
   FrameworkType,
   NODE_VERSION,
@@ -39,9 +38,9 @@ import {
   allDependencyNames,
   getMiddlewareMatcherRegexes,
 } from "./utils";
+
 import type { Manifest, MiddlewareManifest, NpmLsDepdendency } from "./interfaces";
-import { readJSON } from "../utils";
-import { warnIfCustomBuildScript } from "../utils";
+import { readJSON, simpleProxy, warnIfCustomBuildScript } from "../utils";
 import type { EmulatorInfo } from "../../emulator/types";
 import { usesAppDirRouter, usesNextImage, hasUnoptimizedImage } from "./utils";
 import {
@@ -441,11 +440,10 @@ export async function getDevModeHandle(dir: string, hostingEmulatorInfo?: Emulat
   const handler = nextApp.getRequestHandler();
   await nextApp.prepare();
 
-  return (req: IncomingMessage, res: ServerResponse, next: () => void) => {
+  return simpleProxy(async (req: IncomingMessage, res: ServerResponse) => {
     const parsedUrl = parse(req.url!, true);
-    const proxy = createServerResponseProxy(req, res, next);
-    handler(req, proxy, parsedUrl);
-  };
+    await handler(req, res, parsedUrl);
+  });
 }
 
 async function getConfig(dir: string): Promise<NextConfig & { distDir: string }> {
