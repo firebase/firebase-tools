@@ -237,8 +237,15 @@ export async function getBrowserConfig(sourceDir: string) {
 }
 
 export async function getServerConfig(sourceDir: string) {
-  const { architectHost, host, serverTarget, browserTarget, baseHref, workspaceProject, ngOptimizedImage } =
-    await getContext(sourceDir);
+  const {
+    architectHost,
+    host,
+    serverTarget,
+    browserTarget,
+    baseHref,
+    workspaceProject,
+    ngOptimizedImage,
+  } = await getContext(sourceDir);
   if (!serverTarget) throw new Error("No server target");
   const { locales, defaultLocale } = await localesForTarget(
     sourceDir,
@@ -277,8 +284,14 @@ export async function getServerConfig(sourceDir: string) {
 
 export async function getBuildConfig(sourceDir: string) {
   const { targetStringFromTarget } = relativeRequire(sourceDir, "@angular-devkit/architect");
-  const { browserTarget, prerenderTarget, serverTarget, architectHost, workspaceProject, ngOptimizedImage } =
-    await getContext(sourceDir);
+  const {
+    browserTarget,
+    prerenderTarget,
+    serverTarget,
+    architectHost,
+    workspaceProject,
+    ngOptimizedImage,
+  } = await getContext(sourceDir);
   const targets = (
     prerenderTarget ? [prerenderTarget] : [browserTarget, serverTarget].filter((it) => !it)
   ).map((it) => targetStringFromTarget(it!));
