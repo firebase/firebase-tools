@@ -105,13 +105,13 @@ export class Delegate implements runtimes.RuntimeDelegate {
       if (this._modulesDir === "") {
         if (stderr.includes("venv") && stderr.includes("activate")) {
           throw new FirebaseError(
-            "Failed to find location of Firebase Functions SDK: Missing virtual environment at venv directory." +
-              `Run '${this.bin} -m venv venv' command and try again.`
+            "Failed to find location of Firebase Functions SDK: Missing virtual environment at venv directory. " +
+              `Did you forget to run '${this.bin} -m venv venv'?`
           );
         }
         throw new FirebaseError(
           "Failed to find location of Firebase Functions SDK. " +
-            `Run '${this.bin} -m pip install -r requirements.txt' and try again.`
+            `Did you forget to run '${this.bin} -m pip install -r requirements.txt'?`
         );
       }
     }
