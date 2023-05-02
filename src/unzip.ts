@@ -119,7 +119,6 @@ const extractEntriesFromBuffer = async (data: Buffer, outputDir: string): Promis
 
 export const unzip = async (inputPath: string, outputDir: string): Promise<void> => {
   const data = await fs.promises.readFile(inputPath);
-  console.log(`data is ${data.byteLength} bytes`);
   await extractEntriesFromBuffer(data, outputDir);
 };
 
