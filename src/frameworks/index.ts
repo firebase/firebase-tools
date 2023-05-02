@@ -50,23 +50,29 @@ export interface Framework {
   discover: (dir: string) => Promise<Discovery | undefined>;
   type: FrameworkType;
   name: string;
-  build: (dir: string) => Promise<BuildResult | void>;
+  build: (dir: string, target: string) => Promise<BuildResult | void>;
   support: SupportLevel;
   init?: (setup: any, config: any) => Promise<void>;
   getDevModeHandle?: (
     dir: string,
+    target: string,
     hostingEmulatorInfo?: EmulatorInfo
   ) => Promise<(req: IncomingMessage, res: ServerResponse, next: () => void) => void>;
-  ɵcodegenPublicDirectory: (dir: string, dest: string) => Promise<void>;
+  ɵcodegenPublicDirectory: (dir: string, dest: string, target?: string) => Promise<void>;
   ɵcodegenFunctionsDirectory?: (
     dir: string,
-    dest: string
+    dest: string,
+    target: string
   ) => Promise<{
     bootstrapScript?: string;
     packageJson: any;
     frameworksEntry?: string;
   }>;
+  getValidBuildTargets: (purpose: BUILD_TARGET_PURPOSE, dir: string) => Promise<string[]>;
+  shouldUseDevModeHandle: (target: string, dir: string) => Promise<boolean>;
 }
+
+export type BUILD_TARGET_PURPOSE = "deploy" | "test" | "serve";
 
 // TODO pull from @firebase/util when published
 interface FirebaseDefaults {
@@ -80,8 +86,6 @@ interface FindDepOptions {
   depth?: number;
   omitDev: boolean;
 }
-
-type FrameworksBuildTarget = "production" | "development";
 
 // These serve as the order of operations for discovery
 // E.g, a framework utilizing Vite should be given priority
@@ -128,7 +132,13 @@ const DEFAULT_FIND_DEP_OPTIONS: FindDepOptions = {
 
 const NPM_COMMAND = process.platform === "win32" ? "npm.cmd" : "npm";
 
-const FRAMEWORKS_BUILD_OPTIONS = ["production", "development"];
+function getDefaultBuildTargets() {
+  return Promise.resolve(["production", "development"]);
+}
+
+function defaultShouldUseDevModeHandle(target: string) {
+  return Promise.resolve(target === "development");
+}
 
 export const WebFrameworks: Record<string, Framework> = Object.fromEntries(
   readdirSync(__dirname)
@@ -406,19 +416,23 @@ export async function prepareFrameworks(
       getDevModeHandle,
       name,
       support,
+      getValidBuildTargets = getDefaultBuildTargets,
+      shouldUseDevModeHandle = defaultShouldUseDevModeHandle,
     } = WebFrameworks[framework];
     console.log(`Detected a ${name} codebase. ${SupportLevelWarnings[support] || ""}\n`);
     const hostingEmulatorInfo = emulators.find((e) => e.name === Emulators.HOSTING);
-    const frameworksBuildTarget = getFrameworksBuildTarget();
+    const buildTargetPurpose: BUILD_TARGET_PURPOSE =
+      context._name === "deploy" ? "deploy" : context._name === "emulators:exec" ? "test" : "serve";
+    const validBuildTargets = await getValidBuildTargets(buildTargetPurpose, getProjectPath());
+    const frameworksBuildTarget = getFrameworksBuildTarget(buildTargetPurpose, validBuildTargets);
+    const useDevModeHandle = await shouldUseDevModeHandle(frameworksBuildTarget, getProjectPath());
+
     let codegenFunctionsDirectory: Framework["ɵcodegenFunctionsDirectory"];
 
-    // TODO allow for override
-    const isDevMode = context._name !== "deploy" && frameworksBuildTarget === "development";
-
     const devModeHandle =
-      isDevMode &&
+      useDevModeHandle &&
       getDevModeHandle &&
-      (await getDevModeHandle(getProjectPath(), hostingEmulatorInfo));
+      (await getDevModeHandle(getProjectPath(), frameworksBuildTarget, hostingEmulatorInfo));
     if (devModeHandle) {
       config.public = relative(projectRoot, publicDirectory);
       // Attach the handle to options, it will be used when spinning up superstatic
@@ -434,14 +448,14 @@ export async function prepareFrameworks(
         redirects = [],
         headers = [],
         trailingSlash,
-      } = (await build(getProjectPath())) || {};
+      } = (await build(getProjectPath(), frameworksBuildTarget)) || {};
       config.rewrites.push(...rewrites);
       config.redirects.push(...redirects);
       config.headers.push(...headers);
       config.trailingSlash ??= trailingSlash;
       if (await pathExists(hostingDist)) await rm(hostingDist, { recursive: true });
       await mkdirp(hostingDist);
-      await ɵcodegenPublicDirectory(getProjectPath(), hostingDist);
+      await ɵcodegenPublicDirectory(getProjectPath(), hostingDist, frameworksBuildTarget);
       config.public = relative(projectRoot, hostingDist);
       if (wantsBackend) codegenFunctionsDirectory = codegenProdModeFunctionsDirectory;
     }
@@ -469,6 +483,7 @@ export async function prepareFrameworks(
         {
           source: relative(projectRoot, functionsDist),
           codebase,
+          region: ssrRegion,
         },
       ]);
 
@@ -500,7 +515,7 @@ export async function prepareFrameworks(
         packageJson,
         bootstrapScript,
         frameworksEntry = framework,
-      } = await codegenFunctionsDirectory(getProjectPath(), functionsDist);
+      } = await codegenFunctionsDirectory(getProjectPath(), functionsDist, frameworksBuildTarget);
 
       // Set the framework entry in the env variables to handle generation of the functions.yaml
       process.env.__FIREBASE_FRAMEWORKS_ENTRY__ = frameworksEntry;
@@ -631,23 +646,34 @@ function codegenDevModeFunctionsDirectory() {
   return Promise.resolve({ packageJson, frameworksEntry: "_devMode" });
 }
 
-function getFrameworksBuildTarget() {
-  const frameworksBuild = process.env.FIREBASE_FRAMEWORKS_BUILD_TARGET as FrameworksBuildTarget;
-
+function getFrameworksBuildTarget(purpose: BUILD_TARGET_PURPOSE, validOptions: string[]) {
+  const frameworksBuild = process.env.FIREBASE_FRAMEWORKS_BUILD_TARGET;
   if (frameworksBuild) {
-    // TODO validate frameworksBuild with other possible values (for Angular)
-    // TODO validate frameworksBuild for other languages, e.g. Python
-    if (!FRAMEWORKS_BUILD_OPTIONS.includes(frameworksBuild)) {
+    if (!validOptions.includes(frameworksBuild)) {
       throw new FirebaseError(
-        `Invalid value for FIREBASE_FRAMEWORKS_BUILD_TARGET environment variable: ${frameworksBuild}. Valid values are: ${FRAMEWORKS_BUILD_OPTIONS.join(
+        `Invalid value for FIREBASE_FRAMEWORKS_BUILD_TARGET environment variable: ${frameworksBuild}. Valid values are: ${validOptions.join(
           ", "
         )}`
       );
     }
-
     return frameworksBuild;
+    // TODO handle other language / frameworks environment variables
   } else if (process.env.NODE_ENV) {
-    return process.env.NODE_ENV;
+    switch (process.env.NODE_ENV) {
+      case "development":
+        return "development";
+      case "production":
+      case "test":
+        return "production";
+      default:
+        throw new FirebaseError(
+          `We cannot infer your build target from a non-standard NODE_ENV. Please set the FIREBASE_FRAMEWORKS_BUILD_TARGET environment variable. Valid values are: ${validOptions.join(
+            ", "
+          )}`
+        );
+    }
+  } else if (purpose !== "serve") {
+    return "production";
   } else {
     return "development";
   }
