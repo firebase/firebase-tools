@@ -5,4 +5,4 @@
 - Adds function emulator support for v2 firestore triggers (#5685)
 - Improvements for developers using Next 13's app directory (#5691)
 - Resolve timeouts when bundling Next.js applications for Cloud Functions (#5691)
-- Fixes bug where the functions emulator would attempt to call to prod for 'demo-' projects (#5218)
+- Fixes bug where the functions emulator would attempt to call to prod for 'demo-' projects (#5170)
