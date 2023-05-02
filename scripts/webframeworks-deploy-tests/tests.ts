@@ -30,7 +30,9 @@ describe("webframeworks deploy build", function (this) {
 
   it("should log reasons for backend", () => {
     process.env.FIREBASE_CLI_EXPERIMENTS = "webframeworks";
-    const result = readFileSync("scripts/webframeworks-deploy-tests/firebase-emulators.log").toString();
+    const result = readFileSync(
+      "scripts/webframeworks-deploy-tests/firebase-emulators.log"
+    ).toString();
 
     expect(result, "build result").to.match(
       /Building a Cloud Function to run this application. This is needed due to:/
