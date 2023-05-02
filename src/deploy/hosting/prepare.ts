@@ -24,9 +24,31 @@ function handlePublicDirectoryFlag(options: HostingOptions & Options): void {
 }
 
 /**
- * If there is a rewrite to a tagged function, add it to the deploy target.
+ * Return whether any hosting config tags any functions.
+ * This is used to know whether a deploy needs to add functions to the targets,
+ * ask for permissions explicitly (they may not have been asked for in the
+ * normal boilerplate), and the only string might need to be updated with
+ * addPinnedFunctionsToOnlyString.
  */
-export async function addTaggedFunctionsToOnlyString(
+export function hasPinnedFunctions(options: HostingOptions & Options): boolean {
+  handlePublicDirectoryFlag(options);
+  for (const c of config.hostingConfig(options)) {
+    for (const r of c.rewrites || []) {
+      if ("function" in r && typeof r.function === "object" && r.function.pinTag) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+/**
+ * If there is a rewrite to a tagged function, add it to the deploy target.
+ * precondition: we have permissions to call functions APIs.
+ * TODO: we should add an optional codebase field to the rewrite so that we
+ * can skip loading other functions codebases on deploy
+ */
+export async function addPinnedFunctionsToOnlyString(
   context: Context,
   options: HostingOptions & Options
 ): Promise<boolean> {
@@ -45,10 +67,15 @@ export async function addTaggedFunctionsToOnlyString(
         continue;
       }
 
-      const existing = await backend.existingBackend(context);
-      const endpoint =
-        existing.endpoints[r.function.region || "us-central1"][r.function.functionId];
-      options.only = ensureTargeted(options.only, endpoint.codebase || "default", endpoint.id);
+      const endpoint: backend.Endpoint | null = (await backend.existingBackend(context)).endpoints[
+        r.function.region || "us-central1"
+      ]?.[r.function.functionId];
+      if (endpoint) {
+        options.only = ensureTargeted(options.only, endpoint.codebase || "default", endpoint.id);
+      } else {
+        // This endpoint is just being added in this push. We don't know what codebase it is.
+        options.only = ensureTargeted(options.only, r.function.functionId);
+      }
       addedFunctions = true;
     }
   }
