@@ -30,6 +30,7 @@ export const MAILING_LIST_URL = "https://goo.gle/41enW5X";
 export const FIREBASE_FRAMEWORKS_VERSION = "^0.9.0";
 export const FIREBASE_FUNCTIONS_VERSION = "^4.3.0";
 export const FIREBASE_ADMIN_VERSION = "^11.0.1";
+export const SHARP_VERSION = "latest";
 export const NODE_VERSION = parseInt(process.versions.node, 10);
 export const VALID_ENGINES = { node: [16, 18] };
 

@@ -34,7 +34,7 @@ import {
   getNonStaticServerComponents,
   getHeadersFromMetaFiles,
 } from "./utils";
-import { NODE_VERSION, NPM_COMMAND_TIMEOUT_MILLIES } from "../constants";
+import { NODE_VERSION, NPM_COMMAND_TIMEOUT_MILLIES, SHARP_VERSION } from "../constants";
 import type {
   AppPathRoutesManifest,
   AppPathsManifest,
@@ -482,7 +482,7 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
     !(await hasUnoptimizedImage(sourceDir, distDir)) &&
     (usesAppDirRouter(sourceDir) || (await usesNextImage(sourceDir, distDir)))
   ) {
-    packageJson.dependencies["sharp"] = "latest";
+    packageJson.dependencies["sharp"] = SHARP_VERSION;
   }
 
   await mkdirp(join(destDir, distDir));

@@ -14,6 +14,7 @@ import {
   findDependency,
 } from "../utils";
 import { getBrowserConfig, getBuildConfig, getContext, getServerConfig } from "./utils";
+import { SHARP_VERSION } from "../constants";
 
 export const name = "Angular";
 export const support = SupportLevel.Preview;
@@ -25,9 +26,7 @@ const DEFAULT_BUILD_SCRIPT = ["ng build"];
 export async function discover(dir: string): Promise<Discovery | undefined> {
   if (!(await pathExists(join(dir, "package.json")))) return;
   if (!(await pathExists(join(dir, "angular.json")))) return;
-  const { serverTarget } = await getContext(dir);
-  // TODO don't hardcode assets dir
-  return { mayWantBackend: !!serverTarget, publicDirectory: join(dir, "src", "assets") };
+  return { mayWantBackend: true, publicDirectory: join(dir, "src", "assets") };
 }
 
 export async function init(setup: any, config: any) {
@@ -53,7 +52,7 @@ export async function init(setup: any, config: any) {
 }
 
 export async function build(dir: string): Promise<BuildResult> {
-  const { targets, serverTarget, locales } = await getBuildConfig(dir);
+  const { targets, serverTarget, ngOptimizedImage, locales } = await getBuildConfig(dir);
   await warnIfCustomBuildScript(dir, name, DEFAULT_BUILD_SCRIPT);
   for (const target of targets) {
     // TODO there is a bug here. Spawn for now.
@@ -64,7 +63,7 @@ export async function build(dir: string): Promise<BuildResult> {
       stdio: "inherit",
     });
   }
-  const wantsBackend = !!serverTarget;
+  const wantsBackend = !!serverTarget || ngOptimizedImage;
   const i18n = locales ? { root: "/" } : undefined;
   return { wantsBackend, i18n };
 }
@@ -119,6 +118,7 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
     bundleDependencies,
     externalDependencies,
     baseHref: baseUrl,
+    ngOptimizedImage,
   } = await getServerConfig(sourceDir);
 
   await Promise.all([
@@ -143,6 +143,13 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
       }
     }
     packageJson.dependencies = dependencies;
+  } else {
+    packageJson.dependencies ||= {};
   }
+
+  if (ngOptimizedImage) {
+    packageJson.dependencies["sharp"] ||= SHARP_VERSION;
+  }
+
   return { bootstrapScript, packageJson, baseUrl };
 }

@@ -64,6 +64,7 @@ export async function getContext(dir: string) {
   let serverTarget: Target | undefined;
   let prerenderTarget: Target | undefined;
   let serveTarget: Target | undefined;
+  let ngOptimizedImage = false;
 
   if (!project) {
     const angularJson = parse(await host.readFile(join(dir, "angular.json")));
@@ -96,6 +97,9 @@ export async function getContext(dir: string) {
       browserTarget = targetFromTargetString(options.browserTarget);
     if (typeof options?.serverTarget === "string")
       serverTarget = targetFromTargetString(options.serverTarget);
+    if (options?.ngOptimizedImage) {
+      ngOptimizedImage = true;
+    }
     if (!browserTarget)
       throw new Error("ng-deploy is missing a browser target. Plase check your angular.json.");
     if (prerenderTarget) {
@@ -213,6 +217,7 @@ export async function getContext(dir: string) {
     serverTarget,
     serveTarget,
     workspaceProject,
+    ngOptimizedImage,
   };
 }
 
@@ -232,7 +237,7 @@ export async function getBrowserConfig(sourceDir: string) {
 }
 
 export async function getServerConfig(sourceDir: string) {
-  const { architectHost, host, serverTarget, browserTarget, baseHref, workspaceProject } =
+  const { architectHost, host, serverTarget, browserTarget, baseHref, workspaceProject, ngOptimizedImage } =
     await getContext(sourceDir);
   if (!serverTarget) throw new Error("No server target");
   const { locales, defaultLocale } = await localesForTarget(
@@ -266,12 +271,13 @@ export async function getServerConfig(sourceDir: string) {
     externalDependencies,
     locales,
     defaultLocale,
+    ngOptimizedImage,
   };
 }
 
 export async function getBuildConfig(sourceDir: string) {
   const { targetStringFromTarget } = relativeRequire(sourceDir, "@angular-devkit/architect");
-  const { browserTarget, prerenderTarget, serverTarget, architectHost, workspaceProject } =
+  const { browserTarget, prerenderTarget, serverTarget, architectHost, workspaceProject, ngOptimizedImage } =
     await getContext(sourceDir);
   const targets = (
     prerenderTarget ? [prerenderTarget] : [browserTarget, serverTarget].filter((it) => !it)
@@ -281,5 +287,6 @@ export async function getBuildConfig(sourceDir: string) {
     targets,
     serverTarget,
     locales,
+    ngOptimizedImage,
   };
 }
