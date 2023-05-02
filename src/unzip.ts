@@ -26,24 +26,25 @@ const readUInt32LE = (buf: Buffer, offset: number): number => {
   );
 };
 
-const findNextDataDescriptor = async (data:Buffer, offset: number): Promise<[number, number]> => {
+const findNextDataDescriptor = (data: Buffer, offset: number): [number, number] => {
   const dataDescriptorSignature = 0x08074b50;
   let position = offset;
   while (position < data.length) {
-    const potentialDescriptor = data.slice(position, position+16);
+    const potentialDescriptor = data.slice(position, position + 16);
     if (readUInt32LE(potentialDescriptor, 0) === dataDescriptorSignature) {
-      logger.debug(`[unzip] found data descriptor sginature @ ${position}`);
+      logger.debug(`[unzip] found data descriptor signature @ ${position}`);
       const compressedSize = readUInt32LE(potentialDescriptor, 8);
       const uncompressedSize = readUInt32LE(potentialDescriptor, 12);
       return [compressedSize, uncompressedSize];
     }
     position++;
   }
-  throw new FirebaseError("Unable to find compressed and uncompressed size of file in ZIP archive.");
-}
+  throw new FirebaseError(
+    "Unable to find compressed and uncompressed size of file in ZIP archive."
+  );
+};
 
 const extractEntriesFromBuffer = async (data: Buffer, outputDir: string): Promise<void> => {
-  // await findHeaders(data);
   let position = 0;
   logger.debug(`Data is ${data.length}`);
   while (position < data.length) {
@@ -60,10 +61,14 @@ const extractEntriesFromBuffer = async (data: Buffer, outputDir: string): Promis
     entry.fileName = data.toString("utf-8", position + 30, position + 30 + entry.fileNameLength);
     entry.headerSize = 30 + entry.fileNameLength + entry.extraLength;
     let dataDescriptorSize = 0;
-    if (entry.generalPurposeBitFlag === 8 && entry.compressedSize === 0 && entry.uncompressedSize === 0) {
+    if (
+      entry.generalPurposeBitFlag === 8 &&
+      entry.compressedSize === 0 &&
+      entry.uncompressedSize === 0
+    ) {
       // If set, entry header won't have compressed or uncompressed size set.
       // Need to look ahead to data descriptor to find them.
-      const [ compressedSize, uncompressedSize ] = await findNextDataDescriptor(data, position);
+      const [compressedSize, uncompressedSize] = findNextDataDescriptor(data, position);
       entry.compressedSize = compressedSize;
       entry.uncompressedSize = uncompressedSize;
       // If we hit this, we also need to skip over the data descriptor to read the next file
