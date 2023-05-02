@@ -1,4 +1,6 @@
 import type { Target } from "@angular-devkit/architect";
+import type { ProjectDefinition } from "@angular-devkit/core/src/workspace";
+import type { WorkspaceNodeModulesArchitectHost } from "@angular-devkit/architect/node";
 import { join } from "path";
 import { execSync } from "child_process";
 import { spawn } from "cross-spawn";
@@ -16,6 +18,8 @@ import {
 } from "..";
 import { promptOnce } from "../../prompt";
 import { simpleProxy, warnIfCustomBuildScript } from "../utils";
+import { AngularI18nConfig } from "./interfaces";
+import { FirebaseError } from "../../error";
 
 export const name = "Angular";
 export const support = SupportLevel.Experimental;
@@ -55,7 +59,14 @@ export async function init(setup: any, config: any) {
 
 export async function build(dir: string): Promise<BuildResult> {
   const { targetStringFromTarget } = relativeRequire(dir, "@angular-devkit/architect");
-  const { architect, browserTarget, prerenderTarget, serverTarget } = await getContext(dir);
+  const {
+    architect,
+    browserTarget,
+    prerenderTarget,
+    serverTarget,
+    architectHost,
+    workspaceProject,
+  } = await getContext(dir);
 
   const scheduleTarget = async (target: Target) => {
     const run = await architect.scheduleTarget(target, undefined);
@@ -82,7 +93,11 @@ export async function build(dir: string): Promise<BuildResult> {
 
   const wantsBackend = !!serverTarget;
 
-  return { wantsBackend };
+  const { locales } = await localesForTarget(dir, architectHost, browserTarget, workspaceProject);
+
+  const i18n = locales ? { root: "/" } : undefined;
+
+  return { wantsBackend, i18n };
 }
 
 export async function getDevModeHandle(dir: string) {
@@ -109,21 +124,50 @@ export async function getDevModeHandle(dir: string) {
 }
 
 export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: string) {
-  const { architectHost, browserTarget } = await getContext(sourceDir);
-  if (!browserTarget) throw new Error("No browser target");
+  const { architectHost, browserTarget, baseHref, workspaceProject } = await getContext(sourceDir);
+  const { locales, defaultLocale } = await localesForTarget(
+    sourceDir,
+    architectHost,
+    browserTarget,
+    workspaceProject
+  );
   const browserTargetOptions = await architectHost.getOptionsForTarget(browserTarget);
   if (typeof browserTargetOptions?.outputPath !== "string")
     throw new Error("browserTarget output path is not a string");
   const browserOutputPath = browserTargetOptions.outputPath;
-  await mkdir(destDir, { recursive: true });
-  await copy(join(sourceDir, browserOutputPath), destDir);
+  await mkdir(join(destDir, baseHref), { recursive: true });
+  if (locales) {
+    await Promise.all([
+      defaultLocale
+        ? await copy(join(sourceDir, browserOutputPath, defaultLocale), join(destDir, baseHref))
+        : Promise.resolve(),
+      ...locales.map(async (locale) => {
+        await mkdir(join(destDir, baseHref, locale), { recursive: true });
+        await copy(join(sourceDir, browserOutputPath, locale), join(destDir, baseHref, locale));
+      }),
+    ]);
+  } else {
+    await copy(join(sourceDir, browserOutputPath), join(destDir, baseHref));
+  }
 }
 
 // TODO(jamesdaniels) dry up
 export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: string) {
-  const { architectHost, host, serverTarget, browserTarget } = await getContext(sourceDir);
+  const {
+    architectHost,
+    host,
+    serverTarget,
+    browserTarget,
+    baseHref: baseUrl,
+    workspaceProject,
+  } = await getContext(sourceDir);
   if (!serverTarget) throw new Error("No server target");
-  if (!browserTarget) throw new Error("No browser target");
+  const { locales, defaultLocale } = await localesForTarget(
+    sourceDir,
+    architectHost,
+    serverTarget,
+    workspaceProject
+  );
   const packageJson = JSON.parse(await host.readFile(join(sourceDir, "package.json")));
   const serverTargetOptions = await architectHost.getOptionsForTarget(serverTarget);
   if (typeof serverTargetOptions?.outputPath !== "string")
@@ -137,7 +181,15 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
   await mkdir(join(destDir, browserOutputPath), { recursive: true });
   await copy(join(sourceDir, serverOutputPath), join(destDir, serverOutputPath));
   await copy(join(sourceDir, browserOutputPath), join(destDir, browserOutputPath));
-  const bootstrapScript = `exports.handle = require('./${serverOutputPath}/main.js').app();\n`;
+  if (locales && !defaultLocale) {
+    throw new FirebaseError(
+      "It's required that your source locale to be one of the localize options"
+    );
+  }
+  // TODO how can we handle multiple locales for a backend, is the cookie being passed?
+  const bootstrapScript = `exports.handle = require('./${serverOutputPath}/${
+    defaultLocale || ""
+  }/main.js').app();\n`;
   const bundleDependencies = serverTargetOptions.bundleDependencies ?? true;
   if (bundleDependencies) {
     const dependencies: Record<string, string> = {};
@@ -150,7 +202,40 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
     });
     packageJson.dependencies = dependencies;
   }
-  return { bootstrapScript, packageJson };
+  return { bootstrapScript, packageJson, baseUrl };
+}
+
+async function localesForTarget(
+  dir: string,
+  architectHost: WorkspaceNodeModulesArchitectHost,
+  target: Target,
+  workspaceProject: ProjectDefinition
+) {
+  const { targetStringFromTarget } = relativeRequire(dir, "@angular-devkit/architect");
+  const browserTargetOptions = await architectHost.getOptionsForTarget(target);
+  if (!browserTargetOptions)
+    throw new FirebaseError(`Couldn't find options for ${targetStringFromTarget(target)}.`);
+
+  let locales: string[] | undefined = undefined;
+  let defaultLocale: string | undefined = undefined;
+  if (browserTargetOptions.localize) {
+    const i18n: AngularI18nConfig | undefined = workspaceProject.extensions?.i18n as any;
+    if (!i18n) throw new FirebaseError(`No i18n config on project.`);
+    if (browserTargetOptions.localize === true) {
+      defaultLocale = i18n.sourceLocale;
+      locales = Object.keys(i18n.locales);
+    } else if (Array.isArray(browserTargetOptions.localize)) {
+      locales ||= [];
+      for (const locale of browserTargetOptions.localize) {
+        if (typeof locale !== "string") continue;
+        locales.push(locale);
+      }
+      if (locales.includes(i18n.sourceLocale)) {
+        defaultLocale = i18n.sourceLocale;
+      }
+    }
+  }
+  return { locales, defaultLocale };
 }
 
 // TODO(jamesdaniels) memoize, dry up
@@ -192,12 +277,13 @@ async function getContext(dir: string) {
   }
 
   if (!project)
-    throw new Error(
+    throw new FirebaseError(
       "Unable to detirmine the application to deploy, you should use `ng deploy` via @angular/fire."
     );
 
   const workspaceProject = workspace.projects.get(project);
-  if (!workspaceProject) throw new Error(`No project ${project} found.`);
+  if (!workspaceProject) throw new FirebaseError(`No project ${project} found.`);
+
   const deployTargetDefinition = workspaceProject.targets.get("deploy");
 
   if (deployTargetDefinition?.builder === "@angular/fire:deploy") {
@@ -304,13 +390,26 @@ async function getContext(dir: string) {
     serveTarget = { project, target: "serve", configuration };
   }
 
+  if (!browserTarget) throw new FirebaseError(`No browser target on ${project}`);
+  const browserTargetOptions = await architectHost.getOptionsForTarget(browserTarget);
+  if (!browserTargetOptions)
+    throw new FirebaseError(`Couldn't find options for ${targetStringFromTarget(browserTarget)}.`);
+
+  const baseHref = browserTargetOptions.baseHref || "";
+  if (typeof baseHref !== "string")
+    throw new FirebaseError(
+      `baseHref on ${targetStringFromTarget(browserTarget)} was not a string`
+    );
+
   return {
     architect,
     architectHost,
+    baseHref,
     host,
     browserTarget,
     prerenderTarget,
     serverTarget,
     serveTarget,
+    workspaceProject,
   };
 }

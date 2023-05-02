@@ -1,4 +1,4 @@
-import { join, relative, extname, basename } from "path";
+import { join, relative, extname, basename, posix } from "path";
 import { exit } from "process";
 import { execSync } from "child_process";
 import { sync as spawnSync } from "cross-spawn";
@@ -46,6 +46,7 @@ export interface BuildResult {
   headers?: any[];
   wantsBackend?: boolean;
   trailingSlash?: boolean;
+  i18n?: { root: string };
 }
 
 export interface Framework {
@@ -67,6 +68,7 @@ export interface Framework {
     bootstrapScript?: string;
     packageJson: any;
     frameworksEntry?: string;
+    baseUrl?: string;
   }>;
 }
 
@@ -463,10 +465,12 @@ export async function prepareFrameworks(
         redirects = [],
         headers = [],
         trailingSlash,
+        i18n,
       } = (await build(getProjectPath())) || {};
       config.rewrites.push(...rewrites);
       config.redirects.push(...redirects);
       config.headers.push(...headers);
+      config.i18n = i18n;
       config.trailingSlash ??= trailingSlash;
       if (await pathExists(hostingDist)) await rm(hostingDist, { recursive: true });
       await mkdirp(hostingDist);
@@ -487,15 +491,6 @@ export async function prepareFrameworks(
           "deploy an app that requires a backend to a preview channel"
         );
       }
-
-      config.rewrites.push({
-        source: "**",
-        function: {
-          functionId,
-          region: ssrRegion,
-          pinTag: experiments.isEnabled("pintags"),
-        },
-      });
 
       const codebase = `firebase-frameworks-${site}`;
       const existingFunctionsConfig = options.config.get("functions")
@@ -537,7 +532,17 @@ export async function prepareFrameworks(
         packageJson,
         bootstrapScript,
         frameworksEntry = framework,
+        baseUrl = "",
       } = await codegenFunctionsDirectory(getProjectPath(), functionsDist);
+
+      config.rewrites.push({
+        source: posix.normalize(posix.join(baseUrl, "**")),
+        function: {
+          functionId,
+          region: ssrRegion,
+          pinTag: experiments.isEnabled("pintags"),
+        },
+      });
 
       // Set the framework entry in the env variables to handle generation of the functions.yaml
       process.env.__FIREBASE_FRAMEWORKS_ENTRY__ = frameworksEntry;
