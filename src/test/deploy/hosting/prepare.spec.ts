@@ -10,7 +10,8 @@ import * as tracking from "../../../track";
 import * as deploymentTool from "../../../deploymentTool";
 import * as config from "../../../hosting/config";
 import {
-  addTaggedFunctionsToOnlyString,
+  addPinnedFunctionsToOnlyString,
+  hasPinnedFunctions,
   prepare,
   unsafePins,
 } from "../../../deploy/hosting/prepare";
@@ -246,7 +247,18 @@ describe("hosting prepare", () => {
     });
   });
 
-  describe("addTaggedFunctionsToOnlyString", () => {
+  describe("hasPinnedFunctions", () => {
+    it("detects function tags", () => {
+      expect(hasPinnedFunctions(options)).to.be.true;
+    });
+
+    it("detects a lack of function tags", () => {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      delete (options as any).config.src.hosting?.rewrites?.[0]?.function?.pinTag;
+      expect(hasPinnedFunctions(options)).to.be.false;
+    });
+  });
+  describe("addPinnedFunctionsToOnlyString", () => {
     it("adds functions to deploy targets w/ codebases", async () => {
       backendStub.existingBackend.resolves({
         endpoints: {
@@ -262,7 +274,7 @@ describe("hosting prepare", () => {
         environmentVariables: {},
       });
 
-      await expect(addTaggedFunctionsToOnlyString({} as any, options)).to.eventually.be.true;
+      await expect(addPinnedFunctionsToOnlyString({} as any, options)).to.eventually.be.true;
       expect(options.only).to.equal("hosting,functions:backend:function");
     });
 
@@ -280,7 +292,7 @@ describe("hosting prepare", () => {
         environmentVariables: {},
       });
 
-      await expect(addTaggedFunctionsToOnlyString({} as any, options)).to.eventually.be.true;
+      await expect(addPinnedFunctionsToOnlyString({} as any, options)).to.eventually.be.true;
       expect(options.only).to.equal("hosting,functions:default:function");
     });
 
@@ -288,7 +300,7 @@ describe("hosting prepare", () => {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       delete (siteConfig as any).rewrites[0].function.pinTag;
 
-      await expect(addTaggedFunctionsToOnlyString({} as any, options)).to.eventually.be.false;
+      await expect(addPinnedFunctionsToOnlyString({} as any, options)).to.eventually.be.false;
       expect(options.only).to.equal("hosting");
       expect(backendStub.existingBackend).to.not.have.been.called;
     });

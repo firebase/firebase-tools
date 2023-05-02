@@ -23,6 +23,9 @@ import {
   isUsingAppDirectory,
   allDependencyNames,
   getMiddlewareMatcherRegexes,
+  getNonStaticRoutes,
+  getNonStaticServerComponents,
+  getHeadersFromMetaFiles,
 } from "../../../frameworks/next/utils";
 import * as frameworksUtils from "../../../frameworks/utils";
 import * as fsUtils from "../../../fsutils";
@@ -48,6 +51,11 @@ import {
   npmLsReturn,
   middlewareV1ManifestWhenUsed,
   middlewareV1ManifestWhenNotUsed,
+  pagesManifest,
+  prerenderManifest,
+  appPathsManifest,
+  appPathRoutesManifest,
+  metaFileContents,
 } from "./helpers";
 
 describe("Next.js utils", () => {
@@ -396,6 +404,64 @@ describe("Next.js utils", () => {
       const middlewareMatcherRegexes = getMiddlewareMatcherRegexes(middlewareV2ManifestWhenNotUsed);
 
       expect(middlewareMatcherRegexes).to.eql([]);
+    });
+  });
+
+  describe("getNonStaticRoutes", () => {
+    it("should get non-static routes", () => {
+      expect(
+        getNonStaticRoutes(
+          pagesManifest,
+          Object.keys(prerenderManifest.routes),
+          Object.keys(prerenderManifest.dynamicRoutes)
+        )
+      ).to.deep.equal(["/dynamic/[dynamic-slug]"]);
+    });
+  });
+
+  describe("getNonStaticServerComponents", () => {
+    it("should get non-static server components", () => {
+      expect(
+        getNonStaticServerComponents(
+          appPathsManifest,
+          appPathRoutesManifest,
+          Object.keys(prerenderManifest.routes),
+          Object.keys(prerenderManifest.dynamicRoutes)
+        )
+      ).to.deep.equal(["/api/test/route"]);
+    });
+  });
+
+  describe("getHeadersFromMetaFiles", () => {
+    let sandbox: sinon.SinonSandbox;
+    beforeEach(() => (sandbox = sinon.createSandbox()));
+    afterEach(() => sandbox.restore());
+
+    it("should get headers from meta files", async () => {
+      const distDir = ".next";
+      const readJsonStub = sandbox.stub(frameworksUtils, "readJSON");
+      const dirExistsSyncStub = sandbox.stub(fsUtils, "dirExistsSync");
+      const fileExistsSyncStub = sandbox.stub(fsUtils, "fileExistsSync");
+
+      dirExistsSyncStub.withArgs(`${distDir}/server/app/api/static`).returns(true);
+      fileExistsSyncStub.withArgs(`${distDir}/server/app/api/static.meta`).returns(true);
+      readJsonStub.withArgs(`${distDir}/server/app/api/static.meta`).resolves(metaFileContents);
+
+      expect(await getHeadersFromMetaFiles(".", distDir, appPathRoutesManifest)).to.deep.equal([
+        {
+          source: "/api/static",
+          headers: [
+            {
+              key: "content-type",
+              value: "application/json",
+            },
+            {
+              key: "custom-header",
+              value: "custom-value",
+            },
+          ],
+        },
+      ]);
     });
   });
 });
