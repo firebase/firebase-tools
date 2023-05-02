@@ -13,7 +13,7 @@ import { runWithVirtualEnv } from "../../../../functions/python";
 import { FirebaseError } from "../../../../error";
 import { Build } from "../../build";
 
-export const LATEST_VERSION: runtimes.Runtime = "python310";
+export const LATEST_VERSION: runtimes.Runtime = "python311";
 
 /**
  * Create a runtime delegate for the Python runtime, if applicable.
