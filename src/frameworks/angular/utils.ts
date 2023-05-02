@@ -81,7 +81,7 @@ export async function getContext(dir: string) {
 
   if (!project)
     throw new FirebaseError(
-      "Unable to detirmine the application to deploy, you should use `ng deploy` via @angular/fire."
+      "Unable to determine the application to deploy, you should use `ng deploy` via @angular/fire."
     );
 
   const workspaceProject = workspace.projects.get(project);
