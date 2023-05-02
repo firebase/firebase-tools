@@ -12,6 +12,7 @@ import { logger } from "../../../../logger";
 import { runWithVirtualEnv } from "../../../../functions/python";
 import { FirebaseError } from "../../../../error";
 import { Build } from "../../build";
+import { logLabeledWarning } from "../../../../utils";
 
 export const LATEST_VERSION: runtimes.Runtime = "python310";
 
@@ -75,6 +76,8 @@ export class Delegate implements runtimes.RuntimeDelegate {
 
   async modulesDir(): Promise<string> {
     if (!this._modulesDir) {
+      let out = "";
+      let stderr = "";
       const child = runWithVirtualEnv(
         [
           this.bin,
@@ -84,7 +87,11 @@ export class Delegate implements runtimes.RuntimeDelegate {
         this.sourceDir,
         {}
       );
-      let out = "";
+      child.stderr?.on("data", (chunk: Buffer) => {
+        const chunkString = chunk.toString();
+        stderr = stderr + chunkString;
+        logger.debug(`stderr: ${chunkString}`);
+      });
       child.stdout?.on("data", (chunk: Buffer) => {
         const chunkString = chunk.toString();
         out = out + chunkString;
@@ -95,6 +102,19 @@ export class Delegate implements runtimes.RuntimeDelegate {
         child.on("error", reject);
       });
       this._modulesDir = out.trim();
+      if (this._modulesDir === "") {
+        console.log(stderr);
+        if (stderr.includes("venv") && stderr.includes("activate")) {
+          throw new FirebaseError(
+            "Failed to find location of Firebase Functions SDK: Missing virtual environment at venv directory." +
+              `Run '${this.bin} -m venv venv' command and try again.`
+          );
+        }
+        throw new FirebaseError(
+          "Failed to find location of Firebase Functions SDK. " +
+            `Run '${this.bin} -m pip install -r requirements.txt' and try again.`
+        );
+      }
     }
     return this._modulesDir;
   }
@@ -116,13 +136,15 @@ export class Delegate implements runtimes.RuntimeDelegate {
     return Promise.resolve();
   }
 
-  async serveAdmin(port: number, envs: backend.EnvironmentVariables): Promise<() => Promise<void>> {
+  async serveAdmin(port: number, envs: backend.EnvironmentVariables) {
     const modulesDir = await this.modulesDir();
     const envWithAdminPort = {
       ...envs,
       ADMIN_PORT: port.toString(),
     };
     const args = [this.bin, path.join(modulesDir, "private", "serving.py")];
+    const stdout: string[] = [];
+    const stderr: string[] = [];
     logger.debug(
       `Running admin server with args: ${JSON.stringify(args)} and env: ${JSON.stringify(
         envWithAdminPort
@@ -131,20 +153,26 @@ export class Delegate implements runtimes.RuntimeDelegate {
     const childProcess = runWithVirtualEnv(args, this.sourceDir, envWithAdminPort);
     childProcess.stdout?.on("data", (chunk: Buffer) => {
       const chunkString = chunk.toString();
+      stdout.push(chunkString);
       logger.debug(`stdout: ${chunkString}`);
     });
     childProcess.stderr?.on("data", (chunk: Buffer) => {
       const chunkString = chunk.toString();
+      stderr.push(chunkString);
       logger.debug(`stderr: ${chunkString}`);
     });
-    return Promise.resolve(async () => {
-      await fetch(`http://127.0.0.1:${port}/__/quitquitquit`);
-      const quitTimeout = setTimeout(() => {
-        if (!childProcess.killed) {
-          childProcess.kill("SIGKILL");
-        }
-      }, 10_000);
-      clearTimeout(quitTimeout);
+    return Promise.resolve({
+      stderr,
+      stdout,
+      killProcess: async () => {
+        await fetch(`http://127.0.0.1:${port}/__/quitquitquit`);
+        const quitTimeout = setTimeout(() => {
+          if (!childProcess.killed) {
+            childProcess.kill("SIGKILL");
+          }
+        }, 10_000);
+        clearTimeout(quitTimeout);
+      },
     });
   }
 
@@ -157,9 +185,15 @@ export class Delegate implements runtimes.RuntimeDelegate {
       const adminPort = await portfinder.getPortPromise({
         port: 8081,
       });
-      const killProcess = await this.serveAdmin(adminPort, envs);
+      const { killProcess, stderr } = await this.serveAdmin(adminPort, envs);
       try {
         discovered = await discovery.detectFromPort(adminPort, this.projectId, this.runtime);
+      } catch (e: any) {
+        logLabeledWarning(
+          "functions",
+          `Failed to detect functions from source: ${stderr.join("\n")}`
+        );
+        throw e;
       } finally {
         await killProcess();
       }
