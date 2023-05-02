@@ -14,7 +14,7 @@ import { FirebaseError } from "../../../../error";
 import { Build } from "../../build";
 import { logLabeledWarning } from "../../../../utils";
 
-export const LATEST_VERSION: runtimes.Runtime = "python310";
+export const LATEST_VERSION: runtimes.Runtime = "python311";
 
 /**
  * Create a runtime delegate for the Python runtime, if applicable.
