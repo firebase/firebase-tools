@@ -23,9 +23,12 @@ const gcbPollerOptions: Omit<poller.OperationPollerOptions, "operationResourceNa
 };
 
 /**
- *
+ * Prompts the user to link their stack to a GitHub repository.
  */
-export async function linkRepository(projectId: string, location: string): Promise<Repository> {
+export async function linkGitHubRepository(
+  projectId: string,
+  location: string
+): Promise<Repository> {
   const connectionId = generateConnectionId();
   const conn = await getOrCreateConnection(projectId, location, connectionId);
   if (conn.installationState.stage !== "COMPLETE") {
@@ -117,7 +120,7 @@ async function getOrCreateConnection(
     }
   }
 
-  // We can prompt users to select Continue once they have followed
+  // We prompt users to select Continue once they have followed
   // the link and successfully authorized Cloud Build to access
   // their GitHub account
   while (conn.installationState.stage === "PENDING_USER_OAUTH") {

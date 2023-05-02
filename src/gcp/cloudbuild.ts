@@ -21,7 +21,7 @@ export interface Operation {
   metadata?: OperationMetadata;
   done: boolean;
   error?: { code: number; message: string; details: unknown };
-  response?: any; // TODO: narrow down
+  response?: any;
 }
 
 export interface GitHubConfig {
@@ -49,6 +49,7 @@ export interface ConnectionBase {
   githubConfig?: GitHubConfig;
 }
 
+// A Connection map to an installation of the GitHub App to an SCM.
 export interface Connection extends ConnectionBase {
   createTime: string;
   updateTime: string;
@@ -80,7 +81,7 @@ interface LinkableRepositories {
 }
 
 /**
- *
+ * Creates a Cloud Build V2 Connection.
  */
 export async function createConnection(
   projectId: string,
@@ -96,7 +97,7 @@ export async function createConnection(
 }
 
 /**
- *
+ * Gets metadata for a Cloud Build V2 Connection.
  */
 export async function getConnection(
   projectId: string,
@@ -109,7 +110,7 @@ export async function getConnection(
 }
 
 /**
- *
+ * Gets a list of repositories that can be added to the provided Connection.
  */
 export async function fetchLinkableRepositories(
   projectId: string,
@@ -122,7 +123,7 @@ export async function fetchLinkableRepositories(
 }
 
 /**
- *
+ * Creates a Cloud Build V2 Repository.
  */
 export async function createRepository(
   projectId: string,
@@ -140,7 +141,7 @@ export async function createRepository(
 }
 
 /**
- *
+ * Gets metadata for a Cloud Build V2 Repository.
  */
 export async function getRepository(
   projectId: string,
