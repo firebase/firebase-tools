@@ -3,8 +3,8 @@ import { readFile } from "fs/promises";
 import { join } from "path";
 import { lt } from "semver";
 import { spawn } from "cross-spawn";
-import { FrameworkType, getNodeModuleBin, relativeRequire, SupportLevel } from "..";
-import { simpleProxy, warnIfCustomBuildScript } from "../utils";
+import { FrameworkType, SupportLevel } from "../interfaces";
+import { simpleProxy, warnIfCustomBuildScript, getNodeModuleBin, relativeRequire } from "../utils";
 import { getNuxtVersion } from "./utils";
 
 export const name = "Nuxt";
