@@ -5,7 +5,7 @@ import * as refs from "../extensions/refs";
 import * as utils from "../utils";
 import { Command } from "../command";
 import { confirm } from "../prompt";
-import { ensureExtensionsApiEnabled, logPrefix } from "../extensions/extensionsHelper";
+import { ensureExtensionsPublisherApiEnabled, logPrefix } from "../extensions/extensionsHelper";
 import { deprecateExtensionVersion, listExtensionVersions } from "../extensions/extensionsApi";
 import { parseVersionPredicate } from "../extensions/versionHelper";
 import { requireAuth } from "../requireAuth";
@@ -27,7 +27,7 @@ export const command = new Command("ext:dev:deprecate <extensionRef> [versionPre
     "override deprecation message for existing deprecated extension versions that match"
   )
   .before(requireAuth)
-  .before(ensureExtensionsApiEnabled)
+  .before(ensureExtensionsPublisherApiEnabled)
   .action(
     async (extensionRef: string, versionPredicate: string, options: ExtDevDeprecateOptions) => {
       const ref = refs.parse(extensionRef);
