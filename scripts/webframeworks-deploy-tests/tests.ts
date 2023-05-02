@@ -1,22 +1,11 @@
 import { expect } from "chai";
 import * as glob from "glob";
-
-import * as cli from "./cli";
-import { requireAuth } from "../../src/requireAuth";
-import { getBuildId } from "../../src/frameworks/next/utils";
 import { relative } from "path";
+import { readFile } from "fs/promises";
+
+import { getBuildId } from "../../src/frameworks/next/utils";
 
 const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "";
-const FIREBASE_DEBUG = process.env.FIREBASE_DEBUG || "";
-
-function genRandomId(n = 10): string {
-  const charset = "abcdefghijklmnopqrstuvwxyz";
-  let id = "";
-  for (let i = 0; i < n; i++) {
-    id += charset.charAt(Math.floor(Math.random() * charset.length));
-  }
-  return id;
-}
 
 async function getFilesListFromDir(dir: string): Promise<string[]> {
   const files = await new Promise<string[]>((resolve, reject) => {
@@ -29,44 +18,27 @@ async function getFilesListFromDir(dir: string): Promise<string[]> {
 }
 
 describe("webframeworks deploy build", function (this) {
-  this.timeout(1000_000);
+  this.timeout(10_000);
 
-  let result: cli.Result;
-
-  const RUN_ID = genRandomId();
-  console.log(`TEST RUN: ${RUN_ID}`);
-
-  async function setOptsAndBuild(): Promise<cli.Result> {
-    const args = ["exit 0"];
-    if (FIREBASE_DEBUG) {
-      args.push("--debug");
-    }
-
-    return await cli.exec("emulators:exec", FIREBASE_PROJECT, args, __dirname, false);
-  }
-
-  before(async () => {
+  before(() => {
     expect(FIREBASE_PROJECT).to.not.be.empty;
-
-    await requireAuth({});
-    process.env.FIREBASE_CLI_EXPERIMENTS = "webframeworks";
-    result = await setOptsAndBuild();
   });
 
   after(() => {
     // This is not an empty block.
   });
 
-  it("should log reasons for backend", () => {
+  it("should log reasons for backend", async () => {
     process.env.FIREBASE_CLI_EXPERIMENTS = "webframeworks";
+    const result = (await readFile("firebase-emulators.log")).toString();
 
-    expect(result.stdout, "build result").to.match(
+    expect(result, "build result").to.match(
       /Building a Cloud Function to run this application. This is needed due to:/
     );
-    expect(result.stdout, "build result").to.match(/middleware/);
-    expect(result.stdout, "build result").to.match(/Image Optimization/);
-    expect(result.stdout, "build result").to.match(/use of revalidate \/bar/);
-    expect(result.stdout, "build result").to.match(/non-static route \/api\/hello/);
+    expect(result, "build result").to.match(/middleware/);
+    expect(result, "build result").to.match(/Image Optimization/);
+    expect(result, "build result").to.match(/use of revalidate \/bar/);
+    expect(result, "build result").to.match(/non-static route \/api\/hello/);
   });
 
   it("should have the expected static files to be deployed", async () => {
