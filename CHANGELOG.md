@@ -1,0 +1,1 @@
+- Fix framework detection limitation for NextJs applications that aren't co-located with their package.json (monorepo)
