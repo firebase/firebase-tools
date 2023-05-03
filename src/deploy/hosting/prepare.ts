@@ -2,13 +2,14 @@ import { FirebaseError } from "../../error";
 import * as api from "../../hosting/api";
 import * as config from "../../hosting/config";
 import * as deploymentTool from "../../deploymentTool";
+import * as clc from "colorette";
 import { Context } from "./context";
 import { Options } from "../../options";
 import { HostingOptions } from "../../hosting/options";
 import { assertExhaustive, zipIn } from "../../functional";
 import { track } from "../../track";
 import * as utils from "../../utils";
-import { HostingSource } from "../../firebaseConfig";
+import { HostingSource, RunRewrite } from "../../firebaseConfig";
 import * as backend from "../functions/backend";
 import { ensureTargeted } from "../../functions/ensureTargeted";
 
@@ -60,8 +61,9 @@ export async function addPinnedFunctionsToOnlyString(
   // a scalar to an array now
   handlePublicDirectoryFlag(options);
 
-  let addedFunctions = false;
+  const addedFunctions: string[] = [];
   for (const c of config.hostingConfig(options)) {
+    const addedFunctionsPerSite: string[] = [];
     for (const r of c.rewrites || []) {
       if (!("function" in r) || typeof r.function !== "object" || !r.function.pinTag) {
         continue;
@@ -76,10 +78,19 @@ export async function addPinnedFunctionsToOnlyString(
         // This endpoint is just being added in this push. We don't know what codebase it is.
         options.only = ensureTargeted(options.only, r.function.functionId);
       }
-      addedFunctions = true;
+      addedFunctionsPerSite.push(r.function.functionId);
+    }
+    if (addedFunctionsPerSite.length) {
+      utils.logLabeledBullet(
+        "hosting",
+        "The following function(s) are pinned to site " +
+          `${clc.bold(c.site)} and will be deployed as well: ` +
+          addedFunctionsPerSite.map(clc.bold).join(",")
+      );
+      addedFunctions.push(...addedFunctionsPerSite);
     }
   }
-  return addedFunctions;
+  return addedFunctions.length !== 0;
 }
 
 /**
@@ -103,9 +114,23 @@ export async function prepare(context: Context, options: HostingOptions & Option
       }
       const unsafe = await unsafePins(context, config);
       if (unsafe.length) {
-        const msg = `Cannot deploy site ${config.site} to channel ${context.hostingChannel} because it would modify one or more rewrites in "live" that are not pinned, breaking production. Please pin "live" before pinning other channels.`;
+        const msg =
+          `Cannot deploy site ${clc.bold(config.site)} to channel ` +
+          `${clc.bold(context.hostingChannel!)} because it would modify one or ` +
+          `more rewrites in "live" that are not pinned, breaking production. ` +
+          `Please pin "live" before pinning other channels.`;
         utils.logLabeledError("Hosting", msg);
         throw new Error(msg);
+      }
+      const runPins = config.rewrites
+        ?.filter((r) => "run" in r && r.run.pinTag)
+        ?.map((r) => (r as RunRewrite).run.serviceId);
+      if (runPins?.length) {
+        utils.logLabeledBullet(
+          "hosting",
+          `The site ${clc.bold(config.site)} will pin rewrites to the current ` +
+            `latest revision of service(s) ${runPins.map(clc.bold).join(",")}`
+        );
       }
       const version: Omit<api.Version, api.VERSION_OUTPUT_FIELDS> = {
         status: "CREATED",
