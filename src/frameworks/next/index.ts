@@ -4,7 +4,6 @@ import { mkdir, copyFile } from "fs/promises";
 import { basename, dirname, join } from "path";
 import type { NextConfig } from "next";
 import type { PrerenderManifest } from "next/dist/build";
-import type { MiddlewareManifest } from "next/dist/build/webpack/plugins/middleware-plugin";
 import type { PagesManifest } from "next/dist/build/webpack/plugins/pages-manifest-plugin";
 import { copy, mkdirp, pathExists, pathExistsSync } from "fs-extra";
 import { pathToFileURL, parse } from "url";
@@ -18,9 +17,19 @@ import { pick } from "stream-json/filters/Pick";
 import { streamObject } from "stream-json/streamers/StreamObject";
 import { fileExistsSync, dirExistsSync } from "../../fsutils";
 
-import { BuildResult, FrameworkType, SupportLevel } from "../interfaces";
 import { promptOnce } from "../../prompt";
 import { FirebaseError } from "../../error";
+import { NODE_VERSION, NPM_COMMAND_TIMEOUT_MILLIES } from "../constants";
+import type { EmulatorInfo } from "../../emulator/types";
+import {
+  readJSON,
+  simpleProxy,
+  warnIfCustomBuildScript,
+  relativeRequire,
+  findDependency,
+} from "../utils";
+import { BuildResult, FrameworkType, SupportLevel } from "../interfaces";
+
 import {
   cleanEscapedChars,
   getNextjsRewritesToUse,
@@ -30,27 +39,22 @@ import {
   isUsingImageOptimization,
   isUsingMiddleware,
   allDependencyNames,
+  getMiddlewareMatcherRegexes,
   getNonStaticRoutes,
   getNonStaticServerComponents,
   getHeadersFromMetaFiles,
+  usesAppDirRouter,
+  usesNextImage,
+  hasUnoptimizedImage,
 } from "./utils";
-import { NODE_VERSION, NPM_COMMAND_TIMEOUT_MILLIES } from "../constants";
 import type {
   AppPathRoutesManifest,
   AppPathsManifest,
   HostingHeadersWithSource,
   Manifest,
   NpmLsDepdendency,
+  MiddlewareManifest,
 } from "./interfaces";
-import {
-  readJSON,
-  simpleProxy,
-  warnIfCustomBuildScript,
-  relativeRequire,
-  findDependency,
-} from "../utils";
-import type { EmulatorInfo } from "../../emulator/types";
-import { usesAppDirRouter, usesNextImage, hasUnoptimizedImage } from "./utils";
 import {
   MIDDLEWARE_MANIFEST,
   PAGES_MANIFEST,
@@ -325,10 +329,7 @@ export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: strin
 
   const appPathRoutesEntries = Object.entries(appPathRoutesManifest);
 
-  const middlewareMatcherRegexes = Object.values(middlewareManifest.middleware)
-    .map((it) => it.matchers)
-    .flat()
-    .map((it) => new RegExp(it.regexp));
+  const middlewareMatcherRegexes = getMiddlewareMatcherRegexes(middlewareManifest);
 
   const { redirects = [], rewrites = [], headers = [] } = routesManifest;
 

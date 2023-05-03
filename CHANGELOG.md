@@ -10,3 +10,4 @@
 - Fixes bug where the functions emulator would attempt to call to prod for 'demo-' projects (#5170)
 - Address issues starting the Firebase Hosting emulator with some versions of Next.js (#5781)
 - Updates firebase init function templates for TypeScript and Javascript to 2nd gen (#5775)
+- Fix regex page matcher for Next.js middlewares version 1 (#5496)
