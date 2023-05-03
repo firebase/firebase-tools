@@ -53,7 +53,6 @@ import { requiresJava } from "./downloadableEmulators";
 import { prepareFrameworks } from "../frameworks";
 import * as experiments from "../experiments";
 import { EmulatorListenConfig, PortName, resolveHostAndAssignPorts } from "./portUtils";
-import { addPinnedFunctionsToOnlyString, hasPinnedFunctions } from "../deploy/hosting/prepare";
 
 const START_LOGGING_EMULATOR = utils.envOverride(
   "START_LOGGING_EMULATOR",
@@ -465,14 +464,6 @@ export async function startAll(
     }
     // This may add additional sources for Functions emulator and must be done before it.
     await prepareFrameworks(targets, options, options, emulators);
-  }
-
-  if (targets.includes(Emulators.HOSTING) && hasPinnedFunctions(options)) {
-    experiments.assertEnabled("pintags", "deploy a tagged function as a hosting rewrite");
-    if (!targets.includes(Emulators.FUNCTIONS)) {
-      targets.unshift(Emulators.FUNCTIONS);
-    }
-    await addPinnedFunctionsToOnlyString(options as any, options);
   }
 
   const projectDir = (options.extDevDir || options.config.projectDir) as string;
