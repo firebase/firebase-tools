@@ -7,8 +7,8 @@ import fetch from "node-fetch";
 import { getBuildId } from "../../src/frameworks/next/utils";
 
 const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "";
-const HOST = "http://127.0.0.1:5002";
 const DOT_FIREBASE_FOLDER_PATH = `${__dirname}/.firebase/${FIREBASE_PROJECT}`;
+const FIREBASE_EMULATOR_HUB = process.env.FIREBASE_EMULATOR_HUB;
 
 async function getFilesListFromDir(dir: string): Promise<string[]> {
   const files = await new Promise<string[]>((resolve, reject) => {
@@ -22,9 +22,14 @@ async function getFilesListFromDir(dir: string): Promise<string[]> {
 
 describe("webframeworks deploy build", function (this) {
   this.timeout(10_000);
+  let HOST: string;
 
-  before(() => {
+  before(async () => {
     expect(FIREBASE_PROJECT, "$FIREBASE_PROJECT").to.not.be.empty;
+    expect(FIREBASE_EMULATOR_HUB, "$FIREBASE_EMULATOR_HUB").to.not.be.empty;
+    const hubResponse = await fetch(`http://${FIREBASE_EMULATOR_HUB}/emulators`);
+    const { hosting: { port, host } } = await hubResponse.json();
+    HOST = `http://${host}:${port}`;
   });
 
   after(() => {
