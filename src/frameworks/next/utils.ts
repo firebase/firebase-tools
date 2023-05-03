@@ -1,7 +1,6 @@
 import { existsSync } from "fs";
 import { pathExists } from "fs-extra";
 import { basename, extname, join } from "path";
-import type { Header, Redirect, Rewrite } from "next/dist/lib/load-custom-routes";
 import type { MiddlewareManifest } from "next/dist/build/webpack/plugins/middleware-plugin";
 import type { PagesManifest } from "next/dist/build/webpack/plugins/pages-manifest-plugin";
 
@@ -29,7 +28,6 @@ import { readFile } from "fs/promises";
 
 export const I18N_CUSTOM_ROUTE_PREFIX = ":nextInternalLocale";
 
-
 /**
  * Remove escaping from characters used for Regex patch matching that Next.js
  * requires. As Firebase Hosting does not require escaping for those charachters,
@@ -55,17 +53,13 @@ export function cleanCustomRouteI18n(path: string): string {
   return path.replace(new RegExp(String.raw`^/${I18N_CUSTOM_ROUTE_PREFIX}(\(([^)]+)\))?`), "");
 }
 
-
-// TODO fix types
-export function cleanI18n<T=any>(it: T): T {
-  // @ts-ignore
+export function cleanI18n<T = any>(it: any): T {
   const sourceContainsI18n = it.source.startsWith(`/${I18N_CUSTOM_ROUTE_PREFIX}`);
   return {
     ...it,
-    // @ts-ignore
     source: sourceContainsI18n ? cleanCustomRouteI18n(it.source) : it.source,
-    // @ts-ignore
-    destination: it.destination && sourceContainsI18n ? cleanCustomRouteI18n(it.destination) : it.destination,
+    destination:
+      it.destination && sourceContainsI18n ? cleanCustomRouteI18n(it.destination) : it.destination,
   };
 }
 
@@ -82,7 +76,12 @@ export function cleanI18n<T=any>(it: T): T {
  * - Rewrites to external URLs or URLs using parameters
  */
 export function isRewriteSupportedByHosting(rewrite: RoutesManifestRewrite): boolean {
-  return !("has" in rewrite || "missing" in rewrite || isUrl(rewrite.destination) || rewrite.destination.includes("?"));
+  return !(
+    "has" in rewrite ||
+    "missing" in rewrite ||
+    isUrl(rewrite.destination) ||
+    rewrite.destination.includes("?")
+  );
 }
 
 /**

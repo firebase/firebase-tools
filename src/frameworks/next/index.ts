@@ -17,7 +17,7 @@ import { chain } from "stream-chain";
 import { parser } from "stream-json";
 import { pick } from "stream-json/filters/Pick";
 import { streamObject } from "stream-json/streamers/StreamObject";
-import { fileExistsSync, dirExistsSync } from "../../fsutils";
+import { fileExistsSync } from "../../fsutils";
 
 import { BuildResult, FrameworkType, SupportLevel } from "../interfaces";
 import { promptOnce } from "../../prompt";
@@ -394,8 +394,6 @@ export async function ɵcodegenPublicDirectory(
     ...pagesManifestLikePrerender,
   };
 
-
-  
   await Promise.all(
     Object.entries(routesToCopy).map(async ([path, route]) => {
       if (
@@ -419,7 +417,10 @@ export async function ɵcodegenPublicDirectory(
       if (
         matchingI18nDomain &&
         locale &&
-        !(matchingI18nDomain.defaultLocale === locale || matchingI18nDomain.locales?.includes(locale))
+        !(
+          matchingI18nDomain.defaultLocale === locale ||
+          matchingI18nDomain.locales?.includes(locale)
+        )
       ) {
         // This content doesn't belong on this domain
         return;
@@ -432,7 +433,11 @@ export async function ɵcodegenPublicDirectory(
         sourcePath += ".html";
         localizedDestPath += ".html";
         if (defaultDestPath) defaultDestPath += ".html";
-      } else if (appPathRoute && basename(appPathRoute) === "route" && fileExistsSync(`${sourcePath}.body`)) {
+      } else if (
+        appPathRoute &&
+        basename(appPathRoute) === "route" &&
+        fileExistsSync(`${sourcePath}.body`)
+      ) {
         sourcePath += ".body";
       } else if (!pathExistsSync(sourcePath)) {
         console.error(`Cannot find ${path} in your compiled Next.js application.`);
@@ -571,10 +576,9 @@ export async function getDevModeHandle(dir: string, hostingEmulatorInfo?: Emulat
   });
 }
 
-async function getConfig(dir: string): Promise<
-  Partial<NextConfig> &
-  { distDir: string, trailingSlash: boolean, basePath: string }
-> {
+async function getConfig(
+  dir: string
+): Promise<Partial<NextConfig> & { distDir: string; trailingSlash: boolean; basePath: string }> {
   let config: NextConfig = {};
   if (existsSync(join(dir, "next.config.js"))) {
     const version = getNextVersion(dir);

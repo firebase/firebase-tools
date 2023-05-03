@@ -43,10 +43,14 @@ export interface Framework {
     dir: string,
     hostingEmulatorInfo?: EmulatorInfo
   ) => Promise<(req: IncomingMessage, res: ServerResponse, next: () => void) => void>;
-  ɵcodegenPublicDirectory: (dir: string, dest: string, context: {
-    project: string,
-    site: string,
-  }) => Promise<void>;
+  ɵcodegenPublicDirectory: (
+    dir: string,
+    dest: string,
+    context: {
+      project: string;
+      site: string;
+    }
+  ) => Promise<void>;
   ɵcodegenFunctionsDirectory?: (
     dir: string,
     dest: string
