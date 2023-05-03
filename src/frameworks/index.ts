@@ -301,7 +301,11 @@ export async function prepareFrameworks(
       // This is just a fallback for previous behavior if the user manually
       // disables the pintags experiment (e.g. there is a break and they would
       // rather disable the experiment than roll back).
-      if (!experiments.isEnabled("pintags")) {
+      if (
+        !experiments.isEnabled("pintags") ||
+        context._name === "serve" ||
+        context._name.startsWith("emulators:")
+      ) {
         if (!targetNames.includes("functions")) {
           targetNames.unshift("functions");
         }

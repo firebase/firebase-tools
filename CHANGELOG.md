@@ -8,3 +8,4 @@
 - Improvements for developers using Next 13's app directory (#5691)
 - Resolve timeouts when bundling Next.js applications for Cloud Functions (#5691)
 - Fixes bug where the functions emulator would attempt to call to prod for 'demo-' projects (#5170)
+- Address issues starting the Firebase Hosting emulator with some versions of Next.js (#5781)
