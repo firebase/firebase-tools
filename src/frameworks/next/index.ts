@@ -505,7 +505,8 @@ export async function getDevModeHandle(dir: string, hostingEmulatorInfo?: Emulat
     }
   }
 
-  const { default: next } = relativeRequire(dir, "next");
+  let next = relativeRequire(dir, "next");
+  if ("default" in next) next = next.default;
   const nextApp = next({
     dev: true,
     dir,

@@ -5,6 +5,7 @@ import { trackEmulator } from "../track";
 import { getProjectId } from "../projectUtils";
 import { Constants } from "../emulator/constants";
 import * as config from "../hosting/config";
+import { addPinnedFunctionsToOnlyString, hasPinnedFunctions } from "../deploy/hosting/prepare";
 
 const { FunctionsServer } = require("./functions");
 
@@ -25,6 +26,13 @@ export async function serve(options: any): Promise<void> {
   if (targetNames.includes("hosting") && config.extract(options).some((it: any) => it.source)) {
     experiments.assertEnabled("webframeworks", "emulate a web framework");
     await prepareFrameworks(targetNames, options, options);
+  }
+  if (targetNames.includes("hosting") && hasPinnedFunctions(options)) {
+    experiments.assertEnabled("pintags", "deploy a tagged function as a hosting rewrite");
+    if (!targetNames.includes("functions")) {
+      targetNames.unshift("functions");
+    }
+    await addPinnedFunctionsToOnlyString(options, options);
   }
   const isDemoProject = Constants.isDemoProject(getProjectId(options) || "");
   targetNames.forEach((targetName) => {

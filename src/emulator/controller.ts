@@ -53,6 +53,7 @@ import { requiresJava } from "./downloadableEmulators";
 import { prepareFrameworks } from "../frameworks";
 import * as experiments from "../experiments";
 import { EmulatorListenConfig, PortName, resolveHostAndAssignPorts } from "./portUtils";
+import { addPinnedFunctionsToOnlyString, hasPinnedFunctions } from "../deploy/hosting/prepare";
 
 const START_LOGGING_EMULATOR = utils.envOverride(
   "START_LOGGING_EMULATOR",
@@ -451,21 +452,27 @@ export async function startAll(
   ) {
     experiments.assertEnabled("webframeworks", "emulate a web framework");
     const emulators: EmulatorInfo[] = [];
-    if (experiments.isEnabled("webframeworks")) {
-      for (const e of ALL_SERVICE_EMULATORS) {
-        // TODO(yuchenshi): Functions and Eventarc may be missing if they are not
-        // yet known to be needed and then prepareFrameworks adds extra functions.
-        if (listenForEmulator[e]) {
-          emulators.push({
-            name: e,
-            host: utils.connectableHostname(listenForEmulator[e][0].address),
-            port: listenForEmulator[e][0].port,
-          });
-        }
+    for (const e of ALL_SERVICE_EMULATORS) {
+      // TODO(yuchenshi): Functions and Eventarc may be missing if they are not
+      // yet known to be needed and then prepareFrameworks adds extra functions.
+      if (listenForEmulator[e]) {
+        emulators.push({
+          name: e,
+          host: utils.connectableHostname(listenForEmulator[e][0].address),
+          port: listenForEmulator[e][0].port,
+        });
       }
     }
     // This may add additional sources for Functions emulator and must be done before it.
     await prepareFrameworks(targets, options, options, emulators);
+  }
+
+  if (targets.includes(Emulators.HOSTING) && hasPinnedFunctions(options)) {
+    experiments.assertEnabled("pintags", "deploy a tagged function as a hosting rewrite");
+    if (!targets.includes(Emulators.FUNCTIONS)) {
+      targets.unshift(Emulators.FUNCTIONS);
+    }
+    await addPinnedFunctionsToOnlyString(options as any, options);
   }
 
   const projectDir = (options.extDevDir || options.config.projectDir) as string;
