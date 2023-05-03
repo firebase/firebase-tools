@@ -3,12 +3,14 @@ import * as glob from "glob";
 import { relative } from "path";
 import { readFileSync } from "fs";
 import fetch from "node-fetch";
+import type { NextConfig } from "next";
 
 import { getBuildId } from "../../src/frameworks/next/utils";
 
 const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "";
 const DOT_FIREBASE_FOLDER_PATH = `${__dirname}/.firebase/${FIREBASE_PROJECT}`;
 const FIREBASE_EMULATOR_HUB = process.env.FIREBASE_EMULATOR_HUB;
+const BASE_PATH: NextConfig["basePath"] = "base";
 
 async function getFilesListFromDir(dir: string): Promise<string[]> {
   const files = await new Promise<string[]>((resolve, reject) => {
@@ -31,7 +33,7 @@ describe("webframeworks deploy build", function (this) {
     const {
       hosting: { port, host },
     } = await hubResponse.json();
-    HOST = `http://${host}:${port}`;
+    HOST = `http://${host}:${port}/${BASE_PATH}`;
   });
 
   after(() => {
@@ -41,38 +43,38 @@ describe("webframeworks deploy build", function (this) {
   describe("app directory", () => {
     it("should have working SSG", async () => {
       const apiStaticJSON = JSON.parse(
-        readFileSync(`${DOT_FIREBASE_FOLDER_PATH}/hosting/base/app/api/static`).toString()
+        readFileSync(`${DOT_FIREBASE_FOLDER_PATH}/hosting/${BASE_PATH}/app/api/static`).toString()
       );
 
-      const apiStaticResponse = await fetch(`${HOST}/base/app/api/static`);
+      const apiStaticResponse = await fetch(`${HOST}/app/api/static`);
       expect(apiStaticResponse.ok).to.be.true;
       expect(apiStaticResponse.headers.get("content-type")).to.eql("application/json");
       expect(apiStaticResponse.headers.get("custom-header")).to.eql("custom-value");
       expect(await apiStaticResponse.json()).to.eql(apiStaticJSON);
 
-      const fooResponse = await fetch(`${HOST}/base/app/ssg`);
+      const fooResponse = await fetch(`${HOST}/app/ssg`);
       expect(fooResponse.ok).to.be.true;
       const fooResponseText = await fooResponse.text();
 
       const fooHtml = readFileSync(
-        `${DOT_FIREBASE_FOLDER_PATH}/hosting/base/app/ssg.html`
+        `${DOT_FIREBASE_FOLDER_PATH}/hosting/${BASE_PATH}/app/ssg.html`
       ).toString();
       expect(fooHtml).to.eql(fooResponseText);
     });
 
     it("should have working ISR", async () => {
-      const response = await fetch(`${HOST}/base/app/isr`);
+      const response = await fetch(`${HOST}/app/isr`);
       expect(response.ok).to.be.true;
       expect(response.headers.get("cache-control")).to.eql("private");
       expect(await response.text()).to.include("<body>ISR<!-- -->");
     });
 
     it("should have working SSR", async () => {
-      const bazResponse = await fetch(`${HOST}/base/app/ssr`);
+      const bazResponse = await fetch(`${HOST}/app/ssr`);
       expect(bazResponse.ok).to.be.true;
       expect(await bazResponse.text()).to.include("<body>SSR<!-- -->");
 
-      const apiDynamicResponse = await fetch(`${HOST}/base/app/api/dynamic`);
+      const apiDynamicResponse = await fetch(`${HOST}/app/api/dynamic`);
       expect(apiDynamicResponse.ok).to.be.true;
       expect(apiDynamicResponse.headers.get("cache-control")).to.eql("private");
       expect(await apiDynamicResponse.json()).to.eql([1, 2, 3]);
@@ -81,7 +83,7 @@ describe("webframeworks deploy build", function (this) {
 
   describe("pages directory", () => {
     it("should have working SSR", async () => {
-      const response = await fetch(`${HOST}/base/api/hello`);
+      const response = await fetch(`${HOST}/api/hello`);
       expect(response.ok).to.be.true;
       expect(await response.json()).to.eql({ name: "John Doe" });
     });
@@ -109,71 +111,71 @@ describe("webframeworks deploy build", function (this) {
     const buildId = await getBuildId(`${__dirname}/hosting/.next`);
 
     const EXPECTED_FILES = [
-      `base`,
-      `base/_next`,
-      `base/_next/data`,
-      `base/_next/data/${buildId}`,
-      `base/_next/data/${buildId}/en-US`,
-      `base/_next/data/${buildId}/en-US/pages`,
-      `base/_next/data/${buildId}/en-US/pages/fallback`,
-      `base/_next/data/${buildId}/en-US/pages/fallback/1.json`,
-      `base/_next/data/${buildId}/en-US/pages/fallback/2.json`,
-      `base/_next/data/${buildId}/pages`,
-      `base/_next/data/${buildId}/pages/ssg.json`,
-      `base/_next/static`,
-      `base/_next/static/chunks`,
-      `base/_next/static/chunks/app`,
-      `base/_next/static/chunks/app/app`,
-      `base/_next/static/chunks/app/app/isr`,
-      `base/_next/static/chunks/app/app/ssg`,
-      `base/_next/static/chunks/app/app/ssr`,
-      `base/_next/static/chunks/pages`,
-      `base/_next/static/chunks/pages/pages`,
-      `base/_next/static/chunks/pages/pages/fallback`,
-      `base/_next/static/css`,
-      `base/_next/static/${buildId}`,
-      `base/_next/static/${buildId}/_buildManifest.js`,
-      `base/_next/static/${buildId}/_ssgManifest.js`,
-      `base/app`,
-      `base/app/api`,
-      `base/app/api/static`,
-      `base/app/ssg.html`,
-      `base/pages`,
-      `base/pages/fallback`,
-      `base/pages/fallback/1.html`,
-      `base/pages/fallback/2.html`,
-      `base/pages/ssg.html`,
-      `base/404.html`,
-      `base/500.html`,
-      `base/index.html`,
-      `base/en-US`,
-      `base/en-US/pages`,
-      `base/en-US/pages/fallback`,
-      `base/en-US/pages/fallback/1.html`,
-      `base/en-US/pages/fallback/2.html`,
-      `base/en-US/pages/ssg.html`,
-      `base/en-US/404.html`,
-      `base/en-US/500.html`,
-      `base/en-US/index.html`,
-      `base/fr`,
-      `base/fr/pages`,
-      `base/fr/pages/ssg.html`,
-      `base/fr/404.html`,
-      `base/fr/500.html`,
-      `base/fr/index.html`,
+      `${BASE_PATH}`,
+      `${BASE_PATH}/_next`,
+      `${BASE_PATH}/_next/data`,
+      `${BASE_PATH}/_next/data/${buildId}`,
+      `${BASE_PATH}/_next/data/${buildId}/en-US`,
+      `${BASE_PATH}/_next/data/${buildId}/en-US/pages`,
+      `${BASE_PATH}/_next/data/${buildId}/en-US/pages/fallback`,
+      `${BASE_PATH}/_next/data/${buildId}/en-US/pages/fallback/1.json`,
+      `${BASE_PATH}/_next/data/${buildId}/en-US/pages/fallback/2.json`,
+      `${BASE_PATH}/_next/data/${buildId}/pages`,
+      `${BASE_PATH}/_next/data/${buildId}/pages/ssg.json`,
+      `${BASE_PATH}/_next/static`,
+      `${BASE_PATH}/_next/static/chunks`,
+      `${BASE_PATH}/_next/static/chunks/app`,
+      `${BASE_PATH}/_next/static/chunks/app/app`,
+      `${BASE_PATH}/_next/static/chunks/app/app/isr`,
+      `${BASE_PATH}/_next/static/chunks/app/app/ssg`,
+      `${BASE_PATH}/_next/static/chunks/app/app/ssr`,
+      `${BASE_PATH}/_next/static/chunks/pages`,
+      `${BASE_PATH}/_next/static/chunks/pages/pages`,
+      `${BASE_PATH}/_next/static/chunks/pages/pages/fallback`,
+      `${BASE_PATH}/_next/static/css`,
+      `${BASE_PATH}/_next/static/${buildId}`,
+      `${BASE_PATH}/_next/static/${buildId}/_buildManifest.js`,
+      `${BASE_PATH}/_next/static/${buildId}/_ssgManifest.js`,
+      `${BASE_PATH}/app`,
+      `${BASE_PATH}/app/api`,
+      `${BASE_PATH}/app/api/static`,
+      `${BASE_PATH}/app/ssg.html`,
+      `${BASE_PATH}/pages`,
+      `${BASE_PATH}/pages/fallback`,
+      `${BASE_PATH}/pages/fallback/1.html`,
+      `${BASE_PATH}/pages/fallback/2.html`,
+      `${BASE_PATH}/pages/ssg.html`,
+      `${BASE_PATH}/404.html`,
+      `${BASE_PATH}/500.html`,
+      `${BASE_PATH}/index.html`,
+      `${BASE_PATH}/en-US`,
+      `${BASE_PATH}/en-US/pages`,
+      `${BASE_PATH}/en-US/pages/fallback`,
+      `${BASE_PATH}/en-US/pages/fallback/1.html`,
+      `${BASE_PATH}/en-US/pages/fallback/2.html`,
+      `${BASE_PATH}/en-US/pages/ssg.html`,
+      `${BASE_PATH}/en-US/404.html`,
+      `${BASE_PATH}/en-US/500.html`,
+      `${BASE_PATH}/en-US/index.html`,
+      `${BASE_PATH}/fr`,
+      `${BASE_PATH}/fr/pages`,
+      `${BASE_PATH}/fr/pages/ssg.html`,
+      `${BASE_PATH}/fr/404.html`,
+      `${BASE_PATH}/fr/500.html`,
+      `${BASE_PATH}/fr/index.html`,
     ];
 
     const EXPECTED_PATTERNS = [
-      `base\/_next\/static\/chunks\/[^-]+-[^\.]+\.js`,
-      `base\/_next\/static\/chunks\/app\/layout-[^\.]+\.js`,
-      `base\/_next\/static\/chunks\/main-[^\.]+\.js`,
-      `base\/_next\/static\/chunks\/main-app-[^\.]+\.js`,
-      `base\/_next\/static\/chunks\/pages\/_app-[^\.]+\.js`,
-      `base\/_next\/static\/chunks\/pages\/_error-[^\.]+\.js`,
-      `base\/_next\/static\/chunks\/pages\/index-[^\.]+\.js`,
-      `base\/_next\/static\/chunks\/polyfills-[^\.]+\.js`,
-      `base\/_next\/static\/chunks\/webpack-[^\.]+\.js`,
-      `base\/_next\/static\/css\/[^\.]+\.css`,
+      `${BASE_PATH}\/_next\/static\/chunks\/[^-]+-[^\.]+\.js`,
+      `${BASE_PATH}\/_next\/static\/chunks\/app\/layout-[^\.]+\.js`,
+      `${BASE_PATH}\/_next\/static\/chunks\/main-[^\.]+\.js`,
+      `${BASE_PATH}\/_next\/static\/chunks\/main-app-[^\.]+\.js`,
+      `${BASE_PATH}\/_next\/static\/chunks\/pages\/_app-[^\.]+\.js`,
+      `${BASE_PATH}\/_next\/static\/chunks\/pages\/_error-[^\.]+\.js`,
+      `${BASE_PATH}\/_next\/static\/chunks\/pages\/index-[^\.]+\.js`,
+      `${BASE_PATH}\/_next\/static\/chunks\/polyfills-[^\.]+\.js`,
+      `${BASE_PATH}\/_next\/static\/chunks\/webpack-[^\.]+\.js`,
+      `${BASE_PATH}\/_next\/static\/css\/[^\.]+\.css`,
     ].map((it) => new RegExp(it));
 
     const files = await getFilesListFromDir(`${DOT_FIREBASE_FOLDER_PATH}/hosting`);
