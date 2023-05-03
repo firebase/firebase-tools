@@ -1,5 +1,6 @@
 import type { RouteHas } from "next/dist/lib/load-custom-routes";
 import type { ImageConfigComplete } from "next/dist/shared/lib/image-config";
+import type { HostingHeaders } from "../../firebaseConfig";
 
 export interface RoutesManifestRewriteObject {
   beforeFiles?: RoutesManifestRewrite[];
@@ -101,4 +102,17 @@ export interface NpmLsReturn {
   dependencies: {
     [key: string]: NpmLsDepdendency;
   };
+}
+
+export interface AppPathsManifest {
+  [key: string]: string;
+}
+
+export interface AppPathRoutesManifest {
+  [key: string]: string;
+}
+
+export interface HostingHeadersWithSource {
+  source: string;
+  headers: HostingHeaders["headers"];
 }

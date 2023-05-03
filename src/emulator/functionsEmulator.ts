@@ -9,7 +9,7 @@ import * as semver from "semver";
 import { URL } from "url";
 import { EventEmitter } from "events";
 
-import { Account } from "../auth";
+import { Account } from "../types/auth";
 import { logger } from "../logger";
 import { track, trackEmulator } from "../track";
 import { Constants } from "./constants";
@@ -212,6 +212,8 @@ export class FunctionsEmulator implements EmulatorInstance {
 
   private blockingFunctionsConfig: BlockingFunctionsConfig = {};
 
+  debugMode = false;
+
   constructor(private args: FunctionsEmulatorArgs) {
     // TODO: Would prefer not to have static state but here we are!
     EmulatorLogger.verbosity = this.args.quiet ? Verbosity.QUIET : Verbosity.DEBUG;
@@ -220,13 +222,12 @@ export class FunctionsEmulator implements EmulatorInstance {
     if (this.args.debugPort) {
       this.args.disabledRuntimeFeatures = this.args.disabledRuntimeFeatures || {};
       this.args.disabledRuntimeFeatures.timeout = true;
+      this.debugMode = true;
     }
 
     this.adminSdkConfig = { ...this.args.adminSdkConfig, projectId: this.args.projectId };
 
-    const mode = this.args.debugPort
-      ? FunctionsExecutionMode.SEQUENTIAL
-      : FunctionsExecutionMode.AUTO;
+    const mode = this.debugMode ? FunctionsExecutionMode.SEQUENTIAL : FunctionsExecutionMode.AUTO;
     this.workerPools = {};
     for (const backend of this.args.emulatableBackends) {
       const pool = new RuntimeWorkerPool(mode);
@@ -373,6 +374,12 @@ export class FunctionsEmulator implements EmulatorInstance {
       }
     }
     const worker = pool.getIdleWorker(trigger.id)!;
+    if (this.debugMode) {
+      await worker.sendDebugMsg({
+        functionTarget: trigger.entryPoint,
+        functionSignature: getSignatureType(trigger),
+      });
+    }
     const reqBody = JSON.stringify(body);
     const headers = {
       "Content-Type": "application/json",
@@ -617,7 +624,8 @@ export class FunctionsEmulator implements EmulatorInstance {
             added = await this.addFirestoreTrigger(
               this.args.projectId,
               key,
-              definition.eventTrigger
+              definition.eventTrigger,
+              signature
             );
             break;
           case Constants.SERVICE_REALTIME_DATABASE:
@@ -689,8 +697,8 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
     // In debug mode, we eagerly start the runtime processes to allow debuggers to attach
     // before invoking a function.
-    if (this.args.debugPort) {
-      if (!emulatableBackend.bin?.startsWith("node")) {
+    if (this.debugMode) {
+      if (!emulatableBackend.runtime?.startsWith("node")) {
         this.logger.log("WARN", "--inspect-functions only supported for Node.js runtimes.");
       } else {
         // Since we're about to start a runtime to be shared by all the functions in this codebase,
@@ -872,26 +880,74 @@ export class FunctionsEmulator implements EmulatorInstance {
     return true;
   }
 
-  async addFirestoreTrigger(
-    projectId: string,
-    key: string,
-    eventTrigger: EventTrigger
-  ): Promise<boolean> {
-    if (!EmulatorRegistry.isRunning(Emulators.FIRESTORE)) {
-      return Promise.resolve(false);
-    }
-
+  private getV1FirestoreAttributes(projectId: string, key: string, eventTrigger: EventTrigger) {
     const bundle = JSON.stringify({
       eventTrigger: {
         ...eventTrigger,
         service: "firestore.googleapis.com",
       },
     });
+    const path = `/emulator/v1/projects/${projectId}/triggers/${key}`;
+    return { bundle, path };
+  }
+
+  private getV2FirestoreAttributes(projectId: string, key: string, eventTrigger: EventTrigger) {
+    logger.debug("Found a v2 firestore trigger.");
+    const database = eventTrigger.eventFilters?.database;
+    if (!database) {
+      throw new FirebaseError("A database must be supplied.");
+    }
+    const namespace = eventTrigger.eventFilters?.namespace;
+    if (!namespace) {
+      throw new FirebaseError("A namespace must be supplied.");
+    }
+    let doc;
+    let match;
+    if (eventTrigger.eventFilters?.document) {
+      doc = eventTrigger.eventFilters?.document;
+      match = "EXACT";
+    }
+    if (eventTrigger.eventFilterPathPatterns?.document) {
+      doc = eventTrigger.eventFilterPathPatterns?.document;
+      match = "PATH_PATTERN";
+    }
+    if (!doc) {
+      throw new FirebaseError("A document must be supplied.");
+    }
+
+    const bundle = JSON.stringify({
+      eventType: eventTrigger.eventType,
+      database,
+      namespace,
+      document: {
+        value: doc,
+        matchType: match,
+      },
+    });
+    const path = `/emulator/v1/projects/${projectId}/eventarcTrigger?eventarcTriggerId=${key}`;
+    return { bundle, path };
+  }
+
+  async addFirestoreTrigger(
+    projectId: string,
+    key: string,
+    eventTrigger: EventTrigger,
+    signature: SignatureType
+  ): Promise<boolean> {
+    if (!EmulatorRegistry.isRunning(Emulators.FIRESTORE)) {
+      return Promise.resolve(false);
+    }
+
+    const { bundle, path } =
+      signature === "cloudevent"
+        ? this.getV2FirestoreAttributes(projectId, key, eventTrigger)
+        : this.getV1FirestoreAttributes(projectId, key, eventTrigger);
+
     logger.debug(`addFirestoreTrigger`, JSON.stringify(bundle));
 
     const client = EmulatorRegistry.client(Emulators.FIRESTORE);
     try {
-      await client.put(`/emulator/v1/projects/${projectId}/triggers/${key}`, bundle);
+      signature === "cloudevent" ? await client.post(path, bundle) : await client.put(path, bundle);
     } catch (err: any) {
       this.logger.log("WARN", "Error adding firestore function: " + err);
       throw err;
@@ -1134,7 +1190,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
     setEnvVarsForEmulators(envs, emulatorInfos);
 
-    if (this.args.debugPort) {
+    if (this.debugMode) {
       // Start runtime in debug mode to allow triggers to share single runtime process.
       envs["FUNCTION_DEBUG_MODE"] = "true";
     }
@@ -1241,7 +1297,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     envs: Record<string, string>
   ): Promise<FunctionsRuntimeInstance> {
     const args = [path.join(__dirname, "functionsEmulatorRuntime")];
-    if (this.args.debugPort) {
+    if (this.debugMode) {
       if (process.env.FIREPIT_VERSION) {
         this.logger.log(
           "WARN",
@@ -1304,7 +1360,7 @@ export class FunctionsEmulator implements EmulatorInstance {
   ): Promise<FunctionsRuntimeInstance> {
     const args = ["functions-framework"];
 
-    if (this.args.debugPort) {
+    if (this.debugMode) {
       this.logger.log("WARN", "--inspect-functions not supported for Python functions. Ignored.");
     }
 
@@ -1458,7 +1514,15 @@ export class FunctionsEmulator implements EmulatorInstance {
     const trigger = record.def;
     logger.debug(`Accepted request ${method} ${req.url} --> ${triggerId}`);
 
-    const reqBody = (req as RequestWithRawBody).rawBody;
+    let reqBody: Buffer | Uint8Array = (req as RequestWithRawBody).rawBody;
+    // When the payload is a protobuf, EventArc converts a base64 encoded string into a byte array before sending the
+    // request to the function. Let's mimic that behavior.
+    if (getSignatureType(trigger) === "cloudevent") {
+      if (req.headers["content-type"]?.includes("application/protobuf")) {
+        reqBody = Uint8Array.from(atob(reqBody.toString()), (c) => c.charCodeAt(0));
+        req.headers["content-length"] = reqBody.length.toString();
+      }
+    }
 
     // For callable functions we want to accept tokens without actually calling verifyIdToken
     const isCallable = trigger.labels && trigger.labels["deployment-callable"] === "true";
@@ -1515,12 +1579,13 @@ export class FunctionsEmulator implements EmulatorInstance {
         return;
       }
     }
-    const debugBundle = this.args.debugPort
-      ? {
-          functionTarget: trigger.entryPoint,
-          functionSignature: getSignatureType(trigger),
-        }
-      : undefined;
+    let debugBundle;
+    if (this.debugMode) {
+      debugBundle = {
+        functionTarget: trigger.entryPoint,
+        functionSignature: getSignatureType(trigger),
+      };
+    }
     await pool.submitRequest(
       trigger.id,
       {
@@ -1528,7 +1593,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         path,
         headers: req.headers,
       },
-      res,
+      res as http.ServerResponse,
       reqBody,
       debugBundle
     );

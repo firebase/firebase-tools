@@ -8,7 +8,7 @@ import { FirebaseError } from "./error";
  */
 export type Question = inquirer.DistinctQuestion;
 
-type QuestionsThatReturnAString<T> =
+type QuestionsThatReturnAString<T extends inquirer.Answers> =
   | inquirer.RawListQuestion<T>
   | inquirer.ExpandQuestion<T>
   | inquirer.InputQuestion<T>
@@ -91,7 +91,32 @@ export async function promptOnce<A extends inquirer.Answers>(
  * @return The value as returned by `inquirer` for that quesiton.
  */
 export async function promptOnce<A>(question: Question, options: Options = {}): Promise<A> {
-  question.name = question.name || "question";
+  // Need to replace any .'s in the question name - otherwise, Inquirer puts the answer
+  // in a nested object like so: `"a.b.c" => {a: {b: {c: "my-answer"}}}`
+  question.name = question.name?.replace(/\./g, "/") || "question";
   await prompt(options, [question]);
   return options[question.name];
+}
+
+/**
+ * Confirm if the user wants to continue
+ */
+export async function confirm(args: {
+  nonInteractive?: boolean;
+  force?: boolean;
+  default?: boolean;
+  message?: string;
+}): Promise<boolean> {
+  if (!args.nonInteractive && !args.force) {
+    const message = args.message ?? `Do you wish to continue?`;
+    return await promptOnce({
+      type: "confirm",
+      message,
+      default: args.default,
+    });
+  } else if (args.nonInteractive && !args.force) {
+    throw new FirebaseError("Pass the --force flag to use this command in non-interactive mode");
+  } else {
+    return true;
+  }
 }

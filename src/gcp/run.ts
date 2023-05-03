@@ -153,6 +153,7 @@ export async function getService(name: string): Promise<Service> {
   } catch (err: any) {
     throw new FirebaseError(`Failed to fetch Run service ${name}`, {
       original: err,
+      status: err?.context?.response?.statusCode,
     });
   }
 }
@@ -220,6 +221,7 @@ export async function replaceService(name: string, service: Service): Promise<Se
   } catch (err: any) {
     throw new FirebaseError(`Failed to replace Run service ${name}`, {
       original: err,
+      status: err?.context?.response?.statusCode,
     });
   }
 }
@@ -249,6 +251,7 @@ export async function setIamPolicy(
   } catch (err: any) {
     throw new FirebaseError(`Failed to set the IAM Policy on the Service ${name}`, {
       original: err,
+      status: err?.context?.response?.statusCode,
     });
   }
 }

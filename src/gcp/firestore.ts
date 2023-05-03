@@ -1,11 +1,48 @@
 import { firestoreOriginOrEmulator } from "../api";
 import { Client } from "../apiv2";
+import { logger } from "../logger";
 
 const apiClient = new Client({
   auth: true,
   apiVersion: "v1",
   urlPrefix: firestoreOriginOrEmulator,
 });
+
+interface Database {
+  name: string;
+  uid: string;
+  createTime: string;
+  updateTime: string;
+  locationId: string;
+  type: "DATABASE_TYPE_UNSPECIFIED" | "FIRESTORE_NATIVE" | "DATASTORE_MODE";
+  concurrencyMode:
+    | "CONCURRENCY_MODE_UNSPECIFIED"
+    | "OPTIMISTIC"
+    | "PESSIMISTIC"
+    | "OPTIMISTIC_WITH_ENTITY_GROUPS";
+  appEngineIntegrationMode: "APP_ENGINE_INTEGRATION_MODE_UNSPECIFIED" | "ENABLED" | "DISABLED";
+  keyPrefix: string;
+  etag: string;
+}
+
+/**
+ * Get a firebase database instance.
+ *
+ * @param {string} project the Google Cloud project
+ * @param {string} database the Firestore database name
+ */
+export async function getDatabase(project: string, database: string): Promise<Database> {
+  const url = `projects/${project}/databases/${database}`;
+  try {
+    const resp = await apiClient.get<Database>(url);
+    return resp.body;
+  } catch (err: unknown) {
+    logger.info(
+      `There was an error retrieving the Firestore database. Currently, the database id is set to ${database}, make sure it exists.`
+    );
+    throw err;
+  }
+}
 
 /**
  * List all collection IDs.

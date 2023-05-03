@@ -8,8 +8,11 @@ import { HostingSingle } from "../../../firebaseConfig";
 import * as api from "../../../hosting/api";
 import { FirebaseError } from "../../../error";
 import { Payload } from "../../../deploy/functions/args";
+import * as runTags from "../../../hosting/runTags";
+import * as experiments from "../../../experiments";
 
-const FUNCTION_ID = "function";
+const FUNCTION_ID = "functionId";
+const SERVICE_ID = "function-id";
 const PROJECT_ID = "project";
 const REGION = "region";
 
@@ -36,10 +39,34 @@ function endpoint(opts?: Partial<backend.Endpoint>): backend.Endpoint {
   ) {
     ret.httpsTrigger = {};
   }
+  if (opts?.platform === "gcfv2") {
+    ret.runServiceId = opts?.id ?? SERVICE_ID;
+  }
   return ret as backend.Endpoint;
 }
 
 describe("convertConfig", () => {
+  let setRewriteTagsStub: sinon.SinonStub;
+
+  let wasPinTagsEnabled: boolean;
+  before(() => {
+    wasPinTagsEnabled = experiments.isEnabled("pintags");
+    experiments.setEnabled("pintags", true);
+  });
+
+  after(() => {
+    experiments.setEnabled("pintags", wasPinTagsEnabled);
+  });
+
+  beforeEach(() => {
+    setRewriteTagsStub = sinon.stub(runTags, "setRewriteTags");
+    setRewriteTagsStub.resolves();
+  });
+
+  afterEach(() => {
+    setRewriteTagsStub.restore();
+  });
+
   const tests: Array<{
     name: string;
     input: HostingSingle;
@@ -178,7 +205,7 @@ describe("convertConfig", () => {
       name: "defaults to a us-central1 rewrite if one is avaiable, v2 edition",
       input: { rewrites: [{ glob: "/foo", function: { functionId: FUNCTION_ID } }] },
       want: {
-        rewrites: [{ glob: "/foo", run: { region: "us-central1", serviceId: FUNCTION_ID } }],
+        rewrites: [{ glob: "/foo", run: { region: "us-central1", serviceId: SERVICE_ID } }],
       },
       functionsPayload: {
         functions: {
@@ -192,6 +219,7 @@ describe("convertConfig", () => {
                 region: "europe-west2",
                 platform: "gcfv2",
                 httpsTrigger: {},
+                runServiceId: SERVICE_ID,
               },
               {
                 id: FUNCTION_ID,
@@ -201,6 +229,7 @@ describe("convertConfig", () => {
                 region: "us-central1",
                 platform: "gcfv2",
                 httpsTrigger: {},
+                runServiceId: SERVICE_ID,
               }
             ),
             haveBackend: backend.empty(),
@@ -236,7 +265,7 @@ describe("convertConfig", () => {
     {
       name: "rewrites referencing CF3v2 functions being deployed are changed to Cloud Run (during release)",
       input: { rewrites: [{ regex: "/foo$", function: { functionId: FUNCTION_ID } }] },
-      want: { rewrites: [{ regex: "/foo$", run: { serviceId: FUNCTION_ID, region: REGION } }] },
+      want: { rewrites: [{ regex: "/foo$", run: { serviceId: SERVICE_ID, region: REGION } }] },
       functionsPayload: {
         functions: {
           default: {
@@ -248,6 +277,7 @@ describe("convertConfig", () => {
               region: REGION,
               platform: "gcfv2",
               httpsTrigger: {},
+              runServiceId: SERVICE_ID,
             }),
             haveBackend: backend.empty(),
           },
@@ -262,7 +292,7 @@ describe("convertConfig", () => {
         ],
       },
       want: {
-        rewrites: [{ regex: "/foo$", run: { serviceId: FUNCTION_ID, region: "us-central1" } }],
+        rewrites: [{ regex: "/foo$", run: { serviceId: SERVICE_ID, region: "us-central1" } }],
       },
       existingBackend: backend.of(endpoint({ platform: "gcfv2", region: "us-central1" })),
     },
@@ -275,7 +305,7 @@ describe("convertConfig", () => {
       },
       existingBackend: backend.of(endpoint({ platform: "gcfv2", region: "us-central1" })),
       want: {
-        rewrites: [{ regex: "/foo$", run: { serviceId: FUNCTION_ID, region: "us-central1" } }],
+        rewrites: [{ regex: "/foo$", run: { serviceId: SERVICE_ID, region: "us-central1" } }],
       },
     },
     {
@@ -399,6 +429,41 @@ describe("convertConfig", () => {
       name: "returns i18n as it is set",
       input: { i18n: { root: "bar" } },
       want: { i18n: { root: "bar" } },
+    },
+    // Tag pinning.
+    {
+      name: "rewrites v2 functions tags",
+      input: { rewrites: [{ glob: "**", function: { functionId: FUNCTION_ID, pinTag: true } }] },
+      want: {
+        rewrites: [
+          {
+            glob: "**",
+            run: { serviceId: SERVICE_ID, region: REGION, tag: runTags.TODO_TAG_NAME },
+          },
+        ],
+      },
+      existingBackend: backend.of({
+        id: FUNCTION_ID,
+        project: PROJECT_ID,
+        entryPoint: FUNCTION_ID,
+        runtime: "nodejs16",
+        region: REGION,
+        platform: "gcfv2",
+        httpsTrigger: {},
+        runServiceId: SERVICE_ID,
+      }),
+    },
+    {
+      name: "rewrites run tags",
+      input: { rewrites: [{ glob: "**", run: { serviceId: SERVICE_ID, pinTag: true } }] },
+      want: {
+        rewrites: [
+          {
+            glob: "**",
+            run: { serviceId: SERVICE_ID, region: "us-central1", tag: runTags.TODO_TAG_NAME },
+          },
+        ],
+      },
     },
   ];
 

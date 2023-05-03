@@ -9,9 +9,9 @@ import { parseTemplateForTable } from "../remoteconfig/get";
 import { Options } from "../options";
 import * as utils from "../utils";
 
-import Table = require("cli-table");
+const Table = require("cli-table");
 import * as fs from "fs";
-import util = require("util");
+import * as util from "util";
 import { FirebaseError } from "../error";
 
 const tableHead = ["Entry Name", "Value"];

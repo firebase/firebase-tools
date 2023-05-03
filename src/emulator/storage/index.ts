@@ -8,7 +8,7 @@ import { EmulatorLogger } from "../emulatorLogger";
 import { createStorageRulesManager, StorageRulesManager } from "./rules/manager";
 import { StorageRulesIssues, StorageRulesRuntime } from "./rules/runtime";
 import { SourceFile } from "./rules/types";
-import express = require("express");
+import * as express from "express";
 import {
   getAdminCredentialValidator,
   getAdminOnlyFirebaseRulesValidator,

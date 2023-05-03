@@ -13,7 +13,6 @@ import {
   assertUnique,
 } from "../../../functions/projectConfig";
 import { FirebaseError } from "../../../error";
-import { isEnabled } from "../../../experiments";
 
 const MAX_ATTEMPTS = 5;
 
@@ -168,12 +167,10 @@ async function languageSetup(setup: any, config: Config): Promise<any> {
       value: "typescript",
     },
   ];
-  if (isEnabled("pythonfunctions")) {
-    choices.push({
-      name: "Python",
-      value: "python",
-    });
-  }
+  choices.push({
+    name: "Python",
+    value: "python",
+  });
   const language = await promptOnce({
     type: "list",
     message: "What language would you like to use to write Cloud Functions?",
@@ -187,6 +184,9 @@ async function languageSetup(setup: any, config: Config): Promise<any> {
       break;
     case "typescript":
       cbconfig.ignore = ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log"];
+      break;
+    case "python":
+      cbconfig.ignore = ["venv", ".git", "firebase-debug.log", "firebase-debug.*.log"];
       break;
   }
   return require("./" + language).setup(setup, config);

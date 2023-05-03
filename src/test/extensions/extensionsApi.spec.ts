@@ -689,10 +689,10 @@ describe("publishExtensionVersion", () => {
       response: TEST_EXT_VERSION_3,
     });
 
-    const res = await extensionsApi.publishExtensionVersion(
-      TEST_EXT_VERSION_3.ref,
-      "www.google.com/test-extension.zip"
-    );
+    const res = await extensionsApi.publishExtensionVersion({
+      extensionVersionRef: TEST_EXT_VERSION_3.ref,
+      packageUri: "www.google.com/test-extension.zip",
+    });
     expect(res).to.deep.equal(TEST_EXT_VERSION_3);
     expect(nock.isDone()).to.be.true;
   });
@@ -703,11 +703,11 @@ describe("publishExtensionVersion", () => {
       .reply(500);
 
     await expect(
-      extensionsApi.publishExtensionVersion(
-        `${PUBLISHER_ID}/${EXTENSION_ID}@${EXTENSION_VERSION}`,
-        "www.google.com/test-extension.zip",
-        "/"
-      )
+      extensionsApi.publishExtensionVersion({
+        extensionVersionRef: `${PUBLISHER_ID}/${EXTENSION_ID}@${EXTENSION_VERSION}`,
+        packageUri: "www.google.com/test-extension.zip",
+        extensionRoot: "/",
+      })
     ).to.be.rejectedWith(FirebaseError, "HTTP Error: 500, Unknown Error");
     expect(nock.isDone()).to.be.true;
   });
@@ -719,22 +719,22 @@ describe("publishExtensionVersion", () => {
     nock(api.extensionsOrigin).get(`/${VERSION}/operations/abc123`).reply(502, {});
 
     await expect(
-      extensionsApi.publishExtensionVersion(
-        `${PUBLISHER_ID}/${EXTENSION_ID}@${EXTENSION_VERSION}`,
-        "www.google.com/test-extension.zip",
-        "/"
-      )
+      extensionsApi.publishExtensionVersion({
+        extensionVersionRef: `${PUBLISHER_ID}/${EXTENSION_ID}@${EXTENSION_VERSION}`,
+        packageUri: "www.google.com/test-extension.zip",
+        extensionRoot: "/",
+      })
     ).to.be.rejectedWith(FirebaseError, "HTTP Error: 502, Unknown Error");
     expect(nock.isDone()).to.be.true;
   });
 
   it("should throw an error for an invalid ref", async () => {
     await expect(
-      extensionsApi.publishExtensionVersion(
-        `${PUBLISHER_ID}/${EXTENSION_ID}`,
-        "www.google.com/test-extension.zip",
-        "/"
-      )
+      extensionsApi.publishExtensionVersion({
+        extensionVersionRef: `${PUBLISHER_ID}/${EXTENSION_ID}`,
+        packageUri: "www.google.com/test-extension.zip",
+        extensionRoot: "/",
+      })
     ).to.be.rejectedWith(FirebaseError, "ExtensionVersion ref");
   });
 });

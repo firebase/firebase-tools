@@ -25,6 +25,7 @@ const featureFns = new Map<string, (setup: any, config: any, options?: any) => P
   ["hosting", features.hosting],
   ["storage", features.storage],
   ["emulators", features.emulators],
+  ["extensions", features.extensions],
   ["project", features.project], // always runs, sets up .firebaserc
   ["remoteconfig", features.remoteconfig],
   ["hosting:github", features.hostingGithub],
