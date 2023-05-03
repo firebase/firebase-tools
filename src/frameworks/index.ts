@@ -21,7 +21,6 @@ import { Constants } from "../emulator/constants";
 import { FirebaseError } from "../error";
 import { requireHostingSite } from "../requireHostingSite";
 import * as experiments from "../experiments";
-import { ensureTargeted } from "../functions/ensureTargeted";
 import { implicitInit } from "../hosting/implicitInit";
 import { findDependency, conjoinOptions, frameworksCallToAction } from "./utils";
 import {
@@ -37,6 +36,7 @@ import {
 } from "./constants";
 import { FirebaseDefaults, Framework } from "./interfaces";
 import { logWarning } from "../utils";
+import { ensureTargeted } from "../functions/ensureTargeted";
 
 export { WebFrameworks };
 
@@ -297,11 +297,21 @@ export async function prepareFrameworks(
         },
       ]);
 
-      if (!targetNames.includes("functions")) {
-        targetNames.unshift("functions");
-      }
-      if (options.only) {
-        options.only = ensureTargeted(options.only, codebase);
+      // N.B. the pin-tags experiment already does this holistically later.
+      // This is just a fallback for previous behavior if the user manually
+      // disables the pintags experiment (e.g. there is a break and they would
+      // rather disable the experiment than roll back).
+      if (
+        !experiments.isEnabled("pintags") ||
+        context._name === "serve" ||
+        context._name.startsWith("emulators:")
+      ) {
+        if (!targetNames.includes("functions")) {
+          targetNames.unshift("functions");
+        }
+        if (options.only) {
+          options.only = ensureTargeted(options.only, codebase);
+        }
       }
 
       // if exists, delete everything but the node_modules directory and package-lock.json

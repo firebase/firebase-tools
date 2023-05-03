@@ -1,22 +1,14 @@
 import { expect } from "chai";
 import * as glob from "glob";
-
-import * as cli from "./cli";
-import { requireAuth } from "../../src/requireAuth";
-import { getBuildId } from "../../src/frameworks/next/utils";
 import { relative } from "path";
+import { readFileSync } from "fs";
+import fetch from "node-fetch";
+
+import { getBuildId } from "../../src/frameworks/next/utils";
 
 const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "";
-const FIREBASE_DEBUG = process.env.FIREBASE_DEBUG || "";
-
-function genRandomId(n = 10): string {
-  const charset = "abcdefghijklmnopqrstuvwxyz";
-  let id = "";
-  for (let i = 0; i < n; i++) {
-    id += charset.charAt(Math.floor(Math.random() * charset.length));
-  }
-  return id;
-}
+const DOT_FIREBASE_FOLDER_PATH = `${__dirname}/.firebase/${FIREBASE_PROJECT}`;
+const FIREBASE_EMULATOR_HUB = process.env.FIREBASE_EMULATOR_HUB;
 
 async function getFilesListFromDir(dir: string): Promise<string[]> {
   const files = await new Promise<string[]>((resolve, reject) => {
@@ -29,81 +21,135 @@ async function getFilesListFromDir(dir: string): Promise<string[]> {
 }
 
 describe("webframeworks deploy build", function (this) {
-  this.timeout(1000_000);
-
-  let result: cli.Result;
-
-  const RUN_ID = genRandomId();
-  console.log(`TEST RUN: ${RUN_ID}`);
-
-  async function setOptsAndBuild(): Promise<cli.Result> {
-    const args = ["exit 0"];
-    if (FIREBASE_DEBUG) {
-      args.push("--debug");
-    }
-
-    return await cli.exec("emulators:exec", FIREBASE_PROJECT, args, __dirname, false);
-  }
+  this.timeout(10_000);
+  let HOST: string;
 
   before(async () => {
-    expect(FIREBASE_PROJECT).to.not.be.empty;
-
-    await requireAuth({});
-    process.env.FIREBASE_CLI_EXPERIMENTS = "webframeworks";
-    result = await setOptsAndBuild();
+    expect(FIREBASE_PROJECT, "$FIREBASE_PROJECT").to.not.be.empty;
+    expect(FIREBASE_EMULATOR_HUB, "$FIREBASE_EMULATOR_HUB").to.not.be.empty;
+    const hubResponse = await fetch(`http://${FIREBASE_EMULATOR_HUB}/emulators`);
+    const {
+      hosting: { port, host },
+    } = await hubResponse.json();
+    HOST = `http://${host}:${port}`;
   });
 
   after(() => {
     // This is not an empty block.
   });
 
-  it("should log reasons for backend", () => {
-    process.env.FIREBASE_CLI_EXPERIMENTS = "webframeworks";
+  describe("app directory", () => {
+    it("should have working SSG", async () => {
+      const apiStaticJSON = JSON.parse(
+        readFileSync(`${DOT_FIREBASE_FOLDER_PATH}/hosting/app/api/static`).toString()
+      );
 
-    expect(result.stdout, "build result").to.match(
-      /Building a Cloud Function to run this application. This is needed due to:/
+      const apiStaticResponse = await fetch(`${HOST}/app/api/static`);
+      expect(apiStaticResponse.ok).to.be.true;
+      expect(apiStaticResponse.headers.get("content-type")).to.eql("application/json");
+      expect(apiStaticResponse.headers.get("custom-header")).to.eql("custom-value");
+      expect(await apiStaticResponse.json()).to.eql(apiStaticJSON);
+
+      const fooResponse = await fetch(`${HOST}/app/ssg`);
+      expect(fooResponse.ok).to.be.true;
+      const fooResponseText = await fooResponse.text();
+
+      const fooHtml = readFileSync(`${DOT_FIREBASE_FOLDER_PATH}/hosting/app/ssg.html`).toString();
+      expect(fooHtml).to.eql(fooResponseText);
+    });
+
+    it("should have working ISR", async () => {
+      const response = await fetch(`${HOST}/app/isr`);
+      expect(response.ok).to.be.true;
+      expect(response.headers.get("cache-control")).to.eql("private");
+      expect(await response.text()).to.include("<body>ISR<!-- -->");
+    });
+
+    it("should have working SSR", async () => {
+      const bazResponse = await fetch(`${HOST}/app/ssr`);
+      expect(bazResponse.ok).to.be.true;
+      expect(await bazResponse.text()).to.include("<body>SSR<!-- -->");
+
+      const apiDynamicResponse = await fetch(`${HOST}/app/api/dynamic`);
+      expect(apiDynamicResponse.ok).to.be.true;
+      expect(apiDynamicResponse.headers.get("cache-control")).to.eql("private");
+      expect(await apiDynamicResponse.json()).to.eql([1, 2, 3]);
+    });
+  });
+
+  describe("pages directory", () => {
+    it("should have working SSR", async () => {
+      const response = await fetch(`${HOST}/api/hello`);
+      expect(response.ok).to.be.true;
+      expect(await response.json()).to.eql({ name: "John Doe" });
+    });
+  });
+
+  it("should log reasons for backend", () => {
+    const result = readFileSync(
+      "scripts/webframeworks-deploy-tests/firebase-emulators.log"
+    ).toString();
+
+    expect(result, "build result").to.include(
+      "Building a Cloud Function to run this application. This is needed due to:"
     );
-    expect(result.stdout, "build result").to.match(/middleware/);
-    expect(result.stdout, "build result").to.match(/Image Optimization/);
-    expect(result.stdout, "build result").to.match(/use of revalidate \/bar/);
-    expect(result.stdout, "build result").to.match(/non-static route \/api\/hello/);
+    expect(result, "build result").to.include(" • middleware");
+    expect(result, "build result").to.include(" • Image Optimization");
+    expect(result, "build result").to.include(" • use of fallback /pages/fallback/[id]");
+    expect(result, "build result").to.include(" • use of revalidate /app/isr");
+    expect(result, "build result").to.include(" • non-static route /api/hello");
+    expect(result, "build result").to.include(" • non-static route /pages/ssr");
+    expect(result, "build result").to.include(" • non-static component /app/api/dynamic/route");
+    expect(result, "build result").to.include(" • non-static component /app/ssr/page");
   });
 
   it("should have the expected static files to be deployed", async () => {
     const buildId = await getBuildId(`${__dirname}/hosting/.next`);
 
-    const DOT_FIREBASE_FOLDER_PATH = `${__dirname}/.firebase/${FIREBASE_PROJECT}`;
-
     const EXPECTED_FILES = [
       `_next`,
+      `_next/data`,
+      `_next/data/${buildId}`,
+      `_next/data/${buildId}/pages`,
+      `_next/data/${buildId}/pages/fallback`,
+      `_next/data/${buildId}/pages/fallback/1.json`,
+      `_next/data/${buildId}/pages/fallback/2.json`,
+      `_next/data/${buildId}/pages/ssg.json`,
       `_next/static`,
       `_next/static/chunks`,
       `_next/static/chunks/app`,
-      `_next/static/chunks/app/bar`,
-      `_next/static/chunks/app/foo`,
+      `_next/static/chunks/app/app`,
+      `_next/static/chunks/app/app/isr`,
+      `_next/static/chunks/app/app/ssg`,
+      `_next/static/chunks/app/app/ssr`,
       `_next/static/chunks/pages`,
-      `_next/static/chunks/pages/about`,
+      `_next/static/chunks/pages/pages`,
+      `_next/static/chunks/pages/pages/fallback`,
       `_next/static/css`,
       `_next/static/${buildId}`,
       `_next/static/${buildId}/_buildManifest.js`,
       `_next/static/${buildId}/_ssgManifest.js`,
+      `app`,
+      `app/api`,
+      `app/api/static`,
+      `app/ssg.html`,
+      `pages`,
+      `pages/fallback`,
+      `pages/fallback/1.html`,
+      `pages/fallback/2.html`,
+      `pages/ssg.html`,
       `404.html`,
       `500.html`,
-      `foo.html`,
       `index.html`,
     ];
 
     const EXPECTED_PATTERNS = [
-      `_next\/static\/chunks\/[0-9]+-[^\.]+\.js`,
-      `_next\/static\/chunks\/app-internals-[^\.]+\.js`,
-      `_next\/static\/chunks\/app\/bar\/page-[^\.]+\.js`,
-      `_next\/static\/chunks\/app\/foo\/page-[^\.]+\.js`,
+      `_next\/static\/chunks\/[^-]+-[^\.]+\.js`,
       `_next\/static\/chunks\/app\/layout-[^\.]+\.js`,
       `_next\/static\/chunks\/main-[^\.]+\.js`,
       `_next\/static\/chunks\/main-app-[^\.]+\.js`,
       `_next\/static\/chunks\/pages\/_app-[^\.]+\.js`,
       `_next\/static\/chunks\/pages\/_error-[^\.]+\.js`,
-      `_next\/static\/chunks\/pages\/about\/me-[^\.]+\.js`,
       `_next\/static\/chunks\/pages\/index-[^\.]+\.js`,
       `_next\/static\/chunks\/polyfills-[^\.]+\.js`,
       `_next\/static\/chunks\/webpack-[^\.]+\.js`,
@@ -120,7 +166,7 @@ describe("webframeworks deploy build", function (this) {
       ...EXPECTED_PATTERNS.filter((it) => !files.some((file) => !!file.match(it))),
     ];
 
-    expect(unmatchedFiles).to.be.empty;
-    expect(unmatchedExpectations).to.be.empty;
+    expect(unmatchedFiles, "matchedFiles").to.eql([]);
+    expect(unmatchedExpectations, "unmatchedExpectations").to.eql([]);
   });
 });
