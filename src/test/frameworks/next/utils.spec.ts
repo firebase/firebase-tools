@@ -384,7 +384,9 @@ describe("Next.js utils", () => {
       fileExistsSyncStub.withArgs(`${distDir}/server/app/api/static.meta`).returns(true);
       readJsonStub.withArgs(`${distDir}/server/app/api/static.meta`).resolves(metaFileContents);
 
-      expect(await getHeadersFromMetaFiles(".", distDir, "/asdf", appPathRoutesManifest)).to.deep.equal([
+      expect(
+        await getHeadersFromMetaFiles(".", distDir, "/asdf", appPathRoutesManifest)
+      ).to.deep.equal([
         {
           source: "/asdf/api/static",
           headers: [

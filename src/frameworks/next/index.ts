@@ -191,7 +191,12 @@ export async function build(dir: string): Promise<BuildResult> {
   ]);
 
   if (appPathRoutesManifest) {
-    const headersFromMetaFiles = await getHeadersFromMetaFiles(dir, distDir, basePath, appPathRoutesManifest);
+    const headersFromMetaFiles = await getHeadersFromMetaFiles(
+      dir,
+      distDir,
+      basePath,
+      appPathRoutesManifest
+    );
     headers.push(...headersFromMetaFiles);
 
     if (appPathsManifest) {

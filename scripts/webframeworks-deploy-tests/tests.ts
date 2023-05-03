@@ -54,7 +54,9 @@ describe("webframeworks deploy build", function (this) {
       expect(fooResponse.ok).to.be.true;
       const fooResponseText = await fooResponse.text();
 
-      const fooHtml = readFileSync(`${DOT_FIREBASE_FOLDER_PATH}/hosting/base/app/ssg.html`).toString();
+      const fooHtml = readFileSync(
+        `${DOT_FIREBASE_FOLDER_PATH}/hosting/base/app/ssg.html`
+      ).toString();
       expect(fooHtml).to.eql(fooResponseText);
     });
 
