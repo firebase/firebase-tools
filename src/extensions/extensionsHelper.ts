@@ -3,11 +3,11 @@ import * as ora from "ora";
 import * as semver from "semver";
 import * as tmp from "tmp";
 import * as fs from "fs-extra";
-import * as unzipper from "unzipper";
 import fetch from "node-fetch";
 import * as path from "path";
 import { marked } from "marked";
 
+import { createUnzipTransform } from "./../unzip";
 const TerminalRenderer = require("marked-terminal");
 marked.setOptions({
   renderer: new TerminalRenderer(),
@@ -691,7 +691,7 @@ export async function uploadExtensionVersionFromGitHubSource(args: {
   try {
     const response = await fetch(archiveUri);
     if (response.ok) {
-      await response.body.pipe(unzipper.Extract({ path: tempDirectory.name })).promise(); // eslint-disable-line new-cap
+      await response.body.pipe(createUnzipTransform(tempDirectory.name)).promise();
     }
   } catch (err: any) {
     throw new FirebaseError(
