@@ -205,7 +205,10 @@ export function relativeRequire(
   dir: string,
   mod: "next/constants"
 ): typeof import("next/constants");
-export function relativeRequire(dir: string, mod: "next"): typeof import("next") | typeof import("next")["default"];
+export function relativeRequire(
+  dir: string,
+  mod: "next"
+): typeof import("next") | typeof import("next")["default"];
 export function relativeRequire(dir: string, mod: "vite"): typeof import("vite");
 export function relativeRequire(dir: string, mod: "jsonc-parser"): typeof import("jsonc-parser");
 
