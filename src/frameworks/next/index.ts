@@ -191,7 +191,7 @@ export async function build(dir: string): Promise<BuildResult> {
   ]);
 
   if (appPathRoutesManifest) {
-    const headersFromMetaFiles = await getHeadersFromMetaFiles(dir, distDir, appPathRoutesManifest);
+    const headersFromMetaFiles = await getHeadersFromMetaFiles(dir, distDir, basePath, appPathRoutesManifest);
     headers.push(...headersFromMetaFiles);
 
     if (appPathsManifest) {
@@ -427,8 +427,8 @@ export async function ɵcodegenPublicDirectory(
       }
 
       let sourcePath = join(contentDist, ...sourcePartsOrIndex);
-      let localizedDestPath = join(destDir, locale, ...destPartsOrIndex);
-      let defaultDestPath = locale && defaultLocale && join(destDir, ...destPartsOrIndex);
+      let localizedDestPath = join(destDir, basePath, locale, ...destPartsOrIndex);
+      let defaultDestPath = locale && defaultLocale && join(destDir, basePath, ...destPartsOrIndex);
       if (!fileExistsSync(sourcePath) && fileExistsSync(`${sourcePath}.html`)) {
         sourcePath += ".html";
         localizedDestPath += ".html";
@@ -454,7 +454,7 @@ export async function ɵcodegenPublicDirectory(
 
       if (route.dataRoute && !appPathRoute) {
         const dataSourcePath = `${join(...sourcePartsOrIndex)}.json`;
-        const dataDestPath = join(destDir, route.dataRoute);
+        const dataDestPath = join(destDir, basePath, route.dataRoute);
         await mkdir(dirname(dataDestPath), { recursive: true });
         await copyFile(join(contentDist, dataSourcePath), dataDestPath);
       }

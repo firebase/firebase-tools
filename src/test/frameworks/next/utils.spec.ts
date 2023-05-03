@@ -85,45 +85,29 @@ describe("Next.js utils", () => {
     });
   });
 
-  describe("isRewriteSupportedByFirebase", () => {
-    it("should allow supported rewrites", () => {
-      for (const rewrite of supportedRewritesArray) {
-        expect(isRewriteSupportedByHosting(rewrite)).to.be.true;
-      }
-    });
-
-    it("should disallow unsupported rewrites", () => {
-      for (const rewrite of unsupportedRewritesArray) {
-        expect(isRewriteSupportedByHosting(rewrite)).to.be.false;
-      }
-    });
+  it("should allow supported rewrites", () => {
+    expect(
+      [...supportedRewritesArray, ...unsupportedRewritesArray].filter((it) =>
+        isRewriteSupportedByHosting(it)
+      )
+    ).to.have.members(supportedRewritesArray);
   });
 
   describe("isRedirectSupportedByFirebase", () => {
     it("should allow supported redirects", () => {
-      for (const redirect of supportedRedirects) {
-        expect(isRedirectSupportedByHosting(redirect)).to.be.true;
-      }
-    });
-
-    it("should disallow unsupported redirects", () => {
-      for (const redirect of unsupportedRedirects) {
-        expect(isRedirectSupportedByHosting(redirect)).to.be.false;
-      }
+      expect(
+        [...supportedRedirects, ...unsupportedRedirects].filter((it) =>
+          isRedirectSupportedByHosting(it)
+        )
+      ).to.have.members(supportedRedirects);
     });
   });
 
   describe("isHeaderSupportedByFirebase", () => {
     it("should allow supported headers", () => {
-      for (const header of supportedHeaders) {
-        expect(isHeaderSupportedByHosting(header)).to.be.true;
-      }
-    });
-
-    it("should disallow unsupported headers", () => {
-      for (const header of unsupportedHeaders) {
-        expect(isHeaderSupportedByHosting(header)).to.be.false;
-      }
+      expect(
+        [...supportedHeaders, ...unsupportedHeaders].filter((it) => isHeaderSupportedByHosting(it))
+      ).to.have.members(supportedHeaders);
     });
   });
 
@@ -400,9 +384,9 @@ describe("Next.js utils", () => {
       fileExistsSyncStub.withArgs(`${distDir}/server/app/api/static.meta`).returns(true);
       readJsonStub.withArgs(`${distDir}/server/app/api/static.meta`).resolves(metaFileContents);
 
-      expect(await getHeadersFromMetaFiles(".", distDir, appPathRoutesManifest)).to.deep.equal([
+      expect(await getHeadersFromMetaFiles(".", distDir, "/asdf", appPathRoutesManifest)).to.deep.equal([
         {
-          source: "/api/static",
+          source: "/asdf/api/static",
           headers: [
             {
               key: "content-type",

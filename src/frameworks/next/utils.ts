@@ -1,6 +1,6 @@
 import { existsSync } from "fs";
 import { pathExists } from "fs-extra";
-import { basename, extname, join } from "path";
+import { basename, extname, join, posix } from "path";
 import type { MiddlewareManifest } from "next/dist/build/webpack/plugins/middleware-plugin";
 import type { PagesManifest } from "next/dist/build/webpack/plugins/pages-manifest-plugin";
 
@@ -97,7 +97,12 @@ export function isRewriteSupportedByHosting(rewrite: RoutesManifestRewrite): boo
  * - Next.js internal redirects
  */
 export function isRedirectSupportedByHosting(redirect: RoutesManifestRedirect): boolean {
-  return !("has" in redirect || "missing" in redirect || "internal" in redirect);
+  return !(
+    "has" in redirect ||
+    "missing" in redirect ||
+    "internal" in redirect ||
+    redirect.destination.includes("?")
+  );
 }
 
 /**
@@ -290,6 +295,7 @@ export function getNonStaticServerComponents(
 export async function getHeadersFromMetaFiles(
   sourceDir: string,
   distDir: string,
+  basePath: string,
   appPathRoutesManifest: AppPathRoutesManifest
 ): Promise<HostingHeadersWithSource[]> {
   const headers: HostingHeadersWithSource[] = [];
@@ -307,7 +313,7 @@ export async function getHeadersFromMetaFiles(
         const meta = await readJSON<{ headers?: Record<string, string> }>(metadataPath);
         if (meta.headers)
           headers.push({
-            source,
+            source: posix.join(basePath, source),
             headers: Object.entries(meta.headers).map(([key, value]) => ({ key, value })),
           });
       }
