@@ -27,6 +27,12 @@ export interface Extension {
   repoUri?: string;
 }
 
+export interface Listing {
+  state: ListingState;
+}
+
+export type ListingState = "STATE_UPSPECIFIED" | "UNLISTED" | "PENDING" | "APPROVED" | "REJECTED";
+
 export interface ExtensionVersion {
   name: string;
   ref: string;
@@ -34,16 +40,21 @@ export interface ExtensionVersion {
   spec: ExtensionSpec;
   hash: string;
   sourceDownloadUri: string;
+  buildSourceUri?: string;
   releaseNotes?: string;
   createTime?: string;
   deprecationMessage?: string;
   extensionRoot?: string;
+  listing?: Listing;
 }
 
 export interface PublisherProfile {
   name: string;
   publisherId: string;
   registerTime: string;
+  displayName: string;
+  websiteUri?: string;
+  iconUri?: string;
 }
 
 export interface ExtensionInstance {

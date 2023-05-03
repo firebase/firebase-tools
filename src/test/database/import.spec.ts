@@ -8,11 +8,11 @@ import { FirebaseError } from "../../error";
 import { FetchError } from "node-fetch";
 
 const dbUrl = new URL("https://test-db.firebaseio.com/foo");
-const chunkSize = 1024 * 1024 * 10;
+const payloadSize = 1024 * 1024 * 10;
 const concurrencyLimit = 5;
 
 describe("DatabaseImporter", () => {
-  const DATA = { a: 100, b: [true, "bar", { f: { g: 0, h: 1 }, i: "baz" }] };
+  const DATA = { a: 100, b: [true, "bar", { f: { g: 0, h: 1 }, i: "baz" }], c: { d: false } };
   let DATA_STREAM: stream.Readable;
 
   beforeEach(() => {
@@ -26,7 +26,7 @@ describe("DatabaseImporter", () => {
       dbUrl,
       utils.stringToStream(INVALID_JSON)!,
       /* importPath= */ "/",
-      chunkSize,
+      payloadSize,
       concurrencyLimit
     );
 
@@ -36,59 +36,108 @@ describe("DatabaseImporter", () => {
     );
   });
 
-  it("chunks data in top-level objects", async () => {
+  it("batches data from different top-level objects", async () => {
     nock("https://test-db.firebaseio.com").get("/foo.json?shallow=true").reply(200);
-    nock("https://test-db.firebaseio.com").put("/foo/a.json", "100").reply(200);
     nock("https://test-db.firebaseio.com")
-      .put("/foo/b.json", JSON.stringify([true, "bar", { f: { g: 0, h: 1 }, i: "baz" }]))
+      .patch("/foo.json", JSON.stringify({ a: 100, "b/0": true, "b/1": "bar" }))
+      .reply(200);
+    nock("https://test-db.firebaseio.com")
+      .patch("/foo/b/2.json", JSON.stringify({ f: { g: 0, h: 1 }, i: "baz" }))
+      .reply(200);
+    nock("https://test-db.firebaseio.com")
+      .patch("/foo/c.json", JSON.stringify({ d: false }))
       .reply(200);
     const importer = new DatabaseImporter(
       dbUrl,
       DATA_STREAM,
       /* importPath= */ "/",
-      chunkSize,
+      /* payloadSize= */ 40,
       concurrencyLimit
     );
 
     const responses = await importer.execute();
 
-    expect(responses).to.have.length(2);
+    expect(responses).to.have.length(3);
     expect(nock.isDone()).to.be.true;
   });
 
-  it("chunks data according to provided chunk size", async () => {
+  it("writes data as a single batch for large enough payload size", async () => {
     nock("https://test-db.firebaseio.com").get("/foo.json?shallow=true").reply(200);
-    nock("https://test-db.firebaseio.com").put("/foo/a.json", "100").reply(200);
-    nock("https://test-db.firebaseio.com").put("/foo/b/0.json", "true").reply(200);
-    nock("https://test-db.firebaseio.com").put("/foo/b/1.json", '"bar"').reply(200);
     nock("https://test-db.firebaseio.com")
-      .put("/foo/b/2/f.json", JSON.stringify({ g: 0, h: 1 }))
+      .patch(
+        "/foo.json",
+        JSON.stringify({
+          a: 100,
+          b: [true, "bar", { f: { g: 0, h: 1 }, i: "baz" }],
+          c: { d: false },
+        })
+      )
       .reply(200);
-    nock("https://test-db.firebaseio.com").put("/foo/b/2/i.json", '"baz"').reply(200);
     const importer = new DatabaseImporter(
       dbUrl,
       DATA_STREAM,
       /* importPath= */ "/",
-      /* chunkSize= */ 20,
+      payloadSize,
       concurrencyLimit
     );
 
     const responses = await importer.execute();
 
-    expect(responses).to.have.length(5);
+    expect(responses).to.have.length(1);
     expect(nock.isDone()).to.be.true;
   });
 
   it("imports from data path", async () => {
     nock("https://test-db.firebaseio.com").get("/foo.json?shallow=true").reply(200);
     nock("https://test-db.firebaseio.com")
-      .put("/foo/b.json", JSON.stringify([true, "bar", { f: { g: 0, h: 1 }, i: "baz" }]))
+      .patch("/foo/c.json", JSON.stringify({ d: false }))
+      .reply(200);
+    const importer = new DatabaseImporter(
+      dbUrl,
+      DATA_STREAM,
+      /* importPath= */ "/c",
+      payloadSize,
+      concurrencyLimit
+    );
+
+    const responses = await importer.execute();
+
+    expect(responses).to.have.length(1);
+    expect(nock.isDone()).to.be.true;
+  });
+
+  it("writes primitive as object", async () => {
+    nock("https://test-db.firebaseio.com").get("/foo.json?shallow=true").reply(200);
+    nock("https://test-db.firebaseio.com")
+      .patch("/foo.json", JSON.stringify({ a: 100 }))
+      .reply(200);
+    const importer = new DatabaseImporter(
+      dbUrl,
+      DATA_STREAM,
+      /* importPath= */ "/a",
+      payloadSize,
+      concurrencyLimit
+    );
+
+    const responses = await importer.execute();
+
+    expect(responses).to.have.length(1);
+    expect(nock.isDone()).to.be.true;
+  });
+
+  it("writes array as object", async () => {
+    nock("https://test-db.firebaseio.com").get("/foo.json?shallow=true").reply(200);
+    nock("https://test-db.firebaseio.com")
+      .patch(
+        "/foo/b.json",
+        JSON.stringify({ "0": true, "1": "bar", "2": { f: { g: 0, h: 1 }, i: "baz" } })
+      )
       .reply(200);
     const importer = new DatabaseImporter(
       dbUrl,
       DATA_STREAM,
       /* importPath= */ "/b",
-      chunkSize,
+      payloadSize,
       concurrencyLimit
     );
 
@@ -104,7 +153,7 @@ describe("DatabaseImporter", () => {
       dbUrl,
       DATA_STREAM,
       /* importPath= */ "/",
-      chunkSize,
+      payloadSize,
       concurrencyLimit
     );
 
@@ -120,26 +169,40 @@ describe("DatabaseImporter", () => {
 
     nock("https://test-db.firebaseio.com").get("/foo.json?shallow=true").reply(200);
     nock("https://test-db.firebaseio.com")
-      .put("/foo/a.json", "100")
+      .patch(
+        "/foo.json",
+        JSON.stringify({
+          a: 100,
+          b: [true, "bar", { f: { g: 0, h: 1 }, i: "baz" }],
+          c: { d: false },
+        })
+      )
       .once()
       .replyWithError(timeoutErr);
-    nock("https://test-db.firebaseio.com").put("/foo/a.json", "100").once().reply(200);
     nock("https://test-db.firebaseio.com")
-      .put("/foo/b.json", JSON.stringify([true, "bar", { f: { g: 0, h: 1 }, i: "baz" }]))
+      .patch(
+        "/foo.json",
+        JSON.stringify({
+          a: 100,
+          b: [true, "bar", { f: { g: 0, h: 1 }, i: "baz" }],
+          c: { d: false },
+        })
+      )
+      .once()
       .reply(200);
 
     const importer = new DatabaseImporter(
       dbUrl,
       DATA_STREAM,
       /* importPath= */ "/",
-      chunkSize,
+      payloadSize,
       concurrencyLimit
     );
     importer.nonFatalRetryTimeout = 0;
 
     const responses = await importer.execute();
 
-    expect(responses).to.have.length(2);
+    expect(responses).to.have.length(1);
     expect(nock.isDone()).to.be.true;
   });
 });

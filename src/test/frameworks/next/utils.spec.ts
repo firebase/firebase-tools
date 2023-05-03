@@ -23,6 +23,7 @@ import {
   cleanCustomRouteI18n,
   I18N_CUSTOM_ROUTE_PREFIX,
   allDependencyNames,
+  getMiddlewareMatcherRegexes,
   getNonStaticRoutes,
   getNonStaticServerComponents,
   getHeadersFromMetaFiles,
@@ -35,8 +36,8 @@ import {
   exportMarkerWithoutImage,
   imagesManifest,
   imagesManifestUnoptimized,
-  middlewareManifestWhenNotUsed,
-  middlewareManifestWhenUsed,
+  middlewareV2ManifestWhenNotUsed,
+  middlewareV2ManifestWhenUsed,
   supportedHeaders,
   supportedRedirects,
   supportedRewritesArray,
@@ -45,6 +46,8 @@ import {
   unsupportedRedirects,
   unsupportedRewritesArray,
   npmLsReturn,
+  middlewareV1ManifestWhenUsed,
+  middlewareV1ManifestWhenNotUsed,
   pagesManifest,
   prerenderManifest,
   appPathsManifest,
@@ -222,12 +225,12 @@ describe("Next.js utils", () => {
     });
 
     it("should return true if using middleware in production", async () => {
-      sandbox.stub(fsExtra, "readJSON").resolves(middlewareManifestWhenUsed);
+      sandbox.stub(fsExtra, "readJSON").resolves(middlewareV2ManifestWhenUsed);
       expect(await isUsingMiddleware("", false)).to.be.true;
     });
 
     it("should return false if not using middleware in production", async () => {
-      sandbox.stub(fsExtra, "readJSON").resolves(middlewareManifestWhenNotUsed);
+      sandbox.stub(fsExtra, "readJSON").resolves(middlewareV2ManifestWhenNotUsed);
       expect(await isUsingMiddleware("", false)).to.be.false;
     });
   });
@@ -341,6 +344,36 @@ describe("Next.js utils", () => {
         "react",
         "loose-envify",
       ]);
+    });
+  });
+
+  describe("getMiddlewareMatcherRegexes", () => {
+    it("should return regexes when using version 1", () => {
+      const middlewareMatcherRegexes = getMiddlewareMatcherRegexes(middlewareV1ManifestWhenUsed);
+
+      for (const regex of middlewareMatcherRegexes) {
+        expect(regex).to.be.an.instanceOf(RegExp);
+      }
+    });
+
+    it("should return empty array when using version 1 but not using middleware", () => {
+      const middlewareMatcherRegexes = getMiddlewareMatcherRegexes(middlewareV1ManifestWhenNotUsed);
+
+      expect(middlewareMatcherRegexes).to.eql([]);
+    });
+
+    it("should return regexes when using version 2", () => {
+      const middlewareMatcherRegexes = getMiddlewareMatcherRegexes(middlewareV2ManifestWhenUsed);
+
+      for (const regex of middlewareMatcherRegexes) {
+        expect(regex).to.be.an.instanceOf(RegExp);
+      }
+    });
+
+    it("should return empty array when using version 2 but not using middleware", () => {
+      const middlewareMatcherRegexes = getMiddlewareMatcherRegexes(middlewareV2ManifestWhenNotUsed);
+
+      expect(middlewareMatcherRegexes).to.eql([]);
     });
   });
 
