@@ -9,13 +9,19 @@ import * as hostingApi from "../../../hosting/api";
 import * as tracking from "../../../track";
 import * as deploymentTool from "../../../deploymentTool";
 import * as config from "../../../hosting/config";
-import { prepare, unsafePins } from "../../../deploy/hosting/prepare";
+import {
+  addPinnedFunctionsToOnlyString,
+  hasPinnedFunctions,
+  prepare,
+  unsafePins,
+} from "../../../deploy/hosting/prepare";
 import { cloneDeep } from "../../../utils";
 import * as backend from "../../../deploy/functions/backend";
 
 describe("hosting prepare", () => {
   let hostingStub: sinon.SinonStubbedInstance<typeof hostingApi>;
   let trackingStub: sinon.SinonStubbedInstance<typeof tracking>;
+  let backendStub: sinon.SinonStubbedInstance<typeof backend>;
   let siteConfig: config.HostingResolved;
   let firebaseJson: FirebaseConfig;
   let options: HostingOptions & Options;
@@ -23,12 +29,22 @@ describe("hosting prepare", () => {
   beforeEach(() => {
     hostingStub = sinon.stub(hostingApi);
     trackingStub = sinon.stub(tracking);
+    backendStub = sinon.stub(backend);
 
     // We're intentionally using pointer references so that editing site
     // edits the results of hostingConfig() and changes firebase.json
     siteConfig = {
       site: "site",
       public: ".",
+      rewrites: [
+        {
+          glob: "**",
+          function: {
+            functionId: "function",
+            pinTag: true,
+          },
+        },
+      ],
     };
     firebaseJson = {
       hosting: siteConfig,
@@ -36,7 +52,7 @@ describe("hosting prepare", () => {
     options = {
       cwd: ".",
       configPath: ".",
-      only: "",
+      only: "hosting",
       except: "",
       filteredTargets: ["HOSTING"],
       force: false,
@@ -153,10 +169,7 @@ describe("hosting prepare", () => {
       ],
     };
 
-    let backendStub: sinon.SinonStubbedInstance<typeof backend>;
-
     beforeEach(() => {
-      backendStub = sinon.stub(backend);
       backendStub.existingBackend.resolves({
         endpoints: {
           "us-central1": {
@@ -231,6 +244,65 @@ describe("hosting prepare", () => {
       await expect(
         unsafePins({ projectId: "project", hostingChannel: "test" }, configWithFuncPin)
       ).to.eventually.deep.equal(["**"]);
+    });
+  });
+
+  describe("hasPinnedFunctions", () => {
+    it("detects function tags", () => {
+      expect(hasPinnedFunctions(options)).to.be.true;
+    });
+
+    it("detects a lack of function tags", () => {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      delete (options as any).config.src.hosting?.rewrites?.[0]?.function?.pinTag;
+      expect(hasPinnedFunctions(options)).to.be.false;
+    });
+  });
+  describe("addPinnedFunctionsToOnlyString", () => {
+    it("adds functions to deploy targets w/ codebases", async () => {
+      backendStub.existingBackend.resolves({
+        endpoints: {
+          "us-central1": {
+            function: {
+              id: "function",
+              runServiceId: "service",
+              codebase: "backend",
+            } as unknown as backend.Endpoint,
+          },
+        },
+        requiredAPIs: [],
+        environmentVariables: {},
+      });
+
+      await expect(addPinnedFunctionsToOnlyString({} as any, options)).to.eventually.be.true;
+      expect(options.only).to.equal("hosting,functions:backend:function");
+    });
+
+    it("adds functions to deploy targets w/o codebases", async () => {
+      backendStub.existingBackend.resolves({
+        endpoints: {
+          "us-central1": {
+            function: {
+              id: "function",
+              runServiceId: "service",
+            } as unknown as backend.Endpoint,
+          },
+        },
+        requiredAPIs: [],
+        environmentVariables: {},
+      });
+
+      await expect(addPinnedFunctionsToOnlyString({} as any, options)).to.eventually.be.true;
+      expect(options.only).to.equal("hosting,functions:default:function");
+    });
+
+    it("doesn't add untagged functions", async () => {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      delete (siteConfig as any).rewrites[0].function.pinTag;
+
+      await expect(addPinnedFunctionsToOnlyString({} as any, options)).to.eventually.be.false;
+      expect(options.only).to.equal("hosting");
+      expect(backendStub.existingBackend).to.not.have.been.called;
     });
   });
 });

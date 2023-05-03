@@ -22,6 +22,10 @@ import {
   isUsingImageOptimization,
   isUsingAppDirectory,
   allDependencyNames,
+  getMiddlewareMatcherRegexes,
+  getNonStaticRoutes,
+  getNonStaticServerComponents,
+  getHeadersFromMetaFiles,
 } from "../../../frameworks/next/utils";
 import * as frameworksUtils from "../../../frameworks/utils";
 import * as fsUtils from "../../../fsutils";
@@ -31,8 +35,8 @@ import {
   exportMarkerWithoutImage,
   imagesManifest,
   imagesManifestUnoptimized,
-  middlewareManifestWhenNotUsed,
-  middlewareManifestWhenUsed,
+  middlewareV2ManifestWhenNotUsed,
+  middlewareV2ManifestWhenUsed,
   pathsAsGlobs,
   pathsWithEscapedChars,
   pathsWithRegex,
@@ -45,6 +49,13 @@ import {
   unsupportedRedirects,
   unsupportedRewritesArray,
   npmLsReturn,
+  middlewareV1ManifestWhenUsed,
+  middlewareV1ManifestWhenNotUsed,
+  pagesManifest,
+  prerenderManifest,
+  appPathsManifest,
+  appPathRoutesManifest,
+  metaFileContents,
 } from "./helpers";
 
 describe("Next.js utils", () => {
@@ -258,12 +269,12 @@ describe("Next.js utils", () => {
     });
 
     it("should return true if using middleware in production", async () => {
-      sandbox.stub(fsExtra, "readJSON").resolves(middlewareManifestWhenUsed);
+      sandbox.stub(fsExtra, "readJSON").resolves(middlewareV2ManifestWhenUsed);
       expect(await isUsingMiddleware("", false)).to.be.true;
     });
 
     it("should return false if not using middleware in production", async () => {
-      sandbox.stub(fsExtra, "readJSON").resolves(middlewareManifestWhenNotUsed);
+      sandbox.stub(fsExtra, "readJSON").resolves(middlewareV2ManifestWhenNotUsed);
       expect(await isUsingMiddleware("", false)).to.be.false;
     });
   });
@@ -362,6 +373,94 @@ describe("Next.js utils", () => {
         "loose-envify",
         "react",
         "loose-envify",
+      ]);
+    });
+  });
+
+  describe("getMiddlewareMatcherRegexes", () => {
+    it("should return regexes when using version 1", () => {
+      const middlewareMatcherRegexes = getMiddlewareMatcherRegexes(middlewareV1ManifestWhenUsed);
+
+      for (const regex of middlewareMatcherRegexes) {
+        expect(regex).to.be.an.instanceOf(RegExp);
+      }
+    });
+
+    it("should return empty array when using version 1 but not using middleware", () => {
+      const middlewareMatcherRegexes = getMiddlewareMatcherRegexes(middlewareV1ManifestWhenNotUsed);
+
+      expect(middlewareMatcherRegexes).to.eql([]);
+    });
+
+    it("should return regexes when using version 2", () => {
+      const middlewareMatcherRegexes = getMiddlewareMatcherRegexes(middlewareV2ManifestWhenUsed);
+
+      for (const regex of middlewareMatcherRegexes) {
+        expect(regex).to.be.an.instanceOf(RegExp);
+      }
+    });
+
+    it("should return empty array when using version 2 but not using middleware", () => {
+      const middlewareMatcherRegexes = getMiddlewareMatcherRegexes(middlewareV2ManifestWhenNotUsed);
+
+      expect(middlewareMatcherRegexes).to.eql([]);
+    });
+  });
+
+  describe("getNonStaticRoutes", () => {
+    it("should get non-static routes", () => {
+      expect(
+        getNonStaticRoutes(
+          pagesManifest,
+          Object.keys(prerenderManifest.routes),
+          Object.keys(prerenderManifest.dynamicRoutes)
+        )
+      ).to.deep.equal(["/dynamic/[dynamic-slug]"]);
+    });
+  });
+
+  describe("getNonStaticServerComponents", () => {
+    it("should get non-static server components", () => {
+      expect(
+        getNonStaticServerComponents(
+          appPathsManifest,
+          appPathRoutesManifest,
+          Object.keys(prerenderManifest.routes),
+          Object.keys(prerenderManifest.dynamicRoutes)
+        )
+      ).to.deep.equal(["/api/test/route"]);
+    });
+  });
+
+  describe("getHeadersFromMetaFiles", () => {
+    let sandbox: sinon.SinonSandbox;
+    beforeEach(() => (sandbox = sinon.createSandbox()));
+    afterEach(() => sandbox.restore());
+
+    it("should get headers from meta files", async () => {
+      const distDir = ".next";
+      const readJsonStub = sandbox.stub(frameworksUtils, "readJSON");
+      const dirExistsSyncStub = sandbox.stub(fsUtils, "dirExistsSync");
+      const fileExistsSyncStub = sandbox.stub(fsUtils, "fileExistsSync");
+
+      dirExistsSyncStub.withArgs(`${distDir}/server/app/api/static`).returns(true);
+      fileExistsSyncStub.withArgs(`${distDir}/server/app/api/static.meta`).returns(true);
+      readJsonStub.withArgs(`${distDir}/server/app/api/static.meta`).resolves(metaFileContents);
+
+      expect(await getHeadersFromMetaFiles(".", distDir, appPathRoutesManifest)).to.deep.equal([
+        {
+          source: "/api/static",
+          headers: [
+            {
+              key: "content-type",
+              value: "application/json",
+            },
+            {
+              key: "custom-header",
+              value: "custom-value",
+            },
+          ],
+        },
       ]);
     });
   });

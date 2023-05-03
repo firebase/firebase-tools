@@ -10,11 +10,9 @@ import { track } from "../../track";
 import * as utils from "../../utils";
 import { HostingSource } from "../../firebaseConfig";
 import * as backend from "../functions/backend";
+import { ensureTargeted } from "../../functions/ensureTargeted";
 
-/**
- *  Prepare creates versions for each Hosting site to be deployed.
- */
-export async function prepare(context: Context, options: HostingOptions & Options): Promise<void> {
+function handlePublicDirectoryFlag(options: HostingOptions & Options): void {
   // Allow the public directory to be overridden by the --public flag
   if (options.public) {
     if (Array.isArray(options.config.get("hosting"))) {
@@ -23,6 +21,72 @@ export async function prepare(context: Context, options: HostingOptions & Option
 
     options.config.set("hosting.public", options.public);
   }
+}
+
+/**
+ * Return whether any hosting config tags any functions.
+ * This is used to know whether a deploy needs to add functions to the targets,
+ * ask for permissions explicitly (they may not have been asked for in the
+ * normal boilerplate), and the only string might need to be updated with
+ * addPinnedFunctionsToOnlyString.
+ */
+export function hasPinnedFunctions(options: HostingOptions & Options): boolean {
+  handlePublicDirectoryFlag(options);
+  for (const c of config.hostingConfig(options)) {
+    for (const r of c.rewrites || []) {
+      if ("function" in r && typeof r.function === "object" && r.function.pinTag) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+/**
+ * If there is a rewrite to a tagged function, add it to the deploy target.
+ * precondition: we have permissions to call functions APIs.
+ * TODO: we should add an optional codebase field to the rewrite so that we
+ * can skip loading other functions codebases on deploy
+ */
+export async function addPinnedFunctionsToOnlyString(
+  context: Context,
+  options: HostingOptions & Options
+): Promise<boolean> {
+  if (!options.only) {
+    return false;
+  }
+
+  // This must be called before modifying hosting config because we turn it from
+  // a scalar to an array now
+  handlePublicDirectoryFlag(options);
+
+  let addedFunctions = false;
+  for (const c of config.hostingConfig(options)) {
+    for (const r of c.rewrites || []) {
+      if (!("function" in r) || typeof r.function !== "object" || !r.function.pinTag) {
+        continue;
+      }
+
+      const endpoint: backend.Endpoint | null = (await backend.existingBackend(context)).endpoints[
+        r.function.region || "us-central1"
+      ]?.[r.function.functionId];
+      if (endpoint) {
+        options.only = ensureTargeted(options.only, endpoint.codebase || "default", endpoint.id);
+      } else {
+        // This endpoint is just being added in this push. We don't know what codebase it is.
+        options.only = ensureTargeted(options.only, r.function.functionId);
+      }
+      addedFunctions = true;
+    }
+  }
+  return addedFunctions;
+}
+
+/**
+ *  Prepare creates versions for each Hosting site to be deployed.
+ */
+export async function prepare(context: Context, options: HostingOptions & Options): Promise<void> {
+  handlePublicDirectoryFlag(options);
 
   const configs = config.hostingConfig(options);
   if (configs.length === 0) {

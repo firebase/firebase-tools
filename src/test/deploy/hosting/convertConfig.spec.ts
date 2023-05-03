@@ -8,6 +8,8 @@ import { HostingSingle } from "../../../firebaseConfig";
 import * as api from "../../../hosting/api";
 import { FirebaseError } from "../../../error";
 import { Payload } from "../../../deploy/functions/args";
+import * as runTags from "../../../hosting/runTags";
+import * as experiments from "../../../experiments";
 
 const FUNCTION_ID = "functionId";
 const SERVICE_ID = "function-id";
@@ -44,6 +46,27 @@ function endpoint(opts?: Partial<backend.Endpoint>): backend.Endpoint {
 }
 
 describe("convertConfig", () => {
+  let setRewriteTagsStub: sinon.SinonStub;
+
+  let wasPinTagsEnabled: boolean;
+  before(() => {
+    wasPinTagsEnabled = experiments.isEnabled("pintags");
+    experiments.setEnabled("pintags", true);
+  });
+
+  after(() => {
+    experiments.setEnabled("pintags", wasPinTagsEnabled);
+  });
+
+  beforeEach(() => {
+    setRewriteTagsStub = sinon.stub(runTags, "setRewriteTags");
+    setRewriteTagsStub.resolves();
+  });
+
+  afterEach(() => {
+    setRewriteTagsStub.restore();
+  });
+
   const tests: Array<{
     name: string;
     input: HostingSingle;
@@ -406,6 +429,41 @@ describe("convertConfig", () => {
       name: "returns i18n as it is set",
       input: { i18n: { root: "bar" } },
       want: { i18n: { root: "bar" } },
+    },
+    // Tag pinning.
+    {
+      name: "rewrites v2 functions tags",
+      input: { rewrites: [{ glob: "**", function: { functionId: FUNCTION_ID, pinTag: true } }] },
+      want: {
+        rewrites: [
+          {
+            glob: "**",
+            run: { serviceId: SERVICE_ID, region: REGION, tag: runTags.TODO_TAG_NAME },
+          },
+        ],
+      },
+      existingBackend: backend.of({
+        id: FUNCTION_ID,
+        project: PROJECT_ID,
+        entryPoint: FUNCTION_ID,
+        runtime: "nodejs16",
+        region: REGION,
+        platform: "gcfv2",
+        httpsTrigger: {},
+        runServiceId: SERVICE_ID,
+      }),
+    },
+    {
+      name: "rewrites run tags",
+      input: { rewrites: [{ glob: "**", run: { serviceId: SERVICE_ID, pinTag: true } }] },
+      want: {
+        rewrites: [
+          {
+            glob: "**",
+            run: { serviceId: SERVICE_ID, region: "us-central1", tag: runTags.TODO_TAG_NAME },
+          },
+        ],
+      },
     },
   ];
 
