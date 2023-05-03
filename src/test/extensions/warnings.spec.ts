@@ -72,38 +72,18 @@ describe("displayWarningPrompts", () => {
     logLabeledStub.restore();
   });
 
-  it("should not warn if from trusted publisher and not experimental", async () => {
+  it("should not warn if from trusted publisher", async () => {
     const publisherId = "firebase";
 
-    await warnings.displayWarningPrompts(
-      publisherId,
-      RegistryLaunchStage.BETA,
-      testExtensionVersion
-    );
+    await warnings.displayWarningPrompts(publisherId, testExtensionVersion);
 
     expect(logLabeledStub).to.not.have.been.called;
-  });
-
-  it("should warn if experimental", async () => {
-    const publisherId = "firebase";
-
-    await warnings.displayWarningPrompts(
-      publisherId,
-      RegistryLaunchStage.EXPERIMENTAL,
-      testExtensionVersion
-    );
-
-    expect(logLabeledStub).to.have.been.calledWithMatch("extensions", "experimental");
   });
 
   it("should warn if the publisher is not on the approved publisher list", async () => {
     const publisherId = "pubby-mcpublisher";
 
-    await warnings.displayWarningPrompts(
-      publisherId,
-      RegistryLaunchStage.BETA,
-      testExtensionVersion
-    );
+    await warnings.displayWarningPrompts(publisherId, testExtensionVersion);
 
     expect(logLabeledStub).to.have.been.calledWithMatch("extensions", "Early Access Program");
   });
@@ -124,7 +104,7 @@ describe("displayWarningsForDeploy", () => {
     logLabeledStub.restore();
   });
 
-  it("should not warn or prompt if from trusted publisher and not experimental", async () => {
+  it("should not warn or prompt if from trusted publisher", async () => {
     const toCreate = [
       testInstanceSpec("firebase", "ext-id-1", RegistryLaunchStage.GA),
       testInstanceSpec("firebase", "ext-id-2", RegistryLaunchStage.GA),
@@ -134,18 +114,6 @@ describe("displayWarningsForDeploy", () => {
 
     expect(warned).to.be.false;
     expect(logLabeledStub).to.not.have.been.called;
-  });
-
-  it("should prompt if experimental", async () => {
-    const toCreate = [
-      testInstanceSpec("firebase", "ext-id-1", RegistryLaunchStage.EXPERIMENTAL),
-      testInstanceSpec("firebase", "ext-id-2", RegistryLaunchStage.EXPERIMENTAL),
-    ];
-
-    const warned = await warnings.displayWarningsForDeploy(toCreate);
-
-    expect(warned).to.be.true;
-    expect(logLabeledStub).to.have.been.calledWithMatch("extensions", "experimental");
   });
 
   it("should prompt if the publisher is not on the approved publisher list", async () => {
@@ -158,18 +126,5 @@ describe("displayWarningsForDeploy", () => {
 
     expect(warned).to.be.true;
     expect(logLabeledStub).to.have.been.calledWithMatch("extensions", "Early Access Program");
-  });
-
-  it("should show multiple warnings at once if triggered", async () => {
-    const toCreate = [
-      testInstanceSpec("pubby-mcpublisher", "ext-id-1", RegistryLaunchStage.GA),
-      testInstanceSpec("firebase", "ext-id-2", RegistryLaunchStage.EXPERIMENTAL),
-    ];
-
-    const warned = await warnings.displayWarningsForDeploy(toCreate);
-
-    expect(warned).to.be.true;
-    expect(logLabeledStub).to.have.been.calledWithMatch("extensions", "Early Access Program");
-    expect(logLabeledStub).to.have.been.calledWithMatch("extensions", "experimental");
   });
 });

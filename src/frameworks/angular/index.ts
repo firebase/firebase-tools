@@ -5,23 +5,21 @@ import { spawn } from "cross-spawn";
 import { copy, pathExists } from "fs-extra";
 import { mkdir } from "fs/promises";
 
-import {
-  BuildResult,
-  Discovery,
-  findDependency,
-  FrameworkType,
-  relativeRequire,
-  SupportLevel,
-} from "..";
+import { BuildResult, Discovery, FrameworkType, SupportLevel } from "../interfaces";
 import { promptOnce } from "../../prompt";
-import { proxyRequestHandler } from "../../hosting/proxy";
-import { warnIfCustomBuildScript } from "../utils";
+import {
+  simpleProxy,
+  warnIfCustomBuildScript,
+  getNodeModuleBin,
+  relativeRequire,
+  findDependency,
+} from "../utils";
 
 export const name = "Angular";
-export const support = SupportLevel.Experimental;
+export const support = SupportLevel.Preview;
 export const type = FrameworkType.Framework;
+export const docsUrl = "https://firebase.google.com/docs/hosting/frameworks/angular";
 
-const CLI_COMMAND = join("node_modules", ".bin", process.platform === "win32" ? "ng.cmd" : "ng");
 const DEFAULT_BUILD_SCRIPT = ["ng build"];
 
 export async function discover(dir: string): Promise<Discovery | undefined> {
@@ -71,7 +69,8 @@ export async function build(dir: string): Promise<BuildResult> {
   if (prerenderTarget) {
     // TODO there is a bug here. Spawn for now.
     // await scheduleTarget(prerenderTarget);
-    execSync(`${CLI_COMMAND} run ${targetStringFromTarget(prerenderTarget)}`, {
+    const cli = getNodeModuleBin("ng", dir);
+    execSync(`${cli} run ${targetStringFromTarget(prerenderTarget)}`, {
       cwd: dir,
       stdio: "inherit",
     });
@@ -92,11 +91,10 @@ export async function getDevModeHandle(dir: string) {
   const host = new Promise<string>((resolve) => {
     // Can't use scheduleTarget since that—like prerender—is failing on an ESM bug
     // will just grep for the hostname
-    const serve = spawn(
-      CLI_COMMAND,
-      ["run", targetStringFromTarget(serveTarget), "--host", "localhost"],
-      { cwd: dir }
-    );
+    const cli = getNodeModuleBin("ng", dir);
+    const serve = spawn(cli, ["run", targetStringFromTarget(serveTarget), "--host", "localhost"], {
+      cwd: dir,
+    });
     serve.stdout.on("data", (data: any) => {
       process.stdout.write(data);
       const match = data.toString().match(/(http:\/\/localhost:\d+)/);
@@ -106,7 +104,7 @@ export async function getDevModeHandle(dir: string) {
       process.stderr.write(data);
     });
   });
-  return proxyRequestHandler(await host, "Angular Live Development Server", { forceCascade: true });
+  return simpleProxy(await host);
 }
 
 export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: string) {

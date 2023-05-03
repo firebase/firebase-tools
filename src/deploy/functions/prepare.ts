@@ -135,7 +135,7 @@ export async function prepare(
     }
 
     for (const endpoint of backend.allEndpoints(wantBackend)) {
-      endpoint.environmentVariables = wantBackend.environmentVariables || {};
+      endpoint.environmentVariables = { ...wantBackend.environmentVariables } || {};
       let resource: string;
       if (endpoint.platform === "gcfv1") {
         resource = `projects/${endpoint.project}/locations/${endpoint.region}/functions/${endpoint.id}`;

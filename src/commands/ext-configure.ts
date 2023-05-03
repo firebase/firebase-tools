@@ -1,5 +1,5 @@
 import { marked } from "marked";
-import TerminalRenderer = require("marked-terminal");
+import * as TerminalRenderer from "marked-terminal";
 
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
@@ -75,9 +75,8 @@ export const command = new Command("ext:configure <extensionInstanceId>")
       instanceId,
       projectDir: config.projectDir,
     });
-
     const [immutableParams, tbdParams] = partition(
-      spec.params.concat(spec.systemParams ?? []),
+      (spec.params ?? []).concat(spec.systemParams ?? []),
       (param) => param.immutable ?? false
     );
     infoImmutableParams(immutableParams, oldParamValues);

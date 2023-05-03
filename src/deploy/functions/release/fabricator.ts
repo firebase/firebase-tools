@@ -298,6 +298,7 @@ export class Fabricator {
             }
             throw new FirebaseError("Unexpected error creating Pub/Sub topic", {
               original: err as Error,
+              status: err.status,
             });
           }
         })
@@ -336,6 +337,7 @@ export class Fabricator {
             }
             throw new FirebaseError("Unexpected error creating Eventarc channel", {
               original: err as Error,
+              status: err.status,
             });
           }
         })
@@ -345,16 +347,25 @@ export class Fabricator {
     const resultFunction = await this.functionExecutor
       .run(async () => {
         const op: { name: string } = await gcfV2.createFunction(apiFunction);
-        return await poller.pollOperation<gcfV2.CloudFunction>({
+        return await poller.pollOperation<gcfV2.OutputCloudFunction>({
           ...gcfV2PollerOptions,
           pollerName: `create-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
           operationResourceName: op.name,
         });
       })
-      .catch(rethrowAs<gcfV2.CloudFunction>(endpoint, "create"));
+      .catch(rethrowAs<gcfV2.OutputCloudFunction>(endpoint, "create"));
 
-    endpoint.uri = resultFunction.serviceConfig.uri;
-    const serviceName = resultFunction.serviceConfig.service!;
+    endpoint.uri = resultFunction.serviceConfig?.uri;
+    const serviceName = resultFunction.serviceConfig?.service;
+    endpoint.runServiceId = utils.last(serviceName?.split("/"));
+    if (!serviceName) {
+      logger.debug("Result function unexpectedly didn't have a service name.");
+      utils.logLabeledWarning(
+        "functions",
+        "Updated function is not associated with a service. This deployment is in an unexpected state - please re-deploy your functions."
+      );
+      return;
+    }
     if (backend.isHttpsTriggered(endpoint)) {
       const invoker = endpoint.httpsTrigger.invoker || ["public"];
       if (!invoker.includes("private")) {
@@ -391,26 +402,6 @@ export class Fabricator {
       await this.executor
         .run(() => run.setInvokerCreate(endpoint.project, serviceName, invoker))
         .catch(rethrowAs(endpoint, "set invoker"));
-    }
-
-    const mem = endpoint.availableMemoryMb || backend.DEFAULT_MEMORY;
-
-    // "CustomCPU" here means "not the CPU that GCF gives us". GCF automatically
-    // sets the CPU for a Run service based on the RAM settings. The value GCF
-    // uses is memoryToGen1Cpu.
-    const hasCustomCPU = endpoint.cpu !== backend.memoryToGen1Cpu(mem);
-    // I don't love editing an input in this function, but the code gets ugly
-    // otherwise. It's nice to not resolve concurrency in the prepare stage
-    // because it helps us know whether we should call setRunTraits on update.
-    if (!endpoint.concurrency) {
-      endpoint.concurrency =
-        (endpoint.cpu as number) >= backend.MIN_CPU_FOR_CONCURRENCY
-          ? backend.DEFAULT_CONCURRENCY
-          : 1;
-    }
-    const hasConcurrency = endpoint.concurrency !== 1;
-    if (hasCustomCPU || hasConcurrency) {
-      await this.setRunTraits(serviceName, endpoint);
     }
   }
 
@@ -473,16 +464,25 @@ export class Fabricator {
     const resultFunction = await this.functionExecutor
       .run(async () => {
         const op: { name: string } = await gcfV2.updateFunction(apiFunction);
-        return await poller.pollOperation<gcfV2.CloudFunction>({
+        return await poller.pollOperation<gcfV2.OutputCloudFunction>({
           ...gcfV2PollerOptions,
           pollerName: `update-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
           operationResourceName: op.name,
         });
       })
-      .catch(rethrowAs<gcfV2.CloudFunction>(endpoint, "update"));
+      .catch(rethrowAs<gcfV2.OutputCloudFunction>(endpoint, "update"));
 
-    endpoint.uri = resultFunction.serviceConfig.uri;
-    const serviceName = resultFunction.serviceConfig.service!;
+    endpoint.uri = resultFunction.serviceConfig?.uri;
+    const serviceName = resultFunction.serviceConfig?.service;
+    endpoint.runServiceId = utils.last(serviceName?.split("/"));
+    if (!serviceName) {
+      logger.debug("Result function unexpectedly didn't have a service name.");
+      utils.logLabeledWarning(
+        "functions",
+        "Updated function is not associated with a service. This deployment is in an unexpected state - please re-deploy your functions."
+      );
+      return;
+    }
     let invoker: string[] | undefined;
     if (backend.isHttpsTriggered(endpoint)) {
       invoker = endpoint.httpsTrigger.invoker === null ? ["public"] : endpoint.httpsTrigger.invoker;
@@ -501,26 +501,6 @@ export class Fabricator {
       await this.executor
         .run(() => run.setInvokerUpdate(endpoint.project, serviceName, invoker!))
         .catch(rethrowAs(endpoint, "set invoker"));
-    }
-
-    // Ideally we'd avoid a read of the Cloud Run service. We need to read if we
-    // believe a setting (CPU or concurrency) has changed because the user
-    // changed their mind or if GCF has stamped over the user's choice (we're
-    // using custom VM shapes).
-    const hasCustomCPU =
-      endpoint.cpu !==
-      backend.memoryToGen1Cpu(endpoint.availableMemoryMb || backend.DEFAULT_MEMORY);
-    const explicitConcurrency = endpoint.concurrency !== undefined;
-    if (hasCustomCPU || explicitConcurrency) {
-      // GCF may have stamped over the CPU to be <1 which would reset concurrency.
-      // We may have to reapply defaults.
-      if (endpoint.concurrency === undefined) {
-        endpoint.concurrency =
-          (endpoint.cpu as number) < backend.MIN_CPU_FOR_CONCURRENCY
-            ? 1
-            : backend.DEFAULT_CONCURRENCY;
-      }
-      await this.setRunTraits(serviceName, endpoint);
     }
   }
 

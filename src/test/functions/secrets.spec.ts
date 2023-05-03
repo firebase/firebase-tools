@@ -124,6 +124,17 @@ describe("functions/secret", () => {
       expect(promptStub).to.have.been.calledOnce;
     });
 
+    it("does not prompt user to have Firebase manage the secret if already managed by Firebase", async () => {
+      getStub.resolves({ ...secret, labels: secrets.labels() });
+      patchStub.resolves(secret);
+
+      await expect(
+        secrets.ensureSecret("project-id", "MY_SECRET", options)
+      ).to.eventually.deep.equal(secret);
+      expect(warnStub).not.to.have.been.calledOnce;
+      expect(promptStub).not.to.have.been.calledOnce;
+    });
+
     it("creates a new secret if it doesn't exists", async () => {
       getStub.rejects({ status: 404 });
       createStub.resolves(secret);
