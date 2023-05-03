@@ -28,7 +28,9 @@ describe("webframeworks deploy build", function (this) {
     expect(FIREBASE_PROJECT, "$FIREBASE_PROJECT").to.not.be.empty;
     expect(FIREBASE_EMULATOR_HUB, "$FIREBASE_EMULATOR_HUB").to.not.be.empty;
     const hubResponse = await fetch(`http://${FIREBASE_EMULATOR_HUB}/emulators`);
-    const { hosting: { port, host } } = await hubResponse.json();
+    const {
+      hosting: { port, host },
+    } = await hubResponse.json();
     HOST = `http://${host}:${port}`;
   });
 
