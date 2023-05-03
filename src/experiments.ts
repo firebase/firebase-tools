@@ -42,14 +42,6 @@ export const ALL_EXPERIMENTS = experiments({
     docsUri: "https://firebase.google.com/docs/extensions/alpha/overview-build-extensions",
   },
 
-  // Cloud Functions for Firebase experiments
-  pythonfunctions: {
-    shortDescription: "Python support for Cloud Functions for Firebase",
-    fullDescription:
-      "Adds the ability to initializea and deploy Cloud " +
-      "Functions for Firebase in Python. While this feature is experimental " +
-      "breaking API changes are allowed in MINOR API revisions",
-  },
   deletegcfartifacts: {
     shortDescription: `Add the ${bold(
       "functions:deletegcfartifacts"
