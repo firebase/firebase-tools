@@ -1,5 +1,6 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
+import * as clc from "colorette";
 
 import { FirebaseConfig } from "../../../firebaseConfig";
 import { HostingOptions } from "../../../hosting/options";
@@ -9,8 +10,10 @@ import * as hostingApi from "../../../hosting/api";
 import * as tracking from "../../../track";
 import * as deploymentTool from "../../../deploymentTool";
 import * as config from "../../../hosting/config";
+import * as utils from "../../../utils";
 import {
-  addTaggedFunctionsToOnlyString,
+  addPinnedFunctionsToOnlyString,
+  hasPinnedFunctions,
   prepare,
   unsafePins,
 } from "../../../deploy/hosting/prepare";
@@ -21,6 +24,7 @@ describe("hosting prepare", () => {
   let hostingStub: sinon.SinonStubbedInstance<typeof hostingApi>;
   let trackingStub: sinon.SinonStubbedInstance<typeof tracking>;
   let backendStub: sinon.SinonStubbedInstance<typeof backend>;
+  let loggerStub: sinon.SinonStub;
   let siteConfig: config.HostingResolved;
   let firebaseJson: FirebaseConfig;
   let options: HostingOptions & Options;
@@ -29,6 +33,7 @@ describe("hosting prepare", () => {
     hostingStub = sinon.stub(hostingApi);
     trackingStub = sinon.stub(tracking);
     backendStub = sinon.stub(backend);
+    loggerStub = sinon.stub(utils, "logLabeledBullet");
 
     // We're intentionally using pointer references so that editing site
     // edits the results of hostingConfig() and changes firebase.json
@@ -36,6 +41,13 @@ describe("hosting prepare", () => {
       site: "site",
       public: ".",
       rewrites: [
+        {
+          glob: "run",
+          run: {
+            serviceId: "service",
+            pinTag: true,
+          },
+        },
         {
           glob: "**",
           function: {
@@ -102,6 +114,11 @@ describe("hosting prepare", () => {
         },
       ],
     });
+    expect(loggerStub).to.have.been.calledWith(
+      "hosting",
+      `The site ${clc.bold("site")} will pin rewrites to the current latest ` +
+        `revision of service(s) ${clc.bold("service")}`
+    );
   });
 
   it("passes a smoke test without web framework", async () => {
@@ -246,7 +263,19 @@ describe("hosting prepare", () => {
     });
   });
 
-  describe("addTaggedFunctionsToOnlyString", () => {
+  describe("hasPinnedFunctions", () => {
+    it("detects function tags", () => {
+      expect(hasPinnedFunctions(options)).to.be.true;
+    });
+
+    it("detects a lack of function tags", () => {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      delete (options as any).config.src.hosting?.rewrites?.[1]?.function?.pinTag;
+      expect(hasPinnedFunctions(options)).to.be.false;
+    });
+  });
+
+  describe("addPinnedFunctionsToOnlyString", () => {
     it("adds functions to deploy targets w/ codebases", async () => {
       backendStub.existingBackend.resolves({
         endpoints: {
@@ -262,8 +291,13 @@ describe("hosting prepare", () => {
         environmentVariables: {},
       });
 
-      await expect(addTaggedFunctionsToOnlyString({} as any, options)).to.eventually.be.true;
+      await expect(addPinnedFunctionsToOnlyString({} as any, options)).to.eventually.be.true;
       expect(options.only).to.equal("hosting,functions:backend:function");
+      expect(loggerStub).to.have.been.calledWith(
+        "hosting",
+        `The following function(s) are pinned to site ${clc.bold("site")} ` +
+          `and will be deployed as well: ${clc.bold("function")}`
+      );
     });
 
     it("adds functions to deploy targets w/o codebases", async () => {
@@ -280,15 +314,15 @@ describe("hosting prepare", () => {
         environmentVariables: {},
       });
 
-      await expect(addTaggedFunctionsToOnlyString({} as any, options)).to.eventually.be.true;
+      await expect(addPinnedFunctionsToOnlyString({} as any, options)).to.eventually.be.true;
       expect(options.only).to.equal("hosting,functions:default:function");
     });
 
     it("doesn't add untagged functions", async () => {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      delete (siteConfig as any).rewrites[0].function.pinTag;
+      delete (siteConfig as any).rewrites[1].function.pinTag;
 
-      await expect(addTaggedFunctionsToOnlyString({} as any, options)).to.eventually.be.false;
+      await expect(addPinnedFunctionsToOnlyString({} as any, options)).to.eventually.be.false;
       expect(options.only).to.equal("hosting");
       expect(backendStub.existingBackend).to.not.have.been.called;
     });

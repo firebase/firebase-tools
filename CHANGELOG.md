@@ -1,8 +1,1 @@
-- Added more helpful error messages for the Firebase Hosting GitHub Action (#5749)
-- Upgrade Firestore emulator to 1.17.4
-- Web Frameworks will no longer try to deploy unsupported versions of NodeJS to Cloud Functions (#5733)
-- Adding experimental support for deploying Flutter Web applications to Firebase Hosting (#5332)
-- Adds function emulator support for v2 firestore triggers (#5685).
-- Improvements for developers using Next 13's app directory (#5691)
-- Resolve timeouts when bundling Next.js applications for Cloud Functions (#5691)
 - Add support for Angular i18n and baseHref (#5774)
