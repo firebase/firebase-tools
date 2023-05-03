@@ -304,7 +304,8 @@ export async function prepareFrameworks(
       if (
         !experiments.isEnabled("pintags") ||
         context._name === "serve" ||
-        context._name.startsWith("emulators:")
+        context._name === "emulators:start" ||
+        context._name === "emulators:exec"
       ) {
         if (!targetNames.includes("functions")) {
           targetNames.unshift("functions");
