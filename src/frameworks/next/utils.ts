@@ -2,7 +2,6 @@ import { existsSync } from "fs";
 import { pathExists } from "fs-extra";
 import { basename, extname, join } from "path";
 import type { Header, Redirect, Rewrite } from "next/dist/lib/load-custom-routes";
-import type { MiddlewareManifest } from "next/dist/build/webpack/plugins/middleware-plugin";
 import type { PagesManifest } from "next/dist/build/webpack/plugins/pages-manifest-plugin";
 
 import { isUrl, readJSON } from "../utils";
@@ -12,6 +11,9 @@ import type {
   ExportMarker,
   ImagesManifest,
   NpmLsDepdendency,
+  MiddlewareManifest,
+  MiddlewareManifestV1,
+  MiddlewareManifestV2,
   AppPathsManifest,
   AppPathRoutesManifest,
   HostingHeadersWithSource,
@@ -237,6 +239,27 @@ export function allDependencyNames(mod: NpmLsDepdendency): string[] {
     [] as string[]
   );
   return dependencyNames;
+}
+
+/**
+ * Get regexes from middleware matcher manifest
+ */
+export function getMiddlewareMatcherRegexes(middlewareManifest: MiddlewareManifest): RegExp[] {
+  const middlewareObjectValues = Object.values(middlewareManifest.middleware);
+
+  let middlewareMatchers: Record<"regexp", string>[];
+
+  if (middlewareManifest.version === 1) {
+    middlewareMatchers = middlewareObjectValues.map(
+      (page: MiddlewareManifestV1["middleware"]["page"]) => ({ regexp: page.regexp })
+    );
+  } else {
+    middlewareMatchers = middlewareObjectValues
+      .map((page: MiddlewareManifestV2["middleware"]["page"]) => page.matchers)
+      .flat();
+  }
+
+  return middlewareMatchers.map((matcher) => new RegExp(matcher.regexp));
 }
 
 /**

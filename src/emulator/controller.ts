@@ -451,17 +451,15 @@ export async function startAll(
   ) {
     experiments.assertEnabled("webframeworks", "emulate a web framework");
     const emulators: EmulatorInfo[] = [];
-    if (experiments.isEnabled("webframeworks")) {
-      for (const e of ALL_SERVICE_EMULATORS) {
-        // TODO(yuchenshi): Functions and Eventarc may be missing if they are not
-        // yet known to be needed and then prepareFrameworks adds extra functions.
-        if (listenForEmulator[e]) {
-          emulators.push({
-            name: e,
-            host: utils.connectableHostname(listenForEmulator[e][0].address),
-            port: listenForEmulator[e][0].port,
-          });
-        }
+    for (const e of ALL_SERVICE_EMULATORS) {
+      // TODO(yuchenshi): Functions and Eventarc may be missing if they are not
+      // yet known to be needed and then prepareFrameworks adds extra functions.
+      if (listenForEmulator[e]) {
+        emulators.push({
+          name: e,
+          host: utils.connectableHostname(listenForEmulator[e][0].address),
+          port: listenForEmulator[e][0].port,
+        });
       }
     }
     // This may add additional sources for Functions emulator and must be done before it.
