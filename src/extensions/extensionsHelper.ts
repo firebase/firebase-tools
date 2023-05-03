@@ -684,7 +684,7 @@ export async function uploadExtensionVersionFromGitHubSource(args: {
   }
 
   // Fetch and validate extension from remote repo.
-  const sourceUri = path.join(repoUri, "tree", sourceRef, extensionRoot);
+  const sourceUri = repoUri + path.join("/tree", sourceRef, extensionRoot);
   logger.info(`Validating source code at ${clc.bold(sourceUri)}...`);
   const archiveUri = `${repoUri}/archive/${sourceRef}.zip`;
   const tempDirectory = tmp.dirSync({ unsafeCleanup: true });
