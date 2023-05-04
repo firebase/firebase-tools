@@ -6,7 +6,7 @@ import { Aligner, CmQuery, queryTimeSeries, TimeSeriesView } from "../gcp/cloudm
 import { requireAuth } from "../requireAuth";
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { buildMetricsTableRow, parseTimeseriesResponse } from "../extensions/metricsUtils";
-import { getPublisherProfile, listExtensions } from "../extensions/extensionsApi";
+import { getPublisherProfile, listExtensions } from "../extensions/publisherApi";
 import { getPublisherProjectFromName, logPrefix } from "../extensions/extensionsHelper";
 import { FirebaseError } from "../error";
 import { logger } from "../logger";

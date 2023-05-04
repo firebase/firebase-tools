@@ -25,15 +25,14 @@ import { checkResponse } from "./askUserForParam";
 import { ensure } from "../ensureApiEnabled";
 import { deleteObject, uploadObject } from "../gcp/storage";
 import { getProjectId } from "../projectUtils";
+import { createSource, getInstance } from "./extensionsApi";
 import {
   createExtensionVersionFromGitHubSource,
   createExtensionVersionFromLocalSource,
-  createSource,
   getExtension,
   getExtensionVersion,
-  getInstance,
   listExtensionVersions,
-} from "./extensionsApi";
+} from "./publisherApi";
 import { Extension, ExtensionSource, ExtensionSpec, ExtensionVersion, Param } from "./types";
 import * as refs from "./refs";
 import { EXTENSIONS_SPEC_FILE, readFile, getLocalExtensionSpec } from "./localHelper";
@@ -633,6 +632,7 @@ export async function uploadExtensionVersionFromGitHubSource(args: {
     if (extension) {
       try {
         const extensionVersionRef = `${extensionRef}@${extension.latestVersion}`;
+
         const extensionVersion = await getExtensionVersion(extensionVersionRef);
         if (extensionVersion.extensionRoot) {
           defaultRoot = extensionVersion.extensionRoot;

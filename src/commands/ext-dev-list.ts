@@ -4,7 +4,7 @@ const Table = require("cli-table");
 import { Command } from "../command";
 import { FirebaseError } from "../error";
 import { last, logLabeledBullet } from "../utils";
-import { listExtensions } from "../extensions/extensionsApi";
+import { listExtensions } from "../extensions/publisherApi";
 import { logger } from "../logger";
 import { logPrefix } from "../extensions/extensionsHelper";
 import { requireAuth } from "../requireAuth";
