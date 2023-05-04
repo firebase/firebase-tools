@@ -23,6 +23,7 @@ const V2_EVENTS = [
   events.v2.PUBSUB_PUBLISH_EVENT,
   ...events.v2.STORAGE_EVENTS,
   ...events.v2.DATABASE_EVENTS,
+  ...events.v2.FIRESTORE_EVENTS,
 ];
 
 /**
