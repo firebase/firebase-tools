@@ -721,8 +721,8 @@ export async function getAllSiteDomains(projectId: string, siteId: string): Prom
   const allSiteDomains = new Set([
     ...hostingDomains.map(({ domainName }) => domainName),
     defaultDomainWithoutHttp,
-    `${projectId}.web.app`,
-    `${projectId}.firebaseapp.com`,
+    `${siteId}.web.app`,
+    `${siteId}.firebaseapp.com`,
   ]);
 
   return Array.from(allSiteDomains);

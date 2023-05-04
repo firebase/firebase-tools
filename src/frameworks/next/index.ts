@@ -325,6 +325,7 @@ export async function ɵcodegenPublicDirectory(
     const siteDomains = await getAllSiteDomains(context.project, context.site);
     matchingI18nDomain = i18n.domains.find(({ domain }) => siteDomains.includes(domain));
   }
+  const singleLocaleDomain = !i18n || ((matchingI18nDomain || i18n).locales || []).length <= 1;
 
   const publicPath = join(sourceDir, "public");
   await mkdir(join(destDir, basePath, "_next", "static"), { recursive: true });
@@ -332,19 +333,6 @@ export async function ɵcodegenPublicDirectory(
     await copy(publicPath, join(destDir, basePath));
   }
   await copy(join(sourceDir, distDir, "static"), join(destDir, basePath, "_next", "static"));
-
-  // Copy over the default html files
-  for (const file of ["index.html", "404.html", "500.html"]) {
-    const pagesPath = join(sourceDir, distDir, "server", "pages", file);
-    if (await pathExists(pagesPath)) {
-      await copyFile(pagesPath, join(destDir, basePath, file));
-      continue;
-    }
-    const appPath = join(sourceDir, distDir, "server", "app", file);
-    if (await pathExists(appPath)) {
-      await copyFile(appPath, join(destDir, basePath, file));
-    }
-  }
 
   const [
     middlewareManifest,
@@ -415,29 +403,27 @@ export async function ɵcodegenPublicDirectory(
 
       const sourceParts = path.split("/").filter((it) => !!it);
       const sourcePartsOrIndex = sourceParts.length > 0 ? sourceParts : ["index"];
-      const locale = i18n?.locales.includes(sourceParts[0]) ? sourceParts[0] : "";
+      const locale = i18n?.locales.includes(sourceParts[0]) ? sourceParts[0] : undefined;
       const destParts = sourceParts.slice(locale ? 1 : 0);
       const destPartsOrIndex = destParts.length > 0 ? destParts : ["index"];
       const defaultLocale = !locale || (matchingI18nDomain || i18n)?.defaultLocale === locale;
+      const includeOnThisDomain = !locale ||
+        !matchingI18nDomain ||
+        matchingI18nDomain.defaultLocale === locale ||
+        !matchingI18nDomain.locales ||
+        matchingI18nDomain.locales.includes(locale);
 
-      if (
-        matchingI18nDomain &&
-        locale &&
-        !(
-          matchingI18nDomain.defaultLocale === locale ||
-          matchingI18nDomain.locales?.includes(locale)
-        )
-      ) {
+      if (!includeOnThisDomain) {
         // This content doesn't belong on this domain
         return;
       }
 
       let sourcePath = join(contentDist, ...sourcePartsOrIndex);
-      let localizedDestPath = join(destDir, basePath, locale, ...destPartsOrIndex);
-      let defaultDestPath = locale && defaultLocale && join(destDir, basePath, ...destPartsOrIndex);
+      let localizedDestPath = !singleLocaleDomain && locale && join(destDir, basePath, locale, ...destPartsOrIndex);
+      let defaultDestPath = defaultLocale && join(destDir, basePath, ...destPartsOrIndex);
       if (!fileExistsSync(sourcePath) && fileExistsSync(`${sourcePath}.html`)) {
         sourcePath += ".html";
-        localizedDestPath += ".html";
+        if (localizedDestPath) localizedDestPath += ".html";
         if (defaultDestPath) defaultDestPath += ".html";
       } else if (
         appPathRoute &&
@@ -450,8 +436,10 @@ export async function ɵcodegenPublicDirectory(
         return;
       }
 
-      await mkdir(dirname(localizedDestPath), { recursive: true });
-      await copyFile(sourcePath, localizedDestPath);
+      if (localizedDestPath) {
+        await mkdir(dirname(localizedDestPath), { recursive: true });
+        await copyFile(sourcePath, localizedDestPath);
+      }
 
       if (defaultDestPath) {
         await mkdir(dirname(defaultDestPath), { recursive: true });

@@ -1,1 +1,3 @@
 - Support for Next.js i18n, basePath, and more advanced rewrites/redirects/headers (#5788)
+- hosting.frameworksBackend now respects omit: true (#5788)
+- Web Frameworks now memoizes framework builds for single builds across mulitple hosting sites (#5788)
