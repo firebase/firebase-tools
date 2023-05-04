@@ -116,6 +116,7 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
     serverOutputPath,
     browserOutputPath,
     defaultLocale,
+    locales,
     bundleDependencies,
     externalDependencies,
     baseHref: baseUrl,
@@ -131,10 +132,6 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
     ),
   ]);
 
-  // TODO how can we handle multiple locales for a backend, is the cookie being passed?
-  const bootstrapScript = `exports.handle = require('./${serverOutputPath}/${
-    defaultLocale || ""
-  }/main.js').app();\n`;
   if (bundleDependencies) {
     const dependencies: Record<string, string> = {};
     for (const externalDependency of externalDependencies) {
@@ -150,6 +147,28 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
 
   if (serveOptimizedImages) {
     packageJson.dependencies["sharp"] ||= SHARP_VERSION;
+  }
+
+  let bootstrapScript: string;
+  if (locales) {
+    bootstrapScript = `const localizedApps = new Map();
+const ffi18n = import("firebase-frameworks/i18n");
+exports.handle = function(req,res) {
+  ffi18n.then(({ getPreferredLocale }) => {
+    const locale = getPreferredLocale(req, ${JSON.stringify(locales)}, ${JSON.stringify(defaultLocale)});
+    if (!locale) {
+      res.end(404);
+    } else if (localizedApps.has(locale)) {
+      localizedApps.get(locale)(req,res);
+    } else {
+      const app = require(\`./${serverOutputPath}/\${locale}/main.js\`).app(locale);
+      localizedApps.set(locale, app);
+      app(req,res);
+    }
+  });
+};\n`;
+  } else {
+    bootstrapScript = `exports.handle = require('./${serverOutputPath}/main.js').app();\n`;
   }
 
   return { bootstrapScript, packageJson, baseUrl };

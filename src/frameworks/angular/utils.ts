@@ -97,7 +97,7 @@ export async function getContext(dir: string) {
       browserTarget = targetFromTargetString(options.browserTarget);
     if (typeof options?.serverTarget === "string")
       serverTarget = targetFromTargetString(options.serverTarget);
-    if (options?.ngOptimizedImage) {
+    if (options?.serveOptimizedImages) {
       serveOptimizedImages = true;
     }
     if (!browserTarget)

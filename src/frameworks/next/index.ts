@@ -19,7 +19,6 @@ import { fileExistsSync, dirExistsSync } from "../../fsutils";
 
 import { promptOnce } from "../../prompt";
 import { FirebaseError } from "../../error";
-import { NODE_VERSION, NPM_COMMAND_TIMEOUT_MILLIES } from "../constants";
 import type { EmulatorInfo } from "../../emulator/types";
 import {
   readJSON,
