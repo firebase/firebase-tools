@@ -4,8 +4,6 @@ import { FirebaseError } from "../error";
 
 import type { GetInitFirebaseResponse, InitFirebaseResponse } from "./interfaces";
 
-const MONOSPACE_DAEMON_PORT = process.env.MONOSPACE_DAEMON_PORT;
-
 /**
  * Integrate Firebase Plugin with Monospace’s service Account Authentication
  */
@@ -75,7 +73,7 @@ async function pollAuthorizedProject(rid: string): Promise<string> {
  * Step 1: Make call to init Firebase, get request id (rid) or error
  */
 async function initFirebase(project?: string): Promise<InitFirebaseResponse> {
-  const initFirebaseURL = new URL(`http://localhost:${MONOSPACE_DAEMON_PORT}/init-firebase`);
+  const initFirebaseURL = new URL(`http://localhost:${getMonospaceDaemonPort()}/init-firebase`);
 
   if (project) {
     initFirebaseURL.searchParams.set("known_project", project);
@@ -98,7 +96,7 @@ async function initFirebase(project?: string): Promise<InitFirebaseResponse> {
  */
 async function getInitFirebaseResponse(rid: string): Promise<GetInitFirebaseResponse> {
   const getInitFirebaseRes = await fetch(
-    `http://localhost:${MONOSPACE_DAEMON_PORT}/get-init-firebase-response?rid=${rid}`
+    `http://localhost:${getMonospaceDaemonPort()}/get-init-firebase-response?rid=${rid}`
   );
 
   const getInitFirebaseJson: GetInitFirebaseResponse = await getInitFirebaseRes.json();
@@ -110,5 +108,9 @@ async function getInitFirebaseResponse(rid: string): Promise<GetInitFirebaseResp
  * Whether this is a Monospace environment
  */
 export async function isMonospaceEnv(): Promise<boolean> {
-  return Promise.resolve(Boolean(process.env.MONOSPACE_DAEMON_PORT));
+  return Promise.resolve(Boolean(getMonospaceDaemonPort()));
+}
+
+function getMonospaceDaemonPort(): string | undefined {
+  return process.env.MONOSPACE_DAEMON_PORT;
 }
