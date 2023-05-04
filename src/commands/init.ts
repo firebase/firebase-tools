@@ -70,6 +70,11 @@ const choices = [
     name: "Extensions: Set up an empty Extensions manifest",
     checked: false,
   },
+  {
+    value: "turtlestack",
+    name: "Turtlestack: Get started with Turtle project",
+    checked: false,
+  },
 ];
 const featureNames = choices.map((choice) => choice.value);
 
