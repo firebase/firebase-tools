@@ -1,7 +1,5 @@
 import fetch from "node-fetch";
-import { GoogleAuth } from "google-auth-library";
 
-import * as apiv2 from "../apiv2";
 import { FirebaseError } from "../error";
 
 import type { GetInitFirebaseResponse, InitFirebaseResponse } from "./interfaces";
@@ -11,13 +9,7 @@ const MONOSPACE_DAEMON_PORT = process.env.MONOSPACE_DAEMON_PORT;
 /**
  * Integrate Firebase Plugin with Monospace’s service Account Authentication
  */
-export async function setupMonospace(client: GoogleAuth, project?: string): Promise<void> {
-  const accessToken = await client.getAccessToken();
-
-  if (!accessToken) throw new Error("Failed to get access token");
-
-  apiv2.setAccessToken(accessToken);
-
+export async function setupMonospace(project?: string): Promise<void> {
   const initFirebaseResponse = await initFirebase(project);
 
   if (initFirebaseResponse.success === false) {
