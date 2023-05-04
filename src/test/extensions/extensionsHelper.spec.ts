@@ -4,6 +4,7 @@ import * as sinon from "sinon";
 import { FirebaseError } from "../../error";
 import * as extensionsApi from "../../extensions/extensionsApi";
 import * as extensionsHelper from "../../extensions/extensionsHelper";
+import * as publisherApi from "../../extensions/publisherApi";
 import * as getProjectNumber from "../../getProjectNumber";
 import * as functionsConfig from "../../functionsConfig";
 import { storage } from "../../gcp";
@@ -470,7 +471,7 @@ describe("extensionsHelper", () => {
     let listExtensionVersionsStub: sinon.SinonStub;
 
     beforeEach(() => {
-      listExtensionVersionsStub = sinon.stub(extensionsApi, "listExtensionVersions");
+      listExtensionVersionsStub = sinon.stub(publisherApi, "listExtensionVersions");
       listExtensionVersionsStub.returns(Promise.resolve([TEST_EXT_VERSION_1, TEST_EXT_VERSION_2]));
     });
 
