@@ -88,7 +88,7 @@ describe("turtles", () => {
       ],
     };
 
-    it.only("creates a connection if it doesn't exist", async () => {
+    it("creates a connection if it doesn't exist", async () => {
       getConnectionStub.onFirstCall().rejects(new FirebaseError("error", { status: 404 }));
       getConnectionStub.onSecondCall().resolves(completeConn);
       fetchLinkableRepositoriesStub.resolves(repos);
@@ -102,7 +102,7 @@ describe("turtles", () => {
       expect(createConnectionStub).to.be.calledWith(projectId, location, connectionId);
     });
 
-    it.only("create repository if it doesn't exist", async () => {
+    it("create repository if it doesn't exist", async () => {
       getConnectionStub.resolves(completeConn);
       fetchLinkableRepositoriesStub.resolves(repos);
       promptOnceStub.onFirstCall().resolves(repos.repositories[0].remoteUri);
@@ -120,7 +120,7 @@ describe("turtles", () => {
       );
     });
 
-    it.only("throws error if user fails to auth github connection", async () => {
+    it("throws error if user fails to auth github connection", async () => {
       getConnectionStub.resolves(pendingConn);
 
       promptOnceStub.onFirstCall().resolves("continue");
