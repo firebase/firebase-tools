@@ -1,14 +1,6 @@
 import { cloudbuildOrigin } from "../../../api";
 import { FirebaseError } from "../../../error";
-import {
-  Connection,
-  Repository,
-  createConnection,
-  createRepository,
-  fetchLinkableRepositories,
-  getConnection,
-  getRepository,
-} from "../../../gcp/cloudbuild";
+import * as gcb from "../../../gcp/cloudbuild";
 import { logger } from "../../../logger";
 import * as poller from "../../../operation-poller";
 import * as open from "open";
@@ -28,21 +20,32 @@ const gcbPollerOptions: Omit<poller.OperationPollerOptions, "operationResourceNa
 export async function linkGitHubRepository(
   projectId: string,
   location: string
-): Promise<Repository> {
+): Promise<gcb.Repository> {
   const connectionId = generateConnectionId();
   const conn = await getOrCreateConnection(projectId, location, connectionId);
   if (conn.installationState.stage !== "COMPLETE") {
     throw new FirebaseError(conn.installationState.message);
   }
 
-  const resp = await fetchLinkableRepositories(projectId, location, connectionId);
-  const choices = resp.repositories.map((repo: Repository) => ({
+  const resp = await gcb.fetchLinkableRepositories(projectId, location, connectionId);
+  if (resp.repositories.length === 0) {
+    throw new FirebaseError(
+      "The GitHub App does not have access to any repositories. Please configure" +
+        "your app installation permissions at https://github.com/settings/installations."
+    );
+  }
+
+  const choices = resp.repositories.map((repo: gcb.Repository) => ({
     name: extractRepoSlugFromURI(repo.remoteUri) || repo.remoteUri,
     value: repo.remoteUri,
   }));
   const remoteUri: string = await promptOnce({
     type: "list",
-    message: "Which of the following repositories would you like to link?",
+    message:
+      "Which of the following repositories would you like to link? If you don't" +
+      "see the repository, cancel the setup process by pressing Ctrl-C, configure" +
+      "your app installation permissions at https://github.com/settings/installations," +
+      "then run the command again.",
     choices,
   });
 
@@ -63,54 +66,29 @@ function extractRepoSlugFromURI(remoteUri: string): string | undefined {
   return match[1];
 }
 
-function generateRepositoryId(remoteUri: string): string | undefined {
-  return extractRepoSlugFromURI(remoteUri)?.replace("/", "--");
-}
-
 function generateConnectionId(): string {
   return "turtles-conn";
 }
 
-async function getOrCreateRepository(
-  projectId: string,
-  location: string,
-  connectionId: string,
-  remoteUri: string
-): Promise<Repository> {
-  const repositoryId = generateRepositoryId(remoteUri);
-  if (!repositoryId) {
-    throw new FirebaseError(`Failed to generate repositoryId for URI ${remoteUri}`);
-  }
-  let repo: Repository;
-  try {
-    repo = await getRepository(projectId, location, connectionId, repositoryId);
-  } catch (err: unknown) {
-    if ((err as FirebaseError).status === 404) {
-      const op = await createRepository(projectId, location, connectionId, repositoryId, remoteUri);
-      repo = await poller.pollOperation<Repository>({
-        ...gcbPollerOptions,
-        pollerName: `create-${location}-${connectionId}-${repositoryId}`,
-        operationResourceName: op.name,
-      });
-    } else {
-      throw err;
-    }
-  }
-  return repo;
+function generateRepositoryId(remoteUri: string): string | undefined {
+  return extractRepoSlugFromURI(remoteUri)?.replace("/", "--");
 }
 
-async function getOrCreateConnection(
+/**
+ *
+ */
+export async function getOrCreateConnection(
   projectId: string,
   location: string,
   connectionId: string
-): Promise<Connection> {
-  let conn: Connection;
+): Promise<gcb.Connection> {
+  let conn: gcb.Connection;
   try {
-    conn = await getConnection(projectId, location, connectionId);
+    conn = await gcb.getConnection(projectId, location, connectionId);
   } catch (err: unknown) {
     if ((err as FirebaseError).status === 404) {
-      const op = await createConnection(projectId, location, connectionId);
-      conn = await poller.pollOperation<Connection>({
+      const op = await gcb.createConnection(projectId, location, connectionId);
+      conn = await poller.pollOperation<gcb.Connection>({
         ...gcbPollerOptions,
         pollerName: `create-${location}-${connectionId}`,
         operationResourceName: op.name,
@@ -142,7 +120,7 @@ async function getOrCreateConnection(
       ],
     });
     if (authorized === "continue") {
-      conn = await getConnection(projectId, location, connectionId);
+      conn = await gcb.getConnection(projectId, location, connectionId);
     } else {
       // will return a connection in PENDING_USER_OAUTH state
       return conn;
@@ -150,4 +128,41 @@ async function getOrCreateConnection(
   }
   // may return a connection in non-COMPLETE state
   return conn;
+}
+
+/**
+ *
+ */
+export async function getOrCreateRepository(
+  projectId: string,
+  location: string,
+  connectionId: string,
+  remoteUri: string
+): Promise<gcb.Repository> {
+  const repositoryId = generateRepositoryId(remoteUri);
+  if (!repositoryId) {
+    throw new FirebaseError(`Failed to generate repositoryId for URI "${remoteUri}".`);
+  }
+  let repo: gcb.Repository;
+  try {
+    repo = await gcb.getRepository(projectId, location, connectionId, repositoryId);
+  } catch (err: unknown) {
+    if ((err as FirebaseError).status === 404) {
+      const op = await gcb.createRepository(
+        projectId,
+        location,
+        connectionId,
+        repositoryId,
+        remoteUri
+      );
+      repo = await poller.pollOperation<gcb.Repository>({
+        ...gcbPollerOptions,
+        pollerName: `create-${location}-${connectionId}-${repositoryId}`,
+        operationResourceName: op.name,
+      });
+    } else {
+      throw err;
+    }
+  }
+  return repo;
 }
