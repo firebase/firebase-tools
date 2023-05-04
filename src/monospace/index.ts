@@ -113,3 +113,10 @@ async function getInitFirebaseResponse(rid: string): Promise<GetInitFirebaseResp
 
   return getInitFirebaseJson;
 }
+
+/**
+ * Whether this is a Monospace environment
+ */
+export async function isMonospaceEnv(): Promise<boolean> {
+  return Promise.resolve(Boolean(process.env.MONOSPACE_DAEMON_PORT));
+}
