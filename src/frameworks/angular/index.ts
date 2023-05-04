@@ -52,7 +52,7 @@ export async function init(setup: any, config: any) {
 }
 
 export async function build(dir: string): Promise<BuildResult> {
-  const { targets, serverTarget, ngOptimizedImage, locales } = await getBuildConfig(dir);
+  const { targets, serverTarget, serveOptimizedImages, locales } = await getBuildConfig(dir);
   await warnIfCustomBuildScript(dir, name, DEFAULT_BUILD_SCRIPT);
   for (const target of targets) {
     // TODO there is a bug here. Spawn for now.
@@ -63,7 +63,7 @@ export async function build(dir: string): Promise<BuildResult> {
       stdio: "inherit",
     });
   }
-  const wantsBackend = !!serverTarget || ngOptimizedImage;
+  const wantsBackend = !!serverTarget || serveOptimizedImages;
   const i18n = locales ? { root: "/" } : undefined;
   return { wantsBackend, i18n };
 }
@@ -110,6 +110,7 @@ export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: strin
 }
 
 export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: string) {
+  // TODO if !serverTarget, return { ngOptimizedImage only }
   const {
     packageJson,
     serverOutputPath,
@@ -118,7 +119,7 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
     bundleDependencies,
     externalDependencies,
     baseHref: baseUrl,
-    ngOptimizedImage,
+    serveOptimizedImages,
   } = await getServerConfig(sourceDir);
 
   await Promise.all([
@@ -147,7 +148,7 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
     packageJson.dependencies ||= {};
   }
 
-  if (ngOptimizedImage) {
+  if (serveOptimizedImages) {
     packageJson.dependencies["sharp"] ||= SHARP_VERSION;
   }
 
