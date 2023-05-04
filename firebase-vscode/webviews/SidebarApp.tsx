@@ -3,6 +3,8 @@ import {
   VSCodeDivider,
   VSCodeProgressRing,
   VSCodeLink,
+  VSCodeRadio,
+  VSCodeRadioGroup,
 } from "@vscode/webview-ui-toolkit/react";
 import cn from "classnames";
 import React, { useEffect, useState } from "react";
@@ -19,6 +21,11 @@ import { ProjectSection } from "./components/ProjectSection";
 import { FirebaseConfig } from "../../src/firebaseConfig";
 import { ServiceAccountUser } from "../common/types";
 
+const deployTargetText = {
+  live: 'Live Channel',
+  preview: 'Preview Channel'
+};
+
 export function SidebarApp() {
   const [projectId, setProjectId] = useState<string | null>(null);
   const [hostingState, setHostingState] = useState<
@@ -30,6 +37,7 @@ export function SidebarApp() {
     ServiceAccountUser | User
   > | null>(null);
   const [isHostingOnboarded, setHostingOnboarded] = useState<boolean>(false);
+  const [deployTarget, setDeployTarget] = useState<string>('live');
 
   useEffect(() => {
     console.log("loading SidebarApp component");
@@ -104,9 +112,9 @@ export function SidebarApp() {
     );
   };
 
-  const accountSection = env && !env.isMonospace && (
-    <AccountSection userEmail={userEmail} allUsers={allUsers} />
-  );
+  const accountSection = 
+    <AccountSection userEmail={userEmail} allUsers={allUsers} isMonospace={env?.isMonospace} />
+  ;
 
   // Just render the account section loading view if it doesn't know user state
   if (allUsers === null) {
@@ -131,22 +139,26 @@ export function SidebarApp() {
                   broker.send("hostingDeploy");
                 }}
               >
-                Deploy to Firebase Hosting
+                Deploy to {deployTargetText[deployTarget]}
               </VSCodeButton>
-              {hostingState === null && (
+              <VSCodeRadioGroup name="deployTarget" value={deployTarget} onChange={e => setDeployTarget(e.target.value)}>
+                <VSCodeRadio name="deployTarget" value="live">{deployTargetText.live}</VSCodeRadio>
+                <VSCodeRadio name="deployTarget" value="preview">{deployTargetText.preview}</VSCodeRadio>
+              </VSCodeRadioGroup>
+              <Spacer size="xsmall" />
+              {hostingState !== 'deploying' && (
                 <>
+                  <Spacer size="xsmall" /><div>
+                <Label level={3} className={styles.hostingRowLabel}>
                   <Spacer size="xsmall" />
-                  <div>
-                    <Label level={3} className={styles.hostingRowLabel}>
-                      <Spacer size="xsmall" />
-                      <Icon
-                        className={styles.hostingRowIcon}
-                        slot="start"
-                        icon="globe"
-                      ></Icon>
-                      {projectId}.web.app
-                    </Label>
-                  </div>
+                  <Icon
+                    className={styles.hostingRowIcon}
+                    slot="start"
+                    icon='history'
+                  ></Icon>
+                  {hostingState === null ? 'Not deployed yet' : `Deployed [timestamp here]`}
+                </Label>
+              </div>
                 </>
               )}
               {hostingState === "deploying" && (
@@ -163,22 +175,18 @@ export function SidebarApp() {
                   </div>
                 </>
               )}
-              {hostingState === "deployed" && (
-                <>
-                  <Spacer size="medium" />
-                  <Label level={3} className={styles.hostingRowLabel}>
-                    <Spacer size="xsmall" />
-                    <Icon
-                      className={styles.hostingRowIcon}
-                      slot="start"
-                      icon="globe"
-                    ></Icon>
-                    <VSCodeLink href={`https://${projectId}.web.app`}>
-                      {projectId}.web.app
-                    </VSCodeLink>
-                  </Label>
-                </>
-              )}
+              <Spacer size="medium" />
+              <Label level={3} className={styles.hostingRowLabel}>
+                <Spacer size="xsmall" />
+                <Icon
+                  className={styles.hostingRowIcon}
+                  slot="start"
+                  icon="globe"
+                ></Icon>
+                <VSCodeLink href={`https://${projectId}.web.app`}>
+                  {projectId}.web.app
+                </VSCodeLink>
+              </Label>
             </>
           </PanelSection>
         </>
