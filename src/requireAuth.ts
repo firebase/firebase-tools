@@ -42,7 +42,7 @@ async function autoAuth(options: any, authScopes: string[]): Promise<void> {
   token !== null ? apiv2.setAccessToken(token) : false;
 
   if (await isMonospaceEnv()) {
-    await setupMonospace(options.project);
+    await setupMonospace(options.projectRoot, options.project);
   }
 }
 
