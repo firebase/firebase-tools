@@ -50,8 +50,8 @@ async function pollAuthorizedProject(rid: string): Promise<string> {
 
   // Success case: If the user successfully completes the steps in the popup,
   // you'll see a response below
-  if (getInitFirebaseRes.success === true) {
-    return getInitFirebaseRes.authorized_project;
+  if ("userResponse" in getInitFirebaseRes) {
+    return getInitFirebaseRes.userResponse.projectId;
   }
 
   const { error } = getInitFirebaseRes;
