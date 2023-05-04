@@ -41,7 +41,12 @@ export async function displayWarningsForDeploy(instancesToCreate: InstanceSpec[]
     utils.logLabeledBullet(
       logPrefix,
       marked(
-        `The following extension versions have not been published to the Firebase Extensions Hub:\n${humanReadableList}\nUnpublished extensions may carry a higher risk of containing malicious or low quality code. It is provided “AS IS”, without any warranty, express or implied, from Google. Google disclaims all liability for any damages, direct or indirect, resulting from the use of the extension, and its functionality might change in backwards-incompatible ways.`,
+        `The following extension versions have not been published to the Firebase Extensions Hub:\n${humanReadableList}\n.` +
+          "Unpublished extensions have not been reviewed by " +
+          'Firebase, and are provided "AS IS", without any warranty, express or ' +
+          "implied, from Google. Google disclaims all liability for any damages, " +
+          "direct or indirect, resulting from the use of the extension, and its " +
+          "functionality might change in backwards-incompatible ways.",
         { gfm: false }
       )
     );
