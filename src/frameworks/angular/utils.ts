@@ -14,21 +14,22 @@ async function localesForTarget(
   workspaceProject: ProjectDefinition
 ) {
   const { targetStringFromTarget } = relativeRequire(dir, "@angular-devkit/architect");
-  const browserTargetOptions = await architectHost.getOptionsForTarget(target);
-  if (!browserTargetOptions)
+  const targetOptions = await architectHost.getOptionsForTarget(target);
+  if (!targetOptions)
     throw new FirebaseError(`Couldn't find options for ${targetStringFromTarget(target)}.`);
 
   let locales: string[] | undefined = undefined;
   let defaultLocale: string | undefined = undefined;
-  if (browserTargetOptions.localize) {
+  if (targetOptions.localize) {
     const i18n: AngularI18nConfig | undefined = workspaceProject.extensions?.i18n as any;
     if (!i18n) throw new FirebaseError(`No i18n config on project.`);
-    if (browserTargetOptions.localize === true) {
+    if (targetOptions.localize === true) {
       defaultLocale = i18n.sourceLocale;
       locales = Object.keys(i18n.locales);
-    } else if (Array.isArray(browserTargetOptions.localize)) {
+      if (defaultLocale) locales.push(defaultLocale);
+    } else if (Array.isArray(targetOptions.localize)) {
       locales ||= [];
-      for (const locale of browserTargetOptions.localize) {
+      for (const locale of targetOptions.localize) {
         if (typeof locale !== "string") continue;
         locales.push(locale);
       }
@@ -198,14 +199,16 @@ export async function getContext(dir: string) {
 
   if (!browserTarget) throw new FirebaseError(`No browser target on ${project}`);
   const browserTargetOptions = await architectHost.getOptionsForTarget(browserTarget);
-  if (!browserTargetOptions)
+  if (!browserTargetOptions) {
     throw new FirebaseError(`Couldn't find options for ${targetStringFromTarget(browserTarget)}.`);
+  }
 
   const baseHref = browserTargetOptions.baseHref || "";
-  if (typeof baseHref !== "string")
+  if (typeof baseHref !== "string") {
     throw new FirebaseError(
       `baseHref on ${targetStringFromTarget(browserTarget)} was not a string`
     );
+  }
 
   return {
     architect,
@@ -247,10 +250,16 @@ export async function getServerConfig(sourceDir: string) {
     serveOptimizedImages,
   } = await getContext(sourceDir);
   if (!serverTarget) throw new Error("No server target");
-  const { locales, defaultLocale } = await localesForTarget(
+  const { locales: serverLocales, defaultLocale } = await localesForTarget(
     sourceDir,
     architectHost,
     serverTarget,
+    workspaceProject
+  );
+  const { locales: browserLocales } = await localesForTarget(
+    sourceDir,
+    architectHost,
+    browserTarget,
     workspaceProject
   );
   const serverTargetOptions = await architectHost.getOptionsForTarget(serverTarget);
@@ -261,7 +270,7 @@ export async function getServerConfig(sourceDir: string) {
     throw new Error("browserTarget output path is not a string");
   const browserOutputPath = browserTargetOptions.outputPath;
   const serverOutputPath = serverTargetOptions.outputPath;
-  if (locales && !defaultLocale) {
+  if (serverLocales && !defaultLocale) {
     throw new FirebaseError(
       "It's required that your source locale to be one of the localize options"
     );
@@ -276,7 +285,8 @@ export async function getServerConfig(sourceDir: string) {
     baseHref,
     bundleDependencies,
     externalDependencies,
-    locales,
+    serverLocales,
+    browserLocales,
     defaultLocale,
     serveOptimizedImages,
   };
