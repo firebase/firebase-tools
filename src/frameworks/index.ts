@@ -383,9 +383,13 @@ export async function prepareFrameworks(
           if (!(await pathExists(path))) continue;
           const stats = await stat(path);
           if (stats.isDirectory()) {
-            const result = spawnSync("npm", ["pack", relative(functionsDist, path), "--json=true"], {
-              cwd: functionsDist,
-            });
+            const result = spawnSync(
+              "npm",
+              ["pack", relative(functionsDist, path), "--json=true"],
+              {
+                cwd: functionsDist,
+              }
+            );
             if (result.status) throw new Error(`Error running \`npm pack\` at ${path}`);
             const { filename } = JSON.parse(result.stdout.toString())[0];
             packageJson.dependencies[name] = `file:${filename}`;

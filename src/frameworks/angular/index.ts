@@ -157,8 +157,16 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
 const ffi18n = import("firebase-frameworks/i18n");
 exports.handle = function(req,res) {
   ffi18n.then(({ getPreferredLocale }) => {
-    const serverLocale = ${serverLocales ? `getPreferredLocale(req, ${JSON.stringify(serverLocales)}, ${JSON.stringify(defaultLocale)})` : `""`};
-    const browserLocale = getPreferredLocale(req, ${JSON.stringify(browserLocales)}, ${JSON.stringify(defaultLocale)});
+    const serverLocale = ${
+      serverLocales
+        ? `getPreferredLocale(req, ${JSON.stringify(serverLocales)}, ${JSON.stringify(
+            defaultLocale
+          )})`
+        : `""`
+    };
+    const browserLocale = getPreferredLocale(req, ${JSON.stringify(
+      browserLocales
+    )}, ${JSON.stringify(defaultLocale)});
     if (!browserLocale) {
       res.end(404);
     } else if (localizedApps.has(serverLocale)) {
