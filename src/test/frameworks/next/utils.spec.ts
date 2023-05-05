@@ -21,7 +21,7 @@ import {
   isUsingImageOptimization,
   isUsingAppDirectory,
   cleanCustomRouteI18n,
-  I18N_CUSTOM_ROUTE_PREFIX,
+  I18N_SOURCE,
   allDependencyNames,
   getMiddlewareMatcherRegexes,
   getNonStaticRoutes,
@@ -287,8 +287,8 @@ describe("Next.js utils", () => {
       for (const path of pathsWithCustomRoutesInternalPrefix) {
         const cleanPath = cleanCustomRouteI18n(path);
 
-        expect(path.includes(I18N_CUSTOM_ROUTE_PREFIX)).to.be.true;
-        expect(cleanPath.includes(I18N_CUSTOM_ROUTE_PREFIX)).to.be.false;
+        expect(!!path.match(I18N_SOURCE)).to.be.true;
+        expect(!!cleanPath.match(I18N_SOURCE)).to.be.false;
 
         // should not keep double slashes
         expect(cleanPath.startsWith("//")).to.be.false;

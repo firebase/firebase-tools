@@ -71,7 +71,11 @@ export async function discover(dir: string, warn = true) {
 const BUILD_MEMO = new Map<string[], Promise<BuildResult | void>>();
 
 // Memoize the build based on both the dir and the environment variables
-function memoizeBuild(dir: string, build: (dir: string) => Promise<BuildResult | void>, deps: any[]) {
+function memoizeBuild(
+  dir: string,
+  build: (dir: string) => Promise<BuildResult | void>,
+  deps: any[]
+) {
   const key = [dir, ...deps];
   for (const existingKey of BUILD_MEMO.keys()) {
     if (isDeepStrictEqual(existingKey, key)) {
@@ -286,7 +290,8 @@ export async function prepareFrameworks(
       });
 
       config.public = relative(projectRoot, hostingDist);
-      if (wantsBackend && !omitCloudFunction) codegenFunctionsDirectory = codegenProdModeFunctionsDirectory;
+      if (wantsBackend && !omitCloudFunction)
+        codegenFunctionsDirectory = codegenProdModeFunctionsDirectory;
     }
     config.webFramework = `${framework}${codegenFunctionsDirectory ? "_ssr" : ""}`;
     if (codegenFunctionsDirectory) {
@@ -510,6 +515,10 @@ ${firebaseDefaults ? `__FIREBASE_DEFAULTS__=${JSON.stringify(firebaseDefaults)}\
         ],
       });
     }
+  }
+  if (process.env.DEBUG) {
+    console.log("Effective firebase.json:");
+    console.log(JSON.stringify(configs, undefined, 2));
   }
 
   // Clean up memos/caches

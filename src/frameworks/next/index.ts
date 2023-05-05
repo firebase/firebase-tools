@@ -69,7 +69,7 @@ import { getAllSiteDomains } from "../../hosting/api";
 
 const DEFAULT_BUILD_SCRIPT = ["next build"];
 const PUBLIC_DIR = "public";
-const I18N_ROOT = "/";
+const I18N_ROOT = "localized";
 
 export const name = "Next.js";
 export const support = SupportLevel.Preview;
@@ -218,7 +218,6 @@ export async function build(dir: string): Promise<BuildResult> {
   }
 
   const isEveryRedirectSupported = nextJsRedirects
-    .map(cleanI18n)
     .filter((it) => !it.internal)
     .every(isRedirectSupportedByHosting);
   if (!isEveryRedirectSupported) {
@@ -252,6 +251,7 @@ export async function build(dir: string): Promise<BuildResult> {
 
   const rewrites = nextJsRewritesToUse
     .filter(isRewriteSupportedByHosting)
+    .map(cleanI18n)
     .map(({ source, destination }) => ({
       // clean up unnecessary escaping
       source: cleanEscapedChars(source),
@@ -278,7 +278,7 @@ export async function build(dir: string): Promise<BuildResult> {
 
   const i18n = nextjsI18n
     ? {
-        root: join(basePath, I18N_ROOT),
+        root: I18N_ROOT,
       }
     : undefined;
 
@@ -358,10 +358,13 @@ export async function ɵcodegenPublicDirectory(
 
   const rewritesRegexesNotSupportedByHosting = getNextjsRewritesToUse(rewrites)
     .filter((rewrite) => !isRewriteSupportedByHosting(rewrite))
+    .map(cleanI18n)
     .map((rewrite) => new RegExp(rewrite.regex));
 
   const redirectsRegexesNotSupportedByHosting = redirects
+    .filter((it) => !it.internal)
     .filter((redirect) => !isRedirectSupportedByHosting(redirect))
+    .map(cleanI18n)
     .map((redirect) => new RegExp(redirect.regex));
 
   const headersRegexesNotSupportedByHosting = headers
@@ -390,37 +393,47 @@ export async function ɵcodegenPublicDirectory(
 
   await Promise.all(
     Object.entries(routesToCopy).map(async ([path, route]) => {
-      if (
-        route.initialRevalidateSeconds ||
-        pathsUsingsFeaturesNotSupportedByHosting.some((it) => path.match(it))
-      ) {
+      if (route.initialRevalidateSeconds) {
+        if (process.env.DEBUG) console.log(`skipping ${path} due to revalidate`);
         return;
       }
-
+      if (pathsUsingsFeaturesNotSupportedByHosting.some((it) => path.match(it))) {
+        if (process.env.DEBUG)
+          console.log(
+            `skipping ${path} due to it matching an unsupported rewrite/redirect/header or middlware`
+          );
+        return;
+      }
       const appPathRoute =
         route.srcRoute && appPathRoutesEntries.find(([, it]) => it === route.srcRoute)?.[0];
       const contentDist = join(sourceDir, distDir, "server", appPathRoute ? "app" : "pages");
 
       const sourceParts = path.split("/").filter((it) => !!it);
-      const sourcePartsOrIndex = sourceParts.length > 0 ? sourceParts : ["index"];
       const locale = i18n?.locales.includes(sourceParts[0]) ? sourceParts[0] : undefined;
-      const destParts = sourceParts.slice(locale ? 1 : 0);
-      const destPartsOrIndex = destParts.length > 0 ? destParts : ["index"];
-      const defaultLocale = !locale || (matchingI18nDomain || i18n)?.defaultLocale === locale;
-      const includeOnThisDomain = !locale ||
+      const includeOnThisDomain =
+        !locale ||
         !matchingI18nDomain ||
         matchingI18nDomain.defaultLocale === locale ||
         !matchingI18nDomain.locales ||
         matchingI18nDomain.locales.includes(locale);
 
       if (!includeOnThisDomain) {
-        // This content doesn't belong on this domain
+        if (process.env.DEBUG)
+          console.log(`skipping ${path} since it is for a locale not deployed on this domain`);
         return;
       }
 
+      const sourcePartsOrIndex = sourceParts.length > 0 ? sourceParts : ["index"];
+      const destParts = sourceParts.slice(locale ? 1 : 0);
+      const destPartsOrIndex = destParts.length > 0 ? destParts : ["index"];
+      const isDefaultLocale = !locale || (matchingI18nDomain || i18n)?.defaultLocale === locale;
+
       let sourcePath = join(contentDist, ...sourcePartsOrIndex);
-      let localizedDestPath = !singleLocaleDomain && locale && join(destDir, basePath, locale, ...destPartsOrIndex);
-      let defaultDestPath = defaultLocale && join(destDir, basePath, ...destPartsOrIndex);
+      let localizedDestPath =
+        !singleLocaleDomain &&
+        locale &&
+        join(destDir, I18N_ROOT, basePath, locale, ...destPartsOrIndex);
+      let defaultDestPath = isDefaultLocale && join(destDir, basePath, ...destPartsOrIndex);
       if (!fileExistsSync(sourcePath) && fileExistsSync(`${sourcePath}.html`)) {
         sourcePath += ".html";
         if (localizedDestPath) localizedDestPath += ".html";

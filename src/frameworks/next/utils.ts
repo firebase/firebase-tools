@@ -28,7 +28,7 @@ import {
 import { dirExistsSync, fileExistsSync } from "../../fsutils";
 import { readFile } from "fs/promises";
 
-export const I18N_CUSTOM_ROUTE_PREFIX = ":nextInternalLocale";
+export const I18N_SOURCE = /\/:nextInternalLocale(\([^\)]+\))?/;
 
 /**
  * Remove escaping from characters used for Regex patch matching that Next.js
@@ -52,16 +52,21 @@ export function cleanEscapedChars(path: string): string {
  * Remove Next.js internal i18n prefix from headers, redirects and rewrites.
  */
 export function cleanCustomRouteI18n(path: string): string {
-  return path.replace(new RegExp(String.raw`^/${I18N_CUSTOM_ROUTE_PREFIX}(\(([^)]+)\))?`), "");
+  return path.replace(I18N_SOURCE, "");
 }
 
-export function cleanI18n<T = any>(it: any): T {
-  const sourceContainsI18n = it.source.startsWith(`/${I18N_CUSTOM_ROUTE_PREFIX}`);
+export function cleanI18n<T = any>(it: T & { source: string; [key: string]: any }): T {
+  const [, localesRegex] = it.source.match(I18N_SOURCE) || [undefined, undefined];
+  const source = localesRegex ? cleanCustomRouteI18n(it.source) : it.source;
+  const destination =
+    "destination" in it && localesRegex ? cleanCustomRouteI18n(it.destination) : it.destination;
+  const regex =
+    "regex" in it && localesRegex ? it.regex.replace(`(?:/${localesRegex})`, "") : it.regex;
   return {
     ...it,
-    source: sourceContainsI18n ? cleanCustomRouteI18n(it.source) : it.source,
-    destination:
-      it.destination && sourceContainsI18n ? cleanCustomRouteI18n(it.destination) : it.destination,
+    source,
+    destination,
+    regex,
   };
 }
 
