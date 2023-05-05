@@ -3,7 +3,8 @@ const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
   experimental: {
-    appDir: true
+    appDir: true,
+    serverActions: true,
   },
   basePath: "/base",
   i18n: {

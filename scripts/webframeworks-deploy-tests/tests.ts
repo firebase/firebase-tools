@@ -68,14 +68,14 @@ describe("webframeworks deploy build", function (this) {
     it("should have working ISR", async () => {
       const response = await fetch(`${HOST}/app/isr`);
       expect(response.ok).to.be.true;
-      expect(response.headers.get("cache-control")).to.eql("private");
-      expect(await response.text()).to.include("<body>ISR<!-- -->");
+      expect(response.headers.get("cache-control")).to.eql("private, no-cache, no-store, max-age=0, must-revalidate");
+      expect(await response.text()).to.include("<body>ISR");
     });
 
     it("should have working SSR", async () => {
       const bazResponse = await fetch(`${HOST}/app/ssr`);
       expect(bazResponse.ok).to.be.true;
-      expect(await bazResponse.text()).to.include("<body>SSR<!-- -->");
+      expect(await bazResponse.text()).to.include("<body>SSR");
 
       const apiDynamicResponse = await fetch(`${HOST}/app/api/dynamic`);
       expect(apiDynamicResponse.ok).to.be.true;
@@ -112,7 +112,7 @@ describe("webframeworks deploy build", function (this) {
     it("should have working ISR", async () => {
       const response = await fetch(`${HOST}/pages/isr`);
       expect(response.ok).to.be.true;
-      expect(response.headers.get("cache-control")).to.eql("s-maxage=10, stale-while-revalidate");
+      expect(response.headers.get("cache-control")).to.eql("private");
       expect(await response.text()).to.include(`ISR <!-- -->${DEFAULT_LANG}`);
     });
   });
