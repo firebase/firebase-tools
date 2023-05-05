@@ -832,7 +832,7 @@ function getMissingPublisherError(publisherId: string): FirebaseError {
     marked(
       `Couldn't find publisher ID '${clc.bold(
         publisherId
-      )}'. Please ensure that you have registered this ID. To register as a publisher, you can check out the [Firebase documentation](https://firebase.google.com/docs/extensions/publishers/get-started) for step-by-step instructions.`
+      )}'. Please ensure that you have registered this ID. For step-by-step instructions on getting started as a publisher, see https://firebase.google.com/docs/extensions/publishers/get-started.`
     )
   );
 }
