@@ -1,7 +1,6 @@
 import * as clc from "colorette";
 const Table = require("cli-table");
 
-import { ExtensionState } from "../extensions/types";
 import { Command } from "../command";
 import { FirebaseError } from "../error";
 import { last, logLabeledBullet } from "../utils";
@@ -39,10 +38,7 @@ export const command = new Command("ext:dev:list <publisherId>")
       head: ["Extension ID", "State", "Latest Version", "Version in Extensions Hub"],
       style: { head: ["yellow"] },
     });
-    // Order extensions newest to oldest.
-    const sorted = extensions.sort(
-      (a, b) => new Date(b.createTime).valueOf() - new Date(a.createTime).valueOf()
-    );
+    const sorted = extensions.sort((a, b) => a.ref.localeCompare(b.ref));
     sorted.forEach((extension) => {
       var state: string;
       switch (extension.state) {
@@ -53,18 +49,18 @@ export const command = new Command("ext:dev:list <publisherId>")
           } else if (extension.latestVersion) {
             state = clc.green("Uploaded");
           } else {
-            state = "Prerelease"
+            state = "Prerelease";
           }
-          break
+          break;
         case "DEPRECATED":
-          state = clc.red("Deprecated")
-          break
+          state = clc.red("Deprecated");
+          break;
         case "SUSPENDED":
-          state = clc.bold(clc.red("Suspended"))
-          break
+          state = clc.bold(clc.red("Suspended"));
+          break;
         default:
           state = "-";
-          break
+          break;
       }
       table.push([
         last(extension.ref.split("/")),
