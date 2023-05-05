@@ -28,7 +28,7 @@ export interface BuildResult {
   headers?: any[];
   wantsBackend?: boolean;
   trailingSlash?: boolean;
-  i18n?: { root: string };
+  i18n?: boolean;
 }
 
 export interface Framework {

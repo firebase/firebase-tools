@@ -20,7 +20,7 @@ import { fileExistsSync } from "../../fsutils";
 
 import { promptOnce } from "../../prompt";
 import { FirebaseError } from "../../error";
-import { NODE_VERSION, NPM_COMMAND_TIMEOUT_MILLIES } from "../constants";
+import { I18N_ROOT, NODE_VERSION, NPM_COMMAND_TIMEOUT_MILLIES } from "../constants";
 import type { EmulatorInfo } from "../../emulator/types";
 import {
   readJSON,
@@ -69,7 +69,6 @@ import { getAllSiteDomains } from "../../hosting/api";
 
 const DEFAULT_BUILD_SCRIPT = ["next build"];
 const PUBLIC_DIR = "public";
-const I18N_ROOT = "localized";
 
 export const name = "Next.js";
 export const support = SupportLevel.Preview;
@@ -276,11 +275,7 @@ export async function build(dir: string): Promise<BuildResult> {
     console.log("");
   }
 
-  const i18n = nextjsI18n
-    ? {
-        root: I18N_ROOT,
-      }
-    : undefined;
+  const i18n = !!nextjsI18n;
 
   return {
     wantsBackend,

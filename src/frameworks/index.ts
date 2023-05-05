@@ -29,6 +29,7 @@ import {
   FIREBASE_ADMIN_VERSION,
   FIREBASE_FRAMEWORKS_VERSION,
   FIREBASE_FUNCTIONS_VERSION,
+  I18N_ROOT,
   NODE_VERSION,
   SupportLevelWarnings,
   VALID_ENGINES,
@@ -272,14 +273,14 @@ export async function prepareFrameworks(
         redirects = [],
         headers = [],
         trailingSlash,
-        i18n,
+        i18n = false,
       } = (await memoizeBuild(getProjectPath(), build, [firebaseDefaults])) || {};
 
       config.rewrites.push(...rewrites);
       config.redirects.push(...redirects);
       config.headers.push(...headers);
       config.trailingSlash ??= trailingSlash;
-      config.i18n ??= i18n;
+      if (i18n) config.i18n ??= { root: I18N_ROOT };
 
       if (await pathExists(hostingDist)) await rm(hostingDist, { recursive: true });
       await mkdirp(hostingDist);

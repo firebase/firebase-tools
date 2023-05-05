@@ -91,12 +91,6 @@ describe("webframeworks deploy build", function (this) {
       const headers = lang ? { "Accept-Language": lang } : undefined;
 
       describe(`${lang || "default"} locale`, () => {
-        it("should have working SSR", async () => {
-          const response = await fetch(`${HOST}/api/hello`, { headers });
-          expect(response.ok).to.be.true;
-          expect(await response.json()).to.eql({ name: "John Doe" });
-        });
-
         it("should have working i18n", async () => {
           const response = await fetch(`${HOST}`, { headers });
           expect(response.ok).to.be.true;
@@ -110,6 +104,12 @@ describe("webframeworks deploy build", function (this) {
         });
       });
     }
+
+    it("should have working SSR", async () => {
+      const response = await fetch(`${HOST}/api/hello`);
+      expect(response.ok).to.be.true;
+      expect(await response.json()).to.eql({ name: "John Doe" });
+    });
 
     it("should have working ISR", async () => {
       const response = await fetch(`${HOST}/pages/isr`);
