@@ -432,7 +432,7 @@ export async function ɵcodegenPublicDirectory(
       let localizedDestPath =
         !singleLocaleDomain &&
         locale &&
-        join(destDir, I18N_ROOT, basePath, locale, ...destPartsOrIndex);
+        join(destDir, I18N_ROOT, locale, basePath, ...destPartsOrIndex);
       let defaultDestPath = isDefaultLocale && join(destDir, basePath, ...destPartsOrIndex);
       if (!fileExistsSync(sourcePath) && fileExistsSync(`${sourcePath}.html`)) {
         sourcePath += ".html";

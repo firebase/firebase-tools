@@ -771,8 +771,8 @@ describe("hosting", () => {
 
       const allDomainsPlusWebAppAndFirebaseApp = [
         ...EXPECTED_DOMAINS_RESPONSE,
-        `${PROJECT_ID}.web.app`,
-        `${PROJECT_ID}.firebaseapp.com`,
+        `${SITE}.web.app`,
+        `${SITE}.firebaseapp.com`,
       ];
 
       expect(await hostingApi.getAllSiteDomains(PROJECT_ID, SITE)).to.deep.equal(

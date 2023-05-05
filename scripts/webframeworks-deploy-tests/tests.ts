@@ -84,44 +84,38 @@ describe("webframeworks deploy build", function (this) {
     });
   });
 
-  // TODO figure out why i18n isn't working on this app, it's working on others
-  for (const lang of [undefined /* , 'en', 'fr' */]) {
-    const headers = lang ? { "Accept-Language": lang } : undefined;
+  describe("pages directory", () => {
+    for (const lang of [undefined, "en", "fr"]) {
+      const headers = lang ? { "Accept-Language": lang } : undefined;
 
-    describe(`pages directory${lang ? ` (${lang})` : ""}`, () => {
-      it("should have working SSR", async () => {
-        const response = await fetch(`${HOST}/api/hello`, { headers });
-        expect(response.ok).to.be.true;
-        expect(await response.json()).to.eql({ name: "John Doe" });
+      describe(`${lang || "default"} locale`, () => {
+        it("should have working SSR", async () => {
+          const response = await fetch(`${HOST}/api/hello`, { headers });
+          expect(response.ok).to.be.true;
+          expect(await response.json()).to.eql({ name: "John Doe" });
+        });
+
+        it("should have working i18n", async () => {
+          const response = await fetch(`${HOST}`, { headers });
+          expect(response.ok).to.be.true;
+          expect(await response.text()).to.include(`<html lang="${lang || DEFAULT_LANG}">`);
+        });
+
+        it("should have working SSG", async () => {
+          const response = await fetch(`${HOST}/pages/ssg`, { headers });
+          expect(response.ok).to.be.true;
+          expect(await response.text()).to.include(`SSG <!-- -->${lang || DEFAULT_LANG}`);
+        });
       });
+    }
 
-      it("should have working i18n", async () => {
-        const response = await fetch(`${HOST}`, { headers });
-        expect(response.ok).to.be.true;
-        expect(await response.text()).to.include(`<html lang="${lang || DEFAULT_LANG}">`);
-      });
-
-      it("should have working SSG", async () => {
-        const response = await fetch(`${HOST}/pages/ssg`, { headers });
-        expect(response.ok).to.be.true;
-        expect(await response.text()).to.include(`SSG <!-- -->${lang || DEFAULT_LANG}`);
-      });
-
-      it("should have working ISR", async () => {
-        const response = await fetch(`${HOST}/pages/isr`, { headers });
-        expect(response.ok).to.be.true;
-        expect(response.headers.get("cache-control")).to.eql("s-maxage=10, stale-while-revalidate");
-        expect(await response.text()).to.include(`ISR <!-- -->${lang || DEFAULT_LANG}`);
-      });
-
-      /* TODO figure out why fallback isn't working
-      it("should have working fallback", async () => {
-        const response = await fetch(`${HOST}/pages/fallback/4`, { headers });
-        expect(response.ok).to.be.true;
-        expect(await response.text()).to.include(`SSG <!-- -->4 <!-- -->${lang || DEFAULT_LANG}`);
-      });*/
+    it("should have working ISR", async () => {
+      const response = await fetch(`${HOST}/pages/isr`);
+      expect(response.ok).to.be.true;
+      expect(response.headers.get("cache-control")).to.eql("s-maxage=10, stale-while-revalidate");
+      expect(await response.text()).to.include(`ISR <!-- -->${DEFAULT_LANG}`);
     });
-  }
+  });
 
   it("should log reasons for backend", () => {
     const result = readFileSync(
@@ -160,18 +154,18 @@ describe("webframeworks deploy build", function (this) {
       `${BASE_PATH}/404.html`,
       `${BASE_PATH}/500.html`,
       `${BASE_PATH}/index.html`,
-      `${I18N_BASE}/${BASE_PATH}/en/pages/fallback/1.html`,
-      `${I18N_BASE}/${BASE_PATH}/en/pages/fallback/2.html`,
-      `${I18N_BASE}/${BASE_PATH}/en/pages/ssg.html`,
-      `${I18N_BASE}/${BASE_PATH}/en/404.html`,
-      `${I18N_BASE}/${BASE_PATH}/en/500.html`,
-      `${I18N_BASE}/${BASE_PATH}/en/index.html`,
-      `${I18N_BASE}/${BASE_PATH}/fr/pages/fallback/1.html`,
-      `${I18N_BASE}/${BASE_PATH}/fr/pages/fallback/2.html`,
-      `${I18N_BASE}/${BASE_PATH}/fr/pages/ssg.html`,
-      `${I18N_BASE}/${BASE_PATH}/fr/404.html`,
-      `${I18N_BASE}/${BASE_PATH}/fr/500.html`,
-      `${I18N_BASE}/${BASE_PATH}/fr/index.html`,
+      `${I18N_BASE}/en/${BASE_PATH}/pages/fallback/1.html`,
+      `${I18N_BASE}/en/${BASE_PATH}/pages/fallback/2.html`,
+      `${I18N_BASE}/en/${BASE_PATH}/pages/ssg.html`,
+      `${I18N_BASE}/en/${BASE_PATH}/404.html`,
+      `${I18N_BASE}/en/${BASE_PATH}/500.html`,
+      `${I18N_BASE}/en/${BASE_PATH}/index.html`,
+      `${I18N_BASE}/fr/${BASE_PATH}/pages/fallback/1.html`,
+      `${I18N_BASE}/fr/${BASE_PATH}/pages/fallback/2.html`,
+      `${I18N_BASE}/fr/${BASE_PATH}/pages/ssg.html`,
+      `${I18N_BASE}/fr/${BASE_PATH}/404.html`,
+      `${I18N_BASE}/fr/${BASE_PATH}/500.html`,
+      `${I18N_BASE}/fr/${BASE_PATH}/index.html`,
     ];
 
     const EXPECTED_PATTERNS = [

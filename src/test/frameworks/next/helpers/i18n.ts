@@ -1,24 +1,23 @@
 import type { DomainLocale } from "next/dist/server/config";
-import { I18N_SOURCE } from "../../../../frameworks/next/utils";
 
 export const pathsWithCustomRoutesInternalPrefix = [
-  `/${I18N_SOURCE}(en\\-US|fr|nl\\-NL|nl\\-BE)/bar/:slug(\\d{1,})`,
-  `/${I18N_SOURCE}/bar/:slug`,
-  `/${I18N_SOURCE}(en\\-US|fr|nl\\-NL|nl\\-BE)/bar/bar`,
-  `/${I18N_SOURCE}(en\\-US|fr|nl\\-NL|nl\\-BE)/bar/\\(escapedparentheses\\)/:slug(\\d{1,})`,
-  `/${I18N_SOURCE}/bar/barbar`,
-  `/${I18N_SOURCE}(en\\-US|fr|nl\\-NL|nl\\-BE)/bar/another-regex/((?!bar).*)`,
-  `/${I18N_SOURCE}/bar/barbar`,
-  `/${I18N_SOURCE}(en\\-US|fr|nl\\-NL|nl\\-BE)/team`,
-  `/${I18N_SOURCE}/bar/barbar`,
-  `/${I18N_SOURCE}(en\\-US|fr|nl\\-NL|nl\\-BE)/about-us`,
-  `/${I18N_SOURCE}/bar/barbar`,
-  `/${I18N_SOURCE}(en\\-US|fr|nl\\-NL|nl\\-BE)/post/:slug`,
-  `/${I18N_SOURCE}/bar/barbar`,
-  `/${I18N_SOURCE}(en\\-US|fr|nl\\-NL|nl\\-BE)/blog/:slug*`,
-  `/${I18N_SOURCE}/bar/barbar`,
-  `/${I18N_SOURCE}(en\\-US|fr|nl\\-NL|nl\\-BE)/docs/:slug`,
-  `/${I18N_SOURCE}/bar/barbar`,
+  `/:nextInternalLocale(en\\-US|fr|nl\\-NL|nl\\-BE)/bar/:slug(\\d{1,})`,
+  `/:nextInternalLocale/bar/:slug`,
+  `/:nextInternalLocale(en\\-US|fr|nl\\-NL|nl\\-BE)/bar/bar`,
+  `/:nextInternalLocale(en\\-US|fr|nl\\-NL|nl\\-BE)/bar/\\(escapedparentheses\\)/:slug(\\d{1,})`,
+  `/:nextInternalLocale/bar/barbar`,
+  `/:nextInternalLocale(en\\-US|fr|nl\\-NL|nl\\-BE)/bar/another-regex/((?!bar).*)`,
+  `/:nextInternalLocale/bar/barbar`,
+  `/:nextInternalLocale(en\\-US|fr|nl\\-NL|nl\\-BE)/team`,
+  `/:nextInternalLocale/bar/barbar`,
+  `/:nextInternalLocale(en\\-US|fr|nl\\-NL|nl\\-BE)/about-us`,
+  `/:nextInternalLocale/bar/barbar`,
+  `/:nextInternalLocale(en\\-US|fr|nl\\-NL|nl\\-BE)/post/:slug`,
+  `/:nextInternalLocale/bar/barbar`,
+  `/:nextInternalLocale(en\\-US|fr|nl\\-NL|nl\\-BE)/blog/:slug*`,
+  `/:nextInternalLocale/bar/barbar`,
+  `/:nextInternalLocale(en\\-US|fr|nl\\-NL|nl\\-BE)/docs/:slug`,
+  `/:nextInternalLocale/bar/barbar`,
 ];
 
 export const i18nDomains: DomainLocale[] = [
