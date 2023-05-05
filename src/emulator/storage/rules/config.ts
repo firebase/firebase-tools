@@ -70,10 +70,9 @@ export function getStorageRulesConfig(
       rc.requireTarget(projectId, "storage", targetConfig.target);
     }
     results.push(
-      ...rc.target(projectId,"storage", targetConfig.target).map(
-        (resource: string) => {
-          return { resource, rules: getSourceFile(targetConfig.rules, options) };
-        })
+      ...rc.target(projectId, "storage", targetConfig.target).map((resource: string) => {
+        return { resource, rules: getSourceFile(targetConfig.rules, options) };
+      })
     );
   }
   return results;
