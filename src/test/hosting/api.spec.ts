@@ -17,7 +17,6 @@ const TEST_CHANNELS_RESPONSE = {
 };
 const TEST_GET_DOMAINS_RESPONSE = {
   authorizedDomains: [
-    "my-site.firebaseapp.com",
     "localhost",
     "randomurl.com",
     "my-site--ch1-4iyrl1uo.web.app",
@@ -27,7 +26,6 @@ const TEST_GET_DOMAINS_RESPONSE = {
 };
 
 const EXPECTED_DOMAINS_RESPONSE = [
-  "my-site.firebaseapp.com",
   "localhost",
   "randomurl.com",
   "my-site--ch1-4iyrl1uo.web.app",
@@ -775,7 +773,7 @@ describe("hosting", () => {
         `${SITE}.firebaseapp.com`,
       ];
 
-      expect(await hostingApi.getAllSiteDomains(PROJECT_ID, SITE)).to.deep.equal(
+      expect(await hostingApi.getAllSiteDomains(PROJECT_ID, SITE)).to.have.members(
         allDomainsPlusWebAppAndFirebaseApp
       );
     });
