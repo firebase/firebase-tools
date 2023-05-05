@@ -25,11 +25,7 @@ const TEST_GET_DOMAINS_RESPONSE = {
   ],
 };
 
-const EXPECTED_DOMAINS_RESPONSE = [
-  "localhost",
-  "randomurl.com",
-  "my-site--ch1-4iyrl1uo.web.app",
-];
+const EXPECTED_DOMAINS_RESPONSE = ["localhost", "randomurl.com", "my-site--ch1-4iyrl1uo.web.app"];
 const PROJECT_ID = "test-project";
 const SITE = "my-site";
 
