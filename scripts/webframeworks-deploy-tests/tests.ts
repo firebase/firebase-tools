@@ -68,7 +68,9 @@ describe("webframeworks deploy build", function (this) {
     it("should have working ISR", async () => {
       const response = await fetch(`${HOST}/app/isr`);
       expect(response.ok).to.be.true;
-      expect(response.headers.get("cache-control")).to.eql("private, no-cache, no-store, max-age=0, must-revalidate");
+      expect(response.headers.get("cache-control")).to.eql(
+        "private, no-cache, no-store, max-age=0, must-revalidate"
+      );
       expect(await response.text()).to.include("<body>ISR");
     });
 
