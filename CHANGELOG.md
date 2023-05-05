@@ -1,1 +1,5 @@
+- Support for Next.js i18n, basePath, and more advanced rewrites/redirects/headers (#5788)
+- hosting.frameworksBackend now respects omit: true (#5788)
+- Web Frameworks now memoizes framework builds for single builds across multiple hosting sites (#5788)
 - Add support for Angular i18n and baseHref (#5774)
+- Trip the backend requirement for Angular applications using ng-deploy w/serveOptimizedImages (#5774)

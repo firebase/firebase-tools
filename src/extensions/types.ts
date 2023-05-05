@@ -19,9 +19,11 @@ export enum Visibility {
 export interface Extension {
   name: string;
   ref: string;
+  state: ExtensionState;
   visibility: Visibility;
   registryLaunchStage: RegistryLaunchStage;
   createTime: string;
+  latestApprovedVersion?: string;
   latestVersion?: string;
   latestVersionCreateTime?: string;
   repoUri?: string;
@@ -30,6 +32,8 @@ export interface Extension {
 export interface Listing {
   state: ListingState;
 }
+
+export type ExtensionState = "STATE_UNSPECIFIED" | "PUBLISHED" | "DEPRECATED" | "SUSPENDED";
 
 export type ListingState = "STATE_UPSPECIFIED" | "UNLISTED" | "PENDING" | "APPROVED" | "REJECTED";
 

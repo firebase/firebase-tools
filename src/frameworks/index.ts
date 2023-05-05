@@ -29,14 +29,16 @@ import {
   FIREBASE_ADMIN_VERSION,
   FIREBASE_FRAMEWORKS_VERSION,
   FIREBASE_FUNCTIONS_VERSION,
+  I18N_ROOT,
   NODE_VERSION,
   SupportLevelWarnings,
   VALID_ENGINES,
   WebFrameworks,
 } from "./constants";
-import { FirebaseDefaults, Framework } from "./interfaces";
+import { BuildResult, FirebaseDefaults, Framework } from "./interfaces";
 import { logWarning } from "../utils";
 import { ensureTargeted } from "../functions/ensureTargeted";
+import { isDeepStrictEqual } from "util";
 
 export { WebFrameworks };
 
@@ -65,6 +67,25 @@ export async function discover(dir: string, warn = true) {
   }
   if (warn) console.warn("Could not determine the web framework in use.");
   return;
+}
+
+const BUILD_MEMO = new Map<string[], Promise<BuildResult | void>>();
+
+// Memoize the build based on both the dir and the environment variables
+function memoizeBuild(
+  dir: string,
+  build: (dir: string) => Promise<BuildResult | void>,
+  deps: any[]
+) {
+  const key = [dir, ...deps];
+  for (const existingKey of BUILD_MEMO.keys()) {
+    if (isDeepStrictEqual(existingKey, key)) {
+      return BUILD_MEMO.get(existingKey);
+    }
+  }
+  const value = build(dir);
+  BUILD_MEMO.set(key, value);
+  return value;
 }
 
 /**
@@ -129,6 +150,7 @@ export async function prepareFrameworks(
       throw new Error(`hosting.public and hosting.source cannot both be set in firebase.json`);
     }
     const ssrRegion = frameworksBackend?.region ?? DEFAULT_REGION;
+    const omitCloudFunction = frameworksBackend?.omit ?? false;
     if (!allowedRegionsValues.includes(ssrRegion)) {
       const validRegions = conjoinOptions(allowedRegionsValues);
       throw new FirebaseError(
@@ -251,18 +273,26 @@ export async function prepareFrameworks(
         redirects = [],
         headers = [],
         trailingSlash,
-        i18n,
-      } = (await build(getProjectPath())) || {};
+        i18n = false,
+      } = (await memoizeBuild(getProjectPath(), build, [firebaseDefaults])) || {};
+
       config.rewrites.push(...rewrites);
       config.redirects.push(...redirects);
       config.headers.push(...headers);
-      config.i18n = i18n;
       config.trailingSlash ??= trailingSlash;
+      if (i18n) config.i18n ??= { root: I18N_ROOT };
+
       if (await pathExists(hostingDist)) await rm(hostingDist, { recursive: true });
       await mkdirp(hostingDist);
-      await ɵcodegenPublicDirectory(getProjectPath(), hostingDist);
+
+      await ɵcodegenPublicDirectory(getProjectPath(), hostingDist, {
+        project,
+        site,
+      });
+
       config.public = relative(projectRoot, hostingDist);
-      if (wantsBackend) codegenFunctionsDirectory = codegenProdModeFunctionsDirectory;
+      if (wantsBackend && !omitCloudFunction)
+        codegenFunctionsDirectory = codegenProdModeFunctionsDirectory;
     }
     config.webFramework = `${framework}${codegenFunctionsDirectory ? "_ssr" : ""}`;
     if (codegenFunctionsDirectory) {
@@ -465,6 +495,9 @@ ${firebaseDefaults ? `__FIREBASE_DEFAULTS__=${JSON.stringify(firebaseDefaults)}\
         );
       }
     } else {
+      if (await pathExists(functionsDist)) {
+        await rm(functionsDist, { recursive: true });
+      }
       // No function, treat as an SPA
       // TODO(jamesdaniels) be smarter about this, leave it to the framework?
       config.rewrites.push({
@@ -489,6 +522,13 @@ ${firebaseDefaults ? `__FIREBASE_DEFAULTS__=${JSON.stringify(firebaseDefaults)}\
       });
     }
   }
+  if (process.env.DEBUG) {
+    console.log("Effective firebase.json:");
+    console.log(JSON.stringify(configs, undefined, 2));
+  }
+
+  // Clean up memos/caches
+  BUILD_MEMO.clear();
 }
 
 function codegenDevModeFunctionsDirectory() {

@@ -19,7 +19,7 @@ import { FirebaseError } from "../error";
 import { acceptLatestPublisherTOS } from "../extensions/tos";
 import * as utils from "../utils";
 import { Options } from "../options";
-import { getPublisherProfile } from "../extensions/extensionsApi";
+import { getPublisherProfile } from "../extensions/publisherApi";
 import { getPublisherProjectFromName } from "../extensions/extensionsHelper";
 
 marked.setOptions({

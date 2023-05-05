@@ -28,7 +28,7 @@ export interface BuildResult {
   headers?: any[];
   wantsBackend?: boolean;
   trailingSlash?: boolean;
-  i18n?: { root: string };
+  i18n?: boolean;
 }
 
 export interface Framework {
@@ -43,7 +43,14 @@ export interface Framework {
     dir: string,
     hostingEmulatorInfo?: EmulatorInfo
   ) => Promise<(req: IncomingMessage, res: ServerResponse, next: () => void) => void>;
-  ɵcodegenPublicDirectory: (dir: string, dest: string) => Promise<void>;
+  ɵcodegenPublicDirectory: (
+    dir: string,
+    dest: string,
+    context: {
+      project: string;
+      site: string;
+    }
+  ) => Promise<void>;
   ɵcodegenFunctionsDirectory?: (
     dir: string,
     dest: string

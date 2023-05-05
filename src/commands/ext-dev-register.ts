@@ -2,7 +2,7 @@ import * as clc from "colorette";
 import { marked } from "marked";
 
 import { Command } from "../command";
-import { registerPublisherProfile } from "../extensions/extensionsApi";
+import { registerPublisherProfile } from "../extensions/publisherApi";
 import { needProjectId } from "../projectUtils";
 import { promptOnce } from "../prompt";
 import {

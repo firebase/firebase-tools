@@ -14,7 +14,7 @@ import {
   findDependency,
 } from "../utils";
 import { getBrowserConfig, getBuildConfig, getContext, getServerConfig } from "./utils";
-import { SHARP_VERSION } from "../constants";
+import { I18N_ROOT, SHARP_VERSION } from "../constants";
 
 export const name = "Angular";
 export const support = SupportLevel.Preview;
@@ -22,7 +22,6 @@ export const type = FrameworkType.Framework;
 export const docsUrl = "https://firebase.google.com/docs/hosting/frameworks/angular";
 
 const DEFAULT_BUILD_SCRIPT = ["ng build"];
-const I18N_ROOT = "localized";
 
 export async function discover(dir: string): Promise<Discovery | undefined> {
   if (!(await pathExists(join(dir, "package.json")))) return;
@@ -65,7 +64,7 @@ export async function build(dir: string): Promise<BuildResult> {
     });
   }
   const wantsBackend = !!serverTarget || serveOptimizedImages;
-  const i18n = locales ? { root: I18N_ROOT } : undefined;
+  const i18n = !!locales;
   return { wantsBackend, i18n };
 }
 
