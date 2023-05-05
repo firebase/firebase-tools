@@ -40,7 +40,7 @@ export const command = new Command("ext:dev:list <publisherId>")
     });
     const sorted = extensions.sort((a, b) => a.ref.localeCompare(b.ref));
     sorted.forEach((extension) => {
-      var state: string;
+      let state: string;
       switch (extension.state) {
         case "PUBLISHED":
           // Unpacking legacy "published" terminology.
