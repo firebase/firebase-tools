@@ -22,6 +22,7 @@ export const type = FrameworkType.Framework;
 export const docsUrl = "https://firebase.google.com/docs/hosting/frameworks/angular";
 
 const DEFAULT_BUILD_SCRIPT = ["ng build"];
+const I18N_ROOT = "localized";
 
 export async function discover(dir: string): Promise<Discovery | undefined> {
   if (!(await pathExists(join(dir, "package.json")))) return;
@@ -64,7 +65,7 @@ export async function build(dir: string): Promise<BuildResult> {
     });
   }
   const wantsBackend = !!serverTarget || serveOptimizedImages;
-  const i18n = locales ? { root: "/" } : undefined;
+  const i18n = locales ? { root: I18N_ROOT } : undefined;
   return { wantsBackend, i18n };
 }
 
@@ -100,8 +101,8 @@ export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: strin
         ? await copy(join(sourceDir, outputPath, defaultLocale), join(destDir, baseHref))
         : Promise.resolve(),
       ...locales.map(async (locale) => {
-        await mkdir(join(destDir, baseHref, locale), { recursive: true });
-        await copy(join(sourceDir, outputPath, locale), join(destDir, baseHref, locale));
+        await mkdir(join(destDir, I18N_ROOT, locale, baseHref), { recursive: true });
+        await copy(join(sourceDir, outputPath, locale), join(destDir, I18N_ROOT, locale, baseHref));
       }),
     ]);
   } else {
