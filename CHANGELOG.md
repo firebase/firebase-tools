@@ -1,0 +1,1 @@
+- Fixes a bug where the Storage emulator would not fall back to open rules for 'demo-' projects if `firebase.json` contained multiple storage targets (#5170)
