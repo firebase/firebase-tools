@@ -4,7 +4,7 @@ import * as sinon from "sinon";
 import { FirebaseError } from "../../error";
 import * as nodejsMigrationHelper from "../../extensions/billingMigrationHelper";
 import * as prompt from "../../prompt";
-import { ExtensionSpec } from "../../extensions/extensionsApi";
+import { ExtensionSpec } from "../../extensions/types";
 import { cloneDeep } from "../../utils";
 
 const NO_RUNTIME_SPEC: ExtensionSpec = {
@@ -27,6 +27,7 @@ const NO_RUNTIME_SPEC: ExtensionSpec = {
   billingRequired: true,
   sourceUrl: "test.com",
   params: [],
+  systemParams: [],
 };
 
 const NODE8_SPEC: ExtensionSpec = {
@@ -49,6 +50,7 @@ const NODE8_SPEC: ExtensionSpec = {
   billingRequired: true,
   sourceUrl: "test.com",
   params: [],
+  systemParams: [],
 };
 
 const NODE10_SPEC: ExtensionSpec = {
@@ -71,6 +73,7 @@ const NODE10_SPEC: ExtensionSpec = {
   billingRequired: true,
   sourceUrl: "test.com",
   params: [],
+  systemParams: [],
 };
 
 describe("billingMigrationHelper", () => {

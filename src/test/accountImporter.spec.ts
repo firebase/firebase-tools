@@ -33,11 +33,11 @@ describe("accountImporter", () => {
 
   describe("validateOptions", () => {
     it("should reject when unsupported hash algorithm provided", () => {
-      expect(() => validateOptions({ hashAlgo: "MD2" })).to.throw;
+      expect(() => validateOptions({ hashAlgo: "MD2" })).to.throw();
     });
 
     it("should reject when missing parameters", () => {
-      expect(() => validateOptions({ hashAlgo: "HMAC_SHA1" })).to.throw;
+      expect(() => validateOptions({ hashAlgo: "HMAC_SHA1" })).to.throw();
     });
   });
 

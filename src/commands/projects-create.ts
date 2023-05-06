@@ -2,14 +2,14 @@ import { Command } from "../command";
 import { FirebaseError } from "../error";
 import {
   createFirebaseProjectAndLog,
-  FirebaseProjectMetadata,
   ProjectParentResourceType,
   PROJECTS_CREATE_QUESTIONS,
 } from "../management/projects";
+import { FirebaseProjectMetadata } from "../types/project";
 import { prompt } from "../prompt";
 import { requireAuth } from "../requireAuth";
 
-module.exports = new Command("projects:create [projectId]")
+export const command = new Command("projects:create [projectId]")
   .description(
     "creates a new Google Cloud Platform project, then adds Firebase resources to the project"
   )

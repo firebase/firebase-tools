@@ -1,5 +1,3 @@
-import * as _ from "lodash";
-
 import { rulesOrigin } from "../api";
 import { Client } from "../apiv2";
 import { logger } from "../logger";
@@ -32,7 +30,7 @@ export async function getLatestRulesetName(
 ): Promise<string | null> {
   const releases = await listAllReleases(projectId);
   const prefix = `projects/${projectId}/releases/${service}`;
-  const release = _.find(releases, (r) => r.name.startsWith(prefix));
+  const release = releases.find((r) => r.name.startsWith(prefix));
 
   if (!release) {
     return null;
@@ -88,7 +86,7 @@ export async function listAllReleases(projectId: string): Promise<Release[]> {
     }
     pageToken = response.nextPageToken;
   } while (pageToken);
-  return _.orderBy(releases, ["createTime"], ["desc"]);
+  return releases.sort((a, b) => b.createTime.localeCompare(a.createTime));
 }
 
 export interface RulesetFile {
@@ -154,7 +152,7 @@ export async function listAllRulesets(projectId: string): Promise<ListRulesetsEn
     }
     pageToken = response.nextPageToken;
   } while (pageToken);
-  return _.orderBy(rulesets, ["createTime"], ["desc"]);
+  return rulesets.sort((a, b) => b.createTime.localeCompare(a.createTime));
 }
 
 export interface ListRulesetsResponse {

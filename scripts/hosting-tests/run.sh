@@ -22,13 +22,19 @@ TEMP_DIR="$(mktemp -d)"
 echo "Created temp directory: ${TEMP_DIR}"
 
 echo "Installing firebase-tools..."
-./scripts/npm-link.sh
+./scripts/clean-install.sh
 echo "Installed firebase-tools: $(which firebase)"
 
 echo "Initializing temp directory..."
 cd "${TEMP_DIR}"
+PORT=8685
 cat > "firebase.json" <<- EOM
 {
+  "emulators": {
+    "hosting": {
+      "port": "${PORT}"
+    }
+  },
   "hosting": {
     "public": "public",
     "ignore": [
@@ -45,7 +51,6 @@ echo "${DATE}" > "public/${TARGET_FILE}"
 echo "Initialized temp directory."
 
 echo "Testing local serve..."
-PORT=8685
 firebase serve --only hosting --project "${FBTOOLS_TARGET_PROJECT}" --port "${PORT}" &
 PID="$!"
 sleep 5
@@ -56,7 +61,6 @@ wait
 echo "Tested local serve."
 
 echo "Testing local hosting emulator..."
-PORT=5000
 firebase emulators:start --only hosting --project "${FBTOOLS_TARGET_PROJECT}" &
 PID="$!"
 sleep 5
@@ -76,14 +80,15 @@ wait
 echo "Tested local hosting emulator."
 
 echo "Testing hosting deployment..."
-firebase deploy --only hosting --project "${FBTOOLS_TARGET_PROJECT}"
+firebase hosting:channel:deploy --expires 1h --project "${FBTOOLS_TARGET_PROJECT}" --json "${GITHUB_RUN_NUMBER}" | tee channeldeploy.json
+URL=$(cat channeldeploy.json | jq -r ".result.\"${FBTOOLS_TARGET_PROJECT}\".url")
 sleep 12
-VALUE="$(curl https://${FBTOOLS_TARGET_PROJECT}.web.app/${TARGET_FILE})"
+VALUE="$(curl $URL/${TARGET_FILE})"
 test "${DATE}" = "${VALUE}" || (echo "Expected ${VALUE} to equal ${DATE}." && false)
 
 # Test that ?useEmulator has no effect on init.js
-INIT_JS_NONE="$(curl https://${FBTOOLS_TARGET_PROJECT}.web.app/__/firebase/init.js)"
-INIT_JS_TRUE="$(curl https://${FBTOOLS_TARGET_PROJECT}.web.app/__/firebase/init.js\?useEmulator=true)"
+INIT_JS_NONE="$(curl $URL/__/firebase/init.js)"
+INIT_JS_TRUE="$(curl $URL/__/firebase/init.js\?useEmulator=true)"
 test "${INIT_JS_NONE}" = "${INIT_JS_TRUE}" || (echo "Expected ${INIT_JS_NONE} to equal ${INIT_JS_TRUE}." && false)
 
 echo "Tested hosting deployment."
@@ -123,17 +128,18 @@ firebase target:apply hosting customtarget "${FBTOOLS_TARGET_PROJECT}"
 echo "Set targets."
 echo "Initialized second temp directory."
 
-echo "Testing hosting deployment by target..."
-firebase deploy --only hosting:customtarget --project "${FBTOOLS_TARGET_PROJECT}"
-sleep 12
-VALUE="$(curl https://${FBTOOLS_TARGET_PROJECT}.web.app/${TARGET_FILE})"
-test "${DATE}" = "${VALUE}" || (echo "Expected ${VALUE} to equal ${DATE}." && false)
-echo "Tested hosting deployment by target."
+# Skipping this in favor of the test below.
+# echo "Testing hosting deployment by target..."
+# firebase deploy --only hosting:customtarget --project "${FBTOOLS_TARGET_PROJECT}"
+# VALUE="$(curl https://${FBTOOLS_TARGET_PROJECT}.web.app/${TARGET_FILE})"
+# sleep 12
+# test "${DATE}" = "${VALUE}" || (echo "Expected ${VALUE} to equal ${DATE}." && false)
+# echo "Tested hosting deployment by target."
 
 echo "Testing hosting channel deployment by target..."
 firebase hosting:channel:deploy mychannel --only customtarget --project "${FBTOOLS_TARGET_PROJECT}" --json | tee output.json
-sleep 12
 CHANNEL_URL=$(cat output.json | jq -r ".result.customtarget.url")
+sleep 12
 VALUE="$(curl ${CHANNEL_URL}/${TARGET_FILE})"
 test "${DATE}" = "${VALUE}" || (echo "Expected ${VALUE} to equal ${DATE}." && false)
 echo "Tested hosting channel deployment by target."

@@ -4,6 +4,7 @@ import * as nock from "nock";
 import * as api from "../../api";
 import { FirebaseError } from "../../error";
 import * as extensionsApi from "../../extensions/extensionsApi";
+import { ExtensionSource } from "../../extensions/types";
 import * as refs from "../../extensions/refs";
 import { cloneDeep } from "../../utils";
 
@@ -232,9 +233,18 @@ describe("extensions", () => {
           name: "sources/blah",
           packageUri: "https://test.fake/pacakge.zip",
           hash: "abc123",
-          spec: { name: "", version: "0.1.0", sourceUrl: "", roles: [], resources: [], params: [] },
+          spec: {
+            name: "",
+            version: "0.1.0",
+            sourceUrl: "",
+            roles: [],
+            resources: [],
+            params: [],
+            systemParams: [],
+          },
         },
         params: {},
+        systemParams: {},
       });
       expect(nock.isDone()).to.be.true;
     });
@@ -293,6 +303,7 @@ describe("extensions", () => {
               roles: [],
               resources: [],
               params: [],
+              systemParams: [],
             },
           },
           params: {},
@@ -310,7 +321,10 @@ describe("extensions", () => {
     it("should make a PATCH call to the correct endpoint, and then poll on the returned operation", async () => {
       nock(api.extensionsOrigin)
         .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
-        .query({ updateMask: "config.params", validateOnly: "false" })
+        .query({
+          updateMask: "config.params,config.allowed_event_types,config.eventarc_channel",
+          validateOnly: "false",
+        })
         .reply(200, { name: "operations/abc123" });
       nock(api.extensionsOrigin)
         .get(`/${VERSION}/operations/abc123`)
@@ -322,6 +336,7 @@ describe("extensions", () => {
         projectId: PROJECT_ID,
         instanceId: INSTANCE_ID,
         params: { MY_PARAM: "value" },
+        canEmitEvents: false,
       });
       expect(nock.isDone()).to.be.true;
     });
@@ -329,7 +344,10 @@ describe("extensions", () => {
     it("should make a PATCH and not poll if validateOnly=true", async () => {
       nock(api.extensionsOrigin)
         .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
-        .query({ updateMask: "config.params", validateOnly: "true" })
+        .query({
+          updateMask: "config.params,config.allowed_event_types,config.eventarc_channel",
+          validateOnly: "true",
+        })
         .reply(200, { name: "operations/abc123", done: true });
 
       await extensionsApi.configureInstance({
@@ -337,6 +355,7 @@ describe("extensions", () => {
         instanceId: INSTANCE_ID,
         params: { MY_PARAM: "value" },
         validateOnly: true,
+        canEmitEvents: false,
       });
       expect(nock.isDone()).to.be.true;
     });
@@ -344,7 +363,10 @@ describe("extensions", () => {
     it("should throw a FirebaseError if update returns an error response", async () => {
       nock(api.extensionsOrigin)
         .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
-        .query({ updateMask: "config.params", validateOnly: false })
+        .query({
+          updateMask: "config.params,config.allowed_event_types,config.eventarc_channel",
+          validateOnly: false,
+        })
         .reply(500);
 
       await expect(
@@ -352,6 +374,7 @@ describe("extensions", () => {
           projectId: PROJECT_ID,
           instanceId: INSTANCE_ID,
           params: { MY_PARAM: "value" },
+          canEmitEvents: false,
         })
       ).to.be.rejectedWith(FirebaseError, "HTTP Error: 500");
       expect(nock.isDone()).to.be.true;
@@ -386,7 +409,7 @@ describe("extensions", () => {
   });
 
   describe("updateInstance", () => {
-    const testSource: extensionsApi.ExtensionSource = {
+    const testSource: ExtensionSource = {
       state: "ACTIVE",
       name: "abc123",
       packageUri: "www.google.com/pack.zip",
@@ -396,6 +419,7 @@ describe("extensions", () => {
         version: "0.1.0",
         resources: [],
         params: [],
+        systemParams: [],
         sourceUrl: "www.google.com/pack.zip",
       },
     };
@@ -403,10 +427,14 @@ describe("extensions", () => {
       nock.cleanAll();
     });
 
-    it("should include config.param in updateMask is params are changed", async () => {
+    it("should include config.params in updateMask is params are changed", async () => {
       nock(api.extensionsOrigin)
         .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
-        .query({ updateMask: "config.source.name,config.params", validateOnly: "false" })
+        .query({
+          updateMask:
+            "config.source.name,config.params,config.allowed_event_types,config.eventarc_channel",
+          validateOnly: "false",
+        })
         .reply(200, { name: "operations/abc123" });
       nock(api.extensionsOrigin).get(`/${VERSION}/operations/abc123`).reply(200, { done: true });
 
@@ -417,15 +445,19 @@ describe("extensions", () => {
         params: {
           MY_PARAM: "value",
         },
+        canEmitEvents: false,
       });
 
       expect(nock.isDone()).to.be.true;
     });
 
-    it("should not include config.param in updateMask is params aren't changed", async () => {
+    it("should not include config.params or config.system_params in updateMask is params aren't changed", async () => {
       nock(api.extensionsOrigin)
         .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
-        .query({ updateMask: "config.source.name", validateOnly: "false" })
+        .query({
+          updateMask: "config.source.name,config.allowed_event_types,config.eventarc_channel",
+          validateOnly: "false",
+        })
         .reply(200, { name: "operations/abc123" });
       nock(api.extensionsOrigin).get(`/${VERSION}/operations/abc123`).reply(200, { done: true });
 
@@ -433,15 +465,67 @@ describe("extensions", () => {
         projectId: PROJECT_ID,
         instanceId: INSTANCE_ID,
         extensionSource: testSource,
+        canEmitEvents: false,
+      });
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should include config.system_params in updateMask if system_params are changed", async () => {
+      nock(api.extensionsOrigin)
+        .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
+        .query({
+          updateMask:
+            "config.source.name,config.system_params,config.allowed_event_types,config.eventarc_channel",
+          validateOnly: "false",
+        })
+        .reply(200, { name: "operations/abc123" });
+      nock(api.extensionsOrigin).get(`/${VERSION}/operations/abc123`).reply(200, { done: true });
+
+      await extensionsApi.updateInstance({
+        projectId: PROJECT_ID,
+        instanceId: INSTANCE_ID,
+        extensionSource: testSource,
+        systemParams: {
+          MY_PARAM: "value",
+        },
+        canEmitEvents: false,
       });
 
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should include config.allowed_event_types and config.eventarc_Channel in updateMask if events config is provided", async () => {
+      nock(api.extensionsOrigin)
+        .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
+        .query({
+          updateMask:
+            "config.source.name,config.params,config.allowed_event_types,config.eventarc_channel",
+          validateOnly: "false",
+        })
+        .reply(200, { name: "operations/abc123" });
+      nock(api.extensionsOrigin).get(`/${VERSION}/operations/abc123`).reply(200, { done: true });
+
+      await extensionsApi.updateInstance({
+        projectId: PROJECT_ID,
+        instanceId: INSTANCE_ID,
+        extensionSource: testSource,
+        params: {
+          MY_PARAM: "value",
+        },
+        canEmitEvents: true,
+        eventarcChannel: "projects/${PROJECT_ID}/locations/us-central1/channels/firebase",
+        allowedEventTypes: ["google.firebase.custom-events-occurred"],
+      });
       expect(nock.isDone()).to.be.true;
     });
 
     it("should make a PATCH and not poll if validateOnly=true", async () => {
       nock(api.extensionsOrigin)
         .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
-        .query({ updateMask: "config.source.name", validateOnly: "true" })
+        .query({
+          updateMask: "config.source.name,config.allowed_event_types,config.eventarc_channel",
+          validateOnly: "true",
+        })
         .reply(200, { name: "operations/abc123", done: true });
 
       await extensionsApi.updateInstance({
@@ -449,6 +533,7 @@ describe("extensions", () => {
         instanceId: INSTANCE_ID,
         extensionSource: testSource,
         validateOnly: true,
+        canEmitEvents: false,
       });
       expect(nock.isDone()).to.be.true;
     });
@@ -456,7 +541,10 @@ describe("extensions", () => {
     it("should make a PATCH and not poll if validateOnly=true", async () => {
       nock(api.extensionsOrigin)
         .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
-        .query({ updateMask: "config.source.name", validateOnly: "true" })
+        .query({
+          updateMask: "config.source.name,config.allowed_event_types,config.eventarc_channel",
+          validateOnly: "true",
+        })
         .reply(200, { name: "operations/abc123", done: true });
 
       await extensionsApi.updateInstance({
@@ -464,6 +552,7 @@ describe("extensions", () => {
         instanceId: INSTANCE_ID,
         extensionSource: testSource,
         validateOnly: true,
+        canEmitEvents: false,
       });
       expect(nock.isDone()).to.be.true;
     });
@@ -471,7 +560,11 @@ describe("extensions", () => {
     it("should throw a FirebaseError if update returns an error response", async () => {
       nock(api.extensionsOrigin)
         .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
-        .query({ updateMask: "config.source.name,config.params", validateOnly: false })
+        .query({
+          updateMask:
+            "config.source.name,config.params,config.allowed_event_types,config.eventarc_channel",
+          validateOnly: false,
+        })
         .reply(500);
 
       await expect(
@@ -482,6 +575,7 @@ describe("extensions", () => {
           params: {
             MY_PARAM: "value",
           },
+          canEmitEvents: false,
         })
       ).to.be.rejectedWith(FirebaseError, "HTTP Error: 500");
 
@@ -595,10 +689,10 @@ describe("publishExtensionVersion", () => {
       response: TEST_EXT_VERSION_3,
     });
 
-    const res = await extensionsApi.publishExtensionVersion(
-      TEST_EXT_VERSION_3.ref,
-      "www.google.com/test-extension.zip"
-    );
+    const res = await extensionsApi.publishExtensionVersion({
+      extensionVersionRef: TEST_EXT_VERSION_3.ref,
+      packageUri: "www.google.com/test-extension.zip",
+    });
     expect(res).to.deep.equal(TEST_EXT_VERSION_3);
     expect(nock.isDone()).to.be.true;
   });
@@ -609,11 +703,11 @@ describe("publishExtensionVersion", () => {
       .reply(500);
 
     await expect(
-      extensionsApi.publishExtensionVersion(
-        `${PUBLISHER_ID}/${EXTENSION_ID}@${EXTENSION_VERSION}`,
-        "www.google.com/test-extension.zip",
-        "/"
-      )
+      extensionsApi.publishExtensionVersion({
+        extensionVersionRef: `${PUBLISHER_ID}/${EXTENSION_ID}@${EXTENSION_VERSION}`,
+        packageUri: "www.google.com/test-extension.zip",
+        extensionRoot: "/",
+      })
     ).to.be.rejectedWith(FirebaseError, "HTTP Error: 500, Unknown Error");
     expect(nock.isDone()).to.be.true;
   });
@@ -625,22 +719,22 @@ describe("publishExtensionVersion", () => {
     nock(api.extensionsOrigin).get(`/${VERSION}/operations/abc123`).reply(502, {});
 
     await expect(
-      extensionsApi.publishExtensionVersion(
-        `${PUBLISHER_ID}/${EXTENSION_ID}@${EXTENSION_VERSION}`,
-        "www.google.com/test-extension.zip",
-        "/"
-      )
+      extensionsApi.publishExtensionVersion({
+        extensionVersionRef: `${PUBLISHER_ID}/${EXTENSION_ID}@${EXTENSION_VERSION}`,
+        packageUri: "www.google.com/test-extension.zip",
+        extensionRoot: "/",
+      })
     ).to.be.rejectedWith(FirebaseError, "HTTP Error: 502, Unknown Error");
     expect(nock.isDone()).to.be.true;
   });
 
   it("should throw an error for an invalid ref", async () => {
     await expect(
-      extensionsApi.publishExtensionVersion(
-        `${PUBLISHER_ID}/${EXTENSION_ID}`,
-        "www.google.com/test-extension.zip",
-        "/"
-      )
+      extensionsApi.publishExtensionVersion({
+        extensionVersionRef: `${PUBLISHER_ID}/${EXTENSION_ID}`,
+        packageUri: "www.google.com/test-extension.zip",
+        extensionRoot: "/",
+      })
     ).to.be.rejectedWith(FirebaseError, "ExtensionVersion ref");
   });
 });

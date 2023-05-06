@@ -10,8 +10,10 @@ import {
 } from "../../extensions/extensionsHelper";
 import { logger } from "../../logger";
 import { readInstanceParam } from "../../extensions/manifest";
-import { ParamBindingOptions } from "../../extensions/paramHelper";
+import { isSystemParam, ParamBindingOptions } from "../../extensions/paramHelper";
 import { readExtensionYaml, readPostinstall } from "../../extensions/emulator/specHelper";
+import { ExtensionVersion, Extension, ExtensionSpec } from "../../extensions/types";
+import { partitionRecord } from "../../functional";
 
 export interface InstanceSpec {
   instanceId: string;
@@ -20,9 +22,9 @@ export interface InstanceSpec {
   localPath?: string; // For local extensions
   // Used by getExtensionVersion, getExtension, and getExtensionSpec.
   // You should stronly prefer accessing via those methods
-  extensionVersion?: extensionsApi.ExtensionVersion;
-  extension?: extensionsApi.Extension;
-  extensionSpec?: extensionsApi.ExtensionSpec;
+  extensionVersion?: ExtensionVersion;
+  extension?: Extension;
+  extensionSpec?: ExtensionSpec;
 }
 
 /**
@@ -45,14 +47,16 @@ export interface ManifestInstanceSpec extends InstanceSpec {
  */
 export interface DeploymentInstanceSpec extends InstanceSpec {
   params: Record<string, string>;
+  systemParams: Record<string, string>;
+  allowedEventTypes?: string[];
+  eventarcChannel?: string;
+  etag?: string;
 }
 
 /**
  * Caching fetcher for the corresponding ExtensionVersion for an instance spec.
  */
-export async function getExtensionVersion(
-  i: InstanceSpec
-): Promise<extensionsApi.ExtensionVersion> {
+export async function getExtensionVersion(i: InstanceSpec): Promise<ExtensionVersion> {
   if (!i.extensionVersion) {
     if (!i.ref) {
       throw new FirebaseError(
@@ -67,7 +71,7 @@ export async function getExtensionVersion(
 /**
  * Caching fetcher for the corresponding Extension for an instance spec.
  */
-export async function getExtension(i: InstanceSpec): Promise<extensionsApi.Extension> {
+export async function getExtension(i: InstanceSpec): Promise<Extension> {
   if (!i.ref) {
     throw new FirebaseError(`Can't get Extension for ${i.instanceId} because it has no ref`);
   }
@@ -79,19 +83,19 @@ export async function getExtension(i: InstanceSpec): Promise<extensionsApi.Exten
 
 /** Caching fetcher for the corresponding ExtensionSpec for an instance spec.
  */
-export async function getExtensionSpec(i: InstanceSpec): Promise<extensionsApi.ExtensionSpec> {
+export async function getExtensionSpec(i: InstanceSpec): Promise<ExtensionSpec> {
   if (!i.extensionSpec) {
     if (i.ref) {
       const extensionVersion = await getExtensionVersion(i);
       i.extensionSpec = extensionVersion.spec;
     } else if (i.localPath) {
       i.extensionSpec = await readExtensionYaml(i.localPath);
-      i.extensionSpec.postinstallContent = await readPostinstall(i.localPath);
+      i.extensionSpec!.postinstallContent = await readPostinstall(i.localPath);
     } else {
       throw new FirebaseError("InstanceSpec had no ref or localPath, unable to get extensionSpec");
     }
   }
-  return i.extensionSpec;
+  return i.extensionSpec!;
 }
 
 /**
@@ -105,6 +109,10 @@ export async function have(projectId: string): Promise<DeploymentInstanceSpec[]>
     const dep: DeploymentInstanceSpec = {
       instanceId: i.name.split("/").pop()!,
       params: i.config.params,
+      systemParams: i.config.systemParams ?? {},
+      allowedEventTypes: i.config.allowedEventTypes,
+      eventarcChannel: i.config.eventarcChannel,
+      etag: i.etag,
     };
     if (i.config.extensionRef) {
       const ref = refs.parse(i.config.extensionRef);
@@ -140,7 +148,7 @@ export async function want(args: {
     try {
       const instanceId = e[0];
 
-      const params = readInstanceParam({
+      const rawParams = readInstanceParam({
         projectDir: args.projectDir,
         instanceId,
         projectId: args.projectId,
@@ -149,13 +157,30 @@ export async function want(args: {
         checkLocal: args.emulatorMode,
       });
       const autoPopulatedParams = await getFirebaseProjectParams(args.projectId, args.emulatorMode);
-      const subbedParams = substituteParams(params, autoPopulatedParams);
+      const subbedParams = substituteParams(rawParams, autoPopulatedParams);
+      const [systemParams, params] = partitionRecord(subbedParams, isSystemParam);
+
+      // ALLOWED_EVENT_TYPES can be undefined (user input not provided) or empty string (no events selected).
+      // If empty string, we want to pass an empty array. If it's undefined we want to pass through undefined.
+      const allowedEventTypes =
+        params.ALLOWED_EVENT_TYPES !== undefined
+          ? params.ALLOWED_EVENT_TYPES.split(",").filter((e) => e !== "")
+          : undefined;
+      const eventarcChannel = params.EVENTARC_CHANNEL;
+
+      // Remove special params that are stored in the .env file but aren't actually params specified by the publisher.
+      // Currently, only environment variables needed for Events features are considered special params stored in .env files.
+      delete params["EVENTARC_CHANNEL"];
+      delete params["ALLOWED_EVENT_TYPES"];
 
       if (isLocalPath(e[1])) {
         instanceSpecs.push({
           instanceId,
           localPath: e[1],
-          params: subbedParams,
+          params,
+          systemParams,
+          allowedEventTypes: allowedEventTypes,
+          eventarcChannel: eventarcChannel,
         });
       } else {
         const ref = refs.parse(e[1]);
@@ -163,7 +188,10 @@ export async function want(args: {
         instanceSpecs.push({
           instanceId,
           ref,
-          params: subbedParams,
+          params,
+          systemParams,
+          allowedEventTypes: allowedEventTypes,
+          eventarcChannel: eventarcChannel,
         });
       }
     } catch (err: any) {
@@ -187,12 +215,13 @@ export async function want(args: {
  */
 export async function resolveVersion(ref: refs.Ref): Promise<string> {
   const extensionRef = refs.toExtensionRef(ref);
-  const versions = await extensionsApi.listExtensionVersions(extensionRef);
+  const versions = await extensionsApi.listExtensionVersions(extensionRef, undefined, true);
   if (versions.length === 0) {
     throw new FirebaseError(`No versions found for ${extensionRef}`);
   }
   if (!ref.version || ref.version === "latest") {
     return versions
+      .filter((ev) => ev.spec.version !== undefined)
       .map((ev) => ev.spec.version)
       .sort(semver.compare)
       .pop()!;

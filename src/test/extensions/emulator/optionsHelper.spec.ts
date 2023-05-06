@@ -2,7 +2,7 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 
 import * as optionsHelper from "../../../extensions/emulator/optionsHelper";
-import { ExtensionSpec, Param, ParamType } from "../../../extensions/extensionsApi";
+import { ExtensionSpec, Param, ParamType } from "../../../extensions/types";
 import * as paramHelper from "../../../extensions/paramHelper";
 
 describe("optionsHelper", () => {
@@ -28,6 +28,7 @@ describe("optionsHelper", () => {
         resources: [],
         sourceUrl: "https://my.stuff.com",
         params: [],
+        systemParams: [],
       };
       readEnvFileStub = sinon.stub(paramHelper, "readEnvFile");
     });

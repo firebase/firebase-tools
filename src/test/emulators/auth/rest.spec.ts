@@ -17,6 +17,7 @@ describeAuthEmulator("REST API mapping", ({ authApi }) => {
       .options("/")
       .set("Origin", "example.com")
       .set("Access-Control-Request-Headers", "Authorization,X-Client-Version,X-Whatever-Header")
+      .set("Access-Control-Request-Private-Network", "true")
       .then((res) => {
         expectStatusCode(204, res);
 
@@ -29,6 +30,10 @@ describeAuthEmulator("REST API mapping", ({ authApi }) => {
           "X-Client-Version",
           "X-Whatever-Header",
         ]);
+
+        // Check that access-control-allow-private-network = true
+        // Enables accessing locahost when site is exposed via tunnel see https://github.com/firebase/firebase-tools/issues/4227
+        expect(res.header["access-control-allow-private-network"]).to.eql("true");
       });
   });
 
@@ -88,6 +93,28 @@ describeAuthEmulator("authentication", ({ authApi }) => {
       });
   });
 
+  it("should accept API key as a query parameter", async () => {
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:signUp")
+      .query({ key: "fake-api-key" })
+      .send({})
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body).not.to.have.property("error");
+      });
+  });
+
+  it("should accept API key in HTTP Header x-goog-api-key", async () => {
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:signUp")
+      .set("x-goog-api-key", "fake-api-key")
+      .send({})
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body).not.to.have.property("error");
+      });
+  });
+
   it("should ignore non-Bearer Authorization headers", async () => {
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:signUp")
@@ -138,7 +165,11 @@ describeAuthEmulator("authentication", ({ authApi }) => {
       .post("/identitytoolkit.googleapis.com/v1/accounts:signUp")
       // This authenticates as owner of the default projectId. The exact value
       // and expiry don't matter -- the Emulator only checks for the format.
-      .set("Authorization", "Bearer ya29.AHES6ZRVmB7fkLtd1XTmq6mo0S1wqZZi3-Lh_s-6Uw7p8vtgSwg")
+      .set(
+        "Authorization",
+        // Not an actual token. Breaking it down to avoid linter false positives.
+        "Bearer ya" + "29.AHES0ZZZZZ0fff" + "ff0XXXX0mmmm0wwwww0-LL_l-0bb0b0bbbbbb"
+      )
       .send({
         // This field requires OAuth 2 and should work correctly.
         targetProjectId: "example2",
@@ -180,12 +211,12 @@ describeAuthEmulator("authentication", ({ authApi }) => {
       });
   });
 
-  it("should deny requests where tenant IDs do not match in the token and path", async () => {
+  it("should deny requests where tenant IDs do not match in the ID token and path", async () => {
     const tenant = await registerTenant(authApi(), PROJECT_ID, {
       disableAuth: false,
       allowPasswordSignup: true,
     });
-    const { idToken, localId } = await registerUser(authApi(), {
+    const { idToken } = await registerUser(authApi(), {
       email: "alice@example.com",
       password: "notasecret",
       tenantId: tenant.tenantId,
@@ -203,12 +234,12 @@ describeAuthEmulator("authentication", ({ authApi }) => {
       });
   });
 
-  it("should deny requests where tenant IDs do not match in the token and request body", async () => {
+  it("should deny requests where tenant IDs do not match in the ID token and request body", async () => {
     const tenant = await registerTenant(authApi(), PROJECT_ID, {
       disableAuth: false,
       allowPasswordSignup: true,
     });
-    const { idToken, localId } = await registerUser(authApi(), {
+    const { idToken } = await registerUser(authApi(), {
       email: "alice@example.com",
       password: "notasecret",
       tenantId: tenant.tenantId,

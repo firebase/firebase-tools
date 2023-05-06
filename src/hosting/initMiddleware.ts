@@ -1,6 +1,4 @@
-import * as url from "url";
-import * as qs from "querystring";
-import { RequestHandler } from "express";
+import { IncomingMessage, ServerResponse } from "http";
 
 import { Client } from "../apiv2";
 import { TemplateServerResponse } from "./implicitInit";
@@ -15,14 +13,16 @@ const SDK_PATH_REGEXP = /^\/__\/firebase\/([^/]+)\/([^/]+)$/;
  * @param init template server response.
  * @return the middleware function.
  */
-export function initMiddleware(init: TemplateServerResponse): RequestHandler {
+export function initMiddleware(
+  init: TemplateServerResponse
+): (req: IncomingMessage, res: ServerResponse, next: () => void) => void {
   return (req, res, next) => {
-    const parsedUrl = url.parse(req.url);
-    const match = RegExp(SDK_PATH_REGEXP).exec(req.url);
+    const parsedUrl = new URL(req.url || "", `http://${req.headers.host}`);
+    const match = RegExp(SDK_PATH_REGEXP).exec(parsedUrl.pathname);
     if (match) {
       const version = match[1];
       const sdkName = match[2];
-      const u = new url.URL(`https://www.gstatic.com/firebasejs/${version}/${sdkName}`);
+      const u = new URL(`https://www.gstatic.com/firebasejs/${version}/${sdkName}`);
       const c = new Client({ urlPrefix: u.origin, auth: false });
       const headers: { [key: string]: string } = {};
       const acceptEncoding = req.headers["accept-encoding"];
@@ -57,10 +57,9 @@ export function initMiddleware(init: TemplateServerResponse): RequestHandler {
       // In theory we should be able to get this from req.query but for some
       // when testing this functionality, req.query and req.params were always
       // empty or undefined.
-      const query = qs.parse(parsedUrl.query || "");
-
+      const query = parsedUrl.searchParams;
       res.setHeader("Content-Type", "application/javascript");
-      if (query["useEmulator"] === "true") {
+      if (query.get("useEmulator") === "true") {
         res.end(init.emulatorsJs);
       } else {
         res.end(init.js);

@@ -1,6 +1,7 @@
-import * as api from "../api";
 import { EmulatorHub, Locator, GetEmulatorsResponse } from "./hub";
 import { FirebaseError } from "../error";
+import { Client } from "../apiv2";
+import { ExportOptions } from "./hubExport";
 
 export class EmulatorHubClient {
   private locator: Locator | undefined;
@@ -13,36 +14,45 @@ export class EmulatorHubClient {
     return this.locator !== undefined;
   }
 
-  getStatus(): Promise<void> {
-    return api.request("GET", "/", {
-      origin: this.origin,
+  /**
+   * Ping possible hub origins for status and return the first successful.
+   */
+  getStatus(): Promise<string> {
+    return this.tryOrigins(async (client, origin) => {
+      await client.get("/");
+      return origin;
     });
   }
 
-  getEmulators(): Promise<GetEmulatorsResponse> {
-    return api
-      .request("GET", EmulatorHub.PATH_EMULATORS, {
-        origin: this.origin,
-        json: true,
-      })
-      .then((res) => {
-        return res.body as GetEmulatorsResponse;
-      });
+  private async tryOrigins<T>(task: (client: Client, origin: string) => Promise<T>): Promise<T> {
+    const origins = this.assertLocator().origins;
+    let err: any = undefined;
+    for (const origin of origins) {
+      try {
+        const apiClient = new Client({ urlPrefix: origin, auth: false });
+        return await task(apiClient, origin);
+      } catch (e) {
+        if (!err) {
+          err = e; // Only record the first error and only throw if all fails.
+        }
+      }
+    }
+    throw err ?? new Error("Cannot find working hub origin. Tried:" + origins.join(" "));
   }
 
-  postExport(path: string): Promise<void> {
-    return api.request("POST", EmulatorHub.PATH_EXPORT, {
-      origin: this.origin,
-      json: true,
-      data: {
-        path,
-      },
-    });
+  async getEmulators(): Promise<GetEmulatorsResponse> {
+    const res = await this.tryOrigins((client) =>
+      client.get<GetEmulatorsResponse>(EmulatorHub.PATH_EMULATORS)
+    );
+    return res.body;
   }
 
-  get origin(): string {
-    const locator = this.assertLocator();
-    return `http://${locator.host}:${locator.port}`;
+  async postExport(options: ExportOptions): Promise<void> {
+    // This is a POST operation that should not be retried / multicast, so we
+    // will try to find the right origin first via GET.
+    const origin = await this.getStatus();
+    const apiClient = new Client({ urlPrefix: origin, auth: false });
+    await apiClient.post(EmulatorHub.PATH_EXPORT, options);
   }
 
   private assertLocator(): Locator {

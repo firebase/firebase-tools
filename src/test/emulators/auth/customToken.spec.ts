@@ -8,7 +8,6 @@ import {
   getAccountInfoByIdToken,
   updateAccountByLocalId,
   signInWithEmailLink,
-  updateProjectConfig,
   registerTenant,
 } from "./helpers";
 
@@ -16,7 +15,7 @@ describeAuthEmulator("sign-in with custom token", ({ authApi }) => {
   it("should create new account from custom token (unsigned)", async () => {
     const uid = "someuid";
     const claims = { abc: "def", ultimate: { answer: 42 } };
-    const token = signJwt({ uid, claims }, "", {
+    const token = signJwt({ uid, claims }, "fake-secret", {
       algorithm: "none",
       expiresIn: 3600,
 
@@ -116,45 +115,6 @@ describeAuthEmulator("sign-in with custom token", ({ authApi }) => {
       });
   });
 
-  it("should not issue a refresh token in passthrough mode", async () => {
-    const uid = "someuid";
-    const claims = { abc: "def", ultimate: { answer: 42 } };
-    const token = signJwt({ uid, claims }, "", {
-      algorithm: "none",
-      expiresIn: 3600,
-
-      subject: "fake-service-account@example.com",
-      issuer: "fake-service-account@example.com",
-      audience: CUSTOM_TOKEN_AUDIENCE,
-    });
-    await updateProjectConfig(authApi(), { usageMode: "PASSTHROUGH" });
-
-    await authApi()
-      .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken")
-      .query({ key: "fake-api-key" })
-      .send({ token })
-      .then((res) => {
-        expectStatusCode(200, res);
-        expect(res.body.isNewUser).to.equal(false);
-        expect(res.body).not.to.have.property("refreshToken");
-
-        const idToken = res.body.idToken as string;
-        const decoded = decodeJwt(idToken, { complete: true }) as {
-          header: JwtHeader;
-          payload: FirebaseJwtPayload;
-        } | null;
-        expect(decoded, "JWT returned by emulator is invalid").not.to.be.null;
-        expect(decoded!.header.alg).to.eql("none");
-        expect(decoded!.payload).not.to.have.property("provider_id");
-        expect(decoded!.payload.firebase)
-          .to.have.property("sign_in_provider")
-          .equals(PROVIDER_CUSTOM);
-        expect(decoded!.payload.firebase).to.have.property("usage_mode").equals("passthrough");
-        expect(decoded!.payload).deep.include(claims);
-        return idToken;
-      });
-  });
-
   it("should error if custom token is missing", async () => {
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken")
@@ -189,7 +149,7 @@ describeAuthEmulator("sign-in with custom token", ({ authApi }) => {
   });
 
   it("should error if custom token addresses the wrong audience", async () => {
-    const token = signJwt({ uid: "foo" }, "", {
+    const token = signJwt({ uid: "foo" }, "fake-secret", {
       algorithm: "none",
       expiresIn: 3600,
 
@@ -213,7 +173,7 @@ describeAuthEmulator("sign-in with custom token", ({ authApi }) => {
       {
         /* no uid */
       },
-      "",
+      "fake-secret",
       {
         algorithm: "none",
         expiresIn: 3600,
@@ -292,7 +252,7 @@ describeAuthEmulator("sign-in with custom token", ({ authApi }) => {
     const tenant = await registerTenant(authApi(), PROJECT_ID, { disableAuth: false });
     const uid = "someuid";
     const claims = { abc: "def", ultimate: { answer: 42 } };
-    const token = signJwt({ uid, claims, tenant_id: "not-matching-tenant-id" }, "", {
+    const token = signJwt({ uid, claims, tenant_id: "not-matching-tenant-id" }, "fake-secret", {
       algorithm: "none",
       expiresIn: 3600,
 
@@ -315,7 +275,7 @@ describeAuthEmulator("sign-in with custom token", ({ authApi }) => {
     const tenant = await registerTenant(authApi(), PROJECT_ID, { disableAuth: false });
     const uid = "someuid";
     const claims = { abc: "def", ultimate: { answer: 42 } };
-    const token = signJwt({ uid, claims, tenant_id: tenant.tenantId }, "", {
+    const token = signJwt({ uid, claims, tenant_id: tenant.tenantId }, "fake-secret", {
       algorithm: "none",
       expiresIn: 3600,
 

@@ -7,11 +7,11 @@ import { requirePermissions } from "../requirePermissions";
 import { Version, ListVersionsResult } from "../remoteconfig/interfaces";
 import { datetimeString } from "../utils";
 
-import Table = require("cli-table");
+const Table = require("cli-table");
 
 const tableHead = ["Update User", "Version Number", "Update Time"];
 
-function pushTableContents(table: Table, version: Version): number {
+function pushTableContents(table: typeof Table, version: Version): number {
   return table.push([
     version.updateUser?.email,
     version.versionNumber,
@@ -19,7 +19,7 @@ function pushTableContents(table: Table, version: Version): number {
   ]);
 }
 
-module.exports = new Command("remoteconfig:versions:list")
+export const command = new Command("remoteconfig:versions:list")
   .description(
     "get a list of Remote Config template versions that have been published for a Firebase project"
   )

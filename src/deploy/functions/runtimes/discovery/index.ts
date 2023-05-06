@@ -6,31 +6,31 @@ import { promisify } from "util";
 
 import { logger } from "../../../../logger";
 import * as api from "../../.../../../../api";
-import * as backend from "../../backend";
+import * as build from "../../build";
 import * as runtimes from "..";
 import * as v1alpha1 from "./v1alpha1";
 import { FirebaseError } from "../../../../error";
 
 export const readFileAsync = promisify(fs.readFile);
 
-export function yamlToBackend(
+export function yamlToBuild(
   yaml: any,
   project: string,
   region: string,
   runtime: runtimes.Runtime
-): backend.Backend {
+): build.Build {
   try {
     if (!yaml.specVersion) {
-      throw new FirebaseError("Expect backend yaml to specify a version number");
+      throw new FirebaseError("Expect manifest yaml to specify a version number");
     }
     if (yaml.specVersion === "v1alpha1") {
-      return v1alpha1.backendFromV1Alpha1(yaml, project, region, runtime);
+      return v1alpha1.buildFromV1Alpha1(yaml, project, region, runtime);
     }
     throw new FirebaseError(
       "It seems you are using a newer SDK than this version of the CLI can handle. Please update your CLI with `npm install -g firebase-tools`"
     );
   } catch (err: any) {
-    throw new FirebaseError("Failed to parse backend specification", { children: [err] });
+    throw new FirebaseError("Failed to parse build specification", { children: [err] });
   }
 }
 
@@ -38,7 +38,7 @@ export async function detectFromYaml(
   directory: string,
   project: string,
   runtime: runtimes.Runtime
-): Promise<backend.Backend | undefined> {
+): Promise<build.Build | undefined> {
   let text: string;
   try {
     text = await exports.readFileAsync(path.join(directory, "functions.yaml"), "utf8");
@@ -53,15 +53,15 @@ export async function detectFromYaml(
 
   logger.debug("Found functions.yaml. Got spec:", text);
   const parsed = yaml.load(text);
-  return yamlToBackend(parsed, project, api.functionsDefaultRegion, runtime);
+  return yamlToBuild(parsed, project, api.functionsDefaultRegion, runtime);
 }
 
 export async function detectFromPort(
   port: number,
   project: string,
   runtime: runtimes.Runtime,
-  timeout: number = 30_000 /* 30s to boot up */
-): Promise<backend.Backend> {
+  timeout = 10_000 /* 10s to boot up */
+): Promise<build.Build> {
   // The result type of fetch isn't exported
   let res: { text(): Promise<string> };
   const timedOut = new Promise<never>((resolve, reject) => {
@@ -72,7 +72,7 @@ export async function detectFromPort(
 
   while (true) {
     try {
-      res = await Promise.race([fetch(`http://localhost:${port}/__/functions.yaml`), timedOut]);
+      res = await Promise.race([fetch(`http://127.0.0.1:${port}/__/functions.yaml`), timedOut]);
       break;
     } catch (err: any) {
       // Allow us to wait until the server is listening.
@@ -90,8 +90,9 @@ export async function detectFromPort(
   try {
     parsed = yaml.load(text);
   } catch (err: any) {
-    throw new FirebaseError("Failed to parse backend specification", { children: [err] });
+    logger.debug("Failed to parse functions.yaml", err);
+    throw new FirebaseError(`Failed to load function definition from source: ${text}`);
   }
 
-  return yamlToBackend(parsed, project, api.functionsDefaultRegion, runtime);
+  return yamlToBuild(parsed, project, api.functionsDefaultRegion, runtime);
 }

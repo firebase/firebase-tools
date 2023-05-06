@@ -2,11 +2,11 @@ import * as nock from "nock";
 import { expect } from "chai";
 
 import * as api from "../../api";
-import * as extensionsApi from "../../extensions/extensionsApi";
+import { ExtensionInstance, ParamType } from "../../extensions/types";
 import * as secretsUtils from "../../extensions/secretsUtils";
 
 const PROJECT_ID = "test-project";
-const TEST_INSTANCE: extensionsApi.ExtensionInstance = {
+const TEST_INSTANCE: ExtensionInstance = {
   name: "projects/invader-zim/instances/image-resizer",
   createTime: "2019-05-19T00:20:10.416947Z",
   updateTime: "2019-05-19T00:20:10.416947Z",
@@ -35,20 +35,22 @@ const TEST_INSTANCE: extensionsApi.ExtensionInstance = {
           {
             param: "SECRET1",
             label: "secret 1",
-            type: extensionsApi.ParamType.SECRET,
+            type: ParamType.SECRET,
           },
           {
             param: "SECRET2",
             label: "secret 2",
-            type: extensionsApi.ParamType.SECRET,
+            type: ParamType.SECRET,
           },
         ],
+        systemParams: [],
       },
     },
     params: {
       SECRET1: "projects/test-project/secrets/secret1/versions/1",
       SECRET2: "projects/test-project/secrets/secret2/versions/1",
     },
+    systemParams: {},
   },
 };
 

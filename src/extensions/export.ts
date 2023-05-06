@@ -1,8 +1,4 @@
-import {
-  getExtensionVersion,
-  DeploymentInstanceSpec,
-  InstanceSpec,
-} from "../deploy/extensions/planner";
+import { getExtensionVersion, DeploymentInstanceSpec } from "../deploy/extensions/planner";
 import { humanReadable } from "../deploy/extensions/deploymentSummary";
 import { logger } from "../logger";
 import { parseSecretVersionResourceName, toSecretVersionResourceName } from "../gcp/secretManager";
@@ -78,6 +74,12 @@ function displaySpecs(specs: DeploymentInstanceSpec[]): void {
     logger.info(`Configuration will be written to 'extensions/${spec.instanceId}.env'`);
     for (const p of Object.entries(spec.params)) {
       logger.info(`\t${p[0]}=${p[1]}`);
+    }
+    if (spec.allowedEventTypes?.length) {
+      logger.info(`\tALLOWED_EVENTS=${spec.allowedEventTypes}`);
+    }
+    if (spec.eventarcChannel) {
+      logger.info(`\tEVENTARC_CHANNEL=${spec.eventarcChannel}`);
     }
     logger.info("");
   }

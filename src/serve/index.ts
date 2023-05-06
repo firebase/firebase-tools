@@ -1,14 +1,15 @@
-import { EmulatorServer } from "../emulator/emulatorServer";
-import * as _ from "lodash";
 import { logger } from "../logger";
-import { previews } from "../previews";
+import { prepareFrameworks } from "../frameworks";
+import * as experiments from "../experiments";
+import { trackEmulator } from "../track";
+import { getProjectId } from "../projectUtils";
+import { Constants } from "../emulator/constants";
+import * as config from "../hosting/config";
 
 const { FunctionsServer } = require("./functions");
 
 const TARGETS: {
-  [key: string]:
-    | EmulatorServer
-    | { start: (o: any) => void; stop: (o: any) => void; connect: () => void };
+  [key: string]: { start: (o: any) => void; stop: (o: any) => void; connect: () => void };
 } = {
   hosting: require("./hosting"),
   functions: new FunctionsServer(),
@@ -19,34 +20,40 @@ const TARGETS: {
  * @param options Firebase CLI options.
  */
 export async function serve(options: any): Promise<void> {
-  const targetNames = options.targets;
+  options.targets ||= [];
+  const targetNames: string[] = options.targets;
   options.port = parseInt(options.port, 10);
-  if (
-    previews.frameworkawareness &&
-    targetNames.includes("hosting") &&
-    [].concat(options.config.get("hosting")).some((it: any) => it.source)
-  ) {
-    await require("firebase-frameworks").prepare(
-      targetNames,
-      { project: options.projectId },
-      options
-    );
+  if (targetNames.includes("hosting") && config.extract(options).some((it: any) => it.source)) {
+    experiments.assertEnabled("webframeworks", "emulate a web framework");
+    await prepareFrameworks(targetNames, options, options);
   }
+  const isDemoProject = Constants.isDemoProject(getProjectId(options) || "");
+  targetNames.forEach((targetName) => {
+    void trackEmulator("emulator_run", {
+      emulator_name: targetName,
+      is_demo_project: String(isDemoProject),
+    });
+  });
   await Promise.all(
-    _.map(targetNames, (targetName: string) => {
+    targetNames.map((targetName: string) => {
       return TARGETS[targetName].start(options);
     })
   );
   await Promise.all(
-    _.map(targetNames, (targetName: string) => {
+    targetNames.map((targetName: string) => {
       return TARGETS[targetName].connect();
     })
   );
+  void trackEmulator("emulators_started", {
+    count: targetNames.length,
+    count_all: targetNames.length,
+    is_demo_project: String(isDemoProject),
+  });
   await new Promise((resolve) => {
     process.on("SIGINT", () => {
       logger.info("Shutting down...");
-      return Promise.all(
-        _.map(targetNames, (targetName: string) => {
+      Promise.all(
+        targetNames.map((targetName: string) => {
           return TARGETS[targetName].stop(options);
         })
       )

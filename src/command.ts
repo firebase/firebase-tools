@@ -1,15 +1,14 @@
-import { bold } from "cli-color";
+import * as clc from "colorette";
 import { CommanderStatic } from "commander";
 import { first, last, get, size, head, keys, values } from "lodash";
 
 import { FirebaseError } from "./error";
-import { getInheritedOption, setupLoggers } from "./utils";
-import { loadRC, RC } from "./rc";
+import { getInheritedOption, setupLoggers, withTimeout } from "./utils";
+import { loadRC } from "./rc";
 import { Config } from "./config";
 import { configstore } from "./configstore";
 import { detectProjectRoot } from "./detectProjectRoot";
-import { track } from "./track";
-import clc = require("cli-color");
+import { track, trackEmulator } from "./track";
 import { selectAccount, setActiveAccount } from "./auth";
 import { getFirebaseProject } from "./management/projects";
 import { requireAuth } from "./requireAuth";
@@ -145,6 +144,7 @@ export class Command {
 
     if (this.helpText) {
       cmd.on("--help", () => {
+        console.log(); // Seperates the help text from global options.
         console.log(this.helpText);
       });
     }
@@ -157,7 +157,7 @@ export class Command {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     cmd.action((...args: any[]) => {
       const runner = this.runner();
-      const start = new Date().getTime();
+      const start = process.uptime();
       const options = last(args);
       // We do not want to provide more arguments to the action functions than
       // we are able to - we're not sure what the ripple effects are. Our
@@ -173,15 +173,22 @@ export class Command {
       if (args.length - 1 > cmd._args.length) {
         client.errorOut(
           new FirebaseError(
-            `Too many arguments. Run ${bold("firebase help " + this.name)} for usage instructions`,
+            `Too many arguments. Run ${clc.bold(
+              "firebase help " + this.name
+            )} for usage instructions`,
             { exit: 1 }
           )
         );
         return;
       }
 
+      const isEmulator = this.name.includes("emulator") || this.name === "serve";
+      if (isEmulator) {
+        void trackEmulator("command_start", { command_name: this.name });
+      }
+
       runner(...args)
-        .then((result) => {
+        .then(async (result) => {
           if (getInheritedOption(options, "json")) {
             console.log(
               JSON.stringify(
@@ -194,8 +201,23 @@ export class Command {
               )
             );
           }
-          const duration = new Date().getTime() - start;
-          void track(this.name, "success", duration).then(() => process.exit());
+          const duration = Math.floor((process.uptime() - start) * 1000);
+          const trackSuccess = track(this.name, "success", duration);
+          if (!isEmulator) {
+            await withTimeout(5000, trackSuccess);
+          } else {
+            await withTimeout(
+              5000,
+              Promise.all([
+                trackSuccess,
+                trackEmulator("command_success", {
+                  command_name: this.name,
+                  duration,
+                }),
+              ])
+            );
+          }
+          process.exit();
         })
         .catch(async (err) => {
           if (getInheritedOption(options, "json")) {
@@ -210,10 +232,22 @@ export class Command {
               )
             );
           }
-          const duration = Date.now() - start;
-          const errorEvent = err.exit === 1 ? "Error (User)" : "Error (Unexpected)";
+          const duration = Math.floor((process.uptime() - start) * 1000);
+          await withTimeout(
+            5000,
+            Promise.all([
+              track(this.name, "error", duration),
+              track(err.exit === 1 ? "Error (User)" : "Error (Unexpected)", "", duration),
+              isEmulator
+                ? trackEmulator("command_error", {
+                    command_name: this.name,
+                    duration,
+                    error_type: err.exit === 1 ? "user" : "unexpected",
+                  })
+                : Promise.resolve(),
+            ])
+          );
 
-          await Promise.all([track(this.name, "error", duration), track(errorEvent, "", duration)]);
           client.errorOut(err);
         });
     });
@@ -224,7 +258,7 @@ export class Command {
    * @param options the command options object.
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private async prepare(options: any): Promise<void> {
+  public async prepare(options: any): Promise<void> {
     options = options || {};
     options.project = getInheritedOption(options, "project");
 

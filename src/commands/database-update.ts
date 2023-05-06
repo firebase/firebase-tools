@@ -1,5 +1,5 @@
 import { URL } from "url";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as fs from "fs";
 
 import { Client } from "../apiv2";
@@ -15,7 +15,7 @@ import { logger } from "../logger";
 import { requireDatabaseInstance } from "../requireDatabaseInstance";
 import * as utils from "../utils";
 
-export default new Command("database:update <path> [infile]")
+export const command = new Command("database:update <path> [infile]")
   .description("update some of the keys for the defined path in your Firebase")
   .option("-d, --data <data>", "specify escaped JSON directly")
   .option("-f, --force", "pass this option to bypass confirmation prompt")
@@ -23,6 +23,7 @@ export default new Command("database:update <path> [infile]")
     "--instance <instance>",
     "use the database <instance>.firebaseio.com (if omitted, use default database instance)"
   )
+  .option("--disable-triggers", "suppress any Cloud functions triggered by this operation")
   .before(requirePermissions, ["firebasedatabase.instances.update"])
   .before(requireDatabaseInstance)
   .before(populateInstanceDetails)
@@ -51,6 +52,9 @@ export default new Command("database:update <path> [infile]")
       (infile && fs.createReadStream(infile)) ||
       process.stdin;
     const jsonUrl = new URL(utils.getDatabaseUrl(origin, options.instance, path + ".json"));
+    if (options.disableTriggers) {
+      jsonUrl.searchParams.set("disableTriggers", "true");
+    }
 
     if (!infile && !options.data) {
       utils.explainStdin();
@@ -62,6 +66,7 @@ export default new Command("database:update <path> [infile]")
         method: "PATCH",
         path: jsonUrl.pathname,
         body: inStream,
+        queryParams: jsonUrl.searchParams,
       });
     } catch (err: any) {
       throw new FirebaseError("Unexpected error while setting data");

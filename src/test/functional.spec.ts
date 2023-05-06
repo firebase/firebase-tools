@@ -86,7 +86,7 @@ describe("functional", () => {
       expect([...f.zip([1], ["a"])]).to.deep.equal([[1, "a"]]);
     });
     it("throws on length mismatch", () => {
-      expect(() => f.zip([1], [])).to.throw;
+      expect(() => [...f.zip([1], [])]).to.throw();
     });
   });
 
@@ -141,6 +141,23 @@ describe("functional", () => {
 
     it("can handle an empty array", () => {
       expect(f.partition<string>([], (s: string) => s.startsWith("T"))).to.deep.equal([[], []]);
+    });
+  });
+
+  describe("partitionRecord", () => {
+    it("should split a record into true and false", () => {
+      const rec = { T1: 1, F1: 2, T2: 3, F2: 4 };
+      expect(f.partitionRecord<number>(rec, (s: string) => s.startsWith("T"))).to.deep.equal([
+        { T1: 1, T2: 3 },
+        { F1: 2, F2: 4 },
+      ]);
+    });
+
+    it("can handle an empty record", () => {
+      expect(f.partitionRecord<string>({}, (s: string) => s.startsWith("T"))).to.deep.equal([
+        {},
+        {},
+      ]);
     });
   });
 });

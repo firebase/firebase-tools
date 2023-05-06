@@ -186,7 +186,7 @@ const throttlerTest = (ThrottlerConstructor: ThrottlerConstructorType): void => 
     return q
       .wait()
       .catch((err: Error) => {
-        throw new Error("handler should have passed ");
+        throw new Error(`handler should have passed ${err.message}`);
       })
       .then(() => {
         expect(q.complete).to.equal(3);
@@ -223,7 +223,7 @@ const throttlerTest = (ThrottlerConstructor: ThrottlerConstructorType): void => 
     return q
       .wait()
       .catch((err: Error) => {
-        throw new Error("handler should have passed");
+        throw new Error(`handler should have passed ${err.message}`);
       })
       .then(() => {
         expect(handler.callCount).to.equal(9);
@@ -485,7 +485,7 @@ export const createTask = (name: string, resolved: boolean) => {
       resolve = s;
       reject = j;
     });
-    const startExecutePromise = new Promise((s, j) => {
+    const startExecutePromise = new Promise((s) => {
       startExecute = s;
     });
     res({

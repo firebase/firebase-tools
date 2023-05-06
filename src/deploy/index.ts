@@ -1,13 +1,14 @@
+import * as clc from "colorette";
 import { logger } from "../logger";
 import { hostingOrigin } from "../api";
-import { bold, white } from "cli-color";
+import { bold, underline, white } from "colorette";
 import { has, includes, each } from "lodash";
 import { needProjectId } from "../projectUtils";
 import { logBullet, logSuccess, consoleUrl, addSubdomain } from "../utils";
 import { FirebaseError } from "../error";
 import { track } from "../track";
-import * as lifecycleHooks from "./lifecycleHooks";
-import { previews } from "../previews";
+import { lifecycleHooks } from "./lifecycleHooks";
+import * as experiments from "../experiments";
 import * as HostingTarget from "./hosting";
 import * as DatabaseTarget from "./database";
 import * as FirestoreTarget from "./firestore";
@@ -15,6 +16,12 @@ import * as FunctionsTarget from "./functions";
 import * as StorageTarget from "./storage";
 import * as RemoteConfigTarget from "./remoteconfig";
 import * as ExtensionsTarget from "./extensions";
+import { prepareFrameworks } from "../frameworks";
+import { HostingDeploy } from "./hosting/context";
+import { addPinnedFunctionsToOnlyString, hasPinnedFunctions } from "./hosting/prepare";
+import { isRunningInGithubAction } from "../init/features/hosting/github";
+import { TARGET_PERMISSIONS } from "../commands/deploy";
+import { requirePermissions } from "../requirePermissions";
 
 const TARGETS = {
   hosting: HostingTarget,
@@ -55,20 +62,42 @@ export const deploy = async function (
   const postdeploys: Chain = [];
   const startTime = Date.now();
 
-  if (previews.frameworkawareness && targetNames.includes("hosting")) {
+  if (targetNames.includes("hosting")) {
     const config = options.config.get("hosting");
     if (Array.isArray(config) ? config.some((it) => it.source) : config.source) {
-      await require("firebase-frameworks").prepare(targetNames, context, options);
+      experiments.assertEnabled("webframeworks", "deploy a web framework from source");
+      await prepareFrameworks(targetNames, context, options);
     }
+  }
+
+  if (targetNames.includes("hosting") && hasPinnedFunctions(options)) {
+    experiments.assertEnabled("pintags", "deploy a tagged function as a hosting rewrite");
+    if (!targetNames.includes("functions")) {
+      targetNames.unshift("functions");
+      try {
+        await requirePermissions(options, TARGET_PERMISSIONS["functions"]);
+      } catch (e) {
+        if (isRunningInGithubAction()) {
+          throw new FirebaseError(
+            "It looks like you are deploying a Hosting site along with Cloud Functions " +
+              "using a GitHub action version that did not include Cloud Functions " +
+              "permissions. Please reinstall the GitHub action with" +
+              clc.bold("firebase init hosting:github"),
+            { original: e as Error }
+          );
+        } else {
+          throw e;
+        }
+      }
+    }
+    await addPinnedFunctionsToOnlyString(context, options);
   }
 
   for (const targetName of targetNames) {
     const target = TARGETS[targetName];
 
     if (!target) {
-      return Promise.reject(
-        new FirebaseError(bold(targetName) + " is not a valid deploy target", { exit: 1 })
-      );
+      return Promise.reject(new FirebaseError(`${bold(targetName)} is not a valid deploy target`));
     }
 
     predeploys.push(lifecycleHooks(targetName, "predeploy"));
@@ -98,14 +127,14 @@ export const deploy = async function (
   await track("Product Deploy", [...targetNames].sort().join(","), duration);
 
   logger.info();
-  logSuccess(bold.underline("Deploy complete!"));
+  logSuccess(bold(underline("Deploy complete!")));
   logger.info();
 
   const deployedHosting = includes(targetNames, "hosting");
   logger.info(bold("Project Console:"), consoleUrl(options.project, "/overview"));
   if (deployedHosting) {
-    each(context.hosting.deploys, (deploy) => {
-      logger.info(bold("Hosting URL:"), addSubdomain(hostingOrigin, deploy.site));
+    each(context.hosting.deploys as HostingDeploy[], (deploy) => {
+      logger.info(bold("Hosting URL:"), addSubdomain(hostingOrigin, deploy.config.site));
     });
     const versionNames = context.hosting.deploys.map((deploy: any) => deploy.version);
     return { hosting: versionNames.length === 1 ? versionNames[0] : versionNames };

@@ -1,12 +1,12 @@
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
-const { marked } = require("marked");
+import { marked } from "marked";
 
-import * as extensionsApi from "./extensionsApi";
+import { ExtensionSpec } from "./types";
 import { firebaseStorageOrigin, firedataOrigin } from "../api";
 import { Client } from "../apiv2";
 import { flattenArray } from "../functional";
 import { FirebaseError } from "../error";
 import { getExtensionSpec, InstanceSpec } from "../deploy/extensions/planner";
+import { logger } from "../logger";
 
 /** Product for which provisioning can be (or is) deferred */
 export enum DeferredProduct {
@@ -21,7 +21,7 @@ export enum DeferredProduct {
  */
 export async function checkProductsProvisioned(
   projectId: string,
-  spec: extensionsApi.ExtensionSpec
+  spec: ExtensionSpec
 ): Promise<void> {
   const usedProducts = getUsedProducts(spec);
   await checkProducts(projectId, usedProducts);
@@ -55,12 +55,16 @@ async function checkProducts(projectId: string, usedProducts: DeferredProduct[])
   if (usedProducts.includes(DeferredProduct.AUTH)) {
     isAuthProvisionedPromise = isAuthProvisioned(projectId);
   }
-
-  if (isStorageProvisionedPromise && !(await isStorageProvisionedPromise)) {
-    needProvisioning.push(DeferredProduct.STORAGE);
-  }
-  if (isAuthProvisionedPromise && !(await isAuthProvisionedPromise)) {
-    needProvisioning.push(DeferredProduct.AUTH);
+  try {
+    if (isStorageProvisionedPromise && !(await isStorageProvisionedPromise)) {
+      needProvisioning.push(DeferredProduct.STORAGE);
+    }
+    if (isAuthProvisionedPromise && !(await isAuthProvisionedPromise)) {
+      needProvisioning.push(DeferredProduct.AUTH);
+    }
+  } catch (err: any) {
+    // If a provisioning check throws, we should fail open since this is best effort.
+    logger.debug(`Error while checking product provisioning, failing open: ${err}`);
   }
 
   if (needProvisioning.length > 0) {
@@ -89,7 +93,7 @@ async function checkProducts(projectId: string, usedProducts: DeferredProduct[])
  * From the spec determines which products are used by the extension and
  * returns the list.
  */
-export function getUsedProducts(spec: extensionsApi.ExtensionSpec): DeferredProduct[] {
+export function getUsedProducts(spec: ExtensionSpec): DeferredProduct[] {
   const usedProducts: DeferredProduct[] = [];
   const usedApis = spec.apis?.map((api) => api.apiName);
   const usedRoles = spec.roles?.map((r) => r.role.split(".")[0]);

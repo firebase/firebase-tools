@@ -270,4 +270,186 @@ describe("run", () => {
       });
     });
   });
+  describe("updateService", () => {
+    let service: run.Service;
+    let serviceIsResolved: sinon.SinonStub;
+    let replaceService: sinon.SinonStub;
+    let getService: sinon.SinonStub;
+
+    beforeEach(() => {
+      serviceIsResolved = sinon
+        .stub(run, "serviceIsResolved")
+        .throws(new Error("Unexpected serviceIsResolved call"));
+      replaceService = sinon
+        .stub(run, "replaceService")
+        .throws(new Error("Unexpected replaceService call"));
+      getService = sinon.stub(run, "getService").throws(new Error("Unexpected getService call"));
+
+      service = {
+        apiVersion: "serving.knative.dev/v1",
+        kind: "Service",
+        metadata: {
+          name: "service",
+          namespace: "project",
+        },
+        spec: {
+          template: {
+            metadata: {
+              name: "service",
+              namespace: "project",
+            },
+            spec: {
+              containerConcurrency: 1,
+              containers: [
+                {
+                  image: "image",
+                  ports: [
+                    {
+                      name: "main",
+                      containerPort: 8080,
+                    },
+                  ],
+                  env: {},
+                  resources: {
+                    limits: {
+                      memory: "256M",
+                      cpu: "0.1667",
+                    },
+                  },
+                },
+              ],
+            },
+          },
+          traffic: [],
+        },
+      };
+    });
+
+    afterEach(() => {
+      serviceIsResolved.restore();
+      getService.restore();
+      replaceService.restore();
+    });
+
+    it("handles noops immediately", async () => {
+      replaceService.resolves(service);
+      getService.resolves(service);
+      serviceIsResolved.returns(true);
+      await run.updateService("name", service);
+
+      expect(replaceService).to.have.been.calledOnce;
+      expect(serviceIsResolved).to.have.been.calledOnce;
+      expect(getService).to.not.have.been.called;
+    });
+
+    it("loops on ready status", async () => {
+      replaceService.resolves(service);
+      getService.resolves(service);
+      serviceIsResolved.onFirstCall().returns(false);
+      serviceIsResolved.onSecondCall().returns(true);
+      await run.updateService("name", service);
+
+      expect(replaceService).to.have.been.calledOnce;
+      expect(serviceIsResolved).to.have.been.calledTwice;
+      expect(getService).to.have.been.calledOnce;
+    });
+  });
+
+  describe("serviceIsResolved", () => {
+    let service: run.Service;
+    beforeEach(() => {
+      service = {
+        apiVersion: "serving.knative.dev/v1",
+        kind: "Service",
+        metadata: {
+          name: "service",
+          namespace: "project",
+          generation: 2,
+        },
+        spec: {
+          template: {
+            metadata: {
+              name: "service",
+              namespace: "project",
+            },
+            spec: {
+              containerConcurrency: 1,
+              containers: [
+                {
+                  image: "image",
+                  ports: [
+                    {
+                      name: "main",
+                      containerPort: 8080,
+                    },
+                  ],
+                  env: {},
+                  resources: {
+                    limits: {
+                      memory: "256M",
+                      cpu: "0.1667",
+                    },
+                  },
+                },
+              ],
+            },
+          },
+          traffic: [],
+        },
+        status: {
+          observedGeneration: 2,
+          conditions: [
+            {
+              status: "True",
+              type: "Ready",
+              reason: "Testing",
+              lastTransitionTime: "",
+              message: "",
+              severity: "Info",
+            },
+          ],
+          latestCreatedRevisionName: "",
+          latestReadyRevisionName: "",
+          traffic: [],
+          url: "",
+          address: {
+            url: "",
+          },
+        },
+      };
+    });
+
+    it("returns false if the observed generation isn't the metageneration", () => {
+      service.status!.observedGeneration = 1;
+      service.metadata.generation = 2;
+      expect(run.serviceIsResolved(service)).to.be.false;
+    });
+
+    it("returns false if the status is not ready", () => {
+      service.status!.observedGeneration = 2;
+      service.metadata.generation = 2;
+      service.status!.conditions[0].status = "Unknown";
+      service.status!.conditions[0].type = "Ready";
+
+      expect(run.serviceIsResolved(service)).to.be.false;
+    });
+
+    it("throws if we have an failed status", () => {
+      service.status!.observedGeneration = 2;
+      service.metadata.generation = 2;
+      service.status!.conditions[0].status = "False";
+      service.status!.conditions[0].type = "Ready";
+
+      expect(() => run.serviceIsResolved(service)).to.throw;
+    });
+
+    it("returns true if resolved", () => {
+      service.status!.observedGeneration = 2;
+      service.metadata.generation = 2;
+      service.status!.conditions[0].status = "True";
+      service.status!.conditions[0].type = "Ready";
+
+      expect(run.serviceIsResolved(service)).to.be.true;
+    });
+  });
 });

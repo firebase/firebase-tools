@@ -5,6 +5,7 @@ import * as storage from "../../../gcp/storage";
 import * as rm from "../../../gcp/resourceManager";
 import * as backend from "../../../deploy/functions/backend";
 
+const projectId = "my-project";
 const projectNumber = "123456789";
 
 const STORAGE_RES = {
@@ -21,12 +22,6 @@ const SPEC = {
   region: "us-west1",
   project: projectNumber,
   runtime: "nodejs14",
-};
-
-const iamPolicy = {
-  etag: "etag",
-  version: 3,
-  bindings: [BINDING],
 };
 
 describe("checkIam", () => {
@@ -50,116 +45,9 @@ describe("checkIam", () => {
     sinon.verifyAndRestore();
   });
 
-  const iamPolicy = {
-    etag: "etag",
-    version: 3,
-    bindings: [
-      {
-        role: "some/role",
-        members: ["someuser"],
-      },
-    ],
-  };
-
-  describe("obtainBinding", () => {
-    it("should assign the service account the role if they don't exist in the policy", () => {
-      const policy = { ...iamPolicy };
-      const serviceAccount = "myServiceAccount";
-      const role = "role/myrole";
-
-      const bindings = checkIam.obtainBinding(policy, serviceAccount, role);
-
-      expect(bindings).to.deep.equal({
-        role,
-        members: [serviceAccount],
-      });
-    });
-
-    it("should append the service account as a member of the role when the role exists in the policy", () => {
-      const policy = { ...iamPolicy };
-      const serviceAccount = "myServiceAccount";
-      const role = "role/myrole";
-      policy.bindings = [
-        {
-          role,
-          members: ["someuser"],
-        },
-      ];
-
-      const bindings = checkIam.obtainBinding(policy, serviceAccount, role);
-
-      expect(bindings).to.deep.equal({
-        role,
-        members: ["someuser", serviceAccount],
-      });
-    });
-
-    it("should not add the role or service account if the policy already has the binding", () => {
-      const policy = { ...iamPolicy };
-      const serviceAccount = "myServiceAccount";
-      const role = "role/myrole";
-      policy.bindings = [
-        {
-          role,
-          members: [serviceAccount],
-        },
-      ];
-
-      const bindings = checkIam.obtainBinding(policy, serviceAccount, role);
-
-      expect(bindings).to.deep.equal({
-        role,
-        members: [serviceAccount],
-      });
-    });
-  });
-
   describe("obtainPubSubServiceAgentBindings", () => {
-    it("should add the binding", () => {
-      const policy = { ...iamPolicy };
-
-      const bindings = checkIam.obtainPubSubServiceAgentBindings(projectNumber, policy);
-
-      expect(bindings.length).to.equal(1);
-      expect(bindings[0]).to.deep.equal({
-        role: checkIam.SERVICE_ACCOUNT_TOKEN_CREATOR_ROLE,
-        members: [`serviceAccount:service-${projectNumber}@gcp-sa-pubsub.iam.gserviceaccount.com`],
-      });
-    });
-
-    it("should add the service agent as a member", () => {
-      const policy = { ...iamPolicy };
-      policy.bindings = [
-        {
-          role: checkIam.SERVICE_ACCOUNT_TOKEN_CREATOR_ROLE,
-          members: ["someuser"],
-        },
-      ];
-
-      const bindings = checkIam.obtainPubSubServiceAgentBindings(projectNumber, policy);
-
-      expect(bindings.length).to.equal(1);
-      expect(bindings[0]).to.deep.equal({
-        role: checkIam.SERVICE_ACCOUNT_TOKEN_CREATOR_ROLE,
-        members: [
-          "someuser",
-          `serviceAccount:service-${projectNumber}@gcp-sa-pubsub.iam.gserviceaccount.com`,
-        ],
-      });
-    });
-
-    it("should do nothing if we have the binding", () => {
-      const policy = { ...iamPolicy };
-      policy.bindings = [
-        {
-          role: checkIam.SERVICE_ACCOUNT_TOKEN_CREATOR_ROLE,
-          members: [
-            `serviceAccount:service-${projectNumber}@gcp-sa-pubsub.iam.gserviceaccount.com`,
-          ],
-        },
-      ];
-
-      const bindings = checkIam.obtainPubSubServiceAgentBindings(projectNumber, policy);
+    it("should obtain the bindings", () => {
+      const bindings = checkIam.obtainPubSubServiceAgentBindings(projectNumber);
 
       expect(bindings.length).to.equal(1);
       expect(bindings[0]).to.deep.equal({
@@ -170,10 +58,8 @@ describe("checkIam", () => {
   });
 
   describe("obtainDefaultComputeServiceAgentBindings", () => {
-    it("should add both bindings", () => {
-      const policy = { ...iamPolicy };
-
-      const bindings = checkIam.obtainDefaultComputeServiceAgentBindings(projectNumber, policy);
+    it("should obtain the bindings", () => {
+      const bindings = checkIam.obtainDefaultComputeServiceAgentBindings(projectNumber);
 
       expect(bindings.length).to.equal(2);
       expect(bindings).to.include.deep.members([
@@ -189,44 +75,30 @@ describe("checkIam", () => {
     });
   });
 
-  describe("obtainEventarcServiceAgentBindings", () => {
-    it("should add the binding", () => {
-      const policy = { ...iamPolicy };
-
-      const bindings = checkIam.obtainEventarcServiceAgentBindings(projectNumber, policy);
-
-      expect(bindings.length).to.equal(1);
-      expect(bindings[0]).to.deep.equal({
-        role: checkIam.EVENTARC_SERVICE_AGENT_ROLE,
-        members: [
-          `serviceAccount:service-${projectNumber}@gcp-sa-eventarc.iam.gserviceaccount.com`,
-        ],
-      });
-    });
-  });
-
   describe("mergeBindings", () => {
-    it("should skip empty or duplicate bindings", () => {
+    it("should not update the policy when the bindings are present", () => {
       const policy = {
         etag: "etag",
         version: 3,
         bindings: [BINDING],
       };
 
-      checkIam.mergeBindings(policy, [[], [BINDING]]);
+      const updated = checkIam.mergeBindings(policy, [BINDING]);
 
+      expect(updated).to.be.false;
       expect(policy.bindings).to.deep.equal([BINDING]);
     });
 
-    it("should update current binding", () => {
+    it("should update the members of a binding in the policy", () => {
       const policy = {
         etag: "etag",
         version: 3,
         bindings: [BINDING],
       };
 
-      checkIam.mergeBindings(policy, [[{ role: "some/role", members: ["newuser"] }]]);
+      const updated = checkIam.mergeBindings(policy, [{ role: "some/role", members: ["newuser"] }]);
 
+      expect(updated).to.be.true;
       expect(policy.bindings).to.deep.equal([
         {
           role: "some/role",
@@ -235,44 +107,22 @@ describe("checkIam", () => {
       ]);
     });
 
-    it("should add the binding", () => {
+    it("should add a new binding to the policy", () => {
       const policy = {
         etag: "etag",
         version: 3,
         bindings: [],
       };
 
-      checkIam.mergeBindings(policy, [[BINDING]]);
+      const updated = checkIam.mergeBindings(policy, [BINDING]);
 
+      expect(updated).to.be.true;
       expect(policy.bindings).to.deep.equal([BINDING]);
     });
   });
 
   describe("ensureServiceAgentRoles", () => {
-    it("should return early if we fail to get the IAM policy", async () => {
-      getIamStub.rejects("Failed to get the IAM policy");
-      const wantFn: backend.Endpoint = {
-        id: "wantFn",
-        entryPoint: "wantFn",
-        platform: "gcfv2",
-        eventTrigger: {
-          eventType: "google.cloud.storage.object.v1.finalized",
-          eventFilters: { bucket: "my-bucket" },
-          retry: false,
-        },
-        ...SPEC,
-      };
-
-      await expect(
-        checkIam.ensureServiceAgentRoles(projectNumber, backend.of(wantFn), backend.empty())
-      ).to.not.be.rejected;
-      expect(getIamStub).to.have.been.calledOnce;
-      expect(getIamStub).to.have.been.calledWith(projectNumber);
-      expect(storageStub).to.not.have.been.called;
-      expect(setIamStub).to.not.have.been.called;
-    });
-
-    it("should skip v1, callable, and deployed functions", async () => {
+    it("should return early if we do not have new services", async () => {
       const v1EventFn: backend.Endpoint = {
         id: "v1eventfn",
         entryPoint: "v1Fn",
@@ -304,6 +154,7 @@ describe("checkIam", () => {
       };
 
       await checkIam.ensureServiceAgentRoles(
+        projectId,
         projectNumber,
         backend.of(wantFn),
         backend.of(v1EventFn, v2CallableFn, wantFn)
@@ -314,7 +165,9 @@ describe("checkIam", () => {
       expect(setIamStub).to.not.have.been.called;
     });
 
-    it("should skip if we have a deployed event fn of the same kind", async () => {
+    it("should return early if we fail to get the IAM policy", async () => {
+      storageStub.resolves(STORAGE_RES);
+      getIamStub.rejects("Failed to get the IAM policy");
       const wantFn: backend.Endpoint = {
         id: "wantFn",
         entryPoint: "wantFn",
@@ -326,23 +179,56 @@ describe("checkIam", () => {
         },
         ...SPEC,
       };
-      const haveFn: backend.Endpoint = {
-        id: "haveFn",
-        entryPoint: "haveFn",
+
+      await expect(
+        checkIam.ensureServiceAgentRoles(
+          projectId,
+          projectNumber,
+          backend.of(wantFn),
+          backend.empty()
+        )
+      ).to.not.be.rejected;
+      expect(storageStub).to.have.been.calledOnce;
+      expect(getIamStub).to.have.been.calledOnce;
+      expect(getIamStub).to.have.been.calledWith(projectNumber);
+      expect(setIamStub).to.not.have.been.called;
+    });
+
+    it("should error if we fail to set the IAM policy", async () => {
+      storageStub.resolves(STORAGE_RES);
+      getIamStub.resolves({
+        etag: "etag",
+        version: 3,
+        bindings: [BINDING],
+      });
+      const wantFn: backend.Endpoint = {
+        id: "wantFn",
+        entryPoint: "wantFn",
         platform: "gcfv2",
         eventTrigger: {
-          eventType: "google.cloud.storage.object.v1.metadataUpdated",
+          eventType: "google.cloud.storage.object.v1.finalized",
           eventFilters: { bucket: "my-bucket" },
           retry: false,
         },
         ...SPEC,
       };
 
-      await checkIam.ensureServiceAgentRoles(projectNumber, backend.of(wantFn), backend.of(haveFn));
-
-      expect(storageStub).to.not.have.been.called;
-      expect(getIamStub).to.not.have.been.called;
-      expect(setIamStub).to.not.have.been.called;
+      await expect(
+        checkIam.ensureServiceAgentRoles(
+          projectId,
+          projectNumber,
+          backend.of(wantFn),
+          backend.empty()
+        )
+      ).to.be.rejectedWith(
+        "We failed to modify the IAM policy for the project. The functions " +
+          "deployment requires specific roles to be granted to service agents," +
+          " otherwise the deployment will fail."
+      );
+      expect(storageStub).to.have.been.calledOnce;
+      expect(getIamStub).to.have.been.calledOnce;
+      expect(getIamStub).to.have.been.calledWith(projectNumber);
+      expect(setIamStub).to.have.been.calledOnce;
     });
 
     it("should add the pubsub publisher role and all default bindings for a new v2 storage function without v2 deployed functions", async () => {
@@ -369,12 +255,6 @@ describe("checkIam", () => {
             role: checkIam.EVENTARC_EVENT_RECEIVER_ROLE,
             members: [`serviceAccount:${projectNumber}-compute@developer.gserviceaccount.com`],
           },
-          {
-            role: checkIam.EVENTARC_SERVICE_AGENT_ROLE,
-            members: [
-              `serviceAccount:service-${projectNumber}@gcp-sa-eventarc.iam.gserviceaccount.com`,
-            ],
-          },
         ],
       };
       storageStub.resolves(STORAGE_RES);
@@ -396,7 +276,12 @@ describe("checkIam", () => {
         ...SPEC,
       };
 
-      await checkIam.ensureServiceAgentRoles(projectNumber, backend.of(wantFn), backend.empty());
+      await checkIam.ensureServiceAgentRoles(
+        projectId,
+        projectNumber,
+        backend.of(wantFn),
+        backend.empty()
+      );
 
       expect(storageStub).to.have.been.calledOnce;
       expect(getIamStub).to.have.been.calledOnce;
@@ -447,7 +332,12 @@ describe("checkIam", () => {
       ...SPEC,
     };
 
-    await checkIam.ensureServiceAgentRoles(projectNumber, backend.of(wantFn), backend.of(haveFn));
+    await checkIam.ensureServiceAgentRoles(
+      projectId,
+      projectNumber,
+      backend.of(wantFn),
+      backend.of(haveFn)
+    );
 
     expect(storageStub).to.have.been.calledOnce;
     expect(getIamStub).to.have.been.calledOnce;
@@ -475,12 +365,6 @@ describe("checkIam", () => {
           role: checkIam.EVENTARC_EVENT_RECEIVER_ROLE,
           members: [`serviceAccount:${projectNumber}-compute@developer.gserviceaccount.com`],
         },
-        {
-          role: checkIam.EVENTARC_SERVICE_AGENT_ROLE,
-          members: [
-            `serviceAccount:service-${projectNumber}@gcp-sa-eventarc.iam.gserviceaccount.com`,
-          ],
-        },
       ],
     };
     getIamStub.resolves({
@@ -501,7 +385,12 @@ describe("checkIam", () => {
       ...SPEC,
     };
 
-    await checkIam.ensureServiceAgentRoles(projectNumber, backend.of(wantFn), backend.empty());
+    await checkIam.ensureServiceAgentRoles(
+      projectId,
+      projectNumber,
+      backend.of(wantFn),
+      backend.empty()
+    );
 
     expect(getIamStub).to.have.been.calledOnce;
     expect(setIamStub).to.have.been.calledOnce;
@@ -509,17 +398,6 @@ describe("checkIam", () => {
   });
 
   it("should not add bindings for a new v2 alerts function with v2 deployed functions", async () => {
-    const newIamPolicy = {
-      etag: "etag",
-      version: 3,
-      bindings: [BINDING],
-    };
-    getIamStub.resolves({
-      etag: "etag",
-      version: 3,
-      bindings: [BINDING],
-    });
-    setIamStub.resolves(newIamPolicy);
     const wantFn: backend.Endpoint = {
       id: "wantFn",
       entryPoint: "wantFn",
@@ -543,9 +421,188 @@ describe("checkIam", () => {
       ...SPEC,
     };
 
-    await checkIam.ensureServiceAgentRoles(projectNumber, backend.of(wantFn), backend.of(haveFn));
+    await checkIam.ensureServiceAgentRoles(
+      projectId,
+      projectNumber,
+      backend.of(wantFn),
+      backend.of(haveFn)
+    );
+
+    expect(getIamStub).to.not.have.been.called;
+    expect(setIamStub).to.not.have.been.called;
+  });
+
+  it("should add the default bindings for a new v2 remote config function without v2 deployed functions", async () => {
+    const newIamPolicy = {
+      etag: "etag",
+      version: 3,
+      bindings: [
+        BINDING,
+        {
+          role: checkIam.SERVICE_ACCOUNT_TOKEN_CREATOR_ROLE,
+          members: [
+            `serviceAccount:service-${projectNumber}@gcp-sa-pubsub.iam.gserviceaccount.com`,
+          ],
+        },
+        {
+          role: checkIam.RUN_INVOKER_ROLE,
+          members: [`serviceAccount:${projectNumber}-compute@developer.gserviceaccount.com`],
+        },
+        {
+          role: checkIam.EVENTARC_EVENT_RECEIVER_ROLE,
+          members: [`serviceAccount:${projectNumber}-compute@developer.gserviceaccount.com`],
+        },
+      ],
+    };
+    getIamStub.resolves({
+      etag: "etag",
+      version: 3,
+      bindings: [BINDING],
+    });
+    setIamStub.resolves(newIamPolicy);
+    const wantFn: backend.Endpoint = {
+      id: "wantFn",
+      entryPoint: "wantFn",
+      platform: "gcfv2",
+      eventTrigger: {
+        eventType: "google.firebase.remoteconfig.remoteConfig.v1.updated",
+        eventFilters: {},
+        retry: false,
+      },
+      ...SPEC,
+    };
+
+    await checkIam.ensureServiceAgentRoles(
+      projectId,
+      projectNumber,
+      backend.of(wantFn),
+      backend.empty()
+    );
 
     expect(getIamStub).to.have.been.calledOnce;
+    expect(setIamStub).to.have.been.calledOnce;
+    expect(setIamStub).to.have.been.calledWith(projectNumber, newIamPolicy, "bindings");
+  });
+
+  it("should not add bindings for a new v2 remote config function with v2 deployed functions", async () => {
+    const wantFn: backend.Endpoint = {
+      id: "wantFn",
+      entryPoint: "wantFn",
+      platform: "gcfv2",
+      eventTrigger: {
+        eventType: "google.firebase.remoteconfig.remoteConfig.v1.updated",
+        eventFilters: {},
+        retry: false,
+      },
+      ...SPEC,
+    };
+    const haveFn: backend.Endpoint = {
+      id: "haveFn",
+      entryPoint: "haveFn",
+      platform: "gcfv2",
+      eventTrigger: {
+        eventType: "google.cloud.storage.object.v1.finalized",
+        eventFilters: { bucket: "my-bucket" },
+        retry: false,
+      },
+      ...SPEC,
+    };
+
+    await checkIam.ensureServiceAgentRoles(
+      projectId,
+      projectNumber,
+      backend.of(wantFn),
+      backend.of(haveFn)
+    );
+
+    expect(getIamStub).to.not.have.been.called;
+    expect(setIamStub).to.not.have.been.called;
+  });
+
+  it("should add the default bindings for a new v2 test lab function without v2 deployed functions", async () => {
+    const newIamPolicy = {
+      etag: "etag",
+      version: 3,
+      bindings: [
+        BINDING,
+        {
+          role: checkIam.SERVICE_ACCOUNT_TOKEN_CREATOR_ROLE,
+          members: [
+            `serviceAccount:service-${projectNumber}@gcp-sa-pubsub.iam.gserviceaccount.com`,
+          ],
+        },
+        {
+          role: checkIam.RUN_INVOKER_ROLE,
+          members: [`serviceAccount:${projectNumber}-compute@developer.gserviceaccount.com`],
+        },
+        {
+          role: checkIam.EVENTARC_EVENT_RECEIVER_ROLE,
+          members: [`serviceAccount:${projectNumber}-compute@developer.gserviceaccount.com`],
+        },
+      ],
+    };
+    getIamStub.resolves({
+      etag: "etag",
+      version: 3,
+      bindings: [BINDING],
+    });
+    setIamStub.resolves(newIamPolicy);
+    const wantFn: backend.Endpoint = {
+      id: "wantFn",
+      entryPoint: "wantFn",
+      platform: "gcfv2",
+      eventTrigger: {
+        eventType: "google.firebase.testlab.testMatrix.v1.completed",
+        eventFilters: {},
+        retry: false,
+      },
+      ...SPEC,
+    };
+
+    await checkIam.ensureServiceAgentRoles(
+      projectId,
+      projectNumber,
+      backend.of(wantFn),
+      backend.empty()
+    );
+
+    expect(getIamStub).to.have.been.calledOnce;
+    expect(setIamStub).to.have.been.calledOnce;
+    expect(setIamStub).to.have.been.calledWith(projectNumber, newIamPolicy, "bindings");
+  });
+
+  it("should not add bindings for a new v2 test lab function with v2 deployed functions", async () => {
+    const wantFn: backend.Endpoint = {
+      id: "wantFn",
+      entryPoint: "wantFn",
+      platform: "gcfv2",
+      eventTrigger: {
+        eventType: "google.firebase.testlab.testMatrix.v1.completed",
+        eventFilters: {},
+        retry: false,
+      },
+      ...SPEC,
+    };
+    const haveFn: backend.Endpoint = {
+      id: "haveFn",
+      entryPoint: "haveFn",
+      platform: "gcfv2",
+      eventTrigger: {
+        eventType: "google.cloud.storage.object.v1.finalized",
+        eventFilters: { bucket: "my-bucket" },
+        retry: false,
+      },
+      ...SPEC,
+    };
+
+    await checkIam.ensureServiceAgentRoles(
+      projectId,
+      projectNumber,
+      backend.of(wantFn),
+      backend.of(haveFn)
+    );
+
+    expect(getIamStub).to.not.have.been.called;
     expect(setIamStub).to.not.have.been.called;
   });
 });

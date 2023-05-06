@@ -177,7 +177,7 @@ export function logError(err: Error): void {
  * terminal or Emulator UI).
  */
 export function authEmulatorUrl(req: express.Request): URL {
-  if (EmulatorRegistry.getInfo(Emulators.AUTH)) {
+  if (EmulatorRegistry.isRunning(Emulators.AUTH)) {
     return EmulatorRegistry.url(Emulators.AUTH);
   } else {
     return EmulatorRegistry.url(Emulators.AUTH, req);

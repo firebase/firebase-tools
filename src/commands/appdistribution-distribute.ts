@@ -28,7 +28,7 @@ function getReleaseNotes(releaseNotes: string, releaseNotesFile: string): string
   return "";
 }
 
-module.exports = new Command("appdistribution:distribute <release-binary-file>")
+export const command = new Command("appdistribution:distribute <release-binary-file>")
   .description("upload a release binary")
   .option("--app <app_id>", "the app id of your Firebase app")
   .option("--release-notes <string>", "release notes to include")
@@ -129,6 +129,11 @@ module.exports = new Command("appdistribution:distribute <release-binary-file>")
             `uploaded release ${release.displayVersion} (${release.buildVersion}) successfully!`
           );
       }
+      utils.logSuccess(`View this release in the Firebase console: ${release.firebaseConsoleUri}`);
+      utils.logSuccess(`Share this release with testers who have access: ${release.testingUri}`);
+      utils.logSuccess(
+        `Download the release binary (link expires in 1 hour): ${release.binaryDownloadUri}`
+      );
       releaseName = uploadResponse.release.name;
     } catch (err: any) {
       if (err.status === 404) {

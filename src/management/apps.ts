@@ -1,12 +1,13 @@
 import * as fs from "fs";
 
-import * as api from "../api";
+import { Client } from "../apiv2";
+import { firebaseApiOrigin } from "../api";
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import { pollOperation } from "../operation-poller";
 
 const TIMEOUT_MILLIS = 30000;
-const APP_LIST_PAGE_SIZE = 100;
+export const APP_LIST_PAGE_SIZE = 100;
 const CREATE_APP_API_REQUEST_TIMEOUT_MILLIS = 15000;
 
 const WEB_CONFIG_FILE_NAME = "google-config.js";
@@ -84,6 +85,8 @@ export function getAppPlatform(platform: string): AppPlatform {
   }
 }
 
+const apiClient = new Client({ urlPrefix: firebaseApiOrigin, apiVersion: "v1beta1" });
+
 /**
  * Send an API request to create a new Firebase iOS app and poll the LRO to get the new app
  * information.
@@ -96,16 +99,19 @@ export async function createIosApp(
   options: { displayName?: string; appStoreId?: string; bundleId: string }
 ): Promise<IosAppMetadata> {
   try {
-    const response = await api.request("POST", `/v1beta1/projects/${projectId}/iosApps`, {
-      auth: true,
-      origin: api.firebaseApiOrigin,
+    const response = await apiClient.request<
+      { displayName?: string; appStoreId?: string; bundleId: string },
+      { name: string }
+    >({
+      method: "POST",
+      path: `/projects/${projectId}/iosApps`,
       timeout: CREATE_APP_API_REQUEST_TIMEOUT_MILLIS,
-      data: options,
+      body: options,
     });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const appData = await pollOperation<any>({
       pollerName: "Create iOS app Poller",
-      apiOrigin: api.firebaseApiOrigin,
+      apiOrigin: firebaseApiOrigin,
       apiVersion: "v1beta1",
       operationResourceName: response.body.name /* LRO resource name */,
     });
@@ -131,16 +137,19 @@ export async function createAndroidApp(
   options: { displayName?: string; packageName: string }
 ): Promise<AndroidAppMetadata> {
   try {
-    const response = await api.request("POST", `/v1beta1/projects/${projectId}/androidApps`, {
-      auth: true,
-      origin: api.firebaseApiOrigin,
+    const response = await apiClient.request<
+      { displayName?: string; packageName: string },
+      { name: string }
+    >({
+      method: "POST",
+      path: `/projects/${projectId}/androidApps`,
       timeout: CREATE_APP_API_REQUEST_TIMEOUT_MILLIS,
-      data: options,
+      body: options,
     });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const appData = await pollOperation<any>({
       pollerName: "Create Android app Poller",
-      apiOrigin: api.firebaseApiOrigin,
+      apiOrigin: firebaseApiOrigin,
       apiVersion: "v1beta1",
       operationResourceName: response.body.name /* LRO resource name */,
     });
@@ -169,16 +178,16 @@ export async function createWebApp(
   options: { displayName?: string }
 ): Promise<WebAppMetadata> {
   try {
-    const response = await api.request("POST", `/v1beta1/projects/${projectId}/webApps`, {
-      auth: true,
-      origin: api.firebaseApiOrigin,
+    const response = await apiClient.request<{ displayName?: string }, { name: string }>({
+      method: "POST",
+      path: `/projects/${projectId}/webApps`,
       timeout: CREATE_APP_API_REQUEST_TIMEOUT_MILLIS,
-      data: options,
+      body: options,
     });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const appData = await pollOperation<any>({
       pollerName: "Create Web app Poller",
-      apiOrigin: api.firebaseApiOrigin,
+      apiOrigin: firebaseApiOrigin,
       apiVersion: "v1beta1",
       operationResourceName: response.body.name /* LRO resource name */,
     });
@@ -211,7 +220,7 @@ function getListAppsResourceString(projectId: string, platform: AppPlatform): st
       throw new FirebaseError("Unexpected platform. Only support iOS, Android and Web apps");
   }
 
-  return `/v1beta1/projects/${projectId}${resourceSuffix}`;
+  return `/projects/${projectId}${resourceSuffix}`;
 }
 
 /**
@@ -229,19 +238,18 @@ export async function listFirebaseApps(
 ): Promise<AppMetadata[]> {
   const apps: AppMetadata[] = [];
   try {
-    let nextPageToken = "";
+    let nextPageToken: string | undefined;
     do {
-      const pageTokenQueryString = nextPageToken ? `&pageToken=${nextPageToken}` : "";
-      const response = await api.request(
-        "GET",
-        getListAppsResourceString(projectId, platform) +
-          `?pageSize=${pageSize}${pageTokenQueryString}`,
-        {
-          auth: true,
-          origin: api.firebaseApiOrigin,
-          timeout: TIMEOUT_MILLIS,
-        }
-      );
+      const queryParams: { pageSize: number; pageToken?: string } = { pageSize };
+      if (nextPageToken) {
+        queryParams.pageToken = nextPageToken;
+      }
+      const response = await apiClient.request<void, { apps: any[]; nextPageToken?: string }>({
+        method: "GET",
+        path: getListAppsResourceString(projectId, platform),
+        queryParams,
+        timeout: TIMEOUT_MILLIS,
+      });
       if (response.body.apps) {
         const appsOnPage = response.body.apps.map(
           // app.platform does not exist if we use the endpoint for a specific platform
@@ -283,7 +291,7 @@ function getAppConfigResourceString(appId: string, platform: AppPlatform): strin
       throw new FirebaseError("Unexpected app platform");
   }
 
-  return `/v1beta1/projects/-/${platformResource}/${appId}/config`;
+  return `/projects/-/${platformResource}/${appId}/config`;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -323,13 +331,13 @@ export function getAppConfigFile(config: any, platform: AppPlatform): AppConfigu
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function getAppConfig(appId: string, platform: AppPlatform): Promise<any> {
-  let response;
   try {
-    response = await api.request("GET", getAppConfigResourceString(appId, platform), {
-      auth: true,
-      origin: api.firebaseApiOrigin,
+    const response = await apiClient.request<void, any>({
+      method: "GET",
+      path: getAppConfigResourceString(appId, platform),
       timeout: TIMEOUT_MILLIS,
     });
+    return response.body;
   } catch (err: any) {
     logger.debug(err.message);
     throw new FirebaseError(
@@ -340,7 +348,6 @@ export async function getAppConfig(appId: string, platform: AppPlatform): Promis
       }
     );
   }
-  return response.body;
 }
 
 /**
@@ -355,14 +362,11 @@ export async function listAppAndroidSha(
 ): Promise<AppAndroidShaData[]> {
   const shaCertificates: AppAndroidShaData[] = [];
   try {
-    const response = await api.request(
-      "GET",
-      `/v1beta1/projects/${projectId}/androidApps/${appId}/sha`,
-      {
-        auth: true,
-        origin: api.firebaseApiOrigin,
-      }
-    );
+    const response = await apiClient.request<void, any>({
+      method: "GET",
+      path: `/projects/${projectId}/androidApps/${appId}/sha`,
+      timeout: CREATE_APP_API_REQUEST_TIMEOUT_MILLIS,
+    });
     if (response.body.certificates) {
       shaCertificates.push(...response.body.certificates);
     }
@@ -394,19 +398,13 @@ export async function createAppAndroidSha(
   options: { shaHash: string; certType: string }
 ): Promise<AppAndroidShaData> {
   try {
-    const response = await api.request(
-      "POST",
-      `/v1beta1/projects/${projectId}/androidApps/${appId}/sha`,
-      {
-        auth: true,
-        origin: api.firebaseApiOrigin,
-        timeout: CREATE_APP_API_REQUEST_TIMEOUT_MILLIS,
-        data: options,
-      }
-    );
-
+    const response = await apiClient.request<{ shaHash: string; certType: string }, any>({
+      method: "POST",
+      path: `/projects/${projectId}/androidApps/${appId}/sha`,
+      body: options,
+      timeout: CREATE_APP_API_REQUEST_TIMEOUT_MILLIS,
+    });
     const shaCertificate = response.body;
-
     return shaCertificate;
   } catch (err: any) {
     logger.debug(err.message);
@@ -432,16 +430,11 @@ export async function deleteAppAndroidSha(
   shaId: string
 ): Promise<void> {
   try {
-    await api.request(
-      "DELETE",
-      `/v1beta1/projects/${projectId}/androidApps/${appId}/sha/${shaId}`,
-      {
-        auth: true,
-        origin: api.firebaseApiOrigin,
-        timeout: CREATE_APP_API_REQUEST_TIMEOUT_MILLIS,
-        data: null,
-      }
-    );
+    await apiClient.request<void, void>({
+      method: "DELETE",
+      path: `/projects/${projectId}/androidApps/${appId}/sha/${shaId}`,
+      timeout: CREATE_APP_API_REQUEST_TIMEOUT_MILLIS,
+    });
   } catch (err: any) {
     logger.debug(err.message);
     throw new FirebaseError(

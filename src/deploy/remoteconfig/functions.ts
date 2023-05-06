@@ -1,9 +1,11 @@
+import { remoteConfigApiOrigin } from "../../api";
+import { Client } from "../../apiv2";
 import { FirebaseError } from "../../error";
 import { RemoteConfigTemplate } from "../../remoteconfig/interfaces";
 
-import api = require("../../api");
-
 const TIMEOUT = 30000;
+
+const client = new Client({ urlPrefix: remoteConfigApiOrigin, apiVersion: "v1" });
 
 /**
  * Gets Etag for Remote Config Project Template
@@ -12,23 +14,25 @@ const TIMEOUT = 30000;
  * @return {Promise<string>} Returns a Promise of the Remote Config Template Etag string
  */
 export async function getEtag(projectNumber: string, versionNumber?: string): Promise<string> {
-  let reqPath = `/v1/projects/${projectNumber}/remoteConfig`;
+  const reqPath = `/projects/${projectNumber}/remoteConfig`;
+  const queryParams: { versionNumber?: string } = {};
   if (versionNumber) {
-    reqPath = reqPath + "?versionNumber=" + versionNumber;
+    queryParams.versionNumber = versionNumber;
   }
-  const response = await api.request("GET", reqPath, {
-    auth: true,
-    origin: api.remoteConfigApiOrigin,
-    timeout: TIMEOUT,
+  const response = await client.request<void, void>({
+    method: "GET",
+    path: reqPath,
+    queryParams,
     headers: { "Accept-Encoding": "gzip" },
+    timeout: TIMEOUT,
   });
-  return response.response.headers.etag;
+  return response.response.headers.get("etag") || "";
 }
 
 /**
  * Validates Remote Config Template before deploying project template
  * @param template The Remote Config template to be deployed
- * @return {Promise<RemoteConfigTemplate>} Returns a Promise of the valid Remote Config template
+ * @return Returns a Promise of the valid Remote Config template
  */
 export function validateInputRemoteConfigTemplate(
   template: RemoteConfigTemplate
@@ -54,7 +58,7 @@ export function validateInputRemoteConfigTemplate(
  * @param etag Remote Config Template's etag value
  * @param options Optional object when publishing a Remote Config template. If the
  * force {boolean} is `true` the Remote Config template is forced to update and circumvent the Etag
- * @return {Promise<RemoteConfigTemplate>} Returns a Promise of a Remote Config template
+ * @return Returns a Promise of a Remote Config template
  */
 export async function deployTemplate(
   projectNumber: string,
@@ -62,20 +66,20 @@ export async function deployTemplate(
   etag: string,
   options?: { force: boolean }
 ): Promise<RemoteConfigTemplate> {
-  const reqPath = `/v1/projects/${projectNumber}/remoteConfig`;
+  const reqPath = `/projects/${projectNumber}/remoteConfig`;
   if (options?.force) {
     etag = "*";
   }
-  const response = await api.request("PUT", reqPath, {
-    auth: true,
-    origin: api.remoteConfigApiOrigin,
-    timeout: TIMEOUT,
+  const response = await client.request<any, RemoteConfigTemplate>({
+    method: "PUT",
+    path: reqPath,
     headers: { "If-Match": etag },
-    data: {
+    body: {
       conditions: template.conditions,
       parameters: template.parameters,
       parameterGroups: template.parameterGroups,
     },
+    timeout: TIMEOUT,
   });
   return response.body;
 }
@@ -86,7 +90,7 @@ export async function deployTemplate(
  * @param template The Remote Config template to be published
  * @param etag Remote Config Template's etag value
  * @param options Force boolean option
- * @return {Promise<RemoteConfigTemplate>} Returns a Promise that fulfills with the published Remote Config template
+ * @return Returns a Promise that fulfills with the published Remote Config template
  */
 export function publishTemplate(
   projectNumber: string,

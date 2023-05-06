@@ -7,11 +7,23 @@ import { EmulatorLogger } from "../emulatorLogger";
 import { Emulators, EmulatorInstance, EmulatorInfo } from "../types";
 import { createApp } from "./server";
 import { FirebaseError } from "../../error";
+import { trackEmulator } from "../../track";
 
 export interface AuthEmulatorArgs {
   projectId: string;
   port?: number;
   host?: string;
+  singleProjectMode?: SingleProjectMode;
+}
+
+/**
+ * An enum that dictates the behavior when the project ID in the request doesn't match the
+ * defaultProjectId.
+ */
+export enum SingleProjectMode {
+  NO_WARNING,
+  WARNING,
+  ERROR,
 }
 
 export class AuthEmulator implements EmulatorInstance {
@@ -21,7 +33,7 @@ export class AuthEmulator implements EmulatorInstance {
 
   async start(): Promise<void> {
     const { host, port } = this.getInfo();
-    const app = await createApp(this.args.projectId);
+    const app = await createApp(this.args.projectId, this.args.singleProjectMode);
     const server = app.listen(port, host);
     this.destroyServer = utils.createDestroyer(server);
   }
@@ -35,7 +47,7 @@ export class AuthEmulator implements EmulatorInstance {
   }
 
   getInfo(): EmulatorInfo {
-    const host = this.args.host || Constants.getDefaultHost(Emulators.AUTH);
+    const host = this.args.host || Constants.getDefaultHost();
     const port = this.args.port || Constants.getDefaultPort(Emulators.AUTH);
 
     return {
@@ -49,8 +61,17 @@ export class AuthEmulator implements EmulatorInstance {
     return Emulators.AUTH;
   }
 
-  async importData(authExportDir: string, projectId: string): Promise<void> {
-    const logger = EmulatorLogger.forEmulator(Emulators.DATABASE);
+  async importData(
+    authExportDir: string,
+    projectId: string,
+    options: { initiatedBy: string }
+  ): Promise<void> {
+    void trackEmulator("emulator_import", {
+      initiated_by: options.initiatedBy,
+      emulator_name: Emulators.AUTH,
+    });
+
+    const logger = EmulatorLogger.forEmulator(Emulators.AUTH);
     const { host, port } = this.getInfo();
 
     // TODO: In the future when we support import on demand, clear data first.
@@ -63,7 +84,7 @@ export class AuthEmulator implements EmulatorInstance {
       await importFromFile(
         {
           method: "PATCH",
-          host,
+          host: utils.connectableHostname(host),
           port,
           path: `/emulator/v1/projects/${projectId}/config`,
           headers: {
@@ -89,7 +110,7 @@ export class AuthEmulator implements EmulatorInstance {
       await importFromFile(
         {
           method: "POST",
-          host,
+          host: utils.connectableHostname(host),
           port,
           path: `/identitytoolkit.googleapis.com/v1/projects/${projectId}/accounts:batchCreate`,
           headers: {

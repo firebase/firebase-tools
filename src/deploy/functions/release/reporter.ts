@@ -1,5 +1,5 @@
 import * as backend from "../backend";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
 import { logger } from "../../../logger";
 import { track } from "../../../track";
@@ -19,11 +19,13 @@ export interface Summary {
 
 export type OperationType =
   | "create"
+  | "skip"
   | "update"
   | "delete"
   | "upsert schedule"
   | "delete schedule"
   | "upsert task queue"
+  | "upsert eventarc channel"
   | "disable task queue"
   | "create topic"
   | "delete topic"

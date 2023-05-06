@@ -6,20 +6,21 @@ import * as nock from "nock";
 import * as api from "../../../../../api";
 import { FirebaseError } from "../../../../../error";
 import * as discovery from "../../../../../deploy/functions/runtimes/discovery";
-import * as backend from "../../../../../deploy/functions/backend";
+import * as build from "../../../../../deploy/functions/build";
 
 const MIN_ENDPOINT = {
   entryPoint: "entrypoint",
   httpsTrigger: {},
+  serviceAccount: null,
 };
 
-const ENDPOINT: backend.Endpoint = {
+const ENDPOINT: build.Endpoint = {
   ...MIN_ENDPOINT,
-  id: "id",
   platform: "gcfv2",
   project: "project",
-  region: api.functionsDefaultRegion,
   runtime: "nodejs16",
+  region: [api.functionsDefaultRegion],
+  serviceAccount: null,
 };
 
 const YAML_OBJ = {
@@ -29,24 +30,24 @@ const YAML_OBJ = {
 
 const YAML_TEXT = yaml.dump(YAML_OBJ);
 
-const BACKEND: backend.Backend = backend.of(ENDPOINT);
+const BUILD: build.Build = build.of({ id: ENDPOINT });
 
-describe("yamlToBackend", () => {
+describe("yamlToBuild", () => {
   it("Accepts a valid v1alpha1 spec", () => {
-    const parsed = discovery.yamlToBackend(
+    const parsed = discovery.yamlToBuild(
       YAML_OBJ,
       "project",
       api.functionsDefaultRegion,
       "nodejs16"
     );
-    expect(parsed).to.deep.equal(BACKEND);
+    expect(parsed).to.deep.equal(BUILD);
   });
 
   it("Requires a spec version", () => {
     const flawed: Record<string, unknown> = { ...YAML_OBJ };
     delete flawed.specVersion;
     expect(() =>
-      discovery.yamlToBackend(flawed, "project", api.functionsDefaultRegion, "nodejs16")
+      discovery.yamlToBuild(flawed, "project", api.functionsDefaultRegion, "nodejs16")
     ).to.throw(FirebaseError);
   });
 
@@ -56,7 +57,7 @@ describe("yamlToBackend", () => {
       specVersion: "32767beta2",
     };
     expect(() =>
-      discovery.yamlToBackend(flawed, "project", api.functionsDefaultRegion, "nodejs16")
+      discovery.yamlToBuild(flawed, "project", api.functionsDefaultRegion, "nodejs16")
     ).to.throw(FirebaseError);
   });
 });
@@ -77,7 +78,7 @@ describe("detectFromYaml", () => {
 
     await expect(
       discovery.detectFromYaml("directory", "project", "nodejs16")
-    ).to.eventually.deep.equal(BACKEND);
+    ).to.eventually.deep.equal(BUILD);
   });
 
   it("returns undefined when YAML cannot be found", async () => {
@@ -94,18 +95,15 @@ describe("detectFromPort", () => {
     nock.cleanAll();
   });
 
-  // This test requires us to launch node and load express.js. On my 16" MBP this takes
-  // 600ms, which is dangerously close to the default limit of 1s. Increase limits so
-  // that this doesn't flake even when running on slower machines experiencing hiccup
   it("passes as smoke test", async () => {
-    nock("http://localhost:8080").get("/__/functions.yaml").times(20).replyWithError({
+    nock("http://127.0.0.1:8080").get("/__/functions.yaml").times(5).replyWithError({
       message: "Still booting",
       code: "ECONNREFUSED",
     });
 
-    nock("http://localhost:8080").get("/__/functions.yaml").reply(200, YAML_TEXT);
+    nock("http://127.0.0.1:8080").get("/__/functions.yaml").reply(200, YAML_TEXT);
 
     const parsed = await discovery.detectFromPort(8080, "project", "nodejs16");
-    expect(parsed).to.deep.equal(BACKEND);
+    expect(parsed).to.deep.equal(BUILD);
   });
 });

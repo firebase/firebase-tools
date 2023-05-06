@@ -1,4 +1,4 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import { FirebaseError } from "../error";
 
 /**
@@ -37,5 +37,15 @@ export function assertEnum(obj: any, prop: string, valid: any[]): void {
   const objString = clc.cyan(JSON.stringify(obj));
   if (valid.indexOf(obj[prop]) < 0) {
     throw new FirebaseError(`Field "${prop}" must be one of  ${valid.join(", ")}: ${objString}`);
+  }
+}
+
+/**
+ * Throw an error if the value of the property 'prop' differs against type
+ * guard.
+ */
+export function assertType(prop: string, propValue: any, type: string): void {
+  if (typeof propValue !== type) {
+    throw new FirebaseError(`Property "${prop}" must be of type ${type}`);
   }
 }

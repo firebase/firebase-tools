@@ -7,7 +7,7 @@ import {
   ExtensionVersion,
   RegistryLaunchStage,
   Visibility,
-} from "../../extensions/extensionsApi";
+} from "../../extensions/types";
 
 const baseDef = {
   platform: "gcfv1" as const,
@@ -31,12 +31,12 @@ describe("FunctionsEmulatorShared", () => {
       expect(functionsEmulatorShared.getFunctionService(def)).to.be.eql("pubsub.googleapis.com");
     });
 
-    it("should return unknown if trigger definition is not event-based", () => {
+    it("should infer https service from http trigger", () => {
       const def = {
         ...baseDef,
         httpsTrigger: {},
       };
-      expect(functionsEmulatorShared.getFunctionService(def)).to.be.eql("unknown");
+      expect(functionsEmulatorShared.getFunctionService(def)).to.be.eql("https");
     });
 
     it("should infer pubsub service based on eventType", () => {
@@ -111,6 +111,7 @@ describe("FunctionsEmulatorShared", () => {
           env: {},
           secretEnv: [],
           extensionInstanceId: "my-extension-instance",
+          codebase: "",
         },
         expected: "project/dir/extensions/my-extension-instance.secret.local",
       },
@@ -120,6 +121,7 @@ describe("FunctionsEmulatorShared", () => {
           functionsDir: "test/cf3",
           env: {},
           secretEnv: [],
+          codebase: "",
         },
         expected: "test/cf3/.secret.local",
       },
@@ -140,6 +142,7 @@ describe("FunctionsEmulatorShared", () => {
         entryPoint: "cf3",
         platform: "gcfv1",
         name: "cf3-trigger",
+        codebase: "",
       },
     ];
     const testExtTriggers: functionsEmulatorShared.ParsedTriggerDefinition[] = [
@@ -155,6 +158,7 @@ describe("FunctionsEmulatorShared", () => {
       resources: [],
       sourceUrl: "test.com",
       params: [],
+      systemParams: [],
       postinstallContent: "Should subsitute ${param:KEY}",
     };
     const testSubbedSpec: ExtensionSpec = {
@@ -163,6 +167,7 @@ describe("FunctionsEmulatorShared", () => {
       resources: [],
       sourceUrl: "test.com",
       params: [],
+      systemParams: [],
       postinstallContent: "Should subsitute value",
     };
     const testExtension: Extension = {
@@ -200,6 +205,7 @@ describe("FunctionsEmulatorShared", () => {
           extension: testExtension,
           extensionVersion: testExtensionVersion(testSpec),
           extensionInstanceId: "my-instance",
+          codebase: "",
         },
         expected: {
           directory: "test",
@@ -223,6 +229,7 @@ describe("FunctionsEmulatorShared", () => {
           predefinedTriggers: testExtTriggers,
           extensionSpec: testSpec,
           extensionInstanceId: "my-local-instance",
+          codebase: "",
         },
         expected: {
           directory: "test",
@@ -242,6 +249,7 @@ describe("FunctionsEmulatorShared", () => {
             KEY: "value",
           },
           secretEnv: [],
+          codebase: "",
         },
         expected: {
           directory: "test",
@@ -265,6 +273,7 @@ describe("FunctionsEmulatorShared", () => {
               projectId: "test",
             },
           ],
+          codebase: "",
         },
         expected: {
           directory: "test",

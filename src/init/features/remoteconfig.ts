@@ -1,6 +1,6 @@
 import { promptOnce } from "../../prompt";
-import fsutils = require("../../fsutils");
-import clc = require("cli-color");
+import * as fsutils from "../../fsutils";
+import * as clc from "colorette";
 import { Config } from "../../config";
 
 interface RemoteConfig {

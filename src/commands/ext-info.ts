@@ -1,5 +1,4 @@
-import * as clc from "cli-color";
-import * as _ from "lodash";
+import * as clc from "colorette";
 
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
@@ -10,13 +9,12 @@ import { logger } from "../logger";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
-const { marked } = require("marked");
-import TerminalRenderer = require("marked-terminal");
+import { marked } from "marked";
+import * as TerminalRenderer from "marked-terminal";
 
 const FUNCTION_TYPE_REGEX = /\..+\.function/;
 
-export default new Command("ext:info <extensionName>")
+export const command = new Command("ext:info <extensionName>")
   .description(
     "display information about an extension by name (extensionName@x.y.z for a specific version)"
   )
@@ -71,45 +69,45 @@ export default new Command("ext:info <extensionName>")
 
     if (spec.params && Array.isArray(spec.params) && spec.params.length > 0) {
       lines.push("", "**Configuration Parameters:**");
-      _.forEach(spec.params, (param) => {
+      for (const param of spec.params) {
         lines.push(`* ${param.label}` + (param.description ? `: ${param.description}` : ""));
-      });
+      }
     }
 
     const functions: any = [];
     const otherResources: any = [];
-    _.forEach(spec.resources, (resource) => {
+    for (const resource of spec.resources) {
       if (FUNCTION_TYPE_REGEX.test(resource.type)) {
         functions.push(resource);
       } else {
         otherResources.push(resource);
       }
-    });
+    }
 
     if (functions.length > 0) {
       lines.push("", "**Cloud Functions:**");
-      _.forEach(functions, (func) => {
+      for (const func of functions) {
         lines.push(`* **${func.name}:** ${func.description}`);
-      });
+      }
     }
     if (otherResources.length > 0) {
       lines.push("", "**Other Resources**:");
-      _.forEach(otherResources, (resource) => {
+      for (const resource of otherResources) {
         lines.push(`* ${resource.name} (${resource.type})`);
-      });
+      }
     }
     if (spec.apis) {
       lines.push("", "**APIs Used**:");
-      _.forEach(spec.apis, (api) => {
+      for (const api of spec.apis) {
         lines.push(`* ${api.apiName}` + (api.reason ? ` (Reason: ${api.reason})` : ""));
-      });
+      }
     }
     if (spec.roles) {
       lines.push("", "**Access Required**:");
       lines.push("", "This extension will operate with the following project IAM roles:");
-      _.forEach(spec.roles, (role) => {
+      for (const role of spec.roles) {
         lines.push(`* ${role.role}` + (role.reason ? ` (Reason: ${role.reason})` : ""));
-      });
+      }
     }
 
     if (options.markdown) {

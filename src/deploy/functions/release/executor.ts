@@ -14,7 +14,7 @@ interface Operation {
   error?: any;
 }
 
-async function handler(op: Operation): Promise<undefined> {
+async function handler(op: Operation): Promise<void> {
   try {
     op.result = await op.func();
   } catch (err: any) {
@@ -30,7 +30,7 @@ async function handler(op: Operation): Promise<undefined> {
       err.context?.response?.statusCode ||
       err.original?.code ||
       err.original?.context?.response?.statusCode;
-    if (code === 429 || code === 409) {
+    if (code === 429 || code === 409 || code === 503) {
       throw err;
     }
     op.error = err;

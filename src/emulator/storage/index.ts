@@ -8,7 +8,7 @@ import { EmulatorLogger } from "../emulatorLogger";
 import { createStorageRulesManager, StorageRulesManager } from "./rules/manager";
 import { StorageRulesIssues, StorageRulesRuntime } from "./rules/runtime";
 import { SourceFile } from "./rules/types";
-import express = require("express");
+import * as express from "express";
 import {
   getAdminCredentialValidator,
   getAdminOnlyFirebaseRulesValidator,
@@ -123,7 +123,7 @@ export class StorageEmulator implements EmulatorInstance {
   }
 
   getInfo(): EmulatorInfo {
-    const host = this.args.host || Constants.getDefaultHost(Emulators.STORAGE);
+    const host = this.args.host || Constants.getDefaultHost();
     const port = this.args.port || Constants.getDefaultPort(Emulators.STORAGE);
 
     return {

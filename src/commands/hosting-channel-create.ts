@@ -1,4 +1,4 @@
-import { bold, yellow } from "cli-color";
+import { bold, yellow } from "colorette";
 
 import { Channel, createChannel, addAuthDomains, normalizeName } from "../hosting/api";
 import { Command } from "../command";
@@ -10,13 +10,12 @@ import { requirePermissions } from "../requirePermissions";
 import { needProjectId } from "../projectUtils";
 import { logger } from "../logger";
 import { requireConfig } from "../requireConfig";
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
-const { marked } = require("marked");
+import { marked } from "marked";
 import { requireHostingSite } from "../requireHostingSite";
 
 const LOG_TAG = "hosting:channel";
 
-export default new Command("hosting:channel:create [channelId]")
+export const command = new Command("hosting:channel:create [channelId]")
   .description("create a Firebase Hosting channel")
   .option(
     "-e, --expires <duration>",

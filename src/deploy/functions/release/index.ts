@@ -1,4 +1,4 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
 import { Options } from "../../../options";
 import { logger } from "../../../logger";
@@ -11,12 +11,10 @@ import * as fabricator from "./fabricator";
 import * as reporter from "./reporter";
 import * as executor from "./executor";
 import * as prompts from "../prompts";
-import * as secrets from "../../../functions/secrets";
 import { getAppEngineLocation } from "../../../functionsConfig";
 import { getFunctionLabel } from "../functionsDeployHelper";
 import { FirebaseError } from "../../../error";
-import { needProjectId, needProjectNumber } from "../../../projectUtils";
-import { logLabeledBullet, logLabeledWarning } from "../../../utils";
+import { getProjectNumber } from "../../../getProjectNumber";
 
 /** Releases new versions of functions to prod. */
 export async function release(
@@ -61,18 +59,19 @@ export async function release(
     }
   }
 
-  const functionExecutor: executor.QueueExecutor = new executor.QueueExecutor({
+  const throttlerOptions = {
     retries: 30,
     backoff: 20000,
     concurrency: 40,
-    maxBackoff: 40000,
-  });
+    maxBackoff: 100000,
+  };
 
   const fab = new fabricator.Fabricator({
-    functionExecutor,
-    executor: new executor.QueueExecutor({}),
+    functionExecutor: new executor.QueueExecutor(throttlerOptions),
+    executor: new executor.QueueExecutor(throttlerOptions),
     sources: context.sources,
     appEngineLocation: getAppEngineLocation(context.firebaseConfig),
+    projectNumber: options.projectNumber || (await getProjectNumber(context.projectId)),
   });
 
   const summary = await fab.applyPlan(plan);
@@ -91,43 +90,16 @@ export async function release(
   const deletedEndpoints = Object.values(plan)
     .map((r) => r.endpointsToDelete)
     .reduce(reduceFlat, []);
-  const opts: { ar?: containerCleaner.ArtifactRegistryCleaner } = {};
-  if (!context.artifactRegistryEnabled) {
-    opts.ar = new containerCleaner.NoopArtifactRegistryCleaner();
-  }
-  await containerCleaner.cleanupBuildImages(haveEndpoints, deletedEndpoints, opts);
+  await containerCleaner.cleanupBuildImages(haveEndpoints, deletedEndpoints);
 
   const allErrors = summary.results.filter((r) => r.error).map((r) => r.error) as Error[];
   if (allErrors.length) {
     const opts = allErrors.length === 1 ? { original: allErrors[0] } : { children: allErrors };
-    throw new FirebaseError("There was an error deploying functions", { ...opts, exit: 2 });
-  } else {
-    if (secrets.of(haveEndpoints).length > 0) {
-      const projectId = needProjectId(options);
-      const projectNumber = await needProjectNumber(options);
-      // Re-load backend with all endpoints, not just the ones deployed.
-      const reloadedBackend = await backend.existingBackend({ projectId } as args.Context);
-      const prunedResult = await secrets.pruneAndDestroySecrets(
-        { projectId, projectNumber },
-        backend.allEndpoints(reloadedBackend)
-      );
-      if (prunedResult.destroyed.length > 0) {
-        logLabeledBullet(
-          "functions",
-          `Destroyed unused secret versions: ${prunedResult.destroyed
-            .map((s) => `${s.secret}@${s.version}`)
-            .join(", ")}`
-        );
-      }
-      if (prunedResult.erred.length > 0) {
-        logLabeledWarning(
-          "functions",
-          `Failed to destroy unused secret versions:\n\t${prunedResult.erred
-            .map((err) => err.message)
-            .join("\n\t")}`
-        );
-      }
+    logger.debug("Functions deploy failed.");
+    for (const error of allErrors) {
+      logger.debug(JSON.stringify(error, null, 2));
     }
+    throw new FirebaseError("There was an error deploying functions", { ...opts, exit: 2 });
   }
 }
 

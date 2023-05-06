@@ -1,11 +1,10 @@
-import { expect } from "chai";
 import * as sinon from "sinon";
+import { expect } from "chai";
 
-import { FirebaseError } from "../../error";
+import * as iam from "../../gcp/iam";
 import * as displayExtensionInfo from "../../extensions/displayExtensionInfo";
-import * as prompt from "../../prompt";
-import { ExtensionSpec, Resource } from "../../extensions/extensionsApi";
-import { cloneDeep } from "../../utils";
+import { ExtensionSpec, Param, Resource } from "../../extensions/types";
+import { ParamType } from "../../extensions/types";
 
 const SPEC: ExtensionSpec = {
   name: "test",
@@ -30,17 +29,69 @@ const SPEC: ExtensionSpec = {
   billingRequired: true,
   sourceUrl: "test.com",
   params: [],
+  systemParams: [],
+};
+
+const TASK_FUNCTION_RESOURCE: Resource = {
+  name: "taskResource",
+  type: "firebaseextensions.v1beta.function",
+  properties: {
+    taskQueueTrigger: {},
+  },
+};
+
+const SECRET_PARAM: Param = {
+  param: "secret",
+  label: "Secret",
+  type: ParamType.SECRET,
 };
 
 describe("displayExtensionInfo", () => {
   describe("displayExtInfo", () => {
-    it("should display info during install", () => {
-      const loggedLines = displayExtensionInfo.displayExtInfo(SPEC.name, "", SPEC);
-      const expected: string[] = ["**Name**: Old", "**Description**: descriptive"];
-      expect(loggedLines).to.eql(expected);
+    let getRoleStub: sinon.SinonStub;
+    beforeEach(() => {
+      getRoleStub = sinon.stub(iam, "getRole");
+      getRoleStub.withArgs("role1").resolves({
+        title: "Role 1",
+        description: "a role",
+      });
+      getRoleStub.withArgs("role2").resolves({
+        title: "Role 2",
+        description: "a role",
+      });
+      getRoleStub.withArgs("cloudtasks.enqueuer").resolves({
+        title: "Cloud Task Enqueuer",
+        description: "Enqueue tasks",
+      });
+      getRoleStub.withArgs("secretmanager.secretAccessor").resolves({
+        title: "Secret Accessor",
+        description: "Access Secrets",
+      });
     });
-    it("should display additional information for a published extension", () => {
-      const loggedLines = displayExtensionInfo.displayExtInfo(
+
+    afterEach(() => {
+      getRoleStub.restore();
+    });
+
+    it("should display info during install", async () => {
+      const loggedLines = await displayExtensionInfo.displayExtInfo(SPEC.name, "", SPEC);
+      const expected: string[] = [
+        "**Name**: Old",
+        "**Description**: descriptive",
+        "**APIs used by this Extension**:\n  api1 ()\n  api2 ()",
+        "\u001b[1m**Roles granted to this Extension**:\n\u001b[22m  Role 1 (a role)\n  Role 2 (a role)",
+      ];
+      expect(loggedLines.length).to.eql(expected.length);
+      expect(loggedLines[0]).to.include("Old");
+      expect(loggedLines[1]).to.include("descriptive");
+      expect(loggedLines[2]).to.include("api1");
+      expect(loggedLines[2]).to.include("api2");
+      expect(loggedLines[3]).to.include("Role 1");
+      expect(loggedLines[3]).to.include("Role 2");
+    });
+
+    it("should display additional information for a published extension", async () => {
+      const loggedLines = await displayExtensionInfo.displayExtInfo(
         SPEC.name,
         "testpublisher",
         SPEC,
@@ -52,207 +103,62 @@ describe("displayExtensionInfo", () => {
         "**Description**: descriptive",
         "**License**: MIT",
         "**Source code**: test.com",
+        "**APIs used by this Extension**:\n  api1 ()\n  api2 ()",
+        "\u001b[1m**Roles granted to this Extension**:\n\u001b[22m  Role 1 (a role)\n  Role 2 (a role)",
       ];
-      expect(loggedLines).to.eql(expected);
-    });
-  });
-  describe("displayUpdateChangesNoInput", () => {
-    it("should display changes to display name", () => {
-      const newSpec = cloneDeep(SPEC);
-      newSpec.displayName = "new";
-
-      const loggedLines = displayExtensionInfo.displayUpdateChangesNoInput(SPEC, newSpec);
-
-      const expected = ["", "**Name:**", "\u001b[31m- Old\u001b[39m", "\u001b[32m+ new\u001b[39m"];
-      expect(loggedLines).to.include.members(expected);
+      expect(loggedLines.length).to.eql(expected.length);
+      expect(loggedLines[0]).to.include("Old");
+      expect(loggedLines[1]).to.include("testpublisher");
+      expect(loggedLines[2]).to.include("descriptive");
+      expect(loggedLines[3]).to.include("MIT");
+      expect(loggedLines[4]).to.include("test.com");
+      expect(loggedLines[5]).to.include("api1");
+      expect(loggedLines[5]).to.include("api2");
+      expect(loggedLines[6]).to.include("Role 1");
+      expect(loggedLines[6]).to.include("Role 2");
     });
 
-    it("should display changes to description", () => {
-      const newSpec = cloneDeep(SPEC);
-      newSpec.description = "even better";
+    it("should display role and api for Cloud Tasks during install", async () => {
+      const specWithTasks = JSON.parse(JSON.stringify(SPEC)) as ExtensionSpec;
+      specWithTasks.resources.push(TASK_FUNCTION_RESOURCE);
 
-      const loggedLines = displayExtensionInfo.displayUpdateChangesNoInput(SPEC, newSpec);
-
-      const expected = [
-        "",
-        "**Description:**",
-        "\u001b[31m- descriptive\u001b[39m",
-        "\u001b[32m+ even better\u001b[39m",
+      const loggedLines = await displayExtensionInfo.displayExtInfo(SPEC.name, "", specWithTasks);
+      const expected: string[] = [
+        "**Name**: Old",
+        "**Description**: descriptive",
+        "**APIs used by this Extension**:\n  api1 ()\n  api2 ()",
+        "\u001b[1m**Roles granted to this Extension**:\n\u001b[22m  Role 1 (a role)\n  Role 2 (a role)\n  Cloud Task Enqueuer (Enqueue tasks)",
       ];
-      expect(loggedLines).to.include.members(expected);
+      expect(loggedLines.length).to.eql(expected.length);
+      expect(loggedLines[0]).to.include("Old");
+      expect(loggedLines[1]).to.include("descriptive");
+      expect(loggedLines[2]).to.include("api1");
+      expect(loggedLines[2]).to.include("api2");
+      expect(loggedLines[2]).to.include("Cloud Tasks");
+      expect(loggedLines[3]).to.include("Role 1");
+      expect(loggedLines[3]).to.include("Role 2");
+      expect(loggedLines[3]).to.include("Cloud Task Enqueuer");
     });
 
-    it("should notify the user if billing is no longer required", () => {
-      const newSpec = cloneDeep(SPEC);
-      newSpec.billingRequired = false;
+    it("should display role for Cloud Secret Manager during install", async () => {
+      const specWithSecret = JSON.parse(JSON.stringify(SPEC)) as ExtensionSpec;
+      specWithSecret.params.push(SECRET_PARAM);
 
-      const loggedLines = displayExtensionInfo.displayUpdateChangesNoInput(SPEC, newSpec);
-
-      const expected = ["", "**Billing is no longer required for this extension.**"];
-      expect(loggedLines).to.include.members(expected);
-    });
-  });
-
-  describe("displayUpdateChangesRequiringConfirmation", () => {
-    let promptStub: sinon.SinonStub;
-    beforeEach(() => {
-      promptStub = sinon.stub(prompt, "promptOnce");
-    });
-
-    afterEach(() => {
-      promptStub.restore();
-    });
-
-    it("should prompt for changes to license and continue if user gives consent", async () => {
-      promptStub.resolves(true);
-      const newSpec = cloneDeep(SPEC);
-      newSpec.license = "To Kill";
-
-      await expect(
-        displayExtensionInfo.displayUpdateChangesRequiringConfirmation({
-          spec: SPEC,
-          newSpec,
-          nonInteractive: false,
-          force: false,
-        })
-      ).to.eventually.not.be.rejected;
-
-      expect(promptStub.callCount).to.equal(1);
-    });
-
-    it("should prompt for changes to apis and continue if user gives consent", async () => {
-      promptStub.resolves(true);
-      const newSpec = cloneDeep(SPEC);
-      newSpec.apis = [
-        { apiName: "api2", reason: "" },
-        { apiName: "api3", reason: "" },
+      const loggedLines = await displayExtensionInfo.displayExtInfo(SPEC.name, "", specWithSecret);
+      const expected: string[] = [
+        "**Name**: Old",
+        "**Description**: descriptive",
+        "**APIs used by this Extension**:\n  api1 ()\n  api2 ()",
+        "\u001b[1m**Roles granted to this Extension**:\n\u001b[22m  Role 1 (a role)\n  Role 2 (a role)\n  Secret Accessor (Access secrets)",
       ];
-
-      await expect(
-        displayExtensionInfo.displayUpdateChangesRequiringConfirmation({
-          spec: SPEC,
-          newSpec,
-          nonInteractive: false,
-          force: false,
-        })
-      ).not.to.be.rejected;
-
-      expect(promptStub.callCount).to.equal(1);
-    });
-
-    it("should prompt for changes to roles and continue if user gives consent", async () => {
-      promptStub.resolves(true);
-      const newSpec = cloneDeep(SPEC);
-      newSpec.roles = [
-        { role: "role2", reason: "" },
-        { role: "role3", reason: "" },
-      ];
-
-      await expect(
-        displayExtensionInfo.displayUpdateChangesRequiringConfirmation({
-          spec: SPEC,
-          newSpec,
-          nonInteractive: false,
-          force: false,
-        })
-      ).not.to.be.rejected;
-
-      expect(promptStub.callCount).to.equal(1);
-    });
-
-    it("should prompt for changes to resources and continue if user gives consent", async () => {
-      promptStub.resolves(true);
-      const newSpec = cloneDeep(SPEC);
-      newSpec.resources = [
-        { name: "resource3", type: "firebaseextensions.v1beta.function", description: "new desc" },
-        { name: "resource2", type: "other", description: "" } as unknown as Resource,
-      ];
-
-      await expect(
-        displayExtensionInfo.displayUpdateChangesRequiringConfirmation({
-          spec: SPEC,
-          newSpec,
-          nonInteractive: false,
-          force: false,
-        })
-      ).not.to.be.rejected;
-
-      expect(promptStub.callCount).to.equal(1);
-    });
-
-    it("should prompt for changes to resources and continue if user gives consent", async () => {
-      promptStub.resolves(true);
-      const oldSpec = cloneDeep(SPEC);
-      oldSpec.billingRequired = false;
-
-      await expect(
-        displayExtensionInfo.displayUpdateChangesRequiringConfirmation({
-          spec: oldSpec,
-          newSpec: SPEC,
-          nonInteractive: false,
-          force: false,
-        })
-      ).not.to.be.rejected;
-
-      expect(promptStub.callCount).to.equal(1);
-    });
-
-    it("should exit if the user consents to one change but rejects another", async () => {
-      promptStub.resolves(true);
-      promptStub.resolves(false);
-      const newSpec = cloneDeep(SPEC);
-      newSpec.license = "New";
-      newSpec.roles = [
-        { role: "role2", reason: "" },
-        { role: "role3", reason: "" },
-      ];
-
-      await expect(
-        displayExtensionInfo.displayUpdateChangesRequiringConfirmation({
-          spec: SPEC,
-          newSpec,
-          nonInteractive: false,
-          force: false,
-        })
-      ).to.be.rejectedWith(
-        FirebaseError,
-        "Unable to update this extension instance without explicit consent for the change to 'License'"
-      );
-
-      expect(promptStub.callCount).to.equal(1);
-    });
-
-    it("should error if the user doesn't give consent", async () => {
-      promptStub.resolves(false);
-      const newSpec = cloneDeep(SPEC);
-      newSpec.license = "new";
-
-      await expect(
-        displayExtensionInfo.displayUpdateChangesRequiringConfirmation({
-          spec: SPEC,
-          newSpec,
-          nonInteractive: false,
-          force: false,
-        })
-      ).to.be.rejectedWith(
-        FirebaseError,
-        "Unable to update this extension instance without explicit consent for the change to 'License'."
-      );
-    });
-
-    it("shouldn't prompt the user if no changes require confirmation", async () => {
-      promptStub.resolves(false);
-      const newSpec = cloneDeep(SPEC);
-      newSpec.version = "1.1.0";
-
-      await displayExtensionInfo.displayUpdateChangesRequiringConfirmation({
-        spec: SPEC,
-        newSpec,
-        nonInteractive: false,
-        force: false,
-      });
-
-      expect(promptStub).not.to.have.been.called;
+      expect(loggedLines.length).to.eql(expected.length);
+      expect(loggedLines[0]).to.include("Old");
+      expect(loggedLines[1]).to.include("descriptive");
+      expect(loggedLines[2]).to.include("api1");
+      expect(loggedLines[2]).to.include("api2");
+      expect(loggedLines[3]).to.include("Role 1");
+      expect(loggedLines[3]).to.include("Role 2");
+      expect(loggedLines[3]).to.include("Secret Accessor");
     });
   });
 });

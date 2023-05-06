@@ -130,7 +130,7 @@ export function getEndpointFilters(options: { only?: string }): EndpointFilter[]
 export function getFunctionLabel(fn: backend.TargetIds & { codebase?: string }): string {
   let id = `${fn.id}(${fn.region})`;
   if (fn.codebase && fn.codebase !== DEFAULT_CODEBASE) {
-    id = `[${fn.codebase}]${id}`;
+    id = `${fn.codebase}:${id}`;
   }
   return id;
 }
@@ -203,4 +203,18 @@ export function groupEndpointsByCodebase(
   // What about unassigned endpoints? We leave them, as it's possible that these endpoints belong to codebases
   // defined in other project repositories.
   return grouped;
+}
+
+/** Checks if a codebase should be filtered */
+export function isCodebaseFiltered(codebase: string, filters: EndpointFilter[]): boolean {
+  return filters.some((filter) => {
+    // For a codebase to be filtered, the id chunks MUST be empty.
+    const noIdChunks = (filter.idChunks || []).length === 0;
+    return noIdChunks && filter.codebase === codebase;
+  });
+}
+
+/** Checks if a function should be filtered given a list of endpoints. */
+export function isEndpointFiltered(endpoint: backend.Endpoint, filters: EndpointFilter[]) {
+  return filters.some((filter) => endpointMatchesFilter(endpoint, filter));
 }

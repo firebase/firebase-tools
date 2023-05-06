@@ -1,5 +1,6 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
+import * as nock from "nock";
 
 import * as api from "../../api";
 
@@ -12,7 +13,10 @@ import {
   createInstance,
   listDatabaseInstances,
   checkInstanceNameAvailable,
+  MGMT_API_VERSION,
+  APP_LIST_PAGE_SIZE,
 } from "../../management/database";
+import { FirebaseError } from "../../error";
 
 const PROJECT_ID = "the-best-firebase-project";
 const DATABASE_INSTANCE_NAME = "some_instance";
@@ -87,23 +91,28 @@ function generateInstanceListApiResponse(counts: number, location: DatabaseLocat
     };
   });
 }
+
 describe("Database management", () => {
   let sandbox: sinon.SinonSandbox;
-  let apiRequestStub: sinon.SinonStub;
 
   beforeEach(() => {
     sandbox = sinon.createSandbox();
-    apiRequestStub = sandbox.stub(api, "request").throws("Unexpected API request call");
+    nock.disableNetConnect();
   });
 
   afterEach(() => {
+    nock.enableNetConnect();
     sandbox.restore();
   });
 
-  describe("getInstanceDetails", () => {
+  describe("getDatabaseInstanceDetails", () => {
     it("should resolve with DatabaseInstance if API call succeeds", async () => {
       const expectedDatabaseInstance = SOME_DATABASE_INSTANCE;
-      apiRequestStub.onFirstCall().resolves({ body: INSTANCE_RESPONSE_US_CENTRAL1 });
+      nock(api.rtdbManagementOrigin)
+        .get(
+          `/${MGMT_API_VERSION}/projects/${PROJECT_ID}/locations/-/instances/${DATABASE_INSTANCE_NAME}`
+        )
+        .reply(200, INSTANCE_RESPONSE_US_CENTRAL1);
 
       const resultDatabaseInstance = await getDatabaseInstanceDetails(
         PROJECT_ID,
@@ -111,21 +120,14 @@ describe("Database management", () => {
       );
 
       expect(resultDatabaseInstance).to.deep.equal(expectedDatabaseInstance);
-      expect(apiRequestStub).to.be.calledOnceWith(
-        "GET",
-        `/v1beta/projects/${PROJECT_ID}/locations/-/instances/${DATABASE_INSTANCE_NAME}`,
-        {
-          auth: true,
-          origin: api.rtdbManagementOrigin,
-          timeout: 10000,
-        }
-      );
+      expect(nock.isDone()).to.be.true;
     });
 
     it("should reject if API call fails", async () => {
       const badInstanceName = "non-existent-instance";
-      const expectedError = new Error("HTTP Error 404: Not Found");
-      apiRequestStub.onFirstCall().rejects(expectedError);
+      nock(api.rtdbManagementOrigin)
+        .get(`/${MGMT_API_VERSION}/projects/${PROJECT_ID}/locations/-/instances/${badInstanceName}`)
+        .reply(404);
       let err;
       try {
         await getDatabaseInstanceDetails(PROJECT_ID, badInstanceName);
@@ -135,23 +137,20 @@ describe("Database management", () => {
       expect(err.message).to.equal(
         `Failed to get instance details for instance: ${badInstanceName}. See firebase-debug.log for more details.`
       );
-      expect(err.original).to.equal(expectedError);
-      expect(apiRequestStub).to.be.calledOnceWith(
-        "GET",
-        `/v1beta/projects/${PROJECT_ID}/locations/-/instances/${badInstanceName}`,
-        {
-          auth: true,
-          origin: api.rtdbManagementOrigin,
-          timeout: 10000,
-        }
-      );
+      expect(err.original).to.be.an.instanceOf(FirebaseError, "Not Found");
+      expect(nock.isDone()).to.be.true;
     });
   });
 
   describe("createInstance", () => {
     it("should resolve with new DatabaseInstance if API call succeeds", async () => {
       const expectedDatabaseInstance = SOME_DATABASE_INSTANCE_EUROPE_WEST1;
-      apiRequestStub.onFirstCall().resolves({ body: INSTANCE_RESPONSE_EUROPE_WEST1 });
+      nock(api.rtdbManagementOrigin)
+        .post(
+          `/${MGMT_API_VERSION}/projects/${PROJECT_ID}/locations/${DatabaseLocation.EUROPE_WEST1}/instances`
+        )
+        .query({ databaseId: DATABASE_INSTANCE_NAME })
+        .reply(200, INSTANCE_RESPONSE_EUROPE_WEST1);
       const resultDatabaseInstance = await createInstance(
         PROJECT_ID,
         DATABASE_INSTANCE_NAME,
@@ -159,24 +158,17 @@ describe("Database management", () => {
         DatabaseInstanceType.USER_DATABASE
       );
       expect(resultDatabaseInstance).to.deep.equal(expectedDatabaseInstance);
-      expect(apiRequestStub).to.be.calledOnceWith(
-        "POST",
-        `/v1beta/projects/${PROJECT_ID}/locations/${DatabaseLocation.EUROPE_WEST1}/instances?databaseId=${DATABASE_INSTANCE_NAME}`,
-        {
-          auth: true,
-          origin: api.rtdbManagementOrigin,
-          timeout: 10000,
-          data: {
-            type: DatabaseInstanceType.USER_DATABASE,
-          },
-        }
-      );
+      expect(nock.isDone()).to.be.true;
     });
 
     it("should reject if API call fails", async () => {
       const badInstanceName = "non-existent-instance";
-      const expectedError = new Error("HTTP Error 404: Not Found");
-      apiRequestStub.onFirstCall().rejects(expectedError);
+      nock(api.rtdbManagementOrigin)
+        .post(
+          `/${MGMT_API_VERSION}/projects/${PROJECT_ID}/locations/${DatabaseLocation.US_CENTRAL1}/instances`
+        )
+        .query({ databaseId: badInstanceName })
+        .reply(404);
 
       let err;
       try {
@@ -193,106 +185,82 @@ describe("Database management", () => {
       expect(err.message).to.equal(
         `Failed to create instance: ${badInstanceName}. See firebase-debug.log for more details.`
       );
-      expect(err.original).to.equal(expectedError);
-      expect(apiRequestStub).to.be.calledOnceWith(
-        "POST",
-        `/v1beta/projects/${PROJECT_ID}/locations/${DatabaseLocation.US_CENTRAL1}/instances?databaseId=${badInstanceName}`,
-        {
-          auth: true,
-          origin: api.rtdbManagementOrigin,
-          timeout: 10000,
-          data: {
-            type: DatabaseInstanceType.DEFAULT_DATABASE,
-          },
-        }
-      );
+      expect(err.original).to.be.an.instanceOf(FirebaseError, "Not Found");
+      expect(nock.isDone()).to.be.true;
     });
   });
 
   describe("checkInstanceNameAvailable", () => {
     it("should resolve with new DatabaseInstance if specified instance name is available and API call succeeds", async () => {
-      apiRequestStub.onFirstCall().resolves({ body: INSTANCE_RESPONSE_EUROPE_WEST1 });
+      nock(api.rtdbManagementOrigin)
+        .post(
+          `/${MGMT_API_VERSION}/projects/${PROJECT_ID}/locations/${DatabaseLocation.EUROPE_WEST1}/instances`
+        )
+        .query({ databaseId: DATABASE_INSTANCE_NAME, validateOnly: true })
+        .reply(200, INSTANCE_RESPONSE_EUROPE_WEST1);
+
       const output = await checkInstanceNameAvailable(
         PROJECT_ID,
         DATABASE_INSTANCE_NAME,
         DatabaseInstanceType.USER_DATABASE,
         DatabaseLocation.EUROPE_WEST1
       );
-      expect(output).to.deep.equal({
-        available: true,
-      });
-      expect(apiRequestStub).to.be.calledOnceWith(
-        "POST",
-        `/v1beta/projects/${PROJECT_ID}/locations/${DatabaseLocation.EUROPE_WEST1}/instances?databaseId=${DATABASE_INSTANCE_NAME}&validateOnly=true`,
-        {
-          auth: true,
-          origin: api.rtdbManagementOrigin,
-          timeout: 10000,
-          data: {
-            type: DatabaseInstanceType.USER_DATABASE,
-          },
-        }
-      );
+
+      expect(output).to.deep.equal({ available: true });
+      expect(nock.isDone()).to.be.true;
     });
 
     it("should resolve with suggested instance names if the API call fails with suggestions ", async () => {
       const badInstanceName = "invalid:database|name";
       const expectedErrorObj = {
-        context: {
-          body: {
-            error: {
-              details: [
-                {
-                  metadata: {
-                    suggested_database_ids: "dbName1,dbName2,dbName3",
-                  },
-                },
-              ],
+        error: {
+          details: [
+            {
+              metadata: {
+                suggested_database_ids: "dbName1,dbName2,dbName3",
+              },
             },
-          },
+          ],
         },
       };
-      apiRequestStub.onFirstCall().rejects(expectedErrorObj);
+      nock(api.rtdbManagementOrigin)
+        .post(
+          `/${MGMT_API_VERSION}/projects/${PROJECT_ID}/locations/${DatabaseLocation.EUROPE_WEST1}/instances`
+        )
+        .query({ databaseId: badInstanceName, validateOnly: true })
+        .reply(409, expectedErrorObj);
+
       const output = await checkInstanceNameAvailable(
         PROJECT_ID,
         badInstanceName,
         DatabaseInstanceType.USER_DATABASE,
         DatabaseLocation.EUROPE_WEST1
       );
+
       expect(output).to.deep.equal({
         available: false,
         suggestedIds: ["dbName1", "dbName2", "dbName3"],
       });
-      expect(apiRequestStub).to.be.calledOnceWith(
-        "POST",
-        `/v1beta/projects/${PROJECT_ID}/locations/${DatabaseLocation.EUROPE_WEST1}/instances?databaseId=${badInstanceName}&validateOnly=true`,
-        {
-          auth: true,
-          origin: api.rtdbManagementOrigin,
-          timeout: 10000,
-          data: {
-            type: DatabaseInstanceType.USER_DATABASE,
-          },
-        }
-      );
+      expect(nock.isDone()).to.be.true;
     });
 
     it("should reject if API call fails without suggestions", async () => {
       const badInstanceName = "non-existent-instance";
       const expectedErrorObj = {
-        context: {
-          body: {
-            error: {
-              details: [
-                {
-                  metadata: {},
-                },
-              ],
+        error: {
+          details: [
+            {
+              metadata: {},
             },
-          },
+          ],
         },
       };
-      apiRequestStub.onFirstCall().rejects(expectedErrorObj);
+      nock(api.rtdbManagementOrigin)
+        .post(
+          `/${MGMT_API_VERSION}/projects/${PROJECT_ID}/locations/${DatabaseLocation.US_CENTRAL1}/instances`
+        )
+        .query({ databaseId: badInstanceName, validateOnly: true })
+        .reply(409, expectedErrorObj);
 
       let err;
       try {
@@ -309,50 +277,35 @@ describe("Database management", () => {
       expect(err.message).to.equal(
         `Failed to validate Realtime Database instance name: ${badInstanceName}.`
       );
-      expect(err.original).to.equal(expectedErrorObj);
-      expect(apiRequestStub).to.be.calledOnceWith(
-        "POST",
-        `/v1beta/projects/${PROJECT_ID}/locations/${DatabaseLocation.US_CENTRAL1}/instances?databaseId=${badInstanceName}&validateOnly=true`,
-        {
-          auth: true,
-          origin: api.rtdbManagementOrigin,
-          timeout: 10000,
-          data: {
-            type: DatabaseInstanceType.DEFAULT_DATABASE,
-          },
-        }
-      );
+      expect(err.original).to.be.an.instanceOf(FirebaseError, "409");
+      expect(nock.isDone()).to.be.true;
     });
   });
 
   describe("listDatabaseInstances", () => {
     it("should resolve with instance list if it succeeds with only 1 api call", async () => {
+      const pageSize = 5;
       const instancesPerLocation = 2;
       const expectedInstanceList = [
         ...generateInstanceList(instancesPerLocation, DatabaseLocation.US_CENTRAL1),
         ...generateInstanceList(instancesPerLocation, DatabaseLocation.EUROPE_WEST1),
       ];
-      apiRequestStub.onFirstCall().resolves({
-        body: {
+      nock(api.rtdbManagementOrigin)
+        .get(
+          `/${MGMT_API_VERSION}/projects/${PROJECT_ID}/locations/${DatabaseLocation.ANY}/instances`
+        )
+        .query({ pageSize })
+        .reply(200, {
           instances: [
             ...generateInstanceListApiResponse(instancesPerLocation, DatabaseLocation.US_CENTRAL1),
             ...generateInstanceListApiResponse(instancesPerLocation, DatabaseLocation.EUROPE_WEST1),
           ],
-        },
-      });
+        });
 
-      const instances = await listDatabaseInstances(PROJECT_ID, DatabaseLocation.ANY, 5);
+      const instances = await listDatabaseInstances(PROJECT_ID, DatabaseLocation.ANY, pageSize);
 
       expect(instances).to.deep.equal(expectedInstanceList);
-      expect(apiRequestStub).to.be.calledOnceWith(
-        "GET",
-        `/v1beta/projects/${PROJECT_ID}/locations/-/instances?pageSize=5`,
-        {
-          auth: true,
-          origin: api.rtdbManagementOrigin,
-          timeout: 10000,
-        }
-      );
+      expect(nock.isDone()).to.be.true;
     });
 
     it("should resolve with specific location", async () => {
@@ -361,25 +314,21 @@ describe("Database management", () => {
         instancesPerLocation,
         DatabaseLocation.US_CENTRAL1
       );
-      apiRequestStub.onFirstCall().resolves({
-        body: {
+      nock(api.rtdbManagementOrigin)
+        .get(
+          `/${MGMT_API_VERSION}/projects/${PROJECT_ID}/locations/${DatabaseLocation.US_CENTRAL1}/instances`
+        )
+        .query({ pageSize: APP_LIST_PAGE_SIZE })
+        .reply(200, {
           instances: [
             ...generateInstanceListApiResponse(instancesPerLocation, DatabaseLocation.US_CENTRAL1),
           ],
-        },
-      });
+        });
+
       const instances = await listDatabaseInstances(PROJECT_ID, DatabaseLocation.US_CENTRAL1);
 
       expect(instances).to.deep.equal(expectedInstancesList);
-      expect(apiRequestStub).to.be.calledOnceWith(
-        "GET",
-        `/v1beta/projects/${PROJECT_ID}/locations/${DatabaseLocation.US_CENTRAL1}/instances?pageSize=100`,
-        {
-          auth: true,
-          origin: api.rtdbManagementOrigin,
-          timeout: 10000,
-        }
-      );
+      expect(nock.isDone()).to.be.true;
     });
 
     it("should concatenate pages to get instances list if it succeeds", async () => {
@@ -391,53 +340,42 @@ describe("Database management", () => {
         ...generateInstanceList(countPerLocation, DatabaseLocation.EUROPE_WEST1),
         ...generateInstanceList(countPerLocation, DatabaseLocation.EUROPE_WEST1),
       ];
-
       const expectedResponsesList = [
         ...generateInstanceListApiResponse(countPerLocation, DatabaseLocation.US_CENTRAL1),
         ...generateInstanceListApiResponse(countPerLocation, DatabaseLocation.EUROPE_WEST1),
         ...generateInstanceListApiResponse(countPerLocation, DatabaseLocation.EUROPE_WEST1),
       ];
-
-      apiRequestStub
-        .onFirstCall()
-        .resolves({
-          body: {
-            instances: expectedResponsesList.slice(0, pageSize),
-            nextPageToken: nextPageToken,
-          },
-        })
-        .onSecondCall()
-        .resolves({
-          body: {
-            instances: expectedResponsesList.slice(pageSize),
-          },
+      nock(api.rtdbManagementOrigin)
+        .get(
+          `/${MGMT_API_VERSION}/projects/${PROJECT_ID}/locations/${DatabaseLocation.ANY}/instances`
+        )
+        .query({ pageSize: pageSize })
+        .reply(200, {
+          instances: expectedResponsesList.slice(0, pageSize),
+          nextPageToken,
+        });
+      nock(api.rtdbManagementOrigin)
+        .get(
+          `/${MGMT_API_VERSION}/projects/${PROJECT_ID}/locations/${DatabaseLocation.ANY}/instances`
+        )
+        .query({ pageSize: pageSize, pageToken: nextPageToken })
+        .reply(200, {
+          instances: expectedResponsesList.slice(pageSize),
         });
 
       const instances = await listDatabaseInstances(PROJECT_ID, DatabaseLocation.ANY, pageSize);
+
       expect(instances).to.deep.equal(expectedInstancesList);
-      expect(apiRequestStub.firstCall).to.be.calledWith(
-        "GET",
-        `/v1beta/projects/${PROJECT_ID}/locations/-/instances?pageSize=${pageSize}`,
-        {
-          auth: true,
-          origin: api.rtdbManagementOrigin,
-          timeout: 10000,
-        }
-      );
-      expect(apiRequestStub.secondCall).to.be.calledWith(
-        "GET",
-        `/v1beta/projects/${PROJECT_ID}/locations/-/instances?pageSize=${pageSize}&pageToken=${nextPageToken}`,
-        {
-          auth: true,
-          origin: api.rtdbManagementOrigin,
-          timeout: 10000,
-        }
-      );
+      expect(nock.isDone()).to.be.true;
     });
 
     it("should reject if the first api call fails", async () => {
-      const expectedError = new Error("HTTP Error 404: Not Found");
-      apiRequestStub.onFirstCall().rejects(expectedError);
+      nock(api.rtdbManagementOrigin)
+        .get(
+          `/${MGMT_API_VERSION}/projects/${PROJECT_ID}/locations/${DatabaseLocation.ANY}/instances`
+        )
+        .query({ pageSize: APP_LIST_PAGE_SIZE })
+        .reply(404);
 
       let err;
       try {
@@ -449,36 +387,31 @@ describe("Database management", () => {
       expect(err.message).to.equal(
         "Failed to list Firebase Realtime Database instances. See firebase-debug.log for more info."
       );
-      expect(err.original).to.equal(expectedError);
-      expect(apiRequestStub).to.be.calledOnceWith(
-        "GET",
-        `/v1beta/projects/${PROJECT_ID}/locations/-/instances?pageSize=100`,
-        {
-          auth: true,
-          origin: api.rtdbManagementOrigin,
-          timeout: 10000,
-        }
-      );
+      expect(err.original).to.be.an.instanceOf(FirebaseError, "Not Found");
+      expect(nock.isDone()).to.be.true;
     });
 
     it("should reject if error is thrown in subsequent api call", async () => {
-      const expectedError = new Error("HTTP Error 400: unexpected error");
       const countPerLocation = 5;
       const pageSize = 5;
       const nextPageToken = "next-page-token";
-
-      apiRequestStub
-        .onFirstCall()
-        .resolves({
-          body: {
-            instances: [
-              ...generateInstanceListApiResponse(countPerLocation, DatabaseLocation.US_CENTRAL1),
-            ].slice(0, pageSize),
-            nextPageToken: nextPageToken,
-          },
-        })
-        .onSecondCall()
-        .rejects(expectedError);
+      nock(api.rtdbManagementOrigin)
+        .get(
+          `/${MGMT_API_VERSION}/projects/${PROJECT_ID}/locations/${DatabaseLocation.US_CENTRAL1}/instances`
+        )
+        .query({ pageSize: pageSize })
+        .reply(200, {
+          instances: [
+            ...generateInstanceListApiResponse(countPerLocation, DatabaseLocation.US_CENTRAL1),
+          ].slice(0, pageSize),
+          nextPageToken,
+        });
+      nock(api.rtdbManagementOrigin)
+        .get(
+          `/${MGMT_API_VERSION}/projects/${PROJECT_ID}/locations/${DatabaseLocation.US_CENTRAL1}/instances`
+        )
+        .query({ pageSize: pageSize, pageToken: nextPageToken })
+        .reply(404);
 
       let err;
       try {
@@ -490,25 +423,8 @@ describe("Database management", () => {
       expect(err.message).to.equal(
         `Failed to list Firebase Realtime Database instances for location ${DatabaseLocation.US_CENTRAL1}. See firebase-debug.log for more info.`
       );
-      expect(err.original).to.equal(expectedError);
-      expect(apiRequestStub.firstCall).to.be.calledWith(
-        "GET",
-        `/v1beta/projects/${PROJECT_ID}/locations/${DatabaseLocation.US_CENTRAL1}/instances?pageSize=${pageSize}`,
-        {
-          auth: true,
-          origin: api.rtdbManagementOrigin,
-          timeout: 10000,
-        }
-      );
-      expect(apiRequestStub.secondCall).to.be.calledWith(
-        "GET",
-        `/v1beta/projects/${PROJECT_ID}/locations/${DatabaseLocation.US_CENTRAL1}/instances?pageSize=${pageSize}&pageToken=${nextPageToken}`,
-        {
-          auth: true,
-          origin: api.rtdbManagementOrigin,
-          timeout: 10000,
-        }
-      );
+      expect(err.original).to.be.an.instanceOf(FirebaseError, "Not Found");
+      expect(nock.isDone()).to.be.true;
     });
   });
 });

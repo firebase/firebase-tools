@@ -1,4 +1,4 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import { FirebaseError } from "../../error";
 
 import * as extensionsApi from "../../extensions/extensionsApi";
@@ -49,7 +49,10 @@ export function createExtensionInstanceTask(
         projectId,
         instanceId: instanceSpec.instanceId,
         params: instanceSpec.params,
+        systemParams: instanceSpec.systemParams,
         extensionVersionRef: refs.toExtensionVersionRef(instanceSpec.ref),
+        allowedEventTypes: instanceSpec.allowedEventTypes,
+        eventarcChannel: instanceSpec.eventarcChannel,
         validateOnly,
       });
     } else if (instanceSpec.localPath) {
@@ -58,7 +61,10 @@ export function createExtensionInstanceTask(
         projectId,
         instanceId: instanceSpec.instanceId,
         params: instanceSpec.params,
+        systemParams: instanceSpec.systemParams,
         extensionSource,
+        allowedEventTypes: instanceSpec.allowedEventTypes,
+        eventarcChannel: instanceSpec.eventarcChannel,
         validateOnly,
       });
     } else {
@@ -88,6 +94,10 @@ export function updateExtensionInstanceTask(
         instanceId: instanceSpec.instanceId,
         extRef: refs.toExtensionVersionRef(instanceSpec.ref!),
         params: instanceSpec.params,
+        systemParams: instanceSpec.systemParams,
+        canEmitEvents: !!instanceSpec.allowedEventTypes,
+        allowedEventTypes: instanceSpec.allowedEventTypes,
+        eventarcChannel: instanceSpec.eventarcChannel,
         validateOnly,
       });
     } else if (instanceSpec.localPath) {
@@ -97,6 +107,11 @@ export function updateExtensionInstanceTask(
         instanceId: instanceSpec.instanceId,
         extensionSource,
         validateOnly,
+        params: instanceSpec.params,
+        systemParams: instanceSpec.systemParams,
+        canEmitEvents: !!instanceSpec.allowedEventTypes,
+        allowedEventTypes: instanceSpec.allowedEventTypes,
+        eventarcChannel: instanceSpec.eventarcChannel,
       });
     } else {
       throw new FirebaseError(
@@ -124,6 +139,10 @@ export function configureExtensionInstanceTask(
         projectId,
         instanceId: instanceSpec.instanceId,
         params: instanceSpec.params,
+        systemParams: instanceSpec.systemParams,
+        canEmitEvents: !!instanceSpec.allowedEventTypes,
+        allowedEventTypes: instanceSpec.allowedEventTypes,
+        eventarcChannel: instanceSpec.eventarcChannel,
         validateOnly,
       });
     } else if (instanceSpec.localPath) {
@@ -164,5 +183,5 @@ export function deleteExtensionInstanceTask(
 
 function printSuccess(instanceId: string, type: DeploymentType, validateOnly: boolean) {
   const action = validateOnly ? `validated ${type} for` : `${type}d`;
-  utils.logSuccess(clc.bold.green("extensions") + ` Successfully ${action} ${instanceId}`);
+  utils.logSuccess(clc.bold(clc.green("extensions")) + ` Successfully ${action} ${instanceId}`);
 }

@@ -1,8 +1,10 @@
 import { expect } from "chai";
+import * as nock from "nock";
 import * as sinon from "sinon";
 
-import * as api from "../../../api";
+import { remoteConfigApiOrigin } from "../../../api";
 import * as rcDeploy from "../../../deploy/remoteconfig/functions";
+import { FirebaseError } from "../../../error";
 import * as remoteconfig from "../../../remoteconfig/get";
 import { RemoteConfigTemplate } from "../../../remoteconfig/interfaces";
 
@@ -60,13 +62,11 @@ const currentTemplate: RemoteConfigTemplate = createTemplate("6");
 
 describe("Remote Config Deploy", () => {
   let sandbox: sinon.SinonSandbox;
-  let apiRequestStub: sinon.SinonStub;
   let templateStub: sinon.SinonStub;
   let etagStub: sinon.SinonStub;
 
   beforeEach(() => {
     sandbox = sinon.createSandbox();
-    apiRequestStub = sandbox.stub(api, "request").throws("Unexpected API request call");
     templateStub = sandbox.stub(remoteconfig, "getTemplate");
     etagStub = sandbox.stub(rcDeploy, "getEtag");
   });
@@ -77,34 +77,26 @@ describe("Remote Config Deploy", () => {
 
   describe("Publish the updated template", () => {
     it("should publish the latest template", async () => {
-      apiRequestStub.onFirstCall().resolves({ body: expectedTemplateInfo });
+      const ETAG = header.etag;
       templateStub.withArgs(PROJECT_NUMBER).returns(currentTemplate);
-      etagStub.withArgs(PROJECT_NUMBER, "6").returns(header);
+      etagStub.withArgs(PROJECT_NUMBER, "6").returns(ETAG);
+      nock(remoteConfigApiOrigin)
+        .put(`/v1/projects/${PROJECT_NUMBER}/remoteConfig`)
+        .matchHeader("If-Match", ETAG)
+        .reply(200, expectedTemplateInfo);
 
-      const etag = await rcDeploy.getEtag(PROJECT_NUMBER, "6");
-      const RCtemplate = await rcDeploy.publishTemplate(PROJECT_NUMBER, currentTemplate, etag);
+      const RCtemplate = await rcDeploy.publishTemplate(PROJECT_NUMBER, currentTemplate, ETAG);
 
       expect(RCtemplate).to.deep.equal(expectedTemplateInfo);
-      expect(apiRequestStub).to.be.calledOnceWith(
-        "PUT",
-        `/v1/projects/${PROJECT_NUMBER}/remoteConfig`,
-        {
-          auth: true,
-          origin: api.remoteConfigApiOrigin,
-          timeout: 30000,
-          headers: { "If-Match": etag },
-          data: {
-            conditions: currentTemplate.conditions,
-            parameters: currentTemplate.parameters,
-            parameterGroups: currentTemplate.parameterGroups,
-          },
-        }
-      );
+      expect(nock.isDone()).to.be.true;
     });
 
     it("should publish the latest template with * etag", async () => {
-      apiRequestStub.onFirstCall().resolves({ body: expectedTemplateInfo });
       templateStub.withArgs(PROJECT_NUMBER).returns(currentTemplate);
+      nock(remoteConfigApiOrigin)
+        .put(`/v1/projects/${PROJECT_NUMBER}/remoteConfig`)
+        .matchHeader("If-Match", "*")
+        .reply(200, expectedTemplateInfo);
 
       const options = { force: true };
       const etag = "*";
@@ -116,49 +108,21 @@ describe("Remote Config Deploy", () => {
       );
 
       expect(RCtemplate).to.deep.equal(expectedTemplateInfo);
-      expect(apiRequestStub).to.be.calledOnceWith(
-        "PUT",
-        `/v1/projects/${PROJECT_NUMBER}/remoteConfig`,
-        {
-          auth: true,
-          origin: api.remoteConfigApiOrigin,
-          timeout: 30000,
-          headers: { "If-Match": etag },
-          data: {
-            conditions: currentTemplate.conditions,
-            parameters: currentTemplate.parameters,
-            parameterGroups: currentTemplate.parameterGroups,
-          },
-        }
-      );
+      expect(nock.isDone()).to.be.true;
     });
 
     it("should reject if the api call fails", async () => {
-      const etag = await rcDeploy.getEtag(PROJECT_NUMBER);
+      const ETAG = header.etag;
+      etagStub.withArgs(PROJECT_NUMBER, "6").returns(ETAG);
+      nock(remoteConfigApiOrigin)
+        .put(`/v1/projects/${PROJECT_NUMBER}/remoteConfig`)
+        .matchHeader("If-Match", ETAG)
+        .reply(400);
 
-      etagStub.withArgs(PROJECT_NUMBER, "undefined").returns(header);
-
-      try {
-        await rcDeploy.publishTemplate(PROJECT_NUMBER, currentTemplate, etag);
-      } catch (e: any) {
-        e;
-      }
-
-      expect(apiRequestStub).to.be.calledOnceWith(
-        "PUT",
-        `/v1/projects/${PROJECT_NUMBER}/remoteConfig`,
-        {
-          auth: true,
-          origin: api.remoteConfigApiOrigin,
-          timeout: 30000,
-          headers: { "If-Match": undefined },
-          data: {
-            conditions: currentTemplate.conditions,
-            parameters: currentTemplate.parameters,
-            parameterGroups: currentTemplate.parameterGroups,
-          },
-        }
-      );
+      await expect(
+        rcDeploy.publishTemplate(PROJECT_NUMBER, currentTemplate, ETAG)
+      ).to.eventually.be.rejectedWith(FirebaseError, "Unknown Error");
+      expect(nock.isDone()).to.be.true;
     });
   });
 });

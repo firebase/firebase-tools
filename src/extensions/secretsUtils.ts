@@ -2,19 +2,20 @@ import { getProjectNumber } from "../getProjectNumber";
 import * as utils from "../utils";
 import { ensure } from "../ensureApiEnabled";
 import { needProjectId } from "../projectUtils";
-import * as extensionsApi from "./extensionsApi";
+import { ExtensionInstance, ExtensionSpec, ParamType } from "./types";
 import * as secretManagerApi from "../gcp/secretManager";
 import { logger } from "../logger";
 
 export const SECRET_LABEL = "firebase-extensions-managed";
+export const SECRET_ROLE = "secretmanager.secretAccessor";
 
 export async function ensureSecretManagerApiEnabled(options: any): Promise<void> {
   const projectId = needProjectId(options);
   return await ensure(projectId, "secretmanager.googleapis.com", "extensions", options.markdown);
 }
 
-export function usesSecrets(spec: extensionsApi.ExtensionSpec): boolean {
-  return spec.params && !!spec.params.find((p) => p.type === extensionsApi.ParamType.SECRET);
+export function usesSecrets(spec: ExtensionSpec): boolean {
+  return spec.params && !!spec.params.find((p) => p.type === ParamType.SECRET);
 }
 
 export async function grantFirexServiceAgentSecretAdminRole(
@@ -30,9 +31,7 @@ export async function grantFirexServiceAgentSecretAdminRole(
   return secretManagerApi.ensureServiceAgentRole(secret, [saEmail], "roles/secretmanager.admin");
 }
 
-export async function getManagedSecrets(
-  instance: extensionsApi.ExtensionInstance
-): Promise<string[]> {
+export async function getManagedSecrets(instance: ExtensionInstance): Promise<string[]> {
   return (
     await Promise.all(
       getActiveSecrets(instance.config.source.spec, instance.config.params).map(
@@ -49,12 +48,9 @@ export async function getManagedSecrets(
   ).filter((secretId) => !!secretId);
 }
 
-export function getActiveSecrets(
-  spec: extensionsApi.ExtensionSpec,
-  params: Record<string, string>
-): string[] {
+export function getActiveSecrets(spec: ExtensionSpec, params: Record<string, string>): string[] {
   return spec.params
-    .map((p) => (p.type === extensionsApi.ParamType.SECRET ? params[p.param] : ""))
+    .map((p) => (p.type === ParamType.SECRET ? params[p.param] : ""))
     .filter((pv) => !!pv);
 }
 

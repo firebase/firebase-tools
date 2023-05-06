@@ -1,20 +1,20 @@
 import * as path from "path";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as fs from "fs-extra";
 
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
-import * as extensionsApi from "./extensionsApi";
-import {
-  getFirebaseProjectParams,
-  populateDefaultParams,
-  substituteParams,
-  validateCommandLineParams,
-} from "./extensionsHelper";
+import { ExtensionInstance, ExtensionSpec, Param } from "./types";
+import { getFirebaseProjectParams, substituteParams } from "./extensionsHelper";
 import * as askUserForParam from "./askUserForParam";
 import { track } from "../track";
 import * as env from "../functions/env";
 import { cloneDeep } from "../utils";
+
+const NONINTERACTIVE_ERROR_MESSAGE =
+  "As of firebase-tools@11, `ext:install`, `ext:update` and `ext:configure` are interactive only commands. " +
+  "To deploy an extension noninteractively, use an extensions manifest and `firebase deploy --only extensions`.  " +
+  "See https://firebase.google.com/docs/extensions/manifest for more details";
 
 /**
  * Interface for holding different param values for different environments/configs.
@@ -61,10 +61,7 @@ export function buildBindingOptionsWithBaseValue(baseParams: { [key: string]: st
  * @param params A list of params
  * @param newDefaults a map of { PARAM_NAME: default_value }
  */
-export function setNewDefaults(
-  params: extensionsApi.Param[],
-  newDefaults: { [key: string]: string }
-): extensionsApi.Param[] {
+export function setNewDefaults(params: Param[], newDefaults: { [key: string]: string }): Param[] {
   params.forEach((param) => {
     if (newDefaults[param.param.toUpperCase()]) {
       param.default = newDefaults[param.param.toUpperCase()];
@@ -78,16 +75,15 @@ export function setNewDefaults(
  * @param extensionInstance the extension instance to change the default params of
  */
 export function getParamsWithCurrentValuesAsDefaults(
-  extensionInstance: extensionsApi.ExtensionInstance
-): extensionsApi.Param[] {
+  extensionInstance: ExtensionInstance
+): Param[] {
   const specParams = cloneDeep(extensionInstance?.config?.source?.spec?.params || []);
   const currentParams = cloneDeep(extensionInstance?.config?.params || {});
   return setNewDefaults(specParams, currentParams);
 }
 
 /**
- * Gets params from the user, either by
- * reading the env file passed in the --params command line option
+ * Gets params from the user
  * or prompting the user for each param.
  * @param projectId the id of the project in use
  * @param paramSpecs a list of params, ie. extensionSpec.params
@@ -97,29 +93,14 @@ export function getParamsWithCurrentValuesAsDefaults(
 export async function getParams(args: {
   projectId?: string;
   instanceId: string;
-  paramSpecs: extensionsApi.Param[];
+  paramSpecs: Param[];
   nonInteractive?: boolean;
   paramsEnvPath?: string;
   reconfiguring?: boolean;
 }): Promise<Record<string, ParamBindingOptions>> {
   let params: Record<string, ParamBindingOptions>;
-  if (args.nonInteractive && !args.paramsEnvPath) {
-    const paramsMessage = args.paramSpecs
-      .map((p) => {
-        return `\t${p.param}${p.required ? "" : " (Optional)"}`;
-      })
-      .join("\n");
-    throw new FirebaseError(
-      "In non-interactive mode but no `--params` flag found. " +
-        "To install this extension in non-interactive mode, set `--params` to a path to an .env file" +
-        " containing values for this extension's params:\n" +
-        paramsMessage
-    );
-  } else if (args.paramsEnvPath) {
-    params = getParamsFromFile({
-      paramSpecs: args.paramSpecs,
-      paramsEnvPath: args.paramsEnvPath,
-    });
+  if (args.nonInteractive) {
+    throw new FirebaseError(NONINTERACTIVE_ERROR_MESSAGE);
   } else {
     const firebaseProjectParams = await getFirebaseProjectParams(args.projectId);
     params = await askUserForParam.ask({
@@ -136,8 +117,8 @@ export async function getParams(args: {
 }
 
 export async function getParamsForUpdate(args: {
-  spec: extensionsApi.ExtensionSpec;
-  newSpec: extensionsApi.ExtensionSpec;
+  spec: ExtensionSpec;
+  newSpec: ExtensionSpec;
   currentParams: { [option: string]: string };
   projectId?: string;
   paramsEnvPath?: string;
@@ -145,23 +126,8 @@ export async function getParamsForUpdate(args: {
   instanceId: string;
 }): Promise<Record<string, ParamBindingOptions>> {
   let params: Record<string, ParamBindingOptions>;
-  if (args.nonInteractive && !args.paramsEnvPath) {
-    const paramsMessage = args.newSpec.params
-      .map((p) => {
-        return `\t${p.param}${p.required ? "" : " (Optional)"}`;
-      })
-      .join("\n");
-    throw new FirebaseError(
-      "In non-interactive mode but no `--params` flag found. " +
-        "To update this extension in non-interactive mode, set `--params` to a path to an .env file" +
-        " containing values for this extension's params:\n" +
-        paramsMessage
-    );
-  } else if (args.paramsEnvPath) {
-    params = getParamsFromFile({
-      paramSpecs: args.newSpec.params,
-      paramsEnvPath: args.paramsEnvPath,
-    });
+  if (args.nonInteractive) {
+    throw new FirebaseError(NONINTERACTIVE_ERROR_MESSAGE);
   } else {
     params = await promptForNewParams({
       spec: args.spec,
@@ -185,8 +151,8 @@ export async function getParamsForUpdate(args: {
  * @param currentParams A set of current params and their values
  */
 export async function promptForNewParams(args: {
-  spec: extensionsApi.ExtensionSpec;
-  newSpec: extensionsApi.ExtensionSpec;
+  spec: ExtensionSpec;
+  newSpec: ExtensionSpec;
   currentParams: { [option: string]: string };
   projectId?: string;
   instanceId: string;
@@ -194,13 +160,10 @@ export async function promptForNewParams(args: {
   const newParamBindingOptions = buildBindingOptionsWithBaseValue(args.currentParams);
 
   const firebaseProjectParams = await getFirebaseProjectParams(args.projectId);
-  const sameParam = (param1: extensionsApi.Param) => (param2: extensionsApi.Param) => {
+  const sameParam = (param1: Param) => (param2: Param) => {
     return param1.type === param2.type && param1.param === param2.param;
   };
-  const paramDiff = (
-    left: extensionsApi.Param[],
-    right: extensionsApi.Param[]
-  ): extensionsApi.Param[] => {
+  const paramDiff = (left: Param[], right: Param[]): Param[] => {
     return left.filter((aLeft) => !right.find(sameParam(aLeft)));
   };
 
@@ -210,16 +173,10 @@ export async function promptForNewParams(args: {
   );
 
   let paramsDiffDeletions = paramDiff(oldParams, args.newSpec.params);
-  paramsDiffDeletions = substituteParams<extensionsApi.Param[]>(
-    paramsDiffDeletions,
-    firebaseProjectParams
-  );
+  paramsDiffDeletions = substituteParams<Param[]>(paramsDiffDeletions, firebaseProjectParams);
 
   let paramsDiffAdditions = paramDiff(args.newSpec.params, oldParams);
-  paramsDiffAdditions = substituteParams<extensionsApi.Param[]>(
-    paramsDiffAdditions,
-    firebaseProjectParams
-  );
+  paramsDiffAdditions = substituteParams<Param[]>(paramsDiffAdditions, firebaseProjectParams);
 
   if (paramsDiffDeletions.length) {
     logger.info("The following params will no longer be used:");
@@ -244,25 +201,6 @@ export async function promptForNewParams(args: {
   return newParamBindingOptions;
 }
 
-function getParamsFromFile(args: {
-  paramSpecs: extensionsApi.Param[];
-  paramsEnvPath: string;
-}): Record<string, ParamBindingOptions> {
-  let envParams;
-  try {
-    envParams = readEnvFile(args.paramsEnvPath);
-    void track("Extension Env File", "Present");
-  } catch (err: any) {
-    void track("Extension Env File", "Invalid");
-    throw new FirebaseError(`Error reading env file: ${err.message}\n`, { original: err });
-  }
-  const params = populateDefaultParams(envParams, args.paramSpecs);
-  validateCommandLineParams(params, args.paramSpecs);
-  logger.info(`Using param values from ${args.paramsEnvPath}`);
-
-  return buildBindingOptionsWithBaseValue(params);
-}
-
 export function readEnvFile(envPath: string): Record<string, string> {
   const buf = fs.readFileSync(path.resolve(envPath), "utf8");
   const result = env.parse(buf.toString().trim());
@@ -274,4 +212,9 @@ export function readEnvFile(envPath: string): Record<string, string> {
     );
   }
   return result.envs;
+}
+
+export function isSystemParam(paramName: string): boolean {
+  const regex = /^firebaseextensions\.[a-zA-Z0-9\.]*\//;
+  return regex.test(paramName);
 }

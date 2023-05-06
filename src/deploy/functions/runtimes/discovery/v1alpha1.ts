@@ -1,8 +1,11 @@
-import * as backend from "../../backend";
+import * as build from "../../build";
+import * as params from "../../params";
 import * as runtimes from "..";
-import { copyIfPresent, renameIfPresent } from "../../../../gcp/proto";
+
+import { copyIfPresent, convertIfPresent, secondsFromDuration } from "../../../../gcp/proto";
 import { assertKeyTypes, requireKeys } from "./parsing";
 import { FirebaseError } from "../../../../error";
+import { nullsafeVisitor } from "../../../../functional";
 
 const CHANNEL_NAME_REGEX = new RegExp(
   "(projects\\/" +
@@ -13,52 +16,96 @@ const CHANNEL_NAME_REGEX = new RegExp(
     "(?<channel>[A-Za-z\\d\\-_]+)"
 );
 
-export type ManifestEndpoint = backend.ServiceConfiguration &
-  backend.Triggered &
-  Partial<backend.HttpsTriggered> &
-  Partial<backend.CallableTriggered> &
-  Partial<backend.EventTriggered> &
-  Partial<backend.TaskQueueTriggered> &
-  Partial<backend.BlockingTriggered> &
-  Partial<backend.ScheduleTriggered> & {
-    region?: string[];
-    entryPoint: string;
-    platform?: backend.FunctionsPlatform;
-  };
-
-export interface Manifest {
-  specVersion: string;
-  requiredAPIs?: backend.RequiredAPI[];
-  endpoints: Record<string, ManifestEndpoint>;
+export interface ManifestSecretEnv {
+  key: string;
+  secret?: string;
+  projectId?: string;
 }
 
-/** Returns a Backend from a v1alpha1 Manifest. */
-export function backendFromV1Alpha1(
+// Note: v1 schedule functions use *Duration instead of *Seconds
+// so this version of the API must allow these three retryConfig fields.
+type WireScheduleTrigger = build.ScheduleTrigger & {
+  retryConfig?: {
+    maxRetryDuration?: string | null;
+    minBackoffDuration?: string | null;
+    maxBackoffDuration?: string | null;
+  } | null;
+};
+// Note: v1 event trigger allowed users to specify "serviceAccountEmail"
+// which has been changed for the same reasons as in the main endpoint.
+type WireEventTrigger = build.EventTrigger & {
+  serviceAccountEmail?: string | null;
+};
+
+export type WireEndpoint = build.Triggered &
+  Partial<build.HttpsTriggered> &
+  Partial<build.CallableTriggered> &
+  Partial<{ eventTrigger: WireEventTrigger }> &
+  Partial<build.TaskQueueTriggered> &
+  Partial<build.BlockingTriggered> &
+  Partial<{ scheduleTrigger: WireScheduleTrigger }> & {
+    omit?: build.Field<boolean>;
+    labels?: Record<string, string> | null;
+    environmentVariables?: Record<string, string> | null;
+    availableMemoryMb?: build.MemoryOption | build.Expression<number> | null;
+    concurrency?: build.Field<number>;
+    cpu?: number | "gcf_gen1" | null;
+    timeoutSeconds?: build.Field<number>;
+    maxInstances?: build.Field<number>;
+    minInstances?: build.Field<number>;
+    vpc?: {
+      connector: string;
+      egressSettings?: build.VpcEgressSetting | null;
+    } | null;
+    ingressSettings?: build.IngressSetting | null;
+    serviceAccount?: string | null;
+    // Note: Historically we used "serviceAccountEmail" to refer to a thing that
+    // might not be an email (e.g. it might be "myAccount@"" to be project-relative)
+    // We now use "serviceAccount" but maintain backwards compatability in the
+    // wire format for the time being.
+    serviceAccountEmail?: string | null;
+    region?: build.ListField;
+    entryPoint: string;
+    platform?: build.FunctionsPlatform;
+    secretEnvironmentVariables?: Array<ManifestSecretEnv> | null;
+  };
+
+export interface WireManifest {
+  specVersion: string;
+  params?: params.Param[];
+  requiredAPIs?: build.RequiredApi[];
+  endpoints: Record<string, WireEndpoint>;
+}
+
+/** Returns a Build from a v1alpha1 Manifest. */
+export function buildFromV1Alpha1(
   yaml: unknown,
   project: string,
   region: string,
   runtime: runtimes.Runtime
-): backend.Backend {
-  const manifest = JSON.parse(JSON.stringify(yaml)) as Manifest;
-  const bkend: backend.Backend = backend.empty();
-  bkend.requiredAPIs = parseRequiredAPIs(manifest);
+): build.Build {
+  const manifest = JSON.parse(JSON.stringify(yaml)) as WireManifest;
   requireKeys("", manifest, "endpoints");
   assertKeyTypes("", manifest, {
     specVersion: "string",
+    params: "array",
     requiredAPIs: "array",
     endpoints: "object",
   });
+  const bd: build.Build = build.empty();
+  bd.params = manifest.params || [];
+  bd.requiredAPIs = parseRequiredAPIs(manifest);
   for (const id of Object.keys(manifest.endpoints)) {
-    for (const parsed of parseEndpoints(manifest, id, project, region, runtime)) {
-      bkend.endpoints[parsed.region] = bkend.endpoints[parsed.region] || {};
-      bkend.endpoints[parsed.region][parsed.id] = parsed;
-    }
+    const me: WireEndpoint = manifest.endpoints[id];
+    assertBuildEndpoint(me, id);
+    const be: build.Endpoint = parseEndpointForBuild(id, me, project, region, runtime);
+    bd.endpoints[id] = be;
   }
-  return bkend;
+  return bd;
 }
 
-function parseRequiredAPIs(manifest: Manifest): backend.RequiredAPI[] {
-  const requiredAPIs: backend.RequiredAPI[] = manifest.requiredAPIs || [];
+function parseRequiredAPIs(manifest: WireManifest): build.RequiredApi[] {
+  const requiredAPIs: build.RequiredApi[] = manifest.requiredAPIs || [];
   for (const { api, reason } of requiredAPIs) {
     if (typeof api !== "string") {
       throw new FirebaseError(`Invalid api "${JSON.stringify(api)}. Expected string`);
@@ -72,44 +119,37 @@ function parseRequiredAPIs(manifest: Manifest): backend.RequiredAPI[] {
   return requiredAPIs;
 }
 
-function parseEndpoints(
-  manifest: Manifest,
-  id: string,
-  project: string,
-  defaultRegion: string,
-  runtime: runtimes.Runtime
-): backend.Endpoint[] {
-  const allParsed: backend.Endpoint[] = [];
+function assertBuildEndpoint(ep: WireEndpoint, id: string): void {
   const prefix = `endpoints[${id}]`;
-  const ep = manifest.endpoints[id];
-
   assertKeyTypes(prefix, ep, {
-    region: "array",
-    platform: (platform) => backend.AllFunctionsPlatforms.includes(platform),
+    region: "List",
+    platform: (platform) => build.AllFunctionsPlatforms.includes(platform),
     entryPoint: "string",
-    availableMemoryMb: (mem) => backend.AllMemoryOptions.includes(mem),
-    maxInstances: "number",
-    minInstances: "number",
-    concurrency: "number",
-    serviceAccountEmail: "string",
-    timeoutSeconds: "number",
-    vpc: "object",
-    labels: "object",
-    ingressSettings: (setting) => backend.AllIngressSettings.includes(setting),
-    environmentVariables: "object",
-    secretEnvironmentVariables: "array",
+    omit: "Field<boolean>?",
+    availableMemoryMb: (mem) => mem === null || isCEL(mem) || build.isValidMemoryOption(mem),
+    maxInstances: "Field<number>?",
+    minInstances: "Field<number>?",
+    concurrency: "Field<number>?",
+    serviceAccount: "string?",
+    serviceAccountEmail: "string?",
+    timeoutSeconds: "Field<number>?",
+    vpc: "object?",
+    labels: "object?",
+    ingressSettings: (setting) => setting === null || build.AllIngressSettings.includes(setting),
+    environmentVariables: "object?",
+    secretEnvironmentVariables: "array?",
     httpsTrigger: "object",
     callableTrigger: "object",
     eventTrigger: "object",
     scheduleTrigger: "object",
     taskQueueTrigger: "object",
     blockingTrigger: "object",
-    cpu: (cpu: backend.Endpoint["cpu"]) => typeof cpu === "number" || cpu === "gcf_gen1",
+    cpu: (cpu) => cpu === null || isCEL(cpu) || cpu === "gcf_gen1" || typeof cpu === "number",
   });
   if (ep.vpc) {
     assertKeyTypes(prefix + ".vpc", ep.vpc, {
       connector: "string",
-      egressSettings: (setting) => backend.AllVpcEgressSettings.includes(setting),
+      egressSettings: (setting) => setting === null || build.AllVpcEgressSettings.includes(setting),
     });
     requireKeys(prefix + ".vpc", ep.vpc, "connector");
   }
@@ -138,115 +178,247 @@ function parseEndpoints(
   if (triggerCount > 1) {
     throw new FirebaseError("Multiple triggers defined for endpoint" + id);
   }
-  for (const region of ep.region || [defaultRegion]) {
-    let triggered: backend.Triggered;
-    if (backend.isEventTriggered(ep)) {
-      requireKeys(prefix + ".eventTrigger", ep.eventTrigger, "eventType", "eventFilters");
-      assertKeyTypes(prefix + ".eventTrigger", ep.eventTrigger, {
-        eventFilters: "object",
-        eventFilterPathPatterns: "object",
-        eventType: "string",
-        retry: "boolean",
-        region: "string",
-        serviceAccountEmail: "string",
-        channel: "string",
-      });
-      triggered = { eventTrigger: ep.eventTrigger };
-      renameIfPresent(triggered.eventTrigger, ep.eventTrigger, "channel", "channel", (c) =>
-        resolveChannelName(project, c, defaultRegion)
-      );
-      for (const [k, v] of Object.entries(triggered.eventTrigger.eventFilters)) {
-        if (k === "topic" && !v.startsWith("projects/")) {
-          // Construct full pubsub topic name.
-          triggered.eventTrigger.eventFilters[k] = `projects/${project}/topics/${v}`;
-        }
-      }
-    } else if (backend.isHttpsTriggered(ep)) {
-      assertKeyTypes(prefix + ".httpsTrigger", ep.httpsTrigger, {
-        invoker: "array",
-      });
-      triggered = { httpsTrigger: {} };
-      copyIfPresent(triggered.httpsTrigger, ep.httpsTrigger, "invoker");
-    } else if (backend.isCallableTriggered(ep)) {
-      triggered = { callableTrigger: {} };
-    } else if (backend.isScheduleTriggered(ep)) {
-      assertKeyTypes(prefix + ".scheduleTrigger", ep.scheduleTrigger, {
-        schedule: "string",
-        timeZone: "string",
-        retryConfig: "object",
-      });
+  if (build.isEventTriggered(ep)) {
+    requireKeys(prefix + ".eventTrigger", ep.eventTrigger, "eventType", "eventFilters");
+    assertKeyTypes(prefix + ".eventTrigger", ep.eventTrigger, {
+      eventFilters: "object",
+      eventFilterPathPatterns: "object",
+      eventType: "string",
+      retry: "Field<boolean>",
+      region: "Field<string>",
+      serviceAccount: "string?",
+      serviceAccountEmail: "string?",
+      channel: "string",
+    });
+  } else if (build.isHttpsTriggered(ep)) {
+    assertKeyTypes(prefix + ".httpsTrigger", ep.httpsTrigger, {
+      invoker: "array?",
+    });
+  } else if (build.isCallableTriggered(ep)) {
+    // no-op
+  } else if (build.isScheduleTriggered(ep)) {
+    assertKeyTypes(prefix + ".scheduleTrigger", ep.scheduleTrigger, {
+      schedule: "Field<string>",
+      timeZone: "Field<string>?",
+      retryConfig: "object?",
+    });
+    if (ep.scheduleTrigger.retryConfig) {
       assertKeyTypes(prefix + ".scheduleTrigger.retryConfig", ep.scheduleTrigger.retryConfig, {
-        retryCount: "number",
-        maxDoublings: "number",
-        minBackoffDuration: "string",
-        maxBackoffDuration: "string",
-        maxRetryDuration: "string",
+        retryCount: "Field<number>?",
+        maxDoublings: "Field<number>?",
+        minBackoffSeconds: "Field<number>?",
+        maxBackoffSeconds: "Field<number>?",
+        maxRetrySeconds: "Field<number>?",
+        // The "duration" key types are supported for legacy compability reasons only.
+        // They are not parametized and are automatically converted by the parser to seconds.
+        maxRetryDuration: "string?",
+        minBackoffDuration: "string?",
+        maxBackoffDuration: "string?",
       });
-      triggered = { scheduleTrigger: ep.scheduleTrigger };
-    } else if (backend.isTaskQueueTriggered(ep)) {
-      assertKeyTypes(prefix + ".taskQueueTrigger", ep.taskQueueTrigger, {
-        rateLimits: "object",
-        retryConfig: "object",
-        invoker: "array",
-      });
-      if (ep.taskQueueTrigger.rateLimits) {
-        assertKeyTypes(prefix + ".taskQueueTrigger.rateLimits", ep.taskQueueTrigger.rateLimits, {
-          maxConcurrentDispatches: "number",
-          maxDispatchesPerSecond: "number",
-        });
-      }
-      if (ep.taskQueueTrigger.retryConfig) {
-        assertKeyTypes(prefix + ".taskQueueTrigger.retryConfig", ep.taskQueueTrigger.retryConfig, {
-          maxAttempts: "number",
-          maxRetrySeconds: "number",
-          minBackoffSeconds: "number",
-          maxBackoffSeconds: "number",
-          maxDoublings: "number",
-        });
-      }
-      triggered = { taskQueueTrigger: ep.taskQueueTrigger };
-    } else if (backend.isBlockingTriggered(ep)) {
-      requireKeys(prefix + ".blockingTrigger", ep.blockingTrigger, "eventType");
-      assertKeyTypes(prefix + ".blockingTrigger", ep.blockingTrigger, {
-        eventType: "string",
-        options: "object",
-      });
-      triggered = { blockingTrigger: ep.blockingTrigger };
-    } else {
-      throw new FirebaseError(
-        `Do not recognize trigger type for endpoint ${id}. Try upgrading ` +
-          "firebase-tools with npm install -g firebase-tools@latest"
-      );
     }
-
-    requireKeys(prefix, ep, "entryPoint");
-    const parsed: backend.Endpoint = {
-      platform: ep.platform || "gcfv2",
-      id,
-      region,
-      project,
-      runtime,
-      entryPoint: ep.entryPoint,
-      ...triggered,
-    };
-    copyIfPresent(
-      parsed,
-      ep,
-      "availableMemoryMb",
-      "maxInstances",
-      "minInstances",
-      "concurrency",
-      "serviceAccountEmail",
-      "timeoutSeconds",
-      "vpc",
-      "labels",
-      "ingressSettings",
-      "environmentVariables"
+  } else if (build.isTaskQueueTriggered(ep)) {
+    assertKeyTypes(prefix + ".taskQueueTrigger", ep.taskQueueTrigger, {
+      rateLimits: "object?",
+      retryConfig: "object?",
+      invoker: "array?",
+    });
+    if (ep.taskQueueTrigger.rateLimits) {
+      assertKeyTypes(prefix + ".taskQueueTrigger.rateLimits", ep.taskQueueTrigger.rateLimits, {
+        maxConcurrentDispatches: "Field<number>?",
+        maxDispatchesPerSecond: "Field<number>?",
+      });
+    }
+    if (ep.taskQueueTrigger.retryConfig) {
+      assertKeyTypes(prefix + ".taskQueueTrigger.retryConfig", ep.taskQueueTrigger.retryConfig, {
+        maxAttempts: "Field<number>?",
+        maxRetrySeconds: "Field<number>?",
+        minBackoffSeconds: "Field<number>?",
+        maxBackoffSeconds: "Field<number>?",
+        maxDoublings: "Field<number>?",
+      });
+    }
+  } else if (build.isBlockingTriggered(ep)) {
+    requireKeys(prefix + ".blockingTrigger", ep.blockingTrigger, "eventType");
+    assertKeyTypes(prefix + ".blockingTrigger", ep.blockingTrigger, {
+      eventType: "string",
+      options: "object",
+    });
+  } else {
+    throw new FirebaseError(
+      `Do not recognize trigger type for endpoint ${id}. Try upgrading ` +
+        "firebase-tools with npm install -g firebase-tools@latest"
     );
-    allParsed.push(parsed);
+  }
+}
+
+function parseEndpointForBuild(
+  id: string,
+  ep: WireEndpoint,
+  project: string,
+  defaultRegion: string,
+  runtime: runtimes.Runtime
+): build.Endpoint {
+  let triggered: build.Triggered;
+  if (build.isEventTriggered(ep)) {
+    const eventTrigger: build.EventTrigger = {
+      eventType: ep.eventTrigger.eventType,
+      retry: ep.eventTrigger.retry,
+    };
+    // Allow serviceAccountEmail but prefer serviceAccount
+    if ("serviceAccountEmail" in (ep.eventTrigger as any)) {
+      eventTrigger.serviceAccount = (ep.eventTrigger as any).serviceAccountEmail;
+    }
+    copyIfPresent(
+      eventTrigger,
+      ep.eventTrigger,
+      "serviceAccount",
+      "eventFilterPathPatterns",
+      "region"
+    );
+    convertIfPresent(eventTrigger, ep.eventTrigger, "channel", (c) =>
+      resolveChannelName(project, c, defaultRegion)
+    );
+    convertIfPresent(eventTrigger, ep.eventTrigger, "eventFilters", (filters) => {
+      const copy = { ...filters };
+      if (copy["topic"] && !copy["topic"].startsWith("projects/")) {
+        copy["topic"] = `projects/${project}/topics/${copy["topic"]}`;
+      }
+      return copy;
+    });
+    triggered = { eventTrigger };
+  } else if (build.isHttpsTriggered(ep)) {
+    triggered = { httpsTrigger: {} };
+    copyIfPresent(triggered.httpsTrigger, ep.httpsTrigger, "invoker");
+  } else if (build.isCallableTriggered(ep)) {
+    triggered = { callableTrigger: {} };
+  } else if (build.isScheduleTriggered(ep)) {
+    const st: build.ScheduleTrigger = {
+      // TODO: consider adding validation for fields like this that reject
+      // invalid values before actually modifying prod.
+      schedule: ep.scheduleTrigger.schedule || "",
+      timeZone: ep.scheduleTrigger.timeZone ?? null,
+    };
+    if (ep.scheduleTrigger.retryConfig) {
+      st.retryConfig = {};
+      convertIfPresent(
+        st.retryConfig,
+        ep.scheduleTrigger.retryConfig,
+        "maxBackoffSeconds",
+        "maxBackoffDuration",
+        (duration) => (duration === null ? null : secondsFromDuration(duration))
+      );
+      convertIfPresent(
+        st.retryConfig,
+        ep.scheduleTrigger.retryConfig,
+        "minBackoffSeconds",
+        "minBackoffDuration",
+        (duration) => (duration === null ? null : secondsFromDuration(duration))
+      );
+      convertIfPresent(
+        st.retryConfig,
+        ep.scheduleTrigger.retryConfig,
+        "maxRetrySeconds",
+        "maxRetryDuration",
+        (duration) => (duration === null ? null : secondsFromDuration(duration))
+      );
+      copyIfPresent(
+        st.retryConfig,
+        ep.scheduleTrigger.retryConfig,
+        "retryCount",
+        "minBackoffSeconds",
+        "maxBackoffSeconds",
+        "maxRetrySeconds",
+        "maxDoublings"
+      );
+      convertIfPresent(
+        st.retryConfig,
+        ep.scheduleTrigger.retryConfig,
+        "minBackoffSeconds",
+        "minBackoffDuration",
+        nullsafeVisitor(secondsFromDuration)
+      );
+      convertIfPresent(
+        st.retryConfig,
+        ep.scheduleTrigger.retryConfig,
+        "maxBackoffSeconds",
+        "maxBackoffDuration",
+        nullsafeVisitor(secondsFromDuration)
+      );
+      convertIfPresent(
+        st.retryConfig,
+        ep.scheduleTrigger.retryConfig,
+        "maxRetrySeconds",
+        "maxRetryDuration",
+        nullsafeVisitor(secondsFromDuration)
+      );
+    } else if (ep.scheduleTrigger.retryConfig === null) {
+      st.retryConfig = null;
+    }
+    triggered = { scheduleTrigger: st };
+  } else if (build.isTaskQueueTriggered(ep)) {
+    const tq: build.TaskQueueTrigger = {};
+    if (ep.taskQueueTrigger.invoker) {
+      tq.invoker = ep.taskQueueTrigger.invoker;
+    } else if (ep.taskQueueTrigger.invoker === null) {
+      tq.invoker = null;
+    }
+    if (ep.taskQueueTrigger.retryConfig) {
+      tq.retryConfig = { ...ep.taskQueueTrigger.retryConfig };
+    } else if (ep.taskQueueTrigger.retryConfig === null) {
+      tq.retryConfig = null;
+    }
+    if (ep.taskQueueTrigger.rateLimits) {
+      tq.rateLimits = { ...ep.taskQueueTrigger.rateLimits };
+    } else if (ep.taskQueueTrigger.rateLimits === null) {
+      tq.rateLimits = null;
+    }
+    triggered = { taskQueueTrigger: tq };
+  } else if (ep.blockingTrigger) {
+    triggered = { blockingTrigger: ep.blockingTrigger };
+  } else {
+    throw new FirebaseError(
+      `Do not recognize trigger type for endpoint ${id}. Try upgrading ` +
+        "firebase-tools with npm install -g firebase-tools@latest"
+    );
   }
 
-  return allParsed;
+  const parsed: build.Endpoint = {
+    platform: ep.platform || "gcfv2",
+    region: ep.region || [defaultRegion],
+    project,
+    runtime,
+    entryPoint: ep.entryPoint,
+    ...triggered,
+  };
+  // Allow "serviceAccountEmail" but prefer "serviceAccount"
+  if ("serviceAccountEmail" in (ep as any)) {
+    parsed.serviceAccount = (ep as any).serviceAccountEmail;
+  }
+  copyIfPresent(
+    parsed,
+    ep,
+    "omit",
+    "availableMemoryMb",
+    "cpu",
+    "maxInstances",
+    "minInstances",
+    "concurrency",
+    "timeoutSeconds",
+    "vpc",
+    "labels",
+    "ingressSettings",
+    "environmentVariables",
+    "serviceAccount"
+  );
+  convertIfPresent(parsed, ep, "secretEnvironmentVariables", (senvs) => {
+    if (!senvs) {
+      return null;
+    }
+    return senvs.map(({ key, secret }) => {
+      return { key, secret: secret || key, projectId: project } as build.SecretEnvVar;
+    });
+  });
+  return parsed;
 }
 
 function resolveChannelName(projectId: string, channel: string, defaultRegion: string): string {
@@ -267,4 +439,8 @@ function resolveChannelName(projectId: string, channel: string, defaultRegion: s
   } else {
     return "projects/" + projectId + "/locations/" + location + "/channels/" + channelId;
   }
+}
+
+function isCEL(expr: any) {
+  return typeof expr === "string" && expr.includes("{{") && expr.includes("}}");
 }

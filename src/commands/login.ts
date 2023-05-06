@@ -1,5 +1,5 @@
 import * as _ from "lodash";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
 import { Command } from "../command";
 import { logger } from "../logger";
@@ -10,8 +10,9 @@ import { promptOnce } from "../prompt";
 
 import * as auth from "../auth";
 import { isCloudEnvironment } from "../utils";
+import { User, Tokens } from "../types/auth";
 
-module.exports = new Command("login")
+export const command = new Command("login")
   .description("log the CLI into Firebase")
   .option("--no-localhost", "login from a device without an accessible localhost")
   .option("--reauth", "force reauthentication even if already logged in")
@@ -25,8 +26,8 @@ module.exports = new Command("login")
       );
     }
 
-    const user = options.user as auth.User | undefined;
-    const tokens = options.tokens as auth.Tokens | undefined;
+    const user = options.user as User | undefined;
+    const tokens = options.tokens as Tokens | undefined;
 
     if (user && tokens && !options.reauth) {
       logger.info("Already logged in as", clc.bold(user.email));
@@ -35,12 +36,13 @@ module.exports = new Command("login")
 
     if (!options.reauth) {
       utils.logBullet(
-        "Firebase optionally collects CLI usage and error reporting information to help improve our products. Data is collected in accordance with Google's privacy policy (https://policies.google.com/privacy) and is not used to identify you.\n"
+        "Firebase optionally collects CLI and Emulator Suite usage and error reporting information to help improve our products. Data is collected in accordance with Google's privacy policy (https://policies.google.com/privacy) and is not used to identify you.\n"
       );
       const collectUsage = await promptOnce({
         type: "confirm",
         name: "collectUsage",
-        message: "Allow Firebase to collect CLI usage and error reporting information?",
+        message:
+          "Allow Firebase to collect CLI and Emulator Suite usage and error reporting information?",
       });
       configstore.set("usage", collectUsage);
       if (collectUsage) {

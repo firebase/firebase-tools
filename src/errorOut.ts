@@ -1,4 +1,4 @@
-import logError = require("./logError");
+import { logError } from "./logError";
 import { FirebaseError } from "./error";
 
 /**

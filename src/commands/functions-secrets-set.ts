@@ -1,21 +1,21 @@
 import * as tty from "tty";
 import * as fs from "fs";
 
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
-import { ensureValidKey, ensureSecret, pruneAndDestroySecrets } from "../functions/secrets";
+import { ensureValidKey, ensureSecret } from "../functions/secrets";
 import { Command } from "../command";
 import { requirePermissions } from "../requirePermissions";
 import { Options } from "../options";
 import { promptOnce } from "../prompt";
-import { logBullet, logSuccess, logWarning } from "../utils";
+import { logBullet, logSuccess } from "../utils";
 import { needProjectId, needProjectNumber } from "../projectUtils";
 import { addVersion, toSecretVersionResourceName } from "../gcp/secretManager";
 import * as secrets from "../functions/secrets";
 import * as backend from "../deploy/functions/backend";
 import * as args from "../deploy/functions/args";
 
-export default new Command("functions:secrets:set <KEY>")
+export const command = new Command("functions:secrets:set <KEY>")
   .description("Create or update a secret for use in Cloud Functions for Firebase.")
   .withForce("Automatically updates functions to use the new secret.")
   .before(requirePermissions, [
@@ -103,25 +103,5 @@ export default new Command("functions:secrets:set <KEY>")
       logBullet(`Updated function ${e.id}(${e.region}).`);
       return updated;
     });
-    const updatedEndpoints = await Promise.all(updateOps);
-
-    logBullet(`Pruning stale secrets...`);
-    const prunedResult = await pruneAndDestroySecrets(
-      { projectId, projectNumber },
-      updatedEndpoints
-    );
-    if (prunedResult.destroyed.length > 0) {
-      logBullet(
-        `Detroyed unused secret versions: ${prunedResult.destroyed
-          .map((s) => `${s.secret}@${s.version}`)
-          .join(", ")}`
-      );
-    }
-    if (prunedResult.erred.length > 0) {
-      logWarning(
-        `Failed to destroy unused secret versions:\n\t${prunedResult.erred
-          .map((err) => err.message)
-          .join("\n\t")}`
-      );
-    }
+    await Promise.all(updateOps);
   });

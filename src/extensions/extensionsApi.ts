@@ -1,8 +1,6 @@
 import * as yaml from "js-yaml";
-import * as _ from "lodash";
-import * as clc from "cli-color";
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
-const { marked } = require("marked");
+import * as clc from "colorette";
+import { marked } from "marked";
 
 import { Client } from "../apiv2";
 import { extensionsOrigin } from "../api";
@@ -10,193 +8,18 @@ import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import * as operationPoller from "../operation-poller";
 import * as refs from "./refs";
-import * as proto from "../gcp/proto";
-import { SpecParamType } from "./extensionsHelper";
-import { Runtime } from "../deploy/functions/runtimes";
-import { HttpsTriggered, EventTriggered } from "../deploy/functions/backend";
-import { StringifyOptions } from "querystring";
-
+import {
+  Extension,
+  ExtensionInstance,
+  ExtensionSource,
+  ExtensionSpec,
+  ExtensionVersion,
+  PublisherProfile,
+} from "./types";
 const VERSION = "v1beta";
 const PAGE_SIZE_MAX = 100;
 
 const apiClient = new Client({ urlPrefix: extensionsOrigin, apiVersion: VERSION });
-
-export enum RegistryLaunchStage {
-  EXPERIMENTAL = "EXPERIMENTAL",
-  BETA = "BETA",
-  GA = "GA",
-  DEPRECATED = "DEPRECATED",
-  REGISTRY_LAUNCH_STAGE_UNSPECIFIED = "REGISTRY_LAUNCH_STAGE_UNSPECIFIED",
-}
-
-export enum Visibility {
-  UNLISTED = "unlisted",
-  PUBLIC = "public",
-}
-
-export interface Extension {
-  name: string;
-  ref: string;
-  visibility: Visibility;
-  registryLaunchStage: RegistryLaunchStage;
-  createTime: string;
-  latestVersion?: string;
-  latestVersionCreateTime?: string;
-}
-
-export interface ExtensionVersion {
-  name: string;
-  ref: string;
-  state: "STATE_UNSPECIFIED" | "PUBLISHED" | "DEPRECATED";
-  spec: ExtensionSpec;
-  hash: string;
-  sourceDownloadUri: string;
-  releaseNotes?: string;
-  createTime?: string;
-  deprecationMessage?: string;
-}
-
-export interface PublisherProfile {
-  name: string;
-  publisherId: string;
-  registerTime: string;
-}
-
-export interface ExtensionInstance {
-  name: string;
-  createTime: string;
-  updateTime: string;
-  state: "STATE_UNSPECIFIED" | "DEPLOYING" | "UNINSTALLING" | "ACTIVE" | "ERRORED" | "PAUSED";
-  config: ExtensionConfig;
-  serviceAccountEmail: string;
-  errorStatus?: string;
-  lastOperationName?: string;
-  lastOperationType?: string;
-  extensionRef?: string;
-  extensionVersion?: string;
-}
-
-export interface ExtensionConfig {
-  name: string;
-  createTime: string;
-  source: ExtensionSource;
-  params: {
-    [key: string]: any;
-  };
-  populatedPostinstallContent?: string;
-  extensionRef?: string;
-  extensionVersion?: string;
-}
-
-export interface ExtensionSource {
-  state: "STATE_UNSPECIFIED" | "ACTIVE" | "DELETED";
-  name: string;
-  packageUri: string;
-  hash: string;
-  spec: ExtensionSpec;
-  extensionRoot?: string;
-  fetchTime?: string;
-  lastOperationName?: string;
-}
-
-export interface ExtensionSpec {
-  specVersion?: string;
-  name: string;
-  version: string;
-  displayName?: string;
-  description?: string;
-  apis?: Api[];
-  roles?: Role[];
-  resources: Resource[];
-  billingRequired?: boolean;
-  author?: Author;
-  contributors?: Author[];
-  license?: string;
-  releaseNotesUrl?: string;
-  sourceUrl: string;
-  params: Param[];
-  preinstallContent?: string;
-  postinstallContent?: string;
-  readmeContent?: string;
-  externalServices?: ExternalService[];
-}
-
-export interface ExternalService {
-  name: string;
-  pricingUri: string;
-}
-
-export interface Api {
-  apiName: string;
-  reason: string;
-}
-
-export interface Role {
-  role: string;
-  reason: string;
-}
-
-// Docs at https://firebase.google.com/docs/extensions/alpha/ref-extension-yaml
-export const FUNCTIONS_RESOURCE_TYPE = "firebaseextensions.v1beta.function";
-export interface FunctionResourceProperties {
-  type: typeof FUNCTIONS_RESOURCE_TYPE;
-  properties?: {
-    location?: string;
-    entryPoint?: string;
-    sourceDirectory?: string;
-    timeout?: proto.Duration;
-    availableMemoryMb?: number;
-    runtime?: Runtime;
-    httpsTrigger?: Record<string, never>;
-    eventTrigger?: {
-      eventType: string;
-      resource: string;
-      service?: string;
-    };
-  };
-}
-
-// Union of all valid property types so we can have a strongly typed "property"
-// field depending on the actual value of "type"
-type ResourceProperties = FunctionResourceProperties;
-
-export type Resource = ResourceProperties & {
-  name: string;
-  description?: string;
-  propertiesYaml?: string;
-  entryPoint?: string;
-};
-
-export interface Author {
-  authorName: string;
-  url?: string;
-}
-
-export interface Param {
-  param: string; // The key of the {param:value} pair.
-  label: string;
-  description?: string;
-  default?: string;
-  type?: ParamType | SpecParamType; // TODO(b/224618262): This is SpecParamType when publishing & ParamType when looking at API responses. Choose one.
-  options?: ParamOption[];
-  required?: boolean;
-  validationRegex?: string;
-  validationErrorMessage?: string;
-  immutable?: boolean;
-  example?: string;
-}
-
-export enum ParamType {
-  STRING = "STRING",
-  SELECT = "SELECT",
-  MULTISELECT = "MULTISELECT",
-  SECRET = "SECRET",
-}
-
-export interface ParamOption {
-  value: string;
-  label?: string;
-}
 
 /**
  * Create a new extension instance, given a extension source path or extension reference, a set of params, and a service account.
@@ -249,11 +72,17 @@ export async function createInstance(args: {
   instanceId: string;
   extensionSource?: ExtensionSource;
   extensionVersionRef?: string;
-  params: { [key: string]: string };
+  params: Record<string, string>;
+  systemParams?: Record<string, string>;
+  allowedEventTypes?: string[];
+  eventarcChannel?: string;
   validateOnly?: boolean;
 }): Promise<ExtensionInstance> {
   const config: any = {
     params: args.params,
+    systemParams: args.systemParams ?? {},
+    allowedEventTypes: args.allowedEventTypes,
+    eventarcChannel: args.eventarcChannel,
   };
 
   if (args.extensionSource && args.extensionVersionRef) {
@@ -268,6 +97,12 @@ export async function createInstance(args: {
     config.extensionVersion = ref.version ?? "";
   } else {
     throw new FirebaseError("No ExtensionVersion or ExtensionSource provided but one is required.");
+  }
+  if (args.allowedEventTypes) {
+    config.allowedEventTypes = args.allowedEventTypes;
+  }
+  if (args.eventarcChannel) {
+    config.eventarcChannel = args.eventarcChannel;
   }
   return createInstanceHelper(args.projectId, args.instanceId, config, args.validateOnly);
 }
@@ -297,8 +132,20 @@ export async function deleteInstance(projectId: string, instanceId: string): Pro
  * @param instanceId the id of the instance to delete
  */
 export async function getInstance(projectId: string, instanceId: string): Promise<any> {
-  const res = await apiClient.get(`/projects/${projectId}/instances/${instanceId}`);
-  return res.body;
+  try {
+    const res = await apiClient.get(`/projects/${projectId}/instances/${instanceId}`);
+    return res.body;
+  } catch (err: any) {
+    if (err.status === 404) {
+      throw new FirebaseError(
+        `Extension instance '${clc.bold(instanceId)}' not found in project '${clc.bold(
+          projectId
+        )}'.`,
+        { status: 404 }
+      );
+    }
+    throw err;
+  }
 }
 
 /**
@@ -335,15 +182,21 @@ export async function listInstances(projectId: string): Promise<ExtensionInstanc
  * @param projectId the project the instance is in
  * @param instanceId the id of the instance to configure
  * @param params params to configure the extension instance
+ * @param allowedEventTypes types of events (selected by consumer) that the extension is allowed to emit
+ * @param eventarcChannel fully qualified eventarc channel resource name to emit events to
  * @param validateOnly if true, only validates the update and makes no changes
  */
 export async function configureInstance(args: {
   projectId: string;
   instanceId: string;
-  params: { [option: string]: string };
+  params: Record<string, string>;
+  systemParams?: Record<string, string>;
+  canEmitEvents: boolean;
+  allowedEventTypes?: string[];
+  eventarcChannel?: string;
   validateOnly?: boolean;
 }): Promise<any> {
-  const res = await patchInstance({
+  const reqBody: any = {
     projectId: args.projectId,
     instanceId: args.instanceId,
     updateMask: "config.params",
@@ -353,8 +206,22 @@ export async function configureInstance(args: {
         params: args.params,
       },
     },
-  });
-  return res;
+  };
+  if (args.canEmitEvents) {
+    if (args.allowedEventTypes === undefined || args.eventarcChannel === undefined) {
+      throw new FirebaseError(
+        `This instance is configured to emit events, but either allowed event types or eventarc channel is undefined.`
+      );
+    }
+    reqBody.data.config.allowedEventTypes = args.allowedEventTypes;
+    reqBody.data.config.eventarcChannel = args.eventarcChannel;
+  }
+  reqBody.updateMask += ",config.allowed_event_types,config.eventarc_channel";
+  if (args.systemParams) {
+    reqBody.data.config.systemParams = args.systemParams;
+    reqBody.updateMask += ",config.system_params";
+  }
+  return patchInstance(reqBody);
 }
 
 /**
@@ -364,13 +231,19 @@ export async function configureInstance(args: {
  * @param instanceId the id of the instance to configure
  * @param extensionSource the source for the version of the extension to update to
  * @param params params to configure the extension instance
+ * @param allowedEventTypes types of events (selected by consumer) that the extension is allowed to emit
+ * @param eventarcChannel fully qualified eventarc channel resource name to emit events to
  * @param validateOnly if true, only validates the update and makes no changes
  */
 export async function updateInstance(args: {
   projectId: string;
   instanceId: string;
   extensionSource: ExtensionSource;
-  params?: { [option: string]: string };
+  params?: Record<string, string>;
+  systemParams?: Record<string, string>;
+  canEmitEvents: boolean;
+  allowedEventTypes?: string[];
+  eventarcChannel?: string;
   validateOnly?: boolean;
 }): Promise<any> {
   const body: any = {
@@ -383,7 +256,21 @@ export async function updateInstance(args: {
     body.config.params = args.params;
     updateMask += ",config.params";
   }
-  return await patchInstance({
+  if (args.systemParams) {
+    body.config.systemParams = args.systemParams;
+    updateMask += ",config.system_params";
+  }
+  if (args.canEmitEvents) {
+    if (args.allowedEventTypes === undefined || args.eventarcChannel === undefined) {
+      throw new FirebaseError(
+        `This instance is configured to emit events, but either allowed event types or eventarc channel is undefined.`
+      );
+    }
+    body.config.allowedEventTypes = args.allowedEventTypes;
+    body.config.eventarcChannel = args.eventarcChannel;
+  }
+  updateMask += ",config.allowed_event_types,config.eventarc_channel";
+  return patchInstance({
     projectId: args.projectId,
     instanceId: args.instanceId,
     updateMask,
@@ -399,13 +286,19 @@ export async function updateInstance(args: {
  * @param instanceId the id of the instance to configure
  * @param extRef reference for the extension to update to
  * @param params params to configure the extension instance
+ * @param allowedEventTypes types of events (selected by consumer) that the extension is allowed to emit
+ * @param eventarcChannel fully qualified eventarc channel resource name to emit events to
  * @param validateOnly if true, only validates the update and makes no changes
  */
 export async function updateInstanceFromRegistry(args: {
   projectId: string;
   instanceId: string;
   extRef: string;
-  params?: { [option: string]: string };
+  params?: Record<string, string>;
+  systemParams?: Record<string, string>;
+  canEmitEvents: boolean;
+  allowedEventTypes?: string[];
+  eventarcChannel?: string;
   validateOnly?: boolean;
 }): Promise<any> {
   const ref = refs.parse(args.extRef);
@@ -420,7 +313,21 @@ export async function updateInstanceFromRegistry(args: {
     body.config.params = args.params;
     updateMask += ",config.params";
   }
-  return await patchInstance({
+  if (args.systemParams) {
+    body.config.systemParams = args.systemParams;
+    updateMask += ",config.system_params";
+  }
+  if (args.canEmitEvents) {
+    if (args.allowedEventTypes === undefined || args.eventarcChannel === undefined) {
+      throw new FirebaseError(
+        `This instance is configured to emit events, but either allowed event types or eventarc channel is undefined.`
+      );
+    }
+    body.config.allowedEventTypes = args.allowedEventTypes;
+    body.config.eventarcChannel = args.eventarcChannel;
+  }
+  updateMask += ",config.allowed_event_types,config.eventarc_channel";
+  return patchInstance({
     projectId: args.projectId,
     instanceId: args.instanceId,
     updateMask,
@@ -458,9 +365,9 @@ async function patchInstance(args: {
   return pollRes;
 }
 
-function populateResourceProperties(spec: ExtensionSpec): void {
+function populateSpec(spec: ExtensionSpec): void {
   if (spec) {
-    spec.resources.forEach((r) => {
+    for (const r of spec.resources) {
       try {
         if (r.propertiesYaml) {
           r.properties = yaml.safeLoad(r.propertiesYaml);
@@ -468,7 +375,10 @@ function populateResourceProperties(spec: ExtensionSpec): void {
       } catch (err: any) {
         logger.debug(`[ext] failed to parse resource properties yaml: ${err}`);
       }
-    });
+    }
+    // We need to populate empty repeated fields with empty arrays, since proto wire format removes them.
+    spec.params = spec.params ?? [];
+    spec.systemParams = spec.systemParams ?? [];
   }
 }
 
@@ -498,7 +408,7 @@ export async function createSource(
     masterTimeout: 600000,
   });
   if (pollRes.spec) {
-    populateResourceProperties(pollRes.spec);
+    populateSpec(pollRes.spec);
   }
   return pollRes;
 }
@@ -511,7 +421,7 @@ export async function createSource(
 export async function getSource(sourceName: string): Promise<ExtensionSource> {
   const res = await apiClient.get<ExtensionSource>(`/${sourceName}`);
   if (res.body.spec) {
-    populateResourceProperties(res.body.spec);
+    populateSpec(res.body.spec);
   }
   return res.body;
 }
@@ -527,7 +437,7 @@ export async function getExtensionVersion(extensionVersionRef: string): Promise<
   try {
     const res = await apiClient.get<ExtensionVersion>(`/${refs.toExtensionVersionName(ref)}`);
     if (res.body.spec) {
-      populateResourceProperties(res.body.spec);
+      populateSpec(res.body.spec);
     }
     return res.body;
   } catch (err: any) {
@@ -571,7 +481,11 @@ export async function listExtensions(publisherId: string): Promise<Extension[]> 
 /**
  * @param ref user-friendly identifier for the ExtensionVersion (publisher-id/extension-id)
  */
-export async function listExtensionVersions(ref: string, filter = ""): Promise<ExtensionVersion[]> {
+export async function listExtensionVersions(
+  ref: string,
+  filter = "",
+  showPrereleases = false
+): Promise<ExtensionVersion[]> {
   const { publisherId, extensionId } = refs.parse(ref);
   const extensionVersions: ExtensionVersion[] = [];
   const getNextPage = async (pageToken = "") => {
@@ -581,6 +495,7 @@ export async function listExtensionVersions(ref: string, filter = ""): Promise<E
     }>(`/publishers/${publisherId}/extensions/${extensionId}/versions`, {
       queryParams: {
         filter,
+        showPrereleases: String(showPrereleases),
         pageSize: PAGE_SIZE_MAX,
         pageToken,
       },
@@ -708,25 +623,37 @@ export async function undeprecateExtensionVersion(extensionRef: string): Promise
  * @param extensionVersionRef user-friendly identifier for the ExtensionVersion (publisher-id/extension-id@1.0.0)
  * @param extensionRoot directory location of extension.yaml in the archived package, defaults to "/".
  */
-export async function publishExtensionVersion(
-  extensionVersionRef: string,
-  packageUri: string,
-  extensionRoot?: string
-): Promise<ExtensionVersion> {
-  const ref = refs.parse(extensionVersionRef);
+export async function publishExtensionVersion(args: {
+  extensionVersionRef: string;
+  packageUri?: string;
+  extensionRoot?: string;
+  repoUri?: string;
+  sourceRef?: string;
+}): Promise<ExtensionVersion> {
+  const ref = refs.parse(args.extensionVersionRef);
   if (!ref.version) {
-    throw new FirebaseError(`ExtensionVersion ref "${extensionVersionRef}" must supply a version.`);
+    throw new FirebaseError(
+      `ExtensionVersion ref "${args.extensionVersionRef}" must supply a version.`
+    );
   }
 
   // TODO(b/185176470): Publishing an extension with a previously deleted name will return 409.
   // Need to surface a better error, potentially by calling getExtension.
   const publishRes = await apiClient.post<
-    { versionId: string; packageUri: string; extensionRoot: string },
+    {
+      versionId: string;
+      packageUri: string;
+      extensionRoot: string;
+      repoUri: string;
+      sourceRef: string;
+    },
     ExtensionVersion
   >(`/${refs.toExtensionName(ref)}/versions:publish`, {
     versionId: ref.version,
-    packageUri,
-    extensionRoot: extensionRoot ?? "/",
+    packageUri: args.packageUri ?? "",
+    extensionRoot: args.extensionRoot ?? "/",
+    repoUri: args.repoUri ?? "",
+    sourceRef: args.sourceRef ?? "",
   });
   const pollRes = await operationPoller.pollOperation<ExtensionVersion>({
     apiOrigin: extensionsOrigin,

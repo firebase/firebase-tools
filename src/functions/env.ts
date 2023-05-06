@@ -1,10 +1,10 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as fs from "fs";
 import * as path from "path";
 
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
-import { logBullet } from "../utils";
+import { logBullet, logWarning } from "../utils";
 
 const FUNCTIONS_EMULATOR_DOTENV = ".env.local";
 
@@ -45,7 +45,7 @@ const RESERVED_KEYS = [
 const LINE_RE = new RegExp(
   "^" +                      // begin line
   "\\s*" +                   //   leading whitespaces
-  "(\\w+)" +                 //   key
+  "([\\w./]+)" +                 //   key
   "\\s*=[\\f\\t\\v]*" +              //   separator (=)
   "(" +                      //   begin optional value
   "\\s*'(?:\\\\'|[^'])*'|" + //     single quoted or
@@ -67,6 +67,18 @@ const ESCAPE_SEQUENCES_TO_CHARACTERS: Record<string, string> = {
   "\\'": "'",
   '\\"': '"',
 };
+const ALL_ESCAPE_SEQUENCES_RE = /\\[nrtv\\'"]/g;
+
+const CHARACTERS_TO_ESCAPE_SEQUENCES: Record<string, string> = {
+  "\n": "\\n",
+  "\r": "\\r",
+  "\t": "\\t",
+  "\v": "\\v",
+  "\\": "\\\\",
+  "'": "\\'",
+  '"': '\\"',
+};
+const ALL_ESCAPABLE_CHARACTERS_RE = /[\n\r\t\v\\'"]/g;
 
 interface ParseResult {
   envs: Record<string, string>;
@@ -116,7 +128,7 @@ export function parse(data: string): ParseResult {
       if (quotesMatch[1] === '"') {
         // Substitute escape sequences. The regex passed to replace() must
         // match every key in ESCAPE_SEQUENCES_TO_CHARACTERS.
-        v = v.replace(/\\[nrtv\\'"]/g, (match) => ESCAPE_SEQUENCES_TO_CHARACTERS[match]);
+        v = v.replace(ALL_ESCAPE_SEQUENCES_RE, (match) => ESCAPE_SEQUENCES_TO_CHARACTERS[match]);
       }
     }
 
@@ -167,9 +179,11 @@ export function validateKey(key: string): void {
   }
 }
 
-// Parse dotenv file, but throw errors if:
-//   1. Input has any invalid lines.
-//   2. Any env key fails validation.
+/**
+ * Parse dotenv file, but throw errors if:
+ * 1. Input has any invalid lines.
+ * 2. Any env key fails validation.
+ */
 export function parseStrict(data: string): Record<string, string> {
   const { envs, errors } = parse(data);
 
@@ -241,6 +255,95 @@ export function hasUserEnvs({
 }
 
 /**
+ * Write new environment variables into a dotenv file.
+ *
+ * Identifies one and only one dotenv file to touch using the same rules as loadUserEnvs().
+ * It is an error to provide a key-value pair which is already in the file.
+ */
+export function writeUserEnvs(toWrite: Record<string, string>, envOpts: UserEnvsOpts) {
+  if (Object.keys(toWrite).length === 0) {
+    return;
+  }
+  const { functionsSource, projectId, projectAlias, isEmulator } = envOpts;
+
+  // Determine which .env file to write to, and create it if it doesn't exist
+  const allEnvFiles = findEnvfiles(functionsSource, projectId, projectAlias, isEmulator);
+  const targetEnvFile = envOpts.isEmulator
+    ? FUNCTIONS_EMULATOR_DOTENV
+    : `.env.${envOpts.projectId}`;
+  const targetEnvFileExists = allEnvFiles.includes(targetEnvFile);
+  if (!targetEnvFileExists) {
+    fs.writeFileSync(path.join(envOpts.functionsSource, targetEnvFile), "", { flag: "wx" });
+    logBullet(
+      clc.yellow(clc.bold("functions: ")) +
+        `Created new local file ${targetEnvFile} to store param values. We suggest explicitly adding or excluding this file from version control.`
+    );
+  }
+
+  // Throw if any of the keys are duplicate (note special case if emulator) or malformed
+  const fullEnvs = loadUserEnvs(envOpts);
+  const prodEnvs = isEmulator
+    ? loadUserEnvs({ ...envOpts, isEmulator: false })
+    : loadUserEnvs(envOpts);
+  checkForDuplicateKeys(isEmulator || false, Object.keys(toWrite), fullEnvs, prodEnvs);
+  for (const k of Object.keys(toWrite)) {
+    validateKey(k);
+  }
+
+  // Write all the keys in a single filesystem access
+  logBullet(
+    clc.cyan(clc.bold("functions: ")) + `Writing new parameter values to disk: ${targetEnvFile}`
+  );
+  let lines = "";
+  for (const k of Object.keys(toWrite)) {
+    lines += formatUserEnvForWrite(k, toWrite[k]);
+  }
+  fs.appendFileSync(path.join(functionsSource, targetEnvFile), lines);
+}
+
+/**
+ * Errors if any of the provided keys are aleady defined in the .env fields.
+ * This seems like a simple presence check, but...
+ *
+ * For emulator deploys, it's legal to write a key to .env.local even if it's
+ * already defined in .env.projectId. This is a special case designed to follow
+ * the principle of least surprise for emulator users.
+ */
+export function checkForDuplicateKeys(
+  isEmulator: boolean,
+  keys: string[],
+  fullEnv: Record<string, string>,
+  envsWithoutLocal?: Record<string, string>
+): void {
+  for (const key of keys) {
+    const definedInEnv = fullEnv.hasOwnProperty(key);
+    if (definedInEnv) {
+      if (envsWithoutLocal && isEmulator && envsWithoutLocal.hasOwnProperty(key)) {
+        logWarning(
+          clc.cyan(clc.yellow("functions: ")) +
+            `Writing parameter ${key} to emulator-specific config .env.local. This will overwrite your existing definition only when emulating.`
+        );
+        continue;
+      }
+      throw new FirebaseError(
+        `Attempted to write param-defined key ${key} to .env files, but it was already defined.`
+      );
+    }
+  }
+}
+
+function formatUserEnvForWrite(key: string, value: string): string {
+  const escapedValue = value.replace(
+    ALL_ESCAPABLE_CHARACTERS_RE,
+    (match) => CHARACTERS_TO_ESCAPE_SEQUENCES[match]
+  );
+  if (escapedValue !== value) {
+    return `${key}="${escapedValue}"\n`;
+  }
+  return `${key}=${escapedValue}\n`;
+}
+
+/**
  * Load user-specified environment variables.
  *
  * Look for .env files at the root of functions source directory
@@ -289,7 +392,7 @@ export function loadUserEnvs({
     }
   }
   logBullet(
-    clc.cyan.bold("functions: ") + `Loaded environment variables from ${envFiles.join(", ")}.`
+    clc.cyan(clc.bold("functions: ")) + `Loaded environment variables from ${envFiles.join(", ")}.`
   );
 
   return envs;

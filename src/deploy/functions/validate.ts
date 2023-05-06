@@ -1,5 +1,5 @@
 import * as path from "path";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
 import { FirebaseError } from "../../error";
 import { getSecretVersion, SecretVersion } from "../../gcp/secretManager";
@@ -10,6 +10,24 @@ import * as utils from "../../utils";
 import * as secrets from "../../functions/secrets";
 import { serviceForEndpoint } from "./services";
 
+function matchingIds(
+  endpoints: backend.Endpoint[],
+  filter: (endpoint: backend.Endpoint) => boolean
+): string {
+  return endpoints
+    .filter(filter)
+    .map((endpoint) => endpoint.id)
+    .join(",");
+}
+
+const mem = (endpoint: backend.Endpoint): backend.MemoryOptions =>
+  endpoint.availableMemoryMb || backend.DEFAULT_MEMORY;
+const cpu = (endpoint: backend.Endpoint): number => {
+  return endpoint.cpu === "gcf_gen1"
+    ? backend.memoryToGen1Cpu(mem(endpoint))
+    : endpoint.cpu ?? backend.memoryToGen2Cpu(mem(endpoint));
+};
+
 /** Validate that the configuration for endpoints are valid. */
 export function endpointsAreValid(wantBackend: backend.Backend): void {
   const endpoints = backend.allEndpoints(wantBackend);
@@ -19,29 +37,110 @@ export function endpointsAreValid(wantBackend: backend.Backend): void {
   }
 
   // Our SDK doesn't let people articulate this, but it's theoretically possible in the manifest syntax.
-  const gcfV1WithConcurrency = endpoints
-    .filter((endpoint) => (endpoint.concurrency || 1) !== 1 && endpoint.platform === "gcfv1")
-    .map((endpoint) => endpoint.id);
+  const gcfV1WithConcurrency = matchingIds(
+    endpoints,
+    (endpoint) => (endpoint.concurrency || 1) !== 1 && endpoint.platform === "gcfv1"
+  );
   if (gcfV1WithConcurrency.length) {
-    const msg = `Cannot set concurrency on the functions ${gcfV1WithConcurrency.join(
-      ","
-    )} because they are GCF gen 1`;
+    const msg = `Cannot set concurrency on the functions ${gcfV1WithConcurrency} because they are GCF gen 1`;
     throw new FirebaseError(msg);
   }
 
-  const tooSmallForConcurrency = endpoints
-    .filter((endpoint) => {
-      if ((endpoint.concurrency || 1) === 1) {
-        return false;
-      }
-      const mem = endpoint.availableMemoryMb || backend.DEFAULT_MEMORY;
-      return mem < backend.MIN_MEMORY_FOR_CONCURRENCY;
-    })
-    .map((endpoint) => endpoint.id);
+  const tooSmallForConcurrency = matchingIds(endpoints, (endpoint) => {
+    if ((endpoint.concurrency || 1) === 1) {
+      return false;
+    }
+    return cpu(endpoint) < backend.MIN_CPU_FOR_CONCURRENCY;
+  });
   if (tooSmallForConcurrency.length) {
-    const msg = `Cannot set concurency on the functions ${tooSmallForConcurrency.join(
-      ","
-    )} because they have fewer than 2GB memory`;
+    const msg =
+      "The following functions are configured to allow concurrent " +
+      "execution and less than one full CPU. This is not supported: " +
+      tooSmallForConcurrency;
+    throw new FirebaseError(msg);
+  }
+  cpuConfigIsValid(endpoints);
+}
+
+/**
+ *  Validate that endpoints have valid CPU configuration.
+ *  Enforces https://cloud.google.com/run/docs/configuring/cpu.
+ */
+export function cpuConfigIsValid(endpoints: backend.Endpoint[]): void {
+  const gcfV1WithCPU = matchingIds(
+    endpoints,
+    (endpoint) => endpoint.platform === "gcfv1" && typeof endpoint["cpu"] !== "undefined"
+  );
+  if (gcfV1WithCPU.length) {
+    const msg = `Cannot set CPU on the functions ${gcfV1WithCPU} because they are GCF gen 1`;
+    throw new FirebaseError(msg);
+  }
+
+  const invalidCPU = matchingIds(endpoints, (endpoint) => {
+    const c: number = cpu(endpoint);
+    if (c < 0.08) {
+      return true;
+    }
+    if (c < 1) {
+      return false;
+    }
+    // But whole CPU is limited to fixed sizes
+    return ![1, 2, 4, 6, 8].includes(c);
+  });
+  if (invalidCPU.length) {
+    const msg = `The following functions have invalid CPU settings ${invalidCPU}. Valid CPU options are (0.08, 1], 2, 4, 6, 8, or "gcf_gen1"`;
+    throw new FirebaseError(msg);
+  }
+
+  const smallCPURegions = ["australia-southeast2", "asia-northeast3", "asia-south2"];
+  const tooBigCPUForRegion = matchingIds(
+    endpoints,
+    (endpoint) => smallCPURegions.includes(endpoint.region) && cpu(endpoint) > 4
+  );
+  if (tooBigCPUForRegion) {
+    const msg = `The functions ${tooBigCPUForRegion} have > 4 CPU in a region that supports a maximum 4 CPU`;
+    throw new FirebaseError(msg);
+  }
+
+  const tooSmallCPUSmall = matchingIds(
+    endpoints,
+    (endpoint) => mem(endpoint) > 512 && cpu(endpoint) < 0.5
+  );
+  if (tooSmallCPUSmall) {
+    const msg = `The functions ${tooSmallCPUSmall} have too little CPU for their memory allocation. A minimum of 0.5 CPU is needed to set a memory limit greater than 512MiB`;
+    throw new FirebaseError(msg);
+  }
+
+  const tooSmallCPUBig = matchingIds(
+    endpoints,
+    (endpoint) => mem(endpoint) > 1024 && cpu(endpoint) < 1
+  );
+  if (tooSmallCPUBig) {
+    const msg = `The functions ${tooSmallCPUSmall} have too little CPU for their memory allocation. A minimum of 1 CPU is needed to set a memory limit greater than 1GiB`;
+    throw new FirebaseError(msg);
+  }
+  const tooSmallMemory4CPU = matchingIds(
+    endpoints,
+    (endpoint) => cpu(endpoint) === 4 && mem(endpoint) < 2 << 10
+  );
+  if (tooSmallMemory4CPU) {
+    const msg = `The functions ${tooSmallMemory4CPU} have too little memory for their CPU. Functions with 4 CPU require at least 2GiB`;
+    throw new FirebaseError(msg);
+  }
+  const tooSmallMemory6CPU = matchingIds(
+    endpoints,
+    (endpoint) => cpu(endpoint) === 6 && mem(endpoint) < 3 << 10
+  );
+  if (tooSmallMemory6CPU) {
+    const msg = `The functions ${tooSmallMemory6CPU} have too little memory for their CPU. Functions with 6 CPU require at least 3GiB`;
+    throw new FirebaseError(msg);
+  }
+  const tooSmallMemory8CPU = matchingIds(
+    endpoints,
+    (endpoint) => cpu(endpoint) === 8 && mem(endpoint) < 4 << 10
+  );
+  if (tooSmallMemory8CPU) {
+    const msg = `The functions ${tooSmallMemory8CPU} have too little memory for their CPU. Functions with 8 CPU require at least 4GiB`;
     throw new FirebaseError(msg);
   }
 }
@@ -99,25 +198,13 @@ export function functionsDirectoryExists(sourceDir: string, projectDir: string):
  * @throws { FirebaseError } Function names must be valid.
  */
 export function functionIdsAreValid(functions: { id: string; platform: string }[]): void {
-  const v1FunctionName = /^[a-zA-Z][a-zA-Z0-9_-]{0,62}$/;
-  const invalidV1Ids = functions.filter((fn) => {
-    return fn.platform === "gcfv1" && !v1FunctionName.test(fn.id);
-  });
-  if (invalidV1Ids.length !== 0) {
+  // TODO: cannot end with a _ or -
+  const functionName = /^[a-zA-Z][a-zA-Z0-9_-]{0,62}$/;
+  const invalidIds = functions.filter((fn) => !functionName.test(fn.id));
+  if (invalidIds.length !== 0) {
     const msg =
-      `${invalidV1Ids.map((f) => f.id).join(", ")} function name(s) can only contain letters, ` +
+      `${invalidIds.map((f) => f.id).join(", ")} function name(s) can only contain letters, ` +
       `numbers, hyphens, and not exceed 62 characters in length`;
-    throw new FirebaseError(msg);
-  }
-
-  const v2FunctionName = /^[a-z][a-z0-9-]{0,62}$/;
-  const invalidV2Ids = functions.filter((fn) => {
-    return fn.platform === "gcfv2" && !v2FunctionName.test(fn.id);
-  });
-  if (invalidV2Ids.length !== 0) {
-    const msg =
-      `${invalidV2Ids.map((f) => f.id).join(", ")} v2 function name(s) can only contin lower ` +
-      `case letters, numbers, hyphens, and not exceed 62 characters in length`;
     throw new FirebaseError(msg);
   }
 }
@@ -136,17 +223,17 @@ export async function secretsAreValid(projectId: string, wantBackend: backend.Ba
   await validateSecretVersions(projectId, endpoints);
 }
 
+const secretsSupportedPlatforms = ["gcfv1", "gcfv2"];
 /**
  * Ensures that all endpoints specifying secret environment variables target platform that supports the feature.
  */
 function validatePlatformTargets(endpoints: backend.Endpoint[]) {
-  const supportedPlatforms = ["gcfv1"];
-  const unsupported = endpoints.filter((e) => !supportedPlatforms.includes(e.platform));
+  const unsupported = endpoints.filter((e) => !secretsSupportedPlatforms.includes(e.platform));
   if (unsupported.length > 0) {
     const errs = unsupported.map((e) => `${e.id}[platform=${e.platform}]`);
     throw new FirebaseError(
       `Tried to set secret environment variables on ${errs.join(", ")}. ` +
-        `Only ${supportedPlatforms.join(", ")} support secret environments.`
+        `Only ${secretsSupportedPlatforms.join(", ")} support secret environments.`
     );
   }
 }

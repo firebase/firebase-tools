@@ -10,7 +10,7 @@ describe("calculateChannelExpireTTL", () => {
     { input: "2d", want: 2 * 24 * 60 * 60 * 1000 },
     { input: "2h", want: 2 * 60 * 60 * 1000 },
     { input: "56m", want: 56 * 60 * 1000 },
-  ];
+  ] as const;
 
   for (const test of goodTests) {
     it(`should be able to parse time ${test.input}`, () => {
@@ -19,11 +19,17 @@ describe("calculateChannelExpireTTL", () => {
     });
   }
 
-  const badTests = [{ input: "1.5d" }, { input: "2x" }, { input: "2dd" }, { input: "0.5m" }];
+  const badTests = [
+    { input: "1.5d" },
+    { input: "2x" },
+    { input: "2dd" },
+    { input: "0.5m" },
+    { input: undefined },
+  ];
 
   for (const test of badTests) {
-    it(`should be able to parse time ${test.input}`, () => {
-      expect(() => calculateChannelExpireTTL(test.input)).to.throw(
+    it(`should be able to parse time ${test.input || "undefined"}`, () => {
+      expect(() => calculateChannelExpireTTL(test.input as any)).to.throw(
         FirebaseError,
         /flag must be a duration string/
       );

@@ -1,17 +1,21 @@
 import { expect } from "chai";
 import { decode as decodeJwt, JwtHeader } from "jsonwebtoken";
-import { UserInfo } from "../../../emulator/auth/state";
 import {
-  deleteAccount,
+  decodeRefreshToken,
+  encodeRefreshToken,
+  RefreshTokenRecord,
+  UserInfo,
+} from "../../../emulator/auth/state";
+import {
   getAccountInfoByIdToken,
   PROJECT_ID,
   registerTenant,
   signInWithPhoneNumber,
   TEST_PHONE_NUMBER,
-  updateProjectConfig,
 } from "./helpers";
 import { describeAuthEmulator } from "./setup";
 import {
+  deleteAccount,
   expectStatusCode,
   registerUser,
   registerAnonUser,
@@ -23,6 +27,7 @@ import {
   SESSION_COOKIE_MAX_VALID_DURATION,
 } from "../../../emulator/auth/operations";
 import { toUnixTimestamp } from "../../../emulator/auth/utils";
+import { SingleProjectMode } from "../../../emulator/auth";
 
 describeAuthEmulator("token refresh", ({ authApi, getClock }) => {
   it("should exchange refresh token for new tokens", async () => {
@@ -44,6 +49,40 @@ describeAuthEmulator("token refresh", ({ authApi, getClock }) => {
         expect(res.body.project_id).to.equal("12345");
         expect(res.body.token_type).to.equal("Bearer");
         expect(res.body.user_id).to.equal(localId);
+      });
+  });
+
+  it("should exchange refresh tokens for new tokens in a tenant project", async () => {
+    const tenant = await registerTenant(authApi(), PROJECT_ID, {
+      disableAuth: false,
+      allowPasswordSignup: true,
+    });
+    const { refreshToken, localId } = await registerUser(authApi(), {
+      email: "alice@example.com",
+      password: "notasecret",
+      tenantId: tenant.tenantId,
+    });
+
+    await authApi()
+      .post("/securetoken.googleapis.com/v1/token")
+      .type("form")
+      // snake_case parameters also work, per OAuth 2.0 spec.
+      .send({ refresh_token: refreshToken, grantType: "refresh_token" })
+      .query({ key: "fake-api-key" })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body.id_token).to.be.a("string");
+        expect(res.body.access_token).to.equal(res.body.id_token);
+        expect(res.body.refresh_token).to.be.a("string");
+        expect(res.body.expires_in)
+          .to.be.a("string")
+          .matches(/[0-9]+/);
+        expect(res.body.project_id).to.equal("12345");
+        expect(res.body.token_type).to.equal("Bearer");
+        expect(res.body.user_id).to.equal(localId);
+
+        const refreshTokenRecord = decodeRefreshToken(res.body.refresh_token);
+        expect(refreshTokenRecord.tenantId).to.equal(tenant.tenantId);
       });
   });
 
@@ -75,6 +114,62 @@ describeAuthEmulator("token refresh", ({ authApi, getClock }) => {
     expect(decoded!.payload.auth_time).to.equal(lastLoginAtSeconds);
   });
 
+  it("should error if grant type is missing", async () => {
+    const { refreshToken } = await registerAnonUser(authApi());
+
+    await authApi()
+      .post("/securetoken.googleapis.com/v1/token")
+      .type("form")
+      // snake_case parameters also work, per OAuth 2.0 spec.
+      .send({ refresh_token: refreshToken })
+      .query({ key: "fake-api-key" })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error.message).to.contain("MISSING_GRANT_TYPE");
+      });
+  });
+
+  it("should error if grant type is not refresh_token", async () => {
+    const { refreshToken } = await registerAnonUser(authApi());
+
+    await authApi()
+      .post("/securetoken.googleapis.com/v1/token")
+      .type("form")
+      // snake_case parameters also work, per OAuth 2.0 spec.
+      .send({ refresh_token: refreshToken, grantType: "other_grant_type" })
+      .query({ key: "fake-api-key" })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error.message).to.contain("INVALID_GRANT_TYPE");
+      });
+  });
+
+  it("should error if refresh token is missing", async () => {
+    await authApi()
+      .post("/securetoken.googleapis.com/v1/token")
+      .type("form")
+      // snake_case parameters also work, per OAuth 2.0 spec.
+      .send({ grantType: "refresh_token" })
+      .query({ key: "fake-api-key" })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error.message).to.contain("MISSING_REFRESH_TOKEN");
+      });
+  });
+
+  it("should error on malformed refresh tokens", async () => {
+    await authApi()
+      .post("/securetoken.googleapis.com/v1/token")
+      .type("form")
+      // snake_case parameters also work, per OAuth 2.0 spec.
+      .send({ refresh_token: "malformedToken", grantType: "refresh_token" })
+      .query({ key: "fake-api-key" })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error.message).to.contain("INVALID_REFRESH_TOKEN");
+      });
+  });
+
   it("should error if user is disabled", async () => {
     const { refreshToken, localId } = await registerAnonUser(authApi());
     await updateAccountByLocalId(authApi(), localId, { disableUser: true });
@@ -90,10 +185,15 @@ describeAuthEmulator("token refresh", ({ authApi, getClock }) => {
       });
   });
 
-  it("should error if usageMode is passthrough", async () => {
-    const { refreshToken, idToken } = await registerAnonUser(authApi());
-    await deleteAccount(authApi(), { idToken });
-    await updateProjectConfig(authApi(), { usageMode: "PASSTHROUGH" });
+  it("should error when refresh tokens are from a different project", async () => {
+    const refreshTokenRecord = {
+      _AuthEmulatorRefreshToken: "DO NOT MODIFY",
+      localId: "localId",
+      provider: "provider",
+      extraClaims: {},
+      projectId: "notMatchingProjectId",
+    };
+    const refreshToken = encodeRefreshToken(refreshTokenRecord);
 
     await authApi()
       .post("/securetoken.googleapis.com/v1/token")
@@ -102,9 +202,43 @@ describeAuthEmulator("token refresh", ({ authApi, getClock }) => {
       .query({ key: "fake-api-key" })
       .then((res) => {
         expectStatusCode(400, res);
-        expect(res.body.error)
-          .to.have.property("message")
-          .equals("UNSUPPORTED_PASSTHROUGH_OPERATION");
+        expect(res.body.error).to.have.property("message").equals("INVALID_REFRESH_TOKEN");
+      });
+  });
+
+  it("should error on refresh tokens without required fields", async () => {
+    const refreshTokenRecord = {
+      localId: "localId",
+      provider: "provider",
+      extraClaims: {},
+      projectId: "notMatchingProjectId",
+    };
+    const refreshToken = encodeRefreshToken(refreshTokenRecord as RefreshTokenRecord);
+
+    await authApi()
+      .post("/securetoken.googleapis.com/v1/token")
+      .type("form")
+      .send({ refresh_token: refreshToken, grantType: "refresh_token" })
+      .query({ key: "fake-api-key" })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error).to.have.property("message").equals("INVALID_REFRESH_TOKEN");
+      });
+  });
+
+  it("should error if the refresh token is for a user that does not exist", async () => {
+    const { refreshToken, idToken } = await registerAnonUser(authApi());
+    await deleteAccount(authApi(), { idToken });
+
+    await authApi()
+      .post("/securetoken.googleapis.com/v1/token")
+      .type("form")
+      // snake_case parameters also work, per OAuth 2.0 spec.
+      .send({ refresh_token: refreshToken, grantType: "refresh_token" })
+      .query({ key: "fake-api-key" })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error.message).to.contain("INVALID_REFRESH_TOKEN");
       });
   });
 });
@@ -210,24 +344,6 @@ describeAuthEmulator("createSessionCookie", ({ authApi }) => {
         expect(res.body.error.message).to.equal("INVALID_DURATION");
       });
   });
-
-  it("should error if usageMode is passthrough", async () => {
-    const { idToken } = await registerAnonUser(authApi());
-    const validDuration = 7777; /* seconds */
-    await deleteAccount(authApi(), { idToken });
-    await updateProjectConfig(authApi(), { usageMode: "PASSTHROUGH" });
-
-    await authApi()
-      .post(`/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}:createSessionCookie`)
-      .set("Authorization", "Bearer owner")
-      .send({ idToken, validDuration: validDuration.toString() })
-      .then((res) => {
-        expectStatusCode(400, res);
-        expect(res.body.error)
-          .to.have.property("message")
-          .equals("UNSUPPORTED_PASSTHROUGH_OPERATION");
-      });
-  });
 });
 
 describeAuthEmulator("accounts:lookup", ({ authApi }) => {
@@ -290,19 +406,6 @@ describeAuthEmulator("accounts:lookup", ({ authApi }) => {
       });
   });
 
-  it("should return empty result for admin lookup if usageMode is passthrough", async () => {
-    await updateProjectConfig(authApi(), { usageMode: "PASSTHROUGH" });
-
-    await authApi()
-      .post(`/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:lookup`)
-      .set("Authorization", "Bearer owner")
-      .send({ localId: ["noSuchId"] })
-      .then((res) => {
-        expectStatusCode(200, res);
-        expect(res.body).not.to.have.property("users");
-      });
-  });
-
   it("should return user by tenantId in idToken", async () => {
     const tenant = await registerTenant(authApi(), PROJECT_ID, {
       disableAuth: false,
@@ -322,23 +425,6 @@ describeAuthEmulator("accounts:lookup", ({ authApi }) => {
         expectStatusCode(200, res);
         expect(res.body.users).to.have.length(1);
         expect(res.body.users[0].localId).to.equal(localId);
-      });
-  });
-
-  it("should error for lookup using idToken if usageMode is passthrough", async () => {
-    const { idToken } = await registerAnonUser(authApi());
-    await deleteAccount(authApi(), { idToken });
-    await updateProjectConfig(authApi(), { usageMode: "PASSTHROUGH" });
-
-    await authApi()
-      .post(`/identitytoolkit.googleapis.com/v1/accounts:lookup`)
-      .send({ idToken })
-      .query({ key: "fake-api-key" })
-      .then((res) => {
-        expectStatusCode(400, res);
-        expect(res.body.error)
-          .to.have.property("message")
-          .equals("UNSUPPORTED_PASSTHROUGH_OPERATION");
       });
   });
 
@@ -469,6 +555,15 @@ describeAuthEmulator("emulator utility APIs", ({ authApi }) => {
       });
   });
 
+  it("should not throw an exception on project ID mismatch if singleProjectMode is NO_WARNING", async () => {
+    await authApi()
+      .get(`/emulator/v1/projects/someproject/config`) // note the "wrong" project ID here
+      .send()
+      .then((res) => {
+        expectStatusCode(200, res);
+      });
+  });
+
   it("should update allowDuplicateEmails on PATCH /emulator/v1/projects/{PROJECT_ID}/config", async () => {
     await authApi()
       .patch(`/emulator/v1/projects/${PROJECT_ID}/config`)
@@ -489,65 +584,20 @@ describeAuthEmulator("emulator utility APIs", ({ authApi }) => {
         });
       });
   });
-
-  it("should update usageMode on PATCH /emulator/v1/projects/{PROJECT_ID}/config", async () => {
-    await authApi()
-      .patch(`/emulator/v1/projects/${PROJECT_ID}/config`)
-      .send({ usageMode: "PASSTHROUGH" })
-      .then((res) => {
-        expectStatusCode(200, res);
-        expect(res.body).to.have.property("usageMode").equals("PASSTHROUGH");
-      });
-    await authApi()
-      .patch(`/emulator/v1/projects/${PROJECT_ID}/config`)
-      .send({ usageMode: "DEFAULT" })
-      .then((res) => {
-        expectStatusCode(200, res);
-        expect(res.body).to.have.property("usageMode").equals("DEFAULT");
-      });
-  });
-
-  it("should default to DEFAULT usageMode on PATCH /emulator/v1/projects/{PROJECT_ID}/config", async () => {
-    await authApi()
-      .patch(`/emulator/v1/projects/${PROJECT_ID}/config`)
-      .send({ usageMode: undefined })
-      .then((res) => {
-        expectStatusCode(200, res);
-        expect(res.body).to.have.property("usageMode").equals("DEFAULT");
-      });
-  });
-
-  it("should error for unspecified usageMode on PATCH /emulator/v1/projects/{PROJECT_ID}/config", async () => {
-    await authApi()
-      .patch(`/emulator/v1/projects/${PROJECT_ID}/config`)
-      .send({ usageMode: "USAGE_MODE_UNSPECIFIED" })
-      .then((res) => {
-        expectStatusCode(400, res);
-        expect(res.body.error).to.have.property("message").contains("INVALID_USAGE_MODE");
-      });
-  });
-
-  it("should error for invalid usageMode on PATCH /emulator/v1/projects/{PROJECT_ID}/config", async () => {
-    await authApi()
-      .patch(`/emulator/v1/projects/${PROJECT_ID}/config`)
-      .send({ usageMode: "NOT_AN_ACTUAL_USAGE_MODE" })
-      .then((res) => {
-        expectStatusCode(400, res);
-        expect(res.body.error)
-          .to.have.property("message")
-          .contains("Invalid JSON payload received");
-      });
-  });
-
-  it("should error when users are present for passthrough mode on PATCH /emulator/v1/projects/{PROJECT_ID}/config", async () => {
-    await registerAnonUser(authApi());
-
-    await authApi()
-      .patch(`/emulator/v1/projects/${PROJECT_ID}/config`)
-      .send({ usageMode: "PASSTHROUGH" })
-      .then((res) => {
-        expectStatusCode(400, res);
-        expect(res.body.error).to.have.property("message").contains("USERS_STILL_EXIST");
-      });
-  });
 });
+
+describeAuthEmulator(
+  "emulator utility API; singleProjectMode=ERROR",
+  ({ authApi }) => {
+    it("should throw an exception on project ID mismatch if singleProjectMode is ERROR", async () => {
+      await authApi()
+        .get(`/emulator/v1/projects/someproject/config`) // note the "wrong" project ID here
+        .send()
+        .then((res) => {
+          expectStatusCode(400, res);
+          expect(res.body.error.message).to.contain("single project mode");
+        });
+    });
+  },
+  SingleProjectMode.ERROR
+);

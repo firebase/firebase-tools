@@ -5,6 +5,7 @@ import {
   trimSlashes,
   compareVersionStrings,
   parseRuntimeVersion,
+  isLocalHost,
 } from "../../emulator/functionsEmulatorUtils";
 
 describe("FunctionsEmulatorUtils", () => {
@@ -137,5 +138,49 @@ describe("FunctionsEmulatorUtils", () => {
     it("should ignore unknown", () => {
       expect(parseRuntimeVersion("banana")).to.eql(undefined);
     });
+  });
+
+  describe("isLocalHost", () => {
+    const testCases: {
+      desc: string;
+      href: string;
+      expected: boolean;
+    }[] = [
+      {
+        desc: "should return true for localhost",
+        href: "http://localhost:4000",
+        expected: true,
+      },
+      {
+        desc: "should return true for 127.0.0.1",
+        href: "127.0.0.1:5001/firestore",
+        expected: true,
+      },
+      {
+        desc: "should return true for ipv6 loopback",
+        href: "[::1]:5001/firestore",
+        expected: true,
+      },
+      {
+        desc: "should work with https",
+        href: "https://127.0.0.1:5001/firestore",
+        expected: true,
+      },
+      {
+        desc: "should return false for external uri",
+        href: "http://google.com/what-is-localhost",
+        expected: false,
+      },
+      {
+        desc: "should return false for external ip",
+        href: "123:100:99:12",
+        expected: false,
+      },
+    ];
+    for (const t of testCases) {
+      it(t.desc, () => {
+        expect(isLocalHost(t.href)).to.eq(t.expected);
+      });
+    }
   });
 });

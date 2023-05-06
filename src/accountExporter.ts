@@ -1,5 +1,4 @@
 import { Writable } from "stream";
-import * as _ from "lodash";
 import * as os from "os";
 import * as path from "path";
 
@@ -85,16 +84,23 @@ function transUserToArray(user: any): any[] {
   arr[24] = user.lastLoginAt;
   arr[25] = user.phoneNumber;
   arr[26] = user.disabled;
-  arr[27] = user.customAttributes;
+  // quote entire custom claims object and escape inner quotes with quotes
+  arr[27] = user.customAttributes
+    ? `"${user.customAttributes.replace(/(?<!\\)"/g, '""')}"`
+    : user.customAttributes;
   return arr;
 }
 
 function transUserJson(user: any): any {
   const newUser: any = {};
-  _.each(_.pick(user, EXPORTED_JSON_KEYS), (value, key) => {
+  const pickedUser: Record<string, any> = {};
+  for (const k of EXPORTED_JSON_KEYS) {
+    pickedUser[k] = user[k];
+  }
+  for (const [key, value] of Object.entries(pickedUser)) {
     const newKey = EXPORTED_JSON_KEYS_RENAMING[key] || key;
     newUser[newKey] = value;
-  });
+  }
   if (newUser.passwordHash) {
     newUser.passwordHash = convertToNormalBase64(newUser.passwordHash);
   }
@@ -105,7 +111,11 @@ function transUserJson(user: any): any {
     newUser.providerUserInfo = [];
     for (const providerInfo of user.providerUserInfo) {
       if (PROVIDER_ID_INDEX_MAP.has(providerInfo.providerId)) {
-        newUser.providerUserInfo.push(_.pick(providerInfo, EXPORTED_PROVIDER_USER_INFO_KEYS));
+        const picked: Record<string, any> = {};
+        for (const k of EXPORTED_PROVIDER_USER_INFO_KEYS) {
+          picked[k] = providerInfo[k];
+        }
+        newUser.providerUserInfo.push(picked);
       }
     }
   }

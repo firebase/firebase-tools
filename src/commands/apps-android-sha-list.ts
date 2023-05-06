@@ -1,4 +1,4 @@
-import Table = require("cli-table");
+const Table = require("cli-table");
 
 import { Command } from "../command";
 import { needProjectId } from "../projectUtils";
@@ -36,7 +36,7 @@ function logCertificatesCount(count: number = 0): void {
   logger.info(`${count} SHA hash(es) total.`);
 }
 
-module.exports = new Command("apps:android:sha:list <appId>")
+export const command = new Command("apps:android:sha:list <appId>")
   .description("list the SHA certificate hashes for a given app id. ")
   .before(requireAuth)
   .action(async (appId: string = "", options: any): Promise<AppAndroidShaData[]> => {

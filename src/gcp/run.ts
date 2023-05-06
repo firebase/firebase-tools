@@ -3,7 +3,8 @@ import { FirebaseError } from "../error";
 import { runOrigin } from "../api";
 import * as proto from "./proto";
 import * as iam from "./iam";
-import * as _ from "lodash";
+import { backoff } from "../throttler/throttler";
+import { logger } from "../logger";
 
 const API_VERSION = "v1";
 
@@ -67,7 +68,7 @@ export interface ServiceSpec {
 export interface ServiceStatus {
   observedGeneration: number;
   conditions: Condition[];
-  latestRevisionName: string;
+  latestReadyRevisionName: string;
   latestCreatedRevisionName: string;
   traffic: TrafficTarget[];
   url: string;
@@ -76,28 +77,41 @@ export interface ServiceStatus {
 
 export interface Service {
   apiVersion: "serving.knative.dev/v1";
-  kind: "service";
+  kind: "Service";
   metadata: ObjectMetadata;
   spec: ServiceSpec;
   status?: ServiceStatus;
 }
 
+export interface Container {
+  image: string;
+  ports: Array<{ name: string; containerPort: number }>;
+  env: Record<string, string>;
+  resources: {
+    limits: {
+      cpu: string;
+      memory: string;
+    };
+  };
+}
+
 export interface RevisionSpec {
   containerConcurrency?: number | null;
+  containers: Container[];
 }
 
 export interface RevisionTemplate {
-  metadata: ObjectMetadata;
+  metadata: Partial<ObjectMetadata>;
   spec: RevisionSpec;
 }
 
 export interface TrafficTarget {
-  configurationName: string;
+  configurationName?: string;
   // RevisionName can be used to target a specific revision,
   // or customers can set latestRevision = true
   revisionName?: string;
   latestRevision?: boolean;
-  percent: number;
+  percent?: number; // optional when tagged
   tag?: string;
 
   // Output only:
@@ -113,6 +127,25 @@ export interface IamPolicy {
   etag?: string;
 }
 
+export interface GCPIds {
+  serviceId: string;
+  region: string;
+  projectNumber: string;
+}
+
+/**
+ * Gets the standard project/location/id tuple from the K8S style resource.
+ */
+export function gcpIds(service: Pick<Service, "metadata">): GCPIds {
+  return {
+    serviceId: service.metadata.name,
+    projectNumber: service.metadata.namespace,
+    region: service.metadata.labels?.[LOCATION_LABEL] || "unknown-region",
+  };
+}
+/**
+ * Gets a service with a given name.
+ */
 export async function getService(name: string): Promise<Service> {
   try {
     const response = await client.get<Service>(name);
@@ -120,17 +153,75 @@ export async function getService(name: string): Promise<Service> {
   } catch (err: any) {
     throw new FirebaseError(`Failed to fetch Run service ${name}`, {
       original: err,
+      status: err?.context?.response?.statusCode,
     });
   }
 }
 
+/**
+ * Update a service and wait for changes to replicate.
+ */
+export async function updateService(name: string, service: Service): Promise<Service> {
+  delete service.status;
+  service = await exports.replaceService(name, service);
+
+  // Now we need to wait for reconciliation or we might delete the docker
+  // image while the service is still rolling out a new revision.
+  let retry = 0;
+  while (!exports.serviceIsResolved(service)) {
+    await backoff(retry, 2, 30);
+    retry = retry + 1;
+    service = await exports.getService(name);
+  }
+  return service;
+}
+
+/**
+ * Returns whether a service is resolved (all transitions have completed).
+ */
+export function serviceIsResolved(service: Service): boolean {
+  if (service.status?.observedGeneration !== service.metadata.generation) {
+    logger.debug(
+      `Service ${service.metadata.name} is not resolved because` +
+        `observed generation ${service.status?.observedGeneration} does not ` +
+        `match spec generation ${service.metadata.generation}`
+    );
+    return false;
+  }
+  const readyCondition = service.status?.conditions?.find((condition) => {
+    return condition.type === "Ready";
+  });
+
+  if (readyCondition?.status === "Unknown") {
+    logger.debug(
+      `Waiting for service ${service.metadata.name} to be ready. ` +
+        `Status is ${JSON.stringify(service.status?.conditions)}`
+    );
+    return false;
+  } else if (readyCondition?.status === "True") {
+    return true;
+  }
+  logger.debug(
+    `Service ${service.metadata.name} has unexpected ready status ${JSON.stringify(
+      readyCondition
+    )}. It may have failed rollout.`
+  );
+  throw new FirebaseError(
+    `Unexpected Status ${readyCondition?.status} for service ${service.metadata.name}`
+  );
+}
+
+/**
+ * Replaces a service spec. Prefer updateService to block on replication.
+ */
 export async function replaceService(name: string, service: Service): Promise<Service> {
   try {
     const response = await client.put<Service, Service>(name, service);
     return response.body;
   } catch (err: any) {
-    throw new FirebaseError(`Failed to update Run service ${name}`, {
+    throw new FirebaseError(`Failed to replace Run service ${name}`, {
       original: err,
+      status: err?.context?.response?.statusCode,
     });
   }
 }
@@ -160,10 +251,14 @@ export async function setIamPolicy(
   } catch (err: any) {
     throw new FirebaseError(`Failed to set the IAM Policy on the Service ${name}`, {
       original: err,
+      status: err?.context?.response?.statusCode,
     });
   }
 }
 
+/**
+ * Gets IAM policy for a service.
+ */
 export async function getIamPolicy(
   serviceName: string,
   httpClient: Client = client
@@ -183,7 +278,6 @@ export async function getIamPolicy(
  * @param projectId id of the project
  * @param serviceName cloud run service
  * @param invoker an array of invoker strings
- *
  * @throws {@link FirebaseError} on an empty invoker, when the IAM Polciy fails to be grabbed or set
  */
 export async function setInvokerCreate(
@@ -213,7 +307,6 @@ export async function setInvokerCreate(
  * @param projectId id of the project
  * @param serviceName cloud run service
  * @param invoker an array of invoker strings
- *
  * @throws {@link FirebaseError} on an empty invoker, when the IAM Polciy fails to be grabbed or set
  */
 export async function setInvokerUpdate(

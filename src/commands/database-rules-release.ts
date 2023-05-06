@@ -5,7 +5,7 @@ import * as metadata from "../database/metadata";
 import { Emulators } from "../emulator/types";
 import { warnEmulatorNotSupported } from "../emulator/commandUtils";
 
-export default new Command("database:rules:release <rulesetId>")
+export const command = new Command("database:rules:release <rulesetId>")
   .description("mark a staged ruleset as the stable ruleset")
   .option(
     "--instance <instance>",

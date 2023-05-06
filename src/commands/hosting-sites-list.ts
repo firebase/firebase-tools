@@ -1,5 +1,5 @@
-import { bold } from "cli-color";
-import Table = require("cli-table");
+import { bold } from "colorette";
+const Table = require("cli-table");
 
 import { Command } from "../command";
 import { Site, listSites } from "../hosting/api";
@@ -9,7 +9,7 @@ import { logger } from "../logger";
 
 const TABLE_HEAD = ["Site ID", "Default URL", "App ID (if set)"];
 
-export default new Command("hosting:sites:list")
+export const command = new Command("hosting:sites:list")
   .description("list Firebase Hosting sites")
   .before(requirePermissions, ["firebasehosting.sites.get"])
   .action(

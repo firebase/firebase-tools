@@ -1,11 +1,11 @@
 import { RequestHandler } from "express";
-import { get } from "lodash";
 
+import { Client } from "../apiv2";
+import { cloudRunApiOrigin } from "../api";
 import { errorRequestHandler, proxyRequestHandler } from "./proxy";
-import { needProjectId } from "../projectUtils";
+import { FirebaseError } from "../error";
 import { logger } from "../logger";
-import { cloudRunApiOrigin, request as apiRequest } from "../api";
-import { Options } from "../options";
+import { needProjectId } from "../projectUtils";
 
 export interface CloudRunProxyOptions {
   project?: string;
@@ -20,30 +20,32 @@ export interface CloudRunProxyRewrite {
 
 const cloudRunCache: { [s: string]: string } = {};
 
-function getCloudRunUrl(rewrite: CloudRunProxyRewrite, projectId: string): Promise<string> {
+const apiClient = new Client({ urlPrefix: cloudRunApiOrigin, apiVersion: "v1" });
+
+async function getCloudRunUrl(rewrite: CloudRunProxyRewrite, projectId: string): Promise<string> {
   const alreadyFetched = cloudRunCache[`${rewrite.run.region}/${rewrite.run.serviceId}`];
   if (alreadyFetched) {
     return Promise.resolve(alreadyFetched);
   }
 
-  const path = `/v1/projects/${projectId}/locations/${
-    rewrite.run.region || "us-central1"
-  }/services/${rewrite.run.serviceId}`;
-  logger.info(`[hosting] Looking up Cloud Run service "${path}" for its URL`);
-  return apiRequest("GET", path, { origin: cloudRunApiOrigin, auth: true })
-    .then((res) => {
-      const url = get(res, "body.status.url");
-      if (!url) {
-        return Promise.reject("Cloud Run URL doesn't exist in response.");
-      }
+  const path = `/projects/${projectId}/locations/${rewrite.run.region || "us-central1"}/services/${
+    rewrite.run.serviceId
+  }`;
+  try {
+    logger.info(`[hosting] Looking up Cloud Run service "${path}" for its URL`);
+    const res = await apiClient.get<{ status?: { url?: string } }>(path);
+    const url = res.body.status?.url;
+    if (!url) {
+      throw new FirebaseError("Cloud Run URL doesn't exist in response.");
+    }
 
-      cloudRunCache[`${rewrite.run.region}/${rewrite.run.serviceId}`] = url;
-      return url;
-    })
-    .catch((err) => {
-      const errInfo = `error looking up URL for Cloud Run service: ${err}`;
-      return Promise.reject(errInfo);
+    cloudRunCache[`${rewrite.run.region}/${rewrite.run.serviceId}`] = url;
+    return url;
+  } catch (err: any) {
+    throw new FirebaseError(`Error looking up URL for Cloud Run service: ${err}`, {
+      original: err,
     });
+  }
 }
 
 /**

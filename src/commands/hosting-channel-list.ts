@@ -1,5 +1,5 @@
-import { bold } from "cli-color";
-import Table = require("cli-table");
+import { bold } from "colorette";
+const Table = require("cli-table");
 
 import { Channel, listChannels } from "../hosting/api";
 import { Command } from "../command";
@@ -12,7 +12,7 @@ import { requireHostingSite } from "../requireHostingSite";
 
 const TABLE_HEAD = ["Channel ID", "Last Release Time", "URL", "Expire Time"];
 
-export default new Command("hosting:channel:list")
+export const command = new Command("hosting:channel:list")
   .description("list all Firebase Hosting channels for your project")
   .option("--site <siteName>", "list channels for the specified site")
   .before(requireConfig)

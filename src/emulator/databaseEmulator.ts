@@ -1,17 +1,17 @@
 import * as chokidar from "chokidar";
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as fs from "fs";
 import * as path from "path";
 import * as http from "http";
 
-import * as api from "../api";
 import * as downloadableEmulators from "./downloadableEmulators";
 import { EmulatorInfo, EmulatorInstance, Emulators } from "../emulator/types";
 import { Constants } from "./constants";
 import { EmulatorRegistry } from "./registry";
 import { EmulatorLogger } from "./emulatorLogger";
 import { FirebaseError } from "../error";
-import * as parseBoltRules from "../parseBoltRules";
+import { parseBoltRules } from "../parseBoltRules";
+import { connectableHostname } from "../utils";
 
 export interface DatabaseEmulatorArgs {
   port?: number;
@@ -21,6 +21,7 @@ export interface DatabaseEmulatorArgs {
   functions_emulator_port?: number;
   functions_emulator_host?: string;
   auto_download?: boolean;
+  single_project_mode?: string;
 }
 
 export class DatabaseEmulator implements EmulatorInstance {
@@ -49,7 +50,7 @@ export class DatabaseEmulator implements EmulatorInstance {
         }
 
         this.rulesWatcher = chokidar.watch(c.rules, { persistent: true, ignoreInitial: true });
-        this.rulesWatcher.on("change", async (event, stats) => {
+        this.rulesWatcher.on("change", async () => {
           // There have been some race conditions reported (on Windows) where reading the
           // file too quickly after the watcher fires results in an empty file being read.
           // Adding a small delay prevents that at very little cost.
@@ -83,8 +84,16 @@ export class DatabaseEmulator implements EmulatorInstance {
         if (!c.instance) {
           continue;
         }
-
-        await this.updateRules(c.instance, c.rules);
+        try {
+          await this.updateRules(c.instance, c.rules);
+        } catch (e: any) {
+          const rulesError = this.prettyPrintRulesError(c.rules, e);
+          this.logger.logLabeled("WARN", "database", rulesError);
+          this.logger.logLabeled("WARN", "database", "Failed to update rules");
+          throw new FirebaseError(
+            `Failed to load initial ${Constants.description(this.getName())} rules:\n${rulesError}`
+          );
+        }
       }
     }
   }
@@ -94,7 +103,7 @@ export class DatabaseEmulator implements EmulatorInstance {
   }
 
   getInfo(): EmulatorInfo {
-    const host = this.args.host || Constants.getDefaultHost(Emulators.DATABASE);
+    const host = this.args.host || Constants.getDefaultHost();
     const port = this.args.port || Constants.getDefaultPort(Emulators.DATABASE);
 
     return {
@@ -123,7 +132,7 @@ export class DatabaseEmulator implements EmulatorInstance {
       const req = http.request(
         {
           method: "PUT",
-          host,
+          host: connectableHostname(host),
           port,
           path: `/.json?ns=${ns}&disableTriggers=true&writeSizeLimit=unlimited`,
           headers: {
@@ -160,25 +169,49 @@ export class DatabaseEmulator implements EmulatorInstance {
         ? parseBoltRules(rulesPath).toString()
         : fs.readFileSync(rulesPath, "utf8");
 
-    const info = this.getInfo();
     try {
-      await api.request("PUT", `/.settings/rules.json?ns=${instance}`, {
-        origin: `http://${EmulatorRegistry.getInfoHostString(info)}`,
+      await EmulatorRegistry.client(Emulators.DATABASE).put(`/.settings/rules.json`, content, {
         headers: { Authorization: "Bearer owner" },
-        data: content,
-        json: false,
+        queryParams: { ns: instance },
       });
     } catch (e: any) {
       // The body is already parsed as JSON
       if (e.context && e.context.body) {
         throw e.context.body.error;
       }
-      throw e.original;
+      throw e.original ?? e;
     }
   }
 
-  private prettyPrintRulesError(filePath: string, error: string): string {
+  // TODO: tests
+  private prettyPrintRulesError(filePath: string, error: unknown): string {
+    let errStr;
+    switch (typeof error) {
+      case "string":
+        errStr = error;
+        break;
+      case "object":
+        if (error != null && "message" in error) {
+          const message = (error as { message: unknown }).message;
+          errStr = `${message}`;
+          if (typeof message === "string") {
+            try {
+              // message may be JSON with {error: string} in it
+              const parsed = JSON.parse(message);
+              if (typeof parsed === "object" && parsed.error) {
+                errStr = `${parsed.error}`;
+              }
+            } catch (_) {
+              // Probably not JSON, just output the string itself as above.
+            }
+          }
+          break;
+        }
+      // fallthrough
+      default:
+        errStr = `Unknown error: ${JSON.stringify(error)}`;
+    }
     const relativePath = path.relative(process.cwd(), filePath);
-    return `${clc.cyan(relativePath)}:${error.trim()}`;
+    return `${clc.cyan(relativePath)}:${errStr.trim()}`;
   }
 }

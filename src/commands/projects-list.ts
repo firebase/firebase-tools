@@ -1,9 +1,10 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 import * as ora from "ora";
-import Table = require("cli-table");
+const Table = require("cli-table");
 
 import { Command } from "../command";
-import { FirebaseProjectMetadata, listFirebaseProjects } from "../management/projects";
+import { listFirebaseProjects } from "../management/projects";
+import { FirebaseProjectMetadata } from "../types/project";
 import { requireAuth } from "../requireAuth";
 import { logger } from "../logger";
 
@@ -23,7 +24,7 @@ function logProjectsList(projects: FirebaseProjectMetadata[], currentProjectId: 
   const table = new Table({ head: tableHead, style: { head: ["green"] } });
   projects.forEach(({ projectId, projectNumber, displayName, resources }) => {
     if (projectId === currentProjectId) {
-      projectId = clc.cyan.bold(`${projectId} (current)`);
+      projectId = clc.cyan(clc.bold(`${projectId} (current)`));
     }
     table.push([
       displayName || NOT_SPECIFIED,
@@ -45,7 +46,7 @@ function logProjectCount(arr: FirebaseProjectMetadata[] = []): void {
   logger.info(`${arr.length} project(s) total.`);
 }
 
-module.exports = new Command("projects:list")
+export const command = new Command("projects:list")
   .description("list all Firebase projects you have access to")
   .before(requireAuth)
   .action(

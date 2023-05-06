@@ -1,6 +1,6 @@
-import * as clc from "cli-color";
+import * as clc from "colorette";
 
-import { Client } from "../apiv2";
+import { Client, ClientVerbOptions } from "../apiv2";
 import { FirebaseError } from "../error";
 import { functionsV2Origin } from "../api";
 import { logger } from "../logger";
@@ -11,9 +11,16 @@ import * as runtimes from "../deploy/functions/runtimes";
 import * as proto from "./proto";
 import * as utils from "../utils";
 import * as projectConfig from "../functions/projectConfig";
+import {
+  BLOCKING_EVENT_TO_LABEL_KEY,
+  BLOCKING_LABEL,
+  BLOCKING_LABEL_KEY_TO_EVENT,
+  CODEBASE_LABEL,
+  HASH_LABEL,
+} from "../functions/constants";
+import { RequireKeys } from "../metaprogramming";
 
-export const API_VERSION = "v2alpha";
-export const CODEBASE_LABEL = "firebase-functions-codebase";
+export const API_VERSION = "v2";
 
 const client = new Client({
   urlPrefix: functionsV2Origin,
@@ -21,32 +28,12 @@ const client = new Client({
   apiVersion: API_VERSION,
 });
 
-export const BLOCKING_LABEL = "deployment-blocking";
-
-const BLOCKING_LABEL_KEY_TO_EVENT: Record<string, typeof AUTH_BLOCKING_EVENTS[number]> = {
-  "before-create": "providers/cloud.auth/eventTypes/user.beforeCreate",
-  "before-sign-in": "providers/cloud.auth/eventTypes/user.beforeSignIn",
-};
-
-const BLOCKING_EVENT_TO_LABEL_KEY: Record<typeof AUTH_BLOCKING_EVENTS[number], string> = {
-  "providers/cloud.auth/eventTypes/user.beforeCreate": "before-create",
-  "providers/cloud.auth/eventTypes/user.beforeSignIn": "before-sign-in",
-};
-
 export type VpcConnectorEgressSettings = "PRIVATE_RANGES_ONLY" | "ALL_TRAFFIC";
 export type IngressSettings = "ALLOW_ALL" | "ALLOW_INTERNAL_ONLY" | "ALLOW_INTERNAL_AND_GCLB";
 export type FunctionState = "ACTIVE" | "FAILED" | "DEPLOYING" | "DELETING" | "UNKONWN";
 
-// The GCFv2 funtion type has many inner types which themselves have output-only fields:
-// eventTrigger.trigger
-// buildConfig.config
-// buildConfig.workerPool
-// serviceConfig.service
-// serviceConfig.uri
-//
-// Because Omit<> doesn't work with nested property addresses, we're making those fields optional.
-// An alternative would be to name the types OutputCloudFunction/CloudFunction or CloudFunction/InputCloudFunction.
-export type OutputOnlyFields = "state" | "updateTime";
+// Values allowed for the operator field in EventFilter
+export type EventFilterOperator = "match-path-pattern";
 
 /** Settings for building a container out of the customer source. */
 export interface BuildConfig {
@@ -90,6 +77,21 @@ export interface Source {
 export interface EventFilter {
   attribute: string;
   value: string;
+  operator?: EventFilterOperator;
+}
+
+/**
+ * Configurations for secret environment variables attached to a cloud functions resource.
+ */
+export interface SecretEnvVar {
+  /* Name of the environment variable. */
+  key: string;
+  /* Project identifier (or project number) of the project that contains the secret. */
+  projectId: string;
+  /* Name of the secret in secret manager. e.g. MY_SECRET, NOT projects/abc/secrets/MY_SECRET */
+  secret: string;
+  /* Version of the secret (version number or the string 'latest') */
+  version?: string;
 }
 
 /** The Cloud Run service that underlies a Cloud Function. */
@@ -101,19 +103,22 @@ export interface ServiceConfig {
   // cloudfunctions.net URLs.
   uri?: string;
 
-  timeoutSeconds?: number;
-  availableMemory?: string;
-  environmentVariables?: Record<string, string>;
-  maxInstanceCount?: number;
-  minInstanceCount?: number;
-  vpcConnector?: string;
-  vpcConnectorEgressSettings?: VpcConnectorEgressSettings;
-  ingressSettings?: IngressSettings;
+  timeoutSeconds?: number | null;
+  availableMemory?: string | null;
+  availableCpu?: string | null;
+  environmentVariables?: Record<string, string> | null;
+  secretEnvironmentVariables?: SecretEnvVar[] | null;
+  maxInstanceCount?: number | null;
+  minInstanceCount?: number | null;
+  maxInstanceRequestConcurrency?: number | null;
+  vpcConnector?: string | null;
+  vpcConnectorEgressSettings?: VpcConnectorEgressSettings | null;
+  ingressSettings?: IngressSettings | null;
 
   // The service account for default credentials. Defaults to the
   // default compute account. This is different from the v1 default
   // of the default GAE account.
-  serviceAccountEmail?: string;
+  serviceAccountEmail?: string | null;
 }
 
 export interface EventTrigger {
@@ -138,16 +143,25 @@ export interface EventTrigger {
   channel?: string;
 }
 
-export interface CloudFunction {
+interface CloudFunctionBase {
   name: string;
   description?: string;
   buildConfig: BuildConfig;
-  serviceConfig: ServiceConfig;
+  serviceConfig?: ServiceConfig;
   eventTrigger?: EventTrigger;
+  labels?: Record<string, string> | null;
+}
+
+export type OutputCloudFunction = CloudFunctionBase & {
   state: FunctionState;
   updateTime: Date;
-  labels?: Record<string, string>;
-}
+  serviceConfig?: RequireKeys<ServiceConfig, "service" | "uri">;
+};
+
+export type InputCloudFunction = CloudFunctionBase & {
+  // serviceConfig is required.
+  serviceConfig: ServiceConfig;
+};
 
 export interface OperationMetadata {
   createTime: string;
@@ -166,13 +180,13 @@ export interface Operation {
   metadata?: OperationMetadata;
   done: boolean;
   error?: { code: number; message: string; details: unknown };
-  response?: CloudFunction;
+  response?: OutputCloudFunction;
 }
 
 // Private API interface for ListFunctionsResponse. listFunctions returns
 // a CloudFunction[]
 interface ListFunctionsResponse {
-  functions: CloudFunction[];
+  functions: OutputCloudFunction[];
   unreachable: string[];
 }
 
@@ -201,7 +215,7 @@ const BYTES_PER_UNIT: Record<MemoryUnit, number> = {
  * Must serve the same results as
  * https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/apimachinery/pkg/api/resource/quantity.go
  */
-export function megabytes(memory: string): number {
+export function mebibytes(memory: string): number {
   const re = /^([0-9]+(\.[0-9]*)?)(Ki|Mi|Gi|Ti|k|M|G|T|([eE]([0-9]+)))?$/;
   const matches = re.exec(memory);
   if (!matches) {
@@ -215,7 +229,7 @@ export function megabytes(memory: string): number {
     const suffix = matches[3] || "";
     bytes = quantity * BYTES_PER_UNIT[suffix as MemoryUnit];
   }
-  return bytes / 1e6;
+  return bytes / (1 << 20);
 }
 
 /**
@@ -225,19 +239,31 @@ export function megabytes(memory: string): number {
  * @param err The error returned from the operation.
  */
 function functionsOpLogReject(funcName: string, type: string, err: any): void {
+  utils.logWarning(clc.bold(clc.yellow("functions:")) + ` ${err?.message}`);
   if (err?.context?.response?.statusCode === 429) {
     utils.logWarning(
-      `${clc.bold.yellow(
-        "functions:"
+      `${clc.bold(
+        clc.yellow("functions:")
       )} got "Quota Exceeded" error while trying to ${type} ${funcName}. Waiting to retry...`
+    );
+  } else if (
+    err?.message.includes(
+      "If you recently started to use Eventarc, it may take a few minutes before all necessary permissions are propagated to the Service Agent"
+    )
+  ) {
+    utils.logWarning(
+      `${clc.bold(
+        clc.yellow("functions:")
+      )} since this is your first time using functions v2, we need a little bit longer to finish setting everything up, please retry the deployment in a few minutes.`
     );
   } else {
     utils.logWarning(
-      clc.bold.yellow("functions:") + " failed to " + type + " function " + funcName
+      clc.bold(clc.yellow("functions:")) + " failed to " + type + " function " + funcName
     );
   }
   throw new FirebaseError(`Failed to ${type} function ${funcName}`, {
     original: err,
+    status: err?.context?.response?.statusCode,
     context: { function: funcName },
   });
 }
@@ -265,12 +291,17 @@ export async function generateUploadUrl(
 /**
  * Creates a new Cloud Function.
  */
-export async function createFunction(
-  cloudFunction: Omit<CloudFunction, OutputOnlyFields>
-): Promise<Operation> {
+export async function createFunction(cloudFunction: InputCloudFunction): Promise<Operation> {
   // the API is a POST to the collection that owns the function name.
   const components = cloudFunction.name.split("/");
   const functionId = components.splice(-1, 1)[0];
+
+  cloudFunction.buildConfig.environmentVariables = {
+    ...cloudFunction.buildConfig.environmentVariables,
+    // Disable GCF from automatically running npm run build script
+    // https://cloud.google.com/functions/docs/release-notes
+    GOOGLE_NODE_RUN_SCRIPTS: "",
+  };
 
   try {
     const res = await client.post<typeof cloudFunction, Operation>(
@@ -291,9 +322,9 @@ export async function getFunction(
   projectId: string,
   location: string,
   functionId: string
-): Promise<CloudFunction> {
+): Promise<OutputCloudFunction> {
   const name = `projects/${projectId}/locations/${location}/functions/${functionId}`;
-  const res = await client.get<CloudFunction>(name);
+  const res = await client.get<OutputCloudFunction>(name);
   return res.body;
 }
 
@@ -301,7 +332,10 @@ export async function getFunction(
  *  List all functions in a region.
  *  Customers should generally use backend.existingBackend.
  */
-export async function listFunctions(projectId: string, region: string): Promise<CloudFunction[]> {
+export async function listFunctions(
+  projectId: string,
+  region: string
+): Promise<OutputCloudFunction[]> {
   const res = await listFunctionsInternal(projectId, region);
   if (res.unreachable.includes(region)) {
     throw new FirebaseError(`Cloud Functions region ${region} is unavailable`);
@@ -322,12 +356,16 @@ async function listFunctionsInternal(
   region: string
 ): Promise<ListFunctionsResponse> {
   type Response = ListFunctionsResponse & { nextPageToken?: string };
-  const functions: CloudFunction[] = [];
+  const functions: OutputCloudFunction[] = [];
   const unreacahble = new Set<string>();
   let pageToken = "";
   while (true) {
     const url = `projects/${projectId}/locations/${region}/functions`;
-    const opts = pageToken === "" ? {} : { queryParams: { pageToken } };
+    // V2 API returns both V1 and V2 Functions. Add filter condition to return only V2 functions.
+    const opts: ClientVerbOptions = { queryParams: { filter: `environment="GEN_2"` } };
+    if (pageToken !== "") {
+      opts.queryParams = { ...opts.queryParams, pageToken };
+    }
     const res = await client.get<Response>(url, opts);
     functions.push(...(res.body.functions || []));
     for (const region of res.body.unreachable || []) {
@@ -348,16 +386,23 @@ async function listFunctionsInternal(
  * Updates a Cloud Function.
  * Customers can force a field to be deleted by setting that field to `undefined`
  */
-export async function updateFunction(
-  cloudFunction: Omit<CloudFunction, OutputOnlyFields>
-): Promise<Operation> {
-  // Keys in labels and environmentVariables are user defined, so we don't recurse
+export async function updateFunction(cloudFunction: InputCloudFunction): Promise<Operation> {
+  // Keys in labels and environmentVariables and secretEnvironmentVariables are user defined, so we don't recurse
   // for field masks.
   const fieldMasks = proto.fieldMasks(
     cloudFunction,
     /* doNotRecurseIn...=*/ "labels",
-    "serviceConfig.environmentVariables"
+    "serviceConfig.environmentVariables",
+    "serviceConfig.secretEnvironmentVariables"
   );
+
+  cloudFunction.buildConfig.environmentVariables = {
+    ...cloudFunction.buildConfig.environmentVariables,
+    // Disable GCF from automatically running npm run build script
+    // https://cloud.google.com/functions/docs/release-notes
+    GOOGLE_NODE_RUN_SCRIPTS: "",
+  };
+  fieldMasks.push("buildConfig.buildEnvironmentVariables");
   try {
     const queryParams = {
       updateMask: fieldMasks.join(","),
@@ -386,7 +431,13 @@ export async function deleteFunction(cloudFunction: string): Promise<Operation> 
   }
 }
 
-export function functionFromEndpoint(endpoint: backend.Endpoint, source: StorageSource) {
+/**
+ * Generate a v2 Cloud Function API object from a versionless Endpoint object.
+ */
+export function functionFromEndpoint(
+  endpoint: backend.Endpoint,
+  source: StorageSource
+): InputCloudFunction {
   if (endpoint.platform !== "gcfv2") {
     throw new FirebaseError(
       "Trying to create a v2 CloudFunction with v1 API. This should never happen"
@@ -400,7 +451,7 @@ export function functionFromEndpoint(endpoint: backend.Endpoint, source: Storage
     );
   }
 
-  const gcfFunction: Omit<CloudFunction, OutputOnlyFields> = {
+  const gcfFunction: InputCloudFunction = {
     name: backend.functionName(endpoint),
     buildConfig: {
       runtime: endpoint.runtime,
@@ -419,19 +470,33 @@ export function functionFromEndpoint(endpoint: backend.Endpoint, source: Storage
     gcfFunction.serviceConfig,
     endpoint,
     "environmentVariables",
-    "serviceAccountEmail",
+    "secretEnvironmentVariables",
     "ingressSettings",
     "timeoutSeconds"
   );
   proto.renameIfPresent(
     gcfFunction.serviceConfig,
     endpoint,
-    "availableMemory",
-    "availableMemoryMb",
-    (mb: string) => `${mb}M`
+    "serviceAccountEmail",
+    "serviceAccount"
   );
+  // Memory must be set because the default value of GCF gen 2 is Megabytes and
+  // we use mebibytes
+  const mem = endpoint.availableMemoryMb || backend.DEFAULT_MEMORY;
+  gcfFunction.serviceConfig.availableMemory = mem > 1024 ? `${mem / 1024}Gi` : `${mem}Mi`;
   proto.renameIfPresent(gcfFunction.serviceConfig, endpoint, "minInstanceCount", "minInstances");
   proto.renameIfPresent(gcfFunction.serviceConfig, endpoint, "maxInstanceCount", "maxInstances");
+  // N.B. only convert CPU and concurrency fields for 2nd gen functions, once we
+  // eventually use the v2 API to configure both 1st and 2nd gen functions)
+  proto.renameIfPresent(
+    gcfFunction.serviceConfig,
+    endpoint,
+    "maxInstanceRequestConcurrency",
+    "concurrency"
+  );
+  proto.convertIfPresent(gcfFunction.serviceConfig, endpoint, "availableCpu", "cpu", (cpu) => {
+    return String(cpu);
+  });
 
   if (endpoint.vpc) {
     proto.renameIfPresent(gcfFunction.serviceConfig, endpoint.vpc, "vpcConnector", "connector");
@@ -441,6 +506,9 @@ export function functionFromEndpoint(endpoint: backend.Endpoint, source: Storage
       "vpcConnectorEgressSettings",
       "egressSettings"
     );
+  } else if (endpoint.vpc === null) {
+    gcfFunction.serviceConfig.vpcConnector = null;
+    gcfFunction.serviceConfig.vpcConnectorEgressSettings = null;
   }
 
   if (backend.isEventTriggered(endpoint)) {
@@ -448,6 +516,12 @@ export function functionFromEndpoint(endpoint: backend.Endpoint, source: Storage
       eventType: endpoint.eventTrigger.eventType,
     };
     if (gcfFunction.eventTrigger.eventType === PUBSUB_PUBLISH_EVENT) {
+      if (!endpoint.eventTrigger.eventFilters?.topic) {
+        throw new FirebaseError(
+          "Error: Pub/Sub event trigger is missing topic: " +
+            JSON.stringify(endpoint.eventTrigger, null, 2)
+        );
+      }
       gcfFunction.eventTrigger.pubsubTopic = endpoint.eventTrigger.eventFilters.topic;
       gcfFunction.eventTrigger.eventFilters = [];
       for (const [attribute, value] of Object.entries(endpoint.eventTrigger.eventFilters)) {
@@ -456,8 +530,17 @@ export function functionFromEndpoint(endpoint: backend.Endpoint, source: Storage
       }
     } else {
       gcfFunction.eventTrigger.eventFilters = [];
-      for (const [attribute, value] of Object.entries(endpoint.eventTrigger.eventFilters)) {
+      for (const [attribute, value] of Object.entries(endpoint.eventTrigger.eventFilters || {})) {
         gcfFunction.eventTrigger.eventFilters.push({ attribute, value });
+      }
+      for (const [attribute, value] of Object.entries(
+        endpoint.eventTrigger.eventFilterPathPatterns || {}
+      )) {
+        gcfFunction.eventTrigger.eventFilters.push({
+          attribute,
+          value,
+          operator: "match-path-pattern",
+        });
       }
     }
     proto.renameIfPresent(
@@ -491,7 +574,7 @@ export function functionFromEndpoint(endpoint: backend.Endpoint, source: Storage
       ...gcfFunction.labels,
       [BLOCKING_LABEL]:
         BLOCKING_EVENT_TO_LABEL_KEY[
-          endpoint.blockingTrigger.eventType as typeof AUTH_BLOCKING_EVENTS[number]
+          endpoint.blockingTrigger.eventType as (typeof AUTH_BLOCKING_EVENTS)[number]
         ],
     };
   }
@@ -504,10 +587,19 @@ export function functionFromEndpoint(endpoint: backend.Endpoint, source: Storage
   } else {
     delete gcfFunction.labels?.[CODEBASE_LABEL];
   }
+  if (endpoint.hash) {
+    gcfFunction.labels = {
+      ...gcfFunction.labels,
+      [HASH_LABEL]: endpoint.hash,
+    };
+  }
   return gcfFunction;
 }
 
-export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoint {
+/**
+ * Generate a versionless Endpoint object from a v2 Cloud Function API object.
+ */
+export function endpointFromFunction(gcfFunction: OutputCloudFunction): backend.Endpoint {
   const [, project, , region, , id] = gcfFunction.name.split("/");
   let trigger: backend.Triggered;
   if (gcfFunction.labels?.["deployment-scheduled"] === "true") {
@@ -529,19 +621,30 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
       },
     };
   } else if (gcfFunction.eventTrigger) {
+    const eventFilters: Record<string, string> = {};
+    const eventFilterPathPatterns: Record<string, string> = {};
+    if (gcfFunction.eventTrigger.pubsubTopic) {
+      eventFilters.topic = gcfFunction.eventTrigger.pubsubTopic;
+    } else {
+      for (const eventFilter of gcfFunction.eventTrigger.eventFilters || []) {
+        if (eventFilter.operator === "match-path-pattern") {
+          eventFilterPathPatterns[eventFilter.attribute] = eventFilter.value;
+        } else {
+          eventFilters[eventFilter.attribute] = eventFilter.value;
+        }
+      }
+    }
     trigger = {
       eventTrigger: {
         eventType: gcfFunction.eventTrigger.eventType,
-        eventFilters: {},
         retry: false,
       },
     };
-    if (gcfFunction.eventTrigger.pubsubTopic) {
-      trigger.eventTrigger.eventFilters.topic = gcfFunction.eventTrigger.pubsubTopic;
-    } else {
-      for (const { attribute, value } of gcfFunction.eventTrigger.eventFilters || []) {
-        trigger.eventTrigger.eventFilters[attribute] = value;
-      }
+    if (Object.keys(eventFilters).length) {
+      trigger.eventTrigger.eventFilters = eventFilters;
+    }
+    if (Object.keys(eventFilterPathPatterns).length) {
+      trigger.eventTrigger.eventFilterPathPatterns = eventFilterPathPatterns;
     }
     proto.copyIfPresent(trigger.eventTrigger, gcfFunction.eventTrigger, "channel");
     proto.renameIfPresent(
@@ -566,35 +669,78 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
     ...trigger,
     entryPoint: gcfFunction.buildConfig.entryPoint,
     runtime: gcfFunction.buildConfig.runtime,
-    uri: gcfFunction.serviceConfig.uri,
   };
-  proto.copyIfPresent(
-    endpoint,
-    gcfFunction.serviceConfig,
-    "serviceAccountEmail",
-    "ingressSettings",
-    "environmentVariables",
-    "timeoutSeconds"
-  );
-  proto.renameIfPresent(
-    endpoint,
-    gcfFunction.serviceConfig,
-    "availableMemoryMb",
-    "availableMemory",
-    megabytes
-  );
-  proto.renameIfPresent(endpoint, gcfFunction.serviceConfig, "minInstances", "minInstanceCount");
-  proto.renameIfPresent(endpoint, gcfFunction.serviceConfig, "maxInstances", "maxInstanceCount");
-  proto.copyIfPresent(endpoint, gcfFunction, "labels");
-  if (gcfFunction.serviceConfig.vpcConnector) {
-    endpoint.vpc = { connector: gcfFunction.serviceConfig.vpcConnector };
-    proto.renameIfPresent(
-      endpoint.vpc,
+  if (gcfFunction.serviceConfig) {
+    proto.copyIfPresent(
+      endpoint,
       gcfFunction.serviceConfig,
-      "egressSettings",
-      "vpcConnectorEgressSettings"
+      "ingressSettings",
+      "environmentVariables",
+      "secretEnvironmentVariables",
+      "timeoutSeconds",
+      "uri"
     );
+    proto.renameIfPresent(
+      endpoint,
+      gcfFunction.serviceConfig,
+      "serviceAccount",
+      "serviceAccountEmail"
+    );
+    proto.convertIfPresent(
+      endpoint,
+      gcfFunction.serviceConfig,
+      "availableMemoryMb",
+      "availableMemory",
+      (prod) => {
+        if (prod === null) {
+          logger.debug("Prod should always return a valid memory amount");
+          return prod as never;
+        }
+        const mem = mebibytes(prod);
+        if (!backend.isValidMemoryOption(mem)) {
+          logger.warn("Converting a function to an endpoint with an invalid memory option", mem);
+        }
+        return mem as backend.MemoryOptions;
+      }
+    );
+    proto.convertIfPresent(endpoint, gcfFunction.serviceConfig, "cpu", "availableCpu", (cpu) => {
+      let cpuVal: number | null = Number(cpu);
+      if (Number.isNaN(cpuVal)) {
+        cpuVal = null;
+      }
+      return cpuVal;
+    });
+    proto.renameIfPresent(endpoint, gcfFunction.serviceConfig, "minInstances", "minInstanceCount");
+    proto.renameIfPresent(endpoint, gcfFunction.serviceConfig, "maxInstances", "maxInstanceCount");
+    proto.renameIfPresent(
+      endpoint,
+      gcfFunction.serviceConfig,
+      "concurrency",
+      "maxInstanceRequestConcurrency"
+    );
+    proto.copyIfPresent(endpoint, gcfFunction, "labels");
+    if (gcfFunction.serviceConfig.vpcConnector) {
+      endpoint.vpc = { connector: gcfFunction.serviceConfig.vpcConnector };
+      proto.renameIfPresent(
+        endpoint.vpc,
+        gcfFunction.serviceConfig,
+        "egressSettings",
+        "vpcConnectorEgressSettings"
+      );
+    }
+    const serviceName = gcfFunction.serviceConfig.service;
+    if (!serviceName) {
+      logger.debug(
+        "Got a v2 function without a service name." +
+          "Maybe we've migrated to using the v2 API everywhere and missed this code"
+      );
+    } else {
+      endpoint.runServiceId = utils.last(serviceName.split("/"));
+    }
   }
   endpoint.codebase = gcfFunction.labels?.[CODEBASE_LABEL] || projectConfig.DEFAULT_CODEBASE;
+  if (gcfFunction.labels?.[HASH_LABEL]) {
+    endpoint.hash = gcfFunction.labels[HASH_LABEL];
+  }
   return endpoint;
 }

@@ -1,8 +1,6 @@
-import * as url from "url";
-
 import { Emulators } from "./types";
 
-const DEFAULT_PORTS: { [s in Emulators]: number } = {
+export const DEFAULT_PORTS: { [s in Emulators]: number } = {
   ui: 4000,
   hub: 4400,
   logging: 4500,
@@ -14,13 +12,14 @@ const DEFAULT_PORTS: { [s in Emulators]: number } = {
   database: 9000,
   auth: 9099,
   storage: 9199,
+  eventarc: 9299,
 };
 
 export const FIND_AVAILBLE_PORT_BY_DEFAULT: Record<Emulators, boolean> = {
   ui: true,
   hub: true,
   logging: true,
-  hosting: false,
+  hosting: true,
   functions: false,
   firestore: false,
   database: false,
@@ -28,6 +27,7 @@ export const FIND_AVAILBLE_PORT_BY_DEFAULT: Record<Emulators, boolean> = {
   auth: false,
   storage: false,
   extensions: false,
+  eventarc: true,
 };
 
 export const EMULATOR_DESCRIPTION: Record<Emulators, string> = {
@@ -42,9 +42,10 @@ export const EMULATOR_DESCRIPTION: Record<Emulators, string> = {
   auth: "Authentication Emulator",
   storage: "Storage Emulator",
   extensions: "Extensions Emulator",
+  eventarc: "Eventarc Emulator",
 };
 
-const DEFAULT_HOST = "localhost";
+export const DEFAULT_HOST = "localhost";
 
 export class Constants {
   // GCP projects cannot start with 'demo' so we use 'demo-' as a prefix to denote
@@ -56,6 +57,9 @@ export class Constants {
 
   // Environment variable to override SDK/CLI to point at the Firestore emulator.
   static FIRESTORE_EMULATOR_HOST = "FIRESTORE_EMULATOR_HOST";
+
+  // Alternative (deprecated) env var for Firestore Emulator.
+  static FIRESTORE_EMULATOR_ENV_ALT = "FIREBASE_FIRESTORE_EMULATOR_ADDRESS";
 
   // Environment variable to override SDK/CLI to point at the Realtime Database emulator.
   static FIREBASE_DATABASE_EMULATOR_HOST = "FIREBASE_DATABASE_EMULATOR_HOST";
@@ -71,12 +75,20 @@ export class Constants {
   // this one must start with 'http://'.
   static CLOUD_STORAGE_EMULATOR_HOST = "STORAGE_EMULATOR_HOST";
 
+  // Environment variable to discover the eventarc emulator.
+  static PUBSUB_EMULATOR_HOST = "PUBSUB_EMULATOR_HOST";
+
+  // Environment variable to discover the eventarc emulator.
+  static CLOUD_EVENTARC_EMULATOR_HOST = "CLOUD_EVENTARC_EMULATOR_HOST";
+
   // Environment variable to discover the Emulator HUB
   static FIREBASE_EMULATOR_HUB = "FIREBASE_EMULATOR_HUB";
+  static FIREBASE_GA_SESSION = "FIREBASE_GA_SESSION";
 
   static SERVICE_FIRESTORE = "firestore.googleapis.com";
   static SERVICE_REALTIME_DATABASE = "firebaseio.com";
   static SERVICE_PUBSUB = "pubsub.googleapis.com";
+  static SERVICE_EVENTARC = "eventarc.googleapis.com";
   // Note: the service name below are here solely for logging purposes.
   // There is not an emulator available for these.
   static SERVICE_ANALYTICS = "app-measurement.com";
@@ -106,12 +118,14 @@ export class Constants {
         return "storage";
       case this.SERVICE_TEST_LAB:
         return "test lab";
+      case this.SERVICE_EVENTARC:
+        return "eventarc";
       default:
         return service;
     }
   }
 
-  static getDefaultHost(emulator: Emulators): string {
+  static getDefaultHost(): string {
     return DEFAULT_HOST;
   }
 
@@ -121,16 +135,6 @@ export class Constants {
 
   static description(name: Emulators): string {
     return EMULATOR_DESCRIPTION[name];
-  }
-
-  static normalizeHost(host: string): string {
-    let normalized = host;
-    if (!normalized.startsWith("http")) {
-      normalized = `http://${normalized}`;
-    }
-
-    const u = url.parse(normalized);
-    return u.hostname || DEFAULT_HOST;
   }
 
   static isDemoProject(projectId?: string): boolean {
