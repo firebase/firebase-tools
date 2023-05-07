@@ -669,11 +669,7 @@ function validateReleaseNotes(rootDirectory: string, newVersion: string, require
  * @param newVersion the new extension version
  * @param latestVersion the latest extension version
  */
-function validateVersion(
-  extensionRef: string,
-  newVersion: string,
-  latestVersion?: string,
-) {
+function validateVersion(extensionRef: string, newVersion: string, latestVersion?: string) {
   if (latestVersion) {
     if (semver.lt(newVersion, latestVersion)) {
       throw new FirebaseError(
@@ -908,7 +904,13 @@ export async function uploadExtensionVersionFromGitHubSource(args: {
     !!extension?.latestVersion
   );
   const sourceUri = repoUri + path.join("/tree", sourceRef, extensionRoot);
-  displayReleaseNotes({ extensionRef, newVersion, releaseNotes, sourceUri, autoReview });
+  displayReleaseNotes({
+    extensionRef,
+    newVersion,
+    releaseNotes,
+    sourceUri,
+    autoReview: stage === "stable" && autoReview,
+  });
   const confirmed = await confirm({
     nonInteractive: args.nonInteractive,
     force: args.force,
@@ -970,7 +972,7 @@ export async function uploadExtensionVersionFromLocalSource(args: {
   }
 
   const extensionSpec = await validateExtensionSpec(args.rootDirectory, args.extensionId);
-  validateVersion( extensionRef, extensionSpec.version, extension?.latestVersion);
+  validateVersion(extensionRef, extensionSpec.version, extension?.latestVersion);
   const { versionByStage } = await getNextVersionByStage(extensionRef, extensionSpec.version);
 
   // Prompt for release stage.
@@ -1129,7 +1131,7 @@ export function displayReleaseNotes(args: {
   releaseNotes?: string;
   sourceUri?: string;
 }): void {
-  const source = args.sourceUri || "local source";
+  const source = args.sourceUri || "Local source";
   const releaseNotesMessage = args.releaseNotes
     ? `${clc.bold("Release notes:")}\n${marked(args.releaseNotes)}`
     : "\n";
@@ -1143,7 +1145,7 @@ export function displayReleaseNotes(args: {
     `\nYou are about to upload a new version to Firebase's registry of extensions.\n\n` +
     metadataMessage +
     releaseNotesMessage +
-    `Once an extension version is uploaded, it cannot be changed. If you wish to make changes after uploading, you will need to upload a new version.\n`;
+    `Once an extension version is uploaded, it becomes installable by other users and cannot be changed. If you wish to make changes after uploading, you will need to upload a new version.\n`;
   logger.info(message);
 }
 
