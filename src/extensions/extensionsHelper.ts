@@ -421,12 +421,8 @@ export async function promptForValidExtensionRoot(defaultRoot: string): Promise<
         "Enter this extension's root directory in the repo (defaults to previous root if set):",
       default: defaultRoot,
     });
-    // TODO: Change this to a real check.
-    if (false) {
-      logger.info(`${extensionRoot} is not a valid directory path.`);
-    } else {
-      rootIsValid = true;
-    }
+    // TODO: Add real directory path validation.
+    rootIsValid = true;
   }
   return extensionRoot;
 }
@@ -669,14 +665,14 @@ function validateReleaseNotes(rootDirectory: string, newVersion: string, require
 /**
  * Validates the extension version.
  *
+ * @param extensionRef the ref of the extension
  * @param newVersion the new extension version
  * @param latestVersion the latest extension version
- * @param extensionRef the ref of the extension
  */
 function validateVersion(
+  extensionRef: string,
   newVersion: string,
-  latestVersion: string | undefined,
-  extensionRef: string
+  latestVersion?: string,
 ) {
   if (latestVersion) {
     if (semver.lt(newVersion, latestVersion)) {
@@ -744,6 +740,7 @@ async function displayExtensionHeader(extensionRef: string): Promise<{
     } catch (err: any) {
       // Silently fail and continue if extension has no latest version.
     }
+    // TODO: Fix this logic.
     const source = extension.repoUri
       ? `${new URL(
           latestVersion?.extensionRoot ?? "",
@@ -764,7 +761,6 @@ async function displayExtensionHeader(extensionRef: string): Promise<{
     logger.info(`${clc.bold("Extension:")} ${extensionRef}`);
     logger.info(`${clc.bold("State:")} ${clc.bold(clc.blue("New"))}`);
     logger.info("");
-    // Silently fail and continue if extension does not exist.
   }
   return { extension, latestVersion };
 }
@@ -852,17 +848,11 @@ export async function uploadExtensionVersionFromGitHubSource(args: {
     }
   }
 
-  // TODO: Normalize the extension root.
   let extensionRoot = args.extensionRoot || latestVersion?.extensionRoot;
   if (!extensionRoot) {
     const defaultRoot = "/";
     if (!args.nonInteractive) {
-      extensionRoot = await promptOnce({
-        type: "input",
-        message:
-          "Enter this extension's root directory in the repo (defaults to previous root if set):",
-        default: defaultRoot,
-      });
+      extensionRoot = await promptForValidExtensionRoot(defaultRoot);
     } else {
       extensionRoot = defaultRoot;
     }
@@ -885,7 +875,7 @@ export async function uploadExtensionVersionFromGitHubSource(args: {
 
   const rootDirectory = await fetchExtensionSource(repoUri, sourceRef, extensionRoot);
   const extensionSpec = await validateExtensionSpec(rootDirectory, args.extensionId);
-  validateVersion(extensionSpec.version, extension?.latestVersion, extensionRef);
+  validateVersion(extensionRef, extensionSpec.version, extension?.latestVersion);
   const { versionByStage, hasVersions } = await getNextVersionByStage(
     extensionRef,
     extensionSpec.version
@@ -980,7 +970,7 @@ export async function uploadExtensionVersionFromLocalSource(args: {
   }
 
   const extensionSpec = await validateExtensionSpec(args.rootDirectory, args.extensionId);
-  validateVersion(extensionSpec.version, extension?.latestVersion, extensionRef);
+  validateVersion( extensionRef, extensionSpec.version, extension?.latestVersion);
   const { versionByStage } = await getNextVersionByStage(extensionRef, extensionSpec.version);
 
   // Prompt for release stage.
