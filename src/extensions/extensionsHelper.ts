@@ -981,11 +981,11 @@ export async function uploadExtensionVersionFromLocalSource(args: {
   const extensionVersionRef = `${extensionRef}@${newVersion}`;
   let packageUri: string;
   let objectPath = "";
-  const uploadSpinner = ora(" Archiving and uploading extension source code...");
+  const uploadSpinner = ora("Archiving and uploading extension source code...");
   try {
     uploadSpinner.start();
     objectPath = await archiveAndUploadSource(args.rootDirectory, EXTENSIONS_BUCKET_NAME);
-    uploadSpinner.succeed(" Uploaded extension source code");
+    uploadSpinner.succeed("Uploaded extension source code");
     packageUri = storageOrigin + objectPath + "?alt=media";
   } catch (err: any) {
     uploadSpinner.fail();
@@ -993,12 +993,12 @@ export async function uploadExtensionVersionFromLocalSource(args: {
       original: err,
     });
   }
-  const publishSpinner = ora(` Uploading ${clc.bold(extensionVersionRef)}...`);
+  const publishSpinner = ora(`Uploading ${clc.bold(extensionVersionRef)}...`);
   let res;
   try {
     publishSpinner.start();
     res = await createExtensionVersionFromLocalSource({ extensionVersionRef, packageUri });
-    publishSpinner.succeed(` Successfully uploaded ${clc.bold(extensionVersionRef)}`);
+    publishSpinner.succeed(`Successfully uploaded ${clc.bold(extensionVersionRef)}`);
   } catch (err: any) {
     publishSpinner.fail();
     if (err.status === 404) {
