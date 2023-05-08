@@ -253,7 +253,7 @@ export function validateSpec(spec: any) {
   } else {
     const version = semver.parse(spec.version)!;
     if (version.prerelease.length > 0 || version.build.length > 0) {
-      errors.push("version field in extension.yaml does not support pre-release annotations");
+      errors.push("version field in extension.yaml does not support pre-release annotations; instead, set a pre-release stage using the --stage flag");
     }
   }
   if (!spec.license) {
@@ -544,7 +544,7 @@ async function getNextVersionByStage(
   try {
     extensionVersions = await listExtensionVersions(extensionRef, `id="${newVersion}"`, true);
   } catch (err: any) {
-    // Silently fail if there are no extension versions exist.
+    // Silently fail if no extension versions exist.
   }
   // Maps stage to default next version (e.g. "rc" => "1.0.0-rc.0").
   const versionByStage = new Map(
