@@ -529,6 +529,11 @@ ${firebaseDefaults ? `__FIREBASE_DEFAULTS__=${JSON.stringify(firebaseDefaults)}\
 
   // Clean up memos/caches
   BUILD_MEMO.clear();
+
+  // Clean up ENV variables, if were emulatoring .env won't override
+  // this is leads to failures if we're hosting multiple sites
+  delete process.env.__FIREBASE_DEFAULTS__
+  delete process.env.__FIREBASE_FRAMEWORKS_ENTRY__
 }
 
 function codegenDevModeFunctionsDirectory() {

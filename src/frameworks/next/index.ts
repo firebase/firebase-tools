@@ -470,7 +470,7 @@ const BUNDLE_NEXT_CONFIG_TIMEOUT = 10_000;
  * Create a directory for SSR content.
  */
 export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: string) {
-  const { distDir } = await getConfig(sourceDir);
+  const { distDir, basePath } = await getConfig(sourceDir);
   const packageJson = await readJSON(join(sourceDir, "package.json"));
   // Bundle their next.config.js with esbuild via NPX, pinned version was having troubles on m1
   // macs and older Node versions; either way, we should avoid taking on any deps in firebase-tools
@@ -543,7 +543,7 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
 
   await mkdirp(join(destDir, distDir));
   await copy(join(sourceDir, distDir), join(destDir, distDir));
-  return { packageJson, frameworksEntry: "next.js" };
+  return { packageJson, frameworksEntry: "next.js", basePath };
 }
 
 /**

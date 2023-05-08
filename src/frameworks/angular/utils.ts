@@ -303,7 +303,7 @@ export async function getBuildConfig(sourceDir: string) {
     serveOptimizedImages,
   } = await getContext(sourceDir);
   const targets = (
-    prerenderTarget ? [prerenderTarget] : [browserTarget, serverTarget].filter((it) => !it)
+    prerenderTarget ? [prerenderTarget] : [browserTarget, serverTarget].filter((it) => !!it)
   ).map((it) => targetStringFromTarget(it!));
   const locales = await localesForTarget(sourceDir, architectHost, browserTarget, workspaceProject);
   return {
