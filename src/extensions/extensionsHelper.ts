@@ -686,23 +686,12 @@ export function unpackExtensionState(extension: Extension) {
 }
 
 /**
- * Fetches the extension and its latest version and displays all metadata.
+ * Displays metadata about the extension being uploaded.
  *
  * @param extensionRef the ref of the extension
  */
-async function displayExtensionHeader(extensionRef: string): Promise<{
-  extension?: Extension;
-  latestVersion?: ExtensionVersion;
-}> {
-  let extension: Extension | undefined;
-  let latestVersion: ExtensionVersion | undefined;
-  try {
-    extension = await getExtension(extensionRef);
-    try {
-      latestVersion = await getExtensionVersion(`${extensionRef}@latest`);
-    } catch (err: any) {
-      // Silently fail and continue if extension has no latest version.
-    }
+function displayExtensionHeader(extensionRef: string, extension?: Extension, latestVersion?: ExtensionVersion) {
+  if (extension) {
     // TODO: Fix this logic.
     const source = extension.repoUri
       ? `${new URL(
@@ -719,13 +708,12 @@ async function displayExtensionHeader(extensionRef: string): Promise<{
     );
     logger.info(`${clc.bold("Source in GitHub:")} ${source}`);
     logger.info("");
-  } catch (err: any) {
+  } else {
     logger.info("");
     logger.info(`${clc.bold("Extension:")} ${extensionRef}`);
     logger.info(`${clc.bold("State:")} ${clc.bold(clc.blue("New"))}`);
     logger.info("");
   }
-  return { extension, latestVersion };
 }
 
 /**
@@ -792,7 +780,15 @@ export async function uploadExtensionVersionFromGitHubSource(args: {
   force: boolean;
 }): Promise<ExtensionVersion | undefined> {
   const extensionRef = `${args.publisherId}/${args.extensionId}`;
-  const { extension, latestVersion } = await displayExtensionHeader(extensionRef);
+  let extension: Extension | undefined;
+  let latestVersion: ExtensionVersion | undefined;
+  try {
+    extension = await getExtension(extensionRef);
+    latestVersion = await getExtensionVersion(`${extensionRef}@latest`);
+  } catch (err: any) {
+    // Silently fail and continue if extension is new or has no latest version set.
+  }
+  displayExtensionHeader(extensionRef);
 
   if (args.stage && !stageOptions.includes(args.stage)) {
     throw new FirebaseError(`--stage flag only supports the following values: ${stageOptions}`);
@@ -927,7 +923,15 @@ export async function uploadExtensionVersionFromLocalSource(args: {
   force: boolean;
 }): Promise<ExtensionVersion | undefined> {
   const extensionRef = `${args.publisherId}/${args.extensionId}`;
-  const { extension } = await displayExtensionHeader(extensionRef);
+  let extension: Extension | undefined;
+  let latestVersion: ExtensionVersion | undefined;
+  try {
+    extension = await getExtension(extensionRef);
+    latestVersion = await getExtensionVersion(`${extensionRef}@latest`);
+  } catch (err: any) {
+    // Silently fail and continue if extension is new or has no latest version set.
+  }
+  displayExtensionHeader(extensionRef);
 
   const localStageOptions = ["rc", "alpha", "beta"];
   if (args.stage && !localStageOptions.includes(args.stage)) {
