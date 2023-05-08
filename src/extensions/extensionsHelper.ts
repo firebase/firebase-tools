@@ -443,46 +443,47 @@ async function promptForReleaseStage(args: {
   nonInteractive: boolean;
   force: boolean;
 }): Promise<ReleaseStage> {
-  const defaultStage = "rc";
-  let stage: ReleaseStage;
-  const choices = [
-    { name: `Release candidate (${args.versionByStage.get("rc")})`, value: "rc" },
-    { name: `Alpha (${args.versionByStage.get("alpha")})`, value: "alpha" },
-    { name: `Beta (${args.versionByStage.get("beta")})`, value: "beta" },
-  ];
-  if (args.allowStable) {
-    const stableChoice = {
-      name: `Stable (${args.versionByStage.get("stable")}${
-        args.autoReview ? ", automatically sent for review" : ""
-      })`,
-      value: "stable",
-    };
-    choices.push(stableChoice);
-  }
-  stage = await promptOnce({
-    type: "list",
-    message: "Choose the release stage:",
-    choices: choices,
-    default: defaultStage,
-  });
-  if (stage === "stable" && !args.hasVersions) {
-    logger.info(
-      `${clc.bold(
-        clc.yellow("Warning:")
-      )} It's highly recommended to first upload a pre-release version before choosing stable.`
-    );
-    const confirmed = await confirm({
-      nonInteractive: args.nonInteractive,
-      force: args.force,
-      default: false,
+  let stage: ReleaseStage = "rc";
+  if (!args.nonInteractive) {
+    const choices = [
+      { name: `Release candidate (${args.versionByStage.get("rc")})`, value: "rc" },
+      { name: `Alpha (${args.versionByStage.get("alpha")})`, value: "alpha" },
+      { name: `Beta (${args.versionByStage.get("beta")})`, value: "beta" },
+    ];
+    if (args.allowStable) {
+      const stableChoice = {
+        name: `Stable (${args.versionByStage.get("stable")}${
+          args.autoReview ? ", automatically sent for review" : ""
+        })`,
+        value: "stable",
+      };
+      choices.push(stableChoice);
+    }
+    stage = await promptOnce({
+      type: "list",
+      message: "Choose the release stage:",
+      choices: choices,
+      default: stage,
     });
-    if (!confirmed) {
-      stage = await promptOnce({
-        type: "list",
-        message: "Choose the release stage:",
-        choices: choices,
-        default: defaultStage,
+    if (stage === "stable" && !args.hasVersions) {
+      logger.info(
+        `${clc.bold(
+          clc.yellow("Warning:")
+        )} It's highly recommended to first upload a pre-release version before choosing stable.`
+      );
+      const confirmed = await confirm({
+        nonInteractive: args.nonInteractive,
+        force: args.force,
+        default: false,
       });
+      if (!confirmed) {
+        stage = await promptOnce({
+          type: "list",
+          message: "Choose the release stage:",
+          choices: choices,
+          default: stage,
+        });
+      }
     }
   }
   return stage;
@@ -552,18 +553,19 @@ async function getNextVersionByStage(
       semver.inc(`${newVersion}-${stage}`, "prerelease", undefined, stage)!,
     ])
   );
-  extensionVersions
-    .map((extensionVersion) => semver.parse(extensionVersion.spec.version)!)
-    .filter((version) => !!version.prerelease)
-    .forEach((version) => {
-      // Extensions only support a single prerelease annotation.
-      const prerelease = semver.prerelease(version)![0];
-      // Parse out stage from prerelease (e.g. "rc" from "rc.0").
-      const stage = prerelease.split(".")[0];
-      if (versionByStage.has(stage) && semver.gte(version, versionByStage.get(stage)!)) {
-        versionByStage.set(stage, semver.inc(version, "prerelease", undefined, stage)!);
-      }
-    });
+  for (const extensionVersion of extensionVersions) {
+    const version = semver.parse(extensionVersion.spec.version)!;
+    if (!version.prerelease) {
+      continue;
+    }
+    // Extensions only support a single prerelease annotation.
+    const prerelease = semver.prerelease(version)![0];
+    // Parse out stage from prerelease (e.g. "rc" from "rc.0").
+    const stage = prerelease.split(".")[0];
+    if (versionByStage.has(stage) && semver.gte(version, versionByStage.get(stage)!)) {
+      versionByStage.set(stage, semver.inc(version, "prerelease", undefined, stage)!);
+    }
+  }
   versionByStage.set("stable", newVersion);
   return { versionByStage, hasVersions: extensionVersions.length > 0 };
 }
@@ -849,18 +851,14 @@ export async function uploadExtensionVersionFromGitHubSource(args: {
   // Prompt for release stage.
   let stage = args.stage;
   if (!stage) {
-    if (!args.nonInteractive) {
-      stage = await promptForReleaseStage({
-        versionByStage,
-        autoReview,
-        allowStable: true,
-        hasVersions,
-        nonInteractive: args.nonInteractive,
-        force: args.force,
-      });
-    } else {
-      stage = "rc";
-    }
+    stage = await promptForReleaseStage({
+      versionByStage,
+      autoReview,
+      allowStable: true,
+      hasVersions,
+      nonInteractive: args.nonInteractive,
+      force: args.force,
+    });
   }
 
   const newVersion = versionByStage.get(stage)!;
