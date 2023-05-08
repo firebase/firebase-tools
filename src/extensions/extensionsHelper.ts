@@ -952,7 +952,7 @@ export async function uploadExtensionVersionFromLocalSource(args: {
       stage = await promptForReleaseStage({
         versionByStage,
         autoReview: false,
-        allowStable: true,
+        allowStable: false,
         hasVersions: false,
         nonInteractive: args.nonInteractive,
         force: args.force,
