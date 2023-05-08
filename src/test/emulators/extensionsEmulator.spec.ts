@@ -16,6 +16,7 @@ const TEST_EXTENSION: Extension = {
   name: "publishers/firebase/extensions/storage-resize-images",
   ref: "firebase/storage-resize-images",
   visibility: Visibility.PUBLIC,
+  state: "PUBLISHED",
   registryLaunchStage: RegistryLaunchStage.BETA,
   createTime: "0",
 };

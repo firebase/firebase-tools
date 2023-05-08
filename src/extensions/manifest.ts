@@ -10,7 +10,7 @@ import { confirm, promptOnce } from "../prompt";
 import { readEnvFile } from "./paramHelper";
 import { FirebaseError } from "../error";
 import * as utils from "../utils";
-import { isLocalPath, logPrefix } from "./extensionsHelper";
+import { isLocalPath } from "./extensionsHelper";
 import { ParamType } from "./types";
 
 export const ENV_DIRECTORY = "extensions";
@@ -289,19 +289,4 @@ function readParamsFile(projectDir: string, fileName: string): Record<string, st
   const paramPath = path.join(projectDir, ENV_DIRECTORY, fileName);
   const params = readEnvFile(paramPath);
   return params;
-}
-
-/**
- * Show post deprecation notice about --local flag taking over current default bahaviors.
- */
-export function showPostDeprecationNotice() {
-  utils.logLabeledBullet(
-    logPrefix,
-    "The behavior of ext:install, ext:update, ext:configure, and ext:uninstall has changed in firebase-tools@11.0.0. " +
-      "Instead of deploying extensions directly, " +
-      "changes to extension instances will be written to firebase.json and ./extensions/*.env. " +
-      `Then ${clc.bold(
-        "firebase deploy (--only extensions)"
-      )} will deploy the changes to your Firebase project. See https://firebase.google.com/docs/extensions/manifest for more details.`
-  );
 }
