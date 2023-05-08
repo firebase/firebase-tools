@@ -1,7 +1,5 @@
-- Releases Firestore Emulator 1.17.2
-  - Propagates page token from ListDocumentsResponse to GetOrListDocumentsResponse in Firestore emulator.
-- Fixes an issue where Secret Manager secrets were tagged incorrectly (#5704).
-- Fix bug where Custom Event channels weren't automatically crated on function deploys (#5700)
-- Lift GCF 2nd gen naming restrictions (#5690)
-- Fixes a bug where `ext:install` and `ext:configure` would error on extensions with no params.
-- Fixed an issue with Vite and Angular integrations using a obsolete NPM command (#5710)
+- Support for Next.js i18n, basePath, and more advanced rewrites/redirects/headers (#5788)
+- hosting.frameworksBackend now respects omit: true (#5788)
+- Web Frameworks now memoizes framework builds for single builds across multiple hosting sites (#5788)
+- Fixes a bug where the Storage emulator would not fall back to open rules for 'demo-' projects if `firebase.json` contained multiple storage targets (#5170)
+- Updates firebase init function templates for TypeScript and Javascript to 2nd gen (#5775)

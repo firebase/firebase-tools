@@ -4,9 +4,11 @@ import * as TerminalRenderer from "marked-terminal";
 
 import { Command } from "../command";
 import {
+  ReleaseStage,
   logPrefix,
-  publishExtensionVersionFromLocalSource,
-  publishExtensionVersionFromRemoteRepo,
+  uploadExtensionVersionFromLocalSource,
+  uploadExtensionVersionFromGitHubSource,
+  ensureExtensionsPublisherApiEnabled,
 } from "../extensions/extensionsHelper";
 import * as refs from "../extensions/refs";
 import { findExtensionYaml } from "../extensions/localHelper";
@@ -14,7 +16,12 @@ import { consoleInstallLink } from "../extensions/publishHelpers";
 import { ExtensionVersion } from "../extensions/types";
 import { requireAuth } from "../requireAuth";
 import { FirebaseError } from "../error";
+import { acceptLatestPublisherTOS } from "../extensions/tos";
 import * as utils from "../utils";
+import { Options } from "../options";
+import { getPublisherProfile } from "../extensions/publisherApi";
+import { getPublisherProjectFromName } from "../extensions/extensionsHelper";
+import { getFirebaseProject } from "../management/projects";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),
@@ -26,15 +33,13 @@ marked.setOptions({
 export const command = new Command("ext:dev:upload <extensionRef>")
   .description(`upload a new version of an extension`)
   .option(`-s, --stage <stage>`, `release stage (supports "alpha", "beta", "rc", and "stable")`)
-  .option(
-    `--repo <repo>`,
-    `Public Git repo URI (only required for first version from repo, cannot be changed)`
-  )
+  .option(`--repo <repo>`, `Public GitHub repo URI that contains the extension source`)
   .option(`--ref <ref>`, `commit hash, branch, or tag to build from the repo (defaults to HEAD)`)
   .option(
     `--root <root>`,
-    `root directory that contains this Extension (defaults to previous version's root or root of repo if none set)`
+    `root directory that contains this extension (defaults to last uploaded root or "/" if none set)`
   )
+  .option(`--local`, `upload from local source instead`)
   .withForce()
   .help(
     "if you have not previously uploaded a version of this extension, this will " +
@@ -42,11 +47,18 @@ export const command = new Command("ext:dev:upload <extensionRef>")
       "be greater than previous versions."
   )
   .before(requireAuth)
+  .before(ensureExtensionsPublisherApiEnabled)
   .action(uploadExtensionAction);
 
+export interface UploadExtensionOptions extends Options {
+  repo?: string;
+  ref?: string;
+  root?: string;
+  stage?: string;
+}
 export async function uploadExtensionAction(
   extensionRef: string,
-  options: any
+  options: UploadExtensionOptions
 ): Promise<ExtensionVersion | undefined> {
   const { publisherId, extensionId, version } = refs.parse(extensionRef);
   if (version) {
@@ -63,10 +75,26 @@ export async function uploadExtensionAction(
       )}'. Please use the format '${clc.bold("<publisherId>/<extensionId>")}'.`
     );
   }
+
+  // Get the project number and check the publisher TOS
+  const profile = await getPublisherProfile("-", publisherId);
+  const projectNumber = `${getPublisherProjectFromName(profile.name)}`;
+  const { projectId } = await getFirebaseProject(projectNumber);
+  await acceptLatestPublisherTOS(options, projectNumber);
+
   let res;
-  // TODO: Default to this path instead of local source in a major version.
-  if (options.repo || options.root || options.ref) {
-    res = await publishExtensionVersionFromRemoteRepo({
+  if (options.local) {
+    const extensionYamlDirectory = findExtensionYaml(process.cwd());
+    res = await uploadExtensionVersionFromLocalSource({
+      publisherId,
+      extensionId,
+      rootDirectory: extensionYamlDirectory,
+      nonInteractive: options.nonInteractive,
+      force: options.force,
+      stage: options.stage as ReleaseStage,
+    });
+  } else {
+    res = await uploadExtensionVersionFromGitHubSource({
       publisherId,
       extensionId,
       repoUri: options.repo,
@@ -74,21 +102,21 @@ export async function uploadExtensionAction(
       extensionRoot: options.root,
       nonInteractive: options.nonInteractive,
       force: options.force,
-      stage: options.stage,
-    });
-  } else {
-    const extensionYamlDirectory = findExtensionYaml(process.cwd());
-    res = await publishExtensionVersionFromLocalSource({
-      publisherId,
-      extensionId,
-      rootDirectory: extensionYamlDirectory,
-      nonInteractive: options.nonInteractive,
-      force: options.force,
-      stage: options.stage ?? "stable",
+      stage: options.stage as ReleaseStage,
     });
   }
   if (res) {
     utils.logLabeledBullet(logPrefix, marked(`[Install Link](${consoleInstallLink(res.ref)})`));
+    const version = res.ref.split("@")[1];
+    utils.logLabeledBullet(
+      logPrefix,
+      marked(
+        `[View in Console](${utils.consoleUrl(
+          projectId,
+          `/publisher/extensions/${extensionId}/v/${version}`
+        )})`
+      )
+    );
   }
   return res;
 }

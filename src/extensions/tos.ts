@@ -3,14 +3,16 @@ import { extensionsTOSOrigin } from "../api";
 import { logger } from "../logger";
 import { confirm } from "../prompt";
 import { FirebaseError } from "../error";
+import { logPrefix } from "./extensionsHelper";
+import * as utils from "../utils";
 
 const VERSION = "v1";
 const extensionsTosUrl = (tos: string) => `https://firebase.google.com/terms/extensions/${tos}`;
 
 export interface TOS {
   name: string;
-  lastAcceptedVersion: string;
-  lastAcceptedTime: string;
+  lastAcceptedVersion?: string;
+  lastAcceptedTime?: string;
   latestTosVersion: string;
 }
 export type PublisherTOS = TOS;
@@ -64,57 +66,57 @@ export async function acceptLatestPublisherTOS(
 ): Promise<PublisherTOS> {
   logger.debug(`Checking if latest publisher TOS has been accepted by ${projectId}...`);
   const currentAcceptance = await getPublisherTOSStatus(projectId);
-  if (currentAcceptance.lastAcceptedVersion === currentAcceptance.latestTosVersion) {
+  if (currentAcceptance.lastAcceptedVersion) {
     logger.debug(
-      `Latest version of publisher TOS is ${currentAcceptance.lastAcceptedVersion}, already accepted.`
+      `Already accepted version ${currentAcceptance.lastAcceptedVersion} of Extensions publisher TOS.`
     );
     return currentAcceptance;
   } else {
     // Display link to TOS, prompt for acceptance
     const tosLink = extensionsTosUrl("publisher");
     logger.info(
-      `To continue, you must accept the [Extensions publisher terms of service](${tosLink})`
+      `To continue, you must accept the Firebase Extensions Publisher Terms of Service: ${tosLink}`
     );
     if (
       await confirm({
         ...options,
-        message: "Do you accept the Extensions publisher terms of service?",
+        message: "Do you accept the Firebase Extensions Publisher Terms of Service?",
       })
     ) {
       return acceptPublisherTOS(projectId, currentAcceptance.latestTosVersion);
     }
-    throw new FirebaseError("Command terminated becuase publisher TOS was not accepted");
+    throw new FirebaseError("You must accept the terms of service to continue.");
   }
 }
 
 export async function acceptLatestAppDeveloperTOS(
   options: { force?: boolean; nonInteractive?: boolean },
   projectId: string,
-  instanceId: string = ""
-): Promise<AppDevTOS> {
-  logger.debug(
-    `Checking if latest AppDeveloper TOS has been accepted by ${projectId}/${instanceId}...`
-  );
+  instanceIds: string[]
+): Promise<AppDevTOS[]> {
+  logger.debug(`Checking if latest AppDeveloper TOS has been accepted by ${projectId}...`);
+  displayDeveloperTOSWarning();
   const currentAcceptance = await getAppDeveloperTOSStatus(projectId);
-  if (currentAcceptance.lastAcceptedVersion === currentAcceptance.latestTosVersion) {
-    logger.debug(
-      `Latest version of app developer TOS is ${currentAcceptance.lastAcceptedVersion}, already accepted.`
-    );
-    return currentAcceptance;
-  } else {
-    // Display link to TOS, prompt for acceptance
-    const tosLink = extensionsTosUrl("appdev");
-    logger.info(
-      `To continue, you must accept the [Extensions app developer terms of service](${tosLink})`
-    );
-    if (
-      await confirm({
-        ...options,
-        message: "Do you accept the Extensions app developer terms of service?",
-      })
-    ) {
-      return acceptAppDeveloperTOS(projectId, instanceId, currentAcceptance.latestTosVersion);
-    }
-    throw new FirebaseError("Command terminated becuase app developer TOS was not accepted");
+  if (currentAcceptance.lastAcceptedVersion) {
+    logger.debug(`User Terms of Service aready accepted on project ${projectId}.`);
+  } else if (
+    !(await confirm({
+      ...options,
+      message: "Do you accept the Firebase Extensions User Terms of Service?",
+    }))
+  ) {
+    throw new FirebaseError("You must accept the terms of service to continue.");
   }
+  const tosPromises = instanceIds.map((instanceId) => {
+    return acceptAppDeveloperTOS(projectId, currentAcceptance.latestTosVersion, instanceId);
+  });
+  return Promise.all(tosPromises);
+}
+
+export function displayDeveloperTOSWarning(): void {
+  const tosLink = extensionsTosUrl("user");
+  utils.logLabeledBullet(
+    logPrefix,
+    `By installing an extension instance onto a Firebase project, you accept the Firebase Extensions User Terms of Service: ${tosLink}`
+  );
 }

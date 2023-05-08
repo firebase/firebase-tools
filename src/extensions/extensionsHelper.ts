@@ -3,11 +3,11 @@ import * as ora from "ora";
 import * as semver from "semver";
 import * as tmp from "tmp";
 import * as fs from "fs-extra";
-import * as unzipper from "unzipper";
 import fetch from "node-fetch";
 import * as path from "path";
 import { marked } from "marked";
 
+import { createUnzipTransform } from "./../unzip";
 const TerminalRenderer = require("marked-terminal");
 marked.setOptions({
   renderer: new TerminalRenderer(),
@@ -25,14 +25,14 @@ import { checkResponse } from "./askUserForParam";
 import { ensure } from "../ensureApiEnabled";
 import { deleteObject, uploadObject } from "../gcp/storage";
 import { getProjectId } from "../projectUtils";
+import { createSource, getInstance } from "./extensionsApi";
 import {
-  createSource,
+  createExtensionVersionFromGitHubSource,
+  createExtensionVersionFromLocalSource,
   getExtension,
   getExtensionVersion,
-  getInstance,
   listExtensionVersions,
-  publishExtensionVersion,
-} from "./extensionsApi";
+} from "./publisherApi";
 import { Extension, ExtensionSource, ExtensionSpec, ExtensionVersion, Param } from "./types";
 import * as refs from "./refs";
 import { EXTENSIONS_SPEC_FILE, readFile, getLocalExtensionSpec } from "./localHelper";
@@ -412,6 +412,19 @@ export async function ensureExtensionsApiEnabled(options: any): Promise<void> {
   );
 }
 
+export async function ensureExtensionsPublisherApiEnabled(options: any): Promise<void> {
+  const projectId = getProjectId(options);
+  if (!projectId) {
+    return;
+  }
+  return await ensure(
+    projectId,
+    "firebaseextensionspublisher.googleapis.com",
+    "extensions",
+    options.markdown
+  );
+}
+
 /**
  * Zips and uploads a local extension to a bucket.
  * @param extPath a local path to archive and upload
@@ -561,7 +574,7 @@ async function validateExtensionSpec(args: {
 }
 
 /**
- * Publishes an Extension version from a remote repo.
+ * Uploads an extension version from a GitHub repo.
  *
  * @param publisherId the ID of the Publisher this Extension will be published under
  * @param extensionId the ID of the Extension to be published
@@ -572,13 +585,13 @@ async function validateExtensionSpec(args: {
  * @param nonInteractive whether to display prompts
  * @param force whether to force confirmations
  */
-export async function publishExtensionVersionFromRemoteRepo(args: {
+export async function uploadExtensionVersionFromGitHubSource(args: {
   publisherId: string;
   extensionId: string;
-  repoUri: string;
-  sourceRef: string;
-  extensionRoot: string;
-  stage: ReleaseStage;
+  repoUri?: string;
+  sourceRef?: string;
+  extensionRoot?: string;
+  stage?: ReleaseStage;
   nonInteractive: boolean;
   force: boolean;
 }): Promise<ExtensionVersion | undefined> {
@@ -606,7 +619,7 @@ export async function publishExtensionVersionFromRemoteRepo(args: {
   }
   if (extension?.repoUri) {
     logger.info(
-      `Extension ${clc.bold(extensionRef)} is published from ${clc.bold(
+      `Extension ${clc.bold(extensionRef)} is uploaded from ${clc.bold(
         extension?.repoUri
       )}. Use --repo to change this repo.`
     );
@@ -619,6 +632,7 @@ export async function publishExtensionVersionFromRemoteRepo(args: {
     if (extension) {
       try {
         const extensionVersionRef = `${extensionRef}@${extension.latestVersion}`;
+
         const extensionVersion = await getExtensionVersion(extensionVersionRef);
         if (extensionVersion.extensionRoot) {
           defaultRoot = extensionVersion.extensionRoot;
@@ -669,18 +683,19 @@ export async function publishExtensionVersionFromRemoteRepo(args: {
     }
   }
 
-  // Fetch and validate Extension from remote repo.
-  logger.info("Downloading and validating source code...");
+  // Fetch and validate extension from remote repo.
+  const sourceUri = repoUri + path.join("/tree", sourceRef, extensionRoot);
+  logger.info(`Validating source code at ${clc.bold(sourceUri)}...`);
   const archiveUri = `${repoUri}/archive/${sourceRef}.zip`;
   const tempDirectory = tmp.dirSync({ unsafeCleanup: true });
   try {
     const response = await fetch(archiveUri);
     if (response.ok) {
-      await response.body.pipe(unzipper.Extract({ path: tempDirectory.name })).promise(); // eslint-disable-line new-cap
+      await response.body.pipe(createUnzipTransform(tempDirectory.name)).promise();
     }
   } catch (err: any) {
     throw new FirebaseError(
-      `Failed to fetch Extension archive ${archiveUri}. Please check the repo URI and source ref. ${err}`
+      `Failed to fetch extension archive from ${archiveUri}. Please check the repo URI and source ref. ${err}`
     );
   }
   const archiveName = fs.readdirSync(tempDirectory.name)[0];
@@ -700,10 +715,9 @@ export async function publishExtensionVersionFromRemoteRepo(args: {
     extensionId: args.extensionId,
     rootDirectory: rootDirectory,
     latestVersion: extension?.latestVersion,
-    stage: stage,
+    stage: stage!,
   });
 
-  const sourceUri = path.join(repoUri, "tree", sourceRef, extensionRoot);
   displayReleaseNotes(extensionRef, extensionSpec.version, notes, sourceUri);
   const confirmed = await confirm({
     nonInteractive: args.nonInteractive,
@@ -714,22 +728,21 @@ export async function publishExtensionVersionFromRemoteRepo(args: {
     return;
   }
 
-  // Publish the Extension version.
+  // Upload the extension version.
   const extensionVersionRef = `${extensionRef}@${extensionSpec.version}`;
-  const publishSpinner = ora(`Publishing ${clc.bold(extensionVersionRef)}`);
+  const uploadSpinner = ora(` Uploading ${clc.bold(extensionVersionRef)}`);
   let res;
   try {
-    publishSpinner.start();
-    res = await publishExtensionVersion({
+    uploadSpinner.start();
+    res = await createExtensionVersionFromGitHubSource({
       extensionVersionRef,
-      packageUri: "",
       extensionRoot,
       repoUri,
-      sourceRef: args.sourceRef,
+      sourceRef: sourceRef,
     });
-    publishSpinner.succeed(` Successfully published ${clc.bold(extensionRef)}`);
+    uploadSpinner.succeed(` Successfully uploaded ${clc.bold(extensionRef)}`);
   } catch (err: any) {
-    publishSpinner.fail();
+    uploadSpinner.fail();
     if (err.status === 404) {
       throw getMissingPublisherError(args.publisherId);
     }
@@ -739,7 +752,7 @@ export async function publishExtensionVersionFromRemoteRepo(args: {
 }
 
 /**
- * Publishes an Extension version from local source.
+ * Uploads an extension version from local source.
  *
  * @param publisherId the ID of the Publisher this Extension will be published under
  * @param extensionId the ID of the Extension to be published
@@ -748,7 +761,7 @@ export async function publishExtensionVersionFromRemoteRepo(args: {
  * @param nonInteractive whether to display prompts
  * @param force whether to force confirmations
  */
-export async function publishExtensionVersionFromLocalSource(args: {
+export async function uploadExtensionVersionFromLocalSource(args: {
   publisherId: string;
   extensionId: string;
   rootDirectory: string;
@@ -793,16 +806,16 @@ export async function publishExtensionVersionFromLocalSource(args: {
     packageUri = storageOrigin + objectPath + "?alt=media";
   } catch (err: any) {
     uploadSpinner.fail();
-    throw new FirebaseError(`Failed to archive and upload extension source, ${err}`, {
+    throw new FirebaseError(`Failed to archive and upload extension source code, ${err}`, {
       original: err,
     });
   }
-  const publishSpinner = ora(`Publishing ${clc.bold(extensionVersionRef)}`);
+  const publishSpinner = ora(` Uploading ${clc.bold(extensionVersionRef)}`);
   let res;
   try {
     publishSpinner.start();
-    res = await publishExtensionVersion({ extensionVersionRef, packageUri });
-    publishSpinner.succeed(` Successfully published ${clc.bold(extensionVersionRef)}`);
+    res = await createExtensionVersionFromLocalSource({ extensionVersionRef, packageUri });
+    publishSpinner.succeed(` Successfully uploaded ${clc.bold(extensionVersionRef)}`);
   } catch (err: any) {
     publishSpinner.fail();
     if (err.status === 404) {
@@ -914,10 +927,10 @@ export function displayReleaseNotes(
     `${clc.bold("Version:")} ${clc.bold(clc.green(versionId))}\n` +
     `${clc.bold("Source:")} ${source}\n`;
   const message =
-    `\nYou are about to publish a new version to Firebase's registry of Extensions.\n\n` +
+    `\nYou are about to upload a new version to Firebase's registry of extensions.\n\n` +
     metadataMessage +
     releaseNotesMessage +
-    `\nOnce an Extension version is published, it cannot be changed. If you wish to make changes after publishing, you will need to publish a new version.\n`;
+    `\nOnce an Extension version is uploaded, it cannot be changed. If you wish to make changes after uploading, you will need to upload a new version.\n`;
   logger.info(message);
 }
 

@@ -1,19 +1,19 @@
 export const pathsWithRegex = [
   "/(.*)",
   "/post/:slug(\\d{1,})",
-  "/:path((?!another-page$).*)",
   "/api-hello-regex/:first(.*)",
   "/unnamed-params/nested/(.*)/:test/(.*)",
+  "/:path((?!another-page$).*)",
 ] as const;
 
 export const pathsWithEscapedChars = [
   `/post\\(someStringBetweenParentheses\\)/:slug`,
   `/english\\(default\\)/:slug`,
-  `/post/\\(es\\?cap\\Wed\\*p\\{ar\\}en\\:th\\eses\\)`,
 ] as const;
 
 export const pathsWithRegexAndEscapedChars = [
   `/post/\\(escapedparentheses\\)/:slug(\\d{1,})`,
+  `/post/\\(es\\?cap\\Wed\\*p\\{ar\\}en\\:th\\eses\\)`,
   `/post/\\(es\\?cap\\Wed\\*p\\{ar\\}en\\:th\\eses\\)/:slug(\\d{1,})`,
 ] as const;
 
@@ -56,10 +56,10 @@ export const pathsAsGlobs = [
   "/proxy-me/:path*",
   "/api-hello",
   "/api/hello",
-  "/api/hello?name=:first*",
   "/api-hello-param/:name",
-  "/api/hello?hello=:name",
   "/api-dynamic-param/:name",
+  "/api/hello?name=:first*",
+  "/api/hello?hello=:name",
   "/api/dynamic/:name?hello=:name",
   "/:path/post-321",
   "/with-params",
@@ -86,5 +86,12 @@ export const pathsAsGlobs = [
   "/overridden/:path*",
 ] as const;
 
-export const supportedPaths = [...pathsWithEscapedChars, ...pathsAsGlobs] as const;
-export const unsupportedPaths = [...pathsWithRegex, ...pathsWithRegexAndEscapedChars] as const;
+export const supportedPaths = [
+  ...pathsWithEscapedChars,
+  ...pathsAsGlobs,
+  ...pathsWithRegex,
+  ...pathsWithRegexAndEscapedChars,
+] as const;
+
+// It seems as though we support all these!
+export const unsupportedPaths = [] as const;

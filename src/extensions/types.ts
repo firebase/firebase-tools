@@ -19,13 +19,23 @@ export enum Visibility {
 export interface Extension {
   name: string;
   ref: string;
+  state: ExtensionState;
   visibility: Visibility;
   registryLaunchStage: RegistryLaunchStage;
   createTime: string;
+  latestApprovedVersion?: string;
   latestVersion?: string;
   latestVersionCreateTime?: string;
   repoUri?: string;
 }
+
+export interface Listing {
+  state: ListingState;
+}
+
+export type ExtensionState = "STATE_UNSPECIFIED" | "PUBLISHED" | "DEPRECATED" | "SUSPENDED";
+
+export type ListingState = "STATE_UPSPECIFIED" | "UNLISTED" | "PENDING" | "APPROVED" | "REJECTED";
 
 export interface ExtensionVersion {
   name: string;
@@ -34,16 +44,21 @@ export interface ExtensionVersion {
   spec: ExtensionSpec;
   hash: string;
   sourceDownloadUri: string;
+  buildSourceUri?: string;
   releaseNotes?: string;
   createTime?: string;
   deprecationMessage?: string;
   extensionRoot?: string;
+  listing?: Listing;
 }
 
 export interface PublisherProfile {
   name: string;
   publisherId: string;
   registerTime: string;
+  displayName: string;
+  websiteUri?: string;
+  iconUri?: string;
 }
 
 export interface ExtensionInstance {
