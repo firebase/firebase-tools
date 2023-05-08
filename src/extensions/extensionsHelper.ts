@@ -6,7 +6,6 @@ import * as fs from "fs-extra";
 import fetch from "node-fetch";
 import * as path from "path";
 import { marked } from "marked";
-import normalize from "normalize-path";
 
 import { createUnzipTransform } from "./../unzip";
 const TerminalRenderer = require("marked-terminal");
@@ -699,10 +698,7 @@ function displayExtensionHeader(
   if (extension) {
     // TODO: Fix this logic.
     const source = extension.repoUri
-      ? `${new URL(
-          extensionRoot ?? "",
-          extension.repoUri
-        )} (use --repo and --root to modify)`
+      ? `${new URL(extensionRoot ?? "", extension.repoUri)} (use --repo and --root to modify)`
       : "Local source";
     logger.info(
       `\n${clc.bold("Extension:")} ${extension.ref}\n` +
