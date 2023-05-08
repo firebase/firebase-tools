@@ -796,7 +796,7 @@ export async function uploadExtensionVersionFromGitHubSource(args: {
   displayExtensionHeader(extensionRef, extension, latestVersion?.extensionRoot);
 
   if (args.stage && !stageOptions.includes(args.stage)) {
-    throw new FirebaseError(`--stage flag only supports the following values: ${stageOptions}`);
+    throw new FirebaseError(`--stage flag only supports the following values: ${stageOptions.join(", ")}`);
   }
 
   // Prompt for repo URI.
@@ -937,7 +937,7 @@ export async function uploadExtensionVersionFromLocalSource(args: {
   const localStageOptions = ["rc", "alpha", "beta"];
   if (args.stage && !localStageOptions.includes(args.stage)) {
     throw new FirebaseError(
-      `--stage flag only supports the following values when used with --local: ${localStageOptions}`
+      `--stage flag only supports the following values when used with --local: ${localStageOptions.join(", ")}`
     );
   }
 
