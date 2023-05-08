@@ -845,9 +845,9 @@ export async function uploadExtensionVersionFromGitHubSource(args: {
   );
   const autoReview =
     !!extension?.latestApprovedVersion ||
-    latestVersion?.listing?.state == "PENDING" ||
-    latestVersion?.listing?.state == "APPROVED" ||
-    latestVersion?.listing?.state == "REJECTED";
+    latestVersion?.listing?.state === "PENDING" ||
+    latestVersion?.listing?.state === "APPROVED" ||
+    latestVersion?.listing?.state === "REJECTED";
 
   // Prompt for release stage.
   let stage = args.stage;

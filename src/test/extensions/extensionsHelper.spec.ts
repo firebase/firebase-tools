@@ -4,7 +4,6 @@ import * as sinon from "sinon";
 import { FirebaseError } from "../../error";
 import * as extensionsApi from "../../extensions/extensionsApi";
 import * as extensionsHelper from "../../extensions/extensionsHelper";
-import * as publisherApi from "../../extensions/publisherApi";
 import * as getProjectNumber from "../../getProjectNumber";
 import * as functionsConfig from "../../functionsConfig";
 import { storage } from "../../gcp";
@@ -47,24 +46,6 @@ const EXT_SPEC_2: ExtensionSpec = {
   sourceUrl: "www.google.com/cool-things-here",
   params: [],
   systemParams: [],
-};
-const TEST_EXT_VERSION_1: ExtensionVersion = {
-  name: "publishers/test-pub/extensions/ext-one/versions/0.0.1-rc.0",
-  ref: "test-pub/ext-one@0.0.1-rc.0",
-  spec: EXT_SPEC_1,
-  state: "PUBLISHED",
-  hash: "12345",
-  createTime: "2020-06-30T00:21:06.722782Z",
-  sourceDownloadUri: "",
-};
-const TEST_EXT_VERSION_2: ExtensionVersion = {
-  name: "publishers/test-pub/extensions/ext-one/versions/0.0.1-rc.1",
-  ref: "test-pub/ext-one@0.0.1-rc.1",
-  spec: EXT_SPEC_2,
-  state: "PUBLISHED",
-  hash: "23456",
-  createTime: "2020-06-30T00:21:06.722782Z",
-  sourceDownloadUri: "",
 };
 
 describe("extensionsHelper", () => {
