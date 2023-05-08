@@ -696,10 +696,12 @@ function displayExtensionHeader(
   extensionRoot?: string
 ) {
   if (extension) {
-    // TODO: Fix this logic.
-    const source = extension.repoUri
-      ? `${new URL(extensionRoot ?? "", extension.repoUri)} (use --repo and --root to modify)`
-      : "Local source";
+    let source = "Local source";
+    if (extension.repoUri) {
+      const uri = new URL(extension.repoUri!);
+      uri.pathname = path.join(uri.pathname, extensionRoot ?? "");
+      source = `${uri.toString()} (use --repo and --root to modify)`;
+    }
     logger.info(
       `\n${clc.bold("Extension:")} ${extension.ref}\n` +
         `${clc.bold("State:")} ${unpackExtensionState(extension)}\n` +
