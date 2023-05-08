@@ -530,44 +530,6 @@ async function archiveAndUploadSource(extPath: string, bucketName: string): Prom
 }
 
 /**
- * Increments the pre-release annotation of the Extension version if the release stage is not stable.
- * @param ref the ref to the Extension
- * @param extensionVersion the version of the Extension
- * @param stage the stage of this release
- */
-export async function incrementPrereleaseVersion(
-  ref: string,
-  extensionVersion: string,
-  stage: ReleaseStage
-): Promise<string> {
-  if (!stageOptions.includes(stage)) {
-    throw new FirebaseError(`--stage flag only supports the following values: ${stageOptions}`);
-  }
-  if (stage !== "stable") {
-    const version = semver.parse(extensionVersion)!;
-    if (version.prerelease.length > 0 || version.build.length > 0) {
-      throw new FirebaseError(
-        `Cannot combine the --stage flag with a version with a prerelease annotation in extension.yaml.`
-      );
-    }
-    let extensionVersions: ExtensionVersion[] = [];
-    try {
-      extensionVersions = await listExtensionVersions(ref, `id="${version.version}"`, true);
-    } catch (e) {
-      // Silently fail and continue the publish flow if extension not found.
-    }
-    const latestVersion =
-      extensionVersions
-        .map((version) => semver.parse(version.spec.version)!)
-        .filter((version) => version.prerelease.length > 0 && version.prerelease[0] === stage)
-        .sort((v1, v2) => semver.compare(v1, v2))
-        .pop() ?? `${version}-${stage}`;
-    return semver.inc(latestVersion, "prerelease", undefined, stage)!;
-  }
-  return extensionVersion;
-}
-
-/**
  * Gets a list of the next version to upload by release stage.
  *
  * @param extensionRef the ref of the extension
@@ -635,7 +597,7 @@ async function validateExtensionSpec(
  * @param rootDirectory the directory with the extension source
  * @param newVersion the new extension version
  */
-function validateReleaseNotes(rootDirectory: string, newVersion: string, required: boolean) {
+function validateReleaseNotes(rootDirectory: string, newVersion: string, extension?: Extension) {
   let notes: string;
   try {
     const changes = getLocalChangelog(rootDirectory);
@@ -650,7 +612,7 @@ function validateReleaseNotes(rootDirectory: string, newVersion: string, require
     );
   }
   // Notes are required for all stable versions after the initial release.
-  if (!notes && !semver.prerelease(newVersion) && required) {
+  if (!notes && !semver.prerelease(newVersion) && extension) {
     throw new FirebaseError(
       `No entry for version ${newVersion} found in CHANGELOG.md. ` +
         "Please add one so users know what has changed in this version. " +
@@ -742,7 +704,7 @@ async function displayExtensionHeader(extensionRef: string): Promise<{
           latestVersion?.extensionRoot ?? "",
           extension.repoUri
         )} (use --repo and --root to modify)`
-      : "-";
+      : "Local source";
     logger.info("");
     logger.info(`${clc.bold("Extension:")} ${extension.ref}`);
     logger.info(`${clc.bold("State:")} ${unpackExtensionState(extension)}`);
@@ -878,7 +840,9 @@ export async function uploadExtensionVersionFromGitHubSource(args: {
   );
   const autoReview =
     !!extension?.latestApprovedVersion ||
-    ["PENDING", "APPROVED", "REJECTED"].includes(latestVersion?.listing?.state ?? "");
+    latestVersion?.listing?.state == "PENDING" ||
+    latestVersion?.listing?.state == "APPROVED" ||
+    latestVersion?.listing?.state == "REJECTED";
 
   // Prompt for release stage.
   let stage = args.stage;
@@ -901,7 +865,7 @@ export async function uploadExtensionVersionFromGitHubSource(args: {
   const releaseNotes = validateReleaseNotes(
     rootDirectory,
     extensionSpec.version,
-    !!extension?.latestVersion
+    extension
   );
   const sourceUri = repoUri + path.join("/tree", sourceRef, extensionRoot);
   displayReleaseNotes({
@@ -962,7 +926,7 @@ export async function uploadExtensionVersionFromLocalSource(args: {
   force: boolean;
 }): Promise<ExtensionVersion | undefined> {
   const extensionRef = `${args.publisherId}/${args.extensionId}`;
-  const { extension, latestVersion } = await displayExtensionHeader(extensionRef);
+  const { extension } = await displayExtensionHeader(extensionRef);
 
   const localStageOptions = ["rc", "alpha", "beta"];
   if (args.stage && !localStageOptions.includes(args.stage)) {
@@ -996,7 +960,7 @@ export async function uploadExtensionVersionFromLocalSource(args: {
   const releaseNotes = validateReleaseNotes(
     args.rootDirectory,
     extensionSpec.version,
-    !!extension?.latestVersion
+    extension
   );
   displayReleaseNotes({ extensionRef, newVersion, releaseNotes, autoReview: false });
   const confirmed = await confirm({
@@ -1037,7 +1001,7 @@ export async function uploadExtensionVersionFromLocalSource(args: {
     throw err;
   }
   await deleteUploadedSource(objectPath);
-  return;
+  return res;
 }
 
 function getMissingPublisherError(publisherId: string): FirebaseError {

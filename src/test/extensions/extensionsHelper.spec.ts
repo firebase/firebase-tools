@@ -467,46 +467,6 @@ describe("extensionsHelper", () => {
     });
   });
 
-  describe("incrementPrereleaseVersion", () => {
-    let listExtensionVersionsStub: sinon.SinonStub;
-
-    beforeEach(() => {
-      listExtensionVersionsStub = sinon.stub(publisherApi, "listExtensionVersions");
-      listExtensionVersionsStub.returns(Promise.resolve([TEST_EXT_VERSION_1, TEST_EXT_VERSION_2]));
-    });
-
-    afterEach(() => {
-      listExtensionVersionsStub.restore();
-    });
-
-    it("should increment rc version", async () => {
-      const newVersion = await extensionsHelper.incrementPrereleaseVersion(
-        "test-pub/ext-one",
-        "0.0.1",
-        "rc"
-      );
-      expect(newVersion).to.eql("0.0.1-rc.2");
-    });
-
-    it("should be first beta version", async () => {
-      const newVersion = await extensionsHelper.incrementPrereleaseVersion(
-        "test-pub/ext-one",
-        "0.0.1",
-        "beta"
-      );
-      expect(newVersion).to.eql("0.0.1-beta.0");
-    });
-
-    it("should not increment version", async () => {
-      const newVersion = await extensionsHelper.incrementPrereleaseVersion(
-        "test-pub/ext-one",
-        "0.0.1",
-        "stable"
-      );
-      expect(newVersion).to.eql("0.0.1");
-    });
-  });
-
   describe("validateSpec", () => {
     it("should not error on a valid spec", () => {
       const testSpec: ExtensionSpec = {
