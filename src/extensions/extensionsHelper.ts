@@ -253,7 +253,9 @@ export function validateSpec(spec: any) {
   } else {
     const version = semver.parse(spec.version)!;
     if (version.prerelease.length > 0 || version.build.length > 0) {
-      errors.push("version field in extension.yaml does not support pre-release annotations; instead, set a pre-release stage using the --stage flag");
+      errors.push(
+        "version field in extension.yaml does not support pre-release annotations; instead, set a pre-release stage using the --stage flag"
+      );
     }
   }
   if (!spec.license) {
