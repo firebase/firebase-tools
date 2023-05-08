@@ -9,44 +9,11 @@ import * as functionsConfig from "../../functionsConfig";
 import { storage } from "../../gcp";
 import * as archiveDirectory from "../../archiveDirectory";
 import * as prompt from "../../prompt";
-import {
-  ExtensionSource,
-  ExtensionSpec,
-  ExtensionVersion,
-  Param,
-  ParamType,
-} from "../../extensions/types";
+import { ExtensionSource, ExtensionSpec, Param, ParamType } from "../../extensions/types";
 import { Readable } from "stream";
 import { ArchiveResult } from "../../archiveDirectory";
 import { canonicalizeRefInput } from "../../extensions/extensionsHelper";
 import * as planner from "../../deploy/extensions/planner";
-
-const EXT_SPEC_1: ExtensionSpec = {
-  name: "cool-things",
-  version: "0.0.1-rc.0",
-  resources: [
-    {
-      name: "cool-resource",
-      type: "firebaseextensions.v1beta.function",
-    },
-  ],
-  sourceUrl: "www.google.com/cool-things-here",
-  params: [],
-  systemParams: [],
-};
-const EXT_SPEC_2: ExtensionSpec = {
-  name: "cool-things",
-  version: "0.0.1-rc.1",
-  resources: [
-    {
-      name: "cool-resource",
-      type: "firebaseextensions.v1beta.function",
-    },
-  ],
-  sourceUrl: "www.google.com/cool-things-here",
-  params: [],
-  systemParams: [],
-};
 
 describe("extensionsHelper", () => {
   describe("substituteParams", () => {
