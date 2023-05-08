@@ -1,1 +1,4 @@
+- Support for Next.js i18n, basePath, and more advanced rewrites/redirects/headers (#5788)
+- hosting.frameworksBackend now respects omit: true (#5788)
+- Web Frameworks now memoizes framework builds for single builds across multiple hosting sites (#5788)
 - Fixes a bug where the Storage emulator would not fall back to open rules for 'demo-' projects if `firebase.json` contained multiple storage targets (#5170)

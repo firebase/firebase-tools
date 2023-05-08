@@ -36,6 +36,7 @@ const testExtensionVersion = (listingState: ListingState): ExtensionVersion => {
 const testExtension = (publisherId: string): Extension => {
   return {
     name: "test",
+    state: "PUBLISHED",
     ref: `${publisherId}/test`,
     registryLaunchStage: RegistryLaunchStage.BETA,
     createTime: "101",
