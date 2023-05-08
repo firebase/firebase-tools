@@ -1,3 +1,4 @@
+import * as clc from "colorette";
 import { expect } from "chai";
 import * as sinon from "sinon";
 
@@ -10,7 +11,15 @@ import * as functionsConfig from "../../functionsConfig";
 import { storage } from "../../gcp";
 import * as archiveDirectory from "../../archiveDirectory";
 import * as prompt from "../../prompt";
-import { ExtensionSource, ExtensionSpec, Param, ParamType } from "../../extensions/types";
+import {
+  ExtensionSource,
+  ExtensionSpec,
+  Param,
+  ParamType,
+  Extension,
+  Visibility,
+  RegistryLaunchStage,
+} from "../../extensions/types";
 import { Readable } from "stream";
 import { ArchiveResult } from "../../archiveDirectory";
 import { canonicalizeRefInput } from "../../extensions/extensionsHelper";
@@ -938,6 +947,53 @@ describe("extensionsHelper", () => {
       );
       expect(Array.from(versionByStage.entries())).to.eql(Array.from(expected.entries()));
       expect(hasVersions).to.eql(true);
+    });
+  });
+
+  describe("unpackExtensionState", () => {
+    it("should return correct state", () => {
+      const testExtension: Extension = {
+        name: "publishers/publisher-id/extensions/extension-id",
+        ref: "publisher-id/extension-id",
+        visibility: Visibility.PUBLIC,
+        registryLaunchStage: RegistryLaunchStage.BETA,
+        createTime: "",
+        state: "PUBLISHED",
+      };
+      expect(
+        extensionsHelper.unpackExtensionState({
+          ...testExtension,
+          state: "PUBLISHED",
+          latestVersion: "1.0.0",
+          latestApprovedVersion: "1.0.0",
+        })
+      ).to.eql(clc.bold(clc.green("Published")));
+      expect(
+        extensionsHelper.unpackExtensionState({
+          ...testExtension,
+          state: "PUBLISHED",
+          latestVersion: "1.0.0",
+        })
+      ).to.eql(clc.green("Uploaded"));
+      expect(
+        extensionsHelper.unpackExtensionState({
+          ...testExtension,
+          state: "DEPRECATED",
+        })
+      ).to.eql(clc.red("Deprecated"));
+      expect(
+        extensionsHelper.unpackExtensionState({
+          ...testExtension,
+          state: "SUSPENDED",
+          latestVersion: "1.0.0",
+        })
+      ).to.eql(clc.bold(clc.red("Suspended")));
+      expect(
+        extensionsHelper.unpackExtensionState({
+          ...testExtension,
+          state: "PUBLISHED",
+        })
+      ).to.eql("Prerelease");
     });
   });
 
