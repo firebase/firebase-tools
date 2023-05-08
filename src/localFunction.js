@@ -1,10 +1,12 @@
 "use strict";
 
 var _ = require("lodash");
-var request = require("request");
+var { Client } = require("./apiv2");
 
 var { encodeFirestoreValue } = require("./firestore/encodeFirestoreValue");
 var utils = require("./utils");
+
+const HTTPS_SENTINEL = "Request sent to function.";
 
 /**
  * @constructor
@@ -28,11 +30,48 @@ var LocalFunction = function (trigger, urls, controller) {
     if (isCallable == "true") {
       this.call = this._constructCallableFunc.bind(this);
     } else {
-      this.call = request.defaults({
-        callback: this._requestCallBack,
-        baseUrl: this.url,
-        uri: "",
-      });
+      const callClient = new Client({ urlPrefix: this.url, auth: false });
+      this.call = (path) => {
+        callClient
+          .get(path || "/")
+          .then((res) => {
+            this._requestCallBack(undefined, res, res.body);
+          })
+          .catch((err) => {
+            this._requestCallBack(err);
+          });
+        return HTTPS_SENTINEL;
+      };
+      this.call["get"] = (path) => {
+        callClient["get"]("path" || "/")
+          .then((res) => {
+            this._requestCallBack(undefined, res, res.body);
+          })
+          .catch((err) => {
+            this._requestCallBack(err);
+          });
+        return HTTPS_SENTINEL;
+      };
+      for (const method of ["post", "put", "patch", "delete"]) {
+        this.call[method] = (...args) => {
+          let path = "/";
+          let data = {};
+          if (args.length === 1 && typeof args[0] !== "string") {
+            data = args[0];
+          } else if (args.length === 2) {
+            path = args[0];
+            data = args[1];
+          }
+          callClient[method](path, data)
+            .then((res) => {
+              this._requestCallBack(undefined, res, res.body);
+            })
+            .catch((err) => {
+              this._requestCallBack(err);
+            });
+          return HTTPS_SENTINEL;
+        };
+      }
     }
   } else {
     this.call = this._call.bind(this);
@@ -59,19 +98,21 @@ LocalFunction.prototype._substituteParams = function (resource, params) {
 LocalFunction.prototype._constructCallableFunc = function (data, opts) {
   opts = opts || {};
 
+  /** @type {{ [key: string]: string }} */
   var headers = {};
   if (opts.instanceIdToken) {
     headers["Firebase-Instance-ID-Token"] = opts.instanceIdToken;
   }
 
-  return request.post({
-    callback: this._requestCallBack,
-    baseUrl: this.url,
-    uri: "",
-    body: { data: data },
-    json: true,
-    headers: headers,
-  });
+  const client = new Client({ urlPrefix: this.url, auth: false });
+  void client
+    .post("", data, { headers })
+    .then((res) => {
+      this._requestCallBack(undefined, res, res.body);
+    })
+    .catch((err) => {
+      this._requestCallBack(err);
+    });
 };
 
 LocalFunction.prototype._constructAuth = function (auth, authType) {
@@ -135,7 +176,7 @@ LocalFunction.prototype._requestCallBack = function (err, response, body) {
   if (err) {
     return console.warn("\nERROR SENDING REQUEST: " + err);
   }
-  var status = response ? response.statusCode + ", " : "";
+  var status = response ? response.status + ", " : "";
 
   // If the body is a string we want to check if we can parse it as JSON
   // and pretty-print it. We can't blindly stringify because stringifying
@@ -219,3 +260,4 @@ LocalFunction.prototype._call = function (data, opts) {
 };
 
 module.exports = LocalFunction;
+module.exports.HTTPS_SENTINAL = HTTPS_SENTINEL;
