@@ -539,26 +539,30 @@ async function getNextVersionByStage(
   extensionRef: string,
   newVersion: string
 ): Promise<{ versionByStage: Map<string, string>; hasVersions: boolean }> {
+  let extensionVersions: ExtensionVersion[] = [];
+  try {
+    extensionVersions = await listExtensionVersions(extensionRef, `id="${newVersion}"`, true);
+  } catch (err: any) {
+    // Silently fail if there are no extension versions exist.
+  }
   const versionByStage = new Map(
     ["rc", "alpha", "beta"].map((stage) => [
       stage,
       semver.inc(`${newVersion}-${stage}`, "prerelease", undefined, stage)!,
     ])
   );
-  let extensionVersions: ExtensionVersion[] = [];
-  try {
-    extensionVersions = await listExtensionVersions(extensionRef, `id="${newVersion}"`, true);
-    for (const extensionVersion of extensionVersions) {
-      const version = semver.parse(extensionVersion.spec.version)!;
+  extensionVersions
+    .map((extensionVersion) => semver.parse(extensionVersion.spec.version)!)
+    .filter((version) => !!version.prerelease)
+    .forEach((version) => {
       // Extensions only support semvers of format: <major>.<minor>.<patch>-<stage>.<count>
-      const stage = String(version.prerelease[0]).split(".")[0];
+      const prerelease = semver.prerelease(version)![0];
+      // Parse out stage from <stage>.<count>
+      const stage = prerelease.split(".")[0];
       if (versionByStage.has(stage) && semver.gte(version, versionByStage.get(stage)!)) {
         versionByStage.set(stage, semver.inc(version, "prerelease", undefined, stage)!);
       }
-    }
-  } catch (e) {
-    // Fallthrough.
-  }
+    });
   versionByStage.set("stable", newVersion);
   return { versionByStage, hasVersions: extensionVersions.length > 0 };
 }
@@ -862,11 +866,7 @@ export async function uploadExtensionVersionFromGitHubSource(args: {
   }
 
   const newVersion = versionByStage.get(stage)!;
-  const releaseNotes = validateReleaseNotes(
-    rootDirectory,
-    extensionSpec.version,
-    extension
-  );
+  const releaseNotes = validateReleaseNotes(rootDirectory, extensionSpec.version, extension);
   const sourceUri = repoUri + path.join("/tree", sourceRef, extensionRoot);
   displayReleaseNotes({
     extensionRef,
@@ -957,11 +957,7 @@ export async function uploadExtensionVersionFromLocalSource(args: {
   }
 
   const newVersion = versionByStage.get(stage)!;
-  const releaseNotes = validateReleaseNotes(
-    args.rootDirectory,
-    extensionSpec.version,
-    extension
-  );
+  const releaseNotes = validateReleaseNotes(args.rootDirectory, extensionSpec.version, extension);
   displayReleaseNotes({ extensionRef, newVersion, releaseNotes, autoReview: false });
   const confirmed = await confirm({
     nonInteractive: args.nonInteractive,
