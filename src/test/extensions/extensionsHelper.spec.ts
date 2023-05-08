@@ -951,15 +951,15 @@ describe("extensionsHelper", () => {
   });
 
   describe("unpackExtensionState", () => {
-    it("should return correct state", () => {
-      const testExtension: Extension = {
-        name: "publishers/publisher-id/extensions/extension-id",
-        ref: "publisher-id/extension-id",
-        visibility: Visibility.PUBLIC,
-        registryLaunchStage: RegistryLaunchStage.BETA,
-        createTime: "",
-        state: "PUBLISHED",
-      };
+    const testExtension: Extension = {
+      name: "publishers/publisher-id/extensions/extension-id",
+      ref: "publisher-id/extension-id",
+      visibility: Visibility.PUBLIC,
+      registryLaunchStage: RegistryLaunchStage.BETA,
+      createTime: "",
+      state: "PUBLISHED",
+    };
+    it("should return correct published state", () => {
       expect(
         extensionsHelper.unpackExtensionState({
           ...testExtension,
@@ -968,6 +968,8 @@ describe("extensionsHelper", () => {
           latestApprovedVersion: "1.0.0",
         })
       ).to.eql(clc.bold(clc.green("Published")));
+    });
+    it("should return correct uploaded state", () => {
       expect(
         extensionsHelper.unpackExtensionState({
           ...testExtension,
@@ -975,12 +977,16 @@ describe("extensionsHelper", () => {
           latestVersion: "1.0.0",
         })
       ).to.eql(clc.green("Uploaded"));
+    });
+    it("should return correct deprecated state", () => {
       expect(
         extensionsHelper.unpackExtensionState({
           ...testExtension,
           state: "DEPRECATED",
         })
       ).to.eql(clc.red("Deprecated"));
+    });
+    it("should return correct suspended state", () => {
       expect(
         extensionsHelper.unpackExtensionState({
           ...testExtension,
@@ -988,6 +994,8 @@ describe("extensionsHelper", () => {
           latestVersion: "1.0.0",
         })
       ).to.eql(clc.bold(clc.red("Suspended")));
+    });
+    it("should return correct prerelease state", () => {
       expect(
         extensionsHelper.unpackExtensionState({
           ...testExtension,
