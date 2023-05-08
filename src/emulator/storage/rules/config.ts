@@ -62,7 +62,7 @@ export function getStorageRulesConfig(
         storageLogger.logLabeled(
           "BULLET",
           "storage",
-          `Detected demo project ID "${projectId}", using a default (open) rules configuration.`
+          `Detected demo project ID "${projectId}", using a default (open) rules configuration. Storage targets in firebase.json will be ignored.`
         );
         return defaultStorageRules();
       }
