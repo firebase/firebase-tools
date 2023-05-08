@@ -6,7 +6,7 @@ import { FirebaseError } from "../error";
 import { last, logLabeledBullet } from "../utils";
 import { listExtensions } from "../extensions/publisherApi";
 import { logger } from "../logger";
-import { logPrefix } from "../extensions/extensionsHelper";
+import { logPrefix, unpackExtensionState } from "../extensions/extensionsHelper";
 import { requireAuth } from "../requireAuth";
 
 /**
@@ -40,31 +40,9 @@ export const command = new Command("ext:dev:list <publisherId>")
     });
     const sorted = extensions.sort((a, b) => a.ref.localeCompare(b.ref));
     sorted.forEach((extension) => {
-      let state: string;
-      switch (extension.state) {
-        case "PUBLISHED":
-          // Unpacking legacy "published" terminology.
-          if (extension.latestApprovedVersion) {
-            state = clc.bold(clc.green("Published"));
-          } else if (extension.latestVersion) {
-            state = clc.green("Uploaded");
-          } else {
-            state = "Prerelease";
-          }
-          break;
-        case "DEPRECATED":
-          state = clc.red("Deprecated");
-          break;
-        case "SUSPENDED":
-          state = clc.bold(clc.red("Suspended"));
-          break;
-        default:
-          state = "-";
-          break;
-      }
       table.push([
         last(extension.ref.split("/")),
-        state,
+        unpackExtensionState(extension),
         extension.latestVersion ?? "-",
         extension.latestApprovedVersion ?? "-",
       ]);
