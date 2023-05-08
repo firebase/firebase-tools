@@ -538,7 +538,7 @@ async function archiveAndUploadSource(extPath: string, bucketName: string): Prom
  * @param extensionRef the ref of the extension
  * @param version the new version of the extension
  */
-async function getNextVersionByStage(
+export async function getNextVersionByStage(
   extensionRef: string,
   newVersion: string
 ): Promise<{ versionByStage: Map<string, string>; hasVersions: boolean }> {

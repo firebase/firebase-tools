@@ -3,6 +3,7 @@ import * as sinon from "sinon";
 
 import { FirebaseError } from "../../error";
 import * as extensionsApi from "../../extensions/extensionsApi";
+import * as publisherApi from "../../extensions/publisherApi";
 import * as extensionsHelper from "../../extensions/extensionsHelper";
 import * as getProjectNumber from "../../getProjectNumber";
 import * as functionsConfig from "../../functionsConfig";
@@ -882,6 +883,61 @@ describe("extensionsHelper", () => {
       });
       expect(projectNumberStub).to.have.been.called;
       expect(getFirebaseConfigStub).to.have.been.called;
+    });
+  });
+
+  describe("getNextVersionByStage", () => {
+    let listExtensionVersionsStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      listExtensionVersionsStub = sinon.stub(publisherApi, "listExtensionVersions");
+    });
+
+    afterEach(() => {
+      listExtensionVersionsStub.restore();
+    });
+
+    it("should return expected stages and versions", async () => {
+      listExtensionVersionsStub.returns(
+        Promise.resolve([
+          { spec: { version: "1.0.0-rc.0" } },
+          { spec: { version: "1.0.0-rc.1" } },
+          { spec: { version: "1.0.0-beta.0" } },
+        ])
+      );
+      const expected = new Map<string, string>([
+        ["rc", "1.0.0-rc.2"],
+        ["alpha", "1.0.0-alpha.0"],
+        ["beta", "1.0.0-beta.1"],
+        ["stable", "1.0.0"],
+      ]);
+      const { versionByStage, hasVersions } = await extensionsHelper.getNextVersionByStage(
+        "test",
+        "1.0.0"
+      );
+      expect(Array.from(versionByStage.entries())).to.eql(Array.from(expected.entries()));
+      expect(hasVersions).to.eql(true);
+    });
+
+    it("should ignore unknown stages and different prerelease format", async () => {
+      listExtensionVersionsStub.returns(
+        Promise.resolve([
+          { spec: { version: "1.0.0-beta" } },
+          { spec: { version: "1.0.0-prealpha.0" } },
+        ])
+      );
+      const expected = new Map<string, string>([
+        ["rc", "1.0.0-rc.0"],
+        ["alpha", "1.0.0-alpha.0"],
+        ["beta", "1.0.0-beta.0"],
+        ["stable", "1.0.0"],
+      ]);
+      const { versionByStage, hasVersions } = await extensionsHelper.getNextVersionByStage(
+        "test",
+        "1.0.0"
+      );
+      expect(Array.from(versionByStage.entries())).to.eql(Array.from(expected.entries()));
+      expect(hasVersions).to.eql(true);
     });
   });
 
