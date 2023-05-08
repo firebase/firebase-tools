@@ -791,7 +791,7 @@ export async function uploadExtensionVersionFromGitHubSource(args: {
   } catch (err: any) {
     // Silently fail and continue if extension is new or has no latest version set.
   }
-  displayExtensionHeader(extensionRef);
+  displayExtensionHeader(extensionRef, extension, latestVersion?.extensionRoot);
 
   if (args.stage && !stageOptions.includes(args.stage)) {
     throw new FirebaseError(`--stage flag only supports the following values: ${stageOptions}`);
@@ -934,7 +934,7 @@ export async function uploadExtensionVersionFromLocalSource(args: {
   } catch (err: any) {
     // Silently fail and continue if extension is new or has no latest version set.
   }
-  displayExtensionHeader(extensionRef);
+  displayExtensionHeader(extensionRef, extension, latestVersion?.extensionRoot);
 
   const localStageOptions = ["rc", "alpha", "beta"];
   if (args.stage && !localStageOptions.includes(args.stage)) {
