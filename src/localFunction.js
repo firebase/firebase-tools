@@ -43,7 +43,7 @@ var LocalFunction = function (trigger, urls, controller) {
         return HTTPS_SENTINEL;
       };
       this.call["get"] = (path) => {
-        callClient["get"]("path" || "/")
+        callClient["get"](path || "/")
           .then((res) => {
             this._requestCallBack(undefined, res, res.body);
           })
@@ -116,7 +116,7 @@ LocalFunction.prototype._constructCallableFunc = function (data, opts) {
 };
 
 LocalFunction.prototype._constructAuth = function (auth, authType) {
-  if (_.get(auth, "admin") || _.get(auth, "variable")) {
+  if (auth?.admin || auth?.variable) {
     return auth; // User is providing the wire auth format already.
   }
   if (typeof authType !== "undefined") {
@@ -124,17 +124,17 @@ LocalFunction.prototype._constructAuth = function (auth, authType) {
       case "USER":
         return {
           variable: {
-            uid: _.get(auth, "uid", ""),
-            token: _.get(auth, "token", {}),
+            uid: auth?.uid ?? "",
+            token: auth?.token ?? {},
           },
         };
       case "ADMIN":
-        if (_.get(auth, "uid") || _.get(auth, "token")) {
+        if (auth?.uid || auth?.token) {
           throw new Error("authType and auth are incompatible.");
         }
         return { admin: true };
       case "UNAUTHENTICATED":
-        if (_.get(auth, "uid") || _.get(auth, "token")) {
+        if (auth?.uid || auth?.token) {
           throw new Error("authType and auth are incompatible.");
         }
         return { admin: false };
