@@ -21,6 +21,7 @@ import * as utils from "../utils";
 import { Options } from "../options";
 import { getPublisherProfile } from "../extensions/publisherApi";
 import { getPublisherProjectFromName } from "../extensions/extensionsHelper";
+import { getFirebaseProject } from "../management/projects";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),
@@ -78,6 +79,7 @@ export async function uploadExtensionAction(
   // Get the project number and check the publisher TOS
   const profile = await getPublisherProfile("-", publisherId);
   const projectNumber = `${getPublisherProjectFromName(profile.name)}`;
+  const { projectId } = await getFirebaseProject(projectNumber);
   await acceptLatestPublisherTOS(options, projectNumber);
 
   let res;
@@ -110,7 +112,7 @@ export async function uploadExtensionAction(
       logPrefix,
       marked(
         `[View in Console](${utils.consoleUrl(
-          projectNumber,
+          projectId,
           `/publisher/extensions/${extensionId}/v/${version}`
         )})`
       )
