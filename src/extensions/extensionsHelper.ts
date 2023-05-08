@@ -690,7 +690,11 @@ export function unpackExtensionState(extension: Extension) {
  *
  * @param extensionRef the ref of the extension
  */
-function displayExtensionHeader(extensionRef: string, extension?: Extension, latestVersion?: ExtensionVersion) {
+function displayExtensionHeader(
+  extensionRef: string,
+  extension?: Extension,
+  latestVersion?: ExtensionVersion
+) {
   if (extension) {
     // TODO: Fix this logic.
     const source = extension.repoUri
