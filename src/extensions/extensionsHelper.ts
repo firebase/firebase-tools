@@ -6,6 +6,7 @@ import * as fs from "fs-extra";
 import fetch from "node-fetch";
 import * as path from "path";
 import { marked } from "marked";
+import normalize from "normalize-path";
 
 import { createUnzipTransform } from "./../unzip";
 const TerminalRenderer = require("marked-terminal");
@@ -693,30 +694,28 @@ export function unpackExtensionState(extension: Extension) {
 function displayExtensionHeader(
   extensionRef: string,
   extension?: Extension,
-  latestVersion?: ExtensionVersion
+  extensionRoot?: string
 ) {
   if (extension) {
     // TODO: Fix this logic.
     const source = extension.repoUri
       ? `${new URL(
-          latestVersion?.extensionRoot ?? "",
+          extensionRoot ?? "",
           extension.repoUri
         )} (use --repo and --root to modify)`
       : "Local source";
-    logger.info("");
-    logger.info(`${clc.bold("Extension:")} ${extension.ref}`);
-    logger.info(`${clc.bold("State:")} ${unpackExtensionState(extension)}`);
-    logger.info(`${clc.bold("Latest Version:")} ${extension.latestVersion ?? "-"}`);
     logger.info(
-      `${clc.bold("Version in Extensions Hub:")} ${extension.latestApprovedVersion ?? "-"}`
+      `\n${clc.bold("Extension:")} ${extension.ref}\n` +
+        `${clc.bold("State:")} ${unpackExtensionState(extension)}\n` +
+        `${clc.bold("Latest Version:")} ${extension.latestVersion ?? "-"}\n` +
+        `${clc.bold("Version in Extensions Hub:")} ${extension.latestApprovedVersion ?? "-"}\n` +
+        `${clc.bold("Source in GitHub:")} ${source}\n`
     );
-    logger.info(`${clc.bold("Source in GitHub:")} ${source}`);
-    logger.info("");
   } else {
-    logger.info("");
-    logger.info(`${clc.bold("Extension:")} ${extensionRef}`);
-    logger.info(`${clc.bold("State:")} ${clc.bold(clc.blue("New"))}`);
-    logger.info("");
+    logger.info(
+      `\n${clc.bold("Extension:")} ${extensionRef}\n` +
+        `${clc.bold("State:")} ${clc.bold(clc.blue("New"))}\n`
+    );
   }
 }
 
