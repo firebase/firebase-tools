@@ -557,7 +557,7 @@ async function getNextVersionByStage(
   );
   for (const extensionVersion of extensionVersions) {
     const version = semver.parse(extensionVersion.spec.version)!;
-    if (!version.prerelease) {
+    if (!version.prerelease || version.prerelease.length === 0) {
       continue;
     }
     // Extensions only support a single prerelease annotation.
