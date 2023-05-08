@@ -545,6 +545,7 @@ async function getNextVersionByStage(
   } catch (err: any) {
     // Silently fail if there are no extension versions exist.
   }
+  // Maps stage to default next version (e.g. "rc" => "1.0.0-rc.0").
   const versionByStage = new Map(
     ["rc", "alpha", "beta"].map((stage) => [
       stage,
@@ -555,9 +556,9 @@ async function getNextVersionByStage(
     .map((extensionVersion) => semver.parse(extensionVersion.spec.version)!)
     .filter((version) => !!version.prerelease)
     .forEach((version) => {
-      // Extensions only support semvers of format: <major>.<minor>.<patch>-<stage>.<count>
+      // Extensions only support a single prerelease annotation.
       const prerelease = semver.prerelease(version)![0];
-      // Parse out stage from <stage>.<count>
+      // Parse out stage from prerelease (e.g. "rc" from "rc.0").
       const stage = prerelease.split(".")[0];
       if (versionByStage.has(stage) && semver.gte(version, versionByStage.get(stage)!)) {
         versionByStage.set(stage, semver.inc(version, "prerelease", undefined, stage)!);
