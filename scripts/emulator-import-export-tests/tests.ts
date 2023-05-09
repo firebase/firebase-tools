@@ -43,7 +43,7 @@ function logIncludes(msg: string) {
 describe("import/export end to end", () => {
   it("should be able to import/export firestore data", async function (this) {
     this.timeout(2 * TEST_SETUP_TIMEOUT);
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    await new Promise((resolve) => setTimeout(resolve, 10000));
 
     // Start up emulator suite
     const emulatorsCLI = new CLIProcess("1", __dirname);
@@ -94,7 +94,7 @@ describe("import/export end to end", () => {
 
   it("should be able to import/export rtdb data", async function (this) {
     this.timeout(2 * TEST_SETUP_TIMEOUT);
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    await new Promise((resolve) => setTimeout(resolve, 10000));
 
     // Start up emulator suite
     const emulatorsCLI = new CLIProcess("1", __dirname);
@@ -211,7 +211,7 @@ describe("import/export end to end", () => {
 
   it("should be able to import/export auth data", async function (this) {
     this.timeout(2 * TEST_SETUP_TIMEOUT);
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    await new Promise((resolve) => setTimeout(resolve, 10000));
 
     // Start up emulator suite
     const project = FIREBASE_PROJECT || "example";
@@ -317,7 +317,7 @@ describe("import/export end to end", () => {
 
   it("should be able to import/export auth data with many users", async function (this) {
     this.timeout(2 * TEST_SETUP_TIMEOUT);
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    await new Promise((resolve) => setTimeout(resolve, 10000));
 
     // Start up emulator suite
     const project = FIREBASE_PROJECT || "example";
@@ -400,7 +400,7 @@ describe("import/export end to end", () => {
   });
   it("should be able to export / import auth data with no users", async function (this) {
     this.timeout(2 * TEST_SETUP_TIMEOUT);
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    await new Promise((resolve) => setTimeout(resolve, 10000));
 
     // Start up emulator suite
     const project = FIREBASE_PROJECT || "example";
