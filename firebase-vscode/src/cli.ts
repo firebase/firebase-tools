@@ -42,7 +42,7 @@ async function requireAuthWrapper(showError: boolean = true) {
   try {
     await requireAuth(account || {});
   } catch (e) {
-    console.log('requireAuth error', e);
+    console.error('requireAuth error', e.original || e);
     if (showError) {
       vscode.window.showErrorMessage("Not logged in", {
         modal: true,
