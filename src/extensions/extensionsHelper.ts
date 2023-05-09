@@ -616,7 +616,7 @@ function validateReleaseNotes(rootDirectory: string, newVersion: string, extensi
       "No CHANGELOG.md file found. " +
         "Please create one and add an entry for this version. " +
         marked(
-          "See https://firebase.google.com/docs/extensions/alpha/create-user-docs#writing-changelog for more details."
+          "See https://firebase.google.com/docs/extensions/publishers/user-documentation #writing-changelog for more details."
         )
     );
   }
@@ -626,7 +626,7 @@ function validateReleaseNotes(rootDirectory: string, newVersion: string, extensi
       `No entry for version ${newVersion} found in CHANGELOG.md. ` +
         "Please add one so users know what has changed in this version. " +
         marked(
-          "See https://firebase.google.com/docs/extensions/alpha/create-user-docs#writing-changelog for more details."
+          "See https://firebase.google.com/docs/extensions/publishers/user-documentation #writing-changelog for more details."
         )
     );
   }
@@ -1015,7 +1015,7 @@ function getMissingPublisherError(publisherId: string): FirebaseError {
     marked(
       `Couldn't find publisher ID '${clc.bold(
         publisherId
-      )}'. Please ensure that you have registered this ID. To register as a publisher, you can check out the [Firebase documentation](https://firebase.google.com/docs/extensions/alpha/share#register_as_an_extensions_publisher) for step-by-step instructions.`
+      )}'. Please ensure that you have registered this ID. For step-by-step instructions on getting started as a publisher, see https://firebase.google.com/docs/extensions/publishers/get-started.`
     )
   );
 }
