@@ -17,7 +17,7 @@ const ANGULAR_BASE_PATH = "";
 const I18N_BASE = "";
 const DEFAULT_LANG = "en";
 const LOG_FILE = "scripts/webframeworks-deploy-tests/firebase-emulators.log";
-const NEXT_SOURCE = `${__dirname}/hosting`;
+const NEXT_SOURCE = `${__dirname}/nextjs`;
 
 async function getFilesListFromDir(dir: string): Promise<string[]> {
   const files = await new Promise<string[]>((resolve, reject) => {
