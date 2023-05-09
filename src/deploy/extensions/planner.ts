@@ -227,7 +227,7 @@ export async function resolveVersion(ref: refs.Ref): Promise<string> {
   if (ref.version === "latest") {
     if (!extension.latestVersion) {
       throw new FirebaseError(
-        `${extensionRef} has no stables versions (or all have been deprecated). If you wish to install a prerelease version, you must specify the version you want to install.`
+        `${extensionRef} has no stable non-deprecated versions. If you wish to install a prerelease version, you must specify the version you want to install.`
       );
     }
     return extension.latestVersion;
