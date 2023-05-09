@@ -360,6 +360,7 @@ export async function prepareFrameworks(
         bootstrapScript,
         frameworksEntry = framework,
         baseUrl = "",
+        dotEnv = {},
       } = await codegenFunctionsDirectory(getProjectPath(), functionsDist);
 
       config.rewrites.push({
@@ -443,16 +444,22 @@ export async function prepareFrameworks(
         await copyFile(getProjectPath(".npmrc"), join(functionsDist, ".npmrc"));
       }
 
-      let existingDotEnvContents = "";
+      let dotEnvContents = "";
       if (await pathExists(getProjectPath(".env"))) {
-        existingDotEnvContents = (await readFile(getProjectPath(".env"))).toString();
+        dotEnvContents = (await readFile(getProjectPath(".env"))).toString();
+      }
+
+      for (const [key, value] of Object.entries(dotEnv)) {
+        dotEnvContents += `\n${key}=${value}`;
       }
 
       await writeFile(
         join(functionsDist, ".env"),
-        `${existingDotEnvContents}
+        `${dotEnvContents}
 __FIREBASE_FRAMEWORKS_ENTRY__=${frameworksEntry}
-${firebaseDefaults ? `__FIREBASE_DEFAULTS__=${JSON.stringify(firebaseDefaults)}\n` : ""}`
+${
+  firebaseDefaults ? `__FIREBASE_DEFAULTS__=${JSON.stringify(firebaseDefaults)}\n` : ""
+}`.trimStart()
       );
 
       const envs = await new Promise<string[]>((resolve, reject) =>

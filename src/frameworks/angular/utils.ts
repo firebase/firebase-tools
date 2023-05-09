@@ -267,35 +267,48 @@ export async function getServerConfig(sourceDir: string) {
     workspaceProject,
     serveOptimizedImages,
   } = await getContext(sourceDir);
-  if (!serverTarget) throw new Error("No server target");
+  const browserTargetOptions = await architectHost.getOptionsForTarget(browserTarget);
+  if (typeof browserTargetOptions?.outputPath !== "string")
+    throw new Error("browserTarget output path is not a string");
+  const browserOutputPath = browserTargetOptions.outputPath;
+  const packageJson = JSON.parse(await host.readFile(join(sourceDir, "package.json")));
+  if (!serverTarget) {
+    return {
+      packageJson,
+      browserOutputPath,
+      serverOutputPath: undefined,
+      baseHref,
+      bundleDependencies: false,
+      externalDependencies: [],
+      serverLocales: [],
+      browserLocales: undefined,
+      defaultLocale: undefined,
+      serveOptimizedImages,
+    };
+  }
   const { locales: serverLocales, defaultLocale } = await localesForTarget(
     sourceDir,
     architectHost,
     serverTarget,
     workspaceProject
   );
-  const { locales: browserLocales } = await localesForTarget(
-    sourceDir,
-    architectHost,
-    browserTarget,
-    workspaceProject
-  );
   const serverTargetOptions = await architectHost.getOptionsForTarget(serverTarget);
   if (typeof serverTargetOptions?.outputPath !== "string")
     throw new Error("serverTarget output path is not a string");
-  const browserTargetOptions = await architectHost.getOptionsForTarget(browserTarget);
-  if (typeof browserTargetOptions?.outputPath !== "string")
-    throw new Error("browserTarget output path is not a string");
-  const browserOutputPath = browserTargetOptions.outputPath;
   const serverOutputPath = serverTargetOptions.outputPath;
   if (serverLocales && !defaultLocale) {
     throw new FirebaseError(
       "It's required that your source locale to be one of the localize options"
     );
   }
-  const packageJson = JSON.parse(await host.readFile(join(sourceDir, "package.json")));
   const externalDependencies: string[] = (serverTargetOptions.externalDependencies as any) || [];
   const bundleDependencies = serverTargetOptions.bundleDependencies ?? true;
+  const { locales: browserLocales } = await localesForTarget(
+    sourceDir,
+    architectHost,
+    browserTarget,
+    workspaceProject
+  );
   return {
     packageJson,
     browserOutputPath,

@@ -110,7 +110,6 @@ export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: strin
 }
 
 export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: string) {
-  // TODO if !serverTarget, return { ngOptimizedImage only }
   const {
     packageJson,
     serverOutputPath,
@@ -124,10 +123,14 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
     serveOptimizedImages,
   } = await getServerConfig(sourceDir);
 
+  const dotEnv = { __NG_BROWSER_OUTPUT_PATH__: browserOutputPath };
+
   await Promise.all([
-    mkdir(join(destDir, serverOutputPath), { recursive: true }).then(() =>
-      copy(join(sourceDir, serverOutputPath), join(destDir, serverOutputPath))
-    ),
+    serverOutputPath
+      ? mkdir(join(destDir, serverOutputPath), { recursive: true }).then(() =>
+          copy(join(sourceDir, serverOutputPath), join(destDir, serverOutputPath))
+        )
+      : Promise.resolve(),
     mkdir(join(destDir, browserOutputPath), { recursive: true }).then(() =>
       copy(join(sourceDir, browserOutputPath), join(destDir, browserOutputPath))
     ),
@@ -142,8 +145,10 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
       }
     }
     packageJson.dependencies = dependencies;
-  } else {
+  } else if (serverOutputPath) {
     packageJson.dependencies ||= {};
+  } else {
+    packageJson.dependencies = {};
   }
 
   if (serveOptimizedImages) {
@@ -171,9 +176,11 @@ exports.handle = function(req,res) {
     }
   });
 };\n`;
-  } else {
+  } else if (serverOutputPath) {
     bootstrapScript = `exports.handle = require('./${serverOutputPath}/main.js').app();\n`;
+  } else {
+    bootstrapScript = `exports.handle = (res, req) => req.sendStatus(404);\n`;
   }
 
-  return { bootstrapScript, packageJson, baseUrl };
+  return { bootstrapScript, packageJson, baseUrl, dotEnv };
 }
