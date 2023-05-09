@@ -88,7 +88,7 @@ jobs:
           - npm run test:functions-discover
           - npm run test:hosting
           # - npm run test:hosting-rewrites # Long-running test that might conflict across test runs. Run this manually.
-          # - npm run test:import-export # This test keeps breaking whenever we change the runtime env.
+          - npm run test:import-export
           - npm run test:storage-deploy
           - npm run test:storage-emulator-integration
           - npm run test:triggers-end-to-end
