@@ -95,7 +95,7 @@ export const resourceTypeToNiceName: Record<string, string> = {
 };
 export type ReleaseStage = "alpha" | "beta" | "rc" | "stable";
 const repoRegex = new RegExp(`^https:\/\/github\.com\/[^\/]+\/[^\/]+$`);
-const stageOptions = ["alpha", "beta", "rc", "stable"];
+const stageOptions = ["rc", "alpha", "beta", "stable"];
 
 /**
  * Turns database URLs (e.g. https://my-db.firebaseio.com) into database instance names
@@ -248,6 +248,15 @@ export function validateSpec(spec: any) {
   }
   if (!spec.version) {
     errors.push("extension.yaml is missing required field: version");
+  } else if (!semver.valid(spec.version)) {
+    errors.push(`version ${spec.version} in extension.yaml is not a valid semver`);
+  } else {
+    const version = semver.parse(spec.version)!;
+    if (version.prerelease.length > 0 || version.build.length > 0) {
+      errors.push(
+        "version field in extension.yaml does not support pre-release annotations; instead, set a pre-release stage using the --stage flag"
+      );
+    }
   }
   if (!spec.license) {
     errors.push("extension.yaml is missing required field: license");
@@ -388,7 +397,7 @@ export async function promptForValidRepoURI(): Promise<string> {
   while (!repoIsValid) {
     extensionRoot = await promptOnce({
       type: "input",
-      message: "Enter the GitHub repo URI where this Extension's source code is located:",
+      message: "Enter the GitHub repo URI where this extension's source code is located:",
     });
     if (!repoRegex.test(extensionRoot)) {
       logger.info("Repo URI must follow this format: https://github.com/<user>/<repo>");
@@ -397,6 +406,89 @@ export async function promptForValidRepoURI(): Promise<string> {
     }
   }
   return extensionRoot;
+}
+
+/**
+ * Prompts for a valid extension root.
+ *
+ * @param defaultRoot the default extension root
+ */
+export async function promptForValidExtensionRoot(defaultRoot: string): Promise<string> {
+  let rootIsValid = false;
+  let extensionRoot = "";
+  while (!rootIsValid) {
+    extensionRoot = await promptOnce({
+      type: "input",
+      message:
+        "Enter this extension's root directory in the repo (defaults to previous root if set):",
+      default: defaultRoot,
+    });
+    // TODO: Add real directory path validation.
+    rootIsValid = true;
+  }
+  return extensionRoot;
+}
+
+/**
+ * Prompts for the extension version's release stage.
+ *
+ * @param versionByStage map from stage to the next version to upload
+ * @param autoReview whether the stable version will be automatically sent for review on upload
+ * @param allowStable whether to allow stable versions
+ * @param hasVersions whether there have been any pre-release versions uploaded already
+ */
+async function promptForReleaseStage(args: {
+  versionByStage: Map<string, string>;
+  autoReview: boolean;
+  allowStable: boolean;
+  hasVersions: boolean;
+  nonInteractive: boolean;
+  force: boolean;
+}): Promise<ReleaseStage> {
+  let stage: ReleaseStage = "rc";
+  if (!args.nonInteractive) {
+    const choices = [
+      { name: `Release candidate (${args.versionByStage.get("rc")})`, value: "rc" },
+      { name: `Alpha (${args.versionByStage.get("alpha")})`, value: "alpha" },
+      { name: `Beta (${args.versionByStage.get("beta")})`, value: "beta" },
+    ];
+    if (args.allowStable) {
+      const stableChoice = {
+        name: `Stable (${args.versionByStage.get("stable")}${
+          args.autoReview ? ", automatically sent for review" : ""
+        })`,
+        value: "stable",
+      };
+      choices.push(stableChoice);
+    }
+    stage = await promptOnce({
+      type: "list",
+      message: "Choose the release stage:",
+      choices: choices,
+      default: stage,
+    });
+    if (stage === "stable" && !args.hasVersions) {
+      logger.info(
+        `${clc.bold(
+          clc.yellow("Warning:")
+        )} It's highly recommended to first upload a pre-release version before choosing stable.`
+      );
+      const confirmed = await confirm({
+        nonInteractive: args.nonInteractive,
+        force: args.force,
+        default: false,
+      });
+      if (!confirmed) {
+        stage = await promptOnce({
+          type: "list",
+          message: "Choose the release stage:",
+          choices: choices,
+          default: stage,
+        });
+      }
+    }
+  }
+  return stage;
 }
 
 export async function ensureExtensionsApiEnabled(options: any): Promise<void> {
@@ -441,70 +533,63 @@ async function archiveAndUploadSource(extPath: string, bucketName: string): Prom
 }
 
 /**
- * Increments the pre-release annotation of the Extension version if the release stage is not stable.
- * @param ref the ref to the Extension
- * @param extensionVersion the version of the Extension
- * @param stage the stage of this release
+ * Gets a list of the next version to upload by release stage.
+ *
+ * @param extensionRef the ref of the extension
+ * @param version the new version of the extension
  */
-export async function incrementPrereleaseVersion(
-  ref: string,
-  extensionVersion: string,
-  stage: ReleaseStage
-): Promise<string> {
-  if (!stageOptions.includes(stage)) {
-    throw new FirebaseError(`--stage flag only supports the following values: ${stageOptions}`);
+export async function getNextVersionByStage(
+  extensionRef: string,
+  newVersion: string
+): Promise<{ versionByStage: Map<string, string>; hasVersions: boolean }> {
+  let extensionVersions: ExtensionVersion[] = [];
+  try {
+    extensionVersions = await listExtensionVersions(extensionRef, `id="${newVersion}"`, true);
+  } catch (err: any) {
+    // Silently fail if no extension versions exist.
   }
-  if (stage !== "stable") {
-    const version = semver.parse(extensionVersion)!;
-    if (version.prerelease.length > 0 || version.build.length > 0) {
-      throw new FirebaseError(
-        `Cannot combine the --stage flag with a version with a prerelease annotation in extension.yaml.`
-      );
+  // Maps stage to default next version (e.g. "rc" => "1.0.0-rc.0").
+  const versionByStage = new Map(
+    ["rc", "alpha", "beta"].map((stage) => [
+      stage,
+      semver.inc(`${newVersion}-${stage}`, "prerelease", undefined, stage)!,
+    ])
+  );
+  for (const extensionVersion of extensionVersions) {
+    const version = semver.parse(extensionVersion.spec.version)!;
+    if (!version.prerelease.length) {
+      continue;
     }
-    let extensionVersions: ExtensionVersion[] = [];
-    try {
-      extensionVersions = await listExtensionVersions(ref, `id="${version.version}"`, true);
-    } catch (e) {
-      // Silently fail and continue the publish flow if extension not found.
+    // Extensions only support a single prerelease annotation.
+    const prerelease = semver.prerelease(version)![0];
+    // Parse out stage from prerelease (e.g. "rc" from "rc.0").
+    const stage = prerelease.split(".")[0];
+    if (versionByStage.has(stage) && semver.gte(version, versionByStage.get(stage)!)) {
+      versionByStage.set(stage, semver.inc(version, "prerelease", undefined, stage)!);
     }
-    const latestVersion =
-      extensionVersions
-        .map((version) => semver.parse(version.spec.version)!)
-        .filter((version) => version.prerelease.length > 0 && version.prerelease[0] === stage)
-        .sort((v1, v2) => semver.compare(v1, v2))
-        .pop() ?? `${version}-${stage}`;
-    return semver.inc(latestVersion, "prerelease", undefined, stage)!;
   }
-  return extensionVersion;
+  versionByStage.set("stable", newVersion);
+  return { versionByStage, hasVersions: extensionVersions.length > 0 };
 }
 
 /**
- * Validates the Extension spec.
+ * Validates the extension spec.
  *
- * @param publisherId the ID of the Publisher
- * @param extensionId the ID of the Extension
- * @param rootDirectory the directory with the Extension's source
- * @param latestVersion the latest version of the Extension (if any)
- * @param stage the release stage
- *
+ * @param rootDirectory the directory with the extension source
+ * @param extensionRef the ref of the extension
  */
-async function validateExtensionSpec(args: {
-  publisherId: string;
-  extensionId: string;
-  rootDirectory: string;
-  latestVersion?: string;
-  stage: ReleaseStage;
-}): Promise<{ extensionSpec: ExtensionSpec; notes: string }> {
-  const extensionRef = `${args.publisherId}/${args.extensionId}`;
-  const extensionSpec = await getLocalExtensionSpec(args.rootDirectory);
-  if (extensionSpec.name !== args.extensionId) {
+async function validateExtensionSpec(
+  rootDirectory: string,
+  extensionId: string
+): Promise<ExtensionSpec> {
+  const extensionSpec = await getLocalExtensionSpec(rootDirectory);
+  if (extensionSpec.name !== extensionId) {
     throw new FirebaseError(
       `Extension ID '${clc.bold(
-        args.extensionId
+        extensionId
       )}' does not match the name in extension.yaml '${clc.bold(extensionSpec.name)}'.`
     );
   }
-
   // Substitute deepcopied spec with autopopulated params, and make sure that it passes basic extension.yaml validation.
   const subbedSpec = JSON.parse(JSON.stringify(extensionSpec));
   subbedSpec.params = substituteParams<Param[]>(
@@ -512,178 +597,142 @@ async function validateExtensionSpec(args: {
     AUTOPOULATED_PARAM_PLACEHOLDERS
   );
   validateSpec(subbedSpec);
+  return extensionSpec;
+}
 
-  // Increment the pre-release annotation if it is not a stable version.
-  extensionSpec.version = await incrementPrereleaseVersion(
-    extensionRef,
-    extensionSpec.version,
-    args.stage
-  );
-
+/**
+ * Validates the release notes.
+ *
+ * @param rootDirectory the directory with the extension source
+ * @param newVersion the new extension version
+ */
+function validateReleaseNotes(rootDirectory: string, newVersion: string, extension?: Extension) {
   let notes: string;
   try {
-    const changes = getLocalChangelog(args.rootDirectory);
-    notes = changes[extensionSpec.version];
+    const changes = getLocalChangelog(rootDirectory);
+    notes = changes[newVersion];
   } catch (err: any) {
     throw new FirebaseError(
       "No CHANGELOG.md file found. " +
         "Please create one and add an entry for this version. " +
         marked(
-          "See https://firebase.google.com/docs/extensions/alpha/create-user-docs#writing-changelog for more details."
+          "See https://firebase.google.com/docs/extensions/publishers/user-documentation#writing-changelog for more details."
         )
     );
   }
   // Notes are required for all stable versions after the initial release.
-  if (!notes && !semver.prerelease(extensionSpec.version) && args.latestVersion) {
+  if (!notes && !semver.prerelease(newVersion) && extension) {
     throw new FirebaseError(
-      `No entry for version ${extensionSpec.version} found in CHANGELOG.md. ` +
+      `No entry for version ${newVersion} found in CHANGELOG.md. ` +
         "Please add one so users know what has changed in this version. " +
         marked(
-          "See https://firebase.google.com/docs/extensions/alpha/create-user-docs#writing-changelog for more details."
+          "See https://firebase.google.com/docs/extensions/publishers/user-documentation#writing-changelog for more details."
         )
     );
   }
+  return notes;
+}
 
-  if (args.latestVersion) {
-    if (semver.lt(extensionSpec.version, args.latestVersion)) {
+/**
+ * Validates the extension version.
+ *
+ * @param extensionRef the ref of the extension
+ * @param newVersion the new extension version
+ * @param latestVersion the latest extension version
+ */
+function validateVersion(extensionRef: string, newVersion: string, latestVersion?: string) {
+  if (latestVersion) {
+    if (semver.lt(newVersion, latestVersion)) {
       throw new FirebaseError(
         `The version you are trying to publish (${clc.bold(
-          extensionSpec.version
+          newVersion
         )}) is lower than the current version (${clc.bold(
-          args.latestVersion
+          latestVersion
         )}) for the extension '${clc.bold(
           extensionRef
-        )}'. Please make sure this version is greater than the current version (${clc.bold(
-          args.latestVersion
-        )}) inside of extension.yaml.\n`,
+        )}'. Make sure this version is greater than the current version (${clc.bold(
+          latestVersion
+        )}) inside of extension.yaml and try again.\n`,
         { exit: 104 }
       );
-    } else if (semver.eq(extensionSpec.version, args.latestVersion)) {
+    } else if (semver.eq(newVersion, latestVersion)) {
       throw new FirebaseError(
-        `The version you are trying to publish (${clc.bold(
-          extensionSpec.version
-        )}) already exists for Extension '${clc.bold(
+        `The version you are trying to upload (${clc.bold(
+          newVersion
+        )}) already exists for extension '${clc.bold(
           extensionRef
-        )}'. Please increment the version inside of extension.yaml.\n`,
+        )}'. Increment the version inside of extension.yaml and try again.\n`,
         { exit: 103 }
       );
     }
   }
+}
 
-  return { extensionSpec, notes };
+/** Unpacks extension state into a more specific string. */
+export function unpackExtensionState(extension: Extension) {
+  switch (extension.state) {
+    case "PUBLISHED":
+      // Unpacking legacy "published" terminology.
+      if (extension.latestApprovedVersion) {
+        return clc.bold(clc.green("Published"));
+      } else if (extension.latestVersion) {
+        return clc.green("Uploaded");
+      } else {
+        return "Prerelease";
+      }
+    case "DEPRECATED":
+      return clc.red("Deprecated");
+    case "SUSPENDED":
+      return clc.bold(clc.red("Suspended"));
+    default:
+      return "-";
+  }
 }
 
 /**
- * Uploads an extension version from a GitHub repo.
+ * Displays metadata about the extension being uploaded.
  *
- * @param publisherId the ID of the Publisher this Extension will be published under
- * @param extensionId the ID of the Extension to be published
- * @param repoUri the URI of the repo where this Extension's source exists
- * @param sourceRef the commit hash, branch, or tag name in the repo to publish from
- * @param extensionRoot the root directory that contains this Extension's source
- * @param stage the release stage to publish
- * @param nonInteractive whether to display prompts
- * @param force whether to force confirmations
+ * @param extensionRef the ref of the extension
  */
-export async function uploadExtensionVersionFromGitHubSource(args: {
-  publisherId: string;
-  extensionId: string;
-  repoUri?: string;
-  sourceRef?: string;
-  extensionRoot?: string;
-  stage?: ReleaseStage;
-  nonInteractive: boolean;
-  force: boolean;
-}): Promise<ExtensionVersion | undefined> {
-  const extensionRef = `${args.publisherId}/${args.extensionId}`;
-
-  // Check if Extension already exists.
-  let extension: Extension | undefined;
-  try {
-    extension = await getExtension(extensionRef);
-  } catch (err: any) {
-    // Silently fail and continue the publish flow if Extension not found.
-  }
-
-  // Prompt for repo URI and validate that it hasn't changed if previously set.
-  if (args.repoUri && !repoRegex.test(args.repoUri)) {
-    throw new FirebaseError("Repo URI must follow this format: https://github.com/<user>/<repo>");
-  }
-  let repoUri = args.repoUri || extension?.repoUri;
-  if (!repoUri) {
-    if (!args.nonInteractive) {
-      repoUri = await promptForValidRepoURI();
-    } else {
-      throw new FirebaseError("Repo URI is required but not currently set.");
+function displayExtensionHeader(
+  extensionRef: string,
+  extension?: Extension,
+  extensionRoot?: string
+) {
+  if (extension) {
+    let source = "Local source";
+    if (extension.repoUri) {
+      const uri = new URL(extension.repoUri!);
+      uri.pathname = path.join(uri.pathname, extensionRoot ?? "");
+      source = `${uri.toString()} (use --repo and --root to modify)`;
     }
-  }
-  if (extension?.repoUri) {
     logger.info(
-      `Extension ${clc.bold(extensionRef)} is uploaded from ${clc.bold(
-        extension?.repoUri
-      )}. Use --repo to change this repo.`
+      `\n${clc.bold("Extension:")} ${extension.ref}\n` +
+        `${clc.bold("State:")} ${unpackExtensionState(extension)}\n` +
+        `${clc.bold("Latest Version:")} ${extension.latestVersion ?? "-"}\n` +
+        `${clc.bold("Version in Extensions Hub:")} ${extension.latestApprovedVersion ?? "-"}\n` +
+        `${clc.bold("Source in GitHub:")} ${source}\n`
+    );
+  } else {
+    logger.info(
+      `\n${clc.bold("Extension:")} ${extensionRef}\n` +
+        `${clc.bold("State:")} ${clc.bold(clc.blue("New"))}\n`
     );
   }
+}
 
-  let extensionRoot = args.extensionRoot;
-  let defaultRoot = "/";
-  if (!extensionRoot) {
-    // Try to get the cached root only if the root hasn't already been passed in.
-    if (extension) {
-      try {
-        const extensionVersionRef = `${extensionRef}@${extension.latestVersion}`;
-
-        const extensionVersion = await getExtensionVersion(extensionVersionRef);
-        if (extensionVersion.extensionRoot) {
-          defaultRoot = extensionVersion.extensionRoot;
-        }
-      } catch (err: any) {
-        // Not a critical error so continue with default root.
-      }
-    }
-    extensionRoot = defaultRoot;
-    if (!args.nonInteractive) {
-      extensionRoot = await promptOnce({
-        type: "input",
-        message:
-          "Enter this Extension's root directory in the repo (defaults to previous root if set):",
-        default: defaultRoot,
-      });
-    }
-  }
-
-  // Prompt for source ref and default to HEAD.
-  let sourceRef = args.sourceRef;
-  const defaultSourceRef = "HEAD";
-  if (!sourceRef) {
-    if (!args.nonInteractive) {
-      sourceRef = await promptOnce({
-        type: "input",
-        message: "Enter the commit hash, branch, or tag name to build from in the repo:",
-        default: defaultSourceRef,
-      });
-    } else {
-      sourceRef = defaultSourceRef;
-    }
-  }
-
-  // Prompt for release stage.
-  let stage = args.stage;
-  const defaultStage = "rc";
-  if (!stage) {
-    if (!args.nonInteractive) {
-      stage = await promptOnce({
-        type: "list",
-        message: "Choose the release stage (pre-release annotations will be auto-incremented):",
-        choices: stageOptions,
-        default: defaultStage,
-      });
-    } else {
-      stage = defaultStage;
-    }
-  }
-
-  // Fetch and validate extension from remote repo.
+/**
+ * Fetches the extension source from GitHub.
+ *
+ * @param repoUri the public GitHub repo URI that contains the extension source
+ * @param sourceRef the commit hash, branch, or tag to build from the repo
+ * @param extensionRoot the root directory that contains this extension
+ */
+async function fetchExtensionSource(
+  repoUri: string,
+  sourceRef: string,
+  extensionRoot: string
+): Promise<string> {
   const sourceUri = repoUri + path.join("/tree", sourceRef, extensionRoot);
   logger.info(`Validating source code at ${clc.bold(sourceUri)}...`);
   const archiveUri = `${repoUri}/archive/${sourceRef}.zip`;
@@ -710,15 +759,122 @@ export async function uploadExtensionVersionFromGitHubSource(args: {
       )}. Please verify the root and try again.`
     );
   }
-  const { extensionSpec, notes } = await validateExtensionSpec({
-    publisherId: args.publisherId,
-    extensionId: args.extensionId,
-    rootDirectory: rootDirectory,
-    latestVersion: extension?.latestVersion,
-    stage: stage!,
-  });
+  return rootDirectory;
+}
 
-  displayReleaseNotes(extensionRef, extensionSpec.version, notes, sourceUri);
+/**
+ * Uploads an extension version from a GitHub repo.
+ *
+ * @param publisherId the ID of the Publisher this Extension will be published under
+ * @param extensionId the ID of the Extension to be published
+ * @param repoUri the URI of the repo where this Extension's source exists
+ * @param sourceRef the commit hash, branch, or tag name in the repo to publish from
+ * @param extensionRoot the root directory that contains this Extension's source
+ * @param stage the release stage to publish
+ * @param nonInteractive whether to display prompts
+ * @param force whether to force confirmations
+ */
+export async function uploadExtensionVersionFromGitHubSource(args: {
+  publisherId: string;
+  extensionId: string;
+  repoUri?: string;
+  sourceRef?: string;
+  extensionRoot?: string;
+  stage?: ReleaseStage;
+  nonInteractive: boolean;
+  force: boolean;
+}): Promise<ExtensionVersion | undefined> {
+  const extensionRef = `${args.publisherId}/${args.extensionId}`;
+  let extension: Extension | undefined;
+  let latestVersion: ExtensionVersion | undefined;
+  try {
+    extension = await getExtension(extensionRef);
+    latestVersion = await getExtensionVersion(`${extensionRef}@latest`);
+  } catch (err: any) {
+    // Silently fail and continue if extension is new or has no latest version set.
+  }
+  displayExtensionHeader(extensionRef, extension, latestVersion?.extensionRoot);
+
+  if (args.stage && !stageOptions.includes(args.stage)) {
+    throw new FirebaseError(
+      `--stage only supports the following values: ${stageOptions.join(", ")}`
+    );
+  }
+
+  // Prompt for repo URI.
+  if (args.repoUri && !repoRegex.test(args.repoUri)) {
+    throw new FirebaseError("Repo URI must follow this format: https://github.com/<user>/<repo>");
+  }
+  let repoUri = args.repoUri || extension?.repoUri;
+  if (!repoUri) {
+    if (!args.nonInteractive) {
+      repoUri = await promptForValidRepoURI();
+    } else {
+      throw new FirebaseError("Repo URI is required but not currently set.");
+    }
+  }
+
+  let extensionRoot = args.extensionRoot || latestVersion?.extensionRoot;
+  if (!extensionRoot) {
+    const defaultRoot = "/";
+    if (!args.nonInteractive) {
+      extensionRoot = await promptForValidExtensionRoot(defaultRoot);
+    } else {
+      extensionRoot = defaultRoot;
+    }
+  }
+
+  // Prompt for source ref and default to HEAD.
+  let sourceRef = args.sourceRef;
+  const defaultSourceRef = "HEAD";
+  if (!sourceRef) {
+    if (!args.nonInteractive) {
+      sourceRef = await promptOnce({
+        type: "input",
+        message: "Enter the commit hash, branch, or tag name to build from in the repo:",
+        default: defaultSourceRef,
+      });
+    } else {
+      sourceRef = defaultSourceRef;
+    }
+  }
+
+  const rootDirectory = await fetchExtensionSource(repoUri, sourceRef, extensionRoot);
+  const extensionSpec = await validateExtensionSpec(rootDirectory, args.extensionId);
+  validateVersion(extensionRef, extensionSpec.version, extension?.latestVersion);
+  const { versionByStage, hasVersions } = await getNextVersionByStage(
+    extensionRef,
+    extensionSpec.version
+  );
+  const autoReview =
+    !!extension?.latestApprovedVersion ||
+    latestVersion?.listing?.state === "PENDING" ||
+    latestVersion?.listing?.state === "APPROVED" ||
+    latestVersion?.listing?.state === "REJECTED";
+
+  // Prompt for release stage.
+  let stage = args.stage;
+  if (!stage) {
+    stage = await promptForReleaseStage({
+      versionByStage,
+      autoReview,
+      allowStable: true,
+      hasVersions,
+      nonInteractive: args.nonInteractive,
+      force: args.force,
+    });
+  }
+
+  const newVersion = versionByStage.get(stage)!;
+  const releaseNotes = validateReleaseNotes(rootDirectory, extensionSpec.version, extension);
+  const sourceUri = repoUri + path.join("/tree", sourceRef, extensionRoot);
+  displayReleaseNotes({
+    extensionRef,
+    newVersion,
+    releaseNotes,
+    sourceUri,
+    autoReview: stage === "stable" && autoReview,
+  });
   const confirmed = await confirm({
     nonInteractive: args.nonInteractive,
     force: args.force,
@@ -729,8 +885,8 @@ export async function uploadExtensionVersionFromGitHubSource(args: {
   }
 
   // Upload the extension version.
-  const extensionVersionRef = `${extensionRef}@${extensionSpec.version}`;
-  const uploadSpinner = ora(` Uploading ${clc.bold(extensionVersionRef)}`);
+  const extensionVersionRef = `${extensionRef}@${newVersion}`;
+  const uploadSpinner = ora(`Uploading ${clc.bold(extensionVersionRef)}...`);
   let res;
   try {
     uploadSpinner.start();
@@ -740,7 +896,7 @@ export async function uploadExtensionVersionFromGitHubSource(args: {
       repoUri,
       sourceRef: sourceRef,
     });
-    uploadSpinner.succeed(` Successfully uploaded ${clc.bold(extensionRef)}`);
+    uploadSpinner.succeed(`Successfully uploaded ${clc.bold(extensionRef)}`);
   } catch (err: any) {
     uploadSpinner.fail();
     if (err.status === 404) {
@@ -769,23 +925,50 @@ export async function uploadExtensionVersionFromLocalSource(args: {
   nonInteractive: boolean;
   force: boolean;
 }): Promise<ExtensionVersion | undefined> {
-  let extension;
+  const extensionRef = `${args.publisherId}/${args.extensionId}`;
+  let extension: Extension | undefined;
+  let latestVersion: ExtensionVersion | undefined;
   try {
-    extension = await getExtension(`${args.publisherId}/${args.extensionId}`);
+    extension = await getExtension(extensionRef);
+    latestVersion = await getExtensionVersion(`${extensionRef}@latest`);
   } catch (err: any) {
-    // Silently fail and continue the publish flow if extension not found.
+    // Silently fail and continue if extension is new or has no latest version set.
+  }
+  displayExtensionHeader(extensionRef, extension, latestVersion?.extensionRoot);
+
+  const localStageOptions = ["rc", "alpha", "beta"];
+  if (args.stage && !localStageOptions.includes(args.stage)) {
+    throw new FirebaseError(
+      `--stage only supports the following values when used with --local: ${localStageOptions.join(
+        ", "
+      )}`
+    );
   }
 
-  const { extensionSpec, notes } = await validateExtensionSpec({
-    publisherId: args.publisherId,
-    extensionId: args.extensionId,
-    rootDirectory: args.rootDirectory,
-    latestVersion: extension?.latestVersion,
-    stage: args.stage,
-  });
+  const extensionSpec = await validateExtensionSpec(args.rootDirectory, args.extensionId);
+  validateVersion(extensionRef, extensionSpec.version, extension?.latestVersion);
+  const { versionByStage } = await getNextVersionByStage(extensionRef, extensionSpec.version);
 
-  const extensionRef = `${args.publisherId}/${args.extensionId}`;
-  displayReleaseNotes(extensionRef, extensionSpec.version, notes);
+  // Prompt for release stage.
+  let stage = args.stage;
+  if (!stage) {
+    if (!args.nonInteractive) {
+      stage = await promptForReleaseStage({
+        versionByStage,
+        autoReview: false,
+        allowStable: false,
+        hasVersions: false,
+        nonInteractive: args.nonInteractive,
+        force: args.force,
+      });
+    } else {
+      stage = "rc";
+    }
+  }
+
+  const newVersion = versionByStage.get(stage)!;
+  const releaseNotes = validateReleaseNotes(args.rootDirectory, extensionSpec.version, extension);
+  displayReleaseNotes({ extensionRef, newVersion, releaseNotes, autoReview: false });
   const confirmed = await confirm({
     nonInteractive: args.nonInteractive,
     force: args.force,
@@ -795,14 +978,14 @@ export async function uploadExtensionVersionFromLocalSource(args: {
     return;
   }
 
-  const extensionVersionRef = `${extensionRef}@${extensionSpec.version}`;
+  const extensionVersionRef = `${extensionRef}@${newVersion}`;
   let packageUri: string;
   let objectPath = "";
-  const uploadSpinner = ora(" Archiving and uploading extension source code");
+  const uploadSpinner = ora("Archiving and uploading extension source code...");
   try {
     uploadSpinner.start();
     objectPath = await archiveAndUploadSource(args.rootDirectory, EXTENSIONS_BUCKET_NAME);
-    uploadSpinner.succeed(" Uploaded extension source code");
+    uploadSpinner.succeed("Uploaded extension source code");
     packageUri = storageOrigin + objectPath + "?alt=media";
   } catch (err: any) {
     uploadSpinner.fail();
@@ -810,12 +993,12 @@ export async function uploadExtensionVersionFromLocalSource(args: {
       original: err,
     });
   }
-  const publishSpinner = ora(` Uploading ${clc.bold(extensionVersionRef)}`);
+  const publishSpinner = ora(`Uploading ${clc.bold(extensionVersionRef)}...`);
   let res;
   try {
     publishSpinner.start();
     res = await createExtensionVersionFromLocalSource({ extensionVersionRef, packageUri });
-    publishSpinner.succeed(` Successfully uploaded ${clc.bold(extensionVersionRef)}`);
+    publishSpinner.succeed(`Successfully uploaded ${clc.bold(extensionVersionRef)}`);
   } catch (err: any) {
     publishSpinner.fail();
     if (err.status === 404) {
@@ -827,12 +1010,12 @@ export async function uploadExtensionVersionFromLocalSource(args: {
   return res;
 }
 
-function getMissingPublisherError(publisherId: string): FirebaseError {
+export function getMissingPublisherError(publisherId: string): FirebaseError {
   return new FirebaseError(
     marked(
       `Couldn't find publisher ID '${clc.bold(
         publisherId
-      )}'. Please ensure that you have registered this ID. To register as a publisher, you can check out the [Firebase documentation](https://firebase.google.com/docs/extensions/alpha/share#register_as_an_extensions_publisher) for step-by-step instructions.`
+      )}'. Please ensure that you have registered this ID. For step-by-step instructions on getting started as a publisher, see https://firebase.google.com/docs/extensions/publishers/get-started.`
     )
   );
 }
@@ -904,33 +1087,35 @@ export function getPublisherProjectFromName(publisherName: string): number {
 }
 
 /**
- * Displays the release notes and confirmation message for an Extension about to be published.
+ * Displays the release notes and confirmation message for the extension to be uploaded.
  *
- * @param extensionRef the ref of the Extension being published
- * @param versionId the version ID of the Extension being published
- * @param releaseNotes the release notes for the version being published (if any)
- * @param sourceUri the repo URI + root from which the Extension will be published
- * @param sourceRef the source ref in the repo from which the Extension will be published
+ * @param extensionRef the ref of the extension
+ * @param newVersion the new version of the extension
+ * @param releaseNotes the release notes for the version being uploaded (if any)
+ * @param sourceUri the source URI from which the extension will be uploaded
  */
-export function displayReleaseNotes(
-  extensionRef: string,
-  versionId: string,
-  releaseNotes?: string,
-  sourceUri?: string
-): void {
-  const source = sourceUri || "local source";
-  const releaseNotesMessage = releaseNotes
-    ? `${clc.bold("Release notes:")}\n${marked(releaseNotes)}`
-    : "";
+export function displayReleaseNotes(args: {
+  extensionRef: string;
+  newVersion: string;
+  autoReview: boolean;
+  releaseNotes?: string;
+  sourceUri?: string;
+}): void {
+  const source = args.sourceUri || "Local source";
+  const releaseNotesMessage = args.releaseNotes
+    ? `${clc.bold("Release notes:")}\n${marked(args.releaseNotes)}`
+    : "\n";
   const metadataMessage =
-    `${clc.bold("Extension:")} ${extensionRef}\n` +
-    `${clc.bold("Version:")} ${clc.bold(clc.green(versionId))}\n` +
+    `${clc.bold("Extension:")} ${args.extensionRef}\n` +
+    `${clc.bold("Version:")} ${clc.bold(clc.green(args.newVersion))} ${
+      args.autoReview ? "(automatically sent for review)" : ""
+    }\n` +
     `${clc.bold("Source:")} ${source}\n`;
   const message =
     `\nYou are about to upload a new version to Firebase's registry of extensions.\n\n` +
     metadataMessage +
     releaseNotesMessage +
-    `\nOnce an Extension version is uploaded, it cannot be changed. If you wish to make changes after uploading, you will need to upload a new version.\n`;
+    `Once an extension version is uploaded, it becomes installable by other users and cannot be changed. If you wish to make changes after uploading, you will need to upload a new version.\n`;
   logger.info(message);
 }
 
@@ -1064,17 +1249,18 @@ export async function diagnoseAndFixProject(options: any): Promise<void> {
 /**
  * Canonicalize a user-inputted ref string.
  * 1. Infer firebase publisher if not provided
- * 2. Infer "latest" as the version if not provided
+ * 2. Infer "latest-approved" as the version if not provided
  */
 export async function canonicalizeRefInput(refInput: string): Promise<string> {
   let inferredRef = refInput;
+  // TODO: Stop defaulting to 'firebase' publisher ID if none provided.
   // Infer 'firebase' if publisher ID not provided.
   if (refInput.split("/").length < 2) {
     inferredRef = `firebase/${inferredRef}`;
   }
-  // Infer 'latest' if no version provided.
+  // Infer 'latest-approved' if no version provided.
   if (refInput.split("@").length < 2) {
-    inferredRef = `${inferredRef}@latest`;
+    inferredRef = `${inferredRef}@latest-approved`;
   }
   // Get the correct version for a given extension reference from the Registry API.
   const ref = refs.parse(inferredRef);

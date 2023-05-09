@@ -161,7 +161,7 @@
         "vite": "^4.2.1"
       },
       "engines": {
-        "node": "^14.18.0 || >=16.4.0"
+        "node": ">=16.13.0 || >=18.0.0"
       }
     },
     "node_modules/@ampproject/remapping": {

@@ -1,5 +1,13 @@
+- Adds `ext:dev:*` commands to publish and manage Extensions. For step-by-step instructions on how to publish your own Extensions, see https://firebase.google.com/docs/extensions/publishers/get-started.
+  - Note: These commands were previously available to early access users behind an experiment flag. There are some breaking changes from the early access version of these commands.
+  - `ext:dev:publish` has been renamed to `ext:dev:upload`. `ext:dev:upload` defaults to uploading extensions from GitHub instead of local source.
+  - `ext:dev:publish` is deprecated and will be removed in version 13.
+  - `ext:dev:delete`, `ext:dev:unpublish`, `ext:sources:create` and `ext:dev:emualtors:*` have been removed.
 - Support for Next.js i18n, basePath, and more advanced rewrites/redirects/headers (#5788)
 - hosting.frameworksBackend now respects omit: true (#5788)
 - Web Frameworks now memoizes framework builds for single builds across multiple hosting sites (#5788)
 - Add support for Angular i18n and baseHref (#5774)
 - Trip the backend requirement for Angular applications using ng-deploy w/serveOptimizedImages (#5774)
+- Fixes a bug where the Storage emulator would not fall back to open rules for 'demo-' projects if `firebase.json` contained multiple storage targets (#5170)
+- Updates `firebase init` function templates for TypeScript and Javascript to 2nd gen (#5775)
+- Allow for atomic deployment of Hosting content & Functions rewrites via tag pinning (#5753)

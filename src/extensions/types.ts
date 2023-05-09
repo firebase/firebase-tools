@@ -20,8 +20,8 @@ export interface Extension {
   name: string;
   ref: string;
   state: ExtensionState;
-  visibility: Visibility;
-  registryLaunchStage: RegistryLaunchStage;
+  visibility?: Visibility;
+  registryLaunchStage?: RegistryLaunchStage;
   createTime: string;
   latestApprovedVersion?: string;
   latestVersion?: string;
@@ -144,7 +144,7 @@ export interface Role {
   reason: string;
 }
 
-// Docs at https://firebase.google.com/docs/extensions/alpha/ref-extension-yaml
+// Docs at https://firebase.google.com/docs/extensions/reference/extension-yaml
 export const FUNCTIONS_RESOURCE_TYPE = "firebaseextensions.v1beta.function";
 export interface FunctionResourceProperties {
   type: typeof FUNCTIONS_RESOURCE_TYPE;
