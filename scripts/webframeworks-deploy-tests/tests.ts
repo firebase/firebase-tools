@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import * as glob from "glob";
-import { join, relative } from "path";
+import { join, normalize, relative } from "path";
 import { readFileSync } from "fs";
 import fetch from "node-fetch";
 import type { NextConfig } from "next";
@@ -12,7 +12,7 @@ const NEXT_OUTPUT_PATH = `${__dirname}/.firebase/demo-nextjs`;
 const ANGULAR_OUTPUT_PATH = `${__dirname}/.firebase/demo-angular`;
 const FIREBASE_EMULATOR_HUB = process.env.FIREBASE_EMULATOR_HUB;
 const BASE_PATH: NextConfig["basePath"] = "base";
-const I18N_BASE = "localized";
+const I18N_BASE = "";
 const DEFAULT_LANG = "en";
 const LOG_FILE = "scripts/webframeworks-deploy-tests/firebase-emulators.log";
 const NEXT_SOURCE = `${__dirname}/hosting`;
@@ -143,35 +143,27 @@ describe("webframeworks", function (this) {
     it("should have the expected static files to be deployed", async () => {
       const buildId = await getBuildId(join(NEXT_SOURCE, ".next"));
 
-      const EXPECTED_FILES = [
-        `${BASE_PATH}/_next/data/${buildId}/en/pages/fallback/1.json`,
-        `${BASE_PATH}/_next/data/${buildId}/en/pages/fallback/2.json`,
-        `${BASE_PATH}/_next/data/${buildId}/fr/pages/fallback/1.json`,
-        `${BASE_PATH}/_next/data/${buildId}/fr/pages/fallback/2.json`,
-        `${BASE_PATH}/_next/data/${buildId}/pages/ssg.json`,
-        `${BASE_PATH}/_next/static/${buildId}/_buildManifest.js`,
-        `${BASE_PATH}/_next/static/${buildId}/_ssgManifest.js`,
-        `${BASE_PATH}/app/api/static`,
-        `${BASE_PATH}/app/ssg.html`,
-        `${BASE_PATH}/pages/fallback/1.html`,
-        `${BASE_PATH}/pages/fallback/2.html`,
-        `${BASE_PATH}/pages/ssg.html`,
-        `${BASE_PATH}/404.html`,
-        `${BASE_PATH}/500.html`,
-        `${BASE_PATH}/index.html`,
-        `${I18N_BASE}/en/${BASE_PATH}/pages/fallback/1.html`,
-        `${I18N_BASE}/en/${BASE_PATH}/pages/fallback/2.html`,
-        `${I18N_BASE}/en/${BASE_PATH}/pages/ssg.html`,
-        `${I18N_BASE}/en/${BASE_PATH}/404.html`,
-        `${I18N_BASE}/en/${BASE_PATH}/500.html`,
-        `${I18N_BASE}/en/${BASE_PATH}/index.html`,
-        `${I18N_BASE}/fr/${BASE_PATH}/pages/fallback/1.html`,
-        `${I18N_BASE}/fr/${BASE_PATH}/pages/fallback/2.html`,
-        `${I18N_BASE}/fr/${BASE_PATH}/pages/ssg.html`,
-        `${I18N_BASE}/fr/${BASE_PATH}/404.html`,
-        `${I18N_BASE}/fr/${BASE_PATH}/500.html`,
-        `${I18N_BASE}/fr/${BASE_PATH}/index.html`,
-      ];
+      const EXPECTED_FILES = ['en', 'fr'].flatMap(locale => [
+        `/${BASE_PATH}/_next/data/${buildId}/${locale}/pages/fallback/1.json`,
+        `/${BASE_PATH}/_next/data/${buildId}/${locale}/pages/fallback/2.json`,
+        `/${BASE_PATH}/_next/data/${buildId}/pages/ssg.json`,
+        `/${BASE_PATH}/_next/static/${buildId}/_buildManifest.js`,
+        `/${BASE_PATH}/_next/static/${buildId}/_ssgManifest.js`,
+        `/${BASE_PATH}/app/api/static`,
+        `/${BASE_PATH}/app/ssg.html`,
+        `/${BASE_PATH}/pages/fallback/1.html`,
+        `/${BASE_PATH}/pages/fallback/2.html`,
+        `/${BASE_PATH}/pages/ssg.html`,
+        `/${BASE_PATH}/404.html`,
+        `/${BASE_PATH}/500.html`,
+        `/${BASE_PATH}/index.html`,
+        `/${I18N_BASE}/${locale}/${BASE_PATH}/pages/fallback/1.html`,
+        `/${I18N_BASE}/${locale}/${BASE_PATH}/pages/fallback/2.html`,
+        `/${I18N_BASE}/${locale}/${BASE_PATH}/pages/ssg.html`,
+        `/${I18N_BASE}/${locale}/${BASE_PATH}/404.html`,
+        `/${I18N_BASE}/${locale}/${BASE_PATH}/500.html`,
+        `/${I18N_BASE}/${locale}/${BASE_PATH}/index.html`,
+      ]).map(normalize).map(it => it.startsWith("/") ? it.substring(1) : it);
 
       const EXPECTED_PATTERNS = [
         `${BASE_PATH}\/_next\/static\/chunks\/[^-]+-[^\.]+\.js`,
@@ -207,7 +199,7 @@ describe("webframeworks", function (this) {
     it("should work", async () => {
       const response = await fetch(ANGULAR_HOST);
       expect(response.ok).to.be.true;
-      expect(await response.text()).to.include(`<html lansg="en" `);
+      expect(await response.text()).to.include(`<html lang="en" `);
     });
 
   });

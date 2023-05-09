@@ -43,7 +43,7 @@ export const ALLOWED_SSR_REGIONS = [
   { name: "asia-east1 (Taiwan)", value: "asia-east1" },
 ];
 
-export const I18N_ROOT = "localized";
+export const I18N_ROOT = "/";
 
 export const WebFrameworks: Record<string, Framework> = Object.fromEntries(
   readdirSync(__dirname)
