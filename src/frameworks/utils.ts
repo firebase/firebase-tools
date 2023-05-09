@@ -3,7 +3,7 @@ import type { ReadOptions } from "fs-extra";
 import { extname, join, relative } from "path";
 import { readFile } from "fs/promises";
 import { IncomingMessage, request as httpRequest, ServerResponse, Agent } from "http";
-import { spawnSync } from "child_process";
+import { sync as spawnSync } from "cross-spawn";
 import * as clc from "colorette";
 
 import { logger } from "../logger";
