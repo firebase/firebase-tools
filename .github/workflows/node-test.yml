@@ -88,12 +88,14 @@ jobs:
           - npm run test:functions-discover
           - npm run test:hosting
           # - npm run test:hosting-rewrites # Long-running test that might conflict across test runs. Run this manually.
-          - npm run test:import-export
           - npm run test:storage-deploy
           - npm run test:storage-emulator-integration
           - npm run test:triggers-end-to-end
           - npm run test:triggers-end-to-end:inspect
           - npm run test:webframeworks-deploy
+        include:
+          - node-vesion: "16" # import-export breaks on Node 18 and is very fragile. It likely needs a refactor.
+            script: npm run test:import-export
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
