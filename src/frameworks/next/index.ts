@@ -20,7 +20,6 @@ import { fileExistsSync } from "../../fsutils";
 
 import { promptOnce } from "../../prompt";
 import { FirebaseError } from "../../error";
-import { I18N_ROOT, NODE_VERSION, NPM_COMMAND_TIMEOUT_MILLIES } from "../constants";
 import type { EmulatorInfo } from "../../emulator/types";
 import {
   readJSON,
@@ -28,6 +27,7 @@ import {
   warnIfCustomBuildScript,
   relativeRequire,
   findDependency,
+  validateLocales,
 } from "../utils";
 import { BuildResult, FrameworkType, SupportLevel } from "../interfaces";
 
@@ -49,6 +49,7 @@ import {
   usesNextImage,
   hasUnoptimizedImage,
 } from "./utils";
+import { NODE_VERSION, NPM_COMMAND_TIMEOUT_MILLIES, SHARP_VERSION, I18N_ROOT } from "../constants";
 import type {
   AppPathRoutesManifest,
   AppPathsManifest,
@@ -470,7 +471,7 @@ const BUNDLE_NEXT_CONFIG_TIMEOUT = 10_000;
  * Create a directory for SSR content.
  */
 export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: string) {
-  const { distDir } = await getConfig(sourceDir);
+  const { distDir, basePath } = await getConfig(sourceDir);
   const packageJson = await readJSON(join(sourceDir, "package.json"));
   // Bundle their next.config.js with esbuild via NPX, pinned version was having troubles on m1
   // macs and older Node versions; either way, we should avoid taking on any deps in firebase-tools
@@ -538,12 +539,12 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
     !(await hasUnoptimizedImage(sourceDir, distDir)) &&
     (usesAppDirRouter(sourceDir) || (await usesNextImage(sourceDir, distDir)))
   ) {
-    packageJson.dependencies["sharp"] = "latest";
+    packageJson.dependencies["sharp"] = SHARP_VERSION;
   }
 
   await mkdirp(join(destDir, distDir));
   await copy(join(sourceDir, distDir), join(destDir, distDir));
-  return { packageJson, frameworksEntry: "next.js" };
+  return { packageJson, frameworksEntry: "next.js", basePath };
 }
 
 /**
@@ -597,6 +598,7 @@ async function getConfig(
       }
     }
   }
+  validateLocales(config.i18n?.locales);
   return {
     distDir: ".next",
     // trailingSlash defaults to false in Next.js: https://nextjs.org/docs/api-reference/next.config.js/trailing-slash

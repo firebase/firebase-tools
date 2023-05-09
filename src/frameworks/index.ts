@@ -1,4 +1,4 @@
-import { join, relative, basename } from "path";
+import { join, relative, basename, posix } from "path";
 import { exit } from "process";
 import { execSync } from "child_process";
 import { sync as spawnSync } from "cross-spawn";
@@ -308,15 +308,6 @@ export async function prepareFrameworks(
         );
       }
 
-      config.rewrites.push({
-        source: "**",
-        function: {
-          functionId,
-          region: ssrRegion,
-          pinTag: experiments.isEnabled("pintags"),
-        },
-      });
-
       const codebase = `firebase-frameworks-${site}`;
       const existingFunctionsConfig = options.config.get("functions")
         ? [].concat(options.config.get("functions"))
@@ -368,7 +359,18 @@ export async function prepareFrameworks(
         packageJson,
         bootstrapScript,
         frameworksEntry = framework,
+        baseUrl = "",
+        dotEnv = {},
       } = await codegenFunctionsDirectory(getProjectPath(), functionsDist);
+
+      config.rewrites.push({
+        source: posix.normalize(posix.join(baseUrl, "**")),
+        function: {
+          functionId,
+          region: ssrRegion,
+          pinTag: experiments.isEnabled("pintags"),
+        },
+      });
 
       // Set the framework entry in the env variables to handle generation of the functions.yaml
       process.env.__FIREBASE_FRAMEWORKS_ENTRY__ = frameworksEntry;
@@ -412,11 +414,15 @@ export async function prepareFrameworks(
           if (!(await pathExists(path))) continue;
           const stats = await stat(path);
           if (stats.isDirectory()) {
-            const result = spawnSync("npm", ["pack", relative(functionsDist, path)], {
-              cwd: functionsDist,
-            });
-            if (!result.stdout) throw new Error(`Error running \`npm pack\` at ${path}`);
-            const filename = result.stdout.toString().trim();
+            const result = spawnSync(
+              "npm",
+              ["pack", relative(functionsDist, path), "--json=true"],
+              {
+                cwd: functionsDist,
+              }
+            );
+            if (result.status) throw new Error(`Error running \`npm pack\` at ${path}`);
+            const { filename } = JSON.parse(result.stdout.toString())[0];
             packageJson.dependencies[name] = `file:${filename}`;
           } else {
             const filename = basename(path);
@@ -438,16 +444,22 @@ export async function prepareFrameworks(
         await copyFile(getProjectPath(".npmrc"), join(functionsDist, ".npmrc"));
       }
 
-      let existingDotEnvContents = "";
+      let dotEnvContents = "";
       if (await pathExists(getProjectPath(".env"))) {
-        existingDotEnvContents = (await readFile(getProjectPath(".env"))).toString();
+        dotEnvContents = (await readFile(getProjectPath(".env"))).toString();
+      }
+
+      for (const [key, value] of Object.entries(dotEnv)) {
+        dotEnvContents += `\n${key}=${value}`;
       }
 
       await writeFile(
         join(functionsDist, ".env"),
-        `${existingDotEnvContents}
+        `${dotEnvContents}
 __FIREBASE_FRAMEWORKS_ENTRY__=${frameworksEntry}
-${firebaseDefaults ? `__FIREBASE_DEFAULTS__=${JSON.stringify(firebaseDefaults)}\n` : ""}`
+${
+  firebaseDefaults ? `__FIREBASE_DEFAULTS__=${JSON.stringify(firebaseDefaults)}\n` : ""
+}`.trimStart()
       );
 
       const envs = await new Promise<string[]>((resolve, reject) =>
@@ -524,6 +536,11 @@ ${firebaseDefaults ? `__FIREBASE_DEFAULTS__=${JSON.stringify(firebaseDefaults)}\
 
   // Clean up memos/caches
   BUILD_MEMO.clear();
+
+  // Clean up ENV variables, if were emulatoring .env won't override
+  // this is leads to failures if we're hosting multiple sites
+  delete process.env.__FIREBASE_DEFAULTS__;
+  delete process.env.__FIREBASE_FRAMEWORKS_ENTRY__;
 }
 
 function codegenDevModeFunctionsDirectory() {

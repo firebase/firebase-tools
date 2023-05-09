@@ -58,6 +58,8 @@ export interface Framework {
     bootstrapScript?: string;
     packageJson: any;
     frameworksEntry?: string;
+    baseUrl?: string;
+    dotEnv?: Record<string, string>;
   }>;
 }
 
