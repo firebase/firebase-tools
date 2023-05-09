@@ -616,7 +616,7 @@ function validateReleaseNotes(rootDirectory: string, newVersion: string, extensi
       "No CHANGELOG.md file found. " +
         "Please create one and add an entry for this version. " +
         marked(
-          "See https://firebase.google.com/docs/extensions/publishers/user-documentation #writing-changelog for more details."
+          "See https://firebase.google.com/docs/extensions/publishers/user-documentation#writing-changelog for more details."
         )
     );
   }
@@ -626,7 +626,7 @@ function validateReleaseNotes(rootDirectory: string, newVersion: string, extensi
       `No entry for version ${newVersion} found in CHANGELOG.md. ` +
         "Please add one so users know what has changed in this version. " +
         marked(
-          "See https://firebase.google.com/docs/extensions/publishers/user-documentation #writing-changelog for more details."
+          "See https://firebase.google.com/docs/extensions/publishers/user-documentation#writing-changelog for more details."
         )
     );
   }
