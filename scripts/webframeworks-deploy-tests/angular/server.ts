@@ -6,6 +6,7 @@ import * as express from 'express';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { AppServerModule } from './src/main.server';
+import { LOCALE_ID } from '@angular/core';
 
 // The Express app is exported so that it can be used by serverless Functions.
 export function app(locale: string): express.Express {
@@ -29,8 +30,11 @@ export function app(locale: string): express.Express {
   }));
 
   // All regular routes use the Universal engine
-  server.get('base/*', (req, res) => {
-    res.render(indexHtml, { req, providers: [{ provide: APP_BASE_HREF, useValue: req.baseUrl }] });
+  server.get('*', (req, res) => {
+    res.render(indexHtml, { req, providers: [
+      { provide: APP_BASE_HREF, useValue: req.baseUrl },
+      { provide: LOCALE_ID, useValue: locale },
+    ] });
   });
 
   return server;

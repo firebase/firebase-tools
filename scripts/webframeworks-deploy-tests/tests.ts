@@ -11,7 +11,9 @@ import { fileExistsSync } from "../../src/fsutils";
 const NEXT_OUTPUT_PATH = `${__dirname}/.firebase/demo-nextjs`;
 const ANGULAR_OUTPUT_PATH = `${__dirname}/.firebase/demo-angular`;
 const FIREBASE_EMULATOR_HUB = process.env.FIREBASE_EMULATOR_HUB;
-const BASE_PATH: NextConfig["basePath"] = "base";
+const NEXT_BASE_PATH: NextConfig["basePath"] = "base";
+// TODO Angular basePath and i18n are not cooperating
+const ANGULAR_BASE_PATH = "";
 const I18N_BASE = "";
 const DEFAULT_LANG = "en";
 const LOG_FILE = "scripts/webframeworks-deploy-tests/firebase-emulators.log";
@@ -38,8 +40,8 @@ describe("webframeworks", function (this) {
     const {
       hosting: { port, host },
     } = await hubResponse.json();
-    NEXTJS_HOST = `http://${host}:${port}/${BASE_PATH}`;
-    ANGULAR_HOST = `http://${host}:${port+5}/${BASE_PATH}`;
+    NEXTJS_HOST = `http://${host}:${port}/${NEXT_BASE_PATH}`;
+    ANGULAR_HOST = `http://${host}:${port + 5}/${ANGULAR_BASE_PATH}`;
   });
 
   after(() => {
@@ -47,11 +49,10 @@ describe("webframeworks", function (this) {
   });
 
   describe("next.js", () => {
-
     describe("app directory", () => {
       it("should have working SSG", async () => {
         const apiStaticJSON = JSON.parse(
-          readFileSync(`${NEXT_OUTPUT_PATH}/hosting/${BASE_PATH}/app/api/static`).toString()
+          readFileSync(`${NEXT_OUTPUT_PATH}/hosting/${NEXT_BASE_PATH}/app/api/static`).toString()
         );
 
         const apiStaticResponse = await fetch(`${NEXTJS_HOST}/app/api/static`);
@@ -65,7 +66,7 @@ describe("webframeworks", function (this) {
         const fooResponseText = await fooResponse.text();
 
         const fooHtml = readFileSync(
-          `${NEXT_OUTPUT_PATH}/hosting/${BASE_PATH}/app/ssg.html`
+          `${NEXT_OUTPUT_PATH}/hosting/${NEXT_BASE_PATH}/app/ssg.html`
         ).toString();
         expect(fooHtml).to.eql(fooResponseText);
       });
@@ -143,39 +144,41 @@ describe("webframeworks", function (this) {
     it("should have the expected static files to be deployed", async () => {
       const buildId = await getBuildId(join(NEXT_SOURCE, ".next"));
 
-      const EXPECTED_FILES = ['en', 'fr'].flatMap(locale => [
-        `/${BASE_PATH}/_next/data/${buildId}/${locale}/pages/fallback/1.json`,
-        `/${BASE_PATH}/_next/data/${buildId}/${locale}/pages/fallback/2.json`,
-        `/${BASE_PATH}/_next/data/${buildId}/pages/ssg.json`,
-        `/${BASE_PATH}/_next/static/${buildId}/_buildManifest.js`,
-        `/${BASE_PATH}/_next/static/${buildId}/_ssgManifest.js`,
-        `/${BASE_PATH}/app/api/static`,
-        `/${BASE_PATH}/app/ssg.html`,
-        `/${BASE_PATH}/pages/fallback/1.html`,
-        `/${BASE_PATH}/pages/fallback/2.html`,
-        `/${BASE_PATH}/pages/ssg.html`,
-        `/${BASE_PATH}/404.html`,
-        `/${BASE_PATH}/500.html`,
-        `/${BASE_PATH}/index.html`,
-        `/${I18N_BASE}/${locale}/${BASE_PATH}/pages/fallback/1.html`,
-        `/${I18N_BASE}/${locale}/${BASE_PATH}/pages/fallback/2.html`,
-        `/${I18N_BASE}/${locale}/${BASE_PATH}/pages/ssg.html`,
-        `/${I18N_BASE}/${locale}/${BASE_PATH}/404.html`,
-        `/${I18N_BASE}/${locale}/${BASE_PATH}/500.html`,
-        `/${I18N_BASE}/${locale}/${BASE_PATH}/index.html`,
-      ]).map(normalize).map(it => it.startsWith("/") ? it.substring(1) : it);
+      const EXPECTED_FILES = ["", "en", "fr"]
+        .flatMap((locale) => [
+          ...(locale
+            ? [
+                `/${NEXT_BASE_PATH}/_next/data/${buildId}/${locale}/pages/fallback/1.json`,
+                `/${NEXT_BASE_PATH}/_next/data/${buildId}/${locale}/pages/fallback/2.json`,
+              ]
+            : [
+                `/${NEXT_BASE_PATH}/_next/data/${buildId}/pages/ssg.json`,
+                `/${NEXT_BASE_PATH}/_next/static/${buildId}/_buildManifest.js`,
+                `/${NEXT_BASE_PATH}/_next/static/${buildId}/_ssgManifest.js`,
+                `/${NEXT_BASE_PATH}/app/api/static`,
+                `/${NEXT_BASE_PATH}/app/ssg.html`,
+              ]),
+          `/${I18N_BASE}/${locale}/${NEXT_BASE_PATH}/pages/fallback/1.html`,
+          `/${I18N_BASE}/${locale}/${NEXT_BASE_PATH}/pages/fallback/2.html`,
+          `/${I18N_BASE}/${locale}/${NEXT_BASE_PATH}/pages/ssg.html`,
+          `/${I18N_BASE}/${locale}/${NEXT_BASE_PATH}/404.html`,
+          `/${I18N_BASE}/${locale}/${NEXT_BASE_PATH}/500.html`,
+          `/${I18N_BASE}/${locale}/${NEXT_BASE_PATH}/index.html`,
+        ])
+        .map(normalize)
+        .map((it) => (it.startsWith("/") ? it.substring(1) : it));
 
       const EXPECTED_PATTERNS = [
-        `${BASE_PATH}\/_next\/static\/chunks\/[^-]+-[^\.]+\.js`,
-        `${BASE_PATH}\/_next\/static\/chunks\/app\/layout-[^\.]+\.js`,
-        `${BASE_PATH}\/_next\/static\/chunks\/main-[^\.]+\.js`,
-        `${BASE_PATH}\/_next\/static\/chunks\/main-app-[^\.]+\.js`,
-        `${BASE_PATH}\/_next\/static\/chunks\/pages\/_app-[^\.]+\.js`,
-        `${BASE_PATH}\/_next\/static\/chunks\/pages\/_error-[^\.]+\.js`,
-        `${BASE_PATH}\/_next\/static\/chunks\/pages\/index-[^\.]+\.js`,
-        `${BASE_PATH}\/_next\/static\/chunks\/polyfills-[^\.]+\.js`,
-        `${BASE_PATH}\/_next\/static\/chunks\/webpack-[^\.]+\.js`,
-        `${BASE_PATH}\/_next\/static\/css\/[^\.]+\.css`,
+        `${NEXT_BASE_PATH}\/_next\/static\/chunks\/[^-]+-[^\.]+\.js`,
+        `${NEXT_BASE_PATH}\/_next\/static\/chunks\/app\/layout-[^\.]+\.js`,
+        `${NEXT_BASE_PATH}\/_next\/static\/chunks\/main-[^\.]+\.js`,
+        `${NEXT_BASE_PATH}\/_next\/static\/chunks\/main-app-[^\.]+\.js`,
+        `${NEXT_BASE_PATH}\/_next\/static\/chunks\/pages\/_app-[^\.]+\.js`,
+        `${NEXT_BASE_PATH}\/_next\/static\/chunks\/pages\/_error-[^\.]+\.js`,
+        `${NEXT_BASE_PATH}\/_next\/static\/chunks\/pages\/index-[^\.]+\.js`,
+        `${NEXT_BASE_PATH}\/_next\/static\/chunks\/polyfills-[^\.]+\.js`,
+        `${NEXT_BASE_PATH}\/_next\/static\/chunks\/webpack-[^\.]+\.js`,
+        `${NEXT_BASE_PATH}\/_next\/static\/css\/[^\.]+\.css`,
       ].map((it) => new RegExp(it));
 
       const files = await getFilesListFromDir(`${NEXT_OUTPUT_PATH}/hosting`);
@@ -191,16 +194,66 @@ describe("webframeworks", function (this) {
       expect(unmatchedFiles, "matchedFiles").to.eql([]);
       expect(unmatchedExpectations, "unmatchedExpectations").to.eql([]);
     });
-
   });
 
   describe("angular", () => {
+    for (const lang of [undefined, "en", "fr", "es"]) {
+      const headers = lang ? { "Accept-Language": lang } : undefined;
 
-    it("should work", async () => {
-      const response = await fetch(ANGULAR_HOST);
-      expect(response.ok).to.be.true;
-      expect(await response.text()).to.include(`<html lang="en" `);
+      describe(`${lang || "default"} locale`, () => {
+        it("should have working SSG", async () => {
+          const response = await fetch(ANGULAR_HOST, { headers });
+          expect(response.ok).to.be.true;
+          const body = await response.text();
+          expect(body).to.include(`<html lang="${lang || DEFAULT_LANG}" `);
+          expect(body).to.include(`Home ${lang || DEFAULT_LANG}`);
+        });
+
+        it("should have working SSR", async () => {
+          const response = await fetch(`${ANGULAR_HOST}/foo/1`, { headers });
+          expect(response.ok).to.be.true;
+          const body = await response.text();
+          expect(body).to.include(`<html lang="${lang || DEFAULT_LANG}" `);
+          expect(body).to.include(`Foo ${lang || DEFAULT_LANG}`);
+        });
+      });
+    }
+
+    it("should have the expected static files to be deployed", async () => {
+      const EXPECTED_FILES = ["", "en", "fr", "es"]
+        .flatMap((locale) => [
+          `/${I18N_BASE}/${locale}/${ANGULAR_BASE_PATH}/index.html`,
+          `/${I18N_BASE}/${locale}/${ANGULAR_BASE_PATH}/3rdpartylicenses.txt`,
+          `/${I18N_BASE}/${locale}/${ANGULAR_BASE_PATH}/favicon.ico`,
+          `/${I18N_BASE}/${locale}/${ANGULAR_BASE_PATH}/index.original.html`,
+          `/${I18N_BASE}/${locale}/${ANGULAR_BASE_PATH}/3rdpartylicenses.txt`,
+        ])
+        .map(normalize)
+        .map((it) => (it.startsWith("/") ? it.substring(1) : it));
+
+      const EXPECTED_PATTERNS = ["", "en", "fr", "es"]
+        .flatMap((locale) => [
+          `/${I18N_BASE}/${locale}/${ANGULAR_BASE_PATH}/main\.[^\.]+\.js`,
+          `/${I18N_BASE}/${locale}/${ANGULAR_BASE_PATH}/polyfills\.[^\.]+\.js`,
+          `/${I18N_BASE}/${locale}/${ANGULAR_BASE_PATH}/runtime\.[^\.]+\.js`,
+          `/${I18N_BASE}/${locale}/${ANGULAR_BASE_PATH}/styles\.[^\.]+\.css`,
+        ])
+        .map(normalize)
+        .map((it) => (it.startsWith("/") ? it.substring(1) : it))
+        .map((it) => new RegExp(it.replace("/", "\\/")));
+
+      const files = await getFilesListFromDir(`${ANGULAR_OUTPUT_PATH}/hosting`);
+      const unmatchedFiles = files.filter(
+        (it) =>
+          !(EXPECTED_FILES.includes(it) || EXPECTED_PATTERNS.some((pattern) => !!it.match(pattern)))
+      );
+      const unmatchedExpectations = [
+        ...EXPECTED_FILES.filter((it) => !files.includes(it)),
+        ...EXPECTED_PATTERNS.filter((it) => !files.some((file) => !!file.match(it))),
+      ];
+
+      expect(unmatchedFiles, "matchedFiles").to.eql([]);
+      expect(unmatchedExpectations, "unmatchedExpectations").to.eql([]);
     });
-
   });
 });

@@ -152,27 +152,21 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
 
   let bootstrapScript: string;
   if (browserLocales) {
+    const locales = serverLocales?.filter((it) => browserLocales.includes(it));
     bootstrapScript = `const localizedApps = new Map();
 const ffi18n = import("firebase-frameworks/i18n");
 exports.handle = function(req,res) {
   ffi18n.then(({ getPreferredLocale }) => {
-    const serverLocale = ${
-      serverLocales
-        ? `getPreferredLocale(req, ${JSON.stringify(serverLocales)}, ${JSON.stringify(
-            defaultLocale
-          )})`
+    const locale = ${
+      locales
+        ? `getPreferredLocale(req, ${JSON.stringify(locales)}, ${JSON.stringify(defaultLocale)})`
         : `""`
     };
-    const browserLocale = getPreferredLocale(req, ${JSON.stringify(
-      browserLocales
-    )}, ${JSON.stringify(defaultLocale)});
-    if (!browserLocale) {
-      res.end(404);
-    } else if (localizedApps.has(serverLocale)) {
+    if (localizedApps.has(locale)) {
       localizedApps.get(locale)(req,res);
     } else {
-      const app = require(\`./${serverOutputPath}/\${serverLocale}/main.js\`).app(browserLocale);
-      localizedApps.set(serverLocale, app);
+      const app = require(\`./${serverOutputPath}/\${locale}/main.js\`).app(locale);
+      localizedApps.set(locale, app);
       app(req,res);
     }
   });

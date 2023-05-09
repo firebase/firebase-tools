@@ -23,18 +23,35 @@ async function localesForTarget(
   if (targetOptions.localize) {
     const i18n: AngularI18nConfig | undefined = workspaceProject.extensions?.i18n as any;
     if (!i18n) throw new FirebaseError(`No i18n config on project.`);
+    if (typeof i18n.sourceLocale === "string") {
+      throw new FirebaseError(`All your i18n locales must have a baseHref of "" on Firebase, use an object for sourceLocale in your angular.json:
+  "i18n": {
+    "sourceLocale": {
+      "code": "${i18n.sourceLocale}",
+      "baseHref": ""
+    },
+    ...
+  }`);
+    }
+    if (i18n.sourceLocale.baseHref !== "")
+      throw new FirebaseError(
+        'All your i18n locales must have a baseHref of "" on Firebase, errored on sourceLocale.'
+      );
+    defaultLocale = i18n.sourceLocale.code;
     if (targetOptions.localize === true) {
-      defaultLocale = i18n.sourceLocale;
-      locales = Object.keys(i18n.locales);
-      if (defaultLocale) locales.push(defaultLocale);
+      locales = [defaultLocale];
+      for (const [locale, { baseHref }] of Object.entries(i18n.locales)) {
+        if (baseHref !== "")
+          throw new FirebaseError(
+            `All your i18n locales must have a baseHref of \"\" on Firebase, errored on ${locale}.`
+          );
+        locales.push(locale);
+      }
     } else if (Array.isArray(targetOptions.localize)) {
-      locales ||= [];
+      locales = [defaultLocale];
       for (const locale of targetOptions.localize) {
         if (typeof locale !== "string") continue;
         locales.push(locale);
-      }
-      if (locales.includes(i18n.sourceLocale)) {
-        defaultLocale = i18n.sourceLocale;
       }
     }
   }

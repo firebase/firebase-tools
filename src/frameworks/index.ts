@@ -249,7 +249,7 @@ export async function prepareFrameworks(
       `\n${frameworksCallToAction(SupportLevelWarnings[support](name), docsUrl, "   ")}\n`
     );
     // TODO allow for override
-    const isDevMode = context._name === "serve" || context._name === "emulators:start";
+    const isDevMode = false; // context._name === "serve" || context._name === "emulators:start";
 
     const hostingEmulatorInfo = emulators.find((e) => e.name === Emulators.HOSTING);
 
@@ -532,8 +532,8 @@ ${firebaseDefaults ? `__FIREBASE_DEFAULTS__=${JSON.stringify(firebaseDefaults)}\
 
   // Clean up ENV variables, if were emulatoring .env won't override
   // this is leads to failures if we're hosting multiple sites
-  delete process.env.__FIREBASE_DEFAULTS__
-  delete process.env.__FIREBASE_FRAMEWORKS_ENTRY__
+  delete process.env.__FIREBASE_DEFAULTS__;
+  delete process.env.__FIREBASE_FRAMEWORKS_ENTRY__;
 }
 
 function codegenDevModeFunctionsDirectory() {

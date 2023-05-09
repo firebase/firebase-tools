@@ -37,13 +37,18 @@
       "sourceRoot": "src",
       "prefix": "app",
       "i18n": {
-        "sourceLocale": "en",
+        "sourceLocale": {
+          "code": "en",
+          "baseHref": ""
+        },
         "locales": {
           "fr": {
-            "translation": "src/locale/messages.fr.xlf"
+            "translation": "src/locale/messages.fr.xlf",
+            "baseHref": ""
           },
           "es": {
-            "translation": "src/locale/messages.es.xlf"
+            "translation": "src/locale/messages.es.xlf",
+            "baseHref": ""
           }
         }
       },
@@ -52,7 +57,6 @@
           "builder": "@angular-devkit/build-angular:browser",
           "options": {
             "localize": true,
-            "baseHref": "/base/",
             "outputPath": "dist/angular/browser",
             "index": "src/index.html",
             "main": "src/main.ts",

@@ -4,6 +4,11 @@ interface AngularLocale {
 }
 
 export interface AngularI18nConfig {
-  sourceLocale: string;
+  sourceLocale:
+    | string
+    | {
+        code: string;
+        baseHref?: string;
+      };
   locales: Record<string, AngularLocale>;
 }

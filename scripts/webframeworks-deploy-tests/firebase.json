@@ -1,7 +1,7 @@
 {
   "hosting": [{
     "site": "demo-nextjs",
-    "source": "hosting"
+    "source": "nextjs"
   }, {
     "site": "demo-angular",
     "source": "angular"
