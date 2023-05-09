@@ -20,8 +20,8 @@ export interface Extension {
   name: string;
   ref: string;
   state: ExtensionState;
-  visibility: Visibility;
-  registryLaunchStage: RegistryLaunchStage;
+  visibility?: Visibility;
+  registryLaunchStage?: RegistryLaunchStage;
   createTime: string;
   latestApprovedVersion?: string;
   latestVersion?: string;
