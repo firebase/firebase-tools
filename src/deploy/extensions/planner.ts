@@ -219,7 +219,7 @@ export async function resolveVersion(ref: refs.Ref): Promise<string> {
   if (!ref.version || ref.version === "latest-approved") {
     if (!extension.latestApprovedVersion) {
       throw new FirebaseError(
-        `${extensionRef} has not been published to https://extensions.dev. To install it, you must specify the version you want to install.`
+        `${extensionRef} has not been published to Extensions Hub (https://extensions.dev). To install it, you must specify the version you want to install.`
       );
     }
     return extension.latestApprovedVersion;
