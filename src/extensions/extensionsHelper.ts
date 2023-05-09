@@ -1073,7 +1073,7 @@ export async function canonicalizeRefInput(refInput: string): Promise<string> {
   if (refInput.split("/").length < 2) {
     inferredRef = `firebase/${inferredRef}`;
   }
-  // Infer 'latest' if no version provided.
+  // Infer 'latest-approved' if no version provided.
   if (refInput.split("@").length < 2) {
     inferredRef = `${inferredRef}@latest-approved`;
   }
