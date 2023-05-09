@@ -71,7 +71,7 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run build",
-    "copyfiles": "cp -r node_modules/@vscode/codicons/dist resources/dist",
+    "copyfiles": "cp node_modules/@vscode/codicons/dist/codicon.css resources",
     "dev": "npm run copyfiles && webpack --config webpack.dev.js",
     "dev:extension": "npm run copyfiles && webpack --config webpack.dev.js --config-name extension",
     "dev:sidebar": "npm run copyfiles && webpack --config webpack.dev.js --config-name sidebar",
@@ -83,6 +83,7 @@
     "lint": "eslint src --ext ts",
     "test": "node ./dist/test/runTest.js"
   },
+  "extensionDependencies": ["google.monospace"],
   "devDependencies": {
     "@teamsupercell/typings-for-css-modules-loader": "^2.5.1",
     "@types/glob": "^8.0.0",

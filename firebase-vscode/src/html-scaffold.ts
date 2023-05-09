@@ -15,7 +15,7 @@ export function getHtmlForWebview(
     Uri.joinPath(extensionUri, "resources/Monicons.woff")
   );
   const codiconsUri = webview.asWebviewUri(
-    Uri.joinPath(extensionUri, "node_modules/@vscode/codicons/dist/codicon.css")
+    Uri.joinPath(extensionUri, "resources/dist/codicon.css")
   );
   // Use a nonce to only allow a specific script to be run.
   const nonce = getNonce();

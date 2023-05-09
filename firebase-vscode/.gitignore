@@ -1,3 +1,4 @@
 *.vsix
 dist/
 *.scss.d.ts
+resources/dist

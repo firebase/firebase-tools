@@ -21,23 +21,26 @@ import { ProjectSection } from "./components/ProjectSection";
 import { FirebaseConfig } from "../../src/firebaseConfig";
 import { ServiceAccountUser } from "../common/types";
 
+type HostingState = null | "deployed" | "deploying";
 const deployTargetText = {
-  live: 'Live Channel',
-  preview: 'Preview Channel'
+  live: "Live Channel",
+  preview: "Preview Channel",
 };
 
 export function SidebarApp() {
   const [projectId, setProjectId] = useState<string | null>(null);
-  const [hostingState, setHostingState] = useState<
-    null | "deploying" | "deployed"
-  >(null);
+  const [hostingState, setHostingState] = useState<HostingState>(null);
   const [env, setEnv] = useState<{ isMonospace: boolean }>();
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  /**
+   * null - has not finished checking yet
+   * empty array - finished checking, no users logged in
+   * non-empty array - contains logged in users
+   */
   const [allUsers, setAllUsers] = useState<Array<
     ServiceAccountUser | User
   > | null>(null);
   const [isHostingOnboarded, setHostingOnboarded] = useState<boolean>(false);
-  const [deployTarget, setDeployTarget] = useState<string>('live');
 
   useEffect(() => {
     console.log("loading SidebarApp component");
@@ -112,103 +115,37 @@ export function SidebarApp() {
     );
   };
 
-  const accountSection = 
-    <AccountSection userEmail={userEmail} allUsers={allUsers} isMonospace={env?.isMonospace} />
-  ;
-
+  const accountSection = (
+    <AccountSection
+      userEmail={userEmail}
+      allUsers={allUsers}
+      isMonospace={env?.isMonospace}
+    />
+  );
   // Just render the account section loading view if it doesn't know user state
   if (allUsers === null) {
-    return accountSection;
+    return (<>
+      <Spacer size="medium" />
+      {accountSection}
+    </>);
   }
 
   return (
     <>
       <Spacer size="medium" />
       {accountSection}
-      <ProjectSection userEmail={userEmail} projectId={projectId} />
-      {isHostingOnboarded && !!projectId && (
-        <>
-          <VSCodeDivider style={{ width: "100vw" }} />
-          <Spacer size="medium" />
-          <PanelSection title="Hosting">
-            <>
-              <VSCodeButton
-                disabled={hostingState === "deploying"}
-                onClick={() => {
-                  setHostingState("deploying");
-                  broker.send("hostingDeploy");
-                }}
-              >
-                Deploy to {deployTargetText[deployTarget]}
-              </VSCodeButton>
-              <VSCodeRadioGroup name="deployTarget" value={deployTarget} onChange={e => setDeployTarget(e.target.value)}>
-                <VSCodeRadio name="deployTarget" value="live">{deployTargetText.live}</VSCodeRadio>
-                <VSCodeRadio name="deployTarget" value="preview">{deployTargetText.preview}</VSCodeRadio>
-              </VSCodeRadioGroup>
-              <Spacer size="xsmall" />
-              {hostingState !== 'deploying' && (
-                <>
-                  <Spacer size="xsmall" /><div>
-                <Label level={3} className={styles.hostingRowLabel}>
-                  <Spacer size="xsmall" />
-                  <Icon
-                    className={styles.hostingRowIcon}
-                    slot="start"
-                    icon='history'
-                  ></Icon>
-                  {hostingState === null ? 'Not deployed yet' : `Deployed [timestamp here]`}
-                </Label>
-              </div>
-                </>
-              )}
-              {hostingState === "deploying" && (
-                <>
-                  <Spacer size="medium" />
-                  <div className={styles.integrationStatus}>
-                    <VSCodeProgressRing
-                      className={cn(
-                        styles.integrationStatusIcon,
-                        styles.integrationStatusLoading
-                      )}
-                    />
-                    <Label level={3}> Deploying...</Label>
-                  </div>
-                </>
-              )}
-              <Spacer size="medium" />
-              <Label level={3} className={styles.hostingRowLabel}>
-                <Spacer size="xsmall" />
-                <Icon
-                  className={styles.hostingRowIcon}
-                  slot="start"
-                  icon="globe"
-                ></Icon>
-                <VSCodeLink href={`https://${projectId}.web.app`}>
-                  {projectId}.web.app
-                </VSCodeLink>
-              </Label>
-            </>
-          </PanelSection>
-        </>
+      {!!userEmail && <ProjectSection userEmail={userEmail} projectId={projectId} />}
+      {isHostingOnboarded && !!userEmail && !!projectId && (
+        <DeployPanel
+          hostingState={hostingState}
+          setHostingState={setHostingState}
+          projectId={projectId}
+        />
       )}
       <Spacer size="large" />
-      {!isHostingOnboarded && (
-        <InitFirebase
+      {!isHostingOnboarded && !!userEmail && !!projectId && (
+        <InitFirebasePanel
           onHostingInit={() => {
-            if (!userEmail) {
-              broker.send("showMessage", "Not logged in", {
-                modal: true,
-                detail: `Log in by clicking "Sign in with Google" in the sidebar.`,
-              });
-              return;
-            }
-            if (!projectId) {
-              broker.send("showMessage", "No project selected", {
-                modal: true,
-                detail: `Select a project in the sidebar.`,
-              });
-              return;
-            }
             setupHosting();
           }}
         />
@@ -217,7 +154,95 @@ export function SidebarApp() {
   );
 }
 
-function InitFirebase({ onHostingInit }: { onHostingInit: Function }) {
+function DeployPanel({
+  hostingState,
+  setHostingState,
+  projectId,
+}: {
+  hostingState: HostingState;
+  setHostingState: (hostingState: HostingState) => void;
+  projectId: string;
+}) {
+  const [deployTarget, setDeployTarget] = useState<string>("live");
+  return (
+    <>
+      <VSCodeDivider style={{ width: "100vw" }} />
+      <Spacer size="medium" />
+      <PanelSection title="Hosting">
+        <>
+          <VSCodeButton
+            disabled={hostingState === "deploying"}
+            onClick={() => {
+              setHostingState("deploying");
+              broker.send("hostingDeploy");
+            }}
+          >
+            Deploy to {deployTargetText[deployTarget]}
+          </VSCodeButton>
+          <VSCodeRadioGroup
+            name="deployTarget"
+            value={deployTarget}
+            onChange={(e) => setDeployTarget(e.target.value)}
+          >
+            <VSCodeRadio name="deployTarget" value="live">
+              {deployTargetText.live}
+            </VSCodeRadio>
+            <VSCodeRadio name="deployTarget" value="preview">
+              {deployTargetText.preview}
+            </VSCodeRadio>
+          </VSCodeRadioGroup>
+          <Spacer size="xsmall" />
+          {hostingState !== "deploying" && (
+            <>
+              <Spacer size="xsmall" />
+              <div>
+                <Label level={3} className={styles.hostingRowLabel}>
+                  <Spacer size="xsmall" />
+                  <Icon
+                    className={styles.hostingRowIcon}
+                    slot="start"
+                    icon="history"
+                  ></Icon>
+                  {hostingState === null
+                    ? "Not deployed yet"
+                    : `Deployed [timestamp here]`}
+                </Label>
+              </div>
+            </>
+          )}
+          {hostingState === "deploying" && (
+            <>
+              <Spacer size="medium" />
+              <div className={styles.integrationStatus}>
+                <VSCodeProgressRing
+                  className={cn(
+                    styles.integrationStatusIcon,
+                    styles.integrationStatusLoading
+                  )}
+                />
+                <Label level={3}> Deploying...</Label>
+              </div>
+            </>
+          )}
+          <Spacer size="medium" />
+          <Label level={3} className={styles.hostingRowLabel}>
+            <Spacer size="xsmall" />
+            <Icon
+              className={styles.hostingRowIcon}
+              slot="start"
+              icon="globe"
+            ></Icon>
+            <VSCodeLink href={`https://${projectId}.web.app`}>
+              {projectId}.web.app
+            </VSCodeLink>
+          </Label>
+        </>
+      </PanelSection>
+    </>
+  );
+}
+
+function InitFirebasePanel({ onHostingInit }: { onHostingInit: Function }) {
   return (
     <PanelSection isLast>
       <Body>Choose a path below to get started</Body>

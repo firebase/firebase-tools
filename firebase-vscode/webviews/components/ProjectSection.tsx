@@ -25,11 +25,11 @@ export function ProjectSection({
           )}
         </div>
       </Label>
-      <IconButton
+      {!!projectId && <IconButton
         tooltip="Switch projects"
         icon="arrow-swap"
         onClick={() => initProjectSelection(userEmail)}
-      />
+      />}
     </div>
     );
 }
