@@ -72,7 +72,7 @@
   "scripts": {
     "vscode:prepublish": "npm run build",
     "copyfiles": "cp -r node_modules/@vscode/codicons/dist resources/dist",
-    "devpkg": "cp -r node_modules/@vscode/codicons/dist resources/dist",
+    "pkg:vsce": "cp package_monospace.json ",
     "dev": "npm run copyfiles && webpack --config webpack.dev.js",
     "dev:extension": "npm run copyfiles && webpack --config webpack.dev.js --config-name extension",
     "dev:sidebar": "npm run copyfiles && webpack --config webpack.dev.js --config-name sidebar",
