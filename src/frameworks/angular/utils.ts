@@ -3,7 +3,7 @@ import type { ProjectDefinition } from "@angular-devkit/core/src/workspace";
 import type { WorkspaceNodeModulesArchitectHost } from "@angular-devkit/architect/node";
 
 import { AngularI18nConfig } from "./interfaces";
-import { relativeRequire } from "../utils";
+import { relativeRequire, validateLocales } from "../utils";
 import { FirebaseError } from "../../error";
 import { join } from "path";
 
@@ -55,6 +55,7 @@ async function localesForTarget(
       }
     }
   }
+  validateLocales(locales);
   return { locales, defaultLocale };
 }
 

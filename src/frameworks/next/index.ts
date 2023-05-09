@@ -27,6 +27,7 @@ import {
   warnIfCustomBuildScript,
   relativeRequire,
   findDependency,
+  validateLocales,
 } from "../utils";
 import { BuildResult, FrameworkType, SupportLevel } from "../interfaces";
 
@@ -597,6 +598,7 @@ async function getConfig(
       }
     }
   }
+  validateLocales(config.i18n?.locales);
   return {
     distDir: ".next",
     // trailingSlash defaults to false in Next.js: https://nextjs.org/docs/api-reference/next.config.js/trailing-slash

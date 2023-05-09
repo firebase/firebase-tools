@@ -249,7 +249,7 @@ export async function prepareFrameworks(
       `\n${frameworksCallToAction(SupportLevelWarnings[support](name), docsUrl, "   ")}\n`
     );
     // TODO allow for override
-    const isDevMode = false; // context._name === "serve" || context._name === "emulators:start";
+    const isDevMode = context._name === "serve" || context._name === "emulators:start";
 
     const hostingEmulatorInfo = emulators.find((e) => e.name === Emulators.HOSTING);
 
