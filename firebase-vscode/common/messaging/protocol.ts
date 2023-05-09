@@ -31,8 +31,10 @@ export interface WebviewToExtension {
     singleAppSupport: boolean
   ): void;
 
+  getChannels(): void;
+
   /** Runs `firebase deploy` for hosting. */
-  hostingDeploy(): void;
+  hostingDeploy(target: string): void;
 
   /** fetches a list of folders in the user's workspace. */
   getWorkspaceFolders(): void;
@@ -51,6 +53,8 @@ export interface ExtensionToWebview {
   notifyEnv(env: { isMonospace: boolean }): void;
   /** Called as a result of getUsers/addUser/logout calls */
   notifyUsers(users: User[]): void;
+
+  notifyChannels(channels: any[]): void;
 
   /** Called when a new project is selected */
   notifyProjectChanged(projectId: string): void;

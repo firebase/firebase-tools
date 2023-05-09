@@ -5,6 +5,7 @@ import {
   setGlobalDefaultAccount,
 } from "../../src/auth";
 import { logoutAction } from "../../src/commands/logout";
+import { hostingChannelDeployAction } from "../../src/commands/hosting-channel-deploy";
 import { listFirebaseProjects } from "../../src/management/projects";
 import { requireAuth } from "../../src/requireAuth";
 import { deploy } from "../../src/deploy";
@@ -19,6 +20,8 @@ import { currentOptions, getCommandOptions } from "./options";
 import { setInquirerOptions } from "./stubs/inquirer-stub";
 import * as vscode from "vscode";
 import { ServiceAccount } from "../common/types";
+import { listChannels } from "../../src/hosting/api";
+import { ChannelWithId } from "./messaging/types";
 
 /**
  * Wrap the CLI's requireAuth() which is normally run before every command
@@ -69,6 +72,26 @@ export async function getAccounts(): Promise<Array<Account | ServiceAccount>> {
   return accounts;
 }
 
+export async function getChannels(firebaseJSON: FirebaseConfig): Promise<ChannelWithId[]> {
+  if (!firebaseJSON) {
+    return [];
+  }
+  await requireAuthWrapper();
+  const options = { ...currentOptions };
+  if (!options.project) {
+    return [];
+  }
+  // TODO: handle multiple hosting configs
+  if (!(firebaseJSON.hosting as HostingSingle).site) {
+    (firebaseJSON.hosting as HostingSingle).site =
+      await getDefaultHostingSite(options);
+      console.log((firebaseJSON.hosting as HostingSingle).site);
+  }
+  const channels = await listChannels(options.project, (firebaseJSON.hosting as HostingSingle).site);
+
+  return channels.map(channel => ({...channel, id: channel.name.split("/").pop()}));
+}
+
 export async function logoutUser(email: string): Promise<void> {
   await logoutAction(email, {} as Options);
 }
@@ -99,7 +122,8 @@ export async function initHosting(options: { spa: boolean; public: string }) {
 
 export async function deployToHosting(
   firebaseJSON: FirebaseConfig,
-  firebaseRC: FirebaseRC
+  firebaseRC: FirebaseRC,
+  deployTarget: string
 ) {
   if (!(await requireAuthWrapper())) {
     return { success: false, hostingUrl: "", consoleUrl: "" };
@@ -116,7 +140,11 @@ export async function deployToHosting(
         await getDefaultHostingSite(options);
     }
     const commandOptions = await getCommandOptions(firebaseJSON, options);
-    await deploy(["hosting"], commandOptions);
+    if (deployTarget === 'live') {
+      await deploy(["hosting"], commandOptions);
+    } else {
+      await hostingChannelDeployAction(deployTarget, commandOptions);
+    }
   } catch (e) {
     console.error(e);
     return { success: false, hostingUrl: "", consoleUrl: "" };

@@ -12,6 +12,7 @@ import {
   login,
   logoutUser,
   initHosting,
+  getChannels,
 } from "./cli";
 import { User } from "../../src/types/auth";
 import { FirebaseRC } from "../../src/firebaserc";
@@ -131,10 +132,16 @@ export function setupWorkflow(
 ) {
   extensionContext = context;
 
+  async function fetchChannels() {
+    const channels = await getChannels(firebaseJSON);
+    broker.send("notifyChannels", channels);
+  }
+
   // Read config files and store in memory.
   readFirebaseConfigs();
   // Check current users state
   fetchUsers();
+  fetchChannels();
 
   broker.on("getEnv", async () => {
     broker.send("notifyEnv", {
@@ -168,6 +175,7 @@ export function setupWorkflow(
     if (firebaseRC?.projects?.default) {
       broker.send("notifyProjectChanged", firebaseRC?.projects?.default);
     }
+    fetchChannels();
   });
 
   broker.on("showMessage", async (msg, options) => {
@@ -236,6 +244,7 @@ export function setupWorkflow(
     }
     await updateFirebaseRC("default", projectId);
     broker.send("notifyProjectChanged", projectId);
+    fetchChannels();
   });
 
   broker.on(
@@ -263,12 +272,14 @@ export function setupWorkflow(
     }
   );
 
-  broker.on("hostingDeploy", async () => {
+  broker.on("hostingDeploy", async (deployTarget) => {
     const { success, consoleUrl, hostingUrl } = await deployToHosting(
       firebaseJSON,
-      firebaseRC
+      firebaseRC,
+      deployTarget
     );
     broker.send("notifyHostingDeploy", success, consoleUrl, hostingUrl);
+    fetchChannels();
   });
 
   broker.on("getWorkspaceFolders", () => {
