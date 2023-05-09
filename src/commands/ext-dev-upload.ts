@@ -9,11 +9,12 @@ import {
   uploadExtensionVersionFromLocalSource,
   uploadExtensionVersionFromGitHubSource,
   ensureExtensionsPublisherApiEnabled,
+  getMissingPublisherError,
 } from "../extensions/extensionsHelper";
 import * as refs from "../extensions/refs";
 import { findExtensionYaml } from "../extensions/localHelper";
 import { consoleInstallLink } from "../extensions/publishHelpers";
-import { ExtensionVersion } from "../extensions/types";
+import { ExtensionVersion, PublisherProfile } from "../extensions/types";
 import { requireAuth } from "../requireAuth";
 import { FirebaseError } from "../error";
 import { acceptLatestPublisherTOS } from "../extensions/tos";
@@ -77,7 +78,15 @@ export async function uploadExtensionAction(
   }
 
   // Get the project number and check the publisher TOS
-  const profile = await getPublisherProfile("-", publisherId);
+  let profile: PublisherProfile | undefined;
+  try {
+    profile = await getPublisherProfile("-", publisherId);
+  } catch (err: any) {
+    if (err.status === 404) {
+      throw getMissingPublisherError(publisherId);
+    }
+    throw err;
+  }
   const projectNumber = `${getPublisherProjectFromName(profile.name)}`;
   const { projectId } = await getFirebaseProject(projectNumber);
   await acceptLatestPublisherTOS(options, projectNumber);

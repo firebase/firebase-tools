@@ -1010,7 +1010,7 @@ export async function uploadExtensionVersionFromLocalSource(args: {
   return res;
 }
 
-function getMissingPublisherError(publisherId: string): FirebaseError {
+export function getMissingPublisherError(publisherId: string): FirebaseError {
   return new FirebaseError(
     marked(
       `Couldn't find publisher ID '${clc.bold(
