@@ -53,3 +53,6 @@ See the detailed guide for your preferred framework:
 * [Next.js] (/docs/hosting/frameworks/nextjs)
 * [Flask](/docs/hosting/frameworks/flask)
 * [Frameworks with Express.js](/docs/hosting/frameworks/express)
+
+Also check out our *experimental* integrations for Flutter, Astro, SvelteKit, Nuxt, and more on
+[GitHub (FirebaseExtended/firebase-framework-tools)](https://github.com/FirebaseExtended/firebase-framework-tools).
