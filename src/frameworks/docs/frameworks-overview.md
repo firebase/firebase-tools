@@ -51,4 +51,5 @@ See the detailed guide for your preferred framework:
 
 * [Angular Universal](/docs/hosting/frameworks/angular)
 * [Next.js] (/docs/hosting/frameworks/nextjs)
-* [Frameworks with Express.js](/docs/hosting/frameworks/ßexpress)
+* [Flask](/docs/hosting/frameworks/flask)
+* [Frameworks with Express.js](/docs/hosting/frameworks/express)
