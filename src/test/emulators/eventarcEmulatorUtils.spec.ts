@@ -138,7 +138,6 @@ describe("eventarcEmulatorUtils", () => {
               ceTimestamp: "2022-03-16T20:20:42.212Z",
             },
           },
-          subject: undefined,
           id: "user-provided-id",
           source: "/my/functions",
           specVersion: "1.0",
@@ -150,6 +149,7 @@ describe("eventarcEmulatorUtils", () => {
         specversion: "1.0",
         datacontenttype: "application/json",
         id: "user-provided-id",
+        subject: undefined,
         data: {
           hello: "world",
         },
