@@ -39,7 +39,9 @@ type InstallationStage =
   | "PENDING_INSTALL_APP"
   | "COMPLETE";
 
-export interface ConnectionBase {
+type ConnectionOutputOnlyFields = "createTime" | "updateTime" | "installationState" | "reconciling";
+
+export interface Connection {
   name?: string;
   disabled?: boolean;
   annotations?: {
@@ -47,10 +49,6 @@ export interface ConnectionBase {
   };
   etag?: string;
   githubConfig?: GitHubConfig;
-}
-
-// A Connection map to an installation of the GitHub App to an SCM.
-export interface Connection extends ConnectionBase {
   createTime: string;
   updateTime: string;
   installationState: {
@@ -61,16 +59,15 @@ export interface Connection extends ConnectionBase {
   reconciling: boolean;
 }
 
-export interface RepositoryBase {
+type RepositoryOutputOnlyFields = "createTime" | "updateTime";
+
+export interface Repository {
   name?: string;
   remoteUri: string;
   annotations?: {
     [key: string]: string;
   };
   etag?: string;
-}
-
-export interface Repository extends RepositoryBase {
   createTime: string;
   updateTime: string;
 }
@@ -88,7 +85,7 @@ export async function createConnection(
   location: string,
   connectionId: string
 ): Promise<Operation> {
-  const res = await client.post<ConnectionBase, Operation>(
+  const res = await client.post<Omit<Connection, ConnectionOutputOnlyFields>, Operation>(
     `projects/${projectId}/locations/${location}/connections`,
     { githubConfig: {} },
     { queryParams: { connectionId } }
@@ -106,6 +103,19 @@ export async function getConnection(
 ): Promise<Connection> {
   const name = `projects/${projectId}/locations/${location}/connections/${connectionId}`;
   const res = await client.get<Connection>(name);
+  return res.body;
+}
+
+/**
+ * Deletes a Cloud Build V2 Connection.
+ */
+export async function deleteConnection(
+  projectId: string,
+  location: string,
+  connectionId: string
+): Promise<Operation> {
+  const name = `projects/${projectId}/locations/${location}/connections/${connectionId}`;
+  const res = await client.delete<Operation>(name);
   return res.body;
 }
 
@@ -132,7 +142,7 @@ export async function createRepository(
   repositoryId: string,
   remoteUri: string
 ): Promise<Operation> {
-  const res = await client.post<RepositoryBase, Operation>(
+  const res = await client.post<Omit<Repository, RepositoryOutputOnlyFields>, Operation>(
     `projects/${projectId}/locations/${location}/connections/${connectionId}/repositories`,
     { remoteUri },
     { queryParams: { repositoryId } }
@@ -151,5 +161,19 @@ export async function getRepository(
 ): Promise<Repository> {
   const name = `projects/${projectId}/locations/${location}/connections/${connectionId}/repositories/${repositoryId}`;
   const res = await client.get<Repository>(name);
+  return res.body;
+}
+
+/**
+ * Deletes a Cloud Build V2 Repository.
+ */
+export async function deleteRepository(
+  projectId: string,
+  location: string,
+  connectionId: string,
+  repositoryId: string
+) {
+  const name = `projects/${projectId}/locations/${location}/connections/${connectionId}/repositories/${repositoryId}`;
+  const res = await client.delete<Operation>(name);
   return res.body;
 }

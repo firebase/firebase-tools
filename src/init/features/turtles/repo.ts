@@ -5,7 +5,6 @@ import { logger } from "../../../logger";
 import * as poller from "../../../operation-poller";
 import * as open from "open";
 import { promptOnce } from "../../../prompt";
-// import { execSync } from "child_process";
 
 const gcbPollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
   apiOrigin: cloudbuildOrigin,
@@ -13,50 +12,6 @@ const gcbPollerOptions: Omit<poller.OperationPollerOptions, "operationResourceNa
   masterTimeout: 25 * 60 * 1_000,
   maxBackoff: 10_000,
 };
-
-/**
- * Prompts the user to link their stack to a GitHub repository.
- */
-export async function linkGitHubRepository(
-  projectId: string,
-  location: string
-): Promise<gcb.Repository> {
-  const connectionId = generateConnectionId();
-  const conn = await getOrCreateConnection(projectId, location, connectionId);
-  if (conn.installationState.stage !== "COMPLETE") {
-    throw new FirebaseError(conn.installationState.message);
-  }
-
-  const resp = await gcb.fetchLinkableRepositories(projectId, location, connectionId);
-  if (resp.repositories.length === 0) {
-    throw new FirebaseError(
-      "The GitHub App does not have access to any repositories. Please configure" +
-        "your app installation permissions at https://github.com/settings/installations."
-    );
-  }
-
-  const choices = resp.repositories.map((repo: gcb.Repository) => ({
-    name: extractRepoSlugFromURI(repo.remoteUri) || repo.remoteUri,
-    value: repo.remoteUri,
-  }));
-  const remoteUri: string = await promptOnce({
-    type: "list",
-    message:
-      "Which of the following repositories would you like to link? If you don't" +
-      "see the repository, cancel the setup process by pressing Ctrl-C, configure" +
-      "your app installation permissions at https://github.com/settings/installations," +
-      "then run the command again.",
-    choices,
-  });
-
-  const repo = await getOrCreateRepository(projectId, location, connectionId, remoteUri);
-  logger.info(`Successfully linked GitHub repository at remote URI ${remoteUri}.`);
-  return repo;
-}
-
-// function detectGitRemote(remoteName: string): string {
-//   return execSync(`git config remote.${remoteName}.url`).toString();
-// }
 
 function extractRepoSlugFromURI(remoteUri: string): string | undefined {
   const match = /github.com\/(.+).git/.exec(remoteUri);
@@ -66,12 +21,97 @@ function extractRepoSlugFromURI(remoteUri: string): string | undefined {
   return match[1];
 }
 
-function generateConnectionId(): string {
-  return "turtles-conn";
+function generateConnectionId(stackId: string): string {
+  return `turtles-${stackId}-conn`;
 }
 
-function generateRepositoryId(remoteUri: string): string | undefined {
-  return extractRepoSlugFromURI(remoteUri)?.replace("/", "--");
+function generateRepositoryId(): string | undefined {
+  return `turtles-repo`;
+}
+
+/**
+ * We wrap and export the open() function from the "open" package
+ * to stub it out in unit tests.
+ */
+export async function openInBrowser(url: string): Promise<void> {
+  await open(url);
+}
+
+/**
+ * Prompts the user to link their stack to a GitHub repository.
+ */
+export async function linkGitHubRepository(
+  projectId: string,
+  location: string,
+  stackId: string
+): Promise<gcb.Repository> {
+  const connectionId = generateConnectionId(stackId);
+  const conn = await getOrCreateConnection(projectId, location, connectionId);
+  if (conn.installationState.stage !== "COMPLETE") {
+    throw new FirebaseError(
+      `Failed to setup connection: ${conn.installationState.message} at ${conn.installationState.actionUri}`
+    );
+  }
+
+  let remoteUri = await promptRepositoryURI(projectId, location, connectionId);
+  while (!remoteUri) {
+    await openInBrowser("https://github.com/apps/google-cloud-build/installations/new");
+    await promptOnce({
+      type: "input",
+      message:
+        "Press any key once you have finished configuring your installation's access settings.",
+    });
+    remoteUri = await promptRepositoryURI(projectId, location, connectionId);
+  }
+
+  const repo = await getOrCreateRepository(projectId, location, connectionId, remoteUri);
+  logger.info(`Successfully linked GitHub repository at remote URI ${remoteUri}.`);
+  return repo;
+}
+
+async function promptRepositoryURI(
+  projectId: string,
+  location: string,
+  connectionId: string
+): Promise<string> {
+  const resp = await gcb.fetchLinkableRepositories(projectId, location, connectionId);
+  if (!resp.repositories || resp.repositories.length === 0) {
+    throw new FirebaseError(
+      "The GitHub App does not have access to any repositories. Please configure " +
+        "your app installation permissions at https://github.com/settings/installations."
+    );
+  }
+  const choices = resp.repositories.map((repo: gcb.Repository) => ({
+    name: extractRepoSlugFromURI(repo.remoteUri) || repo.remoteUri,
+    value: repo.remoteUri,
+  }));
+  choices.push({
+    name: "Missing a repo? Select this option to configure your installation's access settings",
+    value: "",
+  });
+
+  return await promptOnce({
+    type: "list",
+    message: "Which of the following repositories would you like to link?",
+    choices,
+  });
+}
+
+async function promptConnectionAuth(
+  conn: gcb.Connection,
+  projectId: string,
+  location: string,
+  connectionId: string
+): Promise<gcb.Connection> {
+  logger.info(conn.installationState.message);
+  logger.info(conn.installationState.actionUri);
+  await openInBrowser(conn.installationState.actionUri);
+  await promptOnce({
+    type: "input",
+    message:
+      "Press any key once you have authorized Turtles (Cloud Build) to access your GitHub repo.",
+  });
+  return await gcb.getConnection(projectId, location, connectionId);
 }
 
 /**
@@ -98,35 +138,9 @@ export async function getOrCreateConnection(
     }
   }
 
-  // We prompt users to select Continue once they have followed
-  // the link and successfully authorized Cloud Build to access
-  // their GitHub account
-  while (conn.installationState.stage === "PENDING_USER_OAUTH") {
-    logger.info(conn.installationState.message);
-    await open(conn.installationState.actionUri);
-    const authorized = await promptOnce({
-      type: "list",
-      message:
-        "Choose 'Continue' once you have authorized Turtles (Cloud Build) to access your GitHub repo, or cancel.",
-      choices: [
-        {
-          name: "Continue",
-          value: "continue",
-        },
-        {
-          name: "Cancel",
-          value: "cancel",
-        },
-      ],
-    });
-    if (authorized === "continue") {
-      conn = await gcb.getConnection(projectId, location, connectionId);
-    } else {
-      // will return a connection in PENDING_USER_OAUTH state
-      return conn;
-    }
+  while (conn.installationState.stage !== "COMPLETE") {
+    conn = await promptConnectionAuth(conn, projectId, location, connectionId);
   }
-  // may return a connection in non-COMPLETE state
   return conn;
 }
 
@@ -139,13 +153,17 @@ export async function getOrCreateRepository(
   connectionId: string,
   remoteUri: string
 ): Promise<gcb.Repository> {
-  const repositoryId = generateRepositoryId(remoteUri);
+  const repositoryId = generateRepositoryId();
   if (!repositoryId) {
     throw new FirebaseError(`Failed to generate repositoryId for URI "${remoteUri}".`);
   }
   let repo: gcb.Repository;
   try {
     repo = await gcb.getRepository(projectId, location, connectionId, repositoryId);
+    const repoSlug = extractRepoSlugFromURI(repo.remoteUri);
+    if (repoSlug) {
+      throw new FirebaseError(`${repoSlug} has already been linked.`);
+    }
   } catch (err: unknown) {
     if ((err as FirebaseError).status === 404) {
       const op = await gcb.createRepository(

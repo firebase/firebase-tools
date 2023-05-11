@@ -1,17 +1,14 @@
 import * as sinon from "sinon";
 import { expect } from "chai";
 
-// import * as open from "open";
-
 import * as gcb from "../../../gcp/cloudbuild";
 import * as prompt from "../../../prompt";
 import * as poller from "../../../operation-poller";
 import { FirebaseError } from "../../../error";
-import { linkGitHubRepository } from "../../../init/features/turtles/repo";
+import * as repo from "../../../init/features/turtles/repo";
 
 describe("turtles", () => {
   const sandbox: sinon.SinonSandbox = sinon.createSandbox();
-  // let openStub: sinon.SinonStub = sandbox.stub(open, "open").resolves();
 
   let promptOnceStub: sinon.SinonStub;
   let pollOperationStub: sinon.SinonStub;
@@ -37,6 +34,8 @@ describe("turtles", () => {
     fetchLinkableRepositoriesStub = sandbox
       .stub(gcb, "fetchLinkableRepositories")
       .throws("Unexpected fetchLinkableRepositories call");
+
+    // sandbox.stub(repo, "openInBrowser").resolves();
   });
 
   afterEach(() => {
@@ -46,7 +45,9 @@ describe("turtles", () => {
   describe("connect GitHub repo", () => {
     const projectId = "projectId";
     const location = "us-central1";
-    const connectionId = "turtles-conn";
+    const stackId = "stack0";
+    const connectionId = `turtles-${stackId}-conn`;
+
     const op = {
       name: `projects/${projectId}/locations/${location}/connections/${connectionId}`,
       done: true,
@@ -88,7 +89,7 @@ describe("turtles", () => {
       ],
     };
 
-    it("creates a connection if it doesn't exist", async () => {
+    it.only("creates a connection if it doesn't exist", async () => {
       getConnectionStub.onFirstCall().rejects(new FirebaseError("error", { status: 404 }));
       getConnectionStub.onSecondCall().resolves(completeConn);
       fetchLinkableRepositoriesStub.resolves(repos);
@@ -98,7 +99,7 @@ describe("turtles", () => {
       promptOnceStub.onSecondCall().resolves(repos.repositories[0].remoteUri);
       getRepositoryStub.resolves(repos.repositories[0]);
 
-      await linkGitHubRepository(projectId, location);
+      await repo.linkGitHubRepository(projectId, location, stackId);
       expect(createConnectionStub).to.be.calledWith(projectId, location, connectionId);
     });
 
@@ -110,7 +111,7 @@ describe("turtles", () => {
       createRepositoryStub.resolves();
       pollOperationStub.resolves(repos.repositories[0]);
 
-      await linkGitHubRepository(projectId, location);
+      await repo.linkGitHubRepository(projectId, location, stackId);
       expect(createRepositoryStub).to.be.calledWith(
         projectId,
         location,
@@ -126,7 +127,7 @@ describe("turtles", () => {
       promptOnceStub.onFirstCall().resolves("continue");
       promptOnceStub.onSecondCall().resolves("cancel");
 
-      await expect(linkGitHubRepository(projectId, location)).to.be.rejected;
+      await expect(repo.linkGitHubRepository(projectId, location, stackId)).to.be.rejected;
       expect(promptOnceStub).to.be.calledTwice;
     });
 
@@ -134,7 +135,7 @@ describe("turtles", () => {
       getConnectionStub.resolves(pendingConn);
       fetchLinkableRepositoriesStub.resolves({ repositories: [] });
 
-      await expect(linkGitHubRepository(projectId, location)).to.be.rejected;
+      await expect(repo.linkGitHubRepository(projectId, location, stackId)).to.be.rejected;
     });
   });
 });
