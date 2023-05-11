@@ -1,0 +1,1 @@
+- Fixes an issue in the EventArc emualtor where events missing optional fields would cause crashes. (#5803)
