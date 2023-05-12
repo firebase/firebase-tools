@@ -107,6 +107,13 @@ export async function isMonospaceEnv(): Promise<boolean> {
 }
 
 /**
+ * Whether it's running from the VSCode extension
+ */
+export function isVSCodeExtension(): boolean {
+  return Boolean((globalThis as any).IS_VSCODE_EXTENSION);
+}
+
+/**
  * Create a .firebaserc in the project's root with the authorized project
  * as the default project
  */
