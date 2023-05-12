@@ -8,7 +8,10 @@ import type { GetInitFirebaseResponse, InitFirebaseResponse } from "./interfaces
 /**
  * Integrate Firebase Plugin with Monospace’s service Account Authentication
  */
-export async function setupMonospace(projectRoot: string, project?: string): Promise<void> {
+export async function setupMonospace(
+  projectRoot: string,
+  project?: string
+): Promise<void | string> {
   const initFirebaseResponse = await initFirebase(project);
 
   if (initFirebaseResponse.success === false) {
@@ -20,7 +23,11 @@ export async function setupMonospace(projectRoot: string, project?: string): Pro
   // Poll for response from the user
   const authorizedProject = await pollAuthorizedProject(rid);
 
-  createFirebaseRc(projectRoot, authorizedProject);
+  if (isVSCodeExtension()) {
+    return authorizedProject;
+  } else {
+    createFirebaseRc(projectRoot, authorizedProject);
+  }
 }
 
 /**
