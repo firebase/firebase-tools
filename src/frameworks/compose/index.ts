@@ -3,7 +3,7 @@ import { EngineMode, getEngine } from "./engine";
 
 function discover(): AppSpec {
   return {
-    baseImage: "nodejs18",
+    baseImage: "node:18",
     environmentVariables: {
       NODE_ENV: "PRODUCTION",
     },

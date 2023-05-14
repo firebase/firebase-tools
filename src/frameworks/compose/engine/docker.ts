@@ -42,7 +42,8 @@ export class DockerEngine implements Engine {
   }
 
   private buildStage(stage: string, contextDir: string) {
-    const ret = spawn.sync("docker", ["build", "--target", stage, "-f", "-", contextDir], {
+    const ret = spawn.sync("docker", ["buildx", "build", "--target", stage, "-f", "-", contextDir], {
+      env: { ...process.env, BUILD_KIT: "1" },
       input: this.dockerfile,
       stdio: [/* stdin= */ "pipe", /* stdout= */ "inherit", /* stderr= */ "inherit"],
     });
