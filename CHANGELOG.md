@@ -1,2 +1,3 @@
+- Fix framework detection limitation for NextJs applications that aren't co-located with their package.json. (#5789)
 - Fixes an issue in the EventArc emualtor where events missing optional fields would cause crashes. (#5803)
 - Fixes an issue running `firebase emulators:start` and `firebase deploy` when Python Cloud Functions directory path has spaces. (#5830)

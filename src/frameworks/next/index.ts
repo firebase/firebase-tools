@@ -87,11 +87,11 @@ function getReactVersion(cwd: string): string | undefined {
 }
 
 /**
- * Returns whether this codebase is a Next.js backend.
+ * Returns whether this project is a Next.js app.
  */
 export async function discover(dir: string) {
-  if (!(await pathExists(join(dir, "package.json")))) return;
-  if (!(await pathExists("next.config.js")) && !getNextVersion(dir)) return;
+  if (!(await pathExists(join(dir, "next.config.js")))) return;
+  if (!getNextVersion(dir)) return;
 
   return { mayWantBackend: true, publicDirectory: join(dir, PUBLIC_DIR) };
 }
