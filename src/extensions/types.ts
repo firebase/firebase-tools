@@ -19,13 +19,23 @@ export enum Visibility {
 export interface Extension {
   name: string;
   ref: string;
-  visibility: Visibility;
-  registryLaunchStage: RegistryLaunchStage;
+  state: ExtensionState;
+  visibility?: Visibility;
+  registryLaunchStage?: RegistryLaunchStage;
   createTime: string;
+  latestApprovedVersion?: string;
   latestVersion?: string;
   latestVersionCreateTime?: string;
   repoUri?: string;
 }
+
+export interface Listing {
+  state: ListingState;
+}
+
+export type ExtensionState = "STATE_UNSPECIFIED" | "PUBLISHED" | "DEPRECATED" | "SUSPENDED";
+
+export type ListingState = "STATE_UPSPECIFIED" | "UNLISTED" | "PENDING" | "APPROVED" | "REJECTED";
 
 export interface ExtensionVersion {
   name: string;
@@ -34,16 +44,21 @@ export interface ExtensionVersion {
   spec: ExtensionSpec;
   hash: string;
   sourceDownloadUri: string;
+  buildSourceUri?: string;
   releaseNotes?: string;
   createTime?: string;
   deprecationMessage?: string;
   extensionRoot?: string;
+  listing?: Listing;
 }
 
 export interface PublisherProfile {
   name: string;
   publisherId: string;
   registerTime: string;
+  displayName: string;
+  websiteUri?: string;
+  iconUri?: string;
 }
 
 export interface ExtensionInstance {
@@ -129,7 +144,7 @@ export interface Role {
   reason: string;
 }
 
-// Docs at https://firebase.google.com/docs/extensions/alpha/ref-extension-yaml
+// Docs at https://firebase.google.com/docs/extensions/reference/extension-yaml
 export const FUNCTIONS_RESOURCE_TYPE = "firebaseextensions.v1beta.function";
 export interface FunctionResourceProperties {
   type: typeof FUNCTIONS_RESOURCE_TYPE;

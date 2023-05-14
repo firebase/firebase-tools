@@ -6,8 +6,10 @@ set -e # Immediately exit on failure
 
 source scripts/set-default-credentials.sh
 
-(cd scripts/webframeworks-deploy-tests/hosting;
-npm i;
+(cd scripts/webframeworks-deploy-tests/nextjs;
+npm ci;
+cd ../angular;
+npm ci;
 cd ..;
 FIREBASE_CLI_EXPERIMENTS=webframeworks,pintags firebase emulators:exec "cd ../..; mocha scripts/webframeworks-deploy-tests/tests.ts" --project $FBTOOLS_TARGET_PROJECT --debug > firebase-emulators.log || \
 (cat firebase-emulators.log && exit 1);

@@ -3,7 +3,7 @@ import type { ReadOptions } from "fs-extra";
 import { extname, join, relative } from "path";
 import { readFile } from "fs/promises";
 import { IncomingMessage, request as httpRequest, ServerResponse, Agent } from "http";
-import { spawnSync } from "child_process";
+import { sync as spawnSync } from "cross-spawn";
 import * as clc from "colorette";
 
 import { logger } from "../logger";
@@ -16,6 +16,7 @@ import {
   FILE_BUG_URL,
   MAILING_LIST_URL,
   NPM_COMMAND_TIMEOUT_MILLIES,
+  VALID_LOCALE_FORMATS,
 } from "./constants";
 
 // Use "true &&"" to keep typescript from compiling this file and rewriting
@@ -261,4 +262,17 @@ ${prefix}${clc.bold("File a bug:")} ${FILE_BUG_URL}
 ${prefix}${clc.bold("Submit a feature request:")} ${FEATURE_REQUEST_URL}
 
 ${prefix}We'd love to learn from you. Express your interest in helping us shape the future of Firebase Hosting: ${MAILING_LIST_URL}`;
+}
+
+export function validateLocales(locales: string[] | undefined = []) {
+  const invalidLocales = locales.filter(
+    (locale) => !VALID_LOCALE_FORMATS.some((format) => locale.match(format))
+  );
+  if (invalidLocales.length) {
+    throw new FirebaseError(
+      `Invalid i18n locales (${invalidLocales.join(
+        ", "
+      )}) for Firebase. See our docs for more information https://firebase.google.com/docs/hosting/i18n-rewrites#country-and-language-codes`
+    );
+  }
 }
