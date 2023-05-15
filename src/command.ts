@@ -258,7 +258,7 @@ export class Command {
    * @param options the command options object.
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private async prepare(options: any): Promise<void> {
+  public async prepare(options: any): Promise<void> {
     options = options || {};
     options.project = getInheritedOption(options, "project");
 

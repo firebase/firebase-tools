@@ -86,28 +86,25 @@ export function load(client: any): any {
   client.ext.list = loadCommand("ext-list");
   client.ext.uninstall = loadCommand("ext-uninstall");
   client.ext.update = loadCommand("ext-update");
-  if (experiments.isEnabled("ext")) {
-    client.ext.sources = {};
-    client.ext.sources.create = loadCommand("ext-sources-create");
-  }
-  if (experiments.isEnabled("extdev")) {
-    client.ext.dev = {};
-    client.ext.dev.init = loadCommand("ext-dev-init");
-    client.ext.dev.list = loadCommand("ext-dev-list");
-    client.ext.dev.register = loadCommand("ext-dev-register");
-    client.ext.dev.emulators = {};
-    client.ext.dev.emulators.start = loadCommand("ext-dev-emulators-start");
-    client.ext.dev.emulators.exec = loadCommand("ext-dev-emulators-exec");
-    client.ext.dev.deprecate = loadCommand("ext-dev-deprecate");
-    client.ext.dev.undeprecate = loadCommand("ext-dev-undeprecate");
-    client.ext.dev.unpublish = loadCommand("ext-dev-unpublish");
-    client.ext.dev.publish = loadCommand("ext-dev-publish");
-    client.ext.dev.delete = loadCommand("ext-dev-extension-delete");
-    client.ext.dev.usage = loadCommand("ext-dev-usage");
-  }
+  client.ext.dev = {};
+  client.ext.dev.init = loadCommand("ext-dev-init");
+  client.ext.dev.list = loadCommand("ext-dev-list");
+  client.ext.dev.register = loadCommand("ext-dev-register");
+  client.ext.dev.deprecate = loadCommand("ext-dev-deprecate");
+  client.ext.dev.undeprecate = loadCommand("ext-dev-undeprecate");
+  client.ext.dev.upload = loadCommand("ext-dev-upload");
+  client.ext.dev.publish = loadCommand("ext-dev-publish");
+  client.ext.dev.usage = loadCommand("ext-dev-usage");
   client.firestore = {};
   client.firestore.delete = loadCommand("firestore-delete");
   client.firestore.indexes = loadCommand("firestore-indexes-list");
+  client.firestore.locations = loadCommand("firestore-locations");
+  client.firestore.databases = {};
+  client.firestore.databases.list = loadCommand("firestore-databases-list");
+  client.firestore.databases.get = loadCommand("firestore-databases-get");
+  client.firestore.databases.create = loadCommand("firestore-databases-create");
+  client.firestore.databases.update = loadCommand("firestore-databases-update");
+  client.firestore.databases.delete = loadCommand("firestore-databases-delete");
   client.functions = {};
   client.functions.config = {};
   client.functions.config.clone = loadCommand("functions-config-clone");

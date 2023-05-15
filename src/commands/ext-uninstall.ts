@@ -34,5 +34,4 @@ export const command = new Command("ext:uninstall <extensionInstanceId>")
     }
     const config = manifest.loadConfig(options);
     manifest.removeFromManifest(instanceId, config);
-    manifest.showPostDeprecationNotice();
   });

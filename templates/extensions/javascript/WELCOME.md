@@ -1,4 +1,4 @@
-This directory now contains the source files for a simple extension called **greet-the-world**. You can try it out right away in the Firebase Emulator suite - just naviagte to the integration-test directory and run:
+This directory now contains the source files for a simple extension called **greet-the-world**. You can try it out right away in the Firebase Emulator suite - just navigate to the integration-test directory and run:
 
 `firebase emulators:start --project=<project-id>`
 
@@ -15,4 +15,4 @@ If you want to deploy your extension to test on a real project, go to a Firebase
 `firebase ext:install ./path/to/extension/directory --project=<project-id>`
 `firebase deploy --only extensions`
 
-You can find more information about building extensions in the publisher docs: https://firebase.google.com/docs/extensions/alpha/overview-build-extensions
+You can find more information about building extensions in the publisher docs: https://firebase.google.com/docs/extensions/publishers/get-started

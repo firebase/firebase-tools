@@ -9,7 +9,6 @@ import {
   APP_PATH_ROUTES_MANIFEST,
 } from "../../../frameworks/next/constants";
 import {
-  pathHasRegex,
   cleanEscapedChars,
   isRewriteSupportedByHosting,
   isRedirectSupportedByHosting,
@@ -21,7 +20,13 @@ import {
   isUsingMiddleware,
   isUsingImageOptimization,
   isUsingAppDirectory,
+  cleanCustomRouteI18n,
+  I18N_SOURCE,
   allDependencyNames,
+  getMiddlewareMatcherRegexes,
+  getNonStaticRoutes,
+  getNonStaticServerComponents,
+  getHeadersFromMetaFiles,
 } from "../../../frameworks/next/utils";
 import * as frameworksUtils from "../../../frameworks/utils";
 import * as fsUtils from "../../../fsutils";
@@ -31,12 +36,8 @@ import {
   exportMarkerWithoutImage,
   imagesManifest,
   imagesManifestUnoptimized,
-  middlewareManifestWhenNotUsed,
-  middlewareManifestWhenUsed,
-  pathsAsGlobs,
-  pathsWithEscapedChars,
-  pathsWithRegex,
-  pathsWithRegexAndEscapedChars,
+  middlewareV2ManifestWhenNotUsed,
+  middlewareV2ManifestWhenUsed,
   supportedHeaders,
   supportedRedirects,
   supportedRewritesArray,
@@ -45,35 +46,17 @@ import {
   unsupportedRedirects,
   unsupportedRewritesArray,
   npmLsReturn,
+  middlewareV1ManifestWhenUsed,
+  middlewareV1ManifestWhenNotUsed,
+  pagesManifest,
+  prerenderManifest,
+  appPathsManifest,
+  appPathRoutesManifest,
+  metaFileContents,
 } from "./helpers";
+import { pathsWithCustomRoutesInternalPrefix } from "./helpers/i18n";
 
 describe("Next.js utils", () => {
-  describe("pathHasRegex", () => {
-    it("should identify regex", () => {
-      for (const path of pathsWithRegex) {
-        expect(pathHasRegex(path)).to.be.true;
-      }
-    });
-
-    it("should not identify escaped parentheses as regex", () => {
-      for (const path of pathsWithEscapedChars) {
-        expect(pathHasRegex(path)).to.be.false;
-      }
-    });
-
-    it("should identify regex along with escaped chars", () => {
-      for (const path of pathsWithRegexAndEscapedChars) {
-        expect(pathHasRegex(path)).to.be.true;
-      }
-    });
-
-    it("should not identify globs as regex", () => {
-      for (const path of pathsAsGlobs) {
-        expect(pathHasRegex(path)).to.be.false;
-      }
-    });
-  });
-
   describe("cleanEscapedChars", () => {
     it("should clean escaped chars", () => {
       // path containing all escaped chars
@@ -105,45 +88,29 @@ describe("Next.js utils", () => {
     });
   });
 
-  describe("isRewriteSupportedByFirebase", () => {
-    it("should allow supported rewrites", () => {
-      for (const rewrite of supportedRewritesArray) {
-        expect(isRewriteSupportedByHosting(rewrite)).to.be.true;
-      }
-    });
-
-    it("should disallow unsupported rewrites", () => {
-      for (const rewrite of unsupportedRewritesArray) {
-        expect(isRewriteSupportedByHosting(rewrite)).to.be.false;
-      }
-    });
+  it("should allow supported rewrites", () => {
+    expect(
+      [...supportedRewritesArray, ...unsupportedRewritesArray].filter((it) =>
+        isRewriteSupportedByHosting(it)
+      )
+    ).to.have.members(supportedRewritesArray);
   });
 
   describe("isRedirectSupportedByFirebase", () => {
     it("should allow supported redirects", () => {
-      for (const redirect of supportedRedirects) {
-        expect(isRedirectSupportedByHosting(redirect)).to.be.true;
-      }
-    });
-
-    it("should disallow unsupported redirects", () => {
-      for (const redirect of unsupportedRedirects) {
-        expect(isRedirectSupportedByHosting(redirect)).to.be.false;
-      }
+      expect(
+        [...supportedRedirects, ...unsupportedRedirects].filter((it) =>
+          isRedirectSupportedByHosting(it)
+        )
+      ).to.have.members(supportedRedirects);
     });
   });
 
   describe("isHeaderSupportedByFirebase", () => {
     it("should allow supported headers", () => {
-      for (const header of supportedHeaders) {
-        expect(isHeaderSupportedByHosting(header)).to.be.true;
-      }
-    });
-
-    it("should disallow unsupported headers", () => {
-      for (const header of unsupportedHeaders) {
-        expect(isHeaderSupportedByHosting(header)).to.be.false;
-      }
+      expect(
+        [...supportedHeaders, ...unsupportedHeaders].filter((it) => isHeaderSupportedByHosting(it))
+      ).to.have.members(supportedHeaders);
     });
   });
 
@@ -258,12 +225,12 @@ describe("Next.js utils", () => {
     });
 
     it("should return true if using middleware in production", async () => {
-      sandbox.stub(fsExtra, "readJSON").resolves(middlewareManifestWhenUsed);
+      sandbox.stub(fsExtra, "readJSON").resolves(middlewareV2ManifestWhenUsed);
       expect(await isUsingMiddleware("", false)).to.be.true;
     });
 
     it("should return false if not using middleware in production", async () => {
-      sandbox.stub(fsExtra, "readJSON").resolves(middlewareManifestWhenNotUsed);
+      sandbox.stub(fsExtra, "readJSON").resolves(middlewareV2ManifestWhenNotUsed);
       expect(await isUsingMiddleware("", false)).to.be.false;
     });
   });
@@ -315,6 +282,20 @@ describe("Next.js utils", () => {
     });
   });
 
+  describe("cleanCustomRouteI18n", () => {
+    it("should remove Next.js i18n prefix", () => {
+      for (const path of pathsWithCustomRoutesInternalPrefix) {
+        const cleanPath = cleanCustomRouteI18n(path);
+
+        expect(!!path.match(I18N_SOURCE)).to.be.true;
+        expect(!!cleanPath.match(I18N_SOURCE)).to.be.false;
+
+        // should not keep double slashes
+        expect(cleanPath.startsWith("//")).to.be.false;
+      }
+    });
+  });
+
   describe("allDependencyNames", () => {
     it("should return empty on stopping conditions", () => {
       expect(allDependencyNames({})).to.eql([]);
@@ -362,6 +343,96 @@ describe("Next.js utils", () => {
         "loose-envify",
         "react",
         "loose-envify",
+      ]);
+    });
+  });
+
+  describe("getMiddlewareMatcherRegexes", () => {
+    it("should return regexes when using version 1", () => {
+      const middlewareMatcherRegexes = getMiddlewareMatcherRegexes(middlewareV1ManifestWhenUsed);
+
+      for (const regex of middlewareMatcherRegexes) {
+        expect(regex).to.be.an.instanceOf(RegExp);
+      }
+    });
+
+    it("should return empty array when using version 1 but not using middleware", () => {
+      const middlewareMatcherRegexes = getMiddlewareMatcherRegexes(middlewareV1ManifestWhenNotUsed);
+
+      expect(middlewareMatcherRegexes).to.eql([]);
+    });
+
+    it("should return regexes when using version 2", () => {
+      const middlewareMatcherRegexes = getMiddlewareMatcherRegexes(middlewareV2ManifestWhenUsed);
+
+      for (const regex of middlewareMatcherRegexes) {
+        expect(regex).to.be.an.instanceOf(RegExp);
+      }
+    });
+
+    it("should return empty array when using version 2 but not using middleware", () => {
+      const middlewareMatcherRegexes = getMiddlewareMatcherRegexes(middlewareV2ManifestWhenNotUsed);
+
+      expect(middlewareMatcherRegexes).to.eql([]);
+    });
+  });
+
+  describe("getNonStaticRoutes", () => {
+    it("should get non-static routes", () => {
+      expect(
+        getNonStaticRoutes(
+          pagesManifest,
+          Object.keys(prerenderManifest.routes),
+          Object.keys(prerenderManifest.dynamicRoutes)
+        )
+      ).to.deep.equal(["/dynamic/[dynamic-slug]"]);
+    });
+  });
+
+  describe("getNonStaticServerComponents", () => {
+    it("should get non-static server components", () => {
+      expect(
+        getNonStaticServerComponents(
+          appPathsManifest,
+          appPathRoutesManifest,
+          Object.keys(prerenderManifest.routes),
+          Object.keys(prerenderManifest.dynamicRoutes)
+        )
+      ).to.deep.equal(["/api/test/route"]);
+    });
+  });
+
+  describe("getHeadersFromMetaFiles", () => {
+    let sandbox: sinon.SinonSandbox;
+    beforeEach(() => (sandbox = sinon.createSandbox()));
+    afterEach(() => sandbox.restore());
+
+    it("should get headers from meta files", async () => {
+      const distDir = ".next";
+      const readJsonStub = sandbox.stub(frameworksUtils, "readJSON");
+      const dirExistsSyncStub = sandbox.stub(fsUtils, "dirExistsSync");
+      const fileExistsSyncStub = sandbox.stub(fsUtils, "fileExistsSync");
+
+      dirExistsSyncStub.withArgs(`${distDir}/server/app/api/static`).returns(true);
+      fileExistsSyncStub.withArgs(`${distDir}/server/app/api/static.meta`).returns(true);
+      readJsonStub.withArgs(`${distDir}/server/app/api/static.meta`).resolves(metaFileContents);
+
+      expect(
+        await getHeadersFromMetaFiles(".", distDir, "/asdf", appPathRoutesManifest)
+      ).to.deep.equal([
+        {
+          source: "/asdf/api/static",
+          headers: [
+            {
+              key: "content-type",
+              value: "application/json",
+            },
+            {
+              key: "custom-header",
+              value: "custom-value",
+            },
+          ],
+        },
       ]);
     });
   });

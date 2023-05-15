@@ -11,20 +11,21 @@ import {
   logPrefix,
   getSourceOrigin,
   SourceOrigin,
-  confirm,
   diagnoseAndFixProject,
   isLocalPath,
 } from "../extensions/extensionsHelper";
 import * as paramHelper from "../extensions/paramHelper";
 import { inferUpdateSource } from "../extensions/updateHelper";
+import * as secretsUtils from "../extensions/secretsUtils";
 import * as refs from "../extensions/refs";
 import { getProjectId } from "../projectUtils";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
-import * as experiments from "../experiments";
+import { confirm } from "../prompt";
 import * as manifest from "../extensions/manifest";
 import { Options } from "../options";
 import * as askUserForEventsConfig from "../extensions/askUserForEventsConfig";
+import { displayDeveloperTOSWarning } from "../extensions/tos";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),
@@ -35,9 +36,7 @@ marked.setOptions({
  */
 export const command = new Command("ext:update <extensionInstanceId> [updateSource]")
   .description(
-    experiments.isEnabled("extdev")
-      ? "update an existing extension instance to the latest version or from a local or URL source"
-      : "update an existing extension instance to the latest version"
+    "update an existing extension instance to the latest version, or to a specific version if provided"
   )
   .before(requirePermissions, [
     "firebaseextensions.instances.update",
@@ -46,19 +45,10 @@ export const command = new Command("ext:update <extensionInstanceId> [updateSour
   .before(ensureExtensionsApiEnabled)
   .before(checkMinRequiredVersion, "extMinVersion")
   .before(diagnoseAndFixProject)
-  .option("--local", "deprecated")
   .withForce()
   .action(async (instanceId: string, updateSource: string, options: Options) => {
     const projectId = getProjectId(options);
     const config = manifest.loadConfig(options);
-
-    if (options.local) {
-      utils.logLabeledWarning(
-        logPrefix,
-        "As of firebase-tools@11.0.0, the `--local` flag is no longer required, as it is the default behavior."
-      );
-    }
-
     const oldRefOrPath = manifest.getInstanceTarget(instanceId, config);
     if (isLocalPath(oldRefOrPath)) {
       throw new FirebaseError(
@@ -95,7 +85,6 @@ export const command = new Command("ext:update <extensionInstanceId> [updateSour
       );
       return;
     }
-
     utils.logLabeledBullet(
       logPrefix,
       `Updating ${clc.bold(instanceId)} from version ${clc.bold(
@@ -112,6 +101,10 @@ export const command = new Command("ext:update <extensionInstanceId> [updateSour
     ) {
       utils.logLabeledBullet(logPrefix, "Update aborted.");
       return;
+    }
+
+    if (secretsUtils.usesSecrets(newExtensionVersion.spec)) {
+      await secretsUtils.ensureSecretManagerApiEnabled(options);
     }
 
     const oldParamValues = manifest.readInstanceParam({
@@ -158,6 +151,6 @@ export const command = new Command("ext:update <extensionInstanceId> [updateSour
         force: true, // Skip asking for permission again
       }
     );
-    manifest.showPostDeprecationNotice();
+    displayDeveloperTOSWarning();
     return;
   });
