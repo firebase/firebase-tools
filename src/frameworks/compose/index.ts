@@ -1,5 +1,5 @@
 import { AppSpec } from "./interfaces";
-import { EngineMode, getEngine } from "./engine";
+import { Mode, getDriver } from "./driver";
 
 function discover(): AppSpec {
   return {
@@ -16,10 +16,10 @@ function discover(): AppSpec {
 /**
  * Run composer in the specified execution context.
  */
-export function run(mode: EngineMode): void {
+export function run(mode: Mode): void {
   const spec = discover();
 
-  const engine = getEngine(mode, spec);
-  engine.install();
-  engine.build();
+  const driver = getDriver(mode, spec);
+  driver.install();
+  driver.build();
 }

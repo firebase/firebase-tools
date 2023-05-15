@@ -1,4 +1,4 @@
-export interface Bundle {
+export interface AppBundle {
   version: "v1alpha";
   server?: ServerConfig;
 }

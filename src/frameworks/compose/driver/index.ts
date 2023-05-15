@@ -3,12 +3,12 @@ import { LocalDriver } from "./local";
 import { DockerDriver } from "./docker";
 
 export const SUPPORTED_MODES = ["local", "docker"] as const;
-export type EngineMode = (typeof SUPPORTED_MODES)[number];
+export type Mode = (typeof SUPPORTED_MODES)[number];
 
 /**
- * Returns engine that drives the execution context for the build
+ * Returns the driver that provides the execution context for the composer.
  */
-export function getEngine(mode: EngineMode, app: AppSpec): Driver {
+export function getDriver(mode: Mode, app: AppSpec): Driver {
   if (mode === "local") {
     return new LocalDriver(app);
   } else if (mode === "docker") {

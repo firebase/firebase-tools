@@ -1,7 +1,7 @@
 import { Command } from "../command";
 import { Options } from "../options";
 import { logger } from "../logger";
-import { EngineMode, SUPPORTED_MODES } from "../frameworks/compose/engine";
+import { Mode, SUPPORTED_MODES } from "../frameworks/compose/driver";
 import { run } from "../frameworks/compose";
 import { FirebaseError } from "../error";
 
@@ -15,7 +15,7 @@ export const command = new Command("internaltesting:frameworks:compose")
         `Unsupported mode ${mode}. Supported modes are [${SUPPORTED_MODES.join(", ")}]`
       );
     }
-    run(mode as EngineMode);
+    run(mode as Mode);
     logger.info(JSON.stringify({}, null, 2));
     return {};
   });

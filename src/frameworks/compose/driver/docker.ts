@@ -46,7 +46,7 @@ export class DockerDriver implements Driver {
       "docker",
       ["buildx", "build", "--target", stage, "-f", "-", contextDir],
       {
-        env: { ...process.env, BUILD_KIT: "1" },
+        env: { ...process.env, ...this.spec.environmentVariables, BUILD_KIT: "1" },
         input: this.dockerfile,
         stdio: [/* stdin= */ "pipe", /* stdout= */ "inherit", /* stderr= */ "inherit"],
       }

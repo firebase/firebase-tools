@@ -8,6 +8,7 @@ export class LocalDriver implements Driver {
   private execCmd(cmdStr: string) {
     const [cmd, ...args] = cmdStr.split(" ");
     const ret = spawn.sync(cmd, args, {
+      env: { ...process.env, ...this.spec.environmentVariables },
       stdio: [/* stdin= */ "pipe", /* stdout= */ "inherit", /* stderr= */ "inherit"],
     });
     if (ret.error) {
