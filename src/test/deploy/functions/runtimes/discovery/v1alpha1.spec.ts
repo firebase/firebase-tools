@@ -586,6 +586,7 @@ describe("buildFromV1Alpha", () => {
           id: {
             ...MIN_WIRE_ENDPOINT,
             httpsTrigger: {},
+            serviceAccount: "{{ params.SERVICE_ACCOUNT }}",
             concurrency: "{{ params.CONCURRENCY }}",
             availableMemoryMb: "{{ params.MEMORY }}",
             timeoutSeconds: "{{ params.TIMEOUT }}",
@@ -598,6 +599,7 @@ describe("buildFromV1Alpha", () => {
       const expected: build.Build = build.of({
         id: {
           ...DEFAULTED_ENDPOINT,
+          serviceAccount: "{{ params.SERVICE_ACCOUNT }}",
           concurrency: "{{ params.CONCURRENCY }}",
           availableMemoryMb: "{{ params.MEMORY }}",
           timeoutSeconds: "{{ params.TIMEOUT }}",
