@@ -1,6 +1,6 @@
-import { AppSpec, Engine } from "../interfaces";
-import { LocalEngine } from "./local";
-import { DockerEngine } from "./docker";
+import { AppSpec, Driver } from "../interfaces";
+import { LocalDriver } from "./local";
+import { DockerDriver } from "./docker";
 
 export const SUPPORTED_MODES = ["local", "docker"] as const;
 export type EngineMode = (typeof SUPPORTED_MODES)[number];
@@ -8,11 +8,11 @@ export type EngineMode = (typeof SUPPORTED_MODES)[number];
 /**
  * Returns engine that drives the execution context for the build
  */
-export function getEngine(mode: EngineMode, app: AppSpec): Engine {
+export function getEngine(mode: EngineMode, app: AppSpec): Driver {
   if (mode === "local") {
-    return new LocalEngine(app);
+    return new LocalDriver(app);
   } else if (mode === "docker") {
-    return new DockerEngine(app);
+    return new DockerDriver(app);
   }
   // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
   throw new Error(`Unsupported mode ${mode}`);

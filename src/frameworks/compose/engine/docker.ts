@@ -1,6 +1,6 @@
 import * as spawn from "cross-spawn";
 
-import { AppSpec, Engine } from "../interfaces";
+import { AppSpec, Driver } from "../interfaces";
 
 const DOCKER_STAGE_INSTALL = "installer" as const;
 const DOCKER_STAGE_BUILD = "builder" as const;
@@ -34,7 +34,7 @@ COPY --from=builder /app /
 `;
 }
 
-export class DockerEngine implements Engine {
+export class DockerDriver implements Driver {
   private dockerfile = "";
 
   constructor(readonly spec: AppSpec) {
@@ -42,11 +42,15 @@ export class DockerEngine implements Engine {
   }
 
   private buildStage(stage: string, contextDir: string) {
-    const ret = spawn.sync("docker", ["buildx", "build", "--target", stage, "-f", "-", contextDir], {
-      env: { ...process.env, BUILD_KIT: "1" },
-      input: this.dockerfile,
-      stdio: [/* stdin= */ "pipe", /* stdout= */ "inherit", /* stderr= */ "inherit"],
-    });
+    const ret = spawn.sync(
+      "docker",
+      ["buildx", "build", "--target", stage, "-f", "-", contextDir],
+      {
+        env: { ...process.env, BUILD_KIT: "1" },
+        input: this.dockerfile,
+        stdio: [/* stdin= */ "pipe", /* stdout= */ "inherit", /* stderr= */ "inherit"],
+      }
+    );
     if (ret.error) {
       throw new Error(`Failed to execute stage ${stage}`, ret.error);
     }

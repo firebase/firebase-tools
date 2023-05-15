@@ -1,8 +1,8 @@
 import * as spawn from "cross-spawn";
 
-import { AppSpec, Engine } from "../interfaces";
+import { AppSpec, Driver } from "../interfaces";
 
-export class LocalEngine implements Engine {
+export class LocalDriver implements Driver {
   constructor(readonly spec: AppSpec) {}
 
   private execCmd(cmdStr: string) {

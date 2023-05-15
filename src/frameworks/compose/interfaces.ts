@@ -31,7 +31,7 @@ export interface AppSpec {
   startCommand: string;
 }
 
-export class Engine {
+export class Driver {
   constructor(readonly spec: AppSpec) {}
 
   install(): void {
