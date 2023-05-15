@@ -6,6 +6,7 @@ import * as prompt from "../../../prompt";
 import * as poller from "../../../operation-poller";
 import { FirebaseError } from "../../../error";
 import * as repo from "../../../init/features/turtles/repo";
+import * as utils from "../../../utils";
 
 describe("turtles", () => {
   const sandbox: sinon.SinonSandbox = sinon.createSandbox();
@@ -35,7 +36,7 @@ describe("turtles", () => {
       .stub(gcb, "fetchLinkableRepositories")
       .throws("Unexpected fetchLinkableRepositories call");
 
-    // sandbox.stub(repo, "openInBrowser").resolves();
+    sandbox.stub(utils, "openInBrowser").resolves();
   });
 
   afterEach(() => {
@@ -89,49 +90,41 @@ describe("turtles", () => {
       ],
     };
 
-    it.only("creates a connection if it doesn't exist", async () => {
+    it("creates a connection if it doesn't exist", async () => {
       getConnectionStub.onFirstCall().rejects(new FirebaseError("error", { status: 404 }));
       getConnectionStub.onSecondCall().resolves(completeConn);
-      fetchLinkableRepositoriesStub.resolves(repos);
       createConnectionStub.resolves(op);
       pollOperationStub.resolves(pendingConn);
-      promptOnceStub.onFirstCall().resolves("continue");
-      promptOnceStub.onSecondCall().resolves(repos.repositories[0].remoteUri);
-      getRepositoryStub.resolves(repos.repositories[0]);
+      promptOnceStub.onFirstCall().resolves("any key");
 
-      await repo.linkGitHubRepository(projectId, location, stackId);
+      await repo.getOrCreateConnection(projectId, location, connectionId);
       expect(createConnectionStub).to.be.calledWith(projectId, location, connectionId);
     });
 
-    it("create repository if it doesn't exist", async () => {
+    it("creates repository if it doesn't exist", async () => {
       getConnectionStub.resolves(completeConn);
       fetchLinkableRepositoriesStub.resolves(repos);
       promptOnceStub.onFirstCall().resolves(repos.repositories[0].remoteUri);
       getRepositoryStub.rejects(new FirebaseError("error", { status: 404 }));
-      createRepositoryStub.resolves();
+      createRepositoryStub.resolves({ name: "op" });
       pollOperationStub.resolves(repos.repositories[0]);
 
-      await repo.linkGitHubRepository(projectId, location, stackId);
+      await repo.getOrCreateRepository(
+        projectId,
+        location,
+        connectionId,
+        repos.repositories[0].remoteUri
+      );
       expect(createRepositoryStub).to.be.calledWith(
         projectId,
         location,
         connectionId,
-        "test--repo0",
+        "turtles-repo",
         repos.repositories[0].remoteUri
       );
     });
 
-    it("throws error if user fails to auth github connection", async () => {
-      getConnectionStub.resolves(pendingConn);
-
-      promptOnceStub.onFirstCall().resolves("continue");
-      promptOnceStub.onSecondCall().resolves("cancel");
-
-      await expect(repo.linkGitHubRepository(projectId, location, stackId)).to.be.rejected;
-      expect(promptOnceStub).to.be.calledTwice;
-    });
-
-    it.only("throws error if no linkable repositories are available", async () => {
+    it("throws error if no linkable repositories are available", async () => {
       getConnectionStub.resolves(pendingConn);
       fetchLinkableRepositoriesStub.resolves({ repositories: [] });
 

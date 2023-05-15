@@ -3,7 +3,7 @@ import { FirebaseError } from "../../../error";
 import * as gcb from "../../../gcp/cloudbuild";
 import { logger } from "../../../logger";
 import * as poller from "../../../operation-poller";
-import * as open from "open";
+import * as utils from "../../../utils";
 import { promptOnce } from "../../../prompt";
 
 const gcbPollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
@@ -30,14 +30,6 @@ function generateRepositoryId(): string | undefined {
 }
 
 /**
- * We wrap and export the open() function from the "open" package
- * to stub it out in unit tests.
- */
-export async function openInBrowser(url: string): Promise<void> {
-  await open(url);
-}
-
-/**
  * Prompts the user to link their stack to a GitHub repository.
  */
 export async function linkGitHubRepository(
@@ -46,16 +38,11 @@ export async function linkGitHubRepository(
   stackId: string
 ): Promise<gcb.Repository> {
   const connectionId = generateConnectionId(stackId);
-  const conn = await getOrCreateConnection(projectId, location, connectionId);
-  if (conn.installationState.stage !== "COMPLETE") {
-    throw new FirebaseError(
-      `Failed to setup connection: ${conn.installationState.message} at ${conn.installationState.actionUri}`
-    );
-  }
+  await getOrCreateConnection(projectId, location, connectionId);
 
   let remoteUri = await promptRepositoryURI(projectId, location, connectionId);
-  while (!remoteUri) {
-    await openInBrowser("https://github.com/apps/google-cloud-build/installations/new");
+  while (remoteUri === "") {
+    await utils.openInBrowser("https://github.com/apps/google-cloud-build/installations/new");
     await promptOnce({
       type: "input",
       message:
@@ -105,7 +92,7 @@ async function promptConnectionAuth(
 ): Promise<gcb.Connection> {
   logger.info(conn.installationState.message);
   logger.info(conn.installationState.actionUri);
-  await openInBrowser(conn.installationState.actionUri);
+  await utils.openInBrowser(conn.installationState.actionUri);
   await promptOnce({
     type: "input",
     message:
@@ -115,7 +102,7 @@ async function promptConnectionAuth(
 }
 
 /**
- *
+ * Exported for unit testing.
  */
 export async function getOrCreateConnection(
   projectId: string,
@@ -145,7 +132,7 @@ export async function getOrCreateConnection(
 }
 
 /**
- *
+ * Exported for unit testing.
  */
 export async function getOrCreateRepository(
   projectId: string,
