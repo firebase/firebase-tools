@@ -28,7 +28,7 @@ export function parse(refOrName: string): Ref {
     ret.version &&
     !semver.valid(ret.version) &&
     !semver.validRange(ret.version) &&
-    ret.version !== "latest"
+    !["latest", "latest-approved"].includes(ret.version)
   ) {
     throw new FirebaseError(
       `Extension reference ${ret} contains an invalid version ${ret.version}.`

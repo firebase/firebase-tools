@@ -173,6 +173,7 @@ describe("FunctionsEmulatorShared", () => {
     const testExtension: Extension = {
       name: "my-extension",
       ref: "pubby/my-extensions",
+      state: "PUBLISHED",
       createTime: "",
       visibility: Visibility.PUBLIC,
       registryLaunchStage: RegistryLaunchStage.BETA,
