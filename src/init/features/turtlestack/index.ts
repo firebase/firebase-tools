@@ -4,12 +4,11 @@ import { Config } from "../../../config";
 import { requirePermissions } from "../../../requirePermissions";
 import { ensure } from "../../../ensureApiEnabled";
 import * as ora from "ora";
-import { discoverFramework } from "./discovery";
 import * as utils from "../../../utils";
-import { NEXT_JS, ANGULAR } from "./frameworks";
 import { logger } from "../../../logger";
+import { promptOnce } from "../../../prompt";
+import { DEFAULT_REGION, ALLOWED_REGIONS, DEFAULT_DEPLOY_METHOD, ALLOWED_DEPLOY_METHODS } from "./constants";
 
-const frameworks = new Set<string>([NEXT_JS, ANGULAR]);
 /**
  * Setup new Turtlestack project.
  */
@@ -19,27 +18,42 @@ export async function doSetup(setup: any, config: Config, options: Options): Pro
     await requirePermissions({ ...options, project: projectId });
     await Promise.all([ensure(projectId, "firebaseextensions.googleapis.com", "unused", true)]);
   }
+  setup.turtlestack = {}
 
-  const spinner = ora("Examining your source code").start();
-  let discoveredData: any;
-  try {
-    discoveredData = await discoverFramework(); // wait for response until framework is discovered.
-    spinner.succeed();
-  } catch (error) {
-    spinner.fail("Failed to discover the framework.");
-    throw error;
-  }
-  utils.logBullet("Writing configuration info to " + clc.bold("firebase.json") + "...");
-  if (frameworks.has(discoveredData.framework)) {
-    utils.logBullet(`Detected ${discoveredData.framework} application in the root directory!`);
-    utils.logBullet(
-      "Based on your " +
-        clc.bold("package.json") +
-        " we have pre-filled the following project settings:"
-    );
-    logger.info("root directory: " + discoveredData.rootDirectory);
-    logger.info("build command: " + clc.blue(discoveredData.buildCommand));
-    logger.info("install command: " + clc.blue(discoveredData.installCommand));
-    logger.info("output directory: " + clc.blue(discoveredData.outputDirectory));
-  }
+  utils.logBullet("First we need a few details to create your service.");
+  await promptOnce(
+    {
+      name: "serviceName",
+      type: "input",
+      default: "acme-inc-web",
+      message: "Create a name for your service.",
+    },
+    setup.turtlestack
+  );
+
+  await promptOnce(
+    {
+      name: "regionName",
+      type: "list",
+      default: DEFAULT_REGION,
+      message: "Please select a region (Your region determines where your backend is located)",
+      choices: ALLOWED_REGIONS,
+    },
+    setup.turtlestack
+  );
+
+  utils.logSuccess(`Region set to ${setup.turtlestack.regionName}.`)
+
+  logger.info(clc.bold(`\n${clc.white("===")} Deploy Setup`));
+
+  await promptOnce(
+    {
+      name: "deployMethod",
+      type: "list",
+      default: DEFAULT_DEPLOY_METHOD,
+      message: "How do you want to deploy",
+      choices: ALLOWED_DEPLOY_METHODS,
+    },
+    setup.turtlestack
+  );
 }
