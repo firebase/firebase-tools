@@ -155,8 +155,8 @@ export function load(client: any): any {
     client.internaltesting = {};
     client.internaltesting.functions = {};
     client.internaltesting.functions.discover = loadCommand("internaltesting-functions-discover");
-    client.internaltesting.turtles = {};
-    client.internaltesting.turtles.init = loadCommand("internaltesting-turtles-init");
+    client.internaltesting.frameworks = {};
+    client.internaltesting.frameworks.init = loadCommand("internaltesting-frameworks-init");
   }
   client.login = loadCommand("login");
   client.login.add = loadCommand("login-add");

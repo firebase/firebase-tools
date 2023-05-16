@@ -13,6 +13,10 @@ const gcbPollerOptions: Omit<poller.OperationPollerOptions, "operationResourceNa
   maxBackoff: 10_000,
 };
 
+/**
+ * Example usage:
+ * extractRepoSlugFromURI("https://github.com/user/repo.git") => "user/repo"
+ */
 function extractRepoSlugFromURI(remoteUri: string): string | undefined {
   const match = /github.com\/(.+).git/.exec(remoteUri);
   if (!match) {
@@ -25,6 +29,13 @@ function generateConnectionId(stackId: string): string {
   return `turtles-${stackId}-conn`;
 }
 
+/**
+ * Generates a repository ID.
+ * N.B. The deterministic nature of the repository ID implies that each
+ * Cloud Build Connection will have one Cloud Build Repo child resource.
+ * The current implementation is subject to change in the event that
+ * the 1:1 Connection-to-Resource relationship no longer holds.
+ */
 function generateRepositoryId(): string | undefined {
   return `turtles-repo`;
 }
@@ -96,7 +107,7 @@ async function promptConnectionAuth(
   await promptOnce({
     type: "input",
     message:
-      "Press any key once you have authorized Turtles (Cloud Build) to access your GitHub repo.",
+      "Press any key once you have authorized the app (Cloud Build) to access your GitHub repo.",
   });
   return await gcb.getConnection(projectId, location, connectionId);
 }
