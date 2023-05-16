@@ -3,11 +3,15 @@ import { Options } from "../../../options";
 import { Config } from "../../../config";
 import { requirePermissions } from "../../../requirePermissions";
 import { ensure } from "../../../ensureApiEnabled";
-import * as ora from "ora";
 import * as utils from "../../../utils";
 import { logger } from "../../../logger";
 import { promptOnce } from "../../../prompt";
-import { DEFAULT_REGION, ALLOWED_REGIONS, DEFAULT_DEPLOY_METHOD, ALLOWED_DEPLOY_METHODS } from "./constants";
+import {
+  DEFAULT_REGION,
+  ALLOWED_REGIONS,
+  DEFAULT_DEPLOY_METHOD,
+  ALLOWED_DEPLOY_METHODS,
+} from "./constants";
 
 /**
  * Setup new Turtlestack project.
@@ -18,9 +22,10 @@ export async function doSetup(setup: any, config: Config, options: Options): Pro
     await requirePermissions({ ...options, project: projectId });
     await Promise.all([ensure(projectId, "firebaseextensions.googleapis.com", "unused", true)]);
   }
-  setup.turtlestack = {}
+  setup.turtlestack = {};
 
   utils.logBullet("First we need a few details to create your service.");
+
   await promptOnce(
     {
       name: "serviceName",
@@ -42,7 +47,7 @@ export async function doSetup(setup: any, config: Config, options: Options): Pro
     setup.turtlestack
   );
 
-  utils.logSuccess(`Region set to ${setup.turtlestack.regionName}.`)
+  utils.logSuccess(`Region set to ${setup.turtlestack.regionName}.`);
 
   logger.info(clc.bold(`\n${clc.white("===")} Deploy Setup`));
 
