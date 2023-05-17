@@ -19,7 +19,7 @@ interface StartConfig {
   // Command to start the server (e.g. ["npm", "run", "start"]).
   cmd: string[];
   // Runtime required to command execution.
-  runtime: "nodejs18" | string;
+  runtime?: "nodejs18" | string;
 }
 
 export interface AppSpec {
@@ -29,7 +29,12 @@ export interface AppSpec {
   installCommand: string;
   buildCommand: string;
   startCommand: string;
+
+  afterInstall?: () => (b: AppBundle) => AppBundle;
+  afterBuild?: () => (b: AppBundle) => AppBundle;
 }
+
+export type Hook = (b: AppBundle) => AppBundle;
 
 export class Driver {
   constructor(readonly spec: AppSpec) {}
@@ -40,5 +45,9 @@ export class Driver {
 
   build(): void {
     throw new Error("build() not implemented");
+  }
+
+  execHook(bundle: AppBundle, hook: Hook): AppBundle {
+    throw new Error("execHook() not implemented");
   }
 }
