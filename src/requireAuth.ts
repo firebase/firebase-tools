@@ -9,7 +9,7 @@ import * as utils from "./utils";
 import * as scopes from "./scopes";
 import { Tokens, User } from "./types/auth";
 import { setRefreshToken, setActiveAccount } from "./auth";
-import { setupMonospace, isMonospaceEnv } from "./monospace";
+import { setupMonospace, isMonospaceEnv, isVSCodeExtension } from "./monospace";
 
 const AUTH_ERROR_MESSAGE = `Command requires authentication, please run ${clc.bold(
   "firebase login"
@@ -41,7 +41,7 @@ async function autoAuth(options: any, authScopes: string[]): Promise<void> {
   const token = await client.getAccessToken();
   token !== null ? apiv2.setAccessToken(token) : false;
 
-  if (await isMonospaceEnv()) {
+  if ((await isMonospaceEnv()) && !isVSCodeExtension()) {
     await setupMonospace(options.projectRoot, options.project);
   }
 }

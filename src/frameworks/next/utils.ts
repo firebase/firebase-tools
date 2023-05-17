@@ -1,16 +1,17 @@
 import { existsSync } from "fs";
 import { pathExists } from "fs-extra";
-import { basename, extname, join } from "path";
-import type { Header, Redirect, Rewrite } from "next/dist/lib/load-custom-routes";
+import { basename, extname, join, posix } from "path";
 import type { PagesManifest } from "next/dist/build/webpack/plugins/pages-manifest-plugin";
 
 import { isUrl, readJSON } from "../utils";
 import type {
-  Manifest,
-  RoutesManifestRewrite,
+  RoutesManifest,
   ExportMarker,
   ImagesManifest,
   NpmLsDepdendency,
+  RoutesManifestRewrite,
+  RoutesManifestRedirect,
+  RoutesManifestHeader,
   MiddlewareManifest,
   MiddlewareManifestV1,
   MiddlewareManifestV2,
@@ -27,20 +28,7 @@ import {
 import { dirExistsSync, fileExistsSync } from "../../fsutils";
 import { readFile } from "fs/promises";
 
-/**
- * Whether the given path has a regex or not.
- * According to the Next.js documentation:
- * ```md
- *  To match a regex path you can wrap the regex in parentheses
- *  after a parameter, for example /post/:slug(\\d{1,}) will match /post/123
- *  but not /post/abc.
- * ```
- * See: https://nextjs.org/docs/api-reference/next.config.js/redirects#regex-path-matching
- */
-export function pathHasRegex(path: string): boolean {
-  // finds parentheses that are not preceded by double backslashes
-  return /(?<!\\)\(/.test(path);
-}
+export const I18N_SOURCE = /\/:nextInternalLocale(\([^\)]+\))?/;
 
 /**
  * Remove escaping from characters used for Regex patch matching that Next.js
@@ -61,22 +49,46 @@ export function cleanEscapedChars(path: string): string {
 }
 
 /**
+ * Remove Next.js internal i18n prefix from headers, redirects and rewrites.
+ */
+export function cleanCustomRouteI18n(path: string): string {
+  return path.replace(I18N_SOURCE, "");
+}
+
+export function cleanI18n<T = any>(it: T & { source: string; [key: string]: any }): T {
+  const [, localesRegex] = it.source.match(I18N_SOURCE) || [undefined, undefined];
+  const source = localesRegex ? cleanCustomRouteI18n(it.source) : it.source;
+  const destination =
+    "destination" in it && localesRegex ? cleanCustomRouteI18n(it.destination) : it.destination;
+  const regex =
+    "regex" in it && localesRegex ? it.regex.replace(`(?:/${localesRegex})`, "") : it.regex;
+  return {
+    ...it,
+    source,
+    destination,
+    regex,
+  };
+}
+
+/**
  * Whether a Next.js rewrite is supported by `firebase.json`.
  *
  * See: https://firebase.google.com/docs/hosting/full-config#rewrites
  *
  * Next.js unsupported rewrites includes:
- * - Rewrites with the `has` property that is used by Next.js for Header,
+ * - Rewrites with the `has` or `missing` property that is used by Next.js for Header,
  *   Cookie, and Query Matching.
  *     - https://nextjs.org/docs/api-reference/next.config.js/rewrites#header-cookie-and-query-matching
  *
- * - Rewrites using regex for path matching.
- *     - https://nextjs.org/docs/api-reference/next.config.js/rewrites#regex-path-matching
- *
- * - Rewrites to external URLs
+ * - Rewrites to external URLs or URLs using parameters
  */
-export function isRewriteSupportedByHosting(rewrite: Rewrite): boolean {
-  return !("has" in rewrite || pathHasRegex(rewrite.source) || isUrl(rewrite.destination));
+export function isRewriteSupportedByHosting(rewrite: RoutesManifestRewrite): boolean {
+  return !(
+    "has" in rewrite ||
+    "missing" in rewrite ||
+    isUrl(rewrite.destination) ||
+    rewrite.destination.includes("?")
+  );
 }
 
 /**
@@ -85,17 +97,19 @@ export function isRewriteSupportedByHosting(rewrite: Rewrite): boolean {
  * See: https://firebase.google.com/docs/hosting/full-config#redirects
  *
  * Next.js unsupported redirects includes:
- * - Redirects with the `has` property that is used by Next.js for Header,
+ * - Redirects with the `has` or `missing` property that is used by Next.js for Header,
  *   Cookie, and Query Matching.
  *     - https://nextjs.org/docs/api-reference/next.config.js/redirects#header-cookie-and-query-matching
  *
- * - Redirects using regex for path matching.
- *     - https://nextjs.org/docs/api-reference/next.config.js/redirects#regex-path-matching
- *
  * - Next.js internal redirects
  */
-export function isRedirectSupportedByHosting(redirect: Redirect): boolean {
-  return !("has" in redirect || pathHasRegex(redirect.source) || "internal" in redirect);
+export function isRedirectSupportedByHosting(redirect: RoutesManifestRedirect): boolean {
+  return !(
+    "has" in redirect ||
+    "missing" in redirect ||
+    "internal" in redirect ||
+    redirect.destination.includes("?")
+  );
 }
 
 /**
@@ -104,15 +118,13 @@ export function isRedirectSupportedByHosting(redirect: Redirect): boolean {
  * See: https://firebase.google.com/docs/hosting/full-config#headers
  *
  * Next.js unsupported headers includes:
- * - Custom header with the `has` property that is used by Next.js for Header,
+ * - Custom header with the `has` or `missing` property that is used by Next.js for Header,
  *   Cookie, and Query Matching.
  *     - https://nextjs.org/docs/api-reference/next.config.js/headers#header-cookie-and-query-matching
  *
- * - Custom header using regex for path matching.
- *     - https://nextjs.org/docs/api-reference/next.config.js/headers#regex-path-matching
  */
-export function isHeaderSupportedByHosting(header: Header): boolean {
-  return !("has" in header || pathHasRegex(header.source));
+export function isHeaderSupportedByHosting(header: RoutesManifestHeader): boolean {
+  return !("has" in header || "missing" in header);
 }
 
 /**
@@ -125,14 +137,14 @@ export function isHeaderSupportedByHosting(header: Header): boolean {
  * See: https://nextjs.org/docs/api-reference/next.config.js/rewrites
  */
 export function getNextjsRewritesToUse(
-  nextJsRewrites: Manifest["rewrites"]
+  nextJsRewrites: RoutesManifest["rewrites"]
 ): RoutesManifestRewrite[] {
   if (Array.isArray(nextJsRewrites)) {
-    return nextJsRewrites;
+    return nextJsRewrites.map(cleanI18n);
   }
 
   if (nextJsRewrites?.beforeFiles) {
-    return nextJsRewrites.beforeFiles;
+    return nextJsRewrites.beforeFiles.map(cleanI18n);
   }
 
   return [];
@@ -311,6 +323,7 @@ export function getNonStaticServerComponents(
 export async function getHeadersFromMetaFiles(
   sourceDir: string,
   distDir: string,
+  basePath: string,
   appPathRoutesManifest: AppPathRoutesManifest
 ): Promise<HostingHeadersWithSource[]> {
   const headers: HostingHeadersWithSource[] = [];
@@ -328,7 +341,7 @@ export async function getHeadersFromMetaFiles(
         const meta = await readJSON<{ headers?: Record<string, string> }>(metadataPath);
         if (meta.headers)
           headers.push({
-            source,
+            source: posix.join(basePath, source),
             headers: Object.entries(meta.headers).map(([key, value]) => ({ key, value })),
           });
       }

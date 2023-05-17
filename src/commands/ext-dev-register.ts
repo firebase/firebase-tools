@@ -2,14 +2,19 @@ import * as clc from "colorette";
 import { marked } from "marked";
 
 import { Command } from "../command";
-import { registerPublisherProfile } from "../extensions/extensionsApi";
+import { registerPublisherProfile } from "../extensions/publisherApi";
 import { needProjectId } from "../projectUtils";
 import { promptOnce } from "../prompt";
-import { ensureExtensionsApiEnabled, logPrefix } from "../extensions/extensionsHelper";
-import { promptForPublisherTOS } from "../extensions/askUserForConsent";
+import {
+  ensureExtensionsApiEnabled,
+  ensureExtensionsPublisherApiEnabled,
+  logPrefix,
+} from "../extensions/extensionsHelper";
+import { acceptLatestPublisherTOS } from "../extensions/tos";
 import { requirePermissions } from "../requirePermissions";
 import { FirebaseError } from "../error";
 import * as utils from "../utils";
+import { PublisherProfile } from "../extensions/types";
 
 /**
  * Register a publisher ID; run this before publishing any extensions.
@@ -18,10 +23,11 @@ export const command = new Command("ext:dev:register")
   .description("register a publisher ID; run this before publishing your first extension.")
   // temporary until registry-specific permissions are available
   .before(requirePermissions, ["firebaseextensions.sources.create"])
+  .before(ensureExtensionsPublisherApiEnabled)
   .before(ensureExtensionsApiEnabled)
   .action(async (options: any) => {
-    await promptForPublisherTOS();
     const projectId = needProjectId(options);
+    await acceptLatestPublisherTOS(options, projectId);
     const msg =
       "What would you like to register as your publisher ID? " +
       "This value identifies you in Firebase's registry of extensions as the author of your extensions. " +
@@ -33,8 +39,9 @@ export const command = new Command("ext:dev:register")
       message: msg,
       default: projectId,
     });
+    let profile: PublisherProfile;
     try {
-      await registerPublisherProfile(projectId, publisherId);
+      profile = await registerPublisherProfile(projectId, publisherId);
     } catch (err: any) {
       if (err.status === 409) {
         const error =
@@ -55,10 +62,11 @@ export const command = new Command("ext:dev:register")
         )}: ${err.message}`
       );
     }
-    return utils.logLabeledSuccess(
+    utils.logLabeledSuccess(
       logPrefix,
       `Publisher ID '${clc.bold(publisherId)}' has been registered to project ${clc.bold(
         projectId
-      )}`
+      )}. View and edit your profile at ${utils.consoleUrl(projectId, `/publisher`)}`
     );
+    return profile;
   });
