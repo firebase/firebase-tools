@@ -143,7 +143,7 @@ export async function getContext(dir: string) {
       ? "production"
       : target.defaultConfiguration;
     if (!configuration)
-      throw new Error("No production or default configutation found for prerender.");
+      throw new Error("No production or default configuration found for prerender.");
     if (configuration !== "production")
       console.warn(
         `Using ${configuration} configuration for the prerender, we suggest adding a production target.`
@@ -164,7 +164,7 @@ export async function getContext(dir: string) {
         ? "production"
         : target.defaultConfiguration;
       if (!configuration)
-        throw new Error("No production or default configutation found for build.");
+        throw new Error("No production or default configuration found for build.");
       if (configuration !== "production")
         console.warn(
           `Using ${configuration} configuration for the browser deploy, we suggest adding a production target.`
