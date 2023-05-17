@@ -1,3 +1,7 @@
+import type { Options } from "../options";
+
+export type SetupMonospaceOptions = Pick<Options, "config" | "project" | "isVSCE">;
+
 export type GetInitFirebaseResponse =
   | {
       success: true;

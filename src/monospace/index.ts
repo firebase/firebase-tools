@@ -3,15 +3,20 @@ import fetch from "node-fetch";
 import { FirebaseError } from "../error";
 import { loadRC } from "../rc";
 
-import type { GetInitFirebaseResponse, InitFirebaseResponse } from "./interfaces";
+import type {
+  GetInitFirebaseResponse,
+  InitFirebaseResponse,
+  SetupMonospaceOptions,
+} from "./interfaces";
 
 /**
  * Integrate Firebase Plugin with Monospace’s service Account Authentication
  */
-export async function setupMonospace(
-  projectRoot: string,
-  project?: string
-): Promise<void | string> {
+export async function setupMonospace({
+  config,
+  project,
+  isVSCE,
+}: SetupMonospaceOptions): Promise<void | string | null> {
   const initFirebaseResponse = await initFirebase(project);
 
   if (initFirebaseResponse.success === false) {
@@ -23,11 +28,11 @@ export async function setupMonospace(
   // Poll for response from the user
   const authorizedProject = await pollAuthorizedProject(rid);
 
-  if (isVSCodeExtension()) {
-    return authorizedProject;
-  } else {
-    createFirebaseRc(projectRoot, authorizedProject);
-  }
+  if (!authorizedProject) return null;
+
+  if (isVSCE) return authorizedProject;
+
+  createFirebaseRc(config.projectDir, authorizedProject);
 }
 
 /**
@@ -114,18 +119,11 @@ export async function isMonospaceEnv(): Promise<boolean> {
 }
 
 /**
- * Whether it's running from the VSCode extension
- */
-export function isVSCodeExtension(): boolean {
-  return Boolean((globalThis as any).IS_VSCODE_EXTENSION);
-}
-
-/**
  * Create a .firebaserc in the project's root with the authorized project
  * as the default project
  */
-function createFirebaseRc(projectRoot: string, authorizedProject: string): boolean {
-  const firebaseRc = loadRC({ cwd: projectRoot });
+function createFirebaseRc(projectDir: string, authorizedProject: string): boolean {
+  const firebaseRc = loadRC({ cwd: projectDir });
 
   firebaseRc.addProjectAlias("default", authorizedProject);
 
