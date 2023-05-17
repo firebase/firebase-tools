@@ -14,7 +14,7 @@ export const DEFAULT_VENV_DIR = "venv";
 export function virtualEnvCmd(cwd: string, venvDir: string): { command: string; args: string[] } {
   const activateScriptPath =
     process.platform === "win32" ? ["Scripts", "activate.bat"] : ["bin", "activate"];
-  const venvActivate = path.join(cwd, venvDir, ...activateScriptPath);
+  const venvActivate = `"${path.join(cwd, venvDir, ...activateScriptPath)}"`;
   return {
     command: process.platform === "win32" ? venvActivate : ".",
     args: [process.platform === "win32" ? "" : venvActivate],
