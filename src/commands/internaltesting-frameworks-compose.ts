@@ -15,7 +15,7 @@ export const command = new Command("internaltesting:frameworks:compose")
         `Unsupported mode ${mode}. Supported modes are [${SUPPORTED_MODES.join(", ")}]`
       );
     }
-    compose(mode as Mode);
-    logger.info(JSON.stringify({}, null, 2));
+    const bundle = compose(mode as Mode);
+    logger.info(JSON.stringify(bundle, null, 2));
     return {};
   });

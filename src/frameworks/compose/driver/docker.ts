@@ -3,9 +3,9 @@ import * as path from "node:path";
 import * as spawn from "cross-spawn";
 
 import { AppBundle, AppSpec, Driver, Hook } from "../interfaces";
+import { BUNDLE_PATH, genHookScript } from "./hooks";
 
 const ADAPTER_SCRIPTS_PATH = "./.firebase/adapters" as const;
-const BUNDLE_PATH = "./.firebase/bundle.json" as const;
 
 const DOCKER_STAGE_INSTALL = "installer" as const;
 const DOCKER_STAGE_BUILD = "builder" as const;
@@ -19,9 +19,10 @@ export class DockerDriver implements Driver {
     this.lastDockerStage = "base";
   }
 
-  private addDockerStage(stage: string, cmds: string[]): void {
-    this.dockerfile += `FROM ${this.lastDockerStage} AS ${stage}\n`;
+  private addDockerStage(stage: string, cmds: string[], fromImg?: string): void {
+    this.dockerfile += `FROM ${fromImg ?? this.lastDockerStage} AS ${stage}\n`;
     this.dockerfile += cmds.join("\n");
+    this.dockerfile += "\n";
   }
 
   private buildStage(
@@ -33,6 +34,8 @@ export class DockerDriver implements Driver {
     if (!outputOnly) {
       this.lastDockerStage = stage;
     }
+    console.log(`Building stage: ${stage}`);
+    console.log(this.dockerfile);
     const ret = spawn.sync(
       "docker",
       ["buildx", "build", "--target", stage, "-f", "-", contextDir, ...extraArgs],
@@ -50,7 +53,7 @@ export class DockerDriver implements Driver {
   install(): void {
     this.addDockerStage(DOCKER_STAGE_INSTALL, [
       "WORKDIR /app",
-      ...Object.entries(this.spec.environmentVariables || {}).map(([k, v]) => `ENV ${k}="${v}`),
+      ...Object.entries(this.spec.environmentVariables || {}).map(([k, v]) => `ENV ${k}="${v}"`),
       "COPY package.json ./",
       `RUN ${this.spec.installCommand}`,
     ]);
@@ -68,21 +71,15 @@ export class DockerDriver implements Driver {
 
   execHook(bundle: AppBundle, hook: Hook): AppBundle {
     // prepare hook execution by writing the node script locally
-    const hookScript = `hook-${new Date()}.js`;
+    const hookScript = `hook-${Date.now()}.js`;
+    const hookScriptSrc = genHookScript(bundle, hook);
+
     if (!fs.existsSync(ADAPTER_SCRIPTS_PATH)) {
       fs.mkdirSync(ADAPTER_SCRIPTS_PATH, { recursive: true });
     }
-    const hookScriptSrc = `
-const bundleDir = path.dirname("${BUNDLE_PATH}");
-if (!fs.existsSync(bundleDir)) {
-  fs.mkdirSync(path.dirname("${BUNDLE_PATH}"));
-}
-const bundle = (${hook.toString()})(${JSON.stringify(bundle)});
-fs.writeFileSync("${BUNDLE_PATH}", JSON.stringify(bundle));
-`;
     fs.writeFileSync(path.join(ADAPTER_SCRIPTS_PATH, hookScript), hookScriptSrc);
 
-    // add new docker stage to run the node script
+    // Execute the hook inside the docker sandbox
     const hookStage = path.basename(hookScript, ".js");
     this.addDockerStage(hookStage, [
       `RUN --mount=source=${ADAPTER_SCRIPTS_PATH},target=/framework/adapters ` +
@@ -90,13 +87,14 @@ fs.writeFileSync("${BUNDLE_PATH}", JSON.stringify(bundle));
     ]);
     this.buildStage(hookStage, ".");
 
-    // Manually add output only stage.
-    this.dockerfile = `
-FROM scratch as ${hookStage}-export
-COPY --from=${hookStage} /${BUNDLE_PATH} /bundle.json
-`;
-    // execute the stage that outputs generated .output.json locally
-    this.buildStage(hookStage, ".", ["--output", "./.firebase"], true);
+    // Pull out bundle from the Docker sandbox.
+    const hookExportStage = `${hookStage}-export`;
+    this.addDockerStage(
+      hookExportStage,
+      [`COPY --from=${hookStage} ${BUNDLE_PATH} /bundle.json`],
+      "scratch"
+    );
+    this.buildStage(`${hookStage}-export`, ".", ["--output", "./.firebase"], true);
     return bundle;
   }
 }

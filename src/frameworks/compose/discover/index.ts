@@ -1,4 +1,4 @@
-import { AppBundle, AppSpec } from "../interfaces";
+import { AppSpec } from "../interfaces";
 
 /**
  * Discover framework in the given project directory
@@ -16,14 +16,14 @@ export function discover(dir: string): AppSpec {
     afterInstall: () => {
       return (b) => {
         console.log("HOOK: AFTER INSTALL");
-        return { version: "afterInstall" };
+        return { version: "v1alpha" };
       };
     },
 
     afterBuild: () => {
       return (b) => {
         console.log("HOOK: AFTER BUILD");
-        return { version: "afterBuild" };
+        return { version: "v1alpha" };
       };
     },
   };
