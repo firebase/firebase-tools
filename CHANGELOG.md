@@ -1,1 +1,1 @@
-Fixes an issue running `firebase emulators:start` when Python Cloud Functions directory path has spaces. (#5854)
+- Fixes an issue running `firebase emulators:start` when Python Cloud Functions directory path has spaces. (#5854)
