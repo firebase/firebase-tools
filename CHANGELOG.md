@@ -1,1 +1,2 @@
 - Fixes an issue running `firebase emulators:start` when Python Cloud Functions directory path has spaces. (#5854)
+- Add support for nodejs20 for Cloud Functions for Firebase. (#5837)
