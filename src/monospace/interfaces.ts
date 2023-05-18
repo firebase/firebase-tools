@@ -1,6 +1,10 @@
 import type { Options } from "../options";
 
-export type SetupMonospaceOptions = Pick<Options, "config" | "project" | "isVSCE">;
+export type SetupMonospaceOptions = {
+  projectRoot: Options["config"]["projectDir"];
+  project: Options["project"];
+  isVSCE: Options["isVSCE"];
+};
 
 export type GetInitFirebaseResponse =
   | {
