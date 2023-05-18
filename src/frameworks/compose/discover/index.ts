@@ -13,18 +13,14 @@ export function discover(dir: string): AppSpec {
     buildCommand: "npm run build",
     startCommand: "npm run start",
 
-    afterInstall: () => {
-      return (b) => {
-        console.log("HOOK: AFTER INSTALL");
-        return { version: "v1alpha" };
-      };
+    afterInstall: (b) => {
+      console.log("HOOK: AFTER INSTALL");
+      return { version: "v1alpha", notes: "afterInstall" };
     },
 
-    afterBuild: () => {
-      return (b) => {
-        console.log("HOOK: AFTER BUILD");
-        return { version: "v1alpha" };
-      };
+    afterBuild(b) {
+      console.log("HOOK: AFTER BUILD");
+      return { version: "v1alpha", notes: "afterBuild" };
     },
   };
 }

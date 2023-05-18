@@ -30,8 +30,8 @@ export interface AppSpec {
   buildCommand: string;
   startCommand: string;
 
-  afterInstall?: () => (b: AppBundle) => AppBundle;
-  afterBuild?: () => (b: AppBundle) => AppBundle;
+  afterInstall?: (b: AppBundle) => AppBundle;
+  afterBuild?: (b: AppBundle) => AppBundle;
 }
 
 export type Hook = (b: AppBundle) => AppBundle;

@@ -94,7 +94,8 @@ export class DockerDriver implements Driver {
       [`COPY --from=${hookStage} ${BUNDLE_PATH} /bundle.json`],
       "scratch"
     );
-    this.buildStage(`${hookStage}-export`, ".", ["--output", "./.firebase"], true);
-    return bundle;
+    this.buildStage(`${hookStage}-export`, ".", ["--output", path.dirname(BUNDLE_PATH)], true);
+    const newBundle = JSON.parse(fs.readFileSync(BUNDLE_PATH, "utf8"));
+    return newBundle;
   }
 }
