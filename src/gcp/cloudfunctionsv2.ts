@@ -241,24 +241,38 @@ export function mebibytes(memory: string): number {
 function functionsOpLogReject(funcName: string, type: string, err: any): void {
   utils.logWarning(clc.bold(clc.yellow("functions:")) + ` ${err?.message}`);
   if (err?.context?.response?.statusCode === 429) {
-    utils.logWarning(
-      `${clc.bold(
-        clc.yellow("functions:")
-      )} got "Quota Exceeded" error while trying to ${type} ${funcName}. Waiting to retry...`
+    utils.logLabeledWarning(
+      "functions",
+      `Got "Quota Exceeded" error while trying to ${type} ${funcName}. Waiting to retry...`
     );
   } else if (
-    err?.message.includes(
+    err?.message?.includes(
       "If you recently started to use Eventarc, it may take a few minutes before all necessary permissions are propagated to the Service Agent"
     )
   ) {
-    utils.logWarning(
-      `${clc.bold(
-        clc.yellow("functions:")
-      )} since this is your first time using functions v2, we need a little bit longer to finish setting everything up, please retry the deployment in a few minutes.`
+    utils.logLabeledWarning(
+      "functions",
+      `Since this is your first time using functions v2, we need a little bit longer to finish setting everything up, please retry the deployment in a few minutes.`
+    );
+  } else if (err?.message?.includes("maxScale may not exceed")) {
+    const errMsg = err.message;
+    utils.logLabeledWarning(
+      "functions",
+      "You can adjust the max instances value in your function option:"
+    );
+    utils.logLabeledWarning(
+      "functions",
+      "(Node.js) functions.v2.options.setGlobalOptions({maxInstances: 10})"
+    );
+    utils.logLabeledWarning(
+      "functions",
+      "(Python) firebase_functions.options.set_global_options(max_instances=10)"
     );
   } else {
-    utils.logWarning(
-      clc.bold(clc.yellow("functions:")) + " failed to " + type + " function " + funcName
+    utils.logLabeledWarning(
+      "functions",
+
+      ` failed to ${type} function ${funcName}`
     );
   }
   throw new FirebaseError(`Failed to ${type} function ${funcName}`, {
