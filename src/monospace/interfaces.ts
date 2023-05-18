@@ -1,7 +1,7 @@
 import type { Options } from "../options";
 
 export type SetupMonospaceOptions = {
-  projectRoot: Options["config"]["projectDir"];
+  projectRoot: Options["projectRoot"];
   project: Options["project"];
   isVSCE: Options["isVSCE"];
 };

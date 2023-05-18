@@ -38,7 +38,7 @@ export async function selectProjectInMonospace({
 
   if (isVSCE) return authorizedProject;
 
-  createFirebaseRc(projectRoot, authorizedProject);
+  if (projectRoot) createFirebaseRc(projectRoot, authorizedProject);
 }
 
 /**
