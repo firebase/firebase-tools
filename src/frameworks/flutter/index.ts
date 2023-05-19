@@ -49,7 +49,7 @@ export function init(setup: any, config: any) {
 export function build(cwd: string): Promise<BuildResult> {
   assertFlutterCliExists();
   const build = spawnSync("flutter", ["build", "web"], { cwd, stdio: "inherit" });
-  if (build.status) throw new FirebaseError("Unable to build your Flutter app");
+  if (build.status !== 0) throw new FirebaseError("Unable to build your Flutter app");
   return Promise.resolve({ wantsBackend: false });
 }
 
