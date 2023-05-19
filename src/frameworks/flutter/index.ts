@@ -8,7 +8,7 @@ import { BuildResult, Discovery, FrameworkType, SupportLevel } from "../interfac
 import { FirebaseError } from "../../error";
 import { assertFlutterCliExists } from "./utils";
 
-export const name = "Flutter";
+export const name = "Flutter Web";
 export const type = FrameworkType.Framework;
 export const support = SupportLevel.Experimental;
 
@@ -20,6 +20,16 @@ export async function discover(dir: string): Promise<Discovery | undefined> {
   const usingFlutter = pubSpec.dependencies?.flutter;
   if (!usingFlutter) return;
   return { mayWantBackend: false, publicDirectory: join(dir, "web") };
+}
+
+export async function init(setup: any, config: any) {
+  assertFlutterCliExists();
+  // Convert the projectId into a valid pubspec name https://dart.dev/tools/pub/pubspec#name
+  const projectName = setup.projectId.replaceAll("-", "_").replace(/[^a-z0-9_]/g, "");
+  spawnSync(
+    "flutter", ["create", "--template=app", `--project-name=${projectName}`, "--overwrite", "--platforms=web", setup.hosting.source],
+    { stdio: "inherit", cwd: config.projectDir }
+  );
 }
 
 export function build(cwd: string): Promise<BuildResult> {
