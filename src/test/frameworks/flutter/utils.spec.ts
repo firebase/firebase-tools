@@ -1,8 +1,7 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 import { EventEmitter } from "events";
-import type { ChildProcess } from "child_process";
-import { Readable, Writable } from "stream";
+import { Writable } from "stream";
 import * as crossSpawn from "cross-spawn";
 
 import { assertFlutterCliExists } from "../../../frameworks/flutter/utils";
@@ -20,17 +19,16 @@ describe("Flutter utils", () => {
     });
 
     it("should return void, if !status", () => {
-      const process = new EventEmitter() as ChildProcess;
+      const process = new EventEmitter() as any;
       process.stdin = new Writable();
-      process.stdout = new EventEmitter() as Readable;
-      process.stderr = new EventEmitter() as Readable;
+      process.stdout = new EventEmitter();
+      process.stderr = new EventEmitter();
+      process.status = 0;
 
-      sandbox
-        .stub(crossSpawn, "sync")
-        .withArgs("flutter", ["--version"], { stdio: "ignore" })
-        .returns(process as any);
+      const stub = sandbox.stub(crossSpawn, "sync").returns(process as any);
 
       expect(assertFlutterCliExists()).to.be.undefined;
+      sinon.assert.calledWith(stub, "flutter", ["--version"], { stdio: "ignore" });
     });
   });
 });

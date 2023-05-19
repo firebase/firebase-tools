@@ -421,7 +421,7 @@ export async function prepareFrameworks(
                 cwd: functionsDist,
               }
             );
-            if (result.status) throw new Error(`Error running \`npm pack\` at ${path}`);
+            if (result.status !== 0) throw new Error(`Error running \`npm pack\` at ${path}`);
             const { filename } = JSON.parse(result.stdout.toString())[0];
             packageJson.dependencies[name] = `file:${filename}`;
           } else {
