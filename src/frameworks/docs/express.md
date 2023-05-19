@@ -24,7 +24,7 @@ to extend integration support to frameworks other than Angular and Next.js.
 <<_includes/_initialize-firebase.md>>
 
 1. Choose your hosting source directory; this could be an existing web app.
-1. Choose "Dynamic web hosting with web framework."
+1. Answer yes to "Do you want to use a web framework? (experimental)"
 1. Choose Express.js / custom
 
 ### Initialize an existing project

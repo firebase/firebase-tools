@@ -20,7 +20,7 @@ to Firebase and serve dynamic content to your users.
 <<_includes/_initialize-firebase.md>>
 
 1. Choose your hosting source directory; this could be an existing Flutter app.
-1. Choose "Dynamic web hosting with web framework."
+1. Answer yes to "Do you want to use a web framework? (experimental)"
 1. Choose Flutter Web.
 
 ### Initialize an existing project

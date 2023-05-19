@@ -7,6 +7,7 @@ import { readFile } from "fs/promises";
 import { BuildResult, Discovery, FrameworkType, SupportLevel } from "../interfaces";
 import { FirebaseError } from "../../error";
 import { assertFlutterCliExists } from "./utils";
+import { DART_RESERVED_WORDS, FALLBACK_PROJECT_NAME } from "./constants";
 
 export const name = "Flutter Web";
 export const type = FrameworkType.Framework;
@@ -25,10 +26,11 @@ export async function discover(dir: string): Promise<Discovery | undefined> {
 export function init(setup: any, config: any) {
   assertFlutterCliExists();
   // Convert the projectId into a valid pubspec name https://dart.dev/tools/pub/pubspec#name
-  const projectName = setup.projectId
-    .toLowerCase()
-    .replaceAll("-", "_")
-    .replace(/[^a-z0-9_]/g, "");
+  // the projectId should be safe, save hyphens which we turn into underscores here
+  // if it's a reserved word just give it a fallback name
+  const projectName = DART_RESERVED_WORDS.includes(setup.projectId)
+    ? FALLBACK_PROJECT_NAME
+    : setup.projectId.replaceAll("-", "_");
   spawnSync(
     "flutter",
     [
