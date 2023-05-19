@@ -22,19 +22,16 @@ export function compose(mode: Mode): AppBundle {
   if (spec.afterInstall) {
     bundle = driver.execHook(bundle, spec.afterInstall);
   }
-  console.log("bundle after install");
-  console.log(JSON.stringify(bundle, null, 2));
 
   driver.build();
   if (spec.afterBuild) {
     bundle = driver.execHook(bundle, spec.afterBuild);
   }
-  console.log("bundle after build");
-  console.log(JSON.stringify(bundle, null, 2));
 
-  // TODO: Export assets
-  //   TODO: Create container image if necessary
-  // . TODO: Push static content to Firestack Files
+  if (bundle.server) {
+    // Export container
+    driver.export(bundle);
+  }
 
   // TODO: Update stack config
   return bundle;

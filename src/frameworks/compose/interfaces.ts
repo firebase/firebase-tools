@@ -48,6 +48,11 @@ export class Driver {
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  export(bundle: AppBundle): void {
+    throw new Error("export() not implemented");
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   execHook(bundle: AppBundle, hook: Hook): AppBundle {
     throw new Error("execHook() not implemented");
   }

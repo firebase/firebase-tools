@@ -69,6 +69,27 @@ export class DockerDriver implements Driver {
     this.buildStage(DOCKER_STAGE_BUILD, ".");
   }
 
+  export(bundle: AppBundle): void {
+    const startCmd = bundle.server?.start.cmd;
+    if (startCmd) {
+      this.addDockerStage(
+        "exporter",
+        [
+          "WORKDIR /app",
+          `COPY --from=${DOCKER_STAGE_BUILD} /app /app`,
+          `CMD [${startCmd.join(", ")}]`,
+        ],
+        this.spec.baseImage
+      );
+      this.buildStage(
+        "exporter",
+        ".",
+        ["-t", "https://us-central1-docker.pkg.dev/danielylee-test-6/composer-demo"],
+        true
+      );
+    }
+  }
+
   execHook(bundle: AppBundle, hook: Hook): AppBundle {
     // Prepare hook execution by writing the node script locally
     const hookScript = `hook-${Date.now()}.js`;

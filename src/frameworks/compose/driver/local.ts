@@ -27,6 +27,11 @@ export class LocalDriver implements Driver {
     this.execCmd(cmd, args);
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  export(bundle: AppBundle): void {
+    // no-op
+  }
+
   execHook(bundle: AppBundle, hook: Hook): AppBundle {
     const script = genHookScript(bundle, hook);
     this.execCmd("node", ["-e", script]);
