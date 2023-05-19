@@ -1,4 +1,0 @@
-- Fixes an issue running `firebase emulators:start` when Python Cloud Functions directory path has spaces. (#5854)
-- Add support for nodejs20 for Cloud Functions for Firebase. (#5837)
-- Add Flutter Web as an option in "firebase init hosting" (#5864)
-- Some failures while building Web Frameworks were not being caught (#5864)
