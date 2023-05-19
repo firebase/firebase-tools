@@ -98,7 +98,7 @@ export async function ɵcodegenFunctionsDirectory(rootDir: string, destDir: stri
 export async function getDevModeHandle(cwd: string) {
   const host = new Promise<string>((resolve) => {
     const cli = getNodeModuleBin("nuxt", cwd);
-    const serve = spawn(cli, ["dev"], { cwd: cwd });
+    const serve = spawn(cli, ["dev"], { cwd });
 
     serve.stdout.on("data", (data: any) => {
       process.stdout.write(data);
