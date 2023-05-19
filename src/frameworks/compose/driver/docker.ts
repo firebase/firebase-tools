@@ -70,7 +70,7 @@ export class DockerDriver implements Driver {
   }
 
   execHook(bundle: AppBundle, hook: Hook): AppBundle {
-    // prepare hook execution by writing the node script locally
+    // Prepare hook execution by writing the node script locally
     const hookScript = `hook-${Date.now()}.js`;
     const hookScriptSrc = genHookScript(bundle, hook);
 
@@ -87,7 +87,7 @@ export class DockerDriver implements Driver {
     ]);
     this.buildStage(hookStage, ".");
 
-    // Pull out bundle from the Docker sandbox.
+    // Pull out generated bundle from the Docker sandbox.
     const hookExportStage = `${hookStage}-export`;
     this.addDockerStage(
       hookExportStage,
@@ -95,7 +95,6 @@ export class DockerDriver implements Driver {
       "scratch"
     );
     this.buildStage(`${hookStage}-export`, ".", ["--output", path.dirname(BUNDLE_PATH)], true);
-    const newBundle = JSON.parse(fs.readFileSync(BUNDLE_PATH, "utf8"));
-    return newBundle;
+    return JSON.parse(fs.readFileSync(BUNDLE_PATH, "utf8")) as AppBundle;
   }
 }
