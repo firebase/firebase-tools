@@ -11,7 +11,7 @@ page_type: guide
 # Integrate Flutter Web
 
 With the Firebase framework-aware {{cli}}, you can deploy your Flutter application
-to Firebase and serve dynamic content to your users.
+to Firebase.
 
 <<_includes/_preview-disclaimer.md>>
 
