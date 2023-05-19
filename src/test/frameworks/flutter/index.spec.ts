@@ -9,7 +9,7 @@ import * as fsPromises from "fs/promises";
 import { join } from "path";
 
 import * as flutterUtils from "../../../frameworks/flutter/utils";
-import { discover, build, ɵcodegenPublicDirectory } from "../../../frameworks/flutter";
+import { discover, build, ɵcodegenPublicDirectory, init } from "../../../frameworks/flutter";
 
 describe("Flutter", () => {
   describe("discovery", () => {
@@ -112,6 +112,41 @@ describe("Flutter", () => {
       expect(await result).to.deep.equal({
         wantsBackend: false,
       });
+    });
+  });
+
+  describe("init", () => {
+    let sandbox: sinon.SinonSandbox;
+
+    beforeEach(() => {
+      sandbox = sinon.createSandbox();
+    });
+
+    afterEach(() => {
+      sandbox.restore();
+    });
+
+    it("should create a new project", async () => {
+      const process = new EventEmitter() as ChildProcess;
+      process.stdin = new Writable();
+      process.stdout = new EventEmitter() as Readable;
+      process.stderr = new EventEmitter() as Readable;
+
+      sandbox.stub(flutterUtils, "assertFlutterCliExists").returns(undefined);
+
+      const projectId = "asdfLJ(-ao9iu4__49";
+      const projectName = "asdflj_ao9iu4__49";
+      const projectDir = "asfijreou5o";
+      const source = "asflijrelijf";
+
+      const stub = sandbox
+        .stub(crossSpawn, "sync")
+        .returns(process as any);
+
+      const result = init({ projectId, hosting: { source } }, { projectDir });
+
+      expect(await result).to.eql(undefined);
+      sinon.assert.calledWith(stub, "flutter", ["create", "--template=app", `--project-name=${projectName}`, "--overwrite", "--platforms=web", source], { cwd: projectDir, stdio: "inherit" });
     });
   });
 });
