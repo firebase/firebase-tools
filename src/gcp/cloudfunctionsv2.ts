@@ -248,11 +248,12 @@ function functionsOpLogReject(func: InputCloudFunction, type: string, err: any):
         "Either reduce this function's maxInstances, or request a quota increase on the underlying Cloud Run service " +
         "at https://cloud.google.com/run/quotas."
     );
+    const suggestedFix = func.buildConfig.runtime.startsWith("python")
+      ? "firebase_functions.options.set_global_options(max_instances=10)"
+      : "setGlobalOptions({maxInstances: 10})";
     utils.logLabeledWarning(
       "functions",
-      "You can adjust the max instances value in your function's runtime options:\n" +
-        "\t(Node.js) setGlobalOptions({maxInstances: 10})\n" +
-        "\t(Python) firebase_functions.options.set_global_options(max_instances=10)"
+      `You can adjust the max instances value in your function's runtime options:\n\t${suggestedFix}`
     );
   } else {
     utils.logLabeledWarning("functions", `${err?.message}`);
