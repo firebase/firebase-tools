@@ -1,8 +1,7 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 import { EventEmitter } from "events";
-import type { ChildProcess } from "child_process";
-import { Readable, Writable } from "stream";
+import { Writable } from "stream";
 import * as crossSpawn from "cross-spawn";
 import * as fsExtra from "fs-extra";
 import * as fsPromises from "fs/promises";
@@ -93,25 +92,24 @@ describe("Flutter", () => {
     });
 
     it("should build", async () => {
-      const process = new EventEmitter() as ChildProcess;
+      const process = new EventEmitter() as any;
       process.stdin = new Writable();
-      process.stdout = new EventEmitter() as Readable;
-      process.stderr = new EventEmitter() as Readable;
+      process.stdout = new EventEmitter();
+      process.stderr = new EventEmitter();
+      process.status = 0;
 
       sandbox.stub(flutterUtils, "assertFlutterCliExists").returns(undefined);
 
       const cwd = ".";
 
-      sandbox
-        .stub(crossSpawn, "sync")
-        .withArgs("flutter", ["build", "web"], { cwd, stdio: "inherit" })
-        .returns(process as any);
+      const stub = sandbox.stub(crossSpawn, "sync").returns(process as any);
 
       const result = build(cwd);
 
       expect(await result).to.deep.equal({
         wantsBackend: false,
       });
+      sinon.assert.calledWith(stub, "flutter", ["build", "web"], { cwd, stdio: "inherit" });
     });
   });
 
@@ -127,10 +125,11 @@ describe("Flutter", () => {
     });
 
     it("should create a new project", async () => {
-      const process = new EventEmitter() as ChildProcess;
+      const process = new EventEmitter() as any;
       process.stdin = new Writable();
-      process.stdout = new EventEmitter() as Readable;
-      process.stderr = new EventEmitter() as Readable;
+      process.stdout = new EventEmitter();
+      process.stderr = new EventEmitter();
+      process.status = 0;
 
       sandbox.stub(flutterUtils, "assertFlutterCliExists").returns(undefined);
 

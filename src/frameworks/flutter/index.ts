@@ -31,7 +31,7 @@ export function init(setup: any, config: any) {
   const projectName = DART_RESERVED_WORDS.includes(setup.projectId)
     ? FALLBACK_PROJECT_NAME
     : setup.projectId.replaceAll("-", "_");
-  spawnSync(
+  const result = spawnSync(
     "flutter",
     [
       "create",
@@ -43,6 +43,10 @@ export function init(setup: any, config: any) {
     ],
     { stdio: "inherit", cwd: config.projectDir }
   );
+  if (result.status !== 0)
+    throw new FirebaseError(
+      "We were not able to create your flutter app, create the application yourself https://docs.flutter.dev/get-started/test-drive?tab=terminal before trying again."
+    );
   return Promise.resolve();
 }
 
