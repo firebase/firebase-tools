@@ -7,8 +7,7 @@ import { BUNDLE_PATH, genHookScript } from "./hooks";
 export class LocalDriver implements Driver {
   constructor(readonly spec: AppSpec) {}
 
-  private execCmd(cmdStr: string) {
-    const [cmd, ...args] = cmdStr.split(" ");
+  private execCmd(cmd: string, args: string[]) {
     const ret = spawn.sync(cmd, args, {
       env: { ...process.env, ...this.spec.environmentVariables },
       stdio: [/* stdin= */ "pipe", /* stdout= */ "inherit", /* stderr= */ "inherit"],
@@ -19,21 +18,18 @@ export class LocalDriver implements Driver {
   }
 
   install(): void {
-    this.execCmd(this.spec.installCommand);
+    const [cmd, ...args] = this.spec.installCommand.split(" ");
+    this.execCmd(cmd, args);
   }
 
   build(): void {
-    this.execCmd(this.spec.buildCommand);
+    const [cmd, ...args] = this.spec.buildCommand.split(" ");
+    this.execCmd(cmd, args);
   }
+
   execHook(bundle: AppBundle, hook: Hook): AppBundle {
     const script = genHookScript(bundle, hook);
-    const ret = spawn.sync("node", ["-e", script], {
-      env: { ...process.env, ...this.spec.environmentVariables },
-      stdio: [/* stdin= */ "pipe", /* stdout= */ "inherit", /* stderr= */ "inherit"],
-    });
-    if (ret.error) {
-      throw ret.error;
-    }
+    this.execCmd("node", ["-e", script]);
     if (!fs.existsSync(BUNDLE_PATH)) {
       console.warn(`Expected hook to generate app bundle at ${BUNDLE_PATH} but got nothing.`);
       console.warn("Returning original bundle.");
