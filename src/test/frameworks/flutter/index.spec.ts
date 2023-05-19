@@ -139,14 +139,24 @@ describe("Flutter", () => {
       const projectDir = "asfijreou5o";
       const source = "asflijrelijf";
 
-      const stub = sandbox
-        .stub(crossSpawn, "sync")
-        .returns(process as any);
+      const stub = sandbox.stub(crossSpawn, "sync").returns(process as any);
 
       const result = init({ projectId, hosting: { source } }, { projectDir });
 
       expect(await result).to.eql(undefined);
-      sinon.assert.calledWith(stub, "flutter", ["create", "--template=app", `--project-name=${projectName}`, "--overwrite", "--platforms=web", source], { cwd: projectDir, stdio: "inherit" });
+      sinon.assert.calledWith(
+        stub,
+        "flutter",
+        [
+          "create",
+          "--template=app",
+          `--project-name=${projectName}`,
+          "--overwrite",
+          "--platforms=web",
+          source,
+        ],
+        { cwd: projectDir, stdio: "inherit" }
+      );
     });
   });
 });

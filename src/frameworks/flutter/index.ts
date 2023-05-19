@@ -22,14 +22,26 @@ export async function discover(dir: string): Promise<Discovery | undefined> {
   return { mayWantBackend: false, publicDirectory: join(dir, "web") };
 }
 
-export async function init(setup: any, config: any) {
+export function init(setup: any, config: any) {
   assertFlutterCliExists();
   // Convert the projectId into a valid pubspec name https://dart.dev/tools/pub/pubspec#name
-  const projectName = setup.projectId.toLowerCase().replaceAll("-", "_").replace(/[^a-z0-9_]/g, "");
+  const projectName = setup.projectId
+    .toLowerCase()
+    .replaceAll("-", "_")
+    .replace(/[^a-z0-9_]/g, "");
   spawnSync(
-    "flutter", ["create", "--template=app", `--project-name=${projectName}`, "--overwrite", "--platforms=web", setup.hosting.source],
+    "flutter",
+    [
+      "create",
+      "--template=app",
+      `--project-name=${projectName}`,
+      "--overwrite",
+      "--platforms=web",
+      setup.hosting.source,
+    ],
     { stdio: "inherit", cwd: config.projectDir }
   );
+  return Promise.resolve();
 }
 
 export function build(cwd: string): Promise<BuildResult> {
