@@ -15,6 +15,7 @@ import {
 } from "../utils";
 import { getBrowserConfig, getBuildConfig, getContext, getServerConfig } from "./utils";
 import { I18N_ROOT, SHARP_VERSION } from "../constants";
+import { FirebaseError } from "../../error";
 
 export const name = "Angular";
 export const support = SupportLevel.Preview;
@@ -58,10 +59,11 @@ export async function build(dir: string): Promise<BuildResult> {
     // TODO there is a bug here. Spawn for now.
     // await scheduleTarget(prerenderTarget);
     const cli = getNodeModuleBin("ng", dir);
-    spawnSync(cli, ["run", target], {
+    const result = spawnSync(cli, ["run", target], {
       cwd: dir,
       stdio: "inherit",
     });
+    if (result.status !== 0) throw new FirebaseError(`Unable to build ${target}`);
   }
   const wantsBackend = !!serverTarget || serveOptimizedImages;
   const i18n = !!locales;
