@@ -43,7 +43,7 @@ export async function build(rootDir: string) {
     options: { ssr, target },
   } = app;
 
-  // Nuxt seems to use proces.cwd() somewhere
+  // Nuxt seems to use process.cwd() somewhere
   const cwd = process.cwd();
   process.chdir(rootDir);
 
