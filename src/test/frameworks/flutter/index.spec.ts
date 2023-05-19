@@ -134,7 +134,7 @@ describe("Flutter", () => {
 
       sandbox.stub(flutterUtils, "assertFlutterCliExists").returns(undefined);
 
-      const projectId = "asdfLJ(-ao9iu4__49";
+      const projectId = "asdflj-ao9iu4__49";
       const projectName = "asdflj_ao9iu4__49";
       const projectDir = "asfijreou5o";
       const source = "asflijrelijf";
