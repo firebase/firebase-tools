@@ -8,7 +8,7 @@ import { FirebaseError } from "../error";
 export const command = new Command("internaltesting:frameworks:compose")
   .option("-m, --mode <mode>", "Composer mode (local or docker)", "local")
   .description("compose framework in current directory")
-  .action(async (options: Options) => {
+  .action((options: Options) => {
     const mode = options.mode as string;
     if (!(SUPPORTED_MODES as unknown as string[]).includes(mode)) {
       throw new FirebaseError(

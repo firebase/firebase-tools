@@ -7,7 +7,7 @@ import { discover } from "./discover";
  */
 export function compose(mode: Mode): AppBundle {
   let bundle: AppBundle = { version: "v1alpha" };
-  const spec = discover(process.cwd());
+  const spec = discover();
   const driver = getDriver(mode, spec);
 
   if (spec.startCommand) {

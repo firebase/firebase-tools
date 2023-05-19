@@ -47,6 +47,7 @@ export class Driver {
     throw new Error("build() not implemented");
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   execHook(bundle: AppBundle, hook: Hook): AppBundle {
     throw new Error("execHook() not implemented");
   }
