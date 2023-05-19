@@ -42,7 +42,7 @@ export async function build(cwd: string): Promise<BuildResult> {
     );
   }
   const build = spawnSync(cli, ["build"], { cwd, stdio: "inherit" });
-  if (build.status) throw new FirebaseError("Unable to build your Astro app");
+  if (build.status !== 0) throw new FirebaseError("Unable to build your Astro app");
   return { wantsBackend: output === "server" };
 }
 

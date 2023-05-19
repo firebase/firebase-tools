@@ -515,7 +515,7 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
         cwd: sourceDir,
         timeout: BUNDLE_NEXT_CONFIG_TIMEOUT,
       });
-      if (bundle.status) {
+      if (bundle.status !== 0) {
         throw new FirebaseError(bundle.stderr.toString());
       }
     } catch (e: any) {
