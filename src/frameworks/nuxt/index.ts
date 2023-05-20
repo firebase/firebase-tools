@@ -49,7 +49,7 @@ export async function build(cwd: string) {
     stdio: "inherit",
     env: { ...process.env, NITRO_PRESET: "node" },
   });
-  if (build.status) throw new FirebaseError("Was unable to build your Nuxt application.");
+  if (build.status !== 0) throw new FirebaseError("Was unable to build your Nuxt application.");
   const rewrites = wantsBackend ? [] : [{ source: "**", destination: "/200.html" }];
   return { wantsBackend, rewrites };
 }

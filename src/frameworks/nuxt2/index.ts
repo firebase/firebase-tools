@@ -4,7 +4,7 @@ import { basename, join, relative } from "path";
 import { gte } from "semver";
 
 import { SupportLevel, FrameworkType } from "../interfaces";
-import { getNodeModuleBin, relativeRequire,  } from "../utils";
+import { getNodeModuleBin, relativeRequire } from "../utils";
 import { getNuxtVersion } from "../nuxt/utils";
 import { simpleProxy } from "../utils";
 import { spawn } from "cross-spawn";
