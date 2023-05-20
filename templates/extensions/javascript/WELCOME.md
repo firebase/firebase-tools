@@ -15,4 +15,4 @@ If you want to deploy your extension to test on a real project, go to a Firebase
 `firebase ext:install ./path/to/extension/directory --project=<project-id>`
 `firebase deploy --only extensions`
 
-You can find more information about building extensions in the publisher docs: https://firebase.google.com/docs/extensions/alpha/overview-build-extensions
+You can find more information about building extensions in the publisher docs: https://firebase.google.com/docs/extensions/publishers/get-started

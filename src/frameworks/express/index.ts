@@ -2,15 +2,16 @@ import { execSync } from "child_process";
 import { copy, pathExists } from "fs-extra";
 import { mkdir, readFile } from "fs/promises";
 import { join } from "path";
-import { BuildResult, FrameworkType, SupportLevel } from "..";
+import { BuildResult, FrameworkType, SupportLevel } from "../interfaces";
 
 // Use "true &&"" to keep typescript from compiling this file and rewriting
 // the import statement into a require
 const { dynamicImport } = require(true && "../../dynamicImport");
 
 export const name = "Express.js";
-export const support = SupportLevel.Experimental;
+export const support = SupportLevel.Preview;
 export const type = FrameworkType.Custom;
+export const docsUrl = "https://firebase.google.com/docs/hosting/frameworks/express";
 
 async function getConfig(root: string) {
   const packageJsonBuffer = await readFile(join(root, "package.json"));

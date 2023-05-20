@@ -3,9 +3,15 @@ import { spawn } from "cross-spawn";
 import { existsSync } from "fs";
 import { copy, pathExists } from "fs-extra";
 import { join } from "path";
-import { findDependency, FrameworkType, getNodeModuleBin, relativeRequire, SupportLevel } from "..";
+import { FrameworkType, SupportLevel } from "../interfaces";
 import { promptOnce } from "../../prompt";
-import { simpleProxy, warnIfCustomBuildScript } from "../utils";
+import {
+  simpleProxy,
+  warnIfCustomBuildScript,
+  findDependency,
+  getNodeModuleBin,
+  relativeRequire,
+} from "../utils";
 
 export const name = "Vite";
 export const support = SupportLevel.Experimental;

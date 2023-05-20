@@ -6,7 +6,7 @@ import { Readable, Writable } from "stream";
 import * as fsExtra from "fs-extra";
 import * as crossSpawn from "cross-spawn";
 
-import * as frameworksFunctions from "../../../frameworks";
+import * as frameworksUtils from "../../../frameworks/utils";
 import { discover as discoverNuxt2 } from "../../../frameworks/nuxt2";
 import { discover as discoverNuxt3, getDevModeHandle } from "../../../frameworks/nuxt";
 import type { NuxtOptions } from "../../../frameworks/nuxt/interfaces";
@@ -26,7 +26,7 @@ describe("Nuxt 2 utils", () => {
 
     it("should find a Nuxt 2 app", async () => {
       sandbox.stub(fsExtra, "pathExists").resolves(true);
-      sandbox.stub(frameworksFunctions, "findDependency").returns({
+      sandbox.stub(frameworksUtils, "findDependency").returns({
         version: "2.15.8",
         resolved: "https://registry.npmjs.org/nuxt/-/nuxt-2.15.8.tgz",
         overridden: false,
@@ -39,13 +39,13 @@ describe("Nuxt 2 utils", () => {
 
     it("should find a Nuxt 3 app", async () => {
       sandbox.stub(fsExtra, "pathExists").resolves(true);
-      sandbox.stub(frameworksFunctions, "findDependency").returns({
+      sandbox.stub(frameworksUtils, "findDependency").returns({
         version: "3.0.0",
         resolved: "https://registry.npmjs.org/nuxt/-/nuxt-3.0.0.tgz",
         overridden: false,
       });
       sandbox
-        .stub(frameworksFunctions, "relativeRequire")
+        .stub(frameworksUtils, "relativeRequire")
         .withArgs(discoverNuxtDir, "@nuxt/kit")
         .resolves({
           loadNuxtConfig: async function (): Promise<NuxtOptions> {
@@ -83,7 +83,7 @@ describe("Nuxt 2 utils", () => {
       process.stderr = new EventEmitter() as Readable;
 
       const cli = Math.random().toString(36).split(".")[1];
-      sandbox.stub(frameworksFunctions, "getNodeModuleBin").withArgs("nuxt", ".").returns(cli);
+      sandbox.stub(frameworksUtils, "getNodeModuleBin").withArgs("nuxt", ".").returns(cli);
       sandbox.stub(crossSpawn, "spawn").withArgs(cli, ["dev"], { cwd: "." }).returns(process);
 
       const devModeHandle = getDevModeHandle(".");

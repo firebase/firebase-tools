@@ -3,7 +3,8 @@ import { readFile } from "fs/promises";
 import { basename, join, relative } from "path";
 import { gte } from "semver";
 
-import { FrameworkType, getNodeModuleBin, relativeRequire, SupportLevel } from "..";
+import { SupportLevel, FrameworkType } from "../interfaces";
+import { getNodeModuleBin, relativeRequire,  } from "../utils";
 import { getNuxtVersion } from "../nuxt/utils";
 import { simpleProxy } from "../utils";
 import { spawn } from "cross-spawn";

@@ -6,11 +6,20 @@ import * as validate from "../validate";
 import { FirebaseError } from "../../../error";
 
 /** Supported runtimes for new Cloud Functions. */
-const RUNTIMES: string[] = ["nodejs10", "nodejs12", "nodejs14", "nodejs16", "nodejs18"];
+const RUNTIMES: string[] = [
+  "nodejs10",
+  "nodejs12",
+  "nodejs14",
+  "nodejs16",
+  "nodejs18",
+  "nodejs20",
+  "python310",
+  "python311",
+];
 // Experimental runtimes are part of the Runtime type, but are in a
 // different list to help guard against some day accidentally iterating over
 // and printing a hidden runtime to the user.
-const EXPERIMENTAL_RUNTIMES: string[] = ["python310", "python311"];
+const EXPERIMENTAL_RUNTIMES: string[] = [];
 export type Runtime = (typeof RUNTIMES)[number] | (typeof EXPERIMENTAL_RUNTIMES)[number];
 
 /** Runtimes that can be found in existing backends but not used for new functions. */
@@ -35,8 +44,9 @@ const MESSAGE_FRIENDLY_RUNTIMES: Record<Runtime | DeprecatedRuntime, string> = {
   nodejs14: "Node.js 14",
   nodejs16: "Node.js 16",
   nodejs18: "Node.js 18",
+  nodejs20: "Node.js 20",
   python310: "Python 3.10",
-  python311: "Python 3.11 (Preview)",
+  python311: "Python 3.11",
 };
 
 /**

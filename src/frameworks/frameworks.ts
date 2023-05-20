@@ -11,7 +11,7 @@ import * as svelekit from "./sveltekit";
 import * as react from "./react";
 import * as vite from "./vite";
 
-import { Framework } from ".";
+import { Framework } from "./interfaces";
 
 export const WebFrameworks: Record<string, Framework> = {
   angular,
