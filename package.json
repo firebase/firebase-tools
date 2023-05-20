@@ -217,7 +217,6 @@
     "eslint-config-prettier": "^8.3.0",
     "eslint-plugin-jsdoc": "^39.2.9",
     "eslint-plugin-prettier": "^4.0.0",
-    "firebase": "^9.16.0",
     "firebase-admin": "^11.5.0",
     "firebase-functions": "^4.3.1",
     "google-discovery-to-swagger": "^2.1.0",
