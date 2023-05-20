@@ -1,6 +1,6 @@
-import { copy, pathExists } from "fs-extra";
+import { copy, mkdirp, pathExists } from "fs-extra";
 import { readFile } from "fs/promises";
-import { join } from "path";
+import { join, posix } from "path";
 import { lt } from "semver";
 import { spawn, sync as spawnSync } from "cross-spawn";
 import { FrameworkType, SupportLevel } from "../interfaces";
@@ -42,7 +42,7 @@ export async function discover(dir: string) {
 export async function build(cwd: string) {
   await warnIfCustomBuildScript(cwd, name, DEFAULT_BUILD_SCRIPT);
   const cli = getNodeModuleBin("nuxt", cwd);
-  const { ssr: wantsBackend } = await getConfig(cwd);
+  const { ssr: wantsBackend, app: { baseURL } } = await getConfig(cwd);
   const command = wantsBackend ? ["build"] : ["generate"];
   const build = spawnSync(cli, command, {
     cwd,
@@ -50,13 +50,19 @@ export async function build(cwd: string) {
     env: { ...process.env, NITRO_PRESET: "node" },
   });
   if (build.status !== 0) throw new FirebaseError("Was unable to build your Nuxt application.");
-  const rewrites = wantsBackend ? [] : [{ source: "**", destination: "/200.html" }];
+  const rewrites = wantsBackend ? [] : [{
+    source: posix.join(baseURL, "**"),
+    destination: posix.join(baseURL, "200.html"),
+  }];
   return { wantsBackend, rewrites };
 }
 
 export async function ɵcodegenPublicDirectory(root: string, dest: string) {
+  const { app: { baseURL } } = await getConfig(root);
   const distPath = join(root, ".output", "public");
-  await copy(distPath, dest);
+  const fullDest = join(dest, baseURL);
+  await mkdirp(fullDest);
+  await copy(distPath, fullDest);
 }
 
 export async function ɵcodegenFunctionsDirectory(sourceDir: string) {
@@ -67,7 +73,9 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string) {
   packageJson.dependencies ||= {};
   packageJson.dependencies["nitro-output"] = `file:${serverDir}`;
 
-  return { packageJson, frameworksEntry: "nitro" };
+  const { app: { baseURL: baseUrl } } = await getConfig(sourceDir);
+
+  return { packageJson, frameworksEntry: "nitro", baseUrl };
 }
 
 export async function getDevModeHandle(cwd: string) {

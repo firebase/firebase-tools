@@ -31,9 +31,19 @@ describe("Nuxt 2 utils", () => {
         resolved: "https://registry.npmjs.org/nuxt/-/nuxt-2.15.8.tgz",
         overridden: false,
       });
+      sandbox
+        .stub(frameworksUtils, "relativeRequire")
+        .withArgs(discoverNuxtDir, "nuxt/dist/nuxt.js" as any)
+        .resolves({
+          loadNuxt: () => Promise.resolve({
+            ready: () => Promise.resolve(),
+            options: { dir: { static: "static" } },
+          })
+        });
 
       expect(await discoverNuxt2(discoverNuxtDir)).to.deep.equal({
         mayWantBackend: true,
+        publicDirectory: "static",
       });
     });
 
@@ -51,6 +61,9 @@ describe("Nuxt 2 utils", () => {
           loadNuxtConfig: async function (): Promise<NuxtOptions> {
             return Promise.resolve({
               ssr: true,
+              app: {
+                baseURL: "/",
+              },
               dir: {
                 public: "public",
               },

@@ -1,4 +1,4 @@
-import { join } from "path";
+import { join, posix } from "path";
 import { execSync } from "child_process";
 import { spawn, sync as spawnSync } from "cross-spawn";
 import { copy, pathExists } from "fs-extra";
@@ -53,7 +53,7 @@ export async function init(setup: any, config: any) {
 }
 
 export async function build(dir: string): Promise<BuildResult> {
-  const { targets, serverTarget, serveOptimizedImages, locales } = await getBuildConfig(dir);
+  const { targets, serverTarget, serveOptimizedImages, locales, baseHref } = await getBuildConfig(dir);
   await warnIfCustomBuildScript(dir, name, DEFAULT_BUILD_SCRIPT);
   for (const target of targets) {
     // TODO there is a bug here. Spawn for now.
@@ -67,8 +67,10 @@ export async function build(dir: string): Promise<BuildResult> {
   }
 
   const wantsBackend = !!serverTarget || serveOptimizedImages;
-  // TODO use baseHref
-  const rewrites = wantsBackend ? [] : [{ source: "**", destination: "/index.html" }];
+  const rewrites = wantsBackend ? [] : [{
+    source: posix.join(baseHref, "**"),
+    destination: posix.join(baseHref, "index.html")
+  }];
   const i18n = !!locales;
   return { wantsBackend, i18n, rewrites };
 }
