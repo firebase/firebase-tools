@@ -60,7 +60,7 @@ export async function detectFromPort(
   port: number,
   project: string,
   runtime: runtimes.Runtime,
-  timeout = 50_000 /* 10s to boot up */
+  timeout = 50_000 /* 50s to boot up */
 ): Promise<build.Build> {
   // The result type of fetch isn't exported
   let res: { text(): Promise<string> };
