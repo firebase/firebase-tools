@@ -947,13 +947,13 @@ function sendVerificationCode(
     "INVALID_PHONE_NUMBER : Invalid format."
   );
 
-  const user = state.getUserByPhoneNumber(reqBody.phoneNumber);
+  const normalizedPhoneNumber = reqBody.phoneNumber.replace(/[^0-9+]/gim, "");
+  const user = state.getUserByPhoneNumber(normalizedPhoneNumber);
   assert(
     !user?.mfaInfo?.length,
     "UNSUPPORTED_FIRST_FACTOR : A phone number cannot be set as a first factor on an SMS based MFA user."
   );
 
-  const normalizedPhoneNumber = reqBody.phoneNumber.replace(/[^0-9+]/gim, "");
   const { sessionInfo, phoneNumber, code } = state.createVerificationCode(normalizedPhoneNumber);
 
   // Print out a developer-friendly log containing the link, in lieu of sending
