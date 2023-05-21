@@ -23,6 +23,9 @@ import {
   PHOTO_URL,
   BEFORE_SIGN_IN_PATH,
   BEFORE_SIGN_IN_URL,
+  TEST_PHONE_NUMBER_FORMAT_1,
+  TEST_PHONE_NUMBER_FORMAT_2,
+  TEST_PHONE_NUMBER_FORMAT_3,
 } from "./helpers";
 
 describeAuthEmulator("phone auth sign-in", ({ authApi }) => {
@@ -117,6 +120,129 @@ describeAuthEmulator("phone auth sign-in", ({ authApi }) => {
       .post("/identitytoolkit.googleapis.com/v1/accounts:sendVerificationCode")
       .query({ key: "fake-api-key" })
       .send({ phoneNumber, recaptchaToken: "ignored" })
+      .then((res) => {
+        expectStatusCode(200, res);
+        return res.body.sessionInfo;
+      });
+
+    const codes = await inspectVerificationCodes(authApi());
+    const code = codes[0].code;
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithPhoneNumber")
+      .query({ key: "fake-api-key" })
+      .send({ sessionInfo, code })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body).to.have.property("isNewUser").equals(true);
+        expect(res.body).to.have.property("phoneNumber").equals(phoneNumber);
+
+        expect(res.body).to.have.property("refreshToken").that.is.a("string");
+
+        const idToken = res.body.idToken;
+        const decoded = decodeJwt(idToken, { complete: true }) as {
+          header: JwtHeader;
+          payload: FirebaseJwtPayload;
+        } | null;
+        expect(decoded, "JWT returned by emulator is invalid").not.to.be.null;
+        expect(decoded!.header.alg).to.eql("none");
+        expect(decoded!.payload.user_id).to.be.a("string");
+        expect(decoded!.payload.phone_number).to.equal(phoneNumber);
+        expect(decoded!.payload).not.to.have.property("provider_id");
+        expect(decoded!.payload.firebase).to.have.property("sign_in_provider").equals("phone");
+        expect(decoded!.payload.firebase.identities).to.eql({ phone: [phoneNumber] });
+      });
+  });
+
+  it("should create new account by verifying phone number with parentheses", async () => {
+    const phoneNumber = TEST_PHONE_NUMBER;
+
+    const sessionInfo = await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:sendVerificationCode")
+      .query({ key: "fake-api-key" })
+      .send({ phoneNumber: TEST_PHONE_NUMBER_FORMAT_1, recaptchaToken: "ignored" })
+      .then((res) => {
+        expectStatusCode(200, res);
+        return res.body.sessionInfo;
+      });
+
+    const codes = await inspectVerificationCodes(authApi());
+    const code = codes[0].code;
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithPhoneNumber")
+      .query({ key: "fake-api-key" })
+      .send({ sessionInfo, code })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body).to.have.property("isNewUser").equals(true);
+        expect(res.body).to.have.property("phoneNumber").equals(phoneNumber);
+
+        expect(res.body).to.have.property("refreshToken").that.is.a("string");
+
+        const idToken = res.body.idToken;
+        const decoded = decodeJwt(idToken, { complete: true }) as {
+          header: JwtHeader;
+          payload: FirebaseJwtPayload;
+        } | null;
+        expect(decoded, "JWT returned by emulator is invalid").not.to.be.null;
+        expect(decoded!.header.alg).to.eql("none");
+        expect(decoded!.payload.user_id).to.be.a("string");
+        expect(decoded!.payload.phone_number).to.equal(phoneNumber);
+        expect(decoded!.payload).not.to.have.property("provider_id");
+        expect(decoded!.payload.firebase).to.have.property("sign_in_provider").equals("phone");
+        expect(decoded!.payload.firebase.identities).to.eql({ phone: [phoneNumber] });
+      });
+  });
+
+  it("should create new account by verifying phone number with dashes", async () => {
+    const phoneNumber = TEST_PHONE_NUMBER;
+
+    const sessionInfo = await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:sendVerificationCode")
+      .query({ key: "fake-api-key" })
+      .send({ phoneNumber: TEST_PHONE_NUMBER_FORMAT_2, recaptchaToken: "ignored" })
+      .then((res) => {
+        expectStatusCode(200, res);
+        return res.body.sessionInfo;
+      });
+
+    const codes = await inspectVerificationCodes(authApi());
+    const code = codes[0].code;
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithPhoneNumber")
+      .query({ key: "fake-api-key" })
+      .send({ sessionInfo, code })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body).to.have.property("isNewUser").equals(true);
+        expect(res.body).to.have.property("phoneNumber").equals(phoneNumber);
+
+        expect(res.body).to.have.property("refreshToken").that.is.a("string");
+
+        const idToken = res.body.idToken;
+        const decoded = decodeJwt(idToken, { complete: true }) as {
+          header: JwtHeader;
+          payload: FirebaseJwtPayload;
+        } | null;
+        expect(decoded, "JWT returned by emulator is invalid").not.to.be.null;
+        expect(decoded!.header.alg).to.eql("none");
+        expect(decoded!.payload.user_id).to.be.a("string");
+        expect(decoded!.payload.phone_number).to.equal(phoneNumber);
+        expect(decoded!.payload).not.to.have.property("provider_id");
+        expect(decoded!.payload.firebase).to.have.property("sign_in_provider").equals("phone");
+        expect(decoded!.payload.firebase.identities).to.eql({ phone: [phoneNumber] });
+      });
+  });
+
+  it("should create new account by verifying phone number with spaces", async () => {
+    const phoneNumber = TEST_PHONE_NUMBER;
+
+    const sessionInfo = await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:sendVerificationCode")
+      .query({ key: "fake-api-key" })
+      .send({ phoneNumber: TEST_PHONE_NUMBER_FORMAT_3, recaptchaToken: "ignored" })
       .then((res) => {
         expectStatusCode(200, res);
         return res.body.sessionInfo;
