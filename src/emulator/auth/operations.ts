@@ -947,7 +947,7 @@ function sendVerificationCode(
     "INVALID_PHONE_NUMBER : Invalid format."
   );
 
-  const normalizedPhoneNumber = reqBody.phoneNumber.replace(/[^0-9+]/gim, "");
+  const normalizedPhoneNumber = reqBody.phoneNumber.replace(/[^0-9+]/g, "");
   const user = state.getUserByPhoneNumber(normalizedPhoneNumber);
   assert(
     !user?.mfaInfo?.length,
