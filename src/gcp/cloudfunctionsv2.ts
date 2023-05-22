@@ -244,7 +244,7 @@ function functionsOpLogReject(func: InputCloudFunction, type: string, err: any):
     const maxInstances = func.serviceConfig.maxInstanceCount || DEFAULT_MAX_INSTANCE_COUNT;
     utils.logLabeledWarning(
       "functions",
-      `Your current project quotas don't allow for the current `maxInstances` setting of ${maxInstances}. ` +
+      `Your current project quotas don't allow for the current max instances setting of ${maxInstances}. ` +
         "Either reduce this function's maximum instances, or request a quota increase on the underlying Cloud Run service " +
         "at https://cloud.google.com/run/quotas."
     );
@@ -253,7 +253,7 @@ function functionsOpLogReject(func: InputCloudFunction, type: string, err: any):
       : "setGlobalOptions({maxInstances: 10})";
     utils.logLabeledWarning(
       "functions",
-      `You can adjust the `maxInstances` value in your function's runtime options:\n\t${suggestedFix}`
+      `You can adjust the max instances value in your function's runtime options:\n\t${suggestedFix}`
     );
   } else {
     utils.logLabeledWarning("functions", `${err?.message}`);
