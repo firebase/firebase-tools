@@ -60,6 +60,7 @@ export interface Framework {
     frameworksEntry?: string;
     baseUrl?: string;
     dotEnv?: Record<string, string>;
+    rewriteSource?: string;
   }>;
 }
 

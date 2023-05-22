@@ -69,7 +69,7 @@ export async function build(dir: string): Promise<BuildResult> {
   }
 
   const wantsBackend = !!serverTarget || serveOptimizedImages;
-  const rewrites = wantsBackend
+  const rewrites = serverTarget
     ? []
     : [
         {
@@ -137,6 +137,7 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
   } = await getServerConfig(sourceDir);
 
   const dotEnv = { __NG_BROWSER_OUTPUT_PATH__: browserOutputPath };
+  let rewriteSource: string|undefined = undefined;
 
   await Promise.all([
     serverOutputPath
@@ -193,7 +194,8 @@ exports.handle = function(req,res) {
     bootstrapScript = `exports.handle = require('./${serverOutputPath}/main.js').app();\n`;
   } else {
     bootstrapScript = `exports.handle = (res, req) => req.sendStatus(404);\n`;
+    rewriteSource = posix.join(baseUrl, "__image__");
   }
 
-  return { bootstrapScript, packageJson, baseUrl, dotEnv };
+  return { bootstrapScript, packageJson, baseUrl, dotEnv, rewriteSource };
 }

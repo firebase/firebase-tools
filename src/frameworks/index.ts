@@ -361,10 +361,11 @@ export async function prepareFrameworks(
         frameworksEntry = framework,
         baseUrl = "",
         dotEnv = {},
+        rewriteSource = posix.join(baseUrl, "**"),
       } = await codegenFunctionsDirectory(getProjectPath(), functionsDist);
 
       config.rewrites.push({
-        source: posix.normalize(posix.join(baseUrl, "**")),
+        source: rewriteSource,
         function: {
           functionId,
           region: ssrRegion,
