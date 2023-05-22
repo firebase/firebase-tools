@@ -84,11 +84,12 @@ export async function build(dir: string): Promise<BuildResult> {
 export async function getDevModeHandle(dir: string) {
   const { targetStringFromTarget } = relativeRequire(dir, "@angular-devkit/architect");
   const { serveTarget } = await getContext(dir);
+  if (!serveTarget) throw new Error("Could not find the serveTarget");
   const host = new Promise<string>((resolve) => {
     // Can't use scheduleTarget since that—like prerender—is failing on an ESM bug
     // will just grep for the hostname
     const cli = getNodeModuleBin("ng", dir);
-    const serve = spawn(cli, ["run", targetStringFromTarget(serveTarget!), "--host", "localhost"], {
+    const serve = spawn(cli, ["run", targetStringFromTarget(serveTarget), "--host", "localhost"], {
       cwd: dir,
     });
     serve.stdout.on("data", (data: any) => {

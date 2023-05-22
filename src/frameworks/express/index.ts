@@ -94,7 +94,8 @@ async function getBootstrapScript(
 }
 
 export async function ɵcodegenFunctionsDirectory(root: string, dest: string) {
-  const bootstrapScript = (await getBootstrapScript(root))!;
+  const bootstrapScript = await getBootstrapScript(root);
+  if (!bootstrapScript) throw new Error("Cloud not find bootstrapScript");
   await mkdir(dest, { recursive: true });
 
   const { packageJson } = await getConfig(root);
