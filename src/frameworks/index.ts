@@ -1,13 +1,9 @@
-import { join, relative, extname, basename } from "path";
+import { join, relative, basename, posix } from "path";
 import { exit } from "process";
 import { execSync } from "child_process";
 import { sync as spawnSync } from "cross-spawn";
-import { readdirSync, statSync } from "fs";
-import { pathToFileURL } from "url";
-import { IncomingMessage, ServerResponse } from "http";
 import { copyFile, readdir, readFile, rm, writeFile } from "fs/promises";
 import { mkdirp, pathExists, stat } from "fs-extra";
-import * as clc from "colorette";
 import * as process from "node:process";
 import * as semver from "semver";
 import * as glob from "glob";
@@ -24,190 +20,34 @@ import { formatHost } from "../emulator/functionsEmulatorShared";
 import { Constants } from "../emulator/constants";
 import { FirebaseError } from "../error";
 import { requireHostingSite } from "../requireHostingSite";
-import { HostingRewrites } from "../firebaseConfig";
 import * as experiments from "../experiments";
-import { ensureTargeted } from "../functions/ensureTargeted";
 import { implicitInit } from "../hosting/implicitInit";
+import {
+  findDependency,
+  conjoinOptions,
+  frameworksCallToAction,
+  getFrameworksBuildTarget,
+} from "./utils";
+import {
+  ALLOWED_SSR_REGIONS,
+  DEFAULT_REGION,
+  DEFAULT_SHOULD_USE_DEV_MODE_HANDLE,
+  FIREBASE_ADMIN_VERSION,
+  FIREBASE_FRAMEWORKS_VERSION,
+  FIREBASE_FUNCTIONS_VERSION,
+  GET_DEFAULT_BUILD_TARGETS,
+  I18N_ROOT,
+  NODE_VERSION,
+  SupportLevelWarnings,
+  VALID_ENGINES,
+  WebFrameworks,
+} from "./constants";
+import { BUILD_TARGET_PURPOSE, BuildResult, FirebaseDefaults, Framework } from "./interfaces";
+import { logWarning } from "../utils";
+import { ensureTargeted } from "../functions/ensureTargeted";
+import { isDeepStrictEqual } from "util";
 
-// Use "true &&"" to keep typescript from compiling this file and rewriting
-// the import statement into a require
-const { dynamicImport } = require(true && "../dynamicImport");
-
-export interface Discovery {
-  mayWantBackend: boolean;
-  publicDirectory: string;
-}
-
-export interface BuildResult {
-  rewrites?: any[];
-  redirects?: any[];
-  headers?: any[];
-  wantsBackend?: boolean;
-  trailingSlash?: boolean;
-}
-
-export interface Framework {
-  discover: (dir: string) => Promise<Discovery | undefined>;
-  type: FrameworkType;
-  name: string;
-  build: (dir: string, target: string) => Promise<BuildResult | void>;
-  support: SupportLevel;
-  init?: (setup: any, config: any) => Promise<void>;
-  getDevModeHandle?: (
-    dir: string,
-    target: string,
-    hostingEmulatorInfo?: EmulatorInfo
-  ) => Promise<(req: IncomingMessage, res: ServerResponse, next: () => void) => void>;
-  ɵcodegenPublicDirectory: (dir: string, dest: string, target?: string) => Promise<void>;
-  ɵcodegenFunctionsDirectory?: (
-    dir: string,
-    dest: string,
-    target: string
-  ) => Promise<{
-    bootstrapScript?: string;
-    packageJson: any;
-    frameworksEntry?: string;
-  }>;
-  getValidBuildTargets: (purpose: BUILD_TARGET_PURPOSE, dir: string) => Promise<string[]>;
-  shouldUseDevModeHandle: (target: string, dir: string) => Promise<boolean>;
-}
-
-export type BUILD_TARGET_PURPOSE = "deploy" | "test" | "serve";
-
-// TODO pull from @firebase/util when published
-interface FirebaseDefaults {
-  config?: Object;
-  emulatorHosts?: Record<string, string>;
-  _authTokenSyncURL?: string;
-}
-
-interface FindDepOptions {
-  cwd: string;
-  depth?: number;
-  omitDev: boolean;
-}
-
-// These serve as the order of operations for discovery
-// E.g, a framework utilizing Vite should be given priority
-// over the vite tooling
-export const enum FrameworkType {
-  Custom = 0, // express
-  Monorep, // nx, lerna
-  MetaFramework, // next.js, nest.js
-  Framework, // angular, react
-  Toolchain, // vite
-}
-
-export const enum SupportLevel {
-  Experimental = "experimental",
-  Community = "community-supported",
-}
-
-const SupportLevelWarnings = {
-  [SupportLevel.Experimental]: clc.yellow(
-    `This is an experimental integration, proceed with caution.`
-  ),
-  [SupportLevel.Community]: clc.yellow(
-    `This is a community-supported integration, support is best effort.`
-  ),
-};
-
-export const FIREBASE_FRAMEWORKS_VERSION = "^0.6.0";
-export const FIREBASE_FUNCTIONS_VERSION = "^3.23.0";
-export const FIREBASE_ADMIN_VERSION = "^11.0.1";
-export const NODE_VERSION = parseInt(process.versions.node, 10).toString();
-export const DEFAULT_REGION = "us-central1";
-export const ALLOWED_SSR_REGIONS = [
-  { name: "us-central1 (Iowa)", value: "us-central1" },
-  { name: "us-west1 (Oregon)", value: "us-west1" },
-  { name: "us-east1 (South Carolina)", value: "us-east1" },
-  { name: "europe-west1 (Belgium)", value: "europe-west1" },
-  { name: "asia-east1 (Taiwan)", value: "asia-east1" },
-];
-
-const DEFAULT_FIND_DEP_OPTIONS: FindDepOptions = {
-  cwd: process.cwd(),
-  omitDev: true,
-};
-
-const NPM_COMMAND = process.platform === "win32" ? "npm.cmd" : "npm";
-
-function getDefaultBuildTargets() {
-  return Promise.resolve(["production", "development"]);
-}
-
-function defaultShouldUseDevModeHandle(target: string) {
-  return Promise.resolve(target === "development");
-}
-
-export const WebFrameworks: Record<string, Framework> = Object.fromEntries(
-  readdirSync(__dirname)
-    .filter((path) => statSync(join(__dirname, path)).isDirectory())
-    .map((path) => [path, require(join(__dirname, path))])
-    .filter(
-      ([, obj]) => obj.name && obj.discover && obj.build && obj.type !== undefined && obj.support
-    )
-);
-
-export function relativeRequire(
-  dir: string,
-  mod: "@angular-devkit/core"
-): typeof import("@angular-devkit/core");
-export function relativeRequire(
-  dir: string,
-  mod: "@angular-devkit/core/node"
-): typeof import("@angular-devkit/core/node");
-export function relativeRequire(
-  dir: string,
-  mod: "@angular-devkit/architect"
-): typeof import("@angular-devkit/architect");
-export function relativeRequire(
-  dir: string,
-  mod: "@angular-devkit/architect/node"
-): typeof import("@angular-devkit/architect/node");
-export function relativeRequire(
-  dir: string,
-  mod: "next/dist/build"
-): typeof import("next/dist/build");
-export function relativeRequire(
-  dir: string,
-  mod: "next/dist/server/config"
-): typeof import("next/dist/server/config");
-export function relativeRequire(
-  dir: string,
-  mod: "next/constants"
-): typeof import("next/constants");
-export function relativeRequire(dir: string, mod: "next"): typeof import("next");
-export function relativeRequire(dir: string, mod: "vite"): typeof import("vite");
-export function relativeRequire(dir: string, mod: "jsonc-parser"): typeof import("jsonc-parser");
-
-// TODO the types for @nuxt/kit are causing a lot of troubles, need to do something other than any
-// Nuxt 2
-export function relativeRequire(dir: string, mod: "nuxt/dist/nuxt.js"): Promise<any>;
-// Nuxt 3
-export function relativeRequire(dir: string, mod: "@nuxt/kit"): Promise<any>;
-
-/**
- *
- */
-export function relativeRequire(dir: string, mod: string) {
-  try {
-    const path = require.resolve(mod, { paths: [dir] });
-    if (extname(path) === ".mjs") {
-      return dynamicImport(pathToFileURL(path).toString());
-    } else {
-      return require(path);
-    }
-  } catch (e) {
-    const path = relative(process.cwd(), dir);
-    console.error(
-      `Could not load dependency ${mod} in ${
-        path.startsWith("..") ? path : `./${path}`
-      }, have you run \`npm install\`?`
-    );
-    throw e;
-  }
-}
+export { WebFrameworks };
 
 /**
  *
@@ -236,38 +76,24 @@ export async function discover(dir: string, warn = true) {
   return;
 }
 
-function scanDependencyTree(searchingFor: string, dependencies = {}): any {
-  for (const [name, dependency] of Object.entries(
-    dependencies as Record<string, Record<string, any>>
-  )) {
-    if (name === searchingFor) return dependency;
-    const result = scanDependencyTree(searchingFor, dependency.dependencies);
-    if (result) return result;
-  }
-  return;
-}
+const BUILD_MEMO = new Map<string[], Promise<BuildResult | void>>();
 
-/**
- *
- */
-export function findDependency(name: string, options: Partial<FindDepOptions> = {}) {
-  const { cwd, depth, omitDev } = { ...DEFAULT_FIND_DEP_OPTIONS, ...options };
-  const env: any = Object.assign({}, process.env);
-  delete env.NODE_ENV;
-  const result = spawnSync(
-    NPM_COMMAND,
-    [
-      "list",
-      name,
-      "--json",
-      ...(omitDev ? ["--omit", "dev"] : []),
-      ...(depth === undefined ? [] : ["--depth", depth.toString(10)]),
-    ],
-    { cwd, env }
-  );
-  if (!result.stdout) return;
-  const json = JSON.parse(result.stdout.toString());
-  return scanDependencyTree(name, json.dependencies);
+// Memoize the build based on both the dir and the environment variables
+function memoizeBuild(
+  dir: string,
+  build: (dir: string, target: string) => Promise<BuildResult | void>,
+  deps: any[],
+  target: string
+) {
+  const key = [dir, ...deps];
+  for (const existingKey of BUILD_MEMO.keys()) {
+    if (isDeepStrictEqual(existingKey, key)) {
+      return BUILD_MEMO.get(existingKey);
+    }
+  }
+  const value = build(dir, target);
+  BUILD_MEMO.set(key, value);
+  return value;
 }
 
 /**
@@ -332,8 +158,9 @@ export async function prepareFrameworks(
       throw new Error(`hosting.public and hosting.source cannot both be set in firebase.json`);
     }
     const ssrRegion = frameworksBackend?.region ?? DEFAULT_REGION;
+    const omitCloudFunction = frameworksBackend?.omit ?? false;
     if (!allowedRegionsValues.includes(ssrRegion)) {
-      const validRegions = allowedRegionsValues.join(", ");
+      const validRegions = conjoinOptions(allowedRegionsValues);
       throw new FirebaseError(
         `Hosting config for site ${site} places server-side content in region ${ssrRegion} which is not known. Valid regions are ${validRegions}`
       );
@@ -405,9 +232,17 @@ export async function prepareFrameworks(
         }
       }
     }
-    if (firebaseDefaults) process.env.__FIREBASE_DEFAULTS__ = JSON.stringify(firebaseDefaults);
+    if (firebaseDefaults) {
+      process.env.__FIREBASE_DEFAULTS__ = JSON.stringify(firebaseDefaults);
+    }
     const results = await discover(getProjectPath());
-    if (!results) throw new Error("Epic fail.");
+    if (!results) {
+      throw new FirebaseError(
+        frameworksCallToAction(
+          "Unable to detect the web framework in use, check firebase-debug.log for more info."
+        )
+      );
+    }
     const { framework, mayWantBackend, publicDirectory } = results;
     const {
       build,
@@ -416,16 +251,21 @@ export async function prepareFrameworks(
       getDevModeHandle,
       name,
       support,
-      getValidBuildTargets = getDefaultBuildTargets,
-      shouldUseDevModeHandle = defaultShouldUseDevModeHandle,
+      docsUrl,
+      getValidBuildTargets = GET_DEFAULT_BUILD_TARGETS,
+      shouldUseDevModeHandle = DEFAULT_SHOULD_USE_DEV_MODE_HANDLE,
     } = WebFrameworks[framework];
-    console.log(`Detected a ${name} codebase. ${SupportLevelWarnings[support] || ""}\n`);
+    console.log(
+      `\n${frameworksCallToAction(SupportLevelWarnings[support](name), docsUrl, "   ")}\n`
+    );
+
     const hostingEmulatorInfo = emulators.find((e) => e.name === Emulators.HOSTING);
     const buildTargetPurpose: BUILD_TARGET_PURPOSE =
       context._name === "deploy" ? "deploy" : context._name === "emulators:exec" ? "test" : "serve";
     const validBuildTargets = await getValidBuildTargets(buildTargetPurpose, getProjectPath());
     const frameworksBuildTarget = getFrameworksBuildTarget(buildTargetPurpose, validBuildTargets);
     const useDevModeHandle = await shouldUseDevModeHandle(frameworksBuildTarget, getProjectPath());
+    console.log("prepareFrameworks", { buildTargetPurpose, validBuildTargets, frameworksBuildTarget, useDevModeHandle });
 
     let codegenFunctionsDirectory: Framework["ɵcodegenFunctionsDirectory"];
 
@@ -442,37 +282,52 @@ export async function prepareFrameworks(
         codegenFunctionsDirectory = codegenDevModeFunctionsDirectory;
       }
     } else {
+      const buildResult = await memoizeBuild(
+        getProjectPath(),
+        build,
+        [firebaseDefaults, frameworksBuildTarget],
+        frameworksBuildTarget
+      );
       const {
         wantsBackend = false,
         rewrites = [],
         redirects = [],
         headers = [],
         trailingSlash,
-      } = (await build(getProjectPath(), frameworksBuildTarget)) || {};
+        i18n = false,
+      }: BuildResult = buildResult || {};
+
       config.rewrites.push(...rewrites);
       config.redirects.push(...redirects);
       config.headers.push(...headers);
       config.trailingSlash ??= trailingSlash;
+      if (i18n) config.i18n ??= { root: I18N_ROOT };
+
       if (await pathExists(hostingDist)) await rm(hostingDist, { recursive: true });
       await mkdirp(hostingDist);
-      await ɵcodegenPublicDirectory(getProjectPath(), hostingDist, frameworksBuildTarget);
+
+      await ɵcodegenPublicDirectory(getProjectPath(), hostingDist, frameworksBuildTarget, {
+        project,
+        site,
+      });
+
       config.public = relative(projectRoot, hostingDist);
-      if (wantsBackend) codegenFunctionsDirectory = codegenProdModeFunctionsDirectory;
+      if (wantsBackend && !omitCloudFunction)
+        codegenFunctionsDirectory = codegenProdModeFunctionsDirectory;
     }
     config.webFramework = `${framework}${codegenFunctionsDirectory ? "_ssr" : ""}`;
     if (codegenFunctionsDirectory) {
-      if (firebaseDefaults) firebaseDefaults._authTokenSyncURL = "/__session";
-
-      const rewrite: HostingRewrites = {
-        source: "**",
-        function: {
-          functionId,
-        },
-      };
-      if (experiments.isEnabled("pintags")) {
-        rewrite.function.pinTag = true;
+      if (firebaseDefaults) {
+        firebaseDefaults._authTokenSyncURL = "/__session";
+        process.env.__FIREBASE_DEFAULTS__ = JSON.stringify(firebaseDefaults);
       }
-      config.rewrites.push(rewrite);
+
+      if (context.hostingChannel) {
+        experiments.assertEnabled(
+          "pintags",
+          "deploy an app that requires a backend to a preview channel"
+        );
+      }
 
       const codebase = `firebase-frameworks-${site}`;
       const existingFunctionsConfig = options.config.get("functions")
@@ -487,11 +342,22 @@ export async function prepareFrameworks(
         },
       ]);
 
-      if (!targetNames.includes("functions")) {
-        targetNames.unshift("functions");
-      }
-      if (options.only) {
-        options.only = ensureTargeted(options.only, codebase);
+      // N.B. the pin-tags experiment already does this holistically later.
+      // This is just a fallback for previous behavior if the user manually
+      // disables the pintags experiment (e.g. there is a break and they would
+      // rather disable the experiment than roll back).
+      if (
+        !experiments.isEnabled("pintags") ||
+        context._name === "serve" ||
+        context._name === "emulators:start" ||
+        context._name === "emulators:exec"
+      ) {
+        if (!targetNames.includes("functions")) {
+          targetNames.unshift("functions");
+        }
+        if (options.only) {
+          options.only = ensureTargeted(options.only, codebase);
+        }
       }
 
       // if exists, delete everything but the node_modules directory and package-lock.json
@@ -515,19 +381,56 @@ export async function prepareFrameworks(
         packageJson,
         bootstrapScript,
         frameworksEntry = framework,
+        baseUrl = "",
+        dotEnv = {},
+        rewriteSource = posix.join(baseUrl, "**"),
       } = await codegenFunctionsDirectory(getProjectPath(), functionsDist, frameworksBuildTarget);
+
+      config.rewrites = [
+        {
+          source: rewriteSource,
+          function: {
+            functionId,
+            region: ssrRegion,
+            pinTag: experiments.isEnabled("pintags"),
+          },
+        },
+        ...config.rewrites,
+      ];
 
       // Set the framework entry in the env variables to handle generation of the functions.yaml
       process.env.__FIREBASE_FRAMEWORKS_ENTRY__ = frameworksEntry;
 
       packageJson.main = "server.js";
-      delete packageJson.devDependencies;
       packageJson.dependencies ||= {};
       packageJson.dependencies["firebase-frameworks"] ||= FIREBASE_FRAMEWORKS_VERSION;
       packageJson.dependencies["firebase-functions"] ||= FIREBASE_FUNCTIONS_VERSION;
       packageJson.dependencies["firebase-admin"] ||= FIREBASE_ADMIN_VERSION;
       packageJson.engines ||= {};
-      packageJson.engines.node ||= NODE_VERSION;
+      const validEngines = VALID_ENGINES.node.filter((it) => it <= NODE_VERSION);
+      const engine = validEngines[validEngines.length - 1] || VALID_ENGINES.node[0];
+      if (engine !== NODE_VERSION) {
+        logWarning(
+          `This integration expects Node version ${conjoinOptions(
+            VALID_ENGINES.node,
+            "or"
+          )}. You're running version ${NODE_VERSION}, problems may be encountered.`
+        );
+      }
+      packageJson.engines.node ||= engine.toString();
+      delete packageJson.scripts;
+      delete packageJson.devDependencies;
+
+      const bundledDependencies: Record<string, string> = packageJson.bundledDependencies || {};
+      if (Object.keys(bundledDependencies).length) {
+        logWarning(
+          "Bundled dependencies aren't supported in Cloud Functions, converting to dependencies."
+        );
+        for (const [dep, version] of Object.entries(bundledDependencies)) {
+          packageJson.dependencies[dep] ||= version;
+        }
+        delete packageJson.bundledDependencies;
+      }
 
       for (const [name, version] of Object.entries(
         packageJson.dependencies as Record<string, string>
@@ -537,11 +440,16 @@ export async function prepareFrameworks(
           if (!(await pathExists(path))) continue;
           const stats = await stat(path);
           if (stats.isDirectory()) {
-            const result = spawnSync("npm", ["pack", relative(functionsDist, path)], {
-              cwd: functionsDist,
-            });
-            if (!result.stdout) throw new Error(`Error running \`npm pack\` at ${path}`);
-            const filename = result.stdout.toString().trim();
+            const result = spawnSync(
+              "npm",
+              ["pack", relative(functionsDist, path), "--json=true"],
+              {
+                cwd: functionsDist,
+              }
+            );
+            if (result.status !== 0)
+              throw new FirebaseError(`Error running \`npm pack\` at ${path}`);
+            const { filename } = JSON.parse(result.stdout.toString())[0];
             packageJson.dependencies[name] = `file:${filename}`;
           } else {
             const filename = basename(path);
@@ -563,16 +471,22 @@ export async function prepareFrameworks(
         await copyFile(getProjectPath(".npmrc"), join(functionsDist, ".npmrc"));
       }
 
-      let existingDotEnvContents = "";
+      let dotEnvContents = "";
       if (await pathExists(getProjectPath(".env"))) {
-        existingDotEnvContents = (await readFile(getProjectPath(".env"))).toString();
+        dotEnvContents = (await readFile(getProjectPath(".env"))).toString();
+      }
+
+      for (const [key, value] of Object.entries(dotEnv)) {
+        dotEnvContents += `\n${key}=${value}`;
       }
 
       await writeFile(
         join(functionsDist, ".env"),
-        `${existingDotEnvContents}
+        `${dotEnvContents}
 __FIREBASE_FRAMEWORKS_ENTRY__=${frameworksEntry}
-${firebaseDefaults ? `__FIREBASE_DEFAULTS__=${JSON.stringify(firebaseDefaults)}\n` : ""}`
+${
+  firebaseDefaults ? `__FIREBASE_DEFAULTS__=${JSON.stringify(firebaseDefaults)}\n` : ""
+}`.trimStart()
       );
 
       const envs = await new Promise<string[]>((resolve, reject) =>
@@ -584,7 +498,7 @@ ${firebaseDefaults ? `__FIREBASE_DEFAULTS__=${JSON.stringify(firebaseDefaults)}\
 
       await Promise.all(envs.map((path) => copyFile(path, join(functionsDist, basename(path)))));
 
-      execSync(`${NPM_COMMAND} i --omit dev --no-audit`, {
+      execSync(`npm i --omit dev --no-audit`, {
         cwd: functionsDist,
         stdio: "inherit",
       });
@@ -615,12 +529,9 @@ ${firebaseDefaults ? `__FIREBASE_DEFAULTS__=${JSON.stringify(firebaseDefaults)}\
         );
       }
     } else {
-      // No function, treat as an SPA
-      // TODO(jamesdaniels) be smarter about this, leave it to the framework?
-      config.rewrites.push({
-        source: "**",
-        destination: "/index.html",
-      });
+      if (await pathExists(functionsDist)) {
+        await rm(functionsDist, { recursive: true });
+      }
     }
 
     if (firebaseDefaults) {
@@ -639,92 +550,21 @@ ${firebaseDefaults ? `__FIREBASE_DEFAULTS__=${JSON.stringify(firebaseDefaults)}\
       });
     }
   }
+  if (process.env.DEBUG) {
+    console.log("Effective firebase.json:");
+    console.log(JSON.stringify(configs, undefined, 2));
+  }
+
+  // Clean up memos/caches
+  BUILD_MEMO.clear();
+
+  // Clean up ENV variables, if were emulatoring .env won't override
+  // this is leads to failures if we're hosting multiple sites
+  delete process.env.__FIREBASE_DEFAULTS__;
+  delete process.env.__FIREBASE_FRAMEWORKS_ENTRY__;
 }
 
 function codegenDevModeFunctionsDirectory() {
   const packageJson = {};
   return Promise.resolve({ packageJson, frameworksEntry: "_devMode" });
-}
-
-function getFrameworksBuildTarget(purpose: BUILD_TARGET_PURPOSE, validOptions: string[]) {
-  const frameworksBuild = process.env.FIREBASE_FRAMEWORKS_BUILD_TARGET;
-  if (frameworksBuild) {
-    if (!validOptions.includes(frameworksBuild)) {
-      throw new FirebaseError(
-        `Invalid value for FIREBASE_FRAMEWORKS_BUILD_TARGET environment variable: ${frameworksBuild}. Valid values are: ${validOptions.join(
-          ", "
-        )}`
-      );
-    }
-    return frameworksBuild;
-    // TODO handle other language / frameworks environment variables
-  } else if (process.env.NODE_ENV) {
-    switch (process.env.NODE_ENV) {
-      case "development":
-        return "development";
-      case "production":
-      case "test":
-        return "production";
-      default:
-        throw new FirebaseError(
-          `We cannot infer your build target from a non-standard NODE_ENV. Please set the FIREBASE_FRAMEWORKS_BUILD_TARGET environment variable. Valid values are: ${validOptions.join(
-            ", "
-          )}`
-        );
-    }
-  } else if (purpose !== "serve") {
-    return "production";
-  } else {
-    return "development";
-  }
-}
-
-/**
- *
- */
-export function createServerResponseProxy(
-  req: IncomingMessage,
-  res: ServerResponse,
-  next: () => void
-) {
-  const proxiedRes = new ServerResponse(req);
-  const buffer: [string, any[]][] = [];
-  proxiedRes.write = new Proxy(proxiedRes.write.bind(proxiedRes), {
-    apply: (target: any, thisArg, args) => {
-      target.call(thisArg, ...args);
-      buffer.push(["write", args]);
-    },
-  });
-  proxiedRes.setHeader = new Proxy(proxiedRes.setHeader.bind(proxiedRes), {
-    apply: (target: any, thisArg, args) => {
-      target.call(thisArg, ...args);
-      buffer.push(["setHeader", args]);
-    },
-  });
-  proxiedRes.removeHeader = new Proxy(proxiedRes.removeHeader.bind(proxiedRes), {
-    apply: (target: any, thisArg, args) => {
-      target.call(thisArg, ...args);
-      buffer.push(["removeHeader", args]);
-    },
-  });
-  proxiedRes.writeHead = new Proxy(proxiedRes.writeHead.bind(proxiedRes), {
-    apply: (target: any, thisArg, args) => {
-      target.call(thisArg, ...args);
-      buffer.push(["writeHead", args]);
-    },
-  });
-  proxiedRes.end = new Proxy(proxiedRes.end.bind(proxiedRes), {
-    apply: (target: any, thisArg, args) => {
-      target.call(thisArg, ...args);
-      if (proxiedRes.statusCode === 404) {
-        next();
-      } else {
-        for (const [fn, args] of buffer) {
-          (res as any)[fn](...args);
-        }
-        res.end(...args);
-      }
-    },
-  });
-  return proxiedRes;
 }

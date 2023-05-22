@@ -10,7 +10,13 @@ import type { HttpsOptions } from "firebase-functions/v2/https";
 import { IngressSetting, MemoryOption, VpcEgressSetting } from "firebase-functions/v2/options";
 
 // should be sourced from - https://github.com/firebase/firebase-tools/blob/master/src/deploy/functions/runtimes/index.ts#L15
-type CloudFunctionRuntimes = "nodejs10" | "nodejs12" | "nodejs14" | "nodejs16" | "nodejs18";
+type CloudFunctionRuntimes =
+  | "nodejs10"
+  | "nodejs12"
+  | "nodejs14"
+  | "nodejs16"
+  | "nodejs18"
+  | "nodejs20";
 
 export type Deployable = {
   predeploy?: string | string[];
@@ -29,9 +35,24 @@ type DatabaseMultiple = ({
 }> &
   Deployable)[];
 
+type FirestoreSingle = {
+  database?: string;
+  rules?: string;
+  indexes?: string;
+} & Deployable;
+
+type FirestoreMultiple = ({
+  rules?: string;
+  indexes?: string;
+} & RequireAtLeastOne<{
+  database: string;
+  target: string;
+}> &
+  Deployable)[];
+
 export type HostingSource = { glob: string } | { source: string } | { regex: string };
 
-type HostingRedirects = HostingSource & {
+export type HostingRedirects = HostingSource & {
   destination: string;
   type?: number;
 };
@@ -140,10 +161,7 @@ type StorageMultiple = ({
 // Full Configs
 export type DatabaseConfig = DatabaseSingle | DatabaseMultiple;
 
-export type FirestoreConfig = {
-  rules?: string;
-  indexes?: string;
-} & Deployable;
+export type FirestoreConfig = FirestoreSingle | FirestoreMultiple;
 
 export type FunctionConfig = {
   source?: string;

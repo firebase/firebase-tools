@@ -2,11 +2,11 @@ import * as crypto from "crypto";
 import * as fs from "fs-extra";
 import * as path from "path";
 import * as tmp from "tmp";
-import * as unzipper from "unzipper";
 
 import { EmulatorLogger } from "./emulatorLogger";
 import { EmulatorDownloadDetails, DownloadableEmulators } from "./types";
 import { FirebaseError } from "../error";
+import { unzip } from "../unzip";
 import * as downloadableEmulators from "./downloadableEmulators";
 import * as downloadUtils from "../downloadUtils";
 
@@ -36,10 +36,6 @@ export async function downloadEmulator(name: DownloadableEmulators): Promise<voi
   if (emulator.unzipDir) {
     await unzip(emulator.downloadPath, emulator.unzipDir);
   }
-
-  // Set a delay while the unzip stream completes before running chmod
-  // See https://github.com/ZJONSSON/node-unzipper/issues/165
-  await new Promise((f) => setTimeout(f, 2000));
 
   const executablePath = emulator.binaryPath || emulator.downloadPath;
   fs.chmodSync(executablePath, 0o755);
@@ -76,15 +72,6 @@ export async function downloadExtensionVersion(
   // TODO: We should not need to do this wait
   // However, when I remove this, unzipDir doesn't contain everything yet.
   await new Promise((resolve) => setTimeout(resolve, 1000));
-}
-
-function unzip(zipPath: string, unzipDir: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    fs.createReadStream(zipPath)
-      .pipe(unzipper.Extract({ path: unzipDir })) // eslint-disable-line new-cap
-      .on("error", reject)
-      .on("close", resolve);
-  });
 }
 
 function removeOldFiles(

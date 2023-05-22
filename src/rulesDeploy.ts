@@ -254,9 +254,7 @@ export class RulesDeploy {
     await gcp.rules.updateOrCreateRelease(
       this.options.project,
       this.rulesetNames[filename],
-      resourceName === RulesetServiceType.FIREBASE_STORAGE
-        ? `${resourceName}/${subResourceName}`
-        : resourceName
+      subResourceName ? `${resourceName}/${subResourceName}` : resourceName
     );
     utils.logLabeledSuccess(
       RulesetType[this.type],
