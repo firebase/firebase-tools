@@ -1,3 +1,7 @@
 - Update error message when function deploy fails due to quota. (#5867)
 - Fixes RTDB emulator 127.0.0.1 namespace resolution bug. (#5863)
 - Improves RTDB emulator to GCF emulator network reliability. (#5863)
+- Allow for Angular developers to both target a PWA and leverage `serveOptimizedImages`. (#5716)
+- Multi-page applications that are fully staticly rendered are no longer treated as PWAs. (#5716)
+- Add fast dev-mode support for devlopers using Nuxt v2. (#5716)
+- Respect `ssr: false` and `baseURL` when using Nuxt. (#5716)

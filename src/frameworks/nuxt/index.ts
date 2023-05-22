@@ -1,8 +1,8 @@
-import { copy, pathExists } from "fs-extra";
+import { copy, mkdirp, pathExists } from "fs-extra";
 import { readFile } from "fs/promises";
-import { join } from "path";
+import { join, posix } from "path";
 import { lt } from "semver";
-import { spawn } from "cross-spawn";
+import { spawn, sync as spawnSync } from "cross-spawn";
 import { FrameworkType, SupportLevel } from "../interfaces";
 import { simpleProxy, warnIfCustomBuildScript, getNodeModuleBin, relativeRequire } from "../utils";
 import { getNuxtVersion } from "./utils";
@@ -13,6 +13,7 @@ export const type = FrameworkType.Toolchain;
 
 import { nuxtConfigFilesExist } from "./utils";
 import type { NuxtOptions } from "./interfaces";
+import { FirebaseError } from "../../error";
 
 const DEFAULT_BUILD_SCRIPT = ["nuxt build", "nuxi build"];
 
@@ -21,9 +22,7 @@ const DEFAULT_BUILD_SCRIPT = ["nuxt build", "nuxi build"];
  * @param dir current directory
  * @return undefined if project is not Nuxt 2, { mayWantBackend: true, publicDirectory: string } otherwise
  */
-export async function discover(
-  dir: string
-): Promise<{ mayWantBackend: true; publicDirectory: string } | undefined> {
+export async function discover(dir: string) {
   if (!(await pathExists(join(dir, "package.json")))) return;
 
   const anyConfigFileExists = await nuxtConfigFilesExist(dir);
@@ -34,49 +33,60 @@ export async function discover(
 
   const {
     dir: { public: publicDirectory },
+    ssr: mayWantBackend,
   } = await getConfig(dir);
 
-  return { publicDirectory, mayWantBackend: true };
+  return { publicDirectory, mayWantBackend };
 }
 
-export async function build(root: string) {
-  const { buildNuxt } = await relativeRequire(root, "@nuxt/kit");
-  const nuxtApp = await getNuxt3App(root);
-
-  await warnIfCustomBuildScript(root, name, DEFAULT_BUILD_SCRIPT);
-
-  await buildNuxt(nuxtApp);
-  return { wantsBackend: true };
-}
-
-// Nuxt 3
-async function getNuxt3App(cwd: string) {
-  const { loadNuxt } = await relativeRequire(cwd, "@nuxt/kit");
-  return await loadNuxt({
+export async function build(cwd: string) {
+  await warnIfCustomBuildScript(cwd, name, DEFAULT_BUILD_SCRIPT);
+  const cli = getNodeModuleBin("nuxt", cwd);
+  const {
+    ssr: wantsBackend,
+    app: { baseURL },
+  } = await getConfig(cwd);
+  const command = wantsBackend ? ["build"] : ["generate"];
+  const build = spawnSync(cli, command, {
     cwd,
-    overrides: {
-      nitro: { preset: "node" },
-      // TODO figure out why generate true is leading to errors
-      // _generate: true,
-    },
+    stdio: "inherit",
+    env: { ...process.env, NITRO_PRESET: "node" },
   });
+  if (build.status !== 0) throw new FirebaseError("Was unable to build your Nuxt application.");
+  const rewrites = wantsBackend
+    ? []
+    : [
+        {
+          source: posix.join(baseURL, "**"),
+          destination: posix.join(baseURL, "200.html"),
+        },
+      ];
+  return { wantsBackend, rewrites };
 }
 
 export async function ɵcodegenPublicDirectory(root: string, dest: string) {
+  const {
+    app: { baseURL },
+  } = await getConfig(root);
   const distPath = join(root, ".output", "public");
-  await copy(distPath, dest);
+  const fullDest = join(dest, baseURL);
+  await mkdirp(fullDest);
+  await copy(distPath, fullDest);
 }
 
-export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: string) {
+export async function ɵcodegenFunctionsDirectory(sourceDir: string) {
+  const serverDir = join(sourceDir, ".output", "server");
   const packageJsonBuffer = await readFile(join(sourceDir, "package.json"));
   const packageJson = JSON.parse(packageJsonBuffer.toString());
 
-  const outputPackageJsonBuffer = await readFile(
-    join(sourceDir, ".output", "server", "package.json")
-  );
-  const outputPackageJson = JSON.parse(outputPackageJsonBuffer.toString());
-  await copy(join(sourceDir, ".output", "server"), destDir);
-  return { packageJson: { ...packageJson, ...outputPackageJson }, frameworksEntry: "nuxt3" };
+  packageJson.dependencies ||= {};
+  packageJson.dependencies["nitro-output"] = `file:${serverDir}`;
+
+  const {
+    app: { baseURL: baseUrl },
+  } = await getConfig(sourceDir);
+
+  return { packageJson, frameworksEntry: "nitro", baseUrl };
 }
 
 export async function getDevModeHandle(cwd: string) {

@@ -69,7 +69,8 @@ export function simpleProxy(hostOrRequestHandler: string | RequestHandler) {
   return async (originalReq: IncomingMessage, originalRes: ServerResponse, next: () => void) => {
     const { method, headers, url: path } = originalReq;
     if (!method || !path) {
-      return originalRes.end();
+      originalRes.end();
+      return;
     }
     // If the path is a the auth token sync URL pass through to Cloud Functions
     const firebaseDefaultsJSON = process.env.__FIREBASE_DEFAULTS__;
