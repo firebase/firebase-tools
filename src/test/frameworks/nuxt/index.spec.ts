@@ -35,10 +35,11 @@ describe("Nuxt 2 utils", () => {
         .stub(frameworksUtils, "relativeRequire")
         .withArgs(discoverNuxtDir, "nuxt/dist/nuxt.js" as any)
         .resolves({
-          loadNuxt: () => Promise.resolve({
-            ready: () => Promise.resolve(),
-            options: { dir: { static: "static" } },
-          })
+          loadNuxt: () =>
+            Promise.resolve({
+              ready: () => Promise.resolve(),
+              options: { dir: { static: "static" } },
+            }),
         });
 
       expect(await discoverNuxt2(discoverNuxtDir)).to.deep.equal({

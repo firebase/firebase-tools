@@ -53,7 +53,9 @@ export async function init(setup: any, config: any) {
 }
 
 export async function build(dir: string): Promise<BuildResult> {
-  const { targets, serverTarget, serveOptimizedImages, locales, baseHref } = await getBuildConfig(dir);
+  const { targets, serverTarget, serveOptimizedImages, locales, baseHref } = await getBuildConfig(
+    dir
+  );
   await warnIfCustomBuildScript(dir, name, DEFAULT_BUILD_SCRIPT);
   for (const target of targets) {
     // TODO there is a bug here. Spawn for now.
@@ -67,10 +69,14 @@ export async function build(dir: string): Promise<BuildResult> {
   }
 
   const wantsBackend = !!serverTarget || serveOptimizedImages;
-  const rewrites = wantsBackend ? [] : [{
-    source: posix.join(baseHref, "**"),
-    destination: posix.join(baseHref, "index.html")
-  }];
+  const rewrites = wantsBackend
+    ? []
+    : [
+        {
+          source: posix.join(baseHref, "**"),
+          destination: posix.join(baseHref, "index.html"),
+        },
+      ];
   const i18n = !!locales;
   return { wantsBackend, i18n, rewrites };
 }

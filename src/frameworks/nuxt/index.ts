@@ -42,7 +42,10 @@ export async function discover(dir: string) {
 export async function build(cwd: string) {
   await warnIfCustomBuildScript(cwd, name, DEFAULT_BUILD_SCRIPT);
   const cli = getNodeModuleBin("nuxt", cwd);
-  const { ssr: wantsBackend, app: { baseURL } } = await getConfig(cwd);
+  const {
+    ssr: wantsBackend,
+    app: { baseURL },
+  } = await getConfig(cwd);
   const command = wantsBackend ? ["build"] : ["generate"];
   const build = spawnSync(cli, command, {
     cwd,
@@ -50,15 +53,21 @@ export async function build(cwd: string) {
     env: { ...process.env, NITRO_PRESET: "node" },
   });
   if (build.status !== 0) throw new FirebaseError("Was unable to build your Nuxt application.");
-  const rewrites = wantsBackend ? [] : [{
-    source: posix.join(baseURL, "**"),
-    destination: posix.join(baseURL, "200.html"),
-  }];
+  const rewrites = wantsBackend
+    ? []
+    : [
+        {
+          source: posix.join(baseURL, "**"),
+          destination: posix.join(baseURL, "200.html"),
+        },
+      ];
   return { wantsBackend, rewrites };
 }
 
 export async function ɵcodegenPublicDirectory(root: string, dest: string) {
-  const { app: { baseURL } } = await getConfig(root);
+  const {
+    app: { baseURL },
+  } = await getConfig(root);
   const distPath = join(root, ".output", "public");
   const fullDest = join(dest, baseURL);
   await mkdirp(fullDest);
@@ -73,7 +82,9 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string) {
   packageJson.dependencies ||= {};
   packageJson.dependencies["nitro-output"] = `file:${serverDir}`;
 
-  const { app: { baseURL: baseUrl } } = await getConfig(sourceDir);
+  const {
+    app: { baseURL: baseUrl },
+  } = await getConfig(sourceDir);
 
   return { packageJson, frameworksEntry: "nitro", baseUrl };
 }
