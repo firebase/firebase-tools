@@ -52,7 +52,7 @@ type FirestoreMultiple = ({
 
 export type HostingSource = { glob: string } | { source: string } | { regex: string };
 
-type HostingRedirects = HostingSource & {
+export type HostingRedirects = HostingSource & {
   destination: string;
   type?: number;
 };

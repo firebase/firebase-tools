@@ -327,6 +327,7 @@ export async function getBuildConfig(sourceDir: string) {
   const { targetStringFromTarget } = relativeRequire(sourceDir, "@angular-devkit/architect");
   const {
     browserTarget,
+    baseHref,
     prerenderTarget,
     serverTarget,
     architectHost,
@@ -339,6 +340,7 @@ export async function getBuildConfig(sourceDir: string) {
   const locales = await localesForTarget(sourceDir, architectHost, browserTarget, workspaceProject);
   return {
     targets,
+    baseHref,
     serverTarget,
     locales,
     serveOptimizedImages,

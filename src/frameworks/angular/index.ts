@@ -1,4 +1,4 @@
-import { join } from "path";
+import { join, posix } from "path";
 import { execSync } from "child_process";
 import { spawn, sync as spawnSync } from "cross-spawn";
 import { copy, pathExists } from "fs-extra";
@@ -53,7 +53,9 @@ export async function init(setup: any, config: any) {
 }
 
 export async function build(dir: string): Promise<BuildResult> {
-  const { targets, serverTarget, serveOptimizedImages, locales } = await getBuildConfig(dir);
+  const { targets, serverTarget, serveOptimizedImages, locales, baseHref } = await getBuildConfig(
+    dir
+  );
   await warnIfCustomBuildScript(dir, name, DEFAULT_BUILD_SCRIPT);
   for (const target of targets) {
     // TODO there is a bug here. Spawn for now.
@@ -65,15 +67,24 @@ export async function build(dir: string): Promise<BuildResult> {
     });
     if (result.status !== 0) throw new FirebaseError(`Unable to build ${target}`);
   }
+
   const wantsBackend = !!serverTarget || serveOptimizedImages;
+  const rewrites = serverTarget
+    ? []
+    : [
+        {
+          source: posix.join(baseHref, "**"),
+          destination: posix.join(baseHref, "index.html"),
+        },
+      ];
   const i18n = !!locales;
-  return { wantsBackend, i18n };
+  return { wantsBackend, i18n, rewrites };
 }
 
 export async function getDevModeHandle(dir: string) {
   const { targetStringFromTarget } = relativeRequire(dir, "@angular-devkit/architect");
   const { serveTarget } = await getContext(dir);
-  if (!serveTarget) return;
+  if (!serveTarget) throw new Error("Could not find the serveTarget");
   const host = new Promise<string>((resolve) => {
     // Can't use scheduleTarget since that—like prerender—is failing on an ESM bug
     // will just grep for the hostname
@@ -126,6 +137,7 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
   } = await getServerConfig(sourceDir);
 
   const dotEnv = { __NG_BROWSER_OUTPUT_PATH__: browserOutputPath };
+  let rewriteSource: string | undefined = undefined;
 
   await Promise.all([
     serverOutputPath
@@ -182,7 +194,8 @@ exports.handle = function(req,res) {
     bootstrapScript = `exports.handle = require('./${serverOutputPath}/main.js').app();\n`;
   } else {
     bootstrapScript = `exports.handle = (res, req) => req.sendStatus(404);\n`;
+    rewriteSource = posix.join(baseUrl, "__image__");
   }
 
-  return { bootstrapScript, packageJson, baseUrl, dotEnv };
+  return { bootstrapScript, packageJson, baseUrl, dotEnv, rewriteSource };
 }

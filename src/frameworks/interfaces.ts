@@ -1,5 +1,6 @@
 import { IncomingMessage, ServerResponse } from "http";
 import { EmulatorInfo } from "../emulator/types";
+import { HostingHeaders, HostingRedirects, HostingRewrites } from "../firebaseConfig";
 
 // These serve as the order of operations for discovery
 // E.g, a framework utilizing Vite should be given priority
@@ -23,9 +24,9 @@ export interface Discovery {
 }
 
 export interface BuildResult {
-  rewrites?: any[];
-  redirects?: any[];
-  headers?: any[];
+  rewrites?: HostingRewrites[];
+  redirects?: HostingRedirects[];
+  headers?: HostingHeaders[];
   wantsBackend?: boolean;
   trailingSlash?: boolean;
   i18n?: boolean;
@@ -60,6 +61,7 @@ export interface Framework {
     frameworksEntry?: string;
     baseUrl?: string;
     dotEnv?: Record<string, string>;
+    rewriteSource?: string;
   }>;
 }
 
