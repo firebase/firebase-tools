@@ -1,1 +1,3 @@
 - Update error message when function deploy fails due to quota. (#5867)
+- Fixes RTDB emulator 127.0.0.1 namespace resolution bug. (#5863)
+- Improves RTDB emulator to GCF emulator network reliability. (#5863)
