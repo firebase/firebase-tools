@@ -12,15 +12,14 @@ import { requireConfig } from "../requireConfig";
 import { Emulators, ALL_SERVICE_EMULATORS } from "./types";
 import { FirebaseError } from "../error";
 import { EmulatorRegistry } from "./registry";
-import { FirestoreEmulator } from "./firestoreEmulator";
 import { getProjectId } from "../projectUtils";
 import { promptOnce } from "../prompt";
-import { onExit } from "./controller";
 import * as fsutils from "../fsutils";
 import Signals = NodeJS.Signals;
 import SignalsListener = NodeJS.SignalsListener;
-import Table = require("cli-table");
+const Table = require("cli-table");
 import { emulatorSession } from "../track";
+import { setEnvVarsForEmulators } from "./env";
 
 export const FLAG_ONLY = "--only <emulators>";
 export const DESC_ONLY =
@@ -256,7 +255,7 @@ function processKillSignal(
           `Please wait for a clean shutdown or send the ${signalDisplay} signal again to stop right now.`
         );
         // in case of a double 'Ctrl-C' we do not want to cleanly exit with onExit/cleanShutdown
-        await onExit(options);
+        await controller.onExit(options);
         await controller.cleanShutdown();
       } else {
         logger.debug(`Skipping clean onExit() and cleanShutdown()`);
@@ -286,7 +285,7 @@ function processKillSignal(
           pids.push(emulatorInfo.pid as number);
           emulatorsTable.push([
             Constants.description(emulatorInfo.name),
-            EmulatorRegistry.getInfoHostString(emulatorInfo),
+            getListenOverview(emulatorInfo.name) ?? "unknown",
             emulatorInfo.pid,
           ]);
         }
@@ -330,52 +329,21 @@ async function runScript(script: string, extraEnv: Record<string, string>): Prom
   utils.logBullet(`Running script: ${clc.bold(script)}`);
 
   const env: NodeJS.ProcessEnv = { ...process.env, ...extraEnv };
-
-  const databaseInstance = EmulatorRegistry.get(Emulators.DATABASE);
-  if (databaseInstance) {
-    const info = databaseInstance.getInfo();
-    const address = EmulatorRegistry.getInfoHostString(info);
-    env[Constants.FIREBASE_DATABASE_EMULATOR_HOST] = address;
+  // Hyrum's Law strikes here:
+  //   Scripts that imported older versions of Firebase Functions SDK accidentally made
+  //   the FIREBASE_CONFIG environment variable always available to the script.
+  //   Many users ended up depending on this behavior, so we conditionally inject the env var
+  //   if the FIREBASE_CONFIG env var isn't explicitly set in the parent process.
+  if (env.GCLOUD_PROJECT && !env.FIREBASE_CONFIG) {
+    env.FIREBASE_CONFIG = JSON.stringify({
+      projectId: env.GCLOUD_PROJECT,
+      storageBucket: `${env.GCLOUD_PROJECT}.appspot.com`,
+      databaseURL: `https://${env.GCLOUD_PROJECT}.firebaseio.com`,
+    });
   }
 
-  const firestoreInstance = EmulatorRegistry.get(Emulators.FIRESTORE);
-  if (firestoreInstance) {
-    const info = firestoreInstance.getInfo();
-    const address = EmulatorRegistry.getInfoHostString(info);
-
-    env[Constants.FIRESTORE_EMULATOR_HOST] = address;
-    env[FirestoreEmulator.FIRESTORE_EMULATOR_ENV_ALT] = address;
-  }
-
-  const storageInstance = EmulatorRegistry.get(Emulators.STORAGE);
-  if (storageInstance) {
-    const info = storageInstance.getInfo();
-    const address = EmulatorRegistry.getInfoHostString(info);
-
-    env[Constants.FIREBASE_STORAGE_EMULATOR_HOST] = address;
-    env[Constants.CLOUD_STORAGE_EMULATOR_HOST] = `http://${address}`;
-  }
-
-  const authInstance = EmulatorRegistry.get(Emulators.AUTH);
-  if (authInstance) {
-    const info = authInstance.getInfo();
-    const address = EmulatorRegistry.getInfoHostString(info);
-    env[Constants.FIREBASE_AUTH_EMULATOR_HOST] = address;
-  }
-
-  const hubInstance = EmulatorRegistry.get(Emulators.HUB);
-  if (hubInstance) {
-    const info = hubInstance.getInfo();
-    const address = EmulatorRegistry.getInfoHostString(info);
-    env[Constants.FIREBASE_EMULATOR_HUB] = address;
-  }
-
-  const eventarcInstance = EmulatorRegistry.get(Emulators.EVENTARC);
-  if (eventarcInstance) {
-    const info = eventarcInstance.getInfo();
-    const address = EmulatorRegistry.getInfoHostString(info);
-    env[Constants.CLOUD_EVENTARC_EMULATOR_HOST] = address;
-  }
+  const emulatorInfos = EmulatorRegistry.listRunningWithInfo();
+  setEnvVarsForEmulators(env, emulatorInfos);
 
   const proc = childProcess.spawn(script, {
     stdio: ["inherit", "inherit", "inherit"] as childProcess.StdioOptions,
@@ -420,6 +388,30 @@ async function runScript(script: string, extraEnv: Record<string, string>): Prom
 }
 
 /**
+ * For overview tables ONLY. Use EmulatorRegistry methods instead for connecting.
+ *
+ * This method returns a string suitable for printing into CLI outputs, resembling
+ * a netloc part of URL. This makes it clickable in many terminal emulators, a
+ * specific customer request.
+ *
+ * Note that this method does not transform the hostname and may return 0.0.0.0
+ * etc. that may not work in some browser / OS combinations. When trying to send
+ * a network request, use `EmulatorRegistry.client()` instead. When constructing
+ * URLs (especially links printed/shown), use `EmulatorRegistry.url()`.
+ */
+export function getListenOverview(emulator: Emulators): string | undefined {
+  const info = EmulatorRegistry.get(emulator)?.getInfo();
+  if (!info) {
+    return undefined;
+  }
+  if (info.host.includes(":")) {
+    return `[${info.host}]:${info.port}`;
+  } else {
+    return `${info.host}:${info.port}`;
+  }
+}
+
+/**
  * The action function for emulators:exec.
  * Starts the appropriate emulators, executes the provided script,
  * and then exits.
@@ -444,7 +436,7 @@ export async function emulatorExec(script: string, options: any): Promise<void> 
     const showUI = !!options.ui;
     ({ deprecationNotices } = await controller.startAll(options, showUI));
     exitCode = await runScript(script, extraEnv);
-    await onExit(options);
+    await controller.onExit(options);
   } finally {
     await controller.cleanShutdown();
   }
@@ -468,7 +460,7 @@ const JAVA_HINT = "Please make sure Java is installed and on your system PATH.";
 /**
  * Return whether Java major verion is supported. Throws if Java not available.
  *
- * @returns Java major version (for Java >= 9) or -1 otherwise
+ * @return Java major version (for Java >= 9) or -1 otherwise
  */
 export async function checkJavaMajorVersion(): Promise<number> {
   return new Promise<string>((resolve, reject) => {
@@ -530,7 +522,7 @@ export async function checkJavaMajorVersion(): Promise<number> {
     });
   }).then((output) => {
     let versionInt = -1;
-    const match = output.match(JAVA_VERSION_REGEX);
+    const match = JAVA_VERSION_REGEX.exec(output);
     if (match) {
       const version = match[1];
       versionInt = parseInt(version, 10);

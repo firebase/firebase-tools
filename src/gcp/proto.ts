@@ -165,7 +165,13 @@ function fieldMasksHelper(
   doNotRecurseIn: string[],
   masks: string[]
 ): void {
-  if (typeof cursor !== "object" || Array.isArray(cursor) || cursor === null) {
+  // Empty arrays should never be sent because they're dropped by the one platform
+  // gateway and then services get confused why there's an update mask for a missing field"
+  if (Array.isArray(cursor) && !cursor.length) {
+    return;
+  }
+
+  if (typeof cursor !== "object" || (Array.isArray(cursor) && cursor.length) || cursor === null) {
     masks.push(prefixes.join("."));
     return;
   }
@@ -228,4 +234,31 @@ export function formatServiceAccount(serviceAccount: string, projectId: string):
     return `serviceAccount:${serviceAccount}${suffix}`;
   }
   return `serviceAccount:${serviceAccount}`;
+}
+
+/**
+ * Remove keys whose values are undefined.
+ * When we write an interface { foo?: number } there are three possible
+ * forms: { foo: 1 }, {}, and { foo: undefined }. The latter surprises
+ * most people and make unit test comparison flaky. This cleans that up.
+ */
+export function pruneUndefiends(obj: unknown): void {
+  if (typeof obj !== "object" || obj === null) {
+    return;
+  }
+  const keyable = obj as Record<string, unknown>;
+  for (const key of Object.keys(keyable)) {
+    if (keyable[key] === undefined) {
+      delete keyable[key];
+    } else if (typeof keyable[key] === "object") {
+      if (Array.isArray(keyable[key])) {
+        for (const sub of keyable[key] as unknown[]) {
+          pruneUndefiends(sub);
+        }
+        keyable[key] = (keyable[key] as unknown[]).filter((e) => e !== undefined);
+      } else {
+        pruneUndefiends(keyable[key]);
+      }
+    }
+  }
 }

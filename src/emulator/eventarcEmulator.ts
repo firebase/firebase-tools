@@ -7,8 +7,8 @@ import { EmulatorLogger } from "./emulatorLogger";
 import { EventTrigger } from "./functionsEmulatorShared";
 import { CloudEvent } from "./events/types";
 import { EmulatorRegistry } from "./registry";
-import { Client } from "../apiv2";
 import { FirebaseError } from "../error";
+import { cloudEventFromProtoToJson } from "./eventarcEmulatorUtils";
 
 interface CustomEventTrigger {
   projectId: string;
@@ -106,17 +106,12 @@ export class EventarcEmulator implements EmulatorInstance {
   }
 
   async triggerCustomEventFunction(channel: string, event: CloudEvent<any>) {
-    const functionsEmulator = EmulatorRegistry.get(Emulators.FUNCTIONS);
-    if (!functionsEmulator) {
+    if (!EmulatorRegistry.isRunning(Emulators.FUNCTIONS)) {
       this.logger.log("INFO", "Functions emulator not found. This should not happen.");
       return Promise.reject();
     }
     const key = `${event.type}-${channel}`;
     const triggers = this.customEvents[key] || [];
-    const apiClient = new Client({
-      urlPrefix: `http://${EmulatorRegistry.getInfoHostString(functionsEmulator.getInfo())}`,
-      auth: false,
-    });
     return await Promise.all(
       triggers
         .filter(
@@ -125,11 +120,11 @@ export class EventarcEmulator implements EmulatorInstance {
             this.matchesAll(event, trigger.eventTrigger.eventFilters)
         )
         .map((trigger) =>
-          apiClient
+          EmulatorRegistry.client(Emulators.FUNCTIONS)
             .request<CloudEvent<any>, NodeJS.ReadableStream>({
               method: "POST",
               path: `/functions/projects/${trigger.projectId}/triggers/${trigger.triggerName}`,
-              body: JSON.stringify(event),
+              body: JSON.stringify(cloudEventFromProtoToJson(event)),
               responseType: "stream",
               resolveOnHTTPError: true,
             })

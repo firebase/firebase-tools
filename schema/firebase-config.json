@@ -5,6 +5,126 @@
         "ExtensionsConfig": {
             "additionalProperties": false,
             "type": "object"
+        },
+        "FrameworksBackendOptions": {
+            "additionalProperties": false,
+            "properties": {
+                "concurrency": {
+                    "description": "Number of requests a function can serve at once.",
+                    "type": "number"
+                },
+                "cors": {
+                    "description": "If true, allows CORS on requests to this function.\nIf this is a `string` or `RegExp`, allows requests from domains that match the provided value.\nIf this is an `Array`, allows requests from domains matching at least one entry of the array.\nDefaults to true for {@link https.CallableFunction} and false otherwise.",
+                    "type": [
+                        "string",
+                        "boolean"
+                    ]
+                },
+                "cpu": {
+                    "anyOf": [
+                        {
+                            "enum": [
+                                "gcf_gen1"
+                            ],
+                            "type": "string"
+                        },
+                        {
+                            "type": "number"
+                        }
+                    ],
+                    "description": "Fractional number of CPUs to allocate to a function."
+                },
+                "enforceAppCheck": {
+                    "description": "Determines whether Firebase AppCheck is enforced. Defaults to false.",
+                    "type": "boolean"
+                },
+                "ingressSettings": {
+                    "description": "Ingress settings which control where this function can be called from.",
+                    "enum": [
+                        "ALLOW_ALL",
+                        "ALLOW_INTERNAL_AND_GCLB",
+                        "ALLOW_INTERNAL_ONLY"
+                    ],
+                    "type": "string"
+                },
+                "invoker": {
+                    "description": "Invoker to set access control on https functions.",
+                    "enum": [
+                        "public"
+                    ],
+                    "type": "string"
+                },
+                "labels": {
+                    "$ref": "#/definitions/Record<string,string>",
+                    "description": "User labels to set on the function."
+                },
+                "maxInstances": {
+                    "description": "Max number of instances to be running in parallel.",
+                    "type": "number"
+                },
+                "memory": {
+                    "description": "Amount of memory to allocate to a function.",
+                    "enum": [
+                        "128MiB",
+                        "16GiB",
+                        "1GiB",
+                        "256MiB",
+                        "2GiB",
+                        "32GiB",
+                        "4GiB",
+                        "512MiB",
+                        "8GiB"
+                    ],
+                    "type": "string"
+                },
+                "minInstances": {
+                    "description": "Min number of actual instances to be running at a given time.",
+                    "type": "number"
+                },
+                "omit": {
+                    "description": "If true, do not deploy or emulate this function.",
+                    "type": "boolean"
+                },
+                "preserveExternalChanges": {
+                    "description": "Controls whether function configuration modified outside of function source is preserved. Defaults to false.",
+                    "type": "boolean"
+                },
+                "region": {
+                    "description": "HTTP functions can override global options and can specify multiple regions to deploy to.",
+                    "type": "string"
+                },
+                "secrets": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                "serviceAccount": {
+                    "description": "Specific service account for the function to run as.",
+                    "type": "string"
+                },
+                "timeoutSeconds": {
+                    "description": "Timeout for the function in seconds, possible values are 0 to 540.\nHTTPS functions can specify a higher timeout.",
+                    "type": "number"
+                },
+                "vpcConnector": {
+                    "description": "Connect cloud function to specified VPC connector.",
+                    "type": "string"
+                },
+                "vpcConnectorEgressSettings": {
+                    "description": "Egress settings for VPC connector.",
+                    "enum": [
+                        "ALL_TRAFFIC",
+                        "PRIVATE_RANGES_ONLY"
+                    ],
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "Record<string,string>": {
+            "additionalProperties": false,
+            "type": "object"
         }
     },
     "properties": {
@@ -199,6 +319,9 @@
                         },
                         "port": {
                             "type": "number"
+                        },
+                        "websocketPort": {
+                            "type": "number"
                         }
                     },
                     "type": "object"
@@ -263,6 +386,9 @@
                     },
                     "type": "object"
                 },
+                "singleProjectMode": {
+                    "type": "boolean"
+                },
                 "storage": {
                     "additionalProperties": false,
                     "properties": {
@@ -300,42 +426,150 @@
             "$ref": "#/definitions/ExtensionsConfig"
         },
         "firestore": {
-            "additionalProperties": false,
-            "properties": {
-                "indexes": {
-                    "type": "string"
-                },
-                "postdeploy": {
-                    "anyOf": [
-                        {
-                            "items": {
-                                "type": "string"
-                            },
-                            "type": "array"
+            "anyOf": [
+                {
+                    "additionalProperties": false,
+                    "properties": {
+                        "database": {
+                            "type": "string"
                         },
-                        {
+                        "indexes": {
+                            "type": "string"
+                        },
+                        "postdeploy": {
+                            "anyOf": [
+                                {
+                                    "items": {
+                                        "type": "string"
+                                    },
+                                    "type": "array"
+                                },
+                                {
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "predeploy": {
+                            "anyOf": [
+                                {
+                                    "items": {
+                                        "type": "string"
+                                    },
+                                    "type": "array"
+                                },
+                                {
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "rules": {
                             "type": "string"
                         }
-                    ]
+                    },
+                    "type": "object"
                 },
-                "predeploy": {
-                    "anyOf": [
-                        {
-                            "items": {
-                                "type": "string"
+                {
+                    "items": {
+                        "anyOf": [
+                            {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "database": {
+                                        "type": "string"
+                                    },
+                                    "indexes": {
+                                        "type": "string"
+                                    },
+                                    "postdeploy": {
+                                        "anyOf": [
+                                            {
+                                                "items": {
+                                                    "type": "string"
+                                                },
+                                                "type": "array"
+                                            },
+                                            {
+                                                "type": "string"
+                                            }
+                                        ]
+                                    },
+                                    "predeploy": {
+                                        "anyOf": [
+                                            {
+                                                "items": {
+                                                    "type": "string"
+                                                },
+                                                "type": "array"
+                                            },
+                                            {
+                                                "type": "string"
+                                            }
+                                        ]
+                                    },
+                                    "rules": {
+                                        "type": "string"
+                                    },
+                                    "target": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "target"
+                                ],
+                                "type": "object"
                             },
-                            "type": "array"
-                        },
-                        {
-                            "type": "string"
-                        }
-                    ]
-                },
-                "rules": {
-                    "type": "string"
+                            {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "database": {
+                                        "type": "string"
+                                    },
+                                    "indexes": {
+                                        "type": "string"
+                                    },
+                                    "postdeploy": {
+                                        "anyOf": [
+                                            {
+                                                "items": {
+                                                    "type": "string"
+                                                },
+                                                "type": "array"
+                                            },
+                                            {
+                                                "type": "string"
+                                            }
+                                        ]
+                                    },
+                                    "predeploy": {
+                                        "anyOf": [
+                                            {
+                                                "items": {
+                                                    "type": "string"
+                                                },
+                                                "type": "array"
+                                            },
+                                            {
+                                                "type": "string"
+                                            }
+                                        ]
+                                    },
+                                    "rules": {
+                                        "type": "string"
+                                    },
+                                    "target": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "database"
+                                ],
+                                "type": "object"
+                            }
+                        ]
+                    },
+                    "type": "array"
                 }
-            },
-            "type": "object"
+            ]
         },
         "functions": {
             "anyOf": [
@@ -382,7 +616,9 @@
                                 "nodejs10",
                                 "nodejs12",
                                 "nodejs14",
-                                "nodejs16"
+                                "nodejs16",
+                                "nodejs18",
+                                "nodejs20"
                             ],
                             "type": "string"
                         },
@@ -436,7 +672,9 @@
                                     "nodejs10",
                                     "nodejs12",
                                     "nodejs14",
-                                    "nodejs16"
+                                    "nodejs16",
+                                    "nodejs18",
+                                    "nodejs20"
                                 ],
                                 "type": "string"
                             },
@@ -456,10 +694,17 @@
                     "additionalProperties": false,
                     "properties": {
                         "appAssociation": {
+                            "enum": [
+                                "AUTO",
+                                "NONE"
+                            ],
                             "type": "string"
                         },
                         "cleanUrls": {
                             "type": "boolean"
+                        },
+                        "frameworksBackend": {
+                            "$ref": "#/definitions/FrameworksBackendOptions"
                         },
                         "headers": {
                             "items": {
@@ -716,12 +961,46 @@
                                     {
                                         "additionalProperties": false,
                                         "properties": {
+                                            "function": {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "functionId": {
+                                                        "type": "string"
+                                                    },
+                                                    "pinTag": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "region": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "required": [
+                                                    "functionId"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            "glob": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "function",
+                                            "glob"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    {
+                                        "additionalProperties": false,
+                                        "properties": {
                                             "glob": {
                                                 "type": "string"
                                             },
                                             "run": {
                                                 "additionalProperties": false,
                                                 "properties": {
+                                                    "pinTag": {
+                                                        "type": "boolean"
+                                                    },
                                                     "region": {
                                                         "type": "string"
                                                     },
@@ -795,9 +1074,43 @@
                                     {
                                         "additionalProperties": false,
                                         "properties": {
+                                            "function": {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "functionId": {
+                                                        "type": "string"
+                                                    },
+                                                    "pinTag": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "region": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "required": [
+                                                    "functionId"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            "source": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "function",
+                                            "source"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    {
+                                        "additionalProperties": false,
+                                        "properties": {
                                             "run": {
                                                 "additionalProperties": false,
                                                 "properties": {
+                                                    "pinTag": {
+                                                        "type": "boolean"
+                                                    },
                                                     "region": {
                                                         "type": "string"
                                                     },
@@ -874,12 +1187,46 @@
                                     {
                                         "additionalProperties": false,
                                         "properties": {
+                                            "function": {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "functionId": {
+                                                        "type": "string"
+                                                    },
+                                                    "pinTag": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "region": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "required": [
+                                                    "functionId"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            "regex": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "function",
+                                            "regex"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    {
+                                        "additionalProperties": false,
+                                        "properties": {
                                             "regex": {
                                                 "type": "string"
                                             },
                                             "run": {
                                                 "additionalProperties": false,
                                                 "properties": {
+                                                    "pinTag": {
+                                                        "type": "boolean"
+                                                    },
                                                     "region": {
                                                         "type": "string"
                                                     },
@@ -941,10 +1288,17 @@
                                 "additionalProperties": false,
                                 "properties": {
                                     "appAssociation": {
+                                        "enum": [
+                                            "AUTO",
+                                            "NONE"
+                                        ],
                                         "type": "string"
                                     },
                                     "cleanUrls": {
                                         "type": "boolean"
+                                    },
+                                    "frameworksBackend": {
+                                        "$ref": "#/definitions/FrameworksBackendOptions"
                                     },
                                     "headers": {
                                         "items": {
@@ -1201,12 +1555,46 @@
                                                 {
                                                     "additionalProperties": false,
                                                     "properties": {
+                                                        "function": {
+                                                            "additionalProperties": false,
+                                                            "properties": {
+                                                                "functionId": {
+                                                                    "type": "string"
+                                                                },
+                                                                "pinTag": {
+                                                                    "type": "boolean"
+                                                                },
+                                                                "region": {
+                                                                    "type": "string"
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "functionId"
+                                                            ],
+                                                            "type": "object"
+                                                        },
+                                                        "glob": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "function",
+                                                        "glob"
+                                                    ],
+                                                    "type": "object"
+                                                },
+                                                {
+                                                    "additionalProperties": false,
+                                                    "properties": {
                                                         "glob": {
                                                             "type": "string"
                                                         },
                                                         "run": {
                                                             "additionalProperties": false,
                                                             "properties": {
+                                                                "pinTag": {
+                                                                    "type": "boolean"
+                                                                },
                                                                 "region": {
                                                                     "type": "string"
                                                                 },
@@ -1280,9 +1668,43 @@
                                                 {
                                                     "additionalProperties": false,
                                                     "properties": {
+                                                        "function": {
+                                                            "additionalProperties": false,
+                                                            "properties": {
+                                                                "functionId": {
+                                                                    "type": "string"
+                                                                },
+                                                                "pinTag": {
+                                                                    "type": "boolean"
+                                                                },
+                                                                "region": {
+                                                                    "type": "string"
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "functionId"
+                                                            ],
+                                                            "type": "object"
+                                                        },
+                                                        "source": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "function",
+                                                        "source"
+                                                    ],
+                                                    "type": "object"
+                                                },
+                                                {
+                                                    "additionalProperties": false,
+                                                    "properties": {
                                                         "run": {
                                                             "additionalProperties": false,
                                                             "properties": {
+                                                                "pinTag": {
+                                                                    "type": "boolean"
+                                                                },
                                                                 "region": {
                                                                     "type": "string"
                                                                 },
@@ -1359,12 +1781,46 @@
                                                 {
                                                     "additionalProperties": false,
                                                     "properties": {
+                                                        "function": {
+                                                            "additionalProperties": false,
+                                                            "properties": {
+                                                                "functionId": {
+                                                                    "type": "string"
+                                                                },
+                                                                "pinTag": {
+                                                                    "type": "boolean"
+                                                                },
+                                                                "region": {
+                                                                    "type": "string"
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "functionId"
+                                                            ],
+                                                            "type": "object"
+                                                        },
+                                                        "regex": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "function",
+                                                        "regex"
+                                                    ],
+                                                    "type": "object"
+                                                },
+                                                {
+                                                    "additionalProperties": false,
+                                                    "properties": {
                                                         "regex": {
                                                             "type": "string"
                                                         },
                                                         "run": {
                                                             "additionalProperties": false,
                                                             "properties": {
+                                                                "pinTag": {
+                                                                    "type": "boolean"
+                                                                },
                                                                 "region": {
                                                                     "type": "string"
                                                                 },
@@ -1426,10 +1882,17 @@
                                 "additionalProperties": false,
                                 "properties": {
                                     "appAssociation": {
+                                        "enum": [
+                                            "AUTO",
+                                            "NONE"
+                                        ],
                                         "type": "string"
                                     },
                                     "cleanUrls": {
                                         "type": "boolean"
+                                    },
+                                    "frameworksBackend": {
+                                        "$ref": "#/definitions/FrameworksBackendOptions"
                                     },
                                     "headers": {
                                         "items": {
@@ -1686,12 +2149,46 @@
                                                 {
                                                     "additionalProperties": false,
                                                     "properties": {
+                                                        "function": {
+                                                            "additionalProperties": false,
+                                                            "properties": {
+                                                                "functionId": {
+                                                                    "type": "string"
+                                                                },
+                                                                "pinTag": {
+                                                                    "type": "boolean"
+                                                                },
+                                                                "region": {
+                                                                    "type": "string"
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "functionId"
+                                                            ],
+                                                            "type": "object"
+                                                        },
+                                                        "glob": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "function",
+                                                        "glob"
+                                                    ],
+                                                    "type": "object"
+                                                },
+                                                {
+                                                    "additionalProperties": false,
+                                                    "properties": {
                                                         "glob": {
                                                             "type": "string"
                                                         },
                                                         "run": {
                                                             "additionalProperties": false,
                                                             "properties": {
+                                                                "pinTag": {
+                                                                    "type": "boolean"
+                                                                },
                                                                 "region": {
                                                                     "type": "string"
                                                                 },
@@ -1765,9 +2262,43 @@
                                                 {
                                                     "additionalProperties": false,
                                                     "properties": {
+                                                        "function": {
+                                                            "additionalProperties": false,
+                                                            "properties": {
+                                                                "functionId": {
+                                                                    "type": "string"
+                                                                },
+                                                                "pinTag": {
+                                                                    "type": "boolean"
+                                                                },
+                                                                "region": {
+                                                                    "type": "string"
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "functionId"
+                                                            ],
+                                                            "type": "object"
+                                                        },
+                                                        "source": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "function",
+                                                        "source"
+                                                    ],
+                                                    "type": "object"
+                                                },
+                                                {
+                                                    "additionalProperties": false,
+                                                    "properties": {
                                                         "run": {
                                                             "additionalProperties": false,
                                                             "properties": {
+                                                                "pinTag": {
+                                                                    "type": "boolean"
+                                                                },
                                                                 "region": {
                                                                     "type": "string"
                                                                 },
@@ -1844,12 +2375,46 @@
                                                 {
                                                     "additionalProperties": false,
                                                     "properties": {
+                                                        "function": {
+                                                            "additionalProperties": false,
+                                                            "properties": {
+                                                                "functionId": {
+                                                                    "type": "string"
+                                                                },
+                                                                "pinTag": {
+                                                                    "type": "boolean"
+                                                                },
+                                                                "region": {
+                                                                    "type": "string"
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "functionId"
+                                                            ],
+                                                            "type": "object"
+                                                        },
+                                                        "regex": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "function",
+                                                        "regex"
+                                                    ],
+                                                    "type": "object"
+                                                },
+                                                {
+                                                    "additionalProperties": false,
+                                                    "properties": {
                                                         "regex": {
                                                             "type": "string"
                                                         },
                                                         "run": {
                                                             "additionalProperties": false,
                                                             "properties": {
+                                                                "pinTag": {
+                                                                    "type": "boolean"
+                                                                },
                                                                 "region": {
                                                                     "type": "string"
                                                                 },

@@ -1,4 +1,4 @@
-import serveHosting = require("../serve/hosting");
+import * as serveHosting from "../serve/hosting";
 import { EmulatorInfo, EmulatorInstance, Emulators } from "../emulator/types";
 import { Constants } from "./constants";
 
@@ -9,13 +9,19 @@ interface HostingEmulatorArgs {
 }
 
 export class HostingEmulator implements EmulatorInstance {
+  private reservedPorts?: number[];
+
   constructor(private args: HostingEmulatorArgs) {}
 
-  start(): Promise<void> {
+  async start(): Promise<void> {
     this.args.options.host = this.args.host;
     this.args.options.port = this.args.port;
 
-    return serveHosting.start(this.args.options);
+    const { ports } = await serveHosting.start(this.args.options);
+    this.args.port = ports[0];
+    if (ports.length > 1) {
+      this.reservedPorts = ports.slice(1);
+    }
   }
 
   connect(): Promise<void> {
@@ -34,6 +40,7 @@ export class HostingEmulator implements EmulatorInstance {
       name: this.getName(),
       host,
       port,
+      reservedPorts: this.reservedPorts,
     };
   }
 

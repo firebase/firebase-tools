@@ -8,7 +8,7 @@ import * as projectPath from "../../../projectPath";
 import * as secretManager from "../../../gcp/secretManager";
 import * as backend from "../../../deploy/functions/backend";
 import { BEFORE_CREATE_EVENT, BEFORE_SIGN_IN_EVENT } from "../../../functions/events/v1";
-import { resolveCpu } from "../../../deploy/functions/prepare";
+import { resolveCpuAndConcurrency } from "../../../deploy/functions/prepare";
 
 describe("validate", () => {
   describe("functionsDirectoryExists", () => {
@@ -82,10 +82,6 @@ describe("validate", () => {
           id: "my-function$%#",
           platform: "gcfv1",
         },
-        {
-          id: "my-function-2",
-          platform: "gcfv2",
-        },
       ];
 
       expect(() => {
@@ -103,18 +99,18 @@ describe("validate", () => {
       }).to.throw(FirebaseError);
     });
 
-    it("should throw error on capital letters in v2 function names", () => {
+    it("should not throw error on capital letters in v2 function names", () => {
       const functions = [{ id: "Hi", platform: "gcfv2" }];
       expect(() => {
         validate.functionIdsAreValid(functions);
-      }).to.throw(FirebaseError);
+      }).to.not.throw();
     });
 
-    it("should throw error on underscores in v2 function names", () => {
+    it("should not throw error on underscores in v2 function names", () => {
       const functions = [{ id: "o_O", platform: "gcfv2" }];
       expect(() => {
         validate.functionIdsAreValid(functions);
-      }).to.throw(FirebaseError);
+      }).to.not.throw();
     });
   });
 
@@ -331,7 +327,7 @@ describe("validate", () => {
           availableMemoryMb: mem,
           cpu: "gcf_gen1",
         };
-        resolveCpu(backend.of(ep));
+        resolveCpuAndConcurrency(backend.of(ep));
         expect(() => validate.endpointsAreValid(backend.of(ep))).to.not.throw;
       }
     });
@@ -344,7 +340,7 @@ describe("validate", () => {
           cpu: "gcf_gen1",
           concurrency: 42,
         };
-        resolveCpu(backend.of(ep));
+        resolveCpuAndConcurrency(backend.of(ep));
         expect(() => validate.endpointsAreValid(backend.of(ep))).to.not.throw;
       }
     });
@@ -356,7 +352,7 @@ describe("validate", () => {
         concurrency: 2,
         cpu: "gcf_gen1",
       };
-      resolveCpu(backend.of(ep));
+      resolveCpuAndConcurrency(backend.of(ep));
       expect(() => validate.endpointsAreValid(backend.of(ep))).to.throw(
         /concurrent execution and less than one full CPU/
       );

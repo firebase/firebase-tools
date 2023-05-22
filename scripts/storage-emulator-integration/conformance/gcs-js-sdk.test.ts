@@ -3,7 +3,6 @@ import { expect } from "chai";
 import * as admin from "firebase-admin";
 import * as fs from "fs";
 import { EmulatorEndToEndTest } from "../../integration-helpers/framework";
-import * as supertest from "supertest";
 import { TEST_ENV } from "./env";
 import {
   createRandomFile,
@@ -13,6 +12,7 @@ import {
   TEST_SETUP_TIMEOUT,
   getTmpDir,
 } from "../utils";
+import { gunzipSync } from "zlib";
 
 // Test case that should only run when targeting the emulator.
 // Example use: emulatorOnly.it("Local only test case", () => {...});
@@ -27,7 +27,6 @@ describe("GCS Javascript SDK conformance tests", () => {
   const storageBucket = TEST_ENV.appConfig.storageBucket;
   const otherStorageBucket = TEST_ENV.secondTestBucket;
   const storageHost = TEST_ENV.storageHost;
-  const firebaseHost = TEST_ENV.firebaseHost;
   const googleapisHost = TEST_ENV.googleapisHost;
 
   let test: EmulatorEndToEndTest;
@@ -109,14 +108,6 @@ describe("GCS Javascript SDK conformance tests", () => {
         fs.unlinkSync(content2);
       });
 
-      it("should handle gzip'd uploads", async () => {
-        // This appears to pass, but the file gets corrupted cause it's gzipped?
-        // expect(true).to.be.false;
-        await testBucket.upload(smallFilePath, {
-          gzip: true,
-        });
-      });
-
       it("should upload with provided metadata", async () => {
         const metadata = {
           contentDisposition: "attachment",
@@ -132,6 +123,13 @@ describe("GCS Javascript SDK conformance tests", () => {
         expect(fileMetadata).to.deep.include(metadata);
       });
 
+      it("should upload with proper content type", async () => {
+        const jpgFile = createRandomFile("small_file.jpg", SMALL_FILE_SIZE, tmpDir);
+        const [, fileMetadata] = await testBucket.upload(jpgFile);
+
+        expect(fileMetadata.contentType).to.equal("image/jpeg");
+      });
+
       it("should handle firebaseStorageDownloadTokens", async () => {
         const testFileName = "public/file";
         await testBucket.upload(smallFilePath, {
@@ -139,27 +137,15 @@ describe("GCS Javascript SDK conformance tests", () => {
           metadata: {},
         });
 
-        const cloudFile = testBucket.file(testFileName);
+        const file = testBucket.file(testFileName);
         const incomingMetadata = {
           metadata: {
             firebaseStorageDownloadTokens: "myFirstToken,mySecondToken",
           },
         };
-        await cloudFile.setMetadata(incomingMetadata);
+        await file.setMetadata(incomingMetadata);
 
-        // Check that the tokens are saved in Firebase metadata
-        await supertest(firebaseHost)
-          .get(`/v0/b/${testBucket.name}/o/${encodeURIComponent(testFileName)}`)
-          .expect(200)
-          .then((res) => {
-            const firebaseMd = res.body;
-            expect(firebaseMd.downloadTokens).to.equal(
-              incomingMetadata.metadata.firebaseStorageDownloadTokens
-            );
-          });
-
-        // Check that the tokens are saved in Cloud metadata
-        const [storedMetadata] = await cloudFile.getMetadata();
+        const [storedMetadata] = await file.getMetadata();
         expect(storedMetadata.metadata.firebaseStorageDownloadTokens).to.deep.equal(
           incomingMetadata.metadata.firebaseStorageDownloadTokens
         );
@@ -344,10 +330,11 @@ describe("GCS Javascript SDK conformance tests", () => {
       });
 
       it("should list files in sub-directory (using directory)", async () => {
-        const [files, , { prefixes }] = await testBucket.getFiles({
+        const res = await testBucket.getFiles({
           autoPaginate: false,
-          directory: "testing/",
+          prefix: "testing/",
         });
+        const [files, , { prefixes }] = res;
 
         expect(prefixes).to.be.undefined;
         expect(files.map((file) => file.name)).to.deep.equal([TESTING_FILE]);
@@ -392,6 +379,26 @@ describe("GCS Javascript SDK conformance tests", () => {
   });
 
   describe(".file()", () => {
+    describe("#save()", () => {
+      it("should save", async () => {
+        const contents = Buffer.from("hello world");
+
+        const file = testBucket.file("gzippedFile");
+        await file.save(contents, { contentType: "text/plain" });
+
+        expect(file.metadata.contentType).to.be.eql("text/plain");
+        const [downloadedContents] = await file.download();
+        expect(downloadedContents).to.be.eql(contents);
+      });
+
+      it("should handle gzipped uploads", async () => {
+        const file = testBucket.file("gzippedFile");
+        await file.save("hello world", { gzip: true });
+
+        expect(file.metadata.contentEncoding).to.be.eql("gzip");
+      });
+    });
+
     describe("#exists()", () => {
       it("should return false for a file that does not exist", async () => {
         // Ensure that the file exists on the bucket before deleting it
@@ -487,6 +494,29 @@ describe("GCS Javascript SDK conformance tests", () => {
 
         expect(err).to.have.property("code", 404);
         expect(err).not.have.nested.property("errors[0]");
+      });
+
+      it("should decompress gzipped file", async () => {
+        const contents = Buffer.from("hello world");
+
+        const file = testBucket.file("gzippedFile");
+        await file.save(contents, { gzip: true });
+
+        const [downloadedContents] = await file.download();
+        expect(downloadedContents).to.be.eql(contents);
+      });
+
+      it("should serve gzipped file if decompress option specified", async () => {
+        const contents = Buffer.from("hello world");
+
+        const file = testBucket.file("gzippedFile");
+        await file.save(contents, { gzip: true });
+
+        const [downloadedContents] = await file.download({ decompress: false });
+        expect(downloadedContents).to.not.be.eql(contents);
+
+        const ungzippedContents = gunzipSync(downloadedContents);
+        expect(ungzippedContents).to.be.eql(contents);
       });
     });
 

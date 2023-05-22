@@ -2,11 +2,10 @@ import * as backend from "./backend";
 import * as proto from "../../gcp/proto";
 import * as api from "../../.../../api";
 import * as params from "./params";
-import { previews } from "../../previews";
 import { FirebaseError } from "../../error";
 import { assertExhaustive, mapObject, nullsafeVisitor } from "../../functional";
 import { UserEnvsOpts, writeUserEnvs } from "../../functions/env";
-import { logger } from "../../logger";
+import { FirebaseConfig } from "./args";
 
 /* The union of a customer-controlled deployment and potentially deploy-time defined parameters */
 export interface Build {
@@ -52,8 +51,9 @@ export interface RequiredApi {
 // expressions.
 // `Expression<Foo> == Expression<Foo>` is an Expression<boolean>
 // `Expression<boolean> ? Expression<T> : Expression<T>` is an Expression<T>
-export type Expression<T extends string | number | boolean> = string; // eslint-disable-line
+export type Expression<T extends string | number | boolean | string[]> = string; // eslint-disable-line
 export type Field<T extends string | number | boolean> = T | Expression<T> | null;
+export type ListField = Expression<string[]> | (string | Expression<string>)[] | null;
 
 // A service account must either:
 // 1. Be a project-relative email that ends with "@" (e.g. database-users@)
@@ -220,6 +220,9 @@ export const AllIngressSettings: IngressSetting[] = [
 ];
 
 export type Endpoint = Triggered & {
+  // Defaults to false. If true, the function will be ignored during the deploy process.
+  omit?: Field<boolean>;
+
   // Defaults to "gcfv2". "Run" will be an additional option defined later
   platform?: "gcfv1" | "gcfv2";
 
@@ -234,7 +237,7 @@ export type Endpoint = Triggered & {
 
   // defaults to ["us-central1"], overridable in firebase-tools with
   //  process.env.FIREBASE_FUNCTIONS_DEFAULT_REGION
-  region?: string[];
+  region?: ListField;
 
   // The Cloud project associated with this endpoint.
   project: string;
@@ -269,51 +272,85 @@ export type Endpoint = Triggered & {
 };
 
 /**
- *  Resolves user-defined parameters inside a Build, and returns a Backend ready for upload to the API
+ * Resolves user-defined parameters inside a Build, and generates a Backend.
+ * Returns both the Backend and the literal resolved values of any params, since
+ * the latter also have to be uploaded so user code can see them in process.env
  */
 export async function resolveBackend(
   build: Build,
+  firebaseConfig: FirebaseConfig,
   userEnvOpt: UserEnvsOpts,
   userEnvs: Record<string, string>,
   nonInteractive?: boolean
-): Promise<backend.Backend> {
-  const projectId = userEnvOpt.projectId;
-  let paramValues: Record<string, Field<string | number | boolean>> = {};
-  if (previews.functionsparams) {
-    paramValues = await params.resolveParams(
-      build.params,
-      projectId,
-      envWithTypes(userEnvs),
-      nonInteractive
-    );
+): Promise<{ backend: backend.Backend; envs: Record<string, params.ParamValue> }> {
+  let paramValues: Record<string, params.ParamValue> = {};
+  paramValues = await params.resolveParams(
+    build.params,
+    firebaseConfig,
+    envWithTypes(build.params, userEnvs),
+    nonInteractive
+  );
 
-    // TODO(vsfan@): when merging secrets support into the Build, make sure we aren't writing those to disk.
-    const toWrite: Record<string, string> = {};
-    for (const paramName of Object.keys(paramValues)) {
-      if (userEnvs.hasOwnProperty(paramName)) {
-        continue;
-      }
-      toWrite[paramName] = paramValues[paramName]?.toString() || "";
+  const toWrite: Record<string, string> = {};
+  for (const paramName of Object.keys(paramValues)) {
+    const paramValue = paramValues[paramName];
+    if (Object.prototype.hasOwnProperty.call(userEnvs, paramName) || paramValue.internal) {
+      continue;
     }
-    writeUserEnvs(toWrite, userEnvOpt);
+    toWrite[paramName] = paramValue.toString();
   }
+  writeUserEnvs(toWrite, userEnvOpt);
 
-  return toBackend(build, paramValues);
+  return { backend: toBackend(build, paramValues), envs: paramValues };
 }
 
-function envWithTypes(rawEnvs: Record<string, string>): Record<string, string | number | boolean> {
-  const out: Record<string, string | number | boolean> = {};
+function envWithTypes(
+  definedParams: params.Param[],
+  rawEnvs: Record<string, string>
+): Record<string, params.ParamValue> {
+  const out: Record<string, params.ParamValue> = {};
   for (const envName of Object.keys(rawEnvs)) {
     const value = rawEnvs[envName];
-    if (!isNaN(+value) && isFinite(+value) && !value.includes("e")) {
-      out[envName] = +value;
-    } else if (value === "true") {
-      out[envName] = true;
-    } else if (value === "false") {
-      out[envName] = false;
-    } else {
-      out[envName] = value;
+    let providedType = {
+      string: true,
+      boolean: true,
+      number: true,
+      list: true,
+    };
+    for (const param of definedParams) {
+      if (param.name === envName) {
+        if (param.type === "string") {
+          providedType = {
+            string: true,
+            boolean: false,
+            number: false,
+            list: false,
+          };
+        } else if (param.type === "int") {
+          providedType = {
+            string: false,
+            boolean: false,
+            number: true,
+            list: false,
+          };
+        } else if (param.type === "boolean") {
+          providedType = {
+            string: false,
+            boolean: true,
+            number: false,
+            list: false,
+          };
+        } else if (param.type === "list") {
+          providedType = {
+            string: false,
+            boolean: false,
+            number: false,
+            list: true,
+          };
+        }
+      }
     }
+    out[envName] = new params.ParamValue(value, false, providedType);
   }
   return out;
 }
@@ -324,7 +361,7 @@ function envWithTypes(rawEnvs: Record<string, string>): Record<string, string | 
 // The class also recognizes that if the input is not null the output cannot be
 // null.
 class Resolver {
-  constructor(private readonly paramValues: Record<string, Field<string | number | boolean>>) {}
+  constructor(private readonly paramValues: Record<string, params.ParamValue>) {}
 
   // NB: The (Extract<T, null> | number) says "If T can be null, the return value"
   // can be null. If we know input is not null, the return type is known to not
@@ -380,31 +417,29 @@ class Resolver {
 }
 
 /** Converts a build specification into a Backend representation, with all Params resolved and interpolated */
-// TODO(vsfan): handle Expression<T> types
 export function toBackend(
   build: Build,
-  paramValues: Record<string, Field<string | number | boolean>>
+  paramValues: Record<string, params.ParamValue>
 ): backend.Backend {
   const r = new Resolver(paramValues);
   const bkEndpoints: Array<backend.Endpoint> = [];
   for (const endpointId of Object.keys(build.endpoints)) {
     const bdEndpoint = build.endpoints[endpointId];
+    if (r.resolveBoolean(bdEndpoint.omit || false)) {
+      continue;
+    }
 
-    let regions = bdEndpoint.region;
-    if (typeof regions === "undefined") {
+    let regions: string[] = [];
+    if (!bdEndpoint.region) {
       regions = [api.functionsDefaultRegion];
+    } else {
+      regions = params.resolveList(bdEndpoint.region, paramValues);
     }
     for (const region of regions) {
       const trigger = discoverTrigger(bdEndpoint, region, r);
 
       if (typeof bdEndpoint.platform === "undefined") {
         throw new FirebaseError("platform can't be undefined");
-      }
-      if (
-        bdEndpoint.availableMemoryMb != null &&
-        !backend.isValidMemoryOption(bdEndpoint.availableMemoryMb)
-      ) {
-        throw new FirebaseError("available memory must be a supported value, if present");
       }
       const bkEndpoint: backend.Endpoint = {
         id: endpointId,
@@ -433,9 +468,13 @@ export function toBackend(
       proto.convertIfPresent(bkEndpoint, bdEndpoint, "availableMemoryMb", (from) => {
         const mem = r.resolveInt(from);
         if (mem !== null && !backend.isValidMemoryOption(mem)) {
-          logger.debug("Warning; setting memory to unexpected value", mem);
+          throw new FirebaseError(
+            `Function memory (${mem}) must resolve to a supported value, if present: ${JSON.stringify(
+              allMemoryOptions
+            )}`
+          );
         }
-        return mem as backend.MemoryOptions | null;
+        return (mem as backend.MemoryOptions) || null;
       });
 
       r.resolveInts(

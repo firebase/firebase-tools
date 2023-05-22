@@ -3,6 +3,7 @@ import * as express from "express";
 import * as exegesisExpress from "exegesis-express";
 import { ValidationError } from "exegesis/lib/errors";
 import * as _ from "lodash";
+import { SingleProjectMode } from "./index";
 import { OpenAPIObject, PathsObject, ServerObject, OperationObject } from "openapi3-ts";
 import { EmulatorLogger } from "../emulatorLogger";
 import { Emulators } from "../types";
@@ -31,7 +32,7 @@ import {
 import { logError } from "./utils";
 import { camelCase } from "lodash";
 import { registerHandlers } from "./handlers";
-import bodyParser = require("body-parser");
+import * as bodyParser from "body-parser";
 import { URLSearchParams } from "url";
 import { decode, JwtHeader } from "jsonwebtoken";
 const apiSpec = apiSpecUntyped as OpenAPIObject;
@@ -116,10 +117,23 @@ function specWithEmulatorServer(protocol: string, host: string | undefined): Ope
  */
 export async function createApp(
   defaultProjectId: string,
+  singleProjectMode = SingleProjectMode.NO_WARNING,
   projectStateForId = new Map<string, AgentProjectState>()
 ): Promise<express.Express> {
   const app = express();
   app.set("json spaces", 2);
+
+  // Retrun access-control-allow-private-network heder if requested
+  // Enables accessing locahost when site is exposed via tunnel see https://github.com/firebase/firebase-tools/issues/4227
+  // Aligns with https://wicg.github.io/private-network-access/#headers
+  // Replace with cors option if adopted, see https://github.com/expressjs/cors/issues/236
+  app.use("/", (req, res, next) => {
+    if (req.headers["access-control-request-private-network"]) {
+      res.setHeader("access-control-allow-private-network", "true");
+    }
+    next();
+  });
+
   // Enable CORS for all APIs, all origins (reflected), and all headers (reflected).
   // This is similar to production behavior. Safe since all APIs are cookieless.
   app.use(cors({ origin: true }));
@@ -152,14 +166,25 @@ export async function createApp(
   );
 
   const apiKeyAuthenticator: PromiseAuthenticator = (ctx, info) => {
-    if (info.in !== "query") {
-      throw new Error('apiKey must be defined as in: "query" in API spec.');
-    }
     if (!info.name) {
-      throw new Error("apiKey param name is undefined in API spec.");
+      throw new Error("apiKey param/header name is undefined in API spec.");
     }
-    const key = (ctx.req as express.Request).query[info.name];
-    if (typeof key === "string" && key.length > 0) {
+
+    let key: string | undefined;
+    const req = ctx.req as express.Request;
+    switch (info.in) {
+      case "header":
+        key = req.get(info.name);
+        break;
+      case "query": {
+        const q = req.query[info.name];
+        key = typeof q === "string" ? q : undefined;
+        break;
+      }
+      default:
+        throw new Error('apiKey must be defined as in: "query" or "header" in API spec.');
+    }
+    if (key) {
       return { type: "success", user: getProjectIdByApiKey(key) };
     } else {
       return undefined;
@@ -204,7 +229,8 @@ export async function createApp(
   const apis = await exegesisExpress.middleware(specForRouter(), {
     controllers: { auth: toExegesisController(authOperations, getProjectStateById) },
     authenticators: {
-      apiKey: apiKeyAuthenticator,
+      apiKeyQuery: apiKeyAuthenticator,
+      apiKeyHeader: apiKeyAuthenticator,
       Oauth2: oauth2Authenticator,
     },
     autoHandleHttpErrors(err) {
@@ -291,7 +317,7 @@ export async function createApp(
               if (ctx.res.statusCode === 401) {
                 // Normalize unauthenticated responses to match production.
                 const requirements = (ctx.api.operationObject as OperationObject).security;
-                if (requirements?.some((req) => req.apiKey)) {
+                if (requirements?.some((req) => req.apiKeyQuery || req.apiKeyHeader)) {
                   throw new PermissionDeniedError("The request is missing a valid API key.");
                 } else {
                   throw new UnauthenticatedError(
@@ -350,6 +376,22 @@ export async function createApp(
 
   function getProjectStateById(projectId: string, tenantId?: string): ProjectState {
     let agentState = projectStateForId.get(projectId);
+
+    if (
+      singleProjectMode !== SingleProjectMode.NO_WARNING &&
+      projectId &&
+      defaultProjectId !== projectId
+    ) {
+      const errorString =
+        `Multiple projectIds are not recommended in single project mode. ` +
+        `Requested project ID ${projectId}, but the emulator is configured for ` +
+        `${defaultProjectId}. To opt-out of single project mode add/set the ` +
+        `\'"singleProjectMode"\' false' property in the firebase.json emulators config.`;
+      EmulatorLogger.forEmulator(Emulators.AUTH).log("WARN", errorString);
+      if (singleProjectMode === SingleProjectMode.ERROR) {
+        throw new BadRequestError(errorString);
+      }
+    }
     if (!agentState) {
       agentState = new AgentProjectState(projectId);
       projectStateForId.set(projectId, agentState);

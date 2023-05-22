@@ -1,8 +1,9 @@
 import { Suite } from "mocha";
 import { useFakeTimers } from "sinon";
-import supertest = require("supertest");
+import * as supertest from "supertest";
 import { createApp } from "../../../emulator/auth/server";
 import { AgentProjectState } from "../../../emulator/auth/state";
+import { SingleProjectMode } from "../../../emulator/auth";
 
 export const PROJECT_ID = "example";
 
@@ -14,13 +15,14 @@ export const PROJECT_ID = "example";
  */
 export function describeAuthEmulator(
   title: string,
-  fn: (this: Suite, utils: AuthTestUtils) => void
+  fn: (this: Suite, utils: AuthTestUtils) => void,
+  singleProjectMode = SingleProjectMode.NO_WARNING
 ): Suite {
   return describe(`Auth Emulator: ${title}`, function (this) {
     let authApp: Express.Application;
     beforeEach("setup or reuse auth server", async function (this) {
       this.timeout(20000);
-      authApp = await createOrReuseApp();
+      authApp = await createOrReuseApp(singleProjectMode);
     });
 
     let clock: sinon.SinonFakeTimers;
@@ -40,12 +42,16 @@ export type AuthTestUtils = {
 };
 
 // Keep a global auth server since start-up takes too long:
-let cachedAuthApp: Express.Application;
+const cachedAuthAppMap = new Map<SingleProjectMode, Express.Application>();
 const projectStateForId = new Map<string, AgentProjectState>();
 
-async function createOrReuseApp(): Promise<Express.Application> {
-  if (!cachedAuthApp) {
-    cachedAuthApp = await createApp(PROJECT_ID, projectStateForId);
+async function createOrReuseApp(
+  singleProjectMode: SingleProjectMode
+): Promise<Express.Application> {
+  let cachedAuthApp: Express.Application | undefined = cachedAuthAppMap.get(singleProjectMode);
+  if (cachedAuthApp === undefined) {
+    cachedAuthApp = await createApp(PROJECT_ID, singleProjectMode, projectStateForId);
+    cachedAuthAppMap.set(singleProjectMode, cachedAuthApp);
   }
   // Clear the state every time to make it work like brand new.
   // NOTE: This probably won't work with parallel mode if we ever enable it.

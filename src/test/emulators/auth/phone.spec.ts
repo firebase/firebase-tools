@@ -451,7 +451,7 @@ describeAuthEmulator("phone auth sign-in", ({ authApi }) => {
             displayName: DISPLAY_NAME,
             photoUrl: PHOTO_URL,
             emailVerified: true,
-            customClaims: JSON.stringify({ customAttribute: "custom" }),
+            customClaims: { customAttribute: "custom" },
           },
         });
       const phoneNumber = TEST_PHONE_NUMBER;
@@ -514,8 +514,8 @@ describeAuthEmulator("phone auth sign-in", ({ authApi }) => {
             displayName: DISPLAY_NAME,
             photoUrl: PHOTO_URL,
             emailVerified: true,
-            customClaims: JSON.stringify({ customAttribute: "custom" }),
-            sessionClaims: JSON.stringify({ sessionAttribute: "session" }),
+            customClaims: { customAttribute: "custom" },
+            sessionClaims: { sessionAttribute: "session" },
           },
         });
       const phoneNumber = TEST_PHONE_NUMBER;
@@ -582,7 +582,7 @@ describeAuthEmulator("phone auth sign-in", ({ authApi }) => {
             displayName: "oldDisplayName",
             photoUrl: "oldPhotoUrl",
             emailVerified: false,
-            customClaims: JSON.stringify({ customAttribute: "oldCustom" }),
+            customClaims: { customAttribute: "oldCustom" },
           },
         })
         .post(BEFORE_SIGN_IN_PATH)
@@ -592,8 +592,8 @@ describeAuthEmulator("phone auth sign-in", ({ authApi }) => {
             displayName: DISPLAY_NAME,
             photoUrl: PHOTO_URL,
             emailVerified: true,
-            customClaims: JSON.stringify({ customAttribute: "custom" }),
-            sessionClaims: JSON.stringify({ sessionAttribute: "session" }),
+            customClaims: { customAttribute: "custom" },
+            sessionClaims: { sessionAttribute: "session" },
           },
         });
       const phoneNumber = TEST_PHONE_NUMBER;

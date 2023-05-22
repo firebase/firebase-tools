@@ -11,6 +11,7 @@ import * as validate from "./validate";
 import * as ensure from "./ensure";
 import { Options } from "../../options";
 import {
+  EndpointFilter,
   endpointMatchesAnyFilter,
   getEndpointFilters,
   groupEndpointsByCodebase,
@@ -25,10 +26,18 @@ import { logger } from "../../logger";
 import { ensureTriggerRegions } from "./triggerRegionHelper";
 import { ensureServiceAgentRoles } from "./checkIam";
 import { FirebaseError } from "../../error";
-import { configForCodebase, normalizeAndValidate } from "../../functions/projectConfig";
+import {
+  configForCodebase,
+  normalizeAndValidate,
+  ValidatedConfig,
+} from "../../functions/projectConfig";
 import { AUTH_BLOCKING_EVENTS } from "../../functions/events/v1";
 import { generateServiceIdentity } from "../../gcp/serviceusage";
+import { applyBackendHashToBackends } from "./cache/applyHash";
+import { allEndpoints, Backend } from "./backend";
+import { assertExhaustive } from "../../functional";
 
+export const EVENTARC_SOURCE_ENV = "EVENTARC_CLOUD_EVENT_SOURCE";
 function hasUserConfig(config: Record<string, unknown>): boolean {
   // "firebase" key is always going to exist in runtime config.
   // If any other key exists, we can assume that user is using runtime config.
@@ -53,6 +62,9 @@ export async function prepare(
   if (codebases.length === 0) {
     throw new FirebaseError("No function matches given --only filters. Aborting deployment.");
   }
+  for (const codebase of codebases) {
+    logLabeledBullet("functions", `preparing codebase ${clc.bold(codebase)} for deployment`);
+  }
 
   // ===Phase 0. Check that minimum APIs required for function deploys are enabled.
   const checkAPIsEnabled = await Promise.all([
@@ -76,63 +88,89 @@ export async function prepare(
     runtimeConfig = { ...runtimeConfig, ...(await getFunctionsConfig(projectId)) };
   }
 
-  // ===Phase 1. Load codebase from source.
-  context.sources = {};
+  // ===Phase 1. Load codebases from source.
+  const wantBuilds = await loadCodebases(
+    context.config,
+    options,
+    firebaseConfig,
+    runtimeConfig,
+    context.filters
+  );
+
+  // == Phase 2. Resolve build to backend.
   const codebaseUsesEnvs: string[] = [];
   const wantBackends: Record<string, backend.Backend> = {};
-  for (const codebase of codebases) {
-    logLabeledBullet("functions", `preparing codebase ${clc.bold(codebase)} for deployment`);
-
+  for (const [codebase, wantBuild] of Object.entries(wantBuilds)) {
     const config = configForCodebase(context.config, codebase);
-    const sourceDirName = config.source;
-    if (!sourceDirName) {
-      throw new FirebaseError(
-        `No functions code detected at default location (./functions), and no functions source defined in firebase.json`
-      );
-    }
-    const sourceDir = options.config.path(sourceDirName);
-    const delegateContext: runtimes.DelegateContext = {
-      projectId,
-      sourceDir,
-      projectDir: options.config.projectDir,
-      runtime: config.runtime || "",
-    };
-    const runtimeDelegate = await runtimes.getRuntimeDelegate(delegateContext);
-    logger.debug(`Validating ${runtimeDelegate.name} source`);
-    await runtimeDelegate.validate();
-    logger.debug(`Building ${runtimeDelegate.name} source`);
-    await runtimeDelegate.build();
-
     const firebaseEnvs = functionsEnv.loadFirebaseEnvs(firebaseConfig, projectId);
     const userEnvOpt: functionsEnv.UserEnvsOpts = {
-      functionsSource: sourceDir,
+      functionsSource: options.config.path(config.source),
       projectId: projectId,
       projectAlias: options.projectAlias,
     };
     const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
     const envs = { ...userEnvs, ...firebaseEnvs };
-    const wantBuild: build.Build = await runtimeDelegate.discoverBuild(runtimeConfig, firebaseEnvs);
-    const wantBackend: backend.Backend = await build.resolveBackend(
+
+    const { backend: wantBackend, envs: resolvedEnvs } = await build.resolveBackend(
       wantBuild,
+      firebaseConfig,
       userEnvOpt,
       userEnvs,
       options.nonInteractive
     );
+
+    let hasEnvsFromParams = false;
     wantBackend.environmentVariables = envs;
+    for (const envName of Object.keys(resolvedEnvs)) {
+      const isList = resolvedEnvs[envName]?.legalList;
+      const envValue = resolvedEnvs[envName]?.toSDK();
+      if (
+        envValue &&
+        !resolvedEnvs[envName].internal &&
+        (!Object.prototype.hasOwnProperty.call(wantBackend.environmentVariables, envName) || isList)
+      ) {
+        wantBackend.environmentVariables[envName] = envValue;
+        hasEnvsFromParams = true;
+      }
+    }
+
     for (const endpoint of backend.allEndpoints(wantBackend)) {
-      endpoint.environmentVariables = wantBackend.environmentVariables;
+      endpoint.environmentVariables = { ...wantBackend.environmentVariables } || {};
+      let resource: string;
+      if (endpoint.platform === "gcfv1") {
+        resource = `projects/${endpoint.project}/locations/${endpoint.region}/functions/${endpoint.id}`;
+      } else if (endpoint.platform === "gcfv2") {
+        // N.B. If GCF starts allowing v1's allowable characters in IDs they're
+        // going to need to have a transform to create a service ID (which has a
+        // more restrictive cahracter set). We'll need to reimplement that here.
+        resource = `projects/${endpoint.project}/locations/${endpoint.region}/services/${endpoint.id}`;
+      } else {
+        assertExhaustive(endpoint.platform);
+      }
+      endpoint.environmentVariables[EVENTARC_SOURCE_ENV] = resource;
       endpoint.codebase = codebase;
     }
     wantBackends[codebase] = wantBackend;
-    if (functionsEnv.hasUserEnvs(userEnvOpt)) {
+    if (functionsEnv.hasUserEnvs(userEnvOpt) || hasEnvsFromParams) {
       codebaseUsesEnvs.push(codebase);
+    }
+
+    if (wantBuild.params.length > 0) {
+      if (wantBuild.params.every((p) => p.type !== "secret")) {
+        void track("functions_params_in_build", "env_only");
+      } else {
+        void track("functions_params_in_build", "with_secrets");
+      }
+    } else {
+      void track("functions_params_in_build", "none");
     }
   }
 
-  // ===Phase 1.5. Before proceeding further, let's make sure that we don't have conflicting function names.
+  // ===Phase 2.5. Before proceeding further, let's make sure that we don't have conflicting function names.
   validate.endpointsAreUnique(wantBackends);
 
-  // ===Phase 2. Prepare source for upload.
+  // ===Phase 3. Prepare source for upload.
+  context.sources = {};
   for (const [codebase, wantBackend] of Object.entries(wantBackends)) {
     const config = configForCodebase(context.config, codebase);
     const sourceDirName = config.source;
@@ -145,15 +183,19 @@ export async function prepare(
       );
     }
     if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv2")) {
-      source.functionsSourceV2 = await prepareFunctionsUpload(sourceDir, config);
+      const packagedSource = await prepareFunctionsUpload(sourceDir, config);
+      source.functionsSourceV2 = packagedSource?.pathToSource;
+      source.functionsSourceV2Hash = packagedSource?.hash;
     }
     if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv1")) {
-      source.functionsSourceV1 = await prepareFunctionsUpload(sourceDir, config, runtimeConfig);
+      const packagedSource = await prepareFunctionsUpload(sourceDir, config, runtimeConfig);
+      source.functionsSourceV1 = packagedSource?.pathToSource;
+      source.functionsSourceV1Hash = packagedSource?.hash;
     }
     context.sources[codebase] = source;
   }
 
-  // ===Phase 3. Fill in details and validate endpoints. We run the check for ALL endpoints - we think it's useful for
+  // ===Phase 4. Fill in details and validate endpoints. We run the check for ALL endpoints - we think it's useful for
   // validations to fail even for endpoints that aren't being deployed so any errors are caught early.
   payload.functions = {};
   const haveBackends = groupEndpointsByCodebase(
@@ -167,7 +209,7 @@ export async function prepare(
   for (const [codebase, { wantBackend, haveBackend }] of Object.entries(payload.functions)) {
     inferDetailsFromExisting(wantBackend, haveBackend, codebaseUsesEnvs.includes(codebase));
     await ensureTriggerRegions(wantBackend);
-    resolveCpu(wantBackend);
+    resolveCpuAndConcurrency(wantBackend);
     validate.endpointsAreValid(wantBackend);
     inferBlockingDetails(wantBackend);
   }
@@ -184,7 +226,7 @@ export async function prepare(
   const codebaseCnt = Object.keys(payload.functions).length;
   void track("functions_codebase_deploy_count", codebaseCnt >= 5 ? "5+" : codebaseCnt.toString());
 
-  // ===Phase 4. Enable APIs required by the deploying backends.
+  // ===Phase 5. Enable APIs required by the deploying backends.
   const wantBackend = backend.merge(...Object.values(wantBackends));
   const haveBackend = backend.merge(...Object.values(haveBackends));
 
@@ -219,7 +261,7 @@ export async function prepare(
     await Promise.all(generateServiceAccounts);
   }
 
-  // ===Phase 5. Ask for user prompts for things might warrant user attentions.
+  // ===Phase 6. Ask for user prompts for things might warrant user attentions.
   // We limit the scope endpoints being deployed.
   const matchingBackend = backend.matchingBackend(wantBackend, (endpoint) => {
     return endpointMatchesAnyFilter(endpoint, context.filters);
@@ -227,12 +269,19 @@ export async function prepare(
   await promptForFailurePolicies(options, matchingBackend, haveBackend);
   await promptForMinInstances(options, matchingBackend, haveBackend);
 
-  // ===Phase 6. Finalize preparation by "fixing" all extraneous environment issues like IAM policies.
+  // ===Phase 7. Finalize preparation by "fixing" all extraneous environment issues like IAM policies.
   // We limit the scope endpoints being deployed.
   await backend.checkAvailability(context, matchingBackend);
   await ensureServiceAgentRoles(projectId, projectNumber, matchingBackend, haveBackend);
   await validate.secretsAreValid(projectId, matchingBackend);
   await ensure.secretAccess(projectId, matchingBackend, haveBackend);
+
+  /**
+   * ===Phase 8 Generates the hashes for each of the functions now that secret versions have been resolved.
+   * This must be called after `await validate.secretsAreValid`.
+   */
+  updateEndpointTargetedStatus(wantBackends, context.filters || []);
+  applyBackendHashToBackends(wantBackends, context);
 }
 
 /**
@@ -268,16 +317,14 @@ export function inferDetailsFromExisting(
       wantE.availableMemoryMb = haveE.availableMemoryMb;
     }
 
-    // N.B. This code doesn't handle automatic downgrading of concurrency if
-    // the customer sets CPU <1. We'll instead error that you can't have both.
-    // We may want to handle this case, though it might also be surprising to
-    // customers if they _don't_ get an error and we silently drop concurrency.
-    if (typeof wantE.concurrency === "undefined" && haveE.concurrency) {
-      wantE.concurrency = haveE.concurrency;
-    }
     if (typeof wantE.cpu === "undefined" && haveE.cpu) {
       wantE.cpu = haveE.cpu;
     }
+
+    // N.B. concurrency has different defaults based on CPU. If the customer
+    // only specifies CPU and they change that specification to < 1, we should
+    // turn off concurrency.
+    // We'll hanndle this in setCpuAndConcurrency
 
     wantE.securityLevel = haveE.securityLevel ? haveE.securityLevel : "SECURE_ALWAYS";
 
@@ -302,6 +349,20 @@ function maybeCopyTriggerRegion(wantE: backend.Endpoint, haveE: backend.Endpoint
     return;
   }
   wantE.eventTrigger.region = haveE.eventTrigger.region;
+}
+
+/**
+ * Determines whether endpoints are targeted by an --only flag.
+ */
+export function updateEndpointTargetedStatus(
+  wantBackends: Record<string, Backend>,
+  endpointFilters: EndpointFilter[]
+): void {
+  for (const wantBackend of Object.values(wantBackends)) {
+    for (const endpoint of allEndpoints(wantBackend)) {
+      endpoint.targetedByOnly = endpointMatchesAnyFilter(endpoint, endpointFilters);
+    }
+  }
 }
 
 /** Figures out the blocking endpoint options by taking the OR of every trigger option and reassigning that value back to the endpoint. */
@@ -341,7 +402,7 @@ export function inferBlockingDetails(want: backend.Backend): void {
  * provided and sets concurrency based on the CPU level if not provided.
  * After this function, CPU will be a real number and not "gcf_gen1".
  */
-export function resolveCpu(want: backend.Backend): void {
+export function resolveCpuAndConcurrency(want: backend.Backend): void {
   for (const e of backend.allEndpoints(want)) {
     if (e.platform === "gcfv1") {
       continue;
@@ -351,5 +412,52 @@ export function resolveCpu(want: backend.Backend): void {
     } else if (!e.cpu) {
       e.cpu = backend.memoryToGen2Cpu(e.availableMemoryMb || backend.DEFAULT_MEMORY);
     }
+
+    if (!e.concurrency) {
+      e.concurrency = e.cpu >= 1 ? backend.DEFAULT_CONCURRENCY : 1;
+    }
   }
+}
+
+/**
+ * Exported for use by an internal command (internaltesting:functions:discover) only.
+ *
+ * @internal
+ */
+export async function loadCodebases(
+  config: ValidatedConfig,
+  options: Options,
+  firebaseConfig: args.FirebaseConfig,
+  runtimeConfig: Record<string, unknown>,
+  filters?: EndpointFilter[]
+): Promise<Record<string, build.Build>> {
+  const codebases = targetCodebases(config, filters);
+  const projectId = needProjectId(options);
+
+  const wantBuilds: Record<string, build.Build> = {};
+  for (const codebase of codebases) {
+    const codebaseConfig = configForCodebase(config, codebase);
+    const sourceDirName = codebaseConfig.source;
+    if (!sourceDirName) {
+      throw new FirebaseError(
+        `No functions code detected at default location (./functions), and no functions source defined in firebase.json`
+      );
+    }
+    const sourceDir = options.config.path(sourceDirName);
+    const delegateContext: runtimes.DelegateContext = {
+      projectId,
+      sourceDir,
+      projectDir: options.config.projectDir,
+      runtime: codebaseConfig.runtime || "",
+    };
+    const runtimeDelegate = await runtimes.getRuntimeDelegate(delegateContext);
+    logger.debug(`Validating ${runtimeDelegate.name} source`);
+    await runtimeDelegate.validate();
+    logger.debug(`Building ${runtimeDelegate.name} source`);
+    await runtimeDelegate.build();
+
+    const firebaseEnvs = functionsEnv.loadFirebaseEnvs(firebaseConfig, projectId);
+    wantBuilds[codebase] = await runtimeDelegate.discoverBuild(runtimeConfig, firebaseEnvs);
+  }
+  return wantBuilds;
 }

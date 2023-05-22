@@ -1,9 +1,13 @@
 import { expect } from "chai";
+import * as nock from "nock";
 
 import * as cloudfunctionsv2 from "../../gcp/cloudfunctionsv2";
 import * as backend from "../../deploy/functions/backend";
 import * as events from "../../functions/events";
 import * as projectConfig from "../../functions/projectConfig";
+import { BLOCKING_LABEL, CODEBASE_LABEL, HASH_LABEL } from "../../functions/constants";
+import { functionsV2Origin } from "../../api";
+import { FirebaseError } from "../../error";
 
 describe("cloudfunctionsv2", () => {
   const FUNCTION_NAME: backend.TargetIds = {
@@ -19,6 +23,7 @@ describe("cloudfunctionsv2", () => {
     entryPoint: "function",
     runtime: "nodejs16",
     codebase: projectConfig.DEFAULT_CODEBASE,
+    runServiceId: "service",
   };
 
   const CLOUD_FUNCTION_V2_SOURCE: cloudfunctionsv2.StorageSource = {
@@ -27,26 +32,26 @@ describe("cloudfunctionsv2", () => {
     generation: 42,
   };
 
-  const CLOUD_FUNCTION_V2: Omit<cloudfunctionsv2.CloudFunction, cloudfunctionsv2.OutputOnlyFields> =
-    {
-      name: "projects/project/locations/region/functions/id",
-      buildConfig: {
-        entryPoint: "function",
-        runtime: "nodejs16",
-        source: {
-          storageSource: CLOUD_FUNCTION_V2_SOURCE,
-        },
-        environmentVariables: {},
+  const CLOUD_FUNCTION_V2: cloudfunctionsv2.InputCloudFunction = {
+    name: "projects/project/locations/region/functions/id",
+    buildConfig: {
+      entryPoint: "function",
+      runtime: "nodejs16",
+      source: {
+        storageSource: CLOUD_FUNCTION_V2_SOURCE,
       },
-      serviceConfig: {
-        availableMemory: `${backend.DEFAULT_MEMORY}Mi`,
-      },
-    };
+      environmentVariables: {},
+    },
+    serviceConfig: {
+      availableMemory: `${backend.DEFAULT_MEMORY}Mi`,
+    },
+  };
 
   const RUN_URI = "https://id-nonce-region-project.run.app";
-  const HAVE_CLOUD_FUNCTION_V2: cloudfunctionsv2.CloudFunction = {
+  const HAVE_CLOUD_FUNCTION_V2: cloudfunctionsv2.OutputCloudFunction = {
     ...CLOUD_FUNCTION_V2,
     serviceConfig: {
+      service: "service",
       uri: RUN_URI,
     },
     state: "ACTIVE",
@@ -112,10 +117,7 @@ describe("cloudfunctionsv2", () => {
           channel: "projects/myproject/locations/us-wildwest11/channels/mychannel",
         },
       };
-      const eventGcfFunction: Omit<
-        cloudfunctionsv2.CloudFunction,
-        cloudfunctionsv2.OutputOnlyFields
-      > = {
+      const eventGcfFunction: cloudfunctionsv2.InputCloudFunction = {
         ...CLOUD_FUNCTION_V2,
         eventTrigger: {
           eventType: "google.cloud.audit.log.v1.written",
@@ -212,7 +214,7 @@ describe("cloudfunctionsv2", () => {
         ...CLOUD_FUNCTION_V2,
         labels: {
           ...CLOUD_FUNCTION_V2.labels,
-          [cloudfunctionsv2.BLOCKING_LABEL]: "before-create",
+          [BLOCKING_LABEL]: "before-create",
         },
       });
 
@@ -231,7 +233,7 @@ describe("cloudfunctionsv2", () => {
         ...CLOUD_FUNCTION_V2,
         labels: {
           ...CLOUD_FUNCTION_V2.labels,
-          [cloudfunctionsv2.BLOCKING_LABEL]: "before-sign-in",
+          [BLOCKING_LABEL]: "before-sign-in",
         },
       });
     });
@@ -262,10 +264,7 @@ describe("cloudfunctionsv2", () => {
         ],
       };
 
-      const fullGcfFunction: Omit<
-        cloudfunctionsv2.CloudFunction,
-        cloudfunctionsv2.OutputOnlyFields
-      > = {
+      const fullGcfFunction: cloudfunctionsv2.InputCloudFunction = {
         ...CLOUD_FUNCTION_V2,
         labels: {
           ...CLOUD_FUNCTION_V2.labels,
@@ -313,10 +312,7 @@ describe("cloudfunctionsv2", () => {
         availableMemoryMb: 128,
       };
 
-      const complexGcfFunction: Omit<
-        cloudfunctionsv2.CloudFunction,
-        cloudfunctionsv2.OutputOnlyFields
-      > = {
+      const complexGcfFunction: cloudfunctionsv2.InputCloudFunction = {
         ...CLOUD_FUNCTION_V2,
         eventTrigger: {
           eventType: events.v2.PUBSUB_PUBLISH_EVENT,
@@ -343,6 +339,27 @@ describe("cloudfunctionsv2", () => {
       ).to.deep.equal(complexGcfFunction);
     });
 
+    it("should correctly convert CPU and concurrency values", () => {
+      const endpoint: backend.Endpoint = {
+        ...ENDPOINT,
+        platform: "gcfv2",
+        httpsTrigger: {},
+        concurrency: 40,
+        cpu: 2,
+      };
+      const gcfFunction: cloudfunctionsv2.InputCloudFunction = {
+        ...CLOUD_FUNCTION_V2,
+        serviceConfig: {
+          ...CLOUD_FUNCTION_V2.serviceConfig,
+          maxInstanceRequestConcurrency: 40,
+          availableCpu: "2",
+        },
+      };
+      expect(
+        cloudfunctionsv2.functionFromEndpoint(endpoint, CLOUD_FUNCTION_V2_SOURCE)
+      ).to.deep.equal(gcfFunction);
+    });
+
     it("should export codebase as label", () => {
       expect(
         cloudfunctionsv2.functionFromEndpoint(
@@ -351,7 +368,19 @@ describe("cloudfunctionsv2", () => {
         )
       ).to.deep.equal({
         ...CLOUD_FUNCTION_V2,
-        labels: { ...CLOUD_FUNCTION_V2.labels, [cloudfunctionsv2.CODEBASE_LABEL]: "my-codebase" },
+        labels: { ...CLOUD_FUNCTION_V2.labels, [CODEBASE_LABEL]: "my-codebase" },
+      });
+    });
+
+    it("should export hash as label", () => {
+      expect(
+        cloudfunctionsv2.functionFromEndpoint(
+          { ...ENDPOINT, hash: "my-hash", httpsTrigger: {} },
+          CLOUD_FUNCTION_V2_SOURCE
+        )
+      ).to.deep.equal({
+        ...CLOUD_FUNCTION_V2,
+        labels: { ...CLOUD_FUNCTION_V2.labels, [HASH_LABEL]: "my-hash" },
       });
     });
   });
@@ -363,6 +392,23 @@ describe("cloudfunctionsv2", () => {
         httpsTrigger: {},
         platform: "gcfv2",
         uri: RUN_URI,
+      });
+    });
+
+    it("should copy run service IDs", () => {
+      const fn: cloudfunctionsv2.OutputCloudFunction = {
+        ...HAVE_CLOUD_FUNCTION_V2,
+        serviceConfig: {
+          ...HAVE_CLOUD_FUNCTION_V2.serviceConfig,
+          service: "projects/p/locations/l/services/service-id",
+        },
+      };
+      expect(cloudfunctionsv2.endpointFromFunction(fn)).to.deep.equal({
+        ...ENDPOINT,
+        httpsTrigger: {},
+        platform: "gcfv2",
+        uri: RUN_URI,
+        runServiceId: "service-id",
       });
     });
 
@@ -607,7 +653,7 @@ describe("cloudfunctionsv2", () => {
           ...HAVE_CLOUD_FUNCTION_V2,
           labels: {
             ...CLOUD_FUNCTION_V2.labels,
-            [cloudfunctionsv2.CODEBASE_LABEL]: "my-codebase",
+            [CODEBASE_LABEL]: "my-codebase",
           },
         })
       ).to.deep.equal({
@@ -617,10 +663,71 @@ describe("cloudfunctionsv2", () => {
         httpsTrigger: {},
         labels: {
           ...ENDPOINT.labels,
-          [cloudfunctionsv2.CODEBASE_LABEL]: "my-codebase",
+          [CODEBASE_LABEL]: "my-codebase",
         },
         codebase: "my-codebase",
       });
+    });
+
+    it("should derive hash from labels", () => {
+      expect(
+        cloudfunctionsv2.endpointFromFunction({
+          ...HAVE_CLOUD_FUNCTION_V2,
+          labels: {
+            ...CLOUD_FUNCTION_V2.labels,
+            [CODEBASE_LABEL]: "my-codebase",
+            [HASH_LABEL]: "my-hash",
+          },
+        })
+      ).to.deep.equal({
+        ...ENDPOINT,
+        platform: "gcfv2",
+        uri: RUN_URI,
+        httpsTrigger: {},
+        labels: {
+          ...ENDPOINT.labels,
+          [CODEBASE_LABEL]: "my-codebase",
+          [HASH_LABEL]: "my-hash",
+        },
+        codebase: "my-codebase",
+        hash: "my-hash",
+      });
+    });
+
+    it("should convert function without serviceConfig", () => {
+      const expectedEndpoint = {
+        ...ENDPOINT,
+        platform: "gcfv2",
+        httpsTrigger: {},
+      };
+      delete expectedEndpoint.runServiceId;
+      expect(
+        cloudfunctionsv2.endpointFromFunction({
+          ...HAVE_CLOUD_FUNCTION_V2,
+          serviceConfig: undefined,
+        })
+      ).to.deep.equal(expectedEndpoint);
+    });
+  });
+
+  describe("listFunctions", () => {
+    it("should pass back an error with the correct status", async () => {
+      nock(functionsV2Origin)
+        .get("/v2/projects/foo/locations/-/functions")
+        .query({ filter: `environment="GEN_2"` })
+        .reply(403, { error: "You don't have permissions." });
+
+      let errCaught = false;
+      try {
+        await cloudfunctionsv2.listFunctions("foo", "-");
+      } catch (err: unknown) {
+        errCaught = true;
+        expect(err).instanceOf(FirebaseError);
+        expect(err).has.property("status", 403);
+      }
+
+      expect(errCaught, "should have caught an error").to.be.true;
+      expect(nock.isDone()).to.be.true;
     });
   });
 });

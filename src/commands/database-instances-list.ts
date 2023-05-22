@@ -1,15 +1,15 @@
 import { Command } from "../command";
-import Table = require("cli-table");
+const Table = require("cli-table");
 import * as clc from "colorette";
 import * as ora from "ora";
 
 import { logger } from "../logger";
 import { requirePermissions } from "../requirePermissions";
 import { needProjectNumber } from "../projectUtils";
-import firedata = require("../gcp/firedata");
+import * as firedata from "../gcp/firedata";
 import { Emulators } from "../emulator/types";
 import { warnEmulatorNotSupported } from "../emulator/commandUtils";
-import { previews } from "../previews";
+import * as experiments from "../experiments";
 import { needProjectId } from "../projectUtils";
 import {
   listDatabaseInstances,
@@ -52,7 +52,7 @@ export let command = new Command("database:instances:list")
     ).start();
     let instances;
 
-    if (previews.rtdbmanagement) {
+    if (experiments.isEnabled("rtdbmanagement")) {
       const projectId = needProjectId(options);
       try {
         instances = await listDatabaseInstances(projectId, location);
@@ -80,7 +80,7 @@ export let command = new Command("database:instances:list")
     return instances;
   });
 
-if (previews.rtdbmanagement) {
+if (experiments.isEnabled("rtdbmanagement")) {
   command = command.option(
     "-l, --location <location>",
     "(optional) location for the database instance, defaults to us-central1"

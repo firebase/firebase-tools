@@ -1,5 +1,5 @@
 # Learn detailed information about the fields of an extension.yaml file in the docs:
-# https://firebase.google.com/docs/extensions/alpha/ref-extension-yaml
+# https://firebase.google.com/docs/extensions/reference/extension-yaml
 
 name: greet-the-world  # Identifier for your extension
 version: 0.0.1  # Follow semver versioning
@@ -18,18 +18,21 @@ license: Apache-2.0  # https://spdx.org/licenses/
 sourceUrl: https://github.com/firebase/firebase-tools/tree/master/templates/extensions
 
 # Specify whether a paid-tier billing plan is required to use your extension.
-# Learn more in the docs: https://firebase.google.com/docs/extensions/alpha/ref-extension-yaml#billing-required-field
+# Learn more in the docs: https://firebase.google.com/docs/extensions/reference/extension-yaml#billing-required-field
 billingRequired: false
 
 # In an `apis` field, list any Google APIs (like Cloud Translation, BigQuery, etc.)
 # required for your extension to operate.
-# Learn more in the docs: https://firebase.google.com/docs/extensions/alpha/ref-extension-yaml#apis-field
+# Learn more in the docs:
+# https://firebase.google.com/docs/extensions/reference/extension-yaml#apis-field
 
 # In a `roles` field, list any IAM access roles required for your extension to operate.
-# Learn more in the docs: https://firebase.google.com/docs/extensions/alpha/ref-extension-yaml#roles-field
+# Learn more in the docs:
+# https://firebase.google.com/docs/extensions/reference/extension-yaml#roles-field
 
 # In the `resources` field, list each of your extension's functions, including the trigger for each function.
-# Learn more in the docs: https://firebase.google.com/docs/extensions/alpha/ref-extension-yaml#resources-field
+# Learn more in the docs:
+# https://firebase.google.com/docs/extensions/reference/extension-yaml#resources-field
 resources:
   - name: greetTheWorld
     type: firebaseextensions.v1beta.function
@@ -40,10 +43,11 @@ resources:
       location: ${LOCATION}
       # httpsTrigger is used for an HTTP triggered function.
       httpsTrigger: {}
-      runtime: "nodejs12"
+      runtime: "nodejs16"
 
 # In the `params` field, set up your extension's user-configured parameters.
-# Learn more in the docs: https://firebase.google.com/docs/extensions/alpha/ref-extension-yaml#params-field
+# Learn more in the docs:
+# https://firebase.google.com/docs/extensions/reference/extension-yaml#params-field
 params:
   - param: GREETING
     label: Greeting for the world

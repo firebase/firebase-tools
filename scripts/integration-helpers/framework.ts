@@ -23,6 +23,8 @@ const STORAGE_BUCKET_FUNCTION_V2_FINALIZED_LOG =
   "========== STORAGE BUCKET V2 FUNCTION FINALIZED ==========";
 const STORAGE_BUCKET_FUNCTION_V2_METADATA_LOG =
   "========== STORAGE BUCKET V2 FUNCTION METADATA ==========";
+const RTDB_V2_FUNCTION_LOG = "========== RTDB V2 FUNCTION ==========";
+const FIRESTORE_V2_LOG = "========== FIRESTORE V2 FUNCTION ==========";
 /* Functions V1 */
 const RTDB_FUNCTION_LOG = "========== RTDB FUNCTION ==========";
 const FIRESTORE_FUNCTION_LOG = "========== FIRESTORE FUNCTION ==========";
@@ -52,6 +54,7 @@ interface ConnectionInfo {
 
 export interface FrameworkOptions {
   emulators?: {
+    hub: ConnectionInfo;
     database: ConnectionInfo;
     firestore: ConnectionInfo;
     functions: ConnectionInfo;
@@ -62,17 +65,18 @@ export interface FrameworkOptions {
 }
 
 export class EmulatorEndToEndTest {
-  rtdbEmulatorHost = "localhost";
+  emulatorHubPort = 0;
+  rtdbEmulatorHost = "127.0.0.1";
   rtdbEmulatorPort = 0;
-  firestoreEmulatorHost = "localhost";
+  firestoreEmulatorHost = "127.0.0.1";
   firestoreEmulatorPort = 0;
-  functionsEmulatorHost = "localhost";
+  functionsEmulatorHost = "127.0.0.1";
   functionsEmulatorPort = 0;
-  pubsubEmulatorHost = "localhost";
+  pubsubEmulatorHost = "127.0.0.1";
   pubsubEmulatorPort = 0;
-  authEmulatorHost = "localhost";
+  authEmulatorHost = "127.0.0.1";
   authEmulatorPort = 0;
-  storageEmulatorHost = "localhost";
+  storageEmulatorHost = "127.0.0.1";
   storageEmulatorPort = 0;
   allEmulatorsStarted = false;
 
@@ -86,6 +90,7 @@ export class EmulatorEndToEndTest {
     if (!config.emulators) {
       return;
     }
+    this.emulatorHubPort = config.emulators.hub?.port;
     this.rtdbEmulatorPort = config.emulators.database?.port;
     this.firestoreEmulatorPort = config.emulators.firestore?.port;
     this.functionsEmulatorPort = config.emulators.functions?.port;
@@ -141,6 +146,8 @@ export class TriggerEndToEndTest extends EmulatorEndToEndTest {
   storageBucketV2MetadataTriggerCount = 0;
   authBlockingCreateV2TriggerCount = 0;
   authBlockingSignInV2TriggerCount = 0;
+  rtdbV2TriggerCount = 0;
+  firestoreV2TriggerCount = 0;
 
   rtdbFromFirestore = false;
   firestoreFromRtdb = false;
@@ -176,6 +183,8 @@ export class TriggerEndToEndTest extends EmulatorEndToEndTest {
     this.storageBucketV2MetadataTriggerCount = 0;
     this.authBlockingCreateV2TriggerCount = 0;
     this.authBlockingSignInV2TriggerCount = 0;
+    this.rtdbV2TriggerCount = 0;
+    this.firestoreV2TriggerCount = 0;
   }
 
   /*
@@ -268,6 +277,12 @@ export class TriggerEndToEndTest extends EmulatorEndToEndTest {
       if (data.includes(AUTH_BLOCKING_SIGN_IN_V2_LOG)) {
         this.authBlockingSignInV2TriggerCount++;
       }
+      if (data.includes(RTDB_V2_FUNCTION_LOG)) {
+        this.rtdbV2TriggerCount++;
+      }
+      if (data.includes(FIRESTORE_V2_LOG)) {
+        this.firestoreV2TriggerCount++;
+      }
     });
 
     return startEmulators;
@@ -309,7 +324,7 @@ export class TriggerEndToEndTest extends EmulatorEndToEndTest {
   }
 
   invokeHttpFunction(name: string, zone = FIREBASE_PROJECT_ZONE): Promise<Response> {
-    const url = `http://localhost:${[this.functionsEmulatorPort, this.project, zone, name].join(
+    const url = `http://127.0.0.1:${[this.functionsEmulatorPort, this.project, zone, name].join(
       "/"
     )}`;
     return fetch(url);
@@ -320,7 +335,7 @@ export class TriggerEndToEndTest extends EmulatorEndToEndTest {
     body: Record<string, unknown>,
     zone = FIREBASE_PROJECT_ZONE
   ): Promise<Response> {
-    const url = `http://localhost:${this.functionsEmulatorPort}/${[this.project, zone, name].join(
+    const url = `http://127.0.0.1:${this.functionsEmulatorPort}/${[this.project, zone, name].join(
       "/"
     )}`;
     return fetch(url, {
@@ -402,5 +417,15 @@ export class TriggerEndToEndTest extends EmulatorEndToEndTest {
         callback();
       }
     }, interval);
+  }
+
+  disableBackgroundTriggers(): Promise<Response> {
+    const url = `http://127.0.0.1:${this.emulatorHubPort}/functions/disableBackgroundTriggers`;
+    return fetch(url, { method: "PUT" });
+  }
+
+  enableBackgroundTriggers(): Promise<Response> {
+    const url = `http://127.0.0.1:${this.emulatorHubPort}/functions/enableBackgroundTriggers`;
+    return fetch(url, { method: "PUT" });
   }
 }

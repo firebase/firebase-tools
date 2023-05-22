@@ -113,7 +113,7 @@ class DefaultStorageRulesManager implements StorageRulesManager {
           }:${parsedIssue.sourcePosition_.line_}`
         );
       } catch {
-        this._logger.log("WARN", issue);
+        this._logger.logLabeled("WARN", "storage", issue);
       }
     });
     return issues;

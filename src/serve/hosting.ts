@@ -1,24 +1,24 @@
-import * as clc from "colorette";
-
-const superstatic = require("superstatic").server; // Superstatic has no types, requires odd importing.
 const morgan = require("morgan");
+import { isIPv4 } from "net";
+import { server as superstatic } from "superstatic";
+import * as clc from "colorette";
 
 import { detectProjectRoot } from "../detectProjectRoot";
 import { FirebaseError } from "../error";
 import { implicitInit, TemplateServerResponse } from "../hosting/implicitInit";
 import { initMiddleware } from "../hosting/initMiddleware";
-import { normalizedHostingConfigs } from "../hosting/normalizedHostingConfigs";
+import * as config from "../hosting/config";
 import cloudRunProxy from "../hosting/cloudRunProxy";
 import { functionsProxy } from "../hosting/functionsProxy";
-import { NextFunction, Request, Response } from "express";
 import { Writable } from "stream";
 import { EmulatorLogger } from "../emulator/emulatorLogger";
 import { Emulators } from "../emulator/types";
 import { createDestroyer } from "../utils";
-import { execSync } from "child_process";
+import { requireHostingSite } from "../requireHostingSite";
+import { getProjectId } from "../projectUtils";
+import { checkListenable } from "../emulator/portUtils";
+import { IncomingMessage, ServerResponse } from "http";
 
-const MAX_PORT_ATTEMPTS = 10;
-let attempts = 0;
 let destroyServer: undefined | (() => Promise<void>) = undefined;
 
 const logger = EmulatorLogger.forEmulator(Emulators.HOSTING);
@@ -45,53 +45,26 @@ function startServer(options: any, config: any, port: number, init: TemplateServ
     stream: morganStream,
   });
 
-  const portInUse = () => {
-    const message = "Port " + options.port + " is not available.";
-    logger.log("WARN", clc.yellow("hosting: ") + message + " Trying another port...");
-    if (attempts < MAX_PORT_ATTEMPTS) {
-      // Another project that's running takes up to 4 ports: 1 hosting port and 3 functions ports
-      attempts++;
-      startServer(options, config, port + 5, init);
-    } else {
-      logger.log("WARN", message);
-      throw new FirebaseError("Could not find an open port for hosting development server.", {
-        exit: 1,
-      });
-    }
+  const after = options.frameworksDevModeHandle && {
+    files: options.frameworksDevModeHandle,
   };
-
-  // On OSX, some ports may be reserved by the OS in a way that node http doesn't detect.
-  // Starting in MacOS 12.3 it does this with port 5000 our default port. This is a bad
-  // enough devexp that we should special case and ensure it's available.
-  if (process.platform === "darwin") {
-    try {
-      execSync(`lsof -i :${port}`);
-      portInUse();
-      return;
-    } catch (e) {
-      // if lsof errored the port is NOT in use, continue
-    }
-  }
 
   const server = superstatic({
     debug: false,
     port: port,
-    host: options.host,
+    hostname: options.host,
     config: config,
     compression: true,
-    cwd: detectProjectRoot(options),
+    cwd: detectProjectRoot(options) || undefined,
     stack: "strict",
     before: {
-      files: (req: Request, res: Response, next: NextFunction) => {
+      files: (req: IncomingMessage, res: ServerResponse, next: (err?: unknown) => void) => {
         // We do these in a single method to ensure order of operations
-        morganMiddleware(req, res, () => {
-          /*
-          NoOp next function
-        */
-        });
+        morganMiddleware(req, res, () => null);
         firebaseMiddleware(req, res, next);
       },
     },
+    after,
     rewriters: {
       function: functionsProxy(options),
       run: cloudRunProxy(options),
@@ -112,16 +85,11 @@ function startServer(options: any, config: any, port: number, init: TemplateServ
 
   destroyServer = createDestroyer(server);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  server.on("error", (err: any) => {
-    if (err.code === "EADDRINUSE") {
-      portInUse();
-    } else {
-      throw new FirebaseError(
-        "An error occurred while starting the hosting development server:\n\n" + err.toString(),
-        { exit: 1 }
-      );
-    }
+  server.on("error", (err: Error) => {
+    logger.log("DEBUG", `Error from superstatic server: ${err.stack || ""}`);
+    throw new FirebaseError(
+      `An error occurred while starting the hosting development server:\n\n${err.message}`
+    );
   });
 }
 
@@ -137,15 +105,45 @@ export function stop(): Promise<void> {
  * @param options the Firebase CLI options.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function start(options: any): Promise<void> {
+export async function start(options: any): Promise<{ ports: number[] }> {
   const init = await implicitInit(options);
-  const configs = normalizedHostingConfigs(options);
+  // N.B. Originally we didn't call this method because it could try to resolve
+  // targets and cause us to fail. But we might be calling prepareFrameworks,
+  // which modifies the cached result of config.hostingConfig. So if we don't
+  // call this, we won't get web frameworks. But we might need to change this
+  // as well to avoid validation errors.
+  // But hostingConfig tries to resolve targets and a customer might not have
+  // site/targets defined
+  if (!options.site) {
+    try {
+      await requireHostingSite(options);
+    } catch {
+      if (init.json) {
+        options.site = JSON.parse(init.json).projectId;
+      } else {
+        options.site = getProjectId(options) || "site";
+      }
+    }
+  }
+  const configs = config.hostingConfig(options);
 
+  // We never want to try and take port 5001 because Functions likes that port
+  // quite a bit, and we don't want to make Functions mad.
+  const assignedPorts = new Set<number>([5001]);
   for (let i = 0; i < configs.length; i++) {
     // skip over the functions emulator ports to avoid breaking changes
-    const port = i === 0 ? options.port : options.port + 4 + i;
+    let port = i === 0 ? options.port : options.port + 4 + i;
+    while (assignedPorts.has(port) || !(await availablePort(options.host, port))) {
+      port += 1;
+    }
+    assignedPorts.add(port);
     startServer(options, configs[i], port, init);
   }
+
+  // We are not actually reserving 5001, so remove it from our set before
+  // returning.
+  assignedPorts.delete(5001);
+  return { ports: Array.from(assignedPorts) };
 }
 
 /**
@@ -153,4 +151,12 @@ export async function start(options: any): Promise<void> {
  */
 export async function connect(): Promise<void> {
   await Promise.resolve();
+}
+
+function availablePort(host: string, port: number): Promise<boolean> {
+  return checkListenable({
+    address: host,
+    port,
+    family: isIPv4(host) ? "IPv4" : "IPv6",
+  });
 }

@@ -39,7 +39,11 @@ function makeVary(vary: string | null = ""): string {
  * cookies, and caching similar to the behavior of the production version of
  * the Firebase Hosting origin.
  */
-export function proxyRequestHandler(url: string, rewriteIdentifier: string): RequestHandler {
+export function proxyRequestHandler(
+  url: string,
+  rewriteIdentifier: string,
+  options: { forceCascade?: boolean } = {}
+): RequestHandler {
   return async (req: IncomingMessage, res: ServerResponse, next: () => void): Promise<unknown> => {
     logger.info(`[hosting] Rewriting ${req.url} to ${url} for ${rewriteIdentifier}`);
     // Extract the __session cookie from headers to forward it to the
@@ -123,7 +127,7 @@ export function proxyRequestHandler(url: string, rewriteIdentifier: string): Req
     if (proxyRes.status === 404) {
       // x-cascade is not a string[].
       const cascade = proxyRes.response.headers.get("x-cascade");
-      if (cascade && cascade.toUpperCase() === "PASS") {
+      if (options.forceCascade || (cascade && cascade.toUpperCase() === "PASS")) {
         return next();
       }
     }

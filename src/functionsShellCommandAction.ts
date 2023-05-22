@@ -13,8 +13,9 @@ import * as shell from "./emulator/functionsEmulatorShell";
 import * as commandUtils from "./emulator/commandUtils";
 import { EMULATORS_SUPPORTED_BY_FUNCTIONS, EmulatorInfo, Emulators } from "./emulator/types";
 import { EmulatorHubClient } from "./emulator/hubClient";
-import { findAvailablePort } from "./emulator/portUtils";
+import { resolveHostAndAssignPorts } from "./emulator/portUtils";
 import { Options } from "./options";
+import { Constants } from "./emulator/constants";
 
 const serveFunctions = new FunctionsServer();
 
@@ -44,6 +45,14 @@ export const actionFunction = async (options: Options) => {
     (e) => remoteEmulators[e] === undefined
   );
 
+  let host = Constants.getDefaultHost();
+  // If the port was not set by the --port flag or determined from 'firebase.json', just scan
+  // up from 5000
+  let port = 5000;
+  if (typeof options.port === "number") {
+    port = options.port;
+  }
+
   const functionsInfo = remoteEmulators[Emulators.FUNCTIONS];
   if (functionsInfo) {
     utils.logLabeledWarning(
@@ -53,14 +62,19 @@ export const actionFunction = async (options: Options) => {
   } else if (!options.port) {
     // If the user did not pass in any port and the functions emulator is not already running, we can
     // use the port defined for the Functions emulator in their firebase.json
-    options.port = options.config.src.emulators?.functions?.port;
+    port = options.config.src.emulators?.functions?.port ?? port;
+    host = options.config.src.emulators?.functions?.host ?? host;
+    options.host = host;
   }
 
-  // If the port was not set by the --port flag or determined from 'firebase.json', just scan
-  // up from 5000
-  if (!options.port) {
-    options.port = await findAvailablePort("localhost", 5000);
-  }
+  const listen = (
+    await resolveHostAndAssignPorts({
+      [Emulators.FUNCTIONS]: { host, port },
+    })
+  ).functions;
+  // TODO: Listen on secondary addresses.
+  options.host = listen[0].address;
+  options.port = listen[0].port;
 
   return serveFunctions
     .start(options, {

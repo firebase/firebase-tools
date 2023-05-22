@@ -4,24 +4,22 @@ import {
   FunctionsEmulator,
   FunctionsEmulatorArgs,
 } from "../emulator/functionsEmulator";
-import { EmulatorServer } from "../emulator/emulatorServer";
-import { parseRuntimeVersion } from "../emulator/functionsEmulatorUtils";
 import { needProjectId } from "../projectUtils";
 import { getProjectDefaultAccount } from "../auth";
 import { Options } from "../options";
 import * as projectConfig from "../functions/projectConfig";
 import * as utils from "../utils";
+import { EmulatorRegistry } from "../emulator/registry";
 
-// TODO(samstern): It would be better to convert this to an EmulatorServer
-// but we don't have the "options" object until start() is called.
 export class FunctionsServer {
-  emulatorServer?: EmulatorServer;
+  emulator?: FunctionsEmulator;
   backends?: EmulatableBackend[];
 
-  private assertServer() {
-    if (!this.emulatorServer || !this.backends) {
+  private assertServer(): FunctionsEmulator {
+    if (!this.emulator || !this.backends) {
       throw new Error("Must call start() before calling any other operation!");
     }
+    return this.emulator;
   }
 
   async start(options: Options, partialArgs: Partial<FunctionsEmulatorArgs>): Promise<void> {
@@ -31,11 +29,10 @@ export class FunctionsServer {
     const backends: EmulatableBackend[] = [];
     for (const cfg of config) {
       const functionsDir = path.join(options.config.projectDir, cfg.source);
-      const nodeMajorVersion = parseRuntimeVersion(cfg.runtime);
       backends.push({
         functionsDir,
         codebase: cfg.codebase,
-        nodeMajorVersion,
+        runtime: cfg.runtime,
         env: {},
         secretEnv: [],
       });
@@ -75,22 +72,19 @@ export class FunctionsServer {
       }
     }
 
-    this.emulatorServer = new EmulatorServer(new FunctionsEmulator(args));
-    await this.emulatorServer.start();
+    this.emulator = new FunctionsEmulator(args);
+    return EmulatorRegistry.start(this.emulator);
   }
 
   async connect(): Promise<void> {
-    this.assertServer();
-    await this.emulatorServer!.connect();
+    await this.assertServer().connect();
   }
 
   async stop(): Promise<void> {
-    this.assertServer();
-    await this.emulatorServer!.stop();
+    await this.assertServer().stop();
   }
 
   get(): FunctionsEmulator {
-    this.assertServer();
-    return this.emulatorServer!.get() as FunctionsEmulator;
+    return this.assertServer();
   }
 }

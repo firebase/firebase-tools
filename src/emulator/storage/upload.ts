@@ -27,9 +27,9 @@ export enum UploadType {
 
 /** The status of an upload. Multipart uploads can only ever be FINISHED. */
 export enum UploadStatus {
-  ACTIVE,
-  CANCELLED,
-  FINISHED,
+  ACTIVE = "active",
+  CANCELLED = "cancelled",
+  FINISHED = "final",
 }
 
 /** Request object for {@link UploadService#mediaUpload}. */
@@ -44,7 +44,7 @@ export type MediaUploadRequest = {
 export type MultipartUploadRequest = {
   bucketId: string;
   objectId: string;
-  metadataRaw: string;
+  metadata: object;
   dataRaw: Buffer;
   authorization?: string;
 };
@@ -53,7 +53,7 @@ export type MultipartUploadRequest = {
 export type StartResumableUploadRequest = {
   bucketId: string;
   objectId: string;
-  metadataRaw: string;
+  metadata: object;
   authorization?: string;
 };
 
@@ -117,7 +117,7 @@ export class UploadService {
       objectId: request.objectId,
       uploadType: UploadType.MULTIPART,
       dataRaw: request.dataRaw,
-      metadata: JSON.parse(request.metadataRaw),
+      metadata: request.metadata,
       authorization: request.authorization,
     });
     this._persistence.deleteFile(upload.path, /* failSilently = */ true);
@@ -155,7 +155,7 @@ export class UploadService {
       type: UploadType.RESUMABLE,
       path: this.getStagingFileName(id, request.bucketId, request.objectId),
       status: UploadStatus.ACTIVE,
-      metadata: JSON.parse(request.metadataRaw),
+      metadata: request.metadata,
       size: 0,
       authorization: request.authorization,
     };

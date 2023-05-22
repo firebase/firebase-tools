@@ -1,5 +1,8 @@
-import { previews } from "../previews";
+import * as experiments from "../experiments";
 
+/**
+ * Loads all commands for our parser.
+ */
 export function load(client: any): any {
   function loadCommand(name: string) {
     const t0 = process.hrtime.bigint();
@@ -42,13 +45,14 @@ export function load(client: any): any {
   client.crashlytics.mappingfile.upload = loadCommand("crashlytics-mappingfile-upload");
   client.database = {};
   client.database.get = loadCommand("database-get");
+  client.database.import = loadCommand("database-import");
   client.database.instances = {};
   client.database.instances.create = loadCommand("database-instances-create");
   client.database.instances.list = loadCommand("database-instances-list");
   client.database.profile = loadCommand("database-profile");
   client.database.push = loadCommand("database-push");
   client.database.remove = loadCommand("database-remove");
-  if (previews.rtdbrules) {
+  if (experiments.isEnabled("rtdbrules")) {
     client.database.rules = {};
     client.database.rules.get = loadCommand("database-rules-get");
     client.database.rules.list = loadCommand("database-rules-list");
@@ -69,6 +73,11 @@ export function load(client: any): any {
   client.experimental = {};
   client.experimental.functions = {};
   client.experimental.functions.shell = loadCommand("experimental-functions-shell");
+  client.experiments = {};
+  client.experiments.list = loadCommand("experiments-list");
+  client.experiments.describe = loadCommand("experiments-describe");
+  client.experiments.enable = loadCommand("experiments-enable");
+  client.experiments.disable = loadCommand("experiments-disable");
   client.ext = loadCommand("ext");
   client.ext.configure = loadCommand("ext-configure");
   client.ext.info = loadCommand("ext-info");
@@ -77,28 +86,25 @@ export function load(client: any): any {
   client.ext.list = loadCommand("ext-list");
   client.ext.uninstall = loadCommand("ext-uninstall");
   client.ext.update = loadCommand("ext-update");
-  if (previews.ext) {
-    client.ext.sources = {};
-    client.ext.sources.create = loadCommand("ext-sources-create");
-  }
-  if (previews.extdev) {
-    client.ext.dev = {};
-    client.ext.dev.init = loadCommand("ext-dev-init");
-    client.ext.dev.list = loadCommand("ext-dev-list");
-    client.ext.dev.register = loadCommand("ext-dev-register");
-    client.ext.dev.emulators = {};
-    client.ext.dev.emulators.start = loadCommand("ext-dev-emulators-start");
-    client.ext.dev.emulators.exec = loadCommand("ext-dev-emulators-exec");
-    client.ext.dev.deprecate = loadCommand("ext-dev-deprecate");
-    client.ext.dev.undeprecate = loadCommand("ext-dev-undeprecate");
-    client.ext.dev.unpublish = loadCommand("ext-dev-unpublish");
-    client.ext.dev.publish = loadCommand("ext-dev-publish");
-    client.ext.dev.delete = loadCommand("ext-dev-extension-delete");
-    client.ext.dev.usage = loadCommand("ext-dev-usage");
-  }
+  client.ext.dev = {};
+  client.ext.dev.init = loadCommand("ext-dev-init");
+  client.ext.dev.list = loadCommand("ext-dev-list");
+  client.ext.dev.register = loadCommand("ext-dev-register");
+  client.ext.dev.deprecate = loadCommand("ext-dev-deprecate");
+  client.ext.dev.undeprecate = loadCommand("ext-dev-undeprecate");
+  client.ext.dev.upload = loadCommand("ext-dev-upload");
+  client.ext.dev.publish = loadCommand("ext-dev-publish");
+  client.ext.dev.usage = loadCommand("ext-dev-usage");
   client.firestore = {};
   client.firestore.delete = loadCommand("firestore-delete");
   client.firestore.indexes = loadCommand("firestore-indexes-list");
+  client.firestore.locations = loadCommand("firestore-locations");
+  client.firestore.databases = {};
+  client.firestore.databases.list = loadCommand("firestore-databases-list");
+  client.firestore.databases.get = loadCommand("firestore-databases-get");
+  client.firestore.databases.create = loadCommand("firestore-databases-create");
+  client.firestore.databases.update = loadCommand("firestore-databases-update");
+  client.firestore.databases.delete = loadCommand("firestore-databases-delete");
   client.functions = {};
   client.functions.config = {};
   client.functions.config.clone = loadCommand("functions-config-clone");
@@ -110,7 +116,7 @@ export function load(client: any): any {
   client.functions.log = loadCommand("functions-log");
   client.functions.shell = loadCommand("functions-shell");
   client.functions.list = loadCommand("functions-list");
-  if (previews.deletegcfartifacts) {
+  if (experiments.isEnabled("deletegcfartifacts")) {
     client.functions.deletegcfartifacts = loadCommand("functions-deletegcfartifacts");
   }
   client.functions.secrets = {};
@@ -135,6 +141,11 @@ export function load(client: any): any {
   client.hosting.sites.get = loadCommand("hosting-sites-get");
   client.hosting.sites.list = loadCommand("hosting-sites-list");
   client.init = loadCommand("init");
+  if (experiments.isEnabled("internaltesting")) {
+    client.internaltesting = {};
+    client.internaltesting.functions = {};
+    client.internaltesting.functions.discover = loadCommand("internaltesting-functions-discover");
+  }
   client.login = loadCommand("login");
   client.login.add = loadCommand("login-add");
   client.login.ci = loadCommand("login-ci");

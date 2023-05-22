@@ -1,10 +1,10 @@
 import { EmulatorLogger } from "../../emulatorLogger";
 import { Emulators } from "../../types";
 import * as uuid from "uuid";
-import { gunzipSync } from "zlib";
 import { IncomingMetadata, OutgoingFirebaseMetadata, StoredFileMetadata } from "../metadata";
 import { Request, Response, Router } from "express";
 import { StorageEmulator } from "../index";
+import { sendFileBytes } from "./shared";
 import { EmulatorRegistry } from "../../registry";
 import { parseObjectUploadMultipartRequest } from "../multipart";
 import { NotFoundError, ForbiddenError } from "../errors";
@@ -27,7 +27,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
 
   if (process.env.STORAGE_EMULATOR_DEBUG) {
     firebaseStorageAPI.use((req, res, next) => {
-      console.log("--------------INCOMING REQUEST--------------");
+      console.log("--------------INCOMING FIREBASE REQUEST--------------");
       console.log(`${req.method.toUpperCase()} ${req.path}`);
       console.log("-- query:");
       console.log(JSON.stringify(req.query, undefined, 2));
@@ -121,29 +121,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
 
     // Object data request
     if (req.query.alt === "media") {
-      const isGZipped = metadata.contentEncoding === "gzip";
-      if (isGZipped) {
-        data = gunzipSync(data);
-      }
-      res.setHeader("Accept-Ranges", "bytes");
-      res.setHeader("Content-Type", metadata.contentType || "application/octet-stream");
-      res.setHeader("Content-Disposition", metadata.contentDisposition || "inline");
-      setObjectHeaders(res, metadata, { "Content-Encoding": isGZipped ? "identity" : undefined });
-
-      const byteRange = req.range(data.byteLength, { combine: true });
-
-      if (Array.isArray(byteRange) && byteRange.type === "bytes" && byteRange.length > 0) {
-        const range = byteRange[0];
-        res.setHeader(
-          "Content-Range",
-          `${byteRange.type} ${range.start}-${range.end}/${data.byteLength}`
-        );
-        // Byte range requests are inclusive for start and end
-        res.status(206).end(data.slice(range.start, range.end + 1));
-      } else {
-        res.end(data);
-      }
-      return;
+      return sendFileBytes(metadata, data, req, res);
     }
 
     // Object metadata request
@@ -238,7 +216,8 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
     }
 
     // Resumable upload
-    if (uploadType === "resumable") {
+    // sdk can set uploadType or just set upload command to indicate resumable upload
+    if (uploadType === "resumable" || req.header("x-goog-upload-command")) {
       const uploadCommand = req.header("x-goog-upload-command");
       if (!uploadCommand) {
         res.sendStatus(400);
@@ -253,7 +232,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
         const upload = uploadService.startResumableUpload({
           bucketId,
           objectId,
-          metadataRaw: JSON.stringify(req.body),
+          metadata: req.body,
           // Store auth header for use in the finalize request
           authorization: req.header("authorization"),
         });
@@ -288,6 +267,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
           throw err;
         }
         res.header("X-Goog-Upload-Size-Received", upload.size.toString());
+        res.header("x-goog-upload-status", upload.status);
         return res.sendStatus(200);
       }
 
@@ -376,7 +356,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       const upload = uploadService.multipartUpload({
         bucketId,
         objectId,
-        metadataRaw,
+        metadata: JSON.parse(metadataRaw),
         dataRaw: dataRaw,
         authorization: req.header("authorization"),
       });
@@ -530,27 +510,16 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
   return firebaseStorageAPI;
 }
 
-function setObjectHeaders(
-  res: Response,
-  metadata: StoredFileMetadata,
-  headerOverride: {
-    "Content-Encoding": string | undefined;
-  } = { "Content-Encoding": undefined }
-): void {
+function setObjectHeaders(res: Response, metadata: StoredFileMetadata): void {
   if (metadata.contentDisposition) {
     res.setHeader("Content-Disposition", metadata.contentDisposition);
   }
-
-  if (headerOverride["Content-Encoding"]) {
-    res.setHeader("Content-Encoding", headerOverride["Content-Encoding"]);
-  } else if (metadata.contentEncoding) {
+  if (metadata.contentEncoding) {
     res.setHeader("Content-Encoding", metadata.contentEncoding);
   }
-
   if (metadata.cacheControl) {
     res.setHeader("Cache-Control", metadata.cacheControl);
   }
-
   if (metadata.contentLanguage) {
     res.setHeader("Content-Language", metadata.contentLanguage);
   }

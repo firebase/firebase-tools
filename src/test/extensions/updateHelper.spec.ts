@@ -8,6 +8,7 @@ import * as extensionsApi from "../../extensions/extensionsApi";
 import { ExtensionSpec, Resource } from "../../extensions/types";
 import * as extensionsHelper from "../../extensions/extensionsHelper";
 import * as updateHelper from "../../extensions/updateHelper";
+import * as iam from "../../gcp/iam";
 
 const SPEC: ExtensionSpec = {
   name: "test",
@@ -32,6 +33,7 @@ const SPEC: ExtensionSpec = {
   billingRequired: true,
   sourceUrl: "test.com",
   params: [],
+  systemParams: [],
 };
 
 const SOURCE = {
@@ -39,23 +41,6 @@ const SOURCE = {
   packageUri: "https://firebase-fake-bucket.com",
   hash: "1234567",
   spec: SPEC,
-};
-
-const EXTENSION_VERSION = {
-  name: "publishers/test-publisher/extensions/test/versions/0.2.0",
-  ref: "test-publisher/test@0.2.0",
-  spec: SPEC,
-  state: "PUBLISHED",
-  hash: "abcdefg",
-  createTime: "2020-06-30T00:21:06.722782Z",
-};
-
-const EXTENSION = {
-  name: "publishers/test-publisher/extensions/test",
-  ref: "test-publisher/test",
-  state: "PUBLISHED",
-  createTime: "2020-06-30T00:21:06.722782Z",
-  latestVersion: "0.2.0",
 };
 
 const INSTANCE = {
@@ -111,11 +96,15 @@ describe("updateHelper", () => {
   describe("updateFromLocalSource", () => {
     let createSourceStub: sinon.SinonStub;
     let getInstanceStub: sinon.SinonStub;
-
+    let getRoleStub: sinon.SinonStub;
     beforeEach(() => {
       createSourceStub = sinon.stub(extensionsHelper, "createSourceFromLocation");
       getInstanceStub = sinon.stub(extensionsApi, "getInstance").resolves(INSTANCE);
-
+      getRoleStub = sinon.stub(iam, "getRole");
+      getRoleStub.resolves({
+        title: "Role 1",
+        description: "a role",
+      });
       // The logic will fetch the extensions registry, but it doesn't need to receive anything.
       nock(firebaseExtensionsRegistryOrigin).get("/extensions.json").reply(200, {});
     });
@@ -123,6 +112,7 @@ describe("updateHelper", () => {
     afterEach(() => {
       createSourceStub.restore();
       getInstanceStub.restore();
+      getRoleStub.restore();
 
       nock.cleanAll();
     });
@@ -149,11 +139,15 @@ describe("updateHelper", () => {
   describe("updateFromUrlSource", () => {
     let createSourceStub: sinon.SinonStub;
     let getInstanceStub: sinon.SinonStub;
-
+    let getRoleStub: sinon.SinonStub;
     beforeEach(() => {
       createSourceStub = sinon.stub(extensionsHelper, "createSourceFromLocation");
       getInstanceStub = sinon.stub(extensionsApi, "getInstance").resolves(INSTANCE);
-
+      getRoleStub = sinon.stub(iam, "getRole");
+      getRoleStub.resolves({
+        title: "Role 1",
+        description: "a role",
+      });
       // The logic will fetch the extensions registry, but it doesn't need to receive anything.
       nock(firebaseExtensionsRegistryOrigin).get("/extensions.json").reply(200, {});
     });
@@ -161,6 +155,7 @@ describe("updateHelper", () => {
     afterEach(() => {
       createSourceStub.restore();
       getInstanceStub.restore();
+      getRoleStub.restore();
 
       nock.cleanAll();
     });
@@ -186,102 +181,6 @@ describe("updateHelper", () => {
           SPEC
         )
       ).to.be.rejectedWith(FirebaseError, "Unable to update from the source");
-    });
-  });
-
-  describe("updateToVersionFromPublisherSource", () => {
-    let getExtensionStub: sinon.SinonStub;
-    let createSourceStub: sinon.SinonStub;
-    let listExtensionVersionStub: sinon.SinonStub;
-    let getInstanceStub: sinon.SinonStub;
-
-    beforeEach(() => {
-      getExtensionStub = sinon.stub(extensionsApi, "getExtension");
-      createSourceStub = sinon.stub(extensionsApi, "getExtensionVersion");
-      listExtensionVersionStub = sinon.stub(extensionsApi, "listExtensionVersions");
-      getInstanceStub = sinon.stub(extensionsApi, "getInstance").resolves(REGISTRY_INSTANCE);
-    });
-
-    afterEach(() => {
-      getExtensionStub.restore();
-      createSourceStub.restore();
-      listExtensionVersionStub.restore();
-      getInstanceStub.restore();
-    });
-
-    it("should return the correct source name for a valid published extension version source", async () => {
-      getExtensionStub.resolves(EXTENSION);
-      createSourceStub.resolves(EXTENSION_VERSION);
-      listExtensionVersionStub.resolves([]);
-      const name = await updateHelper.updateToVersionFromPublisherSource(
-        "test-project",
-        "test-instance",
-        "test-publisher/test@0.2.0",
-        SPEC
-      );
-      expect(name).to.equal(EXTENSION_VERSION.name);
-    });
-
-    it("should throw an error for an invalid source", async () => {
-      getExtensionStub.throws(Error("NOT FOUND"));
-      createSourceStub.throws(Error("NOT FOUND"));
-      listExtensionVersionStub.resolves([]);
-      await expect(
-        updateHelper.updateToVersionFromPublisherSource(
-          "test-project",
-          "test-instance",
-          "test-publisher/test@1.2.3",
-          SPEC
-        )
-      ).to.be.rejectedWith("NOT FOUND");
-    });
-  });
-
-  describe("updateFromPublisherSource", () => {
-    let getExtensionStub: sinon.SinonStub;
-    let createSourceStub: sinon.SinonStub;
-    let listExtensionVersionStub: sinon.SinonStub;
-    let getInstanceStub: sinon.SinonStub;
-
-    beforeEach(() => {
-      getExtensionStub = sinon.stub(extensionsApi, "getExtension");
-      createSourceStub = sinon.stub(extensionsApi, "getExtensionVersion");
-      listExtensionVersionStub = sinon.stub(extensionsApi, "listExtensionVersions");
-      getInstanceStub = sinon.stub(extensionsApi, "getInstance").resolves(REGISTRY_INSTANCE);
-    });
-
-    afterEach(() => {
-      getExtensionStub.restore();
-      createSourceStub.restore();
-      listExtensionVersionStub.restore();
-      getInstanceStub.restore();
-    });
-
-    it("should return the correct source name for the latest published extension source", async () => {
-      getExtensionStub.resolves(EXTENSION);
-      createSourceStub.resolves(EXTENSION_VERSION);
-      listExtensionVersionStub.resolves([]);
-      const name = await updateHelper.updateToVersionFromPublisherSource(
-        "test-project",
-        "test-instance",
-        "test-publisher/test",
-        SPEC
-      );
-      expect(name).to.equal(EXTENSION_VERSION.name);
-    });
-
-    it("should throw an error for an invalid source", async () => {
-      getExtensionStub.throws(Error("NOT FOUND"));
-      createSourceStub.throws(Error("NOT FOUND"));
-      listExtensionVersionStub.resolves([]);
-      await expect(
-        updateHelper.updateToVersionFromPublisherSource(
-          "test-project",
-          "test-instance",
-          "test-publisher/test",
-          SPEC
-        )
-      ).to.be.rejectedWith("NOT FOUND");
     });
   });
 });

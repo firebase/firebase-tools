@@ -10,9 +10,7 @@ import { FirebaseError } from "../error";
 import { EmulatorHub } from "./hub";
 import { getDownloadDetails } from "./downloadableEmulators";
 import { DatabaseEmulator } from "./databaseEmulator";
-import { StorageEmulator } from "./storage";
 import * as rimraf from "rimraf";
-import { Client } from "../apiv2";
 import { trackEmulator } from "../track";
 
 export interface FirestoreExportMetadata {
@@ -142,23 +140,21 @@ export class HubExport {
       emulator_name: Emulators.FIRESTORE,
     });
 
-    const firestoreInfo = EmulatorRegistry.get(Emulators.FIRESTORE)!.getInfo();
-    const firestoreHost = `http://${EmulatorRegistry.getInfoHostString(firestoreInfo)}`;
-
     const firestoreExportBody = {
       database: `projects/${this.projectId}/databases/(default)`,
       export_directory: this.tmpDir,
       export_name: metadata.firestore!!.path,
     };
 
-    const client = new Client({ urlPrefix: firestoreHost, auth: false });
-    await client.post(`/emulator/v1/projects/${this.projectId}:export`, firestoreExportBody);
+    await EmulatorRegistry.client(Emulators.FIRESTORE).post(
+      `/emulator/v1/projects/${this.projectId}:export`,
+      firestoreExportBody
+    );
   }
 
   private async exportDatabase(metadata: ExportMetadata): Promise<void> {
     const databaseEmulator = EmulatorRegistry.get(Emulators.DATABASE) as DatabaseEmulator;
-    const databaseAddr = `http://${EmulatorRegistry.getInfoHostString(databaseEmulator.getInfo())}`;
-    const client = new Client({ urlPrefix: databaseAddr, auth: true });
+    const client = EmulatorRegistry.client(Emulators.DATABASE, { auth: true });
 
     // Get the list of namespaces
     const inspectURL = `/.inspect/databases.json`;
@@ -260,8 +256,6 @@ export class HubExport {
   }
 
   private async exportStorage(metadata: ExportMetadata): Promise<void> {
-    const storageEmulator = EmulatorRegistry.get(Emulators.STORAGE) as StorageEmulator;
-
     // Clear the export
     const storageExportPath = path.join(this.tmpDir, metadata.storage!.path);
     if (fs.existsSync(storageExportPath)) {
@@ -269,14 +263,12 @@ export class HubExport {
     }
     fs.mkdirSync(storageExportPath, { recursive: true });
 
-    const storageHost = `http://${EmulatorRegistry.getInfoHostString(storageEmulator.getInfo())}`;
     const storageExportBody = {
       path: storageExportPath,
       initiatedBy: this.options.initiatedBy,
     };
 
-    const client = new Client({ urlPrefix: storageHost, auth: false });
-    const res = await client.request({
+    const res = await EmulatorRegistry.client(Emulators.STORAGE).request({
       method: "POST",
       path: "/internal/export",
       headers: { "Content-Type": "application/json" },

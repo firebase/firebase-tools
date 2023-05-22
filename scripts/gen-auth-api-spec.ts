@@ -14,13 +14,10 @@
 import * as https from "https";
 import { resolve } from "path";
 import { writeFileSync } from "fs";
-// @ts-ignore
 import * as prettier from "prettier";
-// @ts-ignore
 import * as swagger2openapi from "swagger2openapi";
-// @ts-ignore
 import { merge, isErrorResult } from "openapi-merge";
-import swaggerToTS from "@manifoldco/swagger-to-ts";
+import openapiTS from "openapi-typescript";
 
 // Convert Google API Discovery format to OpenAPI using this library in order
 // to use OpenAPI tooling, recommended by https://googleapis.github.io/#openapi.
@@ -72,8 +69,9 @@ async function main(): Promise<void> {
   writeFileSync(specFile, prettier.format(specContent, { ...prettierOptions, filepath: specFile }));
 
   // Also generate TypeScript definitions for use in implementation.
-  const prettierConfig = resolve(__dirname, "../.prettierrc");
-  const defsContent = header + swaggerToTS(merged.output as any, { prettierConfig });
+  const prettierConfig = resolve(__dirname, "../.prettierrc.js");
+  const output = await openapiTS(merged.output as any, { prettierConfig });
+  const defsContent = header + output;
   writeFileSync(resolve(__dirname, "../src/emulator/auth/schema.ts"), defsContent);
 }
 
@@ -116,10 +114,10 @@ async function toOpenapi3(discovery: Discovery): Promise<any> {
   // tools offer one single API call for the entire conversion, but perform
   // indirect conversion under the hood. We'll just do it explicitly and that
   // also gives us more control (such as .setStrict above) and less deps.
-  const swagger = await googleDiscoveryToSwagger.convert(discovery);
+  const swagger: any = await googleDiscoveryToSwagger.convert(discovery);
   const result = await swagger2openapi.convertObj(swagger, {});
   const openapi3 = result.openapi;
-  openapi3.servers.forEach((server: { url: string }) => {
+  openapi3.servers?.forEach((server: { url: string }) => {
     // Server URL should not end with slash since it is prefixed to paths.
     server.url = server.url.replace(/\/$/, "");
   });
@@ -252,11 +250,18 @@ function patchSecurity(openapi3: any, apiKeyDescription: string): void {
     securitySchemes = openapi3.components.securitySchemes = {};
   }
 
-  // Add the missing apiKey method here.
-  securitySchemes.apiKey = {
+  // Add the missing apiKeyQuery and apiKeyHeader schemes here.
+  // https://cloud.google.com/docs/authentication/api-keys#using-with-rest
+  securitySchemes.apiKeyQuery = {
     type: "apiKey",
     name: "key",
     in: "query",
+    description: apiKeyDescription,
+  };
+  securitySchemes.apiKeyHeader = {
+    type: "apiKey",
+    name: "x-goog-api-key",
+    in: "header",
     description: apiKeyDescription,
   };
 
@@ -271,9 +276,9 @@ function patchSecurity(openapi3: any, apiKeyDescription: string): void {
       delete alt.Oauth2c;
     });
 
-    // Forcibly add API Key as an alternative auth method. Note that some
-    // operations may not support it, but those can be handled within impl.
-    operation.security.push({ apiKey: [] });
+    // Add alternative auth schemes (query OR header) for API key. Note that
+    // some operations may not support it, but those can be handled within impl.
+    operation.security.push({ apiKeyQuery: [] }, { apiKeyHeader: [] });
   });
 }
 

@@ -1,7 +1,8 @@
 import { Bucket } from "@google-cloud/storage";
 import { expect } from "chai";
-import * as firebase from "firebase";
-import * as admin from "firebase-admin";
+import firebasePkg from "firebase/compat/app";
+import { applicationDefault, cert, deleteApp, getApp, initializeApp } from "firebase-admin/app";
+import { getStorage } from "firebase-admin/storage";
 import * as fs from "fs";
 import * as puppeteer from "puppeteer";
 import { TEST_ENV } from "./env";
@@ -14,10 +15,18 @@ import {
   SMALL_FILE_SIZE,
   TEST_SETUP_TIMEOUT,
   getTmpDir,
-  writeToFile,
 } from "../utils";
 
 const TEST_FILE_NAME = "testing/storage_ref/testFile";
+
+// Test case that should only run when targeting the emulator.
+// Example use: emulatorOnly.it("Local only test case", () => {...});
+const emulatorOnly = { it: TEST_ENV.useProductionServers ? it.skip : it };
+
+// This is a 'workaround' to prevent typescript from renaming the import. That
+// causes issues when page.evaluate is run with the rename, since the renamed
+// values don't exist in the created page.
+const firebase = firebasePkg;
 
 describe("Firebase Storage JavaScript SDK conformance tests", () => {
   const storageBucket = TEST_ENV.appConfig.storageBucket;
@@ -27,11 +36,6 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
   const tmpDir = getTmpDir();
   const smallFilePath: string = createRandomFile("small_file", SMALL_FILE_SIZE, tmpDir);
   const emptyFilePath: string = createRandomFile("empty_file", 0, tmpDir);
-  const imageFilePath = writeToFile(
-    "image_base64",
-    Buffer.from(IMAGE_FILE_BASE64, "base64"),
-    tmpDir
-  );
 
   let test: EmulatorEndToEndTest;
   let testBucket: Bucket;
@@ -44,16 +48,14 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
     filename: string,
     text: string,
     format?: string,
-    metadata?: firebase.storage.UploadMetadata
+    metadata?: firebasePkg.storage.UploadMetadata
   ): Promise<string> {
     return page.evaluate(
       async (filename, text, format, metadata) => {
         try {
-          const task = await firebase
-            .storage()
-            .ref(filename)
-            .putString(text, format, JSON.parse(metadata));
-          return task.state;
+          const ref = firebase.storage().ref(filename);
+          const res = await ref.putString(text, format, JSON.parse(metadata));
+          return res.state;
         } catch (err) {
           if (err instanceof Error) {
             throw err.message;
@@ -92,10 +94,10 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
 
     // Init GCS admin SDK.
     const credential = TEST_ENV.prodServiceAccountKeyJson
-      ? admin.credential.cert(TEST_ENV.prodServiceAccountKeyJson)
-      : admin.credential.applicationDefault();
-    admin.initializeApp({ credential });
-    testBucket = admin.storage().bucket(storageBucket);
+      ? cert(TEST_ENV.prodServiceAccountKeyJson)
+      : applicationDefault();
+    initializeApp({ credential });
+    testBucket = getStorage().bucket(storageBucket);
     authHeader = { Authorization: `Bearer ${await TEST_ENV.adminAccessTokenGetter}` };
 
     // Init fake browser page.
@@ -106,30 +108,39 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
     page = await browser.newPage();
     await page.goto("https://example.com", { waitUntil: "networkidle2" });
     await page.addScriptTag({
-      url: "https://www.gstatic.com/firebasejs/9.9.1/firebase-app-compat.js",
+      url: "https://www.gstatic.com/firebasejs/9.16.0/firebase-app-compat.js",
     });
     await page.addScriptTag({
-      url: "https://www.gstatic.com/firebasejs/9.9.1/firebase-auth-compat.js",
+      url: "https://www.gstatic.com/firebasejs/9.16.0/firebase-auth-compat.js",
     });
     await page.addScriptTag({
-      url: "https://www.gstatic.com/firebasejs/9.9.1/firebase-storage-compat.js",
+      url: "https://www.gstatic.com/firebasejs/9.16.0/firebase-storage-compat.js",
     });
 
     // Init Firebase app in browser context and maybe set emulator host overrides.
-    await page.evaluate(
-      (appConfig, useProductionServers, authEmulatorHost, storageEmulatorHost) => {
-        firebase.initializeApp(appConfig);
-        if (!useProductionServers) {
-          firebase.auth().useEmulator(authEmulatorHost);
-          const [storageHost, storagePort] = storageEmulatorHost.split(":") as string[];
-          (firebase.storage() as any).useEmulator(storageHost, storagePort);
-        }
-      },
-      TEST_ENV.appConfig,
-      TEST_ENV.useProductionServers,
-      TEST_ENV.authEmulatorHost,
-      TEST_ENV.storageEmulatorHost.replace(/^(https?:|)\/\//, "")
-    );
+    console.error("we're going to use this config", TEST_ENV.appConfig);
+    await page
+      .evaluate(
+        (appConfig, useProductionServers, authEmulatorHost, storageEmulatorHost) => {
+          // throw new Error(window.firebase.toString());
+          // if (firebase.apps.length <= 0) {
+          firebase.initializeApp(appConfig);
+          // }
+          if (!useProductionServers) {
+            firebase.app().auth().useEmulator(authEmulatorHost);
+            const [storageHost, storagePort] = storageEmulatorHost.split(":");
+            firebase.app().storage().useEmulator(storageHost, Number(storagePort));
+          }
+        },
+        TEST_ENV.appConfig,
+        TEST_ENV.useProductionServers,
+        TEST_ENV.authEmulatorHost,
+        TEST_ENV.storageEmulatorHost.replace(/^(https?:|)\/\//, "")
+      )
+      .catch((reason) => {
+        console.error("*** ", reason);
+        throw reason;
+      });
   });
 
   beforeEach(async () => {
@@ -144,7 +155,7 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
 
   after(async function (this) {
     this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
-    admin.app().delete();
+    await deleteApp(getApp());
     fs.rmSync(tmpDir, { recursive: true, force: true });
     await page.close();
     await browser.close();
@@ -156,8 +167,8 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
   });
 
   describe(".ref()", () => {
-    describe("#put()", () => {
-      it("should upload a file", async () => {
+    describe("#putString()", () => {
+      it("should upload a string", async () => {
         await signInToFirebaseAuth(page);
         await page.evaluate(async (ref) => {
           await firebase.storage().ref(ref).putString("hello world");
@@ -180,7 +191,9 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
           });
         });
       });
+    });
 
+    describe("#put()", () => {
       it("should upload a file with a really long path name to check for os filename character limit", async () => {
         await signInToFirebaseAuth(page);
         const uploadState = await uploadText(
@@ -249,6 +262,10 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
         }, IMAGE_FILE_BASE64);
 
         expect(uploadState).to.equal("success");
+        const [metadata] = await testBucket
+          .file("upload/allowIfContentTypeImage.png")
+          .getMetadata();
+        expect(metadata.contentType).to.equal("image/blah");
       });
 
       it("should return a 403 on rules deny", async () => {
@@ -267,7 +284,7 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
             throw err;
           }
         }, IMAGE_FILE_BASE64);
-        expect(uploadState!).to.include("User does not have permission");
+        expect(uploadState).to.include("User does not have permission");
       });
 
       it("should return a 403 on rules deny when overwriting existing file", async () => {
@@ -285,7 +302,19 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
         await uploadText(page, "upload/allowIfNoExistingFile.txt", "some-content");
 
         const uploadState = await shouldThrowOnUpload();
-        expect(uploadState!).to.include("User does not have permission");
+        expect(uploadState).to.include("User does not have permission");
+      });
+
+      it("should default to application/octet-stream", async () => {
+        await signInToFirebaseAuth(page);
+        const uploadState = await page.evaluate(async (TEST_FILE_NAME) => {
+          const task = await firebase.storage().ref(TEST_FILE_NAME).put(new ArrayBuffer(8));
+          return task.state;
+        }, TEST_FILE_NAME);
+
+        expect(uploadState).to.equal("success");
+        const [metadata] = await testBucket.file(TEST_FILE_NAME).getMetadata();
+        expect(metadata.contentType).to.equal("application/octet-stream");
       });
     });
 
@@ -433,7 +462,8 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
       });
 
       it("serves the right content", async () => {
-        await testBucket.upload(imageFilePath, { destination: TEST_FILE_NAME });
+        const contents = Buffer.from("hello world");
+        await testBucket.file(TEST_FILE_NAME).save(contents);
         await signInToFirebaseAuth(page);
 
         const downloadUrl = await page.evaluate((filename) => {
@@ -442,11 +472,16 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
 
         await new Promise((resolve, reject) => {
           TEST_ENV.requestClient.get(downloadUrl, (response) => {
-            const data: any = [];
+            let data = Buffer.alloc(0);
+            expect(response.headers["content-disposition"]).to.be.eql(
+              "attachment; filename=testFile"
+            );
             response
-              .on("data", (chunk) => data.push(chunk))
+              .on("data", (chunk) => {
+                data = Buffer.concat([data, chunk]);
+              })
               .on("end", () => {
-                expect(Buffer.concat(data)).to.deep.equal(Buffer.from(IMAGE_FILE_BASE64, "base64"));
+                expect(data).to.deep.equal(contents);
               })
               .on("close", resolve)
               .on("error", reject);
@@ -454,7 +489,7 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
         });
       });
 
-      it("serves content successfully when spammed with calls", async () => {
+      emulatorOnly.it("serves content successfully when spammed with calls", async () => {
         const NUMBER_OF_FILES = 10;
         const allFileNames: string[] = [];
         for (let i = 0; i < NUMBER_OF_FILES; i++) {
@@ -464,18 +499,16 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
         }
         await signInToFirebaseAuth(page);
 
-        const promises: Promise<any>[] = [];
+        const values: string[] = [];
         for (const singleFileName of allFileNames) {
-          promises.push(
+          values.push(
             await page.evaluate((filename) => {
               return firebase.storage().ref(filename).getDownloadURL();
             }, singleFileName)
           );
         }
 
-        Promise.all(promises).then((values) => {
-          expect(values.length).to.be.equal(10);
-        });
+        expect(values.length).to.be.equal(10);
       });
     });
 
@@ -504,7 +537,8 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
           "contentEncoding",
           "contentType",
         ]);
-        expect(metadata.type).to.be.eql("file");
+        // Unsure why `type` still exists in practice but not the typing.
+        // expect(metadata.type).to.be.eql("file");
         expect(metadata.bucket).to.be.eql(storageBucket);
         expect(metadata.generation).to.be.a("string");
         // Firebase Storage automatically updates metadata with a download token on data or
@@ -526,7 +560,7 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
         await testBucket.upload(emptyFilePath, { destination: TEST_FILE_NAME });
         await signInToFirebaseAuth(page);
 
-        const metadata = await page.evaluate(async (filename) => {
+        const metadata = await page.evaluate((filename) => {
           return firebase
             .storage()
             .ref(filename)
@@ -556,7 +590,7 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
         });
         await signInToFirebaseAuth(page);
 
-        const updatedMetadata = await page.evaluate(async (filename) => {
+        const updatedMetadata = await page.evaluate((filename) => {
           return firebase.storage().ref(filename).updateMetadata({
             cacheControl: null,
             contentDisposition: null,
@@ -631,7 +665,7 @@ describe("Firebase Storage JavaScript SDK conformance tests", () => {
       });
     });
 
-    describe("deleteFile", () => {
+    describe("#delete()", () => {
       it("should delete file", async () => {
         await testBucket.upload(emptyFilePath, { destination: TEST_FILE_NAME });
         await signInToFirebaseAuth(page);

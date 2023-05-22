@@ -1,5 +1,8 @@
 import { expect } from "chai";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 
+import * as planner from "../../deploy/extensions/planner";
 import { ExtensionsEmulator } from "../../emulator/extensionsEmulator";
 import { EmulatableBackend } from "../../emulator/functionsEmulator";
 import {
@@ -8,12 +11,12 @@ import {
   RegistryLaunchStage,
   Visibility,
 } from "../../extensions/types";
-import * as planner from "../../deploy/extensions/planner";
 
 const TEST_EXTENSION: Extension = {
   name: "publishers/firebase/extensions/storage-resize-images",
   ref: "firebase/storage-resize-images",
   visibility: Visibility.PUBLIC,
+  state: "PUBLISHED",
   registryLaunchStage: RegistryLaunchStage.BETA,
   createTime: "0",
 };
@@ -43,6 +46,7 @@ const TEST_EXTENSION_VERSION: ExtensionVersion = {
       },
     ],
     params: [],
+    systemParams: [],
     version: "0.1.18",
     sourceUrl: "https://fake.test",
   },
@@ -78,6 +82,7 @@ describe("Extensions Emulator", () => {
               "google.firebase.image-resize-started,google.firebase.image-resize-completed",
             EVENTARC_CHANNEL: "projects/test-project/locations/us-central1/channels/firebase",
           },
+          systemParams: {},
           allowedEventTypes: [
             "google.firebase.image-resize-started",
             "google.firebase.image-resize-completed",
@@ -101,9 +106,11 @@ describe("Extensions Emulator", () => {
           },
           secretEnv: [],
           extensionInstanceId: "ext-test",
-          functionsDir:
-            "src/test/emulators/extensions/firebase/storage-resize-images@0.1.18/functions",
-          nodeMajorVersion: 10,
+          // use join to convert path to platform dependent path
+          // so test also runs on win machines
+          // eslint-disable-next-line prettier/prettier
+            functionsDir: join("src/test/emulators/extensions/firebase/storage-resize-images@0.1.18/functions"),
+          runtime: "nodejs10",
           predefinedTriggers: [
             {
               entryPoint: "generateResizedImage",
@@ -119,6 +126,7 @@ describe("Extensions Emulator", () => {
           ],
           extension: TEST_EXTENSION,
           extensionVersion: TEST_EXTENSION_VERSION,
+          codebase: "ext-test",
         },
       },
     ];
@@ -133,9 +141,36 @@ describe("Extensions Emulator", () => {
         });
 
         const result = await e.toEmulatableBackend(testCase.input);
-
+        // ignore result.bin, as it is platform dependent
+        delete result.bin;
         expect(result).to.deep.equal(testCase.expected);
       });
     }
+  });
+
+  describe("installAndBuildSourceCode", () => {
+    const extensionPath = "src/test/emulators/extensions/firebase/storage-resize-images@0.1.18";
+    it("installs dependecies", () => {
+      // creating a subclass of ext emulator
+      // to be able to test private method
+      class DependencyInstallingExtensionsEmulator extends ExtensionsEmulator {
+        constructor(extensionPath: string) {
+          super({
+            projectId: "test-project",
+            projectNumber: "1234567",
+            projectDir: ".",
+            extensions: {},
+            aliases: [],
+          });
+
+          this.installAndBuildSourceCode(extensionPath);
+        }
+      }
+      new DependencyInstallingExtensionsEmulator(extensionPath);
+      const nodeModulesFolderExists = existsSync(
+        `${extensionPath}/functions/node_modules/firebase-tools`
+      );
+      expect(nodeModulesFolderExists).to.be.true;
+    }).timeout(60_000);
   });
 });

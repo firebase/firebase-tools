@@ -11,21 +11,14 @@ if (!semver.satisfies(nodeVersion, pkg.engines.node)) {
   process.exit(1);
 }
 
-import * as updateNotifierPkg from "update-notifier";
+import * as updateNotifierPkg from "update-notifier-cjs";
 import * as clc from "colorette";
 import * as TerminalRenderer from "marked-terminal";
-const updateNotifier = updateNotifierPkg({ pkg: pkg });
+const updateNotifier = updateNotifierPkg({ pkg });
 import { marked } from "marked";
 marked.setOptions({
   renderer: new TerminalRenderer(),
 });
-const updateMessage =
-  `Update available ${clc.gray("{currentVersion}")} → ${clc.green("{latestVersion}")}\n` +
-  `To update to the latest version using npm, run\n${clc.cyan("npm install -g firebase-tools")}\n` +
-  `For other CLI management options, visit the ${marked(
-    "[CLI documentation](https://firebase.google.com/docs/cli#update-cli)"
-  )}`;
-updateNotifier.notify({ defer: true, isGlobal: true, message: updateMessage });
 
 import { Command } from "commander";
 import { join } from "node:path";
@@ -45,7 +38,7 @@ import * as winston from "winston";
 let args = process.argv.slice(2);
 let cmd: Command;
 
-function findAvailableLogFile() {
+function findAvailableLogFile(): string {
   const candidates = ["firebase-debug.log"];
   for (let i = 1; i < 10; i++) {
     candidates.push(`firebase-debug.${i}.log`);
@@ -103,7 +96,10 @@ if (utils.envOverrides.length) {
 logger.debug("-".repeat(70));
 logger.debug();
 
+import { enableExperimentsFromCliEnvVariable } from "../experiments";
 import { fetchMOTD } from "../fetchMOTD";
+
+enableExperimentsFromCliEnvVariable();
 fetchMOTD();
 
 process.on("exit", (code) => {
@@ -132,6 +128,31 @@ process.on("exit", (code) => {
   } else {
     configstore.delete("lastError");
   }
+
+  // Notify about updates right before process exit.
+  try {
+    const updateMessage =
+      `Update available ${clc.gray("{currentVersion}")} → ${clc.green("{latestVersion}")}\n` +
+      `To update to the latest version using npm, run\n${clc.cyan(
+        "npm install -g firebase-tools"
+      )}\n` +
+      `For other CLI management options, visit the ${marked(
+        "[CLI documentation](https://firebase.google.com/docs/cli#update-cli)"
+      )}`;
+    // `defer: true` would interfere with commands that perform tasks (emulators etc.)
+    // before exit since it installs a SIGINT handler that immediately exits. See:
+    // https://github.com/firebase/firebase-tools/issues/4981
+    updateNotifier.notify({ defer: false, isGlobal: true, message: updateMessage });
+  } catch (err) {
+    // This is not a fatal error -- let's debug log, swallow, and exit cleanly.
+    logger.debug("Error when notifying about new CLI updates:");
+    if (err instanceof Error) {
+      logger.debug(err);
+    } else {
+      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+      logger.debug(`${err}`);
+    }
+  }
 });
 
 process.on("uncaughtException", (err) => {
@@ -142,9 +163,7 @@ if (!handlePreviewToggles(args)) {
   cmd = client.cli.parse(process.argv);
 
   // determine if there are any non-option arguments. if not, display help
-  args = args.filter((arg) => {
-    return arg.indexOf("-") < 0;
-  });
+  args = args.filter((arg) => !arg.includes("-"));
   if (!args.length) {
     client.cli.help();
   }

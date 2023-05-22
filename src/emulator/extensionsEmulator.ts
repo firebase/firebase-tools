@@ -1,24 +1,24 @@
+import * as clc from "colorette";
+import * as spawn from "cross-spawn";
 import * as fs from "fs-extra";
 import * as os from "os";
 import * as path from "path";
-import * as clc from "colorette";
-import Table = require("cli-table");
-import * as spawn from "cross-spawn";
+const Table = require("cli-table");
 
 import * as planner from "../deploy/extensions/planner";
-import { Options } from "../options";
-import { FirebaseError } from "../error";
-import { toExtensionVersionRef } from "../extensions/refs";
-import { downloadExtensionVersion } from "./download";
-import { EmulatableBackend } from "./functionsEmulator";
-import { getExtensionFunctionInfo } from "../extensions/emulator/optionsHelper";
-import { EmulatorLogger } from "./emulatorLogger";
-import { EmulatorInfo, EmulatorInstance, Emulators } from "./types";
-import { checkForUnemulatedTriggerTypes, getUnemulatedAPIs } from "./extensions/validation";
 import { enableApiURI } from "../ensureApiEnabled";
+import { FirebaseError } from "../error";
+import { getExtensionFunctionInfo } from "../extensions/emulator/optionsHelper";
+import { toExtensionVersionRef } from "../extensions/refs";
+import { Options } from "../options";
 import { shortenUrl } from "../shortenUrl";
 import { Constants } from "./constants";
+import { downloadExtensionVersion } from "./download";
+import { EmulatorLogger } from "./emulatorLogger";
+import { checkForUnemulatedTriggerTypes, getUnemulatedAPIs } from "./extensions/validation";
+import { EmulatableBackend } from "./functionsEmulator";
 import { EmulatorRegistry } from "./registry";
+import { EmulatorInfo, EmulatorInstance, Emulators } from "./types";
 
 export interface ExtensionEmulatorArgs {
   projectId: string;
@@ -61,13 +61,13 @@ export class ExtensionsEmulator implements EmulatorInstance {
   }
 
   public getInfo(): EmulatorInfo {
-    const info = EmulatorRegistry.getInfo(Emulators.FUNCTIONS);
-    if (!info) {
+    const functionsEmulator = EmulatorRegistry.get(Emulators.FUNCTIONS);
+    if (!functionsEmulator) {
       throw new FirebaseError(
         "Extensions Emulator is running but Functions emulator is not. This should never happen."
       );
     }
-    return info;
+    return { ...functionsEmulator.getInfo(), name: this.getName() };
   }
 
   public getName(): Emulators {
@@ -167,11 +167,13 @@ export class ExtensionsEmulator implements EmulatorInstance {
     return true;
   }
 
-  private installAndBuildSourceCode(sourceCodePath: string): void {
+  installAndBuildSourceCode(sourceCodePath: string): void {
     // TODO: Add logging during this so it is clear what is happening.
     this.logger.logLabeled("DEBUG", "Extensions", `Running "npm install" for ${sourceCodePath}`);
-    const npmInstall = spawn.sync("npm", ["--prefix", `/${sourceCodePath}/functions/`, "install"], {
+    const functionsDirectory = path.resolve(sourceCodePath, "functions");
+    const npmInstall = spawn.sync("npm", ["install"], {
       encoding: "utf8",
+      cwd: functionsDirectory,
     });
     if (npmInstall.error) {
       throw npmInstall.error;
@@ -183,11 +185,10 @@ export class ExtensionsEmulator implements EmulatorInstance {
       "Extensions",
       `Running "npm run gcp-build" for ${sourceCodePath}`
     );
-    const npmRunGCPBuild = spawn.sync(
-      "npm",
-      ["--prefix", `/${sourceCodePath}/functions/`, "run", "gcp-build"],
-      { encoding: "utf8" }
-    );
+    const npmRunGCPBuild = spawn.sync("npm", ["run", "gcp-build"], {
+      encoding: "utf8",
+      cwd: functionsDirectory,
+    });
     if (npmRunGCPBuild.error) {
       // TODO: Make sure this does not error out if "gcp-build" is not defined, but does error if it fails otherwise.
       throw npmRunGCPBuild.error;
@@ -229,14 +230,16 @@ export class ExtensionsEmulator implements EmulatorInstance {
     const functionsDir = path.join(extensionDir, "functions");
     // TODO(b/213335255): For local extensions, this should include extensionSpec instead of extensionVersion
     const env = Object.assign(this.autoPopulatedParams(instance), instance.params);
-    const { extensionTriggers, nodeMajorVersion, nonSecretEnv, secretEnvVariables } =
+    const { extensionTriggers, runtime, nonSecretEnv, secretEnvVariables } =
       await getExtensionFunctionInfo(instance, env);
     const emulatableBackend: EmulatableBackend = {
       functionsDir,
+      runtime,
+      bin: process.execPath,
       env: nonSecretEnv,
+      codebase: instance.instanceId, // Give each extension its own codebase name so that they don't share workerPools.
       secretEnv: secretEnvVariables,
       predefinedTriggers: extensionTriggers,
-      nodeMajorVersion: nodeMajorVersion,
       extensionInstanceId: instance.instanceId,
     };
     if (instance.ref) {
@@ -343,15 +346,13 @@ export class ExtensionsEmulator implements EmulatorInstance {
   }
 
   private extensionDetailsUILink(backend: EmulatableBackend): string {
-    const uiInfo = EmulatorRegistry.getInfo(Emulators.UI);
-    if (!uiInfo || !backend.extensionInstanceId) {
+    if (!EmulatorRegistry.isRunning(Emulators.UI) || !backend.extensionInstanceId) {
       // If the Emulator UI is not running, or if this is not an Extension backend, return an empty string
       return "";
     }
-    const uiUrl = EmulatorRegistry.getInfoHostString(uiInfo);
-    return clc.underline(
-      clc.bold(`http://${uiUrl}/${Emulators.EXTENSIONS}/${backend.extensionInstanceId}`)
-    );
+    const uiUrl = EmulatorRegistry.url(Emulators.UI);
+    uiUrl.pathname = `/${Emulators.EXTENSIONS}/${backend.extensionInstanceId}`;
+    return clc.underline(clc.bold(uiUrl.toString()));
   }
 
   public extensionsInfoTable(options: Options): string {

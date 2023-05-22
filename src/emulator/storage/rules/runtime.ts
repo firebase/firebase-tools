@@ -3,8 +3,11 @@ import { ChildProcess } from "child_process";
 import { FirebaseError } from "../../../error";
 import * as AsyncLock from "async-lock";
 import {
+  DataLoadStatus,
   RulesetOperationMethod,
   RuntimeActionBundle,
+  RuntimeActionFirestoreDataRequest,
+  RuntimeActionFirestoreDataResponse,
   RuntimeActionLoadRulesetBundle,
   RuntimeActionLoadRulesetResponse,
   RuntimeActionRequest,
@@ -27,9 +30,10 @@ import {
   DownloadDetails,
   handleEmulatorProcessError,
 } from "../../downloadableEmulators";
+import { EmulatorRegistry } from "../../registry";
 
 const lock = new AsyncLock();
-const synchonizationKey: string = "key";
+const synchonizationKey = "key";
 
 export interface RulesetVerificationOpts {
   file: {
@@ -40,6 +44,7 @@ export interface RulesetVerificationOpts {
   method: RulesetOperationMethod;
   path: string;
   delimiter?: string;
+  projectId: string;
 }
 
 export class StorageRulesetInstance {
@@ -189,9 +194,16 @@ export class StorageRulesRuntime {
           );
           return;
         }
-        const request = this._requests[rap.id];
 
-        if (rap.status !== "ok") {
+        const id = rap.id ?? rap.server_request_id;
+        if (id === undefined) {
+          console.log(`Received no ID from server response ${serializedRuntimeActionResponse}`);
+          return;
+        }
+
+        const request = this._requests[id];
+
+        if (rap.status !== "ok" && !("action" in rap)) {
           console.warn(`[RULES] ${rap.status}: ${rap.message}`);
           rap.errors.forEach(console.warn.bind(console));
           return;
@@ -213,7 +225,7 @@ export class StorageRulesRuntime {
     this._childprocess?.kill();
   }
 
-  private async _sendRequest(rab: RuntimeActionBundle) {
+  private async _sendRequest(rab: RuntimeActionBundle, overrideId?: number) {
     if (!this._childprocess) {
       throw new FirebaseError(
         "Failed to send Cloud Storage rules request due to rules runtime not available."
@@ -222,10 +234,16 @@ export class StorageRulesRuntime {
 
     const runtimeActionRequest: RuntimeActionRequest = {
       ...rab,
-      id: this._requestCount++,
+      id: overrideId ?? this._requestCount++,
     };
 
-    if (this._requests[runtimeActionRequest.id]) {
+    // If `overrideId` is set, we are to use this ID to send to Rules.
+    // This happens when there is a back-and-forth interaction with Rules,
+    // meaning we also need to delete the old request and await the new
+    // response with the same ID.
+    if (overrideId !== undefined) {
+      delete this._requests[overrideId];
+    } else if (this._requests[runtimeActionRequest.id]) {
       throw new FirebaseError("Attempted to send Cloud Storage rules request with stale id");
     }
 
@@ -267,7 +285,7 @@ export class StorageRulesRuntime {
       runtimeActionRequest
     )) as RuntimeActionLoadRulesetResponse;
 
-    if (response.errors.length || response.warnings.length) {
+    if (response.errors.length) {
       return {
         issues: StorageRulesIssues.fromResponse(response),
       };
@@ -318,7 +336,27 @@ export class StorageRulesRuntime {
         variables: runtimeVariables,
       },
     };
-    const response = (await this._sendRequest(runtimeActionRequest)) as RuntimeActionVerifyResponse;
+
+    return this._completeVerifyWithRuleset(opts.projectId, runtimeActionRequest);
+  }
+
+  private async _completeVerifyWithRuleset(
+    projectId: string,
+    runtimeActionRequest: RuntimeActionBundle,
+    overrideId?: number
+  ): Promise<{
+    permitted?: boolean;
+    issues: StorageRulesIssues;
+  }> {
+    const response = (await this._sendRequest(
+      runtimeActionRequest,
+      overrideId
+    )) as RuntimeActionVerifyResponse;
+
+    if ("context" in response) {
+      const dataResponse = await fetchFirestoreDocument(projectId, response);
+      return this._completeVerifyWithRuleset(projectId, dataResponse, response.server_request_id);
+    }
 
     if (!response.errors) response.errors = [];
     if (!response.warnings) response.warnings = [];
@@ -377,7 +415,7 @@ function toExpressionValue(obj: any): ExpressionValue {
 
   if (obj == null) {
     return {
-      null_value: 0,
+      null_value: null,
     };
   }
 
@@ -397,6 +435,24 @@ function toExpressionValue(obj: any): ExpressionValue {
   throw new FirebaseError(
     `Cannot convert "${obj}" of type ${typeof obj} for Firebase Storage rules runtime`
   );
+}
+
+async function fetchFirestoreDocument(
+  projectId: string,
+  request: RuntimeActionFirestoreDataRequest
+): Promise<RuntimeActionFirestoreDataResponse> {
+  const pathname = `projects/${projectId}${request.context.path}`;
+
+  const client = EmulatorRegistry.client(Emulators.FIRESTORE, { apiVersion: "v1", auth: true });
+  try {
+    const doc = await client.get(pathname);
+    const { name, fields } = doc.body as { name: string; fields: string };
+    const result = { name, fields };
+    return { result, status: DataLoadStatus.OK, warnings: [], errors: [] };
+  } catch (e) {
+    // Don't care what the error is, just return not_found
+    return { status: DataLoadStatus.NOT_FOUND, warnings: [], errors: [] };
+  }
 }
 
 function createAuthExpressionValue(opts: RulesetVerificationOpts): ExpressionValue {
@@ -428,7 +484,7 @@ function createRequestExpressionValue(opts: RulesetVerificationOpts): Expression
     },
     time: toExpressionValue(new Date()),
     resource: toExpressionValue(opts.file.after ? opts.file.after : null),
-    auth: opts.token ? createAuthExpressionValue(opts) : { null_value: 0 },
+    auth: opts.token ? createAuthExpressionValue(opts) : { null_value: null },
   };
 
   return {

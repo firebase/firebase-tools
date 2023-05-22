@@ -101,6 +101,25 @@ describeAuthEmulator("accounts:signInWithPassword", ({ authApi, getClock }) => {
       });
   });
 
+  it("should error if email is invalid", async () => {
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword")
+      .query({ key: "fake-api-key" })
+      .send({ email: "ill-formatted-email", password: "notasecret" })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error.message).equals("INVALID_EMAIL");
+      });
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword")
+      .query({ key: "fake-api-key" })
+      .send({ email: "", password: "notasecret" })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error.message).equals("INVALID_EMAIL");
+      });
+  });
+
   it("should error if email is not found", async () => {
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword")
@@ -251,8 +270,8 @@ describeAuthEmulator("accounts:signInWithPassword", ({ authApi, getClock }) => {
             displayName: DISPLAY_NAME,
             photoUrl: PHOTO_URL,
             emailVerified: true,
-            customClaims: JSON.stringify({ customAttribute: "custom" }),
-            sessionClaims: JSON.stringify({ sessionAttribute: "session" }),
+            customClaims: { customAttribute: "custom" },
+            sessionClaims: { sessionAttribute: "session" },
           },
         });
 

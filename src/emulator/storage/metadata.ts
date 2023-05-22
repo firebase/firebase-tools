@@ -57,12 +57,21 @@ export class StoredFileMetadata {
     this.contentLanguage = opts.contentLanguage;
     this.customTime = opts.customTime;
     this.contentEncoding = opts.contentEncoding;
-    this.customMetadata = opts.customMetadata;
     this.downloadTokens = opts.downloadTokens || [];
     if (opts.etag) {
       this.etag = opts.etag;
     } else {
       this.etag = generateETag(this.generation, this.metageneration);
+    }
+    if (opts.customMetadata) {
+      this.customMetadata = {};
+      for (const [k, v] of Object.entries(opts.customMetadata)) {
+        let stringVal = v;
+        if (typeof stringVal !== "string") {
+          stringVal = JSON.stringify(v);
+        }
+        this.customMetadata[k] = stringVal || "";
+      }
     }
 
     // Special handling for date fields
@@ -360,9 +369,11 @@ export class CloudStorageBucketMetadata {
   constructor(id: string) {
     this.name = id;
     this.id = id;
-    this.selfLink = `http://${EmulatorRegistry.getInfo(Emulators.STORAGE)?.host}:${
-      EmulatorRegistry.getInfo(Emulators.STORAGE)?.port
-    }/v1/b/${this.id}`;
+
+    const selfLink = EmulatorRegistry.url(Emulators.STORAGE);
+    selfLink.pathname = `/v1/b/${this.id}`;
+    this.selfLink = selfLink.toString();
+
     this.timeCreated = toSerializedDate(new Date());
     this.updated = this.timeCreated;
     this.projectNumber = "000000000000";
@@ -471,14 +482,19 @@ export class CloudStorageObjectMetadata {
 
     this.timeStorageClassUpdated = toSerializedDate(metadata.timeCreated);
     this.id = `${metadata.bucket}/${metadata.name}/${metadata.generation}`;
-    this.selfLink = `http://${EmulatorRegistry.getInfo(Emulators.STORAGE)?.host}:${
-      EmulatorRegistry.getInfo(Emulators.STORAGE)?.port
-    }/storage/v1/b/${metadata.bucket}/o/${encodeURIComponent(metadata.name)}`;
-    this.mediaLink = `http://${EmulatorRegistry.getInfo(Emulators.STORAGE)?.host}:${
-      EmulatorRegistry.getInfo(Emulators.STORAGE)?.port
-    }/download/storage/v1/b/${metadata.bucket}/o/${encodeURIComponent(metadata.name)}?generation=${
-      metadata.generation
-    }&alt=media`;
+
+    const selfLink = EmulatorRegistry.url(Emulators.STORAGE);
+    selfLink.pathname = `/storage/v1/b/${metadata.bucket}/o/${encodeURIComponent(metadata.name)}`;
+    this.selfLink = selfLink.toString();
+
+    const mediaLink = EmulatorRegistry.url(Emulators.STORAGE);
+    mediaLink.pathname = `/download/storage/v1/b/${metadata.bucket}/o/${encodeURIComponent(
+      metadata.name
+    )}`;
+    mediaLink.searchParams.set("generation", metadata.generation.toString());
+    mediaLink.searchParams.set("alt", "media");
+
+    this.mediaLink = mediaLink.toString();
   }
 }
 

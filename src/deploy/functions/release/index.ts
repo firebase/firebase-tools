@@ -59,16 +59,16 @@ export async function release(
     }
   }
 
-  const functionExecutor: executor.QueueExecutor = new executor.QueueExecutor({
+  const throttlerOptions = {
     retries: 30,
     backoff: 20000,
     concurrency: 40,
-    maxBackoff: 40000,
-  });
+    maxBackoff: 100000,
+  };
 
   const fab = new fabricator.Fabricator({
-    functionExecutor,
-    executor: new executor.QueueExecutor({}),
+    functionExecutor: new executor.QueueExecutor(throttlerOptions),
+    executor: new executor.QueueExecutor(throttlerOptions),
     sources: context.sources,
     appEngineLocation: getAppEngineLocation(context.firebaseConfig),
     projectNumber: options.projectNumber || (await getProjectNumber(context.projectId)),

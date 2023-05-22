@@ -122,6 +122,59 @@ describe("prepare", () => {
       prepare.inferDetailsFromExisting(backend.of(want), backend.of(have), /* usedDotEnv= */ false);
       expect(want.availableMemoryMb).to.equal(512);
     });
+
+    it("downgrades concurrency if necessary (explicit)", () => {
+      const have: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        httpsTrigger: {},
+        concurrency: 80,
+        cpu: 1,
+      };
+      const want: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        httpsTrigger: {},
+        cpu: 0.5,
+      };
+
+      prepare.inferDetailsFromExisting(backend.of(want), backend.of(have), /* useDotEnv= */ false);
+      prepare.resolveCpuAndConcurrency(backend.of(want));
+      expect(want.concurrency).to.equal(1);
+    });
+
+    it("downgrades concurrency if necessary (implicit)", () => {
+      const have: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        httpsTrigger: {},
+        concurrency: 80,
+        cpu: 1,
+      };
+      const want: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        httpsTrigger: {},
+        cpu: "gcf_gen1",
+      };
+
+      prepare.inferDetailsFromExisting(backend.of(want), backend.of(have), /* useDotEnv= */ false);
+      prepare.resolveCpuAndConcurrency(backend.of(want));
+      expect(want.concurrency).to.equal(1);
+    });
+
+    it("upgrades default concurrency with CPU upgrades", () => {
+      const have: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        httpsTrigger: {},
+        availableMemoryMb: 256,
+        cpu: "gcf_gen1",
+      };
+      const want: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        httpsTrigger: {},
+      };
+
+      prepare.inferDetailsFromExisting(backend.of(want), backend.of(have), /* useDotEnv= */ false);
+      prepare.resolveCpuAndConcurrency(backend.of(want));
+      expect(want.concurrency).to.equal(1);
+    });
   });
 
   describe("inferBlockingDetails", () => {
@@ -157,6 +210,85 @@ describe("prepare", () => {
       expect(beforeSignIn.blockingTrigger.options?.accessToken).to.be.true;
       expect(beforeSignIn.blockingTrigger.options?.idToken).to.be.true;
       expect(beforeSignIn.blockingTrigger.options?.refreshToken).to.be.false;
+    });
+  });
+
+  describe("updateEndpointTargetedStatus", () => {
+    let endpoint1InBackend1: backend.Endpoint;
+    let endpoint2InBackend1: backend.Endpoint;
+    let endpoint1InBackend2: backend.Endpoint;
+    let endpoint2InBackend2: backend.Endpoint;
+
+    let backends: Record<string, backend.Backend>;
+
+    beforeEach(() => {
+      endpoint1InBackend1 = {
+        ...ENDPOINT,
+        id: "endpoint1",
+        platform: "gcfv1",
+        codebase: "backend1",
+      };
+      endpoint2InBackend1 = {
+        ...ENDPOINT,
+        id: "endpoint2",
+        platform: "gcfv1",
+        codebase: "backend1",
+      };
+      endpoint1InBackend2 = {
+        ...ENDPOINT,
+        id: "endpoint1",
+        platform: "gcfv2",
+        codebase: "backend2",
+      };
+      endpoint2InBackend2 = {
+        ...ENDPOINT,
+        id: "endpoint2",
+        platform: "gcfv2",
+        codebase: "backend2",
+      };
+
+      const backend1 = backend.of(endpoint1InBackend1, endpoint2InBackend1);
+      const backend2 = backend.of(endpoint1InBackend2, endpoint2InBackend2);
+
+      backends = { backend1, backend2 };
+    });
+
+    it("should mark targeted codebases", () => {
+      const filters = [{ codebase: "backend1" }];
+      // Execute
+      prepare.updateEndpointTargetedStatus(backends, filters);
+
+      // Expect
+      expect(endpoint1InBackend1.targetedByOnly).to.be.true;
+      expect(endpoint2InBackend1.targetedByOnly).to.be.true;
+      expect(endpoint1InBackend2.targetedByOnly).to.be.false;
+      expect(endpoint2InBackend2.targetedByOnly).to.be.false;
+    });
+
+    it("should mark targeted codebases + ids", () => {
+      const filters = [{ codebase: "backend1", idChunks: ["endpoint1"] }];
+
+      // Execute
+      prepare.updateEndpointTargetedStatus(backends, filters);
+
+      // Expect
+      expect(endpoint1InBackend1.targetedByOnly).to.be.true;
+      expect(endpoint2InBackend1.targetedByOnly).to.be.false;
+      expect(endpoint1InBackend2.targetedByOnly).to.be.false;
+      expect(endpoint2InBackend2.targetedByOnly).to.be.false;
+    });
+
+    it("should mark targeted ids", () => {
+      const filters = [{ idChunks: ["endpoint1"] }];
+
+      // Execute
+      prepare.updateEndpointTargetedStatus(backends, filters);
+
+      // Expect
+      expect(endpoint1InBackend1.targetedByOnly).to.be.true;
+      expect(endpoint2InBackend1.targetedByOnly).to.be.false;
+      expect(endpoint1InBackend1.targetedByOnly).to.be.true;
+      expect(endpoint2InBackend2.targetedByOnly).to.be.false;
     });
   });
 });

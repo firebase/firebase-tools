@@ -1,0 +1,1 @@
+exports.msg = "Hello world!";

@@ -4,6 +4,7 @@ import {
   DownloadableEmulatorCommand,
   DownloadableEmulatorDetails,
   EmulatorDownloadDetails,
+  EmulatorUpdateDetails,
 } from "./types";
 import { Constants } from "./constants";
 
@@ -18,95 +19,123 @@ import * as path from "path";
 import * as os from "os";
 import { EmulatorRegistry } from "./registry";
 import { downloadEmulator } from "../emulator/download";
-import { previews } from "../previews";
+import * as experiments from "../experiments";
 
 const EMULATOR_INSTANCE_KILL_TIMEOUT = 4000; /* ms */
 
 const CACHE_DIR =
   process.env.FIREBASE_EMULATORS_PATH || path.join(os.homedir(), ".cache", "firebase", "emulators");
 
+const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDetails } = {
+  database: {
+    version: "4.11.0",
+    expectedSize: 34318940,
+    expectedChecksum: "311609538bd65666eb724ef47c2e6466",
+  },
+  firestore: {
+    version: "1.17.4",
+    expectedSize: 64969580,
+    expectedChecksum: "9d580b58e55e57b0cdc3ca8888098d43",
+  },
+  storage: {
+    version: "1.1.3",
+    expectedSize: 52892936,
+    expectedChecksum: "2ca11ec1193003bea89f806cc085fa25",
+  },
+  ui: experiments.isEnabled("emulatoruisnapshot")
+    ? { version: "SNAPSHOT", expectedSize: -1, expectedChecksum: "" }
+    : {
+        version: "1.11.6",
+        expectedSize: 3063444,
+        expectedChecksum: "14b971f4ed4909f348e647db7114d62b",
+      },
+  pubsub: {
+    version: "0.7.1",
+    expectedSize: 65137179,
+    expectedChecksum: "b59a6e705031a54a69e5e1dced7ca9bf",
+  },
+};
+
 export const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDetails } = {
   database: {
-    downloadPath: path.join(CACHE_DIR, "firebase-database-emulator-v4.8.0.jar"),
-    version: "4.8.0",
+    downloadPath: path.join(
+      CACHE_DIR,
+      `firebase-database-emulator-v${EMULATOR_UPDATE_DETAILS.database.version}.jar`
+    ),
+    version: EMULATOR_UPDATE_DETAILS.database.version,
     opts: {
       cacheDir: CACHE_DIR,
-      remoteUrl:
-        "https://storage.googleapis.com/firebase-preview-drop/emulator/firebase-database-emulator-v4.8.0.jar",
-      expectedSize: 33676395,
-      expectedChecksum: "e5ae0085d9c88ed14b0bd9c25fe62916",
+      remoteUrl: `https://storage.googleapis.com/firebase-preview-drop/emulator/firebase-database-emulator-v${EMULATOR_UPDATE_DETAILS.database.version}.jar`,
+      expectedSize: EMULATOR_UPDATE_DETAILS.database.expectedSize,
+      expectedChecksum: EMULATOR_UPDATE_DETAILS.database.expectedChecksum,
       namePrefix: "firebase-database-emulator",
     },
   },
   firestore: {
-    downloadPath: path.join(CACHE_DIR, "cloud-firestore-emulator-v1.14.4.jar"),
-    version: "1.14.4",
+    downloadPath: path.join(
+      CACHE_DIR,
+      `cloud-firestore-emulator-v${EMULATOR_UPDATE_DETAILS.firestore.version}.jar`
+    ),
+    version: EMULATOR_UPDATE_DETAILS.firestore.version,
     opts: {
       cacheDir: CACHE_DIR,
-      remoteUrl:
-        "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v1.14.4.jar",
-      expectedSize: 61017177,
-      expectedChecksum: "953d10e73798484aa0b84c45005faadb",
+      remoteUrl: `https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v${EMULATOR_UPDATE_DETAILS.firestore.version}.jar`,
+      expectedSize: EMULATOR_UPDATE_DETAILS.firestore.expectedSize,
+      expectedChecksum: EMULATOR_UPDATE_DETAILS.firestore.expectedChecksum,
       namePrefix: "cloud-firestore-emulator",
     },
   },
   storage: {
-    downloadPath: path.join(CACHE_DIR, "cloud-storage-rules-runtime-v1.0.2.jar"),
-    version: "1.0.2",
+    downloadPath: path.join(
+      CACHE_DIR,
+      `cloud-storage-rules-runtime-v${EMULATOR_UPDATE_DETAILS.storage.version}.jar`
+    ),
+    version: EMULATOR_UPDATE_DETAILS.storage.version,
     opts: {
       cacheDir: CACHE_DIR,
-      remoteUrl:
-        "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-storage-rules-runtime-v1.0.2.jar",
-      expectedSize: 35704306,
-      expectedChecksum: "0dd3e17939610fc3dbdf53fb24cfda86",
+      remoteUrl: `https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-storage-rules-runtime-v${EMULATOR_UPDATE_DETAILS.storage.version}.jar`,
+      expectedSize: EMULATOR_UPDATE_DETAILS.storage.expectedSize,
+      expectedChecksum: EMULATOR_UPDATE_DETAILS.storage.expectedChecksum,
       namePrefix: "cloud-storage-rules-emulator",
     },
   },
-  ui: previews.emulatoruisnapshot
-    ? {
-        version: "SNAPSHOT",
-        downloadPath: path.join(CACHE_DIR, "ui-vSNAPSHOT.zip"),
-        unzipDir: path.join(CACHE_DIR, "ui-vSNAPSHOT"),
-        binaryPath: path.join(CACHE_DIR, "ui-vSNAPSHOT", "server", "server.js"),
-        opts: {
-          cacheDir: CACHE_DIR,
-          remoteUrl:
-            "https://storage.googleapis.com/firebase-preview-drop/emulator/ui-vSNAPSHOT.zip",
-          expectedSize: -1,
-          expectedChecksum: "",
-          skipCache: true,
-          skipChecksumAndSize: true,
-          namePrefix: "ui",
-        },
-      }
-    : {
-        version: "1.9.0",
-        downloadPath: path.join(CACHE_DIR, "ui-v1.9.0.zip"),
-        unzipDir: path.join(CACHE_DIR, "ui-v1.9.0"),
-        binaryPath: path.join(CACHE_DIR, "ui-v1.9.0", "server", "server.js"),
-        opts: {
-          cacheDir: CACHE_DIR,
-          remoteUrl: "https://storage.googleapis.com/firebase-preview-drop/emulator/ui-v1.9.0.zip",
-          expectedSize: 3062710,
-          expectedChecksum: "984597f41d497bd318dac131615eb9d5",
-          namePrefix: "ui",
-        },
-      },
-  pubsub: {
-    downloadPath: path.join(CACHE_DIR, "pubsub-emulator-0.1.0.zip"),
-    version: "0.1.0",
-    unzipDir: path.join(CACHE_DIR, "pubsub-emulator-0.1.0"),
+  ui: {
+    version: EMULATOR_UPDATE_DETAILS.ui.version,
+    downloadPath: path.join(CACHE_DIR, `ui-v${EMULATOR_UPDATE_DETAILS.ui.version}.zip`),
+    unzipDir: path.join(CACHE_DIR, `ui-v${EMULATOR_UPDATE_DETAILS.ui.version}`),
     binaryPath: path.join(
       CACHE_DIR,
-      "pubsub-emulator-0.1.0",
+      `ui-v${EMULATOR_UPDATE_DETAILS.ui.version}`,
+      "server",
+      "server.js"
+    ),
+    opts: {
+      cacheDir: CACHE_DIR,
+      remoteUrl: `https://storage.googleapis.com/firebase-preview-drop/emulator/ui-v${EMULATOR_UPDATE_DETAILS.ui.version}.zip`,
+      expectedSize: EMULATOR_UPDATE_DETAILS.ui.expectedSize,
+      expectedChecksum: EMULATOR_UPDATE_DETAILS.ui.expectedChecksum,
+      skipCache: experiments.isEnabled("emulatoruisnapshot"),
+      skipChecksumAndSize: experiments.isEnabled("emulatoruisnapshot"),
+      namePrefix: "ui",
+    },
+  },
+  pubsub: {
+    downloadPath: path.join(
+      CACHE_DIR,
+      `pubsub-emulator-${EMULATOR_UPDATE_DETAILS.pubsub.version}.zip`
+    ),
+    version: EMULATOR_UPDATE_DETAILS.pubsub.version,
+    unzipDir: path.join(CACHE_DIR, `pubsub-emulator-${EMULATOR_UPDATE_DETAILS.pubsub.version}`),
+    binaryPath: path.join(
+      CACHE_DIR,
+      `pubsub-emulator-${EMULATOR_UPDATE_DETAILS.pubsub.version}`,
       `pubsub-emulator/bin/cloud-pubsub-emulator${process.platform === "win32" ? ".bat" : ""}`
     ),
     opts: {
       cacheDir: CACHE_DIR,
-      remoteUrl:
-        "https://storage.googleapis.com/firebase-preview-drop/emulator/pubsub-emulator-0.1.0.zip",
-      expectedSize: 36623622,
-      expectedChecksum: "81704b24737d4968734d3e175f4cde71",
+      remoteUrl: `https://storage.googleapis.com/firebase-preview-drop/emulator/pubsub-emulator-${EMULATOR_UPDATE_DETAILS.pubsub.version}.zip`,
+      expectedSize: EMULATOR_UPDATE_DETAILS.pubsub.expectedSize,
+      expectedChecksum: EMULATOR_UPDATE_DETAILS.pubsub.expectedChecksum,
       namePrefix: "pubsub-emulator",
     },
   },
@@ -144,7 +173,13 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
   database: {
     binary: "java",
     args: ["-Duser.language=en", "-jar", getExecPath(Emulators.DATABASE)],
-    optionalArgs: ["port", "host", "functions_emulator_port", "functions_emulator_host"],
+    optionalArgs: [
+      "port",
+      "host",
+      "functions_emulator_port",
+      "functions_emulator_host",
+      "single_project_mode",
+    ],
     joinArgs: false,
   },
   firestore: {
@@ -160,8 +195,13 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
       "webchannel_port",
       "host",
       "rules",
+      "websocket_port",
       "functions_emulator",
       "seed_from_export",
+      "project_id",
+      "single_project_mode",
+      // TODO(christhompson) Re-enable after firestore accepts this flag.
+      // "single_project_mode_error",
     ],
     joinArgs: false,
   },
@@ -286,6 +326,9 @@ async function _fatal(emulator: Emulators, errorMsg: string): Promise<void> {
   }
 }
 
+/**
+ * Handle errors in an emulator process.
+ */
 export async function handleEmulatorProcessError(emulator: Emulators, err: any): Promise<void> {
   const description = Constants.description(emulator);
   if (err.path === "java" && err.code === "ENOENT") {
@@ -298,6 +341,9 @@ export async function handleEmulatorProcessError(emulator: Emulators, err: any):
   }
 }
 
+/**
+ * Do the selected list of emulators depend on the JRE.
+ */
 export function requiresJava(emulator: Emulators): boolean {
   if (emulator in Commands) {
     return Commands[emulator as keyof typeof Commands].binary === "java";
@@ -308,7 +354,7 @@ export function requiresJava(emulator: Emulators): boolean {
 async function _runBinary(
   emulator: DownloadableEmulatorDetails,
   command: DownloadableEmulatorCommand,
-  extraEnv: NodeJS.ProcessEnv
+  extraEnv: Partial<NodeJS.ProcessEnv>
 ): Promise<void> {
   return new Promise((resolve) => {
     const logger = EmulatorLogger.forEmulator(emulator.name);
@@ -452,7 +498,7 @@ export async function downloadIfNecessary(targetName: DownloadableEmulators): Pr
 export async function start(
   targetName: DownloadableEmulators,
   args: any,
-  extraEnv: NodeJS.ProcessEnv = {}
+  extraEnv: Partial<NodeJS.ProcessEnv> = {}
 ): Promise<void> {
   const downloadDetails = DownloadDetails[targetName];
   const emulator = get(targetName);

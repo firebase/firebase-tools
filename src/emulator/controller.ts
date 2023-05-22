@@ -1,14 +1,16 @@
 import * as clc from "colorette";
 import * as fs from "fs";
 import * as path from "path";
+import * as fsConfig from "../firestore/fsConfig";
 
 import { logger } from "../logger";
 import { track, trackEmulator } from "../track";
 import * as utils from "../utils";
 import { EmulatorRegistry } from "./registry";
 import {
-  Address,
+  ALL_EMULATORS,
   ALL_SERVICE_EMULATORS,
+  EmulatorInfo,
   EmulatorInstance,
   Emulators,
   EMULATORS_SUPPORTED_BY_UI,
@@ -16,8 +18,7 @@ import {
 } from "./types";
 import { Constants, FIND_AVAILBLE_PORT_BY_DEFAULT } from "./constants";
 import { EmulatableBackend, FunctionsEmulator } from "./functionsEmulator";
-import { parseRuntimeVersion } from "./functionsEmulatorUtils";
-import { AuthEmulator } from "./auth";
+import { AuthEmulator, SingleProjectMode } from "./auth";
 import { DatabaseEmulator, DatabaseEmulatorArgs } from "./databaseEmulator";
 import { FirestoreEmulator, FirestoreEmulatorArgs } from "./firestoreEmulator";
 import { HostingEmulator } from "./hostingEmulator";
@@ -32,7 +33,6 @@ import { EmulatorUI } from "./ui";
 import { LoggingEmulator } from "./loggingEmulator";
 import * as dbRulesConfig from "../database/rulesConfig";
 import { EmulatorLogger } from "./emulatorLogger";
-import * as portUtils from "./portUtils";
 import { EmulatorHubClient } from "./hubClient";
 import { promptOnce } from "../prompt";
 import {
@@ -51,92 +51,14 @@ import { ExtensionsEmulator } from "./extensionsEmulator";
 import { normalizeAndValidate } from "../functions/projectConfig";
 import { requiresJava } from "./downloadableEmulators";
 import { prepareFrameworks } from "../frameworks";
-import { previews } from "../previews";
+import * as experiments from "../experiments";
+import { EmulatorListenConfig, PortName, resolveHostAndAssignPorts } from "./portUtils";
 
 const START_LOGGING_EMULATOR = utils.envOverride(
   "START_LOGGING_EMULATOR",
   "false",
   (val) => val === "true"
 );
-
-async function getAndCheckAddress(emulator: Emulators, options: Options): Promise<Address> {
-  if (emulator === Emulators.EXTENSIONS) {
-    // The Extensions emulator always runs on the same port as the Functions emulator.
-    emulator = Emulators.FUNCTIONS;
-  }
-  let host = options.config.src.emulators?.[emulator]?.host || Constants.getDefaultHost();
-  if (host === "localhost" && utils.isRunningInWSL()) {
-    // HACK(https://github.com/firebase/firebase-tools-ui/issues/332): Use IPv4
-    // 127.0.0.1 instead of localhost. This, combined with the hack in
-    // downloadableEmulators.ts, forces the emulator to listen on IPv4 ONLY.
-    // The CLI (including the hub) will also consistently report 127.0.0.1,
-    // causing clients to connect via IPv4 only (which mitigates the problem of
-    // some clients resolving localhost to IPv6 and get connection refused).
-    host = "127.0.0.1";
-  }
-
-  const portVal = options.config.src.emulators?.[emulator]?.port;
-  let port;
-  let findAvailablePort = false;
-  if (portVal) {
-    port = parseInt(`${portVal}`, 10);
-  } else {
-    port = Constants.getDefaultPort(emulator);
-    findAvailablePort = FIND_AVAILBLE_PORT_BY_DEFAULT[emulator];
-  }
-
-  const loggerForEmulator = EmulatorLogger.forEmulator(emulator);
-  const portOpen = await portUtils.checkPortOpen(port, host);
-  if (!portOpen) {
-    if (findAvailablePort) {
-      const newPort = await portUtils.findAvailablePort(host, port);
-      if (newPort !== port) {
-        loggerForEmulator.logLabeled(
-          "WARN",
-          emulator,
-          `${Constants.description(
-            emulator
-          )} unable to start on port ${port}, starting on ${newPort} instead.`
-        );
-        port = newPort;
-      }
-    } else {
-      await cleanShutdown();
-      const description = Constants.description(emulator);
-      loggerForEmulator.logLabeled(
-        "WARN",
-        emulator,
-        `Port ${port} is not open on ${host}, could not start ${description}.`
-      );
-      loggerForEmulator.logLabeled(
-        "WARN",
-        emulator,
-        `To select a different host/port, specify that host/port in a firebase.json config file:
-      {
-        // ...
-        "emulators": {
-          "${emulator}": {
-            "host": "${clc.yellow("HOST")}",
-            "port": "${clc.yellow("PORT")}"
-          }
-        }
-      }`
-      );
-      return utils.reject(`Could not start ${description}, port taken.`, {});
-    }
-  }
-
-  if (portUtils.isRestricted(port)) {
-    const suggested = portUtils.suggestUnrestricted(port);
-    loggerForEmulator.logLabeled(
-      "WARN",
-      emulator,
-      `Port ${port} is restricted by some web browsers, including Chrome. You may want to choose a different port such as ${suggested}.`
-    );
-  }
-
-  return { host, port };
-}
 
 /**
  * Exports emulator data on clean exit (SIGINT or process end)
@@ -323,6 +245,9 @@ interface EmulatorOptions extends Options {
   extDevEnv?: Record<string, string>;
 }
 
+/**
+ * Start all emulators.
+ */
 export async function startAll(
   options: EmulatorOptions,
   showUI = true
@@ -341,6 +266,9 @@ export async function startAll(
   // 2) If the --only flag is passed, then this list is the intersection
   const targets = filterEmulatorTargets(options);
   options.targets = targets;
+  const singleProjectModeEnabled =
+    options.config.src.emulators?.singleProjectMode === undefined ||
+    options.config.src.emulators?.singleProjectMode;
 
   if (targets.length === 0) {
     throw new FirebaseError(
@@ -395,11 +323,73 @@ export async function startAll(
     }
   }
 
-  if (previews.frameworkawareness) {
-    const config = options.config.get("hosting");
-    if (Array.isArray(config) ? config.some((it) => it.source) : config?.source) {
-      await prepareFrameworks(targets, options, options);
+  const emulatableBackends: EmulatableBackend[] = [];
+
+  // Process extensions config early so that we have a better guess at whether
+  // the Functions emulator needs to start.
+  let extensionEmulator: ExtensionsEmulator | undefined = undefined;
+  if (shouldStart(options, Emulators.EXTENSIONS)) {
+    const projectNumber = isDemoProject
+      ? Constants.FAKE_PROJECT_NUMBER
+      : await needProjectNumber(options);
+    const aliases = getAliases(options, projectId);
+    extensionEmulator = new ExtensionsEmulator({
+      projectId,
+      projectDir: options.config.projectDir,
+      projectNumber,
+      aliases,
+      extensions: options.config.get("extensions"),
+    });
+    const extensionsBackends = await extensionEmulator.getExtensionBackends();
+    const filteredExtensionsBackends = extensionEmulator.filterUnemulatedTriggers(
+      options,
+      extensionsBackends
+    );
+    emulatableBackends.push(...filteredExtensionsBackends);
+  }
+
+  const listenConfig = {} as Record<PortName, EmulatorListenConfig>;
+  if (emulatableBackends.length) {
+    // If we already know we need Functions (and Eventarc), assign them now.
+    listenConfig[Emulators.FUNCTIONS] = getListenConfig(options, Emulators.FUNCTIONS);
+    listenConfig[Emulators.EVENTARC] = getListenConfig(options, Emulators.EVENTARC);
+  }
+  for (const emulator of ALL_EMULATORS) {
+    if (
+      emulator === Emulators.FUNCTIONS ||
+      emulator === Emulators.EVENTARC ||
+      // Same port as Functions, no need for separate assignment
+      emulator === Emulators.EXTENSIONS ||
+      (emulator === Emulators.UI && !showUI)
+    ) {
+      continue;
     }
+    if (
+      shouldStart(options, emulator) ||
+      (emulator === Emulators.LOGGING &&
+        ((showUI && shouldStart(options, Emulators.UI)) || START_LOGGING_EMULATOR))
+    ) {
+      const config = getListenConfig(options, emulator);
+      listenConfig[emulator] = config;
+      if (emulator === Emulators.FIRESTORE) {
+        const wsPortConfig = options.config.src.emulators?.firestore?.websocketPort;
+        listenConfig["firestore.websocket"] = {
+          host: config.host,
+          port: wsPortConfig || 9150,
+          portFixed: !!wsPortConfig,
+        };
+      }
+    }
+  }
+  let listenForEmulator = await resolveHostAndAssignPorts(listenConfig);
+  hubLogger.log("DEBUG", "assigned listening specs for emulators", { user: listenForEmulator });
+
+  function legacyGetFirstAddr(name: PortName): { host: string; port: number } {
+    const firstSpec = listenForEmulator[name][0];
+    return {
+      host: firstSpec.address,
+      port: firstSpec.port,
+    };
   }
 
   function startEmulator(instance: EmulatorInstance): Promise<void> {
@@ -415,9 +405,12 @@ export async function startAll(
     return EmulatorRegistry.start(instance);
   }
 
-  if (shouldStart(options, Emulators.HUB)) {
-    const hubAddr = await getAndCheckAddress(Emulators.HUB, options);
-    const hub = new EmulatorHub({ projectId, ...hubAddr });
+  if (listenForEmulator.hub) {
+    const hub = new EmulatorHub({
+      projectId,
+      listen: listenForEmulator[Emulators.HUB],
+      listenForEmulator,
+    });
 
     // Log the command for analytics, we only report this for "hub"
     // since we originally mistakenly reported emulators:start events
@@ -450,7 +443,29 @@ export async function startAll(
     }
   }
 
-  const emulatableBackends: EmulatableBackend[] = [];
+  // TODO: turn this into hostingConfig.extract or hostingConfig.hostingConfig
+  // once those branches merge
+  const hostingConfig = options.config.get("hosting");
+  if (
+    Array.isArray(hostingConfig) ? hostingConfig.some((it) => it.source) : hostingConfig?.source
+  ) {
+    experiments.assertEnabled("webframeworks", "emulate a web framework");
+    const emulators: EmulatorInfo[] = [];
+    for (const e of ALL_SERVICE_EMULATORS) {
+      // TODO(yuchenshi): Functions and Eventarc may be missing if they are not
+      // yet known to be needed and then prepareFrameworks adds extra functions.
+      if (listenForEmulator[e]) {
+        emulators.push({
+          name: e,
+          host: utils.connectableHostname(listenForEmulator[e][0].address),
+          port: listenForEmulator[e][0].port,
+        });
+      }
+    }
+    // This may add additional sources for Functions emulator and must be done before it.
+    await prepareFrameworks(targets, options, options, emulators);
+  }
+
   const projectDir = (options.extDevDir || options.config.projectDir) as string;
   if (shouldStart(options, Emulators.FUNCTIONS)) {
     const functionsCfg = normalizeAndValidate(options.config.src.functions);
@@ -459,8 +474,10 @@ export async function startAll(
 
     for (const cfg of functionsCfg) {
       const functionsDir = path.join(projectDir, cfg.source);
+      const runtime = (options.extDevRuntime as string | undefined) ?? cfg.runtime;
       emulatableBackends.push({
         functionsDir,
+        runtime,
         codebase: cfg.codebase,
         env: {
           ...options.extDevEnv,
@@ -469,35 +486,28 @@ export async function startAll(
         // TODO(b/213335255): predefinedTriggers and nodeMajorVersion are here to support ext:dev:emulators:* commands.
         // Ideally, we should handle that case via ExtensionEmulator.
         predefinedTriggers: options.extDevTriggers as ParsedTriggerDefinition[] | undefined,
-        nodeMajorVersion: parseRuntimeVersion((options.extDevNodeVersion as string) || cfg.runtime),
       });
     }
   }
 
-  if (shouldStart(options, Emulators.EXTENSIONS)) {
-    const projectNumber = isDemoProject
-      ? Constants.FAKE_PROJECT_NUMBER
-      : await needProjectNumber(options);
-    const aliases = getAliases(options, projectId);
-    const extensionEmulator = new ExtensionsEmulator({
-      projectId,
-      projectDir: options.config.projectDir,
-      projectNumber,
-      aliases,
-      extensions: options.config.get("extensions"),
-    });
-    const extensionsBackends = await extensionEmulator.getExtensionBackends();
-    const filteredExtensionsBackends = extensionEmulator.filterUnemulatedTriggers(
-      options,
-      extensionsBackends
-    );
-    emulatableBackends.push(...filteredExtensionsBackends);
+  if (extensionEmulator) {
     await startEmulator(extensionEmulator);
   }
 
   if (emulatableBackends.length) {
+    if (!listenForEmulator.functions || !listenForEmulator.eventarc) {
+      // We did not know that we need Functions and Eventarc earlier but now we do.
+      listenForEmulator = await resolveHostAndAssignPorts({
+        ...listenForEmulator,
+        functions: listenForEmulator.functions ?? getListenConfig(options, Emulators.FUNCTIONS),
+        eventarc: listenForEmulator.eventarc ?? getListenConfig(options, Emulators.EVENTARC),
+      });
+      hubLogger.log("DEBUG", "late-assigned ports for functions and eventarc emulators", {
+        user: listenForEmulator,
+      });
+    }
     const functionsLogger = EmulatorLogger.forEmulator(Emulators.FUNCTIONS);
-    const functionsAddr = await getAndCheckAddress(Emulators.FUNCTIONS, options);
+    const functionsAddr = legacyGetFirstAddr(Emulators.FUNCTIONS);
     const projectId = needProjectId(options);
 
     let inspectFunctions: number | undefined;
@@ -514,7 +524,7 @@ export async function startAll(
 
     // Warn the developer that the Functions/Extensions emulator can call out to production.
     const emulatorsNotRunning = ALL_SERVICE_EMULATORS.filter((e) => {
-      return e !== Emulators.FUNCTIONS && !shouldStart(options, e);
+      return e !== Emulators.FUNCTIONS && !listenForEmulator[e];
     });
     if (emulatorsNotRunning.length > 0 && !Constants.isDemoProject(projectId)) {
       functionsLogger.logLabeled(
@@ -541,7 +551,7 @@ export async function startAll(
     });
     await startEmulator(functionsEmulator);
 
-    const eventarcAddr = await getAndCheckAddress(Emulators.EVENTARC, options);
+    const eventarcAddr = legacyGetFirstAddr(Emulators.EVENTARC);
     const eventarcEmulator = new EventarcEmulator({
       host: eventarcAddr.host,
       port: eventarcAddr.port,
@@ -549,14 +559,16 @@ export async function startAll(
     await startEmulator(eventarcEmulator);
   }
 
-  if (shouldStart(options, Emulators.FIRESTORE)) {
+  if (listenForEmulator.firestore) {
     const firestoreLogger = EmulatorLogger.forEmulator(Emulators.FIRESTORE);
-    const firestoreAddr = await getAndCheckAddress(Emulators.FIRESTORE, options);
+    const firestoreAddr = legacyGetFirstAddr(Emulators.FIRESTORE);
+    const websocketPort = legacyGetFirstAddr("firestore.websocket").port;
 
     const args: FirestoreEmulatorArgs = {
       host: firestoreAddr.host,
       port: firestoreAddr.port,
-      projectId,
+      websocket_port: websocketPort,
+      project_id: projectId,
       auto_download: true,
     };
 
@@ -581,8 +593,29 @@ export async function startAll(
     }
 
     const config = options.config;
-    const rulesLocalPath = config.src.firestore?.rules;
-    let rulesFileFound = false;
+    // emulator does not support multiple databases yet
+    // TODO(VicVer09): b/269787702
+    let rulesLocalPath;
+    let rulesFileFound;
+    const firestoreConfigs: fsConfig.ParsedFirestoreConfig[] = fsConfig.getFirestoreConfig(
+      projectId,
+      options
+    );
+    if (!firestoreConfigs) {
+      firestoreLogger.logLabeled(
+        "WARN",
+        "firestore",
+        `Cloud Firestore config does not exist in firebase.json.`
+      );
+    } else if (firestoreConfigs.length !== 1) {
+      firestoreLogger.logLabeled(
+        "WARN",
+        "firestore",
+        `Cloud Firestore Emulator does not support multiple databases yet.`
+      );
+    } else if (firestoreConfigs[0].rules) {
+      rulesLocalPath = firestoreConfigs[0].rules;
+    }
     if (rulesLocalPath) {
       const rules: string = config.path(rulesLocalPath);
       rulesFileFound = fs.existsSync(rules);
@@ -611,19 +644,40 @@ export async function startAll(
       );
     }
 
+    // undefined in the config defaults to setting single_project_mode.
+    if (singleProjectModeEnabled) {
+      if (projectId) {
+        args.single_project_mode = true;
+        args.single_project_mode_error = false;
+      } else {
+        firestoreLogger.logLabeled(
+          "DEBUG",
+          "firestore",
+          "Could not enable single_project_mode: missing projectId."
+        );
+      }
+    }
+
     const firestoreEmulator = new FirestoreEmulator(args);
     await startEmulator(firestoreEmulator);
+    firestoreLogger.logLabeled(
+      "SUCCESS",
+      Emulators.FIRESTORE,
+      `Firestore Emulator UI websocket is running on ${websocketPort}.`
+    );
   }
 
-  if (shouldStart(options, Emulators.DATABASE)) {
+  if (listenForEmulator.database) {
     const databaseLogger = EmulatorLogger.forEmulator(Emulators.DATABASE);
-    const databaseAddr = await getAndCheckAddress(Emulators.DATABASE, options);
+    const databaseAddr = legacyGetFirstAddr(Emulators.DATABASE);
 
     const args: DatabaseEmulatorArgs = {
       host: databaseAddr.host,
       port: databaseAddr.port,
       projectId,
       auto_download: true,
+      // Only set the flag (at all) if singleProjectMode is enabled.
+      single_project_mode: singleProjectModeEnabled ? "Warning" : undefined,
     };
 
     // Try to fetch the default RTDB instance for a project, but don't hard-fail if we
@@ -690,7 +744,7 @@ export async function startAll(
     }
   }
 
-  if (shouldStart(options, Emulators.AUTH)) {
+  if (listenForEmulator.auth) {
     if (!projectId) {
       throw new FirebaseError(
         `Cannot start the ${Constants.description(
@@ -699,11 +753,14 @@ export async function startAll(
       );
     }
 
-    const authAddr = await getAndCheckAddress(Emulators.AUTH, options);
+    const authAddr = legacyGetFirstAddr(Emulators.AUTH);
     const authEmulator = new AuthEmulator({
       host: authAddr.host,
       port: authAddr.port,
       projectId,
+      singleProjectMode: singleProjectModeEnabled
+        ? SingleProjectMode.WARNING
+        : SingleProjectMode.NO_WARNING,
     });
     await startEmulator(authEmulator);
 
@@ -716,14 +773,14 @@ export async function startAll(
     }
   }
 
-  if (shouldStart(options, Emulators.PUBSUB)) {
+  if (listenForEmulator.pubsub) {
     if (!projectId) {
       throw new FirebaseError(
         "Cannot start the Pub/Sub emulator without a project: run 'firebase init' or provide the --project flag"
       );
     }
 
-    const pubsubAddr = await getAndCheckAddress(Emulators.PUBSUB, options);
+    const pubsubAddr = legacyGetFirstAddr(Emulators.PUBSUB);
     const pubsubEmulator = new PubsubEmulator({
       host: pubsubAddr.host,
       port: pubsubAddr.port,
@@ -733,8 +790,8 @@ export async function startAll(
     await startEmulator(pubsubEmulator);
   }
 
-  if (shouldStart(options, Emulators.STORAGE)) {
-    const storageAddr = await getAndCheckAddress(Emulators.STORAGE, options);
+  if (listenForEmulator.storage) {
+    const storageAddr = legacyGetFirstAddr(Emulators.STORAGE);
 
     const storageEmulator = new StorageEmulator({
       host: storageAddr.host,
@@ -754,8 +811,8 @@ export async function startAll(
 
   // Hosting emulator needs to start after all of the others so that we can detect
   // which are running and call useEmulator in __init.js
-  if (shouldStart(options, Emulators.HOSTING)) {
-    const hostingAddr = await getAndCheckAddress(Emulators.HOSTING, options);
+  if (listenForEmulator.hosting) {
+    const hostingAddr = legacyGetFirstAddr(Emulators.HOSTING);
     const hostingEmulator = new HostingEmulator({
       host: hostingAddr.host,
       port: hostingAddr.port,
@@ -775,8 +832,8 @@ export async function startAll(
     );
   }
 
-  if (showUI && (shouldStart(options, Emulators.UI) || START_LOGGING_EMULATOR)) {
-    const loggingAddr = await getAndCheckAddress(Emulators.LOGGING, options);
+  if (listenForEmulator.logging) {
+    const loggingAddr = legacyGetFirstAddr(Emulators.LOGGING);
     const loggingEmulator = new LoggingEmulator({
       host: loggingAddr.host,
       port: loggingAddr.port,
@@ -785,12 +842,11 @@ export async function startAll(
     await startEmulator(loggingEmulator);
   }
 
-  if (showUI && shouldStart(options, Emulators.UI)) {
-    const uiAddr = await getAndCheckAddress(Emulators.UI, options);
+  if (listenForEmulator.ui) {
     const ui = new EmulatorUI({
       projectId: projectId,
       auto_download: true,
-      ...uiAddr,
+      listen: listenForEmulator[Emulators.UI],
     });
     await startEmulator(ui);
   }
@@ -816,6 +872,38 @@ export async function startAll(
   return { deprecationNotices: [] };
 }
 
+function getListenConfig(
+  options: EmulatorOptions,
+  emulator: Exclude<Emulators, Emulators.EXTENSIONS>
+): EmulatorListenConfig {
+  let host = options.config.src.emulators?.[emulator]?.host || Constants.getDefaultHost();
+  if (host === "localhost" && utils.isRunningInWSL()) {
+    // HACK(https://github.com/firebase/firebase-tools-ui/issues/332): Use IPv4
+    // 127.0.0.1 instead of localhost. This, combined with the hack in
+    // downloadableEmulators.ts, forces the emulator to listen on IPv4 ONLY.
+    // The CLI (including the hub) will also consistently report 127.0.0.1,
+    // causing clients to connect via IPv4 only (which mitigates the problem of
+    // some clients resolving localhost to IPv6 and get connection refused).
+    host = "127.0.0.1";
+  }
+
+  const portVal = options.config.src.emulators?.[emulator]?.port;
+  let port: number;
+  let portFixed: boolean;
+  if (portVal) {
+    port = parseInt(`${portVal}`, 10);
+    portFixed = true;
+  } else {
+    port = Constants.getDefaultPort(emulator);
+    portFixed = !FIND_AVAILBLE_PORT_BY_DEFAULT[emulator];
+  }
+  return {
+    host,
+    port,
+    portFixed,
+  };
+}
+
 /**
  * Exports data from emulators that support data export. Used with `emulators:export` and with the --export-on-exit flag.
  * @param exportPath
@@ -838,8 +926,9 @@ export async function exportEmulatorData(exportPath: string, options: any, initi
     );
   }
 
+  let origin;
   try {
-    await hubClient.getStatus();
+    origin = await hubClient.getStatus();
   } catch (e: any) {
     const filePath = EmulatorHub.getLocatorFilePath(projectId);
     throw new FirebaseError(
@@ -848,9 +937,7 @@ export async function exportEmulatorData(exportPath: string, options: any, initi
     );
   }
 
-  utils.logBullet(
-    `Found running emulator hub for project ${clc.bold(projectId)} at ${hubClient.origin}`
-  );
+  utils.logBullet(`Found running emulator hub for project ${clc.bold(projectId)} at ${origin}`);
 
   // If the export target directory does not exist, we should attempt to create it
   const exportAbsPath = path.resolve(exportPath);

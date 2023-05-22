@@ -11,22 +11,16 @@ import * as projectConfig from "../functions/projectConfig";
 import { Client } from "../apiv2";
 import { functionsOrigin } from "../api";
 import { AUTH_BLOCKING_EVENTS } from "../functions/events/v1";
+import {
+  BLOCKING_EVENT_TO_LABEL_KEY,
+  BLOCKING_LABEL,
+  BLOCKING_LABEL_KEY_TO_EVENT,
+  CODEBASE_LABEL,
+  HASH_LABEL,
+} from "../functions/constants";
 
 export const API_VERSION = "v1";
-export const CODEBASE_LABEL = "firebase-functions-codebase";
 const client = new Client({ urlPrefix: functionsOrigin, apiVersion: API_VERSION });
-
-export const BLOCKING_LABEL = "deployment-blocking";
-
-const BLOCKING_LABEL_KEY_TO_EVENT: Record<string, typeof AUTH_BLOCKING_EVENTS[number]> = {
-  "before-create": "providers/cloud.auth/eventTypes/user.beforeCreate",
-  "before-sign-in": "providers/cloud.auth/eventTypes/user.beforeSignIn",
-};
-
-const BLOCKING_EVENT_TO_LABEL_KEY: Record<typeof AUTH_BLOCKING_EVENTS[number], string> = {
-  "providers/cloud.auth/eventTypes/user.beforeCreate": "before-create",
-  "providers/cloud.auth/eventTypes/user.beforeSignIn": "before-sign-in",
-};
 
 interface Operation {
   name: string;
@@ -171,6 +165,7 @@ function functionsOpLogReject(funcName: string, type: string, err: any): void {
   }
   throw new FirebaseError(`Failed to ${type} function ${funcName}`, {
     original: err,
+    status: err?.context?.response?.statusCode,
     context: { function: funcName },
   });
 }
@@ -210,6 +205,12 @@ export async function createFunction(
   // the API is a POST to the collection that owns the function name.
   const apiPath = cloudFunction.name.substring(0, cloudFunction.name.lastIndexOf("/"));
   const endpoint = `/${apiPath}`;
+  cloudFunction.buildEnvironmentVariables = {
+    ...cloudFunction.buildEnvironmentVariables,
+    // Disable GCF from automatically running npm run build script
+    // https://cloud.google.com/functions/docs/release-notes
+    GOOGLE_NODE_RUN_SCRIPTS: "",
+  };
 
   try {
     const res = await client.post<Omit<CloudFunction, OutputOnlyFields>, CloudFunction>(
@@ -250,6 +251,7 @@ export async function setIamPolicy(options: IamOptions): Promise<void> {
   } catch (err: any) {
     throw new FirebaseError(`Failed to set the IAM Policy on the function ${options.name}`, {
       original: err,
+      status: err?.context?.response?.statusCode,
     });
   }
 }
@@ -356,14 +358,22 @@ export async function updateFunction(
   cloudFunction: Omit<CloudFunction, OutputOnlyFields>
 ): Promise<Operation> {
   const endpoint = `/${cloudFunction.name}`;
-  // Keys in labels and environmentVariables and secretEnvironmentVariables are user defined, so we don't recurse
-  // for field masks.
+  // Keys in labels and environmentVariables and secretEnvironmentVariables are user defined,
+  // so we don't recurse for field masks.
   const fieldMasks = proto.fieldMasks(
     cloudFunction,
     /* doNotRecurseIn...=*/ "labels",
     "environmentVariables",
     "secretEnvironmentVariables"
   );
+
+  cloudFunction.buildEnvironmentVariables = {
+    ...cloudFunction.buildEnvironmentVariables,
+    // Disable GCF from automatically running npm run build script
+    // https://cloud.google.com/functions/docs/release-notes
+    GOOGLE_NODE_RUN_SCRIPTS: "",
+  };
+  fieldMasks.push("buildEnvironmentVariables");
 
   // Failure policy is always an explicit policy and is only signified by the presence or absence of
   // a protobuf.Empty value, so we have to manually add it in the missing case.
@@ -429,6 +439,7 @@ async function list(projectId: string, region: string): Promise<ListFunctionsRes
     logger.debug(`[functions] ${err?.message}`);
     throw new FirebaseError(`Failed to list functions for ${projectId}`, {
       original: err,
+      status: err instanceof FirebaseError ? err.status : undefined,
     });
   }
 }
@@ -559,6 +570,9 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
     );
   }
   endpoint.codebase = gcfFunction.labels?.[CODEBASE_LABEL] || projectConfig.DEFAULT_CODEBASE;
+  if (gcfFunction.labels?.[HASH_LABEL]) {
+    endpoint.hash = gcfFunction.labels[HASH_LABEL];
+  }
   return endpoint;
 }
 
@@ -626,7 +640,7 @@ export function functionFromEndpoint(
       ...gcfFunction.labels,
       [BLOCKING_LABEL]:
         BLOCKING_EVENT_TO_LABEL_KEY[
-          endpoint.blockingTrigger.eventType as typeof AUTH_BLOCKING_EVENTS[number]
+          endpoint.blockingTrigger.eventType as (typeof AUTH_BLOCKING_EVENTS)[number]
         ],
     };
   } else {
@@ -678,6 +692,12 @@ export function functionFromEndpoint(
     };
   } else {
     delete gcfFunction.labels?.[CODEBASE_LABEL];
+  }
+  if (endpoint.hash) {
+    gcfFunction.labels = {
+      ...gcfFunction.labels,
+      [HASH_LABEL]: endpoint.hash,
+    };
   }
   return gcfFunction;
 }

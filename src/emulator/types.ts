@@ -131,9 +131,15 @@ export interface EmulatorInstance {
 
 export interface EmulatorInfo {
   name: Emulators;
+  pid?: number;
+  reservedPorts?: number[];
+
+  /** All addresses that an emulator listens on. */
+  listen?: ListenSpec[];
+
+  /** The primary IP address that the emulator listens on. */
   host: string;
   port: number;
-  pid?: number;
 }
 
 export interface DownloadableEmulatorCommand {
@@ -151,6 +157,12 @@ export interface EmulatorDownloadOptions {
   namePrefix: string;
   skipChecksumAndSize?: boolean;
   skipCache?: boolean;
+}
+
+export interface EmulatorUpdateDetails {
+  version: string;
+  expectedSize: number;
+  expectedChecksum: string;
 }
 
 export interface EmulatorDownloadDetails {
@@ -177,9 +189,10 @@ export interface DownloadableEmulatorDetails {
   stdout: any | null;
 }
 
-export interface Address {
-  host: string;
+export interface ListenSpec {
+  address: string;
   port: number;
+  family: "IPv4" | "IPv6";
 }
 
 export enum FunctionsExecutionMode {

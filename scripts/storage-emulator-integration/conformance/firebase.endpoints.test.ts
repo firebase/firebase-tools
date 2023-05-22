@@ -3,6 +3,7 @@ import { expect } from "chai";
 import * as admin from "firebase-admin";
 import * as fs from "fs";
 import * as supertest from "supertest";
+import { gunzipSync } from "zlib";
 import { TEST_ENV } from "./env";
 import { EmulatorEndToEndTest } from "../../integration-helpers/framework";
 import {
@@ -15,6 +16,9 @@ import {
 
 const TEST_FILE_NAME = "testing/storage_ref/testFile";
 const ENCODED_TEST_FILE_NAME = "testing%2Fstorage_ref%2FtestFile";
+
+// headers
+const uploadStatusHeader = "x-goog-upload-status";
 
 // TODO(b/242314185): add more coverage.
 describe("Firebase Storage endpoint conformance tests", () => {
@@ -178,7 +182,7 @@ describe("Firebase Storage endpoint conformance tests", () => {
             "X-Goog-Upload-Command": "finalize",
           })
           .expect(200)
-          .then((res) => res.header["x-goog-upload-status"]);
+          .then((res) => res.header[uploadStatusHeader]);
 
         expect(uploadStatus).to.equal("final");
 
@@ -211,7 +215,7 @@ describe("Firebase Storage endpoint conformance tests", () => {
           })
           .send({})
           .expect(200)
-          .then((res) => res.header["x-goog-upload-status"]);
+          .then((res) => res.header[uploadStatusHeader]);
         expect(finalizeStatus).to.equal("final");
       });
 
@@ -235,7 +239,7 @@ describe("Firebase Storage endpoint conformance tests", () => {
             "X-Goog-Upload-Offset": 0,
           })
           .expect(403)
-          .then((res) => res.header["x-goog-upload-status"]);
+          .then((res) => res.header[uploadStatusHeader]);
         expect(uploadStatus).to.equal("final");
       });
 
@@ -265,7 +269,7 @@ describe("Firebase Storage endpoint conformance tests", () => {
             "X-Goog-Upload-Command": "finalize",
           })
           .expect(403)
-          .then((res) => res.header["x-goog-upload-status"]);
+          .then((res) => res.header[uploadStatusHeader]);
         expect(uploadStatus).to.equal("final");
       });
 
@@ -331,6 +335,42 @@ describe("Firebase Storage endpoint conformance tests", () => {
             "X-Goog-Upload-Command": "finalize",
           })
           .expect(400);
+      });
+
+      it("should handle resumable uploads with without upload protocol set", async () => {
+        const uploadURL = await supertest(firebaseHost)
+          .post(`/v0/b/${storageBucket}/o?name=${TEST_FILE_NAME}`)
+          .set(authHeader)
+          .set({
+            "X-Goog-Upload-Protocol": "resumable",
+            "X-Goog-Upload-Command": "start",
+          })
+          .expect(200)
+          .then((res) => {
+            return new URL(res.header["x-goog-upload-url"]);
+          });
+
+        await supertest(firebaseHost)
+          .put(uploadURL.pathname + uploadURL.search)
+          .set({
+            "X-Goog-Upload-Command": "upload",
+            "X-Goog-Upload-Offset": 0,
+          })
+          .expect(200);
+        const uploadStatus = await supertest(firebaseHost)
+          .put(uploadURL.pathname + uploadURL.search)
+          .set({
+            "X-Goog-Upload-Command": "finalize",
+          })
+          .expect(200)
+          .then((res) => res.header[uploadStatusHeader]);
+
+        expect(uploadStatus).to.equal("final");
+
+        await supertest(firebaseHost)
+          .get(`/v0/b/${storageBucket}/o/${ENCODED_TEST_FILE_NAME}`)
+          .set(authHeader)
+          .expect(200);
       });
     });
 
@@ -435,6 +475,164 @@ describe("Firebase Storage endpoint conformance tests", () => {
           })
           .expect(404);
       });
+    });
+  });
+
+  describe("gzip", () => {
+    it("should serve gunzipped file by default", async () => {
+      const contents = Buffer.from("hello world");
+      const fileName = "gzippedFile";
+      const file = testBucket.file(fileName);
+      await file.save(contents, {
+        gzip: true,
+        contentType: "text/plain",
+      });
+
+      // Use requestClient since supertest will decompress the response body by default.
+      await new Promise((resolve, reject) => {
+        TEST_ENV.requestClient.get(
+          `${firebaseHost}/v0/b/${storageBucket}/o/${fileName}?alt=media`,
+          { headers: { ...authHeader } },
+          (res) => {
+            expect(res.headers["content-encoding"]).to.be.undefined;
+            expect(res.headers["content-length"]).to.be.undefined;
+            expect(res.headers["content-type"]).to.be.eql("text/plain");
+
+            let responseBody = Buffer.alloc(0);
+            res
+              .on("data", (chunk) => {
+                responseBody = Buffer.concat([responseBody, chunk]);
+              })
+              .on("end", () => {
+                expect(responseBody).to.be.eql(contents);
+              })
+              .on("close", resolve)
+              .on("error", reject);
+          }
+        );
+      });
+    });
+
+    it("should serve gzipped file if Accept-Encoding header allows", async () => {
+      const contents = Buffer.from("hello world");
+      const fileName = "gzippedFile";
+      const file = testBucket.file(fileName);
+      await file.save(contents, {
+        gzip: true,
+        contentType: "text/plain",
+      });
+
+      // Use requestClient since supertest will decompress the response body by default.
+      await new Promise((resolve, reject) => {
+        TEST_ENV.requestClient.get(
+          `${firebaseHost}/v0/b/${storageBucket}/o/${fileName}?alt=media`,
+          { headers: { ...authHeader, "Accept-Encoding": "gzip" } },
+          (res) => {
+            expect(res.headers["content-encoding"]).to.be.eql("gzip");
+            expect(res.headers["content-type"]).to.be.eql("text/plain");
+
+            let responseBody = Buffer.alloc(0);
+            res
+              .on("data", (chunk) => {
+                responseBody = Buffer.concat([responseBody, chunk]);
+              })
+              .on("end", () => {
+                expect(responseBody).to.not.be.eql(contents);
+                const decompressed = gunzipSync(responseBody);
+                expect(decompressed).to.be.eql(contents);
+              })
+              .on("close", resolve)
+              .on("error", reject);
+          }
+        );
+      });
+    });
+  });
+
+  describe("upload status", () => {
+    it("should update the status to active after an upload is started", async () => {
+      const uploadURL = await supertest(firebaseHost)
+        .post(`/v0/b/${storageBucket}/o?name=${TEST_FILE_NAME}`)
+        .set(authHeader)
+        .set({
+          "X-Goog-Upload-Protocol": "resumable",
+          "X-Goog-Upload-Command": "start",
+        })
+        .expect(200)
+        .then((res) => new URL(res.header["x-goog-upload-url"]));
+      const queryUploadStatus = await supertest(firebaseHost)
+        .put(uploadURL.pathname + uploadURL.search)
+        .set({
+          "X-Goog-Upload-Protocol": "resumable",
+          "X-Goog-Upload-Command": "query",
+        })
+        .expect(200)
+        .then((res) => res.header[uploadStatusHeader]);
+      expect(queryUploadStatus).to.equal("active");
+    });
+    it("should update the status to cancelled after an upload is cancelled", async () => {
+      const uploadURL = await supertest(firebaseHost)
+        .post(`/v0/b/${storageBucket}/o/${ENCODED_TEST_FILE_NAME}`)
+        .set(authHeader)
+        .set({
+          "X-Goog-Upload-Protocol": "resumable",
+          "X-Goog-Upload-Command": "start",
+        })
+        .expect(200)
+        .then((res) => new URL(res.header["x-goog-upload-url"]));
+      await supertest(firebaseHost)
+        .put(uploadURL.pathname + uploadURL.search)
+        .set({
+          "X-Goog-Upload-Protocol": "resumable",
+          "X-Goog-Upload-Command": "cancel",
+        })
+        .expect(200);
+      const queryUploadStatus = await supertest(firebaseHost)
+        .put(uploadURL.pathname + uploadURL.search)
+        .set({
+          "X-Goog-Upload-Protocol": "resumable",
+          "X-Goog-Upload-Command": "query",
+        })
+        .expect(200)
+        .then((res) => res.header[uploadStatusHeader]);
+      expect(queryUploadStatus).to.equal("cancelled");
+    });
+    it("should update the status to final after an upload is finalized", async () => {
+      const uploadURL = await supertest(firebaseHost)
+        .post(`/v0/b/${storageBucket}/o?name=${TEST_FILE_NAME}`)
+        .set(authHeader)
+        .set({
+          "X-Goog-Upload-Protocol": "resumable",
+          "X-Goog-Upload-Command": "start",
+        })
+        .expect(200)
+        .then((res) => new URL(res.header["x-goog-upload-url"]));
+
+      await supertest(firebaseHost)
+        .put(uploadURL.pathname + uploadURL.search)
+        .set({
+          "X-Goog-Upload-Protocol": "resumable",
+          "X-Goog-Upload-Command": "upload",
+          "X-Goog-Upload-Offset": 0,
+        })
+        .expect(200);
+      await supertest(firebaseHost)
+        .put(uploadURL.pathname + uploadURL.search)
+        .set({
+          "X-Goog-Upload-Protocol": "resumable",
+          "X-Goog-Upload-Command": "finalize",
+        })
+        .expect(200)
+        .then((res) => res.header[uploadStatusHeader]);
+      const queryUploadStatus = await supertest(firebaseHost)
+        .put(uploadURL.pathname + uploadURL.search)
+        .set({
+          "X-Goog-Upload-Protocol": "resumable",
+          "X-Goog-Upload-Command": "query",
+        })
+        .expect(200)
+        .then((res) => res.header[uploadStatusHeader]);
+      expect(queryUploadStatus).to.equal("final");
     });
   });
 

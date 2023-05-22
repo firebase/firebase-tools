@@ -1,0 +1,9 @@
+{
+  "hosting": [{
+    "site": "demo-nextjs",
+    "source": "nextjs"
+  }, {
+    "site": "demo-angular",
+    "source": "angular"
+  }]
+}

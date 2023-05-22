@@ -8,7 +8,19 @@ import * as api from "../../../../../api";
 import { BEFORE_CREATE_EVENT } from "../../../../../functions/events/v1";
 
 async function resolveBackend(bd: build.Build): Promise<backend.Backend> {
-  return build.resolveBackend(bd, { functionsSource: "", projectId: "PROJECT" }, {});
+  return (
+    await build.resolveBackend(
+      bd,
+      {
+        locationId: "",
+        projectId: "foo",
+        storageBucket: "foo.appspot.com",
+        databaseURL: "https://foo.firebaseio.com",
+      },
+      { functionsSource: "", projectId: "PROJECT" },
+      {}
+    )
+  ).backend;
 }
 
 describe("addResourcesToBuild", () => {
@@ -427,6 +439,45 @@ describe("addResourcesToBuild", () => {
       vpc: {
         connector: "",
       },
+    });
+    const convertedBackend = resolveBackend(expected);
+    await expect(convertedBackend).to.eventually.deep.equal(expectedBackend);
+  });
+
+  it("should parse secret", async () => {
+    const trigger: parseTriggers.TriggerAnnotation = {
+      ...BASIC_TRIGGER,
+      httpsTrigger: {},
+      secrets: ["MY_SECRET"],
+    };
+    const result = build.empty();
+    parseTriggers.addResourcesToBuild("project", "nodejs16", trigger, result);
+
+    const expected: build.Build = build.of({
+      func: {
+        ...BASIC_ENDPOINT,
+        httpsTrigger: {},
+        secretEnvironmentVariables: [
+          {
+            projectId: "project",
+            secret: "MY_SECRET",
+            key: "MY_SECRET",
+          },
+        ],
+      },
+    });
+    expect(result).to.deep.equal(expected);
+
+    const expectedBackend: backend.Backend = backend.of({
+      ...BASIC_BACKEND_ENDPOINT,
+      httpsTrigger: {},
+      secretEnvironmentVariables: [
+        {
+          projectId: "project",
+          secret: "MY_SECRET",
+          key: "MY_SECRET",
+        },
+      ],
     });
     const convertedBackend = resolveBackend(expected);
     await expect(convertedBackend).to.eventually.deep.equal(expectedBackend);

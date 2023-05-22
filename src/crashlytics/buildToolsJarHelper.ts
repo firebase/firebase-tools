@@ -13,7 +13,7 @@ const JAR_CACHE_DIR =
   process.env.FIREBASE_CRASHLYTICS_BUILDTOOLS_PATH ||
   path.join(os.homedir(), ".cache", "firebase", "crashlytics", "buildtools");
 
-const JAR_VERSION = "2.9.1";
+const JAR_VERSION = "2.9.2";
 const JAR_URL = `https://dl.google.com/android/maven2/com/google/firebase/firebase-crashlytics-buildtools/${JAR_VERSION}/firebase-crashlytics-buildtools-${JAR_VERSION}.jar`;
 
 /**

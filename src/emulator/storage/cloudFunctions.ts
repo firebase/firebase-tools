@@ -1,7 +1,7 @@
 import * as uuid from "uuid";
 
 import { EmulatorRegistry } from "../registry";
-import { EmulatorInfo, Emulators } from "../types";
+import { Emulators } from "../types";
 import { EmulatorLogger } from "../emulatorLogger";
 import { CloudStorageObjectMetadata, toSerializedDate } from "./metadata";
 import { Client } from "../../apiv2";
@@ -18,23 +18,15 @@ const STORAGE_V2_ACTION_MAP: Record<StorageCloudFunctionAction, string> = {
 
 export class StorageCloudFunctions {
   private logger = EmulatorLogger.forEmulator(Emulators.STORAGE);
-  private functionsEmulatorInfo?: EmulatorInfo;
-  private multicastOrigin = "";
   private multicastPath = "";
   private enabled = false;
   private client?: Client;
 
   constructor(private projectId: string) {
-    const functionsEmulator = EmulatorRegistry.get(Emulators.FUNCTIONS);
-
-    if (functionsEmulator) {
+    if (EmulatorRegistry.isRunning(Emulators.FUNCTIONS)) {
       this.enabled = true;
-      this.functionsEmulatorInfo = functionsEmulator.getInfo();
-      this.multicastOrigin = `http://${EmulatorRegistry.getInfoHostString(
-        this.functionsEmulatorInfo
-      )}`;
       this.multicastPath = `/functions/projects/${projectId}/trigger_multicast`;
-      this.client = new Client({ urlPrefix: this.multicastOrigin, auth: false });
+      this.client = EmulatorRegistry.client(Emulators.FUNCTIONS);
     }
   }
 
@@ -114,7 +106,7 @@ export class StorageCloudFunctions {
       time = typeof data.updated === "string" ? data.updated : data.updated.toISOString();
     }
     return {
-      specversion: "1",
+      specversion: "1.0",
       id: uuid.v4(),
       type: `google.cloud.storage.object.v1.${ceAction}`,
       source: `//storage.googleapis.com/projects/_/buckets/${objectMetadataPayload.bucket}/objects/${objectMetadataPayload.name}`,
@@ -263,9 +255,9 @@ export interface ObjectMetadataPayload {
    * Customer-supplied encryption key.
    *
    * This object contains the following properties:
-   * * `encryptionAlgorithm` (`string|undefined`): The encryption algorithm that
+   * `encryptionAlgorithm` (`string|undefined`): The encryption algorithm that
    *   was used. Always contains the value `AES256`.
-   * * `keySha256` (`string|undefined`): An RFC 4648 base64-encoded string of the
+   * `keySha256` (`string|undefined`): An RFC 4648 base64-encoded string of the
    *   SHA256 hash of your encryption key. You can use this SHA256 hash to
    *   uniquely identify the AES-256 encryption key required to decrypt the
    *   object, which you must store securely.

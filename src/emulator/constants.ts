@@ -1,5 +1,3 @@
-import * as url from "url";
-
 import { Emulators } from "./types";
 
 export const DEFAULT_PORTS: { [s in Emulators]: number } = {
@@ -21,7 +19,7 @@ export const FIND_AVAILBLE_PORT_BY_DEFAULT: Record<Emulators, boolean> = {
   ui: true,
   hub: true,
   logging: true,
-  hosting: false,
+  hosting: true,
   functions: false,
   firestore: false,
   database: false,
@@ -60,6 +58,9 @@ export class Constants {
   // Environment variable to override SDK/CLI to point at the Firestore emulator.
   static FIRESTORE_EMULATOR_HOST = "FIRESTORE_EMULATOR_HOST";
 
+  // Alternative (deprecated) env var for Firestore Emulator.
+  static FIRESTORE_EMULATOR_ENV_ALT = "FIREBASE_FIRESTORE_EMULATOR_ADDRESS";
+
   // Environment variable to override SDK/CLI to point at the Realtime Database emulator.
   static FIREBASE_DATABASE_EMULATOR_HOST = "FIREBASE_DATABASE_EMULATOR_HOST";
 
@@ -73,6 +74,9 @@ export class Constants {
   // for firebase-admin <= 9.6.0. Unlike the FIREBASE_STORAGE_EMULATOR_HOST variable
   // this one must start with 'http://'.
   static CLOUD_STORAGE_EMULATOR_HOST = "STORAGE_EMULATOR_HOST";
+
+  // Environment variable to discover the eventarc emulator.
+  static PUBSUB_EMULATOR_HOST = "PUBSUB_EMULATOR_HOST";
 
   // Environment variable to discover the eventarc emulator.
   static CLOUD_EVENTARC_EMULATOR_HOST = "CLOUD_EVENTARC_EMULATOR_HOST";
@@ -131,16 +135,6 @@ export class Constants {
 
   static description(name: Emulators): string {
     return EMULATOR_DESCRIPTION[name];
-  }
-
-  static normalizeHost(host: string): string {
-    let normalized = host;
-    if (!normalized.startsWith("http")) {
-      normalized = `http://${normalized}`;
-    }
-
-    const u = url.parse(normalized);
-    return u.hostname || DEFAULT_HOST;
   }
 
   static isDemoProject(projectId?: string): boolean {

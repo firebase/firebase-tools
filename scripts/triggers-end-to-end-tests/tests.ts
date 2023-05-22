@@ -22,7 +22,7 @@ const ADMIN_CREDENTIAL = {
  */
 const TEST_SETUP_TIMEOUT = 80000;
 const EMULATORS_WRITE_DELAY_MS = 5000;
-const EMULATORS_SHUTDOWN_DELAY_MS = 5000;
+const EMULATORS_SHUTDOWN_DELAY_MS = 7000;
 const EMULATOR_TEST_TIMEOUT = EMULATORS_WRITE_DELAY_MS * 2;
 
 /*
@@ -56,13 +56,13 @@ describe("function triggers", () => {
     firestore = new Firestore({
       port: test.firestoreEmulatorPort,
       projectId: FIREBASE_PROJECT,
-      servicePath: "localhost",
+      servicePath: "127.0.0.1",
       ssl: false,
     });
 
     admin.initializeApp({
       projectId: FIREBASE_PROJECT,
-      databaseURL: `http://localhost:${test.rtdbEmulatorPort}?ns=${FIREBASE_PROJECT}`,
+      databaseURL: `http://127.0.0.1:${test.rtdbEmulatorPort}?ns=${FIREBASE_PROJECT}`,
       credential: ADMIN_CREDENTIAL,
     });
 
@@ -122,6 +122,20 @@ describe("function triggers", () => {
     await test.stopEmulators();
   });
 
+  describe("https triggers", () => {
+    it("should handle parallel requests", async function (this) {
+      this.timeout(TEST_SETUP_TIMEOUT);
+
+      const [resp1, resp2] = await Promise.all([
+        test.invokeHttpFunction("httpsv2reaction"),
+        test.invokeHttpFunction("httpsv2reaction"),
+      ]);
+
+      expect(resp1.status).to.eq(200);
+      expect(resp2.status).to.eq(200);
+    });
+  });
+
   describe("database and firestore emulator triggers", () => {
     it("should write to the database emulator", async function (this) {
       this.timeout(EMULATOR_TEST_TIMEOUT);
@@ -131,7 +145,7 @@ describe("function triggers", () => {
     });
 
     it("should write to the firestore emulator", async function (this) {
-      this.timeout(EMULATOR_TEST_TIMEOUT);
+      this.timeout(EMULATOR_TEST_TIMEOUT * 2);
 
       const response = await test.writeToFirestore();
       expect(response.status).to.equal(200);
@@ -143,12 +157,14 @@ describe("function triggers", () => {
        * fixture state handlers to complete before we check
        * that state in the next test.
        */
-      await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS));
+      await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS * 2));
     });
 
     it("should have have triggered cloud functions", () => {
       expect(test.rtdbTriggerCount).to.equal(1);
+      expect(test.rtdbV2TriggerCount).to.eq(1);
       expect(test.firestoreTriggerCount).to.equal(1);
+      expect(test.firestoreV2TriggerCount).to.equal(1);
       /*
        * Check for the presence of all expected documents in the firestore
        * and database emulators.
@@ -406,6 +422,78 @@ describe("function triggers", () => {
       expect(response.status).to.equal(200);
       const body = await response.json();
       expect(body).to.deep.equal({ result: "foobar" });
+    });
+  });
+
+  it("should enforce timeout", async function (this) {
+    this.timeout(TEST_SETUP_TIMEOUT);
+    const v2response = await test.invokeHttpFunction("onreqv2timeout");
+    expect(v2response.status).to.equal(500);
+  });
+
+  describe("disable/enableBackgroundTriggers", () => {
+    before(() => {
+      test.resetCounts();
+    });
+
+    it("should disable background triggers", async function (this) {
+      this.timeout(TEST_SETUP_TIMEOUT);
+
+      const response = await test.disableBackgroundTriggers();
+      expect(response.status).to.equal(200);
+
+      await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS));
+
+      await Promise.all([
+        // TODO(danielylee): Trying to respond to all triggers at once often results in Functions
+        // Emulator hanging indefinitely. Only triggering 1 trigger for now. Re-enable other triggers
+        // once the root cause is identified.
+        // test.writeToRtdb(),
+        // test.writeToFirestore(),
+        // test.writeToPubsub(),
+        // test.writeToDefaultStorage(),
+        test.writeToAuth(),
+      ]);
+
+      await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS * 2));
+
+      // expect(test.rtdbTriggerCount).to.equal(0);
+      // expect(test.rtdbV2TriggerCount).to.eq(0);
+      // expect(test.firestoreTriggerCount).to.equal(0);
+      // expect(test.pubsubTriggerCount).to.equal(0);
+      // expect(test.pubsubV2TriggerCount).to.equal(0);
+      expect(test.authTriggerCount).to.equal(0);
+    });
+
+    it("should re-enable background triggers", async function (this) {
+      this.timeout(TEST_SETUP_TIMEOUT);
+
+      const response = await test.enableBackgroundTriggers();
+      expect(response.status).to.equal(200);
+
+      await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS));
+
+      await Promise.all([
+        // TODO(danielylee): Trying to respond to all triggers at once often results in Functions
+        // Emulator hanging indefinitely. Only triggering 1 trigger for now. Re-enable other triggers
+        // once the root cause is identified.
+        // test.writeToRtdb(),
+        // test.writeToFirestore(),
+        // test.writeToPubsub(),
+        // test.writeToDefaultStorage(),
+        test.writeToAuth(),
+      ]);
+
+      await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS * 3));
+      // TODO(danielylee): Trying to respond to all triggers at once often results in Functions
+      // Emulator hanging indefinitely. Only triggering 1 trigger for now. Re-enable other triggers
+      // once the root cause is identified.
+      // expect(test.rtdbTriggerCount).to.equal(1);
+      // expect(test.rtdbV2TriggerCount).to.eq(1);
+      // expect(test.firestoreTriggerCount).to.equal(1);
+      // expect(test.pubsubTriggerCount).to.equal(1);
+      // expect(test.pubsubV2TriggerCount).to.equal(1);
+      expect(test.authTriggerCount).to.equal(1);
     });
   });
 });

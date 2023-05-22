@@ -6,7 +6,7 @@ import { fetchWebSetup, getCachedWebSetup } from "../fetchWebSetup";
 import * as utils from "../utils";
 import { logger } from "../logger";
 import { EmulatorRegistry } from "../emulator/registry";
-import { EMULATORS_SUPPORTED_BY_USE_EMULATOR, Address, Emulators } from "../emulator/types";
+import { EMULATORS_SUPPORTED_BY_USE_EMULATOR, Emulators } from "../emulator/types";
 
 const INIT_TEMPLATE = fs.readFileSync(__dirname + "/../../templates/hosting/init.js", "utf8");
 
@@ -18,7 +18,7 @@ export interface TemplateServerResponse {
   emulatorsJs: string;
 
   // firebaseConfig JSON
-  json: string;
+  json?: string;
 }
 
 /**
@@ -63,25 +63,15 @@ export async function implicitInit(options: any): Promise<TemplateServerResponse
 
   const configJson = JSON.stringify(config, null, 2);
 
-  const emulators: { [e in Emulators]?: Address } = {};
+  const emulators: { [e in Emulators]?: { host: string; port: number; hostAndPort: string } } = {};
   for (const e of EMULATORS_SUPPORTED_BY_USE_EMULATOR) {
     const info = EmulatorRegistry.getInfo(e);
 
     if (info) {
-      let host = info.host;
-
-      if (host === "0.0.0.0") {
-        host = "127.0.0.1";
-      } else if (host === "::") {
-        host = "[::1]";
-      } else if (host.includes(":")) {
-        // IPv6 hosts need to be quoted using brackets.
-        host = `[${host}]`;
-      }
-
       emulators[e] = {
-        host,
+        host: info.host,
         port: info.port,
+        hostAndPort: EmulatorRegistry.url(e).host,
       };
     }
   }

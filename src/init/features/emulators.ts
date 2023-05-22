@@ -95,9 +95,14 @@ export async function doSetup(setup: any, config: any) {
         name: "download",
         type: "confirm",
         message: "Would you like to download the emulators now?",
-        default: false,
+        default: true,
       },
     ]);
+  }
+
+  // Set the default behavior to be single project mode.
+  if (setup.config.emulators.singleProjectMode === undefined) {
+    setup.config.emulators.singleProjectMode = true;
   }
 
   if (selections.download) {

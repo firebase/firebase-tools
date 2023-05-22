@@ -60,7 +60,7 @@ export async function detectFromPort(
   port: number,
   project: string,
   runtime: runtimes.Runtime,
-  timeout = 30_000 /* 30s to boot up */
+  timeout = 10_000 /* 10s to boot up */
 ): Promise<build.Build> {
   // The result type of fetch isn't exported
   let res: { text(): Promise<string> };
@@ -72,7 +72,7 @@ export async function detectFromPort(
 
   while (true) {
     try {
-      res = await Promise.race([fetch(`http://localhost:${port}/__/functions.yaml`), timedOut]);
+      res = await Promise.race([fetch(`http://127.0.0.1:${port}/__/functions.yaml`), timedOut]);
       break;
     } catch (err: any) {
       // Allow us to wait until the server is listening.

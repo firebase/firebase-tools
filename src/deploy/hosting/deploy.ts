@@ -4,20 +4,17 @@ import { listFiles } from "../../listFiles";
 import { logger } from "../../logger";
 import { track } from "../../track";
 import { envOverride, logLabeledBullet, logLabeledSuccess } from "../../utils";
-import { HostingDeploy } from "./hostingDeploy";
 import { bold, cyan } from "colorette";
 import * as ora from "ora";
+import { Context, HostingDeploy } from "./context";
+import { Options } from "../../options";
+import { dirExistsSync } from "../../fsutils";
+import { FirebaseError } from "../../error";
 
-export async function deploy(
-  context: { hosting?: { deploys?: HostingDeploy[] } },
-  options: {
-    cwd?: string;
-    configPath?: string;
-    debug?: boolean;
-    nonInteractive?: boolean;
-    config: { path: (path: string) => string };
-  }
-): Promise<void> {
+/**
+ * Uploads static assets to the upcoming Hosting versions.
+ */
+export async function deploy(context: Context, options: Options): Promise<void> {
   if (!context.hosting?.deploys) {
     return;
   }
@@ -41,20 +38,23 @@ export async function deploy(
     // No need to run Uploader for no-file deploys
     if (!deploy.config?.public) {
       logLabeledBullet(
-        `hosting[${deploy.site}]`,
+        `hosting[${deploy.config.site}]`,
         'no "public" directory to upload, continuing with release'
       );
       return runDeploys(deploys, debugging);
     }
 
-    logLabeledBullet(`hosting[${deploy.site}]`, "beginning deploy...");
+    logLabeledBullet(`hosting[${deploy.config.site}]`, "beginning deploy...");
     const t0 = Date.now();
 
     const publicDir = options.config.path(deploy.config.public);
+    if (!dirExistsSync(`${publicDir}`)) {
+      throw new FirebaseError(`Directory '${deploy.config.public}' for Hosting does not exist.`);
+    }
     const files = listFiles(publicDir, deploy.config.ignore);
 
     logLabeledBullet(
-      `hosting[${deploy.site}]`,
+      `hosting[${deploy.config.site}]`,
       `found ${files.length} files in ${bold(deploy.config.public)}`
     );
 
@@ -100,9 +100,9 @@ export async function deploy(
       spinner.stop();
     }
 
-    logLabeledSuccess("hosting[" + deploy.site + "]", "file upload complete");
+    logLabeledSuccess(`hosting[${deploy.config.site}]`, "file upload complete");
     const dt = Date.now() - t0;
-    logger.debug("[hosting] deploy completed after " + dt + "ms");
+    logger.debug(`[hosting] deploy completed after ${dt}ms`);
 
     void track("Hosting Deploy", "success", dt);
     return runDeploys(deploys, debugging);

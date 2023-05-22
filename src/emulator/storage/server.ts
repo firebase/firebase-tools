@@ -25,6 +25,17 @@ export function createApp(
     `Temp file directory for storage emulator: ${storageLayer.dirPath}`
   );
 
+  // Retrun access-control-allow-private-network header if requested
+  // Enables accessing locahost when site is exposed via tunnel see https://github.com/firebase/firebase-tools/issues/4227
+  // Aligns with https://wicg.github.io/private-network-access/#headers
+  // Replace with cors option if adopted, see https://github.com/expressjs/cors/issues/236
+  app.use("/", (req, res, next) => {
+    if (req.headers["access-control-request-private-network"]) {
+      res.setHeader("access-control-allow-private-network", "true");
+    }
+    next();
+  });
+
   // Enable CORS for all APIs, all origins (reflected), and all headers (reflected).
   // This is similar to production behavior. Safe since all APIs are cookieless.
   app.use(
@@ -33,8 +44,8 @@ export function createApp(
       exposedHeaders: [
         "content-type",
         "x-firebase-storage-version",
+        "X-Goog-Upload-Size-Received",
         "x-goog-upload-url",
-        "x-goog-upload-status",
         "x-goog-upload-command",
         "x-gupload-uploadid",
         "x-goog-upload-header-content-length",

@@ -9,10 +9,9 @@ import * as projectNumber from "../getProjectNumber";
 import { readFileSync } from "fs-extra";
 import { RulesetFile } from "../gcp/rules";
 import { Config } from "../config";
-import gcp = require("../gcp");
+import * as gcp from "../gcp";
 
 import { RulesDeploy, RulesetServiceType } from "../rulesDeploy";
-import { previews } from "../previews";
 
 describe("RulesDeploy", () => {
   const FIXTURE_DIR = path.resolve(__dirname, "fixtures/rulesDeploy");
@@ -350,7 +349,6 @@ describe("RulesDeploy", () => {
       CROSS_SERVICE_OPTIONS.config = Config.load(CROSS_SERVICE_OPTIONS, false);
 
       beforeEach(() => {
-        previews.crossservicerules = true;
         (gcp.rules.getLatestRulesetName as sinon.SinonStub).resolves(null);
         (gcp.rules.createRuleset as sinon.SinonStub).onFirstCall().resolves("compiled");
         sinon.stub(projectNumber, "getProjectNumber").resolves("12345");
@@ -360,7 +358,6 @@ describe("RulesDeploy", () => {
 
       afterEach(() => {
         sinon.restore();
-        previews.crossservicerules = false;
       });
 
       it("should deploy even with IAM failure", async () => {
@@ -420,22 +417,6 @@ describe("RulesDeploy", () => {
         ]);
         expect(resourceManager.addServiceAccountToRoles).not.called;
         expect(promptSpy).not.called;
-      });
-
-      it("should not prompt if feature is disabled", async () => {
-        previews.crossservicerules = false;
-        sinon.stub(resourceManager, "serviceAccountHasRoles").resolves(false);
-        sinon.stub(resourceManager, "addServiceAccountToRoles").resolves();
-        sinon.spy(prompt, "promptOnce");
-
-        const result = rd.createRulesets(RulesetServiceType.FIREBASE_STORAGE);
-        await expect(result).to.eventually.deep.equal(["compiled"]);
-
-        expect(gcp.rules.createRuleset).calledOnceWithExactly(BASE_OPTIONS.project, [
-          { name: "storage.rules", content: sinon.match.string },
-        ]);
-        expect(resourceManager.addServiceAccountToRoles).not.called;
-        expect(prompt.promptOnce).not.called;
       });
     });
 
