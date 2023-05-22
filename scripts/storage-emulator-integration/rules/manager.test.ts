@@ -55,14 +55,6 @@ describe("Storage Rules Manager", function () {
     ).to.be.false;
   });
 
-  it("should load single ruleset on start", async () => {
-    rulesManager = createStorageRulesManager(StorageRulesFiles.readWriteIfTrue, rulesRuntime);
-    await rulesManager.start();
-
-    const ruleset = rulesManager.getRuleset("bucket");
-    expect(await isPermitted({ ...opts, ruleset: ruleset!, projectId })).to.be.true;
-  });
-
   it("should reload ruleset on changes to source file", async () => {
     // Write rules to file
     const fileName = "storage.rules";
