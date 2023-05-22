@@ -267,6 +267,7 @@ export async function prepareFrameworks(
         codegenFunctionsDirectory = codegenDevModeFunctionsDirectory;
       }
     } else {
+      const buildResult = await memoizeBuild(getProjectPath(), build, [firebaseDefaults]);
       const {
         wantsBackend = false,
         rewrites = [],
@@ -274,7 +275,7 @@ export async function prepareFrameworks(
         headers = [],
         trailingSlash,
         i18n = false,
-      } = (await memoizeBuild(getProjectPath(), build, [firebaseDefaults])) || {};
+      }: BuildResult = buildResult || {};
 
       config.rewrites.push(...rewrites);
       config.redirects.push(...redirects);
@@ -364,14 +365,17 @@ export async function prepareFrameworks(
         rewriteSource = posix.join(baseUrl, "**"),
       } = await codegenFunctionsDirectory(getProjectPath(), functionsDist);
 
-      config.rewrites.push({
-        source: rewriteSource,
-        function: {
-          functionId,
-          region: ssrRegion,
-          pinTag: experiments.isEnabled("pintags"),
+      config.rewrites = [
+        {
+          source: rewriteSource,
+          function: {
+            functionId,
+            region: ssrRegion,
+            pinTag: experiments.isEnabled("pintags"),
+          },
         },
-      });
+        ...config.rewrites,
+      ];
 
       // Set the framework entry in the env variables to handle generation of the functions.yaml
       process.env.__FIREBASE_FRAMEWORKS_ENTRY__ = frameworksEntry;

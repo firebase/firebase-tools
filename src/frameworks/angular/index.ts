@@ -137,7 +137,7 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
   } = await getServerConfig(sourceDir);
 
   const dotEnv = { __NG_BROWSER_OUTPUT_PATH__: browserOutputPath };
-  let rewriteSource: string|undefined = undefined;
+  let rewriteSource: string | undefined = undefined;
 
   await Promise.all([
     serverOutputPath
