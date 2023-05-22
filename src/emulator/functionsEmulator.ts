@@ -561,12 +561,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
     // Before loading any triggers we need to make sure there are no 'stale' workers
     // in the pool that would cause us to run old code.
-    if (this.debugMode) {
-      // Kill the workerPool. This should clean up all inspectors connected to the debug port.
-      this.workerPools[emulatableBackend.codebase].exit();
-    } else {
-      this.workerPools[emulatableBackend.codebase].refresh();
-    }
+    this.workerPools[emulatableBackend.codebase].refresh();
     // reset blocking functions config for reloads
     this.blockingFunctionsConfig = {};
 
