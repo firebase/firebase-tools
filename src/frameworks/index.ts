@@ -267,6 +267,7 @@ export async function prepareFrameworks(
         codegenFunctionsDirectory = codegenDevModeFunctionsDirectory;
       }
     } else {
+      const buildResult = await memoizeBuild(getProjectPath(), build, [firebaseDefaults]);
       const {
         wantsBackend = false,
         rewrites = [],
@@ -274,7 +275,7 @@ export async function prepareFrameworks(
         headers = [],
         trailingSlash,
         i18n = false,
-      } = (await memoizeBuild(getProjectPath(), build, [firebaseDefaults])) || {};
+      }: BuildResult = buildResult || {};
 
       config.rewrites.push(...rewrites);
       config.redirects.push(...redirects);
@@ -361,16 +362,20 @@ export async function prepareFrameworks(
         frameworksEntry = framework,
         baseUrl = "",
         dotEnv = {},
+        rewriteSource = posix.join(baseUrl, "**"),
       } = await codegenFunctionsDirectory(getProjectPath(), functionsDist);
 
-      config.rewrites.push({
-        source: posix.normalize(posix.join(baseUrl, "**")),
-        function: {
-          functionId,
-          region: ssrRegion,
-          pinTag: experiments.isEnabled("pintags"),
+      config.rewrites = [
+        {
+          source: rewriteSource,
+          function: {
+            functionId,
+            region: ssrRegion,
+            pinTag: experiments.isEnabled("pintags"),
+          },
         },
-      });
+        ...config.rewrites,
+      ];
 
       // Set the framework entry in the env variables to handle generation of the functions.yaml
       process.env.__FIREBASE_FRAMEWORKS_ENTRY__ = frameworksEntry;
@@ -421,7 +426,8 @@ export async function prepareFrameworks(
                 cwd: functionsDist,
               }
             );
-            if (result.status !== 0) throw new Error(`Error running \`npm pack\` at ${path}`);
+            if (result.status !== 0)
+              throw new FirebaseError(`Error running \`npm pack\` at ${path}`);
             const { filename } = JSON.parse(result.stdout.toString())[0];
             packageJson.dependencies[name] = `file:${filename}`;
           } else {
@@ -505,12 +511,6 @@ ${
       if (await pathExists(functionsDist)) {
         await rm(functionsDist, { recursive: true });
       }
-      // No function, treat as an SPA
-      // TODO(jamesdaniels) be smarter about this, leave it to the framework?
-      config.rewrites.push({
-        source: "**",
-        destination: "/index.html",
-      });
     }
 
     if (firebaseDefaults) {

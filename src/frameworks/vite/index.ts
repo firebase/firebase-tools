@@ -73,6 +73,8 @@ export async function build(root: string) {
   process.chdir(root);
   await build({ root, mode: "production" });
   process.chdir(cwd);
+
+  return { rewrites: [{ source: "**", destination: "/index.html" }] };
 }
 
 export async function ɵcodegenPublicDirectory(root: string, dest: string) {
