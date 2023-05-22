@@ -245,7 +245,7 @@ function functionsOpLogReject(func: InputCloudFunction, type: string, err: any):
     utils.logLabeledWarning(
       "functions",
       `Your current project quotas don't allow for the current `maxInstances` setting of ${maxInstances}. ` +
-        "Either reduce this function's maximum instances`, or request a quota increase on the underlying Cloud Run service " +
+        "Either reduce this function's maximum instances, or request a quota increase on the underlying Cloud Run service " +
         "at https://cloud.google.com/run/quotas."
     );
     const suggestedFix = func.buildConfig.runtime.startsWith("python")
