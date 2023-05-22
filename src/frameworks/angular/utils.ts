@@ -61,9 +61,6 @@ async function localesForTarget(
 
 // TODO(jamesdaniels) memoize, dry up
 export async function getContext(dir: string, configuration?: string) {
-
-  console.log("getContext", { configuration });
-
   const { NodeJsAsyncHost } = relativeRequire(dir, "@angular-devkit/core/node");
   const { workspaces } = relativeRequire(dir, "@angular-devkit/core");
   const { WorkspaceNodeModulesArchitectHost } = relativeRequire(

@@ -137,7 +137,6 @@ export async function ɵcodegenPublicDirectory(
 }
 
 export async function getValidBuildTargets(purpose: BUILD_TARGET_PURPOSE, dir: string) {
-  console.log("getValidBuildTargets", { purpose });
   const validTargetNames = new Set(["development", "production"]);
   const { workspaceProject, browserTarget, serverTarget, serveTarget } = await getContext(dir);
   const { target } = ((purpose === "serve" && serveTarget) || serverTarget || browserTarget)!;
@@ -147,14 +146,11 @@ export async function getValidBuildTargets(purpose: BUILD_TARGET_PURPOSE, dir: s
 }
 
 export async function shouldUseDevModeHandle(configuration: string, dir: string) {
-  console.log("shouldUseDevModeHandle", { configuration });
   if (configuration === "production") return false;
   const { serveTarget, workspaceProject } = await getContext(dir);
-  console.log("shouldUseDevModeHandle", { serveTarget })
   if (!serveTarget) return false;
   if (configuration === "development") return true;
   const { configurations = {} } = workspaceProject.targets.get(serveTarget.target)!;
-  console.log("shouldUseDevModeHandle", { configurations: Object.keys(configurations) });
   return Object.keys(configurations).includes(configuration);
 }
 

@@ -265,8 +265,7 @@ export async function prepareFrameworks(
     const validBuildTargets = await getValidBuildTargets(buildTargetPurpose, getProjectPath());
     const frameworksBuildTarget = getFrameworksBuildTarget(buildTargetPurpose, validBuildTargets);
     const useDevModeHandle = await shouldUseDevModeHandle(frameworksBuildTarget, getProjectPath());
-    console.log("prepareFrameworks", { buildTargetPurpose, validBuildTargets, frameworksBuildTarget, useDevModeHandle });
-
+    
     let codegenFunctionsDirectory: Framework["ɵcodegenFunctionsDirectory"];
 
     const devModeHandle =
