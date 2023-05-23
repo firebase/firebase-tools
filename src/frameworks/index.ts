@@ -538,7 +538,7 @@ ${
       const sameSite = "Strict";
       const path = `/`;
       config.headers.push({
-        source: "**/*.js",
+        source: "**/*.[jt]s",
         headers: [
           {
             key: "Set-Cookie",
