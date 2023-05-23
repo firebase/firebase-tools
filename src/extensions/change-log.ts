@@ -2,8 +2,8 @@ import * as clc from "colorette";
 import { marked } from "marked";
 import * as path from "path";
 import * as semver from "semver";
-import TerminalRenderer = require("marked-terminal");
-import Table = require("cli-table");
+import * as TerminalRenderer from "marked-terminal";
+const Table = require("cli-table");
 
 import { listExtensionVersions } from "./extensionsApi";
 import { readFile } from "./localHelper";

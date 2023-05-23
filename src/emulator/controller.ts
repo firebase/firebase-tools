@@ -1,6 +1,7 @@
 import * as clc from "colorette";
 import * as fs from "fs";
 import * as path from "path";
+import * as fsConfig from "../firestore/fsConfig";
 
 import { logger } from "../logger";
 import { track, trackEmulator } from "../track";
@@ -450,17 +451,15 @@ export async function startAll(
   ) {
     experiments.assertEnabled("webframeworks", "emulate a web framework");
     const emulators: EmulatorInfo[] = [];
-    if (experiments.isEnabled("webframeworks")) {
-      for (const e of ALL_SERVICE_EMULATORS) {
-        // TODO(yuchenshi): Functions and Eventarc may be missing if they are not
-        // yet known to be needed and then prepareFrameworks adds extra functions.
-        if (listenForEmulator[e]) {
-          emulators.push({
-            name: e,
-            host: utils.connectableHostname(listenForEmulator[e][0].address),
-            port: listenForEmulator[e][0].port,
-          });
-        }
+    for (const e of ALL_SERVICE_EMULATORS) {
+      // TODO(yuchenshi): Functions and Eventarc may be missing if they are not
+      // yet known to be needed and then prepareFrameworks adds extra functions.
+      if (listenForEmulator[e]) {
+        emulators.push({
+          name: e,
+          host: utils.connectableHostname(listenForEmulator[e][0].address),
+          port: listenForEmulator[e][0].port,
+        });
       }
     }
     // This may add additional sources for Functions emulator and must be done before it.
@@ -594,8 +593,29 @@ export async function startAll(
     }
 
     const config = options.config;
-    const rulesLocalPath = config.src.firestore?.rules;
-    let rulesFileFound = false;
+    // emulator does not support multiple databases yet
+    // TODO(VicVer09): b/269787702
+    let rulesLocalPath;
+    let rulesFileFound;
+    const firestoreConfigs: fsConfig.ParsedFirestoreConfig[] = fsConfig.getFirestoreConfig(
+      projectId,
+      options
+    );
+    if (!firestoreConfigs) {
+      firestoreLogger.logLabeled(
+        "WARN",
+        "firestore",
+        `Cloud Firestore config does not exist in firebase.json.`
+      );
+    } else if (firestoreConfigs.length !== 1) {
+      firestoreLogger.logLabeled(
+        "WARN",
+        "firestore",
+        `Cloud Firestore Emulator does not support multiple databases yet.`
+      );
+    } else if (firestoreConfigs[0].rules) {
+      rulesLocalPath = firestoreConfigs[0].rules;
+    }
     if (rulesLocalPath) {
       const rules: string = config.path(rulesLocalPath);
       rulesFileFound = fs.existsSync(rules);

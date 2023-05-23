@@ -3,8 +3,18 @@ import * as sinon from "sinon";
 
 import * as planner from "../../../deploy/extensions/planner";
 import * as extensionsApi from "../../../extensions/extensionsApi";
-import { ExtensionInstance } from "../../../extensions/types";
+import { ExtensionInstance, Extension } from "../../../extensions/types";
 
+function extension(latest?: string, latestApproved?: string): Extension {
+  return {
+    name: `publishers/test/extensions/test`,
+    ref: `test/test`,
+    state: "PUBLISHED",
+    latestVersion: latest,
+    latestApprovedVersion: latestApproved,
+    createTime: "",
+  };
+}
 function extensionVersion(version?: string): any {
   return {
     name: `publishers/test/extensions/test/versions/${version}`,
@@ -25,7 +35,7 @@ function extensionVersion(version?: string): any {
 describe("Extensions Deployment Planner", () => {
   describe("resolveSemver", () => {
     let listExtensionVersionsStub: sinon.SinonStub;
-
+    let getExtensionStub: sinon.SinonStub;
     before(() => {
       listExtensionVersionsStub = sinon.stub(extensionsApi, "listExtensionVersions").resolves([
         extensionVersion("0.1.0"),
@@ -33,10 +43,14 @@ describe("Extensions Deployment Planner", () => {
         extensionVersion("0.2.0"),
         extensionVersion(), // Explicitly test that this doesn't break on bad data
       ]);
+      getExtensionStub = sinon
+        .stub(extensionsApi, "getExtension")
+        .resolves(extension("0.2.0", "0.1.1"));
     });
 
     after(() => {
       listExtensionVersionsStub.restore();
+      getExtensionStub.restore();
     });
 
     const cases = [
@@ -59,8 +73,14 @@ describe("Extensions Deployment Planner", () => {
         err: false,
       },
       {
-        description: "should default to latest version",
-        out: "0.2.0",
+        description: "should default to latest-approved version",
+        out: "0.1.1",
+        err: false,
+      },
+      {
+        description: "should resolve explicit latest-approved",
+        in: "latest-approved",
+        out: "0.1.1",
         err: false,
       },
       {

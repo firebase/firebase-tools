@@ -1,4 +1,8 @@
-- Remove call to Cloud Run API and set CPU & concurrency in GCF API instead. (#5605)
-- Fix function deploy retry after quota exceeded bug and increase backoff. (#5601)
-- Fix bug where EVENTARC_CLOUD_EVENT_SOURCE environment variable was correctly set for some functions. (#5597)
+- Update error message when function deploy fails due to quota. (#5867)
+- Fixes RTDB emulator 127.0.0.1 namespace resolution bug. (#5863)
+- Improves RTDB emulator to GCF emulator network reliability. (#5863)
+- Allow for Angular developers to both target a PWA and leverage `serveOptimizedImages`. (#5716)
+- Multi-page applications that are fully staticly rendered are no longer treated as PWAs. (#5716)
+- Add fast dev-mode support for devlopers using Nuxt v2. (#5716)
+- Respect `ssr: false` and `baseURL` when using Nuxt. (#5716)
 - Fix bug where Vite JS-SDK auto init was not working for webframeworks (#5610).

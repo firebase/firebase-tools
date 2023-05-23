@@ -104,7 +104,7 @@
                     "type": "string"
                 },
                 "timeoutSeconds": {
-                    "description": "Timeout for the function in sections, possible values are 0 to 540.\nHTTPS functions can specify a higher timeout.",
+                    "description": "Timeout for the function in seconds, possible values are 0 to 540.\nHTTPS functions can specify a higher timeout.",
                     "type": "number"
                 },
                 "vpcConnector": {
@@ -426,42 +426,150 @@
             "$ref": "#/definitions/ExtensionsConfig"
         },
         "firestore": {
-            "additionalProperties": false,
-            "properties": {
-                "indexes": {
-                    "type": "string"
-                },
-                "postdeploy": {
-                    "anyOf": [
-                        {
-                            "items": {
-                                "type": "string"
-                            },
-                            "type": "array"
+            "anyOf": [
+                {
+                    "additionalProperties": false,
+                    "properties": {
+                        "database": {
+                            "type": "string"
                         },
-                        {
+                        "indexes": {
+                            "type": "string"
+                        },
+                        "postdeploy": {
+                            "anyOf": [
+                                {
+                                    "items": {
+                                        "type": "string"
+                                    },
+                                    "type": "array"
+                                },
+                                {
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "predeploy": {
+                            "anyOf": [
+                                {
+                                    "items": {
+                                        "type": "string"
+                                    },
+                                    "type": "array"
+                                },
+                                {
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "rules": {
                             "type": "string"
                         }
-                    ]
+                    },
+                    "type": "object"
                 },
-                "predeploy": {
-                    "anyOf": [
-                        {
-                            "items": {
-                                "type": "string"
+                {
+                    "items": {
+                        "anyOf": [
+                            {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "database": {
+                                        "type": "string"
+                                    },
+                                    "indexes": {
+                                        "type": "string"
+                                    },
+                                    "postdeploy": {
+                                        "anyOf": [
+                                            {
+                                                "items": {
+                                                    "type": "string"
+                                                },
+                                                "type": "array"
+                                            },
+                                            {
+                                                "type": "string"
+                                            }
+                                        ]
+                                    },
+                                    "predeploy": {
+                                        "anyOf": [
+                                            {
+                                                "items": {
+                                                    "type": "string"
+                                                },
+                                                "type": "array"
+                                            },
+                                            {
+                                                "type": "string"
+                                            }
+                                        ]
+                                    },
+                                    "rules": {
+                                        "type": "string"
+                                    },
+                                    "target": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "target"
+                                ],
+                                "type": "object"
                             },
-                            "type": "array"
-                        },
-                        {
-                            "type": "string"
-                        }
-                    ]
-                },
-                "rules": {
-                    "type": "string"
+                            {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "database": {
+                                        "type": "string"
+                                    },
+                                    "indexes": {
+                                        "type": "string"
+                                    },
+                                    "postdeploy": {
+                                        "anyOf": [
+                                            {
+                                                "items": {
+                                                    "type": "string"
+                                                },
+                                                "type": "array"
+                                            },
+                                            {
+                                                "type": "string"
+                                            }
+                                        ]
+                                    },
+                                    "predeploy": {
+                                        "anyOf": [
+                                            {
+                                                "items": {
+                                                    "type": "string"
+                                                },
+                                                "type": "array"
+                                            },
+                                            {
+                                                "type": "string"
+                                            }
+                                        ]
+                                    },
+                                    "rules": {
+                                        "type": "string"
+                                    },
+                                    "target": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "database"
+                                ],
+                                "type": "object"
+                            }
+                        ]
+                    },
+                    "type": "array"
                 }
-            },
-            "type": "object"
+            ]
         },
         "functions": {
             "anyOf": [
@@ -509,7 +617,8 @@
                                 "nodejs12",
                                 "nodejs14",
                                 "nodejs16",
-                                "nodejs18"
+                                "nodejs18",
+                                "nodejs20"
                             ],
                             "type": "string"
                         },
@@ -564,7 +673,8 @@
                                     "nodejs12",
                                     "nodejs14",
                                     "nodejs16",
-                                    "nodejs18"
+                                    "nodejs18",
+                                    "nodejs20"
                                 ],
                                 "type": "string"
                             },

@@ -1,5 +1,5 @@
 import { marked } from "marked";
-import TerminalRenderer = require("marked-terminal");
+import * as TerminalRenderer from "marked-terminal";
 
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
@@ -34,5 +34,4 @@ export const command = new Command("ext:uninstall <extensionInstanceId>")
     }
     const config = manifest.loadConfig(options);
     manifest.removeFromManifest(instanceId, config);
-    manifest.showPostDeprecationNotice();
   });

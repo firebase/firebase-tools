@@ -26,6 +26,7 @@ import * as utils from "../../../utils";
 import * as services from "../services";
 import { AUTH_BLOCKING_EVENTS } from "../../../functions/events/v1";
 import { getDefaultComputeServiceAgent } from "../checkIam";
+import { getHumanFriendlyPlatformName } from "../functionsDeployHelper";
 
 // TODO: Tune this for better performance.
 const gcfV1PollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
@@ -347,16 +348,25 @@ export class Fabricator {
     const resultFunction = await this.functionExecutor
       .run(async () => {
         const op: { name: string } = await gcfV2.createFunction(apiFunction);
-        return await poller.pollOperation<gcfV2.CloudFunction>({
+        return await poller.pollOperation<gcfV2.OutputCloudFunction>({
           ...gcfV2PollerOptions,
           pollerName: `create-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
           operationResourceName: op.name,
         });
       })
-      .catch(rethrowAs<gcfV2.CloudFunction>(endpoint, "create"));
+      .catch(rethrowAs<gcfV2.OutputCloudFunction>(endpoint, "create"));
 
-    endpoint.uri = resultFunction.serviceConfig.uri;
-    const serviceName = resultFunction.serviceConfig.service!;
+    endpoint.uri = resultFunction.serviceConfig?.uri;
+    const serviceName = resultFunction.serviceConfig?.service;
+    endpoint.runServiceId = utils.last(serviceName?.split("/"));
+    if (!serviceName) {
+      logger.debug("Result function unexpectedly didn't have a service name.");
+      utils.logLabeledWarning(
+        "functions",
+        "Updated function is not associated with a service. This deployment is in an unexpected state - please re-deploy your functions."
+      );
+      return;
+    }
     if (backend.isHttpsTriggered(endpoint)) {
       const invoker = endpoint.httpsTrigger.invoker || ["public"];
       if (!invoker.includes("private")) {
@@ -455,16 +465,25 @@ export class Fabricator {
     const resultFunction = await this.functionExecutor
       .run(async () => {
         const op: { name: string } = await gcfV2.updateFunction(apiFunction);
-        return await poller.pollOperation<gcfV2.CloudFunction>({
+        return await poller.pollOperation<gcfV2.OutputCloudFunction>({
           ...gcfV2PollerOptions,
           pollerName: `update-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
           operationResourceName: op.name,
         });
       })
-      .catch(rethrowAs<gcfV2.CloudFunction>(endpoint, "update"));
+      .catch(rethrowAs<gcfV2.OutputCloudFunction>(endpoint, "update"));
 
-    endpoint.uri = resultFunction.serviceConfig.uri;
-    const serviceName = resultFunction.serviceConfig.service!;
+    endpoint.uri = resultFunction.serviceConfig?.uri;
+    const serviceName = resultFunction.serviceConfig?.service;
+    endpoint.runServiceId = utils.last(serviceName?.split("/"));
+    if (!serviceName) {
+      logger.debug("Result function unexpectedly didn't have a service name.");
+      utils.logLabeledWarning(
+        "functions",
+        "Updated function is not associated with a service. This deployment is in an unexpected state - please re-deploy your functions."
+      );
+      return;
+    }
     let invoker: string[] | undefined;
     if (backend.isHttpsTriggered(endpoint)) {
       invoker = endpoint.httpsTrigger.invoker === null ? ["public"] : endpoint.httpsTrigger.invoker;
@@ -662,8 +681,12 @@ export class Fabricator {
 
   logOpStart(op: string, endpoint: backend.Endpoint): void {
     const runtime = getHumanFriendlyRuntimeName(endpoint.runtime);
+    const platform = getHumanFriendlyPlatformName(endpoint.platform);
     const label = helper.getFunctionLabel(endpoint);
-    utils.logLabeledBullet("functions", `${op} ${runtime} function ${clc.bold(label)}...`);
+    utils.logLabeledBullet(
+      "functions",
+      `${op} ${runtime} (${platform}) function ${clc.bold(label)}...`
+    );
   }
 
   logOpSuccess(op: string, endpoint: backend.Endpoint): void {
