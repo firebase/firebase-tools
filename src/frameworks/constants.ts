@@ -68,3 +68,11 @@ export const WebFrameworks: Record<string, Framework> = Object.fromEntries(
         obj && obj.name && obj.discover && obj.build && obj.type !== undefined && obj.support
     )
 );
+
+export function GET_DEFAULT_BUILD_TARGETS() {
+  return Promise.resolve(["production", "development"]);
+}
+
+export function DEFAULT_SHOULD_USE_DEV_MODE_HANDLE(target: string) {
+  return Promise.resolve(target === "development");
+}
