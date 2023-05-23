@@ -15,7 +15,7 @@ import * as path from "path";
 const EMULATOR_LOAD_RULESET_DELAY_MS = 20000;
 const SETUP_TIMEOUT = 60000;
 
-describe("Storage Rules Manager", function () {
+describe("Storage Rules Manager", () => {
   let rulesRuntime: StorageRulesRuntime;
   const opts = { method: RulesetOperationMethod.GET, file: {}, path: "/b/bucket_0/o/" };
   const projectId = "demo-project-id";
