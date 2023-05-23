@@ -5,4 +5,5 @@
 - Multi-page applications that are fully staticly rendered are no longer treated as PWAs. (#5716)
 - Add fast dev-mode support for devlopers using Nuxt v2. (#5716)
 - Respect `ssr: false` and `baseURL` when using Nuxt. (#5716)
+- Respect `FIREBASE_FRAMEWORKS_BUILD_TARGET` environment variable to override the default build target (#5572).
 - Improves cleanup process when reloading emulated functions in debug mode. (#5878)
