@@ -141,12 +141,6 @@ export class StorageEmulator implements EmulatorInstance {
     return this._app!;
   }
 
-  async replaceRules(rules: SourceFile | RulesConfig[]): Promise<StorageRulesIssues> {
-    await this._rulesManager.stop();
-    this._rulesManager = this.createRulesManager(rules);
-    return this._rulesManager.start();
-  }
-
   private createRulesManager(rules: SourceFile | RulesConfig[]): StorageRulesManager {
     return createStorageRulesManager(rules, this._rulesRuntime);
   }

@@ -60,6 +60,7 @@ class DefaultStorageRulesManager implements StorageRulesManager {
   }
 
   async start(): Promise<StorageRulesIssues> {
+    this._runtime.start();
     const issues = await this.loadRuleset();
     this.updateWatcher(this._rules.name);
     return issues;
@@ -72,7 +73,7 @@ class DefaultStorageRulesManager implements StorageRulesManager {
   async stop(): Promise<void> {
     await this._watcher.close();
     if (this._runtime.alive) {
-      this._runtime.stop();
+      await this._runtime.stop();
     }
   }
 

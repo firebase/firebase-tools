@@ -118,6 +118,9 @@ export class StorageRulesRuntime {
   }
 
   async start(autoDownload = true) {
+    if (this.alive) {
+      return;
+    }
     const downloadDetails = DownloadDetails[Emulators.STORAGE];
     const hasEmulator = fs.existsSync(downloadDetails.downloadPath);
 
@@ -220,9 +223,18 @@ export class StorageRulesRuntime {
     return startPromise;
   }
 
-  stop() {
+  stop(): Promise<void> {
     EmulatorLogger.forEmulator(Emulators.STORAGE).log("DEBUG", "Stopping rules runtime.");
-    this._childprocess?.kill();
+    return new Promise<void>((resolve) => {
+      if (this.alive) {
+        this._childprocess!.on("exit", () => {
+          resolve();
+        });
+        this._childprocess?.kill("SIGINT");
+      } else {
+        resolve();
+      }
+    });
   }
 
   private async _sendRequest(rab: RuntimeActionBundle, overrideId?: number) {

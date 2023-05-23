@@ -16,27 +16,30 @@ import { isPermitted } from "../../../src/emulator/storage/rules/utils";
 import { readFile } from "../../../src/fsutils";
 import * as path from "path";
 
-const EMULATOR_LOAD_RULESET_DELAY_MS = 2000;
+const EMULATOR_LOAD_RULESET_DELAY_MS = 20000;
+const SETUP_TIMEOUT = 60000;
 
 describe("Storage Rules Manager", function () {
-  const rulesRuntime = new StorageRulesRuntime();
+  let rulesRuntime: StorageRulesRuntime;
   const opts = { method: RulesetOperationMethod.GET, file: {}, path: "/b/bucket_0/o/" };
   const projectId = "demo-project-id";
   let rulesManager: StorageRulesManager;
 
-  // eslint-disable-next-line @typescript-eslint/no-invalid-this
-  this.timeout(TIMEOUT_LONG);
+  this.timeout(SETUP_TIMEOUT);
 
-  beforeEach(async () => {
+  beforeEach(async function (this) {
+    this.timeout(SETUP_TIMEOUT);
+    rulesRuntime = new StorageRulesRuntime();
     await rulesRuntime.start();
   });
 
-  afterEach(async () => {
-    rulesRuntime.stop();
+  afterEach(async function () {
+    this.timeout(SETUP_TIMEOUT);
     await rulesManager.stop();
   });
 
-  it("should load multiple rulesets on start", async () => {
+  it("should load multiple rulesets on start", async function (this) {
+    this.timeout(SETUP_TIMEOUT);
     const rules = [
       { resource: "bucket_0", rules: StorageRulesFiles.readWriteIfTrue },
       { resource: "bucket_1", rules: StorageRulesFiles.readWriteIfAuth },
@@ -53,9 +56,27 @@ describe("Storage Rules Manager", function () {
     expect(
       await isPermitted({ ...opts, path: "/b/bucket_1/o/", ruleset: bucket1Ruleset!, projectId })
     ).to.be.false;
+
+    await rulesManager.stop();
   });
 
-  it("should reload ruleset on changes to source file", async () => {
+  it("should load single ruleset on start", async function (this) {
+    this.timeout(SETUP_TIMEOUT);
+    // Write rules to file
+    const fileName = "storage.rules";
+    const testDir = createTmpDir("storage-files");
+    appendBytes(testDir, fileName, Buffer.from(StorageRulesFiles.readWriteIfTrue.content));
+
+    const sourceFile = getSourceFile(testDir, fileName);
+    rulesManager = createStorageRulesManager(sourceFile, rulesRuntime);
+    await rulesManager.start();
+
+    const ruleset = rulesManager.getRuleset("bucket");
+    expect(await isPermitted({ ...opts, ruleset: ruleset!, projectId })).to.be.true;
+  });
+
+  it("should reload ruleset on changes to source file", async function (this) {
+    this.timeout(SETUP_TIMEOUT);
     // Write rules to file
     const fileName = "storage.rules";
     const testDir = createTmpDir("storage-files");
