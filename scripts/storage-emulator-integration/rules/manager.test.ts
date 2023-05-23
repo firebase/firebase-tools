@@ -56,8 +56,6 @@ describe("Storage Rules Manager", function () {
     expect(
       await isPermitted({ ...opts, path: "/b/bucket_1/o/", ruleset: bucket1Ruleset!, projectId })
     ).to.be.false;
-
-    await rulesManager.stop();
   });
 
   it("should load single ruleset on start", async function (this) {
