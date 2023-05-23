@@ -617,7 +617,8 @@
                                 "nodejs12",
                                 "nodejs14",
                                 "nodejs16",
-                                "nodejs18"
+                                "nodejs18",
+                                "nodejs20"
                             ],
                             "type": "string"
                         },
@@ -672,7 +673,8 @@
                                     "nodejs12",
                                     "nodejs14",
                                     "nodejs16",
-                                    "nodejs18"
+                                    "nodejs18",
+                                    "nodejs20"
                                 ],
                                 "type": "string"
                             },

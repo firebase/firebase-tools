@@ -125,6 +125,16 @@ export function getEndpointFilters(options: { only?: string }): EndpointFilter[]
 }
 
 /**
+ * Get human friendly name for the given function platform
+ */
+export function getHumanFriendlyPlatformName(platform: backend.Endpoint["platform"]): string {
+  if (platform === "gcfv1") {
+    return "1st Gen";
+  }
+  return "2nd Gen";
+}
+
+/**
  * Generate label for a function.
  */
 export function getFunctionLabel(fn: backend.TargetIds & { codebase?: string }): string {
