@@ -7,3 +7,4 @@
 - Respect `ssr: false` and `baseURL` when using Nuxt. (#5716)
 - Fix bug where JS SDK auto-init was not working for Vite while in dev-mode (#5610).
 - Respect `FIREBASE_FRAMEWORKS_BUILD_TARGET` environment variable to override the default build target (#5572).
+- Improves cleanup process when reloading emulated functions in debug mode. (#5878)
