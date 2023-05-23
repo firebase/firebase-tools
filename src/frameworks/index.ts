@@ -337,7 +337,6 @@ export async function prepareFrameworks(
         {
           source: relative(projectRoot, functionsDist),
           codebase,
-          region: ssrRegion,
         },
       ]);
 
