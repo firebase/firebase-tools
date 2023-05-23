@@ -1,10 +1,6 @@
 import { expect } from "chai";
 
-import {
-  createTmpDir,
-  StorageRulesFiles,
-  TIMEOUT_LONG,
-} from "../../../src/test/emulators/fixtures";
+import { createTmpDir, StorageRulesFiles } from "../../../src/test/emulators/fixtures";
 import {
   createStorageRulesManager,
   StorageRulesManager,
@@ -25,15 +21,13 @@ describe("Storage Rules Manager", function () {
   const projectId = "demo-project-id";
   let rulesManager: StorageRulesManager;
 
-  this.timeout(SETUP_TIMEOUT);
-
   beforeEach(async function (this) {
     this.timeout(SETUP_TIMEOUT);
     rulesRuntime = new StorageRulesRuntime();
     await rulesRuntime.start();
   });
 
-  afterEach(async function () {
+  afterEach(async function (this) {
     this.timeout(SETUP_TIMEOUT);
     await rulesManager.stop();
   });
