@@ -19,7 +19,13 @@ import {
   warnIfCustomBuildScript,
   findDependency,
 } from "../utils";
-import { getBrowserConfig, getBuildConfig, getContext, getServerConfig } from "./utils";
+import {
+  getAllTargets,
+  getBrowserConfig,
+  getBuildConfig,
+  getContext,
+  getServerConfig,
+} from "./utils";
 import { I18N_ROOT, SHARP_VERSION } from "../constants";
 import { FirebaseError } from "../../error";
 
@@ -138,20 +144,22 @@ export async function ɵcodegenPublicDirectory(
 
 export async function getValidBuildTargets(purpose: BUILD_TARGET_PURPOSE, dir: string) {
   const validTargetNames = new Set(["development", "production"]);
-  const { workspaceProject, browserTarget, serverTarget, serveTarget } = await getContext(dir);
-  const { target } = ((purpose === "serve" && serveTarget) || serverTarget || browserTarget)!;
-  const workspaceTarget = workspaceProject.targets.get(target)!;
-  Object.keys(workspaceTarget.configurations || {}).forEach((it) => validTargetNames.add(it));
-  return [...validTargetNames];
+  try {
+    const { workspaceProject, browserTarget, serverTarget, serveTarget } = await getContext(dir);
+    const { target } = ((purpose === "serve" && serveTarget) || serverTarget || browserTarget)!;
+    const workspaceTarget = workspaceProject.targets.get(target)!;
+    Object.keys(workspaceTarget.configurations || {}).forEach((it) => validTargetNames.add(it));
+  } catch (e) {
+    // continue
+  }
+  const allTargets = await getAllTargets(purpose, dir);
+  return [...validTargetNames, ...allTargets];
 }
 
-export async function shouldUseDevModeHandle(configuration: string, dir: string) {
-  if (configuration === "production") return false;
-  const { serveTarget, workspaceProject } = await getContext(dir);
+export async function shouldUseDevModeHandle(targetOrConfiguration: string, dir: string) {
+  const { serveTarget } = await getContext(dir, targetOrConfiguration);
   if (!serveTarget) return false;
-  if (configuration === "development") return true;
-  const { configurations = {} } = workspaceProject.targets.get(serveTarget.target)!;
-  return Object.keys(configurations).includes(configuration);
+  return serveTarget.configuration !== "production";
 }
 
 export async function ɵcodegenFunctionsDirectory(
