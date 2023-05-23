@@ -4,10 +4,8 @@ import { EmulatorLogger } from "../emulatorLogger";
 import { Emulators } from "../types";
 import * as bodyParser from "body-parser";
 import { createCloudEndpoints } from "./apis/gcloud";
-import { RulesConfig, StorageEmulator } from "./index";
+import { StorageEmulator } from "./index";
 import { createFirebaseEndpoints } from "./apis/firebase";
-import { InvalidArgumentError } from "../auth/errors";
-import { SourceFile } from "./rules/types";
 
 /**
  * @param defaultProjectId
@@ -88,16 +86,4 @@ export function createApp(
   app.use("/", createCloudEndpoints(emulator));
 
   return Promise.resolve(app);
-}
-
-interface RulesFile {
-  name: string;
-  content: string;
-  resource?: string;
-}
-
-function isRulesFile(file: unknown): file is RulesFile {
-  return (
-    typeof (file as RulesFile).name === "string" && typeof (file as RulesFile).content === "string"
-  );
 }
