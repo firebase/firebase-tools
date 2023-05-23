@@ -8,3 +8,4 @@
 - Fix bug where JS SDK auto-init was not working for Vite while in dev-mode (#5610).
 - Respect `FIREBASE_FRAMEWORKS_BUILD_TARGET` environment variable to override the default build target (#5572).
 - Improves cleanup process when reloading emulated functions in debug mode. (#5878)
+- Allow Web Frameworks to target NodeJS v20. (#5879)
