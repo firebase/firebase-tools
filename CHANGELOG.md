@@ -1,0 +1,1 @@
+- Gracefully close rules runtime on storage emulator stop (#4902)
