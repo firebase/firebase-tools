@@ -4,7 +4,13 @@ import { spawn, sync as spawnSync } from "cross-spawn";
 import { copy, pathExists } from "fs-extra";
 import { mkdir } from "fs/promises";
 
-import { BuildResult, Discovery, FrameworkType, SupportLevel } from "../interfaces";
+import {
+  BuildResult,
+  Discovery,
+  FrameworkType,
+  SupportLevel,
+  BUILD_TARGET_PURPOSE,
+} from "../interfaces";
 import { promptOnce } from "../../prompt";
 import {
   simpleProxy,
@@ -13,7 +19,13 @@ import {
   warnIfCustomBuildScript,
   findDependency,
 } from "../utils";
-import { getBrowserConfig, getBuildConfig, getContext, getServerConfig } from "./utils";
+import {
+  getAllTargets,
+  getBrowserConfig,
+  getBuildConfig,
+  getContext,
+  getServerConfig,
+} from "./utils";
 import { I18N_ROOT, SHARP_VERSION } from "../constants";
 import { FirebaseError } from "../../error";
 
@@ -52,9 +64,10 @@ export async function init(setup: any, config: any) {
   }
 }
 
-export async function build(dir: string): Promise<BuildResult> {
+export async function build(dir: string, configuration: string): Promise<BuildResult> {
   const { targets, serverTarget, serveOptimizedImages, locales, baseHref } = await getBuildConfig(
-    dir
+    dir,
+    configuration
   );
   await warnIfCustomBuildScript(dir, name, DEFAULT_BUILD_SCRIPT);
   for (const target of targets) {
@@ -81,9 +94,9 @@ export async function build(dir: string): Promise<BuildResult> {
   return { wantsBackend, i18n, rewrites };
 }
 
-export async function getDevModeHandle(dir: string) {
+export async function getDevModeHandle(dir: string, configuration: string) {
   const { targetStringFromTarget } = relativeRequire(dir, "@angular-devkit/architect");
-  const { serveTarget } = await getContext(dir);
+  const { serveTarget } = await getContext(dir, configuration);
   if (!serveTarget) throw new Error("Could not find the serveTarget");
   const host = new Promise<string>((resolve) => {
     // Can't use scheduleTarget since that—like prerender—is failing on an ESM bug
@@ -104,8 +117,15 @@ export async function getDevModeHandle(dir: string) {
   return simpleProxy(await host);
 }
 
-export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: string) {
-  const { outputPath, baseHref, defaultLocale, locales } = await getBrowserConfig(sourceDir);
+export async function ɵcodegenPublicDirectory(
+  sourceDir: string,
+  destDir: string,
+  configuration: string
+) {
+  const { outputPath, baseHref, defaultLocale, locales } = await getBrowserConfig(
+    sourceDir,
+    configuration
+  );
   await mkdir(join(destDir, baseHref), { recursive: true });
   if (locales) {
     await Promise.all([
@@ -122,7 +142,31 @@ export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: strin
   }
 }
 
-export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: string) {
+export async function getValidBuildTargets(purpose: BUILD_TARGET_PURPOSE, dir: string) {
+  const validTargetNames = new Set(["development", "production"]);
+  try {
+    const { workspaceProject, browserTarget, serverTarget, serveTarget } = await getContext(dir);
+    const { target } = ((purpose === "serve" && serveTarget) || serverTarget || browserTarget)!;
+    const workspaceTarget = workspaceProject.targets.get(target)!;
+    Object.keys(workspaceTarget.configurations || {}).forEach((it) => validTargetNames.add(it));
+  } catch (e) {
+    // continue
+  }
+  const allTargets = await getAllTargets(purpose, dir);
+  return [...validTargetNames, ...allTargets];
+}
+
+export async function shouldUseDevModeHandle(targetOrConfiguration: string, dir: string) {
+  const { serveTarget } = await getContext(dir, targetOrConfiguration);
+  if (!serveTarget) return false;
+  return serveTarget.configuration !== "production";
+}
+
+export async function ɵcodegenFunctionsDirectory(
+  sourceDir: string,
+  destDir: string,
+  configuration: string
+) {
   const {
     packageJson,
     serverOutputPath,
@@ -134,7 +178,7 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
     externalDependencies,
     baseHref: baseUrl,
     serveOptimizedImages,
-  } = await getServerConfig(sourceDir);
+  } = await getServerConfig(sourceDir, configuration);
 
   const dotEnv = { __NG_BROWSER_OUTPUT_PATH__: browserOutputPath };
   let rewriteSource: string | undefined = undefined;
