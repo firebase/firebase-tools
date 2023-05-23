@@ -6,6 +6,7 @@ import { AngularI18nConfig } from "./interfaces";
 import { relativeRequire, validateLocales } from "../utils";
 import { FirebaseError } from "../../error";
 import { join } from "path";
+import { BUILD_TARGET_PURPOSE } from "../interfaces";
 
 async function localesForTarget(
   dir: string,
@@ -59,8 +60,55 @@ async function localesForTarget(
   return { locales, defaultLocale };
 }
 
+const enum ExpectedBuilder {
+  ANGULAR_FIRE_DEPLOY_TARGET = "@angular/fire:deploy",
+  BUILD_TARGET = "@angular-devkit/build-angular:browser",
+  PRERENDER_TARGET = "@nguniversal/builders:prerender",
+  DEV_SERVER_TARGET = "@angular-devkit/build-angular:dev-server",
+  SSR_DEV_SERVER_TARGET = "@nguniversal/builders:ssr-dev-server",
+}
+
+const DEV_SERVER_TARGETS: string[] = [
+  ExpectedBuilder.DEV_SERVER_TARGET,
+  ExpectedBuilder.SSR_DEV_SERVER_TARGET,
+];
+
+function getValidBuilders(purpose: BUILD_TARGET_PURPOSE): string[] {
+  return [
+    ExpectedBuilder.ANGULAR_FIRE_DEPLOY_TARGET,
+    ExpectedBuilder.BUILD_TARGET,
+    ExpectedBuilder.PRERENDER_TARGET,
+    ...(purpose === "deploy" ? [] : DEV_SERVER_TARGETS),
+  ];
+}
+
+export async function getAllTargets(purpose: BUILD_TARGET_PURPOSE, dir: string) {
+  const validBuilders = getValidBuilders(purpose);
+  const { NodeJsAsyncHost } = relativeRequire(dir, "@angular-devkit/core/node");
+  const { workspaces } = relativeRequire(dir, "@angular-devkit/core");
+  const { targetStringFromTarget } = relativeRequire(dir, "@angular-devkit/architect");
+
+  const host = workspaces.createWorkspaceHost(new NodeJsAsyncHost());
+  const { workspace } = await workspaces.readWorkspace(dir, host);
+
+  const targets: string[] = [];
+  workspace.projects.forEach((projectDefinition, project) => {
+    if (projectDefinition.extensions.projectType !== "application") return;
+    projectDefinition.targets.forEach((targetDefinition, target) => {
+      if (!validBuilders.includes(targetDefinition.builder)) return;
+      const configurations = Object.keys(targetDefinition.configurations || {});
+      if (!configurations.includes("production")) configurations.push("production");
+      if (!configurations.includes("development")) configurations.push("development");
+      configurations.forEach((configuration) => {
+        targets.push(targetStringFromTarget({ project, target, configuration }));
+      });
+    });
+  });
+  return targets;
+}
+
 // TODO(jamesdaniels) memoize, dry up
-export async function getContext(dir: string) {
+export async function getContext(dir: string, targetOrConfiguration?: string) {
   const { NodeJsAsyncHost } = relativeRequire(dir, "@angular-devkit/core/node");
   const { workspaces } = relativeRequire(dir, "@angular-devkit/core");
   const { WorkspaceNodeModulesArchitectHost } = relativeRequire(
@@ -78,12 +126,26 @@ export async function getContext(dir: string) {
   const architectHost = new WorkspaceNodeModulesArchitectHost(workspace, dir);
   const architect = new Architect(architectHost);
 
-  let project: string | undefined = (globalThis as any).NG_DEPLOY_PROJECT;
+  let overrideTarget: Target | undefined;
+  let project: string | undefined;
   let browserTarget: Target | undefined;
   let serverTarget: Target | undefined;
   let prerenderTarget: Target | undefined;
   let serveTarget: Target | undefined;
   let serveOptimizedImages = false;
+
+  let deployTargetName;
+  let configuration: string | undefined = undefined;
+  if (targetOrConfiguration) {
+    try {
+      overrideTarget = targetFromTargetString(targetOrConfiguration);
+      configuration = overrideTarget.configuration;
+      project = overrideTarget.project;
+    } catch (e) {
+      deployTargetName = "deploy";
+      configuration = targetOrConfiguration;
+    }
+  }
 
   if (!project) {
     const angularJson = parse(await host.readFile(join(dir, "angular.json")));
@@ -100,15 +162,27 @@ export async function getContext(dir: string) {
 
   if (!project)
     throw new FirebaseError(
-      "Unable to determine the application to deploy, you should use `ng deploy` via @angular/fire."
+      "Unable to determine the application to deploy, specify a target via the FIREBASE_FRAMEWORKS_BUILD_TARGET environment variable"
     );
 
   const workspaceProject = workspace.projects.get(project);
   if (!workspaceProject) throw new FirebaseError(`No project ${project} found.`);
 
-  const deployTargetDefinition = workspaceProject.targets.get("deploy");
+  if (overrideTarget) {
+    const target = workspaceProject.targets.get(overrideTarget.target)!;
+    const builder = target.builder;
+    if (builder === ExpectedBuilder.ANGULAR_FIRE_DEPLOY_TARGET)
+      deployTargetName = overrideTarget.target;
+    if (builder === ExpectedBuilder.BUILD_TARGET) browserTarget = overrideTarget;
+    if (builder === ExpectedBuilder.PRERENDER_TARGET) prerenderTarget = overrideTarget;
+    if (typeof builder === "string" && DEV_SERVER_TARGETS.includes(builder))
+      serveTarget = overrideTarget;
+  }
 
-  if (deployTargetDefinition?.builder === "@angular/fire:deploy") {
+  const deployTargetDefinition = deployTargetName
+    ? workspaceProject.targets.get(deployTargetName)
+    : undefined;
+  if (deployTargetDefinition?.builder === ExpectedBuilder.ANGULAR_FIRE_DEPLOY_TARGET) {
     const options = deployTargetDefinition.options;
     if (typeof options?.prerenderTarget === "string")
       prerenderTarget = targetFromTargetString(options.prerenderTarget);
@@ -136,83 +210,62 @@ export async function getContext(dir: string) {
           "Treating the application as fully rendered. Add a serverTarget to your deploy target in angular.json to utilize server-side rendering."
         );
     }
-  } else if (workspaceProject.targets.has("prerender")) {
-    const target = workspaceProject.targets.get("prerender")!;
-    const configurations = Object.keys(target.configurations!);
-    const configuration = configurations.includes("production")
-      ? "production"
-      : target.defaultConfiguration;
-    if (!configuration)
-      throw new Error("No production or default configuration found for prerender.");
-    if (configuration !== "production")
-      console.warn(
-        `Using ${configuration} configuration for the prerender, we suggest adding a production target.`
+  }
+
+  if (!overrideTarget && !prerenderTarget && workspaceProject.targets.has("prerender")) {
+    const { defaultConfiguration = "production" } = workspaceProject.targets.get("prerender")!;
+    prerenderTarget = { project, target: "prerender", configuration: defaultConfiguration };
+  }
+
+  if (serveTarget) {
+    const options = await architectHost.getOptionsForTarget(serveTarget);
+    if (typeof options?.browserTarget !== "string")
+      throw new Error(
+        `${serveTarget.target} browserTarget expected to be string, check your angular.json.`
       );
-    prerenderTarget = { project, target: "prerender", configuration };
-    const production = await architectHost.getOptionsForTarget(prerenderTarget);
-    if (typeof production?.browserTarget !== "string")
-      throw new Error("Prerender browserTarget expected to be string, check your angular.json.");
-    browserTarget = targetFromTargetString(production.browserTarget);
-    if (typeof production?.serverTarget !== "string")
-      throw new Error("Prerender serverTarget expected to be string, check your angular.json.");
-    serverTarget = targetFromTargetString(production.serverTarget);
-  } else {
-    if (workspaceProject.targets.has("build")) {
-      const target = workspaceProject.targets.get("build")!;
-      const configurations = Object.keys(target.configurations!);
-      const configuration = configurations.includes("production")
-        ? "production"
-        : target.defaultConfiguration;
-      if (!configuration)
-        throw new Error("No production or default configuration found for build.");
-      if (configuration !== "production")
-        console.warn(
-          `Using ${configuration} configuration for the browser deploy, we suggest adding a production target.`
+    browserTarget = targetFromTargetString(options.browserTarget);
+    if (options?.serverTarget) {
+      if (typeof options.serverTarget !== "string")
+        throw new Error(
+          `${serveTarget.target} serverTarget expected to be string, check your angular.json.`
         );
-      browserTarget = { project, target: "build", configuration };
+      serverTarget = targetFromTargetString(options.serverTarget);
     }
-    if (workspaceProject.targets.has("server")) {
-      const target = workspaceProject.targets.get("server")!;
-      const configurations = Object.keys(target.configurations!);
-      const configuration = configurations.includes("production")
-        ? "production"
-        : target.defaultConfiguration;
-      if (!configuration)
-        throw new Error("No production or default configutation found for server.");
-      if (configuration !== "production")
-        console.warn(
-          `Using ${configuration} configuration for the server deploy, we suggest adding a production target.`
-        );
-      serverTarget = { project, target: "server", configuration };
+  } else if (prerenderTarget) {
+    const options = await architectHost.getOptionsForTarget(prerenderTarget);
+    if (typeof options?.browserTarget !== "string")
+      throw new Error("Prerender browserTarget expected to be string, check your angular.json.");
+    browserTarget = targetFromTargetString(options.browserTarget);
+    if (typeof options?.serverTarget !== "string")
+      throw new Error("Prerender serverTarget expected to be string, check your angular.json.");
+    serverTarget = targetFromTargetString(options.serverTarget);
+  }
+
+  if (!browserTarget && workspaceProject.targets.has("build")) {
+    const { defaultConfiguration = "production" } = workspaceProject.targets.get("build")!;
+    browserTarget = { project, target: "build", configuration: defaultConfiguration };
+  }
+
+  if (!serverTarget && workspaceProject.targets.has("server")) {
+    const { defaultConfiguration = "production" } = workspaceProject.targets.get("server")!;
+    serverTarget = { project, target: "server", configuration: defaultConfiguration };
+  }
+
+  if (!serveTarget) {
+    if (serverTarget && workspaceProject.targets.has("serve-ssr")) {
+      const { defaultConfiguration = "development" } = workspaceProject.targets.get("serve-ssr")!;
+      serveTarget = { project, target: "serve-ssr", configuration: defaultConfiguration };
+    } else if (workspaceProject.targets.has("serve")) {
+      const { defaultConfiguration = "development" } = workspaceProject.targets.get("serve")!;
+      serveTarget = { project, target: "serve", configuration: defaultConfiguration };
     }
   }
 
-  if (serverTarget && workspaceProject.targets.has("serve-ssr")) {
-    const target = workspaceProject.targets.get("serve-ssr")!;
-    const configurations = Object.keys(target.configurations!);
-    const configuration = configurations.includes("development")
-      ? "development"
-      : target.defaultConfiguration;
-    if (!configuration)
-      throw new Error("No development or default configutation found for serve-ssr.");
-    if (configuration !== "development")
-      console.warn(
-        `Using ${configuration} configuration for the local server, we suggest adding a development target.`
-      );
-    serveTarget = { project, target: "serve-ssr", configuration };
-  } else if (workspaceProject.targets.has("serve")) {
-    if (serverTarget) console.warn(`No server-ssr target found.`);
-    const target = workspaceProject.targets.get("serve")!;
-    const configurations = Object.keys(target.configurations!);
-    const configuration = configurations.includes("development")
-      ? "development"
-      : target.defaultConfiguration;
-    if (!configuration) throw new Error("No development or default configutation found for serve.");
-    if (configuration !== "development")
-      console.warn(
-        `Using ${configuration} configuration for the local server, we suggest adding a development target.`
-      );
-    serveTarget = { project, target: "serve", configuration };
+  if (configuration) {
+    if (prerenderTarget) prerenderTarget.configuration = configuration;
+    if (serverTarget) serverTarget.configuration = configuration;
+    if (browserTarget) browserTarget.configuration = configuration;
+    if (serveTarget) serveTarget.configuration = configuration;
   }
 
   if (!browserTarget) throw new FirebaseError(`No browser target on ${project}`);
@@ -221,7 +274,7 @@ export async function getContext(dir: string) {
     throw new FirebaseError(`Couldn't find options for ${targetStringFromTarget(browserTarget)}.`);
   }
 
-  const baseHref = browserTargetOptions.baseHref || "";
+  const baseHref = browserTargetOptions.baseHref || "/";
   if (typeof baseHref !== "string") {
     throw new FirebaseError(
       `baseHref on ${targetStringFromTarget(browserTarget)} was not a string`
@@ -242,8 +295,11 @@ export async function getContext(dir: string) {
   };
 }
 
-export async function getBrowserConfig(sourceDir: string) {
-  const { architectHost, browserTarget, baseHref, workspaceProject } = await getContext(sourceDir);
+export async function getBrowserConfig(sourceDir: string, configuration: string) {
+  const { architectHost, browserTarget, baseHref, workspaceProject } = await getContext(
+    sourceDir,
+    configuration
+  );
   const { locales, defaultLocale } = await localesForTarget(
     sourceDir,
     architectHost,
@@ -257,7 +313,7 @@ export async function getBrowserConfig(sourceDir: string) {
   return { locales, baseHref, outputPath, defaultLocale };
 }
 
-export async function getServerConfig(sourceDir: string) {
+export async function getServerConfig(sourceDir: string, configuration: string) {
   const {
     architectHost,
     host,
@@ -266,7 +322,7 @@ export async function getServerConfig(sourceDir: string) {
     baseHref,
     workspaceProject,
     serveOptimizedImages,
-  } = await getContext(sourceDir);
+  } = await getContext(sourceDir, configuration);
   const browserTargetOptions = await architectHost.getOptionsForTarget(browserTarget);
   if (typeof browserTargetOptions?.outputPath !== "string")
     throw new Error("browserTarget output path is not a string");
@@ -323,22 +379,24 @@ export async function getServerConfig(sourceDir: string) {
   };
 }
 
-export async function getBuildConfig(sourceDir: string) {
+export async function getBuildConfig(sourceDir: string, configuration: string) {
   const { targetStringFromTarget } = relativeRequire(sourceDir, "@angular-devkit/architect");
   const {
     browserTarget,
+    baseHref,
     prerenderTarget,
     serverTarget,
     architectHost,
     workspaceProject,
     serveOptimizedImages,
-  } = await getContext(sourceDir);
+  } = await getContext(sourceDir, configuration);
   const targets = (
     prerenderTarget ? [prerenderTarget] : [browserTarget, serverTarget].filter((it) => !!it)
   ).map((it) => targetStringFromTarget(it!));
   const locales = await localesForTarget(sourceDir, architectHost, browserTarget, workspaceProject);
   return {
     targets,
+    baseHref,
     serverTarget,
     locales,
     serveOptimizedImages,

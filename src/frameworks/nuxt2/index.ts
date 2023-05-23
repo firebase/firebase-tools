@@ -1,140 +1,117 @@
 import { copy, pathExists } from "fs-extra";
 import { readFile } from "fs/promises";
-import { join } from "path";
-import { lt } from "semver";
-import { relativeRequire } from "../utils";
-import { FrameworkType, SupportLevel } from "../interfaces";
+import { basename, join, relative } from "path";
+import { gte } from "semver";
 
-import { nuxtConfigFilesExist, getNuxtVersion } from "../nuxt/utils";
+import { SupportLevel, FrameworkType } from "../interfaces";
+import { getNodeModuleBin, relativeRequire } from "../utils";
+import { getNuxtVersion } from "../nuxt/utils";
+import { simpleProxy } from "../utils";
+import { spawn } from "cross-spawn";
 
 export const name = "Nuxt";
 export const support = SupportLevel.Experimental;
 export const type = FrameworkType.MetaFramework;
 
+async function getAndLoadNuxt(options: { rootDir: string; for: string }) {
+  const nuxt = await relativeRequire(options.rootDir, "nuxt/dist/nuxt.js");
+  const app = await nuxt.loadNuxt(options);
+  await app.ready();
+  return { app, nuxt };
+}
+
 /**
  *
- * @param dir current directory
+ * @param rootDir current directory
  * @return undefined if project is not Nuxt 2, {mayWantBackend: true } otherwise
  */
-export async function discover(dir: string): Promise<{ mayWantBackend: true } | undefined> {
-  if (!(await pathExists(join(dir, "package.json")))) return;
-
-  const nuxtVersion = getNuxtVersion(dir);
-  const anyConfigFileExists = await nuxtConfigFilesExist(dir);
-
-  if (!anyConfigFileExists && !nuxtVersion) return;
-  if (nuxtVersion && lt(nuxtVersion, "3.0.0-0")) return { mayWantBackend: true };
-}
-
-/**
- * Get the Nuxt app
- * @param cwd
- * @return Nuxt app object
- */
-async function getNuxtApp(cwd: string): Promise<any> {
-  return await relativeRequire(cwd, "nuxt/dist/nuxt.js");
+export async function discover(rootDir: string) {
+  if (!(await pathExists(join(rootDir, "package.json")))) return;
+  const nuxtVersion = getNuxtVersion(rootDir);
+  if (!nuxtVersion || (nuxtVersion && gte(nuxtVersion, "3.0.0-0"))) return;
+  const { app } = await getAndLoadNuxt({ rootDir, for: "build" });
+  return { mayWantBackend: true, publicDirectory: app.options.dir.static };
 }
 
 /**
  *
- * @param root nuxt project root
+ * @param rootDir nuxt project root
  * @return whether backend is needed or not
  */
-export async function build(root: string): Promise<{ wantsBackend: boolean }> {
-  const nuxt = await getNuxtApp(root);
-
-  const nuxtApp = await nuxt.loadNuxt({
-    for: "build",
-    rootDir: root,
-  });
-
+export async function build(rootDir: string) {
+  const { app, nuxt } = await getAndLoadNuxt({ rootDir, for: "build" });
   const {
     options: { ssr, target },
-  } = await nuxt.build(nuxtApp);
+  } = app;
 
-  if (ssr === true && target === "server") {
-    return { wantsBackend: true };
-  } else {
-    // Inform the user that static target is not supported with `ssr: false`,
-    // and continue with building for client side as per current Nuxt 2.
-    if (ssr === false && target === "static") {
-      console.log(
-        "Firebase: Nuxt 2: Static target is not supported with `ssr: false`. Please use `target: 'server'` in your `nuxt.config.js` file."
-      );
-      console.log("Firebase: Nuxt 2: Bundling only for client side.\n");
-    }
+  // Nuxt seems to use process.cwd() somewhere
+  const cwd = process.cwd();
+  process.chdir(rootDir);
 
-    await buildAndGenerate(nuxt, root);
-    return { wantsBackend: false };
-  }
-}
-/**
- * Build and generate the Nuxt app
- *
- * @param nuxt nuxt object
- * @param root root directory
- * @return void
- */
-async function buildAndGenerate(nuxt: any, root: string): Promise<void> {
-  const nuxtApp = await nuxt.loadNuxt({
-    for: "start",
-    rootDir: root,
-  });
-
-  const builder = await nuxt.getBuilder(nuxtApp);
-  const generator = new nuxt.Generator(nuxtApp, builder);
+  await nuxt.build(app);
+  const { app: generateApp } = await getAndLoadNuxt({ rootDir, for: "start" });
+  const builder = await nuxt.getBuilder(generateApp);
+  const generator = new nuxt.Generator(generateApp, builder);
   await generator.generate({ build: false, init: true });
+
+  process.chdir(cwd);
+
+  const wantsBackend = ssr && target === "server";
+  const rewrites = wantsBackend ? [] : [{ source: "**", destination: "/200.html" }];
+
+  return { wantsBackend, rewrites };
 }
 
 /**
  * Copy the static files to the destination directory whether it's a static build or server build.
- * @param root
+ * @param rootDir
  * @param dest
  */
-export async function ɵcodegenPublicDirectory(root: string, dest: string) {
-  const nuxt = await getNuxtApp(root);
-  const nuxtConfig = await nuxt.loadNuxtConfig();
-  const { ssr, target } = nuxtConfig;
-
-  // If `target` is set to `static`, copy the generated files
-  // to the destination directory (i.e. `/hosting`).
-  if (!(ssr === true && target === "server")) {
-    const source =
-      nuxtConfig?.generate?.dir !== undefined
-        ? join(root, nuxtConfig?.generate?.dir)
-        : join(root, "dist");
-
-    await copy(source, dest);
-  }
-
-  // Copy static assets if they exist.
-  const staticPath = join(root, "static");
-  if (await pathExists(staticPath)) {
-    await copy(staticPath, dest);
-  }
+export async function ɵcodegenPublicDirectory(rootDir: string, dest: string) {
+  const {
+    app: { options },
+  } = await getAndLoadNuxt({ rootDir, for: "build" });
+  await copy(options.generate.dir, dest);
 }
 
-export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: string) {
-  const packageJsonBuffer = await readFile(join(sourceDir, "package.json"));
+export async function ɵcodegenFunctionsDirectory(rootDir: string, destDir: string) {
+  const packageJsonBuffer = await readFile(join(rootDir, "package.json"));
   const packageJson = JSON.parse(packageJsonBuffer.toString());
 
   // Get the nuxt config into an object so we can check the `target` and `ssr` properties.
-  const nuxt = await getNuxtApp(sourceDir);
-  const nuxtConfig = await nuxt.loadNuxtConfig();
+  const {
+    app: { options },
+  } = await getAndLoadNuxt({ rootDir, for: "build" });
+  const { buildDir, _nuxtConfigFile: configFilePath } = options;
 
   // When starting the Nuxt 2 server, we need to copy the `.nuxt` to the destination directory (`functions`)
   // with the same folder name (.firebase/<project-name>/functions/.nuxt).
   // This is because `loadNuxt` (called from `firebase-frameworks`) will only look
   // for the `.nuxt` directory in the destination directory.
-  await copy(join(sourceDir, ".nuxt"), join(destDir, ".nuxt"));
+  await copy(buildDir, join(destDir, relative(rootDir, buildDir)));
 
-  // When using `SSR: false`, we need to copy the `nuxt.config.js` to the destination directory (`functions`)
-  // This is because `loadNuxt` (called from `firebase-frameworks`) will look
-  // for the `nuxt.config.js` file in the destination directory.
-  if (!nuxtConfig.ssr) {
-    const nuxtConfigFile = nuxtConfig._nuxtConfigFile.split("/").pop();
-    await copy(nuxtConfig._nuxtConfigFile, join(destDir, nuxtConfigFile));
-  }
+  // TODO pack this
+  await copy(configFilePath, join(destDir, basename(configFilePath)));
 
   return { packageJson: { ...packageJson }, frameworksEntry: "nuxt" };
+}
+
+export async function getDevModeHandle(cwd: string) {
+  const host = new Promise<string>((resolve) => {
+    const cli = getNodeModuleBin("nuxt", cwd);
+    const serve = spawn(cli, ["dev"], { cwd });
+
+    serve.stdout.on("data", (data: any) => {
+      process.stdout.write(data);
+      const match = data.toString().match(/(http:\/\/.+:\d+)/);
+
+      if (match) resolve(match[1]);
+    });
+
+    serve.stderr.on("data", (data: any) => {
+      process.stderr.write(data);
+    });
+  });
+
+  return simpleProxy(await host);
 }
