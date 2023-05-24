@@ -1,5 +1,6 @@
 import { IncomingMessage, ServerResponse } from "http";
 import { EmulatorInfo } from "../emulator/types";
+import { HostingHeaders, HostingRedirects, HostingRewrites } from "../firebaseConfig";
 
 // These serve as the order of operations for discovery
 // E.g, a framework utilizing Vite should be given priority
@@ -23,9 +24,9 @@ export interface Discovery {
 }
 
 export interface BuildResult {
-  rewrites?: any[];
-  redirects?: any[];
-  headers?: any[];
+  rewrites?: HostingRewrites[];
+  redirects?: HostingRedirects[];
+  headers?: HostingHeaders[];
   wantsBackend?: boolean;
   trailingSlash?: boolean;
   i18n?: boolean;
@@ -35,17 +36,19 @@ export interface Framework {
   discover: (dir: string) => Promise<Discovery | undefined>;
   type: FrameworkType;
   name: string;
-  build: (dir: string) => Promise<BuildResult | void>;
+  build: (dir: string, target: string) => Promise<BuildResult | void>;
   support: SupportLevel;
   docsUrl?: string;
   init?: (setup: any, config: any) => Promise<void>;
   getDevModeHandle?: (
     dir: string,
+    target: string,
     hostingEmulatorInfo?: EmulatorInfo
   ) => Promise<(req: IncomingMessage, res: ServerResponse, next: () => void) => void>;
   ɵcodegenPublicDirectory: (
     dir: string,
     dest: string,
+    target: string,
     context: {
       project: string;
       site: string;
@@ -53,15 +56,21 @@ export interface Framework {
   ) => Promise<void>;
   ɵcodegenFunctionsDirectory?: (
     dir: string,
-    dest: string
+    dest: string,
+    target: string
   ) => Promise<{
     bootstrapScript?: string;
     packageJson: any;
     frameworksEntry?: string;
     baseUrl?: string;
     dotEnv?: Record<string, string>;
+    rewriteSource?: string;
   }>;
+  getValidBuildTargets?: (purpose: BUILD_TARGET_PURPOSE, dir: string) => Promise<string[]>;
+  shouldUseDevModeHandle?: (target: string, dir: string) => Promise<boolean>;
 }
+
+export type BUILD_TARGET_PURPOSE = "deploy" | "test" | "serve";
 
 // TODO pull from @firebase/util when published
 export interface FirebaseDefaults {
