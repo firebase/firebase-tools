@@ -18,6 +18,7 @@ import {
   NPM_COMMAND_TIMEOUT_MILLIES,
   VALID_LOCALE_FORMATS,
 } from "./constants";
+import { BUILD_TARGET_PURPOSE } from "./interfaces";
 
 // Use "true &&"" to keep typescript from compiling this file and rewriting
 // the import statement into a require
@@ -275,5 +276,38 @@ export function validateLocales(locales: string[] | undefined = []) {
         ", "
       )}) for Firebase. See our docs for more information https://firebase.google.com/docs/hosting/i18n-rewrites#country-and-language-codes`
     );
+  }
+}
+
+export function getFrameworksBuildTarget(purpose: BUILD_TARGET_PURPOSE, validOptions: string[]) {
+  const frameworksBuild = process.env.FIREBASE_FRAMEWORKS_BUILD_TARGET;
+  if (frameworksBuild) {
+    if (!validOptions.includes(frameworksBuild)) {
+      throw new FirebaseError(
+        `Invalid value for FIREBASE_FRAMEWORKS_BUILD_TARGET environment variable: ${frameworksBuild}. Valid values are: ${validOptions.join(
+          ", "
+        )}`
+      );
+    }
+    return frameworksBuild;
+    // TODO handle other language / frameworks environment variables
+  } else if (process.env.NODE_ENV) {
+    switch (process.env.NODE_ENV) {
+      case "development":
+        return "development";
+      case "production":
+      case "test":
+        return "production";
+      default:
+        throw new FirebaseError(
+          `We cannot infer your build target from a non-standard NODE_ENV. Please set the FIREBASE_FRAMEWORKS_BUILD_TARGET environment variable. Valid values are: ${validOptions.join(
+            ", "
+          )}`
+        );
+    }
+  } else if (purpose !== "serve") {
+    return "production";
+  } else {
+    return "development";
   }
 }

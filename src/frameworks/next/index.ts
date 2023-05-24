@@ -312,6 +312,7 @@ export async function init(setup: any, config: any) {
 export async function ɵcodegenPublicDirectory(
   sourceDir: string,
   destDir: string,
+  _: string,
   context: { site: string; project: string }
 ) {
   const { distDir, i18n, basePath } = await getConfig(sourceDir);
@@ -550,7 +551,7 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
 /**
  * Create a dev server.
  */
-export async function getDevModeHandle(dir: string, hostingEmulatorInfo?: EmulatorInfo) {
+export async function getDevModeHandle(dir: string, _: string, hostingEmulatorInfo?: EmulatorInfo) {
   // throw error when using Next.js middleware with firebase serve
   if (!hostingEmulatorInfo) {
     if (await isUsingMiddleware(dir, true)) {

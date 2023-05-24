@@ -22,20 +22,27 @@ import { FirebaseError } from "../error";
 import { requireHostingSite } from "../requireHostingSite";
 import * as experiments from "../experiments";
 import { implicitInit } from "../hosting/implicitInit";
-import { findDependency, conjoinOptions, frameworksCallToAction } from "./utils";
+import {
+  findDependency,
+  conjoinOptions,
+  frameworksCallToAction,
+  getFrameworksBuildTarget,
+} from "./utils";
 import {
   ALLOWED_SSR_REGIONS,
   DEFAULT_REGION,
+  DEFAULT_SHOULD_USE_DEV_MODE_HANDLE,
   FIREBASE_ADMIN_VERSION,
   FIREBASE_FRAMEWORKS_VERSION,
   FIREBASE_FUNCTIONS_VERSION,
+  GET_DEFAULT_BUILD_TARGETS,
   I18N_ROOT,
   NODE_VERSION,
   SupportLevelWarnings,
   VALID_ENGINES,
   WebFrameworks,
 } from "./constants";
-import { BuildResult, FirebaseDefaults, Framework } from "./interfaces";
+import { BUILD_TARGET_PURPOSE, BuildResult, FirebaseDefaults, Framework } from "./interfaces";
 import { logWarning } from "../utils";
 import { ensureTargeted } from "../functions/ensureTargeted";
 import { isDeepStrictEqual } from "util";
@@ -74,8 +81,9 @@ const BUILD_MEMO = new Map<string[], Promise<BuildResult | void>>();
 // Memoize the build based on both the dir and the environment variables
 function memoizeBuild(
   dir: string,
-  build: (dir: string) => Promise<BuildResult | void>,
-  deps: any[]
+  build: (dir: string, target: string) => Promise<BuildResult | void>,
+  deps: any[],
+  target: string
 ) {
   const key = [dir, ...deps];
   for (const existingKey of BUILD_MEMO.keys()) {
@@ -83,7 +91,7 @@ function memoizeBuild(
       return BUILD_MEMO.get(existingKey);
     }
   }
-  const value = build(dir);
+  const value = build(dir, target);
   BUILD_MEMO.set(key, value);
   return value;
 }
@@ -244,20 +252,26 @@ export async function prepareFrameworks(
       name,
       support,
       docsUrl,
+      getValidBuildTargets = GET_DEFAULT_BUILD_TARGETS,
+      shouldUseDevModeHandle = DEFAULT_SHOULD_USE_DEV_MODE_HANDLE,
     } = WebFrameworks[framework];
     console.log(
       `\n${frameworksCallToAction(SupportLevelWarnings[support](name), docsUrl, "   ")}\n`
     );
-    // TODO allow for override
-    const isDevMode = context._name === "serve" || context._name === "emulators:start";
 
     const hostingEmulatorInfo = emulators.find((e) => e.name === Emulators.HOSTING);
+    const buildTargetPurpose: BUILD_TARGET_PURPOSE =
+      context._name === "deploy" ? "deploy" : context._name === "emulators:exec" ? "test" : "serve";
+    const validBuildTargets = await getValidBuildTargets(buildTargetPurpose, getProjectPath());
+    const frameworksBuildTarget = getFrameworksBuildTarget(buildTargetPurpose, validBuildTargets);
+    const useDevModeHandle = await shouldUseDevModeHandle(frameworksBuildTarget, getProjectPath());
+
+    let codegenFunctionsDirectory: Framework["ɵcodegenFunctionsDirectory"];
 
     const devModeHandle =
-      isDevMode &&
+      useDevModeHandle &&
       getDevModeHandle &&
-      (await getDevModeHandle(getProjectPath(), hostingEmulatorInfo));
-    let codegenFunctionsDirectory: Framework["ɵcodegenFunctionsDirectory"];
+      (await getDevModeHandle(getProjectPath(), frameworksBuildTarget, hostingEmulatorInfo));
     if (devModeHandle) {
       config.public = relative(projectRoot, publicDirectory);
       // Attach the handle to options, it will be used when spinning up superstatic
@@ -267,7 +281,12 @@ export async function prepareFrameworks(
         codegenFunctionsDirectory = codegenDevModeFunctionsDirectory;
       }
     } else {
-      const buildResult = await memoizeBuild(getProjectPath(), build, [firebaseDefaults]);
+      const buildResult = await memoizeBuild(
+        getProjectPath(),
+        build,
+        [firebaseDefaults, frameworksBuildTarget],
+        frameworksBuildTarget
+      );
       const {
         wantsBackend = false,
         rewrites = [],
@@ -286,7 +305,7 @@ export async function prepareFrameworks(
       if (await pathExists(hostingDist)) await rm(hostingDist, { recursive: true });
       await mkdirp(hostingDist);
 
-      await ɵcodegenPublicDirectory(getProjectPath(), hostingDist, {
+      await ɵcodegenPublicDirectory(getProjectPath(), hostingDist, frameworksBuildTarget, {
         project,
         site,
       });
@@ -363,7 +382,7 @@ export async function prepareFrameworks(
         baseUrl = "",
         dotEnv = {},
         rewriteSource = posix.join(baseUrl, "**"),
-      } = await codegenFunctionsDirectory(getProjectPath(), functionsDist);
+      } = await codegenFunctionsDirectory(getProjectPath(), functionsDist, frameworksBuildTarget);
 
       config.rewrites = [
         {
@@ -519,7 +538,7 @@ ${
       const sameSite = "Strict";
       const path = `/`;
       config.headers.push({
-        source: "**/*.js",
+        source: "**/*.[jt]s",
         headers: [
           {
             key: "Set-Cookie",
