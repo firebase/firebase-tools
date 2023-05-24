@@ -31,7 +31,7 @@ export async function doSetup(setup: any, config: Config, options: Options): Pro
       name: "serviceName",
       type: "input",
       default: "acme-inc-web",
-      message: "Create a name for your service.",
+      message: "Create a name for your service [1-64 characters]",
     },
     setup.frameworkstack
   );
@@ -41,7 +41,9 @@ export async function doSetup(setup: any, config: Config, options: Options): Pro
       name: "regionName",
       type: "list",
       default: DEFAULT_REGION,
-      message: "Please select a region (Your region determines where your backend is located)",
+      message:
+        "Please select a region " +
+        `(${clc.yellow("info")}: Your region determines where your backend is located):\n`,
       choices: ALLOWED_REGIONS,
     },
     setup.frameworkstack
