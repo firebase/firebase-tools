@@ -1,2 +1,2 @@
 - Gracefully close rules runtime on storage emulator stop (#4902)
-- Always assume build target of production when deploying a web framework, unless overridden
+- Always assume build target of production when deploying a web framework, unless overridden (#5892)
