@@ -81,12 +81,15 @@ export class DockerDriver implements Driver {
         ],
         this.spec.baseImage
       );
-      this.buildStage(
-        "exporter",
-        ".",
-        ["-t", "https://us-central1-docker.pkg.dev/danielylee-test-6/composer-demo"],
-        true
-      );
+      const imageName = "us-central1-docker.pkg.dev/danielylee-test-6/composer-demo/node";
+      this.buildStage("exporter", ".", ["-t", imageName], true);
+      const ret = spawn.sync("docker", ["push", imageName], {
+        env: { ...process.env, ...this.spec.environmentVariables, BUILD_KIT: "1" },
+        stdio: [/* stdin= */ "pipe", /* stdout= */ "inherit", /* stderr= */ "inherit"],
+      });
+      if (ret.error) {
+        throw new Error(`Failed to push image ${imageName}`, ret.error);
+      }
     }
   }
 
