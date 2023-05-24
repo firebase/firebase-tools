@@ -264,7 +264,9 @@ export async function prepareFrameworks(
       context._name === "deploy" ? "deploy" : context._name === "emulators:exec" ? "test" : "serve";
     const validBuildTargets = await getValidBuildTargets(buildTargetPurpose, getProjectPath());
     const frameworksBuildTarget = getFrameworksBuildTarget(buildTargetPurpose, validBuildTargets);
-    const useDevModeHandle = await shouldUseDevModeHandle(frameworksBuildTarget, getProjectPath());
+    const useDevModeHandle =
+      context._name !== "deploy" &&
+      (await shouldUseDevModeHandle(frameworksBuildTarget, getProjectPath()));
 
     let codegenFunctionsDirectory: Framework["ɵcodegenFunctionsDirectory"];
 
