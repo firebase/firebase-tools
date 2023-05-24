@@ -75,8 +75,8 @@ export class DockerDriver implements Driver {
       this.addDockerStage(
         "exporter",
         [
-          "WORKDIR /app",
           `COPY --from=${DOCKER_STAGE_BUILD} /app .`,
+          "WORKDIR /app",
           `CMD [${startCmd.map((c) => `"${c}"`).join(", ")}]`,
         ],
         this.spec.baseImage
