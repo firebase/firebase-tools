@@ -71,8 +71,8 @@ const choices = [
     checked: false,
   },
   {
-    value: "turtlestack",
-    name: "Turtlestack: Get started with Turtle project",
+    value: "frameworkstack",
+    name: "Frameworkstack: Get started with Frameworks project",
     checked: false,
   },
 ];

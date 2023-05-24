@@ -14,7 +14,7 @@ import {
 } from "./constants";
 
 /**
- * Setup new Turtlestack project.
+ * Setup new Frameworkstack project.
  */
 export async function doSetup(setup: any, config: Config, options: Options): Promise<void> {
   const projectId = setup?.rcfile?.projects?.default;
@@ -22,7 +22,7 @@ export async function doSetup(setup: any, config: Config, options: Options): Pro
     await requirePermissions({ ...options, project: projectId });
     await Promise.all([ensure(projectId, "firebaseextensions.googleapis.com", "unused", true)]);
   }
-  setup.turtlestack = {};
+  setup.frameworkstack = {};
 
   utils.logBullet("First we need a few details to create your service.");
 
@@ -33,7 +33,7 @@ export async function doSetup(setup: any, config: Config, options: Options): Pro
       default: "acme-inc-web",
       message: "Create a name for your service.",
     },
-    setup.turtlestack
+    setup.frameworkstack
   );
 
   await promptOnce(
@@ -44,10 +44,10 @@ export async function doSetup(setup: any, config: Config, options: Options): Pro
       message: "Please select a region (Your region determines where your backend is located)",
       choices: ALLOWED_REGIONS,
     },
-    setup.turtlestack
+    setup.frameworkstack
   );
 
-  utils.logSuccess(`Region set to ${setup.turtlestack.regionName}.`);
+  utils.logSuccess(`Region set to ${setup.frameworkstack.regionName}.`);
 
   logger.info(clc.bold(`\n${clc.white("===")} Deploy Setup`));
 
@@ -59,6 +59,6 @@ export async function doSetup(setup: any, config: Config, options: Options): Pro
       message: "How do you want to deploy",
       choices: ALLOWED_DEPLOY_METHODS,
     },
-    setup.turtlestack
+    setup.frameworkstack
   );
 }

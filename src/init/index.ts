@@ -29,7 +29,7 @@ const featureFns = new Map<string, (setup: any, config: any, options?: any) => P
   ["project", features.project], // always runs, sets up .firebaserc
   ["remoteconfig", features.remoteconfig],
   ["hosting:github", features.hostingGithub],
-  ["turtlestack", features.turtlestack],
+  ["frameworkstack", features.frameworkstack],
 ]);
 
 export async function init(setup: Setup, config: any, options: any): Promise<any> {
