@@ -67,16 +67,16 @@ type RequestHandler = (req: IncomingMessage, res: ServerResponse) => Promise<voi
 
 export function simpleProxy(hostOrRequestHandler: string | RequestHandler) {
   const agent = new Agent({ keepAlive: true });
+  // If the path is a the auth token sync URL pass through to Cloud Functions
+  const firebaseDefaultsJSON = process.env.__FIREBASE_DEFAULTS__;
+  const authTokenSyncURL: string | undefined =
+    firebaseDefaultsJSON && JSON.parse(firebaseDefaultsJSON)._authTokenSyncURL;
   return async (originalReq: IncomingMessage, originalRes: ServerResponse, next: () => void) => {
     const { method, headers, url: path } = originalReq;
     if (!method || !path) {
       originalRes.end();
       return;
     }
-    // If the path is a the auth token sync URL pass through to Cloud Functions
-    const firebaseDefaultsJSON = process.env.__FIREBASE_DEFAULTS__;
-    const authTokenSyncURL: string | undefined =
-      firebaseDefaultsJSON && JSON.parse(firebaseDefaultsJSON)._authTokenSyncURL;
     if (path === authTokenSyncURL) {
       return next();
     }
