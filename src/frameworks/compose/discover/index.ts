@@ -16,13 +16,13 @@ export function discover(): AppSpec {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     afterInstall: (b) => {
       console.log("HOOK: AFTER INSTALL");
-      return { version: "v1alpha", notes: "afterInstall" };
+      return { ...b, version: "v1alpha", notes: "afterInstall" };
     },
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     afterBuild(b) {
       console.log("HOOK: AFTER BUILD");
-      return { version: "v1alpha", notes: "afterBuild" };
+      return { ...b, version: "v1alpha", notes: "afterBuild" };
     },
   };
 }
