@@ -290,6 +290,8 @@ export function getFrameworksBuildTarget(purpose: BUILD_TARGET_PURPOSE, validOpt
       );
     }
     return frameworksBuild;
+  } else if (purpose === "deploy") {
+    return "production";
     // TODO handle other language / frameworks environment variables
   } else if (process.env.NODE_ENV) {
     switch (process.env.NODE_ENV) {
@@ -305,7 +307,7 @@ export function getFrameworksBuildTarget(purpose: BUILD_TARGET_PURPOSE, validOpt
           )}`
         );
     }
-  } else if (purpose !== "serve") {
+  } else if (purpose === "test") {
     return "production";
   } else {
     return "development";
