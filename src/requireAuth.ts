@@ -9,7 +9,8 @@ import * as utils from "./utils";
 import * as scopes from "./scopes";
 import { Tokens, User } from "./types/auth";
 import { setRefreshToken, setActiveAccount } from "./auth";
-import { setupMonospace, isMonospaceEnv } from "./monospace";
+import { selectProjectInMonospace, isMonospaceEnv } from "./monospace";
+import type { Options } from "./options";
 
 const AUTH_ERROR_MESSAGE = `Command requires authentication, please run ${clc.bold(
   "firebase login"
@@ -35,14 +36,18 @@ function getAuthClient(config: GoogleAuthOptions): GoogleAuth {
  * @param options CLI options.
  * @param authScopes scopes to be obtained.
  */
-async function autoAuth(options: any, authScopes: string[]): Promise<void> {
+async function autoAuth(options: Options, authScopes: string[]): Promise<void> {
   const client = getAuthClient({ scopes: authScopes, projectId: options.project });
 
   const token = await client.getAccessToken();
   token !== null ? apiv2.setAccessToken(token) : false;
 
-  if ((await isMonospaceEnv()) && !options.isVSCE) {
-    await setupMonospace(options.projectRoot, options.project, options.isVSCE);
+  if (!options.isVSCE && (await isMonospaceEnv())) {
+    await selectProjectInMonospace({
+      projectRoot: options.config.projectDir,
+      project: options.project,
+      isVSCE: options.isVSCE,
+    });
   }
 }
 
