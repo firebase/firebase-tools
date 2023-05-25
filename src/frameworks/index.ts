@@ -259,13 +259,17 @@ export async function prepareFrameworks(
       `\n${frameworksCallToAction(SupportLevelWarnings[support](name), docsUrl, "   ")}\n`
     );
 
+    const command = options._name;
+      if (typeof command !== "string") throw new Error("options._name is not a string");
+
     const hostingEmulatorInfo = emulators.find((e) => e.name === Emulators.HOSTING);
-    const buildTargetPurpose: BUILD_TARGET_PURPOSE =
-      context._name === "deploy" ? "deploy" : context._name === "emulators:exec" ? "test" : "serve";
+    const buildTargetPurpose: BUILD_TARGET_PURPOSE = ["deploy", "hosting:channel:deploy"].includes(command) ?
+      "deploy" :
+      command === "emulators:exec" ? "test" : "serve";
     const validBuildTargets = await getValidBuildTargets(buildTargetPurpose, getProjectPath());
     const frameworksBuildTarget = getFrameworksBuildTarget(buildTargetPurpose, validBuildTargets);
     const useDevModeHandle =
-      context._name !== "deploy" &&
+      buildTargetPurpose !== "deploy" &&
       (await shouldUseDevModeHandle(frameworksBuildTarget, getProjectPath()));
 
     let codegenFunctionsDirectory: Framework["ɵcodegenFunctionsDirectory"];
@@ -348,9 +352,7 @@ export async function prepareFrameworks(
       // rather disable the experiment than roll back).
       if (
         !experiments.isEnabled("pintags") ||
-        context._name === "serve" ||
-        context._name === "emulators:start" ||
-        context._name === "emulators:exec"
+        ["serve", "emulators:start", "emulators:exec"].includes(command)
       ) {
         if (!targetNames.includes("functions")) {
           targetNames.unshift("functions");
