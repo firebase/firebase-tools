@@ -103,9 +103,13 @@ export class DockerDriver implements Driver {
     });
   }
 
-  private buildStage(stage: string, contextDir: string): void {
+  private buildStage(stage: string, contextDir: string, extraArgs?: string[]): void {
     console.log(`Building stage: ${stage}`);
-    const ret = this.execDocker(["buildx", "build"], ["--target", stage], contextDir);
+    const ret = this.execDocker(
+      ["buildx", "build"],
+      ["--target", stage, ...(extraArgs || [])],
+      contextDir
+    );
     if (ret.error) {
       throw new Error(`Failed to execute stage ${stage}`, ret.error);
     }
@@ -182,15 +186,8 @@ export class DockerDriver implements Driver {
         this.spec.baseImage
       );
       const imageName = "us-central1-docker.pkg.dev/danielylee-test-6/composer-demo/node";
-      let ret = this.execDocker(
-        ["buildx", "build"],
-        ["--target", exportStage, "-t", imageName],
-        "."
-      );
-      if (ret.error) {
-        throw new Error(`Failed to build image ${imageName}`, ret.error);
-      }
-      ret = this.execDocker(["push"], [imageName], ".");
+      this.buildStage(exportStage, ".", ["--t", imageName]);
+      const ret = this.execDocker(["push"], [imageName], ".");
       if (ret.error) {
         throw new Error(`Failed to push image ${imageName}`, ret.error);
       }
