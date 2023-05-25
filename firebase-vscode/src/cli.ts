@@ -22,6 +22,8 @@ import * as vscode from "vscode";
 import { ServiceAccount } from "../common/types";
 import { listChannels } from "../../src/hosting/api";
 import { ChannelWithId } from "./messaging/types";
+import { setEnabled } from "../../src/experiments";
+import { logger } from "../../src/logger";
 
 /**
  * Wrap the CLI's requireAuth() which is normally run before every command
@@ -49,7 +51,7 @@ async function requireAuthWrapper(showError: boolean = true) {
     });
     await requireAuth(commandOptions);
   } catch (e) {
-    console.error('requireAuth error', e.original || e);
+    logger.error('requireAuth error', e.original || e);
     if (showError) {
       vscode.window.showErrorMessage("Not logged in", {
         modal: true,
@@ -89,9 +91,7 @@ export async function getChannels(firebaseJSON: FirebaseConfig): Promise<Channel
   if (!(firebaseJSON.hosting as HostingSingle).site) {
     (firebaseJSON.hosting as HostingSingle).site =
       await getDefaultHostingSite(options);
-      console.log((firebaseJSON.hosting as HostingSingle).site);
   }
-  console.log('listChannels args', options.project, firebaseJSON.hosting);
   const channels = await listChannels(options.project, (firebaseJSON.hosting as HostingSingle).site);
 
   return channels.map(channel => ({...channel, id: channel.name.split("/").pop()}));
@@ -117,12 +117,25 @@ export async function listProjects() {
 
 export async function initHosting(options: { spa: boolean; public: string }) {
   await requireAuthWrapper();
-  const commandOptions = await getCommandOptions(undefined, {
-    ...currentOptions,
+  let webFrameworksOptions = {};
+  if (process.env.MONOSPACE_ENV) {
+    // TODO: Also allow VS Code users to enable this manually with a UI
+    setEnabled('webframeworks', true);
+    webFrameworksOptions = {
+      // Should use auto-discovered framework
+      useDiscoveredFramework: true,
+      // Should set up a new framework - do not do this on Monospace
+      useWebFrameworks: false
+    };
+  }
+  const commandOptions = await getCommandOptions(undefined, currentOptions);
+  setInquirerOptions({
+    ...commandOptions,
     ...options,
+    ...webFrameworksOptions,
+    // False for now, we can let the user decide if needed
+    github: false
   });
-  console.log('initHosting commandOptions', commandOptions);
-  setInquirerOptions(commandOptions);
   await initAction("hosting", commandOptions);
 }
 
@@ -147,13 +160,12 @@ export async function deployToHosting(
     }
     const commandOptions = await getCommandOptions(firebaseJSON, options);
     if (deployTarget === 'live') {
-      console.log('deploy commandOptions', commandOptions);
       await deploy(["hosting"], commandOptions);
     } else {
       await hostingChannelDeployAction(deployTarget, commandOptions);
     }
   } catch (e) {
-    console.error(e);
+    logger.error(e);
     return { success: false, hostingUrl: "", consoleUrl: "" };
   }
   return { success: true, hostingUrl: "", consoleUrl: "" };

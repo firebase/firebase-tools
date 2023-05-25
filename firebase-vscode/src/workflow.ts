@@ -20,6 +20,8 @@ import { FirebaseConfig } from "../../src/firebaseConfig";
 import { currentOptions, updateOptions } from "./options";
 import { ServiceAccountUser } from "./types";
 import { setupMonospace } from "../../src/monospace";
+import { setupLoggers } from "../../src/utils";
+import { logger } from "../../src/logger";
 
 let firebaseRC: FirebaseRC | null = null;
 let firebaseJSON: FirebaseConfig | null = null;
@@ -106,7 +108,7 @@ function getJsonFile<T>(filename: string): T | null {
         currentOptions.cwd = folder;
         return result;
       } catch (e) {
-        console.log(`Error parsing JSON in ${jsonFilePath}`);
+        logger.error(`Error parsing JSON in ${jsonFilePath}`);
         return null;
       }
     }
@@ -138,6 +140,9 @@ export function setupWorkflow(
     broker.send("notifyChannels", channels);
   }
 
+  // Sets up CLI logger to log to console
+  process.env.DEBUG = 'true';
+  setupLoggers();
   // Read config files and store in memory.
   readFirebaseConfigs();
   // Check current users state
@@ -229,10 +234,10 @@ export function setupWorkflow(
        */
       let projects = [];
       if (projectsUserMapping.has(email)) {
-        console.log(`using cached projects list for ${email}`);
+        logger.info(`using cached projects list for ${email}`);
         projects = projectsUserMapping.get(email)!;
       } else {
-        console.log(`fetching projects list for ${email}`);
+        logger.info(`fetching projects list for ${email}`);
         vscode.window.showQuickPick(["Loading...."]);
         projects = (await listProjects()) as FirebaseProjectMetadata[];
         projectsUserMapping.set(email, projects);
