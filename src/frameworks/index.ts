@@ -260,12 +260,16 @@ export async function prepareFrameworks(
     );
 
     const command = options._name;
-      if (typeof command !== "string") throw new Error("options._name is not a string");
+    if (typeof command !== "string") throw new Error("options._name is not a string");
 
     const hostingEmulatorInfo = emulators.find((e) => e.name === Emulators.HOSTING);
-    const buildTargetPurpose: BUILD_TARGET_PURPOSE = ["deploy", "hosting:channel:deploy"].includes(command) ?
-      "deploy" :
-      command === "emulators:exec" ? "test" : "serve";
+    const buildTargetPurpose: BUILD_TARGET_PURPOSE = ["deploy", "hosting:channel:deploy"].includes(
+      command
+    )
+      ? "deploy"
+      : command === "emulators:exec"
+      ? "test"
+      : "serve";
     const validBuildTargets = await getValidBuildTargets(buildTargetPurpose, getProjectPath());
     const frameworksBuildTarget = getFrameworksBuildTarget(buildTargetPurpose, validBuildTargets);
     const useDevModeHandle =
