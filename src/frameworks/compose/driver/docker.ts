@@ -68,6 +68,10 @@ export class DockerfileBuilder {
     this.dockerfile = `CMD [${cmds.map((c) => `"${c}"`).join(", ")}]`;
     return this;
   }
+
+  toString(): string {
+    return this.dockerfile;
+  }
 }
 
 export class DockerDriver implements Driver {
