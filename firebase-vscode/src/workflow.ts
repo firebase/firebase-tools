@@ -19,7 +19,7 @@ import { FirebaseRC } from "../../src/firebaserc";
 import { FirebaseConfig } from "../../src/firebaseConfig";
 import { currentOptions, updateOptions } from "./options";
 import { ServiceAccountUser } from "./types";
-import { setupMonospace } from "../../src/monospace";
+import { selectProjectInMonospace } from "../../src/monospace";
 import { setupLoggers } from "../../src/utils";
 import { logger } from "../../src/logger";
 
@@ -217,7 +217,11 @@ export function setupWorkflow(
       const monospaceExtension = vscode.extensions.getExtension('google.monospace');
       process.env.MONOSPACE_DAEMON_PORT = monospaceExtension.exports.getMonospaceDaemonPort();
       // call appropriate CLI function?
-      projectId = await setupMonospace(currentOptions.cwd, /* project */ undefined, /* isVSCodeExtension */ true);
+      projectId = await selectProjectInMonospace({
+        projectRoot: currentOptions.cwd,
+        project: undefined,
+        isVSCE: true
+      });
     } else if (email === 'service_account') {
       /**
        * Non-Monospace service account case: get the service account's only

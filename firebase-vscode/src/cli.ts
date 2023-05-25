@@ -9,10 +9,9 @@ import { hostingChannelDeployAction } from "../../src/commands/hosting-channel-d
 import { listFirebaseProjects } from "../../src/management/projects";
 import { requireAuth } from "../../src/requireAuth";
 import { deploy } from "../../src/deploy";
-import { FirebaseConfig } from "../../src/firebaseConfig";
-import { FirebaseRC } from "../../src/firebaserc";
+import { FirebaseConfig, HostingSingle } from "../../src/firebaseConfig";
+import { FirebaseRC } from "../common/firebaserc";
 import { getDefaultHostingSite } from "../../src/getDefaultHostingSite";
-import { HostingSingle } from "./firebaseConfig";
 import { initAction } from "../../src/commands/init";
 import { Account, User } from "../../src/types/auth";
 import { Options } from "../../src/options";
@@ -21,7 +20,7 @@ import { setInquirerOptions } from "./stubs/inquirer-stub";
 import * as vscode from "vscode";
 import { ServiceAccount } from "../common/types";
 import { listChannels } from "../../src/hosting/api";
-import { ChannelWithId } from "./messaging/types";
+import { ChannelWithId } from "../common/messaging/types";
 import { setEnabled } from "../../src/experiments";
 import { logger } from "../../src/logger";
 
