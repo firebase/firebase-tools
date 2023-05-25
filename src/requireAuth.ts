@@ -76,7 +76,6 @@ export async function requireAuth(options: any): Promise<void> {
     try {
       return await autoAuth(options, options.authScopes);
     } catch (e: any) {
-      console.log('autoAuth error', e);
       throw new FirebaseError(
         `Failed to authenticate, have you run ${clc.bold("firebase login")}?`,
         { original: e }
