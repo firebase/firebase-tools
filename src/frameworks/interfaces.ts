@@ -1,6 +1,8 @@
 import { IncomingMessage, ServerResponse } from "http";
 import { EmulatorInfo } from "../emulator/types";
 import { HostingHeaders, HostingRedirects, HostingRewrites } from "../firebaseConfig";
+import { HostingOptions } from "../hosting/options";
+import { Options } from "../options";
 
 // These serve as the order of operations for discovery
 // E.g, a framework utilizing Vite should be given priority
@@ -32,6 +34,19 @@ export interface BuildResult {
   i18n?: boolean;
 }
 
+export type RequestHandle = (req: IncomingMessage, res: ServerResponse, next: () => void) => void;
+
+export type FrameworksOptions = HostingOptions &
+  Options & {
+    frameworksDevModeHandle?: RequestHandle;
+    nonInteractive?: boolean;
+  };
+
+export type FrameworkContext = {
+  projectId?: string;
+  hostingChannel?: string;
+};
+
 export interface Framework {
   discover: (dir: string) => Promise<Discovery | undefined>;
   type: FrameworkType;
@@ -44,7 +59,7 @@ export interface Framework {
     dir: string,
     target: string,
     hostingEmulatorInfo?: EmulatorInfo
-  ) => Promise<(req: IncomingMessage, res: ServerResponse, next: () => void) => void>;
+  ) => Promise<RequestHandle>;
   ɵcodegenPublicDirectory: (
     dir: string,
     dest: string,
@@ -70,7 +85,7 @@ export interface Framework {
   shouldUseDevModeHandle?: (target: string, dir: string) => Promise<boolean>;
 }
 
-export type BUILD_TARGET_PURPOSE = "deploy" | "test" | "serve";
+export type BUILD_TARGET_PURPOSE = "deploy" | "test" | "emulate";
 
 // TODO pull from @firebase/util when published
 export interface FirebaseDefaults {

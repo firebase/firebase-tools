@@ -146,7 +146,7 @@ export async function getValidBuildTargets(purpose: BUILD_TARGET_PURPOSE, dir: s
   const validTargetNames = new Set(["development", "production"]);
   try {
     const { workspaceProject, browserTarget, serverTarget, serveTarget } = await getContext(dir);
-    const { target } = ((purpose === "serve" && serveTarget) || serverTarget || browserTarget)!;
+    const { target } = ((purpose === "emulate" && serveTarget) || serverTarget || browserTarget)!;
     const workspaceTarget = workspaceProject.targets.get(target)!;
     Object.keys(workspaceTarget.configurations || {}).forEach((it) => validTargetNames.add(it));
   } catch (e) {
