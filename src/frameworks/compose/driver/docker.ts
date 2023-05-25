@@ -25,29 +25,41 @@ export class DockerDriver implements Driver {
     this.dockerfile += "\n";
   }
 
-  private buildStage(
-    stage: string,
-    contextDir: string,
-    extraArgs: string[] = [],
-    outputOnly = true
-  ): void {
-    if (!outputOnly) {
-      this.lastDockerStage = stage;
-    }
-    console.log(`Building stage: ${stage}`);
+  private execDocker(cmd: string[], args: string[], contextDir: string) {
+    console.log(`executing docker: ${cmd.join(" ")} ${args.join(" ")} ${contextDir}`);
     console.log(this.dockerfile);
-    const ret = spawn.sync(
-      "docker",
-      ["buildx", "build", "--target", stage, "-f", "-", contextDir, ...extraArgs],
-      {
-        env: { ...process.env, ...this.spec.environmentVariables, BUILD_KIT: "1" },
-        input: this.dockerfile,
-        stdio: [/* stdin= */ "pipe", /* stdout= */ "inherit", /* stderr= */ "inherit"],
-      }
-    );
+    return spawn.sync("docker", [...cmd, ...args, "-f", "-", contextDir], {
+      env: { ...process.env, ...this.spec.environmentVariables, BUILD_KIT: "1" },
+      input: this.dockerfile,
+      stdio: [/* stdin= */ "pipe", /* stdout= */ "inherit", /* stderr= */ "inherit"],
+    });
+  }
+
+  private buildStage(stage: string, contextDir: string): void {
+    console.log(`Building stage: ${stage}`);
+    const ret = this.execDocker(["buildx", "build"], ["--target", stage], contextDir);
     if (ret.error) {
       throw new Error(`Failed to execute stage ${stage}`, ret.error);
     }
+    this.lastDockerStage = stage;
+  }
+
+  private exportBundle(contextDir: string): AppBundle {
+    const stage = `${this.lastDockerStage}-export`;
+    this.addDockerStage(
+      stage,
+      [`COPY --from=${this.lastDockerStage} ${BUNDLE_PATH} /bundle.json`],
+      "scratch"
+    );
+    const ret = this.execDocker(
+      ["buildx", "build"],
+      ["--target", stage, "--output", path.dirname(BUNDLE_PATH)],
+      contextDir
+    );
+    if (ret.error) {
+      throw new Error(`Failed to export bundle from ${this.lastDockerStage}`, ret.error);
+    }
+    return JSON.parse(fs.readFileSync(BUNDLE_PATH, "utf8")) as AppBundle;
   }
 
   install(): void {
@@ -72,8 +84,9 @@ export class DockerDriver implements Driver {
   export(bundle: AppBundle): void {
     const startCmd = bundle.server?.start.cmd;
     if (startCmd) {
+      const exportStage = "exporter";
       this.addDockerStage(
-        "exporter",
+        exportStage,
         [
           `COPY --from=${DOCKER_STAGE_BUILD} /app .`,
           "WORKDIR /app",
@@ -82,11 +95,15 @@ export class DockerDriver implements Driver {
         this.spec.baseImage
       );
       const imageName = "us-central1-docker.pkg.dev/danielylee-test-6/composer-demo/node";
-      this.buildStage("exporter", ".", ["-t", imageName], true);
-      const ret = spawn.sync("docker", ["push", imageName], {
-        env: { ...process.env, ...this.spec.environmentVariables, BUILD_KIT: "1" },
-        stdio: [/* stdin= */ "pipe", /* stdout= */ "inherit", /* stderr= */ "inherit"],
-      });
+      let ret = this.execDocker(
+        ["buildx", "build"],
+        ["--target", exportStage, "-t", imageName],
+        "."
+      );
+      if (ret.error) {
+        throw new Error(`Failed to build image ${imageName}`, ret.error);
+      }
+      ret = this.execDocker(["push"], [imageName], ".");
       if (ret.error) {
         throw new Error(`Failed to push image ${imageName}`, ret.error);
       }
@@ -112,13 +129,6 @@ export class DockerDriver implements Driver {
     this.buildStage(hookStage, ".");
 
     // Pull out generated bundle from the Docker sandbox.
-    const hookExportStage = `${hookStage}-export`;
-    this.addDockerStage(
-      hookExportStage,
-      [`COPY --from=${hookStage} ${BUNDLE_PATH} /bundle.json`],
-      "scratch"
-    );
-    this.buildStage(`${hookStage}-export`, ".", ["--output", path.dirname(BUNDLE_PATH)], true);
-    return JSON.parse(fs.readFileSync(BUNDLE_PATH, "utf8")) as AppBundle;
+    return this.exportBundle(".");
   }
 }
