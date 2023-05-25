@@ -151,7 +151,7 @@ export async function prepareFrameworks(
     config.redirects ||= [];
     config.headers ||= [];
     config.cleanUrls ??= true;
-    const dist = resolveProjectPath(options, join(".firebase", site));
+    const dist = join(projectRoot, ".firebase", site));
     const hostingDist = join(dist, "hosting");
     const functionsDist = join(dist, "functions");
     if (publicDir) {
@@ -165,8 +165,7 @@ export async function prepareFrameworks(
         `Hosting config for site ${site} places server-side content in region ${ssrRegion} which is not known. Valid regions are ${validRegions}`
       );
     }
-    const getProjectPath = (...args: string[]) =>
-      resolveProjectPath(options, join(source, ...args));
+    const getProjectPath = (...args: string[]) => join(projectRoot, source, ...args);
     const functionId = `ssr${site.toLowerCase().replace(/-/g, "")}`;
     const usesFirebaseAdminSdk = !!findDependency("firebase-admin", { cwd: getProjectPath() });
     const usesFirebaseJsSdk = !!findDependency("@firebase/app", { cwd: getProjectPath() });
@@ -266,7 +265,6 @@ export async function prepareFrameworks(
     const useDevModeHandle =
       reason !== "deploy" &&
       (await shouldUseDevModeHandle(frameworksBuildTarget, getProjectPath()));
-    console.log({ reason, frameworksBuildTarget, useDevModeHandle }, context, options);
 
     let codegenFunctionsDirectory: Framework["ɵcodegenFunctionsDirectory"];
 
