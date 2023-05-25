@@ -25,7 +25,7 @@ interface CommandOptions extends Options {}
 /**
  * User-facing CLI options
  */
-export let currentOptions: CliOptions = {
+export let currentOptions: CliOptions & { isVSCE: boolean } = {
   cwd: "",
   configPath: "",
   only: "",
@@ -47,6 +47,7 @@ export let currentOptions: CliOptions = {
   debug: false,
 
   rc: null,
+  isVSCE: true
 };
 
 export function updateOptions(

@@ -19,6 +19,7 @@ import { FirebaseRC } from "../../src/firebaserc";
 import { FirebaseConfig } from "../../src/firebaseConfig";
 import { currentOptions, updateOptions } from "./options";
 import { ServiceAccountUser } from "./types";
+import { setupMonospace } from "../../src/monospace";
 
 let firebaseRC: FirebaseRC | null = null;
 let firebaseJSON: FirebaseConfig | null = null;
@@ -211,7 +212,7 @@ export function setupWorkflow(
       const monospaceExtension = vscode.extensions.getExtension('google.monospace');
       process.env.MONOSPACE_DAEMON_PORT = monospaceExtension.exports.getMonospaceDaemonPort();
       // call appropriate CLI function?
-      projectId = 'monospace-placeholder-projectid';
+      projectId = await setupMonospace(currentOptions.cwd, /* project */ undefined, /* isVSCodeExtension */ true);
     } else if (email === 'service_account') {
       /**
        * Non-Monospace service account case: get the service account's only
@@ -242,9 +243,11 @@ export function setupWorkflow(
         vscode.window.showErrorMessage(e.message);
       }
     }
-    await updateFirebaseRC("default", projectId);
-    broker.send("notifyProjectChanged", projectId);
-    fetchChannels();
+    if (projectId) {
+      await updateFirebaseRC("default", projectId);
+      broker.send("notifyProjectChanged", projectId);
+      fetchChannels();
+    }
   });
 
   broker.on(

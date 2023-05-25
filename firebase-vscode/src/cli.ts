@@ -43,7 +43,11 @@ async function requireAuthWrapper(showError: boolean = true) {
   // If account is still null, `requireAuth()` will use google-auth-library
   // to look for the service account hopefully.
   try {
-    await requireAuth(account || {});
+    const commandOptions = await getCommandOptions(undefined, {
+      ...currentOptions,
+      ...account,
+    });
+    await requireAuth(commandOptions);
   } catch (e) {
     console.error('requireAuth error', e.original || e);
     if (showError) {
@@ -87,6 +91,7 @@ export async function getChannels(firebaseJSON: FirebaseConfig): Promise<Channel
       await getDefaultHostingSite(options);
       console.log((firebaseJSON.hosting as HostingSingle).site);
   }
+  console.log('listChannels args', options.project, firebaseJSON.hosting);
   const channels = await listChannels(options.project, (firebaseJSON.hosting as HostingSingle).site);
 
   return channels.map(channel => ({...channel, id: channel.name.split("/").pop()}));
@@ -116,6 +121,7 @@ export async function initHosting(options: { spa: boolean; public: string }) {
     ...currentOptions,
     ...options,
   });
+  console.log('initHosting commandOptions', commandOptions);
   setInquirerOptions(commandOptions);
   await initAction("hosting", commandOptions);
 }
@@ -141,6 +147,7 @@ export async function deployToHosting(
     }
     const commandOptions = await getCommandOptions(firebaseJSON, options);
     if (deployTarget === 'live') {
+      console.log('deploy commandOptions', commandOptions);
       await deploy(["hosting"], commandOptions);
     } else {
       await hostingChannelDeployAction(deployTarget, commandOptions);
