@@ -107,7 +107,7 @@ function memoizeBuild(
  *
  */
 export async function prepareFrameworks(
-  reason: BUILD_TARGET_PURPOSE,
+  purpose: BUILD_TARGET_PURPOSE,
   targetNames: string[],
   context: FrameworkContext | undefined,
   options: FrameworksOptions,
@@ -260,10 +260,10 @@ export async function prepareFrameworks(
     );
 
     const hostingEmulatorInfo = emulators.find((e) => e.name === Emulators.HOSTING);
-    const validBuildTargets = await getValidBuildTargets(reason, getProjectPath());
-    const frameworksBuildTarget = getFrameworksBuildTarget(reason, validBuildTargets);
+    const validBuildTargets = await getValidBuildTargets(purpose, getProjectPath());
+    const frameworksBuildTarget = getFrameworksBuildTarget(purpose, validBuildTargets);
     const useDevModeHandle =
-      reason !== "deploy" &&
+      purpose !== "deploy" &&
       (await shouldUseDevModeHandle(frameworksBuildTarget, getProjectPath()));
 
     let codegenFunctionsDirectory: Framework["ɵcodegenFunctionsDirectory"];
@@ -344,7 +344,7 @@ export async function prepareFrameworks(
       // This is just a fallback for previous behavior if the user manually
       // disables the pintags experiment (e.g. there is a break and they would
       // rather disable the experiment than roll back).
-      if (!experiments.isEnabled("pintags") || reason !== "deploy") {
+      if (!experiments.isEnabled("pintags") || purpose !== "deploy") {
         if (!targetNames.includes("functions")) {
           targetNames.unshift("functions");
         }
