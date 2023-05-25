@@ -11,8 +11,8 @@ describe("DockerfileBuilder", () => {
 
     it("should add a FROM instruction to the Dockerfile without a name", () => {
       const builder = new DockerfileBuilder();
-      builder.from("node:14");
-      expect(builder.toString()).to.equal("FROM node:14\n");
+      builder.from("node:18");
+      expect(builder.toString()).to.equal("FROM node:18\n");
     });
   });
 
@@ -21,6 +21,16 @@ describe("DockerfileBuilder", () => {
       const builder = new DockerfileBuilder();
       builder.from("node:18", "base").fromLastStage("test");
       expect(builder.toString()).to.equal("FROM node:18 AS base\nFROM base AS test\n");
+    });
+  });
+
+  describe("tempFrom", () => {
+    it("should add a FROM instruction without updating last stage", () => {
+      const builder = new DockerfileBuilder();
+      builder.from("node:18", "base")
+        .tempFrom("node:20", "temp")
+        .fromLastStage("test");
+      expect(builder.toString()).to.equal("FROM node:18 AS base\nFROM node:20 AS temp\nFROM base as test\n");
     });
   });
 

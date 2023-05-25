@@ -5,7 +5,7 @@ import { AppSpec } from "../interfaces";
  */
 export function discover(): AppSpec {
   return {
-    baseImage: "gcr.io/gae-runtimes/buildpacks/nodejs18/run",
+    baseImage: "node:18",
     environmentVariables: {
       NODE_ENV: "PRODUCTION",
     },
