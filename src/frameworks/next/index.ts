@@ -312,6 +312,7 @@ export async function init(setup: any, config: any) {
 export async function ɵcodegenPublicDirectory(
   sourceDir: string,
   destDir: string,
+  _: string,
   context: { site: string; project: string }
 ) {
   const { distDir, i18n, basePath } = await getConfig(sourceDir);
@@ -515,7 +516,7 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
         cwd: sourceDir,
         timeout: BUNDLE_NEXT_CONFIG_TIMEOUT,
       });
-      if (bundle.status) {
+      if (bundle.status !== 0) {
         throw new FirebaseError(bundle.stderr.toString());
       }
     } catch (e: any) {
@@ -550,7 +551,7 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
 /**
  * Create a dev server.
  */
-export async function getDevModeHandle(dir: string, hostingEmulatorInfo?: EmulatorInfo) {
+export async function getDevModeHandle(dir: string, _: string, hostingEmulatorInfo?: EmulatorInfo) {
   // throw error when using Next.js middleware with firebase serve
   if (!hostingEmulatorInfo) {
     if (await isUsingMiddleware(dir, true)) {
