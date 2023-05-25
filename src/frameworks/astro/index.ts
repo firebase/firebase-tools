@@ -25,7 +25,7 @@ export async function discover(dir: string): Promise<Discovery | undefined> {
   if (!getAstroVersion(dir)) return;
   const { output, publicDir: publicDirectory } = await getConfig(dir);
   return {
-    mayWantBackend: output === "server",
+    mayWantBackend: output !== "static",
     publicDirectory,
   };
 }
@@ -36,20 +36,21 @@ export async function build(cwd: string): Promise<BuildResult> {
   const cli = getNodeModuleBin("astro", cwd);
   await warnIfCustomBuildScript(cwd, name, DEFAULT_BUILD_SCRIPT);
   const { output, adapter } = await getConfig(cwd);
-  if (output === "server" && adapter?.name !== "@astrojs/node") {
+  const wantsBackend = output !== "static";
+  if (wantsBackend && adapter?.name !== "@astrojs/node") {
     throw new FirebaseError(
       "Deploying an Astro application with SSR on Firebase Hosting requires the @astrojs/node adapter."
     );
   }
   const build = spawnSync(cli, ["build"], { cwd, stdio: "inherit" });
   if (build.status !== 0) throw new FirebaseError("Unable to build your Astro app");
-  return { wantsBackend: output === "server" };
+  return { wantsBackend };
 }
 
 export async function ɵcodegenPublicDirectory(root: string, dest: string) {
   const { outDir, output } = await getConfig(root);
   // output: "server" in astro.config builds "client" and "server" folders, otherwise assets are in top-level outDir
-  const assetPath = join(root, outDir, output === "server" ? "client" : "");
+  const assetPath = join(root, outDir, output !== "static" ? "client" : "");
   await copy(assetPath, dest);
 }
 
