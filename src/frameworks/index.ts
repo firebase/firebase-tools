@@ -151,7 +151,7 @@ export async function prepareFrameworks(
     config.redirects ||= [];
     config.headers ||= [];
     config.cleanUrls ??= true;
-    const dist = join(projectRoot, ".firebase", site));
+    const dist = join(projectRoot, ".firebase", site);
     const hostingDist = join(dist, "hosting");
     const functionsDist = join(dist, "functions");
     if (publicDir) {
