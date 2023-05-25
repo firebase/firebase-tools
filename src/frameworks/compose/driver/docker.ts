@@ -10,13 +10,77 @@ const ADAPTER_SCRIPTS_PATH = "./.firebase/adapters" as const;
 const DOCKER_STAGE_INSTALL = "installer" as const;
 const DOCKER_STAGE_BUILD = "builder" as const;
 
+export class DockerfileBuilder {
+  private dockerfile = "";
+  private lastStage = "";
+
+  from(image: string, name?: string): DockerfileBuilder {
+    this.dockerfile += `FROM ${image}`;
+    if (name) {
+      this.dockerfile += ` AS ${name}`;
+      this.lastStage = name;
+    }
+    this.dockerfile += "\n";
+
+    return this;
+  }
+
+  fromLastStage(image: string): DockerfileBuilder {
+    return this.from(image, this.lastStage);
+  }
+
+  workdir(dir: string): DockerfileBuilder {
+    this.dockerfile += `WORKDIR ${dir}\n`;
+    return this;
+  }
+
+  copy(src: string, dest: string, from?: string): DockerfileBuilder {
+    if (from) {
+      this.dockerfile += `COPY --from=${from} ${src} ${dest}\n`;
+    } else {
+      this.dockerfile += `COPY ${src} ${dest}\n`;
+    }
+    return this;
+  }
+
+  run(cmd: string, mount?: string): DockerfileBuilder {
+    if (mount) {
+      this.dockerfile += `RUN --mount=${mount} ${cmd}\n`;
+    } else {
+      this.dockerfile += `RUN ${cmd}\n`;
+    }
+    return this;
+  }
+
+  env(key: string, value: string): DockerfileBuilder {
+    this.dockerfile += `ENV ${key}="${value}"\n`;
+    return this;
+  }
+
+  envs(envs: Record<string, string>): DockerfileBuilder {
+    for (const [key, value] of Object.entries(envs)) {
+      this.env(key, value);
+    }
+    return this;
+  }
+
+  cmd(cmds: string[]): DockerfileBuilder {
+    this.dockerfile = `CMD [${cmds.map((c) => `"${c}"`).join(", ")}]`;
+    return this;
+  }
+}
+
 export class DockerDriver implements Driver {
   private dockerfile = "";
+  private dockerfileBuilder;
   private lastDockerStage = "";
 
   constructor(readonly spec: AppSpec) {
     this.dockerfile = `FROM ${spec.baseImage} AS base\n`;
     this.lastDockerStage = "base";
+
+    this.dockerfileBuilder = new DockerfileBuilder();
+    this.dockerfileBuilder.from(spec.baseImage, "base");
   }
 
   private addDockerStage(stage: string, cmds: string[], fromImg?: string): void {
@@ -46,6 +110,7 @@ export class DockerDriver implements Driver {
 
   private exportBundle(contextDir: string): AppBundle {
     const stage = `${this.lastDockerStage}-export`;
+    this.dockerfileBuilder.from("scratch", stage).copy(BUNDLE_PATH, "/bundle.json");
     this.addDockerStage(
       stage,
       [`COPY --from=${this.lastDockerStage} ${BUNDLE_PATH} /bundle.json`],
@@ -63,6 +128,13 @@ export class DockerDriver implements Driver {
   }
 
   install(): void {
+    this.dockerfileBuilder
+      .fromLastStage(DOCKER_STAGE_INSTALL)
+      .workdir("/app")
+      .envs(this.spec.environmentVariables || {})
+      .copy("package.json", ".")
+      .run(this.spec.installCommand);
+
     this.addDockerStage(DOCKER_STAGE_INSTALL, [
       "WORKDIR /app",
       ...Object.entries(this.spec.environmentVariables || {}).map(([k, v]) => `ENV ${k}="${v}"`),
@@ -73,6 +145,12 @@ export class DockerDriver implements Driver {
   }
 
   build(): void {
+    this.dockerfileBuilder
+      .fromLastStage(DOCKER_STAGE_BUILD)
+      .workdir("/app")
+      .copy(".", ".")
+      .run(this.spec.buildCommand);
+
     this.addDockerStage(DOCKER_STAGE_BUILD, [
       "WORKDIR /app",
       "COPY . .",
@@ -85,6 +163,11 @@ export class DockerDriver implements Driver {
     const startCmd = bundle.server?.start.cmd;
     if (startCmd) {
       const exportStage = "exporter";
+      this.dockerfileBuilder
+        .from(this.spec.baseImage, exportStage)
+        .copy("/app", ".", DOCKER_STAGE_BUILD)
+        .cmd(startCmd);
+
       this.addDockerStage(
         exportStage,
         [
@@ -122,6 +205,12 @@ export class DockerDriver implements Driver {
 
     // Execute the hook inside the docker sandbox
     const hookStage = path.basename(hookScript, ".js");
+    this.dockerfileBuilder
+      .fromLastStage(hookStage)
+      .run(
+        `NODE_PATH=./node_modules node /framework/adapters/${hookScript}`,
+        `source=${ADAPTER_SCRIPTS_PATH},target=/framework/adapters`
+      );
     this.addDockerStage(hookStage, [
       `RUN --mount=source=${ADAPTER_SCRIPTS_PATH},target=/framework/adapters ` +
         `NODE_PATH=./node_modules node /framework/adapters/${hookScript}`,
