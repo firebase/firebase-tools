@@ -464,7 +464,6 @@ export async function startAll(
       }
     }
     // This may add additional sources for Functions emulator and must be done before it.
-    // TODO test if emulatorss:exec
     await prepareFrameworks(
       runningTestScript ? "test" : "emulate",
       targets,
