@@ -116,17 +116,17 @@ export class DockerDriver implements Driver {
     this.lastDockerStage = stage;
   }
 
-  private exportBundle(contextDir: string): AppBundle {
-    const stage = `${this.lastDockerStage}-export`;
-    this.dockerfileBuilder.from("scratch", stage).copy(BUNDLE_PATH, "/bundle.json");
+  private exportBundle(stage: string, contextDir: string): AppBundle {
+    const exportStage = `${stage}-export`;
+    this.dockerfileBuilder.from("scratch", exportStage).copy(BUNDLE_PATH, "/bundle.json", stage);
     this.addDockerStage(
-      stage,
-      [`COPY --from=${this.lastDockerStage} ${BUNDLE_PATH} /bundle.json`],
+      exportStage,
+      [`COPY --from=${stage} /app/${BUNDLE_PATH} /bundle.json`],
       "scratch"
     );
     const ret = this.execDocker(
       ["buildx", "build"],
-      ["--target", stage, "--output", path.dirname(BUNDLE_PATH)],
+      ["--target", exportStage, "--output", path.dirname(BUNDLE_PATH)],
       contextDir
     );
     if (ret.error) {
@@ -213,12 +213,10 @@ export class DockerDriver implements Driver {
         `source=${ADAPTER_SCRIPTS_PATH},target=/framework/adapters`
       );
     this.addDockerStage(hookStage, [
+      "WORKDIR /app",
       `RUN --mount=source=${ADAPTER_SCRIPTS_PATH},target=/framework/adapters ` +
         `NODE_PATH=./node_modules node /framework/adapters/${hookScript}`,
     ]);
-    this.buildStage(hookStage, ".");
-
-    // Pull out generated bundle from the Docker sandbox.
-    return this.exportBundle(".");
+    return this.exportBundle(hookStage, ".");
   }
 }
