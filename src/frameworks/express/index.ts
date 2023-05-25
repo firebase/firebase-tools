@@ -23,9 +23,9 @@ async function getConfig(root: string) {
 
 export async function discover(dir: string) {
   if (!(await pathExists(join(dir, "package.json")))) return;
-  const { serveDir } = await getConfig(dir);
-  if (!serveDir) return;
-  return { mayWantBackend: true };
+  const { serveDir: publicDirectory } = await getConfig(dir);
+  if (!publicDirectory) return;
+  return { mayWantBackend: true, publicDirectory };
 }
 
 export async function build(cwd: string): Promise<BuildResult> {
@@ -95,7 +95,7 @@ async function getBootstrapScript(
 
 export async function ɵcodegenFunctionsDirectory(root: string, dest: string) {
   const bootstrapScript = await getBootstrapScript(root);
-  if (!bootstrapScript) return;
+  if (!bootstrapScript) throw new Error("Cloud not find bootstrapScript");
   await mkdir(dest, { recursive: true });
 
   const { packageJson } = await getConfig(root);
