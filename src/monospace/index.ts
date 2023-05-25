@@ -10,7 +10,8 @@ import type { GetInitFirebaseResponse, InitFirebaseResponse } from "./interfaces
  */
 export async function setupMonospace(
   projectRoot: string,
-  project?: string
+  project?: string,
+  isVSCodeExtension = false
 ): Promise<void | string> {
   const initFirebaseResponse = await initFirebase(project);
 
@@ -23,7 +24,7 @@ export async function setupMonospace(
   // Poll for response from the user
   const authorizedProject = await pollAuthorizedProject(rid);
 
-  if (isVSCodeExtension()) {
+  if (isVSCodeExtension) {
     return authorizedProject;
   } else {
     createFirebaseRc(projectRoot, authorizedProject);
@@ -111,13 +112,6 @@ async function getInitFirebaseResponse(rid: string): Promise<GetInitFirebaseResp
  */
 export async function isMonospaceEnv(): Promise<boolean> {
   return Promise.resolve(Boolean(getMonospaceDaemonPort()));
-}
-
-/**
- * Whether it's running from the VSCode extension
- */
-export function isVSCodeExtension(): boolean {
-  return Boolean((globalThis as any).IS_VSCODE_EXTENSION);
 }
 
 /**
