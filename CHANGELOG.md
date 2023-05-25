@@ -1,0 +1,1 @@
+- Fix a bug preventing web framework's dev-mode from working out-of-box with Firebase Authentication. (#5894)
