@@ -98,7 +98,7 @@ export async function getDevModeHandle(dir: string, configuration: string) {
   const { targetStringFromTarget } = relativeRequire(dir, "@angular-devkit/architect");
   const { serveTarget } = await getContext(dir, configuration);
   if (!serveTarget) throw new Error("Could not find the serveTarget");
-  const host = new Promise<string>((resolve) => {
+  const host = new Promise<string>((resolve, reject) => {
     // Can't use scheduleTarget since that—like prerender—is failing on an ESM bug
     // will just grep for the hostname
     const cli = getNodeModuleBin("ng", dir);
@@ -113,6 +113,7 @@ export async function getDevModeHandle(dir: string, configuration: string) {
     serve.stderr.on("data", (data: any) => {
       process.stderr.write(data);
     });
+    serve.on("exit", reject);
   });
   return simpleProxy(await host);
 }
@@ -146,7 +147,7 @@ export async function getValidBuildTargets(purpose: BUILD_TARGET_PURPOSE, dir: s
   const validTargetNames = new Set(["development", "production"]);
   try {
     const { workspaceProject, browserTarget, serverTarget, serveTarget } = await getContext(dir);
-    const { target } = ((purpose === "serve" && serveTarget) || serverTarget || browserTarget)!;
+    const { target } = ((purpose === "emulate" && serveTarget) || serverTarget || browserTarget)!;
     const workspaceTarget = workspaceProject.targets.get(target)!;
     Object.keys(workspaceTarget.configurations || {}).forEach((it) => validTargetNames.add(it));
   } catch (e) {

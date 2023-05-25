@@ -434,7 +434,7 @@ export async function emulatorExec(script: string, options: any): Promise<void> 
   let deprecationNotices;
   try {
     const showUI = !!options.ui;
-    ({ deprecationNotices } = await controller.startAll(options, showUI));
+    ({ deprecationNotices } = await controller.startAll(options, showUI, true));
     exitCode = await runScript(script, extraEnv);
     await controller.onExit(options);
   } finally {
