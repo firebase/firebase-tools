@@ -34,11 +34,11 @@ export interface BuildResult {
   i18n?: boolean;
 }
 
-export type RequestHandle = (req: IncomingMessage, res: ServerResponse, next: () => void) => void;
+export type RequestHandler = (req: IncomingMessage, res: ServerResponse, next: () => void) => void;
 
 export type FrameworksOptions = HostingOptions &
   Options & {
-    frameworksDevModeHandle?: RequestHandle;
+    frameworksDevModeHandle?: RequestHandler;
     nonInteractive?: boolean;
   };
 
@@ -59,7 +59,7 @@ export interface Framework {
     dir: string,
     target: string,
     hostingEmulatorInfo?: EmulatorInfo
-  ) => Promise<RequestHandle>;
+  ) => Promise<RequestHandler>;
   ɵcodegenPublicDirectory: (
     dir: string,
     dest: string,
