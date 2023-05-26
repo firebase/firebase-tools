@@ -281,8 +281,9 @@ export class Command {
       setupLoggers();
     }
 
-    if (getInheritedOption(options, "config")) {
-      options.configPath = getInheritedOption(options, "config");
+    if (getInheritedOption(options, "configPath")) {
+      // FIXME idk what this is but "config" resolves to the "Config" object which fails because it's expecting string
+      options.configPath = getInheritedOption(options, "configPath");
     }
 
     try {

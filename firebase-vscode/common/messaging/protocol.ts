@@ -31,6 +31,14 @@ export interface WebviewToExtension {
     singleAppSupport: boolean
   ): void;
 
+  /** Runs `firebase emulators:start` command. */
+  launchEmulators(
+    projectId: string
+  ): void;
+
+  /** Stops the emulators gracefully allowing for data export if required. */
+  stopEmulators(): void;
+
   getChannels(): void;
 
   /** Runs `firebase deploy` for hosting. */
@@ -65,6 +73,8 @@ export interface ExtensionToWebview {
   notifyUserChanged(email: string): void;
 
   notifyHostingFolderReady(projectId: string, folderPath: string): void;
+  notifyEmulatorsStarted(): void;
+  notifyEmulatorsStopped(): void;
 
   notifyHostingDeploy(
     success: boolean,

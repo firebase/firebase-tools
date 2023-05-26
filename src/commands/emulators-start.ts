@@ -17,38 +17,42 @@ function stylizeLink(url: string): string {
 }
 
 export const command = new Command("emulators:start")
-  .before(commandUtils.setExportOnExitOptions)
+  .before(commandUtils.setExportOnExitOptions) // FIXME some of this logic will surely need to be captured
   .before(commandUtils.beforeEmulatorCommand)
   .description("start the local Firebase emulators")
-  .option(commandUtils.FLAG_ONLY, commandUtils.DESC_ONLY)
+  .option(commandUtils.FLAG_ONLY, commandUtils.DESC_ONLY, "firestore")
   .option(commandUtils.FLAG_INSPECT_FUNCTIONS, commandUtils.DESC_INSPECT_FUNCTIONS)
   .option(commandUtils.FLAG_IMPORT, commandUtils.DESC_IMPORT)
   .option(commandUtils.FLAG_EXPORT_ON_EXIT, commandUtils.DESC_EXPORT_ON_EXIT)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  .action((options: any) => {
-    const killSignalPromise = commandUtils.shutdownWhenKilled(options);
-    return Promise.race([
-      killSignalPromise,
-      (async () => {
-        let deprecationNotices;
-        try {
-          ({ deprecationNotices } = await controller.startAll(options));
-        } catch (e: any) {
-          await controller.cleanShutdown();
-          throw e;
-        }
+  .action(emulatorsStartAction);
 
-        printEmulatorOverview(options);
+export function emulatorsStartAction(options: any) { // FIXME what options do we really expect here?
+console.log("emulatorsStartAction, options: ")
+console.log(options)
+  const killSignalPromise = commandUtils.shutdownWhenKilled(options);
+  return Promise.race([
+    killSignalPromise,
+    (async () => {
+      let deprecationNotices;
+      try {
+        ({ deprecationNotices } = await controller.startAll(options));
+      } catch (e: any) {
+        await controller.cleanShutdown();
+        throw e;
+      }
 
-        for (const notice of deprecationNotices) {
-          logLabeledWarning("emulators", notice, "warn");
-        }
+      printEmulatorOverview(options);
 
-        // Hang until explicitly killed
-        return killSignalPromise;
-      })(),
-    ]);
-  });
+      for (const notice of deprecationNotices) {
+        logLabeledWarning("emulators", notice, "warn");
+      }
+
+      // Hang until explicitly killed
+      return killSignalPromise;
+    })(),
+  ]);
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function printEmulatorOverview(options: any): void {

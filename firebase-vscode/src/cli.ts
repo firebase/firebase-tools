@@ -14,6 +14,8 @@ import { FirebaseRC } from "../../src/firebaserc";
 import { getDefaultHostingSite } from "../../src/getDefaultHostingSite";
 import { HostingSingle } from "./firebaseConfig";
 import { initAction } from "../../src/commands/init";
+import { emulatorsStartAction } from "../../src/commands/emulators-start";
+import { EmulatorRegistry } from "../../src/emulator/registry";
 import { Account, User } from "../../src/types/auth";
 import { Options } from "../../src/options";
 import { currentOptions, getCommandOptions } from "./options";
@@ -120,6 +122,23 @@ export async function initHosting(options: { spa: boolean; public: string }) {
   await initAction("hosting", commandOptions);
 }
 
+// FIXME is start action correct or should we use controller.startAll
+export async function emulatorsStart() {
+  const commandOptions = await getCommandOptions(undefined, {
+    // FIXME rename currentOptions to something more descriptive - make it strongly typed and figure out how to avoid conflics in naming or duplicate properties with different names and mismatched values
+    ...currentOptions,
+  });
+  emulatorsStartAction(commandOptions);
+}
+
+export async function stopEmulators() {
+  const commandOptions = await getCommandOptions(undefined, {
+    // FIXME rename currentOptions to something more descriptive - make it strongly typed and figure out how to avoid conflics in naming or duplicate properties with different names and mismatched values
+    ...currentOptions,
+  });
+  EmulatorRegistry.stopAll();
+}
+
 export async function deployToHosting(
   firebaseJSON: FirebaseConfig,
   firebaseRC: FirebaseRC,
@@ -150,4 +169,8 @@ export async function deployToHosting(
     return { success: false, hostingUrl: "", consoleUrl: "" };
   }
   return { success: true, hostingUrl: "", consoleUrl: "" };
+}
+
+export async function startEmulators() {
+
 }

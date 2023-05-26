@@ -31,6 +31,9 @@ export function SidebarApp() {
     ServiceAccountUser | User
   > | null>(null);
   const [isHostingOnboarded, setHostingOnboarded] = useState<boolean>(false);
+  // TODO emulators running check on extension start
+  // TODO emulators shutdown button
+  const [areEmulatorsRunning, setAreEmulatorsRunning] = useState<boolean>(false);
 
   useEffect(() => {
     console.log("loading SidebarApp component");
@@ -94,6 +97,18 @@ export function SidebarApp() {
       setHostingOnboarded(true);
     });
 
+    broker.on("notifyEmulatorsStarted", () => {
+      console.log(`notifyEmulatorsStarted received in sidebar`);
+      // FIXME check that closing vscode kills emulator with sigterm and not sigkill ?
+      setAreEmulatorsRunning(true);
+    });
+
+    broker.on("notifyEmulatorsStopped", () => {
+      console.log(`notifyEmulatorsStopped received in sidebar`);
+      // FIXME check that closing vscode kills emulator with sigterm and not sigkill ?
+      setAreEmulatorsRunning(false);
+    });
+
     broker.on("notifyHostingDeploy", (success: boolean) => {
       console.log(`notifyHostingDeploy: ${success}`);
       setHostingState("deployed");
@@ -107,7 +122,20 @@ export function SidebarApp() {
       "selectAndInitHostingFolder",
       projectId,
       userEmail!, // Safe to assume user email is already there
-      true
+      /*singleAppSupport*/ true
+    );
+  };
+
+  const launchEmulators = () => {
+    broker.send(
+      "launchEmulators",
+      "demo-something" // FIXME project ID
+    );
+  };
+
+  const stopEmulators = () => {
+    broker.send(
+      "stopEmulators"
     );
   };
 
@@ -147,6 +175,11 @@ export function SidebarApp() {
           }}
         />
       )}
+      <RunEmulatorPanel
+        areEmulatorsRunning={areEmulatorsRunning}
+        launchEmulators={launchEmulators}
+        stopEmulators={stopEmulators}
+      />
     </>
   );
 }
@@ -161,6 +194,29 @@ function InitFirebasePanel({ onHostingInit }: { onHostingInit: Function }) {
       </VSCodeButton>
       <Spacer size="medium" />
       <Body>Free web hosting with a world-class CDN for peak performance</Body>
+      <Spacer size="large" />
+    </PanelSection>
+  );
+}
+
+// FIXME need some args here perhaps to populate which emulators, demo vs not etc
+function RunEmulatorPanel(
+  { areEmulatorsRunning, launchEmulators, stopEmulators }:
+    { areEmulatorsRunning: boolean, launchEmulators: Function, stopEmulators: Function }) { // why is this param structure needed even with 1 param?
+  return (
+    <PanelSection isLast>
+      <Body>Launch the emulator suite</Body>
+      todo insert dropdown
+      <Spacer size="medium" />
+      {areEmulatorsRunning ?
+        <VSCodeButton onClick={() => stopEmulators()}>
+          Emulators are running, click to stop
+        </VSCodeButton>
+        :
+        <VSCodeButton onClick={() => launchEmulators()}>
+          Launch emulators
+        </VSCodeButton>
+      }
       <Spacer size="large" />
     </PanelSection>
   );

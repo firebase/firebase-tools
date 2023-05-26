@@ -5,7 +5,7 @@ This extension is in the development and exploration stage.
 ## Running
 
 1. Open from the firebase-vscode not firebase-tools directory
-2. npm i
+2. npm i from the firebase/firebase-tools/firebase-vscode directory
 3. f5 to run opens new window
       f5 -> npm run watch defined in tasks.json
       My terminal didn't have npm available but yours might
@@ -13,11 +13,11 @@ This extension is in the development and exploration stage.
 Workaround if f5 doesnt work:
 2.1 Execute `npm run watch` from within the vscode directory
        Aside: Running `npm run watch` or `npm run build` the extension is compiled into dist (extension.js)
-       Changing code within extension is hot-reloaded
-       Modifying extensions.js will not hot-reload
+       Changing code within extension.ts is hot-reloaded
+       Modifying extensions.js will not be hot-reload
        source file src/extension.ts
 2.11 Wait for completion
-2.2 Hit play from the left nav
+2.2 Hit play from the left nav. This will open a second VSCode window with the extension loaded.
 
 New code changes are automatically rebuilt if you have `watch` running, however the new VSCode Plugin-enabled window will not reflect changes until reloaded.
 Manual reload from new window: "Developer: Reload Window" Default hotkey: cmd + R

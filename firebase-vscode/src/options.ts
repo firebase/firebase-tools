@@ -6,14 +6,14 @@ import { BaseOptions, Options } from "../../src/options";
 import { Command } from "../../src/command";
 import { ExtensionContext } from "vscode";
 import { setInquirerOptions } from "./stubs/inquirer-stub";
+import * as commandUtils from "../../src/emulator/commandUtils";
 
 /**
  * User-facing CLI options
  * Passed to command.prepare()
  */
 
-interface CliOptions extends Omit<BaseOptions, "config"> {
-  config: string;
+interface CliOptions extends BaseOptions {
 }
 
 /**
@@ -28,9 +28,9 @@ interface CommandOptions extends Options {}
 export let currentOptions: CliOptions = {
   cwd: "",
   configPath: "",
-  only: "",
+  only: "firestore", // FIXME
   except: "",
-  config: "",
+  config: commandUtils.DEFAULT_CONFIG,
   filteredTargets: [],
   force: true,
 

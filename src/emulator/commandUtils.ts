@@ -59,7 +59,7 @@ export const FLAG_TEST_PARAMS = "--test-params <params.env file>";
 export const DESC_TEST_PARAMS =
   "A .env file containing test param values for your emulated extension.";
 
-const DEFAULT_CONFIG = new Config(
+export const DEFAULT_CONFIG = new Config(
   {
     eventarc: {},
     database: {},

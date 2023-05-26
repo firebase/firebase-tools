@@ -7,12 +7,14 @@ import { writeFirebaseRCFile } from "./utils";
 import { ExtensionBrokerImpl } from "./extension-broker";
 import {
   deployToHosting,
+  emulatorsStart,
   getAccounts,
+  getChannels,
+  initHosting,
   listProjects,
   login,
   logoutUser,
-  initHosting,
-  getChannels,
+  stopEmulators,
 } from "./cli";
 import { User } from "../../src/types/auth";
 import { FirebaseRC } from "../../src/firebaserc";
@@ -269,6 +271,29 @@ export function setupWorkflow(
         readAndSendFirebaseConfigs(broker);
         broker.send("notifyHostingFolderReady", projectId, currentOptions.cwd);
       }
+    }
+  );
+
+  broker.on(
+    "launchEmulators",
+    async (projectId: string) => {
+      // FIXME figure out what we might want from the above selectAndInitHostingFolder
+      await emulatorsStart();
+      // Update the UI
+      console.log("emulators started, sending broker notification to webview");
+      broker.send("notifyEmulatorsStarted");
+
+    }
+  );
+
+  broker.on(
+    "stopEmulators",
+    async () => {
+      // FIXME figure out what we might want from the above selectAndInitHostingFolder
+      await stopEmulators();
+      // Update the UI
+      console.log("emulators started, sending broker notification to webview");
+      broker.send("notifyEmulatorsStopped");
     }
   );
 
