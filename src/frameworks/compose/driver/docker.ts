@@ -165,7 +165,7 @@ export class DockerDriver implements Driver {
         .copy("/app", ".", DOCKER_STAGE_BUILD)
         .workdir("/app")
         .cmd(startCmd);
-      const imageName = "us-central1-docker.pkg.dev/danielylee-test-6/composer-demo/node";
+      const imageName = `us-docker.pkg.dev/${process.env.PROJECT_ID}/test/demo-nodappe`;
       this.buildStage(exportStage, ".", imageName);
       const ret = this.execDockerPush([imageName]);
       if (ret.error || ret.status !== 0) {

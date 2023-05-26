@@ -5,7 +5,7 @@ import { AppSpec } from "../interfaces";
  */
 export function discover(): AppSpec {
   return {
-    baseImage: "node:18",
+    baseImage: "us-docker.pkg.dev/firestack-build/test/run:latest",
     environmentVariables: {
       NODE_ENV: "PRODUCTION",
     },
