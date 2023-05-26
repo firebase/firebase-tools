@@ -1,5 +1,5 @@
 import { Command } from "../command";
-import { linkGitHubRepository } from "../init/features/turtles/repo";
+import { linkGitHubRepository } from "../init/features/composer/repo";
 import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
 import requireInteractive from "../requireInteractive";

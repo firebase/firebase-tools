@@ -26,7 +26,7 @@ function extractRepoSlugFromURI(remoteUri: string): string | undefined {
 }
 
 function generateConnectionId(stackId: string): string {
-  return `turtles-${stackId}-conn`;
+  return `composer-${stackId}-conn`;
 }
 
 /**
@@ -37,7 +37,7 @@ function generateConnectionId(stackId: string): string {
  * the 1:1 Connection-to-Resource relationship no longer holds.
  */
 function generateRepositoryId(): string | undefined {
-  return `turtles-repo`;
+  return `composer-repo`;
 }
 
 /**

@@ -5,10 +5,10 @@ import * as gcb from "../../../gcp/cloudbuild";
 import * as prompt from "../../../prompt";
 import * as poller from "../../../operation-poller";
 import { FirebaseError } from "../../../error";
-import * as repo from "../../../init/features/turtles/repo";
+import * as repo from "../../../init/features/composer/repo";
 import * as utils from "../../../utils";
 
-describe("turtles", () => {
+describe("composer", () => {
   const sandbox: sinon.SinonSandbox = sinon.createSandbox();
 
   let promptOnceStub: sinon.SinonStub;
@@ -47,7 +47,7 @@ describe("turtles", () => {
     const projectId = "projectId";
     const location = "us-central1";
     const stackId = "stack0";
-    const connectionId = `turtles-${stackId}-conn`;
+    const connectionId = `composer-${stackId}-conn`;
 
     const op = {
       name: `projects/${projectId}/locations/${location}/connections/${connectionId}`,
@@ -119,7 +119,7 @@ describe("turtles", () => {
         projectId,
         location,
         connectionId,
-        "turtles-repo",
+        "composer-repo",
         repos.repositories[0].remoteUri
       );
     });
