@@ -40,7 +40,7 @@ describeAuthEmulator("accounts:signUp", ({ authApi }) => {
       });
   });
 
-  it("should throw error if blank email and password is provided", async () => {
+  it("should throw error if empty email and password is provided", async () => {
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:signUp")
       .send({ email: "", password: "" })
