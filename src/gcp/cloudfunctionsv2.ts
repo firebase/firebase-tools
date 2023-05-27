@@ -1,5 +1,3 @@
-import * as clc from "colorette";
-
 import { Client, ClientVerbOptions } from "../apiv2";
 import { FirebaseError } from "../error";
 import { functionsV2Origin } from "../api";
@@ -21,6 +19,9 @@ import {
 import { RequireKeys } from "../metaprogramming";
 
 export const API_VERSION = "v2";
+
+// Defined by Cloud Run: https://cloud.google.com/run/docs/configuring/max-instances#setting
+const DEFAULT_MAX_INSTANCE_COUNT = 100;
 
 const client = new Client({
   urlPrefix: functionsV2Origin,
@@ -234,37 +235,53 @@ export function mebibytes(memory: string): number {
 
 /**
  * Logs an error from a failed function deployment.
- * @param funcName Name of the function that was unsuccessfully deployed.
+ * @param func The function that was unsuccessfully deployed.
  * @param type Type of deployment - create, update, or delete.
  * @param err The error returned from the operation.
  */
-function functionsOpLogReject(funcName: string, type: string, err: any): void {
-  utils.logWarning(clc.bold(clc.yellow("functions:")) + ` ${err?.message}`);
-  if (err?.context?.response?.statusCode === 429) {
-    utils.logWarning(
-      `${clc.bold(
-        clc.yellow("functions:")
-      )} got "Quota Exceeded" error while trying to ${type} ${funcName}. Waiting to retry...`
+function functionsOpLogReject(func: InputCloudFunction, type: string, err: any): void {
+  if (err?.message?.includes("maxScale may not exceed")) {
+    const maxInstances = func.serviceConfig.maxInstanceCount || DEFAULT_MAX_INSTANCE_COUNT;
+    utils.logLabeledWarning(
+      "functions",
+      `Your current project quotas don't allow for the current max instances setting of ${maxInstances}. ` +
+        "Either reduce this function's maximum instances, or request a quota increase on the underlying Cloud Run service " +
+        "at https://cloud.google.com/run/quotas."
     );
-  } else if (
-    err?.message.includes(
-      "If you recently started to use Eventarc, it may take a few minutes before all necessary permissions are propagated to the Service Agent"
-    )
-  ) {
-    utils.logWarning(
-      `${clc.bold(
-        clc.yellow("functions:")
-      )} since this is your first time using functions v2, we need a little bit longer to finish setting everything up, please retry the deployment in a few minutes.`
+    const suggestedFix = func.buildConfig.runtime.startsWith("python")
+      ? "firebase_functions.options.set_global_options(max_instances=10)"
+      : "setGlobalOptions({maxInstances: 10})";
+    utils.logLabeledWarning(
+      "functions",
+      `You can adjust the max instances value in your function's runtime options:\n\t${suggestedFix}`
     );
   } else {
-    utils.logWarning(
-      clc.bold(clc.yellow("functions:")) + " failed to " + type + " function " + funcName
+    utils.logLabeledWarning("functions", `${err?.message}`);
+    if (err?.context?.response?.statusCode === 429) {
+      utils.logLabeledWarning(
+        "functions",
+        `Got "Quota Exceeded" error while trying to ${type} ${func.name}. Waiting to retry...`
+      );
+    } else if (
+      err?.message?.includes(
+        "If you recently started to use Eventarc, it may take a few minutes before all necessary permissions are propagated to the Service Agent"
+      )
+    ) {
+      utils.logLabeledWarning(
+        "functions",
+        `Since this is your first time using 2nd gen functions, we need a little bit longer to finish setting everything up. Retry the deployment in a few minutes.`
+      );
+    }
+    utils.logLabeledWarning(
+      "functions",
+
+      ` failed to ${type} function ${func.name}`
     );
   }
-  throw new FirebaseError(`Failed to ${type} function ${funcName}`, {
+  throw new FirebaseError(`Failed to ${type} function ${func.name}`, {
     original: err,
     status: err?.context?.response?.statusCode,
-    context: { function: funcName },
+    context: { function: func.name },
   });
 }
 
@@ -311,7 +328,7 @@ export async function createFunction(cloudFunction: InputCloudFunction): Promise
     );
     return res.body;
   } catch (err: any) {
-    throw functionsOpLogReject(cloudFunction.name, "create", err);
+    throw functionsOpLogReject(cloudFunction, "create", err);
   }
 }
 
@@ -414,7 +431,7 @@ export async function updateFunction(cloudFunction: InputCloudFunction): Promise
     );
     return res.body;
   } catch (err: any) {
-    throw functionsOpLogReject(cloudFunction.name, "update", err);
+    throw functionsOpLogReject(cloudFunction, "update", err);
   }
 }
 
@@ -427,7 +444,7 @@ export async function deleteFunction(cloudFunction: string): Promise<Operation> 
     const res = await client.delete<Operation>(cloudFunction);
     return res.body;
   } catch (err: any) {
-    throw functionsOpLogReject(cloudFunction, "update", err);
+    throw functionsOpLogReject({ name: cloudFunction } as InputCloudFunction, "update", err);
   }
 }
 
