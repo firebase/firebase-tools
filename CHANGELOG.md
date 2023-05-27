@@ -1,1 +1,2 @@
 - Address additional cases where we were attempting to deploy a framework's development bundle (#5895)
+- Fixes issue where Authentication emulator creates a user if empty email and empty password is provided. (#5639)
