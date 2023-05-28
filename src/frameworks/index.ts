@@ -51,7 +51,7 @@ import {
 } from "./interfaces";
 import { logWarning } from "../utils";
 import { ensureTargeted } from "../functions/ensureTargeted";
-import { isDeepStrictEqual } from "util";
+import { inspect, isDeepStrictEqual } from "util";
 import { resolveProjectPath } from "../projectPath";
 
 export { WebFrameworks };
@@ -451,17 +451,20 @@ export async function prepareFrameworks(
           }
         }
       }
-      await writeFile(join(functionsDist, "package.json"), JSON.stringify(packageJson, null, 2));
+      console.log("\x1b[36m%s\x1b[0m", "Skipping writing package.json, since NX generates it");
+      // await writeFile(join(functionsDist, "package.json"), JSON.stringify(packageJson, null, 2));
 
-      await copyFile(
-        getProjectPath("package-lock.json"),
-        join(functionsDist, "package-lock.json")
-      ).catch(() => {
-        // continue
-      });
+      // await copyFile(
+      //   getProjectPath("package-lock.json"),
+      //   join(functionsDist, "package-lock.json")
+      // ).catch(() => {
+      //   // continue
+      // });
 
-      if (await pathExists(getProjectPath(".npmrc"))) {
-        await copyFile(getProjectPath(".npmrc"), join(functionsDist, ".npmrc"));
+      const npmrcPath = getProjectPath("..", "..", ".npmrc");
+      if (await pathExists(npmrcPath)) {
+        console.log("\x1b[36m%s\x1b[0m", `copying ${npmrcPath} to ${functionsDist}`);
+        await copyFile(npmrcPath, join(functionsDist, ".npmrc"));
       }
 
       let dotEnvContents = "";
@@ -482,19 +485,29 @@ ${
 }`.trimStart()
       );
 
+      const dotEnvsPathsGlob = getProjectPath("..", "..", "environment", ".env.*");
       const envs = await new Promise<string[]>((resolve, reject) =>
-        glob(getProjectPath(".env.*"), (err, matches) => {
+        glob(dotEnvsPathsGlob, (err, matches) => {
           if (err) reject(err);
           resolve(matches);
         })
       );
+      console.log(
+        "\x1b[36m%s\x1b[0m",
+        "copying the following env files",
+        inspect(envs, true, null, true)
+      );
 
       await Promise.all(envs.map((path) => copyFile(path, join(functionsDist, basename(path)))));
 
-      execSync(`npm i --omit dev --no-audit`, {
-        cwd: functionsDist,
-        stdio: "inherit",
-      });
+      // execSync(`npm i --omit dev --no-audit`, {
+      //   cwd: functionsDist,
+      //   stdio: "inherit",
+      // });
+      console.log(
+        "\x1b[36m%s\x1b[0m",
+        "skipping npm install in functions directory, since NX generates package-lock.json"
+      );
 
       if (bootstrapScript) await writeFile(join(functionsDist, "bootstrap.js"), bootstrapScript);
 
@@ -526,6 +539,9 @@ ${
         await rm(functionsDist, { recursive: true });
       }
     }
+
+    console.log("\x1b[36m%s\x1b[0m", "Removing .next/cache from functions directory");
+    await Promise.all([rm(join(functionsDist, ".next", "cache"), { recursive: true })]);
 
     if (firebaseDefaults) {
       const encodedDefaults = Buffer.from(JSON.stringify(firebaseDefaults)).toString("base64url");
