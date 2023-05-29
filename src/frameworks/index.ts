@@ -461,7 +461,7 @@ export async function prepareFrameworks(
       //   // continue
       // });
 
-      const npmrcPath = getProjectPath(".npmrc");
+      const npmrcPath = getProjectPath("..", "..", ".npmrc");
       if (await pathExists(npmrcPath)) {
         console.log("\x1b[36m%s\x1b[0m", `copying ${npmrcPath} to ${functionsDist}`);
         await copyFile(npmrcPath, join(functionsDist, ".npmrc"));
@@ -485,7 +485,7 @@ ${
 }`.trimStart()
       );
 
-      const dotEnvsPathsGlob = getProjectPath("..", "..", "environment", ".env.staging*");
+      const dotEnvsPathsGlob = getProjectPath("..", "..", "environment", ".env.*");
       const envs = await new Promise<string[]>((resolve, reject) =>
         glob(dotEnvsPathsGlob, (err, matches) => {
           if (err) reject(err);
@@ -518,21 +518,19 @@ ${
           join(functionsDist, "server.js"),
           `import { onRequest } from 'firebase-functions/v2/https';
   const server = import('firebase-frameworks');
-  export const ${functionId} = onRequest(${JSON.stringify(frameworksBackend || {})}, (req, res) => {
-      return server.then(it => it.handle(req, res))
-    });
-`
+  export const ${functionId} = onRequest(${JSON.stringify(
+            frameworksBackend || {}
+          )}, (req, res) => server.then(it => it.handle(req, res)));
+  `
         );
       } else {
         await writeFile(
           join(functionsDist, "server.js"),
           `const { onRequest } = require('firebase-functions/v2/https');
-          const server = import('firebase-frameworks');
-          exports.${functionId} = onRequest(${JSON.stringify(
+  const server = import('firebase-frameworks');
+  exports.${functionId} = onRequest(${JSON.stringify(
             frameworksBackend || {}
-          )}, (req, res) => {
-            return server.then(it => it.handle(req, res))
-          });
+          )}, (req, res) => server.then(it => it.handle(req, res)));
   `
         );
       }

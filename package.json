@@ -72,6 +72,9 @@
     "url": "https://github.com/firebase/firebase-tools/issues"
   },
   "homepage": "https://github.com/firebase/firebase-tools",
+  "publishConfig": {
+    "registry": "https://wombat-dressing-room.appspot.com"
+  },
   "nyc": {
     "require": [
       "ts-node/register"
