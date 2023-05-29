@@ -1,7 +1,7 @@
 import { execSync } from "child_process";
 import { spawn, sync as spawnSync } from "cross-spawn";
 import { mkdir, copyFile } from "fs/promises";
-import { basename, dirname, join, resolve } from "path";
+import { basename, dirname, join } from "path";
 import type { NextConfig } from "next";
 import type { PrerenderManifest } from "next/dist/build";
 import type { DomainLocale } from "next/dist/server/config";
@@ -110,13 +110,12 @@ export async function build(dir: string): Promise<BuildResult> {
     process.env.__NEXT_REACT_ROOT = "true";
   }
 
-  // await nextBuild(dir, null, false, false, true).catch((e) => {
-  //   // Err on the side of displaying this error, since this is likely a bug in
-  //   // the developer's code that we want to display immediately
-  //   console.error(e.message);
-  //   throw e;
-  // });
-  console.log("\x1b[36m%s\x1b[0m", "skipping Next Build, using prebuilt assets");
+  await nextBuild(dir, null, false, false, true).catch((e) => {
+    // Err on the side of displaying this error, since this is likely a bug in
+    // the developer's code that we want to display immediately
+    console.error(e.message);
+    throw e;
+  });
 
   const reasonsForBackend = new Set();
   const { distDir, trailingSlash, basePath } = await getConfig(dir);
@@ -524,11 +523,8 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
       console.warn(
         "Unable to bundle next.config.js for use in Cloud Functions, proceeding with deploy but problems may be enountered."
       );
-      // console.error(e.message || e);
+      console.error(e.message || e);
       copy(join(sourceDir, "next.config.js"), join(destDir, "next.config.js"));
-      const distDir = resolve(sourceDir, "..", "..", "dist/apps/web");
-      console.log("\x1b[36m%s\x1b[0m", `copying build assets from ${distDir} to ${destDir}`);
-      copy(distDir, join(destDir));
     }
   }
   if (await pathExists(join(sourceDir, "public"))) {
