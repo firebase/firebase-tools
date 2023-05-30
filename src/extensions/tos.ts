@@ -5,6 +5,7 @@ import { confirm } from "../prompt";
 import { FirebaseError } from "../error";
 import { logPrefix } from "./extensionsHelper";
 import * as utils from "../utils";
+import { ensure } from "../ensureApiEnabled";
 
 const VERSION = "v1";
 const extensionsTosUrl = (tos: string) => `https://firebase.google.com/terms/extensions/${tos}`;
@@ -72,6 +73,7 @@ export async function acceptLatestPublisherTOS(
     );
     return currentAcceptance;
   } else {
+    await ensure(projectId, extensionsTOSOrigin, "extensions", true);
     // Display link to TOS, prompt for acceptance
     const tosLink = extensionsTosUrl("publisher");
     logger.info(
@@ -107,6 +109,7 @@ export async function acceptLatestAppDeveloperTOS(
   ) {
     throw new FirebaseError("You must accept the terms of service to continue.");
   }
+  await ensure(projectId, extensionsTOSOrigin, "extensions", true);
   const tosPromises = instanceIds.map((instanceId) => {
     return acceptAppDeveloperTOS(projectId, currentAcceptance.latestTosVersion, instanceId);
   });

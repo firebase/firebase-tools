@@ -1,1 +1,2 @@
 - Address additional cases where we were attempting to deploy a framework's development bundle (#5895)
+- Fixes an issue where the Firebase Extensions Terms of Service API was not enabled in some cases where it is needed. (#5855)
