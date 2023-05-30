@@ -161,11 +161,20 @@ export class RuntimeWorker {
       }
       const proxy = http.request(reqOpts, (_resp: http.IncomingMessage) => {
         resp.writeHead(_resp.statusCode || 200, _resp.headers);
+
+        let finished = false;
+        const finishReq = (event?: string): void => {
+          this.logger.log("DEBUG", `Finishing up request with event=${event}`);
+          if (!finished) {
+            finished = true;
+            onFinish();
+            resolve();
+          }
+        };
+        _resp.on("pause", () => finishReq("pause"));
+        _resp.on("close", () => finishReq("close"));
         const piped = _resp.pipe(resp);
-        piped.on("finish", () => {
-          onFinish();
-          resolve();
-        });
+        piped.on("finish", () => finishReq("finish"));
       });
       proxy.on("timeout", () => {
         this.logger.log(

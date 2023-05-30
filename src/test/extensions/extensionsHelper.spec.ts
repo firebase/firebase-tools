@@ -1,8 +1,10 @@
+import * as clc from "colorette";
 import { expect } from "chai";
 import * as sinon from "sinon";
 
 import { FirebaseError } from "../../error";
 import * as extensionsApi from "../../extensions/extensionsApi";
+import * as publisherApi from "../../extensions/publisherApi";
 import * as extensionsHelper from "../../extensions/extensionsHelper";
 import * as getProjectNumber from "../../getProjectNumber";
 import * as functionsConfig from "../../functionsConfig";
@@ -12,59 +14,16 @@ import * as prompt from "../../prompt";
 import {
   ExtensionSource,
   ExtensionSpec,
-  ExtensionVersion,
   Param,
   ParamType,
+  Extension,
+  Visibility,
+  RegistryLaunchStage,
 } from "../../extensions/types";
 import { Readable } from "stream";
 import { ArchiveResult } from "../../archiveDirectory";
 import { canonicalizeRefInput } from "../../extensions/extensionsHelper";
 import * as planner from "../../deploy/extensions/planner";
-
-const EXT_SPEC_1: ExtensionSpec = {
-  name: "cool-things",
-  version: "0.0.1-rc.0",
-  resources: [
-    {
-      name: "cool-resource",
-      type: "firebaseextensions.v1beta.function",
-    },
-  ],
-  sourceUrl: "www.google.com/cool-things-here",
-  params: [],
-  systemParams: [],
-};
-const EXT_SPEC_2: ExtensionSpec = {
-  name: "cool-things",
-  version: "0.0.1-rc.1",
-  resources: [
-    {
-      name: "cool-resource",
-      type: "firebaseextensions.v1beta.function",
-    },
-  ],
-  sourceUrl: "www.google.com/cool-things-here",
-  params: [],
-  systemParams: [],
-};
-const TEST_EXT_VERSION_1: ExtensionVersion = {
-  name: "publishers/test-pub/extensions/ext-one/versions/0.0.1-rc.0",
-  ref: "test-pub/ext-one@0.0.1-rc.0",
-  spec: EXT_SPEC_1,
-  state: "PUBLISHED",
-  hash: "12345",
-  createTime: "2020-06-30T00:21:06.722782Z",
-  sourceDownloadUri: "",
-};
-const TEST_EXT_VERSION_2: ExtensionVersion = {
-  name: "publishers/test-pub/extensions/ext-one/versions/0.0.1-rc.1",
-  ref: "test-pub/ext-one@0.0.1-rc.1",
-  spec: EXT_SPEC_2,
-  state: "PUBLISHED",
-  hash: "23456",
-  createTime: "2020-06-30T00:21:06.722782Z",
-  sourceDownloadUri: "",
-};
 
 describe("extensionsHelper", () => {
   describe("substituteParams", () => {
@@ -463,46 +422,6 @@ describe("extensionsHelper", () => {
       expect(() => {
         extensionsHelper.validateCommandLineParams(testParams, testParamSpec);
       }).not.to.throw();
-    });
-  });
-
-  describe("incrementPrereleaseVersion", () => {
-    let listExtensionVersionsStub: sinon.SinonStub;
-
-    beforeEach(() => {
-      listExtensionVersionsStub = sinon.stub(extensionsApi, "listExtensionVersions");
-      listExtensionVersionsStub.returns(Promise.resolve([TEST_EXT_VERSION_1, TEST_EXT_VERSION_2]));
-    });
-
-    afterEach(() => {
-      listExtensionVersionsStub.restore();
-    });
-
-    it("should increment rc version", async () => {
-      const newVersion = await extensionsHelper.incrementPrereleaseVersion(
-        "test-pub/ext-one",
-        "0.0.1",
-        "rc"
-      );
-      expect(newVersion).to.eql("0.0.1-rc.2");
-    });
-
-    it("should be first beta version", async () => {
-      const newVersion = await extensionsHelper.incrementPrereleaseVersion(
-        "test-pub/ext-one",
-        "0.0.1",
-        "beta"
-      );
-      expect(newVersion).to.eql("0.0.1-beta.0");
-    });
-
-    it("should not increment version", async () => {
-      const newVersion = await extensionsHelper.incrementPrereleaseVersion(
-        "test-pub/ext-one",
-        "0.0.1",
-        "stable"
-      );
-      expect(newVersion).to.eql("0.0.1");
     });
   });
 
@@ -973,6 +892,116 @@ describe("extensionsHelper", () => {
       });
       expect(projectNumberStub).to.have.been.called;
       expect(getFirebaseConfigStub).to.have.been.called;
+    });
+  });
+
+  describe("getNextVersionByStage", () => {
+    let listExtensionVersionsStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      listExtensionVersionsStub = sinon.stub(publisherApi, "listExtensionVersions");
+    });
+
+    afterEach(() => {
+      listExtensionVersionsStub.restore();
+    });
+
+    it("should return expected stages and versions", async () => {
+      listExtensionVersionsStub.returns(
+        Promise.resolve([
+          { spec: { version: "1.0.0-rc.0" } },
+          { spec: { version: "1.0.0-rc.1" } },
+          { spec: { version: "1.0.0-beta.0" } },
+        ])
+      );
+      const expected = new Map<string, string>([
+        ["rc", "1.0.0-rc.2"],
+        ["alpha", "1.0.0-alpha.0"],
+        ["beta", "1.0.0-beta.1"],
+        ["stable", "1.0.0"],
+      ]);
+      const { versionByStage, hasVersions } = await extensionsHelper.getNextVersionByStage(
+        "test",
+        "1.0.0"
+      );
+      expect(Array.from(versionByStage.entries())).to.eql(Array.from(expected.entries()));
+      expect(hasVersions).to.eql(true);
+    });
+
+    it("should ignore unknown stages and different prerelease format", async () => {
+      listExtensionVersionsStub.returns(
+        Promise.resolve([
+          { spec: { version: "1.0.0-beta" } },
+          { spec: { version: "1.0.0-prealpha.0" } },
+        ])
+      );
+      const expected = new Map<string, string>([
+        ["rc", "1.0.0-rc.0"],
+        ["alpha", "1.0.0-alpha.0"],
+        ["beta", "1.0.0-beta.0"],
+        ["stable", "1.0.0"],
+      ]);
+      const { versionByStage, hasVersions } = await extensionsHelper.getNextVersionByStage(
+        "test",
+        "1.0.0"
+      );
+      expect(Array.from(versionByStage.entries())).to.eql(Array.from(expected.entries()));
+      expect(hasVersions).to.eql(true);
+    });
+  });
+
+  describe("unpackExtensionState", () => {
+    const testExtension: Extension = {
+      name: "publishers/publisher-id/extensions/extension-id",
+      ref: "publisher-id/extension-id",
+      visibility: Visibility.PUBLIC,
+      registryLaunchStage: RegistryLaunchStage.BETA,
+      createTime: "",
+      state: "PUBLISHED",
+    };
+    it("should return correct published state", () => {
+      expect(
+        extensionsHelper.unpackExtensionState({
+          ...testExtension,
+          state: "PUBLISHED",
+          latestVersion: "1.0.0",
+          latestApprovedVersion: "1.0.0",
+        })
+      ).to.eql(clc.bold(clc.green("Published")));
+    });
+    it("should return correct uploaded state", () => {
+      expect(
+        extensionsHelper.unpackExtensionState({
+          ...testExtension,
+          state: "PUBLISHED",
+          latestVersion: "1.0.0",
+        })
+      ).to.eql(clc.green("Uploaded"));
+    });
+    it("should return correct deprecated state", () => {
+      expect(
+        extensionsHelper.unpackExtensionState({
+          ...testExtension,
+          state: "DEPRECATED",
+        })
+      ).to.eql(clc.red("Deprecated"));
+    });
+    it("should return correct suspended state", () => {
+      expect(
+        extensionsHelper.unpackExtensionState({
+          ...testExtension,
+          state: "SUSPENDED",
+          latestVersion: "1.0.0",
+        })
+      ).to.eql(clc.bold(clc.red("Suspended")));
+    });
+    it("should return correct prerelease state", () => {
+      expect(
+        extensionsHelper.unpackExtensionState({
+          ...testExtension,
+          state: "PUBLISHED",
+        })
+      ).to.eql("Prerelease");
     });
   });
 

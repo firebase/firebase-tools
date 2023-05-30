@@ -23,6 +23,7 @@ import { Options } from "../options";
 import { partition } from "../functional";
 import { buildBindingOptionsWithBaseValue } from "../extensions/paramHelper";
 import * as askUserForEventsConfig from "../extensions/askUserForEventsConfig";
+import { displayDeveloperTOSWarning } from "../extensions/tos";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),
@@ -75,9 +76,8 @@ export const command = new Command("ext:configure <extensionInstanceId>")
       instanceId,
       projectDir: config.projectDir,
     });
-
     const [immutableParams, tbdParams] = partition(
-      spec.params.concat(spec.systemParams ?? []),
+      (spec.params ?? []).concat(spec.systemParams ?? []),
       (param) => param.immutable ?? false
     );
     infoImmutableParams(immutableParams, oldParamValues);
@@ -114,7 +114,6 @@ export const command = new Command("ext:configure <extensionInstanceId>")
       ...buildBindingOptionsWithBaseValue(oldParamValues),
       ...mutableParamsBindingOptions,
     };
-
     await manifest.writeToManifest(
       [
         {
@@ -131,7 +130,7 @@ export const command = new Command("ext:configure <extensionInstanceId>")
         force: true, // Skip asking for permission again
       }
     );
-    manifest.showPostDeprecationNotice();
+    displayDeveloperTOSWarning();
     return;
   });
 

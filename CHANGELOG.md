@@ -1,11 +1,2 @@
 - Delete and re-create v2 function on Cloud Run API quota exhaustion (#5719).
-- Adds new commands for provisioning and managing Firestore databases: (#5616)
-  - firestore:databases:list
-  - firestore:databases:create
-  - firestore:databases:get
-  - firestore:databases:update
-  - firestore:databases:delete
-  - firestore:locations
-- Adds `extensions` as an option in `firebase init`.
-- Relaxed repo URI validation in ext:dev:publish (#5698).
-- Enable Secret Manager API during ext:install/update for extensions that use secrets (#5702).
+- Address additional cases where we were attempting to deploy a framework's development bundle (#5895)

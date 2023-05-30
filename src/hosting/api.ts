@@ -88,6 +88,22 @@ export interface Channel {
   labels: { [key: string]: string };
 }
 
+export interface Domain {
+  site: `projects/${string}/sites/${string}`;
+  domainName: string;
+  updateTime: string;
+  provisioning?: {
+    certStatus: string;
+    dnsStatus: string;
+    expectedIps: string[];
+  };
+  status: string;
+  domainRedirect?: {
+    domainName: string;
+    type: string;
+  };
+}
+
 export type VersionStatus =
   // The version has been created, and content is currently being added to the
   // version.
@@ -661,4 +677,53 @@ export async function cleanAuthState(
     siteDomainMap.set(site, updatedDomains);
   }
   return siteDomainMap;
+}
+
+/**
+ * Retrieves all site domains
+ *
+ * @param project project ID
+ * @param site site id
+ * @return array of domains
+ */
+export async function getSiteDomains(project: string, site: string): Promise<Domain[]> {
+  try {
+    const res = await apiClient.get<{ domains: Domain[] }>(
+      `/projects/${project}/sites/${site}/domains`
+    );
+
+    return res.body.domains ?? [];
+  } catch (e: unknown) {
+    if (e instanceof FirebaseError && e.status === 404) {
+      throw new FirebaseError(`could not find site "${site}" for project "${project}"`, {
+        original: e,
+      });
+    }
+    throw e;
+  }
+}
+
+/**
+ * Join the default domain and the custom domains of a Hosting site
+ *
+ * @param projectId the project id
+ * @param siteId the site id
+ * @return array of domains
+ */
+export async function getAllSiteDomains(projectId: string, siteId: string): Promise<string[]> {
+  const [hostingDomains, defaultDomain] = await Promise.all([
+    getSiteDomains(projectId, siteId),
+    getSite(projectId, siteId),
+  ]);
+
+  const defaultDomainWithoutHttp = defaultDomain.defaultUrl.replace(/^https?:\/\//, "");
+
+  const allSiteDomains = new Set([
+    ...hostingDomains.map(({ domainName }) => domainName),
+    defaultDomainWithoutHttp,
+    `${siteId}.web.app`,
+    `${siteId}.firebaseapp.com`,
+  ]);
+
+  return Array.from(allSiteDomains);
 }
