@@ -50,12 +50,17 @@ async function requireAuthWrapper(showError: boolean = true) {
     });
     await requireAuth(commandOptions);
   } catch (e) {
-    logger.error('requireAuth error', e.original || e);
     if (showError) {
+      logger.error('requireAuth error', e.original || e);
       vscode.window.showErrorMessage("Not logged in", {
         modal: true,
         detail: `Log in by clicking "Sign in with Google" in the sidebar.`,
       });
+    } else {
+      // If "showError" is false, this may not be an error, just an indication
+      // no one is logged in. Log to "debug".
+      logger.debug('No user found (this may be normal), requireAuth error output:',
+        e.original || e);
     }
     return false;
   }
@@ -81,7 +86,10 @@ export async function getChannels(firebaseJSON: FirebaseConfig): Promise<Channel
   if (!firebaseJSON) {
     return [];
   }
-  await requireAuthWrapper();
+  const loggedIn = await requireAuthWrapper(false);
+  if (!loggedIn) {
+    return [];
+  }
   const options = { ...currentOptions };
   if (!options.project) {
     return [];
@@ -110,7 +118,10 @@ export async function login() {
 }
 
 export async function listProjects() {
-  await requireAuthWrapper();
+  const loggedIn = await requireAuthWrapper(false);
+  if (!loggedIn) {
+    return [];
+  }
   return listFirebaseProjects();
 }
 
