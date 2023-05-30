@@ -5,7 +5,6 @@ import { sync as spawnSync } from "cross-spawn";
 import { copyFile, readdir, readFile, rm, writeFile } from "fs/promises";
 import { mkdirp, pathExists, stat } from "fs-extra";
 import * as process from "node:process";
-import * as semver from "semver";
 import * as glob from "glob";
 
 import { needProjectId } from "../projectUtils";
@@ -42,10 +41,18 @@ import {
   VALID_ENGINES,
   WebFrameworks,
 } from "./constants";
-import { BUILD_TARGET_PURPOSE, BuildResult, FirebaseDefaults, Framework } from "./interfaces";
+import {
+  BUILD_TARGET_PURPOSE,
+  BuildResult,
+  FirebaseDefaults,
+  Framework,
+  FrameworkContext,
+  FrameworksOptions,
+} from "./interfaces";
 import { logWarning } from "../utils";
 import { ensureTargeted } from "../functions/ensureTargeted";
 import { isDeepStrictEqual } from "util";
+import { resolveProjectPath } from "../projectPath";
 
 export { WebFrameworks };
 
@@ -100,21 +107,14 @@ function memoizeBuild(
  *
  */
 export async function prepareFrameworks(
+  purpose: BUILD_TARGET_PURPOSE,
   targetNames: string[],
-  context: any,
-  options: any,
+  context: FrameworkContext | undefined,
+  options: FrameworksOptions,
   emulators: EmulatorInfo[] = []
 ): Promise<void> {
-  // `firebase-frameworks` requires Node >= 16. We must check for this to avoid horrible errors.
-  const nodeVersion = process.version;
-  if (!semver.satisfies(nodeVersion, ">=16.0.0")) {
-    throw new FirebaseError(
-      `The frameworks awareness feature requires Node.JS >= 16 and npm >= 8 in order to work correctly, due to some of the downstream dependencies. Please upgrade your version of Node.JS, reinstall firebase-tools, and give it another go.`
-    );
-  }
-
-  const project = needProjectId(context);
-  const { projectRoot } = options;
+  const project = needProjectId(context || options);
+  const projectRoot = resolveProjectPath(options, ".");
   const account = getProjectDefaultAccount(projectRoot);
   // options.site is not present when emulated. We could call requireHostingSite but IAM permissions haven't
   // been booted up (at this point) and we may be offline, so just use projectId. Most of the time
@@ -260,11 +260,11 @@ export async function prepareFrameworks(
     );
 
     const hostingEmulatorInfo = emulators.find((e) => e.name === Emulators.HOSTING);
-    const buildTargetPurpose: BUILD_TARGET_PURPOSE =
-      context._name === "deploy" ? "deploy" : context._name === "emulators:exec" ? "test" : "serve";
-    const validBuildTargets = await getValidBuildTargets(buildTargetPurpose, getProjectPath());
-    const frameworksBuildTarget = getFrameworksBuildTarget(buildTargetPurpose, validBuildTargets);
-    const useDevModeHandle = await shouldUseDevModeHandle(frameworksBuildTarget, getProjectPath());
+    const validBuildTargets = await getValidBuildTargets(purpose, getProjectPath());
+    const frameworksBuildTarget = getFrameworksBuildTarget(purpose, validBuildTargets);
+    const useDevModeHandle =
+      purpose !== "deploy" &&
+      (await shouldUseDevModeHandle(frameworksBuildTarget, getProjectPath()));
 
     let codegenFunctionsDirectory: Framework["ɵcodegenFunctionsDirectory"];
 
@@ -321,7 +321,7 @@ export async function prepareFrameworks(
         process.env.__FIREBASE_DEFAULTS__ = JSON.stringify(firebaseDefaults);
       }
 
-      if (context.hostingChannel) {
+      if (context?.hostingChannel) {
         experiments.assertEnabled(
           "pintags",
           "deploy an app that requires a backend to a preview channel"
@@ -344,12 +344,7 @@ export async function prepareFrameworks(
       // This is just a fallback for previous behavior if the user manually
       // disables the pintags experiment (e.g. there is a break and they would
       // rather disable the experiment than roll back).
-      if (
-        !experiments.isEnabled("pintags") ||
-        context._name === "serve" ||
-        context._name === "emulators:start" ||
-        context._name === "emulators:exec"
-      ) {
+      if (!experiments.isEnabled("pintags") || purpose !== "deploy") {
         if (!targetNames.includes("functions")) {
           targetNames.unshift("functions");
         }
