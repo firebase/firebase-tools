@@ -20,8 +20,12 @@ import { FirebaseConfig } from "../../src/firebaseConfig";
 import { currentOptions, updateOptions } from "./options";
 import { ServiceAccountUser } from "./types";
 import { selectProjectInMonospace } from "../../src/monospace";
-import { setupLoggers } from "../../src/utils";
-import { logger } from "../../src/logger";
+import { setupLoggers, tryStringify } from "../../src/utils";
+import { pluginLogger } from "./logger-wrapper";
+import { logger } from '../../src/logger';
+import { transports, format } from "winston";
+import stripAnsi from "strip-ansi";
+import { SPLAT } from "triple-beam";
 
 let firebaseRC: FirebaseRC | null = null;
 let firebaseJSON: FirebaseConfig | null = null;
@@ -97,7 +101,7 @@ function getRootFolders() {
   return Array.from(new Set(folders));
 }
 
-function getJsonFile<T>(filename: string): T | null {
+function getConfigFile<T>(filename: string): T | null {
   const rootFolders = getRootFolders();
   for (const folder of rootFolders) {
     const jsonFilePath = path.join(folder, filename);
@@ -108,7 +112,7 @@ function getJsonFile<T>(filename: string): T | null {
         currentOptions.cwd = folder;
         return result;
       } catch (e) {
-        logger.error(`Error parsing JSON in ${jsonFilePath}`);
+        pluginLogger.error(`Error parsing JSON in ${jsonFilePath}`);
         return null;
       }
     }
@@ -143,6 +147,21 @@ export function setupWorkflow(
   // Sets up CLI logger to log to console
   process.env.DEBUG = 'true';
   setupLoggers();
+  // Re-implement file logger call from ../../src/bin/firebase.ts to not bring in
+  // the entire firebase.ts file
+  const rootFolders = getRootFolders();
+  const filePath = path.join(rootFolders[0], 'firebase-plugin-debug.log');
+  pluginLogger.info('Logging to path', filePath);
+  logger.add(
+    new transports.File({
+      level: "debug",
+      filename: filePath,
+      format: format.printf((info) => {
+        const segments = [info.message, ...(info[SPLAT] || [])].map(tryStringify);
+        return `[${info.level}] ${stripAnsi(segments.join(" "))}`;
+      }),
+    })
+  );
   // Read config files and store in memory.
   readFirebaseConfigs();
   // Check current users state
@@ -238,10 +257,10 @@ export function setupWorkflow(
        */
       let projects = [];
       if (projectsUserMapping.has(email)) {
-        logger.info(`using cached projects list for ${email}`);
+        pluginLogger.info(`using cached projects list for ${email}`);
         projects = projectsUserMapping.get(email)!;
       } else {
-        logger.info(`fetching projects list for ${email}`);
+        pluginLogger.info(`fetching projects list for ${email}`);
         vscode.window.showQuickPick(["Loading...."]);
         projects = (await listProjects()) as FirebaseProjectMetadata[];
         projectsUserMapping.set(email, projects);
@@ -312,8 +331,8 @@ export function setupWorkflow(
  * exist, and write to memory.
  */
 function readFirebaseConfigs() {
-  firebaseRC = getJsonFile<FirebaseRC>(".firebaserc");
-  firebaseJSON = getJsonFile<FirebaseConfig>("firebase.json");
+  firebaseRC = getConfigFile<FirebaseRC>(".firebaserc");
+  firebaseJSON = getConfigFile<FirebaseConfig>("firebase.json");
 
   updateOptions(extensionContext, firebaseJSON, firebaseRC);
 }

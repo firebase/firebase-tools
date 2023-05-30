@@ -66,7 +66,7 @@ export function DeployPanel({
     <VSCodeRadio
       name="deployTarget"
       value={channel.id}
-      key={channel.id}
+      key={channel.id + (channel.id === deployTarget ? '-checked' : '')}
       checked={channel.id === deployTarget}
       onChange={(e) => setDeployTarget(e.target.value)}
     >

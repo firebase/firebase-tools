@@ -22,7 +22,7 @@ import { ServiceAccount } from "../common/types";
 import { listChannels } from "../../src/hosting/api";
 import { ChannelWithId } from "../common/messaging/types";
 import { setEnabled } from "../../src/experiments";
-import { logger } from "../../src/logger";
+import { pluginLogger } from "./logger-wrapper";
 
 /**
  * Wrap the CLI's requireAuth() which is normally run before every command
@@ -51,7 +51,7 @@ async function requireAuthWrapper(showError: boolean = true) {
     await requireAuth(commandOptions);
   } catch (e) {
     if (showError) {
-      logger.error('requireAuth error', e.original || e);
+      pluginLogger.error('requireAuth error', e.original || e);
       vscode.window.showErrorMessage("Not logged in", {
         modal: true,
         detail: `Log in by clicking "Sign in with Google" in the sidebar.`,
@@ -59,7 +59,7 @@ async function requireAuthWrapper(showError: boolean = true) {
     } else {
       // If "showError" is false, this may not be an error, just an indication
       // no one is logged in. Log to "debug".
-      logger.debug('No user found (this may be normal), requireAuth error output:',
+      pluginLogger.debug('No user found (this may be normal), requireAuth error output:',
         e.original || e);
     }
     return false;
@@ -72,9 +72,11 @@ async function requireAuthWrapper(showError: boolean = true) {
 export async function getAccounts(): Promise<Array<Account | ServiceAccount>> {
   // Get Firebase login accounts
   const accounts: Array<Account | ServiceAccount> = getAllAccounts();
+  pluginLogger.debug(`Found ${accounts.length} non-service accounts.`);
   // Get other accounts (assuming service account for now, could also be glogin)
   const otherAuthExists = await requireAuthWrapper(false);
   if (otherAuthExists) {
+    pluginLogger.debug(`Found service account`);
     accounts.push({
       user: { email: "service_account", type: "service_account" },
     });
@@ -99,6 +101,7 @@ export async function getChannels(firebaseJSON: FirebaseConfig): Promise<Channel
     (firebaseJSON.hosting as HostingSingle).site =
       await getDefaultHostingSite(options);
   }
+  pluginLogger.debug('Calling listChannels with params', options.project, (firebaseJSON.hosting as HostingSingle).site);
   const channels = await listChannels(options.project, (firebaseJSON.hosting as HostingSingle).site);
 
   return channels.map(channel => ({...channel, id: channel.name.split("/").pop()}));
@@ -127,6 +130,7 @@ export async function listProjects() {
 
 export async function initHosting(options: { spa: boolean; public: string }) {
   await requireAuthWrapper();
+  pluginLogger.debug('initHosting begin');
   let webFrameworksOptions = {};
   if (process.env.MONOSPACE_ENV) {
     // TODO: Also allow VS Code users to enable this manually with a UI
@@ -139,13 +143,15 @@ export async function initHosting(options: { spa: boolean; public: string }) {
     };
   }
   const commandOptions = await getCommandOptions(undefined, currentOptions);
-  setInquirerOptions({
+  const inquirerOptions = {
     ...commandOptions,
     ...options,
     ...webFrameworksOptions,
     // False for now, we can let the user decide if needed
     github: false
-  });
+  };
+  pluginLogger.debug('Calling hosting init with inquirer options', JSON.stringify(inquirerOptions));
+  setInquirerOptions(inquirerOptions);
   await initAction("hosting", commandOptions);
 }
 
@@ -169,13 +175,15 @@ export async function deployToHosting(
         await getDefaultHostingSite(options);
     }
     const commandOptions = await getCommandOptions(firebaseJSON, options);
+    pluginLogger.debug('Calling hosting deploy with command options', JSON.stringify(commandOptions));
     if (deployTarget === 'live') {
       await deploy(["hosting"], commandOptions);
     } else {
       await hostingChannelDeployAction(deployTarget, commandOptions);
     }
+    pluginLogger.debug('Hosting deploy complete');
   } catch (e) {
-    logger.error(e);
+    pluginLogger.error(`Error deploying to hosting`, e);
     return { success: false, hostingUrl: "", consoleUrl: "" };
   }
   return { success: true, hostingUrl: "", consoleUrl: "" };
