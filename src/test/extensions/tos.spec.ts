@@ -1,15 +1,22 @@
 import { expect } from "chai";
 import * as nock from "nock";
+import * as sinon from "sinon";
 
 import * as api from "../../api";
+import * as ensure from "../../ensureApiEnabled";
 import * as tos from "../../extensions/tos";
 
 describe("tos", () => {
+  const testProjectId = "test-proj";
+  let ensureApiEnabedStub: sinon.SinonStub;
+  beforeEach(() => {
+    ensureApiEnabedStub = sinon.stub(ensure, "ensure");
+  });
   afterEach(() => {
     nock.cleanAll();
+    ensureApiEnabedStub.restore();
   });
 
-  const testProjectId = "test-proj";
   describe("getAppDeveloperTOSStatus", () => {
     it("should get app developer TOS", async () => {
       const t = testTOS("appdevtos", "1.0.0");
