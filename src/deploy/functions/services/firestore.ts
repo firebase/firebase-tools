@@ -14,6 +14,7 @@ export async function ensureFirestoreTriggerRegion(
     endpoint.eventTrigger.eventFilters?.database || "(default)"
   );
   const dbRegion = db.locationId;
+  console.error(`db region is ${dbRegion} and trigger region is ${endpoint.eventTrigger.region}`);
   if (!endpoint.eventTrigger.region) {
     endpoint.eventTrigger.region = dbRegion;
   }
