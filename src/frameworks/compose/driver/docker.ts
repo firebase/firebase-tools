@@ -140,7 +140,7 @@ export class DockerDriver implements Driver {
   install(): void {
     this.dockerfileBuilder
       .fromLastStage(DOCKER_STAGE_INSTALL)
-      .workdir("/home/cnb/app")
+      .workdir("/home/firebase/app")
       .envs(this.spec.environmentVariables || {})
       .copy("package.json", ".")
       .run(this.spec.installCommand);
@@ -161,8 +161,8 @@ export class DockerDriver implements Driver {
       const exportStage = "exporter";
       this.dockerfileBuilder
         .from(this.spec.baseImage, exportStage)
-        .workdir("/home/cnb/app")
-        .copy("/home/cnb/app", ".", DOCKER_STAGE_BUILD)
+        .workdir("/home/firebase/app")
+        .copy("/home/firebase/app", ".", DOCKER_STAGE_BUILD)
         .cmd(startCmd);
       const imageName = `us-docker.pkg.dev/${process.env.PROJECT_ID}/test/demo-nodappe`;
       this.buildStage(exportStage, ".", imageName);
