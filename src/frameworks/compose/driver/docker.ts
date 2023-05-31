@@ -140,7 +140,7 @@ export class DockerDriver implements Driver {
   install(): void {
     this.dockerfileBuilder
       .fromLastStage(DOCKER_STAGE_INSTALL)
-      .workdir("/app")
+      .workdir("/home/cnb/app")
       .envs(this.spec.environmentVariables || {})
       .copy("package.json", ".")
       .run(this.spec.installCommand);
@@ -150,7 +150,6 @@ export class DockerDriver implements Driver {
   build(): void {
     this.dockerfileBuilder
       .fromLastStage(DOCKER_STAGE_BUILD)
-      .workdir("/app")
       .copy(".", ".")
       .run(this.spec.buildCommand);
     this.buildStage(DOCKER_STAGE_BUILD, ".");
@@ -162,8 +161,8 @@ export class DockerDriver implements Driver {
       const exportStage = "exporter";
       this.dockerfileBuilder
         .from(this.spec.baseImage, exportStage)
-        .copy("/app", ".", DOCKER_STAGE_BUILD)
-        .workdir("/app")
+        .workdir("/home/cnb/app")
+        .copy("/home/cnb/app", ".", DOCKER_STAGE_BUILD)
         .cmd(startCmd);
       const imageName = `us-docker.pkg.dev/${process.env.PROJECT_ID}/test/demo-nodappe`;
       this.buildStage(exportStage, ".", imageName);
@@ -190,7 +189,6 @@ export class DockerDriver implements Driver {
     const hookStage = path.basename(hookScript, ".js");
     this.dockerfileBuilder
       .fromLastStage(hookStage)
-      .workdir("/app")
       .run(
         `NODE_PATH=./node_modules node /framework/adapters/${hookScript}`,
         `source=${ADAPTER_SCRIPTS_PATH},target=/framework/adapters`
