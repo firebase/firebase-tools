@@ -58,11 +58,19 @@ describe("DockerfileBuilder", () => {
     });
   });
 
-  describe("copy", () => {
+  describe("copyForFirebase", () => {
     it("should add a COPY instruction to the Dockerfile", () => {
       const builder = new DockerfileBuilder();
       builder.copyForFirebase("src", "dest");
-      expect(builder.toString()).to.equal("COPY src dest\n");
+      expect(builder.toString()).to.equal("COPY --chown=firebase:firebase src dest\n");
+    });
+  });
+
+  describe("copyFrom", () => {
+    it("should add a COPY instruction to the Dockerfile", () => {
+      const builder = new DockerfileBuilder();
+      builder.copyFrom("src", "dest", "stage");
+      expect(builder.toString()).to.equal("COPY --from=stage src dest\n");
     });
   });
 
