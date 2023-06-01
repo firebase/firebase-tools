@@ -138,13 +138,13 @@ export class DockerDriver implements Driver {
       .tempFrom("scratch", exportStage)
       .copyFrom(BUNDLE_PATH, "/bundle.json", stage);
     const ret = this.execDockerBuild(
-      ["--target", exportStage, "--output", ".firebase"],
+      ["--target", exportStage, "--output", ".firebase/.output"],
       contextDir
     );
     if (ret.error || ret.status !== 0) {
       throw new Error(`Failed to export bundle ${stage}: error=${ret.error} status=${ret.status}`);
     }
-    return JSON.parse(fs.readFileSync("./.firebase/bundle.json", "utf8")) as AppBundle;
+    return JSON.parse(fs.readFileSync("./.firebase/.output/bundle.json", "utf8")) as AppBundle;
   }
 
   install(): void {
