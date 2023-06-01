@@ -14,8 +14,8 @@ description: >-
 
 license: Apache-2.0  # https://spdx.org/licenses/
 
-# Public URL for the source code of your extension
-sourceUrl: https://github.com/firebase/firebase-tools/tree/master/templates/extensions
+# Public URL for the source code of your extension. Replace this with your GitHub repo.
+sourceUrl: https://github.com/ORG_OR_USER/REPO_NAME
 
 # Specify whether a paid-tier billing plan is required to use your extension.
 # Learn more in the docs: https://firebase.google.com/docs/extensions/reference/extension-yaml#billing-required-field
