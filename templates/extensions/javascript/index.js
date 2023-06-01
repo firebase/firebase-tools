@@ -5,7 +5,7 @@
  * Reference PARAMETERS in your functions code with:
  * `process.env.<parameter-name>`
  * Learn more about building extensions in the docs:
- * https://firebase.google.com/docs/extensions/publishers
+ * https://firebase.google.com/docs/extensions/alpha/overview
  */
 
 const functions = require("firebase-functions");

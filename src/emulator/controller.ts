@@ -186,11 +186,6 @@ export function shouldStart(options: Options, name: Emulators): boolean {
 }
 
 function findExportMetadata(importPath: string): ExportMetadata | undefined {
-  const pathExists = fs.existsSync(importPath);
-  if (!pathExists) {
-    throw new FirebaseError(`Directory "${importPath}" does not exist.`);
-  }
-
   const pathIsDirectory = fs.lstatSync(importPath).isDirectory();
   if (!pathIsDirectory) {
     return;
