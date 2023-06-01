@@ -180,9 +180,11 @@ export async function deployToHosting(
     const options = { ...currentOptions };
     // TODO: handle multiple hosting configs
     if (!(firebaseJSON.hosting as HostingSingle).site) {
+      pluginLogger.debug('Calling getDefaultHostingSite() with options', JSON.stringify(options));
       (firebaseJSON.hosting as HostingSingle).site =
         await getDefaultHostingSite(options);
     }
+    pluginLogger.debug('Calling getCommandOptions() with options', JSON.stringify(options));
     const commandOptions = await getCommandOptions(firebaseJSON, options);
     pluginLogger.debug('Calling hosting deploy with command options', JSON.stringify(commandOptions));
     if (deployTarget === 'live') {
