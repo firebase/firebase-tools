@@ -115,7 +115,7 @@ export function simpleProxy(hostOrRequestHandler: string | RequestHandler) {
       const req = httpRequest(opts, (response) => {
         const { statusCode, statusMessage, headers } = response;
         if (statusCode === 404) {
-          next()
+          next();
         } else {
           originalRes.writeHead(statusCode!, statusMessage, headers);
           response.pipe(originalRes);

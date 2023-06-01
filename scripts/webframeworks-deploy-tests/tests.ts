@@ -49,86 +49,88 @@ describe("webframeworks", function (this) {
   });
 
   describe("build", () => {
-    it("should have the correct effective firebase.json", async () => {
+    it("should have the correct effective firebase.json", () => {
       const result = readFileSync(LOG_FILE).toString();
-      const effectiveFirebaseJSON = result.split("Effective firebase.json:\n")[1]?.split(`[${(new Date()).getFullYear()}`)?.[0];
+      const effectiveFirebaseJSON = result
+        .split("Effective firebase.json:\n")[1]
+        ?.split(`[${new Date().getFullYear()}`)?.[0];
       expect(effectiveFirebaseJSON && JSON.parse(effectiveFirebaseJSON), "firebase.json").to.eql([
         {
-          "target": "nextjs",
-          "source": "nextjs",
-          "frameworksBackend": {
-            "maxInstances": 1,
-            "region": "asia-east1"
+          target: "nextjs",
+          source: "nextjs",
+          frameworksBackend: {
+            maxInstances: 1,
+            region: "asia-east1",
           },
-          "rewrites": [
+          rewrites: [
             {
-              "source": "/base/**",
-              "function": {
-                "functionId": "ssrdemonextjs",
-                "region": "asia-east1",
-                "pinTag": true
-              }
-            }
+              source: "/base/**",
+              function: {
+                functionId: "ssrdemonextjs",
+                region: "asia-east1",
+                pinTag: true,
+              },
+            },
           ],
-          "site": "demo-nextjs",
-          "redirects": [],
-          "headers": [
+          site: "demo-nextjs",
+          redirects: [],
+          headers: [
             {
-              "source": "/base/app/api/static",
-              "headers": [
+              source: "/base/app/api/static",
+              headers: [
                 {
-                  "key": "content-type",
-                  "value": "application/json"
+                  key: "content-type",
+                  value: "application/json",
                 },
                 {
-                  "key": "custom-header",
-                  "value": "custom-value"
+                  key: "custom-header",
+                  value: "custom-value",
                 },
                 {
-                  "key": "x-next-cache-tags",
-                  "value": "/app/api/static/route"
-                }
-              ]
-            }
+                  key: "x-next-cache-tags",
+                  value: "/app/api/static/route",
+                },
+              ],
+            },
           ],
-          "cleanUrls": true,
-          "trailingSlash": false,
-          "i18n": {
-            "root": "/"
+          cleanUrls: true,
+          trailingSlash: false,
+          i18n: {
+            root: "/",
           },
-          "public": ".firebase/demo-nextjs/hosting",
-          "webFramework": "next_ssr"
+          public: ".firebase/demo-nextjs/hosting",
+          webFramework: "next_ssr",
         },
         {
-          "target": "angular",
-          "source": "angular",
-          "frameworksBackend": {
-            "maxInstances": 1,
-            "region": "europe-west1"
+          target: "angular",
+          source: "angular",
+          frameworksBackend: {
+            maxInstances: 1,
+            region: "europe-west1",
           },
-          "rewrites": [
+          rewrites: [
             {
-              "source": "/**",
-              "function": {
-                "functionId": "ssrdemoangular",
-                "region": "europe-west1",
-                "pinTag": true
-              }
-            }
+              source: "/**",
+              function: {
+                functionId: "ssrdemoangular",
+                region: "europe-west1",
+                pinTag: true,
+              },
+            },
           ],
-          "site": "demo-angular",
-          "redirects": [],
-          "headers": [],
-          "cleanUrls": true,
-          "i18n": {
-            "root": "/"
+          site: "demo-angular",
+          redirects: [],
+          headers: [],
+          cleanUrls: true,
+          i18n: {
+            root: "/",
           },
-          "public": ".firebase/demo-angular/hosting",
-          "webFramework": "angular_ssr"
-        }
+          public: ".firebase/demo-angular/hosting",
+          webFramework: "angular_ssr",
+        },
       ]);
-    })
-  })
+    });
+  });
 
   describe("next.js", () => {
     describe("app directory", () => {

@@ -34,7 +34,11 @@ export interface BuildResult {
   i18n?: boolean;
 }
 
-export type RequestHandler = (req: IncomingMessage, res: ServerResponse, next: () => void) => void | Promise<void>;
+export type RequestHandler = (
+  req: IncomingMessage,
+  res: ServerResponse,
+  next: () => void
+) => void | Promise<void>;
 
 export type FrameworksOptions = HostingOptions &
   Options & {
