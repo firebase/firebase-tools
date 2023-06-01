@@ -45,12 +45,17 @@ export class DockerfileBuilder {
     return this;
   }
 
-  copy(src: string, dest: string, from?: string): DockerfileBuilder {
+  copyForFirebase(src: string, dest: string, from?: string): DockerfileBuilder {
     if (from) {
-      this.dockerfile += `COPY --from=${from} ${src} ${dest}\n`;
+      this.dockerfile += `COPY --chown=firebase:firebase --from=${from} ${src} ${dest}\n`;
     } else {
-      this.dockerfile += `COPY ${src} ${dest}\n`;
+      this.dockerfile += `COPY --chown=firebase:firebase ${src} ${dest}\n`;
     }
+    return this;
+  }
+
+  copyFrom(src: string, dest: string, from: string) {
+    this.dockerfile += `COPY --from=${from} ${src} ${dest}\n`;
     return this;
   }
 
@@ -80,6 +85,11 @@ export class DockerfileBuilder {
     return this;
   }
 
+  user(user: string): DockerfileBuilder {
+    this.dockerfile += `USER ${user}\n`;
+    return this;
+  }
+
   toString(): string {
     return this.dockerfile;
   }
@@ -90,7 +100,7 @@ export class DockerDriver implements Driver {
 
   constructor(readonly spec: AppSpec) {
     this.dockerfileBuilder = new DockerfileBuilder();
-    this.dockerfileBuilder.from(spec.baseImage, "base");
+    this.dockerfileBuilder.from(spec.baseImage, "base").user("firebase");
   }
 
   private execDockerPush(args: string[]) {
@@ -104,7 +114,7 @@ export class DockerDriver implements Driver {
     console.log(`executing docker build: ${args.join(" ")} ${contextDir}`);
     console.log(this.dockerfileBuilder.toString());
     return spawn.sync("docker", ["buildx", "build", ...args, "-f", "-", contextDir], {
-      env: { ...process.env, ...this.spec.environmentVariables, BUILD_KIT: "1" },
+      env: { ...process.env, ...this.spec.environmentVariables },
       input: this.dockerfileBuilder.toString(),
       stdio: [/* stdin= */ "pipe", /* stdout= */ "inherit", /* stderr= */ "inherit"],
     });
@@ -126,7 +136,7 @@ export class DockerDriver implements Driver {
     const exportStage = `${stage}-export`;
     this.dockerfileBuilder
       .tempFrom("scratch", exportStage)
-      .copy(BUNDLE_PATH, "/bundle.json", stage);
+      .copyFrom(BUNDLE_PATH, "/bundle.json", stage);
     const ret = this.execDockerBuild(
       ["--target", exportStage, "--output", ".firebase"],
       contextDir
@@ -140,9 +150,9 @@ export class DockerDriver implements Driver {
   install(): void {
     this.dockerfileBuilder
       .fromLastStage(DOCKER_STAGE_INSTALL)
-      .workdir("/home/cnb/app")
+      .workdir("/home/firebase/app")
       .envs(this.spec.environmentVariables || {})
-      .copy("package.json", ".")
+      .copyForFirebase("package.json", ".")
       .run(this.spec.installCommand);
     this.buildStage(DOCKER_STAGE_INSTALL, ".");
   }
@@ -150,7 +160,7 @@ export class DockerDriver implements Driver {
   build(): void {
     this.dockerfileBuilder
       .fromLastStage(DOCKER_STAGE_BUILD)
-      .copy(".", ".")
+      .copyForFirebase(".", ".")
       .run(this.spec.buildCommand);
     this.buildStage(DOCKER_STAGE_BUILD, ".");
   }
@@ -161,8 +171,8 @@ export class DockerDriver implements Driver {
       const exportStage = "exporter";
       this.dockerfileBuilder
         .from(this.spec.baseImage, exportStage)
-        .workdir("/home/cnb/app")
-        .copy("/home/cnb/app", ".", DOCKER_STAGE_BUILD)
+        .workdir("/home/firebase/app")
+        .copyForFirebase("/home/firebase/app", ".", DOCKER_STAGE_BUILD)
         .cmd(startCmd);
       const imageName = `us-docker.pkg.dev/${process.env.PROJECT_ID}/test/demo-nodappe`;
       this.buildStage(exportStage, ".", imageName);

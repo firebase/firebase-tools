@@ -1,6 +1,6 @@
 import { AppBundle, Hook } from "../interfaces";
 
-export const BUNDLE_PATH = "/app/.firebase/bundle.json" as const;
+export const BUNDLE_PATH = "/home/firebase/app/.firebase/bundle.json" as const;
 
 /**
  * Generate a script that wraps the given hook to output the resulting AppBundle

@@ -61,7 +61,7 @@ describe("DockerfileBuilder", () => {
   describe("copy", () => {
     it("should add a COPY instruction to the Dockerfile", () => {
       const builder = new DockerfileBuilder();
-      builder.copy("src", "dest");
+      builder.copyForFirebase("src", "dest");
       expect(builder.toString()).to.equal("COPY src dest\n");
     });
   });
