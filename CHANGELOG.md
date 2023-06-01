@@ -1,2 +1,3 @@
 - Address additional cases where we were attempting to deploy a framework's development bundle (#5895)
 - Improve error message raised when `--import` flag directory does not exist. (#5851)
+- Support Astro hybrid rendering (#5898)
