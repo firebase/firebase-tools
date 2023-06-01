@@ -1,1 +1,3 @@
 - Address additional cases where we were attempting to deploy a framework's development bundle (#5895)
+- NextJS rewrites should be prefixed with the basePath defined in next.config.js (#TDB)
+- Web Frameworks emulators will now respect Cloud Functions rewrites (#TDB)

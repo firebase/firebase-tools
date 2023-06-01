@@ -1,1 +1,18 @@
-{}
+{
+  "projects": {
+    "default": "demo-123"
+  },
+  "targets": {
+    "demo-123": {
+      "hosting": {
+        "angular": [
+          "demo-angular"
+        ],
+        "nextjs": [
+          "demo-nextjs"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}

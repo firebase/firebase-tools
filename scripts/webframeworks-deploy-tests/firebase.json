@@ -1,9 +1,17 @@
 {
   "hosting": [{
-    "site": "demo-nextjs",
-    "source": "nextjs"
+    "target": "nextjs",
+    "source": "nextjs",
+    "frameworksBackend": {
+      "maxInstances": 1,
+      "region": "asia-east1"
+    }
   }, {
-    "site": "demo-angular",
-    "source": "angular"
+    "target": "angular",
+    "source": "angular",
+    "frameworksBackend": {
+      "maxInstances": 1,
+      "region": "europe-west1"
+    }
   }]
 }
