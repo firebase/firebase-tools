@@ -1,3 +1,5 @@
 - Address additional cases where we were attempting to deploy a framework's development bundle (#5895)
-- NextJS rewrites should be prefixed with the basePath defined in next.config.js (#TDB)
-- Web Frameworks emulators will now respect Cloud Functions rewrites (#TDB)
+- NextJS rewrites should be prefixed with the basePath defined in next.config.js (#5923)
+- Web Frameworks emulators will now respect Cloud Functions rewrites (#5923)
+- Switch `ext:dev:init` to default 'billingRequired' to true in `extension.yaml` (#5917)
+- Support Astro hybrid rendering (#5898)

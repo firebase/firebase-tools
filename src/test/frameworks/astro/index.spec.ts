@@ -268,7 +268,7 @@ describe("Astro", () => {
 
       await expect(build(cwd)).to.eventually.rejectedWith(
         FirebaseError,
-        "Deploying an Astro application with SSR on Firebase Hosting requires the @astrojs/node adapter."
+        "Deploying an Astro application with SSR on Firebase Hosting requires the @astrojs/node adapter in middleware mode. https://docs.astro.build/en/guides/integrations-guide/node/"
       );
     });
 
