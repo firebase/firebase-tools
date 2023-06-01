@@ -294,10 +294,12 @@ export async function prepareFrameworks(
       );
       const { wantsBackend = false, trailingSlash, i18n = false }: BuildResult = buildResult || {};
 
-      baseUrl = buildResult?.baseUrl ?? baseUrl;
-      if (buildResult?.headers) headers.push(...buildResult.headers);
-      if (buildResult?.rewrites) rewrites.push(...buildResult.rewrites);
-      if (buildResult?.redirects) redirects.push(...buildResult.redirects);
+      if (buildResult) {
+        baseUrl = buildResult.baseUrl ?? baseUrl;
+        if (buildResult.headers) headers.push(...buildResult.headers);
+        if (buildResult.rewrites) rewrites.push(...buildResult.rewrites);
+        if (buildResult.redirects) redirects.push(...buildResult.redirects);
+      }
 
       config.trailingSlash ??= trailingSlash;
       if (i18n) config.i18n ??= { root: I18N_ROOT };
