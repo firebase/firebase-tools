@@ -1,6 +1,7 @@
 import fetch from "node-fetch";
 
 import { FirebaseError } from "../error";
+import { logger } from "../logger";
 import { loadRC } from "../rc";
 
 import type {
@@ -116,6 +117,9 @@ async function getInitFirebaseResponse(rid: string): Promise<GetInitFirebaseResp
   );
 
   const getInitFirebaseJson = (await getInitFirebaseRes.json()) as GetInitFirebaseResponse;
+
+  logger.debug(`/get-init-firebase-response?rid=${rid} response:`);
+  logger.debug(getInitFirebaseJson);
 
   return getInitFirebaseJson;
 }
