@@ -1,6 +1,4 @@
-# firebase-vscode README
-
-This is the README for your extension "firebase-vscode". After writing up a brief description, we recommend including the following sections.
+# firebase-vscode
 
 ## Features
 
