@@ -1,3 +1,4 @@
+- Fix a bug preventing web framework's dev-mode from working out-of-box with Firebase Authentication. (#5894)
 - Address additional cases where we were attempting to deploy a framework's development bundle (#5895)
 - NextJS rewrites should be prefixed with the basePath defined in next.config.js (#5923)
 - Web Frameworks emulators will now respect Cloud Functions rewrites (#5923)
