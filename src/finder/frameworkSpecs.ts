@@ -2,7 +2,7 @@ import { FrameworkSpec } from "./types";
 
 export const frameworkSpecs: FrameworkSpec[] = [
   {
-    id: "core:express",
+    id: "express",
     runtime: "nodejs",
     webFrameworkId: "Express.js",
     requiredDependencies: [
@@ -15,7 +15,7 @@ export const frameworkSpecs: FrameworkSpec[] = [
     id: "angular",
     runtime: "nodejs",
     webFrameworkId: "Angular",
-    requiredFiles: ["next.config.js", "next.config.ts"],
+    requiredFiles: ["angular.json"],
     requiredDependencies: [
       {
         name: "@angular/core",
@@ -26,74 +26,74 @@ export const frameworkSpecs: FrameworkSpec[] = [
     ],
     commands: {
       build: {
-        cmd: "ng build",
+        cmd: "npm run build",
       },
       dev: {
-        cmd: "ng run",
+        cmd: "npm run start",
         env: { NODE_ENV: "dev" },
       },
       run: {
-        cmd: "ng run",
+        cmd: "node server.js",
         env: { NODE_ENV: "production" },
       },
     },
   },
   {
-    id: "core:nextjs",
+    id: "nextjs",
     runtime: "nodejs",
-    requiredFiles: [["next.config.js", "next.config.ts"]],
+    requiredFiles: [["next.config.js"]],
     requiredDependencies: [{ name: "next" }],
   },
   {
-    id: "core:astro",
+    id: "astro",
     runtime: "nodejs",
     requiredFiles: [["astro.config.mjs", "astro.config.cjs", "astro.config.js", "astro.config.ts"]],
     requiredDependencies: [{ name: "astrojs" }],
-    embedsFrameworks: ["core:svelte", "core:react", "core:vite"],
+    embedsFrameworks: ["svelte", "react", "vite"],
     commands: {
       build: {
         cmd: "astro build",
       },
       dev: {
-        cmd: "astro preview",
+        cmd: "astro",
         env: { NODE_ENV: "dev" },
       },
       run: {
-        cmd: "astro deploy",
+        cmd: "node ./dist/server/entry.mjs",
         env: { NODE_ENV: "production" },
       },
     },
   },
   {
-    id: "core:react",
+    id: "react",
     runtime: "nodejs",
     requiredDependencies: [{ name: "react" }, { name: "react-dom" }],
   },
   {
-    id: "core:react-vite",
-    runtime: "core:vite",
+    id: "react-vite",
+    runtime: "vite",
     requiredDependencies: [{ name: "react" }, { name: "react-dom" }],
     // vars: { vitePlugin: "react-jsx" },
   },
   {
-    id: "core:svelte",
+    id: "svelte",
     runtime: "nodejs",
     requiredDependencies: [{ name: "svelte" }],
   },
   {
-    id: "core:svelte-vite",
-    runtime: "core:vite",
+    id: "svelte-vite",
+    runtime: "vite",
     requiredDependencies: [{ name: "svelte" }],
-    embedsFrameworks: ["core:svelte"],
+    embedsFrameworks: ["svelte"],
     // vars: { vitePlugin: "vite-plugin-svelte" },
   },
   {
-    id: "core:sveltekit",
-    runtime: "core:svelte",
+    id: "sveltekit",
+    runtime: "svelte",
     requiredDependencies: [{ name: "@sveltejs/kit" }],
   },
   {
-    id: "core:vite",
+    id: "vite",
     runtime: "nodejs",
     requiredDependencies: [{ name: "vite" }],
     commands: {
@@ -101,7 +101,7 @@ export const frameworkSpecs: FrameworkSpec[] = [
         cmd: "vite build",
       },
       dev: {
-        cmd: "vite preview",
+        cmd: "vite",
         env: { NODE_ENV: "dev" },
       },
     },
