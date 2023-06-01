@@ -3,7 +3,6 @@
  * between two environments (VScode and Webview)
  */
 
-import { FirebaseProjectMetadata } from "../../../src/types/project";
 import { FirebaseConfig } from  '../../../src/firebaseConfig';
 import { FirebaseRC } from "../firebaserc";
 import { User } from "../../../src/types/auth";
@@ -46,6 +45,8 @@ export interface WebviewToExtension {
   getFirebaseJson(): void;
 
   showMessage(msg: string, options?: {}): void;
+
+  openLink(href: string): void;
 }
 
 // Messages sent from Extension to Webview

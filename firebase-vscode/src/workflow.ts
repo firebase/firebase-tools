@@ -207,6 +207,10 @@ export function setupWorkflow(
     vscode.window.showInformationMessage(msg, options);
   });
 
+  broker.on("openLink", async (href) => {
+    vscode.env.openExternal(vscode.Uri.parse(href));
+  });
+
   broker.on("addUser", async () => {
     const { user } = await login();
     users.push(user);
