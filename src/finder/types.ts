@@ -1,6 +1,6 @@
 export interface FileSystem {
   exists(file: string): Promise<boolean>;
-  read(file: string): Promise<string>;
+  read(file: string): Promise<string | null>;
 }
 
 export interface Runtime {

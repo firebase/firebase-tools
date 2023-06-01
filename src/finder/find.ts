@@ -1,8 +1,3 @@
-// Convert the Github remoteURL repository to a folder or directory.
-
-// Read the project folder to detect the Runtime environment.
-
-// Detect the FrameworkSpec required.
 import { Runtime, FileSystem, RuntimeMatch } from "./types";
 import { NodejsRuntime } from "./runtimes/NodejsRuntime";
 
@@ -34,3 +29,7 @@ export async function find(fs: FileSystem): Promise<RuntimeMatch | null> {
   }
   return match;
 }
+
+// Read the project folder to detect the Runtime environment.
+
+// Detect the FrameworkSpec required.
