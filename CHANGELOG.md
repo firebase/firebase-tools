@@ -1,3 +1,4 @@
+- Fix a bug preventing web framework's dev-mode from working out-of-box with Firebase Authentication. (#5894)
 - Address additional cases where we were attempting to deploy a framework's development bundle (#5895)
 - Switch `ext:dev:init` to default 'billingRequired' to true in `extension.yaml`
 - Support Astro hybrid rendering (#5898)
