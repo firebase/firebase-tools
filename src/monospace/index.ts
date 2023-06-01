@@ -1,6 +1,7 @@
 import fetch from "node-fetch";
 
 import { FirebaseError } from "../error";
+import { logger } from "../logger";
 import { loadRC } from "../rc";
 
 import type {
@@ -46,12 +47,16 @@ export async function selectProjectInMonospace({
  * take some time for the response to become available. Here we poll for user's
  * response.
  */
-async function pollAuthorizedProject(rid: string): Promise<string> {
+async function pollAuthorizedProject(rid: string): Promise<string | null> {
   const getInitFirebaseRes = await getInitFirebaseResponse(rid);
 
   // If the user authorizes a project, `userResponse` will be available
   if ("userResponse" in getInitFirebaseRes) {
-    return getInitFirebaseRes.userResponse.projectId;
+    if (getInitFirebaseRes.userResponse.success) {
+      return getInitFirebaseRes.userResponse.projectId;
+    } else {
+      return null;
+    }
   }
 
   const { error } = getInitFirebaseRes;
@@ -116,6 +121,9 @@ async function getInitFirebaseResponse(rid: string): Promise<GetInitFirebaseResp
   );
 
   const getInitFirebaseJson = (await getInitFirebaseRes.json()) as GetInitFirebaseResponse;
+
+  logger.debug(`/get-init-firebase-response?rid=${rid} response:`);
+  logger.debug(getInitFirebaseJson);
 
   return getInitFirebaseJson;
 }
