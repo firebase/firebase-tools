@@ -102,9 +102,17 @@ export async function getChannels(firebaseJSON: FirebaseConfig): Promise<Channel
       await getDefaultHostingSite(options);
   }
   pluginLogger.debug('Calling listChannels with params', options.project, (firebaseJSON.hosting as HostingSingle).site);
-  const channels = await listChannels(options.project, (firebaseJSON.hosting as HostingSingle).site);
-
-  return channels.map(channel => ({ ...channel, id: channel.name.split("/").pop() }));
+  try {
+    const channels = await listChannels(options.project, (firebaseJSON.hosting as HostingSingle).site);
+    return channels.map(channel => ({ ...channel, id: channel.name.split("/").pop() }));
+  } catch (e) {
+    pluginLogger.error('Error on listChannels()', e);
+    vscode.window.showErrorMessage("Error finding hosting channels", {
+      modal: true,
+      detail: `Error finding hosting channels: ${e}`,
+    });
+    return [];
+  }
 }
 
 export async function logoutUser(email: string): Promise<void> {
@@ -184,7 +192,14 @@ export async function deployToHosting(
     }
     pluginLogger.debug('Hosting deploy complete');
   } catch (e) {
-    pluginLogger.error(`Error deploying to hosting`, e);
+    let message = `Error deploying to hosting`;
+    if (e.message) {
+      message += `: ${e.message}`;
+    }
+    if (e.original) {
+      message += ` (original: ${e.original})`;
+    }
+    pluginLogger.error(message);
     return { success: false, hostingUrl: "", consoleUrl: "" };
   }
   return { success: true, hostingUrl: "", consoleUrl: "" };

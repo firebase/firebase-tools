@@ -319,7 +319,9 @@ export function setupWorkflow(
       deployTarget
     );
     broker.send("notifyHostingDeploy", success, consoleUrl, hostingUrl);
-    fetchChannels();
+    if (success) {
+      fetchChannels();
+    }
   });
 
   broker.on("getWorkspaceFolders", () => {
