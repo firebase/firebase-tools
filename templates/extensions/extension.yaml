@@ -1,7 +1,9 @@
 # Learn detailed information about the fields of an extension.yaml file in the docs:
 # https://firebase.google.com/docs/extensions/reference/extension-yaml
 
-name: greet-the-world  # Identifier for your extension
+# Identifier for your extension
+# TODO: Replace this with an descriptive name for your extension.
+name: greet-the-world  
 version: 0.0.1  # Follow semver versioning
 specVersion: v1beta  # Version of the Firebase Extensions specification
 
@@ -14,7 +16,8 @@ description: >-
 
 license: Apache-2.0  # https://spdx.org/licenses/
 
-# Public URL for the source code of your extension. Replace this with your GitHub repo.
+# Public URL for the source code of your extension.
+# TODO:  Replace this with your GitHub repo.
 sourceUrl: https://github.com/ORG_OR_USER/REPO_NAME
 
 # Specify whether a paid-tier billing plan is required to use your extension.
