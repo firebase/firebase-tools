@@ -1,69 +1,58 @@
-# firebase-vscode
+# firebase-vscode README
 
-## Features
+This extension is in the development and exploration stage.
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+## Running
 
-For example if there is an image subfolder under your extension project workspace:
+1. Open from the firebase-vscode not firebase-tools directory
+2. npm i
+3. f5 to run opens new window
+      f5 -> npm run watch defined in tasks.json
+      My terminal didn't have npm available but yours might
 
-\!\[feature X\]\(images/feature-x.png\)
+Workaround if f5 doesnt work:
+2.1 Execute `npm run watch` from within the vscode directory
+       Aside: Running `npm run watch` or `npm run build` the extension is compiled into dist (extension.js)
+       Changing code within extension is hot-reloaded
+       Modifying extensions.js will not hot-reload
+       source file src/extension.ts
+2.11 Wait for completion
+2.2 Hit play from the left nav
 
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+New code changes are automatically rebuilt if you have `watch` running, however the new VSCode Plugin-enabled window will not reflect changes until reloaded.
+Manual reload from new window: "Developer: Reload Window" Default hotkey: cmd + R
 
-## Requirements
+The communication between UI and extension done via the broker (see webview.postMessage)
+Web view uses react (carry-over from the hackweek project courtesy of Roman and Prakhar) TODO:verify ldaps
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+## Structure
+Extention.ts main entry point, calls sidebar.ts and workflow.ts
+sidebar.ts loads the UI from the webviews folder
+workflow.ts is the driving component (logic source)
+cli.ts wraps CLI methods, importing from firebase-tools/src
 
-## Extension Settings
+When workflow.ts needs to execute some CLI command, it defers to cli.ts
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
+## State
+currentOptions maintains the currentState of the plugin and is passed as a whole object to populate calls to the firebase-tools methods
+     `prepare` in the command includes a lot of 
 
-For example:
+## Logic
+Calling firebase-tools in general follows the stuff:
+1. instead of calling `before`, call `requireAuth` instead
+      requireAuth is a prerequisite for the plugin UI, needed
+      Zero-state (before login) directs the user to sign in with google (using firebase-tools CLI)
+2. prepare is an implicit command in the cmd class
+3. action
 
-This extension contributes the following settings:
+requireAuth -> login with service account or check that you're already logged in via firebase-tools
 
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
+## Open issues
 
-## Known Issues
-
-Calling out known issues can help limit users opening duplicate issues against your extension.
-
-## Release Notes
-
-Users appreciate release notes as you update your extension.
-
-### 1.0.0
-
-Initial release of ...
-
-### 1.0.1
-
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
-
----
-
-## Following extension guidelines
-
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
-
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
-
-## Working with Markdown
-
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
-
-## For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
+Login changes in the CLI are not immediately reflected in the Plugin, requires restart
+    If logged-out in the middle of a plugin session, handle requireAuth errors gracefully
+Plugin startup is flaky sometimes
+Unit/Integration tests are not developed
+Code cleanliness/structure TODOs
+tsconfig.json's rootDirs includes ["src", "../src", "common"] which causes some issues with import autocomplete
+Three package.jsons - one for monospace and one for the standalone plugin, and then root to copy the correct version

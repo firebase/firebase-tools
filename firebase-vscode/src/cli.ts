@@ -23,6 +23,7 @@ import { listChannels } from "../../src/hosting/api";
 import { ChannelWithId } from "../common/messaging/types";
 import { setEnabled } from "../../src/experiments";
 import { pluginLogger } from "./logger-wrapper";
+import { inspect } from "util";
 
 /**
  * Wrap the CLI's requireAuth() which is normally run before every command
@@ -159,7 +160,7 @@ export async function initHosting(options: { spa: boolean; public: string }) {
     // False for now, we can let the user decide if needed
     github: false
   };
-  pluginLogger.debug('Calling hosting init with inquirer options', JSON.stringify(inquirerOptions));
+  pluginLogger.debug('Calling hosting init with inquirer options', inspect(inquirerOptions));
   setInquirerOptions(inquirerOptions);
   await initAction("hosting", commandOptions);
 }
@@ -180,13 +181,13 @@ export async function deployToHosting(
     const options = { ...currentOptions };
     // TODO: handle multiple hosting configs
     if (!(firebaseJSON.hosting as HostingSingle).site) {
-      pluginLogger.debug('Calling getDefaultHostingSite() with options', JSON.stringify(options));
+      pluginLogger.debug('Calling getDefaultHostingSite() with options', inspect(options));
       (firebaseJSON.hosting as HostingSingle).site =
         await getDefaultHostingSite(options);
     }
-    pluginLogger.debug('Calling getCommandOptions() with options', JSON.stringify(options));
+    pluginLogger.debug('Calling getCommandOptions() with options', inspect(options));
     const commandOptions = await getCommandOptions(firebaseJSON, options);
-    pluginLogger.debug('Calling hosting deploy with command options', JSON.stringify(commandOptions));
+    pluginLogger.debug('Calling hosting deploy with command options', inspect(commandOptions));
     if (deployTarget === 'live') {
       await deploy(["hosting"], commandOptions);
     } else {
