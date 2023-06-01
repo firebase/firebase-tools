@@ -19,7 +19,7 @@ sourceUrl: https://github.com/firebase/firebase-tools/tree/master/templates/exte
 
 # Specify whether a paid-tier billing plan is required to use your extension.
 # Learn more in the docs: https://firebase.google.com/docs/extensions/reference/extension-yaml#billing-required-field
-billingRequired: false
+billingRequired: true
 
 # In an `apis` field, list any Google APIs (like Cloud Translation, BigQuery, etc.)
 # required for your extension to operate.
