@@ -104,7 +104,7 @@ export async function getChannels(firebaseJSON: FirebaseConfig): Promise<Channel
   pluginLogger.debug('Calling listChannels with params', options.project, (firebaseJSON.hosting as HostingSingle).site);
   const channels = await listChannels(options.project, (firebaseJSON.hosting as HostingSingle).site);
 
-  return channels.map(channel => ({...channel, id: channel.name.split("/").pop()}));
+  return channels.map(channel => ({ ...channel, id: channel.name.split("/").pop() }));
 }
 
 export async function logoutUser(email: string): Promise<void> {
@@ -130,9 +130,10 @@ export async function listProjects() {
 
 export async function initHosting(options: { spa: boolean; public: string }) {
   await requireAuthWrapper();
-  pluginLogger.debug('initHosting begin');
   let webFrameworksOptions = {};
   if (process.env.MONOSPACE_ENV) {
+    pluginLogger.debug('initHosting found MONOSPACE_ENV, '
+      + 'setting web frameworks options');
     // TODO: Also allow VS Code users to enable this manually with a UI
     setEnabled('webframeworks', true);
     webFrameworksOptions = {

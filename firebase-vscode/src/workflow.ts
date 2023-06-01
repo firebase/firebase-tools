@@ -44,8 +44,6 @@ async function fetchUsers() {
  * Get the user to select a project.
  */
 async function promptUserForProject(broker: ExtensionBrokerImpl, projects: FirebaseProjectMetadata[]) {
-  // Put in a separate flow for monospace.
-  // process.env.MONOSPACE_ENV should be directly accessible here
   const items = projects.map(({ projectId }) => projectId);
 
   return new Promise<null | string>((resolve, reject) => {
@@ -169,6 +167,8 @@ export function setupWorkflow(
   fetchChannels();
 
   broker.on("getEnv", async () => {
+    pluginLogger.debug(`Value of process.env.MONOSPACE_ENV: `
+      + `${process.env.MONOSPACE_ENV}`);
     broker.send("notifyEnv", {
       isMonospace: Boolean(process.env.MONOSPACE_ENV),
     });
@@ -230,22 +230,29 @@ export function setupWorkflow(
   broker.on("selectProject", async (email) => {
     let projectId;
     if (process.env.MONOSPACE_ENV) {
+      pluginLogger.debug('selectProject: found MONOSPACE_ENV, '
+        + 'prompting user using external flow');
       /**
        * Monospace case: use Monospace flow
        */
       const monospaceExtension = vscode.extensions.getExtension('google.monospace');
       process.env.MONOSPACE_DAEMON_PORT = monospaceExtension.exports.getMonospaceDaemonPort();
-      // call appropriate CLI function?
-      projectId = await selectProjectInMonospace({
-        projectRoot: currentOptions.cwd,
-        project: undefined,
-        isVSCE: true
-      });
+      try {
+        projectId = await selectProjectInMonospace({
+          projectRoot: currentOptions.cwd,
+          project: undefined,
+          isVSCE: true
+        });
+      } catch (e) {
+        pluginLogger.error(e);
+      }
     } else if (email === 'service_account') {
       /**
        * Non-Monospace service account case: get the service account's only
        * linked project.
        */
+      pluginLogger.debug('selectProject: MONOSPACE_ENV not found, '
+        + ' but service account found');
       const projects = (await listProjects()) as FirebaseProjectMetadata[];
       projectsUserMapping.set(email, projects);
       // Service accounts should only have one project.
@@ -255,6 +262,8 @@ export function setupWorkflow(
        * Default Firebase login case, let user choose from projects that
        * Firebase login has access to.
        */
+      pluginLogger.debug('selectProject: no service account or MONOSPACE_ENV '
+        + 'found, using firebase account to list projects');
       let projects = [];
       if (projectsUserMapping.has(email)) {
         pluginLogger.info(`using cached projects list for ${email}`);
