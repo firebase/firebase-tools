@@ -14,7 +14,16 @@ export type GetInitFirebaseResponse =
         projectId: string;
       };
     }
-  | { success: false; error: "WAITING_FOR_RESPONSE" | "USER_CANCELED" | unknown }; // TODO: define all errors
+  | {
+      success: true;
+      userResponse: {
+        success: false;
+      };
+    }
+  | {
+      success: false;
+      error: "WAITING_FOR_RESPONSE" | "USER_CANCELED" | unknown; // TODO: define all errors
+    };
 
 export type InitFirebaseResponse =
   | {
