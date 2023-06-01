@@ -52,8 +52,10 @@ describe("webframeworks", function (this) {
     it("should have the correct effective firebase.json", () => {
       const result = readFileSync(LOG_FILE).toString();
       const effectiveFirebaseJSON = result
-        .split("[web frameworks] effective firebase.json: ").at(-1)
-        ?.split(new RegExp(`(\\[\\S+\\] )?\\[${new Date().getFullYear()}`))[0]?.trim();
+        .split("[web frameworks] effective firebase.json: ")
+        .at(-1)
+        ?.split(new RegExp(`(\\[\\S+\\] )?\\[${new Date().getFullYear()}`))[0]
+        ?.trim();
       expect(effectiveFirebaseJSON && JSON.parse(effectiveFirebaseJSON), "firebase.json").to.eql({
         hosting: [
           {

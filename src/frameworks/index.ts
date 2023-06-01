@@ -555,8 +555,11 @@ ${
       });
     }
   }
-  
-  logger.debug("[web frameworks] effective firebase.json: ", JSON.stringify({ hosting: configs, functions: options.config.get("functions") }, undefined, 2));
+
+  logger.debug(
+    "[web frameworks] effective firebase.json: ",
+    JSON.stringify({ hosting: configs, functions: options.config.get("functions") }, undefined, 2)
+  );
 
   // Clean up memos/caches
   BUILD_MEMO.clear();

@@ -263,7 +263,10 @@ export async function build(dir: string): Promise<BuildResult> {
 
   if (wantsBackend) {
     logger.info("Building a Cloud Function to run this application. This is needed due to:");
-    for (const reason of Array.from(reasonsForBackend).slice(0, DEFAULT_NUMBER_OF_REASONS_TO_LIST)) {
+    for (const reason of Array.from(reasonsForBackend).slice(
+      0,
+      DEFAULT_NUMBER_OF_REASONS_TO_LIST
+    )) {
       logger.info(` • ${reason}`);
     }
     for (const reason of Array.from(reasonsForBackend).slice(DEFAULT_NUMBER_OF_REASONS_TO_LIST)) {
