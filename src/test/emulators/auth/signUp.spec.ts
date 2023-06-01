@@ -40,6 +40,17 @@ describeAuthEmulator("accounts:signUp", ({ authApi }) => {
       });
   });
 
+  it("should throw error if empty email and password is provided", async () => {
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:signUp")
+      .send({ email: "", password: "" })
+      .query({ key: "fake-api-key" })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error).to.have.property("message").equals("INVALID_EMAIL");
+      });
+  });
+
   it("should issue idToken and refreshToken on anon signUp", async () => {
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:signUp")
