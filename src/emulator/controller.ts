@@ -250,7 +250,8 @@ interface EmulatorOptions extends Options {
  */
 export async function startAll(
   options: EmulatorOptions,
-  showUI = true
+  showUI = true,
+  runningTestScript = false
 ): Promise<{ deprecationNotices: string[] }> {
   // Emulators config is specified in firebase.json as:
   // "emulators": {
@@ -463,7 +464,13 @@ export async function startAll(
       }
     }
     // This may add additional sources for Functions emulator and must be done before it.
-    await prepareFrameworks(targets, options, options, emulators);
+    await prepareFrameworks(
+      runningTestScript ? "test" : "emulate",
+      targets,
+      undefined,
+      options,
+      emulators
+    );
   }
 
   const projectDir = (options.extDevDir || options.config.projectDir) as string;
