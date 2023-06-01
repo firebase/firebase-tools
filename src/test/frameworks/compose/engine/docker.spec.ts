@@ -27,10 +27,10 @@ describe("DockerfileBuilder", () => {
   describe("tempFrom", () => {
     it("should add a FROM instruction without updating last stage", () => {
       const builder = new DockerfileBuilder();
-      builder.from("node:18", "base")
-        .tempFrom("node:20", "temp")
-        .fromLastStage("test");
-      expect(builder.toString()).to.equal("FROM node:18 AS base\nFROM node:20 AS temp\nFROM base as test\n");
+      builder.from("node:18", "base").tempFrom("node:20", "temp").fromLastStage("test");
+      expect(builder.toString()).to.equal(
+        "FROM node:18 AS base\nFROM node:20 AS temp\nFROM base AS test\n"
+      );
     });
   });
 
@@ -78,7 +78,7 @@ describe("DockerfileBuilder", () => {
     it("should add multiple ENV instructions to the Dockerfile", () => {
       const builder = new DockerfileBuilder();
       builder.envs({ NODE_ENV: "production", PORT: "8080" });
-      expect(builder.toString()).to.equal('ENV NODE_ENV="production" PORT="8080"\n');
+      expect(builder.toString()).to.equal('ENV NODE_ENV="production"\nENV PORT="8080"\n');
     });
   });
 });
