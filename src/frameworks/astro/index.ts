@@ -64,7 +64,7 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
 }
 
 export async function getDevModeHandle(cwd: string) {
-  const host = new Promise<string>((resolve) => {
+  const host = new Promise<string>((resolve, reject) => {
     const cli = getNodeModuleBin("astro", cwd);
     const serve = spawn(cli, ["dev"], { cwd });
     serve.stdout.on("data", (data: any) => {
@@ -75,6 +75,7 @@ export async function getDevModeHandle(cwd: string) {
     serve.stderr.on("data", (data: any) => {
       process.stderr.write(data);
     });
+    serve.on("exit", reject);
   });
   return simpleProxy(await host);
 }
