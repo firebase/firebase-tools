@@ -1,2 +1,3 @@
 - Address additional cases where we were attempting to deploy a framework's development bundle (#5895)
 - Switch `ext:dev:init` to default 'billingRequired' to true in `extension.yaml`
+- Support Astro hybrid rendering (#5898)
