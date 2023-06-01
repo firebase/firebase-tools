@@ -32,6 +32,7 @@ export interface BuildResult {
   wantsBackend?: boolean;
   trailingSlash?: boolean;
   i18n?: boolean;
+  baseUrl?: string;
 }
 
 export type RequestHandler = (
@@ -81,7 +82,6 @@ export interface Framework {
     bootstrapScript?: string;
     packageJson: any;
     frameworksEntry?: string;
-    baseUrl?: string;
     dotEnv?: Record<string, string>;
     rewriteSource?: string;
   }>;
