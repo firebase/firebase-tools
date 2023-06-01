@@ -76,18 +76,3 @@ export class RepositoryFileSystem implements FileSystem {
     }
   }
 }
-
-/**
- * Automatically convert ENOENT errors into null
- */
-export async function readOrNull(fs: FileSystem, path: string): Promise<string | null> {
-  try {
-    return fs.read(path);
-  } catch (err: unknown) {
-    // Is this really what TypeScript intends me to do to avoid linter errors?
-    if (err && typeof err === "object" && "code" in err && err.code === "ENOENT") {
-      return null;
-    }
-    throw err;
-  }
-}
