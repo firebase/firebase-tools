@@ -1,6 +1,11 @@
 - Fix a bug preventing web framework's dev-mode from working out-of-box with Firebase Authentication. (#5894)
 - Address additional cases where we were attempting to deploy a framework's development bundle (#5895)
 - NextJS rewrites should be prefixed with the basePath defined in next.config.js (#5923)
-- Web Frameworks emulators will now respect Cloud Functions rewrites (#5923)
+- Web Frameworks emulators will again respect existing Cloud Functions rewrites (#5923)
+- Web Frameworks rewrites/redirects/headers will only prepend those in firebase.json if there's a baseUrl (#5923)
 - Switch `ext:dev:init` to default 'billingRequired' to true in `extension.yaml` (#5917)
+- Fixes issue where Authentication emulator creates a user if empty email and empty password is provided. (#5639)
+- Improve error message raised when `--import` flag directory does not exist. (#5851)
+- Switch `ext:dev:init` to default 'billingRequired' to true in `extension.yaml`
+- Remove `LOCATION` param from the `extensions.yaml` template for `ext:dev:init`
 - Support Astro hybrid rendering (#5898)
