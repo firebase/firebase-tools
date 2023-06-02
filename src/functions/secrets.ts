@@ -2,6 +2,7 @@ import * as utils from "../utils";
 import * as poller from "../operation-poller";
 import * as gcf from "../gcp/cloudfunctions";
 import * as backend from "../deploy/functions/backend";
+import * as ensureApiEnabled from "../ensureApiEnabled";
 import {
   createSecret,
   destroySecretVersion,
@@ -22,6 +23,7 @@ import { validateKey } from "./env";
 import { logger } from "../logger";
 import { functionsOrigin } from "../api";
 import { assertExhaustive } from "../functional";
+import { needProjectId } from "../projectUtils";
 
 const FIREBASE_MANAGED = "firebase-managed";
 
@@ -50,6 +52,14 @@ function toUpperSnakeCase(key: string): string {
     .replace(/[.-]/g, "_")
     .replace(/([a-z])([A-Z])/g, "$1_$2")
     .toUpperCase();
+}
+
+/**
+ * Utility used in the "before" command annotation to enable the API.
+ */
+export function ensureApi(options: any): Promise<void> {
+  const projectId = needProjectId(options);
+  return ensureApiEnabled.ensure(projectId, "secretmanager.googleapis.com", "runtimeconfig", true);
 }
 
 /**
