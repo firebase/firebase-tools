@@ -3,6 +3,7 @@ import * as fs from "fs";
 
 import * as clc from "colorette";
 
+import { logger } from "../logger";
 import { ensureValidKey, ensureSecret } from "../functions/secrets";
 import { Command } from "../command";
 import { requirePermissions } from "../requirePermissions";
@@ -14,10 +15,12 @@ import { addVersion, toSecretVersionResourceName } from "../gcp/secretManager";
 import * as secrets from "../functions/secrets";
 import * as backend from "../deploy/functions/backend";
 import * as args from "../deploy/functions/args";
+import { check } from "../ensureApiEnabled";
 
 export const command = new Command("functions:secrets:set <KEY>")
   .description("Create or update a secret for use in Cloud Functions for Firebase.")
   .withForce("Automatically updates functions to use the new secret.")
+  .before(secrets.ensureApi)
   .before(requirePermissions, [
     "secretmanager.secrets.create",
     "secretmanager.secrets.get",
@@ -57,6 +60,17 @@ export const command = new Command("functions:secrets:set <KEY>")
         "Please deploy your functions for the change to take effect by running:\n\t" +
           clc.bold("firebase deploy --only functions")
       );
+      return;
+    }
+
+    const functionsEnabled = await check(
+      projectId,
+      "cloudfunctions.googleapis.com",
+      "functions",
+      /* silent= */ true
+    );
+    if (!functionsEnabled) {
+      logger.debug("Customer set secrets before enabling functions. Exiting");
       return;
     }
 
