@@ -12,7 +12,6 @@ import { logger } from "../../../../logger";
 import { DEFAULT_VENV_DIR, runWithVirtualEnv, virtualEnvCmd } from "../../../../functions/python";
 import { FirebaseError } from "../../../../error";
 import { Build } from "../../build";
-import { logLabeledWarning } from "../../../../utils";
 
 export const LATEST_VERSION: runtimes.Runtime = "python311";
 
