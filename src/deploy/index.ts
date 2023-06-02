@@ -1,3 +1,4 @@
+import * as clc from "colorette";
 import { logger } from "../logger";
 import { hostingOrigin } from "../api";
 import { bold, underline, white } from "colorette";
@@ -17,8 +18,10 @@ import * as RemoteConfigTarget from "./remoteconfig";
 import * as ExtensionsTarget from "./extensions";
 import { prepareFrameworks } from "../frameworks";
 import { HostingDeploy } from "./hosting/context";
-import { requirePermissions } from "../requirePermissions";
+import { addPinnedFunctionsToOnlyString, hasPinnedFunctions } from "./hosting/prepare";
+import { isRunningInGithubAction } from "../init/features/hosting/github";
 import { TARGET_PERMISSIONS } from "../commands/deploy";
+import { requirePermissions } from "../requirePermissions";
 
 const TARGETS = {
   hosting: HostingTarget,
@@ -62,19 +65,32 @@ export const deploy = async function (
   if (targetNames.includes("hosting")) {
     const config = options.config.get("hosting");
     if (Array.isArray(config) ? config.some((it) => it.source) : config.source) {
-      experiments.assertEnabled("webframeworks", "deploy a web framework to hosting");
-      const usedToTargetFunctions = targetNames.includes("functions");
-      await prepareFrameworks(targetNames, context, options);
-      const nowTargetsFunctions = targetNames.includes("functions");
-      if (nowTargetsFunctions && !usedToTargetFunctions) {
-        if (context.hostingChannel && !experiments.isEnabled("pintags")) {
+      experiments.assertEnabled("webframeworks", "deploy a web framework from source");
+      await prepareFrameworks("deploy", targetNames, context, options);
+    }
+  }
+
+  if (targetNames.includes("hosting") && hasPinnedFunctions(options)) {
+    experiments.assertEnabled("pintags", "deploy a tagged function as a hosting rewrite");
+    if (!targetNames.includes("functions")) {
+      targetNames.unshift("functions");
+      try {
+        await requirePermissions(options, TARGET_PERMISSIONS["functions"]);
+      } catch (e) {
+        if (isRunningInGithubAction()) {
           throw new FirebaseError(
-            "Web frameworks with dynamic content do not yet support deploying to preview channels"
+            "It looks like you are deploying a Hosting site along with Cloud Functions " +
+              "using a GitHub action version that did not include Cloud Functions " +
+              "permissions. Please reinstall the GitHub action with" +
+              clc.bold("firebase init hosting:github"),
+            { original: e as Error }
           );
+        } else {
+          throw e;
         }
-        await requirePermissions(TARGET_PERMISSIONS["functions"]);
       }
     }
+    await addPinnedFunctionsToOnlyString(context, options);
   }
 
   for (const targetName of targetNames) {

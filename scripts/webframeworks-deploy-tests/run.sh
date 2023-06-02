@@ -4,6 +4,10 @@ set -e # Immediately exit on failure
 # Globally link the CLI for the testing framework
 ./scripts/clean-install.sh
 
-(cd scripts/webframeworks-deploy-tests/hosting; npm i; npm run build)
+source scripts/set-default-credentials.sh
 
-mocha scripts/webframeworks-deploy-tests/tests.ts
+npm ci --prefix scripts/webframeworks-deploy-tests/nextjs
+npm ci --prefix scripts/webframeworks-deploy-tests/angular
+npm ci --prefix scripts/webframeworks-deploy-tests/functions
+
+FIREBASE_CLI_EXPERIMENTS=webframeworks,pintags firebase emulators:exec "mocha scripts/webframeworks-deploy-tests/tests.ts" --config scripts/webframeworks-deploy-tests/firebase.json --project demo-123 --debug

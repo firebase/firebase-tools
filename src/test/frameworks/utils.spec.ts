@@ -3,8 +3,12 @@ import * as sinon from "sinon";
 import * as fs from "fs";
 import { resolve, join } from "path";
 
-import { warnIfCustomBuildScript, isUrl } from "../../frameworks/utils";
-import { getNodeModuleBin } from "../../frameworks";
+import {
+  warnIfCustomBuildScript,
+  isUrl,
+  getNodeModuleBin,
+  conjoinOptions,
+} from "../../frameworks/utils";
 
 describe("Frameworks utils", () => {
   describe("getNodeModuleBin", () => {
@@ -89,6 +93,50 @@ describe("Frameworks utils", () => {
 
       expect(consoleLogSpy).to.be.calledOnceWith(
         `\nWARNING: Your package.json contains a custom build that is being ignored. Only the ${framework} default build script (e.g, "${defaultBuildScripts[0]}") is respected. If you have a more advanced build process you should build a custom integration https://firebase.google.com/docs/hosting/express\n`
+      );
+    });
+  });
+
+  describe("conjoinOptions", () => {
+    const options = [14, 16, 18];
+    const defaultSeparator = ",";
+    const defaultConjunction = "and";
+
+    it("should return undefined if there's no options", () => {
+      expect(conjoinOptions([])).to.be.undefined;
+    });
+
+    it("should return option if there's only one", () => {
+      expect(conjoinOptions([options[0]])).to.equal(options[0].toString());
+    });
+
+    it("should return options without separator if there's two options", () => {
+      const twoOptions = options.slice(0, 2);
+
+      expect(conjoinOptions(twoOptions)).to.equal(
+        `${twoOptions[0]} ${defaultConjunction} ${twoOptions[1]}`
+      );
+    });
+
+    it("should return options with default conjunction and default separator", () => {
+      expect(conjoinOptions(options)).to.equal(
+        `${options[0]}${defaultSeparator} ${options[1]}${defaultSeparator} ${defaultConjunction} ${options[2]}`
+      );
+    });
+
+    it("should return options with custom separator", () => {
+      const customSeparator = "/";
+
+      expect(conjoinOptions(options, defaultConjunction, customSeparator)).to.equal(
+        `${options[0]}${customSeparator} ${options[1]}${customSeparator} ${defaultConjunction} ${options[2]}`
+      );
+    });
+
+    it("should return options with custom conjunction", () => {
+      const customConjuntion = "or";
+
+      expect(conjoinOptions(options, customConjuntion, defaultSeparator)).to.equal(
+        `${options[0]}${defaultSeparator} ${options[1]}${defaultSeparator} ${customConjuntion} ${options[2]}`
       );
     });
   });

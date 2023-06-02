@@ -3,9 +3,15 @@ import { spawn } from "cross-spawn";
 import { existsSync } from "fs";
 import { copy, pathExists } from "fs-extra";
 import { join } from "path";
-import { findDependency, FrameworkType, getNodeModuleBin, relativeRequire, SupportLevel } from "..";
+import { FrameworkType, SupportLevel } from "../interfaces";
 import { promptOnce } from "../../prompt";
-import { simpleProxy, warnIfCustomBuildScript } from "../utils";
+import {
+  simpleProxy,
+  warnIfCustomBuildScript,
+  findDependency,
+  getNodeModuleBin,
+  relativeRequire,
+} from "../utils";
 
 export const name = "Vite";
 export const support = SupportLevel.Experimental;
@@ -67,6 +73,8 @@ export async function build(root: string) {
   process.chdir(root);
   await build({ root, mode: "production" });
   process.chdir(cwd);
+
+  return { rewrites: [{ source: "**", destination: "/index.html" }] };
 }
 
 export async function ɵcodegenPublicDirectory(root: string, dest: string) {
@@ -76,7 +84,7 @@ export async function ɵcodegenPublicDirectory(root: string, dest: string) {
 }
 
 export async function getDevModeHandle(dir: string) {
-  const host = new Promise<string>((resolve) => {
+  const host = new Promise<string>((resolve, reject) => {
     // Can't use scheduleTarget since that—like prerender—is failing on an ESM bug
     // will just grep for the hostname
     const cli = getNodeModuleBin("vite", dir);
@@ -89,6 +97,8 @@ export async function getDevModeHandle(dir: string) {
     serve.stderr.on("data", (data: any) => {
       process.stderr.write(data);
     });
+
+    serve.on("exit", reject);
   });
   return simpleProxy(await host);
 }

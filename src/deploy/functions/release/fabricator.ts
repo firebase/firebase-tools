@@ -26,6 +26,7 @@ import * as utils from "../../../utils";
 import * as services from "../services";
 import { AUTH_BLOCKING_EVENTS } from "../../../functions/events/v1";
 import { getDefaultComputeServiceAgent } from "../checkIam";
+import { getHumanFriendlyPlatformName } from "../functionsDeployHelper";
 
 // TODO: Tune this for better performance.
 const gcfV1PollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
@@ -357,6 +358,7 @@ export class Fabricator {
 
     endpoint.uri = resultFunction.serviceConfig?.uri;
     const serviceName = resultFunction.serviceConfig?.service;
+    endpoint.runServiceId = utils.last(serviceName?.split("/"));
     if (!serviceName) {
       logger.debug("Result function unexpectedly didn't have a service name.");
       utils.logLabeledWarning(
@@ -473,6 +475,7 @@ export class Fabricator {
 
     endpoint.uri = resultFunction.serviceConfig?.uri;
     const serviceName = resultFunction.serviceConfig?.service;
+    endpoint.runServiceId = utils.last(serviceName?.split("/"));
     if (!serviceName) {
       logger.debug("Result function unexpectedly didn't have a service name.");
       utils.logLabeledWarning(
@@ -678,8 +681,12 @@ export class Fabricator {
 
   logOpStart(op: string, endpoint: backend.Endpoint): void {
     const runtime = getHumanFriendlyRuntimeName(endpoint.runtime);
+    const platform = getHumanFriendlyPlatformName(endpoint.platform);
     const label = helper.getFunctionLabel(endpoint);
-    utils.logLabeledBullet("functions", `${op} ${runtime} function ${clc.bold(label)}...`);
+    utils.logLabeledBullet(
+      "functions",
+      `${op} ${runtime} (${platform}) function ${clc.bold(label)}...`
+    );
   }
 
   logOpSuccess(op: string, endpoint: backend.Endpoint): void {

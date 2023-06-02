@@ -28,14 +28,14 @@ const CACHE_DIR =
 
 const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDetails } = {
   database: {
-    version: "4.11.0",
-    expectedSize: 34318940,
-    expectedChecksum: "311609538bd65666eb724ef47c2e6466",
+    version: "4.11.2",
+    expectedSize: 34495935,
+    expectedChecksum: "2fd771101c0e1f7898c04c9204f2ce63",
   },
   firestore: {
-    version: "1.16.2",
-    expectedSize: 64601019,
-    expectedChecksum: "83f379a5b3d367503a860497fea3a936",
+    version: "1.17.4",
+    expectedSize: 64969580,
+    expectedChecksum: "9d580b58e55e57b0cdc3ca8888098d43",
   },
   storage: {
     version: "1.1.3",
@@ -45,9 +45,9 @@ const EMULATOR_UPDATE_DETAILS: { [s in DownloadableEmulators]: EmulatorUpdateDet
   ui: experiments.isEnabled("emulatoruisnapshot")
     ? { version: "SNAPSHOT", expectedSize: -1, expectedChecksum: "" }
     : {
-        version: "1.11.5",
+        version: "1.11.6",
         expectedSize: 3063444,
-        expectedChecksum: "4045fef65cf71fb9d83b01fb8b160141",
+        expectedChecksum: "14b971f4ed4909f348e647db7114d62b",
       },
   pubsub: {
     version: "0.7.1",

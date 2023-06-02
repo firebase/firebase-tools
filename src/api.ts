@@ -124,6 +124,14 @@ export const extensionsOrigin = utils.envOverride(
   "FIREBASE_EXT_URL",
   "https://firebaseextensions.googleapis.com"
 );
+export const extensionsPublisherOrigin = utils.envOverride(
+  "FIREBASE_EXT_PUBLISHER_URL",
+  "https://firebaseextensionspublisher.googleapis.com"
+);
+export const extensionsTOSOrigin = utils.envOverride(
+  "FIREBASE_EXT_TOS_URL",
+  "https://firebaseextensionstos-pa.googleapis.com"
+);
 export const realtimeOrigin = utils.envOverride("FIREBASE_REALTIME_URL", "https://firebaseio.com");
 export const rtdbManagementOrigin = utils.envOverride(
   "FIREBASE_RTDB_MANAGEMENT_URL",

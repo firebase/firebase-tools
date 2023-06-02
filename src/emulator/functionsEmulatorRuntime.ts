@@ -1026,11 +1026,13 @@ async function main(): Promise<void> {
       switch (FUNCTION_SIGNATURE) {
         case "event":
         case "cloudevent":
+          let reqBody;
           const rawBody = (req as RequestWithRawBody).rawBody;
-          let reqBody = JSON.parse(rawBody.toString());
           if (EventUtils.isBinaryCloudEvent(req)) {
             reqBody = EventUtils.extractBinaryCloudEventContext(req);
             reqBody.data = req.body;
+          } else {
+            reqBody = JSON.parse(rawBody.toString());
           }
           await processBackground(trigger, reqBody, FUNCTION_SIGNATURE);
           res.send({ status: "acknowledged" });
