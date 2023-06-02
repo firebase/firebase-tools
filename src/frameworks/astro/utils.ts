@@ -15,8 +15,8 @@ export async function getConfig(cwd: string) {
   );
   const logging: any = undefined; // TODO figure out the types here
   const { astroConfig: config } = await openConfig({ cmd: "build", cwd, logging });
-  const outDirPath = config.outDir.pathname[0] === '/' ? config.outDir.pathname.substring(1) : config.outDir.pathname
-  const PublicDirPath = config.publicDir.pathname[0] === '/' ? config.publicDir.pathname.substring(1) : config.publicDir.pathname
+  const outDirPath = config.outDir.pathname.startsWith('/') ? config.outDir.pathname.substring(1) : config.outDir.pathname
+  const PublicDirPath = config.publicDir.pathname.startsWith('/') ? config.publicDir.pathname.substring(1) : config.publicDir.pathname
   return {
     outDir: relative(cwd, outDirPath),
     publicDir: relative(cwd, PublicDirPath),
