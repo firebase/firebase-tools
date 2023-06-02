@@ -65,10 +65,13 @@ export async function init(setup: any, config: any) {
 }
 
 export async function build(dir: string, configuration: string): Promise<BuildResult> {
-  const { targets, serverTarget, serveOptimizedImages, locales, baseHref } = await getBuildConfig(
-    dir,
-    configuration
-  );
+  const {
+    targets,
+    serverTarget,
+    serveOptimizedImages,
+    locales,
+    baseHref: baseUrl,
+  } = await getBuildConfig(dir, configuration);
   await warnIfCustomBuildScript(dir, name, DEFAULT_BUILD_SCRIPT);
   for (const target of targets) {
     // TODO there is a bug here. Spawn for now.
@@ -86,12 +89,12 @@ export async function build(dir: string, configuration: string): Promise<BuildRe
     ? []
     : [
         {
-          source: posix.join(baseHref, "**"),
-          destination: posix.join(baseHref, "index.html"),
+          source: posix.join(baseUrl, "**"),
+          destination: posix.join(baseUrl, "index.html"),
         },
       ];
   const i18n = !!locales;
-  return { wantsBackend, i18n, rewrites };
+  return { wantsBackend, i18n, rewrites, baseUrl };
 }
 
 export async function getDevModeHandle(dir: string, configuration: string) {
@@ -177,7 +180,7 @@ export async function ɵcodegenFunctionsDirectory(
     browserLocales,
     bundleDependencies,
     externalDependencies,
-    baseHref: baseUrl,
+    baseHref,
     serveOptimizedImages,
   } = await getServerConfig(sourceDir, configuration);
 
@@ -239,8 +242,8 @@ exports.handle = function(req,res) {
     bootstrapScript = `exports.handle = require('./${serverOutputPath}/main.js').app();\n`;
   } else {
     bootstrapScript = `exports.handle = (res, req) => req.sendStatus(404);\n`;
-    rewriteSource = posix.join(baseUrl, "__image__");
+    rewriteSource = posix.join(baseHref, "__image__");
   }
 
-  return { bootstrapScript, packageJson, baseUrl, dotEnv, rewriteSource };
+  return { bootstrapScript, packageJson, dotEnv, rewriteSource };
 }

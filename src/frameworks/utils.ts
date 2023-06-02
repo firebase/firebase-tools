@@ -18,7 +18,7 @@ import {
   NPM_COMMAND_TIMEOUT_MILLIES,
   VALID_LOCALE_FORMATS,
 } from "./constants";
-import { BUILD_TARGET_PURPOSE } from "./interfaces";
+import { BUILD_TARGET_PURPOSE, RequestHandler } from "./interfaces";
 
 // Use "true &&"" to keep typescript from compiling this file and rewriting
 // the import statement into a require
@@ -63,20 +63,34 @@ export async function warnIfCustomBuildScript(
   }
 }
 
-type RequestHandler = (req: IncomingMessage, res: ServerResponse) => Promise<void>;
+function proxyResponse(original: ServerResponse, next: () => void) {
+  return (response: IncomingMessage | ServerResponse) => {
+    const { statusCode, statusMessage } = response;
+    if (!statusCode) {
+      original.end();
+      return;
+    }
+    if (statusCode === 404) {
+      return next();
+    }
+    const headers = "getHeaders" in response ? response.getHeaders() : response.headers;
+    original.writeHead(statusCode, statusMessage, headers);
+    response.pipe(original);
+  };
+}
 
 export function simpleProxy(hostOrRequestHandler: string | RequestHandler) {
   const agent = new Agent({ keepAlive: true });
+  // If the path is a the auth token sync URL pass through to Cloud Functions
+  const firebaseDefaultsJSON = process.env.__FIREBASE_DEFAULTS__;
+  const authTokenSyncURL: string | undefined =
+    firebaseDefaultsJSON && JSON.parse(firebaseDefaultsJSON)._authTokenSyncURL;
   return async (originalReq: IncomingMessage, originalRes: ServerResponse, next: () => void) => {
     const { method, headers, url: path } = originalReq;
     if (!method || !path) {
       originalRes.end();
       return;
     }
-    // If the path is a the auth token sync URL pass through to Cloud Functions
-    const firebaseDefaultsJSON = process.env.__FIREBASE_DEFAULTS__;
-    const authTokenSyncURL: string | undefined =
-      firebaseDefaultsJSON && JSON.parse(firebaseDefaultsJSON)._authTokenSyncURL;
     if (path === authTokenSyncURL) {
       return next();
     }
@@ -100,8 +114,12 @@ export function simpleProxy(hostOrRequestHandler: string | RequestHandler) {
       };
       const req = httpRequest(opts, (response) => {
         const { statusCode, statusMessage, headers } = response;
-        originalRes.writeHead(statusCode!, statusMessage, headers);
-        response.pipe(originalRes);
+        if (statusCode === 404) {
+          next();
+        } else {
+          originalRes.writeHead(statusCode!, statusMessage, headers);
+          response.pipe(originalRes);
+        }
       });
       originalReq.pipe(req);
       req.on("error", (err) => {
@@ -109,7 +127,9 @@ export function simpleProxy(hostOrRequestHandler: string | RequestHandler) {
         originalRes.end();
       });
     } else {
-      await hostOrRequestHandler(originalReq, originalRes);
+      await Promise.resolve(hostOrRequestHandler(originalReq, originalRes, next));
+      const proxiedRes = new ServerResponse(originalReq);
+      proxyResponse(originalRes, next)(proxiedRes);
     }
   };
 }
