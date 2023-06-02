@@ -128,5 +128,7 @@ module.exports = {
     "/src/frameworks/docs/**",
     // This file is taking a very long time to lint, 2-4m
     "src/emulator/auth/schema.ts",
+    // TODO: run linting on this with its own lint script, monorepo style
+    "firebase-vscode",
   ],
 };
