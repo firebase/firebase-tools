@@ -12,97 +12,26 @@ export const frameworkSpecs: FrameworkSpec[] = [
     ],
   },
   {
-    id: "angular",
+    id: "nextjs",
     runtime: "nodejs",
-    webFrameworkId: "Angular",
-    requiredFiles: ["angular.json"],
+    webFrameworkId: "Next.js",
+    requiredFiles: ["next.config.js", "next.config.ts"],
     requiredDependencies: [
       {
-        name: "@angular/core",
-      },
-      {
-        name: "@angular/cli",
+        name: "next",
       },
     ],
     commands: {
       build: {
-        cmd: "npm run build",
+        cmd: "npx next build",
       },
       dev: {
-        cmd: "npm run start",
+        cmd: "npx next dev",
         env: { NODE_ENV: "dev" },
       },
       run: {
-        cmd: "node server.js",
+        cmd: "npx next run",
         env: { NODE_ENV: "production" },
-      },
-    },
-  },
-  {
-    id: "nextjs",
-    runtime: "nodejs",
-    requiredFiles: [["next.config.js"]],
-    requiredDependencies: [{ name: "next" }],
-  },
-  {
-    id: "astro",
-    runtime: "nodejs",
-    requiredFiles: [["astro.config.mjs", "astro.config.cjs", "astro.config.js", "astro.config.ts"]],
-    requiredDependencies: [{ name: "astrojs" }],
-    embedsFrameworks: ["svelte", "react", "vite"],
-    commands: {
-      build: {
-        cmd: "astro build",
-      },
-      dev: {
-        cmd: "astro",
-        env: { NODE_ENV: "dev" },
-      },
-      run: {
-        cmd: "node ./dist/server/entry.mjs",
-        env: { NODE_ENV: "production" },
-      },
-    },
-  },
-  {
-    id: "react",
-    runtime: "nodejs",
-    requiredDependencies: [{ name: "react" }, { name: "react-dom" }],
-  },
-  {
-    id: "react-vite",
-    runtime: "vite",
-    requiredDependencies: [{ name: "react" }, { name: "react-dom" }],
-    // vars: { vitePlugin: "react-jsx" },
-  },
-  {
-    id: "svelte",
-    runtime: "nodejs",
-    requiredDependencies: [{ name: "svelte" }],
-  },
-  {
-    id: "svelte-vite",
-    runtime: "vite",
-    requiredDependencies: [{ name: "svelte" }],
-    embedsFrameworks: ["svelte"],
-    // vars: { vitePlugin: "vite-plugin-svelte" },
-  },
-  {
-    id: "sveltekit",
-    runtime: "svelte",
-    requiredDependencies: [{ name: "@sveltejs/kit" }],
-  },
-  {
-    id: "vite",
-    runtime: "nodejs",
-    requiredDependencies: [{ name: "vite" }],
-    commands: {
-      build: {
-        cmd: "vite build",
-      },
-      dev: {
-        cmd: "vite",
-        env: { NODE_ENV: "dev" },
       },
     },
   },
