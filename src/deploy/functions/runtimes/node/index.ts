@@ -203,10 +203,7 @@ export class Delegate {
         const childProcess = spawn(binPath, [this.sourceDir], {
           env,
           cwd: this.sourceDir,
-          stdio: [/* stdin=*/ "ignore", /* stdout=*/ "pipe", /* stderr=*/ "inherit"],
-        });
-        childProcess.stdout?.on("data", (chunk) => {
-          logger.debug(chunk.toString());
+          stdio: [/* stdin=*/ "ignore", /* stdout=*/ "inherit", /* stderr=*/ "inherit"],
         });
         return Promise.resolve(async () => {
           const p = new Promise<void>((resolve, reject) => {

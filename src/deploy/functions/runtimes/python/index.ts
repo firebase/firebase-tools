@@ -145,8 +145,6 @@ export class Delegate implements runtimes.RuntimeDelegate {
       ADMIN_PORT: port.toString(),
     };
     const args = [this.bin, `"${path.join(modulesDir, "private", "serving.py")}"`];
-    const stdout: string[] = [];
-    const stderr: string[] = [];
     logger.debug(
       `Running admin server with args: ${JSON.stringify(args)} and env: ${JSON.stringify(
         envWithAdminPort
@@ -154,27 +152,19 @@ export class Delegate implements runtimes.RuntimeDelegate {
     );
     const childProcess = runWithVirtualEnv(args, this.sourceDir, envWithAdminPort);
     childProcess.stdout?.on("data", (chunk: Buffer) => {
-      const chunkString = chunk.toString();
-      stdout.push(chunkString);
-      logger.debug(`stdout: ${chunkString}`);
+      console.log(chunk.toString("utf8"));
     });
     childProcess.stderr?.on("data", (chunk: Buffer) => {
-      const chunkString = chunk.toString();
-      stderr.push(chunkString);
-      logger.debug(`stderr: ${chunkString}`);
+      console.error(chunk.toString("utf8"));
     });
-    return Promise.resolve({
-      stderr,
-      stdout,
-      killProcess: async () => {
-        await fetch(`http://127.0.0.1:${port}/__/quitquitquit`);
-        const quitTimeout = setTimeout(() => {
-          if (!childProcess.killed) {
-            childProcess.kill("SIGKILL");
-          }
-        }, 10_000);
-        clearTimeout(quitTimeout);
-      },
+    return Promise.resolve(async () => {
+      await fetch(`http://127.0.0.1:${port}/__/quitquitquit`);
+      const quitTimeout = setTimeout(() => {
+        if (!childProcess.killed) {
+          childProcess.kill("SIGKILL");
+        }
+      }, 10_000);
+      clearTimeout(quitTimeout);
     });
   }
 
@@ -187,15 +177,9 @@ export class Delegate implements runtimes.RuntimeDelegate {
       const adminPort = await portfinder.getPortPromise({
         port: 8081,
       });
-      const { killProcess, stderr } = await this.serveAdmin(adminPort, envs);
+      const killProcess = await this.serveAdmin(adminPort, envs);
       try {
         discovered = await discovery.detectFromPort(adminPort, this.projectId, this.runtime);
-      } catch (e: any) {
-        logLabeledWarning(
-          "functions",
-          `Failed to detect functions from source ${e}.\nstderr:${stderr.join("\n")}`
-        );
-        throw e;
       } finally {
         await killProcess();
       }
