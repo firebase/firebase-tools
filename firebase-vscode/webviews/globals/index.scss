@@ -1,0 +1,12 @@
+@import "./tokens.scss";
+@import "./vscode.scss";
+
+body {
+  background-color: transparent;
+  cursor: default;
+}
+
+:global #root {
+  display: flex;
+  flex-direction: column;
+}
