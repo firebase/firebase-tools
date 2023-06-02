@@ -23,7 +23,6 @@ import { setInquirerOptions } from "./stubs/inquirer-stub";
 import { ServiceAccount } from "../common/types";
 import { listChannels } from "../../src/hosting/api";
 import { ChannelWithId } from "../common/messaging/types";
-import { setEnabled } from "../../src/experiments";
 import { pluginLogger } from "./logger-wrapper";
 
 /**
@@ -144,14 +143,12 @@ export async function listProjects() {
   return listFirebaseProjects();
 }
 
-export async function initHosting(options: { spa: boolean; public: string }) {
+export async function initHosting(options: { spa: boolean; public?: string }) {
   await requireAuthWrapper();
   let webFrameworksOptions = {};
-  if (process.env.MONOSPACE_ENV) {
-    pluginLogger.debug('initHosting found MONOSPACE_ENV, '
-      + 'setting web frameworks options');
-    // TODO(hsubox76): Also allow VS Code users to enable this manually with a UI
-    setEnabled('webframeworks', true);
+  // Empty public param means this is a web frameworks setup.
+  if (!options.public) {
+    pluginLogger.debug('Setting web frameworks options');
     webFrameworksOptions = {
       // Should use auto-discovered framework
       useDiscoveredFramework: true,

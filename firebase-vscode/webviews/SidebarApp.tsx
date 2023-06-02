@@ -48,7 +48,7 @@ export function SidebarApp() {
     });
 
     broker.on("notifyFirebaseConfig", ({ firebaseJson, firebaseRC }) => {
-      webLogger.debug("got firebase hosting", JSON.stringify(firebaseJson?.hosting));
+      webLogger.debug("got firebase hosting");
       if (firebaseJson?.hosting) {
         webLogger.debug("Detected hosting setup");
         setHostingOnboarded(true);

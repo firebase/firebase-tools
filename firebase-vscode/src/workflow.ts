@@ -27,6 +27,8 @@ import { selectProjectInMonospace } from "../../src/monospace";
 import { setupLoggers, tryStringify } from "../../src/utils";
 import { pluginLogger } from "./logger-wrapper";
 import { logger } from '../../src/logger';
+import { discover } from "../../src/frameworks";
+import { setEnabled } from "../../src/experiments";
 
 let firebaseRC: FirebaseRC | null = null;
 let firebaseJSON: FirebaseConfig | null = null;
@@ -146,8 +148,18 @@ export function setupWorkflow(
     'firebase',
     vscode.workspace.workspaceFolders[0].uri
   );
-  const shouldDebug: boolean = workspaceConfig.get('debug');
-
+  const shouldWriteDebug: boolean = workspaceConfig.get('debug');
+  const debugLogPath: string | null = workspaceConfig.get('debugLogPath');
+  const useFrameworkLocal: boolean = workspaceConfig.get('useFrameworkLocal');
+  const npmPath: boolean = workspaceConfig.get('npmPath');
+  if (npmPath) {
+    process.env.PATH += `:${npmPath}`;
+  }
+  
+  if (process.env.MONOSPACE_ENV || useFrameworkLocal) {
+    // TODO(hsubox76): Also allow VS Code users to enable this manually with a UI
+    setEnabled('webframeworks', true);
+  }
   /**
    * Logging setup for logging to console and to file.
    */
@@ -157,10 +169,10 @@ export function setupWorkflow(
   // Re-implement file logger call from ../../src/bin/firebase.ts to not bring
   // in the entire firebase.ts file
   const rootFolders = getRootFolders();
-  const filePath = path.join(rootFolders[0], 'firebase-plugin-debug.log');
+  const filePath = debugLogPath || path.join(rootFolders[0], 'firebase-plugin-debug.log');
   pluginLogger.info('Logging to path', filePath);
   // Only log to file if firebase.debug extension setting is true.
-  if (shouldDebug) {
+  if (shouldWriteDebug) {
     logger.add(
       new transports.File({
         level: "debug",
@@ -350,28 +362,36 @@ export function setupWorkflow(
   }
 
   async function selectAndInitHosting({ projectId, singleAppSupport }) {
-    const options: vscode.OpenDialogOptions = {
-      canSelectMany: false,
-      openLabel: `Select distribution/public folder for ${projectId}`,
-      canSelectFiles: false,
-      canSelectFolders: true,
-    };
-    const fileUri = await vscode.window.showOpenDialog(options);
-    if (fileUri && fileUri[0] && fileUri[0].fsPath) {
-      const publicFolderFull = fileUri[0].fsPath;
-      const publicFolder = publicFolderFull.substring(
-        currentOptions.cwd.length + 1
-      );
+    pluginLogger.debug('Searching for a web framework in this project.');
+    const discoveredFramework = await discover(currentOptions.cwd, false);
+    if (discoveredFramework) {
+      pluginLogger.debug('Detected web framework, launching frameworks init.');
       await initHosting({
-        spa: singleAppSupport,
-        public: publicFolder,
+        spa: singleAppSupport
       });
-      readAndSendFirebaseConfigs(broker);
-      broker.send("notifyHostingFolderReady",
-        { projectId, folderPath: currentOptions.cwd });
-      
-      await fetchChannels();
+    } else {
+      const options: vscode.OpenDialogOptions = {
+        canSelectMany: false,
+        openLabel: `Select distribution/public folder for ${projectId}`,
+        canSelectFiles: false,
+        canSelectFolders: true,
+      };
+      const fileUri = await vscode.window.showOpenDialog(options);
+      if (fileUri && fileUri[0] && fileUri[0].fsPath) {
+        const publicFolderFull = fileUri[0].fsPath;
+        const publicFolder = publicFolderFull.substring(
+          currentOptions.cwd.length + 1
+        );
+        await initHosting({
+          spa: singleAppSupport,
+          public: publicFolder,
+        });
+        readAndSendFirebaseConfigs(broker);
+        broker.send("notifyHostingFolderReady",
+          { projectId, folderPath: currentOptions.cwd });
+      }
     }
+    await fetchChannels();
   }
 }
 

@@ -85,6 +85,37 @@ const extensionConfig = {
           ],
         },
       },
+      {
+        test: /frameworks\/utils\.ts$/,
+        loader: "string-replace-loader",
+        options: {
+          multiple: [
+            {
+              search: "require.resolve",
+              replace: "__non_webpack_require__.resolve",
+              strict: true
+            },
+            {
+              search: "require(path",
+              replace: '__non_webpack_require__(path',
+              strict: true,
+            },
+          ],
+        },
+      },
+      {
+        test: /dynamicImport.js$/,
+        loader: "string-replace-loader",
+        options: {
+          multiple: [
+            {
+              search: "require.resolve",
+              replace: "__non_webpack_require__.resolve",
+              strict: true
+            },
+          ],
+        },
+      },
     ],
   },
   plugins: [
