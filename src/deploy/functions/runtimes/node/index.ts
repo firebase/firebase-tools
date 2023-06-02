@@ -211,7 +211,14 @@ export class Delegate {
             childProcess.once("error", reject);
           });
 
-          await fetch(`http://localhost:${port}/__/quitquitquit`);
+          try {
+            await fetch(`http://localhost:${port}/__/quitquitquit`);
+          } catch (e) {
+            logger.debug(
+              "Failed to call quitquitquit. This often means the server failed to start",
+              e
+            );
+          }
           setTimeout(() => {
             if (!childProcess.killed) {
               childProcess.kill("SIGKILL");

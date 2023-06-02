@@ -158,13 +158,21 @@ export class Delegate implements runtimes.RuntimeDelegate {
       console.error(chunk.toString("utf8"));
     });
     return Promise.resolve(async () => {
-      await fetch(`http://127.0.0.1:${port}/__/quitquitquit`);
+      try {
+        await fetch(`http://127.0.0.1:${port}/__/quitquitquit`);
+      } catch (e) {
+        logger.debug("Failed to call quitquitquit. This often means the server failed to start", e);
+      }
       const quitTimeout = setTimeout(() => {
         if (!childProcess.killed) {
           childProcess.kill("SIGKILL");
         }
       }, 10_000);
       clearTimeout(quitTimeout);
+      return new Promise<void>((resolve, reject) => {
+        childProcess.once("exit", resolve);
+        childProcess.once("error", reject);
+      });
     });
   }
 

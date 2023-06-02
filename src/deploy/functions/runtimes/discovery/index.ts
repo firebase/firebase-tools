@@ -13,6 +13,9 @@ import { FirebaseError } from "../../../../error";
 
 export const readFileAsync = promisify(fs.readFile);
 
+/**
+ *
+ */
 export function yamlToBuild(
   yaml: any,
   project: string,
@@ -34,6 +37,9 @@ export function yamlToBuild(
   }
 }
 
+/**
+ *
+ */
 export async function detectFromYaml(
   directory: string,
   project: string,
@@ -56,6 +62,9 @@ export async function detectFromYaml(
   return yamlToBuild(parsed, project, api.functionsDefaultRegion, runtime);
 }
 
+/**
+ *
+ */
 export async function detectFromPort(
   port: number,
   project: string,
@@ -63,7 +72,7 @@ export async function detectFromPort(
   timeout = 10_000 /* 10s to boot up */
 ): Promise<build.Build> {
   // The result type of fetch isn't exported
-  let res: { text(): Promise<string> };
+  let res: { text(): Promise<string>; status: number };
   const timedOut = new Promise<never>((resolve, reject) => {
     setTimeout(() => {
       reject(new FirebaseError("User code failed to load. Cannot determine backend specification"));
@@ -83,6 +92,14 @@ export async function detectFromPort(
     }
   }
 
+  if (res.status !== 200) {
+    const text = await res.text();
+    logger.debug(`Got response code ${res.status}; body ${text}`);
+    throw new FirebaseError(
+      "Functions codebase could not be analyzed successfully. " +
+        "It may have a syntax or runtime error"
+    );
+  }
   const text = await res.text();
   logger.debug("Got response from /__/functions.yaml", text);
 
