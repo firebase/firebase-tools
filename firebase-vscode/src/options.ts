@@ -1,4 +1,3 @@
-import { Config as cliConfig } from "../../src/config";
 import { FirebaseConfig } from "../../src/firebaseConfig";
 import { FirebaseRC } from "../common/firebaserc";
 import { RC } from "../../src/rc";
@@ -14,6 +13,7 @@ import * as commandUtils from "../../src/emulator/commandUtils";
  */
 
 interface CliOptions extends BaseOptions {
+  exportOnExit: boolean
 }
 
 /**
@@ -28,7 +28,7 @@ interface CommandOptions extends Options {}
 export let currentOptions: CliOptions = {
   cwd: "",
   configPath: "",
-  only: "firestore", // FIXME
+  only: "firestore", // FIXME use default instead probs
   except: "",
   config: commandUtils.DEFAULT_CONFIG,
   filteredTargets: [],
@@ -45,8 +45,8 @@ export let currentOptions: CliOptions = {
   nonInteractive: true,
   interactive: false,
   debug: false,
-
   rc: null,
+  exportOnExit: false,
 };
 
 export function updateOptions(

@@ -10,8 +10,10 @@ import {
   emulatorsStart,
   getAccounts,
   getChannels,
+  getEmulatorUiUrl,
   initHosting,
   listProjects,
+  listRunningEmulators,
   login,
   logoutUser,
   stopEmulators,
@@ -133,6 +135,7 @@ export function setupWorkflow(
   broker: ExtensionBrokerImpl
 ) {
   extensionContext = context;
+  process.env.IS_VSCODE_ENVIRONMENT = "true";
 
   async function fetchChannels() {
     const channels = await getChannels(firebaseJSON);
@@ -276,12 +279,17 @@ export function setupWorkflow(
 
   broker.on(
     "launchEmulators",
-    async (projectId: string) => {
+    async (firebaseJsonPath: string, projectId: string, exportOnExit: boolean) => {
       // FIXME figure out what we might want from the above selectAndInitHostingFolder
-      await emulatorsStart();
+      emulatorsStart(firebaseJsonPath, projectId, exportOnExit); // FIXME maybe we make this generic flaggage
+      // FIXME: the above is the running promise, never returns. Need to find a better way to go vs 5s wait
+      //                  use controller instead of the action
+
       // Update the UI
-      console.log("emulators started, sending broker notification to webview");
-      broker.send("notifyEmulatorsStarted");
+      setTimeout(function () {
+        console.log("emulators started, sending broker notification to webview: " + listRunningEmulators());
+        broker.send("notifyRunningEmulatorInfo", { uiUrl: getEmulatorUiUrl(), displayInfo: listRunningEmulators() })
+      }, 5000);
 
     }
   );
@@ -315,9 +323,25 @@ export function setupWorkflow(
     readAndSendFirebaseConfigs(broker);
   });
 
+  broker.on("getFirebaseJsonPath", async () => {
+    // FIXME [0] - consider joining with the existing below
+    const firebaseJsonPath: string = getRootFolders()[0] + "/firebase.json";
+    if (fs.existsSync(firebaseJsonPath)) {
+      // In the case that the json path can't be found, we default to having the user select one
+      broker.send("notifyFirebaseJsonPath", firebaseJsonPath);
+    }
+  });
+
   context.subscriptions.push(
     setupFirebaseJsonAndRcFileSystemWatcher(broker)
   );
+}
+
+/**
+ * Cleans up any open resources before shutting down.
+ */
+export async function onShutdown() {
+  await stopEmulators();
 }
 
 /**

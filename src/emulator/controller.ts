@@ -92,7 +92,7 @@ export async function onExit(options: any) {
  * Hook to clean up on shutdown (includes errors). Will be skipped on a third SIGINT
  * Stops all running emulators in parallel.
  */
-export async function cleanShutdown(): Promise<void> {
+export async function cleanShutdown(): Promise<void> { // FIXME use this instead of stopall
   EmulatorLogger.forEmulator(Emulators.HUB).logLabeled(
     "BULLET",
     "emulators",
@@ -108,7 +108,6 @@ export async function cleanShutdown(): Promise<void> {
 export function filterEmulatorTargets(options: any): Emulators[] {
   let targets = [...ALL_SERVICE_EMULATORS];
   targets.push(Emulators.EXTENSIONS);
-console.log("inside filterEmulatorTargets, options: " + options)
 // FIXME another reason for a dummy config
   // targets = targets.filter((e) => {
   //   return options.config?.has(e) || options.config?.has(`emulators.${e}`);
@@ -121,6 +120,7 @@ console.log("inside filterEmulatorTargets, options: " + options)
     });
     targets = targets.filter((t) => only.includes(t));
   }
+  // console.log("inside filterEmulatorTargets, returning: " + JSON.stringify(targets))
 
   return targets;
 }
@@ -313,7 +313,7 @@ export async function startAll( // FIXME rather than peppering ? after config we
         );
       } else {
         // this should not work:
-        // firebase emulators:start --only doesnotexit
+        // firebase emulators:start --only doesnotexist
         throw new FirebaseError(
           `${name} is not a valid emulator name, valid options are: ${JSON.stringify(
             ALL_SERVICE_EMULATORS
@@ -824,16 +824,6 @@ export async function startAll( // FIXME rather than peppering ? after config we
     await startEmulator(hostingEmulator);
   }
 
-  if (showUI && !shouldStart(options, Emulators.UI)) {
-    hubLogger.logLabeled(
-      "WARN",
-      "emulators",
-      "The Emulator UI is not starting, either because none of the emulated " +
-        "products have an interaction layer in Emulator UI or it cannot " +
-        "determine the Project ID. Pass the --project flag to specify a project."
-    );
-  }
-
   if (listenForEmulator.logging) {
     const loggingAddr = legacyGetFirstAddr(Emulators.LOGGING);
     const loggingEmulator = new LoggingEmulator({
@@ -842,6 +832,16 @@ export async function startAll( // FIXME rather than peppering ? after config we
     });
 
     await startEmulator(loggingEmulator);
+  }
+
+  if (showUI && !shouldStart(options, Emulators.UI)) {
+    hubLogger.logLabeled(
+      "WARN",
+      "emulators",
+      "The Emulator UI is not starting, either because none of the emulated " +
+        "products have an interaction layer in Emulator UI or it cannot " +
+        "determine the Project ID. Pass the --project flag to specify a project."
+    );
   }
 
   if (listenForEmulator.ui) {

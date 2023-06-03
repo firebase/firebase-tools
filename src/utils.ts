@@ -482,8 +482,9 @@ export function tryParse(value: any) {
 /**
  *
  */
-export function setupLoggers() {
-  if (process.env.DEBUG) {
+export function setupLoggers() { // FIXME this is never called I guess
+  console.log("setting up loggers");
+  if (process.env.DEBUG || process.env.IS_VSCODE_ENVIRONMENT) {
     logger.add(
       new winston.transports.Console({
         level: "debug",

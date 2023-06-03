@@ -1,5 +1,5 @@
 import {
-  VSCodeButton,
+  VSCodeButton, VSCodeCheckbox, VSCodeDivider, VSCodeLink, VSCodeProgressRing, VSCodeTextField,
 } from "@vscode/webview-ui-toolkit/react";
 import React, { useEffect, useState } from "react";
 import { Spacer } from "./components/ui/Spacer";
@@ -12,9 +12,22 @@ import { AccountSection } from "./components/AccountSection";
 import { ProjectSection } from "./components/ProjectSection";
 import { FirebaseConfig } from "../../src/firebaseConfig";
 import { ServiceAccountUser } from "../common/types";
+import { RunningEmulatorInfo } from "../common/messaging/protocol";
 import { DeployPanel } from "./components/DeployPanel";
 import { HostingState } from "./webview-types";
 import { ChannelWithId } from "./messaging/types";
+import { VSCodeDropdown } from "@vscode/webview-ui-toolkit/react";
+import { VSCodeOption } from "@vscode/webview-ui-toolkit/react";
+
+interface EmulatorUiSelections {
+  projectId: string
+  firebaseJsonPath: string
+  importStateFolderPath?: string
+  exportStateOnExit: boolean
+  mode: "hosting" | "all"
+  debugLogging: boolean
+}
+const DEFAULT_EMULATOR_UI_SELECTIONS: EmulatorUiSelections = { projectId: "demo-something", firebaseJsonPath: "", importStateFolderPath: "", exportStateOnExit: false, mode: "all", debugLogging:false };
 
 export function SidebarApp() {
   const [projectId, setProjectId] = useState<string | null>(null);
@@ -32,8 +45,20 @@ export function SidebarApp() {
   > | null>(null);
   const [isHostingOnboarded, setHostingOnboarded] = useState<boolean>(false);
   // TODO emulators running check on extension start
-  // TODO emulators shutdown button
-  const [areEmulatorsRunning, setAreEmulatorsRunning] = useState<boolean>(false);
+  const [runningEmulatorInfo, setRunningEmulatorInfo] = useState<RunningEmulatorInfo>();
+  const [firebaseJsonPath, setFirebaseJsonPath] = useState<string>("");
+  const [showEmulatorProgressIndicator, setShowEmulatorProgressIndicator] = useState<boolean>(false);
+  // FIXME hardcoded for now ....
+  const [selectedFirebaseJsonInDropdown, setSelectedFirebaseJsonInDropdown] = useState<string>("/usr/local/google/home/christhompson/firebaseprojects/firebaseclicker/firebase.json");
+  const [emulatorUiSelections, setEmulatorUiSelections] = useState<EmulatorUiSelections>(DEFAULT_EMULATOR_UI_SELECTIONS);
+
+  console.log("initial state:" + JSON.stringify(emulatorUiSelections));
+  function setEmulatorUiSelectionsAndSaveToWorkspace(uiSelections:EmulatorUiSelections) {
+    // FIXME save before updating UI. Requires context
+    setEmulatorUiSelections(uiSelections);
+  }
+
+  // FIXME load from save on startup
 
   useEffect(() => {
     console.log("loading SidebarApp component");
@@ -42,6 +67,7 @@ export function SidebarApp() {
     broker.send("getFirebaseJson");
     broker.send("getSelectedProject");
     broker.send("getChannels");
+    broker.send("getFirebaseJsonPath");
 
     broker.on("notifyEnv", (env) => {
       console.log("notifyEnv()");
@@ -97,21 +123,26 @@ export function SidebarApp() {
       setHostingOnboarded(true);
     });
 
-    broker.on("notifyEmulatorsStarted", () => {
-      console.log(`notifyEmulatorsStarted received in sidebar`);
-      // FIXME check that closing vscode kills emulator with sigterm and not sigkill ?
-      setAreEmulatorsRunning(true);
-    });
-
-    broker.on("notifyEmulatorsStopped", () => {
-      console.log(`notifyEmulatorsStopped received in sidebar`);
-      // FIXME check that closing vscode kills emulator with sigterm and not sigkill ?
-      setAreEmulatorsRunning(false);
-    });
-
     broker.on("notifyHostingDeploy", (success: boolean) => {
       console.log(`notifyHostingDeploy: ${success}`);
       setHostingState("deployed");
+    });
+
+    broker.on("notifyEmulatorsStopped", () => {
+      setShowEmulatorProgressIndicator(false);
+      console.log(`notifyEmulatorsStopped received in sidebar`);
+      setRunningEmulatorInfo(null);
+    });
+
+    broker.on("notifyRunningEmulatorInfo", (info: RunningEmulatorInfo) => {
+      setShowEmulatorProgressIndicator(false);
+      console.log(`notifyRunningEmulatorInfo received in sidebar`);
+      setRunningEmulatorInfo(info);
+    });
+
+    broker.on("notifyFirebaseJsonPath", (path: string) => {
+      console.log(`notifyFirebaseJsonPath received in sidebar`);
+      setFirebaseJsonPath(path);
     });
 
     // return () => broker.delete();
@@ -126,18 +157,76 @@ export function SidebarApp() {
     );
   };
 
-  const launchEmulators = () => {
+  function launchEmulators() {
+    if (!emulatorUiSelections.projectId) {
+      // FIXME still can't get this to work - says already acquired
+      // const vscode = (window as any)["acquireVsCodeApi"]();
+      // vscode.window.showErrorMessage("Missing project ID when launching emulators");
+      console.log("missing project ID");
+      return;
+    }
+    setShowEmulatorProgressIndicator(true);
     broker.send(
       "launchEmulators",
-      "demo-something" // FIXME project ID
+      selectedFirebaseJsonInDropdown,
+      emulatorUiSelections.projectId,
+      emulatorUiSelections.exportStateOnExit
     );
   };
 
-  const stopEmulators = () => {
+  function stopEmulators() {
+    setShowEmulatorProgressIndicator(true);
     broker.send(
       "stopEmulators"
     );
   };
+  
+  /**
+   * Clears the input field and adds it to the dropdown instead
+   */
+  function selectFirebaseJson() {
+    const filePicked = (document.getElementById("json-file-picker") as HTMLInputElement).value;
+    (document.getElementById("json-file-picker") as HTMLInputElement).value = "";
+    console.log("selectFirebaseJson ping" + filePicked);
+    const element: HTMLOptionElement = new Option();
+    element.innerHTML = filePicked;
+    element.value = filePicked;
+    (document.getElementById("firebase-json-dropdown") as HTMLSelectElement).prepend(element);
+    (document.getElementById("firebase-json-dropdown") as HTMLSelectElement).value = filePicked;
+    // FIXME now select it, this is buggy
+  //   const options: vscode.OpenDialogOptions = {
+  //     canSelectMany: false,
+  //     openLabel: 'Select',
+  //     canSelectFiles: true,
+  //     canSelectFolders: false
+  // };
+    // window.showOpenDialog().then(fileUri => {
+    //   if (fileUri && fileUri[0]) {
+    //       console.log('Selected file: ' + fileUri[0].fsPath);
+    //   }
+    // });
+  };
+
+  /**
+   * Called when import folder changes.
+   */
+  function selectedImportFolder(folderPath: string) {
+    // FIXME
+  }
+  
+  function toggleExportOnExit() {
+    console.log("toggle export on exit");
+    const selections: EmulatorUiSelections = emulatorUiSelections;
+    selections.exportStateOnExit = !selections.exportStateOnExit;
+    setEmulatorUiSelectionsAndSaveToWorkspace(selections);
+  }
+  
+  function projectIdChanged(event: any) {
+    console.log("projectIdChanged: " + event.target.value);
+    const selections: EmulatorUiSelections = emulatorUiSelections;
+    selections.projectId = event.target.value;
+    setEmulatorUiSelectionsAndSaveToWorkspace(selections);
+  }
 
   const accountSection = (
     <AccountSection
@@ -176,9 +265,16 @@ export function SidebarApp() {
         />
       )}
       <RunEmulatorPanel
-        areEmulatorsRunning={areEmulatorsRunning}
+        runningEmulatorInfo={runningEmulatorInfo}
+        firebaseJsonPath={firebaseJsonPath}
+        showEmulatorProgressIndicator={showEmulatorProgressIndicator}
+        emulatorUiSelections={emulatorUiSelections}
         launchEmulators={launchEmulators}
         stopEmulators={stopEmulators}
+        selectFirebaseJson={selectFirebaseJson}
+        selectedImportFolder={selectedImportFolder}
+        toggleExportOnExit={toggleExportOnExit} // FIXME how to avoid passing in every handler function?
+        projectIdChanged={projectIdChanged}
       />
     </>
   );
@@ -201,23 +297,112 @@ function InitFirebasePanel({ onHostingInit }: { onHostingInit: Function }) {
 
 // FIXME need some args here perhaps to populate which emulators, demo vs not etc
 function RunEmulatorPanel(
-  { areEmulatorsRunning, launchEmulators, stopEmulators }:
-    { areEmulatorsRunning: boolean, launchEmulators: Function, stopEmulators: Function }) { // why is this param structure needed even with 1 param?
+  {
+    runningEmulatorInfo,
+    firebaseJsonPath,
+    showEmulatorProgressIndicator,
+    emulatorUiSelections,
+    launchEmulators,
+    stopEmulators,
+    selectFirebaseJson,
+    selectedImportFolder,
+    toggleExportOnExit,
+    projectIdChanged
+  }:
+    { // why is this param struct needed even with 1 param?
+      runningEmulatorInfo: RunningEmulatorInfo,
+      firebaseJsonPath: string,
+      showEmulatorProgressIndicator: boolean,
+      emulatorUiSelections: EmulatorUiSelections
+      launchEmulators: Function,
+      stopEmulators: Function,
+      selectFirebaseJson: Function
+      selectedImportFolder: Function
+      toggleExportOnExit: Function
+      projectIdChanged: Function
+    }) {
+
   return (
-    <PanelSection isLast>
-      <Body>Launch the emulator suite</Body>
-      todo insert dropdown
-      <Spacer size="medium" />
-      {areEmulatorsRunning ?
-        <VSCodeButton onClick={() => stopEmulators()}>
-          Emulators are running, click to stop
-        </VSCodeButton>
+    <PanelSection>
+      <h2>Launch the Emulator Suite</h2>
+      <Spacer size="xxlarge" />
+      Current project ID:
+      <VSCodeTextField className="in-line" value={emulatorUiSelections.projectId} onChange={projectIdChanged}></VSCodeTextField>
+      <button className="in-line">edit</button>
+      <Spacer size="xxlarge" />
+      Firebase JSON selected: <br />
+      <VSCodeDropdown disabled={runningEmulatorInfo ? true : false} id="firebase-json-dropdown">
+        <VSCodeOption selected={true}>
+          No config (default values)
+        </VSCodeOption>
+        <VSCodeOption selected={true} title={firebaseJsonPath}>
+          {firebaseJsonPath}
+        </VSCodeOption>
+      </VSCodeDropdown>
+      <input disabled={runningEmulatorInfo ? true : false} type="file" id="json-file-picker" onChange={(event) => selectFirebaseJson()} />
+      <Spacer size="xxlarge" />
+      Import emulator state from directory:
+      <Spacer size="small" />
+      <input disabled={runningEmulatorInfo ? true : false} type="file" id="import-folder-picker" onChange={(event) => selectedImportFolder()} />
+      <Spacer size="small" />
+      <VSCodeButton appearance="secondary">Clear</VSCodeButton>
+      <Spacer size="xxlarge" />
+      <VSCodeCheckbox value={emulatorUiSelections.exportStateOnExit} onChange={() => toggleExportOnExit()}>
+        Export emulator state on exit
+      </VSCodeCheckbox>
+      <Spacer size="xxlarge" />
+      {showEmulatorProgressIndicator ?
+        <VSCodeProgressRing />
+        : <></>}
+        Emulator "mode"
+        <VSCodeDropdown>
+          <VSCodeOption>
+          Only hosting
+          </VSCodeOption>
+          <VSCodeOption>
+          All emulators
+          </VSCodeOption>
+        </VSCodeDropdown>
+      {runningEmulatorInfo ?
+        <>
+          <VSCodeDivider />
+          <Spacer size="xxlarge" />
+          The emulators are running.
+          <Spacer size="xxlarge" />
+          <VSCodeLink href={runningEmulatorInfo.uiUrl}>
+            View them in the Emulator Suite UI
+          </VSCodeLink>
+          <Spacer size="xxlarge" />
+          {runningEmulatorInfo.displayInfo}
+          <Spacer size="xxlarge" />
+          <VSCodeButton onClick={() => stopEmulators()}>
+            Click to stop the emulators
+          </VSCodeButton>
+        </>
         :
-        <VSCodeButton onClick={() => launchEmulators()}>
+        <VSCodeButton onClick={() => launchEmulators()} disabled={showEmulatorProgressIndicator ? true : false}>
           Launch emulators
         </VSCodeButton>
       }
-      <Spacer size="large" />
+      <Spacer size="xxlarge" />
+      <Spacer size="xxlarge" />
+      <Spacer size="xxlarge" />
+      <Spacer size="xxlarge" />
+
+
+      <br />automatic json select if present in the root folder
+      <br />TODO persist settings on reload
+      <br />TODO debug options:
+      <br />&nbsp;logging passthrough to console - perhaps in some secret options
+      <br />&nbsp;open debug files in editor
+      <br />&nbsp;clear \[emualtor\] state back to default
+      <Spacer size="medium" />
+      <br />Later:
+      <br />SDK resolution of project IDs (demo)
+      <br />SDK auto-connect to emulator (set env var perhaps)
+      https://github.com/firebase/firebase-js-sdk/blob/2ccc9ddb0ee875cf5a14bbc1ca473b576b9105bf/packages/util/src/defaults.ts#L135
+      <br />TODO on restart check if emulators already running. Right now it's throwing exit() but swallowed
+
     </PanelSection>
   );
 }

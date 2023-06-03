@@ -16,6 +16,7 @@ import { Client, ClientOptions } from "../apiv2";
 export class EmulatorRegistry {
   static async start(instance: EmulatorInstance): Promise<void> {
     const description = Constants.description(instance.getName());
+    console.log("starting emulator: " + JSON.stringify(instance))
     if (this.isRunning(instance.getName())) {
       throw new FirebaseError(`${description} is already running!`, {});
     }
@@ -111,6 +112,7 @@ export class EmulatorRegistry {
   }
 
   static listRunningWithInfo(): EmulatorInfo[] {
+    console.log("listRunningWithInfo")
     return this.listRunning()
       .map((emulator) => this.getInfo(emulator) as EmulatorInfo)
       .filter((info) => typeof info !== "undefined");
@@ -190,6 +192,7 @@ export class EmulatorRegistry {
   private static INSTANCES: Map<Emulators, EmulatorInstance> = new Map();
 
   private static set(emulator: Emulators, instance: EmulatorInstance): void {
+    console.log("registry setting emulator: " + emulator)
     this.INSTANCES.set(emulator, instance);
   }
 

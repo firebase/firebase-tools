@@ -52,3 +52,8 @@ a:not(:hover):not(:focus) {
     display: flex;
   }
 }
+
+.in-line {
+  display:inline-block;
+  max-width: 75%;
+}

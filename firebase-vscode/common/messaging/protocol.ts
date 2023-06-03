@@ -31,9 +31,14 @@ export interface WebviewToExtension {
     singleAppSupport: boolean
   ): void;
 
-  /** Runs `firebase emulators:start` command. */
+  /** Runs `firebase emulators:start` command. 
+   * 
+   * Defers to firebaseJsonPath and if empty, uses the project ID with a default configuration
+  */
   launchEmulators(
-    projectId: string
+    firebaseJsonPath: string,
+    projectId: string,
+    exportOnExit: boolean,
   ): void;
 
   /** Stops the emulators gracefully allowing for data export if required. */
@@ -52,6 +57,9 @@ export interface WebviewToExtension {
 
   /** Fetches the entire firebase rc config file. If the file doesn't exist, then it will return a default value. */
   getFirebaseJson(): void;
+
+  /** Gets the current CWD firebasejson. */
+  getFirebaseJsonPath(): void;
 
   showMessage(msg: string, options?: {}): void;
 }
@@ -73,8 +81,8 @@ export interface ExtensionToWebview {
   notifyUserChanged(email: string): void;
 
   notifyHostingFolderReady(projectId: string, folderPath: string): void;
-  notifyEmulatorsStarted(): void;
   notifyEmulatorsStopped(): void;
+  notifyRunningEmulatorInfo(info: RunningEmulatorInfo): void;
 
   notifyHostingDeploy(
     success: boolean,
@@ -85,4 +93,13 @@ export interface ExtensionToWebview {
   notifyWorkspaceFolders(folders: Array<String>): void;
 
   notifyFirebaseJson(firebaseJson: FirebaseConfig, firebaseRC: FirebaseRC): void;
+  notifyFirebaseJsonPath(firebaseJsonPath: string): void;
+}
+
+/**
+ * Info to display in the UI while the emulators are running
+ */
+export interface RunningEmulatorInfo {
+  uiUrl: string;
+  displayInfo: string;
 }

@@ -10,6 +10,7 @@ import {
 } from "../common/messaging/protocol";
 import { setupSidebar } from "./sidebar";
 import { setupWorkflow } from "./workflow";
+import { onShutdown } from "./workflow";
 
 const broker = createBroker<
   ExtensionToWebview,
@@ -30,5 +31,8 @@ export function activate(context: vscode.ExtensionContext) {
   setupSidebar(context, broker);
 }
 
-// This method is called when your extension is deactivated
-export function deactivate() {}
+// This method is called when the extension is deactivated
+export async function deactivate() {
+  // This await is optimistic but it might wait for a moment longer while we run cleanup activities
+  await onShutdown();
+}

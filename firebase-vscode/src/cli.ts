@@ -3,12 +3,13 @@ import {
   getGlobalDefaultAccount,
   loginGoogle,
   setGlobalDefaultAccount,
-} from "../../src/auth";
+} from "../../src/auth"; 
 import { logoutAction } from "../../src/commands/logout";
 import { hostingChannelDeployAction } from "../../src/commands/hosting-channel-deploy";
 import { listFirebaseProjects } from "../../src/management/projects";
 import { requireAuth } from "../../src/requireAuth";
 import { deploy } from "../../src/deploy";
+import { Config as FirebaseJsonConfig } from "../../src/config";
 import { FirebaseConfig } from "../../src/firebaseConfig";
 import { FirebaseRC } from "../../src/firebaserc";
 import { getDefaultHostingSite } from "../../src/getDefaultHostingSite";
@@ -16,11 +17,12 @@ import { HostingSingle } from "./firebaseConfig";
 import { initAction } from "../../src/commands/init";
 import { emulatorsStartAction } from "../../src/commands/emulators-start";
 import { EmulatorRegistry } from "../../src/emulator/registry";
+import { Emulators } from "../../src/emulator/types";
 import { Account, User } from "../../src/types/auth";
 import { Options } from "../../src/options";
 import { currentOptions, getCommandOptions } from "./options";
 import { setInquirerOptions } from "./stubs/inquirer-stub";
-import * as vscode from "vscode";
+import { window } from "vscode";
 import { ServiceAccount } from "../common/types";
 import { listChannels } from "../../src/hosting/api";
 import { ChannelWithId } from "./messaging/types";
@@ -122,21 +124,36 @@ export async function initHosting(options: { spa: boolean; public: string }) {
   await initAction("hosting", commandOptions);
 }
 
+function parseConfig(firebaseJsonPath: string): FirebaseJsonConfig {
+  return FirebaseJsonConfig.load({cwd:firebaseJsonPath});
+}
+
 // FIXME is start action correct or should we use controller.startAll
-export async function emulatorsStart() {
+export async function emulatorsStart(firebaseJsonPath: string, projectId: string, exportOnExit: boolean) {
   const commandOptions = await getCommandOptions(undefined, {
     // FIXME rename currentOptions to something more descriptive - make it strongly typed and figure out how to avoid conflics in naming or duplicate properties with different names and mismatched values
     ...currentOptions,
+    config: parseConfig(firebaseJsonPath),
+    project: projectId, // FIXME required to be set for UI
+    exportOnExit: exportOnExit,
   });
-  emulatorsStartAction(commandOptions);
+  return emulatorsStartAction(commandOptions); // Returns a promise of the running emulator. Can listen for shutdown if needed.
 }
 
 export async function stopEmulators() {
-  const commandOptions = await getCommandOptions(undefined, {
-    // FIXME rename currentOptions to something more descriptive - make it strongly typed and figure out how to avoid conflics in naming or duplicate properties with different names and mismatched values
-    ...currentOptions,
-  });
-  EmulatorRegistry.stopAll();
+  await EmulatorRegistry.stopAll();
+}
+
+// FIXME pipe output to console if we're in a VSCode environment
+// https://cs.opensource.google/firebase-sdk/firebase-tools/+/master:src/utils.ts;l=487?q=logger.add&ss=firebase-sdk%2Ffirebase-tools
+export function listRunningEmulators(): string {
+  const emulatorInfo : string = JSON.stringify(EmulatorRegistry.listRunningWithInfo());
+  console.log("listRunningEmulators, returned info: " + emulatorInfo);
+  return emulatorInfo;
+}
+
+export function getEmulatorUiUrl(): string {
+  return EmulatorRegistry.url(Emulators.UI).toString();
 }
 
 export async function deployToHosting(

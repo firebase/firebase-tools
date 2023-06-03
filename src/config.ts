@@ -238,7 +238,7 @@ export class Config {
     });
   }
 
-  public static load(options: any, allowMissing?: boolean) {
+  public static load(options: any, allowMissing?: boolean) : Config | null {
     const pd = detectProjectRoot(options);
     const filename = options.configPath || Config.FILENAME;
     if (pd) {

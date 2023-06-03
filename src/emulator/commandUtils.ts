@@ -66,7 +66,7 @@ export const DEFAULT_CONFIG = new Config(
     firestore: {},
     functions: {},
     hosting: {},
-    emulators: { auth: {}, pubsub: {} },
+    emulators: { auth: {}, pubsub: {}},
   },
   {}
 );
