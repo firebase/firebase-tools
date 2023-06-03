@@ -14,6 +14,7 @@ import * as commandUtils from "../../src/emulator/commandUtils";
 
 interface CliOptions extends BaseOptions {
   exportOnExit: boolean
+  import: string
 }
 
 /**
@@ -28,7 +29,7 @@ interface CommandOptions extends Options {}
 export let currentOptions: CliOptions = {
   cwd: "",
   configPath: "",
-  only: "firestore", // FIXME use default instead probs
+  only: "firestore", // FIXME do this via the default config. Exception: if some emulators dont work in vscode.
   except: "",
   config: commandUtils.DEFAULT_CONFIG,
   filteredTargets: [],
@@ -47,6 +48,7 @@ export let currentOptions: CliOptions = {
   debug: false,
   rc: null,
   exportOnExit: false,
+  import: "",
 };
 
 export function updateOptions(

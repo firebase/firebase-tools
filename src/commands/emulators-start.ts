@@ -17,10 +17,10 @@ function stylizeLink(url: string): string {
 }
 
 export const command = new Command("emulators:start")
-  .before(commandUtils.setExportOnExitOptions) // FIXME some of this logic will surely need to be captured
+  .before(commandUtils.setExportOnExitOptions)
   .before(commandUtils.beforeEmulatorCommand)
   .description("start the local Firebase emulators")
-  .option(commandUtils.FLAG_ONLY, commandUtils.DESC_ONLY, "firestore")
+  .option(commandUtils.FLAG_ONLY, commandUtils.DESC_ONLY)
   .option(commandUtils.FLAG_INSPECT_FUNCTIONS, commandUtils.DESC_INSPECT_FUNCTIONS)
   .option(commandUtils.FLAG_IMPORT, commandUtils.DESC_IMPORT)
   .option(commandUtils.FLAG_EXPORT_ON_EXIT, commandUtils.DESC_EXPORT_ON_EXIT)
@@ -55,7 +55,7 @@ console.log(options)
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function printEmulatorOverview(options: any): void {
+function printEmulatorOverview(options: { only: string }): void {
   const reservedPorts = [] as number[];
   for (const internalEmulator of [Emulators.LOGGING]) {
     const info = EmulatorRegistry.getInfo(internalEmulator);

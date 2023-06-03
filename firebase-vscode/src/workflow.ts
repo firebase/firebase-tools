@@ -23,6 +23,7 @@ import { FirebaseRC } from "../../src/firebaserc";
 import { FirebaseConfig } from "../../src/firebaseConfig";
 import { currentOptions, updateOptions } from "./options";
 import { ServiceAccountUser } from "./types";
+import { EmulatorUiSelections } from "../common/messaging/protocol";
 
 let firebaseRC: FirebaseRC | null = null;
 let firebaseJSON: FirebaseConfig | null = null;
@@ -279,9 +280,8 @@ export function setupWorkflow(
 
   broker.on(
     "launchEmulators",
-    async (firebaseJsonPath: string, projectId: string, exportOnExit: boolean) => {
-      // FIXME figure out what we might want from the above selectAndInitHostingFolder
-      emulatorsStart(firebaseJsonPath, projectId, exportOnExit); // FIXME maybe we make this generic flaggage
+    async (firebaseJsonPath: string, emulatorUiSelections:EmulatorUiSelections) => {
+      emulatorsStart(firebaseJsonPath, emulatorUiSelections);
       // FIXME: the above is the running promise, never returns. Need to find a better way to go vs 5s wait
       //                  use controller instead of the action
 
@@ -297,7 +297,6 @@ export function setupWorkflow(
   broker.on(
     "stopEmulators",
     async () => {
-      // FIXME figure out what we might want from the above selectAndInitHostingFolder
       await stopEmulators();
       // Update the UI
       console.log("emulators started, sending broker notification to webview");

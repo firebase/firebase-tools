@@ -26,6 +26,8 @@ import { window } from "vscode";
 import { ServiceAccount } from "../common/types";
 import { listChannels } from "../../src/hosting/api";
 import { ChannelWithId } from "./messaging/types";
+import * as commandUtils from "../../src/emulator/commandUtils";
+import { EmulatorUiSelections } from "../common/messaging/protocol";
 
 /**
  * Wrap the CLI's requireAuth() which is normally run before every command
@@ -51,7 +53,7 @@ async function requireAuthWrapper(showError: boolean = true) {
   } catch (e) {
     console.error('requireAuth error', e.original || e);
     if (showError) {
-      vscode.window.showErrorMessage("Not logged in", {
+      window.showErrorMessage("Not logged in", {
         modal: true,
         detail: `Log in by clicking "Sign in with Google" in the sidebar.`,
       });
@@ -125,18 +127,20 @@ export async function initHosting(options: { spa: boolean; public: string }) {
 }
 
 function parseConfig(firebaseJsonPath: string): FirebaseJsonConfig {
-  return FirebaseJsonConfig.load({cwd:firebaseJsonPath});
+  return FirebaseJsonConfig.load({ cwd: firebaseJsonPath });
 }
 
 // FIXME is start action correct or should we use controller.startAll
-export async function emulatorsStart(firebaseJsonPath: string, projectId: string, exportOnExit: boolean) {
+export async function emulatorsStart(firebaseJsonPath: string, emulatorUiSelections: EmulatorUiSelections) {
   const commandOptions = await getCommandOptions(undefined, {
     // FIXME rename currentOptions to something more descriptive - make it strongly typed and figure out how to avoid conflics in naming or duplicate properties with different names and mismatched values
     ...currentOptions,
     config: parseConfig(firebaseJsonPath),
-    project: projectId, // FIXME required to be set for UI
-    exportOnExit: exportOnExit,
+    project: emulatorUiSelections.projectId,
+    exportOnExit: emulatorUiSelections.exportStateOnExit,
+    import: emulatorUiSelections.importStateFolderPath,
   });
+  commandUtils.setExportOnExitOptions(commandOptions); // Should error since we don't set import.
   return emulatorsStartAction(commandOptions); // Returns a promise of the running emulator. Can listen for shutdown if needed.
 }
 

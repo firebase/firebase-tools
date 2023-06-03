@@ -12,21 +12,13 @@ import { AccountSection } from "./components/AccountSection";
 import { ProjectSection } from "./components/ProjectSection";
 import { FirebaseConfig } from "../../src/firebaseConfig";
 import { ServiceAccountUser } from "../common/types";
-import { RunningEmulatorInfo } from "../common/messaging/protocol";
+import { RunningEmulatorInfo, EmulatorUiSelections } from "../common/messaging/protocol";
 import { DeployPanel } from "./components/DeployPanel";
 import { HostingState } from "./webview-types";
 import { ChannelWithId } from "./messaging/types";
 import { VSCodeDropdown } from "@vscode/webview-ui-toolkit/react";
 import { VSCodeOption } from "@vscode/webview-ui-toolkit/react";
 
-interface EmulatorUiSelections {
-  projectId: string
-  firebaseJsonPath: string
-  importStateFolderPath?: string
-  exportStateOnExit: boolean
-  mode: "hosting" | "all"
-  debugLogging: boolean
-}
 const DEFAULT_EMULATOR_UI_SELECTIONS: EmulatorUiSelections = { projectId: "demo-something", firebaseJsonPath: "", importStateFolderPath: "", exportStateOnExit: false, mode: "all", debugLogging:false };
 
 export function SidebarApp() {
@@ -46,7 +38,6 @@ export function SidebarApp() {
   const [isHostingOnboarded, setHostingOnboarded] = useState<boolean>(false);
   // TODO emulators running check on extension start
   const [runningEmulatorInfo, setRunningEmulatorInfo] = useState<RunningEmulatorInfo>();
-  const [firebaseJsonPath, setFirebaseJsonPath] = useState<string>("");
   const [showEmulatorProgressIndicator, setShowEmulatorProgressIndicator] = useState<boolean>(false);
   // FIXME hardcoded for now ....
   const [selectedFirebaseJsonInDropdown, setSelectedFirebaseJsonInDropdown] = useState<string>("/usr/local/google/home/christhompson/firebaseprojects/firebaseclicker/firebase.json");
@@ -142,7 +133,10 @@ export function SidebarApp() {
 
     broker.on("notifyFirebaseJsonPath", (path: string) => {
       console.log(`notifyFirebaseJsonPath received in sidebar`);
-      setFirebaseJsonPath(path);
+      var selections: EmulatorUiSelections = emulatorUiSelections;
+      selections.firebaseJsonPath = path;
+      selections = {...selections}; // Copy to a new object to force a react rerender
+      setEmulatorUiSelectionsAndSaveToWorkspace(selections);
     });
 
     // return () => broker.delete();
@@ -169,8 +163,7 @@ export function SidebarApp() {
     broker.send(
       "launchEmulators",
       selectedFirebaseJsonInDropdown,
-      emulatorUiSelections.projectId,
-      emulatorUiSelections.exportStateOnExit
+      emulatorUiSelections
     );
   };
 
@@ -210,8 +203,12 @@ export function SidebarApp() {
   /**
    * Called when import folder changes.
    */
-  function selectedImportFolder(folderPath: string) {
-    // FIXME
+  function selectedImportFolder(event: Event) { // FIXME any
+    console.log("selectedImportFolder: " + event.target.value);
+    var selections: EmulatorUiSelections = emulatorUiSelections;
+    selections.importStateFolderPath = event.target.value;
+    selections = {...selections}; // Copy to a new object to force a react rerender
+    setEmulatorUiSelectionsAndSaveToWorkspace(selections);
   }
   
   function toggleExportOnExit() {
@@ -221,7 +218,7 @@ export function SidebarApp() {
     setEmulatorUiSelectionsAndSaveToWorkspace(selections);
   }
   
-  function projectIdChanged(event: any) {
+  function projectIdChanged(event: Event) {
     console.log("projectIdChanged: " + event.target.value);
     const selections: EmulatorUiSelections = emulatorUiSelections;
     selections.projectId = event.target.value;
@@ -266,7 +263,6 @@ export function SidebarApp() {
       )}
       <RunEmulatorPanel
         runningEmulatorInfo={runningEmulatorInfo}
-        firebaseJsonPath={firebaseJsonPath}
         showEmulatorProgressIndicator={showEmulatorProgressIndicator}
         emulatorUiSelections={emulatorUiSelections}
         launchEmulators={launchEmulators}
@@ -299,7 +295,6 @@ function InitFirebasePanel({ onHostingInit }: { onHostingInit: Function }) {
 function RunEmulatorPanel(
   {
     runningEmulatorInfo,
-    firebaseJsonPath,
     showEmulatorProgressIndicator,
     emulatorUiSelections,
     launchEmulators,
@@ -311,7 +306,6 @@ function RunEmulatorPanel(
   }:
     { // why is this param struct needed even with 1 param?
       runningEmulatorInfo: RunningEmulatorInfo,
-      firebaseJsonPath: string,
       showEmulatorProgressIndicator: boolean,
       emulatorUiSelections: EmulatorUiSelections
       launchEmulators: Function,
@@ -327,7 +321,7 @@ function RunEmulatorPanel(
       <h2>Launch the Emulator Suite</h2>
       <Spacer size="xxlarge" />
       Current project ID:
-      <VSCodeTextField className="in-line" value={emulatorUiSelections.projectId} onChange={projectIdChanged}></VSCodeTextField>
+      <VSCodeTextField className="in-line" value={emulatorUiSelections.projectId} onChange={(event) => projectIdChanged(event)}></VSCodeTextField>
       <button className="in-line">edit</button>
       <Spacer size="xxlarge" />
       Firebase JSON selected: <br />
@@ -335,19 +329,19 @@ function RunEmulatorPanel(
         <VSCodeOption selected={true}>
           No config (default values)
         </VSCodeOption>
-        <VSCodeOption selected={true} title={firebaseJsonPath}>
-          {firebaseJsonPath}
+        <VSCodeOption selected={true} title={emulatorUiSelections.firebaseJsonPath}>
+          {emulatorUiSelections.firebaseJsonPath}
         </VSCodeOption>
       </VSCodeDropdown>
-      <input disabled={runningEmulatorInfo ? true : false} type="file" id="json-file-picker" onChange={(event) => selectFirebaseJson()} />
+      <input disabled={!!runningEmulatorInfo} type="file" id="json-file-picker" onChange={(event) => selectFirebaseJson()} />
       <Spacer size="xxlarge" />
       Import emulator state from directory:
       <Spacer size="small" />
-      <input disabled={runningEmulatorInfo ? true : false} type="file" id="import-folder-picker" onChange={(event) => selectedImportFolder()} />
+      <input disabled={!!runningEmulatorInfo} type="file" id="import-folder-picker" onChange={(event) => selectedImportFolder(event)} />
       <Spacer size="small" />
       <VSCodeButton appearance="secondary">Clear</VSCodeButton>
       <Spacer size="xxlarge" />
-      <VSCodeCheckbox value={emulatorUiSelections.exportStateOnExit} onChange={() => toggleExportOnExit()}>
+      <VSCodeCheckbox disabled={!emulatorUiSelections.importStateFolderPath} value={emulatorUiSelections.exportStateOnExit} onChange={() => toggleExportOnExit()}>
         Export emulator state on exit
       </VSCodeCheckbox>
       <Spacer size="xxlarge" />
@@ -390,12 +384,11 @@ function RunEmulatorPanel(
       <Spacer size="xxlarge" />
 
 
-      <br />automatic json select if present in the root folder
       <br />TODO persist settings on reload
       <br />TODO debug options:
       <br />&nbsp;logging passthrough to console - perhaps in some secret options
       <br />&nbsp;open debug files in editor
-      <br />&nbsp;clear \[emualtor\] state back to default
+      <br />&nbsp;clear [emualtor] state back to default
       <Spacer size="medium" />
       <br />Later:
       <br />SDK resolution of project IDs (demo)

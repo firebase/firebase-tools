@@ -37,8 +37,7 @@ export interface WebviewToExtension {
   */
   launchEmulators(
     firebaseJsonPath: string,
-    projectId: string,
-    exportOnExit: boolean,
+    EmulatorUiSelections: EmulatorUiSelections,
   ): void;
 
   /** Stops the emulators gracefully allowing for data export if required. */
@@ -102,4 +101,13 @@ export interface ExtensionToWebview {
 export interface RunningEmulatorInfo {
   uiUrl: string;
   displayInfo: string;
+}
+
+export interface EmulatorUiSelections {
+  projectId: string
+  firebaseJsonPath: string
+  importStateFolderPath?: string
+  exportStateOnExit: boolean
+  mode: "hosting" | "all"
+  debugLogging: boolean
 }

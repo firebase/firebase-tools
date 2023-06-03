@@ -105,7 +105,7 @@ export async function cleanShutdown(): Promise<void> { // FIXME use this instead
  * Filters a list of emulators to only those specified in the config
  * @param options
  */
-export function filterEmulatorTargets(options: any): Emulators[] {
+export function filterEmulatorTargets(options: { only: string }): Emulators[] {
   let targets = [...ALL_SERVICE_EMULATORS];
   targets.push(Emulators.EXTENSIONS);
 // FIXME another reason for a dummy config
@@ -249,7 +249,7 @@ interface EmulatorOptions extends Options {
 /**
  * Start all emulators.
  */
-export async function startAll( // FIXME rather than peppering ? after config we should pass in a dummy config
+export async function startAll( // FIXME undo all the config? I added.
   options: EmulatorOptions,
   showUI = true
 ): Promise<{ deprecationNotices: string[] }> {
