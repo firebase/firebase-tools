@@ -193,7 +193,6 @@ export function parseInspectionPort(options: any): number {
 export function setExportOnExitOptions(options: {
   exportOnExit: boolean | string;
   import?: string;
-  [x: string | number | symbol]: unknown;
 }): void {
   if (options.exportOnExit || typeof options.exportOnExit === "string") {
     // note that options.exportOnExit may be a bool when used as a flag without a [dir] argument:
