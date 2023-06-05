@@ -1,6 +1,6 @@
 import * as clc from "colorette";
 
-import { Executor } from "./executor";
+import { DEFAULT_RETRY_CODES, Executor } from "./executor";
 import { FirebaseError } from "../../../error";
 import { SourceTokenScraper } from "./sourceTokenScraper";
 import { Timer } from "./timer";
@@ -489,7 +489,7 @@ export class Fabricator {
             operationResourceName: op.name,
           });
         },
-        { retryCodes: [CLOUD_RUN_RESOURCE_EXHAUSTED_CODE] }
+        { retryCodes: [...DEFAULT_RETRY_CODES, CLOUD_RUN_RESOURCE_EXHAUSTED_CODE] }
       )
       .catch(rethrowAs<gcfV2.OutputCloudFunction>(endpoint, "update"));
 
@@ -553,7 +553,7 @@ export class Fabricator {
           };
           await poller.pollOperation<void>(pollerOptions);
         },
-        { retryCodes: [CLOUD_RUN_RESOURCE_EXHAUSTED_CODE] }
+        { retryCodes: [...DEFAULT_RETRY_CODES, CLOUD_RUN_RESOURCE_EXHAUSTED_CODE] }
       )
       .catch(rethrowAs(endpoint, "delete"));
   }
