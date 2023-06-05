@@ -44,7 +44,7 @@ export async function build(cwd: string) {
   const cli = getNodeModuleBin("nuxt", cwd);
   const {
     ssr: wantsBackend,
-    app: { baseURL },
+    app: { baseURL: baseUrl },
   } = await getConfig(cwd);
   const command = wantsBackend ? ["build"] : ["generate"];
   const build = spawnSync(cli, command, {
@@ -57,11 +57,11 @@ export async function build(cwd: string) {
     ? []
     : [
         {
-          source: posix.join(baseURL, "**"),
-          destination: posix.join(baseURL, "200.html"),
+          source: posix.join(baseUrl, "**"),
+          destination: posix.join(baseUrl, "200.html"),
         },
       ];
-  return { wantsBackend, rewrites };
+  return { wantsBackend, rewrites, baseUrl };
 }
 
 export async function ɵcodegenPublicDirectory(root: string, dest: string) {
@@ -82,11 +82,7 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string) {
   packageJson.dependencies ||= {};
   packageJson.dependencies["nitro-output"] = `file:${serverDir}`;
 
-  const {
-    app: { baseURL: baseUrl },
-  } = await getConfig(sourceDir);
-
-  return { packageJson, frameworksEntry: "nitro", baseUrl };
+  return { packageJson, frameworksEntry: "nitro" };
 }
 
 export async function getDevModeHandle(cwd: string) {

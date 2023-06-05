@@ -1,2 +1,3 @@
 - Delete and re-create v2 function on Cloud Run API quota exhaustion (#5719).
 - Address additional cases where we were attempting to deploy a framework's development bundle (#5895)
+- firebase functions:secrets:\* ensure the secretmanager API is enabled (#5918)
