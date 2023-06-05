@@ -17,9 +17,9 @@ export class ExtensionBroker extends Broker {
   private webviews: Webview[] = [];
 
   sendMessage(message: string, data: any[]): void {
-    this.webviews.forEach((webview) => {
+    for (const webview of this.webviews) {
       webview.postMessage({ message, data });
-    });
+    }
   }
 
   registerReceiver(receiver: Webview) {

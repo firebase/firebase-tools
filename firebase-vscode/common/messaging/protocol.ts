@@ -89,8 +89,8 @@ export interface ExtensionToWebview {
    */
   notifyHostingDeploy(
     success: boolean,
-    consoleUrl: string | undefined,
-    hostingUrl: string | undefined
+    consoleUrl?: string,
+    hostingUrl?: string
   ): void;
 
   /**

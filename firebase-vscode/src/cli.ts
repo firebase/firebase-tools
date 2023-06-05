@@ -1,3 +1,6 @@
+import * as vscode from "vscode";
+import { inspect } from "util";
+
 import {
   getAllAccounts,
   getGlobalDefaultAccount,
@@ -17,13 +20,11 @@ import { Account, User } from "../../src/types/auth";
 import { Options } from "../../src/options";
 import { currentOptions, getCommandOptions } from "./options";
 import { setInquirerOptions } from "./stubs/inquirer-stub";
-import * as vscode from "vscode";
 import { ServiceAccount } from "../common/types";
 import { listChannels } from "../../src/hosting/api";
 import { ChannelWithId } from "../common/messaging/types";
 import { setEnabled } from "../../src/experiments";
 import { pluginLogger } from "./logger-wrapper";
-import { inspect } from "util";
 
 /**
  * Wrap the CLI's requireAuth() which is normally run before every command
@@ -109,7 +110,9 @@ export async function getChannels(firebaseJSON: FirebaseConfig): Promise<Channel
   );
   try {
     const channels = await listChannels(options.project, (firebaseJSON.hosting as HostingSingle).site);
-    return channels.map(channel => ({ ...channel, id: channel.name.split("/").pop() }));
+    return channels.map(channel => ({
+      ...channel, id: channel.name.split("/").pop()
+    }));
   } catch (e) {
     pluginLogger.error('Error on listChannels()', e);
     vscode.window.showErrorMessage("Error finding hosting channels", {

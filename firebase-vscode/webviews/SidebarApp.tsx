@@ -51,7 +51,7 @@ export function SidebarApp() {
     });
 
     broker.on(
-      "notifyFirebaseJson",
+      "notifyFirebaseConfig",
       (firebaseJson: FirebaseConfig, firebaseRC: FirebaseRC) => {
         console.log("got firebase hosting", firebaseJson?.hosting);
         if (firebaseJson?.hosting) {
