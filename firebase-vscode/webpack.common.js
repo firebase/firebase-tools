@@ -77,7 +77,7 @@ const extensionConfig = {
               search: /Configstore\(pkg\.name\)/g,
               replace: "Configstore('firebase-tools')",
             },
-            // TODO: replace with something more robust
+            // TODO(hsubox76): replace with something more robust
             {
               search: "childProcess.spawn(translatedCommand",
               replace: "childProcess.spawn(escapedCommand"

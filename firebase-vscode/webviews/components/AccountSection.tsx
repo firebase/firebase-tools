@@ -41,7 +41,7 @@ export function AccountSection({
   } else if (usersLoaded && allUsers.length > 0) {
     // Users loaded, at least one user was found
     if (isMonospace && userEmail === 'service_account') {
-      // TODO: Figure out correct wording
+      // TODO(hsubox76): Figure out correct wording
       currentUserElement = 'workspace logged in';
     } else {
       currentUserElement = userEmail;

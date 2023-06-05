@@ -5,6 +5,7 @@ import {
   ExtensionToWebview,
   WebviewToExtension,
 } from "../common/messaging/protocol";
+import { Message } from "../common/messaging/types";
 
 export type ExtensionBrokerImpl = BrokerImpl<
   ExtensionToWebview,
@@ -21,11 +22,11 @@ export class ExtensionBroker extends Broker {
     });
   }
 
-  registerReceiver(receiver: any) {
-    const webview = receiver as Webview;
+  registerReceiver(receiver: Webview) {
+    const webview = receiver;
     this.webviews.push(webview);
-    webview.onDidReceiveMessage((data: any) => {
-      this.executeListeners(data);
+    webview.onDidReceiveMessage((message: Message) => {
+      this.executeListeners(message);
     }, null);
   }
 

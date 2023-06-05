@@ -14,22 +14,22 @@ import { ExtensionBrokerImpl } from "./extension-broker";
 export function setupSidebar(
   context: ExtensionContext,
   extensionBroker: ExtensionBrokerImpl
-): MonospaceSidebarViewProvider {
-  const provider = new MonospaceSidebarViewProvider(
+): SidebarViewProvider {
+  const provider = new SidebarViewProvider(
     context.extensionUri,
     extensionBroker
   );
   context.subscriptions.push(
     window.registerWebviewViewProvider(
-      MonospaceSidebarViewProvider.viewType,
+      SidebarViewProvider.viewType,
       provider
     )
   );
   return provider;
 }
 
-class MonospaceSidebarViewProvider implements WebviewViewProvider {
-  public static readonly viewType = "firebase2.sidebarView";
+class SidebarViewProvider implements WebviewViewProvider {
+  public static readonly viewType = "firebase.sidebarView";
   private _view?: WebviewView;
 
   constructor(

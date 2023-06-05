@@ -4,7 +4,8 @@ This extension is in the development and exploration stage.
 
 ## Running
 
-1. Open from the firebase-vscode not firebase-tools directory
+1. In order to make sure f5 launches the extension properly, first open your
+   VS Code session from the `firebase-vscode` subdirectory (not the `firebase-tools` directory).
 2. npm i
 3. f5 to run opens new window
    f5 -> npm run watch defined in tasks.json
@@ -23,7 +24,7 @@ New code changes are automatically rebuilt if you have `watch` running, however 
 Manual reload from new window: "Developer: Reload Window" Default hotkey: cmd + R
 
 The communication between UI and extension done via the broker (see webview.postMessage)
-Web view uses react (carry-over from the hackweek project courtesy of Roman and Prakhar) TODO:verify ldaps
+Web view uses react (carry-over from the hackweek project courtesy of Roman and Prakhar)
 
 ## Structure
 

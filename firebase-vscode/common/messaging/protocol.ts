@@ -23,7 +23,10 @@ export interface WebviewToExtension {
   /** Select a project */
   selectProject(email: string): void;
 
-  /** Runs `firebase init hosting` command. */
+  /**
+   * Runs `firebase init hosting` command.
+   * TODO(hsubox76): Generalize to work for all `firebase init` products.
+   */
   selectAndInitHostingFolder(
     projectId: string,
     email: string,
@@ -32,7 +35,10 @@ export interface WebviewToExtension {
 
   getChannels(): void;
 
-  /** Runs `firebase deploy` for hosting. */
+  /**
+   * Runs `firebase deploy` for hosting.
+   * TODO(hsubox76): Generalize to work for all `firebase deploy` targets.
+   */
   hostingDeploy(target: string): void;
 
   /** fetches a list of folders in the user's workspace. */
@@ -41,7 +47,11 @@ export interface WebviewToExtension {
   /** get selected project either from firebaserc or last cached value (or workspace file) */
   getSelectedProject(): void;
 
-  /** Fetches the entire firebase rc config file. If the file doesn't exist, then it will return a default value. */
+  /**
+   * Fetches the contents of the .firebaserc and firebase.json config files.
+   * If either or both files do not exist, then it will return a default
+   * value.
+   */
   getFirebaseJson(): void;
 
   showMessage(msg: string, options?: {}): void;
@@ -65,15 +75,27 @@ export interface ExtensionToWebview {
    */
   notifyUserChanged(email: string): void;
 
+  /**
+   * Notifies webview when user has successfully selected a hosting folder
+   * and it has been written to firebase.json.
+   */
   notifyHostingFolderReady(projectId: string, folderPath: string): void;
 
+  /**
+   * Notify webview of status of deployment attempt.
+   * @param success - true if deployment was a success
+   * @param consoleUrl - url of Firebase console for this project
+   * @param hostingUrl - hosting url for this deploy
+   */
   notifyHostingDeploy(
     success: boolean,
     consoleUrl: string | undefined,
     hostingUrl: string | undefined
   ): void;
 
-  notifyWorkspaceFolders(folders: Array<String>): void;
-
-  notifyFirebaseJson(firebaseJson: FirebaseConfig, firebaseRC: FirebaseRC): void;
+  /**
+   * Notify webview of initial discovery or change in firebase.json or
+   * .firebaserc
+   */
+  notifyFirebaseConfig(firebaseJson: FirebaseConfig, firebaseRC: FirebaseRC): void;
 }

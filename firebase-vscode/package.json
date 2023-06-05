@@ -30,7 +30,7 @@
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "firebase2",
+          "id": "firebase",
           "title": "Firebase",
           "icon": "$(mono-firebase)"
         }
@@ -46,28 +46,14 @@
       }
     },
     "views": {
-      "firebase2": [
+      "firebase": [
         {
           "type": "webview",
-          "id": "firebase2.sidebarView",
+          "id": "firebase.sidebarView",
           "name": "Firebase"
         }
       ]
-    },
-    "commands": [
-      {
-        "command": "firebase-vscode.helloWorld",
-        "title": "ABCD"
-      },
-      {
-        "command": "firebase-vscode.start",
-        "title": "Start Firebase VSCode"
-      },
-      {
-        "command": "firebase-vscode.login",
-        "title": "Log in to Firebase"
-      }
-    ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run build",
@@ -85,6 +71,13 @@
     "lint": "eslint src --ext ts",
     "test": "node ./dist/test/runTest.js"
   },
+  "dependencies": {
+    "@vscode/codicons": "0.0.30",
+    "@vscode/webview-ui-toolkit": "^1.2.1",
+    "classnames": "^2.3.2",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
   "devDependencies": {
     "@teamsupercell/typings-for-css-modules-loader": "^2.5.1",
     "@types/glob": "^8.0.0",
@@ -95,10 +88,7 @@
     "@types/vscode": "^1.69.0",
     "@typescript-eslint/eslint-plugin": "^5.45.0",
     "@typescript-eslint/parser": "^5.45.0",
-    "@vscode/codicons": "0.0.30",
     "@vscode/test-electron": "^2.2.0",
-    "@vscode/webview-ui-toolkit": "^1.2.1",
-    "classnames": "^2.3.2",
     "copy-webpack-plugin": "^11.0.0",
     "css-loader": "^6.7.1",
     "eslint": "^8.28.0",
@@ -108,8 +98,6 @@
     "mini-css-extract-plugin": "^2.6.0",
     "mocha": "^10.1.0",
     "postcss-loader": "^7.0.0",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
     "sass": "^1.52.0",
     "sass-loader": "^13.0.0",
     "string-replace-loader": "^3.1.0",

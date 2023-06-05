@@ -328,10 +328,6 @@ export function setupWorkflow(
     }
   });
 
-  broker.on("getWorkspaceFolders", () => {
-    broker.send("notifyWorkspaceFolders", getRootFolders());
-  });
-
   broker.on("getFirebaseJson", async () => {
     readAndSendFirebaseConfigs(broker);
   });
@@ -357,7 +353,7 @@ function readFirebaseConfigs() {
  */
 async function readAndSendFirebaseConfigs(broker: ExtensionBrokerImpl) {
   readFirebaseConfigs();
-  broker.send("notifyFirebaseJson", firebaseJSON, firebaseRC);
+  broker.send("notifyFirebaseConfig", firebaseJSON, firebaseRC);
 }
 
 /**

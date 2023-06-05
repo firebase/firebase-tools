@@ -97,12 +97,16 @@ export async function getChannels(firebaseJSON: FirebaseConfig): Promise<Channel
   if (!options.project) {
     return [];
   }
-  // TODO: handle multiple hosting configs
+  // TODO(hsubox76): handle multiple hosting configs
   if (!(firebaseJSON.hosting as HostingSingle).site) {
     (firebaseJSON.hosting as HostingSingle).site =
       await getDefaultHostingSite(options);
   }
-  pluginLogger.debug('Calling listChannels with params', options.project, (firebaseJSON.hosting as HostingSingle).site);
+  pluginLogger.debug(
+    'Calling listChannels with params',
+    options.project,
+    (firebaseJSON.hosting as HostingSingle).site
+  );
   try {
     const channels = await listChannels(options.project, (firebaseJSON.hosting as HostingSingle).site);
     return channels.map(channel => ({ ...channel, id: channel.name.split("/").pop() }));
@@ -143,7 +147,7 @@ export async function initHosting(options: { spa: boolean; public: string }) {
   if (process.env.MONOSPACE_ENV) {
     pluginLogger.debug('initHosting found MONOSPACE_ENV, '
       + 'setting web frameworks options');
-    // TODO: Also allow VS Code users to enable this manually with a UI
+    // TODO(hsubox76): Also allow VS Code users to enable this manually with a UI
     setEnabled('webframeworks', true);
     webFrameworksOptions = {
       // Should use auto-discovered framework
@@ -174,12 +178,10 @@ export async function deployToHosting(
     return { success: false, hostingUrl: "", consoleUrl: "" };
   }
 
-  // TODO: throw if it doesn't find firebaseJSON or the hosting field
-  // const projects = await listFirebaseProjects();
-  // const currentProject = projects.find(project => project.projectId === firebaseRC.projects?.default);
+  // TODO(hsubox76): throw if it doesn't find firebaseJSON or the hosting field
   try {
     const options = { ...currentOptions };
-    // TODO: handle multiple hosting configs
+    // TODO(hsubox76): handle multiple hosting configs
     if (!(firebaseJSON.hosting as HostingSingle).site) {
       pluginLogger.debug('Calling getDefaultHostingSite() with options', inspect(options));
       (firebaseJSON.hosting as HostingSingle).site =
