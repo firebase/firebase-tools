@@ -82,7 +82,7 @@ function updateCurrentUser(
       currentUserEmail = null;
     }
   }
-  broker.send("notifyUserChanged", currentUserEmail);
+  broker.send("notifyUserChanged", { email: currentUserEmail });
   return currentUserEmail;
 }
 
@@ -139,7 +139,7 @@ export function setupWorkflow(
 
   async function fetchChannels() {
     const channels = await getChannels(firebaseJSON);
-    broker.send("notifyChannels", channels);
+    broker.send("notifyChannels", { channels });
   }
 
   // Sets up CLI logger to log to console
@@ -155,7 +155,8 @@ export function setupWorkflow(
       level: "debug",
       filename: filePath,
       format: format.printf((info) => {
-        const segments = [info.message, ...(info[SPLAT] || [])].map(tryStringify);
+        const segments = [info.message, ...(info[SPLAT] || [])]
+          .map(tryStringify);
         return `[${info.level}] ${stripAnsi(segments.join(" "))}`;
       }),
     })
@@ -170,7 +171,9 @@ export function setupWorkflow(
     pluginLogger.debug(`Value of process.env.MONOSPACE_ENV: `
       + `${process.env.MONOSPACE_ENV}`);
     broker.send("notifyEnv", {
-      isMonospace: Boolean(process.env.MONOSPACE_ENV),
+      env: {
+        isMonospace: Boolean(process.env.MONOSPACE_ENV),
+      }
     });
   });
 
@@ -178,16 +181,16 @@ export function setupWorkflow(
     if (users.length === 0) {
       await fetchUsers();
     }
-    broker.send("notifyUsers", users);
+    broker.send("notifyUsers", { users });
     currentUserEmail = updateCurrentUser(users, broker);
   });
 
-  broker.on("logout", async (email: string) => {
+  broker.on("logout", async ({ email }: { email: string }) => {
     try {
       await logoutUser(email);
       const accounts = await getAccounts();
       users = accounts.map((account) => account.user);
-      broker.send("notifyUsers", users);
+      broker.send("notifyUsers", { users });
       currentUserEmail = updateCurrentUser(users, broker);
     } catch (e) {
       // ignored
@@ -198,16 +201,17 @@ export function setupWorkflow(
     // For now, just read the cached value.
     // TODO: Extend this to reading from firebaserc
     if (firebaseRC?.projects?.default) {
-      broker.send("notifyProjectChanged", firebaseRC?.projects?.default);
+      broker.send("notifyProjectChanged",
+        { projectId: firebaseRC?.projects?.default });
     }
     fetchChannels();
   });
 
-  broker.on("showMessage", async (msg, options) => {
+  broker.on("showMessage", async ({ msg, options }) => {
     vscode.window.showInformationMessage(msg, options);
   });
 
-  broker.on("openLink", async (href) => {
+  broker.on("openLink", async ({ href }) => {
     vscode.env.openExternal(vscode.Uri.parse(href));
   });
 
@@ -215,7 +219,7 @@ export function setupWorkflow(
     const { user } = await login();
     users.push(user);
     if (users) {
-      broker.send("notifyUsers", users);
+      broker.send("notifyUsers", { users });
       currentUserEmail = updateCurrentUser(
         users,
         broker,
@@ -224,14 +228,17 @@ export function setupWorkflow(
     }
   });
 
-  broker.on("requestChangeUser", (requestedUser: User | ServiceAccountUser) => {
+  broker.on("requestChangeUser", (
+    { user: requestedUser }:
+      { user: User | ServiceAccountUser }
+  ) => {
     if (users.some((user) => user.email === requestedUser.email)) {
       currentUserEmail = requestedUser.email;
-      broker.send("notifyUserChanged", currentUserEmail);
+      broker.send("notifyUserChanged", { email: currentUserEmail });
     }
   });
 
-  broker.on("selectProject", async (email) => {
+  broker.on("selectProject", async ({ email }) => {
     let projectId;
     if (process.env.MONOSPACE_ENV) {
       pluginLogger.debug('selectProject: found MONOSPACE_ENV, '
@@ -240,7 +247,8 @@ export function setupWorkflow(
        * Monospace case: use Monospace flow
        */
       const monospaceExtension = vscode.extensions.getExtension('google.monospace');
-      process.env.MONOSPACE_DAEMON_PORT = monospaceExtension.exports.getMonospaceDaemonPort();
+      process.env.MONOSPACE_DAEMON_PORT =
+        monospaceExtension.exports.getMonospaceDaemonPort();
       try {
         projectId = await selectProjectInMonospace({
           projectRoot: currentOptions.cwd,
@@ -293,7 +301,7 @@ export function setupWorkflow(
 
   broker.on(
     "selectAndInitHostingFolder",
-    async (projectId: string, email: string, singleAppSupport: boolean) => {
+    async ({ projectId, email, singleAppSupport }) => {
       const options: vscode.OpenDialogOptions = {
         canSelectMany: false,
         openLabel: `Select distribution/public folder for ${projectId}`,
@@ -311,18 +319,19 @@ export function setupWorkflow(
           public: publicFolder,
         });
         readAndSendFirebaseConfigs(broker);
-        broker.send("notifyHostingFolderReady", projectId, currentOptions.cwd);
+        broker.send("notifyHostingFolderReady",
+          { projectId, folderPath: currentOptions.cwd });
       }
     }
   );
 
-  broker.on("hostingDeploy", async (deployTarget) => {
+  broker.on("hostingDeploy", async ({ target: deployTarget }) => {
     const { success, consoleUrl, hostingUrl } = await deployToHosting(
       firebaseJSON,
       firebaseRC,
       deployTarget
     );
-    broker.send("notifyHostingDeploy", success, consoleUrl, hostingUrl);
+    broker.send("notifyHostingDeploy", { success, consoleUrl, hostingUrl });
     if (success) {
       fetchChannels();
     }
@@ -353,7 +362,10 @@ function readFirebaseConfigs() {
  */
 async function readAndSendFirebaseConfigs(broker: ExtensionBrokerImpl) {
   readFirebaseConfigs();
-  broker.send("notifyFirebaseConfig", firebaseJSON, firebaseRC);
+  broker.send("notifyFirebaseConfig",
+    {
+      firebaseJson: firebaseJSON, firebaseRC
+    });
 }
 
 /**

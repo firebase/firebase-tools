@@ -3,99 +3,118 @@
  * between two environments (VScode and Webview)
  */
 
-import { FirebaseConfig } from  '../../../src/firebaseConfig';
+import { FirebaseConfig } from '../../../src/firebaseConfig';
 import { FirebaseRC } from "../firebaserc";
 import { User } from "../../../src/types/auth";
 import { ServiceAccountUser } from "../types";
 
-// Messages sent from Webview to extension
-export interface WebviewToExtension {
-  getEnv(): void;
+export interface WebviewToExtensionParamsMap {
+  /**
+   * Ask extension for env variables
+   */
+  getEnv: {};
+  /**
+   * User management
+   */
+  getUsers: {};
+  addUser: {};
+  logout: { email: string };
 
-  /* --- working with CLI: user management --- */
-  getUsers(): void;
-  addUser(): void;
-  logout(email: string): void;
+  /** Notify extension that current user has been changed in UI. */
+  requestChangeUser: { user: User | ServiceAccountUser };
 
-  /** Notify extension that current user has been changed. */
-  requestChangeUser(user: User | ServiceAccountUser): void;
-
-  /** Select a project */
-  selectProject(email: string): void;
-
+  /** Trigger project selection */
+  selectProject: { email: string };
   /**
    * Runs `firebase init hosting` command.
    * TODO(hsubox76): Generalize to work for all `firebase init` products.
    */
-  selectAndInitHostingFolder(
+  selectAndInitHostingFolder: {
     projectId: string,
     email: string,
     singleAppSupport: boolean
-  ): void;
+  };
 
-  getChannels(): void;
+  /**
+   * Get hosting channels.
+   */
+  getChannels: {};
 
   /**
    * Runs `firebase deploy` for hosting.
    * TODO(hsubox76): Generalize to work for all `firebase deploy` targets.
    */
-  hostingDeploy(target: string): void;
+  hostingDeploy: {
+    target: string
+  };
 
-  /** fetches a list of folders in the user's workspace. */
-  getWorkspaceFolders(): void;
-
-  /** get selected project either from firebaserc or last cached value (or workspace file) */
-  getSelectedProject(): void;
+  /**
+   * Get currently selected Firebase project from extension runtime.
+   */
+  getSelectedProject: {};
 
   /**
    * Fetches the contents of the .firebaserc and firebase.json config files.
    * If either or both files do not exist, then it will return a default
    * value.
    */
-  getFirebaseJson(): void;
+  getFirebaseJson: {};
 
-  showMessage(msg: string, options?: {}): void;
+  /**
+   * Show a UI message using the vscode interface
+   */
+  showMessage: {
+    msg: string,
+    options?: {}
+  };
 
-  openLink(href: string): void;
+  /**
+   * Call extension runtime to open a link (a href does not work in Monospace)
+   */
+  openLink: {
+    href: string
+  };
 }
 
-// Messages sent from Extension to Webview
-export interface ExtensionToWebview {
-  notifyEnv(env: { isMonospace: boolean }): void;
-  /** Called as a result of getUsers/addUser/logout calls */
-  notifyUsers(users: User[]): void;
+export interface ExtensionToWebviewParamsMap {
+  /** Triggered when new environment variables values are found. */
+  notifyEnv: { env: { isMonospace: boolean } };
 
-  notifyChannels(channels: any[]): void;
+  /** Triggered when users have been updated. */
+  notifyUsers: { users: User[] };
 
-  /** Called when a new project is selected */
-  notifyProjectChanged(projectId: string): void;
+  /** Triggered when hosting channels have been fetched. */
+  notifyChannels: { channels: any[] };
+
+  /** Triggered when a new project is selected */
+  notifyProjectChanged: { projectId: string };
 
   /**
    * This can potentially call multiple webviews to notify of user selection.
    */
-  notifyUserChanged(email: string): void;
+  notifyUserChanged: { email: string };
 
   /**
    * Notifies webview when user has successfully selected a hosting folder
    * and it has been written to firebase.json.
    */
-  notifyHostingFolderReady(projectId: string, folderPath: string): void;
+  notifyHostingFolderReady: { projectId: string, folderPath: string };
 
   /**
    * Notify webview of status of deployment attempt.
-   * @param success - true if deployment was a success
-   * @param consoleUrl - url of Firebase console for this project
-   * @param hostingUrl - hosting url for this deploy
    */
-  notifyHostingDeploy(
+  notifyHostingDeploy: {
     success: boolean,
     consoleUrl?: string,
     hostingUrl?: string
-  ): void;
+  };
 
   /**
    * Notify webview of initial discovery or change in firebase.json or
    * .firebaserc
    */
-  notifyFirebaseConfig(firebaseJson: FirebaseConfig, firebaseRC: FirebaseRC): void;
+  notifyFirebaseConfig: { firebaseJson: FirebaseConfig, firebaseRC: FirebaseRC };
+
 }
+
+export type MessageParamsMap = WebviewToExtensionParamsMap | ExtensionToWebviewParamsMap;

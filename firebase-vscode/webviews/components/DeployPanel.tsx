@@ -106,10 +106,10 @@ export function DeployPanel({
             disabled={hostingState === "deploying"}
             onClick={() => {
               setHostingState("deploying");
-              broker.send(
-                "hostingDeploy",
-                deployTarget === "new" ? newPreviewChannel : deployTarget
-              );
+              broker.send("hostingDeploy", {
+                target:
+                  deployTarget === "new" ? newPreviewChannel : deployTarget,
+              });
             }}
           >
             Deploy to channel:{" "}

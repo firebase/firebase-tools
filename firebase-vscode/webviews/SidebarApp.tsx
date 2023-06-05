@@ -1,6 +1,4 @@
-import {
-  VSCodeButton,
-} from "@vscode/webview-ui-toolkit/react";
+import { VSCodeButton } from "@vscode/webview-ui-toolkit/react";
 import React, { useEffect, useState } from "react";
 import { Spacer } from "./components/ui/Spacer";
 import { Body } from "./components/ui/Text";
@@ -40,61 +38,57 @@ export function SidebarApp() {
     broker.send("getSelectedProject");
     broker.send("getChannels");
 
-    broker.on("notifyEnv", (env) => {
+    broker.on("notifyEnv", ({ env }) => {
       console.log("notifyEnv()");
       setEnv(env);
     });
 
-    broker.on("notifyChannels", (channels) => {
+    broker.on("notifyChannels", ({ channels }) => {
       console.log("notifyChannels()");
       setChannels(channels);
     });
 
-    broker.on(
-      "notifyFirebaseConfig",
-      (firebaseJson: FirebaseConfig, firebaseRC: FirebaseRC) => {
-        console.log("got firebase hosting", firebaseJson?.hosting);
-        if (firebaseJson?.hosting) {
-          console.log("Detected hosting setup");
-          setHostingOnboarded(true);
-          broker.send(
-            "showMessage",
-            "Auto-detected hosting setup in this folder"
-          );
-        } else {
-          setHostingOnboarded(false);
-        }
-
-        if (firebaseRC?.projects?.default) {
-          console.log("Detected project setup from existing firebaserc");
-          setProjectId(firebaseRC.projects.default);
-        } else {
-          setProjectId(null);
-        }
+    broker.on("notifyFirebaseConfig", ({ firebaseJson, firebaseRC }) => {
+      console.log("got firebase hosting", firebaseJson?.hosting);
+      if (firebaseJson?.hosting) {
+        console.log("Detected hosting setup");
+        setHostingOnboarded(true);
+        broker.send("showMessage", {
+          msg: "Auto-detected hosting setup in this folder",
+        });
+      } else {
+        setHostingOnboarded(false);
       }
-    );
 
-    broker.on("notifyUsers", (users: User[]) => {
+      if (firebaseRC?.projects?.default) {
+        console.log("Detected project setup from existing firebaserc");
+        setProjectId(firebaseRC.projects.default);
+      } else {
+        setProjectId(null);
+      }
+    });
+
+    broker.on("notifyUsers", ({ users }) => {
       console.log("notifyUsers()");
       setAllUsers(users);
     });
 
-    broker.on("notifyProjectChanged", (projectId: string) => {
+    broker.on("notifyProjectChanged", ({ projectId }) => {
       console.log("Project selected", projectId);
       setProjectId(projectId);
     });
 
-    broker.on("notifyUserChanged", (email) => {
+    broker.on("notifyUserChanged", ({ email }) => {
       console.log("notifyUserChanged:", email);
       setUserEmail(email);
     });
 
-    broker.on("notifyHostingFolderReady", (projectId, folderPath) => {
+    broker.on("notifyHostingFolderReady", ({ projectId, folderPath }) => {
       console.log(`notifyHostingFolderReady: ${projectId}, ${folderPath}`);
       setHostingOnboarded(true);
     });
 
-    broker.on("notifyHostingDeploy", (success: boolean) => {
+    broker.on("notifyHostingDeploy", ({ success }) => {
       console.log(`notifyHostingDeploy: ${success}`);
       setHostingState("deployed");
     });
@@ -103,12 +97,11 @@ export function SidebarApp() {
   }, []);
 
   const setupHosting = () => {
-    broker.send(
-      "selectAndInitHostingFolder",
+    broker.send("selectAndInitHostingFolder", {
       projectId,
-      userEmail!, // Safe to assume user email is already there
-      true
-    );
+      email: userEmail!, // Safe to assume user email is already there
+      singleAppSupport: true,
+    });
   };
 
   const accountSection = (
@@ -120,17 +113,21 @@ export function SidebarApp() {
   );
   // Just render the account section loading view if it doesn't know user state
   if (allUsers === null) {
-    return (<>
-      <Spacer size="medium" />
-      {accountSection}
-    </>);
+    return (
+      <>
+        <Spacer size="medium" />
+        {accountSection}
+      </>
+    );
   }
 
   return (
     <>
       <Spacer size="medium" />
       {accountSection}
-      {!!userEmail && <ProjectSection userEmail={userEmail} projectId={projectId} />}
+      {!!userEmail && (
+        <ProjectSection userEmail={userEmail} projectId={projectId} />
+      )}
       {isHostingOnboarded && !!userEmail && !!projectId && (
         <DeployPanel
           hostingState={hostingState}

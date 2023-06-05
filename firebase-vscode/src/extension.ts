@@ -5,15 +5,15 @@ import * as vscode from "vscode";
 import { ExtensionBroker } from "./extension-broker";
 import { createBroker } from "../common/messaging/broker";
 import {
-  ExtensionToWebview,
-  WebviewToExtension,
+  ExtensionToWebviewParamsMap,
+  WebviewToExtensionParamsMap,
 } from "../common/messaging/protocol";
 import { setupSidebar } from "./sidebar";
 import { setupWorkflow } from "./workflow";
 
 const broker = createBroker<
-  ExtensionToWebview,
-  WebviewToExtension,
+  ExtensionToWebviewParamsMap,
+  WebviewToExtensionParamsMap,
   vscode.Webview
 >(new ExtensionBroker());
 

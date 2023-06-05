@@ -1,14 +1,15 @@
 import { Channel } from "../hosting/api";
+import { ExtensionToWebviewParamsMap, MessageParamsMap } from "./protocol";
 
-export interface Message {
+export interface Message<M> {
   message: string;
-  data: any[];
+  data: M[keyof M];
 }
 
-export type Listener = (...args: any[]) => void;
+export type Listener<M> = (args?: M[keyof M]) => void;
 
-export interface MessageListeners {
-  [message: string]: { listeners: Listener[] };
+export interface MessageListeners<M> {
+  [message: string]: { listeners: Listener<M>[] };
 }
 
 export interface ChannelWithId extends Channel {

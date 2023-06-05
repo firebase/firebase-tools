@@ -4,7 +4,7 @@ import { broker } from "../../globals/html-broker";
 
 export function ExternalLink({ href, text }: { href: string; text: string }) {
   return (
-    <VSCodeLink onClick={() => broker.send("openLink", href)}>
+    <VSCodeLink onClick={() => broker.send("openLink", { href })}>
       {text}
     </VSCodeLink>
   );

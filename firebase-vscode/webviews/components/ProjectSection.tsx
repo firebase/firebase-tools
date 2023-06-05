@@ -43,11 +43,14 @@ export function ProjectSection({
 
 export function initProjectSelection(userEmail: string | null) {
   if (userEmail) {
-    broker.send("selectProject", userEmail);
+    broker.send("selectProject", { email: userEmail });
   } else {
-    broker.send("showMessage", "Not logged in", {
-      modal: true,
-      detail: `Log in to allow project selection. Click "Sign in with Google" in the sidebar.`,
+    broker.send("showMessage", {
+      msg: "Not logged in",
+      options: {
+        modal: true,
+        detail: `Log in to allow project selection. Click "Sign in with Google" in the sidebar.`,
+      },
     });
     return;
   }

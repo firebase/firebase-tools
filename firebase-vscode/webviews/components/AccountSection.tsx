@@ -103,7 +103,7 @@ function UserSelectionMenu({
         {allUsers.map((user) => (
           <MenuItem
             onClick={() => {
-              broker.send("requestChangeUser", user);
+              broker.send("requestChangeUser", {user});
               onClose();
             }}
             key={user.email}
@@ -117,7 +117,7 @@ function UserSelectionMenu({
           userEmail !== "service_account" && (
             <MenuItem
               onClick={() => {
-                broker.send("logout", userEmail);
+                broker.send("logout", {email: userEmail});
                 onClose();
               }}
             >
