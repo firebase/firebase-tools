@@ -3,7 +3,7 @@ import * as backend from "../deploy/functions/backend";
 import { Command } from "../command";
 import { Options } from "../options";
 import { needProjectId, needProjectNumber } from "../projectUtils";
-import { pruneSecrets } from "../functions/secrets";
+import * as secrets from "../functions/secrets";
 import { requirePermissions } from "../requirePermissions";
 import { isFirebaseManaged } from "../deploymentTool";
 import { logBullet, logSuccess } from "../utils";
@@ -13,6 +13,7 @@ import { destroySecretVersion } from "../gcp/secretManager";
 export const command = new Command("functions:secrets:prune")
   .withForce("Destroys unused secrets without prompt")
   .description("Destroys unused secrets")
+  .before(secrets.ensureApi)
   .before(requirePermissions, [
     "cloudfunctions.functions.list",
     "secretmanager.secrets.list",
@@ -30,7 +31,7 @@ export const command = new Command("functions:secrets:prune")
       .allEndpoints(haveBackend)
       .filter((e) => isFirebaseManaged(e.labels || []));
 
-    const pruned = await pruneSecrets({ projectNumber, projectId }, haveEndpoints);
+    const pruned = await secrets.pruneSecrets({ projectNumber, projectId }, haveEndpoints);
 
     if (pruned.length === 0) {
       logBullet("All secrets are in use. Nothing to prune today.");
