@@ -63,10 +63,12 @@ export interface WebviewToExtensionParamsMap {
   /**
    * Show a UI message using the vscode interface
    */
-  showMessage: {
-    msg: string,
-    options?: {}
-  };
+  showMessage: { msg: string, options?: {} };
+
+  /**
+   * Write a log to the extension logger.
+   */
+  writeLog: { level: string, args: string[] };
 
   /**
    * Call extension runtime to open a link (a href does not work in Monospace)

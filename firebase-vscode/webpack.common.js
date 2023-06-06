@@ -106,7 +106,7 @@ const extensionConfig = {
   },
 };
 
-const makeWebConfig = (entryName) => {
+function makeWebConfig(entryName)  {
   return {
     name: entryName,
     mode: "none", // this leaves the source code as close as possible to the original (when packaging we set this to 'production')

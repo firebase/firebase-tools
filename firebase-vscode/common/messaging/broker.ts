@@ -23,18 +23,18 @@ export abstract class Broker<
     this.listeners[message].listeners.push(cb);
   }
 
-  executeListeners(data: Message<IncomingMessages>) {
-    if (data === undefined || !isObject(data) || !data.message) {
+  executeListeners(message: Message<IncomingMessages>) {
+    if (message === undefined || !isObject(message) || !message.command) {
       return;
     }
 
-    const d = data;
+    const d = message;
 
-    if (this.listeners[d.message] === undefined) {
+    if (this.listeners[d.command] === undefined) {
       return;
     }
 
-    for (const listener of this.listeners[d.message].listeners) {
+    for (const listener of this.listeners[d.command].listeners) {
       d.data === undefined ? listener() : listener(d.data);
     };
   }

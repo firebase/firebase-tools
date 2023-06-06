@@ -2,7 +2,7 @@ import { Channel } from "../hosting/api";
 import { ExtensionToWebviewParamsMap, MessageParamsMap } from "./protocol";
 
 export interface Message<M> {
-  message: string;
+  command: string;
   data: M[keyof M];
 }
 

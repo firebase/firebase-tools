@@ -4,15 +4,14 @@ import { Spacer } from "./components/ui/Spacer";
 import { Body } from "./components/ui/Text";
 import { broker } from "./globals/html-broker";
 import { User } from "../../src/types/auth";
-import { FirebaseRC } from "../../src/firebaserc";
 import { PanelSection } from "./components/ui/PanelSection";
 import { AccountSection } from "./components/AccountSection";
 import { ProjectSection } from "./components/ProjectSection";
-import { FirebaseConfig } from "../../src/firebaseConfig";
 import { ServiceAccountUser } from "../common/types";
 import { DeployPanel } from "./components/DeployPanel";
 import { HostingState } from "./webview-types";
 import { ChannelWithId } from "./messaging/types";
+import { webLogger } from "./globals/web-logger";
 
 export function SidebarApp() {
   const [projectId, setProjectId] = useState<string | null>(null);
@@ -31,7 +30,7 @@ export function SidebarApp() {
   const [isHostingOnboarded, setHostingOnboarded] = useState<boolean>(false);
 
   useEffect(() => {
-    console.log("loading SidebarApp component");
+    webLogger.debug("loading SidebarApp component");
     broker.send("getEnv");
     broker.send("getUsers");
     broker.send("getFirebaseJson");
@@ -39,19 +38,19 @@ export function SidebarApp() {
     broker.send("getChannels");
 
     broker.on("notifyEnv", ({ env }) => {
-      console.log("notifyEnv()");
+      webLogger.debug("notifyEnv()");
       setEnv(env);
     });
 
     broker.on("notifyChannels", ({ channels }) => {
-      console.log("notifyChannels()");
+      webLogger.debug("notifyChannels()");
       setChannels(channels);
     });
 
     broker.on("notifyFirebaseConfig", ({ firebaseJson, firebaseRC }) => {
-      console.log("got firebase hosting", firebaseJson?.hosting);
+      webLogger.debug("got firebase hosting", JSON.stringify(firebaseJson?.hosting));
       if (firebaseJson?.hosting) {
-        console.log("Detected hosting setup");
+        webLogger.debug("Detected hosting setup");
         setHostingOnboarded(true);
         broker.send("showMessage", {
           msg: "Auto-detected hosting setup in this folder",
@@ -61,7 +60,7 @@ export function SidebarApp() {
       }
 
       if (firebaseRC?.projects?.default) {
-        console.log("Detected project setup from existing firebaserc");
+        webLogger.debug("Detected project setup from existing firebaserc");
         setProjectId(firebaseRC.projects.default);
       } else {
         setProjectId(null);
@@ -69,34 +68,32 @@ export function SidebarApp() {
     });
 
     broker.on("notifyUsers", ({ users }) => {
-      console.log("notifyUsers()");
+      webLogger.debug("notifyUsers()");
       setAllUsers(users);
     });
 
     broker.on("notifyProjectChanged", ({ projectId }) => {
-      console.log("Project selected", projectId);
+      webLogger.debug("Project selected", projectId);
       setProjectId(projectId);
     });
 
     broker.on("notifyUserChanged", ({ email }) => {
-      console.log("notifyUserChanged:", email);
+      webLogger.debug("notifyUserChanged:", email);
       setUserEmail(email);
     });
 
     broker.on("notifyHostingFolderReady", ({ projectId, folderPath }) => {
-      console.log(`notifyHostingFolderReady: ${projectId}, ${folderPath}`);
+      webLogger.debug(`notifyHostingFolderReady: ${projectId}, ${folderPath}`);
       setHostingOnboarded(true);
     });
 
     broker.on("notifyHostingDeploy", ({ success }) => {
-      console.log(`notifyHostingDeploy: ${success}`);
+      webLogger.debug(`notifyHostingDeploy: ${success}`);
       setHostingState("deployed");
     });
-
-    // return () => broker.delete();
   }, []);
 
-  const setupHosting = () => {
+  function setupHosting() {
     broker.send("selectAndInitHostingFolder", {
       projectId,
       email: userEmail!, // Safe to assume user email is already there

@@ -11,8 +11,8 @@ export class HtmlBroker extends Broker<
     window.addEventListener("message", event => this.executeListeners(event.data));
   }
 
-  sendMessage(message: keyof WebviewToExtensionParamsMap, data: WebviewToExtensionParamsMap[keyof WebviewToExtensionParamsMap]): void {
-    this.vscode.postMessage({ message, data });
+  sendMessage(command: keyof WebviewToExtensionParamsMap, data: WebviewToExtensionParamsMap[keyof WebviewToExtensionParamsMap]): void {
+    this.vscode.postMessage({ command, data });
   }
 }
 

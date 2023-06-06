@@ -20,9 +20,9 @@ export class ExtensionBroker extends Broker<
 > {
   private webviews: Webview[] = [];
 
-  sendMessage(message: string, data: ExtensionToWebviewParamsMap[keyof ExtensionToWebviewParamsMap]): void {
+  sendMessage(command: string, data: ExtensionToWebviewParamsMap[keyof ExtensionToWebviewParamsMap]): void {
     for (const webview of this.webviews) {
-      webview.postMessage({ message, data });
+      webview.postMessage({ command, data });
     }
   }
 

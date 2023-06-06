@@ -167,6 +167,13 @@ export function setupWorkflow(
   fetchUsers();
   fetchChannels();
 
+  /**
+   * Call pluginLogger with log arguments received from webview.
+   */
+  broker.on("writeLog", async ({ level, args }) => {
+    pluginLogger[level]('(Webview)', ...args);
+  });
+
   broker.on("getEnv", async () => {
     pluginLogger.debug(`Value of process.env.MONOSPACE_ENV: `
       + `${process.env.MONOSPACE_ENV}`);
