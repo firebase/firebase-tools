@@ -282,7 +282,6 @@ export function setupWorkflow(
     "launchEmulators",
     async (firebaseJsonPath: string, emulatorUiSelections: EmulatorUiSelections) => {
       emulatorsStart(firebaseJsonPath, emulatorUiSelections).then(() => {
-        console.log("emulators started, sending broker notification to webview: " + listRunningEmulators());
         broker.send("notifyRunningEmulatorInfo", { uiUrl: getEmulatorUiUrl(), displayInfo: listRunningEmulators() });
       });
     }
@@ -293,7 +292,6 @@ export function setupWorkflow(
     async () => {
       await stopEmulators();
       // Update the UI
-      console.log("emulators started, sending broker notification to webview");
       broker.send("notifyEmulatorsStopped");
     }
   );
