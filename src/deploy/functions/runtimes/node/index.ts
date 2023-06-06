@@ -200,10 +200,18 @@ export class Delegate {
       const binPath = path.join(nodeModulesPath, ".bin", "firebase-functions");
       if (fileExistsSync(binPath)) {
         logger.debug(`Found firebase-functions binary at '${binPath}'`);
+        // Note: We cannot use inherit because we need the stdout/err to be
+        // omitted in commands that use --json.
         const childProcess = spawn(binPath, [this.sourceDir], {
           env,
           cwd: this.sourceDir,
-          stdio: [/* stdin=*/ "ignore", /* stdout=*/ "inherit", /* stderr=*/ "inherit"],
+          stdio: [/* stdin=*/ "ignore", /* stdout=*/ "pipe", /* stderr=*/ "pipe"],
+        });
+        childProcess.stdout?.on("data", (chunk: Buffer) => {
+          logger.info(chunk.toString("utf8"));
+        });
+        childProcess.stderr?.on("data", (chunk: Buffer) => {
+          logger.error(chunk.toString("utf8"));
         });
         return Promise.resolve(async () => {
           const p = new Promise<void>((resolve, reject) => {

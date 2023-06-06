@@ -151,10 +151,10 @@ export class Delegate implements runtimes.RuntimeDelegate {
     );
     const childProcess = runWithVirtualEnv(args, this.sourceDir, envWithAdminPort);
     childProcess.stdout?.on("data", (chunk: Buffer) => {
-      console.log(chunk.toString("utf8"));
+      logger.info(chunk.toString("utf8"));
     });
     childProcess.stderr?.on("data", (chunk: Buffer) => {
-      console.error(chunk.toString("utf8"));
+      logger.error(chunk.toString("utf8"));
     });
     return Promise.resolve(async () => {
       try {
