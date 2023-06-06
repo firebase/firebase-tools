@@ -1,0 +1,1 @@
+- firebase functions:secrets:\* ensure the secretmanager API is enabled (#5918)

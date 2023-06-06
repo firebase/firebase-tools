@@ -190,7 +190,10 @@ export function parseInspectionPort(options: any): number {
  * export data the first time they start developing on a clean project.
  * @param options
  */
-export function setExportOnExitOptions(options: any) {
+export function setExportOnExitOptions(options: {
+  exportOnExit: boolean | string;
+  import?: string;
+}): void {
   if (options.exportOnExit || typeof options.exportOnExit === "string") {
     // note that options.exportOnExit may be a bool when used as a flag without a [dir] argument:
     // --import ./data --export-on-exit
