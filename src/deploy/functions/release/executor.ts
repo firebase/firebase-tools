@@ -63,11 +63,7 @@ export class QueueExecutor implements Executor {
   }
 
   async run<T>(func: () => Promise<T>, opts?: RunOptions): Promise<T> {
-    // merge and de-duplicate default and provided retry codes
-    let retryCodes = opts?.retryCodes || [];
-    if (retryCodes.length === 0) {
-      retryCodes = DEFAULT_RETRY_CODES;
-    }
+    const retryCodes = opts?.retryCodes || DEFAULT_RETRY_CODES;
 
     const op: Operation = {
       func,
