@@ -153,10 +153,10 @@ export function SidebarApp() {
 
   function launchEmulators() {
     if (!emulatorUiSelections.projectId) {
-      // FIXME still can't get this to work - says already acquired
-      // const vscode = (window as any)["acquireVsCodeApi"]();
-      // vscode.window.showErrorMessage("Missing project ID when launching emulators");
-      console.log("missing project ID");
+      broker.send("showMessage", "Missing project ID", {
+        modal: true,
+        detail: `Please specify a project ID before starting the emulator suite.`,
+      });
       return;
     }
     setShowEmulatorProgressIndicator(true);
@@ -203,7 +203,7 @@ export function SidebarApp() {
   /**
    * Called when import folder changes.
    */
-  function selectedImportFolder(event: Event) { // FIXME any
+  function selectedImportFolder(event: React.ChangeEvent<HTMLInputElement>) {
     console.log("selectedImportFolder: " + event.target.value);
     var selections: EmulatorUiSelections = emulatorUiSelections;
     selections.importStateFolderPath = event.target.value;
@@ -218,7 +218,7 @@ export function SidebarApp() {
     setEmulatorUiSelectionsAndSaveToWorkspace(selections);
   }
   
-  function projectIdChanged(event: Event) {
+  function projectIdChanged(event: React.ChangeEvent<HTMLInputElement>) {
     console.log("projectIdChanged: " + event.target.value);
     const selections: EmulatorUiSelections = emulatorUiSelections;
     selections.projectId = event.target.value;
@@ -269,7 +269,7 @@ export function SidebarApp() {
         stopEmulators={stopEmulators}
         selectFirebaseJson={selectFirebaseJson}
         selectedImportFolder={selectedImportFolder}
-        toggleExportOnExit={toggleExportOnExit} // FIXME how to avoid passing in every handler function?
+        toggleExportOnExit={toggleExportOnExit}
         projectIdChanged={projectIdChanged}
       />
     </>
@@ -290,8 +290,7 @@ function InitFirebasePanel({ onHostingInit }: { onHostingInit: Function }) {
     </PanelSection>
   );
 }
-
-// FIXME need some args here perhaps to populate which emulators, demo vs not etc
+// FIXME move this out to a component
 function RunEmulatorPanel(
   {
     runningEmulatorInfo,
@@ -325,17 +324,12 @@ function RunEmulatorPanel(
       <button className="in-line">edit</button>
       <Spacer size="xxlarge" />
       Firebase JSON selected: <br />
-      <VSCodeDropdown disabled={runningEmulatorInfo ? true : false} id="firebase-json-dropdown">
-        <VSCodeOption selected={true}>
-          No config (default values)
-        </VSCodeOption>
-        <VSCodeOption selected={true} title={emulatorUiSelections.firebaseJsonPath}>
-          {emulatorUiSelections.firebaseJsonPath}
-        </VSCodeOption>
-      </VSCodeDropdown>
+      <VSCodeTextField disabled="true" value={emulatorUiSelections.firebaseJsonPath}>
+
+      </VSCodeTextField>
       <input disabled={!!runningEmulatorInfo} type="file" id="json-file-picker" onChange={(event) => selectFirebaseJson()} />
       <Spacer size="xxlarge" />
-      Import emulator state from directory:
+      Import emulator state from directory: FIXME
       <Spacer size="small" />
       <input disabled={!!runningEmulatorInfo} type="file" id="import-folder-picker" onChange={(event) => selectedImportFolder(event)} />
       <Spacer size="small" />

@@ -27,9 +27,7 @@ export const command = new Command("emulators:start")
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   .action(emulatorsStartAction);
 
-export function emulatorsStartAction(options: any) { // FIXME what options do we really expect here?
-console.log("emulatorsStartAction, options: ")
-console.log(options)
+export function emulatorsStartAction(options: any) {
   const killSignalPromise = commandUtils.shutdownWhenKilled(options);
   return Promise.race([
     killSignalPromise,

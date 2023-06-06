@@ -284,7 +284,6 @@ export class Command {
     }
 
     if (getInheritedOption(options, "configPath")) {
-      // FIXME idk what this is but "config" resolves to the "Config" object which fails because it's expecting string
       options.configPath = getInheritedOption(options, "configPath");
     }
 

@@ -280,17 +280,11 @@ export function setupWorkflow(
 
   broker.on(
     "launchEmulators",
-    async (firebaseJsonPath: string, emulatorUiSelections:EmulatorUiSelections) => {
-      emulatorsStart(firebaseJsonPath, emulatorUiSelections);
-      // FIXME: the above is the running promise, never returns. Need to find a better way to go vs 5s wait
-      //                  use controller instead of the action
-
-      // Update the UI
-      setTimeout(function () {
+    async (firebaseJsonPath: string, emulatorUiSelections: EmulatorUiSelections) => {
+      emulatorsStart(firebaseJsonPath, emulatorUiSelections).then(() => {
         console.log("emulators started, sending broker notification to webview: " + listRunningEmulators());
-        broker.send("notifyRunningEmulatorInfo", { uiUrl: getEmulatorUiUrl(), displayInfo: listRunningEmulators() })
-      }, 5000);
-
+        broker.send("notifyRunningEmulatorInfo", { uiUrl: getEmulatorUiUrl(), displayInfo: listRunningEmulators() });
+      });
     }
   );
 

@@ -92,7 +92,7 @@ export async function onExit(options: any) {
  * Hook to clean up on shutdown (includes errors). Will be skipped on a third SIGINT
  * Stops all running emulators in parallel.
  */
-export async function cleanShutdown(): Promise<void> { // FIXME use this instead of stopall
+export async function cleanShutdown(): Promise<void> {
   EmulatorLogger.forEmulator(Emulators.HUB).logLabeled(
     "BULLET",
     "emulators",
@@ -249,7 +249,7 @@ interface EmulatorOptions extends Options {
 /**
  * Start all emulators.
  */
-export async function startAll( // FIXME undo all the config? I added.
+export async function startAll( // FIXME undo all the "config?" I added.
   options: EmulatorOptions,
   showUI = true
 ): Promise<{ deprecationNotices: string[] }> {

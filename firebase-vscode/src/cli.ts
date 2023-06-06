@@ -15,7 +15,7 @@ import { FirebaseRC } from "../../src/firebaserc";
 import { getDefaultHostingSite } from "../../src/getDefaultHostingSite";
 import { HostingSingle } from "./firebaseConfig";
 import { initAction } from "../../src/commands/init";
-import { emulatorsStartAction } from "../../src/commands/emulators-start";
+import { startAll as startAllEmulators, cleanShutdown as stopAllEmulators } from "../../src/emulator/controller"
 import { EmulatorRegistry } from "../../src/emulator/registry";
 import { Emulators } from "../../src/emulator/types";
 import { Account, User } from "../../src/types/auth";
@@ -130,10 +130,8 @@ function parseConfig(firebaseJsonPath: string): FirebaseJsonConfig {
   return FirebaseJsonConfig.load({ cwd: firebaseJsonPath });
 }
 
-// FIXME is start action correct or should we use controller.startAll
 export async function emulatorsStart(firebaseJsonPath: string, emulatorUiSelections: EmulatorUiSelections) {
   const commandOptions = await getCommandOptions(undefined, {
-    // FIXME rename currentOptions to something more descriptive - make it strongly typed and figure out how to avoid conflics in naming or duplicate properties with different names and mismatched values
     ...currentOptions,
     config: parseConfig(firebaseJsonPath),
     project: emulatorUiSelections.projectId,
@@ -141,11 +139,11 @@ export async function emulatorsStart(firebaseJsonPath: string, emulatorUiSelecti
     import: emulatorUiSelections.importStateFolderPath,
   });
   commandUtils.setExportOnExitOptions(commandOptions); // Should error since we don't set import.
-  return emulatorsStartAction(commandOptions); // Returns a promise of the running emulator. Can listen for shutdown if needed.
+  return startAllEmulators(commandOptions, /*showUi=*/ true); // Returns a promise of the running emulator. Can listen for shutdown if needed.
 }
 
 export async function stopEmulators() {
-  await EmulatorRegistry.stopAll();
+  await stopAllEmulators();
 }
 
 // FIXME pipe output to console if we're in a VSCode environment

@@ -482,7 +482,7 @@ export function tryParse(value: any) {
 /**
  *
  */
-export function setupLoggers() { // FIXME this is never called I guess
+export function setupLoggers() {
   console.log("setting up loggers");
   if (process.env.DEBUG || process.env.IS_VSCODE_ENVIRONMENT) {
     logger.add(
