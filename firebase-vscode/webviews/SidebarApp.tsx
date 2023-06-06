@@ -43,7 +43,7 @@ export function SidebarApp() {
   const [selectedFirebaseJsonInDropdown, setSelectedFirebaseJsonInDropdown] = useState<string>("/usr/local/google/home/christhompson/firebaseprojects/firebaseclicker/firebase.json");
   const [emulatorUiSelections, setEmulatorUiSelections] = useState<EmulatorUiSelections>(DEFAULT_EMULATOR_UI_SELECTIONS);
 
-  console.log("initial state:" + JSON.stringify(emulatorUiSelections));
+  console.log("initial state ui selections:" + JSON.stringify(emulatorUiSelections));
   function setEmulatorUiSelectionsAndSaveToWorkspace(uiSelections:EmulatorUiSelections) {
     // FIXME save before updating UI. Requires context
     setEmulatorUiSelections(uiSelections);
@@ -207,7 +207,7 @@ export function SidebarApp() {
     console.log("selectedImportFolder: " + event.target.value);
     var selections: EmulatorUiSelections = emulatorUiSelections;
     selections.importStateFolderPath = event.target.value;
-    selections = {...selections}; // Copy to a new object to force a react rerender
+    selections = {...selections}; // FIXME Copy to a new object to force a react rerender
     setEmulatorUiSelectionsAndSaveToWorkspace(selections);
   }
   
@@ -303,7 +303,7 @@ function RunEmulatorPanel(
     toggleExportOnExit,
     projectIdChanged
   }:
-    { // why is this param struct needed even with 1 param?
+    {
       runningEmulatorInfo: RunningEmulatorInfo,
       showEmulatorProgressIndicator: boolean,
       emulatorUiSelections: EmulatorUiSelections
@@ -379,9 +379,12 @@ function RunEmulatorPanel(
 
 
       <br />TODO persist settings on reload
+      <br />TODO emulator:exec mode - right now they need to launch and THEN launch the app.
+      <br />TODO dummy config for no json - useful?
       <br />TODO debug options:
-      <br />&nbsp;logging passthrough to console - perhaps in some secret options
+      <br />&nbsp;logging passthrough to console for faster debugging - perhaps in some secret options
       <br />&nbsp;open debug files in editor
+      <br />&nbsp;debug flag set for additional diagnostic logging
       <br />&nbsp;clear [emualtor] state back to default
       <Spacer size="medium" />
       <br />Later:

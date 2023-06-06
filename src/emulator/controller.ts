@@ -105,13 +105,12 @@ export async function cleanShutdown(): Promise<void> {
  * Filters a list of emulators to only those specified in the config
  * @param options
  */
-export function filterEmulatorTargets(options: { only: string }): Emulators[] {
+export function filterEmulatorTargets(options: { only: string, config: any }): Emulators[] {
   let targets = [...ALL_SERVICE_EMULATORS];
   targets.push(Emulators.EXTENSIONS);
-// FIXME another reason for a dummy config
-  // targets = targets.filter((e) => {
-  //   return options.config?.has(e) || options.config?.has(`emulators.${e}`);
-  // });
+  targets = targets.filter((e) => {
+    return options.config.has(e) || options.config.has(`emulators.${e}`);
+  });
 
   const onlyOptions: string = options.only;
   if (onlyOptions) {
@@ -120,7 +119,6 @@ export function filterEmulatorTargets(options: { only: string }): Emulators[] {
     });
     targets = targets.filter((t) => only.includes(t));
   }
-  // console.log("inside filterEmulatorTargets, returning: " + JSON.stringify(targets))
 
   return targets;
 }
@@ -143,7 +141,7 @@ export function shouldStart(options: Options, name: Emulators): boolean {
       return true;
     }
 
-    if (options.config?.src.emulators?.ui?.enabled === false) {
+    if (options.config.src.emulators?.ui?.enabled === false) {
       // Allow disabling UI via `{emulators: {"ui": {"enabled": false}}}`.
       // Emulator UI is by default enabled if that option is not specified.
       return false;
@@ -158,7 +156,7 @@ export function shouldStart(options: Options, name: Emulators): boolean {
   // Don't start the functions emulator if we can't find the source directory
   if (name === Emulators.FUNCTIONS && emulatorInTargets) {
     try {
-      normalizeAndValidate(options.config?.src.functions);
+      normalizeAndValidate(options.config.src.functions);
       return true;
     } catch (err: any) {
       EmulatorLogger.forEmulator(Emulators.FUNCTIONS).logLabeled(
@@ -172,7 +170,7 @@ export function shouldStart(options: Options, name: Emulators): boolean {
     }
   }
 
-  if (name === Emulators.HOSTING && emulatorInTargets && !options.config?.get("hosting")) {
+  if (name === Emulators.HOSTING && emulatorInTargets && !options.config.get("hosting")) {
     EmulatorLogger.forEmulator(Emulators.HOSTING).logLabeled(
       "WARN",
       "hosting",
@@ -249,7 +247,7 @@ interface EmulatorOptions extends Options {
 /**
  * Start all emulators.
  */
-export async function startAll( // FIXME undo all the "config?" I added.
+export async function startAll(
   options: EmulatorOptions,
   showUI = true
 ): Promise<{ deprecationNotices: string[] }> {
@@ -268,8 +266,8 @@ export async function startAll( // FIXME undo all the "config?" I added.
   const targets = filterEmulatorTargets(options);
   options.targets = targets;
   const singleProjectModeEnabled =
-    options.config?.src.emulators?.singleProjectMode === undefined ||
-    options.config?.src.emulators?.singleProjectMode;
+    options.config.src.emulators?.singleProjectMode === undefined ||
+    options.config.src.emulators?.singleProjectMode;
 
   if (targets.length === 0) {
     throw new FirebaseError(
@@ -336,10 +334,10 @@ export async function startAll( // FIXME undo all the "config?" I added.
     const aliases = getAliases(options, projectId);
     extensionEmulator = new ExtensionsEmulator({
       projectId,
-      projectDir: options.config?.projectDir,
+      projectDir: options.config.projectDir,
       projectNumber,
       aliases,
-      extensions: options.config?.get("extensions"),
+      extensions: options.config.get("extensions"),
     });
     const extensionsBackends = await extensionEmulator.getExtensionBackends();
     const filteredExtensionsBackends = extensionEmulator.filterUnemulatedTriggers(
@@ -373,7 +371,7 @@ export async function startAll( // FIXME undo all the "config?" I added.
       const config = getListenConfig(options, emulator);
       listenConfig[emulator] = config;
       if (emulator === Emulators.FIRESTORE) {
-        const wsPortConfig = options.config?.src.emulators?.firestore?.websocketPort;
+        const wsPortConfig = options.config.src.emulators?.firestore?.websocketPort;
         listenConfig["firestore.websocket"] = {
           host: config.host,
           port: wsPortConfig || 9150,
@@ -446,7 +444,7 @@ export async function startAll( // FIXME undo all the "config?" I added.
 
   // TODO: turn this into hostingConfig.extract or hostingConfig.hostingConfig
   // once those branches merge
-  const hostingConfig = options.config?.get("hosting");
+  const hostingConfig = options.config.get("hosting");
   if (
     Array.isArray(hostingConfig) ? hostingConfig.some((it) => it.source) : hostingConfig?.source
   ) {
@@ -467,9 +465,9 @@ export async function startAll( // FIXME undo all the "config?" I added.
     await prepareFrameworks(targets, options, options, emulators);
   }
 
-  const projectDir = (options.extDevDir || options.config?.projectDir) as string;
+  const projectDir = (options.extDevDir || options.config.projectDir) as string;
   if (shouldStart(options, Emulators.FUNCTIONS)) {
-    const functionsCfg = normalizeAndValidate(options.config?.src.functions);
+    const functionsCfg = normalizeAndValidate(options.config.src.functions);
     // Note: ext:dev:emulators:* commands hit this path, not the Emulators.EXTENSIONS path
     utils.assertIsStringOrUndefined(options.extDevDir);
 
@@ -598,11 +596,10 @@ export async function startAll( // FIXME undo all the "config?" I added.
     // TODO(VicVer09): b/269787702
     let rulesLocalPath;
     let rulesFileFound;
-    /*const*/ var firestoreConfigs: fsConfig.ParsedFirestoreConfig[] = fsConfig.getFirestoreConfig(
+    const firestoreConfigs: fsConfig.ParsedFirestoreConfig[] = fsConfig.getFirestoreConfig(
       projectId,
       options
     );
-    firestoreConfigs = []; // FIXME
     if (!firestoreConfigs) {
       firestoreLogger.logLabeled(
         "WARN",
@@ -878,7 +875,7 @@ function getListenConfig(
   options: EmulatorOptions,
   emulator: Exclude<Emulators, Emulators.EXTENSIONS>
 ): EmulatorListenConfig {
-  let host = options.config?.src.emulators?.[emulator]?.host || Constants.getDefaultHost();
+  let host = options.config.src.emulators?.[emulator]?.host || Constants.getDefaultHost();
   if (host === "localhost" && utils.isRunningInWSL()) {
     // HACK(https://github.com/firebase/firebase-tools-ui/issues/332): Use IPv4
     // 127.0.0.1 instead of localhost. This, combined with the hack in
@@ -889,7 +886,7 @@ function getListenConfig(
     host = "127.0.0.1";
   }
 
-  const portVal = options.config?.src.emulators?.[emulator]?.port;
+  const portVal = options.config.src.emulators?.[emulator]?.port;
   let port: number;
   let portFixed: boolean;
   if (portVal) {

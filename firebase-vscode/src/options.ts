@@ -29,7 +29,7 @@ interface CommandOptions extends Options {}
 export let currentOptions: CliOptions = {
   cwd: "",
   configPath: "",
-  only: "firestore", // FIXME do this via the default config. Exception: if some emulators dont work in vscode.
+  only: "",
   except: "",
   config: commandUtils.DEFAULT_CONFIG,
   filteredTargets: [],

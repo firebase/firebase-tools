@@ -259,8 +259,6 @@ export class Command {
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public async prepare(options: any): Promise<void> {
-    console.log("preparing with options:");
-    console.log(options);
     options = options || {};
     options.project = getInheritedOption(options, "project");
 

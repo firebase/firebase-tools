@@ -146,11 +146,8 @@ export async function stopEmulators() {
   await stopAllEmulators();
 }
 
-// FIXME pipe output to console if we're in a VSCode environment
-// https://cs.opensource.google/firebase-sdk/firebase-tools/+/master:src/utils.ts;l=487?q=logger.add&ss=firebase-sdk%2Ffirebase-tools
 export function listRunningEmulators(): string {
   const emulatorInfo : string = JSON.stringify(EmulatorRegistry.listRunningWithInfo());
-  console.log("listRunningEmulators, returned info: " + emulatorInfo);
   return emulatorInfo;
 }
 
