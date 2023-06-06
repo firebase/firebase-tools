@@ -4,7 +4,9 @@ export interface FileSystem {
 }
 
 export interface Runtime {
-  match(fs: FileSystem): Promise<RuntimeMatch | null>;
+  match(fs: FileSystem): Promise<boolean | null>;
+  getRuntimeName(): string;
+  analyseCodebase(fs: FileSystem, allFrameworkSpecs: FrameworkSpec[]): Promise<RuntimeSpec | null>;
 }
 
 export interface Command {
@@ -64,7 +66,7 @@ export interface FrameworkSpec {
   samples?: FrameworkSample[];
 }
 
-export interface RuntimeMatch {
+export interface RuntimeSpec {
   // e.g. `nodejs`
   id: string;
 
@@ -84,6 +86,8 @@ export interface RuntimeMatch {
   // The runtime has detected a command that should always be run irrespective of
   // the framework (e.g. the "build" script always wins in Node)
   detectedCommands?: LifecycleCommands;
+
+  fallbackCommands?: LifecycleCommands;
 }
 
 export interface SampleInstallStrategy {

@@ -157,6 +157,8 @@ export function load(client: any): any {
   client.open = loadCommand("open");
   client.projects = {};
   client.projects.addfirebase = loadCommand("projects-addfirebase");
+  client.internaltesting.frameworks = {};
+  client.internaltesting.frameworks.init = loadCommand("internaltesting-frameworks-init");
   client.projects.create = loadCommand("projects-create");
   client.projects.list = loadCommand("projects-list");
   client.remoteconfig = {};

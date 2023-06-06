@@ -31,12 +31,13 @@
         "express": "^4.16.4",
         "filesize": "^6.1.0",
         "form-data": "^4.0.0",
+        "fs": "^0.0.1-security",
         "fs-extra": "^10.1.0",
         "github-api": "^3.4.0",
         "glob": "^7.1.2",
         "google-auth-library": "^7.11.0",
         "inquirer": "^8.2.0",
-        "js-yaml": "^3.13.1",
+        "js-yaml": "^3.14.1",
         "jsonwebtoken": "^9.0.0",
         "leven": "^3.1.0",
         "libsodium-wrappers": "^0.7.10",
@@ -70,7 +71,8 @@
         "uuid": "^8.3.2",
         "winston": "^3.0.0",
         "winston-transport": "^4.4.0",
-        "ws": "^7.2.3"
+        "ws": "^7.2.3",
+        "yaml": "^2.3.1"
       },
       "bin": {
         "firebase": "lib/bin/firebase.js"
@@ -103,7 +105,7 @@
         "@types/marked-terminal": "^3.1.3",
         "@types/mocha": "^9.0.0",
         "@types/multer": "^1.4.3",
-        "@types/node": "^14.18.18",
+        "@types/node": "^14.18.48",
         "@types/node-fetch": "^2.5.12",
         "@types/prettier": "^2.7.2",
         "@types/progress": "^2.0.3",
@@ -3942,9 +3944,9 @@
       }
     },
     "node_modules/@types/node": {
-      "version": "14.18.36",
-      "resolved": "https://registry.npmjs.org/@types/node/-/node-14.18.36.tgz",
-      "integrity": "sha512-FXKWbsJ6a1hIrRxv+FoukuHnGTgEzKYGi7kilfMae96AL9UNkPFNWJEEYWzdRI9ooIkbr4AKldyuSTLql06vLQ=="
+      "version": "14.18.48",
+      "resolved": "https://registry.npmjs.org/@types/node/-/node-14.18.48.tgz",
+      "integrity": "sha512-iL0PIMwejpmuVHgfibHpfDwOdsbmB50wr21X71VnF5d7SsBF7WK+ZvP/SCcFm7Iwb9iiYSap9rlrdhToNAWdxg=="
     },
     "node_modules/@types/node-fetch": {
       "version": "2.5.12",
@@ -6896,6 +6898,15 @@
         "node": ">=10"
       }
     },
+    "node_modules/cosmiconfig/node_modules/yaml": {
+      "version": "1.10.2",
+      "resolved": "https://registry.npmjs.org/yaml/-/yaml-1.10.2.tgz",
+      "integrity": "sha512-r3vXyErRCYJ7wg28yvBY5VSoAF8ZvlcW9/BwUzEtUsjvX/DKs24dIkuwjtuprwJJHsbyUbLApepYTR1BN4uHrg==",
+      "dev": true,
+      "engines": {
+        "node": ">= 6"
+      }
+    },
     "node_modules/crc-32": {
       "version": "1.2.2",
       "resolved": "https://registry.npmjs.org/crc-32/-/crc-32-1.2.2.tgz",
@@ -8981,6 +8992,11 @@
           "url": "https://feross.org/support"
         }
       ]
+    },
+    "node_modules/fs": {
+      "version": "0.0.1-security",
+      "resolved": "https://registry.npmjs.org/fs/-/fs-0.0.1-security.tgz",
+      "integrity": "sha512-3XY9e1pP0CVEUCdj5BmfIZxRBTSDycnbqhIOGec9QYtmVH2fbLpj86CFWkrNOkt/Fvty4KZG5lTglL9j/gJ87w=="
     },
     "node_modules/fs-constants": {
       "version": "1.0.0",
@@ -11306,9 +11322,9 @@
       "dev": true
     },
     "node_modules/js-yaml": {
-      "version": "3.13.1",
-      "resolved": "https://registry.npmjs.org/js-yaml/-/js-yaml-3.13.1.tgz",
-      "integrity": "sha512-YfbcO7jXDdyj0DGxYVSlSeQNHbD7XPWvrVWeVUujrQEoZzWJIRrCPoyk6kL6IAjAG2IolMK4T0hNUe0HOUs5Jw==",
+      "version": "3.14.1",
+      "resolved": "https://registry.npmjs.org/js-yaml/-/js-yaml-3.14.1.tgz",
+      "integrity": "sha512-okMH7OXXJ7YrN9Ok3/SXrnu4iX9yOk+25nqX4imS2npuvTYDmo/QEZoqwZkYaIDk3jVvBOTOIEgEhaLOynBS9g==",
       "dependencies": {
         "argparse": "^1.0.7",
         "esprima": "^4.0.0"
@@ -14209,6 +14225,15 @@
         "url": "https://github.com/Mermade/oas-kit?sponsor=1"
       }
     },
+    "node_modules/oas-linter/node_modules/yaml": {
+      "version": "1.10.2",
+      "resolved": "https://registry.npmjs.org/yaml/-/yaml-1.10.2.tgz",
+      "integrity": "sha512-r3vXyErRCYJ7wg28yvBY5VSoAF8ZvlcW9/BwUzEtUsjvX/DKs24dIkuwjtuprwJJHsbyUbLApepYTR1BN4uHrg==",
+      "dev": true,
+      "engines": {
+        "node": ">= 6"
+      }
+    },
     "node_modules/oas-resolver": {
       "version": "2.5.6",
       "resolved": "https://registry.npmjs.org/oas-resolver/-/oas-resolver-2.5.6.tgz",
@@ -14249,6 +14274,15 @@
       "dev": true,
       "engines": {
         "node": ">=10"
+      }
+    },
+    "node_modules/oas-resolver/node_modules/yaml": {
+      "version": "1.10.2",
+      "resolved": "https://registry.npmjs.org/yaml/-/yaml-1.10.2.tgz",
+      "integrity": "sha512-r3vXyErRCYJ7wg28yvBY5VSoAF8ZvlcW9/BwUzEtUsjvX/DKs24dIkuwjtuprwJJHsbyUbLApepYTR1BN4uHrg==",
+      "dev": true,
+      "engines": {
+        "node": ">= 6"
       }
     },
     "node_modules/oas-resolver/node_modules/yargs": {
@@ -14304,6 +14338,15 @@
       },
       "funding": {
         "url": "https://github.com/Mermade/oas-kit?sponsor=1"
+      }
+    },
+    "node_modules/oas-validator/node_modules/yaml": {
+      "version": "1.10.2",
+      "resolved": "https://registry.npmjs.org/yaml/-/yaml-1.10.2.tgz",
+      "integrity": "sha512-r3vXyErRCYJ7wg28yvBY5VSoAF8ZvlcW9/BwUzEtUsjvX/DKs24dIkuwjtuprwJJHsbyUbLApepYTR1BN4uHrg==",
+      "dev": true,
+      "engines": {
+        "node": ">= 6"
       }
     },
     "node_modules/oauth-sign": {
@@ -14564,6 +14607,14 @@
       "integrity": "sha512-v6X3iwddhi276siej96jHGIqTx3wzVfMTmpGJEQDt7GPI7pI6sywItURLzpEci21SBRpPN/aOWSF5mVfFVNmcg==",
       "dependencies": {
         "yaml": "^1.10.0"
+      }
+    },
+    "node_modules/openapi3-ts/node_modules/yaml": {
+      "version": "1.10.2",
+      "resolved": "https://registry.npmjs.org/yaml/-/yaml-1.10.2.tgz",
+      "integrity": "sha512-r3vXyErRCYJ7wg28yvBY5VSoAF8ZvlcW9/BwUzEtUsjvX/DKs24dIkuwjtuprwJJHsbyUbLApepYTR1BN4uHrg==",
+      "engines": {
+        "node": ">= 6"
       }
     },
     "node_modules/optionator": {
@@ -17445,6 +17496,15 @@
         "node": ">=10"
       }
     },
+    "node_modules/swagger2openapi/node_modules/yaml": {
+      "version": "1.10.2",
+      "resolved": "https://registry.npmjs.org/yaml/-/yaml-1.10.2.tgz",
+      "integrity": "sha512-r3vXyErRCYJ7wg28yvBY5VSoAF8ZvlcW9/BwUzEtUsjvX/DKs24dIkuwjtuprwJJHsbyUbLApepYTR1BN4uHrg==",
+      "dev": true,
+      "engines": {
+        "node": ">= 6"
+      }
+    },
     "node_modules/swagger2openapi/node_modules/yargs": {
       "version": "17.6.2",
       "resolved": "https://registry.npmjs.org/yargs/-/yargs-17.6.2.tgz",
@@ -19207,11 +19267,11 @@
       "integrity": "sha512-3wdGidZyq5PB084XLES5TpOSRA3wjXAlIWMhum2kRcv/41Sn2emQ0dycQW4uZXLejwKvg6EsvbdlVL+FYEct7A=="
     },
     "node_modules/yaml": {
-      "version": "1.10.2",
-      "resolved": "https://registry.npmjs.org/yaml/-/yaml-1.10.2.tgz",
-      "integrity": "sha512-r3vXyErRCYJ7wg28yvBY5VSoAF8ZvlcW9/BwUzEtUsjvX/DKs24dIkuwjtuprwJJHsbyUbLApepYTR1BN4uHrg==",
+      "version": "2.3.1",
+      "resolved": "https://registry.npmjs.org/yaml/-/yaml-2.3.1.tgz",
+      "integrity": "sha512-2eHWfjaoXgTBC2jNM1LRef62VQa0umtvRiDSk6HSzW7RvS5YtkabJrwYLLEKWBc8a5U2PTSCs+dJjUTJdlHsWQ==",
       "engines": {
-        "node": ">= 6"
+        "node": ">= 14"
       }
     },
     "node_modules/yargs": {
@@ -22336,9 +22396,9 @@
       }
     },
     "@types/node": {
-      "version": "14.18.36",
-      "resolved": "https://registry.npmjs.org/@types/node/-/node-14.18.36.tgz",
-      "integrity": "sha512-FXKWbsJ6a1hIrRxv+FoukuHnGTgEzKYGi7kilfMae96AL9UNkPFNWJEEYWzdRI9ooIkbr4AKldyuSTLql06vLQ=="
+      "version": "14.18.48",
+      "resolved": "https://registry.npmjs.org/@types/node/-/node-14.18.48.tgz",
+      "integrity": "sha512-iL0PIMwejpmuVHgfibHpfDwOdsbmB50wr21X71VnF5d7SsBF7WK+ZvP/SCcFm7Iwb9iiYSap9rlrdhToNAWdxg=="
     },
     "@types/node-fetch": {
       "version": "2.5.12",
@@ -24571,6 +24631,14 @@
         "parse-json": "^5.0.0",
         "path-type": "^4.0.0",
         "yaml": "^1.10.0"
+      },
+      "dependencies": {
+        "yaml": {
+          "version": "1.10.2",
+          "resolved": "https://registry.npmjs.org/yaml/-/yaml-1.10.2.tgz",
+          "integrity": "sha512-r3vXyErRCYJ7wg28yvBY5VSoAF8ZvlcW9/BwUzEtUsjvX/DKs24dIkuwjtuprwJJHsbyUbLApepYTR1BN4uHrg==",
+          "dev": true
+        }
       }
     },
     "crc-32": {
@@ -26147,6 +26215,11 @@
       "resolved": "https://registry.npmjs.org/fromentries/-/fromentries-1.2.1.tgz",
       "integrity": "sha512-Xu2Qh8yqYuDhQGOhD5iJGninErSfI9A3FrriD3tjUgV5VbJFeH8vfgZ9HnC6jWN80QDVNQK5vmxRAmEAp7Mevw==",
       "dev": true
+    },
+    "fs": {
+      "version": "0.0.1-security",
+      "resolved": "https://registry.npmjs.org/fs/-/fs-0.0.1-security.tgz",
+      "integrity": "sha512-3XY9e1pP0CVEUCdj5BmfIZxRBTSDycnbqhIOGec9QYtmVH2fbLpj86CFWkrNOkt/Fvty4KZG5lTglL9j/gJ87w=="
     },
     "fs-constants": {
       "version": "1.0.0",
@@ -27927,9 +28000,9 @@
       "dev": true
     },
     "js-yaml": {
-      "version": "3.13.1",
-      "resolved": "https://registry.npmjs.org/js-yaml/-/js-yaml-3.13.1.tgz",
-      "integrity": "sha512-YfbcO7jXDdyj0DGxYVSlSeQNHbD7XPWvrVWeVUujrQEoZzWJIRrCPoyk6kL6IAjAG2IolMK4T0hNUe0HOUs5Jw==",
+      "version": "3.14.1",
+      "resolved": "https://registry.npmjs.org/js-yaml/-/js-yaml-3.14.1.tgz",
+      "integrity": "sha512-okMH7OXXJ7YrN9Ok3/SXrnu4iX9yOk+25nqX4imS2npuvTYDmo/QEZoqwZkYaIDk3jVvBOTOIEgEhaLOynBS9g==",
       "requires": {
         "argparse": "^1.0.7",
         "esprima": "^4.0.0"
@@ -30070,6 +30143,14 @@
         "@exodus/schemasafe": "^1.0.0-rc.2",
         "should": "^13.2.1",
         "yaml": "^1.10.0"
+      },
+      "dependencies": {
+        "yaml": {
+          "version": "1.10.2",
+          "resolved": "https://registry.npmjs.org/yaml/-/yaml-1.10.2.tgz",
+          "integrity": "sha512-r3vXyErRCYJ7wg28yvBY5VSoAF8ZvlcW9/BwUzEtUsjvX/DKs24dIkuwjtuprwJJHsbyUbLApepYTR1BN4uHrg==",
+          "dev": true
+        }
       }
     },
     "oas-resolver": {
@@ -30100,6 +30181,12 @@
           "version": "5.0.8",
           "resolved": "https://registry.npmjs.org/y18n/-/y18n-5.0.8.tgz",
           "integrity": "sha512-0pfFzegeDWJHJIAmTLRP2DwHjdF5s7jo9tuztdQxAhINCdvS+3nGINqPd00AphqJR/0LhANUS6/+7SCb98YOfA==",
+          "dev": true
+        },
+        "yaml": {
+          "version": "1.10.2",
+          "resolved": "https://registry.npmjs.org/yaml/-/yaml-1.10.2.tgz",
+          "integrity": "sha512-r3vXyErRCYJ7wg28yvBY5VSoAF8ZvlcW9/BwUzEtUsjvX/DKs24dIkuwjtuprwJJHsbyUbLApepYTR1BN4uHrg==",
           "dev": true
         },
         "yargs": {
@@ -30145,6 +30232,14 @@
         "reftools": "^1.1.9",
         "should": "^13.2.1",
         "yaml": "^1.10.0"
+      },
+      "dependencies": {
+        "yaml": {
+          "version": "1.10.2",
+          "resolved": "https://registry.npmjs.org/yaml/-/yaml-1.10.2.tgz",
+          "integrity": "sha512-r3vXyErRCYJ7wg28yvBY5VSoAF8ZvlcW9/BwUzEtUsjvX/DKs24dIkuwjtuprwJJHsbyUbLApepYTR1BN4uHrg==",
+          "dev": true
+        }
       }
     },
     "oauth-sign": {
@@ -30339,6 +30434,13 @@
       "integrity": "sha512-v6X3iwddhi276siej96jHGIqTx3wzVfMTmpGJEQDt7GPI7pI6sywItURLzpEci21SBRpPN/aOWSF5mVfFVNmcg==",
       "requires": {
         "yaml": "^1.10.0"
+      },
+      "dependencies": {
+        "yaml": {
+          "version": "1.10.2",
+          "resolved": "https://registry.npmjs.org/yaml/-/yaml-1.10.2.tgz",
+          "integrity": "sha512-r3vXyErRCYJ7wg28yvBY5VSoAF8ZvlcW9/BwUzEtUsjvX/DKs24dIkuwjtuprwJJHsbyUbLApepYTR1BN4uHrg=="
+        }
       }
     },
     "optionator": {
@@ -32533,6 +32635,12 @@
           "integrity": "sha512-0pfFzegeDWJHJIAmTLRP2DwHjdF5s7jo9tuztdQxAhINCdvS+3nGINqPd00AphqJR/0LhANUS6/+7SCb98YOfA==",
           "dev": true
         },
+        "yaml": {
+          "version": "1.10.2",
+          "resolved": "https://registry.npmjs.org/yaml/-/yaml-1.10.2.tgz",
+          "integrity": "sha512-r3vXyErRCYJ7wg28yvBY5VSoAF8ZvlcW9/BwUzEtUsjvX/DKs24dIkuwjtuprwJJHsbyUbLApepYTR1BN4uHrg==",
+          "dev": true
+        },
         "yargs": {
           "version": "17.6.2",
           "resolved": "https://registry.npmjs.org/yargs/-/yargs-17.6.2.tgz",
@@ -33819,9 +33927,9 @@
       "integrity": "sha512-3wdGidZyq5PB084XLES5TpOSRA3wjXAlIWMhum2kRcv/41Sn2emQ0dycQW4uZXLejwKvg6EsvbdlVL+FYEct7A=="
     },
     "yaml": {
-      "version": "1.10.2",
-      "resolved": "https://registry.npmjs.org/yaml/-/yaml-1.10.2.tgz",
-      "integrity": "sha512-r3vXyErRCYJ7wg28yvBY5VSoAF8ZvlcW9/BwUzEtUsjvX/DKs24dIkuwjtuprwJJHsbyUbLApepYTR1BN4uHrg=="
+      "version": "2.3.1",
+      "resolved": "https://registry.npmjs.org/yaml/-/yaml-2.3.1.tgz",
+      "integrity": "sha512-2eHWfjaoXgTBC2jNM1LRef62VQa0umtvRiDSk6HSzW7RvS5YtkabJrwYLLEKWBc8a5U2PTSCs+dJjUTJdlHsWQ=="
     },
     "yargs": {
       "version": "16.2.0",
