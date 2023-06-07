@@ -142,6 +142,16 @@ export function setupWorkflow(
     broker.send("notifyChannels", { channels });
   }
 
+  // Get user-defined VSCode settings.
+  const workspaceConfig = workspace.getConfiguration(
+    'firebase',
+    vscode.workspace.workspaceFolders[0].uri
+  );
+  const shouldDebug: boolean = workspaceConfig.get('debug');
+
+  /**
+   * Logging setup for logging to console and to file.
+   */
   // Sets up CLI logger to log to console
   process.env.DEBUG = 'true';
   setupLoggers();
@@ -150,7 +160,8 @@ export function setupWorkflow(
   const rootFolders = getRootFolders();
   const filePath = path.join(rootFolders[0], 'firebase-plugin-debug.log');
   pluginLogger.info('Logging to path', filePath);
-  if (!process.env.MONOSPACE_ENV) {
+  // Only log to file if firebase.debug extension setting is true.
+  if (shouldDebug) {
     logger.add(
       new transports.File({
         level: "debug",
@@ -167,6 +178,7 @@ export function setupWorkflow(
   readFirebaseConfigs();
   // Check current users state
   fetchUsers();
+  // Get hosting channels
   fetchChannels();
 
   /**
