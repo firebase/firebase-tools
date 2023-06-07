@@ -150,17 +150,19 @@ export function setupWorkflow(
   const rootFolders = getRootFolders();
   const filePath = path.join(rootFolders[0], 'firebase-plugin-debug.log');
   pluginLogger.info('Logging to path', filePath);
-  logger.add(
-    new transports.File({
-      level: "debug",
-      filename: filePath,
-      format: format.printf((info) => {
-        const segments = [info.message, ...(info[SPLAT] || [])]
-          .map(tryStringify);
-        return `[${info.level}] ${stripAnsi(segments.join(" "))}`;
-      }),
-    })
-  );
+  if (!process.env.MONOSPACE_ENV) {
+    logger.add(
+      new transports.File({
+        level: "debug",
+        filename: filePath,
+        format: format.printf((info) => {
+          const segments = [info.message, ...(info[SPLAT] || [])]
+            .map(tryStringify);
+          return `[${info.level}] ${stripAnsi(segments.join(" "))}`;
+        }),
+      })
+    );
+  }
   // Read config files and store in memory.
   readFirebaseConfigs();
   // Check current users state
