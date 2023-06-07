@@ -1,24 +1,19 @@
 {
-	"compilerOptions": {
+  "compilerOptions": {
     "allowJs": true,
     "checkJs": false,
     "allowSyntheticDefaultImports": true,
-		"resolveJsonModule": true,
-    "typeRoots": [
-      "node_modules/@types",
-      "../src/types"
-    ],
-		"module": "ES2015",
-		"moduleResolution": "node",
-		"target": "ES2020",
-		"outDir": "dist",
-		"lib": [
-			"ES2020"
-		],
-		"jsx": "react",
-		"sourceMap": true,
-		"rootDirs": ["src", "../src", "common"],
-		"strict": false   /* enable all strict type-checking options */
-	},
-	"include": ["src/**/*", "common/**/*"],
+    "resolveJsonModule": true,
+    "typeRoots": ["node_modules/@types", "../src/types"],
+    "module": "ES2015",
+    "moduleResolution": "node",
+    "target": "ES2020",
+    "outDir": "dist",
+    "lib": ["ES2020"],
+    "jsx": "react",
+    "sourceMap": true,
+    "rootDirs": ["src", "../src", "common"],
+    "strict": false /* enable all strict type-checking options */
+  },
+  "include": ["src/**/*", "common/**/*"]
 }

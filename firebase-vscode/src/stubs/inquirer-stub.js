@@ -1,16 +1,17 @@
 const inquirer = module.exports;
 
-let options = {};
+const optionsKey = Symbol('options');
+inquirer[optionsKey] = {};
 
 inquirer.setInquirerOptions = (inquirerOptions) => {
-  options = inquirerOptions;
+  inquirer[optionsKey] = inquirerOptions;
 };
 
 inquirer.prompt = async (prompts) => {
   const answers = {};
   for (const prompt of prompts) {
-    if (options.hasOwnProperty(prompt.name)) {
-      answers[prompt.name] = options[prompt.name];
+    if (inquirer[optionsKey].hasOwnProperty(prompt.name)) {
+      answers[prompt.name] = inquirer[optionsKey][prompt.name];
     } else {
       console.log(
         `Didn't find "${prompt.name}" in options (message:` +

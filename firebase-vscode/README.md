@@ -12,13 +12,13 @@ This extension is in the development and exploration stage.
    My terminal didn't have npm available but yours might
 
 Workaround if f5 doesnt work:
-2.1 Execute `npm run watch` from within the vscode directory
+1. Execute `npm run watch` from within the vscode directory
 Aside: Running `npm run watch` or `npm run build` the extension is compiled into dist (extension.js)
 Changing code within extension is hot-reloaded
 Modifying extensions.js will not hot-reload
 source file src/extension.ts
-2.11 Wait for completion
-2.2 Hit play from the left nav
+2. Wait for completion
+3. Hit play from the left nav
 
 New code changes are automatically rebuilt if you have `watch` running, however the new VSCode Plugin-enabled window will not reflect changes until reloaded.
 Manual reload from new window: "Developer: Reload Window" Default hotkey: cmd + R
