@@ -130,16 +130,16 @@ function parseConfig(firebaseJsonPath: string): FirebaseJsonConfig {
   return FirebaseJsonConfig.load({ cwd: firebaseJsonPath });
 }
 
-export async function emulatorsStart(firebaseJsonPath: string, emulatorUiSelections: EmulatorUiSelections) {
-  const commandOptions = await getCommandOptions(undefined, {
+export async function emulatorsStart(firebaseJson: FirebaseConfig, emulatorUiSelections: EmulatorUiSelections) {
+  const commandOptions = await getCommandOptions(firebaseJson, {
+    config: { ...firebaseJson },
     ...currentOptions,
-    config: parseConfig(firebaseJsonPath),
     project: emulatorUiSelections.projectId,
     exportOnExit: emulatorUiSelections.exportStateOnExit,
     import: emulatorUiSelections.importStateFolderPath,
   });
-  commandUtils.setExportOnExitOptions(commandOptions); // Should error since we don't set import.
-  return startAllEmulators(commandOptions, /*showUi=*/ true); // Returns a promise of the running emulator. Can listen for shutdown if needed.
+  commandUtils.setExportOnExitOptions(commandOptions);
+  return startAllEmulators(commandOptions, /*showUi=*/ true); 
 }
 
 export async function stopEmulators() {

@@ -36,7 +36,7 @@ export interface WebviewToExtension {
    * Defers to firebaseJsonPath and if empty, uses the project ID with a default configuration
   */
   launchEmulators(
-    firebaseJsonPath: string,
+    firebaseJson: FirebaseConfig,
     EmulatorUiSelections: EmulatorUiSelections,
   ): void;
 
@@ -56,9 +56,6 @@ export interface WebviewToExtension {
 
   /** Fetches the entire firebase rc config file. If the file doesn't exist, then it will return a default value. */
   getFirebaseJson(): void;
-
-  /** Gets the current CWD firebasejson. */
-  getFirebaseJsonPath(): void;
 
   showMessage(msg: string, options?: {}): void;
 }
@@ -92,7 +89,6 @@ export interface ExtensionToWebview {
   notifyWorkspaceFolders(folders: Array<String>): void;
 
   notifyFirebaseJson(firebaseJson: FirebaseConfig, firebaseRC: FirebaseRC): void;
-  notifyFirebaseJsonPath(firebaseJsonPath: string): void;
 }
 
 /**
@@ -105,7 +101,7 @@ export interface RunningEmulatorInfo {
 
 export interface EmulatorUiSelections {
   projectId: string
-  firebaseJsonPath: string
+  firebaseJsonPath?: string
   importStateFolderPath?: string
   exportStateOnExit: boolean
   mode: "hosting" | "all"

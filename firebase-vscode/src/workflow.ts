@@ -86,7 +86,7 @@ function updateCurrentUser(
   return currentUserEmail;
 }
 
-function getRootFolders() {
+function getRootFolders(): Array<string> {
   if (!workspace) {
     return [];
   }
@@ -100,7 +100,9 @@ function getRootFolders() {
 }
 
 function getJsonFile<T>(filename: string): T | null {
-  const rootFolders = getRootFolders();
+  var rootFolders = getRootFolders();
+  rootFolders = !!rootFolders ? rootFolders : ["/usr/local/google/home/christhompson/firebaseprojects/firebaseclicker/"];
+  filename = "firebase.json";
   for (const folder of rootFolders) {
     const jsonFilePath = path.join(folder, filename);
     if (fs.existsSync(jsonFilePath)) {
@@ -280,8 +282,9 @@ export function setupWorkflow(
 
   broker.on(
     "launchEmulators",
-    async (firebaseJsonPath: string, emulatorUiSelections: EmulatorUiSelections) => {
-      emulatorsStart(firebaseJsonPath, emulatorUiSelections).then(() => {
+    async (firebaseJson: FirebaseConfig, emulatorUiSelections: EmulatorUiSelections) => {
+      // FIXME note we're passing in firebaseJSON not the param above
+      emulatorsStart(firebaseJSON, emulatorUiSelections).then(() => {
         broker.send("notifyRunningEmulatorInfo", { uiUrl: getEmulatorUiUrl(), displayInfo: listRunningEmulators() });
       });
     }
@@ -314,15 +317,6 @@ export function setupWorkflow(
     readAndSendFirebaseConfigs(broker);
   });
 
-  broker.on("getFirebaseJsonPath", async () => {
-    // FIXME [0] - consider joining with the existing below
-    const firebaseJsonPath: string = getRootFolders()[0] + "/firebase.json";
-    if (fs.existsSync(firebaseJsonPath)) {
-      // In the case that the json path can't be found, we default to having the user select one
-      broker.send("notifyFirebaseJsonPath", firebaseJsonPath);
-    }
-  });
-
   context.subscriptions.push(
     setupFirebaseJsonAndRcFileSystemWatcher(broker)
   );
@@ -342,7 +336,6 @@ export async function onShutdown() {
 function readFirebaseConfigs() {
   firebaseRC = getJsonFile<FirebaseRC>(".firebaserc");
   firebaseJSON = getJsonFile<FirebaseConfig>("firebase.json");
-
   updateOptions(extensionContext, firebaseJSON, firebaseRC);
 }
 

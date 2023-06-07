@@ -19,7 +19,7 @@ import { ChannelWithId } from "./messaging/types";
 import { VSCodeDropdown } from "@vscode/webview-ui-toolkit/react";
 import { VSCodeOption } from "@vscode/webview-ui-toolkit/react";
 
-const DEFAULT_EMULATOR_UI_SELECTIONS: EmulatorUiSelections = { projectId: "demo-something", firebaseJsonPath: "", importStateFolderPath: "", exportStateOnExit: false, mode: "all", debugLogging:false };
+const DEFAULT_EMULATOR_UI_SELECTIONS: EmulatorUiSelections = { projectId: "demo-something", importStateFolderPath: "", exportStateOnExit: false, mode: "all", debugLogging:false };
 
 export function SidebarApp() {
   const [projectId, setProjectId] = useState<string | null>(null);
@@ -39,8 +39,6 @@ export function SidebarApp() {
   // TODO emulators running check on extension start
   const [runningEmulatorInfo, setRunningEmulatorInfo] = useState<RunningEmulatorInfo>();
   const [showEmulatorProgressIndicator, setShowEmulatorProgressIndicator] = useState<boolean>(false);
-  // FIXME hardcoded for now ....
-  const [selectedFirebaseJsonInDropdown, setSelectedFirebaseJsonInDropdown] = useState<string>("/usr/local/google/home/christhompson/firebaseprojects/firebaseclicker/firebase.json");
   const [emulatorUiSelections, setEmulatorUiSelections] = useState<EmulatorUiSelections>(DEFAULT_EMULATOR_UI_SELECTIONS);
 
   console.log("initial state ui selections:" + JSON.stringify(emulatorUiSelections));
@@ -48,6 +46,8 @@ export function SidebarApp() {
     // FIXME save before updating UI. Requires context
     setEmulatorUiSelections(uiSelections);
   }
+
+  const [firebaseJson, setFirebaseJson] = useState<FirebaseConfig>();
 
   // FIXME load from save on startup
 
@@ -58,7 +58,6 @@ export function SidebarApp() {
     broker.send("getFirebaseJson");
     broker.send("getSelectedProject");
     broker.send("getChannels");
-    broker.send("getFirebaseJsonPath");
 
     broker.on("notifyEnv", (env) => {
       console.log("notifyEnv()");
@@ -74,6 +73,9 @@ export function SidebarApp() {
       "notifyFirebaseJson",
       (firebaseJson: FirebaseConfig, firebaseRC: FirebaseRC) => {
         console.log("got firebase hosting", firebaseJson?.hosting);
+        if (firebaseJson) {
+          setFirebaseJson(firebaseJson);
+        }
         if (firebaseJson?.hosting) {
           console.log("Detected hosting setup");
           setHostingOnboarded(true);
@@ -131,14 +133,6 @@ export function SidebarApp() {
       setRunningEmulatorInfo(info);
     });
 
-    broker.on("notifyFirebaseJsonPath", (path: string) => {
-      console.log(`notifyFirebaseJsonPath received in sidebar`);
-      var selections: EmulatorUiSelections = emulatorUiSelections;
-      selections.firebaseJsonPath = path;
-      selections = {...selections}; // Copy to a new object to force a react rerender
-      setEmulatorUiSelectionsAndSaveToWorkspace(selections);
-    });
-
     // return () => broker.delete();
   }, []);
 
@@ -159,10 +153,18 @@ export function SidebarApp() {
       });
       return;
     }
+    if (!firebaseJson) {
+    // TODO(christhompson): Consider using a default config in the case that firebase.json doesnt exist.
+    broker.send("showMessage", "Missing firebase.json", {
+      modal: true,
+      detail: `Unable to find firebase.json file.`,
+    });
+    return;
+    }
     setShowEmulatorProgressIndicator(true);
     broker.send(
       "launchEmulators",
-      selectedFirebaseJsonInDropdown,
+      firebaseJson,
       emulatorUiSelections
     );
   };
