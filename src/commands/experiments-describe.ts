@@ -7,7 +7,7 @@ import { logger } from "../logger";
 import { last } from "../utils";
 
 export const command = new Command("experiments:describe <experiment>")
-  .description("describe an experiment on this machine")
+  .description("describe what an experiment does when enabled")
   .action((experiment: string) => {
     if (!experiments.isValidExperiment(experiment)) {
       let message = `Cannot find experiment ${bold(experiment)}`;
