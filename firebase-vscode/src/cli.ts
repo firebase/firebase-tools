@@ -17,7 +17,7 @@ import { HostingSingle } from "./firebaseConfig";
 import { initAction } from "../../src/commands/init";
 import { startAll as startAllEmulators, cleanShutdown as stopAllEmulators } from "../../src/emulator/controller"
 import { EmulatorRegistry } from "../../src/emulator/registry";
-import { Emulators } from "../../src/emulator/types";
+import { EmulatorInfo, Emulators } from "../../src/emulator/types";
 import { Account, User } from "../../src/types/auth";
 import { Options } from "../../src/options";
 import { currentOptions, getCommandOptions } from "./options";
@@ -126,10 +126,6 @@ export async function initHosting(options: { spa: boolean; public: string }) {
   await initAction("hosting", commandOptions);
 }
 
-function parseConfig(firebaseJsonPath: string): FirebaseJsonConfig {
-  return FirebaseJsonConfig.load({ cwd: firebaseJsonPath });
-}
-
 export async function emulatorsStart(firebaseJson: FirebaseConfig, emulatorUiSelections: EmulatorUiSelections) {
   const commandOptions = await getCommandOptions(firebaseJson, {
     config: { ...firebaseJson },
@@ -137,7 +133,9 @@ export async function emulatorsStart(firebaseJson: FirebaseConfig, emulatorUiSel
     project: emulatorUiSelections.projectId,
     exportOnExit: emulatorUiSelections.exportStateOnExit,
     import: emulatorUiSelections.importStateFolderPath,
+    only: emulatorUiSelections.mode === "hosting" ? "hosting" : ""
   });
+  // Adjusts some options, export on exit can be a boolean or a path.
   commandUtils.setExportOnExitOptions(commandOptions);
   return startAllEmulators(commandOptions, /*showUi=*/ true); 
 }
@@ -146,13 +144,13 @@ export async function stopEmulators() {
   await stopAllEmulators();
 }
 
-export function listRunningEmulators(): string {
-  const emulatorInfo : string = JSON.stringify(EmulatorRegistry.listRunningWithInfo());
-  return emulatorInfo;
+export function listRunningEmulators(): EmulatorInfo[] {
+  return EmulatorRegistry.listRunningWithInfo();
 }
 
-export function getEmulatorUiUrl(): string {
-  return EmulatorRegistry.url(Emulators.UI).toString();
+export function getEmulatorUiUrl(): string | undefined {
+  const asdf = EmulatorRegistry.url(Emulators.UI);
+  return asdf.hostname === "unknown" ? undefined : asdf.toString();
 }
 
 export async function deployToHosting(

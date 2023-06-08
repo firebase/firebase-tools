@@ -101,8 +101,6 @@ function getRootFolders(): Array<string> {
 
 function getJsonFile<T>(filename: string): T | null {
   var rootFolders = getRootFolders();
-  rootFolders = !!rootFolders ? rootFolders : ["/usr/local/google/home/christhompson/firebaseprojects/firebaseclicker/"];
-  filename = "firebase.json";
   for (const folder of rootFolders) {
     const jsonFilePath = path.join(folder, filename);
     if (fs.existsSync(jsonFilePath)) {
@@ -283,8 +281,7 @@ export function setupWorkflow(
   broker.on(
     "launchEmulators",
     async (firebaseJson: FirebaseConfig, emulatorUiSelections: EmulatorUiSelections) => {
-      // FIXME note we're passing in firebaseJSON not the param above
-      emulatorsStart(firebaseJSON, emulatorUiSelections).then(() => {
+      emulatorsStart(firebaseJson, emulatorUiSelections).then(() => {
         broker.send("notifyRunningEmulatorInfo", { uiUrl: getEmulatorUiUrl(), displayInfo: listRunningEmulators() });
       });
     }
@@ -296,6 +293,26 @@ export function setupWorkflow(
       await stopEmulators();
       // Update the UI
       broker.send("notifyEmulatorsStopped");
+    }
+  );
+
+  broker.on(
+    "selectEmulatorImportFolder",
+    async () => {
+      const options: vscode.OpenDialogOptions = {
+        canSelectMany: false,
+        openLabel: `Pick an import folder`,
+        title: `Pick an import folder`,
+        canSelectFiles: false,
+        canSelectFolders: true,
+      };
+      const fileUri = await vscode.window.showOpenDialog(options);
+      // Update the UI of the selection
+      if (!fileUri || fileUri.length < 1) {
+        vscode.window.showErrorMessage("Invalid import folder selected.");
+        return;
+      }
+      broker.send("notifyEmulatorImportFolder", fileUri[0].fsPath);
     }
   );
 

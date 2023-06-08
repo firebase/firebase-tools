@@ -8,6 +8,7 @@ import { FirebaseConfig } from  '../../../src/firebaseConfig';
 import { FirebaseRC } from "../firebaserc";
 import { User } from "../../../src/types/auth";
 import { ServiceAccountUser } from "../types";
+import { EmulatorInfo } from "../emulator/types";
 
 // Messages sent from Webview to extension
 export interface WebviewToExtension {
@@ -58,6 +59,8 @@ export interface WebviewToExtension {
   getFirebaseJson(): void;
 
   showMessage(msg: string, options?: {}): void;
+
+  selectEmulatorImportFolder(): void;
 }
 
 // Messages sent from Extension to Webview
@@ -89,6 +92,8 @@ export interface ExtensionToWebview {
   notifyWorkspaceFolders(folders: Array<String>): void;
 
   notifyFirebaseJson(firebaseJson: FirebaseConfig, firebaseRC: FirebaseRC): void;
+
+  notifyEmulatorImportFolder(folder: string) : void;
 }
 
 /**
@@ -96,7 +101,7 @@ export interface ExtensionToWebview {
  */
 export interface RunningEmulatorInfo {
   uiUrl: string;
-  displayInfo: string;
+  displayInfo: EmulatorInfo[];
 }
 
 export interface EmulatorUiSelections {

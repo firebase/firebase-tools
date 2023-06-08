@@ -56,7 +56,6 @@ export function updateOptions(
   firebaseJSON: FirebaseConfig,
   firebaseRC: FirebaseRC
 ) {
-  // FIXME why is this removed
   // const config = new cliConfig(firebaseJSON, options);
   // currentOptions.config = config;
   if (firebaseJSON) {
