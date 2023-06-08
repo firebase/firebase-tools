@@ -344,7 +344,7 @@ export function setupWorkflow(
     }
     if (projectId) {
       await updateFirebaseRC("default", projectId);
-      broker.send("notifyProjectChanged", projectId);
+      broker.send("notifyProjectChanged", { projectId });
       fetchChannels();
     }
   }
