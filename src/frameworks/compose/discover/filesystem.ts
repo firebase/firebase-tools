@@ -36,11 +36,7 @@ export class RepositoryFileSystem implements FileSystem {
         const fileContents = await readFile(join(this.cwd, path), "utf-8");
         this.contentCache[path] = fileContents;
       } catch (error: any) {
-        console.error("Unable to read file", error.message);
-        if (error.code === "ENOENT") {
-          this.readErrorCache[path] = error as Error;
-        }
-        throw error;
+        new Error("Can't read file contents.");
       }
     }
     return this.contentCache[path];

@@ -1,5 +1,5 @@
 import { Command } from "../command";
-import { readYAMLFile } from "../finder/find";
+import { readYAMLFile } from "../frameworks/compose/discover/index";
 import requireInteractive from "../requireInteractive";
 
 export const command = new Command("internaltesting:frameworks:init")

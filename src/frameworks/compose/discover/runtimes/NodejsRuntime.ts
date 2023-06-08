@@ -4,6 +4,7 @@ import { RuntimeSpec } from "../types";
 import { frameworkMatcher } from "../frameworkMatcher";
 import { LifecycleCommands } from "../types";
 import { Command } from "../types";
+import { join } from "path";
 
 interface PackageJSON {
   dependencies?: Record<string, string>;
@@ -16,6 +17,7 @@ const NODE = "node";
 const NODE_LATEST_BASE_IMAGE = "node:18-slim";
 const NODE_RUNTIME_ID = "nodejs";
 const PACKAGE_JSON = "package.json";
+const PACKAGE_LOCK_JSON = "package-lock.json";
 const YARN = "yarn";
 const YARN_LOCK = "yarn.lock";
 const NPM = "npm";
@@ -74,13 +76,13 @@ export class NodejsRuntime implements Runtime {
       // identify nodeversion
       const nodeImageVersion = this.getNodeVersion(packageJSON.engines);
       // identify depedencies
-      const depedencies = { ...packageJSON.dependencies, ...packageJSON.devDependencies };
+      const dependencies = await this.getDependencies(fs, packageJSON, packageManager);
       // identify the frameworkSpec
       const matchedFramework = frameworkMatcher(
         NODE_RUNTIME_ID,
         fs,
         allFrameworkSpecs,
-        depedencies
+        dependencies
       );
 
       if (!nodeImageVersion) {
@@ -103,6 +105,32 @@ export class NodejsRuntime implements Runtime {
       return runtimeSpec;
     } catch (error: any) {
       throw new Error("Failed to analyseCodebase", error.message);
+    }
+  }
+
+  async getDependencies(fs: FileSystem, packageJSON: PackageJSON, packageManager: string) {
+    try {
+      let dependencies = {};
+      if (packageManager === NPM) {
+        const packageLockJSONRaw = await readOrNull(fs, PACKAGE_LOCK_JSON);
+        if (!packageLockJSONRaw) {
+          return dependencies;
+        }
+        const packageLockJSON = JSON.parse(packageLockJSONRaw);
+        const directDependencies = { ...packageJSON.dependencies, ...packageJSON.devDependencies };
+        const directDependenciesKeys = Object.keys(directDependencies).map((x) =>
+          join("node_modules", x)
+        );
+        let transitiveDependencies = {};
+        directDependenciesKeys.forEach((key) => {
+          const deps = packageLockJSON.packages[key]["dependencies"];
+          transitiveDependencies = { ...transitiveDependencies, ...deps };
+        });
+        dependencies = { ...directDependencies, ...transitiveDependencies };
+      }
+      return dependencies;
+    } catch (error: any) {
+      throw new Error("Failed to getDependencies for the project", error.message);
     }
   }
 

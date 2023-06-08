@@ -2,7 +2,7 @@ import { FrameworkSpec, FileSystem } from "./types";
 
 // TODO: Vesion matching the dependencies.
 // Package.json not have transitive dependencies.
-function filterFrameworksWithDependencies(
+export function filterFrameworksWithDependencies(
   allFrameworkSpecs: FrameworkSpec[],
   dependencies: Record<string, string>
 ): FrameworkSpec[] {
@@ -13,7 +13,7 @@ function filterFrameworksWithDependencies(
   });
 }
 
-function filterFrameworksWithFiles(
+export function filterFrameworksWithFiles(
   allFrameworkSpecs: FrameworkSpec[],
   fs: FileSystem
 ): FrameworkSpec[] {
@@ -28,7 +28,7 @@ function filterFrameworksWithFiles(
   });
 }
 
-function removeEmbededFrameworks(allFrameworkSpecs: FrameworkSpec[]): FrameworkSpec[] {
+export function removeEmbededFrameworks(allFrameworkSpecs: FrameworkSpec[]): FrameworkSpec[] {
   const embededFrameworkSet: Set<string> = new Set<string>();
   allFrameworkSpecs.forEach((framework) => {
     framework.embedsFrameworks?.forEach((item) => embededFrameworkSet.add(item));
@@ -37,7 +37,7 @@ function removeEmbededFrameworks(allFrameworkSpecs: FrameworkSpec[]): FrameworkS
 }
 
 /**
- * Identifies the correct FrameworkSpec for the codebase.
+ * Identifies the correct FrameworkSpec for the codebase. kjajfkjasd.
  */
 export function frameworkMatcher(
   runtime: string,
