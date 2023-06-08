@@ -1,7 +1,11 @@
 import * as path from "path";
 import * as fs from "fs";
 import * as vscode from "vscode";
+import { transports, format } from "winston";
+import stripAnsi from "strip-ansi";
+import { SPLAT } from "triple-beam";
 import { ExtensionContext, workspace } from "vscode";
+
 import { FirebaseProjectMetadata } from "../../src/types/project";
 import { writeFirebaseRCFile } from "./utils";
 import { ExtensionBrokerImpl } from "./extension-broker";
@@ -23,9 +27,6 @@ import { selectProjectInMonospace } from "../../src/monospace";
 import { setupLoggers, tryStringify } from "../../src/utils";
 import { pluginLogger } from "./logger-wrapper";
 import { logger } from '../../src/logger';
-import { transports, format } from "winston";
-import stripAnsi from "strip-ansi";
-import { SPLAT } from "triple-beam";
 
 let firebaseRC: FirebaseRC | null = null;
 let firebaseJSON: FirebaseConfig | null = null;
@@ -43,7 +44,10 @@ async function fetchUsers() {
 /**
  * Get the user to select a project.
  */
-async function promptUserForProject(broker: ExtensionBrokerImpl, projects: FirebaseProjectMetadata[]) {
+async function promptUserForProject(
+  broker: ExtensionBrokerImpl,
+  projects: FirebaseProjectMetadata[]
+) {
   const items = projects.map(({ projectId }) => projectId);
 
   return new Promise<null | string>((resolve, reject) => {
@@ -137,11 +141,6 @@ export function setupWorkflow(
 ) {
   extensionContext = context;
 
-  async function fetchChannels() {
-    const channels = await getChannels(firebaseJSON);
-    broker.send("notifyChannels", { channels });
-  }
-
   // Get user-defined VSCode settings.
   const workspaceConfig = workspace.getConfiguration(
     'firebase',
@@ -155,8 +154,8 @@ export function setupWorkflow(
   // Sets up CLI logger to log to console
   process.env.DEBUG = 'true';
   setupLoggers();
-  // Re-implement file logger call from ../../src/bin/firebase.ts to not bring in
-  // the entire firebase.ts file
+  // Re-implement file logger call from ../../src/bin/firebase.ts to not bring
+  // in the entire firebase.ts file
   const rootFolders = getRootFolders();
   const filePath = path.join(rootFolders[0], 'firebase-plugin-debug.log');
   pluginLogger.info('Logging to path', filePath);
@@ -259,7 +258,36 @@ export function setupWorkflow(
     }
   });
 
-  broker.on("selectProject", async ({ email }) => {
+  broker.on("selectProject", selectProject);
+
+  broker.on("selectAndInitHostingFolder", selectAndInitHosting);
+
+  broker.on("hostingDeploy", async ({ target: deployTarget }) => {
+    const { success, consoleUrl, hostingUrl } = await deployToHosting(
+      firebaseJSON,
+      firebaseRC,
+      deployTarget
+    );
+    broker.send("notifyHostingDeploy", { success, consoleUrl, hostingUrl });
+    if (success) {
+      fetchChannels();
+    }
+  });
+
+  broker.on("getFirebaseJson", async () => {
+    readAndSendFirebaseConfigs(broker);
+  });
+
+  context.subscriptions.push(
+    setupFirebaseJsonAndRcFileSystemWatcher(broker)
+  );
+
+  async function fetchChannels() {
+    const channels = await getChannels(firebaseJSON);
+    broker.send("notifyChannels", { channels });
+  }
+
+  async function selectProject({ email }) {
     let projectId;
     if (process.env.MONOSPACE_ENV) {
       pluginLogger.debug('selectProject: found MONOSPACE_ENV, '
@@ -267,7 +295,8 @@ export function setupWorkflow(
       /**
        * Monospace case: use Monospace flow
        */
-      const monospaceExtension = vscode.extensions.getExtension('google.monospace');
+      const monospaceExtension =
+        vscode.extensions.getExtension('google.monospace');
       process.env.MONOSPACE_DAEMON_PORT =
         monospaceExtension.exports.getMonospaceDaemonPort();
       try {
@@ -318,53 +347,32 @@ export function setupWorkflow(
       broker.send("notifyProjectChanged", projectId);
       fetchChannels();
     }
-  });
+  }
 
-  broker.on(
-    "selectAndInitHostingFolder",
-    async ({ projectId, email, singleAppSupport }) => {
-      const options: vscode.OpenDialogOptions = {
-        canSelectMany: false,
-        openLabel: `Select distribution/public folder for ${projectId}`,
-        canSelectFiles: false,
-        canSelectFolders: true,
-      };
-      const fileUri = await vscode.window.showOpenDialog(options);
-      if (fileUri && fileUri[0] && fileUri[0].fsPath) {
-        const publicFolderFull = fileUri[0].fsPath;
-        const publicFolder = publicFolderFull.substring(
-          currentOptions.cwd.length + 1
-        );
-        await initHosting({
-          spa: singleAppSupport,
-          public: publicFolder,
-        });
-        readAndSendFirebaseConfigs(broker);
-        broker.send("notifyHostingFolderReady",
-          { projectId, folderPath: currentOptions.cwd });
-      }
+  async function selectAndInitHosting({ projectId, singleAppSupport }) {
+    const options: vscode.OpenDialogOptions = {
+      canSelectMany: false,
+      openLabel: `Select distribution/public folder for ${projectId}`,
+      canSelectFiles: false,
+      canSelectFolders: true,
+    };
+    const fileUri = await vscode.window.showOpenDialog(options);
+    if (fileUri && fileUri[0] && fileUri[0].fsPath) {
+      const publicFolderFull = fileUri[0].fsPath;
+      const publicFolder = publicFolderFull.substring(
+        currentOptions.cwd.length + 1
+      );
+      await initHosting({
+        spa: singleAppSupport,
+        public: publicFolder,
+      });
+      readAndSendFirebaseConfigs(broker);
+      broker.send("notifyHostingFolderReady",
+        { projectId, folderPath: currentOptions.cwd });
+      
+      await fetchChannels();
     }
-  );
-
-  broker.on("hostingDeploy", async ({ target: deployTarget }) => {
-    const { success, consoleUrl, hostingUrl } = await deployToHosting(
-      firebaseJSON,
-      firebaseRC,
-      deployTarget
-    );
-    broker.send("notifyHostingDeploy", { success, consoleUrl, hostingUrl });
-    if (success) {
-      fetchChannels();
-    }
-  });
-
-  broker.on("getFirebaseJson", async () => {
-    readAndSendFirebaseConfigs(broker);
-  });
-
-  context.subscriptions.push(
-    setupFirebaseJsonAndRcFileSystemWatcher(broker)
-  );
+  }
 }
 
 /**
@@ -397,7 +405,7 @@ async function updateFirebaseRC(alias: string, projectId: string) {
     firebaseRC = {
       ...firebaseRC,
       projects: {
-        default: firebaseRC?.projects?.default || "", // ensure default no matter what
+        default: firebaseRC?.projects?.default || "",
         ...(firebaseRC?.projects || {}),
         [alias]: projectId,
       },

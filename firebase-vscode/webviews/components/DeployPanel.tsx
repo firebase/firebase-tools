@@ -49,7 +49,7 @@ export function DeployPanel({
     }
   }, [hostingState]);
 
-  if (!channels) {
+  if (!channels || channels.length === 0) {
     return (
       <>
         <VSCodeDivider style={{ width: "100vw" }} />
@@ -170,7 +170,7 @@ export function DeployPanel({
             </>
           )}
           <Spacer size="medium" />
-          <Label level={3} className={styles.hostingRowLabel}>
+          {siteLink && (<Label level={3} className={styles.hostingRowLabel}>
             <Spacer size="xsmall" />
             <Icon
               className={styles.hostingRowIcon}
@@ -178,7 +178,7 @@ export function DeployPanel({
               icon="globe"
             ></Icon>
             {siteLink}
-          </Label>
+          </Label>)}
         </>
       </PanelSection>
     </>

@@ -1,7 +1,7 @@
-
 import { logger as cliLogger } from "../../src/logger";
+import { setInquirerLogger } from "./stubs/inquirer-stub";
 
-export const pluginLogger: Record<string, any> = {};
+export const pluginLogger: Record<string, (...args) => void> = {};
 
 const logLevels = ['debug', 'info', 'log', 'warn', 'error'];
 
@@ -11,3 +11,5 @@ for (const logLevel of logLevels) {
     cliLogger[logLevel](...prefixedArgs);
   };
 }
+
+setInquirerLogger(pluginLogger);
