@@ -1,12 +1,12 @@
 import { FileSystem } from "./types";
 import { pathExists, readFile } from "fs-extra";
-import { logger } from "../../..";
 import * as path from "path";
+import { FirebaseError } from "../../../error";
 
 /**
- * Find files or read contents present in the Repository
+ * Find files or read file contents present in the directory.
  */
-export class RepositoryFileSystem implements FileSystem {
+export class LocalFileSystem implements FileSystem {
   private readonly existsCache: Record<string, boolean> = {};
   private readonly contentCache: Record<string, string> = {};
   private readonly readErrorCache: Record<string, Error> = {};
@@ -20,9 +20,8 @@ export class RepositoryFileSystem implements FileSystem {
       }
 
       return this.existsCache[file];
-    } catch (error: any) {
-      logger.error("Error occured while searching for file:", error.message);
-      throw error;
+    } catch (error) {
+      throw new FirebaseError("Error occured while searching for file.");
     }
   }
 
@@ -34,9 +33,8 @@ export class RepositoryFileSystem implements FileSystem {
       try {
         const fileContents = await readFile(path.resolve(this.cwd, file), "utf-8");
         this.contentCache[file] = fileContents;
-      } catch (error: any) {
-        logger.error("Error occured while reading file contents:", error.message);
-        throw error;
+      } catch (error) {
+        throw new FirebaseError("Error occured while reading file contents.");
       }
     }
     return this.contentCache[file];
@@ -53,7 +51,6 @@ export async function readOrNull(fs: FileSystem, path: string): Promise<string |
     if (err && typeof err === "object" && "code" in err && err.code === "ENOENT") {
       return null;
     }
-    logger.error("Unknown error occured while trying to read file contents.");
-    throw err;
+    throw new FirebaseError("Unknown error occured while trying to read file contents.");
   }
 }
