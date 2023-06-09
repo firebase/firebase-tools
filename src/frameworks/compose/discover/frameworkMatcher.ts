@@ -2,9 +2,6 @@ import { FirebaseError } from "../../../error";
 import { FrameworkSpec, FileSystem } from "./types";
 import { logger } from "../../../logger";
 
-/**
- *
- */
 export function filterFrameworksWithDependencies(
   allFrameworkSpecs: FrameworkSpec[],
   dependencies: Record<string, string>
@@ -16,9 +13,6 @@ export function filterFrameworksWithDependencies(
   });
 }
 
-/**
- *
- */
 export async function filterFrameworksWithFiles(
   allFrameworkSpecs: FrameworkSpec[],
   fs: FileSystem
@@ -95,6 +89,7 @@ export async function frameworkMatcher(
     }
     if (allMatches.length > 1) {
       const frameworkNames = allMatches.map((framework) => framework.id);
+<<<<<<< HEAD
       throw new FirebaseError(
         `Multiple Frameworks are matched: ${frameworkNames.join(
           ", "
@@ -105,5 +100,13 @@ export async function frameworkMatcher(
     return allMatches[0];
   } catch (error: any) {
     throw new FirebaseError(`Failed to match the correct framework: ${error}`);
+=======
+      throw new FirebaseError(`Multiple Frameworks are matched: ${frameworkNames.join(", ")}`);
+    }
+
+    return allMatches[0];
+  } catch (error) {
+    throw new FirebaseError("Failed to match the correct frameworkSpec");
+>>>>>>> 25fc256f (Resolved code comments)
   }
 }
