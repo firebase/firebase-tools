@@ -2,6 +2,7 @@ import { FileSystem } from "./types";
 import { pathExists, readFile } from "fs-extra";
 import * as path from "path";
 import { FirebaseError } from "../../../error";
+import { logger } from "../../..";
 
 /**
  * Find files or read file contents present in the directory.
@@ -9,7 +10,6 @@ import { FirebaseError } from "../../../error";
 export class LocalFileSystem implements FileSystem {
   private readonly existsCache: Record<string, boolean> = {};
   private readonly contentCache: Record<string, string> = {};
-  private readonly readErrorCache: Record<string, Error> = {};
 
   constructor(private readonly cwd: string) {}
 
@@ -26,18 +26,16 @@ export class LocalFileSystem implements FileSystem {
   }
 
   async read(file: string): Promise<string> {
-    if (this.readErrorCache[file]) {
-      throw this.readErrorCache[file];
-    }
-    if (!(file in this.contentCache)) {
-      try {
+    try {
+      if (!(file in this.contentCache)) {
         const fileContents = await readFile(path.resolve(this.cwd, file), "utf-8");
         this.contentCache[file] = fileContents;
-      } catch (error) {
-        throw new FirebaseError("Error occured while reading file contents.");
       }
+      return this.contentCache[file];
+    } catch (error) {
+      logger.log("Error occured while reading file contents.");
+      throw error;
     }
-    return this.contentCache[file];
   }
 }
 
