@@ -47,13 +47,15 @@ export function EmulatorPanel({
   function setEmulatorUiSelectionsAndSaveToWorkspace(
     uiSelections: EmulatorUiSelections
   ) {
-    // TODO(christhompson): Save UI selections in the current workspace. Requires context object.
+    // TODO(christhompson): Save UI selections in the current workspace.
+    // Requires context object.
     setEmulatorUiSelections(uiSelections);
   }
   const [showEmulatorProgressIndicator, setShowEmulatorProgressIndicator] =
     useState<boolean>(false);
 
-  // TODO(christhompson): Load UI selections from the current workspace. Requires context object.
+  // TODO(christhompson): Load UI selections from the current workspace.
+  // Requires context object.
   // TODO(christhompson): Check if the emulators are running on extension start.
   const [runningEmulatorInfo, setRunningEmulatorInfo] =
     useState<RunningEmulatorInfo>();
@@ -88,7 +90,8 @@ export function EmulatorPanel({
       return;
     }
     if (!firebaseJson) {
-      // TODO(christhompson): Consider using a default config in the case that firebase.json doesnt exist.
+      // TODO(christhompson): Consider using a default config in the case that
+      // firebase.json doesnt exist.
       broker.send("showMessage", {
         msg: "Missing firebase.json",
         options: {
@@ -145,7 +148,8 @@ export function EmulatorPanel({
     setEmulatorUiSelectionsAndSaveToWorkspace({ ...emulatorUiSelections });
   }
 
-  // Make it pretty for the screen. Filter out the logging emulator since it's an implementation detail.
+  // Make it pretty for the screen. Filter out the logging emulator since it's
+  // an implementation detail.
   // TODO(christhompson): Add more info and sort this.
   function formatEmulatorRunningInfo(emulatorInfos: EmulatorInfo[]): string {
     return emulatorInfos
@@ -219,7 +223,7 @@ export function EmulatorPanel({
           )}
           <Spacer size="xxlarge" />
           Running Emulators:
-          <br />
+          <Spacer size="medium" />
           <div
             dangerouslySetInnerHTML={{
               __html: formatEmulatorRunningInfo(
