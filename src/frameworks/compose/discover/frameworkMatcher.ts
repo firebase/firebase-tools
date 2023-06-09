@@ -1,65 +1,74 @@
+import { logger } from "../../..";
+import { FirebaseError } from "../../../error";
 import { FrameworkSpec, FileSystem } from "./types";
 
-/**
- *
- */
 export function filterFrameworksWithDependencies(
   allFrameworkSpecs: FrameworkSpec[],
   dependencies: Record<string, string>
 ): FrameworkSpec[] {
-  return allFrameworkSpecs.filter((framework) => {
-    return framework.requiredDependencies.every((dep) => {
-      return dep["name"] in dependencies;
+  try {
+    return allFrameworkSpecs.filter((framework) => {
+      return framework.requiredDependencies.every((dependency) => {
+        return dependency.name in dependencies;
+      });
     });
-  });
+  } catch (error: any) {
+    logger.log("Error while filtering FrameworksWithDependencies", error.message);
+    throw error;
+  }
 }
 
-/**
- *
- */
 export async function filterFrameworksWithFiles(
   allFrameworkSpecs: FrameworkSpec[],
   fs: FileSystem
 ): Promise<FrameworkSpec[]> {
-  const filteredFrameworks = [];
-  for (const framework of allFrameworkSpecs) {
-    if (!framework.requiredFiles) {
-      filteredFrameworks.push(framework);
-      continue;
-    }
-    const isRequired = await Promise.all(
-      framework.requiredFiles.map(async (files) => {
+  try {
+    const filteredFrameworks = [];
+    for (const framework of allFrameworkSpecs) {
+      if (!framework.requiredFiles) {
+        filteredFrameworks.push(framework);
+        continue;
+      }
+      let isRequired = true;
+      for (const files of framework.requiredFiles) {
         if (Array.isArray(files)) {
-          const boolArray = await Promise.all(files.map((file) => fs.exists(file)));
-          return boolArray.every((x) => x);
+          for (const file of files) {
+            isRequired = isRequired && (await fs.exists(file));
+          }
         } else {
-          return await fs.exists(files);
+          isRequired = isRequired && (await fs.exists(files));
         }
-      })
-    );
-    if (isRequired.every((x) => x)) {
-      filteredFrameworks.push(framework);
+      }
+
+      if (isRequired) {
+        filteredFrameworks.push(framework);
+      }
     }
+    return filteredFrameworks;
+  } catch (error: any) {
+    logger.log("Error while filtering FrameworksWithFiles", error.message);
+    throw error;
   }
-  return filteredFrameworks;
 }
 
-/**
- *
- */
 export function removeEmbededFrameworks(allFrameworkSpecs: FrameworkSpec[]): FrameworkSpec[] {
-  const embededFrameworkSet: Set<string> = new Set<string>();
-  allFrameworkSpecs.forEach((framework) => {
-    if (!framework.embedsFrameworks) {
-      return;
-    }
-    framework.embedsFrameworks.forEach((item) => embededFrameworkSet.add(item));
-  });
-  return allFrameworkSpecs.filter((item) => !embededFrameworkSet.has(item.id));
+  try {
+    const embededFrameworkSet: Set<string> = new Set<string>();
+    allFrameworkSpecs.forEach((framework) => {
+      if (!framework.embedsFrameworks) {
+        return;
+      }
+      framework.embedsFrameworks.forEach((item) => embededFrameworkSet.add(item));
+    });
+    return allFrameworkSpecs.filter((item) => !embededFrameworkSet.has(item.id));
+  } catch (error: any) {
+    logger.log("Error occured while removing Embeded Frameworks", error.message);
+    throw error;
+  }
 }
 
 /**
- * Identifies the correct FrameworkSpec for the codebase. kjajfkjasd.
+ * Identifies the correct FrameworkSpec for the codebase.
  */
 export async function frameworkMatcher(
   runtime: string,
@@ -68,16 +77,12 @@ export async function frameworkMatcher(
   dependencies: Record<string, string>
 ): Promise<FrameworkSpec | null> {
   try {
-    // Filter based on runtime name.
     const filterRuntimeFramework = frameworks.filter((framework) => framework.runtime === runtime);
-    // Filter based on dependencies.
     const frameworksWithDependencies = filterFrameworksWithDependencies(
       filterRuntimeFramework,
       dependencies
     );
-    // Filter based on files required.
     const frameworkWithFiles = await filterFrameworksWithFiles(frameworksWithDependencies, fs);
-    // Filter based on embeded Frameworks.
     const allMatches = removeEmbededFrameworks(frameworkWithFiles);
 
     if (allMatches.length === 0) {
@@ -85,11 +90,11 @@ export async function frameworkMatcher(
     }
     if (allMatches.length > 1) {
       const frameworkNames = allMatches.map((framework) => framework.id);
-      throw new Error(`Multiple Frameworks are matched: ${frameworkNames.join(", ")}`);
+      throw new FirebaseError(`Multiple Frameworks are matched: ${frameworkNames.join(", ")}`);
     }
 
     return allMatches[0];
-  } catch (error: any) {
-    throw new Error("Failed to match the correct frameworkSpec", error.message);
+  } catch (error) {
+    throw new FirebaseError("Failed to match the correct frameworkSpec");
   }
 }
