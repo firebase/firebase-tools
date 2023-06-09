@@ -13,7 +13,8 @@ export interface Command {
   // Consider: string[] for series of commands that must execute successfully
   // in sequence.
   cmd: string | string[];
-  script?: string;
+
+  // Environment in which command is executed.
   env?: Record<string, string>;
 }
 
@@ -26,11 +27,6 @@ export interface LifecycleCommands {
 export interface FrameworkSpec {
   id: string;
 
-  // This Framework is a refinement of the parent framework. It can only be
-  // selected when the parent's requirements are also met. If this framework
-  // matches, its scripts take precedence over the parent's scripts.
-  requireFramework?: string;
-
   // Only analyze Frameworks with a runtime that matches the matched runtime
   runtime: string;
 
@@ -38,11 +34,10 @@ export interface FrameworkSpec {
   // FrameworkSpec agree with one another
   webFrameworkId?: string;
 
-  // VSCode plugins that assist with writing a particular framework
-  suggestedPlugins?: string[];
-
+  // List of dependencies that should be present in the project.
   requiredDependencies: Array<{
     name: string;
+    // Version
     semver?: string;
   }>;
 
@@ -60,8 +55,6 @@ export interface FrameworkSpec {
   // can embed "svelte", so if both frameworks are discovered, monospace can
   // suggest both frameworks' plugins, but should run astro's commands.
   embedsFrameworks?: string[];
-
-  samples?: FrameworkSample[];
 }
 
 export interface RuntimeSpec {
@@ -84,23 +77,4 @@ export interface RuntimeSpec {
   // The runtime has detected a command that should always be run irrespective of
   // the framework (e.g. the "build" script always wins in Node)
   detectedCommands?: LifecycleCommands;
-
-  fallbackCommands?: LifecycleCommands;
-}
-
-export interface SampleInstallStrategy {
-  githubUrl: string;
-  command: string;
-}
-
-export interface FrameworkSample {
-  name: string;
-  description: string;
-  icon: string;
-
-  // oneof
-  install: SampleInstallStrategy;
-
-  // e.g. "javascript" and "typescript" variants
-  installVariants: Record<string, SampleInstallStrategy>;
 }
