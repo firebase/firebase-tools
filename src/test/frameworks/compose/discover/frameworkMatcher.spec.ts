@@ -1,4 +1,4 @@
-import { RepositoryFileSystem } from "../../../../frameworks/compose/discover/filesystem";
+import { MockFileSystem } from "./mockFileSystem";
 import { expect } from "chai";
 import {
   frameworkMatcher,
@@ -10,11 +10,23 @@ import { frameworkSpecs } from "../../../../frameworks/compose/discover/framewor
 import { FrameworkSpec } from "../../../../frameworks/compose/discover/types";
 
 describe("frameworkMatcher", () => {
-  let fileSystem: RepositoryFileSystem;
+  let fileSystem: MockFileSystem;
   const NODE_ID = "nodejs";
 
   before(() => {
-    fileSystem = new RepositoryFileSystem("./src/frameworks/compose/discover/testapps/expressApp");
+    fileSystem = new MockFileSystem({
+      "package.json": JSON.stringify({
+        name: "expressapp",
+        version: "1.0.0",
+        scripts: {
+          test: 'echo "Error: no test specified" && exit 1',
+        },
+        dependencies: {
+          express: "^4.18.2",
+        },
+      }),
+      "package-lock.json": "Unused: contents of package-lock file",
+    });
   });
 
   describe("frameworkMatcher", () => {
