@@ -4,7 +4,7 @@ import { logger } from "../../..";
 import * as path from "path";
 
 /**
- * Find files or read contents present in the Repository.
+ * Find files or read contents present in the Repository
  */
 export class RepositoryFileSystem implements FileSystem {
   private readonly existsCache: Record<string, boolean> = {};
