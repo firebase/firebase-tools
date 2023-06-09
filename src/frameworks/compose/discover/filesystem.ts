@@ -50,11 +50,6 @@ export async function readOrNull(fs: FileSystem, path: string): Promise<string |
       logger.debug("ENOENT error occured while reading file.");
       return null;
     }
-<<<<<<< HEAD
     throw new Error(`Unknown error occured while reading file: ${err}`);
-=======
-    logger.error("Unknown error occured while trying to read file contents.");
-    throw err;
->>>>>>> 48063902 (Removed comments and modified error handling.)
   }
 }
