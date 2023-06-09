@@ -18,11 +18,11 @@ describe("frameworkMatcher", () => {
   });
 
   describe("frameworkMatcher", () => {
-    it("should return express FrameworkSpec after analysing express application", () => {
+    it("should return express FrameworkSpec after analysing express application", async () => {
       const expressDependency: Record<string, string> = {
         express: "^4.18.2",
       };
-      const matchedFramework = frameworkMatcher(
+      const matchedFramework = await frameworkMatcher(
         NODE_ID,
         fileSystem,
         frameworkSpecs,
@@ -39,7 +39,7 @@ describe("frameworkMatcher", () => {
         ],
       };
 
-      expect(matchedFramework).to.equal(expressFrameworkSpec);
+      expect(matchedFramework).to.deep.equal(expressFrameworkSpec);
     });
   });
 
@@ -83,28 +83,28 @@ describe("frameworkMatcher", () => {
   });
 
   describe("filterFrameworksWithFiles", () => {
-    it("should return frameworks having all the required files", () => {
+    it("should return frameworks having all the required files", async () => {
       const allFrameworks: FrameworkSpec[] = [
         {
           id: "express",
           runtime: "nodejs",
           requiredDependencies: [],
-          requiredFiles: ["package.json", "package-lock.json"],
+          requiredFiles: [["package.json", "package-lock.json"]],
         },
         {
           id: "next",
           runtime: "nodejs",
           requiredDependencies: [],
-          requiredFiles: ["next.config.js", "next.config.ts"],
+          requiredFiles: [["next.config.js"], "next.config.ts"],
         },
       ];
-      const actual = filterFrameworksWithFiles(allFrameworks, fileSystem);
+      const actual = await filterFrameworksWithFiles(allFrameworks, fileSystem);
       const expected: FrameworkSpec[] = [
         {
           id: "express",
           runtime: "nodejs",
           requiredDependencies: [],
-          requiredFiles: ["package.json", "package-lock.json"],
+          requiredFiles: [["package.json", "package-lock.json"]],
         },
       ];
 
