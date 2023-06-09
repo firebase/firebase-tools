@@ -44,7 +44,7 @@ describe("webframeworks", function (this) {
     } = await hubResponse.json();
     NEXTJS_HOST = `http://${host}:${port}/${NEXT_BASE_PATH}`;
     ANGULAR_HOST = `http://${host}:${port + 5}/${ANGULAR_BASE_PATH}`;
-    FLASK_HOST = `http://${host}:${port + 10}`;
+    FLASK_HOST = `http://${host}:${port + 6}`;
   });
 
   after(() => {
@@ -213,13 +213,13 @@ describe("webframeworks", function (this) {
           },
           {
             codebase: "firebase-frameworks-demo-nextjs",
-            runtime: "nodejs16",
+            runtime: "nodejs18",
             ignore: ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log"],
             source: ".firebase/demo-nextjs/functions",
           },
           {
             codebase: "firebase-frameworks-demo-angular",
-            runtime: "nodejs16",
+            runtime: "nodejs18",
             ignore: ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log"],
             source: ".firebase/demo-angular/functions",
           },
