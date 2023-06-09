@@ -23,6 +23,18 @@
         "source": "helloWorld",
         "function": "helloWorld"
       }]
+    },
+    {
+      "target": "flask",
+      "source": "flask",
+      "frameworksBackend": {
+        "maxInstances": 1,
+        "region": "us-east1"
+      },
+      "rewrites": [{
+        "source": "helloWorld",
+        "function": "helloWorld"
+      }]
     }
   ],
   "functions": [

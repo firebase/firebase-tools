@@ -390,6 +390,7 @@ export async function prepareFrameworks(
       }
 
       let runtime: string | undefined;
+      let ignore: string[] | undefined;
 
       if ("packageJson" in codegenFunctionsResult) {
         const {
@@ -533,6 +534,8 @@ export async function prepareFrameworks(
   `
           );
         }
+
+        ignore = ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log"];
       } else {
         const { requirementsTxt, imports } = codegenFunctionsResult;
 
@@ -589,6 +592,8 @@ def ${functionId}(req: https_fn.Request) -> https_fn.Response:
           .trim()
           .split(" ")[1];
         runtime = `python${pythonVersion.split(".").slice(0, 2).join("")}`;
+
+        ignore = ["venv", "__pycache__", ".git", "firebase-debug.log", "firebase-debug.*.log"];
       }
 
       const existingFunctionsConfig = options.config.get("functions")
@@ -600,6 +605,7 @@ def ${functionId}(req: https_fn.Request) -> https_fn.Response:
           source: relative(projectRoot, functionsDist),
           codebase,
           runtime,
+          ignore,
         },
       ]);
     } else {

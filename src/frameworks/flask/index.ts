@@ -1,4 +1,4 @@
-import { copy, pathExists } from "fs-extra";
+import { copy, mkdirp, pathExists } from "fs-extra";
 import { mkdir, readFile, readdir } from "fs/promises";
 import { join, relative } from "path";
 import { BuildResult, FrameworkType, SupportLevel } from "../interfaces";
@@ -23,9 +23,11 @@ export function build(): Promise<BuildResult> {
 }
 
 export async function ɵcodegenPublicDirectory(root: string, dest: string) {
-  const { staticFolder } = await getDiscoveryResults(root);
+  const { staticFolder, staticUrlPath } = await getDiscoveryResults(root);
+  const staticDest = join(dest, staticUrlPath);
+  await mkdirp(staticDest);
   if (dirExistsSync(staticFolder)) {
-    await copy(join(root, staticFolder), dest);
+    await copy(staticFolder, staticDest);
   }
 }
 
@@ -56,10 +58,10 @@ async function getDiscoveryResults(cwd: string) {
     });
     child.on("exit", () => resolve(out));
   });
-  const [appName, staticFolder, staticUrlPath] = discovery.trim().split("\n");
+  const [appName, staticFolder, staticUrlPath = "/"] = discovery.trim().split("\n");
   return {
     appName,
-    staticFolder: relative(cwd, staticFolder),
+    staticFolder,
     staticUrlPath,
   };
 }

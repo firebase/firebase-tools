@@ -1,6 +1,7 @@
 {
   "projects": {
-    "default": "nextjs-demo-73e34"
+    "default": "nextjs-demo-73e34",
+    "a": "demo-123"
   },
   "targets": {
     "demo-123": {
@@ -10,6 +11,9 @@
         ],
         "nextjs": [
           "demo-nextjs"
+        ],
+        "flask": [
+          "demo-flask"
         ]
       }
     }

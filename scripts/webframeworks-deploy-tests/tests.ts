@@ -10,6 +10,7 @@ import { fileExistsSync } from "../../src/fsutils";
 
 const NEXT_OUTPUT_PATH = `${__dirname}/.firebase/demo-nextjs`;
 const ANGULAR_OUTPUT_PATH = `${__dirname}/.firebase/demo-angular`;
+const FLASK_OUTPUT_PATH = `${__dirname}/.firebase/demo-flask`;
 const FIREBASE_EMULATOR_HUB = process.env.FIREBASE_EMULATOR_HUB;
 const NEXT_BASE_PATH: NextConfig["basePath"] = "base";
 // TODO Angular basePath and i18n are not cooperating
@@ -33,6 +34,7 @@ describe("webframeworks", function (this) {
   this.timeout(10_000);
   let NEXTJS_HOST: string;
   let ANGULAR_HOST: string;
+  let FLASK_HOST: string;
 
   before(async () => {
     expect(FIREBASE_EMULATOR_HUB, "$FIREBASE_EMULATOR_HUB").to.not.be.empty;
@@ -42,6 +44,7 @@ describe("webframeworks", function (this) {
     } = await hubResponse.json();
     NEXTJS_HOST = `http://${host}:${port}/${NEXT_BASE_PATH}`;
     ANGULAR_HOST = `http://${host}:${port + 5}/${ANGULAR_BASE_PATH}`;
+    FLASK_HOST = `http://${host}:${port + 10}`;
   });
 
   after(() => {
@@ -171,6 +174,36 @@ describe("webframeworks", function (this) {
             public: ".firebase/demo-angular/hosting",
             webFramework: "angular_ssr",
           },
+          {
+            cleanUrls: true,
+            frameworksBackend: {
+              maxInstances: 1,
+              region: "us-east1",
+            },
+            headers: [],
+            public: ".firebase/demo-flask/hosting",
+            redirects: [],
+            rewrites: [
+              {
+                function: {
+                  functionId: "helloWorld",
+                },
+                source: "helloWorld",
+              },
+              {
+                function: {
+                  functionId: "ssrdemoflask",
+                  pinTag: true,
+                  region: "us-east1",
+                },
+                source: "**",
+              },
+            ],
+            site: "demo-flask",
+            source: "flask",
+            target: "flask",
+            webFramework: "flask_ssr",
+          },
         ],
         functions: [
           {
@@ -180,11 +213,21 @@ describe("webframeworks", function (this) {
           },
           {
             codebase: "firebase-frameworks-demo-nextjs",
+            runtime: "nodejs16",
+            ignore: ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log"],
             source: ".firebase/demo-nextjs/functions",
           },
           {
             codebase: "firebase-frameworks-demo-angular",
+            runtime: "nodejs16",
+            ignore: ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log"],
             source: ".firebase/demo-angular/functions",
+          },
+          {
+            codebase: "firebase-frameworks-demo-flask",
+            ignore: ["venv", "__pycache__", ".git", "firebase-debug.log", "firebase-debug.*.log"],
+            runtime: "python310",
+            source: ".firebase/demo-flask/functions",
           },
         ],
       });
@@ -397,6 +440,20 @@ describe("webframeworks", function (this) {
 
       expect(unmatchedFiles, "matchedFiles").to.eql([]);
       expect(unmatchedExpectations, "unmatchedExpectations").to.eql([]);
+    });
+  });
+
+  describe("flask", () => {
+    it("should have working SSR", async () => {
+      const response = await fetch(FLASK_HOST);
+      expect(response.ok).to.be.true;
+      const body = await response.text();
+      expect(body).to.eq("<p>Hello, World!</p>");
+    });
+
+    it("should have the expected static files to be deployed", async () => {
+      const files = await getFilesListFromDir(`${FLASK_OUTPUT_PATH}/hosting`);
+      expect(files).to.eql(["asdflkjlerifj/1.txt"]);
     });
   });
 });
