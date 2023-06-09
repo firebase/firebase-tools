@@ -5,6 +5,7 @@ import { Icon } from "./ui/Icon";
 import { Label } from "./ui/Text";
 import React from "react";
 import styles from "./AccountSection.scss";
+import { ExternalLink } from "./ui/ExternalLink";
 
 export function ProjectSection({
   userEmail,
@@ -16,7 +17,11 @@ export function ProjectSection({
   return (
     <div className={styles.accountRow}>
       <Label className={styles.accountRowLabel}>
-        <Icon className={styles.accountRowIcon} slot="start" icon="symbol-method" />
+        <Icon
+          className={styles.accountRowIcon}
+          slot="start"
+          icon="symbol-method"
+        />
         <div className={styles.accountRowProject}>
           {!projectId ? (
             <ConnectProject userEmail={userEmail} />
@@ -25,22 +30,27 @@ export function ProjectSection({
           )}
         </div>
       </Label>
-      {!!projectId && <IconButton
-        tooltip="Switch projects"
-        icon="arrow-swap"
-        onClick={() => initProjectSelection(userEmail)}
-      />}
+      {!!projectId && (
+        <IconButton
+          tooltip="Switch projects"
+          icon="arrow-swap"
+          onClick={() => initProjectSelection(userEmail)}
+        />
+      )}
     </div>
-    );
+  );
 }
 
 export function initProjectSelection(userEmail: string | null) {
   if (userEmail) {
-    broker.send("selectProject", userEmail);
+    broker.send("selectProject", { email: userEmail });
   } else {
-    broker.send("showMessage", "Not logged in", {
-      modal: true,
-      detail: `Log in to allow project selection. Click "Sign in with Google" in the sidebar.`,
+    broker.send("showMessage", {
+      msg: "Not logged in",
+      options: {
+        modal: true,
+        detail: `Log in to allow project selection. Click "Sign in with Google" in the sidebar.`,
+      },
     });
     return;
   }
@@ -60,11 +70,10 @@ export function ProjectInfo({ projectId }: { projectId: string }) {
   return (
     <>
       {projectId}
-      <VSCodeLink
+      <ExternalLink
         href={`https://console.firebase.google.com/project/${projectId}/overview`}
-      >
-        Open in Firebase Console
-      </VSCodeLink>
+        text="Open in Firebase Console"
+      />
     </>
   );
 }

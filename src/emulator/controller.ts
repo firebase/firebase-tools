@@ -105,7 +105,7 @@ export async function cleanShutdown(): Promise<void> {
  * Filters a list of emulators to only those specified in the config
  * @param options
  */
-export function filterEmulatorTargets(options: { only: string, config: any }): Emulators[] {
+export function filterEmulatorTargets(options: { only: string; config: any }): Emulators[] {
   let targets = [...ALL_SERVICE_EMULATORS];
   targets.push(Emulators.EXTENSIONS);
   targets = targets.filter((e) => {
@@ -185,6 +185,11 @@ export function shouldStart(options: Options, name: Emulators): boolean {
 }
 
 function findExportMetadata(importPath: string): ExportMetadata | undefined {
+  const pathExists = fs.existsSync(importPath);
+  if (!pathExists) {
+    throw new FirebaseError(`Directory "${importPath}" does not exist.`);
+  }
+
   const pathIsDirectory = fs.lstatSync(importPath).isDirectory();
   if (!pathIsDirectory) {
     return;
@@ -249,7 +254,8 @@ interface EmulatorOptions extends Options {
  */
 export async function startAll(
   options: EmulatorOptions,
-  showUI = true
+  showUI = true,
+  runningTestScript = false
 ): Promise<{ deprecationNotices: string[] }> {
   // Emulators config is specified in firebase.json as:
   // "emulators": {
@@ -462,7 +468,13 @@ export async function startAll(
       }
     }
     // This may add additional sources for Functions emulator and must be done before it.
-    await prepareFrameworks(targets, options, options, emulators);
+    await prepareFrameworks(
+      runningTestScript ? "test" : "emulate",
+      targets,
+      undefined,
+      options,
+      emulators
+    );
   }
 
   const projectDir = (options.extDevDir || options.config.projectDir) as string;

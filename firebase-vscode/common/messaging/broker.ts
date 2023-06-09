@@ -1,82 +1,87 @@
+import { MessageParamsMap } from "./protocol";
 import { Listener, Message, MessageListeners } from "./types";
-
-export const isUndefined = (val: any | undefined): val is undefined =>
-  val === undefined;
+import { Webview } from "vscode";
 
 const isObject = (val: any): boolean => typeof val === "object" && val !== null;
 
-export abstract class Broker {
-  protected readonly listeners: MessageListeners = {};
+type Receiver = {} | Webview;
 
-  abstract sendMessage(message: string, data: any[]): void;
-  registerReceiver(receiver: any): void {}
+export abstract class Broker<
+  OutgoingMessages extends MessageParamsMap,
+  IncomingMessages extends MessageParamsMap,
+  R extends Receiver
+> {
+  protected readonly listeners: MessageListeners<IncomingMessages> = {};
 
-  addListener(message: string, cb: Listener): void {
+  abstract sendMessage<T extends keyof OutgoingMessages>(message: T, data: OutgoingMessages[T]): void;
+  registerReceiver(receiver: R): void { }
+
+  addListener(message: string, cb: Listener<IncomingMessages>): void {
     if (!this.listeners[message]) {
       this.listeners[message] = { listeners: [] };
     }
     this.listeners[message].listeners.push(cb);
   }
 
-  executeListeners(data: any | Message) {
-    if (isUndefined(data) || !isObject(data) || !data.message) {
+  executeListeners(message: Message<IncomingMessages>) {
+    if (message === undefined || !isObject(message) || !message.command) {
       return;
     }
 
-    const d = data as Message;
+    const d = message;
 
-    if (isUndefined(this.listeners[d.message])) {
+    if (this.listeners[d.command] === undefined) {
       return;
     }
 
-    this.listeners[d.message].listeners.forEach((cb) =>
-      isUndefined(d.data) ? cb() : cb(...d.data)
-    );
+    for (const listener of this.listeners[d.command].listeners) {
+      d.data === undefined ? listener() : listener(d.data);
+    };
   }
+
+  delete(): void { }
 }
 
-type ListenersMap<U> = {
-  [K in keyof U]: Listener;
-};
-
 export interface BrokerImpl<
-  OutgoingMessages extends ListenersMap<OutgoingMessages>,
-  IncomingMessages extends ListenersMap<IncomingMessages>,
-  Receiver
+  OutgoingMessages,
+  IncomingMessages,
+  R extends Receiver
 > {
   send<E extends keyof OutgoingMessages>(
-    message: Extract<E, string>,
-    ...args: Parameters<OutgoingMessages[E]>
+    message: E,
+    args?: OutgoingMessages[E]
   ): void;
-  registerReceiver(receiver: Receiver): void;
+  registerReceiver(receiver: R): void;
   on<E extends keyof IncomingMessages>(
     message: Extract<E, string>,
-    listener: IncomingMessages[E]
+    listener: (params: IncomingMessages[E]) => void
   ): void;
   delete(): void;
 }
 
 export function createBroker<
-  OutgoingMessages extends ListenersMap<OutgoingMessages>,
-  IncomingMessages extends ListenersMap<IncomingMessages>,
-  Receiver
->(broker: Broker): BrokerImpl<OutgoingMessages, IncomingMessages, Receiver> {
+  OutgoingMessages extends MessageParamsMap,
+  IncomingMessages extends MessageParamsMap,
+  R extends Receiver
+>(broker: Broker<OutgoingMessages, IncomingMessages, R>): BrokerImpl<OutgoingMessages, IncomingMessages, Receiver> {
   return {
     send<E extends keyof OutgoingMessages>(
       message: Extract<E, string>,
-      ...args: Parameters<OutgoingMessages[E]>
+      args?: OutgoingMessages[E]
     ): void {
       broker.sendMessage(message, args);
     },
-    registerReceiver(receiver: Receiver): void {
+    registerReceiver(receiver: R): void {
       broker.registerReceiver(receiver);
     },
     on<E extends keyof IncomingMessages>(
       message: Extract<E, string>,
-      listener: IncomingMessages[E]
+      listener: (params: IncomingMessages[E]) => void
     ): void {
       broker.addListener(message, listener);
     },
-    delete(): void {}
+    delete(): void {
+      broker.delete();
+    }
   };
 }

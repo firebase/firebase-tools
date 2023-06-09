@@ -4,6 +4,7 @@ import { mkdir, copyFile } from "fs/promises";
 import { basename, dirname, join } from "path";
 import type { NextConfig } from "next";
 import type { PrerenderManifest } from "next/dist/build";
+import type { DomainLocale } from "next/dist/server/config";
 import type { PagesManifest } from "next/dist/build/webpack/plugins/pages-manifest-plugin";
 import { copy, mkdirp, pathExists, pathExistsSync } from "fs-extra";
 import { pathToFileURL, parse } from "url";
@@ -15,11 +16,10 @@ import { chain } from "stream-chain";
 import { parser } from "stream-json";
 import { pick } from "stream-json/filters/Pick";
 import { streamObject } from "stream-json/streamers/StreamObject";
-import { fileExistsSync, dirExistsSync } from "../../fsutils";
+import { fileExistsSync } from "../../fsutils";
 
 import { promptOnce } from "../../prompt";
 import { FirebaseError } from "../../error";
-import { NODE_VERSION, NPM_COMMAND_TIMEOUT_MILLIES } from "../constants";
 import type { EmulatorInfo } from "../../emulator/types";
 import {
   readJSON,
@@ -27,6 +27,7 @@ import {
   warnIfCustomBuildScript,
   relativeRequire,
   findDependency,
+  validateLocales,
 } from "../utils";
 import { BuildResult, FrameworkType, SupportLevel } from "../interfaces";
 
@@ -43,15 +44,17 @@ import {
   getNonStaticRoutes,
   getNonStaticServerComponents,
   getHeadersFromMetaFiles,
+  cleanI18n,
   usesAppDirRouter,
   usesNextImage,
   hasUnoptimizedImage,
 } from "./utils";
+import { NODE_VERSION, NPM_COMMAND_TIMEOUT_MILLIES, SHARP_VERSION, I18N_ROOT } from "../constants";
 import type {
   AppPathRoutesManifest,
   AppPathsManifest,
   HostingHeadersWithSource,
-  Manifest,
+  RoutesManifest,
   NpmLsDepdendency,
   MiddlewareManifest,
 } from "./interfaces";
@@ -63,6 +66,8 @@ import {
   APP_PATH_ROUTES_MANIFEST,
   APP_PATHS_MANIFEST,
 } from "./constants";
+import { getAllSiteDomains } from "../../hosting/api";
+import { logger } from "../../logger";
 
 const DEFAULT_BUILD_SCRIPT = ["next build"];
 const PUBLIC_DIR = "public";
@@ -114,7 +119,7 @@ export async function build(dir: string): Promise<BuildResult> {
   });
 
   const reasonsForBackend = new Set();
-  const { distDir, trailingSlash } = await getConfig(dir);
+  const { distDir, trailingSlash, basePath: baseUrl } = await getConfig(dir);
 
   if (await isUsingMiddleware(join(dir, distDir), false)) {
     reasonsForBackend.add("middleware");
@@ -158,20 +163,22 @@ export async function build(dir: string): Promise<BuildResult> {
     reasonsForBackend.add(`non-static route ${key}`);
   }
 
-  const manifest = await readJSON<Manifest>(join(dir, distDir, ROUTES_MANIFEST));
+  const manifest = await readJSON<RoutesManifest>(join(dir, distDir, ROUTES_MANIFEST));
 
   const {
     headers: nextJsHeaders = [],
     redirects: nextJsRedirects = [],
     rewrites: nextJsRewrites = [],
+    i18n: nextjsI18n,
   } = manifest;
 
-  const isEveryHeaderSupported = nextJsHeaders.every(isHeaderSupportedByHosting);
+  const isEveryHeaderSupported = nextJsHeaders.map(cleanI18n).every(isHeaderSupportedByHosting);
   if (!isEveryHeaderSupported) {
     reasonsForBackend.add("advanced headers");
   }
 
   const headers: HostingHeadersWithSource[] = nextJsHeaders
+    .map(cleanI18n)
     .filter(isHeaderSupportedByHosting)
     .map(({ source, headers }) => ({
       // clean up unnecessary escaping
@@ -189,7 +196,12 @@ export async function build(dir: string): Promise<BuildResult> {
   ]);
 
   if (appPathRoutesManifest) {
-    const headersFromMetaFiles = await getHeadersFromMetaFiles(dir, distDir, appPathRoutesManifest);
+    const headersFromMetaFiles = await getHeadersFromMetaFiles(
+      dir,
+      distDir,
+      baseUrl,
+      appPathRoutesManifest
+    );
     headers.push(...headersFromMetaFiles);
 
     if (appPathsManifest) {
@@ -214,6 +226,7 @@ export async function build(dir: string): Promise<BuildResult> {
   }
 
   const redirects = nextJsRedirects
+    .map(cleanI18n)
     .filter(isRedirectSupportedByHosting)
     .map(({ source, destination, statusCode: type }) => ({
       // clean up unnecessary escaping
@@ -237,9 +250,9 @@ export async function build(dir: string): Promise<BuildResult> {
     reasonsForBackend.add("advanced rewrites");
   }
 
-  // Can we change i18n into Firebase settings?
   const rewrites = nextJsRewritesToUse
     .filter(isRewriteSupportedByHosting)
+    .map(cleanI18n)
     .map(({ source, destination }) => ({
       // clean up unnecessary escaping
       source: cleanEscapedChars(source),
@@ -249,22 +262,37 @@ export async function build(dir: string): Promise<BuildResult> {
   const wantsBackend = reasonsForBackend.size > 0;
 
   if (wantsBackend) {
-    const numberOfReasonsToList = process.env.DEBUG ? Infinity : DEFAULT_NUMBER_OF_REASONS_TO_LIST;
-    console.log("Building a Cloud Function to run this application. This is needed due to:");
-    for (const reason of Array.from(reasonsForBackend).slice(0, numberOfReasonsToList)) {
-      console.log(` • ${reason}`);
+    logger.info("Building a Cloud Function to run this application. This is needed due to:");
+    for (const reason of Array.from(reasonsForBackend).slice(
+      0,
+      DEFAULT_NUMBER_OF_REASONS_TO_LIST
+    )) {
+      logger.info(` • ${reason}`);
     }
-    if (reasonsForBackend.size > numberOfReasonsToList) {
-      console.log(
+    for (const reason of Array.from(reasonsForBackend).slice(DEFAULT_NUMBER_OF_REASONS_TO_LIST)) {
+      logger.debug(` • ${reason}`);
+    }
+    if (reasonsForBackend.size > DEFAULT_NUMBER_OF_REASONS_TO_LIST && !process.env.DEBUG) {
+      logger.info(
         ` • and ${
-          reasonsForBackend.size - numberOfReasonsToList
+          reasonsForBackend.size - DEFAULT_NUMBER_OF_REASONS_TO_LIST
         } other reasons, use --debug to see more`
       );
     }
-    console.log("");
+    logger.info("");
   }
 
-  return { wantsBackend, headers, redirects, rewrites, trailingSlash };
+  const i18n = !!nextjsI18n;
+
+  return {
+    wantsBackend,
+    headers,
+    redirects,
+    rewrites,
+    trailingSlash,
+    i18n,
+    baseUrl,
+  };
 }
 
 /**
@@ -288,28 +316,27 @@ export async function init(setup: any, config: any) {
 /**
  * Create a directory for SSG content.
  */
-export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: string) {
-  const { distDir } = await getConfig(sourceDir);
+export async function ɵcodegenPublicDirectory(
+  sourceDir: string,
+  destDir: string,
+  _: string,
+  context: { site: string; project: string }
+) {
+  const { distDir, i18n, basePath } = await getConfig(sourceDir);
+
+  let matchingI18nDomain: DomainLocale | undefined = undefined;
+  if (i18n?.domains) {
+    const siteDomains = await getAllSiteDomains(context.project, context.site);
+    matchingI18nDomain = i18n.domains.find(({ domain }) => siteDomains.includes(domain));
+  }
+  const singleLocaleDomain = !i18n || ((matchingI18nDomain || i18n).locales || []).length <= 1;
 
   const publicPath = join(sourceDir, "public");
-  await mkdir(join(destDir, "_next", "static"), { recursive: true });
+  await mkdir(join(destDir, basePath, "_next", "static"), { recursive: true });
   if (await pathExists(publicPath)) {
-    await copy(publicPath, destDir);
+    await copy(publicPath, join(destDir, basePath));
   }
-  await copy(join(sourceDir, distDir, "static"), join(destDir, "_next", "static"));
-
-  // Copy over the default html files
-  for (const file of ["index.html", "404.html", "500.html"]) {
-    const pagesPath = join(sourceDir, distDir, "server", "pages", file);
-    if (await pathExists(pagesPath)) {
-      await copyFile(pagesPath, join(destDir, file));
-      continue;
-    }
-    const appPath = join(sourceDir, distDir, "server", "app", file);
-    if (await pathExists(appPath)) {
-      await copyFile(appPath, join(destDir, file));
-    }
-  }
+  await copy(join(sourceDir, distDir, "static"), join(destDir, basePath, "_next", "static"));
 
   const [
     middlewareManifest,
@@ -320,7 +347,7 @@ export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: strin
   ] = await Promise.all([
     readJSON<MiddlewareManifest>(join(sourceDir, distDir, "server", MIDDLEWARE_MANIFEST)),
     readJSON<PrerenderManifest>(join(sourceDir, distDir, PRERENDER_MANIFEST)),
-    readJSON<Manifest>(join(sourceDir, distDir, ROUTES_MANIFEST)),
+    readJSON<RoutesManifest>(join(sourceDir, distDir, ROUTES_MANIFEST)),
     readJSON<PagesManifest>(join(sourceDir, distDir, "server", PAGES_MANIFEST)),
     readJSON<AppPathRoutesManifest>(join(sourceDir, distDir, APP_PATH_ROUTES_MANIFEST)).catch(
       () => ({})
@@ -335,10 +362,13 @@ export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: strin
 
   const rewritesRegexesNotSupportedByHosting = getNextjsRewritesToUse(rewrites)
     .filter((rewrite) => !isRewriteSupportedByHosting(rewrite))
+    .map(cleanI18n)
     .map((rewrite) => new RegExp(rewrite.regex));
 
   const redirectsRegexesNotSupportedByHosting = redirects
+    .filter((it) => !it.internal)
     .filter((redirect) => !isRedirectSupportedByHosting(redirect))
+    .map(cleanI18n)
     .map((redirect) => new RegExp(redirect.regex));
 
   const headersRegexesNotSupportedByHosting = headers
@@ -367,41 +397,73 @@ export async function ɵcodegenPublicDirectory(sourceDir: string, destDir: strin
 
   await Promise.all(
     Object.entries(routesToCopy).map(async ([path, route]) => {
-      if (
-        route.initialRevalidateSeconds ||
-        pathsUsingsFeaturesNotSupportedByHosting.some((it) => path.match(it))
-      ) {
+      if (route.initialRevalidateSeconds) {
+        logger.debug(`skipping ${path} due to revalidate`);
         return;
       }
-
+      if (pathsUsingsFeaturesNotSupportedByHosting.some((it) => path.match(it))) {
+        logger.debug(
+          `skipping ${path} due to it matching an unsupported rewrite/redirect/header or middlware`
+        );
+        return;
+      }
       const appPathRoute =
         route.srcRoute && appPathRoutesEntries.find(([, it]) => it === route.srcRoute)?.[0];
       const contentDist = join(sourceDir, distDir, "server", appPathRoute ? "app" : "pages");
 
-      const parts = path.split("/").filter((it) => !!it);
-      const partsOrIndex = parts.length > 0 ? parts : ["index"];
+      const sourceParts = path.split("/").filter((it) => !!it);
+      const locale = i18n?.locales.includes(sourceParts[0]) ? sourceParts[0] : undefined;
+      const includeOnThisDomain =
+        !locale ||
+        !matchingI18nDomain ||
+        matchingI18nDomain.defaultLocale === locale ||
+        !matchingI18nDomain.locales ||
+        matchingI18nDomain.locales.includes(locale);
 
-      let sourcePath = join(contentDist, ...partsOrIndex);
-      let destPath = join(destDir, ...partsOrIndex);
-      if (!fileExistsSync(sourcePath) && fileExistsSync(`${sourcePath}.html`)) {
-        sourcePath += ".html";
-        destPath += ".html";
-      } else if (appPathRoute && basename(appPathRoute) === "route" && dirExistsSync(sourcePath)) {
-        sourcePath += ".body";
+      if (!includeOnThisDomain) {
+        logger.debug(`skipping ${path} since it is for a locale not deployed on this domain`);
+        return;
       }
 
-      if (!pathExistsSync(sourcePath)) {
+      const sourcePartsOrIndex = sourceParts.length > 0 ? sourceParts : ["index"];
+      const destParts = sourceParts.slice(locale ? 1 : 0);
+      const destPartsOrIndex = destParts.length > 0 ? destParts : ["index"];
+      const isDefaultLocale = !locale || (matchingI18nDomain || i18n)?.defaultLocale === locale;
+
+      let sourcePath = join(contentDist, ...sourcePartsOrIndex);
+      let localizedDestPath =
+        !singleLocaleDomain &&
+        locale &&
+        join(destDir, I18N_ROOT, locale, basePath, ...destPartsOrIndex);
+      let defaultDestPath = isDefaultLocale && join(destDir, basePath, ...destPartsOrIndex);
+      if (!fileExistsSync(sourcePath) && fileExistsSync(`${sourcePath}.html`)) {
+        sourcePath += ".html";
+        if (localizedDestPath) localizedDestPath += ".html";
+        if (defaultDestPath) defaultDestPath += ".html";
+      } else if (
+        appPathRoute &&
+        basename(appPathRoute) === "route" &&
+        fileExistsSync(`${sourcePath}.body`)
+      ) {
+        sourcePath += ".body";
+      } else if (!pathExistsSync(sourcePath)) {
         console.error(`Cannot find ${path} in your compiled Next.js application.`);
         return;
       }
 
-      await mkdir(dirname(destPath), { recursive: true });
+      if (localizedDestPath) {
+        await mkdir(dirname(localizedDestPath), { recursive: true });
+        await copyFile(sourcePath, localizedDestPath);
+      }
 
-      await copyFile(sourcePath, destPath);
+      if (defaultDestPath) {
+        await mkdir(dirname(defaultDestPath), { recursive: true });
+        await copyFile(sourcePath, defaultDestPath);
+      }
 
       if (route.dataRoute && !appPathRoute) {
-        const dataSourcePath = `${join(...partsOrIndex)}.json`;
-        const dataDestPath = join(destDir, route.dataRoute);
+        const dataSourcePath = `${join(...sourcePartsOrIndex)}.json`;
+        const dataDestPath = join(destDir, basePath, route.dataRoute);
         await mkdir(dirname(dataDestPath), { recursive: true });
         await copyFile(join(contentDist, dataSourcePath), dataDestPath);
       }
@@ -459,7 +521,7 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
         cwd: sourceDir,
         timeout: BUNDLE_NEXT_CONFIG_TIMEOUT,
       });
-      if (bundle.status) {
+      if (bundle.status !== 0) {
         throw new FirebaseError(bundle.stderr.toString());
       }
     } catch (e: any) {
@@ -483,7 +545,7 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
     !(await hasUnoptimizedImage(sourceDir, distDir)) &&
     (usesAppDirRouter(sourceDir) || (await usesNextImage(sourceDir, distDir)))
   ) {
-    packageJson.dependencies["sharp"] = "latest";
+    packageJson.dependencies["sharp"] = SHARP_VERSION;
   }
 
   await mkdirp(join(destDir, distDir));
@@ -494,7 +556,7 @@ export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: st
 /**
  * Create a dev server.
  */
-export async function getDevModeHandle(dir: string, hostingEmulatorInfo?: EmulatorInfo) {
+export async function getDevModeHandle(dir: string, _: string, hostingEmulatorInfo?: EmulatorInfo) {
   // throw error when using Next.js middleware with firebase serve
   if (!hostingEmulatorInfo) {
     if (await isUsingMiddleware(dir, true)) {
@@ -523,7 +585,9 @@ export async function getDevModeHandle(dir: string, hostingEmulatorInfo?: Emulat
   });
 }
 
-async function getConfig(dir: string): Promise<NextConfig & { distDir: string }> {
+async function getConfig(
+  dir: string
+): Promise<Partial<NextConfig> & { distDir: string; trailingSlash: boolean; basePath: string }> {
   let config: NextConfig = {};
   if (existsSync(join(dir, "next.config.js"))) {
     const version = getNextVersion(dir);
@@ -540,10 +604,12 @@ async function getConfig(dir: string): Promise<NextConfig & { distDir: string }>
       }
     }
   }
+  validateLocales(config.i18n?.locales);
   return {
     distDir: ".next",
     // trailingSlash defaults to false in Next.js: https://nextjs.org/docs/api-reference/next.config.js/trailing-slash
     trailingSlash: false,
+    basePath: "/",
     ...config,
   };
 }

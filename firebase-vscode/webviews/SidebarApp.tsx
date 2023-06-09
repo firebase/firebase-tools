@@ -1,6 +1,4 @@
-import {
-  VSCodeButton,
-} from "@vscode/webview-ui-toolkit/react";
+import { VSCodeButton } from "@vscode/webview-ui-toolkit/react";
 import React, { useEffect, useState } from "react";
 import { Spacer } from "./components/ui/Spacer";
 import { Body } from "./components/ui/Text";
@@ -17,6 +15,7 @@ import { HostingState } from "./webview-types";
 import { ChannelWithId } from "./messaging/types";
 import { EmulatorPanel } from "./EmulatorPanel";
 
+import { webLogger } from "./globals/web-logger";
 
 export function SidebarApp() {
   const [projectId, setProjectId] = useState<string | null>(null);
@@ -33,90 +32,83 @@ export function SidebarApp() {
     ServiceAccountUser | User
   > | null>(null);
   const [isHostingOnboarded, setHostingOnboarded] = useState<boolean>(false);
-
   const [firebaseJson, setFirebaseJson] = useState<FirebaseConfig>();
 
   useEffect(() => {
-    console.log("loading SidebarApp component");
+
+    webLogger.debug("loading SidebarApp component");
     broker.send("getEnv");
     broker.send("getUsers");
     broker.send("getFirebaseJson");
     broker.send("getSelectedProject");
     broker.send("getChannels");
 
-    broker.on("notifyEnv", (env) => {
-      console.log("notifyEnv()");
+    broker.on("notifyEnv", ({ env }) => {
+      webLogger.debug("notifyEnv()");
       setEnv(env);
     });
 
-    broker.on("notifyChannels", (channels) => {
-      console.log("notifyChannels()");
+    broker.on("notifyChannels", ({ channels }) => {
+      webLogger.debug("notifyChannels()");
       setChannels(channels);
     });
 
-    broker.on(
-      "notifyFirebaseJson",
-      (firebaseJson: FirebaseConfig, firebaseRC: FirebaseRC) => {
-        console.log("got firebase hosting", firebaseJson?.hosting);
-        if (firebaseJson) {
-          setFirebaseJson(firebaseJson);
-          console.log("set firebase JSON");
-        }
-        if (firebaseJson?.hosting) {
-          console.log("Detected hosting setup");
-          setHostingOnboarded(true);
-          broker.send(
-            "showMessage",
-            "Auto-detected hosting setup in this folder"
-          );
-        } else {
-          setHostingOnboarded(false);
-        }
-
-        if (firebaseRC?.projects?.default) {
-          console.log("Detected project setup from existing firebaserc");
-          setProjectId(firebaseRC.projects.default);
-        } else {
-          setProjectId(null);
-        }
+    broker.on("notifyFirebaseConfig", ({ firebaseJson, firebaseRC }) => {
+      webLogger.debug("got firebase hosting", JSON.stringify(firebaseJson?.hosting));
+      if (firebaseJson) {
+        setFirebaseJson(firebaseJson);
+        console.log("set firebase JSON");
       }
-    );
+      if (firebaseJson?.hosting) {
+        webLogger.debug("Detected hosting setup");
+        setHostingOnboarded(true);
+        broker.send("showMessage", {
+          msg: "Auto-detected hosting setup in this folder",
+        });
+      } else {
+        setHostingOnboarded(false);
+      }
 
-    broker.on("notifyUsers", (users: User[]) => {
-      console.log("notifyUsers()");
+      if (firebaseRC?.projects?.default) {
+        webLogger.debug("Detected project setup from existing firebaserc");
+        setProjectId(firebaseRC.projects.default);
+      } else {
+        setProjectId(null);
+      }
+    });
+
+    broker.on("notifyUsers", ({ users }) => {
+      webLogger.debug("notifyUsers()");
       setAllUsers(users);
     });
 
-    broker.on("notifyProjectChanged", (projectId: string) => {
-      console.log("Project selected", projectId);
+    broker.on("notifyProjectChanged", ({ projectId }) => {
+      webLogger.debug("Project selected", projectId);
       setProjectId(projectId);
     });
 
-    broker.on("notifyUserChanged", (email) => {
-      console.log("notifyUserChanged:", email);
+    broker.on("notifyUserChanged", ({ email }) => {
+      webLogger.debug("notifyUserChanged:", email);
       setUserEmail(email);
     });
 
-    broker.on("notifyHostingFolderReady", (projectId, folderPath) => {
-      console.log(`notifyHostingFolderReady: ${projectId}, ${folderPath}`);
+    broker.on("notifyHostingFolderReady", ({ projectId, folderPath }) => {
+      webLogger.debug(`notifyHostingFolderReady: ${projectId}, ${folderPath}`);
       setHostingOnboarded(true);
     });
 
-    broker.on("notifyHostingDeploy", (success: boolean) => {
-      console.log(`notifyHostingDeploy: ${success}`);
+    broker.on("notifyHostingDeploy", ({ success }) => {
+      webLogger.debug(`notifyHostingDeploy: ${success}`);
       setHostingState("deployed");
     });
-    
-    // return () => broker.delete();
   }, []);
 
-  const setupHosting = () => {
-    broker.send(
-      "selectAndInitHostingFolder",
+  function setupHosting() {
+    broker.send("selectAndInitHostingFolder", {
       projectId,
-      userEmail!, // Safe to assume user email is already there
-      /*singleAppSupport*/ true
-    );
+      email: userEmail!, // Safe to assume user email is already there
+      singleAppSupport: true,
+    });
   };
 
   const accountSection = (
@@ -128,17 +120,21 @@ export function SidebarApp() {
   );
   // Just render the account section loading view if it doesn't know user state
   if (allUsers === null) {
-    return (<>
-      <Spacer size="medium" />
-      {accountSection}
-    </>);
+    return (
+      <>
+        <Spacer size="medium" />
+        {accountSection}
+      </>
+    );
   }
 
   return (
     <>
       <Spacer size="medium" />
       {accountSection}
-      {!!userEmail && <ProjectSection userEmail={userEmail} projectId={projectId} />}
+      {!!userEmail && (
+        <ProjectSection userEmail={userEmail} projectId={projectId} />
+      )}
       {isHostingOnboarded && !!userEmail && !!projectId && (
         <DeployPanel
           hostingState={hostingState}

@@ -2,7 +2,7 @@ import cn from "classnames";
 import React, { FC, HTMLAttributes, PropsWithChildren } from "react";
 import styles from "./PopupMenu.scss";
 
-// TODO: replace this with a real, accessible Menu component
+// TODO(hsubox76): replace this with a real, accessible Menu component
 
 type PopupMenuProps<T> = PropsWithChildren<
   T &

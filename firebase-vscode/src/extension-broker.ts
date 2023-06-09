@@ -2,31 +2,37 @@ import { Webview } from "vscode";
 
 import { Broker, BrokerImpl } from "../common/messaging/broker";
 import {
-  ExtensionToWebview,
-  WebviewToExtension,
+  ExtensionToWebviewParamsMap,
+  WebviewToExtensionParamsMap,
 } from "../common/messaging/protocol";
+import { Message } from "../common/messaging/types";
 
 export type ExtensionBrokerImpl = BrokerImpl<
-  ExtensionToWebview,
-  WebviewToExtension,
+  ExtensionToWebviewParamsMap,
+  WebviewToExtensionParamsMap,
   Webview
 >;
 
-export class ExtensionBroker extends Broker {
+export class ExtensionBroker extends Broker<
+  ExtensionToWebviewParamsMap,
+  WebviewToExtensionParamsMap,
+  Webview
+> {
   private webviews: Webview[] = [];
 
-  sendMessage(message: string, data: any[]): void {
-    this.webviews.forEach((webview) => {
-      webview.postMessage({ message, data });
-    });
+  sendMessage(command: string, data: ExtensionToWebviewParamsMap[keyof ExtensionToWebviewParamsMap]): void {
+    for (const webview of this.webviews) {
+      webview.postMessage({ command, data });
+    }
   }
 
-  registerReceiver(receiver: any) {
-    const webview = receiver as Webview;
+  registerReceiver(receiver: Webview) {
+    const webview = receiver;
     this.webviews.push(webview);
-    webview.onDidReceiveMessage((data: any) => {
-      this.executeListeners(data);
-    }, null);
+    webview.onDidReceiveMessage(
+      (message: Message<WebviewToExtensionParamsMap>) => {
+        this.executeListeners(message);
+      }, null);
   }
 
   delete(): void {

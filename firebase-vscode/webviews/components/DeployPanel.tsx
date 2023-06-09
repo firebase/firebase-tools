@@ -17,10 +17,11 @@ import styles from "../sidebar.entry.scss";
 import { PanelSection } from "./ui/PanelSection";
 import { HostingState } from "../webview-types";
 import { ChannelWithId } from "../messaging/types";
+import { ExternalLink } from "./ui/ExternalLink";
 
 interface DeployInfo {
-  date: string,
-  channelId: string
+  date: string;
+  channelId: string;
 }
 
 export function DeployPanel({
@@ -39,13 +40,16 @@ export function DeployPanel({
   const [deployedInfo, setDeployedInfo] = useState<DeployInfo>(null);
 
   useEffect(() => {
-    if (hostingState === 'deployed') {
-      setDeployedInfo({date: new Date().toLocaleDateString(), channelId: deployTarget === 'new' ? newPreviewChannel : deployTarget });
-      setNewPreviewChannel('');
+    if (hostingState === "deployed") {
+      setDeployedInfo({
+        date: new Date().toLocaleDateString(),
+        channelId: deployTarget === "new" ? newPreviewChannel : deployTarget,
+      });
+      setNewPreviewChannel("");
     }
   }, [hostingState]);
 
-  if (!channels) {
+  if (!channels || channels.length === 0) {
     return (
       <>
         <VSCodeDivider style={{ width: "100vw" }} />
@@ -66,7 +70,7 @@ export function DeployPanel({
     <VSCodeRadio
       name="deployTarget"
       value={channel.id}
-      key={channel.id}
+      key={channel.id + (channel.id === deployTarget ? "-checked" : "")}
       checked={channel.id === deployTarget}
       onChange={(e) => setDeployTarget(e.target.value)}
     >
@@ -75,16 +79,23 @@ export function DeployPanel({
   ));
   let siteLink = null;
 
-  const existingChannel = channels.find(channel => channel.id === deployTarget);
+  const existingChannel = channels.find(
+    (channel) => channel.id === deployTarget
+  );
 
   if (existingChannel) {
     siteLink = (
-      <VSCodeLink href={existingChannel.url}>
-        {existingChannel.id === 'live' ? `${projectId}.web.app` : `go to ${existingChannel.id} site`}
-      </VSCodeLink>
+      <ExternalLink
+        href={existingChannel.url}
+        text={
+          existingChannel.id === "live"
+            ? `${projectId}.web.app`
+            : `go to ${existingChannel.id} site`
+        }
+      />
     );
   }
-  
+
   return (
     <>
       <VSCodeDivider style={{ width: "100vw" }} />
@@ -95,10 +106,10 @@ export function DeployPanel({
             disabled={hostingState === "deploying"}
             onClick={() => {
               setHostingState("deploying");
-              broker.send(
-                "hostingDeploy",
-                deployTarget === "new" ? newPreviewChannel : deployTarget
-              );
+              broker.send("hostingDeploy", {
+                target:
+                  deployTarget === "new" ? newPreviewChannel : deployTarget,
+              });
             }}
           >
             Deploy to channel:{" "}
@@ -138,7 +149,7 @@ export function DeployPanel({
                     icon="history"
                   ></Icon>
                   {deployedInfo
-                    ? `Deployed ${deployedInfo.date} to ${deployedInfo.channelId}` 
+                    ? `Deployed ${deployedInfo.date} to ${deployedInfo.channelId}`
                     : "Not deployed yet"}
                 </Label>
               </div>
@@ -159,7 +170,7 @@ export function DeployPanel({
             </>
           )}
           <Spacer size="medium" />
-          <Label level={3} className={styles.hostingRowLabel}>
+          {siteLink && (<Label level={3} className={styles.hostingRowLabel}>
             <Spacer size="xsmall" />
             <Icon
               className={styles.hostingRowIcon}
@@ -167,7 +178,7 @@ export function DeployPanel({
               icon="globe"
             ></Icon>
             {siteLink}
-          </Label>
+          </Label>)}
         </>
       </PanelSection>
     </>

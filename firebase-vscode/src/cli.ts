@@ -1,33 +1,35 @@
+import * as vscode from "vscode";
+import { inspect } from "util";
+
 import {
   getAllAccounts,
   getGlobalDefaultAccount,
   loginGoogle,
   setGlobalDefaultAccount,
-} from "../../src/auth"; 
+} from "../../src/auth";
 import { logoutAction } from "../../src/commands/logout";
 import { hostingChannelDeployAction } from "../../src/commands/hosting-channel-deploy";
 import { listFirebaseProjects } from "../../src/management/projects";
 import { requireAuth } from "../../src/requireAuth";
 import { deploy } from "../../src/deploy";
-import { Config as FirebaseJsonConfig } from "../../src/config";
-import { FirebaseConfig } from "../../src/firebaseConfig";
 import { FirebaseRC } from "../../src/firebaserc";
 import { getDefaultHostingSite } from "../../src/getDefaultHostingSite";
-import { HostingSingle } from "./firebaseConfig";
 import { initAction } from "../../src/commands/init";
-import { startAll as startAllEmulators, cleanShutdown as stopAllEmulators } from "../../src/emulator/controller"
+import { startAll as startAllEmulators, cleanShutdown as stopAllEmulators } from "../../src/emulator/controller";
 import { EmulatorRegistry } from "../../src/emulator/registry";
 import { EmulatorInfo, Emulators } from "../../src/emulator/types";
+import { FirebaseConfig, HostingSingle } from "../../src/firebaseConfig";
 import { Account, User } from "../../src/types/auth";
 import { Options } from "../../src/options";
 import { currentOptions, getCommandOptions } from "./options";
 import { setInquirerOptions } from "./stubs/inquirer-stub";
-import { window } from "vscode";
 import { ServiceAccount } from "../common/types";
 import { listChannels } from "../../src/hosting/api";
 import { ChannelWithId } from "./messaging/types";
 import * as commandUtils from "../../src/emulator/commandUtils";
 import { EmulatorUiSelections } from "../common/messaging/protocol";
+import { setEnabled } from "../../src/experiments";
+import { pluginLogger } from "./logger-wrapper";
 
 /**
  * Wrap the CLI's requireAuth() which is normally run before every command
@@ -49,14 +51,23 @@ async function requireAuthWrapper(showError: boolean = true) {
   // If account is still null, `requireAuth()` will use google-auth-library
   // to look for the service account hopefully.
   try {
-    await requireAuth(account || {});
+    const commandOptions = await getCommandOptions(undefined, {
+      ...currentOptions,
+      ...account,
+    });
+    await requireAuth(commandOptions);
   } catch (e) {
-    console.error('requireAuth error', e.original || e);
     if (showError) {
-      window.showErrorMessage("Not logged in", {
+      pluginLogger.error('requireAuth error', e.original || e);
+      vscode.window.showErrorMessage("Not logged in", {
         modal: true,
         detail: `Log in by clicking "Sign in with Google" in the sidebar.`,
       });
+    } else {
+      // If "showError" is false, this may not be an error, just an indication
+      // no one is logged in. Log to "debug".
+      pluginLogger.debug('No user found (this may be normal), requireAuth error output:',
+        e.original || e);
     }
     return false;
   }
@@ -68,9 +79,11 @@ async function requireAuthWrapper(showError: boolean = true) {
 export async function getAccounts(): Promise<Array<Account | ServiceAccount>> {
   // Get Firebase login accounts
   const accounts: Array<Account | ServiceAccount> = getAllAccounts();
+  pluginLogger.debug(`Found ${accounts.length} non-service accounts.`);
   // Get other accounts (assuming service account for now, could also be glogin)
   const otherAuthExists = await requireAuthWrapper(false);
   if (otherAuthExists) {
+    pluginLogger.debug(`Found service account`);
     accounts.push({
       user: { email: "service_account", type: "service_account" },
     });
@@ -82,20 +95,37 @@ export async function getChannels(firebaseJSON: FirebaseConfig): Promise<Channel
   if (!firebaseJSON) {
     return [];
   }
-  await requireAuthWrapper();
+  const loggedIn = await requireAuthWrapper(false);
+  if (!loggedIn) {
+    return [];
+  }
   const options = { ...currentOptions };
   if (!options.project) {
     return [];
   }
-  // TODO: handle multiple hosting configs
+  // TODO(hsubox76): handle multiple hosting configs
   if (!(firebaseJSON.hosting as HostingSingle).site) {
     (firebaseJSON.hosting as HostingSingle).site =
       await getDefaultHostingSite(options);
-      console.log((firebaseJSON.hosting as HostingSingle).site);
   }
-  const channels = await listChannels(options.project, (firebaseJSON.hosting as HostingSingle).site);
-
-  return channels.map(channel => ({...channel, id: channel.name.split("/").pop()}));
+  pluginLogger.debug(
+    'Calling listChannels with params',
+    options.project,
+    (firebaseJSON.hosting as HostingSingle).site
+  );
+  try {
+    const channels = await listChannels(options.project, (firebaseJSON.hosting as HostingSingle).site);
+    return channels.map(channel => ({
+      ...channel, id: channel.name.split("/").pop()
+    }));
+  } catch (e) {
+    pluginLogger.error('Error on listChannels()', e);
+    vscode.window.showErrorMessage("Error finding hosting channels", {
+      modal: true,
+      detail: `Error finding hosting channels: ${e}`,
+    });
+    return [];
+  }
 }
 
 export async function logoutUser(email: string): Promise<void> {
@@ -112,17 +142,38 @@ export async function login() {
 }
 
 export async function listProjects() {
-  await requireAuthWrapper();
+  const loggedIn = await requireAuthWrapper(false);
+  if (!loggedIn) {
+    return [];
+  }
   return listFirebaseProjects();
 }
 
 export async function initHosting(options: { spa: boolean; public: string }) {
   await requireAuthWrapper();
-  const commandOptions = await getCommandOptions(undefined, {
-    ...currentOptions,
+  let webFrameworksOptions = {};
+  if (process.env.MONOSPACE_ENV) {
+    pluginLogger.debug('initHosting found MONOSPACE_ENV, '
+      + 'setting web frameworks options');
+    // TODO(hsubox76): Also allow VS Code users to enable this manually with a UI
+    setEnabled('webframeworks', true);
+    webFrameworksOptions = {
+      // Should use auto-discovered framework
+      useDiscoveredFramework: true,
+      // Should set up a new framework - do not do this on Monospace
+      useWebFrameworks: false
+    };
+  }
+  const commandOptions = await getCommandOptions(undefined, currentOptions);
+  const inquirerOptions = {
+    ...commandOptions,
     ...options,
-  });
-  setInquirerOptions(commandOptions);
+    ...webFrameworksOptions,
+    // False for now, we can let the user decide if needed
+    github: false
+  };
+  pluginLogger.debug('Calling hosting init with inquirer options', inspect(inquirerOptions));
+  setInquirerOptions(inquirerOptions);
   await initAction("hosting", commandOptions);
 }
 
@@ -136,7 +187,7 @@ export async function emulatorsStart(firebaseJson: FirebaseConfig, emulatorUiSel
     only: emulatorUiSelections.mode === "hosting" ? "hosting" : ""
   });
   // Adjusts some options, export on exit can be a boolean or a path.
-  commandUtils.setExportOnExitOptions(commandOptions);
+  commandUtils.setExportOnExitOptions(commandOptions as commandUtils.ExportOnExitOptions);
   return startAllEmulators(commandOptions, /*showUi=*/ true); 
 }
 
@@ -162,29 +213,34 @@ export async function deployToHosting(
     return { success: false, hostingUrl: "", consoleUrl: "" };
   }
 
-  // TODO: throw if it doesn't find firebaseJSON or the hosting field
-  // const projects = await listFirebaseProjects();
-  // const currentProject = projects.find(project => project.projectId === firebaseRC.projects?.default);
+  // TODO(hsubox76): throw if it doesn't find firebaseJSON or the hosting field
   try {
     const options = { ...currentOptions };
-    // TODO: handle multiple hosting configs
+    // TODO(hsubox76): handle multiple hosting configs
     if (!(firebaseJSON.hosting as HostingSingle).site) {
+      pluginLogger.debug('Calling getDefaultHostingSite() with options', inspect(options));
       (firebaseJSON.hosting as HostingSingle).site =
         await getDefaultHostingSite(options);
     }
+    pluginLogger.debug('Calling getCommandOptions() with options', inspect(options));
     const commandOptions = await getCommandOptions(firebaseJSON, options);
+    pluginLogger.debug('Calling hosting deploy with command options', inspect(commandOptions));
     if (deployTarget === 'live') {
       await deploy(["hosting"], commandOptions);
     } else {
       await hostingChannelDeployAction(deployTarget, commandOptions);
     }
+    pluginLogger.debug('Hosting deploy complete');
   } catch (e) {
-    console.error(e);
+    let message = `Error deploying to hosting`;
+    if (e.message) {
+      message += `: ${e.message}`;
+    }
+    if (e.original) {
+      message += ` (original: ${e.original})`;
+    }
+    pluginLogger.error(message);
     return { success: false, hostingUrl: "", consoleUrl: "" };
   }
   return { success: true, hostingUrl: "", consoleUrl: "" };
-}
-
-export async function startEmulators() {
-
 }

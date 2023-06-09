@@ -1,7 +1,11 @@
 import * as path from "path";
 import * as fs from "fs";
 import * as vscode from "vscode";
+import { transports, format } from "winston";
+import stripAnsi from "strip-ansi";
+import { SPLAT } from "triple-beam";
 import { ExtensionContext, workspace } from "vscode";
+
 import { FirebaseProjectMetadata } from "../../src/types/project";
 import { writeFirebaseRCFile } from "./utils";
 import { ExtensionBrokerImpl } from "./extension-broker";
@@ -23,6 +27,10 @@ import { FirebaseRC } from "../../src/firebaserc";
 import { FirebaseConfig } from "../../src/firebaseConfig";
 import { currentOptions, updateOptions } from "./options";
 import { ServiceAccountUser } from "./types";
+import { selectProjectInMonospace } from "../../src/monospace";
+import { setupLoggers, tryStringify } from "../../src/utils";
+import { pluginLogger } from "./logger-wrapper";
+import { logger } from '../../src/logger';
 import { EmulatorUiSelections } from "../common/messaging/protocol";
 
 let firebaseRC: FirebaseRC | null = null;
@@ -41,9 +49,10 @@ async function fetchUsers() {
 /**
  * Get the user to select a project.
  */
-async function promptUserForProject(broker: ExtensionBrokerImpl, projects: FirebaseProjectMetadata[]) {
-  // Put in a separate flow for monospace.
-  // process.env.MONOSPACE_ENV should be directly accessible here
+async function promptUserForProject(
+  broker: ExtensionBrokerImpl,
+  projects: FirebaseProjectMetadata[]
+) {
   const items = projects.map(({ projectId }) => projectId);
 
   return new Promise<null | string>((resolve, reject) => {
@@ -82,11 +91,11 @@ function updateCurrentUser(
       currentUserEmail = null;
     }
   }
-  broker.send("notifyUserChanged", currentUserEmail);
+  broker.send("notifyUserChanged", { email: currentUserEmail });
   return currentUserEmail;
 }
 
-function getRootFolders(): Array<string> {
+function getRootFolders(): string[] {
   if (!workspace) {
     return [];
   }
@@ -99,8 +108,8 @@ function getRootFolders(): Array<string> {
   return Array.from(new Set(folders));
 }
 
-function getJsonFile<T>(filename: string): T | null {
-  var rootFolders = getRootFolders();
+function getConfigFile<T>(filename: string): T | null {
+  const rootFolders = getRootFolders();
   for (const folder of rootFolders) {
     const jsonFilePath = path.join(folder, filename);
     if (fs.existsSync(jsonFilePath)) {
@@ -110,7 +119,7 @@ function getJsonFile<T>(filename: string): T | null {
         currentOptions.cwd = folder;
         return result;
       } catch (e) {
-        console.log(`Error parsing JSON in ${jsonFilePath}`);
+        pluginLogger.error(`Error parsing JSON in ${jsonFilePath}`);
         return null;
       }
     }
@@ -136,22 +145,60 @@ export function setupWorkflow(
   broker: ExtensionBrokerImpl
 ) {
   extensionContext = context;
-  process.env.IS_VSCODE_ENVIRONMENT = "true";
 
-  async function fetchChannels() {
-    const channels = await getChannels(firebaseJSON);
-    broker.send("notifyChannels", channels);
+  // Get user-defined VSCode settings.
+  const workspaceConfig = workspace.getConfiguration(
+    'firebase',
+    vscode.workspace.workspaceFolders[0].uri
+  );
+  const shouldDebug: boolean = workspaceConfig.get('debug');
+
+  /**
+   * Logging setup for logging to console and to file.
+   */
+  // Sets up CLI logger to log to console
+  process.env.DEBUG = 'true';
+  setupLoggers();
+  // Re-implement file logger call from ../../src/bin/firebase.ts to not bring
+  // in the entire firebase.ts file
+  const rootFolders = getRootFolders();
+  const filePath = path.join(rootFolders[0], 'firebase-plugin-debug.log');
+  pluginLogger.info('Logging to path', filePath);
+  // Only log to file if firebase.debug extension setting is true.
+  if (shouldDebug) {
+    logger.add(
+      new transports.File({
+        level: "debug",
+        filename: filePath,
+        format: format.printf((info) => {
+          const segments = [info.message, ...(info[SPLAT] || [])]
+            .map(tryStringify);
+          return `[${info.level}] ${stripAnsi(segments.join(" "))}`;
+        }),
+      })
+    );
   }
-
   // Read config files and store in memory.
   readFirebaseConfigs();
   // Check current users state
   fetchUsers();
+  // Get hosting channels
   fetchChannels();
 
+  /**
+   * Call pluginLogger with log arguments received from webview.
+   */
+  broker.on("writeLog", async ({ level, args }) => {
+    pluginLogger[level]('(Webview)', ...args);
+  });
+
   broker.on("getEnv", async () => {
+    pluginLogger.debug(`Value of process.env.MONOSPACE_ENV: `
+      + `${process.env.MONOSPACE_ENV}`);
     broker.send("notifyEnv", {
-      isMonospace: Boolean(process.env.MONOSPACE_ENV),
+      env: {
+        isMonospace: Boolean(process.env.MONOSPACE_ENV),
+      }
     });
   });
 
@@ -159,16 +206,16 @@ export function setupWorkflow(
     if (users.length === 0) {
       await fetchUsers();
     }
-    broker.send("notifyUsers", users);
+    broker.send("notifyUsers", { users });
     currentUserEmail = updateCurrentUser(users, broker);
   });
 
-  broker.on("logout", async (email: string) => {
+  broker.on("logout", async ({ email }: { email: string }) => {
     try {
       await logoutUser(email);
       const accounts = await getAccounts();
       users = accounts.map((account) => account.user);
-      broker.send("notifyUsers", users);
+      broker.send("notifyUsers", { users });
       currentUserEmail = updateCurrentUser(users, broker);
     } catch (e) {
       // ignored
@@ -179,20 +226,25 @@ export function setupWorkflow(
     // For now, just read the cached value.
     // TODO: Extend this to reading from firebaserc
     if (firebaseRC?.projects?.default) {
-      broker.send("notifyProjectChanged", firebaseRC?.projects?.default);
+      broker.send("notifyProjectChanged",
+        { projectId: firebaseRC?.projects?.default });
     }
     fetchChannels();
   });
 
-  broker.on("showMessage", async (msg, options) => {
+  broker.on("showMessage", async ({ msg, options }) => {
     vscode.window.showInformationMessage(msg, options);
+  });
+
+  broker.on("openLink", async ({ href }) => {
+    vscode.env.openExternal(vscode.Uri.parse(href));
   });
 
   broker.on("addUser", async () => {
     const { user } = await login();
     users.push(user);
     if (users) {
-      broker.send("notifyUsers", users);
+      broker.send("notifyUsers", { users });
       currentUserEmail = updateCurrentUser(
         users,
         broker,
@@ -201,28 +253,73 @@ export function setupWorkflow(
     }
   });
 
-  broker.on("requestChangeUser", (requestedUser: User | ServiceAccountUser) => {
+  broker.on("requestChangeUser", (
+    { user: requestedUser }:
+      { user: User | ServiceAccountUser }
+  ) => {
     if (users.some((user) => user.email === requestedUser.email)) {
       currentUserEmail = requestedUser.email;
-      broker.send("notifyUserChanged", currentUserEmail);
+      broker.send("notifyUserChanged", { email: currentUserEmail });
     }
   });
 
-  broker.on("selectProject", async (email) => {
+  broker.on("selectProject", selectProject);
+
+  broker.on("selectAndInitHostingFolder", selectAndInitHosting);
+
+  broker.on("hostingDeploy", async ({ target: deployTarget }) => {
+    const { success, consoleUrl, hostingUrl } = await deployToHosting(
+      firebaseJSON,
+      firebaseRC,
+      deployTarget
+    );
+    broker.send("notifyHostingDeploy", { success, consoleUrl, hostingUrl });
+    if (success) {
+      fetchChannels();
+    }
+  });
+
+  broker.on("getFirebaseJson", async () => {
+    readAndSendFirebaseConfigs(broker);
+  });
+
+  context.subscriptions.push(
+    setupFirebaseJsonAndRcFileSystemWatcher(broker)
+  );
+
+  async function fetchChannels() {
+    const channels = await getChannels(firebaseJSON);
+    broker.send("notifyChannels", { channels });
+  }
+
+  async function selectProject({ email }) {
     let projectId;
     if (process.env.MONOSPACE_ENV) {
+      pluginLogger.debug('selectProject: found MONOSPACE_ENV, '
+        + 'prompting user using external flow');
       /**
        * Monospace case: use Monospace flow
        */
-      const monospaceExtension = vscode.extensions.getExtension('google.monospace');
-      process.env.MONOSPACE_DAEMON_PORT = monospaceExtension.exports.getMonospaceDaemonPort();
-      // call appropriate CLI function?
-      projectId = 'monospace-placeholder-projectid';
+      const monospaceExtension =
+        vscode.extensions.getExtension('google.monospace');
+      process.env.MONOSPACE_DAEMON_PORT =
+        monospaceExtension.exports.getMonospaceDaemonPort();
+      try {
+        projectId = await selectProjectInMonospace({
+          projectRoot: currentOptions.cwd,
+          project: undefined,
+          isVSCE: true
+        });
+      } catch (e) {
+        pluginLogger.error(e);
+      }
     } else if (email === 'service_account') {
       /**
        * Non-Monospace service account case: get the service account's only
        * linked project.
        */
+      pluginLogger.debug('selectProject: MONOSPACE_ENV not found, '
+        + ' but service account found');
       const projects = (await listProjects()) as FirebaseProjectMetadata[];
       projectsUserMapping.set(email, projects);
       // Service accounts should only have one project.
@@ -232,12 +329,14 @@ export function setupWorkflow(
        * Default Firebase login case, let user choose from projects that
        * Firebase login has access to.
        */
+      pluginLogger.debug('selectProject: no service account or MONOSPACE_ENV '
+        + 'found, using firebase account to list projects');
       let projects = [];
       if (projectsUserMapping.has(email)) {
-        console.log(`using cached projects list for ${email}`);
+        pluginLogger.info(`using cached projects list for ${email}`);
         projects = projectsUserMapping.get(email)!;
       } else {
-        console.log(`fetching projects list for ${email}`);
+        pluginLogger.info(`fetching projects list for ${email}`);
         vscode.window.showQuickPick(["Loading...."]);
         projects = (await listProjects()) as FirebaseProjectMetadata[];
         projectsUserMapping.set(email, projects);
@@ -248,39 +347,40 @@ export function setupWorkflow(
         vscode.window.showErrorMessage(e.message);
       }
     }
-    await updateFirebaseRC("default", projectId);
-    broker.send("notifyProjectChanged", projectId);
-    fetchChannels();
-  });
-
-  broker.on(
-    "selectAndInitHostingFolder",
-    async (projectId: string, email: string, singleAppSupport: boolean) => {
-      const options: vscode.OpenDialogOptions = {
-        canSelectMany: false,
-        openLabel: `Select distribution/public folder for ${projectId}`,
-        canSelectFiles: false,
-        canSelectFolders: true,
-      };
-      const fileUri = await vscode.window.showOpenDialog(options);
-      if (fileUri && fileUri[0] && fileUri[0].fsPath) {
-        const publicFolderFull = fileUri[0].fsPath;
-        const publicFolder = publicFolderFull.substring(
-          currentOptions.cwd.length + 1
-        );
-        await initHosting({
-          spa: singleAppSupport,
-          public: publicFolder,
-        });
-        readAndSendFirebaseConfigs(broker);
-        broker.send("notifyHostingFolderReady", projectId, currentOptions.cwd);
-      }
+    if (projectId) {
+      await updateFirebaseRC("default", projectId);
+      broker.send("notifyProjectChanged", { projectId });
+      fetchChannels();
     }
-  );
+  }
 
+  async function selectAndInitHosting({ projectId, singleAppSupport }) {
+    const options: vscode.OpenDialogOptions = {
+      canSelectMany: false,
+      openLabel: `Select distribution/public folder for ${projectId}`,
+      canSelectFiles: false,
+      canSelectFolders: true,
+    };
+    const fileUri = await vscode.window.showOpenDialog(options);
+    if (fileUri && fileUri[0] && fileUri[0].fsPath) {
+      const publicFolderFull = fileUri[0].fsPath;
+      const publicFolder = publicFolderFull.substring(
+        currentOptions.cwd.length + 1
+      );
+      await initHosting({
+        spa: singleAppSupport,
+        public: publicFolder,
+      });
+      readAndSendFirebaseConfigs(broker);
+      broker.send("notifyHostingFolderReady",
+        { projectId, folderPath: currentOptions.cwd });
+
+      await fetchChannels();
+    }
+  }
   broker.on(
     "launchEmulators",
-    async (firebaseJson: FirebaseConfig, emulatorUiSelections: EmulatorUiSelections) => {
+    async ({firebaseJson, emulatorUiSelections}) => {
       emulatorsStart(firebaseJson, emulatorUiSelections).then(() => {
         broker.send("notifyRunningEmulatorInfo", { uiUrl: getEmulatorUiUrl(), displayInfo: listRunningEmulators() });
       });
@@ -312,30 +412,8 @@ export function setupWorkflow(
         vscode.window.showErrorMessage("Invalid import folder selected.");
         return;
       }
-      broker.send("notifyEmulatorImportFolder", fileUri[0].fsPath);
+      broker.send("notifyEmulatorImportFolder", { folder: fileUri[0].fsPath });
     }
-  );
-
-  broker.on("hostingDeploy", async (deployTarget) => {
-    const { success, consoleUrl, hostingUrl } = await deployToHosting(
-      firebaseJSON,
-      firebaseRC,
-      deployTarget
-    );
-    broker.send("notifyHostingDeploy", success, consoleUrl, hostingUrl);
-    fetchChannels();
-  });
-
-  broker.on("getWorkspaceFolders", () => {
-    broker.send("notifyWorkspaceFolders", getRootFolders());
-  });
-
-  broker.on("getFirebaseJson", async () => {
-    readAndSendFirebaseConfigs(broker);
-  });
-
-  context.subscriptions.push(
-    setupFirebaseJsonAndRcFileSystemWatcher(broker)
   );
 }
 
@@ -351,8 +429,9 @@ export async function onShutdown() {
  * exist, and write to memory.
  */
 function readFirebaseConfigs() {
-  firebaseRC = getJsonFile<FirebaseRC>(".firebaserc");
-  firebaseJSON = getJsonFile<FirebaseConfig>("firebase.json");
+  firebaseRC = getConfigFile<FirebaseRC>(".firebaserc");
+  firebaseJSON = getConfigFile<FirebaseConfig>("firebase.json");
+
   updateOptions(extensionContext, firebaseJSON, firebaseRC);
 }
 
@@ -361,7 +440,10 @@ function readFirebaseConfigs() {
  */
 async function readAndSendFirebaseConfigs(broker: ExtensionBrokerImpl) {
   readFirebaseConfigs();
-  broker.send("notifyFirebaseJson", firebaseJSON, firebaseRC);
+  broker.send("notifyFirebaseConfig",
+    {
+      firebaseJson: firebaseJSON, firebaseRC
+    });
 }
 
 /**
@@ -372,7 +454,7 @@ async function updateFirebaseRC(alias: string, projectId: string) {
     firebaseRC = {
       ...firebaseRC,
       projects: {
-        default: firebaseRC?.projects?.default || "", // ensure default no matter what
+        default: firebaseRC?.projects?.default || "",
         ...(firebaseRC?.projects || {}),
         [alias]: projectId,
       },

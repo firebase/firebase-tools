@@ -24,7 +24,7 @@ export function EmulatorPanel(
       firebaseJson: FirebaseConfig
     }) {
   if (!firebaseJson) {
-    throw Error("Expected a valid FirebaseConfig.")
+    throw Error("Expected a valid FirebaseConfig.");
   }
   const [emulatorUiSelections, setEmulatorUiSelections] = useState<EmulatorUiSelections>(DEFAULT_EMULATOR_UI_SELECTIONS);
 
@@ -51,34 +51,38 @@ export function EmulatorPanel(
     setRunningEmulatorInfo(info);
   });
 
-  broker.on("notifyEmulatorImportFolder", (importPath: string) => {
-    console.log(`notifyEmulatorImportFolder received in sidebar: ${importPath}`);
-    emulatorUiSelections.importStateFolderPath = importPath;
+  broker.on("notifyEmulatorImportFolder", ({ folder }) => {
+    console.log(`notifyEmulatorImportFolder received in sidebar: ${folder}`);
+    emulatorUiSelections.importStateFolderPath = folder;
     setEmulatorUiSelectionsAndSaveToWorkspace({ ...emulatorUiSelections }); // rerender clone
   });
 
   function launchEmulators() {
     if (!emulatorUiSelections.projectId) {
-      broker.send("showMessage", "Missing project ID", {
-        modal: true,
-        detail: `Please specify a project ID before starting the emulator suite.`,
+      broker.send("showMessage", {
+        msg: "Missing project ID", options: {
+          modal: true,
+          detail: `Please specify a project ID before starting the emulator suite.`,
+        }
       });
       return;
     }
     if (!firebaseJson) {
       // TODO(christhompson): Consider using a default config in the case that firebase.json doesnt exist.
-      broker.send("showMessage", "Missing firebase.json", {
-        modal: true,
-        detail: `Unable to find firebase.json file.`,
+      broker.send("showMessage", {
+        msg: "Missing firebase.json", options: {
+          modal: true,
+          detail: `Unable to find firebase.json file.`,
+        }
       });
       return;
     }
     setShowEmulatorProgressIndicator(true);
     broker.send(
-      "launchEmulators",
+      "launchEmulators", {
       firebaseJson,
       emulatorUiSelections
-    );
+    });
   };
 
   function stopEmulators() {
@@ -137,6 +141,7 @@ export function EmulatorPanel(
       {/* TODO(christhompson): Insert some education links or tooltips here. */}
       <Spacer size="xxlarge" />
       Current project ID:
+      {/* TODO(christhompson): convert this into a demo- prefix checkbox or something. */}
       <VSCodeTextField disabled={true} className="in-line" value={emulatorUiSelections.projectId} onChange={(event) => projectIdChanged(event)}></VSCodeTextField>
       <Spacer size="xxlarge" />
       Import emulator state from directory:

@@ -41,7 +41,7 @@ export function AccountSection({
   } else if (usersLoaded && allUsers.length > 0) {
     // Users loaded, at least one user was found
     if (isMonospace && userEmail === 'service_account') {
-      // TODO: Figure out correct wording
+      // TODO(hsubox76): Figure out correct wording
       currentUserElement = 'workspace logged in';
     } else {
       currentUserElement = userEmail;
@@ -103,7 +103,7 @@ function UserSelectionMenu({
         {allUsers.map((user) => (
           <MenuItem
             onClick={() => {
-              broker.send("requestChangeUser", user);
+              broker.send("requestChangeUser", {user});
               onClose();
             }}
             key={user.email}
@@ -117,7 +117,7 @@ function UserSelectionMenu({
           userEmail !== "service_account" && (
             <MenuItem
               onClick={() => {
-                broker.send("logout", userEmail);
+                broker.send("logout", {email: userEmail});
                 onClose();
               }}
             >

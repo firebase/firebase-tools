@@ -16,9 +16,6 @@ export function PanelSection({
   isLast?: boolean;
 }) {
   let [isExpanded, setExpanded] = useState(true);
-  if (!title) {
-    isExpanded = true;
-  }
 
   return (
     <>

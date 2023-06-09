@@ -32,16 +32,14 @@ export const ALL_EXPERIMENTS = experiments({
   rtdbmanagement: {
     shortDescription: "Use new endpoint to administer realtime database instances",
   },
-
-  // Extensions experiments
-  ext: {
-    shortDescription: `Enables the ${bold("ext:sources:create")} command`,
+  // Cloud Functions for Firebase experiments
+  pythonfunctions: {
+    shortDescription: "Python support for Cloud Functions for Firebase",
+    fullDescription:
+      "Adds the ability to initializea and deploy Cloud " +
+      "Functions for Firebase in Python. While this feature is experimental " +
+      "breaking API changes are allowed in MINOR API revisions",
   },
-  extdev: {
-    shortDescription: `Enables the ${bold("ext:dev")} family of commands`,
-    docsUri: "https://firebase.google.com/docs/extensions/alpha/overview-build-extensions",
-  },
-
   deletegcfartifacts: {
     shortDescription: `Add the ${bold(
       "functions:deletegcfartifacts"
@@ -85,6 +83,8 @@ export const ALL_EXPERIMENTS = experiments({
       "exist per region. firebase-tools aggressively garbage collects tags it creates " +
       "if any service exceeds 500 tags, but it is theoretically possible that a project " +
       "exceeds the region-wide limit of tags and an old site version fails",
+    public: true,
+    default: true,
   },
   // Access experiments
   crossservicerules: {

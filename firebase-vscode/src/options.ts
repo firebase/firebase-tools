@@ -13,8 +13,8 @@ import * as commandUtils from "../../src/emulator/commandUtils";
  */
 
 interface CliOptions extends BaseOptions {
-  exportOnExit: boolean
-  import: string
+  exportOnExit?: boolean | string
+  import?: string
 }
 
 /**
@@ -26,7 +26,7 @@ interface CommandOptions extends Options {}
 /**
  * User-facing CLI options
  */
-export let currentOptions: CliOptions = {
+export let currentOptions: CliOptions & { isVSCE: boolean } = {
   cwd: "",
   configPath: "",
   only: "",
@@ -49,6 +49,8 @@ export let currentOptions: CliOptions = {
   rc: null,
   exportOnExit: false,
   import: "",
+
+  isVSCE: true
 };
 
 export function updateOptions(

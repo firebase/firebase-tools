@@ -3,98 +3,140 @@
  * between two environments (VScode and Webview)
  */
 
-import { FirebaseProjectMetadata } from "../../../src/types/project";
-import { FirebaseConfig } from  '../../../src/firebaseConfig';
+import { FirebaseConfig } from '../../../src/firebaseConfig';
 import { FirebaseRC } from "../firebaserc";
 import { User } from "../../../src/types/auth";
 import { ServiceAccountUser } from "../types";
 import { EmulatorInfo } from "../emulator/types";
 
-// Messages sent from Webview to extension
-export interface WebviewToExtension {
-  getEnv(): void;
+export interface WebviewToExtensionParamsMap {
+  /**
+   * Ask extension for env variables
+   */
+  getEnv: {};
+  /**
+   * User management
+   */
+  getUsers: {};
+  addUser: {};
+  logout: { email: string };
 
-  /* --- working with CLI: user management --- */
-  getUsers(): void;
-  addUser(): void;
-  logout(email: string): void;
+  /** Notify extension that current user has been changed in UI. */
+  requestChangeUser: { user: User | ServiceAccountUser };
 
-  /** Notify extension that current user has been changed. */
-  requestChangeUser(user: User | ServiceAccountUser): void;
-
-  /** Select a project */
-  selectProject(email: string): void;
-
-  /** Runs `firebase init hosting` command. */
-  selectAndInitHostingFolder(
+  /** Trigger project selection */
+  selectProject: { email: string };
+  /**
+   * Runs `firebase init hosting` command.
+   * TODO(hsubox76): Generalize to work for all `firebase init` products.
+   */
+  selectAndInitHostingFolder: {
     projectId: string,
     email: string,
     singleAppSupport: boolean
-  ): void;
+  };
 
-  /** Runs `firebase emulators:start` command. 
-   * 
-   * Defers to firebaseJsonPath and if empty, uses the project ID with a default configuration
+  /**
+   * Get hosting channels.
+   */
+  getChannels: {};
+
+  /**
+   * Runs `firebase deploy` for hosting.
+   * TODO(hsubox76): Generalize to work for all `firebase deploy` targets.
+   */
+  hostingDeploy: {
+    target: string
+  };
+
+  /**
+   * Get currently selected Firebase project from extension runtime.
+   */
+  getSelectedProject: {};
+
+  /**
+   * Fetches the contents of the .firebaserc and firebase.json config files.
+   * If either or both files do not exist, then it will return a default
+   * value.
+   */
+  getFirebaseJson: {};
+
+  /**
+   * Show a UI message using the vscode interface
+   */
+  showMessage: { msg: string, options?: {} };
+
+  /**
+   * Write a log to the extension logger.
+   */
+  writeLog: { level: string, args: string[] };
+
+  /**
+   * Call extension runtime to open a link (a href does not work in Monospace)
+   */
+  openLink: {
+    href: string
+  };
+
+  /** 
+   * Equivalent to the `firebase emulators:start` command.
   */
-  launchEmulators(
+  launchEmulators : {
     firebaseJson: FirebaseConfig,
-    EmulatorUiSelections: EmulatorUiSelections,
-  ): void;
+    emulatorUiSelections: EmulatorUiSelections,
+  };
 
   /** Stops the emulators gracefully allowing for data export if required. */
-  stopEmulators(): void;
+  stopEmulators: {};
 
-  getChannels(): void;
-
-  /** Runs `firebase deploy` for hosting. */
-  hostingDeploy(target: string): void;
-
-  /** fetches a list of folders in the user's workspace. */
-  getWorkspaceFolders(): void;
-
-  /** get selected project either from firebaserc or last cached value (or workspace file) */
-  getSelectedProject(): void;
-
-  /** Fetches the entire firebase rc config file. If the file doesn't exist, then it will return a default value. */
-  getFirebaseJson(): void;
-
-  showMessage(msg: string, options?: {}): void;
-
-  selectEmulatorImportFolder(): void;
+  selectEmulatorImportFolder: {};
 }
 
-// Messages sent from Extension to Webview
-export interface ExtensionToWebview {
-  notifyEnv(env: { isMonospace: boolean }): void;
-  /** Called as a result of getUsers/addUser/logout calls */
-  notifyUsers(users: User[]): void;
+export interface ExtensionToWebviewParamsMap {
+  /** Triggered when new environment variables values are found. */
+  notifyEnv: { env: { isMonospace: boolean } };
 
-  notifyChannels(channels: any[]): void;
+  /** Triggered when users have been updated. */
+  notifyUsers: { users: User[] };
 
-  /** Called when a new project is selected */
-  notifyProjectChanged(projectId: string): void;
+  /** Triggered when hosting channels have been fetched. */
+  notifyChannels: { channels: any[] };
+
+  /** Triggered when a new project is selected */
+  notifyProjectChanged: { projectId: string };
 
   /**
    * This can potentially call multiple webviews to notify of user selection.
    */
-  notifyUserChanged(email: string): void;
+  notifyUserChanged: { email: string };
 
-  notifyHostingFolderReady(projectId: string, folderPath: string): void;
-  notifyEmulatorsStopped(): void;
-  notifyRunningEmulatorInfo(info: RunningEmulatorInfo): void;
+  /**
+   * Notifies webview when user has successfully selected a hosting folder
+   * and it has been written to firebase.json.
+   */
+  notifyHostingFolderReady: { projectId: string, folderPath: string };
 
-  notifyHostingDeploy(
+  /**
+   * Notify webview of status of deployment attempt.
+   */
+  notifyHostingDeploy: {
     success: boolean,
-    consoleUrl: string | undefined,
-    hostingUrl: string | undefined
-  ): void;
+    consoleUrl?: string,
+    hostingUrl?: string
+  };
 
-  notifyWorkspaceFolders(folders: Array<String>): void;
+  /**
+   * Notify webview of initial discovery or change in firebase.json or
+   * .firebaserc
+   */
+  notifyFirebaseConfig: { firebaseJson: FirebaseConfig, firebaseRC: FirebaseRC };
 
-  notifyFirebaseJson(firebaseJson: FirebaseConfig, firebaseRC: FirebaseRC): void;
-
-  notifyEmulatorImportFolder(folder: string) : void;
+  notifyEmulatorsStopped: {};
+  notifyRunningEmulatorInfo: RunningEmulatorInfo ;
+  notifyEmulatorImportFolder: { folder: string };
 }
+
+export type MessageParamsMap = WebviewToExtensionParamsMap | ExtensionToWebviewParamsMap;
 
 /**
  * Info to display in the UI while the emulators are running

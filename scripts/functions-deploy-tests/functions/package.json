@@ -11,7 +11,7 @@
     "firebase-functions": "^4.1.0"
   },
   "engines": {
-    "node": "16"
+    "node": "18"
   },
   "private": true
 }

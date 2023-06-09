@@ -2,8 +2,8 @@
   "name": "firebase-vscode",
   "displayName": "firebase-vscode",
   "publisher": "firebase",
-  "description": "",
-  "version": "0.0.1",
+  "description": "VSCode Extension for Firebase",
+  "version": "0.0.9",
   "engines": {
     "vscode": "^1.69.0"
   },
@@ -25,12 +25,17 @@
           "default": "",
           "description": "Firebase RC folder"
         }
+      },
+      "firebase.debug": {
+        "type": "boolean",
+        "default": false,
+        "description": "Logs debug-level messages to firebase-plugin-debug.log (requires restart)"
       }
     },
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "firebase2",
+          "id": "firebase",
           "title": "Firebase",
           "icon": "$(mono-firebase)"
         }
@@ -46,44 +51,37 @@
       }
     },
     "views": {
-      "firebase2": [
+      "firebase": [
         {
           "type": "webview",
-          "id": "firebase2.sidebarView",
+          "id": "firebase.sidebarView",
           "name": "Firebase"
         }
       ]
-    },
-    "commands": [
-      {
-        "command": "firebase-vscode.helloWorld",
-        "title": "ABCD"
-      },
-      {
-        "command": "firebase-vscode.start",
-        "title": "Start Firebase VSCode"
-      },
-      {
-        "command": "firebase-vscode.login",
-        "title": "Log in to Firebase"
-      }
-    ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run build",
     "copyfiles": "cp -r node_modules/@vscode/codicons/dist resources/dist",
-    "pkg:vsce": "cp package_vsce.json package.json && vsce package",
-    "pkg:monospace": "cp package_monospace.json package.json && vsce package",
+    "pkg:vsce": "node scripts/swap-pkg.js vsce && vsce package",
+    "pkg:monospace": "node scripts/swap-pkg.js monospace && vsce package",
     "dev": "npm run copyfiles && webpack --config webpack.dev.js",
     "dev:extension": "npm run copyfiles && webpack --config webpack.dev.js --config-name extension",
     "dev:sidebar": "npm run copyfiles && webpack --config webpack.dev.js --config-name sidebar",
-    "watch": "npm run copyfiles && webpack --config webpack.dev.js --watch",
+    "watch": "node scripts/swap-pkg.js vsce && npm run copyfiles && webpack --config webpack.dev.js --watch",
     "build": "npm run copyfiles && webpack --config webpack.prod.js --devtool hidden-source-map",
     "build:extension": "webpack --config webpack.prod.js --config-name extension",
     "build:sidebar": "npm run copyfiles && webpack --config webpack.prod.js --config-name sidebar",
     "pretest": "npm run build && npm run lint",
     "lint": "eslint src --ext ts",
     "test": "node ./dist/test/runTest.js"
+  },
+  "dependencies": {
+    "@vscode/codicons": "0.0.30",
+    "@vscode/webview-ui-toolkit": "^1.2.1",
+    "classnames": "^2.3.2",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
   },
   "devDependencies": {
     "@teamsupercell/typings-for-css-modules-loader": "^2.5.1",
@@ -95,10 +93,7 @@
     "@types/vscode": "^1.69.0",
     "@typescript-eslint/eslint-plugin": "^5.45.0",
     "@typescript-eslint/parser": "^5.45.0",
-    "@vscode/codicons": "0.0.30",
     "@vscode/test-electron": "^2.2.0",
-    "@vscode/webview-ui-toolkit": "^1.2.1",
-    "classnames": "^2.3.2",
     "copy-webpack-plugin": "^11.0.0",
     "css-loader": "^6.7.1",
     "eslint": "^8.28.0",
@@ -108,8 +103,6 @@
     "mini-css-extract-plugin": "^2.6.0",
     "mocha": "^10.1.0",
     "postcss-loader": "^7.0.0",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
     "sass": "^1.52.0",
     "sass-loader": "^13.0.0",
     "string-replace-loader": "^3.1.0",
