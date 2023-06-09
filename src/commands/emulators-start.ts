@@ -25,35 +25,33 @@ export const command = new Command("emulators:start")
   .option(commandUtils.FLAG_IMPORT, commandUtils.DESC_IMPORT)
   .option(commandUtils.FLAG_EXPORT_ON_EXIT, commandUtils.DESC_EXPORT_ON_EXIT)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  .action(emulatorsStartAction);
+  .action((options: any) => {
+    const killSignalPromise = commandUtils.shutdownWhenKilled(options);
+    return Promise.race([
+      killSignalPromise,
+      (async () => {
+        let deprecationNotices;
+        try {
+          ({ deprecationNotices } = await controller.startAll(options));
+        } catch (e: any) {
+          await controller.cleanShutdown();
+          throw e;
+        }
 
-export function emulatorsStartAction(options: any) {
-  const killSignalPromise = commandUtils.shutdownWhenKilled(options);
-  return Promise.race([
-    killSignalPromise,
-    (async () => {
-      let deprecationNotices;
-      try {
-        ({ deprecationNotices } = await controller.startAll(options));
-      } catch (e: any) {
-        await controller.cleanShutdown();
-        throw e;
-      }
+        printEmulatorOverview(options);
 
-      printEmulatorOverview(options);
+        for (const notice of deprecationNotices) {
+          logLabeledWarning("emulators", notice, "warn");
+        }
 
-      for (const notice of deprecationNotices) {
-        logLabeledWarning("emulators", notice, "warn");
-      }
-
-      // Hang until explicitly killed
-      return killSignalPromise;
-    })(),
-  ]);
-}
+        // Hang until explicitly killed
+        return killSignalPromise;
+      })(),
+    ]);
+  });
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function printEmulatorOverview(options: { only: string }): void {
+function printEmulatorOverview(options: any): void {
   const reservedPorts = [] as number[];
   for (const internalEmulator of [Emulators.LOGGING]) {
     const info = EmulatorRegistry.getInfo(internalEmulator);
