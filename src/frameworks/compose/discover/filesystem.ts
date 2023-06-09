@@ -15,9 +15,6 @@ export class RepositoryFileSystem implements FileSystem {
 
   async exists(file: string): Promise<boolean> {
     try {
-      console.log("+++++++PPPPP+++++++++");
-      console.log(path.resolve(this.cwd, file));
-      console.log("+++++++PPPPP+++++++++");
       if (!(file in this.contentCache)) {
         this.existsCache[file] = await pathExists(path.resolve(this.cwd, file));
       }
