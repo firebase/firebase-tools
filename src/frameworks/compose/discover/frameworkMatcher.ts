@@ -1,6 +1,6 @@
-import { logger } from "../../..";
 import { FirebaseError } from "../../../error";
 import { FrameworkSpec, FileSystem } from "./types";
+import { logger } from "../../../logger";
 
 export function filterFrameworksWithDependencies(
   allFrameworkSpecs: FrameworkSpec[],
@@ -12,8 +12,8 @@ export function filterFrameworksWithDependencies(
         return dependency.name in dependencies;
       });
     });
-  } catch (error: any) {
-    logger.log("Error while filtering FrameworksWithDependencies", error.message);
+  } catch (error) {
+    logger.error("Error while filtering FrameworksWithDependencies", error);
     throw error;
   }
 }
@@ -45,8 +45,8 @@ export async function filterFrameworksWithFiles(
       }
     }
     return filteredFrameworks;
-  } catch (error: any) {
-    logger.log("Error while filtering FrameworksWithFiles", error.message);
+  } catch (error) {
+    logger.error("Error while filtering FrameworksWithFiles", error);
     throw error;
   }
 }
@@ -61,8 +61,8 @@ export function removeEmbededFrameworks(allFrameworkSpecs: FrameworkSpec[]): Fra
       framework.embedsFrameworks.forEach((item) => embededFrameworkSet.add(item));
     });
     return allFrameworkSpecs.filter((item) => !embededFrameworkSet.has(item.id));
-  } catch (error: any) {
-    logger.log("Error occured while removing Embeded Frameworks", error.message);
+  } catch (error) {
+    logger.error("Error occured while removing Embeded Frameworks", error.message);
     throw error;
   }
 }
