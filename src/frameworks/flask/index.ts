@@ -14,8 +14,9 @@ const CLI = "python";
 export async function discover(dir: string) {
   if (!(await pathExists(join(dir, "requirements.txt")))) return;
   if (!(await pathExists(join(dir, "main.py")))) return;
-  const discovery = await getDiscoveryResults(dir);
-  return { mayWantBackend: true, publicDirectory: discovery.staticFolder };
+  const { staticFolder } = await getDiscoveryResults(dir);
+  const publicDirectory = relative(dir, staticFolder);
+  return { mayWantBackend: true, publicDirectory };
 }
 
 export function build(): Promise<BuildResult> {
