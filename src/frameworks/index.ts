@@ -340,13 +340,11 @@ export async function prepareFrameworks(
       // This is just a fallback for previous behavior if the user manually
       // disables the pintags experiment (e.g. there is a break and they would
       // rather disable the experiment than roll back).
-      if (!experiments.isEnabled("pintags") || purpose !== "deploy") {
-        if (!targetNames.includes("functions")) {
-          targetNames.unshift("functions");
-        }
-        if (options.only) {
-          options.only = ensureTargeted(options.only, codebase);
-        }
+      if (!targetNames.includes("functions")) {
+        targetNames.unshift("functions");
+      }
+      if (options.only) {
+        options.only = ensureTargeted(options.only, codebase);
       }
 
       // if exists, delete everything but the node_modules directory and package-lock.json
@@ -454,7 +452,7 @@ export async function prepareFrameworks(
         packageJson.engines.node ||= engine.toString();
         delete packageJson.scripts;
         delete packageJson.devDependencies;
-        runtime = `node${engine.toString()}`;
+        runtime = `nodejs${engine.toString()}`;
 
         const bundledDependencies: Record<string, string> = packageJson.bundledDependencies || {};
         if (Object.keys(bundledDependencies).length) {
