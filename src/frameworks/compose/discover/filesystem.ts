@@ -1,7 +1,7 @@
 import { FileSystem } from "./types";
 import { pathExists, readFile } from "fs-extra";
-import { join } from "path";
 import { logger } from "../../..";
+import * as path from "path";
 
 /**
  * Find files or read contents present in the Repository.
@@ -16,7 +16,7 @@ export class RepositoryFileSystem implements FileSystem {
   async exists(file: string): Promise<boolean> {
     try {
       if (!(file in this.contentCache)) {
-        this.existsCache[file] = await pathExists(join(this.cwd, file));
+        this.existsCache[file] = await pathExists(path.resolve(this.cwd, file));
       }
 
       return this.existsCache[file];
@@ -26,20 +26,20 @@ export class RepositoryFileSystem implements FileSystem {
     }
   }
 
-  async read(path: string): Promise<string> {
-    if (this.readErrorCache[path]) {
-      throw this.readErrorCache[path];
+  async read(file: string): Promise<string> {
+    if (this.readErrorCache[file]) {
+      throw this.readErrorCache[file];
     }
-    if (!(path in this.contentCache)) {
+    if (!(file in this.contentCache)) {
       try {
-        const fileContents = await readFile(join(this.cwd, path), "utf-8");
-        this.contentCache[path] = fileContents;
+        const fileContents = await readFile(path.resolve(this.cwd, file), "utf-8");
+        this.contentCache[file] = fileContents;
       } catch (error: any) {
         logger.error("Error occured while reading file contents:", error.message);
         throw error;
       }
     }
-    return this.contentCache[path];
+    return this.contentCache[file];
   }
 }
 

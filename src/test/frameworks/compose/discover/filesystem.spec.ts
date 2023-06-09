@@ -5,9 +5,7 @@ describe("RepositoryFileSystem", () => {
   let fileSystem: RepositoryFileSystem;
 
   before(() => {
-    fileSystem = new RepositoryFileSystem(
-      "/Users/svnsairam/Documents/google3/firebase-tools/src/frameworks/compose/discover/nodetestapp/nodeapp"
-    );
+    fileSystem = new RepositoryFileSystem("./src/frameworks/compose/discover/testapps/express");
   });
 
   describe("exists", () => {
@@ -28,7 +26,23 @@ describe("RepositoryFileSystem", () => {
     it("should read and return the contents of the file", async () => {
       const fileContent = await fileSystem.read("package.json");
 
-      expect(fileContent).to.equal(fileContent);
+      const expected = {
+        name: "express",
+        version: "1.0.0",
+        description: "",
+        main: "index.js",
+        scripts: {
+          test: 'echo "Error: no test specified" && exit 1',
+        },
+        keywords: [],
+        author: "",
+        license: "ISC",
+        dependencies: {
+          express: "^4.18.2",
+        },
+      };
+
+      expect(JSON.parse(fileContent)).to.deep.equal(expected);
     });
   });
 });
