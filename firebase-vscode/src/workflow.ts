@@ -380,7 +380,7 @@ export function setupWorkflow(
   }
   broker.on(
     "launchEmulators",
-    async ({firebaseJson, emulatorUiSelections}) => {
+    async ({ firebaseJson, emulatorUiSelections }) => {
       emulatorsStart(firebaseJson, emulatorUiSelections).then(() => {
         broker.send("notifyRunningEmulatorInfo", { uiUrl: getEmulatorUiUrl(), displayInfo: listRunningEmulators() });
       });

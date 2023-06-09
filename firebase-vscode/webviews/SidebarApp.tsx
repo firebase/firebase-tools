@@ -35,7 +35,6 @@ export function SidebarApp() {
   const [firebaseJson, setFirebaseJson] = useState<FirebaseConfig>();
 
   useEffect(() => {
-
     webLogger.debug("loading SidebarApp component");
     broker.send("getEnv");
     broker.send("getUsers");
@@ -54,7 +53,10 @@ export function SidebarApp() {
     });
 
     broker.on("notifyFirebaseConfig", ({ firebaseJson, firebaseRC }) => {
-      webLogger.debug("got firebase hosting", JSON.stringify(firebaseJson?.hosting));
+      webLogger.debug(
+        "got firebase hosting",
+        JSON.stringify(firebaseJson?.hosting)
+      );
       if (firebaseJson) {
         setFirebaseJson(firebaseJson);
         console.log("set firebase JSON");
@@ -109,7 +111,7 @@ export function SidebarApp() {
       email: userEmail!, // Safe to assume user email is already there
       singleAppSupport: true,
     });
-  };
+  }
 
   const accountSection = (
     <AccountSection
@@ -151,10 +153,7 @@ export function SidebarApp() {
           }}
         />
       )}
-      {firebaseJson &&
-        <EmulatorPanel firebaseJson={firebaseJson}
-        />
-      }
+      {firebaseJson && <EmulatorPanel firebaseJson={firebaseJson} />}
     </>
   );
 }
