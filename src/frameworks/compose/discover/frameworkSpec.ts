@@ -23,14 +23,14 @@ export const frameworkSpecs: FrameworkSpec[] = [
     ],
     commands: {
       build: {
-        cmd: "npx next build",
+        cmd: "next build",
       },
       dev: {
-        cmd: "npx next dev",
+        cmd: "next dev",
         env: { NODE_ENV: "dev" },
       },
       run: {
-        cmd: "npx next run",
+        cmd: "next run",
         env: { NODE_ENV: "production" },
       },
     },
