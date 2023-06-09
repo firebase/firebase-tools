@@ -1,6 +1,6 @@
 import { copy, pathExists, readFile } from "fs-extra";
 import { join } from "path";
-import { FrameworkType, SupportLevel } from "..";
+import { FrameworkType, SupportLevel } from "../interfaces";
 import { viteDiscoverWithNpmDependency, build as viteBuild } from "../vite";
 import { SvelteKitConfig } from "./interfaces";
 import { fileExistsSync } from "../../fsutils";

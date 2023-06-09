@@ -17,6 +17,7 @@ import * as args from "../deploy/functions/args";
 export const command = new Command("functions:secrets:destroy <KEY>[@version]")
   .description("Destroy a secret. Defaults to destroying the latest version.")
   .withForce("Destroys a secret without confirmation.")
+  .before(secrets.ensureApi)
   .action(async (key: string, options: Options) => {
     const projectId = needProjectId(options);
     const projectNumber = await needProjectNumber(options);

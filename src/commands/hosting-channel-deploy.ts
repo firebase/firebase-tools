@@ -46,143 +46,152 @@ export const command = new Command("hosting:channel:deploy [channelId]")
   .before(requireConfig)
   .before(requirePermissions, ["firebasehosting.sites.update"])
   .before(requireHostingSite)
-  .action(
-    async (
-      channelId: string,
-      options: Options & HostingOptions
-    ): Promise<{ [targetOrSite: string]: ChannelInfo }> => {
-      const projectId = needProjectId(options);
+  .action(hostingChannelDeployAction);
 
-      // TODO: implement --open.
-      if (options.open) {
-        throw new FirebaseError("open is not yet implemented");
-      }
+/**
+ * Deploys to specified hosting channel.
+ *
+ * @param channelId ID of hosting channel to deploy to.
+ * @param options Deployment options
+ */
+export async function hostingChannelDeployAction(
+  channelId: string,
+  options: Options & HostingOptions
+): Promise<{ [targetOrSite: string]: ChannelInfo }> {
+  const projectId = needProjectId(options);
 
-      let expireTTL = DEFAULT_DURATION;
-      if (options.expires) {
-        expireTTL = calculateChannelExpireTTL(options.expires);
-        logger.debug(`Expires TTL: ${expireTTL}`);
-      }
+  // TODO: implement --open.
+  if (options.open) {
+    throw new FirebaseError("open is not yet implemented");
+  }
 
-      // TODO: interactive prompt if channel doesn't exist
-      if (!channelId) {
-        throw new FirebaseError("channelID is currently required");
-      }
+  let expireTTL = DEFAULT_DURATION;
+  if (options.expires) {
+    expireTTL = calculateChannelExpireTTL(options.expires);
+    logger.debug(`Expires TTL: ${expireTTL}`);
+  }
 
-      channelId = normalizeName(channelId);
+  // TODO: interactive prompt if channel doesn't exist
+  if (!channelId) {
+    throw new FirebaseError("channelID is currently required");
+  }
 
-      // Some normalizing to be very sure of this check.
-      if (channelId.toLowerCase().trim() === "live") {
-        throw new FirebaseError(
-          `Cannot deploy to the ${bold("live")} channel using this command. Please use ${bold(
-            yellow("firebase deploy")
-          )} instead.`
-        );
-      }
+  channelId = normalizeName(channelId);
 
-      if (options.only) {
-        // HACK: Re-use deploy in a rather ham-fisted way.
-        options.only = options.only
-          .split(",")
-          .map((o: string) => `hosting:${o}`)
-          .join(",");
-      }
+  // Some normalizing to be very sure of this check.
+  if (channelId.toLowerCase().trim() === "live") {
+    throw new FirebaseError(
+      `Cannot deploy to the ${bold("live")} channel using this command. Please use ${bold(
+        yellow("firebase deploy")
+      )} instead.`
+    );
+  }
 
-      const sites: ChannelInfo[] = hostingConfig(options).map((config) => {
-        return {
-          target: config.target,
-          site: config.site,
-          url: "",
-          version: "",
-          expireTime: "",
-        };
-      });
+  if (options.only) {
+    // HACK: Re-use deploy in a rather ham-fisted way.
+    options.only = options.only
+      .split(",")
+      .map((o: string) => `hosting:${o}`)
+      .join(",");
+  } else {
+    // N.B. The hosting deploy code uses the only string to add all (and only)
+    // functions that are pinned to the only string. If we didn't set the
+    // only string here and only used the hosting deploy targets, we'd only
+    // be able to deploy *all* functions.
+    options.only = "hosting";
+  }
 
-      await Promise.all(
-        sites.map(async (siteInfo) => {
-          const site = siteInfo.site;
-          let chan = await getChannel(projectId, site, channelId);
-          if (chan) {
-            logger.debug("[hosting] found existing channel for site", site, chan);
-            const channelExpires = Boolean(chan.expireTime);
-            if (!channelExpires && options.expires) {
-              // If the channel doesn't expire, but the user provided a TTL, update the channel.
-              chan = await updateChannelTtl(projectId, site, channelId, expireTTL);
-            } else if (channelExpires) {
-              // If the channel expires, calculate the time remaining to maybe update the channel.
-              const channelTimeRemaining = new Date(chan.expireTime).getTime() - Date.now();
-              // If the user explicitly gave us a time OR the time remaining is less than the new TTL:
-              if (options.expires || channelTimeRemaining < expireTTL) {
-                chan = await updateChannelTtl(projectId, site, channelId, expireTTL);
-                logger.debug("[hosting] updated TTL for existing channel for site", site, chan);
-              }
-            }
-          } else {
-            chan = await createChannel(projectId, site, channelId, expireTTL);
-            logger.debug("[hosting] created new channnel for site", site, chan);
-            logLabeledSuccess(
-              LOG_TAG,
-              `Channel ${bold(channelId)} has been created on site ${bold(site)}.`
-            );
+  const sites: ChannelInfo[] = hostingConfig(options).map((config) => {
+    return {
+      target: config.target,
+      site: config.site,
+      url: "",
+      version: "",
+      expireTime: "",
+    };
+  });
+
+  await Promise.all(
+    sites.map(async (siteInfo) => {
+      const site = siteInfo.site;
+      let chan = await getChannel(projectId, site, channelId);
+      if (chan) {
+        logger.debug("[hosting] found existing channel for site", site, chan);
+        const channelExpires = Boolean(chan.expireTime);
+        if (!channelExpires && options.expires) {
+          // If the channel doesn't expire, but the user provided a TTL, update the channel.
+          chan = await updateChannelTtl(projectId, site, channelId, expireTTL);
+        } else if (channelExpires) {
+          // If the channel expires, calculate the time remaining to maybe update the channel.
+          const channelTimeRemaining = new Date(chan.expireTime).getTime() - Date.now();
+          // If the user explicitly gave us a time OR the time remaining is less than the new TTL:
+          if (options.expires || channelTimeRemaining < expireTTL) {
+            chan = await updateChannelTtl(projectId, site, channelId, expireTTL);
+            logger.debug("[hosting] updated TTL for existing channel for site", site, chan);
           }
-          siteInfo.url = chan.url;
-          siteInfo.expireTime = chan.expireTime;
-          return;
-        })
-      );
-
-      const { hosting } = await deploy(["hosting"], options, { hostingChannel: channelId });
-
-      // The version names are returned in the hosting key of the deploy result.
-      //
-      // If there is only one element it is returned as a string, otherwise it
-      // is an array of strings. Not sure why it's done that way, but that's
-      // something we can't change because it is in the deploy output in json.
-      //
-      // The code below turns it back to an array of version names.
-      const versionNames: Array<string> = [];
-      if (typeof hosting === "string") {
-        versionNames.push(hosting);
-      } else if (Array.isArray(hosting)) {
-        hosting.forEach((version) => {
-          versionNames.push(version);
-        });
-      }
-
-      if (options.authorizedDomains) {
-        await syncAuthState(projectId, sites);
+        }
       } else {
-        logger.debug(
-          `skipping syncAuthState since authorizedDomains is ${options.authorizedDomains}`
-        );
-      }
-
-      logger.info();
-      const deploys: { [key: string]: ChannelInfo } = {};
-      sites.forEach((d) => {
-        deploys[d.target || d.site] = d;
-        let expires = "";
-        if (d.expireTime) {
-          expires = `[expires ${bold(datetimeString(new Date(d.expireTime)))}]`;
-        }
-        const versionPrefix = `sites/${d.site}/versions/`;
-        const versionName = versionNames.find((v) => {
-          return v.startsWith(versionPrefix);
-        });
-        let version = "";
-        if (versionName) {
-          d.version = versionName.replace(versionPrefix, "");
-          version = ` [version ${bold(d.version)}]`;
-        }
+        chan = await createChannel(projectId, site, channelId, expireTTL);
+        logger.debug("[hosting] created new channnel for site", site, chan);
         logLabeledSuccess(
           LOG_TAG,
-          `Channel URL (${bold(d.site || d.target || "")}): ${d.url} ${expires}${version}`
+          `Channel ${bold(channelId)} has been created on site ${bold(site)}.`
         );
-      });
-      return deploys;
-    }
+      }
+      siteInfo.url = chan.url;
+      siteInfo.expireTime = chan.expireTime;
+      return;
+    })
   );
 
+  const { hosting } = await deploy(["hosting"], options, { hostingChannel: channelId });
+
+  // The version names are returned in the hosting key of the deploy result.
+  //
+  // If there is only one element it is returned as a string, otherwise it
+  // is an array of strings. Not sure why it's done that way, but that's
+  // something we can't change because it is in the deploy output in json.
+  //
+  // The code below turns it back to an array of version names.
+  const versionNames: Array<string> = [];
+  if (typeof hosting === "string") {
+    versionNames.push(hosting);
+  } else if (Array.isArray(hosting)) {
+    hosting.forEach((version) => {
+      versionNames.push(version);
+    });
+  }
+
+  if (options.authorizedDomains) {
+    await syncAuthState(projectId, sites);
+  } else {
+    logger.debug(`skipping syncAuthState since authorizedDomains is ${options.authorizedDomains}`);
+  }
+
+  logger.info();
+  const deploys: { [key: string]: ChannelInfo } = {};
+  sites.forEach((d) => {
+    deploys[d.target || d.site] = d;
+    let expires = "";
+    if (d.expireTime) {
+      expires = `[expires ${bold(datetimeString(new Date(d.expireTime)))}]`;
+    }
+    const versionPrefix = `sites/${d.site}/versions/`;
+    const versionName = versionNames.find((v) => {
+      return v.startsWith(versionPrefix);
+    });
+    let version = "";
+    if (versionName) {
+      d.version = versionName.replace(versionPrefix, "");
+      version = ` [version ${bold(d.version)}]`;
+    }
+    logLabeledSuccess(
+      LOG_TAG,
+      `Channel URL (${bold(d.site || d.target || "")}): ${d.url} ${expires}${version}`
+    );
+  });
+  return deploys;
+}
 /**
  * Helper function to sync authorized domains for deployed sites.
  * @param projectId the project id.

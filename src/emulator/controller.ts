@@ -186,6 +186,11 @@ export function shouldStart(options: Options, name: Emulators): boolean {
 }
 
 function findExportMetadata(importPath: string): ExportMetadata | undefined {
+  const pathExists = fs.existsSync(importPath);
+  if (!pathExists) {
+    throw new FirebaseError(`Directory "${importPath}" does not exist.`);
+  }
+
   const pathIsDirectory = fs.lstatSync(importPath).isDirectory();
   if (!pathIsDirectory) {
     return;
@@ -250,7 +255,8 @@ interface EmulatorOptions extends Options {
  */
 export async function startAll(
   options: EmulatorOptions,
-  showUI = true
+  showUI = true,
+  runningTestScript = false
 ): Promise<{ deprecationNotices: string[] }> {
   // Emulators config is specified in firebase.json as:
   // "emulators": {
@@ -451,21 +457,25 @@ export async function startAll(
   ) {
     experiments.assertEnabled("webframeworks", "emulate a web framework");
     const emulators: EmulatorInfo[] = [];
-    if (experiments.isEnabled("webframeworks")) {
-      for (const e of ALL_SERVICE_EMULATORS) {
-        // TODO(yuchenshi): Functions and Eventarc may be missing if they are not
-        // yet known to be needed and then prepareFrameworks adds extra functions.
-        if (listenForEmulator[e]) {
-          emulators.push({
-            name: e,
-            host: utils.connectableHostname(listenForEmulator[e][0].address),
-            port: listenForEmulator[e][0].port,
-          });
-        }
+    for (const e of ALL_SERVICE_EMULATORS) {
+      // TODO(yuchenshi): Functions and Eventarc may be missing if they are not
+      // yet known to be needed and then prepareFrameworks adds extra functions.
+      if (listenForEmulator[e]) {
+        emulators.push({
+          name: e,
+          host: utils.connectableHostname(listenForEmulator[e][0].address),
+          port: listenForEmulator[e][0].port,
+        });
       }
     }
     // This may add additional sources for Functions emulator and must be done before it.
-    await prepareFrameworks(targets, options, options, emulators);
+    await prepareFrameworks(
+      runningTestScript ? "test" : "emulate",
+      targets,
+      undefined,
+      options,
+      emulators
+    );
   }
 
   const projectDir = (options.extDevDir || options.config.projectDir) as string;

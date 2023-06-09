@@ -1,14 +1,14 @@
 import { copy, pathExists } from "fs-extra";
-import { mkdir, readFile } from "fs/promises";
+import { mkdir, readFile, readdir } from "fs/promises";
 import { join } from "path";
-import { BuildResult, FrameworkType, SupportLevel } from "..";
+import { BuildResult, FrameworkType, SupportLevel } from "../interfaces";
 import { runWithVirtualEnv } from "../../functions/python";
 
 export const name = "Django";
 export const support = SupportLevel.Experimental;
 export const type = FrameworkType.Framework;
 
-const CLI = "python3.10";
+const CLI = "python";
 
 export async function discover(dir: string) {
   if (!(await pathExists(join(dir, "requirements.txt")))) return;
@@ -24,15 +24,14 @@ export async function discover(dir: string) {
       );
       let out = "";
       child.stdout?.on("data", (chunk: Buffer) => {
-        console.log(chunk);
         const chunkString = chunk.toString();
         out = out + chunkString;
       });
       child.on("exit", () => resolve(out));
     });
-    console.log({ isDjango });
     if (isDjango !== "True\n") return;
-    return { mayWantBackend: true };
+    // TODO don't hardcode static
+    return { mayWantBackend: true, publicDirectory: "static" };
   } catch (e) {
     // continue
   }
@@ -71,8 +70,14 @@ export async function ɵcodegenFunctionsDirectory(root: string, dest: string) {
   });
   const splitWsgiApplication = wsgiApplication.trim().split(".");
   // TODO refactor to at(-1) when we have it
-  const imports = [splitWsgiApplication.slice(0, -1).join("."), splitWsgiApplication.slice(-1)[0]];
-  const requirementsTxt = await readFile(join(root, "requirements.txt"));
-  await copy(root, dest, { recursive: true });
+  const imports: [string,string] = [splitWsgiApplication.slice(0, -1).join("."), splitWsgiApplication.slice(-1)[0]];
+  const requirementsTxt = (await readFile(join(root, "requirements.txt"))).toString();
+  // COPY everything except venv
+  const files = await readdir(root);
+  await Promise.all(files.map(async file => {
+    if (file !== "venv") {
+      await copy(join(root, file), join(dest, file), { recursive: true });
+    }
+  }));
   return { imports, requirementsTxt };
 }

@@ -1,14 +1,15 @@
 import { copy, pathExists } from "fs-extra";
-import { mkdir, readFile, rmdir } from "fs/promises";
+import { mkdir, readFile, readdir, rmdir } from "fs/promises";
 import { join, relative } from "path";
-import { BuildResult, FrameworkType, SupportLevel } from "..";
+import { BuildResult, FrameworkType, SupportLevel } from "../interfaces";
 import { runWithVirtualEnv } from "../../functions/python";
+import { dirExistsSync } from "../../fsutils";
 
 export const name = "Flask";
 export const support = SupportLevel.Experimental;
 export const type = FrameworkType.Framework;
 
-const CLI = "python3.10";
+const CLI = "python";
 
 export async function discover(dir: string) {
   if (!(await pathExists(join(dir, "requirements.txt")))) return;
@@ -23,16 +24,23 @@ export function build(): Promise<BuildResult> {
 
 export async function ɵcodegenPublicDirectory(root: string, dest: string) {
   const { staticFolder } = await getDiscoveryResults(root);
-  copy(join(root, staticFolder), dest);
+  if (dirExistsSync(staticFolder)) {
+    await copy(join(root, staticFolder), dest);
+  }
 }
 
 export async function ɵcodegenFunctionsDirectory(root: string, dest: string) {
   await mkdir(join(dest, "src"), { recursive: true });
-  await copy(root, join(dest, "src"), { recursive: true });
-  await rmdir(join(dest, "src", "venv")).catch(() => undefined);
-  const requirementsTxt = await readFile(join(root, "requirements.txt"));
+  // COPY everything except venv
+  const files = await readdir(root);
+  await Promise.all(files.map(async file => {
+    if (file !== "venv") {
+      await copy(join(root, file), join(dest, "src", file), { recursive: true });
+    }
+  }));
+  const requirementsTxt = (await readFile(join(root, "requirements.txt"))).toString();
   const { appName } = await getDiscoveryResults(root);
-  const imports = ["src.main", appName];
+  const imports: [string, string] = ["src.main", appName];
   return { imports, requirementsTxt };
 }
 

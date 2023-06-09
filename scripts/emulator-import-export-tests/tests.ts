@@ -6,6 +6,7 @@ import * as path from "path";
 
 import { CLIProcess } from "../integration-helpers/cli";
 import { FrameworkOptions } from "../integration-helpers/framework";
+import { Resolver } from "../../src/emulator/dns";
 
 const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "";
 const ADMIN_CREDENTIAL = {
@@ -24,6 +25,17 @@ const ALL_EMULATORS_STARTED_LOG = "All emulators ready";
  * parallel emulator subprocesses.
  */
 const TEST_SETUP_TIMEOUT = 60000;
+
+const r = new Resolver();
+let addr: string;
+async function localhost(): Promise<string> {
+  if (addr) {
+    return addr;
+  }
+  const a = await r.lookupFirst("localhost");
+  addr = a.address;
+  return addr;
+}
 
 function readConfig(): FrameworkOptions {
   const filename = path.join(__dirname, "firebase.json");
@@ -113,10 +125,11 @@ describe("import/export end to end", () => {
     // Write some data to export
     const config = readConfig();
     const port = config.emulators!.database.port;
+    const host = await localhost();
     const aApp = admin.initializeApp(
       {
         projectId: FIREBASE_PROJECT,
-        databaseURL: `http://localhost:${port}?ns=namespace-a`,
+        databaseURL: `http://${host}:${port}?ns=namespace-a`,
         credential: ADMIN_CREDENTIAL,
       },
       "rtdb-export-a"
@@ -124,7 +137,7 @@ describe("import/export end to end", () => {
     const bApp = admin.initializeApp(
       {
         projectId: FIREBASE_PROJECT,
-        databaseURL: `http://localhost:${port}?ns=namespace-b`,
+        databaseURL: `http://${host}:${port}?ns=namespace-b`,
         credential: ADMIN_CREDENTIAL,
       },
       "rtdb-export-b"
@@ -132,7 +145,7 @@ describe("import/export end to end", () => {
     const cApp = admin.initializeApp(
       {
         projectId: FIREBASE_PROJECT,
-        databaseURL: `http://localhost:${port}?ns=namespace-c`,
+        databaseURL: `http://${host}:${port}?ns=namespace-c`,
         credential: ADMIN_CREDENTIAL,
       },
       "rtdb-export-c"
@@ -228,7 +241,7 @@ describe("import/export end to end", () => {
     const config = readConfig();
     const port = config.emulators!.auth.port;
     try {
-      process.env.FIREBASE_AUTH_EMULATOR_HOST = `localhost:${port}`;
+      process.env.FIREBASE_AUTH_EMULATOR_HOST = `${await localhost()}:${port}`;
       const adminApp = admin.initializeApp(
         {
           projectId: project,
@@ -335,7 +348,7 @@ describe("import/export end to end", () => {
     const config = readConfig();
     const port = config.emulators!.auth.port;
     try {
-      process.env.FIREBASE_AUTH_EMULATOR_HOST = `localhost:${port}`;
+      process.env.FIREBASE_AUTH_EMULATOR_HOST = `${await localhost()}:${port}`;
       const adminApp = admin.initializeApp(
         {
           projectId: project,
@@ -477,7 +490,7 @@ describe("import/export end to end", () => {
 
     const config = readConfig();
     const port = config.emulators!.storage.port;
-    process.env.STORAGE_EMULATOR_HOST = `http://localhost:${port}`;
+    process.env.STORAGE_EMULATOR_HOST = `http://${await localhost()}:${port}`;
 
     // Write some data to export
     const aApp = admin.initializeApp(

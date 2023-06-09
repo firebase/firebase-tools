@@ -1,8 +1,10 @@
-import { bold } from "colorette";
+import { bold, italic } from "colorette";
 import * as leven from "leven";
+import { basename } from "path";
 
 import { configstore } from "./configstore";
 import { FirebaseError } from "./error";
+import { isRunningInGithubAction } from "./init/features/hosting/github";
 
 export interface Experiment {
   shortDescription: string;
@@ -30,16 +32,6 @@ export const ALL_EXPERIMENTS = experiments({
   rtdbmanagement: {
     shortDescription: "Use new endpoint to administer realtime database instances",
   },
-
-  // Extensions experiments
-  ext: {
-    shortDescription: `Enables the ${bold("ext:sources:create")} command`,
-  },
-  extdev: {
-    shortDescription: `Enables the ${bold("ext:dev")} family of commands`,
-    docsUri: "https://firebase.google.com/docs/extensions/alpha/overview-build-extensions",
-  },
-
   // Cloud Functions for Firebase experiments
   pythonfunctions: {
     shortDescription: "Python support for Cloud Functions for Firebase",
@@ -91,6 +83,8 @@ export const ALL_EXPERIMENTS = experiments({
       "exist per region. firebase-tools aggressively garbage collects tags it creates " +
       "if any service exceeds 500 tags, but it is theoretically possible that a project " +
       "exceeds the region-wide limit of tags and an old site version fails",
+    public: true,
+    default: true,
   },
   // Access experiments
   crossservicerules: {
@@ -192,11 +186,28 @@ export function enableExperimentsFromCliEnvVariable(): void {
  */
 export function assertEnabled(name: ExperimentName, task: string): void {
   if (!isEnabled(name)) {
-    throw new FirebaseError(
-      `Cannot ${task} because the experiment ${bold(name)} is not enabled. To enable ${bold(
-        name
-      )} run ${bold(`firebase experiments:enable ${name}`)}`
-    );
+    const prefix = `Cannot ${task} because the experiment ${bold(name)} is not enabled.`;
+    if (isRunningInGithubAction()) {
+      const path = process.env.GITHUB_WORKFLOW_REF?.split("@")[0];
+      const filename = path ? `.github/workflows/${basename(path)}` : "your action's yml";
+      const newValue = [process.env.FIREBASE_CLI_EXPERIMENTS, name].filter((it) => !!it).join(",");
+      throw new FirebaseError(
+        `${prefix} To enable add a ${bold(
+          "FIREBASE_CLI_EXPERIMENTS"
+        )} environment variable to ${filename}, like so: ${italic(`
+
+- uses: FirebaseExtended/action-hosting-deploy@v0
+  with:
+    ...
+  env:
+    FIREBASE_CLI_EXPERIMENTS: ${newValue}
+`)}`
+      );
+    } else {
+      throw new FirebaseError(
+        `${prefix} To enable ${bold(name)} run ${bold(`firebase experiments:enable ${name}`)}`
+      );
+    }
   }
 }
 

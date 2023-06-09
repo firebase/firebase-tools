@@ -14,6 +14,7 @@ import { checkSpecForSecrets } from "./secrets";
 import { displayWarningsForDeploy, outOfBandChangesWarning } from "../../extensions/warnings";
 import { detectEtagChanges } from "../../extensions/etags";
 import { checkSpecForV2Functions, ensureNecessaryV2ApisAndRoles } from "./v2FunctionHelper";
+import { acceptLatestAppDeveloperTOS } from "../../extensions/tos";
 
 export async function prepare(context: Context, options: Options, payload: Payload) {
   const projectId = needProjectId(options);
@@ -35,15 +36,8 @@ export async function prepare(context: Context, options: Options, payload: Paylo
   const etagsChanged = detectEtagChanges(options.rc, projectId, context.have);
   if (etagsChanged.length) {
     outOfBandChangesWarning(etagsChanged);
-    if (!options.force && options.nonInteractive) {
-      throw new FirebaseError(
-        "Pass the --force flag to overwrite out of band changes in non-interactive mode"
-      );
-    } else if (
-      !options.force &&
-      !options.nonInteractive &&
-      !(await prompt.promptOnce({
-        type: "confirm",
+    if (
+      !(await prompt.confirm({
         message: `Do you wish to continue deploying these extension instances?`,
         default: false,
       }))
@@ -70,15 +64,8 @@ export async function prepare(context: Context, options: Options, payload: Paylo
   payload.instancesToDelete = context.have.filter((i) => !context.want?.some(matchesInstanceId(i)));
 
   if (await displayWarningsForDeploy(payload.instancesToCreate)) {
-    if (!options.force && options.nonInteractive) {
-      throw new FirebaseError(
-        "Pass the --force flag to acknowledge these terms in non-interactive mode"
-      );
-    } else if (
-      !options.force &&
-      !options.nonInteractive &&
-      !(await prompt.promptOnce({
-        type: "confirm",
+    if (
+      !(await prompt.confirm({
         message: `Do you wish to continue deploying these extension instances?`,
         default: true,
       }))
@@ -103,13 +90,8 @@ export async function prepare(context: Context, options: Options, payload: Paylo
   }
   if (payload.instancesToDelete.length) {
     logger.info(deploymentSummary.deletesSummary(payload.instancesToDelete));
-    if (!options.force && options.nonInteractive) {
-      throw new FirebaseError("Pass the --force flag to use this command in non-interactive mode");
-    } else if (
-      !options.force &&
-      !options.nonInteractive &&
-      !(await prompt.promptOnce({
-        type: "confirm",
+    if (
+      !(await prompt.confirm({
         message: `Would you like to delete ${payload.instancesToDelete
           .map((i) => i.instanceId)
           .join(", ")}?`,
@@ -123,6 +105,11 @@ export async function prepare(context: Context, options: Options, payload: Paylo
   }
 
   await requirePermissions(options, permissionsNeeded);
+  await acceptLatestAppDeveloperTOS(
+    options,
+    projectId,
+    context.want.map((i) => i.instanceId)
+  );
 }
 const matchesInstanceId = (dep: planner.InstanceSpec) => (test: planner.InstanceSpec) => {
   return dep.instanceId === test.instanceId;

@@ -190,14 +190,14 @@ export async function convertConfig(
       if (endpoint.platform === "gcfv1") {
         if (!backend.isHttpsTriggered(endpoint) && !backend.isCallableTriggered(endpoint)) {
           throw new FirebaseError(
-            `Function ${endpoint.id} is a gen 1 function and therefore must be an https function type`
+            `Function ${endpoint.id} is a 1st gen function and therefore must be an https function type`
           );
         }
         if (rewrite.function.pinTag) {
           throw new FirebaseError(
-            `Function ${endpoint.id} is a gen 1 function and therefore does not support the ${bold(
-              "pinTag"
-            )} option`
+            `Function ${
+              endpoint.id
+            } is a 1st gen function and therefore does not support the ${bold("pinTag")} option`
           );
         }
         return {
@@ -235,12 +235,13 @@ export async function convertConfig(
       const apiRewrite: api.Rewrite = {
         ...target,
         run: {
-          region: "us-central1",
-          ...rewrite.run,
+          serviceId: rewrite.run.serviceId,
+          region: rewrite.run.region || "us-central1",
         },
       };
-      if (apiRewrite.run.tag) {
+      if (rewrite.run.pinTag) {
         experiments.assertEnabled("pintags", "pin to a run service revision");
+        apiRewrite.run.tag = runTags.TODO_TAG_NAME;
       }
       return apiRewrite;
     }

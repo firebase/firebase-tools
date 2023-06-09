@@ -3,4 +3,6 @@
 /lib/**/*
 /CONTRIBUTING.md
 /scripts/frameworks-tests/vite-project/**
+/scripts/webframeworks-deploy-tests/angular/**
+/scripts/webframeworks-deploy-tests/nextjs/**
 /src/frameworks/docs/**

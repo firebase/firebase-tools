@@ -1,12 +1,10 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 import { EventEmitter } from "events";
-import type { ChildProcess } from "child_process";
-import { Readable, Writable } from "stream";
+import { Writable } from "stream";
 import * as crossSpawn from "cross-spawn";
 import * as fsExtra from "fs-extra";
 
-import * as frameworksFunctions from "../../../frameworks";
 import * as astroUtils from "../../../frameworks/astro/utils";
 import * as frameworkUtils from "../../../frameworks/utils";
 import {
@@ -46,7 +44,7 @@ describe("Astro", () => {
           })
         );
       sandbox
-        .stub(frameworksFunctions, "findDependency")
+        .stub(frameworkUtils, "findDependency")
         .withArgs("astro", { cwd, depth: 0, omitDev: false })
         .returns({
           version: "2.2.2",
@@ -76,7 +74,7 @@ describe("Astro", () => {
           })
         );
       sandbox
-        .stub(frameworksFunctions, "findDependency")
+        .stub(frameworkUtils, "findDependency")
         .withArgs("astro", { cwd, depth: 0, omitDev: false })
         .returns({
           version: "2.2.2",
@@ -210,10 +208,11 @@ describe("Astro", () => {
     });
 
     it("should build an Astro SSR app", async () => {
-      const process = new EventEmitter() as ChildProcess;
+      const process = new EventEmitter() as any;
       process.stdin = new Writable();
-      process.stdout = new EventEmitter() as Readable;
-      process.stderr = new EventEmitter() as Readable;
+      process.stdout = new EventEmitter();
+      process.stderr = new EventEmitter();
+      process.status = 0;
 
       const cwd = ".";
       const publicDir = Math.random().toString(36).split(".")[1];
@@ -233,8 +232,8 @@ describe("Astro", () => {
         );
 
       const cli = Math.random().toString(36).split(".")[1];
-      sandbox.stub(frameworksFunctions, "getNodeModuleBin").withArgs("astro", cwd).returns(cli);
-      sandbox.stub(crossSpawn, "spawn").withArgs(cli, ["build"], { cwd }).returns(process);
+      sandbox.stub(frameworkUtils, "getNodeModuleBin").withArgs("astro", cwd).returns(cli);
+      const stub = sandbox.stub(crossSpawn, "sync").returns(process);
 
       const result = build(cwd);
 
@@ -243,14 +242,10 @@ describe("Astro", () => {
       expect(await result).to.deep.equal({
         wantsBackend: true,
       });
+      sinon.assert.calledWith(stub, cli, ["build"], { cwd, stdio: "inherit" });
     });
 
     it("should fail to build an Astro SSR app w/wrong adapter", async () => {
-      const process = new EventEmitter() as ChildProcess;
-      process.stdin = new Writable();
-      process.stdout = new EventEmitter() as Readable;
-      process.stderr = new EventEmitter() as Readable;
-
       const cwd = ".";
       const publicDir = Math.random().toString(36).split(".")[1];
       sandbox
@@ -269,20 +264,20 @@ describe("Astro", () => {
         );
 
       const cli = Math.random().toString(36).split(".")[1];
-      sandbox.stub(frameworksFunctions, "getNodeModuleBin").withArgs("astro", cwd).returns(cli);
-      sandbox.stub(crossSpawn, "spawn").withArgs(cli, ["build"], { cwd }).returns(process);
+      sandbox.stub(frameworkUtils, "getNodeModuleBin").withArgs("astro", cwd).returns(cli);
 
       await expect(build(cwd)).to.eventually.rejectedWith(
         FirebaseError,
-        "Deploying an Astro application with SSR on Firebase Hosting requires the @astrojs/node adapter."
+        "Deploying an Astro application with SSR on Firebase Hosting requires the @astrojs/node adapter in middleware mode. https://docs.astro.build/en/guides/integrations-guide/node/"
       );
     });
 
     it("should build an Astro static app", async () => {
-      const process = new EventEmitter() as ChildProcess;
+      const process = new EventEmitter() as any;
       process.stdin = new Writable();
-      process.stdout = new EventEmitter() as Readable;
-      process.stderr = new EventEmitter() as Readable;
+      process.stdout = new EventEmitter();
+      process.stderr = new EventEmitter();
+      process.status = 0;
 
       const cwd = ".";
       const publicDir = Math.random().toString(36).split(".")[1];
@@ -299,8 +294,8 @@ describe("Astro", () => {
         );
 
       const cli = Math.random().toString(36).split(".")[1];
-      sandbox.stub(frameworksFunctions, "getNodeModuleBin").withArgs("astro", cwd).returns(cli);
-      sandbox.stub(crossSpawn, "spawn").withArgs(cli, ["build"], { cwd }).returns(process);
+      sandbox.stub(frameworkUtils, "getNodeModuleBin").withArgs("astro", cwd).returns(cli);
+      const stub = sandbox.stub(crossSpawn, "sync").returns(process);
 
       const result = build(cwd);
 
@@ -309,6 +304,7 @@ describe("Astro", () => {
       expect(await result).to.deep.equal({
         wantsBackend: false,
       });
+      sinon.assert.calledWith(stub, cli, ["build"], { cwd, stdio: "inherit" });
     });
   });
 
@@ -324,14 +320,15 @@ describe("Astro", () => {
     });
 
     it("should resolve with dev server output", async () => {
-      const process = new EventEmitter() as ChildProcess;
+      const process = new EventEmitter() as any;
       process.stdin = new Writable();
-      process.stdout = new EventEmitter() as Readable;
-      process.stderr = new EventEmitter() as Readable;
+      process.stdout = new EventEmitter();
+      process.stderr = new EventEmitter();
+      process.status = 0;
 
       const cli = Math.random().toString(36).split(".")[1];
-      sandbox.stub(frameworksFunctions, "getNodeModuleBin").withArgs("astro", ".").returns(cli);
-      sandbox.stub(crossSpawn, "spawn").withArgs(cli, ["dev"], { cwd: "." }).returns(process);
+      sandbox.stub(frameworkUtils, "getNodeModuleBin").withArgs("astro", ".").returns(cli);
+      const stub = sandbox.stub(crossSpawn, "spawn").returns(process);
 
       const devModeHandle = getDevModeHandle(".");
 
@@ -346,6 +343,7 @@ describe("Astro", () => {
       );
 
       await expect(devModeHandle).eventually.be.fulfilled;
+      sinon.assert.calledWith(stub, cli, ["dev"], { cwd: "." });
     });
   });
 });
