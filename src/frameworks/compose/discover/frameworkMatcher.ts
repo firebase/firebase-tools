@@ -62,7 +62,7 @@ export function removeEmbededFrameworks(allFrameworkSpecs: FrameworkSpec[]): Fra
     });
     return allFrameworkSpecs.filter((item) => !embededFrameworkSet.has(item.id));
   } catch (error) {
-    logger.error("Error occured while removing Embeded Frameworks", error.message);
+    logger.error("Error occured while removing Embeded Frameworks", error);
     throw error;
   }
 }
