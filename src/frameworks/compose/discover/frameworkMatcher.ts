@@ -8,31 +8,40 @@ export function filterFrameworksWithDependencies(
   dependencies: Record<string, string>
 ): FrameworkSpec[] {
   return allFrameworkSpecs.filter((framework) => {
-    return framework.requiredDependencies.every((dependency) =>
-      dependencies.hasOwnProperty(dependency["name"])
-    );
+    return framework.requiredDependencies.every((dep) => {
+      return dep["name"] in dependencies;
+    });
   });
 }
 
 /**
  *
  */
-export function filterFrameworksWithFiles(
+export async function filterFrameworksWithFiles(
   allFrameworkSpecs: FrameworkSpec[],
   fs: FileSystem
-): FrameworkSpec[] {
-  return allFrameworkSpecs.filter((framework) => {
+): Promise<FrameworkSpec[]> {
+  const filteredFrameworks = [];
+  for (const framework of allFrameworkSpecs) {
     if (!framework.requiredFiles) {
-      return true;
+      filteredFrameworks.push(framework);
+      continue;
     }
-    framework.requiredFiles.every((files) => {
-      if (Array.isArray(files)) {
-        return files.every((file) => fs.exists(file));
-      } else {
-        return fs.exists(files);
-      }
-    });
-  });
+    const isRequired = await Promise.all(
+      framework.requiredFiles.map(async (files) => {
+        if (Array.isArray(files)) {
+          const boolArray = await Promise.all(files.map((file) => fs.exists(file)));
+          return boolArray.every((x) => x);
+        } else {
+          return await fs.exists(files);
+        }
+      })
+    );
+    if (isRequired.every((x) => x)) {
+      filteredFrameworks.push(framework);
+    }
+  }
+  return filteredFrameworks;
 }
 
 /**
@@ -52,12 +61,12 @@ export function removeEmbededFrameworks(allFrameworkSpecs: FrameworkSpec[]): Fra
 /**
  * Identifies the correct FrameworkSpec for the codebase. kjajfkjasd.
  */
-export function frameworkMatcher(
+export async function frameworkMatcher(
   runtime: string,
   fs: FileSystem,
   frameworks: FrameworkSpec[],
   dependencies: Record<string, string>
-): FrameworkSpec | null {
+): Promise<FrameworkSpec | null> {
   try {
     // Filter based on runtime name.
     const filterRuntimeFramework = frameworks.filter((framework) => framework.runtime === runtime);
@@ -67,11 +76,11 @@ export function frameworkMatcher(
       dependencies
     );
     // Filter based on files required.
-    const frameworkWithFiles = filterFrameworksWithFiles(frameworksWithDependencies, fs);
+    const frameworkWithFiles = await filterFrameworksWithFiles(frameworksWithDependencies, fs);
     // Filter based on embeded Frameworks.
     const allMatches = removeEmbededFrameworks(frameworkWithFiles);
 
-    if (!allMatches.length) {
+    if (allMatches.length === 0) {
       return null;
     }
     if (allMatches.length > 1) {
