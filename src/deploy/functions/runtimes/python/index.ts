@@ -44,7 +44,6 @@ export async function tryCreateDelegate(
  * By default, returns "python"
  */
 export function getPythonBinary(runtime: runtimes.Runtime): string {
-  console.log(runtime);
   if (process.platform === "win32") {
     // There is no easy way to get specific version of python executable in Windows.
     return "python.exe";

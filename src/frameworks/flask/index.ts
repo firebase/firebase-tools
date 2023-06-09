@@ -1,5 +1,5 @@
 import { copy, pathExists } from "fs-extra";
-import { mkdir, readFile, readdir, rmdir } from "fs/promises";
+import { mkdir, readFile, readdir } from "fs/promises";
 import { join, relative } from "path";
 import { BuildResult, FrameworkType, SupportLevel } from "../interfaces";
 import { runWithVirtualEnv } from "../../functions/python";
@@ -33,11 +33,13 @@ export async function ɵcodegenFunctionsDirectory(root: string, dest: string) {
   await mkdir(join(dest, "src"), { recursive: true });
   // COPY everything except venv
   const files = await readdir(root);
-  await Promise.all(files.map(async file => {
-    if (file !== "venv") {
-      await copy(join(root, file), join(dest, "src", file), { recursive: true });
-    }
-  }));
+  await Promise.all(
+    files.map(async (file) => {
+      if (file !== "venv") {
+        await copy(join(root, file), join(dest, "src", file), { recursive: true });
+      }
+    })
+  );
   const requirementsTxt = (await readFile(join(root, "requirements.txt"))).toString();
   const { appName } = await getDiscoveryResults(root);
   const imports: [string, string] = ["src.main", appName];

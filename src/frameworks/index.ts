@@ -55,7 +55,6 @@ import { isDeepStrictEqual } from "util";
 import { resolveProjectPath } from "../projectPath";
 import { logger } from "../logger";
 import { runWithVirtualEnv } from "../functions/python";
-import e from "express";
 import { dirExistsSync } from "../fsutils";
 
 export { WebFrameworks };
@@ -367,7 +366,11 @@ export async function prepareFrameworks(
         await mkdirp(functionsDist);
       }
 
-      const codegenFunctionsResult = await codegenFunctionsDirectory(getProjectPath(), functionsDist, frameworksBuildTarget);
+      const codegenFunctionsResult = await codegenFunctionsDirectory(
+        getProjectPath(),
+        functionsDist,
+        frameworksBuildTarget
+      );
       const { rewriteSource } = codegenFunctionsResult;
 
       const rewrite = {
@@ -388,10 +391,9 @@ export async function prepareFrameworks(
         rewrites.push(rewrite);
       }
 
-      let runtime: string|undefined;
+      let runtime: string | undefined;
 
       if ("packageJson" in codegenFunctionsResult) {
-
         const {
           packageJson,
           bootstrapScript,
@@ -401,7 +403,6 @@ export async function prepareFrameworks(
 
         // Set the framework entry in the env variables to handle generation of the functions.yaml
         process.env.__FIREBASE_FRAMEWORKS_ENTRY__ = frameworksEntry;
-
 
         if (await pathExists(getProjectPath(".npmrc"))) {
           await copyFile(getProjectPath(".npmrc"), join(functionsDist, ".npmrc"));
@@ -493,7 +494,7 @@ export async function prepareFrameworks(
           }
         }
         await writeFile(join(functionsDist, "package.json"), JSON.stringify(packageJson, null, 2));
-        
+
         await copyFile(
           getProjectPath("package-lock.json"),
           join(functionsDist, "package-lock.json")
@@ -535,11 +536,7 @@ export async function prepareFrameworks(
           );
         }
       } else {
-
-        const {
-          requirementsTxt,
-          imports,
-        } = codegenFunctionsResult;
+        const { requirementsTxt, imports } = codegenFunctionsResult;
 
         await writeFile(
           join(functionsDist, "requirements.txt"),
@@ -577,7 +574,7 @@ def ${functionId}(req: https_fn.Request) -> https_fn.Response:
 `
         );
         const python = getProjectPath("venv", "bin", "python");
-        if (!dirExistsSync(join(functionsDist, "venv")) ) {
+        if (!dirExistsSync(join(functionsDist, "venv"))) {
           spawnSync(python, ["-m", "venv", "venv"], { cwd: functionsDist });
         }
         await new Promise<void>((resolve) => {
@@ -589,8 +586,11 @@ def ${functionId}(req: https_fn.Request) -> https_fn.Response:
           );
           child.on("exit", () => resolve());
         });
-        const pythonVersion = spawnSync(python, ['--version']).stdout.toString().trim().split(' ')[1];
-        runtime = `python${pythonVersion.split('.').slice(0,2).join('')}`;
+        const pythonVersion = spawnSync(python, ["--version"])
+          .stdout.toString()
+          .trim()
+          .split(" ")[1];
+        runtime = `python${pythonVersion.split(".").slice(0, 2).join("")}`;
       }
 
       const existingFunctionsConfig = options.config.get("functions")
@@ -604,7 +604,6 @@ def ${functionId}(req: https_fn.Request) -> https_fn.Response:
           runtime,
         },
       ]);
-
     } else {
       if (await pathExists(functionsDist)) {
         await rm(functionsDist, { recursive: true });

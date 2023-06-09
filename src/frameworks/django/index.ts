@@ -70,14 +70,19 @@ export async function ɵcodegenFunctionsDirectory(root: string, dest: string) {
   });
   const splitWsgiApplication = wsgiApplication.trim().split(".");
   // TODO refactor to at(-1) when we have it
-  const imports: [string,string] = [splitWsgiApplication.slice(0, -1).join("."), splitWsgiApplication.slice(-1)[0]];
+  const imports: [string, string] = [
+    splitWsgiApplication.slice(0, -1).join("."),
+    splitWsgiApplication.slice(-1)[0],
+  ];
   const requirementsTxt = (await readFile(join(root, "requirements.txt"))).toString();
   // COPY everything except venv
   const files = await readdir(root);
-  await Promise.all(files.map(async file => {
-    if (file !== "venv") {
-      await copy(join(root, file), join(dest, file), { recursive: true });
-    }
-  }));
+  await Promise.all(
+    files.map(async (file) => {
+      if (file !== "venv") {
+        await copy(join(root, file), join(dest, file), { recursive: true });
+      }
+    })
+  );
   return { imports, requirementsTxt };
 }
