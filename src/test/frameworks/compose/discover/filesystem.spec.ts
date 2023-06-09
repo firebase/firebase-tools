@@ -27,7 +27,7 @@ describe("RepositoryFileSystem", () => {
       const fileContent = await fileSystem.read("package.json");
 
       const expected = {
-        name: "express",
+        name: "expressApp",
         version: "1.0.0",
         description: "",
         main: "index.js",
