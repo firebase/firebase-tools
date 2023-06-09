@@ -12,11 +12,12 @@ This extension is in the development and exploration stage.
    My terminal didn't have npm available but yours might
 
 Workaround if f5 doesnt work:
+
 1. Execute `npm run watch` from within the vscode directory
-Aside: Running `npm run watch` or `npm run build` the extension is compiled into dist (extension.js)
-Changing code within extension is hot-reloaded
-Modifying extensions.js will not hot-reload
-source file src/extension.ts
+   Aside: Running `npm run watch` or `npm run build` the extension is compiled into dist (extension.js)
+   Changing code within extension is hot-reloaded
+   Modifying extensions.js will not hot-reload
+   source file src/extension.ts
 2. Wait for completion
 3. Hit play from the left nav
 
