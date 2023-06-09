@@ -14,7 +14,7 @@ describe("frameworkMatcher", () => {
   const NODE_ID = "nodejs";
 
   before(() => {
-    fileSystem = new RepositoryFileSystem("./testapps/express");
+    fileSystem = new RepositoryFileSystem("./src/frameworks/compose/discover/testapps/expressApp");
   });
 
   describe("frameworkMatcher", () => {
