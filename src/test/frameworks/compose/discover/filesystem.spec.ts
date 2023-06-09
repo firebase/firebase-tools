@@ -1,11 +1,22 @@
-import { RepositoryFileSystem } from "../../../../frameworks/compose/discover/filesystem";
+import { MockFileSystem } from "./mockFileSystem";
 import { expect } from "chai";
 
 describe("RepositoryFileSystem", () => {
-  let fileSystem: RepositoryFileSystem;
+  let fileSystem: MockFileSystem;
 
   before(() => {
-    fileSystem = new RepositoryFileSystem("./src/frameworks/compose/discover/testapps/expressApp");
+    fileSystem = new MockFileSystem({
+      "package.json": JSON.stringify({
+        name: "expressapp",
+        version: "1.0.0",
+        scripts: {
+          test: 'echo "Error: no test specified" && exit 1',
+        },
+        dependencies: {
+          express: "^4.18.2",
+        },
+      }),
+    });
   });
 
   describe("exists", () => {
@@ -26,23 +37,18 @@ describe("RepositoryFileSystem", () => {
     it("should read and return the contents of the file", async () => {
       const fileContent = await fileSystem.read("package.json");
 
-      const expected = {
+      const expected = JSON.stringify({
         name: "expressapp",
         version: "1.0.0",
-        description: "",
-        main: "index.js",
         scripts: {
           test: 'echo "Error: no test specified" && exit 1',
         },
-        keywords: [],
-        author: "",
-        license: "ISC",
         dependencies: {
           express: "^4.18.2",
         },
-      };
+      });
 
-      expect(JSON.parse(fileContent)).to.deep.equal(expected);
+      expect(fileContent).to.equal(expected);
     });
   });
 });
