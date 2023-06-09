@@ -1,9 +1,10 @@
 import { FileSystem } from "./types";
 import { pathExists, readFile } from "fs-extra";
 import { join } from "path";
+import { logger } from "../../..";
 
 /**
- * Find or read contents present in the Repository.
+ * Find files or read contents present in the Repository.
  */
 export class RepositoryFileSystem implements FileSystem {
   private readonly existsCache: Record<string, boolean> = {};
@@ -15,15 +16,13 @@ export class RepositoryFileSystem implements FileSystem {
   async exists(file: string): Promise<boolean> {
     try {
       if (!(file in this.contentCache)) {
-        // Get repository contents
         this.existsCache[file] = await pathExists(join(this.cwd, file));
       }
 
       return this.existsCache[file];
     } catch (error: any) {
-      // File not found
-      console.error("Error occured while searching for file:", error.message);
-      return Promise.resolve(false);
+      logger.error("Error occured while searching for file:", error.message);
+      throw error;
     }
   }
 
@@ -36,7 +35,8 @@ export class RepositoryFileSystem implements FileSystem {
         const fileContents = await readFile(join(this.cwd, path), "utf-8");
         this.contentCache[path] = fileContents;
       } catch (error: any) {
-        new Error("Can't read file contents.");
+        logger.error("Error occured while reading file contents:", error.message);
+        throw error;
       }
     }
     return this.contentCache[path];
@@ -53,6 +53,7 @@ export async function readOrNull(fs: FileSystem, path: string): Promise<string |
     if (err && typeof err === "object" && "code" in err && err.code === "ENOENT") {
       return null;
     }
+    logger.error("Unknown error occured while trying to read file contents.");
     throw err;
   }
 }
