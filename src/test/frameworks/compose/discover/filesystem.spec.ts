@@ -5,7 +5,7 @@ describe("RepositoryFileSystem", () => {
   let fileSystem: RepositoryFileSystem;
 
   before(() => {
-    fileSystem = new RepositoryFileSystem("./src/frameworks/compose/discover/testapps/express");
+    fileSystem = new RepositoryFileSystem("./src/frameworks/compose/discover/testapps/expressApp");
   });
 
   describe("exists", () => {
