@@ -7,7 +7,7 @@ import {
   readJSON,
   simpleProxy,
   warnIfCustomBuildScript,
-  findDependency,
+  findNPMDependency,
   getNodeModuleBin,
 } from "../utils";
 import { getBootstrapScript, getConfig } from "./utils";
@@ -17,7 +17,7 @@ export const support = SupportLevel.Experimental;
 export const type = FrameworkType.MetaFramework;
 
 function getAstroVersion(cwd: string): string | undefined {
-  return findDependency("astro", { cwd, depth: 0, omitDev: false })?.version;
+  return findNPMDependency("astro", { cwd, depth: 0, omitDev: false })?.version;
 }
 
 export async function discover(dir: string): Promise<Discovery | undefined> {

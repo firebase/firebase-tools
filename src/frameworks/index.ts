@@ -22,7 +22,7 @@ import { requireHostingSite } from "../requireHostingSite";
 import * as experiments from "../experiments";
 import { implicitInit } from "../hosting/implicitInit";
 import {
-  findDependency,
+  findNPMDependency,
   conjoinOptions,
   frameworksCallToAction,
   getFrameworksBuildTarget,
@@ -172,8 +172,8 @@ export async function prepareFrameworks(
     }
     const getProjectPath = (...args: string[]) => join(projectRoot, source, ...args);
     const functionId = `ssr${site.toLowerCase().replace(/-/g, "")}`;
-    const usesFirebaseAdminSdk = !!findDependency("firebase-admin", { cwd: getProjectPath() });
-    const usesFirebaseJsSdk = !!findDependency("@firebase/app", { cwd: getProjectPath() });
+    const usesFirebaseAdminSdk = !!findNPMDependency("firebase-admin", { cwd: getProjectPath() });
+    const usesFirebaseJsSdk = !!findNPMDependency("@firebase/app", { cwd: getProjectPath() });
     if (usesFirebaseAdminSdk) {
       process.env.GOOGLE_CLOUD_PROJECT = project;
       if (account && !process.env.GOOGLE_APPLICATION_CREDENTIALS) {
@@ -541,7 +541,7 @@ export async function prepareFrameworks(
 
         await writeFile(
           join(functionsDist, "requirements.txt"),
-          `${requirementsTxt}\nfirebase_functions`.trimStart()
+          `${requirementsTxt.trim()}\nfirebase_functions`.trimStart()
         );
         await writeFile(
           join(functionsDist, "main.py"),

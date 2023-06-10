@@ -26,7 +26,7 @@ import {
   simpleProxy,
   warnIfCustomBuildScript,
   relativeRequire,
-  findDependency,
+  findNPMDependency,
   validateLocales,
 } from "../utils";
 import { BuildResult, FrameworkType, SupportLevel } from "../interfaces";
@@ -80,11 +80,11 @@ export const docsUrl = "https://firebase.google.com/docs/hosting/frameworks/next
 const DEFAULT_NUMBER_OF_REASONS_TO_LIST = 5;
 
 function getNextVersion(cwd: string): string | undefined {
-  return findDependency("next", { cwd, depth: 0, omitDev: false })?.version;
+  return findNPMDependency("next", { cwd, depth: 0, omitDev: false })?.version;
 }
 
 function getReactVersion(cwd: string): string | undefined {
-  return findDependency("react-dom", { cwd, omitDev: false })?.version;
+  return findNPMDependency("react-dom", { cwd, omitDev: false })?.version;
 }
 
 /**

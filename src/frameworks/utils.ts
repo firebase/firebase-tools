@@ -1,9 +1,9 @@
 import { readJSON as originalReadJSON } from "fs-extra";
 import type { ReadOptions } from "fs-extra";
 import { extname, join, relative } from "path";
-import { readFile } from "fs/promises";
+import { readFile, readdir } from "fs/promises";
 import { IncomingMessage, request as httpRequest, ServerResponse, Agent } from "http";
-import { sync as spawnSync } from "cross-spawn";
+import { sync as spawnSync, spawn } from "cross-spawn";
 import * as clc from "colorette";
 
 import { logger } from "../logger";
@@ -19,6 +19,8 @@ import {
   VALID_LOCALE_FORMATS,
 } from "./constants";
 import { BUILD_TARGET_PURPOSE, RequestHandler } from "./interfaces";
+import { readFileSync } from "fs";
+import { runWithVirtualEnv } from "../functions/python";
 
 // Use "true &&"" to keep typescript from compiling this file and rewriting
 // the import statement into a require
@@ -175,10 +177,67 @@ const DEFAULT_FIND_DEP_OPTIONS: FindDepOptions = {
   omitDev: true,
 };
 
+export function hasPipDependency(name: string, options: { cwd?: string } = {}) {
+  const { cwd = process.cwd() } = options;
+  const requirementsPath = join(cwd, "requirements.txt");
+  if (!fileExistsSync(requirementsPath)) return false;
+  return readFileSync(requirementsPath).toString().split("\n").includes(name);
+}
+
+export function findPythonCLI() {
+  const pythonCLI = ["python.exe", "python3.11", "python3.10", "python"].find(
+    (it) => spawnSync(it, ["--version"], { stdio: "ignore" }).status === 0
+  );
+  if (!pythonCLI) {
+    throw new FirebaseError("Python not found.");
+  }
+  return pythonCLI;
+}
+
+export async function spawnPython(
+  originalCommand: string,
+  args: string[],
+  cwd: string = process.cwd()
+) {
+  const files = await readdir(cwd);
+  const venvDir = files.find((it) => fileExistsSync(join(cwd, it, "pyvenv.cfg")));
+  logger.debug(
+    `Running "${originalCommand} ${args.join(" ").replace('"', '\\"')}" in ${cwd} ${
+      venvDir ? `with venv (${venvDir})` : "without venv"
+    }.`
+  );
+  const command = venvDir || originalCommand !== "python" ? originalCommand : findPythonCLI();
+  const results = await new Promise<string>((resolve, reject) => {
+    const child = venvDir
+      ? runWithVirtualEnv([command, ...args], cwd, {}, undefined, venvDir)
+      : spawn(command, args, { cwd });
+    let out = "";
+    let err = "";
+    child.stderr?.on("data", (chunk: Buffer) => {
+      const chunkString = chunk.toString();
+      err = err + chunkString;
+      logger.debug(chunkString);
+    });
+    child.stdout?.on("data", (chunk: Buffer) => {
+      const chunkString = chunk.toString();
+      out = out + chunkString;
+      logger.debug(chunkString);
+    });
+    child.on("error", () => {
+      reject(err);
+    });
+    child.on("exit", (status) => {
+      if (status === 0) resolve(out);
+      reject(err);
+    });
+  });
+  return results.trim();
+}
+
 /**
  *
  */
-export function findDependency(name: string, options: Partial<FindDepOptions> = {}) {
+export function findNPMDependency(name: string, options: Partial<FindDepOptions> = {}) {
   const { cwd: dir, depth, omitDev } = { ...DEFAULT_FIND_DEP_OPTIONS, ...options };
   const cwd = getNpmRoot(dir);
   if (!cwd) return;

@@ -1,22 +1,41 @@
-import { copy, mkdirp, pathExists } from "fs-extra";
-import { mkdir, readFile, readdir } from "fs/promises";
+import { copy, mkdirp } from "fs-extra";
+import { mkdir, readFile, readdir, writeFile } from "fs/promises";
 import { join, relative } from "path";
 import { BuildResult, FrameworkType, SupportLevel } from "../interfaces";
-import { runWithVirtualEnv } from "../../functions/python";
 import { dirExistsSync } from "../../fsutils";
+import { findPythonCLI, hasPipDependency, spawnPython } from "../utils";
+import { spawnSync } from "child_process";
 
 export const name = "Flask";
 export const support = SupportLevel.Experimental;
 export const type = FrameworkType.Framework;
 
-const CLI = "python";
-
-export async function discover(dir: string) {
-  if (!(await pathExists(join(dir, "requirements.txt")))) return;
-  if (!(await pathExists(join(dir, "main.py")))) return;
-  const { staticFolder } = await getDiscoveryResults(dir);
-  const publicDirectory = relative(dir, staticFolder);
+export async function discover(cwd: string) {
+  if (!hasPipDependency("Flask", { cwd })) return;
+  const results = await getDiscoveryResults(cwd).catch(() => undefined);
+  if (!results) return;
+  const publicDirectory = relative(cwd, results.staticFolder);
   return { mayWantBackend: true, publicDirectory };
+}
+
+export async function init(setup: any, config: any) {
+  const cwd = join(config.projectDir, setup.hosting.source);
+  await mkdirp(cwd);
+  const cli = findPythonCLI();
+  spawnSync(cli, ["-m", "venv", "venv"], { stdio: "ignore", cwd });
+  writeFile(join(cwd, "requirements.txt"), "Flask");
+  await spawnPython("pip", ["install", "-r", "requirements.txt"], cwd);
+  await writeFile(
+    join(cwd, "main.py"),
+    `from flask import Flask
+
+app = Flask(__name__)
+
+@app.route("/")
+def hello_world():
+    return "<p>Hello, World!</p>"
+`
+  );
 }
 
 export function build(): Promise<BuildResult> {
@@ -50,16 +69,8 @@ export async function ɵcodegenFunctionsDirectory(root: string, dest: string) {
 }
 
 async function getDiscoveryResults(cwd: string) {
-  const discovery = await new Promise<string>((resolve) => {
-    const child = runWithVirtualEnv([CLI, join(__dirname, "discover.py")], cwd, {});
-    let out = "";
-    child.stdout?.on("data", (chunk: Buffer) => {
-      const chunkString = chunk.toString();
-      out = out + chunkString;
-    });
-    child.on("exit", () => resolve(out));
-  });
-  const [appName, staticFolder, staticUrlPath = "/"] = discovery.trim().split("\n");
+  const discovery = await spawnPython("python", [join(__dirname, "discover.py")], cwd);
+  const [appName, staticFolder, staticUrlPath = "/"] = discovery.split("\n");
   return {
     appName,
     staticFolder,

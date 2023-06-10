@@ -26,7 +26,7 @@ describe("Nuxt 2 utils", () => {
 
     it("should find a Nuxt 2 app", async () => {
       sandbox.stub(fsExtra, "pathExists").resolves(true);
-      sandbox.stub(frameworksUtils, "findDependency").returns({
+      sandbox.stub(frameworksUtils, "findNPMDependency").returns({
         version: "2.15.8",
         resolved: "https://registry.npmjs.org/nuxt/-/nuxt-2.15.8.tgz",
         overridden: false,
@@ -50,7 +50,7 @@ describe("Nuxt 2 utils", () => {
 
     it("should find a Nuxt 3 app", async () => {
       sandbox.stub(fsExtra, "pathExists").resolves(true);
-      sandbox.stub(frameworksUtils, "findDependency").returns({
+      sandbox.stub(frameworksUtils, "findNPMDependency").returns({
         version: "3.0.0",
         resolved: "https://registry.npmjs.org/nuxt/-/nuxt-3.0.0.tgz",
         overridden: false,

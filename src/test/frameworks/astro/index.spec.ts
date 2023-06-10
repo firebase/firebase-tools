@@ -44,7 +44,7 @@ describe("Astro", () => {
           })
         );
       sandbox
-        .stub(frameworkUtils, "findDependency")
+        .stub(frameworkUtils, "findNPMDependency")
         .withArgs("astro", { cwd, depth: 0, omitDev: false })
         .returns({
           version: "2.2.2",
@@ -74,7 +74,7 @@ describe("Astro", () => {
           })
         );
       sandbox
-        .stub(frameworkUtils, "findDependency")
+        .stub(frameworkUtils, "findNPMDependency")
         .withArgs("astro", { cwd, depth: 0, omitDev: false })
         .returns({
           version: "2.2.2",
