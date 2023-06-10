@@ -1,7 +1,7 @@
 import { MockFileSystem } from "./mockFileSystem";
 import { expect } from "chai";
 
-describe("RepositoryFileSystem", () => {
+describe("LocalFileSystem", () => {
   let fileSystem: MockFileSystem;
 
   before(() => {
