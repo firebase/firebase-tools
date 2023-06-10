@@ -55,6 +55,10 @@ live site:
 See the detailed guide for your preferred framework:
 
 * [Angular Universal](/docs/hosting/frameworks/angular)
-* [Next.js] (/docs/hosting/frameworks/nextjs)
-* [Flutter Web] (/docs/hosting/frameworks/flutter)
+* [Next.js](/docs/hosting/frameworks/nextjs)
+* [Flask](/docs/hosting/frameworks/flask)
+* [Flutter Web](/docs/hosting/frameworks/flutter)
 * [Frameworks with Express.js](/docs/hosting/frameworks/express)
+
+Also check out our *experimental* integrations for Astro, SvelteKit, Nuxt, and more on
+[GitHub (FirebaseExtended/firebase-framework-tools)](https://github.com/FirebaseExtended/firebase-framework-tools).

@@ -1,0 +1,1 @@
+- Support deployment of Flask and Django applications to Firebase Hosting (#5659)
