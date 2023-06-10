@@ -16,7 +16,7 @@ const NEXT_BASE_PATH: NextConfig["basePath"] = "base";
 const ANGULAR_BASE_PATH = "";
 const I18N_BASE = "";
 const DEFAULT_LANG = "en";
-const LOG_FILE = "scripts/webframeworks-deploy-tests/firebase-emulators.log";
+const LOG_FILE = "firebase-debug.log";
 const NEXT_SOURCE = `${__dirname}/nextjs`;
 
 async function getFilesListFromDir(dir: string): Promise<string[]> {
@@ -46,6 +46,149 @@ describe("webframeworks", function (this) {
 
   after(() => {
     // This is not an empty block.
+  });
+
+  describe("build", () => {
+    it("should have the correct effective firebase.json", () => {
+      const result = readFileSync(LOG_FILE).toString();
+      const effectiveFirebaseJSON = result
+        .split("[web frameworks] effective firebase.json: ")
+        .at(-1)
+        ?.split(new RegExp(`(\\[\\S+\\] )?\\[${new Date().getFullYear()}`))[0]
+        ?.trim();
+      expect(effectiveFirebaseJSON && JSON.parse(effectiveFirebaseJSON), "firebase.json").to.eql({
+        hosting: [
+          {
+            target: "nextjs",
+            source: "nextjs",
+            frameworksBackend: {
+              maxInstances: 1,
+              region: "asia-east1",
+            },
+            rewrites: [
+              {
+                destination: "/base",
+                source: "/base/about",
+              },
+              {
+                source: "/base/**",
+                function: {
+                  functionId: "ssrdemonextjs",
+                  region: "asia-east1",
+                  pinTag: true,
+                },
+              },
+              {
+                function: {
+                  functionId: "helloWorld",
+                },
+                source: "helloWorld",
+              },
+            ],
+            site: "demo-nextjs",
+            redirects: [
+              {
+                destination: "/base/",
+                source: "/base/en/about",
+                type: 308,
+              },
+              {
+                destination: "/base",
+                source: "/base/about",
+                type: 308,
+              },
+            ],
+            headers: [
+              {
+                headers: [
+                  {
+                    key: "x-custom-header",
+                    value: "my custom header value",
+                  },
+                  {
+                    key: "x-another-custom-header",
+                    value: "my other custom header value",
+                  },
+                ],
+                source: "/base/about",
+              },
+              {
+                source: "/base/app/api/static",
+                headers: [
+                  {
+                    key: "content-type",
+                    value: "application/json",
+                  },
+                  {
+                    key: "custom-header",
+                    value: "custom-value",
+                  },
+                  {
+                    key: "x-next-cache-tags",
+                    value: "/app/api/static/route",
+                  },
+                ],
+              },
+            ],
+            cleanUrls: true,
+            trailingSlash: false,
+            i18n: {
+              root: "/",
+            },
+            public: ".firebase/demo-nextjs/hosting",
+            webFramework: "next_ssr",
+          },
+          {
+            target: "angular",
+            source: "angular",
+            frameworksBackend: {
+              maxInstances: 1,
+              region: "europe-west1",
+            },
+            rewrites: [
+              {
+                function: {
+                  functionId: "helloWorld",
+                },
+                source: "helloWorld",
+              },
+              {
+                source: "/**",
+                function: {
+                  functionId: "ssrdemoangular",
+                  region: "europe-west1",
+                  pinTag: true,
+                },
+              },
+            ],
+            site: "demo-angular",
+            redirects: [],
+            headers: [],
+            cleanUrls: true,
+            i18n: {
+              root: "/",
+            },
+            public: ".firebase/demo-angular/hosting",
+            webFramework: "angular_ssr",
+          },
+        ],
+        functions: [
+          {
+            codebase: "default",
+            ignore: ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log"],
+            source: "functions",
+          },
+          {
+            codebase: "firebase-frameworks-demo-nextjs",
+            source: ".firebase/demo-nextjs/functions",
+          },
+          {
+            codebase: "firebase-frameworks-demo-angular",
+            source: ".firebase/demo-angular/functions",
+          },
+        ],
+      });
+    });
   });
 
   describe("next.js", () => {

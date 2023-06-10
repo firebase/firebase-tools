@@ -122,5 +122,41 @@ describe("eventarcEmulatorUtils", () => {
       expect(got.datacontenttype).to.deep.eq("text/plain");
       expect(got.data).to.eq("hello world");
     });
+
+    it("allows optional attribute to not be set", () => {
+      expect(
+        cloudEventFromProtoToJson({
+          "@type": "type.googleapis.com/io.cloudevents.v1.CloudEvent",
+          attributes: {
+            customattr: {
+              ceString: "custom value",
+            },
+            datacontenttype: {
+              ceString: "application/json",
+            },
+            time: {
+              ceTimestamp: "2022-03-16T20:20:42.212Z",
+            },
+          },
+          id: "user-provided-id",
+          source: "/my/functions",
+          specVersion: "1.0",
+          textData: '{"hello":"world"}',
+          type: "some.custom.event",
+        })
+      ).to.deep.eq({
+        type: "some.custom.event",
+        specversion: "1.0",
+        datacontenttype: "application/json",
+        id: "user-provided-id",
+        subject: undefined,
+        data: {
+          hello: "world",
+        },
+        source: "/my/functions",
+        time: "2022-03-16T20:20:42.212Z",
+        customattr: "custom value",
+      });
+    });
   });
 });

@@ -32,7 +32,7 @@ export const FIREBASE_FUNCTIONS_VERSION = "^4.3.0";
 export const FIREBASE_ADMIN_VERSION = "^11.0.1";
 export const SHARP_VERSION = "^0.32.1";
 export const NODE_VERSION = parseInt(process.versions.node, 10);
-export const VALID_ENGINES = { node: [16, 18] };
+export const VALID_ENGINES = { node: [16, 18, 20] };
 
 export const VALID_LOCALE_FORMATS = [/^ALL_[a-z]+$/, /^[a-z]+_ALL$/, /^[a-z]+(_[a-z]+)?$/];
 
@@ -68,3 +68,11 @@ export const WebFrameworks: Record<string, Framework> = Object.fromEntries(
         obj && obj.name && obj.discover && obj.build && obj.type !== undefined && obj.support
     )
 );
+
+export function GET_DEFAULT_BUILD_TARGETS() {
+  return Promise.resolve(["production", "development"]);
+}
+
+export function DEFAULT_SHOULD_USE_DEV_MODE_HANDLE(target: string) {
+  return Promise.resolve(target === "development");
+}
