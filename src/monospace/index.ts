@@ -146,8 +146,8 @@ function createFirebaseRc(projectDir: string, authorizedProject: string): boolea
 /**
  * Whether this is a Monospace environment
  */
-export async function isMonospaceEnv(): Promise<boolean> {
-  return Promise.resolve(Boolean(getMonospaceDaemonPort()));
+export function isMonospaceEnv(): boolean {
+  return getMonospaceDaemonPort() !== undefined;
 }
 
 /**
