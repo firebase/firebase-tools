@@ -58,7 +58,7 @@ async function createInstanceHelper(
     apiOrigin: extensionsOrigin,
     apiVersion: EXTENSIONS_API_VERSION,
     operationResourceName: createRes.body.name,
-    masterTimeout: 600000,
+    masterTimeout: 1800000,
   });
   return pollRes;
 }
