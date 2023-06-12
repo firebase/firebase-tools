@@ -8,14 +8,13 @@ import { join } from "path";
 import { logger } from "../../../../logger";
 import { FirebaseError } from "../../../../error";
 
-interface PackageJSON {
+export interface PackageJSON {
   dependencies?: Record<string, string>;
   devDependencies?: Record<string, string>;
   scripts?: Record<string, string>;
-  engines: Record<string, string>;
+  engines?: Record<string, string>;
 }
 
-const NODE = "node";
 const NODE_LATEST_BASE_IMAGE = "node:18-slim";
 const NODE_RUNTIME_ID = "nodejs";
 const PACKAGE_JSON = "package.json";
@@ -25,8 +24,8 @@ const YARN_LOCK = "yarn.lock";
 const NPM = "npm";
 
 export class NodejsRuntime implements Runtime {
-  private readonly runtimeName = NODE_RUNTIME_ID;
   private readonly runtimeRequiredFiles: string[] = [PACKAGE_JSON];
+  private readonly contentCache: Record<string, boolean> = {};
 
   // Checks if the codebase is using Node as runtime.
   async match(fs: FileSystem): Promise<boolean | null> {
@@ -37,18 +36,18 @@ export class NodejsRuntime implements Runtime {
   }
 
   getRuntimeName(): string {
-    return this.runtimeName;
+    return NODE_RUNTIME_ID;
   }
 
-  getNodeVersion(version: Record<string, string>): string {
+  getNodeImage(version: Record<string, string> | undefined): string {
     try {
       // If no version is mentioned explicitly, assuming application is compatible with latest version.
       if (!version) {
         return NODE_LATEST_BASE_IMAGE;
       }
-      const nodeVersion = version[NODE];
+      const nodeVersion = version.node;
       // Splits version number `>=18..0.5` to `>=` and `18.0.5`
-      const versionPattern = /^([>=<]+)?(\d+\.\d+\.\d+)$/;
+      const versionPattern = /^([>=<^~]+)?(\d+\.\d+\.\d+)$/;
       const versionMatch = versionPattern.exec(nodeVersion);
       if (!versionMatch) {
         return NODE_LATEST_BASE_IMAGE;
@@ -56,7 +55,7 @@ export class NodejsRuntime implements Runtime {
       const operator = versionMatch[1];
       const versionNumber = versionMatch[2];
       const majorVersion = parseInt(versionNumber.split(".")[0]);
-      if (!operator && majorVersion < 18) {
+      if ((!operator || operator === "^" || operator === "~") && majorVersion < 18) {
         throw new FirebaseError(
           "Unsupported node version number, only versions >= 18 are supported."
         );
@@ -80,24 +79,31 @@ export class NodejsRuntime implements Runtime {
     fs: FileSystem,
     packageJSON: PackageJSON
   ): Promise<Record<string, string>> {
+    const directDependencies = { ...packageJSON.dependencies, ...packageJSON.devDependencies };
+    let transitiveDependencies = {};
+
     const packageLockJSONRaw = await readOrNull(fs, PACKAGE_LOCK_JSON);
     if (!packageLockJSONRaw) {
-      return {};
+      return directDependencies;
     }
     const packageLockJSON = JSON.parse(packageLockJSONRaw);
-    const directDependencies = { ...packageJSON.dependencies, ...packageJSON.devDependencies };
-    const directDependenciesKeys = Object.keys(directDependencies).map((x) =>
+    const directDependencyNames = Object.keys(directDependencies).map((x) =>
       join("node_modules", x)
     );
-    let transitiveDependencies = {};
-    directDependenciesKeys.forEach((key) => {
-      const deps = packageLockJSON.packages[key]["dependencies"];
-      transitiveDependencies = { ...transitiveDependencies, ...deps };
+
+    directDependencyNames.forEach((directDepName) => {
+      const transitiveDeps = packageLockJSON.packages[directDepName].dependencies;
+      transitiveDependencies = { ...transitiveDependencies, ...transitiveDeps };
     });
+
     return { ...directDependencies, ...transitiveDependencies };
   }
 
-  async getDependencies(fs: FileSystem, packageJSON: PackageJSON, packageManager: string) {
+  async getDependencies(
+    fs: FileSystem,
+    packageJSON: PackageJSON,
+    packageManager: string
+  ): Promise<Record<string, string>> {
     try {
       let dependencies = {};
       if (packageManager === NPM) {
@@ -155,6 +161,7 @@ export class NodejsRuntime implements Runtime {
         command.cmd.replace(/^\S+/, packageManager);
       }
     }
+
     return command;
   }
 
@@ -217,7 +224,7 @@ export class NodejsRuntime implements Runtime {
       }
       const packageJSON = JSON.parse(packageJSONRaw) as PackageJSON;
       const packageManager = await this.getPackageManager(fs);
-      const nodeImageVersion = this.getNodeVersion(packageJSON.engines);
+      const nodeImage = this.getNodeImage(packageJSON.engines);
       const dependencies = await this.getDependencies(fs, packageJSON, packageManager);
       const matchedFramework = await frameworkMatcher(
         NODE_RUNTIME_ID,
@@ -228,7 +235,7 @@ export class NodejsRuntime implements Runtime {
 
       const runtimeSpec: RuntimeSpec = {
         id: NODE_RUNTIME_ID,
-        baseImage: nodeImageVersion,
+        baseImage: nodeImage,
         packageManagerInstallCommand: this.packageManagerInstallCommand(packageManager),
         installCommand: this.installCommand(packageManager),
         detectedCommands: this.detectedCommands(
