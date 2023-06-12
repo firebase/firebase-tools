@@ -13,6 +13,8 @@ import * as functionsConfig from "../../functionsConfig";
 import * as utils from "../../utils";
 import * as fsAsync from "../../fsAsync";
 import * as projectConfig from "../../functions/projectConfig";
+import { readdirRecursive } from "../../fsAsync";
+import { join } from "path";
 
 const CONFIG_DEST_FILE = ".runtimeconfig.json";
 
@@ -24,6 +26,9 @@ interface PackagedSourceInfo {
 type SortedConfig = string | { key: string; value: SortedConfig }[];
 
 // TODO(inlined): move to a file that's not about uploading source code
+/**
+ *
+ */
 export async function getFunctionsConfig(projectId: string): Promise<Record<string, unknown>> {
   try {
     return await functionsConfig.materializeAll(projectId);
@@ -55,19 +60,12 @@ async function pipeAsync(from: archiver.Archiver, to: fs.WriteStream) {
   });
 }
 
-async function packageSource(
+async function prepareSource(
   sourceDir: string,
   config: projectConfig.ValidatedSingle,
   runtimeConfig: any
-): Promise<PackagedSourceInfo | undefined> {
-  const tmpFile = tmp.fileSync({ prefix: "firebase-functions-", postfix: ".zip" }).name;
-  const fileStream = fs.createWriteStream(tmpFile, {
-    flags: "w",
-    encoding: "binary",
-  });
-  const archive = archiver("zip");
-  const hashes: string[] = [];
-
+) {
+  const tmpDir = tmp.dirSync({ prefix: "firebase-functions-" });
   // We must ignore firebase-debug.log or weird things happen if
   // you're in the public dir when you deploy.
   // We ignore any CONFIG_DEST_FILE that already exists, and write another one
@@ -78,38 +76,49 @@ async function packageSource(
     "firebase-debug.*.log",
     CONFIG_DEST_FILE /* .runtimeconfig.json */
   );
-  try {
-    const files = await fsAsync.readdirRecursive({ path: sourceDir, ignore: ignore });
-    for (const file of files) {
-      const name = path.relative(sourceDir, file.name);
-      const fileHash = await getSourceHash(file.name);
-      hashes.push(fileHash);
-      archive.file(file.name, {
-        name,
-        mode: file.mode,
-      });
-    }
-    if (typeof runtimeConfig !== "undefined") {
-      // In order for hash to be consistent, configuration object tree must be sorted by key, only possible with arrays.
-      const runtimeConfigHashString = JSON.stringify(convertToSortedKeyValueArray(runtimeConfig));
-      hashes.push(runtimeConfigHashString);
-
-      const runtimeConfigString = JSON.stringify(runtimeConfig, null, 2);
-      archive.append(runtimeConfigString, {
-        name: CONFIG_DEST_FILE,
-        mode: 420 /* 0o644 */,
-      });
-    }
-    await pipeAsync(archive, fileStream);
-  } catch (err: any) {
-    throw new FirebaseError(
-      "Could not read source directory. Remove links and shortcuts and try again.",
-      {
-        original: err,
-        exit: 1,
+  const internalDepDir = "internal_dependencies";
+  const hashes = await copyPackageTo(
+    sourceDir,
+    tmpDir.name,
+    `${tmpDir.name}/${internalDepDir}`,
+    `./${internalDepDir}/`,
+    (args) => {
+      if (args.versionString.startsWith("workspace:")) {
+        return join(args.source, "node_modules", args.dependency);
       }
-    );
+      return null;
+    }
+  );
+  if (typeof runtimeConfig !== "undefined") {
+    // In order for hash to be consistent, configuration object tree must be sorted by key, only possible with arrays.
+    const runtimeConfigHashString = JSON.stringify(convertToSortedKeyValueArray(runtimeConfig));
+    hashes.push(runtimeConfigHashString);
+
+    const runtimeConfigString = JSON.stringify(runtimeConfig, null, 2);
+    fs.writeFileSync(path.join(tmpDir.name, CONFIG_DEST_FILE), runtimeConfigString, {
+      mode: 420 /* 0o644 */,
+    });
   }
+  return {
+    dir: tmpDir.name,
+    hash: hashes.join("."),
+  };
+}
+
+async function packageSource(
+  sourceDir: string,
+  config: projectConfig.ValidatedSingle,
+  runtimeConfig: any
+): Promise<PackagedSourceInfo | undefined> {
+  const { hash, dir } = await prepareSource(sourceDir, config, runtimeConfig);
+  const tmpFile = tmp.fileSync({ name: `${path.basename(dir)}.zip` }).name;
+  const fileStream = fs.createWriteStream(tmpFile, {
+    flags: "w",
+    encoding: "binary",
+  });
+  const archive = archiver("zip");
+  archive.directory(dir, false);
+  await pipeAsync(archive, fileStream);
 
   utils.logBullet(
     clc.cyan(clc.bold("functions:")) +
@@ -119,10 +128,86 @@ async function packageSource(
       filesize(archive.pointer()) +
       ") for uploading"
   );
-  const hash = hashes.join(".");
   return { pathToSource: tmpFile, hash };
 }
 
+interface ResolveInternalDependency {
+  source: string;
+  dependency: string;
+  versionString: string;
+}
+
+/**
+ *
+ */
+async function copyPackageTo(
+  sourcePackage: string,
+  target: string,
+  internalDependencyDir: string,
+  pathRewritePrefix: string,
+  resolveInternalDependency: (args: ResolveInternalDependency) => string | null
+): Promise<string[]> {
+  if (fs.existsSync(target)) {
+    return [];
+  }
+  fs.mkdirSync(target, { recursive: true });
+  const files = await readdirRecursive({ path: sourcePackage });
+  const hashes: string[] = [];
+  for (const file of files) {
+    const absSource = path.join(sourcePackage, file.name);
+    const absDest = path.join(target, file.name);
+    const fileHash = await getSourceHash(file.name);
+    hashes.push(fileHash);
+    if (file.name !== "package.json") {
+      const targetDir = absDest.slice(0, absDest.lastIndexOf("/"));
+      fs.mkdirSync(targetDir, { recursive: true });
+      fs.copyFileSync(absSource, absDest);
+    } else {
+      const packageJson: PackageJson = JSON.parse(
+        fs.readFileSync(absSource, "utf-8")
+      ) as PackageJson;
+      for (const map of [
+        packageJson.dependencies,
+        packageJson.devDependencies,
+        packageJson.peerDependencies,
+        packageJson.optionalDependencies,
+      ]) {
+        if (!map) {
+          continue;
+        }
+        for (const dep in map) {
+          if (!dep) {
+            continue;
+          }
+          const version = map[dep];
+          const internal = resolveInternalDependency({
+            source: sourcePackage,
+            dependency: dep,
+            versionString: version,
+          });
+          if (internal) {
+            const name = path.basename(internal);
+            map[dep] = `file:${pathRewritePrefix}${name}`;
+            const childHashes = await copyPackageTo(
+              internal,
+              `${internalDependencyDir}/${name}`,
+              internalDependencyDir,
+              "../",
+              resolveInternalDependency
+            );
+            hashes.push(...childHashes);
+          }
+        }
+      }
+      fs.writeFileSync(absDest, JSON.stringify(packageJson, null, 2), "utf-8");
+    }
+  }
+  return hashes;
+}
+
+/**
+ *
+ */
 export async function prepareFunctionsUpload(
   sourceDir: string,
   config: projectConfig.ValidatedSingle,
@@ -131,6 +216,9 @@ export async function prepareFunctionsUpload(
   return packageSource(sourceDir, config, runtimeConfig);
 }
 
+/**
+ *
+ */
 export function convertToSortedKeyValueArray(config: any): SortedConfig {
   if (typeof config !== "object" || config === null) return config;
 
@@ -140,3 +228,10 @@ export function convertToSortedKeyValueArray(config: any): SortedConfig {
       return { key, value: convertToSortedKeyValueArray(config[key]) };
     });
 }
+
+type PackageJson = {
+  dependencies?: Record<string, string>;
+  devDependencies?: Record<string, string>;
+  optionalDependencies?: Record<string, string>;
+  peerDependencies?: Record<string, string>;
+};
