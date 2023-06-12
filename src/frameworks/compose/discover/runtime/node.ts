@@ -163,6 +163,7 @@ export class NodejsRuntime implements Runtime {
         command.cmd.replace(/^\S+/, packageManager);
       }
     }
+
     return command;
   }
 
