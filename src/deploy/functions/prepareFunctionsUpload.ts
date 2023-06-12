@@ -11,7 +11,6 @@ import { getSourceHash } from "./cache/hash";
 import * as backend from "./backend";
 import * as functionsConfig from "../../functionsConfig";
 import * as utils from "../../utils";
-import * as fsAsync from "../../fsAsync";
 import * as projectConfig from "../../functions/projectConfig";
 import { readdirRecursive } from "../../fsAsync";
 import { join } from "path";
@@ -65,7 +64,7 @@ async function prepareSource(
   config: projectConfig.ValidatedSingle,
   runtimeConfig: any
 ) {
-  const tmpDir = tmp.dirSync({ prefix: "firebase-functions-" });
+  const tmpDir = tmp.tmpNameSync({ prefix: "firebase-functions-" });
   // We must ignore firebase-debug.log or weird things happen if
   // you're in the public dir when you deploy.
   // We ignore any CONFIG_DEST_FILE that already exists, and write another one
@@ -79,8 +78,8 @@ async function prepareSource(
   const internalDepDir = "internal_dependencies";
   const hashes = await copyPackageTo(
     sourceDir,
-    tmpDir.name,
-    `${tmpDir.name}/${internalDepDir}`,
+    tmpDir,
+    `${tmpDir}/${internalDepDir}`,
     `./${internalDepDir}/`,
     (args) => {
       if (args.versionString.startsWith("workspace:")) {
@@ -95,12 +94,12 @@ async function prepareSource(
     hashes.push(runtimeConfigHashString);
 
     const runtimeConfigString = JSON.stringify(runtimeConfig, null, 2);
-    fs.writeFileSync(path.join(tmpDir.name, CONFIG_DEST_FILE), runtimeConfigString, {
+    fs.writeFileSync(path.join(tmpDir, CONFIG_DEST_FILE), runtimeConfigString, {
       mode: 420 /* 0o644 */,
     });
   }
   return {
-    dir: tmpDir.name,
+    dir: tmpDir,
     hash: hashes.join("."),
   };
 }
