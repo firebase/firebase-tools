@@ -54,9 +54,9 @@ async function pollAuthorizedProject(rid: string): Promise<string | null> {
   if ("userResponse" in getInitFirebaseRes) {
     if (getInitFirebaseRes.userResponse.success) {
       return getInitFirebaseRes.userResponse.projectId;
-    } else {
-      return null;
     }
+
+    return null;
   }
 
   const { error } = getInitFirebaseRes;
