@@ -30,4 +30,7 @@ export interface BaseOptions {
 export interface Options extends BaseOptions {
   // TODO(samstern): Remove this once options is better typed
   [key: string]: unknown;
+
+  // whether it's coming from the VS Code Extension
+  isVSCE?: true;
 }
