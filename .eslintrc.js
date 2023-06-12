@@ -128,5 +128,7 @@ module.exports = {
     "/src/frameworks/docs/**",
     // This file is taking a very long time to lint, 2-4m
     "src/emulator/auth/schema.ts",
+    // TODO(hsubox76): Set up a job to run eslint separately on vscode dir
+    "firebase-vscode/",
   ],
 };
