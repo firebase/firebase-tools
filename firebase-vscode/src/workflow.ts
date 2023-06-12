@@ -230,8 +230,6 @@ export function setupWorkflow(
   });
 
   broker.on("getSelectedProject", async () => {
-    // For now, just read the cached value.
-    // TODO: Extend this to reading from firebaserc
     if (firebaseRC?.projects?.default) {
       broker.send("notifyProjectChanged",
         { projectId: firebaseRC?.projects?.default });
@@ -295,6 +293,7 @@ export function setupWorkflow(
   );
 
   async function fetchChannels() {
+    pluginLogger.debug('Fetching hosting channels');
     const channels = await getChannels(firebaseJSON);
     broker.send("notifyChannels", { channels });
   }
@@ -363,6 +362,7 @@ export function setupWorkflow(
 
   async function selectAndInitHosting({ projectId, singleAppSupport }) {
     pluginLogger.debug('Searching for a web framework in this project.');
+    //TODO(chholland): This takes a few seconds - add some UI progress/message
     const discoveredFramework = await discover(currentOptions.cwd, false);
     if (discoveredFramework) {
       pluginLogger.debug('Detected web framework, launching frameworks init.');
