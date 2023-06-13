@@ -1,7 +1,7 @@
 import { MockFileSystem } from "./mockFileSystem";
 import { expect } from "chai";
 
-describe("LocalFileSystem", () => {
+describe("MockFileSystem", () => {
   let fileSystem: MockFileSystem;
 
   before(() => {
@@ -23,13 +23,14 @@ describe("LocalFileSystem", () => {
     it("should return true if file exists in the directory ", async () => {
       const fileExists = await fileSystem.exists("package.json");
 
-      expect(fileExists).to.equal(true);
+      expect(fileExists).to.be.true;
+      expect(fileSystem.getExistsCache("package.json")).to.be.true;
     });
 
     it("should return false if file does not exist in the directory", async () => {
       const fileExists = await fileSystem.exists("nonexistent.txt");
 
-      expect(fileExists).to.equal(false);
+      expect(fileExists).to.be.false;
     });
   });
 
@@ -49,6 +50,7 @@ describe("LocalFileSystem", () => {
       });
 
       expect(fileContent).to.equal(expected);
+      expect(fileSystem.getContentCache("package.json")).to.equal(expected);
     });
   });
 });
