@@ -75,6 +75,7 @@ async function prepareSource(
     "firebase-debug.*.log",
     CONFIG_DEST_FILE /* .runtimeconfig.json */
   );
+  // Hardcoded but could be made configurable via an env variable
   const internalDepDir = "internal_dependencies";
   const hashes = await copyPackageTo(
     sourceDir,
@@ -82,6 +83,8 @@ async function prepareSource(
     `${tmpDir}/${internalDepDir}`,
     `./${internalDepDir}/`,
     ignore,
+    // Strategy on how to find if a dependency is a locally linked dependency and should be packaged
+    // Returns the path to the dependency or null if it shouldn't be included
     (args) => {
       if (args.versionString.startsWith("workspace:")) {
         return join(args.source, "node_modules", args.dependency);
