@@ -41,32 +41,27 @@ export class NodejsRuntime implements Runtime {
   }
 
   getNodeImage(version: Record<string, string> | undefined): string {
-    try {
-      // If no version is mentioned explicitly, assuming application is compatible with latest version.
-      if (!version) {
-        return NODE_LATEST_BASE_IMAGE;
-      }
-      const nodeVersion = version.node;
-      // Splits version number `>=18..0.5` to `>=` and `18.0.5`
-      const versionPattern = /^([>=<^~]+)?(\d+\.\d+\.\d+)$/;
-      const versionMatch = versionPattern.exec(nodeVersion);
-      if (!versionMatch) {
-        return NODE_LATEST_BASE_IMAGE;
-      }
-      const operator = versionMatch[1];
-      const versionNumber = versionMatch[2];
-      const majorVersion = parseInt(versionNumber.split(".")[0]);
-      if ((!operator || operator === "^" || operator === "~") && majorVersion < 18) {
-        throw new FirebaseError(
-          "Unsupported node version number, only versions >= 18 are supported."
-        );
-      }
-
+    // If no version is mentioned explicitly, assuming application is compatible with latest version.
+    if (!version) {
       return NODE_LATEST_BASE_IMAGE;
-    } catch (error) {
-      logger.error("Failed to getNodeVersion", error);
-      throw error;
     }
+    const nodeVersion = version.node;
+    // Splits version number `>=18..0.5` to `>=` and `18.0.5`
+    const versionPattern = /^([>=<^~]+)?(\d+\.\d+\.\d+)$/;
+    const versionMatch = versionPattern.exec(nodeVersion);
+    if (!versionMatch) {
+      return NODE_LATEST_BASE_IMAGE;
+    }
+    const operator = versionMatch[1];
+    const versionNumber = versionMatch[2];
+    const majorVersion = parseInt(versionNumber.split(".")[0]);
+    if ((!operator || operator === "^" || operator === "~") && majorVersion < 18) {
+      throw new FirebaseError(
+        "Unsupported node version number, only versions >= 18 are supported."
+      );
+    }
+
+    return NODE_LATEST_BASE_IMAGE;
   }
 
   async getPackageManager(fs: FileSystem): Promise<string> {
@@ -114,7 +109,7 @@ export class NodejsRuntime implements Runtime {
 
       return dependencies;
     } catch (error: any) {
-      logger.error("Failed to getDependencies for the project: ", error);
+      logger.error("Error while reading dependencies for the project: ", error);
       throw error;
     }
   }
@@ -251,8 +246,7 @@ export class NodejsRuntime implements Runtime {
 
       return runtimeSpec;
     } catch (error: any) {
-      logger.error("Failed to analyseCodebase: ", error);
-      throw error;
+      throw new FirebaseError(`Failed to indentify commands for codebase: ${error}`);
     }
   }
 }
